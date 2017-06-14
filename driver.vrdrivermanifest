@@ -1,0 +1,10 @@
+{
+	"alwaysActivate": true,
+	"name" : "virtual_display",
+	"redirectsDisplay": true,
+
+	"hmd_presence" :
+	[
+		"*.*"
+	]
+}

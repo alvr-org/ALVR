@@ -1,0 +1,12 @@
+{
+	"driver_virtual_display": {
+		"serialNumber": "VD-001",
+		"modelNumber": "Virtual Display",
+		"additionalLatencyInSeconds": 0.008,
+		"displayWidth": 2160,
+		"displayHeight": 1200,
+		"displayRefreshRateNumerator": 90,
+		"displayRefreshRateDenominator": 1,
+		"adapterIndex": -1
+	}
+}

@@ -68,10 +68,8 @@ NvEncoder::NvEncoder(NV_ENC_DEVICE_TYPE eDeviceType, void *pDevice, uint32_t nWi
     encodeSessionExParams.deviceType = m_eDeviceType;
     encodeSessionExParams.apiVersion = NVENCAPI_VERSION;
     void *hEncoder = NULL;
-	Log("nvEncOpenEncodeSessionEx:%p %p %p", m_nvenc.nvEncOpenEncodeSessionEx, m_pDevice, m_eDeviceType);
     NVENC_API_CALL(m_nvenc.nvEncOpenEncodeSessionEx(&encodeSessionExParams, &hEncoder));
 
-	Log("nvEncOpenEncodeSessionEx end");
     m_hEncoder = hEncoder;
 }
 

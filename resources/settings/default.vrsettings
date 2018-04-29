@@ -3,10 +3,19 @@
 		"serialNumber": "VD-001",
 		"modelNumber": "Virtual Display",
 		"additionalLatencyInSeconds": 0.008,
-		"displayWidth": 2160,
-		"displayHeight": 1200,
+		"displayWidth": 1920,
+		"displayHeight": 1080,
 		"displayRefreshRateNumerator": 90,
 		"displayRefreshRateDenominator": 1,
-		"adapterIndex": -1
+		"adapterIndex": -1,
+      "enable" : true,
+      "windowX" : 0,
+      "windowY" : 0,
+      "windowWidth" : 1920,
+      "windowHeight" : 1080,
+      "renderWidth" : 1920,
+      "renderHeight" : 1080,
+      "secondsFromVsyncToPhotons" : 0.011,
+      "displayFrequency" : 0
 	}
 }

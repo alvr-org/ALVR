@@ -20,6 +20,65 @@ simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger(
 
 namespace
 {
+	using namespace vr;
+
+	void Log(const char *pFormat, ...);
+
+	void Test(CD3DRender *m_pD3DRender, ID3D11Texture2D *pTexture, int nHeight) {
+
+		D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
+		if (SUCCEEDED(m_pD3DRender->GetContext()->Map(pTexture, 0, D3D11_MAP_READ, 0, &mapped)))
+		{
+			Log("[VDispDvr] Test Mapped Texture");
+			FILE *fp;
+			fopen_s(&fp, "C:\\src\\virtual_display\\test.bmp", "w");
+			fwrite(mapped.pData, mapped.RowPitch * nHeight, 1, fp);
+			fclose(fp);
+
+			m_pD3DRender->GetContext()->Unmap(pTexture, 0);
+		}
+	}
+
+	inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y, double z)
+	{
+		HmdQuaternion_t quat;
+		quat.w = w;
+		quat.x = x;
+		quat.y = y;
+		quat.z = z;
+		return quat;
+	}
+
+	inline void HmdMatrix_SetIdentity(HmdMatrix34_t *pMatrix)
+	{
+		pMatrix->m[0][0] = 1.f;
+		pMatrix->m[0][1] = 0.f;
+		pMatrix->m[0][2] = 0.f;
+		pMatrix->m[0][3] = 0.f;
+		pMatrix->m[1][0] = 0.f;
+		pMatrix->m[1][1] = 1.f;
+		pMatrix->m[1][2] = 0.f;
+		pMatrix->m[1][3] = 0.f;
+		pMatrix->m[2][0] = 0.f;
+		pMatrix->m[2][1] = 0.f;
+		pMatrix->m[2][2] = 1.f;
+		pMatrix->m[2][3] = 0.f;
+	}
+
+
+	// keys for use with the settings API
+	static const char * const k_pch_Sample_Section = "driver_virtual_display";
+	static const char * const k_pch_Sample_SerialNumber_String = "serialNumber";
+	static const char * const k_pch_Sample_ModelNumber_String = "modelNumber";
+	static const char * const k_pch_Sample_WindowX_Int32 = "windowX";
+	static const char * const k_pch_Sample_WindowY_Int32 = "windowY";
+	static const char * const k_pch_Sample_WindowWidth_Int32 = "windowWidth";
+	static const char * const k_pch_Sample_WindowHeight_Int32 = "windowHeight";
+	static const char * const k_pch_Sample_RenderWidth_Int32 = "renderWidth";
+	static const char * const k_pch_Sample_RenderHeight_Int32 = "renderHeight";
+	static const char * const k_pch_Sample_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
+	static const char * const k_pch_Sample_DisplayFrequency_Float = "displayFrequency";
+
 	//-----------------------------------------------------------------------------
 	// Settings
 	//-----------------------------------------------------------------------------
@@ -44,13 +103,36 @@ namespace
 		strcat_s( buffer, "\n" );
 		//vr::VRDriverLog()->Log( buffer );
 
+		FILETIME ft;
+		SYSTEMTIME st2, st;
+
+		GetSystemTimeAsFileTime(&ft);
+		FileTimeToSystemTime(&ft, &st2);
+		SystemTimeToTzSpecificLocalTime(NULL, &st2, &st);
+
 		FILE *fp = fopen("C:\\src\\virtual_display\\driver.log", "a");
 		if (fp) {
+			uint64_t q = (((uint64_t)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+			q /= 10;
+			fprintf(fp,
+				"[%02d:%02d:%02d.%03lld %03lld] ",
+				st.wHour, st.wMinute, st.wSecond, q / 1000 % 1000, q % 1000);
 			fputs(buffer, fp);
 			fclose(fp);
 		}
 
 		va_end( args );
+	}
+
+	// Get current time in micro seconds.
+	uint64_t GetTimestamp() {
+		FILETIME ft;
+		GetSystemTimeAsFileTime(&ft);
+
+		uint64_t q = (((uint64_t)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+		q /= 10;
+
+		return q;
 	}
 
 	class RGBToNV12ConverterD3D11 {
@@ -173,6 +255,16 @@ namespace
 			NvEncoderInitParam EncodeCLIOptions("");
 			char *szOutFilePath = "C:\\src\\virtual_display\\test.h264";
 
+			if (nWindowWidth == 0 || nWindowHeight == 0 ||
+				nRefreshRateNumerator == 0 || nRefreshRateDenominator == 0)
+			{
+				Log("RemoteDevice: Invalid parameters. w=%d h=%d refresh=%d/%d",
+					nWindowWidth, nWindowHeight, nRefreshRateNumerator, nRefreshRateDenominator);
+				return false;
+			}
+
+			m_flFrameIntervalInSeconds = float(nRefreshRateDenominator) / nRefreshRateNumerator;
+
 			if (m_bForceNv12)
 			{
 				pConverter.reset(new RGBToNV12ConverterD3D11(m_pD3DRender->GetDevice(), m_pD3DRender->GetContext(), nWidth, nHeight));
@@ -180,14 +272,16 @@ namespace
 
 			Log("CNvEncoder Initialize %dx%d %dx%d %p", nWindowX, nWindowY, nWindowWidth, nWindowHeight, m_pD3DRender->GetDevice());
 
-			enc = new NvEncoderD3D11(m_pD3DRender->GetDevice(), nWidth, nHeight, m_bForceNv12 ? NV_ENC_BUFFER_FORMAT_NV12 : NV_ENC_BUFFER_FORMAT_ARGB);
+			NV_ENC_BUFFER_FORMAT format = m_bForceNv12 ? NV_ENC_BUFFER_FORMAT_NV12 : NV_ENC_BUFFER_FORMAT_ARGB;
+			format = NV_ENC_BUFFER_FORMAT_ABGR;
+			enc = new NvEncoderD3D11(m_pD3DRender->GetDevice(), nWidth, nHeight, format);
 
 			NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
 			NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
 			initializeParams.encodeConfig = &encodeConfig;
 			enc->CreateDefaultEncoderParams(&initializeParams, EncodeCLIOptions.GetEncodeGUID(), EncodeCLIOptions.GetPresetGUID());
 
-			EncodeCLIOptions.SetInitParams(&initializeParams, m_bForceNv12 ? NV_ENC_BUFFER_FORMAT_NV12 : NV_ENC_BUFFER_FORMAT_ARGB);
+			EncodeCLIOptions.SetInitParams(&initializeParams, format);
 			Log("CreateEncoder start");
 			enc->CreateEncoder(&initializeParams);
 
@@ -203,6 +297,13 @@ namespace
 			}
 			Log("file opened");
 
+			m_pNewFrame = new IPCEvent("RemoteDisplay_NewFrame", false, false);
+			if (m_pNewFrame == NULL)
+			{
+				Log("RemoteDevice: Failed to create IPC event!");
+				return false;
+			}
+
 			return true;
 		}
 
@@ -210,8 +311,15 @@ namespace
 		{
 			std::vector<std::vector<uint8_t>> vPacket;
 			enc->EndEncode(vPacket);
+			for (std::vector<uint8_t> &packet : vPacket)
+			{
+				fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
+			}
+
 			enc->DestroyEncoder();
 			delete enc;
+
+			Log("CNvEncoder::Shutdown");
 
 			fpOut.close();
 		}
@@ -235,6 +343,8 @@ namespace
 			nWidth = min(desc.Width, SharedState_t::MAX_TEXTURE_WIDTH);
 			nHeight = min(desc.Height, SharedState_t::MAX_TEXTURE_HEIGHT);
 
+			Log("Transmit %dx%d %d", nWidth, nHeight, desc.Format);
+
 			const NvEncInputFrame* encoderInputFrame = enc->GetNextInputFrame();
 			
 
@@ -246,9 +356,17 @@ namespace
 			else
 			{
 				ID3D11Texture2D *pTexBgra = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
+				Log("CopyResource start");
+				uint64_t start = GetTimestamp();
 				m_pD3DRender->GetContext()->CopyResource(pTexBgra, pTexture);
+				uint64_t end = GetTimestamp();
+				Log("CopyResource end %lld us", end - start);
 			}
+
+			uint64_t start = GetTimestamp();
 			enc->EncodeFrame(vPacket);
+			uint64_t end = GetTimestamp();
+			Log("EncodeFrame %lld us", end - start);
 
 
 			m_nFrame += (int)vPacket.size();
@@ -258,6 +376,12 @@ namespace
 			}
 
 			m_pNewFrame->SetEvent();
+
+			{
+				CSharedState::Ptr data(&m_sharedState);
+				data->m_flLastVsyncTimeInSeconds += m_flFrameIntervalInSeconds / 2;
+				data->m_nVsyncCounter++;
+			}
 
 			Log("[VDispDvr] Transmit(end) (frame %d)", vPacket.size());
 		}
@@ -324,6 +448,8 @@ namespace
 				stagingTextureDesc.Usage = D3D11_USAGE_STAGING;
 				stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
+				Log("CopyToStaging %dx%d %d", srcDesc.Width, srcDesc.Height, srcDesc.Format);
+
 				if ( FAILED( m_pD3DRender->GetDevice()->CreateTexture2D( &stagingTextureDesc, NULL, &m_pStagingTexture ) ) )
 				{
 					Log( "Failed to create staging texture!" );
@@ -342,7 +468,7 @@ namespace
 
 			while ( !m_bExiting )
 			{
-				EventWriteString( L"[VDispDvr] Encoder waiting for new frame..." );
+				Log( "[VDispDvr] Encoder waiting for new frame..." );
 
 				m_newFrameReady.Wait();
 				if ( m_bExiting )
@@ -386,275 +512,452 @@ namespace
 	};
 }
 
+
 //-----------------------------------------------------------------------------
-// Purpose: This object represents our device (registered below).
-// It implements the IVRVirtualDisplay component interface to provide us
-// hooks into the render pipeline.
+// Purpose:
 //-----------------------------------------------------------------------------
-class CDisplayRedirectLatest : public vr::ITrackedDeviceServerDriver, public vr::IVRVirtualDisplay
+class CRemoteHmd : public vr::ITrackedDeviceServerDriver, public vr::IVRDisplayComponent, public vr::IVRVirtualDisplay
 {
 public:
-	CDisplayRedirectLatest()
-		: m_unObjectId( vr::k_unTrackedDeviceIndexInvalid )
-		, m_nGraphicsAdapterLuid( 0 )
-		, m_flLastVsyncTimeInSeconds( 0.0 )
-		, m_nVsyncCounter( 0 )
-		, m_pD3DRender( NULL )
-		, m_pFlushTexture( NULL )
-		, m_pRemoteDevice( NULL )
-		, m_pEncoder( NULL )
+	CRemoteHmd()
+		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
+		, m_nGraphicsAdapterLuid(0)
+		, m_flLastVsyncTimeInSeconds(0.0)
+		, m_nVsyncCounter(0)
+		, m_pD3DRender(NULL)
+		, m_pFlushTexture(NULL)
+		, m_pRemoteDevice(NULL)
+		, m_pEncoder(NULL)
 	{
-		vr::VRSettings()->GetString( k_pch_VirtualDisplay_Section,
-			vr::k_pch_Null_SerialNumber_String, m_rchSerialNumber, ARRAYSIZE( m_rchSerialNumber ) );
-		vr::VRSettings()->GetString( k_pch_VirtualDisplay_Section,
-			vr::k_pch_Null_ModelNumber_String, m_rchModelNumber, ARRAYSIZE( m_rchModelNumber ) );
+		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
-		m_flAdditionalLatencyInSeconds = max( 0.0f,
-			vr::VRSettings()->GetFloat( k_pch_VirtualDisplay_Section,
-				k_pch_VirtualDisplay_AdditionalLatencyInSeconds_Float ) );
+		Log("Using settings values");
+		m_flIPD = vr::VRSettings()->GetFloat(k_pch_SteamVR_Section, k_pch_SteamVR_IPD_Float);
+
+		char buf[1024];
+		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_SerialNumber_String, buf, sizeof(buf));
+		m_sSerialNumber = buf;
+
+		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_ModelNumber_String, buf, sizeof(buf));
+		m_sModelNumber = buf;
+
+		m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowX_Int32);
+		m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowY_Int32);
+		m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowWidth_Int32);
+		m_nWindowHeight = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowHeight_Int32);
+		m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_RenderWidth_Int32);
+		m_nRenderHeight = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_RenderHeight_Int32);
+		m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_SecondsFromVsyncToPhotons_Float);
+		m_flDisplayFrequency = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_DisplayFrequency_Float);
+
+		Log("driver_null: Serial Number: %s", m_sSerialNumber.c_str());
+		Log("driver_null: Model Number: %s", m_sModelNumber.c_str());
+		Log("driver_null: Window: %d %d %d %d", m_nWindowX, m_nWindowY, m_nWindowWidth, m_nWindowHeight);
+		Log("driver_null: Render Target: %d %d", m_nRenderWidth, m_nRenderHeight);
+		Log("driver_null: Seconds from Vsync to Photons: %f", m_flSecondsFromVsyncToPhotons);
+		Log("driver_null: Display Frequency: %f", m_flDisplayFrequency);
+		Log("driver_null: IPD: %f", m_flIPD);
+
+
+	//CDisplayRedirectLatest()
+
+		m_flAdditionalLatencyInSeconds = max(0.0f,
+			vr::VRSettings()->GetFloat(k_pch_VirtualDisplay_Section,
+				k_pch_VirtualDisplay_AdditionalLatencyInSeconds_Float));
 
 		uint32_t nDisplayWidth = vr::VRSettings()->GetInt32(
 			k_pch_VirtualDisplay_Section,
-			k_pch_VirtualDisplay_DisplayWidth_Int32 );
+			k_pch_VirtualDisplay_DisplayWidth_Int32);
 		uint32_t nDisplayHeight = vr::VRSettings()->GetInt32(
 			k_pch_VirtualDisplay_Section,
-			k_pch_VirtualDisplay_DisplayHeight_Int32 );
+			k_pch_VirtualDisplay_DisplayHeight_Int32);
 
 		int32_t nDisplayRefreshRateNumerator = vr::VRSettings()->GetInt32(
 			k_pch_VirtualDisplay_Section,
-			k_pch_VirtualDisplay_DisplayRefreshRateNumerator_Int32 );
+			k_pch_VirtualDisplay_DisplayRefreshRateNumerator_Int32);
 		int32_t nDisplayRefreshRateDenominator = vr::VRSettings()->GetInt32(
 			k_pch_VirtualDisplay_Section,
-			k_pch_VirtualDisplay_DisplayRefreshRateDenominator_Int32 );
+			k_pch_VirtualDisplay_DisplayRefreshRateDenominator_Int32);
 
 		int32_t nAdapterIndex = vr::VRSettings()->GetInt32(
 			k_pch_VirtualDisplay_Section,
-			k_pch_VirtualDisplay_AdapterIndex_Int32 );
+			k_pch_VirtualDisplay_AdapterIndex_Int32);
 
 		m_pD3DRender = new CD3DRender();
 
 		// First initialize using the specified display dimensions to determine
 		// which graphics adapter the headset is attached to (if any).
-		if ( !m_pD3DRender->Initialize( nDisplayWidth, nDisplayHeight ) )
+		if (!m_pD3DRender->Initialize(nDisplayWidth, nDisplayHeight))
 		{
-			Log( "Could not find headset with display size %dx%d.", nDisplayWidth, nDisplayHeight );
+			Log("Could not find headset with display size %dx%d.", nDisplayWidth, nDisplayHeight);
 			return;
 		}
 
 		int32_t nDisplayX, nDisplayY;
 		m_pD3DRender->GetDisplayPos(&nDisplayX, &nDisplayY);
-		m_pD3DRender->GetDisplaySize(&nDisplayWidth, &nDisplayHeight);
+		//m_pD3DRender->GetDisplaySize(&nDisplayWidth, &nDisplayHeight);
 
 		int32_t nDisplayAdapterIndex;
 		const int32_t nBufferSize = 128;
-		wchar_t wchAdapterDescription[ nBufferSize ];
-		if ( !m_pD3DRender->GetAdapterInfo( &nDisplayAdapterIndex, wchAdapterDescription, nBufferSize ) )
+		wchar_t wchAdapterDescription[nBufferSize];
+		if (!m_pD3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, nBufferSize))
 		{
-			Log( "Failed to get headset adapter info!" );
+			Log("Failed to get headset adapter info!");
 			return;
 		}
 
-		char chAdapterDescription[ nBufferSize ];
-		wcstombs_s( 0, chAdapterDescription, nBufferSize, wchAdapterDescription, nBufferSize );
-		Log( "Headset connected to %s.", chAdapterDescription );
+		char chAdapterDescription[nBufferSize];
+		wcstombs_s(0, chAdapterDescription, nBufferSize, wchAdapterDescription, nBufferSize);
+		Log("Headset connected to %s.", chAdapterDescription);
 
 		Log("Adapter Index: %d %d", nAdapterIndex, nDisplayAdapterIndex);
 
 		// If no adapter specified, choose the first one the headset *isn't* plugged into.
-		if ( nAdapterIndex < 0 )
+		if (nAdapterIndex < 0)
 		{
-			nAdapterIndex = ( nDisplayAdapterIndex == 0 ) ? 1 : 0;
+			nAdapterIndex = (nDisplayAdapterIndex == 0) ? 1 : 0;
 		}
-		else if ( nDisplayAdapterIndex == nAdapterIndex )
+		else if (nDisplayAdapterIndex == nAdapterIndex)
 		{
-			Log( "Headset needs to be plugged into a separate graphics card." );
+			Log("Headset needs to be plugged into a separate graphics card.");
 			return;
 		}
 
 		nAdapterIndex = 0;
 
 		// Store off the LUID of the primary gpu we want to use.
-		if ( !m_pD3DRender->GetAdapterLuid( nAdapterIndex, &m_nGraphicsAdapterLuid ) )
+		if (!m_pD3DRender->GetAdapterLuid(nAdapterIndex, &m_nGraphicsAdapterLuid))
 		{
-			Log( "Failed to get adapter index for graphics adapter!" );
+			Log("Failed to get adapter index for graphics adapter!");
 			return;
 		}
 
 		// Now reinitialize using the other graphics card.
-		if ( !m_pD3DRender->Initialize( nAdapterIndex ) )
+		if (!m_pD3DRender->Initialize(nAdapterIndex))
 		{
-			Log( "Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", nAdapterIndex );
+			Log("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", nAdapterIndex);
 			return;
 		}
 
-		if ( !m_pD3DRender->GetAdapterInfo( &nDisplayAdapterIndex, wchAdapterDescription, nBufferSize ) )
+		if (!m_pD3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, nBufferSize))
 		{
-			Log( "Failed to get primary adapter info!" );
+			Log("Failed to get primary adapter info!");
 			return;
 		}
 
-		wcstombs_s( 0, chAdapterDescription, nBufferSize, wchAdapterDescription, nBufferSize );
-		Log( "Using %s as primary graphics adapter.", chAdapterDescription );
+		wcstombs_s(0, chAdapterDescription, nBufferSize, wchAdapterDescription, nBufferSize);
+		Log("Using %s as primary graphics adapter.", chAdapterDescription);
 
 		// Spawn our separate process to manage headset presentation.
 		m_pRemoteDevice = new CNvEncoder(m_pD3DRender);
-		if ( !m_pRemoteDevice->Initialize(
+		if (!m_pRemoteDevice->Initialize(
 			nDisplayX, nDisplayY, nDisplayWidth, nDisplayHeight,
-			nDisplayRefreshRateNumerator, nDisplayRefreshRateDenominator ) )
+			nDisplayRefreshRateNumerator, nDisplayRefreshRateDenominator))
 		{
 			return;
 		}
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
-		m_pEncoder = new CEncoder( m_pD3DRender, m_pRemoteDevice );
+		m_pEncoder = new CEncoder(m_pD3DRender, m_pRemoteDevice);
 		m_pEncoder->Start();
 	}
 
-	virtual ~CDisplayRedirectLatest()
+	virtual ~CRemoteHmd()
 	{
-		if ( m_pEncoder )
+		if (m_pEncoder)
 		{
 			m_pEncoder->Stop();
 			delete m_pEncoder;
 		}
 
-		if ( m_pRemoteDevice )
+		if (m_pRemoteDevice)
 		{
 			m_pRemoteDevice->Shutdown();
 			delete m_pRemoteDevice;
 		}
 
-		if ( m_pFlushTexture )
+		if (m_pFlushTexture)
 		{
 			m_pFlushTexture->Release();
 		}
 
-		if ( m_pD3DRender )
+		if (m_pD3DRender)
 		{
 			m_pD3DRender->Shutdown();
 			delete m_pD3DRender;
 		}
 	}
 
+
+	virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId)
+	{
+		Log("CRemoteHmd Activate %f", m_flDisplayFrequency);
+
+		m_unObjectId = unObjectId;
+		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
+
+
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_RenderModelName_String, m_sModelNumber.c_str());
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, Prop_UserIpdMeters_Float, m_flIPD);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, Prop_UserHeadToEyeDepthMeters_Float, 0.f);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, Prop_DisplayFrequency_Float, m_flDisplayFrequency);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, Prop_SecondsFromVsyncToPhotons_Float, m_flSecondsFromVsyncToPhotons);
+
+		// return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, Prop_CurrentUniverseId_Uint64, 2);
+
+		// avoid "not fullscreen" warnings from vrmonitor
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, Prop_IsOnDesktop_Bool, false);
+
+		// Icons can be configured in code or automatically configured by an external file "drivername\resources\driver.vrresources".
+		// Icon properties NOT configured in code (post Activate) are then auto-configured by the optional presence of a driver's "drivername\resources\driver.vrresources".
+		// In this manner a driver can configure their icons in a flexible data driven fashion by using an external file.
+		//
+		// The structure of the driver.vrresources file allows a driver to specialize their icons based on their HW.
+		// Keys matching the value in "Prop_ModelNumber_String" are considered first, since the driver may have model specific icons.
+		// An absence of a matching "Prop_ModelNumber_String" then considers the ETrackedDeviceClass ("HMD", "Controller", "GenericTracker", "TrackingReference")
+		// since the driver may have specialized icons based on those device class names.
+		//
+		// An absence of either then falls back to the "system.vrresources" where generic device class icons are then supplied.
+		//
+		// Please refer to "bin\drivers\sample\resources\driver.vrresources" which contains this sample configuration.
+		//
+		// "Alias" is a reserved key and specifies chaining to another json block.
+		//
+		// In this sample configuration file (overly complex FOR EXAMPLE PURPOSES ONLY)....
+		//
+		// "Model-v2.0" chains through the alias to "Model-v1.0" which chains through the alias to "Model-v Defaults".
+		//
+		// Keys NOT found in "Model-v2.0" would then chase through the "Alias" to be resolved in "Model-v1.0" and either resolve their or continue through the alias.
+		// Thus "Prop_NamedIconPathDeviceAlertLow_String" in each model's block represent a specialization specific for that "model".
+		// Keys in "Model-v Defaults" are an example of mapping to the same states, and here all map to "Prop_NamedIconPathDeviceOff_String".
+		//
+		bool bSetupIconUsingExternalResourceFile = true;
+		if (!bSetupIconUsingExternalResourceFile)
+		{
+			// Setup properties directly in code.
+			// Path values are of the form {drivername}\icons\some_icon_filename.png
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceOff_String, "{virtual_display}/icons/headset_sample_status_off.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearching_String, "{virtual_display}/icons/headset_sample_status_searching.gif");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearchingAlert_String, "{virtual_display}/icons/headset_sample_status_searching_alert.gif");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReady_String, "{virtual_display}/icons/headset_sample_status_ready.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{virtual_display}/icons/headset_sample_status_ready_alert.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceNotReady_String, "{virtual_display}/icons/headset_sample_status_error.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String, "{virtual_display}/icons/headset_sample_status_standby.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{virtual_display}/icons/headset_sample_status_ready_low.png");
+		}
+
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
+			vr::Prop_SecondsFromVsyncToPhotons_Float, m_flAdditionalLatencyInSeconds);
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer,
+			vr::Prop_GraphicsAdapterLuid_Uint64, m_nGraphicsAdapterLuid);
+
+		return VRInitError_None;
+	}
+
+	virtual void Deactivate()
+	{
+		Log("CRemoteHmd Deactivate");
+		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+	}
+
+	virtual void EnterStandby()
+	{
+	}
+
+	void *GetComponent(const char *pchComponentNameAndVersion)
+	{
+		Log("CRemoteHmd GetComponent %s", pchComponentNameAndVersion);
+		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
+		{
+			return (vr::IVRDisplayComponent*)this;
+		}
+		if (!_stricmp(pchComponentNameAndVersion, vr::IVRVirtualDisplay_Version))
+		{
+			return static_cast< vr::IVRVirtualDisplay * >(this);
+		}
+
+		// override this to add a component to a driver
+		return NULL;
+	}
+
+	virtual void PowerOff()
+	{
+	}
+
+	/** debug request from a client */
+	virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize)
+	{
+		if (unResponseBufferSize >= 1)
+			pchResponseBuffer[0] = 0;
+	}
+
+	virtual void GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
+	{
+		Log("GetWindowBounds %dx%x %dx%d", m_nWindowX, m_nWindowY, m_nWindowWidth, m_nWindowHeight);
+		*pnX = m_nWindowX;
+		*pnY = m_nWindowY;
+		*pnWidth = m_nWindowWidth;
+		*pnHeight = m_nWindowHeight;
+	}
+
+	virtual bool IsDisplayOnDesktop()
+	{
+		return true;
+	}
+
+	virtual bool IsDisplayRealDisplay()
+	{
+		return false;
+	}
+
+	virtual void GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight)
+	{
+		*pnWidth = m_nRenderWidth;
+		*pnHeight = m_nRenderHeight;
+	}
+
+	virtual void GetEyeOutputViewport(EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
+	{
+		*pnY = 0;
+		*pnWidth = m_nWindowWidth / 2;
+		*pnHeight = m_nWindowHeight;
+
+		if (eEye == Eye_Left)
+		{
+			*pnX = 0;
+		}
+		else
+		{
+			*pnX = m_nWindowWidth / 2;
+		}
+	}
+
+	virtual void GetProjectionRaw(EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom)
+	{
+		*pfLeft = -1.0;
+		*pfRight = 1.0;
+		*pfTop = -1.0;
+		*pfBottom = 1.0;
+	}
+
+	virtual DistortionCoordinates_t ComputeDistortion(EVREye eEye, float fU, float fV)
+	{
+		DistortionCoordinates_t coordinates;
+		coordinates.rfBlue[0] = fU;
+		coordinates.rfBlue[1] = fV;
+		coordinates.rfGreen[0] = fU;
+		coordinates.rfGreen[1] = fV;
+		coordinates.rfRed[0] = fU;
+		coordinates.rfRed[1] = fV;
+		return coordinates;
+	}
+
+	// ITrackedDeviceServerDriver
+
+
+	virtual DriverPose_t GetPose()
+	{
+		DriverPose_t pose = { 0 };
+		pose.poseIsValid = true;
+		pose.result = TrackingResult_Running_OK;
+		pose.deviceIsConnected = true;
+
+		pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+
+		Log("GetPose");
+
+		return pose;
+	}
+
+
+	void RunFrame()
+	{
+		// In a real driver, this should happen from some pose tracking thread.
+		// The RunFrame interval is unspecified and can be very irregular if some other
+		// driver blocks it for some periodic task.
+		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
+		{
+			Log("RunFrame");
+			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(DriverPose_t));
+		}
+	}
+
+	std::string GetSerialNumber() const { return m_sSerialNumber; }
+
+private:
+	vr::TrackedDeviceIndex_t m_unObjectId;
+	vr::PropertyContainerHandle_t m_ulPropertyContainer;
+
+	std::string m_sSerialNumber;
+	std::string m_sModelNumber;
+
+	int32_t m_nWindowX;
+	int32_t m_nWindowY;
+	int32_t m_nWindowWidth;
+	int32_t m_nWindowHeight;
+	int32_t m_nRenderWidth;
+	int32_t m_nRenderHeight;
+	float m_flSecondsFromVsyncToPhotons;
+	float m_flDisplayFrequency;
+	float m_flIPD;
+
+public:
 	bool IsValid() const
 	{
 		return m_pEncoder != NULL;
 	}
 
-	// ITrackedDeviceServerDriver
-
-	virtual vr::EVRInitError Activate( uint32_t unObjectId ) override
-	{
-		m_unObjectId = unObjectId;
-
-		vr::PropertyContainerHandle_t ulContainer =
-			vr::VRProperties()->TrackedDeviceToPropertyContainer( unObjectId );
-
-		vr::VRProperties()->SetStringProperty( ulContainer,
-			vr::Prop_ModelNumber_String, m_rchModelNumber );
-		vr::VRProperties()->SetFloatProperty( ulContainer,
-			vr::Prop_SecondsFromVsyncToPhotons_Float, m_flAdditionalLatencyInSeconds );
-		vr::VRProperties()->SetUint64Property( ulContainer,
-			vr::Prop_GraphicsAdapterLuid_Uint64, m_nGraphicsAdapterLuid );
-
-		Log("Activate %s %f %llu", m_rchModelNumber, m_flAdditionalLatencyInSeconds, m_nGraphicsAdapterLuid);
-		return vr::VRInitError_None;
-	}
-
-	virtual void Deactivate() override
-	{
-		Log("Deactivate");
-		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-	}
-
-	virtual void *GetComponent( const char *pchComponentNameAndVersion ) override
-	{
-		Log("GetComponent %s", pchComponentNameAndVersion);
-		if ( !_stricmp( pchComponentNameAndVersion, vr::IVRVirtualDisplay_Version ) )
-		{
-			return static_cast< vr::IVRVirtualDisplay * >( this );
-		}
-		return NULL;
-	}
-
-	virtual void EnterStandby() override
-	{
-	}
-
-	virtual void DebugRequest( const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize ) override
-	{
-		if( unResponseBufferSize >= 1 )
-			pchResponseBuffer[0] = 0;
-	}
-
-	virtual vr::DriverPose_t GetPose() override
-	{
-		vr::DriverPose_t pose = { 0 };
-		pose.poseIsValid = true;
-		pose.result = vr::TrackingResult_Running_OK;
-		pose.deviceIsConnected = true;
-		pose.qWorldFromDriverRotation.w = 1;
-		pose.qWorldFromDriverRotation.x = 0;
-		pose.qWorldFromDriverRotation.y = 0;
-		pose.qWorldFromDriverRotation.z = 0;
-		pose.qDriverFromHeadRotation.w = 1;
-		pose.qDriverFromHeadRotation.x = 0;
-		pose.qDriverFromHeadRotation.y = 0;
-		pose.qDriverFromHeadRotation.z = 0;
-		return pose;
-	}
-
-	std::string GetSerialNumber()
-	{
-		return m_rchSerialNumber;
-	}
 
 	// IVRVirtualDisplay
 
-	virtual void Present( vr::SharedTextureHandle_t backbufferTextureHandle ) override
+	virtual void Present(vr::SharedTextureHandle_t backbufferTextureHandle) override
 	{
 		Log("Present");
 		// Open and cache our shared textures to avoid re-opening every frame.
-		ID3D11Texture2D *pTexture = m_pD3DRender->GetSharedTexture( ( HANDLE )backbufferTextureHandle );
-		if ( pTexture == NULL )
+		ID3D11Texture2D *pTexture = m_pD3DRender->GetSharedTexture((HANDLE)backbufferTextureHandle);
+		if (pTexture == NULL)
 		{
-			EventWriteString( L"[VDispDvr] Texture is NULL!" );
+			EventWriteString(L"[VDispDvr] Texture is NULL!");
 		}
 		else
 		{
-			EventWriteString( L"[VDispDvr] Waiting for previous encode to finish..." );
+			EventWriteString(L"[VDispDvr] Waiting for previous encode to finish...");
 
 			// Wait for the encoder to be ready.  This is important because the encoder thread
 			// blocks on transmit which uses our shared d3d context (which is not thread safe).
 			m_pEncoder->WaitForEncode();
 
-			EventWriteString( L"[VDispDvr] Done" );
+			EventWriteString(L"[VDispDvr] Done");
 
 			// Access to shared texture must be wrapped in AcquireSync/ReleaseSync
 			// to ensure the compositor has finished rendering to it before it gets used.
 			// This enforces scheduling of work on the gpu between processes.
 			IDXGIKeyedMutex *pKeyedMutex = NULL;
-			if ( SUCCEEDED( pTexture->QueryInterface( __uuidof( IDXGIKeyedMutex ), ( void ** )&pKeyedMutex ) ) )
+			if (SUCCEEDED(pTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void **)&pKeyedMutex)))
 			{
-				if ( pKeyedMutex->AcquireSync( 0, 10 ) != S_OK )
+				if (pKeyedMutex->AcquireSync(0, 10) != S_OK)
 				{
 					pKeyedMutex->Release();
-					EventWriteString( L"[VDispDvr] ACQUIRESYNC FAILED!!!" );
+					EventWriteString(L"[VDispDvr] ACQUIRESYNC FAILED!!!");
 					return;
 				}
 			}
 
-			EventWriteString( L"[VDispDvr] AcquiredSync" );
+			EventWriteString(L"[VDispDvr] AcquiredSync");
 
-			if ( m_pFlushTexture == NULL )
+			if (m_pFlushTexture == NULL)
 			{
 				D3D11_TEXTURE2D_DESC srcDesc;
-				pTexture->GetDesc( &srcDesc );
+				pTexture->GetDesc(&srcDesc);
 
 				// Create a second small texture for copying and reading a single pixel from
 				// in order to block on the cpu until rendering is finished.
 				D3D11_TEXTURE2D_DESC flushTextureDesc;
-				ZeroMemory( &flushTextureDesc, sizeof( flushTextureDesc ) );
+				ZeroMemory(&flushTextureDesc, sizeof(flushTextureDesc));
 				flushTextureDesc.Width = 32;
 				flushTextureDesc.Height = 32;
 				flushTextureDesc.MipLevels = 1;
@@ -665,71 +968,71 @@ public:
 				flushTextureDesc.BindFlags = 0;
 				flushTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
-				if ( FAILED( m_pD3DRender->GetDevice()->CreateTexture2D( &flushTextureDesc, NULL, &m_pFlushTexture ) ) )
+				if (FAILED(m_pD3DRender->GetDevice()->CreateTexture2D(&flushTextureDesc, NULL, &m_pFlushTexture)))
 				{
-					Log( "Failed to create flush texture!" );
+					Log("Failed to create flush texture!");
 					return;
 				}
 			}
 
 			// Copy a single pixel so we can block until rendering is finished in WaitForPresent.
 			D3D11_BOX box = { 0, 0, 0, 1, 1, 1 };
-			m_pD3DRender->GetContext()->CopySubresourceRegion( m_pFlushTexture, 0, 0, 0, 0, pTexture, 0, &box );
+			m_pD3DRender->GetContext()->CopySubresourceRegion(m_pFlushTexture, 0, 0, 0, 0, pTexture, 0, &box);
 
-			EventWriteString( L"[VDispDvr] Flush-Begin" );
+			EventWriteString(L"[VDispDvr] Flush-Begin");
 
 			// This can go away, but is useful to see it as a separate packet on the gpu in traces.
 			m_pD3DRender->GetContext()->Flush();
 
-			EventWriteString( L"[VDispDvr] Flush-End" );
+			EventWriteString(L"[VDispDvr] Flush-End");
 
 			// Copy entire texture to staging so we can read the pixels to send to remote device.
-			m_pEncoder->CopyToStaging( pTexture );
+			m_pEncoder->CopyToStaging(pTexture);
 
-			EventWriteString( L"[VDispDvr] Flush-Staging(begin)" );
+			EventWriteString(L"[VDispDvr] Flush-Staging(begin)");
 
 			m_pD3DRender->GetContext()->Flush();
 
-			EventWriteString( L"[VDispDvr] Flush-Staging(end)" );
+			EventWriteString(L"[VDispDvr] Flush-Staging(end)");
 
-			if ( pKeyedMutex )
+			if (pKeyedMutex)
 			{
-				pKeyedMutex->ReleaseSync( 0 );
+				pKeyedMutex->ReleaseSync(0);
 				pKeyedMutex->Release();
 			}
 
-			EventWriteString( L"[VDispDvr] ReleasedSync" );
+			EventWriteString(L"[VDispDvr] ReleasedSync");
 		}
 	}
 
 	virtual void WaitForPresent() override
 	{
-		EventWriteString( L"[VDispDvr] WaitForPresent(begin)" );
+		EventWriteString(L"[VDispDvr] WaitForPresent(begin)");
 
 		// First wait for rendering to finish on the gpu.
-		if ( m_pFlushTexture )
+		if (m_pFlushTexture)
 		{
 			D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
-			if ( SUCCEEDED( m_pD3DRender->GetContext()->Map( m_pFlushTexture, 0, D3D11_MAP_READ, 0, &mapped ) ) )
+			if (SUCCEEDED(m_pD3DRender->GetContext()->Map(m_pFlushTexture, 0, D3D11_MAP_READ, 0, &mapped)))
 			{
-				EventWriteString( L"[VDispDvr] Mapped FlushTexture" );
+				EventWriteString(L"[VDispDvr] Mapped FlushTexture");
 
-				m_pD3DRender->GetContext()->Unmap( m_pFlushTexture, 0 );
+				m_pD3DRender->GetContext()->Unmap(m_pFlushTexture, 0);
 			}
 		}
 
-		EventWriteString( L"[VDispDvr] RenderingFinished" );
+		EventWriteString(L"[VDispDvr] RenderingFinished");
 
 		// Now that we know rendering is done, we can fire off our thread that reads the
 		// backbuffer into system memory.  We also pass in the earliest time that this frame
 		// should get presented.  This is the real vsync that starts our frame.
-		m_pEncoder->NewFrameReady( m_flLastVsyncTimeInSeconds + m_flAdditionalLatencyInSeconds );
+		m_pEncoder->NewFrameReady(m_flLastVsyncTimeInSeconds + m_flAdditionalLatencyInSeconds);
 
 		// Get latest timing info to work with.  This gets us sync'd up with the hardware in
 		// the first place, and also avoids any drifting over time.
 		double flLastVsyncTimeInSeconds;
 		uint32_t nVsyncCounter;
-		m_pRemoteDevice->GetTimingInfo( &flLastVsyncTimeInSeconds, &nVsyncCounter );
+		m_pRemoteDevice->GetTimingInfo(&flLastVsyncTimeInSeconds, &nVsyncCounter);
 
 		// Account for encoder/transmit latency.
 		// This is where the conversion from real to virtual vsync happens.
@@ -739,37 +1042,34 @@ public:
 
 		// Realign our last time interval given updated timing reference.
 		int32_t nTimeRefToLastVsyncFrames =
-			( int32_t )roundf( float( m_flLastVsyncTimeInSeconds - flLastVsyncTimeInSeconds ) / flFrameIntervalInSeconds );
+			(int32_t)roundf(float(m_flLastVsyncTimeInSeconds - flLastVsyncTimeInSeconds) / flFrameIntervalInSeconds);
 		m_flLastVsyncTimeInSeconds = flLastVsyncTimeInSeconds + flFrameIntervalInSeconds * nTimeRefToLastVsyncFrames;
 
 		// We could probably just use this instead, but it seems safer to go off the system timer calculation.
-		assert( m_nVsyncCounter == nVsyncCounter + nTimeRefToLastVsyncFrames );
+		//assert(m_nVsyncCounter == nVsyncCounter + nTimeRefToLastVsyncFrames);
 
 		double flNow = SystemTime::GetInSeconds();
 
 		// Find the next frame interval (keeping in mind we may get here during running start).
 		int32_t nLastVsyncToNextVsyncFrames =
-			( int32_t )( float( flNow - m_flLastVsyncTimeInSeconds ) / flFrameIntervalInSeconds );
-		nLastVsyncToNextVsyncFrames = max( nLastVsyncToNextVsyncFrames, 0 ) + 1;
+			(int32_t)(float(flNow - m_flLastVsyncTimeInSeconds) / flFrameIntervalInSeconds);
+		nLastVsyncToNextVsyncFrames = max(nLastVsyncToNextVsyncFrames, 0) + 1;
 
 		// And store it for use in GetTimeSinceLastVsync (below) and updating our next frame.
 		m_flLastVsyncTimeInSeconds += flFrameIntervalInSeconds * nLastVsyncToNextVsyncFrames;
 		m_nVsyncCounter = nVsyncCounter + nTimeRefToLastVsyncFrames + nLastVsyncToNextVsyncFrames;
 
-		EventWriteString( L"[VDispDvr] WaitForPresent(end)" );
+		EventWriteString(L"[VDispDvr] WaitForPresent(end)");
 	}
 
-	virtual bool GetTimeSinceLastVsync( float *pfSecondsSinceLastVsync, uint64_t *pulFrameCounter ) override
+	virtual bool GetTimeSinceLastVsync(float *pfSecondsSinceLastVsync, uint64_t *pulFrameCounter) override
 	{
-		*pfSecondsSinceLastVsync = ( float )( SystemTime::GetInSeconds() - m_flLastVsyncTimeInSeconds );
+		*pfSecondsSinceLastVsync = (float)(SystemTime::GetInSeconds() - m_flLastVsyncTimeInSeconds);
 		*pulFrameCounter = m_nVsyncCounter;
 		return true;
 	}
 
 private:
-	uint32_t m_unObjectId;
-	char m_rchSerialNumber[ 1024 ];
-	char m_rchModelNumber[ 1024 ];
 	uint64_t m_nGraphicsAdapterLuid;
 	float m_flAdditionalLatencyInSeconds;
 	double m_flLastVsyncTimeInSeconds;
@@ -781,7 +1081,6 @@ private:
 	CEncoder *m_pEncoder;
 };
 
-
 //-----------------------------------------------------------------------------
 // Purpose: Server interface implementation.
 //-----------------------------------------------------------------------------
@@ -789,7 +1088,7 @@ class CServerDriver_DisplayRedirect : public vr::IServerTrackedDeviceProvider
 {
 public:
 	CServerDriver_DisplayRedirect()
-		: m_pDisplayRedirectLatest( NULL )
+		: m_pRemoteHmd( NULL )
 	{}
 
 	virtual vr::EVRInitError Init( vr::IVRDriverContext *pContext ) override;
@@ -798,27 +1097,30 @@ public:
 		{ return vr::k_InterfaceVersions;  }
 	virtual const char *GetTrackedDeviceDriverVersion()
 		{ return vr::ITrackedDeviceServerDriver_Version; }
-	virtual void RunFrame() override {}
+	virtual void RunFrame();
 	virtual bool ShouldBlockStandbyMode() override { return false; }
 	virtual void EnterStandby() override {}
 	virtual void LeaveStandby() override {}
 
 private:
-	CDisplayRedirectLatest *m_pDisplayRedirectLatest;
+	CRemoteHmd *m_pRemoteHmd;
 };
 
 vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pContext )
 {
 	VR_INIT_SERVER_DRIVER_CONTEXT( pContext );
 
-	m_pDisplayRedirectLatest = new CDisplayRedirectLatest();
+	m_pRemoteHmd = new CRemoteHmd();
 
-	if ( m_pDisplayRedirectLatest->IsValid() )
+	if (m_pRemoteHmd->IsValid() )
 	{
-		vr::VRServerDriverHost()->TrackedDeviceAdded(
-			m_pDisplayRedirectLatest->GetSerialNumber().c_str(),
-			vr::TrackedDeviceClass_DisplayRedirect,
-			m_pDisplayRedirectLatest );
+		bool ret;
+		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+			m_pRemoteHmd->GetSerialNumber().c_str(),
+			vr::TrackedDeviceClass_HMD,
+			//vr::TrackedDeviceClass_DisplayRedirect,
+			m_pRemoteHmd);
+		Log("TrackedDeviceAdded %d %s", ret, m_pRemoteHmd->GetSerialNumber().c_str());
 	}
 
 	return vr::VRInitError_None;
@@ -826,10 +1128,18 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 
 void CServerDriver_DisplayRedirect::Cleanup()
 {
-	delete m_pDisplayRedirectLatest;
-	m_pDisplayRedirectLatest = NULL;
+	delete m_pRemoteHmd;
+	m_pRemoteHmd = NULL;
 
 	VR_CLEANUP_SERVER_DRIVER_CONTEXT();
+}
+
+void CServerDriver_DisplayRedirect::RunFrame()
+{
+	if (m_pRemoteHmd)
+	{
+		m_pRemoteHmd->RunFrame();
+	}
 }
 
 CServerDriver_DisplayRedirect g_serverDriverDisplayRedirect;

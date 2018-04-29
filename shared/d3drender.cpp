@@ -26,15 +26,15 @@ namespace
 				DXGI_OUTPUT_DESC desc;
 				pDXGIOutput->GetDesc( &desc );
 
-				if ( desc.DesktopCoordinates.right - desc.DesktopCoordinates.left == nWidth &&
-					desc.DesktopCoordinates.bottom - desc.DesktopCoordinates.top == nHeight )
-				{
+				//if ( desc.DesktopCoordinates.right - desc.DesktopCoordinates.left == nWidth &&
+				//	desc.DesktopCoordinates.bottom - desc.DesktopCoordinates.top == nHeight )
+				//{
 					*pOutAdapter = pDXGIAdapter;
 					*pOutOutput = pDXGIOutput;
 					*pOutX = desc.DesktopCoordinates.left;
 					*pOutY = desc.DesktopCoordinates.top;
 					return true;
-				}
+				//}
 				pDXGIOutput->Release();
 			}
 			pDXGIAdapter->Release();

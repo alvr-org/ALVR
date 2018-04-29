@@ -9,6 +9,15 @@
 #include "systemtime.h"
 #include "d3drender.h"
 
+#include <D3dx9core.h>
+#include <d3d11.h>
+#include "NvEncoderD3D11.h"
+#include "Logger.h"
+#include "NvCodecUtils.h"
+#include "AppEncUtils.h"
+
+simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
+
 namespace
 {
 	//-----------------------------------------------------------------------------
@@ -33,96 +42,178 @@ namespace
 		char buffer[ 1024 ];
 		vsprintf_s( buffer, pFormat, args );
 		strcat_s( buffer, "\n" );
-		vr::VRDriverLog()->Log( buffer );
+		//vr::VRDriverLog()->Log( buffer );
+
+		FILE *fp = fopen("C:\\src\\virtual_display\\driver.log", "a");
+		if (fp) {
+			fputs(buffer, fp);
+			fclose(fp);
+		}
 
 		va_end( args );
 	}
+
+	class RGBToNV12ConverterD3D11 {
+	public:
+		RGBToNV12ConverterD3D11(ID3D11Device *pDevice, ID3D11DeviceContext *pContext, int nWidth, int nHeight)
+			: pD3D11Device(pDevice), pD3D11Context(pContext)
+		{
+			pD3D11Device->AddRef();
+			pD3D11Context->AddRef();
+
+			pTexBgra = NULL;
+			D3D11_TEXTURE2D_DESC desc;
+			ZeroMemory(&desc, sizeof(D3D11_TEXTURE2D_DESC));
+			desc.Width = nWidth;
+			desc.Height = nHeight;
+			desc.MipLevels = 1;
+			desc.ArraySize = 1;
+			desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+			desc.SampleDesc.Count = 1;
+			desc.Usage = D3D11_USAGE_DEFAULT;
+			desc.BindFlags = D3D11_BIND_RENDER_TARGET;
+			desc.CPUAccessFlags = 0;
+			ck(pDevice->CreateTexture2D(&desc, NULL, &pTexBgra));
+
+			ck(pDevice->QueryInterface(__uuidof(ID3D11VideoDevice), (void **)&pVideoDevice));
+			ck(pContext->QueryInterface(__uuidof(ID3D11VideoContext), (void **)&pVideoContext));
+
+			D3D11_VIDEO_PROCESSOR_CONTENT_DESC contentDesc =
+			{
+				D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE,
+			{ 1, 1 }, desc.Width, desc.Height,
+			{ 1, 1 }, desc.Width, desc.Height,
+			D3D11_VIDEO_USAGE_PLAYBACK_NORMAL
+			};
+			ck(pVideoDevice->CreateVideoProcessorEnumerator(&contentDesc, &pVideoProcessorEnumerator));
+
+			ck(pVideoDevice->CreateVideoProcessor(pVideoProcessorEnumerator, 0, &pVideoProcessor));
+			D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC inputViewDesc = { 0, D3D11_VPIV_DIMENSION_TEXTURE2D,{ 0, 0 } };
+			ck(pVideoDevice->CreateVideoProcessorInputView(pTexBgra, pVideoProcessorEnumerator, &inputViewDesc, &pInputView));
+		}
+
+		~RGBToNV12ConverterD3D11()
+		{
+			for (auto& it : outputViewMap)
+			{
+				ID3D11VideoProcessorOutputView* pOutputView = it.second;
+				pOutputView->Release();
+			}
+
+			pInputView->Release();
+			pVideoProcessorEnumerator->Release();
+			pVideoProcessor->Release();
+			pVideoContext->Release();
+			pVideoDevice->Release();
+			pTexBgra->Release();
+			pD3D11Context->Release();
+			pD3D11Device->Release();
+		}
+		void ConvertRGBToNV12(ID3D11Texture2D*pRGBSrcTexture, ID3D11Texture2D* pDestTexture)
+		{
+			pD3D11Context->CopyResource(pTexBgra, pRGBSrcTexture);
+			ID3D11VideoProcessorOutputView* pOutputView = nullptr;
+			auto it = outputViewMap.find(pDestTexture);
+			if (it == outputViewMap.end())
+			{
+				D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC outputViewDesc = { D3D11_VPOV_DIMENSION_TEXTURE2D };
+				ck(pVideoDevice->CreateVideoProcessorOutputView(pDestTexture, pVideoProcessorEnumerator, &outputViewDesc, &pOutputView));
+				outputViewMap.insert({ pDestTexture, pOutputView });
+			}
+			else
+			{
+				pOutputView = it->second;
+			}
+
+			D3D11_VIDEO_PROCESSOR_STREAM stream = { TRUE, 0, 0, 0, 0, NULL, pInputView, NULL };
+			ck(pVideoContext->VideoProcessorBlt(pVideoProcessor, pOutputView, 0, 1, &stream));
+			return;
+		}
+
+	private:
+		ID3D11Device * pD3D11Device = NULL;
+		ID3D11DeviceContext *pD3D11Context = NULL;
+		ID3D11VideoDevice *pVideoDevice = NULL;
+		ID3D11VideoContext *pVideoContext = NULL;
+		ID3D11VideoProcessor *pVideoProcessor = NULL;
+		ID3D11VideoProcessorInputView *pInputView = NULL;
+		ID3D11VideoProcessorOutputView *pOutputView = NULL;
+		ID3D11Texture2D *pTexBgra = NULL;
+		ID3D11VideoProcessorEnumerator *pVideoProcessorEnumerator = nullptr;
+		std::unordered_map<ID3D11Texture2D*, ID3D11VideoProcessorOutputView*> outputViewMap;
+	};
 
 	//-----------------------------------------------------------------------------
 	// Interface to separate process standing in for an actual remote device.
 	// This needs to be a separate process because D3D blocks gpu work within
 	// a process on Present.
 	//-----------------------------------------------------------------------------
-	class CRemoteDevice
+	class CNvEncoder
 	{
 	public:
-		CRemoteDevice()
+		CNvEncoder(CD3DRender *pD3DRender)
 			: m_flFrameIntervalInSeconds( 0.0f )
 			, m_pNewFrame( NULL )
+			, enc(NULL)
+			, m_pD3DRender(pD3DRender)
+			, m_bForceNv12(false)
+			, m_nFrame(0)
 		{
-			ZeroMemory( &m_procInfo, sizeof( m_procInfo ) );
 		}
 
-		~CRemoteDevice()
+		~CNvEncoder()
 		{}
 
 		bool Initialize(
 			uint32_t nWindowX, uint32_t nWindowY, uint32_t nWindowWidth, uint32_t nWindowHeight,
 			uint32_t nRefreshRateNumerator, uint32_t nRefreshRateDenominator )
 		{
-			if ( nWindowWidth == 0 || nWindowHeight == 0 ||
-				nRefreshRateNumerator == 0 || nRefreshRateDenominator == 0 )
+			int nWidth = nWindowWidth;
+			int nHeight = nWindowHeight;
+			NvEncoderInitParam EncodeCLIOptions("");
+			char *szOutFilePath = "C:\\src\\virtual_display\\test.h264";
+
+			if (m_bForceNv12)
 			{
-				Log( "RemoteDevice: Invalid parameters. w=%d h=%d refresh=%d/%d",
-					nWindowWidth, nWindowHeight, nRefreshRateNumerator, nRefreshRateDenominator );
-				return false;
+				pConverter.reset(new RGBToNV12ConverterD3D11(m_pD3DRender->GetDevice(), m_pD3DRender->GetContext(), nWidth, nHeight));
 			}
 
-			m_flFrameIntervalInSeconds = float( nRefreshRateDenominator ) / nRefreshRateNumerator;
+			Log("CNvEncoder Initialize %dx%d %dx%d %p", nWindowX, nWindowY, nWindowWidth, nWindowHeight, m_pD3DRender->GetDevice());
 
-			if ( !m_sharedState.IsValid() )
+			enc = new NvEncoderD3D11(m_pD3DRender->GetDevice(), nWidth, nHeight, m_bForceNv12 ? NV_ENC_BUFFER_FORMAT_NV12 : NV_ENC_BUFFER_FORMAT_ARGB);
+
+			NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
+			NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
+			initializeParams.encodeConfig = &encodeConfig;
+			enc->CreateDefaultEncoderParams(&initializeParams, EncodeCLIOptions.GetEncodeGUID(), EncodeCLIOptions.GetPresetGUID());
+
+			EncodeCLIOptions.SetInitParams(&initializeParams, m_bForceNv12 ? NV_ENC_BUFFER_FORMAT_NV12 : NV_ENC_BUFFER_FORMAT_ARGB);
+			Log("CreateEncoder start");
+			enc->CreateEncoder(&initializeParams);
+
+			Log("CreateEncoder end");
+
+			fpOut = std::ofstream(szOutFilePath, std::ios::out | std::ios::binary);
+			if (!fpOut)
 			{
-				Log( "RemoteDevice: Failed to initialize shared memory!" );
-				return false;
+				std::ostringstream err;
+				err << "Unable to open output file: " << szOutFilePath << std::endl;
+				Log("unable to open output file %s", szOutFilePath);
+				throw std::invalid_argument(err.str());
 			}
-			else
-			{
-				CSharedState::Ptr data( &m_sharedState );
-				data->m_nTextureWidth = 0;
-				data->m_nTextureHeight = 0;
-				data->m_flLastVsyncTimeInSeconds = 0.0f;
-				data->m_nVsyncCounter = 0;
-				data->m_nSystemBaseTimeTicks = SystemTime::GetBaseTicks();
-			}
-
-			m_pNewFrame = new IPCEvent( "RemoteDisplay_NewFrame", false, false );
-			if ( m_pNewFrame == NULL )
-			{
-				Log( "RemoteDevice: Failed to create IPC event!" );
-				return false;
-			}
-
-			std::string sInstallPath = vr::VRProperties()->GetStringProperty( vr::VRDriverHandle(), vr::Prop_InstallPath_String );
-			std::string sWorkingPath = sInstallPath + "\\bin\\win32";
-
-			char buffer[ 256 ];
-			sprintf_s( buffer, "\"%s\\virtual_display.exe\" %d %d %d %d %d %d",
-				sWorkingPath.c_str(),
-				nWindowX, nWindowY, nWindowWidth, nWindowHeight,
-				nRefreshRateNumerator, nRefreshRateDenominator );
-
-			Log( "Launching %s", buffer );
-
-			STARTUPINFO startupInfo = { 0 };
-			startupInfo.cb = sizeof( STARTUPINFO );
-			if ( !CreateProcess( NULL, buffer, NULL, NULL, FALSE, NULL, NULL, sWorkingPath.c_str(), &startupInfo, &m_procInfo ) )
-			{
-				Log( "RemoteDevice: Failed to launch external process." );
-				return false;
-			}
+			Log("file opened");
 
 			return true;
 		}
 
 		void Shutdown()
 		{
-			if ( m_procInfo.hProcess )
-			{
-				TerminateProcess( m_procInfo.hProcess, 0 );
-				CloseHandle( m_procInfo.hProcess );
-				CloseHandle( m_procInfo.hThread );
-				ZeroMemory( &m_procInfo, sizeof( m_procInfo ) );
-			}
+			std::vector<std::vector<uint8_t>> vPacket;
+			enc->EndEncode(vPacket);
+			enc->DestroyEncoder();
+			delete enc;
+
+			fpOut.close();
 		}
 
 		float GetFrameIntervalInSeconds() const
@@ -130,35 +221,50 @@ namespace
 			return m_flFrameIntervalInSeconds;
 		}
 
-		void Transmit( uint32_t nWidth, uint32_t nHeight, DXGI_FORMAT format,
-			const BYTE *pData, uint32_t nRowPitch, double flVsyncTimeInSeconds )
+		void Transmit(ID3D11Texture2D *pTexture)
 		{
-			EventWriteString( L"[VDispDvr] Transmit(begin)" );
+			uint32_t nWidth;
+			uint32_t nHeight;
+			std::vector<std::vector<uint8_t>> vPacket;
+			D3D11_TEXTURE2D_DESC desc;
 
-			nWidth = min( nWidth, SharedState_t::MAX_TEXTURE_WIDTH );
-			nHeight = min( nHeight, SharedState_t::MAX_TEXTURE_HEIGHT );
+			pTexture->GetDesc(&desc);
 
-			if ( 1 )
+			EventWriteString(L"[VDispDvr] Transmit(begin)");
+
+			nWidth = min(desc.Width, SharedState_t::MAX_TEXTURE_WIDTH);
+			nHeight = min(desc.Height, SharedState_t::MAX_TEXTURE_HEIGHT);
+
+			const NvEncInputFrame* encoderInputFrame = enc->GetNextInputFrame();
+			
+
+			if (m_bForceNv12)
 			{
-				CSharedState::Ptr data( &m_sharedState );
-				data->m_nTextureWidth = nWidth;
-				data->m_nTextureHeight = nHeight;
-				data->m_nTextureFormat = format;
-				data->m_flVsyncTimeInSeconds = flVsyncTimeInSeconds;
+				ID3D11Texture2D *pNV12Textyure = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
+				pConverter->ConvertRGBToNV12(pTexture, pNV12Textyure);
+			}
+			else
+			{
+				ID3D11Texture2D *pTexBgra = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
+				m_pD3DRender->GetContext()->CopyResource(pTexBgra, pTexture);
+			}
+			enc->EncodeFrame(vPacket);
 
-				CD3DRender::CopyTextureData( data->m_nTextureData, nWidth * SharedState_t::TEXTURE_PITCH,
-					pData, nRowPitch, nWidth, nHeight, SharedState_t::TEXTURE_PITCH );
 
+			m_nFrame += (int)vPacket.size();
+			for (std::vector<uint8_t> &packet : vPacket)
+			{
+				fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 			}
 
 			m_pNewFrame->SetEvent();
 
-			EventWriteString( L"[VDispDvr] Transmit(end)" );
+			Log("[VDispDvr] Transmit(end) (frame %d)", vPacket.size());
 		}
 
-		void GetTimingInfo( double *pflLastVsyncTimeInSeconds, uint32_t *pnVsyncCounter )
+		void GetTimingInfo(double *pflLastVsyncTimeInSeconds, uint32_t *pnVsyncCounter)
 		{
-			CSharedState::Ptr data( &m_sharedState );
+			CSharedState::Ptr data(&m_sharedState);
 			*pflLastVsyncTimeInSeconds = data->m_flLastVsyncTimeInSeconds;
 			*pnVsyncCounter = data->m_nVsyncCounter;
 		}
@@ -167,7 +273,13 @@ namespace
 		CSharedState m_sharedState;
 		IPCEvent *m_pNewFrame;
 		float m_flFrameIntervalInSeconds;
-		PROCESS_INFORMATION m_procInfo;
+		std::ofstream fpOut;
+		NvEncoderD3D11 *enc;
+
+		CD3DRender *m_pD3DRender;
+		bool m_bForceNv12;
+		int m_nFrame;
+		std::unique_ptr<RGBToNV12ConverterD3D11> pConverter;
 	};
 
 	//----------------------------------------------------------------------------
@@ -178,7 +290,7 @@ namespace
 	class CEncoder : public CThread
 	{
 	public:
-		CEncoder( CD3DRender *pD3DRender, CRemoteDevice *pRemoteDevice )
+		CEncoder( CD3DRender *pD3DRender, CNvEncoder *pRemoteDevice )
 			: m_pRemoteDevice( pRemoteDevice )
 			, m_pD3DRender( pD3DRender )
 			, m_pStagingTexture( NULL )
@@ -238,21 +350,7 @@ namespace
 
 				if ( m_pStagingTexture )
 				{
-					D3D11_TEXTURE2D_DESC desc;
-					m_pStagingTexture->GetDesc( &desc );
-
-					EventWriteString( L"[VDispDvr] Map:Staging(begin)" );
-
-					D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
-					if ( SUCCEEDED( m_pD3DRender->GetContext()->Map( m_pStagingTexture, 0, D3D11_MAP_READ, 0, &mapped ) ) )
-					{
-						EventWriteString( L"[VDispDvr] Map:Staging(end)" );
-
-						m_pRemoteDevice->Transmit( desc.Width, desc.Height, desc.Format,
-							( const BYTE * )mapped.pData, mapped.RowPitch, m_flVsyncTimeInSeconds );
-
-						m_pD3DRender->GetContext()->Unmap( m_pStagingTexture, 0 );
-					}
+					m_pRemoteDevice->Transmit( m_pStagingTexture );
 				}
 
 				m_encodeFinished.Set();
@@ -280,7 +378,7 @@ namespace
 
 	private:
 		CThreadEvent m_newFrameReady, m_encodeFinished;
-		CRemoteDevice *m_pRemoteDevice;
+		CNvEncoder *m_pRemoteDevice;
 		CD3DRender *m_pD3DRender;
 		ID3D11Texture2D *m_pStagingTexture;
 		double m_flVsyncTimeInSeconds;
@@ -315,10 +413,10 @@ public:
 			vr::VRSettings()->GetFloat( k_pch_VirtualDisplay_Section,
 				k_pch_VirtualDisplay_AdditionalLatencyInSeconds_Float ) );
 
-		int32_t nDisplayWidth = vr::VRSettings()->GetInt32(
+		uint32_t nDisplayWidth = vr::VRSettings()->GetInt32(
 			k_pch_VirtualDisplay_Section,
 			k_pch_VirtualDisplay_DisplayWidth_Int32 );
-		int32_t nDisplayHeight = vr::VRSettings()->GetInt32(
+		uint32_t nDisplayHeight = vr::VRSettings()->GetInt32(
 			k_pch_VirtualDisplay_Section,
 			k_pch_VirtualDisplay_DisplayHeight_Int32 );
 
@@ -344,7 +442,8 @@ public:
 		}
 
 		int32_t nDisplayX, nDisplayY;
-		m_pD3DRender->GetDisplayPos( &nDisplayX, &nDisplayY );
+		m_pD3DRender->GetDisplayPos(&nDisplayX, &nDisplayY);
+		m_pD3DRender->GetDisplaySize(&nDisplayWidth, &nDisplayHeight);
 
 		int32_t nDisplayAdapterIndex;
 		const int32_t nBufferSize = 128;
@@ -359,6 +458,8 @@ public:
 		wcstombs_s( 0, chAdapterDescription, nBufferSize, wchAdapterDescription, nBufferSize );
 		Log( "Headset connected to %s.", chAdapterDescription );
 
+		Log("Adapter Index: %d %d", nAdapterIndex, nDisplayAdapterIndex);
+
 		// If no adapter specified, choose the first one the headset *isn't* plugged into.
 		if ( nAdapterIndex < 0 )
 		{
@@ -369,6 +470,8 @@ public:
 			Log( "Headset needs to be plugged into a separate graphics card." );
 			return;
 		}
+
+		nAdapterIndex = 0;
 
 		// Store off the LUID of the primary gpu we want to use.
 		if ( !m_pD3DRender->GetAdapterLuid( nAdapterIndex, &m_nGraphicsAdapterLuid ) )
@@ -394,7 +497,7 @@ public:
 		Log( "Using %s as primary graphics adapter.", chAdapterDescription );
 
 		// Spawn our separate process to manage headset presentation.
-		m_pRemoteDevice = new CRemoteDevice();
+		m_pRemoteDevice = new CNvEncoder(m_pD3DRender);
 		if ( !m_pRemoteDevice->Initialize(
 			nDisplayX, nDisplayY, nDisplayWidth, nDisplayHeight,
 			nDisplayRefreshRateNumerator, nDisplayRefreshRateDenominator ) )
@@ -454,16 +557,19 @@ public:
 		vr::VRProperties()->SetUint64Property( ulContainer,
 			vr::Prop_GraphicsAdapterLuid_Uint64, m_nGraphicsAdapterLuid );
 
+		Log("Activate %s %f %llu", m_rchModelNumber, m_flAdditionalLatencyInSeconds, m_nGraphicsAdapterLuid);
 		return vr::VRInitError_None;
 	}
 
 	virtual void Deactivate() override
 	{
+		Log("Deactivate");
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 	}
 
 	virtual void *GetComponent( const char *pchComponentNameAndVersion ) override
 	{
+		Log("GetComponent %s", pchComponentNameAndVersion);
 		if ( !_stricmp( pchComponentNameAndVersion, vr::IVRVirtualDisplay_Version ) )
 		{
 			return static_cast< vr::IVRVirtualDisplay * >( this );
@@ -507,6 +613,7 @@ public:
 
 	virtual void Present( vr::SharedTextureHandle_t backbufferTextureHandle ) override
 	{
+		Log("Present");
 		// Open and cache our shared textures to avoid re-opening every frame.
 		ID3D11Texture2D *pTexture = m_pD3DRender->GetSharedTexture( ( HANDLE )backbufferTextureHandle );
 		if ( pTexture == NULL )
@@ -670,7 +777,7 @@ private:
 
 	CD3DRender *m_pD3DRender;
 	ID3D11Texture2D *m_pFlushTexture;
-	CRemoteDevice *m_pRemoteDevice;
+	CNvEncoder *m_pRemoteDevice;
 	CEncoder *m_pEncoder;
 };
 
@@ -733,8 +840,10 @@ CServerDriver_DisplayRedirect g_serverDriverDisplayRedirect;
 extern "C" __declspec( dllexport )
 void *HmdDriverFactory( const char *pInterfaceName, int *pReturnCode )
 {
+	Log("HmdDriverFactory %s (%s)", pInterfaceName, vr::IServerTrackedDeviceProvider_Version);
 	if ( 0 == strcmp( vr::IServerTrackedDeviceProvider_Version, pInterfaceName ) )
 	{
+		Log("HmdDriverFactory server return");
 		return &g_serverDriverDisplayRedirect;
 	}
 

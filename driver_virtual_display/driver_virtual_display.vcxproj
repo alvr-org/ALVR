@@ -148,7 +148,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AppEncD3D11.cpp" />
     <ClCompile Include="driver_virtual_display.cpp" />
     <ClCompile Include="NvEncoder.cpp" />
     <ClCompile Include="NvEncoderD3D11.cpp" />
@@ -159,12 +158,13 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AppEncUtils.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="NvCodecUtils.h" />
     <ClInclude Include="nvEncodeAPI.h" />
     <ClInclude Include="NvEncoder.h" />
+    <ClInclude Include="nvencoderclioptions.h" />
     <ClInclude Include="NvEncoderD3D11.h" />
+    <ClInclude Include="UdpSender.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

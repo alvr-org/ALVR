@@ -3,18 +3,22 @@
 // Example OpenVR driver for demonstrating IVRVirtualDisplay interface.
 //
 //==================================================================================================
+#define _WINSOCKAPI_
 #include "openvr_driver.h"
 #include "sharedstate.h"
 #include "threadtools.h"
 #include "systemtime.h"
 #include "d3drender.h"
 
+#include <winsock2.h>
 #include <D3dx9core.h>
 #include <d3d11.h>
 #include "NvEncoderD3D11.h"
 #include "Logger.h"
 #include "NvCodecUtils.h"
-#include "AppEncUtils.h"
+#include "SpriteFont.h"
+#include "UdpSender.h"
+#include "nvencoderclioptions.h"
 
 simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
 
@@ -38,6 +42,113 @@ namespace
 			m_pD3DRender->GetContext()->Unmap(pTexture, 0);
 		}
 	}
+
+	void DrawDigitPixels(D3D11_MAPPED_SUBRESOURCE &mapped, int x, int y, int digit) {
+		static const char map[][15] = {
+		{ 1, 1, 1,
+		 1, 0, 1,
+		 1, 0, 1,
+		 1, 0, 1,
+		 1, 1, 1},
+		{ 0, 1, 0,
+		1, 1, 0,
+		0, 1, 0,
+		0, 1, 0,
+		1, 1, 1},
+		{ 1, 1, 0,
+		1, 0, 1,
+		0, 1, 0,
+		1, 0, 0,
+		1, 1, 1},
+		{ 1, 1, 1,
+		0, 0, 1,
+		0, 1, 1,
+		0, 0, 1,
+		1, 1, 1},
+		{ 1, 0, 1,
+		1, 0, 1,
+		1, 1, 1,
+		0, 0, 1,
+		0, 0, 1},
+		{ 1, 1, 1,
+		1, 0, 0,
+		1, 1, 1,
+		0, 0, 1,
+		1, 1, 1},
+		{ 1, 1, 0,
+		1, 0, 0,
+		1, 1, 1,
+		1, 0, 1,
+		1, 1, 1},
+		{ 1, 1, 1,
+		0, 0, 1,
+		0, 1, 0,
+		0, 1, 0,
+		0, 1, 0},
+		{ 1, 1, 1,
+		1, 0, 1,
+		1, 1, 1,
+		1, 0, 1,
+		1, 1, 1 },
+		{ 1, 1, 1,
+		1, 0, 1,
+		1, 1, 1,
+		0, 0, 1,
+		0, 0, 1 }
+		};
+		if (digit < 0 || 9 < digit) {
+			digit = 0;
+		}
+		uint8_t *p = (uint8_t *)mapped.pData;
+
+		for (int i = 0; i < 5; i++) {
+			for (int j = 0; j < 3; j++) {
+				if (map[digit][i * 3 + j]) {
+					p[(y + i) * mapped.RowPitch + (x + j) * 4 + 0] = 0xff;
+					p[(y + i) * mapped.RowPitch + (x + j) * 4 + 1] = 0xff;
+					p[(y + i) * mapped.RowPitch + (x + j) * 4 + 2] = 0xff;
+					p[(y + i) * mapped.RowPitch + (x + j) * 4 + 3] = 0xff;
+				}
+
+			}
+		}
+			
+	}
+
+
+	void DrawDebugTimestamp(CD3DRender *m_pD3DRender, ID3D11Texture2D *pTexture)
+	{
+		D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
+		if (SUCCEEDED(m_pD3DRender->GetContext()->Map(pTexture, 0, D3D11_MAP_READ, 0, &mapped)))
+		{
+			int x = 10;
+			int y = 10;
+
+			FILETIME ft;
+			SYSTEMTIME st2, st;
+
+			GetSystemTimeAsFileTime(&ft);
+			FileTimeToSystemTime(&ft, &st2);
+			SystemTimeToTzSpecificLocalTime(NULL, &st2, &st);
+
+			uint64_t q = (((uint64_t)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+			q /= 10;
+			char buf[100];
+			snprintf(buf, sizeof(buf),
+				"%02d %02d %02d %03lld %03lld",
+				st.wHour, st.wMinute, st.wSecond, q / 1000 % 1000, q % 1000);
+
+			for (int i = 0; buf[i]; i++) {
+				if (buf[i] != ' ') {
+					DrawDigitPixels(mapped, x, y, buf[i] - '0');
+				}
+				x += 5;
+			}
+
+			m_pD3DRender->GetContext()->Unmap(pTexture, 0);
+		}
+	}
+
 
 	inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y, double z)
 	{
@@ -78,7 +189,10 @@ namespace
 	static const char * const k_pch_Sample_RenderHeight_Int32 = "renderHeight";
 	static const char * const k_pch_Sample_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
 	static const char * const k_pch_Sample_DisplayFrequency_Float = "displayFrequency";
-
+	static const char * const k_pch_Sample_EncoderOptions_String = "nvencOptions";
+	static const char * const k_pch_Sample_OutputFile_String = "outputFile";
+	static const char * const k_pch_Sample_LogFile_String = "logFile";
+	
 	//-----------------------------------------------------------------------------
 	// Settings
 	//-----------------------------------------------------------------------------
@@ -98,30 +212,29 @@ namespace
 		va_list args;
 		va_start( args, pFormat );
 
-		char buffer[ 1024 ];
+		char buffer[ 10240 ];
 		vsprintf_s( buffer, pFormat, args );
-		strcat_s( buffer, "\n" );
 		//vr::VRDriverLog()->Log( buffer );
 
-		FILETIME ft;
-		SYSTEMTIME st2, st;
+		if (1) {
+			FILETIME ft;
+			SYSTEMTIME st2, st;
 
-		GetSystemTimeAsFileTime(&ft);
-		FileTimeToSystemTime(&ft, &st2);
-		SystemTimeToTzSpecificLocalTime(NULL, &st2, &st);
+			GetSystemTimeAsFileTime(&ft);
+			FileTimeToSystemTime(&ft, &st2);
+			SystemTimeToTzSpecificLocalTime(NULL, &st2, &st);
 
-		FILE *fp = fopen("C:\\src\\virtual_display\\driver.log", "a");
-		if (fp) {
 			uint64_t q = (((uint64_t)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
 			q /= 10;
-			fprintf(fp,
+
+			char timestamp[100];
+			snprintf(timestamp, sizeof(timestamp),
 				"[%02d:%02d:%02d.%03lld %03lld] ",
 				st.wHour, st.wMinute, st.wSecond, q / 1000 % 1000, q % 1000);
-			fputs(buffer, fp);
-			fclose(fp);
+			logger->GetStream() << timestamp << buffer << std::endl;
 		}
 
-		va_end( args );
+		va_end(args);
 	}
 
 	// Get current time in micro seconds.
@@ -225,6 +338,7 @@ namespace
 		std::unordered_map<ID3D11Texture2D*, ID3D11VideoProcessorOutputView*> outputViewMap;
 	};
 
+
 	//-----------------------------------------------------------------------------
 	// Interface to separate process standing in for an actual remote device.
 	// This needs to be a separate process because D3D blocks gpu work within
@@ -240,6 +354,7 @@ namespace
 			, m_pD3DRender(pD3DRender)
 			, m_bForceNv12(false)
 			, m_nFrame(0)
+			, m_UdpSender(NULL)
 		{
 		}
 
@@ -247,13 +362,13 @@ namespace
 		{}
 
 		bool Initialize(
+			std::string encoderOptions, std::string outputFile,
 			uint32_t nWindowX, uint32_t nWindowY, uint32_t nWindowWidth, uint32_t nWindowHeight,
 			uint32_t nRefreshRateNumerator, uint32_t nRefreshRateDenominator )
 		{
 			int nWidth = nWindowWidth;
 			int nHeight = nWindowHeight;
-			NvEncoderInitParam EncodeCLIOptions("");
-			char *szOutFilePath = "C:\\src\\virtual_display\\test.h264";
+			NvEncoderInitParam EncodeCLIOptions(encoderOptions.c_str());
 
 			if (nWindowWidth == 0 || nWindowHeight == 0 ||
 				nRefreshRateNumerator == 0 || nRefreshRateDenominator == 0)
@@ -281,21 +396,25 @@ namespace
 			initializeParams.encodeConfig = &encodeConfig;
 			enc->CreateDefaultEncoderParams(&initializeParams, EncodeCLIOptions.GetEncodeGUID(), EncodeCLIOptions.GetPresetGUID());
 
+			Log((std::string("NvEnc Encoder Parameters:\n") + EncodeCLIOptions.FullParamToString(&initializeParams)).c_str());
+
 			EncodeCLIOptions.SetInitParams(&initializeParams, format);
+
 			Log("CreateEncoder start");
 			enc->CreateEncoder(&initializeParams);
-
 			Log("CreateEncoder end");
 
-			fpOut = std::ofstream(szOutFilePath, std::ios::out | std::ios::binary);
+			fpOut = std::ofstream(outputFile, std::ios::out | std::ios::binary);
 			if (!fpOut)
 			{
 				std::ostringstream err;
-				err << "Unable to open output file: " << szOutFilePath << std::endl;
-				Log("unable to open output file %s", szOutFilePath);
+				err << "Unable to open output file: " << outputFile << std::endl;
+				Log("unable to open output file %s", outputFile.c_str());
 				throw std::invalid_argument(err.str());
 			}
 			Log("file opened");
+
+			m_UdpSender = new UdpSender("127.0.0.1", 9944);
 
 			m_pNewFrame = new IPCEvent("RemoteDisplay_NewFrame", false, false);
 			if (m_pNewFrame == NULL)
@@ -318,6 +437,9 @@ namespace
 
 			enc->DestroyEncoder();
 			delete enc;
+
+			delete m_UdpSender;
+			m_UdpSender = NULL;
 
 			Log("CNvEncoder::Shutdown");
 
@@ -346,6 +468,8 @@ namespace
 			Log("Transmit %dx%d %d", nWidth, nHeight, desc.Format);
 
 			const NvEncInputFrame* encoderInputFrame = enc->GetNextInputFrame();
+
+			DrawDebugTimestamp(m_pD3DRender, pTexture);
 			
 
 			if (m_bForceNv12)
@@ -373,13 +497,14 @@ namespace
 			for (std::vector<uint8_t> &packet : vPacket)
 			{
 				fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
+				m_UdpSender->Send(packet.data(), (int)packet.size());
 			}
 
 			m_pNewFrame->SetEvent();
 
 			{
 				CSharedState::Ptr data(&m_sharedState);
-				data->m_flLastVsyncTimeInSeconds += m_flFrameIntervalInSeconds / 2;
+				data->m_flLastVsyncTimeInSeconds = SystemTime::GetInSeconds();
 				data->m_nVsyncCounter++;
 			}
 
@@ -404,6 +529,8 @@ namespace
 		bool m_bForceNv12;
 		int m_nFrame;
 		std::unique_ptr<RGBToNV12ConverterD3D11> pConverter;
+
+		UdpSender *m_UdpSender;
 	};
 
 	//----------------------------------------------------------------------------
@@ -528,6 +655,7 @@ public:
 		, m_pFlushTexture(NULL)
 		, m_pRemoteDevice(NULL)
 		, m_pEncoder(NULL)
+		, m_EncoderOptions("")
 	{
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
@@ -535,7 +663,7 @@ public:
 		Log("Using settings values");
 		m_flIPD = vr::VRSettings()->GetFloat(k_pch_SteamVR_Section, k_pch_SteamVR_IPD_Float);
 
-		char buf[1024];
+		char buf[10240];
 		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_SerialNumber_String, buf, sizeof(buf));
 		m_sSerialNumber = buf;
 
@@ -551,6 +679,15 @@ public:
 		m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_SecondsFromVsyncToPhotons_Float);
 		m_flDisplayFrequency = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_DisplayFrequency_Float);
 
+		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_EncoderOptions_String, buf, sizeof(buf));
+		m_EncoderOptions = buf;
+		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_OutputFile_String, buf, sizeof(buf));
+		m_OutputFile = buf;
+		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_LogFile_String, buf, sizeof(buf));
+		std::string logFile = buf;
+
+		logger = simplelogger::LoggerFactory::CreateFileLogger(logFile);
+
 		Log("driver_null: Serial Number: %s", m_sSerialNumber.c_str());
 		Log("driver_null: Model Number: %s", m_sModelNumber.c_str());
 		Log("driver_null: Window: %d %d %d %d", m_nWindowX, m_nWindowY, m_nWindowWidth, m_nWindowHeight);
@@ -559,8 +696,11 @@ public:
 		Log("driver_null: Display Frequency: %f", m_flDisplayFrequency);
 		Log("driver_null: IPD: %f", m_flIPD);
 
+		Log("driver_null: EncoderOptions: %s%s", m_EncoderOptions.c_str(), m_EncoderOptions.size() == sizeof(buf) - 1 ? " (Maybe truncated)" : "");
+		Log("driver_null: OutputFile: %s%s", m_OutputFile.c_str(), m_OutputFile.size() == sizeof(buf) - 1 ? " (Maybe truncated)" : "");
 
-	//CDisplayRedirectLatest()
+
+		//CDisplayRedirectLatest()
 
 		m_flAdditionalLatencyInSeconds = max(0.0f,
 			vr::VRSettings()->GetFloat(k_pch_VirtualDisplay_Section,
@@ -652,6 +792,7 @@ public:
 		// Spawn our separate process to manage headset presentation.
 		m_pRemoteDevice = new CNvEncoder(m_pD3DRender);
 		if (!m_pRemoteDevice->Initialize(
+			m_EncoderOptions, m_OutputFile,
 			nDisplayX, nDisplayY, nDisplayWidth, nDisplayHeight,
 			nDisplayRefreshRateNumerator, nDisplayRefreshRateDenominator))
 		{
@@ -805,7 +946,7 @@ public:
 
 	virtual bool IsDisplayOnDesktop()
 	{
-		return true;
+		return false;
 	}
 
 	virtual bool IsDisplayRealDisplay()
@@ -905,6 +1046,8 @@ private:
 	float m_flDisplayFrequency;
 	float m_flIPD;
 
+	std::string m_EncoderOptions;
+	std::string m_OutputFile;
 public:
 	bool IsValid() const
 	{
@@ -921,17 +1064,17 @@ public:
 		ID3D11Texture2D *pTexture = m_pD3DRender->GetSharedTexture((HANDLE)backbufferTextureHandle);
 		if (pTexture == NULL)
 		{
-			EventWriteString(L"[VDispDvr] Texture is NULL!");
+			Log("[VDispDvr] Texture is NULL!");
 		}
 		else
 		{
-			EventWriteString(L"[VDispDvr] Waiting for previous encode to finish...");
+			Log("[VDispDvr] Waiting for previous encode to finish...");
 
 			// Wait for the encoder to be ready.  This is important because the encoder thread
 			// blocks on transmit which uses our shared d3d context (which is not thread safe).
 			m_pEncoder->WaitForEncode();
 
-			EventWriteString(L"[VDispDvr] Done");
+			Log("[VDispDvr] Done");
 
 			// Access to shared texture must be wrapped in AcquireSync/ReleaseSync
 			// to ensure the compositor has finished rendering to it before it gets used.
@@ -942,12 +1085,12 @@ public:
 				if (pKeyedMutex->AcquireSync(0, 10) != S_OK)
 				{
 					pKeyedMutex->Release();
-					EventWriteString(L"[VDispDvr] ACQUIRESYNC FAILED!!!");
+					Log("[VDispDvr] ACQUIRESYNC FAILED!!!");
 					return;
 				}
 			}
 
-			EventWriteString(L"[VDispDvr] AcquiredSync");
+			Log("[VDispDvr] AcquiredSync");
 
 			if (m_pFlushTexture == NULL)
 			{
@@ -979,21 +1122,21 @@ public:
 			D3D11_BOX box = { 0, 0, 0, 1, 1, 1 };
 			m_pD3DRender->GetContext()->CopySubresourceRegion(m_pFlushTexture, 0, 0, 0, 0, pTexture, 0, &box);
 
-			EventWriteString(L"[VDispDvr] Flush-Begin");
+			Log("[VDispDvr] Flush-Begin");
 
 			// This can go away, but is useful to see it as a separate packet on the gpu in traces.
 			m_pD3DRender->GetContext()->Flush();
 
-			EventWriteString(L"[VDispDvr] Flush-End");
+			Log("[VDispDvr] Flush-End");
 
 			// Copy entire texture to staging so we can read the pixels to send to remote device.
 			m_pEncoder->CopyToStaging(pTexture);
 
-			EventWriteString(L"[VDispDvr] Flush-Staging(begin)");
+			Log("[VDispDvr] Flush-Staging(begin)");
 
 			m_pD3DRender->GetContext()->Flush();
 
-			EventWriteString(L"[VDispDvr] Flush-Staging(end)");
+			Log("[VDispDvr] Flush-Staging(end)");
 
 			if (pKeyedMutex)
 			{
@@ -1001,7 +1144,7 @@ public:
 				pKeyedMutex->Release();
 			}
 
-			EventWriteString(L"[VDispDvr] ReleasedSync");
+			Log("[VDispDvr] ReleasedSync");
 		}
 	}
 

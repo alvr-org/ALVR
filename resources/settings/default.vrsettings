@@ -5,7 +5,7 @@
 		"additionalLatencyInSeconds": 0.008,
 		"displayWidth": 1920,
 		"displayHeight": 1080,
-		"displayRefreshRateNumerator": 90,
+		"displayRefreshRateNumerator": 60,
 		"displayRefreshRateDenominator": 1,
 		"adapterIndex": -1,
       "enable" : true,
@@ -15,7 +15,9 @@
       "windowHeight" : 1080,
       "renderWidth" : 1920,
       "renderHeight" : 1080,
-      "secondsFromVsyncToPhotons" : 0.011,
-      "displayFrequency" : 0
+      "secondsFromVsyncToPhotons" : 0.01666,
+      "displayFrequency" : 60,
+      "nvencOptions": "-codec h264 -preset ll_hq -rc cbr_ll_hq -bitrate 20M -gop 60 -maxbitrate 30M -fps 60",
+      "outputFile": "C:\\src\\virtual_display\\test.h264"
 	}
 }

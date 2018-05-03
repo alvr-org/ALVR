@@ -239,3 +239,33 @@ private:
 
 extern simplelogger::Logger *logger;
 #define LOG(level) simplelogger::LogTransaction(logger, level, __FILE__, __LINE__, __FUNCTION__).GetStream()
+
+inline void Log(const char *pFormat, ...)
+{
+	va_list args;
+	va_start(args, pFormat);
+
+	char buffer[10240];
+	vsprintf_s(buffer, pFormat, args);
+	//vr::VRDriverLog()->Log( buffer );
+
+	if (1) {
+		FILETIME ft;
+		SYSTEMTIME st2, st;
+
+		GetSystemTimeAsFileTime(&ft);
+		FileTimeToSystemTime(&ft, &st2);
+		SystemTimeToTzSpecificLocalTime(NULL, &st2, &st);
+
+		uint64_t q = (((uint64_t)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+		q /= 10;
+
+		char timestamp[100];
+		snprintf(timestamp, sizeof(timestamp),
+			"[%02d:%02d:%02d.%03lld %03lld] ",
+			st.wHour, st.wMinute, st.wSecond, q / 1000 % 1000, q % 1000);
+		logger->GetStream() << timestamp << buffer << std::endl;
+	}
+
+	va_end(args);
+}

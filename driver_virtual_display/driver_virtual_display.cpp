@@ -19,14 +19,13 @@
 #include "SpriteFont.h"
 #include "UdpSender.h"
 #include "nvencoderclioptions.h"
+#include "Listener.h"
 
 simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
 
 namespace
 {
 	using namespace vr;
-
-	void Log(const char *pFormat, ...);
 
 	void Test(CD3DRender *m_pD3DRender, ID3D11Texture2D *pTexture, int nHeight) {
 
@@ -101,9 +100,9 @@ namespace
 		}
 		uint8_t *p = (uint8_t *)mapped.pData;
 
-		for (int i = 0; i < 5; i++) {
-			for (int j = 0; j < 3; j++) {
-				if (map[digit][i * 3 + j]) {
+		for (int i = 0; i < 5 * 2; i++) {
+			for (int j = 0; j < 3 * 2; j++) {
+				if (map[digit][i / 2 * 3 + j / 2]) {
 					p[(y + i) * mapped.RowPitch + (x + j) * 4 + 0] = 0xff;
 					p[(y + i) * mapped.RowPitch + (x + j) * 4 + 1] = 0xff;
 					p[(y + i) * mapped.RowPitch + (x + j) * 4 + 2] = 0xff;
@@ -142,7 +141,7 @@ namespace
 				if (buf[i] != ' ') {
 					DrawDigitPixels(mapped, x, y, buf[i] - '0');
 				}
-				x += 5;
+				x += 10;
 			}
 
 			m_pD3DRender->GetContext()->Unmap(pTexture, 0);
@@ -191,7 +190,12 @@ namespace
 	static const char * const k_pch_Sample_DisplayFrequency_Float = "displayFrequency";
 	static const char * const k_pch_Sample_EncoderOptions_String = "nvencOptions";
 	static const char * const k_pch_Sample_OutputFile_String = "outputFile";
+	static const char * const k_pch_Sample_ReplayFile_String = "replayFile";
 	static const char * const k_pch_Sample_LogFile_String = "logFile";
+	static const char * const k_pch_Sample_DebugTimestamp_Bool = "debugTimestamp";
+	static const char * const k_pch_Sample_ListenHost_String = "listenHost";
+	static const char * const k_pch_Sample_ListenPort_Int32 = "listenPort";
+
 	
 	//-----------------------------------------------------------------------------
 	// Settings
@@ -207,35 +211,7 @@ namespace
 	static const char * const k_pch_VirtualDisplay_AdapterIndex_Int32 = "adapterIndex";
 
 	//-----------------------------------------------------------------------------
-	void Log( const char *pFormat, ... )
-	{
-		va_list args;
-		va_start( args, pFormat );
-
-		char buffer[ 10240 ];
-		vsprintf_s( buffer, pFormat, args );
-		//vr::VRDriverLog()->Log( buffer );
-
-		if (1) {
-			FILETIME ft;
-			SYSTEMTIME st2, st;
-
-			GetSystemTimeAsFileTime(&ft);
-			FileTimeToSystemTime(&ft, &st2);
-			SystemTimeToTzSpecificLocalTime(NULL, &st2, &st);
-
-			uint64_t q = (((uint64_t)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
-			q /= 10;
-
-			char timestamp[100];
-			snprintf(timestamp, sizeof(timestamp),
-				"[%02d:%02d:%02d.%03lld %03lld] ",
-				st.wHour, st.wMinute, st.wSecond, q / 1000 % 1000, q % 1000);
-			logger->GetStream() << timestamp << buffer << std::endl;
-		}
-
-		va_end(args);
-	}
+	
 
 	// Get current time in micro seconds.
 	uint64_t GetTimestamp() {
@@ -354,7 +330,8 @@ namespace
 			, m_pD3DRender(pD3DRender)
 			, m_bForceNv12(false)
 			, m_nFrame(0)
-			, m_UdpSender(NULL)
+			, m_Listener(NULL)
+			, m_DebugTimestamp(false)
 		{
 		}
 
@@ -362,13 +339,15 @@ namespace
 		{}
 
 		bool Initialize(
-			std::string encoderOptions, std::string outputFile,
+			std::string encoderOptions, std::string outputFile, std::string replayFile, Listener *listener,
 			uint32_t nWindowX, uint32_t nWindowY, uint32_t nWindowWidth, uint32_t nWindowHeight,
-			uint32_t nRefreshRateNumerator, uint32_t nRefreshRateDenominator )
+			uint32_t nRefreshRateNumerator, uint32_t nRefreshRateDenominator,
+			bool DebugTimestamp)
 		{
 			int nWidth = nWindowWidth;
 			int nHeight = nWindowHeight;
 			NvEncoderInitParam EncodeCLIOptions(encoderOptions.c_str());
+			m_DebugTimestamp = DebugTimestamp;
 
 			if (nWindowWidth == 0 || nWindowHeight == 0 ||
 				nRefreshRateNumerator == 0 || nRefreshRateDenominator == 0)
@@ -385,6 +364,8 @@ namespace
 				pConverter.reset(new RGBToNV12ConverterD3D11(m_pD3DRender->GetDevice(), m_pD3DRender->GetContext(), nWidth, nHeight));
 			}
 
+			/// Initialize Encoder ///
+
 			Log("CNvEncoder Initialize %dx%d %dx%d %p", nWindowX, nWindowY, nWindowWidth, nWindowHeight, m_pD3DRender->GetDevice());
 
 			NV_ENC_BUFFER_FORMAT format = m_bForceNv12 ? NV_ENC_BUFFER_FORMAT_NV12 : NV_ENC_BUFFER_FORMAT_ARGB;
@@ -396,25 +377,24 @@ namespace
 			initializeParams.encodeConfig = &encodeConfig;
 			enc->CreateDefaultEncoderParams(&initializeParams, EncodeCLIOptions.GetEncodeGUID(), EncodeCLIOptions.GetPresetGUID());
 
-			Log((std::string("NvEnc Encoder Parameters:\n") + EncodeCLIOptions.FullParamToString(&initializeParams)).c_str());
+			initializeParams.encodeConfig->encodeCodecConfig.h264Config.repeatSPSPPS = 1;
 
 			EncodeCLIOptions.SetInitParams(&initializeParams, format);
 
-			Log("CreateEncoder start");
+			std::string parameterDesc = EncodeCLIOptions.FullParamToString(&initializeParams);
+			Log("NvEnc Encoder Parameters:\n%s", parameterDesc.c_str());
+
 			enc->CreateEncoder(&initializeParams);
-			Log("CreateEncoder end");
 
-			fpOut = std::ofstream(outputFile, std::ios::out | std::ios::binary);
-			if (!fpOut)
-			{
-				std::ostringstream err;
-				err << "Unable to open output file: " << outputFile << std::endl;
-				Log("unable to open output file %s", outputFile.c_str());
-				throw std::invalid_argument(err.str());
+			/// Initialize debug video output ///
+
+			if (outputFile != "") {
+				fpOut = std::ofstream(outputFile, std::ios::out | std::ios::binary);
+				if (!fpOut)
+				{
+					Log("unable to open output file %s", outputFile.c_str());
+				}
 			}
-			Log("file opened");
-
-			m_UdpSender = new UdpSender("127.0.0.1", 9944);
 
 			m_pNewFrame = new IPCEvent("RemoteDisplay_NewFrame", false, false);
 			if (m_pNewFrame == NULL)
@@ -422,6 +402,8 @@ namespace
 				Log("RemoteDevice: Failed to create IPC event!");
 				return false;
 			}
+
+			m_Listener = listener;
 
 			return true;
 		}
@@ -432,18 +414,20 @@ namespace
 			enc->EndEncode(vPacket);
 			for (std::vector<uint8_t> &packet : vPacket)
 			{
-				fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
+				if (fpOut) {
+					fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
+				}
+				m_Listener->Send(packet.data(), (int)packet.size());
 			}
 
 			enc->DestroyEncoder();
 			delete enc;
 
-			delete m_UdpSender;
-			m_UdpSender = NULL;
-
 			Log("CNvEncoder::Shutdown");
 
-			fpOut.close();
+			if (fpOut) {
+				fpOut.close();
+			}
 		}
 
 		float GetFrameIntervalInSeconds() const
@@ -469,8 +453,9 @@ namespace
 
 			const NvEncInputFrame* encoderInputFrame = enc->GetNextInputFrame();
 
-			DrawDebugTimestamp(m_pD3DRender, pTexture);
-			
+			if (m_DebugTimestamp) {
+				DrawDebugTimestamp(m_pD3DRender, pTexture);
+			}
 
 			if (m_bForceNv12)
 			{
@@ -497,7 +482,9 @@ namespace
 			for (std::vector<uint8_t> &packet : vPacket)
 			{
 				fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
-				m_UdpSender->Send(packet.data(), (int)packet.size());
+				if (m_Listener) {
+					m_Listener->Send(packet.data(), (int)packet.size());
+				}
 			}
 
 			m_pNewFrame->SetEvent();
@@ -530,7 +517,8 @@ namespace
 		int m_nFrame;
 		std::unique_ptr<RGBToNV12ConverterD3D11> pConverter;
 
-		UdpSender *m_UdpSender;
+		Listener *m_Listener;
+		bool m_DebugTimestamp;
 	};
 
 	//----------------------------------------------------------------------------
@@ -656,7 +644,13 @@ public:
 		, m_pRemoteDevice(NULL)
 		, m_pEncoder(NULL)
 		, m_EncoderOptions("")
+		, m_DebugTimestamp(false)
+		, m_Listener(NULL)
 	{
+		std::string logFile;
+		std::string host;
+		int port;
+
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
@@ -684,7 +678,17 @@ public:
 		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_OutputFile_String, buf, sizeof(buf));
 		m_OutputFile = buf;
 		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_LogFile_String, buf, sizeof(buf));
-		std::string logFile = buf;
+		logFile = buf;
+		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_ReplayFile_String, buf, sizeof(buf));
+		m_ReplayFile = buf;
+
+		// Listener Parameters
+		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_ListenHost_String, buf, sizeof(buf));
+		host = buf;
+		port = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_ListenPort_Int32);
+
+		m_DebugTimestamp = vr::VRSettings()->GetBool(k_pch_Sample_Section, k_pch_Sample_DebugTimestamp_Bool);
+		
 
 		logger = simplelogger::LoggerFactory::CreateFileLogger(logFile);
 
@@ -698,6 +702,7 @@ public:
 
 		Log("driver_null: EncoderOptions: %s%s", m_EncoderOptions.c_str(), m_EncoderOptions.size() == sizeof(buf) - 1 ? " (Maybe truncated)" : "");
 		Log("driver_null: OutputFile: %s%s", m_OutputFile.c_str(), m_OutputFile.size() == sizeof(buf) - 1 ? " (Maybe truncated)" : "");
+		Log("driver_null: ReplayFile: %s%s", m_ReplayFile.c_str(), m_ReplayFile.size() == sizeof(buf) - 1 ? " (Maybe truncated)" : "");
 
 
 		//CDisplayRedirectLatest()
@@ -789,12 +794,17 @@ public:
 		wcstombs_s(0, chAdapterDescription, nBufferSize, wchAdapterDescription, nBufferSize);
 		Log("Using %s as primary graphics adapter.", chAdapterDescription);
 
+		std::function<void(sockaddr_in *)> Callback = [&](sockaddr_in *a) { ListenerCallback(a); };
+		m_Listener = new Listener(host, port, Callback);
+		m_Listener->Start();
+
 		// Spawn our separate process to manage headset presentation.
 		m_pRemoteDevice = new CNvEncoder(m_pD3DRender);
 		if (!m_pRemoteDevice->Initialize(
-			m_EncoderOptions, m_OutputFile,
+			m_EncoderOptions, m_OutputFile, m_ReplayFile, m_Listener,
 			nDisplayX, nDisplayY, nDisplayWidth, nDisplayHeight,
-			nDisplayRefreshRateNumerator, nDisplayRefreshRateDenominator))
+			nDisplayRefreshRateNumerator, nDisplayRefreshRateDenominator,
+			m_DebugTimestamp))
 		{
 			return;
 		}
@@ -816,6 +826,12 @@ public:
 		{
 			m_pRemoteDevice->Shutdown();
 			delete m_pRemoteDevice;
+		}
+
+		if (m_Listener)
+		{
+			m_Listener->Stop();
+			delete m_Listener;
 		}
 
 		if (m_pFlushTexture)
@@ -1048,6 +1064,8 @@ private:
 
 	std::string m_EncoderOptions;
 	std::string m_OutputFile;
+	std::string m_ReplayFile;
+	bool m_DebugTimestamp;
 public:
 	bool IsValid() const
 	{
@@ -1212,6 +1230,10 @@ public:
 		return true;
 	}
 
+	void ListenerCallback(sockaddr_in *addr)
+	{
+	}
+
 private:
 	uint64_t m_nGraphicsAdapterLuid;
 	float m_flAdditionalLatencyInSeconds;
@@ -1222,6 +1244,7 @@ private:
 	ID3D11Texture2D *m_pFlushTexture;
 	CNvEncoder *m_pRemoteDevice;
 	CEncoder *m_pEncoder;
+	Listener *m_Listener;
 };
 
 //-----------------------------------------------------------------------------

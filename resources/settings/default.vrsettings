@@ -17,7 +17,12 @@
       "renderHeight" : 1080,
       "secondsFromVsyncToPhotons" : 0.01666,
       "displayFrequency" : 60,
-      "nvencOptions": "-codec h264 -preset ll_hq -rc cbr_ll_hq -bitrate 20M -gop 60 -maxbitrate 30M -fps 60",
-      "outputFile": "C:\\src\\virtual_display\\test.h264"
+      "nvencOptions": "-codec h264 -preset ll_hq -rc cbr_ll_hq -bitrate 20M -gop 120 -maxbitrate 20M -fps 60",
+      //"outputFile": "C:\\src\\virtual_display\\test.h264",
+      //"replayFile": "C:\\src\\virtual_display\\replay.dump",
+      "logFile": "C:\\src\\virtual_display\\driver.log",
+      "listenPort": 9944,
+      "listenHost": "0.0.0.0",
+      "debugTimestamp": true
 	}
 }

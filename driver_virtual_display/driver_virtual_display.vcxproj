@@ -158,6 +158,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Listener.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="NvCodecUtils.h" />
     <ClInclude Include="nvEncodeAPI.h" />

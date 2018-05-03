@@ -466,7 +466,7 @@ public:
             << "    initialRCQP: " << pConfig->rcParams.initialRCQP.qpInterP << ", " << pConfig->rcParams.initialRCQP.qpInterB << ", " << pConfig->rcParams.initialRCQP.qpIntra << std::endl
             << "    temporallayerIdxMask: " << pConfig->rcParams.temporallayerIdxMask << std::endl
             << "    temporalLayerQP: " << (int)pConfig->rcParams.temporalLayerQP[0] << ", " << (int)pConfig->rcParams.temporalLayerQP[1] << ", " << (int)pConfig->rcParams.temporalLayerQP[2] << ", " << (int)pConfig->rcParams.temporalLayerQP[3] << ", " << (int)pConfig->rcParams.temporalLayerQP[4] << ", " << (int)pConfig->rcParams.temporalLayerQP[5] << ", " << (int)pConfig->rcParams.temporalLayerQP[6] << ", " << (int)pConfig->rcParams.temporalLayerQP[7] << std::endl
-            << "    targetQuality: " << pConfig->rcParams.targetQuality << std::endl
+            << "    targetQuality: " << (int)pConfig->rcParams.targetQuality << std::endl
             << "    lookaheadDepth: " << pConfig->rcParams.lookaheadDepth << std::endl;
         if (pInitializeParams->encodeGUID == NV_ENC_CODEC_H264_GUID) {
             os  

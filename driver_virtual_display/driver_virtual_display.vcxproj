@@ -90,10 +90,11 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;$(SolutionDir)include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>C:\src\virtual_display\x64-libs\libeay32.lib;C:\src\virtual_display\x64-libs\ssleay32.lib;C:\src\virtual_display\x64-libs\pthread_lib.lib;C:\src\virtual_display\x64-libs\srt_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -132,12 +133,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;$(SolutionDir)include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>C:\src\virtual_display\x64-libs\libeay32.lib;C:\src\virtual_display\x64-libs\ssleay32.lib;C:\src\virtual_display\x64-libs\pthread_lib.lib;C:\src\virtual_display\x64-libs\srt_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>

@@ -482,6 +482,7 @@ namespace
 			for (std::vector<uint8_t> &packet : vPacket)
 			{
 				fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
+				Log("Sending packet %d", (int)packet.size());
 				if (m_Listener) {
 					m_Listener->Send(packet.data(), (int)packet.size());
 				}
@@ -495,7 +496,7 @@ namespace
 				data->m_nVsyncCounter++;
 			}
 
-			Log("[VDispDvr] Transmit(end) (frame %d)", vPacket.size());
+			Log("[VDispDvr] Transmit(end) (frame %d %d)", vPacket.size(), m_nFrame);
 		}
 
 		void GetTimingInfo(double *pflLastVsyncTimeInSeconds, uint32_t *pnVsyncCounter)
@@ -607,6 +608,7 @@ namespace
 
 		void NewFrameReady( double flVsyncTimeInSeconds )
 		{
+			Log("New Frame Ready");
 			m_flVsyncTimeInSeconds = flVsyncTimeInSeconds;
 			m_encodeFinished.Reset();
 			m_newFrameReady.Set();
@@ -1025,8 +1027,6 @@ public:
 		pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
 		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-		Log("GetPose");
-
 		return pose;
 	}
 
@@ -1168,7 +1168,7 @@ public:
 
 	virtual void WaitForPresent() override
 	{
-		EventWriteString(L"[VDispDvr] WaitForPresent(begin)");
+		Log("[VDispDvr] WaitForPresent(begin)");
 
 		// First wait for rendering to finish on the gpu.
 		if (m_pFlushTexture)
@@ -1176,13 +1176,13 @@ public:
 			D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
 			if (SUCCEEDED(m_pD3DRender->GetContext()->Map(m_pFlushTexture, 0, D3D11_MAP_READ, 0, &mapped)))
 			{
-				EventWriteString(L"[VDispDvr] Mapped FlushTexture");
+				Log("[VDispDvr] Mapped FlushTexture");
 
 				m_pD3DRender->GetContext()->Unmap(m_pFlushTexture, 0);
 			}
 		}
 
-		EventWriteString(L"[VDispDvr] RenderingFinished");
+		Log("[VDispDvr] RenderingFinished");
 
 		// Now that we know rendering is done, we can fire off our thread that reads the
 		// backbuffer into system memory.  We also pass in the earliest time that this frame
@@ -1220,7 +1220,7 @@ public:
 		m_flLastVsyncTimeInSeconds += flFrameIntervalInSeconds * nLastVsyncToNextVsyncFrames;
 		m_nVsyncCounter = nVsyncCounter + nTimeRefToLastVsyncFrames + nLastVsyncToNextVsyncFrames;
 
-		EventWriteString(L"[VDispDvr] WaitForPresent(end)");
+		Log("[VDispDvr] WaitForPresent(end)");
 	}
 
 	virtual bool GetTimeSinceLastVsync(float *pfSecondsSinceLastVsync, uint64_t *pulFrameCounter) override

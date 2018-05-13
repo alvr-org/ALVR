@@ -15,7 +15,7 @@
       "windowHeight" : 1080,
       "renderWidth" : 1920,
       "renderHeight" : 1080,
-      "secondsFromVsyncToPhotons" : 0.01666,
+      "secondsFromVsyncToPhotons" : 0.005, // 5ms
       "displayFrequency" : 60,
       "nvencOptions": "-codec h264 -preset ll_hq -rc cbr_ll_hq -bitrate 20M -gop 120 -maxbitrate 20M -fps 60",
       //"outputFile": "C:\\src\\virtual_display\\test.h264",
@@ -23,6 +23,6 @@
       "logFile": "C:\\src\\virtual_display\\driver.log",
       "listenPort": 9944,
       "listenHost": "0.0.0.0",
-      "debugTimestamp": true
+      "debugTimestamp": false
 	}
 }

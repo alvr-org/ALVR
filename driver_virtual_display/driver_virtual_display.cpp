@@ -325,7 +325,6 @@ namespace
 	public:
 		CNvEncoder(CD3DRender *pD3DRender)
 			: m_flFrameIntervalInSeconds( 0.0f )
-			, m_pNewFrame( NULL )
 			, enc(NULL)
 			, m_pD3DRender(pD3DRender)
 			, m_bForceNv12(false)
@@ -396,13 +395,6 @@ namespace
 				}
 			}
 
-			m_pNewFrame = new IPCEvent("RemoteDisplay_NewFrame", false, false);
-			if (m_pNewFrame == NULL)
-			{
-				Log("RemoteDevice: Failed to create IPC event!");
-				return false;
-			}
-
 			m_Listener = listener;
 
 			return true;
@@ -417,7 +409,7 @@ namespace
 				if (fpOut) {
 					fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 				}
-				m_Listener->Send(packet.data(), (int)packet.size());
+				m_Listener->Send(packet.data(), (int)packet.size(), GetTimestamp(), 0);
 			}
 
 			enc->DestroyEncoder();
@@ -435,7 +427,7 @@ namespace
 			return m_flFrameIntervalInSeconds;
 		}
 
-		void Transmit(ID3D11Texture2D *pTexture)
+		void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex)
 		{
 			uint32_t nWidth;
 			uint32_t nHeight;
@@ -444,7 +436,7 @@ namespace
 
 			pTexture->GetDesc(&desc);
 
-			EventWriteString(L"[VDispDvr] Transmit(begin)");
+			Log("[VDispDvr] Transmit(begin)");
 
 			nWidth = min(desc.Width, SharedState_t::MAX_TEXTURE_WIDTH);
 			nHeight = min(desc.Height, SharedState_t::MAX_TEXTURE_HEIGHT);
@@ -484,11 +476,9 @@ namespace
 				fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 				Log("Sending packet %d", (int)packet.size());
 				if (m_Listener) {
-					m_Listener->Send(packet.data(), (int)packet.size());
+					m_Listener->Send(packet.data(), (int)packet.size(), presentationTime, frameIndex);
 				}
 			}
-
-			m_pNewFrame->SetEvent();
 
 			{
 				CSharedState::Ptr data(&m_sharedState);
@@ -508,7 +498,6 @@ namespace
 
 	private:
 		CSharedState m_sharedState;
-		IPCEvent *m_pNewFrame;
 		float m_flFrameIntervalInSeconds;
 		std::ofstream fpOut;
 		NvEncoderD3D11 *enc;
@@ -535,6 +524,7 @@ namespace
 			, m_pD3DRender( pD3DRender )
 			, m_pStagingTexture( NULL )
 			, m_bExiting( false )
+			, m_frameIndex(0)
 		{
 			m_encodeFinished.Set();
 		}
@@ -544,7 +534,7 @@ namespace
 			SAFE_RELEASE( m_pStagingTexture );
 		}
 
-		bool CopyToStaging( ID3D11Texture2D *pTexture )
+		bool CopyToStaging( ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex )
 		{
 			// Create a staging texture to copy frame data into that can in turn
 			// be read back (for blocking until rendering is finished).
@@ -572,6 +562,8 @@ namespace
 					return false;
 				}
 			}
+			m_presentationTime = presentationTime;
+			m_frameIndex = frameIndex;
 
 			m_pD3DRender->GetContext()->CopyResource( m_pStagingTexture, pTexture );
 
@@ -592,7 +584,7 @@ namespace
 
 				if ( m_pStagingTexture )
 				{
-					m_pRemoteDevice->Transmit( m_pStagingTexture );
+					m_pRemoteDevice->Transmit( m_pStagingTexture, m_presentationTime, m_frameIndex);
 				}
 
 				m_encodeFinished.Set();
@@ -626,6 +618,8 @@ namespace
 		ID3D11Texture2D *m_pStagingTexture;
 		double m_flVsyncTimeInSeconds;
 		bool m_bExiting;
+		uint64_t m_presentationTime;
+		uint64_t m_frameIndex;
 	};
 }
 
@@ -851,7 +845,7 @@ public:
 
 	virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId)
 	{
-		Log("CRemoteHmd Activate %f", m_flDisplayFrequency);
+		Log("CRemoteHmd Activate");
 
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
@@ -928,7 +922,6 @@ public:
 
 	void *GetComponent(const char *pchComponentNameAndVersion)
 	{
-		Log("CRemoteHmd GetComponent %s", pchComponentNameAndVersion);
 		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
 		{
 			return (vr::IVRDisplayComponent*)this;
@@ -1023,9 +1016,36 @@ public:
 		pose.poseIsValid = true;
 		pose.result = TrackingResult_Running_OK;
 		pose.deviceIsConnected = true;
+		pose.shouldApplyHeadModel = true;
+		pose.willDriftInYaw = true;
 
 		pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
 		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+
+		if (m_Listener->GetTrackingInfo().type == 1) {
+			auto& info = m_Listener->GetTrackingInfo();
+			Log("Tracking %lld %f,%f,%f,%f %f,%f,%f",
+				info.FrameIndex,
+				info.HeadPose_Pose_Orientation.x,
+				info.HeadPose_Pose_Orientation.y,
+				info.HeadPose_Pose_Orientation.z,
+				info.HeadPose_Pose_Orientation.w,
+				info.HeadPose_Pose_Position.x,
+				info.HeadPose_Pose_Position.y,
+				info.HeadPose_Pose_Position.z
+			);
+
+			pose.qRotation.x = info.HeadPose_Pose_Orientation.x;
+			pose.qRotation.y = info.HeadPose_Pose_Orientation.y;
+			pose.qRotation.z = info.HeadPose_Pose_Orientation.z;
+			pose.qRotation.w = info.HeadPose_Pose_Orientation.w;
+		
+			pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
+			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
+			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
+
+			m_LastReferencedFrameIndex = info.FrameIndex;
+		}
 
 		return pose;
 	}
@@ -1066,6 +1086,8 @@ private:
 	std::string m_OutputFile;
 	std::string m_ReplayFile;
 	bool m_DebugTimestamp;
+
+	uint64_t m_LastReferencedFrameIndex;
 public:
 	bool IsValid() const
 	{
@@ -1136,6 +1158,8 @@ public:
 				}
 			}
 
+			uint64_t presentationTime = GetTimestamp();
+
 			// Copy a single pixel so we can block until rendering is finished in WaitForPresent.
 			D3D11_BOX box = { 0, 0, 0, 1, 1, 1 };
 			m_pD3DRender->GetContext()->CopySubresourceRegion(m_pFlushTexture, 0, 0, 0, 0, pTexture, 0, &box);
@@ -1148,7 +1172,7 @@ public:
 			Log("[VDispDvr] Flush-End");
 
 			// Copy entire texture to staging so we can read the pixels to send to remote device.
-			m_pEncoder->CopyToStaging(pTexture);
+			m_pEncoder->CopyToStaging(pTexture, presentationTime, m_LastReferencedFrameIndex);
 
 			Log("[VDispDvr] Flush-Staging(begin)");
 

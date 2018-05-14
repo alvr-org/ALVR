@@ -153,6 +153,8 @@
     <ClCompile Include="driver_virtual_display.cpp" />
     <ClCompile Include="NvEncoder.cpp" />
     <ClCompile Include="NvEncoderD3D11.cpp" />
+    <ClCompile Include="SrtSocket.cpp" />
+    <ClCompile Include="UdpSocket.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\shared\shared.vcxproj">
@@ -160,6 +162,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ISocket.h" />
     <ClInclude Include="Listener.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="NvCodecUtils.h" />
@@ -167,7 +170,10 @@
     <ClInclude Include="NvEncoder.h" />
     <ClInclude Include="nvencoderclioptions.h" />
     <ClInclude Include="NvEncoderD3D11.h" />
+    <ClInclude Include="SrtSocket.h" />
+    <ClInclude Include="UdpSocket.h" />
     <ClInclude Include="UdpSender.h" />
+    <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

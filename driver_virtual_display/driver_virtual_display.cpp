@@ -20,6 +20,7 @@
 #include "UdpSender.h"
 #include "nvencoderclioptions.h"
 #include "Listener.h"
+#include "Utils.h"
 
 simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
 
@@ -175,54 +176,39 @@ namespace
 		pMatrix->m[2][3] = 0.f;
 	}
 
-
-	// keys for use with the settings API
-	static const char * const k_pch_Sample_Section = "driver_virtual_display";
-	static const char * const k_pch_Sample_SerialNumber_String = "serialNumber";
-	static const char * const k_pch_Sample_ModelNumber_String = "modelNumber";
-	static const char * const k_pch_Sample_WindowX_Int32 = "windowX";
-	static const char * const k_pch_Sample_WindowY_Int32 = "windowY";
-	static const char * const k_pch_Sample_WindowWidth_Int32 = "windowWidth";
-	static const char * const k_pch_Sample_WindowHeight_Int32 = "windowHeight";
-	static const char * const k_pch_Sample_RenderWidth_Int32 = "renderWidth";
-	static const char * const k_pch_Sample_RenderHeight_Int32 = "renderHeight";
-	static const char * const k_pch_Sample_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
-	static const char * const k_pch_Sample_DisplayFrequency_Float = "displayFrequency";
-	static const char * const k_pch_Sample_EncoderOptions_String = "nvencOptions";
-	static const char * const k_pch_Sample_OutputFile_String = "outputFile";
-	static const char * const k_pch_Sample_ReplayFile_String = "replayFile";
-	static const char * const k_pch_Sample_LogFile_String = "logFile";
-	static const char * const k_pch_Sample_DebugTimestamp_Bool = "debugTimestamp";
-	static const char * const k_pch_Sample_ListenHost_String = "listenHost";
-	static const char * const k_pch_Sample_ListenPort_Int32 = "listenPort";
-
-	
+		
 	//-----------------------------------------------------------------------------
 	// Settings
 	//-----------------------------------------------------------------------------
-	static const char * const k_pch_VirtualDisplay_Section = "driver_virtual_display";
-	static const char * const k_pch_VirtualDisplay_SerialNumber_String = "serialNumber";
-	static const char * const k_pch_VirtualDisplay_ModelNumber_String = "modelNumber";
-	static const char * const k_pch_VirtualDisplay_AdditionalLatencyInSeconds_Float = "additionalLatencyInSeconds";
-	static const char * const k_pch_VirtualDisplay_DisplayWidth_Int32 = "displayWidth";
-	static const char * const k_pch_VirtualDisplay_DisplayHeight_Int32 = "displayHeight";
-	static const char * const k_pch_VirtualDisplay_DisplayRefreshRateNumerator_Int32 = "displayRefreshRateNumerator";
-	static const char * const k_pch_VirtualDisplay_DisplayRefreshRateDenominator_Int32 = "displayRefreshRateDenominator";
-	static const char * const k_pch_VirtualDisplay_AdapterIndex_Int32 = "adapterIndex";
+	static const char * const k_pch_Settings_Section = "driver_remote_glass";
+	static const char * const k_pch_Settings_SerialNumber_String = "serialNumber";
+	static const char * const k_pch_Settings_ModelNumber_String = "modelNumber";
+	static const char * const k_pch_Settings_WindowX_Int32 = "windowX";
+	static const char * const k_pch_Settings_WindowY_Int32 = "windowY";
+	static const char * const k_pch_Settings_WindowWidth_Int32 = "windowWidth";
+	static const char * const k_pch_Settings_WindowHeight_Int32 = "windowHeight";
+	static const char * const k_pch_Settings_RenderWidth_Int32 = "renderWidth";
+	static const char * const k_pch_Settings_RenderHeight_Int32 = "renderHeight";
+	static const char * const k_pch_Settings_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
+	static const char * const k_pch_Settings_DisplayFrequency_Float = "displayFrequency";
+	static const char * const k_pch_Settings_EncoderOptions_String = "nvencOptions";
+	static const char * const k_pch_Settings_OutputFile_String = "outputFile";
+	static const char * const k_pch_Settings_ReplayFile_String = "replayFile";
+	static const char * const k_pch_Settings_LogFile_String = "logFile";
+	static const char * const k_pch_Settings_DebugTimestamp_Bool = "debugTimestamp";
+	static const char * const k_pch_Settings_ListenHost_String = "listenHost";
+	static const char * const k_pch_Settings_ListenPort_Int32 = "listenPort";
+
+	static const char * const k_pch_Settings_AdditionalLatencyInSeconds_Float = "additionalLatencyInSeconds";
+	static const char * const k_pch_Settings_DisplayWidth_Int32 = "displayWidth";
+	static const char * const k_pch_Settings_DisplayHeight_Int32 = "displayHeight";
+	static const char * const k_pch_Settings_DisplayRefreshRateNumerator_Int32 = "displayRefreshRateNumerator";
+	static const char * const k_pch_Settings_DisplayRefreshRateDenominator_Int32 = "displayRefreshRateDenominator";
+	static const char * const k_pch_Settings_AdapterIndex_Int32 = "adapterIndex";
+
+	static const char * const k_pch_Settings_SrtOptions_String = "srtOptions";
 
 	//-----------------------------------------------------------------------------
-	
-
-	// Get current time in micro seconds.
-	uint64_t GetTimestamp() {
-		FILETIME ft;
-		GetSystemTimeAsFileTime(&ft);
-
-		uint64_t q = (((uint64_t)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
-		q /= 10;
-
-		return q;
-	}
 
 	class RGBToNV12ConverterD3D11 {
 	public:
@@ -409,7 +395,7 @@ namespace
 				if (fpOut) {
 					fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 				}
-				m_Listener->Send(packet.data(), (int)packet.size(), GetTimestamp(), 0);
+				m_Listener->Send(packet.data(), (int)packet.size(), GetTimestampUs(), 0);
 			}
 
 			enc->DestroyEncoder();
@@ -427,7 +413,7 @@ namespace
 			return m_flFrameIntervalInSeconds;
 		}
 
-		void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex)
+		void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime)
 		{
 			uint32_t nWidth;
 			uint32_t nHeight;
@@ -458,17 +444,19 @@ namespace
 			{
 				ID3D11Texture2D *pTexBgra = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
 				Log("CopyResource start");
-				uint64_t start = GetTimestamp();
+				uint64_t start = GetTimestampUs();
 				m_pD3DRender->GetContext()->CopyResource(pTexBgra, pTexture);
-				uint64_t end = GetTimestamp();
+				uint64_t end = GetTimestampUs();
 				Log("CopyResource end %lld us", end - start);
 			}
 
-			uint64_t start = GetTimestamp();
+			uint64_t start = GetTimestampUs();
 			enc->EncodeFrame(vPacket);
-			uint64_t end = GetTimestamp();
+			uint64_t end = GetTimestampUs();
 			Log("EncodeFrame %lld us", end - start);
 
+			Log("Tracking info delay: %lld us", GetTimestampUs() - m_Listener->clientToServerTime(clientTime));
+			Log("Encoding delay: %lld us", GetTimestampUs() - presentationTime);
 
 			m_nFrame += (int)vPacket.size();
 			for (std::vector<uint8_t> &packet : vPacket)
@@ -534,7 +522,7 @@ namespace
 			SAFE_RELEASE( m_pStagingTexture );
 		}
 
-		bool CopyToStaging( ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex )
+		bool CopyToStaging( ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime )
 		{
 			// Create a staging texture to copy frame data into that can in turn
 			// be read back (for blocking until rendering is finished).
@@ -564,6 +552,7 @@ namespace
 			}
 			m_presentationTime = presentationTime;
 			m_frameIndex = frameIndex;
+			m_clientTime = clientTime;
 
 			m_pD3DRender->GetContext()->CopyResource( m_pStagingTexture, pTexture );
 
@@ -584,7 +573,7 @@ namespace
 
 				if ( m_pStagingTexture )
 				{
-					m_pRemoteDevice->Transmit( m_pStagingTexture, m_presentationTime, m_frameIndex);
+					m_pRemoteDevice->Transmit( m_pStagingTexture, m_presentationTime, m_frameIndex, m_clientTime);
 				}
 
 				m_encodeFinished.Set();
@@ -620,6 +609,7 @@ namespace
 		bool m_bExiting;
 		uint64_t m_presentationTime;
 		uint64_t m_frameIndex;
+		uint64_t m_clientTime;
 	};
 }
 
@@ -654,36 +644,38 @@ public:
 		m_flIPD = vr::VRSettings()->GetFloat(k_pch_SteamVR_Section, k_pch_SteamVR_IPD_Float);
 
 		char buf[10240];
-		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_SerialNumber_String, buf, sizeof(buf));
+		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_SerialNumber_String, buf, sizeof(buf));
 		m_sSerialNumber = buf;
 
-		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_ModelNumber_String, buf, sizeof(buf));
+		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ModelNumber_String, buf, sizeof(buf));
 		m_sModelNumber = buf;
 
-		m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowX_Int32);
-		m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowY_Int32);
-		m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowWidth_Int32);
-		m_nWindowHeight = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_WindowHeight_Int32);
-		m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_RenderWidth_Int32);
-		m_nRenderHeight = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_RenderHeight_Int32);
-		m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_SecondsFromVsyncToPhotons_Float);
-		m_flDisplayFrequency = vr::VRSettings()->GetFloat(k_pch_Sample_Section, k_pch_Sample_DisplayFrequency_Float);
+		m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_WindowX_Int32);
+		m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_WindowY_Int32);
+		m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_WindowWidth_Int32);
+		m_nWindowHeight = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_WindowHeight_Int32);
+		m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_RenderWidth_Int32);
+		m_nRenderHeight = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_RenderHeight_Int32);
+		m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(k_pch_Settings_Section, k_pch_Settings_SecondsFromVsyncToPhotons_Float);
+		m_flDisplayFrequency = vr::VRSettings()->GetFloat(k_pch_Settings_Section, k_pch_Settings_DisplayFrequency_Float);
 
-		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_EncoderOptions_String, buf, sizeof(buf));
+		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_EncoderOptions_String, buf, sizeof(buf));
 		m_EncoderOptions = buf;
-		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_OutputFile_String, buf, sizeof(buf));
+		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_OutputFile_String, buf, sizeof(buf));
 		m_OutputFile = buf;
-		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_LogFile_String, buf, sizeof(buf));
+		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_LogFile_String, buf, sizeof(buf));
 		logFile = buf;
-		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_ReplayFile_String, buf, sizeof(buf));
+		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ReplayFile_String, buf, sizeof(buf));
 		m_ReplayFile = buf;
+		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_SrtOptions_String, buf, sizeof(buf));
+		std::string SrtOptions = buf;
 
 		// Listener Parameters
-		vr::VRSettings()->GetString(k_pch_Sample_Section, k_pch_Sample_ListenHost_String, buf, sizeof(buf));
+		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ListenHost_String, buf, sizeof(buf));
 		host = buf;
-		port = vr::VRSettings()->GetInt32(k_pch_Sample_Section, k_pch_Sample_ListenPort_Int32);
+		port = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ListenPort_Int32);
 
-		m_DebugTimestamp = vr::VRSettings()->GetBool(k_pch_Sample_Section, k_pch_Sample_DebugTimestamp_Bool);
+		m_DebugTimestamp = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugTimestamp_Bool);
 		
 
 		logger = simplelogger::LoggerFactory::CreateFileLogger(logFile);
@@ -704,26 +696,26 @@ public:
 		//CDisplayRedirectLatest()
 
 		m_flAdditionalLatencyInSeconds = max(0.0f,
-			vr::VRSettings()->GetFloat(k_pch_VirtualDisplay_Section,
-				k_pch_VirtualDisplay_AdditionalLatencyInSeconds_Float));
+			vr::VRSettings()->GetFloat(k_pch_Settings_Section,
+				k_pch_Settings_AdditionalLatencyInSeconds_Float));
 
 		uint32_t nDisplayWidth = vr::VRSettings()->GetInt32(
-			k_pch_VirtualDisplay_Section,
-			k_pch_VirtualDisplay_DisplayWidth_Int32);
+			k_pch_Settings_Section,
+			k_pch_Settings_DisplayWidth_Int32);
 		uint32_t nDisplayHeight = vr::VRSettings()->GetInt32(
-			k_pch_VirtualDisplay_Section,
-			k_pch_VirtualDisplay_DisplayHeight_Int32);
+			k_pch_Settings_Section,
+			k_pch_Settings_DisplayHeight_Int32);
 
 		int32_t nDisplayRefreshRateNumerator = vr::VRSettings()->GetInt32(
-			k_pch_VirtualDisplay_Section,
-			k_pch_VirtualDisplay_DisplayRefreshRateNumerator_Int32);
+			k_pch_Settings_Section,
+			k_pch_Settings_DisplayRefreshRateNumerator_Int32);
 		int32_t nDisplayRefreshRateDenominator = vr::VRSettings()->GetInt32(
-			k_pch_VirtualDisplay_Section,
-			k_pch_VirtualDisplay_DisplayRefreshRateDenominator_Int32);
+			k_pch_Settings_Section,
+			k_pch_Settings_DisplayRefreshRateDenominator_Int32);
 
 		int32_t nAdapterIndex = vr::VRSettings()->GetInt32(
-			k_pch_VirtualDisplay_Section,
-			k_pch_VirtualDisplay_AdapterIndex_Int32);
+			k_pch_Settings_Section,
+			k_pch_Settings_AdapterIndex_Int32);
 
 		m_pD3DRender = new CD3DRender();
 
@@ -791,7 +783,8 @@ public:
 		Log("Using %s as primary graphics adapter.", chAdapterDescription);
 
 		std::function<void(sockaddr_in *)> Callback = [&](sockaddr_in *a) { ListenerCallback(a); };
-		m_Listener = new Listener(host, port, Callback);
+		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
+		m_Listener = new Listener(host, port, SrtOptions, Callback, poseCallback);
 		m_Listener->Start();
 
 		// Spawn our separate process to manage headset presentation.
@@ -845,7 +838,7 @@ public:
 
 	virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId)
 	{
-		Log("CRemoteHmd Activate");
+		Log("CRemoteHmd Activate %d", unObjectId);
 
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
@@ -1016,15 +1009,19 @@ public:
 		pose.poseIsValid = true;
 		pose.result = TrackingResult_Running_OK;
 		pose.deviceIsConnected = true;
-		pose.shouldApplyHeadModel = true;
-		pose.willDriftInYaw = true;
+		//pose.shouldApplyHeadModel = true;
+		//pose.willDriftInYaw = true;
 
 		pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
 		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+		pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-		if (m_Listener->GetTrackingInfo().type == 1) {
+		if (m_Listener->HasValidTrackingInfo()) {
 			auto& info = m_Listener->GetTrackingInfo();
-			Log("Tracking %lld %f,%f,%f,%f %f,%f,%f",
+			uint64_t trackingDelay = GetTimestampUs() - m_Listener->clientToServerTime(info.clientTime);
+
+			Log("Tracking elapsed:%lld us %lld %f,%f,%f,%f %f,%f,%f\nView[0]:\n%sProj[0]:\n%sView[1]:\n%sProj[1]:\n%s",
+				trackingDelay,
 				info.FrameIndex,
 				info.HeadPose_Pose_Orientation.x,
 				info.HeadPose_Pose_Orientation.y,
@@ -1032,19 +1029,44 @@ public:
 				info.HeadPose_Pose_Orientation.w,
 				info.HeadPose_Pose_Position.x,
 				info.HeadPose_Pose_Position.y,
-				info.HeadPose_Pose_Position.z
+				info.HeadPose_Pose_Position.z,
+				DumpMatrix(info.Eye[0].ViewMatrix.M).c_str(),
+				DumpMatrix(info.Eye[0].ProjectionMatrix.M).c_str(),
+				DumpMatrix(info.Eye[1].ViewMatrix.M).c_str(),
+				DumpMatrix(info.Eye[1].ProjectionMatrix.M).c_str()
 			);
 
 			pose.qRotation.x = info.HeadPose_Pose_Orientation.x;
 			pose.qRotation.y = info.HeadPose_Pose_Orientation.y;
 			pose.qRotation.z = info.HeadPose_Pose_Orientation.z;
 			pose.qRotation.w = info.HeadPose_Pose_Orientation.w;
-		
+
 			pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
 			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
 			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
 
+			/*
+			pose.vecVelocity[0] = info.HeadPose_LinearVelocity.x;
+			pose.vecVelocity[1] = info.HeadPose_LinearVelocity.y;
+			pose.vecVelocity[2] = info.HeadPose_LinearVelocity.z;
+
+			pose.vecAcceleration[0] = info.HeadPose_LinearAcceleration.x;
+			pose.vecAcceleration[1] = info.HeadPose_LinearAcceleration.y;
+			pose.vecAcceleration[2] = info.HeadPose_LinearAcceleration.z;
+
+			pose.vecAngularVelocity[0] = info.HeadPose_AngularVelocity.x;
+			pose.vecAngularVelocity[1] = info.HeadPose_AngularVelocity.y;
+			pose.vecAngularVelocity[2] = info.HeadPose_AngularVelocity.z;
+
+			pose.vecAngularAcceleration[0] = info.HeadPose_AngularAcceleration.x;
+			pose.vecAngularAcceleration[1] = info.HeadPose_AngularAcceleration.y;
+			pose.vecAngularAcceleration[2] = info.HeadPose_AngularAcceleration.z;*/
+
+			//pose.poseTimeOffset = -(trackingDelay * 1.0) / 1000.0 / 1000.0;
+			pose.poseTimeOffset = 0;
+
 			m_LastReferencedFrameIndex = info.FrameIndex;
+			m_LastReferencedClientTime = info.clientTime;
 		}
 
 		return pose;
@@ -1088,6 +1110,7 @@ private:
 	bool m_DebugTimestamp;
 
 	uint64_t m_LastReferencedFrameIndex;
+	uint64_t m_LastReferencedClientTime;
 public:
 	bool IsValid() const
 	{
@@ -1099,7 +1122,7 @@ public:
 
 	virtual void Present(vr::SharedTextureHandle_t backbufferTextureHandle) override
 	{
-		Log("Present");
+		//Log("Present");
 		// Open and cache our shared textures to avoid re-opening every frame.
 		ID3D11Texture2D *pTexture = m_pD3DRender->GetSharedTexture((HANDLE)backbufferTextureHandle);
 		if (pTexture == NULL)
@@ -1130,7 +1153,7 @@ public:
 				}
 			}
 
-			Log("[VDispDvr] AcquiredSync");
+			//Log("[VDispDvr] AcquiredSync");
 
 			if (m_pFlushTexture == NULL)
 			{
@@ -1158,27 +1181,27 @@ public:
 				}
 			}
 
-			uint64_t presentationTime = GetTimestamp();
+			uint64_t presentationTime = GetTimestampUs();
 
 			// Copy a single pixel so we can block until rendering is finished in WaitForPresent.
 			D3D11_BOX box = { 0, 0, 0, 1, 1, 1 };
 			m_pD3DRender->GetContext()->CopySubresourceRegion(m_pFlushTexture, 0, 0, 0, 0, pTexture, 0, &box);
 
-			Log("[VDispDvr] Flush-Begin");
+			//Log("[VDispDvr] Flush-Begin");
 
 			// This can go away, but is useful to see it as a separate packet on the gpu in traces.
 			m_pD3DRender->GetContext()->Flush();
 
-			Log("[VDispDvr] Flush-End");
+			//Log("[VDispDvr] Flush-End");
 
 			// Copy entire texture to staging so we can read the pixels to send to remote device.
-			m_pEncoder->CopyToStaging(pTexture, presentationTime, m_LastReferencedFrameIndex);
+			m_pEncoder->CopyToStaging(pTexture, presentationTime, m_LastReferencedFrameIndex, m_LastReferencedClientTime);
 
-			Log("[VDispDvr] Flush-Staging(begin)");
+			//Log("[VDispDvr] Flush-Staging(begin)");
 
 			m_pD3DRender->GetContext()->Flush();
 
-			Log("[VDispDvr] Flush-Staging(end)");
+			//Log("[VDispDvr] Flush-Staging(end)");
 
 			if (pKeyedMutex)
 			{
@@ -1186,7 +1209,7 @@ public:
 				pKeyedMutex->Release();
 			}
 
-			Log("[VDispDvr] ReleasedSync");
+			//Log("[VDispDvr] ReleasedSync");
 		}
 	}
 
@@ -1256,6 +1279,14 @@ public:
 
 	void ListenerCallback(sockaddr_in *addr)
 	{
+	}
+
+	void OnPoseUpdated() {
+		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
+		{
+			Log("OnPoseUpdated");
+			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(DriverPose_t));
+		}
 	}
 
 private:

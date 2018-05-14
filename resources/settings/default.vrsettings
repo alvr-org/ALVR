@@ -1,28 +1,29 @@
 {
-	"driver_virtual_display": {
+	"driver_remote_glass": {
 		"serialNumber": "VD-001",
 		"modelNumber": "Virtual Display",
 		"additionalLatencyInSeconds": 0.008,
-		"displayWidth": 1920,
-		"displayHeight": 1080,
+		"displayWidth": 2048,
+		"displayHeight": 1024,
 		"displayRefreshRateNumerator": 60,
 		"displayRefreshRateDenominator": 1,
 		"adapterIndex": -1,
-      "enable" : true,
-      "windowX" : 0,
-      "windowY" : 0,
-      "windowWidth" : 1920,
-      "windowHeight" : 1080,
-      "renderWidth" : 1920,
-      "renderHeight" : 1080,
-      "secondsFromVsyncToPhotons" : 0.005, // 5ms
-      "displayFrequency" : 60,
-      "nvencOptions": "-codec h264 -preset ll_hq -rc cbr_ll_hq -bitrate 20M -gop 120 -maxbitrate 20M -fps 60",
-      //"outputFile": "C:\\src\\virtual_display\\test.h264",
-      //"replayFile": "C:\\src\\virtual_display\\replay.dump",
-      "logFile": "C:\\src\\virtual_display\\driver.log",
-      "listenPort": 9944,
-      "listenHost": "0.0.0.0",
-      "debugTimestamp": false
+		"enable" : true,
+		"windowX" : 0,
+		"windowY" : 0,
+		"windowWidth" : 2048,
+		"windowHeight" : 1024,
+		"renderWidth" : 2048,
+		"renderHeight" : 1024,
+		"secondsFromVsyncToPhotons" : 0.005, // 5ms
+		"displayFrequency" : 60,
+		"nvencOptions": "-codec h264 -preset ll_hq -rc cbr_ll_hq -bitrate 10M -gop 240 -maxbitrate 10M -fps 60",
+        "outputFile": "C:\\src\\virtual_display\\test.h264",
+		//"replayFile": "C:\\src\\virtual_display\\replay.dump",
+        "logFile": "C:\\src\\virtual_display\\driver.log",
+		"listenPort": 9944,
+		"listenHost": "0.0.0.0",
+		"debugTimestamp": false,
+		"srtOptions": "TSBPDDELAY=1 RCVLATENCY=1"
 	}
 }

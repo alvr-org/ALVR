@@ -32,3 +32,24 @@ inline std::string DumpMatrix(const float *m) {
 		, m[3], m[7], m[11], m[15]);
 	return std::string(buf);
 }
+
+inline std::string GetDxErrorStr(HRESULT hr) {
+	char *s = NULL;
+	std::string ret;
+	FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, hr,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPSTR)&s, 0, NULL);
+	ret = s;
+	LocalFree(s);
+
+	if (ret.size() >= 1) {
+		if (ret[ret.size() - 1] == '\n') {
+			ret.erase(ret.size() - 1, 1);
+		}
+		if (ret[ret.size() - 1] == '\r') {
+			ret.erase(ret.size() - 1, 1);
+		}
+	}
+	return ret;
+}

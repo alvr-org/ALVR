@@ -270,4 +270,6 @@ inline void Log(const char *pFormat, ...)
 		"[%02d:%02d:%02d.%03lld %03lld] ",
 		st.wHour, st.wMinute, st.wSecond, q / 1000 % 1000, q % 1000);
 	logger->GetStream() << timestamp << buffer << std::endl;
+	OutputDebugString(buffer);
+	OutputDebugString("\r\n");
 }

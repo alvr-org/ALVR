@@ -13,6 +13,13 @@
 #include <winsock2.h>
 #include <D3dx9core.h>
 #include <d3d11.h>
+#include <wrl.h>
+#include <map>
+#include <d3dcompiler.h>
+#include <directxmath.h>
+#include <directxcolors.h>
+#include <d3d11_1.h>
+
 #include "NvEncoderD3D11.h"
 #include "Logger.h"
 #include "NvCodecUtils.h"
@@ -26,7 +33,77 @@ simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger(
 
 namespace
 {
-	using namespace vr;
+
+	using Microsoft::WRL::ComPtr;
+
+
+	const char *VERTEX_SHADER = "//--------------------------------------------------------------------------------------\n"
+		"// File: Tutorial07.fx\n"
+		"//\n"
+		"// Copyright (c) Microsoft Corporation. All rights reserved.\n"
+		"//--------------------------------------------------------------------------------------\n"
+		"\n"
+		"//--------------------------------------------------------------------------------------\n"
+		"// Constant Buffer Variables\n"
+		"//--------------------------------------------------------------------------------------\n"
+		"Texture2D txDiffuse : register(t0);\n"
+		"SamplerState samLinear : register(s0);\n"
+		"\n"
+		"cbuffer cbNeverChanges : register(b0)\n"
+		"{\n"
+		"	matrix View;\n"
+		"};\n"
+		"\n"
+		"cbuffer cbChangeOnResize : register(b1)\n"
+		"{\n"
+		"	matrix Projection;\n"
+		"};\n"
+		"\n"
+		"cbuffer cbChangesEveryFrame : register(b2)\n"
+		"{\n"
+		"	matrix World;\n"
+		"	float4 vMeshColor;\n"
+		"};\n"
+		"\n"
+		"\n"
+		"//--------------------------------------------------------------------------------------\n"
+		"struct VS_INPUT\n"
+		"{\n"
+		"	float4 Pos : POSITION;\n"
+		"	float2 Tex : TEXCOORD0;\n"
+		"};\n"
+		"\n"
+		"struct PS_INPUT\n"
+		"{\n"
+		"	float4 Pos : SV_POSITION;\n"
+		"	float2 Tex : TEXCOORD0;\n"
+		"};\n"
+		"\n"
+		"\n"
+		"//--------------------------------------------------------------------------------------\n"
+		"// Vertex Shader\n"
+		"//--------------------------------------------------------------------------------------\n"
+		"PS_INPUT VS(VS_INPUT input)\n"
+		"{\n"
+		"	PS_INPUT output = (PS_INPUT)0;\n"
+		"	output.Pos = mul(input.Pos, World);\n"
+		"	output.Pos = mul(output.Pos, View);\n"
+		"	output.Pos = mul(output.Pos, Projection);\n"
+		"	output.Tex = input.Tex;\n"
+		"\n"
+		"	return output;\n"
+		"}\n"
+		"\n"
+		"\n"
+		"//--------------------------------------------------------------------------------------\n"
+		"// Pixel Shader\n"
+		"//--------------------------------------------------------------------------------------\n"
+		"float4 PS(PS_INPUT input) : SV_Target\n"
+		"{\n"
+		//"	return txDiffuse.Sample(samLinear, input.Tex) * vMeshColor;\n"
+		"	return float4(1.0, 0.4, 0.6, 1.0);\n"
+		"}\n";
+	const char *PIXEL_SHADER = VERTEX_SHADER;
 
 	void Test(CD3DRender *m_pD3DRender, ID3D11Texture2D *pTexture, int nHeight) {
 
@@ -150,9 +227,9 @@ namespace
 	}
 
 
-	inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y, double z)
+	inline vr::HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y, double z)
 	{
-		HmdQuaternion_t quat;
+		vr::HmdQuaternion_t quat;
 		quat.w = w;
 		quat.x = x;
 		quat.y = y;
@@ -160,7 +237,7 @@ namespace
 		return quat;
 	}
 
-	inline void HmdMatrix_SetIdentity(HmdMatrix34_t *pMatrix)
+	inline void HmdMatrix_SetIdentity(vr::HmdMatrix34_t *pMatrix)
 	{
 		pMatrix->m[0][0] = 1.f;
 		pMatrix->m[0][1] = 0.f;
@@ -445,6 +522,12 @@ namespace
 				ID3D11Texture2D *pTexBgra = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
 				Log("CopyResource start");
 				uint64_t start = GetTimestampUs();
+
+				D3D11_TEXTURE2D_DESC desc2;
+				pTexBgra->GetDesc(&desc2);
+				Log("%dx%d %d %d -> %dx%d %d %d",
+					desc.Width, desc.Height, desc.Format, desc.BindFlags,
+					desc2.Width, desc2.Height, desc2.Format, desc2.BindFlags);
 				m_pD3DRender->GetContext()->CopyResource(pTexBgra, pTexture);
 				uint64_t end = GetTimestampUs();
 				Log("CopyResource end %lld us", end - start);
@@ -507,54 +590,412 @@ namespace
 	class CEncoder : public CThread
 	{
 	public:
-		CEncoder( CD3DRender *pD3DRender, CNvEncoder *pRemoteDevice )
+		CEncoder( CD3DRender *pD3DRender, CNvEncoder *pRemoteDevice, int renderWidth, int renderHeight )
 			: m_pRemoteDevice( pRemoteDevice )
 			, m_pD3DRender( pD3DRender )
 			, m_pStagingTexture( NULL )
 			, m_bExiting( false )
 			, m_frameIndex(0)
+			, m_renderWidth(renderWidth)
+			, m_renderHeight(renderHeight)
 		{
 			m_encodeFinished.Set();
 		}
 
 		~CEncoder()
 		{
-			SAFE_RELEASE( m_pStagingTexture );
 		}
 
-		bool CopyToStaging( ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime )
+		bool CopyToStaging( ID3D11Texture2D *pTexture[], int textureNum, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime )
 		{
 			// Create a staging texture to copy frame data into that can in turn
 			// be read back (for blocking until rendering is finished).
-			if ( m_pStagingTexture == NULL )
+			if ( !m_pStagingTexture )
 			{
 				D3D11_TEXTURE2D_DESC srcDesc;
-				pTexture->GetDesc( &srcDesc );
+				pTexture[0]->GetDesc( &srcDesc );
 
 				D3D11_TEXTURE2D_DESC stagingTextureDesc;
 				ZeroMemory( &stagingTextureDesc, sizeof( stagingTextureDesc ) );
-				stagingTextureDesc.Width = srcDesc.Width;
-				stagingTextureDesc.Height = srcDesc.Height;
+				stagingTextureDesc.Width = m_renderWidth * 2;
+				stagingTextureDesc.Height = m_renderHeight;
 				stagingTextureDesc.Format = srcDesc.Format;
 				stagingTextureDesc.MipLevels = 1;
 				stagingTextureDesc.ArraySize = 1;
 				stagingTextureDesc.SampleDesc.Count = 1;
-				stagingTextureDesc.Usage = D3D11_USAGE_STAGING;
-				stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-
-				Log("CopyToStaging %dx%d %d", srcDesc.Width, srcDesc.Height, srcDesc.Format);
+				stagingTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+				//stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+				stagingTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
 
 				if ( FAILED( m_pD3DRender->GetDevice()->CreateTexture2D( &stagingTextureDesc, NULL, &m_pStagingTexture ) ) )
 				{
 					Log( "Failed to create staging texture!" );
 					return false;
 				}
+
+				HRESULT hr = m_pD3DRender->GetDevice()->CreateRenderTargetView(m_pStagingTexture.Get(), NULL, &m_pRenderTargetView);
+				if (FAILED(hr)) {
+					Log("CreateRenderTargetView %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+
+				// Create depth stencil texture
+				D3D11_TEXTURE2D_DESC descDepth;
+				ZeroMemory(&descDepth, sizeof(descDepth));
+				descDepth.Width = stagingTextureDesc.Width;
+				descDepth.Height = stagingTextureDesc.Height;
+				descDepth.MipLevels = 1;
+				descDepth.ArraySize = 1;
+				descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+				descDepth.SampleDesc.Count = 1;
+				descDepth.SampleDesc.Quality = 0;
+				descDepth.Usage = D3D11_USAGE_DEFAULT;
+				descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+				descDepth.CPUAccessFlags = 0;
+				descDepth.MiscFlags = 0;
+				hr = m_pD3DRender->GetDevice()->CreateTexture2D(&descDepth, nullptr, &m_pDepthStencil);
+				if (FAILED(hr)) {
+					Log("CreateTexture2D %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+
+
+				// Create the depth stencil view
+				D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
+				ZeroMemory(&descDSV, sizeof(descDSV));
+				descDSV.Format = descDepth.Format;
+				descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+				descDSV.Texture2D.MipSlice = 0;
+				hr = m_pD3DRender->GetDevice()->CreateDepthStencilView(m_pDepthStencil.Get(), &descDSV, &m_pDepthStencilView);
+				if (FAILED(hr)) {
+					Log("CreateDepthStencilView %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+
+				m_pD3DRender->GetContext()->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get());
+
+				D3D11_VIEWPORT viewport;
+				viewport.Width = (float)m_renderWidth * 2;
+				viewport.Height = (float)m_renderHeight;
+				viewport.MinDepth = 0.0f;
+				viewport.MaxDepth = 1.0f;
+				viewport.TopLeftX = 0;
+				viewport.TopLeftY = 0;
+				m_pD3DRender->GetContext()->RSSetViewports(1, &viewport);
+
+
+				D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+				SRVDesc.Format = srcDesc.Format;
+				SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+				SRVDesc.Texture2D.MostDetailedMip = 0;
+				SRVDesc.Texture2D.MipLevels = 1;
+
+				hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[0], &SRVDesc, &m_pShaderResourceView);
+				if (FAILED(hr)) {
+					Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+
+
+				ID3DBlob *vshader, *pshader, *error;
+
+				hr = D3DCompile(VERTEX_SHADER, strlen(VERTEX_SHADER), "vs", NULL, NULL, "VS", "vs_4_0", 0, 0, &vshader, &error);
+				//hr = D3DXCompileShader(VERTEX_SHADER, strlen(VERTEX_SHADER), 0, 0, "main", "vs_4_0", 0, &vshader, &error, NULL);
+				Log("D3DCompile vs %p %s", hr, GetDxErrorStr(hr).c_str());
+				if (FAILED(hr)) {
+					Log("%s", error->GetBufferPointer());
+					return hr;
+				}
+				if (error != NULL) {
+					error->Release();
+					error = NULL;
+				}
+
+				hr = m_pD3DRender->GetDevice()->CreateVertexShader((const DWORD*)vshader->GetBufferPointer(), vshader->GetBufferSize(), NULL, &m_pVertexShader);
+				if (FAILED(hr)) {
+					Log("CreateVertexShader %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+				hr = D3DCompile(VERTEX_SHADER, strlen(VERTEX_SHADER), "ps", NULL, NULL, "PS", "ps_4_0", 0, 0, &pshader, &error);
+//				hr = D3DXCompileShader(PIXEL_SHADER, strlen(PIXEL_SHADER), 0, 0, "main", "ps_4_0", 0, &pshader, &error, NULL);
+				Log("D3DCompile ps %p %s", hr, GetDxErrorStr(hr).c_str());
+				if (FAILED(hr)) {
+					Log("%s", error->GetBufferPointer());
+					return hr;
+				}
+				if (error != NULL) {
+					error->Release();
+				}
+
+				hr = m_pD3DRender->GetDevice()->CreatePixelShader((const DWORD*)pshader->GetBufferPointer(), pshader->GetBufferSize(), NULL, &m_pPixelShader);
+				if (FAILED(hr)) {
+					Log("CreatePixelShader %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+
+				// Define the input layout
+				D3D11_INPUT_ELEMENT_DESC layout[] =
+				{
+					{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+				};
+				UINT numElements = ARRAYSIZE(layout);
+
+
+				// Create the input layout
+				hr = m_pD3DRender->GetDevice()->CreateInputLayout(layout, numElements, vshader->GetBufferPointer(),
+					vshader->GetBufferSize(), &m_pVertexLayout);
+				if (FAILED(hr)) {
+					Log("CreateInputLayout %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+				vshader->Release();
+
+				// Set the input layout
+				m_pD3DRender->GetContext()->IASetInputLayout(m_pVertexLayout.Get());
+
+				// Create vertex buffer
+				SimpleVertex vertices[] =
+				{
+					{ DirectX::XMFLOAT3(-1.0f, 1.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 0.0f) },
+				{ DirectX::XMFLOAT3(1.0f, 1.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 0.0f) },
+				{ DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 1.0f) },
+				{ DirectX::XMFLOAT3(-1.0f, 1.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 1.0f) },
+
+				{ DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 0.0f) },
+				{ DirectX::XMFLOAT3(1.0f, -1.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 0.0f) },
+				{ DirectX::XMFLOAT3(1.0f, -1.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 1.0f) },
+				{ DirectX::XMFLOAT3(-1.0f, -1.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 1.0f) },
+
+				{ DirectX::XMFLOAT3(-1.0f, -1.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 1.0f) },
+				{ DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 1.0f) },
+				{ DirectX::XMFLOAT3(-1.0f, 1.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 0.0f) },
+				{ DirectX::XMFLOAT3(-1.0f, 1.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 0.0f) },
+
+				{ DirectX::XMFLOAT3(1.0f, -1.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 1.0f) },
+				{ DirectX::XMFLOAT3(1.0f, -1.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 1.0f) },
+				{ DirectX::XMFLOAT3(1.0f, 1.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 0.0f) },
+				{ DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 0.0f) },
+
+				{ DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 1.0f) },
+				{ DirectX::XMFLOAT3(1.0f, -1.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 1.0f) },
+				{ DirectX::XMFLOAT3(1.0f, 1.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 0.0f) },
+				{ DirectX::XMFLOAT3(-1.0f, 1.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 0.0f) },
+
+				{ DirectX::XMFLOAT3(-1.0f, -1.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 1.0f) },
+				{ DirectX::XMFLOAT3(1.0f, -1.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 1.0f) },
+				{ DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 0.0f) },
+				{ DirectX::XMFLOAT3(-1.0f, 1.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 0.0f) },
+				};
+
+				D3D11_BUFFER_DESC bd;
+				ZeroMemory(&bd, sizeof(bd));
+				bd.Usage = D3D11_USAGE_DEFAULT;
+				bd.ByteWidth = sizeof(SimpleVertex) * 24;
+				bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+				bd.CPUAccessFlags = 0;
+				D3D11_SUBRESOURCE_DATA InitData;
+				ZeroMemory(&InitData, sizeof(InitData));
+				InitData.pSysMem = vertices;
+				hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, &InitData, &m_pVertexBuffer);
+				if (FAILED(hr)) {
+					Log("CreateBuffer 1 %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+
+				// Set vertex buffer
+				UINT stride = sizeof(SimpleVertex);
+				UINT offset = 0;
+				m_pD3DRender->GetContext()->IASetVertexBuffers(0, 1, &m_pVertexBuffer, &stride, &offset);
+				
+				// Create index buffer
+				// Create vertex buffer
+				WORD indices[] =
+				{
+					3,1,0,
+					2,1,3,
+
+					6,4,5,
+					7,4,6,
+
+					11,9,8,
+					10,9,11,
+
+					14,12,13,
+					15,12,14,
+
+					19,17,16,
+					18,17,19,
+
+					22,20,21,
+					23,20,22
+				};
+
+				bd.Usage = D3D11_USAGE_DEFAULT;
+				bd.ByteWidth = sizeof(WORD) * 36;
+				bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+				bd.CPUAccessFlags = 0;
+				InitData.pSysMem = indices;
+				hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, &InitData, &m_pIndexBuffer);
+				if (FAILED(hr)) {
+					Log("CreateBuffer 2 %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+
+				// Set index buffer
+				m_pD3DRender->GetContext()->IASetIndexBuffer(m_pIndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+
+				// Set primitive topology
+				m_pD3DRender->GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+				// Create the constant buffers
+				bd.Usage = D3D11_USAGE_DEFAULT;
+				bd.ByteWidth = sizeof(CBNeverChanges);
+				bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+				bd.CPUAccessFlags = 0;
+				hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, nullptr, &m_pCBNeverChanges);
+				if (FAILED(hr)) {
+					Log("CreateBuffer 3 %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+
+				bd.ByteWidth = sizeof(CBChangeOnResize);
+				hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, nullptr, &m_pCBChangeOnResize);
+				if (FAILED(hr)) {
+					Log("CreateBuffer 4 %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+
+				bd.ByteWidth = sizeof(CBChangesEveryFrame);
+				hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, nullptr, &m_pCBChangesEveryFrame);
+				if (FAILED(hr)) {
+					Log("CreateBuffer 5 %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+
+
+				// Create the sample state
+				D3D11_SAMPLER_DESC sampDesc;
+				ZeroMemory(&sampDesc, sizeof(sampDesc));
+				sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+				sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+				sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+				sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+				sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+				sampDesc.MinLOD = 0;
+				sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+				hr = m_pD3DRender->GetDevice()->CreateSamplerState(&sampDesc, &m_pSamplerLinear);
+				if (FAILED(hr)) {
+					Log("CreateSamplerState 5 %p %s", hr, GetDxErrorStr(hr).c_str());
+					return hr;
+				}
+
+				// Initialize the world matrices
+				g_World = DirectX::XMMatrixIdentity();
+
+				// Initialize the view matrix
+				DirectX::XMVECTOR Eye = DirectX::XMVectorSet(0.0f, 3.0f, -6.0f, 0.0f);
+				DirectX::XMVECTOR At = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+				DirectX::XMVECTOR Up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+				g_View = DirectX::XMMatrixLookAtLH(Eye, At, Up);
+				g_vMeshColor = DirectX::XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
+
+				CBNeverChanges cbNeverChanges;
+				cbNeverChanges.mView = DirectX::XMMatrixTranspose(g_View);
+				m_pD3DRender->GetContext()->UpdateSubresource(m_pCBNeverChanges.Get(), 0, nullptr, &cbNeverChanges, 0, 0);
+
+				// Initialize the projection matrix
+				g_Projection = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, 1, 0.01f, 100.0f);
+
+				CBChangeOnResize cbChangesOnResize;
+				cbChangesOnResize.mProjection = DirectX::XMMatrixTranspose(g_Projection);
+				m_pD3DRender->GetContext()->UpdateSubresource(m_pCBChangeOnResize.Get(), 0, nullptr, &cbChangesOnResize, 0, 0);
+
+				Log("Staging Texture created");
 			}
+
+			D3D11_TEXTURE2D_DESC srcDesc;
+			pTexture[0]->GetDesc(&srcDesc);
+
+			Log("CopyToStaging 0 %dx%d %d", srcDesc.Width, srcDesc.Height, srcDesc.Format);
+			pTexture[1]->GetDesc(&srcDesc);
+
+			Log("CopyToStaging 1 %dx%d %d", srcDesc.Width, srcDesc.Height, srcDesc.Format);
+
 			m_presentationTime = presentationTime;
 			m_frameIndex = frameIndex;
 			m_clientTime = clientTime;
+			
+			if (textureNum == 1) {
+				m_pD3DRender->GetContext()->CopyResource( m_pStagingTexture.Get(), pTexture[0] );
+			}
+			else {
+				D3D11_BOX box = { 0 };
+				box.right = srcDesc.Width;
+				box.bottom = srcDesc.Height;
+				box.back = 1;
+				//m_pD3DRender->GetContext()->CopyResource(m_pStagingTexture, pTexture[1]);
+				//m_pD3DRender->GetContext()->CopySubresourceRegion(m_pStagingTexture, 0, 0, 0, 0, pTexture[0], 0, 0);
+				//m_pD3DRender->GetContext()->CopySubresourceRegion(m_pStagingTexture.Get(), 0, 0, 0, 0, pTexture[0], 0, &box);
+				//m_pD3DRender->GetContext()->CopySubresourceRegion(m_pStagingTexture.Get(), 0, srcDesc.Width, 0, 0, pTexture[1], 0, &box);
 
-			m_pD3DRender->GetContext()->CopyResource( m_pStagingTexture, pTexture );
+				m_pD3DRender->GetContext()->Flush();
+
+				//m_pD3DRender->GetContext()->Begin(NULL);
+				// Update our time
+				static float t = 0.0f;
+				
+				
+				static ULONGLONG timeStart = 0;
+				ULONGLONG timeCur = GetTickCount64();
+				if (timeStart == 0)
+					timeStart = timeCur;
+				
+				t = (timeCur - timeStart) / 1000.0f;
+				float col = (GetTimestampUs() / 1000) / 10 % 256 / 256.0;
+
+				// Rotate cube around the origin
+				g_World = DirectX::XMMatrixRotationY(t);
+
+				// Modify the color
+				g_vMeshColor.x = (sinf(t * 1.0f) + 1.0f) * 0.5f;
+				g_vMeshColor.y = (cosf(t * 3.0f) + 1.0f) * 0.5f;
+				g_vMeshColor.z = (sinf(t * 5.0f) + 1.0f) * 0.5f;
+
+
+				//
+				// Clear the back buffer
+				//
+				float color[4] = { 1.0, col, 1.0, 1.0 };//DirectX::Colors::MidnightBlue
+				m_pD3DRender->GetContext()->ClearRenderTargetView(m_pRenderTargetView.Get(), color);
+
+				//
+				// Clear the depth buffer to 1.0 (max depth)
+				//
+				m_pD3DRender->GetContext()->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+				//
+				// Update variables that change once per frame
+				//
+				CBChangesEveryFrame cb;
+				cb.mWorld = DirectX::XMMatrixTranspose(g_World);
+				cb.vMeshColor = g_vMeshColor;
+				m_pD3DRender->GetContext()->UpdateSubresource(m_pCBChangesEveryFrame.Get(), 0, nullptr, &cb, 0, 0);
+
+				//
+				// Render the cube
+				//
+				m_pD3DRender->GetContext()->VSSetShader(m_pVertexShader.Get(), nullptr, 0);
+				m_pD3DRender->GetContext()->VSSetConstantBuffers(0, 1, m_pCBNeverChanges.GetAddressOf());
+				m_pD3DRender->GetContext()->VSSetConstantBuffers(1, 1, m_pCBChangeOnResize.GetAddressOf());
+				m_pD3DRender->GetContext()->VSSetConstantBuffers(2, 1, m_pCBChangesEveryFrame.GetAddressOf());
+				m_pD3DRender->GetContext()->PSSetShader(m_pPixelShader.Get(), nullptr, 0);
+				m_pD3DRender->GetContext()->PSSetConstantBuffers(2, 1, m_pCBChangesEveryFrame.GetAddressOf());
+				m_pD3DRender->GetContext()->PSSetShaderResources(0, 1, m_pShaderResourceView.GetAddressOf());
+				m_pD3DRender->GetContext()->PSSetSamplers(0, 1, m_pSamplerLinear.GetAddressOf());
+				m_pD3DRender->GetContext()->DrawIndexed(36, 0, 0);
+				m_pD3DRender->GetContext()->Flush();
+			}
 
 			return true;
 		}
@@ -573,7 +1014,7 @@ namespace
 
 				if ( m_pStagingTexture )
 				{
-					m_pRemoteDevice->Transmit( m_pStagingTexture, m_presentationTime, m_frameIndex, m_clientTime);
+					m_pRemoteDevice->Transmit( m_pStagingTexture.Get(), m_presentationTime, m_frameIndex, m_clientTime);
 				}
 
 				m_encodeFinished.Set();
@@ -604,20 +1045,90 @@ namespace
 		CThreadEvent m_newFrameReady, m_encodeFinished;
 		CNvEncoder *m_pRemoteDevice;
 		CD3DRender *m_pD3DRender;
-		ID3D11Texture2D *m_pStagingTexture;
 		double m_flVsyncTimeInSeconds;
 		bool m_bExiting;
 		uint64_t m_presentationTime;
 		uint64_t m_frameIndex;
 		uint64_t m_clientTime;
+
+		int m_renderWidth;
+		int m_renderHeight;
+		ComPtr<ID3D11Texture2D> m_pStagingTexture;
+
+		ComPtr<ID3D11VertexShader> m_pVertexShader;
+		ComPtr<ID3D11PixelShader> m_pPixelShader;
+
+		ComPtr<ID3D11InputLayout> m_pVertexLayout;
+		ComPtr<ID3D11Buffer> m_pVertexBuffer;
+		ComPtr<ID3D11Buffer> m_pIndexBuffer;
+
+		ComPtr<ID3D11Buffer> m_pCBNeverChanges;
+		ComPtr<ID3D11Buffer> m_pCBChangeOnResize;
+		ComPtr<ID3D11Buffer> m_pCBChangesEveryFrame;
+
+		ComPtr<ID3D11SamplerState> m_pSamplerLinear;
+		DirectX::XMMATRIX g_World;
+		DirectX::XMMATRIX g_View;
+		DirectX::XMMATRIX g_Projection;
+		DirectX::XMFLOAT4 g_vMeshColor;
+
+		ComPtr<ID3D11Texture2D> m_pDepthStencil;
+		ComPtr<ID3D11ShaderResourceView> m_pShaderResourceView;
+		ComPtr<ID3D11RenderTargetView> m_pRenderTargetView;
+		ComPtr<ID3D11DepthStencilView> m_pDepthStencilView;
+
+		struct SimpleVertex
+		{
+			DirectX::XMFLOAT3 Pos;
+			DirectX::XMFLOAT2 Tex;
+		};
+
+		struct CBNeverChanges
+		{
+			DirectX::XMMATRIX mView;
+		};
+
+		struct CBChangeOnResize
+		{
+			DirectX::XMMATRIX mProjection;
+		};
+
+		struct CBChangesEveryFrame
+		{
+			DirectX::XMMATRIX mWorld;
+			DirectX::XMFLOAT4 vMeshColor;
+		};
+
 	};
 }
 
+// VSync Event Thread
+
+class VSyncThread : public CThread
+{
+public:
+	VSyncThread() : m_bExit(false) {}
+
+	void Run()override {
+		while (!m_bExit) {
+			uint64_t prev = GetTimestampUs();
+			Log("Generate VSync Event");
+			vr::VRServerDriverHost()->VsyncEvent(0);
+			Sleep(((prev + 16666) - GetTimestampUs()) / 1000);
+		}
+	}
+
+	void Shutdown() {
+		m_bExit = true;
+	}
+private:
+	bool m_bExit;
+};
 
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-class CRemoteHmd : public vr::ITrackedDeviceServerDriver, public vr::IVRDisplayComponent, public vr::IVRVirtualDisplay
+class CRemoteHmd : public vr::ITrackedDeviceServerDriver, public vr::IVRDisplayComponent, public vr::IVRVirtualDisplay, public vr::IVRDriverDirectModeComponent
 {
 public:
 	CRemoteHmd()
@@ -632,6 +1143,7 @@ public:
 		, m_EncoderOptions("")
 		, m_DebugTimestamp(false)
 		, m_Listener(NULL)
+		, m_VSyncThread(NULL)
 	{
 		std::string logFile;
 		std::string host;
@@ -641,7 +1153,7 @@ public:
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
 		Log("Using settings values");
-		m_flIPD = vr::VRSettings()->GetFloat(k_pch_SteamVR_Section, k_pch_SteamVR_IPD_Float);
+		m_flIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
 
 		char buf[10240];
 		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_SerialNumber_String, buf, sizeof(buf));
@@ -799,8 +1311,11 @@ public:
 		}
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
-		m_pEncoder = new CEncoder(m_pD3DRender, m_pRemoteDevice);
+		m_pEncoder = new CEncoder(m_pD3DRender, m_pRemoteDevice, m_nRenderWidth, m_nRenderHeight);
 		m_pEncoder->Start();
+
+		m_VSyncThread = new VSyncThread();
+		m_VSyncThread->Start();
 	}
 
 	virtual ~CRemoteHmd()
@@ -823,6 +1338,12 @@ public:
 			delete m_Listener;
 		}
 
+		if (m_VSyncThread)
+		{
+			m_VSyncThread->Shutdown();
+			delete m_VSyncThread;
+		}
+
 		if (m_pFlushTexture)
 		{
 			m_pFlushTexture->Release();
@@ -836,7 +1357,7 @@ public:
 	}
 
 
-	virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId)
+	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId)
 	{
 		Log("CRemoteHmd Activate %d", unObjectId);
 
@@ -844,18 +1365,21 @@ public:
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
 
 
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_RenderModelName_String, m_sModelNumber.c_str());
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, Prop_UserIpdMeters_Float, m_flIPD);
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, Prop_UserHeadToEyeDepthMeters_Float, 0.f);
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, Prop_DisplayFrequency_Float, m_flDisplayFrequency);
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, Prop_SecondsFromVsyncToPhotons_Float, m_flSecondsFromVsyncToPhotons);
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, m_sModelNumber.c_str());
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, m_sModelNumber.c_str());
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserIpdMeters_Float, m_flIPD);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, m_flDisplayFrequency);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_SecondsFromVsyncToPhotons_Float, m_flSecondsFromVsyncToPhotons);
 
 		// return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, Prop_CurrentUniverseId_Uint64, 2);
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_CurrentUniverseId_Uint64, 2);
 
 		// avoid "not fullscreen" warnings from vrmonitor
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, Prop_IsOnDesktop_Bool, false);
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_IsOnDesktop_Bool, false);
+
+		// Manually send VSync events on direct mode. ref:https://github.com/ValveSoftware/virtual_display/issues/1
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true);
 
 		// Icons can be configured in code or automatically configured by an external file "drivername\resources\driver.vrresources".
 		// Icon properties NOT configured in code (post Activate) are then auto-configured by the optional presence of a driver's "drivername\resources\driver.vrresources".
@@ -900,7 +1424,7 @@ public:
 		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer,
 			vr::Prop_GraphicsAdapterLuid_Uint64, m_nGraphicsAdapterLuid);
 
-		return VRInitError_None;
+		return vr::VRInitError_None;
 	}
 
 	virtual void Deactivate()
@@ -915,13 +1439,18 @@ public:
 
 	void *GetComponent(const char *pchComponentNameAndVersion)
 	{
+		Log("GetComponent %s", pchComponentNameAndVersion);
 		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
 		{
 			return (vr::IVRDisplayComponent*)this;
 		}
 		if (!_stricmp(pchComponentNameAndVersion, vr::IVRVirtualDisplay_Version))
 		{
-			return static_cast< vr::IVRVirtualDisplay * >(this);
+			//return static_cast< vr::IVRVirtualDisplay * >(this);
+		}
+		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDriverDirectModeComponent_Version))
+		{
+			return static_cast< vr::IVRDriverDirectModeComponent * >(this);
 		}
 
 		// override this to add a component to a driver
@@ -962,15 +1491,16 @@ public:
 	{
 		*pnWidth = m_nRenderWidth;
 		*pnHeight = m_nRenderHeight;
+		Log("GetRecommendedRenderTargetSize %dx%d", *pnWidth, *pnHeight);
 	}
 
-	virtual void GetEyeOutputViewport(EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
+	virtual void GetEyeOutputViewport(vr::EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
 	{
 		*pnY = 0;
 		*pnWidth = m_nWindowWidth / 2;
 		*pnHeight = m_nWindowHeight;
 
-		if (eEye == Eye_Left)
+		if (eEye == vr::Eye_Left)
 		{
 			*pnX = 0;
 		}
@@ -978,19 +1508,30 @@ public:
 		{
 			*pnX = m_nWindowWidth / 2;
 		}
+		Log("GetEyeOutputViewport %d %dx%d %dx%d", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
 	}
 
-	virtual void GetProjectionRaw(EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom)
+	virtual void GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom)
 	{
-		*pfLeft = -1.0;
-		*pfRight = 1.0;
-		*pfTop = -1.0;
-		*pfBottom = 1.0;
+		if (eEye == vr::Eye_Left)
+		{
+			*pfLeft = -1.0;
+			*pfRight = 0.0;
+			*pfTop = -1.0;
+			*pfBottom = 1.0;
+		}
+		else {
+			*pfLeft = 0.0;
+			*pfRight = 1.0;
+			*pfTop = -1.0;
+			*pfBottom = 1.0;
+		}
+		Log("GetProjectionRaw %d", eEye);
 	}
 
-	virtual DistortionCoordinates_t ComputeDistortion(EVREye eEye, float fU, float fV)
+	virtual vr::DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU, float fV)
 	{
-		DistortionCoordinates_t coordinates;
+		vr::DistortionCoordinates_t coordinates;
 		coordinates.rfBlue[0] = fU;
 		coordinates.rfBlue[1] = fV;
 		coordinates.rfGreen[0] = fU;
@@ -1003,11 +1544,11 @@ public:
 	// ITrackedDeviceServerDriver
 
 
-	virtual DriverPose_t GetPose()
+	virtual vr::DriverPose_t GetPose()
 	{
-		DriverPose_t pose = { 0 };
+		vr::DriverPose_t pose = { 0 };
 		pose.poseIsValid = true;
-		pose.result = TrackingResult_Running_OK;
+		pose.result = vr::TrackingResult_Running_OK;
 		pose.deviceIsConnected = true;
 		//pose.shouldApplyHeadModel = true;
 		//pose.willDriftInYaw = true;
@@ -1081,7 +1622,7 @@ public:
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
 		{
 			Log("RunFrame");
-			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(DriverPose_t));
+			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 		}
 	}
 
@@ -1120,9 +1661,9 @@ public:
 
 	// IVRVirtualDisplay
 
-	virtual void Present(vr::SharedTextureHandle_t backbufferTextureHandle) override
+	virtual void Present2(vr::SharedTextureHandle_t backbufferTextureHandle) 
 	{
-		//Log("Present");
+		Log("Present %p", backbufferTextureHandle);
 		// Open and cache our shared textures to avoid re-opening every frame.
 		ID3D11Texture2D *pTexture = m_pD3DRender->GetSharedTexture((HANDLE)backbufferTextureHandle);
 		if (pTexture == NULL)
@@ -1195,7 +1736,7 @@ public:
 			//Log("[VDispDvr] Flush-End");
 
 			// Copy entire texture to staging so we can read the pixels to send to remote device.
-			m_pEncoder->CopyToStaging(pTexture, presentationTime, m_LastReferencedFrameIndex, m_LastReferencedClientTime);
+			m_pEncoder->CopyToStaging(&pTexture, 1, presentationTime, m_LastReferencedFrameIndex, m_LastReferencedClientTime);
 
 			//Log("[VDispDvr] Flush-Staging(begin)");
 
@@ -1285,7 +1826,7 @@ public:
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
 		{
 			Log("OnPoseUpdated");
-			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(DriverPose_t));
+			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 		}
 	}
 
@@ -1300,6 +1841,196 @@ private:
 	CNvEncoder *m_pRemoteDevice;
 	CEncoder *m_pEncoder;
 	Listener *m_Listener;
+	VSyncThread *m_VSyncThread;
+public:
+	// -----------------------------------
+	// Direct mode methods
+	// -----------------------------------
+
+	/** Specific to Oculus compositor support, textures supplied must be created using this method. */
+	virtual void CreateSwapTextureSet(uint32_t unPid, uint32_t unFormat, uint32_t unWidth, uint32_t unHeight, vr::SharedTextureHandle_t(*pSharedTextureHandles)[3]) {
+		Log("CreateSwapTextureSet %d %d %d %d", unPid, unFormat, unWidth, unHeight);
+
+		//HRESULT hr = D3D11CreateDevice(pAdapter, D3D_DRIVER_TYPE_HARDWARE, NULL, creationFlags, NULL, 0, D3D11_SDK_VERSION, &pDevice, &eFeatureLevel, &pContext);
+
+		D3D11_TEXTURE2D_DESC SharedTextureDesc = {};
+		SharedTextureDesc.ArraySize = 1;
+		SharedTextureDesc.MipLevels = 1;
+		SharedTextureDesc.SampleDesc.Count = 1;
+		SharedTextureDesc.SampleDesc.Quality = 0;
+		SharedTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+		SharedTextureDesc.Format = (DXGI_FORMAT)unFormat;
+
+		// Some(or all?) applications request larger texture than we specified in GetRecommendedRenderTargetSize.
+		// But, we must create textures in requested size to prevent cropped output. And then we must shrink texture to H.264 movie size.
+		SharedTextureDesc.Width = unWidth;
+		SharedTextureDesc.Height = unHeight;
+
+		SharedTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+		//SharedTextureDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
+		SharedTextureDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+		
+		ProcessResource *processResource = new ProcessResource();
+
+		for (int i = 0; i < 3; i++) {
+			HRESULT hr = m_pD3DRender->GetDevice()->CreateTexture2D(&SharedTextureDesc, NULL, &processResource->textures[i]);
+			//Log("texture%d %p res:%d %s", i, texture[i], hr, GetDxErrorStr(hr).c_str());
+
+			IDXGIResource* pResource;
+			hr = processResource->textures[i]->QueryInterface(__uuidof(IDXGIResource), (void**)&pResource);
+			//Log("QueryInterface %p res:%d %s", pResource, hr, GetDxErrorStr(hr).c_str());
+
+			hr = pResource->GetSharedHandle(&processResource->sharedHandles[i]);
+			//Log("GetSharedHandle %p res:%d %s", processResource->sharedHandles[i], hr, GetDxErrorStr(hr).c_str());
+
+			m_handleMap.insert(std::make_pair(processResource->sharedHandles[i], std::make_pair(processResource, i)));
+
+			(*pSharedTextureHandles)[i] = (vr::SharedTextureHandle_t)processResource->sharedHandles[i];
+
+			pResource->Release();
+
+			Log("texture %d %p", i, processResource->sharedHandles[i]);
+		}
+		//m_processMap.insert(std::pair<uint32_t, ProcessResource *>(unPid, processResource));
+	}
+
+	/** Used to textures created using CreateSwapTextureSet.  Only one of the set's handles needs to be used to destroy the entire set. */
+	virtual void DestroySwapTextureSet(vr::SharedTextureHandle_t sharedTextureHandle) {
+		Log("DestroySwapTextureSet");
+
+		auto it = m_handleMap.find((HANDLE)sharedTextureHandle);
+		if (it != m_handleMap.end()) {
+			// Release all reference (a bit forcible)
+			it->second.first->textures[it->second.second].Reset();
+		}
+		else {
+			Log("Requested to destroy not managing texture. handle:%p", sharedTextureHandle);
+		}
+	}
+
+	/** Used to purge all texture sets for a given process. */
+	virtual void DestroyAllSwapTextureSets(uint32_t unPid) {
+		Log("DestroyAllSwapTextureSets");
+
+		for (auto it = m_handleMap.begin(); it != m_handleMap.end();) {
+			if (it->second.first->pid == unPid) {
+				if (it->second.second == 0) {
+					delete it->second.first;
+				}
+				m_handleMap.erase(it++);
+			}
+			else {
+				++it;
+			}
+		}
+	}
+
+	/** After Present returns, calls this to get the next index to use for rendering. */
+	virtual void GetNextSwapTextureSetIndex(vr::SharedTextureHandle_t sharedTextureHandles[2], uint32_t(*pIndices)[2]) {
+		Log("GetNextSwapTextureSetIndex %p %p %d %d", sharedTextureHandles[0], sharedTextureHandles[1], (*pIndices)[0], (*pIndices)[1]);
+		(*pIndices)[0]++;
+		(*pIndices)[0] %= 3;
+		(*pIndices)[1]++;
+		(*pIndices)[1] %= 3;
+	}
+
+	/** Call once per layer to draw for this frame.  One shared texture handle per eye.  Textures must be created
+	* using CreateSwapTextureSet and should be alternated per frame.  Call Present once all layers have been submitted. */
+	virtual void SubmitLayer(vr::SharedTextureHandle_t sharedTextureHandles[2], const vr::VRTextureBounds_t(&bounds)[2], const vr::HmdMatrix34_t *pPose) {
+		Log("SubmitLayer %p %p %f-%f,%f-%f %f-%f,%f-%f  (%f,%f,%f,%f | %f,%f,%f,%f | %f,%f,%f,%f)", sharedTextureHandles[0], sharedTextureHandles[1]
+			, bounds[0].uMin, bounds[0].uMax, bounds[0].vMin, bounds[0].vMax
+			, bounds[1].uMin, bounds[1].uMax, bounds[1].vMin, bounds[1].vMax
+			, pPose->m[0][0], pPose->m[0][1], pPose->m[0][2], pPose->m[0][3]
+			, pPose->m[1][0], pPose->m[1][1], pPose->m[1][2], pPose->m[1][3]
+			, pPose->m[2][0], pPose->m[2][1], pPose->m[2][2], pPose->m[2][3]
+		);
+		m_submitTextures[0] = sharedTextureHandles[0];
+		m_submitTextures[1] = sharedTextureHandles[1];
+	}
+
+	/** Submits queued layers for display. */
+	virtual void Present(vr::SharedTextureHandle_t syncTexture) {
+		Log("Present %p", syncTexture);
+
+		Log("[VDispDvr] Waiting for previous encode to finish...");
+
+		// Wait for the encoder to be ready.  This is important because the encoder thread
+		// blocks on transmit which uses our shared d3d context (which is not thread safe).
+		m_pEncoder->WaitForEncode();
+
+		Log("[VDispDvr] Done");
+
+		ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
+		if (!pSyncTexture)
+		{
+			Log("[VDispDvr] SyncTexture is NULL!");
+			return;
+		}
+
+		// Access to shared texture must be wrapped in AcquireSync/ReleaseSync
+		// to ensure the compositor has finished rendering to it before it gets used.
+		// This enforces scheduling of work on the gpu between processes.
+		IDXGIKeyedMutex *pKeyedMutex = NULL;
+		if (SUCCEEDED(pSyncTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void **)&pKeyedMutex)))
+		{
+			// TODO: Reasonable timeout and timeout handling
+			HRESULT hr = pKeyedMutex->AcquireSync(0, INFINITE);
+			if (hr != S_OK)
+			{
+				pKeyedMutex->Release();
+				Log("[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %s", hr, hr, GetDxErrorStr(hr).c_str());
+				return;
+			}
+		}
+
+		uint64_t presentationTime = GetTimestampUs();
+
+		ID3D11Texture2D *pTexture[2];
+		// Left eye
+		auto it = m_handleMap.find((HANDLE)m_submitTextures[0]);
+		// No AddRef
+		pTexture[0] = it->second.first->textures[it->second.second].Get();
+
+		// Right eye
+		it = m_handleMap.find((HANDLE)m_submitTextures[0]);
+		pTexture[1] = it->second.first->textures[it->second.second].Get();
+
+		//Log("[VDispDvr] Flush-Begin");
+
+		// This can go away, but is useful to see it as a separate packet on the gpu in traces.
+		m_pD3DRender->GetContext()->Flush();
+
+		//Log("[VDispDvr] Flush-End");
+
+		// Copy entire texture to staging so we can read the pixels to send to remote device.
+		m_pEncoder->CopyToStaging(pTexture, 2, presentationTime, m_LastReferencedFrameIndex, m_LastReferencedClientTime);
+
+		//Log("[VDispDvr] Flush-Staging(begin)");
+
+		m_pD3DRender->GetContext()->Flush();
+
+		//Log("[VDispDvr] Flush-Staging(end)");
+
+		if (pKeyedMutex)
+		{
+			pKeyedMutex->ReleaseSync(0);
+			pKeyedMutex->Release();
+		}
+
+		m_pEncoder->NewFrameReady(m_flLastVsyncTimeInSeconds + m_flAdditionalLatencyInSeconds);
+	}
+
+private:
+	// Resource for each process
+	struct ProcessResource {
+		ComPtr<ID3D11Texture2D> textures[3];
+		HANDLE sharedHandles[3];
+		uint32_t pid;
+	};
+	//std::unordered_multimap<uint32_t, ProcessResource *> m_processMap;
+	std::map<HANDLE, std::pair<ProcessResource *, int> > m_handleMap;
+
+	vr::SharedTextureHandle_t m_submitTextures[2];
 };
 
 //-----------------------------------------------------------------------------

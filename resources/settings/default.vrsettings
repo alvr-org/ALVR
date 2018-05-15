@@ -13,7 +13,7 @@
 		"windowY" : 0,
 		"windowWidth" : 2048,
 		"windowHeight" : 1024,
-		"renderWidth" : 2048,
+		"renderWidth" : 1024,
 		"renderHeight" : 1024,
 		"secondsFromVsyncToPhotons" : 0.005, // 5ms
 		"displayFrequency" : 60,

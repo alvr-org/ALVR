@@ -806,7 +806,7 @@ namespace
 				// Set vertex buffer
 				UINT stride = sizeof(SimpleVertex);
 				UINT offset = 0;
-				m_pD3DRender->GetContext()->IASetVertexBuffers(0, 1, &m_pVertexBuffer, &stride, &offset);
+				m_pD3DRender->GetContext()->IASetVertexBuffers(0, 1, m_pVertexBuffer.GetAddressOf(), &stride, &offset);
 				
 				// Create index buffer
 				// Create vertex buffer

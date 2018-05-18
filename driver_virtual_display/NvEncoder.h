@@ -62,10 +62,6 @@ inline NVENCException NVENCException::makeNVENCException(const std::string& erro
         NVENCSTATUS errorCode = nvencAPI;                                                                          \
         if( errorCode != NV_ENC_SUCCESS)                                                                           \
         {                                                                                                          \
-			FILE *fp;\
-fopen_s(&fp, "C:\\src\\virtual_display\\driver.log", "a");\
-fprintf(fp, "nvenc error: %s %d", #nvencAPI, errorCode);\
-fclose(fp);\
             std::ostringstream errorLog;                                                                           \
             errorLog << #nvencAPI << " returned error " << errorCode;                                              \
             throw NVENCException::makeNVENCException(errorLog.str(), errorCode, __FUNCTION__, __FILE__, __LINE__); \

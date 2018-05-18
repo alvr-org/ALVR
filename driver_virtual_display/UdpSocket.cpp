@@ -6,13 +6,14 @@
 #include "Utils.h"
 
 
-UdpSocket::UdpSocket(std::string host, int port)
+UdpSocket::UdpSocket(std::string host, int port, std::shared_ptr<Poller> poller)
 	: m_Host(host)
 	, m_Port(port)
 	, m_Socket(INVALID_SOCKET)
 	, m_PendingData(false)
 	, m_NewClient(false)
 	, m_LastSeen(0)
+	, m_Poller(poller)
 	
 {
 	m_ClientAddr.sin_family = 0;
@@ -45,31 +46,11 @@ bool UdpSocket::Startup() {
 		return false;
 	}
 
-	FD_ZERO(&m_fds);
-	FD_SET(m_Socket, &m_fds);
+	m_Poller->AddSocket(m_Socket);
 
 	Log("UdpSocket::Startup success");
 
 	return true;
-}
-
-bool UdpSocket::Poll() {
-	fd_set fds;
-
-	CheckTimeout();
-
-	timeval timeout;
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 10 * 1000;
-	memcpy(&fds, &m_fds, sizeof(fd_set));
-	int ret = select(0, &fds, NULL, NULL, &timeout);
-
-	if (FD_ISSET(m_Socket, &fds)) {
-		m_PendingData = true;
-		return true;
-	}
-
-	return false;
 }
 
 bool UdpSocket::NewClient(std::string &host, int &port) {
@@ -96,7 +77,7 @@ bool UdpSocket::IsClientValid()const {
 }
 
 bool UdpSocket::Recv(char *buf, int *buflen) {
-	if (!m_PendingData) {
+	if (!m_Poller->IsPending(m_Socket)) {
 		return false;
 	}
 

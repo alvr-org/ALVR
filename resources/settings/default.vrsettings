@@ -15,6 +15,7 @@
 		"windowHeight" : 1024,
 		"renderWidth" : 1024,
 		"renderHeight" : 1024,
+        "IPD": 0.064,
 		"secondsFromVsyncToPhotons" : 0.005, // 5ms
 		"displayFrequency" : 60,
 		"nvencOptions": "-codec h264 -preset ll_hq -rc cbr_ll_hq -bitrate 10M -gop 240 -maxbitrate 10M -fps 60",
@@ -23,6 +24,8 @@
         "logFile": "C:\\src\\virtual_display\\driver.log",
 		"listenPort": 9944,
 		"listenHost": "0.0.0.0",
+		"controlListenPort": 9944,
+        "controlListenHost": "127.0.0.1",
 		"debugTimestamp": false,
 		"srtOptions": "TSBPDDELAY=1 RCVLATENCY=1"
 	}

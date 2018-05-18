@@ -12,6 +12,8 @@
 #include "SrtSocket.h"
 #include "UdpSocket.h"
 #include "Utils.h"
+#include "Poller.h"
+#include "ControlSocket.h"
 
 class Listener : public CThread {
 public:
@@ -75,16 +77,24 @@ public:
 		uint64_t serverTime;
 		uint64_t clientTime;
 	};
+	struct ChangeSettings {
+		uint32_t type; // 4
+		uint32_t enableTestMode;
+	};
 #pragma pack(pop)
 
-	Listener(std::string host, int port, std::string SrtOptions, std::function<void(sockaddr_in *)> callback, std::function<void()> poseCallback) : m_bExiting(false)
+	Listener(std::string host, int port, std::string control_host, int control_port, std::string SrtOptions, std::function<void(sockaddr_in *)> callback, std::function<void()> poseCallback) : m_bExiting(false)
 		//, m_Socket(host, port, SrtOptions) {
 		{
 		m_LastSeen = 0;
 		m_NewClientCallback = callback;
 		m_PoseUpdatedCallback = poseCallback;
 		memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
-		m_Socket.reset(new UdpSocket(host, port));
+
+		m_Poller.reset(new Poller());
+		m_Socket.reset(new UdpSocket(host, port, m_Poller));
+		m_ControlSocket.reset(new ControlSocket(control_host, control_port, m_Poller));
+
 		m_UseUdp = true;
 	}
 
@@ -93,11 +103,14 @@ public:
 		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 
 		m_Socket->Startup();
+		m_ControlSocket->Startup();
 		
 		while (!m_bExiting) {
-			if (!m_Socket->Poll()) {
+			m_Socket->CheckTimeout();
+			if (m_Poller->Do() <= 0) {
 				continue;
 			}
+
 			char buf[2000];
 			int len = sizeof(buf);
 			if (m_Socket->Recv(buf, &len)) {
@@ -150,6 +163,22 @@ public:
 				m_NewClientCallback(&m_Socket->GetClientAddr());
 			}
 
+			m_ControlSocket->Accept();
+			std::vector<std::string> commands;
+			if (m_ControlSocket->Recv(commands)) {
+				for (auto it = commands.begin(); it != commands.end(); ++it) {
+					if (*it == "EnableTestMode 0") {
+						SendChangeSettings(0);
+					}else if (*it == "EnableTestMode 1") {
+						SendChangeSettings(1);
+					}else if (*it == "EnableTestMode 2") {
+						SendChangeSettings(2);
+					}
+					else {
+
+					}
+				}
+			}
 		}
 	}
 
@@ -198,10 +227,22 @@ public:
 		}
 	}
 
+	void SendChangeSettings(int EnableTestMode) {
+		ChangeSettings settings;
+		settings.type = 4;
+		settings.enableTestMode = EnableTestMode;
+
+		if (!m_Socket->IsClientValid()) {
+			return;
+		}
+		m_Socket->Send((char *)&settings, sizeof(settings));
+	}
+
 	void Stop()
 	{
 		m_bExiting = true;
 		m_Socket->Shutdown();
+		m_ControlSocket->Shutdown();
 		Join();
 	}
 
@@ -224,7 +265,9 @@ public:
 private:
 	bool m_bExiting;
 	bool m_UseUdp;
-	std::shared_ptr<ISocket> m_Socket;
+	std::shared_ptr<Poller> m_Poller;
+	std::shared_ptr<UdpSocket> m_Socket;
+	std::shared_ptr<ControlSocket> m_ControlSocket;
 
 	// Maximum SRT(or UDP) payload is PACKET_SIZE + 16
 	static const int PACKET_SIZE = 1000;

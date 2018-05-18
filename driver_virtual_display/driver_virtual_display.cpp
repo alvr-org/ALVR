@@ -37,36 +37,11 @@ namespace
 	using Microsoft::WRL::ComPtr;
 
 
-	const char *VERTEX_SHADER = "//--------------------------------------------------------------------------------------\n"
-		"// File: Tutorial07.fx\n"
-		"//\n"
-		"// Copyright (c) Microsoft Corporation. All rights reserved.\n"
-		"//--------------------------------------------------------------------------------------\n"
-		"\n"
-		"//--------------------------------------------------------------------------------------\n"
-		"// Constant Buffer Variables\n"
-		"//--------------------------------------------------------------------------------------\n"
-		"Texture2D txDiffuse : register(t0);\n"
+	const char *VERTEX_SHADER = 
+		"Texture2D txLeft : register(t0);\n"
+		"Texture2D txRight : register(t1);\n"
 		"SamplerState samLinear : register(s0);\n"
 		"\n"
-		"cbuffer cbNeverChanges : register(b0)\n"
-		"{\n"
-		"	matrix View;\n"
-		"};\n"
-		"\n"
-		"cbuffer cbChangeOnResize : register(b1)\n"
-		"{\n"
-		"	matrix Projection;\n"
-		"};\n"
-		"\n"
-		"cbuffer cbChangesEveryFrame : register(b2)\n"
-		"{\n"
-		"	matrix World;\n"
-		"	float4 vMeshColor;\n"
-		"};\n"
-		"\n"
-		"\n"
-		"//--------------------------------------------------------------------------------------\n"
 		"struct VS_INPUT\n"
 		"{\n"
 		"	float4 Pos : POSITION;\n"
@@ -78,30 +53,32 @@ namespace
 		"	float4 Pos : SV_POSITION;\n"
 		"	float2 Tex : TEXCOORD0;\n"
 		"};\n"
-		"\n"
-		"\n"
-		"//--------------------------------------------------------------------------------------\n"
-		"// Vertex Shader\n"
-		"//--------------------------------------------------------------------------------------\n"
 		"PS_INPUT VS(VS_INPUT input)\n"
 		"{\n"
 		"	PS_INPUT output = (PS_INPUT)0;\n"
-		"	output.Pos = mul(input.Pos, World);\n"
-		"	output.Pos = mul(output.Pos, View);\n"
-		"	output.Pos = mul(output.Pos, Projection);\n"
+		"	output.Pos = input.Pos;\n"
 		"	output.Tex = input.Tex;\n"
 		"\n"
 		"	return output;\n"
 		"}\n"
-		"\n"
-		"\n"
-		"//--------------------------------------------------------------------------------------\n"
-		"// Pixel Shader\n"
-		"//--------------------------------------------------------------------------------------\n"
 		"float4 PS(PS_INPUT input) : SV_Target\n"
 		"{\n"
-		//"	return txDiffuse.Sample(samLinear, input.Tex) * vMeshColor;\n"
-		"	return float4(1.0, 0.4, 0.6, 1.0);\n"
+		//"float offset = (1448.0 - 1024.0) / 2 / 1448.0;\n"
+		"float offset = 0.0;\n"
+		"float shrink_to = 1.0 - offset * 2;\n"
+		"float x = input.Tex.x;\n"
+		"float y = input.Tex.y;\n"
+		"	if (input.Tex.x < 0.5){\n"
+		"		x = x * 2;\n"
+		"		x = x * shrink_to + offset;\n"
+		"		y = y * shrink_to + offset;\n"
+		"		return txLeft.Sample(samLinear, float2(1.0 - x, 1.0 - y)); // We need this hack, because We cloud not resolve upside down issue by changing texcoord in buffer.\n"
+		"	}else{\n"
+		"		x = x * 2 - 1.0;\n"
+		"		x = x * shrink_to + offset;\n"
+		"		y = y * shrink_to + offset;\n"
+		"		return txLeft.Sample(samLinear, float2(1.0 - x, 1.0 - y)); // We need this hack, because We cloud not resolve upside down issue by changing texcoord in buffer.\n"
+		"	}\n"
 		"}\n";
 	const char *PIXEL_SHADER = VERTEX_SHADER;
 
@@ -266,6 +243,7 @@ namespace
 	static const char * const k_pch_Settings_WindowHeight_Int32 = "windowHeight";
 	static const char * const k_pch_Settings_RenderWidth_Int32 = "renderWidth";
 	static const char * const k_pch_Settings_RenderHeight_Int32 = "renderHeight";
+	static const char * const k_pch_Settings_IPD_Float = "IPD";
 	static const char * const k_pch_Settings_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
 	static const char * const k_pch_Settings_DisplayFrequency_Float = "displayFrequency";
 	static const char * const k_pch_Settings_EncoderOptions_String = "nvencOptions";
@@ -275,6 +253,8 @@ namespace
 	static const char * const k_pch_Settings_DebugTimestamp_Bool = "debugTimestamp";
 	static const char * const k_pch_Settings_ListenHost_String = "listenHost";
 	static const char * const k_pch_Settings_ListenPort_Int32 = "listenPort";
+	static const char * const k_pch_Settings_ControlListenHost_String = "controlListenHost";
+	static const char * const k_pch_Settings_ControlListenPort_Int32 = "controlListenPort";
 
 	static const char * const k_pch_Settings_AdditionalLatencyInSeconds_Float = "additionalLatencyInSeconds";
 	static const char * const k_pch_Settings_DisplayWidth_Int32 = "displayWidth";
@@ -636,7 +616,7 @@ namespace
 				HRESULT hr = m_pD3DRender->GetDevice()->CreateRenderTargetView(m_pStagingTexture.Get(), NULL, &m_pRenderTargetView);
 				if (FAILED(hr)) {
 					Log("CreateRenderTargetView %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
+					return false;
 				}
 
 				// Create depth stencil texture
@@ -656,7 +636,7 @@ namespace
 				hr = m_pD3DRender->GetDevice()->CreateTexture2D(&descDepth, nullptr, &m_pDepthStencil);
 				if (FAILED(hr)) {
 					Log("CreateTexture2D %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
+					return false;
 				}
 
 
@@ -669,7 +649,7 @@ namespace
 				hr = m_pD3DRender->GetDevice()->CreateDepthStencilView(m_pDepthStencil.Get(), &descDSV, &m_pDepthStencilView);
 				if (FAILED(hr)) {
 					Log("CreateDepthStencilView %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
+					return false;
 				}
 
 				m_pD3DRender->GetContext()->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get());
@@ -684,27 +664,13 @@ namespace
 				m_pD3DRender->GetContext()->RSSetViewports(1, &viewport);
 
 
-				D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
-				SRVDesc.Format = srcDesc.Format;
-				SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-				SRVDesc.Texture2D.MostDetailedMip = 0;
-				SRVDesc.Texture2D.MipLevels = 1;
-
-				hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[0], &SRVDesc, &m_pShaderResourceView);
-				if (FAILED(hr)) {
-					Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
-				}
-
-
 				ID3DBlob *vshader, *pshader, *error;
 
 				hr = D3DCompile(VERTEX_SHADER, strlen(VERTEX_SHADER), "vs", NULL, NULL, "VS", "vs_4_0", 0, 0, &vshader, &error);
-				//hr = D3DXCompileShader(VERTEX_SHADER, strlen(VERTEX_SHADER), 0, 0, "main", "vs_4_0", 0, &vshader, &error, NULL);
 				Log("D3DCompile vs %p %s", hr, GetDxErrorStr(hr).c_str());
 				if (FAILED(hr)) {
 					Log("%s", error->GetBufferPointer());
-					return hr;
+					return false;
 				}
 				if (error != NULL) {
 					error->Release();
@@ -714,14 +680,13 @@ namespace
 				hr = m_pD3DRender->GetDevice()->CreateVertexShader((const DWORD*)vshader->GetBufferPointer(), vshader->GetBufferSize(), NULL, &m_pVertexShader);
 				if (FAILED(hr)) {
 					Log("CreateVertexShader %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
+					return false;
 				}
 				hr = D3DCompile(VERTEX_SHADER, strlen(VERTEX_SHADER), "ps", NULL, NULL, "PS", "ps_4_0", 0, 0, &pshader, &error);
-//				hr = D3DXCompileShader(PIXEL_SHADER, strlen(PIXEL_SHADER), 0, 0, "main", "ps_4_0", 0, &pshader, &error, NULL);
 				Log("D3DCompile ps %p %s", hr, GetDxErrorStr(hr).c_str());
 				if (FAILED(hr)) {
 					Log("%s", error->GetBufferPointer());
-					return hr;
+					return false;
 				}
 				if (error != NULL) {
 					error->Release();
@@ -730,7 +695,7 @@ namespace
 				hr = m_pD3DRender->GetDevice()->CreatePixelShader((const DWORD*)pshader->GetBufferPointer(), pshader->GetBufferSize(), NULL, &m_pPixelShader);
 				if (FAILED(hr)) {
 					Log("CreatePixelShader %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
+					return false;
 				}
 
 				// Define the input layout
@@ -747,51 +712,31 @@ namespace
 					vshader->GetBufferSize(), &m_pVertexLayout);
 				if (FAILED(hr)) {
 					Log("CreateInputLayout %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
+					return false;
 				}
 				vshader->Release();
 
 				// Set the input layout
 				m_pD3DRender->GetContext()->IASetInputLayout(m_pVertexLayout.Get());
 
+				// src textures has 1448x1448 pixels but dest texture(remote display) has 1024x1024 pixels.
+				// Apply offset to crop center of src textures.
+				float tex_offset = (1448 - 1024) / 2 / 1448.0;
+				tex_offset = 0;
+
 				// Create vertex buffer
 				SimpleVertex vertices[] =
 				{
-					{ DirectX::XMFLOAT3(-1.0f, 1.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 0.0f) },
-				{ DirectX::XMFLOAT3(1.0f, 1.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 0.0f) },
-				{ DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 1.0f) },
-				{ DirectX::XMFLOAT3(-1.0f, 1.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 1.0f) },
-
-				{ DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 0.0f) },
-				{ DirectX::XMFLOAT3(1.0f, -1.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 0.0f) },
-				{ DirectX::XMFLOAT3(1.0f, -1.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 1.0f) },
-				{ DirectX::XMFLOAT3(-1.0f, -1.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 1.0f) },
-
-				{ DirectX::XMFLOAT3(-1.0f, -1.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 1.0f) },
-				{ DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 1.0f) },
-				{ DirectX::XMFLOAT3(-1.0f, 1.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 0.0f) },
-				{ DirectX::XMFLOAT3(-1.0f, 1.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 0.0f) },
-
-				{ DirectX::XMFLOAT3(1.0f, -1.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 1.0f) },
-				{ DirectX::XMFLOAT3(1.0f, -1.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 1.0f) },
-				{ DirectX::XMFLOAT3(1.0f, 1.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 0.0f) },
-				{ DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 0.0f) },
-
-				{ DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 1.0f) },
-				{ DirectX::XMFLOAT3(1.0f, -1.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 1.0f) },
-				{ DirectX::XMFLOAT3(1.0f, 1.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 0.0f) },
-				{ DirectX::XMFLOAT3(-1.0f, 1.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 0.0f) },
-
-				{ DirectX::XMFLOAT3(-1.0f, -1.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 1.0f) },
-				{ DirectX::XMFLOAT3(1.0f, -1.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 1.0f) },
-				{ DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 0.0f) },
-				{ DirectX::XMFLOAT3(-1.0f, 1.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 0.0f) },
+					{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(1.0f - tex_offset, 0.0f + tex_offset) },
+				    { DirectX::XMFLOAT3( 1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(0.0f + tex_offset, 1.0f - tex_offset) },
+				    { DirectX::XMFLOAT3( 1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(0.0f + tex_offset, 0.0f + tex_offset) },
+				    { DirectX::XMFLOAT3(-1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(1.0f - tex_offset, 1.0f - tex_offset) },
 				};
 
 				D3D11_BUFFER_DESC bd;
 				ZeroMemory(&bd, sizeof(bd));
 				bd.Usage = D3D11_USAGE_DEFAULT;
-				bd.ByteWidth = sizeof(SimpleVertex) * 24;
+				bd.ByteWidth = sizeof(SimpleVertex) * 4;
 				bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 				bd.CPUAccessFlags = 0;
 				D3D11_SUBRESOURCE_DATA InitData;
@@ -800,7 +745,7 @@ namespace
 				hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, &InitData, &m_pVertexBuffer);
 				if (FAILED(hr)) {
 					Log("CreateBuffer 1 %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
+					return false;
 				}
 
 				// Set vertex buffer
@@ -812,34 +757,19 @@ namespace
 				// Create vertex buffer
 				WORD indices[] =
 				{
-					3,1,0,
-					2,1,3,
-
-					6,4,5,
-					7,4,6,
-
-					11,9,8,
-					10,9,11,
-
-					14,12,13,
-					15,12,14,
-
-					19,17,16,
-					18,17,19,
-
-					22,20,21,
-					23,20,22
+					0,1,2,
+					0,3,1
 				};
 
 				bd.Usage = D3D11_USAGE_DEFAULT;
-				bd.ByteWidth = sizeof(WORD) * 36;
+				bd.ByteWidth = sizeof(WORD) * 6;
 				bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
 				bd.CPUAccessFlags = 0;
 				InitData.pSysMem = indices;
 				hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, &InitData, &m_pIndexBuffer);
 				if (FAILED(hr)) {
 					Log("CreateBuffer 2 %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
+					return false;
 				}
 
 				// Set index buffer
@@ -847,32 +777,6 @@ namespace
 
 				// Set primitive topology
 				m_pD3DRender->GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-				// Create the constant buffers
-				bd.Usage = D3D11_USAGE_DEFAULT;
-				bd.ByteWidth = sizeof(CBNeverChanges);
-				bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-				bd.CPUAccessFlags = 0;
-				hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, nullptr, &m_pCBNeverChanges);
-				if (FAILED(hr)) {
-					Log("CreateBuffer 3 %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
-				}
-
-				bd.ByteWidth = sizeof(CBChangeOnResize);
-				hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, nullptr, &m_pCBChangeOnResize);
-				if (FAILED(hr)) {
-					Log("CreateBuffer 4 %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
-				}
-
-				bd.ByteWidth = sizeof(CBChangesEveryFrame);
-				hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, nullptr, &m_pCBChangesEveryFrame);
-				if (FAILED(hr)) {
-					Log("CreateBuffer 5 %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
-				}
-
 
 				// Create the sample state
 				D3D11_SAMPLER_DESC sampDesc;
@@ -887,29 +791,8 @@ namespace
 				hr = m_pD3DRender->GetDevice()->CreateSamplerState(&sampDesc, &m_pSamplerLinear);
 				if (FAILED(hr)) {
 					Log("CreateSamplerState 5 %p %s", hr, GetDxErrorStr(hr).c_str());
-					return hr;
+					return false;
 				}
-
-				// Initialize the world matrices
-				g_World = DirectX::XMMatrixIdentity();
-
-				// Initialize the view matrix
-				DirectX::XMVECTOR Eye = DirectX::XMVectorSet(0.0f, 3.0f, -6.0f, 0.0f);
-				DirectX::XMVECTOR At = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-				DirectX::XMVECTOR Up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-				g_View = DirectX::XMMatrixLookAtLH(Eye, At, Up);
-				g_vMeshColor = DirectX::XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
-
-				CBNeverChanges cbNeverChanges;
-				cbNeverChanges.mView = DirectX::XMMatrixTranspose(g_View);
-				m_pD3DRender->GetContext()->UpdateSubresource(m_pCBNeverChanges.Get(), 0, nullptr, &cbNeverChanges, 0, 0);
-
-				// Initialize the projection matrix
-				g_Projection = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, 1, 0.01f, 100.0f);
-
-				CBChangeOnResize cbChangesOnResize;
-				cbChangesOnResize.mProjection = DirectX::XMMatrixTranspose(g_Projection);
-				m_pD3DRender->GetContext()->UpdateSubresource(m_pCBChangeOnResize.Get(), 0, nullptr, &cbChangesOnResize, 0, 0);
 
 				Log("Staging Texture created");
 			}
@@ -954,14 +837,22 @@ namespace
 				t = (timeCur - timeStart) / 1000.0f;
 				float col = (GetTimestampUs() / 1000) / 10 % 256 / 256.0;
 
-				// Rotate cube around the origin
-				g_World = DirectX::XMMatrixRotationY(t);
+				D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+				SRVDesc.Format = srcDesc.Format;
+				SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+				SRVDesc.Texture2D.MostDetailedMip = 0;
+				SRVDesc.Texture2D.MipLevels = 1;
 
-				// Modify the color
-				g_vMeshColor.x = (sinf(t * 1.0f) + 1.0f) * 0.5f;
-				g_vMeshColor.y = (cosf(t * 3.0f) + 1.0f) * 0.5f;
-				g_vMeshColor.z = (sinf(t * 5.0f) + 1.0f) * 0.5f;
-
+				HRESULT hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[0], &SRVDesc, m_pShaderResourceView[0].ReleaseAndGetAddressOf());
+				if (FAILED(hr)) {
+					Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
+					return false;
+				}
+				hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[1], &SRVDesc, m_pShaderResourceView[1].ReleaseAndGetAddressOf());
+				if (FAILED(hr)) {
+					Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
+					return false;
+				}
 
 				//
 				// Clear the back buffer
@@ -975,25 +866,17 @@ namespace
 				m_pD3DRender->GetContext()->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
 				//
-				// Update variables that change once per frame
-				//
-				CBChangesEveryFrame cb;
-				cb.mWorld = DirectX::XMMatrixTranspose(g_World);
-				cb.vMeshColor = g_vMeshColor;
-				m_pD3DRender->GetContext()->UpdateSubresource(m_pCBChangesEveryFrame.Get(), 0, nullptr, &cb, 0, 0);
-
-				//
 				// Render the cube
 				//
 				m_pD3DRender->GetContext()->VSSetShader(m_pVertexShader.Get(), nullptr, 0);
-				m_pD3DRender->GetContext()->VSSetConstantBuffers(0, 1, m_pCBNeverChanges.GetAddressOf());
-				m_pD3DRender->GetContext()->VSSetConstantBuffers(1, 1, m_pCBChangeOnResize.GetAddressOf());
-				m_pD3DRender->GetContext()->VSSetConstantBuffers(2, 1, m_pCBChangesEveryFrame.GetAddressOf());
 				m_pD3DRender->GetContext()->PSSetShader(m_pPixelShader.Get(), nullptr, 0);
-				m_pD3DRender->GetContext()->PSSetConstantBuffers(2, 1, m_pCBChangesEveryFrame.GetAddressOf());
-				m_pD3DRender->GetContext()->PSSetShaderResources(0, 1, m_pShaderResourceView.GetAddressOf());
+
+				ID3D11ShaderResourceView *shaderResourceView[2] = { m_pShaderResourceView[0].Get(), m_pShaderResourceView[1].Get() };
+				m_pD3DRender->GetContext()->PSSetShaderResources(0, 2, shaderResourceView);
+				//m_pD3DRender->GetContext()->PSSetShaderResources(0, 1, shaderResourceView);
+
 				m_pD3DRender->GetContext()->PSSetSamplers(0, 1, m_pSamplerLinear.GetAddressOf());
-				m_pD3DRender->GetContext()->DrawIndexed(36, 0, 0);
+				m_pD3DRender->GetContext()->DrawIndexed(6, 0, 0);
 				m_pD3DRender->GetContext()->Flush();
 			}
 
@@ -1062,18 +945,10 @@ namespace
 		ComPtr<ID3D11Buffer> m_pVertexBuffer;
 		ComPtr<ID3D11Buffer> m_pIndexBuffer;
 
-		ComPtr<ID3D11Buffer> m_pCBNeverChanges;
-		ComPtr<ID3D11Buffer> m_pCBChangeOnResize;
-		ComPtr<ID3D11Buffer> m_pCBChangesEveryFrame;
-
 		ComPtr<ID3D11SamplerState> m_pSamplerLinear;
-		DirectX::XMMATRIX g_World;
-		DirectX::XMMATRIX g_View;
-		DirectX::XMMATRIX g_Projection;
-		DirectX::XMFLOAT4 g_vMeshColor;
 
 		ComPtr<ID3D11Texture2D> m_pDepthStencil;
-		ComPtr<ID3D11ShaderResourceView> m_pShaderResourceView;
+		ComPtr<ID3D11ShaderResourceView> m_pShaderResourceView[2];
 		ComPtr<ID3D11RenderTargetView> m_pRenderTargetView;
 		ComPtr<ID3D11DepthStencilView> m_pDepthStencilView;
 
@@ -1082,23 +957,6 @@ namespace
 			DirectX::XMFLOAT3 Pos;
 			DirectX::XMFLOAT2 Tex;
 		};
-
-		struct CBNeverChanges
-		{
-			DirectX::XMMATRIX mView;
-		};
-
-		struct CBChangeOnResize
-		{
-			DirectX::XMMATRIX mProjection;
-		};
-
-		struct CBChangesEveryFrame
-		{
-			DirectX::XMMATRIX mWorld;
-			DirectX::XMFLOAT4 vMeshColor;
-		};
-
 	};
 }
 
@@ -1144,16 +1002,16 @@ public:
 		, m_DebugTimestamp(false)
 		, m_Listener(NULL)
 		, m_VSyncThread(NULL)
+		, m_poseMutex(NULL)
 	{
 		std::string logFile;
-		std::string host;
-		int port;
+		std::string host, control_host;
+		int port, control_port;
 
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
 		Log("Using settings values");
-		m_flIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
 
 		char buf[10240];
 		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_SerialNumber_String, buf, sizeof(buf));
@@ -1186,11 +1044,21 @@ public:
 		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ListenHost_String, buf, sizeof(buf));
 		host = buf;
 		port = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ListenPort_Int32);
+		
+		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ControlListenHost_String, buf, sizeof(buf));
+		control_host = buf;
+		control_port = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControlListenPort_Int32);
 
 		m_DebugTimestamp = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugTimestamp_Bool);
 		
 
 		logger = simplelogger::LoggerFactory::CreateFileLogger(logFile);
+
+
+		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
+
+		m_flIPD = vr::VRSettings()->GetFloat(k_pch_Settings_Section, k_pch_Settings_IPD_Float);
+		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, m_flIPD);
 
 		Log("driver_null: Serial Number: %s", m_sSerialNumber.c_str());
 		Log("driver_null: Model Number: %s", m_sModelNumber.c_str());
@@ -1296,7 +1164,7 @@ public:
 
 		std::function<void(sockaddr_in *)> Callback = [&](sockaddr_in *a) { ListenerCallback(a); };
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
-		m_Listener = new Listener(host, port, SrtOptions, Callback, poseCallback);
+		m_Listener = new Listener(host, port, control_host, control_port, SrtOptions, Callback, poseCallback);
 		m_Listener->Start();
 
 		// Spawn our separate process to manage headset presentation.
@@ -1516,12 +1384,12 @@ public:
 		if (eEye == vr::Eye_Left)
 		{
 			*pfLeft = -1.0;
-			*pfRight = 0.0;
+			*pfRight = 1.0;
 			*pfTop = -1.0;
 			*pfBottom = 1.0;
 		}
 		else {
-			*pfLeft = 0.0;
+			*pfLeft = -1.0;
 			*pfRight = 1.0;
 			*pfTop = -1.0;
 			*pfBottom = 1.0;
@@ -1561,7 +1429,7 @@ public:
 			auto& info = m_Listener->GetTrackingInfo();
 			uint64_t trackingDelay = GetTimestampUs() - m_Listener->clientToServerTime(info.clientTime);
 
-			Log("Tracking elapsed:%lld us %lld %f,%f,%f,%f %f,%f,%f\nView[0]:\n%sProj[0]:\n%sView[1]:\n%sProj[1]:\n%s",
+			Log("Tracking elapsed:%lld us %lld quot:%f,%f,%f,%f\nposition:%f,%f,%f\nView[0]:\n%sProj[0]:\n%sView[1]:\n%sProj[1]:\n%s",
 				trackingDelay,
 				info.FrameIndex,
 				info.HeadPose_Pose_Orientation.x,
@@ -1608,6 +1476,21 @@ public:
 
 			m_LastReferencedFrameIndex = info.FrameIndex;
 			m_LastReferencedClientTime = info.clientTime;
+
+			m_poseMutex.Wait(INFINITE);
+			if (m_poseBuffer.size() != 0) {
+				m_poseBuffer.push_back(info);
+			}
+			else {
+				if (m_poseBuffer.back().FrameIndex != info.FrameIndex) {
+					// New track info
+					m_poseBuffer.push_back(info);
+				}
+			}
+			if (m_poseBuffer.size() > 10) {
+				m_poseBuffer.pop_front();
+			}
+			m_poseMutex.Release();
 		}
 
 		return pose;
@@ -1652,6 +1535,10 @@ private:
 
 	uint64_t m_LastReferencedFrameIndex;
 	uint64_t m_LastReferencedClientTime;
+
+	IPCMutex m_poseMutex;
+	std::list<Listener::TrackingInfo> m_poseBuffer;
+
 public:
 	bool IsValid() const
 	{
@@ -1937,13 +1824,50 @@ public:
 	/** Call once per layer to draw for this frame.  One shared texture handle per eye.  Textures must be created
 	* using CreateSwapTextureSet and should be alternated per frame.  Call Present once all layers have been submitted. */
 	virtual void SubmitLayer(vr::SharedTextureHandle_t sharedTextureHandles[2], const vr::VRTextureBounds_t(&bounds)[2], const vr::HmdMatrix34_t *pPose) {
-		Log("SubmitLayer %p %p %f-%f,%f-%f %f-%f,%f-%f  (%f,%f,%f,%f | %f,%f,%f,%f | %f,%f,%f,%f)", sharedTextureHandles[0], sharedTextureHandles[1]
+		Log("SubmitLayer %p %p %f-%f,%f-%f %f-%f,%f-%f  \n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f", sharedTextureHandles[0], sharedTextureHandles[1]
 			, bounds[0].uMin, bounds[0].uMax, bounds[0].vMin, bounds[0].vMax
 			, bounds[1].uMin, bounds[1].uMax, bounds[1].vMin, bounds[1].vMax
 			, pPose->m[0][0], pPose->m[0][1], pPose->m[0][2], pPose->m[0][3]
 			, pPose->m[1][0], pPose->m[1][1], pPose->m[1][2], pPose->m[1][3]
 			, pPose->m[2][0], pPose->m[2][1], pPose->m[2][2], pPose->m[2][3]
 		);
+		// 3x3 rotation matrix
+		//pPose->m[0][0], pPose->m[0][1], pPose->m[0][2],
+		//pPose->m[1][0], pPose->m[1][1], pPose->m[1][2], 
+		//pPose->m[2][0], pPose->m[2][1], pPose->m[2][2], 
+		// position
+		// x = pPose->m[0][3], y = pPose->m[1][3], z = pPose->m[2][3]
+		m_framePose = *pPose;
+
+		m_poseMutex.Wait(INFINITE);
+		float diff = 100000;
+		int index = 0;
+		int minIndex = 0;
+		auto minIt = m_poseBuffer.begin();
+		for (auto it = m_poseBuffer.begin(); it != m_poseBuffer.end(); it++, index++) {
+			float distance = 0;
+			// rotation matrix composes parts of ViewMatrix
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					distance += pow(it->Eye[0].ViewMatrix.M[j * 3 + i] - pPose->m[i][j], 2);
+				}
+			}
+			if (diff > distance) {
+				minIndex = index;
+				minIt = it;
+			}
+		}
+		if (minIt != m_poseBuffer.end()) {
+			// found the frameIndex
+			m_submitFrameIndex = minIt->FrameIndex;
+			m_submitClientTime = minIt->clientTime;
+		}
+		else {
+			m_submitFrameIndex = 0;
+			m_submitClientTime = 0;
+		}
+		m_poseMutex.Release();
+
 		m_submitTextures[0] = sharedTextureHandles[0];
 		m_submitTextures[1] = sharedTextureHandles[1];
 	}
@@ -2003,7 +1927,8 @@ public:
 		//Log("[VDispDvr] Flush-End");
 
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
-		m_pEncoder->CopyToStaging(pTexture, 2, presentationTime, m_LastReferencedFrameIndex, m_LastReferencedClientTime);
+		Log("FrameIndex diff LastRef: %llu render:%llu  diff:%llu", m_LastReferencedFrameIndex, m_submitFrameIndex, m_LastReferencedFrameIndex - m_submitFrameIndex);
+		m_pEncoder->CopyToStaging(pTexture, 2, presentationTime, m_submitFrameIndex, m_submitClientTime);
 
 		//Log("[VDispDvr] Flush-Staging(begin)");
 
@@ -2031,6 +1956,9 @@ private:
 	std::map<HANDLE, std::pair<ProcessResource *, int> > m_handleMap;
 
 	vr::SharedTextureHandle_t m_submitTextures[2];
+	vr::HmdMatrix34_t m_framePose;
+	uint64_t m_submitFrameIndex;
+	uint64_t m_submitClientTime;
 };
 
 //-----------------------------------------------------------------------------

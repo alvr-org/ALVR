@@ -150,9 +150,11 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ControlSocket.cpp" />
     <ClCompile Include="driver_virtual_display.cpp" />
     <ClCompile Include="NvEncoder.cpp" />
     <ClCompile Include="NvEncoderD3D11.cpp" />
+    <ClCompile Include="Poller.cpp" />
     <ClCompile Include="SrtSocket.cpp" />
     <ClCompile Include="UdpSocket.cpp" />
   </ItemGroup>
@@ -162,6 +164,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ControlSocket.h" />
     <ClInclude Include="ISocket.h" />
     <ClInclude Include="Listener.h" />
     <ClInclude Include="Logger.h" />
@@ -170,6 +173,7 @@
     <ClInclude Include="NvEncoder.h" />
     <ClInclude Include="nvencoderclioptions.h" />
     <ClInclude Include="NvEncoderD3D11.h" />
+    <ClInclude Include="Poller.h" />
     <ClInclude Include="SrtSocket.h" />
     <ClInclude Include="UdpSocket.h" />
     <ClInclude Include="UdpSender.h" />

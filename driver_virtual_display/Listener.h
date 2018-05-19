@@ -80,6 +80,7 @@ public:
 	struct ChangeSettings {
 		uint32_t type; // 4
 		uint32_t enableTestMode;
+		uint32_t suspend;
 	};
 #pragma pack(pop)
 
@@ -90,12 +91,21 @@ public:
 		m_NewClientCallback = callback;
 		m_PoseUpdatedCallback = poseCallback;
 		memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
+		InitializeCriticalSection(&m_CS);
+
+		m_Settings.type = 4;
+		m_Settings.enableTestMode = 0;
+		m_Settings.suspend = 0;
 
 		m_Poller.reset(new Poller());
 		m_Socket.reset(new UdpSocket(host, port, m_Poller));
 		m_ControlSocket.reset(new ControlSocket(control_host, control_port, m_Poller));
 
 		m_UseUdp = true;
+	}
+
+	~Listener() {
+		DeleteCriticalSection(&m_CS);
 	}
 
 	void Run() override
@@ -125,7 +135,9 @@ public:
 						Log("Hello Message: %s", message->deviceName);
 					}
 					else if (type == 2 && len >= sizeof(TrackingInfo)) {
+						EnterCriticalSection(&m_CS);
 						m_TrackingInfo = *(TrackingInfo *)buf;
+						LeaveCriticalSection(&m_CS);
 						
 						Log("got tracking info %d %f %f %f %f", (int)m_TrackingInfo.FrameIndex,
 							m_TrackingInfo.HeadPose_Pose_Orientation.x,
@@ -167,15 +179,22 @@ public:
 			std::vector<std::string> commands;
 			if (m_ControlSocket->Recv(commands)) {
 				for (auto it = commands.begin(); it != commands.end(); ++it) {
-					if (*it == "EnableTestMode 0") {
-						SendChangeSettings(0);
-					}else if (*it == "EnableTestMode 1") {
-						SendChangeSettings(1);
-					}else if (*it == "EnableTestMode 2") {
-						SendChangeSettings(2);
-					}
-					else {
+					int split = it->find(" ");
+					if (split != -1) {
+						std::string commandName = it->substr(0, split);
+						std::string args = it->substr(split + 1);
 
+						if (commandName == "EnableTestMode") {
+							m_Settings.enableTestMode = atoi(args.c_str());
+							SendChangeSettings();
+						}
+						else if (commandName == "Suspend") {
+							m_Settings.suspend = atoi(args.c_str());
+							SendChangeSettings();
+						}
+						else {
+							Log("Invalid control command: %s", commandName.c_str());
+						}
 					}
 				}
 			}
@@ -227,15 +246,11 @@ public:
 		}
 	}
 
-	void SendChangeSettings(int EnableTestMode) {
-		ChangeSettings settings;
-		settings.type = 4;
-		settings.enableTestMode = EnableTestMode;
-
+	void SendChangeSettings() {
 		if (!m_Socket->IsClientValid()) {
 			return;
 		}
-		m_Socket->Send((char *)&settings, sizeof(settings));
+		m_Socket->Send((char *)&m_Settings, sizeof(m_Settings));
 	}
 
 	void Stop()
@@ -250,8 +265,10 @@ public:
 		return m_TrackingInfo.type == 2;
 	}
 
-	const TrackingInfo &GetTrackingInfo()const {
-		return m_TrackingInfo;
+	void GetTrackingInfo(TrackingInfo &info) {
+		EnterCriticalSection(&m_CS);
+		info = m_TrackingInfo;
+		LeaveCriticalSection(&m_CS);
 	}
 
 	uint64_t clientToServerTime(uint64_t clientTime) const {
@@ -280,4 +297,7 @@ private:
 	TrackingInfo m_TrackingInfo;
 
 	uint64_t m_TimeDiff = 0;
+	CRITICAL_SECTION m_CS;
+
+	ChangeSettings m_Settings;
 };

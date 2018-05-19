@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <stdint.h>
 #include <string>
+#include <d3d11.h>
 
 #include "openvr_driver.h"
 
@@ -52,4 +53,77 @@ inline std::string GetDxErrorStr(HRESULT hr) {
 		}
 	}
 	return ret;
+}
+
+
+inline void DrawDigitPixels(D3D11_MAPPED_SUBRESOURCE &mapped, int x, int y, int digit) {
+	static const char map[][15] = {
+		{ 1, 1, 1,
+		1, 0, 1,
+		1, 0, 1,
+		1, 0, 1,
+		1, 1, 1 },
+	{ 0, 1, 0,
+	1, 1, 0,
+	0, 1, 0,
+	0, 1, 0,
+	1, 1, 1 },
+	{ 1, 1, 0,
+	1, 0, 1,
+	0, 1, 0,
+	1, 0, 0,
+	1, 1, 1 },
+	{ 1, 1, 1,
+	0, 0, 1,
+	0, 1, 1,
+	0, 0, 1,
+	1, 1, 1 },
+	{ 1, 0, 1,
+	1, 0, 1,
+	1, 1, 1,
+	0, 0, 1,
+	0, 0, 1 },
+	{ 1, 1, 1,
+	1, 0, 0,
+	1, 1, 1,
+	0, 0, 1,
+	1, 1, 1 },
+	{ 1, 1, 0,
+	1, 0, 0,
+	1, 1, 1,
+	1, 0, 1,
+	1, 1, 1 },
+	{ 1, 1, 1,
+	0, 0, 1,
+	0, 1, 0,
+	0, 1, 0,
+	0, 1, 0 },
+	{ 1, 1, 1,
+	1, 0, 1,
+	1, 1, 1,
+	1, 0, 1,
+	1, 1, 1 },
+	{ 1, 1, 1,
+	1, 0, 1,
+	1, 1, 1,
+	0, 0, 1,
+	0, 0, 1 }
+	};
+	if (digit < 0 || 9 < digit) {
+		digit = 0;
+	}
+	uint8_t *p = (uint8_t *)mapped.pData;
+
+	for (int i = 0; i < 5 * 2; i++) {
+		for (int j = 0; j < 3 * 2; j++) {
+			if (map[digit][i / 2 * 3 + j / 2]) {
+				p[(y + i) * mapped.RowPitch + (x + j) * 4 + 0] = 0xff;
+				p[(y + i) * mapped.RowPitch + (x + j) * 4 + 1] = 0xff;
+				p[(y + i) * mapped.RowPitch + (x + j) * 4 + 2] = 0xff;
+				p[(y + i) * mapped.RowPitch + (x + j) * 4 + 3] = 0xff;
+			}
+
+		}
+	}
+
 }

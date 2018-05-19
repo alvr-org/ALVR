@@ -83,6 +83,7 @@ bool SrtSocket::Poll() {
 		}
 
 	}
+	return false;
 }
 
 void SrtSocket::Shutdown() {

@@ -11,169 +11,36 @@
 #include "d3drender.h"
 
 #include <winsock2.h>
-#include <D3dx9core.h>
 #include <d3d11.h>
 #include <wrl.h>
 #include <map>
-#include <d3dcompiler.h>
-#include <directxmath.h>
-#include <directxcolors.h>
 #include <d3d11_1.h>
+#include <ScreenGrab.h>
+#include <wincodec.h>
+#include <wincodecsdk.h>
 
 #include "NvEncoderD3D11.h"
 #include "Logger.h"
 #include "NvCodecUtils.h"
-#include "SpriteFont.h"
 #include "UdpSender.h"
 #include "nvencoderclioptions.h"
 #include "Listener.h"
 #include "Utils.h"
+#include "FrameRender.h"
 
-simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
+HINSTANCE g_hInstance;
+
+std::string g_DebugOutputDir;
 
 namespace
 {
-
 	using Microsoft::WRL::ComPtr;
-
-
-	const char *VERTEX_SHADER = 
-		"Texture2D txLeft : register(t0);\n"
-		"Texture2D txRight : register(t1);\n"
-		"SamplerState samLinear : register(s0);\n"
-		"\n"
-		"struct VS_INPUT\n"
-		"{\n"
-		"	float4 Pos : POSITION;\n"
-		"	float2 Tex : TEXCOORD0;\n"
-		"};\n"
-		"\n"
-		"struct PS_INPUT\n"
-		"{\n"
-		"	float4 Pos : SV_POSITION;\n"
-		"	float2 Tex : TEXCOORD0;\n"
-		"};\n"
-		"PS_INPUT VS(VS_INPUT input)\n"
-		"{\n"
-		"	PS_INPUT output = (PS_INPUT)0;\n"
-		"	output.Pos = input.Pos;\n"
-		"	output.Tex = input.Tex;\n"
-		"\n"
-		"	return output;\n"
-		"}\n"
-		"float4 PS(PS_INPUT input) : SV_Target\n"
-		"{\n"
-		//"float offset = (1448.0 - 1024.0) / 2 / 1448.0;\n"
-		"float offset = 0.0;\n"
-		"float shrink_to = 1.0 - offset * 2;\n"
-		"float x = input.Tex.x;\n"
-		"float y = input.Tex.y;\n"
-		"	if (input.Tex.x < 0.5){\n"
-		"		x = x * 2;\n"
-		"		x = x * shrink_to + offset;\n"
-		"		y = y * shrink_to + offset;\n"
-		"		return txLeft.Sample(samLinear, float2(1.0 - x, 1.0 - y)); // We need this hack, because We cloud not resolve upside down issue by changing texcoord in buffer.\n"
-		"	}else{\n"
-		"		x = x * 2 - 1.0;\n"
-		"		x = x * shrink_to + offset;\n"
-		"		y = y * shrink_to + offset;\n"
-		"		return txLeft.Sample(samLinear, float2(1.0 - x, 1.0 - y)); // We need this hack, because We cloud not resolve upside down issue by changing texcoord in buffer.\n"
-		"	}\n"
-		"}\n";
-	const char *PIXEL_SHADER = VERTEX_SHADER;
-
-	void Test(CD3DRender *m_pD3DRender, ID3D11Texture2D *pTexture, int nHeight) {
-
-		D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
-		if (SUCCEEDED(m_pD3DRender->GetContext()->Map(pTexture, 0, D3D11_MAP_READ, 0, &mapped)))
-		{
-			Log("[VDispDvr] Test Mapped Texture");
-			FILE *fp;
-			fopen_s(&fp, "C:\\src\\virtual_display\\test.bmp", "w");
-			fwrite(mapped.pData, mapped.RowPitch * nHeight, 1, fp);
-			fclose(fp);
-
-			m_pD3DRender->GetContext()->Unmap(pTexture, 0);
-		}
-	}
-
-	void DrawDigitPixels(D3D11_MAPPED_SUBRESOURCE &mapped, int x, int y, int digit) {
-		static const char map[][15] = {
-		{ 1, 1, 1,
-		 1, 0, 1,
-		 1, 0, 1,
-		 1, 0, 1,
-		 1, 1, 1},
-		{ 0, 1, 0,
-		1, 1, 0,
-		0, 1, 0,
-		0, 1, 0,
-		1, 1, 1},
-		{ 1, 1, 0,
-		1, 0, 1,
-		0, 1, 0,
-		1, 0, 0,
-		1, 1, 1},
-		{ 1, 1, 1,
-		0, 0, 1,
-		0, 1, 1,
-		0, 0, 1,
-		1, 1, 1},
-		{ 1, 0, 1,
-		1, 0, 1,
-		1, 1, 1,
-		0, 0, 1,
-		0, 0, 1},
-		{ 1, 1, 1,
-		1, 0, 0,
-		1, 1, 1,
-		0, 0, 1,
-		1, 1, 1},
-		{ 1, 1, 0,
-		1, 0, 0,
-		1, 1, 1,
-		1, 0, 1,
-		1, 1, 1},
-		{ 1, 1, 1,
-		0, 0, 1,
-		0, 1, 0,
-		0, 1, 0,
-		0, 1, 0},
-		{ 1, 1, 1,
-		1, 0, 1,
-		1, 1, 1,
-		1, 0, 1,
-		1, 1, 1 },
-		{ 1, 1, 1,
-		1, 0, 1,
-		1, 1, 1,
-		0, 0, 1,
-		0, 0, 1 }
-		};
-		if (digit < 0 || 9 < digit) {
-			digit = 0;
-		}
-		uint8_t *p = (uint8_t *)mapped.pData;
-
-		for (int i = 0; i < 5 * 2; i++) {
-			for (int j = 0; j < 3 * 2; j++) {
-				if (map[digit][i / 2 * 3 + j / 2]) {
-					p[(y + i) * mapped.RowPitch + (x + j) * 4 + 0] = 0xff;
-					p[(y + i) * mapped.RowPitch + (x + j) * 4 + 1] = 0xff;
-					p[(y + i) * mapped.RowPitch + (x + j) * 4 + 2] = 0xff;
-					p[(y + i) * mapped.RowPitch + (x + j) * 4 + 3] = 0xff;
-				}
-
-			}
-		}
-			
-	}
-
-
+	
 	void DrawDebugTimestamp(CD3DRender *m_pD3DRender, ID3D11Texture2D *pTexture)
 	{
 		D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
-		if (SUCCEEDED(m_pD3DRender->GetContext()->Map(pTexture, 0, D3D11_MAP_READ, 0, &mapped)))
+		HRESULT hr = m_pD3DRender->GetContext()->Map(pTexture, 0, D3D11_MAP_READ, 0, &mapped);
+		if (SUCCEEDED(hr))
 		{
 			int x = 10;
 			int y = 10;
@@ -201,7 +68,37 @@ namespace
 
 			m_pD3DRender->GetContext()->Unmap(pTexture, 0);
 		}
+		else {
+			Log("DrawDebugTimestamp failed: %p %s", hr, GetDxErrorStr(hr).c_str());
+		}
 	}
+
+	void SaveDebugOutput(CD3DRender *m_pD3DRender, std::vector<std::vector<uint8_t>> &vPacket, ID3D11Texture2D *texture, uint64_t frameIndex) {
+		if (vPacket.size() == 0) {
+			return;
+		}
+		if (vPacket[0].size() < 10) {
+			return;
+		}
+		int type = vPacket[0][4] & 0x1F;
+		if (type == 7) {
+			// SPS, PPS, IDR
+			char filename[1000];
+			wchar_t filename2[1000];
+			snprintf(filename, sizeof(filename), "%s\\%llu.h264", g_DebugOutputDir.c_str(), frameIndex);
+			_snwprintf_s(filename2, sizeof(filename2), L"%hs\\%llu.dds", g_DebugOutputDir.c_str(), frameIndex);
+			FILE *fp;
+			fopen_s(&fp, filename, "wb");
+			if (fp) {
+				for (auto packet : vPacket) {
+					fwrite(&packet[0], packet.size(), 1, fp);
+				}
+				fclose(fp);
+			}
+			DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), texture, filename2);
+		}
+	}
+
 
 
 	inline vr::HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y, double z)
@@ -247,10 +144,11 @@ namespace
 	static const char * const k_pch_Settings_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
 	static const char * const k_pch_Settings_DisplayFrequency_Float = "displayFrequency";
 	static const char * const k_pch_Settings_EncoderOptions_String = "nvencOptions";
-	static const char * const k_pch_Settings_OutputFile_String = "outputFile";
-	static const char * const k_pch_Settings_ReplayFile_String = "replayFile";
-	static const char * const k_pch_Settings_LogFile_String = "logFile";
 	static const char * const k_pch_Settings_DebugTimestamp_Bool = "debugTimestamp";
+	static const char * const k_pch_Settings_DebugFrameIndex_Bool = "debugFrameIndex";
+	static const char * const k_pch_Settings_DebugFrameOutput_Bool = "debugFrameOutput";
+	static const char * const k_pch_Settings_DebugCaptureOutput_Bool = "debugCaptureOutput";
+	static const char * const k_pch_Settings_DebugOutputDir = "debugOutputDir";
 	static const char * const k_pch_Settings_ListenHost_String = "listenHost";
 	static const char * const k_pch_Settings_ListenPort_Int32 = "listenPort";
 	static const char * const k_pch_Settings_ControlListenHost_String = "controlListenHost";
@@ -366,14 +264,17 @@ namespace
 	class CNvEncoder
 	{
 	public:
-		CNvEncoder(CD3DRender *pD3DRender)
+		CNvEncoder(CD3DRender *pD3DRender,
+			bool DebugTimestamp, bool DebugFrameOutput, bool DebugCaptureOutput)
 			: m_flFrameIntervalInSeconds( 0.0f )
 			, enc(NULL)
 			, m_pD3DRender(pD3DRender)
 			, m_bForceNv12(false)
 			, m_nFrame(0)
 			, m_Listener(NULL)
-			, m_DebugTimestamp(false)
+			, m_DebugTimestamp(DebugTimestamp)
+			, m_DebugFrameOutput(DebugFrameOutput)
+			, m_DebugCaptureOutput(DebugCaptureOutput)
 		{
 		}
 
@@ -381,15 +282,14 @@ namespace
 		{}
 
 		bool Initialize(
-			std::string encoderOptions, std::string outputFile, std::string replayFile, Listener *listener,
+			std::string encoderOptions, Listener *listener,
 			uint32_t nWindowX, uint32_t nWindowY, uint32_t nWindowWidth, uint32_t nWindowHeight,
-			uint32_t nRefreshRateNumerator, uint32_t nRefreshRateDenominator,
-			bool DebugTimestamp)
+			uint32_t nRefreshRateNumerator, uint32_t nRefreshRateDenominator)
 		{
 			int nWidth = nWindowWidth;
 			int nHeight = nWindowHeight;
 			NvEncoderInitParam EncodeCLIOptions(encoderOptions.c_str());
-			m_DebugTimestamp = DebugTimestamp;
+			std::string outputFile = g_DebugOutputDir + "\\capture.h264";
 
 			if (nWindowWidth == 0 || nWindowHeight == 0 ||
 				nRefreshRateNumerator == 0 || nRefreshRateDenominator == 0)
@@ -412,7 +312,7 @@ namespace
 
 			NV_ENC_BUFFER_FORMAT format = m_bForceNv12 ? NV_ENC_BUFFER_FORMAT_NV12 : NV_ENC_BUFFER_FORMAT_ARGB;
 			format = NV_ENC_BUFFER_FORMAT_ABGR;
-			enc = new NvEncoderD3D11(m_pD3DRender->GetDevice(), nWidth, nHeight, format);
+			enc = new NvEncoderD3D11(m_pD3DRender->GetDevice(), nWidth, nHeight, format, 0);
 
 			NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
 			NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
@@ -470,7 +370,7 @@ namespace
 			return m_flFrameIntervalInSeconds;
 		}
 
-		void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime)
+		void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime)
 		{
 			uint32_t nWidth;
 			uint32_t nHeight;
@@ -480,11 +380,6 @@ namespace
 			pTexture->GetDesc(&desc);
 
 			Log("[VDispDvr] Transmit(begin)");
-
-			nWidth = min(desc.Width, SharedState_t::MAX_TEXTURE_WIDTH);
-			nHeight = min(desc.Height, SharedState_t::MAX_TEXTURE_HEIGHT);
-
-			Log("Transmit %dx%d %d", nWidth, nHeight, desc.Format);
 
 			const NvEncInputFrame* encoderInputFrame = enc->GetNextInputFrame();
 
@@ -501,22 +396,10 @@ namespace
 			{
 				ID3D11Texture2D *pTexBgra = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
 				Log("CopyResource start");
-				uint64_t start = GetTimestampUs();
-
-				D3D11_TEXTURE2D_DESC desc2;
-				pTexBgra->GetDesc(&desc2);
-				Log("%dx%d %d %d -> %dx%d %d %d",
-					desc.Width, desc.Height, desc.Format, desc.BindFlags,
-					desc2.Width, desc2.Height, desc2.Format, desc2.BindFlags);
 				m_pD3DRender->GetContext()->CopyResource(pTexBgra, pTexture);
-				uint64_t end = GetTimestampUs();
-				Log("CopyResource end %lld us", end - start);
 			}
 
-			uint64_t start = GetTimestampUs();
 			enc->EncodeFrame(vPacket);
-			uint64_t end = GetTimestampUs();
-			Log("EncodeFrame %lld us", end - start);
 
 			Log("Tracking info delay: %lld us", GetTimestampUs() - m_Listener->clientToServerTime(clientTime));
 			Log("Encoding delay: %lld us", GetTimestampUs() - presentationTime);
@@ -529,6 +412,10 @@ namespace
 				if (m_Listener) {
 					m_Listener->Send(packet.data(), (int)packet.size(), presentationTime, frameIndex);
 				}
+			}
+
+			if (m_DebugFrameOutput) {
+				SaveDebugOutput(m_pD3DRender, vPacket, reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr), frameIndex2);
 			}
 
 			{
@@ -560,6 +447,8 @@ namespace
 
 		Listener *m_Listener;
 		bool m_DebugTimestamp;
+		bool m_DebugFrameOutput;
+		bool m_DebugCaptureOutput;
 	};
 
 	//----------------------------------------------------------------------------
@@ -570,15 +459,13 @@ namespace
 	class CEncoder : public CThread
 	{
 	public:
-		CEncoder( CD3DRender *pD3DRender, CNvEncoder *pRemoteDevice, int renderWidth, int renderHeight )
+		CEncoder( CD3DRender *pD3DRender, CNvEncoder *pRemoteDevice, int renderWidth, int renderHeight, bool debugFrameIndex )
 			: m_pRemoteDevice( pRemoteDevice )
-			, m_pD3DRender( pD3DRender )
-			, m_pStagingTexture( NULL )
 			, m_bExiting( false )
 			, m_frameIndex(0)
-			, m_renderWidth(renderWidth)
-			, m_renderHeight(renderHeight)
+			, m_frameIndex2(0)
 		{
+			m_FrameRender = new FrameRender(renderWidth, renderHeight, debugFrameIndex, pD3DRender);
 			m_encodeFinished.Set();
 		}
 
@@ -586,300 +473,17 @@ namespace
 		{
 		}
 
-		bool CopyToStaging( ID3D11Texture2D *pTexture[], int textureNum, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime )
+		bool CopyToStaging( ID3D11Texture2D *pTexture[], int textureNum, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime, const std::string& debugText)
 		{
-			// Create a staging texture to copy frame data into that can in turn
-			// be read back (for blocking until rendering is finished).
-			if ( !m_pStagingTexture )
-			{
-				D3D11_TEXTURE2D_DESC srcDesc;
-				pTexture[0]->GetDesc( &srcDesc );
-
-				D3D11_TEXTURE2D_DESC stagingTextureDesc;
-				ZeroMemory( &stagingTextureDesc, sizeof( stagingTextureDesc ) );
-				stagingTextureDesc.Width = m_renderWidth * 2;
-				stagingTextureDesc.Height = m_renderHeight;
-				stagingTextureDesc.Format = srcDesc.Format;
-				stagingTextureDesc.MipLevels = 1;
-				stagingTextureDesc.ArraySize = 1;
-				stagingTextureDesc.SampleDesc.Count = 1;
-				stagingTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-				//stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-				stagingTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-
-				if ( FAILED( m_pD3DRender->GetDevice()->CreateTexture2D( &stagingTextureDesc, NULL, &m_pStagingTexture ) ) )
-				{
-					Log( "Failed to create staging texture!" );
-					return false;
-				}
-
-				HRESULT hr = m_pD3DRender->GetDevice()->CreateRenderTargetView(m_pStagingTexture.Get(), NULL, &m_pRenderTargetView);
-				if (FAILED(hr)) {
-					Log("CreateRenderTargetView %p %s", hr, GetDxErrorStr(hr).c_str());
-					return false;
-				}
-
-				// Create depth stencil texture
-				D3D11_TEXTURE2D_DESC descDepth;
-				ZeroMemory(&descDepth, sizeof(descDepth));
-				descDepth.Width = stagingTextureDesc.Width;
-				descDepth.Height = stagingTextureDesc.Height;
-				descDepth.MipLevels = 1;
-				descDepth.ArraySize = 1;
-				descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-				descDepth.SampleDesc.Count = 1;
-				descDepth.SampleDesc.Quality = 0;
-				descDepth.Usage = D3D11_USAGE_DEFAULT;
-				descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-				descDepth.CPUAccessFlags = 0;
-				descDepth.MiscFlags = 0;
-				hr = m_pD3DRender->GetDevice()->CreateTexture2D(&descDepth, nullptr, &m_pDepthStencil);
-				if (FAILED(hr)) {
-					Log("CreateTexture2D %p %s", hr, GetDxErrorStr(hr).c_str());
-					return false;
-				}
-
-
-				// Create the depth stencil view
-				D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
-				ZeroMemory(&descDSV, sizeof(descDSV));
-				descDSV.Format = descDepth.Format;
-				descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-				descDSV.Texture2D.MipSlice = 0;
-				hr = m_pD3DRender->GetDevice()->CreateDepthStencilView(m_pDepthStencil.Get(), &descDSV, &m_pDepthStencilView);
-				if (FAILED(hr)) {
-					Log("CreateDepthStencilView %p %s", hr, GetDxErrorStr(hr).c_str());
-					return false;
-				}
-
-				m_pD3DRender->GetContext()->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get());
-
-				D3D11_VIEWPORT viewport;
-				viewport.Width = (float)m_renderWidth * 2;
-				viewport.Height = (float)m_renderHeight;
-				viewport.MinDepth = 0.0f;
-				viewport.MaxDepth = 1.0f;
-				viewport.TopLeftX = 0;
-				viewport.TopLeftY = 0;
-				m_pD3DRender->GetContext()->RSSetViewports(1, &viewport);
-
-
-				ID3DBlob *vshader, *pshader, *error;
-
-				hr = D3DCompile(VERTEX_SHADER, strlen(VERTEX_SHADER), "vs", NULL, NULL, "VS", "vs_4_0", 0, 0, &vshader, &error);
-				Log("D3DCompile vs %p %s", hr, GetDxErrorStr(hr).c_str());
-				if (FAILED(hr)) {
-					Log("%s", error->GetBufferPointer());
-					return false;
-				}
-				if (error != NULL) {
-					error->Release();
-					error = NULL;
-				}
-
-				hr = m_pD3DRender->GetDevice()->CreateVertexShader((const DWORD*)vshader->GetBufferPointer(), vshader->GetBufferSize(), NULL, &m_pVertexShader);
-				if (FAILED(hr)) {
-					Log("CreateVertexShader %p %s", hr, GetDxErrorStr(hr).c_str());
-					return false;
-				}
-				hr = D3DCompile(VERTEX_SHADER, strlen(VERTEX_SHADER), "ps", NULL, NULL, "PS", "ps_4_0", 0, 0, &pshader, &error);
-				Log("D3DCompile ps %p %s", hr, GetDxErrorStr(hr).c_str());
-				if (FAILED(hr)) {
-					Log("%s", error->GetBufferPointer());
-					return false;
-				}
-				if (error != NULL) {
-					error->Release();
-				}
-
-				hr = m_pD3DRender->GetDevice()->CreatePixelShader((const DWORD*)pshader->GetBufferPointer(), pshader->GetBufferSize(), NULL, &m_pPixelShader);
-				if (FAILED(hr)) {
-					Log("CreatePixelShader %p %s", hr, GetDxErrorStr(hr).c_str());
-					return false;
-				}
-
-				// Define the input layout
-				D3D11_INPUT_ELEMENT_DESC layout[] =
-				{
-					{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-				{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-				};
-				UINT numElements = ARRAYSIZE(layout);
-
-
-				// Create the input layout
-				hr = m_pD3DRender->GetDevice()->CreateInputLayout(layout, numElements, vshader->GetBufferPointer(),
-					vshader->GetBufferSize(), &m_pVertexLayout);
-				if (FAILED(hr)) {
-					Log("CreateInputLayout %p %s", hr, GetDxErrorStr(hr).c_str());
-					return false;
-				}
-				vshader->Release();
-
-				// Set the input layout
-				m_pD3DRender->GetContext()->IASetInputLayout(m_pVertexLayout.Get());
-
-				// src textures has 1448x1448 pixels but dest texture(remote display) has 1024x1024 pixels.
-				// Apply offset to crop center of src textures.
-				float tex_offset = (1448 - 1024) / 2 / 1448.0;
-				tex_offset = 0;
-
-				// Create vertex buffer
-				SimpleVertex vertices[] =
-				{
-					{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(1.0f - tex_offset, 0.0f + tex_offset) },
-				    { DirectX::XMFLOAT3( 1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(0.0f + tex_offset, 1.0f - tex_offset) },
-				    { DirectX::XMFLOAT3( 1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(0.0f + tex_offset, 0.0f + tex_offset) },
-				    { DirectX::XMFLOAT3(-1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(1.0f - tex_offset, 1.0f - tex_offset) },
-				};
-
-				D3D11_BUFFER_DESC bd;
-				ZeroMemory(&bd, sizeof(bd));
-				bd.Usage = D3D11_USAGE_DEFAULT;
-				bd.ByteWidth = sizeof(SimpleVertex) * 4;
-				bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-				bd.CPUAccessFlags = 0;
-				D3D11_SUBRESOURCE_DATA InitData;
-				ZeroMemory(&InitData, sizeof(InitData));
-				InitData.pSysMem = vertices;
-				hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, &InitData, &m_pVertexBuffer);
-				if (FAILED(hr)) {
-					Log("CreateBuffer 1 %p %s", hr, GetDxErrorStr(hr).c_str());
-					return false;
-				}
-
-				// Set vertex buffer
-				UINT stride = sizeof(SimpleVertex);
-				UINT offset = 0;
-				m_pD3DRender->GetContext()->IASetVertexBuffers(0, 1, m_pVertexBuffer.GetAddressOf(), &stride, &offset);
-				
-				// Create index buffer
-				// Create vertex buffer
-				WORD indices[] =
-				{
-					0,1,2,
-					0,3,1
-				};
-
-				bd.Usage = D3D11_USAGE_DEFAULT;
-				bd.ByteWidth = sizeof(WORD) * 6;
-				bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-				bd.CPUAccessFlags = 0;
-				InitData.pSysMem = indices;
-				hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, &InitData, &m_pIndexBuffer);
-				if (FAILED(hr)) {
-					Log("CreateBuffer 2 %p %s", hr, GetDxErrorStr(hr).c_str());
-					return false;
-				}
-
-				// Set index buffer
-				m_pD3DRender->GetContext()->IASetIndexBuffer(m_pIndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-
-				// Set primitive topology
-				m_pD3DRender->GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-				// Create the sample state
-				D3D11_SAMPLER_DESC sampDesc;
-				ZeroMemory(&sampDesc, sizeof(sampDesc));
-				sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-				sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-				sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-				sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-				sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-				sampDesc.MinLOD = 0;
-				sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
-				hr = m_pD3DRender->GetDevice()->CreateSamplerState(&sampDesc, &m_pSamplerLinear);
-				if (FAILED(hr)) {
-					Log("CreateSamplerState 5 %p %s", hr, GetDxErrorStr(hr).c_str());
-					return false;
-				}
-
-				Log("Staging Texture created");
-			}
-
-			D3D11_TEXTURE2D_DESC srcDesc;
-			pTexture[0]->GetDesc(&srcDesc);
-
-			Log("CopyToStaging 0 %dx%d %d", srcDesc.Width, srcDesc.Height, srcDesc.Format);
-			pTexture[1]->GetDesc(&srcDesc);
-
-			Log("CopyToStaging 1 %dx%d %d", srcDesc.Width, srcDesc.Height, srcDesc.Format);
-
 			m_presentationTime = presentationTime;
 			m_frameIndex = frameIndex;
 			m_clientTime = clientTime;
-			
-			if (textureNum == 1) {
-				m_pD3DRender->GetContext()->CopyResource( m_pStagingTexture.Get(), pTexture[0] );
-			}
-			else {
-				D3D11_BOX box = { 0 };
-				box.right = srcDesc.Width;
-				box.bottom = srcDesc.Height;
-				box.back = 1;
-				//m_pD3DRender->GetContext()->CopyResource(m_pStagingTexture, pTexture[1]);
-				//m_pD3DRender->GetContext()->CopySubresourceRegion(m_pStagingTexture, 0, 0, 0, 0, pTexture[0], 0, 0);
-				//m_pD3DRender->GetContext()->CopySubresourceRegion(m_pStagingTexture.Get(), 0, 0, 0, 0, pTexture[0], 0, &box);
-				//m_pD3DRender->GetContext()->CopySubresourceRegion(m_pStagingTexture.Get(), 0, srcDesc.Width, 0, 0, pTexture[1], 0, &box);
+			m_FrameRender->Startup(pTexture);
 
-				m_pD3DRender->GetContext()->Flush();
+			char buf[200];
+			snprintf(buf, sizeof(buf), "\nindex2: %llu", m_frameIndex2);
 
-				//m_pD3DRender->GetContext()->Begin(NULL);
-				// Update our time
-				static float t = 0.0f;
-				
-				
-				static ULONGLONG timeStart = 0;
-				ULONGLONG timeCur = GetTickCount64();
-				if (timeStart == 0)
-					timeStart = timeCur;
-				
-				t = (timeCur - timeStart) / 1000.0f;
-				float col = (GetTimestampUs() / 1000) / 10 % 256 / 256.0;
-
-				D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
-				SRVDesc.Format = srcDesc.Format;
-				SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-				SRVDesc.Texture2D.MostDetailedMip = 0;
-				SRVDesc.Texture2D.MipLevels = 1;
-
-				HRESULT hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[0], &SRVDesc, m_pShaderResourceView[0].ReleaseAndGetAddressOf());
-				if (FAILED(hr)) {
-					Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
-					return false;
-				}
-				hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[1], &SRVDesc, m_pShaderResourceView[1].ReleaseAndGetAddressOf());
-				if (FAILED(hr)) {
-					Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
-					return false;
-				}
-
-				//
-				// Clear the back buffer
-				//
-				float color[4] = { 1.0, col, 1.0, 1.0 };//DirectX::Colors::MidnightBlue
-				m_pD3DRender->GetContext()->ClearRenderTargetView(m_pRenderTargetView.Get(), color);
-
-				//
-				// Clear the depth buffer to 1.0 (max depth)
-				//
-				m_pD3DRender->GetContext()->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
-
-				//
-				// Render the cube
-				//
-				m_pD3DRender->GetContext()->VSSetShader(m_pVertexShader.Get(), nullptr, 0);
-				m_pD3DRender->GetContext()->PSSetShader(m_pPixelShader.Get(), nullptr, 0);
-
-				ID3D11ShaderResourceView *shaderResourceView[2] = { m_pShaderResourceView[0].Get(), m_pShaderResourceView[1].Get() };
-				m_pD3DRender->GetContext()->PSSetShaderResources(0, 2, shaderResourceView);
-				//m_pD3DRender->GetContext()->PSSetShaderResources(0, 1, shaderResourceView);
-
-				m_pD3DRender->GetContext()->PSSetSamplers(0, 1, m_pSamplerLinear.GetAddressOf());
-				m_pD3DRender->GetContext()->DrawIndexed(6, 0, 0);
-				m_pD3DRender->GetContext()->Flush();
-			}
-
+			m_FrameRender->RenderFrame(pTexture, textureNum, debugText + buf);
 			return true;
 		}
 
@@ -895,10 +499,12 @@ namespace
 				if ( m_bExiting )
 					break;
 
-				if ( m_pStagingTexture )
+				if ( m_FrameRender->GetTexture() )
 				{
-					m_pRemoteDevice->Transmit( m_pStagingTexture.Get(), m_presentationTime, m_frameIndex, m_clientTime);
+					m_pRemoteDevice->Transmit(m_FrameRender->GetTexture().Get(), m_presentationTime, m_frameIndex, m_frameIndex2, m_clientTime);
 				}
+
+				m_frameIndex2++;
 
 				m_encodeFinished.Set();
 			}
@@ -909,6 +515,7 @@ namespace
 			m_bExiting = true;
 			m_newFrameReady.Set();
 			Join();
+			delete m_FrameRender;
 		}
 
 		void NewFrameReady( double flVsyncTimeInSeconds )
@@ -927,36 +534,15 @@ namespace
 	private:
 		CThreadEvent m_newFrameReady, m_encodeFinished;
 		CNvEncoder *m_pRemoteDevice;
-		CD3DRender *m_pD3DRender;
 		double m_flVsyncTimeInSeconds;
 		bool m_bExiting;
 		uint64_t m_presentationTime;
 		uint64_t m_frameIndex;
 		uint64_t m_clientTime;
 
-		int m_renderWidth;
-		int m_renderHeight;
-		ComPtr<ID3D11Texture2D> m_pStagingTexture;
+		uint64_t m_frameIndex2;
 
-		ComPtr<ID3D11VertexShader> m_pVertexShader;
-		ComPtr<ID3D11PixelShader> m_pPixelShader;
-
-		ComPtr<ID3D11InputLayout> m_pVertexLayout;
-		ComPtr<ID3D11Buffer> m_pVertexBuffer;
-		ComPtr<ID3D11Buffer> m_pIndexBuffer;
-
-		ComPtr<ID3D11SamplerState> m_pSamplerLinear;
-
-		ComPtr<ID3D11Texture2D> m_pDepthStencil;
-		ComPtr<ID3D11ShaderResourceView> m_pShaderResourceView[2];
-		ComPtr<ID3D11RenderTargetView> m_pRenderTargetView;
-		ComPtr<ID3D11DepthStencilView> m_pDepthStencilView;
-
-		struct SimpleVertex
-		{
-			DirectX::XMFLOAT3 Pos;
-			DirectX::XMFLOAT2 Tex;
-		};
+		FrameRender *m_FrameRender;
 	};
 }
 
@@ -999,12 +585,10 @@ public:
 		, m_pRemoteDevice(NULL)
 		, m_pEncoder(NULL)
 		, m_EncoderOptions("")
-		, m_DebugTimestamp(false)
 		, m_Listener(NULL)
 		, m_VSyncThread(NULL)
 		, m_poseMutex(NULL)
 	{
-		std::string logFile;
 		std::string host, control_host;
 		int port, control_port;
 
@@ -1031,12 +615,10 @@ public:
 
 		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_EncoderOptions_String, buf, sizeof(buf));
 		m_EncoderOptions = buf;
-		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_OutputFile_String, buf, sizeof(buf));
-		m_OutputFile = buf;
-		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_LogFile_String, buf, sizeof(buf));
-		logFile = buf;
-		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ReplayFile_String, buf, sizeof(buf));
-		m_ReplayFile = buf;
+		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_DebugOutputDir, buf, sizeof(buf));
+		g_DebugOutputDir = buf;
+		
+
 		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_SrtOptions_String, buf, sizeof(buf));
 		std::string SrtOptions = buf;
 
@@ -1049,12 +631,11 @@ public:
 		control_host = buf;
 		control_port = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControlListenPort_Int32);
 
-		m_DebugTimestamp = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugTimestamp_Bool);
+		bool DebugTimestamp = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugTimestamp_Bool);
+		bool DebugFrameIndex = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugFrameIndex_Bool);
+		bool DebugFrameOutput = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugFrameOutput_Bool);
+		bool DebugCaptureOutput = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugCaptureOutput_Bool);
 		
-
-		logger = simplelogger::LoggerFactory::CreateFileLogger(logFile);
-
-
 		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
 
 		m_flIPD = vr::VRSettings()->GetFloat(k_pch_Settings_Section, k_pch_Settings_IPD_Float);
@@ -1069,9 +650,6 @@ public:
 		Log("driver_null: IPD: %f", m_flIPD);
 
 		Log("driver_null: EncoderOptions: %s%s", m_EncoderOptions.c_str(), m_EncoderOptions.size() == sizeof(buf) - 1 ? " (Maybe truncated)" : "");
-		Log("driver_null: OutputFile: %s%s", m_OutputFile.c_str(), m_OutputFile.size() == sizeof(buf) - 1 ? " (Maybe truncated)" : "");
-		Log("driver_null: ReplayFile: %s%s", m_ReplayFile.c_str(), m_ReplayFile.size() == sizeof(buf) - 1 ? " (Maybe truncated)" : "");
-
 
 		//CDisplayRedirectLatest()
 
@@ -1168,18 +746,17 @@ public:
 		m_Listener->Start();
 
 		// Spawn our separate process to manage headset presentation.
-		m_pRemoteDevice = new CNvEncoder(m_pD3DRender);
+		m_pRemoteDevice = new CNvEncoder(m_pD3DRender, DebugTimestamp, DebugFrameOutput, DebugCaptureOutput);
 		if (!m_pRemoteDevice->Initialize(
-			m_EncoderOptions, m_OutputFile, m_ReplayFile, m_Listener,
+			m_EncoderOptions, m_Listener,
 			nDisplayX, nDisplayY, nDisplayWidth, nDisplayHeight,
-			nDisplayRefreshRateNumerator, nDisplayRefreshRateDenominator,
-			m_DebugTimestamp))
+			nDisplayRefreshRateNumerator, nDisplayRefreshRateDenominator))
 		{
 			return;
 		}
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
-		m_pEncoder = new CEncoder(m_pD3DRender, m_pRemoteDevice, m_nRenderWidth, m_nRenderHeight);
+		m_pEncoder = new CEncoder(m_pD3DRender, m_pRemoteDevice, m_nRenderWidth, m_nRenderHeight, DebugFrameIndex);
 		m_pEncoder->Start();
 
 		m_VSyncThread = new VSyncThread();
@@ -1426,7 +1003,8 @@ public:
 		pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
 		if (m_Listener->HasValidTrackingInfo()) {
-			auto& info = m_Listener->GetTrackingInfo();
+			Listener::TrackingInfo info;
+			m_Listener->GetTrackingInfo(info);
 			uint64_t trackingDelay = GetTimestampUs() - m_Listener->clientToServerTime(info.clientTime);
 
 			Log("Tracking elapsed:%lld us %lld quot:%f,%f,%f,%f\nposition:%f,%f,%f\nView[0]:\n%sProj[0]:\n%sView[1]:\n%sProj[1]:\n%s",
@@ -1505,7 +1083,7 @@ public:
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
 		{
 			Log("RunFrame");
-			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
+			//vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 		}
 	}
 
@@ -1529,9 +1107,6 @@ private:
 	float m_flIPD;
 
 	std::string m_EncoderOptions;
-	std::string m_OutputFile;
-	std::string m_ReplayFile;
-	bool m_DebugTimestamp;
 
 	uint64_t m_LastReferencedFrameIndex;
 	uint64_t m_LastReferencedClientTime;
@@ -1623,7 +1198,7 @@ public:
 			//Log("[VDispDvr] Flush-End");
 
 			// Copy entire texture to staging so we can read the pixels to send to remote device.
-			m_pEncoder->CopyToStaging(&pTexture, 1, presentationTime, m_LastReferencedFrameIndex, m_LastReferencedClientTime);
+			m_pEncoder->CopyToStaging(&pTexture, 1, presentationTime, m_LastReferencedFrameIndex, m_LastReferencedClientTime, std::string(""));
 
 			//Log("[VDispDvr] Flush-Staging(begin)");
 
@@ -1797,7 +1372,7 @@ public:
 
 	/** Used to purge all texture sets for a given process. */
 	virtual void DestroyAllSwapTextureSets(uint32_t unPid) {
-		Log("DestroyAllSwapTextureSets");
+		Log("DestroyAllSwapTextureSets %d", unPid);
 
 		for (auto it = m_handleMap.begin(); it != m_handleMap.end();) {
 			if (it->second.first->pid == unPid) {
@@ -1859,15 +1434,29 @@ public:
 		}
 		if (minIt != m_poseBuffer.end()) {
 			// found the frameIndex
+			m_prevSubmitFrameIndex = m_submitFrameIndex;
+			m_prevSubmitClientTime = m_submitClientTime;
 			m_submitFrameIndex = minIt->FrameIndex;
 			m_submitClientTime = minIt->clientTime;
+
+			m_prevFramePoseRotation = m_framePoseRotation;
+			m_framePoseRotation.x = minIt->HeadPose_Pose_Orientation.x;
+			m_framePoseRotation.y = minIt->HeadPose_Pose_Orientation.y;
+			m_framePoseRotation.z = minIt->HeadPose_Pose_Orientation.z;
+			m_framePoseRotation.w = minIt->HeadPose_Pose_Orientation.w;
 		}
 		else {
 			m_submitFrameIndex = 0;
 			m_submitClientTime = 0;
+			m_framePoseRotation = HmdQuaternion_Init(0.0, 0.0, 0.0, 0.0);
 		}
 		m_poseMutex.Release();
-
+		/*Listener::TrackingInfo info;
+		m_Listener->GetTrackingInfo(info);
+		m_submitFrameIndex = info.FrameIndex;
+		m_submitClientTime = info.clientTime;
+		m_framePoseRotation.x = info.HeadPose_Pose_Orientation.x;
+		*/
 		m_submitTextures[0] = sharedTextureHandles[0];
 		m_submitTextures[1] = sharedTextureHandles[1];
 	}
@@ -1878,11 +1467,6 @@ public:
 
 		Log("[VDispDvr] Waiting for previous encode to finish...");
 
-		// Wait for the encoder to be ready.  This is important because the encoder thread
-		// blocks on transmit which uses our shared d3d context (which is not thread safe).
-		m_pEncoder->WaitForEncode();
-
-		Log("[VDispDvr] Done");
 
 		ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
 		if (!pSyncTexture)
@@ -1926,9 +1510,21 @@ public:
 
 		//Log("[VDispDvr] Flush-End");
 
+		// Wait for the encoder to be ready.  This is important because the encoder thread
+		// blocks on transmit which uses our shared d3d context (which is not thread safe).
+		m_pEncoder->WaitForEncode();
+
+		Log("[VDispDvr] Done");
+
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
 		Log("FrameIndex diff LastRef: %llu render:%llu  diff:%llu", m_LastReferencedFrameIndex, m_submitFrameIndex, m_LastReferencedFrameIndex - m_submitFrameIndex);
-		m_pEncoder->CopyToStaging(pTexture, 2, presentationTime, m_submitFrameIndex, m_submitClientTime);
+
+		Listener::TrackingInfo info;
+		m_Listener->GetTrackingInfo(info);
+
+		char buf[2000];
+		snprintf(buf, sizeof(buf), "%llu\n%f\n%f", m_prevSubmitFrameIndex, m_prevFramePoseRotation.x, info.HeadPose_Pose_Orientation.x);
+		m_pEncoder->CopyToStaging(pTexture, 2, presentationTime, m_prevSubmitFrameIndex, m_prevSubmitClientTime, std::string(buf));
 
 		//Log("[VDispDvr] Flush-Staging(begin)");
 
@@ -1957,8 +1553,12 @@ private:
 
 	vr::SharedTextureHandle_t m_submitTextures[2];
 	vr::HmdMatrix34_t m_framePose;
+	vr::HmdQuaternion_t m_prevFramePoseRotation;
+	vr::HmdQuaternion_t m_framePoseRotation;
 	uint64_t m_submitFrameIndex;
 	uint64_t m_submitClientTime;
+	uint64_t m_prevSubmitFrameIndex;
+	uint64_t m_prevSubmitClientTime;
 };
 
 //-----------------------------------------------------------------------------
@@ -2043,3 +1643,12 @@ void *HmdDriverFactory( const char *pInterfaceName, int *pReturnCode )
 	return NULL;
 }
 
+BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
+{
+	switch (dwReason) {
+	case DLL_PROCESS_ATTACH:
+		g_hInstance = hInstance;
+	}
+
+	return TRUE;
+}

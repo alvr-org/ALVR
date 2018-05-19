@@ -1,7 +1,7 @@
 {
 	"driver_remote_glass": {
-		"serialNumber": "VD-001",
-		"modelNumber": "Virtual Display",
+		"serialNumber": "RG-001",
+		"modelNumber": "Remote Glass",
 		"additionalLatencyInSeconds": 0.008,
 		"displayWidth": 2048,
 		"displayHeight": 1024,
@@ -18,15 +18,15 @@
         "IPD": 0.064,
 		"secondsFromVsyncToPhotons" : 0.005, // 5ms
 		"displayFrequency" : 60,
-		"nvencOptions": "-codec h264 -preset ll_hq -rc cbr_ll_hq -bitrate 10M -gop 240 -maxbitrate 10M -fps 60",
-        "outputFile": "C:\\src\\virtual_display\\test.h264",
-		//"replayFile": "C:\\src\\virtual_display\\replay.dump",
-        "logFile": "C:\\src\\virtual_display\\driver.log",
+		"nvencOptions": "-codec h264 -preset ll_hq -rc cbr_ll_hq -bitrate 20M -gop 240 -maxbitrate 30M -fps 60",
 		"listenPort": 9944,
 		"listenHost": "0.0.0.0",
 		"controlListenPort": 9944,
         "controlListenHost": "127.0.0.1",
-		"debugTimestamp": false,
+		//"debugFrameIndex": true,
+		//"debugFrameOutput": true,
+		//"debugCaptureOutput": true,
+        "debugOutputDir": "C:\\src\\virtual_display",
 		"srtOptions": "TSBPDDELAY=1 RCVLATENCY=1"
 	}
 }

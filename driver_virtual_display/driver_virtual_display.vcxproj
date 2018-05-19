@@ -94,7 +94,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>C:\src\virtual_display\x64-libs\libeay32.lib;C:\src\virtual_display\x64-libs\ssleay32.lib;C:\src\virtual_display\x64-libs\pthread_lib.lib;C:\src\virtual_display\x64-libs\srt_static.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:\src\virtual_display\x64-libs\libeay32.lib;C:\src\virtual_display\x64-libs\ssleay32.lib;C:\src\virtual_display\x64-libs\pthread_lib.lib;C:\src\virtual_display\x64-libs\srt_static.lib;ws2_32.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -139,7 +139,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>C:\src\virtual_display\x64-libs\libeay32.lib;C:\src\virtual_display\x64-libs\ssleay32.lib;C:\src\virtual_display\x64-libs\pthread_lib.lib;C:\src\virtual_display\x64-libs\srt_static.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:\src\virtual_display\x64-libs\libeay32.lib;C:\src\virtual_display\x64-libs\ssleay32.lib;C:\src\virtual_display\x64-libs\pthread_lib.lib;C:\src\virtual_display\x64-libs\srt_static.lib;d3dcompiler.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -152,6 +152,7 @@
   <ItemGroup>
     <ClCompile Include="ControlSocket.cpp" />
     <ClCompile Include="driver_virtual_display.cpp" />
+    <ClCompile Include="FrameRender.cpp" />
     <ClCompile Include="NvEncoder.cpp" />
     <ClCompile Include="NvEncoderD3D11.cpp" />
     <ClCompile Include="Poller.cpp" />
@@ -165,6 +166,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ControlSocket.h" />
+    <ClInclude Include="FrameRender.h" />
     <ClInclude Include="ISocket.h" />
     <ClInclude Include="Listener.h" />
     <ClInclude Include="Logger.h" />
@@ -174,6 +176,7 @@
     <ClInclude Include="nvencoderclioptions.h" />
     <ClInclude Include="NvEncoderD3D11.h" />
     <ClInclude Include="Poller.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="SrtSocket.h" />
     <ClInclude Include="UdpSocket.h" />
     <ClInclude Include="UdpSender.h" />
@@ -181,6 +184,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="resource.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

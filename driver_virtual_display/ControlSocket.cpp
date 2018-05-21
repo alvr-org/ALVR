@@ -117,3 +117,10 @@ void ControlSocket::Shutdown() {
 		m_Socket = INVALID_SOCKET;
 	}
 }
+
+void ControlSocket::SendCommandResponse(const char * commandResponse)
+{
+	if (m_ClientSocket != INVALID_SOCKET) {
+		send(m_ClientSocket, commandResponse, strlen(commandResponse), 0);
+	}
+}

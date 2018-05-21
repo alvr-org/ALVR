@@ -32,6 +32,8 @@ HINSTANCE g_hInstance;
 
 std::string g_DebugOutputDir;
 
+uint64_t g_DriverTestMode = 0;
+
 namespace
 {
 	using Microsoft::WRL::ComPtr;
@@ -134,8 +136,6 @@ namespace
 	static const char * const k_pch_Settings_Section = "driver_remote_glass";
 	static const char * const k_pch_Settings_SerialNumber_String = "serialNumber";
 	static const char * const k_pch_Settings_ModelNumber_String = "modelNumber";
-	static const char * const k_pch_Settings_WindowWidth_Int32 = "windowWidth";
-	static const char * const k_pch_Settings_WindowHeight_Int32 = "windowHeight";
 	static const char * const k_pch_Settings_RenderWidth_Int32 = "renderWidth";
 	static const char * const k_pch_Settings_RenderHeight_Int32 = "renderHeight";
 	static const char * const k_pch_Settings_IPD_Float = "IPD";
@@ -153,124 +153,19 @@ namespace
 	static const char * const k_pch_Settings_ControlListenHost_String = "controlListenHost";
 	static const char * const k_pch_Settings_ControlListenPort_Int32 = "controlListenPort";
 
-	static const char * const k_pch_Settings_AdditionalLatencyInSeconds_Float = "additionalLatencyInSeconds";
-	static const char * const k_pch_Settings_DisplayWidth_Int32 = "displayWidth";
-	static const char * const k_pch_Settings_DisplayHeight_Int32 = "displayHeight";
-	static const char * const k_pch_Settings_DisplayRefreshRateNumerator_Int32 = "displayRefreshRateNumerator";
-	static const char * const k_pch_Settings_DisplayRefreshRateDenominator_Int32 = "displayRefreshRateDenominator";
 	static const char * const k_pch_Settings_AdapterIndex_Int32 = "adapterIndex";
 
 	static const char * const k_pch_Settings_SrtOptions_String = "srtOptions";
 	static const char * const k_pch_Settings_SendingTimeslotUs_Int32 = "sendingTimeslotUs";
 	static const char * const k_pch_Settings_LimitTimeslotPackets_Int32 = "limitTimeslotPackets";
 
-	//-----------------------------------------------------------------------------
-
-	class RGBToNV12ConverterD3D11 {
-	public:
-		RGBToNV12ConverterD3D11(ID3D11Device *pDevice, ID3D11DeviceContext *pContext, int nWidth, int nHeight)
-			: pD3D11Device(pDevice), pD3D11Context(pContext)
-		{
-			pD3D11Device->AddRef();
-			pD3D11Context->AddRef();
-
-			pTexBgra = NULL;
-			D3D11_TEXTURE2D_DESC desc;
-			ZeroMemory(&desc, sizeof(D3D11_TEXTURE2D_DESC));
-			desc.Width = nWidth;
-			desc.Height = nHeight;
-			desc.MipLevels = 1;
-			desc.ArraySize = 1;
-			desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-			desc.SampleDesc.Count = 1;
-			desc.Usage = D3D11_USAGE_DEFAULT;
-			desc.BindFlags = D3D11_BIND_RENDER_TARGET;
-			desc.CPUAccessFlags = 0;
-			ck(pDevice->CreateTexture2D(&desc, NULL, &pTexBgra));
-
-			ck(pDevice->QueryInterface(__uuidof(ID3D11VideoDevice), (void **)&pVideoDevice));
-			ck(pContext->QueryInterface(__uuidof(ID3D11VideoContext), (void **)&pVideoContext));
-
-			D3D11_VIDEO_PROCESSOR_CONTENT_DESC contentDesc =
-			{
-				D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE,
-			{ 1, 1 }, desc.Width, desc.Height,
-			{ 1, 1 }, desc.Width, desc.Height,
-			D3D11_VIDEO_USAGE_PLAYBACK_NORMAL
-			};
-			ck(pVideoDevice->CreateVideoProcessorEnumerator(&contentDesc, &pVideoProcessorEnumerator));
-
-			ck(pVideoDevice->CreateVideoProcessor(pVideoProcessorEnumerator, 0, &pVideoProcessor));
-			D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC inputViewDesc = { 0, D3D11_VPIV_DIMENSION_TEXTURE2D,{ 0, 0 } };
-			ck(pVideoDevice->CreateVideoProcessorInputView(pTexBgra, pVideoProcessorEnumerator, &inputViewDesc, &pInputView));
-		}
-
-		~RGBToNV12ConverterD3D11()
-		{
-			for (auto& it : outputViewMap)
-			{
-				ID3D11VideoProcessorOutputView* pOutputView = it.second;
-				pOutputView->Release();
-			}
-
-			pInputView->Release();
-			pVideoProcessorEnumerator->Release();
-			pVideoProcessor->Release();
-			pVideoContext->Release();
-			pVideoDevice->Release();
-			pTexBgra->Release();
-			pD3D11Context->Release();
-			pD3D11Device->Release();
-		}
-		void ConvertRGBToNV12(ID3D11Texture2D*pRGBSrcTexture, ID3D11Texture2D* pDestTexture)
-		{
-			pD3D11Context->CopyResource(pTexBgra, pRGBSrcTexture);
-			ID3D11VideoProcessorOutputView* pOutputView = nullptr;
-			auto it = outputViewMap.find(pDestTexture);
-			if (it == outputViewMap.end())
-			{
-				D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC outputViewDesc = { D3D11_VPOV_DIMENSION_TEXTURE2D };
-				ck(pVideoDevice->CreateVideoProcessorOutputView(pDestTexture, pVideoProcessorEnumerator, &outputViewDesc, &pOutputView));
-				outputViewMap.insert({ pDestTexture, pOutputView });
-			}
-			else
-			{
-				pOutputView = it->second;
-			}
-
-			D3D11_VIDEO_PROCESSOR_STREAM stream = { TRUE, 0, 0, 0, 0, NULL, pInputView, NULL };
-			ck(pVideoContext->VideoProcessorBlt(pVideoProcessor, pOutputView, 0, 1, &stream));
-			return;
-		}
-
-	private:
-		ID3D11Device * pD3D11Device = NULL;
-		ID3D11DeviceContext *pD3D11Context = NULL;
-		ID3D11VideoDevice *pVideoDevice = NULL;
-		ID3D11VideoContext *pVideoContext = NULL;
-		ID3D11VideoProcessor *pVideoProcessor = NULL;
-		ID3D11VideoProcessorInputView *pInputView = NULL;
-		ID3D11VideoProcessorOutputView *pOutputView = NULL;
-		ID3D11Texture2D *pTexBgra = NULL;
-		ID3D11VideoProcessorEnumerator *pVideoProcessorEnumerator = nullptr;
-		std::unordered_map<ID3D11Texture2D*, ID3D11VideoProcessorOutputView*> outputViewMap;
-	};
-
-
-	//-----------------------------------------------------------------------------
-	// Interface to separate process standing in for an actual remote device.
-	// This needs to be a separate process because D3D blocks gpu work within
-	// a process on Present.
-	//-----------------------------------------------------------------------------
 	class CNvEncoder
 	{
 	public:
 		CNvEncoder(CD3DRender *pD3DRender,
 			bool DebugTimestamp, bool DebugFrameOutput, bool DebugCaptureOutput)
-			: m_flFrameIntervalInSeconds( 0.0f )
-			, enc(NULL)
+			: enc(NULL)
 			, m_pD3DRender(pD3DRender)
-			, m_bForceNv12(false)
 			, m_nFrame(0)
 			, m_Listener(NULL)
 			, m_DebugTimestamp(DebugTimestamp)
@@ -283,39 +178,25 @@ namespace
 		{}
 
 		bool Initialize(
-			std::string encoderOptions, Listener *listener,
-			uint32_t nWidth, uint32_t nHeight,
-			uint32_t nRefreshRateNumerator, uint32_t nRefreshRateDenominator)
+			std::string encoderOptions, Listener *listener, int nWidth, int nHeight)
 		{
 			NvEncoderInitParam EncodeCLIOptions(encoderOptions.c_str());
 
-			if (nWidth == 0 || nHeight == 0 ||
-				nRefreshRateNumerator == 0 || nRefreshRateDenominator == 0)
-			{
-				Log("RemoteDevice: Invalid parameters. w=%d h=%d refresh=%d/%d",
-					nWidth, nHeight, nRefreshRateNumerator, nRefreshRateDenominator);
-				return false;
-			}
-
-			m_flFrameIntervalInSeconds = float(nRefreshRateDenominator) / nRefreshRateNumerator;
-
-			m_pD3DRender->GetDevice()->CreateDeferredContext(0, &m_DeferredContext);
+			//m_pD3DRender->GetDevice()->CreateDeferredContext(0, &m_DeferredContext);
 			
-			if (m_bForceNv12)
-			{
-				pConverter.reset(new RGBToNV12ConverterD3D11(m_pD3DRender->GetDevice(), m_DeferredContext.Get(), nWidth, nHeight));
-			}
+			//
+			// Initialize Encoder
+			//
 
-			/// Initialize Encoder ///
+			Log("Initializing CNvEncoder. Width=%d Height=%d", nWidth, nHeight);
 
-			Log("CNvEncoder Initialize %dx%d %p", nWidth, nHeight, m_pD3DRender->GetDevice());
+			NV_ENC_BUFFER_FORMAT format = NV_ENC_BUFFER_FORMAT_ABGR;
 
-			NV_ENC_BUFFER_FORMAT format = m_bForceNv12 ? NV_ENC_BUFFER_FORMAT_NV12 : NV_ENC_BUFFER_FORMAT_ARGB;
-			format = NV_ENC_BUFFER_FORMAT_ABGR;
 			enc = new NvEncoderD3D11(m_pD3DRender->GetDevice(), nWidth, nHeight, format, 0);
 
 			NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
 			NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
+
 			initializeParams.encodeConfig = &encodeConfig;
 			enc->CreateDefaultEncoderParams(&initializeParams, EncodeCLIOptions.GetEncodeGUID(), EncodeCLIOptions.GetPresetGUID());
 
@@ -328,7 +209,9 @@ namespace
 
 			enc->CreateEncoder(&initializeParams);
 
-			/// Initialize debug video output ///
+			//
+			// Initialize debug video output
+			//
 
 			if (g_DebugOutputDir != "" && m_DebugCaptureOutput) {
 				std::string outputFile = g_DebugOutputDir + "\\capture.h264";
@@ -366,11 +249,6 @@ namespace
 			}
 		}
 
-		float GetFrameIntervalInSeconds() const
-		{
-			return m_flFrameIntervalInSeconds;
-		}
-
 		void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime)
 		{
 			std::vector<std::vector<uint8_t>> vPacket;
@@ -386,18 +264,10 @@ namespace
 				DrawDebugTimestamp(m_pD3DRender, pTexture);
 			}
 
-			if (m_bForceNv12)
-			{
-				ID3D11Texture2D *pNV12Textyure = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
-				pConverter->ConvertRGBToNV12(pTexture, pNV12Textyure);
-			}
-			else
-			{
-				ID3D11Texture2D *pTexBgra = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
-				Log("CopyResource start");
-				m_pD3DRender->GetContext()->CopyResource(pTexBgra, pTexture);
-				//m_DeferredContext->CopyResource(pTexBgra, pTexture);
-			}
+			ID3D11Texture2D *pTexBgra = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
+			Log("CopyResource start");
+			m_pD3DRender->GetContext()->CopyResource(pTexBgra, pTexture);
+			//m_DeferredContext->CopyResource(pTexBgra, pTexture);
 
 			Log("EncodeFrame start");
 			enc->EncodeFrame(vPacket);
@@ -411,14 +281,13 @@ namespace
 				if (fpOut) {
 					fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 				}
-				Log("Sending packet %d", (int)packet.size());
 				if (m_Listener) {
 					m_Listener->Send(packet.data(), (int)packet.size(), presentationTime, frameIndex);
 				}
 			}
 
 			if (m_DebugFrameOutput) {
-				SaveDebugOutput(m_pD3DRender, vPacket, reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr), frameIndex2);
+				SaveDebugOutput(m_pD3DRender, vPacket, pTexBgra, frameIndex2);
 			}
 
 			{
@@ -439,21 +308,18 @@ namespace
 
 	private:
 		CSharedState m_sharedState;
-		float m_flFrameIntervalInSeconds;
 		std::ofstream fpOut;
 		NvEncoderD3D11 *enc;
 
 		CD3DRender *m_pD3DRender;
-		bool m_bForceNv12;
 		int m_nFrame;
-		std::unique_ptr<RGBToNV12ConverterD3D11> pConverter;
 
 		Listener *m_Listener;
 		bool m_DebugTimestamp;
 		bool m_DebugFrameOutput;
 		bool m_DebugCaptureOutput;
 
-		ComPtr<ID3D11DeviceContext> m_DeferredContext;
+		//ComPtr<ID3D11DeviceContext> m_DeferredContext;
 	};
 
 	//----------------------------------------------------------------------------
@@ -483,7 +349,7 @@ namespace
 			m_presentationTime = presentationTime;
 			m_frameIndex = frameIndex;
 			m_clientTime = clientTime;
-			m_FrameRender->Startup(pTexture[0]);
+			m_FrameRender->Startup();
 
 			char buf[200];
 			snprintf(buf, sizeof(buf), "\nindex2: %llu", m_frameIndex2);
@@ -523,10 +389,9 @@ namespace
 			delete m_FrameRender;
 		}
 
-		void NewFrameReady( double flVsyncTimeInSeconds )
+		void NewFrameReady()
 		{
 			Log("New Frame Ready");
-			m_flVsyncTimeInSeconds = flVsyncTimeInSeconds;
 			m_encodeFinished.Reset();
 			m_newFrameReady.Set();
 		}
@@ -539,7 +404,6 @@ namespace
 	private:
 		CThreadEvent m_newFrameReady, m_encodeFinished;
 		CNvEncoder *m_pRemoteDevice;
-		double m_flVsyncTimeInSeconds;
 		bool m_bExiting;
 		uint64_t m_presentationTime;
 		uint64_t m_frameIndex;
@@ -600,7 +464,6 @@ public:
 	CRemoteHmd()
 		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 		, m_nGraphicsAdapterLuid(0)
-		, m_flLastVsyncTimeInSeconds(0.0)
 		, m_nVsyncCounter(0)
 		, m_pD3DRender(NULL)
 		, m_pFlushTexture(NULL)
@@ -610,8 +473,7 @@ public:
 		, m_Listener(NULL)
 		, m_VSyncThread(NULL)
 		, m_poseMutex(NULL)
-		, m_nWindowX(0)
-		, m_nWindowY(0)
+		, m_captureDDSTrigger(false)
 	{
 		std::string host, control_host;
 		int port, control_port;
@@ -628,19 +490,18 @@ public:
 		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ModelNumber_String, buf, sizeof(buf));
 		m_sModelNumber = buf;
 
-		m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_WindowWidth_Int32);
-		m_nWindowHeight = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_WindowHeight_Int32);
 		m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_RenderWidth_Int32);
 		m_nRenderHeight = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_RenderHeight_Int32);
 		m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(k_pch_Settings_Section, k_pch_Settings_SecondsFromVsyncToPhotons_Float);
 		m_flDisplayFrequency = vr::VRSettings()->GetFloat(k_pch_Settings_Section, k_pch_Settings_DisplayFrequency_Float);
+
+		int32_t nAdapterIndex = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_AdapterIndex_Int32);
 
 		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_EncoderOptions_String, buf, sizeof(buf));
 		m_EncoderOptions = buf;
 		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_DebugOutputDir, buf, sizeof(buf));
 		g_DebugOutputDir = buf;
 		
-
 		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_SrtOptions_String, buf, sizeof(buf));
 		std::string SrtOptions = buf;
 
@@ -674,80 +535,16 @@ public:
 
 		Log("driver_null: Serial Number: %s", m_sSerialNumber.c_str());
 		Log("driver_null: Model Number: %s", m_sModelNumber.c_str());
-		Log("driver_null: Window: %d %d %d %d", m_nWindowX, m_nWindowY, m_nWindowWidth, m_nWindowHeight);
 		Log("driver_null: Render Target: %d %d", m_nRenderWidth, m_nRenderHeight);
 		Log("driver_null: Seconds from Vsync to Photons: %f", m_flSecondsFromVsyncToPhotons);
 		Log("driver_null: Display Frequency: %f", m_flDisplayFrequency);
 		Log("driver_null: IPD: %f", m_flIPD);
 
 		Log("driver_null: EncoderOptions: %s%s", m_EncoderOptions.c_str(), m_EncoderOptions.size() == sizeof(buf) - 1 ? " (Maybe truncated)" : "");
-
-		//CDisplayRedirectLatest()
-
-		m_flAdditionalLatencyInSeconds = max(0.0f,
-			vr::VRSettings()->GetFloat(k_pch_Settings_Section,
-				k_pch_Settings_AdditionalLatencyInSeconds_Float));
-
-		uint32_t nDisplayWidth = vr::VRSettings()->GetInt32(
-			k_pch_Settings_Section,
-			k_pch_Settings_DisplayWidth_Int32);
-		uint32_t nDisplayHeight = vr::VRSettings()->GetInt32(
-			k_pch_Settings_Section,
-			k_pch_Settings_DisplayHeight_Int32);
-
-		int32_t nDisplayRefreshRateNumerator = vr::VRSettings()->GetInt32(
-			k_pch_Settings_Section,
-			k_pch_Settings_DisplayRefreshRateNumerator_Int32);
-		int32_t nDisplayRefreshRateDenominator = vr::VRSettings()->GetInt32(
-			k_pch_Settings_Section,
-			k_pch_Settings_DisplayRefreshRateDenominator_Int32);
-
-		int32_t nAdapterIndex = vr::VRSettings()->GetInt32(
-			k_pch_Settings_Section,
-			k_pch_Settings_AdapterIndex_Int32);
+		
 
 		m_pD3DRender = new CD3DRender();
-
-		// First initialize using the specified display dimensions to determine
-		// which graphics adapter the headset is attached to (if any).
-		if (!m_pD3DRender->Initialize(nDisplayWidth, nDisplayHeight))
-		{
-			Log("Could not find headset with display size %dx%d.", nDisplayWidth, nDisplayHeight);
-			return;
-		}
-
-		int32_t nDisplayX, nDisplayY;
-		m_pD3DRender->GetDisplayPos(&nDisplayX, &nDisplayY);
-		//m_pD3DRender->GetDisplaySize(&nDisplayWidth, &nDisplayHeight);
-
-		int32_t nDisplayAdapterIndex;
-		const int32_t nBufferSize = 128;
-		wchar_t wchAdapterDescription[nBufferSize];
-		if (!m_pD3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, nBufferSize))
-		{
-			Log("Failed to get headset adapter info!");
-			return;
-		}
-
-		char chAdapterDescription[nBufferSize];
-		wcstombs_s(0, chAdapterDescription, nBufferSize, wchAdapterDescription, nBufferSize);
-		Log("Headset connected to %s.", chAdapterDescription);
-
-		Log("Adapter Index: %d %d", nAdapterIndex, nDisplayAdapterIndex);
-
-		// If no adapter specified, choose the first one the headset *isn't* plugged into.
-		if (nAdapterIndex < 0)
-		{
-			nAdapterIndex = (nDisplayAdapterIndex == 0) ? 1 : 0;
-		}
-		else if (nDisplayAdapterIndex == nAdapterIndex)
-		{
-			Log("Headset needs to be plugged into a separate graphics card.");
-			return;
-		}
-
-		nAdapterIndex = 0;
-
+		
 		// Store off the LUID of the primary gpu we want to use.
 		if (!m_pD3DRender->GetAdapterLuid(nAdapterIndex, &m_nGraphicsAdapterLuid))
 		{
@@ -762,16 +559,17 @@ public:
 			return;
 		}
 
-		if (!m_pD3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, nBufferSize))
+		int32_t nDisplayAdapterIndex;
+		wchar_t wchAdapterDescription[300];
+		if (!m_pD3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, sizeof(wchAdapterDescription)))
 		{
 			Log("Failed to get primary adapter info!");
 			return;
 		}
 
-		wcstombs_s(0, chAdapterDescription, nBufferSize, wchAdapterDescription, nBufferSize);
-		Log("Using %s as primary graphics adapter.", chAdapterDescription);
+		Log("Using %ls as primary graphics adapter.", wchAdapterDescription);
 
-		std::function<void(sockaddr_in *)> Callback = [&](sockaddr_in *a) { ListenerCallback(a); };
+		std::function<void(std::string, std::string)> Callback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
 		m_Listener = new Listener(host, port, control_host, control_port, SrtOptions, sendingTimeslotUs, limitTimeslotPackets, Callback, poseCallback);
 		m_Listener->Start();
@@ -779,9 +577,7 @@ public:
 		// Spawn our separate process to manage headset presentation.
 		m_pRemoteDevice = new CNvEncoder(m_pD3DRender, DebugTimestamp, DebugFrameOutput, DebugCaptureOutput);
 		if (!m_pRemoteDevice->Initialize(
-			m_EncoderOptions, m_Listener,
-			nDisplayWidth, nDisplayHeight,
-			nDisplayRefreshRateNumerator, nDisplayRefreshRateDenominator))
+			m_EncoderOptions, m_Listener, m_nRenderWidth, m_nRenderHeight))
 		{
 			return;
 		}
@@ -847,6 +643,7 @@ public:
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, m_flDisplayFrequency);
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_SecondsFromVsyncToPhotons_Float, m_flSecondsFromVsyncToPhotons);
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_GraphicsAdapterLuid_Uint64, m_nGraphicsAdapterLuid);
 
 		// return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
 		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_CurrentUniverseId_Uint64, 2);
@@ -895,11 +692,6 @@ public:
 			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{virtual_display}/icons/headset_sample_status_ready_low.png");
 		}
 
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
-			vr::Prop_SecondsFromVsyncToPhotons_Float, m_flAdditionalLatencyInSeconds);
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer,
-			vr::Prop_GraphicsAdapterLuid_Uint64, m_nGraphicsAdapterLuid);
-
 		return vr::VRInitError_None;
 	}
 
@@ -942,11 +734,11 @@ public:
 
 	virtual void GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
 	{
-		Log("GetWindowBounds %dx%x %dx%d", m_nWindowX, m_nWindowY, m_nWindowWidth, m_nWindowHeight);
-		*pnX = m_nWindowX;
-		*pnY = m_nWindowY;
-		*pnWidth = m_nWindowWidth;
-		*pnHeight = m_nWindowHeight;
+		Log("GetWindowBounds %dx%d - %dx%d", 0, 0, m_nRenderWidth, m_nRenderHeight);
+		*pnX = 0;
+		*pnY = 0;
+		*pnWidth = m_nRenderWidth;
+		*pnHeight = m_nRenderHeight;
 	}
 
 	virtual bool IsDisplayOnDesktop()
@@ -961,7 +753,7 @@ public:
 
 	virtual void GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight)
 	{
-		*pnWidth = m_nRenderWidth;
+		*pnWidth = m_nRenderWidth / 2;
 		*pnHeight = m_nRenderHeight;
 		Log("GetRecommendedRenderTargetSize %dx%d", *pnWidth, *pnHeight);
 	}
@@ -969,8 +761,8 @@ public:
 	virtual void GetEyeOutputViewport(vr::EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
 	{
 		*pnY = 0;
-		*pnWidth = m_nWindowWidth / 2;
-		*pnHeight = m_nWindowHeight;
+		*pnWidth = m_nRenderWidth / 2;
+		*pnHeight = m_nRenderHeight;
 
 		if (eEye == vr::Eye_Left)
 		{
@@ -978,26 +770,18 @@ public:
 		}
 		else
 		{
-			*pnX = m_nWindowWidth / 2;
+			*pnX = m_nRenderWidth / 2;
 		}
 		Log("GetEyeOutputViewport %d %dx%d %dx%d", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
 	}
 
 	virtual void GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom)
 	{
-		if (eEye == vr::Eye_Left)
-		{
-			*pfLeft = -1.0;
-			*pfRight = 1.0;
-			*pfTop = -1.0;
-			*pfBottom = 1.0;
-		}
-		else {
-			*pfLeft = -1.0;
-			*pfRight = 1.0;
-			*pfTop = -1.0;
-			*pfBottom = 1.0;
-		}
+		*pfLeft = -1.0;
+		*pfRight = 1.0;
+		*pfTop = -1.0;
+		*pfBottom = 1.0;
+		
 		Log("GetProjectionRaw %d", eEye);
 	}
 
@@ -1059,6 +843,7 @@ public:
 			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
 			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
 
+			// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
 			/*
 			pose.vecVelocity[0] = info.HeadPose_LinearVelocity.x;
 			pose.vecVelocity[1] = info.HeadPose_LinearVelocity.y;
@@ -1076,12 +861,12 @@ public:
 			pose.vecAngularAcceleration[1] = info.HeadPose_AngularAcceleration.y;
 			pose.vecAngularAcceleration[2] = info.HeadPose_AngularAcceleration.z;*/
 
-			//pose.poseTimeOffset = -(trackingDelay * 1.0) / 1000.0 / 1000.0;
 			pose.poseTimeOffset = 0;
 
 			m_LastReferencedFrameIndex = info.FrameIndex;
 			m_LastReferencedClientTime = info.clientTime;
 
+			// Put pose history buffer
 			m_poseMutex.Wait(INFINITE);
 			if (m_poseBuffer.size() != 0) {
 				m_poseBuffer.push_back(info);
@@ -1109,7 +894,7 @@ public:
 		// driver blocks it for some periodic task.
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
 		{
-			Log("RunFrame");
+			//Log("RunFrame");
 			//vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 		}
 	}
@@ -1123,10 +908,6 @@ private:
 	std::string m_sSerialNumber;
 	std::string m_sModelNumber;
 
-	int32_t m_nWindowX;
-	int32_t m_nWindowY;
-	int32_t m_nWindowWidth;
-	int32_t m_nWindowHeight;
 	int32_t m_nRenderWidth;
 	int32_t m_nRenderHeight;
 	float m_flSecondsFromVsyncToPhotons;
@@ -1147,8 +928,14 @@ public:
 		return m_pEncoder != NULL;
 	}
 
-	void ListenerCallback(sockaddr_in *addr)
+	void CommandCallback(std::string commandName, std::string args)
 	{
+		if (commandName == "Capture") {
+			m_captureDDSTrigger = true;
+		}
+		else if (commandName == "EnableDriverTestMode") {
+			g_DriverTestMode = strtoull(args.c_str(), NULL, 0);
+		}
 	}
 
 	void OnPoseUpdated() {
@@ -1165,8 +952,6 @@ public:
 
 private:
 	uint64_t m_nGraphicsAdapterLuid;
-	float m_flAdditionalLatencyInSeconds;
-	double m_flLastVsyncTimeInSeconds;
 	uint32_t m_nVsyncCounter;
 
 	CD3DRender *m_pD3DRender;
@@ -1396,7 +1181,7 @@ public:
 		}
 
 		Log("[VDispDvr] Mutex Released.");
-		m_pEncoder->NewFrameReady(m_flLastVsyncTimeInSeconds + m_flAdditionalLatencyInSeconds);
+		m_pEncoder->NewFrameReady();
 	}
 
 	void CopyTexture(uint32_t layerCount) {
@@ -1407,18 +1192,30 @@ public:
 		ComPtr<ID3D11Texture2D> Texture[MAX_LAYERS][2];
 
 		for (uint32_t i = 0; i < layerCount; i++) {
-			// Left eye
+			// Find left eye texture.
 			auto it = m_handleMap.find((HANDLE)m_submitTextures[i][0]);
-			// No AddRef
-			Texture[i][0] = it->second.first->textures[it->second.second];
-			D3D11_TEXTURE2D_DESC desc;
-			Texture[i][0]->GetDesc(&desc);
+			if (it == m_handleMap.end()) {
+				// Ignore this layer.
+				Log("Submitted texture is not found on HandleMap. eye=right layer=%d/%d Texture Handle=%p", i, layerCount, (HANDLE)m_submitTextures[i][0]);
+			}
+			else {
+				Texture[i][0] = it->second.first->textures[it->second.second];
+				D3D11_TEXTURE2D_DESC desc;
+				Texture[i][0]->GetDesc(&desc);
 
-			Log("CopyTexture: layer=%d/%d pid=%d Texture Size=%dx%d Format=%d", i, layerCount, it->second.first->pid, desc.Width, desc.Height, desc.Format);
-		
-			// Right eye
-			it = m_handleMap.find((HANDLE)m_submitTextures[i][1]);
-			Texture[i][1] = it->second.first->textures[it->second.second];
+				Log("CopyTexture: layer=%d/%d pid=%d Texture Size=%dx%d Format=%d", i, layerCount, it->second.first->pid, desc.Width, desc.Height, desc.Format);
+
+				// Find right eye texture.
+				it = m_handleMap.find((HANDLE)m_submitTextures[i][1]);
+				if (it == m_handleMap.end()) {
+					// Ignore this layer
+					Log("Submitted texture is not found on HandleMap. eye=left layer=%d/%d Texture Handle=%p", i, layerCount, (HANDLE)m_submitTextures[i][1]);
+					Texture[i][0].Reset();
+				}
+				else {
+					Texture[i][1] = it->second.first->textures[it->second.second];
+				}
+			}
 
 			pTexture[i][0] = Texture[i][0].Get();
 			pTexture[i][1] = Texture[i][1].Get();
@@ -1429,7 +1226,7 @@ public:
 
 		Log("Waiting for finish of previous encode.");
 
-		if (m_LastReferencedFrameIndex % 500 == 499 && false) {
+		if (m_captureDDSTrigger) {
 			wchar_t buf[1000];
 
 			for (uint32_t i = 0; i < layerCount; i++) {
@@ -1438,12 +1235,13 @@ public:
 				HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture[i][0], buf);
 				Log("Writing Debug DDS: End hr=%p %s", hr, GetDxErrorStr(hr).c_str());
 			}
+			m_Listener->SendCommandResponse("Capture OK");
+			m_captureDDSTrigger = false;
 		}
 
 		// Wait for the encoder to be ready.  This is important because the encoder thread
 		// blocks on transmit which uses our shared d3d context (which is not thread safe).
 		m_pEncoder->WaitForEncode();
-
 
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
 		Log("FrameIndex diff LastRef: %llu render:%llu  diff:%llu", m_LastReferencedFrameIndex, m_submitFrameIndex, m_LastReferencedFrameIndex - m_submitFrameIndex);
@@ -1481,6 +1279,8 @@ private:
 	uint64_t m_submitClientTime;
 	uint64_t m_prevSubmitFrameIndex;
 	uint64_t m_prevSubmitClientTime;
+
+	bool m_captureDDSTrigger;
 };
 
 //-----------------------------------------------------------------------------

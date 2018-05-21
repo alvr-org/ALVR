@@ -4,6 +4,7 @@
 #include "resource.h"
 
 extern HINSTANCE g_hInstance;
+extern uint64_t g_DriverTestMode;
 
 static const char *VERTEX_SHADER =
 "Texture2D txLeft : register(t0);\n"
@@ -56,24 +57,26 @@ FrameRender::~FrameRender()
 {
 }
 
-bool FrameRender::Startup(ID3D11Texture2D * pTexture[])
+bool FrameRender::Startup()
 {
 	if (m_pStagingTexture) {
 		return true;
 	}
-	D3D11_TEXTURE2D_DESC srcDesc;
-	pTexture[0]->GetDesc(&srcDesc);
+
+	//
+	// Create staging texture
+	// This is input texture of Video Encoder and is render target of both eyes.
+	//
 
 	D3D11_TEXTURE2D_DESC stagingTextureDesc;
 	ZeroMemory(&stagingTextureDesc, sizeof(stagingTextureDesc));
-	stagingTextureDesc.Width = m_renderWidth * 2;
+	stagingTextureDesc.Width = m_renderWidth;
 	stagingTextureDesc.Height = m_renderHeight;
-	stagingTextureDesc.Format = srcDesc.Format;
+	stagingTextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	stagingTextureDesc.MipLevels = 1;
 	stagingTextureDesc.ArraySize = 1;
 	stagingTextureDesc.SampleDesc.Count = 1;
 	stagingTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-	//stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 	stagingTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
 
 	if (FAILED(m_pD3DRender->GetDevice()->CreateTexture2D(&stagingTextureDesc, NULL, &m_pStagingTexture)))
@@ -124,7 +127,7 @@ bool FrameRender::Startup(ID3D11Texture2D * pTexture[])
 	m_pD3DRender->GetContext()->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get());
 
 	D3D11_VIEWPORT viewport;
-	viewport.Width = (float)m_renderWidth * 2;
+	viewport.Width = (float)m_renderWidth;
 	viewport.Height = (float)m_renderHeight;
 	viewport.MinDepth = 0.0f;
 	viewport.MaxDepth = 1.0f;
@@ -290,11 +293,34 @@ bool FrameRender::Startup(ID3D11Texture2D * pTexture[])
 
 	//
 	// Create alpha blend state
+	// We need alpha blending to support layer.
 	//
 
-	// We need alpha blending to support layer.
+	// BlendState for first layer.
+	// Some VR apps (like StreamVR Home beta) submit the texture that alpha is zero on all pixels.
+	// So we need to ignore alpha of first layer.
 	D3D11_BLEND_DESC BlendDesc;
 	ZeroMemory(&BlendDesc, sizeof(BlendDesc));
+	BlendDesc.AlphaToCoverageEnable = FALSE;
+	BlendDesc.IndependentBlendEnable = FALSE;
+	for (int i = 0; i < 8; i++) {
+		BlendDesc.RenderTarget[i].BlendEnable = TRUE;
+		BlendDesc.RenderTarget[i].SrcBlend = D3D11_BLEND_ONE;
+		BlendDesc.RenderTarget[i].DestBlend = D3D11_BLEND_ZERO;
+		BlendDesc.RenderTarget[i].BlendOp = D3D11_BLEND_OP_ADD;
+		BlendDesc.RenderTarget[i].SrcBlendAlpha = D3D11_BLEND_ONE;
+		BlendDesc.RenderTarget[i].DestBlendAlpha = D3D11_BLEND_ZERO;
+		BlendDesc.RenderTarget[i].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+		BlendDesc.RenderTarget[i].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_RED | D3D11_COLOR_WRITE_ENABLE_GREEN | D3D11_COLOR_WRITE_ENABLE_BLUE;
+	}
+
+	hr = m_pD3DRender->GetDevice()->CreateBlendState(&BlendDesc, &m_pBlendStateFirst);
+	if (FAILED(hr)) {
+		Log("CreateBlendState %p %s", hr, GetDxErrorStr(hr).c_str());
+		return false;
+	}
+
+	// BleandState for other layers than first.
 	BlendDesc.AlphaToCoverageEnable = FALSE;
 	BlendDesc.IndependentBlendEnable = FALSE;
 	for (int i = 0; i < 8; i++) {
@@ -327,7 +353,7 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 
 	// Set viewport
 	D3D11_VIEWPORT viewport;
-	viewport.Width = (float)m_renderWidth * 2;
+	viewport.Width = (float)m_renderWidth;
 	viewport.Height = (float)m_renderHeight;
 	viewport.MinDepth = 0.0f;
 	viewport.MaxDepth = 1.0f;
@@ -338,10 +364,12 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 	// Clear the back buffer
 	m_pD3DRender->GetContext()->ClearRenderTargetView(m_pRenderTargetView.Get(), DirectX::Colors::MidnightBlue);
 
-	// Clear the depth buffer to 1.0 (max depth)
-	m_pD3DRender->GetContext()->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
-
 	for (int i = 0; i < layerCount; i++) {
+		if (pTexture[i][0] == NULL || pTexture[i][1] == NULL) {
+			Log("Ignore NULL layer. layer=%d/%d", i, layerCount);
+			continue;
+		}
+
 		D3D11_TEXTURE2D_DESC srcDesc;
 		pTexture[i][0]->GetDesc(&srcDesc);
 
@@ -353,22 +381,33 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 		SRVDesc.Texture2D.MostDetailedMip = 0;
 		SRVDesc.Texture2D.MipLevels = 1;
 
-		HRESULT hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[i][0], &SRVDesc, m_pShaderResourceView[0].ReleaseAndGetAddressOf());
+		ComPtr<ID3D11ShaderResourceView> pShaderResourceView[2];
+
+		HRESULT hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[i][0], &SRVDesc, pShaderResourceView[0].ReleaseAndGetAddressOf());
 		if (FAILED(hr)) {
 			Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
 			return false;
 		}
-		hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[i][1], &SRVDesc, m_pShaderResourceView[1].ReleaseAndGetAddressOf());
+		hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[i][1], &SRVDesc, pShaderResourceView[1].ReleaseAndGetAddressOf());
 		if (FAILED(hr)) {
 			Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
 			return false;
 		}
+		
+		if (i == 0) {
+			m_pD3DRender->GetContext()->OMSetBlendState(m_pBlendStateFirst.Get(), NULL, 0xffffffff);
+		}
+		else {
+			m_pD3DRender->GetContext()->OMSetBlendState(m_pBlendState.Get(), NULL, 0xffffffff);
+		}
+		
+		// Clear the depth buffer to 1.0 (max depth)
+		// We need clear depth buffer to correctly render layers.
+		m_pD3DRender->GetContext()->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-
-		float blendFactor[4] = { D3D11_BLEND_ZERO, D3D11_BLEND_ZERO, D3D11_BLEND_ZERO, D3D11_BLEND_ZERO };
-		m_pD3DRender->GetContext()->OMSetBlendState(m_pBlendState.Get(), blendFactor, 0xffffffff);
-
-		// Update uv-coordinates
+		//
+		// Update uv-coordinates in vertex buffer according to bounds.
+		//
 
 		// Without bounds
 		/*SimpleVertex vertices[] =
@@ -411,30 +450,36 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 
 		m_pD3DRender->GetContext()->Unmap(m_pVertexBuffer.Get(), 0);
 
-
 		// Set the input layout
 		m_pD3DRender->GetContext()->IASetInputLayout(m_pVertexLayout.Get());
 
+		//
+		// Set buffers
+		//
 
-		// Set vertex buffer
 		UINT stride = sizeof(SimpleVertex);
 		UINT offset = 0;
 		m_pD3DRender->GetContext()->IASetVertexBuffers(0, 1, m_pVertexBuffer.GetAddressOf(), &stride, &offset);
 
-		// Set index buffer
 		m_pD3DRender->GetContext()->IASetIndexBuffer(m_pIndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-
-		// Set primitive topology
 		m_pD3DRender->GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		// Render the cube
+		//
+		// Set shaders
+		//
+
 		m_pD3DRender->GetContext()->VSSetShader(m_pVertexShader.Get(), nullptr, 0);
 		m_pD3DRender->GetContext()->PSSetShader(m_pPixelShader.Get(), nullptr, 0);
 
-		ID3D11ShaderResourceView *shaderResourceView[2] = { m_pShaderResourceView[0].Get(), m_pShaderResourceView[1].Get() };
+		ID3D11ShaderResourceView *shaderResourceView[2] = { pShaderResourceView[0].Get(), pShaderResourceView[1].Get() };
 		m_pD3DRender->GetContext()->PSSetShaderResources(0, 2, shaderResourceView);
 
 		m_pD3DRender->GetContext()->PSSetSamplers(0, 1, m_pSamplerLinear.GetAddressOf());
+		
+		//
+		// Draw
+		//
+
 		m_pD3DRender->GetContext()->DrawIndexed(VERTEX_INDEX_COUNT, 0, 0);
 	}
 

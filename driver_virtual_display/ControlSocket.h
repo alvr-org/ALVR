@@ -18,6 +18,8 @@ public:
 	void CloseClient();
 
 	void Shutdown();
+
+	void SendCommandResponse(const char *commandResponse);
 private:
 	std::string m_Host;
 	int m_Port;

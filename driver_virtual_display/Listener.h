@@ -85,11 +85,11 @@ public:
 #pragma pack(pop)
 
 	Listener(std::string host, int port, std::string control_host, int control_port, std::string SrtOptions
-		, uint64_t sendingTimeslotUs, uint64_t limitTimeslotPackets, std::function<void(sockaddr_in *)> callback, std::function<void()> poseCallback) : m_bExiting(false)
+		, uint64_t sendingTimeslotUs, uint64_t limitTimeslotPackets, std::function<void(std::string, std::string)> callback, std::function<void()> poseCallback) : m_bExiting(false)
 		//, m_Socket(host, port, SrtOptions) {
 		{
 		m_LastSeen = 0;
-		m_NewClientCallback = callback;
+		m_CommandCallback = callback;
 		m_PoseUpdatedCallback = poseCallback;
 		memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
 		InitializeCriticalSection(&m_CS);
@@ -173,30 +173,44 @@ public:
 			int port;
 			if (m_Socket->NewClient(host, port)) {
 				Log("New client: %s:%d", host.c_str(), port);
-				m_NewClientCallback(&m_Socket->GetClientAddr());
 			}
 
 			m_ControlSocket->Accept();
 			std::vector<std::string> commands;
 			if (m_ControlSocket->Recv(commands)) {
 				for (auto it = commands.begin(); it != commands.end(); ++it) {
-					int split = it->find(" ");
-					if (split != -1) {
-						std::string commandName = it->substr(0, split);
-						std::string args = it->substr(split + 1);
+					std::string commandName, args;
 
-						if (commandName == "EnableTestMode") {
-							m_Settings.enableTestMode = atoi(args.c_str());
-							SendChangeSettings();
-						}
-						else if (commandName == "Suspend") {
-							m_Settings.suspend = atoi(args.c_str());
-							SendChangeSettings();
-						}
-						else {
-							Log("Invalid control command: %s", commandName.c_str());
-						}
+					size_t split = it->find(" ");
+					if (split != std::string::npos) {
+						commandName = it->substr(0, split);
+						args = it->substr(split + 1);
 					}
+					else {
+						commandName = *it;
+						args = "";
+					}
+
+					Log("Control Command: %s %s", commandName.c_str(), args.c_str());
+
+					if (commandName == "EnableTestMode") {
+						m_Settings.enableTestMode = atoi(args.c_str());
+						SendChangeSettings();
+					}
+					else if (commandName == "Suspend") {
+						m_Settings.suspend = atoi(args.c_str());
+						SendChangeSettings();
+					}
+					else if (commandName == "Capture") {
+						m_CommandCallback(commandName, args);
+					}
+					else if (commandName == "EnableDriverTestMode") {
+						m_CommandCallback(commandName, args);
+					}
+					else {
+						Log("Invalid control command: %s", commandName.c_str());
+					}
+
 				}
 			}
 		}
@@ -206,6 +220,7 @@ public:
 		uint8_t packetBuffer[2000];
 
 		if (!m_Socket->IsClientValid()) {
+			Log("Skip sending packet because client is not connected. Packet Length=%d FrameIndex=%llu", len, frameIndex);
 			return;
 		}
 		Log("Sending %d bytes FrameIndex=%llu", len, frameIndex);
@@ -280,6 +295,10 @@ public:
 		return serverTime - m_TimeDiff;
 	}
 
+	void SendCommandResponse(const char *commandResponse) {
+		m_ControlSocket->SendCommandResponse(commandResponse);
+	}
+
 private:
 	bool m_bExiting;
 	bool m_UseUdp;
@@ -293,7 +312,7 @@ private:
 	uint32_t packetCounter = 0;
 
 	time_t m_LastSeen;
-	std::function<void(sockaddr_in *)> m_NewClientCallback;
+	std::function<void(std::string, std::string)> m_CommandCallback;
 	std::function<void()> m_PoseUpdatedCallback;
 	TrackingInfo m_TrackingInfo;
 

@@ -128,7 +128,7 @@ bool UdpSocket::Recv(char *buf, int *buflen) {
 					break;
 				}
 				else {
-					Log("sendto: CurrentTimeslotPackets=%llu FrameIndex=%llu", m_CurrentTimeslotPackets, buffer.frameIndex);
+					//Log("sendto: CurrentTimeslotPackets=%llu FrameIndex=%llu", m_CurrentTimeslotPackets, buffer.frameIndex);
 					int sendret = sendto(m_Socket, buffer.buf.get(), buffer.len, 0, (sockaddr *)&m_ClientAddr, sizeof(m_ClientAddr));
 					if (sendret < 0) {
 						Log("sendto error: %d %s", WSAGetLastError(), ErrorStr().c_str());

@@ -23,7 +23,7 @@ public:
 	FrameRender(int renderWidth, int renderHeight, bool debugFrameIndex, CD3DRender *pD3DRender);
 	virtual ~FrameRender();
 
-	bool Startup(ID3D11Texture2D *pTexture[]);
+	bool Startup();
 	bool RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, const std::string& debugText);
 	void RenderDebugText(const std::string& debugText);
 
@@ -45,10 +45,10 @@ private:
 	ComPtr<ID3D11SamplerState> m_pSamplerLinear;
 
 	ComPtr<ID3D11Texture2D> m_pDepthStencil;
-	ComPtr<ID3D11ShaderResourceView> m_pShaderResourceView[2];
 	ComPtr<ID3D11RenderTargetView> m_pRenderTargetView;
 	ComPtr<ID3D11DepthStencilView> m_pDepthStencilView;
 
+	ComPtr<ID3D11BlendState> m_pBlendStateFirst;
 	ComPtr<ID3D11BlendState> m_pBlendState;
 
 	std::unique_ptr<DirectX::SpriteFont> m_Font;

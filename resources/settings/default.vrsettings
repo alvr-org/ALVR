@@ -2,18 +2,15 @@
 	"driver_remote_glass": {
 		"serialNumber": "RG-001",
 		"modelNumber": "Remote Glass",
-		"additionalLatencyInSeconds": 0.008,
 		"displayWidth": 2048,
 		"displayHeight": 1024,
 		"displayRefreshRateNumerator": 60,
 		"displayRefreshRateDenominator": 1,
-		"adapterIndex": -1,
+		"adapterIndex": 0,
 		"enable" : true,
 		"windowX" : 0,
 		"windowY" : 0,
-		"windowWidth" : 2048,
-		"windowHeight" : 1024,
-		"renderWidth" : 1024,
+		"renderWidth" : 2048,
 		"renderHeight" : 1024,
         "IPD": 0.064,
 		"secondsFromVsyncToPhotons" : 0.005, // 5ms
@@ -26,9 +23,9 @@
 		"controlListenPort": 9944,
         "controlListenHost": "127.0.0.1",
 		"debugLog": true,
+		"debugCaptureOutput": true,
 		//"debugFrameIndex": true,
 		//"debugFrameOutput": true,
-		"debugCaptureOutput": true,
         "debugOutputDir": "C:\\src\\virtual_display",
 		"srtOptions": "TSBPDDELAY=1 RCVLATENCY=1"
 	}

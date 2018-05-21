@@ -21,11 +21,14 @@
 		"nvencOptions": "-codec h264 -preset ll_hq -rc cbr_ll_hq -bitrate 20M -gop 240 -maxbitrate 30M -fps 60",
 		"listenPort": 9944,
 		"listenHost": "0.0.0.0",
+        "sendingTimeslotUs": 1000,
+        "limitTimeslotPackets": 8,
 		"controlListenPort": 9944,
         "controlListenHost": "127.0.0.1",
+		"debugLog": true,
 		//"debugFrameIndex": true,
 		//"debugFrameOutput": true,
-		//"debugCaptureOutput": true,
+		"debugCaptureOutput": true,
         "debugOutputDir": "C:\\src\\virtual_display",
 		"srtOptions": "TSBPDDELAY=1 RCVLATENCY=1"
 	}

@@ -22,26 +22,6 @@ static inline bool operator!=(const GUID &guid1, const GUID &guid2) {
 }
 #endif
 
-static void Log(const char *pFormat, ...)
-{
-	va_list args;
-	va_start(args, pFormat);
-
-	char buffer[1024];
-	vsprintf_s(buffer, pFormat, args);
-	strcat_s(buffer, "\n");
-	//vr::VRDriverLog()->Log( buffer );
-
-	FILE *fp;
-	fopen_s(&fp, "C:\\src\\virtual_display\\driver.log", "a");
-	if (fp) {
-		fputs(buffer, fp);
-		fclose(fp);
-	}
-
-	va_end(args);
-}
-
 NvEncoder::NvEncoder(NV_ENC_DEVICE_TYPE eDeviceType, void *pDevice, uint32_t nWidth, uint32_t nHeight, NV_ENC_BUFFER_FORMAT eBufferFormat,
                             uint32_t nExtraOutputDelay, bool bMotionEstimationOnly) :
     m_pDevice(pDevice), 
@@ -103,7 +83,6 @@ void NvEncoder::LoadNvEncApi()
     uint32_t currentVersion = (NVENCAPI_MAJOR_VERSION << 4) | NVENCAPI_MINOR_VERSION;
     NVENC_API_CALL(NvEncodeAPIGetMaxSupportedVersion(&version));
 
-	Log("max supported nvenc version %d %x (currentVersion %d)", version, version, currentVersion);
     if (currentVersion > version)
     {
         NVENC_THROW_ERROR("Current Driver Version does not support this NvEncodeAPI version, please upgrade driver", NV_ENC_ERR_INVALID_VERSION);

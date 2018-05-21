@@ -84,7 +84,8 @@ public:
 	};
 #pragma pack(pop)
 
-	Listener(std::string host, int port, std::string control_host, int control_port, std::string SrtOptions, std::function<void(sockaddr_in *)> callback, std::function<void()> poseCallback) : m_bExiting(false)
+	Listener(std::string host, int port, std::string control_host, int control_port, std::string SrtOptions
+		, uint64_t sendingTimeslotUs, uint64_t limitTimeslotPackets, std::function<void(sockaddr_in *)> callback, std::function<void()> poseCallback) : m_bExiting(false)
 		//, m_Socket(host, port, SrtOptions) {
 		{
 		m_LastSeen = 0;
@@ -98,7 +99,7 @@ public:
 		m_Settings.suspend = 0;
 
 		m_Poller.reset(new Poller());
-		m_Socket.reset(new UdpSocket(host, port, m_Poller));
+		m_Socket.reset(new UdpSocket(host, port, m_Poller, sendingTimeslotUs, limitTimeslotPackets));
 		m_ControlSocket.reset(new ControlSocket(control_host, control_port, m_Poller));
 
 		m_UseUdp = true;
@@ -154,7 +155,7 @@ public:
 							TimeSync sendBuf = *timeSync;
 							sendBuf.mode = 1;
 							sendBuf.serverTime = Current;
-							m_Socket->Send((char *)&sendBuf, sizeof(sendBuf));
+							m_Socket->Send((char *)&sendBuf, sizeof(sendBuf), 0);
 						}
 						else if (timeSync->mode == 2) {
 							// Calclate RTT
@@ -207,7 +208,7 @@ public:
 		if (!m_Socket->IsClientValid()) {
 			return;
 		}
-		Log("Sending %d bytes", len);
+		Log("Sending %d bytes FrameIndex=%llu", len, frameIndex);
 
 		int chunks = (len + PACKET_SIZE - 1) / PACKET_SIZE;
 		for (int i = 0; i < chunks; i++) {
@@ -241,7 +242,7 @@ public:
 				memcpy(packetBuffer + pos, "\x00\x00\x00\x02", 4);
 				pos += 4;
 			}
-			int ret = m_Socket->Send((char *)packetBuffer, pos);
+			int ret = m_Socket->Send((char *)packetBuffer, pos, frameIndex);
 			
 		}
 	}
@@ -250,7 +251,7 @@ public:
 		if (!m_Socket->IsClientValid()) {
 			return;
 		}
-		m_Socket->Send((char *)&m_Settings, sizeof(m_Settings));
+		m_Socket->Send((char *)&m_Settings, sizeof(m_Settings), 0);
 	}
 
 	void Stop()

@@ -1,5 +1,6 @@
 #include "SrtSocket.h"
 #include "Logger.h"
+#include <sstream>
 
 SrtSocket::SrtSocket(std::string host, int port, std::string srtOptions)
 	: m_Host(host)

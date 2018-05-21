@@ -13,39 +13,31 @@ static const char *VERTEX_SHADER =
 "struct VS_INPUT\n"
 "{\n"
 "	float4 Pos : POSITION;\n"
-"	float2 Tex : TEXCOORD0;\n"
+"	float2 Tex : TEXCOORD;\n"
+"   uint    View : VIEW;\n"
 "};\n"
 "\n"
 "struct PS_INPUT\n"
 "{\n"
 "	float4 Pos : SV_POSITION;\n"
-"	float2 Tex : TEXCOORD0;\n"
+"	float2 Tex : TEXCOORD;\n"
+"   uint    View : VIEW;\n"
 "};\n"
 "PS_INPUT VS(VS_INPUT input)\n"
 "{\n"
 "	PS_INPUT output = (PS_INPUT)0;\n"
 "	output.Pos = input.Pos;\n"
 "	output.Tex = input.Tex;\n"
+"	output.View = input.View;\n"
 "\n"
 "	return output;\n"
 "}\n"
 "float4 PS(PS_INPUT input) : SV_Target\n"
 "{\n"
-//"float offset = (1448.0 - 1024.0) / 2 / 1448.0;\n"
-"float offset = 0.0;\n"
-"float shrink_to = 1.0 - offset * 2;\n"
-"float x = input.Tex.x;\n"
-"float y = input.Tex.y;\n"
-"	if (input.Tex.x < 0.5){\n"
-"		x = x * 2;\n"
-"		x = x * shrink_to + offset;\n"
-"		y = y * shrink_to + offset;\n"
-"		return txLeft.Sample(samLinear, float2(1.0 - x, 1.0 - y)); // We need this hack, because We cloud not resolve upside down issue by changing texcoord in buffer.\n"
-"	}else{\n"
-"		x = x * 2 - 1.0;\n"
-"		x = x * shrink_to + offset;\n"
-"		y = y * shrink_to + offset;\n"
-"		return txLeft.Sample(samLinear, float2(1.0 - x, 1.0 - y)); // We need this hack, because We cloud not resolve upside down issue by changing texcoord in buffer.\n"
+"if (input.View == (uint)0){ // Left View \n"
+"		return txLeft.Sample(samLinear, input.Tex);\n"
+"	}else{ // Right View \n"
+"		return txRight.Sample(samLinear, input.Tex);\n"
 "	}\n"
 "}\n";
 static const char *PIXEL_SHADER = VERTEX_SHADER;
@@ -140,6 +132,9 @@ bool FrameRender::Startup(ID3D11Texture2D * pTexture[])
 	viewport.TopLeftY = 0;
 	m_pD3DRender->GetContext()->RSSetViewports(1, &viewport);
 
+	//
+	// Compile shaders
+	//
 
 	ID3DBlob *vshader, *pshader, *error;
 
@@ -175,11 +170,16 @@ bool FrameRender::Startup(ID3D11Texture2D * pTexture[])
 		return false;
 	}
 
+	//
+	// Create input layout
+	//
+
 	// Define the input layout
 	D3D11_INPUT_ELEMENT_DESC layout[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	{ "VIEW", 0, DXGI_FORMAT_R32_UINT, 0, 20, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 	UINT numElements = ARRAYSIZE(layout);
 
@@ -196,30 +196,21 @@ bool FrameRender::Startup(ID3D11Texture2D * pTexture[])
 	// Set the input layout
 	m_pD3DRender->GetContext()->IASetInputLayout(m_pVertexLayout.Get());
 
-	// src textures has 1448x1448 pixels but dest texture(remote display) has 1024x1024 pixels.
-	// Apply offset to crop center of src textures.
-	float tex_offset = (1448 - 1024) / 2 / 1448.0;
-	tex_offset = 0;
-
+	//
 	// Create vertex buffer
-	SimpleVertex vertices[] =
-	{
-		{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(1.0f - tex_offset, 0.0f + tex_offset) },
-	{ DirectX::XMFLOAT3(1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(0.0f + tex_offset, 1.0f - tex_offset) },
-	{ DirectX::XMFLOAT3(1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(0.0f + tex_offset, 0.0f + tex_offset) },
-	{ DirectX::XMFLOAT3(-1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(1.0f - tex_offset, 1.0f - tex_offset) },
-	};
+	//
 
+	// Src texture has various geometry and we should use the part of the textures.
+	// That part are defined by uv-coordinates of "bounds" passed to IVRDriverDirectModeComponent::SubmitLayer.
+	// So we should update uv-coordinates for every frames and layers.
 	D3D11_BUFFER_DESC bd;
 	ZeroMemory(&bd, sizeof(bd));
-	bd.Usage = D3D11_USAGE_DEFAULT;
-	bd.ByteWidth = sizeof(SimpleVertex) * 4;
+	bd.Usage = D3D11_USAGE_DYNAMIC;
+	bd.ByteWidth = sizeof(SimpleVertex) * 8;
 	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bd.CPUAccessFlags = 0;
-	D3D11_SUBRESOURCE_DATA InitData;
-	ZeroMemory(&InitData, sizeof(InitData));
-	InitData.pSysMem = vertices;
-	hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, &InitData, &m_pVertexBuffer);
+	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, NULL, &m_pVertexBuffer);
 	if (FAILED(hr)) {
 		Log("CreateBuffer 1 %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
@@ -229,20 +220,29 @@ bool FrameRender::Startup(ID3D11Texture2D * pTexture[])
 	UINT stride = sizeof(SimpleVertex);
 	UINT offset = 0;
 	m_pD3DRender->GetContext()->IASetVertexBuffers(0, 1, m_pVertexBuffer.GetAddressOf(), &stride, &offset);
-
+	
+	//
 	// Create index buffer
-	// Create vertex buffer
+	//
+
 	WORD indices[] =
 	{
 		0,1,2,
-		0,3,1
+		0,3,1,
+
+		4,5,6,
+		4,7,5
 	};
 
 	bd.Usage = D3D11_USAGE_DEFAULT;
-	bd.ByteWidth = sizeof(WORD) * 6;
+	bd.ByteWidth = sizeof(indices);
 	bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	bd.CPUAccessFlags = 0;
+
+	D3D11_SUBRESOURCE_DATA InitData;
+	ZeroMemory(&InitData, sizeof(InitData));
 	InitData.pSysMem = indices;
+
 	hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, &InitData, &m_pIndexBuffer);
 	if (FAILED(hr)) {
 		Log("CreateBuffer 2 %p %s", hr, GetDxErrorStr(hr).c_str());
@@ -267,14 +267,52 @@ bool FrameRender::Startup(ID3D11Texture2D * pTexture[])
 	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	hr = m_pD3DRender->GetDevice()->CreateSamplerState(&sampDesc, &m_pSamplerLinear);
 	if (FAILED(hr)) {
-		Log("CreateSamplerState 5 %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log("CreateSamplerState %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
 
-	HRSRC fontResource = FindResource(g_hInstance, MAKEINTRESOURCE(IDR_FONT), RT_RCDATA);
+	//
+	// Load spritefont for debug text output
+	//
 
-	m_Font = std::make_unique<DirectX::SpriteFont>(m_pD3DRender->GetDevice(), L"C:\\src\\virtual_display\\driver_virtual_display\\resources\\inconsolata.spritefont");
-	m_SpriteBatch = std::make_unique<DirectX::SpriteBatch>(m_pD3DRender->GetContext());
+	HRSRC fontResource = FindResource(g_hInstance, MAKEINTRESOURCE(IDR_FONT), RT_RCDATA);
+	if (fontResource != NULL) {
+		HGLOBAL hResData = LoadResource(g_hInstance, fontResource);
+		void *fontData = LockResource(hResData);
+		int fontDataSize = SizeofResource(g_hInstance, fontResource);
+
+		m_Font = std::make_unique<DirectX::SpriteFont>(m_pD3DRender->GetDevice(), (uint8_t *)fontData, fontDataSize);
+		m_SpriteBatch = std::make_unique<DirectX::SpriteBatch>(m_pD3DRender->GetContext());
+	}
+	else {
+		Log("FindResource failed %d", GetLastError());
+	}
+
+	//
+	// Create alpha blend state
+	//
+
+	// We need alpha blending to support layer.
+	D3D11_BLEND_DESC BlendDesc;
+	ZeroMemory(&BlendDesc, sizeof(BlendDesc));
+	BlendDesc.AlphaToCoverageEnable = FALSE;
+	BlendDesc.IndependentBlendEnable = FALSE;
+	for (int i = 0; i < 8; i++) {
+		BlendDesc.RenderTarget[i].BlendEnable = TRUE;
+		BlendDesc.RenderTarget[i].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+		BlendDesc.RenderTarget[i].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+		BlendDesc.RenderTarget[i].BlendOp = D3D11_BLEND_OP_ADD;
+		BlendDesc.RenderTarget[i].SrcBlendAlpha = D3D11_BLEND_ONE;
+		BlendDesc.RenderTarget[i].DestBlendAlpha = D3D11_BLEND_ZERO;
+		BlendDesc.RenderTarget[i].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+		BlendDesc.RenderTarget[i].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	}
+
+	hr = m_pD3DRender->GetDevice()->CreateBlendState(&BlendDesc, &m_pBlendState);
+	if (FAILED(hr)) {
+		Log("CreateBlendState %p %s", hr, GetDxErrorStr(hr).c_str());
+		return false;
+	}
 
 	Log("Staging Texture created");
 
@@ -282,45 +320,97 @@ bool FrameRender::Startup(ID3D11Texture2D * pTexture[])
 }
 
 
-bool FrameRender::RenderFrame(ID3D11Texture2D * pTexture[], int textureNum, const std::string& debugText)
+bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, const std::string& debugText)
 {
+	// Set render target
+	m_pD3DRender->GetContext()->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get());
 
-	D3D11_TEXTURE2D_DESC srcDesc;
-	pTexture[0]->GetDesc(&srcDesc);
+	// Set viewport
+	D3D11_VIEWPORT viewport;
+	viewport.Width = (float)m_renderWidth * 2;
+	viewport.Height = (float)m_renderHeight;
+	viewport.MinDepth = 0.0f;
+	viewport.MaxDepth = 1.0f;
+	viewport.TopLeftX = 0;
+	viewport.TopLeftY = 0;
+	m_pD3DRender->GetContext()->RSSetViewports(1, &viewport);
 
-	Log("RenderFrame %dx%d %d", srcDesc.Width, srcDesc.Height, srcDesc.Format);
-	
-	if (textureNum == 1) {
-		m_pD3DRender->GetContext()->CopyResource(m_pStagingTexture.Get(), pTexture[0]);
-	}
-	else {
+	// Clear the back buffer
+	m_pD3DRender->GetContext()->ClearRenderTargetView(m_pRenderTargetView.Get(), DirectX::Colors::MidnightBlue);
+
+	// Clear the depth buffer to 1.0 (max depth)
+	m_pD3DRender->GetContext()->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+	for (int i = 0; i < layerCount; i++) {
+		D3D11_TEXTURE2D_DESC srcDesc;
+		pTexture[i][0]->GetDesc(&srcDesc);
+
+		Log("RenderFrame layer=%d/%d %dx%d %d", i, layerCount, srcDesc.Width, srcDesc.Height, srcDesc.Format);
+
 		D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
 		SRVDesc.Format = srcDesc.Format;
 		SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		SRVDesc.Texture2D.MostDetailedMip = 0;
 		SRVDesc.Texture2D.MipLevels = 1;
 
-		HRESULT hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[0], &SRVDesc, m_pShaderResourceView[0].ReleaseAndGetAddressOf());
+		HRESULT hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[i][0], &SRVDesc, m_pShaderResourceView[0].ReleaseAndGetAddressOf());
 		if (FAILED(hr)) {
 			Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
 			return false;
 		}
-		hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[1], &SRVDesc, m_pShaderResourceView[1].ReleaseAndGetAddressOf());
+		hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[i][1], &SRVDesc, m_pShaderResourceView[1].ReleaseAndGetAddressOf());
 		if (FAILED(hr)) {
 			Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
 			return false;
 		}
 
-		m_pD3DRender->GetContext()->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get());
 
-		D3D11_VIEWPORT viewport;
-		viewport.Width = (float)m_renderWidth * 2;
-		viewport.Height = (float)m_renderHeight;
-		viewport.MinDepth = 0.0f;
-		viewport.MaxDepth = 1.0f;
-		viewport.TopLeftX = 0;
-		viewport.TopLeftY = 0;
-		m_pD3DRender->GetContext()->RSSetViewports(1, &viewport);
+		float blendFactor[4] = { D3D11_BLEND_ZERO, D3D11_BLEND_ZERO, D3D11_BLEND_ZERO, D3D11_BLEND_ZERO };
+		m_pD3DRender->GetContext()->OMSetBlendState(m_pBlendState.Get(), blendFactor, 0xffffffff);
+
+		// Update uv-coordinates
+
+		// Without bounds
+		/*SimpleVertex vertices[] =
+		{
+			// Left View
+			{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(0.0f, 1.0f), 0 },
+		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(1.0f, 0.0f), 0 },
+		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(1.0f, 1.0f), 0 },
+		{ DirectX::XMFLOAT3(-1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(0.0f, 0.0f), 0 },
+		// Right View
+		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(0.0f, 1.0f), 1 },
+		{ DirectX::XMFLOAT3(1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(1.0f, 0.0f), 1 },
+		{ DirectX::XMFLOAT3(1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(1.0f, 1.0f), 1 },
+		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(0.0f, 0.0f), 1 },
+		};*/
+		SimpleVertex vertices[] =
+		{
+			// Left View
+			{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][0].uMin, bounds[i][0].vMax), 0 },
+		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][0].uMax, bounds[i][0].vMin), 0 },
+		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][0].uMax, bounds[i][0].vMax), 0 },
+		{ DirectX::XMFLOAT3(-1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][0].uMin, bounds[i][0].vMin), 0 },
+		// Right View
+		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][1].uMin, bounds[i][1].vMax), 1 },
+		{ DirectX::XMFLOAT3(1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][1].uMax, bounds[i][1].vMin), 1 },
+		{ DirectX::XMFLOAT3(1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][1].uMax, bounds[i][1].vMax), 1 },
+		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][1].uMin, bounds[i][1].vMin), 1 },
+		};
+
+		// TODO: Which is better? UpdateSubresource or Map
+		//m_pD3DRender->GetContext()->UpdateSubresource(m_pVertexBuffer.Get(), 0, nullptr, &vertices, 0, 0);
+
+		D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
+		hr = m_pD3DRender->GetContext()->Map(m_pVertexBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+		if (FAILED(hr)) {
+			Log("Map %p %s", hr, GetDxErrorStr(hr).c_str());
+			return false;
+		}
+		memcpy(mapped.pData, vertices, sizeof(vertices));
+
+		m_pD3DRender->GetContext()->Unmap(m_pVertexBuffer.Get(), 0);
+
 
 		// Set the input layout
 		m_pD3DRender->GetContext()->IASetInputLayout(m_pVertexLayout.Get());
@@ -337,29 +427,22 @@ bool FrameRender::RenderFrame(ID3D11Texture2D * pTexture[], int textureNum, cons
 		// Set primitive topology
 		m_pD3DRender->GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		// Clear the back buffer
-		m_pD3DRender->GetContext()->ClearRenderTargetView(m_pRenderTargetView.Get(), DirectX::Colors::MidnightBlue);
-
-		// Clear the depth buffer to 1.0 (max depth)
-		m_pD3DRender->GetContext()->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
-
 		// Render the cube
 		m_pD3DRender->GetContext()->VSSetShader(m_pVertexShader.Get(), nullptr, 0);
 		m_pD3DRender->GetContext()->PSSetShader(m_pPixelShader.Get(), nullptr, 0);
 
 		ID3D11ShaderResourceView *shaderResourceView[2] = { m_pShaderResourceView[0].Get(), m_pShaderResourceView[1].Get() };
 		m_pD3DRender->GetContext()->PSSetShaderResources(0, 2, shaderResourceView);
-		//m_pD3DRender->GetContext()->PSSetShaderResources(0, 1, shaderResourceView);
 
 		m_pD3DRender->GetContext()->PSSetSamplers(0, 1, m_pSamplerLinear.GetAddressOf());
-		m_pD3DRender->GetContext()->DrawIndexed(6, 0, 0);
-
-		RenderDebugText(debugText);
-
-		m_pD3DRender->GetContext()->Flush();
+		m_pD3DRender->GetContext()->DrawIndexed(VERTEX_INDEX_COUNT, 0, 0);
 	}
 
-	return false;
+	RenderDebugText(debugText);
+
+	m_pD3DRender->GetContext()->Flush();
+
+	return true;
 }
 
 

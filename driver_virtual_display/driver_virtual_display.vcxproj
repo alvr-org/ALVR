@@ -153,6 +153,7 @@
     <ClCompile Include="ControlSocket.cpp" />
     <ClCompile Include="driver_virtual_display.cpp" />
     <ClCompile Include="FrameRender.cpp" />
+    <ClCompile Include="Logger.cpp" />
     <ClCompile Include="NvEncoder.cpp" />
     <ClCompile Include="NvEncoderD3D11.cpp" />
     <ClCompile Include="Poller.cpp" />

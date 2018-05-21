@@ -134,8 +134,6 @@ namespace
 	static const char * const k_pch_Settings_Section = "driver_remote_glass";
 	static const char * const k_pch_Settings_SerialNumber_String = "serialNumber";
 	static const char * const k_pch_Settings_ModelNumber_String = "modelNumber";
-	static const char * const k_pch_Settings_WindowX_Int32 = "windowX";
-	static const char * const k_pch_Settings_WindowY_Int32 = "windowY";
 	static const char * const k_pch_Settings_WindowWidth_Int32 = "windowWidth";
 	static const char * const k_pch_Settings_WindowHeight_Int32 = "windowHeight";
 	static const char * const k_pch_Settings_RenderWidth_Int32 = "renderWidth";
@@ -144,6 +142,7 @@ namespace
 	static const char * const k_pch_Settings_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
 	static const char * const k_pch_Settings_DisplayFrequency_Float = "displayFrequency";
 	static const char * const k_pch_Settings_EncoderOptions_String = "nvencOptions";
+	static const char * const k_pch_Settings_DebugLog_Bool = "debugLog";
 	static const char * const k_pch_Settings_DebugTimestamp_Bool = "debugTimestamp";
 	static const char * const k_pch_Settings_DebugFrameIndex_Bool = "debugFrameIndex";
 	static const char * const k_pch_Settings_DebugFrameOutput_Bool = "debugFrameOutput";
@@ -162,6 +161,8 @@ namespace
 	static const char * const k_pch_Settings_AdapterIndex_Int32 = "adapterIndex";
 
 	static const char * const k_pch_Settings_SrtOptions_String = "srtOptions";
+	static const char * const k_pch_Settings_SendingTimeslotUs_Int32 = "sendingTimeslotUs";
+	static const char * const k_pch_Settings_LimitTimeslotPackets_Int32 = "limitTimeslotPackets";
 
 	//-----------------------------------------------------------------------------
 
@@ -283,32 +284,31 @@ namespace
 
 		bool Initialize(
 			std::string encoderOptions, Listener *listener,
-			uint32_t nWindowX, uint32_t nWindowY, uint32_t nWindowWidth, uint32_t nWindowHeight,
+			uint32_t nWidth, uint32_t nHeight,
 			uint32_t nRefreshRateNumerator, uint32_t nRefreshRateDenominator)
 		{
-			int nWidth = nWindowWidth;
-			int nHeight = nWindowHeight;
 			NvEncoderInitParam EncodeCLIOptions(encoderOptions.c_str());
-			std::string outputFile = g_DebugOutputDir + "\\capture.h264";
 
-			if (nWindowWidth == 0 || nWindowHeight == 0 ||
+			if (nWidth == 0 || nHeight == 0 ||
 				nRefreshRateNumerator == 0 || nRefreshRateDenominator == 0)
 			{
 				Log("RemoteDevice: Invalid parameters. w=%d h=%d refresh=%d/%d",
-					nWindowWidth, nWindowHeight, nRefreshRateNumerator, nRefreshRateDenominator);
+					nWidth, nHeight, nRefreshRateNumerator, nRefreshRateDenominator);
 				return false;
 			}
 
 			m_flFrameIntervalInSeconds = float(nRefreshRateDenominator) / nRefreshRateNumerator;
 
+			m_pD3DRender->GetDevice()->CreateDeferredContext(0, &m_DeferredContext);
+			
 			if (m_bForceNv12)
 			{
-				pConverter.reset(new RGBToNV12ConverterD3D11(m_pD3DRender->GetDevice(), m_pD3DRender->GetContext(), nWidth, nHeight));
+				pConverter.reset(new RGBToNV12ConverterD3D11(m_pD3DRender->GetDevice(), m_DeferredContext.Get(), nWidth, nHeight));
 			}
 
 			/// Initialize Encoder ///
 
-			Log("CNvEncoder Initialize %dx%d %dx%d %p", nWindowX, nWindowY, nWindowWidth, nWindowHeight, m_pD3DRender->GetDevice());
+			Log("CNvEncoder Initialize %dx%d %p", nWidth, nHeight, m_pD3DRender->GetDevice());
 
 			NV_ENC_BUFFER_FORMAT format = m_bForceNv12 ? NV_ENC_BUFFER_FORMAT_NV12 : NV_ENC_BUFFER_FORMAT_ARGB;
 			format = NV_ENC_BUFFER_FORMAT_ABGR;
@@ -330,7 +330,8 @@ namespace
 
 			/// Initialize debug video output ///
 
-			if (outputFile != "") {
+			if (g_DebugOutputDir != "" && m_DebugCaptureOutput) {
+				std::string outputFile = g_DebugOutputDir + "\\capture.h264";
 				fpOut = std::ofstream(outputFile, std::ios::out | std::ios::binary);
 				if (!fpOut)
 				{
@@ -372,14 +373,12 @@ namespace
 
 		void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime)
 		{
-			uint32_t nWidth;
-			uint32_t nHeight;
 			std::vector<std::vector<uint8_t>> vPacket;
 			D3D11_TEXTURE2D_DESC desc;
 
 			pTexture->GetDesc(&desc);
 
-			Log("[VDispDvr] Transmit(begin)");
+			Log("[VDispDvr] Transmit(begin) FrameIndex=%llu", frameIndex);
 
 			const NvEncInputFrame* encoderInputFrame = enc->GetNextInputFrame();
 
@@ -397,17 +396,21 @@ namespace
 				ID3D11Texture2D *pTexBgra = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
 				Log("CopyResource start");
 				m_pD3DRender->GetContext()->CopyResource(pTexBgra, pTexture);
+				//m_DeferredContext->CopyResource(pTexBgra, pTexture);
 			}
 
+			Log("EncodeFrame start");
 			enc->EncodeFrame(vPacket);
 
-			Log("Tracking info delay: %lld us", GetTimestampUs() - m_Listener->clientToServerTime(clientTime));
-			Log("Encoding delay: %lld us", GetTimestampUs() - presentationTime);
+			Log("Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
+			Log("Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
 
 			m_nFrame += (int)vPacket.size();
 			for (std::vector<uint8_t> &packet : vPacket)
 			{
-				fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
+				if (fpOut) {
+					fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
+				}
 				Log("Sending packet %d", (int)packet.size());
 				if (m_Listener) {
 					m_Listener->Send(packet.data(), (int)packet.size(), presentationTime, frameIndex);
@@ -424,7 +427,7 @@ namespace
 				data->m_nVsyncCounter++;
 			}
 
-			Log("[VDispDvr] Transmit(end) (frame %d %d)", vPacket.size(), m_nFrame);
+			Log("[VDispDvr] Transmit(end) (frame %d %d) FrameIndex=%llu", vPacket.size(), m_nFrame, frameIndex);
 		}
 
 		void GetTimingInfo(double *pflLastVsyncTimeInSeconds, uint32_t *pnVsyncCounter)
@@ -449,6 +452,8 @@ namespace
 		bool m_DebugTimestamp;
 		bool m_DebugFrameOutput;
 		bool m_DebugCaptureOutput;
+
+		ComPtr<ID3D11DeviceContext> m_DeferredContext;
 	};
 
 	//----------------------------------------------------------------------------
@@ -473,17 +478,17 @@ namespace
 		{
 		}
 
-		bool CopyToStaging( ID3D11Texture2D *pTexture[], int textureNum, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime, const std::string& debugText)
+		bool CopyToStaging( ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime, const std::string& debugText)
 		{
 			m_presentationTime = presentationTime;
 			m_frameIndex = frameIndex;
 			m_clientTime = clientTime;
-			m_FrameRender->Startup(pTexture);
+			m_FrameRender->Startup(pTexture[0]);
 
 			char buf[200];
 			snprintf(buf, sizeof(buf), "\nindex2: %llu", m_frameIndex2);
 
-			m_FrameRender->RenderFrame(pTexture, textureNum, debugText + buf);
+			m_FrameRender->RenderFrame(pTexture, bounds, layerCount, debugText + buf);
 			return true;
 		}
 
@@ -555,24 +560,41 @@ public:
 
 	void Run()override {
 		while (!m_bExit) {
-			uint64_t prev = GetTimestampUs();
-			Log("Generate VSync Event");
-			vr::VRServerDriverHost()->VsyncEvent(0);
-			Sleep(((prev + 16666) - GetTimestampUs()) / 1000);
+			uint64_t current = GetTimestampUs();
+			m_PreviousVsync = current;
+
+			if (current - m_InsertedVsync < 16666) {
+				int sleepTime = (int)((m_InsertedVsync + 16666) - current) / 1000;
+				Log("Skip VSync Event. Sleep %llu ms", sleepTime);
+				Sleep(sleepTime);
+			}
+			else {
+				Log("Generate VSync Event");
+				vr::VRServerDriverHost()->VsyncEvent(0);
+				Sleep(((m_PreviousVsync + 16666) - GetTimestampUs()) / 1000);
+			}
 		}
 	}
 
 	void Shutdown() {
 		m_bExit = true;
 	}
+
+	void InsertVsync() {
+		Log("Insert VSync Event");
+		vr::VRServerDriverHost()->VsyncEvent(0);
+		m_InsertedVsync = GetTimestampUs();
+	}
 private:
 	bool m_bExit;
+	uint64_t m_PreviousVsync;
+	uint64_t m_InsertedVsync;
 };
 
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-class CRemoteHmd : public vr::ITrackedDeviceServerDriver, public vr::IVRDisplayComponent, public vr::IVRVirtualDisplay, public vr::IVRDriverDirectModeComponent
+class CRemoteHmd : public vr::ITrackedDeviceServerDriver, public vr::IVRDisplayComponent, public vr::IVRDriverDirectModeComponent
 {
 public:
 	CRemoteHmd()
@@ -588,6 +610,8 @@ public:
 		, m_Listener(NULL)
 		, m_VSyncThread(NULL)
 		, m_poseMutex(NULL)
+		, m_nWindowX(0)
+		, m_nWindowY(0)
 	{
 		std::string host, control_host;
 		int port, control_port;
@@ -604,8 +628,6 @@ public:
 		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ModelNumber_String, buf, sizeof(buf));
 		m_sModelNumber = buf;
 
-		m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_WindowX_Int32);
-		m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_WindowY_Int32);
 		m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_WindowWidth_Int32);
 		m_nWindowHeight = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_WindowHeight_Int32);
 		m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_RenderWidth_Int32);
@@ -626,15 +648,24 @@ public:
 		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ListenHost_String, buf, sizeof(buf));
 		host = buf;
 		port = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ListenPort_Int32);
+
+
+		uint64_t sendingTimeslotUs = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_SendingTimeslotUs_Int32);
+		uint64_t limitTimeslotPackets = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_LimitTimeslotPackets_Int32);
 		
 		vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ControlListenHost_String, buf, sizeof(buf));
 		control_host = buf;
 		control_port = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControlListenPort_Int32);
 
+		bool DebugLog = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugLog_Bool);
 		bool DebugTimestamp = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugTimestamp_Bool);
 		bool DebugFrameIndex = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugFrameIndex_Bool);
 		bool DebugFrameOutput = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugFrameOutput_Bool);
 		bool DebugCaptureOutput = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugCaptureOutput_Bool);
+
+		if (DebugLog) {
+			OpenLog((g_DebugOutputDir + "\\driver.log").c_str());
+		}
 		
 		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
 
@@ -742,14 +773,14 @@ public:
 
 		std::function<void(sockaddr_in *)> Callback = [&](sockaddr_in *a) { ListenerCallback(a); };
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
-		m_Listener = new Listener(host, port, control_host, control_port, SrtOptions, Callback, poseCallback);
+		m_Listener = new Listener(host, port, control_host, control_port, SrtOptions, sendingTimeslotUs, limitTimeslotPackets, Callback, poseCallback);
 		m_Listener->Start();
 
 		// Spawn our separate process to manage headset presentation.
 		m_pRemoteDevice = new CNvEncoder(m_pD3DRender, DebugTimestamp, DebugFrameOutput, DebugCaptureOutput);
 		if (!m_pRemoteDevice->Initialize(
 			m_EncoderOptions, m_Listener,
-			nDisplayX, nDisplayY, nDisplayWidth, nDisplayHeight,
+			nDisplayWidth, nDisplayHeight,
 			nDisplayRefreshRateNumerator, nDisplayRefreshRateDenominator))
 		{
 			return;
@@ -889,10 +920,6 @@ public:
 		{
 			return (vr::IVRDisplayComponent*)this;
 		}
-		if (!_stricmp(pchComponentNameAndVersion, vr::IVRVirtualDisplay_Version))
-		{
-			//return static_cast< vr::IVRVirtualDisplay * >(this);
-		}
 		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDriverDirectModeComponent_Version))
 		{
 			return static_cast< vr::IVRDriverDirectModeComponent * >(this);
@@ -1007,7 +1034,7 @@ public:
 			m_Listener->GetTrackingInfo(info);
 			uint64_t trackingDelay = GetTimestampUs() - m_Listener->clientToServerTime(info.clientTime);
 
-			Log("Tracking elapsed:%lld us %lld quot:%f,%f,%f,%f\nposition:%f,%f,%f\nView[0]:\n%sProj[0]:\n%sView[1]:\n%sProj[1]:\n%s",
+			Log("Tracking elapsed:%lld us FrameIndex=%lld quot:%f,%f,%f,%f\nposition:%f,%f,%f\nView[0]:\n%sProj[0]:\n%sView[1]:\n%sProj[1]:\n%s",
 				trackingDelay,
 				info.FrameIndex,
 				info.HeadPose_Pose_Orientation.x,
@@ -1120,166 +1147,6 @@ public:
 		return m_pEncoder != NULL;
 	}
 
-
-	// IVRVirtualDisplay
-
-	virtual void Present2(vr::SharedTextureHandle_t backbufferTextureHandle) 
-	{
-		Log("Present %p", backbufferTextureHandle);
-		// Open and cache our shared textures to avoid re-opening every frame.
-		ID3D11Texture2D *pTexture = m_pD3DRender->GetSharedTexture((HANDLE)backbufferTextureHandle);
-		if (pTexture == NULL)
-		{
-			Log("[VDispDvr] Texture is NULL!");
-		}
-		else
-		{
-			Log("[VDispDvr] Waiting for previous encode to finish...");
-
-			// Wait for the encoder to be ready.  This is important because the encoder thread
-			// blocks on transmit which uses our shared d3d context (which is not thread safe).
-			m_pEncoder->WaitForEncode();
-
-			Log("[VDispDvr] Done");
-
-			// Access to shared texture must be wrapped in AcquireSync/ReleaseSync
-			// to ensure the compositor has finished rendering to it before it gets used.
-			// This enforces scheduling of work on the gpu between processes.
-			IDXGIKeyedMutex *pKeyedMutex = NULL;
-			if (SUCCEEDED(pTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void **)&pKeyedMutex)))
-			{
-				if (pKeyedMutex->AcquireSync(0, 10) != S_OK)
-				{
-					pKeyedMutex->Release();
-					Log("[VDispDvr] ACQUIRESYNC FAILED!!!");
-					return;
-				}
-			}
-
-			//Log("[VDispDvr] AcquiredSync");
-
-			if (m_pFlushTexture == NULL)
-			{
-				D3D11_TEXTURE2D_DESC srcDesc;
-				pTexture->GetDesc(&srcDesc);
-
-				// Create a second small texture for copying and reading a single pixel from
-				// in order to block on the cpu until rendering is finished.
-				D3D11_TEXTURE2D_DESC flushTextureDesc;
-				ZeroMemory(&flushTextureDesc, sizeof(flushTextureDesc));
-				flushTextureDesc.Width = 32;
-				flushTextureDesc.Height = 32;
-				flushTextureDesc.MipLevels = 1;
-				flushTextureDesc.ArraySize = 1;
-				flushTextureDesc.Format = srcDesc.Format;
-				flushTextureDesc.SampleDesc.Count = 1;
-				flushTextureDesc.Usage = D3D11_USAGE_STAGING;
-				flushTextureDesc.BindFlags = 0;
-				flushTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-
-				if (FAILED(m_pD3DRender->GetDevice()->CreateTexture2D(&flushTextureDesc, NULL, &m_pFlushTexture)))
-				{
-					Log("Failed to create flush texture!");
-					return;
-				}
-			}
-
-			uint64_t presentationTime = GetTimestampUs();
-
-			// Copy a single pixel so we can block until rendering is finished in WaitForPresent.
-			D3D11_BOX box = { 0, 0, 0, 1, 1, 1 };
-			m_pD3DRender->GetContext()->CopySubresourceRegion(m_pFlushTexture, 0, 0, 0, 0, pTexture, 0, &box);
-
-			//Log("[VDispDvr] Flush-Begin");
-
-			// This can go away, but is useful to see it as a separate packet on the gpu in traces.
-			m_pD3DRender->GetContext()->Flush();
-
-			//Log("[VDispDvr] Flush-End");
-
-			// Copy entire texture to staging so we can read the pixels to send to remote device.
-			m_pEncoder->CopyToStaging(&pTexture, 1, presentationTime, m_LastReferencedFrameIndex, m_LastReferencedClientTime, std::string(""));
-
-			//Log("[VDispDvr] Flush-Staging(begin)");
-
-			m_pD3DRender->GetContext()->Flush();
-
-			//Log("[VDispDvr] Flush-Staging(end)");
-
-			if (pKeyedMutex)
-			{
-				pKeyedMutex->ReleaseSync(0);
-				pKeyedMutex->Release();
-			}
-
-			//Log("[VDispDvr] ReleasedSync");
-		}
-	}
-
-	virtual void WaitForPresent() override
-	{
-		Log("[VDispDvr] WaitForPresent(begin)");
-
-		// First wait for rendering to finish on the gpu.
-		if (m_pFlushTexture)
-		{
-			D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
-			if (SUCCEEDED(m_pD3DRender->GetContext()->Map(m_pFlushTexture, 0, D3D11_MAP_READ, 0, &mapped)))
-			{
-				Log("[VDispDvr] Mapped FlushTexture");
-
-				m_pD3DRender->GetContext()->Unmap(m_pFlushTexture, 0);
-			}
-		}
-
-		Log("[VDispDvr] RenderingFinished");
-
-		// Now that we know rendering is done, we can fire off our thread that reads the
-		// backbuffer into system memory.  We also pass in the earliest time that this frame
-		// should get presented.  This is the real vsync that starts our frame.
-		m_pEncoder->NewFrameReady(m_flLastVsyncTimeInSeconds + m_flAdditionalLatencyInSeconds);
-
-		// Get latest timing info to work with.  This gets us sync'd up with the hardware in
-		// the first place, and also avoids any drifting over time.
-		double flLastVsyncTimeInSeconds;
-		uint32_t nVsyncCounter;
-		m_pRemoteDevice->GetTimingInfo(&flLastVsyncTimeInSeconds, &nVsyncCounter);
-
-		// Account for encoder/transmit latency.
-		// This is where the conversion from real to virtual vsync happens.
-		flLastVsyncTimeInSeconds -= m_flAdditionalLatencyInSeconds;
-
-		float flFrameIntervalInSeconds = m_pRemoteDevice->GetFrameIntervalInSeconds();
-
-		// Realign our last time interval given updated timing reference.
-		int32_t nTimeRefToLastVsyncFrames =
-			(int32_t)roundf(float(m_flLastVsyncTimeInSeconds - flLastVsyncTimeInSeconds) / flFrameIntervalInSeconds);
-		m_flLastVsyncTimeInSeconds = flLastVsyncTimeInSeconds + flFrameIntervalInSeconds * nTimeRefToLastVsyncFrames;
-
-		// We could probably just use this instead, but it seems safer to go off the system timer calculation.
-		//assert(m_nVsyncCounter == nVsyncCounter + nTimeRefToLastVsyncFrames);
-
-		double flNow = SystemTime::GetInSeconds();
-
-		// Find the next frame interval (keeping in mind we may get here during running start).
-		int32_t nLastVsyncToNextVsyncFrames =
-			(int32_t)(float(flNow - m_flLastVsyncTimeInSeconds) / flFrameIntervalInSeconds);
-		nLastVsyncToNextVsyncFrames = max(nLastVsyncToNextVsyncFrames, 0) + 1;
-
-		// And store it for use in GetTimeSinceLastVsync (below) and updating our next frame.
-		m_flLastVsyncTimeInSeconds += flFrameIntervalInSeconds * nLastVsyncToNextVsyncFrames;
-		m_nVsyncCounter = nVsyncCounter + nTimeRefToLastVsyncFrames + nLastVsyncToNextVsyncFrames;
-
-		Log("[VDispDvr] WaitForPresent(end)");
-	}
-
-	virtual bool GetTimeSinceLastVsync(float *pfSecondsSinceLastVsync, uint64_t *pulFrameCounter) override
-	{
-		*pfSecondsSinceLastVsync = (float)(SystemTime::GetInSeconds() - m_flLastVsyncTimeInSeconds);
-		*pulFrameCounter = m_nVsyncCounter;
-		return true;
-	}
-
 	void ListenerCallback(sockaddr_in *addr)
 	{
 	}
@@ -1289,6 +1156,10 @@ public:
 		{
 			Log("OnPoseUpdated");
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
+
+			Log("Generate VSync Event by OnPoseUpdated");
+			m_VSyncThread->InsertVsync();
+			//m_VSyncThread->InsertVsync();
 		}
 	}
 
@@ -1311,7 +1182,7 @@ public:
 
 	/** Specific to Oculus compositor support, textures supplied must be created using this method. */
 	virtual void CreateSwapTextureSet(uint32_t unPid, uint32_t unFormat, uint32_t unWidth, uint32_t unHeight, vr::SharedTextureHandle_t(*pSharedTextureHandles)[3]) {
-		Log("CreateSwapTextureSet %d %d %d %d", unPid, unFormat, unWidth, unHeight);
+		Log("CreateSwapTextureSet pid=%d Format=%d %dx%d", unPid, unFormat, unWidth, unHeight);
 
 		//HRESULT hr = D3D11CreateDevice(pAdapter, D3D_DRIVER_TYPE_HARDWARE, NULL, creationFlags, NULL, 0, D3D11_SDK_VERSION, &pDevice, &eFeatureLevel, &pContext);
 
@@ -1333,6 +1204,7 @@ public:
 		SharedTextureDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
 		
 		ProcessResource *processResource = new ProcessResource();
+		processResource->pid = unPid;
 
 		for (int i = 0; i < 3; i++) {
 			HRESULT hr = m_pD3DRender->GetDevice()->CreateTexture2D(&SharedTextureDesc, NULL, &processResource->textures[i]);
@@ -1351,7 +1223,7 @@ public:
 
 			pResource->Release();
 
-			Log("texture %d %p", i, processResource->sharedHandles[i]);
+			Log("Created Texture %d %p", i, processResource->sharedHandles[i]);
 		}
 		//m_processMap.insert(std::pair<uint32_t, ProcessResource *>(unPid, processResource));
 	}
@@ -1372,7 +1244,7 @@ public:
 
 	/** Used to purge all texture sets for a given process. */
 	virtual void DestroyAllSwapTextureSets(uint32_t unPid) {
-		Log("DestroyAllSwapTextureSets %d", unPid);
+		Log("DestroyAllSwapTextureSets pid=%d", unPid);
 
 		for (auto it = m_handleMap.begin(); it != m_handleMap.end();) {
 			if (it->second.first->pid == unPid) {
@@ -1399,7 +1271,7 @@ public:
 	/** Call once per layer to draw for this frame.  One shared texture handle per eye.  Textures must be created
 	* using CreateSwapTextureSet and should be alternated per frame.  Call Present once all layers have been submitted. */
 	virtual void SubmitLayer(vr::SharedTextureHandle_t sharedTextureHandles[2], const vr::VRTextureBounds_t(&bounds)[2], const vr::HmdMatrix34_t *pPose) {
-		Log("SubmitLayer %p %p %f-%f,%f-%f %f-%f,%f-%f  \n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f", sharedTextureHandles[0], sharedTextureHandles[1]
+		Log("SubmitLayer Handle0=%p Handle1=%p %f-%f,%f-%f %f-%f,%f-%f  \n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f", sharedTextureHandles[0], sharedTextureHandles[1]
 			, bounds[0].uMin, bounds[0].uMax, bounds[0].vMin, bounds[0].vMax
 			, bounds[1].uMin, bounds[1].uMax, bounds[1].vMin, bounds[1].vMax
 			, pPose->m[0][0], pPose->m[0][1], pPose->m[0][2], pPose->m[0][3]
@@ -1414,58 +1286,79 @@ public:
 		// x = pPose->m[0][3], y = pPose->m[1][3], z = pPose->m[2][3]
 		m_framePose = *pPose;
 
-		m_poseMutex.Wait(INFINITE);
-		float diff = 100000;
-		int index = 0;
-		int minIndex = 0;
-		auto minIt = m_poseBuffer.begin();
-		for (auto it = m_poseBuffer.begin(); it != m_poseBuffer.end(); it++, index++) {
-			float distance = 0;
-			// rotation matrix composes parts of ViewMatrix
-			for (int i = 0; i < 3; i++) {
-				for (int j = 0; j < 3; j++) {
-					distance += pow(it->Eye[0].ViewMatrix.M[j * 3 + i] - pPose->m[i][j], 2);
+		if (m_submitLayer == 0) {
+			m_poseMutex.Wait(INFINITE);
+			float diff = 100000;
+			int index = 0;
+			int minIndex = 0;
+			auto minIt = m_poseBuffer.begin();
+			for (auto it = m_poseBuffer.begin(); it != m_poseBuffer.end(); it++, index++) {
+				float distance = 0;
+				// rotation matrix composes parts of ViewMatrix
+				for (int i = 0; i < 3; i++) {
+					for (int j = 0; j < 3; j++) {
+						distance += pow(it->Eye[0].ViewMatrix.M[j * 3 + i] - pPose->m[i][j], 2);
+					}
+				}
+				if (diff > distance) {
+					minIndex = index;
+					minIt = it;
 				}
 			}
-			if (diff > distance) {
-				minIndex = index;
-				minIt = it;
-			}
-		}
-		if (minIt != m_poseBuffer.end()) {
-			// found the frameIndex
-			m_prevSubmitFrameIndex = m_submitFrameIndex;
-			m_prevSubmitClientTime = m_submitClientTime;
-			m_submitFrameIndex = minIt->FrameIndex;
-			m_submitClientTime = minIt->clientTime;
+			if (minIt != m_poseBuffer.end()) {
+				// found the frameIndex
+				m_prevSubmitFrameIndex = m_submitFrameIndex;
+				m_prevSubmitClientTime = m_submitClientTime;
+				m_submitFrameIndex = minIt->FrameIndex;
+				m_submitClientTime = minIt->clientTime;
 
-			m_prevFramePoseRotation = m_framePoseRotation;
-			m_framePoseRotation.x = minIt->HeadPose_Pose_Orientation.x;
-			m_framePoseRotation.y = minIt->HeadPose_Pose_Orientation.y;
-			m_framePoseRotation.z = minIt->HeadPose_Pose_Orientation.z;
-			m_framePoseRotation.w = minIt->HeadPose_Pose_Orientation.w;
+				m_prevFramePoseRotation = m_framePoseRotation;
+				m_framePoseRotation.x = minIt->HeadPose_Pose_Orientation.x;
+				m_framePoseRotation.y = minIt->HeadPose_Pose_Orientation.y;
+				m_framePoseRotation.z = minIt->HeadPose_Pose_Orientation.z;
+				m_framePoseRotation.w = minIt->HeadPose_Pose_Orientation.w;
+
+				Log("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu", m_prevSubmitFrameIndex, m_submitFrameIndex);
+			}
+			else {
+				m_submitFrameIndex = 0;
+				m_submitClientTime = 0;
+				m_framePoseRotation = HmdQuaternion_Init(0.0, 0.0, 0.0, 0.0);
+			}
+			m_poseMutex.Release();
 		}
-		else {
-			m_submitFrameIndex = 0;
-			m_submitClientTime = 0;
-			m_framePoseRotation = HmdQuaternion_Init(0.0, 0.0, 0.0, 0.0);
-		}
-		m_poseMutex.Release();
 		/*Listener::TrackingInfo info;
 		m_Listener->GetTrackingInfo(info);
 		m_submitFrameIndex = info.FrameIndex;
 		m_submitClientTime = info.clientTime;
 		m_framePoseRotation.x = info.HeadPose_Pose_Orientation.x;
 		*/
-		m_submitTextures[0] = sharedTextureHandles[0];
-		m_submitTextures[1] = sharedTextureHandles[1];
+		if (m_submitLayer < MAX_LAYERS) {
+			m_submitTextures[m_submitLayer][0] = sharedTextureHandles[0];
+			m_submitTextures[m_submitLayer][1] = sharedTextureHandles[1];
+			m_submitBounds[m_submitLayer][0] = bounds[0];
+			m_submitBounds[m_submitLayer][1] = bounds[1];
+			m_submitLayer++;
+		}
+		else {
+			Log("Too many layers submitted!");
+		}
+
+		//CopyTexture();
 	}
 
 	/** Submits queued layers for display. */
 	virtual void Present(vr::SharedTextureHandle_t syncTexture) {
-		Log("Present %p", syncTexture);
+		Log("Present syncTexture=%p m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu", syncTexture, m_prevSubmitFrameIndex, m_submitFrameIndex);
 
-		Log("[VDispDvr] Waiting for previous encode to finish...");
+		uint32_t layerCount = m_submitLayer;
+		m_submitLayer = 0;
+
+		if (m_submitFrameIndex != m_LastReferencedFrameIndex) {
+			// Discard old frames
+			Log("Discarding old frame: m_submitFrameIndex=%llu m_LastReferencedFrameIndex=%llu", m_submitFrameIndex, m_LastReferencedFrameIndex);
+			return;
+		}
 
 
 		ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
@@ -1481,40 +1374,76 @@ public:
 		IDXGIKeyedMutex *pKeyedMutex = NULL;
 		if (SUCCEEDED(pSyncTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void **)&pKeyedMutex)))
 		{
+			Log("[VDispDvr] Wait for SyncTexture Mutex.");
 			// TODO: Reasonable timeout and timeout handling
-			HRESULT hr = pKeyedMutex->AcquireSync(0, INFINITE);
+			HRESULT hr = pKeyedMutex->AcquireSync(0, 10);
 			if (hr != S_OK)
 			{
-				pKeyedMutex->Release();
 				Log("[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %s", hr, hr, GetDxErrorStr(hr).c_str());
+				pKeyedMutex->Release();
 				return;
 			}
 		}
 
+		Log("[VDispDvr] Mutex Acquired.");
+
+		CopyTexture(layerCount);
+
+		if (pKeyedMutex)
+		{
+			pKeyedMutex->ReleaseSync(0);
+			pKeyedMutex->Release();
+		}
+
+		Log("[VDispDvr] Mutex Released.");
+		m_pEncoder->NewFrameReady(m_flLastVsyncTimeInSeconds + m_flAdditionalLatencyInSeconds);
+	}
+
+	void CopyTexture(uint32_t layerCount) {
+
 		uint64_t presentationTime = GetTimestampUs();
 
-		ID3D11Texture2D *pTexture[2];
-		// Left eye
-		auto it = m_handleMap.find((HANDLE)m_submitTextures[0]);
-		// No AddRef
-		pTexture[0] = it->second.first->textures[it->second.second].Get();
+		ID3D11Texture2D *pTexture[MAX_LAYERS][2];
+		ComPtr<ID3D11Texture2D> Texture[MAX_LAYERS][2];
 
-		// Right eye
-		it = m_handleMap.find((HANDLE)m_submitTextures[0]);
-		pTexture[1] = it->second.first->textures[it->second.second].Get();
+		for (uint32_t i = 0; i < layerCount; i++) {
+			// Left eye
+			auto it = m_handleMap.find((HANDLE)m_submitTextures[i][0]);
+			// No AddRef
+			Texture[i][0] = it->second.first->textures[it->second.second];
+			D3D11_TEXTURE2D_DESC desc;
+			Texture[i][0]->GetDesc(&desc);
 
-		//Log("[VDispDvr] Flush-Begin");
+			Log("CopyTexture: layer=%d/%d pid=%d Texture Size=%dx%d Format=%d", i, layerCount, it->second.first->pid, desc.Width, desc.Height, desc.Format);
+		
+			// Right eye
+			it = m_handleMap.find((HANDLE)m_submitTextures[i][1]);
+			Texture[i][1] = it->second.first->textures[it->second.second];
+
+			pTexture[i][0] = Texture[i][0].Get();
+			pTexture[i][1] = Texture[i][1].Get();
+		}
 
 		// This can go away, but is useful to see it as a separate packet on the gpu in traces.
 		m_pD3DRender->GetContext()->Flush();
 
-		//Log("[VDispDvr] Flush-End");
+		Log("Waiting for finish of previous encode.");
+
+		if (m_LastReferencedFrameIndex % 500 == 499 && false) {
+			wchar_t buf[1000];
+
+			for (uint32_t i = 0; i < layerCount; i++) {
+				Log("Writing Debug DDS. m_LastReferencedFrameIndex=%llu layer=%d/%d", m_LastReferencedFrameIndex, i, layerCount);
+				_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", g_DebugOutputDir.c_str(), m_LastReferencedFrameIndex, i, layerCount);
+				HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture[i][0], buf);
+				Log("Writing Debug DDS: End hr=%p %s", hr, GetDxErrorStr(hr).c_str());
+			}
+		}
 
 		// Wait for the encoder to be ready.  This is important because the encoder thread
 		// blocks on transmit which uses our shared d3d context (which is not thread safe).
 		m_pEncoder->WaitForEncode();
 
-		Log("[VDispDvr] Done");
 
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
 		Log("FrameIndex diff LastRef: %llu render:%llu  diff:%llu", m_LastReferencedFrameIndex, m_submitFrameIndex, m_LastReferencedFrameIndex - m_submitFrameIndex);
@@ -1524,21 +1453,11 @@ public:
 
 		char buf[2000];
 		snprintf(buf, sizeof(buf), "%llu\n%f\n%f", m_prevSubmitFrameIndex, m_prevFramePoseRotation.x, info.HeadPose_Pose_Orientation.x);
-		m_pEncoder->CopyToStaging(pTexture, 2, presentationTime, m_prevSubmitFrameIndex, m_prevSubmitClientTime, std::string(buf));
+		m_pEncoder->CopyToStaging(pTexture, m_submitBounds, layerCount, presentationTime, m_prevSubmitFrameIndex, m_prevSubmitClientTime, std::string(buf));
 
-		//Log("[VDispDvr] Flush-Staging(begin)");
+		//m_pEncoder->CopyToStaging(pTexture, m_submitBounds, presentationTime, m_submitFrameIndex, m_submitClientTime, std::string(buf));
 
 		m_pD3DRender->GetContext()->Flush();
-
-		//Log("[VDispDvr] Flush-Staging(end)");
-
-		if (pKeyedMutex)
-		{
-			pKeyedMutex->ReleaseSync(0);
-			pKeyedMutex->Release();
-		}
-
-		m_pEncoder->NewFrameReady(m_flLastVsyncTimeInSeconds + m_flAdditionalLatencyInSeconds);
 	}
 
 private:
@@ -1551,7 +1470,10 @@ private:
 	//std::unordered_multimap<uint32_t, ProcessResource *> m_processMap;
 	std::map<HANDLE, std::pair<ProcessResource *, int> > m_handleMap;
 
-	vr::SharedTextureHandle_t m_submitTextures[2];
+	static const int MAX_LAYERS = 10;
+	int m_submitLayer;
+	vr::SharedTextureHandle_t m_submitTextures[MAX_LAYERS][2];
+	vr::VRTextureBounds_t m_submitBounds[MAX_LAYERS][2];
 	vr::HmdMatrix34_t m_framePose;
 	vr::HmdQuaternion_t m_prevFramePoseRotation;
 	vr::HmdQuaternion_t m_framePoseRotation;

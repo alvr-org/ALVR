@@ -13,6 +13,7 @@
 #include <SimpleMath.h>
 
 #include "d3drender.h"
+#include "openvr_driver.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -23,7 +24,7 @@ public:
 	virtual ~FrameRender();
 
 	bool Startup(ID3D11Texture2D *pTexture[]);
-	bool RenderFrame(ID3D11Texture2D *pTexture[], int textureNum, const std::string& debugText);
+	bool RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, const std::string& debugText);
 	void RenderDebugText(const std::string& debugText);
 
 	ComPtr<ID3D11Texture2D> GetTexture();
@@ -48,6 +49,8 @@ private:
 	ComPtr<ID3D11RenderTargetView> m_pRenderTargetView;
 	ComPtr<ID3D11DepthStencilView> m_pDepthStencilView;
 
+	ComPtr<ID3D11BlendState> m_pBlendState;
+
 	std::unique_ptr<DirectX::SpriteFont> m_Font;
 	std::unique_ptr<DirectX::SpriteBatch> m_SpriteBatch;
 
@@ -56,6 +59,9 @@ private:
 	{
 		DirectX::XMFLOAT3 Pos;
 		DirectX::XMFLOAT2 Tex;
+		uint32_t View;
 	};
+	// Parameter for Draw method. 2-triangles for both eyes.
+	static const int VERTEX_INDEX_COUNT = 12;
 };
 

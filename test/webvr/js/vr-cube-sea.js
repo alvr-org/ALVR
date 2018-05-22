@@ -288,7 +288,7 @@ window.VRCubeSea = (function () {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.textureCanvas);
   };
 
-  CubeSea.prototype.render = function (projectionMat, modelViewMat, stats, timestamp, orientation) {
+  CubeSea.prototype.render = function (projectionMat, modelViewMat, stats, timestamp, orientation, position) {
     var gl = this.gl;
     var program = this.program;
 
@@ -334,12 +334,12 @@ window.VRCubeSea = (function () {
         mat4.mul(mm, projectionMat, mm);
         gl.uniformMatrix4fv(program.uniform.modelViewMat, false, mm);
         if(i == 0){
-            console.log(theta);
-            console.log("rotate:");
-            console.log(orientation);
-            console.log(modelViewMat);
-            //console.log(projectionMat);
-            console.log(mm);
+            //console.log(theta);
+            //console.log("rotate:");
+            //console.log(orientation);
+            //console.log(modelViewMat);
+            ////console.log(projectionMat);
+            //console.log(mm);
         }
         gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_SHORT, 0);
     }
@@ -353,31 +353,68 @@ window.VRCubeSea = (function () {
     mat4.mul(mm, projectionMat, mm);
     gl.uniformMatrix4fv(program.uniform.modelViewMat, false, mm);
 
+      function ke(i, n){
+          if(n == 3 && i < 10){
+              return "00" + i;
+          }
+          if(n == 3 && i < 100){
+              return "0" + i;
+          }
+          if(n == 2 && i < 10){
+              return "0" + i;
+          }
+          return "" + i
+      }
 
-    var context = this.textureCanvas.getContext("2d");
-    context.save();
-    context.fillRect(0, 0, this.textureCanvas.width, this.textureCanvas.height);
-    context.fillStyle = '#FFFFFF';
-    context.font = "bold 20px 'Arial'";
-    context.textAlign = 'left';
-    context.textBaseline = 'middle';
-    if(orientation){
-    context.fillText(orientation[0] + "", 0, 20);
-    context.fillText(orientation[1] + "", 0, 40);
-    context.fillText(orientation[2] + "", 0, 60);
-    context.fillText(orientation[3] + "", 0, 80);
-    }else{
-    context.fillText("Hello world!", 0, 40);
+    if(position){
+      var context = this.textureCanvas.getContext("2d");
+      context.save();
+      context.fillRect(0, 0, this.textureCanvas.width, this.textureCanvas.height);
+      context.fillStyle = '#FFFFFF';
+      context.font = "bold 6px 'Arial'";
+      context.textAlign = 'left';
+      context.textBaseline = 'middle';
+      if(orientation){
+        if(1){
+          var line = 8;
+          var pos = 8;
+          var testMat = mat4.create();
+          mat4.fromQuat(testMat, orientation);
+          testMat[1] = -1000;
+          context.fillText(testMat[0].toFixed(3) + " " + testMat[1].toFixed(3) + " " + testMat[2].toFixed(3) + " " + testMat[3].toFixed(3) + " ", 0, pos);
+          context.fillText(testMat[4].toFixed(3) + " " + testMat[5].toFixed(3) + " " + testMat[6].toFixed(3) + " " + testMat[3].toFixed(7) + " ", 0, pos+=line);
+          context.fillText(testMat[8].toFixed(3) + " " + testMat[9].toFixed(3) + " " + testMat[10].toFixed(3) + " " + testMat[3].toFixed(11) + " ", 0, pos+=line);
+          context.fillText(testMat[12].toFixed(3) + " " + testMat[13].toFixed(3) + " " + testMat[13].toFixed(3) + " " + testMat[15].toFixed(11) + " ", 0, pos+=line);
+          context.fillText("q:" + orientation[0].toFixed(6) + " " + orientation[1].toFixed(3) + " " + orientation[2].toFixed(3) + " " + orientation[3].toFixed(11) + " ", 0, pos+=line);
+          context.fillText("p:" + position[0].toFixed(6) + " " + position[1].toFixed(3) + " " + position[2].toFixed(3), 0, pos+=line);
+
+          context.fillText("t1:" + window.test  + " t2:" + window.test2 + "", 0, 80);
+        }
+        else{
+          context.fillText(viewMat + "", 0, 20);
+          context.fillText(orientation[1] + "", 0, 40);
+          context.fillText(orientation[2] + "", 0, 60);
+          context.fillText("t1:" + window.test  + " t2:" + window.test2 + "", 0, 80);
+        }
+        var date = new Date();
+        context.fillText(ke(date.getHours(), 2) + ":" + ke(date.getMinutes(), 2) 
+          + ":" + ke(date.getSeconds(), 2) + "." + ke(date.getMilliseconds(), 3) + "", 0, 100);
+      }else{
+        context.fillText("Hello world!", 0, 40);
+      }
+      context.restore();
+
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.uniform1i(this.program.uniform.diffuse, 0);
+      gl.bindTexture(gl.TEXTURE_2D, this.canvasTexture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.textureCanvas);
+      gl.generateMipmap(gl.TEXTURE_2D);
     }
-    context.restore();
-
 
     gl.activeTexture(gl.TEXTURE0);
     gl.uniform1i(this.program.uniform.diffuse, 0);
     gl.bindTexture(gl.TEXTURE_2D, this.canvasTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.textureCanvas);
-    gl.generateMipmap(gl.TEXTURE_2D);
-
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.boardVertBuffer);
     gl.enableVertexAttribArray(program.attrib.position);
@@ -389,6 +426,31 @@ window.VRCubeSea = (function () {
     gl.vertexAttribPointer(program.attrib.texCoord, 2, gl.FLOAT, false, 48, 12);
     gl.vertexAttribPointer(program.attrib.color, 4, gl.FLOAT, false, 48, 20);
     gl.vertexAttribPointer(program.attrib.normal, 3, gl.FLOAT, false, 48, 36);
+
+    gl.drawArrays(gl.TRIANGLES, 0, this.boardVert.length / 12);
+
+    if(!window.kei){
+      window.kei = 1.0;
+    }
+    mm = mat4.create();
+    mat4.translate(mm, mm, [20, 3, 0]);
+    rot = mat4.create();
+    mat4.rotate(rot, rot, Math.PI * window.kei, [0, 1, 0]);
+    mat4.mul(mm, rot, mm);
+    mat4.mul(mm, modelViewMat, mm);
+    mat4.mul(mm, projectionMat, mm);
+    gl.uniformMatrix4fv(program.uniform.modelViewMat, false, mm);
+
+    gl.drawArrays(gl.TRIANGLES, 0, this.boardVert.length / 12);
+
+    mm = mat4.create();
+    mat4.translate(mm, mm, [20, -3, 0]);
+    rot = mat4.create();
+    mat4.rotate(rot, rot, Math.PI / 2, [0, 1, 0]);
+    mat4.mul(mm, rot, mm);
+    //mat4.mul(mm, modelViewMat, mm);
+    mat4.mul(mm, projectionMat, mm);
+    gl.uniformMatrix4fv(program.uniform.modelViewMat, false, mm);
 
     gl.drawArrays(gl.TRIANGLES, 0, this.boardVert.length / 12);
 

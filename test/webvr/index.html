@@ -271,19 +271,45 @@ found in the LICENSE file.
             0.00000, 0.00000, -0.20000, 0.00000];
             var p = new Float32Array(16);
             p.set(pp);
-            window.test = 1;
-            if(!test){
-              cubeSea.render(frameData.leftProjectionMatrix, frameData.leftViewMatrix, null, t, frameData.pose.orientation);
-            }else{
-              cubeSea.render(p, frameData.leftViewMatrix, null, t, frameData.pose.orientation);
+            var vv = [
+            1.00000, 0.00000, 0.00000, 0.00000,
+            0.00000, 1.00000, 0.00000, 0.00000,
+            0.00000, 0.00000, 1.00000, 0.00000,
+            0.00000, 0.00000, 0.00000, 1.00000];
+            var v = new Float32Array(16);
+            v.set(vv);
+            if(window.test == undefined){
+              window.test = 1;
             }
+            if(window.test2 == undefined){
+              window.test2 = 1;
+            }
+            if(test){
+              p = frameData.leftProjectionMatrix;
+            }
+            if(test2){
+              v = frameData.leftViewMatrix;
+            }
+            cubeSea.render(p, v, null, t, frameData.pose.orientation, frameData.pose.position);
 
             gl.viewport(webglCanvas.width * 0.5, 0, webglCanvas.width * 0.5, webglCanvas.height);
-            if(!test){
-              cubeSea.render(frameData.rightProjectionMatrix, frameData.rightViewMatrix, null, t, frameData.pose.orientation);
-            }else{
-              cubeSea.render(p, frameData.rightViewMatrix, null, t, frameData.pose.orientation);
+            if(test){
+              p = frameData.rightProjectionMatrix;
             }
+            if(test2){
+              v = frameData.rightViewMatrix;
+            }
+            cubeSea.render(p, v, null, t, frameData.pose.orientation, null);
+
+            //console.log(frameData.leftProjectionMatrix);
+            if(window.prevmat){
+              for(var i  = 0 ; i< 16; i++){
+                if(window.prevmat[i] != frameData.leftProjectionMatrix[i]){
+                  console.log("test");
+                }
+              }
+            }
+            window.prevmat = frameData.leftProjectionMatrix.slice();
 
             vrDisplay.submitFrame();
           } else {

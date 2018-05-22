@@ -36,11 +36,16 @@
             this.metroTabPage1 = new MetroFramework.Controls.MetroTabPage();
             this.metroTabPage2 = new MetroFramework.Controls.MetroTabPage();
             this.metroTabPage3 = new MetroFramework.Controls.MetroTabPage();
+            this.metroCheckBox2 = new MetroFramework.Controls.MetroCheckBox();
+            this.metroCheckBox1 = new MetroFramework.Controls.MetroCheckBox();
             this.metroTextBox2 = new MetroFramework.Controls.MetroTextBox();
             this.metroTextBox1 = new MetroFramework.Controls.MetroTextBox();
             this.metroLabel2 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel1 = new MetroFramework.Controls.MetroLabel();
+            this.metroButton5 = new MetroFramework.Controls.MetroButton();
+            this.metroButton4 = new MetroFramework.Controls.MetroButton();
             this.metroLabel3 = new MetroFramework.Controls.MetroLabel();
+            this.metroCheckBox3 = new MetroFramework.Controls.MetroCheckBox();
             this.metroTabControl1.SuspendLayout();
             this.metroTabPage3.SuspendLayout();
             this.SuspendLayout();
@@ -71,7 +76,7 @@
             // 
             // metroButton3
             // 
-            this.metroButton3.Location = new System.Drawing.Point(283, 101);
+            this.metroButton3.Location = new System.Drawing.Point(283, 97);
             this.metroButton3.Name = "metroButton3";
             this.metroButton3.Size = new System.Drawing.Size(75, 23);
             this.metroButton3.TabIndex = 6;
@@ -84,7 +89,7 @@
             this.metroTabControl1.Controls.Add(this.metroTabPage3);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 0;
+            this.metroTabControl1.SelectedIndex = 2;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -110,10 +115,15 @@
             // 
             // metroTabPage3
             // 
+            this.metroTabPage3.Controls.Add(this.metroCheckBox3);
+            this.metroTabPage3.Controls.Add(this.metroCheckBox2);
+            this.metroTabPage3.Controls.Add(this.metroCheckBox1);
             this.metroTabPage3.Controls.Add(this.metroTextBox2);
             this.metroTabPage3.Controls.Add(this.metroTextBox1);
             this.metroTabPage3.Controls.Add(this.metroLabel2);
             this.metroTabPage3.Controls.Add(this.metroLabel1);
+            this.metroTabPage3.Controls.Add(this.metroButton5);
+            this.metroTabPage3.Controls.Add(this.metroButton4);
             this.metroTabPage3.Controls.Add(this.metroButton3);
             this.metroTabPage3.Controls.Add(this.metroButton2);
             this.metroTabPage3.Controls.Add(this.metroButton1);
@@ -124,6 +134,27 @@
             this.metroTabPage3.TabIndex = 2;
             this.metroTabPage3.Text = "Debug";
             this.metroTabPage3.VerticalScrollbarBarColor = true;
+            // 
+            // metroCheckBox2
+            // 
+            this.metroCheckBox2.AutoSize = true;
+            this.metroCheckBox2.Location = new System.Drawing.Point(158, 207);
+            this.metroCheckBox2.Name = "metroCheckBox2";
+            this.metroCheckBox2.Size = new System.Drawing.Size(68, 15);
+            this.metroCheckBox2.TabIndex = 9;
+            this.metroCheckBox2.Text = "Suspend";
+            this.metroCheckBox2.UseVisualStyleBackColor = true;
+            this.metroCheckBox2.CheckedChanged += new System.EventHandler(this.metroCheckBox2_CheckedChanged);
+            // 
+            // metroCheckBox1
+            // 
+            this.metroCheckBox1.AutoSize = true;
+            this.metroCheckBox1.Location = new System.Drawing.Point(158, 175);
+            this.metroCheckBox1.Name = "metroCheckBox1";
+            this.metroCheckBox1.Size = new System.Drawing.Size(119, 15);
+            this.metroCheckBox1.TabIndex = 9;
+            this.metroCheckBox1.Text = "DebugFrameIndex";
+            this.metroCheckBox1.UseVisualStyleBackColor = true;
             // 
             // metroTextBox2
             // 
@@ -159,6 +190,24 @@
             this.metroLabel1.TabIndex = 7;
             this.metroLabel1.Text = "EnableTestMode";
             // 
+            // metroButton5
+            // 
+            this.metroButton5.Location = new System.Drawing.Point(283, 175);
+            this.metroButton5.Name = "metroButton5";
+            this.metroButton5.Size = new System.Drawing.Size(75, 23);
+            this.metroButton5.TabIndex = 6;
+            this.metroButton5.Text = "Send";
+            this.metroButton5.Click += new System.EventHandler(this.metroButton5_Click);
+            // 
+            // metroButton4
+            // 
+            this.metroButton4.Location = new System.Drawing.Point(283, 137);
+            this.metroButton4.Name = "metroButton4";
+            this.metroButton4.Size = new System.Drawing.Size(75, 23);
+            this.metroButton4.TabIndex = 6;
+            this.metroButton4.Text = "GetConfig";
+            this.metroButton4.Click += new System.EventHandler(this.metroButton4_Click);
+            // 
             // metroLabel3
             // 
             this.metroLabel3.CustomBackground = true;
@@ -170,6 +219,17 @@
             this.metroLabel3.TabIndex = 9;
             this.metroLabel3.Text = "metroLabel3";
             this.metroLabel3.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // metroCheckBox3
+            // 
+            this.metroCheckBox3.AutoSize = true;
+            this.metroCheckBox3.Location = new System.Drawing.Point(283, 207);
+            this.metroCheckBox3.Name = "metroCheckBox3";
+            this.metroCheckBox3.Size = new System.Drawing.Size(56, 15);
+            this.metroCheckBox3.TabIndex = 9;
+            this.metroCheckBox3.Text = "Mutex";
+            this.metroCheckBox3.UseVisualStyleBackColor = true;
+            this.metroCheckBox3.CheckedChanged += new System.EventHandler(this.metroCheckBox3_CheckedChanged);
             // 
             // Launcher
             // 
@@ -204,6 +264,11 @@
         private MetroFramework.Controls.MetroLabel metroLabel2;
         private MetroFramework.Controls.MetroLabel metroLabel1;
         private MetroFramework.Controls.MetroLabel metroLabel3;
+        private MetroFramework.Controls.MetroButton metroButton4;
+        private MetroFramework.Controls.MetroCheckBox metroCheckBox1;
+        private MetroFramework.Controls.MetroButton metroButton5;
+        private MetroFramework.Controls.MetroCheckBox metroCheckBox2;
+        private MetroFramework.Controls.MetroCheckBox metroCheckBox3;
     }
 }
 

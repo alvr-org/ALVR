@@ -39,8 +39,7 @@ namespace RemoteGlassLauncher
         {
             byte[] buffer = new byte[1000];
             client.GetStream().BeginRead(buffer, 0, 1000, (e) => {
-                MessageBox.Show("response:" + Encoding.UTF8.GetChars(buffer));
-                ReadNextMessage();
+                //MessageBox.Show("response:" + Encoding.UTF8.GetString(buffer));
             }, null);
         }
 
@@ -82,6 +81,7 @@ namespace RemoteGlassLauncher
                         metroLabel3.Text = "Server is alive!";
                         metroLabel3.BackColor = Color.LimeGreen;
                         metroLabel3.ForeColor = Color.White;
+                        ReadNextMessage();
                     }
                     else
                     {
@@ -92,6 +92,34 @@ namespace RemoteGlassLauncher
                 }));
             }, null);
 
+        }
+
+        private void metroButton4_Click(object sender, EventArgs e)
+        {
+            SendCommand("GetConfig");
+
+            ReadNextMessage();
+        }
+
+        private void metroButton5_Click(object sender, EventArgs e)
+        {
+            SendCommand("SetConfig DebugFrameIndex " + (metroCheckBox1.Checked ? "1" : "0"));
+
+            ReadNextMessage();
+        }
+        
+        private void metroCheckBox2_CheckedChanged(object sender, EventArgs e)
+        {
+            SendCommand("Suspend " + (metroCheckBox2.Checked ? "1" : "0"));
+
+            ReadNextMessage();
+        }
+
+        private void metroCheckBox3_CheckedChanged(object sender, EventArgs e)
+        {
+            SendCommand("SetConfig UseKeyedMutex " + (metroCheckBox2.Checked ? "1" : "0"));
+
+            ReadNextMessage();
         }
     }
 }

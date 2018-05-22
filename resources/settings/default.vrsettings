@@ -2,14 +2,7 @@
 	"driver_alvr_server": {
 		"serialNumber": "RG-001",
 		"modelNumber": "Remote Glass",
-		"displayWidth": 2048,
-		"displayHeight": 1024,
-		"displayRefreshRateNumerator": 60,
-		"displayRefreshRateDenominator": 1,
 		"adapterIndex": 0,
-		"enable" : true,
-		"windowX" : 0,
-		"windowY" : 0,
 		"renderWidth" : 2048,
 		"renderHeight" : 1024,
         "IPD": 0.064,
@@ -26,7 +19,7 @@
 		"debugCaptureOutput": true,
 		//"debugFrameIndex": true,
 		//"debugFrameOutput": true,
-        "debugOutputDir": "C:\\src\\virtual_display",
-		"srtOptions": "TSBPDDELAY=1 RCVLATENCY=1"
+        "debugOutputDir": "C:\\src\\ALVR",
+        "useKeyedMutex": true
 	}
 }

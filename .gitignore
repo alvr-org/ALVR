@@ -8,6 +8,7 @@ Release
 *.dll
 *.exe
 *.mexw64
+*.aps
 
 .vs/
 

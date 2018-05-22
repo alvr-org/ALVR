@@ -1,0 +1,36 @@
+{
+	"jsonid" : "vrresources",
+	"statusicons" : {
+		"HMD" : {
+			"Prop_NamedIconPathDeviceOff_String" : "{sample}/icons/headset_sample_status_off.png",
+			"Prop_NamedIconPathDeviceSearching_String" : "{sample}/icons/headset_sample_status_searching.gif",
+			"Prop_NamedIconPathDeviceSearchingAlert_String" : "{sample}/icons/headset_sample_status_searching_alert.gif",
+			"Prop_NamedIconPathDeviceReady_String" : "{sample}/icons/headset_sample_status_ready.png",
+			"Prop_NamedIconPathDeviceReadyAlert_String" : "{sample}/icons/headset_sample_status_ready_alert.png",
+			"Prop_NamedIconPathDeviceNotReady_String" : "{sample}/icons/headset_sample_status_error.png",
+			"Prop_NamedIconPathDeviceStandby_String" : "{sample}/icons/headset_sample_status_standby.png",
+			"Prop_NamedIconPathDeviceAlertLow_String" : "{sample}/icons/headset_sample_status_ready_low.png"
+		},
+	
+		"Model-v Defaults" : {
+			"Prop_NamedIconPathDeviceOff_String" : "{sample}/icons/headset_sample_status_off.png",
+			"Prop_NamedIconPathDeviceSearching_String" : "Prop_NamedIconPathDeviceOff_String",
+			"Prop_NamedIconPathDeviceSearchingAlert_String" : "Prop_NamedIconPathDeviceOff_String",
+			"Prop_NamedIconPathDeviceReady_String" : "Prop_NamedIconPathDeviceOff_String",
+			"Prop_NamedIconPathDeviceReadyAlert_String" : "Prop_NamedIconPathDeviceOff_String",
+			"Prop_NamedIconPathDeviceNotReady_String" : "Prop_NamedIconPathDeviceOff_String",
+			"Prop_NamedIconPathDeviceStandby_String" : "Prop_NamedIconPathDeviceOff_String",
+			"Prop_NamedIconPathDeviceAlertLow_String" : "Prop_NamedIconPathDeviceOff_String"
+		},
+	
+		"Model-v1.0" : {
+			"Alias" : "Model-v Defaults",
+			"Prop_NamedIconPathDeviceAlertLow_String" : "{sample}/icons/headset_model1_alertlow.png"
+		},
+	
+		"Model-v2.0" : {
+			"Alias" : "Model-v1.0",
+			"Prop_NamedIconPathDeviceAlertLow_String" : "{sample}/icons/headset_model2_alertlow.png"
+		}
+    }	    
+}

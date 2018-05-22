@@ -133,7 +133,7 @@ namespace
 	//-----------------------------------------------------------------------------
 	// Settings
 	//-----------------------------------------------------------------------------
-	static const char * const k_pch_Settings_Section = "driver_remote_glass";
+	static const char * const k_pch_Settings_Section = "driver_alvr_server";
 	static const char * const k_pch_Settings_SerialNumber_String = "serialNumber";
 	static const char * const k_pch_Settings_ModelNumber_String = "modelNumber";
 	static const char * const k_pch_Settings_RenderWidth_Int32 = "renderWidth";
@@ -1136,6 +1136,9 @@ public:
 	virtual void Present(vr::SharedTextureHandle_t syncTexture) {
 		Log("Present syncTexture=%p m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu", syncTexture, m_prevSubmitFrameIndex, m_submitFrameIndex);
 
+		bool useMutex = false;
+		IDXGIKeyedMutex *pKeyedMutex = NULL;
+
 		uint32_t layerCount = m_submitLayer;
 		m_submitLayer = 0;
 
@@ -1153,34 +1156,37 @@ public:
 			return;
 		}
 
-		// Access to shared texture must be wrapped in AcquireSync/ReleaseSync
-		// to ensure the compositor has finished rendering to it before it gets used.
-		// This enforces scheduling of work on the gpu between processes.
-		IDXGIKeyedMutex *pKeyedMutex = NULL;
-		if (SUCCEEDED(pSyncTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void **)&pKeyedMutex)))
-		{
-			Log("[VDispDvr] Wait for SyncTexture Mutex.");
-			// TODO: Reasonable timeout and timeout handling
-			HRESULT hr = pKeyedMutex->AcquireSync(0, 10);
-			if (hr != S_OK)
+		if (useMutex) {
+			// Access to shared texture must be wrapped in AcquireSync/ReleaseSync
+			// to ensure the compositor has finished rendering to it before it gets used.
+			// This enforces scheduling of work on the gpu between processes.
+			if (SUCCEEDED(pSyncTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void **)&pKeyedMutex)))
 			{
-				Log("[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %s", hr, hr, GetDxErrorStr(hr).c_str());
-				pKeyedMutex->Release();
-				return;
+				Log("[VDispDvr] Wait for SyncTexture Mutex.");
+				// TODO: Reasonable timeout and timeout handling
+				HRESULT hr = pKeyedMutex->AcquireSync(0, 10);
+				if (hr != S_OK)
+				{
+					Log("[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %s", hr, hr, GetDxErrorStr(hr).c_str());
+					pKeyedMutex->Release();
+					return;
+				}
 			}
-		}
 
-		Log("[VDispDvr] Mutex Acquired.");
+			Log("[VDispDvr] Mutex Acquired.");
+		}
 
 		CopyTexture(layerCount);
 
-		if (pKeyedMutex)
-		{
-			pKeyedMutex->ReleaseSync(0);
-			pKeyedMutex->Release();
+		if (useMutex) {
+			if (pKeyedMutex)
+			{
+				pKeyedMutex->ReleaseSync(0);
+				pKeyedMutex->Release();
+			}
+			Log("[VDispDvr] Mutex Released.");
 		}
 
-		Log("[VDispDvr] Mutex Released.");
 		m_pEncoder->NewFrameReady();
 	}
 

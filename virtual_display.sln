@@ -3,14 +3,14 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "driver_virtual_display", "driver_virtual_display\driver_virtual_display.vcxproj", "{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "alvr_server", "driver_virtual_display\driver_virtual_display.vcxproj", "{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}"
 	ProjectSection(ProjectDependencies) = postProject
 		{10868996-D864-4E88-8BCB-BA530AF64712} = {10868996-D864-4E88-8BCB-BA530AF64712}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "shared", "shared\shared.vcxproj", "{10868996-D864-4E88-8BCB-BA530AF64712}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteGlassLauncher", "RemoteGlassLauncher\RemoteGlassLauncher.csproj", "{EF437C2D-9F33-4A80-985D-FAFD8ABCF304}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ALVR", "ALVR\ALVR.csproj", "{EF437C2D-9F33-4A80-985D-FAFD8ABCF304}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

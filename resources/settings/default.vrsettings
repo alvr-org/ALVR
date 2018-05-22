@@ -1,5 +1,5 @@
 {
-	"driver_remote_glass": {
+	"driver_alvr_server": {
 		"serialNumber": "RG-001",
 		"modelNumber": "Remote Glass",
 		"displayWidth": 2048,

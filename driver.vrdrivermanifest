@@ -1,6 +1,6 @@
 {
 	"alwaysActivate": true,
-	"name" : "virtual_display",
+	"name" : "alvr_server",
 	"redirectsDisplay": true,
 
 	"hmd_presence" :

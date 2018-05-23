@@ -24,3 +24,4 @@ Release
 *.nuget.props
 *.nuget.targets
 
+resources/settings/default.vrsettings

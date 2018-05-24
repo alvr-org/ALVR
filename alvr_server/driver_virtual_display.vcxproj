@@ -97,6 +97,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>../shared;../openvr/headers;$(SolutionDir)include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WINDLL;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -140,6 +141,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>../shared;../openvr/headers;$(SolutionDir)include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WINDLL;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -182,6 +184,7 @@
     <ClInclude Include="NvEncoder.h" />
     <ClInclude Include="nvencoderclioptions.h" />
     <ClInclude Include="NvEncoderD3D11.h" />
+    <ClInclude Include="packet_types.h" />
     <ClInclude Include="Poller.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Settings.h" />

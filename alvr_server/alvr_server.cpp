@@ -3,7 +3,7 @@
 // Example OpenVR driver for demonstrating IVRVirtualDisplay interface.
 //
 //==================================================================================================
-#define _WINSOCKAPI_
+
 #include "openvr_driver.h"
 #include "sharedstate.h"
 #include "threadtools.h"
@@ -28,6 +28,7 @@
 #include "Utils.h"
 #include "FrameRender.h"
 #include "Settings.h"
+#include "packet_types.h"
 
 HINSTANCE g_hInstance;
 
@@ -720,7 +721,7 @@ public:
 		pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
 		if (m_Listener->HasValidTrackingInfo()) {
-			Listener::TrackingInfo info;
+			TrackingInfo info;
 			m_Listener->GetTrackingInfo(info);
 			uint64_t trackingDelay = GetTimestampUs() - m_Listener->clientToServerTime(info.clientTime);
 
@@ -815,7 +816,7 @@ private:
 	uint64_t m_LastReferencedClientTime;
 
 	IPCMutex m_poseMutex;
-	std::list<Listener::TrackingInfo> m_poseBuffer;
+	std::list<TrackingInfo> m_poseBuffer;
 
 public:
 	bool IsValid() const
@@ -834,12 +835,12 @@ public:
 		else if (commandName == "GetConfig") {
 			char buf[1000];
 			snprintf(buf, sizeof(buf)
-				, "DebugLog %d\n"
+				, "%sDebugLog %d\n"
 				"DebugCaptureOutput %d\n"
 				"DebugFrameIndex %d\n"
 				"DebugFrameOutput %d\n"
-				"UseKeyedMutex %d\n"
-				"END\n"
+				"UseKeyedMutex %d"
+				, m_Listener->DumpConfig().c_str()
 				, Settings::Instance().m_DebugLog
 				, Settings::Instance().m_DebugCaptureOutput
 				, Settings::Instance().m_DebugFrameIndex
@@ -1185,7 +1186,7 @@ public:
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
 		Log("FrameIndex diff LastRef: %llu render:%llu  diff:%llu", m_LastReferencedFrameIndex, m_submitFrameIndex, m_LastReferencedFrameIndex - m_submitFrameIndex);
 
-		Listener::TrackingInfo info;
+		TrackingInfo info;
 		m_Listener->GetTrackingInfo(info);
 
 		char buf[2000];

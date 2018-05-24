@@ -1,5 +1,8 @@
 #pragma once
 
+#include <WinSock2.h>
+#include <WinInet.h>
+#include <WS2tcpip.h>
 #include <Windows.h>
 #include <stdint.h>
 #include <string>
@@ -126,4 +129,19 @@ inline void DrawDigitPixels(D3D11_MAPPED_SUBRESOURCE &mapped, int x, int y, int 
 		}
 	}
 
+}
+
+
+inline std::string AddrToStr(sockaddr_in *addr) {
+	char buf[1000];
+	inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf));
+	return buf;
+}
+
+inline std::string AddrPortToStr(sockaddr_in *addr) {
+	char buf[1000];
+	char buf2[1000];
+	inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf));
+	snprintf(buf2, sizeof(buf2), "%s:%d", buf, htons(addr->sin_port));
+	return buf2;
 }

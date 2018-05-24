@@ -28,14 +28,18 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.metroButton1 = new MetroFramework.Controls.MetroButton();
             this.metroButton2 = new MetroFramework.Controls.MetroButton();
             this.metroProgressSpinner1 = new MetroFramework.Controls.MetroProgressSpinner();
             this.metroButton3 = new MetroFramework.Controls.MetroButton();
             this.metroTabControl1 = new MetroFramework.Controls.MetroTabControl();
+            this.metroTabPage4 = new MetroFramework.Controls.MetroTabPage();
+            this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.metroTabPage1 = new MetroFramework.Controls.MetroTabPage();
-            this.metroTabPage2 = new MetroFramework.Controls.MetroTabPage();
             this.metroTabPage3 = new MetroFramework.Controls.MetroTabPage();
+            this.logText = new MetroFramework.Controls.MetroTextBox();
+            this.metroCheckBox3 = new MetroFramework.Controls.MetroCheckBox();
             this.metroCheckBox2 = new MetroFramework.Controls.MetroCheckBox();
             this.metroCheckBox1 = new MetroFramework.Controls.MetroCheckBox();
             this.metroTextBox2 = new MetroFramework.Controls.MetroTextBox();
@@ -44,10 +48,24 @@
             this.metroLabel1 = new MetroFramework.Controls.MetroLabel();
             this.metroButton5 = new MetroFramework.Controls.MetroButton();
             this.metroButton4 = new MetroFramework.Controls.MetroButton();
+            this.metroTabPage2 = new MetroFramework.Controls.MetroTabPage();
             this.metroLabel3 = new MetroFramework.Controls.MetroLabel();
-            this.metroCheckBox3 = new MetroFramework.Controls.MetroCheckBox();
+            this.startServerButton = new MetroFramework.Controls.MetroButton();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.metroProgressSpinner2 = new MetroFramework.Controls.MetroProgressSpinner();
+            this.metroLabel4 = new MetroFramework.Controls.MetroLabel();
+            this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.AddressColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Button = new System.Windows.Forms.DataGridViewButtonColumn();
+            this.runningLabel = new MetroFramework.Controls.MetroLabel();
+            this.runningPanel = new MetroFramework.Controls.MetroPanel();
+            this.findingPanel = new MetroFramework.Controls.MetroPanel();
             this.metroTabControl1.SuspendLayout();
+            this.metroTabPage4.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.metroTabPage3.SuspendLayout();
+            this.runningPanel.SuspendLayout();
+            this.findingPanel.SuspendLayout();
             this.SuspendLayout();
             // 
             // metroButton1
@@ -73,6 +91,7 @@
             this.metroProgressSpinner1.Name = "metroProgressSpinner1";
             this.metroProgressSpinner1.Size = new System.Drawing.Size(38, 36);
             this.metroProgressSpinner1.TabIndex = 7;
+            this.metroProgressSpinner1.Value = 30;
             // 
             // metroButton3
             // 
@@ -84,14 +103,50 @@
             // 
             // metroTabControl1
             // 
+            this.metroTabControl1.Controls.Add(this.metroTabPage4);
+            this.metroTabControl1.Controls.Add(this.metroTabPage3);
             this.metroTabControl1.Controls.Add(this.metroTabPage1);
             this.metroTabControl1.Controls.Add(this.metroTabPage2);
-            this.metroTabControl1.Controls.Add(this.metroTabPage3);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 2;
+            this.metroTabControl1.SelectedIndex = 1;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
+            // 
+            // metroTabPage4
+            // 
+            this.metroTabPage4.Controls.Add(this.findingPanel);
+            this.metroTabPage4.Controls.Add(this.runningPanel);
+            this.metroTabPage4.HorizontalScrollbarBarColor = true;
+            this.metroTabPage4.Location = new System.Drawing.Point(4, 38);
+            this.metroTabPage4.Name = "metroTabPage4";
+            this.metroTabPage4.Size = new System.Drawing.Size(656, 283);
+            this.metroTabPage4.TabIndex = 3;
+            this.metroTabPage4.Text = "Server";
+            this.metroTabPage4.VerticalScrollbarBarColor = true;
+            // 
+            // dataGridView1
+            // 
+            this.dataGridView1.AllowUserToAddRows = false;
+            this.dataGridView1.AllowUserToDeleteRows = false;
+            this.dataGridView1.AllowUserToResizeRows = false;
+            this.dataGridView1.BackgroundColor = System.Drawing.Color.White;
+            this.dataGridView1.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
+            this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dataGridView1.ColumnHeadersVisible = false;
+            this.dataGridView1.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.NameColumn,
+            this.AddressColumn,
+            this.Button});
+            this.dataGridView1.Location = new System.Drawing.Point(29, 28);
+            this.dataGridView1.Name = "dataGridView1";
+            this.dataGridView1.ReadOnly = true;
+            this.dataGridView1.RowHeadersVisible = false;
+            this.dataGridView1.RowTemplate.Height = 21;
+            this.dataGridView1.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            this.dataGridView1.Size = new System.Drawing.Size(313, 233);
+            this.dataGridView1.TabIndex = 2;
+            this.dataGridView1.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView1_CellContentClick);
             // 
             // metroTabPage1
             // 
@@ -103,18 +158,9 @@
             this.metroTabPage1.Text = "Video";
             this.metroTabPage1.VerticalScrollbarBarColor = true;
             // 
-            // metroTabPage2
-            // 
-            this.metroTabPage2.HorizontalScrollbarBarColor = true;
-            this.metroTabPage2.Location = new System.Drawing.Point(4, 38);
-            this.metroTabPage2.Name = "metroTabPage2";
-            this.metroTabPage2.Size = new System.Drawing.Size(656, 283);
-            this.metroTabPage2.TabIndex = 1;
-            this.metroTabPage2.Text = "Network";
-            this.metroTabPage2.VerticalScrollbarBarColor = true;
-            // 
             // metroTabPage3
             // 
+            this.metroTabPage3.Controls.Add(this.logText);
             this.metroTabPage3.Controls.Add(this.metroCheckBox3);
             this.metroTabPage3.Controls.Add(this.metroCheckBox2);
             this.metroTabPage3.Controls.Add(this.metroCheckBox1);
@@ -134,6 +180,26 @@
             this.metroTabPage3.TabIndex = 2;
             this.metroTabPage3.Text = "Debug";
             this.metroTabPage3.VerticalScrollbarBarColor = true;
+            // 
+            // logText
+            // 
+            this.logText.Location = new System.Drawing.Point(384, 11);
+            this.logText.Multiline = true;
+            this.logText.Name = "logText";
+            this.logText.ReadOnly = true;
+            this.logText.Size = new System.Drawing.Size(246, 269);
+            this.logText.TabIndex = 10;
+            // 
+            // metroCheckBox3
+            // 
+            this.metroCheckBox3.AutoSize = true;
+            this.metroCheckBox3.Location = new System.Drawing.Point(283, 207);
+            this.metroCheckBox3.Name = "metroCheckBox3";
+            this.metroCheckBox3.Size = new System.Drawing.Size(56, 15);
+            this.metroCheckBox3.TabIndex = 9;
+            this.metroCheckBox3.Text = "Mutex";
+            this.metroCheckBox3.UseVisualStyleBackColor = true;
+            this.metroCheckBox3.CheckedChanged += new System.EventHandler(this.metroCheckBox3_CheckedChanged);
             // 
             // metroCheckBox2
             // 
@@ -208,6 +274,16 @@
             this.metroButton4.Text = "GetConfig";
             this.metroButton4.Click += new System.EventHandler(this.metroButton4_Click);
             // 
+            // metroTabPage2
+            // 
+            this.metroTabPage2.HorizontalScrollbarBarColor = true;
+            this.metroTabPage2.Location = new System.Drawing.Point(4, 38);
+            this.metroTabPage2.Name = "metroTabPage2";
+            this.metroTabPage2.Size = new System.Drawing.Size(656, 283);
+            this.metroTabPage2.TabIndex = 1;
+            this.metroTabPage2.Text = "Network";
+            this.metroTabPage2.VerticalScrollbarBarColor = true;
+            // 
             // metroLabel3
             // 
             this.metroLabel3.CustomBackground = true;
@@ -220,22 +296,111 @@
             this.metroLabel3.Text = "metroLabel3";
             this.metroLabel3.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
-            // metroCheckBox3
+            // startServerButton
             // 
-            this.metroCheckBox3.AutoSize = true;
-            this.metroCheckBox3.Location = new System.Drawing.Point(283, 207);
-            this.metroCheckBox3.Name = "metroCheckBox3";
-            this.metroCheckBox3.Size = new System.Drawing.Size(56, 15);
-            this.metroCheckBox3.TabIndex = 9;
-            this.metroCheckBox3.Text = "Mutex";
-            this.metroCheckBox3.UseVisualStyleBackColor = true;
-            this.metroCheckBox3.CheckedChanged += new System.EventHandler(this.metroCheckBox3_CheckedChanged);
+            this.startServerButton.Location = new System.Drawing.Point(376, 32);
+            this.startServerButton.Name = "startServerButton";
+            this.startServerButton.Size = new System.Drawing.Size(75, 36);
+            this.startServerButton.TabIndex = 10;
+            this.startServerButton.Text = "Start server";
+            this.startServerButton.Click += new System.EventHandler(this.metroButton6_Click);
+            // 
+            // timer1
+            // 
+            this.timer1.Enabled = true;
+            this.timer1.Interval = 1000;
+            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+            // 
+            // metroProgressSpinner2
+            // 
+            this.metroProgressSpinner2.Location = new System.Drawing.Point(383, 129);
+            this.metroProgressSpinner2.Maximum = 100;
+            this.metroProgressSpinner2.Name = "metroProgressSpinner2";
+            this.metroProgressSpinner2.Size = new System.Drawing.Size(38, 36);
+            this.metroProgressSpinner2.TabIndex = 7;
+            this.metroProgressSpinner2.Value = 70;
+            // 
+            // metroLabel4
+            // 
+            this.metroLabel4.BackColor = System.Drawing.Color.White;
+            this.metroLabel4.CustomBackground = true;
+            this.metroLabel4.CustomForeColor = true;
+            this.metroLabel4.FontWeight = MetroFramework.MetroLabelWeight.Regular;
+            this.metroLabel4.Location = new System.Drawing.Point(442, 126);
+            this.metroLabel4.Name = "metroLabel4";
+            this.metroLabel4.Size = new System.Drawing.Size(115, 39);
+            this.metroLabel4.TabIndex = 9;
+            this.metroLabel4.Text = "Finding Client...";
+            this.metroLabel4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // NameColumn
+            // 
+            this.NameColumn.HeaderText = "Name";
+            this.NameColumn.Name = "NameColumn";
+            this.NameColumn.ReadOnly = true;
+            // 
+            // AddressColumn
+            // 
+            this.AddressColumn.HeaderText = "IPAddress";
+            this.AddressColumn.Name = "AddressColumn";
+            this.AddressColumn.ReadOnly = true;
+            // 
+            // Button
+            // 
+            this.Button.HeaderText = "Button";
+            this.Button.Name = "Button";
+            this.Button.ReadOnly = true;
+            this.Button.Text = "Connect";
+            // 
+            // runningLabel
+            // 
+            this.runningLabel.BackColor = System.Drawing.Color.White;
+            this.runningLabel.CustomBackground = true;
+            this.runningLabel.CustomForeColor = true;
+            this.runningLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
+            this.runningLabel.Location = new System.Drawing.Point(287, 129);
+            this.runningLabel.Name = "runningLabel";
+            this.runningLabel.Size = new System.Drawing.Size(115, 39);
+            this.runningLabel.TabIndex = 9;
+            this.runningLabel.Text = "Running!";
+            this.runningLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // runningPanel
+            // 
+            this.runningPanel.Controls.Add(this.runningLabel);
+            this.runningPanel.HorizontalScrollbarBarColor = true;
+            this.runningPanel.HorizontalScrollbarHighlightOnWheel = false;
+            this.runningPanel.HorizontalScrollbarSize = 10;
+            this.runningPanel.Location = new System.Drawing.Point(3, 3);
+            this.runningPanel.Name = "runningPanel";
+            this.runningPanel.Size = new System.Drawing.Size(657, 284);
+            this.runningPanel.TabIndex = 10;
+            this.runningPanel.VerticalScrollbarBarColor = true;
+            this.runningPanel.VerticalScrollbarHighlightOnWheel = false;
+            this.runningPanel.VerticalScrollbarSize = 10;
+            // 
+            // findingPanel
+            // 
+            this.findingPanel.Controls.Add(this.dataGridView1);
+            this.findingPanel.Controls.Add(this.metroProgressSpinner2);
+            this.findingPanel.Controls.Add(this.metroLabel4);
+            this.findingPanel.HorizontalScrollbarBarColor = true;
+            this.findingPanel.HorizontalScrollbarHighlightOnWheel = false;
+            this.findingPanel.HorizontalScrollbarSize = 10;
+            this.findingPanel.Location = new System.Drawing.Point(3, 3);
+            this.findingPanel.Name = "findingPanel";
+            this.findingPanel.Size = new System.Drawing.Size(657, 295);
+            this.findingPanel.TabIndex = 11;
+            this.findingPanel.VerticalScrollbarBarColor = true;
+            this.findingPanel.VerticalScrollbarHighlightOnWheel = false;
+            this.findingPanel.VerticalScrollbarSize = 10;
             // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(710, 411);
+            this.Controls.Add(this.startServerButton);
             this.Controls.Add(this.metroProgressSpinner1);
             this.Controls.Add(this.metroLabel3);
             this.Controls.Add(this.metroTabControl1);
@@ -243,8 +408,12 @@
             this.Text = "ALVR";
             this.Load += new System.EventHandler(this.Launcher_Load);
             this.metroTabControl1.ResumeLayout(false);
+            this.metroTabPage4.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             this.metroTabPage3.ResumeLayout(false);
             this.metroTabPage3.PerformLayout();
+            this.runningPanel.ResumeLayout(false);
+            this.findingPanel.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -269,6 +438,19 @@
         private MetroFramework.Controls.MetroButton metroButton5;
         private MetroFramework.Controls.MetroCheckBox metroCheckBox2;
         private MetroFramework.Controls.MetroCheckBox metroCheckBox3;
+        private MetroFramework.Controls.MetroTextBox logText;
+        private MetroFramework.Controls.MetroButton startServerButton;
+        private MetroFramework.Controls.MetroTabPage metroTabPage4;
+        private System.Windows.Forms.DataGridView dataGridView1;
+        private System.Windows.Forms.Timer timer1;
+        private MetroFramework.Controls.MetroLabel metroLabel4;
+        private MetroFramework.Controls.MetroProgressSpinner metroProgressSpinner2;
+        private System.Windows.Forms.DataGridViewTextBoxColumn NameColumn;
+        private System.Windows.Forms.DataGridViewTextBoxColumn AddressColumn;
+        private System.Windows.Forms.DataGridViewButtonColumn Button;
+        private MetroFramework.Controls.MetroLabel runningLabel;
+        private MetroFramework.Controls.MetroPanel findingPanel;
+        private MetroFramework.Controls.MetroPanel runningPanel;
     }
 }
 

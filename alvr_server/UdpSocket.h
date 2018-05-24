@@ -18,19 +18,19 @@ public:
 	virtual ~UdpSocket();
 
 	virtual bool Startup();
-	virtual bool NewClient(std::string &host, int &port);
-	virtual bool Recv(char *buf, int *buflen);
+	virtual bool Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen);
 	virtual bool Send(char *buf, int len, uint64_t frameIndex);
 	virtual void Shutdown();
+	void SetClientAddr(sockaddr_in *addr);
 	virtual sockaddr_in GetClientAddr()const;
 	virtual bool IsClientValid()const;
+	bool IsLegitClient(sockaddr_in *addr);
+	void InvalidateClient();
 
 	std::string ErrorStr();
 
 	bool BindSocket();
 	bool BindQueueSocket();
-	void CheckTimeout();
-	void UpdateLastSeen();
 
 private:
 	std::string m_Host;
@@ -44,10 +44,6 @@ private:
 	sockaddr_in m_ClientAddr;
 	sockaddr_in m_QueueAddr;
 	
-	bool m_PendingData;
-	bool m_NewClient;
-
-	uint64_t m_LastSeen;
 	std::shared_ptr<Poller> m_Poller;
 
 	struct SendBuffer {

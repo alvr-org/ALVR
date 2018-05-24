@@ -10,9 +10,6 @@ UdpSocket::UdpSocket(std::string host, int port, std::shared_ptr<Poller> poller)
 	: m_Host(host)
 	, m_Port(port)
 	, m_Socket(INVALID_SOCKET)
-	, m_PendingData(false)
-	, m_NewClient(false)
-	, m_LastSeen(0)
 	, m_Poller(poller)
 	, m_PreviousSentUs(0)
 	
@@ -46,20 +43,6 @@ bool UdpSocket::Startup() {
 	return true;
 }
 
-bool UdpSocket::NewClient(std::string &host, int &port) {
-	if (m_NewClient) {
-		m_NewClient = false;
-
-		char address[100] = {};
-		inet_ntop(m_ClientAddr.sin_family, &m_ClientAddr.sin_addr, address, sizeof(address));
-		host = address;
-		port = htons(m_ClientAddr.sin_port);
-
-		return true;
-	}
-	return false;
-}
-
 sockaddr_in UdpSocket::GetClientAddr()const {
 	return m_ClientAddr;
 }
@@ -69,28 +52,27 @@ bool UdpSocket::IsClientValid()const {
 	return m_ClientAddr.sin_family != 0;
 }
 
-bool UdpSocket::Recv(char *buf, int *buflen) {
+bool UdpSocket::IsLegitClient(sockaddr_in * addr)
+{
+	if (m_ClientAddr.sin_addr.S_un.S_addr == addr->sin_addr.S_un.S_addr && m_ClientAddr.sin_port == addr->sin_port) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+void UdpSocket::InvalidateClient()
+{
+	m_ClientAddr.sin_family = 0;
+}
+
+bool UdpSocket::Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen) {
 	bool ret = false;
 	if (m_Poller->IsPending(m_Socket)){
 		ret = true;
 
-		sockaddr_in addr;
-		int addrlen = sizeof(addr);
-		recvfrom(m_Socket, buf, *buflen, 0, (sockaddr *)&addr, &addrlen);
-
-		if (m_ClientAddr.sin_family == 0) {
-			// New client
-			m_ClientAddr = addr;
-			m_NewClient = true;
-		}
-		else if (m_ClientAddr.sin_addr.S_un.S_addr != addr.sin_addr.S_un.S_addr || m_ClientAddr.sin_port != addr.sin_port) {
-			// New client
-			m_ClientAddr = addr;
-			m_NewClient = true;
-		}
-		UpdateLastSeen();
-
-		m_PendingData = false;
+		recvfrom(m_Socket, buf, *buflen, 0, (sockaddr *)addr, &addrlen);
 	}
 
 	if (m_Poller->IsPending(m_QueueSocket)) {
@@ -101,11 +83,11 @@ bool UdpSocket::Recv(char *buf, int *buflen) {
 		if (!IsClientValid()) {
 			m_SendQueue.clear();
 
-			sockaddr_in addr;
-			int addrlen = sizeof(addr);
+			sockaddr_in addr2;
+			int addrlen2 = sizeof(addr2);
 			char dummyBuf[1000];
 			while (true) {
-				int recvret = recvfrom(m_QueueSocket, dummyBuf, sizeof(dummyBuf), 0, (sockaddr *)&addr, &addrlen);
+				int recvret = recvfrom(m_QueueSocket, dummyBuf, sizeof(dummyBuf), 0, (sockaddr *)&addr2, &addrlen2);
 				if (recvret < 0) {
 					break;
 				}
@@ -115,7 +97,7 @@ bool UdpSocket::Recv(char *buf, int *buflen) {
 				SendBuffer buffer = m_SendQueue.front();
 
 				uint64_t current = GetTimestampUs();
-				if (current % Settings::Instance().m_SendingTimeslotUs != m_PreviousSentUs % Settings::Instance().m_SendingTimeslotUs) {
+				if (current / Settings::Instance().m_SendingTimeslotUs != m_PreviousSentUs / Settings::Instance().m_SendingTimeslotUs) {
 					// Next window arrived.
 					m_CurrentTimeslotPackets = 0;
 				}
@@ -126,7 +108,7 @@ bool UdpSocket::Recv(char *buf, int *buflen) {
 					break;
 				}
 				else {
-					//Log("sendto: CurrentTimeslotPackets=%llu FrameIndex=%llu", m_CurrentTimeslotPackets, buffer.frameIndex);
+					Log("sendto: CurrentTimeslotPackets=%llu FrameIndex=%llu", m_CurrentTimeslotPackets, buffer.frameIndex);
 					int sendret = sendto(m_Socket, buffer.buf.get(), buffer.len, 0, (sockaddr *)&m_ClientAddr, sizeof(m_ClientAddr));
 					if (sendret < 0) {
 						Log("sendto error: %d %s", WSAGetLastError(), ErrorStr().c_str());
@@ -146,11 +128,11 @@ bool UdpSocket::Recv(char *buf, int *buflen) {
 			}
 		}
 		else {
-			sockaddr_in addr;
-			int addrlen = sizeof(addr);
+			sockaddr_in addr2;
+			int addrlen2 = sizeof(addr2);
 			char dummyBuf[1000];
 			while (true) {
-				int recvret = recvfrom(m_QueueSocket, dummyBuf, sizeof(dummyBuf), 0, (sockaddr *)&addr, &addrlen);
+				int recvret = recvfrom(m_QueueSocket, dummyBuf, sizeof(dummyBuf), 0, (sockaddr *)&addr2, &addrlen2);
 				if (recvret < 0) {
 					break;
 				}
@@ -188,6 +170,11 @@ void UdpSocket::Shutdown() {
 		closesocket(m_Socket);
 	}
 	m_Socket = INVALID_SOCKET;
+}
+
+void UdpSocket::SetClientAddr(sockaddr_in * addr)
+{
+	m_ClientAddr = *addr;
 }
 
 std::string UdpSocket::ErrorStr() {
@@ -261,24 +248,4 @@ bool UdpSocket::BindQueueSocket()
 	ioctlsocket(m_QueueSocket, FIONBIO, &val);
 
 	return true;
-}
-
-
-void UdpSocket::CheckTimeout() {
-	if (!IsClientValid()) {
-		return;
-	}
-
-	uint64_t Current = GetTimestampUs();
-
-	if (Current - m_LastSeen > 60 * 1000 * 1000) {
-		// idle for 60 seconcd
-		// Invalidate client
-		m_ClientAddr.sin_family = 0;
-		Log("Client timeout for idle");
-	}
-}
-
-void UdpSocket::UpdateLastSeen() {
-	m_LastSeen = GetTimestampUs();
 }

@@ -1,7 +1,8 @@
 # ALVR - Air Light VR
-====
 
 ALVR is a opensource remote VR display for Gear VR and Oculus Go. You can play SteamVR games in your standalone headset.
+
+[Japanese README](https://github.com/polygraphene/ALVR/blob/master/README-ja.md)
 
 ## Description
 ALVR streams VR display output from your PC to Gear VR / Oculus Go via Wi-Fi. This is similar to Riftcat or Trinus VR, but our purpose is optimization for Gear VR. We achieved smooth head-tracking compared to Riftcat in Wi-Fi environment.
@@ -41,7 +42,7 @@ ALVR requires following devices:
  - ALVR project is launcher GUI written in C#
 
 ### ALVR Client
-- Clone [ALVR Client](https://polygraphene.github.com/ALVRClient/)
+- Clone [ALVR Client](https://github.com/polygraphene/ALVRClient)
 - Put your [osig file](https://developer.oculus.com/documentation/mobilesdk/latest/concepts/mobile-submission-sig-file/) on assets folder (only for Gear VR)
 - Build with Android Studio
 - Install apk via adb

@@ -1,5 +1,4 @@
 # ALVR - Air Light VR
-====
 
 ALVRはPCVRの画面をGear VRやOculus Goに転送して遊ぶためのソフトです。SteamVRのゲームをスタンドアロン型のヘッドセットでプレイすることができます。
 

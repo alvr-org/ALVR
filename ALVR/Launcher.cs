@@ -97,6 +97,12 @@ namespace RemoteGlassLauncher
 
         private void Launcher_Load(object sender, EventArgs e)
         {
+            System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(assembly.Location);
+            string version = fvi.FileVersion;
+            var split = version.Split('.');
+            versionLabel.Text = "v" + split[0] + "." + split[1];
+
             UpdateServerStatus();
 
             Connect();

@@ -19,7 +19,7 @@ ALVR requires following devices:
 - Install ALVR server for PC
  - Download zip from release page
  - Extract zip on any folder
- - Launch install.bat
+ - Launch driver\_install.bat
  - Launch ALVR.exe
 - Install ALVR client for headset
  - For Gear VR users

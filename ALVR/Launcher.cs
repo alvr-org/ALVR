@@ -103,6 +103,8 @@ namespace RemoteGlassLauncher
             var split = version.Split('.');
             versionLabel.Text = "v" + split[0] + "." + split[1];
 
+            metroTabControl1.SelectedTab = serverTab;
+
             UpdateServerStatus();
 
             Connect();
@@ -208,10 +210,8 @@ namespace RemoteGlassLauncher
                 Connect();
                 return;
             }
-            SendCommand("GetConfig");
-
-            string str = await ReadNextMessage();
-
+            string str = await SendCommand("GetConfig");
+            
             logText.Text = str.Replace("\n", "\r\n");
             if (str.Contains("Connected 1\n")){
                 // Connected
@@ -222,10 +222,9 @@ namespace RemoteGlassLauncher
             runningPanel.Hide();
             findingPanel.Show();
 
-            SendCommand("GetRequests");
+            str = await SendCommand("GetRequests");
 
             dataGridView1.Rows.Clear();
-            str = await ReadNextMessage();
             int i = 0;
 
             foreach (var s in str.Split('\n'))
@@ -267,7 +266,6 @@ namespace RemoteGlassLauncher
             {
                 string IPAddr = (string)dataGridView1.Rows[e.RowIndex].Cells[1].Value;
                 SendCommand("Connect " + IPAddr);
-                ReadNextMessage();
             }
         }
     }

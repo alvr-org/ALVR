@@ -40,7 +40,7 @@ ALVR‚ÍPCVR‚Ì‰æ–Ê‚ğƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·B—‚½ƒ\ƒtƒg‚Æ‚
  - ALVR: C#‚Å‘‚©‚ê‚½GUI‚ÅALVR Server‚ğ‹N“®‚·‚é‚½‚ß‚ÌƒvƒƒOƒ‰ƒ€
 
 ### ALVR Client
-- [ALVR Client](https://polygraphene.github.com/ALVRClient/)‚ğƒNƒ[ƒ“
+- [ALVR Client](https://github.com/polygraphene/ALVRClient)‚ğƒNƒ[ƒ“
 - [osig file](https://developer.oculus.com/documentation/mobilesdk/latest/concepts/mobile-submission-sig-file/) ‚ğ assets ƒtƒHƒ‹ƒ_‚Éİ’u (Gear VR‚Ì‚İ)
 - Android Studio‚Åƒrƒ‹ƒh
 - adb‚ÅƒCƒ“ƒXƒg[ƒ‹

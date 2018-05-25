@@ -22,6 +22,9 @@ void ControlSocket::Startup() {
 		return;
 	}
 
+	int val = 1;
+	setsockopt(m_Socket, SOL_SOCKET, SO_REUSEADDR, (const char *)&val, sizeof(val));
+
 	sockaddr_in addr;
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(m_Port);

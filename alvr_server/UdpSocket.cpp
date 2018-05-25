@@ -111,7 +111,7 @@ bool UdpSocket::Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen) {
 					Log("sendto: CurrentTimeslotPackets=%llu FrameIndex=%llu", m_CurrentTimeslotPackets, buffer.frameIndex);
 					int sendret = sendto(m_Socket, buffer.buf.get(), buffer.len, 0, (sockaddr *)&m_ClientAddr, sizeof(m_ClientAddr));
 					if (sendret < 0) {
-						Log("sendto error: %d %s", WSAGetLastError(), ErrorStr().c_str());
+						Log("sendto error: %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
 						if (WSAGetLastError() != WSAEWOULDBLOCK) {
 							// Fatal Error!
 							abort();
@@ -177,11 +177,11 @@ void UdpSocket::SetClientAddr(sockaddr_in * addr)
 	m_ClientAddr = *addr;
 }
 
-std::string UdpSocket::ErrorStr() {
+std::string UdpSocket::ErrorStr(int err) {
 	char *s = NULL;
 	std::string ret;
 	FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL, WSAGetLastError(),
+		NULL, err,
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 		(LPSTR)&s, 0, NULL);
 	ret = s;
@@ -193,25 +193,28 @@ bool UdpSocket::BindSocket()
 {
 	m_Socket = socket(AF_INET, SOCK_DGRAM, 0);
 	if (m_Socket == INVALID_SOCKET) {
-		Log("UdpSocket::BindSocket socket creation error: %d %s", WSAGetLastError(), ErrorStr().c_str());
+		Log("UdpSocket::BindSocket socket creation error: %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
+
+	int val = 1;
+	setsockopt(m_Socket, SOL_SOCKET, SO_REUSEADDR, (const char *)&val, sizeof(val));
+
+	val = 1;
+	ioctlsocket(m_Socket, FIONBIO, (u_long *)&val);
 
 	sockaddr_in addr;
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(m_Port);
-	InetPton(AF_INET, m_Host.c_str(), &addr.sin_addr);
+	inet_pton(AF_INET, m_Host.c_str(), &addr.sin_addr);
 
 	int ret = bind(m_Socket, (sockaddr *)&addr, sizeof(addr));
 	if (ret != 0) {
-		Log("UdpSocket::BindSocket bind error : %d %s", WSAGetLastError(), ErrorStr().c_str());
+		Log("UdpSocket::BindSocket bind error : Address=%s:%d %d %s", m_Host.c_str(), m_Port, WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 	Log("UdpSocket::BindSocket successfully bound to %s:%d", m_Host.c_str(), m_Port);
-
-	u_long val = 1;
-	ioctlsocket(m_Socket, FIONBIO, &val);
-
+	
 	return true;
 }
 
@@ -219,9 +222,16 @@ bool UdpSocket::BindQueueSocket()
 {
 	m_QueueSocket = socket(AF_INET, SOCK_DGRAM, 0);
 	if (m_QueueSocket == INVALID_SOCKET) {
-		Log("UdpSocket::BindQueueSocket socket creation error: %d %s", WSAGetLastError(), ErrorStr().c_str());
+		Log("UdpSocket::BindQueueSocket socket creation error: %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
+
+	int val = 1;
+	setsockopt(m_QueueSocket, SOL_SOCKET, SO_REUSEADDR, (const char *)&val, sizeof(val));
+
+	val = 1;
+	ioctlsocket(m_QueueSocket, FIONBIO, (u_long *)&val);
+
 	sockaddr_in addr = {};
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(0); // bind to random port
@@ -229,7 +239,7 @@ bool UdpSocket::BindQueueSocket()
 
 	int ret = bind(m_QueueSocket, (sockaddr *)&addr, sizeof(addr));
 	if (ret != 0) {
-		Log("UdpSocket::BindQueueSocket bind error : %d %s", WSAGetLastError(), ErrorStr().c_str());
+		Log("UdpSocket::BindQueueSocket bind error : %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 
@@ -237,15 +247,13 @@ bool UdpSocket::BindQueueSocket()
 	int len = sizeof(m_QueueAddr);
 	ret = getsockname(m_QueueSocket, (sockaddr *)&m_QueueAddr, &len);
 	if (ret != 0) {
-		Log("UdpSocket::BindQueueSocket getsockname error : %d %s", WSAGetLastError(), ErrorStr().c_str());
+		Log("UdpSocket::BindQueueSocket getsockname error : %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 	char buf[30];
 	inet_ntop(AF_INET, &m_QueueAddr, buf, sizeof(buf));
 	Log("UdpSocket::BindQueueSocket bound queue port: %s:%d\n", buf, htons(m_QueueAddr.sin_port));
 
-	u_long val = 1;
-	ioctlsocket(m_QueueSocket, FIONBIO, &val);
 
 	return true;
 }

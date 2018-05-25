@@ -27,7 +27,7 @@ public:
 	bool IsLegitClient(sockaddr_in *addr);
 	void InvalidateClient();
 
-	std::string ErrorStr();
+	std::string ErrorStr(int err);
 
 	bool BindSocket();
 	bool BindQueueSocket();

@@ -1,0 +1,25 @@
+{
+	"driver_alvr_server": {
+		"serialNumber": "RG-001",
+		"modelNumber": "ALVR driver server",
+		"adapterIndex": 0,
+		"renderWidth" : 2048,
+		"renderHeight" : 1024,
+        "IPD": 0.064,
+		"secondsFromVsyncToPhotons" : 0.005, // 5ms
+		"displayFrequency" : 60,
+		"nvencOptions": "-codec h264 -preset ll_hq -rc cbr_ll_hq -bitrate 30M -gop 120 -maxbitrate 40M -fps 60",
+		"listenPort": 9944,
+		"listenHost": "0.0.0.0",
+        "sendingTimeslotUs": 500,
+        "limitTimeslotPackets": 4,
+		"controlListenPort": 9944,
+        "controlListenHost": "127.0.0.1",
+        //"debugLog": true,
+		//"debugCaptureOutput": true,
+		//"debugFrameIndex": true,
+		//"debugFrameOutput": true,
+        //"debugOutputDir": "C:\\src\\ALVR",
+        "useKeyedMutex": true
+	}
+}

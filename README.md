@@ -28,8 +28,10 @@ ALVR requires following devices:
     - For Gear VR users
         - (Install apk from SideloadVR) Yet to be released. Please wait.
         - Get osig file from oculus website.
-        - Put osig file on assets folder in apk
-        - Run zipalign and jarsigner for apk
+        - Install [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor)
+        - Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
+        - Open apk and put osig file on assets folder
+        - Build and install
     - For Oculus Go users
         - Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
         - Install apk via adb

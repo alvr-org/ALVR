@@ -27,7 +27,7 @@ ALVR‚ÍPCVR‚Ì‰æ–Ê‚ğƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·B—‚½ƒ\ƒtƒg‚Æ‚
     - Gear VR
         - SideloadVR‚ÉƒŠƒŠ[ƒX—\’è (R¸‚ª’Ê‚ê‚Î)
         - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çapk‚ğƒ_ƒEƒ“ƒ[ƒh
-        - [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor&hl=ja)“™‚Åapk‚ÌassetsƒtƒHƒ‹ƒ_‚Éosigƒtƒ@ƒCƒ‹‚ğ’u‚­
+        - [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor)“™‚Åapk‚ÌassetsƒtƒHƒ‹ƒ_‚Éosigƒtƒ@ƒCƒ‹‚ğ’u‚­
         - apk‚ğ–¼(Apk Editor‚È‚çBuild)‚µ‚ÄƒCƒ“ƒXƒg[ƒ‹
     - Oculus Go
         - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çapk‚ğƒ_ƒEƒ“ƒ[ƒh

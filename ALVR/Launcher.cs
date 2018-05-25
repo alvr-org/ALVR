@@ -80,11 +80,6 @@ namespace RemoteGlassLauncher
             }
         }
 
-        private void button1_Click(object sender, EventArgs e)
-        {
-            SendCommand("Capture");
-        }
-
         private void button2_Click(object sender, EventArgs e)
         {
             SendCommand("EnableTestMode " + metroTextBox1.Text);
@@ -267,6 +262,11 @@ namespace RemoteGlassLauncher
                 string IPAddr = (string)dataGridView1.Rows[e.RowIndex].Cells[1].Value;
                 SendCommand("Connect " + IPAddr);
             }
+        }
+
+        private void metroButton3_Click(object sender, EventArgs e)
+        {
+            SendCommand("Capture");
         }
     }
 }

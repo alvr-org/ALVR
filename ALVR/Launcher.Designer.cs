@@ -104,6 +104,7 @@
             this.metroButton3.Size = new System.Drawing.Size(75, 23);
             this.metroButton3.TabIndex = 6;
             this.metroButton3.Text = "Capture DDS";
+            this.metroButton3.Click += new System.EventHandler(this.metroButton3_Click);
             // 
             // metroTabControl1
             // 
@@ -112,7 +113,7 @@
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 0;
+            this.metroTabControl1.SelectedIndex = 1;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 

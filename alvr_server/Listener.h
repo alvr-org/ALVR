@@ -372,8 +372,8 @@ public:
 
 		uint64_t Current = GetTimestampUs();
 
-		if (Current - m_LastSeen > 60 * 1000 * 1000) {
-			// idle for 60 seconcd
+		if (Current - m_LastSeen > 10 * 1000 * 1000) {
+			// idle for 10 seconcd
 			// Invalidate client
 			m_Socket->InvalidateClient();
 			m_Connected = false;

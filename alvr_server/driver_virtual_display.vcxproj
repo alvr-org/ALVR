@@ -108,7 +108,7 @@
       </Command>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>xcopy "$(TargetPath)" "$(SolutionDir)bin\win64\" /Y</Command>
+      <Command>xcopy "$(TargetPath)" "$(SolutionDir)driver\bin\win64\" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -154,7 +154,7 @@
       </Command>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>xcopy "$(TargetPath)" "$(SolutionDir)bin\win64\" /Y</Command>
+      <Command>xcopy "$(TargetPath)" "$(SolutionDir)driver\bin\win64\" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

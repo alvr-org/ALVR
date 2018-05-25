@@ -28,7 +28,7 @@ public:
 		memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
 		InitializeCriticalSection(&m_CS);
 
-		m_Settings.type = 4;
+		m_Settings.type = ALVR_PACKET_TYPE_CHANGE_SETTINGS;
 		m_Settings.enableTestMode = 0;
 		m_Settings.suspend = 0;
 
@@ -125,7 +125,7 @@ public:
 							UpdateLastSeen();
 
 							ConnectionMessage message = {};
-							message.type = 6;
+							message.type = ALVR_PACKET_TYPE_CONNECTION_MESSAGE;
 							m_Socket->Send((char *)&message, sizeof(message), 0);
 
 							SendCommandResponse("Success\n");
@@ -153,38 +153,39 @@ public:
 		}
 		Log("Sending %d bytes FrameIndex=%llu", len, frameIndex);
 
-		int chunks = (len + PACKET_SIZE - 1) / PACKET_SIZE;
-		for (int i = 0; i < chunks; i++) {
-			int size = min(PACKET_SIZE, len - (i * PACKET_SIZE));
+		int remainBuffer = len;
+		for (int i = 0; remainBuffer != 0; i++) {
 			int pos = 0;
 
 			if (i == 0) {
-				*(uint32_t *)packetBuffer = 1;
-				pos += sizeof(uint32_t);
-				*(uint32_t *)(packetBuffer + pos) = packetCounter;
-				pos += sizeof(uint32_t);
+				// First fragment
+				VideoFrameStart *header = (VideoFrameStart *)packetBuffer;
 
-				// Insert presentation time header in first packet.
-				*(uint64_t *)(packetBuffer + pos) = presentationTime;
-				pos += sizeof(uint64_t);
-				*(uint64_t *)(packetBuffer + pos) = frameIndex;
-				pos += sizeof(uint64_t);
+				header->type = ALVR_PACKET_TYPE_VIDEO_FRAME_START;
+				header->packetCounter = packetCounter;
+				header->presentationTime = presentationTime;
+				header->frameIndex = frameIndex;
+				header->frameByteSize = len;
+
+				pos = sizeof(VideoFrameStart);
 			}else{
-				*(uint32_t *)packetBuffer = 2;
-				pos += sizeof(uint32_t);
-				*(uint32_t *)(packetBuffer + pos) = packetCounter;
-				pos += sizeof(uint32_t);
+				// Following fragments
+				VideoFrame *header = (VideoFrame *)packetBuffer;
+
+				header->type = ALVR_PACKET_TYPE_VIDEO_FRAME;
+				header->packetCounter = packetCounter;
+
+				pos = sizeof(VideoFrame);
 			}
+
+			int size = min(PACKET_SIZE - pos, remainBuffer);
+
+			memcpy(packetBuffer + pos, buf + (len - remainBuffer), size);
+			pos += size;
+			remainBuffer -= size;
+
 			packetCounter++;
 
-			memcpy(packetBuffer + pos, buf + i * PACKET_SIZE, size);
-			pos += size;
-
-			if (i == chunks - 1) {
-				// Insert padding so that client can detect end of packet
-				memcpy(packetBuffer + pos, "\x00\x00\x00\x02", 4);
-				pos += 4;
-			}
 			int ret = m_Socket->Send((char *)packetBuffer, pos, frameIndex);
 
 		}
@@ -198,7 +199,7 @@ public:
 		uint32_t type = *(uint32_t*)buf;
 
 		Log("Received packet. Type=%d", type);
-		if (type == 1 && len >= sizeof(HelloMessage)) {
+		if (type == ALVR_PACKET_TYPE_HELLO_MESSAGE && len >= sizeof(HelloMessage)) {
 			HelloMessage *message = (HelloMessage *)buf;
 			SanitizeDeviceName(message->deviceName);
 
@@ -206,7 +207,7 @@ public:
 
 			PushRequest(message, addr);
 		}
-		else if (type == 2 && len >= sizeof(TrackingInfo)) {
+		else if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
 			if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
 				char str[100];
 				inet_ntop(AF_INET, &addr->sin_addr, str, sizeof(str));
@@ -226,7 +227,7 @@ public:
 				m_TrackingInfo.HeadPose_Pose_Orientation.w);
 			m_PoseUpdatedCallback();
 		}
-		else if (type == 3 && len >= sizeof(TimeSync)) {
+		else if (type == ALVR_PACKET_TYPE_TIME_SYNC && len >= sizeof(TimeSync)) {
 			if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
 				char str[100];
 				inet_ntop(AF_INET, &addr->sin_addr, str, sizeof(str));
@@ -253,7 +254,7 @@ public:
 				Log("TimeSync: server - client = %lld us RTT = %lld us", TimeDiff, RTT);
 			}
 		}
-		else if (type == 7 && len >= sizeof(StreamControlMessage)) {
+		else if (type == ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE && len >= sizeof(StreamControlMessage)) {
 			if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
 				char str[100];
 				inet_ntop(AF_INET, &addr->sin_addr, str, sizeof(str));
@@ -289,7 +290,7 @@ public:
 	}
 
 	bool HasValidTrackingInfo() const {
-		return m_TrackingInfo.type == 2;
+		return m_TrackingInfo.type == ALVR_PACKET_TYPE_TRACKING_INFO;
 	}
 
 	void GetTrackingInfo(TrackingInfo &info) {
@@ -392,8 +393,8 @@ private:
 	std::shared_ptr<UdpSocket> m_Socket;
 	std::shared_ptr<ControlSocket> m_ControlSocket;
 
-	// Maximum SRT(or UDP) payload is PACKET_SIZE + 16
-	static const int PACKET_SIZE = 1000;
+	// Maximum UDP payload
+	static const int PACKET_SIZE = 1400;
 
 	uint32_t packetCounter = 0;
 

@@ -2,6 +2,18 @@
 #define ALVRCLIENT_PACKETTYPES_H
 #include <stdint.h>
 
+enum ALVR_PACKET_TYPE {
+	ALVR_PACKET_TYPE_HELLO_MESSAGE = 1,
+	ALVR_PACKET_TYPE_TRACKING_INFO = 2,
+	ALVR_PACKET_TYPE_TIME_SYNC = 3,
+	ALVR_PACKET_TYPE_CHANGE_SETTINGS = 4,
+	ALVR_PACKET_TYPE_BROADCAST_REQUEST_MESSAGE = 5,
+	ALVR_PACKET_TYPE_CONNECTION_MESSAGE = 6,
+	ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE = 7,
+	ALVR_PACKET_TYPE_VIDEO_FRAME_START = 8,
+	ALVR_PACKET_TYPE_VIDEO_FRAME = 9
+};
+
 #pragma pack(push, 1)
 // hello message
 struct HelloMessage {
@@ -77,6 +89,19 @@ struct ConnectionMessage {
 struct StreamControlMessage {
 	uint32_t type; // 7
 	uint32_t mode; // 1=Start stream, 2=Stop stream
+};
+struct VideoFrameStart {
+	uint32_t type; // 8
+	uint32_t packetCounter;
+	uint64_t presentationTime;
+	uint64_t frameIndex;
+	uint32_t frameByteSize;
+	// char frameBuffer[];
+};
+struct VideoFrame {
+	uint32_t type; // 9
+	uint32_t packetCounter;
+	// char frameBuffer[];
 };
 #pragma pack(pop)
 

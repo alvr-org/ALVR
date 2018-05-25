@@ -279,14 +279,27 @@ window.VRCubeSea = (function () {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.boardVert), gl.STATIC_DRAW);
 
     this.textureCanvas = document.createElement("canvas");
-    this.textureCanvas.width = 256;
-    this.textureCanvas.height = 256;
+    this.textureCanvas.width = 1024;
+    this.textureCanvas.height = 1024;
 
     this.canvasTexture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.canvasTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.textureCanvas);
   };
+
+  function digit(i, n){
+    if(n == 3 && i < 10){
+      return "00" + i;
+    }
+    if(n == 3 && i < 100){
+      return "0" + i;
+    }
+    if(n == 2 && i < 10){
+      return "0" + i;
+    }
+    return "" + i
+  }
 
   CubeSea.prototype.render = function (projectionMat, modelViewMat, stats, timestamp, orientation, position) {
     var gl = this.gl;
@@ -299,8 +312,8 @@ window.VRCubeSea = (function () {
     //  mat4.multiply(this.cubesModelViewMat, modelViewMat, this.autoRotationMat);
     //  mat3.fromMat4(this.normalMat, this.autoRotationMat);
     //} else {
-      this.cubesModelViewMat = modelViewMat;
-      mat3.identity(this.normalMat);
+    this.cubesModelViewMat = modelViewMat;
+    mat3.identity(this.normalMat);
     //}
 
     gl.uniformMatrix4fv(program.uniform.projectionMat, false, projectionMat);
@@ -325,23 +338,23 @@ window.VRCubeSea = (function () {
 
     var N = 10;
     for(var i = 0; i < N; i++){
-        var theta = 2 * Math.PI * i / N;
+      var theta = 2 * Math.PI * i / N;
 
-        var mm = mat4.create();
-        mat4.translate(mm, mm, [5 * Math.cos(theta), 0, 5* Math.sin(theta)]);
-        var tran = mat4.clone(mm);
-        mat4.mul(mm, modelViewMat, mm);
-        mat4.mul(mm, projectionMat, mm);
-        gl.uniformMatrix4fv(program.uniform.modelViewMat, false, mm);
-        if(i == 0){
-            //console.log(theta);
-            //console.log("rotate:");
-            //console.log(orientation);
-            //console.log(modelViewMat);
-            ////console.log(projectionMat);
-            //console.log(mm);
-        }
-        gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_SHORT, 0);
+      var mm = mat4.create();
+      mat4.translate(mm, mm, [5 * Math.cos(theta), 0, 5* Math.sin(theta)]);
+      var tran = mat4.clone(mm);
+      mat4.mul(mm, modelViewMat, mm);
+      mat4.mul(mm, projectionMat, mm);
+      gl.uniformMatrix4fv(program.uniform.modelViewMat, false, mm);
+      if(i == 0){
+        //console.log(theta);
+        //console.log("rotate:");
+        //console.log(orientation);
+        //console.log(modelViewMat);
+        ////console.log(projectionMat);
+        //console.log(mm);
+      }
+      gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_SHORT, 0);
     }
 
     var mm = mat4.create();
@@ -353,57 +366,54 @@ window.VRCubeSea = (function () {
     mat4.mul(mm, projectionMat, mm);
     gl.uniformMatrix4fv(program.uniform.modelViewMat, false, mm);
 
-      function ke(i, n){
-          if(n == 3 && i < 10){
-              return "00" + i;
-          }
-          if(n == 3 && i < 100){
-              return "0" + i;
-          }
-          if(n == 2 && i < 10){
-              return "0" + i;
-          }
-          return "" + i
-      }
-
     if(position){
       var context = this.textureCanvas.getContext("2d");
       context.save();
       context.fillRect(0, 0, this.textureCanvas.width, this.textureCanvas.height);
       context.fillStyle = '#FFFFFF';
-      context.font = "bold 6px 'Arial'";
+      context.font = "bold 32px 'Arial'";
       context.textAlign = 'left';
       context.textBaseline = 'middle';
-      if(orientation){
-        if(1){
-          var line = 8;
-          var pos = 8;
-          var testMat = mat4.create();
-          mat4.fromQuat(testMat, orientation);
-          testMat[1] = -1000;
-          context.fillText(testMat[0].toFixed(3) + " " + testMat[1].toFixed(3) + " " + testMat[2].toFixed(3) + " " + testMat[3].toFixed(3) + " ", 0, pos);
-          context.fillText(testMat[4].toFixed(3) + " " + testMat[5].toFixed(3) + " " + testMat[6].toFixed(3) + " " + testMat[3].toFixed(7) + " ", 0, pos+=line);
-          context.fillText(testMat[8].toFixed(3) + " " + testMat[9].toFixed(3) + " " + testMat[10].toFixed(3) + " " + testMat[3].toFixed(11) + " ", 0, pos+=line);
-          context.fillText(testMat[12].toFixed(3) + " " + testMat[13].toFixed(3) + " " + testMat[13].toFixed(3) + " " + testMat[15].toFixed(11) + " ", 0, pos+=line);
-          context.fillText("q:" + orientation[0].toFixed(6) + " " + orientation[1].toFixed(3) + " " + orientation[2].toFixed(3) + " " + orientation[3].toFixed(11) + " ", 0, pos+=line);
-          context.fillText("p:" + position[0].toFixed(6) + " " + position[1].toFixed(3) + " " + position[2].toFixed(3), 0, pos+=line);
 
-          context.fillText("t1:" + window.test  + " t2:" + window.test2 + "", 0, 80);
+      if(orientation){
+        var line = 38;
+        var x = 200;
+        var pos = 20;
+        function drawText(text){
+          context.fillText(text, x, pos += line);
         }
-        else{
-          context.fillText(viewMat + "", 0, 20);
-          context.fillText(orientation[1] + "", 0, 40);
-          context.fillText(orientation[2] + "", 0, 60);
-          context.fillText("t1:" + window.test  + " t2:" + window.test2 + "", 0, 80);
-        }
+
+        var testMat = mat4.create();
+        mat4.fromQuat(testMat, orientation);
+
+        drawText(testMat[0].toFixed(3) + " " + testMat[1].toFixed(3) + " " + testMat[2].toFixed(3) + " " + testMat[3].toFixed(3));
+        drawText(testMat[4].toFixed(3) + " " + testMat[5].toFixed(3) + " " + testMat[6].toFixed(3) + " " + testMat[7].toFixed(3));
+        drawText(testMat[8].toFixed(3) + " " + testMat[9].toFixed(3) + " " + testMat[10].toFixed(3) + " " + testMat[11].toFixed(3));
+        drawText(testMat[12].toFixed(3) + " " + testMat[13].toFixed(3) + " " + testMat[13].toFixed(3) + " " + testMat[15].toFixed(3));
+        pos += line;
+        drawText("Rotation(x,y,z,w):");
+        drawText("" + orientation[0].toFixed(6) + " " + orientation[1].toFixed(6) + " " + orientation[2].toFixed(6) + " " + orientation[3].toFixed(6) + " ");
+        pos += line;
+        drawText("Position(x,y,z):");
+        drawText("" + position[0].toFixed(6) + " " + position[1].toFixed(3) + " " + position[2].toFixed(3));
+
+        drawText("t1:" + window.test  + " t2:" + window.test2 + "");
+
         var date = new Date();
-        context.fillText(ke(date.getHours(), 2) + ":" + ke(date.getMinutes(), 2) 
-          + ":" + ke(date.getSeconds(), 2) + "." + ke(date.getMilliseconds(), 3) + "", 0, 100);
+        drawText(digit(date.getHours(), 2) + ":" + digit(date.getMinutes(), 2)
+          + ":" + digit(date.getSeconds(), 2) + "." + digit(date.getMilliseconds(), 3) + "");
+
+        x = 600;
+        pos = 20;
+        drawText(modelViewMat[0].toFixed(3) + " " + modelViewMat[1].toFixed(3) + " " + modelViewMat[2].toFixed(3) + " " + modelViewMat[3].toFixed(3));
+        drawText(modelViewMat[4].toFixed(3) + " " + modelViewMat[5].toFixed(3) + " " + modelViewMat[6].toFixed(3) + " " + modelViewMat[7].toFixed(3));
+        drawText(modelViewMat[8].toFixed(3) + " " + modelViewMat[9].toFixed(3) + " " + modelViewMat[10].toFixed(3) + " " + modelViewMat[11].toFixed(3));
+        drawText(modelViewMat[12].toFixed(3) + " " + modelViewMat[13].toFixed(3) + " " + modelViewMat[13].toFixed(3) + " " + modelViewMat[15].toFixed(3));
+
       }else{
         context.fillText("Hello world!", 0, 40);
       }
       context.restore();
-
 
       gl.activeTexture(gl.TEXTURE0);
       gl.uniform1i(this.program.uniform.diffuse, 0);

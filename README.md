@@ -34,11 +34,20 @@ ALVR requires following devices:
         - Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
         - Install apk via adb
 
+## Usage
+- Install SteamVR
+- Launch ALVR.exe
+- Press "Start Server" button or launch VR game
+- SteamVR's Small window will appears
+- Launch ALVR Client in your headset
+- IP Address of headset will appears in server tab of ALVR.exe
+- Press "Connect" button
+
 ## Uninstallation
 - Execute driver\_uninstall.bat in driver folder
 - Delete install folder (ALVR does not use registry)
 - If you already deleted folder without executing driver\_uninstall.bat
-    - Open C:\Users\%USERNAME%\AppData\Local\openvr\openvrpaths.vrpath and check install directory.
+    - Open C:\Users\\%USERNAME%\AppData\Local\openvr\openvrpaths.vrpath and check install directory.
     - Execute
     `"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vrpathreg.exe" removedriver (install folder)`
     in Command Prompt.

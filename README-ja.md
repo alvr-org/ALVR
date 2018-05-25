@@ -10,31 +10,42 @@ ALVR‚ÍPCVR‚Ì‰æ–Ê‚ğƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·B—‚½ƒ\ƒtƒg‚Æ‚
 ## “®ìŠÂ‹«
 ˆÈ‰º‚Ì“®ìŠÂ‹«‚ª•K—v‚Å‚·B
 - Gear VR ‚© Oculus Go
- - Œ»óAGear VR + Galaxy S8‚Å‚µ‚©‚µ‚Ä‚¢‚Ü‚¹‚ñBS6‚âS7‚¾‚ÆƒXƒyƒbƒN“I‚ÉŒµ‚µ‚¢‚©‚à‚µ‚ê‚Ü‚¹‚ñB
- - ‚µ‚½•û‚ª‚¢‚½‚çƒtƒB[ƒhƒoƒbƒN‚¨Šè‚¢‚µ‚Ü‚·I
+    - Œ»óAGear VR + Galaxy S8‚Å‚µ‚©‚µ‚Ä‚¢‚Ü‚¹‚ñBS6‚âS7‚¾‚ÆƒXƒyƒbƒN“I‚ÉŒµ‚µ‚¢‚©‚à‚µ‚ê‚Ü‚¹‚ñB
+    - ‚µ‚½•û‚ª‚¢‚½‚çƒtƒB[ƒhƒoƒbƒN‚¨Šè‚¢‚µ‚Ü‚·I
 - NVENC‚ªg‚¦‚éNVIDIA GPU‚ğ“‹Ú‚µ‚½ƒnƒCƒGƒ“ƒhPC
- - Œ»İAWindows 10‚Ì‚İƒTƒ|[ƒg‚µ‚Ä‚¢‚Ü‚·B
+    - Œ»İAWindows 10‚Ì‚İƒTƒ|[ƒg‚µ‚Ä‚¢‚Ü‚·B
 - 802.11n/ac Wi-Fi
 - SteamVR‚ªƒCƒ“ƒXƒg[ƒ‹Ï‚İ‚Å‚ ‚é‚±‚Æ
 
 ## ƒCƒ“ƒXƒg[ƒ‹•û–@
 - ALVR server‚ÌƒCƒ“ƒXƒg[ƒ‹‚·‚é•û–@
- - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çzip‚ğƒ_ƒEƒ“ƒ[ƒh
- - ”CˆÓ‚ÌƒtƒHƒ‹ƒ_‚É“WŠJ
- - driverƒtƒHƒ‹ƒ_“à‚Ìdriver\_install.bat‚ğÀs
- - ALVR.exe‚ğ‹N“®
+    - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çzip‚ğƒ_ƒEƒ“ƒ[ƒh
+    - ”CˆÓ‚ÌƒtƒHƒ‹ƒ_‚É“WŠJ
+    - driverƒtƒHƒ‹ƒ_“à‚Ìdriver\_install.bat‚ğÀs
+    - ALVR.exe‚ğ‹N“®
 - ALVR client‚ğƒwƒbƒhƒZƒbƒg‚ÉƒCƒ“ƒXƒg[ƒ‹‚·‚é•û–@
- - Gear VR
-  - SideloadVRŒo—R‚Å‚ÌƒCƒ“ƒXƒg[ƒ‹‚ªŠy‚Å‚·
- - Oculus Go
-  - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çapk‚ğƒ_ƒEƒ“ƒ[ƒh
-  - adb‚Åapk‚ğƒCƒ“ƒXƒg[ƒ‹
+    - Gear VR
+        - SideloadVR‚ÉƒŠƒŠ[ƒX—\’è (R¸‚ª’Ê‚ê‚Î)
+        - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çapk‚ğƒ_ƒEƒ“ƒ[ƒh
+        - [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor&hl=ja)“™‚Åapk‚ÌassetsƒtƒHƒ‹ƒ_‚Éosigƒtƒ@ƒCƒ‹‚ğ’u‚­
+        - apk‚ğ–¼(Apk Editor‚È‚çBuild)‚µ‚ÄƒCƒ“ƒXƒg[ƒ‹
+    - Oculus Go
+        - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çapk‚ğƒ_ƒEƒ“ƒ[ƒh
+        - adb‚Åapk‚ğƒCƒ“ƒXƒg[ƒ‹
+
+## g‚¢•û
+- SteamVR‚ğƒCƒ“ƒXƒg[ƒ‹‚·‚é
+- ALVR.exe‚ğ‹N“®
+- Start Serverƒ{ƒ^ƒ“‚ğ‰Ÿ‚· or VR‘Î‰ƒQ[ƒ€‚ğ‹N“®
+- SteamVR‚Ì¬‚³‚¢ƒEƒBƒ“ƒhƒE‚ªo‚Ä‚­‚é
+- ƒwƒbƒhƒZƒbƒg‚ÅALVR Client‚ğ‹N“®
+- ALVR.exe‚Ì‰æ–Ê‚ÉƒwƒbƒhƒZƒbƒg‚ÌIPƒAƒhƒŒƒX‚ªo‚Ä‚­‚é‚Ì‚ÅConnect‚ğ‰Ÿ‚·
 
 ## ƒAƒ“ƒCƒ“ƒXƒg[ƒ‹•û–@
 - driverƒtƒHƒ‹ƒ_“à‚Ìdriver\_uninstall.bat‚ğÀs
 - ƒCƒ“ƒXƒg[ƒ‹ƒtƒHƒ‹ƒ_‚ğíœ (ƒŒƒWƒXƒgƒŠ‚Íg‚¢‚Ü‚¹‚ñ)
 - driver\_uninstall.bat‚ğÀs‚¹‚¸íœ‚µ‚Ä‚µ‚Ü‚Á‚½ê‡
-    - C:\Users\%USERNAME%\AppData\Local\openvr\openvrpaths.vrpath‚ğƒƒ‚’ ‚ÅŠJ‚«ƒCƒ“ƒXƒg[ƒ‹ƒtƒHƒ‹ƒ_‚ğŠm”F(è“®‚Å‘‚«Š·‚¦‚µ‚È‚¢‚æ‚¤‚É)
+    - C:\Users\\%USERNAME%\AppData\Local\openvr\openvrpaths.vrpath‚ğƒƒ‚’ ‚ÅŠJ‚«ƒCƒ“ƒXƒg[ƒ‹ƒtƒHƒ‹ƒ_‚ğŠm”F(è“®‚Å‘‚«Š·‚¦‚µ‚È‚¢‚æ‚¤‚É)
     - ƒRƒ}ƒ“ƒhƒvƒƒ“ƒvƒg‚Å
     `"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vrpathreg.exe" removedriver (ƒCƒ“ƒXƒg[ƒ‹ƒtƒHƒ‹ƒ_)`
     ‚ğÀs

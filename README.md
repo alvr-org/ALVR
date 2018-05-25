@@ -5,7 +5,7 @@ ALVR is a opensource remote VR display for Gear VR and Oculus Go. You can play S
 [Japanese README](https://github.com/polygraphene/ALVR/blob/master/README-ja.md)
 
 ## Description
-ALVR streams VR display output from your PC to Gear VR / Oculus Go via Wi-Fi. This is similar to Riftcat or Trinus VR, but our purpose is optimization for Gear VR. We achieved smooth head-tracking compared to Riftcat in Wi-Fi environment.
+ALVR streams VR display output from your PC to Gear VR / Oculus Go via Wi-Fi. This is similar to Riftcat or Trinus VR, but our purpose is optimization for Gear VR. ALVR provides smooth head-tracking compared to other apps in Wi-Fi environment using Asynchronous Timewarp.
 
 ## Requirements
 ALVR requires following devices:
@@ -15,18 +15,23 @@ ALVR requires following devices:
 - High-end gaming PC with NVIDIA GPU which supports NVENC
     - Only Windows 10 is supported
 - 802.11n/ac Wireless connection
+- SteamVR
 
 ## Installation
 - Install ALVR server for PC
-    - Download zip from release page
+    - Install SteamVR
+    - Download zip from [release page](https://github.com/polygraphene/ALVR/releases)
     - Extract zip on any folder
-    - Launch driver\_install.bat
+    - Launch driver\_install.bat in driver folder
     - Launch ALVR.exe
 - Install ALVR client for headset
     - For Gear VR users
-        - Install apk from SideloadVR
+        - (Install apk from SideloadVR) Yet to be released. Please wait.
+        - Get osig file from oculus website.
+        - Put osig file on assets folder in apk
+        - Run zipalign and jarsigner for apk
     - For Oculus Go users
-        - Download apk from release page
+        - Download apk from [release page](https://github.com/polygraphene/ALVR/releases)
         - Install apk via adb
 
 ## Future work
@@ -36,7 +41,7 @@ ALVR requires following devices:
 - Easy installer
 
 ## Build
-### ALVR Server and GUI(Launcher)
+### ALVR Server and GUI (Launcher)
 - Open ALVR.sln with Visual Studio 2017 and build.
     - alvr\_server project is driver for SteamVR written in C++
     - ALVR project is launcher GUI written in C#

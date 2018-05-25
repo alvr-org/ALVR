@@ -13,6 +13,7 @@ ALVR‚ÍPCVR‚Ì‰æ–Ê‚ðƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·BŽ—‚½ƒ\ƒtƒg‚Æ‚
 - NVENC‚ªŽg‚¦‚éNVIDIA GPU‚ð“‹Ú‚µ‚½ƒnƒCƒGƒ“ƒhPC
  - Œ»ÝAWindows 10‚Ì‚ÝƒTƒ|[ƒg‚µ‚Ä‚¢‚Ü‚·B
 - 802.11n/ac Wi-Fi
+- SteamVR‚ªƒCƒ“ƒXƒg[ƒ‹Ï‚Ý‚Å‚ ‚é‚±‚Æ
 
 ## ƒCƒ“ƒXƒg[ƒ‹•û–@
 - ALVR server‚ÌƒCƒ“ƒXƒg[ƒ‹‚·‚é•û–@

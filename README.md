@@ -1,6 +1,6 @@
 # ALVR - Air Light VR
 
-ALVR is a opensource remote VR display for Gear VR and Oculus Go. You can play SteamVR games in your standalone headset.
+ALVR is an opensource remote VR display for Gear VR and Oculus Go. You can play SteamVR games in your standalone headset.
 
 [Japanese README](https://github.com/polygraphene/ALVR/blob/master/README-ja.md)
 

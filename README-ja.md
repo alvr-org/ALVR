@@ -17,7 +17,7 @@ ALVR‚ÍPCVR‚Ì‰æ–Ê‚ğƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·B—‚½ƒ\ƒtƒg‚Æ‚
 
 ## ƒCƒ“ƒXƒg[ƒ‹•û–@
 - ALVR server‚ÌƒCƒ“ƒXƒg[ƒ‹‚·‚é•û–@
- - release page‚©‚çzip‚ğƒ_ƒEƒ“ƒ[ƒh
+ - [release page](https://github.com/polygraphene/ALVR/releases)‚©‚çzip‚ğƒ_ƒEƒ“ƒ[ƒh
  - ”CˆÓ‚ÌƒtƒHƒ‹ƒ_‚É“WŠJ
  - driver\_install.bat‚ğÀs
  - ALVR.exe‚ğ‹N“®
@@ -25,7 +25,7 @@ ALVR‚ÍPCVR‚Ì‰æ–Ê‚ğƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·B—‚½ƒ\ƒtƒg‚Æ‚
  - Gear VR
   - SideloadVRŒo—R‚Å‚ÌƒCƒ“ƒXƒg[ƒ‹‚ªŠy‚Å‚·
  - Oculus Go
-  - release page‚©‚çapk‚ğƒ_ƒEƒ“ƒ[ƒh
+  - [release page](https://github.com/polygraphene/ALVR/releases)‚©‚çapk‚ğƒ_ƒEƒ“ƒ[ƒh
   - adb‚Åapk‚ğƒCƒ“ƒXƒg[ƒ‹
 
 ## ¡Œã‚Ì—\’è

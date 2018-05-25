@@ -998,31 +998,38 @@ public:
 			, pPose->m[1][0], pPose->m[1][1], pPose->m[1][2], pPose->m[1][3]
 			, pPose->m[2][0], pPose->m[2][1], pPose->m[2][2], pPose->m[2][3]
 		);
-		// 3x3 rotation matrix
-		//pPose->m[0][0], pPose->m[0][1], pPose->m[0][2],
-		//pPose->m[1][0], pPose->m[1][1], pPose->m[1][2], 
-		//pPose->m[2][0], pPose->m[2][1], pPose->m[2][2], 
+		// pPose is qRotation which is calculated by SteamVR using vr::DriverPose_t::qRotation.
+		// pPose->m[0][0], pPose->m[0][1], pPose->m[0][2],
+		// pPose->m[1][0], pPose->m[1][1], pPose->m[1][2], 
+		// pPose->m[2][0], pPose->m[2][1], pPose->m[2][2], 
 		// position
 		// x = pPose->m[0][3], y = pPose->m[1][3], z = pPose->m[2][3]
-		m_framePose = *pPose;
 
 		if (m_submitLayer == 0) {
+			// Detect FrameIndex of submitted frame by pPose.
+			// This is important part to achieve smooth headtracking.
+			// We search for history of TrackingInfo and find the TrackingInfo which have nearest matrix value.
+
 			m_poseMutex.Wait(INFINITE);
-			float diff = 100000;
+			float minDiff = 100000;
 			int index = 0;
 			int minIndex = 0;
 			auto minIt = m_poseBuffer.begin();
 			for (auto it = m_poseBuffer.begin(); it != m_poseBuffer.end(); it++, index++) {
 				float distance = 0;
-				// rotation matrix composes parts of ViewMatrix
+				// Rotation matrix composes a part of ViewMatrix of TrackingInfo.
+				// Be carefull of transpose.
+				// And bottom side and right side of matrix should not be compared, because pPose does not contain that part of matrix.
 				for (int i = 0; i < 3; i++) {
 					for (int j = 0; j < 3; j++) {
-						distance += pow(it->Eye[0].ViewMatrix.M[j * 3 + i] - pPose->m[i][j], 2);
+						distance += pow(it->Eye[0].ViewMatrix.M[i * 4 + j] - pPose->m[j][i], 2);
 					}
 				}
-				if (diff > distance) {
+				//Log("diff %f %llu", distance, it->FrameIndex);
+				if (minDiff > distance) {
 					minIndex = index;
 					minIt = it;
+					minDiff = distance;
 				}
 			}
 			if (minIt != m_poseBuffer.end()) {
@@ -1077,11 +1084,11 @@ public:
 		uint32_t layerCount = m_submitLayer;
 		m_submitLayer = 0;
 
-		if (m_submitFrameIndex != m_LastReferencedFrameIndex) {
+		/*if (m_submitFrameIndex != m_LastReferencedFrameIndex) {
 			// Discard old frames
 			Log("Discarding old frame: m_submitFrameIndex=%llu m_LastReferencedFrameIndex=%llu", m_submitFrameIndex, m_LastReferencedFrameIndex);
 			return;
-		}
+		}*/
 
 		ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
 		if (!pSyncTexture)
@@ -1191,9 +1198,9 @@ public:
 
 		char buf[2000];
 		snprintf(buf, sizeof(buf), "%llu\n%f\n%f", m_prevSubmitFrameIndex, m_prevFramePoseRotation.x, info.HeadPose_Pose_Orientation.x);
-		m_pEncoder->CopyToStaging(pTexture, m_submitBounds, layerCount, presentationTime, m_prevSubmitFrameIndex, m_prevSubmitClientTime, std::string(buf));
+		//m_pEncoder->CopyToStaging(pTexture, m_submitBounds, layerCount, presentationTime, m_prevSubmitFrameIndex, m_prevSubmitClientTime, std::string(buf));
 
-		//m_pEncoder->CopyToStaging(pTexture, m_submitBounds, presentationTime, m_submitFrameIndex, m_submitClientTime, std::string(buf));
+		m_pEncoder->CopyToStaging(pTexture, m_submitBounds, layerCount, presentationTime, m_submitFrameIndex, m_submitClientTime, std::string(buf));
 
 		m_pD3DRender->GetContext()->Flush();
 	}
@@ -1212,7 +1219,6 @@ private:
 	int m_submitLayer;
 	vr::SharedTextureHandle_t m_submitTextures[MAX_LAYERS][2];
 	vr::VRTextureBounds_t m_submitBounds[MAX_LAYERS][2];
-	vr::HmdMatrix34_t m_framePose;
 	vr::HmdQuaternion_t m_prevFramePoseRotation;
 	vr::HmdQuaternion_t m_framePoseRotation;
 	uint64_t m_submitFrameIndex;

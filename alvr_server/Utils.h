@@ -26,10 +26,10 @@ inline uint64_t GetTimestampUs() {
 inline std::string DumpMatrix(const float *m) {
 	char buf[200];
 	snprintf(buf, sizeof(buf),
-		"%.5f, %.5f, %.5f, %.5f,\n"
-		"%.5f, %.5f, %.5f, %.5f,\n"
-		"%.5f, %.5f, %.5f, %.5f,\n"
-		"%.5f, %.5f, %.5f, %.5f,\n"
+		"%f, %f, %f, %f,\n"
+		"%f, %f, %f, %f,\n"
+		"%f, %f, %f, %f,\n"
+		"%f, %f, %f, %f,\n"
 		, m[0], m[1], m[2], m[3]
 		, m[4], m[5], m[6], m[7]
 		, m[8], m[9], m[10], m[11]

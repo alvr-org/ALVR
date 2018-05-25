@@ -2,6 +2,8 @@
 
 ALVR‚ÍPCVR‚Ì‰æ–Ê‚ğGear VR‚âOculus Go‚É“]‘—‚µ‚Ä—V‚Ô‚½‚ß‚Ìƒ\ƒtƒg‚Å‚·BSteamVR‚ÌƒQ[ƒ€‚ğƒXƒ^ƒ“ƒhƒAƒƒ“Œ^‚ÌƒwƒbƒhƒZƒbƒg‚ÅƒvƒŒƒC‚·‚é‚±‚Æ‚ª‚Å‚«‚Ü‚·B
 
+[English](https://github.com/polygraphene/ALVR/) Japanese
+
 ## “Á’¥
 ALVR‚ÍPCVR‚Ì‰æ–Ê‚ğƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·B—‚½ƒ\ƒtƒg‚Æ‚µ‚ÄRiftcat‚âTrinus VR‚ª‚ ‚è‚Ü‚·‚ªA‚»‚ê‚ç‚æ‚è‚àGear VRŒü‚¯‚É“Á‰»‚µ‚Ä‚¢‚é‚Ì‚ª“Á’¥‚Å‚·BWi-FiŒo—R‚Å‚àGear VR‚É“‹Ú‚³‚ê‚½Asynchronous Timewarp‚ğ—˜—p‚µ‚ÄƒXƒ€[ƒY‚Èƒwƒbƒhƒgƒ‰ƒbƒLƒ“ƒO‚ğÀŒ»‚Å‚«‚Ü‚·B
 
@@ -17,18 +19,28 @@ ALVR‚ÍPCVR‚Ì‰æ–Ê‚ğƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·B—‚½ƒ\ƒtƒg‚Æ‚
 
 ## ƒCƒ“ƒXƒg[ƒ‹•û–@
 - ALVR server‚ÌƒCƒ“ƒXƒg[ƒ‹‚·‚é•û–@
- - [release page](https://github.com/polygraphene/ALVR/releases)‚©‚çzip‚ğƒ_ƒEƒ“ƒ[ƒh
+ - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çzip‚ğƒ_ƒEƒ“ƒ[ƒh
  - ”CˆÓ‚ÌƒtƒHƒ‹ƒ_‚É“WŠJ
- - driver\_install.bat‚ğÀs
+ - driverƒtƒHƒ‹ƒ_“à‚Ìdriver\_install.bat‚ğÀs
  - ALVR.exe‚ğ‹N“®
 - ALVR client‚ğƒwƒbƒhƒZƒbƒg‚ÉƒCƒ“ƒXƒg[ƒ‹‚·‚é•û–@
  - Gear VR
   - SideloadVRŒo—R‚Å‚ÌƒCƒ“ƒXƒg[ƒ‹‚ªŠy‚Å‚·
  - Oculus Go
-  - [release page](https://github.com/polygraphene/ALVR/releases)‚©‚çapk‚ğƒ_ƒEƒ“ƒ[ƒh
+  - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çapk‚ğƒ_ƒEƒ“ƒ[ƒh
   - adb‚Åapk‚ğƒCƒ“ƒXƒg[ƒ‹
 
+## ƒAƒ“ƒCƒ“ƒXƒg[ƒ‹•û–@
+- driverƒtƒHƒ‹ƒ_“à‚Ìdriver\_uninstall.bat‚ğÀs
+- ƒCƒ“ƒXƒg[ƒ‹ƒtƒHƒ‹ƒ_‚ğíœ (ƒŒƒWƒXƒgƒŠ‚Íg‚¢‚Ü‚¹‚ñ)
+- driver\_uninstall.bat‚ğÀs‚¹‚¸íœ‚µ‚Ä‚µ‚Ü‚Á‚½ê‡
+    - C:\Users\%USERNAME%\AppData\Local\openvr\openvrpaths.vrpath‚ğƒƒ‚’ ‚ÅŠJ‚«ƒCƒ“ƒXƒg[ƒ‹ƒtƒHƒ‹ƒ_‚ğŠm”F(è“®‚Å‘‚«Š·‚¦‚µ‚È‚¢‚æ‚¤‚É)
+    - ƒRƒ}ƒ“ƒhƒvƒƒ“ƒvƒg‚Å
+    `"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vrpathreg.exe" removedriver (ƒCƒ“ƒXƒg[ƒ‹ƒtƒHƒ‹ƒ_)`
+    ‚ğÀs
+
 ## ¡Œã‚Ì—\’è
+- “®‰æƒrƒbƒgƒŒ[ƒg‚Ì•ÏX‹@”\
 - ‰¹º‚ÌƒXƒgƒŠ[ƒ~ƒ“ƒO‚ÌƒTƒ|[ƒg
 - H.265‚ÌƒTƒ|[ƒg (Œ»óAH.264‚Ì‚İ)
 - Gear VR / Oculus Go ƒRƒ“ƒgƒ[ƒ‰‚ÌƒTƒ|[ƒg

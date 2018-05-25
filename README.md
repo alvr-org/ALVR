@@ -2,7 +2,7 @@
 
 ALVR is an opensource remote VR display for Gear VR and Oculus Go. You can play SteamVR games in your standalone headset.
 
-[Japanese README](https://github.com/polygraphene/ALVR/blob/master/README-ja.md)
+English [Japanese](https://github.com/polygraphene/ALVR/blob/master/README-ja.md)
 
 ## Description
 ALVR streams VR display output from your PC to Gear VR / Oculus Go via Wi-Fi. This is similar to Riftcat or Trinus VR, but our purpose is optimization for Gear VR. ALVR provides smooth head-tracking compared to other apps in Wi-Fi environment using Asynchronous Timewarp.
@@ -20,9 +20,9 @@ ALVR requires following devices:
 ## Installation
 - Install ALVR server for PC
     - Install SteamVR
-    - Download zip from [release page](https://github.com/polygraphene/ALVR/releases)
+    - Download zip from [Releases](https://github.com/polygraphene/ALVR/releases)
     - Extract zip on any folder
-    - Launch driver\_install.bat in driver folder
+    - Execute driver\_install.bat in driver folder
     - Launch ALVR.exe
 - Install ALVR client for headset
     - For Gear VR users
@@ -31,10 +31,20 @@ ALVR requires following devices:
         - Put osig file on assets folder in apk
         - Run zipalign and jarsigner for apk
     - For Oculus Go users
-        - Download apk from [release page](https://github.com/polygraphene/ALVR/releases)
+        - Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
         - Install apk via adb
 
+## Uninstallation
+- Execute driver\_uninstall.bat in driver folder
+- Delete install folder (ALVR does not use registry)
+- If you already deleted folder without executing driver\_uninstall.bat
+    - Open C:\Users\%USERNAME%\AppData\Local\openvr\openvrpaths.vrpath and check install directory.
+    - Execute
+    `"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vrpathreg.exe" removedriver (install folder)`
+    in Command Prompt.
+
 ## Future work
+- Support the functinalty to change video bitrate
 - Support streaming sound
 - Support H.265 hevc encoding (Currently H.264 only)
 - Support Gear VR / Oculus Go Controller

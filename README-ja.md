@@ -60,8 +60,8 @@ ALVR‚ÍPCVR‚Ì‰æ–Ê‚ğƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·B—‚½ƒ\ƒtƒg‚Æ‚
 ## ƒrƒ‹ƒh•û–@
 ### ALVR Server and GUI(Launcher)
 - ALVR.sln‚ğVisual Studio 2017‚ÅŠJ‚¢‚Äƒrƒ‹ƒh‚µ‚Ü‚·B
- - alvr\_server: C++‚Å‘‚©‚ê‚½SteamVR (OpenVR) ‚Ìƒhƒ‰ƒCƒo
- - ALVR: C#‚Å‘‚©‚ê‚½GUI‚ÅALVR Server‚ğ‹N“®‚·‚é‚½‚ß‚ÌƒvƒƒOƒ‰ƒ€
+    - alvr\_server: SteamVR (OpenVR) ‚Ìƒhƒ‰ƒCƒo (C++)
+    - ALVR: ALVR Server‚ğ‹N“®/§Œä‚·‚é‚½‚ß‚ÌGUI (C#)
 
 ### ALVR Client
 - [ALVR Client](https://github.com/polygraphene/ALVRClient)‚ğƒNƒ[ƒ“

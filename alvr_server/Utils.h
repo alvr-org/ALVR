@@ -6,9 +6,12 @@
 #include <Windows.h>
 #include <stdint.h>
 #include <string>
+#include <vector>
 #include <d3d11.h>
 
 #include "openvr_driver.h"
+
+extern HINSTANCE g_hInstance;
 
 // Get elapsed time in us from Unix Epoch
 inline uint64_t GetTimestampUs() {
@@ -144,4 +147,22 @@ inline std::string AddrPortToStr(sockaddr_in *addr) {
 	inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf));
 	snprintf(buf2, sizeof(buf2), "%s:%d", buf, htons(addr->sin_port));
 	return buf2;
+}
+
+inline bool ReadBinaryResource(std::vector<char> &buffer, int resource) {
+	HRSRC hResource = FindResource(g_hInstance, MAKEINTRESOURCE(resource), RT_RCDATA);
+	if (hResource == NULL) {
+		return false;
+	}
+	HGLOBAL hResData = LoadResource(g_hInstance, hResource);
+	if (hResData == NULL) {
+		return false;
+	}
+	void *data = LockResource(hResData);
+	int dataSize = SizeofResource(g_hInstance, hResource);
+
+	buffer.resize(dataSize);
+	memcpy(&buffer[0], data, dataSize);
+
+	return true;
 }

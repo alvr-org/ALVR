@@ -4,45 +4,7 @@
 #include "resource.h"
 #include "Settings.h"
 
-extern HINSTANCE g_hInstance;
 extern uint64_t g_DriverTestMode;
-
-static const char *VERTEX_SHADER =
-"Texture2D txLeft : register(t0);\n"
-"Texture2D txRight : register(t1);\n"
-"SamplerState samLinear : register(s0);\n"
-"\n"
-"struct VS_INPUT\n"
-"{\n"
-"	float4 Pos : POSITION;\n"
-"	float2 Tex : TEXCOORD;\n"
-"   uint    View : VIEW;\n"
-"};\n"
-"\n"
-"struct PS_INPUT\n"
-"{\n"
-"	float4 Pos : SV_POSITION;\n"
-"	float2 Tex : TEXCOORD;\n"
-"   uint    View : VIEW;\n"
-"};\n"
-"PS_INPUT VS(VS_INPUT input)\n"
-"{\n"
-"	PS_INPUT output = (PS_INPUT)0;\n"
-"	output.Pos = input.Pos;\n"
-"	output.Tex = input.Tex;\n"
-"	output.View = input.View;\n"
-"\n"
-"	return output;\n"
-"}\n"
-"float4 PS(PS_INPUT input) : SV_Target\n"
-"{\n"
-"if (input.View == (uint)0){ // Left View \n"
-"		return txLeft.Sample(samLinear, input.Tex);\n"
-"	}else{ // Right View \n"
-"		return txRight.Sample(samLinear, input.Tex);\n"
-"	}\n"
-"}\n";
-static const char *PIXEL_SHADER = VERTEX_SHADER;
 
 
 FrameRender::FrameRender(CD3DRender *pD3DRender)
@@ -136,36 +98,26 @@ bool FrameRender::Startup()
 	//
 	// Compile shaders
 	//
-
-	ID3DBlob *vshader, *pshader, *error;
-
-	hr = D3DCompile(VERTEX_SHADER, strlen(VERTEX_SHADER), "vs", NULL, NULL, "VS", "vs_4_0", 0, 0, &vshader, &error);
-	Log("D3DCompile vs %p", hr);
-	if (FAILED(hr)) {
-		Log("%s", error->GetBufferPointer());
+	
+	std::vector<char> vshader;
+	if (!ReadBinaryResource(vshader, IDR_VS)) {
+		Log("Failed to load resource for IDR_VS.");
 		return false;
 	}
-	if (error != NULL) {
-		error->Release();
-		error = NULL;
-	}
 
-	hr = m_pD3DRender->GetDevice()->CreateVertexShader((const DWORD*)vshader->GetBufferPointer(), vshader->GetBufferSize(), NULL, &m_pVertexShader);
+	hr = m_pD3DRender->GetDevice()->CreateVertexShader((const DWORD*)&vshader[0], vshader.size(), NULL, &m_pVertexShader);
 	if (FAILED(hr)) {
 		Log("CreateVertexShader %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
-	hr = D3DCompile(VERTEX_SHADER, strlen(VERTEX_SHADER), "ps", NULL, NULL, "PS", "ps_4_0", 0, 0, &pshader, &error);
-	Log("D3DCompile ps %p", hr);
-	if (FAILED(hr)) {
-		Log("%s", error->GetBufferPointer());
+
+	std::vector<char> pshader;
+	if (!ReadBinaryResource(pshader, IDR_PS)) {
+		Log("Failed to load resource for IDR_PS.");
 		return false;
 	}
-	if (error != NULL) {
-		error->Release();
-	}
 
-	hr = m_pD3DRender->GetDevice()->CreatePixelShader((const DWORD*)pshader->GetBufferPointer(), pshader->GetBufferSize(), NULL, &m_pPixelShader);
+	hr = m_pD3DRender->GetDevice()->CreatePixelShader((const DWORD*)&pshader[0], pshader.size(), NULL, &m_pPixelShader);
 	if (FAILED(hr)) {
 		Log("CreatePixelShader %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
@@ -186,13 +138,12 @@ bool FrameRender::Startup()
 
 
 	// Create the input layout
-	hr = m_pD3DRender->GetDevice()->CreateInputLayout(layout, numElements, vshader->GetBufferPointer(),
-		vshader->GetBufferSize(), &m_pVertexLayout);
+	hr = m_pD3DRender->GetDevice()->CreateInputLayout(layout, numElements, &vshader[0],
+		vshader.size(), &m_pVertexLayout);
 	if (FAILED(hr)) {
 		Log("CreateInputLayout %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
-	vshader->Release();
 
 	// Set the input layout
 	m_pD3DRender->GetContext()->IASetInputLayout(m_pVertexLayout.Get());
@@ -276,13 +227,9 @@ bool FrameRender::Startup()
 	// Load spritefont for debug text output
 	//
 
-	HRSRC fontResource = FindResource(g_hInstance, MAKEINTRESOURCE(IDR_FONT), RT_RCDATA);
-	if (fontResource != NULL) {
-		HGLOBAL hResData = LoadResource(g_hInstance, fontResource);
-		void *fontData = LockResource(hResData);
-		int fontDataSize = SizeofResource(g_hInstance, fontResource);
-
-		m_Font = std::make_unique<DirectX::SpriteFont>(m_pD3DRender->GetDevice(), (uint8_t *)fontData, fontDataSize);
+	std::vector<char> fontBuffer;
+	if (ReadBinaryResource(fontBuffer, IDR_FONT)) {
+		m_Font = std::make_unique<DirectX::SpriteFont>(m_pD3DRender->GetDevice(), (uint8_t *)&fontBuffer[0], fontBuffer.size());
 		m_SpriteBatch = std::make_unique<DirectX::SpriteBatch>(m_pD3DRender->GetContext());
 	}
 	else {

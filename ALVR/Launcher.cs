@@ -18,7 +18,7 @@ namespace RemoteGlassLauncher
     {
         string m_Host = "127.0.0.1";
         int m_Port = 9944;
-        TcpClient client = new TcpClient();
+        TcpClient client;
         enum ServerStatus
         {
             CONNECTING,
@@ -59,9 +59,10 @@ namespace RemoteGlassLauncher
             }
             if (ret == 0 || ret < 0)
             {
-                metroLabel3.Text = "Server is down";
-                metroLabel3.BackColor = Color.Gray;
-                metroLabel3.ForeColor = Color.White;
+                // Disconnected
+                client.Close();
+                status = ServerStatus.DEAD;
+                UpdateServerStatus();
                 return "";
             }
             else
@@ -80,12 +81,12 @@ namespace RemoteGlassLauncher
             }
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        async private void button2_Click(object sender, EventArgs e)
         {
-            SendCommand("EnableTestMode " + metroTextBox1.Text);
+            await SendCommand("EnableTestMode " + metroTextBox1.Text);
         }
 
-        private void button3_Click(object sender, EventArgs e)
+        async private void button3_Click(object sender, EventArgs e)
         {
             SendCommand("EnableDriverTestMode " + metroTextBox2.Text);
         }
@@ -107,13 +108,14 @@ namespace RemoteGlassLauncher
 
         async private void Connect()
         {
-            if (status != ServerStatus.DEAD)
+            if (status != ServerStatus.DEAD && client.Connected)
             {
                 return;
             }
             try
             {
                 status = ServerStatus.CONNECTING;
+                client = new TcpClient();
                 await client.ConnectAsync(m_Host, m_Port);
             }
             catch (Exception e)
@@ -168,19 +170,19 @@ namespace RemoteGlassLauncher
             logText.Text = str.Replace("\n", "\r\n");
         }
 
-        private void metroButton5_Click(object sender, EventArgs e)
+        async private void metroButton5_Click(object sender, EventArgs e)
         {
-            SendCommand("SetConfig DebugFrameIndex " + (metroCheckBox1.Checked ? "1" : "0"));
-        }
-        
-        private void metroCheckBox2_CheckedChanged(object sender, EventArgs e)
-        {
-            SendCommand("Suspend " + (metroCheckBox2.Checked ? "1" : "0"));
+            await SendCommand("SetConfig DebugFrameIndex " + (metroCheckBox1.Checked ? "1" : "0"));
         }
 
-        private void metroCheckBox3_CheckedChanged(object sender, EventArgs e)
+        async private void metroCheckBox2_CheckedChanged(object sender, EventArgs e)
         {
-            SendCommand("SetConfig UseKeyedMutex " + (metroCheckBox2.Checked ? "1" : "0"));
+            await SendCommand("Suspend " + (metroCheckBox2.Checked ? "1" : "0"));
+        }
+
+        async private void metroCheckBox3_CheckedChanged(object sender, EventArgs e)
+        {
+            await SendCommand("SetConfig UseKeyedMutex " + (metroCheckBox2.Checked ? "1" : "0"));
         }
 
         private void metroButton6_Click(object sender, EventArgs e)
@@ -206,8 +208,8 @@ namespace RemoteGlassLauncher
                 return;
             }
             string str = await SendCommand("GetConfig");
-            
             logText.Text = str.Replace("\n", "\r\n");
+
             if (str.Contains("Connected 1\n")){
                 // Connected
                 runningPanel.Show();
@@ -219,35 +221,47 @@ namespace RemoteGlassLauncher
 
             str = await SendCommand("GetRequests");
 
-            dataGridView1.Rows.Clear();
-            int i = 0;
+            foreach (var row in dataGridView1.Rows.Cast<DataGridViewRow>())
+            {
+                // Mark as old data
+                row.Tag = 0;
+            }
 
             foreach (var s in str.Split('\n'))
             {
-                if (s != "")
+                if (s == "")
                 {
-                    var elem = s.Split(" ".ToCharArray(), 2);
+                    continue;
+                }
+                var elem = s.Split(" ".ToCharArray(), 2);
 
-                    i++;
-                    if (dataGridView1.Rows.Count < i)
+                bool found = false;
+                foreach (var row in dataGridView1.Rows.Cast<DataGridViewRow>())
+                {
+                    if ((string)row.Cells[1].Value == elem[0])
                     {
-                        dataGridView1.Rows.Add(new string[] { elem[1], elem[0], "Connect" });
-                    }
-                    else
-                    {
-                        dataGridView1.Rows[i - 1].Cells[0].Value = elem[1];
-                        dataGridView1.Rows[i - 1].Cells[1].Value = elem[0];
-                        dataGridView1.Rows[i - 1].Cells[2].Value = "Connect";
+                        found = true;
+
+                        row.Cells[0].Value = elem[1];
+                        // Mark as new data
+                        row.Tag = 1;
                     }
                 }
+                if (!found)
+                {
+                    int index = dataGridView1.Rows.Add(new string[] { elem[1], elem[0], "Connect" });
+                    dataGridView1.Rows[index].Tag = 1;
+                }
             }
-            if (dataGridView1.Rows.Count > i)
+            for (int j = dataGridView1.Rows.Count - 1; j >= 0; j--)
             {
-                for (int j = dataGridView1.Rows.Count - 1; j >= i; j--)
+                // Remove old row
+                if ((int)dataGridView1.Rows[j].Tag == 0)
                 {
                     dataGridView1.Rows.RemoveAt(j);
                 }
             }
+            
         }
 
         private void timer1_Tick(object sender, EventArgs e)
@@ -255,18 +269,18 @@ namespace RemoteGlassLauncher
             UpdateClients();
         }
 
-        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        async private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (dataGridView1.Columns[e.ColumnIndex].Name == "Button")
             {
                 string IPAddr = (string)dataGridView1.Rows[e.RowIndex].Cells[1].Value;
-                SendCommand("Connect " + IPAddr);
+                await SendCommand("Connect " + IPAddr);
             }
         }
 
-        private void metroButton3_Click(object sender, EventArgs e)
+        async private void metroButton3_Click(object sender, EventArgs e)
         {
-            SendCommand("Capture");
+            await SendCommand("Capture");
         }
     }
 }

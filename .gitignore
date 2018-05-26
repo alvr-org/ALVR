@@ -9,6 +9,7 @@ Release
 *.exe
 *.mexw64
 *.aps
+*.cso
 
 .vs/
 

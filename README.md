@@ -20,6 +20,7 @@ ALVR requires following devices:
 ## Installation
 - Install ALVR server for PC
     - Install SteamVR
+    - Install vc\_redist.x64.exe from [here](https://www.microsoft.com/en-us/download/details.aspx?id=53840)
     - Download zip from [Releases](https://github.com/polygraphene/ALVR/releases)
     - Extract zip on any folder
     - Execute driver\_install.bat in driver folder
@@ -37,7 +38,6 @@ ALVR requires following devices:
         - Install apk via adb
 
 ## Usage
-- Install SteamVR
 - Launch ALVR.exe
 - Press "Start Server" button or launch VR game
 - SteamVR's Small window will appears

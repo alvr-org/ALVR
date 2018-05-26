@@ -19,6 +19,8 @@ ALVR‚ÍPCVR‚Ì‰æ–Ê‚ğƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·B—‚½ƒ\ƒtƒg‚Æ‚
 
 ## ƒCƒ“ƒXƒg[ƒ‹•û–@
 - ALVR server‚ÌƒCƒ“ƒXƒg[ƒ‹‚·‚é•û–@
+    - SteamVR‚ğƒCƒ“ƒXƒg[ƒ‹
+    - [‚±‚±](https://www.microsoft.com/en-us/download/details.aspx?id=53840)‚©‚çvc\_redist.x64.exe‚ğƒ_ƒEƒ“ƒ[ƒh‚µ‚ÄƒCƒ“ƒXƒg[ƒ‹
     - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çzip‚ğƒ_ƒEƒ“ƒ[ƒh
     - ”CˆÓ‚ÌƒtƒHƒ‹ƒ_‚É“WŠJ
     - driverƒtƒHƒ‹ƒ_“à‚Ìdriver\_install.bat‚ğÀs
@@ -34,7 +36,6 @@ ALVR‚ÍPCVR‚Ì‰æ–Ê‚ğƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·B—‚½ƒ\ƒtƒg‚Æ‚
         - adb‚Åapk‚ğƒCƒ“ƒXƒg[ƒ‹
 
 ## g‚¢•û
-- SteamVR‚ğƒCƒ“ƒXƒg[ƒ‹‚·‚é
 - ALVR.exe‚ğ‹N“®
 - Start Serverƒ{ƒ^ƒ“‚ğ‰Ÿ‚· or VR‘Î‰ƒQ[ƒ€‚ğ‹N“®
 - SteamVR‚Ì¬‚³‚¢ƒEƒBƒ“ƒhƒE‚ªo‚Ä‚­‚é

@@ -1,4 +1,4 @@
-﻿namespace RemoteGlassLauncher
+﻿namespace ALVR
 {
     partial class Launcher
     {
@@ -35,6 +35,7 @@
             this.metroButton3 = new MetroFramework.Controls.MetroButton();
             this.metroTabControl1 = new MetroFramework.Controls.MetroTabControl();
             this.serverTab = new MetroFramework.Controls.MetroTabPage();
+            this.messagePanel = new MetroFramework.Controls.MetroPanel();
             this.findingPanel = new MetroFramework.Controls.MetroPanel();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -42,18 +43,30 @@
             this.Button = new System.Windows.Forms.DataGridViewButtonColumn();
             this.metroProgressSpinner2 = new MetroFramework.Controls.MetroProgressSpinner();
             this.metroLabel4 = new MetroFramework.Controls.MetroLabel();
-            this.runningPanel = new MetroFramework.Controls.MetroPanel();
-            this.runningLabel = new MetroFramework.Controls.MetroLabel();
+            this.messageLabel = new MetroFramework.Controls.MetroLabel();
+            this.videoTab = new MetroFramework.Controls.MetroTabPage();
+            this.resolutionComboBox = new MetroFramework.Controls.MetroComboBox();
+            this.bitrateLabel = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel9 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel8 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel10 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel7 = new MetroFramework.Controls.MetroLabel();
+            this.bitrateTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.debugTab = new MetroFramework.Controls.MetroTabPage();
             this.metroLabel5 = new MetroFramework.Controls.MetroLabel();
             this.logText = new MetroFramework.Controls.MetroTextBox();
             this.metroCheckBox3 = new MetroFramework.Controls.MetroCheckBox();
+            this.debugPosCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroCheckBox2 = new MetroFramework.Controls.MetroCheckBox();
             this.metroCheckBox1 = new MetroFramework.Controls.MetroCheckBox();
+            this.debugZTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.debugYTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.debugXTextBox = new MetroFramework.Controls.MetroTextBox();
             this.metroTextBox2 = new MetroFramework.Controls.MetroTextBox();
             this.metroTextBox1 = new MetroFramework.Controls.MetroTextBox();
             this.metroLabel2 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel1 = new MetroFramework.Controls.MetroLabel();
+            this.sendDebugPos = new MetroFramework.Controls.MetroButton();
             this.metroButton5 = new MetroFramework.Controls.MetroButton();
             this.metroButton4 = new MetroFramework.Controls.MetroButton();
             this.aboutTab = new MetroFramework.Controls.MetroTabPage();
@@ -63,16 +76,12 @@
             this.metroLabel3 = new MetroFramework.Controls.MetroLabel();
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.debugXTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.debugYTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.debugZTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.sendDebugPos = new MetroFramework.Controls.MetroButton();
-            this.debugPosCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
+            this.messagePanel.SuspendLayout();
             this.findingPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
-            this.runningPanel.SuspendLayout();
+            this.videoTab.SuspendLayout();
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
             this.SuspendLayout();
@@ -114,18 +123,19 @@
             // metroTabControl1
             // 
             this.metroTabControl1.Controls.Add(this.serverTab);
+            this.metroTabControl1.Controls.Add(this.videoTab);
             this.metroTabControl1.Controls.Add(this.debugTab);
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 1;
+            this.metroTabControl1.SelectedIndex = 0;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 
             // serverTab
             // 
             this.serverTab.Controls.Add(this.findingPanel);
-            this.serverTab.Controls.Add(this.runningPanel);
+            this.serverTab.Controls.Add(this.messagePanel);
             this.serverTab.HorizontalScrollbarBarColor = true;
             this.serverTab.Location = new System.Drawing.Point(4, 38);
             this.serverTab.Name = "serverTab";
@@ -133,6 +143,20 @@
             this.serverTab.TabIndex = 3;
             this.serverTab.Text = "Server";
             this.serverTab.VerticalScrollbarBarColor = true;
+            // 
+            // messagePanel
+            // 
+            this.messagePanel.Controls.Add(this.messageLabel);
+            this.messagePanel.HorizontalScrollbarBarColor = true;
+            this.messagePanel.HorizontalScrollbarHighlightOnWheel = false;
+            this.messagePanel.HorizontalScrollbarSize = 10;
+            this.messagePanel.Location = new System.Drawing.Point(3, 3);
+            this.messagePanel.Name = "messagePanel";
+            this.messagePanel.Size = new System.Drawing.Size(657, 284);
+            this.messagePanel.TabIndex = 10;
+            this.messagePanel.VerticalScrollbarBarColor = true;
+            this.messagePanel.VerticalScrollbarHighlightOnWheel = false;
+            this.messagePanel.VerticalScrollbarSize = 10;
             // 
             // findingPanel
             // 
@@ -142,7 +166,7 @@
             this.findingPanel.HorizontalScrollbarBarColor = true;
             this.findingPanel.HorizontalScrollbarHighlightOnWheel = false;
             this.findingPanel.HorizontalScrollbarSize = 10;
-            this.findingPanel.Location = new System.Drawing.Point(3, 3);
+            this.findingPanel.Location = new System.Drawing.Point(0, 0);
             this.findingPanel.Name = "findingPanel";
             this.findingPanel.Size = new System.Drawing.Size(657, 295);
             this.findingPanel.TabIndex = 11;
@@ -214,32 +238,102 @@
             this.metroLabel4.Text = "Finding Client...";
             this.metroLabel4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
-            // runningPanel
+            // messageLabel
             // 
-            this.runningPanel.Controls.Add(this.runningLabel);
-            this.runningPanel.HorizontalScrollbarBarColor = true;
-            this.runningPanel.HorizontalScrollbarHighlightOnWheel = false;
-            this.runningPanel.HorizontalScrollbarSize = 10;
-            this.runningPanel.Location = new System.Drawing.Point(3, 3);
-            this.runningPanel.Name = "runningPanel";
-            this.runningPanel.Size = new System.Drawing.Size(657, 284);
-            this.runningPanel.TabIndex = 10;
-            this.runningPanel.VerticalScrollbarBarColor = true;
-            this.runningPanel.VerticalScrollbarHighlightOnWheel = false;
-            this.runningPanel.VerticalScrollbarSize = 10;
+            this.messageLabel.BackColor = System.Drawing.Color.White;
+            this.messageLabel.CustomBackground = true;
+            this.messageLabel.CustomForeColor = true;
+            this.messageLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
+            this.messageLabel.Location = new System.Drawing.Point(181, 93);
+            this.messageLabel.Name = "messageLabel";
+            this.messageLabel.Size = new System.Drawing.Size(335, 75);
+            this.messageLabel.TabIndex = 9;
+            this.messageLabel.Text = "Server is not runnning.\r\nPlease press \"Start Server\"";
+            this.messageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
-            // runningLabel
+            // videoTab
             // 
-            this.runningLabel.BackColor = System.Drawing.Color.White;
-            this.runningLabel.CustomBackground = true;
-            this.runningLabel.CustomForeColor = true;
-            this.runningLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.runningLabel.Location = new System.Drawing.Point(287, 129);
-            this.runningLabel.Name = "runningLabel";
-            this.runningLabel.Size = new System.Drawing.Size(115, 39);
-            this.runningLabel.TabIndex = 9;
-            this.runningLabel.Text = "Running!";
-            this.runningLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.videoTab.Controls.Add(this.resolutionComboBox);
+            this.videoTab.Controls.Add(this.bitrateLabel);
+            this.videoTab.Controls.Add(this.metroLabel9);
+            this.videoTab.Controls.Add(this.metroLabel8);
+            this.videoTab.Controls.Add(this.metroLabel10);
+            this.videoTab.Controls.Add(this.metroLabel7);
+            this.videoTab.Controls.Add(this.bitrateTrackBar);
+            this.videoTab.HorizontalScrollbarBarColor = true;
+            this.videoTab.Location = new System.Drawing.Point(4, 38);
+            this.videoTab.Name = "videoTab";
+            this.videoTab.Size = new System.Drawing.Size(656, 283);
+            this.videoTab.TabIndex = 5;
+            this.videoTab.Text = "Video";
+            this.videoTab.VerticalScrollbarBarColor = true;
+            // 
+            // resolutionComboBox
+            // 
+            this.resolutionComboBox.FormattingEnabled = true;
+            this.resolutionComboBox.ItemHeight = 23;
+            this.resolutionComboBox.Location = new System.Drawing.Point(184, 87);
+            this.resolutionComboBox.Name = "resolutionComboBox";
+            this.resolutionComboBox.Size = new System.Drawing.Size(192, 29);
+            this.resolutionComboBox.TabIndex = 6;
+            // 
+            // bitrateLabel
+            // 
+            this.bitrateLabel.AutoSize = true;
+            this.bitrateLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.bitrateLabel.Location = new System.Drawing.Point(558, 32);
+            this.bitrateLabel.Name = "bitrateLabel";
+            this.bitrateLabel.Size = new System.Drawing.Size(72, 25);
+            this.bitrateLabel.TabIndex = 5;
+            this.bitrateLabel.Text = "30Mbps";
+            // 
+            // metroLabel9
+            // 
+            this.metroLabel9.AutoSize = true;
+            this.metroLabel9.Location = new System.Drawing.Point(522, 16);
+            this.metroLabel9.Name = "metroLabel9";
+            this.metroLabel9.Size = new System.Drawing.Size(61, 19);
+            this.metroLabel9.TabIndex = 4;
+            this.metroLabel9.Text = "100Mbps";
+            // 
+            // metroLabel8
+            // 
+            this.metroLabel8.AutoSize = true;
+            this.metroLabel8.Location = new System.Drawing.Point(160, 16);
+            this.metroLabel8.Name = "metroLabel8";
+            this.metroLabel8.Size = new System.Drawing.Size(47, 19);
+            this.metroLabel8.TabIndex = 4;
+            this.metroLabel8.Text = "1Mbps";
+            // 
+            // metroLabel10
+            // 
+            this.metroLabel10.AutoSize = true;
+            this.metroLabel10.Location = new System.Drawing.Point(24, 87);
+            this.metroLabel10.Name = "metroLabel10";
+            this.metroLabel10.Size = new System.Drawing.Size(104, 19);
+            this.metroLabel10.TabIndex = 3;
+            this.metroLabel10.Text = "Video resolution";
+            // 
+            // metroLabel7
+            // 
+            this.metroLabel7.AutoSize = true;
+            this.metroLabel7.Location = new System.Drawing.Point(24, 38);
+            this.metroLabel7.Name = "metroLabel7";
+            this.metroLabel7.Size = new System.Drawing.Size(85, 19);
+            this.metroLabel7.TabIndex = 3;
+            this.metroLabel7.Text = "Video bitrate";
+            // 
+            // bitrateTrackBar
+            // 
+            this.bitrateTrackBar.BackColor = System.Drawing.Color.Transparent;
+            this.bitrateTrackBar.Location = new System.Drawing.Point(184, 38);
+            this.bitrateTrackBar.Minimum = 1;
+            this.bitrateTrackBar.Name = "bitrateTrackBar";
+            this.bitrateTrackBar.Size = new System.Drawing.Size(368, 23);
+            this.bitrateTrackBar.TabIndex = 2;
+            this.bitrateTrackBar.Text = "metroTrackBar1";
+            this.bitrateTrackBar.Value = 30;
+            this.bitrateTrackBar.ValueChanged += new System.EventHandler(this.bitrateTrackBar_ValueChanged);
             // 
             // debugTab
             // 
@@ -301,6 +395,17 @@
             this.metroCheckBox3.UseVisualStyleBackColor = true;
             this.metroCheckBox3.CheckedChanged += new System.EventHandler(this.metroCheckBox3_CheckedChanged);
             // 
+            // debugPosCheckBox
+            // 
+            this.debugPosCheckBox.AutoSize = true;
+            this.debugPosCheckBox.Location = new System.Drawing.Point(7, 265);
+            this.debugPosCheckBox.Name = "debugPosCheckBox";
+            this.debugPosCheckBox.Size = new System.Drawing.Size(80, 15);
+            this.debugPosCheckBox.TabIndex = 9;
+            this.debugPosCheckBox.Text = "Debug Pos";
+            this.debugPosCheckBox.UseVisualStyleBackColor = true;
+            this.debugPosCheckBox.CheckedChanged += new System.EventHandler(this.metroCheckBox2_CheckedChanged);
+            // 
             // metroCheckBox2
             // 
             this.metroCheckBox2.AutoSize = true;
@@ -321,6 +426,30 @@
             this.metroCheckBox1.TabIndex = 9;
             this.metroCheckBox1.Text = "DebugFrameIndex";
             this.metroCheckBox1.UseVisualStyleBackColor = true;
+            // 
+            // debugZTextBox
+            // 
+            this.debugZTextBox.Location = new System.Drawing.Point(221, 257);
+            this.debugZTextBox.Name = "debugZTextBox";
+            this.debugZTextBox.Size = new System.Drawing.Size(58, 23);
+            this.debugZTextBox.TabIndex = 8;
+            this.debugZTextBox.Text = "0";
+            // 
+            // debugYTextBox
+            // 
+            this.debugYTextBox.Location = new System.Drawing.Point(157, 257);
+            this.debugYTextBox.Name = "debugYTextBox";
+            this.debugYTextBox.Size = new System.Drawing.Size(58, 23);
+            this.debugYTextBox.TabIndex = 8;
+            this.debugYTextBox.Text = "0";
+            // 
+            // debugXTextBox
+            // 
+            this.debugXTextBox.Location = new System.Drawing.Point(93, 257);
+            this.debugXTextBox.Name = "debugXTextBox";
+            this.debugXTextBox.Size = new System.Drawing.Size(58, 23);
+            this.debugXTextBox.TabIndex = 8;
+            this.debugXTextBox.Text = "0";
             // 
             // metroTextBox2
             // 
@@ -355,6 +484,15 @@
             this.metroLabel1.Size = new System.Drawing.Size(104, 19);
             this.metroLabel1.TabIndex = 7;
             this.metroLabel1.Text = "EnableTestMode";
+            // 
+            // sendDebugPos
+            // 
+            this.sendDebugPos.Location = new System.Drawing.Point(285, 257);
+            this.sendDebugPos.Name = "sendDebugPos";
+            this.sendDebugPos.Size = new System.Drawing.Size(75, 23);
+            this.sendDebugPos.TabIndex = 6;
+            this.sendDebugPos.Text = "Send";
+            this.sendDebugPos.Click += new System.EventHandler(this.sendDebugPos_Click);
             // 
             // metroButton5
             // 
@@ -439,53 +577,8 @@
             // 
             // timer1
             // 
-            this.timer1.Enabled = true;
             this.timer1.Interval = 1000;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
-            // 
-            // debugXTextBox
-            // 
-            this.debugXTextBox.Location = new System.Drawing.Point(93, 257);
-            this.debugXTextBox.Name = "debugXTextBox";
-            this.debugXTextBox.Size = new System.Drawing.Size(58, 23);
-            this.debugXTextBox.TabIndex = 8;
-            this.debugXTextBox.Text = "0";
-            // 
-            // debugYTextBox
-            // 
-            this.debugYTextBox.Location = new System.Drawing.Point(157, 257);
-            this.debugYTextBox.Name = "debugYTextBox";
-            this.debugYTextBox.Size = new System.Drawing.Size(58, 23);
-            this.debugYTextBox.TabIndex = 8;
-            this.debugYTextBox.Text = "0";
-            // 
-            // debugZTextBox
-            // 
-            this.debugZTextBox.Location = new System.Drawing.Point(221, 257);
-            this.debugZTextBox.Name = "debugZTextBox";
-            this.debugZTextBox.Size = new System.Drawing.Size(58, 23);
-            this.debugZTextBox.TabIndex = 8;
-            this.debugZTextBox.Text = "0";
-            // 
-            // sendDebugPos
-            // 
-            this.sendDebugPos.Location = new System.Drawing.Point(285, 257);
-            this.sendDebugPos.Name = "sendDebugPos";
-            this.sendDebugPos.Size = new System.Drawing.Size(75, 23);
-            this.sendDebugPos.TabIndex = 6;
-            this.sendDebugPos.Text = "Send";
-            this.sendDebugPos.Click += new System.EventHandler(this.sendDebugPos_Click);
-            // 
-            // debugPosCheckBox
-            // 
-            this.debugPosCheckBox.AutoSize = true;
-            this.debugPosCheckBox.Location = new System.Drawing.Point(7, 265);
-            this.debugPosCheckBox.Name = "debugPosCheckBox";
-            this.debugPosCheckBox.Size = new System.Drawing.Size(80, 15);
-            this.debugPosCheckBox.TabIndex = 9;
-            this.debugPosCheckBox.Text = "Debug Pos";
-            this.debugPosCheckBox.UseVisualStyleBackColor = true;
-            this.debugPosCheckBox.CheckedChanged += new System.EventHandler(this.metroCheckBox2_CheckedChanged);
             // 
             // Launcher
             // 
@@ -501,9 +594,11 @@
             this.Load += new System.EventHandler(this.Launcher_Load);
             this.metroTabControl1.ResumeLayout(false);
             this.serverTab.ResumeLayout(false);
+            this.messagePanel.ResumeLayout(false);
             this.findingPanel.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
-            this.runningPanel.ResumeLayout(false);
+            this.videoTab.ResumeLayout(false);
+            this.videoTab.PerformLayout();
             this.debugTab.ResumeLayout(false);
             this.debugTab.PerformLayout();
             this.aboutTab.ResumeLayout(false);
@@ -540,9 +635,9 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn NameColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn AddressColumn;
         private System.Windows.Forms.DataGridViewButtonColumn Button;
-        private MetroFramework.Controls.MetroLabel runningLabel;
+        private MetroFramework.Controls.MetroLabel messageLabel;
         private MetroFramework.Controls.MetroPanel findingPanel;
-        private MetroFramework.Controls.MetroPanel runningPanel;
+        private MetroFramework.Controls.MetroPanel messagePanel;
         private MetroFramework.Controls.MetroLabel metroLabel5;
         private MetroFramework.Controls.MetroTabPage aboutTab;
         private MetroFramework.Controls.MetroTextBox metroTextBox3;
@@ -553,6 +648,14 @@
         private MetroFramework.Controls.MetroTextBox debugYTextBox;
         private MetroFramework.Controls.MetroTextBox debugXTextBox;
         private MetroFramework.Controls.MetroButton sendDebugPos;
+        private MetroFramework.Controls.MetroTabPage videoTab;
+        private MetroFramework.Controls.MetroLabel bitrateLabel;
+        private MetroFramework.Controls.MetroLabel metroLabel9;
+        private MetroFramework.Controls.MetroLabel metroLabel8;
+        private MetroFramework.Controls.MetroLabel metroLabel7;
+        private MetroFramework.Controls.MetroTrackBar bitrateTrackBar;
+        private MetroFramework.Controls.MetroComboBox resolutionComboBox;
+        private MetroFramework.Controls.MetroLabel metroLabel10;
     }
 }
 

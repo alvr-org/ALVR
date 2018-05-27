@@ -4,15 +4,18 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using MetroFramework.Forms;
 
-namespace RemoteGlassLauncher
+namespace ALVR
 {
     public partial class Launcher : MetroFramework.Forms.MetroForm
     {
@@ -27,10 +30,44 @@ namespace RemoteGlassLauncher
         };
         ServerStatus status = ServerStatus.DEAD;
         string buf = "";
+        ServerConfig config = new ServerConfig();
 
         public Launcher()
         {
             InitializeComponent();
+        }
+
+        private void Launcher_Load(object sender, EventArgs e)
+        {
+            System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(assembly.Location);
+            string version = fvi.FileVersion;
+            var split = version.Split('.');
+            versionLabel.Text = "v" + split[0] + "." + split[1];
+
+            config.Load();
+
+            foreach(var width in ServerConfig.supportedWidth) {
+                int i = resolutionComboBox.Items.Add(width + " x " + (width / 2));
+                if (config.renderWidth == width)
+                {
+                    resolutionComboBox.SelectedItem = resolutionComboBox.Items[i];
+                }
+            }
+
+            bitrateTrackBar.Value = config.bitrate;
+
+            metroTabControl1.SelectedTab = serverTab;
+
+            UpdateServerStatus();
+
+            messageLabel.Text = "Checking server status. Please wait...";
+            messagePanel.Show();
+            findingPanel.Hide();
+
+            Connect();
+
+            timer1.Start();
         }
 
         async private Task<string> SendCommand(string command)
@@ -91,20 +128,6 @@ namespace RemoteGlassLauncher
             SendCommand("EnableDriverTestMode " + metroTextBox2.Text);
         }
 
-        private void Launcher_Load(object sender, EventArgs e)
-        {
-            System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
-            FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(assembly.Location);
-            string version = fvi.FileVersion;
-            var split = version.Split('.');
-            versionLabel.Text = "v" + split[0] + "." + split[1];
-
-            metroTabControl1.SelectedTab = serverTab;
-
-            UpdateServerStatus();
-
-            Connect();
-        }
 
         async private void Connect()
         {
@@ -115,6 +138,7 @@ namespace RemoteGlassLauncher
             try
             {
                 status = ServerStatus.CONNECTING;
+                UpdateServerStatus();
                 client = new TcpClient();
                 await client.ConnectAsync(m_Host, m_Port);
             }
@@ -146,6 +170,7 @@ namespace RemoteGlassLauncher
                 metroLabel3.Text = "Checking...";
                 metroLabel3.BackColor = Color.White;
                 metroLabel3.ForeColor = Color.Black;
+
                 startServerButton.Hide();
             }
             else if (status == ServerStatus.CONNECTED)
@@ -160,6 +185,7 @@ namespace RemoteGlassLauncher
                 metroLabel3.Text = "Server is down";
                 metroLabel3.BackColor = Color.Gray;
                 metroLabel3.ForeColor = Color.White;
+
                 startServerButton.Show();
             }
         }
@@ -189,14 +215,68 @@ namespace RemoteGlassLauncher
         {
             // Check existence of vrmonitor.
             Microsoft.Win32.RegistryKey regkey =
-                Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(@"vrmonitor", false);
+                Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(@"vrmonitor\Shell\Open\Command", false);
             if (regkey == null)
             {
-                MessageBox.Show("SteamVR is not installed. Please install and retry.");
+                MessageBox.Show("SteamVR is not installed.\r\n(Registry HKEY_CLASSES_ROOT\\vrmonitor\\Shell\\Open\\Command was not found.)\r\nPlease install and retry.");
             }
             else
             {
+                InstallDriver((string)regkey.GetValue(""));
+
+                // Save json
+                int renderWidth = ServerConfig.supportedWidth[resolutionComboBox.SelectedIndex];
+                int bitrate = bitrateTrackBar.Value;
+                config.Save(bitrate, renderWidth);
+
                 Process.Start("vrmonitor:");
+            }
+        }
+
+        private void InstallDriver(string path)
+        {
+            // Execute "C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vrpathreg.exe" adddriver "%~dp0
+            var m = Regex.Match(path, "^\"(.+)bin\\\\([^\\\\]+)\\\\vrmonitor.exe\" \"%1\"$");
+            if (!m.Success)
+            {
+                MessageBox.Show("Invalid value in registry HKEY_CLASSES_ROOT\\vrmonitor\\Shell\\Open\\Command.");
+                return;
+            }
+            string vrpathreg = m.Groups[1].Value + @"bin\win32\vrpathreg.exe";
+
+            string driverPath = Utils.GetDriverPath();
+            if (!Directory.Exists(driverPath))
+            {
+                MessageBox.Show("Driver path: " + driverPath + "\r\nis not found! Please check install location.");
+                return;
+            }
+            // This is for compatibility to driver_uninstall.bat
+            driverPath += "\\\\";
+
+            ExecuteProcess(vrpathreg, "adddriver \"" + driverPath + "\"");
+        }
+
+        private void ExecuteProcess(string path, string args)
+        {
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.FileName = path;
+            startInfo.Arguments = args;
+            startInfo.RedirectStandardOutput = true;
+            startInfo.RedirectStandardError = true;
+            startInfo.UseShellExecute = false;
+            startInfo.CreateNoWindow = true;
+            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+
+            Process processTemp = new Process();
+            processTemp.StartInfo = startInfo;
+            processTemp.EnableRaisingEvents = true;
+            try
+            {
+                processTemp.Start();
+            }
+            catch (Exception e)
+            {
+                throw;
             }
         }
 
@@ -204,6 +284,9 @@ namespace RemoteGlassLauncher
         {
             if (!client.Connected)
             {
+                messageLabel.Text = "Server is not runnning.\r\nPlease press \"Start Server\"";
+                messagePanel.Show();
+                findingPanel.Hide();
                 Connect();
                 return;
             }
@@ -212,11 +295,12 @@ namespace RemoteGlassLauncher
 
             if (str.Contains("Connected 1\n")){
                 // Connected
-                runningPanel.Show();
+                messageLabel.Text = "Connected!\r\nPlease enjoy!";
+                messagePanel.Show();
                 findingPanel.Hide();
                 return;
             }
-            runningPanel.Hide();
+            messagePanel.Hide();
             findingPanel.Show();
 
             str = await SendCommand("GetRequests");
@@ -286,6 +370,11 @@ namespace RemoteGlassLauncher
         async private void sendDebugPos_Click(object sender, EventArgs e)
         {
             await SendCommand("SetDebugPos " + (debugPosCheckBox.Checked ? "1" : "0") + " " + debugXTextBox.Text + " " + debugYTextBox.Text + " " + debugZTextBox);
+        }
+
+        private void bitrateTrackBar_ValueChanged(object sender, EventArgs e)
+        {
+            bitrateLabel.Text = bitrateTrackBar.Value + "Mbps";
         }
     }
 }

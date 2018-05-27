@@ -468,7 +468,7 @@ public:
 
 		int32_t nDisplayAdapterIndex;
 		wchar_t wchAdapterDescription[300];
-		if (!m_pD3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, sizeof(wchAdapterDescription)))
+		if (!m_pD3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, sizeof(wchAdapterDescription) / sizeof(wchar_t)))
 		{
 			Log("Failed to get primary adapter info!");
 			return;

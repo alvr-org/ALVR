@@ -782,7 +782,7 @@ public:
 
 			// Put pose history buffer
 			m_poseMutex.Wait(INFINITE);
-			if (m_poseBuffer.size() != 0) {
+			if (m_poseBuffer.size() == 0) {
 				m_poseBuffer.push_back(info);
 			}
 			else {
@@ -973,12 +973,16 @@ public:
 
 	/** Used to textures created using CreateSwapTextureSet.  Only one of the set's handles needs to be used to destroy the entire set. */
 	virtual void DestroySwapTextureSet(vr::SharedTextureHandle_t sharedTextureHandle) {
-		Log("DestroySwapTextureSet");
+		Log("DestroySwapTextureSet %p", sharedTextureHandle);
 
 		auto it = m_handleMap.find((HANDLE)sharedTextureHandle);
 		if (it != m_handleMap.end()) {
 			// Release all reference (a bit forcible)
-			it->second.first->textures[it->second.second].Reset();
+			ProcessResource *p = it->second.first;
+			m_handleMap.erase(p->sharedHandles[0]);
+			m_handleMap.erase(p->sharedHandles[1]);
+			m_handleMap.erase(p->sharedHandles[2]);
+			delete p;
 		}
 		else {
 			Log("Requested to destroy not managing texture. handle:%p", sharedTextureHandle);

@@ -63,6 +63,11 @@
             this.metroLabel3 = new MetroFramework.Controls.MetroLabel();
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.debugXTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.debugYTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.debugZTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.sendDebugPos = new MetroFramework.Controls.MetroButton();
+            this.debugPosCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -241,12 +246,17 @@
             this.debugTab.Controls.Add(this.metroLabel5);
             this.debugTab.Controls.Add(this.logText);
             this.debugTab.Controls.Add(this.metroCheckBox3);
+            this.debugTab.Controls.Add(this.debugPosCheckBox);
             this.debugTab.Controls.Add(this.metroCheckBox2);
             this.debugTab.Controls.Add(this.metroCheckBox1);
+            this.debugTab.Controls.Add(this.debugZTextBox);
+            this.debugTab.Controls.Add(this.debugYTextBox);
+            this.debugTab.Controls.Add(this.debugXTextBox);
             this.debugTab.Controls.Add(this.metroTextBox2);
             this.debugTab.Controls.Add(this.metroTextBox1);
             this.debugTab.Controls.Add(this.metroLabel2);
             this.debugTab.Controls.Add(this.metroLabel1);
+            this.debugTab.Controls.Add(this.sendDebugPos);
             this.debugTab.Controls.Add(this.metroButton5);
             this.debugTab.Controls.Add(this.metroButton4);
             this.debugTab.Controls.Add(this.metroButton3);
@@ -283,7 +293,7 @@
             // metroCheckBox3
             // 
             this.metroCheckBox3.AutoSize = true;
-            this.metroCheckBox3.Location = new System.Drawing.Point(281, 258);
+            this.metroCheckBox3.Location = new System.Drawing.Point(281, 209);
             this.metroCheckBox3.Name = "metroCheckBox3";
             this.metroCheckBox3.Size = new System.Drawing.Size(56, 15);
             this.metroCheckBox3.TabIndex = 9;
@@ -294,7 +304,7 @@
             // metroCheckBox2
             // 
             this.metroCheckBox2.AutoSize = true;
-            this.metroCheckBox2.Location = new System.Drawing.Point(156, 258);
+            this.metroCheckBox2.Location = new System.Drawing.Point(156, 209);
             this.metroCheckBox2.Name = "metroCheckBox2";
             this.metroCheckBox2.Size = new System.Drawing.Size(68, 15);
             this.metroCheckBox2.TabIndex = 9;
@@ -305,7 +315,7 @@
             // metroCheckBox1
             // 
             this.metroCheckBox1.AutoSize = true;
-            this.metroCheckBox1.Location = new System.Drawing.Point(156, 226);
+            this.metroCheckBox1.Location = new System.Drawing.Point(156, 177);
             this.metroCheckBox1.Name = "metroCheckBox1";
             this.metroCheckBox1.Size = new System.Drawing.Size(119, 15);
             this.metroCheckBox1.TabIndex = 9;
@@ -348,7 +358,7 @@
             // 
             // metroButton5
             // 
-            this.metroButton5.Location = new System.Drawing.Point(281, 226);
+            this.metroButton5.Location = new System.Drawing.Point(281, 177);
             this.metroButton5.Name = "metroButton5";
             this.metroButton5.Size = new System.Drawing.Size(75, 23);
             this.metroButton5.TabIndex = 6;
@@ -357,7 +367,7 @@
             // 
             // metroButton4
             // 
-            this.metroButton4.Location = new System.Drawing.Point(281, 188);
+            this.metroButton4.Location = new System.Drawing.Point(200, 148);
             this.metroButton4.Name = "metroButton4";
             this.metroButton4.Size = new System.Drawing.Size(75, 23);
             this.metroButton4.TabIndex = 6;
@@ -433,6 +443,50 @@
             this.timer1.Interval = 1000;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
+            // debugXTextBox
+            // 
+            this.debugXTextBox.Location = new System.Drawing.Point(93, 257);
+            this.debugXTextBox.Name = "debugXTextBox";
+            this.debugXTextBox.Size = new System.Drawing.Size(58, 23);
+            this.debugXTextBox.TabIndex = 8;
+            this.debugXTextBox.Text = "0";
+            // 
+            // debugYTextBox
+            // 
+            this.debugYTextBox.Location = new System.Drawing.Point(157, 257);
+            this.debugYTextBox.Name = "debugYTextBox";
+            this.debugYTextBox.Size = new System.Drawing.Size(58, 23);
+            this.debugYTextBox.TabIndex = 8;
+            this.debugYTextBox.Text = "0";
+            // 
+            // debugZTextBox
+            // 
+            this.debugZTextBox.Location = new System.Drawing.Point(221, 257);
+            this.debugZTextBox.Name = "debugZTextBox";
+            this.debugZTextBox.Size = new System.Drawing.Size(58, 23);
+            this.debugZTextBox.TabIndex = 8;
+            this.debugZTextBox.Text = "0";
+            // 
+            // sendDebugPos
+            // 
+            this.sendDebugPos.Location = new System.Drawing.Point(285, 257);
+            this.sendDebugPos.Name = "sendDebugPos";
+            this.sendDebugPos.Size = new System.Drawing.Size(75, 23);
+            this.sendDebugPos.TabIndex = 6;
+            this.sendDebugPos.Text = "Send";
+            this.sendDebugPos.Click += new System.EventHandler(this.sendDebugPos_Click);
+            // 
+            // debugPosCheckBox
+            // 
+            this.debugPosCheckBox.AutoSize = true;
+            this.debugPosCheckBox.Location = new System.Drawing.Point(7, 265);
+            this.debugPosCheckBox.Name = "debugPosCheckBox";
+            this.debugPosCheckBox.Size = new System.Drawing.Size(80, 15);
+            this.debugPosCheckBox.TabIndex = 9;
+            this.debugPosCheckBox.Text = "Debug Pos";
+            this.debugPosCheckBox.UseVisualStyleBackColor = true;
+            this.debugPosCheckBox.CheckedChanged += new System.EventHandler(this.metroCheckBox2_CheckedChanged);
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -494,6 +548,11 @@
         private MetroFramework.Controls.MetroTextBox metroTextBox3;
         private MetroFramework.Controls.MetroLabel versionLabel;
         private MetroFramework.Controls.MetroLabel metroLabel6;
+        private MetroFramework.Controls.MetroCheckBox debugPosCheckBox;
+        private MetroFramework.Controls.MetroTextBox debugZTextBox;
+        private MetroFramework.Controls.MetroTextBox debugYTextBox;
+        private MetroFramework.Controls.MetroTextBox debugXTextBox;
+        private MetroFramework.Controls.MetroButton sendDebugPos;
     }
 }
 

@@ -166,3 +166,15 @@ inline bool ReadBinaryResource(std::vector<char> &buffer, int resource) {
 
 	return true;
 }
+
+inline std::string GetNextToken(std::string &str, const char *splitter) {
+	auto pos = str.find(splitter);
+	if (pos != std::string::npos) {
+		std::string ret = str.substr(0, pos);
+		str = str.substr(pos + strlen(splitter));
+		return ret;
+	}
+	std::string ret = str;
+	str = "";
+	return ret;
+}

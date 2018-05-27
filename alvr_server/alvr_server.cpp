@@ -438,6 +438,7 @@ public:
 		, m_VSyncThread(NULL)
 		, m_poseMutex(NULL)
 		, m_captureDDSTrigger(false)
+		, m_EnabledDebugPos(false)
 	{
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
@@ -749,6 +750,12 @@ public:
 			pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
 			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
 			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
+			if (m_EnabledDebugPos) {
+				Log("Provide fake position for debug. Coords=(%f, %f, %f)", m_DebugPos[0], m_DebugPos[1], m_DebugPos[2]);
+				pose.vecPosition[0] = m_DebugPos[0];
+				pose.vecPosition[1] = m_DebugPos[1];
+				pose.vecPosition[2] = m_DebugPos[2];
+			}
 
 			// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
 			/*
@@ -867,6 +874,19 @@ public:
 					Settings::Instance().m_UseKeyedMutex = atoi(args.substr(index + 1).c_str());
 				}
 			}
+		}
+		else if (commandName == "SetDebugPos") {
+			std::string enabled = GetNextToken(args, " ");
+			std::string x = GetNextToken(args, " ");
+			std::string y = GetNextToken(args, " ");
+			std::string z = GetNextToken(args, " ");
+			m_DebugPos[0] = atof(x.c_str());
+			m_DebugPos[1] = atof(y.c_str());
+			m_DebugPos[2] = atof(z.c_str());
+
+			m_EnabledDebugPos = atoi(enabled.c_str()) != 0;
+
+			m_Listener->SendCommandResponse("OK\n");
 		}else {
 			Log("Invalid control command: %s", commandName.c_str());
 		}
@@ -895,6 +915,9 @@ private:
 	CEncoder *m_pEncoder;
 	Listener *m_Listener;
 	VSyncThread *m_VSyncThread;
+
+	float m_DebugPos[3];
+	bool m_EnabledDebugPos;
 public:
 	// -----------------------------------
 	// Direct mode methods

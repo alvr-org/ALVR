@@ -282,5 +282,10 @@ namespace RemoteGlassLauncher
         {
             await SendCommand("Capture");
         }
+
+        async private void sendDebugPos_Click(object sender, EventArgs e)
+        {
+            await SendCommand("SetDebugPos " + (debugPosCheckBox.Checked ? "1" : "0") + " " + debugXTextBox.Text + " " + debugYTextBox.Text + " " + debugZTextBox);
+        }
     }
 }

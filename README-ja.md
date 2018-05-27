@@ -42,6 +42,19 @@ ALVR‚ÍPCVR‚Ì‰æ–Ê‚ðƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·BŽ—‚½ƒ\ƒtƒg‚Æ‚
 - ƒwƒbƒhƒZƒbƒg‚ÅALVR Client‚ð‹N“®
 - ALVR.exe‚Ì‰æ–Ê‚ÉƒwƒbƒhƒZƒbƒg‚ÌIPƒAƒhƒŒƒX‚ªo‚Ä‚­‚é‚Ì‚ÅConnect‚ð‰Ÿ‚·
 
+## ƒgƒ‰ƒuƒ‹ƒVƒ…[ƒeƒBƒ“ƒO
+- ‰Eã‚É"Server is down" ‚Æ•\Ž¦‚³‚ê‚Ä‚¢‚éê‡
+    - driverƒtƒHƒ‹ƒ_‚Ìdriver\_install.bat‚ð‚à‚¤ˆê“xŽÀs‚µ‚Ä‚Ý‚é
+    - ƒ^ƒXƒNƒ}ƒl[ƒWƒƒ‚Åvrserver.exe‚ð‹­§I—¹‚µ‚Ä‚Ý‚é
+- ‰æ–Ê‚ÉƒwƒbƒhƒZƒbƒg‚ÌIPƒAƒhƒŒƒX‚ªo‚Ä‚±‚È‚¢ê‡
+    - ‚¨‚»‚ç‚­ƒlƒbƒgƒ[ƒNŽü‚è‚Ì–â‘è
+    - PC‚ÆƒwƒbƒhƒZƒbƒg‚ª“¯‚¶LAN‚É‚Â‚È‚ª‚Á‚Ä‚¢‚é‚©Šm”F
+    - ƒtƒ@ƒCƒAƒEƒH[ƒ‹‚ÌÝ’è‚ðŠm”F‚·‚é (UDP/9944”Ôƒ|[ƒg‚ª‹–‰Â‚³‚ê‚Ä‚¢‚é‚©)
+    - adb‚ªŽg‚¦‚éê‡A`adb shell ping -c 5 (PC‚ÌIPƒAƒhƒŒƒX)`‚ðŽÀs‚µ‚Äping‚ª¬Œ÷‚·‚é‚©Šm”F
+- ƒXƒgƒŠ[ƒ~ƒ“ƒO‚Ì•iŽ¿‚ªˆ«‚¢ê‡ (‚æ‚­Ž~‚Ü‚éAƒJƒNƒJƒN‚·‚éA‰æ–Ê‚ª—‚ê‚é)
+    - ‰ð‘œ“x‚âƒrƒbƒgƒŒ[ƒg‚ð•ÏX‚·‚é‹@”\‚ð’Ç‰Á—\’è
+    - ‰Â”\‚È‚ç5GHz‚Ì802.11ac‚Ì–³üLAN‚ðŽg—p‚·‚é or ƒwƒbƒhƒZƒbƒg‚ð—LüLAN‚ÅÚ‘±‚·‚é
+
 ## ƒAƒ“ƒCƒ“ƒXƒg[ƒ‹•û–@
 - driverƒtƒHƒ‹ƒ_“à‚Ìdriver\_uninstall.bat‚ðŽÀs
 - ƒCƒ“ƒXƒg[ƒ‹ƒtƒHƒ‹ƒ_‚ðíœ (ƒŒƒWƒXƒgƒŠ‚ÍŽg‚¢‚Ü‚¹‚ñ)

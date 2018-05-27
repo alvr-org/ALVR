@@ -45,6 +45,19 @@ ALVR requires following devices:
 - IP Address of headset will appears in server tab of ALVR.exe
 - Press "Connect" button
 
+## Troubleshoot
+- "Server is down" is displayed on right top corner on ALVR.exe
+    - Retry execute driver\_install.bat on driver folder
+    - Terminate the process `vrserver.exe` on Task Manager
+- IP Address is not displayed on ALVR.exe
+    - It maybe network issue
+    - Confirm that the headset and PC are connected in same LAN.
+    - Check the firewall settings. (Permit UDP/9944 port)
+    - If you can use adb, run `adb shell ping -c 5 (IP Address of PC)` then check success of ping.
+- Bad streaming quality (Sometimes stops, laggy or broken picture)
+    - We will add the functionality to change streaming resolution and bitrate.
+    - Connect 5GHz 802.ac Wi-Fi or Connect Wired LAN to headset.
+
 ## Uninstallation
 - Execute driver\_uninstall.bat in driver folder
 - Delete install folder (ALVR does not use registry)

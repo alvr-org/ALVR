@@ -10,8 +10,14 @@ ALVR streams VR display output from your PC to Gear VR / Oculus Go via Wi-Fi. Th
 ## Requirements
 ALVR requires following devices:
 - Gear VR or Oculus Go
-    - Only tested on Gear VR with Galaxy S8
-    - If you tried on other devices, please feedback!
+
+|Device|Work?|
+|---|---|
+|Oculus Go|OK|
+|GalaxyS8/S8+|OK|
+|GalaxyS7|Not tested|
+|GalaxyS6|Not tested|
+
 - High-end gaming PC with NVIDIA GPU which supports NVENC
     - Only Windows 10 is supported
 - 802.11n/ac wireless or ethernet wired connection

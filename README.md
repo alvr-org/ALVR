@@ -14,7 +14,9 @@ ALVR requires following devices:
     - If you tried on other devices, please feedback!
 - High-end gaming PC with NVIDIA GPU which supports NVENC
     - Only Windows 10 is supported
-- 802.11n/ac Wireless connection
+- 802.11n/ac wireless or ethernet wired connection
+    - It is recommended 11ac for headset and ethernet for PC
+        - You need to connect both to same router
 - SteamVR
 
 ## Installation

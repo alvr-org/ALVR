@@ -1,90 +1,97 @@
 # ALVR - Air Light VR
 
-ALVR‚ÍPCVR‚Ì‰æ–Ê‚ðGear VR‚âOculus Go‚É“]‘—‚µ‚Ä—V‚Ô‚½‚ß‚Ìƒ\ƒtƒg‚Å‚·BSteamVR‚ÌƒQ[ƒ€‚ðƒXƒ^ƒ“ƒhƒAƒƒ“Œ^‚ÌƒwƒbƒhƒZƒbƒg‚ÅƒvƒŒƒC‚·‚é‚±‚Æ‚ª‚Å‚«‚Ü‚·B
+ALVRã¯PCVRã®ç”»é¢ã‚’Gear VRã‚„Oculus Goã«è»¢é€ã—ã¦éŠã¶ãŸã‚ã®ã‚½ãƒ•ãƒˆã§ã™ã€‚SteamVRã®ã‚²ãƒ¼ãƒ ã‚’ã‚¹ã‚¿ãƒ³ãƒ‰ã‚¢ãƒ­ãƒ³åž‹ã®ãƒ˜ãƒƒãƒ‰ã‚»ãƒƒãƒˆã§ãƒ—ãƒ¬ã‚¤ã™ã‚‹ã“ã¨ãŒã§ãã¾ã™ã€‚
 
 [English](https://github.com/polygraphene/ALVR/) Japanese
 
-## “Á’¥
-ALVR‚ÍPCVR‚Ì‰æ–Ê‚ðƒGƒ“ƒR[ƒh‚µWi-FiŒo—R‚ÅƒwƒbƒhƒZƒbƒg‚É“]‘—‚µ‚Ü‚·BŽ—‚½ƒ\ƒtƒg‚Æ‚µ‚ÄRiftcat‚âTrinus VR‚ª‚ ‚è‚Ü‚·‚ªA‚»‚ê‚ç‚æ‚è‚àGear VRŒü‚¯‚É“Á‰»‚µ‚Ä‚¢‚é‚Ì‚ª“Á’¥‚Å‚·BWi-FiŒo—R‚Å‚àGear VR‚É“‹Ú‚³‚ê‚½Asynchronous Timewarp‚ð—˜—p‚µ‚ÄƒXƒ€[ƒY‚Èƒwƒbƒhƒgƒ‰ƒbƒLƒ“ƒO‚ðŽÀŒ»‚Å‚«‚Ü‚·B
+## ç‰¹å¾´
+ALVRã¯PCVRã®ç”»é¢ã‚’ã‚¨ãƒ³ã‚³ãƒ¼ãƒ‰ã—Wi-FiçµŒç”±ã§ãƒ˜ãƒƒãƒ‰ã‚»ãƒƒãƒˆã«è»¢é€ã—ã¾ã™ã€‚ä¼¼ãŸã‚½ãƒ•ãƒˆã¨ã—ã¦Riftcatã‚„Trinus VRãŒã‚ã‚Šã¾ã™ãŒã€ãã‚Œã‚‰ã‚ˆã‚Šã‚‚Gear VRå‘ã‘ã«ç‰¹åŒ–ã—ã¦ã„ã‚‹ã®ãŒç‰¹å¾´ã§ã™ã€‚Wi-FiçµŒç”±ã§ã‚‚Gear VRã«æ­è¼‰ã•ã‚ŒãŸAsynchronous Timewarpã‚’åˆ©ç”¨ã—ã¦ã‚¹ãƒ ãƒ¼ã‚ºãªãƒ˜ãƒƒãƒ‰ãƒˆãƒ©ãƒƒã‚­ãƒ³ã‚°ã‚’å®Ÿç¾ã§ãã¾ã™ã€‚
 
-## “®ìŠÂ‹«
-ˆÈ‰º‚Ì“®ìŠÂ‹«‚ª•K—v‚Å‚·B
-- Gear VR ‚© Oculus Go
-    - Œ»óAGear VR + Galaxy S8‚Å‚µ‚©ŽŽ‚µ‚Ä‚¢‚Ü‚¹‚ñBS6‚âS7‚¾‚ÆƒXƒyƒbƒN“I‚ÉŒµ‚µ‚¢‚©‚à‚µ‚ê‚Ü‚¹‚ñB
-    - ŽŽ‚µ‚½•û‚ª‚¢‚½‚çƒtƒB[ƒhƒoƒbƒN‚¨Šè‚¢‚µ‚Ü‚·I
-- NVENC‚ªŽg‚¦‚éNVIDIA GPU‚ð“‹Ú‚µ‚½ƒnƒCƒGƒ“ƒhPC
-    - Œ»ÝAWindows 10‚Ì‚ÝƒTƒ|[ƒg‚µ‚Ä‚¢‚Ü‚·B
-- 802.11n/ac Wi-Fi
-- SteamVR‚ªƒCƒ“ƒXƒg[ƒ‹Ï‚Ý‚Å‚ ‚é‚±‚Æ
+## å‹•ä½œç’°å¢ƒ
+ä»¥ä¸‹ã®å‹•ä½œç’°å¢ƒãŒå¿…è¦ã§ã™ã€‚
+- Gear VR ã¾ãŸã¯ Oculus Go
 
-## ƒCƒ“ƒXƒg[ƒ‹•û–@
-- ALVR server‚ÌƒCƒ“ƒXƒg[ƒ‹‚·‚é•û–@
-    - SteamVR‚ðƒCƒ“ƒXƒg[ƒ‹
-    - [‚±‚±](https://www.microsoft.com/en-us/download/details.aspx?id=53840)‚©‚çvc\_redist.x64.exe‚ðƒ_ƒEƒ“ƒ[ƒh‚µ‚ÄƒCƒ“ƒXƒg[ƒ‹
-    - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çzip‚ðƒ_ƒEƒ“ƒ[ƒh
-    - ”CˆÓ‚ÌƒtƒHƒ‹ƒ_‚É“WŠJ
-    - driverƒtƒHƒ‹ƒ_“à‚Ìdriver\_install.bat‚ðŽÀs
-    - ALVR.exe‚ð‹N“®
-- ALVR client‚ðƒwƒbƒhƒZƒbƒg‚ÉƒCƒ“ƒXƒg[ƒ‹‚·‚é•û–@
+|æ©Ÿç¨®|å‹•ä½œç¢ºèª|
+|---|---|
+|Oculus Go|OK|
+|GalaxyS8/S8+|OK|
+|GalaxyS7|æœªãƒ†ã‚¹ãƒˆ|
+|GalaxyS6|æœªãƒ†ã‚¹ãƒˆ|
+
+- NVENCãŒä½¿ãˆã‚‹NVIDIA GPUã‚’æ­è¼‰ã—ãŸãƒã‚¤ã‚¨ãƒ³ãƒ‰PC
+    - ç¾åœ¨ã€Windows 10ã®ã¿ã‚µãƒãƒ¼ãƒˆã—ã¦ã„ã¾ã™ã€‚
+- 802.11n/ac Wi-Fi ã¾ãŸã¯ æœ‰ç·šæŽ¥ç¶š
+    - PCã¯æœ‰ç·šã€ãƒ˜ãƒƒãƒ‰ã‚»ãƒƒãƒˆã¯ç„¡ç·šãŒãŠã™ã™ã‚ã§ã™ (åŒã˜ãƒ«ãƒ¼ã‚¿ã«æŽ¥ç¶šã—ã¦ã„ã‚Œã°OK)
+- SteamVRãŒã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«æ¸ˆã¿ã§ã‚ã‚‹ã“ã¨
+
+## ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«æ–¹æ³•
+- ALVR serverã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ã™ã‚‹æ–¹æ³•
+    - SteamVRã‚’ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
+    - [ã“ã“](https://www.microsoft.com/en-us/download/details.aspx?id=53840)ã‹ã‚‰vc\_redist.x64.exeã‚’ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰ã—ã¦ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
+    - [Releases](https://github.com/polygraphene/ALVR/releases)ã‹ã‚‰zipã‚’ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰
+    - ä»»æ„ã®ãƒ•ã‚©ãƒ«ãƒ€ã«å±•é–‹
+    - driverãƒ•ã‚©ãƒ«ãƒ€å†…ã®driver\_install.batã‚’å®Ÿè¡Œ
+    - ALVR.exeã‚’èµ·å‹•
+- ALVR clientã‚’ãƒ˜ãƒƒãƒ‰ã‚»ãƒƒãƒˆã«ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ã™ã‚‹æ–¹æ³•
     - Gear VR
-        - SideloadVR‚ÉƒŠƒŠ[ƒX—\’è (R¸‚ª’Ê‚ê‚Î)
-        - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çapk‚ðƒ_ƒEƒ“ƒ[ƒh
-        - [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor)“™‚Åapk‚ÌassetsƒtƒHƒ‹ƒ_‚Éosigƒtƒ@ƒCƒ‹‚ð’u‚­
-        - apk‚ð–¼(Apk Editor‚È‚çBuild)‚µ‚ÄƒCƒ“ƒXƒg[ƒ‹
+        - SideloadVRã«ãƒªãƒªãƒ¼ã‚¹äºˆå®š (å¯©æŸ»ãŒé€šã‚Œã°)
+        - [Releases](https://github.com/polygraphene/ALVR/releases)ã‹ã‚‰apkã‚’ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰
+        - [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor)ç­‰ã§apkã®assetsãƒ•ã‚©ãƒ«ãƒ€ã«osigãƒ•ã‚¡ã‚¤ãƒ«ã‚’ç½®ã
+        - apkã‚’ç½²å(Apk Editorãªã‚‰Build)ã—ã¦ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
     - Oculus Go
-        - [Releases](https://github.com/polygraphene/ALVR/releases)‚©‚çapk‚ðƒ_ƒEƒ“ƒ[ƒh
-        - adb‚Åapk‚ðƒCƒ“ƒXƒg[ƒ‹
+        - [Releases](https://github.com/polygraphene/ALVR/releases)ã‹ã‚‰apkã‚’ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰
+        - adbã§apkã‚’ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
 
-## Žg‚¢•û
-- ALVR.exe‚ð‹N“®
-- Start Serverƒ{ƒ^ƒ“‚ð‰Ÿ‚· or VR‘Î‰žƒQ[ƒ€‚ð‹N“®
-- SteamVR‚Ì¬‚³‚¢ƒEƒBƒ“ƒhƒE‚ªo‚Ä‚­‚é
-- ƒwƒbƒhƒZƒbƒg‚ÅALVR Client‚ð‹N“®
-- ALVR.exe‚Ì‰æ–Ê‚ÉƒwƒbƒhƒZƒbƒg‚ÌIPƒAƒhƒŒƒX‚ªo‚Ä‚­‚é‚Ì‚ÅConnect‚ð‰Ÿ‚·
+## ä½¿ã„æ–¹
+- ALVR.exeã‚’èµ·å‹•
+- Start Serverãƒœã‚¿ãƒ³ã‚’æŠ¼ã™ or VRå¯¾å¿œã‚²ãƒ¼ãƒ ã‚’èµ·å‹•
+- SteamVRã®å°ã•ã„ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ãŒå‡ºã¦ãã‚‹
+- ãƒ˜ãƒƒãƒ‰ã‚»ãƒƒãƒˆã§ALVR Clientã‚’èµ·å‹•
+- ALVR.exeã®ç”»é¢ã«ãƒ˜ãƒƒãƒ‰ã‚»ãƒƒãƒˆã®IPã‚¢ãƒ‰ãƒ¬ã‚¹ãŒå‡ºã¦ãã‚‹ã®ã§Connectã‚’æŠ¼ã™
 
-## ƒgƒ‰ƒuƒ‹ƒVƒ…[ƒeƒBƒ“ƒO
-- ‰Eã‚É"Server is down" ‚Æ•\Ž¦‚³‚ê‚Ä‚¢‚éê‡
-    - driverƒtƒHƒ‹ƒ_‚Ìdriver\_install.bat‚ð‚à‚¤ˆê“xŽÀs‚µ‚Ä‚Ý‚é
-    - ƒ^ƒXƒNƒ}ƒl[ƒWƒƒ‚Åvrserver.exe‚ð‹­§I—¹‚µ‚Ä‚Ý‚é
-- ‰æ–Ê‚ÉƒwƒbƒhƒZƒbƒg‚ÌIPƒAƒhƒŒƒX‚ªo‚Ä‚±‚È‚¢ê‡
-    - ‚¨‚»‚ç‚­ƒlƒbƒgƒ[ƒNŽü‚è‚Ì–â‘è
-    - PC‚ÆƒwƒbƒhƒZƒbƒg‚ª“¯‚¶LAN‚É‚Â‚È‚ª‚Á‚Ä‚¢‚é‚©Šm”F
-    - ƒtƒ@ƒCƒAƒEƒH[ƒ‹‚ÌÝ’è‚ðŠm”F‚·‚é (UDP/9944”Ôƒ|[ƒg‚ª‹–‰Â‚³‚ê‚Ä‚¢‚é‚©)
-    - adb‚ªŽg‚¦‚éê‡A`adb shell ping -c 5 (PC‚ÌIPƒAƒhƒŒƒX)`‚ðŽÀs‚µ‚Äping‚ª¬Œ÷‚·‚é‚©Šm”F
-- ƒXƒgƒŠ[ƒ~ƒ“ƒO‚Ì•iŽ¿‚ªˆ«‚¢ê‡ (‚æ‚­Ž~‚Ü‚éAƒJƒNƒJƒN‚·‚éA‰æ–Ê‚ª—‚ê‚é)
-    - ‰ð‘œ“x‚âƒrƒbƒgƒŒ[ƒg‚ð•ÏX‚·‚é‹@”\‚ð’Ç‰Á—\’è
-    - ‰Â”\‚È‚ç5GHz‚Ì802.11ac‚Ì–³üLAN‚ðŽg—p‚·‚é or ƒwƒbƒhƒZƒbƒg‚ð—LüLAN‚ÅÚ‘±‚·‚é
+## ãƒˆãƒ©ãƒ–ãƒ«ã‚·ãƒ¥ãƒ¼ãƒ†ã‚£ãƒ³ã‚°
+- å³ä¸Šã«"Server is down" ã¨è¡¨ç¤ºã•ã‚Œã¦ã„ã‚‹å ´åˆ
+    - driverãƒ•ã‚©ãƒ«ãƒ€ã®driver\_install.batã‚’ã‚‚ã†ä¸€åº¦å®Ÿè¡Œã—ã¦ã¿ã‚‹
+    - ã‚¿ã‚¹ã‚¯ãƒžãƒãƒ¼ã‚¸ãƒ£ã§vrserver.exeã‚’å¼·åˆ¶çµ‚äº†ã—ã¦ã¿ã‚‹
+- ç”»é¢ã«ãƒ˜ãƒƒãƒ‰ã‚»ãƒƒãƒˆã®IPã‚¢ãƒ‰ãƒ¬ã‚¹ãŒå‡ºã¦ã“ãªã„å ´åˆ
+    - ãŠãã‚‰ããƒãƒƒãƒˆãƒ¯ãƒ¼ã‚¯å‘¨ã‚Šã®å•é¡Œ
+    - PCã¨ãƒ˜ãƒƒãƒ‰ã‚»ãƒƒãƒˆãŒåŒã˜LAN(åŒã˜ãƒ«ãƒ¼ã‚¿)ã«ã¤ãªãŒã£ã¦ã„ã‚‹ã‹ç¢ºèª
+    - ãƒ•ã‚¡ã‚¤ã‚¢ã‚¦ã‚©ãƒ¼ãƒ«ã®è¨­å®šã‚’ç¢ºèªã™ã‚‹ (UDP/9944ç•ªãƒãƒ¼ãƒˆãŒè¨±å¯ã•ã‚Œã¦ã„ã‚‹ã‹)
+    - adbãŒä½¿ãˆã‚‹å ´åˆã€`adb shell ping -c 5 (PCã®IPã‚¢ãƒ‰ãƒ¬ã‚¹)`ã‚’å®Ÿè¡Œã—ã¦pingãŒæˆåŠŸã™ã‚‹ã‹ç¢ºèª
+- ã‚¹ãƒˆãƒªãƒ¼ãƒŸãƒ³ã‚°ã®å“è³ªãŒæ‚ªã„å ´åˆ (ã‚ˆãæ­¢ã¾ã‚‹ã€ã‚«ã‚¯ã‚«ã‚¯ã™ã‚‹ã€ç”»é¢ãŒä¹±ã‚Œã‚‹)
+    - è§£åƒåº¦ã‚„ãƒ“ãƒƒãƒˆãƒ¬ãƒ¼ãƒˆã‚’å¤‰æ›´ã™ã‚‹æ©Ÿèƒ½ã‚’è¿½åŠ äºˆå®š
+    - å¯èƒ½ãªã‚‰5GHzã®802.11acã®ç„¡ç·šLANã‚’ä½¿ç”¨ã™ã‚‹ or ãƒ˜ãƒƒãƒ‰ã‚»ãƒƒãƒˆã‚’æœ‰ç·šLANã§æŽ¥ç¶šã™ã‚‹
 
-## ƒAƒ“ƒCƒ“ƒXƒg[ƒ‹•û–@
-- driverƒtƒHƒ‹ƒ_“à‚Ìdriver\_uninstall.bat‚ðŽÀs
-- ƒCƒ“ƒXƒg[ƒ‹ƒtƒHƒ‹ƒ_‚ðíœ (ƒŒƒWƒXƒgƒŠ‚ÍŽg‚¢‚Ü‚¹‚ñ)
-- driver\_uninstall.bat‚ðŽÀs‚¹‚¸íœ‚µ‚Ä‚µ‚Ü‚Á‚½ê‡
-    - C:\Users\\%USERNAME%\AppData\Local\openvr\openvrpaths.vrpath‚ðƒƒ‚’ ‚ÅŠJ‚«ƒCƒ“ƒXƒg[ƒ‹ƒtƒHƒ‹ƒ_‚ðŠm”F(Žè“®‚Å‘‚«Š·‚¦‚µ‚È‚¢‚æ‚¤‚É)
-    - ƒRƒ}ƒ“ƒhƒvƒƒ“ƒvƒg‚Å
-    `"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vrpathreg.exe" removedriver (ƒCƒ“ƒXƒg[ƒ‹ƒtƒHƒ‹ƒ_)`
-    ‚ðŽÀs
+## ã‚¢ãƒ³ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«æ–¹æ³•
+- driverãƒ•ã‚©ãƒ«ãƒ€å†…ã®driver\_uninstall.batã‚’å®Ÿè¡Œ
+- ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ãƒ•ã‚©ãƒ«ãƒ€ã‚’å‰Šé™¤ (ãƒ¬ã‚¸ã‚¹ãƒˆãƒªã¯ä½¿ã„ã¾ã›ã‚“)
+- driver\_uninstall.batã‚’å®Ÿè¡Œã›ãšå‰Šé™¤ã—ã¦ã—ã¾ã£ãŸå ´åˆ
+    - C:\Users\\%USERNAME%\AppData\Local\openvr\openvrpaths.vrpathã‚’ãƒ¡ãƒ¢å¸³ã§é–‹ãã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ãƒ•ã‚©ãƒ«ãƒ€ã‚’ç¢ºèª(æ‰‹å‹•ã§æ›¸ãæ›ãˆã—ãªã„ã‚ˆã†ã«)
+    - ã‚³ãƒžãƒ³ãƒ‰ãƒ—ãƒ­ãƒ³ãƒ—ãƒˆã§
+    `"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vrpathreg.exe" removedriver (ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ãƒ•ã‚©ãƒ«ãƒ€)`
+    ã‚’å®Ÿè¡Œ
 
-## ¡Œã‚Ì—\’è
-- “®‰æƒrƒbƒgƒŒ[ƒg‚Ì•ÏX‹@”\
-- ‰¹º‚ÌƒXƒgƒŠ[ƒ~ƒ“ƒO‚ÌƒTƒ|[ƒg
-- H.265‚ÌƒTƒ|[ƒg (Œ»óAH.264‚Ì‚Ý)
-- Gear VR / Oculus Go ƒRƒ“ƒgƒ[ƒ‰‚ÌƒTƒ|[ƒg
-- ƒCƒ“ƒXƒg[ƒ‰‚Ìì¬
+## ä»Šå¾Œã®äºˆå®š
+- å‹•ç”»ãƒ“ãƒƒãƒˆãƒ¬ãƒ¼ãƒˆã®å¤‰æ›´æ©Ÿèƒ½
+- éŸ³å£°ã®ã‚¹ãƒˆãƒªãƒ¼ãƒŸãƒ³ã‚°ã®ã‚µãƒãƒ¼ãƒˆ
+- H.265ã®ã‚µãƒãƒ¼ãƒˆ (ç¾çŠ¶ã€H.264ã®ã¿)
+- Gear VR / Oculus Go ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ©ã®ã‚µãƒãƒ¼ãƒˆ
+- ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ©ã®ä½œæˆ
 
-## ƒrƒ‹ƒh•û–@
+## ãƒ“ãƒ«ãƒ‰æ–¹æ³•
 ### ALVR Server and GUI(Launcher)
-- ALVR.sln‚ðVisual Studio 2017‚ÅŠJ‚¢‚Äƒrƒ‹ƒh‚µ‚Ü‚·B
-    - alvr\_server: SteamVR (OpenVR) ‚Ìƒhƒ‰ƒCƒo (C++)
-    - ALVR: ALVR Server‚ð‹N“®/§Œä‚·‚é‚½‚ß‚ÌGUI (C#)
+- ALVR.slnã‚’Visual Studio 2017ã§é–‹ã„ã¦ãƒ“ãƒ«ãƒ‰ã—ã¾ã™ã€‚
+    - alvr\_server: SteamVR (OpenVR) ã®ãƒ‰ãƒ©ã‚¤ãƒ (C++)
+    - ALVR: ALVR Serverã‚’èµ·å‹•/åˆ¶å¾¡ã™ã‚‹ãŸã‚ã®GUI (C#)
 
 ### ALVR Client
-- [ALVR Client](https://github.com/polygraphene/ALVRClient)‚ðƒNƒ[ƒ“
-- [osig file](https://developer.oculus.com/documentation/mobilesdk/latest/concepts/mobile-submission-sig-file/) ‚ð assets ƒtƒHƒ‹ƒ_‚ÉÝ’u (Gear VR‚Ì‚Ý)
-- Android Studio‚Åƒrƒ‹ƒh
-- adb‚ÅƒCƒ“ƒXƒg[ƒ‹
+- [ALVR Client](https://github.com/polygraphene/ALVRClient)ã‚’ã‚¯ãƒ­ãƒ¼ãƒ³
+- [osig file](https://developer.oculus.com/documentation/mobilesdk/latest/concepts/mobile-submission-sig-file/) ã‚’ assets ãƒ•ã‚©ãƒ«ãƒ€ã«è¨­ç½® (Gear VRã®ã¿)
+- Android Studioã§ãƒ“ãƒ«ãƒ‰
+- adbã§ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
 
 ## License
-MITƒ‰ƒCƒZƒ“ƒX‚Å‚·B
+MITãƒ©ã‚¤ã‚»ãƒ³ã‚¹ã§ã™ã€‚
 ALVR is licensed under MIT License.
 
 ## Donate

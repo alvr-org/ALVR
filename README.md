@@ -28,22 +28,22 @@ ALVR requires following devices:
 
 ## Installation
 ### Install ALVR server for PC
-    - Install SteamVR
-    - Install vc\_redist.x64.exe from [here](https://www.microsoft.com/en-us/download/details.aspx?id=53840)
-    - Download zip from [Releases](https://github.com/polygraphene/ALVR/releases)
-    - Extract zip on any folder
-    - Launch ALVR.exe
+- Install SteamVR
+- Install vc\_redist.x64.exe from [here](https://www.microsoft.com/en-us/download/details.aspx?id=53840)
+- Download zip from [Releases](https://github.com/polygraphene/ALVR/releases)
+- Extract zip on any folder
+- Launch ALVR.exe
 ### Install ALVR client for headset
 #### For Gear VR users
-        - (Install apk from SideloadVR) Yet to be released. Please wait.
-        - Get osig file from oculus website.
-        - Install [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor)
-        - Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
-        - Open apk and put osig file on assets folder
-        - Build and install
+- (Install apk from SideloadVR) Yet to be released. Please wait.
+- Get osig file from oculus website.
+- Install [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor)
+- Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
+- Open apk and put osig file on assets folder
+- Build and install
 #### For Oculus Go users
-        - Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
-        - Install apk via adb
+- Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
+- Install apk via adb
 
 ## Usage
 - Launch ALVR.exe

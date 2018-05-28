@@ -134,6 +134,8 @@ namespace ALVR
             string version = fvi.FileVersion;
             var split = version.Split('.');
             versionLabel.Text = "v" + split[0] + "." + split[1];
+
+            licenseTextBox.Text = Properties.Resources.LICENSE;
         }
 
         async private void Connect()

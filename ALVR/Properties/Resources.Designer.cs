@@ -59,5 +59,45 @@ namespace ALVR.Properties {
                 resourceCulture = value;
             }
         }
+        
+        /// <summary>
+        ///   型 System.Drawing.Bitmap のローカライズされたリソースを検索します。
+        /// </summary>
+        internal static System.Drawing.Bitmap alvr_128 {
+            get {
+                object obj = ResourceManager.GetObject("alvr-128", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Copyright (c) Valve Corporation
+        ///All rights reserved.
+        ///
+        ///Redistribution and use in source and binary forms, with or without modification,
+        ///are permitted provided that the following conditions are met
+        ///
+        ///1. Redistributions of source code must retain the above copyright notice, this
+        ///list of conditions and the following disclaimer.
+        ///
+        ///2. Redistributions in binary form must reproduce the above copyright notice,
+        ///this list of conditions and the following disclaimer in the documentation andor
+        ///other materials pr [残りの文字列は切り詰められました]&quot;; に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string LICENSE {
+            get {
+                return ResourceManager.GetString("LICENSE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   型 System.Drawing.Bitmap のローカライズされたリソースを検索します。
+        /// </summary>
+        internal static System.Drawing.Bitmap web_hi_res_512 {
+            get {
+                object obj = ResourceManager.GetObject("web_hi_res_512", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
     }
 }

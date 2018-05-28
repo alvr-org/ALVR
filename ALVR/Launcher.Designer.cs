@@ -29,22 +29,27 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Launcher));
             this.metroButton1 = new MetroFramework.Controls.MetroButton();
             this.metroButton2 = new MetroFramework.Controls.MetroButton();
             this.metroProgressSpinner1 = new MetroFramework.Controls.MetroProgressSpinner();
             this.metroButton3 = new MetroFramework.Controls.MetroButton();
             this.metroTabControl1 = new MetroFramework.Controls.MetroTabControl();
             this.serverTab = new MetroFramework.Controls.MetroTabPage();
-            this.messagePanel = new MetroFramework.Controls.MetroPanel();
             this.findingPanel = new MetroFramework.Controls.MetroPanel();
+            this.noClientLabel = new MetroFramework.Controls.MetroLabel();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.AddressColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Button = new System.Windows.Forms.DataGridViewButtonColumn();
             this.metroProgressSpinner2 = new MetroFramework.Controls.MetroProgressSpinner();
             this.metroLabel4 = new MetroFramework.Controls.MetroLabel();
+            this.messagePanel = new MetroFramework.Controls.MetroPanel();
             this.messageLabel = new MetroFramework.Controls.MetroLabel();
             this.videoTab = new MetroFramework.Controls.MetroTabPage();
+            this.metroLabel13 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel12 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel11 = new MetroFramework.Controls.MetroLabel();
             this.resolutionComboBox = new MetroFramework.Controls.MetroComboBox();
             this.bitrateLabel = new MetroFramework.Controls.MetroLabel();
             this.metroLabel9 = new MetroFramework.Controls.MetroLabel();
@@ -70,24 +75,24 @@
             this.metroButton5 = new MetroFramework.Controls.MetroButton();
             this.metroButton4 = new MetroFramework.Controls.MetroButton();
             this.aboutTab = new MetroFramework.Controls.MetroTabPage();
-            this.metroTextBox3 = new MetroFramework.Controls.MetroTextBox();
+            this.metroLabel14 = new MetroFramework.Controls.MetroLabel();
+            this.licenseTextBox = new MetroFramework.Controls.MetroTextBox();
             this.versionLabel = new MetroFramework.Controls.MetroLabel();
             this.metroLabel6 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel3 = new MetroFramework.Controls.MetroLabel();
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.noClientLabel = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel11 = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel12 = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel13 = new MetroFramework.Controls.MetroLabel();
+            this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.metroLabel15 = new MetroFramework.Controls.MetroLabel();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
-            this.messagePanel.SuspendLayout();
             this.findingPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
+            this.messagePanel.SuspendLayout();
             this.videoTab.SuspendLayout();
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
             // metroButton1
@@ -127,12 +132,12 @@
             // metroTabControl1
             // 
             this.metroTabControl1.Controls.Add(this.serverTab);
+            this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Controls.Add(this.videoTab);
             this.metroTabControl1.Controls.Add(this.debugTab);
-            this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 1;
+            this.metroTabControl1.SelectedIndex = 0;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -147,20 +152,6 @@
             this.serverTab.TabIndex = 3;
             this.serverTab.Text = "Server";
             this.serverTab.VerticalScrollbarBarColor = true;
-            // 
-            // messagePanel
-            // 
-            this.messagePanel.Controls.Add(this.messageLabel);
-            this.messagePanel.HorizontalScrollbarBarColor = true;
-            this.messagePanel.HorizontalScrollbarHighlightOnWheel = false;
-            this.messagePanel.HorizontalScrollbarSize = 10;
-            this.messagePanel.Location = new System.Drawing.Point(3, 3);
-            this.messagePanel.Name = "messagePanel";
-            this.messagePanel.Size = new System.Drawing.Size(657, 284);
-            this.messagePanel.TabIndex = 10;
-            this.messagePanel.VerticalScrollbarBarColor = true;
-            this.messagePanel.VerticalScrollbarHighlightOnWheel = false;
-            this.messagePanel.VerticalScrollbarSize = 10;
             // 
             // findingPanel
             // 
@@ -178,6 +169,17 @@
             this.findingPanel.VerticalScrollbarBarColor = true;
             this.findingPanel.VerticalScrollbarHighlightOnWheel = false;
             this.findingPanel.VerticalScrollbarSize = 10;
+            // 
+            // noClientLabel
+            // 
+            this.noClientLabel.AutoSize = true;
+            this.noClientLabel.Location = new System.Drawing.Point(39, 96);
+            this.noClientLabel.Name = "noClientLabel";
+            this.noClientLabel.Size = new System.Drawing.Size(292, 76);
+            this.noClientLabel.TabIndex = 10;
+            this.noClientLabel.Text = "Headset not found.\r\n\r\nMake sure the client is launched.\r\nOr check the firewall se" +
+    "ttings (permit UDP/9944).";
+            this.noClientLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // dataGridView1
             // 
@@ -243,6 +245,20 @@
             this.metroLabel4.Text = "Finding Headset...";
             this.metroLabel4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // messagePanel
+            // 
+            this.messagePanel.Controls.Add(this.messageLabel);
+            this.messagePanel.HorizontalScrollbarBarColor = true;
+            this.messagePanel.HorizontalScrollbarHighlightOnWheel = false;
+            this.messagePanel.HorizontalScrollbarSize = 10;
+            this.messagePanel.Location = new System.Drawing.Point(3, 3);
+            this.messagePanel.Name = "messagePanel";
+            this.messagePanel.Size = new System.Drawing.Size(657, 284);
+            this.messagePanel.TabIndex = 10;
+            this.messagePanel.VerticalScrollbarBarColor = true;
+            this.messagePanel.VerticalScrollbarHighlightOnWheel = false;
+            this.messagePanel.VerticalScrollbarSize = 10;
+            // 
             // messageLabel
             // 
             this.messageLabel.BackColor = System.Drawing.Color.White;
@@ -274,6 +290,33 @@
             this.videoTab.TabIndex = 5;
             this.videoTab.Text = "Video";
             this.videoTab.VerticalScrollbarBarColor = true;
+            // 
+            // metroLabel13
+            // 
+            this.metroLabel13.AutoSize = true;
+            this.metroLabel13.Location = new System.Drawing.Point(171, 238);
+            this.metroLabel13.Name = "metroLabel13";
+            this.metroLabel13.Size = new System.Drawing.Size(292, 19);
+            this.metroLabel13.TabIndex = 7;
+            this.metroLabel13.Text = "These settings will be applied after restart server.";
+            // 
+            // metroLabel12
+            // 
+            this.metroLabel12.AutoSize = true;
+            this.metroLabel12.Location = new System.Drawing.Point(55, 186);
+            this.metroLabel12.Name = "metroLabel12";
+            this.metroLabel12.Size = new System.Drawing.Size(356, 19);
+            this.metroLabel12.TabIndex = 7;
+            this.metroLabel12.Text = "Resolution of video streaming. 2048x1024 is recommended.";
+            // 
+            // metroLabel11
+            // 
+            this.metroLabel11.AutoSize = true;
+            this.metroLabel11.Location = new System.Drawing.Point(55, 73);
+            this.metroLabel11.Name = "metroLabel11";
+            this.metroLabel11.Size = new System.Drawing.Size(321, 19);
+            this.metroLabel11.TabIndex = 7;
+            this.metroLabel11.Text = "Bitrate of video streaming. 30Mbps is recommended.";
             // 
             // resolutionComboBox
             // 
@@ -523,7 +566,9 @@
             // 
             // aboutTab
             // 
-            this.aboutTab.Controls.Add(this.metroTextBox3);
+            this.aboutTab.Controls.Add(this.metroLabel15);
+            this.aboutTab.Controls.Add(this.metroLabel14);
+            this.aboutTab.Controls.Add(this.licenseTextBox);
             this.aboutTab.Controls.Add(this.versionLabel);
             this.aboutTab.Controls.Add(this.metroLabel6);
             this.aboutTab.HorizontalScrollbarBarColor = true;
@@ -534,20 +579,29 @@
             this.aboutTab.Text = "About";
             this.aboutTab.VerticalScrollbarBarColor = true;
             // 
-            // metroTextBox3
+            // metroLabel14
             // 
-            this.metroTextBox3.Location = new System.Drawing.Point(297, 15);
-            this.metroTextBox3.Multiline = true;
-            this.metroTextBox3.Name = "metroTextBox3";
-            this.metroTextBox3.ReadOnly = true;
-            this.metroTextBox3.Size = new System.Drawing.Size(324, 253);
-            this.metroTextBox3.TabIndex = 3;
+            this.metroLabel14.AutoSize = true;
+            this.metroLabel14.Location = new System.Drawing.Point(31, 51);
+            this.metroLabel14.Name = "metroLabel14";
+            this.metroLabel14.Size = new System.Drawing.Size(213, 19);
+            this.metroLabel14.TabIndex = 4;
+            this.metroLabel14.Text = "The opensource remote VR display";
+            // 
+            // licenseTextBox
+            // 
+            this.licenseTextBox.Location = new System.Drawing.Point(308, 37);
+            this.licenseTextBox.Multiline = true;
+            this.licenseTextBox.Name = "licenseTextBox";
+            this.licenseTextBox.ReadOnly = true;
+            this.licenseTextBox.Size = new System.Drawing.Size(324, 231);
+            this.licenseTextBox.TabIndex = 3;
             // 
             // versionLabel
             // 
             this.versionLabel.AutoSize = true;
             this.versionLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.versionLabel.Location = new System.Drawing.Point(89, 59);
+            this.versionLabel.Location = new System.Drawing.Point(73, 15);
             this.versionLabel.Name = "versionLabel";
             this.versionLabel.Size = new System.Drawing.Size(39, 25);
             this.versionLabel.TabIndex = 2;
@@ -557,7 +611,7 @@
             // 
             this.metroLabel6.AutoSize = true;
             this.metroLabel6.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel6.Location = new System.Drawing.Point(33, 59);
+            this.metroLabel6.Location = new System.Drawing.Point(17, 15);
             this.metroLabel6.Name = "metroLabel6";
             this.metroLabel6.Size = new System.Drawing.Size(50, 25);
             this.metroLabel6.TabIndex = 2;
@@ -589,68 +643,52 @@
             this.timer1.Interval = 1000;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
-            // noClientLabel
+            // pictureBox1
             // 
-            this.noClientLabel.AutoSize = true;
-            this.noClientLabel.Location = new System.Drawing.Point(39, 96);
-            this.noClientLabel.Name = "noClientLabel";
-            this.noClientLabel.Size = new System.Drawing.Size(292, 76);
-            this.noClientLabel.TabIndex = 10;
-            this.noClientLabel.Text = "Headset not found.\r\n\r\nMake sure the client is launched.\r\nOr check the firewall se" +
-    "ttings (permit UDP/9944).";
-            this.noClientLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.pictureBox1.Image = global::ALVR.Properties.Resources.alvr_128;
+            this.pictureBox1.Location = new System.Drawing.Point(93, 12);
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.Size = new System.Drawing.Size(48, 48);
+            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
+            this.pictureBox1.TabIndex = 11;
+            this.pictureBox1.TabStop = false;
             // 
-            // metroLabel11
+            // metroLabel15
             // 
-            this.metroLabel11.AutoSize = true;
-            this.metroLabel11.Location = new System.Drawing.Point(55, 73);
-            this.metroLabel11.Name = "metroLabel11";
-            this.metroLabel11.Size = new System.Drawing.Size(321, 19);
-            this.metroLabel11.TabIndex = 7;
-            this.metroLabel11.Text = "Bitrate of video streaming. 30Mbps is recommended.";
-            // 
-            // metroLabel12
-            // 
-            this.metroLabel12.AutoSize = true;
-            this.metroLabel12.Location = new System.Drawing.Point(55, 186);
-            this.metroLabel12.Name = "metroLabel12";
-            this.metroLabel12.Size = new System.Drawing.Size(356, 19);
-            this.metroLabel12.TabIndex = 7;
-            this.metroLabel12.Text = "Resolution of video streaming. 2048x1024 is recommended.";
-            // 
-            // metroLabel13
-            // 
-            this.metroLabel13.AutoSize = true;
-            this.metroLabel13.Location = new System.Drawing.Point(171, 238);
-            this.metroLabel13.Name = "metroLabel13";
-            this.metroLabel13.Size = new System.Drawing.Size(292, 19);
-            this.metroLabel13.TabIndex = 7;
-            this.metroLabel13.Text = "These settings will be applied after restart server.";
+            this.metroLabel15.AutoSize = true;
+            this.metroLabel15.Location = new System.Drawing.Point(308, 15);
+            this.metroLabel15.Name = "metroLabel15";
+            this.metroLabel15.Size = new System.Drawing.Size(125, 19);
+            this.metroLabel15.TabIndex = 4;
+            this.metroLabel15.Text = "Opensource license:";
             // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(710, 411);
+            this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.startServerButton);
             this.Controls.Add(this.metroProgressSpinner1);
             this.Controls.Add(this.metroLabel3);
             this.Controls.Add(this.metroTabControl1);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Launcher";
             this.Text = "ALVR";
             this.Load += new System.EventHandler(this.Launcher_Load);
             this.metroTabControl1.ResumeLayout(false);
             this.serverTab.ResumeLayout(false);
-            this.messagePanel.ResumeLayout(false);
             this.findingPanel.ResumeLayout(false);
             this.findingPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
+            this.messagePanel.ResumeLayout(false);
             this.videoTab.ResumeLayout(false);
             this.videoTab.PerformLayout();
             this.debugTab.ResumeLayout(false);
             this.debugTab.PerformLayout();
             this.aboutTab.ResumeLayout(false);
             this.aboutTab.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -688,7 +726,7 @@
         private MetroFramework.Controls.MetroPanel messagePanel;
         private MetroFramework.Controls.MetroLabel metroLabel5;
         private MetroFramework.Controls.MetroTabPage aboutTab;
-        private MetroFramework.Controls.MetroTextBox metroTextBox3;
+        private MetroFramework.Controls.MetroTextBox licenseTextBox;
         private MetroFramework.Controls.MetroLabel versionLabel;
         private MetroFramework.Controls.MetroLabel metroLabel6;
         private MetroFramework.Controls.MetroCheckBox debugPosCheckBox;
@@ -708,6 +746,9 @@
         private MetroFramework.Controls.MetroLabel metroLabel12;
         private MetroFramework.Controls.MetroLabel metroLabel11;
         private MetroFramework.Controls.MetroLabel metroLabel13;
+        private System.Windows.Forms.PictureBox pictureBox1;
+        private MetroFramework.Controls.MetroLabel metroLabel14;
+        private MetroFramework.Controls.MetroLabel metroLabel15;
     }
 }
 

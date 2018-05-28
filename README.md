@@ -99,3 +99,8 @@ ALVR is licensed under MIT License.
 
 ## Donate
 If you like this project, please donate!
+
+#### Donate by paypal
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=polygraphene@gmail.com&lc=US&item_name=Donate+for+ALVR+developer&no_note=0&cn=&curency_code=USD&bn=PP-DonationsBF:btn_donateCC_LG.gif:NonHosted)
+#### Donate by bitcoin
+bitcoin:1FCbmFVSjsmpnAj6oLx2EhnzQzzhyxTLEv

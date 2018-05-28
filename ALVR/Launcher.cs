@@ -14,6 +14,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using MetroFramework.Forms;
+using Microsoft.Win32;
 
 namespace ALVR
 {
@@ -29,6 +30,13 @@ namespace ALVR
             DEAD
         };
         ServerStatus status = ServerStatus.DEAD;
+        enum ClientStatus
+        {
+            CONNECTED,
+            DEAD
+        };
+        ClientStatus clientStatus = ClientStatus.DEAD;
+
         string buf = "";
         ServerConfig config = new ServerConfig();
 
@@ -39,15 +47,16 @@ namespace ALVR
 
         private void Launcher_Load(object sender, EventArgs e)
         {
-            System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
-            FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(assembly.Location);
-            string version = fvi.FileVersion;
-            var split = version.Split('.');
-            versionLabel.Text = "v" + split[0] + "." + split[1];
+            SetFileVersion();
 
-            config.Load();
+            if (!config.Load())
+            {
+                Application.Exit();
+                return;
+            }
 
-            foreach(var width in ServerConfig.supportedWidth) {
+            foreach (var width in ServerConfig.supportedWidth)
+            {
                 int i = resolutionComboBox.Items.Add(width + " x " + (width / 2));
                 if (config.renderWidth == width)
                 {
@@ -118,16 +127,14 @@ namespace ALVR
             }
         }
 
-        async private void button2_Click(object sender, EventArgs e)
+        private void SetFileVersion()
         {
-            await SendCommand("EnableTestMode " + metroTextBox1.Text);
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(assembly.Location);
+            string version = fvi.FileVersion;
+            var split = version.Split('.');
+            versionLabel.Text = "v" + split[0] + "." + split[1];
         }
-
-        async private void button3_Click(object sender, EventArgs e)
-        {
-            SendCommand("EnableDriverTestMode " + metroTextBox2.Text);
-        }
-
 
         async private void Connect()
         {
@@ -144,139 +151,44 @@ namespace ALVR
             }
             catch (Exception e)
             {
+                Debug.WriteLine("Connection error: " + e + "\r\n" + e.Message);
             }
 
-            Invoke((MethodInvoker)(() =>
+            metroProgressSpinner1.Hide();
+            if (client.Connected)
             {
-                metroProgressSpinner1.Hide();
-                if (client.Connected)
-                {
-                    status = ServerStatus.CONNECTED;
-                    UpdateServerStatus();
-                    UpdateClients();
-                }
-                else
-                {
-                    status = ServerStatus.DEAD;
-                    UpdateServerStatus();
-                }
-            }));
+                status = ServerStatus.CONNECTED;
+                UpdateServerStatus();
+                UpdateClients();
+            }
+            else
+            {
+                status = ServerStatus.DEAD;
+                UpdateServerStatus();
+            }
         }
 
         private void UpdateServerStatus()
         {
-            if (status == ServerStatus.CONNECTING)
-            {
-                metroLabel3.Text = "Checking...";
-                metroLabel3.BackColor = Color.White;
-                metroLabel3.ForeColor = Color.Black;
-
-                startServerButton.Hide();
-            }
-            else if (status == ServerStatus.CONNECTED)
+            if (status == ServerStatus.CONNECTED)
             {
                 metroLabel3.Text = "Server is alive!";
                 metroLabel3.BackColor = Color.LimeGreen;
                 metroLabel3.ForeColor = Color.White;
+
                 startServerButton.Hide();
             }
-            else if (status == ServerStatus.DEAD)
+            else
             {
                 metroLabel3.Text = "Server is down";
                 metroLabel3.BackColor = Color.Gray;
                 metroLabel3.ForeColor = Color.White;
 
+                messageLabel.Text = "Server is not runnning.\r\nPress \"Start Server\"";
+                messagePanel.Show();
+                findingPanel.Hide();
+
                 startServerButton.Show();
-            }
-        }
-
-        async private void metroButton4_Click(object sender, EventArgs e)
-        {
-            string str = await SendCommand("GetConfig");
-            logText.Text = str.Replace("\n", "\r\n");
-        }
-
-        async private void metroButton5_Click(object sender, EventArgs e)
-        {
-            await SendCommand("SetConfig DebugFrameIndex " + (metroCheckBox1.Checked ? "1" : "0"));
-        }
-
-        async private void metroCheckBox2_CheckedChanged(object sender, EventArgs e)
-        {
-            await SendCommand("Suspend " + (metroCheckBox2.Checked ? "1" : "0"));
-        }
-
-        async private void metroCheckBox3_CheckedChanged(object sender, EventArgs e)
-        {
-            await SendCommand("SetConfig UseKeyedMutex " + (metroCheckBox2.Checked ? "1" : "0"));
-        }
-
-        private void metroButton6_Click(object sender, EventArgs e)
-        {
-            // Check existence of vrmonitor.
-            Microsoft.Win32.RegistryKey regkey =
-                Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(@"vrmonitor\Shell\Open\Command", false);
-            if (regkey == null)
-            {
-                MessageBox.Show("SteamVR is not installed.\r\n(Registry HKEY_CLASSES_ROOT\\vrmonitor\\Shell\\Open\\Command was not found.)\r\nPlease install and retry.");
-            }
-            else
-            {
-                InstallDriver((string)regkey.GetValue(""));
-
-                // Save json
-                int renderWidth = ServerConfig.supportedWidth[resolutionComboBox.SelectedIndex];
-                int bitrate = bitrateTrackBar.Value;
-                config.Save(bitrate, renderWidth);
-
-                Process.Start("vrmonitor:");
-            }
-        }
-
-        private void InstallDriver(string path)
-        {
-            // Execute "C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vrpathreg.exe" adddriver "%~dp0
-            var m = Regex.Match(path, "^\"(.+)bin\\\\([^\\\\]+)\\\\vrmonitor.exe\" \"%1\"$");
-            if (!m.Success)
-            {
-                MessageBox.Show("Invalid value in registry HKEY_CLASSES_ROOT\\vrmonitor\\Shell\\Open\\Command.");
-                return;
-            }
-            string vrpathreg = m.Groups[1].Value + @"bin\win32\vrpathreg.exe";
-
-            string driverPath = Utils.GetDriverPath();
-            if (!Directory.Exists(driverPath))
-            {
-                MessageBox.Show("Driver path: " + driverPath + "\r\nis not found! Please check install location.");
-                return;
-            }
-            // This is for compatibility to driver_uninstall.bat
-            driverPath += "\\\\";
-
-            ExecuteProcess(vrpathreg, "adddriver \"" + driverPath + "\"");
-        }
-
-        private void ExecuteProcess(string path, string args)
-        {
-            ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.FileName = path;
-            startInfo.Arguments = args;
-            startInfo.RedirectStandardOutput = true;
-            startInfo.RedirectStandardError = true;
-            startInfo.UseShellExecute = false;
-            startInfo.CreateNoWindow = true;
-            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-
-            Process processTemp = new Process();
-            processTemp.StartInfo = startInfo;
-            processTemp.EnableRaisingEvents = true;
-            try
-            {
-                processTemp.Start();
-            }
-            catch (Exception e)
-            {
-                throw;
             }
         }
 
@@ -284,16 +196,14 @@ namespace ALVR
         {
             if (!client.Connected)
             {
-                messageLabel.Text = "Server is not runnning.\r\nPlease press \"Start Server\"";
-                messagePanel.Show();
-                findingPanel.Hide();
                 Connect();
                 return;
             }
             string str = await SendCommand("GetConfig");
             logText.Text = str.Replace("\n", "\r\n");
 
-            if (str.Contains("Connected 1\n")){
+            if (str.Contains("Connected 1\n"))
+            {
                 // Connected
                 messageLabel.Text = "Connected!\r\nPlease enjoy!";
                 messagePanel.Show();
@@ -345,8 +255,12 @@ namespace ALVR
                     dataGridView1.Rows.RemoveAt(j);
                 }
             }
-            
+            noClientLabel.Visible = dataGridView1.Rows.Count == 0;
         }
+
+        //
+        // Event handlers
+        //
 
         private void timer1_Tick(object sender, EventArgs e)
         {
@@ -376,5 +290,52 @@ namespace ALVR
         {
             bitrateLabel.Text = bitrateTrackBar.Value + "Mbps";
         }
+
+        async private void button2_Click(object sender, EventArgs e)
+        {
+            await SendCommand("EnableTestMode " + metroTextBox1.Text);
+        }
+
+        async private void button3_Click(object sender, EventArgs e)
+        {
+            await SendCommand("EnableDriverTestMode " + metroTextBox2.Text);
+        }
+
+        async private void metroButton4_Click(object sender, EventArgs e)
+        {
+            string str = await SendCommand("GetConfig");
+            logText.Text = str.Replace("\n", "\r\n");
+        }
+
+        async private void metroButton5_Click(object sender, EventArgs e)
+        {
+            await SendCommand("SetConfig DebugFrameIndex " + (metroCheckBox1.Checked ? "1" : "0"));
+        }
+
+        async private void metroCheckBox2_CheckedChanged(object sender, EventArgs e)
+        {
+            await SendCommand("Suspend " + (metroCheckBox2.Checked ? "1" : "0"));
+        }
+
+        async private void metroCheckBox3_CheckedChanged(object sender, EventArgs e)
+        {
+            await SendCommand("SetConfig UseKeyedMutex " + (metroCheckBox2.Checked ? "1" : "0"));
+        }
+
+        private void metroButton6_Click(object sender, EventArgs e)
+        {
+            if (!DriverInstaller.InstallDriver())
+            {
+                return;
+            }
+
+            // Save json
+            int renderWidth = ServerConfig.supportedWidth[resolutionComboBox.SelectedIndex];
+            int bitrate = bitrateTrackBar.Value;
+            config.Save(bitrate, renderWidth);
+
+            Process.Start("vrmonitor:");
+        }
+
     }
 }

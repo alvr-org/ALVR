@@ -23,7 +23,7 @@ namespace ALVR
         {
         }
 
-        public void Load()
+        public bool Load()
         {
             string config = Utils.GetConfigPath();
 
@@ -35,8 +35,7 @@ namespace ALVR
             catch (Exception e)
             {
                 MessageBox.Show("Error opning " + config + "\r\nPlease check existence of driver folder.");
-                Environment.Exit(-1);
-                return;
+                return false;
             }
             dynamic configJson = DynamicJson.Parse(stream);
             string nvencOptions = configJson.driver_alvr_server.nvencOptions;
@@ -62,6 +61,7 @@ namespace ALVR
             {
                 renderWidth = DEFAULT_WIDTH;
             }
+            return true;
         }
 
         public void Save(int abitrate, int awidth)

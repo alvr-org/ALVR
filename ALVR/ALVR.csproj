@@ -56,6 +56,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DriverInstaller.cs" />
     <Compile Include="DynamicJson.cs" />
     <Compile Include="Launcher.cs">
       <SubType>Form</SubType>

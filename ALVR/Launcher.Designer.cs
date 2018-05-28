@@ -76,6 +76,10 @@
             this.metroLabel3 = new MetroFramework.Controls.MetroLabel();
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.noClientLabel = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel11 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel12 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel13 = new MetroFramework.Controls.MetroLabel();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.messagePanel.SuspendLayout();
@@ -128,7 +132,7 @@
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 0;
+            this.metroTabControl1.SelectedIndex = 1;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -160,13 +164,14 @@
             // 
             // findingPanel
             // 
+            this.findingPanel.Controls.Add(this.noClientLabel);
             this.findingPanel.Controls.Add(this.dataGridView1);
             this.findingPanel.Controls.Add(this.metroProgressSpinner2);
             this.findingPanel.Controls.Add(this.metroLabel4);
             this.findingPanel.HorizontalScrollbarBarColor = true;
             this.findingPanel.HorizontalScrollbarHighlightOnWheel = false;
             this.findingPanel.HorizontalScrollbarSize = 10;
-            this.findingPanel.Location = new System.Drawing.Point(0, 0);
+            this.findingPanel.Location = new System.Drawing.Point(3, 0);
             this.findingPanel.Name = "findingPanel";
             this.findingPanel.Size = new System.Drawing.Size(657, 295);
             this.findingPanel.TabIndex = 11;
@@ -218,7 +223,7 @@
             // 
             // metroProgressSpinner2
             // 
-            this.metroProgressSpinner2.Location = new System.Drawing.Point(383, 129);
+            this.metroProgressSpinner2.Location = new System.Drawing.Point(383, 116);
             this.metroProgressSpinner2.Maximum = 100;
             this.metroProgressSpinner2.Name = "metroProgressSpinner2";
             this.metroProgressSpinner2.Size = new System.Drawing.Size(38, 36);
@@ -231,11 +236,11 @@
             this.metroLabel4.CustomBackground = true;
             this.metroLabel4.CustomForeColor = true;
             this.metroLabel4.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.metroLabel4.Location = new System.Drawing.Point(442, 126);
+            this.metroLabel4.Location = new System.Drawing.Point(427, 116);
             this.metroLabel4.Name = "metroLabel4";
-            this.metroLabel4.Size = new System.Drawing.Size(115, 39);
+            this.metroLabel4.Size = new System.Drawing.Size(156, 39);
             this.metroLabel4.TabIndex = 9;
-            this.metroLabel4.Text = "Finding Client...";
+            this.metroLabel4.Text = "Finding Headset...";
             this.metroLabel4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // messageLabel
@@ -244,15 +249,17 @@
             this.messageLabel.CustomBackground = true;
             this.messageLabel.CustomForeColor = true;
             this.messageLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.messageLabel.Location = new System.Drawing.Point(181, 93);
+            this.messageLabel.Location = new System.Drawing.Point(161, 93);
             this.messageLabel.Name = "messageLabel";
             this.messageLabel.Size = new System.Drawing.Size(335, 75);
             this.messageLabel.TabIndex = 9;
-            this.messageLabel.Text = "Server is not runnning.\r\nPlease press \"Start Server\"";
             this.messageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // videoTab
             // 
+            this.videoTab.Controls.Add(this.metroLabel13);
+            this.videoTab.Controls.Add(this.metroLabel12);
+            this.videoTab.Controls.Add(this.metroLabel11);
             this.videoTab.Controls.Add(this.resolutionComboBox);
             this.videoTab.Controls.Add(this.bitrateLabel);
             this.videoTab.Controls.Add(this.metroLabel9);
@@ -272,7 +279,7 @@
             // 
             this.resolutionComboBox.FormattingEnabled = true;
             this.resolutionComboBox.ItemHeight = 23;
-            this.resolutionComboBox.Location = new System.Drawing.Point(184, 87);
+            this.resolutionComboBox.Location = new System.Drawing.Point(184, 140);
             this.resolutionComboBox.Name = "resolutionComboBox";
             this.resolutionComboBox.Size = new System.Drawing.Size(192, 29);
             this.resolutionComboBox.TabIndex = 6;
@@ -308,18 +315,20 @@
             // metroLabel10
             // 
             this.metroLabel10.AutoSize = true;
-            this.metroLabel10.Location = new System.Drawing.Point(24, 87);
+            this.metroLabel10.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel10.Location = new System.Drawing.Point(24, 140);
             this.metroLabel10.Name = "metroLabel10";
-            this.metroLabel10.Size = new System.Drawing.Size(104, 19);
+            this.metroLabel10.Size = new System.Drawing.Size(136, 25);
             this.metroLabel10.TabIndex = 3;
             this.metroLabel10.Text = "Video resolution";
             // 
             // metroLabel7
             // 
             this.metroLabel7.AutoSize = true;
-            this.metroLabel7.Location = new System.Drawing.Point(24, 38);
+            this.metroLabel7.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel7.Location = new System.Drawing.Point(24, 32);
             this.metroLabel7.Name = "metroLabel7";
-            this.metroLabel7.Size = new System.Drawing.Size(85, 19);
+            this.metroLabel7.Size = new System.Drawing.Size(109, 25);
             this.metroLabel7.TabIndex = 3;
             this.metroLabel7.Text = "Video bitrate";
             // 
@@ -559,7 +568,7 @@
             this.metroLabel3.CustomBackground = true;
             this.metroLabel3.CustomForeColor = true;
             this.metroLabel3.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.metroLabel3.Location = new System.Drawing.Point(517, 32);
+            this.metroLabel3.Location = new System.Drawing.Point(517, 29);
             this.metroLabel3.Name = "metroLabel3";
             this.metroLabel3.Size = new System.Drawing.Size(115, 39);
             this.metroLabel3.TabIndex = 9;
@@ -580,6 +589,44 @@
             this.timer1.Interval = 1000;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
+            // noClientLabel
+            // 
+            this.noClientLabel.AutoSize = true;
+            this.noClientLabel.Location = new System.Drawing.Point(39, 96);
+            this.noClientLabel.Name = "noClientLabel";
+            this.noClientLabel.Size = new System.Drawing.Size(292, 76);
+            this.noClientLabel.TabIndex = 10;
+            this.noClientLabel.Text = "Headset not found.\r\n\r\nMake sure the client is launched.\r\nOr check the firewall se" +
+    "ttings (permit UDP/9944).";
+            this.noClientLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // metroLabel11
+            // 
+            this.metroLabel11.AutoSize = true;
+            this.metroLabel11.Location = new System.Drawing.Point(55, 73);
+            this.metroLabel11.Name = "metroLabel11";
+            this.metroLabel11.Size = new System.Drawing.Size(321, 19);
+            this.metroLabel11.TabIndex = 7;
+            this.metroLabel11.Text = "Bitrate of video streaming. 30Mbps is recommended.";
+            // 
+            // metroLabel12
+            // 
+            this.metroLabel12.AutoSize = true;
+            this.metroLabel12.Location = new System.Drawing.Point(55, 186);
+            this.metroLabel12.Name = "metroLabel12";
+            this.metroLabel12.Size = new System.Drawing.Size(356, 19);
+            this.metroLabel12.TabIndex = 7;
+            this.metroLabel12.Text = "Resolution of video streaming. 2048x1024 is recommended.";
+            // 
+            // metroLabel13
+            // 
+            this.metroLabel13.AutoSize = true;
+            this.metroLabel13.Location = new System.Drawing.Point(171, 238);
+            this.metroLabel13.Name = "metroLabel13";
+            this.metroLabel13.Size = new System.Drawing.Size(292, 19);
+            this.metroLabel13.TabIndex = 7;
+            this.metroLabel13.Text = "These settings will be applied after restart server.";
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -596,6 +643,7 @@
             this.serverTab.ResumeLayout(false);
             this.messagePanel.ResumeLayout(false);
             this.findingPanel.ResumeLayout(false);
+            this.findingPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             this.videoTab.ResumeLayout(false);
             this.videoTab.PerformLayout();
@@ -656,6 +704,10 @@
         private MetroFramework.Controls.MetroTrackBar bitrateTrackBar;
         private MetroFramework.Controls.MetroComboBox resolutionComboBox;
         private MetroFramework.Controls.MetroLabel metroLabel10;
+        private MetroFramework.Controls.MetroLabel noClientLabel;
+        private MetroFramework.Controls.MetroLabel metroLabel12;
+        private MetroFramework.Controls.MetroLabel metroLabel11;
+        private MetroFramework.Controls.MetroLabel metroLabel13;
     }
 }
 

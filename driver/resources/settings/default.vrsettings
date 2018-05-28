@@ -12,7 +12,7 @@
 		"listenPort": 9944,
 		"listenHost": "0.0.0.0",
 		"sendingTimeslotUs": 500,
-		"limitTimeslotPackets": 4,
+		"limitTimeslotPackets": 0,
 		"controlListenPort": 9944,
 		"controlListenHost": "127.0.0.1",
 		"useKeyedMutex": true

@@ -14,10 +14,12 @@ namespace ALVR
     {
         public static readonly int DEFAULT_BITRATE = 30;
         public static readonly int DEFAULT_WIDTH = 2048;
+        public static readonly int DEFAULT_BUFFER_SIZE = 200 * 1000; // 200kB
         public static readonly int[] supportedWidth = new int[] { 1024, 1536, 2048 };
 
         public int bitrate { get; private set; } // in Mbps
-        public int renderWidth { get; private set; }
+        public int renderWidth { get; private set; } // in pixels
+        public int bufferSize { get; private set; } // in bytes
 
         public ServerConfig()
         {
@@ -61,13 +63,23 @@ namespace ALVR
             {
                 renderWidth = DEFAULT_WIDTH;
             }
+
+            if (configJson.driver_alvr_server.clientRecvBufferSize == null)
+            {
+                bufferSize = DEFAULT_BUFFER_SIZE;
+            }
+            else
+            {
+                bufferSize = (int)configJson.driver_alvr_server.clientRecvBufferSize;
+            }
             return true;
         }
 
-        public void Save(int abitrate, int awidth)
+        public void Save(int abitrate, int awidth, int abufferSize)
         {
             bitrate = abitrate;
             renderWidth = awidth;
+            bufferSize = abufferSize;
 
             string config = Utils.GetConfigPath();
             dynamic configJson;
@@ -83,6 +95,8 @@ namespace ALVR
                 configJson.driver_alvr_server.renderHeight = awidth / 2;
 
                 configJson.driver_alvr_server.debugOutputDir = Utils.GetDriverPath();
+
+                configJson.driver_alvr_server.clientRecvBufferSize = abufferSize;
 
                 using (FileStream stream = new FileStream(config, FileMode.Create, FileAccess.Write))
                 {

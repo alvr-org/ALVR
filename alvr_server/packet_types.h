@@ -85,6 +85,9 @@ struct BroadcastRequestMessage {
 };
 struct ConnectionMessage {
 	uint32_t type; // 6
+	uint32_t videoWidth; // in pixels
+	uint32_t videoHeight; // in pixels
+	uint32_t bufferSize; // in bytes
 };
 struct StreamControlMessage {
 	uint32_t type; // 7

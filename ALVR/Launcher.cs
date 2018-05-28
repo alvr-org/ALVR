@@ -260,6 +260,16 @@ namespace ALVR
             noClientLabel.Visible = dataGridView1.Rows.Count == 0;
         }
 
+        private int MapBufferSizeKB()
+        {
+            if (bufferTrackBar.Value == 5)
+            {
+                return 200;
+            }
+            // Map 0 - 100 to 100kB - 2000kB
+            return bufferTrackBar.Value * 1900 / 100 + 100;
+        }
+
         //
         // Event handlers
         //
@@ -334,10 +344,15 @@ namespace ALVR
             // Save json
             int renderWidth = ServerConfig.supportedWidth[resolutionComboBox.SelectedIndex];
             int bitrate = bitrateTrackBar.Value;
-            config.Save(bitrate, renderWidth);
+            int bufferSize = MapBufferSizeKB() * 1000;
+            config.Save(bitrate, renderWidth, bufferSize);
 
             Process.Start("vrmonitor:");
         }
 
+        private void bufferTrackBar_ValueChanged(object sender, EventArgs e)
+        {
+            bufferLabel.Text = MapBufferSizeKB() + "kB";
+        }
     }
 }

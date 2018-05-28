@@ -17,6 +17,8 @@ static const char * const k_pch_Settings_RenderHeight_Int32 = "renderHeight";
 static const char * const k_pch_Settings_IPD_Float = "IPD";
 static const char * const k_pch_Settings_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
 static const char * const k_pch_Settings_DisplayFrequency_Float = "displayFrequency";
+static const char * const k_pch_Settings_ClientRecvBufferSize_Int32 = "clientRecvBufferSize";
+
 static const char * const k_pch_Settings_EncoderOptions_String = "nvencOptions";
 static const char * const k_pch_Settings_DebugLog_Bool = "debugLog";
 static const char * const k_pch_Settings_DebugTimestamp_Bool = "debugTimestamp";
@@ -65,6 +67,8 @@ void Settings::Load()
 	m_renderHeight = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_RenderHeight_Int32);
 	m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(k_pch_Settings_Section, k_pch_Settings_SecondsFromVsyncToPhotons_Float);
 	m_flDisplayFrequency = vr::VRSettings()->GetFloat(k_pch_Settings_Section, k_pch_Settings_DisplayFrequency_Float);
+
+	m_clientRecvBufferSize = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ClientRecvBufferSize_Int32);
 
 	m_nAdapterIndex = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_AdapterIndex_Int32);
 

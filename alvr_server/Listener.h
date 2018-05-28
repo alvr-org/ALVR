@@ -126,6 +126,10 @@ public:
 
 							ConnectionMessage message = {};
 							message.type = ALVR_PACKET_TYPE_CONNECTION_MESSAGE;
+							message.videoWidth = Settings::Instance().m_renderWidth;
+							message.videoHeight = Settings::Instance().m_renderHeight;
+							message.bufferSize = Settings::Instance().m_clientRecvBufferSize;
+
 							m_Socket->Send((char *)&message, sizeof(message), 0);
 
 							SendCommandResponse("Success\n");

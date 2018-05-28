@@ -42,5 +42,7 @@ public:
 
 	uint64_t m_SendingTimeslotUs;
 	uint64_t m_LimitTimeslotPackets;
+
+	uint32_t m_clientRecvBufferSize;
 };
 

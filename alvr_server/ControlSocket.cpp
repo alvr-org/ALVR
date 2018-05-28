@@ -77,7 +77,7 @@ bool ControlSocket::Recv(std::vector<std::string> &commands) {
 	}
 
 	char buf[1000];
-	int ret = recv(m_ClientSocket, buf, sizeof(buf), 0);
+	int ret = recv(m_ClientSocket, buf, sizeof(buf) - 1, 0);
 	if (ret == 0) {
 		Log("Control connection has closed");
 		m_Buf = "";

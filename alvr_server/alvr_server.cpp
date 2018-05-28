@@ -131,6 +131,22 @@ namespace
 		pMatrix->m[2][3] = 0.f;
 	}
 
+	inline void HmdMatrix_QuatToMat(double w, double x, double y, double z, vr::HmdMatrix34_t *pMatrix)
+	{
+		pMatrix->m[0][0] = 1.0f - 2.0f * y * y - 2.0f * z * z;
+		pMatrix->m[0][1] = 2.0f * x * y - 2.0f * z * w;
+		pMatrix->m[0][2] = 2.0f * x * z + 2.0f * y * w;
+		pMatrix->m[0][3] = 0.0f;
+		pMatrix->m[1][0] = 2.0f * x * y + 2.0f * z * w;
+		pMatrix->m[1][1] = 1.0f - 2.0f * x * x - 2.0f * z * z;
+		pMatrix->m[1][2] = 2.0f * y * z - 2.0f * x * w;
+		pMatrix->m[1][3] = 0.0f;
+		pMatrix->m[2][0] = 2.0f * x * z - 2.0f * y * w;
+		pMatrix->m[2][1] = 2.0f * y * z + 2.0f * x * w;
+		pMatrix->m[2][2] = 1.0f - 2.0f * x * x - 2.0f * y * y;
+		pMatrix->m[2][3] = 0.f;
+	}
+
 
 	class CNvEncoder
 	{
@@ -726,7 +742,7 @@ public:
 			m_Listener->GetTrackingInfo(info);
 			uint64_t trackingDelay = GetTimestampUs() - m_Listener->clientToServerTime(info.clientTime);
 
-			Log("Tracking elapsed:%lld us FrameIndex=%lld quot:%f,%f,%f,%f\nposition:%f,%f,%f\nView[0]:\n%sProj[0]:\n%sView[1]:\n%sProj[1]:\n%s",
+			Log("Tracking elapsed:%lld us FrameIndex=%lld quot:%f,%f,%f,%f\nposition:%f,%f,%f\nController: Rot:%f,%f,%f,%f - Pos:%f,%f,%f\n",
 				trackingDelay,
 				info.FrameIndex,
 				info.HeadPose_Pose_Orientation.x,
@@ -736,10 +752,13 @@ public:
 				info.HeadPose_Pose_Position.x,
 				info.HeadPose_Pose_Position.y,
 				info.HeadPose_Pose_Position.z,
-				DumpMatrix(info.Eye[0].ViewMatrix.M).c_str(),
-				DumpMatrix(info.Eye[0].ProjectionMatrix.M).c_str(),
-				DumpMatrix(info.Eye[1].ViewMatrix.M).c_str(),
-				DumpMatrix(info.Eye[1].ProjectionMatrix.M).c_str()
+				info.controller_Pose_Orientation.x,
+				info.controller_Pose_Orientation.y,
+				info.controller_Pose_Orientation.z,
+				info.controller_Pose_Orientation.w,
+				info.controller_Pose_Position.x,
+				info.controller_Pose_Position.y,
+				info.controller_Pose_Position.z
 			);
 
 			pose.qRotation.x = info.HeadPose_Pose_Orientation.x;
@@ -780,15 +799,38 @@ public:
 			m_LastReferencedFrameIndex = info.FrameIndex;
 			m_LastReferencedClientTime = info.clientTime;
 
+			TrackingHistoryFrame history;
+			history.info = info;
+			HmdMatrix_QuatToMat(info.HeadPose_Pose_Orientation.w,
+				info.HeadPose_Pose_Orientation.x,
+				info.HeadPose_Pose_Orientation.y,
+				info.HeadPose_Pose_Orientation.z,
+				&history.rotationMatrix);
+
+			Log("Rotation Matrix:\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n"
+				, history.rotationMatrix.m[0][0]
+				, history.rotationMatrix.m[0][1]
+				, history.rotationMatrix.m[0][2]
+				, history.rotationMatrix.m[0][3]
+				, history.rotationMatrix.m[1][0]
+				, history.rotationMatrix.m[1][1]
+				, history.rotationMatrix.m[1][2]
+				, history.rotationMatrix.m[1][3]
+				, history.rotationMatrix.m[2][0]
+				, history.rotationMatrix.m[2][1]
+				, history.rotationMatrix.m[2][2]
+				, history.rotationMatrix.m[2][3]
+			);
+
 			// Put pose history buffer
 			m_poseMutex.Wait(INFINITE);
 			if (m_poseBuffer.size() == 0) {
-				m_poseBuffer.push_back(info);
+				m_poseBuffer.push_back(history);
 			}
 			else {
-				if (m_poseBuffer.back().FrameIndex != info.FrameIndex) {
+				if (m_poseBuffer.back().info.FrameIndex != info.FrameIndex) {
 					// New track info
-					m_poseBuffer.push_back(info);
+					m_poseBuffer.push_back(history);
 				}
 			}
 			if (m_poseBuffer.size() > 10) {
@@ -823,7 +865,11 @@ private:
 	uint64_t m_LastReferencedClientTime;
 
 	IPCMutex m_poseMutex;
-	std::list<TrackingInfo> m_poseBuffer;
+	struct TrackingHistoryFrame {
+		TrackingInfo info;
+		vr::HmdMatrix34_t rotationMatrix;
+	};
+	std::list<TrackingHistoryFrame> m_poseBuffer;
 
 public:
 	bool IsValid() const
@@ -1049,10 +1095,10 @@ public:
 				// And bottom side and right side of matrix should not be compared, because pPose does not contain that part of matrix.
 				for (int i = 0; i < 3; i++) {
 					for (int j = 0; j < 3; j++) {
-						distance += pow(it->Eye[0].ViewMatrix.M[i * 4 + j] - pPose->m[j][i], 2);
+						distance += pow(it->rotationMatrix.m[j][i] - pPose->m[j][i], 2);
 					}
 				}
-				//Log("diff %f %llu", distance, it->FrameIndex);
+				//Log("diff %f %llu", distance, it->info.FrameIndex);
 				if (minDiff > distance) {
 					minIndex = index;
 					minIt = it;
@@ -1063,14 +1109,14 @@ public:
 				// found the frameIndex
 				m_prevSubmitFrameIndex = m_submitFrameIndex;
 				m_prevSubmitClientTime = m_submitClientTime;
-				m_submitFrameIndex = minIt->FrameIndex;
-				m_submitClientTime = minIt->clientTime;
+				m_submitFrameIndex = minIt->info.FrameIndex;
+				m_submitClientTime = minIt->info.clientTime;
 
 				m_prevFramePoseRotation = m_framePoseRotation;
-				m_framePoseRotation.x = minIt->HeadPose_Pose_Orientation.x;
-				m_framePoseRotation.y = minIt->HeadPose_Pose_Orientation.y;
-				m_framePoseRotation.z = minIt->HeadPose_Pose_Orientation.z;
-				m_framePoseRotation.w = minIt->HeadPose_Pose_Orientation.w;
+				m_framePoseRotation.x = minIt->info.HeadPose_Pose_Orientation.x;
+				m_framePoseRotation.y = minIt->info.HeadPose_Pose_Orientation.y;
+				m_framePoseRotation.z = minIt->info.HeadPose_Pose_Orientation.z;
+				m_framePoseRotation.w = minIt->info.HeadPose_Pose_Orientation.w;
 
 				Log("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu", m_prevSubmitFrameIndex, m_submitFrameIndex);
 			}

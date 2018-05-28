@@ -20,50 +20,52 @@ struct HelloMessage {
 	int type; // 1
 	char deviceName[32]; // null-terminated
 };
+struct TrackingQuat {
+	float x;
+	float y;
+	float z;
+	float w;
+};
+struct TrackingVector3 {
+	float x;
+	float y;
+	float z;
+};
 struct TrackingInfo {
 	uint32_t type; // 2
 	uint64_t clientTime;
 	uint64_t FrameIndex;
 	double predictedDisplayTime;
-	struct {
-		float x;
-		float y;
-		float z;
-		float w;
-	} HeadPose_Pose_Orientation;
-	struct {
-		float x;
-		float y;
-		float z;
-	} HeadPose_Pose_Position;
-	struct {
-		float x;
-		float y;
-		float z;
-	} HeadPose_AngularVelocity;
-	struct {
-		float x;
-		float y;
-		float z;
-	} HeadPose_LinearVelocity;
-	struct {
-		float x;
-		float y;
-		float z;
-	} HeadPose_AngularAcceleration;
-	struct {
-		float x;
-		float y;
-		float z;
-	} HeadPose_LinearAcceleration;
-	struct Matrix {
-		float M[16];
-	};
-	struct {
-		Matrix ProjectionMatrix;
-		Matrix ViewMatrix;
-	} Eye[2];
+	TrackingQuat HeadPose_Pose_Orientation;
+	TrackingVector3 HeadPose_Pose_Position;
+	TrackingVector3 HeadPose_AngularVelocity;
+	TrackingVector3 HeadPose_LinearVelocity;
+	TrackingVector3 HeadPose_AngularAcceleration;
+	TrackingVector3 HeadPose_LinearAcceleration;
 
+	uint16_t enableController;
+
+	static const int CONTROLLER_FLAG_LEFTHAND = (1 << 0); // 0: Left hand, 1: Right hand
+	static const int CONTROLLER_FLAG_OCULUSGO = (1 << 1); // 0: Gear VR, 1: Oculus Go
+	uint16_t controllerFlags;
+	uint32_t controllerButtons;
+	uint32_t controllerTrackpadStatus;
+
+	struct {
+		float x;
+		float y;
+	} controllerTrackpadPosition;
+
+	uint8_t	controllerBatteryPercentRemaining;
+	uint8_t	controllerRecenterCount;
+
+	// Tracking info of controller. (float * 19 = 76 bytes)
+	TrackingQuat controller_Pose_Orientation;
+	TrackingVector3 controller_Pose_Position;
+	TrackingVector3 controller_AngularVelocity;
+	TrackingVector3 controller_LinearVelocity;
+	TrackingVector3 controller_AngularAcceleration;
+	TrackingVector3 controller_LinearAcceleration;
 };
 // Client >----(mode 0)----> Server
 // Client <----(mode 1)----< Server

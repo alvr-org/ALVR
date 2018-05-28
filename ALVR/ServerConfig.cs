@@ -1,4 +1,5 @@
 ﻿using Codeplex.Data;
+using Microsoft.CSharp.RuntimeBinder;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -40,37 +41,41 @@ namespace ALVR
                 return false;
             }
             dynamic configJson = DynamicJson.Parse(stream);
-            string nvencOptions = configJson.driver_alvr_server.nvencOptions;
-            var m = Regex.Match(nvencOptions, ".*-bitrate ([^ ]+)M.*");
-            if (!m.Success)
+            bitrate = DEFAULT_BITRATE;
+
+            try
             {
-                bitrate = DEFAULT_BITRATE;
-            }
-            else
-            {
-                try
+                string nvencOptions = configJson.driver_alvr_server.nvencOptions;
+                var m = Regex.Match(nvencOptions, ".*-bitrate ([^ ]+)M.*");
+                if (m.Success)
                 {
                     bitrate = int.Parse(m.Groups[1].Value);
                 }
-                catch (Exception e)
+            }
+            catch (Exception e)
+            {
+            }
+
+            renderWidth = DEFAULT_WIDTH;
+            try
+            {
+                renderWidth = (int)configJson.driver_alvr_server.renderWidth;
+                if (!supportedWidth.Contains(renderWidth))
                 {
-                    bitrate = DEFAULT_BITRATE;
+                    renderWidth = DEFAULT_WIDTH;
                 }
             }
-
-            renderWidth = (int)configJson.driver_alvr_server.renderWidth;
-            if (!supportedWidth.Contains(renderWidth))
+            catch (Exception e)
             {
-                renderWidth = DEFAULT_WIDTH;
             }
 
-            if (configJson.driver_alvr_server.clientRecvBufferSize == null)
-            {
-                bufferSize = DEFAULT_BUFFER_SIZE;
-            }
-            else
+            try
             {
                 bufferSize = (int)configJson.driver_alvr_server.clientRecvBufferSize;
+            }
+            catch (RuntimeBinderException e)
+            {
+                bufferSize = DEFAULT_BUFFER_SIZE;
             }
             return true;
         }

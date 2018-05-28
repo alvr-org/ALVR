@@ -12,6 +12,7 @@
 #include "Poller.h"
 #include "ControlSocket.h"
 #include "packet_types.h"
+#include "Settings.h"
 
 class Listener : public CThread {
 public:

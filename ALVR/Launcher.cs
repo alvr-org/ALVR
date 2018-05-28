@@ -66,6 +66,8 @@ namespace ALVR
 
             bitrateTrackBar.Value = config.bitrate;
 
+            SetBufferSizeBytes(config.bufferSize);
+
             metroTabControl1.SelectedTab = serverTab;
 
             UpdateServerStatus();
@@ -79,7 +81,36 @@ namespace ALVR
             timer1.Start();
         }
 
-        async private Task<string> SendCommand(string command)
+        private void LaunchServer()
+        {
+            if (!DriverInstaller.InstallDriver())
+            {
+                return;
+            }
+
+            if (!SaveConfig())
+            {
+                return;
+            }
+
+            Process.Start("vrmonitor:");
+        }
+
+        private bool SaveConfig()
+        {
+            // Save json
+            int renderWidth = ServerConfig.supportedWidth[resolutionComboBox.SelectedIndex];
+            int bitrate = bitrateTrackBar.Value;
+            int bufferSize = GetBufferSizeKB() * 1000;
+            if (!config.Save(bitrate, renderWidth, bufferSize))
+            {
+                Application.Exit();
+                return false;
+            }
+            return true;
+        }
+
+            async private Task<string> SendCommand(string command)
         {
             byte[] buffer = Encoding.UTF8.GetBytes(command + "\n");
             try
@@ -260,7 +291,18 @@ namespace ALVR
             noClientLabel.Visible = dataGridView1.Rows.Count == 0;
         }
 
-        private int MapBufferSizeKB()
+        private void SetBufferSizeBytes(int bufferSizeBytes)
+        {
+            int kb = bufferSizeBytes / 1000;
+            if (kb == 200)
+            {
+                bufferTrackBar.Value = 5;
+            }
+            // Map 0 - 100 to 100kB - 2000kB
+            bufferTrackBar.Value = (kb - 100) * 100 / 1900;
+        }
+
+        private int GetBufferSizeKB()
         {
             if (bufferTrackBar.Value == 5)
             {
@@ -336,27 +378,12 @@ namespace ALVR
 
         private void metroButton6_Click(object sender, EventArgs e)
         {
-            if (!DriverInstaller.InstallDriver())
-            {
-                return;
-            }
-
-            // Save json
-            int renderWidth = ServerConfig.supportedWidth[resolutionComboBox.SelectedIndex];
-            int bitrate = bitrateTrackBar.Value;
-            int bufferSize = MapBufferSizeKB() * 1000;
-            if (!config.Save(bitrate, renderWidth, bufferSize))
-            {
-                Application.Exit();
-                return;
-            }
-
-            Process.Start("vrmonitor:");
+            LaunchServer();
         }
 
         private void bufferTrackBar_ValueChanged(object sender, EventArgs e)
         {
-            bufferLabel.Text = MapBufferSizeKB() + "kB";
+            bufferLabel.Text = GetBufferSizeKB() + "kB";
         }
     }
 }

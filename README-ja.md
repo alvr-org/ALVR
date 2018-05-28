@@ -15,6 +15,7 @@ ALVRはPCVRの画面をエンコードしWi-Fi経由でヘッドセットに転�
 |---|---|
 |Oculus Go|OK|
 |GalaxyS8/S8+|OK|
+|GalaxyS9/S9+|未テスト|
 |GalaxyS7|未テスト|
 |GalaxyS6|未テスト|
 
@@ -25,22 +26,21 @@ ALVRはPCVRの画面をエンコードしWi-Fi経由でヘッドセットに転�
 - SteamVRがインストール済みであること
 
 ## インストール方法
-- ALVR serverのインストールする方法
-    - SteamVRをインストール
-    - [ここ](https://www.microsoft.com/en-us/download/details.aspx?id=53840)からvc\_redist.x64.exeをダウンロードしてインストール
-    - [Releases](https://github.com/polygraphene/ALVR/releases)からzipをダウンロード
-    - 任意のフォルダに展開
-    - driverフォルダ内のdriver\_install.batを実行
-    - ALVR.exeを起動
-- ALVR clientをヘッドセットにインストールする方法
-    - Gear VR
-        - SideloadVRにリリース予定 (審査が通れば)
-        - [Releases](https://github.com/polygraphene/ALVR/releases)からapkをダウンロード
-        - [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor)等でapkのassetsフォルダにosigファイルを置く
-        - apkを署名(Apk EditorならBuild)してインストール
-    - Oculus Go
-        - [Releases](https://github.com/polygraphene/ALVR/releases)からapkをダウンロード
-        - adbでapkをインストール
+### ALVR serverのインストールする方法
+- SteamVRをインストール
+- [ここ](https://www.microsoft.com/en-us/download/details.aspx?id=53840)からvc\_redist.x64.exeをダウンロードしてインストール
+- [Releases](https://github.com/polygraphene/ALVR/releases)からzipをダウンロード
+- 任意のフォルダに展開
+- ALVR.exeを起動
+### ALVR clientをヘッドセットにインストールする方法
+#### Gear VR
+- SideloadVRにリリース予定 (審査が通れば)
+- [Releases](https://github.com/polygraphene/ALVR/releases)からapkをダウンロード
+- [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor)等でapkのassetsフォルダにosigファイルを置く
+- apkを署名(Apk EditorならBuild)してインストール
+#### Oculus Go
+- [Releases](https://github.com/polygraphene/ALVR/releases)からapkをダウンロード
+- adbでapkをインストール
 
 ## 使い方
 - ALVR.exeを起動
@@ -50,7 +50,7 @@ ALVRはPCVRの画面をエンコードしWi-Fi経由でヘッドセットに転�
 - ALVR.exeの画面にヘッドセットのIPアドレスが出てくるのでConnectを押す
 
 ## トラブルシューティング
-- 右上に"Server is down" と表示されている場合
+- "Start server"を押しても、"Server is down" と表示され続ける場合
     - driverフォルダのdriver\_install.batをもう一度実行してみる
     - タスクマネージャでvrserver.exeを強制終了してみる
 - 画面にヘッドセットのIPアドレスが出てこない場合
@@ -59,7 +59,7 @@ ALVRはPCVRの画面をエンコードしWi-Fi経由でヘッドセットに転�
     - ファイアウォールの設定を確認する (UDP/9944番ポートが許可されているか)
     - adbが使える場合、`adb shell ping -c 5 (PCのIPアドレス)`を実行してpingが成功するか確認
 - ストリーミングの品質が悪い場合 (よく止まる、カクカクする、画面が乱れる)
-    - 解像度やビットレートを変更する機能を追加予定
+    - 解像度やビットレート、バッファサイズを変更してみる(変更後はサーバの再起動が必要)
     - 可能なら5GHzの802.11acの無線LANを使用する or ヘッドセットを有線LANで接続する
 
 ## アンインストール方法

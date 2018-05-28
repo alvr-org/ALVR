@@ -15,42 +15,42 @@ ALVR requires following devices:
 |---|---|
 |Oculus Go|OK|
 |GalaxyS8/S8+|OK|
+|GalaxyS9/S9+|Not tested|
 |GalaxyS7|Not tested|
 |GalaxyS6|Not tested|
 
 - High-end gaming PC with NVIDIA GPU which supports NVENC
     - Only Windows 10 is supported
 - 802.11n/ac wireless or ethernet wired connection
-    - It is recommended 11ac for headset and ethernet for PC
+    - It is recommended to use 802.11ac for headset and ethernet for PC
         - You need to connect both to same router
 - SteamVR
 
 ## Installation
-- Install ALVR server for PC
+### Install ALVR server for PC
     - Install SteamVR
     - Install vc\_redist.x64.exe from [here](https://www.microsoft.com/en-us/download/details.aspx?id=53840)
     - Download zip from [Releases](https://github.com/polygraphene/ALVR/releases)
     - Extract zip on any folder
-    - Execute driver\_install.bat in driver folder
     - Launch ALVR.exe
-- Install ALVR client for headset
-    - For Gear VR users
+### Install ALVR client for headset
+#### For Gear VR users
         - (Install apk from SideloadVR) Yet to be released. Please wait.
         - Get osig file from oculus website.
         - Install [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor)
         - Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
         - Open apk and put osig file on assets folder
         - Build and install
-    - For Oculus Go users
+#### For Oculus Go users
         - Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
         - Install apk via adb
 
 ## Usage
 - Launch ALVR.exe
 - Press "Start Server" button or launch VR game
-- SteamVR's Small window will appears
+- SteamVR's small window will appear
 - Launch ALVR Client in your headset
-- IP Address of headset will appears in server tab of ALVR.exe
+- IP Address of headset will appear in server tab of ALVR.exe
 - Press "Connect" button
 
 ## Troubleshoot
@@ -76,7 +76,6 @@ ALVR requires following devices:
     in Command Prompt.
 
 ## Future work
-- Support the functinalty to change video bitrate
 - Support streaming sound
 - Support H.265 hevc encoding (Currently H.264 only)
 - Support Gear VR / Oculus Go Controller

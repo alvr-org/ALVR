@@ -80,7 +80,7 @@ namespace ALVR
             return true;
         }
 
-        public bool Save(int abitrate, int awidth, int abufferSize)
+        public bool Save(int abitrate, int awidth, int abufferSize, bool adebugLog)
         {
             bitrate = abitrate;
             renderWidth = awidth;
@@ -100,6 +100,7 @@ namespace ALVR
                 configJson.driver_alvr_server.renderHeight = awidth / 2;
 
                 configJson.driver_alvr_server.debugOutputDir = Utils.GetDriverPath();
+                configJson.driver_alvr_server.debugLog = adebugLog;
 
                 configJson.driver_alvr_server.clientRecvBufferSize = abufferSize;
 

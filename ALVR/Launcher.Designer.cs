@@ -92,6 +92,7 @@
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.debugLogCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -145,7 +146,7 @@
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 1;
+            this.metroTabControl1.SelectedIndex = 2;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -485,6 +486,7 @@
             this.debugTab.Controls.Add(this.metroCheckBox3);
             this.debugTab.Controls.Add(this.debugPosCheckBox);
             this.debugTab.Controls.Add(this.metroCheckBox2);
+            this.debugTab.Controls.Add(this.debugLogCheckBox);
             this.debugTab.Controls.Add(this.metroCheckBox1);
             this.debugTab.Controls.Add(this.debugZTextBox);
             this.debugTab.Controls.Add(this.debugYTextBox);
@@ -753,6 +755,16 @@
             this.pictureBox1.TabIndex = 11;
             this.pictureBox1.TabStop = false;
             // 
+            // debugLogCheckBox
+            // 
+            this.debugLogCheckBox.AutoSize = true;
+            this.debugLogCheckBox.Location = new System.Drawing.Point(7, 177);
+            this.debugLogCheckBox.Name = "debugLogCheckBox";
+            this.debugLogCheckBox.Size = new System.Drawing.Size(78, 15);
+            this.debugLogCheckBox.TabIndex = 9;
+            this.debugLogCheckBox.Text = "DebugLog";
+            this.debugLogCheckBox.UseVisualStyleBackColor = true;
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -848,6 +860,7 @@
         private MetroFramework.Controls.MetroTrackBar bufferTrackBar;
         private System.Windows.Forms.Label label2;
         private MetroFramework.Controls.MetroLabel metroLabel19;
+        private MetroFramework.Controls.MetroCheckBox debugLogCheckBox;
     }
 }
 

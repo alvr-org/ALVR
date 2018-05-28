@@ -102,7 +102,8 @@ namespace ALVR
             int renderWidth = ServerConfig.supportedWidth[resolutionComboBox.SelectedIndex];
             int bitrate = bitrateTrackBar.Value;
             int bufferSize = GetBufferSizeKB() * 1000;
-            if (!config.Save(bitrate, renderWidth, bufferSize))
+            bool debugLog = debugLogCheckBox.Checked;
+            if (!config.Save(bitrate, renderWidth, bufferSize, debugLog))
             {
                 Application.Exit();
                 return false;
@@ -110,7 +111,7 @@ namespace ALVR
             return true;
         }
 
-            async private Task<string> SendCommand(string command)
+        async private Task<string> SendCommand(string command)
         {
             byte[] buffer = Encoding.UTF8.GetBytes(command + "\n");
             try

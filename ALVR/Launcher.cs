@@ -345,7 +345,11 @@ namespace ALVR
             int renderWidth = ServerConfig.supportedWidth[resolutionComboBox.SelectedIndex];
             int bitrate = bitrateTrackBar.Value;
             int bufferSize = MapBufferSizeKB() * 1000;
-            config.Save(bitrate, renderWidth, bufferSize);
+            if (!config.Save(bitrate, renderWidth, bufferSize))
+            {
+                Application.Exit();
+                return;
+            }
 
             Process.Start("vrmonitor:");
         }

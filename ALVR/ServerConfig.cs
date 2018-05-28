@@ -36,7 +36,7 @@ namespace ALVR
             }
             catch (Exception e)
             {
-                MessageBox.Show("Error opning " + config + "\r\nPlease check existence of driver folder.");
+                MessageBox.Show("Error on opening " + config + "\r\nPlease check existence of driver folder.");
                 return false;
             }
             dynamic configJson = DynamicJson.Parse(stream);
@@ -75,7 +75,7 @@ namespace ALVR
             return true;
         }
 
-        public void Save(int abitrate, int awidth, int abufferSize)
+        public bool Save(int abitrate, int awidth, int abufferSize)
         {
             bitrate = abitrate;
             renderWidth = awidth;
@@ -106,10 +106,10 @@ namespace ALVR
             }
             catch (Exception e)
             {
-                MessageBox.Show("Error opning " + config + "\r\nPlease check existence of driver folder.");
-                Environment.Exit(-1);
-                return;
+                MessageBox.Show("Error on opening " + config + "\r\nPlease check existence of driver folder.");
+                return false;
             }
+            return true;
         }
     }
 }

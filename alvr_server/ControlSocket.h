@@ -11,7 +11,7 @@ public:
 	ControlSocket(std::string host, int port, std::shared_ptr<Poller> poller);
 	~ControlSocket();
 
-	void Startup();
+	bool Startup();
 	void Accept();
 	bool Recv(std::vector<std::string> &commands);
 

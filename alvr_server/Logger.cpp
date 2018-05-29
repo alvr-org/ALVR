@@ -7,6 +7,8 @@
 #include <codecvt>
 #include "Logger.h"
 
+static const char *APP_NAME = "ALVR Server";
+
 extern std::string g_DebugOutputDir;
 
 static std::ofstream ofs;
@@ -17,7 +19,7 @@ void OpenLog(const char *fileName) {
 	ofs.open(fileName);
 }
 
-void Log(const char *pFormat, ...)
+void LogS(const char *str)
 {
 	FILETIME ft;
 	SYSTEMTIME st2, st;
@@ -38,16 +40,37 @@ void Log(const char *pFormat, ...)
 	snprintf(buf, sizeof(buf), "[%02d:%02d:%02d.%03lld %03lld] ",
 		st.wHour, st.wMinute, st.wSecond, q / 1000 % 1000, q % 1000);
 
-	va_list args;
-	va_start(args, pFormat);
-	char buf2[10000];
-	vsnprintf(buf2, sizeof(buf2), pFormat, args);
-	va_end(args);
-
-	ofs << buf << buf2 << std::endl;
+	ofs << buf << str << std::endl;
 
 	if (lastRefresh / 1000000 != q / 1000000) {
 		lastRefresh = q;
 		ofs.flush();
 	}
+}
+
+void Log(const char *format, ...)
+{
+	if (!ofs.is_open()) {
+		return;
+	}
+
+	va_list args;
+	va_start(args, format);
+	char buf2[10000];
+	vsnprintf(buf2, sizeof(buf2), format, args);
+	va_end(args);
+
+	LogS(buf2);
+}
+
+void FatalLog(const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	char buf2[10000];
+	vsnprintf(buf2, sizeof(buf2), format, args);
+	va_end(args);
+
+	LogS(buf2);
+
+	MessageBoxA(NULL, buf2, APP_NAME, MB_OK);
 }

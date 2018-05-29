@@ -148,7 +148,13 @@ namespace
 			std::string parameterDesc = EncodeCLIOptions.FullParamToString(&initializeParams);
 			Log("NvEnc Encoder Parameters:\n%s", parameterDesc.c_str());
 
-			m_NvNecoderD3D11->CreateEncoder(&initializeParams);
+			try {
+				m_NvNecoderD3D11->CreateEncoder(&initializeParams);
+			}
+			catch (NVENCException e) {
+				FatalLog("NvEnc CreateEncoder failed. Code=%d %s", e.getErrorCode(), e.what());
+				return false;
+			}
 
 			//
 			// Initialize debug video output
@@ -812,23 +818,24 @@ public:
 		// blocks on transmit which uses our shared d3d context (which is not thread safe).
 		m_pEncoder->WaitForEncode();
 
+		std::string debugText;
+
+		if (Settings::Instance().m_DebugFrameIndex) {
+			TrackingInfo info;
+			m_Listener->GetTrackingInfo(info);
+
+			char buf[2000];
+			snprintf(buf, sizeof(buf), "%llu\n%f\n%f", m_prevSubmitFrameIndex, m_prevFramePoseRotation.x, info.HeadPose_Pose_Orientation.x);
+			debugText = buf;
+		}
+
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
-		Log("FrameIndex diff LastRef: %llu render:%llu  diff:%llu", m_LastReferencedFrameIndex, m_submitFrameIndex, m_LastReferencedFrameIndex - m_submitFrameIndex);
-
-		TrackingInfo info;
-		m_Listener->GetTrackingInfo(info);
-
-		char buf[2000];
-		snprintf(buf, sizeof(buf), "%llu\n%f\n%f", m_prevSubmitFrameIndex, m_prevFramePoseRotation.x, info.HeadPose_Pose_Orientation.x);
-		//m_pEncoder->CopyToStaging(pTexture, m_submitBounds, layerCount, presentationTime, m_prevSubmitFrameIndex, m_prevSubmitClientTime, std::string(buf));
-
-		m_pEncoder->CopyToStaging(pTexture, m_submitBounds, layerCount, presentationTime, m_submitFrameIndex, m_submitClientTime, std::string(buf));
+		m_pEncoder->CopyToStaging(pTexture, m_submitBounds, layerCount, presentationTime, m_submitFrameIndex, m_submitClientTime, debugText);
 
 		m_pD3DRender->GetContext()->Flush();
 	}
 
 private:
-
 	std::shared_ptr<CD3DRender> m_pD3DRender;
 	std::shared_ptr<CEncoder> m_pEncoder;
 	std::shared_ptr<Listener> m_Listener;
@@ -877,6 +884,7 @@ public:
 		, m_nVsyncCounter(0)
 		, m_EnabledDebugPos(false)
 		, m_controllerDetected(false)
+		, m_initialized(false)
 	{
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
@@ -888,27 +896,27 @@ public:
 		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
 		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().m_flIPD);
 		
-		m_pD3DRender = std::make_shared<CD3DRender>();
+		m_D3DRender = std::make_shared<CD3DRender>();
 		
 		// Store off the LUID of the primary gpu we want to use.
-		if (!m_pD3DRender->GetAdapterLuid(Settings::Instance().m_nAdapterIndex, &m_nGraphicsAdapterLuid))
+		if (!m_D3DRender->GetAdapterLuid(Settings::Instance().m_nAdapterIndex, &m_nGraphicsAdapterLuid))
 		{
-			Log("Failed to get adapter index for graphics adapter!");
+			FatalLog("Failed to get adapter index for graphics adapter!");
 			return;
 		}
 
 		// Now reinitialize using the other graphics card.
-		if (!m_pD3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
+		if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
 		{
-			Log("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
+			FatalLog("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
 			return;
 		}
 
 		int32_t nDisplayAdapterIndex;
 		wchar_t wchAdapterDescription[300];
-		if (!m_pD3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, sizeof(wchAdapterDescription) / sizeof(wchar_t)))
+		if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, sizeof(wchAdapterDescription) / sizeof(wchar_t)))
 		{
-			Log("Failed to get primary adapter info!");
+			FatalLog("Failed to get primary adapter info!");
 			return;
 		}
 
@@ -919,38 +927,44 @@ public:
 		m_Listener = std::make_shared<Listener>(Settings::Instance().m_Host, Settings::Instance().m_Port
 			, Settings::Instance().m_ControlHost, Settings::Instance().m_ControlPort
 			, Callback, poseCallback);
-		m_Listener->Start();
+		if (!m_Listener->Startup())
+		{
+			return;
+		}
 
 		// Spawn our separate process to manage headset presentation.
-		m_pRemoteDevice = std::make_shared<CNvEncoder>(m_pD3DRender, m_Listener);
-		if (!m_pRemoteDevice->Initialize())
+		m_CNvEncoder = std::make_shared<CNvEncoder>(m_D3DRender, m_Listener);
+		if (!m_CNvEncoder->Initialize())
 		{
 			return;
 		}
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
-		m_pEncoder = std::make_shared<CEncoder>(m_pD3DRender, m_pRemoteDevice);
-		m_pEncoder->Start();
+		m_encoder = std::make_shared<CEncoder>(m_D3DRender, m_CNvEncoder);
+		m_encoder->Start();
 
 		m_VSyncThread = std::make_shared<VSyncThread>();
 		m_VSyncThread->Start();
 
 		m_displayComponent = std::make_shared<DisplayComponent>();
-		m_directModeComponent = std::make_shared<DirectModeComponent>(m_pD3DRender, m_pEncoder, m_Listener);
+		m_directModeComponent = std::make_shared<DirectModeComponent>(m_D3DRender, m_encoder, m_Listener);
+
+		Log("CRemoteHmd successfully initialized.");
+		m_initialized = true;
 	}
 
 	virtual ~CRemoteHmd()
 	{
-		if (m_pEncoder)
+		if (m_encoder)
 		{
-			m_pEncoder->Stop();
-			m_pEncoder.reset();
+			m_encoder->Stop();
+			m_encoder.reset();
 		}
 
-		if (m_pRemoteDevice)
+		if (m_CNvEncoder)
 		{
-			m_pRemoteDevice->Shutdown();
-			m_pRemoteDevice.reset();
+			m_CNvEncoder->Shutdown();
+			m_CNvEncoder.reset();
 		}
 
 		if (m_Listener)
@@ -965,13 +979,19 @@ public:
 			m_VSyncThread.reset();
 		}
 
-		if (m_pD3DRender)
+		if (m_D3DRender)
 		{
-			m_pD3DRender->Shutdown();
-			m_pD3DRender.reset();
+			m_D3DRender->Shutdown();
+			m_D3DRender.reset();
 		}
 	}
 
+	std::string GetSerialNumber() const { return Settings::Instance().m_sSerialNumber; }
+
+	bool IsValid() const
+	{
+		return m_initialized;
+	}
 
 	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId)
 	{
@@ -1044,8 +1064,6 @@ public:
 		pose.poseIsValid = true;
 		pose.result = vr::TrackingResult_Running_OK;
 		pose.deviceIsConnected = true;
-		//pose.shouldApplyHeadModel = true;
-		//pose.willDriftInYaw = true;
 
 		pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
 		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
@@ -1076,6 +1094,7 @@ public:
 			pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
 			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
 			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
+
 			if (m_EnabledDebugPos) {
 				Log("Provide fake position for debug. Coords=(%f, %f, %f)", m_DebugPos[0], m_DebugPos[1], m_DebugPos[2]);
 				pose.vecPosition[0] = m_DebugPos[0];
@@ -1084,22 +1103,6 @@ public:
 			}
 
 			// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
-			/*
-			pose.vecVelocity[0] = info.HeadPose_LinearVelocity.x;
-			pose.vecVelocity[1] = info.HeadPose_LinearVelocity.y;
-			pose.vecVelocity[2] = info.HeadPose_LinearVelocity.z;
-
-			pose.vecAcceleration[0] = info.HeadPose_LinearAcceleration.x;
-			pose.vecAcceleration[1] = info.HeadPose_LinearAcceleration.y;
-			pose.vecAcceleration[2] = info.HeadPose_LinearAcceleration.z;
-
-			pose.vecAngularVelocity[0] = info.HeadPose_AngularVelocity.x;
-			pose.vecAngularVelocity[1] = info.HeadPose_AngularVelocity.y;
-			pose.vecAngularVelocity[2] = info.HeadPose_AngularVelocity.z;
-
-			pose.vecAngularAcceleration[0] = info.HeadPose_AngularAcceleration.x;
-			pose.vecAngularAcceleration[1] = info.HeadPose_AngularAcceleration.y;
-			pose.vecAngularAcceleration[2] = info.HeadPose_AngularAcceleration.z;*/
 
 			pose.poseTimeOffset = 0;
 		}
@@ -1120,12 +1123,6 @@ public:
 		}
 	}
 
-	std::string GetSerialNumber() const { return Settings::Instance().m_sSerialNumber; }
-
-	bool IsValid() const
-	{
-		return m_pEncoder != NULL;
-	}
 
 	void CommandCallback(std::string commandName, std::string args)
 	{
@@ -1204,7 +1201,6 @@ public:
 
 			Log("Generate VSync Event by OnPoseUpdated");
 			m_VSyncThread->InsertVsync();
-			//m_VSyncThread->InsertVsync();
 
 			if (!m_controllerDetected) {
 				if (info.enableController) {
@@ -1216,7 +1212,7 @@ public:
 					if (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_LEFTHAND) {
 						handed = true;
 					}
-					m_remoteController.reset(new RemoteController(handed, m_Listener));
+					m_remoteController = std::make_shared<RemoteController>(handed, m_Listener);
 
 					bool ret;
 					ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
@@ -1233,15 +1229,16 @@ public:
 	}
 
 private:
+	bool m_initialized;
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 
 	uint64_t m_nGraphicsAdapterLuid;
 	uint32_t m_nVsyncCounter;
 
-	std::shared_ptr<CD3DRender> m_pD3DRender;
-	std::shared_ptr<CNvEncoder> m_pRemoteDevice;
-	std::shared_ptr<CEncoder> m_pEncoder;
+	std::shared_ptr<CD3DRender> m_D3DRender;
+	std::shared_ptr<CNvEncoder> m_CNvEncoder;
+	std::shared_ptr<CEncoder> m_encoder;
 	std::shared_ptr<Listener> m_Listener;
 	std::shared_ptr<VSyncThread> m_VSyncThread;
 
@@ -1277,14 +1274,14 @@ public:
 	virtual void LeaveStandby() override {}
 
 private:
-	CRemoteHmd *m_pRemoteHmd;
+	std::shared_ptr<CRemoteHmd> m_pRemoteHmd;
 };
 
 vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pContext )
 {
 	VR_INIT_SERVER_DRIVER_CONTEXT( pContext );
 
-	m_pRemoteHmd = new CRemoteHmd();
+	m_pRemoteHmd = std::make_shared<CRemoteHmd>();
 
 	if (m_pRemoteHmd->IsValid() )
 	{
@@ -1292,8 +1289,7 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 			m_pRemoteHmd->GetSerialNumber().c_str(),
 			vr::TrackedDeviceClass_HMD,
-			//vr::TrackedDeviceClass_DisplayRedirect,
-			m_pRemoteHmd);
+			m_pRemoteHmd.get());
 		Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, m_pRemoteHmd->GetSerialNumber().c_str());
 	}
 
@@ -1302,8 +1298,7 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 
 void CServerDriver_DisplayRedirect::Cleanup()
 {
-	delete m_pRemoteHmd;
-	m_pRemoteHmd = NULL;
+	m_pRemoteHmd.reset();
 
 	VR_CLEANUP_SERVER_DRIVER_CONTEXT();
 }

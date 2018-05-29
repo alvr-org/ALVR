@@ -16,10 +16,11 @@ ControlSocket::ControlSocket(std::string host, int port, std::shared_ptr<Poller>
 ControlSocket::~ControlSocket() {
 }
 
-void ControlSocket::Startup() {
+bool ControlSocket::Startup() {
 	m_Socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (m_Socket == INVALID_SOCKET) {
-		return;
+		FatalLog("ControlSocket::Startup socket error : %d", WSAGetLastError());
+		return false;
 	}
 
 	int val = 1;
@@ -32,16 +33,18 @@ void ControlSocket::Startup() {
 	inet_pton(AF_INET, m_Host.c_str(), &addr.sin_addr);
 
 	if (bind(m_Socket, (sockaddr *)&addr, sizeof(addr))) {
-		Log("ControlSocket::Startup bind error : %d", WSAGetLastError());
-		return;
+		FatalLog("ControlSocket::Startup bind error : %d", WSAGetLastError());
+		return false;
 	}
 
 	if (listen(m_Socket, 10)) {
-		Log("ControlSocket::Startup listen error : %d", WSAGetLastError());
-		return;
+		FatalLog("ControlSocket::Startup listen error : %d", WSAGetLastError());
+		return false;
 	}
 
 	m_Poller->AddSocket(m_Socket);
+
+	return true;
 }
 
 

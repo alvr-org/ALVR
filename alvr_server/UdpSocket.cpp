@@ -193,7 +193,7 @@ bool UdpSocket::BindSocket()
 {
 	m_Socket = socket(AF_INET, SOCK_DGRAM, 0);
 	if (m_Socket == INVALID_SOCKET) {
-		Log("UdpSocket::BindSocket socket creation error: %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
+		FatalLog("UdpSocket::BindSocket socket creation error: %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 
@@ -210,7 +210,7 @@ bool UdpSocket::BindSocket()
 
 	int ret = bind(m_Socket, (sockaddr *)&addr, sizeof(addr));
 	if (ret != 0) {
-		Log("UdpSocket::BindSocket bind error : Address=%s:%d %d %s", m_Host.c_str(), m_Port, WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
+		FatalLog("UdpSocket::BindSocket bind error : Address=%s:%d %d %s", m_Host.c_str(), m_Port, WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 	Log("UdpSocket::BindSocket successfully bound to %s:%d", m_Host.c_str(), m_Port);
@@ -222,7 +222,7 @@ bool UdpSocket::BindQueueSocket()
 {
 	m_QueueSocket = socket(AF_INET, SOCK_DGRAM, 0);
 	if (m_QueueSocket == INVALID_SOCKET) {
-		Log("UdpSocket::BindQueueSocket socket creation error: %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
+		FatalLog("UdpSocket::BindQueueSocket socket creation error: %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 
@@ -235,11 +235,11 @@ bool UdpSocket::BindQueueSocket()
 	sockaddr_in addr = {};
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(0); // bind to random port
-	InetPton(AF_INET, "127.0.0.1", &addr.sin_addr);
+	inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
 
 	int ret = bind(m_QueueSocket, (sockaddr *)&addr, sizeof(addr));
 	if (ret != 0) {
-		Log("UdpSocket::BindQueueSocket bind error : %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
+		FatalLog("UdpSocket::BindQueueSocket bind error : %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 
@@ -247,13 +247,12 @@ bool UdpSocket::BindQueueSocket()
 	int len = sizeof(m_QueueAddr);
 	ret = getsockname(m_QueueSocket, (sockaddr *)&m_QueueAddr, &len);
 	if (ret != 0) {
-		Log("UdpSocket::BindQueueSocket getsockname error : %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
+		FatalLog("UdpSocket::BindQueueSocket getsockname error : %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 	char buf[30];
 	inet_ntop(AF_INET, &m_QueueAddr, buf, sizeof(buf));
-	Log("UdpSocket::BindQueueSocket bound queue port: %s:%d\n", buf, htons(m_QueueAddr.sin_port));
-
+	Log("UdpSocket::BindQueueSocket bound queue socket. port=%d\n", htons(m_QueueAddr.sin_port));
 
 	return true;
 }

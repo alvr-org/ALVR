@@ -45,13 +45,22 @@ public:
 		DeleteCriticalSection(&m_CS);
 	}
 
+	bool Startup() {
+		if (!m_Socket->Startup()) {
+			return false;
+		}
+		if (!m_ControlSocket->Startup()) {
+			return false;
+		}
+		// Start thread.
+		Start();
+		return true;
+	}
+
 	void Run() override
 	{
 		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 
-		m_Socket->Startup();
-		m_ControlSocket->Startup();
-		
 		while (!m_bExiting) {
 			CheckTimeout();
 			if (m_Poller->Do() <= 0) {

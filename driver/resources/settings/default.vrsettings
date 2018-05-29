@@ -1,6 +1,6 @@
 {
 	"driver_alvr_server": {
-		"serialNumber": "RG-001",
+		"serialNumber": "ALVR-001",
 		"modelNumber": "ALVR driver server",
 		"adapterIndex": 0,
 		"renderWidth" : 2048,
@@ -15,6 +15,8 @@
 		"limitTimeslotPackets": 0,
 		"controlListenPort": 9944,
 		"controlListenHost": "127.0.0.1",
-		"useKeyedMutex": true
+		"useKeyedMutex": true,
+        "controllerModelNumber": "Gear VR Controller",
+        "controllerSerialNumber": "Controller-001"
 	}
 }

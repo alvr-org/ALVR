@@ -44,5 +44,9 @@ public:
 	uint64_t m_LimitTimeslotPackets;
 
 	uint32_t m_clientRecvBufferSize;
+
+	// Controller configs
+	std::string m_controllerModelNumber;
+	std::string m_controllerSerialNumber;
 };
 

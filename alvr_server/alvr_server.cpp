@@ -28,6 +28,7 @@
 #include "Utils.h"
 #include "FrameRender.h"
 #include "Settings.h"
+#include "RemoteController.h"
 #include "packet_types.h"
 
 HINSTANCE g_hInstance;
@@ -101,50 +102,6 @@ namespace
 			}
 			DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), texture, filename2);
 		}
-	}
-
-
-
-	inline vr::HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y, double z)
-	{
-		vr::HmdQuaternion_t quat;
-		quat.w = w;
-		quat.x = x;
-		quat.y = y;
-		quat.z = z;
-		return quat;
-	}
-
-	inline void HmdMatrix_SetIdentity(vr::HmdMatrix34_t *pMatrix)
-	{
-		pMatrix->m[0][0] = 1.f;
-		pMatrix->m[0][1] = 0.f;
-		pMatrix->m[0][2] = 0.f;
-		pMatrix->m[0][3] = 0.f;
-		pMatrix->m[1][0] = 0.f;
-		pMatrix->m[1][1] = 1.f;
-		pMatrix->m[1][2] = 0.f;
-		pMatrix->m[1][3] = 0.f;
-		pMatrix->m[2][0] = 0.f;
-		pMatrix->m[2][1] = 0.f;
-		pMatrix->m[2][2] = 1.f;
-		pMatrix->m[2][3] = 0.f;
-	}
-
-	inline void HmdMatrix_QuatToMat(double w, double x, double y, double z, vr::HmdMatrix34_t *pMatrix)
-	{
-		pMatrix->m[0][0] = 1.0f - 2.0f * y * y - 2.0f * z * z;
-		pMatrix->m[0][1] = 2.0f * x * y - 2.0f * z * w;
-		pMatrix->m[0][2] = 2.0f * x * z + 2.0f * y * w;
-		pMatrix->m[0][3] = 0.0f;
-		pMatrix->m[1][0] = 2.0f * x * y + 2.0f * z * w;
-		pMatrix->m[1][1] = 1.0f - 2.0f * x * x - 2.0f * z * z;
-		pMatrix->m[1][2] = 2.0f * y * z - 2.0f * x * w;
-		pMatrix->m[1][3] = 0.0f;
-		pMatrix->m[2][0] = 2.0f * x * z - 2.0f * y * w;
-		pMatrix->m[2][1] = 2.0f * y * z + 2.0f * x * w;
-		pMatrix->m[2][2] = 1.0f - 2.0f * x * x - 2.0f * y * y;
-		pMatrix->m[2][3] = 0.f;
 	}
 
 
@@ -455,6 +412,7 @@ public:
 		, m_poseMutex(NULL)
 		, m_captureDDSTrigger(false)
 		, m_EnabledDebugPos(false)
+		, m_controllerDetected(false)
 	{
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
@@ -494,14 +452,14 @@ public:
 
 		std::function<void(std::string, std::string)> Callback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
-		m_Listener = new Listener(Settings::Instance().m_Host, Settings::Instance().m_Port
+		m_Listener.reset(new Listener(Settings::Instance().m_Host, Settings::Instance().m_Port
 			, Settings::Instance().m_ControlHost, Settings::Instance().m_ControlPort
-			, Callback, poseCallback);
+			, Callback, poseCallback));
 		m_Listener->Start();
 
 		// Spawn our separate process to manage headset presentation.
 		m_pRemoteDevice = new CNvEncoder(m_pD3DRender);
-		if (!m_pRemoteDevice->Initialize(m_Listener))
+		if (!m_pRemoteDevice->Initialize(m_Listener.get()))
 		{
 			return;
 		}
@@ -531,7 +489,7 @@ public:
 		if (m_Listener)
 		{
 			m_Listener->Stop();
-			delete m_Listener;
+			m_Listener.reset();
 		}
 
 		if (m_VSyncThread)
@@ -798,45 +756,6 @@ public:
 
 			m_LastReferencedFrameIndex = info.FrameIndex;
 			m_LastReferencedClientTime = info.clientTime;
-
-			TrackingHistoryFrame history;
-			history.info = info;
-			HmdMatrix_QuatToMat(info.HeadPose_Pose_Orientation.w,
-				info.HeadPose_Pose_Orientation.x,
-				info.HeadPose_Pose_Orientation.y,
-				info.HeadPose_Pose_Orientation.z,
-				&history.rotationMatrix);
-
-			Log("Rotation Matrix:\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n"
-				, history.rotationMatrix.m[0][0]
-				, history.rotationMatrix.m[0][1]
-				, history.rotationMatrix.m[0][2]
-				, history.rotationMatrix.m[0][3]
-				, history.rotationMatrix.m[1][0]
-				, history.rotationMatrix.m[1][1]
-				, history.rotationMatrix.m[1][2]
-				, history.rotationMatrix.m[1][3]
-				, history.rotationMatrix.m[2][0]
-				, history.rotationMatrix.m[2][1]
-				, history.rotationMatrix.m[2][2]
-				, history.rotationMatrix.m[2][3]
-			);
-
-			// Put pose history buffer
-			m_poseMutex.Wait(INFINITE);
-			if (m_poseBuffer.size() == 0) {
-				m_poseBuffer.push_back(history);
-			}
-			else {
-				if (m_poseBuffer.back().info.FrameIndex != info.FrameIndex) {
-					// New track info
-					m_poseBuffer.push_back(history);
-				}
-			}
-			if (m_poseBuffer.size() > 10) {
-				m_poseBuffer.pop_front();
-			}
-			m_poseMutex.Release();
 		}
 
 		return pose;
@@ -942,12 +861,80 @@ public:
 	void OnPoseUpdated() {
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
 		{
-			Log("OnPoseUpdated");
+			if (!m_Listener->HasValidTrackingInfo()) {
+				return;
+			}
+
+			TrackingHistoryFrame history;
+			m_Listener->GetTrackingInfo(history.info);
+			TrackingInfo& info = history.info;
+
+			HmdMatrix_QuatToMat(info.HeadPose_Pose_Orientation.w,
+				info.HeadPose_Pose_Orientation.x,
+				info.HeadPose_Pose_Orientation.y,
+				info.HeadPose_Pose_Orientation.z,
+				&history.rotationMatrix);
+
+			Log("Rotation Matrix:\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n"
+				, history.rotationMatrix.m[0][0]
+				, history.rotationMatrix.m[0][1]
+				, history.rotationMatrix.m[0][2]
+				, history.rotationMatrix.m[0][3]
+				, history.rotationMatrix.m[1][0]
+				, history.rotationMatrix.m[1][1]
+				, history.rotationMatrix.m[1][2]
+				, history.rotationMatrix.m[1][3]
+				, history.rotationMatrix.m[2][0]
+				, history.rotationMatrix.m[2][1]
+				, history.rotationMatrix.m[2][2]
+				, history.rotationMatrix.m[2][3]
+			);
+
+			// Put pose history buffer
+			m_poseMutex.Wait(INFINITE);
+			if (m_poseBuffer.size() == 0) {
+				m_poseBuffer.push_back(history);
+			}
+			else {
+				if (m_poseBuffer.back().info.FrameIndex != info.FrameIndex) {
+					// New track info
+					m_poseBuffer.push_back(history);
+				}
+			}
+			if (m_poseBuffer.size() > 10) {
+				m_poseBuffer.pop_front();
+			}
+			m_poseMutex.Release();
+
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
 			Log("Generate VSync Event by OnPoseUpdated");
 			m_VSyncThread->InsertVsync();
 			//m_VSyncThread->InsertVsync();
+
+			if (!m_controllerDetected) {
+				if (info.enableController) {
+					Log("New controller is detected.");
+					m_controllerDetected = true;
+
+					// false: right hand, true: left hand
+					bool handed = false;
+					if (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_LEFTHAND) {
+						handed = true;
+					}
+					m_remoteController.reset(new RemoteController(0, handed, m_Listener));
+
+					bool ret;
+					ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+						m_remoteController->GetSerialNumber().c_str(),
+						vr::TrackedDeviceClass_Controller,
+						m_remoteController.get());
+					Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, m_remoteController->GetSerialNumber().c_str());
+				}
+			}
+			if (info.enableController) {
+				m_remoteController->ReportControllerState();
+			}
 		}
 	}
 
@@ -959,7 +946,7 @@ private:
 	ID3D11Texture2D *m_pFlushTexture;
 	CNvEncoder *m_pRemoteDevice;
 	CEncoder *m_pEncoder;
-	Listener *m_Listener;
+	std::shared_ptr<Listener> m_Listener;
 	VSyncThread *m_VSyncThread;
 
 	float m_DebugPos[3];
@@ -1300,6 +1287,9 @@ private:
 	uint64_t m_prevSubmitClientTime;
 
 	bool m_captureDDSTrigger;
+
+	bool m_controllerDetected;
+	std::shared_ptr<RemoteController> m_remoteController;
 };
 
 //-----------------------------------------------------------------------------
@@ -1341,7 +1331,7 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 			vr::TrackedDeviceClass_HMD,
 			//vr::TrackedDeviceClass_DisplayRedirect,
 			m_pRemoteHmd);
-		Log("TrackedDeviceAdded %d %s", ret, m_pRemoteHmd->GetSerialNumber().c_str());
+		Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, m_pRemoteHmd->GetSerialNumber().c_str());
 	}
 
 	return vr::VRInitError_None;

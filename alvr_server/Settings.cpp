@@ -37,6 +37,8 @@ static const char * const k_pch_Settings_AdapterIndex_Int32 = "adapterIndex";
 static const char * const k_pch_Settings_SendingTimeslotUs_Int32 = "sendingTimeslotUs";
 static const char * const k_pch_Settings_LimitTimeslotPackets_Int32 = "limitTimeslotPackets";
 
+static const char * const k_pch_Settings_ControllerModelNumber_String = "controllerModelNumber";
+static const char * const k_pch_Settings_ControllerSerialNumber_String = "controllerSerialNumber";
 //
 // Constants
 //
@@ -99,6 +101,11 @@ void Settings::Load()
 	
 	
 	m_flIPD = vr::VRSettings()->GetFloat(k_pch_Settings_Section, k_pch_Settings_IPD_Float);
+
+	vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ControllerModelNumber_String, buf, sizeof(buf));
+	m_controllerModelNumber = buf;
+	vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ControllerSerialNumber_String, buf, sizeof(buf));
+	m_controllerSerialNumber = buf;
 
 	if (Settings::Instance().m_DebugLog) {
 		OpenLog((g_DebugOutputDir + "\\" + LOG_FILE).c_str());

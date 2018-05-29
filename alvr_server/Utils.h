@@ -178,3 +178,47 @@ inline std::string GetNextToken(std::string &str, const char *splitter) {
 	str = "";
 	return ret;
 }
+
+
+
+inline vr::HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y, double z)
+{
+	vr::HmdQuaternion_t quat;
+	quat.w = w;
+	quat.x = x;
+	quat.y = y;
+	quat.z = z;
+	return quat;
+}
+
+inline void HmdMatrix_SetIdentity(vr::HmdMatrix34_t *pMatrix)
+{
+	pMatrix->m[0][0] = 1.f;
+	pMatrix->m[0][1] = 0.f;
+	pMatrix->m[0][2] = 0.f;
+	pMatrix->m[0][3] = 0.f;
+	pMatrix->m[1][0] = 0.f;
+	pMatrix->m[1][1] = 1.f;
+	pMatrix->m[1][2] = 0.f;
+	pMatrix->m[1][3] = 0.f;
+	pMatrix->m[2][0] = 0.f;
+	pMatrix->m[2][1] = 0.f;
+	pMatrix->m[2][2] = 1.f;
+	pMatrix->m[2][3] = 0.f;
+}
+
+inline void HmdMatrix_QuatToMat(float w, float x, float y, float z, vr::HmdMatrix34_t *pMatrix)
+{
+	pMatrix->m[0][0] = 1.0f - 2.0f * y * y - 2.0f * z * z;
+	pMatrix->m[0][1] = 2.0f * x * y - 2.0f * z * w;
+	pMatrix->m[0][2] = 2.0f * x * z + 2.0f * y * w;
+	pMatrix->m[0][3] = 0.0f;
+	pMatrix->m[1][0] = 2.0f * x * y + 2.0f * z * w;
+	pMatrix->m[1][1] = 1.0f - 2.0f * x * x - 2.0f * z * z;
+	pMatrix->m[1][2] = 2.0f * y * z - 2.0f * x * w;
+	pMatrix->m[1][3] = 0.0f;
+	pMatrix->m[2][0] = 2.0f * x * z - 2.0f * y * w;
+	pMatrix->m[2][1] = 2.0f * y * z + 2.0f * x * w;
+	pMatrix->m[2][2] = 1.0f - 2.0f * x * x - 2.0f * y * y;
+	pMatrix->m[2][3] = 0.f;
+}

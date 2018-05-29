@@ -7,6 +7,10 @@ English [Japanese](https://github.com/polygraphene/ALVR/blob/master/README-ja.md
 ## Description
 ALVR streams VR display output from your PC to Gear VR / Oculus Go via Wi-Fi. This is similar to Riftcat or Trinus VR, but our purpose is optimization for Gear VR. ALVR provides smooth head-tracking compared to other apps in Wi-Fi environment using Asynchronous Timewarp.
 
+Now, we have Gear VR / Oculus Go Controller support!
+
+Note that many PCVR games require 6DoF controller or multiple buttons, so you might not able to play those games.
+
 ## Requirements
 ALVR requires following devices:
 - Gear VR or Oculus Go
@@ -65,6 +69,8 @@ ALVR requires following devices:
 - Bad streaming quality (Sometimes stops, laggy or broken picture)
     - We will add the functionality to change streaming resolution and bitrate.
     - Connect 5GHz 802.ac Wi-Fi or Connect Wired LAN to headset.
+- If you get "A key component of Steam VR isnt working properly" error
+    - Check the graphic driver is updated
 
 ## Uninstallation
 - Execute driver\_uninstall.bat in driver folder
@@ -78,7 +84,6 @@ ALVR requires following devices:
 ## Future work
 - Support streaming sound
 - Support H.265 hevc encoding (Currently H.264 only)
-- Support Gear VR / Oculus Go Controller
 - Easy installer
 
 ## Build

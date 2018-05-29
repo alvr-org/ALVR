@@ -564,14 +564,14 @@ public:
 		{
 			// Setup properties directly in code.
 			// Path values are of the form {drivername}\icons\some_icon_filename.png
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceOff_String, "{virtual_display}/icons/headset_sample_status_off.png");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearching_String, "{virtual_display}/icons/headset_sample_status_searching.gif");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearchingAlert_String, "{virtual_display}/icons/headset_sample_status_searching_alert.gif");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReady_String, "{virtual_display}/icons/headset_sample_status_ready.png");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{virtual_display}/icons/headset_sample_status_ready_alert.png");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceNotReady_String, "{virtual_display}/icons/headset_sample_status_error.png");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String, "{virtual_display}/icons/headset_sample_status_standby.png");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{virtual_display}/icons/headset_sample_status_ready_low.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceOff_String, "{alvr_server}/icons/headset_sample_status_off.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearching_String, "{alvr_server}/icons/headset_sample_status_searching.gif");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearchingAlert_String, "{alvr_server}/icons/headset_sample_status_searching_alert.gif");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReady_String, "{alvr_server}/icons/headset_sample_status_ready.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{alvr_server}/icons/headset_sample_status_ready_alert.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceNotReady_String, "{alvr_server}/icons/headset_sample_status_error.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String, "{alvr_server}/icons/headset_sample_status_standby.png");
+			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{alvr_server}/icons/headset_sample_status_ready_low.png");
 		}
 
 		return vr::VRInitError_None;

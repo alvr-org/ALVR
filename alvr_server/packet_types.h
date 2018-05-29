@@ -47,9 +47,9 @@ struct TrackingInfo {
 
 	static const int CONTROLLER_FLAG_LEFTHAND = (1 << 0); // 0: Left hand, 1: Right hand
 	static const int CONTROLLER_FLAG_OCULUSGO = (1 << 1); // 0: Gear VR, 1: Oculus Go
+	static const int CONTROLLER_FLAG_TRACKPAD_TOUCH = (1 << 2); // 0: Not touched, 1: Touched
 	uint16_t controllerFlags;
 	uint32_t controllerButtons;
-	uint32_t controllerTrackpadStatus;
 
 	struct {
 		float x;

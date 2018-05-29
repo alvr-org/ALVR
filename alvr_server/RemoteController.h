@@ -6,10 +6,14 @@
 class RemoteController : public vr::ITrackedDeviceServerDriver, public vr::IVRControllerComponent
 {
 public:
-	RemoteController(uint64_t supportedButtons, bool handed, std::shared_ptr<Listener> listener)
-	: m_supportedButtons(m_supportedButtons)
-	, m_handed(handed)
+	RemoteController(bool handed, std::shared_ptr<Listener> listener)
+	:  m_handed(handed)
 	, m_Listener(listener) {
+		m_supportedButtons = vr::ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)
+			| vr::ButtonMaskFromId(vr::k_EButton_SteamVR_Touchpad)
+			| vr::ButtonMaskFromId(vr::k_EButton_Dashboard_Back)
+			| vr::ButtonMaskFromId(vr::k_EButton_Axis0)
+			| vr::ButtonMaskFromId(vr::k_EButton_Axis1);
 	}
 
 	virtual ~RemoteController() {
@@ -33,7 +37,7 @@ public:
 		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_SupportedButtons_Uint64, m_supportedButtons);
 		
 		vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis0Type_Int32, vr::k_eControllerAxis_TrackPad);
-		vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis1Type_Int32, vr::k_eControllerAxis_TrackPad);
+		//vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis1Type_Int32, vr::k_eControllerAxis_TrackPad);
 		//vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis2Type_Int32, vr::k_eControllerAxis_TrackPad);
 		//vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis3Type_Int32, vr::k_eControllerAxis_TrackPad);
 		//vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis4Type_Int32, vr::k_eControllerAxis_TrackPad);
@@ -88,6 +92,24 @@ public:
 		if (m_Listener->HasValidTrackingInfo()) {
 			TrackingInfo info;
 			m_Listener->GetTrackingInfo(info);
+			uint64_t trackingDelay = GetTimestampUs() - m_Listener->clientToServerTime(info.clientTime);
+
+			Log("Controller Flags=%d Quot:%f,%f,%f,%f\nPos:%f,%f,%f\nButtons: %08X\n"
+				"Trackpad: %f, %f\nBattery=%d Recenter=%d",
+				info.controllerFlags,
+				info.controller_Pose_Orientation.x,
+				info.controller_Pose_Orientation.y,
+				info.controller_Pose_Orientation.z,
+				info.controller_Pose_Orientation.w,
+				info.controller_Pose_Position.x,
+				info.controller_Pose_Position.y,
+				info.controller_Pose_Position.z,
+				info.controllerButtons,
+				info.controllerTrackpadPosition.x,
+				info.controllerTrackpadPosition.y,
+				info.controllerBatteryPercentRemaining,
+				info.controllerRecenterCount
+			);
 
 			pose.qRotation.x = info.controller_Pose_Orientation.x;
 			pose.qRotation.y = info.controller_Pose_Orientation.y;
@@ -117,6 +139,70 @@ public:
 
 	void ReportControllerState() {
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
+
+		vr::VRControllerState_t NewState = { 0 };
+
+		TrackingInfo info;
+		m_Listener->GetTrackingInfo(info);
+
+		NewState.unPacketNum = (uint32_t) info.FrameIndex;
+
+		// Trigger pressed (ovrButton_A)
+		if ((m_previousButtons & 0x00000001) != 0) {
+			if ((info.controllerButtons & 0x00000001) == 0) {
+				vr::VRServerDriverHost()->TrackedDeviceButtonUnpressed(m_unObjectId, vr::k_EButton_SteamVR_Trigger, 0.0);
+				vr::VRServerDriverHost()->TrackedDeviceButtonUntouched(m_unObjectId, vr::k_EButton_SteamVR_Trigger, 0.0);
+			}
+		}
+		else {
+			if ((info.controllerButtons & 0x00000001) != 0) {
+				vr::VRServerDriverHost()->TrackedDeviceButtonPressed(m_unObjectId, vr::k_EButton_SteamVR_Trigger, 0.0);
+				vr::VRServerDriverHost()->TrackedDeviceButtonTouched(m_unObjectId, vr::k_EButton_SteamVR_Trigger, 0.0);
+			}
+		}
+		// Touchpad click (ovrButton_Enter)
+		if ((m_previousButtons & 0x00100000) != 0) {
+			if ((info.controllerButtons & 0x00100000) == 0) {
+				vr::VRServerDriverHost()->TrackedDeviceButtonUnpressed(m_unObjectId, vr::k_EButton_SteamVR_Touchpad, 0.0);
+			}
+		}
+		else {
+			if ((info.controllerButtons & 0x00100000) != 0) {
+				vr::VRServerDriverHost()->TrackedDeviceButtonPressed(m_unObjectId, vr::k_EButton_SteamVR_Touchpad, 0.0);
+			}
+		}
+		// Back button (ovrButton_Back)
+		// This event is not sent normally.
+		// TODO: How we get it work?
+		if ((m_previousButtons & 0x00200000) != 0) {
+			if ((info.controllerButtons & 0x00200000) == 0) {
+				vr::VRServerDriverHost()->TrackedDeviceButtonUnpressed(m_unObjectId, vr::k_EButton_Dashboard_Back, 0.0);
+				vr::VRServerDriverHost()->TrackedDeviceButtonUntouched(m_unObjectId, vr::k_EButton_Dashboard_Back, 0.0);
+			}
+		}
+		else {
+			if ((info.controllerButtons & 0x00200000) != 0) {
+				vr::VRServerDriverHost()->TrackedDeviceButtonPressed(m_unObjectId, vr::k_EButton_Dashboard_Back, 0.0);
+				vr::VRServerDriverHost()->TrackedDeviceButtonTouched(m_unObjectId, vr::k_EButton_Dashboard_Back, 0.0);
+			}
+		}
+		if ((m_previousFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) != 0) {
+			if ((info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) == 0) {
+				vr::VRServerDriverHost()->TrackedDeviceButtonUntouched(m_unObjectId, vr::k_EButton_SteamVR_Touchpad, 0.0);
+			}
+		}
+		else {
+			if ((info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) != 0) {
+				vr::VRServerDriverHost()->TrackedDeviceButtonTouched(m_unObjectId, vr::k_EButton_SteamVR_Touchpad, 0.0);
+			}
+		}
+		vr::VRControllerAxis_t axis;
+		axis.x = info.controllerTrackpadPosition.x / 300.0f;
+		axis.y = info.controllerTrackpadPosition.y / 300.0f;
+		vr::VRServerDriverHost()->TrackedDeviceAxisUpdated(m_unObjectId, 0, axis);
+
+		m_previousButtons = info.controllerButtons;
+		m_previousFlags = info.controllerFlags;
 	}
 
 	std::string GetSerialNumber() {
@@ -131,5 +217,8 @@ private:
 	bool m_handed;
 
 	std::shared_ptr<Listener> m_Listener;
+
+	uint32_t m_previousButtons;
+	uint32_t m_previousFlags;
 };
 

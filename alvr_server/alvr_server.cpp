@@ -922,7 +922,7 @@ public:
 					if (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_LEFTHAND) {
 						handed = true;
 					}
-					m_remoteController.reset(new RemoteController(0, handed, m_Listener));
+					m_remoteController.reset(new RemoteController(handed, m_Listener));
 
 					bool ret;
 					ret = vr::VRServerDriverHost()->TrackedDeviceAdded(

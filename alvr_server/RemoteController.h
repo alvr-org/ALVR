@@ -197,8 +197,9 @@ public:
 			}
 		}
 		vr::VRControllerAxis_t axis;
-		axis.x = info.controllerTrackpadPosition.x / 300.0f;
-		axis.y = info.controllerTrackpadPosition.y / 300.0f;
+		// Positions are already normalized to -1.0~+1.0 on client side.
+		axis.x = info.controllerTrackpadPosition.x;
+		axis.y = info.controllerTrackpadPosition.y;
 		vr::VRServerDriverHost()->TrackedDeviceAxisUpdated(m_unObjectId, 0, axis);
 
 		m_previousButtons = info.controllerButtons;

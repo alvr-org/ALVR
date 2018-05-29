@@ -7,7 +7,7 @@
 extern uint64_t g_DriverTestMode;
 
 
-FrameRender::FrameRender(CD3DRender *pD3DRender)
+FrameRender::FrameRender(std::shared_ptr<CD3DRender> pD3DRender)
 	: m_pD3DRender(pD3DRender)
 {
 }

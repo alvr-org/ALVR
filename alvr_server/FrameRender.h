@@ -20,7 +20,7 @@ using Microsoft::WRL::ComPtr;
 class FrameRender
 {
 public:
-	FrameRender(CD3DRender *pD3DRender);
+	FrameRender(std::shared_ptr<CD3DRender> pD3DRender);
 	virtual ~FrameRender();
 
 	bool Startup();
@@ -29,7 +29,7 @@ public:
 
 	ComPtr<ID3D11Texture2D> GetTexture();
 private:
-	CD3DRender *m_pD3DRender;
+	std::shared_ptr<CD3DRender> m_pD3DRender;
 	ComPtr<ID3D11Texture2D> m_pStagingTexture;
 
 	ComPtr<ID3D11VertexShader> m_pVertexShader;

@@ -41,7 +41,7 @@ namespace
 {
 	using Microsoft::WRL::ComPtr;
 	
-	void DrawDebugTimestamp(CD3DRender *m_pD3DRender, ID3D11Texture2D *pTexture)
+	void DrawDebugTimestamp(std::shared_ptr<CD3DRender> m_pD3DRender, ID3D11Texture2D *pTexture)
 	{
 		D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
 		HRESULT hr = m_pD3DRender->GetContext()->Map(pTexture, 0, D3D11_MAP_READ, 0, &mapped);
@@ -78,7 +78,7 @@ namespace
 		}
 	}
 
-	void SaveDebugOutput(CD3DRender *m_pD3DRender, std::vector<std::vector<uint8_t>> &vPacket, ID3D11Texture2D *texture, uint64_t frameIndex) {
+	void SaveDebugOutput(std::shared_ptr<CD3DRender> m_pD3DRender, std::vector<std::vector<uint8_t>> &vPacket, ID3D11Texture2D *texture, uint64_t frameIndex) {
 		if (vPacket.size() == 0) {
 			return;
 		}
@@ -108,18 +108,18 @@ namespace
 	class CNvEncoder
 	{
 	public:
-		CNvEncoder(CD3DRender *pD3DRender)
-			: enc(NULL)
-			, m_pD3DRender(pD3DRender)
+		CNvEncoder(std::shared_ptr<CD3DRender> pD3DRender
+			, std::shared_ptr<Listener> listener)
+			: m_pD3DRender(pD3DRender)
 			, m_nFrame(0)
-			, m_Listener(NULL)
+			, m_Listener(listener)
 		{
 		}
 
 		~CNvEncoder()
 		{}
 
-		bool Initialize(Listener *listener)
+		bool Initialize()
 		{
 			NvEncoderInitParam EncodeCLIOptions(Settings::Instance().m_EncoderOptions.c_str());
 
@@ -133,13 +133,13 @@ namespace
 
 			NV_ENC_BUFFER_FORMAT format = NV_ENC_BUFFER_FORMAT_ABGR;
 
-			enc = new NvEncoderD3D11(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
+			m_NvNecoderD3D11 = std::make_shared<NvEncoderD3D11>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
 
 			NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
 			NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
 
 			initializeParams.encodeConfig = &encodeConfig;
-			enc->CreateDefaultEncoderParams(&initializeParams, EncodeCLIOptions.GetEncodeGUID(), EncodeCLIOptions.GetPresetGUID());
+			m_NvNecoderD3D11->CreateDefaultEncoderParams(&initializeParams, EncodeCLIOptions.GetEncodeGUID(), EncodeCLIOptions.GetPresetGUID());
 
 			initializeParams.encodeConfig->encodeCodecConfig.h264Config.repeatSPSPPS = 1;
 
@@ -148,7 +148,7 @@ namespace
 			std::string parameterDesc = EncodeCLIOptions.FullParamToString(&initializeParams);
 			Log("NvEnc Encoder Parameters:\n%s", parameterDesc.c_str());
 
-			enc->CreateEncoder(&initializeParams);
+			m_NvNecoderD3D11->CreateEncoder(&initializeParams);
 
 			//
 			// Initialize debug video output
@@ -163,15 +163,13 @@ namespace
 				}
 			}
 
-			m_Listener = listener;
-
 			return true;
 		}
 
 		void Shutdown()
 		{
 			std::vector<std::vector<uint8_t>> vPacket;
-			enc->EndEncode(vPacket);
+			m_NvNecoderD3D11->EndEncode(vPacket);
 			for (std::vector<uint8_t> &packet : vPacket)
 			{
 				if (fpOut) {
@@ -180,8 +178,8 @@ namespace
 				m_Listener->Send(packet.data(), (int)packet.size(), GetTimestampUs(), 0);
 			}
 
-			enc->DestroyEncoder();
-			delete enc;
+			m_NvNecoderD3D11->DestroyEncoder();
+			m_NvNecoderD3D11.reset();
 
 			Log("CNvEncoder::Shutdown");
 
@@ -199,7 +197,7 @@ namespace
 
 			Log("[VDispDvr] Transmit(begin) FrameIndex=%llu", frameIndex);
 
-			const NvEncInputFrame* encoderInputFrame = enc->GetNextInputFrame();
+			const NvEncInputFrame* encoderInputFrame = m_NvNecoderD3D11->GetNextInputFrame();
 
 			if (Settings::Instance().m_DebugTimestamp) {
 				DrawDebugTimestamp(m_pD3DRender, pTexture);
@@ -211,7 +209,7 @@ namespace
 			//m_DeferredContext->CopyResource(pTexBgra, pTexture);
 
 			Log("EncodeFrame start");
-			enc->EncodeFrame(vPacket);
+			m_NvNecoderD3D11->EncodeFrame(vPacket);
 
 			Log("Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
 			Log("Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
@@ -250,12 +248,12 @@ namespace
 	private:
 		CSharedState m_sharedState;
 		std::ofstream fpOut;
-		NvEncoderD3D11 *enc;
+		std::shared_ptr<NvEncoderD3D11> m_NvNecoderD3D11;
 
-		CD3DRender *m_pD3DRender;
+		std::shared_ptr<CD3DRender> m_pD3DRender;
 		int m_nFrame;
 
-		Listener *m_Listener;
+		std::shared_ptr<Listener> m_Listener;
 
 		//ComPtr<ID3D11DeviceContext> m_DeferredContext;
 	};
@@ -268,13 +266,13 @@ namespace
 	class CEncoder : public CThread
 	{
 	public:
-		CEncoder( CD3DRender *pD3DRender, CNvEncoder *pRemoteDevice )
+		CEncoder( std::shared_ptr<CD3DRender> pD3DRender, std::shared_ptr<CNvEncoder> pRemoteDevice )
 			: m_pRemoteDevice( pRemoteDevice )
 			, m_bExiting( false )
 			, m_frameIndex(0)
 			, m_frameIndex2(0)
+			, m_FrameRender(std::make_shared<FrameRender>(pD3DRender))
 		{
-			m_FrameRender = new FrameRender(pD3DRender);
 			m_encodeFinished.Set();
 		}
 
@@ -324,7 +322,7 @@ namespace
 			m_bExiting = true;
 			m_newFrameReady.Set();
 			Join();
-			delete m_FrameRender;
+			m_FrameRender.reset();
 		}
 
 		void NewFrameReady()
@@ -341,7 +339,7 @@ namespace
 
 	private:
 		CThreadEvent m_newFrameReady, m_encodeFinished;
-		CNvEncoder *m_pRemoteDevice;
+		std::shared_ptr<CNvEncoder> m_pRemoteDevice;
 		bool m_bExiting;
 		uint64_t m_presentationTime;
 		uint64_t m_frameIndex;
@@ -349,7 +347,7 @@ namespace
 
 		uint64_t m_frameIndex2;
 
-		FrameRender *m_FrameRender;
+		std::shared_ptr<FrameRender> m_FrameRender;
 	};
 }
 
@@ -393,226 +391,11 @@ private:
 	uint64_t m_PreviousVsync;
 };
 
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-class CRemoteHmd : public vr::ITrackedDeviceServerDriver, public vr::IVRDisplayComponent, public vr::IVRDriverDirectModeComponent
+class DisplayComponent : public vr::IVRDisplayComponent
 {
 public:
-	CRemoteHmd()
-		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
-		, m_nGraphicsAdapterLuid(0)
-		, m_nVsyncCounter(0)
-		, m_pD3DRender(NULL)
-		, m_pFlushTexture(NULL)
-		, m_pRemoteDevice(NULL)
-		, m_pEncoder(NULL)
-		, m_Listener(NULL)
-		, m_VSyncThread(NULL)
-		, m_poseMutex(NULL)
-		, m_captureDDSTrigger(false)
-		, m_EnabledDebugPos(false)
-		, m_controllerDetected(false)
-	{
-		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
-
-		Log("Loading settings values");
-		
-		Settings::Instance().Load();
-				
-		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
-		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().m_flIPD);
-		
-		m_pD3DRender = new CD3DRender();
-		
-		// Store off the LUID of the primary gpu we want to use.
-		if (!m_pD3DRender->GetAdapterLuid(Settings::Instance().m_nAdapterIndex, &m_nGraphicsAdapterLuid))
-		{
-			Log("Failed to get adapter index for graphics adapter!");
-			return;
-		}
-
-		// Now reinitialize using the other graphics card.
-		if (!m_pD3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
-		{
-			Log("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
-			return;
-		}
-
-		int32_t nDisplayAdapterIndex;
-		wchar_t wchAdapterDescription[300];
-		if (!m_pD3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, sizeof(wchAdapterDescription) / sizeof(wchar_t)))
-		{
-			Log("Failed to get primary adapter info!");
-			return;
-		}
-
-		Log("Using %ls as primary graphics adapter.", wchAdapterDescription);
-
-		std::function<void(std::string, std::string)> Callback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
-		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
-		m_Listener.reset(new Listener(Settings::Instance().m_Host, Settings::Instance().m_Port
-			, Settings::Instance().m_ControlHost, Settings::Instance().m_ControlPort
-			, Callback, poseCallback));
-		m_Listener->Start();
-
-		// Spawn our separate process to manage headset presentation.
-		m_pRemoteDevice = new CNvEncoder(m_pD3DRender);
-		if (!m_pRemoteDevice->Initialize(m_Listener.get()))
-		{
-			return;
-		}
-
-		// Spin up a separate thread to handle the overlapped encoding/transmit step.
-		m_pEncoder = new CEncoder(m_pD3DRender, m_pRemoteDevice);
-		m_pEncoder->Start();
-
-		m_VSyncThread = new VSyncThread();
-		m_VSyncThread->Start();
-	}
-
-	virtual ~CRemoteHmd()
-	{
-		if (m_pEncoder)
-		{
-			m_pEncoder->Stop();
-			delete m_pEncoder;
-		}
-
-		if (m_pRemoteDevice)
-		{
-			m_pRemoteDevice->Shutdown();
-			delete m_pRemoteDevice;
-		}
-
-		if (m_Listener)
-		{
-			m_Listener->Stop();
-			m_Listener.reset();
-		}
-
-		if (m_VSyncThread)
-		{
-			m_VSyncThread->Shutdown();
-			delete m_VSyncThread;
-		}
-
-		if (m_pFlushTexture)
-		{
-			m_pFlushTexture->Release();
-		}
-
-		if (m_pD3DRender)
-		{
-			m_pD3DRender->Shutdown();
-			delete m_pD3DRender;
-		}
-	}
-
-
-	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId)
-	{
-		Log("CRemoteHmd Activate %d", unObjectId);
-
-		m_unObjectId = unObjectId;
-		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
-
-
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, Settings::Instance().m_sModelNumber.c_str());
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, Settings::Instance().m_sModelNumber.c_str());
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserIpdMeters_Float, Settings::Instance().m_flIPD);
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, Settings::Instance().m_flDisplayFrequency);
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_SecondsFromVsyncToPhotons_Float, Settings::Instance().m_flSecondsFromVsyncToPhotons);
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_GraphicsAdapterLuid_Uint64, m_nGraphicsAdapterLuid);
-
-		// return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_CurrentUniverseId_Uint64, 2);
-
-		// avoid "not fullscreen" warnings from vrmonitor
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_IsOnDesktop_Bool, false);
-
-		// Manually send VSync events on direct mode. ref:https://github.com/ValveSoftware/virtual_display/issues/1
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true);
-
-		// Icons can be configured in code or automatically configured by an external file "drivername\resources\driver.vrresources".
-		// Icon properties NOT configured in code (post Activate) are then auto-configured by the optional presence of a driver's "drivername\resources\driver.vrresources".
-		// In this manner a driver can configure their icons in a flexible data driven fashion by using an external file.
-		//
-		// The structure of the driver.vrresources file allows a driver to specialize their icons based on their HW.
-		// Keys matching the value in "Prop_ModelNumber_String" are considered first, since the driver may have model specific icons.
-		// An absence of a matching "Prop_ModelNumber_String" then considers the ETrackedDeviceClass ("HMD", "Controller", "GenericTracker", "TrackingReference")
-		// since the driver may have specialized icons based on those device class names.
-		//
-		// An absence of either then falls back to the "system.vrresources" where generic device class icons are then supplied.
-		//
-		// Please refer to "bin\drivers\sample\resources\driver.vrresources" which contains this sample configuration.
-		//
-		// "Alias" is a reserved key and specifies chaining to another json block.
-		//
-		// In this sample configuration file (overly complex FOR EXAMPLE PURPOSES ONLY)....
-		//
-		// "Model-v2.0" chains through the alias to "Model-v1.0" which chains through the alias to "Model-v Defaults".
-		//
-		// Keys NOT found in "Model-v2.0" would then chase through the "Alias" to be resolved in "Model-v1.0" and either resolve their or continue through the alias.
-		// Thus "Prop_NamedIconPathDeviceAlertLow_String" in each model's block represent a specialization specific for that "model".
-		// Keys in "Model-v Defaults" are an example of mapping to the same states, and here all map to "Prop_NamedIconPathDeviceOff_String".
-		//
-		bool bSetupIconUsingExternalResourceFile = true;
-		if (!bSetupIconUsingExternalResourceFile)
-		{
-			// Setup properties directly in code.
-			// Path values are of the form {drivername}\icons\some_icon_filename.png
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceOff_String, "{alvr_server}/icons/headset_sample_status_off.png");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearching_String, "{alvr_server}/icons/headset_sample_status_searching.gif");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearchingAlert_String, "{alvr_server}/icons/headset_sample_status_searching_alert.gif");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReady_String, "{alvr_server}/icons/headset_sample_status_ready.png");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{alvr_server}/icons/headset_sample_status_ready_alert.png");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceNotReady_String, "{alvr_server}/icons/headset_sample_status_error.png");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String, "{alvr_server}/icons/headset_sample_status_standby.png");
-			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{alvr_server}/icons/headset_sample_status_ready_low.png");
-		}
-
-		return vr::VRInitError_None;
-	}
-
-	virtual void Deactivate()
-	{
-		Log("CRemoteHmd Deactivate");
-		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-	}
-
-	virtual void EnterStandby()
-	{
-	}
-
-	void *GetComponent(const char *pchComponentNameAndVersion)
-	{
-		Log("GetComponent %s", pchComponentNameAndVersion);
-		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
-		{
-			return (vr::IVRDisplayComponent*)this;
-		}
-		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDriverDirectModeComponent_Version))
-		{
-			return static_cast< vr::IVRDriverDirectModeComponent * >(this);
-		}
-
-		// override this to add a component to a driver
-		return NULL;
-	}
-
-	virtual void PowerOff()
-	{
-	}
-
-	/** debug request from a client */
-	virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize)
-	{
-		if (unResponseBufferSize >= 1)
-			pchResponseBuffer[0] = 0;
-	}
+	DisplayComponent() {}
+	virtual ~DisplayComponent() {}
 
 	virtual void GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
 	{
@@ -663,7 +446,7 @@ public:
 		*pfRight = 1.0;
 		*pfTop = -1.0;
 		*pfBottom = 1.0;
-		
+
 		Log("GetProjectionRaw %d", eEye);
 	}
 
@@ -678,283 +461,62 @@ public:
 		coordinates.rfRed[1] = fV;
 		return coordinates;
 	}
+};
 
-	// ITrackedDeviceServerDriver
-
-
-	virtual vr::DriverPose_t GetPose()
-	{
-		vr::DriverPose_t pose = { 0 };
-		pose.poseIsValid = true;
-		pose.result = vr::TrackingResult_Running_OK;
-		pose.deviceIsConnected = true;
-		//pose.shouldApplyHeadModel = true;
-		//pose.willDriftInYaw = true;
-
-		pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-		pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
-
-		if (m_Listener->HasValidTrackingInfo()) {
-			TrackingInfo info;
-			m_Listener->GetTrackingInfo(info);
-			uint64_t trackingDelay = GetTimestampUs() - m_Listener->clientToServerTime(info.clientTime);
-
-			Log("Tracking elapsed:%lld us FrameIndex=%lld quot:%f,%f,%f,%f\nposition:%f,%f,%f\nController: Rot:%f,%f,%f,%f - Pos:%f,%f,%f\n",
-				trackingDelay,
-				info.FrameIndex,
-				info.HeadPose_Pose_Orientation.x,
-				info.HeadPose_Pose_Orientation.y,
-				info.HeadPose_Pose_Orientation.z,
-				info.HeadPose_Pose_Orientation.w,
-				info.HeadPose_Pose_Position.x,
-				info.HeadPose_Pose_Position.y,
-				info.HeadPose_Pose_Position.z,
-				info.controller_Pose_Orientation.x,
-				info.controller_Pose_Orientation.y,
-				info.controller_Pose_Orientation.z,
-				info.controller_Pose_Orientation.w,
-				info.controller_Pose_Position.x,
-				info.controller_Pose_Position.y,
-				info.controller_Pose_Position.z
-			);
-
-			pose.qRotation.x = info.HeadPose_Pose_Orientation.x;
-			pose.qRotation.y = info.HeadPose_Pose_Orientation.y;
-			pose.qRotation.z = info.HeadPose_Pose_Orientation.z;
-			pose.qRotation.w = info.HeadPose_Pose_Orientation.w;
-
-			pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
-			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
-			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
-			if (m_EnabledDebugPos) {
-				Log("Provide fake position for debug. Coords=(%f, %f, %f)", m_DebugPos[0], m_DebugPos[1], m_DebugPos[2]);
-				pose.vecPosition[0] = m_DebugPos[0];
-				pose.vecPosition[1] = m_DebugPos[1];
-				pose.vecPosition[2] = m_DebugPos[2];
-			}
-
-			// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
-			/*
-			pose.vecVelocity[0] = info.HeadPose_LinearVelocity.x;
-			pose.vecVelocity[1] = info.HeadPose_LinearVelocity.y;
-			pose.vecVelocity[2] = info.HeadPose_LinearVelocity.z;
-
-			pose.vecAcceleration[0] = info.HeadPose_LinearAcceleration.x;
-			pose.vecAcceleration[1] = info.HeadPose_LinearAcceleration.y;
-			pose.vecAcceleration[2] = info.HeadPose_LinearAcceleration.z;
-
-			pose.vecAngularVelocity[0] = info.HeadPose_AngularVelocity.x;
-			pose.vecAngularVelocity[1] = info.HeadPose_AngularVelocity.y;
-			pose.vecAngularVelocity[2] = info.HeadPose_AngularVelocity.z;
-
-			pose.vecAngularAcceleration[0] = info.HeadPose_AngularAcceleration.x;
-			pose.vecAngularAcceleration[1] = info.HeadPose_AngularAcceleration.y;
-			pose.vecAngularAcceleration[2] = info.HeadPose_AngularAcceleration.z;*/
-
-			pose.poseTimeOffset = 0;
-
-			m_LastReferencedFrameIndex = info.FrameIndex;
-			m_LastReferencedClientTime = info.clientTime;
-		}
-
-		return pose;
-	}
-
-
-	void RunFrame()
-	{
-		// In a real driver, this should happen from some pose tracking thread.
-		// The RunFrame interval is unspecified and can be very irregular if some other
-		// driver blocks it for some periodic task.
-		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
-		{
-			//Log("RunFrame");
-			//vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
-		}
-	}
-
-	std::string GetSerialNumber() const { return Settings::Instance().m_sSerialNumber; }
-
-private:
-	vr::TrackedDeviceIndex_t m_unObjectId;
-	vr::PropertyContainerHandle_t m_ulPropertyContainer;
-
-	uint64_t m_LastReferencedFrameIndex;
-	uint64_t m_LastReferencedClientTime;
-
-	IPCMutex m_poseMutex;
-	struct TrackingHistoryFrame {
-		TrackingInfo info;
-		vr::HmdMatrix34_t rotationMatrix;
-	};
-	std::list<TrackingHistoryFrame> m_poseBuffer;
-
+class DirectModeComponent : public vr::IVRDriverDirectModeComponent
+{
 public:
-	bool IsValid() const
-	{
-		return m_pEncoder != NULL;
+	DirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender,
+		std::shared_ptr<CEncoder> pEncoder,
+		std::shared_ptr<Listener> Listener)
+		: m_captureDDSTrigger(false)
+		, m_pD3DRender(pD3DRender)
+		, m_pEncoder(pEncoder)
+		, m_Listener(Listener)
+		, m_poseMutex(NULL)
+		, m_submitLayer(0)
+		, m_LastReferencedFrameIndex(0) 
+		, m_LastReferencedClientTime(0) {
 	}
 
-	void CommandCallback(std::string commandName, std::string args)
+	bool CommandCallback(std::string commandName, std::string args)
 	{
 		if (commandName == "Capture") {
 			m_captureDDSTrigger = true;
+			return true;
 		}
-		else if (commandName == "EnableDriverTestMode") {
-			g_DriverTestMode = strtoull(args.c_str(), NULL, 0);
-		}
-		else if (commandName == "GetConfig") {
-			char buf[1000];
-			snprintf(buf, sizeof(buf)
-				, "%sDebugLog %d\n"
-				"DebugCaptureOutput %d\n"
-				"DebugFrameIndex %d\n"
-				"DebugFrameOutput %d\n"
-				"UseKeyedMutex %d"
-				, m_Listener->DumpConfig().c_str()
-				, Settings::Instance().m_DebugLog
-				, Settings::Instance().m_DebugCaptureOutput
-				, Settings::Instance().m_DebugFrameIndex
-				, Settings::Instance().m_DebugFrameOutput
-				, Settings::Instance().m_UseKeyedMutex
-			);
-			m_Listener->SendCommandResponse(buf);
-		}else if(commandName == "SetConfig"){
-			auto index = args.find(" ");
-			if (index == std::string::npos) {
-				m_Listener->SendCommandResponse("NG\n");
-			}
-			else {
-				auto name = args.substr(0, index);
-				if (name == "DebugFrameIndex") {
-					Settings::Instance().m_DebugFrameIndex = atoi(args.substr(index + 1).c_str());
-				}else if(name == "DebugFrameOutput"){
-					Settings::Instance().m_DebugFrameOutput = atoi(args.substr(index + 1).c_str());
-				}
-				else if (name == "DebugCaptureOutput") {
-					Settings::Instance().m_DebugCaptureOutput = atoi(args.substr(index + 1).c_str());
-				}
-				else if (name == "UseKeyedMutex") {
-					Settings::Instance().m_UseKeyedMutex = atoi(args.substr(index + 1).c_str());
-				}
-			}
-		}
-		else if (commandName == "SetDebugPos") {
-			std::string enabled = GetNextToken(args, " ");
-			std::string x = GetNextToken(args, " ");
-			std::string y = GetNextToken(args, " ");
-			std::string z = GetNextToken(args, " ");
-			m_DebugPos[0] = atof(x.c_str());
-			m_DebugPos[1] = atof(y.c_str());
-			m_DebugPos[2] = atof(z.c_str());
-
-			m_EnabledDebugPos = atoi(enabled.c_str()) != 0;
-
-			m_Listener->SendCommandResponse("OK\n");
-		}else {
-			Log("Invalid control command: %s", commandName.c_str());
-		}
-		
+		return false;
 	}
 
-	void OnPoseUpdated() {
-		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
-		{
-			if (!m_Listener->HasValidTrackingInfo()) {
-				return;
-			}
+	void OnPoseUpdated(TrackingInfo &info) {
+		// Put pose history buffer
+		TrackingHistoryFrame history;
+		history.info = info;
 
-			TrackingHistoryFrame history;
-			m_Listener->GetTrackingInfo(history.info);
-			TrackingInfo& info = history.info;
+		HmdMatrix_QuatToMat(info.HeadPose_Pose_Orientation.w,
+			info.HeadPose_Pose_Orientation.x,
+			info.HeadPose_Pose_Orientation.y,
+			info.HeadPose_Pose_Orientation.z,
+			&history.rotationMatrix);
 
-			HmdMatrix_QuatToMat(info.HeadPose_Pose_Orientation.w,
-				info.HeadPose_Pose_Orientation.x,
-				info.HeadPose_Pose_Orientation.y,
-				info.HeadPose_Pose_Orientation.z,
-				&history.rotationMatrix);
-
-			Log("Rotation Matrix:\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n"
-				, history.rotationMatrix.m[0][0]
-				, history.rotationMatrix.m[0][1]
-				, history.rotationMatrix.m[0][2]
-				, history.rotationMatrix.m[0][3]
-				, history.rotationMatrix.m[1][0]
-				, history.rotationMatrix.m[1][1]
-				, history.rotationMatrix.m[1][2]
-				, history.rotationMatrix.m[1][3]
-				, history.rotationMatrix.m[2][0]
-				, history.rotationMatrix.m[2][1]
-				, history.rotationMatrix.m[2][2]
-				, history.rotationMatrix.m[2][3]
-			);
-
-			// Put pose history buffer
-			m_poseMutex.Wait(INFINITE);
-			if (m_poseBuffer.size() == 0) {
+		m_poseMutex.Wait(INFINITE);
+		if (m_poseBuffer.size() == 0) {
+			m_poseBuffer.push_back(history);
+		}
+		else {
+			if (m_poseBuffer.back().info.FrameIndex != info.FrameIndex) {
+				// New track info
 				m_poseBuffer.push_back(history);
 			}
-			else {
-				if (m_poseBuffer.back().info.FrameIndex != info.FrameIndex) {
-					// New track info
-					m_poseBuffer.push_back(history);
-				}
-			}
-			if (m_poseBuffer.size() > 10) {
-				m_poseBuffer.pop_front();
-			}
-			m_poseMutex.Release();
-
-			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
-
-			Log("Generate VSync Event by OnPoseUpdated");
-			m_VSyncThread->InsertVsync();
-			//m_VSyncThread->InsertVsync();
-
-			if (!m_controllerDetected) {
-				if (info.enableController) {
-					Log("New controller is detected.");
-					m_controllerDetected = true;
-
-					// false: right hand, true: left hand
-					bool handed = false;
-					if (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_LEFTHAND) {
-						handed = true;
-					}
-					m_remoteController.reset(new RemoteController(handed, m_Listener));
-
-					bool ret;
-					ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-						m_remoteController->GetSerialNumber().c_str(),
-						vr::TrackedDeviceClass_Controller,
-						m_remoteController.get());
-					Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, m_remoteController->GetSerialNumber().c_str());
-				}
-			}
-			if (info.enableController) {
-				m_remoteController->ReportControllerState();
-			}
 		}
+		if (m_poseBuffer.size() > 10) {
+			m_poseBuffer.pop_front();
+		}
+		m_poseMutex.Release();
+
+		m_LastReferencedFrameIndex = info.FrameIndex;
+		m_LastReferencedClientTime = info.clientTime;
 	}
-
-private:
-	uint64_t m_nGraphicsAdapterLuid;
-	uint32_t m_nVsyncCounter;
-
-	CD3DRender *m_pD3DRender;
-	ID3D11Texture2D *m_pFlushTexture;
-	CNvEncoder *m_pRemoteDevice;
-	CEncoder *m_pEncoder;
-	std::shared_ptr<Listener> m_Listener;
-	VSyncThread *m_VSyncThread;
-
-	float m_DebugPos[3];
-	bool m_EnabledDebugPos;
-public:
-	// -----------------------------------
-	// Direct mode methods
-	// -----------------------------------
 
 	/** Specific to Oculus compositor support, textures supplied must be created using this method. */
 	virtual void CreateSwapTextureSet(uint32_t unPid, uint32_t unFormat, uint32_t unWidth, uint32_t unHeight, vr::SharedTextureHandle_t(*pSharedTextureHandles)[3]) {
@@ -978,7 +540,7 @@ public:
 		SharedTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
 		//SharedTextureDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
 		SharedTextureDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
-		
+
 		ProcessResource *processResource = new ProcessResource();
 		processResource->pid = unPid;
 
@@ -1145,9 +707,9 @@ public:
 		m_submitLayer = 0;
 
 		/*if (m_submitFrameIndex != m_LastReferencedFrameIndex) {
-			// Discard old frames
-			Log("Discarding old frame: m_submitFrameIndex=%llu m_LastReferencedFrameIndex=%llu", m_submitFrameIndex, m_LastReferencedFrameIndex);
-			return;
+		// Discard old frames
+		Log("Discarding old frame: m_submitFrameIndex=%llu m_LastReferencedFrameIndex=%llu", m_submitFrameIndex, m_LastReferencedFrameIndex);
+		return;
 		}*/
 
 		ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
@@ -1237,8 +799,8 @@ public:
 			wchar_t buf[1000];
 
 			for (uint32_t i = 0; i < layerCount; i++) {
-				Log("Writing Debug DDS. m_LastReferencedFrameIndex=%llu layer=%d/%d", m_LastReferencedFrameIndex, i, layerCount);
-				_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", g_DebugOutputDir.c_str(), m_LastReferencedFrameIndex, i, layerCount);
+				Log("Writing Debug DDS. m_LastReferencedFrameIndex=%llu layer=%d/%d", 0, i, layerCount);
+				_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", g_DebugOutputDir.c_str(), m_submitFrameIndex, i, layerCount);
 				HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture[i][0], buf);
 				Log("Writing Debug DDS: End hr=%p %s", hr, GetDxErrorStr(hr).c_str());
 			}
@@ -1266,13 +828,17 @@ public:
 	}
 
 private:
+
+	std::shared_ptr<CD3DRender> m_pD3DRender;
+	std::shared_ptr<CEncoder> m_pEncoder;
+	std::shared_ptr<Listener> m_Listener;
+
 	// Resource for each process
 	struct ProcessResource {
 		ComPtr<ID3D11Texture2D> textures[3];
 		HANDLE sharedHandles[3];
 		uint32_t pid;
 	};
-	//std::unordered_multimap<uint32_t, ProcessResource *> m_processMap;
 	std::map<HANDLE, std::pair<ProcessResource *, int> > m_handleMap;
 
 	static const int MAX_LAYERS = 10;
@@ -1286,10 +852,407 @@ private:
 	uint64_t m_prevSubmitFrameIndex;
 	uint64_t m_prevSubmitClientTime;
 
+	uint64_t m_LastReferencedFrameIndex;
+	uint64_t m_LastReferencedClientTime;
+
+	IPCMutex m_poseMutex;
+	struct TrackingHistoryFrame {
+		TrackingInfo info;
+		vr::HmdMatrix34_t rotationMatrix;
+	};
+	std::list<TrackingHistoryFrame> m_poseBuffer;
+
 	bool m_captureDDSTrigger;
+};
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+class CRemoteHmd : public vr::ITrackedDeviceServerDriver, public vr::IVRDriverDirectModeComponent
+{
+public:
+	CRemoteHmd()
+		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
+		, m_nGraphicsAdapterLuid(0)
+		, m_nVsyncCounter(0)
+		, m_EnabledDebugPos(false)
+		, m_controllerDetected(false)
+	{
+		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
+
+		Log("Loading settings values");
+		
+		Settings::Instance().Load();
+				
+		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
+		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().m_flIPD);
+		
+		m_pD3DRender = std::make_shared<CD3DRender>();
+		
+		// Store off the LUID of the primary gpu we want to use.
+		if (!m_pD3DRender->GetAdapterLuid(Settings::Instance().m_nAdapterIndex, &m_nGraphicsAdapterLuid))
+		{
+			Log("Failed to get adapter index for graphics adapter!");
+			return;
+		}
+
+		// Now reinitialize using the other graphics card.
+		if (!m_pD3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
+		{
+			Log("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
+			return;
+		}
+
+		int32_t nDisplayAdapterIndex;
+		wchar_t wchAdapterDescription[300];
+		if (!m_pD3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, sizeof(wchAdapterDescription) / sizeof(wchar_t)))
+		{
+			Log("Failed to get primary adapter info!");
+			return;
+		}
+
+		Log("Using %ls as primary graphics adapter.", wchAdapterDescription);
+
+		std::function<void(std::string, std::string)> Callback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
+		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
+		m_Listener = std::make_shared<Listener>(Settings::Instance().m_Host, Settings::Instance().m_Port
+			, Settings::Instance().m_ControlHost, Settings::Instance().m_ControlPort
+			, Callback, poseCallback);
+		m_Listener->Start();
+
+		// Spawn our separate process to manage headset presentation.
+		m_pRemoteDevice = std::make_shared<CNvEncoder>(m_pD3DRender, m_Listener);
+		if (!m_pRemoteDevice->Initialize())
+		{
+			return;
+		}
+
+		// Spin up a separate thread to handle the overlapped encoding/transmit step.
+		m_pEncoder = std::make_shared<CEncoder>(m_pD3DRender, m_pRemoteDevice);
+		m_pEncoder->Start();
+
+		m_VSyncThread = std::make_shared<VSyncThread>();
+		m_VSyncThread->Start();
+
+		m_displayComponent = std::make_shared<DisplayComponent>();
+		m_directModeComponent = std::make_shared<DirectModeComponent>(m_pD3DRender, m_pEncoder, m_Listener);
+	}
+
+	virtual ~CRemoteHmd()
+	{
+		if (m_pEncoder)
+		{
+			m_pEncoder->Stop();
+			m_pEncoder.reset();
+		}
+
+		if (m_pRemoteDevice)
+		{
+			m_pRemoteDevice->Shutdown();
+			m_pRemoteDevice.reset();
+		}
+
+		if (m_Listener)
+		{
+			m_Listener->Stop();
+			m_Listener.reset();
+		}
+
+		if (m_VSyncThread)
+		{
+			m_VSyncThread->Shutdown();
+			m_VSyncThread.reset();
+		}
+
+		if (m_pD3DRender)
+		{
+			m_pD3DRender->Shutdown();
+			m_pD3DRender.reset();
+		}
+	}
+
+
+	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId)
+	{
+		Log("CRemoteHmd Activate %d", unObjectId);
+
+		m_unObjectId = unObjectId;
+		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
+
+
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, Settings::Instance().m_sModelNumber.c_str());
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, Settings::Instance().m_sModelNumber.c_str());
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserIpdMeters_Float, Settings::Instance().m_flIPD);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, Settings::Instance().m_flDisplayFrequency);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_SecondsFromVsyncToPhotons_Float, Settings::Instance().m_flSecondsFromVsyncToPhotons);
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_GraphicsAdapterLuid_Uint64, m_nGraphicsAdapterLuid);
+
+		// return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_CurrentUniverseId_Uint64, 2);
+
+		// avoid "not fullscreen" warnings from vrmonitor
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_IsOnDesktop_Bool, false);
+
+		// Manually send VSync events on direct mode. ref:https://github.com/ValveSoftware/virtual_display/issues/1
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true);
+
+		return vr::VRInitError_None;
+	}
+
+	virtual void Deactivate()
+	{
+		Log("CRemoteHmd Deactivate");
+		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+	}
+
+	virtual void EnterStandby()
+	{
+	}
+
+	void *GetComponent(const char *pchComponentNameAndVersion)
+	{
+		Log("GetComponent %s", pchComponentNameAndVersion);
+		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
+		{
+			return m_displayComponent.get();
+		}
+		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDriverDirectModeComponent_Version))
+		{
+			return m_directModeComponent.get();
+		}
+
+		// override this to add a component to a driver
+		return NULL;
+	}
+
+	virtual void PowerOff()
+	{
+	}
+
+	/** debug request from a client */
+	virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize)
+	{
+		if (unResponseBufferSize >= 1)
+			pchResponseBuffer[0] = 0;
+	}
+
+	virtual vr::DriverPose_t GetPose()
+	{
+		vr::DriverPose_t pose = { 0 };
+		pose.poseIsValid = true;
+		pose.result = vr::TrackingResult_Running_OK;
+		pose.deviceIsConnected = true;
+		//pose.shouldApplyHeadModel = true;
+		//pose.willDriftInYaw = true;
+
+		pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+		pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
+
+		if (m_Listener->HasValidTrackingInfo()) {
+			TrackingInfo info;
+			m_Listener->GetTrackingInfo(info);
+			uint64_t trackingDelay = GetTimestampUs() - m_Listener->clientToServerTime(info.clientTime);
+
+			Log("Tracking elapsed:%lld us FrameIndex=%lld quot:%f,%f,%f,%f\nposition:%f,%f,%f",
+				trackingDelay,
+				info.FrameIndex,
+				info.HeadPose_Pose_Orientation.x,
+				info.HeadPose_Pose_Orientation.y,
+				info.HeadPose_Pose_Orientation.z,
+				info.HeadPose_Pose_Orientation.w,
+				info.HeadPose_Pose_Position.x,
+				info.HeadPose_Pose_Position.y,
+				info.HeadPose_Pose_Position.z
+			);
+
+			pose.qRotation.x = info.HeadPose_Pose_Orientation.x;
+			pose.qRotation.y = info.HeadPose_Pose_Orientation.y;
+			pose.qRotation.z = info.HeadPose_Pose_Orientation.z;
+			pose.qRotation.w = info.HeadPose_Pose_Orientation.w;
+
+			pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
+			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
+			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
+			if (m_EnabledDebugPos) {
+				Log("Provide fake position for debug. Coords=(%f, %f, %f)", m_DebugPos[0], m_DebugPos[1], m_DebugPos[2]);
+				pose.vecPosition[0] = m_DebugPos[0];
+				pose.vecPosition[1] = m_DebugPos[1];
+				pose.vecPosition[2] = m_DebugPos[2];
+			}
+
+			// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
+			/*
+			pose.vecVelocity[0] = info.HeadPose_LinearVelocity.x;
+			pose.vecVelocity[1] = info.HeadPose_LinearVelocity.y;
+			pose.vecVelocity[2] = info.HeadPose_LinearVelocity.z;
+
+			pose.vecAcceleration[0] = info.HeadPose_LinearAcceleration.x;
+			pose.vecAcceleration[1] = info.HeadPose_LinearAcceleration.y;
+			pose.vecAcceleration[2] = info.HeadPose_LinearAcceleration.z;
+
+			pose.vecAngularVelocity[0] = info.HeadPose_AngularVelocity.x;
+			pose.vecAngularVelocity[1] = info.HeadPose_AngularVelocity.y;
+			pose.vecAngularVelocity[2] = info.HeadPose_AngularVelocity.z;
+
+			pose.vecAngularAcceleration[0] = info.HeadPose_AngularAcceleration.x;
+			pose.vecAngularAcceleration[1] = info.HeadPose_AngularAcceleration.y;
+			pose.vecAngularAcceleration[2] = info.HeadPose_AngularAcceleration.z;*/
+
+			pose.poseTimeOffset = 0;
+		}
+
+		return pose;
+	}
+
+
+	void RunFrame()
+	{
+		// In a real driver, this should happen from some pose tracking thread.
+		// The RunFrame interval is unspecified and can be very irregular if some other
+		// driver blocks it for some periodic task.
+		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
+		{
+			//Log("RunFrame");
+			//vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
+		}
+	}
+
+	std::string GetSerialNumber() const { return Settings::Instance().m_sSerialNumber; }
+
+	bool IsValid() const
+	{
+		return m_pEncoder != NULL;
+	}
+
+	void CommandCallback(std::string commandName, std::string args)
+	{
+		if (commandName == "EnableDriverTestMode") {
+			g_DriverTestMode = strtoull(args.c_str(), NULL, 0);
+		}
+		else if (commandName == "GetConfig") {
+			char buf[1000];
+			snprintf(buf, sizeof(buf)
+				, "%sDebugLog %d\n"
+				"DebugCaptureOutput %d\n"
+				"DebugFrameIndex %d\n"
+				"DebugFrameOutput %d\n"
+				"UseKeyedMutex %d"
+				, m_Listener->DumpConfig().c_str()
+				, Settings::Instance().m_DebugLog
+				, Settings::Instance().m_DebugCaptureOutput
+				, Settings::Instance().m_DebugFrameIndex
+				, Settings::Instance().m_DebugFrameOutput
+				, Settings::Instance().m_UseKeyedMutex
+			);
+			m_Listener->SendCommandResponse(buf);
+		}else if(commandName == "SetConfig"){
+			auto index = args.find(" ");
+			if (index == std::string::npos) {
+				m_Listener->SendCommandResponse("NG\n");
+			}
+			else {
+				auto name = args.substr(0, index);
+				if (name == "DebugFrameIndex") {
+					Settings::Instance().m_DebugFrameIndex = atoi(args.substr(index + 1).c_str());
+				}else if(name == "DebugFrameOutput"){
+					Settings::Instance().m_DebugFrameOutput = atoi(args.substr(index + 1).c_str());
+				}
+				else if (name == "DebugCaptureOutput") {
+					Settings::Instance().m_DebugCaptureOutput = atoi(args.substr(index + 1).c_str());
+				}
+				else if (name == "UseKeyedMutex") {
+					Settings::Instance().m_UseKeyedMutex = atoi(args.substr(index + 1).c_str());
+				}
+			}
+		}
+		else if (commandName == "SetDebugPos") {
+			std::string enabled = GetNextToken(args, " ");
+			std::string x = GetNextToken(args, " ");
+			std::string y = GetNextToken(args, " ");
+			std::string z = GetNextToken(args, " ");
+			m_DebugPos[0] = atof(x.c_str());
+			m_DebugPos[1] = atof(y.c_str());
+			m_DebugPos[2] = atof(z.c_str());
+
+			m_EnabledDebugPos = atoi(enabled.c_str()) != 0;
+
+			m_Listener->SendCommandResponse("OK\n");
+		}else {
+			if (!m_directModeComponent->CommandCallback(commandName, args)) {
+				Log("Invalid control command: %s", commandName.c_str());
+			}
+		}
+		
+	}
+
+	void OnPoseUpdated() {
+		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
+		{
+			if (!m_Listener->HasValidTrackingInfo()) {
+				return;
+			}
+
+			TrackingInfo info;
+			m_Listener->GetTrackingInfo(info);
+
+			m_directModeComponent->OnPoseUpdated(info);
+			
+			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
+
+			Log("Generate VSync Event by OnPoseUpdated");
+			m_VSyncThread->InsertVsync();
+			//m_VSyncThread->InsertVsync();
+
+			if (!m_controllerDetected) {
+				if (info.enableController) {
+					Log("New controller is detected.");
+					m_controllerDetected = true;
+
+					// false: right hand, true: left hand
+					bool handed = false;
+					if (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_LEFTHAND) {
+						handed = true;
+					}
+					m_remoteController.reset(new RemoteController(handed, m_Listener));
+
+					bool ret;
+					ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+						m_remoteController->GetSerialNumber().c_str(),
+						vr::TrackedDeviceClass_Controller,
+						m_remoteController.get());
+					Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, m_remoteController->GetSerialNumber().c_str());
+				}
+			}
+			if (info.enableController) {
+				m_remoteController->ReportControllerState();
+			}
+		}
+	}
+
+private:
+	vr::TrackedDeviceIndex_t m_unObjectId;
+	vr::PropertyContainerHandle_t m_ulPropertyContainer;
+
+	uint64_t m_nGraphicsAdapterLuid;
+	uint32_t m_nVsyncCounter;
+
+	std::shared_ptr<CD3DRender> m_pD3DRender;
+	std::shared_ptr<CNvEncoder> m_pRemoteDevice;
+	std::shared_ptr<CEncoder> m_pEncoder;
+	std::shared_ptr<Listener> m_Listener;
+	std::shared_ptr<VSyncThread> m_VSyncThread;
+
+	float m_DebugPos[3];
+	bool m_EnabledDebugPos;
 
 	bool m_controllerDetected;
 	std::shared_ptr<RemoteController> m_remoteController;
+
+	std::shared_ptr<DisplayComponent> m_displayComponent;
+	std::shared_ptr<DirectModeComponent> m_directModeComponent;
 };
 
 //-----------------------------------------------------------------------------

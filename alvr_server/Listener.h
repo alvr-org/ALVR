@@ -96,12 +96,12 @@ public:
 					if (commandName == "EnableTestMode") {
 						m_Settings.enableTestMode = atoi(args.c_str());
 						SendChangeSettings();
-						SendCommandResponse("Success\n");
+						SendCommandResponse("OK\n");
 					}
 					else if (commandName == "Suspend") {
 						m_Settings.suspend = atoi(args.c_str());
 						SendChangeSettings();
-						SendCommandResponse("Success\n");
+						SendCommandResponse("OK\n");
 					}
 					else if (commandName == "GetRequests") {
 						std::string str;
@@ -142,7 +142,7 @@ public:
 
 							m_Socket->Send((char *)&message, sizeof(message), 0);
 
-							SendCommandResponse("Success\n");
+							SendCommandResponse("OK\n");
 						}
 					}
 					else {
@@ -322,6 +322,7 @@ public:
 	}
 
 	void SendCommandResponse(const char *commandResponse) {
+		Log("SendCommandResponse: %s", commandResponse);
 		m_ControlSocket->SendCommandResponse(commandResponse);
 	}
 

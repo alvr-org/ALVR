@@ -125,7 +125,7 @@ void ControlSocket::Shutdown() {
 void ControlSocket::SendCommandResponse(const char * commandResponse)
 {
 	if (m_ClientSocket != INVALID_SOCKET) {
-		send(m_ClientSocket, commandResponse, strlen(commandResponse), 0);
-		send(m_ClientSocket, "\nEND\n", 5, 0);
+		// Send including NULL.
+		send(m_ClientSocket, commandResponse, strlen(commandResponse) + 1, 0);
 	}
 }

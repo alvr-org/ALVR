@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -13,7 +14,7 @@ namespace ALVR
         string m_Host = "127.0.0.1";
         int m_Port = 9944;
         TcpClient client;
-        string buf = "";
+        MemoryStream buf = new MemoryStream();
 
         public enum ServerStatus
         {
@@ -22,12 +23,6 @@ namespace ALVR
             DEAD
         };
         public ServerStatus status { get; private set; } = ServerStatus.DEAD;
-        enum ClientStatus
-        {
-            CONNECTED,
-            DEAD
-        };
-        ClientStatus clientStatus = ClientStatus.DEAD;
 
         public ControlSocket()
         {
@@ -72,17 +67,17 @@ namespace ALVR
             }
             else
             {
-                string str = Encoding.UTF8.GetString(buffer, 0, ret);
-                buf += str;
-
-                int i = buf.IndexOf("\nEND\n");
-                if (i == -1)
+                buf.Write(buffer, 0, ret);
+                byte[] array = buf.ToArray();
+                int index = Array.IndexOf(array, (byte)0);
+                if (index == -1)
                 {
                     return await ReadNextMessage();
                 }
-                string ret2 = buf.Substring(0, i);
-                buf = buf.Substring(i + 5);
-                return ret2;
+                buf.SetLength(0);
+                buf.Write(array, index + 1, array.Length - (index + 1));
+
+                return Encoding.UTF8.GetString(array, 0, index);
             }
         }
 

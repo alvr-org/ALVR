@@ -3,6 +3,7 @@
 #include "Logger.h"
 #include "resource.h"
 #include "Settings.h"
+#include "WICTextureLoader.h"
 
 extern uint64_t g_DriverTestMode;
 
@@ -285,13 +286,15 @@ bool FrameRender::Startup()
 		return false;
 	}
 
+	CreateRecenterTexture();
+
 	Log("Staging Texture created");
 
 	return true;
 }
 
 
-bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, const std::string& debugText)
+bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering, const std::string& debugText)
 {
 	// Set render target
 	m_pD3DRender->GetContext()->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get());
@@ -309,16 +312,36 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 	// Clear the back buffer
 	m_pD3DRender->GetContext()->ClearRenderTargetView(m_pRenderTargetView.Get(), DirectX::Colors::MidnightBlue);
 
+	// Overlay recentering texture on top of all layers.
+	if (recentering) {
+		layerCount++;
+	}
+
 	for (int i = 0; i < layerCount; i++) {
-		if (pTexture[i][0] == NULL || pTexture[i][1] == NULL) {
-			Log("Ignore NULL layer. layer=%d/%d", i, layerCount);
+		ID3D11Texture2D *textures[2];
+		vr::VRTextureBounds_t bound[2];
+
+		if (recentering && i == layerCount - 1) {
+			textures[0] = (ID3D11Texture2D *)m_recenterTexture.Get();
+			textures[1] = (ID3D11Texture2D *)m_recenterTexture.Get();
+			bound[0].uMin = bound[0].vMin = bound[1].uMin = bound[1].vMin = 0.0f;
+			bound[0].uMax = bound[0].vMax = bound[1].uMax = bound[1].vMax = 1.0f;
+		}
+		else {
+			textures[0] = pTexture[i][0];
+			textures[1] = pTexture[i][1];
+			bound[0] = bounds[i][0];
+			bound[1] = bounds[i][1];
+		}
+		if (textures[0] == NULL || textures[1] == NULL) {
+			Log("Ignore NULL layer. layer=%d/%d%s", i, layerCount, recentering ? " (recentering)" : "");
 			continue;
 		}
 
 		D3D11_TEXTURE2D_DESC srcDesc;
-		pTexture[i][0]->GetDesc(&srcDesc);
+		textures[0]->GetDesc(&srcDesc);
 
-		Log("RenderFrame layer=%d/%d %dx%d %d", i, layerCount, srcDesc.Width, srcDesc.Height, srcDesc.Format);
+		Log("RenderFrame layer=%d/%d %dx%d %d%s", i, layerCount, srcDesc.Width, srcDesc.Height, srcDesc.Format, recentering ? " (recentering)" : "");
 
 		D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
 		SRVDesc.Format = srcDesc.Format;
@@ -328,12 +351,12 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 
 		ComPtr<ID3D11ShaderResourceView> pShaderResourceView[2];
 
-		HRESULT hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[i][0], &SRVDesc, pShaderResourceView[0].ReleaseAndGetAddressOf());
+		HRESULT hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(textures[0], &SRVDesc, pShaderResourceView[0].ReleaseAndGetAddressOf());
 		if (FAILED(hr)) {
 			Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
 			return false;
 		}
-		hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(pTexture[i][1], &SRVDesc, pShaderResourceView[1].ReleaseAndGetAddressOf());
+		hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(textures[1], &SRVDesc, pShaderResourceView[1].ReleaseAndGetAddressOf());
 		if (FAILED(hr)) {
 			Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
 			return false;
@@ -371,15 +394,15 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 		SimpleVertex vertices[] =
 		{
 			// Left View
-			{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][0].uMin, bounds[i][0].vMax), 0 },
-		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][0].uMax, bounds[i][0].vMin), 0 },
-		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][0].uMax, bounds[i][0].vMax), 0 },
-		{ DirectX::XMFLOAT3(-1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][0].uMin, bounds[i][0].vMin), 0 },
+			{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bound[0].uMin, bound[0].vMax), 0 },
+		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bound[0].uMax, bound[0].vMin), 0 },
+		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bound[0].uMax, bound[0].vMax), 0 },
+		{ DirectX::XMFLOAT3(-1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bound[0].uMin, bound[0].vMin), 0 },
 		// Right View
-		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][1].uMin, bounds[i][1].vMax), 1 },
-		{ DirectX::XMFLOAT3(1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][1].uMax, bounds[i][1].vMin), 1 },
-		{ DirectX::XMFLOAT3(1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][1].uMax, bounds[i][1].vMax), 1 },
-		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bounds[i][1].uMin, bounds[i][1].vMin), 1 },
+		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bound[1].uMin, bound[1].vMax), 1 },
+		{ DirectX::XMFLOAT3(1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bound[1].uMax, bound[1].vMin), 1 },
+		{ DirectX::XMFLOAT3(1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bound[1].uMax, bound[1].vMax), 1 },
+		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bound[1].uMin, bound[1].vMin), 1 },
 		};
 
 		// TODO: Which is better? UpdateSubresource or Map
@@ -464,3 +487,13 @@ ComPtr<ID3D11Texture2D> FrameRender::GetTexture()
 	return m_pStagingTexture;
 }
 
+void FrameRender::CreateRecenterTexture()
+{
+	std::vector<char> texture;
+	if (!ReadBinaryResource(texture, IDR_RECENTER_TEXTURE)) {
+		Log("Failed to load resource for IDR_RECENTER_TEXTURE.");
+		return;
+	}
+	DirectX::CreateWICTextureFromMemory(m_pD3DRender->GetDevice(), (uint8_t *)&texture[0], texture.size(),
+		&m_recenterTexture, &m_recenterResourceView);
+}

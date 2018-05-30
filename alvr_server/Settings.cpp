@@ -39,6 +39,10 @@ static const char * const k_pch_Settings_LimitTimeslotPackets_Int32 = "limitTime
 
 static const char * const k_pch_Settings_ControllerModelNumber_String = "controllerModelNumber";
 static const char * const k_pch_Settings_ControllerSerialNumber_String = "controllerSerialNumber";
+static const char * const k_pch_Settings_ControllerTriggerMode_Int32 = "controllerTriggerMode";
+static const char * const k_pch_Settings_ControllerTrackpadClickMode_Int32 = "controllerTrackpadClickMode";
+static const char * const k_pch_Settings_ControllerTrackpadTouchMode_Int32 = "controllerTrackpadTouchMode";
+static const char * const k_pch_Settings_ControllerRecenterButton_Int32 = "controllerRecenterButton";
 //
 // Constants
 //
@@ -106,6 +110,11 @@ void Settings::Load()
 	m_controllerModelNumber = buf;
 	vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ControllerSerialNumber_String, buf, sizeof(buf));
 	m_controllerSerialNumber = buf;
+
+	m_controllerTriggerMode = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControllerTriggerMode_Int32);
+	m_controllerTrackpadClickMode = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControllerTrackpadClickMode_Int32);
+	m_controllerTrackpadTouchMode = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControllerTrackpadTouchMode_Int32);
+	m_controllerRecenterButton = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControllerRecenterButton_Int32);
 
 	if (Settings::Instance().m_DebugLog) {
 		OpenLog((g_DebugOutputDir + "\\" + LOG_FILE).c_str());

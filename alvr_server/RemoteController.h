@@ -7,8 +7,8 @@ class RemoteController : public vr::ITrackedDeviceServerDriver, public vr::IVRCo
 {
 public:
 	RemoteController(bool handed, std::shared_ptr<Listener> listener)
-	:  m_handed(handed)
-	, m_Listener(listener) {
+		: m_handed(handed)
+		, m_Listener(listener) {
 		m_supportedButtons = vr::ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)
 			| vr::ButtonMaskFromId(vr::k_EButton_SteamVR_Touchpad)
 			| vr::ButtonMaskFromId(vr::k_EButton_Dashboard_Back)
@@ -32,10 +32,12 @@ public:
 
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, Settings::Instance().m_controllerModelNumber.c_str());
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, Settings::Instance().m_controllerModelNumber.c_str());
-		
+
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_AttachedDeviceId_String, Settings::Instance().m_controllerSerialNumber.c_str());
 		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_SupportedButtons_Uint64, m_supportedButtons);
-		
+
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceProvidesBatteryStatus_Bool, true);
+
 		vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis0Type_Int32, vr::k_eControllerAxis_TrackPad);
 		//vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis1Type_Int32, vr::k_eControllerAxis_TrackPad);
 		//vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis2Type_Int32, vr::k_eControllerAxis_TrackPad);
@@ -137,40 +139,59 @@ public:
 		return 0;
 	}
 
-	void ReportControllerState() {
-		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
+	bool ReportControllerState() {
+		bool recenterRequest = false;
 
-		vr::VRControllerState_t NewState = { 0 };
+		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
 		TrackingInfo info;
 		m_Listener->GetTrackingInfo(info);
 
-		NewState.unPacketNum = (uint32_t) info.FrameIndex;
+		vr::EVRButtonId triggerButton = (vr::EVRButtonId)Settings::Instance().m_controllerTriggerMode;
+		vr::EVRButtonId trackpadClickButton = (vr::EVRButtonId)Settings::Instance().m_controllerTrackpadClickMode;
+		vr::EVRButtonId trackpadTouchButton = (vr::EVRButtonId)Settings::Instance().m_controllerTrackpadTouchMode;
+
 
 		// Trigger pressed (ovrButton_A)
 		if ((m_previousButtons & 0x00000001) != 0) {
 			if ((info.controllerButtons & 0x00000001) == 0) {
-				vr::VRServerDriverHost()->TrackedDeviceButtonUnpressed(m_unObjectId, vr::k_EButton_SteamVR_Trigger, 0.0);
-				vr::VRServerDriverHost()->TrackedDeviceButtonUntouched(m_unObjectId, vr::k_EButton_SteamVR_Trigger, 0.0);
+				if (Settings::Instance().m_controllerTriggerMode != -1) {
+					vr::VRServerDriverHost()->TrackedDeviceButtonUnpressed(m_unObjectId, triggerButton, 0.0);
+					vr::VRServerDriverHost()->TrackedDeviceButtonUntouched(m_unObjectId, triggerButton, 0.0);
+				}
 			}
 		}
 		else {
 			if ((info.controllerButtons & 0x00000001) != 0) {
-				vr::VRServerDriverHost()->TrackedDeviceButtonPressed(m_unObjectId, vr::k_EButton_SteamVR_Trigger, 0.0);
-				vr::VRServerDriverHost()->TrackedDeviceButtonTouched(m_unObjectId, vr::k_EButton_SteamVR_Trigger, 0.0);
+				if (Settings::Instance().m_controllerTriggerMode != -1) {
+					vr::VRServerDriverHost()->TrackedDeviceButtonPressed(m_unObjectId, triggerButton, 0.0);
+					vr::VRServerDriverHost()->TrackedDeviceButtonTouched(m_unObjectId, triggerButton, 0.0);
+				}
+				if (Settings::Instance().m_controllerRecenterButton == 1) {
+					recenterRequest = true;
+				}
 			}
 		}
-		// Touchpad click (ovrButton_Enter)
+
+		// Trackpad click (ovrButton_Enter)
 		if ((m_previousButtons & 0x00100000) != 0) {
 			if ((info.controllerButtons & 0x00100000) == 0) {
-				vr::VRServerDriverHost()->TrackedDeviceButtonUnpressed(m_unObjectId, vr::k_EButton_SteamVR_Touchpad, 0.0);
+				if (Settings::Instance().m_controllerTrackpadClickMode != -1) {
+					vr::VRServerDriverHost()->TrackedDeviceButtonUnpressed(m_unObjectId, trackpadClickButton, 0.0);
+				}
 			}
 		}
 		else {
 			if ((info.controllerButtons & 0x00100000) != 0) {
-				vr::VRServerDriverHost()->TrackedDeviceButtonPressed(m_unObjectId, vr::k_EButton_SteamVR_Touchpad, 0.0);
+				if (Settings::Instance().m_controllerTrackpadClickMode != -1) {
+					vr::VRServerDriverHost()->TrackedDeviceButtonPressed(m_unObjectId, trackpadClickButton, 0.0);
+				}
+				if (Settings::Instance().m_controllerRecenterButton == 2) {
+					recenterRequest = true;
+				}
 			}
 		}
+
 		// Back button (ovrButton_Back)
 		// This event is not sent normally.
 		// TODO: How we get it work?
@@ -186,24 +207,38 @@ public:
 				vr::VRServerDriverHost()->TrackedDeviceButtonTouched(m_unObjectId, vr::k_EButton_Dashboard_Back, 0.0);
 			}
 		}
+		// Trackpad touch
 		if ((m_previousFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) != 0) {
 			if ((info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) == 0) {
-				vr::VRServerDriverHost()->TrackedDeviceButtonUntouched(m_unObjectId, vr::k_EButton_SteamVR_Touchpad, 0.0);
+				if (Settings::Instance().m_controllerTrackpadTouchMode != -1) {
+					vr::VRServerDriverHost()->TrackedDeviceButtonUntouched(m_unObjectId, trackpadTouchButton, 0.0);
+				}
 			}
 		}
 		else {
 			if ((info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) != 0) {
-				vr::VRServerDriverHost()->TrackedDeviceButtonTouched(m_unObjectId, vr::k_EButton_SteamVR_Touchpad, 0.0);
+				if (Settings::Instance().m_controllerTrackpadTouchMode != -1) {
+					vr::VRServerDriverHost()->TrackedDeviceButtonTouched(m_unObjectId, trackpadTouchButton, 0.0);
+				}
+				if (Settings::Instance().m_controllerRecenterButton == 3) {
+					recenterRequest = true;
+				}
 			}
 		}
+
 		vr::VRControllerAxis_t axis;
 		// Positions are already normalized to -1.0~+1.0 on client side.
 		axis.x = info.controllerTrackpadPosition.x;
 		axis.y = info.controllerTrackpadPosition.y;
 		vr::VRServerDriverHost()->TrackedDeviceAxisUpdated(m_unObjectId, 0, axis);
 
+		// Battery
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, info.controllerBatteryPercentRemaining / 100.0f);
+
 		m_previousButtons = info.controllerButtons;
 		m_previousFlags = info.controllerFlags;
+
+		return recenterRequest;
 	}
 
 	std::string GetSerialNumber() {

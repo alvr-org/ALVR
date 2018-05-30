@@ -65,12 +65,19 @@
             this.metroLabel7 = new MetroFramework.Controls.MetroLabel();
             this.bufferTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.bitrateTrackBar = new MetroFramework.Controls.MetroTrackBar();
+            this.controllerTab = new MetroFramework.Controls.MetroTabPage();
+            this.metroLabel22 = new MetroFramework.Controls.MetroLabel();
+            this.trackpadClickComboBox = new MetroFramework.Controls.MetroComboBox();
+            this.metroLabel20 = new MetroFramework.Controls.MetroLabel();
+            this.triggerComboBox = new MetroFramework.Controls.MetroComboBox();
+            this.metroLabel21 = new MetroFramework.Controls.MetroLabel();
             this.debugTab = new MetroFramework.Controls.MetroTabPage();
             this.metroLabel5 = new MetroFramework.Controls.MetroLabel();
             this.logText = new MetroFramework.Controls.MetroTextBox();
             this.metroCheckBox3 = new MetroFramework.Controls.MetroCheckBox();
             this.debugPosCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroCheckBox2 = new MetroFramework.Controls.MetroCheckBox();
+            this.debugLogCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroCheckBox1 = new MetroFramework.Controls.MetroCheckBox();
             this.debugZTextBox = new MetroFramework.Controls.MetroTextBox();
             this.debugYTextBox = new MetroFramework.Controls.MetroTextBox();
@@ -83,6 +90,9 @@
             this.metroButton5 = new MetroFramework.Controls.MetroButton();
             this.metroButton4 = new MetroFramework.Controls.MetroButton();
             this.aboutTab = new MetroFramework.Controls.MetroTabPage();
+            this.driverLabel = new MetroFramework.Controls.MetroLabel();
+            this.uninstallButton = new MetroFramework.Controls.MetroButton();
+            this.installButton = new MetroFramework.Controls.MetroButton();
             this.metroLabel15 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel14 = new MetroFramework.Controls.MetroLabel();
             this.licenseTextBox = new MetroFramework.Controls.MetroTextBox();
@@ -92,16 +102,15 @@
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.debugLogCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.installButton = new MetroFramework.Controls.MetroButton();
-            this.uninstallButton = new MetroFramework.Controls.MetroButton();
-            this.driverLabel = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel23 = new MetroFramework.Controls.MetroLabel();
+            this.recenterButtonComboBox = new MetroFramework.Controls.MetroComboBox();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.messagePanel.SuspendLayout();
             this.videoTab.SuspendLayout();
+            this.controllerTab.SuspendLayout();
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
@@ -144,12 +153,13 @@
             // metroTabControl1
             // 
             this.metroTabControl1.Controls.Add(this.serverTab);
+            this.metroTabControl1.Controls.Add(this.controllerTab);
             this.metroTabControl1.Controls.Add(this.videoTab);
             this.metroTabControl1.Controls.Add(this.debugTab);
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 3;
+            this.metroTabControl1.SelectedIndex = 2;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -482,6 +492,70 @@
             this.bitrateTrackBar.Value = 30;
             this.bitrateTrackBar.ValueChanged += new System.EventHandler(this.bitrateTrackBar_ValueChanged);
             // 
+            // controllerTab
+            // 
+            this.controllerTab.Controls.Add(this.metroLabel22);
+            this.controllerTab.Controls.Add(this.recenterButtonComboBox);
+            this.controllerTab.Controls.Add(this.trackpadClickComboBox);
+            this.controllerTab.Controls.Add(this.metroLabel23);
+            this.controllerTab.Controls.Add(this.metroLabel20);
+            this.controllerTab.Controls.Add(this.triggerComboBox);
+            this.controllerTab.Controls.Add(this.metroLabel21);
+            this.controllerTab.HorizontalScrollbarBarColor = true;
+            this.controllerTab.Location = new System.Drawing.Point(4, 38);
+            this.controllerTab.Name = "controllerTab";
+            this.controllerTab.Size = new System.Drawing.Size(656, 283);
+            this.controllerTab.TabIndex = 6;
+            this.controllerTab.Text = "Controller";
+            this.controllerTab.VerticalScrollbarBarColor = true;
+            // 
+            // metroLabel22
+            // 
+            this.metroLabel22.AutoSize = true;
+            this.metroLabel22.Location = new System.Drawing.Point(184, 244);
+            this.metroLabel22.Name = "metroLabel22";
+            this.metroLabel22.Size = new System.Drawing.Size(230, 19);
+            this.metroLabel22.TabIndex = 10;
+            this.metroLabel22.Text = "These settings will be applied instantly.";
+            // 
+            // trackpadClickComboBox
+            // 
+            this.trackpadClickComboBox.FormattingEnabled = true;
+            this.trackpadClickComboBox.ItemHeight = 23;
+            this.trackpadClickComboBox.Location = new System.Drawing.Point(184, 94);
+            this.trackpadClickComboBox.Name = "trackpadClickComboBox";
+            this.trackpadClickComboBox.Size = new System.Drawing.Size(192, 29);
+            this.trackpadClickComboBox.TabIndex = 9;
+            // 
+            // metroLabel20
+            // 
+            this.metroLabel20.AutoSize = true;
+            this.metroLabel20.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel20.Location = new System.Drawing.Point(24, 94);
+            this.metroLabel20.Name = "metroLabel20";
+            this.metroLabel20.Size = new System.Drawing.Size(116, 25);
+            this.metroLabel20.TabIndex = 8;
+            this.metroLabel20.Text = "Trackpad click";
+            // 
+            // triggerComboBox
+            // 
+            this.triggerComboBox.FormattingEnabled = true;
+            this.triggerComboBox.ItemHeight = 23;
+            this.triggerComboBox.Location = new System.Drawing.Point(184, 32);
+            this.triggerComboBox.Name = "triggerComboBox";
+            this.triggerComboBox.Size = new System.Drawing.Size(192, 29);
+            this.triggerComboBox.TabIndex = 9;
+            // 
+            // metroLabel21
+            // 
+            this.metroLabel21.AutoSize = true;
+            this.metroLabel21.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel21.Location = new System.Drawing.Point(24, 32);
+            this.metroLabel21.Name = "metroLabel21";
+            this.metroLabel21.Size = new System.Drawing.Size(64, 25);
+            this.metroLabel21.TabIndex = 8;
+            this.metroLabel21.Text = "Trigger";
+            // 
             // debugTab
             // 
             this.debugTab.Controls.Add(this.metroLabel5);
@@ -564,6 +638,16 @@
             this.metroCheckBox2.Text = "Suspend";
             this.metroCheckBox2.UseVisualStyleBackColor = true;
             this.metroCheckBox2.CheckedChanged += new System.EventHandler(this.metroCheckBox2_CheckedChanged);
+            // 
+            // debugLogCheckBox
+            // 
+            this.debugLogCheckBox.AutoSize = true;
+            this.debugLogCheckBox.Location = new System.Drawing.Point(7, 177);
+            this.debugLogCheckBox.Name = "debugLogCheckBox";
+            this.debugLogCheckBox.Size = new System.Drawing.Size(78, 15);
+            this.debugLogCheckBox.TabIndex = 9;
+            this.debugLogCheckBox.Text = "DebugLog";
+            this.debugLogCheckBox.UseVisualStyleBackColor = true;
             // 
             // metroCheckBox1
             // 
@@ -678,6 +762,37 @@
             this.aboutTab.Text = "About";
             this.aboutTab.VerticalScrollbarBarColor = true;
             // 
+            // driverLabel
+            // 
+            this.driverLabel.AutoSize = true;
+            this.driverLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
+            this.driverLabel.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.driverLabel.Location = new System.Drawing.Point(84, 214);
+            this.driverLabel.Name = "driverLabel";
+            this.driverLabel.Size = new System.Drawing.Size(138, 19);
+            this.driverLabel.Style = MetroFramework.MetroColorStyle.Green;
+            this.driverLabel.TabIndex = 6;
+            this.driverLabel.Text = "Driver is not installed";
+            this.driverLabel.UseStyleColors = true;
+            // 
+            // uninstallButton
+            // 
+            this.uninstallButton.Location = new System.Drawing.Point(157, 245);
+            this.uninstallButton.Name = "uninstallButton";
+            this.uninstallButton.Size = new System.Drawing.Size(109, 23);
+            this.uninstallButton.TabIndex = 5;
+            this.uninstallButton.Text = "Uninstall driver";
+            this.uninstallButton.Click += new System.EventHandler(this.uninstallButton_Click);
+            // 
+            // installButton
+            // 
+            this.installButton.Location = new System.Drawing.Point(39, 245);
+            this.installButton.Name = "installButton";
+            this.installButton.Size = new System.Drawing.Size(98, 23);
+            this.installButton.TabIndex = 5;
+            this.installButton.Text = "Install driver";
+            this.installButton.Click += new System.EventHandler(this.installButton_Click);
+            // 
             // metroLabel15
             // 
             this.metroLabel15.AutoSize = true;
@@ -761,46 +876,24 @@
             this.pictureBox1.TabIndex = 11;
             this.pictureBox1.TabStop = false;
             // 
-            // debugLogCheckBox
+            // metroLabel23
             // 
-            this.debugLogCheckBox.AutoSize = true;
-            this.debugLogCheckBox.Location = new System.Drawing.Point(7, 177);
-            this.debugLogCheckBox.Name = "debugLogCheckBox";
-            this.debugLogCheckBox.Size = new System.Drawing.Size(78, 15);
-            this.debugLogCheckBox.TabIndex = 9;
-            this.debugLogCheckBox.Text = "DebugLog";
-            this.debugLogCheckBox.UseVisualStyleBackColor = true;
+            this.metroLabel23.AutoSize = true;
+            this.metroLabel23.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel23.Location = new System.Drawing.Point(24, 155);
+            this.metroLabel23.Name = "metroLabel23";
+            this.metroLabel23.Size = new System.Drawing.Size(133, 25);
+            this.metroLabel23.TabIndex = 8;
+            this.metroLabel23.Text = "Recenter button";
             // 
-            // installButton
+            // recenterButtonComboBox
             // 
-            this.installButton.Location = new System.Drawing.Point(39, 245);
-            this.installButton.Name = "installButton";
-            this.installButton.Size = new System.Drawing.Size(98, 23);
-            this.installButton.TabIndex = 5;
-            this.installButton.Text = "Install driver";
-            this.installButton.Click += new System.EventHandler(this.installButton_Click);
-            // 
-            // uninstallButton
-            // 
-            this.uninstallButton.Location = new System.Drawing.Point(157, 245);
-            this.uninstallButton.Name = "uninstallButton";
-            this.uninstallButton.Size = new System.Drawing.Size(109, 23);
-            this.uninstallButton.TabIndex = 5;
-            this.uninstallButton.Text = "Uninstall driver";
-            this.uninstallButton.Click += new System.EventHandler(this.uninstallButton_Click);
-            // 
-            // driverLabel
-            // 
-            this.driverLabel.AutoSize = true;
-            this.driverLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.driverLabel.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.driverLabel.Location = new System.Drawing.Point(84, 214);
-            this.driverLabel.Name = "driverLabel";
-            this.driverLabel.Size = new System.Drawing.Size(138, 19);
-            this.driverLabel.Style = MetroFramework.MetroColorStyle.Green;
-            this.driverLabel.TabIndex = 6;
-            this.driverLabel.Text = "Driver is not installed";
-            this.driverLabel.UseStyleColors = true;
+            this.recenterButtonComboBox.FormattingEnabled = true;
+            this.recenterButtonComboBox.ItemHeight = 23;
+            this.recenterButtonComboBox.Location = new System.Drawing.Point(184, 155);
+            this.recenterButtonComboBox.Name = "recenterButtonComboBox";
+            this.recenterButtonComboBox.Size = new System.Drawing.Size(192, 29);
+            this.recenterButtonComboBox.TabIndex = 9;
             // 
             // Launcher
             // 
@@ -824,6 +917,8 @@
             this.messagePanel.ResumeLayout(false);
             this.videoTab.ResumeLayout(false);
             this.videoTab.PerformLayout();
+            this.controllerTab.ResumeLayout(false);
+            this.controllerTab.PerformLayout();
             this.debugTab.ResumeLayout(false);
             this.debugTab.PerformLayout();
             this.aboutTab.ResumeLayout(false);
@@ -901,6 +996,14 @@
         private MetroFramework.Controls.MetroLabel driverLabel;
         private MetroFramework.Controls.MetroButton uninstallButton;
         private MetroFramework.Controls.MetroButton installButton;
+        private MetroFramework.Controls.MetroTabPage controllerTab;
+        private MetroFramework.Controls.MetroComboBox trackpadClickComboBox;
+        private MetroFramework.Controls.MetroLabel metroLabel20;
+        private MetroFramework.Controls.MetroComboBox triggerComboBox;
+        private MetroFramework.Controls.MetroLabel metroLabel21;
+        private MetroFramework.Controls.MetroLabel metroLabel22;
+        private MetroFramework.Controls.MetroComboBox recenterButtonComboBox;
+        private MetroFramework.Controls.MetroLabel metroLabel23;
     }
 }
 

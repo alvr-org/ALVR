@@ -48,5 +48,9 @@ public:
 	// Controller configs
 	std::string m_controllerModelNumber;
 	std::string m_controllerSerialNumber;
+	int32_t m_controllerTriggerMode;
+	int32_t m_controllerTrackpadClickMode;
+	int32_t m_controllerTrackpadTouchMode;
+	int32_t m_controllerRecenterButton;
 };
 

@@ -286,7 +286,7 @@ namespace
 		{
 		}
 
-		bool CopyToStaging( ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime, const std::string& debugText)
+		bool CopyToStaging( ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime, const std::string& debugText)
 		{
 			m_presentationTime = presentationTime;
 			m_frameIndex = frameIndex;
@@ -296,7 +296,7 @@ namespace
 			char buf[200];
 			snprintf(buf, sizeof(buf), "\nindex2: %llu", m_frameIndex2);
 
-			m_FrameRender->RenderFrame(pTexture, bounds, layerCount, debugText + buf);
+			m_FrameRender->RenderFrame(pTexture, bounds, layerCount, recentering, debugText + buf);
 			return true;
 		}
 
@@ -397,6 +397,67 @@ private:
 	uint64_t m_PreviousVsync;
 };
 
+class RecenterManager
+{
+public:
+	RecenterManager()
+		: m_recentering(false)
+		, m_recenterStartTimestamp(0)
+	{
+	}
+
+	bool IsRecentering() {
+		return m_recentering;
+	}
+
+	void BeginRecenter() {
+		m_recenterStartTimestamp = GetTimestampUs();
+		m_recentering = true;
+	}
+
+	void EndRecenter() {
+		m_recentering = false;
+	}
+
+	void OnPoseUpdated(TrackingInfo &info) {
+		if (m_recentering) {
+			if (GetTimestampUs() - m_recenterStartTimestamp > RECENTER_DURATION) {
+				vr::HmdQuaternion_t orientation;
+				double roll, pitch, yaw;
+
+				orientation.x = info.HeadPose_Pose_Orientation.x;
+				orientation.y = info.HeadPose_Pose_Orientation.y;
+				orientation.z = info.HeadPose_Pose_Orientation.z;
+				orientation.w = info.HeadPose_Pose_Orientation.w;
+
+				QuaternionToEulerAngle(orientation, roll, pitch, yaw);
+
+				m_centerYaw = yaw;
+
+				m_recentering = false;
+			}
+		}
+	}
+
+	vr::HmdQuaternion_t GetRecentered(const TrackingInfo &info) {
+		vr::HmdQuaternion_t orientation;
+		orientation.x = info.HeadPose_Pose_Orientation.x;
+		orientation.y = info.HeadPose_Pose_Orientation.y;
+		orientation.z = info.HeadPose_Pose_Orientation.z;
+		orientation.w = info.HeadPose_Pose_Orientation.w;
+		double roll, pitch, yaw;
+		QuaternionToEulerAngle(orientation, roll, pitch, yaw);
+		yaw -= m_centerYaw;
+		return EulerToQuaternion(pitch, roll, yaw);
+	}
+private:
+	bool m_recentering;
+	uint64_t m_recenterStartTimestamp;
+	double m_centerYaw;
+
+	static const int RECENTER_DURATION = 200 * 1000;
+};
+
 class DisplayComponent : public vr::IVRDisplayComponent
 {
 public:
@@ -474,11 +535,13 @@ class DirectModeComponent : public vr::IVRDriverDirectModeComponent
 public:
 	DirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender,
 		std::shared_ptr<CEncoder> pEncoder,
-		std::shared_ptr<Listener> Listener)
+		std::shared_ptr<Listener> Listener,
+		std::shared_ptr<RecenterManager> recenterManager)
 		: m_captureDDSTrigger(false)
 		, m_pD3DRender(pD3DRender)
 		, m_pEncoder(pEncoder)
 		, m_Listener(Listener)
+		, m_recenterManager(recenterManager)
 		, m_poseMutex(NULL)
 		, m_submitLayer(0)
 		, m_LastReferencedFrameIndex(0) 
@@ -830,7 +893,7 @@ public:
 		}
 
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
-		m_pEncoder->CopyToStaging(pTexture, m_submitBounds, layerCount, presentationTime, m_submitFrameIndex, m_submitClientTime, debugText);
+		m_pEncoder->CopyToStaging(pTexture, m_submitBounds, layerCount, m_recenterManager->IsRecentering(), presentationTime, m_submitFrameIndex, m_submitClientTime, debugText);
 
 		m_pD3DRender->GetContext()->Flush();
 	}
@@ -839,6 +902,7 @@ private:
 	std::shared_ptr<CD3DRender> m_pD3DRender;
 	std::shared_ptr<CEncoder> m_pEncoder;
 	std::shared_ptr<Listener> m_Listener;
+	std::shared_ptr<RecenterManager> m_recenterManager;
 
 	// Resource for each process
 	struct ProcessResource {
@@ -946,8 +1010,10 @@ public:
 		m_VSyncThread = std::make_shared<VSyncThread>();
 		m_VSyncThread->Start();
 
+		m_recenterManager = std::make_shared<RecenterManager>();
+
 		m_displayComponent = std::make_shared<DisplayComponent>();
-		m_directModeComponent = std::make_shared<DirectModeComponent>(m_D3DRender, m_encoder, m_Listener);
+		m_directModeComponent = std::make_shared<DirectModeComponent>(m_D3DRender, m_encoder, m_Listener, m_recenterManager);
 
 		Log("CRemoteHmd successfully initialized.");
 		m_initialized = true;
@@ -984,6 +1050,8 @@ public:
 			m_D3DRender->Shutdown();
 			m_D3DRender.reset();
 		}
+
+		m_recenterManager.reset();
 	}
 
 	std::string GetSerialNumber() const { return Settings::Instance().m_sSerialNumber; }
@@ -1090,6 +1158,7 @@ public:
 			pose.qRotation.y = info.HeadPose_Pose_Orientation.y;
 			pose.qRotation.z = info.HeadPose_Pose_Orientation.z;
 			pose.qRotation.w = info.HeadPose_Pose_Orientation.w;
+			pose.qRotation = m_recenterManager->GetRecentered(info);
 
 			pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
 			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
@@ -1196,6 +1265,7 @@ public:
 			m_Listener->GetTrackingInfo(info);
 
 			m_directModeComponent->OnPoseUpdated(info);
+			m_recenterManager->OnPoseUpdated(info);
 			
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
@@ -1223,7 +1293,10 @@ public:
 				}
 			}
 			if (info.enableController) {
-				m_remoteController->ReportControllerState();
+				bool recenterRequested = m_remoteController->ReportControllerState();
+				if (recenterRequested) {
+					m_recenterManager->BeginRecenter();
+				}
 			}
 		}
 	}
@@ -1241,6 +1314,7 @@ private:
 	std::shared_ptr<CEncoder> m_encoder;
 	std::shared_ptr<Listener> m_Listener;
 	std::shared_ptr<VSyncThread> m_VSyncThread;
+	std::shared_ptr<RecenterManager> m_recenterManager;
 
 	float m_DebugPos[3];
 	bool m_EnabledDebugPos;

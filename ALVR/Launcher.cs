@@ -40,6 +40,26 @@ namespace ALVR
         string buf = "";
         ServerConfig config = new ServerConfig();
 
+        class ComboBoxCustomItem
+        {
+            public ComboBoxCustomItem(string s, int val)
+            {
+                text = s;
+                value = val;
+            }
+            private readonly string text;
+            private readonly int value;
+
+            public override string ToString()
+            {
+                return text;
+            }
+            public int GetValue()
+            {
+                return value;
+            }
+        }
+
         public Launcher()
         {
             InitializeComponent();
@@ -61,6 +81,31 @@ namespace ALVR
                 if (config.renderWidth == width)
                 {
                     resolutionComboBox.SelectedItem = resolutionComboBox.Items[i];
+                }
+            }
+
+            for(int i = 0; i < ServerConfig.supportedButtons.Length; i++)
+            {
+                var item = new ComboBoxCustomItem(ServerConfig.supportedButtons[i], ServerConfig.supportedButtonId[i]);
+                int index = triggerComboBox.Items.Add(item);
+                if (ServerConfig.supportedButtonId[i] == config.controllerTriggerMode)
+                {
+                    triggerComboBox.SelectedIndex = index;
+                }
+                index = trackpadClickComboBox.Items.Add(item);
+                if (ServerConfig.supportedButtonId[i] == config.controllerTrackpadClickMode)
+                {
+                    trackpadClickComboBox.SelectedIndex = index;
+                }
+            }
+
+            for (int i = 0; i < ServerConfig.supportedRecenterButton.Length; i++)
+            {
+                var item = new ComboBoxCustomItem(ServerConfig.supportedRecenterButton[i], i);
+                int index = recenterButtonComboBox.Items.Add(item);
+                if (i == config.controllerRecenterButton)
+                {
+                    recenterButtonComboBox.SelectedIndex = index;
                 }
             }
 
@@ -103,11 +148,17 @@ namespace ALVR
         private bool SaveConfig()
         {
             // Save json
-            int renderWidth = ServerConfig.supportedWidth[resolutionComboBox.SelectedIndex];
-            int bitrate = bitrateTrackBar.Value;
-            int bufferSize = GetBufferSizeKB() * 1000;
+            config.renderWidth = ServerConfig.supportedWidth[resolutionComboBox.SelectedIndex];
+            config.bitrate = bitrateTrackBar.Value;
+            config.bufferSize = GetBufferSizeKB() * 1000;
+            config.controllerTriggerMode = ((ComboBoxCustomItem)triggerComboBox.SelectedItem).GetValue();
+            config.controllerTrackpadClickMode = ((ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).GetValue();
+            // Currently, we use same assing to click and touch of trackpad.
+            config.controllerTrackpadTouchMode = ((ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).GetValue();
+            config.controllerRecenterButton = ((ComboBoxCustomItem)recenterButtonComboBox.SelectedItem).GetValue();
+
             bool debugLog = debugLogCheckBox.Checked;
-            if (!config.Save(bitrate, renderWidth, bufferSize, debugLog))
+            if (!config.Save(debugLog))
             {
                 Application.Exit();
                 return false;

@@ -130,6 +130,8 @@ public:
 	bool ReportControllerState(const TrackingInfo &info) {
 		bool recenterRequest = false;
 
+		m_info = info;
+
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
 		vr::EVRButtonId triggerButton = (vr::EVRButtonId)Settings::Instance().m_controllerTriggerMode;

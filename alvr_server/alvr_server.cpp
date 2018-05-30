@@ -1145,6 +1145,7 @@ public:
 				"%s %d\n"
 				"%s %d\n"
 				"%s %d\n"
+				"%s %d\n"
 				"%s %d"
 				, m_Listener->DumpConfig().c_str()
 				, k_pch_Settings_DebugLog_Bool, Settings::Instance().m_DebugLog

@@ -233,7 +233,7 @@ public:
 		vr::VRServerDriverHost()->TrackedDeviceAxisUpdated(m_unObjectId, 0, axis);
 
 		// Battery
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, info.controllerBatteryPercentRemaining / 100.0f);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, info.controllerBatteryPercentRemaining / 100.0f);
 
 		m_previousButtons = info.controllerButtons;
 		m_previousFlags = info.controllerFlags;

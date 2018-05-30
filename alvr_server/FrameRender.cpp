@@ -494,6 +494,13 @@ void FrameRender::CreateRecenterTexture()
 		Log("Failed to load resource for IDR_RECENTER_TEXTURE.");
 		return;
 	}
-	DirectX::CreateWICTextureFromMemory(m_pD3DRender->GetDevice(), (uint8_t *)&texture[0], texture.size(),
+	CoInitialize(NULL);
+
+	HRESULT hr = DirectX::CreateWICTextureFromMemory(m_pD3DRender->GetDevice(), (uint8_t *)&texture[0], texture.size(),
 		&m_recenterTexture, &m_recenterResourceView);
+	if (!m_recenterTexture) {
+		Log("Failed to create recenter texture. %d %s", hr, GetDxErrorStr(hr));
+	}else if (!m_recenterResourceView) {
+		Log("Failed to create recenter resource view. %d %s", hr, GetDxErrorStr(hr));
+	}
 }

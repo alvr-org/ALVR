@@ -225,40 +225,30 @@ inline void HmdMatrix_QuatToMat(float w, float x, float y, float z, vr::HmdMatri
 	pMatrix->m[2][3] = 0.f;
 }
 
-inline void QuaternionToEulerAngle(const vr::HmdQuaternion_t& q, double& roll, double& pitch, double& yaw)
-{
-	// roll (x-axis rotation)
-	double sinr = +2.0 * (q.w * q.x + q.y * q.z);
-	double cosr = +1.0 - 2.0 * (q.x * q.x + q.y * q.y);
-	roll = atan2(sinr, cosr);
-
-	// pitch (y-axis rotation)
-	double sinp = +2.0 * (q.w * q.y - q.z * q.x);
-	if (fabs(sinp) >= 1)
-		pitch = copysign(M_PI / 2, sinp); // use 90 degrees if out of range
-	else
-		pitch = asin(sinp);
-
-	// yaw (z-axis rotation)
-	double siny = +2.0 * (q.w * q.z + q.x * q.y);
-	double cosy = +1.0 - 2.0 * (q.y * q.y + q.z * q.z);
-	yaw = atan2(siny, cosy);
+inline double PitchFromQuaternion(double x, double y, double z, double w) {
+	// (xx, yy, zz) = rotate (0, 0, -1) by quaternion
+	double xx = -2 * y * w
+		- 2 * x * y;
+	double zz = -w * w
+		+ x * x
+		+ y * y
+		- z * z;
+	return atan2(xx, zz);
 }
 
-inline vr::HmdQuaternion_t EulerToQuaternion(double pitch, double roll, double yaw)
-{
-	vr::HmdQuaternion_t q;
-	// Abbreviations for the various angular functions
-	double cy = cos(yaw * 0.5);
-	double sy = sin(yaw * 0.5);
-	double cr = cos(roll * 0.5);
-	double sr = sin(roll * 0.5);
-	double cp = cos(pitch * 0.5);
-	double sp = sin(pitch * 0.5);
+inline vr::HmdQuaternion_t MultiplyPitchQuaternion(double pitch, double x, double y, double z, double w) {
+	// Multiply quaternion (x=0, y=1, z=0, theta=pitch)
 
-	q.w = cy * cr * cp + sy * sr * sp;
-	q.x = cy * sr * cp - sy * cr * sp;
-	q.y = cy * cr * sp + sy * sr * cp;
-	q.z = sy * cr * cp - cy * sr * sp;
-	return q;
+	vr::HmdQuaternion_t a;
+	a.w = cos(pitch * 0.5);
+	a.x = 0;
+	a.y = sin(pitch * 0.5);
+	a.z = 0;
+
+	vr::HmdQuaternion_t dest;
+	dest.x = a.w * x + a.y * z;
+	dest.y = a.y * w + a.w * y;
+	dest.z = a.w * z - a.y * x;
+	dest.w = a.w * w - a.y * y;
+	return dest;
 }

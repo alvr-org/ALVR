@@ -403,6 +403,7 @@ public:
 	RecenterManager()
 		: m_recentering(false)
 		, m_recenterStartTimestamp(0)
+		, m_centerPitch(0.0)
 	{
 	}
 
@@ -422,17 +423,19 @@ public:
 	void OnPoseUpdated(TrackingInfo &info) {
 		if (m_recentering) {
 			if (GetTimestampUs() - m_recenterStartTimestamp > RECENTER_DURATION) {
-				vr::HmdQuaternion_t orientation;
-				double roll, pitch, yaw;
+				m_centerPitch = PitchFromQuaternion(
+					info.HeadPose_Pose_Orientation.x
+				, info.HeadPose_Pose_Orientation.y
+				, info.HeadPose_Pose_Orientation.z
+				, info.HeadPose_Pose_Orientation.w);
 
-				orientation.x = info.HeadPose_Pose_Orientation.x;
-				orientation.y = info.HeadPose_Pose_Orientation.y;
-				orientation.z = info.HeadPose_Pose_Orientation.z;
-				orientation.w = info.HeadPose_Pose_Orientation.w;
-
-				QuaternionToEulerAngle(orientation, roll, pitch, yaw);
-
-				m_centerYaw = yaw;
+				Log("Do recentered: Cur=(%f,%f,%f,%f) pitch=%f"
+					, info.HeadPose_Pose_Orientation.x
+					, info.HeadPose_Pose_Orientation.y
+					, info.HeadPose_Pose_Orientation.z
+					, info.HeadPose_Pose_Orientation.w
+					, m_centerPitch
+				);
 
 				m_recentering = false;
 			}
@@ -440,22 +443,36 @@ public:
 	}
 
 	vr::HmdQuaternion_t GetRecentered(const TrackingInfo &info) {
-		vr::HmdQuaternion_t orientation;
-		orientation.x = info.HeadPose_Pose_Orientation.x;
-		orientation.y = info.HeadPose_Pose_Orientation.y;
-		orientation.z = info.HeadPose_Pose_Orientation.z;
-		orientation.w = info.HeadPose_Pose_Orientation.w;
-		double roll, pitch, yaw;
-		QuaternionToEulerAngle(orientation, roll, pitch, yaw);
-		yaw -= m_centerYaw;
-		return EulerToQuaternion(pitch, roll, yaw);
+		vr::HmdQuaternion_t fixedOrientation = MultiplyPitchQuaternion(-m_centerPitch
+			, info.HeadPose_Pose_Orientation.x
+			, info.HeadPose_Pose_Orientation.y
+			, info.HeadPose_Pose_Orientation.z
+			, info.HeadPose_Pose_Orientation.w);
+
+		Log("GetRecentered: Old=(%f,%f,%f,%f) New=(%f,%f,%f,%f) pitch=%f-%f %f"
+			, info.HeadPose_Pose_Orientation.x, info.HeadPose_Pose_Orientation.y
+			, info.HeadPose_Pose_Orientation.z, info.HeadPose_Pose_Orientation.w
+			, fixedOrientation.x, fixedOrientation.y
+			, fixedOrientation.z, fixedOrientation.w
+			, PitchFromQuaternion(
+				info.HeadPose_Pose_Orientation.x
+				, info.HeadPose_Pose_Orientation.y
+				, info.HeadPose_Pose_Orientation.z
+				, info.HeadPose_Pose_Orientation.w)
+			, PitchFromQuaternion(
+				fixedOrientation.x
+				, fixedOrientation.y
+				, fixedOrientation.z
+				, fixedOrientation.w)
+			, m_centerPitch);
+		return fixedOrientation;
 	}
 private:
 	bool m_recentering;
 	uint64_t m_recenterStartTimestamp;
-	double m_centerYaw;
+	double m_centerPitch;
 
-	static const int RECENTER_DURATION = 200 * 1000;
+	static const int RECENTER_DURATION = 400 * 1000;
 };
 
 class DisplayComponent : public vr::IVRDisplayComponent
@@ -562,10 +579,11 @@ public:
 		TrackingHistoryFrame history;
 		history.info = info;
 
-		HmdMatrix_QuatToMat(info.HeadPose_Pose_Orientation.w,
-			info.HeadPose_Pose_Orientation.x,
-			info.HeadPose_Pose_Orientation.y,
-			info.HeadPose_Pose_Orientation.z,
+		vr::HmdQuaternion_t recentered = m_recenterManager->GetRecentered(info);
+		HmdMatrix_QuatToMat(recentered.w,
+			recentered.x,
+			recentered.y,
+			recentered.z,
 			&history.rotationMatrix);
 
 		m_poseMutex.Wait(INFINITE);

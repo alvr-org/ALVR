@@ -252,7 +252,7 @@ bool UdpSocket::BindQueueSocket()
 	}
 	char buf[30];
 	inet_ntop(AF_INET, &m_QueueAddr, buf, sizeof(buf));
-	Log("UdpSocket::BindQueueSocket bound queue socket. port=%d\n", htons(m_QueueAddr.sin_port));
+	Log("UdpSocket::BindQueueSocket bound queue socket. port=%d", htons(m_QueueAddr.sin_port));
 
 	return true;
 }

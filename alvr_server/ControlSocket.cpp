@@ -96,8 +96,6 @@ bool ControlSocket::Recv(std::vector<std::string> &commands) {
 	buf[ret] = 0;
 	m_Buf += buf;
 
-	Log("Control buf: %s", m_Buf.c_str());
-
 	int index;
 	while ((index = m_Buf.find("\n")) != -1) {
 		commands.push_back(m_Buf.substr(0, index));

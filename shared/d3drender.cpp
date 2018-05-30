@@ -1,5 +1,6 @@
 //===================== Copyright (c) Valve Corporation. All Rights Reserved. ======================
 #include "d3drender.h"
+#include <D3d11_4.h>
 #include <Evntprov.h>
 
 #pragma comment( lib, "dxgi.lib" )
@@ -68,6 +69,17 @@ namespace
 		{
 			Log( "DX11 level hardware required!" );
 			return false;
+		}
+
+		ID3D11Multithread *D3D11Multithread = NULL;
+		HRESULT hr = (*pD3D11Context)->QueryInterface(__uuidof(ID3D11Multithread), (void **)&D3D11Multithread);
+		if (SUCCEEDED(hr)) {
+			Log("Successfully get ID3D11Multithread interface. We set SetMultithreadProtected(TRUE)");
+			D3D11Multithread->SetMultithreadProtected(TRUE);
+			D3D11Multithread->Release();
+		}
+		else {
+			Log("Failed to get ID3D11Multithread interface. Ignore.");
 		}
 
 		return true;

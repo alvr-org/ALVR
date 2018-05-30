@@ -16,21 +16,11 @@ namespace ALVR
         // Execute "C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vrpathreg.exe" adddriver "%~dp0
         public static bool InstallDriver()
         {
-            RegistryKey regkey = Registry.ClassesRoot.OpenSubKey(@"vrmonitor\Shell\Open\Command", false);
-            if (regkey == null)
+            string vrpathreg = GetVRPathRegPath();
+            if (vrpathreg == null)
             {
-                MessageBox.Show("SteamVR is not installed.\r\n(Registry HKEY_CLASSES_ROOT\\vrmonitor\\Shell\\Open\\Command was not found.)\r\nPlease install and retry.");
                 return false;
             }
-            string path = (string)regkey.GetValue("");
-
-            var m = Regex.Match(path, "^\"(.+)bin\\\\([^\\\\]+)\\\\vrmonitor.exe\" \"%1\"$");
-            if (!m.Success)
-            {
-                MessageBox.Show("Invalid value in registry HKEY_CLASSES_ROOT\\vrmonitor\\Shell\\Open\\Command.");
-                return false;
-            }
-            string vrpathreg = m.Groups[1].Value + @"bin\win32\vrpathreg.exe";
 
             string driverPath = Utils.GetDriverPath();
             if (!Directory.Exists(driverPath))
@@ -41,13 +31,73 @@ namespace ALVR
             // This is for compatibility to driver_uninstall.bat
             driverPath += "\\\\";
 
-            ExecuteProcess(vrpathreg, "adddriver \"" + driverPath + "\"");
+            ExecuteProcess(vrpathreg, "adddriver \"" + driverPath + "\"").WaitForExit();
 
             return true;
         }
 
+        public static bool UninstallDriver()
+        {
+            string vrpathreg = GetVRPathRegPath();
+            if (vrpathreg == null)
+            {
+                return false;
+            }
+
+            string driverPath = Utils.GetDriverPath();
+            // We don't check existence when uninstalling.
+            // This is for compatibility to driver_uninstall.bat
+            driverPath += "\\\\";
+
+            ExecuteProcess(vrpathreg, "removedriver \"" + driverPath + "\"").WaitForExit();
+
+            return true;
+        }
+
+        public static bool CheckInstalled()
+        {
+            string vrpathreg = GetVRPathRegPath();
+            if (vrpathreg == null)
+            {
+                throw new Exception();
+            }
+
+            string driverPath = Utils.GetDriverPath();
+            driverPath += "\\";
+
+            var process = ExecuteProcess(vrpathreg, "show");
+            while (!process.StandardOutput.EndOfStream)
+            {
+                string line = process.StandardOutput.ReadLine();
+                if (line.Trim("\n\t ".ToCharArray()) == driverPath)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static string GetVRPathRegPath()
+        {
+            RegistryKey regkey = Registry.ClassesRoot.OpenSubKey(@"vrmonitor\Shell\Open\Command", false);
+            if (regkey == null)
+            {
+                MessageBox.Show("SteamVR is not installed.\r\n(Registry HKEY_CLASSES_ROOT\\vrmonitor\\Shell\\Open\\Command was not found.)\r\nPlease install and retry.");
+                return null;
+            }
+            string path = (string)regkey.GetValue("");
+
+            var m = Regex.Match(path, "^\"(.+)bin\\\\([^\\\\]+)\\\\vrmonitor.exe\" \"%1\"$");
+            if (!m.Success)
+            {
+                MessageBox.Show("Invalid value in registry HKEY_CLASSES_ROOT\\vrmonitor\\Shell\\Open\\Command.");
+                return null;
+            }
+            return m.Groups[1].Value + @"bin\win32\vrpathreg.exe";
+        }
+
         // Execute vrpathreg without showing command prompt window.
-        private static void ExecuteProcess(string path, string args)
+        private static Process ExecuteProcess(string path, string args)
         {
             ProcessStartInfo startInfo = new ProcessStartInfo();
             startInfo.FileName = path;
@@ -58,17 +108,18 @@ namespace ALVR
             startInfo.CreateNoWindow = true;
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
 
-            Process processTemp = new Process();
-            processTemp.StartInfo = startInfo;
-            processTemp.EnableRaisingEvents = true;
+            Process process = new Process();
+            process.StartInfo = startInfo;
+            process.EnableRaisingEvents = true;
             try
             {
-                processTemp.Start();
+                process.Start();
             }
             catch (Exception e)
             {
                 throw;
             }
+            return process;
         }
     }
 }

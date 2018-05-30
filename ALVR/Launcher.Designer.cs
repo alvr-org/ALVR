@@ -93,6 +93,9 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.debugLogCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.installButton = new MetroFramework.Controls.MetroButton();
+            this.uninstallButton = new MetroFramework.Controls.MetroButton();
+            this.driverLabel = new MetroFramework.Controls.MetroLabel();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -146,7 +149,7 @@
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 2;
+            this.metroTabControl1.SelectedIndex = 3;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -659,6 +662,9 @@
             // 
             // aboutTab
             // 
+            this.aboutTab.Controls.Add(this.driverLabel);
+            this.aboutTab.Controls.Add(this.uninstallButton);
+            this.aboutTab.Controls.Add(this.installButton);
             this.aboutTab.Controls.Add(this.metroLabel15);
             this.aboutTab.Controls.Add(this.metroLabel14);
             this.aboutTab.Controls.Add(this.licenseTextBox);
@@ -765,6 +771,37 @@
             this.debugLogCheckBox.Text = "DebugLog";
             this.debugLogCheckBox.UseVisualStyleBackColor = true;
             // 
+            // installButton
+            // 
+            this.installButton.Location = new System.Drawing.Point(39, 245);
+            this.installButton.Name = "installButton";
+            this.installButton.Size = new System.Drawing.Size(98, 23);
+            this.installButton.TabIndex = 5;
+            this.installButton.Text = "Install driver";
+            this.installButton.Click += new System.EventHandler(this.installButton_Click);
+            // 
+            // uninstallButton
+            // 
+            this.uninstallButton.Location = new System.Drawing.Point(157, 245);
+            this.uninstallButton.Name = "uninstallButton";
+            this.uninstallButton.Size = new System.Drawing.Size(109, 23);
+            this.uninstallButton.TabIndex = 5;
+            this.uninstallButton.Text = "Uninstall driver";
+            this.uninstallButton.Click += new System.EventHandler(this.uninstallButton_Click);
+            // 
+            // driverLabel
+            // 
+            this.driverLabel.AutoSize = true;
+            this.driverLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
+            this.driverLabel.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.driverLabel.Location = new System.Drawing.Point(84, 214);
+            this.driverLabel.Name = "driverLabel";
+            this.driverLabel.Size = new System.Drawing.Size(138, 19);
+            this.driverLabel.Style = MetroFramework.MetroColorStyle.Green;
+            this.driverLabel.TabIndex = 6;
+            this.driverLabel.Text = "Driver is not installed";
+            this.driverLabel.UseStyleColors = true;
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -861,6 +898,9 @@
         private System.Windows.Forms.Label label2;
         private MetroFramework.Controls.MetroLabel metroLabel19;
         private MetroFramework.Controls.MetroCheckBox debugLogCheckBox;
+        private MetroFramework.Controls.MetroLabel driverLabel;
+        private MetroFramework.Controls.MetroButton uninstallButton;
+        private MetroFramework.Controls.MetroButton installButton;
     }
 }
 

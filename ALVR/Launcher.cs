@@ -68,6 +68,8 @@ namespace ALVR
 
             SetBufferSizeBytes(config.bufferSize);
 
+            CheckDriverInstallStatus();
+
             metroTabControl1.SelectedTab = serverTab;
 
             UpdateServerStatus();
@@ -85,8 +87,10 @@ namespace ALVR
         {
             if (!DriverInstaller.InstallDriver())
             {
+                CheckDriverInstallStatus();
                 return;
             }
+            CheckDriverInstallStatus();
 
             if (!SaveConfig())
             {
@@ -313,6 +317,20 @@ namespace ALVR
             return bufferTrackBar.Value * 1900 / 100 + 100;
         }
 
+        private void CheckDriverInstallStatus()
+        {
+            if (DriverInstaller.CheckInstalled())
+            {
+                driverLabel.Text = "Driver is installed";
+                driverLabel.Style = MetroFramework.MetroColorStyle.Green;
+            }
+            else
+            {
+                driverLabel.Text = "Driver is not installed";
+                driverLabel.Style = MetroFramework.MetroColorStyle.Red;
+            }
+        }
+
         //
         // Event handlers
         //
@@ -385,6 +403,20 @@ namespace ALVR
         private void bufferTrackBar_ValueChanged(object sender, EventArgs e)
         {
             bufferLabel.Text = GetBufferSizeKB() + "kB";
+        }
+
+        private void installButton_Click(object sender, EventArgs e)
+        {
+            DriverInstaller.InstallDriver();
+
+            CheckDriverInstallStatus();
+        }
+
+        private void uninstallButton_Click(object sender, EventArgs e)
+        {
+            DriverInstaller.UninstallDriver();
+
+            CheckDriverInstallStatus();
         }
     }
 }

@@ -75,6 +75,10 @@ public:
 			, m_centerPitch);
 		return fixedOrientation;
 	}
+
+	TrackingVector3 GetRecenteredVector(const TrackingVector3 &position) {
+		return RotateVectorQuaternion(position, -m_centerPitch);
+	}
 private:
 	bool m_recentering;
 	uint64_t m_recenterStartTimestamp;

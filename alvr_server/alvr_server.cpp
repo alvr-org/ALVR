@@ -491,6 +491,7 @@ public:
 	{
 		if (commandName == "Capture") {
 			m_captureDDSTrigger = true;
+			m_Listener->SendCommandResponse("OK\n");
 			return true;
 		}
 		return false;
@@ -813,7 +814,6 @@ public:
 				HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture[i][0], buf);
 				Log("Writing Debug DDS: End hr=%p %s", hr, GetDxErrorStr(hr).c_str());
 			}
-			m_Listener->SendCommandResponse("Capture OK");
 			m_captureDDSTrigger = false;
 		}
 
@@ -1096,9 +1096,13 @@ public:
 
 			pose.qRotation = m_recenterManager->GetRecentered(info.HeadPose_Pose_Orientation);
 
-			pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
-			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
-			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
+			TrackingVector3 position = m_recenterManager->GetRecenteredVector(info.HeadPose_Pose_Position);
+			pose.vecPosition[0] = position.x;
+			pose.vecPosition[1] = position.y;
+			pose.vecPosition[2] = position.z;
+			//pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
+			//pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
+			//pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
 
 			if (m_EnabledDebugPos) {
 				Log("Provide fake position for debug. Coords=(%f, %f, %f)", m_DebugPos[0], m_DebugPos[1], m_DebugPos[2]);
@@ -1133,6 +1137,7 @@ public:
 	{
 		if (commandName == "EnableDriverTestMode") {
 			g_DriverTestMode = strtoull(args.c_str(), NULL, 0);
+			m_Listener->SendCommandResponse("OK\n");
 		}
 		else if (commandName == "GetConfig") {
 			char buf[1000];
@@ -1189,6 +1194,11 @@ public:
 				else if (name == k_pch_Settings_ControllerRecenterButton_Int32) {
 					Settings::Instance().m_controllerRecenterButton = atoi(args.substr(index + 1).c_str());
 				}
+				else {
+					m_Listener->SendCommandResponse("NG\n");
+					return;
+				}
+				m_Listener->SendCommandResponse("OK\n");
 			}
 		}
 		else if (commandName == "SetDebugPos") {
@@ -1206,6 +1216,7 @@ public:
 		}else {
 			if (!m_directModeComponent->CommandCallback(commandName, args)) {
 				Log("Invalid control command: %s", commandName.c_str());
+				m_Listener->SendCommandResponse("NG\n");
 			}
 		}
 		

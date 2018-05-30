@@ -3,6 +3,7 @@
 #include "RecenterManager.h"
 #include "Logger.h"
 #include "Listener.h"
+#include "packet_types.h"
 
 class RemoteControllerComponent;
 
@@ -116,10 +117,18 @@ public:
 			);
 
 			pose.qRotation = m_recenterManager->GetRecentered(m_info.controller_Pose_Orientation);
+			//pose.qRotation.x = m_info.controller_Pose_Orientation.x;
+			//pose.qRotation.y = m_info.controller_Pose_Orientation.y;
+			//pose.qRotation.z = m_info.controller_Pose_Orientation.z;
+			//pose.qRotation.w = m_info.controller_Pose_Orientation.w;
 
-			pose.vecPosition[0] = m_info.controller_Pose_Position.x;
-			pose.vecPosition[1] = m_info.controller_Pose_Position.y;
-			pose.vecPosition[2] = m_info.controller_Pose_Position.z;
+			TrackingVector3 position = m_recenterManager->GetRecenteredVector(m_info.controller_Pose_Position);
+			pose.vecPosition[0] = position.x;
+			pose.vecPosition[1] = position.y;
+			pose.vecPosition[2] = position.z;
+			//pose.vecPosition[0] = m_info.controller_Pose_Position.x;
+			//pose.vecPosition[1] = m_info.controller_Pose_Position.y;
+			//pose.vecPosition[2] = m_info.controller_Pose_Position.z;
 
 			pose.poseTimeOffset = 0;
 		}

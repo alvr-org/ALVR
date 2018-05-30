@@ -12,6 +12,7 @@
 #include <math.h>
 
 #include "openvr_driver.h"
+#include "packet_types.h"
 
 extern HINSTANCE g_hInstance;
 
@@ -250,5 +251,57 @@ inline vr::HmdQuaternion_t MultiplyPitchQuaternion(double pitch, double x, doubl
 	dest.y = a.y * w + a.w * y;
 	dest.z = a.w * z - a.y * x;
 	dest.w = a.w * w - a.y * y;
+	return dest;
+}
+
+inline TrackingVector3 add(const TrackingVector3& v1, const TrackingVector3& v2) {
+	TrackingVector3 dest;
+	dest.x = v1.x + v2.x;
+	dest.y = v1.y + v2.y;
+	dest.z = v1.z + v2.z;
+	return dest;
+}
+
+inline TrackingVector3 scale(double scale, const TrackingVector3& v1) {
+	TrackingVector3 dest;
+	dest.x = scale * v1.x;
+	dest.y = scale * v1.y;
+	dest.z = scale * v1.z;
+	return dest;
+}
+
+inline double dot(const TrackingVector3& v1, const TrackingVector3& v2) {
+	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
+inline TrackingVector3 cross(const TrackingVector3& v1, const TrackingVector3& v2) {
+	TrackingVector3 dest;
+	dest.x = v1.y * v2.z - v1.z * v2.y;
+	dest.y = v1.z * v2.x - v1.x * v2.z;
+	dest.z = v1.y * v2.y - v1.y * v2.y;
+	return dest;
+}
+
+inline TrackingVector3 RotateVectorQuaternion(const TrackingVector3& v, double pitch)
+{
+	TrackingVector3 dest;
+
+	TrackingQuat q;
+	q.w = cos(pitch * 0.5);
+	q.x = 0;
+	q.y = sin(pitch * 0.5);
+	q.z = 0;
+
+	// Extract the vector part of the quaternion
+	TrackingVector3 u = { q.x, q.y, q.z };
+
+	// Extract the scalar part of the quaternion
+	float s = q.w;
+
+	TrackingVector3 c = cross(u, v);
+	// Do the math
+	dest = scale(2.0f * dot(u, v), u);
+	dest = add(dest, scale((s*s - dot(u, u)), v));
+	dest = add(dest, scale(2.0f * s, c));
 	return dest;
 }

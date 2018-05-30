@@ -397,84 +397,6 @@ private:
 	uint64_t m_PreviousVsync;
 };
 
-class RecenterManager
-{
-public:
-	RecenterManager()
-		: m_recentering(false)
-		, m_recenterStartTimestamp(0)
-		, m_centerPitch(0.0)
-	{
-	}
-
-	bool IsRecentering() {
-		return m_recentering;
-	}
-
-	void BeginRecenter() {
-		m_recenterStartTimestamp = GetTimestampUs();
-		m_recentering = true;
-	}
-
-	void EndRecenter() {
-		m_recentering = false;
-	}
-
-	void OnPoseUpdated(TrackingInfo &info) {
-		if (m_recentering) {
-			if (GetTimestampUs() - m_recenterStartTimestamp > RECENTER_DURATION) {
-				m_centerPitch = PitchFromQuaternion(
-					info.HeadPose_Pose_Orientation.x
-				, info.HeadPose_Pose_Orientation.y
-				, info.HeadPose_Pose_Orientation.z
-				, info.HeadPose_Pose_Orientation.w);
-
-				Log("Do recentered: Cur=(%f,%f,%f,%f) pitch=%f"
-					, info.HeadPose_Pose_Orientation.x
-					, info.HeadPose_Pose_Orientation.y
-					, info.HeadPose_Pose_Orientation.z
-					, info.HeadPose_Pose_Orientation.w
-					, m_centerPitch
-				);
-
-				m_recentering = false;
-			}
-		}
-	}
-
-	vr::HmdQuaternion_t GetRecentered(const TrackingInfo &info) {
-		vr::HmdQuaternion_t fixedOrientation = MultiplyPitchQuaternion(-m_centerPitch
-			, info.HeadPose_Pose_Orientation.x
-			, info.HeadPose_Pose_Orientation.y
-			, info.HeadPose_Pose_Orientation.z
-			, info.HeadPose_Pose_Orientation.w);
-
-		Log("GetRecentered: Old=(%f,%f,%f,%f) New=(%f,%f,%f,%f) pitch=%f-%f %f"
-			, info.HeadPose_Pose_Orientation.x, info.HeadPose_Pose_Orientation.y
-			, info.HeadPose_Pose_Orientation.z, info.HeadPose_Pose_Orientation.w
-			, fixedOrientation.x, fixedOrientation.y
-			, fixedOrientation.z, fixedOrientation.w
-			, PitchFromQuaternion(
-				info.HeadPose_Pose_Orientation.x
-				, info.HeadPose_Pose_Orientation.y
-				, info.HeadPose_Pose_Orientation.z
-				, info.HeadPose_Pose_Orientation.w)
-			, PitchFromQuaternion(
-				fixedOrientation.x
-				, fixedOrientation.y
-				, fixedOrientation.z
-				, fixedOrientation.w)
-			, m_centerPitch);
-		return fixedOrientation;
-	}
-private:
-	bool m_recentering;
-	uint64_t m_recenterStartTimestamp;
-	double m_centerPitch;
-
-	static const int RECENTER_DURATION = 400 * 1000;
-};
-
 class DisplayComponent : public vr::IVRDisplayComponent
 {
 public:
@@ -579,7 +501,7 @@ public:
 		TrackingHistoryFrame history;
 		history.info = info;
 
-		vr::HmdQuaternion_t recentered = m_recenterManager->GetRecentered(info);
+		vr::HmdQuaternion_t recentered = m_recenterManager->GetRecentered(info.HeadPose_Pose_Orientation);
 		HmdMatrix_QuatToMat(recentered.w,
 			recentered.x,
 			recentered.y,
@@ -1172,11 +1094,7 @@ public:
 				info.HeadPose_Pose_Position.z
 			);
 
-			pose.qRotation.x = info.HeadPose_Pose_Orientation.x;
-			pose.qRotation.y = info.HeadPose_Pose_Orientation.y;
-			pose.qRotation.z = info.HeadPose_Pose_Orientation.z;
-			pose.qRotation.w = info.HeadPose_Pose_Orientation.w;
-			pose.qRotation = m_recenterManager->GetRecentered(info);
+			pose.qRotation = m_recenterManager->GetRecentered(info.HeadPose_Pose_Orientation);
 
 			pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
 			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
@@ -1300,7 +1218,7 @@ public:
 					if (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_LEFTHAND) {
 						handed = true;
 					}
-					m_remoteController = std::make_shared<RemoteController>(handed, m_Listener);
+					m_remoteController = std::make_shared<RemoteControllerServerDriver>(handed, m_recenterManager);
 
 					bool ret;
 					ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
@@ -1311,7 +1229,7 @@ public:
 				}
 			}
 			if (info.enableController) {
-				bool recenterRequested = m_remoteController->ReportControllerState();
+				bool recenterRequested = m_remoteController->ReportControllerState(info);
 				if (recenterRequested) {
 					m_recenterManager->BeginRecenter();
 				}
@@ -1338,7 +1256,7 @@ private:
 	bool m_EnabledDebugPos;
 
 	bool m_controllerDetected;
-	std::shared_ptr<RemoteController> m_remoteController;
+	std::shared_ptr<RemoteControllerServerDriver> m_remoteController;
 
 	std::shared_ptr<DisplayComponent> m_displayComponent;
 	std::shared_ptr<DirectModeComponent> m_directModeComponent;

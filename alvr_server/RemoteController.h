@@ -1,22 +1,26 @@
 #pragma once
 #include <openvr_driver.h>
+#include "RecenterManager.h"
 #include "Logger.h"
 #include "Listener.h"
 
-class RemoteController : public vr::ITrackedDeviceServerDriver, public vr::IVRControllerComponent
+class RemoteControllerComponent;
+
+class RemoteControllerServerDriver : public vr::ITrackedDeviceServerDriver
 {
 public:
-	RemoteController(bool handed, std::shared_ptr<Listener> listener)
+	RemoteControllerServerDriver(bool handed, std::shared_ptr<RecenterManager> recenterManager)
 		: m_handed(handed)
-		, m_Listener(listener) {
+		, m_recenterManager(recenterManager) {
 		m_supportedButtons = vr::ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)
 			| vr::ButtonMaskFromId(vr::k_EButton_SteamVR_Touchpad)
 			| vr::ButtonMaskFromId(vr::k_EButton_Dashboard_Back)
 			| vr::ButtonMaskFromId(vr::k_EButton_Axis0)
 			| vr::ButtonMaskFromId(vr::k_EButton_Axis1);
+		m_info.type = 0;
 	}
 
-	virtual ~RemoteController() {
+	virtual ~RemoteControllerServerDriver() {
 	}
 
 	//
@@ -45,6 +49,8 @@ public:
 		//vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis4Type_Int32, vr::k_eControllerAxis_TrackPad);
 		vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_ControllerRoleHint_Int32, m_handed ? vr::TrackedControllerRole_LeftHand : vr::TrackedControllerRole_RightHand);
 
+		m_component = std::make_shared<RemoteControllerComponent>();
+
 		return vr::VRInitError_None;
 	}
 
@@ -63,7 +69,7 @@ public:
 		Log("RemoteController::GetComponent. Name=%s", pchComponentNameAndVersion);
 		if (!_stricmp(pchComponentNameAndVersion, vr::IVRControllerComponent_Version))
 		{
-			return static_cast<vr::IVRControllerComponent*>(this);
+			return m_component.get();
 		}
 
 		return NULL;
@@ -91,36 +97,29 @@ public:
 		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 		pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-		if (m_Listener->HasValidTrackingInfo()) {
-			TrackingInfo info;
-			m_Listener->GetTrackingInfo(info);
-			uint64_t trackingDelay = GetTimestampUs() - m_Listener->clientToServerTime(info.clientTime);
-
+		if (m_info.type != 0) {
 			Log("Controller Flags=%d Quot:%f,%f,%f,%f\nPos:%f,%f,%f\nButtons: %08X\n"
 				"Trackpad: %f, %f\nBattery=%d Recenter=%d",
-				info.controllerFlags,
-				info.controller_Pose_Orientation.x,
-				info.controller_Pose_Orientation.y,
-				info.controller_Pose_Orientation.z,
-				info.controller_Pose_Orientation.w,
-				info.controller_Pose_Position.x,
-				info.controller_Pose_Position.y,
-				info.controller_Pose_Position.z,
-				info.controllerButtons,
-				info.controllerTrackpadPosition.x,
-				info.controllerTrackpadPosition.y,
-				info.controllerBatteryPercentRemaining,
-				info.controllerRecenterCount
+				m_info.controllerFlags,
+				m_info.controller_Pose_Orientation.x,
+				m_info.controller_Pose_Orientation.y,
+				m_info.controller_Pose_Orientation.z,
+				m_info.controller_Pose_Orientation.w,
+				m_info.controller_Pose_Position.x,
+				m_info.controller_Pose_Position.y,
+				m_info.controller_Pose_Position.z,
+				m_info.controllerButtons,
+				m_info.controllerTrackpadPosition.x,
+				m_info.controllerTrackpadPosition.y,
+				m_info.controllerBatteryPercentRemaining,
+				m_info.controllerRecenterCount
 			);
 
-			pose.qRotation.x = info.controller_Pose_Orientation.x;
-			pose.qRotation.y = info.controller_Pose_Orientation.y;
-			pose.qRotation.z = info.controller_Pose_Orientation.z;
-			pose.qRotation.w = info.controller_Pose_Orientation.w;
+			pose.qRotation = m_recenterManager->GetRecentered(m_info.controller_Pose_Orientation);
 
-			pose.vecPosition[0] = info.controller_Pose_Position.x;
-			pose.vecPosition[1] = info.controller_Pose_Position.y;
-			pose.vecPosition[2] = info.controller_Pose_Position.z;
+			pose.vecPosition[0] = m_info.controller_Pose_Position.x;
+			pose.vecPosition[1] = m_info.controller_Pose_Position.y;
+			pose.vecPosition[2] = m_info.controller_Pose_Position.z;
 
 			pose.poseTimeOffset = 0;
 		}
@@ -128,29 +127,14 @@ public:
 		return pose;
 	}
 
-	/** Gets the current state of a controller. */
-	virtual vr::VRControllerState_t GetControllerState() override {
-		return vr::VRControllerState_t();
-	}
-
-	/** Returns a uint64 property. If the property is not available this function will return 0. */
-	virtual bool TriggerHapticPulse(uint32_t unAxisId, uint16_t usPulseDurationMicroseconds) override {
-		Log("IVRControllerComponent::TriggerHapticPulse AxisId=%d Duration=%d", unAxisId, usPulseDurationMicroseconds);
-		return 0;
-	}
-
-	bool ReportControllerState() {
+	bool ReportControllerState(const TrackingInfo &info) {
 		bool recenterRequest = false;
 
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
-		TrackingInfo info;
-		m_Listener->GetTrackingInfo(info);
-
 		vr::EVRButtonId triggerButton = (vr::EVRButtonId)Settings::Instance().m_controllerTriggerMode;
 		vr::EVRButtonId trackpadClickButton = (vr::EVRButtonId)Settings::Instance().m_controllerTrackpadClickMode;
 		vr::EVRButtonId trackpadTouchButton = (vr::EVRButtonId)Settings::Instance().m_controllerTrackpadTouchMode;
-
 
 		// Trigger pressed (ovrButton_A)
 		if ((m_previousButtons & 0x00000001) != 0) {
@@ -246,15 +230,37 @@ public:
 	}
 
 private:
+	std::shared_ptr<RecenterManager> m_recenterManager;
+	std::shared_ptr<RemoteControllerComponent> m_component;
+
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
+
+	uint32_t m_previousButtons;
+	uint32_t m_previousFlags;
 
 	uint64_t m_supportedButtons;
 	bool m_handed;
 
-	std::shared_ptr<Listener> m_Listener;
+	TrackingInfo m_info;
+};
 
-	uint32_t m_previousButtons;
-	uint32_t m_previousFlags;
+// We really need this implementation???
+class RemoteControllerComponent : public vr::IVRControllerComponent
+{
+public:
+	RemoteControllerComponent() {
+	}
+
+	/** Gets the current state of a controller. */
+	virtual vr::VRControllerState_t GetControllerState() override {
+		return vr::VRControllerState_t();
+	}
+
+	/** Returns a uint64 property. If the property is not available this function will return 0. */
+	virtual bool TriggerHapticPulse(uint32_t unAxisId, uint16_t usPulseDurationMicroseconds) override {
+		Log("IVRControllerComponent::TriggerHapticPulse AxisId=%d Duration=%d", unAxisId, usPulseDurationMicroseconds);
+		return 0;
+	}
 };
 

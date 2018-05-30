@@ -20,23 +20,7 @@ namespace ALVR
 {
     public partial class Launcher : MetroFramework.Forms.MetroForm
     {
-        string m_Host = "127.0.0.1";
-        int m_Port = 9944;
-        TcpClient client;
-        enum ServerStatus
-        {
-            CONNECTING,
-            CONNECTED,
-            DEAD
-        };
-        ServerStatus status = ServerStatus.DEAD;
-        enum ClientStatus
-        {
-            CONNECTED,
-            DEAD
-        };
-        ClientStatus clientStatus = ClientStatus.DEAD;
-
+        ControlSocket socket = new ControlSocket();
         string buf = "";
         ServerConfig config = new ServerConfig();
 
@@ -123,7 +107,7 @@ namespace ALVR
             messagePanel.Show();
             findingPanel.Hide();
 
-            Connect();
+            socket.Update();
 
             timer1.Start();
         }
@@ -166,53 +150,6 @@ namespace ALVR
             return true;
         }
 
-        async private Task<string> SendCommand(string command)
-        {
-            byte[] buffer = Encoding.UTF8.GetBytes(command + "\n");
-            try
-            {
-                client.GetStream().Write(buffer, 0, buffer.Length);
-            }
-            catch (Exception e)
-            {
-            }
-            return await ReadNextMessage();
-        }
-
-        async private Task<string> ReadNextMessage()
-        {
-            byte[] buffer = new byte[1000];
-            int ret = -1;
-            try
-            {
-                ret = await client.GetStream().ReadAsync(buffer, 0, 1000);
-            }
-            catch (Exception e)
-            {
-            }
-            if (ret == 0 || ret < 0)
-            {
-                // Disconnected
-                client.Close();
-                status = ServerStatus.DEAD;
-                UpdateServerStatus();
-                return "";
-            }
-            else
-            {
-                string str = Encoding.UTF8.GetString(buffer, 0, ret);
-                buf += str;
-
-                int i = buf.IndexOf("\nEND\n");
-                if (i == -1)
-                {
-                    return await ReadNextMessage();
-                }
-                string ret2 = buf.Substring(0, i);
-                buf = buf.Substring(i + 5);
-                return ret2;
-            }
-        }
 
         private void SetFileVersion()
         {
@@ -225,41 +162,9 @@ namespace ALVR
             licenseTextBox.Text = Properties.Resources.LICENSE;
         }
 
-        async private void Connect()
-        {
-            if (status != ServerStatus.DEAD && client.Connected)
-            {
-                return;
-            }
-            try
-            {
-                status = ServerStatus.CONNECTING;
-                UpdateServerStatus();
-                client = new TcpClient();
-                await client.ConnectAsync(m_Host, m_Port);
-            }
-            catch (Exception e)
-            {
-                Debug.WriteLine("Connection error: " + e + "\r\n" + e.Message);
-            }
-
-            metroProgressSpinner1.Hide();
-            if (client.Connected)
-            {
-                status = ServerStatus.CONNECTED;
-                UpdateServerStatus();
-                UpdateClients();
-            }
-            else
-            {
-                status = ServerStatus.DEAD;
-                UpdateServerStatus();
-            }
-        }
-
         private void UpdateServerStatus()
         {
-            if (status == ServerStatus.CONNECTED)
+            if (socket.status == ControlSocket.ServerStatus.CONNECTED)
             {
                 metroLabel3.Text = "Server is alive!";
                 metroLabel3.BackColor = Color.LimeGreen;
@@ -283,12 +188,11 @@ namespace ALVR
 
         async private void UpdateClients()
         {
-            if (!client.Connected)
+            if (!socket.Connected)
             {
-                Connect();
                 return;
             }
-            string str = await SendCommand("GetConfig");
+            string str = await socket.SendCommand("GetConfig");
             logText.Text = str.Replace("\n", "\r\n");
 
             if (str.Contains("Connected 1\n"))
@@ -302,7 +206,7 @@ namespace ALVR
             messagePanel.Hide();
             findingPanel.Show();
 
-            str = await SendCommand("GetRequests");
+            str = await socket.SendCommand("GetRequests");
 
             foreach (var row in dataGridView1.Rows.Cast<DataGridViewRow>())
             {
@@ -388,7 +292,9 @@ namespace ALVR
 
         private void timer1_Tick(object sender, EventArgs e)
         {
+            socket.Update();
             UpdateClients();
+            UpdateServerStatus();
         }
 
         async private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -396,18 +302,18 @@ namespace ALVR
             if (dataGridView1.Columns[e.ColumnIndex].Name == "Button")
             {
                 string IPAddr = (string)dataGridView1.Rows[e.RowIndex].Cells[1].Value;
-                await SendCommand("Connect " + IPAddr);
+                await socket.SendCommand("Connect " + IPAddr);
             }
         }
 
         async private void metroButton3_Click(object sender, EventArgs e)
         {
-            await SendCommand("Capture");
+            await socket.SendCommand("Capture");
         }
 
         async private void sendDebugPos_Click(object sender, EventArgs e)
         {
-            await SendCommand("SetDebugPos " + (debugPosCheckBox.Checked ? "1" : "0") + " " + debugXTextBox.Text + " " + debugYTextBox.Text + " " + debugZTextBox);
+            await socket.SendCommand("SetDebugPos " + (debugPosCheckBox.Checked ? "1" : "0") + " " + debugXTextBox.Text + " " + debugYTextBox.Text + " " + debugZTextBox);
         }
 
         private void bitrateTrackBar_ValueChanged(object sender, EventArgs e)
@@ -417,33 +323,33 @@ namespace ALVR
 
         async private void button2_Click(object sender, EventArgs e)
         {
-            await SendCommand("EnableTestMode " + metroTextBox1.Text);
+            await socket.SendCommand("EnableTestMode " + metroTextBox1.Text);
         }
 
         async private void button3_Click(object sender, EventArgs e)
         {
-            await SendCommand("EnableDriverTestMode " + metroTextBox2.Text);
+            await socket.SendCommand("EnableDriverTestMode " + metroTextBox2.Text);
         }
 
         async private void metroButton4_Click(object sender, EventArgs e)
         {
-            string str = await SendCommand("GetConfig");
+            string str = await socket.SendCommand("GetConfig");
             logText.Text = str.Replace("\n", "\r\n");
         }
 
         async private void metroButton5_Click(object sender, EventArgs e)
         {
-            await SendCommand("SetConfig DebugFrameIndex " + (metroCheckBox1.Checked ? "1" : "0"));
+            await socket.SendCommand("SetConfig debugFrameIndex " + (metroCheckBox1.Checked ? "1" : "0"));
         }
 
         async private void metroCheckBox2_CheckedChanged(object sender, EventArgs e)
         {
-            await SendCommand("Suspend " + (metroCheckBox2.Checked ? "1" : "0"));
+            await socket.SendCommand("Suspend " + (metroCheckBox2.Checked ? "1" : "0"));
         }
 
         async private void metroCheckBox3_CheckedChanged(object sender, EventArgs e)
         {
-            await SendCommand("SetConfig UseKeyedMutex " + (metroCheckBox2.Checked ? "1" : "0"));
+            await socket.SendCommand("SetConfig useKeyedMutex " + (metroCheckBox2.Checked ? "1" : "0"));
         }
 
         private void metroButton6_Click(object sender, EventArgs e)
@@ -468,6 +374,25 @@ namespace ALVR
             DriverInstaller.UninstallDriver();
 
             CheckDriverInstallStatus();
+        }
+
+        async private void triggerComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            int value = ((ComboBoxCustomItem)triggerComboBox.SelectedItem).GetValue();
+            await socket.SendCommand("SetConfig controllerTriggerMode " + value);
+        }
+
+        async private void trackpadClickComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            int value = ((ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).GetValue();
+            await socket.SendCommand("SetConfig controllerTrackpadClickMode " + value);
+            await socket.SendCommand("SetConfig controllerTrackpadTouchMode " + value);
+        }
+
+        async private void recenterButtonComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            int value = ((ComboBoxCustomItem)recenterButtonComboBox.SelectedItem).GetValue();
+            await socket.SendCommand("SetConfig controllerRecenterButton " + value);
         }
     }
 }

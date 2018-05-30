@@ -1137,17 +1137,25 @@ public:
 		else if (commandName == "GetConfig") {
 			char buf[1000];
 			snprintf(buf, sizeof(buf)
-				, "%sDebugLog %d\n"
-				"DebugCaptureOutput %d\n"
-				"DebugFrameIndex %d\n"
-				"DebugFrameOutput %d\n"
-				"UseKeyedMutex %d"
+				, "%s"
+				"%s %d\n"
+				"%s %d\n"
+				"%s %d\n"
+				"%s %d\n"
+				"%s %d\n"
+				"%s %d\n"
+				"%s %d\n"
+				"%s %d"
 				, m_Listener->DumpConfig().c_str()
-				, Settings::Instance().m_DebugLog
-				, Settings::Instance().m_DebugCaptureOutput
-				, Settings::Instance().m_DebugFrameIndex
-				, Settings::Instance().m_DebugFrameOutput
-				, Settings::Instance().m_UseKeyedMutex
+				, k_pch_Settings_DebugLog_Bool, Settings::Instance().m_DebugLog
+				, k_pch_Settings_DebugFrameIndex_Bool, Settings::Instance().m_DebugFrameIndex
+				, k_pch_Settings_DebugFrameOutput_Bool, Settings::Instance().m_DebugFrameOutput
+				, k_pch_Settings_DebugCaptureOutput_Bool, Settings::Instance().m_DebugCaptureOutput
+				, k_pch_Settings_UseKeyedMutex_Bool, Settings::Instance().m_UseKeyedMutex
+				, k_pch_Settings_ControllerTriggerMode_Int32, Settings::Instance().m_controllerTriggerMode
+				, k_pch_Settings_ControllerTrackpadClickMode_Int32, Settings::Instance().m_controllerTrackpadClickMode
+				, k_pch_Settings_ControllerTrackpadTouchMode_Int32, Settings::Instance().m_controllerTrackpadTouchMode
+				, k_pch_Settings_ControllerRecenterButton_Int32, Settings::Instance().m_controllerRecenterButton
 			);
 			m_Listener->SendCommandResponse(buf);
 		}else if(commandName == "SetConfig"){
@@ -1157,16 +1165,28 @@ public:
 			}
 			else {
 				auto name = args.substr(0, index);
-				if (name == "DebugFrameIndex") {
+				if (name == k_pch_Settings_DebugFrameIndex_Bool) {
 					Settings::Instance().m_DebugFrameIndex = atoi(args.substr(index + 1).c_str());
-				}else if(name == "DebugFrameOutput"){
+				}else if(name == k_pch_Settings_DebugFrameOutput_Bool){
 					Settings::Instance().m_DebugFrameOutput = atoi(args.substr(index + 1).c_str());
 				}
-				else if (name == "DebugCaptureOutput") {
+				else if (name == k_pch_Settings_DebugCaptureOutput_Bool) {
 					Settings::Instance().m_DebugCaptureOutput = atoi(args.substr(index + 1).c_str());
 				}
-				else if (name == "UseKeyedMutex") {
+				else if (name == k_pch_Settings_UseKeyedMutex_Bool) {
 					Settings::Instance().m_UseKeyedMutex = atoi(args.substr(index + 1).c_str());
+				}
+				else if (name == k_pch_Settings_ControllerTriggerMode_Int32) {
+					Settings::Instance().m_controllerTriggerMode = atoi(args.substr(index + 1).c_str());
+				}
+				else if (name == k_pch_Settings_ControllerTrackpadClickMode_Int32) {
+					Settings::Instance().m_controllerTrackpadClickMode = atoi(args.substr(index + 1).c_str());
+				}
+				else if (name == k_pch_Settings_ControllerTrackpadTouchMode_Int32) {
+					Settings::Instance().m_controllerTrackpadTouchMode = atoi(args.substr(index + 1).c_str());
+				}
+				else if (name == k_pch_Settings_ControllerRecenterButton_Int32) {
+					Settings::Instance().m_controllerRecenterButton = atoi(args.substr(index + 1).c_str());
 				}
 			}
 		}

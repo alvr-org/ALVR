@@ -22,7 +22,6 @@
 #include "NvEncoderD3D11.h"
 #include "Logger.h"
 #include "NvCodecUtils.h"
-#include "UdpSender.h"
 #include "nvencoderclioptions.h"
 #include "Listener.h"
 #include "Utils.h"

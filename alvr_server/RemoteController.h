@@ -256,7 +256,7 @@ public:
 		if ((m_previousFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) != (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH)) {
 			bool value = (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) != 0;
 			if (trackpadTouchButton != -1) {
-				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[trackpadClickButton], value, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[trackpadTouchButton], value, 0.0);
 			}
 			if (value && Settings::Instance().m_controllerRecenterButton == 3) {
 				recenterRequest = true;
@@ -264,7 +264,8 @@ public:
 		}
 
 		// Positions are already normalized to -1.0~+1.0 on client side.
-		vr::VRDriverInput()->UpdateScalarComponent(m_handles[trackpadClickButton], info.controllerTrackpadPosition.x, 0.0);
+		vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_X], info.controllerTrackpadPosition.x, 0.0);
+		vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_Y], info.controllerTrackpadPosition.y, 0.0);
 
 		// Battery
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, info.controllerBatteryPercentRemaining / 100.0f);

@@ -138,7 +138,7 @@ namespace ALVR
             config.controllerTriggerMode = ((ComboBoxCustomItem)triggerComboBox.SelectedItem).GetValue();
             config.controllerTrackpadClickMode = ((ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).GetValue();
             // Currently, we use same assing to click and touch of trackpad.
-            config.controllerTrackpadTouchMode = ((ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).GetValue();
+            config.controllerTrackpadTouchMode = ServerConfig.DEFAULT_TRACKPAD_TOUCH_MODE;
             config.controllerRecenterButton = ((ComboBoxCustomItem)recenterButtonComboBox.SelectedItem).GetValue();
 
             bool debugLog = debugLogCheckBox.Checked;
@@ -170,6 +170,7 @@ namespace ALVR
                 metroLabel3.BackColor = Color.LimeGreen;
                 metroLabel3.ForeColor = Color.White;
 
+                metroProgressSpinner1.Hide();
                 startServerButton.Hide();
             }
             else
@@ -182,6 +183,7 @@ namespace ALVR
                 messagePanel.Show();
                 findingPanel.Hide();
 
+                metroProgressSpinner1.Show();
                 startServerButton.Show();
             }
         }
@@ -386,7 +388,7 @@ namespace ALVR
         {
             int value = ((ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).GetValue();
             await socket.SendCommand("SetConfig controllerTrackpadClickMode " + value);
-            await socket.SendCommand("SetConfig controllerTrackpadTouchMode " + value);
+            //await socket.SendCommand("SetConfig controllerTrackpadTouchMode " + value);
         }
 
         async private void recenterButtonComboBox_SelectedIndexChanged(object sender, EventArgs e)

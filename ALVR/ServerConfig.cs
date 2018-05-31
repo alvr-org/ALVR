@@ -16,7 +16,7 @@ namespace ALVR
         public static readonly int DEFAULT_BITRATE = 30;
         public static readonly int DEFAULT_WIDTH = 2048;
         public static readonly int DEFAULT_BUFFER_SIZE = 200 * 1000; // 200kB
-        public static readonly int DEFAULT_TRIGGER_MODE = 33;
+        public static readonly int DEFAULT_TRIGGER_MODE = 24;
         public static readonly int DEFAULT_TRACKPAD_CLICK_MODE = 28;
         public static readonly int DEFAULT_TRACKPAD_TOUCH_MODE = 29;
         public static readonly int DEFAULT_RECENTER_BUTTON = 0; // 0=Disabled, 1=Trigger, 2=Trackpad Click, 3=Trackpad Touch
@@ -64,6 +64,14 @@ namespace ALVR
         {
         }
 
+        public void EnsureSupportedValue(int []list, int value)
+        {
+            if (Array.IndexOf(list, value) == -1)
+            {
+                throw new NotSupportedException();
+            }
+        }
+
         public bool Load()
         {
             string config = Utils.GetConfigPath();
@@ -94,17 +102,14 @@ namespace ALVR
             {
             }
 
-            renderWidth = DEFAULT_WIDTH;
             try
             {
                 renderWidth = (int)configJson.driver_alvr_server.renderWidth;
-                if (!supportedWidth.Contains(renderWidth))
-                {
-                    renderWidth = DEFAULT_WIDTH;
-                }
+                EnsureSupportedValue(supportedWidth, renderWidth);
             }
             catch (Exception e)
             {
+                renderWidth = DEFAULT_WIDTH;
             }
 
             try
@@ -119,8 +124,9 @@ namespace ALVR
             try
             {
                 controllerTriggerMode = (int)configJson.driver_alvr_server.controllerTriggerMode;
+                EnsureSupportedValue(supportedButtonId, controllerTriggerMode);
             }
-            catch (RuntimeBinderException e)
+            catch (Exception e)
             {
                 controllerTriggerMode = DEFAULT_TRIGGER_MODE;
             }
@@ -128,17 +134,21 @@ namespace ALVR
             try
             {
                 controllerTrackpadClickMode = (int)configJson.driver_alvr_server.controllerTrackpadClickMode;
+                EnsureSupportedValue(supportedButtonId, controllerTrackpadClickMode);
             }
-            catch (RuntimeBinderException e)
+            catch (Exception e)
             {
                 controllerTrackpadClickMode = DEFAULT_TRACKPAD_CLICK_MODE;
             }
 
             try
             {
-                controllerTrackpadTouchMode = (int)configJson.driver_alvr_server.controllerTrackpadTouchMode;
+                //controllerTrackpadTouchMode = (int)configJson.driver_alvr_server.controllerTrackpadTouchMode;
+                // We only support "Trackpad touch" value on controllerTrackpadTouchMode
+                controllerTrackpadTouchMode = DEFAULT_TRACKPAD_TOUCH_MODE;
+                //EnsureSupportedValue(supportedButtonId, controllerTrackpadTouchMode);
             }
-            catch (RuntimeBinderException e)
+            catch (Exception e)
             {
                 controllerTrackpadTouchMode = DEFAULT_TRACKPAD_TOUCH_MODE;
             }
@@ -146,6 +156,10 @@ namespace ALVR
             try
             {
                 controllerRecenterButton = (int)configJson.driver_alvr_server.controllerRecenterButton;
+                if (controllerRecenterButton < 0 || 3 < controllerRecenterButton)
+                {
+                    controllerRecenterButton = DEFAULT_RECENTER_BUTTON;
+                }
             }
             catch (RuntimeBinderException e)
             {

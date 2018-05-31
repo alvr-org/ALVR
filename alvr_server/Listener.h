@@ -132,7 +132,7 @@ public:
 							bool found = false;
 							int refreshRate = 60;
 							for (auto it = m_Requests.begin(); it != m_Requests.end(); it++) {
-								if (it->address.sin_addr == addr.sin_addr && it->address.sin_port == addr.sin_port) {
+								if (it->address.sin_addr.S_un.S_addr == addr.sin_addr.S_un.S_addr && it->address.sin_port == addr.sin_port) {
 									refreshRate = it->refreshRate;
 									found = true;
 									break;

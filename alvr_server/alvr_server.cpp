@@ -321,9 +321,8 @@ namespace
 class VSyncThread : public CThread
 {
 public:
-	VSyncThread(int refreshRate) 
-		: m_bExit(false)
-		, m_refreshRate(refreshRate){}
+	VSyncThread() 
+		: m_bExit(false) {}
 
 	// Trigger VSync if elapsed time from previous VSync is larger than 30ms.
 	void Run()override {
@@ -356,7 +355,6 @@ public:
 private:
 	bool m_bExit;
 	uint64_t m_PreviousVsync;
-	int m_refreshRate;
 };
 
 class DisplayComponent : public vr::IVRDisplayComponent
@@ -905,7 +903,7 @@ public:
 		std::function<void(int)> newClientCallback = [&](int refreshRate) { OnNewClient(refreshRate); };
 		m_Listener = std::make_shared<Listener>(Settings::Instance().m_Host, Settings::Instance().m_Port
 			, Settings::Instance().m_ControlHost, Settings::Instance().m_ControlPort
-			, Callback, poseCallback);
+			, Callback, poseCallback, newClientCallback);
 		if (!m_Listener->Startup())
 		{
 			return;
@@ -1244,13 +1242,6 @@ public:
 		m_refreshRate = refreshRate;
 
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, (float)m_refreshRate);
-		if (m_VSyncThread) {
-			m_VSyncThread->Shutdown();
-		}
-		else {
-			m_VSyncThread = std::make_shared<VSyncThread>(refreshRate);
-			m_VSyncThread->Start();
-		}
 	}
 
 private:

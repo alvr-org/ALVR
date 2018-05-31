@@ -77,13 +77,13 @@ void Settings::Load()
 		OpenLog((g_DebugOutputDir + "\\" + LOG_FILE).c_str());
 	}
 	
-	Log("driver_null: Serial Number: %s", m_sSerialNumber.c_str());
-	Log("driver_null: Model Number: %s", m_sModelNumber.c_str());
-	Log("driver_null: Render Target: %d %d", m_renderWidth, m_renderHeight);
-	Log("driver_null: Seconds from Vsync to Photons: %f", m_flSecondsFromVsyncToPhotons);
-	Log("driver_null: Display Frequency: %f", m_flDisplayFrequency);
-	Log("driver_null: IPD: %f", m_flIPD);
+	Log("Serial Number: %s", m_sSerialNumber.c_str());
+	Log("Model Number: %s", m_sModelNumber.c_str());
+	Log("Render Target: %d %d", m_renderWidth, m_renderHeight);
+	Log("Seconds from Vsync to Photons: %f", m_flSecondsFromVsyncToPhotons);
+	Log("Display Frequency: %f", m_flDisplayFrequency);
+	Log("IPD: %f", m_flIPD);
 
-	Log("driver_null: EncoderOptions: %s%s", m_EncoderOptions.c_str(), m_EncoderOptions.size() == sizeof(buf) - 1 ? " (Maybe truncated)" : "");
+	Log("EncoderOptions: %s%s", m_EncoderOptions.c_str(), m_EncoderOptions.size() == sizeof(buf) - 1 ? " (Maybe truncated)" : "");
 
 }

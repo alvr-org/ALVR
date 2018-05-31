@@ -29,6 +29,7 @@
 #include "Settings.h"
 #include "RemoteController.h"
 #include "packet_types.h"
+#include "resource.h"
 
 HINSTANCE g_hInstance;
 
@@ -854,6 +855,8 @@ public:
 		Log("Loading settings values");
 		
 		Settings::Instance().Load();
+
+		Log("Startup: %s %s", APP_MODULE_NAME, APP_VERSION_STRING);
 				
 		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
 		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().m_flIPD);

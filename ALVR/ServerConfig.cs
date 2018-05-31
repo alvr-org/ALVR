@@ -17,13 +17,14 @@ namespace ALVR
         public static readonly int DEFAULT_WIDTH = 2048;
         public static readonly int DEFAULT_BUFFER_SIZE = 200 * 1000; // 200kB
         public static readonly int DEFAULT_TRIGGER_MODE = 33;
-        public static readonly int DEFAULT_TRACKPAD_CLICK_MODE = 7;
-        public static readonly int DEFAULT_TRACKPAD_TOUCH_MODE = 7;
-        public static readonly int DEFAULT_RECENTER_BUTTON = 0; // 0=Disabled, 1=Trigger, 2=Trackpad Click
+        public static readonly int DEFAULT_TRACKPAD_CLICK_MODE = 28;
+        public static readonly int DEFAULT_TRACKPAD_TOUCH_MODE = 29;
+        public static readonly int DEFAULT_RECENTER_BUTTON = 0; // 0=Disabled, 1=Trigger, 2=Trackpad Click, 3=Trackpad Touch
         public static readonly int[] supportedWidth = new int[] { 1024, 1536, 2048 };
         // From OpenVR EVRButtonId
         public static readonly string[] supportedButtons = new string[] {
-            "System"
+            "None"
+            ,"System"
             , "ApplicationMenu"
             , "Grip"
             , "DPad_Left"
@@ -31,12 +32,23 @@ namespace ALVR
             , "DPad_Right"
             , "DPad_Down"
             , "A Button"
-            , "Touchpad"
-            , "Trigger"
+            , "B Button"
+            , "X Button"
+            , "Y Button" // 10
+            , "Trackpad" // 28
+            , "Trigger" // 24
+            , "Shoulder Left"
+            , "Shoulder Right"
+            , "Joystick Left"
+            , "Joystick Right"
+            , "Back"
+            , "Guide"
+            , "Start"
         };
-        public static readonly int[] supportedButtonId = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 32, 33 };
+        public static readonly int[] supportedButtonId = new int[] { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 /* Y */
+            , 28, 24, 13, 14, 15, 18, 21, 22, 23 };
         public static readonly string[] supportedRecenterButton = new string[] {
-            "None", "Trigger", "Trackpad click"
+            "None", "Trigger", "Trackpad click", "Trackpad touch"//, "Back short-press"
         };
 
         public int bitrate { get; set; } // in Mbps

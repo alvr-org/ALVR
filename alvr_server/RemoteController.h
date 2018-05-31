@@ -5,7 +5,41 @@
 #include "Listener.h"
 #include "packet_types.h"
 
-class RemoteControllerComponent;
+enum {
+	INPUT_SYSTEM_CLICK = 0,
+	INPUT_APPLICATION_MENU_CLICK = 1,
+	INPUT_GRIP_CLICK = 2,
+	INPUT_DPAD_LEFT_CLICK = 3,
+	INPUT_DPAD_UP_CLICK = 4,
+	INPUT_DPAD_RIGHT_CLICK = 5,
+	INPUT_DPAD_DOWN_CLICK = 6,
+	INPUT_A_CLICK = 7,
+	INPUT_B_CLICK = 8,
+	INPUT_X_CLICK = 9,
+	INPUT_Y_CLICK = 10,
+	INPUT_TRIGGER_LEFT_VALUE = 11,
+	INPUT_TRIGGER_RIGHT_VALUE = 12,
+	INPUT_SHOULDER_LEFT_CLICK = 13,
+	INPUT_SHOULDER_RIGHT_CLICK = 14,
+	INPUT_JOYSTICK_LEFT_CLICK = 15,
+	INPUT_JOYSTICK_LEFT_X = 16,
+	INPUT_JOYSTICK_LEFT_Y = 17,
+	INPUT_JOYSTICK_RIGHT_CLICK = 18,
+	INPUT_JOYSTICK_RIGHT_X = 19,
+	INPUT_JOYSTICK_RIGHT_Y = 20,
+	INPUT_BACK_CLICK = 21,
+	INPUT_GUIDE_CLICK = 22,
+	INPUT_START_CLICK = 23,
+	INPUT_TRIGGER_CLICK = 24,
+	INPUT_TRIGGER_VALUE = 25,
+	INPUT_TRACKPAD_X = 26,
+	INPUT_TRACKPAD_Y = 27,
+	INPUT_TRACKPAD_CLICK = 28,
+	INPUT_TRACKPAD_TOUCH = 29,
+
+	INPUT_MAX = 29,
+	INPUT_COUNT = 30
+};
 
 class RemoteControllerServerDriver : public vr::ITrackedDeviceServerDriver
 {
@@ -50,7 +84,48 @@ public:
 		//vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis4Type_Int32, vr::k_eControllerAxis_TrackPad);
 		vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_ControllerRoleHint_Int32, m_handed ? vr::TrackedControllerRole_LeftHand : vr::TrackedControllerRole_RightHand);
 
-		m_component = std::make_shared<RemoteControllerComponent>();
+		int i = 0;
+
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/system/click", &m_handles[INPUT_SYSTEM_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/application_menu/click", &m_handles[INPUT_APPLICATION_MENU_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/grip/click", &m_handles[INPUT_GRIP_CLICK]);
+
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/dpad_left/click", &m_handles[INPUT_DPAD_LEFT_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/dpad_up/click", &m_handles[INPUT_DPAD_UP_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/dpad_right/click", &m_handles[INPUT_DPAD_RIGHT_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/dpad_down/click", &m_handles[INPUT_DPAD_DOWN_CLICK]);
+
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/a/click", &m_handles[INPUT_A_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/b/click", &m_handles[INPUT_B_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/x/click", &m_handles[INPUT_X_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/y/click", &m_handles[INPUT_Y_CLICK]);
+
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger_left/value", &m_handles[INPUT_TRIGGER_LEFT_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger_right/value", &m_handles[INPUT_TRIGGER_RIGHT_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/shoulder_left/click", &m_handles[INPUT_SHOULDER_LEFT_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/shoulder_right/click", &m_handles[INPUT_SHOULDER_RIGHT_CLICK]);
+
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/joystick_left/click", &m_handles[INPUT_JOYSTICK_LEFT_CLICK]);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_left/x", &m_handles[INPUT_JOYSTICK_LEFT_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_left/y", &m_handles[INPUT_JOYSTICK_LEFT_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/joystick_right/click", &m_handles[INPUT_JOYSTICK_RIGHT_CLICK]);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_right/x", &m_handles[INPUT_JOYSTICK_RIGHT_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_right/y", &m_handles[INPUT_JOYSTICK_RIGHT_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/back/click", &m_handles[INPUT_BACK_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/guide/click", &m_handles[INPUT_GUIDE_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/start/click", &m_handles[INPUT_START_CLICK]);
+
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trigger/click", &m_handles[INPUT_TRIGGER_CLICK]);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger/value", &m_handles[INPUT_TRIGGER_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/x", &m_handles[INPUT_TRACKPAD_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/y", &m_handles[INPUT_TRACKPAD_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/click", &m_handles[INPUT_TRACKPAD_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/touch", &m_handles[INPUT_TRACKPAD_TOUCH]);
 
 		return vr::VRInitError_None;
 	}
@@ -68,10 +143,6 @@ public:
 	void *GetComponent(const char *pchComponentNameAndVersion)
 	{
 		Log("RemoteController::GetComponent. Name=%s", pchComponentNameAndVersion);
-		if (!_stricmp(pchComponentNameAndVersion, vr::IVRControllerComponent_Version))
-		{
-			return m_component.get();
-		}
 
 		return NULL;
 	}
@@ -143,89 +214,57 @@ public:
 
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
-		vr::EVRButtonId triggerButton = (vr::EVRButtonId)Settings::Instance().m_controllerTriggerMode;
-		vr::EVRButtonId trackpadClickButton = (vr::EVRButtonId)Settings::Instance().m_controllerTrackpadClickMode;
-		vr::EVRButtonId trackpadTouchButton = (vr::EVRButtonId)Settings::Instance().m_controllerTrackpadTouchMode;
+		int32_t triggerButton = Settings::Instance().m_controllerTriggerMode;
+		int32_t trackpadClickButton = Settings::Instance().m_controllerTrackpadClickMode;
+		int32_t trackpadTouchButton = Settings::Instance().m_controllerTrackpadTouchMode;
 
 		// Trigger pressed (ovrButton_A)
-		if ((m_previousButtons & 0x00000001) != 0) {
-			if ((info.controllerButtons & 0x00000001) == 0) {
-				if (Settings::Instance().m_controllerTriggerMode != -1) {
-					vr::VRServerDriverHost()->TrackedDeviceButtonUnpressed(m_unObjectId, triggerButton, 0.0);
-					vr::VRServerDriverHost()->TrackedDeviceButtonUntouched(m_unObjectId, triggerButton, 0.0);
-				}
+		if ((m_previousButtons & 0x00000001) != (info.controllerButtons & 0x00000001)) {
+			bool value = (info.controllerButtons & 0x00000001) != 0;
+			if (triggerButton != -1) {
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[triggerButton], value, 0.0);
 			}
-		}
-		else {
-			if ((info.controllerButtons & 0x00000001) != 0) {
-				if (Settings::Instance().m_controllerTriggerMode != -1) {
-					vr::VRServerDriverHost()->TrackedDeviceButtonPressed(m_unObjectId, triggerButton, 0.0);
-					vr::VRServerDriverHost()->TrackedDeviceButtonTouched(m_unObjectId, triggerButton, 0.0);
-				}
-				if (Settings::Instance().m_controllerRecenterButton == 1) {
-					recenterRequest = true;
-				}
+			if (value && Settings::Instance().m_controllerRecenterButton == 1) {
+				recenterRequest = true;
 			}
 		}
 
 		// Trackpad click (ovrButton_Enter)
-		if ((m_previousButtons & 0x00100000) != 0) {
-			if ((info.controllerButtons & 0x00100000) == 0) {
-				if (Settings::Instance().m_controllerTrackpadClickMode != -1) {
-					vr::VRServerDriverHost()->TrackedDeviceButtonUnpressed(m_unObjectId, trackpadClickButton, 0.0);
-				}
+		if ((m_previousButtons & 0x00100000) != (info.controllerButtons & 0x00100000)) {
+			bool value = (info.controllerButtons & 0x00100000) != 0;
+			if (triggerButton != -1) {
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[trackpadClickButton], value, 0.0);
 			}
-		}
-		else {
-			if ((info.controllerButtons & 0x00100000) != 0) {
-				if (Settings::Instance().m_controllerTrackpadClickMode != -1) {
-					vr::VRServerDriverHost()->TrackedDeviceButtonPressed(m_unObjectId, trackpadClickButton, 0.0);
-				}
-				if (Settings::Instance().m_controllerRecenterButton == 2) {
-					recenterRequest = true;
-				}
+			if (value && Settings::Instance().m_controllerRecenterButton == 2) {
+				recenterRequest = true;
 			}
 		}
 
 		// Back button (ovrButton_Back)
 		// This event is not sent normally.
 		// TODO: How we get it work?
-		if ((m_previousButtons & 0x00200000) != 0) {
-			if ((info.controllerButtons & 0x00200000) == 0) {
-				vr::VRServerDriverHost()->TrackedDeviceButtonUnpressed(m_unObjectId, vr::k_EButton_Dashboard_Back, 0.0);
-				vr::VRServerDriverHost()->TrackedDeviceButtonUntouched(m_unObjectId, vr::k_EButton_Dashboard_Back, 0.0);
+		if ((m_previousButtons & 0x00200000) != (info.controllerButtons & 0x00200000)) {
+			bool value = (info.controllerButtons & 0x00200000) != 0;
+			if (triggerButton != -1) {
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[vr::k_EButton_Dashboard_Back], value, 0.0);
 			}
-		}
-		else {
-			if ((info.controllerButtons & 0x00200000) != 0) {
-				vr::VRServerDriverHost()->TrackedDeviceButtonPressed(m_unObjectId, vr::k_EButton_Dashboard_Back, 0.0);
-				vr::VRServerDriverHost()->TrackedDeviceButtonTouched(m_unObjectId, vr::k_EButton_Dashboard_Back, 0.0);
+			if (value && Settings::Instance().m_controllerRecenterButton == 4) {
+				recenterRequest = true;
 			}
 		}
 		// Trackpad touch
-		if ((m_previousFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) != 0) {
-			if ((info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) == 0) {
-				if (Settings::Instance().m_controllerTrackpadTouchMode != -1) {
-					vr::VRServerDriverHost()->TrackedDeviceButtonUntouched(m_unObjectId, trackpadTouchButton, 0.0);
-				}
+		if ((m_previousFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) != (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH)) {
+			bool value = (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) != 0;
+			if (trackpadTouchButton != -1) {
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[trackpadClickButton], value, 0.0);
 			}
-		}
-		else {
-			if ((info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) != 0) {
-				if (Settings::Instance().m_controllerTrackpadTouchMode != -1) {
-					vr::VRServerDriverHost()->TrackedDeviceButtonTouched(m_unObjectId, trackpadTouchButton, 0.0);
-				}
-				if (Settings::Instance().m_controllerRecenterButton == 3) {
-					recenterRequest = true;
-				}
+			if (value && Settings::Instance().m_controllerRecenterButton == 3) {
+				recenterRequest = true;
 			}
 		}
 
-		vr::VRControllerAxis_t axis;
 		// Positions are already normalized to -1.0~+1.0 on client side.
-		axis.x = info.controllerTrackpadPosition.x;
-		axis.y = info.controllerTrackpadPosition.y;
-		vr::VRServerDriverHost()->TrackedDeviceAxisUpdated(m_unObjectId, 0, axis);
+		vr::VRDriverInput()->UpdateScalarComponent(m_handles[trackpadClickButton], info.controllerTrackpadPosition.x, 0.0);
 
 		// Battery
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, info.controllerBatteryPercentRemaining / 100.0f);
@@ -242,7 +281,6 @@ public:
 
 private:
 	std::shared_ptr<RecenterManager> m_recenterManager;
-	std::shared_ptr<RemoteControllerComponent> m_component;
 
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
@@ -254,24 +292,6 @@ private:
 	bool m_handed;
 
 	TrackingInfo m_info;
+
+	vr::VRInputComponentHandle_t m_handles[INPUT_COUNT];
 };
-
-// We really need this implementation???
-class RemoteControllerComponent : public vr::IVRControllerComponent
-{
-public:
-	RemoteControllerComponent() {
-	}
-
-	/** Gets the current state of a controller. */
-	virtual vr::VRControllerState_t GetControllerState() override {
-		return vr::VRControllerState_t();
-	}
-
-	/** Returns a uint64 property. If the property is not available this function will return 0. */
-	virtual bool TriggerHapticPulse(uint32_t unAxisId, uint16_t usPulseDurationMicroseconds) override {
-		Log("IVRControllerComponent::TriggerHapticPulse AxisId=%d Duration=%d", unAxisId, usPulseDurationMicroseconds);
-		return 0;
-	}
-};
-

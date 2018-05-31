@@ -362,7 +362,7 @@ public:
 	DisplayComponent() {}
 	virtual ~DisplayComponent() {}
 
-	virtual void GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
+	virtual void GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight) override
 	{
 		Log("GetWindowBounds %dx%d - %dx%d", 0, 0, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
 		*pnX = 0;
@@ -371,24 +371,24 @@ public:
 		*pnHeight = Settings::Instance().m_renderHeight;
 	}
 
-	virtual bool IsDisplayOnDesktop()
+	virtual bool IsDisplayOnDesktop() override
 	{
 		return false;
 	}
 
-	virtual bool IsDisplayRealDisplay()
+	virtual bool IsDisplayRealDisplay() override
 	{
 		return false;
 	}
 
-	virtual void GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight)
+	virtual void GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight) override
 	{
 		*pnWidth = Settings::Instance().m_renderWidth / 2;
 		*pnHeight = Settings::Instance().m_renderHeight;
 		Log("GetRecommendedRenderTargetSize %dx%d", *pnWidth, *pnHeight);
 	}
 
-	virtual void GetEyeOutputViewport(vr::EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
+	virtual void GetEyeOutputViewport(vr::EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight) override
 	{
 		*pnY = 0;
 		*pnWidth = Settings::Instance().m_renderWidth / 2;
@@ -405,7 +405,7 @@ public:
 		Log("GetEyeOutputViewport %d %dx%d %dx%d", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
 	}
 
-	virtual void GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom)
+	virtual void GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom) override
 	{
 		*pfLeft = -1.0;
 		*pfRight = 1.0;
@@ -415,7 +415,7 @@ public:
 		Log("GetProjectionRaw %d", eEye);
 	}
 
-	virtual vr::DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU, float fV)
+	virtual vr::DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU, float fV) override
 	{
 		vr::DistortionCoordinates_t coordinates;
 		coordinates.rfBlue[0] = fU;
@@ -488,7 +488,8 @@ public:
 	}
 
 	/** Specific to Oculus compositor support, textures supplied must be created using this method. */
-	virtual void CreateSwapTextureSet(uint32_t unPid, uint32_t unFormat, uint32_t unWidth, uint32_t unHeight, vr::SharedTextureHandle_t(*pSharedTextureHandles)[3]) {
+	virtual void CreateSwapTextureSet(uint32_t unPid, uint32_t unFormat, uint32_t unWidth, uint32_t unHeight, vr::SharedTextureHandle_t(*pSharedTextureHandles)[3]) override
+	{
 		Log("CreateSwapTextureSet pid=%d Format=%d %dx%d", unPid, unFormat, unWidth, unHeight);
 
 		//HRESULT hr = D3D11CreateDevice(pAdapter, D3D_DRIVER_TYPE_HARDWARE, NULL, creationFlags, NULL, 0, D3D11_SDK_VERSION, &pDevice, &eFeatureLevel, &pContext);
@@ -536,7 +537,8 @@ public:
 	}
 
 	/** Used to textures created using CreateSwapTextureSet.  Only one of the set's handles needs to be used to destroy the entire set. */
-	virtual void DestroySwapTextureSet(vr::SharedTextureHandle_t sharedTextureHandle) {
+	virtual void DestroySwapTextureSet(vr::SharedTextureHandle_t sharedTextureHandle) override
+	{
 		Log("DestroySwapTextureSet %p", sharedTextureHandle);
 
 		auto it = m_handleMap.find((HANDLE)sharedTextureHandle);
@@ -554,7 +556,8 @@ public:
 	}
 
 	/** Used to purge all texture sets for a given process. */
-	virtual void DestroyAllSwapTextureSets(uint32_t unPid) {
+	virtual void DestroyAllSwapTextureSets(uint32_t unPid) override
+	{
 		Log("DestroyAllSwapTextureSets pid=%d", unPid);
 
 		for (auto it = m_handleMap.begin(); it != m_handleMap.end();) {
@@ -571,7 +574,8 @@ public:
 	}
 
 	/** After Present returns, calls this to get the next index to use for rendering. */
-	virtual void GetNextSwapTextureSetIndex(vr::SharedTextureHandle_t sharedTextureHandles[2], uint32_t(*pIndices)[2]) {
+	virtual void GetNextSwapTextureSetIndex(vr::SharedTextureHandle_t sharedTextureHandles[2], uint32_t(*pIndices)[2]) override
+	{
 		Log("GetNextSwapTextureSetIndex %p %p %d %d", sharedTextureHandles[0], sharedTextureHandles[1], (*pIndices)[0], (*pIndices)[1]);
 		(*pIndices)[0]++;
 		(*pIndices)[0] %= 3;
@@ -581,7 +585,8 @@ public:
 
 	/** Call once per layer to draw for this frame.  One shared texture handle per eye.  Textures must be created
 	* using CreateSwapTextureSet and should be alternated per frame.  Call Present once all layers have been submitted. */
-	virtual void SubmitLayer(vr::SharedTextureHandle_t sharedTextureHandles[2], const vr::VRTextureBounds_t(&bounds)[2], const vr::HmdMatrix34_t *pPose) {
+	virtual void SubmitLayer(vr::SharedTextureHandle_t sharedTextureHandles[2], const vr::VRTextureBounds_t(&bounds)[2], const vr::HmdMatrix34_t *pPose) override
+	{
 		Log("SubmitLayer Handle0=%p Handle1=%p %f-%f,%f-%f %f-%f,%f-%f  \n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f", sharedTextureHandles[0], sharedTextureHandles[1]
 			, bounds[0].uMin, bounds[0].uMax, bounds[0].vMin, bounds[0].vMax
 			, bounds[1].uMin, bounds[1].uMax, bounds[1].vMin, bounds[1].vMax
@@ -666,7 +671,8 @@ public:
 	}
 
 	/** Submits queued layers for display. */
-	virtual void Present(vr::SharedTextureHandle_t syncTexture) {
+	virtual void Present(vr::SharedTextureHandle_t syncTexture) override
+	{
 		bool useMutex = Settings::Instance().m_UseKeyedMutex;
 		Log("Present syncTexture=%p (use:%d) m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu", syncTexture, useMutex, m_prevSubmitFrameIndex, m_submitFrameIndex);
 
@@ -838,7 +844,7 @@ private:
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-class CRemoteHmd : public vr::ITrackedDeviceServerDriver, public vr::IVRDriverDirectModeComponent
+class CRemoteHmd : public vr::ITrackedDeviceServerDriver
 {
 public:
 	CRemoteHmd()
@@ -962,7 +968,7 @@ public:
 		return m_initialized;
 	}
 
-	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId)
+	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) override
 	{
 		Log("CRemoteHmd Activate %d", unObjectId);
 
@@ -990,17 +996,17 @@ public:
 		return vr::VRInitError_None;
 	}
 
-	virtual void Deactivate()
+	virtual void Deactivate() override
 	{
 		Log("CRemoteHmd Deactivate");
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 	}
 
-	virtual void EnterStandby()
+	virtual void EnterStandby() override
 	{
 	}
 
-	void *GetComponent(const char *pchComponentNameAndVersion)
+	void *GetComponent(const char *pchComponentNameAndVersion) override
 	{
 		Log("GetComponent %s", pchComponentNameAndVersion);
 		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
@@ -1016,18 +1022,14 @@ public:
 		return NULL;
 	}
 
-	virtual void PowerOff()
-	{
-	}
-
 	/** debug request from a client */
-	virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize)
+	virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize) override
 	{
 		if (unResponseBufferSize >= 1)
 			pchResponseBuffer[0] = 0;
 	}
 
-	virtual vr::DriverPose_t GetPose()
+	virtual vr::DriverPose_t GetPose() override
 	{
 		vr::DriverPose_t pose = { 0 };
 		pose.poseIsValid = true;

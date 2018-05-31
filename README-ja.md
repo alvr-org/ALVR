@@ -19,8 +19,8 @@ Gear VR / Oculus Go のコントローラーをサポートしました！
 |---|---|
 |Oculus Go|OK|
 |GalaxyS8/S8+|OK|
+|GalaxyS7|OK|
 |GalaxyS9/S9+|未テスト|
-|GalaxyS7|未テスト|
 |GalaxyS6|未テスト|
 
 - NVENCが使えるNVIDIA GPUを搭載したハイエンドPC

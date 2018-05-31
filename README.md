@@ -15,12 +15,12 @@ Note that many PCVR games require 6DoF controller or multiple buttons, so you mi
 ALVR requires following devices:
 - Gear VR or Oculus Go
 
-|Device|Work?|
+|Device|Working?|
 |---|---|
 |Oculus Go|OK|
 |GalaxyS8/S8+|OK|
+|GalaxyS7|OK|
 |GalaxyS9/S9+|Not tested|
-|GalaxyS7|Not tested|
 |GalaxyS6|Not tested|
 
 - High-end gaming PC with NVIDIA GPU which supports NVENC

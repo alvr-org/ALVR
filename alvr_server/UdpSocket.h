@@ -6,7 +6,6 @@
 #include <memory>
 #include <vector>
 #include <list>
-#include "ISocket.h"
 #include "Poller.h"
 
 #define CONTROL_NAMED_PIPE "\\\\.\\pipe\\RemoteGlass_Control"

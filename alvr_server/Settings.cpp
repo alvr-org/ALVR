@@ -55,7 +55,6 @@ void Settings::Load()
 	m_ControlPort = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControlListenPort_Int32);
 
 	m_DebugLog = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugLog_Bool);
-	m_DebugTimestamp = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugTimestamp_Bool);
 	m_DebugFrameIndex = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugFrameIndex_Bool);
 	m_DebugFrameOutput = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugFrameOutput_Bool);
 	m_DebugCaptureOutput = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_DebugCaptureOutput_Bool);

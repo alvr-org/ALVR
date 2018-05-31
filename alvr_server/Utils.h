@@ -64,80 +64,6 @@ inline std::string GetDxErrorStr(HRESULT hr) {
 	return ret;
 }
 
-
-inline void DrawDigitPixels(D3D11_MAPPED_SUBRESOURCE &mapped, int x, int y, int digit) {
-	static const char map[][15] = {
-		{ 1, 1, 1,
-		1, 0, 1,
-		1, 0, 1,
-		1, 0, 1,
-		1, 1, 1 },
-	{ 0, 1, 0,
-	1, 1, 0,
-	0, 1, 0,
-	0, 1, 0,
-	1, 1, 1 },
-	{ 1, 1, 0,
-	1, 0, 1,
-	0, 1, 0,
-	1, 0, 0,
-	1, 1, 1 },
-	{ 1, 1, 1,
-	0, 0, 1,
-	0, 1, 1,
-	0, 0, 1,
-	1, 1, 1 },
-	{ 1, 0, 1,
-	1, 0, 1,
-	1, 1, 1,
-	0, 0, 1,
-	0, 0, 1 },
-	{ 1, 1, 1,
-	1, 0, 0,
-	1, 1, 1,
-	0, 0, 1,
-	1, 1, 1 },
-	{ 1, 1, 0,
-	1, 0, 0,
-	1, 1, 1,
-	1, 0, 1,
-	1, 1, 1 },
-	{ 1, 1, 1,
-	0, 0, 1,
-	0, 1, 0,
-	0, 1, 0,
-	0, 1, 0 },
-	{ 1, 1, 1,
-	1, 0, 1,
-	1, 1, 1,
-	1, 0, 1,
-	1, 1, 1 },
-	{ 1, 1, 1,
-	1, 0, 1,
-	1, 1, 1,
-	0, 0, 1,
-	0, 0, 1 }
-	};
-	if (digit < 0 || 9 < digit) {
-		digit = 0;
-	}
-	uint8_t *p = (uint8_t *)mapped.pData;
-
-	for (int i = 0; i < 5 * 2; i++) {
-		for (int j = 0; j < 3 * 2; j++) {
-			if (map[digit][i / 2 * 3 + j / 2]) {
-				p[(y + i) * mapped.RowPitch + (x + j) * 4 + 0] = 0xff;
-				p[(y + i) * mapped.RowPitch + (x + j) * 4 + 1] = 0xff;
-				p[(y + i) * mapped.RowPitch + (x + j) * 4 + 2] = 0xff;
-				p[(y + i) * mapped.RowPitch + (x + j) * 4 + 3] = 0xff;
-			}
-
-		}
-	}
-
-}
-
-
 inline std::string AddrToStr(sockaddr_in *addr) {
 	char buf[1000];
 	inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf));
@@ -254,7 +180,7 @@ inline vr::HmdQuaternion_t MultiplyPitchQuaternion(double pitch, double x, doubl
 	return dest;
 }
 
-inline TrackingVector3 add(const TrackingVector3& v1, const TrackingVector3& v2) {
+inline TrackingVector3 RotateVectorQuaternion_add(const TrackingVector3& v1, const TrackingVector3& v2) {
 	TrackingVector3 dest;
 	dest.x = v1.x + v2.x;
 	dest.y = v1.y + v2.y;
@@ -262,7 +188,7 @@ inline TrackingVector3 add(const TrackingVector3& v1, const TrackingVector3& v2)
 	return dest;
 }
 
-inline TrackingVector3 scale(double scale, const TrackingVector3& v1) {
+inline TrackingVector3 RotateVectorQuaternion_scale(double scale, const TrackingVector3& v1) {
 	TrackingVector3 dest;
 	dest.x = scale * v1.x;
 	dest.y = scale * v1.y;
@@ -270,11 +196,11 @@ inline TrackingVector3 scale(double scale, const TrackingVector3& v1) {
 	return dest;
 }
 
-inline double dot(const TrackingVector3& v1, const TrackingVector3& v2) {
+inline double RotateVectorQuaternion_dot(const TrackingVector3& v1, const TrackingVector3& v2) {
 	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 }
 
-inline TrackingVector3 cross(const TrackingVector3& v1, const TrackingVector3& v2) {
+inline TrackingVector3 RotateVectorQuaternion_cross(const TrackingVector3& v1, const TrackingVector3& v2) {
 	TrackingVector3 dest;
 	dest.x = v1.y * v2.z - v1.z * v2.y;
 	dest.y = v1.z * v2.x - v1.x * v2.z;
@@ -298,10 +224,10 @@ inline TrackingVector3 RotateVectorQuaternion(const TrackingVector3& v, double p
 	// Extract the scalar part of the quaternion
 	float s = q.w;
 
-	TrackingVector3 c = cross(u, v);
+	TrackingVector3 c = RotateVectorQuaternion_cross(u, v);
 	// Do the math
-	dest = scale(2.0f * dot(u, v), u);
-	dest = add(dest, scale((s*s - dot(u, u)), v));
-	dest = add(dest, scale(2.0f * s, c));
+	dest = RotateVectorQuaternion_scale(2.0f * RotateVectorQuaternion_dot(u, v), u);
+	dest = RotateVectorQuaternion_add(dest, RotateVectorQuaternion_scale((s*s - RotateVectorQuaternion_dot(u, u)), v));
+	dest = RotateVectorQuaternion_add(dest, RotateVectorQuaternion_scale(2.0f * s, c));
 	return dest;
 }

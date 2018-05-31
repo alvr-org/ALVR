@@ -40,43 +40,6 @@ namespace
 {
 	using Microsoft::WRL::ComPtr;
 	
-	void DrawDebugTimestamp(std::shared_ptr<CD3DRender> m_pD3DRender, ID3D11Texture2D *pTexture)
-	{
-		D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
-		HRESULT hr = m_pD3DRender->GetContext()->Map(pTexture, 0, D3D11_MAP_READ, 0, &mapped);
-		if (SUCCEEDED(hr))
-		{
-			int x = 10;
-			int y = 10;
-
-			FILETIME ft;
-			SYSTEMTIME st2, st;
-
-			GetSystemTimeAsFileTime(&ft);
-			FileTimeToSystemTime(&ft, &st2);
-			SystemTimeToTzSpecificLocalTime(NULL, &st2, &st);
-
-			uint64_t q = (((uint64_t)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
-			q /= 10;
-			char buf[100];
-			snprintf(buf, sizeof(buf),
-				"%02d %02d %02d %03lld %03lld",
-				st.wHour, st.wMinute, st.wSecond, q / 1000 % 1000, q % 1000);
-
-			for (int i = 0; buf[i]; i++) {
-				if (buf[i] != ' ') {
-					DrawDigitPixels(mapped, x, y, buf[i] - '0');
-				}
-				x += 10;
-			}
-
-			m_pD3DRender->GetContext()->Unmap(pTexture, 0);
-		}
-		else {
-			Log("DrawDebugTimestamp failed: %p %s", hr, GetDxErrorStr(hr).c_str());
-		}
-	}
-
 	void SaveDebugOutput(std::shared_ptr<CD3DRender> m_pD3DRender, std::vector<std::vector<uint8_t>> &vPacket, ID3D11Texture2D *texture, uint64_t frameIndex) {
 		if (vPacket.size() == 0) {
 			return;
@@ -203,10 +166,6 @@ namespace
 			Log("[VDispDvr] Transmit(begin) FrameIndex=%llu", frameIndex);
 
 			const NvEncInputFrame* encoderInputFrame = m_NvNecoderD3D11->GetNextInputFrame();
-
-			if (Settings::Instance().m_DebugTimestamp) {
-				DrawDebugTimestamp(m_pD3DRender, pTexture);
-			}
 
 			ID3D11Texture2D *pTexBgra = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
 			Log("CopyResource start");

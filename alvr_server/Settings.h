@@ -17,7 +17,6 @@ static const char * const k_pch_Settings_ClientRecvBufferSize_Int32 = "clientRec
 
 static const char * const k_pch_Settings_EncoderOptions_String = "nvencOptions";
 static const char * const k_pch_Settings_DebugLog_Bool = "debugLog";
-static const char * const k_pch_Settings_DebugTimestamp_Bool = "debugTimestamp";
 static const char * const k_pch_Settings_DebugFrameIndex_Bool = "debugFrameIndex";
 static const char * const k_pch_Settings_DebugFrameOutput_Bool = "debugFrameOutput";
 static const char * const k_pch_Settings_DebugCaptureOutput_Bool = "debugCaptureOutput";
@@ -75,7 +74,6 @@ public:
 	int m_ControlPort;
 
 	bool m_DebugLog;
-	bool m_DebugTimestamp;
 	bool m_DebugFrameIndex;
 	bool m_DebugFrameOutput;
 	bool m_DebugCaptureOutput;

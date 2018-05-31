@@ -488,24 +488,25 @@ public:
 	}
 
 	/** Specific to Oculus compositor support, textures supplied must be created using this method. */
-	virtual void CreateSwapTextureSet(uint32_t unPid, uint32_t unFormat, uint32_t unWidth, uint32_t unHeight, vr::SharedTextureHandle_t(*pSharedTextureHandles)[3]) override
+	virtual void CreateSwapTextureSet(uint32_t unPid, const SwapTextureSetDesc_t *pSwapTextureSetDesc, vr::SharedTextureHandle_t(*pSharedTextureHandles)[3]) override
 	{
-		Log("CreateSwapTextureSet pid=%d Format=%d %dx%d", unPid, unFormat, unWidth, unHeight);
+		Log("CreateSwapTextureSet pid=%d Format=%d %dx%d SampleCount=%d", unPid, pSwapTextureSetDesc->nFormat
+			, pSwapTextureSetDesc->nWidth, pSwapTextureSetDesc->nHeight, pSwapTextureSetDesc->nSampleCount);
 
 		//HRESULT hr = D3D11CreateDevice(pAdapter, D3D_DRIVER_TYPE_HARDWARE, NULL, creationFlags, NULL, 0, D3D11_SDK_VERSION, &pDevice, &eFeatureLevel, &pContext);
 
 		D3D11_TEXTURE2D_DESC SharedTextureDesc = {};
 		SharedTextureDesc.ArraySize = 1;
 		SharedTextureDesc.MipLevels = 1;
-		SharedTextureDesc.SampleDesc.Count = 1;
+		SharedTextureDesc.SampleDesc.Count = pSwapTextureSetDesc->nSampleCount;
 		SharedTextureDesc.SampleDesc.Quality = 0;
 		SharedTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-		SharedTextureDesc.Format = (DXGI_FORMAT)unFormat;
+		SharedTextureDesc.Format = (DXGI_FORMAT)pSwapTextureSetDesc->nFormat;
 
 		// Some(or all?) applications request larger texture than we specified in GetRecommendedRenderTargetSize.
 		// But, we must create textures in requested size to prevent cropped output. And then we must shrink texture to H.264 movie size.
-		SharedTextureDesc.Width = unWidth;
-		SharedTextureDesc.Height = unHeight;
+		SharedTextureDesc.Width = pSwapTextureSetDesc->nWidth;
+		SharedTextureDesc.Height = pSwapTextureSetDesc->nHeight;
 
 		SharedTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
 		//SharedTextureDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
@@ -585,11 +586,12 @@ public:
 
 	/** Call once per layer to draw for this frame.  One shared texture handle per eye.  Textures must be created
 	* using CreateSwapTextureSet and should be alternated per frame.  Call Present once all layers have been submitted. */
-	virtual void SubmitLayer(vr::SharedTextureHandle_t sharedTextureHandles[2], const vr::VRTextureBounds_t(&bounds)[2], const vr::HmdMatrix34_t *pPose) override
+	virtual void SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2], const vr::HmdMatrix34_t *pPose) override
 	{
-		Log("SubmitLayer Handle0=%p Handle1=%p %f-%f,%f-%f %f-%f,%f-%f  \n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f", sharedTextureHandles[0], sharedTextureHandles[1]
-			, bounds[0].uMin, bounds[0].uMax, bounds[0].vMin, bounds[0].vMax
-			, bounds[1].uMin, bounds[1].uMax, bounds[1].vMin, bounds[1].vMax
+		Log("SubmitLayer Handles=%p,%p DepthHandles=%p,%p %f-%f,%f-%f %f-%f,%f-%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f"
+			, perEye[0].hTexture, perEye[1].hTexture, perEye[0].hDepthTexture, perEye[1].hDepthTexture
+			, perEye[0].bounds.uMin, perEye[0].bounds.uMax, perEye[0].bounds.vMin, perEye[0].bounds.vMax
+			, perEye[1].bounds.uMin, perEye[1].bounds.uMax, perEye[1].bounds.vMin, perEye[1].bounds.vMax
 			, pPose->m[0][0], pPose->m[0][1], pPose->m[0][2], pPose->m[0][3]
 			, pPose->m[1][0], pPose->m[1][1], pPose->m[1][2], pPose->m[1][3]
 			, pPose->m[2][0], pPose->m[2][1], pPose->m[2][2], pPose->m[2][3]
@@ -657,10 +659,8 @@ public:
 		m_framePoseRotation.x = info.HeadPose_Pose_Orientation.x;
 		*/
 		if (m_submitLayer < MAX_LAYERS) {
-			m_submitTextures[m_submitLayer][0] = sharedTextureHandles[0];
-			m_submitTextures[m_submitLayer][1] = sharedTextureHandles[1];
-			m_submitBounds[m_submitLayer][0] = bounds[0];
-			m_submitBounds[m_submitLayer][1] = bounds[1];
+			m_submitLayers[m_submitLayer][0] = perEye[0];
+			m_submitLayers[m_submitLayer][1] = perEye[1];
 			m_submitLayer++;
 		}
 		else {
@@ -734,13 +734,15 @@ public:
 
 		ID3D11Texture2D *pTexture[MAX_LAYERS][2];
 		ComPtr<ID3D11Texture2D> Texture[MAX_LAYERS][2];
+		vr::VRTextureBounds_t bounds[MAX_LAYERS][2];
 
 		for (uint32_t i = 0; i < layerCount; i++) {
 			// Find left eye texture.
-			auto it = m_handleMap.find((HANDLE)m_submitTextures[i][0]);
+			HANDLE leftEyeTexture = (HANDLE)m_submitLayers[i][0].hTexture;
+			auto it = m_handleMap.find(leftEyeTexture);
 			if (it == m_handleMap.end()) {
 				// Ignore this layer.
-				Log("Submitted texture is not found on HandleMap. eye=right layer=%d/%d Texture Handle=%p", i, layerCount, (HANDLE)m_submitTextures[i][0]);
+				Log("Submitted texture is not found on HandleMap. eye=right layer=%d/%d Texture Handle=%p", i, layerCount, leftEyeTexture);
 			}
 			else {
 				Texture[i][0] = it->second.first->textures[it->second.second];
@@ -750,10 +752,11 @@ public:
 				Log("CopyTexture: layer=%d/%d pid=%d Texture Size=%dx%d Format=%d", i, layerCount, it->second.first->pid, desc.Width, desc.Height, desc.Format);
 
 				// Find right eye texture.
-				it = m_handleMap.find((HANDLE)m_submitTextures[i][1]);
+				HANDLE rightEyeTexture = (HANDLE)m_submitLayers[i][1].hTexture;
+				it = m_handleMap.find(rightEyeTexture);
 				if (it == m_handleMap.end()) {
 					// Ignore this layer
-					Log("Submitted texture is not found on HandleMap. eye=left layer=%d/%d Texture Handle=%p", i, layerCount, (HANDLE)m_submitTextures[i][1]);
+					Log("Submitted texture is not found on HandleMap. eye=left layer=%d/%d Texture Handle=%p", i, layerCount, rightEyeTexture);
 					Texture[i][0].Reset();
 				}
 				else {
@@ -763,6 +766,8 @@ public:
 
 			pTexture[i][0] = Texture[i][0].Get();
 			pTexture[i][1] = Texture[i][1].Get();
+			bounds[i][0] = m_submitLayers[i][0].bounds;
+			bounds[i][1] = m_submitLayers[i][1].bounds;
 		}
 
 		// This can go away, but is useful to see it as a separate packet on the gpu in traces.
@@ -798,7 +803,7 @@ public:
 		}
 
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
-		m_pEncoder->CopyToStaging(pTexture, m_submitBounds, layerCount, m_recenterManager->IsRecentering(), presentationTime, m_submitFrameIndex, m_submitClientTime, debugText);
+		m_pEncoder->CopyToStaging(pTexture, bounds, layerCount, m_recenterManager->IsRecentering(), presentationTime, m_submitFrameIndex, m_submitClientTime, debugText);
 
 		m_pD3DRender->GetContext()->Flush();
 	}
@@ -819,8 +824,7 @@ private:
 
 	static const int MAX_LAYERS = 10;
 	int m_submitLayer;
-	vr::SharedTextureHandle_t m_submitTextures[MAX_LAYERS][2];
-	vr::VRTextureBounds_t m_submitBounds[MAX_LAYERS][2];
+	SubmitLayerPerEye_t m_submitLayers[MAX_LAYERS][2];
 	vr::HmdQuaternion_t m_prevFramePoseRotation;
 	vr::HmdQuaternion_t m_framePoseRotation;
 	uint64_t m_submitFrameIndex;

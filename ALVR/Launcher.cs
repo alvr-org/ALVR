@@ -222,23 +222,40 @@ namespace ALVR
                 {
                     continue;
                 }
-                var elem = s.Split(" ".ToCharArray(), 2);
+                var elem = s.Split(" ".ToCharArray(), 4);
+                var address = elem[0];
+                var versionOk = elem[1] == "1";
+                var refreshRate = int.Parse(elem[2]);
+                var name = elem[3];
 
                 bool found = false;
                 foreach (var row in dataGridView1.Rows.Cast<DataGridViewRow>())
                 {
-                    if ((string)row.Cells[1].Value == elem[0])
+                    if ((string)row.Cells[1].Value == address)
                     {
                         found = true;
 
-                        row.Cells[0].Value = elem[1];
+                        row.Cells[0].Value = name;
+                        row.Cells[2].Value = refreshRate + " Hz";
+                        if (versionOk)
+                        {
+                            if ((string)row.Cells[3].Value != "Connect") {
+                                row.Cells[3].Value = "Connect";
+                            }
+                        } else
+                        {
+                            if ((string)row.Cells[3].Value != "Wrong version")
+                            {
+                                row.Cells[3].Value = "Wrong version";
+                            }
+                        }
                         // Mark as new data
                         row.Tag = 1;
                     }
                 }
                 if (!found)
                 {
-                    int index = dataGridView1.Rows.Add(new string[] { elem[1], elem[0], "Connect" });
+                    int index = dataGridView1.Rows.Add(new string[] { name, address, refreshRate + " Hz", versionOk ? "Connect" : "Wrong version" });
                     dataGridView1.Rows[index].Tag = 1;
                 }
             }
@@ -304,6 +321,12 @@ namespace ALVR
             if (dataGridView1.Columns[e.ColumnIndex].Name == "Button")
             {
                 string IPAddr = (string)dataGridView1.Rows[e.RowIndex].Cells[1].Value;
+                string version = (string)dataGridView1.Rows[e.RowIndex].Cells[3].Value;
+                if (version == "Wrong version")
+                {
+                    MessageBox.Show("Please check the version of client and server and update both.");
+                    return;
+                }
                 await socket.SendCommand("Connect " + IPAddr);
             }
         }

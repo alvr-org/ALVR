@@ -321,7 +321,9 @@ namespace
 class VSyncThread : public CThread
 {
 public:
-	VSyncThread() : m_bExit(false) {}
+	VSyncThread(int refreshRate) 
+		: m_bExit(false)
+		, m_refreshRate(refreshRate){}
 
 	// Trigger VSync if elapsed time from previous VSync is larger than 30ms.
 	void Run()override {
@@ -354,6 +356,7 @@ public:
 private:
 	bool m_bExit;
 	uint64_t m_PreviousVsync;
+	int m_refreshRate;
 };
 
 class DisplayComponent : public vr::IVRDisplayComponent
@@ -899,6 +902,7 @@ public:
 
 		std::function<void(std::string, std::string)> Callback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
+		std::function<void(int)> newClientCallback = [&](int refreshRate) { OnNewClient(refreshRate); };
 		m_Listener = std::make_shared<Listener>(Settings::Instance().m_Host, Settings::Instance().m_Port
 			, Settings::Instance().m_ControlHost, Settings::Instance().m_ControlPort
 			, Callback, poseCallback);
@@ -1236,6 +1240,19 @@ public:
 		}
 	}
 
+	void OnNewClient(int refreshRate) {
+		m_refreshRate = refreshRate;
+
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, (float)m_refreshRate);
+		if (m_VSyncThread) {
+			m_VSyncThread->Shutdown();
+		}
+		else {
+			m_VSyncThread = std::make_shared<VSyncThread>(refreshRate);
+			m_VSyncThread->Start();
+		}
+	}
+
 private:
 	bool m_initialized;
 	vr::TrackedDeviceIndex_t m_unObjectId;
@@ -1259,6 +1276,8 @@ private:
 
 	std::shared_ptr<DisplayComponent> m_displayComponent;
 	std::shared_ptr<DirectModeComponent> m_directModeComponent;
+
+	int m_refreshRate;
 };
 
 //-----------------------------------------------------------------------------

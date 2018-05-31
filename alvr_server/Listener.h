@@ -18,14 +18,14 @@ class Listener : public CThread {
 public:
 
 	Listener(std::string host, int port, std::string control_host, int control_port
-		, std::function<void(std::string, std::string)> callback, std::function<void()> poseCallback)
+		, std::function<void(std::string, std::string)> callback, std::function<void()> poseCallback, std::function<void(int)> newClientCallback)
 		: m_bExiting(false)
 		, m_Connected(false)
 		, m_Streaming(false)
-		{
-		m_LastSeen = 0;
-		m_CommandCallback = callback;
-		m_PoseUpdatedCallback = poseCallback;
+		, m_CommandCallback(callback)
+		, m_PoseUpdatedCallback(poseCallback)
+		, m_NewClientCallback(newClientCallback)
+		, m_LastSeen(0) {
 		memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
 		InitializeCriticalSection(&m_CS);
 
@@ -107,8 +107,9 @@ public:
 						std::string str;
 						for (auto it = m_Requests.begin(); it != m_Requests.end(); it++) {
 							char buf[500];
-							snprintf(buf, sizeof(buf), "%s %s\n"
+							snprintf(buf, sizeof(buf), "%s %d %d %s\n"
 								, AddrPortToStr(&it->address).c_str()
+								, it->versionOk, it->refreshRate
 								, it->deviceName);
 							str += buf;
 						}
@@ -128,7 +129,18 @@ public:
 							addr.sin_port = htons(port);
 							inet_pton(addr.sin_family, host.c_str(), &addr.sin_addr);
 
-							Log("Connected to %s:%d", host.c_str(), port);
+							bool found = false;
+							int refreshRate = 60;
+							for (auto it = m_Requests.begin(); it != m_Requests.end(); it++) {
+								if (it->address.sin_addr == addr.sin_addr && it->address.sin_port == addr.sin_port) {
+									refreshRate = it->refreshRate;
+									found = true;
+									break;
+								}
+							}
+							Log("Connected to %s:%d refreshRate=%d", host.c_str(), port, refreshRate);
+
+							m_NewClientCallback(refreshRate);
 
 							m_Socket->SetClientAddr(&addr);
 							m_Connected = true;
@@ -136,6 +148,7 @@ public:
 
 							ConnectionMessage message = {};
 							message.type = ALVR_PACKET_TYPE_CONNECTION_MESSAGE;
+							message.version = ALVR_PROTOCOL_VERSION;
 							message.videoWidth = Settings::Instance().m_renderWidth;
 							message.videoHeight = Settings::Instance().m_renderHeight;
 							message.bufferSize = Settings::Instance().m_clientRecvBufferSize;
@@ -217,7 +230,12 @@ public:
 			HelloMessage *message = (HelloMessage *)buf;
 			SanitizeDeviceName(message->deviceName);
 
-			Log("Hello Message: %s", message->deviceName);
+			if (message->version != ALVR_PROTOCOL_VERSION) {
+				Log("Received hello message which have unsupported version. Received Version=%d Our Version=%d", message->version, ALVR_PROTOCOL_VERSION);
+				// We can't connect, but we should do PushRequest to notify user.
+			}
+
+			Log("Hello Message: %s Version=%d Hz=%d", message->deviceName, message->version, message->refreshRate);
 
 			PushRequest(message, addr);
 		}
@@ -337,6 +355,8 @@ public:
 		request.address = *addr;
 		memcpy(request.deviceName, message->deviceName, sizeof(request.deviceName));
 		request.timestamp = GetTimestampUs();
+		request.versionOk = message->version == ALVR_PROTOCOL_VERSION;
+		request.refreshRate = message->refreshRate == 72 ? 72 : 60;
 
 		m_Requests.push_back(request);
 		if (m_Requests.size() > 10) {
@@ -416,6 +436,7 @@ private:
 	time_t m_LastSeen;
 	std::function<void(std::string, std::string)> m_CommandCallback;
 	std::function<void()> m_PoseUpdatedCallback;
+	std::function<void(int)> m_NewClientCallback;
 	TrackingInfo m_TrackingInfo;
 
 	uint64_t m_TimeDiff = 0;
@@ -430,6 +451,8 @@ private:
 		uint64_t timestamp;
 		sockaddr_in address;
 		char deviceName[32];
+		bool versionOk;
+		uint32_t refreshRate;
 	};
 	std::list<Request> m_Requests;
 };

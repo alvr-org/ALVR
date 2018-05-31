@@ -14,11 +14,16 @@ enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_VIDEO_FRAME = 9
 };
 
+enum {
+	ALVR_PROTOCOL_VERSION = 9
+};
 #pragma pack(push, 1)
 // hello message
 struct HelloMessage {
-	int type; // 1
+	uint32_t type; // 1
+	uint32_t version; // ALVR_PROTOCOL_VERSION
 	char deviceName[32]; // null-terminated
+	uint32_t refreshRate; // 60 or 72
 };
 struct TrackingQuat {
 	float x;
@@ -87,6 +92,7 @@ struct BroadcastRequestMessage {
 };
 struct ConnectionMessage {
 	uint32_t type; // 6
+	uint32_t version; // ALVR_PROTOCOL_VERSION
 	uint32_t videoWidth; // in pixels
 	uint32_t videoHeight; // in pixels
 	uint32_t bufferSize; // in bytes

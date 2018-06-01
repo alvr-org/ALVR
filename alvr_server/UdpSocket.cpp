@@ -6,11 +6,12 @@
 #include "Utils.h"
 #include "Settings.h"
 
-UdpSocket::UdpSocket(std::string host, int port, std::shared_ptr<Poller> poller)
+UdpSocket::UdpSocket(std::string host, int port, std::shared_ptr<Poller> poller, std::shared_ptr<Statistics> statistics)
 	: m_Host(host)
 	, m_Port(port)
 	, m_Socket(INVALID_SOCKET)
 	, m_Poller(poller)
+	, m_Statistics(statistics)
 	, m_PreviousSentUs(0)
 	
 {
@@ -108,7 +109,7 @@ bool UdpSocket::Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen) {
 					break;
 				}
 				else {
-					Log("sendto: CurrentTimeslotPackets=%llu FrameIndex=%llu", m_CurrentTimeslotPackets, buffer.frameIndex);
+					//Log("sendto: CurrentTimeslotPackets=%llu FrameIndex=%llu", m_CurrentTimeslotPackets, buffer.frameIndex);
 					int sendret = sendto(m_Socket, buffer.buf.get(), buffer.len, 0, (sockaddr *)&m_ClientAddr, sizeof(m_ClientAddr));
 					if (sendret < 0) {
 						Log("sendto error: %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
@@ -121,6 +122,7 @@ bool UdpSocket::Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen) {
 					}
 					else {
 						m_SendQueue.pop_front();
+						m_Statistics->CountPacket(buffer.len);
 						m_CurrentTimeslotPackets++;
 						m_PreviousSentUs = current;
 					}

@@ -23,6 +23,9 @@ namespace ALVR
         ControlSocket socket = new ControlSocket();
         string buf = "";
         ServerConfig config = new ServerConfig();
+        string clientName;
+        string clientIPAddress;
+        int clientRefreshRate;
 
         class ComboBoxCustomItem
         {
@@ -104,8 +107,7 @@ namespace ALVR
             UpdateServerStatus();
 
             messageLabel.Text = "Checking server status. Please wait...";
-            messagePanel.Show();
-            findingPanel.Hide();
+            ShowMessagePanel();
 
             socket.Update();
 
@@ -150,7 +152,6 @@ namespace ALVR
             return true;
         }
 
-
         private void SetFileVersion()
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
@@ -162,6 +163,25 @@ namespace ALVR
             licenseTextBox.Text = Properties.Resources.LICENSE;
         }
 
+        private void ShowMessagePanel()
+        {
+            connectedPanel.Hide();
+            findingPanel.Hide();
+            messagePanel.Show();
+        }
+        private void ShowFindingPanel()
+        {
+            connectedPanel.Hide();
+            findingPanel.Show();
+            messagePanel.Hide();
+        }
+
+        private void ShowConnectedPanel()
+        {
+            connectedPanel.Show();
+            findingPanel.Hide();
+            messagePanel.Hide();
+        }
         private void UpdateServerStatus()
         {
             if (socket.status == ControlSocket.ServerStatus.CONNECTED)
@@ -180,12 +200,47 @@ namespace ALVR
                 metroLabel3.ForeColor = Color.White;
 
                 messageLabel.Text = "Server is not runnning.\r\nPress \"Start Server\"";
-                messagePanel.Show();
-                findingPanel.Hide();
+                ShowMessagePanel();
 
                 metroProgressSpinner1.Show();
                 startServerButton.Show();
             }
+        }
+
+        async private void UpdateClientStatistics()
+        {
+            string str = await socket.SendCommand("GetStat");
+            int i = 0;
+            foreach (var line in str.Split("\n".ToCharArray()))
+            {
+                var elem = line.Split(" ".ToCharArray(), 2);
+                if (elem.Length != 2)
+                {
+                    continue;
+                }
+                if (statDataGridView.Rows.Count <= i / 2){
+                    statDataGridView.Rows.Add(new string[] {  });
+                }
+                statDataGridView.Rows[i / 2].Cells[(i % 2) * 2].Value = elem[0];
+                statDataGridView.Rows[i / 2].Cells[(i % 2) * 2 + 1].Value = elem[1];
+
+                i++;
+            }
+        }
+
+        private Dictionary<string, string> ParsePacket(string str)
+        {
+            Dictionary<string, string> dict = new Dictionary<string, string>();
+            foreach (var line in str.Split("\n".ToCharArray()))
+            {
+                var elem = line.Split(" ".ToCharArray(), 2);
+                if (elem.Length != 2)
+                {
+                    continue;
+                }
+                dict.Add(elem[0], elem[1]);
+            }
+            return dict;
         }
 
         async private void UpdateClients()
@@ -195,18 +250,23 @@ namespace ALVR
                 return;
             }
             string str = await socket.SendCommand("GetConfig");
-            logText.Text = str.Replace("\n", "\r\n");
-
-            if (str.Contains("Connected 1\n"))
+            if (str == "")
             {
-                // Connected
-                messageLabel.Text = "Connected!\r\nPlease enjoy!";
-                messagePanel.Show();
-                findingPanel.Hide();
                 return;
             }
-            messagePanel.Hide();
-            findingPanel.Show();
+            logText.Text = str.Replace("\n", "\r\n");
+
+            var configs = ParsePacket(str);
+            if (configs["Connected"] == "1")
+            {
+                // Connected
+                connectedLabel.Text = "Connected!\r\n" + configs["ClientName"] + "\r\n" + configs["Client"] + "\r\n" + configs["RefreshRate"] + " Hz";
+                ShowConnectedPanel();
+
+                UpdateClientStatistics();
+                return;
+            }
+            ShowFindingPanel();
 
             str = await socket.SendCommand("GetRequests");
 
@@ -327,6 +387,9 @@ namespace ALVR
                     MessageBox.Show("Please check the version of client and server and update both.");
                     return;
                 }
+                clientName = (string)dataGridView1.Rows[e.RowIndex].Cells[0].Value;
+                clientIPAddress = (string)dataGridView1.Rows[e.RowIndex].Cells[1].Value;
+                clientRefreshRate = ((string)dataGridView1.Rows[e.RowIndex].Cells[2].Value) == "60 Hz" ? 60 : 72;
                 await socket.SendCommand("Connect " + IPAddr);
             }
         }
@@ -418,6 +481,11 @@ namespace ALVR
         {
             int value = ((ComboBoxCustomItem)recenterButtonComboBox.SelectedItem).GetValue();
             await socket.SendCommand("SetConfig controllerRecenterButton " + value);
+        }
+
+        async private void disconnectButton_Click(object sender, EventArgs e)
+        {
+            await socket.SendCommand("Disconnect");
         }
     }
 }

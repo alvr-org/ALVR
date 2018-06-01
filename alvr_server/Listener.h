@@ -13,6 +13,7 @@
 #include "ControlSocket.h"
 #include "packet_types.h"
 #include "Settings.h"
+#include "Statistics.h"
 
 class Listener : public CThread {
 public:
@@ -29,12 +30,14 @@ public:
 		memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
 		InitializeCriticalSection(&m_CS);
 
+		m_Statistics = std::make_shared<Statistics>();
+
 		m_Settings.type = ALVR_PACKET_TYPE_CHANGE_SETTINGS;
 		m_Settings.enableTestMode = 0;
 		m_Settings.suspend = 0;
 
 		m_Poller.reset(new Poller());
-		m_Socket.reset(new UdpSocket(host, port, m_Poller));
+		m_Socket.reset(new UdpSocket(host, port, m_Poller, m_Statistics));
 		m_ControlSocket.reset(new ControlSocket(control_host, control_port, m_Poller));
 
 		m_UseUdp = true;
@@ -124,39 +127,35 @@ public:
 						else {
 							std::string host = args.substr(0, index);
 							int port = atoi(args.substr(index + 1).c_str());
-							sockaddr_in addr;
-							addr.sin_family = AF_INET;
-							addr.sin_port = htons(port);
-							inet_pton(addr.sin_family, host.c_str(), &addr.sin_addr);
-
-							bool found = false;
-							int refreshRate = 60;
-							for (auto it = m_Requests.begin(); it != m_Requests.end(); it++) {
-								if (it->address.sin_addr.S_un.S_addr == addr.sin_addr.S_un.S_addr && it->address.sin_port == addr.sin_port) {
-									refreshRate = it->refreshRate;
-									found = true;
-									break;
-								}
-							}
-							Log("Connected to %s:%d refreshRate=%d", host.c_str(), port, refreshRate);
-
-							m_NewClientCallback(refreshRate);
-
-							m_Socket->SetClientAddr(&addr);
-							m_Connected = true;
-							UpdateLastSeen();
-
-							ConnectionMessage message = {};
-							message.type = ALVR_PACKET_TYPE_CONNECTION_MESSAGE;
-							message.version = ALVR_PROTOCOL_VERSION;
-							message.videoWidth = Settings::Instance().m_renderWidth;
-							message.videoHeight = Settings::Instance().m_renderHeight;
-							message.bufferSize = Settings::Instance().m_clientRecvBufferSize;
-
-							m_Socket->Send((char *)&message, sizeof(message), 0);
+							
+							Connect(host, port);
 
 							SendCommandResponse("OK\n");
 						}
+					}
+					else if (commandName == "GetStat") {
+						char buf[1000];
+						snprintf(buf, sizeof(buf),
+							"PacketsSentTotal %llu\n"
+							"PacketsSentInSecond %llu\n"
+							"PacketsLostTotal %llu\n"
+							"PacketsLostInSecond %llu\n"
+							"BitsSentTotal %llu\n"
+							"BitsSentInSecond %llu\n"
+							"AverageEncodeLatency %.1f ms\n"
+							"AverageTotalLatency %.1f ms\n"
+							, m_Statistics->GetPacketsSentTotal()
+							, m_Statistics->GetPacketsSentInSecond()
+							, 0
+							, 0
+							, m_Statistics->GetBitsSentTotal()
+							, m_Statistics->GetBitsSentInSecond()
+							, 0, 0);
+						SendCommandResponse(buf);
+					}
+					else if (commandName == "Disconnect") {
+						Disconnect();
+						SendCommandResponse("OK\n");
 					}
 					else {
 						m_CommandCallback(commandName, args);
@@ -393,9 +392,13 @@ public:
 		snprintf(buf, sizeof(buf)
 			, "Connected %d\n"
 			"Client %s:%d\n"
+			"ClientName %s\n"
+			"RefreshRate %d\n"
 			"Streaming %d\n"
 			, m_Connected ? 1 : 0
 			, host, htons(addr.sin_port)
+			, m_clientDeviceName.c_str()
+			, m_clientRefreshRate
 			, m_Streaming);
 
 		return buf;
@@ -411,8 +414,7 @@ public:
 		if (Current - m_LastSeen > 10 * 1000 * 1000) {
 			// idle for 10 seconcd
 			// Invalidate client
-			m_Socket->InvalidateClient();
-			m_Connected = false;
+			Disconnect();
 			Log("Client timeout for idle");
 		}
 	}
@@ -421,12 +423,58 @@ public:
 		m_LastSeen = GetTimestampUs();
 	}
 
+	void Connect(std::string host, int port ) {
+		sockaddr_in addr;
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(port);
+		inet_pton(addr.sin_family, host.c_str(), &addr.sin_addr);
+
+		bool found = false;
+		m_clientRefreshRate = 60;
+		m_clientDeviceName = "";
+
+		for (auto it = m_Requests.begin(); it != m_Requests.end(); it++) {
+			if (it->address.sin_addr.S_un.S_addr == addr.sin_addr.S_un.S_addr && it->address.sin_port == addr.sin_port) {
+				m_clientRefreshRate = it->refreshRate;
+				m_clientDeviceName = it->deviceName;
+				found = true;
+				break;
+			}
+		}
+		Log("Connected to %s:%d refreshRate=%d", host.c_str(), port, m_clientRefreshRate);
+
+		m_NewClientCallback(m_clientRefreshRate);
+
+		m_Socket->SetClientAddr(&addr);
+		m_Connected = true;
+		m_Statistics->ResetAll();
+		UpdateLastSeen();
+
+		ConnectionMessage message = {};
+		message.type = ALVR_PACKET_TYPE_CONNECTION_MESSAGE;
+		message.version = ALVR_PROTOCOL_VERSION;
+		message.videoWidth = Settings::Instance().m_renderWidth;
+		message.videoHeight = Settings::Instance().m_renderHeight;
+		message.bufferSize = Settings::Instance().m_clientRecvBufferSize;
+
+		m_Socket->Send((char *)&message, sizeof(message), 0);
+	}
+
+	void Disconnect() {
+		m_Connected = false;
+		m_clientRefreshRate = 60;
+		m_clientDeviceName = "";
+
+		m_Socket->InvalidateClient();
+	}
+
 private:
 	bool m_bExiting;
 	bool m_UseUdp;
 	std::shared_ptr<Poller> m_Poller;
 	std::shared_ptr<UdpSocket> m_Socket;
 	std::shared_ptr<ControlSocket> m_ControlSocket;
+	std::shared_ptr<Statistics> m_Statistics;
 
 	// Maximum UDP payload
 	static const int PACKET_SIZE = 1400;
@@ -455,4 +503,7 @@ private:
 		uint32_t refreshRate;
 	};
 	std::list<Request> m_Requests;
+
+	std::string m_clientDeviceName;
+	int m_clientRefreshRate;
 };

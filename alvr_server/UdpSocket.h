@@ -7,13 +7,14 @@
 #include <vector>
 #include <list>
 #include "Poller.h"
+#include "Statistics.h"
 
 #define CONTROL_NAMED_PIPE "\\\\.\\pipe\\RemoteGlass_Control"
 
 class UdpSocket
 {
 public:
-	UdpSocket(std::string host, int port, std::shared_ptr<Poller> poller);
+	UdpSocket(std::string host, int port, std::shared_ptr<Poller> poller, std::shared_ptr<Statistics> statistics);
 	virtual ~UdpSocket();
 
 	virtual bool Startup();
@@ -44,6 +45,7 @@ private:
 	sockaddr_in m_QueueAddr;
 	
 	std::shared_ptr<Poller> m_Poller;
+	std::shared_ptr<Statistics> m_Statistics;
 
 	struct SendBuffer {
 		std::shared_ptr<char> buf;

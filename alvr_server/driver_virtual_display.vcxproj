@@ -189,6 +189,7 @@
     <ClInclude Include="RemoteController.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Settings.h" />
+    <ClInclude Include="Statistics.h" />
     <ClInclude Include="UdpSocket.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>

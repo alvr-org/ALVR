@@ -682,6 +682,10 @@ public:
 		uint32_t layerCount = m_submitLayer;
 		m_submitLayer = 0;
 
+		if (m_prevSubmitFrameIndex == m_submitFrameIndex) {
+			Log("Discard duplicated frame. FrameIndex=%llu", m_submitFrameIndex);
+			return;
+		}
 		/*if (m_submitFrameIndex != m_LastReferencedFrameIndex) {
 		// Discard old frames
 		Log("Discarding old frame: m_submitFrameIndex=%llu m_LastReferencedFrameIndex=%llu", m_submitFrameIndex, m_LastReferencedFrameIndex);

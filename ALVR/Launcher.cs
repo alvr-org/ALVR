@@ -21,11 +21,7 @@ namespace ALVR
     public partial class Launcher : MetroFramework.Forms.MetroForm
     {
         ControlSocket socket = new ControlSocket();
-        string buf = "";
         ServerConfig config = new ServerConfig();
-        string clientName;
-        string clientIPAddress;
-        int clientRefreshRate;
 
         class ComboBoxCustomItem
         {
@@ -260,7 +256,8 @@ namespace ALVR
             if (configs["Connected"] == "1")
             {
                 // Connected
-                connectedLabel.Text = "Connected!\r\n" + configs["ClientName"] + "\r\n" + configs["Client"] + "\r\n" + configs["RefreshRate"] + " Hz";
+                connectedLabel.Text = "Connected!\r\n" + configs["ClientName"] + "\r\n"
+                    + configs["Client"] + "\r\n" + configs["RefreshRate"] + " FPS";
                 ShowConnectedPanel();
 
                 UpdateClientStatistics();
@@ -296,7 +293,7 @@ namespace ALVR
                         found = true;
 
                         row.Cells[0].Value = name;
-                        row.Cells[2].Value = refreshRate + " Hz";
+                        row.Cells[2].Value = refreshRate + " FPS";
                         if (versionOk)
                         {
                             if ((string)row.Cells[3].Value != "Connect") {
@@ -315,7 +312,7 @@ namespace ALVR
                 }
                 if (!found)
                 {
-                    int index = dataGridView1.Rows.Add(new string[] { name, address, refreshRate + " Hz", versionOk ? "Connect" : "Wrong version" });
+                    int index = dataGridView1.Rows.Add(new string[] { name, address, refreshRate + " FPS", versionOk ? "Connect" : "Wrong version" });
                     dataGridView1.Rows[index].Tag = 1;
                 }
             }
@@ -387,9 +384,6 @@ namespace ALVR
                     MessageBox.Show("Please check the version of client and server and update both.");
                     return;
                 }
-                clientName = (string)dataGridView1.Rows[e.RowIndex].Cells[0].Value;
-                clientIPAddress = (string)dataGridView1.Rows[e.RowIndex].Cells[1].Value;
-                clientRefreshRate = ((string)dataGridView1.Rows[e.RowIndex].Cells[2].Value) == "60 Hz" ? 60 : 72;
                 await socket.SendCommand("Connect " + IPAddr);
             }
         }

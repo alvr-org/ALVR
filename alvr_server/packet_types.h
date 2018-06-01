@@ -81,6 +81,8 @@ struct TimeSync {
 	uint64_t sequence;
 	uint64_t serverTime;
 	uint64_t clientTime;
+
+	// Following value are filled by client only when mode=0.
 	uint64_t packetsLostTotal;
 	uint64_t packetsLostInSeconds;
 

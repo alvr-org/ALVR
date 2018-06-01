@@ -142,15 +142,18 @@ public:
 							"PacketsLostInSecond %llu\n"
 							"BitsSentTotal %llu\n"
 							"BitsSentInSecond %llu\n"
-							"AverageEncodeLatency %.1f ms\n"
 							"AverageTotalLatency %.1f ms\n"
+							"AverageTransportLatency %.1f ms\n"
+							"AverageDecodeLatency %.1f ms\n"
 							, m_Statistics->GetPacketsSentTotal()
 							, m_Statistics->GetPacketsSentInSecond()
-							, 0
-							, 0
+							, m_reportedStatistics.packetsLostTotal
+							, m_reportedStatistics.packetsLostInSeconds
 							, m_Statistics->GetBitsSentTotal()
 							, m_Statistics->GetBitsSentInSecond()
-							, 0, 0);
+							, m_reportedStatistics.averageTotalLatency / 1000.0
+							, m_reportedStatistics.averageTransportLatency / 1000.0
+							, m_reportedStatistics.averageDecodeLatency / 1000.0);
 						SendCommandResponse(buf);
 					}
 					else if (commandName == "Disconnect") {
@@ -271,6 +274,7 @@ public:
 			uint64_t Current = GetTimestampUs();
 
 			if (timeSync->mode == 0) {
+				m_reportedStatistics = *timeSync;
 				TimeSync sendBuf = *timeSync;
 				sendBuf.mode = 1;
 				sendBuf.serverTime = Current;
@@ -506,4 +510,5 @@ private:
 
 	std::string m_clientDeviceName;
 	int m_clientRefreshRate;
+	TimeSync m_reportedStatistics;
 };

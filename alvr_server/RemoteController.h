@@ -46,7 +46,10 @@ class RemoteControllerServerDriver : public vr::ITrackedDeviceServerDriver
 public:
 	RemoteControllerServerDriver(bool handed, std::shared_ptr<RecenterManager> recenterManager)
 		: m_handed(handed)
-		, m_recenterManager(recenterManager) {
+		, m_recenterManager(recenterManager)
+		, m_previousButtons(0)
+		, m_previousFlags(0)
+	{
 		m_supportedButtons = vr::ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)
 			| vr::ButtonMaskFromId(vr::k_EButton_SteamVR_Touchpad)
 			| vr::ButtonMaskFromId(vr::k_EButton_Dashboard_Back)

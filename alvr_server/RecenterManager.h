@@ -77,7 +77,16 @@ public:
 	}
 
 	TrackingVector3 GetRecenteredVector(const TrackingVector3 &position) {
-		return RotateVectorQuaternion(position, -m_centerPitch);
+		TrackingVector3 fixedPosition = RotateVectorQuaternion(position, m_centerPitch);
+		Log("GetRecenteredVector: Old=(%f,%f,%f) New=(%f,%f,%f) pitch=%f %f %f"
+			, position.x, position.y
+			, position.z
+			, fixedPosition.x, fixedPosition.y
+			, fixedPosition.z
+			, m_centerPitch
+			, sqrt(position.x * position.x + position.z * position.z)
+			, sqrt(fixedPosition.x * fixedPosition.x + fixedPosition.z * fixedPosition.z));
+		return fixedPosition;
 	}
 private:
 	bool m_recentering;

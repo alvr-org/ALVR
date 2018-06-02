@@ -136,20 +136,20 @@ inline void HmdMatrix_SetIdentity(vr::HmdMatrix34_t *pMatrix)
 	pMatrix->m[2][3] = 0.f;
 }
 
-inline void HmdMatrix_QuatToMat(float w, float x, float y, float z, vr::HmdMatrix34_t *pMatrix)
+inline void HmdMatrix_QuatToMat(double w, double x, double y, double z, vr::HmdMatrix34_t *pMatrix)
 {
-	pMatrix->m[0][0] = 1.0f - 2.0f * y * y - 2.0f * z * z;
-	pMatrix->m[0][1] = 2.0f * x * y - 2.0f * z * w;
-	pMatrix->m[0][2] = 2.0f * x * z + 2.0f * y * w;
-	pMatrix->m[0][3] = 0.0f;
-	pMatrix->m[1][0] = 2.0f * x * y + 2.0f * z * w;
-	pMatrix->m[1][1] = 1.0f - 2.0f * x * x - 2.0f * z * z;
-	pMatrix->m[1][2] = 2.0f * y * z - 2.0f * x * w;
-	pMatrix->m[1][3] = 0.0f;
-	pMatrix->m[2][0] = 2.0f * x * z - 2.0f * y * w;
-	pMatrix->m[2][1] = 2.0f * y * z + 2.0f * x * w;
-	pMatrix->m[2][2] = 1.0f - 2.0f * x * x - 2.0f * y * y;
-	pMatrix->m[2][3] = 0.f;
+	pMatrix->m[0][0] = (float)(1.0f - 2.0f * y * y - 2.0f * z * z);
+	pMatrix->m[0][1] = (float)(2.0f * x * y - 2.0f * z * w);
+	pMatrix->m[0][2] = (float)(2.0f * x * z + 2.0f * y * w);
+	pMatrix->m[0][3] = (float)(0.0f);
+	pMatrix->m[1][0] = (float)(2.0f * x * y + 2.0f * z * w);
+	pMatrix->m[1][1] = (float)(1.0f - 2.0f * x * x - 2.0f * z * z);
+	pMatrix->m[1][2] = (float)(2.0f * y * z - 2.0f * x * w);
+	pMatrix->m[1][3] = (float)(0.0f);
+	pMatrix->m[2][0] = (float)(2.0f * x * z - 2.0f * y * w);
+	pMatrix->m[2][1] = (float)(2.0f * y * z + 2.0f * x * w);
+	pMatrix->m[2][2] = (float)(1.0f - 2.0f * x * x - 2.0f * y * y);
+	pMatrix->m[2][3] = (float)(0.0f);
 }
 
 inline double PitchFromQuaternion(double x, double y, double z, double w) {
@@ -190,9 +190,9 @@ inline TrackingVector3 RotateVectorQuaternion_add(const TrackingVector3& v1, con
 
 inline TrackingVector3 RotateVectorQuaternion_scale(double scale, const TrackingVector3& v1) {
 	TrackingVector3 dest;
-	dest.x = scale * v1.x;
-	dest.y = scale * v1.y;
-	dest.z = scale * v1.z;
+	dest.x = (float)(scale * v1.x);
+	dest.y = (float)(scale * v1.y);
+	dest.z = (float)(scale * v1.z);
 	return dest;
 }
 
@@ -211,6 +211,7 @@ inline TrackingVector3 RotateVectorQuaternion_cross(const TrackingVector3& v1, c
 inline TrackingVector3 RotateVectorQuaternion(const TrackingVector3& v, double pitch)
 {
 	TrackingVector3 dest;
+	/*
 
 	TrackingQuat q;
 	q.w = cos(pitch * 0.5);
@@ -228,6 +229,10 @@ inline TrackingVector3 RotateVectorQuaternion(const TrackingVector3& v, double p
 	// Do the math
 	dest = RotateVectorQuaternion_scale(2.0f * RotateVectorQuaternion_dot(u, v), u);
 	dest = RotateVectorQuaternion_add(dest, RotateVectorQuaternion_scale((s*s - RotateVectorQuaternion_dot(u, u)), v));
-	dest = RotateVectorQuaternion_add(dest, RotateVectorQuaternion_scale(2.0f * s, c));
+	dest = RotateVectorQuaternion_add(dest, RotateVectorQuaternion_scale(2.0f * s, c));*/
+
+	dest.y = v.y;
+	dest.x = (float)(v.x * cos(pitch) - v.z * sin(pitch));
+	dest.z = (float)(v.x * sin(pitch) + v.z * cos(pitch));
 	return dest;
 }

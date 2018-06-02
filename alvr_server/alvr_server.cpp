@@ -1179,9 +1179,9 @@ public:
 			std::string x = GetNextToken(args, " ");
 			std::string y = GetNextToken(args, " ");
 			std::string z = GetNextToken(args, " ");
-			m_DebugPos[0] = atof(x.c_str());
-			m_DebugPos[1] = atof(y.c_str());
-			m_DebugPos[2] = atof(z.c_str());
+			m_DebugPos[0] = (float)atof(x.c_str());
+			m_DebugPos[1] = (float)atof(y.c_str());
+			m_DebugPos[2] = (float)atof(z.c_str());
 
 			m_EnabledDebugPos = atoi(enabled.c_str()) != 0;
 

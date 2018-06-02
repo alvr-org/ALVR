@@ -12,14 +12,15 @@ static const char *APP_NAME = "ALVR Server";
 extern std::string g_DebugOutputDir;
 
 static std::ofstream ofs;
+static bool Opened = false;
 static bool OpenFailed = false;
 static uint64_t lastRefresh = 0;
 
 void OpenLog(const char *fileName) {
-	if (ofs) {
-		ofs.close();
+	if (!Opened) {
+		ofs.open(fileName);
 	}
-	ofs.open(fileName);
+	Opened = true;
 }
 
 void LogS(const char *str)

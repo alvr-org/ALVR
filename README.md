@@ -25,7 +25,7 @@ ALVR requires any of the following devices:
 |GalaxyS8/S8+|OK|
 |GalaxyS7|OK|
 |GalaxyS9/S9+|Not tested|
-|GalaxyS6|Not tested|
+|GalaxyS6(Edge)|OK|
 
 - High-end gaming PC with NVIDIA GPU which supports NVENC
     - Only Windows 10 is supported

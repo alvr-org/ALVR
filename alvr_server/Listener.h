@@ -151,8 +151,8 @@ public:
 							"PacketsSentInSecond %llu\n"
 							"PacketsLostTotal %llu\n"
 							"PacketsLostInSecond %llu\n"
-							"BitsSentTotal %.1f Mbps\n"
-							"BitsSentInSecond %1.f Mbps\n"
+							"BitsSentTotal %llu MB\n"
+							"BitsSentInSecond %.1f Mbps\n"
 							"AverageTotalLatency %.1f ms\n"
 							"AverageTransportLatency %.1f ms\n"
 							"AverageDecodeLatency %.1f ms\n"
@@ -160,7 +160,7 @@ public:
 							, m_Statistics->GetPacketsSentInSecond()
 							, m_reportedStatistics.packetsLostTotal
 							, m_reportedStatistics.packetsLostInSeconds
-							, m_Statistics->GetBitsSentTotal() / 1000 / 1000.0
+							, m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000
 							, m_Statistics->GetBitsSentInSecond() / 1000 / 1000.0
 							, m_reportedStatistics.averageTotalLatency / 1000.0
 							, m_reportedStatistics.averageTransportLatency / 1000.0

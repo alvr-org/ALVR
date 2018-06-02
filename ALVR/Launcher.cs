@@ -214,11 +214,11 @@ namespace ALVR
                 {
                     continue;
                 }
-                if (statDataGridView.Rows.Count <= i / 2){
+                if (statDataGridView.Rows.Count <= i){
                     statDataGridView.Rows.Add(new string[] {  });
                 }
-                statDataGridView.Rows[i / 2].Cells[(i % 2) * 2].Value = elem[0];
-                statDataGridView.Rows[i / 2].Cells[(i % 2) * 2 + 1].Value = elem[1];
+                statDataGridView.Rows[i].Cells[0].Value = elem[0];
+                statDataGridView.Rows[i].Cells[1].Value = elem[1];
 
                 i++;
             }
@@ -256,7 +256,7 @@ namespace ALVR
             if (configs["Connected"] == "1")
             {
                 // Connected
-                connectedLabel.Text = "Connected!\r\n" + configs["ClientName"] + "\r\n"
+                connectedLabel.Text = "Connected!\r\n\r\n" + configs["ClientName"] + "\r\n"
                     + configs["Client"] + "\r\n" + configs["RefreshRate"] + " FPS";
                 ShowConnectedPanel();
 

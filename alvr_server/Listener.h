@@ -147,15 +147,15 @@ public:
 					else if (commandName == "GetStat") {
 						char buf[1000];
 						snprintf(buf, sizeof(buf),
-							"PacketsSentTotal %llu\n"
-							"PacketsSentInSecond %llu\n"
-							"PacketsLostTotal %llu\n"
-							"PacketsLostInSecond %llu\n"
-							"BitsSentTotal %llu MB\n"
-							"BitsSentInSecond %.1f Mbps\n"
-							"AverageTotalLatency %.1f ms\n"
-							"AverageTransportLatency %.1f ms\n"
-							"AverageDecodeLatency %.1f ms\n"
+							"TotalPackets %llu Packets\n"
+							"PacketRate %llu Packets/s\n"
+							"PacketsLostTotal %llu Packets\n"
+							"PacketsLostInSecond %llu Packets/s\n"
+							"TotalSent %llu MB\n"
+							"SentRate %.1f Mbps\n"
+							"TotalLatency %.1f ms\n"
+							"TransportLatency %.1f ms\n"
+							"DecodeLatency %.1f ms\n"
 							, m_Statistics->GetPacketsSentTotal()
 							, m_Statistics->GetPacketsSentInSecond()
 							, m_reportedStatistics.packetsLostTotal

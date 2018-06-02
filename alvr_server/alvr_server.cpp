@@ -860,7 +860,6 @@ public:
 		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 		, m_nGraphicsAdapterLuid(0)
 		, m_nVsyncCounter(0)
-		, m_EnabledDebugPos(false)
 		, m_controllerDetected(false)
 		, m_initialized(false)
 	{
@@ -1077,11 +1076,12 @@ public:
 			//pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
 			//pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
 
-			if (m_EnabledDebugPos) {
-				Log("Provide fake position for debug. Coords=(%f, %f, %f)", m_DebugPos[0], m_DebugPos[1], m_DebugPos[2]);
-				pose.vecPosition[0] = m_DebugPos[0];
-				pose.vecPosition[1] = m_DebugPos[1];
-				pose.vecPosition[2] = m_DebugPos[2];
+			if (Settings::Instance().m_EnabledDebugPos) {
+				Log("Provide fake position(offset) for debug. Coords=(%f, %f, %f)"
+					, Settings::Instance().m_DebugPos[0], Settings::Instance().m_DebugPos[1], Settings::Instance().m_DebugPos[2]);
+				pose.vecPosition[0] += Settings::Instance().m_DebugPos[0];
+				pose.vecPosition[1] += Settings::Instance().m_DebugPos[1];
+				pose.vecPosition[2] += Settings::Instance().m_DebugPos[2];
 			}
 
 			// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
@@ -1179,11 +1179,11 @@ public:
 			std::string x = GetNextToken(args, " ");
 			std::string y = GetNextToken(args, " ");
 			std::string z = GetNextToken(args, " ");
-			m_DebugPos[0] = (float)atof(x.c_str());
-			m_DebugPos[1] = (float)atof(y.c_str());
-			m_DebugPos[2] = (float)atof(z.c_str());
+			Settings::Instance().m_DebugPos[0] = (float)atof(x.c_str());
+			Settings::Instance().m_DebugPos[1] = (float)atof(y.c_str());
+			Settings::Instance().m_DebugPos[2] = (float)atof(z.c_str());
 
-			m_EnabledDebugPos = atoi(enabled.c_str()) != 0;
+			Settings::Instance().m_EnabledDebugPos = atoi(enabled.c_str()) != 0;
 
 			m_Listener->SendCommandResponse("OK\n");
 		}else {
@@ -1262,9 +1262,6 @@ private:
 	std::shared_ptr<Listener> m_Listener;
 	std::shared_ptr<VSyncThread> m_VSyncThread;
 	std::shared_ptr<RecenterManager> m_recenterManager;
-
-	float m_DebugPos[3];
-	bool m_EnabledDebugPos;
 
 	bool m_controllerDetected;
 	std::shared_ptr<RemoteControllerServerDriver> m_remoteController;

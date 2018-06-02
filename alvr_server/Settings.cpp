@@ -9,7 +9,11 @@ extern uint64_t g_DriverTestMode;
 Settings Settings::m_Instance;
 
 Settings::Settings()
+	: m_EnabledDebugPos(false)
 {
+	m_DebugPos[0] = 0.0f;
+	m_DebugPos[1] = 0.0f;
+	m_DebugPos[2] = 0.0f;
 }
 
 

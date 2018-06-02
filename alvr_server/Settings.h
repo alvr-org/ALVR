@@ -92,5 +92,8 @@ public:
 	int32_t m_controllerTrackpadClickMode;
 	int32_t m_controllerTrackpadTouchMode;
 	int32_t m_controllerRecenterButton;
+
+	float m_DebugPos[3];
+	bool m_EnabledDebugPos;
 };
 

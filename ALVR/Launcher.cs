@@ -395,7 +395,7 @@ namespace ALVR
 
         async private void sendDebugPos_Click(object sender, EventArgs e)
         {
-            await socket.SendCommand("SetDebugPos " + (debugPosCheckBox.Checked ? "1" : "0") + " " + debugXTextBox.Text + " " + debugYTextBox.Text + " " + debugZTextBox);
+            await socket.SendCommand("SetDebugPos " + (debugPosCheckBox.Checked ? "1" : "0") + " " + debugXTextBox.Text + " " + debugYTextBox.Text + " " + debugZTextBox.Text);
         }
 
         private void bitrateTrackBar_ValueChanged(object sender, EventArgs e)

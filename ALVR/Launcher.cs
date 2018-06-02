@@ -481,5 +481,10 @@ namespace ALVR
         {
             await socket.SendCommand("Disconnect");
         }
+
+        async private void packetlossButton_Click(object sender, EventArgs e)
+        {
+            await socket.SendCommand("SetConfig causePacketLoss 1000");
+        }
     }
 }

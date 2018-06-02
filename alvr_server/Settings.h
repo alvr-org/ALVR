@@ -95,5 +95,7 @@ public:
 
 	float m_DebugPos[3];
 	bool m_EnabledDebugPos;
+
+	int32_t m_causePacketLoss;
 };
 

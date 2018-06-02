@@ -118,6 +118,7 @@
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.packetlossButton = new MetroFramework.Controls.MetroButton();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.connectedPanel.SuspendLayout();
@@ -175,7 +176,7 @@
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 0;
+            this.metroTabControl1.SelectedIndex = 3;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -665,7 +666,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(218, 242);
+            this.metroLabel22.Location = new System.Drawing.Point(218, 130);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(230, 19);
             this.metroLabel22.TabIndex = 10;
@@ -749,6 +750,7 @@
             this.debugTab.Controls.Add(this.metroLabel1);
             this.debugTab.Controls.Add(this.sendDebugPos);
             this.debugTab.Controls.Add(this.metroButton5);
+            this.debugTab.Controls.Add(this.packetlossButton);
             this.debugTab.Controls.Add(this.metroButton4);
             this.debugTab.Controls.Add(this.metroButton3);
             this.debugTab.Controls.Add(this.metroButton2);
@@ -1051,6 +1053,15 @@
             this.pictureBox1.TabIndex = 11;
             this.pictureBox1.TabStop = false;
             // 
+            // packetlossButton
+            // 
+            this.packetlossButton.Location = new System.Drawing.Point(250, 230);
+            this.packetlossButton.Name = "packetlossButton";
+            this.packetlossButton.Size = new System.Drawing.Size(106, 23);
+            this.packetlossButton.TabIndex = 6;
+            this.packetlossButton.Text = "Cause packet loss";
+            this.packetlossButton.Click += new System.EventHandler(this.packetlossButton_Click);
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -1169,6 +1180,7 @@
         private MetroFramework.Controls.MetroLabel connectedLabel;
         private System.Windows.Forms.DataGridViewTextBoxColumn Name1;
         private System.Windows.Forms.DataGridViewTextBoxColumn Value1;
+        private MetroFramework.Controls.MetroButton packetlossButton;
     }
 }
 

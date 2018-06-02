@@ -109,8 +109,19 @@ bool UdpSocket::Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen) {
 					break;
 				}
 				else {
-					//Log("sendto: CurrentTimeslotPackets=%llu FrameIndex=%llu", m_CurrentTimeslotPackets, buffer.frameIndex);
-					int sendret = sendto(m_Socket, buffer.buf.get(), buffer.len, 0, (sockaddr *)&m_ClientAddr, sizeof(m_ClientAddr));
+					bool fakePacketLoss = false;
+					if (Settings::Instance().m_causePacketLoss > 0) {
+						Settings::Instance().m_causePacketLoss--;
+						fakePacketLoss = true;
+					}
+					int sendret = 0;
+					if (!fakePacketLoss) {
+						//Log("sendto: CurrentTimeslotPackets=%llu FrameIndex=%llu", m_CurrentTimeslotPackets, buffer.frameIndex);
+						sendret = sendto(m_Socket, buffer.buf.get(), buffer.len, 0, (sockaddr *)&m_ClientAddr, sizeof(m_ClientAddr));
+					}
+					else {
+						Log("Cause packet loss for debugging.");
+					}
 					if (sendret < 0) {
 						Log("sendto error: %d %s", WSAGetLastError(), ErrorStr(WSAGetLastError()).c_str());
 						if (WSAGetLastError() != WSAEWOULDBLOCK) {

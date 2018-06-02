@@ -1173,6 +1173,9 @@ public:
 				else if (name == k_pch_Settings_ControllerRecenterButton_Int32) {
 					Settings::Instance().m_controllerRecenterButton = atoi(args.substr(index + 1).c_str());
 				}
+				else if (name == "causePacketLoss") {
+					Settings::Instance().m_causePacketLoss = atoi(args.substr(index + 1).c_str());
+				}
 				else {
 					m_Listener->SendCommandResponse("NG\n");
 					return;

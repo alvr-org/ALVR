@@ -15,7 +15,7 @@ enum ALVR_PACKET_TYPE {
 };
 
 enum {
-	ALVR_PROTOCOL_VERSION = 9
+	ALVR_PROTOCOL_VERSION = 10
 };
 #pragma pack(push, 1)
 // hello message

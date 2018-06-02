@@ -856,83 +856,30 @@ private:
 class CRemoteHmd : public vr::ITrackedDeviceServerDriver
 {
 public:
-	CRemoteHmd()
+	CRemoteHmd(std::shared_ptr<Listener> listener)
 		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 		, m_nGraphicsAdapterLuid(0)
 		, m_nVsyncCounter(0)
 		, m_controllerDetected(false)
-		, m_initialized(false)
+		, m_added(false)
+		, m_Listener(listener)
 	{
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
-		Log("Loading settings values");
-		
-		Settings::Instance().Load();
-
 		Log("Startup: %s %s", APP_MODULE_NAME, APP_VERSION_STRING);
-				
-		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
-		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().m_flIPD);
-		
-		m_D3DRender = std::make_shared<CD3DRender>();
-		
-		// Store off the LUID of the primary gpu we want to use.
-		if (!m_D3DRender->GetAdapterLuid(Settings::Instance().m_nAdapterIndex, &m_nGraphicsAdapterLuid))
-		{
-			FatalLog("Failed to get adapter index for graphics adapter!");
-			return;
-		}
 
-		// Now reinitialize using the other graphics card.
-		if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
-		{
-			FatalLog("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
-			return;
-		}
-
-		int32_t nDisplayAdapterIndex;
-		wchar_t wchAdapterDescription[300];
-		if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, sizeof(wchAdapterDescription) / sizeof(wchar_t)))
-		{
-			FatalLog("Failed to get primary adapter info!");
-			return;
-		}
-
-		Log("Using %ls as primary graphics adapter.", wchAdapterDescription);
-
-		std::function<void(std::string, std::string)> Callback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
+		std::function<void()> launcherCallback = [&]() { Enable(); };
+		std::function<void(std::string, std::string)> commandCallback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
 		std::function<void(int)> newClientCallback = [&](int refreshRate) { OnNewClient(refreshRate); };
-		m_Listener = std::make_shared<Listener>(Settings::Instance().m_Host, Settings::Instance().m_Port
-			, Settings::Instance().m_ControlHost, Settings::Instance().m_ControlPort
-			, Callback, poseCallback, newClientCallback);
-		if (!m_Listener->Startup())
-		{
-			return;
-		}
 
-		// Spawn our separate process to manage headset presentation.
-		m_CNvEncoder = std::make_shared<CNvEncoder>(m_D3DRender, m_Listener);
-		if (!m_CNvEncoder->Initialize())
-		{
-			return;
-		}
-
-		// Spin up a separate thread to handle the overlapped encoding/transmit step.
-		m_encoder = std::make_shared<CEncoder>(m_D3DRender, m_CNvEncoder);
-		m_encoder->Start();
-
-		m_VSyncThread = std::make_shared<VSyncThread>();
-		m_VSyncThread->Start();
-
-		m_recenterManager = std::make_shared<RecenterManager>();
-
-		m_displayComponent = std::make_shared<DisplayComponent>();
-		m_directModeComponent = std::make_shared<DirectModeComponent>(m_D3DRender, m_encoder, m_Listener, m_recenterManager);
+		m_Listener->SetLauncherCallback(launcherCallback);
+		m_Listener->SetCommandCallback(commandCallback);
+		m_Listener->SetPoseUpdatedCallback(poseCallback);
+		m_Listener->SetNewClientCallback(newClientCallback);
 
 		Log("CRemoteHmd successfully initialized.");
-		m_initialized = true;
 	}
 
 	virtual ~CRemoteHmd()
@@ -971,19 +918,29 @@ public:
 	}
 
 	std::string GetSerialNumber() const { return Settings::Instance().m_sSerialNumber; }
-
-	bool IsValid() const
+	
+	void Enable()
 	{
-		return m_initialized;
+		if (m_added) {
+			return;
+		}
+		m_added = true;
+		bool ret;
+		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+			GetSerialNumber().c_str(),
+			vr::TrackedDeviceClass_HMD,
+			this);
+		Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, GetSerialNumber().c_str());
 	}
 
 	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) override
 	{
 		Log("CRemoteHmd Activate %d", unObjectId);
 
+		Settings::Instance().Load();
+
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
-
 
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, Settings::Instance().m_sModelNumber.c_str());
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, Settings::Instance().m_sModelNumber.c_str());
@@ -1001,6 +958,55 @@ public:
 
 		// Manually send VSync events on direct mode. ref:https://github.com/ValveSoftware/virtual_display/issues/1
 		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true);
+
+		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
+		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().m_flIPD);
+
+
+		m_D3DRender = std::make_shared<CD3DRender>();
+
+		// Store off the LUID of the primary gpu we want to use.
+		if (!m_D3DRender->GetAdapterLuid(Settings::Instance().m_nAdapterIndex, &m_nGraphicsAdapterLuid))
+		{
+			FatalLog("Failed to get adapter index for graphics adapter!");
+			return vr::VRInitError_Driver_Failed;
+		}
+
+		// Now reinitialize using the other graphics card.
+		if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
+		{
+			FatalLog("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
+			return vr::VRInitError_Driver_Failed;
+		}
+
+		int32_t nDisplayAdapterIndex;
+		wchar_t wchAdapterDescription[300];
+		if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, sizeof(wchAdapterDescription) / sizeof(wchar_t)))
+		{
+			FatalLog("Failed to get primary adapter info!");
+			return vr::VRInitError_Driver_Failed;
+		}
+
+		Log("Using %ls as primary graphics adapter.", wchAdapterDescription);
+
+		// Spawn our separate process to manage headset presentation.
+		m_CNvEncoder = std::make_shared<CNvEncoder>(m_D3DRender, m_Listener);
+		if (!m_CNvEncoder->Initialize())
+		{
+			return vr::VRInitError_Driver_Failed;
+		}
+
+		// Spin up a separate thread to handle the overlapped encoding/transmit step.
+		m_encoder = std::make_shared<CEncoder>(m_D3DRender, m_CNvEncoder);
+		m_encoder->Start();
+
+		m_VSyncThread = std::make_shared<VSyncThread>();
+		m_VSyncThread->Start();
+
+		m_recenterManager = std::make_shared<RecenterManager>();
+
+		m_displayComponent = std::make_shared<DisplayComponent>();
+		m_directModeComponent = std::make_shared<DirectModeComponent>(m_D3DRender, m_encoder, m_Listener, m_recenterManager);
 
 		return vr::VRInitError_None;
 	}
@@ -1249,7 +1255,7 @@ public:
 	}
 
 private:
-	bool m_initialized;
+	bool m_added;
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 
@@ -1295,29 +1301,29 @@ public:
 
 private:
 	std::shared_ptr<CRemoteHmd> m_pRemoteHmd;
+	std::shared_ptr<Listener> m_Listener;
 };
 
 vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pContext )
 {
 	VR_INIT_SERVER_DRIVER_CONTEXT( pContext );
 
-	m_pRemoteHmd = std::make_shared<CRemoteHmd>();
+	Settings::Instance().Load();
 
-	if (m_pRemoteHmd->IsValid() )
+	m_Listener = std::make_shared<Listener>(Settings::Instance().m_Host, Settings::Instance().m_Port
+		, Settings::Instance().m_ControlHost, Settings::Instance().m_ControlPort);
+	if (!m_Listener->Startup())
 	{
-		bool ret;
-		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-			m_pRemoteHmd->GetSerialNumber().c_str(),
-			vr::TrackedDeviceClass_HMD,
-			m_pRemoteHmd.get());
-		Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, m_pRemoteHmd->GetSerialNumber().c_str());
+		return vr::VRInitError_None;
 	}
+	m_pRemoteHmd = std::make_shared<CRemoteHmd>(m_Listener);
 
 	return vr::VRInitError_None;
 }
 
 void CServerDriver_DisplayRedirect::Cleanup()
 {
+	m_Listener.reset();
 	m_pRemoteHmd.reset();
 
 	VR_CLEANUP_SERVER_DRIVER_CONTEXT();
@@ -1325,10 +1331,6 @@ void CServerDriver_DisplayRedirect::Cleanup()
 
 void CServerDriver_DisplayRedirect::RunFrame()
 {
-	if (m_pRemoteHmd)
-	{
-		m_pRemoteHmd->RunFrame();
-	}
 }
 
 CServerDriver_DisplayRedirect g_serverDriverDisplayRedirect;

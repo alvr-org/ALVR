@@ -12,7 +12,7 @@ public:
 	~ControlSocket();
 
 	bool Startup();
-	void Accept();
+	bool Accept();
 	bool Recv(std::vector<std::string> &commands);
 
 	void CloseClient();

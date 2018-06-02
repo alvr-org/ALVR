@@ -18,14 +18,10 @@
 class Listener : public CThread {
 public:
 
-	Listener(std::string host, int port, std::string control_host, int control_port
-		, std::function<void(std::string, std::string)> callback, std::function<void()> poseCallback, std::function<void(int)> newClientCallback)
+	Listener(std::string host, int port, std::string control_host, int control_port)
 		: m_bExiting(false)
 		, m_Connected(false)
 		, m_Streaming(false)
-		, m_CommandCallback(callback)
-		, m_PoseUpdatedCallback(poseCallback)
-		, m_NewClientCallback(newClientCallback)
 		, m_LastSeen(0) {
 		memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
 		InitializeCriticalSection(&m_CS);
@@ -46,6 +42,19 @@ public:
 
 	~Listener() {
 		DeleteCriticalSection(&m_CS);
+	}
+
+	void SetLauncherCallback(std::function<void()> callback) {
+		m_LauncherCallback = callback;
+	}
+	void SetCommandCallback(std::function<void(std::string, std::string)> callback) {
+		m_CommandCallback = callback;
+	}
+	void SetPoseUpdatedCallback(std::function<void()> callback) {
+		m_PoseUpdatedCallback = callback;
+	}
+	void SetNewClientCallback(std::function<void(int)> callback) {
+		m_NewClientCallback = callback;
 	}
 
 	bool Startup() {
@@ -78,7 +87,9 @@ public:
 				ProcessRecv(buf, len, &addr);
 			}
 
-			m_ControlSocket->Accept();
+			if (m_ControlSocket->Accept()) {
+				m_LauncherCallback();
+			}
 			std::vector<std::string> commands;
 			if (m_ControlSocket->Recv(commands)) {
 				for (auto it = commands.begin(); it != commands.end(); ++it) {
@@ -140,8 +151,8 @@ public:
 							"PacketsSentInSecond %llu\n"
 							"PacketsLostTotal %llu\n"
 							"PacketsLostInSecond %llu\n"
-							"BitsSentTotal %llu\n"
-							"BitsSentInSecond %llu\n"
+							"BitsSentTotal %.1f Mbps\n"
+							"BitsSentInSecond %1.f Mbps\n"
 							"AverageTotalLatency %.1f ms\n"
 							"AverageTransportLatency %.1f ms\n"
 							"AverageDecodeLatency %.1f ms\n"
@@ -149,8 +160,8 @@ public:
 							, m_Statistics->GetPacketsSentInSecond()
 							, m_reportedStatistics.packetsLostTotal
 							, m_reportedStatistics.packetsLostInSeconds
-							, m_Statistics->GetBitsSentTotal()
-							, m_Statistics->GetBitsSentInSecond()
+							, m_Statistics->GetBitsSentTotal() / 1000 / 1000.0
+							, m_Statistics->GetBitsSentInSecond() / 1000 / 1000.0
 							, m_reportedStatistics.averageTotalLatency / 1000.0
 							, m_reportedStatistics.averageTransportLatency / 1000.0
 							, m_reportedStatistics.averageDecodeLatency / 1000.0);
@@ -486,6 +497,7 @@ private:
 	uint32_t packetCounter = 0;
 
 	time_t m_LastSeen;
+	std::function<void()> m_LauncherCallback;
 	std::function<void(std::string, std::string)> m_CommandCallback;
 	std::function<void()> m_PoseUpdatedCallback;
 	std::function<void(int)> m_NewClientCallback;

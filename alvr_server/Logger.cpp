@@ -16,6 +16,9 @@ static bool OpenFailed = false;
 static uint64_t lastRefresh = 0;
 
 void OpenLog(const char *fileName) {
+	if (ofs) {
+		ofs.close();
+	}
 	ofs.open(fileName);
 }
 

@@ -48,9 +48,9 @@ bool ControlSocket::Startup() {
 }
 
 
-void ControlSocket::Accept() {
+bool ControlSocket::Accept() {
 	if (!m_Poller->IsPending(m_Socket)) {
-		return;
+		return false;
 	}
 
 	sockaddr_in addr;
@@ -61,7 +61,7 @@ void ControlSocket::Accept() {
 	if (addr.sin_addr.S_un.S_addr != local_addr) {
 		// block connection
 		closesocket(s);
-		return;
+		return false;
 	}
 
 	if (m_ClientSocket != INVALID_SOCKET) {
@@ -72,6 +72,8 @@ void ControlSocket::Accept() {
 
 	m_ClientSocket = s;
 	m_Poller->AddSocket(m_ClientSocket);
+
+	return true;
 }
 
 bool ControlSocket::Recv(std::vector<std::string> &commands) {

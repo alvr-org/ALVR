@@ -280,6 +280,13 @@ namespace ALVR
                     continue;
                 }
                 var elem = s.Split(" ".ToCharArray(), 4);
+                if (elem.Length != 4)
+                {
+                    timer1.Stop();
+                    MessageBox.Show("Invalid server response: " + str.Replace("\n", "\r\n"));
+                    Application.Exit();
+                    continue;
+                }
                 var address = elem[0];
                 var versionOk = elem[1] == "1";
                 var refreshRate = int.Parse(elem[2]);

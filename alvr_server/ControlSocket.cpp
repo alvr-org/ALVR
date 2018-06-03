@@ -42,6 +42,8 @@ bool ControlSocket::Startup() {
 		return false;
 	}
 
+	Log("ControlSocket::Startup Successfully bound to %s:%d", m_Host.c_str(), m_Port);
+
 	m_Poller->AddSocket(m_Socket);
 
 	return true;

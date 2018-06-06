@@ -22,7 +22,8 @@ namespace ALVR
         public static readonly int DEFAULT_TRACKPAD_TOUCH_MODE = 29;
         public static readonly int DEFAULT_RECENTER_BUTTON = 0; // 0=Disabled, 1=Trigger, 2=Trackpad Click, 3=Trackpad Touch
         public static readonly bool DEFAULT_USE_TRACKING_REFERENCE = false;
-        public static readonly int[] supportedWidth = new int[] { 1024, 1536, 2048 };
+        public static readonly int[] supportedWidth = new int[] { 1024, 1536, 2048, 2560, 2880, 3072 };
+        public static readonly string[] supportedResolutions = new string[] { "1024 x 512", "1536 x 768", "2048 x 1024", "2560 x 1280", "2880 x 1440", "3072 x 1536" };
         // From OpenVR EVRButtonId
         public static readonly string[] supportedButtons = new string[] {
             "None"

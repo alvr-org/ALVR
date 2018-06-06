@@ -58,12 +58,12 @@ namespace ALVR
                 return;
             }
 
-            foreach (var width in ServerConfig.supportedWidth)
+            for (int i = 0; i < ServerConfig.supportedWidth.Length; i++)
             {
-                int i = resolutionComboBox.Items.Add(width + " x " + (width / 2));
-                if (config.renderWidth == width)
+                int j = resolutionComboBox.Items.Add(ServerConfig.supportedResolutions[i]);
+                if (config.renderWidth == ServerConfig.supportedWidth[i])
                 {
-                    resolutionComboBox.SelectedItem = resolutionComboBox.Items[i];
+                    resolutionComboBox.SelectedItem = resolutionComboBox.Items[j];
                 }
             }
 

@@ -21,10 +21,10 @@ public:
 	virtual bool Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen);
 	virtual bool Send(char *buf, int len, uint64_t frameIndex);
 	virtual void Shutdown();
-	void SetClientAddr(sockaddr_in *addr);
+	void SetClientAddr(const sockaddr_in *addr);
 	virtual sockaddr_in GetClientAddr()const;
 	virtual bool IsClientValid()const;
-	bool IsLegitClient(sockaddr_in *addr);
+	bool IsLegitClient(const sockaddr_in *addr);
 	void InvalidateClient();
 
 	std::string ErrorStr(int err);

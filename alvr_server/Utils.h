@@ -64,13 +64,13 @@ inline std::string GetDxErrorStr(HRESULT hr) {
 	return ret;
 }
 
-inline std::string AddrToStr(sockaddr_in *addr) {
+inline std::string AddrToStr(const sockaddr_in *addr) {
 	char buf[1000];
 	inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf));
 	return buf;
 }
 
-inline std::string AddrPortToStr(sockaddr_in *addr) {
+inline std::string AddrPortToStr(const sockaddr_in *addr) {
 	char buf[1000];
 	char buf2[1000];
 	inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf));

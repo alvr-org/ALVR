@@ -138,8 +138,13 @@ public:
 						else {
 							std::string host = args.substr(0, index);
 							int port = atoi(args.substr(index + 1).c_str());
-							
-							Connect(host, port);
+
+							sockaddr_in addr;
+							addr.sin_family = AF_INET;
+							addr.sin_port = htons(port);
+							inet_pton(addr.sin_family, host.c_str(), &addr.sin_addr);
+
+							Connect(&addr);
 
 							SendCommandResponse("OK\n");
 						}
@@ -159,7 +164,7 @@ public:
 							, m_Statistics->GetPacketsSentTotal()
 							, m_Statistics->GetPacketsSentInSecond()
 							, m_reportedStatistics.packetsLostTotal
-							, m_reportedStatistics.packetsLostInSeconds
+							, m_reportedStatistics.packetsLostInSecond
 							, m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000
 							, m_Statistics->GetBitsSentInSecond() / 1000 / 1000.0
 							, m_reportedStatistics.averageTotalLatency / 1000.0
@@ -251,6 +256,13 @@ public:
 			Log("Hello Message: %s Version=%d Hz=%d", message->deviceName, message->version, message->refreshRate);
 
 			PushRequest(message, addr);
+		}
+		else if (type == ALVR_PACKET_TYPE_RECOVER_CONNECTION && len >= sizeof(RecoverConnection)) {
+			Log("Got recover connection message from %s.", AddrPortToStr(addr).c_str());
+			if (m_Socket->IsLegitClient(addr)) {
+				Log("This is the legit client. Send connection message.");
+				Connect(addr);
+			}
 		}
 		else if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
 			if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
@@ -426,8 +438,8 @@ public:
 
 		uint64_t Current = GetTimestampUs();
 
-		if (Current - m_LastSeen > 10 * 1000 * 1000) {
-			// idle for 10 seconcd
+		if (Current - m_LastSeen > 300 * 1000 * 1000) {
+			// idle for 300 seconcd
 			// Invalidate client
 			Disconnect();
 			Log("Client timeout for idle");
@@ -438,29 +450,24 @@ public:
 		m_LastSeen = GetTimestampUs();
 	}
 
-	void Connect(std::string host, int port ) {
-		sockaddr_in addr;
-		addr.sin_family = AF_INET;
-		addr.sin_port = htons(port);
-		inet_pton(addr.sin_family, host.c_str(), &addr.sin_addr);
-
+	void Connect(const sockaddr_in *addr) {
 		bool found = false;
 		m_clientRefreshRate = 60;
 		m_clientDeviceName = "";
 
 		for (auto it = m_Requests.begin(); it != m_Requests.end(); it++) {
-			if (it->address.sin_addr.S_un.S_addr == addr.sin_addr.S_un.S_addr && it->address.sin_port == addr.sin_port) {
+			if (it->address.sin_addr.S_un.S_addr == addr->sin_addr.S_un.S_addr && it->address.sin_port == addr->sin_port) {
 				m_clientRefreshRate = it->refreshRate;
 				m_clientDeviceName = it->deviceName;
 				found = true;
 				break;
 			}
 		}
-		Log("Connected to %s:%d refreshRate=%d", host.c_str(), port, m_clientRefreshRate);
+		Log("Connected to %s refreshRate=%d", AddrPortToStr(addr).c_str(), m_clientRefreshRate);
 
 		m_NewClientCallback(m_clientRefreshRate);
 
-		m_Socket->SetClientAddr(&addr);
+		m_Socket->SetClientAddr(addr);
 		m_Connected = true;
 		m_Statistics->ResetAll();
 		UpdateLastSeen();

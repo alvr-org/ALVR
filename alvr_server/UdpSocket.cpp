@@ -53,7 +53,7 @@ bool UdpSocket::IsClientValid()const {
 	return m_ClientAddr.sin_family != 0;
 }
 
-bool UdpSocket::IsLegitClient(sockaddr_in * addr)
+bool UdpSocket::IsLegitClient(const sockaddr_in * addr)
 {
 	if (m_ClientAddr.sin_addr.S_un.S_addr == addr->sin_addr.S_un.S_addr && m_ClientAddr.sin_port == addr->sin_port) {
 		return true;
@@ -185,7 +185,7 @@ void UdpSocket::Shutdown() {
 	m_Socket = INVALID_SOCKET;
 }
 
-void UdpSocket::SetClientAddr(sockaddr_in * addr)
+void UdpSocket::SetClientAddr(const sockaddr_in * addr)
 {
 	m_ClientAddr = *addr;
 }

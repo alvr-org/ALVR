@@ -1221,32 +1221,39 @@ public:
 
 			Log("Generate VSync Event by OnPoseUpdated");
 			m_VSyncThread->InsertVsync();
+			
+			UpdateControllerState(info);
+		}
+	}
 
-			if (!m_controllerDetected) {
-				if (info.enableController) {
-					Log("New controller is detected.");
-					m_controllerDetected = true;
-
-					// false: right hand, true: left hand
-					bool handed = false;
-					if (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_LEFTHAND) {
-						handed = true;
-					}
-					m_remoteController = std::make_shared<RemoteControllerServerDriver>(handed, m_recenterManager);
-
-					bool ret;
-					ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-						m_remoteController->GetSerialNumber().c_str(),
-						vr::TrackedDeviceClass_Controller,
-						m_remoteController.get());
-					Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, m_remoteController->GetSerialNumber().c_str());
-				}
-			}
+	void UpdateControllerState(const TrackingInfo& info) {
+		if (!Settings::Instance().m_enableController) {
+			return;
+		}
+		if (!m_controllerDetected) {
 			if (info.enableController) {
-				bool recenterRequested = m_remoteController->ReportControllerState(info);
-				if (recenterRequested) {
-					m_recenterManager->BeginRecenter();
+				Log("New controller is detected.");
+				m_controllerDetected = true;
+
+				// false: right hand, true: left hand
+				bool handed = false;
+				if (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_LEFTHAND) {
+					handed = true;
 				}
+				m_remoteController = std::make_shared<RemoteControllerServerDriver>(handed, m_recenterManager);
+
+				bool ret;
+				ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+					m_remoteController->GetSerialNumber().c_str(),
+					vr::TrackedDeviceClass_Controller,
+					m_remoteController.get());
+				Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, m_remoteController->GetSerialNumber().c_str());
+			}
+		}
+		if (info.enableController) {
+			bool recenterRequested = m_remoteController->ReportControllerState(info);
+			if (recenterRequested) {
+				m_recenterManager->BeginRecenter();
 			}
 		}
 	}

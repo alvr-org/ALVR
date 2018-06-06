@@ -34,6 +34,7 @@ static const char * const k_pch_Settings_LimitTimeslotPackets_Int32 = "limitTime
 
 static const char * const k_pch_Settings_ControllerModelNumber_String = "controllerModelNumber";
 static const char * const k_pch_Settings_ControllerSerialNumber_String = "controllerSerialNumber";
+static const char * const k_pch_Settings_EnableController_Bool = "enableController";
 static const char * const k_pch_Settings_ControllerTriggerMode_Int32 = "controllerTriggerMode";
 static const char * const k_pch_Settings_ControllerTrackpadClickMode_Int32 = "controllerTrackpadClickMode";
 static const char * const k_pch_Settings_ControllerTrackpadTouchMode_Int32 = "controllerTrackpadTouchMode";
@@ -88,6 +89,7 @@ public:
 	// Controller configs
 	std::string m_controllerModelNumber;
 	std::string m_controllerSerialNumber;
+	bool m_enableController;
 	int32_t m_controllerTriggerMode;
 	int32_t m_controllerTrackpadClickMode;
 	int32_t m_controllerTrackpadTouchMode;

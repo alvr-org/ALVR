@@ -104,6 +104,7 @@
             this.metroLabel1 = new MetroFramework.Controls.MetroLabel();
             this.sendDebugPos = new MetroFramework.Controls.MetroButton();
             this.metroButton5 = new MetroFramework.Controls.MetroButton();
+            this.packetlossButton = new MetroFramework.Controls.MetroButton();
             this.metroButton4 = new MetroFramework.Controls.MetroButton();
             this.aboutTab = new MetroFramework.Controls.MetroTabPage();
             this.driverLabel = new MetroFramework.Controls.MetroLabel();
@@ -118,7 +119,7 @@
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.packetlossButton = new MetroFramework.Controls.MetroButton();
+            this.enableControllerCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.connectedPanel.SuspendLayout();
@@ -647,6 +648,7 @@
             // 
             // controllerTab
             // 
+            this.controllerTab.Controls.Add(this.enableControllerCheckBox);
             this.controllerTab.Controls.Add(this.metroLabel22);
             this.controllerTab.Controls.Add(this.recenterButtonComboBox);
             this.controllerTab.Controls.Add(this.trackpadClickComboBox);
@@ -666,7 +668,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(228, 251);
+            this.metroLabel22.Location = new System.Drawing.Point(204, 255);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(230, 19);
             this.metroLabel22.TabIndex = 10;
@@ -676,7 +678,7 @@
             // 
             this.recenterButtonComboBox.FormattingEnabled = true;
             this.recenterButtonComboBox.ItemHeight = 23;
-            this.recenterButtonComboBox.Location = new System.Drawing.Point(184, 155);
+            this.recenterButtonComboBox.Location = new System.Drawing.Point(216, 162);
             this.recenterButtonComboBox.Name = "recenterButtonComboBox";
             this.recenterButtonComboBox.Size = new System.Drawing.Size(192, 29);
             this.recenterButtonComboBox.TabIndex = 9;
@@ -686,7 +688,7 @@
             // 
             this.trackpadClickComboBox.FormattingEnabled = true;
             this.trackpadClickComboBox.ItemHeight = 23;
-            this.trackpadClickComboBox.Location = new System.Drawing.Point(184, 94);
+            this.trackpadClickComboBox.Location = new System.Drawing.Point(216, 108);
             this.trackpadClickComboBox.Name = "trackpadClickComboBox";
             this.trackpadClickComboBox.Size = new System.Drawing.Size(192, 29);
             this.trackpadClickComboBox.TabIndex = 9;
@@ -696,7 +698,7 @@
             // 
             this.metroLabel23.AutoSize = true;
             this.metroLabel23.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel23.Location = new System.Drawing.Point(24, 155);
+            this.metroLabel23.Location = new System.Drawing.Point(56, 162);
             this.metroLabel23.Name = "metroLabel23";
             this.metroLabel23.Size = new System.Drawing.Size(133, 25);
             this.metroLabel23.TabIndex = 8;
@@ -706,7 +708,7 @@
             // 
             this.metroLabel20.AutoSize = true;
             this.metroLabel20.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel20.Location = new System.Drawing.Point(24, 94);
+            this.metroLabel20.Location = new System.Drawing.Point(56, 108);
             this.metroLabel20.Name = "metroLabel20";
             this.metroLabel20.Size = new System.Drawing.Size(116, 25);
             this.metroLabel20.TabIndex = 8;
@@ -716,7 +718,7 @@
             // 
             this.triggerComboBox.FormattingEnabled = true;
             this.triggerComboBox.ItemHeight = 23;
-            this.triggerComboBox.Location = new System.Drawing.Point(184, 32);
+            this.triggerComboBox.Location = new System.Drawing.Point(216, 57);
             this.triggerComboBox.Name = "triggerComboBox";
             this.triggerComboBox.Size = new System.Drawing.Size(192, 29);
             this.triggerComboBox.TabIndex = 9;
@@ -726,7 +728,7 @@
             // 
             this.metroLabel21.AutoSize = true;
             this.metroLabel21.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel21.Location = new System.Drawing.Point(24, 32);
+            this.metroLabel21.Location = new System.Drawing.Point(56, 57);
             this.metroLabel21.Name = "metroLabel21";
             this.metroLabel21.Size = new System.Drawing.Size(64, 25);
             this.metroLabel21.TabIndex = 8;
@@ -912,6 +914,15 @@
             this.metroButton5.Text = "Send";
             this.metroButton5.Click += new System.EventHandler(this.metroButton5_Click);
             // 
+            // packetlossButton
+            // 
+            this.packetlossButton.Location = new System.Drawing.Point(250, 230);
+            this.packetlossButton.Name = "packetlossButton";
+            this.packetlossButton.Size = new System.Drawing.Size(106, 23);
+            this.packetlossButton.TabIndex = 6;
+            this.packetlossButton.Text = "Cause packet loss";
+            this.packetlossButton.Click += new System.EventHandler(this.packetlossButton_Click);
+            // 
             // metroButton4
             // 
             this.metroButton4.Location = new System.Drawing.Point(200, 148);
@@ -1053,14 +1064,16 @@
             this.pictureBox1.TabIndex = 11;
             this.pictureBox1.TabStop = false;
             // 
-            // packetlossButton
+            // enableControllerCheckBox
             // 
-            this.packetlossButton.Location = new System.Drawing.Point(250, 230);
-            this.packetlossButton.Name = "packetlossButton";
-            this.packetlossButton.Size = new System.Drawing.Size(106, 23);
-            this.packetlossButton.TabIndex = 6;
-            this.packetlossButton.Text = "Cause packet loss";
-            this.packetlossButton.Click += new System.EventHandler(this.packetlossButton_Click);
+            this.enableControllerCheckBox.AutoSize = true;
+            this.enableControllerCheckBox.Location = new System.Drawing.Point(36, 19);
+            this.enableControllerCheckBox.Name = "enableControllerCheckBox";
+            this.enableControllerCheckBox.Size = new System.Drawing.Size(112, 15);
+            this.enableControllerCheckBox.TabIndex = 11;
+            this.enableControllerCheckBox.Text = "Enable controller";
+            this.enableControllerCheckBox.UseVisualStyleBackColor = true;
+            this.enableControllerCheckBox.CheckedChanged += new System.EventHandler(this.enableControllerCheckBox_CheckedChanged);
             // 
             // Launcher
             // 
@@ -1181,6 +1194,7 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn Name1;
         private System.Windows.Forms.DataGridViewTextBoxColumn Value1;
         private MetroFramework.Controls.MetroButton packetlossButton;
+        private MetroFramework.Controls.MetroCheckBox enableControllerCheckBox;
     }
 }
 

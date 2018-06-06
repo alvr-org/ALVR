@@ -16,6 +16,7 @@ namespace ALVR
         public static readonly int DEFAULT_BITRATE = 30;
         public static readonly int DEFAULT_WIDTH = 2048;
         public static readonly int DEFAULT_BUFFER_SIZE = 200 * 1000; // 200kB
+        public static readonly bool DEFAULT_ENABLE_CONTROLLER = true;
         public static readonly int DEFAULT_TRIGGER_MODE = 24;
         public static readonly int DEFAULT_TRACKPAD_CLICK_MODE = 28;
         public static readonly int DEFAULT_TRACKPAD_TOUCH_MODE = 29;
@@ -55,6 +56,7 @@ namespace ALVR
         public int renderWidth { get; set; } // in pixels
         public int bufferSize { get; set; } // in bytes
 
+        public bool enableController { get; set; }
         public int controllerTriggerMode { get; set; }
         public int controllerTrackpadClickMode { get; set; }
         public int controllerTrackpadTouchMode { get; set; }
@@ -120,6 +122,20 @@ namespace ALVR
             {
                 bufferSize = DEFAULT_BUFFER_SIZE;
             }
+
+            //
+            // Controller settings
+            //
+
+            try
+            {
+                enableController = (bool)configJson.driver_alvr_server.enableController;
+            }
+            catch (Exception e)
+            {
+                enableController = DEFAULT_ENABLE_CONTROLLER;
+            }
+
 
             try
             {
@@ -187,6 +203,7 @@ namespace ALVR
                 configJson.driver_alvr_server.debugLog = adebugLog;
 
                 configJson.driver_alvr_server.clientRecvBufferSize = bufferSize;
+                configJson.driver_alvr_server.enableController = enableController;
                 configJson.driver_alvr_server.controllerTriggerMode = controllerTriggerMode;
                 configJson.driver_alvr_server.controllerTrackpadClickMode = controllerTrackpadClickMode;
                 configJson.driver_alvr_server.controllerTrackpadTouchMode = controllerTrackpadTouchMode;

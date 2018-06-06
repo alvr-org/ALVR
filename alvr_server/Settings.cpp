@@ -72,6 +72,7 @@ void Settings::Load()
 	vr::VRSettings()->GetString(k_pch_Settings_Section, k_pch_Settings_ControllerSerialNumber_String, buf, sizeof(buf));
 	m_controllerSerialNumber = buf;
 
+	m_enableController = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_EnableController_Bool);
 	m_controllerTriggerMode = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControllerTriggerMode_Int32);
 	m_controllerTrackpadClickMode = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControllerTrackpadClickMode_Int32);
 	m_controllerTrackpadTouchMode = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControllerTrackpadTouchMode_Int32);

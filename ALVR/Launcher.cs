@@ -92,6 +92,8 @@ namespace ALVR
                 }
             }
 
+            enableControllerCheckBox.Checked = config.enableController;
+
             bitrateTrackBar.Value = config.bitrate;
 
             SetBufferSizeBytes(config.bufferSize);
@@ -133,6 +135,7 @@ namespace ALVR
             config.renderWidth = ServerConfig.supportedWidth[resolutionComboBox.SelectedIndex];
             config.bitrate = bitrateTrackBar.Value;
             config.bufferSize = GetBufferSizeKB() * 1000;
+            config.enableController = enableControllerCheckBox.Checked;
             config.controllerTriggerMode = ((ComboBoxCustomItem)triggerComboBox.SelectedItem).GetValue();
             config.controllerTrackpadClickMode = ((ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).GetValue();
             // Currently, we use same assing to click and touch of trackpad.
@@ -492,6 +495,13 @@ namespace ALVR
         async private void packetlossButton_Click(object sender, EventArgs e)
         {
             await socket.SendCommand("SetConfig causePacketLoss 1000");
+        }
+
+        private void enableControllerCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            triggerComboBox.Enabled = enableControllerCheckBox.Checked;
+            trackpadClickComboBox.Enabled = enableControllerCheckBox.Checked;
+            recenterButtonComboBox.Enabled = enableControllerCheckBox.Checked;
         }
     }
 }

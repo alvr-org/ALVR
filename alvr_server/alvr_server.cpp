@@ -30,6 +30,7 @@
 #include "RemoteController.h"
 #include "packet_types.h"
 #include "resource.h"
+#include "Tracking.h"
 
 HINSTANCE g_hInstance;
 
@@ -930,7 +931,16 @@ public:
 			GetSerialNumber().c_str(),
 			vr::TrackedDeviceClass_HMD,
 			this);
-		Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, GetSerialNumber().c_str());
+		Log("TrackedDeviceAdded(HMD) Ret=%d SerialNumber=%s", ret, GetSerialNumber().c_str());
+		if (Settings::Instance().m_useTrackingReference) {
+			m_trackingReference = std::make_shared<TrackingReference>();
+			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+				m_trackingReference->GetSerialNumber().c_str(),
+				vr::TrackedDeviceClass_TrackingReference,
+				m_trackingReference.get());
+			Log("TrackedDeviceAdded(TrackingReference) Ret=%d SerialNumber=%s", ret, GetSerialNumber().c_str());
+		}
+		
 	}
 
 	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) override
@@ -1223,6 +1233,10 @@ public:
 			m_VSyncThread->InsertVsync();
 			
 			UpdateControllerState(info);
+
+			if (m_trackingReference) {
+				m_trackingReference->OnPoseUpdated();
+			}
 		}
 	}
 
@@ -1284,6 +1298,8 @@ private:
 
 	std::shared_ptr<DisplayComponent> m_displayComponent;
 	std::shared_ptr<DirectModeComponent> m_directModeComponent;
+
+	std::shared_ptr<TrackingReference> m_trackingReference;
 
 	int m_refreshRate;
 };

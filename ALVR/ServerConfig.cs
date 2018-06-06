@@ -21,6 +21,7 @@ namespace ALVR
         public static readonly int DEFAULT_TRACKPAD_CLICK_MODE = 28;
         public static readonly int DEFAULT_TRACKPAD_TOUCH_MODE = 29;
         public static readonly int DEFAULT_RECENTER_BUTTON = 0; // 0=Disabled, 1=Trigger, 2=Trackpad Click, 3=Trackpad Touch
+        public static readonly bool DEFAULT_USE_TRACKING_REFERENCE = false;
         public static readonly int[] supportedWidth = new int[] { 1024, 1536, 2048 };
         // From OpenVR EVRButtonId
         public static readonly string[] supportedButtons = new string[] {
@@ -61,6 +62,8 @@ namespace ALVR
         public int controllerTrackpadClickMode { get; set; }
         public int controllerTrackpadTouchMode { get; set; }
         public int controllerRecenterButton { get; set; }
+
+        public bool useTrackingReference { get; set; }
 
         public ServerConfig()
         {
@@ -181,6 +184,15 @@ namespace ALVR
             {
                 controllerRecenterButton = DEFAULT_RECENTER_BUTTON;
             }
+
+            try
+            {
+                useTrackingReference = (bool)configJson.driver_alvr_server.controllerRecenterButton;
+            }
+            catch (RuntimeBinderException e)
+            {
+                useTrackingReference = DEFAULT_USE_TRACKING_REFERENCE;
+            }
             return true;
         }
 
@@ -208,6 +220,7 @@ namespace ALVR
                 configJson.driver_alvr_server.controllerTrackpadClickMode = controllerTrackpadClickMode;
                 configJson.driver_alvr_server.controllerTrackpadTouchMode = controllerTrackpadTouchMode;
                 configJson.driver_alvr_server.controllerRecenterButton = controllerRecenterButton;
+                configJson.driver_alvr_server.useTrackingReference = useTrackingReference;
 
                 using (FileStream stream = new FileStream(config, FileMode.Create, FileAccess.Write))
                 {

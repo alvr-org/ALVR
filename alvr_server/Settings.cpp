@@ -78,6 +78,8 @@ void Settings::Load()
 	m_controllerTrackpadTouchMode = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControllerTrackpadTouchMode_Int32);
 	m_controllerRecenterButton = vr::VRSettings()->GetInt32(k_pch_Settings_Section, k_pch_Settings_ControllerRecenterButton_Int32);
 
+	m_useTrackingReference = vr::VRSettings()->GetBool(k_pch_Settings_Section, k_pch_Settings_UseTrackingReference_Bool);
+
 	if (Settings::Instance().m_DebugLog) {
 		OpenLog((g_DebugOutputDir + "\\" + LOG_FILE).c_str());
 	}

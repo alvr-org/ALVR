@@ -93,6 +93,9 @@ namespace ALVR
             }
 
             enableControllerCheckBox.Checked = config.enableController;
+            UpdateEnableControllerState();
+
+            fakeTrackingReferenceCheckBox.Checked = config.useTrackingReference;
 
             bitrateTrackBar.Value = config.bitrate;
 
@@ -141,6 +144,7 @@ namespace ALVR
             // Currently, we use same assing to click and touch of trackpad.
             config.controllerTrackpadTouchMode = ServerConfig.DEFAULT_TRACKPAD_TOUCH_MODE;
             config.controllerRecenterButton = ((ComboBoxCustomItem)recenterButtonComboBox.SelectedItem).GetValue();
+            config.useTrackingReference = fakeTrackingReferenceCheckBox.Checked;
 
             bool debugLog = debugLogCheckBox.Checked;
             if (!config.Save(debugLog))
@@ -372,6 +376,13 @@ namespace ALVR
             }
         }
 
+        private void UpdateEnableControllerState()
+        {
+            triggerComboBox.Enabled = enableControllerCheckBox.Checked;
+            trackpadClickComboBox.Enabled = enableControllerCheckBox.Checked;
+            recenterButtonComboBox.Enabled = enableControllerCheckBox.Checked;
+        }
+
         //
         // Event handlers
         //
@@ -499,9 +510,7 @@ namespace ALVR
 
         private void enableControllerCheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            triggerComboBox.Enabled = enableControllerCheckBox.Checked;
-            trackpadClickComboBox.Enabled = enableControllerCheckBox.Checked;
-            recenterButtonComboBox.Enabled = enableControllerCheckBox.Checked;
+            UpdateEnableControllerState();
         }
     }
 }

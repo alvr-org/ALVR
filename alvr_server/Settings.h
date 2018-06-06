@@ -39,6 +39,9 @@ static const char * const k_pch_Settings_ControllerTriggerMode_Int32 = "controll
 static const char * const k_pch_Settings_ControllerTrackpadClickMode_Int32 = "controllerTrackpadClickMode";
 static const char * const k_pch_Settings_ControllerTrackpadTouchMode_Int32 = "controllerTrackpadTouchMode";
 static const char * const k_pch_Settings_ControllerRecenterButton_Int32 = "controllerRecenterButton";
+
+static const char * const k_pch_Settings_UseTrackingReference_Bool = "useTrackingReference";
+
 //
 // Constants
 //
@@ -99,5 +102,7 @@ public:
 	bool m_EnabledDebugPos;
 
 	int32_t m_causePacketLoss;
+
+	bool m_useTrackingReference;
 };
 

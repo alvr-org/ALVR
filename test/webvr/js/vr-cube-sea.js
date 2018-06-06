@@ -279,8 +279,8 @@ window.VRCubeSea = (function () {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.boardVert), gl.STATIC_DRAW);
 
     this.textureCanvas = document.createElement("canvas");
-    this.textureCanvas.width = 1024;
-    this.textureCanvas.height = 1024;
+    this.textureCanvas.width = 1024 * 2;
+    this.textureCanvas.height = 1024 * 2;
 
     this.canvasTexture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0);
@@ -367,11 +367,12 @@ window.VRCubeSea = (function () {
     gl.uniformMatrix4fv(program.uniform.modelViewMat, false, mm);
 
     if(position){
+        var fontSize = 40;
       var context = this.textureCanvas.getContext("2d");
       context.save();
       context.fillRect(0, 0, this.textureCanvas.width, this.textureCanvas.height);
       context.fillStyle = '#FFFFFF';
-      context.font = "bold 32px 'Arial'";
+      context.font = ""+fontSize+"px 'Arial'";
       context.textAlign = 'left';
       context.textBaseline = 'middle';
 

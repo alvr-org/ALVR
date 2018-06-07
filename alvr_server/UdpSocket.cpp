@@ -55,7 +55,7 @@ bool UdpSocket::IsClientValid()const {
 
 bool UdpSocket::IsLegitClient(const sockaddr_in * addr)
 {
-	if (m_ClientAddr.sin_addr.S_un.S_addr == addr->sin_addr.S_un.S_addr && m_ClientAddr.sin_port == addr->sin_port) {
+	if (m_ClientAddr.sin_family == AF_INET && m_ClientAddr.sin_addr.S_un.S_addr == addr->sin_addr.S_un.S_addr && m_ClientAddr.sin_port == addr->sin_port) {
 		return true;
 	}
 	else {

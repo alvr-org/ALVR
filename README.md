@@ -22,10 +22,10 @@ ALVR requires any of the following devices:
 |Device|Working?|
 |---|---|
 |Oculus Go|OK|
+|GalaxyS9/S9+|OK|
 |GalaxyS8/S8+|OK|
 |GalaxyS7|OK|
 |GalaxyS6(Edge)|OK|
-|GalaxyS9/S9+|Not tested|
 
 - High-end gaming PC with NVIDIA GPU which supports NVENC
     - Only Windows 10 is supported
@@ -127,6 +127,11 @@ If you like this project, please donate!
 #### Donate by paypal
 
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=polygraphene@gmail.com&lc=US&item_name=Donate+for+ALVR+developer&no_note=0&cn=&curency_code=USD&bn=PP-DonationsBF:btn_donateCC_LG.gif:NonHosted)
+If you could not use this link, please try the following.
+1. Login your paypal account
+2. Open "Send and request" tab
+3. Click "Pay for goods or services"
+4. Put "polygraphene@gmail.com" (it is my paypal account) and click next
 
 #### Donate by bitcoin
 

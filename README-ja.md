@@ -18,10 +18,10 @@ Gear VR / Oculus Go のコントローラーをサポートしました！
 |機種|動作確認|
 |---|---|
 |Oculus Go|OK|
+|GalaxyS9/S9+|OK|
 |GalaxyS8/S8+|OK|
 |GalaxyS7|OK|
 |GalaxyS6(Edge)|OK|
-|GalaxyS9/S9+|未テスト|
 
 - NVENCが使えるNVIDIA GPUを搭載したハイエンドPC
     - 現在、Windows 10のみサポートしています。
@@ -104,5 +104,11 @@ If you like this project, please donate!
 
 #### Donate by paypal
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=polygraphene@gmail.com&lc=US&item_name=Donate+for+ALVR+developer&no_note=0&cn=&curency_code=USD&bn=PP-DonationsBF:btn_donateCC_LG.gif:NonHosted)
+もしうまくいかない場合は以下の手順をお試しください。
+1. PayPalにログイン
+2. "支払いと請求" タブを開く
+3. "商品またはサービスの代金を支払う" をクリック
+4. メールアドレスに "polygraphene@gmail.com" (作者のPayPalアカウントです) を入力
+
 #### Donate by bitcoin
 bitcoin:1FCbmFVSjsmpnAj6oLx2EhnzQzzhyxTLEv

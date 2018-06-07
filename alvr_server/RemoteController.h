@@ -49,6 +49,7 @@ public:
 		, m_recenterManager(recenterManager)
 		, m_previousButtons(0)
 		, m_previousFlags(0)
+		, m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 	{
 		m_supportedButtons = vr::ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)
 			| vr::ButtonMaskFromId(vr::k_EButton_SteamVR_Touchpad)
@@ -220,6 +221,10 @@ public:
 		bool recenterRequest = false;
 
 		m_info = info;
+
+		if (m_unObjectId == vr::k_unTrackedDeviceIndexInvalid) {
+			return false;
+		}
 
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 

@@ -34,6 +34,11 @@ ALVR requires any of the following devices:
         - You need to connect both to the same router
 - SteamVR
 
+## Tested games
+
+- [List of tested VR games and experiences](https://github.com/polygraphene/ALVR/wiki/List-of-tested-VR-games-and-experiences) is now available.
+    - Thanks @Thaurin!
+
 ## Installation
 
 ### Install ALVR server for PC

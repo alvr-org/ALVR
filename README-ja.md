@@ -29,6 +29,11 @@ Gear VR / Oculus Go のコントローラーをサポートしました！
     - PCは有線、ヘッドセットは無線がおすすめです (同じルータに接続していればOK)
 - SteamVRがインストール済みであること
 
+## 動作確認済みゲーム
+
+- @Thaurinさんが[動作確認済みのゲーム一覧](https://github.com/polygraphene/ALVR/wiki/List-of-tested-VR-games-and-experiences) を作成してくれました！ありがとうございます！
+    - 誰でも編集できるので追加なども歓迎です！
+    
 ## インストール方法
 ### ALVR serverのインストールする方法
 - SteamVRをインストール

@@ -1340,7 +1340,7 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 		, Settings::Instance().m_ControlHost, Settings::Instance().m_ControlPort);
 	if (!m_Listener->Startup())
 	{
-		return vr::VRInitError_None;
+		return vr::VRInitError_Driver_Failed;
 	}
 	m_pRemoteHmd = std::make_shared<CRemoteHmd>(m_Listener);
 

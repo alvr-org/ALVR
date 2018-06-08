@@ -80,6 +80,7 @@
             this.bufferTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.bitrateTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.controllerTab = new MetroFramework.Controls.MetroTabPage();
+            this.enableControllerCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroLabel22 = new MetroFramework.Controls.MetroLabel();
             this.recenterButtonComboBox = new MetroFramework.Controls.MetroComboBox();
             this.trackpadClickComboBox = new MetroFramework.Controls.MetroComboBox();
@@ -87,6 +88,9 @@
             this.metroLabel20 = new MetroFramework.Controls.MetroLabel();
             this.triggerComboBox = new MetroFramework.Controls.MetroComboBox();
             this.metroLabel21 = new MetroFramework.Controls.MetroLabel();
+            this.otherTab = new MetroFramework.Controls.MetroTabPage();
+            this.metroLabel24 = new MetroFramework.Controls.MetroLabel();
+            this.fakeTrackingReferenceCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.debugTab = new MetroFramework.Controls.MetroTabPage();
             this.metroLabel5 = new MetroFramework.Controls.MetroLabel();
             this.logText = new MetroFramework.Controls.MetroTextBox();
@@ -119,10 +123,7 @@
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.enableControllerCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.otherTab = new MetroFramework.Controls.MetroTabPage();
-            this.fakeTrackingReferenceCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.metroLabel24 = new MetroFramework.Controls.MetroLabel();
+            this.listDriversButton = new MetroFramework.Controls.MetroButton();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.connectedPanel.SuspendLayout();
@@ -132,10 +133,10 @@
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.videoTab.SuspendLayout();
             this.controllerTab.SuspendLayout();
+            this.otherTab.SuspendLayout();
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            this.otherTab.SuspendLayout();
             this.SuspendLayout();
             // 
             // metroButton1
@@ -175,14 +176,14 @@
             // metroTabControl1
             // 
             this.metroTabControl1.Controls.Add(this.serverTab);
+            this.metroTabControl1.Controls.Add(this.otherTab);
             this.metroTabControl1.Controls.Add(this.videoTab);
             this.metroTabControl1.Controls.Add(this.controllerTab);
-            this.metroTabControl1.Controls.Add(this.otherTab);
             this.metroTabControl1.Controls.Add(this.debugTab);
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 3;
+            this.metroTabControl1.SelectedIndex = 5;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -669,11 +670,22 @@
             this.controllerTab.Text = "Controller";
             this.controllerTab.VerticalScrollbarBarColor = true;
             // 
+            // enableControllerCheckBox
+            // 
+            this.enableControllerCheckBox.AutoSize = true;
+            this.enableControllerCheckBox.Location = new System.Drawing.Point(36, 19);
+            this.enableControllerCheckBox.Name = "enableControllerCheckBox";
+            this.enableControllerCheckBox.Size = new System.Drawing.Size(112, 15);
+            this.enableControllerCheckBox.TabIndex = 11;
+            this.enableControllerCheckBox.Text = "Enable controller";
+            this.enableControllerCheckBox.UseVisualStyleBackColor = true;
+            this.enableControllerCheckBox.CheckedChanged += new System.EventHandler(this.enableControllerCheckBox_CheckedChanged);
+            // 
             // metroLabel22
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(206, 236);
+            this.metroLabel22.Location = new System.Drawing.Point(206, 124);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -739,6 +751,37 @@
             this.metroLabel21.Size = new System.Drawing.Size(64, 25);
             this.metroLabel21.TabIndex = 8;
             this.metroLabel21.Text = "Trigger";
+            // 
+            // otherTab
+            // 
+            this.otherTab.Controls.Add(this.metroLabel24);
+            this.otherTab.Controls.Add(this.fakeTrackingReferenceCheckBox);
+            this.otherTab.HorizontalScrollbarBarColor = true;
+            this.otherTab.Location = new System.Drawing.Point(4, 38);
+            this.otherTab.Name = "otherTab";
+            this.otherTab.Size = new System.Drawing.Size(656, 283);
+            this.otherTab.TabIndex = 7;
+            this.otherTab.Text = "Other";
+            this.otherTab.VerticalScrollbarBarColor = true;
+            // 
+            // metroLabel24
+            // 
+            this.metroLabel24.AutoSize = true;
+            this.metroLabel24.Location = new System.Drawing.Point(66, 62);
+            this.metroLabel24.Name = "metroLabel24";
+            this.metroLabel24.Size = new System.Drawing.Size(238, 19);
+            this.metroLabel24.TabIndex = 3;
+            this.metroLabel24.Text = "Add fake base station for some games.";
+            // 
+            // fakeTrackingReferenceCheckBox
+            // 
+            this.fakeTrackingReferenceCheckBox.AutoSize = true;
+            this.fakeTrackingReferenceCheckBox.Location = new System.Drawing.Point(37, 31);
+            this.fakeTrackingReferenceCheckBox.Name = "fakeTrackingReferenceCheckBox";
+            this.fakeTrackingReferenceCheckBox.Size = new System.Drawing.Size(113, 15);
+            this.fakeTrackingReferenceCheckBox.TabIndex = 2;
+            this.fakeTrackingReferenceCheckBox.Text = "Fake base station";
+            this.fakeTrackingReferenceCheckBox.UseVisualStyleBackColor = true;
             // 
             // debugTab
             // 
@@ -942,6 +985,7 @@
             // 
             this.aboutTab.Controls.Add(this.driverLabel);
             this.aboutTab.Controls.Add(this.uninstallButton);
+            this.aboutTab.Controls.Add(this.listDriversButton);
             this.aboutTab.Controls.Add(this.installButton);
             this.aboutTab.Controls.Add(this.metroLabel15);
             this.aboutTab.Controls.Add(this.metroLabel14);
@@ -961,7 +1005,7 @@
             this.driverLabel.AutoSize = true;
             this.driverLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
             this.driverLabel.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.driverLabel.Location = new System.Drawing.Point(84, 214);
+            this.driverLabel.Location = new System.Drawing.Point(84, 194);
             this.driverLabel.Name = "driverLabel";
             this.driverLabel.Size = new System.Drawing.Size(138, 19);
             this.driverLabel.Style = MetroFramework.MetroColorStyle.Green;
@@ -971,7 +1015,7 @@
             // 
             // uninstallButton
             // 
-            this.uninstallButton.Location = new System.Drawing.Point(157, 245);
+            this.uninstallButton.Location = new System.Drawing.Point(157, 225);
             this.uninstallButton.Name = "uninstallButton";
             this.uninstallButton.Size = new System.Drawing.Size(109, 23);
             this.uninstallButton.TabIndex = 5;
@@ -980,7 +1024,7 @@
             // 
             // installButton
             // 
-            this.installButton.Location = new System.Drawing.Point(39, 245);
+            this.installButton.Location = new System.Drawing.Point(39, 225);
             this.installButton.Name = "installButton";
             this.installButton.Size = new System.Drawing.Size(98, 23);
             this.installButton.TabIndex = 5;
@@ -1070,47 +1114,14 @@
             this.pictureBox1.TabIndex = 11;
             this.pictureBox1.TabStop = false;
             // 
-            // enableControllerCheckBox
+            // listDriversButton
             // 
-            this.enableControllerCheckBox.AutoSize = true;
-            this.enableControllerCheckBox.Location = new System.Drawing.Point(36, 19);
-            this.enableControllerCheckBox.Name = "enableControllerCheckBox";
-            this.enableControllerCheckBox.Size = new System.Drawing.Size(112, 15);
-            this.enableControllerCheckBox.TabIndex = 11;
-            this.enableControllerCheckBox.Text = "Enable controller";
-            this.enableControllerCheckBox.UseVisualStyleBackColor = true;
-            this.enableControllerCheckBox.CheckedChanged += new System.EventHandler(this.enableControllerCheckBox_CheckedChanged);
-            // 
-            // otherTab
-            // 
-            this.otherTab.Controls.Add(this.metroLabel24);
-            this.otherTab.Controls.Add(this.fakeTrackingReferenceCheckBox);
-            this.otherTab.HorizontalScrollbarBarColor = true;
-            this.otherTab.Location = new System.Drawing.Point(4, 38);
-            this.otherTab.Name = "otherTab";
-            this.otherTab.Size = new System.Drawing.Size(656, 283);
-            this.otherTab.TabIndex = 7;
-            this.otherTab.Text = "Other";
-            this.otherTab.VerticalScrollbarBarColor = true;
-            // 
-            // fakeTrackingReferenceCheckBox
-            // 
-            this.fakeTrackingReferenceCheckBox.AutoSize = true;
-            this.fakeTrackingReferenceCheckBox.Location = new System.Drawing.Point(37, 31);
-            this.fakeTrackingReferenceCheckBox.Name = "fakeTrackingReferenceCheckBox";
-            this.fakeTrackingReferenceCheckBox.Size = new System.Drawing.Size(113, 15);
-            this.fakeTrackingReferenceCheckBox.TabIndex = 2;
-            this.fakeTrackingReferenceCheckBox.Text = "Fake base station";
-            this.fakeTrackingReferenceCheckBox.UseVisualStyleBackColor = true;
-            // 
-            // metroLabel24
-            // 
-            this.metroLabel24.AutoSize = true;
-            this.metroLabel24.Location = new System.Drawing.Point(66, 62);
-            this.metroLabel24.Name = "metroLabel24";
-            this.metroLabel24.Size = new System.Drawing.Size(238, 19);
-            this.metroLabel24.TabIndex = 3;
-            this.metroLabel24.Text = "Add fake base station for some games.";
+            this.listDriversButton.Location = new System.Drawing.Point(100, 257);
+            this.listDriversButton.Name = "listDriversButton";
+            this.listDriversButton.Size = new System.Drawing.Size(98, 23);
+            this.listDriversButton.TabIndex = 5;
+            this.listDriversButton.Text = "List drivers";
+            this.listDriversButton.Click += new System.EventHandler(this.listDriversButton_Click);
             // 
             // Launcher
             // 
@@ -1138,13 +1149,13 @@
             this.videoTab.PerformLayout();
             this.controllerTab.ResumeLayout(false);
             this.controllerTab.PerformLayout();
+            this.otherTab.ResumeLayout(false);
+            this.otherTab.PerformLayout();
             this.debugTab.ResumeLayout(false);
             this.debugTab.PerformLayout();
             this.aboutTab.ResumeLayout(false);
             this.aboutTab.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            this.otherTab.ResumeLayout(false);
-            this.otherTab.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -1237,6 +1248,7 @@
         private MetroFramework.Controls.MetroTabPage otherTab;
         private MetroFramework.Controls.MetroCheckBox fakeTrackingReferenceCheckBox;
         private MetroFramework.Controls.MetroLabel metroLabel24;
+        private MetroFramework.Controls.MetroButton listDriversButton;
     }
 }
 

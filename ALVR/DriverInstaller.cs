@@ -77,6 +77,28 @@ namespace ALVR
             return false;
         }
 
+        public static bool ListDrivers()
+        {
+            string vrpathreg = GetVRPathRegPath();
+            if (vrpathreg == null)
+            {
+                throw new Exception();
+            }
+
+            string driverPath = Utils.GetDriverPath();
+            driverPath += "\\";
+
+            var process = ExecuteProcess(vrpathreg, "show");
+            string list = process.StandardOutput.ReadToEnd();
+            int index = list.IndexOf("External Drivers:\r\n");
+            if (index != -1)
+            {
+                list = "Installed driver list:\r\n" + list.Substring(index + "External Drivers:\r\n".Length);
+            }
+            MessageBox.Show(list, "ALVR");
+            return true;
+        }
+
         private static string GetVRPathRegPath()
         {
             RegistryKey regkey = Registry.ClassesRoot.OpenSubKey(@"vrmonitor\Shell\Open\Command", false);

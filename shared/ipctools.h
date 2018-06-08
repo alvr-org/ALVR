@@ -12,14 +12,16 @@
 class IPCMutex
 {
 public:
-	IPCMutex( const char* pName );
+	IPCMutex( const char* pName, bool initialOwner = false );
 	~IPCMutex();
 
 	bool Wait( uint32_t nTimeoutMs = INFINITE );
 	void Release();
+	bool AlreadyExist();
 
 private:
 	HANDLE m_hMutex;
+	bool m_Exist;
 };
 
 // A named event for synchronization between processes.

@@ -1328,6 +1328,7 @@ public:
 private:
 	std::shared_ptr<CRemoteHmd> m_pRemoteHmd;
 	std::shared_ptr<Listener> m_Listener;
+	std::shared_ptr<IPCMutex> m_mutex;
 };
 
 vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pContext )
@@ -1335,6 +1336,14 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 	VR_INIT_SERVER_DRIVER_CONTEXT( pContext );
 
 	Settings::Instance().Load();
+
+	m_mutex = std::make_shared<IPCMutex>(APP_MUTEX_NAME, true);
+	if (m_mutex->AlreadyExist()) {
+		// Duplicate driver installation.
+		FatalLog("ALVR Server driver is installed on multiple locations. This causes some issues.\r\n"
+			"Please check the installed driver list on About tab and uninstall old drivers.");
+		return vr::VRInitError_Driver_Failed;
+	}
 
 	m_Listener = std::make_shared<Listener>(Settings::Instance().m_Host, Settings::Instance().m_Port
 		, Settings::Instance().m_ControlHost, Settings::Instance().m_ControlPort);
@@ -1351,6 +1360,7 @@ void CServerDriver_DisplayRedirect::Cleanup()
 {
 	m_Listener.reset();
 	m_pRemoteHmd.reset();
+	m_mutex.reset();
 
 	VR_CLEANUP_SERVER_DRIVER_CONTEXT();
 }

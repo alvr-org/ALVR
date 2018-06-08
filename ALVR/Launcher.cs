@@ -512,5 +512,10 @@ namespace ALVR
         {
             UpdateEnableControllerState();
         }
+
+        private void listDriversButton_Click(object sender, EventArgs e)
+        {
+            DriverInstaller.ListDrivers();
+        }
     }
 }

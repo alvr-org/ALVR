@@ -3,6 +3,7 @@ using Microsoft.CSharp.RuntimeBinder;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -13,225 +14,150 @@ namespace ALVR
 {
     class ServerConfig
     {
-        public static readonly int DEFAULT_BITRATE = 30;
-        public static readonly int DEFAULT_WIDTH = 2048;
-        public static readonly int DEFAULT_BUFFER_SIZE = 200 * 1000; // 200kB
-        public static readonly bool DEFAULT_ENABLE_CONTROLLER = true;
-        public static readonly int DEFAULT_TRIGGER_MODE = 24;
-        public static readonly int DEFAULT_TRACKPAD_CLICK_MODE = 28;
-        public static readonly int DEFAULT_TRACKPAD_TOUCH_MODE = 29;
-        public static readonly int DEFAULT_RECENTER_BUTTON = 0; // 0=Disabled, 1=Trigger, 2=Trackpad Click, 3=Trackpad Touch
-        public static readonly bool DEFAULT_USE_TRACKING_REFERENCE = false;
-        public static readonly int[] supportedWidth = new int[] { 1024, 1536, 2048, 2560, 2880, 3072 };
-        public static readonly string[] supportedResolutions = new string[] { "1024 x 512", "1536 x 768", "2048 x 1024", "2560 x 1280", "2880 x 1440", "3072 x 1536" };
-        // From OpenVR EVRButtonId
-        public static readonly string[] supportedButtons = new string[] {
-            "None"
-            ,"System"
-            , "ApplicationMenu"
-            , "Grip"
-            , "DPad_Left"
-            , "DPad_Up"
-            , "DPad_Right"
-            , "DPad_Down"
-            , "A Button"
-            , "B Button"
-            , "X Button"
-            , "Y Button" // 10
-            , "Trackpad" // 28
-            , "Trigger" // 24
-            , "Shoulder Left"
-            , "Shoulder Right"
-            , "Joystick Left"
-            , "Joystick Right"
-            , "Back"
-            , "Guide"
-            , "Start"
+        private static readonly string APP_FILEMAPPING_NAME = "ALVR_DRIVER_FILEMAPPING_0B124897-7730-4B84-AA32-088E9B92851F";
+
+        public class Resolution
+        {
+            public int width { get; set; }
+            public string display { get { return width + " x " + (width / 2); } }
+            public override string ToString()
+            {
+                return display;
+            }
+        }
+        public static readonly Resolution[] supportedResolutions = {
+            new Resolution { width = 1024 }
+            , new Resolution { width = 1536 }
+            , new Resolution { width = 2048 }
+            , new Resolution { width = 2560 }
+            , new Resolution { width = 2880 }
+            , new Resolution { width = 3072 }
         };
-        public static readonly int[] supportedButtonId = new int[] { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 /* Y */
-            , 28, 24, 13, 14, 15, 18, 21, 22, 23 };
+
+        public class ComboBoxCustomItem
+        {
+            public ComboBoxCustomItem(string s, int val)
+            {
+                text = s;
+                value = val;
+            }
+            private readonly string text;
+            public int value { get; private set; }
+
+            public override string ToString()
+            {
+                return text;
+            }
+        }
+
+        // From OpenVR EVRButtonId
+        public static readonly ComboBoxCustomItem[] supportedButtons = {
+            new ComboBoxCustomItem("None", -1)
+            ,new ComboBoxCustomItem("System", 0)
+            ,new ComboBoxCustomItem("ApplicationMenu", 1)
+            ,new ComboBoxCustomItem("Grip", 2)
+            ,new ComboBoxCustomItem("DPad_Left", 3)
+            ,new ComboBoxCustomItem("DPad_Up", 4)
+            ,new ComboBoxCustomItem("DPad_Right", 5)
+            ,new ComboBoxCustomItem("DPad_Down", 6)
+            ,new ComboBoxCustomItem("A Button", 7)
+            ,new ComboBoxCustomItem("B Button", 8)
+            ,new ComboBoxCustomItem("X Button", 9)
+            ,new ComboBoxCustomItem("Y Button", 10)
+            ,new ComboBoxCustomItem("Trackpad", 28) // 28
+            ,new ComboBoxCustomItem("Trigger", 24) // 24
+            ,new ComboBoxCustomItem("Shoulder Left", 13)
+            ,new ComboBoxCustomItem("Shoulder Right", 14)
+            ,new ComboBoxCustomItem("Joystick Left", 15)
+            ,new ComboBoxCustomItem("Joystick Right", 18)
+            ,new ComboBoxCustomItem("Back", 21)
+            ,new ComboBoxCustomItem("Guide", 22)
+            ,new ComboBoxCustomItem("Start", 23)
+        };
         public static readonly string[] supportedRecenterButton = new string[] {
             "None", "Trigger", "Trackpad click", "Trackpad touch"//, "Back short-press"
         };
-
-        public int bitrate { get; set; } // in Mbps
-        public int renderWidth { get; set; } // in pixels
-        public int bufferSize { get; set; } // in bytes
-
-        public bool enableController { get; set; }
-        public int controllerTriggerMode { get; set; }
-        public int controllerTrackpadClickMode { get; set; }
-        public int controllerTrackpadTouchMode { get; set; }
-        public int controllerRecenterButton { get; set; }
-
-        public bool useTrackingReference { get; set; }
-
+        
         public ServerConfig()
         {
         }
 
-        public void EnsureSupportedValue(int []list, int value)
+        public static int FindButton(int button)
         {
-            if (Array.IndexOf(list, value) == -1)
+            for (var i = 0; i < supportedButtons.Length; i++)
             {
-                throw new NotSupportedException();
+                if (supportedButtons[i].value == button)
+                {
+                    return i;
+                }
             }
+            return -1;
         }
 
-        public bool Load()
+        public int GetBufferSizeKB()
         {
-            string config = Utils.GetConfigPath();
-
-            FileStream stream = null;
-            try
+            if (Properties.Settings.Default.bufferSize == 5)
             {
-                stream = new FileStream(config, FileMode.Open, FileAccess.Read);
+                return 200;
             }
-            catch (Exception e)
-            {
-                MessageBox.Show("Error on opening " + config + "\r\nPlease check existence of driver folder.");
-                return false;
-            }
-            dynamic configJson = DynamicJson.Parse(stream);
-            bitrate = DEFAULT_BITRATE;
-
-            try
-            {
-                string nvencOptions = configJson.driver_alvr_server.nvencOptions;
-                var m = Regex.Match(nvencOptions, ".*-bitrate ([^ ]+)M.*");
-                if (m.Success)
-                {
-                    bitrate = int.Parse(m.Groups[1].Value);
-                }
-            }
-            catch (Exception e)
-            {
-            }
-
-            try
-            {
-                renderWidth = (int)configJson.driver_alvr_server.renderWidth;
-                EnsureSupportedValue(supportedWidth, renderWidth);
-            }
-            catch (Exception e)
-            {
-                renderWidth = DEFAULT_WIDTH;
-            }
-
-            try
-            {
-                bufferSize = (int)configJson.driver_alvr_server.clientRecvBufferSize;
-            }
-            catch (RuntimeBinderException e)
-            {
-                bufferSize = DEFAULT_BUFFER_SIZE;
-            }
-
-            //
-            // Controller settings
-            //
-
-            try
-            {
-                enableController = (bool)configJson.driver_alvr_server.enableController;
-            }
-            catch (Exception e)
-            {
-                enableController = DEFAULT_ENABLE_CONTROLLER;
-            }
-
-
-            try
-            {
-                controllerTriggerMode = (int)configJson.driver_alvr_server.controllerTriggerMode;
-                EnsureSupportedValue(supportedButtonId, controllerTriggerMode);
-            }
-            catch (Exception e)
-            {
-                controllerTriggerMode = DEFAULT_TRIGGER_MODE;
-            }
-
-            try
-            {
-                controllerTrackpadClickMode = (int)configJson.driver_alvr_server.controllerTrackpadClickMode;
-                EnsureSupportedValue(supportedButtonId, controllerTrackpadClickMode);
-            }
-            catch (Exception e)
-            {
-                controllerTrackpadClickMode = DEFAULT_TRACKPAD_CLICK_MODE;
-            }
-
-            try
-            {
-                //controllerTrackpadTouchMode = (int)configJson.driver_alvr_server.controllerTrackpadTouchMode;
-                // We only support "Trackpad touch" value on controllerTrackpadTouchMode
-                controllerTrackpadTouchMode = DEFAULT_TRACKPAD_TOUCH_MODE;
-                //EnsureSupportedValue(supportedButtonId, controllerTrackpadTouchMode);
-            }
-            catch (Exception e)
-            {
-                controllerTrackpadTouchMode = DEFAULT_TRACKPAD_TOUCH_MODE;
-            }
-
-            try
-            {
-                controllerRecenterButton = (int)configJson.driver_alvr_server.controllerRecenterButton;
-                if (controllerRecenterButton < 0 || 3 < controllerRecenterButton)
-                {
-                    controllerRecenterButton = DEFAULT_RECENTER_BUTTON;
-                }
-            }
-            catch (RuntimeBinderException e)
-            {
-                controllerRecenterButton = DEFAULT_RECENTER_BUTTON;
-            }
-
-            try
-            {
-                useTrackingReference = (bool)configJson.driver_alvr_server.controllerRecenterButton;
-            }
-            catch (RuntimeBinderException e)
-            {
-                useTrackingReference = DEFAULT_USE_TRACKING_REFERENCE;
-            }
-            return true;
+            // Map 0 - 100 to 100kB - 2000kB
+            return Properties.Settings.Default.bufferSize * 1900 / 100 + 100;
         }
 
-        public bool Save(bool adebugLog)
+        public bool Save()
         {
-            string config = Utils.GetConfigPath();
-            dynamic configJson;
             try
             {
-                using (FileStream stream = new FileStream(config, FileMode.Open, FileAccess.Read))
+                dynamic configJson = new DynamicJson();
+                var driver = configJson.driver_alvr_server;
+                driver.serialNumber = "ALVR-001";
+                driver.modelNumber = "ALVR driver server";
+                driver.adapterIndex = 0;
+                driver.IPD = 0.064;
+                driver.secondsFromVsyncToPhotons = 0.005;
+                driver.displayFrequency = 60;
+                driver.listenPort = 9944;
+                driver.listenHost = "0.0.0.0";
+                driver.sendingTimeslotUs = 500;
+                driver.limitTimeslotPackets = 0;
+                driver.controlListenPort = 9944;
+                driver.controlListenHost = "127.0.0.1";
+                driver.useKeyedMutex = true;
+                driver.controllerModelNumber = "Gear VR Controller";
+                driver.controllerSerialNumber = "Controller-001";
+
+                driver.nvencOptions = "-codec h264 -preset ll_hq -rc cbr_ll_hq -gop 120 -fps 60 -bitrate "
+                    + Properties.Settings.Default.bitrate + "M -maxbitrate " + Properties.Settings.Default.bitrate + "M";
+
+                driver.renderWidth = Properties.Settings.Default.renderWidth;
+                driver.renderHeight = Properties.Settings.Default.renderWidth / 2;
+
+                driver.debugOutputDir = Utils.GetDriverPath();
+                driver.debugLog = Properties.Settings.Default.debugLog;
+
+                driver.clientRecvBufferSize = GetBufferSizeKB() * 1000;
+                driver.enableController = Properties.Settings.Default.enableController;
+                driver.controllerTriggerMode = Properties.Settings.Default.controllerTriggerMode;
+                driver.controllerTrackpadClickMode = Properties.Settings.Default.controllerTrackpadClickMode;
+                driver.controllerTrackpadTouchMode = Properties.Settings.Default.controllerTrackpadTouchMode;
+
+                // 0=Disabled, 1=Trigger, 2=Trackpad Click, 3=Trackpad Touch
+                driver.controllerRecenterButton = Properties.Settings.Default.controllerRecenterButton;
+                driver.useTrackingReference = Properties.Settings.Default.useTrackingReference;
+
+                byte[] bytes = Encoding.UTF8.GetBytes(configJson.ToString());
+                using (var mapped = MemoryMappedFile.CreateOrOpen(APP_FILEMAPPING_NAME, sizeof(int) + bytes.Length))
                 {
-                    configJson = DynamicJson.Parse(stream);
-                }
-                configJson.driver_alvr_server.nvencOptions = "-codec h264 -preset ll_hq -rc cbr_ll_hq -gop 120 -fps 60 -bitrate " + bitrate + "M -maxbitrate " + bitrate + "M";
-
-                configJson.driver_alvr_server.renderWidth = renderWidth;
-                configJson.driver_alvr_server.renderHeight = renderWidth / 2;
-
-                configJson.driver_alvr_server.debugOutputDir = Utils.GetDriverPath();
-                configJson.driver_alvr_server.debugLog = adebugLog;
-
-                configJson.driver_alvr_server.clientRecvBufferSize = bufferSize;
-                configJson.driver_alvr_server.enableController = enableController;
-                configJson.driver_alvr_server.controllerTriggerMode = controllerTriggerMode;
-                configJson.driver_alvr_server.controllerTrackpadClickMode = controllerTrackpadClickMode;
-                configJson.driver_alvr_server.controllerTrackpadTouchMode = controllerTrackpadTouchMode;
-                configJson.driver_alvr_server.controllerRecenterButton = controllerRecenterButton;
-                configJson.driver_alvr_server.useTrackingReference = useTrackingReference;
-
-                using (FileStream stream = new FileStream(config, FileMode.Create, FileAccess.Write))
-                {
-                    var bytes = Encoding.UTF8.GetBytes(configJson.ToString());
-                    stream.Write(bytes, 0, bytes.Length);
+                    using (var mappedStream = mapped.CreateViewStream())
+                    {
+                        mappedStream.Write(BitConverter.GetBytes(bytes.Length), 0, sizeof(int));
+                        mappedStream.Write(bytes, 0, bytes.Length);
+                    }
                 }
             }
             catch (Exception e)
             {
-                MessageBox.Show("Error on opening " + config + "\r\nPlease check existence of driver folder.");
+                MessageBox.Show("Error on creating filemapping.\r\nPlease check the status of vrserver.exe and retry.");
                 return false;
             }
             return true;

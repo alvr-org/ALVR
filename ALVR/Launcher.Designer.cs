@@ -113,6 +113,7 @@
             this.aboutTab = new MetroFramework.Controls.MetroTabPage();
             this.driverLabel = new MetroFramework.Controls.MetroLabel();
             this.uninstallButton = new MetroFramework.Controls.MetroButton();
+            this.listDriversButton = new MetroFramework.Controls.MetroButton();
             this.installButton = new MetroFramework.Controls.MetroButton();
             this.metroLabel15 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel14 = new MetroFramework.Controls.MetroLabel();
@@ -123,7 +124,7 @@
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.listDriversButton = new MetroFramework.Controls.MetroButton();
+            this.resolutionBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.connectedPanel.SuspendLayout();
@@ -137,6 +138,7 @@
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
             // metroButton1
@@ -176,14 +178,14 @@
             // metroTabControl1
             // 
             this.metroTabControl1.Controls.Add(this.serverTab);
-            this.metroTabControl1.Controls.Add(this.otherTab);
             this.metroTabControl1.Controls.Add(this.videoTab);
             this.metroTabControl1.Controls.Add(this.controllerTab);
+            this.metroTabControl1.Controls.Add(this.otherTab);
             this.metroTabControl1.Controls.Add(this.debugTab);
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 5;
+            this.metroTabControl1.SelectedIndex = 1;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -536,12 +538,15 @@
             // 
             // resolutionComboBox
             // 
+            this.resolutionComboBox.DataSource = this.resolutionBindingSource;
+            this.resolutionComboBox.DisplayMember = "display";
             this.resolutionComboBox.FormattingEnabled = true;
             this.resolutionComboBox.ItemHeight = 23;
             this.resolutionComboBox.Location = new System.Drawing.Point(184, 109);
             this.resolutionComboBox.Name = "resolutionComboBox";
             this.resolutionComboBox.Size = new System.Drawing.Size(192, 29);
             this.resolutionComboBox.TabIndex = 6;
+            this.resolutionComboBox.ValueMember = "width";
             // 
             // bufferLabel
             // 
@@ -632,24 +637,26 @@
             // bufferTrackBar
             // 
             this.bufferTrackBar.BackColor = System.Drawing.Color.Transparent;
+            this.bufferTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bufferSize", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.bufferTrackBar.Location = new System.Drawing.Point(184, 204);
             this.bufferTrackBar.Name = "bufferTrackBar";
             this.bufferTrackBar.Size = new System.Drawing.Size(368, 23);
             this.bufferTrackBar.TabIndex = 2;
             this.bufferTrackBar.Text = "metroTrackBar1";
-            this.bufferTrackBar.Value = 5;
+            this.bufferTrackBar.Value = global::ALVR.Properties.Settings.Default.bufferSize;
             this.bufferTrackBar.ValueChanged += new System.EventHandler(this.bufferTrackBar_ValueChanged);
             // 
             // bitrateTrackBar
             // 
             this.bitrateTrackBar.BackColor = System.Drawing.Color.Transparent;
+            this.bitrateTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bitrate", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.bitrateTrackBar.Location = new System.Drawing.Point(184, 38);
             this.bitrateTrackBar.Minimum = 1;
             this.bitrateTrackBar.Name = "bitrateTrackBar";
             this.bitrateTrackBar.Size = new System.Drawing.Size(368, 23);
             this.bitrateTrackBar.TabIndex = 2;
             this.bitrateTrackBar.Text = "metroTrackBar1";
-            this.bitrateTrackBar.Value = 30;
+            this.bitrateTrackBar.Value = global::ALVR.Properties.Settings.Default.bitrate;
             this.bitrateTrackBar.ValueChanged += new System.EventHandler(this.bitrateTrackBar_ValueChanged);
             // 
             // controllerTab
@@ -673,6 +680,9 @@
             // enableControllerCheckBox
             // 
             this.enableControllerCheckBox.AutoSize = true;
+            this.enableControllerCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableController;
+            this.enableControllerCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.enableControllerCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableController", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.enableControllerCheckBox.Location = new System.Drawing.Point(36, 19);
             this.enableControllerCheckBox.Name = "enableControllerCheckBox";
             this.enableControllerCheckBox.Size = new System.Drawing.Size(112, 15);
@@ -685,7 +695,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(206, 124);
+            this.metroLabel22.Location = new System.Drawing.Point(206, -548);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -776,6 +786,8 @@
             // fakeTrackingReferenceCheckBox
             // 
             this.fakeTrackingReferenceCheckBox.AutoSize = true;
+            this.fakeTrackingReferenceCheckBox.Checked = global::ALVR.Properties.Settings.Default.useTrackingReference;
+            this.fakeTrackingReferenceCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useTrackingReference", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.fakeTrackingReferenceCheckBox.Location = new System.Drawing.Point(37, 31);
             this.fakeTrackingReferenceCheckBox.Name = "fakeTrackingReferenceCheckBox";
             this.fakeTrackingReferenceCheckBox.Size = new System.Drawing.Size(113, 15);
@@ -870,6 +882,8 @@
             // debugLogCheckBox
             // 
             this.debugLogCheckBox.AutoSize = true;
+            this.debugLogCheckBox.Checked = global::ALVR.Properties.Settings.Default.debugLog;
+            this.debugLogCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "debugLog", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.debugLogCheckBox.Location = new System.Drawing.Point(7, 177);
             this.debugLogCheckBox.Name = "debugLogCheckBox";
             this.debugLogCheckBox.Size = new System.Drawing.Size(78, 15);
@@ -1022,6 +1036,15 @@
             this.uninstallButton.Text = "Uninstall driver";
             this.uninstallButton.Click += new System.EventHandler(this.uninstallButton_Click);
             // 
+            // listDriversButton
+            // 
+            this.listDriversButton.Location = new System.Drawing.Point(100, 257);
+            this.listDriversButton.Name = "listDriversButton";
+            this.listDriversButton.Size = new System.Drawing.Size(98, 23);
+            this.listDriversButton.TabIndex = 5;
+            this.listDriversButton.Text = "List drivers";
+            this.listDriversButton.Click += new System.EventHandler(this.listDriversButton_Click);
+            // 
             // installButton
             // 
             this.installButton.Location = new System.Drawing.Point(39, 225);
@@ -1114,14 +1137,9 @@
             this.pictureBox1.TabIndex = 11;
             this.pictureBox1.TabStop = false;
             // 
-            // listDriversButton
+            // resolutionBindingSource
             // 
-            this.listDriversButton.Location = new System.Drawing.Point(100, 257);
-            this.listDriversButton.Name = "listDriversButton";
-            this.listDriversButton.Size = new System.Drawing.Size(98, 23);
-            this.listDriversButton.TabIndex = 5;
-            this.listDriversButton.Text = "List drivers";
-            this.listDriversButton.Click += new System.EventHandler(this.listDriversButton_Click);
+            this.resolutionBindingSource.DataSource = typeof(ALVR.ServerConfig.Resolution);
             // 
             // Launcher
             // 
@@ -1136,6 +1154,7 @@
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Launcher";
             this.Text = "ALVR";
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Launcher_FormClosed);
             this.Load += new System.EventHandler(this.Launcher_Load);
             this.metroTabControl1.ResumeLayout(false);
             this.serverTab.ResumeLayout(false);
@@ -1156,6 +1175,7 @@
             this.aboutTab.ResumeLayout(false);
             this.aboutTab.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -1249,6 +1269,7 @@
         private MetroFramework.Controls.MetroCheckBox fakeTrackingReferenceCheckBox;
         private MetroFramework.Controls.MetroLabel metroLabel24;
         private MetroFramework.Controls.MetroButton listDriversButton;
+        private System.Windows.Forms.BindingSource resolutionBindingSource;
     }
 }
 

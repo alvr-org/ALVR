@@ -20,10 +20,5 @@ namespace ALVR
             }
             return driverPath;
         }
-
-        public static string GetConfigPath()
-        {
-            return GetDriverPath() + @"\resources\settings\default.vrsettings";
-        }
     }
 }

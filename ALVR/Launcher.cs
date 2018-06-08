@@ -23,26 +23,6 @@ namespace ALVR
         ControlSocket socket = new ControlSocket();
         ServerConfig config = new ServerConfig();
 
-        class ComboBoxCustomItem
-        {
-            public ComboBoxCustomItem(string s, int val)
-            {
-                text = s;
-                value = val;
-            }
-            private readonly string text;
-            private readonly int value;
-
-            public override string ToString()
-            {
-                return text;
-            }
-            public int GetValue()
-            {
-                return value;
-            }
-        }
-
         public Launcher()
         {
             InitializeComponent();
@@ -52,54 +32,9 @@ namespace ALVR
         {
             SetFileVersion();
 
-            if (!config.Load())
-            {
-                Application.Exit();
-                return;
-            }
+            LoadSettings();
 
-            for (int i = 0; i < ServerConfig.supportedWidth.Length; i++)
-            {
-                int j = resolutionComboBox.Items.Add(ServerConfig.supportedResolutions[i]);
-                if (config.renderWidth == ServerConfig.supportedWidth[i])
-                {
-                    resolutionComboBox.SelectedItem = resolutionComboBox.Items[j];
-                }
-            }
-
-            for(int i = 0; i < ServerConfig.supportedButtons.Length; i++)
-            {
-                var item = new ComboBoxCustomItem(ServerConfig.supportedButtons[i], ServerConfig.supportedButtonId[i]);
-                int index = triggerComboBox.Items.Add(item);
-                if (ServerConfig.supportedButtonId[i] == config.controllerTriggerMode)
-                {
-                    triggerComboBox.SelectedIndex = index;
-                }
-                index = trackpadClickComboBox.Items.Add(item);
-                if (ServerConfig.supportedButtonId[i] == config.controllerTrackpadClickMode)
-                {
-                    trackpadClickComboBox.SelectedIndex = index;
-                }
-            }
-
-            for (int i = 0; i < ServerConfig.supportedRecenterButton.Length; i++)
-            {
-                var item = new ComboBoxCustomItem(ServerConfig.supportedRecenterButton[i], i);
-                int index = recenterButtonComboBox.Items.Add(item);
-                if (i == config.controllerRecenterButton)
-                {
-                    recenterButtonComboBox.SelectedIndex = index;
-                }
-            }
-
-            enableControllerCheckBox.Checked = config.enableController;
             UpdateEnableControllerState();
-
-            fakeTrackingReferenceCheckBox.Checked = config.useTrackingReference;
-
-            bitrateTrackBar.Value = config.bitrate;
-
-            SetBufferSizeBytes(config.bufferSize);
 
             CheckDriverInstallStatus();
 
@@ -113,6 +48,29 @@ namespace ALVR
             socket.Update();
 
             timer1.Start();
+        }
+
+        private void LoadSettings()
+        {
+            resolutionComboBox.DataSource = ServerConfig.supportedResolutions;
+            resolutionComboBox.Text = new ServerConfig.Resolution { width = Properties.Settings.Default.renderWidth }.ToString();
+
+            triggerComboBox.DataSource = ServerConfig.supportedButtons.Clone();
+            trackpadClickComboBox.DataSource = ServerConfig.supportedButtons;
+            triggerComboBox.SelectedIndex = ServerConfig.FindButton(Properties.Settings.Default.controllerTriggerMode);
+            trackpadClickComboBox.SelectedIndex = ServerConfig.FindButton(Properties.Settings.Default.controllerTrackpadClickMode);
+
+            recenterButtonComboBox.DataSource = ServerConfig.supportedRecenterButton;
+            recenterButtonComboBox.SelectedIndex = Properties.Settings.Default.controllerRecenterButton;
+        }
+
+        private void SaveSettings()
+        {
+            Properties.Settings.Default.renderWidth = ((ServerConfig.Resolution)resolutionComboBox.SelectedItem).width;
+            Properties.Settings.Default.controllerTriggerMode = ((ServerConfig.ComboBoxCustomItem)triggerComboBox.SelectedItem).value;
+            Properties.Settings.Default.controllerTrackpadClickMode = ((ServerConfig.ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).value;
+            Properties.Settings.Default.controllerRecenterButton = recenterButtonComboBox.SelectedIndex;
+            Properties.Settings.Default.Save();
         }
 
         private void LaunchServer()
@@ -134,20 +92,9 @@ namespace ALVR
 
         private bool SaveConfig()
         {
-            // Save json
-            config.renderWidth = ServerConfig.supportedWidth[resolutionComboBox.SelectedIndex];
-            config.bitrate = bitrateTrackBar.Value;
-            config.bufferSize = GetBufferSizeKB() * 1000;
-            config.enableController = enableControllerCheckBox.Checked;
-            config.controllerTriggerMode = ((ComboBoxCustomItem)triggerComboBox.SelectedItem).GetValue();
-            config.controllerTrackpadClickMode = ((ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).GetValue();
-            // Currently, we use same assing to click and touch of trackpad.
-            config.controllerTrackpadTouchMode = ServerConfig.DEFAULT_TRACKPAD_TOUCH_MODE;
-            config.controllerRecenterButton = ((ComboBoxCustomItem)recenterButtonComboBox.SelectedItem).GetValue();
-            config.useTrackingReference = fakeTrackingReferenceCheckBox.Checked;
+            SaveSettings();
 
-            bool debugLog = debugLogCheckBox.Checked;
-            if (!config.Save(debugLog))
+            if (!config.Save())
             {
                 Application.Exit();
                 return false;
@@ -341,27 +288,6 @@ namespace ALVR
             noClientLabel.Visible = dataGridView1.Rows.Count == 0;
         }
 
-        private void SetBufferSizeBytes(int bufferSizeBytes)
-        {
-            int kb = bufferSizeBytes / 1000;
-            if (kb == 200)
-            {
-                bufferTrackBar.Value = 5;
-            }
-            // Map 0 - 100 to 100kB - 2000kB
-            bufferTrackBar.Value = (kb - 100) * 100 / 1900;
-        }
-
-        private int GetBufferSizeKB()
-        {
-            if (bufferTrackBar.Value == 5)
-            {
-                return 200;
-            }
-            // Map 0 - 100 to 100kB - 2000kB
-            return bufferTrackBar.Value * 1900 / 100 + 100;
-        }
-
         private void CheckDriverInstallStatus()
         {
             if (DriverInstaller.CheckInstalled())
@@ -462,7 +388,7 @@ namespace ALVR
 
         private void bufferTrackBar_ValueChanged(object sender, EventArgs e)
         {
-            bufferLabel.Text = GetBufferSizeKB() + "kB";
+            bufferLabel.Text = config.GetBufferSizeKB() + "kB";
         }
 
         private void installButton_Click(object sender, EventArgs e)
@@ -481,20 +407,20 @@ namespace ALVR
 
         async private void triggerComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            int value = ((ComboBoxCustomItem)triggerComboBox.SelectedItem).GetValue();
+            int value = ((ServerConfig.ComboBoxCustomItem)triggerComboBox.SelectedItem).value;
             await socket.SendCommand("SetConfig controllerTriggerMode " + value);
         }
 
         async private void trackpadClickComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            int value = ((ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).GetValue();
+            int value = ((ServerConfig.ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).value;
             await socket.SendCommand("SetConfig controllerTrackpadClickMode " + value);
             //await socket.SendCommand("SetConfig controllerTrackpadTouchMode " + value);
         }
 
         async private void recenterButtonComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            int value = ((ComboBoxCustomItem)recenterButtonComboBox.SelectedItem).GetValue();
+            int value = recenterButtonComboBox.SelectedIndex;
             await socket.SendCommand("SetConfig controllerRecenterButton " + value);
         }
 
@@ -516,6 +442,11 @@ namespace ALVR
         private void listDriversButton_Click(object sender, EventArgs e)
         {
             DriverInstaller.ListDrivers();
+        }
+
+        private void Launcher_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            SaveSettings();
         }
     }
 }

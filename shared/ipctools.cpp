@@ -73,3 +73,26 @@ void IPCEvent::ResetEvent()
 {
 	::ResetEvent( m_hEvent );
 }
+
+IPCFileMapping::IPCFileMapping(const char* pName)
+{
+	m_hMapFile = OpenFileMapping(FILE_MAP_READ, false, pName);
+}
+
+IPCFileMapping::~IPCFileMapping()
+{
+	if (m_hMapFile)
+		CloseHandle(m_hMapFile);
+}
+
+void *IPCFileMapping::Map()
+{
+	return MapViewOfFile(m_hMapFile, FILE_MAP_READ, 0, 0, 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+bool IPCFileMapping::Opened()
+{
+	return m_hMapFile != NULL;
+}

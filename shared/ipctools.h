@@ -39,3 +39,18 @@ private:
 	HANDLE m_hEvent;
 };
 
+// Readonly access handle to existing filemapping object.
+class IPCFileMapping
+{
+public:
+	IPCFileMapping(const char* pName);
+	~IPCFileMapping();
+
+	void *Map();
+
+	bool Opened();
+private:
+	HANDLE m_hMapFile;
+	bool m_Exist;
+};
+

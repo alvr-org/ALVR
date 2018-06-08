@@ -71,6 +71,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ServerConfig.cs" />
+    <Compile Include="Settings.cs" />
     <Compile Include="Utils.cs" />
     <EmbeddedResource Include="Launcher.resx">
       <DependentUpon>Launcher.cs</DependentUpon>
@@ -86,6 +87,9 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <None Include="packages.config" />
+    <None Include="Properties\DataSources\ALVR.Properties.Settings.datasource" />
+    <None Include="Properties\DataSources\ServerConfig.datasource" />
+    <None Include="Properties\DataSources\ServerConfig.Resolution.datasource" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -104,6 +108,9 @@
     <None Include="Resources\LICENSE.txt" />
     <None Include="Resources\alvr-128.png" />
     <None Include="Resources\web_hi_res_512.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

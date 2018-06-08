@@ -1335,8 +1335,6 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 {
 	VR_INIT_SERVER_DRIVER_CONTEXT( pContext );
 
-	Settings::Instance().Load();
-
 	m_mutex = std::make_shared<IPCMutex>(APP_MUTEX_NAME, true);
 	if (m_mutex->AlreadyExist()) {
 		// Duplicate driver installation.
@@ -1344,6 +1342,8 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 			"Please check the installed driver list on About tab and uninstall old drivers.");
 		return vr::VRInitError_Driver_Failed;
 	}
+
+	Settings::Instance().Load();
 
 	m_Listener = std::make_shared<Listener>(Settings::Instance().m_Host, Settings::Instance().m_Port
 		, Settings::Instance().m_ControlHost, Settings::Instance().m_ControlPort);

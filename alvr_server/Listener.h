@@ -223,7 +223,7 @@ public:
 				pos = sizeof(VideoFrame);
 			}
 
-			int size = min(PACKET_SIZE - pos, remainBuffer);
+			int size = std::min(PACKET_SIZE - pos, remainBuffer);
 
 			memcpy(packetBuffer + pos, buf + (len - remainBuffer), size);
 			pos += size;

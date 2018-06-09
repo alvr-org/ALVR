@@ -78,7 +78,8 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WINDLL;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -96,8 +97,8 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers;$(SolutionDir)include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_WINDLL;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WINDLL;NOMINMAX;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -118,7 +119,8 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WINDLL;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -140,8 +142,8 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers;$(SolutionDir)include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_WINDLL;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WINDLL;NOMINMAX;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

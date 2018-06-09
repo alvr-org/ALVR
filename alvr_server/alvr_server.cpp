@@ -1353,6 +1353,11 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 	}
 	m_pRemoteHmd = std::make_shared<CRemoteHmd>(m_Listener);
 
+	if (Settings::Instance().IsLoaded()) {
+		// Launcher is running. Enable driver.
+		m_pRemoteHmd->Enable();
+	}
+
 	return vr::VRInitError_None;
 }
 

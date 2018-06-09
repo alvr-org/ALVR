@@ -77,7 +77,9 @@ namespace ALVR
         public static readonly string[] supportedRecenterButton = new string[] {
             "None", "Trigger", "Trackpad click", "Trackpad touch"//, "Back short-press"
         };
-        
+
+        MemoryMappedFile memoryMappedFile;
+
         public ServerConfig()
         {
         }
@@ -108,52 +110,51 @@ namespace ALVR
         {
             try
             {
-                dynamic configJson = new DynamicJson();
-                var driver = configJson.driver_alvr_server;
-                driver.serialNumber = "ALVR-001";
-                driver.modelNumber = "ALVR driver server";
-                driver.adapterIndex = 0;
-                driver.IPD = 0.064;
-                driver.secondsFromVsyncToPhotons = 0.005;
-                driver.displayFrequency = 60;
-                driver.listenPort = 9944;
-                driver.listenHost = "0.0.0.0";
-                driver.sendingTimeslotUs = 500;
-                driver.limitTimeslotPackets = 0;
-                driver.controlListenPort = 9944;
-                driver.controlListenHost = "127.0.0.1";
-                driver.useKeyedMutex = true;
-                driver.controllerModelNumber = "Gear VR Controller";
-                driver.controllerSerialNumber = "Controller-001";
+                dynamic driverConfig = new DynamicJson();
+                driverConfig.serialNumber = "ALVR-001";
+                driverConfig.modelNumber = "ALVR driver server";
+                driverConfig.adapterIndex = 0;
+                driverConfig.IPD = 0.064;
+                driverConfig.secondsFromVsyncToPhotons = 0.005;
+                driverConfig.displayFrequency = 60;
+                driverConfig.listenPort = 9944;
+                driverConfig.listenHost = "0.0.0.0";
+                driverConfig.sendingTimeslotUs = 500;
+                driverConfig.limitTimeslotPackets = 0;
+                driverConfig.controlListenPort = 9944;
+                driverConfig.controlListenHost = "127.0.0.1";
+                driverConfig.useKeyedMutex = true;
+                driverConfig.controllerModelNumber = "Gear VR Controller";
+                driverConfig.controllerSerialNumber = "Controller-001";
 
-                driver.nvencOptions = "-codec h264 -preset ll_hq -rc cbr_ll_hq -gop 120 -fps 60 -bitrate "
+                driverConfig.nvencOptions = "-codec h264 -preset ll_hq -rc cbr_ll_hq -gop 120 -fps 60 -bitrate "
                     + Properties.Settings.Default.bitrate + "M -maxbitrate " + Properties.Settings.Default.bitrate + "M";
 
-                driver.renderWidth = Properties.Settings.Default.renderWidth;
-                driver.renderHeight = Properties.Settings.Default.renderWidth / 2;
+                driverConfig.renderWidth = Properties.Settings.Default.renderWidth;
+                driverConfig.renderHeight = Properties.Settings.Default.renderWidth / 2;
 
-                driver.debugOutputDir = Utils.GetDriverPath();
-                driver.debugLog = Properties.Settings.Default.debugLog;
+                driverConfig.debugOutputDir = Utils.GetDriverPath();
+                driverConfig.debugLog = Properties.Settings.Default.debugLog;
 
-                driver.clientRecvBufferSize = GetBufferSizeKB() * 1000;
-                driver.enableController = Properties.Settings.Default.enableController;
-                driver.controllerTriggerMode = Properties.Settings.Default.controllerTriggerMode;
-                driver.controllerTrackpadClickMode = Properties.Settings.Default.controllerTrackpadClickMode;
-                driver.controllerTrackpadTouchMode = Properties.Settings.Default.controllerTrackpadTouchMode;
+                driverConfig.clientRecvBufferSize = GetBufferSizeKB() * 1000;
+                driverConfig.enableController = Properties.Settings.Default.enableController;
+                driverConfig.controllerTriggerMode = Properties.Settings.Default.controllerTriggerMode;
+                driverConfig.controllerTrackpadClickMode = Properties.Settings.Default.controllerTrackpadClickMode;
+                driverConfig.controllerTrackpadTouchMode = Properties.Settings.Default.controllerTrackpadTouchMode;
 
                 // 0=Disabled, 1=Trigger, 2=Trackpad Click, 3=Trackpad Touch
-                driver.controllerRecenterButton = Properties.Settings.Default.controllerRecenterButton;
-                driver.useTrackingReference = Properties.Settings.Default.useTrackingReference;
+                driverConfig.controllerRecenterButton = Properties.Settings.Default.controllerRecenterButton;
+                driverConfig.useTrackingReference = Properties.Settings.Default.useTrackingReference;
 
-                byte[] bytes = Encoding.UTF8.GetBytes(configJson.ToString());
-                using (var mapped = MemoryMappedFile.CreateOrOpen(APP_FILEMAPPING_NAME, sizeof(int) + bytes.Length))
+                byte[] bytes = Encoding.UTF8.GetBytes(driverConfig.ToString());
+                memoryMappedFile = MemoryMappedFile.CreateOrOpen(APP_FILEMAPPING_NAME, sizeof(int) + bytes.Length);
+
+                using (var mappedStream = memoryMappedFile.CreateViewStream())
                 {
-                    using (var mappedStream = mapped.CreateViewStream())
-                    {
-                        mappedStream.Write(BitConverter.GetBytes(bytes.Length), 0, sizeof(int));
-                        mappedStream.Write(bytes, 0, bytes.Length);
-                    }
+                    mappedStream.Write(BitConverter.GetBytes(bytes.Length), 0, sizeof(int));
+                    mappedStream.Write(bytes, 0, bytes.Length);
                 }
+
             }
             catch (Exception e)
             {

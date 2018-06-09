@@ -50,13 +50,19 @@ static const char * const LOG_FILE = "driver.log";
 class Settings
 {
 	static Settings m_Instance;
-public:
+	bool m_loaded;
+
 	Settings();
 	virtual ~Settings();
 
+public:
 	void Load();
 	static Settings &Instance() {
 		return m_Instance;
+	}
+
+	bool IsLoaded() {
+		return m_loaded;
 	}
 
 	std::string m_sSerialNumber;

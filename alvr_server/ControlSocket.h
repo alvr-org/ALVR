@@ -8,7 +8,7 @@
 
 class ControlSocket {
 public:
-	ControlSocket(std::string host, int port, std::shared_ptr<Poller> poller);
+	ControlSocket(std::shared_ptr<Poller> poller);
 	~ControlSocket();
 
 	bool Startup();
@@ -21,8 +21,8 @@ public:
 
 	void SendCommandResponse(const char *commandResponse);
 private:
-	std::string m_Host;
-	int m_Port;
+	static const int CONTROL_PORT;
+	static const char *CONTROL_HOST;
 	std::shared_ptr<Poller> m_Poller;
 
 	SOCKET m_Socket;

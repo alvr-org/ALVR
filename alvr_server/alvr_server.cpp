@@ -947,8 +947,6 @@ public:
 	{
 		Log("CRemoteHmd Activate %d", unObjectId);
 
-		Settings::Instance().Load();
-
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
 
@@ -1345,12 +1343,12 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 
 	Settings::Instance().Load();
 
-	m_Listener = std::make_shared<Listener>(Settings::Instance().m_Host, Settings::Instance().m_Port
-		, Settings::Instance().m_ControlHost, Settings::Instance().m_ControlPort);
+	m_Listener = std::make_shared<Listener>();
 	if (!m_Listener->Startup())
 	{
 		return vr::VRInitError_Driver_Failed;
 	}
+
 	m_pRemoteHmd = std::make_shared<CRemoteHmd>(m_Listener);
 
 	if (Settings::Instance().IsLoaded()) {

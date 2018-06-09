@@ -135,6 +135,10 @@ namespace ALVR
 
                 driverConfig.debugOutputDir = Utils.GetDriverPath();
                 driverConfig.debugLog = Properties.Settings.Default.debugLog;
+                driverConfig.debugFrameIndex = false;
+                driverConfig.debugFrameOutput = false;
+                driverConfig.debugCaptureOutput = false;
+                driverConfig.useKeyedMutex = true;
 
                 driverConfig.clientRecvBufferSize = GetBufferSizeKB() * 1000;
                 driverConfig.enableController = Properties.Settings.Default.enableController;

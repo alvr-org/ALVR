@@ -3,20 +3,24 @@
 #include "ControlSocket.h"
 #include "Logger.h"
 
-ControlSocket::ControlSocket(std::string host, int port, std::shared_ptr<Poller> poller) :
-	m_Host(host)
-	, m_Port(port)
-	, m_Poller(poller)
+const int ControlSocket::CONTROL_PORT = 9944;
+const char *ControlSocket::CONTROL_HOST = "127.0.0.1";
+
+ControlSocket::ControlSocket(std::shared_ptr<Poller> poller)
+	: m_Poller(poller)
 	, m_Socket(INVALID_SOCKET)
 	, m_ClientSocket(INVALID_SOCKET)
 {
-
 }
 
 ControlSocket::~ControlSocket() {
 }
 
 bool ControlSocket::Startup() {
+	WSADATA wsaData;
+
+	WSAStartup(MAKEWORD(2, 0), &wsaData);
+
 	m_Socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (m_Socket == INVALID_SOCKET) {
 		FatalLog("ControlSocket::Startup socket error : %d", WSAGetLastError());
@@ -28,9 +32,9 @@ bool ControlSocket::Startup() {
 
 	sockaddr_in addr;
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(m_Port);
+	addr.sin_port = htons(CONTROL_PORT);
 
-	inet_pton(AF_INET, m_Host.c_str(), &addr.sin_addr);
+	inet_pton(AF_INET, CONTROL_HOST, &addr.sin_addr);
 
 	if (bind(m_Socket, (sockaddr *)&addr, sizeof(addr))) {
 		FatalLog("ControlSocket::Startup bind error : %d", WSAGetLastError());
@@ -42,7 +46,7 @@ bool ControlSocket::Startup() {
 		return false;
 	}
 
-	Log("ControlSocket::Startup Successfully bound to %s:%d", m_Host.c_str(), m_Port);
+	Log("ControlSocket::Startup Successfully bound to %s:%d", CONTROL_HOST, CONTROL_PORT);
 
 	m_Poller->AddSocket(m_Socket);
 

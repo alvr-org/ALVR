@@ -100,8 +100,6 @@ void Settings::Load()
 	Log("Display Frequency: %f", m_flDisplayFrequency);
 	Log("IPD: %f", m_flIPD);
 
-	Log("renderWidth: %d", m_renderWidth);
-	Log("renderHeight: %d", m_renderHeight);
 	Log("debugOptions: Log:%d FrameIndex:%d FrameOutput:%d CaptureOutput:%d UseKeyedMutex:%d"
 		, m_DebugLog, m_DebugFrameIndex, m_DebugFrameOutput, m_DebugCaptureOutput, m_UseKeyedMutex);
 	Log("EncoderOptions: %s", m_EncoderOptions.c_str());

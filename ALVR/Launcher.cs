@@ -34,6 +34,8 @@ namespace ALVR
 
             LoadSettings();
 
+            config.Save();
+
             UpdateEnableControllerState();
 
             CheckDriverInstallStatus();

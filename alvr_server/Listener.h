@@ -18,8 +18,9 @@
 class Listener : public CThread {
 public:
 
-	Listener(std::string host, int port, std::string control_host, int control_port)
+	Listener()
 		: m_bExiting(false)
+		, m_Enabled(false)
 		, m_Connected(false)
 		, m_Streaming(false)
 		, m_LastSeen(0) {
@@ -33,10 +34,8 @@ public:
 		m_Settings.suspend = 0;
 
 		m_Poller.reset(new Poller());
-		m_Socket.reset(new UdpSocket(host, port, m_Poller, m_Statistics));
-		m_ControlSocket.reset(new ControlSocket(control_host, control_port, m_Poller));
+		m_ControlSocket.reset(new ControlSocket(m_Poller));
 
-		m_UseUdp = true;
 		m_Streaming = false;
 	}
 
@@ -58,11 +57,15 @@ public:
 	}
 
 	bool Startup() {
-		if (!m_Socket->Startup()) {
-			return false;
-		}
 		if (!m_ControlSocket->Startup()) {
 			return false;
+		}
+		if (Settings::Instance().IsLoaded()) {
+			m_Enabled = true;
+			m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port, m_Poller, m_Statistics);
+			if (!m_Socket->Startup()) {
+				return false;
+			}
 		}
 		// Start thread.
 		Start();
@@ -79,15 +82,25 @@ public:
 				continue;
 			}
 
-			sockaddr_in addr;
-			int addrlen = sizeof(addr);
-			char buf[2000];
-			int len = sizeof(buf);
-			if (m_Socket->Recv(buf, &len, &addr, addrlen)) {
-				ProcessRecv(buf, len, &addr);
+			if (m_Socket) {
+				sockaddr_in addr;
+				int addrlen = sizeof(addr);
+				char buf[2000];
+				int len = sizeof(buf);
+				if (m_Socket->Recv(buf, &len, &addr, addrlen)) {
+					ProcessRecv(buf, len, &addr);
+				}
 			}
 
 			if (m_ControlSocket->Accept()) {
+				if (!m_Enabled) {
+					m_Enabled = true;
+					Settings::Instance().Load();
+					m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port, m_Poller, m_Statistics);
+					if (!m_Socket->Startup()) {
+						return;
+					}
+				}
 				m_LauncherCallback();
 			}
 			std::vector<std::string> commands;
@@ -492,7 +505,7 @@ public:
 
 private:
 	bool m_bExiting;
-	bool m_UseUdp;
+	bool m_Enabled;
 	std::shared_ptr<Poller> m_Poller;
 	std::shared_ptr<UdpSocket> m_Socket;
 	std::shared_ptr<ControlSocket> m_ControlSocket;

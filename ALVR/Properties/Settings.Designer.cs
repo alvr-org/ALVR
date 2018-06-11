@@ -154,5 +154,17 @@ namespace ALVR.Properties {
                 this["autoConnectList"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool debugCaptureOutput {
+            get {
+                return ((bool)(this["debugCaptureOutput"]));
+            }
+            set {
+                this["debugCaptureOutput"] = value;
+            }
+        }
     }
 }

@@ -137,7 +137,7 @@ namespace ALVR
                 driverConfig.debugLog = Properties.Settings.Default.debugLog;
                 driverConfig.debugFrameIndex = false;
                 driverConfig.debugFrameOutput = false;
-                driverConfig.debugCaptureOutput = false;
+                driverConfig.debugCaptureOutput = Properties.Settings.Default.debugCaptureOutput;
                 driverConfig.useKeyedMutex = true;
 
                 driverConfig.clientRecvBufferSize = GetBufferSizeKB() * 1000;

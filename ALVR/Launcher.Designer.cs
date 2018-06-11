@@ -126,6 +126,7 @@
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.debugCaptureOutputCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.connectedPanel.SuspendLayout();
@@ -223,7 +224,7 @@
             // autoConnectCheckBox
             // 
             this.autoConnectCheckBox.AutoSize = true;
-            this.autoConnectCheckBox.Location = new System.Drawing.Point(79, 144);
+            this.autoConnectCheckBox.Location = new System.Drawing.Point(79, 163);
             this.autoConnectCheckBox.Name = "autoConnectCheckBox";
             this.autoConnectCheckBox.Size = new System.Drawing.Size(147, 15);
             this.autoConnectCheckBox.TabIndex = 13;
@@ -714,7 +715,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(206, -772);
+            this.metroLabel22.Location = new System.Drawing.Point(206, -884);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -821,6 +822,7 @@
             this.debugTab.Controls.Add(this.metroCheckBox3);
             this.debugTab.Controls.Add(this.debugPosCheckBox);
             this.debugTab.Controls.Add(this.metroCheckBox2);
+            this.debugTab.Controls.Add(this.debugCaptureOutputCheckBox);
             this.debugTab.Controls.Add(this.debugLogCheckBox);
             this.debugTab.Controls.Add(this.metroCheckBox1);
             this.debugTab.Controls.Add(this.debugZTextBox);
@@ -1156,6 +1158,18 @@
             this.pictureBox1.TabIndex = 11;
             this.pictureBox1.TabStop = false;
             // 
+            // debugCaptureOutputCheckBox
+            // 
+            this.debugCaptureOutputCheckBox.AutoSize = true;
+            this.debugCaptureOutputCheckBox.Checked = global::ALVR.Properties.Settings.Default.debugCaptureOutput;
+            this.debugCaptureOutputCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "debugCaptureOutput", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.debugCaptureOutputCheckBox.Location = new System.Drawing.Point(7, 209);
+            this.debugCaptureOutputCheckBox.Name = "debugCaptureOutputCheckBox";
+            this.debugCaptureOutputCheckBox.Size = new System.Drawing.Size(138, 15);
+            this.debugCaptureOutputCheckBox.TabIndex = 9;
+            this.debugCaptureOutputCheckBox.Text = "DebugCaptureOutput";
+            this.debugCaptureOutputCheckBox.UseVisualStyleBackColor = true;
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -1287,6 +1301,7 @@
         private MetroFramework.Controls.MetroButton listDriversButton;
         private System.Windows.Forms.BindingSource resolutionBindingSource;
         private MetroFramework.Controls.MetroCheckBox autoConnectCheckBox;
+        private MetroFramework.Controls.MetroCheckBox debugCaptureOutputCheckBox;
     }
 }
 

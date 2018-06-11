@@ -854,9 +854,9 @@
             this.metroLabel25.AutoSize = true;
             this.metroLabel25.Location = new System.Drawing.Point(66, 164);
             this.metroLabel25.Name = "metroLabel25";
-            this.metroLabel25.Size = new System.Drawing.Size(179, 19);
+            this.metroLabel25.Size = new System.Drawing.Size(212, 19);
             this.metroLabel25.TabIndex = 3;
-            this.metroLabel25.Text = "Add offset to player position.";
+            this.metroLabel25.Text = "Add X,Y,Z offset to player position.";
             // 
             // metroLabel24
             // 

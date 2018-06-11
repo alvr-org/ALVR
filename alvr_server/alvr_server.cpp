@@ -77,6 +77,7 @@ namespace
 			: m_pD3DRender(pD3DRender)
 			, m_nFrame(0)
 			, m_Listener(listener)
+			, m_insertIDR(false)
 		{
 		}
 
@@ -175,7 +176,12 @@ namespace
 			//m_DeferredContext->CopyResource(pTexBgra, pTexture);
 
 			Log("EncodeFrame start");
-			m_NvNecoderD3D11->EncodeFrame(vPacket);
+			NV_ENC_PIC_PARAMS picParams = {};
+			if (m_insertIDR) {
+				m_insertIDR = false;
+				picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
+			}
+			m_NvNecoderD3D11->EncodeFrame(vPacket, &picParams);
 
 			Log("Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
 			Log("Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
@@ -195,24 +201,15 @@ namespace
 				SaveDebugOutput(m_pD3DRender, vPacket, pTexBgra, frameIndex2);
 			}
 
-			{
-				CSharedState::Ptr data(&m_sharedState);
-				data->m_flLastVsyncTimeInSeconds = SystemTime::GetInSeconds();
-				data->m_nVsyncCounter++;
-			}
-
 			Log("[VDispDvr] Transmit(end) (frame %d %d) FrameIndex=%llu", vPacket.size(), m_nFrame, frameIndex);
 		}
 
-		void GetTimingInfo(double *pflLastVsyncTimeInSeconds, uint32_t *pnVsyncCounter)
+		void InsertIDR()
 		{
-			CSharedState::Ptr data(&m_sharedState);
-			*pflLastVsyncTimeInSeconds = data->m_flLastVsyncTimeInSeconds;
-			*pnVsyncCounter = data->m_nVsyncCounter;
+			m_insertIDR = true;
 		}
 
 	private:
-		CSharedState m_sharedState;
 		std::ofstream fpOut;
 		std::shared_ptr<NvEncoderD3D11> m_NvNecoderD3D11;
 
@@ -220,6 +217,8 @@ namespace
 		int m_nFrame;
 
 		std::shared_ptr<Listener> m_Listener;
+
+		bool m_insertIDR;
 
 		//ComPtr<ID3D11DeviceContext> m_DeferredContext;
 	};
@@ -1274,6 +1273,8 @@ public:
 		m_refreshRate = refreshRate;
 
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, (float)m_refreshRate);
+		// Insert IDR frame for faster startup of decoding.
+		m_CNvEncoder->InsertIDR();
 	}
 
 private:

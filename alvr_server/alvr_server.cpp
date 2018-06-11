@@ -1067,7 +1067,7 @@ public:
 			m_Listener->GetTrackingInfo(info);
 			uint64_t trackingDelay = GetTimestampUs() - m_Listener->clientToServerTime(info.clientTime);
 
-			Log("Tracking elapsed:%lld us FrameIndex=%lld quot:%f,%f,%f,%f\nposition:%f,%f,%f",
+			Log("Tracking elapsed:%lld us FrameIndex=%lld quot:%f,%f,%f,%f\nposition:%f,%f,%f\narcore:%f,%f,%f",
 				trackingDelay,
 				info.FrameIndex,
 				info.HeadPose_Pose_Orientation.x,
@@ -1076,7 +1076,10 @@ public:
 				info.HeadPose_Pose_Orientation.w,
 				info.HeadPose_Pose_Position.x,
 				info.HeadPose_Pose_Position.y,
-				info.HeadPose_Pose_Position.z
+				info.HeadPose_Pose_Position.z,
+				info.Other_Tracking_Source_Position.x,
+				info.Other_Tracking_Source_Position.y,
+				info.Other_Tracking_Source_Position.z
 			);
 
 			pose.qRotation = m_recenterManager->GetRecentered(info.HeadPose_Pose_Orientation);
@@ -1085,9 +1088,12 @@ public:
 			pose.vecPosition[0] = position.x;
 			pose.vecPosition[1] = position.y;
 			pose.vecPosition[2] = position.z;
-			//pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
-			//pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
-			//pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
+
+			if (info.flags & TrackingInfo::FLAG_OTHER_TRACKING_SOURCE) {
+				pose.vecPosition[0] += info.Other_Tracking_Source_Position.x;
+				pose.vecPosition[1] += info.Other_Tracking_Source_Position.y;
+				pose.vecPosition[2] += info.Other_Tracking_Source_Position.z;
+			}
 
 			if (Settings::Instance().m_EnabledDebugPos) {
 				Log("Provide fake position(offset) for debug. Coords=(%f, %f, %f)"
@@ -1242,13 +1248,13 @@ public:
 			return;
 		}
 		if (!m_controllerDetected) {
-			if (info.enableController) {
+			if (info.flags & TrackingInfo::FLAG_CONTROLLER_ENABLE) {
 				Log("New controller is detected.");
 				m_controllerDetected = true;
 
 				// false: right hand, true: left hand
 				bool handed = false;
-				if (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_LEFTHAND) {
+				if (info.flags & TrackingInfo::FLAG_CONTROLLER_LEFTHAND) {
 					handed = true;
 				}
 				m_remoteController = std::make_shared<RemoteControllerServerDriver>(handed, m_recenterManager);
@@ -1261,7 +1267,7 @@ public:
 				Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, m_remoteController->GetSerialNumber().c_str());
 			}
 		}
-		if (info.enableController) {
+		if (info.flags & TrackingInfo::FLAG_CONTROLLER_ENABLE) {
 			bool recenterRequested = m_remoteController->ReportControllerState(info);
 			if (recenterRequested) {
 				m_recenterManager->BeginRecenter();

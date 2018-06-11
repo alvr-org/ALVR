@@ -16,7 +16,7 @@ enum ALVR_PACKET_TYPE {
 };
 
 enum {
-	ALVR_PROTOCOL_VERSION = 12
+	ALVR_PROTOCOL_VERSION = 13
 };
 #pragma pack(push, 1)
 // hello message
@@ -39,22 +39,22 @@ struct TrackingVector3 {
 };
 struct TrackingInfo {
 	uint32_t type; // 2
+
+	static const int FLAG_OTHER_TRACKING_SOURCE = (1 << 0); // Other_Tracking_Source_Position has valid value (For ARCore)
+	static const int FLAG_CONTROLLER_ENABLE = (1 << 8);
+	static const int FLAG_CONTROLLER_LEFTHAND = (1 << 9); // 0: Left hand, 1: Right hand
+	static const int FLAG_CONTROLLER_OCULUSGO = (1 << 10); // 0: Gear VR, 1: Oculus Go
+	static const int FLAG_CONTROLLER_TRACKPAD_TOUCH = (1 << 11); // 0: Not touched, 1: Touched
+	uint32_t flags;
+
 	uint64_t clientTime;
 	uint64_t FrameIndex;
 	double predictedDisplayTime;
 	TrackingQuat HeadPose_Pose_Orientation;
 	TrackingVector3 HeadPose_Pose_Position;
-	TrackingVector3 HeadPose_AngularVelocity;
-	TrackingVector3 HeadPose_LinearVelocity;
-	TrackingVector3 HeadPose_AngularAcceleration;
-	TrackingVector3 HeadPose_LinearAcceleration;
 
-	uint16_t enableController;
+	TrackingVector3 Other_Tracking_Source_Position;
 
-	static const int CONTROLLER_FLAG_LEFTHAND = (1 << 0); // 0: Left hand, 1: Right hand
-	static const int CONTROLLER_FLAG_OCULUSGO = (1 << 1); // 0: Gear VR, 1: Oculus Go
-	static const int CONTROLLER_FLAG_TRACKPAD_TOUCH = (1 << 2); // 0: Not touched, 1: Touched
-	uint16_t controllerFlags;
 	uint32_t controllerButtons;
 
 	struct {

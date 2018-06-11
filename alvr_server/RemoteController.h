@@ -176,7 +176,7 @@ public:
 		if (m_info.type != 0) {
 			Log("Controller Flags=%d Quot:%f,%f,%f,%f\nPos:%f,%f,%f\nButtons: %08X\n"
 				"Trackpad: %f, %f\nBattery=%d Recenter=%d",
-				m_info.controllerFlags,
+				m_info.flags,
 				m_info.controller_Pose_Orientation.x,
 				m_info.controller_Pose_Orientation.y,
 				m_info.controller_Pose_Orientation.z,
@@ -192,18 +192,16 @@ public:
 			);
 
 			pose.qRotation = m_recenterManager->GetRecentered(m_info.controller_Pose_Orientation);
-			//pose.qRotation.x = m_info.controller_Pose_Orientation.x;
-			//pose.qRotation.y = m_info.controller_Pose_Orientation.y;
-			//pose.qRotation.z = m_info.controller_Pose_Orientation.z;
-			//pose.qRotation.w = m_info.controller_Pose_Orientation.w;
 
 			TrackingVector3 position = m_recenterManager->GetRecenteredVector(m_info.controller_Pose_Position);
 			pose.vecPosition[0] = position.x;
 			pose.vecPosition[1] = position.y;
 			pose.vecPosition[2] = position.z;
-			//pose.vecPosition[0] = m_info.controller_Pose_Position.x;
-			//pose.vecPosition[1] = m_info.controller_Pose_Position.y;
-			//pose.vecPosition[2] = m_info.controller_Pose_Position.z;
+			if (m_info.flags & TrackingInfo::FLAG_OTHER_TRACKING_SOURCE) {
+				pose.vecPosition[0] += m_info.Other_Tracking_Source_Position.x;
+				pose.vecPosition[1] += m_info.Other_Tracking_Source_Position.y;
+				pose.vecPosition[2] += m_info.Other_Tracking_Source_Position.z;
+			}
 
 			if (Settings::Instance().m_EnabledDebugPos) {
 				pose.vecPosition[0] += Settings::Instance().m_DebugPos[0];
@@ -267,8 +265,8 @@ public:
 			}
 		}
 		// Trackpad touch
-		if ((m_previousFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) != (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH)) {
-			bool value = (info.controllerFlags & TrackingInfo::CONTROLLER_FLAG_TRACKPAD_TOUCH) != 0;
+		if ((m_previousFlags & TrackingInfo::FLAG_CONTROLLER_TRACKPAD_TOUCH) != (info.flags & TrackingInfo::FLAG_CONTROLLER_TRACKPAD_TOUCH)) {
+			bool value = (info.flags & TrackingInfo::FLAG_CONTROLLER_TRACKPAD_TOUCH) != 0;
 			if (trackpadTouchButton != -1) {
 				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[trackpadTouchButton], value, 0.0);
 			}
@@ -285,7 +283,7 @@ public:
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, info.controllerBatteryPercentRemaining / 100.0f);
 
 		m_previousButtons = info.controllerButtons;
-		m_previousFlags = info.controllerFlags;
+		m_previousFlags = info.flags;
 
 		return recenterRequest;
 	}

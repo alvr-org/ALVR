@@ -1095,12 +1095,12 @@ public:
 				pose.vecPosition[2] += info.Other_Tracking_Source_Position.z;
 			}
 
-			if (Settings::Instance().m_EnabledDebugPos) {
+			if (Settings::Instance().m_EnableOffsetPos) {
 				Log("Provide fake position(offset) for debug. Coords=(%f, %f, %f)"
-					, Settings::Instance().m_DebugPos[0], Settings::Instance().m_DebugPos[1], Settings::Instance().m_DebugPos[2]);
-				pose.vecPosition[0] += Settings::Instance().m_DebugPos[0];
-				pose.vecPosition[1] += Settings::Instance().m_DebugPos[1];
-				pose.vecPosition[2] += Settings::Instance().m_DebugPos[2];
+					, Settings::Instance().m_OffsetPos[0], Settings::Instance().m_OffsetPos[1], Settings::Instance().m_OffsetPos[2]);
+				pose.vecPosition[0] += Settings::Instance().m_OffsetPos[0];
+				pose.vecPosition[1] += Settings::Instance().m_OffsetPos[1];
+				pose.vecPosition[2] += Settings::Instance().m_OffsetPos[2];
 			}
 
 			// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
@@ -1196,16 +1196,16 @@ public:
 				m_Listener->SendCommandResponse("OK\n");
 			}
 		}
-		else if (commandName == "SetDebugPos") {
+		else if (commandName == "SetOffsetPos") {
 			std::string enabled = GetNextToken(args, " ");
 			std::string x = GetNextToken(args, " ");
 			std::string y = GetNextToken(args, " ");
 			std::string z = GetNextToken(args, " ");
-			Settings::Instance().m_DebugPos[0] = (float)atof(x.c_str());
-			Settings::Instance().m_DebugPos[1] = (float)atof(y.c_str());
-			Settings::Instance().m_DebugPos[2] = (float)atof(z.c_str());
+			Settings::Instance().m_OffsetPos[0] = (float)atof(x.c_str());
+			Settings::Instance().m_OffsetPos[1] = (float)atof(y.c_str());
+			Settings::Instance().m_OffsetPos[2] = (float)atof(z.c_str());
 
-			Settings::Instance().m_EnabledDebugPos = atoi(enabled.c_str()) != 0;
+			Settings::Instance().m_EnableOffsetPos = atoi(enabled.c_str()) != 0;
 
 			m_Listener->SendCommandResponse("OK\n");
 		}else {

@@ -42,6 +42,11 @@ static const char * const k_pch_Settings_ControllerRecenterButton_Int32 = "contr
 
 static const char * const k_pch_Settings_UseTrackingReference_Bool = "useTrackingReference";
 
+static const char * const k_pch_Settings_EnableOffsetPos_Bool = "enableOffsetPos";
+static const char * const k_pch_Settings_OffsetPosX_Float = "offsetPosX";
+static const char * const k_pch_Settings_OffsetPosY_Float = "offsetPosY";
+static const char * const k_pch_Settings_OffsetPosZ_Float = "offsetPosZ";
+
 //
 // Constants
 //
@@ -104,8 +109,8 @@ public:
 	int32_t m_controllerTrackpadTouchMode;
 	int32_t m_controllerRecenterButton;
 
-	float m_DebugPos[3];
-	bool m_EnabledDebugPos;
+	float m_OffsetPos[3];
+	bool m_EnableOffsetPos;
 
 	int32_t m_causePacketLoss;
 

@@ -150,6 +150,11 @@ namespace ALVR
                 driverConfig.controllerRecenterButton = Properties.Settings.Default.controllerRecenterButton;
                 driverConfig.useTrackingReference = Properties.Settings.Default.useTrackingReference;
 
+                driverConfig.enableOffsetPos = Properties.Settings.Default.useOffsetPos;
+                driverConfig.offsetPosX = Utils.ParseFloat(Properties.Settings.Default.offsetPosX);
+                driverConfig.offsetPosY = Utils.ParseFloat(Properties.Settings.Default.offsetPosY);
+                driverConfig.offsetPosZ = Utils.ParseFloat(Properties.Settings.Default.offsetPosZ);
+
                 byte[] bytes = Encoding.UTF8.GetBytes(driverConfig.ToString());
                 memoryMappedFile = MemoryMappedFile.CreateOrOpen(APP_FILEMAPPING_NAME, sizeof(int) + bytes.Length);
 

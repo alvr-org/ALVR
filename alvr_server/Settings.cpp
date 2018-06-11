@@ -12,12 +12,12 @@ extern uint64_t g_DriverTestMode;
 Settings Settings::m_Instance;
 
 Settings::Settings()
-	: m_EnabledDebugPos(false)
+	: m_EnableOffsetPos(false)
 	, m_loaded(false)
 {
-	m_DebugPos[0] = 0.0f;
-	m_DebugPos[1] = 0.0f;
-	m_DebugPos[2] = 0.0f;
+	m_OffsetPos[0] = 0.0f;
+	m_OffsetPos[1] = 0.0f;
+	m_OffsetPos[2] = 0.0f;
 }
 
 
@@ -88,6 +88,11 @@ void Settings::Load()
 	m_controllerRecenterButton = (int32_t)v.get(k_pch_Settings_ControllerRecenterButton_Int32).get<int64_t>();
 
 	m_useTrackingReference = v.get(k_pch_Settings_UseTrackingReference_Bool).get<bool>();
+
+	m_EnableOffsetPos = v.get(k_pch_Settings_EnableOffsetPos_Bool).get<bool>();
+	m_OffsetPos[0] = (float)v.get(k_pch_Settings_OffsetPosX_Float).get<double>();
+	m_OffsetPos[1] = (float)v.get(k_pch_Settings_OffsetPosY_Float).get<double>();
+	m_OffsetPos[2] = (float)v.get(k_pch_Settings_OffsetPosZ_Float).get<double>();
 
 	if (m_DebugLog) {
 		OpenLog((g_DebugOutputDir + "\\" + LOG_FILE).c_str());

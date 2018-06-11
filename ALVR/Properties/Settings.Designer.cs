@@ -178,5 +178,53 @@ namespace ALVR.Properties {
                 this["UpgradeRequired"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool useOffsetPos {
+            get {
+                return ((bool)(this["useOffsetPos"]));
+            }
+            set {
+                this["useOffsetPos"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0.0")]
+        public string offsetPosX {
+            get {
+                return ((string)(this["offsetPosX"]));
+            }
+            set {
+                this["offsetPosX"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0.0")]
+        public string offsetPosY {
+            get {
+                return ((string)(this["offsetPosY"]));
+            }
+            set {
+                this["offsetPosY"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0.0")]
+        public string offsetPosZ {
+            get {
+                return ((string)(this["offsetPosZ"]));
+            }
+            set {
+                this["offsetPosZ"] = value;
+            }
+        }
     }
 }

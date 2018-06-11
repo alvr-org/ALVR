@@ -20,5 +20,12 @@ namespace ALVR
             }
             return driverPath;
         }
+
+        public static float ParseFloat(string s)
+        {
+            float f = 0.0f;
+            float.TryParse(s, out f);
+            return f;
+        }
     }
 }

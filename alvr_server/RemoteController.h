@@ -203,10 +203,10 @@ public:
 				pose.vecPosition[2] += m_info.Other_Tracking_Source_Position.z;
 			}
 
-			if (Settings::Instance().m_EnabledDebugPos) {
-				pose.vecPosition[0] += Settings::Instance().m_DebugPos[0];
-				pose.vecPosition[1] += Settings::Instance().m_DebugPos[1];
-				pose.vecPosition[2] += Settings::Instance().m_DebugPos[2];
+			if (Settings::Instance().m_EnableOffsetPos) {
+				pose.vecPosition[0] += Settings::Instance().m_OffsetPos[0];
+				pose.vecPosition[1] += Settings::Instance().m_OffsetPos[1];
+				pose.vecPosition[2] += Settings::Instance().m_OffsetPos[2];
 			}
 
 			pose.poseTimeOffset = 0;

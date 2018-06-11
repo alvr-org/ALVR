@@ -85,6 +85,10 @@ namespace ALVR
 
         private void SaveSettings()
         {
+            offsetPosXTextBox.Text = Utils.ParseFloat(offsetPosXTextBox.Text).ToString();
+            offsetPosYTextBox.Text = Utils.ParseFloat(offsetPosYTextBox.Text).ToString();
+            offsetPosZTextBox.Text = Utils.ParseFloat(offsetPosZTextBox.Text).ToString();
+
             Properties.Settings.Default.renderWidth = ((ServerConfig.Resolution)resolutionComboBox.SelectedItem).width;
             Properties.Settings.Default.controllerTriggerMode = ((ServerConfig.ComboBoxCustomItem)triggerComboBox.SelectedItem).value;
             Properties.Settings.Default.controllerTrackpadClickMode = ((ServerConfig.ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).value;
@@ -344,6 +348,12 @@ namespace ALVR
             recenterButtonComboBox.Enabled = enableControllerCheckBox.Checked;
         }
 
+        async private void SendOffsetPos()
+        {
+            SaveSettings();
+            await socket.SendCommand("SetOffsetPos " + (offsetPosCheckBox.Checked ? "1" : "0") + " " + offsetPosXTextBox.Text + " " + offsetPosYTextBox.Text + " " + offsetPosZTextBox.Text);
+        }
+
         //
         // Event handlers
         //
@@ -383,9 +393,9 @@ namespace ALVR
             await socket.SendCommand("Capture");
         }
 
-        async private void sendDebugPos_Click(object sender, EventArgs e)
+        async private void sendOffsetPos_Click(object sender, EventArgs e)
         {
-            await socket.SendCommand("SetDebugPos " + (debugPosCheckBox.Checked ? "1" : "0") + " " + debugXTextBox.Text + " " + debugYTextBox.Text + " " + debugZTextBox.Text);
+            SendOffsetPos();
         }
 
         private void bitrateTrackBar_ValueChanged(object sender, EventArgs e)

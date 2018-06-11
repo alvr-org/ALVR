@@ -122,5 +122,10 @@ namespace ALVR
             var ret = await socket.SendCommand("Connect " + client.Address);
             return ret == "OK";
         }
+
+        public bool InAutoConnectList(string ClientName, string Address)
+        {
+            return autoConnectList.Contains(new Client(ClientName, Address, true));
+        }
     }
 }

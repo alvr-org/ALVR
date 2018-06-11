@@ -62,6 +62,13 @@ namespace ALVR
 
         private void LoadSettings()
         {
+            if (Properties.Settings.Default.UpgradeRequired)
+            {
+                Properties.Settings.Default.Upgrade();
+                Properties.Settings.Default.UpgradeRequired = false;
+                Properties.Settings.Default.Save();
+            }
+
             resolutionComboBox.DataSource = ServerConfig.supportedResolutions;
             resolutionComboBox.Text = new ServerConfig.Resolution { width = Properties.Settings.Default.renderWidth }.ToString();
 
@@ -225,6 +232,10 @@ namespace ALVR
                 // Connected
                 connectedLabel.Text = "Connected!\r\n\r\n" + configs["ClientName"] + "\r\n"
                     + configs["Client"] + "\r\n" + configs["RefreshRate"] + " FPS";
+
+                autoConnectCheckBox.CheckedChanged -= autoConnectCheckBox_CheckedChanged;
+                autoConnectCheckBox.Checked = clientList.InAutoConnectList(configs["ClientName"], configs["Client"]);
+                autoConnectCheckBox.CheckedChanged += autoConnectCheckBox_CheckedChanged;
                 ShowConnectedPanel();
 
                 UpdateClientStatistics();
@@ -262,6 +273,18 @@ namespace ALVR
                     tag2.client = client;
                     tag2.updated = true;
                 }
+
+                Color color = Color.Black;
+                if (!client.Online)
+                {
+                    color = Color.DarkGray;
+                }
+                found.Cells[0].Style.ForeColor = color;
+                found.Cells[0].Style.SelectionForeColor = color;
+                found.Cells[1].Style.ForeColor = color;
+                found.Cells[1].Style.SelectionForeColor = color;
+                found.Cells[2].Style.ForeColor = color;
+                found.Cells[2].Style.SelectionForeColor = color;
 
                 found.Cells[0].Value = client.Name;
                 found.Cells[1].Value = client.Address;
@@ -491,6 +514,11 @@ namespace ALVR
                 clientList.RemoveAutoConnect(configs["ClientName"], configs["Client"]);
             }
             SaveSettings();
+        }
+
+        private void dataGridView1_SelectionChanged(object sender, EventArgs e)
+        {
+            dataGridView1.ClearSelection();
         }
     }
 }

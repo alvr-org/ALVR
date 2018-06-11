@@ -292,6 +292,12 @@ namespace ALVR
                 }
             }
             noClientLabel.Visible = dataGridView1.Rows.Count == 0;
+
+            var autoConnect = clientList.GetAutoConnectableClient();
+            if (autoConnect != null)
+            {
+                await clientList.Connect(socket, autoConnect);
+            }
         }
 
         private void CheckDriverInstallStatus()
@@ -345,7 +351,7 @@ namespace ALVR
                     MessageBox.Show("Please check the version of client and server and update both.");
                     return;
                 }
-                await socket.SendCommand("Connect " + tag.client.Address);
+                await clientList.Connect(socket, tag.client);
             }
         }
 

@@ -142,5 +142,17 @@ namespace ALVR.Properties {
                 this["debugLog"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string autoConnectList {
+            get {
+                return ((string)(this["autoConnectList"]));
+            }
+            set {
+                this["autoConnectList"] = value;
+            }
+        }
     }
 }

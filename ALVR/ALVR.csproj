@@ -59,6 +59,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ClientList.cs" />
     <Compile Include="ControlSocket.cs" />
     <Compile Include="DriverInstaller.cs" />
     <Compile Include="DynamicJson.cs" />

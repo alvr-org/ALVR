@@ -44,6 +44,7 @@
             this.metroTabControl1 = new MetroFramework.Controls.MetroTabControl();
             this.serverTab = new MetroFramework.Controls.MetroTabPage();
             this.connectedPanel = new MetroFramework.Controls.MetroPanel();
+            this.autoConnectCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.statDataGridView = new System.Windows.Forms.DataGridView();
             this.Name1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Value1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -68,6 +69,7 @@
             this.metroLabel12 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel11 = new MetroFramework.Controls.MetroLabel();
             this.resolutionComboBox = new MetroFramework.Controls.MetroComboBox();
+            this.resolutionBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.bufferLabel = new MetroFramework.Controls.MetroLabel();
             this.bitrateLabel = new MetroFramework.Controls.MetroLabel();
             this.metroLabel18 = new MetroFramework.Controls.MetroLabel();
@@ -124,7 +126,6 @@
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.resolutionBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.connectedPanel.SuspendLayout();
@@ -133,12 +134,12 @@
             this.findingPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.videoTab.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).BeginInit();
             this.controllerTab.SuspendLayout();
             this.otherTab.SuspendLayout();
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
             // metroButton1
@@ -185,7 +186,7 @@
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 1;
+            this.metroTabControl1.SelectedIndex = 0;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -204,6 +205,7 @@
             // 
             // connectedPanel
             // 
+            this.connectedPanel.Controls.Add(this.autoConnectCheckBox);
             this.connectedPanel.Controls.Add(this.statDataGridView);
             this.connectedPanel.Controls.Add(this.disconnectButton);
             this.connectedPanel.Controls.Add(this.connectedLabel);
@@ -217,6 +219,18 @@
             this.connectedPanel.VerticalScrollbarBarColor = true;
             this.connectedPanel.VerticalScrollbarHighlightOnWheel = false;
             this.connectedPanel.VerticalScrollbarSize = 10;
+            // 
+            // autoConnectCheckBox
+            // 
+            this.autoConnectCheckBox.AutoSize = true;
+            this.autoConnectCheckBox.Location = new System.Drawing.Point(79, 144);
+            this.autoConnectCheckBox.Name = "autoConnectCheckBox";
+            this.autoConnectCheckBox.Size = new System.Drawing.Size(147, 15);
+            this.autoConnectCheckBox.TabIndex = 13;
+            this.autoConnectCheckBox.Text = "Auto connect next time";
+            this.autoConnectCheckBox.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.autoConnectCheckBox.UseVisualStyleBackColor = true;
+            this.autoConnectCheckBox.CheckedChanged += new System.EventHandler(this.autoConnectCheckBox_CheckedChanged);
             // 
             // statDataGridView
             // 
@@ -400,6 +414,7 @@
             dataGridViewCellStyle7.SelectionBackColor = System.Drawing.Color.White;
             dataGridViewCellStyle7.SelectionForeColor = System.Drawing.Color.Black;
             this.dataGridView1.RowsDefaultCellStyle = dataGridViewCellStyle7;
+            this.dataGridView1.RowTemplate.DefaultCellStyle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
             this.dataGridView1.RowTemplate.Height = 40;
             this.dataGridView1.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.dataGridView1.Size = new System.Drawing.Size(392, 233);
@@ -548,6 +563,10 @@
             this.resolutionComboBox.TabIndex = 6;
             this.resolutionComboBox.ValueMember = "width";
             // 
+            // resolutionBindingSource
+            // 
+            this.resolutionBindingSource.DataSource = typeof(ALVR.ServerConfig.Resolution);
+            // 
             // bufferLabel
             // 
             this.bufferLabel.AutoSize = true;
@@ -695,7 +714,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(206, -548);
+            this.metroLabel22.Location = new System.Drawing.Point(206, -772);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -1137,10 +1156,6 @@
             this.pictureBox1.TabIndex = 11;
             this.pictureBox1.TabStop = false;
             // 
-            // resolutionBindingSource
-            // 
-            this.resolutionBindingSource.DataSource = typeof(ALVR.ServerConfig.Resolution);
-            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -1159,6 +1174,7 @@
             this.metroTabControl1.ResumeLayout(false);
             this.serverTab.ResumeLayout(false);
             this.connectedPanel.ResumeLayout(false);
+            this.connectedPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).EndInit();
             this.messagePanel.ResumeLayout(false);
             this.findingPanel.ResumeLayout(false);
@@ -1166,6 +1182,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             this.videoTab.ResumeLayout(false);
             this.videoTab.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).EndInit();
             this.controllerTab.ResumeLayout(false);
             this.controllerTab.PerformLayout();
             this.otherTab.ResumeLayout(false);
@@ -1175,7 +1192,6 @@
             this.aboutTab.ResumeLayout(false);
             this.aboutTab.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -1270,6 +1286,7 @@
         private MetroFramework.Controls.MetroLabel metroLabel24;
         private MetroFramework.Controls.MetroButton listDriversButton;
         private System.Windows.Forms.BindingSource resolutionBindingSource;
+        private MetroFramework.Controls.MetroCheckBox autoConnectCheckBox;
     }
 }
 

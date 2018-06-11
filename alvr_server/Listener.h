@@ -445,13 +445,23 @@ public:
 	}
 
 	void CheckTimeout() {
+		// Remove old requests
+		for (auto it = m_Requests.begin(); it != m_Requests.end(); ) {
+			if (GetTimestampUs() - it->timestamp > REQUEST_TIMEOUT) {
+				it = m_Requests.erase(it);
+			}
+			else {
+				it++;
+			}
+		}
+
 		if (!m_Connected){
 			return;
 		}
 
 		uint64_t Current = GetTimestampUs();
 
-		if (Current - m_LastSeen > 300 * 1000 * 1000) {
+		if (Current - m_LastSeen > CONNECTION_TIMEOUT) {
 			// idle for 300 seconcd
 			// Invalidate client
 			Disconnect();
@@ -513,6 +523,8 @@ private:
 
 	// Maximum UDP payload
 	static const int PACKET_SIZE = 1400;
+	static const int64_t REQUEST_TIMEOUT = 10 * 1000 * 1000;
+	static const int64_t CONNECTION_TIMEOUT = 300 * 1000 * 1000;
 
 	uint32_t packetCounter = 0;
 

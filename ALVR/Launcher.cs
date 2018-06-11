@@ -13,6 +13,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Codeplex.Data;
 using MetroFramework.Forms;
 using Microsoft.Win32;
 
@@ -22,6 +23,13 @@ namespace ALVR
     {
         ControlSocket socket = new ControlSocket();
         ServerConfig config = new ServerConfig();
+        ClientList clientList;
+
+        class ClientTag
+        {
+            public bool updated = false;
+            public ClientList.Client client;
+        }
 
         public Launcher()
         {
@@ -64,6 +72,8 @@ namespace ALVR
 
             recenterButtonComboBox.DataSource = ServerConfig.supportedRecenterButton;
             recenterButtonComboBox.SelectedIndex = Properties.Settings.Default.controllerRecenterButton;
+
+            clientList = new ClientList(Properties.Settings.Default.autoConnectList);
         }
 
         private void SaveSettings()
@@ -72,6 +82,7 @@ namespace ALVR
             Properties.Settings.Default.controllerTriggerMode = ((ServerConfig.ComboBoxCustomItem)triggerComboBox.SelectedItem).value;
             Properties.Settings.Default.controllerTrackpadClickMode = ((ServerConfig.ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).value;
             Properties.Settings.Default.controllerRecenterButton = recenterButtonComboBox.SelectedIndex;
+            Properties.Settings.Default.autoConnectList = clientList.Serialize();
             Properties.Settings.Default.Save();
         }
 
@@ -221,68 +232,61 @@ namespace ALVR
             }
             ShowFindingPanel();
 
-            str = await socket.SendCommand("GetRequests");
+            var clients = clientList.ParseRequests(await socket.SendCommand("GetRequests"));
 
             foreach (var row in dataGridView1.Rows.Cast<DataGridViewRow>())
             {
                 // Mark as old data
-                row.Tag = 0;
+                ((ClientTag)row.Tag).updated = false;
             }
 
-            foreach (var s in str.Split('\n'))
+            foreach (var client in clients)
             {
-                if (s == "")
-                {
-                    continue;
-                }
-                var elem = s.Split(" ".ToCharArray(), 4);
-                if (elem.Length != 4)
-                {
-                    timer1.Stop();
-                    MessageBox.Show("Invalid server response: " + str.Replace("\n", "\r\n"));
-                    Application.Exit();
-                    continue;
-                }
-                var address = elem[0];
-                var versionOk = elem[1] == "1";
-                var refreshRate = int.Parse(elem[2]);
-                var name = elem[3];
-
-                bool found = false;
+                DataGridViewRow found = null;
                 foreach (var row in dataGridView1.Rows.Cast<DataGridViewRow>())
                 {
-                    if ((string)row.Cells[1].Value == address)
+                    ClientTag tag1 = ((ClientTag)row.Tag);
+                    if (tag1.client.Equals(client))
                     {
-                        found = true;
-
-                        row.Cells[0].Value = name;
-                        row.Cells[2].Value = refreshRate + " FPS";
-                        if (versionOk)
-                        {
-                            if ((string)row.Cells[3].Value != "Connect") {
-                                row.Cells[3].Value = "Connect";
-                            }
-                        } else
-                        {
-                            if ((string)row.Cells[3].Value != "Wrong version")
-                            {
-                                row.Cells[3].Value = "Wrong version";
-                            }
-                        }
-                        // Mark as new data
-                        row.Tag = 1;
+                        found = row;
+                        tag1.client = client;
+                        tag1.updated = true;
                     }
                 }
-                if (!found)
+                if (found == null)
                 {
-                    int index = dataGridView1.Rows.Add(new string[] { name, address, refreshRate + " FPS", versionOk ? "Connect" : "Wrong version" });
-                    dataGridView1.Rows[index].Tag = 1;
+                    int index = dataGridView1.Rows.Add();
+                    found = dataGridView1.Rows[index];
+                    ClientTag tag2 = new ClientTag();
+                    found.Tag = tag2;
+                    tag2.client = client;
+                    tag2.updated = true;
+                }
+
+                found.Cells[0].Value = client.Name;
+                found.Cells[1].Value = client.Address;
+                found.Cells[2].Value = client.Online ? (client.RefreshRate + " FPS") : "Offline";
+
+                string buttonLabel = "Connect";
+                if (!client.Online)
+                {
+                    buttonLabel = "Remove";
+                }
+                else if (!client.VersionOk)
+                {
+                    buttonLabel = "Wrong version";
+                }
+
+                if ((string)found.Cells[3].Value != buttonLabel)
+                {
+                    found.Cells[3].Value = buttonLabel;
                 }
             }
             for (int j = dataGridView1.Rows.Count - 1; j >= 0; j--)
             {
                 // Remove old row
-                if ((int)dataGridView1.Rows[j].Tag == 0)
+                ClientTag tag3 = ((ClientTag)dataGridView1.Rows[j].Tag);
+                if (!tag3.updated)
                 {
                     dataGridView1.Rows.RemoveAt(j);
                 }
@@ -326,14 +330,22 @@ namespace ALVR
         {
             if (dataGridView1.Columns[e.ColumnIndex].Name == "Button")
             {
-                string IPAddr = (string)dataGridView1.Rows[e.RowIndex].Cells[1].Value;
-                string version = (string)dataGridView1.Rows[e.RowIndex].Cells[3].Value;
-                if (version == "Wrong version")
+                var tag = ((ClientTag)dataGridView1.Rows[e.RowIndex].Tag);
+                
+                if (!tag.client.Online)
+                {
+                    // Remove from auto connect list.
+                    clientList.RemoveAutoConnect(tag.client);
+                    SaveSettings();
+                    UpdateClients();
+                    return;
+                }
+                if (!tag.client.VersionOk)
                 {
                     MessageBox.Show("Please check the version of client and server and update both.");
                     return;
                 }
-                await socket.SendCommand("Connect " + IPAddr);
+                await socket.SendCommand("Connect " + tag.client.Address);
             }
         }
 
@@ -448,6 +460,30 @@ namespace ALVR
 
         private void Launcher_FormClosed(object sender, FormClosedEventArgs e)
         {
+            SaveSettings();
+        }
+
+        async private void autoConnectCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            string str = await socket.SendCommand("GetConfig");
+            if (str == "")
+            {
+                return;
+            }
+
+            var configs = ParsePacket(str);
+            if (!configs.ContainsKey("ClientName") || !configs.ContainsKey("Client"))
+            {
+                // Not connected?
+                return;
+            }
+            if (autoConnectCheckBox.Checked)
+            {
+                clientList.AddAutoConnect(configs["ClientName"], configs["Client"]);
+            } else
+            {
+                clientList.RemoveAutoConnect(configs["ClientName"], configs["Client"]);
+            }
             SaveSettings();
         }
     }

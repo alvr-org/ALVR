@@ -348,7 +348,7 @@ namespace ALVR
             recenterButtonComboBox.Enabled = enableControllerCheckBox.Checked;
         }
 
-        async private void SendOffsetPos()
+        async private Task SendOffsetPos()
         {
             SaveSettings();
             await socket.SendCommand("SetOffsetPos " + (offsetPosCheckBox.Checked ? "1" : "0") + " " + offsetPosXTextBox.Text + " " + offsetPosYTextBox.Text + " " + offsetPosZTextBox.Text);
@@ -395,7 +395,7 @@ namespace ALVR
 
         async private void sendOffsetPos_Click(object sender, EventArgs e)
         {
-            SendOffsetPos();
+            await SendOffsetPos();
         }
 
         private void bitrateTrackBar_ValueChanged(object sender, EventArgs e)

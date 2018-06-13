@@ -2,7 +2,7 @@
 
 ALVRはPCVRの画面をGear VRやOculus Goに転送して遊ぶためのソフトです。SteamVRのゲームをスタンドアロン型のヘッドセットでプレイすることができます。
 
-[English](https://github.com/polygraphene/ALVR/) Japanese
+[English](https://github.com/polygraphene/ALVR/) | Japanese
 
 ## 特徴
 ALVRはPCVRの画面をエンコードしWi-Fi経由でヘッドセットに転送します。似たソフトとしてRiftcatやTrinus VRがありますが、それらよりもGear VR向けに特化しているのが特徴です。Wi-Fi経由でもGear VRに搭載されたAsynchronous Timewarpを利用してスムーズなヘッドトラッキングを実現できます。
@@ -11,6 +11,8 @@ Gear VR / Oculus Go のコントローラーをサポートしました！
 
 注意：PCVRでは6DoFコントローラーや多数のボタンが必要なゲームもあり、プレイできないことも多々あります。
 
+参照：[動作確認済みのゲーム一覧](https://github.com/polygraphene/ALVR/wiki/List-of-tested-VR-games-and-experiences)
+    
 ## 動作環境
 以下の動作環境が必要です。
 - Gear VR または Oculus Go
@@ -28,30 +30,41 @@ Gear VR / Oculus Go のコントローラーをサポートしました！
 - 802.11n/ac Wi-Fi または 有線接続
     - PCは有線、ヘッドセットは無線がおすすめです (同じルータに接続していればOK)
 - SteamVRがインストール済みであること
-
-## 動作確認済みゲーム
-
-- @Thaurinさんが[動作確認済みのゲーム一覧](https://github.com/polygraphene/ALVR/wiki/List-of-tested-VR-games-and-experiences) を作成してくれました！ありがとうございます！
-    - 誰でも編集できるので追加なども歓迎です！
     
 ## インストール方法
+
 ### ALVR serverのインストールする方法
+
 - SteamVRをインストール
 - [ここ](https://www.microsoft.com/en-us/download/details.aspx?id=53840)からvc\_redist.x64.exeをダウンロードしてインストール
 - [Releases](https://github.com/polygraphene/ALVR/releases)からzipをダウンロード
 - 任意のフォルダに展開
 - ALVR.exeを起動
+
 ### ALVR clientをヘッドセットにインストールする方法
-#### Gear VR
-- SideloadVRにリリース予定 (審査が通れば)
+
+#### Oculus Storeからインストール
+
+Oculus Storeから"Oculus Key"を使ってインストールできるようになりました。
+
+1. スマートフォンで[Oculus Key配布ページ](https://alvr-dist.appspot.com/)を開く
+2. "Get Key"を押してキーを取得しコピー
+3. Oculusアプリを開き、"もっと見る"をタップ
+4. "コードを利用"をタップし、キーを貼り付け
+
+#### Gear VR (Storeを使う場合不要)
+
 - [Releases](https://github.com/polygraphene/ALVR/releases)からapkをダウンロード
 - [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor)等でapkのassetsフォルダにosigファイルを置く
 - apkを署名(Apk EditorならBuild)してインストール
-#### Oculus Go
+
+#### Oculus Go (Storeを使う場合不要)
+
 - [Releases](https://github.com/polygraphene/ALVR/releases)からapkをダウンロード
 - adbでapkをインストール
 
 ## 使い方
+
 - ALVR.exeを起動
 - Start Serverボタンを押す or VR対応ゲームを起動
 - SteamVRの小さいウィンドウが出てくる
@@ -59,6 +72,7 @@ Gear VR / Oculus Go のコントローラーをサポートしました！
 - ALVR.exeの画面にヘッドセットのIPアドレスが出てくるのでConnectを押す
 
 ## トラブルシューティング
+
 - "Start server"を押しても、"Server is down" と表示され続ける場合
     - driverフォルダのdriver\_install.batをもう一度実行してみる
     - タスクマネージャでvrserver.exeを強制終了してみる
@@ -74,6 +88,7 @@ Gear VR / Oculus Go のコントローラーをサポートしました！
     - NVIDIAのグラフィックドライバを最新版にアップデートしてみてください
 
 ## アンインストール方法
+
 - driverフォルダ内のdriver\_uninstall.batを実行
 - インストールフォルダを削除 (レジストリは使いません)
 - driver\_uninstall.batを実行せず削除してしまった場合
@@ -83,18 +98,21 @@ Gear VR / Oculus Go のコントローラーをサポートしました！
     を実行
 
 ## 今後の予定
-- 動画ビットレートの変更機能
+
 - 音声のストリーミングのサポート
 - H.265のサポート (現状、H.264のみ)
 - インストーラの作成
 
 ## ビルド方法
+
 ### ALVR Server and GUI(Launcher)
+
 - ALVR.slnをVisual Studio 2017で開いてビルドします。
     - alvr\_server: SteamVR (OpenVR) のドライバ (C++)
     - ALVR: ALVR Serverを起動/制御するためのGUI (C#)
 
 ### ALVR Client
+
 - [ALVR Client](https://github.com/polygraphene/ALVRClient)をクローン
 - [osig file](https://developer.oculus.com/documentation/mobilesdk/latest/concepts/mobile-submission-sig-file/) を assets フォルダに設置 (Gear VRのみ)
 - Android Studioでビルド

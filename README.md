@@ -11,7 +11,8 @@ ALVR streams VR display output from your PC to Gear VR / Oculus Go via Wi-Fi. Th
 Now, we have Gear VR / Oculus Go Controller support!
 
 Note that many PCVR games require 6DoF controller or multiple buttons, so you might not able to play those games.
-
+You can find playable games in [List of tested VR games and experiences](https://github.com/polygraphene/ALVR/wiki/List-of-tested-VR-games-and-experiences).
+    
 ## Requirements
 
 ALVR requires any of the following devices:
@@ -34,11 +35,6 @@ ALVR requires any of the following devices:
         - You need to connect both to the same router
 - SteamVR
 
-## Tested games
-
-- [List of tested VR games and experiences](https://github.com/polygraphene/ALVR/wiki/List-of-tested-VR-games-and-experiences) is now available.
-    - Thanks @Thaurin!
-
 ## Installation
 
 ### Install ALVR server for PC
@@ -51,7 +47,11 @@ ALVR requires any of the following devices:
 
 ### Install ALVR client for headset
 
-#### For Gear VR users
+### From Oculus Store
+- You can download ALVR Client from Oculus Store with key.
+- Open [the key distribution page](https://alvr-dist.appspot.com/) on your smartphone and follow the instruction.
+
+#### Download from GitHub for Gear VR (optional)
 
 - (Install apk from SideloadVR) Yet to be released. Please wait.
 - Get osig file from oculus website
@@ -60,7 +60,7 @@ ALVR requires any of the following devices:
 - Open apk and put osig file on assets folder
 - Build and install
 
-#### For Oculus Go users
+#### Download from GitHub for Oculus Go (optional)
 
 - Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
 - Install apk via adb

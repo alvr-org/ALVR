@@ -10,6 +10,7 @@
 #include <d3d11.h>
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <VersionHelpers.h>
 
 #include "openvr_driver.h"
 #include "packet_types.h"
@@ -235,4 +236,9 @@ inline TrackingVector3 RotateVectorQuaternion(const TrackingVector3& v, double p
 	dest.x = (float)(v.x * cos(pitch) - v.z * sin(pitch));
 	dest.z = (float)(v.x * sin(pitch) + v.z * cos(pitch));
 	return dest;
+}
+
+// Use NV12 texture on Windows 7
+inline bool ShouldUseNV12Texture() {
+	return IsWindows8OrGreater() == FALSE;
 }

@@ -31,6 +31,7 @@
 #include "packet_types.h"
 #include "resource.h"
 #include "Tracking.h"
+#include "RGBToNV12ConverterD3D11.h"
 
 HINSTANCE g_hInstance;
 
@@ -73,11 +74,12 @@ namespace
 	{
 	public:
 		CNvEncoder(std::shared_ptr<CD3DRender> pD3DRender
-			, std::shared_ptr<Listener> listener)
+			, std::shared_ptr<Listener> listener, bool useNV12)
 			: m_pD3DRender(pD3DRender)
 			, m_nFrame(0)
 			, m_Listener(listener)
 			, m_insertIDR(false)
+			, m_useNV12(useNV12)
 		{
 		}
 
@@ -94,9 +96,13 @@ namespace
 			// Initialize Encoder
 			//
 
-			Log("Initializing CNvEncoder. Width=%d Height=%d", Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
-
 			NV_ENC_BUFFER_FORMAT format = NV_ENC_BUFFER_FORMAT_ABGR;
+			if (m_useNV12) {
+				format = NV_ENC_BUFFER_FORMAT_NV12;
+			}
+
+			Log("Initializing CNvEncoder. Width=%d Height=%d Format=%d (useNV12:%d)", Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight
+				, format, m_useNV12);
 
 			m_NvNecoderD3D11 = std::make_shared<NvEncoderD3D11>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
 
@@ -119,6 +125,10 @@ namespace
 			catch (NVENCException e) {
 				FatalLog("NvEnc CreateEncoder failed. Code=%d %s", e.getErrorCode(), e.what());
 				return false;
+			}
+
+			if (m_useNV12) {
+				m_Converter = std::make_shared<RGBToNV12ConverterD3D11>(m_pD3DRender->GetDevice(), m_pD3DRender->GetContext(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
 			}
 
 			//
@@ -170,12 +180,20 @@ namespace
 
 			const NvEncInputFrame* encoderInputFrame = m_NvNecoderD3D11->GetNextInputFrame();
 
-			ID3D11Texture2D *pTexBgra = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
-			Log("CopyResource start");
-			m_pD3DRender->GetContext()->CopyResource(pTexBgra, pTexture);
-			//m_DeferredContext->CopyResource(pTexBgra, pTexture);
+			ID3D11Texture2D *pInputTexture = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
+			if (m_useNV12)
+			{
+				Log("ConvertRGBToNV12 start");
+				m_Converter->ConvertRGBToNV12(pTexture, pInputTexture);
+				Log("ConvertRGBToNV12 end");
+			}
+			else {
+				Log("CopyResource start");
+				m_pD3DRender->GetContext()->CopyResource(pInputTexture, pTexture);
+				//m_DeferredContext->CopyResource(pTexBgra, pTexture);
+				Log("CopyResource end");
+			}
 
-			Log("EncodeFrame start");
 			NV_ENC_PIC_PARAMS picParams = {};
 			if (m_insertIDR) {
 				m_insertIDR = false;
@@ -198,7 +216,7 @@ namespace
 			}
 
 			if (Settings::Instance().m_DebugFrameOutput) {
-				SaveDebugOutput(m_pD3DRender, vPacket, pTexBgra, frameIndex2);
+				SaveDebugOutput(m_pD3DRender, vPacket, pInputTexture, frameIndex2);
 			}
 
 			Log("[VDispDvr] Transmit(end) (frame %d %d) FrameIndex=%llu", vPacket.size(), m_nFrame, frameIndex);
@@ -219,6 +237,9 @@ namespace
 		std::shared_ptr<Listener> m_Listener;
 
 		bool m_insertIDR;
+
+		const bool m_useNV12;
+		std::shared_ptr<RGBToNV12ConverterD3D11> m_Converter;
 
 		//ComPtr<ID3D11DeviceContext> m_DeferredContext;
 	};
@@ -997,7 +1018,7 @@ public:
 		Log("Using %ls as primary graphics adapter.", wchAdapterDescription);
 
 		// Spawn our separate process to manage headset presentation.
-		m_CNvEncoder = std::make_shared<CNvEncoder>(m_D3DRender, m_Listener);
+		m_CNvEncoder = std::make_shared<CNvEncoder>(m_D3DRender, m_Listener, ShouldUseNV12Texture());
 		if (!m_CNvEncoder->Initialize())
 		{
 			return vr::VRInitError_Driver_Failed;

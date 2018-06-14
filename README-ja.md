@@ -49,8 +49,9 @@ Oculus Storeから"Oculus Key"を使ってインストールできるように�
 
 1. スマートフォンで[Oculus Key配布ページ](https://alvr-dist.appspot.com/)を開く
 2. "Get Key"を押してキーを取得しコピー
-3. Oculusアプリを開き、"もっと見る"をタップ
-4. "コードを利用"をタップし、キーを貼り付け
+3-a. Androidの場合、Oculusアプリを開き、"もっと見る"(または"設定")をタップ
+3-b. iPhoneの場合は[Oculusのウェブサイト](https://secure.oculus.com/redeem-code)を開きログインする
+4. "コードを利用"を開き、キーを貼り付け
 
 #### Gear VR (Storeを使う場合不要)
 

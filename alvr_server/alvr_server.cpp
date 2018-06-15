@@ -32,7 +32,8 @@
 #include "packet_types.h"
 #include "resource.h"
 #include "Tracking.h"
-#include "CudaConverter.h"
+#include "CudaConverter.h"	   
+#include "RGBToNV12.h"
 
 HINSTANCE g_hInstance;
 
@@ -194,7 +195,7 @@ namespace
 			{
 				try {
 					Log("ConvertRGBToNV12 start");
-					m_Converter->Convert(pTexture);
+					m_Converter->Convert(pTexture, encoderInputFrame);
 					Log("ConvertRGBToNV12 end");
 				}
 				catch (NVENCException e) {
@@ -1374,6 +1375,7 @@ private:
 	std::shared_ptr<IPCMutex> m_mutex;
 };
 
+extern "C" int main_test();
 vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pContext )
 {
 	VR_INIT_SERVER_DRIVER_CONTEXT( pContext );

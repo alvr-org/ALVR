@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ALVR", "ALVR\ALVR.csproj", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "alvr_server", "alvr_server\driver_virtual_display.vcxproj", "{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CUDA", "CUDA\CUDA.vcxproj", "{12336478-A663-42F8-8D52-8D093CD99992}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,14 @@ Global
 		{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}.Release|Win32.Build.0 = Release|Win32
 		{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}.Release|x64.ActiveCfg = Release|x64
 		{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}.Release|x64.Build.0 = Release|x64
+		{12336478-A663-42F8-8D52-8D093CD99992}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{12336478-A663-42F8-8D52-8D093CD99992}.Debug|Win32.ActiveCfg = Debug|x64
+		{12336478-A663-42F8-8D52-8D093CD99992}.Debug|x64.ActiveCfg = Debug|x64
+		{12336478-A663-42F8-8D52-8D093CD99992}.Debug|x64.Build.0 = Debug|x64
+		{12336478-A663-42F8-8D52-8D093CD99992}.Release|Any CPU.ActiveCfg = Release|x64
+		{12336478-A663-42F8-8D52-8D093CD99992}.Release|Win32.ActiveCfg = Release|x64
+		{12336478-A663-42F8-8D52-8D093CD99992}.Release|x64.ActiveCfg = Release|x64
+		{12336478-A663-42F8-8D52-8D093CD99992}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

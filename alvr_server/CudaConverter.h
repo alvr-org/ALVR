@@ -8,6 +8,8 @@
 #include <cuda_runtime_api.h>
 #include <cuda_d3d11_interop.h>
 
+#include <RGBToNV12.h>
+
 #include "Logger.h"
 
 using Microsoft::WRL::ComPtr;
@@ -39,24 +41,31 @@ public:
 		return m_cuContext;
 	}
 
-	void Convert(const ComPtr<ID3D11Texture2D> &texture) {
+	void Convert(const ComPtr<ID3D11Texture2D> &texture, const NvEncInputFrame* encoderInputFrame) {
+		cudaError cuStatus;
+
 		RegisterTexture(texture);
 
+		cuStatus = cudaGraphicsMapResources(1, &m_cudaResource, 0);
+		if (cuStatus != cudaSuccess) {
+			throw MakeException("cudaGraphicsMapResources failed.");
+		}
+
 		cudaArray *cuArray;
-		cudaError cuStatus = cudaGraphicsSubResourceGetMappedArray(&cuArray, m_cudaResource, 0, 0);
+		cuStatus = cudaGraphicsSubResourceGetMappedArray(&cuArray, m_cudaResource, 0, 0);
 		if (cuStatus != cudaSuccess) {
 			throw MakeException("cudaGraphicsSubResourceGetMappedArray failed.");
 		}
 
-		// then we want to copy cudaLinearMemory to the D3D texture, via its mapped form : cudaArray
-		cuStatus = cudaMemcpy2DFromArray(
-			m_cudaLinearMemory, m_pitch, // dst array
-			cuArray,       // src
-			0, 0,
-			m_width, m_height, // extent
-			cudaMemcpyDeviceToDevice); // kind
+		cuStatus = RGBA2NV12(cuArray, (uint8_t *)encoderInputFrame->inputPtr, encoderInputFrame->pitch, m_width, m_height);
+
 		if (cuStatus != cudaSuccess) {
 			throw MakeException("cudaMemcpy2DFromArray failed.");
+		}
+
+		cudaGraphicsUnmapResources(1, &m_cudaResource, 0);
+		if (cuStatus != cudaSuccess) {
+			throw MakeException("cudaGraphicsUnmapResources failed.");
 		}
 	}
 

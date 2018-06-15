@@ -20,6 +20,7 @@
 #include <wincodecsdk.h>
 
 #include "NvEncoderD3D11.h"
+#include "NvEncoderCuda.h"
 #include "Logger.h"
 #include "NvCodecUtils.h"
 #include "nvencoderclioptions.h"
@@ -31,7 +32,7 @@
 #include "packet_types.h"
 #include "resource.h"
 #include "Tracking.h"
-#include "RGBToNV12ConverterD3D11.h"
+#include "CudaConverter.h"
 
 HINSTANCE g_hInstance;
 
@@ -104,13 +105,26 @@ namespace
 			Log("Initializing CNvEncoder. Width=%d Height=%d Format=%d (useNV12:%d)", Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight
 				, format, m_useNV12);
 
-			m_NvNecoderD3D11 = std::make_shared<NvEncoderD3D11>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
+			if (m_useNV12) {
+				try {
+					m_Converter = std::make_shared<CudaConverter>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
+				}
+				catch (Exception e) {
+					FatalLog("Exception:%s", e.what());
+					return false;
+				}
+
+				m_NvNecoder = std::make_shared<NvEncoderCuda>(m_Converter->GetContext(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
+			}
+			else {
+				m_NvNecoder = std::make_shared<NvEncoderD3D11>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
+			}
 
 			NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
 			NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
 
 			initializeParams.encodeConfig = &encodeConfig;
-			m_NvNecoderD3D11->CreateDefaultEncoderParams(&initializeParams, EncodeCLIOptions.GetEncodeGUID(), EncodeCLIOptions.GetPresetGUID());
+			m_NvNecoder->CreateDefaultEncoderParams(&initializeParams, EncodeCLIOptions.GetEncodeGUID(), EncodeCLIOptions.GetPresetGUID());
 
 			initializeParams.encodeConfig->encodeCodecConfig.h264Config.repeatSPSPPS = 1;
 
@@ -120,15 +134,11 @@ namespace
 			Log("NvEnc Encoder Parameters:\n%s", parameterDesc.c_str());
 
 			try {
-				m_NvNecoderD3D11->CreateEncoder(&initializeParams);
+				m_NvNecoder->CreateEncoder(&initializeParams);
 			}
 			catch (NVENCException e) {
 				FatalLog("NvEnc CreateEncoder failed. Code=%d %s", e.getErrorCode(), e.what());
 				return false;
-			}
-
-			if (m_useNV12) {
-				m_Converter = std::make_shared<RGBToNV12ConverterD3D11>(m_pD3DRender->GetDevice(), m_pD3DRender->GetContext(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
 			}
 
 			//
@@ -150,7 +160,7 @@ namespace
 		void Shutdown()
 		{
 			std::vector<std::vector<uint8_t>> vPacket;
-			m_NvNecoderD3D11->EndEncode(vPacket);
+			m_NvNecoder->EndEncode(vPacket);
 			for (std::vector<uint8_t> &packet : vPacket)
 			{
 				if (fpOut) {
@@ -159,8 +169,8 @@ namespace
 				m_Listener->Send(packet.data(), (int)packet.size(), GetTimestampUs(), 0);
 			}
 
-			m_NvNecoderD3D11->DestroyEncoder();
-			m_NvNecoderD3D11.reset();
+			m_NvNecoder->DestroyEncoder();
+			m_NvNecoder.reset();
 
 			Log("CNvEncoder::Shutdown");
 
@@ -178,16 +188,22 @@ namespace
 
 			Log("[VDispDvr] Transmit(begin) FrameIndex=%llu", frameIndex);
 
-			const NvEncInputFrame* encoderInputFrame = m_NvNecoderD3D11->GetNextInputFrame();
+			const NvEncInputFrame* encoderInputFrame = m_NvNecoder->GetNextInputFrame();
 
-			ID3D11Texture2D *pInputTexture = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
 			if (m_useNV12)
 			{
-				Log("ConvertRGBToNV12 start");
-				m_Converter->ConvertRGBToNV12(pTexture, pInputTexture);
-				Log("ConvertRGBToNV12 end");
+				try {
+					Log("ConvertRGBToNV12 start");
+					m_Converter->Convert(pTexture);
+					Log("ConvertRGBToNV12 end");
+				}
+				catch (NVENCException e) {
+					FatalLog("Exception:%s", e.what());
+					return;
+				}
 			}
 			else {
+				ID3D11Texture2D *pInputTexture = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
 				Log("CopyResource start");
 				m_pD3DRender->GetContext()->CopyResource(pInputTexture, pTexture);
 				//m_DeferredContext->CopyResource(pTexBgra, pTexture);
@@ -199,7 +215,7 @@ namespace
 				m_insertIDR = false;
 				picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
 			}
-			m_NvNecoderD3D11->EncodeFrame(vPacket, &picParams);
+			m_NvNecoder->EncodeFrame(vPacket, &picParams);
 
 			Log("Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
 			Log("Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
@@ -216,7 +232,9 @@ namespace
 			}
 
 			if (Settings::Instance().m_DebugFrameOutput) {
-				SaveDebugOutput(m_pD3DRender, vPacket, pInputTexture, frameIndex2);
+				if (!m_useNV12) {
+					SaveDebugOutput(m_pD3DRender, vPacket, reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr), frameIndex2);
+				}
 			}
 
 			Log("[VDispDvr] Transmit(end) (frame %d %d) FrameIndex=%llu", vPacket.size(), m_nFrame, frameIndex);
@@ -229,7 +247,7 @@ namespace
 
 	private:
 		std::ofstream fpOut;
-		std::shared_ptr<NvEncoderD3D11> m_NvNecoderD3D11;
+		std::shared_ptr<NvEncoder> m_NvNecoder;
 
 		std::shared_ptr<CD3DRender> m_pD3DRender;
 		int m_nFrame;
@@ -239,8 +257,7 @@ namespace
 		bool m_insertIDR;
 
 		const bool m_useNV12;
-		std::shared_ptr<RGBToNV12ConverterD3D11> m_Converter;
-
+		std::shared_ptr<CudaConverter> m_Converter;
 		//ComPtr<ID3D11DeviceContext> m_DeferredContext;
 	};
 

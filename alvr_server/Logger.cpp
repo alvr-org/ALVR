@@ -78,3 +78,13 @@ void FatalLog(const char *format, ...) {
 
 	MessageBoxA(NULL, buf2, APP_NAME, MB_OK);
 }
+
+Exception MakeException(const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	char buf[10000];
+	vsnprintf(buf, sizeof(buf), format, args);
+	va_end(args);
+
+	return Exception(buf);
+}

@@ -1375,7 +1375,6 @@ private:
 	std::shared_ptr<IPCMutex> m_mutex;
 };
 
-extern "C" int main_test();
 vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pContext )
 {
 	VR_INIT_SERVER_DRIVER_CONTEXT( pContext );

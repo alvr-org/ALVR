@@ -31,7 +31,7 @@ namespace ALVR
             // This is for compatibility to driver_uninstall.bat
             driverPath += "\\\\";
 
-            ExecuteProcess(vrpathreg, "adddriver \"" + driverPath + "\"").WaitForExit();
+            Utils.ExecuteProcess(vrpathreg, "adddriver \"" + driverPath + "\"").WaitForExit();
 
             return true;
         }
@@ -49,7 +49,7 @@ namespace ALVR
             // This is for compatibility to driver_uninstall.bat
             driverPath += "\\\\";
 
-            ExecuteProcess(vrpathreg, "removedriver \"" + driverPath + "\"").WaitForExit();
+            Utils.ExecuteProcess(vrpathreg, "removedriver \"" + driverPath + "\"").WaitForExit();
 
             return true;
         }
@@ -65,7 +65,7 @@ namespace ALVR
             string driverPath = Utils.GetDriverPath();
             driverPath += "\\";
 
-            var process = ExecuteProcess(vrpathreg, "show");
+            var process = Utils.ExecuteProcess(vrpathreg, "show");
             while (!process.StandardOutput.EndOfStream)
             {
                 string line = process.StandardOutput.ReadLine();
@@ -88,7 +88,7 @@ namespace ALVR
             string driverPath = Utils.GetDriverPath();
             driverPath += "\\";
 
-            var process = ExecuteProcess(vrpathreg, "show");
+            var process = Utils.ExecuteProcess(vrpathreg, "show");
             string list = process.StandardOutput.ReadToEnd();
             int index = list.IndexOf("External Drivers:\r\n");
             if (index != -1)
@@ -116,32 +116,6 @@ namespace ALVR
                 return null;
             }
             return m.Groups[1].Value + @"bin\win32\vrpathreg.exe";
-        }
-
-        // Execute vrpathreg without showing command prompt window.
-        private static Process ExecuteProcess(string path, string args)
-        {
-            ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.FileName = path;
-            startInfo.Arguments = args;
-            startInfo.RedirectStandardOutput = true;
-            startInfo.RedirectStandardError = true;
-            startInfo.UseShellExecute = false;
-            startInfo.CreateNoWindow = true;
-            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-
-            Process process = new Process();
-            process.StartInfo = startInfo;
-            process.EnableRaisingEvents = true;
-            try
-            {
-                process.Start();
-            }
-            catch (Exception e)
-            {
-                throw;
-            }
-            return process;
         }
     }
 }

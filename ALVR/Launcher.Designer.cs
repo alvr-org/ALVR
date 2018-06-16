@@ -61,15 +61,6 @@
             this.Button = new System.Windows.Forms.DataGridViewButtonColumn();
             this.metroProgressSpinner2 = new MetroFramework.Controls.MetroProgressSpinner();
             this.metroLabel4 = new MetroFramework.Controls.MetroLabel();
-            this.controllerTab = new MetroFramework.Controls.MetroTabPage();
-            this.enableControllerCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.metroLabel22 = new MetroFramework.Controls.MetroLabel();
-            this.recenterButtonComboBox = new MetroFramework.Controls.MetroComboBox();
-            this.trackpadClickComboBox = new MetroFramework.Controls.MetroComboBox();
-            this.metroLabel23 = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel20 = new MetroFramework.Controls.MetroLabel();
-            this.triggerComboBox = new MetroFramework.Controls.MetroComboBox();
-            this.metroLabel21 = new MetroFramework.Controls.MetroLabel();
             this.videoTab = new MetroFramework.Controls.MetroTabPage();
             this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
@@ -91,14 +82,30 @@
             this.bufferTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.bitrateTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.otherTab = new MetroFramework.Controls.MetroTabPage();
+            this.metroLabel28 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel27 = new MetroFramework.Controls.MetroLabel();
+            this.refDisconnectCommandButton = new MetroFramework.Controls.MetroButton();
+            this.refConnectCommandButton = new MetroFramework.Controls.MetroButton();
+            this.disconnectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.connectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
             this.offsetPosCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.offsetPosZTextBox = new MetroFramework.Controls.MetroTextBox();
             this.offsetPosYTextBox = new MetroFramework.Controls.MetroTextBox();
             this.offsetPosXTextBox = new MetroFramework.Controls.MetroTextBox();
             this.sendOffsetPos = new MetroFramework.Controls.MetroButton();
+            this.metroLabel26 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel25 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel24 = new MetroFramework.Controls.MetroLabel();
             this.fakeTrackingReferenceCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.controllerTab = new MetroFramework.Controls.MetroTabPage();
+            this.enableControllerCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.metroLabel22 = new MetroFramework.Controls.MetroLabel();
+            this.recenterButtonComboBox = new MetroFramework.Controls.MetroComboBox();
+            this.trackpadClickComboBox = new MetroFramework.Controls.MetroComboBox();
+            this.metroLabel23 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel20 = new MetroFramework.Controls.MetroLabel();
+            this.triggerComboBox = new MetroFramework.Controls.MetroComboBox();
+            this.metroLabel21 = new MetroFramework.Controls.MetroLabel();
             this.debugTab = new MetroFramework.Controls.MetroTabPage();
             this.metroLabel5 = new MetroFramework.Controls.MetroLabel();
             this.logText = new MetroFramework.Controls.MetroTextBox();
@@ -128,6 +135,7 @@
             this.startServerButton = new MetroFramework.Controls.MetroButton();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.connectedPanel.SuspendLayout();
@@ -135,10 +143,10 @@
             this.messagePanel.SuspendLayout();
             this.findingPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
-            this.controllerTab.SuspendLayout();
             this.videoTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).BeginInit();
             this.otherTab.SuspendLayout();
+            this.controllerTab.SuspendLayout();
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
@@ -181,14 +189,14 @@
             // metroTabControl1
             // 
             this.metroTabControl1.Controls.Add(this.serverTab);
-            this.metroTabControl1.Controls.Add(this.controllerTab);
-            this.metroTabControl1.Controls.Add(this.videoTab);
             this.metroTabControl1.Controls.Add(this.otherTab);
+            this.metroTabControl1.Controls.Add(this.videoTab);
+            this.metroTabControl1.Controls.Add(this.controllerTab);
             this.metroTabControl1.Controls.Add(this.debugTab);
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 3;
+            this.metroTabControl1.SelectedIndex = 2;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -472,109 +480,6 @@
             this.metroLabel4.Text = "Finding Headset...";
             this.metroLabel4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
-            // controllerTab
-            // 
-            this.controllerTab.Controls.Add(this.enableControllerCheckBox);
-            this.controllerTab.Controls.Add(this.metroLabel22);
-            this.controllerTab.Controls.Add(this.recenterButtonComboBox);
-            this.controllerTab.Controls.Add(this.trackpadClickComboBox);
-            this.controllerTab.Controls.Add(this.metroLabel23);
-            this.controllerTab.Controls.Add(this.metroLabel20);
-            this.controllerTab.Controls.Add(this.triggerComboBox);
-            this.controllerTab.Controls.Add(this.metroLabel21);
-            this.controllerTab.HorizontalScrollbarBarColor = true;
-            this.controllerTab.Location = new System.Drawing.Point(4, 38);
-            this.controllerTab.Name = "controllerTab";
-            this.controllerTab.Size = new System.Drawing.Size(656, 283);
-            this.controllerTab.TabIndex = 6;
-            this.controllerTab.Text = "Controller";
-            this.controllerTab.VerticalScrollbarBarColor = true;
-            // 
-            // enableControllerCheckBox
-            // 
-            this.enableControllerCheckBox.AutoSize = true;
-            this.enableControllerCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableController;
-            this.enableControllerCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.enableControllerCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableController", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.enableControllerCheckBox.Location = new System.Drawing.Point(36, 19);
-            this.enableControllerCheckBox.Name = "enableControllerCheckBox";
-            this.enableControllerCheckBox.Size = new System.Drawing.Size(112, 15);
-            this.enableControllerCheckBox.TabIndex = 11;
-            this.enableControllerCheckBox.Text = "Enable controller";
-            this.enableControllerCheckBox.UseVisualStyleBackColor = true;
-            this.enableControllerCheckBox.CheckedChanged += new System.EventHandler(this.enableControllerCheckBox_CheckedChanged);
-            // 
-            // metroLabel22
-            // 
-            this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(206, -1220);
-            this.metroLabel22.Name = "metroLabel22";
-            this.metroLabel22.Size = new System.Drawing.Size(240, 38);
-            this.metroLabel22.TabIndex = 10;
-            this.metroLabel22.Text = "These settings will be applied instantly\r\nexcept for enabling/disabling controlle" +
-    "r.";
-            // 
-            // recenterButtonComboBox
-            // 
-            this.recenterButtonComboBox.FormattingEnabled = true;
-            this.recenterButtonComboBox.ItemHeight = 23;
-            this.recenterButtonComboBox.Location = new System.Drawing.Point(216, 162);
-            this.recenterButtonComboBox.Name = "recenterButtonComboBox";
-            this.recenterButtonComboBox.Size = new System.Drawing.Size(192, 29);
-            this.recenterButtonComboBox.TabIndex = 9;
-            this.recenterButtonComboBox.SelectedIndexChanged += new System.EventHandler(this.recenterButtonComboBox_SelectedIndexChanged);
-            // 
-            // trackpadClickComboBox
-            // 
-            this.trackpadClickComboBox.FormattingEnabled = true;
-            this.trackpadClickComboBox.ItemHeight = 23;
-            this.trackpadClickComboBox.Location = new System.Drawing.Point(216, 108);
-            this.trackpadClickComboBox.Name = "trackpadClickComboBox";
-            this.trackpadClickComboBox.Size = new System.Drawing.Size(192, 29);
-            this.trackpadClickComboBox.TabIndex = 9;
-            this.trackpadClickComboBox.SelectedIndexChanged += new System.EventHandler(this.trackpadClickComboBox_SelectedIndexChanged);
-            // 
-            // metroLabel23
-            // 
-            this.metroLabel23.AutoSize = true;
-            this.metroLabel23.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel23.Location = new System.Drawing.Point(56, 162);
-            this.metroLabel23.Name = "metroLabel23";
-            this.metroLabel23.Size = new System.Drawing.Size(133, 25);
-            this.metroLabel23.TabIndex = 8;
-            this.metroLabel23.Text = "Recenter button";
-            // 
-            // metroLabel20
-            // 
-            this.metroLabel20.AutoSize = true;
-            this.metroLabel20.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel20.Location = new System.Drawing.Point(56, 108);
-            this.metroLabel20.Name = "metroLabel20";
-            this.metroLabel20.Size = new System.Drawing.Size(116, 25);
-            this.metroLabel20.TabIndex = 8;
-            this.metroLabel20.Text = "Trackpad click";
-            // 
-            // triggerComboBox
-            // 
-            this.triggerComboBox.FormattingEnabled = true;
-            this.triggerComboBox.ItemHeight = 23;
-            this.triggerComboBox.Location = new System.Drawing.Point(216, 57);
-            this.triggerComboBox.Name = "triggerComboBox";
-            this.triggerComboBox.Size = new System.Drawing.Size(192, 29);
-            this.triggerComboBox.TabIndex = 9;
-            this.triggerComboBox.SelectedIndexChanged += new System.EventHandler(this.triggerComboBox_SelectedIndexChanged);
-            // 
-            // metroLabel21
-            // 
-            this.metroLabel21.AutoSize = true;
-            this.metroLabel21.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel21.Location = new System.Drawing.Point(56, 57);
-            this.metroLabel21.Name = "metroLabel21";
-            this.metroLabel21.Size = new System.Drawing.Size(64, 25);
-            this.metroLabel21.TabIndex = 8;
-            this.metroLabel21.Text = "Trigger";
-            // 
             // videoTab
             // 
             this.videoTab.Controls.Add(this.label2);
@@ -785,11 +690,18 @@
             // 
             // otherTab
             // 
+            this.otherTab.Controls.Add(this.metroLabel28);
+            this.otherTab.Controls.Add(this.metroLabel27);
+            this.otherTab.Controls.Add(this.refDisconnectCommandButton);
+            this.otherTab.Controls.Add(this.refConnectCommandButton);
+            this.otherTab.Controls.Add(this.disconnectCommandTextBox);
+            this.otherTab.Controls.Add(this.connectCommandTextBox);
             this.otherTab.Controls.Add(this.offsetPosCheckBox);
             this.otherTab.Controls.Add(this.offsetPosZTextBox);
             this.otherTab.Controls.Add(this.offsetPosYTextBox);
             this.otherTab.Controls.Add(this.offsetPosXTextBox);
             this.otherTab.Controls.Add(this.sendOffsetPos);
+            this.otherTab.Controls.Add(this.metroLabel26);
             this.otherTab.Controls.Add(this.metroLabel25);
             this.otherTab.Controls.Add(this.metroLabel24);
             this.otherTab.Controls.Add(this.fakeTrackingReferenceCheckBox);
@@ -801,12 +713,66 @@
             this.otherTab.Text = "Other";
             this.otherTab.VerticalScrollbarBarColor = true;
             // 
+            // metroLabel28
+            // 
+            this.metroLabel28.AutoSize = true;
+            this.metroLabel28.Location = new System.Drawing.Point(41, 239);
+            this.metroLabel28.Name = "metroLabel28";
+            this.metroLabel28.Size = new System.Drawing.Size(92, 19);
+            this.metroLabel28.TabIndex = 17;
+            this.metroLabel28.Text = "On disconnect";
+            // 
+            // metroLabel27
+            // 
+            this.metroLabel27.AutoSize = true;
+            this.metroLabel27.Location = new System.Drawing.Point(57, 210);
+            this.metroLabel27.Name = "metroLabel27";
+            this.metroLabel27.Size = new System.Drawing.Size(76, 19);
+            this.metroLabel27.TabIndex = 17;
+            this.metroLabel27.Text = "On connect";
+            // 
+            // refDisconnectCommandButton
+            // 
+            this.refDisconnectCommandButton.Location = new System.Drawing.Point(529, 239);
+            this.refDisconnectCommandButton.Name = "refDisconnectCommandButton";
+            this.refDisconnectCommandButton.Size = new System.Drawing.Size(52, 23);
+            this.refDisconnectCommandButton.TabIndex = 16;
+            this.refDisconnectCommandButton.Text = "...";
+            this.refDisconnectCommandButton.Click += new System.EventHandler(this.refDisconnectCommandButton_Click);
+            // 
+            // refConnectCommandButton
+            // 
+            this.refConnectCommandButton.Location = new System.Drawing.Point(529, 210);
+            this.refConnectCommandButton.Name = "refConnectCommandButton";
+            this.refConnectCommandButton.Size = new System.Drawing.Size(52, 23);
+            this.refConnectCommandButton.TabIndex = 16;
+            this.refConnectCommandButton.Text = "...";
+            this.refConnectCommandButton.Click += new System.EventHandler(this.refConnectCommandButton_Click);
+            // 
+            // disconnectCommandTextBox
+            // 
+            this.disconnectCommandTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "disconnectCommand", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.disconnectCommandTextBox.Location = new System.Drawing.Point(139, 239);
+            this.disconnectCommandTextBox.Name = "disconnectCommandTextBox";
+            this.disconnectCommandTextBox.Size = new System.Drawing.Size(383, 23);
+            this.disconnectCommandTextBox.TabIndex = 15;
+            this.disconnectCommandTextBox.Text = global::ALVR.Properties.Settings.Default.disconnectCommand;
+            // 
+            // connectCommandTextBox
+            // 
+            this.connectCommandTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "connectCommand", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.connectCommandTextBox.Location = new System.Drawing.Point(139, 210);
+            this.connectCommandTextBox.Name = "connectCommandTextBox";
+            this.connectCommandTextBox.Size = new System.Drawing.Size(383, 23);
+            this.connectCommandTextBox.TabIndex = 15;
+            this.connectCommandTextBox.Text = global::ALVR.Properties.Settings.Default.connectCommand;
+            // 
             // offsetPosCheckBox
             // 
             this.offsetPosCheckBox.AutoSize = true;
             this.offsetPosCheckBox.Checked = global::ALVR.Properties.Settings.Default.useOffsetPos;
             this.offsetPosCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useOffsetPos", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.offsetPosCheckBox.Location = new System.Drawing.Point(37, 123);
+            this.offsetPosCheckBox.Location = new System.Drawing.Point(37, 106);
             this.offsetPosCheckBox.Name = "offsetPosCheckBox";
             this.offsetPosCheckBox.Size = new System.Drawing.Size(87, 15);
             this.offsetPosCheckBox.TabIndex = 14;
@@ -816,7 +782,7 @@
             // offsetPosZTextBox
             // 
             this.offsetPosZTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "offsetPosZ", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.offsetPosZTextBox.Location = new System.Drawing.Point(258, 119);
+            this.offsetPosZTextBox.Location = new System.Drawing.Point(258, 102);
             this.offsetPosZTextBox.Name = "offsetPosZTextBox";
             this.offsetPosZTextBox.Size = new System.Drawing.Size(58, 23);
             this.offsetPosZTextBox.TabIndex = 11;
@@ -825,7 +791,7 @@
             // offsetPosYTextBox
             // 
             this.offsetPosYTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "offsetPosY", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.offsetPosYTextBox.Location = new System.Drawing.Point(194, 119);
+            this.offsetPosYTextBox.Location = new System.Drawing.Point(194, 102);
             this.offsetPosYTextBox.Name = "offsetPosYTextBox";
             this.offsetPosYTextBox.Size = new System.Drawing.Size(58, 23);
             this.offsetPosYTextBox.TabIndex = 12;
@@ -834,7 +800,7 @@
             // offsetPosXTextBox
             // 
             this.offsetPosXTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "offsetPosX", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.offsetPosXTextBox.Location = new System.Drawing.Point(130, 119);
+            this.offsetPosXTextBox.Location = new System.Drawing.Point(130, 102);
             this.offsetPosXTextBox.Name = "offsetPosXTextBox";
             this.offsetPosXTextBox.Size = new System.Drawing.Size(58, 23);
             this.offsetPosXTextBox.TabIndex = 13;
@@ -842,17 +808,26 @@
             // 
             // sendOffsetPos
             // 
-            this.sendOffsetPos.Location = new System.Drawing.Point(322, 119);
+            this.sendOffsetPos.Location = new System.Drawing.Point(322, 102);
             this.sendOffsetPos.Name = "sendOffsetPos";
             this.sendOffsetPos.Size = new System.Drawing.Size(75, 23);
             this.sendOffsetPos.TabIndex = 10;
             this.sendOffsetPos.Text = "Save";
             this.sendOffsetPos.Click += new System.EventHandler(this.sendOffsetPos_Click);
             // 
+            // metroLabel26
+            // 
+            this.metroLabel26.AutoSize = true;
+            this.metroLabel26.Location = new System.Drawing.Point(37, 181);
+            this.metroLabel26.Name = "metroLabel26";
+            this.metroLabel26.Size = new System.Drawing.Size(95, 19);
+            this.metroLabel26.TabIndex = 3;
+            this.metroLabel26.Text = "Run command";
+            // 
             // metroLabel25
             // 
             this.metroLabel25.AutoSize = true;
-            this.metroLabel25.Location = new System.Drawing.Point(66, 164);
+            this.metroLabel25.Location = new System.Drawing.Point(66, 147);
             this.metroLabel25.Name = "metroLabel25";
             this.metroLabel25.Size = new System.Drawing.Size(212, 19);
             this.metroLabel25.TabIndex = 3;
@@ -878,6 +853,109 @@
             this.fakeTrackingReferenceCheckBox.TabIndex = 2;
             this.fakeTrackingReferenceCheckBox.Text = "Fake base station";
             this.fakeTrackingReferenceCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // controllerTab
+            // 
+            this.controllerTab.Controls.Add(this.enableControllerCheckBox);
+            this.controllerTab.Controls.Add(this.metroLabel22);
+            this.controllerTab.Controls.Add(this.recenterButtonComboBox);
+            this.controllerTab.Controls.Add(this.trackpadClickComboBox);
+            this.controllerTab.Controls.Add(this.metroLabel23);
+            this.controllerTab.Controls.Add(this.metroLabel20);
+            this.controllerTab.Controls.Add(this.triggerComboBox);
+            this.controllerTab.Controls.Add(this.metroLabel21);
+            this.controllerTab.HorizontalScrollbarBarColor = true;
+            this.controllerTab.Location = new System.Drawing.Point(4, 38);
+            this.controllerTab.Name = "controllerTab";
+            this.controllerTab.Size = new System.Drawing.Size(656, 283);
+            this.controllerTab.TabIndex = 6;
+            this.controllerTab.Text = "Controller";
+            this.controllerTab.VerticalScrollbarBarColor = true;
+            // 
+            // enableControllerCheckBox
+            // 
+            this.enableControllerCheckBox.AutoSize = true;
+            this.enableControllerCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableController;
+            this.enableControllerCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.enableControllerCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableController", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.enableControllerCheckBox.Location = new System.Drawing.Point(36, 19);
+            this.enableControllerCheckBox.Name = "enableControllerCheckBox";
+            this.enableControllerCheckBox.Size = new System.Drawing.Size(112, 15);
+            this.enableControllerCheckBox.TabIndex = 11;
+            this.enableControllerCheckBox.Text = "Enable controller";
+            this.enableControllerCheckBox.UseVisualStyleBackColor = true;
+            this.enableControllerCheckBox.CheckedChanged += new System.EventHandler(this.enableControllerCheckBox_CheckedChanged);
+            // 
+            // metroLabel22
+            // 
+            this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.metroLabel22.AutoSize = true;
+            this.metroLabel22.Location = new System.Drawing.Point(206, -1668);
+            this.metroLabel22.Name = "metroLabel22";
+            this.metroLabel22.Size = new System.Drawing.Size(240, 38);
+            this.metroLabel22.TabIndex = 10;
+            this.metroLabel22.Text = "These settings will be applied instantly\r\nexcept for enabling/disabling controlle" +
+    "r.";
+            // 
+            // recenterButtonComboBox
+            // 
+            this.recenterButtonComboBox.FormattingEnabled = true;
+            this.recenterButtonComboBox.ItemHeight = 23;
+            this.recenterButtonComboBox.Location = new System.Drawing.Point(216, 162);
+            this.recenterButtonComboBox.Name = "recenterButtonComboBox";
+            this.recenterButtonComboBox.Size = new System.Drawing.Size(192, 29);
+            this.recenterButtonComboBox.TabIndex = 9;
+            this.recenterButtonComboBox.SelectedIndexChanged += new System.EventHandler(this.recenterButtonComboBox_SelectedIndexChanged);
+            // 
+            // trackpadClickComboBox
+            // 
+            this.trackpadClickComboBox.FormattingEnabled = true;
+            this.trackpadClickComboBox.ItemHeight = 23;
+            this.trackpadClickComboBox.Location = new System.Drawing.Point(216, 108);
+            this.trackpadClickComboBox.Name = "trackpadClickComboBox";
+            this.trackpadClickComboBox.Size = new System.Drawing.Size(192, 29);
+            this.trackpadClickComboBox.TabIndex = 9;
+            this.trackpadClickComboBox.SelectedIndexChanged += new System.EventHandler(this.trackpadClickComboBox_SelectedIndexChanged);
+            // 
+            // metroLabel23
+            // 
+            this.metroLabel23.AutoSize = true;
+            this.metroLabel23.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel23.Location = new System.Drawing.Point(56, 162);
+            this.metroLabel23.Name = "metroLabel23";
+            this.metroLabel23.Size = new System.Drawing.Size(133, 25);
+            this.metroLabel23.TabIndex = 8;
+            this.metroLabel23.Text = "Recenter button";
+            // 
+            // metroLabel20
+            // 
+            this.metroLabel20.AutoSize = true;
+            this.metroLabel20.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel20.Location = new System.Drawing.Point(56, 108);
+            this.metroLabel20.Name = "metroLabel20";
+            this.metroLabel20.Size = new System.Drawing.Size(116, 25);
+            this.metroLabel20.TabIndex = 8;
+            this.metroLabel20.Text = "Trackpad click";
+            // 
+            // triggerComboBox
+            // 
+            this.triggerComboBox.FormattingEnabled = true;
+            this.triggerComboBox.ItemHeight = 23;
+            this.triggerComboBox.Location = new System.Drawing.Point(216, 57);
+            this.triggerComboBox.Name = "triggerComboBox";
+            this.triggerComboBox.Size = new System.Drawing.Size(192, 29);
+            this.triggerComboBox.TabIndex = 9;
+            this.triggerComboBox.SelectedIndexChanged += new System.EventHandler(this.triggerComboBox_SelectedIndexChanged);
+            // 
+            // metroLabel21
+            // 
+            this.metroLabel21.AutoSize = true;
+            this.metroLabel21.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel21.Location = new System.Drawing.Point(56, 57);
+            this.metroLabel21.Name = "metroLabel21";
+            this.metroLabel21.Size = new System.Drawing.Size(64, 25);
+            this.metroLabel21.TabIndex = 8;
+            this.metroLabel21.Text = "Trigger";
             // 
             // debugTab
             // 
@@ -1185,6 +1263,10 @@
             this.pictureBox1.TabIndex = 11;
             this.pictureBox1.TabStop = false;
             // 
+            // openFileDialog1
+            // 
+            this.openFileDialog1.FileName = "openFileDialog1";
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -1209,13 +1291,13 @@
             this.findingPanel.ResumeLayout(false);
             this.findingPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
-            this.controllerTab.ResumeLayout(false);
-            this.controllerTab.PerformLayout();
             this.videoTab.ResumeLayout(false);
             this.videoTab.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).EndInit();
             this.otherTab.ResumeLayout(false);
             this.otherTab.PerformLayout();
+            this.controllerTab.ResumeLayout(false);
+            this.controllerTab.PerformLayout();
             this.debugTab.ResumeLayout(false);
             this.debugTab.PerformLayout();
             this.aboutTab.ResumeLayout(false);
@@ -1318,6 +1400,14 @@
         private MetroFramework.Controls.MetroTextBox offsetPosXTextBox;
         private MetroFramework.Controls.MetroButton sendOffsetPos;
         private MetroFramework.Controls.MetroLabel metroLabel25;
+        private MetroFramework.Controls.MetroLabel metroLabel28;
+        private MetroFramework.Controls.MetroLabel metroLabel27;
+        private MetroFramework.Controls.MetroButton refDisconnectCommandButton;
+        private MetroFramework.Controls.MetroButton refConnectCommandButton;
+        private MetroFramework.Controls.MetroTextBox disconnectCommandTextBox;
+        private MetroFramework.Controls.MetroTextBox connectCommandTextBox;
+        private MetroFramework.Controls.MetroLabel metroLabel26;
+        private System.Windows.Forms.OpenFileDialog openFileDialog1;
     }
 }
 

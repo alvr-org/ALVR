@@ -24,6 +24,7 @@ namespace ALVR
         ControlSocket socket = new ControlSocket();
         ServerConfig config = new ServerConfig();
         ClientList clientList;
+        bool previousConnectionState = false;
 
         class ClientTag
         {
@@ -219,11 +220,13 @@ namespace ALVR
         {
             if (!socket.Connected)
             {
+                UpdateConnectionState(false);
                 return;
             }
             string str = await socket.SendCommand("GetConfig");
             if (str == "")
             {
+                UpdateConnectionState(false);
                 return;
             }
             logText.Text = str.Replace("\n", "\r\n");
@@ -232,6 +235,8 @@ namespace ALVR
             if (configs["Connected"] == "1")
             {
                 // Connected
+                UpdateConnectionState(true, configs["ClientName"] + " " + configs["Client"] + " " + configs["RefreshRate"]);
+
                 connectedLabel.Text = "Connected!\r\n\r\n" + configs["ClientName"] + "\r\n"
                     + configs["Client"] + "\r\n" + configs["RefreshRate"] + " FPS";
 
@@ -243,6 +248,7 @@ namespace ALVR
                 UpdateClientStatistics();
                 return;
             }
+            UpdateConnectionState(false);
             ShowFindingPanel();
 
             var clients = clientList.ParseRequests(await socket.SendCommand("GetRequests"));
@@ -350,6 +356,39 @@ namespace ALVR
         {
             SaveSettings();
             await socket.SendCommand("SetOffsetPos " + (offsetPosCheckBox.Checked ? "1" : "0") + " " + offsetPosXTextBox.Text + " " + offsetPosYTextBox.Text + " " + offsetPosZTextBox.Text);
+        }
+
+        private void UpdateConnectionState(bool connected, string args = "")
+        {
+            if (!previousConnectionState && connected)
+            {
+                previousConnectionState = connected;
+                RunConnectCommand(args);
+            }else if (previousConnectionState && !connected)
+            {
+                previousConnectionState = connected;
+                RunDisconnectCommand();
+            }
+        }
+
+        private void RunConnectCommand(string args)
+        {
+            var command = connectCommandTextBox.Text;
+            if (command == "")
+            {
+                return;
+            }
+            Utils.ExecuteProcess(command, "connect " + args);
+        }
+
+        private void RunDisconnectCommand()
+        {
+            var command = disconnectCommandTextBox.Text;
+            if (command == "")
+            {
+                return;
+            }
+            Utils.ExecuteProcess(command, "disconnect");
         }
 
         //
@@ -527,6 +566,24 @@ namespace ALVR
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
             dataGridView1.ClearSelection();
+        }
+
+        private void refConnectCommandButton_Click(object sender, EventArgs e)
+        {
+            var result = openFileDialog1.ShowDialog();
+            if (result == DialogResult.OK)
+            {
+                connectCommandTextBox.Text = openFileDialog1.FileName;
+            }
+        }
+
+        private void refDisconnectCommandButton_Click(object sender, EventArgs e)
+        {
+            var result = openFileDialog1.ShowDialog();
+            if (result == DialogResult.OK)
+            {
+                disconnectCommandTextBox.Text = openFileDialog1.FileName;
+            }
         }
     }
 }

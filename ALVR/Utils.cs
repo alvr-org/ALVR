@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -26,6 +27,32 @@ namespace ALVR
             float f = 0.0f;
             float.TryParse(s, out f);
             return f;
+        }
+
+        // Execute command without showing command prompt window.
+        public static Process ExecuteProcess(string path, string args)
+        {
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.FileName = path;
+            startInfo.Arguments = args;
+            startInfo.RedirectStandardOutput = true;
+            startInfo.RedirectStandardError = true;
+            startInfo.UseShellExecute = false;
+            startInfo.CreateNoWindow = true;
+            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+
+            Process process = new Process();
+            process.StartInfo = startInfo;
+            process.EnableRaisingEvents = true;
+            try
+            {
+                process.Start();
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+            return process;
         }
     }
 }

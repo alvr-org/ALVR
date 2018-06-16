@@ -226,5 +226,29 @@ namespace ALVR.Properties {
                 this["offsetPosZ"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string disconnectCommand {
+            get {
+                return ((string)(this["disconnectCommand"]));
+            }
+            set {
+                this["disconnectCommand"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string connectCommand {
+            get {
+                return ((string)(this["connectCommand"]));
+            }
+            set {
+                this["connectCommand"] = value;
+            }
+        }
     }
 }

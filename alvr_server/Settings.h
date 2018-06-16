@@ -32,6 +32,8 @@ static const char * const k_pch_Settings_AdapterIndex_Int32 = "adapterIndex";
 static const char * const k_pch_Settings_SendingTimeslotUs_Int32 = "sendingTimeslotUs";
 static const char * const k_pch_Settings_LimitTimeslotPackets_Int32 = "limitTimeslotPackets";
 
+static const char * const k_pch_Settings_ControllerTrackingSystemName_String = "controllerTrackingSystemName";
+static const char * const k_pch_Settings_ControllerManufacturerName_String = "controllerManufacturerName";
 static const char * const k_pch_Settings_ControllerModelNumber_String = "controllerModelNumber";
 static const char * const k_pch_Settings_ControllerRenderModelName_String = "controllerRenderModelName";
 static const char * const k_pch_Settings_ControllerSerialNumber_String = "controllerSerialNumber";
@@ -102,6 +104,8 @@ public:
 	uint32_t m_clientRecvBufferSize;
 
 	// Controller configs
+	std::string m_controllerTrackingSystemName;
+	std::string m_controllerManufacturerName;
 	std::string m_controllerModelNumber;
 	std::string m_controllerRenderModelName;
 	std::string m_controllerSerialNumber;

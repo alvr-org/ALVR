@@ -124,9 +124,11 @@ namespace ALVR
                 driverConfig.controlListenPort = 9944;
                 driverConfig.controlListenHost = "127.0.0.1";
                 driverConfig.useKeyedMutex = true;
-                driverConfig.controllerModelNumber = "Gear VR Controller";
-                driverConfig.controllerRenderModelName = "GearVRController";
-                driverConfig.controllerSerialNumber = "Controller-001";
+                driverConfig.controllerTrackingSystemName = "ALVR Remote Controller";
+                driverConfig.controllerManufacturerName = "ALVR";
+                driverConfig.controllerModelNumber = "ALVR Remote Controller";
+                driverConfig.controllerRenderModelName = "vr_controller_vive_1_5";
+                driverConfig.controllerSerialNumber = "ALVR Remote Controller";
 
                 driverConfig.nvencOptions = "-codec h264 -preset ll_hq -rc cbr_ll_hq -gop 120 -fps 60 -bitrate "
                     + Properties.Settings.Default.bitrate + "M -maxbitrate " + Properties.Settings.Default.bitrate + "M";

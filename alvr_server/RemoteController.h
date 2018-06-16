@@ -51,11 +51,6 @@ public:
 		, m_previousFlags(0)
 		, m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 	{
-		m_supportedButtons = vr::ButtonMaskFromId(vr::k_EButton_SteamVR_Trigger)
-			| vr::ButtonMaskFromId(vr::k_EButton_SteamVR_Touchpad)
-			| vr::ButtonMaskFromId(vr::k_EButton_Dashboard_Back)
-			| vr::ButtonMaskFromId(vr::k_EButton_Axis0)
-			| vr::ButtonMaskFromId(vr::k_EButton_Axis1);
 		m_info.type = 0;
 	}
 
@@ -73,11 +68,14 @@ public:
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
 
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_TrackingSystemName_String, Settings::Instance().m_controllerTrackingSystemName.c_str());
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ManufacturerName_String, Settings::Instance().m_controllerManufacturerName.c_str());
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, Settings::Instance().m_controllerModelNumber.c_str());
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, Settings::Instance().m_controllerRenderModelName.c_str());
 
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_SerialNumber_String, Settings::Instance().m_controllerSerialNumber.c_str());
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_AttachedDeviceId_String, Settings::Instance().m_controllerSerialNumber.c_str());
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_SupportedButtons_Uint64, m_supportedButtons);
+		//vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_SupportedButtons_Uint64, m_supportedButtons);
 
 		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceProvidesBatteryStatus_Bool, true);
 
@@ -235,6 +233,9 @@ public:
 			bool value = (info.controllerButtons & 0x00000001) != 0;
 			if (triggerButton != -1) {
 				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[triggerButton], value, 0.0);
+				if (triggerButton == INPUT_TRIGGER_CLICK) {
+					vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
+				}
 			}
 			if (value && Settings::Instance().m_controllerRecenterButton == 1) {
 				recenterRequest = true;
@@ -301,7 +302,6 @@ private:
 	uint32_t m_previousButtons;
 	uint32_t m_previousFlags;
 
-	uint64_t m_supportedButtons;
 	bool m_handed;
 
 	TrackingInfo m_info;

@@ -78,7 +78,10 @@ void Settings::Load()
 	m_DebugCaptureOutput = v.get(k_pch_Settings_DebugCaptureOutput_Bool).get<bool>();
 	m_UseKeyedMutex = v.get(k_pch_Settings_UseKeyedMutex_Bool).get<bool>();
 
+	m_controllerTrackingSystemName = v.get(k_pch_Settings_ControllerTrackingSystemName_String).get<std::string>();
+	m_controllerManufacturerName = v.get(k_pch_Settings_ControllerManufacturerName_String).get<std::string>();
 	m_controllerModelNumber = v.get(k_pch_Settings_ControllerModelNumber_String).get<std::string>();
+	m_controllerRenderModelName = v.get(k_pch_Settings_ControllerRenderModelName_String).get<std::string>();
 	m_controllerSerialNumber = v.get(k_pch_Settings_ControllerSerialNumber_String).get<std::string>();
 
 	m_enableController = v.get(k_pch_Settings_EnableController_Bool).get<bool>();

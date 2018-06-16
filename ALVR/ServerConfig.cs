@@ -125,6 +125,7 @@ namespace ALVR
                 driverConfig.controlListenHost = "127.0.0.1";
                 driverConfig.useKeyedMutex = true;
                 driverConfig.controllerModelNumber = "Gear VR Controller";
+                driverConfig.controllerRenderModelName = "GearVRController";
                 driverConfig.controllerSerialNumber = "Controller-001";
 
                 driverConfig.nvencOptions = "-codec h264 -preset ll_hq -rc cbr_ll_hq -gop 120 -fps 60 -bitrate "

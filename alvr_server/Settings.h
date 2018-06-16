@@ -33,6 +33,7 @@ static const char * const k_pch_Settings_SendingTimeslotUs_Int32 = "sendingTimes
 static const char * const k_pch_Settings_LimitTimeslotPackets_Int32 = "limitTimeslotPackets";
 
 static const char * const k_pch_Settings_ControllerModelNumber_String = "controllerModelNumber";
+static const char * const k_pch_Settings_ControllerRenderModelName_String = "controllerRenderModelName";
 static const char * const k_pch_Settings_ControllerSerialNumber_String = "controllerSerialNumber";
 static const char * const k_pch_Settings_EnableController_Bool = "enableController";
 static const char * const k_pch_Settings_ControllerTriggerMode_Int32 = "controllerTriggerMode";
@@ -102,6 +103,7 @@ public:
 
 	// Controller configs
 	std::string m_controllerModelNumber;
+	std::string m_controllerRenderModelName;
 	std::string m_controllerSerialNumber;
 	bool m_enableController;
 	int32_t m_controllerTriggerMode;

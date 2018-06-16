@@ -98,7 +98,7 @@ namespace ALVR
                 Debug.WriteLine("Connection error: " + e + "\r\n" + e.Message);
             }
 
-            if (client.Connected)
+            if (client != null && client.Connected)
             {
                 status = ServerStatus.CONNECTED;
             }

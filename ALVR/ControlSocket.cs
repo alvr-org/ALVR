@@ -60,7 +60,10 @@ namespace ALVR
             if (ret == 0 || ret < 0)
             {
                 // Disconnected
-                client.Close();
+                if (client != null)
+                {
+                    client.Close();
+                }
                 client = null;
                 status = ServerStatus.DEAD;
                 return "";

@@ -198,7 +198,7 @@ public:
 		}
 	}
 
-	void Send(uint8_t *buf, int len, uint64_t presentationTime, uint64_t frameIndex) {
+	void SendVideo(uint8_t *buf, int len, uint64_t presentationTime, uint64_t frameIndex) {
 		uint8_t packetBuffer[2000];
 
 		if (!m_Socket->IsClientValid()) {
@@ -220,7 +220,7 @@ public:
 				VideoFrameStart *header = (VideoFrameStart *)packetBuffer;
 
 				header->type = ALVR_PACKET_TYPE_VIDEO_FRAME_START;
-				header->packetCounter = packetCounter;
+				header->packetCounter = videoPacketCounter;
 				header->presentationTime = presentationTime;
 				header->frameIndex = frameIndex;
 				header->frameByteSize = len;
@@ -231,7 +231,7 @@ public:
 				VideoFrame *header = (VideoFrame *)packetBuffer;
 
 				header->type = ALVR_PACKET_TYPE_VIDEO_FRAME;
-				header->packetCounter = packetCounter;
+				header->packetCounter = videoPacketCounter;
 
 				pos = sizeof(VideoFrame);
 			}
@@ -242,7 +242,7 @@ public:
 			pos += size;
 			remainBuffer -= size;
 
-			packetCounter++;
+			videoPacketCounter++;
 
 			int ret = m_Socket->Send((char *)packetBuffer, pos, frameIndex);
 
@@ -271,7 +271,7 @@ public:
 				auto header = (AudioFrameStart *)packetBuffer;
 
 				header->type = ALVR_PACKET_TYPE_AUDIO_FRAME_START;
-				header->packetCounter = packetCounter;
+				header->packetCounter = soundPacketCounter;
 				header->presentationTime = presentationTime;
 				header->frameByteSize = len;
 
@@ -282,7 +282,7 @@ public:
 				auto header = (AudioFrame *)packetBuffer;
 
 				header->type = ALVR_PACKET_TYPE_AUDIO_FRAME;
-				header->packetCounter = packetCounter;
+				header->packetCounter = soundPacketCounter;
 
 				pos = sizeof(*header);
 			}
@@ -293,7 +293,7 @@ public:
 			pos += size;
 			remainBuffer -= size;
 
-			packetCounter++;
+			soundPacketCounter++;
 
 			int ret = m_Socket->Send((char *)packetBuffer, pos);
 
@@ -543,6 +543,9 @@ public:
 
 		m_Socket->SetClientAddr(addr);
 		m_Connected = true;
+		videoPacketCounter = 0;
+		soundPacketCounter = 0;
+		memset(&m_reportedStatistics, 0, sizeof(m_reportedStatistics));
 		m_Statistics->ResetAll();
 		UpdateLastSeen();
 
@@ -577,7 +580,8 @@ private:
 	static const int64_t REQUEST_TIMEOUT = 10 * 1000 * 1000;
 	static const int64_t CONNECTION_TIMEOUT = 300 * 1000 * 1000;
 
-	uint32_t packetCounter = 0;
+	uint32_t videoPacketCounter = 0;
+	uint32_t soundPacketCounter = 0;
 
 	time_t m_LastSeen;
 	std::function<void()> m_LauncherCallback;

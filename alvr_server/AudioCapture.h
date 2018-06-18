@@ -146,7 +146,7 @@ class AudioCapture
 public:
 	AudioCapture(std::shared_ptr<Listener> listener)
 		: m_pMMDevice(NULL)
-		, m_bInt16(false)
+		, m_bInt16(true)
 		, m_pwfx(NULL)
 		, m_startedEvent(NULL)
 		, m_stopEvent(NULL)
@@ -412,7 +412,7 @@ public:
 		return 0;
 	}
 
-	HRESULT LoopbackCapture() {
+	void LoopbackCapture() {
 		HRESULT hr;
 
 		// activate an IAudioClient
@@ -441,6 +441,9 @@ public:
 		}
 		TaskMem taskmem(pwfx);
 
+		Log("MixFormat: nBlockAlign=%d wFormatTag=%d wBitsPerSample=%d nChannels=%d nSamplesPerSec=%d"
+			, pwfx->nBlockAlign, pwfx->wFormatTag, pwfx->wBitsPerSample, pwfx->nChannels, pwfx->nSamplesPerSec);
+
 		if (m_bInt16) {
 			// coerce int-16 wave format
 			// can do this in-place since we're not changing the size of the format
@@ -457,6 +460,8 @@ public:
 			{
 				// naked scope for case-local variable
 				PWAVEFORMATEXTENSIBLE pEx = reinterpret_cast<PWAVEFORMATEXTENSIBLE>(pwfx);
+				Log("PWAVEFORMATEXTENSIBLE: SubFormat=%d wValidBitsPerSample=%d"
+					, pEx->SubFormat, pEx->Samples.wValidBitsPerSample);
 				if (IsEqualGUID(KSDATAFORMAT_SUBTYPE_IEEE_FLOAT, pEx->SubFormat)) {
 					pEx->SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
 					pEx->Samples.wValidBitsPerSample = 16;
@@ -555,7 +560,6 @@ public:
 		if (!bOK) {
 			DWORD dwErr = GetLastError();
 			throw MakeException("SetWaitableTimer failed: last error = %u", dwErr);
-			return HRESULT_FROM_WIN32(dwErr);
 		}
 		CancelWaitableTimerOnExit cancelWakeUp(wakeUp.Get());
 
@@ -563,7 +567,6 @@ public:
 		hr = pAudioClient->Start();
 		if (FAILED(hr)) {
 			throw MakeException("IAudioClient::Start failed: hr = 0x%08x", hr);
-			return hr;
 		}
 		AudioClientStopOnExit stopAudioClient(pAudioClient.Get());
 

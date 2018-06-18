@@ -13,8 +13,10 @@ public:
 	void ResetAll() {
 		m_packetsSentTotal = 0;
 		m_packetsSentInSecond = 0;
+		m_packetsSentInSecondPrev = 0;
 		m_bitsSentTotal = 0;
 		m_bitsSentInSecond = 0;
+		m_bitsSentInSecondPrev = 0;
 	}
 
 	void CountPacket(int bytes) {

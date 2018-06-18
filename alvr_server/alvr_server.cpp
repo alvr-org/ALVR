@@ -165,7 +165,7 @@ namespace
 				if (fpOut) {
 					fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 				}
-				m_Listener->Send(packet.data(), (int)packet.size(), GetTimestampUs(), 0);
+				m_Listener->SendVideo(packet.data(), (int)packet.size(), GetTimestampUs(), 0);
 			}
 
 			m_NvNecoder->DestroyEncoder();
@@ -226,7 +226,7 @@ namespace
 					fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 				}
 				if (m_Listener) {
-					m_Listener->Send(packet.data(), (int)packet.size(), presentationTime, frameIndex);
+					m_Listener->SendVideo(packet.data(), (int)packet.size(), presentationTime, frameIndex);
 				}
 			}
 

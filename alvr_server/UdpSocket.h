@@ -19,7 +19,7 @@ public:
 
 	virtual bool Startup();
 	virtual bool Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen);
-	virtual bool Send(char *buf, int len, uint64_t frameIndex);
+	virtual bool Send(char *buf, int len, uint64_t frameIndex = 0);
 	virtual void Shutdown();
 	void SetClientAddr(const sockaddr_in *addr);
 	virtual sockaddr_in GetClientAddr()const;

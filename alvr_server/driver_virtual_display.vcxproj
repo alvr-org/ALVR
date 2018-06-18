@@ -83,7 +83,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(CUDA_PATH)\lib\Win32\cudart_static.lib;$(CUDA_PATH)\lib\Win32\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(CUDA_PATH)\lib\Win32\cudart_static.lib;$(CUDA_PATH)\lib\Win32\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -103,7 +103,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -127,7 +127,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(CUDA_PATH)\lib\Win32\cudart_static.lib;$(CUDA_PATH)\lib\Win32\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(CUDA_PATH)\lib\Win32\cudart_static.lib;$(CUDA_PATH)\lib\Win32\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -151,7 +151,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -182,6 +182,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AudioCapture.h" />
     <ClInclude Include="ControlSocket.h" />
     <ClInclude Include="CudaConverter.h" />
     <ClInclude Include="FrameRender.h" />

@@ -35,6 +35,13 @@ public:
 	void SetEvent();
 	void ResetEvent();
 
+	bool IsValid() {
+		return m_hEvent != NULL;
+	}
+	HANDLE Get() {
+		return m_hEvent;
+	}
+
 private:
 	HANDLE m_hEvent;
 };

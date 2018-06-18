@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include <locale>
+#include <codecvt>
 #include <d3d11.h>
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -241,4 +243,10 @@ inline TrackingVector3 RotateVectorQuaternion(const TrackingVector3& v, double p
 // Use NV12 texture on Windows 7
 inline bool ShouldUseNV12Texture() {
 	return IsWindows8OrGreater() == FALSE;
+}
+
+inline std::wstring ToWstring(const std::string &src) {
+	// TODO: src is really UTF-8?
+	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+	return converter.from_bytes(src);
 }

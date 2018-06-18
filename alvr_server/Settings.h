@@ -1,6 +1,7 @@
 #pragma once
 
 #include <openvr_driver.h>
+#include "Utils.h"
 
 //
 // Settings
@@ -55,6 +56,9 @@ static const char * const k_pch_Settings_OffsetPosZ_Float = "offsetPosZ";
 //
 static const char * const LOG_FILE = "driver.log";
 
+static const char * const DEBUG_VIDEO_CAPTURE_OUTPUT_NAME = "capture.h264";
+static const wchar_t * const DEBUG_AUDIO_CAPTURE_OUTPUT_NAME = L"capture.wav";
+
 class Settings
 {
 	static Settings m_Instance;
@@ -72,6 +76,15 @@ public:
 	bool IsLoaded() {
 		return m_loaded;
 	}
+
+	std::string GetVideoOutput() {
+		return m_DebugOutputDir + "\\" + DEBUG_VIDEO_CAPTURE_OUTPUT_NAME;
+	}
+	std::wstring GetAudioOutput() {
+		return ToWstring(m_DebugOutputDir) + L"\\" + DEBUG_AUDIO_CAPTURE_OUTPUT_NAME;
+	}
+
+	std::string m_DebugOutputDir;
 
 	std::string m_sSerialNumber;
 	std::string m_sModelNumber;

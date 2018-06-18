@@ -5,8 +5,6 @@
 #define PICOJSON_USE_INT64
 #include <picojson.h>
 
-extern std::string g_DebugOutputDir;
-
 extern uint64_t g_DriverTestMode;
 
 Settings Settings::m_Instance;
@@ -60,7 +58,7 @@ void Settings::Load()
 	m_nAdapterIndex = (int32_t)v.get(k_pch_Settings_AdapterIndex_Int32).get<int64_t>();
 
 	m_EncoderOptions = v.get(k_pch_Settings_EncoderOptions_String).get<std::string>();
-	g_DebugOutputDir = v.get(k_pch_Settings_DebugOutputDir).get<std::string>();
+	m_DebugOutputDir = v.get(k_pch_Settings_DebugOutputDir).get<std::string>();
 	
 	// Listener Parameters
 	m_Host = v.get(k_pch_Settings_ListenHost_String).get<std::string>();
@@ -98,7 +96,7 @@ void Settings::Load()
 	m_OffsetPos[2] = (float)v.get(k_pch_Settings_OffsetPosZ_Float).get<double>();
 
 	if (m_DebugLog) {
-		OpenLog((g_DebugOutputDir + "\\" + LOG_FILE).c_str());
+		OpenLog((m_DebugOutputDir + "\\" + LOG_FILE).c_str());
 	}
 	
 	Log("Serial Number: %s", m_sSerialNumber.c_str());

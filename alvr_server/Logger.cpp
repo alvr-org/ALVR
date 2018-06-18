@@ -86,5 +86,7 @@ Exception MakeException(const char *format, ...) {
 	vsnprintf(buf, sizeof(buf), format, args);
 	va_end(args);
 
+	LogS(buf);
+
 	return Exception(buf);
 }

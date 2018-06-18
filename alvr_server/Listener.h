@@ -249,6 +249,57 @@ public:
 		}
 	}
 
+	void SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
+		uint8_t packetBuffer[2000];
+
+		if (!m_Socket->IsClientValid()) {
+			Log("Skip sending audio packet because client is not connected. Packet Length=%d", len);
+			return;
+		}
+		if (!m_Streaming) {
+			Log("Skip sending audio packet because streaming is off.");
+			return;
+		}
+		Log("Sending audio %d bytes", len);
+
+		int remainBuffer = len;
+		for (int i = 0; remainBuffer != 0; i++) {
+			int pos = 0;
+
+			if (i == 0) {
+				// First fragment
+				auto header = (AudioFrameStart *)packetBuffer;
+
+				header->type = ALVR_PACKET_TYPE_AUDIO_FRAME_START;
+				header->packetCounter = packetCounter;
+				header->presentationTime = presentationTime;
+				header->frameByteSize = len;
+
+				pos = sizeof(*header);
+			}
+			else {
+				// Following fragments
+				auto header = (AudioFrame *)packetBuffer;
+
+				header->type = ALVR_PACKET_TYPE_AUDIO_FRAME;
+				header->packetCounter = packetCounter;
+
+				pos = sizeof(*header);
+			}
+
+			int size = std::min(PACKET_SIZE - pos, remainBuffer);
+
+			memcpy(packetBuffer + pos, buf + (len - remainBuffer), size);
+			pos += size;
+			remainBuffer -= size;
+
+			packetCounter++;
+
+			int ret = m_Socket->Send((char *)packetBuffer, pos);
+
+		}
+	}
+
 	void ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		if (len < 4) {
 			return;

@@ -33,11 +33,10 @@
 #include "resource.h"
 #include "Tracking.h"
 #include "CudaConverter.h"	   
-#include "RGBToNV12.h"
+#include "RGBToNV12.h" 
+#include "AudioCapture.h"
 
 HINSTANCE g_hInstance;
-
-std::string g_DebugOutputDir;
 
 uint64_t g_DriverTestMode = 0;
 
@@ -57,8 +56,8 @@ namespace
 			// SPS, PPS, IDR
 			char filename[1000];
 			wchar_t filename2[1000];
-			snprintf(filename, sizeof(filename), "%s\\%llu.h264", g_DebugOutputDir.c_str(), frameIndex);
-			_snwprintf_s(filename2, sizeof(filename2), L"%hs\\%llu.dds", g_DebugOutputDir.c_str(), frameIndex);
+			snprintf(filename, sizeof(filename), "%s\\%llu.h264", Settings::Instance().m_DebugOutputDir.c_str(), frameIndex);
+			_snwprintf_s(filename2, sizeof(filename2), L"%hs\\%llu.dds", Settings::Instance().m_DebugOutputDir.c_str(), frameIndex);
 			FILE *fp;
 			fopen_s(&fp, filename, "wb");
 			if (fp) {
@@ -146,12 +145,11 @@ namespace
 			// Initialize debug video output
 			//
 
-			if (g_DebugOutputDir != "" && Settings::Instance().m_DebugCaptureOutput) {
-				std::string outputFile = g_DebugOutputDir + "\\capture.h264";
-				fpOut = std::ofstream(outputFile, std::ios::out | std::ios::binary);
+			if (Settings::Instance().m_DebugCaptureOutput) {
+				fpOut = std::ofstream(Settings::Instance().GetVideoOutput(), std::ios::out | std::ios::binary);
 				if (!fpOut)
 				{
-					Log("unable to open output file %s", outputFile.c_str());
+					Log("unable to open output file %s", Settings::Instance().GetVideoOutput().c_str());
 				}
 			}
 
@@ -824,7 +822,7 @@ public:
 
 			for (uint32_t i = 0; i < layerCount; i++) {
 				Log("Writing Debug DDS. m_LastReferencedFrameIndex=%llu layer=%d/%d", 0, i, layerCount);
-				_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", g_DebugOutputDir.c_str(), m_submitFrameIndex, i, layerCount);
+				_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", Settings::Instance().m_DebugOutputDir.c_str(), m_submitFrameIndex, i, layerCount);
 				HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture[i][0], buf);
 				Log("Writing Debug DDS: End hr=%p %s", hr, GetDxErrorStr(hr).c_str());
 			}
@@ -933,6 +931,12 @@ public:
 		{
 			m_CNvEncoder->Shutdown();
 			m_CNvEncoder.reset();
+		}
+
+		if (m_audioCapture)
+		{
+			m_audioCapture->Shutdown();
+			m_audioCapture.reset();
 		}
 
 		if (m_Listener)
@@ -1045,6 +1049,23 @@ public:
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
 		m_encoder = std::make_shared<CEncoder>(m_D3DRender, m_CNvEncoder);
 		m_encoder->Start();
+
+		m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
+		try {
+			std::vector<std::wstring> audioDevices;
+			AudioCapture::list_devices(audioDevices);
+			if (audioDevices.size() == 0) {
+				Log("Could not find any audio devices.");
+			}
+			else {
+				m_audioCapture->Start(audioDevices[0]);
+			}
+		}
+		catch (Exception e) {
+			FatalLog("Failed to start audio capture. %s", e.what());
+			Sleep(5 * 1000);
+			return vr::VRInitError_Driver_Failed;
+		}
 
 		m_VSyncThread = std::make_shared<VSyncThread>();
 		m_VSyncThread->Start();
@@ -1333,6 +1354,7 @@ private:
 	std::shared_ptr<CD3DRender> m_D3DRender;
 	std::shared_ptr<CNvEncoder> m_CNvEncoder;
 	std::shared_ptr<CEncoder> m_encoder;
+	std::shared_ptr<AudioCapture> m_audioCapture;
 	std::shared_ptr<Listener> m_Listener;
 	std::shared_ptr<VSyncThread> m_VSyncThread;
 	std::shared_ptr<RecenterManager> m_recenterManager;

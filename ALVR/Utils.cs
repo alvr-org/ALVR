@@ -29,6 +29,11 @@ namespace ALVR
             return driverPath;
         }
 
+        public static string GetDllPath(string driverPath)
+        {
+            return driverPath + @"bin\win64\driver_alvr_server.dll";
+        }
+
         public static float ParseFloat(string s)
         {
             float f = 0.0f;

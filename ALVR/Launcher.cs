@@ -41,11 +41,18 @@ namespace ALVR
         {
             SetFileVersion();
 
+            var list = SoundDevice.GetSoundDeviceList();
+            foreach (var device in list)
+            {
+                soundDeviceComboBox.Items.Add(device);
+            }
+
             LoadSettings();
 
             config.Save();
 
             UpdateEnableControllerState();
+            UpdateSoundCheckboxState();
 
             DriverInstaller.RemoveOtherDriverInstallations();
             CheckDriverInstallStatus();
@@ -58,6 +65,8 @@ namespace ALVR
             ShowMessagePanel();
 
             socket.Update();
+
+            SoundDevice.GetSoundDeviceList();
 
             timer1.Start();
         }
@@ -82,6 +91,22 @@ namespace ALVR
             recenterButtonComboBox.DataSource = ServerConfig.supportedRecenterButton;
             recenterButtonComboBox.SelectedIndex = Properties.Settings.Default.controllerRecenterButton;
 
+            if (Properties.Settings.Default.soundDevice != "")
+            {
+                for (int i = 0; i < soundDeviceComboBox.Items.Count; i++)
+                {
+                    if ((string)soundDeviceComboBox.Items[i] == Properties.Settings.Default.soundDevice)
+                    {
+                        soundDeviceComboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            if (soundDeviceComboBox.SelectedIndex == -1 && soundDeviceComboBox.Items.Count > 0)
+            {
+                soundDeviceComboBox.SelectedIndex = 0;
+            }
+
             clientList = new ClientList(Properties.Settings.Default.autoConnectList);
         }
 
@@ -96,6 +121,12 @@ namespace ALVR
             Properties.Settings.Default.controllerTrackpadClickMode = ((ServerConfig.ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).value;
             Properties.Settings.Default.controllerRecenterButton = recenterButtonComboBox.SelectedIndex;
             Properties.Settings.Default.autoConnectList = clientList.Serialize();
+
+            if (soundDeviceComboBox.SelectedIndex != -1)
+            {
+                Properties.Settings.Default.soundDevice = (string)soundDeviceComboBox.SelectedItem;
+            }
+
             Properties.Settings.Default.Save();
         }
 
@@ -392,6 +423,11 @@ namespace ALVR
             Utils.ExecuteProcess(command, "disconnect");
         }
 
+        private void UpdateSoundCheckboxState()
+        {
+            soundDeviceComboBox.Enabled = soundCheckBox.Checked;
+        }
+
         //
         // Event handlers
         //
@@ -585,6 +621,11 @@ namespace ALVR
             {
                 disconnectCommandTextBox.Text = openFileDialog1.FileName;
             }
+        }
+
+        private void soundCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdateSoundCheckboxState();
         }
     }
 }

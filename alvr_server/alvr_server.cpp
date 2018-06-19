@@ -1050,21 +1050,15 @@ public:
 		m_encoder = std::make_shared<CEncoder>(m_D3DRender, m_CNvEncoder);
 		m_encoder->Start();
 
-		m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
-		try {
-			std::vector<std::wstring> audioDevices;
-			AudioCapture::list_devices(audioDevices);
-			if (audioDevices.size() == 0) {
-				Log("Could not find any audio devices.");
+		if (Settings::Instance().m_enableSound) {
+			m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
+			try {
+				m_audioCapture->Start(ToWstring(Settings::Instance().m_soundDevice));
 			}
-			else {
-				m_audioCapture->Start(audioDevices[0]);
+			catch (Exception e) {
+				FatalLog("Failed to start audio capture. %s", e.what());
+				return vr::VRInitError_Driver_Failed;
 			}
-		}
-		catch (Exception e) {
-			FatalLog("Failed to start audio capture. %s", e.what());
-			Sleep(5 * 1000);
-			return vr::VRInitError_Driver_Failed;
 		}
 
 		m_VSyncThread = std::make_shared<VSyncThread>();
@@ -1459,6 +1453,29 @@ void *HmdDriverFactory( const char *pInterfaceName, int *pReturnCode )
 		*pReturnCode = vr::VRInitError_Init_InterfaceNotFound;
 
 	return NULL;
+}
+
+// Called from C#. Returns string of device list joined by '\0'.
+extern "C" __declspec(dllexport)
+void GetSoundDevices(wchar_t **buf, int *len) {
+	std::vector<std::wstring> deviceList;
+	std::vector<wchar_t> strBuf;
+	int pos = 0;
+	AudioCapture::list_devices(deviceList);
+	for (auto it = deviceList.begin(); it != deviceList.end(); it++) {
+		strBuf.resize(pos + it->size() + 1);
+		memcpy(&strBuf[pos], it->c_str(), (it->size() + 1) * sizeof(wchar_t));
+		pos += it->size() + 1;
+	}
+	*len = pos;
+	*buf = new wchar_t[pos];
+	memcpy(*buf, &strBuf[0], pos * sizeof(wchar_t));
+}
+
+// Called from C#.
+extern "C" __declspec(dllexport)
+void ReleaseSoundDeviesBuffer(wchar_t *buf) {
+	delete[] buf;
 }
 
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)

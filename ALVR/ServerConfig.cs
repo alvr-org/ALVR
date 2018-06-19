@@ -136,6 +136,9 @@ namespace ALVR
                 driverConfig.renderWidth = Properties.Settings.Default.renderWidth;
                 driverConfig.renderHeight = Properties.Settings.Default.renderWidth / 2;
 
+                driverConfig.enableSound = Properties.Settings.Default.enableSound && Properties.Settings.Default.soundDevice != "";
+                driverConfig.soundDevice = Properties.Settings.Default.soundDevice;
+
                 driverConfig.debugOutputDir = Utils.GetDriverPath();
                 driverConfig.debugLog = Properties.Settings.Default.debugLog;
                 driverConfig.debugFrameIndex = false;

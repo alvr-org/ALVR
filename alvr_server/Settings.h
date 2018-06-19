@@ -16,6 +16,9 @@ static const char * const k_pch_Settings_SecondsFromVsyncToPhotons_Float = "seco
 static const char * const k_pch_Settings_DisplayFrequency_Float = "displayFrequency";
 static const char * const k_pch_Settings_ClientRecvBufferSize_Int32 = "clientRecvBufferSize";
 
+static const char * const k_pch_Settings_EnableSound_Bool = "enableSound";
+static const char * const k_pch_Settings_SoundDevice_String = "soundDevice";
+
 static const char * const k_pch_Settings_EncoderOptions_String = "nvencOptions";
 static const char * const k_pch_Settings_DebugLog_Bool = "debugLog";
 static const char * const k_pch_Settings_DebugFrameIndex_Bool = "debugFrameIndex";
@@ -96,6 +99,9 @@ public:
 	float m_flSecondsFromVsyncToPhotons;
 	float m_flDisplayFrequency;
 	float m_flIPD;
+
+	bool m_enableSound;
+	std::string m_soundDevice;
 
 	std::string m_EncoderOptions;
 

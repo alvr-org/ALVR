@@ -109,7 +109,7 @@ namespace ALVR
         {
             foreach (var driver in GetDriverList())
             {
-                if (File.Exists(driver + @"\bin\win64\driver_alvr_server.dll"))
+                if (File.Exists(Utils.GetDllPath(driver)))
                 {
                     if (driver != Utils.GetDriverPath())
                     {

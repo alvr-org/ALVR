@@ -48,6 +48,9 @@ void Settings::Load()
 	m_renderWidth = (int32_t)v.get(k_pch_Settings_RenderWidth_Int32).get<int64_t>();
 	m_renderHeight = (int32_t)v.get(k_pch_Settings_RenderHeight_Int32).get<int64_t>();
 
+	m_enableSound = v.get(k_pch_Settings_EnableSound_Bool).get<bool>();
+	m_soundDevice = v.get(k_pch_Settings_SoundDevice_String).get<std::string>();
+
 	m_flSecondsFromVsyncToPhotons = (float)v.get(k_pch_Settings_SecondsFromVsyncToPhotons_Float).get<double>();
 	m_flDisplayFrequency = (float)v.get(k_pch_Settings_DisplayFrequency_Float).get<double>();
 

@@ -250,5 +250,29 @@ namespace ALVR.Properties {
                 this["connectCommand"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool enableSound {
+            get {
+                return ((bool)(this["enableSound"]));
+            }
+            set {
+                this["enableSound"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string soundDevice {
+            get {
+                return ((string)(this["soundDevice"]));
+            }
+            set {
+                this["soundDevice"] = value;
+            }
+        }
     }
 }

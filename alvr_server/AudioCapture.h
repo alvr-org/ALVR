@@ -605,7 +605,7 @@ public:
 					Log("%s", L"Probably spurious glitch reported on first packet");
 				}
 				else if (0 != dwFlags) {
-					throw MakeException("IAudioCaptureClient::GetBuffer set flags to 0x%08x on pass %u after %u frames", dwFlags, nPasses, m_frames);
+					Log("IAudioCaptureClient::GetBuffer set flags to 0x%08x on pass %u after %u frames", dwFlags, nPasses, m_frames);
 				}
 
 				if (0 == nNumFramesToRead) {

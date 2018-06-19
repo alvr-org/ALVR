@@ -14,10 +14,17 @@ namespace ALVR
         public static string GetDriverPath()
         {
             string exePath = Assembly.GetEntryAssembly().Location;
+
             string driverPath = Path.GetDirectoryName(exePath) + "\\driver";
             if (Environment.GetCommandLineArgs().Length >= 2)
             {
                 driverPath = Environment.GetCommandLineArgs()[1];
+            }
+            // This is for compatibility to driver_uninstall.bat.
+            // vrpathreg requires completely same path notation including trailing backslash.
+            if (!driverPath.EndsWith("\\"))
+            {
+                driverPath += "\\";
             }
             return driverPath;
         }

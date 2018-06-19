@@ -47,6 +47,7 @@ namespace ALVR
 
             UpdateEnableControllerState();
 
+            DriverInstaller.RemoveOtherDriverInstallations();
             CheckDriverInstallStatus();
 
             metroTabControl1.SelectedTab = serverTab;

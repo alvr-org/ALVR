@@ -28,15 +28,13 @@ namespace ALVR
                 MessageBox.Show("Driver path: " + driverPath + "\r\nis not found! Please check install location.");
                 return false;
             }
-            // This is for compatibility to driver_uninstall.bat
-            driverPath += "\\\\";
 
-            Utils.ExecuteProcess(vrpathreg, "adddriver \"" + driverPath + "\"").WaitForExit();
+            Utils.ExecuteProcess(vrpathreg, "adddriver \"" + driverPath + "\\\"").WaitForExit();
 
             return true;
         }
 
-        public static bool UninstallDriver()
+        public static bool UninstallDriver(string driverPath = null)
         {
             string vrpathreg = GetVRPathRegPath();
             if (vrpathreg == null)
@@ -44,12 +42,13 @@ namespace ALVR
                 return false;
             }
 
-            string driverPath = Utils.GetDriverPath();
+            if (driverPath == null)
+            {
+                driverPath = Utils.GetDriverPath();
+            }
             // We don't check existence when uninstalling.
-            // This is for compatibility to driver_uninstall.bat
-            driverPath += "\\\\";
 
-            Utils.ExecuteProcess(vrpathreg, "removedriver \"" + driverPath + "\"").WaitForExit();
+            Utils.ExecuteProcess(vrpathreg, "removedriver \"" + driverPath + "\\\"").WaitForExit();
 
             return true;
         }
@@ -63,7 +62,6 @@ namespace ALVR
             }
 
             string driverPath = Utils.GetDriverPath();
-            driverPath += "\\";
 
             var process = Utils.ExecuteProcess(vrpathreg, "show");
             while (!process.StandardOutput.EndOfStream)
@@ -77,7 +75,7 @@ namespace ALVR
             return false;
         }
 
-        public static bool ListDrivers()
+        public static List<string> GetDriverList()
         {
             string vrpathreg = GetVRPathRegPath();
             if (vrpathreg == null)
@@ -93,10 +91,33 @@ namespace ALVR
             int index = list.IndexOf("External Drivers:\r\n");
             if (index != -1)
             {
-                list = "Installed driver list:\r\n" + list.Substring(index + "External Drivers:\r\n".Length);
+                var tmp = list.Substring(index + "External Drivers:\r\n".Length);
+                var drivers = tmp.Split(new []{ "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+                return drivers.ToList().Select(x => x.Trim()).ToList();
             }
-            MessageBox.Show(list, "ALVR");
+            return new List<string>();
+        }
+
+        public static bool ListDrivers()
+        {
+            RemoveOtherDriverInstallations();
+            MessageBox.Show("installed driver list:\r\n" + string.Join("\r\n", GetDriverList()), "ALVR");
             return true;
+        }
+
+        public static void RemoveOtherDriverInstallations()
+        {
+            foreach (var driver in GetDriverList())
+            {
+                if (File.Exists(driver + @"\bin\win64\driver_alvr_server.dll"))
+                {
+                    if (driver != Utils.GetDriverPath())
+                    {
+                        MessageBox.Show("Another ALVR driver has been installed on SteamVR.\r\nUninstalling it.\r\n" + driver);
+                        UninstallDriver(driver);
+                    }
+                }
+            }
         }
 
         private static string GetVRPathRegPath()

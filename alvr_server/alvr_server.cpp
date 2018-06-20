@@ -1248,8 +1248,8 @@ public:
 			TrackingInfo info;
 			m_Listener->GetTrackingInfo(info);
 
-			m_directModeComponent->OnPoseUpdated(info);
 			m_recenterManager->OnPoseUpdated(info);
+			m_directModeComponent->OnPoseUpdated(info);
 			
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 

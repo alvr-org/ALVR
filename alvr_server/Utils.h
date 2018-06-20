@@ -166,6 +166,10 @@ inline double PitchFromQuaternion(double x, double y, double z, double w) {
 	return atan2(xx, zz);
 }
 
+inline double PitchFromQuaternion(const TrackingQuat &q) {
+	return PitchFromQuaternion(q.x, q.y, q.z, q.w);
+}
+
 inline vr::HmdQuaternion_t MultiplyPitchQuaternion(double pitch, double x, double y, double z, double w) {
 	// Multiply quaternion (x=0, y=1, z=0, theta=pitch)
 

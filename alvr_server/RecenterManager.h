@@ -84,25 +84,27 @@ public:
 		}
 
 		if (info.flags & TrackingInfo::FLAG_OTHER_TRACKING_SOURCE) {
-			double p1 = PitchFromQuaternion(info.Other_Tracking_Source_Orientation);
-			double pitch_tracking = PitchFromQuaternion(info.HeadPose_Pose_Orientation);
-			double diff = p1 - pitch_tracking;
-			if (diff < 0) {
-				diff += M_PI * 2;
-			}
 			if (m_rotationDiffLastInitialized == 0) {
 				m_basePosition = info.Other_Tracking_Source_Position;
 				m_rotationDiff = 0.0;
 				m_rotatedBasePosition = m_basePosition;
 			}
 			TrackingVector3 transformed;
-			transformed.x = (info.Other_Tracking_Source_Position.x - m_basePosition.x) * cos(m_rotationDiff) - (info.Other_Tracking_Source_Position.z - m_basePosition.z) * sin(m_rotationDiff);
+			double theta = m_rotationDiff + m_centerPitch;
+			transformed.x = (info.Other_Tracking_Source_Position.x - m_basePosition.x) * cos(theta) - (info.Other_Tracking_Source_Position.z - m_basePosition.z) * sin(theta);
 			transformed.x += m_rotatedBasePosition.x;
 			transformed.y = info.Other_Tracking_Source_Position.y;
-			transformed.z = (info.Other_Tracking_Source_Position.x - m_basePosition.x) * sin(m_rotationDiff) + (info.Other_Tracking_Source_Position.z - m_basePosition.z) * cos(m_rotationDiff);
+			transformed.z = (info.Other_Tracking_Source_Position.x - m_basePosition.x) * sin(theta) + (info.Other_Tracking_Source_Position.z - m_basePosition.z) * cos(theta);
 			transformed.z += m_rotatedBasePosition.z;
 
 			if (GetTimestampUs() - m_rotationDiffLastInitialized > 2 * 1000 * 1000) {
+				double p1 = PitchFromQuaternion(info.Other_Tracking_Source_Orientation);
+				double pitch_tracking = PitchFromQuaternion(info.HeadPose_Pose_Orientation);
+				double diff = p1 - pitch_tracking;
+				if (diff < 0) {
+					diff += M_PI * 2;
+				}
+
 				m_rotationDiffLastInitialized = GetTimestampUs();
 				m_rotationDiff = diff;
 				m_basePosition = info.Other_Tracking_Source_Position;
@@ -118,7 +120,7 @@ public:
 			m_fixedPositionController.y += transformed.y;
 			m_fixedPositionController.z += transformed.z;
 
-			Log("pitch=%f tracking pitch=%f (diff:%f) (%f,%f,%f) (%f,%f,%f)", p1, pitch_tracking, diff,
+			Log("OtherTrackingSource (diff:%f) (%f,%f,%f) (%f,%f,%f)",
 				info.Other_Tracking_Source_Position.x,
 				info.Other_Tracking_Source_Position.y,
 				info.Other_Tracking_Source_Position.z,

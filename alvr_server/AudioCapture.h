@@ -146,7 +146,6 @@ class AudioCapture
 public:
 	AudioCapture(std::shared_ptr<Listener> listener)
 		: m_pMMDevice(NULL)
-		, m_bInt16(true)
 		, m_pwfx(NULL)
 		, m_startedEvent(NULL)
 		, m_stopEvent(NULL)
@@ -288,25 +287,6 @@ public:
 		}
 	}
 
-	static HRESULT open_file(LPCWSTR szFileName, HMMIO *phFile) {
-		MMIOINFO mi = { 0 };
-
-		*phFile = mmioOpenW(
-			// some flags cause mmioOpen write to this buffer
-			// but not any that we're using
-			const_cast<LPWSTR>(szFileName),
-			&mi,
-			MMIO_WRITE | MMIO_CREATE
-		);
-
-		if (NULL == *phFile) {
-			Log("mmioOpen(\"%ls\", ...) failed. wErrorRet == %u", szFileName, mi.wErrorRet);
-			return E_FAIL;
-		}
-
-		return S_OK;
-	}
-
 	void Start(const std::wstring &deviceName) {
 		CoInitialize(NULL);
 
@@ -444,40 +424,40 @@ public:
 		Log("MixFormat: nBlockAlign=%d wFormatTag=%d wBitsPerSample=%d nChannels=%d nSamplesPerSec=%d"
 			, pwfx->nBlockAlign, pwfx->wFormatTag, pwfx->wBitsPerSample, pwfx->nChannels, pwfx->nSamplesPerSec);
 
-		if (m_bInt16) {
-			// coerce int-16 wave format
-			// can do this in-place since we're not changing the size of the format
-			// also, the engine will auto-convert from float to int for us
-			switch (pwfx->wFormatTag) {
-			case WAVE_FORMAT_IEEE_FLOAT:
-				pwfx->wFormatTag = WAVE_FORMAT_PCM;
+		pwfx->nSamplesPerSec = DEFAULT_SAMPLE_RATE;
+
+		// coerce int-16 wave format
+		// can do this in-place since we're not changing the size of the format
+		// also, the engine will auto-convert from float to int for us
+		switch (pwfx->wFormatTag) {
+		case WAVE_FORMAT_IEEE_FLOAT:
+			pwfx->wFormatTag = WAVE_FORMAT_PCM;
+			pwfx->wBitsPerSample = 16;
+			pwfx->nBlockAlign = pwfx->nChannels * pwfx->wBitsPerSample / 8;
+			pwfx->nAvgBytesPerSec = pwfx->nBlockAlign * pwfx->nSamplesPerSec;
+			break;
+
+		case WAVE_FORMAT_EXTENSIBLE:
+		{
+			// naked scope for case-local variable
+			PWAVEFORMATEXTENSIBLE pEx = reinterpret_cast<PWAVEFORMATEXTENSIBLE>(pwfx);
+			Log("PWAVEFORMATEXTENSIBLE: SubFormat=%d wValidBitsPerSample=%d"
+				, pEx->SubFormat, pEx->Samples.wValidBitsPerSample);
+			if (IsEqualGUID(KSDATAFORMAT_SUBTYPE_IEEE_FLOAT, pEx->SubFormat)) {
+				pEx->SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
+				pEx->Samples.wValidBitsPerSample = 16;
 				pwfx->wBitsPerSample = 16;
 				pwfx->nBlockAlign = pwfx->nChannels * pwfx->wBitsPerSample / 8;
 				pwfx->nAvgBytesPerSec = pwfx->nBlockAlign * pwfx->nSamplesPerSec;
-				break;
-
-			case WAVE_FORMAT_EXTENSIBLE:
-			{
-				// naked scope for case-local variable
-				PWAVEFORMATEXTENSIBLE pEx = reinterpret_cast<PWAVEFORMATEXTENSIBLE>(pwfx);
-				Log("PWAVEFORMATEXTENSIBLE: SubFormat=%d wValidBitsPerSample=%d"
-					, pEx->SubFormat, pEx->Samples.wValidBitsPerSample);
-				if (IsEqualGUID(KSDATAFORMAT_SUBTYPE_IEEE_FLOAT, pEx->SubFormat)) {
-					pEx->SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
-					pEx->Samples.wValidBitsPerSample = 16;
-					pwfx->wBitsPerSample = 16;
-					pwfx->nBlockAlign = pwfx->nChannels * pwfx->wBitsPerSample / 8;
-					pwfx->nAvgBytesPerSec = pwfx->nBlockAlign * pwfx->nSamplesPerSec;
-				}
-				else {
-					throw MakeException("%s", L"Don't know how to coerce mix format to int-16");
-				}
 			}
-			break;
-
-			default:
-				throw MakeException("Don't know how to coerce WAVEFORMATEX with wFormatTag = 0x%08x to int-16", pwfx->wFormatTag);
+			else {
+				throw MakeException("%s", L"Don't know how to coerce mix format to int-16");
 			}
+		}
+		break;
+
+		default:
+			throw MakeException("Don't know how to coerce WAVEFORMATEX with wFormatTag = 0x%08x to int-16", pwfx->wFormatTag);
 		}
 
 		MMCKINFO ckRIFF = { 0 };
@@ -746,11 +726,12 @@ private:
 	std::shared_ptr<Listener> m_listener;
 
 	ComPtr<IMMDevice> m_pMMDevice;
-	bool m_bInt16;
 	PWAVEFORMATEX m_pwfx;
 	UINT32 m_frames;
 
 	IPCEvent m_startedEvent;
 	IPCEvent m_stopEvent;
+
+	static const int DEFAULT_SAMPLE_RATE = 48000;
 };
 

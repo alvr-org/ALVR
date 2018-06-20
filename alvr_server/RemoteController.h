@@ -51,7 +51,6 @@ public:
 		, m_previousFlags(0)
 		, m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 	{
-		m_info.type = 0;
 	}
 
 	virtual ~RemoteControllerServerDriver() {
@@ -171,41 +170,13 @@ public:
 		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 		pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-		if (m_info.type != 0) {
-			Log("Controller Flags=%d Quot:%f,%f,%f,%f\nPos:%f,%f,%f\nButtons: %08X\n"
-				"Trackpad: %f, %f\nBattery=%d Recenter=%d",
-				m_info.flags,
-				m_info.controller_Pose_Orientation.x,
-				m_info.controller_Pose_Orientation.y,
-				m_info.controller_Pose_Orientation.z,
-				m_info.controller_Pose_Orientation.w,
-				m_info.controller_Pose_Position.x,
-				m_info.controller_Pose_Position.y,
-				m_info.controller_Pose_Position.z,
-				m_info.controllerButtons,
-				m_info.controllerTrackpadPosition.x,
-				m_info.controllerTrackpadPosition.y,
-				m_info.controllerBatteryPercentRemaining,
-				m_info.controllerRecenterCount
-			);
+		if (m_recenterManager->HasValidTrackingInfo()) {
+			pose.qRotation = m_recenterManager->GetRecenteredController();
 
-			pose.qRotation = m_recenterManager->GetRecentered(m_info.controller_Pose_Orientation);
-
-			TrackingVector3 position = m_recenterManager->GetRecenteredVector(m_info.controller_Pose_Position);
+			TrackingVector3 position = m_recenterManager->GetRecenteredPositionController();
 			pose.vecPosition[0] = position.x;
 			pose.vecPosition[1] = position.y;
 			pose.vecPosition[2] = position.z;
-			if (m_info.flags & TrackingInfo::FLAG_OTHER_TRACKING_SOURCE) {
-				pose.vecPosition[0] += m_info.Other_Tracking_Source_Position.x;
-				pose.vecPosition[1] += m_info.Other_Tracking_Source_Position.y;
-				pose.vecPosition[2] += m_info.Other_Tracking_Source_Position.z;
-			}
-
-			if (Settings::Instance().m_EnableOffsetPos) {
-				pose.vecPosition[0] += Settings::Instance().m_OffsetPos[0];
-				pose.vecPosition[1] += Settings::Instance().m_OffsetPos[1];
-				pose.vecPosition[2] += Settings::Instance().m_OffsetPos[2];
-			}
 
 			pose.poseTimeOffset = 0;
 		}
@@ -215,8 +186,6 @@ public:
 
 	bool ReportControllerState(const TrackingInfo &info) {
 		bool recenterRequest = false;
-
-		m_info = info;
 
 		if (m_unObjectId == vr::k_unTrackedDeviceIndexInvalid) {
 			return false;
@@ -303,8 +272,6 @@ private:
 	uint32_t m_previousFlags;
 
 	bool m_handed;
-
-	TrackingInfo m_info;
 
 	vr::VRInputComponentHandle_t m_handles[INPUT_COUNT];
 };

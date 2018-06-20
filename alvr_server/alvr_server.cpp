@@ -499,7 +499,7 @@ public:
 		TrackingHistoryFrame history;
 		history.info = info;
 
-		vr::HmdQuaternion_t recentered = m_recenterManager->GetRecentered(info.HeadPose_Pose_Orientation);
+		vr::HmdQuaternion_t recentered = m_recenterManager->GetRecenteredHMD();
 		HmdMatrix_QuatToMat(recentered.w,
 			recentered.x,
 			recentered.y,
@@ -1116,46 +1116,13 @@ public:
 		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 		pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-		if (m_Listener->HasValidTrackingInfo()) {
-			TrackingInfo info;
-			m_Listener->GetTrackingInfo(info);
-			uint64_t trackingDelay = GetTimestampUs() - m_Listener->clientToServerTime(info.clientTime);
+		if (m_recenterManager->HasValidTrackingInfo()) {
+			pose.qRotation = m_recenterManager->GetRecenteredHMD();
 
-			Log("Tracking elapsed:%lld us FrameIndex=%lld quot:%f,%f,%f,%f\nposition:%f,%f,%f\narcore:%f,%f,%f",
-				trackingDelay,
-				info.FrameIndex,
-				info.HeadPose_Pose_Orientation.x,
-				info.HeadPose_Pose_Orientation.y,
-				info.HeadPose_Pose_Orientation.z,
-				info.HeadPose_Pose_Orientation.w,
-				info.HeadPose_Pose_Position.x,
-				info.HeadPose_Pose_Position.y,
-				info.HeadPose_Pose_Position.z,
-				info.Other_Tracking_Source_Position.x,
-				info.Other_Tracking_Source_Position.y,
-				info.Other_Tracking_Source_Position.z
-			);
-
-			pose.qRotation = m_recenterManager->GetRecentered(info.HeadPose_Pose_Orientation);
-
-			TrackingVector3 position = m_recenterManager->GetRecenteredVector(info.HeadPose_Pose_Position);
+			TrackingVector3 position = m_recenterManager->GetRecenteredPositionHMD();
 			pose.vecPosition[0] = position.x;
 			pose.vecPosition[1] = position.y;
 			pose.vecPosition[2] = position.z;
-
-			if (info.flags & TrackingInfo::FLAG_OTHER_TRACKING_SOURCE) {
-				pose.vecPosition[0] += info.Other_Tracking_Source_Position.x;
-				pose.vecPosition[1] += info.Other_Tracking_Source_Position.y;
-				pose.vecPosition[2] += info.Other_Tracking_Source_Position.z;
-			}
-
-			if (Settings::Instance().m_EnableOffsetPos) {
-				Log("Provide fake position(offset) for debug. Coords=(%f, %f, %f)"
-					, Settings::Instance().m_OffsetPos[0], Settings::Instance().m_OffsetPos[1], Settings::Instance().m_OffsetPos[2]);
-				pose.vecPosition[0] += Settings::Instance().m_OffsetPos[0];
-				pose.vecPosition[1] += Settings::Instance().m_OffsetPos[1];
-				pose.vecPosition[2] += Settings::Instance().m_OffsetPos[2];
-			}
 
 			// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
 

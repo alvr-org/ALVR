@@ -9,7 +9,7 @@ enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_BROADCAST_REQUEST_MESSAGE = 4,
 	ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE = 5,
 	ALVR_PACKET_TYPE_TRACKING_INFO = 6,
-	ALVR_PACKET_TYPE_TIME_SYNC =7,
+	ALVR_PACKET_TYPE_TIME_SYNC = 7,
 	ALVR_PACKET_TYPE_CHANGE_SETTINGS = 8,
 	ALVR_PACKET_TYPE_VIDEO_FRAME_START = 9,
 	ALVR_PACKET_TYPE_VIDEO_FRAME = 10,
@@ -18,7 +18,7 @@ enum ALVR_PACKET_TYPE {
 };
 
 enum {
-	ALVR_PROTOCOL_VERSION = 14
+	ALVR_PROTOCOL_VERSION = 15
 };
 #pragma pack(push, 1)
 // hello message
@@ -73,6 +73,7 @@ struct TrackingInfo {
 	TrackingVector3 HeadPose_Pose_Position;
 
 	TrackingVector3 Other_Tracking_Source_Position;
+	TrackingQuat Other_Tracking_Source_Orientation;
 
 	uint32_t controllerButtons;
 

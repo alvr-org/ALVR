@@ -8,10 +8,15 @@ class RecenterManager
 {
 public:
 	RecenterManager()
-		: m_recentering(false)
+		: m_hasValidTrackingInfo(false)
+		, m_recentering(false)
 		, m_recenterStartTimestamp(0)
 		, m_centerPitch(0.0)
 	{
+	}
+
+	bool HasValidTrackingInfo() {
+		return m_hasValidTrackingInfo;
 	}
 
 	bool IsRecentering() {
@@ -27,7 +32,8 @@ public:
 		m_recentering = false;
 	}
 
-	void OnPoseUpdated(TrackingInfo &info) {
+	void OnPoseUpdated(const TrackingInfo &info) {
+		m_hasValidTrackingInfo = true;
 		if (m_recentering) {
 			if (GetTimestampUs() - m_recenterStartTimestamp > RECENTER_DURATION) {
 				m_centerPitch = PitchFromQuaternion(
@@ -47,51 +53,84 @@ public:
 				m_recentering = false;
 			}
 		}
-	}
 
-	vr::HmdQuaternion_t GetRecentered(const TrackingQuat &orientation) {
-		vr::HmdQuaternion_t fixedOrientation = MultiplyPitchQuaternion(
+		m_fixedOrientationHMD = MultiplyPitchQuaternion(
 			-m_centerPitch
-			, orientation.x
-			, orientation.y
-			, orientation.z
-			, orientation.w);
+			, info.HeadPose_Pose_Orientation.x
+			, info.HeadPose_Pose_Orientation.y
+			, info.HeadPose_Pose_Orientation.z
+			, info.HeadPose_Pose_Orientation.w);
 
-		Log("GetRecentered: Old=(%f,%f,%f,%f) New=(%f,%f,%f,%f) pitch=%f-%f %f"
-			, orientation.x, orientation.y
-			, orientation.z, orientation.w
-			, fixedOrientation.x, fixedOrientation.y
-			, fixedOrientation.z, fixedOrientation.w
+		m_fixedPositionHMD = RotateVectorQuaternion(info.HeadPose_Pose_Position, m_centerPitch);
+		if (info.flags & TrackingInfo::FLAG_OTHER_TRACKING_SOURCE) {
+			m_fixedPositionHMD.x += info.Other_Tracking_Source_Position.x;
+			m_fixedPositionHMD.y += info.Other_Tracking_Source_Position.y;
+			m_fixedPositionHMD.z += info.Other_Tracking_Source_Position.z;
+		}
+
+		if (Settings::Instance().m_EnableOffsetPos) {
+			m_fixedPositionHMD.x += Settings::Instance().m_OffsetPos[0];
+			m_fixedPositionHMD.y += Settings::Instance().m_OffsetPos[1];
+			m_fixedPositionHMD.z += Settings::Instance().m_OffsetPos[2];
+		}
+
+		m_fixedOrientationController = MultiplyPitchQuaternion(
+			-m_centerPitch
+			, info.controller_Pose_Orientation.x
+			, info.controller_Pose_Orientation.y
+			, info.controller_Pose_Orientation.z
+			, info.controller_Pose_Orientation.w);
+
+		m_fixedPositionController = RotateVectorQuaternion(info.controller_Pose_Position, m_centerPitch);
+		if (info.flags & TrackingInfo::FLAG_OTHER_TRACKING_SOURCE) {
+			m_fixedPositionController.x += info.Other_Tracking_Source_Position.x;
+			m_fixedPositionController.y += info.Other_Tracking_Source_Position.y;
+			m_fixedPositionController.z += info.Other_Tracking_Source_Position.z;
+		}
+
+		if (Settings::Instance().m_EnableOffsetPos) {
+			m_fixedPositionController.x += Settings::Instance().m_OffsetPos[0];
+			m_fixedPositionController.y += Settings::Instance().m_OffsetPos[1];
+			m_fixedPositionController.z += Settings::Instance().m_OffsetPos[2];
+		}
+
+		Log("GetRecenteredHMD: Old=(%f,%f,%f,%f) New=(%f,%f,%f,%f) pitch=%f-%f"
+			, info.HeadPose_Pose_Orientation.x, info.HeadPose_Pose_Orientation.y
+			, info.HeadPose_Pose_Orientation.z, info.HeadPose_Pose_Orientation.w
+			, m_fixedOrientationHMD.x, m_fixedOrientationHMD.y
+			, m_fixedOrientationHMD.z, m_fixedOrientationHMD.w
+			, m_centerPitch
 			, PitchFromQuaternion(
-				orientation.x
-				, orientation.y
-				, orientation.z
-				, orientation.w)
-			, PitchFromQuaternion(
-				fixedOrientation.x
-				, fixedOrientation.y
-				, fixedOrientation.z
-				, fixedOrientation.w)
-			, m_centerPitch);
-		return fixedOrientation;
+				m_fixedOrientationHMD.x
+				, m_fixedOrientationHMD.y
+				, m_fixedOrientationHMD.z
+				, m_fixedOrientationHMD.w));
 	}
 
-	TrackingVector3 GetRecenteredVector(const TrackingVector3 &position) {
-		TrackingVector3 fixedPosition = RotateVectorQuaternion(position, m_centerPitch);
-		Log("GetRecenteredVector: Old=(%f,%f,%f) New=(%f,%f,%f) pitch=%f %f %f"
-			, position.x, position.y
-			, position.z
-			, fixedPosition.x, fixedPosition.y
-			, fixedPosition.z
-			, m_centerPitch
-			, sqrt(position.x * position.x + position.z * position.z)
-			, sqrt(fixedPosition.x * fixedPosition.x + fixedPosition.z * fixedPosition.z));
-		return fixedPosition;
+	vr::HmdQuaternion_t GetRecenteredHMD() {
+		return m_fixedOrientationHMD;
+	}
+
+	vr::HmdQuaternion_t GetRecenteredController() {
+		return m_fixedOrientationController;
+	}
+
+	TrackingVector3 GetRecenteredPositionHMD() {
+		return m_fixedPositionHMD;
+	}
+
+	TrackingVector3 GetRecenteredPositionController() {
+		return m_fixedPositionController;
 	}
 private:
+	bool m_hasValidTrackingInfo;
 	bool m_recentering;
 	uint64_t m_recenterStartTimestamp;
 	double m_centerPitch;
+	vr::HmdQuaternion_t m_fixedOrientationHMD;
+	TrackingVector3 m_fixedPositionHMD;
+	vr::HmdQuaternion_t m_fixedOrientationController;
+	TrackingVector3 m_fixedPositionController;
 
 	static const int RECENTER_DURATION = 400 * 1000;
 };

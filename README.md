@@ -104,7 +104,6 @@ ALVR requires any of the following devices:
 
 ## Future work
 
-- Support streaming sound
 - Support H.265 hevc encoding (currently H.264 only)
 - Better installer
 

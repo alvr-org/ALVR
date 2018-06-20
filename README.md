@@ -12,6 +12,8 @@ Now, we have Gear VR / Oculus Go Controller support!
 
 Note that many PCVR games require 6DoF controller or multiple buttons, so you might not able to play those games.
 You can find playable games in [List of tested VR games and experiences](https://github.com/polygraphene/ALVR/wiki/List-of-tested-VR-games-and-experiences).
+
+I have started crowdfunding about support for AMD GPU on [this page](https://www.bountysource.com/issues/59270271-will-we-get-an-amd-compatible-version-in-the-future). Also refer issue [#33](https://github.com/polygraphene/ALVR/issues/33).
     
 ## Requirements
 

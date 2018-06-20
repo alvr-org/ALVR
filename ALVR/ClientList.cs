@@ -39,7 +39,7 @@ namespace ALVR
 
         List<Client> autoConnectList = new List<Client>();
         List<Client> clients = new List<Client>();
-        bool enableAutoConnect = true;
+        public bool EnableAutoConnect { get; set; } = true;
 
         public ClientList(string serialized)
         {
@@ -106,11 +106,10 @@ namespace ALVR
             var list = autoConnectList.Where(x => clients.Contains(x));
             if (list.Count() != 0)
             {
-                if (!enableAutoConnect)
+                if (!EnableAutoConnect)
                 {
                     return null;
                 }
-                enableAutoConnect = false;
 
                 return list.First();
             }

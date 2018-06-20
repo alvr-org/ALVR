@@ -458,6 +458,8 @@ namespace ALVR
                     MessageBox.Show("Please check the version of client and server and update both.");
                     return;
                 }
+                // Reenable auto connect.
+                clientList.EnableAutoConnect = true;
                 await clientList.Connect(socket, tag.client);
             }
         }
@@ -553,6 +555,8 @@ namespace ALVR
 
         async private void disconnectButton_Click(object sender, EventArgs e)
         {
+            // Disable auto connect to avoid immediate auto reconnection.
+            clientList.EnableAutoConnect = false;
             await socket.SendCommand("Disconnect");
         }
 

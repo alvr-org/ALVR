@@ -15,11 +15,19 @@ enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_VIDEO_FRAME = 10,
 	ALVR_PACKET_TYPE_AUDIO_FRAME_START = 11,
 	ALVR_PACKET_TYPE_AUDIO_FRAME = 12,
+	ALVR_PACKET_TYPE_PACKET_ERROR_REPORT = 13,
 };
 
 enum {
-	ALVR_PROTOCOL_VERSION = 15
+	ALVR_PROTOCOL_VERSION = 16
 };
+
+enum ALVR_LOST_FRAME_TYPE {
+	ALVR_LOST_FRAME_TYPE_P = 0,
+	ALVR_LOST_FRAME_TYPE_IDR = 1,
+	ALVR_LOST_FRAME_TYPE_AUDIO = 2,
+};
+
 #pragma pack(push, 1)
 // hello message
 struct HelloMessage {
@@ -148,6 +156,13 @@ struct AudioFrame {
 	uint32_t type; // 12
 	uint32_t packetCounter;
 	// char frameBuffer[];
+};
+// Report packet loss/error from client to server.
+struct PacketErrorReport {
+	uint32_t type; // ALVR_PACKET_TYPE_PACKET_ERROR_REPORT
+	uint32_t lostFrameType;
+	uint32_t fromPacketCounter;
+	uint32_t toPacketCounter;
 };
 #pragma pack(pop)
 

@@ -79,8 +79,9 @@ namespace
 			: m_pD3DRender(pD3DRender)
 			, m_nFrame(0)
 			, m_Listener(listener)
-			, m_insertIDR(false)
 			, m_useNV12(useNV12)
+			, m_insertIDRTime(0)
+			, m_IsIDRScheduled(false)
 		{
 		}
 
@@ -210,8 +211,8 @@ namespace
 			}
 
 			NV_ENC_PIC_PARAMS picParams = {};
-			if (m_insertIDR) {
-				m_insertIDR = false;
+			if (CheckIDRInsertion()) {
+				Log("Inserting IDR frame.");
 				picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
 			}
 			m_NvNecoder->EncodeFrame(vPacket, &picParams);
@@ -239,9 +240,31 @@ namespace
 			Log("[VDispDvr] Transmit(end) (frame %d %d) FrameIndex=%llu", vPacket.size(), m_nFrame, frameIndex);
 		}
 
-		void InsertIDR()
+		void OnPacketLoss()
 		{
-			m_insertIDR = true;
+			IPCCriticalSectionLock lock(m_IDRCS);
+			if (m_IsIDRScheduled) {
+				// Waiting next insertion.
+				return;
+			}
+			if (GetTimestampUs() - m_insertIDRTime > MIN_IDR_FRAME_INTERVAL) {
+				// Insert immediately
+				m_insertIDRTime = GetTimestampUs();
+				m_IsIDRScheduled = true;
+			}
+			else {
+				// Schedule next insertion.
+				m_insertIDRTime += MIN_IDR_FRAME_INTERVAL;
+				m_IsIDRScheduled = true;
+			}
+		}
+
+		void OnClientConnected()
+		{
+			IPCCriticalSectionLock lock(m_IDRCS);
+			// Force insert IDR-frame
+			m_insertIDRTime = GetTimestampUs();
+			m_IsIDRScheduled = true;
 		}
 
 	private:
@@ -253,11 +276,25 @@ namespace
 
 		std::shared_ptr<Listener> m_Listener;
 
-		bool m_insertIDR;
+		static const int MIN_IDR_FRAME_INTERVAL = 2 * 1000 * 1000; // 2-seconds
+		uint64_t m_insertIDRTime;
+		bool m_IsIDRScheduled;
+		IPCCriticalSection m_IDRCS;
 
 		const bool m_useNV12;
 		std::shared_ptr<CudaConverter> m_Converter;
 		//ComPtr<ID3D11DeviceContext> m_DeferredContext;
+
+		bool CheckIDRInsertion() {
+			IPCCriticalSectionLock lock(m_IDRCS);
+			if (m_IsIDRScheduled) {
+				if (m_insertIDRTime <= GetTimestampUs()) {
+					m_IsIDRScheduled = false;
+					return true;
+				}
+			}
+			return false;
+		}
 	};
 
 	//----------------------------------------------------------------------------
@@ -910,11 +947,13 @@ public:
 		std::function<void(std::string, std::string)> commandCallback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
 		std::function<void(int)> newClientCallback = [&](int refreshRate) { OnNewClient(refreshRate); };
+		std::function<void(int32_t)> packetLossCallback = [&](int32_t lostPacketCount) { OnPacketLoss(lostPacketCount); };
 
 		m_Listener->SetLauncherCallback(launcherCallback);
 		m_Listener->SetCommandCallback(commandCallback);
 		m_Listener->SetPoseUpdatedCallback(poseCallback);
 		m_Listener->SetNewClientCallback(newClientCallback);
+		m_Listener->SetPacketLossCallback(packetLossCallback);
 
 		Log("CRemoteHmd successfully initialized.");
 	}
@@ -1301,9 +1340,14 @@ public:
 
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, (float)m_refreshRate);
 		// Insert IDR frame for faster startup of decoding.
-		m_CNvEncoder->InsertIDR();
+		m_CNvEncoder->OnClientConnected();
 	}
 
+	void OnPacketLoss(int32_t lostPacketCount) {
+		if (lostPacketCount > 0) {
+			m_CNvEncoder->OnPacketLoss();
+		}
+	}
 private:
 	bool m_added;
 	vr::TrackedDeviceIndex_t m_unObjectId;

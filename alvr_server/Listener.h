@@ -55,6 +55,9 @@ public:
 	void SetNewClientCallback(std::function<void(int)> callback) {
 		m_NewClientCallback = callback;
 	}
+	void SetPacketLossCallback(std::function<void(int32_t)> callback) {
+		m_PacketLossCallback = callback;
+	}
 
 	bool Startup() {
 		if (!m_ControlSocket->Startup()) {
@@ -330,9 +333,7 @@ public:
 		}
 		else if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
 			if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
-				char str[100];
-				inet_ntop(AF_INET, &addr->sin_addr, str, sizeof(str));
-				Log("Recieved message from invalid address: %s:%d", str, htons(addr->sin_port));
+				Log("Recieved message from invalid address: %s:%d", AddrPortToStr(addr));
 				return;
 			}
 			UpdateLastSeen();
@@ -350,9 +351,7 @@ public:
 		}
 		else if (type == ALVR_PACKET_TYPE_TIME_SYNC && len >= sizeof(TimeSync)) {
 			if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
-				char str[100];
-				inet_ntop(AF_INET, &addr->sin_addr, str, sizeof(str));
-				Log("Recieved message from invalid address: %s:%d", str, htons(addr->sin_port));
+				Log("Recieved message from invalid address: %s:%d", AddrPortToStr(addr));
 				return;
 			}
 			UpdateLastSeen();
@@ -378,9 +377,7 @@ public:
 		}
 		else if (type == ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE && len >= sizeof(StreamControlMessage)) {
 			if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
-				char str[100];
-				inet_ntop(AF_INET, &addr->sin_addr, str, sizeof(str));
-				Log("Recieved message from invalid address: %s:%d", str, htons(addr->sin_port));
+				Log("Recieved message from invalid address: %s:%d", AddrPortToStr(addr));
 				return;
 			}
 			StreamControlMessage *streamControl = (StreamControlMessage*)buf;
@@ -392,6 +389,17 @@ public:
 			else if (streamControl->mode == 2) {
 				Log("Stream control message: Stop stream.");
 				m_Streaming = false;
+			}
+		}
+		else if (type == ALVR_PACKET_TYPE_PACKET_ERROR_REPORT && len >= sizeof(PacketErrorReport)) {
+			if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
+				Log("Recieved message from invalid address: %s", AddrPortToStr(addr));
+				return;
+			}
+			auto *packetErrorReport = (PacketErrorReport *) buf;
+			if (packetErrorReport->fromPacketCounter != packetErrorReport->toPacketCounter) {
+				Log("Packet loss was reported. Type=%d %lu - %lu", packetErrorReport->lostFrameType ,packetErrorReport->fromPacketCounter, packetErrorReport->toPacketCounter);
+				m_PacketLossCallback((int32_t)(packetErrorReport->toPacketCounter - packetErrorReport->fromPacketCounter));
 			}
 		}
 	}
@@ -588,6 +596,7 @@ private:
 	std::function<void(std::string, std::string)> m_CommandCallback;
 	std::function<void()> m_PoseUpdatedCallback;
 	std::function<void(int)> m_NewClientCallback;
+	std::function<void(int32_t)> m_PacketLossCallback;
 	TrackingInfo m_TrackingInfo;
 
 	uint64_t m_TimeDiff = 0;

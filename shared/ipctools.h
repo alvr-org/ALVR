@@ -61,3 +61,40 @@ private:
 	bool m_Exist;
 };
 
+class IPCCriticalSection
+{
+public:
+	IPCCriticalSection() {
+		InitializeCriticalSection(&m_cs);
+	}
+
+	~IPCCriticalSection() {
+		DeleteCriticalSection(&m_cs);
+	}
+
+	void Lock() {
+		EnterCriticalSection(&m_cs);
+	}
+	void Unlock() {
+		LeaveCriticalSection(&m_cs);
+	}
+
+private:
+	CRITICAL_SECTION m_cs;
+};
+
+class IPCCriticalSectionLock
+{
+public:
+	IPCCriticalSectionLock(IPCCriticalSection &cs) {
+		m_cs = &cs;
+		m_cs->Lock();
+	}
+
+	~IPCCriticalSectionLock() {
+		m_cs->Unlock();
+	}
+
+private:
+	IPCCriticalSection * m_cs;
+};

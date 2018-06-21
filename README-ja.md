@@ -12,6 +12,9 @@ Gear VR / Oculus Go のコントローラーをサポートしました！
 注意：PCVRでは6DoFコントローラーや多数のボタンが必要なゲームもあり、プレイできないことも多々あります。
 
 参照：[動作確認済みのゲーム一覧](https://github.com/polygraphene/ALVR/wiki/List-of-tested-VR-games-and-experiences)
+
+
+AMD GPUのサポートに関するクラウドファンディングを開始しました。 [BountySource](https://www.bountysource.com/issues/59270271-will-we-get-an-amd-compatible-version-in-the-future). [issue #33](https://github.com/polygraphene/ALVR/issues/33).
     
 ## 動作環境
 以下の動作環境が必要です。
@@ -100,7 +103,6 @@ Oculus Storeから"Oculus Key"を使ってインストールできるように�
 
 ## 今後の予定
 
-- 音声のストリーミングのサポート
 - H.265のサポート (現状、H.264のみ)
 - インストーラの作成
 

@@ -78,19 +78,7 @@ ALVR requires any of the following devices:
 
 ## Troubleshoot
 
-- "Server is down" is displayed on right top corner on ALVR.exe
-    - Retry execute driver\_install.bat on driver folder
-    - Terminate the process `vrserver.exe` on Task Manager
-- IP Address is not displayed on ALVR.exe
-    - It maybe a network issue
-    - Confirm that the headset and PC are connected in the same LAN
-    - Check the firewall settings (Permit UDP/9944 port)
-    - If you can use adb, run `adb shell ping -c 5 (IP Address of PC)` then check success of ping
-- Bad streaming quality (sometimes stops, laggy or broken picture)
-    - We will add the functionality to change streaming resolution and bitrate
-    - Connect with 5GHz 802.ac Wi-Fi or Connect wired LAN to headset
-- If you get "A key component of Steam VR isn't working properly" error
-    - Check if the graphic driver is updated
+- https://github.com/polygraphene/ALVR/wiki/Troubleshooting
 
 ## Uninstallation
 

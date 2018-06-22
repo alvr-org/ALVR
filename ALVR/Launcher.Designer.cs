@@ -721,7 +721,7 @@
             this.metroLabel9.Name = "metroLabel9";
             this.metroLabel9.Size = new System.Drawing.Size(61, 19);
             this.metroLabel9.TabIndex = 4;
-            this.metroLabel9.Text = "100Mbps";
+            this.metroLabel9.Text = "250Mbps";
             // 
             // metroLabel17
             // 

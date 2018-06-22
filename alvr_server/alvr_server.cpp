@@ -1344,9 +1344,7 @@ public:
 	}
 
 	void OnPacketLoss(int32_t lostPacketCount) {
-		if (lostPacketCount > 0) {
-			m_CNvEncoder->OnPacketLoss();
-		}
+		m_CNvEncoder->OnPacketLoss();
 	}
 private:
 	bool m_added;

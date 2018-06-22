@@ -397,10 +397,8 @@ public:
 				return;
 			}
 			auto *packetErrorReport = (PacketErrorReport *) buf;
-			if (packetErrorReport->fromPacketCounter != packetErrorReport->toPacketCounter) {
-				Log("Packet loss was reported. Type=%d %lu - %lu", packetErrorReport->lostFrameType ,packetErrorReport->fromPacketCounter, packetErrorReport->toPacketCounter);
-				m_PacketLossCallback((int32_t)(packetErrorReport->toPacketCounter - packetErrorReport->fromPacketCounter));
-			}
+			Log("Packet loss was reported. Type=%d %lu - %lu", packetErrorReport->lostFrameType, packetErrorReport->fromPacketCounter, packetErrorReport->toPacketCounter);
+			m_PacketLossCallback((int32_t)(packetErrorReport->toPacketCounter - packetErrorReport->fromPacketCounter));
 		}
 	}
 

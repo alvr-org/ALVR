@@ -788,6 +788,7 @@
             this.bitrateTrackBar.BackColor = System.Drawing.Color.Transparent;
             this.bitrateTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bitrate", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.bitrateTrackBar.Location = new System.Drawing.Point(184, 38);
+            this.bitrateTrackBar.Maximum = 250;
             this.bitrateTrackBar.Minimum = 1;
             this.bitrateTrackBar.Name = "bitrateTrackBar";
             this.bitrateTrackBar.Size = new System.Drawing.Size(368, 23);

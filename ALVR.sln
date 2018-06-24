@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "alvr_server", "alvr_server\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CUDA", "CUDA\CUDA.vcxproj", "{12336478-A663-42F8-8D52-8D093CD99992}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ALVRFreePIE", "ALVRFreePIE\ALVRFreePIE.csproj", "{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -61,6 +63,18 @@ Global
 		{12336478-A663-42F8-8D52-8D093CD99992}.Release|Win32.ActiveCfg = Release|x64
 		{12336478-A663-42F8-8D52-8D093CD99992}.Release|x64.ActiveCfg = Release|x64
 		{12336478-A663-42F8-8D52-8D093CD99992}.Release|x64.Build.0 = Release|x64
+		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Debug|Win32.ActiveCfg = Debug|Any CPU
+		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Debug|Win32.Build.0 = Debug|Any CPU
+		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Debug|x64.Build.0 = Debug|Any CPU
+		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Release|Win32.ActiveCfg = Release|Any CPU
+		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Release|Win32.Build.0 = Release|Any CPU
+		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Release|x64.ActiveCfg = Release|Any CPU
+		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

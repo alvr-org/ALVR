@@ -45,7 +45,10 @@ ALVR requires any of the following devices:
 2. Download and install vc\_redist.x64.exe from [here](https://go.microsoft.com/fwlink/?LinkId=746572)
 3. Download zip from [Releases](https://github.com/polygraphene/ALVR/releases)
 4. Extract the zip to any folder
-5. Launch ALVR.exe
+5. (First run only) Make sure the ALVR driver is installed in Steam
+  * Use the driver_install.bat helper located in ALVR\driver to install the driver if your SteamVR installation is in the default C:\Program Files (x86)\Steam\steamapps\common\SteamVR location
+  * If SteamVR is installed in any other location, use `[SteamVR install dir]\bin\win32\vrpathreg.exe adddriver [drive-and-path-to-ALVR\driver]` or simply edit the driver_install.bat and driver_uninstall.bat to reflect the location of your SteamVR install directory.
+6. Launch ALVR.exe
 
 ### Install ALVR client for headset
 
@@ -62,7 +65,7 @@ ALVR requires any of the following devices:
 
 - Launch ALVR.exe
 - Press "Start Server" button or launch VR game
-- SteamVR's small window will appear
+- SteamVR's small window will appear. You should see a headset icon in the SteamVR status window that looks like a green block with a bold S in the middle
 - Launch ALVR Client in your headset
 - IP Address of headset will appear in the server tab of ALVR.exe
 - Press "Connect" button

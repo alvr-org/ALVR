@@ -543,6 +543,11 @@ public:
 			recentered.z,
 			&history.rotationMatrix);
 
+		Log("Rotation Matrix=(%f, %f, %f, %f) (%f, %f, %f, %f) (%f, %f, %f, %f)"
+			, history.rotationMatrix.m[0][0], history.rotationMatrix.m[0][1], history.rotationMatrix.m[0][2], history.rotationMatrix.m[0][3]
+			, history.rotationMatrix.m[1][0], history.rotationMatrix.m[1][1], history.rotationMatrix.m[1][2], history.rotationMatrix.m[1][3]
+			, history.rotationMatrix.m[2][0], history.rotationMatrix.m[2][1], history.rotationMatrix.m[2][2], history.rotationMatrix.m[2][3]);
+
 		m_poseMutex.Wait(INFINITE);
 		if (m_poseBuffer.size() == 0) {
 			m_poseBuffer.push_back(history);
@@ -718,7 +723,7 @@ public:
 				m_framePoseRotation.z = minIt->info.HeadPose_Pose_Orientation.z;
 				m_framePoseRotation.w = minIt->info.HeadPose_Pose_Orientation.w;
 
-				Log("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu", m_prevSubmitFrameIndex, m_submitFrameIndex);
+				Log("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu minDiff=%f", m_prevSubmitFrameIndex, m_submitFrameIndex, minDiff);
 			}
 			else {
 				m_submitFrameIndex = 0;
@@ -1162,6 +1167,16 @@ public:
 			pose.vecPosition[0] = position.x;
 			pose.vecPosition[1] = position.y;
 			pose.vecPosition[2] = position.z;
+
+			Log("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)",
+				pose.qRotation.x,
+				pose.qRotation.y,
+				pose.qRotation.z,
+				pose.qRotation.w,
+				pose.vecPosition[0],
+				pose.vecPosition[1],
+				pose.vecPosition[2]
+			);
 
 			// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
 

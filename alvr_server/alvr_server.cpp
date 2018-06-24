@@ -29,6 +29,7 @@
 #include "FrameRender.h"
 #include "Settings.h"
 #include "RemoteController.h"
+#include "RecenterManager.h"
 #include "packet_types.h"
 #include "resource.h"
 #include "Tracking.h"
@@ -943,7 +944,6 @@ public:
 		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 		, m_nGraphicsAdapterLuid(0)
 		, m_nVsyncCounter(0)
-		, m_controllerDetected(false)
 		, m_added(false)
 		, m_Listener(listener)
 	{
@@ -1316,43 +1316,9 @@ public:
 
 			Log("Generate VSync Event by OnPoseUpdated");
 			m_VSyncThread->InsertVsync();
-			
-			UpdateControllerState(info);
 
 			if (m_trackingReference) {
 				m_trackingReference->OnPoseUpdated();
-			}
-		}
-	}
-
-	void UpdateControllerState(const TrackingInfo& info) {
-		if (!Settings::Instance().m_enableController) {
-			return;
-		}
-		if (!m_controllerDetected) {
-			if (info.flags & TrackingInfo::FLAG_CONTROLLER_ENABLE) {
-				Log("New controller is detected.");
-				m_controllerDetected = true;
-
-				// false: right hand, true: left hand
-				bool handed = false;
-				if (info.flags & TrackingInfo::FLAG_CONTROLLER_LEFTHAND) {
-					handed = true;
-				}
-				m_remoteController = std::make_shared<RemoteControllerServerDriver>(handed, m_recenterManager);
-
-				bool ret;
-				ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-					m_remoteController->GetSerialNumber().c_str(),
-					vr::TrackedDeviceClass_Controller,
-					m_remoteController.get());
-				Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, m_remoteController->GetSerialNumber().c_str());
-			}
-		}
-		if (info.flags & TrackingInfo::FLAG_CONTROLLER_ENABLE) {
-			bool recenterRequested = m_remoteController->ReportControllerState(info);
-			if (recenterRequested) {
-				m_recenterManager->BeginRecenter();
 			}
 		}
 	}
@@ -1383,9 +1349,6 @@ private:
 	std::shared_ptr<Listener> m_Listener;
 	std::shared_ptr<VSyncThread> m_VSyncThread;
 	std::shared_ptr<RecenterManager> m_recenterManager;
-
-	bool m_controllerDetected;
-	std::shared_ptr<RemoteControllerServerDriver> m_remoteController;
 
 	std::shared_ptr<DisplayComponent> m_displayComponent;
 	std::shared_ptr<DirectModeComponent> m_directModeComponent;

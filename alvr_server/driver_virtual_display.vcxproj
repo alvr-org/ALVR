@@ -165,6 +165,7 @@
     <ClCompile Include="ControlSocket.cpp" />
     <ClCompile Include="alvr_server.cpp" />
     <ClCompile Include="FrameRender.cpp" />
+    <ClCompile Include="FreePIE.cpp" />
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="NvEncoder.cpp" />
     <ClCompile Include="NvEncoderCuda.cpp" />
@@ -186,6 +187,7 @@
     <ClInclude Include="ControlSocket.h" />
     <ClInclude Include="CudaConverter.h" />
     <ClInclude Include="FrameRender.h" />
+    <ClInclude Include="FreePIE.h" />
     <ClInclude Include="Listener.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="NvCodecUtils.h" />

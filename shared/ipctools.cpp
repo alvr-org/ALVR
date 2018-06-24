@@ -74,9 +74,18 @@ void IPCEvent::ResetEvent()
 	::ResetEvent( m_hEvent );
 }
 
+//
+// IPCFileMapping
+//
+
 IPCFileMapping::IPCFileMapping(const char* pName)
 {
 	m_hMapFile = OpenFileMapping(FILE_MAP_READ, false, pName);
+}
+
+IPCFileMapping::IPCFileMapping(const char* pName, uint64_t size)
+{
+	m_hMapFile = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, (DWORD)(size >> 32), (DWORD)size, pName);
 }
 
 IPCFileMapping::~IPCFileMapping()
@@ -85,13 +94,11 @@ IPCFileMapping::~IPCFileMapping()
 		CloseHandle(m_hMapFile);
 }
 
-void *IPCFileMapping::Map()
+void *IPCFileMapping::Map(DWORD access)
 {
-	return MapViewOfFile(m_hMapFile, FILE_MAP_READ, 0, 0, 0);
+	return MapViewOfFile(m_hMapFile, access, 0, 0, 0);
 }
 
-//--------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
 bool IPCFileMapping::Opened()
 {
 	return m_hMapFile != NULL;

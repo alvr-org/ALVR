@@ -1,9 +1,10 @@
 #pragma once
 #include <openvr_driver.h>
-#include "RecenterManager.h"
+#include <string>
 #include "Logger.h"
 #include "Listener.h"
 #include "packet_types.h"
+#include "FreePIE.h"
 
 enum {
 	INPUT_SYSTEM_CLICK = 0,
@@ -44,13 +45,20 @@ enum {
 class RemoteControllerServerDriver : public vr::ITrackedDeviceServerDriver
 {
 public:
-	RemoteControllerServerDriver(bool handed, std::shared_ptr<RecenterManager> recenterManager)
+	RemoteControllerServerDriver(bool handed)
 		: m_handed(handed)
-		, m_recenterManager(recenterManager)
 		, m_previousButtons(0)
 		, m_previousFlags(0)
 		, m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 	{
+		memset(&m_pose, 0, sizeof(m_pose));
+		m_pose.poseIsValid = true;
+		m_pose.result = vr::TrackingResult_Running_OK;
+		m_pose.deviceIsConnected = true;
+
+		m_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+		m_pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+		m_pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 	}
 
 	virtual ~RemoteControllerServerDriver() {
@@ -161,37 +169,27 @@ public:
 
 	virtual vr::DriverPose_t GetPose()
 	{
-		vr::DriverPose_t pose = { 0 };
-		pose.poseIsValid = true;
-		pose.result = vr::TrackingResult_Running_OK;
-		pose.deviceIsConnected = true;
-
-		pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-		pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
-
-		if (m_recenterManager->HasValidTrackingInfo()) {
-			pose.qRotation = m_recenterManager->GetRecenteredController();
-
-			TrackingVector3 position = m_recenterManager->GetRecenteredPositionController();
-			pose.vecPosition[0] = position.x;
-			pose.vecPosition[1] = position.y;
-			pose.vecPosition[2] = position.z;
-
-			pose.poseTimeOffset = 0;
-		}
-
-		return pose;
+		return m_pose;
 	}
 
-	bool ReportControllerState(const TrackingInfo &info) {
+	bool ReportControllerState(const TrackingInfo &info
+		, const vr::HmdQuaternion_t controllerRotation, const TrackingVector3 &controllerPosition
+		, uint32_t controllerOverrideButtons, uint32_t controllerButtons) {
 		bool recenterRequest = false;
 
 		if (m_unObjectId == vr::k_unTrackedDeviceIndexInvalid) {
 			return false;
 		}
 
-		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
+		m_pose.qRotation = controllerRotation;
+
+		m_pose.vecPosition[0] = controllerPosition.x;
+		m_pose.vecPosition[1] = controllerPosition.y;
+		m_pose.vecPosition[2] = controllerPosition.z;
+
+		m_pose.poseTimeOffset = 0;
+
+		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));
 
 		int32_t triggerButton = Settings::Instance().m_controllerTriggerMode;
 		int32_t trackpadClickButton = Settings::Instance().m_controllerTrackpadClickMode;
@@ -252,6 +250,17 @@ public:
 		// Battery
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, info.controllerBatteryPercentRemaining / 100.0f);
 
+		for (int i = 0; i < FreePIE::ALVR_FREEPIE_BUTTONS; i++) {
+			if (controllerOverrideButtons & (1 << i)) {
+				bool value = (controllerButtons & (1 << i)) != 0;
+				Log("Pressing button %d. State=%d", i, value);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[FreePIE::BUTTON_MAP[i]], value, 0.0);
+				if (FreePIE::BUTTON_MAP[i] == INPUT_TRIGGER_CLICK) {
+					vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
+				}
+			}
+		}
+
 		m_previousButtons = info.controllerButtons;
 		m_previousFlags = info.flags;
 
@@ -263,8 +272,6 @@ public:
 	}
 
 private:
-	std::shared_ptr<RecenterManager> m_recenterManager;
-
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 
@@ -274,4 +281,6 @@ private:
 	bool m_handed;
 
 	vr::VRInputComponentHandle_t m_handles[INPUT_COUNT];
+
+	vr::DriverPose_t m_pose;
 };

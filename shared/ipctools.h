@@ -51,7 +51,22 @@ class IPCFileMapping
 {
 public:
 	IPCFileMapping(const char* pName);
+	IPCFileMapping(const char* pName, uint64_t size);
 	~IPCFileMapping();
+
+	void *Map(DWORD access = FILE_MAP_READ);
+
+	bool Opened();
+private:
+	HANDLE m_hMapFile;
+	bool m_Exist;
+};
+
+class IPCCreateFileMapping
+{
+public:
+	IPCCreateFileMapping(const char* pName, uint64_t size);
+	~IPCCreateFileMapping();
 
 	void *Map();
 

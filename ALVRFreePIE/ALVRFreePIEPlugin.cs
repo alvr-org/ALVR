@@ -7,8 +7,8 @@ using System.Threading;
 
 namespace ALVRFreePIE
 {
-    [GlobalType(Type = typeof(ALVRFreePIEPlugin))]
-    public class ALVRFreePIEPlugin
+    [GlobalType(Type = typeof(ALVRFreePIEPluginGlobal))]
+    public class ALVRFreePIEPlugin : IPlugin
     {
         ALVRFreePIEPluginGlobal global;
         public object CreateGlobal()
@@ -45,112 +45,155 @@ namespace ALVRFreePIE
         public void DoBeforeNextExecute()
         {
             CheckMemoryMappedFileExistence();
-            if (memoryMappedFile != null)
+            if (memoryMappedFile == null)
             {
-                try
+                return;
+            }
+            try
+            {
+                mutex.WaitOne(-1);
+
+                UInt32 flags = 0;
+                UInt32 controllerOverrideButtons = 0;
+                UInt32 controllerButtons = 0;
+                double[] head_orientation = new double[3];
+                double[] head_position = new double[3];
+                double[] controller_orientation = new double[3];
+                double[] controller_position = new double[3];
+
+                using (var mappedStream = memoryMappedFile.CreateViewStream())
                 {
-                    mutex.WaitOne(0);
+                    var reader = new BinaryReader(mappedStream);
 
-                    UInt32 flags = 0;
-                    UInt32 controllerOverrideButtons = 0;
-                    UInt32 controllerButtons = 0;
-
-                    using (var mappedStream = memoryMappedFile.CreateViewStream())
+                    UInt32 version = reader.ReadUInt32();
+                    if (version == ALVR_FREEPIE_SIGNATURE_V1)
                     {
-                        var reader = new BinaryReader(mappedStream);
+                        flags = reader.ReadUInt32();
+                        // Head orientation
+                        head_orientation[0] = reader.ReadDouble();
+                        head_orientation[1] = reader.ReadDouble();
+                        head_orientation[2] = reader.ReadDouble();
+                        // Head position
+                        head_position[0] = reader.ReadDouble();
+                        head_position[1] = reader.ReadDouble();
+                        head_position[2] = reader.ReadDouble();
+                        // Controller orientation
+                        controller_orientation[0] = reader.ReadDouble();
+                        controller_orientation[1] = reader.ReadDouble();
+                        controller_orientation[2] = reader.ReadDouble();
+                        // Controller position
+                        controller_position[0] = reader.ReadDouble();
+                        controller_position[1] = reader.ReadDouble();
+                        controller_position[2] = reader.ReadDouble();
 
-                        UInt32 version = reader.ReadUInt32();
-                        if (version == ALVR_FREEPIE_SIGNATURE_V1)
-                        {
-                            flags = reader.ReadUInt32();
-                            // Head orientation
-                            double yaw = reader.ReadDouble();
-                            double pitch = reader.ReadDouble();
-                            double roll = reader.ReadDouble();
-                            // Head position
-                            double[] head_position = new double[3];
-                            head_position[0] = reader.ReadDouble();
-                            head_position[1] = reader.ReadDouble();
-                            head_position[2] = reader.ReadDouble();
-
-                            controllerOverrideButtons = reader.ReadUInt32();
-                            controllerButtons = reader.ReadUInt32();
-                        }
-                    }
-
-                    using (var mappedStream = memoryMappedFile.CreateViewStream())
-                    {
-                        mappedStream.Seek(sizeof(UInt32), SeekOrigin.Current);
-                        if (global.override_head_orientation) {
-                            flags |= ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_ORIENTATION;
-                        }
-                        if (global.override_head_position)
-                        {
-                            flags |= ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_POSITION;
-                        }
-                        if (global.override_controller_orientation)
-                        {
-                            flags |= ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION;
-                        }
-                        if (global.override_controller_position)
-                        {
-                            flags |= ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION;
-                        }
-
-                        mappedStream.Write(BitConverter.GetBytes(flags), 0, sizeof(UInt32));
-
-                        if (global.override_head_orientation)
-                        {
-                            mappedStream.Write(BitConverter.GetBytes(global.head_orientation[0]), 0, sizeof(double));
-                            mappedStream.Write(BitConverter.GetBytes(global.head_orientation[1]), 0, sizeof(double));
-                            mappedStream.Write(BitConverter.GetBytes(global.head_orientation[2]), 0, sizeof(double));
-                        }
-                        else
-                        {
-                            mappedStream.Seek(sizeof(double) * 3, SeekOrigin.Current);
-                        }
-                        if (global.override_head_position)
-                        {
-                            mappedStream.Write(BitConverter.GetBytes(global.head_position[0]), 0, sizeof(double));
-                            mappedStream.Write(BitConverter.GetBytes(global.head_position[1]), 0, sizeof(double));
-                            mappedStream.Write(BitConverter.GetBytes(global.head_position[2]), 0, sizeof(double));
-                        }
-                        else
-                        {
-                            mappedStream.Seek(sizeof(double) * 3, SeekOrigin.Current);
-                        }
-                        if (global.override_controller_orientation)
-                        {
-                            mappedStream.Write(BitConverter.GetBytes(global.controller_orientation[0]), 0, sizeof(double));
-                            mappedStream.Write(BitConverter.GetBytes(global.controller_orientation[1]), 0, sizeof(double));
-                            mappedStream.Write(BitConverter.GetBytes(global.controller_orientation[2]), 0, sizeof(double));
-                        }
-                        else
-                        {
-                            mappedStream.Seek(sizeof(double) * 3, SeekOrigin.Current);
-                        }
-                        if (global.override_controller_position)
-                        {
-                            mappedStream.Write(BitConverter.GetBytes(global.controller_position[0]), 0, sizeof(double));
-                            mappedStream.Write(BitConverter.GetBytes(global.controller_position[1]), 0, sizeof(double));
-                            mappedStream.Write(BitConverter.GetBytes(global.controller_position[2]), 0, sizeof(double));
-                        }
-                        else
-                        {
-                            mappedStream.Seek(sizeof(double) * 3, SeekOrigin.Current);
-                        }
-
-                        UInt32 newOverrideButtons = global.override_application_menu ? ALVR_FREEPIE_BUTTON_APPLICATION_MENU : 0;
-                        UInt32 newButtons = global.application_menu ? ALVR_FREEPIE_BUTTON_APPLICATION_MENU : 0;
-
-                        mappedStream.Write(BitConverter.GetBytes(newOverrideButtons), 0, sizeof(UInt32));
-                        mappedStream.Write(BitConverter.GetBytes(newOverrideButtons), 0, sizeof(UInt32));
+                        controllerOverrideButtons = reader.ReadUInt32();
+                        controllerButtons = reader.ReadUInt32();
                     }
                 }
-                finally
+
+                using (var mappedStream = memoryMappedFile.CreateViewStream())
                 {
-                    mutex.ReleaseMutex();
+                    mappedStream.Seek(sizeof(UInt32), SeekOrigin.Current);
+                    if (global.override_head_orientation)
+                    {
+                        flags |= ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_ORIENTATION;
+                    }
+                    if (global.override_head_position)
+                    {
+                        flags |= ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_POSITION;
+                    }
+                    if (global.override_controller_orientation)
+                    {
+                        flags |= ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION;
+                    }
+                    if (global.override_controller_position)
+                    {
+                        flags |= ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION;
+                    }
+
+                    mappedStream.Write(BitConverter.GetBytes(flags), 0, sizeof(UInt32));
+
+                    if (global.override_head_orientation)
+                    {
+                        mappedStream.Write(BitConverter.GetBytes(global.head_orientation[0]), 0, sizeof(double));
+                        mappedStream.Write(BitConverter.GetBytes(global.head_orientation[1]), 0, sizeof(double));
+                        mappedStream.Write(BitConverter.GetBytes(global.head_orientation[2]), 0, sizeof(double));
+                    }
+                    else
+                    {
+                        mappedStream.Seek(sizeof(double) * 3, SeekOrigin.Current);
+                    }
+                    if (global.override_head_position)
+                    {
+                        mappedStream.Write(BitConverter.GetBytes(global.head_position[0]), 0, sizeof(double));
+                        mappedStream.Write(BitConverter.GetBytes(global.head_position[1]), 0, sizeof(double));
+                        mappedStream.Write(BitConverter.GetBytes(global.head_position[2]), 0, sizeof(double));
+                    }
+                    else
+                    {
+                        mappedStream.Seek(sizeof(double) * 3, SeekOrigin.Current);
+                    }
+                    if (global.override_controller_orientation)
+                    {
+                        mappedStream.Write(BitConverter.GetBytes(global.controller_orientation[0]), 0, sizeof(double));
+                        mappedStream.Write(BitConverter.GetBytes(global.controller_orientation[1]), 0, sizeof(double));
+                        mappedStream.Write(BitConverter.GetBytes(global.controller_orientation[2]), 0, sizeof(double));
+                    }
+                    else
+                    {
+                        mappedStream.Seek(sizeof(double) * 3, SeekOrigin.Current);
+                    }
+                    if (global.override_controller_position)
+                    {
+                        mappedStream.Write(BitConverter.GetBytes(global.controller_position[0]), 0, sizeof(double));
+                        mappedStream.Write(BitConverter.GetBytes(global.controller_position[1]), 0, sizeof(double));
+                        mappedStream.Write(BitConverter.GetBytes(global.controller_position[2]), 0, sizeof(double));
+                    }
+                    else
+                    {
+                        mappedStream.Seek(sizeof(double) * 3, SeekOrigin.Current);
+                    }
+
+                    UInt32 newOverrideButtons = 0;
+                    for (int i = 0; i < BUTTONS.Length; i++) {
+                        newOverrideButtons |= global.override_buttons[i] ? (1U << i) : 0U;
+                    }
+                    UInt32 newButtons = 0;
+                    for (int i = 0; i < BUTTONS.Length; i++)
+                    {
+                        newButtons |= global.buttons[i] ? (1U << i) : 0U;
+                    }
+                    mappedStream.Write(BitConverter.GetBytes(newOverrideButtons), 0, sizeof(UInt32));
+                    mappedStream.Write(BitConverter.GetBytes(newButtons), 0, sizeof(UInt32));
                 }
+
+                if (!global.override_head_orientation)
+                {
+                    Array.Copy(head_orientation, global.head_orientation, 3);
+                }
+                if (!global.override_head_position)
+                {
+                    Array.Copy(head_position, global.head_position, 3);
+                }
+                if (!global.override_controller_orientation)
+                {
+                    Array.Copy(controller_orientation, global.controller_orientation, 3);
+                }
+                if (!global.override_controller_position)
+                {
+                    Array.Copy(controller_position, global.controller_position, 3);
+                }
+                for (int i = 0; i < BUTTONS.Length; i++)
+                {
+                    if (!global.override_buttons[i])
+                    {
+                        global.buttons[i] = (controllerButtons & (1U << i)) != 0;
+                    }
+                }
+            }
+            finally
+            {
+                mutex.ReleaseMutex();
             }
         }
 
@@ -180,7 +223,11 @@ namespace ALVRFreePIE
         static readonly UInt32 ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION = 1 << 2;
         static readonly UInt32 ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION = 1 << 3;
 
-        static readonly UInt32 ALVR_FREEPIE_BUTTON_APPLICATION_MENU = 1 << 0;
+        public static readonly string[] BUTTONS = {"system", "application_menu", "grip"
+                , "dpad_left", "dpad_up", "dpad_right", "dpad_down"
+                , "a", "b", "x", "y"
+                , "trackpad", "trigger", "shoulder_left", "shoulder_right"
+        , "joystick_left", "joystick_right", "back", "guide", "start"};
 
         MemoryMappedFile memoryMappedFile;
         Mutex mutex;
@@ -196,20 +243,35 @@ namespace ALVRFreePIE
             this.plugin = plugin;
         }
 
-        public bool override_application_menu;
-        public bool application_menu;
-        public bool override_head_orientation;
-        public bool override_head_position;
-        public bool override_controller_orientation;
-        public bool override_controller_position;
+        public int Id(string key)
+        {
+            for (int i = 0; i < ALVRFreePIEPlugin.BUTTONS.Length; i++)
+            {
+                if (ALVRFreePIEPlugin.BUTTONS[i] == key)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        public bool[] override_buttons { get; set; } = new bool[20];
+        public bool[] buttons { get; set; } = new bool[20];
+
+        public bool override_head_orientation { get; set; }
+        public bool override_head_position { get; set; }
+        public bool override_controller_orientation { get; set; }
+        public bool override_controller_position { get; set; }
+
+        public double test { get; set; }
 
         // yaw pitch roll
-        public double[] head_orientation = new double[3];
+        public double[] head_orientation { get; set; } = new double[3];
         // x y z
-        public double[] head_position = new double[3];
+        public double[] head_position { get; set; } = new double[3];
         // yaw pitch roll
-        public double[] controller_orientation = new double[3];
+        public double[] controller_orientation { get; set; } = new double[3];
         // x y z
-        public double[] controller_position = new double[3];
+        public double[] controller_position { get; set; } = new double[3];
     }
 }

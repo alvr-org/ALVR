@@ -41,31 +41,22 @@ ALVR requires any of the following devices:
 
 ### Install ALVR server for PC
 
-- Install SteamVR
-- Install vc\_redist.x64.exe from [here](https://www.microsoft.com/en-us/download/details.aspx?id=53840)
-- Download the zip from [Releases](https://github.com/polygraphene/ALVR/releases)
-- Extract the zip to any folder
-- Launch ALVR.exe
+1. Install SteamVR
+2. Download and install vc\_redist.x64.exe from [here](https://go.microsoft.com/fwlink/?LinkId=746572)
+3. Download zip from [Releases](https://github.com/polygraphene/ALVR/releases)
+4. Extract the zip to any folder
+5. Launch ALVR.exe
 
 ### Install ALVR client for headset
 
 ### From Oculus Store
+
 - You can download ALVR Client from Oculus Store with key.
 - Open [the key distribution page](https://alvr-dist.appspot.com/) on your smartphone and follow the instruction.
 
-#### Download from GitHub for Gear VR (optional)
+### Install from apk
 
-- (Install apk from SideloadVR) Yet to be released. Please wait.
-- Get osig file from oculus website
-- Install [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor)
-- Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
-- Open apk and put osig file on assets folder
-- Build and install
-
-#### Download from GitHub for Oculus Go (optional)
-
-- Download apk from [Releases](https://github.com/polygraphene/ALVR/releases)
-- Install apk via adb
+- Check [Installation](https://github.com/polygraphene/ALVR/wiki/Installation).
 
 ## Usage
 
@@ -78,7 +69,7 @@ ALVR requires any of the following devices:
 
 ## Troubleshoot
 
-- https://github.com/polygraphene/ALVR/wiki/Troubleshooting
+- If you got some error, please check [Troubleshooting](https://github.com/polygraphene/ALVR/wiki/Troubleshooting)
 
 ## Uninstallation
 
@@ -93,6 +84,8 @@ ALVR requires any of the following devices:
 ## Future work
 
 - Support H.265 hevc encoding (currently H.264 only)
+- AMD support [#33](https://github.com/polygraphene/ALVR/issues/33)
+- Windows 7 support
 - Better installer
 
 ## Build

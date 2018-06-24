@@ -34,6 +34,13 @@ namespace ALVR
             return driverPath + @"bin\win64\driver_alvr_server.dll";
         }
 
+        public static int ParseInt(string s)
+        {
+            int i = 0;
+            int.TryParse(s, out i);
+            return i;
+        }
+
         public static float ParseFloat(string s)
         {
             float f = 0.0f;

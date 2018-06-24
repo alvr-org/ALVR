@@ -115,6 +115,7 @@ namespace ALVR
             offsetPosXTextBox.Text = Utils.ParseFloat(offsetPosXTextBox.Text).ToString();
             offsetPosYTextBox.Text = Utils.ParseFloat(offsetPosYTextBox.Text).ToString();
             offsetPosZTextBox.Text = Utils.ParseFloat(offsetPosZTextBox.Text).ToString();
+            trackingFrameOffsetTextBox.Text = Utils.ParseInt(trackingFrameOffsetTextBox.Text).ToString();
 
             Properties.Settings.Default.renderWidth = ((ServerConfig.Resolution)resolutionComboBox.SelectedItem).width;
             Properties.Settings.Default.controllerTriggerMode = ((ServerConfig.ComboBoxCustomItem)triggerComboBox.SelectedItem).value;
@@ -630,6 +631,12 @@ namespace ALVR
         private void soundCheckBox_CheckedChanged(object sender, EventArgs e)
         {
             UpdateSoundCheckboxState();
+        }
+
+        async private void saveTrackingFrameOffsetButton_Click(object sender, EventArgs e)
+        {
+            trackingFrameOffsetTextBox.Text = Utils.ParseInt(trackingFrameOffsetTextBox.Text).ToString();
+            await socket.SendCommand("SetConfig trackingFrameOffset " + trackingFrameOffsetTextBox.Text);
         }
     }
 }

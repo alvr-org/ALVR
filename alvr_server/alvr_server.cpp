@@ -886,8 +886,12 @@ public:
 			debugText = buf;
 		}
 
+		uint64_t submitFrameIndex = m_submitFrameIndex + Settings::Instance().m_trackingFrameOffset;
+		Log("Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu"
+			, m_submitFrameIndex, Settings::Instance().m_trackingFrameOffset, submitFrameIndex);
+
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
-		m_pEncoder->CopyToStaging(pTexture, bounds, layerCount, m_recenterManager->IsRecentering(), presentationTime, m_submitFrameIndex, m_submitClientTime, debugText);
+		m_pEncoder->CopyToStaging(pTexture, bounds, layerCount, m_recenterManager->IsRecentering(), presentationTime, submitFrameIndex, m_submitClientTime, debugText);
 
 		m_pD3DRender->GetContext()->Flush();
 	}
@@ -1263,6 +1267,9 @@ public:
 				}
 				else if (name == "causePacketLoss") {
 					Settings::Instance().m_causePacketLoss = atoi(args.substr(index + 1).c_str());
+				}
+				else if (name == "trackingFrameOffset") {
+					Settings::Instance().m_trackingFrameOffset = atoi(args.substr(index + 1).c_str());
 				}
 				else {
 					m_Listener->SendCommandResponse("NG\n");

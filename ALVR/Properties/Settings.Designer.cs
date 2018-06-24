@@ -274,5 +274,17 @@ namespace ALVR.Properties {
                 this["soundDevice"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public string trackingFrameOffset {
+            get {
+                return ((string)(this["trackingFrameOffset"]));
+            }
+            set {
+                this["trackingFrameOffset"] = value;
+            }
+        }
     }
 }

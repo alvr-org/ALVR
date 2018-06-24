@@ -98,6 +98,8 @@ void Settings::Load()
 	m_OffsetPos[1] = (float)v.get(k_pch_Settings_OffsetPosY_Float).get<double>();
 	m_OffsetPos[2] = (float)v.get(k_pch_Settings_OffsetPosZ_Float).get<double>();
 
+	m_trackingFrameOffset = (int32_t)v.get(k_pch_Settings_TrackingFrameOffset_Int32).get<int64_t>();
+
 	if (m_DebugLog) {
 		OpenLog((m_DebugOutputDir + "\\" + LOG_FILE).c_str());
 	}

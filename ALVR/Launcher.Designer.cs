@@ -94,6 +94,9 @@
             this.soundDeviceComboBox = new MetroFramework.Controls.MetroComboBox();
             this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.otherTab = new MetroFramework.Controls.MetroTabPage();
+            this.trackingFrameOffsetTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.metroLabel30 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel29 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel28 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel27 = new MetroFramework.Controls.MetroLabel();
             this.refDisconnectCommandButton = new MetroFramework.Controls.MetroButton();
@@ -139,6 +142,7 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.saveTrackingFrameOffsetButton = new MetroFramework.Controls.MetroButton();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.connectedPanel.SuspendLayout();
@@ -521,7 +525,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(206, -2116);
+            this.metroLabel22.Location = new System.Drawing.Point(206, -2676);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -719,7 +723,7 @@
             this.metroLabel9.AutoSize = true;
             this.metroLabel9.Location = new System.Drawing.Point(522, 16);
             this.metroLabel9.Name = "metroLabel9";
-            this.metroLabel9.Size = new System.Drawing.Size(61, 19);
+            this.metroLabel9.Size = new System.Drawing.Size(63, 19);
             this.metroLabel9.TabIndex = 4;
             this.metroLabel9.Text = "250Mbps";
             // 
@@ -834,6 +838,9 @@
             // 
             // otherTab
             // 
+            this.otherTab.Controls.Add(this.trackingFrameOffsetTextBox);
+            this.otherTab.Controls.Add(this.metroLabel30);
+            this.otherTab.Controls.Add(this.metroLabel29);
             this.otherTab.Controls.Add(this.metroLabel28);
             this.otherTab.Controls.Add(this.metroLabel27);
             this.otherTab.Controls.Add(this.refDisconnectCommandButton);
@@ -844,6 +851,7 @@
             this.otherTab.Controls.Add(this.offsetPosZTextBox);
             this.otherTab.Controls.Add(this.offsetPosYTextBox);
             this.otherTab.Controls.Add(this.offsetPosXTextBox);
+            this.otherTab.Controls.Add(this.saveTrackingFrameOffsetButton);
             this.otherTab.Controls.Add(this.sendOffsetPos);
             this.otherTab.Controls.Add(this.metroLabel26);
             this.otherTab.Controls.Add(this.metroLabel25);
@@ -855,12 +863,41 @@
             this.otherTab.Size = new System.Drawing.Size(656, 283);
             this.otherTab.TabIndex = 7;
             this.otherTab.Text = "Other";
+            this.otherTab.VerticalScrollbar = true;
             this.otherTab.VerticalScrollbarBarColor = true;
+            // 
+            // trackingFrameOffsetTextBox
+            // 
+            this.trackingFrameOffsetTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "trackingFrameOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.trackingFrameOffsetTextBox.Location = new System.Drawing.Point(190, 245);
+            this.trackingFrameOffsetTextBox.Name = "trackingFrameOffsetTextBox";
+            this.trackingFrameOffsetTextBox.Size = new System.Drawing.Size(86, 23);
+            this.trackingFrameOffsetTextBox.TabIndex = 19;
+            this.trackingFrameOffsetTextBox.Text = global::ALVR.Properties.Settings.Default.trackingFrameOffset;
+            // 
+            // metroLabel30
+            // 
+            this.metroLabel30.AutoSize = true;
+            this.metroLabel30.Location = new System.Drawing.Point(365, 245);
+            this.metroLabel30.Name = "metroLabel30";
+            this.metroLabel30.Size = new System.Drawing.Size(279, 38);
+            this.metroLabel30.TabIndex = 18;
+            this.metroLabel30.Text = "Try \"-1\" if you exceprience jerky head-tracking.\r\nPut \"0\" on if you have no probl" +
+    "em.";
+            // 
+            // metroLabel29
+            // 
+            this.metroLabel29.AutoSize = true;
+            this.metroLabel29.Location = new System.Drawing.Point(37, 245);
+            this.metroLabel29.Name = "metroLabel29";
+            this.metroLabel29.Size = new System.Drawing.Size(129, 19);
+            this.metroLabel29.TabIndex = 18;
+            this.metroLabel29.Text = "TrackingFrameOffset";
             // 
             // metroLabel28
             // 
             this.metroLabel28.AutoSize = true;
-            this.metroLabel28.Location = new System.Drawing.Point(41, 239);
+            this.metroLabel28.Location = new System.Drawing.Point(37, 197);
             this.metroLabel28.Name = "metroLabel28";
             this.metroLabel28.Size = new System.Drawing.Size(92, 19);
             this.metroLabel28.TabIndex = 17;
@@ -869,7 +906,7 @@
             // metroLabel27
             // 
             this.metroLabel27.AutoSize = true;
-            this.metroLabel27.Location = new System.Drawing.Point(57, 210);
+            this.metroLabel27.Location = new System.Drawing.Point(53, 168);
             this.metroLabel27.Name = "metroLabel27";
             this.metroLabel27.Size = new System.Drawing.Size(76, 19);
             this.metroLabel27.TabIndex = 17;
@@ -877,7 +914,7 @@
             // 
             // refDisconnectCommandButton
             // 
-            this.refDisconnectCommandButton.Location = new System.Drawing.Point(529, 239);
+            this.refDisconnectCommandButton.Location = new System.Drawing.Point(525, 197);
             this.refDisconnectCommandButton.Name = "refDisconnectCommandButton";
             this.refDisconnectCommandButton.Size = new System.Drawing.Size(52, 23);
             this.refDisconnectCommandButton.TabIndex = 16;
@@ -886,7 +923,7 @@
             // 
             // refConnectCommandButton
             // 
-            this.refConnectCommandButton.Location = new System.Drawing.Point(529, 210);
+            this.refConnectCommandButton.Location = new System.Drawing.Point(525, 168);
             this.refConnectCommandButton.Name = "refConnectCommandButton";
             this.refConnectCommandButton.Size = new System.Drawing.Size(52, 23);
             this.refConnectCommandButton.TabIndex = 16;
@@ -896,7 +933,7 @@
             // disconnectCommandTextBox
             // 
             this.disconnectCommandTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "disconnectCommand", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.disconnectCommandTextBox.Location = new System.Drawing.Point(139, 239);
+            this.disconnectCommandTextBox.Location = new System.Drawing.Point(135, 197);
             this.disconnectCommandTextBox.Name = "disconnectCommandTextBox";
             this.disconnectCommandTextBox.Size = new System.Drawing.Size(383, 23);
             this.disconnectCommandTextBox.TabIndex = 15;
@@ -905,7 +942,7 @@
             // connectCommandTextBox
             // 
             this.connectCommandTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "connectCommand", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.connectCommandTextBox.Location = new System.Drawing.Point(139, 210);
+            this.connectCommandTextBox.Location = new System.Drawing.Point(135, 168);
             this.connectCommandTextBox.Name = "connectCommandTextBox";
             this.connectCommandTextBox.Size = new System.Drawing.Size(383, 23);
             this.connectCommandTextBox.TabIndex = 15;
@@ -916,7 +953,7 @@
             this.offsetPosCheckBox.AutoSize = true;
             this.offsetPosCheckBox.Checked = global::ALVR.Properties.Settings.Default.useOffsetPos;
             this.offsetPosCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useOffsetPos", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.offsetPosCheckBox.Location = new System.Drawing.Point(37, 106);
+            this.offsetPosCheckBox.Location = new System.Drawing.Point(35, 79);
             this.offsetPosCheckBox.Name = "offsetPosCheckBox";
             this.offsetPosCheckBox.Size = new System.Drawing.Size(87, 15);
             this.offsetPosCheckBox.TabIndex = 14;
@@ -926,7 +963,7 @@
             // offsetPosZTextBox
             // 
             this.offsetPosZTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "offsetPosZ", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.offsetPosZTextBox.Location = new System.Drawing.Point(258, 102);
+            this.offsetPosZTextBox.Location = new System.Drawing.Point(254, 75);
             this.offsetPosZTextBox.Name = "offsetPosZTextBox";
             this.offsetPosZTextBox.Size = new System.Drawing.Size(58, 23);
             this.offsetPosZTextBox.TabIndex = 11;
@@ -935,7 +972,7 @@
             // offsetPosYTextBox
             // 
             this.offsetPosYTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "offsetPosY", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.offsetPosYTextBox.Location = new System.Drawing.Point(194, 102);
+            this.offsetPosYTextBox.Location = new System.Drawing.Point(190, 75);
             this.offsetPosYTextBox.Name = "offsetPosYTextBox";
             this.offsetPosYTextBox.Size = new System.Drawing.Size(58, 23);
             this.offsetPosYTextBox.TabIndex = 12;
@@ -944,7 +981,7 @@
             // offsetPosXTextBox
             // 
             this.offsetPosXTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "offsetPosX", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.offsetPosXTextBox.Location = new System.Drawing.Point(130, 102);
+            this.offsetPosXTextBox.Location = new System.Drawing.Point(126, 75);
             this.offsetPosXTextBox.Name = "offsetPosXTextBox";
             this.offsetPosXTextBox.Size = new System.Drawing.Size(58, 23);
             this.offsetPosXTextBox.TabIndex = 13;
@@ -952,7 +989,7 @@
             // 
             // sendOffsetPos
             // 
-            this.sendOffsetPos.Location = new System.Drawing.Point(322, 102);
+            this.sendOffsetPos.Location = new System.Drawing.Point(318, 75);
             this.sendOffsetPos.Name = "sendOffsetPos";
             this.sendOffsetPos.Size = new System.Drawing.Size(75, 23);
             this.sendOffsetPos.TabIndex = 10;
@@ -962,7 +999,7 @@
             // metroLabel26
             // 
             this.metroLabel26.AutoSize = true;
-            this.metroLabel26.Location = new System.Drawing.Point(37, 181);
+            this.metroLabel26.Location = new System.Drawing.Point(33, 140);
             this.metroLabel26.Name = "metroLabel26";
             this.metroLabel26.Size = new System.Drawing.Size(95, 19);
             this.metroLabel26.TabIndex = 3;
@@ -971,7 +1008,7 @@
             // metroLabel25
             // 
             this.metroLabel25.AutoSize = true;
-            this.metroLabel25.Location = new System.Drawing.Point(66, 147);
+            this.metroLabel25.Location = new System.Drawing.Point(64, 111);
             this.metroLabel25.Name = "metroLabel25";
             this.metroLabel25.Size = new System.Drawing.Size(212, 19);
             this.metroLabel25.TabIndex = 3;
@@ -980,7 +1017,7 @@
             // metroLabel24
             // 
             this.metroLabel24.AutoSize = true;
-            this.metroLabel24.Location = new System.Drawing.Point(66, 62);
+            this.metroLabel24.Location = new System.Drawing.Point(64, 47);
             this.metroLabel24.Name = "metroLabel24";
             this.metroLabel24.Size = new System.Drawing.Size(238, 19);
             this.metroLabel24.TabIndex = 3;
@@ -991,7 +1028,7 @@
             this.fakeTrackingReferenceCheckBox.AutoSize = true;
             this.fakeTrackingReferenceCheckBox.Checked = global::ALVR.Properties.Settings.Default.useTrackingReference;
             this.fakeTrackingReferenceCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useTrackingReference", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.fakeTrackingReferenceCheckBox.Location = new System.Drawing.Point(37, 31);
+            this.fakeTrackingReferenceCheckBox.Location = new System.Drawing.Point(35, 16);
             this.fakeTrackingReferenceCheckBox.Name = "fakeTrackingReferenceCheckBox";
             this.fakeTrackingReferenceCheckBox.Size = new System.Drawing.Size(113, 15);
             this.fakeTrackingReferenceCheckBox.TabIndex = 2;
@@ -1308,6 +1345,15 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
+            // saveTrackingFrameOffsetButton
+            // 
+            this.saveTrackingFrameOffsetButton.Location = new System.Drawing.Point(284, 245);
+            this.saveTrackingFrameOffsetButton.Name = "saveTrackingFrameOffsetButton";
+            this.saveTrackingFrameOffsetButton.Size = new System.Drawing.Size(75, 23);
+            this.saveTrackingFrameOffsetButton.TabIndex = 10;
+            this.saveTrackingFrameOffsetButton.Text = "Save";
+            this.saveTrackingFrameOffsetButton.Click += new System.EventHandler(this.saveTrackingFrameOffsetButton_Click);
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -1454,6 +1500,10 @@
         private MetroFramework.Controls.MetroTabPage soundTab;
         private MetroFramework.Controls.MetroComboBox soundDeviceComboBox;
         private MetroFramework.Controls.MetroCheckBox soundCheckBox;
+        private MetroFramework.Controls.MetroTextBox trackingFrameOffsetTextBox;
+        private MetroFramework.Controls.MetroLabel metroLabel30;
+        private MetroFramework.Controls.MetroLabel metroLabel29;
+        private MetroFramework.Controls.MetroButton saveTrackingFrameOffsetButton;
     }
 }
 

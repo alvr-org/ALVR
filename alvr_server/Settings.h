@@ -54,6 +54,7 @@ static const char * const k_pch_Settings_OffsetPosX_Float = "offsetPosX";
 static const char * const k_pch_Settings_OffsetPosY_Float = "offsetPosY";
 static const char * const k_pch_Settings_OffsetPosZ_Float = "offsetPosZ";
 
+static const char * const k_pch_Settings_TrackingFrameOffset_Int32 = "trackingFrameOffset";
 //
 // Constants
 //
@@ -140,5 +141,7 @@ public:
 	int32_t m_causePacketLoss;
 
 	bool m_useTrackingReference;
+
+	int32_t m_trackingFrameOffset;
 };
 

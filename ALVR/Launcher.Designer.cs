@@ -107,6 +107,7 @@
             this.offsetPosZTextBox = new MetroFramework.Controls.MetroTextBox();
             this.offsetPosYTextBox = new MetroFramework.Controls.MetroTextBox();
             this.offsetPosXTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.saveTrackingFrameOffsetButton = new MetroFramework.Controls.MetroButton();
             this.sendOffsetPos = new MetroFramework.Controls.MetroButton();
             this.metroLabel26 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel25 = new MetroFramework.Controls.MetroLabel();
@@ -142,7 +143,6 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.saveTrackingFrameOffsetButton = new MetroFramework.Controls.MetroButton();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.connectedPanel.SuspendLayout();
@@ -167,6 +167,7 @@
             this.metroButton1.Size = new System.Drawing.Size(75, 23);
             this.metroButton1.TabIndex = 6;
             this.metroButton1.Text = "Send";
+            this.metroButton1.Click += new System.EventHandler(this.button2_Click);
             // 
             // metroButton2
             // 
@@ -175,6 +176,7 @@
             this.metroButton2.Size = new System.Drawing.Size(75, 23);
             this.metroButton2.TabIndex = 6;
             this.metroButton2.Text = "Send";
+            this.metroButton2.Click += new System.EventHandler(this.button3_Click);
             // 
             // metroProgressSpinner1
             // 
@@ -525,7 +527,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(206, -2676);
+            this.metroLabel22.Location = new System.Drawing.Point(206, -2788);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -987,6 +989,15 @@
             this.offsetPosXTextBox.TabIndex = 13;
             this.offsetPosXTextBox.Text = global::ALVR.Properties.Settings.Default.offsetPosX;
             // 
+            // saveTrackingFrameOffsetButton
+            // 
+            this.saveTrackingFrameOffsetButton.Location = new System.Drawing.Point(284, 245);
+            this.saveTrackingFrameOffsetButton.Name = "saveTrackingFrameOffsetButton";
+            this.saveTrackingFrameOffsetButton.Size = new System.Drawing.Size(75, 23);
+            this.saveTrackingFrameOffsetButton.TabIndex = 10;
+            this.saveTrackingFrameOffsetButton.Text = "Save";
+            this.saveTrackingFrameOffsetButton.Click += new System.EventHandler(this.saveTrackingFrameOffsetButton_Click);
+            // 
             // sendOffsetPos
             // 
             this.sendOffsetPos.Location = new System.Drawing.Point(318, 75);
@@ -1344,15 +1355,6 @@
             // openFileDialog1
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
-            // 
-            // saveTrackingFrameOffsetButton
-            // 
-            this.saveTrackingFrameOffsetButton.Location = new System.Drawing.Point(284, 245);
-            this.saveTrackingFrameOffsetButton.Name = "saveTrackingFrameOffsetButton";
-            this.saveTrackingFrameOffsetButton.Size = new System.Drawing.Size(75, 23);
-            this.saveTrackingFrameOffsetButton.TabIndex = 10;
-            this.saveTrackingFrameOffsetButton.Text = "Save";
-            this.saveTrackingFrameOffsetButton.Click += new System.EventHandler(this.saveTrackingFrameOffsetButton_Click);
             // 
             // Launcher
             // 

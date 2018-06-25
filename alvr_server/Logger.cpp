@@ -101,10 +101,6 @@ void LogS(const char *str)
 	SYSTEMTIME st2, st;
 	uint64_t q;
 
-	if (!ofs.is_open()) {
-		return;
-	}
-
 	GetSystemTimeAsFileTime(&ft);
 	FileTimeToSystemTime(&ft, &st2);
 	SystemTimeToTzSpecificLocalTime(NULL, &st2, &st);
@@ -131,6 +127,11 @@ void LogS(const char *str)
 			tailLog[currentLog].push_back(line);
 		}
 	}
+
+	if (!ofs.is_open()) {
+		return;
+	}
+
 	ofs << buf << str << std::endl;
 
 	if (lastRefresh / 1000000 != q / 1000000) {
@@ -141,10 +142,6 @@ void LogS(const char *str)
 
 void Log(const char *format, ...)
 {
-	if (!ofs.is_open()) {
-		return;
-	}
-
 	va_list args;
 	va_start(args, format);
 	char buf2[10000];

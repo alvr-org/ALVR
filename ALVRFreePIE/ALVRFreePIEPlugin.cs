@@ -190,7 +190,7 @@ namespace ALVRFreePIE
         public static readonly string[] BUTTONS = {"system", "application_menu", "grip"
                 , "dpad_left", "dpad_up", "dpad_right", "dpad_down"
                 , "a", "b", "x", "y"
-                , "trackpad", "trigger", "shoulder_left", "shoulder_right"
+                , "trackpad_click", "trackpad_touch", "trigger", "shoulder_left", "shoulder_right"
         , "joystick_left", "joystick_right", "back", "guide", "start"};
 
         MemoryMappedFile memoryMappedFile;
@@ -252,7 +252,7 @@ namespace ALVRFreePIE
 
 
         public bool[] input_buttons { get; set; } = new bool[6];
-        public bool[] buttons { get; set; } = new bool[20];
+        public bool[] buttons { get; set; } = new bool[ALVRFreePIEPlugin.BUTTONS.Length];
 
         // x y
         public double[] input_trackpad { get; set; } = new double[2];

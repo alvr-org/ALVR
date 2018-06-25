@@ -22,7 +22,7 @@ public:
 	static const uint32_t ALVR_FREEPIE_INPUT_BUTTON_BACK = 1 << 3;
 	static const uint32_t ALVR_FREEPIE_INPUT_BUTTON_VOLUME_UP = 1 << 4;
 	static const uint32_t ALVR_FREEPIE_INPUT_BUTTON_VOLUME_DOWN = 1 << 5;
-	static const uint32_t ALVR_FREEPIE_BUTTONS = 20;
+	static const uint32_t ALVR_FREEPIE_BUTTONS = 21;
 
 	static const int BUTTON_MAP[FreePIE::ALVR_FREEPIE_BUTTONS];
 

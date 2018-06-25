@@ -1,11 +1,13 @@
-import math
+import math, time
 
-global prev_back, mode, offset
+global prev_back, mode, offset, message_time
 
 if starting:
   prev_back = False
   mode = 0
   offset = [0.0, 0.0, 0.0]
+  message_time = 0.0
+
 
 map = [["system", Key.G], ["application_menu", Key.X], ["trigger", Key.T], ["a", Key.V], ["b", Key.B], ["x", Key.N], ["y", Key.M]
 , ["grip", Key.F1], ["trackpad_click", Key.F2], ["back", Key.F3], ["guide", Key.F4], ["start", Key.F5]
@@ -18,7 +20,11 @@ if prev_back != alvr.input_buttons[alvr.InputId("back")]:
   prev_back = alvr.input_buttons[alvr.InputId("back")]
   if alvr.input_buttons[alvr.InputId("back")]:
     mode = (mode + 1) % 3
+    alvr.message = "mode " + str(mode)
+    message_time = time.time()
 
+if time.time() - message_time > 2:
+  alvr.message = ""
 
 if mode == 0:
   # trackpad guesture
@@ -37,7 +43,7 @@ if mode == 0:
       else:
         alvr.buttons[alvr.Id("application_menu")] = True
 elif mode == 1:
-  # fly
+  # fly (buggy)
   if alvr.input_buttons[alvr.InputId("trackpad_click")]:
     theta = alvr.input_controller_orientation[1]
     speed = 0.01

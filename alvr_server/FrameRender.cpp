@@ -286,7 +286,7 @@ bool FrameRender::Startup()
 		return false;
 	}
 
-	CreateRecenterTexture();
+	CreateResourceTexture();
 
 	Log("Staging Texture created");
 
@@ -294,7 +294,7 @@ bool FrameRender::Startup()
 }
 
 
-bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering, const std::string& debugText)
+bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering, const std::string &message, const std::string& debugText)
 {
 	// Set render target
 	m_pD3DRender->GetContext()->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), m_pDepthStencilView.Get());
@@ -313,7 +313,9 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 	m_pD3DRender->GetContext()->ClearRenderTargetView(m_pRenderTargetView.Get(), DirectX::Colors::MidnightBlue);
 
 	// Overlay recentering texture on top of all layers.
+	int recenterLayer = -1;
 	if (recentering) {
+		recenterLayer = layerCount;
 		layerCount++;
 	}
 
@@ -321,7 +323,7 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 		ID3D11Texture2D *textures[2];
 		vr::VRTextureBounds_t bound[2];
 
-		if (recentering && i == layerCount - 1) {
+		if (i == recenterLayer) {
 			textures[0] = (ID3D11Texture2D *)m_recenterTexture.Get();
 			textures[1] = (ID3D11Texture2D *)m_recenterTexture.Get();
 			bound[0].uMin = bound[0].vMin = bound[1].uMin = bound[1].vMin = 0.0f;
@@ -334,14 +336,16 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 			bound[1] = bounds[i][1];
 		}
 		if (textures[0] == NULL || textures[1] == NULL) {
-			Log("Ignore NULL layer. layer=%d/%d%s", i, layerCount, recentering ? " (recentering)" : "");
+			Log("Ignore NULL layer. layer=%d/%d%s%s", i, layerCount
+				, recentering ? " (recentering)" : "", !message.empty() ? " (message)" : "");
 			continue;
 		}
 
 		D3D11_TEXTURE2D_DESC srcDesc;
 		textures[0]->GetDesc(&srcDesc);
 
-		Log("RenderFrame layer=%d/%d %dx%d %d%s", i, layerCount, srcDesc.Width, srcDesc.Height, srcDesc.Format, recentering ? " (recentering)" : "");
+		Log("RenderFrame layer=%d/%d %dx%d %d%s%s", i, layerCount, srcDesc.Width, srcDesc.Height, srcDesc.Format
+			, recentering ? " (recentering)" : "", !message.empty() ? " (message)" : "");
 
 		D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
 		SRVDesc.Format = srcDesc.Format;
@@ -451,6 +455,9 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 		m_pD3DRender->GetContext()->DrawIndexed(VERTEX_INDEX_COUNT, 0, 0);
 	}
 
+	if (!message.empty()) {
+		RenderMessage(message);
+	}
 	RenderDebugText(debugText);
 
 	m_pD3DRender->GetContext()->Flush();
@@ -458,6 +465,45 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 	return true;
 }
 
+
+void FrameRender::RenderMessage(const std::string &message)
+{
+	m_SpriteBatch->Begin();
+
+	std::vector<wchar_t> buf(message.size() + 1);
+	_snwprintf_s(&buf[0], buf.size(), buf.size(), L"%hs", message.c_str());
+
+	DirectX::SimpleMath::Vector2 origin = m_Font->MeasureString(&buf[0]);
+
+	int eyeWidth = Settings::Instance().m_renderWidth / 2;
+	int x = Settings::Instance().m_renderWidth / 6;
+	int y = Settings::Instance().m_renderHeight / 3;
+	float scale = Settings::Instance().m_renderWidth / (float)3072;
+
+	RECT rc;
+	rc.left = x - 10;
+	rc.top = y - 10;
+	rc.right = x + origin.x * scale + 10;
+	rc.bottom = y + origin.y * scale + 10;
+	m_SpriteBatch->Draw(m_messageBGResourceView.Get(), rc);
+	rc.left += eyeWidth;
+	rc.right += eyeWidth;
+	m_SpriteBatch->Draw(m_messageBGResourceView.Get(), rc);
+
+	DirectX::SimpleMath::Vector2 FontPos;
+	FontPos.x = x;
+	FontPos.y = y;
+
+	m_Font->DrawString(m_SpriteBatch.get(), &buf[0],
+		FontPos, DirectX::Colors::Gray, 0.f, DirectX::XMFLOAT2(), scale);
+
+	FontPos.x += eyeWidth;
+
+	m_Font->DrawString(m_SpriteBatch.get(), &buf[0],
+		FontPos, DirectX::Colors::Gray, 0.f, DirectX::XMFLOAT2(), scale);
+
+	m_SpriteBatch->End();
+}
 
 void FrameRender::RenderDebugText(const std::string & debugText)
 {
@@ -487,7 +533,7 @@ ComPtr<ID3D11Texture2D> FrameRender::GetTexture()
 	return m_pStagingTexture;
 }
 
-void FrameRender::CreateRecenterTexture()
+void FrameRender::CreateResourceTexture()
 {
 	std::vector<char> texture;
 	if (!ReadBinaryResource(texture, IDR_RECENTER_TEXTURE)) {
@@ -502,5 +548,19 @@ void FrameRender::CreateRecenterTexture()
 		Log("Failed to create recenter texture. %d %s", hr, GetDxErrorStr(hr));
 	}else if (!m_recenterResourceView) {
 		Log("Failed to create recenter resource view. %d %s", hr, GetDxErrorStr(hr));
+	}
+
+	if (!ReadBinaryResource(texture, IDR_MESSAGE_BG_TEXTURE)) {
+		Log("Failed to load resource for IDR_MESSAGE_BG_TEXTURE.");
+		return;
+	}
+
+	hr = DirectX::CreateWICTextureFromMemory(m_pD3DRender->GetDevice(), (uint8_t *)&texture[0], texture.size(),
+		&m_messageBGTexture, &m_messageBGResourceView);
+	if (!m_messageBGTexture) {
+		Log("Failed to create message_bg texture. %d %s", hr, GetDxErrorStr(hr));
+	}
+	else if (!m_messageBGResourceView) {
+		Log("Failed to create message_bg resource view. %d %s", hr, GetDxErrorStr(hr));
 	}
 }

@@ -320,7 +320,8 @@ namespace
 		{
 		}
 
-		bool CopyToStaging( ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime, const std::string& debugText)
+		bool CopyToStaging( ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering
+			, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime, const std::string& message, const std::string& debugText)
 		{
 			m_presentationTime = presentationTime;
 			m_frameIndex = frameIndex;
@@ -330,7 +331,7 @@ namespace
 			char buf[200];
 			snprintf(buf, sizeof(buf), "\nindex2: %llu", m_frameIndex2);
 
-			m_FrameRender->RenderFrame(pTexture, bounds, layerCount, recentering, debugText + buf);
+			m_FrameRender->RenderFrame(pTexture, bounds, layerCount, recentering, message, debugText + buf);
 			return true;
 		}
 
@@ -892,7 +893,7 @@ public:
 			, m_submitFrameIndex, Settings::Instance().m_trackingFrameOffset, submitFrameIndex);
 
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
-		m_pEncoder->CopyToStaging(pTexture, bounds, layerCount, m_recenterManager->IsRecentering(), presentationTime, submitFrameIndex, m_submitClientTime, debugText);
+		m_pEncoder->CopyToStaging(pTexture, bounds, layerCount, m_recenterManager->IsRecentering(), presentationTime, submitFrameIndex, m_submitClientTime, m_recenterManager->GetFreePIEMessage(), debugText);
 
 		m_pD3DRender->GetContext()->Flush();
 	}

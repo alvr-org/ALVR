@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Text;
 using System.Threading;
 
 namespace ALVRFreePIE
@@ -146,6 +147,10 @@ namespace ALVRFreePIE
                     mappedStream.Write(BitConverter.GetBytes(global.joystick_right[1]), 0, sizeof(double));
                     mappedStream.Write(BitConverter.GetBytes(global.trackpad[0]), 0, sizeof(double));
                     mappedStream.Write(BitConverter.GetBytes(global.trackpad[1]), 0, sizeof(double));
+
+                    var bytes = Encoding.UTF8.GetBytes(global.message);
+                    mappedStream.Write(bytes, 0, Math.Min(bytes.Length, ALVR_FREEPIE_MESSAGE_LENGTH - 1));
+                    mappedStream.WriteByte(0);
                 }
 
                 for (int i = 0; i < INPUT_BUTTONS.Length; i++)
@@ -185,6 +190,8 @@ namespace ALVRFreePIE
         static readonly UInt32 ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_POSITION = 1 << 2;
         static readonly UInt32 ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION = 1 << 3;
         static readonly UInt32 ALVR_FREEPIE_FLAG_OVERRIDE_BUTTONS = 1 << 4;
+
+        static readonly int ALVR_FREEPIE_MESSAGE_LENGTH = 512;
 
         public static readonly string[] INPUT_BUTTONS = {"trackpad_click", "trackpad_touch", "trigger", "back", "volume_up", "volume_down"};
         public static readonly string[] BUTTONS = {"system", "application_menu", "grip"
@@ -266,6 +273,8 @@ namespace ALVRFreePIE
         public double[] joystick_right { get; set; } = new double[2];
         // x y
         public double[] trackpad { get; set; } = new double[2];
+
+        public string message { get; set; } = "";
 
     }
 }

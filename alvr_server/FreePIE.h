@@ -23,6 +23,7 @@ public:
 	static const uint32_t ALVR_FREEPIE_INPUT_BUTTON_VOLUME_UP = 1 << 4;
 	static const uint32_t ALVR_FREEPIE_INPUT_BUTTON_VOLUME_DOWN = 1 << 5;
 	static const uint32_t ALVR_FREEPIE_BUTTONS = 21;
+	static const uint32_t ALVR_FREEPIE_MESSAGE_LENGTH = 512;
 
 	static const int BUTTON_MAP[FreePIE::ALVR_FREEPIE_BUTTONS];
 
@@ -47,6 +48,7 @@ public:
 		double joystick_left[2];
 		double joystick_right[2];
 		double trackpad[2];
+		char message[ALVR_FREEPIE_MESSAGE_LENGTH];
 	};
 #pragma pack(pop)
 
@@ -82,6 +84,7 @@ public:
 			| ((info.flags & TrackingInfo::FLAG_CONTROLLER_VOLUME_UP) ? ALVR_FREEPIE_INPUT_BUTTON_VOLUME_UP : 0)
 			| ((info.flags & TrackingInfo::FLAG_CONTROLLER_VOLUME_DOWN) ? ALVR_FREEPIE_INPUT_BUTTON_VOLUME_DOWN : 0);
 
+		m_p->message[ALVR_FREEPIE_MESSAGE_LENGTH - 1] = 0;
 		memcpy(&m_copy, m_p, sizeof(FreePIEFileMapping));
 
 		m_mutex.Release();
@@ -96,6 +99,7 @@ private:
 		m_mutex.Wait();
 
 		m_p = (FreePIEFileMapping *)m_fileMapping.Map(FILE_MAP_WRITE);
+		memset(m_p, 0, sizeof(FreePIEFileMapping));
 		m_p->version = ALVR_FREEPIE_SIGNATURE_V1;
 		m_p->flags = 0;
 

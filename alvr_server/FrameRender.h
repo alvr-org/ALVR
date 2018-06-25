@@ -24,9 +24,10 @@ public:
 	virtual ~FrameRender();
 
 	bool Startup();
-	bool RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering, const std::string& debugText);
+	bool RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering, const std::string& message, const std::string& debugText);
+	void RenderMessage(const std::string& message);
 	void RenderDebugText(const std::string& debugText);
-	void CreateRecenterTexture();
+	void CreateResourceTexture();
 
 	ComPtr<ID3D11Texture2D> GetTexture();
 private:
@@ -51,6 +52,8 @@ private:
 
 	ComPtr<ID3D11Resource> m_recenterTexture;
 	ComPtr<ID3D11ShaderResourceView> m_recenterResourceView;
+	ComPtr<ID3D11Resource> m_messageBGTexture;
+	ComPtr<ID3D11ShaderResourceView> m_messageBGResourceView;
 
 	std::unique_ptr<DirectX::SpriteFont> m_Font;
 	std::unique_ptr<DirectX::SpriteBatch> m_SpriteBatch;

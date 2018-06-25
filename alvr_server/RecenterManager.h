@@ -132,6 +132,10 @@ public:
 		return m_fixedPositionHMD;
 	}
 
+	std::string GetFreePIEMessage() {
+		return m_freePIE->GetData().message;
+	}
+
 private:
 	void UpdateOtherTrackingSource(const TrackingInfo &info) {
 		if (m_rotationDiffLastInitialized == 0) {

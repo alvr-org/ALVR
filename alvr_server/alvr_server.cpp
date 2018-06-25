@@ -1422,6 +1422,8 @@ CServerDriver_DisplayRedirect g_serverDriverDisplayRedirect;
 extern "C" __declspec( dllexport )
 void *HmdDriverFactory( const char *pInterfaceName, int *pReturnCode )
 {
+	InitCrashHandler();
+
 	Log("HmdDriverFactory %s (%s)", pInterfaceName, vr::IServerTrackedDeviceProvider_Version);
 	if ( 0 == strcmp( vr::IServerTrackedDeviceProvider_Version, pInterfaceName ) )
 	{

@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CUDA", "CUDA\CUDA.vcxproj",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ALVRFreePIE", "ALVRFreePIE\ALVRFreePIE.csproj", "{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrashReport", "CrashReport\CrashReport.csproj", "{A89AECE3-9567-48E8-927D-1C8FA0A382A4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -75,6 +77,18 @@ Global
 		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Release|Win32.Build.0 = Release|Any CPU
 		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Release|x64.ActiveCfg = Release|Any CPU
 		{D39838EE-67A1-4D76-8CFA-C1AAE99C2920}.Release|x64.Build.0 = Release|Any CPU
+		{A89AECE3-9567-48E8-927D-1C8FA0A382A4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A89AECE3-9567-48E8-927D-1C8FA0A382A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A89AECE3-9567-48E8-927D-1C8FA0A382A4}.Debug|Win32.ActiveCfg = Debug|Any CPU
+		{A89AECE3-9567-48E8-927D-1C8FA0A382A4}.Debug|Win32.Build.0 = Debug|Any CPU
+		{A89AECE3-9567-48E8-927D-1C8FA0A382A4}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A89AECE3-9567-48E8-927D-1C8FA0A382A4}.Debug|x64.Build.0 = Debug|Any CPU
+		{A89AECE3-9567-48E8-927D-1C8FA0A382A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A89AECE3-9567-48E8-927D-1C8FA0A382A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A89AECE3-9567-48E8-927D-1C8FA0A382A4}.Release|Win32.ActiveCfg = Release|Any CPU
+		{A89AECE3-9567-48E8-927D-1C8FA0A382A4}.Release|Win32.Build.0 = Release|Any CPU
+		{A89AECE3-9567-48E8-927D-1C8FA0A382A4}.Release|x64.ActiveCfg = Release|Any CPU
+		{A89AECE3-9567-48E8-927D-1C8FA0A382A4}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

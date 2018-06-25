@@ -5,16 +5,88 @@
 #include <time.h>
 #include <locale>
 #include <codecvt>
+#include <list>
 #include "Logger.h"
+#include "Utils.h"
 
 static const char *APP_NAME = "ALVR Server";
+static const int STARTUP_LOG_SIZE = 500;
+static const int TAIL_LOG_SIZE = 500;
 
-extern std::string g_DebugOutputDir;
+extern HINSTANCE g_hInstance;
 
 static std::ofstream ofs;
 static bool Opened = false;
 static bool OpenFailed = false;
 static uint64_t lastRefresh = 0;
+static std::string lastException;
+static std::list<std::string> startupLog;
+static std::list<std::string> tailLog[2];
+static int currentLog = 0;
+
+static std::wstring GetCrashReportPath() {
+	wchar_t cpath[10000];
+	GetModuleFileNameW(g_hInstance, cpath, sizeof(cpath) / sizeof(wchar_t));
+	wchar_t *p = wcsrchr(cpath, L'\\');
+	*p = L'\0';
+	wcsncat_s(cpath, L"\\..\\..\\..\\CrashReport.exe", sizeof(cpath) / sizeof(wchar_t));
+	return cpath;
+}
+
+static void OutputCrashLog() {
+	wchar_t cpath[10000], logPath[11000];
+	FILE *fp;
+	wchar_t *p;
+	SYSTEMTIME st;
+
+	GetModuleFileNameW(g_hInstance, cpath, sizeof(cpath) / sizeof(wchar_t));
+	p = wcsrchr(cpath, L'\\');
+	*p = L'\0';
+
+	GetLocalTime(&st);
+
+	_snwprintf_s(logPath, sizeof(logPath), L"%s\\..\\..\\..\\ALVR_CrashLog_%04d%02d%02d_%02d%02d%02d.log",
+		cpath, st.wYear, st.wMonth, st.wDay,
+		st.wHour, st.wMinute, st.wSecond);
+
+	if (_wfopen_s(&fp, logPath, L"w")) {
+		return;
+	}
+
+	fprintf(fp, "Exception: %s\n", lastException.c_str());
+	fprintf(fp, "========== Startup Log ==========\n");
+	for (auto line : startupLog) {
+		fprintf(fp, "%s\n", line.c_str());
+	}
+	fprintf(fp, "========== Tail Log 1 ==========\n");
+	for (auto line : tailLog[currentLog]) {
+		fprintf(fp, "%s\n", line.c_str());
+	}
+	fprintf(fp, "========== Tail Log 2 ==========\n");
+	for (auto line : tailLog[1 - currentLog]) {
+		fprintf(fp, "%s\n", line.c_str());
+	}
+	fclose(fp);
+}
+
+static void ReportError() {
+	FlushLog();
+
+	OutputCrashLog();
+
+	ShellExecuteW(NULL, L"", GetCrashReportPath().c_str(), (L"\"" + ToWstring(lastException) + L"\"").c_str(), L"", SW_SHOWNORMAL);
+}
+
+static LONG WINAPI MyUnhandledExceptionFilter(PEXCEPTION_POINTERS pExceptionPtrs)
+{
+	Log("Unhandled Exception!!! %X %p", pExceptionPtrs->ExceptionRecord->ExceptionCode, pExceptionPtrs->ExceptionRecord->ExceptionAddress);
+	ReportError();
+	return EXCEPTION_EXECUTE_HANDLER;
+}
+
+void InitCrashHandler() {
+	SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
+}
 
 void OpenLog(const char *fileName) {
 	if (!Opened) {
@@ -44,6 +116,21 @@ void LogS(const char *str)
 	snprintf(buf, sizeof(buf), "[%02d:%02d:%02d.%03lld %03lld] ",
 		st.wHour, st.wMinute, st.wSecond, q / 1000 % 1000, q % 1000);
 
+	std::string line = std::string(buf) + str;
+	// Store log into list for crash log.
+	if (startupLog.size() < STARTUP_LOG_SIZE) {
+		startupLog.push_back(line);
+	}
+	else {
+		if (tailLog[currentLog].size() < TAIL_LOG_SIZE) {
+			tailLog[currentLog].push_back(line);
+		}
+		else {
+			currentLog = 1 - currentLog;
+			tailLog[currentLog].clear();
+			tailLog[currentLog].push_back(line);
+		}
+	}
 	ofs << buf << str << std::endl;
 
 	if (lastRefresh / 1000000 != q / 1000000) {
@@ -76,7 +163,8 @@ void FatalLog(const char *format, ...) {
 
 	LogS(buf2);
 
-	MessageBoxA(NULL, buf2, APP_NAME, MB_OK);
+	lastException = buf2;
+	ReportError();
 }
 
 Exception MakeException(const char *format, ...) {
@@ -87,6 +175,15 @@ Exception MakeException(const char *format, ...) {
 	va_end(args);
 
 	LogS(buf);
+	lastException = buf;
+	FlushLog();
 
 	return Exception(buf);
+}
+
+void FlushLog() {
+	if (!ofs.is_open()) {
+		return;
+	}
+	ofs.flush();
 }

@@ -3,6 +3,8 @@
 #include <iostream>
 #include <fstream>
 
+void InitCrashHandler();
+
 void OpenLog(const char *fileName);
 
 void Log(const char *pFormat, ...);
@@ -23,3 +25,5 @@ private:
 };
 
 Exception MakeException(const char *format, ...);
+
+void FlushLog();

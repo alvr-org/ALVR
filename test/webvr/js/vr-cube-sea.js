@@ -367,7 +367,7 @@ window.VRCubeSea = (function () {
     gl.uniformMatrix4fv(program.uniform.modelViewMat, false, mm);
 
     if(position){
-        var fontSize = 40;
+        var fontSize = 60;
       var context = this.textureCanvas.getContext("2d");
       context.save();
       context.fillRect(0, 0, this.textureCanvas.width, this.textureCanvas.height);
@@ -377,7 +377,7 @@ window.VRCubeSea = (function () {
       context.textBaseline = 'middle';
 
       if(orientation){
-        var line = 38;
+        var line = 58;
         var x = 200;
         var pos = 20;
         function drawText(text){
@@ -398,7 +398,15 @@ window.VRCubeSea = (function () {
         drawText("Position(x,y,z):");
         drawText("" + position[0].toFixed(6) + " " + position[1].toFixed(3) + " " + position[2].toFixed(3));
 
-        drawText("t1:" + window.test  + " t2:" + window.test2 + "");
+        var button = "";
+        for(var i = 0; i < navigator.getGamepads().length; i++){
+            var s = navigator.getGamepads()[i];
+            button += " "
+            for(var j = 0; j < s.buttons.length; j++){
+                button += " " + s.buttons[j].pressed;
+            }
+        }
+        drawText("t1:" + window.test  + " t2:" + window.test2 + "" + " button:" + button);
 
         var date = new Date();
         drawText(digit(date.getHours(), 2) + ":" + digit(date.getMinutes(), 2)

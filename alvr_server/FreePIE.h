@@ -11,13 +11,44 @@ public:
 	static const uint32_t ALVR_FREEPIE_SIGNATURE_V1 = 0x11223344;
 
 	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_ORIENTATION = 1 << 0;
-	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_POSITION = 1 << 1;
-	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION = 1 << 2;
+	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION = 1 << 1;
+	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_POSITION = 1 << 2;
 	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION = 1 << 3;
+	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_BUTTONS = 1 << 4;
 
+	static const uint32_t ALVR_FREEPIE_INPUT_BUTTON_TRACKPAD_CLICK = 1 << 0;
+	static const uint32_t ALVR_FREEPIE_INPUT_BUTTON_TRACKPAD_TOUCH = 1 << 1;
+	static const uint32_t ALVR_FREEPIE_INPUT_BUTTON_TRIGGER = 1 << 2;
+	static const uint32_t ALVR_FREEPIE_INPUT_BUTTON_BACK = 1 << 3;
+	static const uint32_t ALVR_FREEPIE_INPUT_BUTTON_VOLUME_UP = 1 << 4;
+	static const uint32_t ALVR_FREEPIE_INPUT_BUTTON_VOLUME_DOWN = 1 << 5;
 	static const uint32_t ALVR_FREEPIE_BUTTONS = 20;
 
 	static const int BUTTON_MAP[FreePIE::ALVR_FREEPIE_BUTTONS];
+
+#pragma pack(push, 1)
+	struct FreePIEFileMapping {
+		uint32_t version;
+		uint32_t flags;
+		double input_head_orientation[3];
+		double input_controller_orientation[3];
+		double input_head_position[3];
+		double input_controller_position[3];
+		double input_trackpad[2];
+		uint32_t inputControllerButtons;
+		uint32_t controllerButtons;
+		double head_orientation[3];
+		double controller_orientation[3];
+		double head_position[3];
+		double controller_position[3];
+		double trigger;
+		double trigger_left;
+		double trigger_right;
+		double joystick_left[2];
+		double joystick_right[2];
+		double trackpad[2];
+	};
+#pragma pack(pop)
 
 	FreePIE()
 		: m_fileMapping(ALVR_FREEPIE_FILEMAPPING_NAME, sizeof(FreePIEFileMapping))
@@ -27,43 +58,37 @@ public:
 	~FreePIE() {
 	}
 
-	void UpdateTrackingInfoByFreePIE(const TrackingInfo &info, vr::HmdQuaternion_t &head_orientation, double *head_position
-		, vr::HmdQuaternion_t &controller_orientation, double *controller_position
-		, uint32_t *controllerOverrideButtons, uint32_t *controllerButtons) {
+	void UpdateTrackingInfoByFreePIE(const TrackingInfo &info, vr::HmdQuaternion_t &head_orientation
+		, vr::HmdQuaternion_t &controller_orientation, const TrackingVector3 &head_position, const TrackingVector3 &controller_position) {
 		m_mutex.Wait();
 
-		if (m_p->flags & ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_ORIENTATION) {
-			head_orientation = EulerAngleToQuaternion(m_p->head_orientation);
-		}
-		else {
-			QuaternionToEulerAngle(head_orientation, m_p->head_orientation);
-		}
+		QuaternionToEulerAngle(head_orientation, m_p->input_head_orientation);
+		QuaternionToEulerAngle(controller_orientation, m_p->input_controller_orientation);
+		m_p->input_head_position[0] = head_position.x;
+		m_p->input_head_position[1] = head_position.y;
+		m_p->input_head_position[2] = head_position.z;
+		m_p->input_controller_position[0] = controller_position.x;
+		m_p->input_controller_position[1] = controller_position.y;
+		m_p->input_controller_position[2] = controller_position.z;
 
-		if (m_p->flags & ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_POSITION) {
-			memcpy(head_position, m_p->head_position, sizeof(double) * 3);
-		}
-		else {
-			memcpy(m_p->head_position, head_position, sizeof(double) * 3);
-		}
+		m_p->input_trackpad[0] = info.controllerTrackpadPosition.x;
+		m_p->input_trackpad[1] = info.controllerTrackpadPosition.y;
 
-		if (m_p->flags & ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION) {
-			controller_orientation = EulerAngleToQuaternion(m_p->controller_orientation);
-		}
-		else {
-			QuaternionToEulerAngle(controller_orientation, m_p->controller_orientation);
-		}
+		m_p->inputControllerButtons =
+			((info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_TRACKPAD_CLICK) ? ALVR_FREEPIE_INPUT_BUTTON_TRACKPAD_CLICK : 0)
+			| ((info.flags & TrackingInfo::FLAG_CONTROLLER_TRACKPAD_TOUCH) ? ALVR_FREEPIE_INPUT_BUTTON_TRACKPAD_TOUCH : 0)
+			| ((info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_TRIGGER_CLICK) ? ALVR_FREEPIE_INPUT_BUTTON_TRIGGER : 0)
+			| ((info.flags & TrackingInfo::FLAG_CONTROLLER_BACK) ? ALVR_FREEPIE_INPUT_BUTTON_BACK : 0)
+			| ((info.flags & TrackingInfo::FLAG_CONTROLLER_VOLUME_UP) ? ALVR_FREEPIE_INPUT_BUTTON_VOLUME_UP : 0)
+			| ((info.flags & TrackingInfo::FLAG_CONTROLLER_VOLUME_DOWN) ? ALVR_FREEPIE_INPUT_BUTTON_VOLUME_DOWN : 0);
 
-		if (m_p->flags & ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION) {
-			memcpy(controller_position, m_p->controller_position, sizeof(double) * 3);
-		}
-		else {
-			memcpy(m_p->controller_position, controller_position, sizeof(double) * 3);
-		}
-
-		*controllerOverrideButtons = m_p->controllerOverrideButtons;
-		*controllerButtons = m_p->controllerButtons;
+		memcpy(&m_copy, m_p, sizeof(FreePIEFileMapping));
 
 		m_mutex.Release();
+	}
+
+	const FreePIEFileMapping& GetData() {
+		return m_copy;
 	}
 
 private:
@@ -74,12 +99,20 @@ private:
 		m_p->version = ALVR_FREEPIE_SIGNATURE_V1;
 		m_p->flags = 0;
 
+		for (int i = 0; i < 14; i++) {
+			m_p->input_head_orientation[i] = 0.0;
+		}
+
+		m_p->inputControllerButtons = 0;
+
 		for (int i = 0; i < 12; i++) {
 			m_p->head_orientation[i] = 0.0;
 		}
-
-		m_p->controllerOverrideButtons = 0;
 		m_p->controllerButtons = 0;
+
+		for (int i = 0; i < 9; i++) {
+			(&m_p->trigger)[i] = 0.0;
+		}
 
 		m_mutex.Release();
 	}
@@ -87,18 +120,9 @@ private:
 	IPCFileMapping m_fileMapping;
 	IPCMutex m_mutex;
 
-	struct FreePIEFileMapping {
-		uint32_t version;
-		uint32_t flags;
-		double head_orientation[3];
-		double head_position[3];
-		double controller_orientation[3];
-		double controller_position[3];
-		uint32_t controllerOverrideButtons;
-		uint32_t controllerButtons;
-	};
 
 	FreePIEFileMapping *m_p;
+	FreePIEFileMapping m_copy;
 
 };
 

@@ -63,11 +63,6 @@ public:
 			, info.HeadPose_Pose_Orientation.w);
 
 		m_fixedPositionHMD = RotateVectorQuaternion(info.HeadPose_Pose_Position, m_centerPitch);
-		if (Settings::Instance().m_EnableOffsetPos) {
-			m_fixedPositionHMD.x += Settings::Instance().m_OffsetPos[0];
-			m_fixedPositionHMD.y += Settings::Instance().m_OffsetPos[1];
-			m_fixedPositionHMD.z += Settings::Instance().m_OffsetPos[2];
-		}
 
 		m_fixedOrientationController = MultiplyPitchQuaternion(
 			-m_centerPitch
@@ -77,11 +72,6 @@ public:
 			, info.controller_Pose_Orientation.w);
 
 		m_fixedPositionController = RotateVectorQuaternion(info.controller_Pose_Position, m_centerPitch);
-		if (Settings::Instance().m_EnableOffsetPos) {
-			m_fixedPositionController.x += Settings::Instance().m_OffsetPos[0];
-			m_fixedPositionController.y += Settings::Instance().m_OffsetPos[1];
-			m_fixedPositionController.z += Settings::Instance().m_OffsetPos[2];
-		}
 
 		if (info.flags & TrackingInfo::FLAG_OTHER_TRACKING_SOURCE) {
 			UpdateOtherTrackingSource(info);
@@ -98,17 +88,40 @@ public:
 				, m_fixedOrientationHMD.z
 				, m_fixedOrientationHMD.w));
 
-		double head_position[3];
-		double controller_position[3];
-		uint32_t controllerOverrideButtons;
-		uint32_t controllerButtons;
+		m_freePIE->UpdateTrackingInfoByFreePIE(info, m_fixedOrientationHMD, m_fixedOrientationController, m_fixedPositionHMD, m_fixedPositionController);
 
-		Log("RecenteredController:(%f, %f, %f), %f, %f, %f, %f", m_fixedPositionController.x, m_fixedPositionController.y, m_fixedPositionController.z
-		, m_fixedOrientationController.x, m_fixedOrientationController.y, m_fixedOrientationController.z, m_fixedOrientationController.w);
-		m_freePIE->UpdateTrackingInfoByFreePIE(info, m_fixedOrientationHMD, head_position, m_fixedOrientationController, controller_position
-			, &controllerOverrideButtons, &controllerButtons);
+		auto data = m_freePIE->GetData();
 
-		UpdateControllerState(info, controllerOverrideButtons, controllerButtons);
+		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_ORIENTATION) {
+			m_fixedOrientationHMD = EulerAngleToQuaternion(data.head_orientation);
+		}
+		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION) {
+			m_fixedOrientationController = EulerAngleToQuaternion(data.controller_orientation);
+		}
+		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_POSITION) {
+			m_fixedPositionHMD.x = data.head_position[0];
+			m_fixedPositionHMD.y = data.head_position[1];
+			m_fixedPositionHMD.z = data.head_position[2];
+		}
+		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION) {
+			Log("Test controller position: %f,%f,%f", data.controller_position[0], data.controller_position[1], data.controller_position[2]);
+			m_fixedPositionController.x = data.controller_position[0];
+			m_fixedPositionController.y = data.controller_position[1];
+			m_fixedPositionController.z = data.controller_position[2];
+		}
+
+		if (Settings::Instance().m_EnableOffsetPos) {
+			m_fixedPositionHMD.x += Settings::Instance().m_OffsetPos[0];
+			m_fixedPositionHMD.y += Settings::Instance().m_OffsetPos[1];
+			m_fixedPositionHMD.z += Settings::Instance().m_OffsetPos[2];
+		}
+		if (Settings::Instance().m_EnableOffsetPos) {
+			m_fixedPositionController.x += Settings::Instance().m_OffsetPos[0];
+			m_fixedPositionController.y += Settings::Instance().m_OffsetPos[1];
+			m_fixedPositionController.z += Settings::Instance().m_OffsetPos[2];
+		}
+
+		UpdateControllerState(info);
 	}
 
 	vr::HmdQuaternion_t GetRecenteredHMD() {
@@ -164,13 +177,14 @@ private:
 			transformed.x, transformed.y, transformed.z);
 	}
 
-	void UpdateControllerState(const TrackingInfo& info, uint32_t controllerOverrideButtons, uint32_t controllerButtons) {
+	void UpdateControllerState(const TrackingInfo& info) {
 		if (!Settings::Instance().m_enableController) {
 			return;
 		}
+		bool enableControllerButton = m_freePIE->GetData().flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_BUTTONS;
 		if (!m_controllerDetected) {
-			if ((info.flags & TrackingInfo::FLAG_CONTROLLER_ENABLE) || controllerOverrideButtons) {
-				Log("Enabling new controller by %s", controllerOverrideButtons ? "FreePIE" : "Client");
+			if ((info.flags & TrackingInfo::FLAG_CONTROLLER_ENABLE) || enableControllerButton) {
+				Log("Enabling new controller by %s", enableControllerButton ? "FreePIE" : "Client");
 				m_controllerDetected = true;
 
 				// false: right hand, true: left hand
@@ -186,9 +200,7 @@ private:
 			}
 		}
 		if (m_controllerDetected) {
-			Log("RecenteredController2:(%f, %f, %f), %f, %f, %f, %f", m_fixedPositionController.x, m_fixedPositionController.y, m_fixedPositionController.z
-				, m_fixedOrientationController.x, m_fixedOrientationController.y, m_fixedOrientationController.z, m_fixedOrientationController.w);
-			bool recenterRequested = m_remoteController->ReportControllerState(info, m_fixedOrientationController, m_fixedPositionController, controllerOverrideButtons, controllerButtons);
+			bool recenterRequested = m_remoteController->ReportControllerState(info, m_fixedOrientationController, m_fixedPositionController, enableControllerButton, m_freePIE->GetData());
 			if (recenterRequested) {
 				BeginRecenter();
 			}

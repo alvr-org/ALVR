@@ -1,0 +1,64 @@
+{
+  "jsonid" : "input_profile",
+  "controller_type": "vive_controller",
+  "legacy_profile": "vive_controller",
+  "legacy_binding" :  "{htc}/input/legacy_bindings_vive_controller.json",
+  "input_bindingui_mode" : "controller_handed",
+  "input_bindingui_left" :
+  {
+    "transform" : "scale(-1,1)",
+    "image": "{htc}/icons/vive_wand.svg"
+  },
+  "input_bindingui_right" :
+  {
+    "image": "{htc}/icons/vive_wand.svg"
+  },
+  "input_source" :
+  {
+    "/input/trackpad" : { 
+        "type" : "trackpad",
+        "binding_image_point" : [ 10, 59 ],
+        "order" : 2
+    },
+    "/input/trigger" : {
+        "type" : "trigger",
+        "binding_image_point" : [ 35, 64 ],
+        "order" : 1
+    },
+    "/input/grip" : {
+        "type" : "button",
+        "binding_image_point" : [ 24, 87 ],
+        "order" : 3
+    },
+    "/input/application_menu" : {
+        "type" : "button",
+        "binding_image_point" : [ 12, 35 ],
+        "order" : 4
+    },
+    "/input/system" : {
+        "type" : "button",
+        "binding_image_point" : [ 9, 81 ],
+        "order" : 5
+    },
+    "/pose/raw" : {
+        "type" : "pose",
+        "binding_image_point" : [ 14, 16 ]
+    },
+    "/pose/base" : {
+        "type" : "pose",
+        "binding_image_point" : [ 11, 150 ]
+    },
+    "/pose/handgrip" : {
+        "type" : "pose",
+        "binding_image_point" : [ 24, 86 ]
+    },
+    "/pose/tip" : {
+        "type" : "pose",
+        "binding_image_point" : [ 14, 16 ]
+    },
+    "/pose/gdc2015" : {
+        "type" : "pose",
+        "binding_image_point" : [ 14, 16 ]
+    }
+  }
+}

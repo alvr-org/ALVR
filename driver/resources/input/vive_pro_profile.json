@@ -1,0 +1,36 @@
+{
+	"jsonid" : "input_profile",
+  "controller_type": "vive_pro",
+  "input_bindingui_mode" : "hmd",
+  "input_bindingui_right" :
+  {
+    "image": "{htc}/icons/vive_hmd.png"
+  },
+  "input_source" :
+  {
+    "/input/system" : {
+        "type" : "button",
+		"order" :  1,
+        "binding_image_point" : [ 230, 300 ]
+    },
+    "/input/volume_up" : {
+        "type" : "button",
+		"order" :  2,
+        "binding_image_point" : [ 110, 230 ]
+    },
+    "/input/volume_down" : {
+        "type" : "button",
+		"order" :  3,
+        "binding_image_point" : [ 110, 245 ]
+    },
+    "/input/mute_mic" : {
+        "type" : "button",
+		"order" :  4,
+        "binding_image_point" : [ 230, 150 ]
+    },
+    "/pose/raw" : {
+        "type" : "pose",
+        "binding_image_point" : [ 105, 200 ]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+	"jsonid" : "input_profile",
+  "controller_type": "vive",
+  "input_bindingui_mode" : "hmd",
+  "input_bindingui_right" :
+  {
+    "image": "{htc}/icons/vive_hmd.png"
+  },
+  "input_source" :
+  {
+    "/input/system" : {
+        "type" : "button",
+        "binding_image_point" : [ 230, 300 ]
+    },
+    "/pose/raw" : {
+        "type" : "pose",
+        "binding_image_point" : [ 105, 200 ]
+    }
+  }
+ }

@@ -1,0 +1,251 @@
+{
+	"controller_type" :	"vive_controller",
+	"action_binds": [
+		{
+			"action": "/actions/legacy/in/Left_Pose",
+			"source": "/user/hand/left/pose/raw"
+		},
+		{
+			"action": "/actions/legacy/out/Left_Haptic",
+			"source": "/user/hand/left/output/haptic"
+		},
+		{
+			"action": "/actions/legacy/in/Left_ApplicationMenu_Press",
+			"source": "/user/hand/left/input/application_menu/click"
+		},
+		{
+			"action": "/actions/legacy/in/Left_Grip_Press",
+			"source": "/user/hand/left/input/grip/click"
+		},
+		{
+			"action": "/actions/legacy/in/Left_Axis0_Press",
+			"source": "/user/hand/left/input/trackpad/click"
+		},
+		{
+			"action": "/actions/legacy/in/Left_Axis0_Touch",
+			"source": "/user/hand/left/input/trackpad/touch"
+		},
+		{
+			"action": "/actions/legacy/in/Left_Axis0_Value",
+			"source": [ "/user/hand/left/input/trackpad/x", "/user/hand/left/input/trackpad/y" ]
+		},
+		{
+			"action": "/actions/legacy/in/Left_Axis1_Press",
+			"source": "/filters/trigger_press_l/result"
+		},
+		{
+			"action": "/actions/legacy/in/Left_Axis2_Touch",
+			"source": "/filters/trigger_touch_l/result"
+		},
+		{
+			"action": "/actions/legacy/in/Left_Axis1_Value",
+			"source": "/user/hand/left/input/trigger/value"
+		},
+
+		{
+			"action": "/actions/legacy/in/Right_Pose",
+			"source": "/user/hand/right/pose/raw"
+		},
+		{
+			"action": "/actions/legacy/out/Right_Haptic",
+			"source": "/user/hand/right/output/haptic"
+		},
+		{
+			"action": "/actions/legacy/in/Right_ApplicationMenu_Press",
+			"source": "/user/hand/right/input/application_menu/click"
+		},
+		{
+			"action": "/actions/legacy/in/Right_Grip_Press",
+			"source": "/user/hand/right/input/grip/click"
+		},
+		{
+			"action": "/actions/legacy/in/Right_Axis0_Press",
+			"source": "/user/hand/right/input/trackpad/click"
+		},
+		{
+			"action": "/actions/legacy/in/Right_Axis0_Touch",
+			"source": "/user/hand/right/input/trackpad/touch"
+		},
+		{
+			"action": "/actions/legacy/in/Right_Axis0_Value",
+			"source": [ "/user/hand/right/input/trackpad/x", "/user/hand/right/input/trackpad/y" ]
+		},
+		{
+			"action": "/actions/legacy/in/Right_Axis1_Press",
+			"source": "/filters/trigger_press_r/result"
+		},
+		{
+			"action": "/actions/legacy/in/Right_Axis2_Touch",
+			"source": "/filters/trigger_touch_r/result"
+		},
+		{
+			"action": "/actions/legacy/in/Right_Axis1_Value",
+			"source": "/user/hand/right/input/trigger/value"
+		}
+	],
+
+	"filters": [
+		{
+			"name": "trigger_press_l",
+			"type": "boolean_threshold",
+			"input": "/user/hand/left/input/trigger/value",
+			"action_sets": [ "/actions/legacy" ],
+			"output": "result"
+		},
+		{
+			"name": "trigger_press_r",
+			"type": "boolean_threshold",
+			"input": "/user/hand/right/input/trigger/value",
+			"action_sets": [ "/actions/legacy" ],
+			"output": "result"
+		},
+		{
+			"name": "trigger_touch_l",
+			"type": "boolean_threshold",
+			"input": "/user/hand/left/input/trigger/value",
+			"parameters": { "threshold": 0.1 },
+			"action_sets": [ "/actions/legacy" ],
+			"output": "result"
+		},
+		{
+			"name": "trigger_touch_r",
+			"type": "boolean_threshold",
+			"input": "/user/hand/right/input/trigger/value",
+			"parameters": { "threshold": 0.1 },
+			"action_sets": [ "/actions/legacy" ],
+			"output": "result"
+		}
+	],
+	"bindings" : 
+	{
+	"/actions/legacy": {
+		 "poses": [
+			{
+				"output": "/actions/legacy/in/Left_Pose",
+				"path": "/user/hand/left/pose/raw"
+			},
+			{
+				"output": "/actions/legacy/in/Right_Pose",
+				"path": "/user/hand/right/pose/raw"
+			}
+		],
+		"sources": [
+			{
+				"mode": "button",
+				"path": "/user/hand/left/input/system",
+				"inputs": {
+					"click": {
+						"output": "/actions/legacy/in/left_system_press"
+					}
+				}
+			},
+			{
+				"mode": "trigger",
+				"path": "/user/hand/left/input/trigger",
+				"inputs": {
+					"click": {
+						"output": "/actions/legacy/in/left_axis1_press"
+					},
+					"touch": {
+						"output": "/actions/legacy/in/left_axis1_touch"
+					},
+					"pull": {
+						"output": "/actions/legacy/in/left_axis1_value"
+					}
+				}
+			},
+			{
+				"mode": "button",
+				"path": "/user/hand/right/input/system",
+				"inputs": {
+					"click": {
+						"output": "/actions/legacy/in/right_system_press"
+					}
+				}
+			},
+			{
+				"mode": "button",
+				"path": "/user/hand/right/input/grip",
+				"inputs": {
+					"click": {
+						"output": "/actions/legacy/in/right_grip_press"
+					}
+				}
+			},
+			{
+				"mode": "button",
+				"path": "/user/hand/left/input/grip",
+				"inputs": {
+					"click": {
+						"output": "/actions/legacy/in/left_grip_press"
+					}
+				}
+			},
+			{
+				"mode": "button",
+				"path": "/user/hand/left/input/application_menu",
+				"inputs": {
+					"click": {
+						"output": "/actions/legacy/in/left_applicationmenu_press"
+					}
+				}
+			},
+			{
+				"mode": "button",
+				"path": "/user/hand/right/input/application_menu",
+				"inputs": {
+					"click": {
+						"output": "/actions/legacy/in/right_applicationmenu_press"
+					}
+				}
+			},
+			{
+				"mode": "trackpad",
+				"path": "/user/hand/left/input/trackpad",
+				"inputs": {
+					"click": {
+						"output": "/actions/legacy/in/left_axis0_press"
+					},
+					"touch": {
+						"output": "/actions/legacy/in/left_axis0_touch"
+					},
+					"position": {
+						"output": "/actions/legacy/in/left_axis0_value"
+					}
+				}
+			},
+			{
+				"mode": "trackpad",
+				"path": "/user/hand/right/input/trackpad",
+				"inputs": {
+					"click": {
+						"output": "/actions/legacy/in/right_axis0_press"
+					},
+					"touch": {
+						"output": "/actions/legacy/in/right_axis0_touch"
+					},
+					"position": {
+						"output": "/actions/legacy/in/right_axis0_value"
+					}
+				}
+			},
+			{
+				"mode": "trigger",
+				"path": "/user/hand/right/input/trigger",
+				"inputs": {
+					"click": {
+						"output": "/actions/legacy/in/right_axis1_press"
+					},
+					"touch": {
+						"output": "/actions/legacy/in/right_axis1_touch"
+					},
+					"pull": {
+						"output": "/actions/legacy/in/right_axis1_value"
+					}
+				}
+			}
+		]
+	}
+}
+}
+

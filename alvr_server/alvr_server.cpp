@@ -92,9 +92,7 @@ namespace
 		bool Initialize()
 		{
 			NvEncoderInitParam EncodeCLIOptions(Settings::Instance().m_EncoderOptions.c_str());
-
-			//m_pD3DRender->GetDevice()->CreateDeferredContext(0, &m_DeferredContext);
-			
+						
 			//
 			// Initialize Encoder
 			//
@@ -207,7 +205,6 @@ namespace
 				ID3D11Texture2D *pInputTexture = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
 				Log("CopyResource start");
 				m_pD3DRender->GetContext()->CopyResource(pInputTexture, pTexture);
-				//m_DeferredContext->CopyResource(pTexBgra, pTexture);
 				Log("CopyResource end");
 			}
 
@@ -284,7 +281,6 @@ namespace
 
 		const bool m_useNV12;
 		std::shared_ptr<CudaConverter> m_Converter;
-		//ComPtr<ID3D11DeviceContext> m_DeferredContext;
 
 		bool CheckIDRInsertion() {
 			IPCCriticalSectionLock lock(m_IDRCS);
@@ -734,12 +730,6 @@ public:
 			}
 			m_poseMutex.Release();
 		}
-		/*Listener::TrackingInfo info;
-		m_Listener->GetTrackingInfo(info);
-		m_submitFrameIndex = info.FrameIndex;
-		m_submitClientTime = info.clientTime;
-		m_framePoseRotation.x = info.HeadPose_Pose_Orientation.x;
-		*/
 		if (m_submitLayer < MAX_LAYERS) {
 			m_submitLayers[m_submitLayer][0] = perEye[0];
 			m_submitLayers[m_submitLayer][1] = perEye[1];
@@ -767,11 +757,6 @@ public:
 			Log("Discard duplicated frame. FrameIndex=%llu", m_submitFrameIndex);
 			return;
 		}
-		/*if (m_submitFrameIndex != m_LastReferencedFrameIndex) {
-		// Discard old frames
-		Log("Discarding old frame: m_submitFrameIndex=%llu m_LastReferencedFrameIndex=%llu", m_submitFrameIndex, m_LastReferencedFrameIndex);
-		return;
-		}*/
 
 		ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
 		if (!pSyncTexture)

@@ -381,20 +381,6 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 		// Update uv-coordinates in vertex buffer according to bounds.
 		//
 
-		// Without bounds
-		/*SimpleVertex vertices[] =
-		{
-			// Left View
-			{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(0.0f, 1.0f), 0 },
-		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(1.0f, 0.0f), 0 },
-		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(1.0f, 1.0f), 0 },
-		{ DirectX::XMFLOAT3(-1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(0.0f, 0.0f), 0 },
-		// Right View
-		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(0.0f, 1.0f), 1 },
-		{ DirectX::XMFLOAT3(1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(1.0f, 0.0f), 1 },
-		{ DirectX::XMFLOAT3(1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(1.0f, 1.0f), 1 },
-		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(0.0f, 0.0f), 1 },
-		};*/
 		SimpleVertex vertices[] =
 		{
 			// Left View

@@ -123,80 +123,7 @@ public:
 					}
 
 					Log("Control Command: %s %s", commandName.c_str(), args.c_str());
-
-					if (commandName == "EnableTestMode") {
-						m_Settings.enableTestMode = atoi(args.c_str());
-						SendChangeSettings();
-						SendCommandResponse("OK\n");
-					}
-					else if (commandName == "Suspend") {
-						m_Settings.suspend = atoi(args.c_str());
-						SendChangeSettings();
-						SendCommandResponse("OK\n");
-					}
-					else if (commandName == "GetRequests") {
-						std::string str;
-						for (auto it = m_Requests.begin(); it != m_Requests.end(); it++) {
-							char buf[500];
-							snprintf(buf, sizeof(buf), "%s %d %d %s\n"
-								, AddrPortToStr(&it->address).c_str()
-								, it->versionOk, it->refreshRate
-								, it->deviceName);
-							str += buf;
-						}
-						SendCommandResponse(str.c_str());
-					}
-					else if (commandName == "Connect") {
-						auto index = args.find(":");
-						if (index == std::string::npos) {
-							// Invalid format.
-							SendCommandResponse("Fail\n");
-						}
-						else {
-							std::string host = args.substr(0, index);
-							int port = atoi(args.substr(index + 1).c_str());
-
-							sockaddr_in addr;
-							addr.sin_family = AF_INET;
-							addr.sin_port = htons(port);
-							inet_pton(addr.sin_family, host.c_str(), &addr.sin_addr);
-
-							Connect(&addr);
-
-							SendCommandResponse("OK\n");
-						}
-					}
-					else if (commandName == "GetStat") {
-						char buf[1000];
-						snprintf(buf, sizeof(buf),
-							"TotalPackets %llu Packets\n"
-							"PacketRate %llu Packets/s\n"
-							"PacketsLostTotal %llu Packets\n"
-							"PacketsLostInSecond %llu Packets/s\n"
-							"TotalSent %llu MB\n"
-							"SentRate %.1f Mbps\n"
-							"TotalLatency %.1f ms\n"
-							"TransportLatency %.1f ms\n"
-							"DecodeLatency %.1f ms\n"
-							, m_Statistics->GetPacketsSentTotal()
-							, m_Statistics->GetPacketsSentInSecond()
-							, m_reportedStatistics.packetsLostTotal
-							, m_reportedStatistics.packetsLostInSecond
-							, m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000
-							, m_Statistics->GetBitsSentInSecond() / 1000 / 1000.0
-							, m_reportedStatistics.averageTotalLatency / 1000.0
-							, m_reportedStatistics.averageTransportLatency / 1000.0
-							, m_reportedStatistics.averageDecodeLatency / 1000.0);
-						SendCommandResponse(buf);
-					}
-					else if (commandName == "Disconnect") {
-						Disconnect();
-						SendCommandResponse("OK\n");
-					}
-					else {
-						m_CommandCallback(commandName, args);
-					}
-
+					ProcessCommand(commandName, args);
 				}
 			}
 		}
@@ -400,6 +327,81 @@ public:
 			auto *packetErrorReport = (PacketErrorReport *) buf;
 			Log("Packet loss was reported. Type=%d %lu - %lu", packetErrorReport->lostFrameType, packetErrorReport->fromPacketCounter, packetErrorReport->toPacketCounter);
 			m_PacketLossCallback((int32_t)(packetErrorReport->toPacketCounter - packetErrorReport->fromPacketCounter));
+		}
+	}
+
+	void ProcessCommand(const std::string &commandName, const std::string args) {
+		if (commandName == "EnableTestMode") {
+			m_Settings.enableTestMode = atoi(args.c_str());
+			SendChangeSettings();
+			SendCommandResponse("OK\n");
+		}
+		else if (commandName == "Suspend") {
+			m_Settings.suspend = atoi(args.c_str());
+			SendChangeSettings();
+			SendCommandResponse("OK\n");
+		}
+		else if (commandName == "GetRequests") {
+			std::string str;
+			for (auto it = m_Requests.begin(); it != m_Requests.end(); it++) {
+				char buf[500];
+				snprintf(buf, sizeof(buf), "%s %d %d %s\n"
+					, AddrPortToStr(&it->address).c_str()
+					, it->versionOk, it->refreshRate
+					, it->deviceName);
+				str += buf;
+			}
+			SendCommandResponse(str.c_str());
+		}
+		else if (commandName == "Connect") {
+			auto index = args.find(":");
+			if (index == std::string::npos) {
+				// Invalid format.
+				SendCommandResponse("Fail\n");
+			}
+			else {
+				std::string host = args.substr(0, index);
+				int port = atoi(args.substr(index + 1).c_str());
+
+				sockaddr_in addr;
+				addr.sin_family = AF_INET;
+				addr.sin_port = htons(port);
+				inet_pton(addr.sin_family, host.c_str(), &addr.sin_addr);
+
+				Connect(&addr);
+
+				SendCommandResponse("OK\n");
+			}
+		}
+		else if (commandName == "GetStat") {
+			char buf[1000];
+			snprintf(buf, sizeof(buf),
+				"TotalPackets %llu Packets\n"
+				"PacketRate %llu Packets/s\n"
+				"PacketsLostTotal %llu Packets\n"
+				"PacketsLostInSecond %llu Packets/s\n"
+				"TotalSent %llu MB\n"
+				"SentRate %.1f Mbps\n"
+				"TotalLatency %.1f ms\n"
+				"TransportLatency %.1f ms\n"
+				"DecodeLatency %.1f ms\n"
+				, m_Statistics->GetPacketsSentTotal()
+				, m_Statistics->GetPacketsSentInSecond()
+				, m_reportedStatistics.packetsLostTotal
+				, m_reportedStatistics.packetsLostInSecond
+				, m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000
+				, m_Statistics->GetBitsSentInSecond() / 1000 / 1000.0
+				, m_reportedStatistics.averageTotalLatency / 1000.0
+				, m_reportedStatistics.averageTransportLatency / 1000.0
+				, m_reportedStatistics.averageDecodeLatency / 1000.0);
+			SendCommandResponse(buf);
+		}
+		else if (commandName == "Disconnect") {
+			Disconnect();
+			SendCommandResponse("OK\n");
+		}
+		else {
+			m_CommandCallback(commandName, args);
 		}
 	}
 

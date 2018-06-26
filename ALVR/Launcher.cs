@@ -39,7 +39,12 @@ namespace ALVR
 
         private void Launcher_Load(object sender, EventArgs e)
         {
+            // Set version label
             SetFileVersion();
+
+            //
+            // Get sound devices
+            //
 
             var list = SoundDevice.GetSoundDeviceList();
             foreach (var device in list)
@@ -47,17 +52,38 @@ namespace ALVR
                 soundDeviceComboBox.Items.Add(device);
             }
 
+            //
+            // Load config and create memory mapped object
+            //
+
             LoadSettings();
 
             config.Save();
 
+            //
+            // Set UI state
+            //
+
             UpdateEnableControllerState();
             UpdateSoundCheckboxState();
 
+            //
+            // Driver check
+            //
+
+            DriverInstaller.CheckDriverPath();
             DriverInstaller.RemoveOtherDriverInstallations();
             CheckDriverInstallStatus();
 
+            //
+            // Open server tab
+            //
+
             metroTabControl1.SelectedTab = serverTab;
+
+            //
+            // Update UI
+            //
 
             UpdateServerStatus();
 
@@ -65,8 +91,6 @@ namespace ALVR
             ShowMessagePanel();
 
             socket.Update();
-
-            SoundDevice.GetSoundDeviceList();
 
             timer1.Start();
         }

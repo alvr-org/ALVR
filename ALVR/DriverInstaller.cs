@@ -120,6 +120,15 @@ namespace ALVR
             }
         }
 
+        public static void CheckDriverPath()
+        {
+            // SteamVR can't load driver which is installed in "multibyte" path.
+            if (Utils.GetDriverPath().Any(c => c > 255))
+            {
+                MessageBox.Show("It seems the ALVR driver is installed in the path contains multibyte character. It will cause load error on SteamVR driver. Please install another location.");
+            }
+        }
+
         private static string GetVRPathRegPath()
         {
             RegistryKey regkey = Registry.ClassesRoot.OpenSubKey(@"vrmonitor\Shell\Open\Command", false);

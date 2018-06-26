@@ -80,6 +80,7 @@ Oculus Storeから"Oculus Key"を使ってインストールできるように�
 - "Start server"を押しても、"Server is down" と表示され続ける場合
     - driverフォルダのdriver\_install.batをもう一度実行してみる
     - タスクマネージャでvrserver.exeを強制終了してみる
+    - 日本語や空白を含んだPathに展開されていないか確認、含まれないPathに移動する
 - 画面にヘッドセットのIPアドレスが出てこない場合
     - おそらくネットワーク周りの問題
     - PCとヘッドセットが同じLAN(同じルータ)につながっているか確認

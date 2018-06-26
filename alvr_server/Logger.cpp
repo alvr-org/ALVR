@@ -59,11 +59,11 @@ static void OutputCrashLog() {
 		fprintf(fp, "%s\n", line.c_str());
 	}
 	fprintf(fp, "========== Tail Log 1 ==========\n");
-	for (auto line : tailLog[currentLog]) {
+	for (auto line : tailLog[1 - currentLog]) {
 		fprintf(fp, "%s\n", line.c_str());
 	}
 	fprintf(fp, "========== Tail Log 2 ==========\n");
-	for (auto line : tailLog[1 - currentLog]) {
+	for (auto line : tailLog[currentLog]) {
 		fprintf(fp, "%s\n", line.c_str());
 	}
 	fclose(fp);

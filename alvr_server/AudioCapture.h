@@ -309,7 +309,7 @@ public:
 		);
 
 		if (WAIT_OBJECT_0 + 1 == waitResult) {
-			throw MakeException("Thread aborted before starting to loopback capture.");
+			throw MakeException("Thread aborted before starting to loopback capture. message=%s", m_errorMessage.c_str());
 		}
 
 		if (WAIT_OBJECT_0 != waitResult) {
@@ -385,7 +385,13 @@ public:
 			return 0;
 		}
 
-		self->LoopbackCapture();
+		try {
+			self->LoopbackCapture();
+		}
+		catch (Exception e) {
+			self->m_errorMessage = e.what();
+			Log("Exception on sound capture. message=%s", e.what());
+		}
 
 		CoUninitialize();
 
@@ -731,6 +737,8 @@ private:
 
 	IPCEvent m_startedEvent;
 	IPCEvent m_stopEvent;
+
+	std::string m_errorMessage;
 
 	static const int DEFAULT_SAMPLE_RATE = 48000;
 };

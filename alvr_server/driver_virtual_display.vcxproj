@@ -78,12 +78,12 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\;..\libswresample\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WINDLL;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(CUDA_PATH)\lib\Win32\cudart_static.lib;$(CUDA_PATH)\lib\Win32\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\Win32\cudart_static.lib;$(CUDA_PATH)\lib\Win32\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -98,12 +98,12 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\;..\libswresample\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WINDLL;NOMINMAX;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -120,14 +120,14 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\;..\libswresample\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WINDLL;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(CUDA_PATH)\lib\Win32\cudart_static.lib;$(CUDA_PATH)\lib\Win32\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\Win32\cudart_static.lib;$(CUDA_PATH)\lib\Win32\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -144,14 +144,14 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\;..\libswresample\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WINDLL;NOMINMAX;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -200,6 +200,7 @@
     <ClInclude Include="Poller.h" />
     <ClInclude Include="RecenterManager.h" />
     <ClInclude Include="RemoteController.h" />
+    <ClInclude Include="ResampleUtils.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="RGBToNV12ConverterD3D11.h" />
     <ClInclude Include="Settings.h" />

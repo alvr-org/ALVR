@@ -9,10 +9,11 @@
 #include <wrl.h>
 #include <ipctools.h>
 
-#include "../Logger.h"
-#include "../Settings.h"
-#include "../Utils.h"
-#include "../Listener.h"
+#include "Logger.h"
+#include "Settings.h"
+#include "Utils.h"
+#include "Listener.h"
+#include "ResampleUtils.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -385,17 +386,29 @@ public:
 			return 0;
 		}
 
-		try {
-			self->LoopbackCapture();
-		}
-		catch (Exception e) {
-			self->m_errorMessage = e.what();
-			Log("Exception on sound capture. message=%s", e.what());
-		}
-
+		self->CaptureRetry();
+		
 		CoUninitialize();
 
 		return 0;
+	}
+
+	void CaptureRetry() {
+		while (true) {
+			try {
+				m_canRetry = false;
+				LoopbackCapture();
+			}
+			catch (Exception e) {
+				if (m_canRetry) {
+					Log("Exception on sound capture (Retry). message=%s", e.what());
+					continue;
+				}
+				m_errorMessage = e.what();
+				Log("Exception on sound capture. message=%s", e.what());
+				break;
+			}
+		}
 	}
 
 	void LoopbackCapture() {
@@ -429,8 +442,6 @@ public:
 
 		Log("MixFormat: nBlockAlign=%d wFormatTag=%d wBitsPerSample=%d nChannels=%d nSamplesPerSec=%d"
 			, pwfx->nBlockAlign, pwfx->wFormatTag, pwfx->wBitsPerSample, pwfx->nChannels, pwfx->nSamplesPerSec);
-
-		pwfx->nSamplesPerSec = DEFAULT_SAMPLE_RATE;
 
 		// coerce int-16 wave format
 		// can do this in-place since we're not changing the size of the format
@@ -514,6 +525,8 @@ public:
 		if (FAILED(hr)) {
 			throw MakeException("IAudioClient::Initialize failed: hr = 0x%08x", hr);
 		}
+
+		std::unique_ptr<Resampler> resampler(std::make_unique<Resampler>(pwfx->nSamplesPerSec, DEFAULT_SAMPLE_RATE));
 
 		// activate an IAudioCaptureClient
 		ComPtr<IAudioCaptureClient> pAudioCaptureClient;
@@ -599,8 +612,9 @@ public:
 				}
 
 				LONG lBytesToWrite = nNumFramesToRead * nBlockAlign;
+				resampler->FeedInput(nNumFramesToRead, (uint8_t *)pData);
 
-				m_listener->SendAudio((uint8_t *)pData, lBytesToWrite, GetTimestampUs());
+				m_listener->SendAudio(resampler->GetDest(), resampler->GetDestBufSize(), GetTimestampUs());
 
 				m_frames += nNumFramesToRead;
 
@@ -622,6 +636,11 @@ public:
 			}
 
 			if (FAILED(hr)) {
+				if (hr == AUDCLNT_E_DEVICE_INVALIDATED) {
+					// When configuration of the sound device was changed. (e.g. sample rate, sample format)
+					// We can retry to capture.
+					m_canRetry = true;
+				}
 				throw MakeException("IAudioCaptureClient::GetNextPacketSize failed on pass %u after %u frames: hr = 0x%08x", nPasses, m_frames, hr);
 			}
 
@@ -738,6 +757,7 @@ private:
 	IPCEvent m_startedEvent;
 	IPCEvent m_stopEvent;
 
+	bool m_canRetry;
 	std::string m_errorMessage;
 
 	static const int DEFAULT_SAMPLE_RATE = 48000;

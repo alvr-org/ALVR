@@ -19,6 +19,7 @@ static const char * const k_pch_Settings_ClientRecvBufferSize_Int32 = "clientRec
 static const char * const k_pch_Settings_EnableSound_Bool = "enableSound";
 static const char * const k_pch_Settings_SoundDevice_String = "soundDevice";
 
+static const char * const k_pch_Settings_Codec_Int32 = "codec";
 static const char * const k_pch_Settings_EncoderOptions_String = "nvencOptions";
 static const char * const k_pch_Settings_DebugLog_Bool = "debugLog";
 static const char * const k_pch_Settings_DebugFrameIndex_Bool = "debugFrameIndex";
@@ -104,6 +105,7 @@ public:
 	bool m_enableSound;
 	std::string m_soundDevice;
 
+	int m_codec;
 	std::string m_EncoderOptions;
 
 	std::string m_Host;

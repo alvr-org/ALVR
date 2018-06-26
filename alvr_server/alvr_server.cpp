@@ -126,7 +126,12 @@ namespace
 			initializeParams.encodeConfig = &encodeConfig;
 			m_NvNecoder->CreateDefaultEncoderParams(&initializeParams, EncodeCLIOptions.GetEncodeGUID(), EncodeCLIOptions.GetPresetGUID());
 
-			initializeParams.encodeConfig->encodeCodecConfig.h264Config.repeatSPSPPS = 1;
+			if (EncodeCLIOptions.GetEncodeGUID() == NV_ENC_CODEC_H264_GUID) {
+				initializeParams.encodeConfig->encodeCodecConfig.h264Config.repeatSPSPPS = 1;
+			}
+			else {
+				initializeParams.encodeConfig->encodeCodecConfig.hevcConfig.repeatSPSPPS = 1;
+			}
 
 			EncodeCLIOptions.SetInitParams(&initializeParams, format);
 

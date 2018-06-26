@@ -60,6 +60,7 @@ void Settings::Load()
 
 	m_nAdapterIndex = (int32_t)v.get(k_pch_Settings_AdapterIndex_Int32).get<int64_t>();
 
+	m_codec = (int32_t)v.get(k_pch_Settings_Codec_Int32).get<int64_t>();
 	m_EncoderOptions = v.get(k_pch_Settings_EncoderOptions_String).get<std::string>();
 	m_DebugOutputDir = v.get(k_pch_Settings_DebugOutputDir).get<std::string>();
 	

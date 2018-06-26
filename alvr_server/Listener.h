@@ -368,6 +368,7 @@ public:
 				addr.sin_port = htons(port);
 				inet_pton(addr.sin_family, host.c_str(), &addr.sin_addr);
 
+				FindClientName(&addr);
 				Connect(&addr);
 
 				SendCommandResponse("OK\n");
@@ -533,10 +534,11 @@ public:
 		m_LastSeen = GetTimestampUs();
 	}
 
-	void Connect(const sockaddr_in *addr) {
-		bool found = false;
+	void FindClientName(const sockaddr_in *addr) {
 		m_clientRefreshRate = 60;
 		m_clientDeviceName = "";
+
+		bool found = false;
 
 		for (auto it = m_Requests.begin(); it != m_Requests.end(); it++) {
 			if (it->address.sin_addr.S_un.S_addr == addr->sin_addr.S_un.S_addr && it->address.sin_port == addr->sin_port) {
@@ -546,6 +548,9 @@ public:
 				break;
 			}
 		}
+	}
+
+	void Connect(const sockaddr_in *addr) {
 		Log("Connected to %s refreshRate=%d", AddrPortToStr(addr).c_str(), m_clientRefreshRate);
 
 		m_NewClientCallback(m_clientRefreshRate);
@@ -561,6 +566,7 @@ public:
 		ConnectionMessage message = {};
 		message.type = ALVR_PACKET_TYPE_CONNECTION_MESSAGE;
 		message.version = ALVR_PROTOCOL_VERSION;
+		message.codec = Settings::Instance().m_codec;
 		message.videoWidth = Settings::Instance().m_renderWidth;
 		message.videoHeight = Settings::Instance().m_renderHeight;
 		message.bufferSize = Settings::Instance().m_clientRecvBufferSize;

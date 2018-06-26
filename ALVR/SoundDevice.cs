@@ -19,6 +19,9 @@ namespace ALVR
         [DllImport("kernel32.dll")]
         public static extern bool FreeLibrary(IntPtr hModule);
 
+        [DllImport("kernel32.dll")]
+        public static extern bool SetDllDirectory(string path);
+
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate void GetSoundDevices(out IntPtr buf, out int len);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -26,6 +29,8 @@ namespace ALVR
 
         static public List<string> GetSoundDeviceList()
         {
+            SetDllDirectory(Utils.GetDllDirectory(Utils.GetDriverPath()));
+
             IntPtr pDll = LoadLibrary(Utils.GetDllPath(Utils.GetDriverPath()));
             if (pDll == IntPtr.Zero)
             {

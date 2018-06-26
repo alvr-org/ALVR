@@ -29,6 +29,11 @@ namespace ALVR
             return driverPath;
         }
 
+        public static string GetDllDirectory(string driverPath)
+        {
+            return driverPath + @"bin\win64";
+        }
+
         public static string GetDllPath(string driverPath)
         {
             return driverPath + @"bin\win64\driver_alvr_server.dll";

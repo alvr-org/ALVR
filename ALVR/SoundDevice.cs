@@ -35,7 +35,7 @@ namespace ALVR
             if (pDll == IntPtr.Zero)
             {
                 int err = Marshal.GetLastWin32Error();
-                MessageBox.Show("Cannot load library. ALVR works only on 64bits Windows.\r\n" + Utils.GetDllPath(Utils.GetDriverPath()) + "\r\nCode:" + err);
+                MessageBox.Show("Cannot load library. ALVR works only on 64bits Windows with NVIDIA GPU.\r\n" + Utils.GetDllPath(Utils.GetDriverPath()) + "\r\nCode:" + err);
                 throw new Exception();
             }
 

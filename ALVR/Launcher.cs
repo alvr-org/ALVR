@@ -46,10 +46,18 @@ namespace ALVR
             // Get sound devices
             //
 
-            var list = SoundDevice.GetSoundDeviceList();
-            foreach (var device in list)
+            try
             {
-                soundDeviceComboBox.Items.Add(device);
+                var list = SoundDevice.GetSoundDeviceList();
+                foreach (var device in list)
+                {
+                    soundDeviceComboBox.Items.Add(device);
+                }
+            }
+            catch (Exception e2)
+            {
+                Application.Exit();
+                return;
             }
 
             //

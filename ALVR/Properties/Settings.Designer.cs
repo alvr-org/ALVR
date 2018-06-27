@@ -286,5 +286,17 @@ namespace ALVR.Properties {
                 this["trackingFrameOffset"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int codec {
+            get {
+                return ((int)(this["codec"]));
+            }
+            set {
+                this["codec"] = value;
+            }
+        }
     }
 }

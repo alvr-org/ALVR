@@ -92,6 +92,7 @@
     </Compile>
     <None Include="packages.config" />
     <None Include="Properties\DataSources\ALVR.Properties.Settings.datasource" />
+    <None Include="Properties\DataSources\ServerConfig.ComboBoxCustomItem.datasource" />
     <None Include="Properties\DataSources\ServerConfig.datasource" />
     <None Include="Properties\DataSources\ServerConfig.Resolution.datasource" />
     <None Include="Properties\Settings.settings">

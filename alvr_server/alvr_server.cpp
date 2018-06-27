@@ -124,9 +124,10 @@ namespace
 			NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
 
 			initializeParams.encodeConfig = &encodeConfig;
-			m_NvNecoder->CreateDefaultEncoderParams(&initializeParams, EncodeCLIOptions.GetEncodeGUID(), EncodeCLIOptions.GetPresetGUID());
+			GUID EncoderGUID = Settings::Instance().m_codec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
+			m_NvNecoder->CreateDefaultEncoderParams(&initializeParams, EncoderGUID, EncodeCLIOptions.GetPresetGUID());
 
-			if (EncodeCLIOptions.GetEncodeGUID() == NV_ENC_CODEC_H264_GUID) {
+			if (Settings::Instance().m_codec == ALVR_CODEC_H264) {
 				initializeParams.encodeConfig->encodeCodecConfig.h264Config.repeatSPSPPS = 1;
 			}
 			else {

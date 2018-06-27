@@ -56,6 +56,7 @@ namespace ALVR
             // Load config and create memory mapped object
             //
 
+            codecComboBox.Items.AddRange(ServerConfig.supportedCodecs);
             LoadSettings();
 
             config.Save();
@@ -115,6 +116,8 @@ namespace ALVR
             recenterButtonComboBox.DataSource = ServerConfig.supportedRecenterButton;
             recenterButtonComboBox.SelectedIndex = Properties.Settings.Default.controllerRecenterButton;
 
+            codecComboBox.SelectedIndex = Properties.Settings.Default.codec;
+
             if (Properties.Settings.Default.soundDevice != "")
             {
                 for (int i = 0; i < soundDeviceComboBox.Items.Count; i++)
@@ -146,6 +149,8 @@ namespace ALVR
             Properties.Settings.Default.controllerTrackpadClickMode = ((ServerConfig.ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).value;
             Properties.Settings.Default.controllerRecenterButton = recenterButtonComboBox.SelectedIndex;
             Properties.Settings.Default.autoConnectList = clientList.Serialize();
+
+            Properties.Settings.Default.codec = codecComboBox.SelectedIndex;
 
             if (soundDeviceComboBox.SelectedIndex != -1)
             {

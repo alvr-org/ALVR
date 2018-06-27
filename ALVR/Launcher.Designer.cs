@@ -43,15 +43,6 @@
             this.metroButton3 = new MetroFramework.Controls.MetroButton();
             this.metroTabControl1 = new MetroFramework.Controls.MetroTabControl();
             this.serverTab = new MetroFramework.Controls.MetroTabPage();
-            this.connectedPanel = new MetroFramework.Controls.MetroPanel();
-            this.autoConnectCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.statDataGridView = new System.Windows.Forms.DataGridView();
-            this.Name1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Value1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.disconnectButton = new MetroFramework.Controls.MetroButton();
-            this.connectedLabel = new MetroFramework.Controls.MetroLabel();
-            this.messagePanel = new MetroFramework.Controls.MetroPanel();
-            this.messageLabel = new MetroFramework.Controls.MetroLabel();
             this.findingPanel = new MetroFramework.Controls.MetroPanel();
             this.noClientLabel = new MetroFramework.Controls.MetroLabel();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
@@ -61,8 +52,18 @@
             this.Button = new System.Windows.Forms.DataGridViewButtonColumn();
             this.metroProgressSpinner2 = new MetroFramework.Controls.MetroProgressSpinner();
             this.metroLabel4 = new MetroFramework.Controls.MetroLabel();
+            this.connectedPanel = new MetroFramework.Controls.MetroPanel();
+            this.autoConnectCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.statDataGridView = new System.Windows.Forms.DataGridView();
+            this.Name1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Value1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.disconnectButton = new MetroFramework.Controls.MetroButton();
+            this.connectedLabel = new MetroFramework.Controls.MetroLabel();
+            this.messagePanel = new MetroFramework.Controls.MetroPanel();
+            this.messageLabel = new MetroFramework.Controls.MetroLabel();
             this.controllerTab = new MetroFramework.Controls.MetroTabPage();
             this.enableControllerCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.metroLabel32 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel22 = new MetroFramework.Controls.MetroLabel();
             this.recenterButtonComboBox = new MetroFramework.Controls.MetroComboBox();
             this.trackpadClickComboBox = new MetroFramework.Controls.MetroComboBox();
@@ -71,12 +72,14 @@
             this.triggerComboBox = new MetroFramework.Controls.MetroComboBox();
             this.metroLabel21 = new MetroFramework.Controls.MetroLabel();
             this.videoTab = new MetroFramework.Controls.MetroTabPage();
+            this.label3 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
             this.metroLabel13 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel19 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel12 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel11 = new MetroFramework.Controls.MetroLabel();
+            this.codecComboBox = new MetroFramework.Controls.MetroComboBox();
             this.resolutionComboBox = new MetroFramework.Controls.MetroComboBox();
             this.resolutionBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.bufferLabel = new MetroFramework.Controls.MetroLabel();
@@ -87,6 +90,7 @@
             this.metroLabel8 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel16 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel10 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel31 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel7 = new MetroFramework.Controls.MetroLabel();
             this.bufferTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.bitrateTrackBar = new MetroFramework.Controls.MetroTrackBar();
@@ -143,13 +147,14 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.comboBoxCustomItemBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
+            this.findingPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.connectedPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).BeginInit();
             this.messagePanel.SuspendLayout();
-            this.findingPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.controllerTab.SuspendLayout();
             this.videoTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).BeginInit();
@@ -158,6 +163,7 @@
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.comboBoxCustomItemBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
             // metroButton1
@@ -199,23 +205,23 @@
             // metroTabControl1
             // 
             this.metroTabControl1.Controls.Add(this.serverTab);
+            this.metroTabControl1.Controls.Add(this.soundTab);
             this.metroTabControl1.Controls.Add(this.controllerTab);
             this.metroTabControl1.Controls.Add(this.videoTab);
-            this.metroTabControl1.Controls.Add(this.soundTab);
             this.metroTabControl1.Controls.Add(this.otherTab);
             this.metroTabControl1.Controls.Add(this.debugTab);
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
             this.metroTabControl1.SelectedIndex = 3;
-            this.metroTabControl1.Size = new System.Drawing.Size(664, 325);
+            this.metroTabControl1.Size = new System.Drawing.Size(664, 396);
             this.metroTabControl1.TabIndex = 8;
             // 
             // serverTab
             // 
+            this.serverTab.Controls.Add(this.findingPanel);
             this.serverTab.Controls.Add(this.connectedPanel);
             this.serverTab.Controls.Add(this.messagePanel);
-            this.serverTab.Controls.Add(this.findingPanel);
             this.serverTab.HorizontalScrollbarBarColor = true;
             this.serverTab.Location = new System.Drawing.Point(4, 38);
             this.serverTab.Name = "serverTab";
@@ -223,143 +229,6 @@
             this.serverTab.TabIndex = 3;
             this.serverTab.Text = "Server";
             this.serverTab.VerticalScrollbarBarColor = true;
-            // 
-            // connectedPanel
-            // 
-            this.connectedPanel.Controls.Add(this.autoConnectCheckBox);
-            this.connectedPanel.Controls.Add(this.statDataGridView);
-            this.connectedPanel.Controls.Add(this.disconnectButton);
-            this.connectedPanel.Controls.Add(this.connectedLabel);
-            this.connectedPanel.HorizontalScrollbarBarColor = true;
-            this.connectedPanel.HorizontalScrollbarHighlightOnWheel = false;
-            this.connectedPanel.HorizontalScrollbarSize = 10;
-            this.connectedPanel.Location = new System.Drawing.Point(3, 3);
-            this.connectedPanel.Name = "connectedPanel";
-            this.connectedPanel.Size = new System.Drawing.Size(657, 295);
-            this.connectedPanel.TabIndex = 11;
-            this.connectedPanel.VerticalScrollbarBarColor = true;
-            this.connectedPanel.VerticalScrollbarHighlightOnWheel = false;
-            this.connectedPanel.VerticalScrollbarSize = 10;
-            // 
-            // autoConnectCheckBox
-            // 
-            this.autoConnectCheckBox.AutoSize = true;
-            this.autoConnectCheckBox.Location = new System.Drawing.Point(79, 163);
-            this.autoConnectCheckBox.Name = "autoConnectCheckBox";
-            this.autoConnectCheckBox.Size = new System.Drawing.Size(147, 15);
-            this.autoConnectCheckBox.TabIndex = 13;
-            this.autoConnectCheckBox.Text = "Auto connect next time";
-            this.autoConnectCheckBox.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.autoConnectCheckBox.UseVisualStyleBackColor = true;
-            this.autoConnectCheckBox.CheckedChanged += new System.EventHandler(this.autoConnectCheckBox_CheckedChanged);
-            // 
-            // statDataGridView
-            // 
-            this.statDataGridView.AllowUserToAddRows = false;
-            this.statDataGridView.AllowUserToDeleteRows = false;
-            this.statDataGridView.BackgroundColor = System.Drawing.Color.White;
-            this.statDataGridView.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
-            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.statDataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
-            this.statDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.statDataGridView.ColumnHeadersVisible = false;
-            this.statDataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.Name1,
-            this.Value1});
-            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle2.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            dataGridViewCellStyle2.ForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            this.statDataGridView.DefaultCellStyle = dataGridViewCellStyle2;
-            this.statDataGridView.Location = new System.Drawing.Point(282, 28);
-            this.statDataGridView.Name = "statDataGridView";
-            this.statDataGridView.ReadOnly = true;
-            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle3.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.statDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
-            this.statDataGridView.RowHeadersVisible = false;
-            this.statDataGridView.RowTemplate.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.White;
-            this.statDataGridView.RowTemplate.DefaultCellStyle.SelectionForeColor = System.Drawing.Color.Black;
-            this.statDataGridView.RowTemplate.Height = 21;
-            this.statDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.CellSelect;
-            this.statDataGridView.Size = new System.Drawing.Size(352, 238);
-            this.statDataGridView.TabIndex = 12;
-            // 
-            // Name1
-            // 
-            this.Name1.HeaderText = "Column1";
-            this.Name1.Name = "Name1";
-            this.Name1.ReadOnly = true;
-            this.Name1.Width = 160;
-            // 
-            // Value1
-            // 
-            this.Value1.HeaderText = "Column1";
-            this.Value1.Name = "Value1";
-            this.Value1.ReadOnly = true;
-            this.Value1.Width = 160;
-            // 
-            // disconnectButton
-            // 
-            this.disconnectButton.Location = new System.Drawing.Point(97, 200);
-            this.disconnectButton.Name = "disconnectButton";
-            this.disconnectButton.Size = new System.Drawing.Size(113, 40);
-            this.disconnectButton.TabIndex = 11;
-            this.disconnectButton.Text = "Disconnect";
-            this.disconnectButton.Click += new System.EventHandler(this.disconnectButton_Click);
-            // 
-            // connectedLabel
-            // 
-            this.connectedLabel.BackColor = System.Drawing.Color.White;
-            this.connectedLabel.CustomBackground = true;
-            this.connectedLabel.CustomForeColor = true;
-            this.connectedLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.connectedLabel.Location = new System.Drawing.Point(79, 43);
-            this.connectedLabel.Name = "connectedLabel";
-            this.connectedLabel.Size = new System.Drawing.Size(156, 92);
-            this.connectedLabel.TabIndex = 9;
-            this.connectedLabel.Text = "Client connected.\r\nDevice Name\r\nIP Address:port\r\n";
-            this.connectedLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // messagePanel
-            // 
-            this.messagePanel.Controls.Add(this.messageLabel);
-            this.messagePanel.HorizontalScrollbarBarColor = true;
-            this.messagePanel.HorizontalScrollbarHighlightOnWheel = false;
-            this.messagePanel.HorizontalScrollbarSize = 10;
-            this.messagePanel.Location = new System.Drawing.Point(3, 3);
-            this.messagePanel.Name = "messagePanel";
-            this.messagePanel.Size = new System.Drawing.Size(657, 284);
-            this.messagePanel.TabIndex = 10;
-            this.messagePanel.VerticalScrollbarBarColor = true;
-            this.messagePanel.VerticalScrollbarHighlightOnWheel = false;
-            this.messagePanel.VerticalScrollbarSize = 10;
-            // 
-            // messageLabel
-            // 
-            this.messageLabel.BackColor = System.Drawing.Color.White;
-            this.messageLabel.CustomBackground = true;
-            this.messageLabel.CustomForeColor = true;
-            this.messageLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.messageLabel.Location = new System.Drawing.Point(161, 93);
-            this.messageLabel.Name = "messageLabel";
-            this.messageLabel.Size = new System.Drawing.Size(335, 75);
-            this.messageLabel.TabIndex = 9;
-            this.messageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // findingPanel
             // 
@@ -372,7 +241,7 @@
             this.findingPanel.HorizontalScrollbarSize = 10;
             this.findingPanel.Location = new System.Drawing.Point(3, 0);
             this.findingPanel.Name = "findingPanel";
-            this.findingPanel.Size = new System.Drawing.Size(657, 295);
+            this.findingPanel.Size = new System.Drawing.Size(657, 351);
             this.findingPanel.TabIndex = 11;
             this.findingPanel.VerticalScrollbarBarColor = true;
             this.findingPanel.VerticalScrollbarHighlightOnWheel = false;
@@ -396,14 +265,14 @@
             this.dataGridView1.AllowUserToResizeRows = false;
             this.dataGridView1.BackgroundColor = System.Drawing.Color.White;
             this.dataGridView1.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
-            dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle4.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle4.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            dataGridViewCellStyle4.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle4.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle4.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle4.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.dataGridView1.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle4;
+            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle1.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.dataGridView1.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
             this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView1.ColumnHeadersVisible = false;
             this.dataGridView1.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
@@ -411,34 +280,34 @@
             this.AddressColumn,
             this.refreshRateColumn,
             this.Button});
-            dataGridViewCellStyle5.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle5.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle5.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            dataGridViewCellStyle5.ForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle5.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle5.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle5.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            this.dataGridView1.DefaultCellStyle = dataGridViewCellStyle5;
+            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle2.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            dataGridViewCellStyle2.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.dataGridView1.DefaultCellStyle = dataGridViewCellStyle2;
             this.dataGridView1.Location = new System.Drawing.Point(29, 28);
             this.dataGridView1.Name = "dataGridView1";
             this.dataGridView1.ReadOnly = true;
-            dataGridViewCellStyle6.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle6.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle6.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            dataGridViewCellStyle6.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle6.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle6.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle6.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.dataGridView1.RowHeadersDefaultCellStyle = dataGridViewCellStyle6;
+            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle3.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.dataGridView1.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
             this.dataGridView1.RowHeadersVisible = false;
-            dataGridViewCellStyle7.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle7.SelectionBackColor = System.Drawing.Color.White;
-            dataGridViewCellStyle7.SelectionForeColor = System.Drawing.Color.Black;
-            this.dataGridView1.RowsDefaultCellStyle = dataGridViewCellStyle7;
+            dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle4.SelectionBackColor = System.Drawing.Color.White;
+            dataGridViewCellStyle4.SelectionForeColor = System.Drawing.Color.Black;
+            this.dataGridView1.RowsDefaultCellStyle = dataGridViewCellStyle4;
             this.dataGridView1.RowTemplate.DefaultCellStyle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
             this.dataGridView1.RowTemplate.Height = 40;
             this.dataGridView1.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dataGridView1.Size = new System.Drawing.Size(392, 233);
+            this.dataGridView1.Size = new System.Drawing.Size(392, 302);
             this.dataGridView1.TabIndex = 2;
             this.dataGridView1.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView1_CellContentClick);
             // 
@@ -471,7 +340,7 @@
             // 
             // metroProgressSpinner2
             // 
-            this.metroProgressSpinner2.Location = new System.Drawing.Point(443, 123);
+            this.metroProgressSpinner2.Location = new System.Drawing.Point(443, 159);
             this.metroProgressSpinner2.Maximum = 100;
             this.metroProgressSpinner2.Name = "metroProgressSpinner2";
             this.metroProgressSpinner2.Size = new System.Drawing.Size(38, 36);
@@ -484,16 +353,154 @@
             this.metroLabel4.CustomBackground = true;
             this.metroLabel4.CustomForeColor = true;
             this.metroLabel4.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.metroLabel4.Location = new System.Drawing.Point(487, 123);
+            this.metroLabel4.Location = new System.Drawing.Point(487, 159);
             this.metroLabel4.Name = "metroLabel4";
             this.metroLabel4.Size = new System.Drawing.Size(156, 39);
             this.metroLabel4.TabIndex = 9;
             this.metroLabel4.Text = "Finding Headset...";
             this.metroLabel4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // connectedPanel
+            // 
+            this.connectedPanel.Controls.Add(this.autoConnectCheckBox);
+            this.connectedPanel.Controls.Add(this.statDataGridView);
+            this.connectedPanel.Controls.Add(this.disconnectButton);
+            this.connectedPanel.Controls.Add(this.connectedLabel);
+            this.connectedPanel.HorizontalScrollbarBarColor = true;
+            this.connectedPanel.HorizontalScrollbarHighlightOnWheel = false;
+            this.connectedPanel.HorizontalScrollbarSize = 10;
+            this.connectedPanel.Location = new System.Drawing.Point(3, 3);
+            this.connectedPanel.Name = "connectedPanel";
+            this.connectedPanel.Size = new System.Drawing.Size(657, 351);
+            this.connectedPanel.TabIndex = 11;
+            this.connectedPanel.VerticalScrollbarBarColor = true;
+            this.connectedPanel.VerticalScrollbarHighlightOnWheel = false;
+            this.connectedPanel.VerticalScrollbarSize = 10;
+            // 
+            // autoConnectCheckBox
+            // 
+            this.autoConnectCheckBox.AutoSize = true;
+            this.autoConnectCheckBox.Location = new System.Drawing.Point(73, 204);
+            this.autoConnectCheckBox.Name = "autoConnectCheckBox";
+            this.autoConnectCheckBox.Size = new System.Drawing.Size(147, 15);
+            this.autoConnectCheckBox.TabIndex = 13;
+            this.autoConnectCheckBox.Text = "Auto connect next time";
+            this.autoConnectCheckBox.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.autoConnectCheckBox.UseVisualStyleBackColor = true;
+            this.autoConnectCheckBox.CheckedChanged += new System.EventHandler(this.autoConnectCheckBox_CheckedChanged);
+            // 
+            // statDataGridView
+            // 
+            this.statDataGridView.AllowUserToAddRows = false;
+            this.statDataGridView.AllowUserToDeleteRows = false;
+            this.statDataGridView.BackgroundColor = System.Drawing.Color.White;
+            this.statDataGridView.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
+            dataGridViewCellStyle5.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle5.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle5.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            dataGridViewCellStyle5.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle5.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle5.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle5.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.statDataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle5;
+            this.statDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.statDataGridView.ColumnHeadersVisible = false;
+            this.statDataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.Name1,
+            this.Value1});
+            dataGridViewCellStyle6.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle6.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle6.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            dataGridViewCellStyle6.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle6.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle6.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle6.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.statDataGridView.DefaultCellStyle = dataGridViewCellStyle6;
+            this.statDataGridView.Location = new System.Drawing.Point(282, 28);
+            this.statDataGridView.Name = "statDataGridView";
+            this.statDataGridView.ReadOnly = true;
+            dataGridViewCellStyle7.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle7.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle7.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            dataGridViewCellStyle7.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle7.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle7.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle7.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.statDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle7;
+            this.statDataGridView.RowHeadersVisible = false;
+            this.statDataGridView.RowTemplate.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.White;
+            this.statDataGridView.RowTemplate.DefaultCellStyle.SelectionForeColor = System.Drawing.Color.Black;
+            this.statDataGridView.RowTemplate.Height = 21;
+            this.statDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.CellSelect;
+            this.statDataGridView.Size = new System.Drawing.Size(352, 299);
+            this.statDataGridView.TabIndex = 12;
+            // 
+            // Name1
+            // 
+            this.Name1.HeaderText = "Column1";
+            this.Name1.Name = "Name1";
+            this.Name1.ReadOnly = true;
+            this.Name1.Width = 160;
+            // 
+            // Value1
+            // 
+            this.Value1.HeaderText = "Column1";
+            this.Value1.Name = "Value1";
+            this.Value1.ReadOnly = true;
+            this.Value1.Width = 160;
+            // 
+            // disconnectButton
+            // 
+            this.disconnectButton.Location = new System.Drawing.Point(91, 241);
+            this.disconnectButton.Name = "disconnectButton";
+            this.disconnectButton.Size = new System.Drawing.Size(113, 40);
+            this.disconnectButton.TabIndex = 11;
+            this.disconnectButton.Text = "Disconnect";
+            this.disconnectButton.Click += new System.EventHandler(this.disconnectButton_Click);
+            // 
+            // connectedLabel
+            // 
+            this.connectedLabel.BackColor = System.Drawing.Color.White;
+            this.connectedLabel.CustomBackground = true;
+            this.connectedLabel.CustomForeColor = true;
+            this.connectedLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
+            this.connectedLabel.Location = new System.Drawing.Point(64, 67);
+            this.connectedLabel.Name = "connectedLabel";
+            this.connectedLabel.Size = new System.Drawing.Size(156, 92);
+            this.connectedLabel.TabIndex = 9;
+            this.connectedLabel.Text = "Client connected.\r\nDevice Name\r\nIP Address:port\r\n";
+            this.connectedLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // messagePanel
+            // 
+            this.messagePanel.Controls.Add(this.messageLabel);
+            this.messagePanel.HorizontalScrollbarBarColor = true;
+            this.messagePanel.HorizontalScrollbarHighlightOnWheel = false;
+            this.messagePanel.HorizontalScrollbarSize = 10;
+            this.messagePanel.Location = new System.Drawing.Point(3, 3);
+            this.messagePanel.Name = "messagePanel";
+            this.messagePanel.Size = new System.Drawing.Size(657, 351);
+            this.messagePanel.TabIndex = 10;
+            this.messagePanel.VerticalScrollbarBarColor = true;
+            this.messagePanel.VerticalScrollbarHighlightOnWheel = false;
+            this.messagePanel.VerticalScrollbarSize = 10;
+            // 
+            // messageLabel
+            // 
+            this.messageLabel.BackColor = System.Drawing.Color.White;
+            this.messageLabel.CustomBackground = true;
+            this.messageLabel.CustomForeColor = true;
+            this.messageLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
+            this.messageLabel.Location = new System.Drawing.Point(161, 93);
+            this.messageLabel.Name = "messageLabel";
+            this.messageLabel.Size = new System.Drawing.Size(335, 75);
+            this.messageLabel.TabIndex = 9;
+            this.messageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
             // controllerTab
             // 
             this.controllerTab.Controls.Add(this.enableControllerCheckBox);
+            this.controllerTab.Controls.Add(this.metroLabel32);
             this.controllerTab.Controls.Add(this.metroLabel22);
             this.controllerTab.Controls.Add(this.recenterButtonComboBox);
             this.controllerTab.Controls.Add(this.trackpadClickComboBox);
@@ -515,7 +522,7 @@
             this.enableControllerCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableController;
             this.enableControllerCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
             this.enableControllerCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableController", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.enableControllerCheckBox.Location = new System.Drawing.Point(36, 19);
+            this.enableControllerCheckBox.Location = new System.Drawing.Point(36, 33);
             this.enableControllerCheckBox.Name = "enableControllerCheckBox";
             this.enableControllerCheckBox.Size = new System.Drawing.Size(112, 15);
             this.enableControllerCheckBox.TabIndex = 11;
@@ -523,11 +530,21 @@
             this.enableControllerCheckBox.UseVisualStyleBackColor = true;
             this.enableControllerCheckBox.CheckedChanged += new System.EventHandler(this.enableControllerCheckBox_CheckedChanged);
             // 
+            // metroLabel32
+            // 
+            this.metroLabel32.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.metroLabel32.AutoSize = true;
+            this.metroLabel32.Location = new System.Drawing.Point(462, -115);
+            this.metroLabel32.Name = "metroLabel32";
+            this.metroLabel32.Size = new System.Drawing.Size(162, 38);
+            this.metroLabel32.TabIndex = 10;
+            this.metroLabel32.Text = "If FreePIE plugin is used,\r\nthese settings are ignored.";
+            // 
             // metroLabel22
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(206, -2788);
+            this.metroLabel22.Location = new System.Drawing.Point(216, 116);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -538,7 +555,7 @@
             // 
             this.recenterButtonComboBox.FormattingEnabled = true;
             this.recenterButtonComboBox.ItemHeight = 23;
-            this.recenterButtonComboBox.Location = new System.Drawing.Point(216, 162);
+            this.recenterButtonComboBox.Location = new System.Drawing.Point(216, 176);
             this.recenterButtonComboBox.Name = "recenterButtonComboBox";
             this.recenterButtonComboBox.Size = new System.Drawing.Size(192, 29);
             this.recenterButtonComboBox.TabIndex = 9;
@@ -548,7 +565,7 @@
             // 
             this.trackpadClickComboBox.FormattingEnabled = true;
             this.trackpadClickComboBox.ItemHeight = 23;
-            this.trackpadClickComboBox.Location = new System.Drawing.Point(216, 108);
+            this.trackpadClickComboBox.Location = new System.Drawing.Point(216, 122);
             this.trackpadClickComboBox.Name = "trackpadClickComboBox";
             this.trackpadClickComboBox.Size = new System.Drawing.Size(192, 29);
             this.trackpadClickComboBox.TabIndex = 9;
@@ -558,7 +575,7 @@
             // 
             this.metroLabel23.AutoSize = true;
             this.metroLabel23.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel23.Location = new System.Drawing.Point(56, 162);
+            this.metroLabel23.Location = new System.Drawing.Point(56, 176);
             this.metroLabel23.Name = "metroLabel23";
             this.metroLabel23.Size = new System.Drawing.Size(133, 25);
             this.metroLabel23.TabIndex = 8;
@@ -568,7 +585,7 @@
             // 
             this.metroLabel20.AutoSize = true;
             this.metroLabel20.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel20.Location = new System.Drawing.Point(56, 108);
+            this.metroLabel20.Location = new System.Drawing.Point(56, 122);
             this.metroLabel20.Name = "metroLabel20";
             this.metroLabel20.Size = new System.Drawing.Size(116, 25);
             this.metroLabel20.TabIndex = 8;
@@ -578,7 +595,7 @@
             // 
             this.triggerComboBox.FormattingEnabled = true;
             this.triggerComboBox.ItemHeight = 23;
-            this.triggerComboBox.Location = new System.Drawing.Point(216, 57);
+            this.triggerComboBox.Location = new System.Drawing.Point(216, 71);
             this.triggerComboBox.Name = "triggerComboBox";
             this.triggerComboBox.Size = new System.Drawing.Size(192, 29);
             this.triggerComboBox.TabIndex = 9;
@@ -588,7 +605,7 @@
             // 
             this.metroLabel21.AutoSize = true;
             this.metroLabel21.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel21.Location = new System.Drawing.Point(56, 57);
+            this.metroLabel21.Location = new System.Drawing.Point(56, 71);
             this.metroLabel21.Name = "metroLabel21";
             this.metroLabel21.Size = new System.Drawing.Size(64, 25);
             this.metroLabel21.TabIndex = 8;
@@ -596,12 +613,14 @@
             // 
             // videoTab
             // 
+            this.videoTab.Controls.Add(this.label3);
             this.videoTab.Controls.Add(this.label2);
             this.videoTab.Controls.Add(this.label1);
             this.videoTab.Controls.Add(this.metroLabel13);
             this.videoTab.Controls.Add(this.metroLabel19);
             this.videoTab.Controls.Add(this.metroLabel12);
             this.videoTab.Controls.Add(this.metroLabel11);
+            this.videoTab.Controls.Add(this.codecComboBox);
             this.videoTab.Controls.Add(this.resolutionComboBox);
             this.videoTab.Controls.Add(this.bufferLabel);
             this.videoTab.Controls.Add(this.bitrateLabel);
@@ -611,6 +630,7 @@
             this.videoTab.Controls.Add(this.metroLabel8);
             this.videoTab.Controls.Add(this.metroLabel16);
             this.videoTab.Controls.Add(this.metroLabel10);
+            this.videoTab.Controls.Add(this.metroLabel31);
             this.videoTab.Controls.Add(this.metroLabel7);
             this.videoTab.Controls.Add(this.bufferTrackBar);
             this.videoTab.Controls.Add(this.bitrateTrackBar);
@@ -622,10 +642,18 @@
             this.videoTab.Text = "Video";
             this.videoTab.VerticalScrollbarBarColor = true;
             // 
+            // label3
+            // 
+            this.label3.BackColor = System.Drawing.Color.DarkGray;
+            this.label3.Location = new System.Drawing.Point(29, 59);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(600, 1);
+            this.label3.TabIndex = 9;
+            // 
             // label2
             // 
             this.label2.BackColor = System.Drawing.Color.DarkGray;
-            this.label2.Location = new System.Drawing.Point(28, 180);
+            this.label2.Location = new System.Drawing.Point(29, 234);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(600, 1);
             this.label2.TabIndex = 9;
@@ -633,7 +661,7 @@
             // label1
             // 
             this.label1.BackColor = System.Drawing.Color.DarkGray;
-            this.label1.Location = new System.Drawing.Point(28, 95);
+            this.label1.Location = new System.Drawing.Point(29, 149);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(600, 1);
             this.label1.TabIndex = 8;
@@ -641,7 +669,7 @@
             // metroLabel13
             // 
             this.metroLabel13.AutoSize = true;
-            this.metroLabel13.Location = new System.Drawing.Point(170, 259);
+            this.metroLabel13.Location = new System.Drawing.Point(171, 313);
             this.metroLabel13.Name = "metroLabel13";
             this.metroLabel13.Size = new System.Drawing.Size(292, 19);
             this.metroLabel13.TabIndex = 7;
@@ -650,7 +678,7 @@
             // metroLabel19
             // 
             this.metroLabel19.AutoSize = true;
-            this.metroLabel19.Location = new System.Drawing.Point(55, 230);
+            this.metroLabel19.Location = new System.Drawing.Point(56, 284);
             this.metroLabel19.Name = "metroLabel19";
             this.metroLabel19.Size = new System.Drawing.Size(558, 19);
             this.metroLabel19.TabIndex = 7;
@@ -660,7 +688,7 @@
             // metroLabel12
             // 
             this.metroLabel12.AutoSize = true;
-            this.metroLabel12.Location = new System.Drawing.Point(55, 141);
+            this.metroLabel12.Location = new System.Drawing.Point(56, 195);
             this.metroLabel12.Name = "metroLabel12";
             this.metroLabel12.Size = new System.Drawing.Size(356, 19);
             this.metroLabel12.TabIndex = 7;
@@ -669,11 +697,20 @@
             // metroLabel11
             // 
             this.metroLabel11.AutoSize = true;
-            this.metroLabel11.Location = new System.Drawing.Point(55, 64);
+            this.metroLabel11.Location = new System.Drawing.Point(56, 118);
             this.metroLabel11.Name = "metroLabel11";
             this.metroLabel11.Size = new System.Drawing.Size(321, 19);
             this.metroLabel11.TabIndex = 7;
             this.metroLabel11.Text = "Bitrate of video streaming. 30Mbps is recommended.";
+            // 
+            // codecComboBox
+            // 
+            this.codecComboBox.FormattingEnabled = true;
+            this.codecComboBox.ItemHeight = 23;
+            this.codecComboBox.Location = new System.Drawing.Point(185, 13);
+            this.codecComboBox.Name = "codecComboBox";
+            this.codecComboBox.Size = new System.Drawing.Size(192, 29);
+            this.codecComboBox.TabIndex = 6;
             // 
             // resolutionComboBox
             // 
@@ -681,7 +718,7 @@
             this.resolutionComboBox.DisplayMember = "display";
             this.resolutionComboBox.FormattingEnabled = true;
             this.resolutionComboBox.ItemHeight = 23;
-            this.resolutionComboBox.Location = new System.Drawing.Point(184, 109);
+            this.resolutionComboBox.Location = new System.Drawing.Point(185, 163);
             this.resolutionComboBox.Name = "resolutionComboBox";
             this.resolutionComboBox.Size = new System.Drawing.Size(192, 29);
             this.resolutionComboBox.TabIndex = 6;
@@ -695,7 +732,7 @@
             // 
             this.bufferLabel.AutoSize = true;
             this.bufferLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.bufferLabel.Location = new System.Drawing.Point(558, 204);
+            this.bufferLabel.Location = new System.Drawing.Point(559, 258);
             this.bufferLabel.Name = "bufferLabel";
             this.bufferLabel.Size = new System.Drawing.Size(57, 25);
             this.bufferLabel.TabIndex = 5;
@@ -705,7 +742,7 @@
             // 
             this.bitrateLabel.AutoSize = true;
             this.bitrateLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.bitrateLabel.Location = new System.Drawing.Point(558, 32);
+            this.bitrateLabel.Location = new System.Drawing.Point(559, 86);
             this.bitrateLabel.Name = "bitrateLabel";
             this.bitrateLabel.Size = new System.Drawing.Size(72, 25);
             this.bitrateLabel.TabIndex = 5;
@@ -714,7 +751,7 @@
             // metroLabel18
             // 
             this.metroLabel18.AutoSize = true;
-            this.metroLabel18.Location = new System.Drawing.Point(532, 179);
+            this.metroLabel18.Location = new System.Drawing.Point(533, 233);
             this.metroLabel18.Name = "metroLabel18";
             this.metroLabel18.Size = new System.Drawing.Size(51, 19);
             this.metroLabel18.TabIndex = 4;
@@ -723,7 +760,7 @@
             // metroLabel9
             // 
             this.metroLabel9.AutoSize = true;
-            this.metroLabel9.Location = new System.Drawing.Point(522, 16);
+            this.metroLabel9.Location = new System.Drawing.Point(523, 70);
             this.metroLabel9.Name = "metroLabel9";
             this.metroLabel9.Size = new System.Drawing.Size(63, 19);
             this.metroLabel9.TabIndex = 4;
@@ -732,7 +769,7 @@
             // metroLabel17
             // 
             this.metroLabel17.AutoSize = true;
-            this.metroLabel17.Location = new System.Drawing.Point(160, 182);
+            this.metroLabel17.Location = new System.Drawing.Point(161, 236);
             this.metroLabel17.Name = "metroLabel17";
             this.metroLabel17.Size = new System.Drawing.Size(42, 19);
             this.metroLabel17.TabIndex = 4;
@@ -741,7 +778,7 @@
             // metroLabel8
             // 
             this.metroLabel8.AutoSize = true;
-            this.metroLabel8.Location = new System.Drawing.Point(160, 16);
+            this.metroLabel8.Location = new System.Drawing.Point(161, 70);
             this.metroLabel8.Name = "metroLabel8";
             this.metroLabel8.Size = new System.Drawing.Size(47, 19);
             this.metroLabel8.TabIndex = 4;
@@ -751,7 +788,7 @@
             // 
             this.metroLabel16.AutoSize = true;
             this.metroLabel16.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel16.Location = new System.Drawing.Point(24, 186);
+            this.metroLabel16.Location = new System.Drawing.Point(25, 240);
             this.metroLabel16.Name = "metroLabel16";
             this.metroLabel16.Size = new System.Drawing.Size(90, 25);
             this.metroLabel16.TabIndex = 3;
@@ -761,27 +798,37 @@
             // 
             this.metroLabel10.AutoSize = true;
             this.metroLabel10.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel10.Location = new System.Drawing.Point(24, 109);
+            this.metroLabel10.Location = new System.Drawing.Point(25, 163);
             this.metroLabel10.Name = "metroLabel10";
-            this.metroLabel10.Size = new System.Drawing.Size(136, 25);
+            this.metroLabel10.Size = new System.Drawing.Size(91, 25);
             this.metroLabel10.TabIndex = 3;
-            this.metroLabel10.Text = "Video resolution";
+            this.metroLabel10.Text = "Resolution";
+            // 
+            // metroLabel31
+            // 
+            this.metroLabel31.AutoSize = true;
+            this.metroLabel31.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel31.Location = new System.Drawing.Point(25, 17);
+            this.metroLabel31.Name = "metroLabel31";
+            this.metroLabel31.Size = new System.Drawing.Size(60, 25);
+            this.metroLabel31.TabIndex = 3;
+            this.metroLabel31.Text = "Codec";
             // 
             // metroLabel7
             // 
             this.metroLabel7.AutoSize = true;
             this.metroLabel7.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel7.Location = new System.Drawing.Point(24, 32);
+            this.metroLabel7.Location = new System.Drawing.Point(25, 86);
             this.metroLabel7.Name = "metroLabel7";
-            this.metroLabel7.Size = new System.Drawing.Size(109, 25);
+            this.metroLabel7.Size = new System.Drawing.Size(60, 25);
             this.metroLabel7.TabIndex = 3;
-            this.metroLabel7.Text = "Video bitrate";
+            this.metroLabel7.Text = "Bitrate";
             // 
             // bufferTrackBar
             // 
             this.bufferTrackBar.BackColor = System.Drawing.Color.Transparent;
             this.bufferTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bufferSize", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.bufferTrackBar.Location = new System.Drawing.Point(184, 204);
+            this.bufferTrackBar.Location = new System.Drawing.Point(185, 258);
             this.bufferTrackBar.Name = "bufferTrackBar";
             this.bufferTrackBar.Size = new System.Drawing.Size(368, 23);
             this.bufferTrackBar.TabIndex = 2;
@@ -793,7 +840,7 @@
             // 
             this.bitrateTrackBar.BackColor = System.Drawing.Color.Transparent;
             this.bitrateTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bitrate", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.bitrateTrackBar.Location = new System.Drawing.Point(184, 38);
+            this.bitrateTrackBar.Location = new System.Drawing.Point(185, 92);
             this.bitrateTrackBar.Maximum = 250;
             this.bitrateTrackBar.Minimum = 1;
             this.bitrateTrackBar.Name = "bitrateTrackBar";
@@ -810,7 +857,7 @@
             this.soundTab.HorizontalScrollbarBarColor = true;
             this.soundTab.Location = new System.Drawing.Point(4, 38);
             this.soundTab.Name = "soundTab";
-            this.soundTab.Size = new System.Drawing.Size(656, 283);
+            this.soundTab.Size = new System.Drawing.Size(656, 354);
             this.soundTab.TabIndex = 8;
             this.soundTab.Text = "Sound";
             this.soundTab.VerticalScrollbarBarColor = true;
@@ -871,7 +918,7 @@
             // trackingFrameOffsetTextBox
             // 
             this.trackingFrameOffsetTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "trackingFrameOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.trackingFrameOffsetTextBox.Location = new System.Drawing.Point(190, 245);
+            this.trackingFrameOffsetTextBox.Location = new System.Drawing.Point(190, 255);
             this.trackingFrameOffsetTextBox.Name = "trackingFrameOffsetTextBox";
             this.trackingFrameOffsetTextBox.Size = new System.Drawing.Size(86, 23);
             this.trackingFrameOffsetTextBox.TabIndex = 19;
@@ -880,7 +927,7 @@
             // metroLabel30
             // 
             this.metroLabel30.AutoSize = true;
-            this.metroLabel30.Location = new System.Drawing.Point(365, 245);
+            this.metroLabel30.Location = new System.Drawing.Point(64, 290);
             this.metroLabel30.Name = "metroLabel30";
             this.metroLabel30.Size = new System.Drawing.Size(279, 38);
             this.metroLabel30.TabIndex = 18;
@@ -890,7 +937,7 @@
             // metroLabel29
             // 
             this.metroLabel29.AutoSize = true;
-            this.metroLabel29.Location = new System.Drawing.Point(37, 245);
+            this.metroLabel29.Location = new System.Drawing.Point(35, 259);
             this.metroLabel29.Name = "metroLabel29";
             this.metroLabel29.Size = new System.Drawing.Size(129, 19);
             this.metroLabel29.TabIndex = 18;
@@ -991,7 +1038,7 @@
             // 
             // saveTrackingFrameOffsetButton
             // 
-            this.saveTrackingFrameOffsetButton.Location = new System.Drawing.Point(284, 245);
+            this.saveTrackingFrameOffsetButton.Location = new System.Drawing.Point(284, 255);
             this.saveTrackingFrameOffsetButton.Name = "saveTrackingFrameOffsetButton";
             this.saveTrackingFrameOffsetButton.Size = new System.Drawing.Size(75, 23);
             this.saveTrackingFrameOffsetButton.TabIndex = 10;
@@ -1028,7 +1075,7 @@
             // metroLabel24
             // 
             this.metroLabel24.AutoSize = true;
-            this.metroLabel24.Location = new System.Drawing.Point(64, 47);
+            this.metroLabel24.Location = new System.Drawing.Point(64, 34);
             this.metroLabel24.Name = "metroLabel24";
             this.metroLabel24.Size = new System.Drawing.Size(238, 19);
             this.metroLabel24.TabIndex = 3;
@@ -1090,7 +1137,7 @@
             this.logText.Multiline = true;
             this.logText.Name = "logText";
             this.logText.ReadOnly = true;
-            this.logText.Size = new System.Drawing.Size(246, 269);
+            this.logText.Size = new System.Drawing.Size(253, 340);
             this.logText.TabIndex = 10;
             // 
             // metroCheckBox3
@@ -1234,7 +1281,7 @@
             this.driverLabel.AutoSize = true;
             this.driverLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
             this.driverLabel.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.driverLabel.Location = new System.Drawing.Point(84, 194);
+            this.driverLabel.Location = new System.Drawing.Point(91, 265);
             this.driverLabel.Name = "driverLabel";
             this.driverLabel.Size = new System.Drawing.Size(138, 19);
             this.driverLabel.Style = MetroFramework.MetroColorStyle.Green;
@@ -1244,7 +1291,7 @@
             // 
             // uninstallButton
             // 
-            this.uninstallButton.Location = new System.Drawing.Point(157, 225);
+            this.uninstallButton.Location = new System.Drawing.Point(164, 296);
             this.uninstallButton.Name = "uninstallButton";
             this.uninstallButton.Size = new System.Drawing.Size(109, 23);
             this.uninstallButton.TabIndex = 5;
@@ -1253,7 +1300,7 @@
             // 
             // listDriversButton
             // 
-            this.listDriversButton.Location = new System.Drawing.Point(100, 257);
+            this.listDriversButton.Location = new System.Drawing.Point(107, 328);
             this.listDriversButton.Name = "listDriversButton";
             this.listDriversButton.Size = new System.Drawing.Size(98, 23);
             this.listDriversButton.TabIndex = 5;
@@ -1262,7 +1309,7 @@
             // 
             // installButton
             // 
-            this.installButton.Location = new System.Drawing.Point(39, 225);
+            this.installButton.Location = new System.Drawing.Point(46, 296);
             this.installButton.Name = "installButton";
             this.installButton.Size = new System.Drawing.Size(98, 23);
             this.installButton.TabIndex = 5;
@@ -1293,7 +1340,8 @@
             this.licenseTextBox.Multiline = true;
             this.licenseTextBox.Name = "licenseTextBox";
             this.licenseTextBox.ReadOnly = true;
-            this.licenseTextBox.Size = new System.Drawing.Size(324, 231);
+            this.licenseTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.licenseTextBox.Size = new System.Drawing.Size(335, 314);
             this.licenseTextBox.TabIndex = 3;
             // 
             // versionLabel
@@ -1356,11 +1404,15 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
+            // comboBoxCustomItemBindingSource
+            // 
+            this.comboBoxCustomItemBindingSource.DataSource = typeof(ALVR.ServerConfig.ComboBoxCustomItem);
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(710, 411);
+            this.ClientSize = new System.Drawing.Size(710, 482);
             this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.startServerButton);
             this.Controls.Add(this.metroProgressSpinner1);
@@ -1373,13 +1425,13 @@
             this.Load += new System.EventHandler(this.Launcher_Load);
             this.metroTabControl1.ResumeLayout(false);
             this.serverTab.ResumeLayout(false);
+            this.findingPanel.ResumeLayout(false);
+            this.findingPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             this.connectedPanel.ResumeLayout(false);
             this.connectedPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).EndInit();
             this.messagePanel.ResumeLayout(false);
-            this.findingPanel.ResumeLayout(false);
-            this.findingPanel.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             this.controllerTab.ResumeLayout(false);
             this.controllerTab.PerformLayout();
             this.videoTab.ResumeLayout(false);
@@ -1394,6 +1446,7 @@
             this.aboutTab.ResumeLayout(false);
             this.aboutTab.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.comboBoxCustomItemBindingSource)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -1506,6 +1559,11 @@
         private MetroFramework.Controls.MetroLabel metroLabel30;
         private MetroFramework.Controls.MetroLabel metroLabel29;
         private MetroFramework.Controls.MetroButton saveTrackingFrameOffsetButton;
+        private System.Windows.Forms.Label label3;
+        private MetroFramework.Controls.MetroComboBox codecComboBox;
+        private MetroFramework.Controls.MetroLabel metroLabel31;
+        private System.Windows.Forms.BindingSource comboBoxCustomItemBindingSource;
+        private MetroFramework.Controls.MetroLabel metroLabel32;
     }
 }
 

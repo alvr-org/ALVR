@@ -78,6 +78,11 @@ namespace ALVR
             "None", "Trigger", "Trackpad click", "Trackpad touch"//, "Back short-press"
         };
 
+        public static readonly ComboBoxCustomItem[] supportedCodecs = {
+            new ComboBoxCustomItem("H.264 AVC", 0),
+            new ComboBoxCustomItem("H.265 HEVC", 1)
+        };
+
         MemoryMappedFile memoryMappedFile;
 
         public ServerConfig()
@@ -130,8 +135,8 @@ namespace ALVR
                 driverConfig.controllerRenderModelName = "vr_controller_vive_1_5";
                 driverConfig.controllerSerialNumber = "ALVR Remote Controller";
 
-                driverConfig.codec = 1; // 0: H264, 1: H265
-                driverConfig.nvencOptions = "-codec hevc -preset ll_hq -rc cbr_ll_hq -fps 60 -bitrate "
+                driverConfig.codec = Properties.Settings.Default.codec; // 0: H264, 1: H265
+                driverConfig.nvencOptions = "-preset ll_hq -rc cbr_ll_hq -fps 60 -bitrate "
                     + Properties.Settings.Default.bitrate + "M -maxbitrate " + Properties.Settings.Default.bitrate + "M";
 
                 driverConfig.renderWidth = Properties.Settings.Default.renderWidth;

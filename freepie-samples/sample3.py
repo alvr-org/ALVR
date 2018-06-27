@@ -2,12 +2,13 @@ import math, time
 
 global prev_back, mode, offset, message_time
 
+def sign(x): return 1 if x >= 0 else -1
+
 if starting:
   prev_back = False
   mode = 0
   offset = [0.0, 0.0, 0.0]
   message_time = 0.0
-
 
 map = [["system", Key.G], ["application_menu", Key.X], ["trigger", Key.T], ["a", Key.V], ["b", Key.B], ["x", Key.N], ["y", Key.M]
 , ["grip", Key.F1], ["trackpad_click", Key.F2], ["back", Key.F3], ["guide", Key.F4], ["start", Key.F5]
@@ -31,7 +32,7 @@ if time.time() - message_time > 2:
 if mode == 0:
   # trackpad guesture mode
   alvr.buttons[alvr.Id("system")] = alvr.buttons[alvr.Id("system")] or alvr.input_buttons[alvr.InputId("trigger")]
-  alvr.buttons[alvr.Id("application_menu")] = alvr.buttons[alvr.Id("application_menu")] or alvr.input_buttons[alvr.InputId("back")]
+  #alvr.buttons[alvr.Id("application_menu")] = alvr.buttons[alvr.Id("application_menu")] or alvr.input_buttons[alvr.InputId("back")]
 
   if alvr.input_buttons[alvr.InputId("trackpad_click")]:
     if alvr.input_trackpad[0] + alvr.input_trackpad[1] > 0.0:
@@ -51,11 +52,14 @@ if mode == 0:
         alvr.buttons[alvr.Id("application_menu")] = True
 elif mode == 1:
   # fly mode (buggy)
+  # press upper half of trackpad to forward. bottom half to back
   if alvr.input_buttons[alvr.InputId("trackpad_click")]:
     theta = alvr.input_controller_orientation[1]
+    theta2 = alvr.input_controller_orientation[2]
     speed = 0.01
-    offset[0] += speed * (-math.cos(theta) * alvr.input_trackpad[0] - math.sin(theta) * alvr.input_trackpad[1])
-    offset[2] += speed * (-math.sin(theta) * alvr.input_trackpad[0] + math.cos(theta) * alvr.input_trackpad[1])
+    offset[0] += speed * -math.sin(theta) * sign(alvr.input_trackpad[1])
+    offset[1] += speed * math.sin(theta2)
+    offset[2] += speed * -math.cos(theta) * sign(alvr.input_trackpad[1])
 
   alvr.buttons[alvr.Id("trigger")] = alvr.buttons[alvr.Id("trigger")] or alvr.input_buttons[alvr.InputId("trigger")]
 elif mode == 2:

@@ -1078,6 +1078,7 @@ public:
 		}
 
 		Log("Using %ls as primary graphics adapter.", wchAdapterDescription);
+		Log("OSVer:%s", GetWindowsOSVersion().c_str());
 
 		// Spawn our separate process to manage headset presentation.
 		m_CNvEncoder = std::make_shared<CNvEncoder>(m_D3DRender, m_Listener, ShouldUseNV12Texture());

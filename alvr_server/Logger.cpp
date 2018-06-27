@@ -54,6 +54,7 @@ static void OutputCrashLog() {
 	}
 
 	fprintf(fp, "Exception: %s\n", lastException.c_str());
+	fprintf(fp, "OSVer: %s\n", GetWindowsOSVersion().c_str());
 	fprintf(fp, "========== Startup Log ==========\n");
 	for (auto line : startupLog) {
 		fprintf(fp, "%s\n", line.c_str());

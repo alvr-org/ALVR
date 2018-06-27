@@ -287,6 +287,33 @@ inline bool ShouldUseNV12Texture() {
 	return IsWindows8OrGreater() == FALSE;
 }
 
+typedef void (WINAPI *RtlGetVersion_FUNC)(OSVERSIONINFOEXW*);
+
+inline std::string GetWindowsOSVersion() {
+	HMODULE hModule;
+	OSVERSIONINFOEXW ver;
+
+	hModule = LoadLibrary(TEXT("ntdll.dll"));
+	if (hModule == NULL) {
+		return "Unknown";
+	}
+	RtlGetVersion_FUNC RtlGetVersion = (RtlGetVersion_FUNC)GetProcAddress(hModule, "RtlGetVersion");
+	if (RtlGetVersion == NULL) {
+		FreeLibrary(hModule);
+		return "Unknown";
+	}
+	memset(&ver, 0, sizeof(ver));
+	ver.dwOSVersionInfoSize = sizeof(ver);
+	RtlGetVersion(&ver);
+
+	FreeLibrary(hModule);
+
+	char buf[1000];
+	snprintf(buf, sizeof(buf), "MajorVersion=%d MinorVersion=%d Build=%d",
+		ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber);
+	return buf;
+}
+
 inline std::wstring ToWstring(const std::string &src) {
 	// TODO: src is really UTF-8?
 	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;

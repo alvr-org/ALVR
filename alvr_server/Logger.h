@@ -8,7 +8,7 @@ void InitCrashHandler();
 void OpenLog(const char *fileName);
 
 void Log(const char *pFormat, ...);
-
+void LogException(const char *format, ...);
 void FatalLog(const char *format, ...);
 
 class Exception : public std::exception {

@@ -9,6 +9,15 @@
 #include "Logger.h"
 #include "Utils.h"
 
+#pragma comment(lib, "psapi.lib")
+#pragma comment(lib, "dbghelp.lib")
+
+// Some versions of imagehlp.dll lack the proper packing directives themselves
+// so we need to do it.
+#pragma pack( push, before_imagehlp, 8 )
+#include <imagehlp.h>
+#pragma pack( pop, before_imagehlp )
+
 static const char *APP_NAME = "ALVR Server";
 static const int STARTUP_LOG_SIZE = 500;
 static const int TAIL_LOG_SIZE = 500;
@@ -33,7 +42,51 @@ static std::wstring GetCrashReportPath() {
 	return cpath;
 }
 
-static void OutputCrashLog() {
+static void GenerateExceptionInfo(wchar_t *logPath, PEXCEPTION_POINTERS pExceptionPtrs) {
+	FILE *fp;
+
+	if (_wfopen_s(&fp, logPath, L"a")) {
+		return;
+	}
+	HANDLE process = GetCurrentProcess();
+	DWORD64 address = (DWORD64)pExceptionPtrs->ExceptionRecord->ExceptionAddress;
+
+	const int max_name_len = 1024;
+	IMAGEHLP_SYMBOL64 *sym = (IMAGEHLP_SYMBOL64 *)malloc(sizeof(IMAGEHLP_SYMBOL64) + max_name_len);
+	IMAGEHLP_LINE64 line = { 0 };
+	DWORD offset_from_symbol;
+
+	line.SizeOfStruct = sizeof line;
+
+	memset(sym, 0, sizeof(IMAGEHLP_SYMBOL64) + max_name_len);
+	sym->SizeOfStruct = sizeof(IMAGEHLP_SYMBOL64);
+	sym->MaxNameLength = max_name_len;
+	DWORD64 displacement;
+
+	SymInitialize(process, NULL, true);
+
+	BOOL ret = SymGetSymFromAddr64(process, address, &displacement, sym);
+	BOOL ret2 = SymGetLineFromAddr64(process, address, &offset_from_symbol, &line);
+
+	fprintf(fp, "========== Exception info start ==========\n");
+	fprintf(fp, "SymGetSymFromAddr64: %d, SymGetLineFromAddr64: %d\n", ret, ret2);
+	fprintf(fp, "ExceptionCode=%X Address=%p\n", pExceptionPtrs->ExceptionRecord->ExceptionCode, address);
+	if (ret) {
+		std::vector<char> und_name(max_name_len);
+		UnDecorateSymbolName(sym->Name, &und_name[0], max_name_len, UNDNAME_COMPLETE);
+
+		fprintf(fp, "%s(%s) +%llu\n", sym->Name, &und_name[0], displacement);
+	}
+	if (ret2) {
+		fprintf(fp, "%s:%d\n", line.FileName, line.LineNumber);
+	}
+	fprintf(fp, "========== Exception info end ==========\n");
+	SymCleanup(process);
+	free(sym);
+	fclose(fp);
+}
+
+static void OutputCrashLog(PEXCEPTION_POINTERS pExceptionPtrs) {
 	wchar_t cpath[10000], logPath[11000];
 	FILE *fp;
 	wchar_t *p;
@@ -55,6 +108,7 @@ static void OutputCrashLog() {
 
 	fprintf(fp, "Exception: %s\n", lastException.c_str());
 	fprintf(fp, "OSVer: %s\n", GetWindowsOSVersion().c_str());
+	fprintf(fp, "Module: %p\n", g_hInstance);
 	fprintf(fp, "========== Startup Log ==========\n");
 	for (auto line : startupLog) {
 		fprintf(fp, "%s\n", line.c_str());
@@ -68,20 +122,25 @@ static void OutputCrashLog() {
 		fprintf(fp, "%s\n", line.c_str());
 	}
 	fclose(fp);
+
+	if (pExceptionPtrs != NULL) {
+		GenerateExceptionInfo(logPath, pExceptionPtrs);
+	}
 }
 
-static void ReportError() {
+static void ReportError(PEXCEPTION_POINTERS pExceptionPtrs) {
 	FlushLog();
 
-	OutputCrashLog();
+	OutputCrashLog(pExceptionPtrs);
 
 	ShellExecuteW(NULL, L"", GetCrashReportPath().c_str(), (L"\"" + ToWstring(lastException) + L"\"").c_str(), L"", SW_SHOWNORMAL);
 }
 
 static LONG WINAPI MyUnhandledExceptionFilter(PEXCEPTION_POINTERS pExceptionPtrs)
 {
-	Log("Unhandled Exception!!! %X %p", pExceptionPtrs->ExceptionRecord->ExceptionCode, pExceptionPtrs->ExceptionRecord->ExceptionAddress);
-	ReportError();
+	LogException("Unhandled Exception.\nExceptionCode=%X\nAddress=%p (%p + %p)", pExceptionPtrs->ExceptionRecord->ExceptionCode, pExceptionPtrs->ExceptionRecord->ExceptionAddress
+		, g_hInstance, (char*)pExceptionPtrs->ExceptionRecord->ExceptionAddress - (char*)g_hInstance);
+	ReportError(pExceptionPtrs);
 	return EXCEPTION_EXECUTE_HANDLER;
 }
 
@@ -152,6 +211,18 @@ void Log(const char *format, ...)
 	LogS(buf2);
 }
 
+void LogException(const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	char buf2[10000];
+	vsnprintf(buf2, sizeof(buf2), format, args);
+	va_end(args);
+
+	LogS(buf2);
+	lastException = buf2;
+}
+
 void FatalLog(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
@@ -162,7 +233,7 @@ void FatalLog(const char *format, ...) {
 	LogS(buf2);
 
 	lastException = buf2;
-	ReportError();
+	ReportError(NULL);
 }
 
 Exception MakeException(const char *format, ...) {

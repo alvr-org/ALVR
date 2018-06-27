@@ -114,10 +114,22 @@ namespace
 					return false;
 				}
 
-				m_NvNecoder = std::make_shared<NvEncoderCuda>(m_Converter->GetContext(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
+				try {
+					m_NvNecoder = std::make_shared<NvEncoderCuda>(m_Converter->GetContext(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
+				}
+				catch (NVENCException e) {
+					FatalLog("NvEnc NvEncoderCuda failed. Code=%d %s", e.getErrorCode(), e.what());
+					return false;
+				}
 			}
 			else {
-				m_NvNecoder = std::make_shared<NvEncoderD3D11>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
+				try {
+					m_NvNecoder = std::make_shared<NvEncoderD3D11>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
+				}
+				catch (NVENCException e) {
+					FatalLog("NvEnc NvEncoderD3D11 failed. Code=%d %s", e.getErrorCode(), e.what());
+					return false;
+				}
 			}
 
 			NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
@@ -158,6 +170,8 @@ namespace
 					Log("unable to open output file %s", Settings::Instance().GetVideoOutput().c_str());
 				}
 			}
+
+			Log("CNvEncoder is successfully initialized.");
 
 			return true;
 		}

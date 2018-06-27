@@ -6,7 +6,7 @@
 
 #define APP_VERSION_MAJOR 2
 #define APP_VERSION_MINOR 2
-#define APP_VERSION_PATCH 0
+#define APP_VERSION_PATCH 1
 #define APP_VERSION_SUFFIX "-alpha"
 #define APP_VERSION_STRING__(major, minor, patch, suffix) #major "." #minor "." #patch "" suffix
 #define APP_VERSION_STRING_(major, minor, patch, suffix) APP_VERSION_STRING__(major, minor, patch, suffix)

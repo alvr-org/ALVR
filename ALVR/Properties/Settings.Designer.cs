@@ -298,5 +298,17 @@ namespace ALVR.Properties {
                 this["codec"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool onlySteamVR {
+            get {
+                return ((bool)(this["onlySteamVR"]));
+            }
+            set {
+                this["onlySteamVR"] = value;
+            }
+        }
     }
 }

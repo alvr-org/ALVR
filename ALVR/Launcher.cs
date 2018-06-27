@@ -182,7 +182,14 @@ namespace ALVR
                 return;
             }
 
-            Process.Start("vrmonitor:");
+            if (Properties.Settings.Default.onlySteamVR)
+            {
+                Utils.LaunchOnlySteamVR();
+            }
+            else
+            {
+                Utils.LaunchSteam();
+            }
         }
 
         private bool SaveConfig()

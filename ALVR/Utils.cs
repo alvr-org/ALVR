@@ -78,5 +78,15 @@ namespace ALVR
             }
             return process;
         }
+
+        public static void LaunchOnlySteamVR()
+        {
+            Process.Start("vrmonitor:");
+        }
+
+        public static void LaunchSteam()
+        {
+            Process.Start("steam://run/250820");
+        }
     }
 }

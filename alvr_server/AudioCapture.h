@@ -398,6 +398,7 @@ public:
 			try {
 				m_canRetry = false;
 				LoopbackCapture();
+				break;
 			}
 			catch (Exception e) {
 				if (m_canRetry) {

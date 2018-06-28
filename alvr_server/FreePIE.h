@@ -108,15 +108,17 @@ private:
 		}
 
 		m_p->inputControllerButtons = 0;
+		m_p->controllerButtons = 0;
 
 		for (int i = 0; i < 12; i++) {
 			m_p->head_orientation[i] = 0.0;
 		}
-		m_p->controllerButtons = 0;
 
 		for (int i = 0; i < 9; i++) {
 			(&m_p->trigger)[i] = 0.0;
 		}
+
+		memcpy(&m_copy, m_p, sizeof(FreePIEFileMapping));
 
 		m_mutex.Release();
 	}

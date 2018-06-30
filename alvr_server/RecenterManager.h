@@ -99,15 +99,15 @@ public:
 			m_fixedOrientationController = EulerAngleToQuaternion(data.controller_orientation);
 		}
 		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_POSITION) {
-			m_fixedPositionHMD.x = data.head_position[0];
-			m_fixedPositionHMD.y = data.head_position[1];
-			m_fixedPositionHMD.z = data.head_position[2];
+			m_fixedPositionHMD.x = (float) data.head_position[0];
+			m_fixedPositionHMD.y = (float) data.head_position[1];
+			m_fixedPositionHMD.z = (float) data.head_position[2];
 		}
 		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION) {
 			Log("Test controller position: %f,%f,%f", data.controller_position[0], data.controller_position[1], data.controller_position[2]);
-			m_fixedPositionController.x = data.controller_position[0];
-			m_fixedPositionController.y = data.controller_position[1];
-			m_fixedPositionController.z = data.controller_position[2];
+			m_fixedPositionController.x = (float) data.controller_position[0];
+			m_fixedPositionController.y = (float) data.controller_position[1];
+			m_fixedPositionController.z = (float) data.controller_position[2];
 		}
 
 		if (Settings::Instance().m_EnableOffsetPos) {
@@ -145,10 +145,11 @@ private:
 		}
 		TrackingVector3 transformed;
 		double theta = m_rotationDiff + m_centerPitch;
-		transformed.x = (info.Other_Tracking_Source_Position.x - m_basePosition.x) * cos(theta) - (info.Other_Tracking_Source_Position.z - m_basePosition.z) * sin(theta);
-		transformed.x += m_rotatedBasePosition.x;
+		transformed.x = (float) ((info.Other_Tracking_Source_Position.x - m_basePosition.x) * cos(theta) - (info.Other_Tracking_Source_Position.z - m_basePosition.z) * sin(theta));
 		transformed.y = info.Other_Tracking_Source_Position.y;
-		transformed.z = (info.Other_Tracking_Source_Position.x - m_basePosition.x) * sin(theta) + (info.Other_Tracking_Source_Position.z - m_basePosition.z) * cos(theta);
+		transformed.z = (float)((info.Other_Tracking_Source_Position.x - m_basePosition.x) * sin(theta) + (info.Other_Tracking_Source_Position.z - m_basePosition.z) * cos(theta));
+
+		transformed.x += m_rotatedBasePosition.x;
 		transformed.z += m_rotatedBasePosition.z;
 
 		if (GetTimestampUs() - m_rotationDiffLastInitialized > 2 * 1000 * 1000) {

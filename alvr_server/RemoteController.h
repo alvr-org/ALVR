@@ -205,15 +205,15 @@ public:
 				}
 			}
 
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], freePIEData.trigger, 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_LEFT_VALUE], freePIEData.trigger_left, 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_RIGHT_VALUE], freePIEData.trigger_right, 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_X], freePIEData.joystick_left[0], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_Y], freePIEData.joystick_left[1], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_X], freePIEData.joystick_right[0], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_Y], freePIEData.joystick_right[1], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_X], freePIEData.trackpad[0], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_Y], freePIEData.trackpad[1], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], (float) freePIEData.trigger, 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_LEFT_VALUE], (float)freePIEData.trigger_left, 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_RIGHT_VALUE], (float)freePIEData.trigger_right, 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_X], (float)freePIEData.joystick_left[0], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_Y], (float)freePIEData.joystick_left[1], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_X], (float)freePIEData.joystick_right[0], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_Y], (float)freePIEData.joystick_right[1], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_X], (float)freePIEData.trackpad[0], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_Y], (float)freePIEData.trackpad[1], 0.0);
 		}else{
 			int32_t triggerButton = Settings::Instance().m_controllerTriggerMode;
 			int32_t trackpadClickButton = Settings::Instance().m_controllerTrackpadClickMode;

@@ -185,7 +185,7 @@ namespace
 				if (fpOut) {
 					fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 				}
-				m_Listener->SendVideo(packet.data(), (int)packet.size(), GetTimestampUs(), 0);
+				m_Listener->SendVideo(packet.data(), (int)packet.size(), 0);
 			}
 
 			m_NvNecoder->DestroyEncoder();
@@ -245,7 +245,7 @@ namespace
 					fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 				}
 				if (m_Listener) {
-					m_Listener->SendVideo(packet.data(), (int)packet.size(), presentationTime, frameIndex);
+					m_Listener->SendVideo(packet.data(), (int)packet.size(), frameIndex);
 				}
 			}
 
@@ -962,7 +962,7 @@ public:
 		std::function<void(std::string, std::string)> commandCallback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
 		std::function<void(int)> newClientCallback = [&](int refreshRate) { OnNewClient(refreshRate); };
-		std::function<void(int32_t)> packetLossCallback = [&](int32_t lostPacketCount) { OnPacketLoss(lostPacketCount); };
+		std::function<void()> packetLossCallback = [&]() { OnPacketLoss(); };
 
 		m_Listener->SetLauncherCallback(launcherCallback);
 		m_Listener->SetCommandCallback(commandCallback);
@@ -1338,7 +1338,7 @@ public:
 		m_CNvEncoder->OnClientConnected();
 	}
 
-	void OnPacketLoss(int32_t lostPacketCount) {
+	void OnPacketLoss() {
 		m_CNvEncoder->OnPacketLoss();
 	}
 private:
@@ -1463,14 +1463,14 @@ extern "C" __declspec(dllexport)
 void GetSoundDevices(wchar_t **buf, int *len) {
 	std::vector<std::wstring> deviceList;
 	std::vector<wchar_t> strBuf;
-	int pos = 0;
+	size_t pos = 0;
 	AudioCapture::list_devices(deviceList);
 	for (auto it = deviceList.begin(); it != deviceList.end(); it++) {
 		strBuf.resize(pos + it->size() + 1);
 		memcpy(&strBuf[pos], it->c_str(), (it->size() + 1) * sizeof(wchar_t));
 		pos += it->size() + 1;
 	}
-	*len = pos;
+	*len = (int) pos;
 	*buf = new wchar_t[pos];
 	memcpy(*buf, &strBuf[0], pos * sizeof(wchar_t));
 }

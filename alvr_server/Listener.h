@@ -61,7 +61,7 @@ public:
 	void SetNewClientCallback(std::function<void(int)> callback) {
 		m_NewClientCallback = callback;
 	}
-	void SetPacketLossCallback(std::function<void(int32_t)> callback) {
+	void SetPacketLossCallback(std::function<void()> callback) {
 		m_PacketLossCallback = callback;
 	}
 
@@ -149,8 +149,8 @@ public:
 
 		assert(totalShards <= DATA_SHARDS_MAX);
 
-		Log("reed_solomon_new. dataShards=%d totalParityShards=%d totalShards=%d blockSize=%d"
-			, dataShards, totalParityShards, totalShards, blockSize);
+		Log("reed_solomon_new. dataShards=%d totalParityShards=%d totalShards=%d blockSize=%d shardPackets=%d"
+			, dataShards, totalParityShards, totalShards, blockSize, shardPackets);
 
 		reed_solomon *rs = reed_solomon_new(dataShards, totalParityShards);
 
@@ -221,9 +221,7 @@ public:
 		}
 	}
 
-	void SendVideo(uint8_t *buf, int len, uint64_t presentationTime, uint64_t frameIndex) {
-		uint8_t packetBuffer[2000];
-
+	void SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 		if (!m_Socket->IsClientValid()) {
 			Log("Skip sending packet because client is not connected. Packet Length=%d FrameIndex=%llu", len, frameIndex);
 			return;
@@ -387,8 +385,10 @@ public:
 			}
 			auto *packetErrorReport = (PacketErrorReport *) buf;
 			Log("Packet loss was reported. Type=%d %lu - %lu", packetErrorReport->lostFrameType, packetErrorReport->fromPacketCounter, packetErrorReport->toPacketCounter);
-			// Ignore
-			//m_PacketLossCallback((int32_t)(packetErrorReport->toPacketCounter - packetErrorReport->fromPacketCounter));
+			if (packetErrorReport->lostFrameType == ALVR_LOST_FRAME_TYPE_VIDEO) {
+				// Recover video frame.
+				OnFecFailure();
+			}
 		}
 	}
 
@@ -658,7 +658,7 @@ public:
 			}
 		}
 		m_lastFecFailure = GetTimestampUs();
-		m_PacketLossCallback(1);
+		m_PacketLossCallback();
 	}
 private:
 	bool m_bExiting;
@@ -681,7 +681,7 @@ private:
 	std::function<void(std::string, std::string)> m_CommandCallback;
 	std::function<void()> m_PoseUpdatedCallback;
 	std::function<void(int)> m_NewClientCallback;
-	std::function<void(int32_t)> m_PacketLossCallback;
+	std::function<void()> m_PacketLossCallback;
 	TrackingInfo m_TrackingInfo;
 
 	uint64_t m_TimeDiff = 0;

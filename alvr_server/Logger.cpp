@@ -8,6 +8,7 @@
 #include <list>
 #include "Logger.h"
 #include "Utils.h"
+#include "ipctools.h"
 
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "dbghelp.lib")
@@ -29,6 +30,7 @@ static bool Opened = false;
 static bool OpenFailed = false;
 static uint64_t lastRefresh = 0;
 static std::string lastException;
+static IPCMutex g_mutex(NULL);
 static std::list<std::string> startupLog;
 static std::list<std::string> tailLog[2];
 static int currentLog = 0;
@@ -69,8 +71,7 @@ static void GenerateExceptionInfo(wchar_t *logPath, PEXCEPTION_POINTERS pExcepti
 	BOOL ret2 = SymGetLineFromAddr64(process, address, &offset_from_symbol, &line);
 
 	fprintf(fp, "========== Exception info start ==========\n");
-	fprintf(fp, "SymGetSymFromAddr64: %d, SymGetLineFromAddr64: %d\n", ret, ret2);
-	fprintf(fp, "ExceptionCode=%X Address=%p\n", pExceptionPtrs->ExceptionRecord->ExceptionCode, address);
+	fprintf(fp, "ExceptionCode=%X Address=%016X\n", pExceptionPtrs->ExceptionRecord->ExceptionCode, address);
 	if (ret) {
 		std::vector<char> und_name(max_name_len);
 		UnDecorateSymbolName(sym->Name, &und_name[0], max_name_len, UNDNAME_COMPLETE);
@@ -110,6 +111,8 @@ static void OutputCrashLog(PEXCEPTION_POINTERS pExceptionPtrs) {
 	fprintf(fp, "OSVer: %s\n", GetWindowsOSVersion().c_str());
 	fprintf(fp, "Module: %p\n", g_hInstance);
 	fprintf(fp, "========== Startup Log ==========\n");
+
+	g_mutex.Wait();
 	for (auto line : startupLog) {
 		fprintf(fp, "%s\n", line.c_str());
 	}
@@ -121,6 +124,8 @@ static void OutputCrashLog(PEXCEPTION_POINTERS pExceptionPtrs) {
 	for (auto line : tailLog[currentLog]) {
 		fprintf(fp, "%s\n", line.c_str());
 	}
+	g_mutex.Release();
+
 	fclose(fp);
 
 	if (pExceptionPtrs != NULL) {
@@ -173,6 +178,8 @@ void LogS(const char *str)
 		st.wHour, st.wMinute, st.wSecond, q / 1000 % 1000, q % 1000);
 
 	std::string line = std::string(buf) + str;
+
+	g_mutex.Wait();
 	// Store log into list for crash log.
 	if (startupLog.size() < STARTUP_LOG_SIZE) {
 		startupLog.push_back(line);
@@ -187,6 +194,7 @@ void LogS(const char *str)
 			tailLog[currentLog].push_back(line);
 		}
 	}
+	g_mutex.Release();
 
 	if (!ofs.is_open()) {
 		return;

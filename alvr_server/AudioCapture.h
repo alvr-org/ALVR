@@ -336,43 +336,45 @@ public:
 			throw MakeException("Loopback capture thread exit code is %u; expected 0", exitCode);
 		}
 
-		// reopen the file in read/write mode
-		MMIOINFO mi = { 0 };
-		MMIOHandle file(mmioOpenW((LPWSTR)Settings::Instance().GetAudioOutput().c_str(), &mi, MMIO_READWRITE));
-		if (!file.IsValid()) {
-			throw MakeException("mmioOpen(\"%ls\", ...) failed. wErrorRet == %u", Settings::Instance().GetAudioOutput().c_str(), mi.wErrorRet);
-		}
+		if (Settings::Instance().m_DebugCaptureOutput) {
+			// reopen the file in read/write mode
+			MMIOINFO mi = { 0 };
+			MMIOHandle file(mmioOpenW((LPWSTR)Settings::Instance().GetAudioOutput().c_str(), &mi, MMIO_READWRITE));
+			if (!file.IsValid()) {
+				throw MakeException("mmioOpen(\"%ls\", ...) failed. wErrorRet == %u", Settings::Instance().GetAudioOutput().c_str(), mi.wErrorRet);
+			}
 
-		// descend into the RIFF/WAVE chunk
-		MMCKINFO ckRIFF = { 0 };
-		ckRIFF.ckid = MAKEFOURCC('W', 'A', 'V', 'E'); // this is right for mmioDescend
-		MMRESULT result = mmioDescend(file.Get(), &ckRIFF, NULL, MMIO_FINDRIFF);
-		if (MMSYSERR_NOERROR != result) {
-			throw MakeException("mmioDescend(\"WAVE\") failed: MMSYSERR = %u", result);
-		}
+			// descend into the RIFF/WAVE chunk
+			MMCKINFO ckRIFF = { 0 };
+			ckRIFF.ckid = MAKEFOURCC('W', 'A', 'V', 'E'); // this is right for mmioDescend
+			MMRESULT result = mmioDescend(file.Get(), &ckRIFF, NULL, MMIO_FINDRIFF);
+			if (MMSYSERR_NOERROR != result) {
+				throw MakeException("mmioDescend(\"WAVE\") failed: MMSYSERR = %u", result);
+			}
 
-		// descend into the fact chunk
-		MMCKINFO ckFact = { 0 };
-		ckFact.ckid = MAKEFOURCC('f', 'a', 'c', 't');
-		result = mmioDescend(file.Get(), &ckFact, &ckRIFF, MMIO_FINDCHUNK);
-		if (MMSYSERR_NOERROR != result) {
-			throw MakeException("mmioDescend(\"fact\") failed: MMSYSERR = %u", result);
-		}
+			// descend into the fact chunk
+			MMCKINFO ckFact = { 0 };
+			ckFact.ckid = MAKEFOURCC('f', 'a', 'c', 't');
+			result = mmioDescend(file.Get(), &ckFact, &ckRIFF, MMIO_FINDCHUNK);
+			if (MMSYSERR_NOERROR != result) {
+				throw MakeException("mmioDescend(\"fact\") failed: MMSYSERR = %u", result);
+			}
 
-		// write the correct data to the fact chunk
-		LONG lBytesWritten = mmioWrite(
-			file.Get(),
-			reinterpret_cast<PCHAR>(&m_frames),
-			sizeof(m_frames)
-		);
-		if (lBytesWritten != sizeof(m_frames)) {
-			throw MakeException("Updating the fact chunk wrote %u bytes; expected %u", lBytesWritten, (UINT32)sizeof(m_frames));
-		}
+			// write the correct data to the fact chunk
+			LONG lBytesWritten = mmioWrite(
+				file.Get(),
+				reinterpret_cast<PCHAR>(&m_frames),
+				sizeof(m_frames)
+			);
+			if (lBytesWritten != sizeof(m_frames)) {
+				throw MakeException("Updating the fact chunk wrote %u bytes; expected %u", lBytesWritten, (UINT32)sizeof(m_frames));
+			}
 
-		// ascend out of the fact chunk
-		result = mmioAscend(file.Get(), &ckFact, 0);
-		if (MMSYSERR_NOERROR != result) {
-			throw MakeException("mmioAscend(\"fact\") failed: MMSYSERR = %u", result);
+			// ascend out of the fact chunk
+			result = mmioAscend(file.Get(), &ckFact, 0);
+			if (MMSYSERR_NOERROR != result) {
+				throw MakeException("mmioAscend(\"fact\") failed: MMSYSERR = %u", result);
+			}
 		}
 	}
 

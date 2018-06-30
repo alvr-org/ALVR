@@ -1,6 +1,11 @@
 #ifndef ALVRCLIENT_PACKETTYPES_H
 #define ALVRCLIENT_PACKETTYPES_H
 #include <stdint.h>
+#include <assert.h>
+#include "reedsolomon/rs.h"
+
+// Maximum UDP packet size (payload size in bytes)
+static const int ALVR_MAX_PACKET_SIZE = 1400;
 
 enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_HELLO_MESSAGE = 1,
@@ -11,15 +16,14 @@ enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_TRACKING_INFO = 6,
 	ALVR_PACKET_TYPE_TIME_SYNC = 7,
 	ALVR_PACKET_TYPE_CHANGE_SETTINGS = 8,
-	ALVR_PACKET_TYPE_VIDEO_FRAME_START = 9,
-	ALVR_PACKET_TYPE_VIDEO_FRAME = 10,
-	ALVR_PACKET_TYPE_AUDIO_FRAME_START = 11,
-	ALVR_PACKET_TYPE_AUDIO_FRAME = 12,
-	ALVR_PACKET_TYPE_PACKET_ERROR_REPORT = 13,
+	ALVR_PACKET_TYPE_VIDEO_FRAME = 9,
+	ALVR_PACKET_TYPE_AUDIO_FRAME_START = 10,
+	ALVR_PACKET_TYPE_AUDIO_FRAME = 11,
+	ALVR_PACKET_TYPE_PACKET_ERROR_REPORT = 12,
 };
 
 enum {
-	ALVR_PROTOCOL_VERSION = 16
+	ALVR_PROTOCOL_VERSION = 17
 };
 
 enum ALVR_CODEC {
@@ -36,13 +40,13 @@ enum ALVR_LOST_FRAME_TYPE {
 #pragma pack(push, 1)
 // hello message
 struct HelloMessage {
-	uint32_t type; // 1
+	uint32_t type; // ALVR_PACKET_TYPE_HELLO_MESSAGE
 	uint32_t version; // ALVR_PROTOCOL_VERSION
 	char deviceName[32]; // null-terminated
 	uint32_t refreshRate; // 60 or 72
 };
 struct ConnectionMessage {
-	uint32_t type; // 2
+	uint32_t type; // ALVR_PACKET_TYPE_CONNECTION_MESSAGE
 	uint32_t version; // ALVR_PROTOCOL_VERSION
 	uint32_t codec; // enum ALVR_CODEC
 	uint32_t videoWidth; // in pixels
@@ -50,13 +54,13 @@ struct ConnectionMessage {
 	uint32_t bufferSize; // in bytes
 };
 struct RecoverConnection {
-	uint32_t type; // 3
+	uint32_t type; // ALVR_PACKET_TYPE_RECOVER_CONNECTION
 };
 struct BroadcastRequestMessage {
-	uint32_t type; // 4
+	uint32_t type; // ALVR_PACKET_TYPE_BROADCAST_REQUEST_MESSAGE
 };
 struct StreamControlMessage {
-	uint32_t type; // 5
+	uint32_t type; // ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE
 	uint32_t mode; // 1=Start stream, 2=Stop stream
 };
 struct TrackingQuat {
@@ -71,7 +75,7 @@ struct TrackingVector3 {
 	float z;
 };
 struct TrackingInfo {
-	uint32_t type; // 6
+	uint32_t type; // ALVR_PACKET_TYPE_TRACKING_INFO
 
 	static const int FLAG_OTHER_TRACKING_SOURCE = (1 << 0); // Other_Tracking_Source_Position has valid value (For ARCore)
 	static const int FLAG_CONTROLLER_ENABLE = (1 << 8);
@@ -117,7 +121,7 @@ struct TrackingInfo {
 // Client <----(mode 1)----< Server
 // Client >----(mode 2)----> Server
 struct TimeSync {
-	uint32_t type; // 7
+	uint32_t type; // ALVR_PACKET_TYPE_TIME_SYNC
 	uint32_t mode; // 0,1,2
 	uint64_t sequence;
 	uint64_t serverTime;
@@ -144,28 +148,25 @@ struct ChangeSettings {
 	uint32_t enableTestMode;
 	uint32_t suspend;
 };
-struct VideoFrameStart {
-	uint32_t type; // 9
-	uint32_t packetCounter;
-	uint64_t presentationTime;
-	uint64_t frameIndex;
-	uint32_t frameByteSize;
-	// char frameBuffer[];
-};
 struct VideoFrame {
-	uint32_t type; // 10
+	uint32_t type; // ALVR_PACKET_TYPE_VIDEO_FRAME
 	uint32_t packetCounter;
+	uint64_t frameIndex;
+	uint64_t sentTime;
+	uint32_t frameByteSize;
+	uint32_t fecIndex;
+	uint16_t fecPercentage;
 	// char frameBuffer[];
 };
 struct AudioFrameStart {
-	uint32_t type; // 11
+	uint32_t type; // ALVR_PACKET_TYPE_AUDIO_FRAME_START
 	uint32_t packetCounter;
 	uint64_t presentationTime;
 	uint32_t frameByteSize;
 	// char frameBuffer[];
 };
 struct AudioFrame {
-	uint32_t type; // 12
+	uint32_t type; // ALVR_PACKET_TYPE_AUDIO_FRAME
 	uint32_t packetCounter;
 	// char frameBuffer[];
 };
@@ -177,5 +178,25 @@ struct PacketErrorReport {
 	uint32_t toPacketCounter;
 };
 #pragma pack(pop)
+
+static const int ALVR_MAX_VIDEO_BUFFER_SIZE = ALVR_MAX_PACKET_SIZE - sizeof(VideoFrame);
+
+inline int CalculateParityShards(int dataShards, int fecPercentage) {
+	int totalParityShards = (dataShards * fecPercentage + 99) / 100;
+	return totalParityShards;
+}
+
+// Calculate how many packet is needed for make signal shard.
+inline int CalculateFECShardPackets(int len, int fecPercentage) {
+	// This reed solomon implementation accept only 255 shards.
+	// Normally, we use ALVR_MAX_VIDEO_BUFFER_SIZE as block_size and single packet becomes single shard.
+	// If we need more than maxDataShards packets, we need to combine multiple packet to make single shrad.
+	// NOTE: Moonlight seems to use only 255 shards for video frame.
+	int maxDataShards = ((DATA_SHARDS_MAX - 2) * 100 + 99 + fecPercentage) / (100 + fecPercentage);
+	int minBlockSize = (len + maxDataShards - 1) / maxDataShards;
+	int shardPackets = (minBlockSize + ALVR_MAX_VIDEO_BUFFER_SIZE - 1) / ALVR_MAX_VIDEO_BUFFER_SIZE;
+	assert(maxDataShards + CalculateParityShards(maxDataShards, fecPercentage) <= DATA_SHARDS_MAX);
+	return shardPackets;
+}
 
 #endif //ALVRCLIENT_PACKETTYPES_H

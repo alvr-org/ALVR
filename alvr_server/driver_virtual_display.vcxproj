@@ -51,7 +51,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\;..\libswresample\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\;..\libswresample\include;$(SolutionDir)ALVR-common</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WINDLL;NOMINMAX;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -73,7 +73,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\;..\libswresample\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\;..\libswresample\include;$(SolutionDir)ALVR-common</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WINDLL;NOMINMAX;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -91,6 +91,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\ALVR-common\reedsolomon\rs.c" />
     <ClCompile Include="ControlSocket.cpp" />
     <ClCompile Include="alvr_server.cpp" />
     <ClCompile Include="FrameRender.cpp" />
@@ -112,6 +113,8 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\ALVR-common\packet_types.h" />
+    <ClInclude Include="..\ALVR-common\reedsolomon\rs.h" />
     <ClInclude Include="AudioCapture.h" />
     <ClInclude Include="ControlSocket.h" />
     <ClInclude Include="CudaConverter.h" />

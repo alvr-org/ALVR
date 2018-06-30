@@ -15,6 +15,9 @@
 #include "packet_types.h"
 #include "Settings.h"
 #include "Statistics.h"
+extern "C" {
+#include "reedsolomon/rs.h"
+};
 
 class Listener : public CThread {
 public:
@@ -38,6 +41,8 @@ public:
 		m_ControlSocket.reset(new ControlSocket(m_Poller));
 
 		m_Streaming = false;
+
+		reed_solomon_init();
 	}
 
 	~Listener() {
@@ -129,6 +134,94 @@ public:
 		}
 	}
 
+	void FECSend(uint8_t *buf, int len, uint64_t frameIndex) {
+		int fecPercentage = 10;
+		int shardPackets = CalculateFECShardPackets(len, fecPercentage);
+
+		int blockSize = shardPackets * ALVR_MAX_VIDEO_BUFFER_SIZE;
+
+		int dataShards = (len + blockSize - 1) / blockSize;
+		int totalParityShards = (dataShards * fecPercentage + 99) / 100;
+		int totalShards = dataShards + totalParityShards;
+
+		int dataPackets = dataShards * shardPackets;
+		int parityPackets = totalParityShards * shardPackets;
+		int totalPackets = totalShards * shardPackets;
+
+		assert(totalShards <= DATA_SHARDS_MAX);
+
+		Log("reed_solomon_new. dataShards=%d totalParityShards=%d totalShards=%d blockSize=%d"
+			, dataShards, totalParityShards, totalShards, blockSize);
+
+		reed_solomon *rs = reed_solomon_new(dataShards, totalParityShards);
+
+		std::vector<uint8_t *> shards(totalShards);
+
+		for (int i = 0; i < dataShards; i++) {
+			shards[i] = buf + i * blockSize;
+		}
+		if (len % blockSize != 0) {
+			// Padding
+			shards[dataShards - 1] = new uint8_t[blockSize];
+			memset(shards[dataShards - 1], 0, blockSize);
+			memcpy(shards[dataShards - 1], buf + (dataShards - 1) * blockSize, len % blockSize);
+		}
+		for (int i = 0; i < totalParityShards; i++) {
+			shards[dataShards + i] = new uint8_t[blockSize];
+		}
+
+		int ret = reed_solomon_encode(rs, &shards[0], totalShards, blockSize);
+		assert(ret == 0);
+
+		reed_solomon_release(rs);
+
+		uint8_t packetBuffer[2000];
+		VideoFrame *header = (VideoFrame *)packetBuffer;
+		uint8_t *payload = packetBuffer + sizeof(VideoFrame);
+		int dataRemain = len;
+
+		header->type = ALVR_PACKET_TYPE_VIDEO_FRAME;
+		header->frameIndex = frameIndex;
+		header->sentTime = GetTimestampUs();
+		header->frameByteSize = len;
+		header->fecIndex = 0;
+		header->fecPercentage = fecPercentage;
+		for (int i = 0; i < dataShards; i++) {
+			for (int j = 0; j < shardPackets; j++) {
+				int copyLength = std::min(ALVR_MAX_VIDEO_BUFFER_SIZE, dataRemain);
+				if (copyLength <= 0) {
+					break;
+				}
+				memcpy(payload, shards[i] + j * ALVR_MAX_VIDEO_BUFFER_SIZE, copyLength);
+				dataRemain -= ALVR_MAX_VIDEO_BUFFER_SIZE;
+
+				header->packetCounter = videoPacketCounter;
+				videoPacketCounter++;
+				m_Socket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, frameIndex);
+				header->fecIndex++;
+			}
+		}
+		header->fecIndex = dataShards * shardPackets;
+		for (int i = 0; i < totalParityShards; i++) {
+			for (int j = 0; j < shardPackets; j++) {
+				int copyLength = ALVR_MAX_VIDEO_BUFFER_SIZE;
+				memcpy(payload, shards[dataShards + i] + j * ALVR_MAX_VIDEO_BUFFER_SIZE, copyLength);
+
+				header->packetCounter = videoPacketCounter;
+				videoPacketCounter++;
+				m_Socket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, frameIndex);
+				header->fecIndex++;
+			}
+		}
+
+		if (len % blockSize != 0) {
+			delete[] shards[dataShards - 1];
+		}
+		for (int i = 0; i < totalParityShards; i++) {
+			delete[] shards[dataShards + i];
+		}
+	}
+
 	void SendVideo(uint8_t *buf, int len, uint64_t presentationTime, uint64_t frameIndex) {
 		uint8_t packetBuffer[2000];
 
@@ -142,42 +235,7 @@ public:
 		}
 		Log("Sending %d bytes FrameIndex=%llu", len, frameIndex);
 
-		int remainBuffer = len;
-		for (int i = 0; remainBuffer != 0; i++) {
-			int pos = 0;
-
-			if (i == 0) {
-				// First fragment
-				VideoFrameStart *header = (VideoFrameStart *)packetBuffer;
-
-				header->type = ALVR_PACKET_TYPE_VIDEO_FRAME_START;
-				header->packetCounter = videoPacketCounter;
-				header->presentationTime = presentationTime;
-				header->frameIndex = frameIndex;
-				header->frameByteSize = len;
-
-				pos = sizeof(VideoFrameStart);
-			}else{
-				// Following fragments
-				VideoFrame *header = (VideoFrame *)packetBuffer;
-
-				header->type = ALVR_PACKET_TYPE_VIDEO_FRAME;
-				header->packetCounter = videoPacketCounter;
-
-				pos = sizeof(VideoFrame);
-			}
-
-			int size = std::min(PACKET_SIZE - pos, remainBuffer);
-
-			memcpy(packetBuffer + pos, buf + (len - remainBuffer), size);
-			pos += size;
-			remainBuffer -= size;
-
-			videoPacketCounter++;
-
-			int ret = m_Socket->Send((char *)packetBuffer, pos, frameIndex);
-
-		}
+		FECSend(buf, len, frameIndex);
 	}
 
 	void SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {

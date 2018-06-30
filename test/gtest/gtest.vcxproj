@@ -57,17 +57,17 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDLL;NOMINMAX;_WINSOCKAPI_;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(SolutionDir)openvr\headers</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(SolutionDir)openvr\headers;$(SolutionDir)alvr_server;$(SolutionDir)ALVR-common;$(SolutionDir)shared;$(CUDA_PATH)/include;$(SolutionDir)alvr_server\include;$(SolutionDir)CUDA;$(SolutionDir)libswresample\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(ProjectDir)lib\$(Configuration)\gmock_main.lib;$(ProjectDir)lib\$(Configuration)\gmock.lib;$(ProjectDir)lib\$(Configuration)\gtest_main.lib;$(ProjectDir)lib\$(Configuration)\gtest.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(ProjectDir)lib\$(Configuration)\gmock_main.lib;$(ProjectDir)lib\$(Configuration)\gmock.lib;$(ProjectDir)lib\$(Configuration)\gtest_main.lib;$(ProjectDir)lib\$(Configuration)\gtest.lib;avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -76,37 +76,77 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDLL;NOMINMAX;_WINSOCKAPI_;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(SolutionDir)openvr\headers</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(SolutionDir)openvr\headers;$(SolutionDir)alvr_server;$(SolutionDir)ALVR-common;$(SolutionDir)shared;$(CUDA_PATH)/include;$(SolutionDir)alvr_server\include;$(SolutionDir)CUDA;$(SolutionDir)libswresample\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(ProjectDir)lib\$(Configuration)\gmock_main.lib;$(ProjectDir)lib\$(Configuration)\gmock.lib;$(ProjectDir)lib\$(Configuration)\gtest_main.lib;$(ProjectDir)lib\$(Configuration)\gtest.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(ProjectDir)lib\$(Configuration)\gmock_main.lib;$(ProjectDir)lib\$(Configuration)\gmock.lib;$(ProjectDir)lib\$(Configuration)\gtest_main.lib;$(ProjectDir)lib\$(Configuration)\gtest.lib;avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\ALVRClient\app\src\main\cpp\fec\reedsolomon\rs.c" />
+    <ClCompile Include="..\..\ALVR-common\reedsolomon\rs.c" />
+    <ClCompile Include="..\..\alvr_server\alvr_server.cpp" />
+    <ClCompile Include="..\..\alvr_server\ControlSocket.cpp" />
+    <ClCompile Include="..\..\alvr_server\FrameRender.cpp" />
+    <ClCompile Include="..\..\alvr_server\FreePIE.cpp" />
+    <ClCompile Include="..\..\alvr_server\Logger.cpp" />
+    <ClCompile Include="..\..\alvr_server\NvEncoder.cpp" />
+    <ClCompile Include="..\..\alvr_server\NvEncoderCuda.cpp" />
+    <ClCompile Include="..\..\alvr_server\NvEncoderD3D11.cpp" />
+    <ClCompile Include="..\..\alvr_server\Poller.cpp" />
+    <ClCompile Include="..\..\alvr_server\Settings.cpp" />
+    <ClCompile Include="..\..\alvr_server\UdpSocket.cpp" />
     <ClCompile Include="rs_test.cpp" />
     <ClCompile Include="utils_test.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\alvr_server\driver_virtual_display.vcxproj">
-      <Project>{6fb51d67-327e-4a18-bc74-7aa6aab4c827}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\CUDA\CUDA.vcxproj">
-      <Project>{12336478-a663-42f8-8d52-8d093cd99992}</Project>
-    </ProjectReference>
+    <ClInclude Include="..\..\ALVR-common\reedsolomon\rs.h" />
+    <ClInclude Include="..\..\alvr_server\AudioCapture.h" />
+    <ClInclude Include="..\..\alvr_server\ControlSocket.h" />
+    <ClInclude Include="..\..\alvr_server\CudaConverter.h" />
+    <ClInclude Include="..\..\alvr_server\FrameRender.h" />
+    <ClInclude Include="..\..\alvr_server\FreePIE.h" />
+    <ClInclude Include="..\..\alvr_server\Listener.h" />
+    <ClInclude Include="..\..\alvr_server\Logger.h" />
+    <ClInclude Include="..\..\alvr_server\NvCodecUtils.h" />
+    <ClInclude Include="..\..\alvr_server\nvEncodeAPI.h" />
+    <ClInclude Include="..\..\alvr_server\NvEncoder.h" />
+    <ClInclude Include="..\..\alvr_server\nvencoderclioptions.h" />
+    <ClInclude Include="..\..\alvr_server\NvEncoderCuda.h" />
+    <ClInclude Include="..\..\alvr_server\NvEncoderD3D11.h" />
+    <ClInclude Include="..\..\alvr_server\Poller.h" />
+    <ClInclude Include="..\..\alvr_server\RecenterManager.h" />
+    <ClInclude Include="..\..\alvr_server\RemoteController.h" />
+    <ClInclude Include="..\..\alvr_server\ResampleUtils.h" />
+    <ClInclude Include="..\..\alvr_server\resource.h" />
+    <ClInclude Include="..\..\alvr_server\RGBToNV12ConverterD3D11.h" />
+    <ClInclude Include="..\..\alvr_server\Settings.h" />
+    <ClInclude Include="..\..\alvr_server\Statistics.h" />
+    <ClInclude Include="..\..\alvr_server\Tracking.h" />
+    <ClInclude Include="..\..\alvr_server\UdpSocket.h" />
+    <ClInclude Include="..\..\alvr_server\Utils.h" />
+    <ClInclude Include="test-common.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\shared\shared.vcxproj">
       <Project>{10868996-d864-4e88-8bcb-ba530af64712}</Project>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="test-common.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\..\packages\directxtk_desktop_2015.2018.6.1.2\build\native\directxtk_desktop_2015.targets" Condition="Exists('..\..\packages\directxtk_desktop_2015.2018.6.1.2\build\native\directxtk_desktop_2015.targets')" />
   </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\..\packages\directxtk_desktop_2015.2018.6.1.2\build\native\directxtk_desktop_2015.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\directxtk_desktop_2015.2018.6.1.2\build\native\directxtk_desktop_2015.targets'))" />
+  </Target>
 </Project>

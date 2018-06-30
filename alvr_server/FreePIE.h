@@ -4,16 +4,17 @@
 #include "resource.h"
 #include "packet_types.h"
 #include "Utils.h"
+#include "Logger.h"
 
 class FreePIE
 {
 public:
-	static const uint32_t ALVR_FREEPIE_SIGNATURE_V1 = 0x11223344;
+	static const uint32_t ALVR_FREEPIE_SIGNATURE_V2 = 0x11223345;
 
 	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_ORIENTATION = 1 << 0;
-	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION = 1 << 1;
+	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION0 = 1 << 1;
 	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_POSITION = 1 << 2;
-	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION = 1 << 3;
+	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION0 = 1 << 3;
 	static const uint32_t ALVR_FREEPIE_FLAG_OVERRIDE_BUTTONS = 1 << 4;
 
 	static const uint32_t ALVR_FREEPIE_INPUT_BUTTON_TRACKPAD_CLICK = 1 << 0;
@@ -36,18 +37,19 @@ public:
 		double input_head_position[3];
 		double input_controller_position[3];
 		double input_trackpad[2];
-		uint32_t inputControllerButtons;
-		uint32_t controllerButtons;
+		uint16_t inputControllerButtons;
+		uint16_t controllers;
+		uint32_t controllerButtons[2];
 		double head_orientation[3];
-		double controller_orientation[3];
+		double controller_orientation[2][3];
 		double head_position[3];
-		double controller_position[3];
-		double trigger;
-		double trigger_left;
-		double trigger_right;
-		double joystick_left[2];
-		double joystick_right[2];
-		double trackpad[2];
+		double controller_position[2][3];
+		double trigger[2];
+		double trigger_left[2];
+		double trigger_right[2];
+		double joystick_left[2][2];
+		double joystick_right[2][2];
+		double trackpad[2][2];
 		char message[ALVR_FREEPIE_MESSAGE_LENGTH];
 	};
 #pragma pack(pop)
@@ -100,23 +102,10 @@ private:
 
 		m_p = (FreePIEFileMapping *)m_fileMapping.Map(FILE_MAP_WRITE);
 		memset(m_p, 0, sizeof(FreePIEFileMapping));
-		m_p->version = ALVR_FREEPIE_SIGNATURE_V1;
+		m_p->version = ALVR_FREEPIE_SIGNATURE_V2;
 		m_p->flags = 0;
 
-		for (int i = 0; i < 14; i++) {
-			m_p->input_head_orientation[i] = 0.0;
-		}
-
-		m_p->inputControllerButtons = 0;
-		m_p->controllerButtons = 0;
-
-		for (int i = 0; i < 12; i++) {
-			m_p->head_orientation[i] = 0.0;
-		}
-
-		for (int i = 0; i < 9; i++) {
-			(&m_p->trigger)[i] = 0.0;
-		}
+		m_p->controllers = 1;
 
 		memcpy(&m_copy, m_p, sizeof(FreePIEFileMapping));
 

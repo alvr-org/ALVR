@@ -87,6 +87,17 @@ public:
 				, m_fixedOrientationHMD.y
 				, m_fixedOrientationHMD.z
 				, m_fixedOrientationHMD.w));
+		Log("GetRecenteredController: Old=(%f,%f,%f,%f) New=(%f,%f,%f,%f) pitch=%f-%f"
+			, info.controller_Pose_Orientation.x, info.controller_Pose_Orientation.y
+			, info.controller_Pose_Orientation.z, info.controller_Pose_Orientation.w
+			, m_fixedOrientationController.x, m_fixedOrientationController.y
+			, m_fixedOrientationController.z, m_fixedOrientationController.w
+			, m_centerPitch
+			, PitchFromQuaternion(
+				m_fixedOrientationController.x
+				, m_fixedOrientationController.y
+				, m_fixedOrientationController.z
+				, m_fixedOrientationController.w));
 
 		m_freePIE->UpdateTrackingInfoByFreePIE(info, m_fixedOrientationHMD, m_fixedOrientationController, m_fixedPositionHMD, m_fixedPositionController);
 
@@ -95,19 +106,18 @@ public:
 		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_ORIENTATION) {
 			m_fixedOrientationHMD = EulerAngleToQuaternion(data.head_orientation);
 		}
-		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION) {
-			m_fixedOrientationController = EulerAngleToQuaternion(data.controller_orientation);
+		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION0) {
+			m_fixedOrientationController = EulerAngleToQuaternion(data.controller_orientation[0]);
 		}
 		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_POSITION) {
 			m_fixedPositionHMD.x = (float) data.head_position[0];
 			m_fixedPositionHMD.y = (float) data.head_position[1];
 			m_fixedPositionHMD.z = (float) data.head_position[2];
 		}
-		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION) {
-			Log("Test controller position: %f,%f,%f", data.controller_position[0], data.controller_position[1], data.controller_position[2]);
-			m_fixedPositionController.x = (float) data.controller_position[0];
-			m_fixedPositionController.y = (float) data.controller_position[1];
-			m_fixedPositionController.z = (float) data.controller_position[2];
+		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION0) {
+			m_fixedPositionController.x = (float) data.controller_position[0][0];
+			m_fixedPositionController.y = (float) data.controller_position[0][1];
+			m_fixedPositionController.z = (float) data.controller_position[0][2];
 		}
 
 		if (Settings::Instance().m_EnableOffsetPos) {
@@ -186,34 +196,51 @@ private:
 		if (!Settings::Instance().m_enableController) {
 			return;
 		}
-		bool enableControllerButton = m_freePIE->GetData().flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_BUTTONS;
-		if (!m_controllerDetected) {
-			if ((info.flags & TrackingInfo::FLAG_CONTROLLER_ENABLE) || enableControllerButton) {
-				Log("Enabling new controller by %s", enableControllerButton ? "FreePIE" : "Client");
-				m_controllerDetected = true;
+		auto data = m_freePIE->GetData();
+		bool enableControllerButton = data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_BUTTONS;
+		m_controllerDetected = data.controllers;
 
-				// false: right hand, true: left hand
-				bool handed = (info.flags & TrackingInfo::FLAG_CONTROLLER_LEFTHAND) != 0;
-				m_remoteController = std::make_shared<RemoteControllerServerDriver>(handed);
+		// Add controller as specified.
+		for (int i = 0; i < m_controllerDetected; i++) {
+			if (m_remoteController[i]) {
+				// Already enabled.
+				continue;
+			}
+			// false: right hand, true: left hand
+			bool handed = (info.flags & TrackingInfo::FLAG_CONTROLLER_LEFTHAND) != 0;
+			if (i == 1) {
+				handed = !handed;
+			}
+			m_remoteController[i] = std::make_shared<RemoteControllerServerDriver>(handed, i);
 
-				bool ret;
-				ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-					m_remoteController->GetSerialNumber().c_str(),
-					vr::TrackedDeviceClass_Controller,
-					m_remoteController.get());
-				Log("TrackedDeviceAdded Ret=%d SerialNumber=%s", ret, m_remoteController->GetSerialNumber().c_str());
+			bool ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+				m_remoteController[i]->GetSerialNumber().c_str(),
+				vr::TrackedDeviceClass_Controller,
+				m_remoteController[i].get());
+			Log("TrackedDeviceAdded vr::TrackedDeviceClass_Controller index=%d Ret=%d SerialNumber=%s"
+				, i, ret, m_remoteController[i]->GetSerialNumber().c_str());
+		}
+
+		if (m_remoteController[0]) {
+			bool recenterRequested = m_remoteController[0]->ReportControllerState(info, m_fixedOrientationController, m_fixedPositionController, enableControllerButton, data);
+			if (recenterRequested) {
+				BeginRecenter();
 			}
 		}
-		if (m_controllerDetected) {
-			bool recenterRequested = m_remoteController->ReportControllerState(info, m_fixedOrientationController, m_fixedPositionController, enableControllerButton, m_freePIE->GetData());
+		if (m_remoteController[1]) {
+			TrackingVector3 positionController1;
+			positionController1.x = (float)data.controller_position[1][0];
+			positionController1.y = (float)data.controller_position[1][1];
+			positionController1.z = (float)data.controller_position[1][2];
+			bool recenterRequested = m_remoteController[1]->ReportControllerState(info, EulerAngleToQuaternion(data.controller_orientation[1]), positionController1, enableControllerButton, data);
 			if (recenterRequested) {
 				BeginRecenter();
 			}
 		}
 	}
 
-	bool m_controllerDetected;
-	std::shared_ptr<RemoteControllerServerDriver> m_remoteController;
+	int m_controllerDetected;
+	std::shared_ptr<RemoteControllerServerDriver> m_remoteController[2];
 
 	std::shared_ptr<FreePIE> m_freePIE;
 

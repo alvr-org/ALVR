@@ -45,11 +45,12 @@ enum {
 class RemoteControllerServerDriver : public vr::ITrackedDeviceServerDriver
 {
 public:
-	RemoteControllerServerDriver(bool handed)
+	RemoteControllerServerDriver(bool handed, int index)
 		: m_handed(handed)
 		, m_previousButtons(0)
 		, m_previousFlags(0)
 		, m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
+		, m_index(index)
 	{
 		memset(&m_pose, 0, sizeof(m_pose));
 		m_pose.poseIsValid = true;
@@ -80,8 +81,8 @@ public:
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, Settings::Instance().m_controllerModelNumber.c_str());
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, Settings::Instance().m_controllerRenderModelName.c_str());
 
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_SerialNumber_String, Settings::Instance().m_controllerSerialNumber.c_str());
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_AttachedDeviceId_String, Settings::Instance().m_controllerSerialNumber.c_str());
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_SerialNumber_String, GetSerialNumber().c_str());
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_AttachedDeviceId_String, GetSerialNumber().c_str());
 
 		uint64_t supportedButtons = 0xFFFFFFFFFFFFFFFFULL;
 		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_SupportedButtons_Uint64, supportedButtons);
@@ -196,24 +197,26 @@ public:
 
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));
 
-		if (enableControllerButton) {
+		// If enableControllerButton is set true by FreePIE, we don't use button assign from GUI but use FreePIE.
+		// Second controller is always controlled by FreePIE.
+		if (enableControllerButton || m_index == 1) {
 			for (int i = 0; i < FreePIE::ALVR_FREEPIE_BUTTONS; i++) {
-				bool value = (freePIEData.controllerButtons & (1 << i)) != 0;
+				bool value = (freePIEData.controllerButtons[m_index] & (1 << i)) != 0;
 				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[FreePIE::BUTTON_MAP[i]], value, 0.0);
 				if (FreePIE::BUTTON_MAP[i] == INPUT_TRIGGER_CLICK) {
 					vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
 				}
 			}
 
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], (float) freePIEData.trigger, 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_LEFT_VALUE], (float)freePIEData.trigger_left, 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_RIGHT_VALUE], (float)freePIEData.trigger_right, 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_X], (float)freePIEData.joystick_left[0], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_Y], (float)freePIEData.joystick_left[1], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_X], (float)freePIEData.joystick_right[0], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_Y], (float)freePIEData.joystick_right[1], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_X], (float)freePIEData.trackpad[0], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_Y], (float)freePIEData.trackpad[1], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], (float) freePIEData.trigger[m_index], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_LEFT_VALUE], (float)freePIEData.trigger_left[m_index], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_RIGHT_VALUE], (float)freePIEData.trigger_right[m_index], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_X], (float)freePIEData.joystick_left[m_index][0], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_Y], (float)freePIEData.joystick_left[m_index][1], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_X], (float)freePIEData.joystick_right[m_index][0], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_Y], (float)freePIEData.joystick_right[m_index][1], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_X], (float)freePIEData.trackpad[m_index][0], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_Y], (float)freePIEData.trackpad[m_index][1], 0.0);
 		}else{
 			int32_t triggerButton = Settings::Instance().m_controllerTriggerMode;
 			int32_t trackpadClickButton = Settings::Instance().m_controllerTrackpadClickMode;
@@ -282,7 +285,9 @@ public:
 	}
 
 	std::string GetSerialNumber() {
-		return Settings::Instance().m_controllerSerialNumber;
+		char str[100];
+		snprintf(str, sizeof(str), "-%d", m_index);
+		return Settings::Instance().m_controllerSerialNumber + str;
 	}
 
 private:
@@ -293,6 +298,7 @@ private:
 	uint32_t m_previousFlags;
 
 	bool m_handed;
+	int m_index;
 
 	vr::VRInputComponentHandle_t m_handles[INPUT_COUNT];
 

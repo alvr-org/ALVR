@@ -135,13 +135,12 @@ public:
 	}
 
 	void FECSend(uint8_t *buf, int len, uint64_t frameIndex) {
-		int fecPercentage = 10;
-		int shardPackets = CalculateFECShardPackets(len, fecPercentage);
+		int shardPackets = CalculateFECShardPackets(len, m_fecPercentage);
 
 		int blockSize = shardPackets * ALVR_MAX_VIDEO_BUFFER_SIZE;
 
 		int dataShards = (len + blockSize - 1) / blockSize;
-		int totalParityShards = (dataShards * fecPercentage + 99) / 100;
+		int totalParityShards = (dataShards * m_fecPercentage + 99) / 100;
 		int totalShards = dataShards + totalParityShards;
 
 		int dataPackets = dataShards * shardPackets;
@@ -185,7 +184,7 @@ public:
 		header->sentTime = GetTimestampUs();
 		header->frameByteSize = len;
 		header->fecIndex = 0;
-		header->fecPercentage = fecPercentage;
+		header->fecPercentage = m_fecPercentage;
 		for (int i = 0; i < dataShards; i++) {
 			for (int j = 0; j < shardPackets; j++) {
 				int copyLength = std::min(ALVR_MAX_VIDEO_BUFFER_SIZE, dataRemain);
@@ -351,6 +350,10 @@ public:
 				sendBuf.mode = 1;
 				sendBuf.serverTime = Current;
 				m_Socket->Send((char *)&sendBuf, sizeof(sendBuf), 0);
+
+				if (timeSync->fecFailure) {
+					OnFecFailure();
+				}
 			}
 			else if (timeSync->mode == 2) {
 				// Calclate RTT
@@ -384,7 +387,8 @@ public:
 			}
 			auto *packetErrorReport = (PacketErrorReport *) buf;
 			Log("Packet loss was reported. Type=%d %lu - %lu", packetErrorReport->lostFrameType, packetErrorReport->fromPacketCounter, packetErrorReport->toPacketCounter);
-			m_PacketLossCallback((int32_t)(packetErrorReport->toPacketCounter - packetErrorReport->fromPacketCounter));
+			// Ignore
+			//m_PacketLossCallback((int32_t)(packetErrorReport->toPacketCounter - packetErrorReport->fromPacketCounter));
 		}
 	}
 
@@ -444,6 +448,9 @@ public:
 				"TotalLatency %.1f ms\n"
 				"TransportLatency %.1f ms\n"
 				"DecodeLatency %.1f ms\n"
+				"FecPercentage %d %%\n"
+				"FecFailureTotal %llu Packets\n"
+				"FecFailureInSecond %llu Packets/s\n"
 				, m_Statistics->GetPacketsSentTotal()
 				, m_Statistics->GetPacketsSentInSecond()
 				, m_reportedStatistics.packetsLostTotal
@@ -452,7 +459,10 @@ public:
 				, m_Statistics->GetBitsSentInSecond() / 1000 / 1000.0
 				, m_reportedStatistics.averageTotalLatency / 1000.0
 				, m_reportedStatistics.averageTransportLatency / 1000.0
-				, m_reportedStatistics.averageDecodeLatency / 1000.0);
+				, m_reportedStatistics.averageDecodeLatency / 1000.0
+			    , m_fecPercentage
+				, m_reportedStatistics.fecFailureTotal
+				, m_reportedStatistics.fecFailureInSecond);
 			SendCommandResponse(buf);
 		}
 		else if (commandName == "Disconnect") {
@@ -617,6 +627,7 @@ public:
 		m_Connected = true;
 		videoPacketCounter = 0;
 		soundPacketCounter = 0;
+		m_fecPercentage = INITIAL_FEC_PERCENTAGE;
 		memset(&m_reportedStatistics, 0, sizeof(m_reportedStatistics));
 		m_Statistics->ResetAll();
 		UpdateLastSeen();
@@ -640,6 +651,15 @@ public:
 		m_Socket->InvalidateClient();
 	}
 
+	void OnFecFailure() {
+		if (GetTimestampUs() - m_lastFecFailure < CONTINUOUS_FEC_FAILURE) {
+			if (m_fecPercentage < MAX_FEC_PERCENTAGE) {
+				m_fecPercentage += 5;
+			}
+		}
+		m_lastFecFailure = GetTimestampUs();
+		m_PacketLossCallback(1);
+	}
 private:
 	bool m_bExiting;
 	bool m_Enabled;
@@ -684,4 +704,9 @@ private:
 	std::string m_clientDeviceName;
 	int m_clientRefreshRate;
 	TimeSync m_reportedStatistics;
+	uint64_t m_lastFecFailure = 0;
+	static const uint64_t CONTINUOUS_FEC_FAILURE = 60 * 1000 * 1000;
+	static const int INITIAL_FEC_PERCENTAGE = 5;
+	static const int MAX_FEC_PERCENTAGE = 30;
+	int m_fecPercentage = INITIAL_FEC_PERCENTAGE;
 };

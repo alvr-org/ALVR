@@ -142,6 +142,10 @@ struct TimeSync {
 	uint32_t averageDecodeLatency;
 	uint32_t maxDecodeLatency;
 	uint32_t minDecodeLatency;
+
+	uint32_t fecFailure;
+	uint64_t fecFailureInSecond;
+	uint64_t fecFailureTotal;
 };
 struct ChangeSettings {
 	uint32_t type; // 8

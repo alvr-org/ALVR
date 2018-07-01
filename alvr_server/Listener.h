@@ -143,10 +143,6 @@ public:
 		int totalParityShards = (dataShards * m_fecPercentage + 99) / 100;
 		int totalShards = dataShards + totalParityShards;
 
-		int dataPackets = dataShards * shardPackets;
-		int parityPackets = totalParityShards * shardPackets;
-		int totalPackets = totalShards * shardPackets;
-
 		assert(totalShards <= DATA_SHARDS_MAX);
 
 		Log("reed_solomon_new. dataShards=%d totalParityShards=%d totalShards=%d blockSize=%d shardPackets=%d"

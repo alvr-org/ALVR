@@ -118,6 +118,10 @@ namespace
 					m_NvNecoder = std::make_shared<NvEncoderCuda>(m_Converter->GetContext(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
 				}
 				catch (NVENCException e) {
+					if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
+						FatalLog("This GPU does not port H.265 encoding. (NvEncoderCuda NV_ENC_ERR_INVALID_PARAM)");
+						return false;
+					}
 					FatalLog("NvEnc NvEncoderCuda failed. Code=%d %s", e.getErrorCode(), e.what());
 					return false;
 				}
@@ -127,6 +131,10 @@ namespace
 					m_NvNecoder = std::make_shared<NvEncoderD3D11>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
 				}
 				catch (NVENCException e) {
+					if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
+						FatalLog("This GPU does not port H.265 encoding. (NvEncoderD3D11 NV_ENC_ERR_INVALID_PARAM)");
+						return false;
+					}
 					FatalLog("NvEnc NvEncoderD3D11 failed. Code=%d %s", e.getErrorCode(), e.what());
 					return false;
 				}

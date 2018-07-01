@@ -767,6 +767,11 @@ public:
 			Log("Too many layers submitted!");
 		}
 
+		if (g_DriverTestMode & 8) {
+			// Crash test
+			*(char*)0 = 1;
+		}
+
 		//CopyTexture();
 	}
 

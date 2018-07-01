@@ -145,7 +145,7 @@ namespace ALVR
                 driverConfig.enableSound = Properties.Settings.Default.enableSound && Properties.Settings.Default.soundDevice != "";
                 driverConfig.soundDevice = Properties.Settings.Default.soundDevice;
 
-                driverConfig.debugOutputDir = Utils.GetDriverPath();
+                driverConfig.debugOutputDir = Utils.GetOutputPath();
                 driverConfig.debugLog = Properties.Settings.Default.debugLog;
                 driverConfig.debugFrameIndex = false;
                 driverConfig.debugFrameOutput = false;

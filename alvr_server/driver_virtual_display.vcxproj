@@ -128,7 +128,6 @@
     <ClInclude Include="nvencoderclioptions.h" />
     <ClInclude Include="NvEncoderCuda.h" />
     <ClInclude Include="NvEncoderD3D11.h" />
-    <ClInclude Include="packet_types.h" />
     <ClInclude Include="Poller.h" />
     <ClInclude Include="RecenterManager.h" />
     <ClInclude Include="RemoteController.h" />

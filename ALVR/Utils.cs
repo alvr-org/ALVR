@@ -29,6 +29,13 @@ namespace ALVR
             return driverPath;
         }
 
+        public static string GetOutputPath()
+        {
+            string exePath = Assembly.GetEntryAssembly().Location;
+
+            return Path.GetDirectoryName(exePath) + "\\logs\\";
+        }
+
         public static string GetDllDirectory(string driverPath)
         {
             return driverPath + @"bin\win64";

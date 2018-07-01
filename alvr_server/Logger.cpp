@@ -99,7 +99,7 @@ static void OutputCrashLog(PEXCEPTION_POINTERS pExceptionPtrs) {
 
 	GetLocalTime(&st);
 
-	_snwprintf_s(logPath, sizeof(logPath), L"%s\\..\\..\\..\\ALVR_CrashLog_%04d%02d%02d_%02d%02d%02d.log",
+	_snwprintf_s(logPath, sizeof(logPath), L"%s\\..\\..\\..\\logs\\ALVR_CrashLog_%04d%02d%02d_%02d%02d%02d.log",
 		cpath, st.wYear, st.wMonth, st.wDay,
 		st.wHour, st.wMinute, st.wSecond);
 

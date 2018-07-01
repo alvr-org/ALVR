@@ -65,4 +65,4 @@ Type: filesandordirs; Name: "{app}"
 Type: files; Name: "{pf32}\FreePIE\plugins\ALVRFreePIE.dll"; 
 
 [UninstallRun]
-Filename: {app}\driver\driver_uninstall.bat;
+Filename: {app}\driver\driver_uninstall.bat; Parameters: "/s"; Flags: runhidden

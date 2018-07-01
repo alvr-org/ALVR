@@ -405,6 +405,9 @@ window.VRCubeSea = (function () {
             for(var j = 0; j < s.buttons.length; j++){
                 button += " " + s.buttons[j].pressed;
             }
+            for(var j = 0; j < s.axes.length; j++){
+                button += " " + s.axes[j];
+            }
         }
         drawText("t1:" + window.test  + " t2:" + window.test2 + "" + " button:" + button);
 

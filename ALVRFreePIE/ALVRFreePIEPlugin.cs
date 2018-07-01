@@ -168,16 +168,16 @@ namespace ALVRFreePIE
                     mappedStream.Write(BitConverter.GetBytes(global.trigger_right[0]), 0, sizeof(double));
                     mappedStream.Write(BitConverter.GetBytes(global.trigger_right[1]), 0, sizeof(double));
                     mappedStream.Write(BitConverter.GetBytes(global.joystick_left[0][0]), 0, sizeof(double));
-                    mappedStream.Write(BitConverter.GetBytes(global.joystick_left[1][0]), 0, sizeof(double));
                     mappedStream.Write(BitConverter.GetBytes(global.joystick_left[0][1]), 0, sizeof(double));
+                    mappedStream.Write(BitConverter.GetBytes(global.joystick_left[1][0]), 0, sizeof(double));
                     mappedStream.Write(BitConverter.GetBytes(global.joystick_left[1][1]), 0, sizeof(double));
                     mappedStream.Write(BitConverter.GetBytes(global.joystick_right[0][0]), 0, sizeof(double));
-                    mappedStream.Write(BitConverter.GetBytes(global.joystick_right[1][0]), 0, sizeof(double));
                     mappedStream.Write(BitConverter.GetBytes(global.joystick_right[0][1]), 0, sizeof(double));
+                    mappedStream.Write(BitConverter.GetBytes(global.joystick_right[1][0]), 0, sizeof(double));
                     mappedStream.Write(BitConverter.GetBytes(global.joystick_right[1][1]), 0, sizeof(double));
                     mappedStream.Write(BitConverter.GetBytes(global.trackpad[0][0]), 0, sizeof(double));
-                    mappedStream.Write(BitConverter.GetBytes(global.trackpad[1][0]), 0, sizeof(double));
                     mappedStream.Write(BitConverter.GetBytes(global.trackpad[0][1]), 0, sizeof(double));
+                    mappedStream.Write(BitConverter.GetBytes(global.trackpad[1][0]), 0, sizeof(double));
                     mappedStream.Write(BitConverter.GetBytes(global.trackpad[1][1]), 0, sizeof(double));
 
                     var bytes = Encoding.UTF8.GetBytes(global.message);

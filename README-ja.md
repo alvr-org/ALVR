@@ -25,6 +25,7 @@ AMD GPUのサポートに関するクラウドファンディングを開始し�
 |Oculus Go|OK|
 |GalaxyS9/S9+|OK|
 |GalaxyS8/S8+|OK|
+|Galaxy Note 8|OK|
 |GalaxyS7|OK|
 |GalaxyS6(Edge)|OK|
 

@@ -83,8 +83,6 @@ public:
 
 	void Run() override
 	{
-		SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
-
 		while (!m_bExiting) {
 			CheckTimeout();
 			if (m_Poller->Do() <= 0) {
@@ -140,7 +138,7 @@ public:
 		int blockSize = shardPackets * ALVR_MAX_VIDEO_BUFFER_SIZE;
 
 		int dataShards = (len + blockSize - 1) / blockSize;
-		int totalParityShards = (dataShards * m_fecPercentage + 99) / 100;
+		int totalParityShards = CalculateParityShards(dataShards, m_fecPercentage);
 		int totalShards = dataShards + totalParityShards;
 
 		assert(totalShards <= DATA_SHARDS_MAX);

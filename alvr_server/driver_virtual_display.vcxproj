@@ -113,6 +113,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\ALVR-common\exception.h" />
     <ClInclude Include="..\ALVR-common\packet_types.h" />
     <ClInclude Include="..\ALVR-common\reedsolomon\rs.h" />
     <ClInclude Include="AudioCapture.h" />

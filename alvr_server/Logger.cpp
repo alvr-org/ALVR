@@ -9,6 +9,7 @@
 #include "Logger.h"
 #include "Utils.h"
 #include "ipctools.h"
+#include "exception.h"
 
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "dbghelp.lib")
@@ -247,15 +248,14 @@ void FatalLog(const char *format, ...) {
 Exception MakeException(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
-	char buf[10000];
-	vsnprintf(buf, sizeof(buf), format, args);
+	Exception e = FormatExceptionV(format, args);
 	va_end(args);
 
-	LogS(buf);
-	lastException = buf;
+	LogS(e.what());
+	lastException = e.what();
 	FlushLog();
 
-	return Exception(buf);
+	return e;
 }
 
 void FlushLog() {

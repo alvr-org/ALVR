@@ -61,9 +61,6 @@
             this.connectedLabel = new MetroFramework.Controls.MetroLabel();
             this.messagePanel = new MetroFramework.Controls.MetroPanel();
             this.messageLabel = new MetroFramework.Controls.MetroLabel();
-            this.soundTab = new MetroFramework.Controls.MetroTabPage();
-            this.soundDeviceComboBox = new MetroFramework.Controls.MetroComboBox();
-            this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.controllerTab = new MetroFramework.Controls.MetroTabPage();
             this.enableControllerCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroLabel32 = new MetroFramework.Controls.MetroLabel();
@@ -97,6 +94,9 @@
             this.metroLabel7 = new MetroFramework.Controls.MetroLabel();
             this.bufferTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.bitrateTrackBar = new MetroFramework.Controls.MetroTrackBar();
+            this.soundTab = new MetroFramework.Controls.MetroTabPage();
+            this.soundDeviceComboBox = new MetroFramework.Controls.MetroComboBox();
+            this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.otherTab = new MetroFramework.Controls.MetroTabPage();
             this.trackingFrameOffsetTextBox = new MetroFramework.Controls.MetroTextBox();
             this.metroLabel30 = new MetroFramework.Controls.MetroLabel();
@@ -116,6 +116,7 @@
             this.metroLabel26 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel25 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel24 = new MetroFramework.Controls.MetroLabel();
+            this.suppressFrameDropCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.onlySteamVRCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.fakeTrackingReferenceCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.debugTab = new MetroFramework.Controls.MetroTabPage();
@@ -155,10 +156,10 @@
             this.connectedPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).BeginInit();
             this.messagePanel.SuspendLayout();
-            this.soundTab.SuspendLayout();
             this.controllerTab.SuspendLayout();
             this.videoTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).BeginInit();
+            this.soundTab.SuspendLayout();
             this.otherTab.SuspendLayout();
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
@@ -496,41 +497,6 @@
             this.messageLabel.TabIndex = 9;
             this.messageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
-            // soundTab
-            // 
-            this.soundTab.Controls.Add(this.soundDeviceComboBox);
-            this.soundTab.Controls.Add(this.soundCheckBox);
-            this.soundTab.HorizontalScrollbarBarColor = true;
-            this.soundTab.Location = new System.Drawing.Point(4, 38);
-            this.soundTab.Name = "soundTab";
-            this.soundTab.Size = new System.Drawing.Size(656, 354);
-            this.soundTab.TabIndex = 8;
-            this.soundTab.Text = "Sound";
-            this.soundTab.VerticalScrollbarBarColor = true;
-            // 
-            // soundDeviceComboBox
-            // 
-            this.soundDeviceComboBox.FormattingEnabled = true;
-            this.soundDeviceComboBox.ItemHeight = 23;
-            this.soundDeviceComboBox.Location = new System.Drawing.Point(66, 74);
-            this.soundDeviceComboBox.Name = "soundDeviceComboBox";
-            this.soundDeviceComboBox.Size = new System.Drawing.Size(387, 29);
-            this.soundDeviceComboBox.TabIndex = 3;
-            // 
-            // soundCheckBox
-            // 
-            this.soundCheckBox.AutoSize = true;
-            this.soundCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableSound;
-            this.soundCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.soundCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableSound", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.soundCheckBox.Location = new System.Drawing.Point(30, 35);
-            this.soundCheckBox.Name = "soundCheckBox";
-            this.soundCheckBox.Size = new System.Drawing.Size(92, 15);
-            this.soundCheckBox.TabIndex = 2;
-            this.soundCheckBox.Text = "Steam sound";
-            this.soundCheckBox.UseVisualStyleBackColor = true;
-            this.soundCheckBox.CheckedChanged += new System.EventHandler(this.soundCheckBox_CheckedChanged);
-            // 
             // controllerTab
             // 
             this.controllerTab.Controls.Add(this.enableControllerCheckBox);
@@ -568,7 +534,7 @@
             // 
             this.metroLabel32.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel32.AutoSize = true;
-            this.metroLabel32.Location = new System.Drawing.Point(462, -227);
+            this.metroLabel32.Location = new System.Drawing.Point(462, 43);
             this.metroLabel32.Name = "metroLabel32";
             this.metroLabel32.Size = new System.Drawing.Size(162, 38);
             this.metroLabel32.TabIndex = 10;
@@ -578,7 +544,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(216, 273);
+            this.metroLabel22.Location = new System.Drawing.Point(216, 292);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -884,6 +850,41 @@
             this.bitrateTrackBar.Value = global::ALVR.Properties.Settings.Default.bitrate;
             this.bitrateTrackBar.ValueChanged += new System.EventHandler(this.bitrateTrackBar_ValueChanged);
             // 
+            // soundTab
+            // 
+            this.soundTab.Controls.Add(this.soundDeviceComboBox);
+            this.soundTab.Controls.Add(this.soundCheckBox);
+            this.soundTab.HorizontalScrollbarBarColor = true;
+            this.soundTab.Location = new System.Drawing.Point(4, 38);
+            this.soundTab.Name = "soundTab";
+            this.soundTab.Size = new System.Drawing.Size(656, 354);
+            this.soundTab.TabIndex = 8;
+            this.soundTab.Text = "Sound";
+            this.soundTab.VerticalScrollbarBarColor = true;
+            // 
+            // soundDeviceComboBox
+            // 
+            this.soundDeviceComboBox.FormattingEnabled = true;
+            this.soundDeviceComboBox.ItemHeight = 23;
+            this.soundDeviceComboBox.Location = new System.Drawing.Point(66, 74);
+            this.soundDeviceComboBox.Name = "soundDeviceComboBox";
+            this.soundDeviceComboBox.Size = new System.Drawing.Size(387, 29);
+            this.soundDeviceComboBox.TabIndex = 3;
+            // 
+            // soundCheckBox
+            // 
+            this.soundCheckBox.AutoSize = true;
+            this.soundCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableSound;
+            this.soundCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.soundCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableSound", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.soundCheckBox.Location = new System.Drawing.Point(30, 35);
+            this.soundCheckBox.Name = "soundCheckBox";
+            this.soundCheckBox.Size = new System.Drawing.Size(92, 15);
+            this.soundCheckBox.TabIndex = 2;
+            this.soundCheckBox.Text = "Steam sound";
+            this.soundCheckBox.UseVisualStyleBackColor = true;
+            this.soundCheckBox.CheckedChanged += new System.EventHandler(this.soundCheckBox_CheckedChanged);
+            // 
             // otherTab
             // 
             this.otherTab.Controls.Add(this.trackingFrameOffsetTextBox);
@@ -904,6 +905,7 @@
             this.otherTab.Controls.Add(this.metroLabel26);
             this.otherTab.Controls.Add(this.metroLabel25);
             this.otherTab.Controls.Add(this.metroLabel24);
+            this.otherTab.Controls.Add(this.suppressFrameDropCheckBox);
             this.otherTab.Controls.Add(this.onlySteamVRCheckBox);
             this.otherTab.Controls.Add(this.fakeTrackingReferenceCheckBox);
             this.otherTab.HorizontalScrollbarBarColor = true;
@@ -1080,6 +1082,19 @@
             this.metroLabel24.Size = new System.Drawing.Size(238, 19);
             this.metroLabel24.TabIndex = 3;
             this.metroLabel24.Text = "Add fake base station for some games.";
+            // 
+            // suppressFrameDropCheckBox
+            // 
+            this.suppressFrameDropCheckBox.AutoSize = true;
+            this.suppressFrameDropCheckBox.Checked = global::ALVR.Properties.Settings.Default.suppressFrameDrop;
+            this.suppressFrameDropCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "suppressFrameDrop", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.suppressFrameDropCheckBox.Location = new System.Drawing.Point(407, 59);
+            this.suppressFrameDropCheckBox.Name = "suppressFrameDropCheckBox";
+            this.suppressFrameDropCheckBox.Size = new System.Drawing.Size(132, 15);
+            this.suppressFrameDropCheckBox.TabIndex = 2;
+            this.suppressFrameDropCheckBox.Text = "Suppress frame drop";
+            this.suppressFrameDropCheckBox.UseVisualStyleBackColor = true;
+            this.suppressFrameDropCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
             // 
             // onlySteamVRCheckBox
             // 
@@ -1440,13 +1455,13 @@
             this.connectedPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).EndInit();
             this.messagePanel.ResumeLayout(false);
-            this.soundTab.ResumeLayout(false);
-            this.soundTab.PerformLayout();
             this.controllerTab.ResumeLayout(false);
             this.controllerTab.PerformLayout();
             this.videoTab.ResumeLayout(false);
             this.videoTab.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).EndInit();
+            this.soundTab.ResumeLayout(false);
+            this.soundTab.PerformLayout();
             this.otherTab.ResumeLayout(false);
             this.otherTab.PerformLayout();
             this.debugTab.ResumeLayout(false);
@@ -1571,6 +1586,7 @@
         private MetroFramework.Controls.MetroLabel metroLabel31;
         private MetroFramework.Controls.MetroLabel metroLabel32;
         private MetroFramework.Controls.MetroCheckBox onlySteamVRCheckBox;
+        private MetroFramework.Controls.MetroCheckBox suppressFrameDropCheckBox;
     }
 }
 

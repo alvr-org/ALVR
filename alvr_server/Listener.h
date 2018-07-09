@@ -463,6 +463,25 @@ public:
 			Disconnect();
 			SendCommandResponse("OK\n");
 		}
+		else if (commandName == "SetClientConfig") {
+			auto index = args.find(" ");
+			if (index == std::string::npos) {
+				SendCommandResponse("NG\n");
+			}
+			else {
+				auto name = args.substr(0, index);
+				if (name == k_pch_Settings_FrameQueueSize_Int32) {
+					Settings::Instance().m_frameQueueSize = atoi(args.substr(index + 1).c_str());
+					m_Settings.frameQueueSize = Settings::Instance().m_frameQueueSize;
+					SendChangeSettings();
+				}
+				else {
+					SendCommandResponse("NG\n");
+					return;
+				}
+				SendCommandResponse("OK\n");
+			}
+		}
 		else {
 			m_CommandCallback(commandName, args);
 		}
@@ -633,6 +652,7 @@ public:
 		message.videoWidth = Settings::Instance().m_renderWidth;
 		message.videoHeight = Settings::Instance().m_renderHeight;
 		message.bufferSize = Settings::Instance().m_clientRecvBufferSize;
+		message.frameQueueSize = Settings::Instance().m_frameQueueSize;
 
 		m_Socket->Send((char *)&message, sizeof(message), 0);
 	}

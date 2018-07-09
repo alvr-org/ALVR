@@ -23,7 +23,7 @@ enum ALVR_PACKET_TYPE {
 };
 
 enum {
-	ALVR_PROTOCOL_VERSION = 17
+	ALVR_PROTOCOL_VERSION = 18
 };
 
 enum ALVR_CODEC {
@@ -51,6 +51,7 @@ struct ConnectionMessage {
 	uint32_t videoWidth; // in pixels
 	uint32_t videoHeight; // in pixels
 	uint32_t bufferSize; // in bytes
+	uint32_t frameQueueSize;
 };
 struct RecoverConnection {
 	uint32_t type; // ALVR_PACKET_TYPE_RECOVER_CONNECTION
@@ -150,6 +151,7 @@ struct ChangeSettings {
 	uint32_t type; // 8
 	uint32_t enableTestMode;
 	uint32_t suspend;
+	uint32_t frameQueueSize;
 };
 struct VideoFrame {
 	uint32_t type; // ALVR_PACKET_TYPE_VIDEO_FRAME

@@ -111,6 +111,11 @@ namespace ALVR
             return Properties.Settings.Default.bufferSize * 1900 / 100 + 100;
         }
 
+        public int GetFrameQueueSize(bool suppressFrameDrop)
+        {
+            return suppressFrameDrop ? 5 : 1;
+        }
+
         public bool Save()
         {
             try
@@ -153,6 +158,7 @@ namespace ALVR
                 driverConfig.useKeyedMutex = true;
 
                 driverConfig.clientRecvBufferSize = GetBufferSizeKB() * 1000;
+                driverConfig.frameQueueSize = GetFrameQueueSize(Properties.Settings.Default.suppressFrameDrop);
                 driverConfig.enableController = Properties.Settings.Default.enableController;
                 driverConfig.controllerTriggerMode = Properties.Settings.Default.controllerTriggerMode;
                 driverConfig.controllerTrackpadClickMode = Properties.Settings.Default.controllerTrackpadClickMode;

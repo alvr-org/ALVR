@@ -682,5 +682,10 @@ namespace ALVR
             trackingFrameOffsetTextBox.Text = Utils.ParseInt(trackingFrameOffsetTextBox.Text).ToString();
             await socket.SendCommand("SetConfig trackingFrameOffset " + trackingFrameOffsetTextBox.Text);
         }
+
+        async private void suppressFrameDropCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            await socket.SendCommand("SetClientConfig frameQueueSize " + config.GetFrameQueueSize(suppressFrameDropCheckBox.Checked));
+        }
     }
 }

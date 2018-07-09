@@ -57,6 +57,7 @@ void Settings::Load()
 	m_flIPD = (float)v.get(k_pch_Settings_IPD_Float).get<double>();
 
 	m_clientRecvBufferSize = (uint32_t)v.get(k_pch_Settings_ClientRecvBufferSize_Int32).get<int64_t>();
+	m_frameQueueSize = (uint32_t)v.get(k_pch_Settings_FrameQueueSize_Int32).get<int64_t>();
 
 	m_nAdapterIndex = (int32_t)v.get(k_pch_Settings_AdapterIndex_Int32).get<int64_t>();
 

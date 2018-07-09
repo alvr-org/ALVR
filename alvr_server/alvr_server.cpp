@@ -1252,6 +1252,7 @@ public:
 				, k_pch_Settings_ControllerTriggerMode_Int32, Settings::Instance().m_controllerTriggerMode
 				, k_pch_Settings_ControllerTrackpadClickMode_Int32, Settings::Instance().m_controllerTrackpadClickMode
 				, k_pch_Settings_ControllerTrackpadTouchMode_Int32, Settings::Instance().m_controllerTrackpadTouchMode
+				, k_pch_Settings_ControllerBackMode_Int32, Settings::Instance().m_controllerBackMode
 				, k_pch_Settings_ControllerRecenterButton_Int32, Settings::Instance().m_controllerRecenterButton
 			);
 			m_Listener->SendCommandResponse(buf);
@@ -1281,6 +1282,9 @@ public:
 				}
 				else if (name == k_pch_Settings_ControllerTrackpadTouchMode_Int32) {
 					Settings::Instance().m_controllerTrackpadTouchMode = atoi(args.substr(index + 1).c_str());
+				}
+				else if (name == k_pch_Settings_ControllerBackMode_Int32) {
+					Settings::Instance().m_controllerBackMode = atoi(args.substr(index + 1).c_str());
 				}
 				else if (name == k_pch_Settings_ControllerRecenterButton_Int32) {
 					Settings::Instance().m_controllerRecenterButton = atoi(args.substr(index + 1).c_str());

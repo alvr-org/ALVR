@@ -221,6 +221,7 @@ public:
 			int32_t triggerButton = Settings::Instance().m_controllerTriggerMode;
 			int32_t trackpadClickButton = Settings::Instance().m_controllerTrackpadClickMode;
 			int32_t trackpadTouchButton = Settings::Instance().m_controllerTrackpadTouchMode;
+			int32_t backButton = Settings::Instance().m_controllerBackMode;
 
 			// Trigger pressed (ovrButton_A)
 			if ((m_previousButtons & TrackingInfo::CONTROLLER_BUTTON_TRIGGER_CLICK) != (info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_TRIGGER_CLICK)) {
@@ -241,19 +242,23 @@ public:
 				bool value = (info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_TRACKPAD_CLICK) != 0;
 				if (triggerButton != -1) {
 					vr::VRDriverInput()->UpdateBooleanComponent(m_handles[trackpadClickButton], value, 0.0);
+					if (trackpadClickButton == INPUT_TRIGGER_CLICK) {
+						vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
+					}
 				}
 				if (value && Settings::Instance().m_controllerRecenterButton == 2) {
 					recenterRequest = true;
 				}
 			}
 
-			// Back button (ovrButton_Back)
-			// This event is not sent normally.
-			// TODO: How we get it work?
-			if ((m_previousButtons & TrackingInfo::CONTROLLER_BUTTON_BACK) != (info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_BACK)) {
-				bool value = (info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_BACK) != 0;
-				if (triggerButton != -1) {
-					vr::VRDriverInput()->UpdateBooleanComponent(m_handles[vr::k_EButton_Dashboard_Back], value, 0.0);
+			// Back button
+			if ((m_previousFlags & TrackingInfo::FLAG_CONTROLLER_BACK) != (info.flags & TrackingInfo::FLAG_CONTROLLER_BACK)) {
+				bool value = (info.flags & TrackingInfo::FLAG_CONTROLLER_BACK) != 0;
+				if (backButton != -1) {
+					vr::VRDriverInput()->UpdateBooleanComponent(m_handles[backButton], value, 0.0);
+					if (backButton == INPUT_TRIGGER_CLICK) {
+						vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
+					}
 				}
 				if (value && Settings::Instance().m_controllerRecenterButton == 4) {
 					recenterRequest = true;
@@ -264,6 +269,9 @@ public:
 				bool value = (info.flags & TrackingInfo::FLAG_CONTROLLER_TRACKPAD_TOUCH) != 0;
 				if (trackpadTouchButton != -1) {
 					vr::VRDriverInput()->UpdateBooleanComponent(m_handles[trackpadTouchButton], value, 0.0);
+					if (trackpadTouchButton == INPUT_TRIGGER_CLICK) {
+						vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
+					}
 				}
 				if (value && Settings::Instance().m_controllerRecenterButton == 3) {
 					recenterRequest = true;

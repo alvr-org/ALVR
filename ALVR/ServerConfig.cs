@@ -75,7 +75,7 @@ namespace ALVR
             ,new ComboBoxCustomItem("Start", 23)
         };
         public static readonly string[] supportedRecenterButton = new string[] {
-            "None", "Trigger", "Trackpad click", "Trackpad touch"//, "Back short-press"
+            "None", "Trigger", "Trackpad click", "Trackpad touch", "Back"
         };
 
         public static readonly ComboBoxCustomItem[] supportedCodecs = {
@@ -163,8 +163,9 @@ namespace ALVR
                 driverConfig.controllerTriggerMode = Properties.Settings.Default.controllerTriggerMode;
                 driverConfig.controllerTrackpadClickMode = Properties.Settings.Default.controllerTrackpadClickMode;
                 driverConfig.controllerTrackpadTouchMode = Properties.Settings.Default.controllerTrackpadTouchMode;
+                driverConfig.controllerBackMode = Properties.Settings.Default.controllerBackMode;
 
-                // 0=Disabled, 1=Trigger, 2=Trackpad Click, 3=Trackpad Touch
+                // 0=Disabled, 1=Trigger, 2=Trackpad Click, 3=Trackpad Touch, 4=Back
                 driverConfig.controllerRecenterButton = Properties.Settings.Default.controllerRecenterButton;
                 driverConfig.useTrackingReference = Properties.Settings.Default.useTrackingReference;
 

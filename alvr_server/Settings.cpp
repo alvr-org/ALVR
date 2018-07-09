@@ -91,6 +91,7 @@ void Settings::Load()
 	m_controllerTriggerMode = (int32_t)v.get(k_pch_Settings_ControllerTriggerMode_Int32).get<int64_t>();
 	m_controllerTrackpadClickMode = (int32_t)v.get(k_pch_Settings_ControllerTrackpadClickMode_Int32).get<int64_t>();
 	m_controllerTrackpadTouchMode = (int32_t)v.get(k_pch_Settings_ControllerTrackpadTouchMode_Int32).get<int64_t>();
+	m_controllerBackMode = (int32_t)v.get(k_pch_Settings_ControllerBackMode_Int32).get<int64_t>();
 	m_controllerRecenterButton = (int32_t)v.get(k_pch_Settings_ControllerRecenterButton_Int32).get<int64_t>();
 
 	m_useTrackingReference = v.get(k_pch_Settings_UseTrackingReference_Bool).get<bool>();

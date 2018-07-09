@@ -149,6 +149,8 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.metroLabel33 = new MetroFramework.Controls.MetroLabel();
+            this.backComboBox = new MetroFramework.Controls.MetroComboBox();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -213,7 +215,7 @@
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 0;
+            this.metroTabControl1.SelectedIndex = 1;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 396);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -503,7 +505,9 @@
             this.controllerTab.Controls.Add(this.metroLabel32);
             this.controllerTab.Controls.Add(this.metroLabel22);
             this.controllerTab.Controls.Add(this.recenterButtonComboBox);
+            this.controllerTab.Controls.Add(this.backComboBox);
             this.controllerTab.Controls.Add(this.trackpadClickComboBox);
+            this.controllerTab.Controls.Add(this.metroLabel33);
             this.controllerTab.Controls.Add(this.metroLabel23);
             this.controllerTab.Controls.Add(this.metroLabel20);
             this.controllerTab.Controls.Add(this.triggerComboBox);
@@ -534,7 +538,7 @@
             // 
             this.metroLabel32.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel32.AutoSize = true;
-            this.metroLabel32.Location = new System.Drawing.Point(462, 43);
+            this.metroLabel32.Location = new System.Drawing.Point(462, -105);
             this.metroLabel32.Name = "metroLabel32";
             this.metroLabel32.Size = new System.Drawing.Size(162, 38);
             this.metroLabel32.TabIndex = 10;
@@ -544,7 +548,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(216, 292);
+            this.metroLabel22.Location = new System.Drawing.Point(216, 291);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -555,7 +559,7 @@
             // 
             this.recenterButtonComboBox.FormattingEnabled = true;
             this.recenterButtonComboBox.ItemHeight = 23;
-            this.recenterButtonComboBox.Location = new System.Drawing.Point(216, 176);
+            this.recenterButtonComboBox.Location = new System.Drawing.Point(216, 214);
             this.recenterButtonComboBox.Name = "recenterButtonComboBox";
             this.recenterButtonComboBox.Size = new System.Drawing.Size(192, 29);
             this.recenterButtonComboBox.TabIndex = 9;
@@ -575,7 +579,7 @@
             // 
             this.metroLabel23.AutoSize = true;
             this.metroLabel23.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel23.Location = new System.Drawing.Point(56, 176);
+            this.metroLabel23.Location = new System.Drawing.Point(56, 214);
             this.metroLabel23.Name = "metroLabel23";
             this.metroLabel23.Size = new System.Drawing.Size(133, 25);
             this.metroLabel23.TabIndex = 8;
@@ -1431,6 +1435,26 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
+            // metroLabel33
+            // 
+            this.metroLabel33.AutoSize = true;
+            this.metroLabel33.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel33.Location = new System.Drawing.Point(56, 167);
+            this.metroLabel33.Name = "metroLabel33";
+            this.metroLabel33.Size = new System.Drawing.Size(47, 25);
+            this.metroLabel33.TabIndex = 8;
+            this.metroLabel33.Text = "Back";
+            // 
+            // backComboBox
+            // 
+            this.backComboBox.FormattingEnabled = true;
+            this.backComboBox.ItemHeight = 23;
+            this.backComboBox.Location = new System.Drawing.Point(216, 167);
+            this.backComboBox.Name = "backComboBox";
+            this.backComboBox.Size = new System.Drawing.Size(192, 29);
+            this.backComboBox.TabIndex = 9;
+            this.backComboBox.SelectedIndexChanged += new System.EventHandler(this.backClickComboBox_SelectedIndexChanged);
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -1587,6 +1611,8 @@
         private MetroFramework.Controls.MetroLabel metroLabel32;
         private MetroFramework.Controls.MetroCheckBox onlySteamVRCheckBox;
         private MetroFramework.Controls.MetroCheckBox suppressFrameDropCheckBox;
+        private MetroFramework.Controls.MetroComboBox backComboBox;
+        private MetroFramework.Controls.MetroLabel metroLabel33;
     }
 }
 

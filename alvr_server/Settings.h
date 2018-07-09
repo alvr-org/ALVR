@@ -47,6 +47,7 @@ static const char * const k_pch_Settings_EnableController_Bool = "enableControll
 static const char * const k_pch_Settings_ControllerTriggerMode_Int32 = "controllerTriggerMode";
 static const char * const k_pch_Settings_ControllerTrackpadClickMode_Int32 = "controllerTrackpadClickMode";
 static const char * const k_pch_Settings_ControllerTrackpadTouchMode_Int32 = "controllerTrackpadTouchMode";
+static const char * const k_pch_Settings_ControllerBackMode_Int32 = "controllerBackMode";
 static const char * const k_pch_Settings_ControllerRecenterButton_Int32 = "controllerRecenterButton";
 
 static const char * const k_pch_Settings_UseTrackingReference_Bool = "useTrackingReference";
@@ -138,6 +139,7 @@ public:
 	int32_t m_controllerTriggerMode;
 	int32_t m_controllerTrackpadClickMode;
 	int32_t m_controllerTrackpadTouchMode;
+	int32_t m_controllerBackMode;
 	int32_t m_controllerRecenterButton;
 
 	float m_OffsetPos[3];

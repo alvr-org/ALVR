@@ -118,8 +118,10 @@ namespace ALVR
 
             triggerComboBox.DataSource = ServerConfig.supportedButtons.Clone();
             trackpadClickComboBox.DataSource = ServerConfig.supportedButtons;
+            backComboBox.DataSource = ServerConfig.supportedButtons.Clone();
             triggerComboBox.SelectedIndex = ServerConfig.FindButton(Properties.Settings.Default.controllerTriggerMode);
             trackpadClickComboBox.SelectedIndex = ServerConfig.FindButton(Properties.Settings.Default.controllerTrackpadClickMode);
+            backComboBox.SelectedIndex = ServerConfig.FindButton(Properties.Settings.Default.controllerBackMode);
 
             recenterButtonComboBox.DataSource = ServerConfig.supportedRecenterButton;
             recenterButtonComboBox.SelectedIndex = Properties.Settings.Default.controllerRecenterButton;
@@ -155,6 +157,7 @@ namespace ALVR
             Properties.Settings.Default.renderWidth = ((ServerConfig.Resolution)resolutionComboBox.SelectedItem).width;
             Properties.Settings.Default.controllerTriggerMode = ((ServerConfig.ComboBoxCustomItem)triggerComboBox.SelectedItem).value;
             Properties.Settings.Default.controllerTrackpadClickMode = ((ServerConfig.ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).value;
+            Properties.Settings.Default.controllerBackMode = ((ServerConfig.ComboBoxCustomItem)backComboBox.SelectedItem).value;
             Properties.Settings.Default.controllerRecenterButton = recenterButtonComboBox.SelectedIndex;
             Properties.Settings.Default.autoConnectList = clientList.Serialize();
 
@@ -590,6 +593,12 @@ namespace ALVR
             int value = ((ServerConfig.ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).value;
             await socket.SendCommand("SetConfig controllerTrackpadClickMode " + value);
             //await socket.SendCommand("SetConfig controllerTrackpadTouchMode " + value);
+        }
+
+        async private void backClickComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            int value = ((ServerConfig.ComboBoxCustomItem)backComboBox.SelectedItem).value;
+            await socket.SendCommand("SetConfig controllerBackMode " + value);
         }
 
         async private void recenterButtonComboBox_SelectedIndexChanged(object sender, EventArgs e)

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -56,7 +57,7 @@ namespace ALVR
         public static float ParseFloat(string s)
         {
             float f = 0.0f;
-            float.TryParse(s, out f);
+            float.TryParse(s, NumberStyles.Number, CultureInfo.InvariantCulture, out f);
             return f;
         }
 

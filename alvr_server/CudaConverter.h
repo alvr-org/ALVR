@@ -44,6 +44,11 @@ public:
 	void Convert(const ComPtr<ID3D11Texture2D> &texture, const NvEncInputFrame* encoderInputFrame) {
 		cudaError cuStatus;
 
+		CUresult result = cuCtxPushCurrent(m_cuContext);
+		if (result != CUDA_SUCCESS) {
+			throw MakeException("cuCtxPushCurrent failed.");
+		}
+
 		RegisterTexture(texture);
 
 		cuStatus = cudaGraphicsMapResources(1, &m_cudaResource, 0);
@@ -60,12 +65,17 @@ public:
 		cuStatus = RGBA2NV12(cuArray, (uint8_t *)encoderInputFrame->inputPtr, encoderInputFrame->pitch, m_width, m_height);
 
 		if (cuStatus != cudaSuccess) {
-			throw MakeException("cudaMemcpy2DFromArray failed.");
+			throw MakeException("Cuda kernel execution failed. code=%d %s", cuStatus, cudaGetErrorString(cuStatus));
 		}
 
 		cudaGraphicsUnmapResources(1, &m_cudaResource, 0);
 		if (cuStatus != cudaSuccess) {
 			throw MakeException("cudaGraphicsUnmapResources failed.");
+		}
+
+		result = cuCtxPopCurrent(NULL);
+		if (result != CUDA_SUCCESS) {
+			throw MakeException("cuCtxPopCurrent failed.");
 		}
 	}
 

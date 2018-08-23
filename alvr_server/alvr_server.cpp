@@ -259,8 +259,18 @@ namespace
 
 			if (Settings::Instance().m_DebugFrameOutput) {
 				if (!m_useNV12) {
-					SaveDebugOutput(m_pD3DRender, vPacket, reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr), frameIndex2);
+					SaveDebugOutput(m_pD3DRender, vPacket, pTexture, frameIndex2);
+					Settings::Instance().m_DebugFrameOutput = false;
 				}
+			}
+
+			if (Settings::Instance().m_captureComposedDDSTrigger) {
+				wchar_t buf[1000];
+
+				_snwprintf_s(buf, sizeof(buf), L"%hs\\composed-%llu-%dx%d-%d.dds", Settings::Instance().m_DebugOutputDir.c_str()
+					, frameIndex2, desc.Width, desc.Height, desc.Format);
+				HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture, buf);
+				Settings::Instance().m_captureComposedDDSTrigger = false;
 			}
 
 			Log("[VDispDvr] Transmit(end) (frame %d %d) FrameIndex=%llu", vPacket.size(), m_nFrame, frameIndex);
@@ -536,8 +546,7 @@ public:
 		std::shared_ptr<CEncoder> pEncoder,
 		std::shared_ptr<Listener> Listener,
 		std::shared_ptr<RecenterManager> recenterManager)
-		: m_captureDDSTrigger(false)
-		, m_pD3DRender(pD3DRender)
+		: m_pD3DRender(pD3DRender)
 		, m_pEncoder(pEncoder)
 		, m_Listener(Listener)
 		, m_recenterManager(recenterManager)
@@ -545,16 +554,6 @@ public:
 		, m_submitLayer(0)
 		, m_LastReferencedFrameIndex(0) 
 		, m_LastReferencedClientTime(0) {
-	}
-
-	bool CommandCallback(std::string commandName, std::string args)
-	{
-		if (commandName == "Capture") {
-			m_captureDDSTrigger = true;
-			m_Listener->SendCommandResponse("OK\n");
-			return true;
-		}
-		return false;
 	}
 
 	void OnPoseUpdated(TrackingInfo &info) {
@@ -879,7 +878,7 @@ public:
 
 		Log("Waiting for finish of previous encode.");
 
-		if (m_captureDDSTrigger) {
+		if (Settings::Instance().m_captureLayerDDSTrigger) {
 			wchar_t buf[1000];
 
 			for (uint32_t i = 0; i < layerCount; i++) {
@@ -888,7 +887,7 @@ public:
 				HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture[i][0], buf);
 				Log("Writing Debug DDS: End hr=%p %s", hr, GetDxErrorStr(hr).c_str());
 			}
-			m_captureDDSTrigger = false;
+			Settings::Instance().m_captureLayerDDSTrigger = false;
 		}
 
 		// Wait for the encoder to be ready.  This is important because the encoder thread
@@ -949,8 +948,6 @@ private:
 		vr::HmdMatrix34_t rotationMatrix;
 	};
 	std::list<TrackingHistoryFrame> m_poseBuffer;
-
-	bool m_captureDDSTrigger;
 };
 
 //-----------------------------------------------------------------------------
@@ -1295,6 +1292,12 @@ public:
 				else if (name == "trackingFrameOffset") {
 					Settings::Instance().m_trackingFrameOffset = atoi(args.substr(index + 1).c_str());
 				}
+				else if (name == "captureLayerDDS") {
+					Settings::Instance().m_captureLayerDDSTrigger = atoi(args.substr(index + 1).c_str());
+				}
+				else if (name == "captureComposedDDS") {
+					Settings::Instance().m_captureComposedDDSTrigger = atoi(args.substr(index + 1).c_str());
+				}
 				else {
 					m_Listener->SendCommandResponse("NG\n");
 					return;
@@ -1315,10 +1318,8 @@ public:
 
 			m_Listener->SendCommandResponse("OK\n");
 		}else {
-			if (!m_directModeComponent->CommandCallback(commandName, args)) {
-				Log("Invalid control command: %s", commandName.c_str());
-				m_Listener->SendCommandResponse("NG\n");
-			}
+			Log("Invalid control command: %s", commandName.c_str());
+			m_Listener->SendCommandResponse("NG\n");
 		}
 		
 	}

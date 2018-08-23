@@ -512,9 +512,14 @@ namespace ALVR
             }
         }
 
-        async private void metroButton3_Click(object sender, EventArgs e)
+        async private void captureLayerDDSButton_Click(object sender, EventArgs e)
         {
-            await socket.SendCommand("Capture");
+            await socket.SendCommand("SetConfig captureLayerDDS 1");
+        }
+
+        async private void captureComposedDDSButton_Click(object sender, EventArgs e)
+        {
+            await socket.SendCommand("SetConfig captureComposedDDS 1");
         }
 
         async private void sendOffsetPos_Click(object sender, EventArgs e)

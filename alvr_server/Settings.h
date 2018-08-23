@@ -150,5 +150,9 @@ public:
 	bool m_useTrackingReference;
 
 	int32_t m_trackingFrameOffset;
+
+	// They are not in config json and set by "SetConfig" command.
+	bool m_captureLayerDDSTrigger = false;
+	bool m_captureComposedDDSTrigger = false;
 };
 

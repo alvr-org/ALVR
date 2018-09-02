@@ -165,6 +165,8 @@ public:
 			vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/click", &m_handles[ALVR_INPUT_TRACKPAD_CLICK]);
 			vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/touch", &m_handles[ALVR_INPUT_TRACKPAD_TOUCH]);
 		}
+		vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer, "/output/haptic", &m_compHaptic);
+
 		return vr::VRInitError_None;
 	}
 
@@ -199,6 +201,10 @@ public:
 	virtual vr::DriverPose_t GetPose()
 	{
 		return m_pose;
+	}
+
+	bool IsMyHapticComponent(uint64_t handle){
+		return m_compHaptic == handle;
 	}
 
 	bool ReportControllerState(int controllerIndex, const TrackingInfo &info
@@ -316,6 +322,7 @@ private:
 	bool mIsTouch;
 
 	vr::VRInputComponentHandle_t m_handles[ALVR_INPUT_COUNT];
+	vr::VRInputComponentHandle_t m_compHaptic;
 
 	vr::DriverPose_t m_pose;
 };

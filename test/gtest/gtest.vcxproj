@@ -100,6 +100,8 @@
     <ClCompile Include="..\..\alvr_server\Poller.cpp" />
     <ClCompile Include="..\..\alvr_server\Settings.cpp" />
     <ClCompile Include="..\..\alvr_server\UdpSocket.cpp" />
+    <ClCompile Include="..\..\alvr_server\VideoEncoder.cpp" />
+    <ClCompile Include="..\..\alvr_server\VideoEncoderNVENC.cpp" />
     <ClCompile Include="rs_test.cpp" />
     <ClCompile Include="utils_test.cpp" />
   </ItemGroup>
@@ -129,6 +131,8 @@
     <ClInclude Include="..\..\alvr_server\Tracking.h" />
     <ClInclude Include="..\..\alvr_server\UdpSocket.h" />
     <ClInclude Include="..\..\alvr_server\Utils.h" />
+    <ClInclude Include="..\..\alvr_server\VideoEncoder.h" />
+    <ClInclude Include="..\..\alvr_server\VideoEncoderNVENC.h" />
     <ClInclude Include="test-common.h" />
   </ItemGroup>
   <ItemGroup>

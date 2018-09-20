@@ -103,6 +103,8 @@
     <ClCompile Include="Poller.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="UdpSocket.cpp" />
+    <ClCompile Include="VideoEncoder.cpp" />
+    <ClCompile Include="VideoEncoderNVENC.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CUDA\CUDA.vcxproj">
@@ -140,6 +142,8 @@
     <ClInclude Include="Tracking.h" />
     <ClInclude Include="UdpSocket.h" />
     <ClInclude Include="Utils.h" />
+    <ClInclude Include="VideoEncoder.h" />
+    <ClInclude Include="VideoEncoderNVENC.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

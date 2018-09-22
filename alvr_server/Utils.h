@@ -4,6 +4,7 @@
 #include <WinInet.h>
 #include <WS2tcpip.h>
 #include <Windows.h>
+#include <delayimp.h>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -285,6 +286,15 @@ inline TrackingVector3 RotateVectorQuaternion(const TrackingVector3& v, double p
 // Use NV12 texture on Windows 7
 inline bool ShouldUseNV12Texture() {
 	return IsWindows8OrGreater() == FALSE;
+}
+
+// Delay loading for Cuda driver API to correctly work on non-NVIDIA GPU.
+inline bool LoadCudaDLL() {
+	__try {
+		return !FAILED(__HrLoadAllImportsForDll("nvcuda.dll"));
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+	}
+	return false;
 }
 
 typedef void (WINAPI *RtlGetVersion_FUNC)(OSVERSIONINFOEXW*);

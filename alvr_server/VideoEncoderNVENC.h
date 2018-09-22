@@ -9,6 +9,7 @@
 #include "CudaConverter.h"
 #include "ipctools.h"
 
+// Video encoder for NVIDIA NvEnc.
 class VideoEncoderNVENC : public VideoEncoder
 {
 public:

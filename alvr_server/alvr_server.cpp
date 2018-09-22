@@ -32,6 +32,7 @@
 #include "AudioCapture.h"
 #include "VideoEncoder.h"
 #include "VideoEncoderNVENC.h"
+#include "VideoEncoderVCE.h"
 #include "IDRScheduler.h"
 
 HINSTANCE g_hInstance;
@@ -55,7 +56,8 @@ namespace
 			, m_frameIndex(0)
 			, m_frameIndex2(0)
 			, m_FrameRender(std::make_shared<FrameRender>(d3dRender))
-			, m_videoEncoder(std::make_shared<VideoEncoderNVENC>(d3dRender, listener, ShouldUseNV12Texture()))
+			, m_videoEncoder(std::make_shared<VideoEncoderVCE>(d3dRender, listener
+				, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, ShouldUseNV12Texture()))
 		{
 			m_encodeFinished.Set();
 		}

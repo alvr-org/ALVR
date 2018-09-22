@@ -32,6 +32,10 @@ bool VideoEncoderNVENC::Initialize()
 		, format, m_useNV12);
 
 	if (m_useNV12) {
+		if (!LoadCudaDLL()) {
+			FatalLog("Failed to load nvcuda.dll. Please check if NVIDIA graphic driver is installed.");
+			return false;
+		}
 		try {
 			m_Converter = std::make_shared<CudaConverter>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
 		}

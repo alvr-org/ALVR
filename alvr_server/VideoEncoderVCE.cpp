@@ -40,11 +40,8 @@ bool VideoEncoderVCE::Initialize()
 
 	::amf_increase_timer_precision();
 
-	amf_int32 frameRateIn = 60;
-	amf_int64 bitRateIn = 5000000L; // in bits, 25MBit
-	amf_int32 rectSize = 50;
-	amf_int32 frameCount = 500;
-	bool bMaximumSpeed = true;
+	amf_int32 frameRateIn = Settings::Instance().m_encodeFPS;
+	amf_int64 bitRateIn = Settings::Instance().m_encodeBitrateInMBits * 1000000L; // in bits
 
 	// context
 	res = g_AMFFactory.GetFactory()->CreateContext(&m_amfContext);
@@ -72,11 +69,8 @@ bool VideoEncoderVCE::Initialize()
 	{
 		res = m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_USAGE, AMF_VIDEO_ENCODER_USAGE_ULTRA_LOW_LATENCY);
 
-		if (bMaximumSpeed)
-		{
-			res = m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_B_PIC_PATTERN, 0);
-			res = m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_SPEED);
-		}
+		res = m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_B_PIC_PATTERN, 0);
+		res = m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_SPEED);
 
 		res = m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
 		res = m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMESIZE, ::AMFConstructSize(m_width, m_height));
@@ -91,10 +85,7 @@ bool VideoEncoderVCE::Initialize()
 	{
 		res = m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_USAGE, AMF_VIDEO_ENCODER_HEVC_USAGE_ULTRA_LOW_LATENCY);
 
-		if (bMaximumSpeed)
-		{
-			res = m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_SPEED);
-		}
+		res = m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_SPEED);
 
 		res = m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
 		res = m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMESIZE, ::AMFConstructSize(Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight));

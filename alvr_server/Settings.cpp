@@ -63,6 +63,9 @@ void Settings::Load()
 
 	m_codec = (int32_t)v.get(k_pch_Settings_Codec_Int32).get<int64_t>();
 	m_EncoderOptions = v.get(k_pch_Settings_EncoderOptions_String).get<std::string>();
+	m_encodeFPS = (int)v.get(k_pch_Settings_EncodeFPS_Int32).get<int64_t>();
+	m_encodeBitrateInMBits = (int)v.get(k_pch_Settings_EncodeBitrateInMBits_Int32).get<int64_t>();
+
 	m_DebugOutputDir = v.get(k_pch_Settings_DebugOutputDir).get<std::string>();
 	
 	// Listener Parameters

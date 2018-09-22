@@ -143,6 +143,8 @@ namespace ALVR
                 driverConfig.codec = Properties.Settings.Default.codec; // 0: H264, 1: H265
                 driverConfig.nvencOptions = "-preset ll_hq -rc cbr_ll_hq -fps 60 -bitrate "
                     + Properties.Settings.Default.bitrate + "M -maxbitrate " + Properties.Settings.Default.bitrate + "M";
+                driverConfig.encodeFPS = 60;
+                driverConfig.encodeBitrateInMBits = Properties.Settings.Default.bitrate;
 
                 driverConfig.renderWidth = Properties.Settings.Default.renderWidth;
                 driverConfig.renderHeight = Properties.Settings.Default.renderWidth / 2;

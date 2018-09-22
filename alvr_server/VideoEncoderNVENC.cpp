@@ -9,8 +9,6 @@ VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	, m_nFrame(0)
 	, m_Listener(listener)
 	, m_useNV12(useNV12)
-	, m_insertIDRTime(0)
-	, m_IsIDRScheduled(false)
 {
 }
 
@@ -134,7 +132,7 @@ void VideoEncoderNVENC::Shutdown()
 	}
 }
 
-void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime)
+void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR)
 {
 	std::vector<std::vector<uint8_t>> vPacket;
 	D3D11_TEXTURE2D_DESC desc;
@@ -165,7 +163,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	}
 
 	NV_ENC_PIC_PARAMS picParams = {};
-	if (CheckIDRInsertion()) {
+	if (insertIDR) {
 		Log("Inserting IDR frame.");
 		picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
 	}
@@ -192,43 +190,4 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	}
 
 	Log("[VDispDvr] Transmit(end) (frame %d %d) FrameIndex=%llu", vPacket.size(), m_nFrame, frameIndex);
-}
-
-void VideoEncoderNVENC::OnPacketLoss()
-{
-	IPCCriticalSectionLock lock(m_IDRCS);
-	if (m_IsIDRScheduled) {
-		// Waiting next insertion.
-		return;
-	}
-	if (GetTimestampUs() - m_insertIDRTime > MIN_IDR_FRAME_INTERVAL) {
-		// Insert immediately
-		m_insertIDRTime = GetTimestampUs();
-		m_IsIDRScheduled = true;
-	}
-	else {
-		// Schedule next insertion.
-		m_insertIDRTime += MIN_IDR_FRAME_INTERVAL;
-		m_IsIDRScheduled = true;
-	}
-}
-
-void VideoEncoderNVENC::OnClientConnected()
-{
-	IPCCriticalSectionLock lock(m_IDRCS);
-	// Force insert IDR-frame
-	m_insertIDRTime = GetTimestampUs();
-	m_IsIDRScheduled = true;
-}
-
-
-bool VideoEncoderNVENC::CheckIDRInsertion() {
-	IPCCriticalSectionLock lock(m_IDRCS);
-	if (m_IsIDRScheduled) {
-		if (m_insertIDRTime <= GetTimestampUs()) {
-			m_IsIDRScheduled = false;
-			return true;
-		}
-	}
-	return false;
 }

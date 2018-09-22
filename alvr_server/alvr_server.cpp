@@ -32,6 +32,7 @@
 #include "AudioCapture.h"
 #include "VideoEncoder.h"
 #include "VideoEncoderNVENC.h"
+#include "IDRScheduler.h"
 
 HINSTANCE g_hInstance;
 
@@ -49,18 +50,27 @@ namespace
 	class CEncoder : public CThread
 	{
 	public:
-		CEncoder( std::shared_ptr<CD3DRender> pD3DRender, std::shared_ptr<VideoEncoder> videoEncoder)
-			: m_videoEncoder(videoEncoder)
-			, m_bExiting( false )
+		CEncoder(std::shared_ptr<CD3DRender> d3dRender, std::shared_ptr<Listener> listener)
+			: m_bExiting( false )
 			, m_frameIndex(0)
 			, m_frameIndex2(0)
-			, m_FrameRender(std::make_shared<FrameRender>(pD3DRender))
+			, m_FrameRender(std::make_shared<FrameRender>(d3dRender))
+			, m_videoEncoder(std::make_shared<VideoEncoderNVENC>(d3dRender, listener, ShouldUseNV12Texture()))
 		{
 			m_encodeFinished.Set();
 		}
 
 		~CEncoder()
 		{
+			if (m_videoEncoder)
+			{
+				m_videoEncoder->Shutdown();
+				m_videoEncoder.reset();
+			}
+		}
+
+		bool Init() {
+			return m_videoEncoder->Initialize();
 		}
 
 		bool CopyToStaging( ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering
@@ -92,7 +102,7 @@ namespace
 
 				if ( m_FrameRender->GetTexture() )
 				{
-					m_videoEncoder->Transmit(m_FrameRender->GetTexture().Get(), m_presentationTime, m_frameIndex, m_frameIndex2, m_clientTime);
+					m_videoEncoder->Transmit(m_FrameRender->GetTexture().Get(), m_presentationTime, m_frameIndex, m_frameIndex2, m_clientTime, m_scheduler.CheckIDRInsertion());
 				}
 
 				m_frameIndex2++;
@@ -121,6 +131,13 @@ namespace
 			m_encodeFinished.Wait();
 		}
 
+		void OnClientConnected() {
+			m_scheduler.OnClientConnected();
+		}
+
+		void OnPacketLoss() {
+			m_scheduler.OnPacketLoss();
+		}
 	private:
 		CThreadEvent m_newFrameReady, m_encodeFinished;
 		std::shared_ptr<VideoEncoder> m_videoEncoder;
@@ -132,6 +149,8 @@ namespace
 		uint64_t m_frameIndex2;
 
 		std::shared_ptr<FrameRender> m_FrameRender;
+
+		IDRScheduler m_scheduler;
 	};
 }
 
@@ -700,12 +719,6 @@ public:
 			m_encoder.reset();
 		}
 
-		if (m_videoEncoder)
-		{
-			m_videoEncoder->Shutdown();
-			m_videoEncoder.reset();
-		}
-
 		if (m_audioCapture)
 		{
 			m_audioCapture->Shutdown();
@@ -813,15 +826,12 @@ public:
 		Log("Using %ls as primary graphics adapter.", wchAdapterDescription);
 		Log("OSVer:%s", GetWindowsOSVersion().c_str());
 
-		// Spawn our separate process to manage headset presentation.
-		m_videoEncoder = std::make_shared<VideoEncoderNVENC>(m_D3DRender, m_Listener, ShouldUseNV12Texture());
-		if (!m_videoEncoder->Initialize())
-		{
+		// Spin up a separate thread to handle the overlapped encoding/transmit step.
+		m_encoder = std::make_shared<CEncoder>(m_D3DRender, m_Listener);
+		if (!m_encoder->Init()) {
+			FatalLog("Failed to initialize CEncoder.");
 			return vr::VRInitError_Driver_Failed;
 		}
-
-		// Spin up a separate thread to handle the overlapped encoding/transmit step.
-		m_encoder = std::make_shared<CEncoder>(m_D3DRender, m_videoEncoder);
 		m_encoder->Start();
 
 		if (Settings::Instance().m_enableSound) {
@@ -1062,11 +1072,11 @@ public:
 
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, (float)m_refreshRate);
 		// Insert IDR frame for faster startup of decoding.
-		m_videoEncoder->OnClientConnected();
+		m_encoder->OnClientConnected();
 	}
 
 	void OnPacketLoss() {
-		m_videoEncoder->OnPacketLoss();
+		m_encoder->OnPacketLoss();
 	}
 private:
 	bool m_added;
@@ -1077,7 +1087,6 @@ private:
 	uint32_t m_nVsyncCounter;
 
 	std::shared_ptr<CD3DRender> m_D3DRender;
-	std::shared_ptr<VideoEncoder> m_videoEncoder;
 	std::shared_ptr<CEncoder> m_encoder;
 	std::shared_ptr<AudioCapture> m_audioCapture;
 	std::shared_ptr<Listener> m_Listener;

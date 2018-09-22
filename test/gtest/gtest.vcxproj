@@ -93,6 +93,7 @@
     <ClCompile Include="..\..\alvr_server\ControlSocket.cpp" />
     <ClCompile Include="..\..\alvr_server\FrameRender.cpp" />
     <ClCompile Include="..\..\alvr_server\FreePIE.cpp" />
+    <ClCompile Include="..\..\alvr_server\IDRScheduler.cpp" />
     <ClCompile Include="..\..\alvr_server\Logger.cpp" />
     <ClCompile Include="..\..\alvr_server\NvEncoder.cpp" />
     <ClCompile Include="..\..\alvr_server\NvEncoderCuda.cpp" />
@@ -112,6 +113,7 @@
     <ClInclude Include="..\..\alvr_server\CudaConverter.h" />
     <ClInclude Include="..\..\alvr_server\FrameRender.h" />
     <ClInclude Include="..\..\alvr_server\FreePIE.h" />
+    <ClInclude Include="..\..\alvr_server\IDRScheduler.h" />
     <ClInclude Include="..\..\alvr_server\Listener.h" />
     <ClInclude Include="..\..\alvr_server\Logger.h" />
     <ClInclude Include="..\..\alvr_server\NvCodecUtils.h" />

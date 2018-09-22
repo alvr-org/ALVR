@@ -17,4 +17,7 @@ public:
 	virtual void OnPacketLoss() = 0;
 
 	virtual void OnClientConnected() = 0;
+
+protected:
+	void SaveDebugOutput(std::shared_ptr<CD3DRender> m_pD3DRender, std::vector<std::vector<uint8_t>> &vPacket, ID3D11Texture2D *texture, uint64_t frameIndex);
 };

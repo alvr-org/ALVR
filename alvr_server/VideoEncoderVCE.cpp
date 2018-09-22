@@ -149,7 +149,13 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 
 	// Disable AUD (NAL Type 9) to produce the same stream format as VideoEncoderNVENC.
 	surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_AUD, false);
-
+	if (insertIDR) {
+		Log("Inserting IDR frame.");
+		surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_SPS, true);
+		surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_PPS, true);
+		surface->SetProperty(AMF_VIDEO_ENCODER_FORCE_PICTURE_TYPE, AMF_VIDEO_ENCODER_PICTURE_TYPE_IDR);
+	}
+	
 	while (true)
 	{
 		res = m_amfEncoder->SubmitInput(surface);

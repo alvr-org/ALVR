@@ -42,5 +42,8 @@ private:
 	int m_width;
 	int m_height;
 	const bool m_useNV12;
+
+	void ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR);
+	void SkipAUD(char **buffer, int *length);
 };
 

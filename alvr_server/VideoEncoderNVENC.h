@@ -17,7 +17,7 @@ public:
 		, std::shared_ptr<Listener> listener, bool useNV12);
 	~VideoEncoderNVENC();
 
-	bool Initialize();
+	void Initialize();
 	void Shutdown();
 
 	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR);

@@ -70,9 +70,9 @@ static void GenerateExceptionInfo(wchar_t *logPath, PEXCEPTION_POINTERS pExcepti
 
 	BOOL ret = SymGetSymFromAddr64(process, address, &displacement, sym);
 	BOOL ret2 = SymGetLineFromAddr64(process, address, &offset_from_symbol, &line);
-
+	
 	fprintf(fp, "========== Exception info start ==========\n");
-	fprintf(fp, "ExceptionCode=%X Address=%016X\n", pExceptionPtrs->ExceptionRecord->ExceptionCode, address);
+	fprintf(fp, "ExceptionCode=%X Address=%016llX ThreadId=%d\n", pExceptionPtrs->ExceptionRecord->ExceptionCode, address, GetCurrentThreadId());
 	if (ret) {
 		std::vector<char> und_name(max_name_len);
 		UnDecorateSymbolName(sym->Name, &und_name[0], max_name_len, UNDNAME_COMPLETE);

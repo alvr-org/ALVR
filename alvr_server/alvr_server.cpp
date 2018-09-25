@@ -57,7 +57,7 @@ namespace
 			, m_frameIndex2(0)
 			, m_FrameRender(std::make_shared<FrameRender>(d3dRender))
 			, m_videoEncoder(std::make_shared<VideoEncoderVCE>(d3dRender, listener
-				, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, ShouldUseNV12Texture()))
+				, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight))
 		{
 			m_encodeFinished.Set();
 		}
@@ -71,8 +71,8 @@ namespace
 			}
 		}
 
-		bool Init() {
-			return m_videoEncoder->Initialize();
+		void Initialize() {
+			m_videoEncoder->Initialize();
 		}
 
 		bool CopyToStaging( ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering
@@ -830,8 +830,11 @@ public:
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
 		m_encoder = std::make_shared<CEncoder>(m_D3DRender, m_Listener);
-		if (!m_encoder->Init()) {
-			FatalLog("Failed to initialize CEncoder.");
+		try {
+			m_encoder->Initialize();
+		}
+		catch (Exception e) {
+			FatalLog("Failed to initialize CEncoder. %s", e.what());
 			return vr::VRInitError_Driver_Failed;
 		}
 		m_encoder->Start();

@@ -15,7 +15,7 @@ VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 VideoEncoderNVENC::~VideoEncoderNVENC()
 {}
 
-bool VideoEncoderNVENC::Initialize()
+void VideoEncoderNVENC::Initialize()
 {
 	NvEncoderInitParam EncodeCLIOptions(Settings::Instance().m_EncoderOptions.c_str());
 
@@ -33,15 +33,13 @@ bool VideoEncoderNVENC::Initialize()
 
 	if (m_useNV12) {
 		if (!LoadCudaDLL()) {
-			FatalLog("Failed to load nvcuda.dll. Please check if NVIDIA graphic driver is installed.");
-			return false;
+			throw MakeException("Failed to load nvcuda.dll. Please check if NVIDIA graphic driver is installed.");
 		}
 		try {
 			m_Converter = std::make_shared<CudaConverter>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
 		}
 		catch (Exception e) {
-			FatalLog("Exception:%s", e.what());
-			return false;
+			throw MakeException("Exception:%s", e.what());
 		}
 
 		try {
@@ -49,11 +47,9 @@ bool VideoEncoderNVENC::Initialize()
 		}
 		catch (NVENCException e) {
 			if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
-				FatalLog("This GPU does not port H.265 encoding. (NvEncoderCuda NV_ENC_ERR_INVALID_PARAM)");
-				return false;
+				throw MakeException("This GPU does not port H.265 encoding. (NvEncoderCuda NV_ENC_ERR_INVALID_PARAM)");
 			}
-			FatalLog("NvEnc NvEncoderCuda failed. Code=%d %s", e.getErrorCode(), e.what());
-			return false;
+			throw MakeException("NvEnc NvEncoderCuda failed. Code=%d %s", e.getErrorCode(), e.what());
 		}
 	}
 	else {
@@ -62,11 +58,9 @@ bool VideoEncoderNVENC::Initialize()
 		}
 		catch (NVENCException e) {
 			if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
-				FatalLog("This GPU does not port H.265 encoding. (NvEncoderD3D11 NV_ENC_ERR_INVALID_PARAM)");
-				return false;
+				throw MakeException("This GPU does not port H.265 encoding. (NvEncoderD3D11 NV_ENC_ERR_INVALID_PARAM)");
 			}
-			FatalLog("NvEnc NvEncoderD3D11 failed. Code=%d %s", e.getErrorCode(), e.what());
-			return false;
+			throw MakeException("NvEnc NvEncoderD3D11 failed. Code=%d %s", e.getErrorCode(), e.what());
 		}
 	}
 
@@ -93,8 +87,7 @@ bool VideoEncoderNVENC::Initialize()
 		m_NvNecoder->CreateEncoder(&initializeParams);
 	}
 	catch (NVENCException e) {
-		FatalLog("NvEnc CreateEncoder failed. Code=%d %s", e.getErrorCode(), e.what());
-		return false;
+		throw MakeException("NvEnc CreateEncoder failed. Code=%d %s", e.getErrorCode(), e.what());
 	}
 
 	//
@@ -110,8 +103,6 @@ bool VideoEncoderNVENC::Initialize()
 	}
 
 	Log("CNvEncoder is successfully initialized.");
-
-	return true;
 }
 
 void VideoEncoderNVENC::Shutdown()

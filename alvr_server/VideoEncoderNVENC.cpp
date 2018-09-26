@@ -47,7 +47,7 @@ void VideoEncoderNVENC::Initialize()
 		}
 		catch (NVENCException e) {
 			if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
-				throw MakeException("This GPU does not port H.265 encoding. (NvEncoderCuda NV_ENC_ERR_INVALID_PARAM)");
+				throw MakeException("This GPU does not support H.265 encoding. (NvEncoderCuda NV_ENC_ERR_INVALID_PARAM)");
 			}
 			throw MakeException("NvEnc NvEncoderCuda failed. Code=%d %s", e.getErrorCode(), e.what());
 		}
@@ -58,7 +58,7 @@ void VideoEncoderNVENC::Initialize()
 		}
 		catch (NVENCException e) {
 			if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
-				throw MakeException("This GPU does not port H.265 encoding. (NvEncoderD3D11 NV_ENC_ERR_INVALID_PARAM)");
+				throw MakeException("This GPU does not support H.265 encoding. (NvEncoderD3D11 NV_ENC_ERR_INVALID_PARAM)");
 			}
 			throw MakeException("NvEnc NvEncoderD3D11 failed. Code=%d %s", e.getErrorCode(), e.what());
 		}
@@ -130,20 +130,13 @@ void VideoEncoderNVENC::Shutdown()
 void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR)
 {
 	std::vector<std::vector<uint8_t>> vPacket;
-	D3D11_TEXTURE2D_DESC desc;
-
-	pTexture->GetDesc(&desc);
-
-	Log("[VDispDvr] Transmit(begin) FrameIndex=%llu", frameIndex);
 
 	const NvEncInputFrame* encoderInputFrame = m_NvNecoder->GetNextInputFrame();
 
 	if (m_useNV12)
 	{
 		try {
-			Log("ConvertRGBToNV12 start");
 			m_Converter->Convert(pTexture, encoderInputFrame);
-			Log("ConvertRGBToNV12 end");
 		}
 		catch (NVENCException e) {
 			FatalLog("Exception:%s", e.what());
@@ -152,9 +145,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	}
 	else {
 		ID3D11Texture2D *pInputTexture = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
-		Log("CopyResource start");
 		m_pD3DRender->GetContext()->CopyResource(pInputTexture, pTexture);
-		Log("CopyResource end");
 	}
 
 	NV_ENC_PIC_PARAMS picParams = {};
@@ -183,6 +174,4 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 			SaveDebugOutput(m_pD3DRender, vPacket, reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr), frameIndex2);
 		}
 	}
-
-	Log("[VDispDvr] Transmit(end) (frame %d %d) FrameIndex=%llu", vPacket.size(), m_nFrame, frameIndex);
 }

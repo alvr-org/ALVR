@@ -142,68 +142,31 @@ private:
 	HANDLE m_h;
 };
 
-class AudioCapture
-{
+class AudioEndPointDescriptor {
 public:
-	AudioCapture(std::shared_ptr<Listener> listener)
-		: m_pMMDevice(NULL)
-		, m_pwfx(NULL)
-		, m_startedEvent(NULL)
-		, m_stopEvent(NULL)
-		, m_listener(listener) {
+	AudioEndPointDescriptor(const ComPtr<IMMDevice> &device, bool isDefault) {
+		wchar_t *idStr;
+		device->GetId(&idStr);
+		TaskMem idMem(idStr);
+
+		m_id = idStr;
+		m_name = GetDeviceName(device);
+		m_isDefault = isDefault;
 	}
-
-	virtual ~AudioCapture() {
+	std::wstring GetName() const {
+		return m_name;
 	}
-
-	static void list_devices(std::vector<std::wstring> &deviceNames) {
-		CoInitialize(NULL);
-
-		HRESULT hr = S_OK;
-
-		// get an enumerator
-		ComPtr<IMMDeviceEnumerator> pMMDeviceEnumerator;
-
-		hr = CoCreateInstance(
-			__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL,
-			__uuidof(IMMDeviceEnumerator),
-			(void**)&pMMDeviceEnumerator
-		);
-		if (FAILED(hr)) {
-			throw MakeException("CoCreateInstance(IMMDeviceEnumerator) failed: hr = 0x%08x", hr);
-		}
-
-		ComPtr<IMMDeviceCollection> pMMDeviceCollection;
-
-		// get all the active render endpoints
-		hr = pMMDeviceEnumerator->EnumAudioEndpoints(
-			eRender, DEVICE_STATE_ACTIVE, &pMMDeviceCollection
-		);
-		if (FAILED(hr)) {
-			throw MakeException("IMMDeviceEnumerator::EnumAudioEndpoints failed: hr = 0x%08x", hr);
-		}
-
-		UINT count;
-		hr = pMMDeviceCollection->GetCount(&count);
-		if (FAILED(hr)) {
-			throw MakeException("IMMDeviceCollection::GetCount failed: hr = 0x%08x", hr);
-		}
-		Log("Active render endpoints found: %u", count);
-
-		for (UINT i = 0; i < count; i++) {
-			ComPtr<IMMDevice> pMMDevice;
-
-			// get the "n"th device
-			hr = pMMDeviceCollection->Item(i, &pMMDevice);
-			if (FAILED(hr)) {
-				throw MakeException("IMMDeviceCollection::Item failed: hr = 0x%08x", hr);
-			}
-
-			auto name = GetDeviceName(pMMDevice);
-
-			Log("Device%u:%ls", i, name.c_str());
-			deviceNames.push_back(name);
-		}
+	std::wstring GetId() const {
+		return m_id;
+	}
+	bool IsDefault() const {
+		return m_isDefault;
+	}
+	bool operator==(const AudioEndPointDescriptor& a) {
+		return a.GetId() == m_id;
+	}
+	bool operator!=(const AudioEndPointDescriptor& a) {
+		return !operator==(a);
 	}
 
 	static std::wstring GetDeviceName(const ComPtr<IMMDevice> &pMMDevice) {
@@ -226,8 +189,27 @@ public:
 		}
 		return pv.Get().pwszVal;
 	}
+private:
+	std::wstring m_name;
+	std::wstring m_id;
+	bool m_isDefault;
+};
 
-	void OpenDevice(const std::wstring &deviceName) {
+class AudioCapture
+{
+public:
+	AudioCapture(std::shared_ptr<Listener> listener)
+		: m_pMMDevice(NULL)
+		, m_pwfx(NULL)
+		, m_startedEvent(NULL)
+		, m_stopEvent(NULL)
+		, m_listener(listener) {
+	}
+
+	virtual ~AudioCapture() {
+	}
+
+	static void list_devices(std::vector<AudioEndPointDescriptor> &deviceList) {
 		CoInitialize(NULL);
 
 		HRESULT hr = S_OK;
@@ -244,6 +226,15 @@ public:
 			throw MakeException("CoCreateInstance(IMMDeviceEnumerator) failed: hr = 0x%08x", hr);
 		}
 
+		// TODO: ERole???
+		ComPtr<IMMDevice> pDefaultMMDevice;
+		hr = pMMDeviceEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDefaultMMDevice);
+		if (FAILED(hr)) {
+			throw MakeException("IMMDeviceEnumerator::GetDefaultAudioEndpoint failed: hr = 0x%08x", hr);
+		}
+		AudioEndPointDescriptor defaultDescriptor(pDefaultMMDevice, true);
+		deviceList.push_back(defaultDescriptor);
+
 		ComPtr<IMMDeviceCollection> pMMDeviceCollection;
 
 		// get all the active render endpoints
@@ -259,39 +250,58 @@ public:
 		if (FAILED(hr)) {
 			throw MakeException("IMMDeviceCollection::GetCount failed: hr = 0x%08x", hr);
 		}
+		Log("Active render endpoints found: %u", count);
+
+		Log("DefaultDevice:%ls ID:%ls", defaultDescriptor.GetName().c_str(), defaultDescriptor.GetId().c_str());
 
 		for (UINT i = 0; i < count; i++) {
 			ComPtr<IMMDevice> pMMDevice;
+			wchar_t *id = nullptr;
 
 			// get the "n"th device
 			hr = pMMDeviceCollection->Item(i, &pMMDevice);
 			if (FAILED(hr)) {
 				throw MakeException("IMMDeviceCollection::Item failed: hr = 0x%08x", hr);
 			}
-
-			auto name = GetDeviceName(pMMDevice);
-
-			// is it a match?
-			if (deviceName == name) {
-				// did we already find it?
-				if (!m_pMMDevice) {
-					m_pMMDevice = pMMDevice;
-				}
-				else {
-					throw MakeException("Found (at least) two devices named %ls", deviceName.c_str());
-				}
+			AudioEndPointDescriptor descriptor(pMMDevice, false);
+			if (descriptor == defaultDescriptor) {
+				// Default is already added.
+				continue;
 			}
-		}
+			deviceList.push_back(descriptor);
 
-		if (!m_pMMDevice) {
-			throw MakeException("Could not find a device named %ls", deviceName.c_str());
+			Log("Device%u:%ls ID:%ls", i, descriptor.GetName().c_str(), descriptor.GetId().c_str());
 		}
 	}
 
-	void Start(const std::wstring &deviceName) {
+	void OpenDevice(const std::wstring &id) {
 		CoInitialize(NULL);
 
-		OpenDevice(deviceName);
+		HRESULT hr = S_OK;
+
+		// get an enumerator
+		ComPtr<IMMDeviceEnumerator> pMMDeviceEnumerator;
+
+		hr = CoCreateInstance(
+			__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL,
+			__uuidof(IMMDeviceEnumerator),
+			(void**)&pMMDeviceEnumerator
+		);
+		if (FAILED(hr)) {
+			throw MakeException("CoCreateInstance(IMMDeviceEnumerator) failed: hr = 0x%08x", hr);
+		}
+
+		hr = pMMDeviceEnumerator->GetDevice(id.c_str(), &m_pMMDevice);
+		if (FAILED(hr)) {
+			throw MakeException("Could not find a device id %ls. hr = 0x%08x", id.c_str(), hr);
+		}
+	}
+
+	void Start(const std::wstring &id) {
+		CoInitialize(NULL);
+
+		OpenDevice(id);
+		Log("Audio device: %ls", AudioEndPointDescriptor::GetDeviceName(m_pMMDevice).c_str());
 
 		m_hThread.Set(CreateThread(
 			NULL, 0,

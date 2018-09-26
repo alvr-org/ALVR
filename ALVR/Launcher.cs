@@ -24,6 +24,8 @@ namespace ALVR
         ControlSocket socket = new ControlSocket();
         ServerConfig config = new ServerConfig();
         ClientList clientList;
+        List<DeviceQuery.SoundDevice> soundDevices = new List<DeviceQuery.SoundDevice>();
+        int defaultSoundDeviceIndex = 0;
         bool previousConnectionState = false;
 
         class ClientTag
@@ -48,13 +50,21 @@ namespace ALVR
 
             try
             {
-                var list = SoundDevice.GetSoundDeviceList();
-                foreach (var device in list)
+                soundDevices = DeviceQuery.GetSoundDeviceList();
+                int i = 0;
+                foreach (var device in soundDevices)
                 {
-                    soundDeviceComboBox.Items.Add(device);
+                    string text = device.name;
+                    if (device.isDefault)
+                    {
+                        defaultSoundDeviceIndex = i;
+                        text = "(Default) " + text;
+                    }
+                    soundDeviceComboBox.Items.Add(text);
+                    i++;
                 }
             }
-            catch (Exception e2)
+            catch (Exception)
             {
                 Application.Exit();
                 return;
@@ -130,9 +140,9 @@ namespace ALVR
 
             if (Properties.Settings.Default.soundDevice != "")
             {
-                for (int i = 0; i < soundDeviceComboBox.Items.Count; i++)
+                for (int i = 0; i < soundDevices.Count; i++)
                 {
-                    if ((string)soundDeviceComboBox.Items[i] == Properties.Settings.Default.soundDevice)
+                    if (soundDevices[i].id == Properties.Settings.Default.soundDevice)
                     {
                         soundDeviceComboBox.SelectedIndex = i;
                         break;
@@ -163,9 +173,16 @@ namespace ALVR
 
             Properties.Settings.Default.codec = codecComboBox.SelectedIndex;
 
-            if (soundDeviceComboBox.SelectedIndex != -1)
+            if (soundDevices.Count > 0)
             {
-                Properties.Settings.Default.soundDevice = (string)soundDeviceComboBox.SelectedItem;
+                if (!defaultSoundDeviceCheckBox.Checked && soundDeviceComboBox.SelectedIndex != -1)
+                {
+                    Properties.Settings.Default.soundDevice = soundDevices[soundDeviceComboBox.SelectedIndex].id;
+                }
+                else
+                {
+                    Properties.Settings.Default.soundDevice = soundDevices[defaultSoundDeviceIndex].id;
+                }
             }
 
             Properties.Settings.Default.Save();
@@ -473,7 +490,9 @@ namespace ALVR
 
         private void UpdateSoundCheckboxState()
         {
-            soundDeviceComboBox.Enabled = soundCheckBox.Checked;
+            defaultSoundDeviceCheckBox.Enabled = soundCheckBox.Checked;
+            soundDeviceComboBox.Enabled = !defaultSoundDeviceCheckBox.Checked && soundCheckBox.Checked;
+            SaveSettings();
         }
 
         //
@@ -700,6 +719,11 @@ namespace ALVR
         async private void suppressFrameDropCheckBox_CheckedChanged(object sender, EventArgs e)
         {
             await socket.SendCommand("SetClientConfig frameQueueSize " + config.GetFrameQueueSize(suppressFrameDropCheckBox.Checked));
+        }
+
+        private void defaultSoundDeviceCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdateSoundCheckboxState();
         }
     }
 }

@@ -92,11 +92,12 @@ namespace
 
 		void Run() override
 		{
+			Log("CEncoder: Start thread. Id=%d", GetCurrentThreadId());
 			SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_MOST_URGENT );
 
 			while ( !m_bExiting )
 			{
-				Log( "[VDispDvr] Encoder waiting for new frame..." );
+				Log("CEncoder: Waiting for new frame...");
 
 				m_newFrameReady.Wait();
 				if ( m_bExiting )
@@ -963,6 +964,7 @@ public:
 				"%s %d\n"
 				"%s %d\n"
 				"%s %d\n"
+				"%s %d\n"
 				"%s %d"
 				, m_Listener->DumpConfig().c_str()
 				, k_pch_Settings_DebugLog_Bool, Settings::Instance().m_DebugLog
@@ -1197,29 +1199,6 @@ void *HmdDriverFactory( const char *pInterfaceName, int *pReturnCode )
 		*pReturnCode = vr::VRInitError_Init_InterfaceNotFound;
 
 	return NULL;
-}
-
-// Called from C#. Returns string of device list joined by '\0'.
-extern "C" __declspec(dllexport)
-void GetSoundDevices(wchar_t **buf, int *len) {
-	std::vector<std::wstring> deviceList;
-	std::vector<wchar_t> strBuf;
-	size_t pos = 0;
-	AudioCapture::list_devices(deviceList);
-	for (auto it = deviceList.begin(); it != deviceList.end(); it++) {
-		strBuf.resize(pos + it->size() + 1);
-		memcpy(&strBuf[pos], it->c_str(), (it->size() + 1) * sizeof(wchar_t));
-		pos += it->size() + 1;
-	}
-	*len = (int) pos;
-	*buf = new wchar_t[pos];
-	memcpy(*buf, &strBuf[0], pos * sizeof(wchar_t));
-}
-
-// Called from C#.
-extern "C" __declspec(dllexport)
-void ReleaseSoundDeviesBuffer(wchar_t *buf) {
-	delete[] buf;
 }
 
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)

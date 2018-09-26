@@ -100,6 +100,7 @@
     <ClCompile Include="amf\common\Windows\ThreadWindows.cpp" />
     <ClCompile Include="ControlSocket.cpp" />
     <ClCompile Include="alvr_server.cpp" />
+    <ClCompile Include="DeviceQuery.cpp" />
     <ClCompile Include="FrameRender.cpp" />
     <ClCompile Include="FreePIE.cpp" />
     <ClCompile Include="IDRScheduler.cpp" />
@@ -163,6 +164,7 @@
     <ClInclude Include="AudioCapture.h" />
     <ClInclude Include="ControlSocket.h" />
     <ClInclude Include="CudaConverter.h" />
+    <ClInclude Include="DeviceQuery.h" />
     <ClInclude Include="FrameRender.h" />
     <ClInclude Include="FreePIE.h" />
     <ClInclude Include="IDRScheduler.h" />

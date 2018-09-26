@@ -62,6 +62,8 @@ AMFTextureEncoder::AMFTextureEncoder(const amf::AMFContextPtr &amfContext
 		//m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PROFILE_LEVEL, AMF_LEVEL_5);
 	}
 	AMF_THROW_IF(m_amfEncoder->Init(inputFormat, width, height));
+
+	Log("Initialized AMFTextureEncoder.");
 }
 
 AMFTextureEncoder::~AMFTextureEncoder()
@@ -141,6 +143,8 @@ AMFTextureConverter::AMFTextureConverter(const amf::AMFContextPtr &amfContext
 	AMF_THROW_IF(m_amfConverter->SetProperty(AMF_VIDEO_CONVERTER_OUTPUT_SIZE, ::AMFConstructSize(width, height)));
 
 	AMF_THROW_IF(m_amfConverter->Init(inputFormat, width, height));
+
+	Log("Initialized AMFTextureConverter.");
 }
 
 AMFTextureConverter::~AMFTextureConverter()
@@ -182,7 +186,7 @@ void AMFTextureConverter::Submit(amf::AMFData *data)
 
 void AMFTextureConverter::Run()
 {
-	Log("Start AMFTextureConverter thread. Thread Id=%d this=%p", GetCurrentThreadId(), this);
+	Log("Start AMFTextureConverter thread. Thread Id=%d", GetCurrentThreadId());
 	amf::AMFDataPtr data;
 	while (true)
 	{
@@ -215,7 +219,6 @@ VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, m_width(width)
 	, m_height(height)
 {
-	Log("VideoEncoderVCE().");
 }
 
 VideoEncoderVCE::~VideoEncoderVCE()
@@ -259,7 +262,7 @@ void VideoEncoderVCE::Initialize()
 
 void VideoEncoderVCE::Shutdown()
 {
-	Log("VideoEncoderVCE::Shutdown");
+	Log("Shutting down VideoEncoderVCE.");
 
 	m_encoder->Shutdown();
 	m_converter->Shutdown();
@@ -269,6 +272,7 @@ void VideoEncoderVCE::Shutdown()
 	if (fpOut) {
 		fpOut.close();
 	}
+	Log("Successfully shutdown VideoEncoderVCE.");
 }
 
 void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR)
@@ -285,7 +289,6 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 
 	ApplyFrameProperties(surface, insertIDR);
 	
-	Log("Submit to converter.");
 	m_converter->Submit(surface);
 }
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Codeplex.Data;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -8,7 +9,7 @@ using System.Windows.Forms;
 
 namespace ALVR
 {
-    class SoundDevice
+    class DeviceQuery
     {
         [DllImport("kernel32.dll")]
         public static extern IntPtr LoadLibrary(string dllToLoad);
@@ -25,9 +26,16 @@ namespace ALVR
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate void GetSoundDevices(out IntPtr buf, out int len);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate void ReleaseSoundDeviesBuffer(IntPtr buf);
+        private delegate void ReleaseBuffer(IntPtr buf);
 
-        static public List<string> GetSoundDeviceList()
+        public class SoundDevice
+        {
+            public string id;
+            public string name;
+            public bool isDefault;
+        }
+
+        static public List<SoundDevice> GetSoundDeviceList()
         {
             SetDllDirectory(Utils.GetDllDirectory(Utils.GetDriverPath()));
 
@@ -40,8 +48,8 @@ namespace ALVR
             }
 
             IntPtr GetSoundDevicesAddr = GetProcAddress(pDll, "GetSoundDevices");
-            IntPtr ReleaseSoundDeviesBufferAddr = GetProcAddress(pDll, "ReleaseSoundDeviesBuffer");
-            if (GetSoundDevicesAddr == IntPtr.Zero || ReleaseSoundDeviesBufferAddr == IntPtr.Zero)
+            IntPtr ReleaseBufferAddr = GetProcAddress(pDll, "ReleaseBuffer");
+            if (GetSoundDevicesAddr == IntPtr.Zero || ReleaseBufferAddr == IntPtr.Zero)
             {
                 MessageBox.Show("Cannot find function from \r\n" + Utils.GetDllPath(Utils.GetDriverPath()));
                 throw new Exception();
@@ -49,17 +57,26 @@ namespace ALVR
             var GetSoundDevicesFunc = (GetSoundDevices)Marshal.GetDelegateForFunctionPointer(
                                                                                     GetSoundDevicesAddr,
                                                                                     typeof(GetSoundDevices));
-            var ReleaseSoundDeviesBufferFunc = (ReleaseSoundDeviesBuffer)Marshal.GetDelegateForFunctionPointer(
-                                                                                    ReleaseSoundDeviesBufferAddr,
-                                                                                    typeof(ReleaseSoundDeviesBuffer));
+            var ReleaseBufferFunc = (ReleaseBuffer)Marshal.GetDelegateForFunctionPointer(
+                                                                                    ReleaseBufferAddr,
+                                                                                    typeof(ReleaseBuffer));
             IntPtr ptr;
             int len;
             GetSoundDevicesFunc(out ptr, out len);
             string buf = Marshal.PtrToStringUni(ptr, len);
-            ReleaseSoundDeviesBufferFunc(ptr);
+            ReleaseBufferFunc(ptr);
 
-            List<string> deviceList = buf.Split('\0').ToList();
-            deviceList.RemoveAt(deviceList.Count - 1);
+            var json = DynamicJson.Parse(buf, Encoding.UTF8);
+
+            var deviceList = new List<SoundDevice>();
+            foreach (var elem in json)
+            {
+                var desc = new SoundDevice();
+                desc.name = elem.name;
+                desc.id = elem.id;
+                desc.isDefault = elem.is_default;
+                deviceList.Add(desc);
+            }
 
             bool result = FreeLibrary(pDll);
 

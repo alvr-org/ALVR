@@ -334,5 +334,17 @@ namespace ALVR.Properties {
                 this["controllerBackMode"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool useDefaultSoundDevice {
+            get {
+                return ((bool)(this["useDefaultSoundDevice"]));
+            }
+            set {
+                this["useDefaultSoundDevice"] = value;
+            }
+        }
     }
 }

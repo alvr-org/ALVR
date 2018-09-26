@@ -28,18 +28,18 @@ void VideoEncoderNVENC::Initialize()
 		format = NV_ENC_BUFFER_FORMAT_NV12;
 	}
 
-	Log("Initializing CNvEncoder. Width=%d Height=%d Format=%d (useNV12:%d)", Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight
+	Log(L"Initializing CNvEncoder. Width=%d Height=%d Format=%d (useNV12:%d)", Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight
 		, format, m_useNV12);
 
 	if (m_useNV12) {
 		if (!LoadCudaDLL()) {
-			throw MakeException("Failed to load nvcuda.dll. Please check if NVIDIA graphic driver is installed.");
+			throw MakeException(L"Failed to load nvcuda.dll. Please check if NVIDIA graphic driver is installed.");
 		}
 		try {
 			m_Converter = std::make_shared<CudaConverter>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
 		}
 		catch (Exception e) {
-			throw MakeException("Exception:%s", e.what());
+			throw MakeException(L"Exception:%s", e.what());
 		}
 
 		try {
@@ -47,9 +47,9 @@ void VideoEncoderNVENC::Initialize()
 		}
 		catch (NVENCException e) {
 			if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
-				throw MakeException("This GPU does not support H.265 encoding. (NvEncoderCuda NV_ENC_ERR_INVALID_PARAM)");
+				throw MakeException(L"This GPU does not support H.265 encoding. (NvEncoderCuda NV_ENC_ERR_INVALID_PARAM)");
 			}
-			throw MakeException("NvEnc NvEncoderCuda failed. Code=%d %s", e.getErrorCode(), e.what());
+			throw MakeException(L"NvEnc NvEncoderCuda failed. Code=%d %hs", e.getErrorCode(), e.what());
 		}
 	}
 	else {
@@ -58,9 +58,9 @@ void VideoEncoderNVENC::Initialize()
 		}
 		catch (NVENCException e) {
 			if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
-				throw MakeException("This GPU does not support H.265 encoding. (NvEncoderD3D11 NV_ENC_ERR_INVALID_PARAM)");
+				throw MakeException(L"This GPU does not support H.265 encoding. (NvEncoderD3D11 NV_ENC_ERR_INVALID_PARAM)");
 			}
-			throw MakeException("NvEnc NvEncoderD3D11 failed. Code=%d %s", e.getErrorCode(), e.what());
+			throw MakeException(L"NvEnc NvEncoderD3D11 failed. Code=%d %hs", e.getErrorCode(), e.what());
 		}
 	}
 
@@ -81,13 +81,13 @@ void VideoEncoderNVENC::Initialize()
 	EncodeCLIOptions.SetInitParams(&initializeParams, format);
 
 	std::string parameterDesc = EncodeCLIOptions.FullParamToString(&initializeParams);
-	Log("NvEnc Encoder Parameters:\n%s", parameterDesc.c_str());
+	Log(L"NvEnc Encoder Parameters:\n%hs", parameterDesc.c_str());
 
 	try {
 		m_NvNecoder->CreateEncoder(&initializeParams);
 	}
 	catch (NVENCException e) {
-		throw MakeException("NvEnc CreateEncoder failed. Code=%d %s", e.getErrorCode(), e.what());
+		throw MakeException(L"NvEnc CreateEncoder failed. Code=%d %hs", e.getErrorCode(), e.what());
 	}
 
 	//
@@ -98,11 +98,11 @@ void VideoEncoderNVENC::Initialize()
 		fpOut = std::ofstream(Settings::Instance().GetVideoOutput(), std::ios::out | std::ios::binary);
 		if (!fpOut)
 		{
-			Log("unable to open output file %s", Settings::Instance().GetVideoOutput().c_str());
+			Log(L"unable to open output file %hs", Settings::Instance().GetVideoOutput().c_str());
 		}
 	}
 
-	Log("CNvEncoder is successfully initialized.");
+	Log(L"CNvEncoder is successfully initialized.");
 }
 
 void VideoEncoderNVENC::Shutdown()
@@ -120,7 +120,7 @@ void VideoEncoderNVENC::Shutdown()
 	m_NvNecoder->DestroyEncoder();
 	m_NvNecoder.reset();
 
-	Log("CNvEncoder::Shutdown");
+	Log(L"CNvEncoder::Shutdown");
 
 	if (fpOut) {
 		fpOut.close();
@@ -139,7 +139,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 			m_Converter->Convert(pTexture, encoderInputFrame);
 		}
 		catch (NVENCException e) {
-			FatalLog("Exception:%s", e.what());
+			FatalLog(L"Exception:%hs", e.what());
 			return;
 		}
 	}
@@ -150,13 +150,13 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 
 	NV_ENC_PIC_PARAMS picParams = {};
 	if (insertIDR) {
-		Log("Inserting IDR frame.");
+		Log(L"Inserting IDR frame.");
 		picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
 	}
 	m_NvNecoder->EncodeFrame(vPacket, &picParams);
 
-	Log("Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
-	Log("Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
+	Log(L"Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
+	Log(L"Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
 
 	m_nFrame += (int)vPacket.size();
 	for (std::vector<uint8_t> &packet : vPacket)

@@ -26,7 +26,7 @@ public:
 		// format is rgba
 		cudaError cuStatus = cudaMallocPitch(&m_cudaLinearMemory, &m_pitch, m_width * 4, m_height);
 		if (cuStatus != cudaSuccess) {
-			throw MakeException("cudaMallocPitch failed.");
+			throw MakeException(L"cudaMallocPitch failed.");
 		}
 		cudaMemset(m_cudaLinearMemory, 1, m_pitch * m_height);
 	}
@@ -46,36 +46,36 @@ public:
 
 		CUresult result = cuCtxPushCurrent(m_cuContext);
 		if (result != CUDA_SUCCESS) {
-			throw MakeException("cuCtxPushCurrent failed.");
+			throw MakeException(L"cuCtxPushCurrent failed.");
 		}
 
 		RegisterTexture(texture);
 
 		cuStatus = cudaGraphicsMapResources(1, &m_cudaResource, 0);
 		if (cuStatus != cudaSuccess) {
-			throw MakeException("cudaGraphicsMapResources failed.");
+			throw MakeException(L"cudaGraphicsMapResources failed.");
 		}
 
 		cudaArray *cuArray;
 		cuStatus = cudaGraphicsSubResourceGetMappedArray(&cuArray, m_cudaResource, 0, 0);
 		if (cuStatus != cudaSuccess) {
-			throw MakeException("cudaGraphicsSubResourceGetMappedArray failed.");
+			throw MakeException(L"cudaGraphicsSubResourceGetMappedArray failed.");
 		}
 
 		cuStatus = RGBA2NV12(cuArray, (uint8_t *)encoderInputFrame->inputPtr, encoderInputFrame->pitch, m_width, m_height);
 
 		if (cuStatus != cudaSuccess) {
-			throw MakeException("Cuda kernel execution failed. code=%d %s", cuStatus, cudaGetErrorString(cuStatus));
+			throw MakeException(L"Cuda kernel execution failed. code=%d %hs", cuStatus, cudaGetErrorString(cuStatus));
 		}
 
 		cudaGraphicsUnmapResources(1, &m_cudaResource, 0);
 		if (cuStatus != cudaSuccess) {
-			throw MakeException("cudaGraphicsUnmapResources failed.");
+			throw MakeException(L"cudaGraphicsUnmapResources failed.");
 		}
 
 		result = cuCtxPopCurrent(NULL);
 		if (result != CUDA_SUCCESS) {
-			throw MakeException("cuCtxPopCurrent failed.");
+			throw MakeException(L"cuCtxPopCurrent failed.");
 		}
 	}
 
@@ -86,31 +86,31 @@ private:
 
 		HRESULT hr = device->QueryInterface(__uuidof(IDXGIDevice), &DXGIDevice);
 		if (FAILED(hr)) {
-			throw MakeException("Failed to query IDXGIDevice");
+			throw MakeException(L"Failed to query IDXGIDevice");
 		}
 
 		hr = DXGIDevice->GetAdapter(&DXGIAdapter);
 		if (FAILED(hr)) {
-			throw MakeException("Failed to get IDXGIAdapter");
+			throw MakeException(L"Failed to get IDXGIAdapter");
 		}
 		int cuDevice;
 		cudaError cuStatus = cudaD3D11GetDevice(&cuDevice, DXGIAdapter.Get());
 		if (cuStatus != cudaSuccess) {
-			throw MakeException("Failed to get CUDA device.");
+			throw MakeException(L"Failed to get CUDA device.");
 		}
 
 		CUresult result = cuInit(0);
 		if (result != CUDA_SUCCESS) {
-			throw MakeException("cuInit failed.");
+			throw MakeException(L"cuInit failed.");
 		}
 
 		cudaDeviceProp deviceProp;
 		cudaGetDeviceProperties(&deviceProp, cuDevice);
-		Log("Using CUDA Device %d: %s\n", cuDevice, deviceProp.name);
+		Log(L"Using CUDA Device %d: %hs\n", cuDevice, deviceProp.name);
 
 		result = cuCtxCreate(&m_cuContext, 0, cuDevice);
 		if (result != CUDA_SUCCESS) {
-			throw MakeException("Failed to create CUDA context.");
+			throw MakeException(L"Failed to create CUDA context.");
 		}
 	}
 
@@ -121,7 +121,7 @@ private:
 		m_registered = true;
 		cudaError cuStatus = cudaGraphicsD3D11RegisterResource(&m_cudaResource, texture.Get(), cudaGraphicsRegisterFlagsNone);
 		if (cuStatus != cudaSuccess) {
-			throw MakeException("cudaGraphicsD3D11RegisterResource failed.");
+			throw MakeException(L"cudaGraphicsD3D11RegisterResource failed.");
 		}
 	}
 

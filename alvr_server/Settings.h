@@ -1,6 +1,7 @@
 #pragma once
 
 #include <openvr_driver.h>
+#include "common-utils.h"
 #include "Utils.h"
 
 //

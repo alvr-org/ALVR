@@ -43,7 +43,7 @@ public:
 			if (GetTimestampUs() - m_recenterStartTimestamp > RECENTER_DURATION) {
 				m_centerPitch = PitchFromQuaternion(info.HeadPose_Pose_Orientation);
 
-				Log("Do recentered: Cur=(%f,%f,%f,%f) pitch=%f"
+				Log(L"Do recentered: Cur=(%f,%f,%f,%f) pitch=%f"
 					, info.HeadPose_Pose_Orientation.x
 					, info.HeadPose_Pose_Orientation.y
 					, info.HeadPose_Pose_Orientation.z
@@ -76,7 +76,7 @@ public:
 		if (info.flags & TrackingInfo::FLAG_OTHER_TRACKING_SOURCE) {
 			UpdateOtherTrackingSource(info);
 		}
-		Log("GetRecenteredHMD: Old=(%f,%f,%f,%f) New=(%f,%f,%f,%f) pitch=%f-%f"
+		Log(L"GetRecenteredHMD: Old=(%f,%f,%f,%f) New=(%f,%f,%f,%f) pitch=%f-%f"
 			, info.HeadPose_Pose_Orientation.x, info.HeadPose_Pose_Orientation.y
 			, info.HeadPose_Pose_Orientation.z, info.HeadPose_Pose_Orientation.w
 			, m_fixedOrientationHMD.x, m_fixedOrientationHMD.y
@@ -87,7 +87,7 @@ public:
 				, m_fixedOrientationHMD.y
 				, m_fixedOrientationHMD.z
 				, m_fixedOrientationHMD.w));
-		Log("GetRecenteredController: Old=(%f,%f,%f,%f) New=(%f,%f,%f,%f) pitch=%f-%f"
+		Log(L"GetRecenteredController: Old=(%f,%f,%f,%f) New=(%f,%f,%f,%f) pitch=%f-%f"
 			, info.controller_Pose_Orientation.x, info.controller_Pose_Orientation.y
 			, info.controller_Pose_Orientation.z, info.controller_Pose_Orientation.w
 			, m_fixedOrientationController.x, m_fixedOrientationController.y
@@ -185,7 +185,7 @@ private:
 		m_fixedPositionController.y += transformed.y;
 		m_fixedPositionController.z += transformed.z;
 
-		Log("OtherTrackingSource (diff:%f) (%f,%f,%f) (%f,%f,%f)",
+		Log(L"OtherTrackingSource (diff:%f) (%f,%f,%f) (%f,%f,%f)",
 			info.Other_Tracking_Source_Position.x,
 			info.Other_Tracking_Source_Position.y,
 			info.Other_Tracking_Source_Position.z,
@@ -217,7 +217,7 @@ private:
 				m_remoteController[i]->GetSerialNumber().c_str(),
 				vr::TrackedDeviceClass_Controller,
 				m_remoteController[i].get());
-			Log("TrackedDeviceAdded vr::TrackedDeviceClass_Controller index=%d Ret=%d SerialNumber=%s"
+			Log(L"TrackedDeviceAdded vr::TrackedDeviceClass_Controller index=%d Ret=%d SerialNumber=%hs"
 				, i, ret, m_remoteController[i]->GetSerialNumber().c_str());
 		}
 

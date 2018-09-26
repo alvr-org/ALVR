@@ -16,7 +16,7 @@ int Poller::Do() {
 	memcpy(&m_fds, &m_org_fds, sizeof(fd_set));
 	int ret = select(0, &m_fds, NULL, NULL, &timeout);
 	if (ret == SOCKET_ERROR) {
-		Log("select error : %d %s", WSAGetLastError(), GetDxErrorStr(WSAGetLastError()));
+		Log(L"select error : %d %hs", WSAGetLastError(), GetDxErrorStr(WSAGetLastError()).c_str());
 	}
 	return ret;
 }

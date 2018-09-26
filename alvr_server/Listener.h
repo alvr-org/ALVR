@@ -125,7 +125,7 @@ public:
 						args = "";
 					}
 
-					Log("Control Command: %s %s", commandName.c_str(), args.c_str());
+					Log(L"Control Command: %hs %hs", commandName.c_str(), args.c_str());
 					ProcessCommand(commandName, args);
 				}
 			}
@@ -143,7 +143,7 @@ public:
 
 		assert(totalShards <= DATA_SHARDS_MAX);
 
-		Log("reed_solomon_new. dataShards=%d totalParityShards=%d totalShards=%d blockSize=%d shardPackets=%d"
+		Log(L"reed_solomon_new. dataShards=%d totalParityShards=%d totalShards=%d blockSize=%d shardPackets=%d"
 			, dataShards, totalParityShards, totalShards, blockSize, shardPackets);
 
 		reed_solomon *rs = reed_solomon_new(dataShards, totalParityShards);
@@ -217,14 +217,14 @@ public:
 
 	void SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 		if (!m_Socket->IsClientValid()) {
-			Log("Skip sending packet because client is not connected. Packet Length=%d FrameIndex=%llu", len, frameIndex);
+			Log(L"Skip sending packet because client is not connected. Packet Length=%d FrameIndex=%llu", len, frameIndex);
 			return;
 		}
 		if (!m_Streaming) {
-			Log("Skip sending packet because streaming is off.");
+			Log(L"Skip sending packet because streaming is off.");
 			return;
 		}
-		Log("Sending %d bytes FrameIndex=%llu", len, frameIndex);
+		Log(L"Sending %d bytes FrameIndex=%llu", len, frameIndex);
 
 		FECSend(buf, len, frameIndex);
 	}
@@ -233,14 +233,14 @@ public:
 		uint8_t packetBuffer[2000];
 
 		if (!m_Socket->IsClientValid()) {
-			Log("Skip sending audio packet because client is not connected. Packet Length=%d", len);
+			Log(L"Skip sending audio packet because client is not connected. Packet Length=%d", len);
 			return;
 		}
 		if (!m_Streaming) {
-			Log("Skip sending audio packet because streaming is off.");
+			Log(L"Skip sending audio packet because streaming is off.");
 			return;
 		}
-		Log("Sending audio %d bytes", len);
+		Log(L"Sending audio %d bytes", len);
 
 		int remainBuffer = len;
 		for (int i = 0; remainBuffer != 0; i++) {
@@ -287,30 +287,30 @@ public:
 		int pos = 0;
 		uint32_t type = *(uint32_t*)buf;
 
-		Log("Received packet. Type=%d", type);
+		Log(L"Received packet. Type=%d", type);
 		if (type == ALVR_PACKET_TYPE_HELLO_MESSAGE && len >= sizeof(HelloMessage)) {
 			HelloMessage *message = (HelloMessage *)buf;
 			SanitizeDeviceName(message->deviceName);
 
 			if (message->version != ALVR_PROTOCOL_VERSION) {
-				Log("Received hello message which have unsupported version. Received Version=%d Our Version=%d", message->version, ALVR_PROTOCOL_VERSION);
+				Log(L"Received hello message which have unsupported version. Received Version=%d Our Version=%d", message->version, ALVR_PROTOCOL_VERSION);
 				// We can't connect, but we should do PushRequest to notify user.
 			}
 
-			Log("Hello Message: %s Version=%d Hz=%d", message->deviceName, message->version, message->refreshRate);
+			Log(L"Hello Message: %hs Version=%d Hz=%d", message->deviceName, message->version, message->refreshRate);
 
 			PushRequest(message, addr);
 		}
 		else if (type == ALVR_PACKET_TYPE_RECOVER_CONNECTION && len >= sizeof(RecoverConnection)) {
-			Log("Got recover connection message from %s.", AddrPortToStr(addr).c_str());
+			Log(L"Got recover connection message from %hs.", AddrPortToStr(addr).c_str());
 			if (m_Socket->IsLegitClient(addr)) {
-				Log("This is the legit client. Send connection message.");
+				Log(L"This is the legit client. Send connection message.");
 				Connect(addr);
 			}
 		}
 		else if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
 			if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
-				Log("Recieved message from invalid address: %s:%d", AddrPortToStr(addr));
+				Log(L"Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 				return;
 			}
 			UpdateLastSeen();
@@ -319,7 +319,7 @@ public:
 			m_TrackingInfo = *(TrackingInfo *)buf;
 			LeaveCriticalSection(&m_CS);
 
-			Log("got tracking info %d %f %f %f %f", (int)m_TrackingInfo.FrameIndex,
+			Log(L"got tracking info %d %f %f %f %f", (int)m_TrackingInfo.FrameIndex,
 				m_TrackingInfo.HeadPose_Pose_Orientation.x,
 				m_TrackingInfo.HeadPose_Pose_Orientation.y,
 				m_TrackingInfo.HeadPose_Pose_Orientation.z,
@@ -328,7 +328,7 @@ public:
 		}
 		else if (type == ALVR_PACKET_TYPE_TIME_SYNC && len >= sizeof(TimeSync)) {
 			if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
-				Log("Recieved message from invalid address: %s:%d", AddrPortToStr(addr));
+				Log(L"Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 				return;
 			}
 			UpdateLastSeen();
@@ -353,32 +353,32 @@ public:
 				// Estimated difference between server and client clock
 				uint64_t TimeDiff = Current - (timeSync->clientTime + RTT / 2);
 				m_TimeDiff = TimeDiff;
-				Log("TimeSync: server - client = %lld us RTT = %lld us", TimeDiff, RTT);
+				Log(L"TimeSync: server - client = %lld us RTT = %lld us", TimeDiff, RTT);
 			}
 		}
 		else if (type == ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE && len >= sizeof(StreamControlMessage)) {
 			if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
-				Log("Recieved message from invalid address: %s:%d", AddrPortToStr(addr));
+				Log(L"Recieved message from invalid address: %s:%d", AddrPortToStr(addr));
 				return;
 			}
 			StreamControlMessage *streamControl = (StreamControlMessage*)buf;
 
 			if (streamControl->mode == 1) {
-				Log("Stream control message: Start stream.");
+				Log(L"Stream control message: Start stream.");
 				m_Streaming = true;
 			}
 			else if (streamControl->mode == 2) {
-				Log("Stream control message: Stop stream.");
+				Log(L"Stream control message: Stop stream.");
 				m_Streaming = false;
 			}
 		}
 		else if (type == ALVR_PACKET_TYPE_PACKET_ERROR_REPORT && len >= sizeof(PacketErrorReport)) {
 			if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
-				Log("Recieved message from invalid address: %s", AddrPortToStr(addr));
+				Log(L"Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 				return;
 			}
 			auto *packetErrorReport = (PacketErrorReport *) buf;
-			Log("Packet loss was reported. Type=%d %lu - %lu", packetErrorReport->lostFrameType, packetErrorReport->fromPacketCounter, packetErrorReport->toPacketCounter);
+			Log(L"Packet loss was reported. Type=%d %lu - %lu", packetErrorReport->lostFrameType, packetErrorReport->fromPacketCounter, packetErrorReport->toPacketCounter);
 			if (packetErrorReport->lostFrameType == ALVR_LOST_FRAME_TYPE_VIDEO) {
 				// Recover video frame.
 				OnFecFailure();
@@ -521,7 +521,7 @@ public:
 	}
 
 	void SendCommandResponse(const char *commandResponse) {
-		Log("SendCommandResponse: %s", commandResponse);
+		Log(L"SendCommandResponse: %hs", commandResponse);
 		m_ControlSocket->SendCommandResponse(commandResponse);
 	}
 
@@ -607,7 +607,7 @@ public:
 			// idle for 300 seconcd
 			// Invalidate client
 			Disconnect();
-			Log("Client timeout for idle");
+			Log(L"Client timeout for idle");
 		}
 	}
 
@@ -632,7 +632,7 @@ public:
 	}
 
 	void Connect(const sockaddr_in *addr) {
-		Log("Connected to %s refreshRate=%d", AddrPortToStr(addr).c_str(), m_clientRefreshRate);
+		Log(L"Connected to %hs refreshRate=%d", AddrPortToStr(addr).c_str(), m_clientRefreshRate);
 
 		m_NewClientCallback(m_clientRefreshRate);
 

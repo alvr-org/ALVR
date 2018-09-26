@@ -93,6 +93,8 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\ALVR-common\common-utils.cpp" />
+    <ClCompile Include="..\ALVR-common\exception.cpp" />
     <ClCompile Include="..\ALVR-common\reedsolomon\rs.c" />
     <ClCompile Include="amf\common\AMFFactory.cpp" />
     <ClCompile Include="amf\common\AMFSTL.cpp" />
@@ -162,6 +164,7 @@
     <ClInclude Include="amf\include\core\Variant.h" />
     <ClInclude Include="amf\include\core\Version.h" />
     <ClInclude Include="AudioCapture.h" />
+    <ClInclude Include="common-utils.h" />
     <ClInclude Include="ControlSocket.h" />
     <ClInclude Include="CudaConverter.h" />
     <ClInclude Include="DeviceQuery.h" />

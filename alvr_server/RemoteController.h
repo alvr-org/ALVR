@@ -71,7 +71,7 @@ public:
 
 	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId)
 	{
-		Log("RemoteController::Activate. objectId=%d", unObjectId);
+		Log(L"RemoteController::Activate. objectId=%d", unObjectId);
 
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
@@ -147,7 +147,7 @@ public:
 
 	virtual void Deactivate()
 	{
-		Log("RemoteController::Deactivate");
+		Log(L"RemoteController::Deactivate");
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 	}
 
@@ -157,7 +157,7 @@ public:
 
 	void *GetComponent(const char *pchComponentNameAndVersion)
 	{
-		Log("RemoteController::GetComponent. Name=%s", pchComponentNameAndVersion);
+		Log(L"RemoteController::GetComponent. Name=%hs", pchComponentNameAndVersion);
 
 		return NULL;
 	}

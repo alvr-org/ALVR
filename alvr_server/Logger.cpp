@@ -1,15 +1,14 @@
 #include <Windows.h>
 #include <string>
-#include <sstream>
 #include <mutex>
 #include <time.h>
-#include <locale>
-#include <codecvt>
+#include <share.h>
 #include <list>
 #include "Logger.h"
 #include "Utils.h"
 #include "ipctools.h"
 #include "exception.h"
+#include "common-utils.h"
 
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "dbghelp.lib")
@@ -26,14 +25,14 @@ static const int TAIL_LOG_SIZE = 500;
 
 extern HINSTANCE g_hInstance;
 
-static std::ofstream ofs;
+static FILE *logFile = nullptr;
 static bool Opened = false;
 static bool OpenFailed = false;
 static uint64_t lastRefresh = 0;
-static std::string lastException;
+static std::wstring lastException;
 static IPCMutex g_mutex(NULL);
-static std::list<std::string> startupLog;
-static std::list<std::string> tailLog[2];
+static std::list<std::wstring> startupLog;
+static std::list<std::wstring> tailLog[2];
 static int currentLog = 0;
 
 static std::wstring GetCrashReportPath() {
@@ -48,7 +47,7 @@ static std::wstring GetCrashReportPath() {
 static void GenerateExceptionInfo(wchar_t *logPath, PEXCEPTION_POINTERS pExceptionPtrs) {
 	FILE *fp;
 
-	if (_wfopen_s(&fp, logPath, L"a")) {
+	if (_wfopen_s(&fp, logPath, L"a, ccs=UTF-8")) {
 		return;
 	}
 	HANDLE process = GetCurrentProcess();
@@ -71,18 +70,18 @@ static void GenerateExceptionInfo(wchar_t *logPath, PEXCEPTION_POINTERS pExcepti
 	BOOL ret = SymGetSymFromAddr64(process, address, &displacement, sym);
 	BOOL ret2 = SymGetLineFromAddr64(process, address, &offset_from_symbol, &line);
 	
-	fprintf(fp, "========== Exception info start ==========\n");
-	fprintf(fp, "ExceptionCode=%X Address=%016llX ThreadId=%d\n", pExceptionPtrs->ExceptionRecord->ExceptionCode, address, GetCurrentThreadId());
+	fwprintf(fp, L"========== Exception info start ==========\n");
+	fwprintf(fp, L"ExceptionCode=%X Address=%016llX ThreadId=%d\n", pExceptionPtrs->ExceptionRecord->ExceptionCode, address, GetCurrentThreadId());
 	if (ret) {
 		std::vector<char> und_name(max_name_len);
 		UnDecorateSymbolName(sym->Name, &und_name[0], max_name_len, UNDNAME_COMPLETE);
 
-		fprintf(fp, "%s(%s) +%llu\n", sym->Name, &und_name[0], displacement);
+		fwprintf(fp, L"%hs(%hs) +%llu\n", sym->Name, &und_name[0], displacement);
 	}
 	if (ret2) {
-		fprintf(fp, "%s:%d\n", line.FileName, line.LineNumber);
+		fwprintf(fp, L"%hs:%d\n", line.FileName, line.LineNumber);
 	}
-	fprintf(fp, "========== Exception info end ==========\n");
+	fwprintf(fp, L"========== Exception info end ==========\n");
 	SymCleanup(process);
 	free(sym);
 	fclose(fp);
@@ -104,26 +103,29 @@ static void OutputCrashLog(PEXCEPTION_POINTERS pExceptionPtrs) {
 		cpath, st.wYear, st.wMonth, st.wDay,
 		st.wHour, st.wMinute, st.wSecond);
 
-	if (_wfopen_s(&fp, logPath, L"w")) {
+	if (_wfopen_s(&fp, logPath, L"w, ccs=UTF-8")) {
 		return;
 	}
 
-	fprintf(fp, "Exception: %s\n", lastException.c_str());
-	fprintf(fp, "OSVer: %s\n", GetWindowsOSVersion().c_str());
-	fprintf(fp, "Module: %p\n", g_hInstance);
-	fprintf(fp, "========== Startup Log ==========\n");
+	fwprintf(fp, L"Exception: %s\n", lastException.c_str());
+	fwprintf(fp, L"OSVer: %s\n", GetWindowsOSVersion().c_str());
+	fwprintf(fp, L"Module: %p\n", g_hInstance);
+	fwprintf(fp, L"========== Startup Log ==========\n");
 
 	g_mutex.Wait();
 	for (auto line : startupLog) {
-		fprintf(fp, "%s\n", line.c_str());
+		fputws(line.c_str(), fp);
+		fputws(L"\n", fp);
 	}
-	fprintf(fp, "========== Tail Log 1 ==========\n");
+	fwprintf(fp, L"========== Tail Log 1 ==========\n");
 	for (auto line : tailLog[1 - currentLog]) {
-		fprintf(fp, "%s\n", line.c_str());
+		fputws(line.c_str(), fp);
+		fputws(L"\n", fp);
 	}
-	fprintf(fp, "========== Tail Log 2 ==========\n");
+	fwprintf(fp, L"========== Tail Log 2 ==========\n");
 	for (auto line : tailLog[currentLog]) {
-		fprintf(fp, "%s\n", line.c_str());
+		fputws(line.c_str(), fp);
+		fputws(L"\n", fp);
 	}
 	g_mutex.Release();
 
@@ -139,7 +141,7 @@ static void ReportError(PEXCEPTION_POINTERS pExceptionPtrs) {
 
 	OutputCrashLog(pExceptionPtrs);
 
-	ShellExecuteW(NULL, L"", GetCrashReportPath().c_str(), (L"\"" + ToWstring(lastException) + L"\"").c_str(), L"", SW_SHOWNORMAL);
+	ShellExecuteW(NULL, L"", GetCrashReportPath().c_str(), (L"\"" + lastException + L"\"").c_str(), L"", SW_SHOWNORMAL);
 }
 
 static LONG WINAPI MyUnhandledExceptionFilter(PEXCEPTION_POINTERS pExceptionPtrs)
@@ -156,12 +158,21 @@ void InitCrashHandler() {
 
 void OpenLog(const char *fileName) {
 	if (!Opened) {
-		ofs.open(fileName);
+		// ccs=UTF-8 converts wchar_t to UTF-8 on output.
+		// _SH_DENYNO allows other process read log.
+		logFile = _fsopen(fileName, "w, ccs=UTF-8", _SH_DENYNO);
 	}
 	Opened = true;
 }
 
-void LogS(const char *str)
+void CloseLog() {
+	if (logFile != nullptr) {
+		fclose(logFile);
+		logFile = nullptr;
+	}
+}
+
+void LogS(const wchar_t *str)
 {
 	FILETIME ft;
 	SYSTEMTIME st2, st;
@@ -174,11 +185,11 @@ void LogS(const char *str)
 	q = (((uint64_t)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
 	q /= 10;
 
-	char buf[100];
-	snprintf(buf, sizeof(buf), "[%02d:%02d:%02d.%03lld %03lld] ",
+	wchar_t buf[100];
+	_snwprintf_s(buf, sizeof(buf) / sizeof(buf[0]), L"[%02d:%02d:%02d.%03lld %03lld] ",
 		st.wHour, st.wMinute, st.wSecond, q / 1000 % 1000, q % 1000);
 
-	std::string line = std::string(buf) + str;
+	std::wstring line = std::wstring(buf) + str;
 
 	g_mutex.Wait();
 	// Store log into list for crash log.
@@ -197,52 +208,107 @@ void LogS(const char *str)
 	}
 	g_mutex.Release();
 
-	if (!ofs.is_open()) {
+	if (logFile == nullptr) {
 		return;
 	}
 
-	ofs << buf << str << std::endl;
+	g_mutex.Wait();
+	fputws(line.c_str(), logFile);
+	fputws(L"\n", logFile);
+	g_mutex.Release();
 
 	if (lastRefresh / 1000000 != q / 1000000) {
 		lastRefresh = q;
-		ofs.flush();
+		fflush(logFile);
 	}
+}
+
+void LogS(const char *str)
+{
+	LogS(ToWstring(str).c_str());
+}
+
+void LogV(const wchar_t *format, va_list args, std::wstring *out) {
+	wchar_t buf[10000];
+	_vsnwprintf_s(buf, sizeof(buf) / sizeof(buf[0]), format, args);
+
+	LogS(buf);
+	if (out != nullptr) {
+		*out = buf;
+	}
+}
+
+void LogV(const char *format, va_list args, std::wstring *out) {
+	char buf[10000];
+	vsnprintf(buf, sizeof(buf), format, args);
+
+	LogS(buf);
+	if (out != nullptr) {
+		*out = ToWstring(buf);
+	}
+}
+
+void Log(const wchar_t *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	LogV(format, args, nullptr);
+	va_end(args);
 }
 
 void Log(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	char buf2[10000];
-	vsnprintf(buf2, sizeof(buf2), format, args);
+	LogV(format, args, nullptr);
 	va_end(args);
+}
 
-	LogS(buf2);
+void LogException(const wchar_t *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	LogV(format, args, &lastException);
+	va_end(args);
 }
 
 void LogException(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	char buf2[10000];
-	vsnprintf(buf2, sizeof(buf2), format, args);
+	LogV(format, args, &lastException);
+	va_end(args);
+}
+
+void FatalLog(const wchar_t *format, ...) {
+	va_list args;
+	va_start(args, format);
+	LogV(format, args, &lastException);
 	va_end(args);
 
-	LogS(buf2);
-	lastException = buf2;
+	ReportError(NULL);
 }
 
 void FatalLog(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
-	char buf2[10000];
-	vsnprintf(buf2, sizeof(buf2), format, args);
+	LogV(format, args, &lastException);
 	va_end(args);
 
-	LogS(buf2);
-
-	lastException = buf2;
 	ReportError(NULL);
+}
+
+Exception MakeException(const wchar_t *format, ...) {
+	va_list args;
+	va_start(args, format);
+	Exception e = FormatExceptionV(format, args);
+	va_end(args);
+
+	LogS(e.what());
+	lastException = e.what();
+	FlushLog();
+
+	return e;
 }
 
 Exception MakeException(const char *format, ...) {
@@ -259,8 +325,8 @@ Exception MakeException(const char *format, ...) {
 }
 
 void FlushLog() {
-	if (!ofs.is_open()) {
+	if (logFile == nullptr) {
 		return;
 	}
-	ofs.flush();
+	fflush(logFile);
 }

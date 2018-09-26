@@ -90,6 +90,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\ALVR-common\common-utils.cpp" />
+    <ClCompile Include="..\..\ALVR-common\exception.cpp" />
     <ClCompile Include="..\..\ALVR-common\reedsolomon\rs.c" />
     <ClCompile Include="..\..\alvr_server\alvr_server.cpp" />
     <ClCompile Include="..\..\alvr_server\amf\common\AMFFactory.cpp" />
@@ -114,6 +116,7 @@
     <ClCompile Include="utils_test.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\ALVR-common\common-utils.h" />
     <ClInclude Include="..\..\ALVR-common\reedsolomon\rs.h" />
     <ClInclude Include="..\..\alvr_server\amf\common\AMFFactory.h" />
     <ClInclude Include="..\..\alvr_server\amf\common\AMFSTL.h" />

@@ -42,13 +42,13 @@ bool FrameRender::Startup()
 
 	if (FAILED(m_pD3DRender->GetDevice()->CreateTexture2D(&stagingTextureDesc, NULL, &m_pStagingTexture)))
 	{
-		Log("Failed to create staging texture!");
+		Log(L"Failed to create staging texture!");
 		return false;
 	}
 
 	HRESULT hr = m_pD3DRender->GetDevice()->CreateRenderTargetView(m_pStagingTexture.Get(), NULL, &m_pRenderTargetView);
 	if (FAILED(hr)) {
-		Log("CreateRenderTargetView %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateRenderTargetView %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -68,7 +68,7 @@ bool FrameRender::Startup()
 	descDepth.MiscFlags = 0;
 	hr = m_pD3DRender->GetDevice()->CreateTexture2D(&descDepth, nullptr, &m_pDepthStencil);
 	if (FAILED(hr)) {
-		Log("CreateTexture2D %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateTexture2D %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -81,7 +81,7 @@ bool FrameRender::Startup()
 	descDSV.Texture2D.MipSlice = 0;
 	hr = m_pD3DRender->GetDevice()->CreateDepthStencilView(m_pDepthStencil.Get(), &descDSV, &m_pDepthStencilView);
 	if (FAILED(hr)) {
-		Log("CreateDepthStencilView %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateDepthStencilView %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -102,25 +102,25 @@ bool FrameRender::Startup()
 	
 	std::vector<char> vshader;
 	if (!ReadBinaryResource(vshader, IDR_VS)) {
-		Log("Failed to load resource for IDR_VS.");
+		Log(L"Failed to load resource for IDR_VS.");
 		return false;
 	}
 
 	hr = m_pD3DRender->GetDevice()->CreateVertexShader((const DWORD*)&vshader[0], vshader.size(), NULL, &m_pVertexShader);
 	if (FAILED(hr)) {
-		Log("CreateVertexShader %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateVertexShader %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
 
 	std::vector<char> pshader;
 	if (!ReadBinaryResource(pshader, IDR_PS)) {
-		Log("Failed to load resource for IDR_PS.");
+		Log(L"Failed to load resource for IDR_PS.");
 		return false;
 	}
 
 	hr = m_pD3DRender->GetDevice()->CreatePixelShader((const DWORD*)&pshader[0], pshader.size(), NULL, &m_pPixelShader);
 	if (FAILED(hr)) {
-		Log("CreatePixelShader %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreatePixelShader %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -142,7 +142,7 @@ bool FrameRender::Startup()
 	hr = m_pD3DRender->GetDevice()->CreateInputLayout(layout, numElements, &vshader[0],
 		vshader.size(), &m_pVertexLayout);
 	if (FAILED(hr)) {
-		Log("CreateInputLayout %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateInputLayout %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -165,7 +165,7 @@ bool FrameRender::Startup()
 
 	hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, NULL, &m_pVertexBuffer);
 	if (FAILED(hr)) {
-		Log("CreateBuffer 1 %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateBuffer 1 %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -198,7 +198,7 @@ bool FrameRender::Startup()
 
 	hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, &InitData, &m_pIndexBuffer);
 	if (FAILED(hr)) {
-		Log("CreateBuffer 2 %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateBuffer 2 %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -220,7 +220,7 @@ bool FrameRender::Startup()
 	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	hr = m_pD3DRender->GetDevice()->CreateSamplerState(&sampDesc, &m_pSamplerLinear);
 	if (FAILED(hr)) {
-		Log("CreateSamplerState %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateSamplerState %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -234,7 +234,7 @@ bool FrameRender::Startup()
 		m_SpriteBatch = std::make_unique<DirectX::SpriteBatch>(m_pD3DRender->GetContext());
 	}
 	else {
-		Log("FindResource failed %d", GetLastError());
+		Log(L"FindResource failed %d", GetLastError());
 	}
 
 	//
@@ -262,7 +262,7 @@ bool FrameRender::Startup()
 
 	hr = m_pD3DRender->GetDevice()->CreateBlendState(&BlendDesc, &m_pBlendStateFirst);
 	if (FAILED(hr)) {
-		Log("CreateBlendState %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateBlendState %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -282,13 +282,13 @@ bool FrameRender::Startup()
 
 	hr = m_pD3DRender->GetDevice()->CreateBlendState(&BlendDesc, &m_pBlendState);
 	if (FAILED(hr)) {
-		Log("CreateBlendState %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateBlendState %p %s", hr, GetDxErrorStr(hr).c_str());
 		return false;
 	}
 
 	CreateResourceTexture();
 
-	Log("Staging Texture created");
+	Log(L"Staging Texture created");
 
 	return true;
 }
@@ -336,16 +336,16 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 			bound[1] = bounds[i][1];
 		}
 		if (textures[0] == NULL || textures[1] == NULL) {
-			Log("Ignore NULL layer. layer=%d/%d%s%s", i, layerCount
-				, recentering ? " (recentering)" : "", !message.empty() ? " (message)" : "");
+			Log(L"Ignore NULL layer. layer=%d/%d%s%s", i, layerCount
+				, recentering ? L" (recentering)" : L"", !message.empty() ? L" (message)" : L"");
 			continue;
 		}
 
 		D3D11_TEXTURE2D_DESC srcDesc;
 		textures[0]->GetDesc(&srcDesc);
 
-		Log("RenderFrame layer=%d/%d %dx%d %d%s%s", i, layerCount, srcDesc.Width, srcDesc.Height, srcDesc.Format
-			, recentering ? " (recentering)" : "", !message.empty() ? " (message)" : "");
+		Log(L"RenderFrame layer=%d/%d %dx%d %d%s%s", i, layerCount, srcDesc.Width, srcDesc.Height, srcDesc.Format
+			, recentering ? L" (recentering)" : L"", !message.empty() ? L" (message)" : L"");
 
 		D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
 		SRVDesc.Format = srcDesc.Format;
@@ -357,12 +357,12 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 
 		HRESULT hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(textures[0], &SRVDesc, pShaderResourceView[0].ReleaseAndGetAddressOf());
 		if (FAILED(hr)) {
-			Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
+			Log(L"CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
 			return false;
 		}
 		hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(textures[1], &SRVDesc, pShaderResourceView[1].ReleaseAndGetAddressOf());
 		if (FAILED(hr)) {
-			Log("CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
+			Log(L"CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
 			return false;
 		}
 		
@@ -401,7 +401,7 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 		D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
 		hr = m_pD3DRender->GetContext()->Map(m_pVertexBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 		if (FAILED(hr)) {
-			Log("Map %p %s", hr, GetDxErrorStr(hr).c_str());
+			Log(L"Map %p %s", hr, GetDxErrorStr(hr).c_str());
 			return false;
 		}
 		memcpy(mapped.pData, vertices, sizeof(vertices));
@@ -523,7 +523,7 @@ void FrameRender::CreateResourceTexture()
 {
 	std::vector<char> texture;
 	if (!ReadBinaryResource(texture, IDR_RECENTER_TEXTURE)) {
-		Log("Failed to load resource for IDR_RECENTER_TEXTURE.");
+		Log(L"Failed to load resource for IDR_RECENTER_TEXTURE.");
 		return;
 	}
 	CoInitialize(NULL);
@@ -531,22 +531,22 @@ void FrameRender::CreateResourceTexture()
 	HRESULT hr = DirectX::CreateWICTextureFromMemory(m_pD3DRender->GetDevice(), (uint8_t *)&texture[0], texture.size(),
 		&m_recenterTexture, &m_recenterResourceView);
 	if (!m_recenterTexture) {
-		Log("Failed to create recenter texture. %d %s", hr, GetDxErrorStr(hr));
+		Log(L"Failed to create recenter texture. %d %s", hr, GetDxErrorStr(hr).c_str());
 	}else if (!m_recenterResourceView) {
-		Log("Failed to create recenter resource view. %d %s", hr, GetDxErrorStr(hr));
+		Log(L"Failed to create recenter resource view. %d %s", hr, GetDxErrorStr(hr).c_str());
 	}
 
 	if (!ReadBinaryResource(texture, IDR_MESSAGE_BG_TEXTURE)) {
-		Log("Failed to load resource for IDR_MESSAGE_BG_TEXTURE.");
+		Log(L"Failed to load resource for IDR_MESSAGE_BG_TEXTURE.");
 		return;
 	}
 
 	hr = DirectX::CreateWICTextureFromMemory(m_pD3DRender->GetDevice(), (uint8_t *)&texture[0], texture.size(),
 		&m_messageBGTexture, &m_messageBGResourceView);
 	if (!m_messageBGTexture) {
-		Log("Failed to create message_bg texture. %d %s", hr, GetDxErrorStr(hr));
+		Log(L"Failed to create message_bg texture. %d %s", hr, GetDxErrorStr(hr).c_str());
 	}
 	else if (!m_messageBGResourceView) {
-		Log("Failed to create message_bg resource view. %d %s", hr, GetDxErrorStr(hr));
+		Log(L"Failed to create message_bg resource view. %d %s", hr, GetDxErrorStr(hr).c_str());
 	}
 }

@@ -21,6 +21,9 @@ Settings::Settings()
 
 Settings::~Settings()
 {
+	if (m_DebugLog) {
+		CloseLog();
+	}
 }
 
 void Settings::Load()
@@ -38,7 +41,7 @@ void Settings::Load()
 	picojson::value v;
 	std::string err = picojson::parse(v, json);
 	if (!err.empty()) {
-		FatalLog("Error on parsing json: %s", err.c_str());
+		FatalLog(L"Error on parsing json: %hs", err.c_str());
 		return;
 	}
 
@@ -110,16 +113,16 @@ void Settings::Load()
 		OpenLog((m_DebugOutputDir + "\\" + LOG_FILE).c_str());
 	}
 	
-	Log("Serial Number: %s", m_sSerialNumber.c_str());
-	Log("Model Number: %s", m_sModelNumber.c_str());
-	Log("Render Target: %d %d", m_renderWidth, m_renderHeight);
-	Log("Seconds from Vsync to Photons: %f", m_flSecondsFromVsyncToPhotons);
-	Log("Display Frequency: %f", m_flDisplayFrequency);
-	Log("IPD: %f", m_flIPD);
+	Log(L"Serial Number: %hs", m_sSerialNumber.c_str());
+	Log(L"Model Number: %hs", m_sModelNumber.c_str());
+	Log(L"Render Target: %d %d", m_renderWidth, m_renderHeight);
+	Log(L"Seconds from Vsync to Photons: %f", m_flSecondsFromVsyncToPhotons);
+	Log(L"Display Frequency: %f", m_flDisplayFrequency);
+	Log(L"IPD: %f", m_flIPD);
 
-	Log("debugOptions: Log:%d FrameIndex:%d FrameOutput:%d CaptureOutput:%d UseKeyedMutex:%d"
+	Log(L"debugOptions: Log:%d FrameIndex:%d FrameOutput:%d CaptureOutput:%d UseKeyedMutex:%d"
 		, m_DebugLog, m_DebugFrameIndex, m_DebugFrameOutput, m_DebugCaptureOutput, m_UseKeyedMutex);
-	Log("EncoderOptions: %s", m_EncoderOptions.c_str());
+	Log(L"EncoderOptions: %hs", m_EncoderOptions.c_str());
 
 	m_loaded = true;
 }

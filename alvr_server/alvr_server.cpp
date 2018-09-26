@@ -92,12 +92,12 @@ namespace
 
 		void Run() override
 		{
-			Log("CEncoder: Start thread. Id=%d", GetCurrentThreadId());
+			Log(L"CEncoder: Start thread. Id=%d", GetCurrentThreadId());
 			SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_MOST_URGENT );
 
 			while ( !m_bExiting )
 			{
-				Log("CEncoder: Waiting for new frame...");
+				Log(L"CEncoder: Waiting for new frame...");
 
 				m_newFrameReady.Wait();
 				if ( m_bExiting )
@@ -124,7 +124,7 @@ namespace
 
 		void NewFrameReady()
 		{
-			Log("New Frame Ready");
+			Log(L"New Frame Ready");
 			m_encodeFinished.Reset();
 			m_newFrameReady.Set();
 		}
@@ -173,11 +173,11 @@ public:
 
 			if (current - m_PreviousVsync < INTERVAL - 2000) {
 				int sleepTime = (int)((m_PreviousVsync + INTERVAL) - current) / 1000;
-				Log("Skip VSync Event. Sleep %llu ms", sleepTime);
+				Log(L"Skip VSync Event. Sleep %llu ms", sleepTime);
 				Sleep(sleepTime);
 			}
 			else {
-				Log("Generate VSync Event");
+				Log(L"Generate VSync Event");
 				vr::VRServerDriverHost()->VsyncEvent(0);
 				m_PreviousVsync = GetTimestampUs();
 			}
@@ -189,7 +189,7 @@ public:
 	}
 
 	void InsertVsync() {
-		Log("Insert VSync Event");
+		Log(L"Insert VSync Event");
 		vr::VRServerDriverHost()->VsyncEvent(0);
 		m_PreviousVsync = GetTimestampUs();
 	}
@@ -206,7 +206,7 @@ public:
 
 	virtual void GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight) override
 	{
-		Log("GetWindowBounds %dx%d - %dx%d", 0, 0, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
+		Log(L"GetWindowBounds %dx%d - %dx%d", 0, 0, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
 		*pnX = 0;
 		*pnY = 0;
 		*pnWidth = Settings::Instance().m_renderWidth;
@@ -227,7 +227,7 @@ public:
 	{
 		*pnWidth = Settings::Instance().m_renderWidth / 2;
 		*pnHeight = Settings::Instance().m_renderHeight;
-		Log("GetRecommendedRenderTargetSize %dx%d", *pnWidth, *pnHeight);
+		Log(L"GetRecommendedRenderTargetSize %dx%d", *pnWidth, *pnHeight);
 	}
 
 	virtual void GetEyeOutputViewport(vr::EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight) override
@@ -244,7 +244,7 @@ public:
 		{
 			*pnX = Settings::Instance().m_renderWidth / 2;
 		}
-		Log("GetEyeOutputViewport %d %dx%d %dx%d", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
+		Log(L"GetEyeOutputViewport %d %dx%d %dx%d", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
 	}
 
 	virtual void GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom) override
@@ -254,7 +254,7 @@ public:
 		*pfTop = -1.0;
 		*pfBottom = 1.0;
 
-		Log("GetProjectionRaw %d", eEye);
+		Log(L"GetProjectionRaw %d", eEye);
 	}
 
 	virtual vr::DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU, float fV) override
@@ -299,7 +299,7 @@ public:
 			recentered.z,
 			&history.rotationMatrix);
 
-		Log("Rotation Matrix=(%f, %f, %f, %f) (%f, %f, %f, %f) (%f, %f, %f, %f)"
+		Log(L"Rotation Matrix=(%f, %f, %f, %f) (%f, %f, %f, %f) (%f, %f, %f, %f)"
 			, history.rotationMatrix.m[0][0], history.rotationMatrix.m[0][1], history.rotationMatrix.m[0][2], history.rotationMatrix.m[0][3]
 			, history.rotationMatrix.m[1][0], history.rotationMatrix.m[1][1], history.rotationMatrix.m[1][2], history.rotationMatrix.m[1][3]
 			, history.rotationMatrix.m[2][0], history.rotationMatrix.m[2][1], history.rotationMatrix.m[2][2], history.rotationMatrix.m[2][3]);
@@ -326,7 +326,7 @@ public:
 	/** Specific to Oculus compositor support, textures supplied must be created using this method. */
 	virtual void CreateSwapTextureSet(uint32_t unPid, const SwapTextureSetDesc_t *pSwapTextureSetDesc, vr::SharedTextureHandle_t(*pSharedTextureHandles)[3]) override
 	{
-		Log("CreateSwapTextureSet pid=%d Format=%d %dx%d SampleCount=%d", unPid, pSwapTextureSetDesc->nFormat
+		Log(L"CreateSwapTextureSet pid=%d Format=%d %dx%d SampleCount=%d", unPid, pSwapTextureSetDesc->nFormat
 			, pSwapTextureSetDesc->nWidth, pSwapTextureSetDesc->nHeight, pSwapTextureSetDesc->nSampleCount);
 
 		//HRESULT hr = D3D11CreateDevice(pAdapter, D3D_DRIVER_TYPE_HARDWARE, NULL, creationFlags, NULL, 0, D3D11_SDK_VERSION, &pDevice, &eFeatureLevel, &pContext);
@@ -353,14 +353,14 @@ public:
 
 		for (int i = 0; i < 3; i++) {
 			HRESULT hr = m_pD3DRender->GetDevice()->CreateTexture2D(&SharedTextureDesc, NULL, &processResource->textures[i]);
-			//Log("texture%d %p res:%d %s", i, texture[i], hr, GetDxErrorStr(hr).c_str());
+			//Log(L"texture%d %p res:%d %s", i, texture[i], hr, GetDxErrorStr(hr).c_str());
 
 			IDXGIResource* pResource;
 			hr = processResource->textures[i]->QueryInterface(__uuidof(IDXGIResource), (void**)&pResource);
-			//Log("QueryInterface %p res:%d %s", pResource, hr, GetDxErrorStr(hr).c_str());
+			//Log(L"QueryInterface %p res:%d %s", pResource, hr, GetDxErrorStr(hr).c_str());
 
 			hr = pResource->GetSharedHandle(&processResource->sharedHandles[i]);
-			//Log("GetSharedHandle %p res:%d %s", processResource->sharedHandles[i], hr, GetDxErrorStr(hr).c_str());
+			//Log(L"GetSharedHandle %p res:%d %s", processResource->sharedHandles[i], hr, GetDxErrorStr(hr).c_str());
 
 			m_handleMap.insert(std::make_pair(processResource->sharedHandles[i], std::make_pair(processResource, i)));
 
@@ -368,7 +368,7 @@ public:
 
 			pResource->Release();
 
-			Log("Created Texture %d %p", i, processResource->sharedHandles[i]);
+			Log(L"Created Texture %d %p", i, processResource->sharedHandles[i]);
 		}
 		//m_processMap.insert(std::pair<uint32_t, ProcessResource *>(unPid, processResource));
 	}
@@ -376,7 +376,7 @@ public:
 	/** Used to textures created using CreateSwapTextureSet.  Only one of the set's handles needs to be used to destroy the entire set. */
 	virtual void DestroySwapTextureSet(vr::SharedTextureHandle_t sharedTextureHandle) override
 	{
-		Log("DestroySwapTextureSet %p", sharedTextureHandle);
+		Log(L"DestroySwapTextureSet %p", sharedTextureHandle);
 
 		auto it = m_handleMap.find((HANDLE)sharedTextureHandle);
 		if (it != m_handleMap.end()) {
@@ -388,14 +388,14 @@ public:
 			delete p;
 		}
 		else {
-			Log("Requested to destroy not managing texture. handle:%p", sharedTextureHandle);
+			Log(L"Requested to destroy not managing texture. handle:%p", sharedTextureHandle);
 		}
 	}
 
 	/** Used to purge all texture sets for a given process. */
 	virtual void DestroyAllSwapTextureSets(uint32_t unPid) override
 	{
-		Log("DestroyAllSwapTextureSets pid=%d", unPid);
+		Log(L"DestroyAllSwapTextureSets pid=%d", unPid);
 
 		for (auto it = m_handleMap.begin(); it != m_handleMap.end();) {
 			if (it->second.first->pid == unPid) {
@@ -413,7 +413,7 @@ public:
 	/** After Present returns, calls this to get the next index to use for rendering. */
 	virtual void GetNextSwapTextureSetIndex(vr::SharedTextureHandle_t sharedTextureHandles[2], uint32_t(*pIndices)[2]) override
 	{
-		Log("GetNextSwapTextureSetIndex %p %p %d %d", sharedTextureHandles[0], sharedTextureHandles[1], (*pIndices)[0], (*pIndices)[1]);
+		Log(L"GetNextSwapTextureSetIndex %p %p %d %d", sharedTextureHandles[0], sharedTextureHandles[1], (*pIndices)[0], (*pIndices)[1]);
 		(*pIndices)[0]++;
 		(*pIndices)[0] %= 3;
 		(*pIndices)[1]++;
@@ -424,7 +424,7 @@ public:
 	* using CreateSwapTextureSet and should be alternated per frame.  Call Present once all layers have been submitted. */
 	virtual void SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2], const vr::HmdMatrix34_t *pPose) override
 	{
-		Log("SubmitLayer Handles=%p,%p DepthHandles=%p,%p %f-%f,%f-%f %f-%f,%f-%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f"
+		Log(L"SubmitLayer Handles=%p,%p DepthHandles=%p,%p %f-%f,%f-%f %f-%f,%f-%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f"
 			, perEye[0].hTexture, perEye[1].hTexture, perEye[0].hDepthTexture, perEye[1].hDepthTexture
 			, perEye[0].bounds.uMin, perEye[0].bounds.uMax, perEye[0].bounds.vMin, perEye[0].bounds.vMax
 			, perEye[1].bounds.uMin, perEye[1].bounds.uMax, perEye[1].bounds.vMin, perEye[1].bounds.vMax
@@ -459,7 +459,7 @@ public:
 						distance += pow(it->rotationMatrix.m[j][i] - pPose->m[j][i], 2);
 					}
 				}
-				//Log("diff %f %llu", distance, it->info.FrameIndex);
+				//Log(L"diff %f %llu", distance, it->info.FrameIndex);
 				if (minDiff > distance) {
 					minIndex = index;
 					minIt = it;
@@ -479,7 +479,7 @@ public:
 				m_framePoseRotation.z = minIt->info.HeadPose_Pose_Orientation.z;
 				m_framePoseRotation.w = minIt->info.HeadPose_Pose_Orientation.w;
 
-				Log("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu minDiff=%f", m_prevSubmitFrameIndex, m_submitFrameIndex, minDiff);
+				Log(L"Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu minDiff=%f", m_prevSubmitFrameIndex, m_submitFrameIndex, minDiff);
 			}
 			else {
 				m_submitFrameIndex = 0;
@@ -494,7 +494,7 @@ public:
 			m_submitLayer++;
 		}
 		else {
-			Log("Too many layers submitted!");
+			Log(L"Too many layers submitted!");
 		}
 
 		if (g_DriverTestMode & 8) {
@@ -509,7 +509,7 @@ public:
 	virtual void Present(vr::SharedTextureHandle_t syncTexture) override
 	{
 		bool useMutex = Settings::Instance().m_UseKeyedMutex;
-		Log("Present syncTexture=%p (use:%d) m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu", syncTexture, useMutex, m_prevSubmitFrameIndex, m_submitFrameIndex);
+		Log(L"Present syncTexture=%p (use:%d) m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu", syncTexture, useMutex, m_prevSubmitFrameIndex, m_submitFrameIndex);
 
 		IDXGIKeyedMutex *pKeyedMutex = NULL;
 
@@ -517,14 +517,14 @@ public:
 		m_submitLayer = 0;
 
 		if (m_prevSubmitFrameIndex == m_submitFrameIndex) {
-			Log("Discard duplicated frame. FrameIndex=%llu", m_submitFrameIndex);
+			Log(L"Discard duplicated frame. FrameIndex=%llu", m_submitFrameIndex);
 			return;
 		}
 
 		ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
 		if (!pSyncTexture)
 		{
-			Log("[VDispDvr] SyncTexture is NULL!");
+			Log(L"[VDispDvr] SyncTexture is NULL!");
 			return;
 		}
 
@@ -534,18 +534,18 @@ public:
 			// This enforces scheduling of work on the gpu between processes.
 			if (SUCCEEDED(pSyncTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void **)&pKeyedMutex)))
 			{
-				Log("[VDispDvr] Wait for SyncTexture Mutex.");
+				Log(L"[VDispDvr] Wait for SyncTexture Mutex.");
 				// TODO: Reasonable timeout and timeout handling
 				HRESULT hr = pKeyedMutex->AcquireSync(0, 10);
 				if (hr != S_OK)
 				{
-					Log("[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %s", hr, hr, GetDxErrorStr(hr).c_str());
+					Log(L"[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %s", hr, hr, GetDxErrorStr(hr).c_str());
 					pKeyedMutex->Release();
 					return;
 				}
 			}
 
-			Log("[VDispDvr] Mutex Acquired.");
+			Log(L"[VDispDvr] Mutex Acquired.");
 		}
 
 		CopyTexture(layerCount);
@@ -556,7 +556,7 @@ public:
 				pKeyedMutex->ReleaseSync(0);
 				pKeyedMutex->Release();
 			}
-			Log("[VDispDvr] Mutex Released.");
+			Log(L"[VDispDvr] Mutex Released.");
 		}
 
 		m_pEncoder->NewFrameReady();
@@ -576,21 +576,21 @@ public:
 			auto it = m_handleMap.find(leftEyeTexture);
 			if (it == m_handleMap.end()) {
 				// Ignore this layer.
-				Log("Submitted texture is not found on HandleMap. eye=right layer=%d/%d Texture Handle=%p", i, layerCount, leftEyeTexture);
+				Log(L"Submitted texture is not found on HandleMap. eye=right layer=%d/%d Texture Handle=%p", i, layerCount, leftEyeTexture);
 			}
 			else {
 				Texture[i][0] = it->second.first->textures[it->second.second];
 				D3D11_TEXTURE2D_DESC desc;
 				Texture[i][0]->GetDesc(&desc);
 
-				Log("CopyTexture: layer=%d/%d pid=%d Texture Size=%dx%d Format=%d", i, layerCount, it->second.first->pid, desc.Width, desc.Height, desc.Format);
+				Log(L"CopyTexture: layer=%d/%d pid=%d Texture Size=%dx%d Format=%d", i, layerCount, it->second.first->pid, desc.Width, desc.Height, desc.Format);
 
 				// Find right eye texture.
 				HANDLE rightEyeTexture = (HANDLE)m_submitLayers[i][1].hTexture;
 				it = m_handleMap.find(rightEyeTexture);
 				if (it == m_handleMap.end()) {
 					// Ignore this layer
-					Log("Submitted texture is not found on HandleMap. eye=left layer=%d/%d Texture Handle=%p", i, layerCount, rightEyeTexture);
+					Log(L"Submitted texture is not found on HandleMap. eye=left layer=%d/%d Texture Handle=%p", i, layerCount, rightEyeTexture);
 					Texture[i][0].Reset();
 				}
 				else {
@@ -607,16 +607,16 @@ public:
 		// This can go away, but is useful to see it as a separate packet on the gpu in traces.
 		m_pD3DRender->GetContext()->Flush();
 
-		Log("Waiting for finish of previous encode.");
+		Log(L"Waiting for finish of previous encode.");
 
 		if (Settings::Instance().m_captureLayerDDSTrigger) {
 			wchar_t buf[1000];
 
 			for (uint32_t i = 0; i < layerCount; i++) {
-				Log("Writing Debug DDS. m_LastReferencedFrameIndex=%llu layer=%d/%d", 0, i, layerCount);
+				Log(L"Writing Debug DDS. m_LastReferencedFrameIndex=%llu layer=%d/%d", 0, i, layerCount);
 				_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", Settings::Instance().m_DebugOutputDir.c_str(), m_submitFrameIndex, i, layerCount);
 				HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture[i][0], buf);
-				Log("Writing Debug DDS: End hr=%p %s", hr, GetDxErrorStr(hr).c_str());
+				Log(L"Writing Debug DDS: End hr=%p %s", hr, GetDxErrorStr(hr).c_str());
 			}
 			Settings::Instance().m_captureLayerDDSTrigger = false;
 		}
@@ -637,7 +637,7 @@ public:
 		}
 
 		uint64_t submitFrameIndex = m_submitFrameIndex + Settings::Instance().m_trackingFrameOffset;
-		Log("Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu"
+		Log(L"Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu"
 			, m_submitFrameIndex, Settings::Instance().m_trackingFrameOffset, submitFrameIndex);
 
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
@@ -697,7 +697,7 @@ public:
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
-		Log("Startup: %s %s", APP_MODULE_NAME, APP_VERSION_STRING);
+		Log(L"Startup: %hs %hs", APP_MODULE_NAME, APP_VERSION_STRING);
 
 		std::function<void()> launcherCallback = [&]() { Enable(); };
 		std::function<void(std::string, std::string)> commandCallback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
@@ -711,7 +711,7 @@ public:
 		m_Listener->SetNewClientCallback(newClientCallback);
 		m_Listener->SetPacketLossCallback(packetLossCallback);
 
-		Log("CRemoteHmd successfully initialized.");
+		Log(L"CRemoteHmd successfully initialized.");
 	}
 
 	virtual ~CRemoteHmd()
@@ -762,21 +762,21 @@ public:
 			GetSerialNumber().c_str(),
 			vr::TrackedDeviceClass_HMD,
 			this);
-		Log("TrackedDeviceAdded(HMD) Ret=%d SerialNumber=%s", ret, GetSerialNumber().c_str());
+		Log(L"TrackedDeviceAdded(HMD) Ret=%d SerialNumber=%hs", ret, GetSerialNumber().c_str());
 		if (Settings::Instance().m_useTrackingReference) {
 			m_trackingReference = std::make_shared<TrackingReference>();
 			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 				m_trackingReference->GetSerialNumber().c_str(),
 				vr::TrackedDeviceClass_TrackingReference,
 				m_trackingReference.get());
-			Log("TrackedDeviceAdded(TrackingReference) Ret=%d SerialNumber=%s", ret, GetSerialNumber().c_str());
+			Log(L"TrackedDeviceAdded(TrackingReference) Ret=%d SerialNumber=%hs", ret, GetSerialNumber().c_str());
 		}
 		
 	}
 
 	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) override
 	{
-		Log("CRemoteHmd Activate %d", unObjectId);
+		Log(L"CRemoteHmd Activate %d", unObjectId);
 
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
@@ -807,14 +807,14 @@ public:
 		// Store off the LUID of the primary gpu we want to use.
 		if (!m_D3DRender->GetAdapterLuid(Settings::Instance().m_nAdapterIndex, &m_nGraphicsAdapterLuid))
 		{
-			FatalLog("Failed to get adapter index for graphics adapter!");
+			FatalLog(L"Failed to get adapter index for graphics adapter!");
 			return vr::VRInitError_Driver_Failed;
 		}
 
 		// Now reinitialize using the other graphics card.
 		if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
 		{
-			FatalLog("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
+			FatalLog(L"Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
 			return vr::VRInitError_Driver_Failed;
 		}
 
@@ -822,12 +822,12 @@ public:
 		wchar_t wchAdapterDescription[300];
 		if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, sizeof(wchAdapterDescription) / sizeof(wchar_t)))
 		{
-			FatalLog("Failed to get primary adapter info!");
+			FatalLog(L"Failed to get primary adapter info!");
 			return vr::VRInitError_Driver_Failed;
 		}
 
-		Log("Using %ls as primary graphics adapter.", wchAdapterDescription);
-		Log("OSVer:%s", GetWindowsOSVersion().c_str());
+		Log(L"Using %s as primary graphics adapter.", wchAdapterDescription);
+		Log(L"OSVer: %s", GetWindowsOSVersion().c_str());
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
 		m_encoder = std::make_shared<CEncoder>(m_D3DRender, m_Listener);
@@ -835,7 +835,7 @@ public:
 			m_encoder->Initialize();
 		}
 		catch (Exception e) {
-			FatalLog("Failed to initialize CEncoder. %s", e.what());
+			FatalLog(L"Failed to initialize CEncoder. %s", e.what());
 			return vr::VRInitError_Driver_Failed;
 		}
 		m_encoder->Start();
@@ -846,7 +846,7 @@ public:
 				m_audioCapture->Start(ToWstring(Settings::Instance().m_soundDevice));
 			}
 			catch (Exception e) {
-				FatalLog("Failed to start audio capture. %s", e.what());
+				FatalLog(L"Failed to start audio capture. %s", e.what());
 				return vr::VRInitError_Driver_Failed;
 			}
 		}
@@ -864,7 +864,7 @@ public:
 
 	virtual void Deactivate() override
 	{
-		Log("CRemoteHmd Deactivate");
+		Log(L"CRemoteHmd Deactivate");
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 	}
 
@@ -874,7 +874,7 @@ public:
 
 	void *GetComponent(const char *pchComponentNameAndVersion) override
 	{
-		Log("GetComponent %s", pchComponentNameAndVersion);
+		Log(L"GetComponent %hs", pchComponentNameAndVersion);
 		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
 		{
 			return m_displayComponent.get();
@@ -914,7 +914,7 @@ public:
 			pose.vecPosition[1] = position.y;
 			pose.vecPosition[2] = position.z;
 
-			Log("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)",
+			Log(L"GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)",
 				pose.qRotation.x,
 				pose.qRotation.y,
 				pose.qRotation.z,
@@ -940,7 +940,7 @@ public:
 		// driver blocks it for some periodic task.
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
 		{
-			//Log("RunFrame");
+			//Log(L"RunFrame");
 			//vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 		}
 	}
@@ -1044,7 +1044,7 @@ public:
 
 			m_Listener->SendCommandResponse("OK\n");
 		}else {
-			Log("Invalid control command: %s", commandName.c_str());
+			Log(L"Invalid control command: %hs", commandName.c_str());
 			m_Listener->SendCommandResponse("NG\n");
 		}
 		
@@ -1065,7 +1065,7 @@ public:
 			
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
-			Log("Generate VSync Event by OnPoseUpdated");
+			Log(L"Generate VSync Event by OnPoseUpdated");
 			m_VSyncThread->InsertVsync();
 
 			if (m_trackingReference) {
@@ -1142,7 +1142,7 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 	m_mutex = std::make_shared<IPCMutex>(APP_MUTEX_NAME, true);
 	if (m_mutex->AlreadyExist()) {
 		// Duplicate driver installation.
-		FatalLog("ALVR Server driver is installed on multiple locations. This causes some issues.\r\n"
+		FatalLog(L"ALVR Server driver is installed on multiple locations. This causes some issues.\r\n"
 			"Please check the installed driver list on About tab and uninstall old drivers.");
 		return vr::VRInitError_Driver_Failed;
 	}
@@ -1188,10 +1188,10 @@ void *HmdDriverFactory( const char *pInterfaceName, int *pReturnCode )
 {
 	InitCrashHandler();
 
-	Log("HmdDriverFactory %s (%s)", pInterfaceName, vr::IServerTrackedDeviceProvider_Version);
+	Log(L"HmdDriverFactory %hs (%hs)", pInterfaceName, vr::IServerTrackedDeviceProvider_Version);
 	if ( 0 == strcmp( vr::IServerTrackedDeviceProvider_Version, pInterfaceName ) )
 	{
-		Log("HmdDriverFactory server return");
+		Log(L"HmdDriverFactory server return");
 		return &g_serverDriverDisplayRedirect;
 	}
 

@@ -12,7 +12,7 @@ public:
 
 	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId)
 	{
-		Log("TrackingReference::Activate. objectId=%d", unObjectId);
+		Log(L"TrackingReference::Activate. objectId=%d", unObjectId);
 
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
@@ -27,7 +27,7 @@ public:
 
 	virtual void Deactivate()
 	{
-		Log("TrackingReference::Deactivate");
+		Log(L"TrackingReference::Deactivate");
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 	}
 
@@ -37,7 +37,7 @@ public:
 
 	void *GetComponent(const char *pchComponentNameAndVersion)
 	{
-		Log("TrackingReference::GetComponent. Name=%s", pchComponentNameAndVersion);
+		Log(L"TrackingReference::GetComponent. Name=%hs", pchComponentNameAndVersion);
 
 		return NULL;
 	}

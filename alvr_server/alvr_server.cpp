@@ -689,7 +689,6 @@ class CRemoteHmd : public vr::ITrackedDeviceServerDriver
 public:
 	CRemoteHmd(std::shared_ptr<Listener> listener)
 		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
-		, m_nGraphicsAdapterLuid(0)
 		, m_nVsyncCounter(0)
 		, m_added(false)
 		, m_Listener(listener)
@@ -787,7 +786,6 @@ public:
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, Settings::Instance().m_flDisplayFrequency);
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_SecondsFromVsyncToPhotons_Float, Settings::Instance().m_flSecondsFromVsyncToPhotons);
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_GraphicsAdapterLuid_Uint64, m_nGraphicsAdapterLuid);
 
 		// return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
 		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_CurrentUniverseId_Uint64, 2);
@@ -801,17 +799,12 @@ public:
 		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
 		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().m_flIPD);
 
-
 		m_D3DRender = std::make_shared<CD3DRender>();
 
-		// Store off the LUID of the primary gpu we want to use.
-		if (!m_D3DRender->GetAdapterLuid(Settings::Instance().m_nAdapterIndex, &m_nGraphicsAdapterLuid))
-		{
-			FatalLog(L"Failed to get adapter index for graphics adapter!");
-			return vr::VRInitError_Driver_Failed;
-		}
-
-		// Now reinitialize using the other graphics card.
+		// Use the same adapter as vrcompositor uses. If another adapter is used, vrcompositor says "failed to open shared texture" and then crashes.
+		// It seems vrcompositor selects always(?) first adapter. vrcompositor may use Intel iGPU when user sets it as primary adapter. I don't know what happens on laptop which support optimus.
+		// Prop_GraphicsAdapterLuid_Uint64 is only for redirect display and is ignored on direct mode driver. So we can't specify an adapter for vrcompositor.
+		// m_nAdapterIndex is set 0 on the launcher.
 		if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
 		{
 			FatalLog(L"Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
@@ -1090,7 +1083,6 @@ private:
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 
-	uint64_t m_nGraphicsAdapterLuid;
 	uint32_t m_nVsyncCounter;
 
 	std::shared_ptr<CD3DRender> m_D3DRender;

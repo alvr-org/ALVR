@@ -51,13 +51,10 @@ namespace
 	class CEncoder : public CThread
 	{
 	public:
-		CEncoder(std::shared_ptr<CD3DRender> d3dRender, std::shared_ptr<Listener> listener)
+		CEncoder()
 			: m_bExiting( false )
 			, m_frameIndex(0)
 			, m_frameIndex2(0)
-			, m_FrameRender(std::make_shared<FrameRender>(d3dRender))
-			, m_videoEncoder(std::make_shared<VideoEncoderVCE>(d3dRender, listener
-				, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight))
 		{
 			m_encodeFinished.Set();
 		}
@@ -71,8 +68,32 @@ namespace
 			}
 		}
 
-		void Initialize() {
-			m_videoEncoder->Initialize();
+		void Initialize(std::shared_ptr<CD3DRender> d3dRender, std::shared_ptr<Listener> listener) {
+			m_FrameRender = std::make_shared<FrameRender>(d3dRender);
+
+			Exception vceException;
+			Exception nvencException;
+			try {
+				Log(L"Try to use VideoEncoderVCE.");
+				m_videoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, listener
+					, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
+				m_videoEncoder->Initialize();
+				return;
+			}
+			catch (Exception e) {
+				vceException = e;
+			}
+			try {
+				Log(L"Try to use VideoEncoderNVENC.");
+				m_videoEncoder = std::make_shared<VideoEncoderNVENC>(d3dRender, listener
+					, ShouldUseNV12Texture());
+				m_videoEncoder->Initialize();
+				return;
+			}
+			catch (Exception e) {
+				nvencException = e;
+			}
+			throw MakeException(L"All VideoEncoder are not available. VCE: %s, NVENC: %s", vceException.what(), nvencException.what());
 		}
 
 		bool CopyToStaging( ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering
@@ -823,9 +844,9 @@ public:
 		Log(L"OSVer: %s", GetWindowsOSVersion().c_str());
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
-		m_encoder = std::make_shared<CEncoder>(m_D3DRender, m_Listener);
+		m_encoder = std::make_shared<CEncoder>();
 		try {
-			m_encoder->Initialize();
+			m_encoder->Initialize(m_D3DRender, m_Listener);
 		}
 		catch (Exception e) {
 			FatalLog(L"Failed to initialize CEncoder. %s", e.what());

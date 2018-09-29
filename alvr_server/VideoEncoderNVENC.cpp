@@ -46,9 +46,6 @@ void VideoEncoderNVENC::Initialize()
 			m_NvNecoder = std::make_shared<NvEncoderCuda>(m_Converter->GetContext(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
 		}
 		catch (NVENCException e) {
-			if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
-				throw MakeException(L"This GPU does not support H.265 encoding. (NvEncoderCuda NV_ENC_ERR_INVALID_PARAM)");
-			}
 			throw MakeException(L"NvEnc NvEncoderCuda failed. Code=%d %hs", e.getErrorCode(), e.what());
 		}
 	}
@@ -57,9 +54,6 @@ void VideoEncoderNVENC::Initialize()
 			m_NvNecoder = std::make_shared<NvEncoderD3D11>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
 		}
 		catch (NVENCException e) {
-			if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
-				throw MakeException(L"This GPU does not support H.265 encoding. (NvEncoderD3D11 NV_ENC_ERR_INVALID_PARAM)");
-			}
 			throw MakeException(L"NvEnc NvEncoderD3D11 failed. Code=%d %hs", e.getErrorCode(), e.what());
 		}
 	}
@@ -87,6 +81,9 @@ void VideoEncoderNVENC::Initialize()
 		m_NvNecoder->CreateEncoder(&initializeParams);
 	}
 	catch (NVENCException e) {
+		if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
+			throw MakeException(L"This GPU does not support H.265 encoding. (NvEncoderCuda NV_ENC_ERR_INVALID_PARAM)");
+		}
 		throw MakeException(L"NvEnc CreateEncoder failed. Code=%d %hs", e.getErrorCode(), e.what());
 	}
 

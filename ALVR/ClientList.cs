@@ -103,7 +103,10 @@ namespace ALVR
 
         public Client GetAutoConnectableClient()
         {
-            var list = autoConnectList.Where(x => clients.Contains(x));
+            var list = autoConnectList.Where(x =>
+            {
+                return clients.Find(y => x.Equals(y) && y.VersionOk) != null;
+            });
             if (list.Count() != 0)
             {
                 if (!EnableAutoConnect)

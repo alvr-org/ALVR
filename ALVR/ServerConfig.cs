@@ -161,6 +161,9 @@ namespace ALVR
 
                 driverConfig.clientRecvBufferSize = GetBufferSizeKB() * 1000;
                 driverConfig.frameQueueSize = GetFrameQueueSize(Properties.Settings.Default.suppressFrameDrop);
+
+                driverConfig.force60HZ = Properties.Settings.Default.force60Hz;
+
                 driverConfig.enableController = Properties.Settings.Default.enableController;
                 driverConfig.controllerTriggerMode = Properties.Settings.Default.controllerTriggerMode;
                 driverConfig.controllerTrackpadClickMode = Properties.Settings.Default.controllerTrackpadClickMode;

@@ -6,6 +6,7 @@
 
 // Maximum UDP packet size (payload size in bytes)
 static const int ALVR_MAX_PACKET_SIZE = 1400;
+static const int ALVR_REFRESH_RATE_LIST_SIZE = 4;
 
 enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_HELLO_MESSAGE = 1,
@@ -23,7 +24,7 @@ enum ALVR_PACKET_TYPE {
 };
 
 enum {
-	ALVR_PROTOCOL_VERSION = 18
+	ALVR_PROTOCOL_VERSION = 19
 };
 
 enum ALVR_CODEC {
@@ -42,7 +43,9 @@ struct HelloMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_HELLO_MESSAGE
 	uint32_t version; // ALVR_PROTOCOL_VERSION
 	char deviceName[32]; // null-terminated
-	uint32_t refreshRate; // 60 or 72
+	// List of supported refresh rate in priority order.
+	// High prio=first element. Empty element become 0.
+	uint8_t refreshRate[ALVR_REFRESH_RATE_LIST_SIZE];
 };
 struct ConnectionMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_CONNECTION_MESSAGE
@@ -52,6 +55,7 @@ struct ConnectionMessage {
 	uint32_t videoHeight; // in pixels
 	uint32_t bufferSize; // in bytes
 	uint32_t frameQueueSize;
+	uint8_t refreshRate;
 };
 struct RecoverConnection {
 	uint32_t type; // ALVR_PACKET_TYPE_RECOVER_CONNECTION

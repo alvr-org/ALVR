@@ -297,7 +297,9 @@ public:
 				// We can't connect, but we should do PushRequest to notify user.
 			}
 
-			Log(L"Hello Message: %hs Version=%d Hz=%d", message->deviceName, message->version, message->refreshRate);
+			Log(L"Hello Message: %hs Version=%d Hz=%d,%d,%d,%d", message->deviceName, message->version
+				, message->refreshRate[0], message->refreshRate[1]
+				, message->refreshRate[2], message->refreshRate[3]);
 
 			PushRequest(message, addr);
 		}
@@ -537,7 +539,16 @@ public:
 		memcpy(request.deviceName, message->deviceName, sizeof(request.deviceName));
 		request.timestamp = GetTimestampUs();
 		request.versionOk = message->version == ALVR_PROTOCOL_VERSION;
-		request.refreshRate = message->refreshRate == 72 ? 72 : 60;
+
+
+		if (Settings::Instance().m_force60HZ) {
+			// Force 60Hz for workaround for Go's suttuer streaming.
+			request.refreshRate = 60;
+		}
+		else {
+			// First element has highest priority.
+			request.refreshRate = message->refreshRate[0];
+		}
 
 		m_Requests.push_back(request);
 		if (m_Requests.size() > 10) {
@@ -653,6 +664,7 @@ public:
 		message.videoHeight = Settings::Instance().m_renderHeight;
 		message.bufferSize = Settings::Instance().m_clientRecvBufferSize;
 		message.frameQueueSize = Settings::Instance().m_frameQueueSize;
+		message.refreshRate = m_clientRefreshRate;
 
 		m_Socket->Send((char *)&message, sizeof(message), 0);
 	}

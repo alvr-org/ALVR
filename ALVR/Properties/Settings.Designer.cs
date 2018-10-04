@@ -346,5 +346,17 @@ namespace ALVR.Properties {
                 this["useDefaultSoundDevice"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool force60Hz {
+            get {
+                return ((bool)(this["force60Hz"]));
+            }
+            set {
+                this["force60Hz"] = value;
+            }
+        }
     }
 }

@@ -18,6 +18,8 @@ static const char * const k_pch_Settings_DisplayFrequency_Float = "displayFreque
 static const char * const k_pch_Settings_ClientRecvBufferSize_Int32 = "clientRecvBufferSize";
 static const char * const k_pch_Settings_FrameQueueSize_Int32 = "frameQueueSize";
 
+static const char * const k_pch_Settings_Force60HZ_Bool = "force60HZ";
+
 static const char * const k_pch_Settings_EnableSound_Bool = "enableSound";
 static const char * const k_pch_Settings_SoundDevice_String = "soundDevice";
 
@@ -133,6 +135,8 @@ public:
 	uint32_t m_clientRecvBufferSize;
 
 	uint32_t m_frameQueueSize;
+
+	bool m_force60HZ;
 
 	// Controller configs
 	std::string m_controllerTrackingSystemName;

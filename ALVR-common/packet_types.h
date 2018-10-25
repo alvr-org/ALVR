@@ -150,6 +150,8 @@ struct TimeSync {
 	uint32_t fecFailure;
 	uint64_t fecFailureInSecond;
 	uint64_t fecFailureTotal;
+
+	uint32_t fps;
 };
 struct ChangeSettings {
 	uint32_t type; // 8

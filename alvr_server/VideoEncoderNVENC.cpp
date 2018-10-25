@@ -155,6 +155,10 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	Log(L"Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
 	Log(L"Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
 
+	if (m_Listener) {
+		m_Listener->GetStatistics()->EncodeOutput(GetTimestampUs() - presentationTime);
+	}
+
 	m_nFrame += (int)vPacket.size();
 	for (std::vector<uint8_t> &packet : vPacket)
 	{

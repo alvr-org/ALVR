@@ -303,8 +303,12 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 
 	amf::AMFBufferPtr buffer(data); // query for buffer interface
 
-	Log(L"VCE encode latency: %.4f ms. Size=%d bytes frameIndex=%llu", double(current_time - start_time) / MILLISEC_TIME, (int)buffer->GetSize()
+	Log(L"VCE encode latency: %.4f ms. Size=%d bytes frameIndex=%llu", double(current_time - start_time) / (double)MILLISEC_TIME, (int)buffer->GetSize()
 		, frameIndex);
+
+	if (m_Listener) {
+		m_Listener->GetStatistics()->EncodeOutput((current_time - start_time) / MICROSEC_TIME);
+	}
 
 	char *p = reinterpret_cast<char *>(buffer->GetNative());
 	int length = buffer->GetSize();

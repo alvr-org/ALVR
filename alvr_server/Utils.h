@@ -18,6 +18,8 @@
 
 extern HINSTANCE g_hInstance;
 
+const uint64_t US_TO_MS = 1000;
+
 // Get elapsed time in us from Unix Epoch
 inline uint64_t GetTimestampUs() {
 	FILETIME ft;

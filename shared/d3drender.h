@@ -25,7 +25,7 @@ public:
 
 	void GetDisplayPos( int32_t *pDisplayX, int32_t *pDisplayY );
 	void GetDisplaySize( uint32_t *pDisplayWidth, uint32_t *pDisplayHeight );
-	bool GetAdapterInfo( int32_t *pAdapterIndex, wchar_t *pBuffer = NULL, uint32_t nBufferCount = 0 );
+	bool GetAdapterInfo( int32_t *pAdapterIndex, std::wstring &adapterName );
 	ID3D11Texture2D *GetSharedTexture( HANDLE hSharedTexture );
 
 	bool CreateSwapChain( HWND hWnd, const DXGI_RATIONAL &refreshRate );

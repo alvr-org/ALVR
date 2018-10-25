@@ -68,7 +68,8 @@ private:
 	static const wchar_t *START_TIME_PROPERTY;
 	static const wchar_t *FRAME_INDEX_PROPERTY;
 
-	const double MILLISEC_TIME = 10000;
+	const uint64_t MILLISEC_TIME = 10000;
+	const uint64_t MICROSEC_TIME = 10;
 
 	amf::AMFContextPtr m_amfContext;
 	std::shared_ptr<AMFTextureEncoder> m_encoder;

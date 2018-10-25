@@ -833,14 +833,13 @@ public:
 		}
 
 		int32_t nDisplayAdapterIndex;
-		wchar_t wchAdapterDescription[300];
-		if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, wchAdapterDescription, sizeof(wchAdapterDescription) / sizeof(wchar_t)))
+		if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, m_adapterName))
 		{
 			FatalLog(L"Failed to get primary adapter info!");
 			return vr::VRInitError_Driver_Failed;
 		}
 
-		Log(L"Using %s as primary graphics adapter.", wchAdapterDescription);
+		Log(L"Using %s as primary graphics adapter.", m_adapterName.c_str());
 		Log(L"OSVer: %s", GetWindowsOSVersion().c_str());
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
@@ -979,7 +978,10 @@ public:
 				"%s %d\n"
 				"%s %d\n"
 				"%s %d\n"
-				"%s %d"
+				"%s %d\n"
+				"GPU %s\n"
+				"Codec %d\n"
+				"Bitrate %dMbps"
 				, m_Listener->DumpConfig().c_str()
 				, k_pch_Settings_DebugLog_Bool, Settings::Instance().m_DebugLog
 				, k_pch_Settings_DebugFrameIndex_Bool, Settings::Instance().m_DebugFrameIndex
@@ -991,6 +993,9 @@ public:
 				, k_pch_Settings_ControllerTrackpadTouchMode_Int32, Settings::Instance().m_controllerTrackpadTouchMode
 				, k_pch_Settings_ControllerBackMode_Int32, Settings::Instance().m_controllerBackMode
 				, k_pch_Settings_ControllerRecenterButton_Int32, Settings::Instance().m_controllerRecenterButton
+				, ToUTF8(m_adapterName).c_str() // TODO: Proper treatment of UNICODE. Sanitizing.
+				, Settings::Instance().m_codec
+				, Settings::Instance().m_encodeBitrateInMBits
 			);
 			m_Listener->SendCommandResponse(buf);
 		}else if(commandName == "SetConfig"){
@@ -1103,6 +1108,8 @@ private:
 	bool m_added;
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
+
+	std::wstring m_adapterName;
 
 	uint32_t m_nVsyncCounter;
 

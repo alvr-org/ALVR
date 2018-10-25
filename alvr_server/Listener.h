@@ -442,11 +442,15 @@ public:
 				"TotalSent %llu MB\n"
 				"SentRate %.1f Mbps\n"
 				"TotalLatency %.1f ms\n"
+				"EncodeLatency %.1f ms\n"
+				"EncodeLatencyMax %.1f ms\n"
 				"TransportLatency %.1f ms\n"
 				"DecodeLatency %.1f ms\n"
 				"FecPercentage %d %%\n"
 				"FecFailureTotal %llu Packets\n"
 				"FecFailureInSecond %llu Packets/s\n"
+				"ClientFPS %d\n"
+				"ServerFPS %d\n"
 				, m_Statistics->GetPacketsSentTotal()
 				, m_Statistics->GetPacketsSentInSecond()
 				, m_reportedStatistics.packetsLostTotal
@@ -454,11 +458,15 @@ public:
 				, m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000
 				, m_Statistics->GetBitsSentInSecond() / 1000 / 1000.0
 				, m_reportedStatistics.averageTotalLatency / 1000.0
+				, (double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS
+				, (double)(m_Statistics->GetEncodeLatencyMax()) / US_TO_MS
 				, m_reportedStatistics.averageTransportLatency / 1000.0
 				, m_reportedStatistics.averageDecodeLatency / 1000.0
 			    , m_fecPercentage
 				, m_reportedStatistics.fecFailureTotal
-				, m_reportedStatistics.fecFailureInSecond);
+				, m_reportedStatistics.fecFailureInSecond
+				, m_reportedStatistics.fps
+				, m_Statistics->GetFPS());
 			SendCommandResponse(buf);
 		}
 		else if (commandName == "Disconnect") {
@@ -685,6 +693,10 @@ public:
 		}
 		m_lastFecFailure = GetTimestampUs();
 		m_PacketLossCallback();
+	}
+
+	std::shared_ptr<Statistics> GetStatistics() {
+		return m_Statistics;
 	}
 private:
 	bool m_bExiting;

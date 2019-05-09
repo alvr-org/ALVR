@@ -19,19 +19,35 @@ namespace ALVR
         public class Resolution
         {
             public int width { get; set; }
-            public string display { get { return width + " x " + (width / 2); } }
+            public int height { get; set; }
+            public string display;
             public override string ToString()
             {
                 return display;
             }
+            public Resolution(int width, int height)
+            {
+                this.width = width;
+                this.height = height;
+                display = width + " x " + height;
+            }
+            public Resolution(int width, int height, string label)
+            {
+                this.width = width;
+                this.height = height;
+                display = width + " x " + height + " " + label + "";
+            }
         }
         public static readonly Resolution[] supportedResolutions = {
-            new Resolution { width = 1024 }
-            , new Resolution { width = 1536 }
-            , new Resolution { width = 2048 }
-            , new Resolution { width = 2560 }
-            , new Resolution { width = 2880 }
-            , new Resolution { width = 3072 }
+            new Resolution(1024, 512)
+            , new Resolution(1536, 768)
+            , new Resolution(2048, 1024)
+            , new Resolution(2560, 1280)
+            , new Resolution(2880, 1440)
+            , new Resolution(3072, 1536)
+            , new Resolution(2432, 1344, "Quest")
+            , new Resolution(2260, 1150, "Mirage Solo(Small)")
+            , new Resolution(3390, 1726, "Mirage Solo(Max)")
         };
 
         public class ComboBoxCustomItem
@@ -141,13 +157,11 @@ namespace ALVR
                 driverConfig.controllerSerialNumber = "ALVR Remote Controller";
 
                 driverConfig.codec = Properties.Settings.Default.codec; // 0: H264, 1: H265
-                driverConfig.nvencOptions = "-preset ll_hq -rc cbr_ll_hq -fps 60 -bitrate "
-                    + Properties.Settings.Default.bitrate + "M -maxbitrate " + Properties.Settings.Default.bitrate + "M";
                 driverConfig.encodeFPS = 60;
                 driverConfig.encodeBitrateInMBits = Properties.Settings.Default.bitrate;
 
                 driverConfig.renderWidth = Properties.Settings.Default.renderWidth;
-                driverConfig.renderHeight = Properties.Settings.Default.renderWidth / 2;
+                driverConfig.renderHeight = Properties.Settings.Default.renderHeight;
 
                 driverConfig.enableSound = Properties.Settings.Default.enableSound && Properties.Settings.Default.soundDevice != "";
                 driverConfig.soundDevice = Properties.Settings.Default.soundDevice;

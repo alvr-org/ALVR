@@ -27,6 +27,7 @@ namespace ALVR
         List<DeviceQuery.SoundDevice> soundDevices = new List<DeviceQuery.SoundDevice>();
         int defaultSoundDeviceIndex = 0;
         bool previousConnectionState = false;
+        bool loadingSettings = false;
 
         class ClientTag
         {
@@ -122,39 +123,52 @@ namespace ALVR
                 Properties.Settings.Default.UpgradeRequired = false;
                 Properties.Settings.Default.Save();
             }
+            // Disable changed listener on controls.
+            loadingSettings = true;
 
-            resolutionComboBox.DataSource = ServerConfig.supportedResolutions;
-            resolutionComboBox.Text = new ServerConfig.Resolution { width = Properties.Settings.Default.renderWidth }.ToString();
-
-            triggerComboBox.DataSource = ServerConfig.supportedButtons.Clone();
-            trackpadClickComboBox.DataSource = ServerConfig.supportedButtons;
-            backComboBox.DataSource = ServerConfig.supportedButtons.Clone();
-            triggerComboBox.SelectedIndex = ServerConfig.FindButton(Properties.Settings.Default.controllerTriggerMode);
-            trackpadClickComboBox.SelectedIndex = ServerConfig.FindButton(Properties.Settings.Default.controllerTrackpadClickMode);
-            backComboBox.SelectedIndex = ServerConfig.FindButton(Properties.Settings.Default.controllerBackMode);
-
-            recenterButtonComboBox.DataSource = ServerConfig.supportedRecenterButton;
-            recenterButtonComboBox.SelectedIndex = Properties.Settings.Default.controllerRecenterButton;
-
-            codecComboBox.SelectedIndex = Properties.Settings.Default.codec;
-
-            if (Properties.Settings.Default.soundDevice != "")
+            try
             {
-                for (int i = 0; i < soundDevices.Count; i++)
+                resolutionComboBox.Enabled = false;
+
+                resolutionComboBox.DataSource = ServerConfig.supportedResolutions;
+                resolutionComboBox.Enabled = true;
+                widthTextBox.Text = Properties.Settings.Default.renderWidth.ToString();
+                heightTextBox.Text = Properties.Settings.Default.renderHeight.ToString();
+
+                triggerComboBox.DataSource = ServerConfig.supportedButtons.Clone();
+                trackpadClickComboBox.DataSource = ServerConfig.supportedButtons;
+                backComboBox.DataSource = ServerConfig.supportedButtons.Clone();
+                triggerComboBox.SelectedIndex = ServerConfig.FindButton(Properties.Settings.Default.controllerTriggerMode);
+                trackpadClickComboBox.SelectedIndex = ServerConfig.FindButton(Properties.Settings.Default.controllerTrackpadClickMode);
+                backComboBox.SelectedIndex = ServerConfig.FindButton(Properties.Settings.Default.controllerBackMode);
+
+                recenterButtonComboBox.DataSource = ServerConfig.supportedRecenterButton;
+                recenterButtonComboBox.SelectedIndex = Properties.Settings.Default.controllerRecenterButton;
+
+                codecComboBox.SelectedIndex = Properties.Settings.Default.codec;
+
+                if (Properties.Settings.Default.soundDevice != "")
                 {
-                    if (soundDevices[i].id == Properties.Settings.Default.soundDevice)
+                    for (int i = 0; i < soundDevices.Count; i++)
                     {
-                        soundDeviceComboBox.SelectedIndex = i;
-                        break;
+                        if (soundDevices[i].id == Properties.Settings.Default.soundDevice)
+                        {
+                            soundDeviceComboBox.SelectedIndex = i;
+                            break;
+                        }
                     }
                 }
-            }
-            if (soundDeviceComboBox.SelectedIndex == -1 && soundDeviceComboBox.Items.Count > 0)
-            {
-                soundDeviceComboBox.SelectedIndex = 0;
-            }
+                if (soundDeviceComboBox.SelectedIndex == -1 && soundDeviceComboBox.Items.Count > 0)
+                {
+                    soundDeviceComboBox.SelectedIndex = 0;
+                }
 
-            clientList = new ClientList(Properties.Settings.Default.autoConnectList);
+                clientList = new ClientList(Properties.Settings.Default.autoConnectList);
+            }
+            finally
+            {
+                loadingSettings = false;
+            }
         }
 
         private void SaveSettings()
@@ -164,7 +178,31 @@ namespace ALVR
             offsetPosZTextBox.Text = Utils.ParseFloat(offsetPosZTextBox.Text).ToString();
             trackingFrameOffsetTextBox.Text = Utils.ParseInt(trackingFrameOffsetTextBox.Text).ToString();
 
-            Properties.Settings.Default.renderWidth = ((ServerConfig.Resolution)resolutionComboBox.SelectedItem).width;
+            try
+            {
+                Properties.Settings.Default.renderWidth = int.Parse(widthTextBox.Text);
+            }catch(Exception)
+            {
+                Properties.Settings.Default.renderWidth = 2048;
+            }
+            if(Properties.Settings.Default.renderWidth < 100 || 10000 < Properties.Settings.Default.renderWidth)
+            {
+                Properties.Settings.Default.renderWidth = 2048;
+            }
+
+            try
+            {
+                Properties.Settings.Default.renderHeight = int.Parse(heightTextBox.Text);
+            }
+            catch (Exception)
+            {
+                Properties.Settings.Default.renderHeight = 1024;
+            }
+            if (Properties.Settings.Default.renderHeight < 100 || 10000 < Properties.Settings.Default.renderWidth)
+            {
+                Properties.Settings.Default.renderHeight = 1024;
+            }
+
             Properties.Settings.Default.controllerTriggerMode = ((ServerConfig.ComboBoxCustomItem)triggerComboBox.SelectedItem).value;
             Properties.Settings.Default.controllerTrackpadClickMode = ((ServerConfig.ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).value;
             Properties.Settings.Default.controllerBackMode = ((ServerConfig.ComboBoxCustomItem)backComboBox.SelectedItem).value;
@@ -308,7 +346,12 @@ namespace ALVR
                 {
                     continue;
                 }
-                dict.Add(elem[0], elem[1]);
+                try
+                {
+                    dict.Add(elem[0], elem[1]);
+                }catch(ArgumentException)
+                {
+                }
             }
             return dict;
         }
@@ -724,6 +767,26 @@ namespace ALVR
         private void defaultSoundDeviceCheckBox_CheckedChanged(object sender, EventArgs e)
         {
             UpdateSoundCheckboxState();
+        }
+
+        private void resolutionTextBox_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if ((e.KeyChar < '0' || '9' < e.KeyChar) && !Char.IsControl(e.KeyChar))
+            {
+                e.Handled = true;
+            }
+        }
+
+        private void resolutionComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (loadingSettings)
+            {
+                return;
+            }
+            var resolution = (ServerConfig.Resolution) resolutionComboBox.SelectedItem;
+            widthTextBox.Text = resolution.width.ToString();
+            heightTextBox.Text = resolution.height.ToString();
+            SaveSettings();
         }
     }
 }

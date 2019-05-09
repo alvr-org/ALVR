@@ -61,6 +61,29 @@
             this.connectedLabel = new MetroFramework.Controls.MetroLabel();
             this.messagePanel = new MetroFramework.Controls.MetroPanel();
             this.messageLabel = new MetroFramework.Controls.MetroLabel();
+            this.otherTab = new MetroFramework.Controls.MetroTabPage();
+            this.trackingFrameOffsetTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.metroLabel30 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel29 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel28 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel27 = new MetroFramework.Controls.MetroLabel();
+            this.refDisconnectCommandButton = new MetroFramework.Controls.MetroButton();
+            this.refConnectCommandButton = new MetroFramework.Controls.MetroButton();
+            this.disconnectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.connectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.offsetPosCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.offsetPosZTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.offsetPosYTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.offsetPosXTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.saveTrackingFrameOffsetButton = new MetroFramework.Controls.MetroButton();
+            this.sendOffsetPos = new MetroFramework.Controls.MetroButton();
+            this.metroLabel26 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel25 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel24 = new MetroFramework.Controls.MetroLabel();
+            this.force60HzCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.suppressFrameDropCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.onlySteamVRCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.fakeTrackingReferenceCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.controllerTab = new MetroFramework.Controls.MetroTabPage();
             this.enableControllerCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroLabel32 = new MetroFramework.Controls.MetroLabel();
@@ -74,6 +97,10 @@
             this.triggerComboBox = new MetroFramework.Controls.MetroComboBox();
             this.metroLabel21 = new MetroFramework.Controls.MetroLabel();
             this.videoTab = new MetroFramework.Controls.MetroTabPage();
+            this.heightTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.widthTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.metroLabel35 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel34 = new MetroFramework.Controls.MetroLabel();
             this.label3 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
@@ -100,28 +127,6 @@
             this.soundDeviceComboBox = new MetroFramework.Controls.MetroComboBox();
             this.defaultSoundDeviceCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.otherTab = new MetroFramework.Controls.MetroTabPage();
-            this.trackingFrameOffsetTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.metroLabel30 = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel29 = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel28 = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel27 = new MetroFramework.Controls.MetroLabel();
-            this.refDisconnectCommandButton = new MetroFramework.Controls.MetroButton();
-            this.refConnectCommandButton = new MetroFramework.Controls.MetroButton();
-            this.disconnectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.connectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.offsetPosCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.offsetPosZTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.offsetPosYTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.offsetPosXTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.saveTrackingFrameOffsetButton = new MetroFramework.Controls.MetroButton();
-            this.sendOffsetPos = new MetroFramework.Controls.MetroButton();
-            this.metroLabel26 = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel25 = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel24 = new MetroFramework.Controls.MetroLabel();
-            this.suppressFrameDropCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.onlySteamVRCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.fakeTrackingReferenceCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.debugTab = new MetroFramework.Controls.MetroTabPage();
             this.metroLabel5 = new MetroFramework.Controls.MetroLabel();
             this.logText = new MetroFramework.Controls.MetroTextBox();
@@ -153,7 +158,6 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.force60HzCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -161,11 +165,11 @@
             this.connectedPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).BeginInit();
             this.messagePanel.SuspendLayout();
+            this.otherTab.SuspendLayout();
             this.controllerTab.SuspendLayout();
             this.videoTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).BeginInit();
             this.soundTab.SuspendLayout();
-            this.otherTab.SuspendLayout();
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
@@ -218,7 +222,7 @@
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 4;
+            this.metroTabControl1.SelectedIndex = 3;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 396);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -541,7 +545,7 @@
             // 
             this.metroLabel32.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel32.AutoSize = true;
-            this.metroLabel32.Location = new System.Drawing.Point(462, -845);
+            this.metroLabel32.Location = new System.Drawing.Point(462, -993);
             this.metroLabel32.Name = "metroLabel32";
             this.metroLabel32.Size = new System.Drawing.Size(162, 38);
             this.metroLabel32.TabIndex = 10;
@@ -551,7 +555,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(216, -449);
+            this.metroLabel22.Location = new System.Drawing.Point(216, -597);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -640,6 +644,10 @@
             // 
             // videoTab
             // 
+            this.videoTab.Controls.Add(this.heightTextBox);
+            this.videoTab.Controls.Add(this.widthTextBox);
+            this.videoTab.Controls.Add(this.metroLabel35);
+            this.videoTab.Controls.Add(this.metroLabel34);
             this.videoTab.Controls.Add(this.label3);
             this.videoTab.Controls.Add(this.label2);
             this.videoTab.Controls.Add(this.label1);
@@ -668,6 +676,41 @@
             this.videoTab.TabIndex = 5;
             this.videoTab.Text = "Video";
             this.videoTab.VerticalScrollbarBarColor = true;
+            // 
+            // heightTextBox
+            // 
+            this.heightTextBox.Location = new System.Drawing.Point(314, 168);
+            this.heightTextBox.Name = "heightTextBox";
+            this.heightTextBox.Size = new System.Drawing.Size(75, 23);
+            this.heightTextBox.TabIndex = 11;
+            this.heightTextBox.Text = "1024";
+            this.heightTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.resolutionTextBox_KeyPress);
+            // 
+            // widthTextBox
+            // 
+            this.widthTextBox.Location = new System.Drawing.Point(193, 168);
+            this.widthTextBox.Name = "widthTextBox";
+            this.widthTextBox.Size = new System.Drawing.Size(75, 23);
+            this.widthTextBox.TabIndex = 11;
+            this.widthTextBox.Text = "2048";
+            // 
+            // metroLabel35
+            // 
+            this.metroLabel35.AutoSize = true;
+            this.metroLabel35.Location = new System.Drawing.Point(283, 168);
+            this.metroLabel35.Name = "metroLabel35";
+            this.metroLabel35.Size = new System.Drawing.Size(21, 19);
+            this.metroLabel35.TabIndex = 10;
+            this.metroLabel35.Text = "H:";
+            // 
+            // metroLabel34
+            // 
+            this.metroLabel34.AutoSize = true;
+            this.metroLabel34.Location = new System.Drawing.Point(161, 168);
+            this.metroLabel34.Name = "metroLabel34";
+            this.metroLabel34.Size = new System.Drawing.Size(25, 19);
+            this.metroLabel34.TabIndex = 10;
+            this.metroLabel34.Text = "W:";
             // 
             // label3
             // 
@@ -743,13 +786,15 @@
             // 
             this.resolutionComboBox.DataSource = this.resolutionBindingSource;
             this.resolutionComboBox.DisplayMember = "display";
+            this.resolutionComboBox.FontSize = MetroFramework.MetroLinkSize.Small;
             this.resolutionComboBox.FormattingEnabled = true;
-            this.resolutionComboBox.ItemHeight = 23;
-            this.resolutionComboBox.Location = new System.Drawing.Point(185, 163);
+            this.resolutionComboBox.ItemHeight = 19;
+            this.resolutionComboBox.Location = new System.Drawing.Point(413, 168);
             this.resolutionComboBox.Name = "resolutionComboBox";
-            this.resolutionComboBox.Size = new System.Drawing.Size(192, 29);
+            this.resolutionComboBox.Size = new System.Drawing.Size(240, 25);
             this.resolutionComboBox.TabIndex = 6;
             this.resolutionComboBox.ValueMember = "width";
+            this.resolutionComboBox.SelectedIndexChanged += new System.EventHandler(this.resolutionComboBox_SelectedIndexChanged);
             // 
             // resolutionBindingSource
             // 
@@ -1126,6 +1171,19 @@
             this.metroLabel24.TabIndex = 3;
             this.metroLabel24.Text = "Add fake base station for some games.";
             // 
+            // force60HzCheckBox
+            // 
+            this.force60HzCheckBox.AutoSize = true;
+            this.force60HzCheckBox.Checked = global::ALVR.Properties.Settings.Default.force60Hz;
+            this.force60HzCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "force60Hz", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.force60HzCheckBox.Location = new System.Drawing.Point(407, 101);
+            this.force60HzCheckBox.Name = "force60HzCheckBox";
+            this.force60HzCheckBox.Size = new System.Drawing.Size(81, 15);
+            this.force60HzCheckBox.TabIndex = 2;
+            this.force60HzCheckBox.Text = "Force 60Hz";
+            this.force60HzCheckBox.UseVisualStyleBackColor = true;
+            this.force60HzCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
+            // 
             // suppressFrameDropCheckBox
             // 
             this.suppressFrameDropCheckBox.AutoSize = true;
@@ -1484,19 +1542,6 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // force60HzCheckBox
-            // 
-            this.force60HzCheckBox.AutoSize = true;
-            this.force60HzCheckBox.Checked = global::ALVR.Properties.Settings.Default.force60Hz;
-            this.force60HzCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "force60Hz", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.force60HzCheckBox.Location = new System.Drawing.Point(407, 101);
-            this.force60HzCheckBox.Name = "force60HzCheckBox";
-            this.force60HzCheckBox.Size = new System.Drawing.Size(81, 15);
-            this.force60HzCheckBox.TabIndex = 2;
-            this.force60HzCheckBox.Text = "Force 60Hz";
-            this.force60HzCheckBox.UseVisualStyleBackColor = true;
-            this.force60HzCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
-            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -1521,6 +1566,8 @@
             this.connectedPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).EndInit();
             this.messagePanel.ResumeLayout(false);
+            this.otherTab.ResumeLayout(false);
+            this.otherTab.PerformLayout();
             this.controllerTab.ResumeLayout(false);
             this.controllerTab.PerformLayout();
             this.videoTab.ResumeLayout(false);
@@ -1528,8 +1575,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).EndInit();
             this.soundTab.ResumeLayout(false);
             this.soundTab.PerformLayout();
-            this.otherTab.ResumeLayout(false);
-            this.otherTab.PerformLayout();
             this.debugTab.ResumeLayout(false);
             this.debugTab.PerformLayout();
             this.aboutTab.ResumeLayout(false);
@@ -1658,6 +1703,10 @@
         private MetroFramework.Controls.MetroButton captureLayerDDSButton;
         private MetroFramework.Controls.MetroCheckBox defaultSoundDeviceCheckBox;
         private MetroFramework.Controls.MetroCheckBox force60HzCheckBox;
+        private MetroFramework.Controls.MetroTextBox heightTextBox;
+        private MetroFramework.Controls.MetroTextBox widthTextBox;
+        private MetroFramework.Controls.MetroLabel metroLabel35;
+        private MetroFramework.Controls.MetroLabel metroLabel34;
     }
 }
 

@@ -7,5 +7,5 @@ echo "Driver Removed"
 if "%1"=="/s" goto :end
 echo "SteamVR not located in C:\\Program Files (x86)\\Steam\\steamapps\\common\\SteamVR - Removal Failed"
 )
-:end
 pause
+:end

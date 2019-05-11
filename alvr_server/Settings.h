@@ -10,12 +10,12 @@
 static const char * const k_pch_Settings_Section = "driver_alvr_server";
 static const char * const k_pch_Settings_SerialNumber_String = "serialNumber";
 static const char * const k_pch_Settings_ModelNumber_String = "modelNumber";
+static const char * const k_pch_Settings_RefreshRate_Int32 = "refreshRate";
 static const char * const k_pch_Settings_RenderWidth_Int32 = "renderWidth";
 static const char * const k_pch_Settings_RenderHeight_Int32 = "renderHeight";
 static const char * const k_pch_Settings_EyeFov = "eyeFov";
 static const char * const k_pch_Settings_IPD_Float = "IPD";
 static const char * const k_pch_Settings_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
-static const char * const k_pch_Settings_DisplayFrequency_Float = "displayFrequency";
 static const char * const k_pch_Settings_ClientRecvBufferSize_Int32 = "clientRecvBufferSize";
 static const char * const k_pch_Settings_FrameQueueSize_Int32 = "frameQueueSize";
 
@@ -26,7 +26,6 @@ static const char * const k_pch_Settings_SoundDevice_String = "soundDevice";
 
 static const char * const k_pch_Settings_Codec_Int32 = "codec";
 static const char * const k_pch_Settings_EncoderOptions_String = "nvencOptions";
-static const char * const k_pch_Settings_EncodeFPS_Int32 = "encodeFPS";
 static const char * const k_pch_Settings_EncodeBitrateInMBits_Int32 = "encodeBitrateInMBits";
 static const char * const k_pch_Settings_DebugLog_Bool = "debugLog";
 static const char * const k_pch_Settings_DebugFrameIndex_Bool = "debugFrameIndex";
@@ -104,11 +103,11 @@ public:
 
 	int32_t m_nAdapterIndex;
 
+	int m_refreshRate;
 	int32_t m_renderWidth;
 	int32_t m_renderHeight;
 	EyeFov m_eyeFov[2];
 	float m_flSecondsFromVsyncToPhotons;
-	float m_flDisplayFrequency;
 	float m_flIPD;
 
 	bool m_enableSound;
@@ -116,7 +115,6 @@ public:
 
 	int m_codec;
 	std::string m_EncoderOptions;
-	int m_encodeFPS;
 	int m_encodeBitrateInMBits;
 
 	std::string m_Host;

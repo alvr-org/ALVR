@@ -158,7 +158,6 @@ namespace ALVR
                 driverConfig.adapterIndex = 0;
                 driverConfig.IPD = 0.063;
                 driverConfig.secondsFromVsyncToPhotons = 0.005;
-                driverConfig.displayFrequency = 60;
                 driverConfig.listenPort = 9944;
                 driverConfig.listenHost = "0.0.0.0";
                 driverConfig.sendingTimeslotUs = 500;
@@ -173,9 +172,9 @@ namespace ALVR
                 driverConfig.controllerSerialNumber = "ALVR Remote Controller";
 
                 driverConfig.codec = Properties.Settings.Default.codec; // 0: H264, 1: H265
-                driverConfig.encodeFPS = 60;
                 driverConfig.encodeBitrateInMBits = Properties.Settings.Default.bitrate;
 
+                driverConfig.refreshRate = 60;
                 driverConfig.renderWidth = Properties.Settings.Default.renderWidth;
                 driverConfig.renderHeight = Properties.Settings.Default.renderHeight;
 

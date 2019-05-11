@@ -273,17 +273,18 @@ public:
 		{
 			*pnX = Settings::Instance().m_renderWidth / 2;
 		}
-		Log(L"GetEyeOutputViewport %d %dx%d %dx%d", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
+		Log(L"GetEyeOutputViewport Eye=%d %dx%d %dx%d", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
 	}
 
 	virtual void GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom) override
 	{
-		*pfLeft = -tan(Settings::Instance().m_eyeFov[eEye].left / 180.0 * M_PI);
-		*pfRight = tan(Settings::Instance().m_eyeFov[eEye].right / 180.0 * M_PI);
-		*pfTop = -tan(Settings::Instance().m_eyeFov[eEye].top / 180.0 * M_PI);
-		*pfBottom = tan(Settings::Instance().m_eyeFov[eEye].bottom / 180.0 * M_PI);
+		auto eyeFov = Settings::Instance().m_eyeFov[eEye];
+		*pfLeft = -tan(eyeFov.left / 180.0 * M_PI);
+		*pfRight = tan(eyeFov.right / 180.0 * M_PI);
+		*pfTop = -tan(eyeFov.top / 180.0 * M_PI);
+		*pfBottom = tan(eyeFov.bottom / 180.0 * M_PI);
 
-		Log(L"GetProjectionRaw %d (l,t,r,b)=(%f,%f,%f,%f)", eEye, *pfLeft, *pfTop, *pfRight, *pfBottom);
+		Log(L"GetProjectionRaw Eye=%d (l,r,t,b)=(%f,%f,%f,%f)", eEye, eyeFov.left, eyeFov.right, eyeFov.top, eyeFov.bottom);
 	}
 
 	virtual vr::DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU, float fV) override
@@ -295,6 +296,7 @@ public:
 		coordinates.rfGreen[1] = fV;
 		coordinates.rfRed[0] = fU;
 		coordinates.rfRed[1] = fV;
+		Log(L"ComputeDistortion %f,%f", fU, fV);
 		return coordinates;
 	}
 };
@@ -813,7 +815,7 @@ public:
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, Settings::Instance().m_sModelNumber.c_str());
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserIpdMeters_Float, Settings::Instance().m_flIPD);
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, Settings::Instance().m_flDisplayFrequency);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().m_refreshRate));
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_SecondsFromVsyncToPhotons_Float, Settings::Instance().m_flSecondsFromVsyncToPhotons);
 
 		// return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
@@ -1007,7 +1009,7 @@ public:
 				, Settings::Instance().m_codec
 				, Settings::Instance().m_encodeBitrateInMBits
 				, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight
-				, Settings::Instance().m_encodeFPS
+				, Settings::Instance().m_refreshRate
 			);
 			m_Listener->SendCommandResponse(buf);
 		}else if(commandName == "SetConfig"){
@@ -1107,19 +1109,14 @@ public:
 
 	// When renderWidth and renderHeight are 0, use user specified size.
 	void OnNewClient(int refreshRate, int renderWidth, int renderHeight) {
-		m_refreshRate = refreshRate;
-
-		// LIMITATION: bitrate can only be changed when client is connecting.
-		Settings::Instance().m_flDisplayFrequency = refreshRate;
-		Settings::Instance().m_encodeFPS = refreshRate;
-		//Settings::Instance().m_renderWidth = renderWidth;
-		//Settings::Instance().m_renderHeight = renderHeight;
+		// LIMITATION: resolution and bitrate can only be changed when client is connecting.
+		Settings::Instance().m_refreshRate = refreshRate;
 
 		m_VSyncThread->SetRefreshRate(refreshRate);
 
 		//m_encoder->Reconfigure(refreshRate, renderWidth, renderHeight, Settings::Instance().m_encodeBitrateInMBits);
 
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, (float)m_refreshRate);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, (float)refreshRate);
 		// Insert IDR frame for faster startup of decoding.
 		m_encoder->OnClientConnected();
 	}
@@ -1147,8 +1144,6 @@ private:
 	std::shared_ptr<DirectModeComponent> m_directModeComponent;
 
 	std::shared_ptr<TrackingReference> m_trackingReference;
-
-	int m_refreshRate;
 };
 
 //-----------------------------------------------------------------------------

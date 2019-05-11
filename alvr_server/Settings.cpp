@@ -51,6 +51,14 @@ void Settings::Load()
 	m_renderWidth = (int32_t)v.get(k_pch_Settings_RenderWidth_Int32).get<int64_t>();
 	m_renderHeight = (int32_t)v.get(k_pch_Settings_RenderHeight_Int32).get<int64_t>();
 
+	picojson::array& eyeFov = v.get(k_pch_Settings_EyeFov).get<picojson::array>();
+	for (int eye = 0; eye < 2; eye++) {
+		m_eyeFov[eye].left = eyeFov[eye * 2 + 0].get<double>();
+		m_eyeFov[eye].right = eyeFov[eye * 2 + 1].get<double>();
+		m_eyeFov[eye].top = eyeFov[eye * 2 + 2].get<double>();
+		m_eyeFov[eye].bottom = eyeFov[eye * 2 + 3].get<double>();
+	}
+
 	m_enableSound = v.get(k_pch_Settings_EnableSound_Bool).get<bool>();
 	m_soundDevice = v.get(k_pch_Settings_SoundDevice_String).get<std::string>();
 
@@ -67,7 +75,6 @@ void Settings::Load()
 	m_nAdapterIndex = (int32_t)v.get(k_pch_Settings_AdapterIndex_Int32).get<int64_t>();
 
 	m_codec = (int32_t)v.get(k_pch_Settings_Codec_Int32).get<int64_t>();
-	m_EncoderOptions = v.get(k_pch_Settings_EncoderOptions_String).get<std::string>();
 	m_encodeFPS = (int)v.get(k_pch_Settings_EncodeFPS_Int32).get<int64_t>();
 	m_encodeBitrateInMBits = (int)v.get(k_pch_Settings_EncodeBitrateInMBits_Int32).get<int64_t>();
 

@@ -8,6 +8,8 @@
 static const int ALVR_MAX_PACKET_SIZE = 1400;
 static const int ALVR_REFRESH_RATE_LIST_SIZE = 4;
 
+static const char *ALVR_HELLO_PACKET_SIGNATURE = "ALVR";
+
 enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_HELLO_MESSAGE = 1,
 	ALVR_PACKET_TYPE_CONNECTION_MESSAGE = 2,
@@ -24,7 +26,7 @@ enum ALVR_PACKET_TYPE {
 };
 
 enum {
-	ALVR_PROTOCOL_VERSION = 19
+	ALVR_PROTOCOL_VERSION = 20
 };
 
 enum ALVR_CODEC {
@@ -37,15 +39,66 @@ enum ALVR_LOST_FRAME_TYPE {
 	ALVR_LOST_FRAME_TYPE_AUDIO = 1,
 };
 
+enum ALVR_DEVICE_TYPE {
+	ALVR_DEVICE_TYPE_UNKNOWN = 0,
+	ALVR_DEVICE_TYPE_OCULUS_MOBILE = 1,
+	ALVR_DEVICE_TYPE_DAYDREAM = 2,
+	ALVR_DEVICE_TYPE_CARDBOARD = 3,
+};
+
+enum ALVR_DEVICE_SUB_TYPE {
+	ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_GEARVR = 1,
+	ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_GO = 2,
+	ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_QUEST = 3,
+
+	ALVR_DEVICE_SUBTYPE_DAYDREAM_GENERIC = 1,
+	ALVR_DEVICE_SUBTYPE_DAYDREAM_MIRAGE_SOLO = 2,
+
+	ALVR_DEVICE_SUBTYPE_CARDBOARD_GENERIC = 1,
+};
+
+enum ALVR_DEVICE_CAPABILITY_FLAG {
+	ALVR_DEVICE_CAPABILITY_FLAG_HMD_6DOF = 1 << 0,
+};
+
+enum ALVR_CONTROLLER_CAPABILITY_FLAG {
+	ALVR_CONTROLLER_CAPABILITY_FLAG_ONE_CONTROLLER = 1 << 0,
+	ALVR_CONTROLLER_CAPABILITY_FLAG_TWO_CONTROLLERS = 1 << 1,
+	ALVR_CONTROLLER_CAPABILITY_FLAG_6DOF = 1 << 2,
+};
+
 #pragma pack(push, 1)
+// Represent FOV for each eye in degree.
+struct EyeFov {
+	float left;
+	float right;
+	float top;
+	float bottom;
+};
 // hello message
 struct HelloMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_HELLO_MESSAGE
+	char signature[4]; // Ascii string "ALVR". NOT null-terminated.
 	uint32_t version; // ALVR_PROTOCOL_VERSION
+
 	char deviceName[32]; // null-terminated
+
 	// List of supported refresh rate in priority order.
 	// High prio=first element. Empty element become 0.
 	uint8_t refreshRate[ALVR_REFRESH_RATE_LIST_SIZE];
+
+	uint16_t renderWidth;
+	uint16_t renderHeight;
+
+	// FOV of left and right eyes.
+	struct EyeFov eyeFov[2];
+
+	uint8_t deviceType; // enum ALVR_DEVICE_TYPE
+	uint8_t deviceSubType; // enum ALVR_DEVICE_SUB_TYPE
+	uint32_t deviceCapabilityFlags; // enum ALVR_DEVICE_CAPABILITY_FLAG
+
+	uint32_t controllerCapabilityFlags; // enum ALVR_CONTROLLER_CAPABILITY_FLAG
+
 };
 struct ConnectionMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_CONNECTION_MESSAGE

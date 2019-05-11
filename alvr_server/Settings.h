@@ -12,6 +12,7 @@ static const char * const k_pch_Settings_SerialNumber_String = "serialNumber";
 static const char * const k_pch_Settings_ModelNumber_String = "modelNumber";
 static const char * const k_pch_Settings_RenderWidth_Int32 = "renderWidth";
 static const char * const k_pch_Settings_RenderHeight_Int32 = "renderHeight";
+static const char * const k_pch_Settings_EyeFov = "eyeFov";
 static const char * const k_pch_Settings_IPD_Float = "IPD";
 static const char * const k_pch_Settings_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
 static const char * const k_pch_Settings_DisplayFrequency_Float = "displayFrequency";
@@ -105,6 +106,7 @@ public:
 
 	int32_t m_renderWidth;
 	int32_t m_renderHeight;
+	EyeFov m_eyeFov[2];
 	float m_flSecondsFromVsyncToPhotons;
 	float m_flDisplayFrequency;
 	float m_flIPD;

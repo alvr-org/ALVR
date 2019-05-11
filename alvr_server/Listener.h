@@ -58,7 +58,7 @@ public:
 	void SetPoseUpdatedCallback(std::function<void()> callback) {
 		m_PoseUpdatedCallback = callback;
 	}
-	void SetNewClientCallback(std::function<void(int)> callback) {
+	void SetNewClientCallback(std::function<void(int, int, int)> callback) {
 		m_NewClientCallback = callback;
 	}
 	void SetPacketLossCallback(std::function<void()> callback) {
@@ -290,6 +290,15 @@ public:
 		Log(L"Received packet. Type=%d", type);
 		if (type == ALVR_PACKET_TYPE_HELLO_MESSAGE && len >= sizeof(HelloMessage)) {
 			HelloMessage *message = (HelloMessage *)buf;
+
+			// Check signature
+			if (memcmp(message->signature, ALVR_HELLO_PACKET_SIGNATURE, sizeof(message->signature)) != 0)
+			{
+				// Non-ALVR packet or old version.
+				Log(L"Received packet with bad signature. sig=%08X", *(uint32_t *)message->signature);
+				return;
+			}
+
 			SanitizeDeviceName(message->deviceName);
 
 			if (message->version != ALVR_PROTOCOL_VERSION) {
@@ -297,9 +306,12 @@ public:
 				// We can't connect, but we should do PushRequest to notify user.
 			}
 
-			Log(L"Hello Message: %hs Version=%d Hz=%d,%d,%d,%d", message->deviceName, message->version
+			Log(L"Hello Message: %hs Version=%d Hz=%d,%d,%d,%d Size=%dx%d Device=%d-%d Caps=%X,%X", message->deviceName, message->version
 				, message->refreshRate[0], message->refreshRate[1]
-				, message->refreshRate[2], message->refreshRate[3]);
+				, message->refreshRate[2], message->refreshRate[3]
+				, message->renderWidth, message->renderHeight
+				, message->deviceType, message->deviceSubType
+				, message->deviceCapabilityFlags, message->controllerCapabilityFlags);
 
 			PushRequest(message, addr);
 		}
@@ -547,7 +559,7 @@ public:
 		memcpy(request.deviceName, message->deviceName, sizeof(request.deviceName));
 		request.timestamp = GetTimestampUs();
 		request.versionOk = message->version == ALVR_PROTOCOL_VERSION;
-
+		request.message = *message;
 
 		if (Settings::Instance().m_force60HZ) {
 			// Force 60Hz for workaround for Go's suttuer streaming.
@@ -594,12 +606,10 @@ public:
 			, "Connected %d\n"
 			"Client %s:%d\n"
 			"ClientName %s\n"
-			"RefreshRate %d\n"
 			"Streaming %d\n"
 			, m_Connected ? 1 : 0
 			, host, htons(addr.sin_port)
 			, m_clientDeviceName.c_str()
-			, m_clientRefreshRate
 			, m_Streaming);
 
 		return buf;
@@ -644,6 +654,19 @@ public:
 			if (it->address.sin_addr.S_un.S_addr == addr->sin_addr.S_un.S_addr && it->address.sin_port == addr->sin_port) {
 				m_clientRefreshRate = it->refreshRate;
 				m_clientDeviceName = it->deviceName;
+				if (it->message.deviceType == ALVR_DEVICE_TYPE_OCULUS_MOBILE &&
+					(it->message.deviceSubType == ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_GEARVR ||
+						it->message.deviceSubType == ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_GO)) {
+					// Use specified resolution on GearVR and Go.
+					m_clientRenderWidth = 0;
+					m_clientRenderHeight = 0;
+					Log("Temporary workaround to determine render size. Ignore client setting(%dx%d).", it->message.renderWidth, it->message.renderHeight);
+				}
+				else {
+					m_clientRenderWidth = it->message.renderWidth;
+					m_clientRenderHeight = it->message.renderHeight;
+					Log("Temporary workaround to determine render size. Overriden by %dx%d.", it->message.renderWidth, it->message.renderHeight);
+				}
 				found = true;
 				break;
 			}
@@ -653,7 +676,7 @@ public:
 	void Connect(const sockaddr_in *addr) {
 		Log(L"Connected to %hs refreshRate=%d", AddrPortToStr(addr).c_str(), m_clientRefreshRate);
 
-		m_NewClientCallback(m_clientRefreshRate);
+		m_NewClientCallback(m_clientRefreshRate, m_clientRenderWidth, m_clientRenderHeight);
 
 		m_Socket->SetClientAddr(addr);
 		m_Connected = true;
@@ -718,7 +741,7 @@ private:
 	std::function<void()> m_LauncherCallback;
 	std::function<void(std::string, std::string)> m_CommandCallback;
 	std::function<void()> m_PoseUpdatedCallback;
-	std::function<void(int)> m_NewClientCallback;
+	std::function<void(int, int, int)> m_NewClientCallback;
 	std::function<void()> m_PacketLossCallback;
 	TrackingInfo m_TrackingInfo;
 
@@ -736,11 +759,14 @@ private:
 		char deviceName[32];
 		bool versionOk;
 		uint32_t refreshRate;
+		HelloMessage message;
 	};
 	std::list<Request> m_Requests;
 
 	std::string m_clientDeviceName;
 	int m_clientRefreshRate;
+	int m_clientRenderWidth;
+	int m_clientRenderHeight;
 	TimeSync m_reportedStatistics;
 	uint64_t m_lastFecFailure = 0;
 	static const uint64_t CONTINUOUS_FEC_FAILURE = 60 * 1000 * 1000;

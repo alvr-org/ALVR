@@ -13,7 +13,7 @@ typedef std::function<void (amf::AMFData *)> AMFTextureReceiver;
 class AMFTextureEncoder {
 public:
 	AMFTextureEncoder(const amf::AMFContextPtr &amfContext
-		, int width, int height
+		, int codec, int width, int height, int refreshRate, int bitrateInMbits
 		, amf::AMF_SURFACE_FORMAT inputFormat
 		, AMFTextureReceiver receiver);
 	~AMFTextureEncoder();
@@ -53,10 +53,11 @@ class VideoEncoderVCE : public VideoEncoder
 {
 public:
 	VideoEncoderVCE(std::shared_ptr<CD3DRender> pD3DRender
-		, std::shared_ptr<Listener> listener, int width, int height);
+		, std::shared_ptr<Listener> listener);
 	~VideoEncoderVCE();
 
 	void Initialize();
+	void Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBit);
 	void Shutdown();
 
 	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR);
@@ -80,8 +81,11 @@ private:
 	std::shared_ptr<CD3DRender> m_d3dRender;
 	std::shared_ptr<Listener> m_Listener;
 
-	int m_width;
-	int m_height;
+	int m_codec;
+	int m_refreshRate;
+	int m_renderWidth;
+	int m_renderHeight;
+	int m_bitrateInMBits;
 
 	void ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR);
 	void SkipAUD(char **buffer, int *length);

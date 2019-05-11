@@ -11,16 +11,16 @@ const wchar_t *VideoEncoderVCE::FRAME_INDEX_PROPERTY = L"FrameIndexProperty";
 //
 
 AMFTextureEncoder::AMFTextureEncoder(const amf::AMFContextPtr &amfContext
-	, int width, int height
+	, int codec, int width, int height, int refreshRate, int bitrateInMbits
 	, amf::AMF_SURFACE_FORMAT inputFormat
 	, AMFTextureReceiver receiver) : m_receiver(receiver)
 {
 	const wchar_t *pCodec;
 
-	amf_int32 frameRateIn = Settings::Instance().m_encodeFPS;
-	amf_int64 bitRateIn = Settings::Instance().m_encodeBitrateInMBits * 1000000L; // in bits
+	amf_int32 frameRateIn = refreshRate;
+	amf_int64 bitRateIn = bitrateInMbits * 1000000L; // in bits
 
-	switch (Settings::Instance().m_codec) {
+	switch (codec) {
 	case ALVR_CODEC_H264:
 		pCodec = AMFVideoEncoderVCE_AVC;
 		break;
@@ -28,13 +28,13 @@ AMFTextureEncoder::AMFTextureEncoder(const amf::AMFContextPtr &amfContext
 		pCodec = AMFVideoEncoder_HEVC;
 		break;
 	default:
-		throw MakeException(L"Unsupported video encoding %d", Settings::Instance().m_codec);
+		throw MakeException(L"Unsupported video encoding %d", codec);
 	}
 
 	// Create encoder component.
 	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateComponent(amfContext, pCodec, &m_amfEncoder));
 
-	if (Settings::Instance().m_codec == ALVR_CODEC_H264)
+	if (codec == ALVR_CODEC_H264)
 	{
 		m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_USAGE, AMF_VIDEO_ENCODER_USAGE_ULTRA_LOW_LATENCY);
 
@@ -213,11 +213,14 @@ void AMFTextureConverter::Run()
 //
 
 VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
-	, std::shared_ptr<Listener> listener, int width, int height)
+	, std::shared_ptr<Listener> listener)
 	: m_d3dRender(d3dRender)
 	, m_Listener(listener)
-	, m_width(width)
-	, m_height(height)
+	, m_codec(Settings::Instance().m_codec)
+	, m_refreshRate(Settings::Instance().m_encodeFPS)
+	, m_renderWidth(Settings::Instance().m_renderWidth)
+	, m_renderHeight(Settings::Instance().m_renderHeight)
+	, m_bitrateInMBits(Settings::Instance().m_encodeBitrateInMBits)
 {
 }
 
@@ -235,10 +238,10 @@ void VideoEncoderVCE::Initialize()
 	AMF_THROW_IF(m_amfContext->InitDX11(m_d3dRender->GetDevice()));
 
 	m_encoder = std::make_shared<AMFTextureEncoder>(m_amfContext
-		, m_width, m_height
+		, m_codec, m_renderWidth, m_renderHeight, m_refreshRate, m_bitrateInMBits
 		, ENCODER_INPUT_FORMAT, std::bind(&VideoEncoderVCE::Receive, this, std::placeholders::_1));
 	m_converter = std::make_shared<AMFTextureConverter>(m_amfContext
-		, m_width, m_height
+		, m_renderWidth, m_renderHeight
 		, CONVERTER_INPUT_FORMAT, ENCODER_INPUT_FORMAT
 		, std::bind(&AMFTextureEncoder::Submit, m_encoder.get(), std::placeholders::_1));
 
@@ -260,6 +263,45 @@ void VideoEncoderVCE::Initialize()
 	Log(L"Successfully initialized VideoEncoderVCE.");
 }
 
+void VideoEncoderVCE::Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits)
+{
+	if ((refreshRate != 0 && refreshRate != m_refreshRate) ||
+		(renderWidth != 0 && renderWidth != m_renderWidth) ||
+		(renderHeight != 0 && renderHeight != m_renderHeight) ||
+		(bitrateInMBits != 0 && bitrateInMBits != m_bitrateInMBits)) {
+
+		Log(L"VideoEncoderVCE: Start to reconfigure. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)"
+			, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
+			, refreshRate, renderWidth, renderHeight, bitrateInMBits
+		);
+
+		try {
+			Shutdown();
+
+			if (refreshRate != 0) {
+				m_refreshRate = refreshRate;
+			}
+			if (renderWidth != 0) {
+				m_renderWidth = renderWidth;
+			}
+			if (renderHeight != 0) {
+				m_renderHeight = renderHeight;
+			}
+			if (bitrateInMBits != 0) {
+				m_bitrateInMBits = bitrateInMBits;
+			}
+
+			Initialize();
+		}
+		catch (Exception &e) {
+			FatalLog(L"VideoEncoderVCE: Failed to reconfigure. %hs"
+				, e.what()
+			);
+			return;
+		}
+ 	}
+}
+
 void VideoEncoderVCE::Shutdown()
 {
 	Log(L"Shutting down VideoEncoderVCE.");
@@ -279,7 +321,7 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 {
 	amf::AMFSurfacePtr surface;
 	// Surface is cached by AMF.
-	AMF_THROW_IF(m_amfContext->AllocSurface(amf::AMF_MEMORY_DX11, CONVERTER_INPUT_FORMAT, m_width, m_height, &surface));
+	AMF_THROW_IF(m_amfContext->AllocSurface(amf::AMF_MEMORY_DX11, CONVERTER_INPUT_FORMAT, m_renderWidth, m_renderHeight, &surface));
 	ID3D11Texture2D *textureDX11 = (ID3D11Texture2D*)surface->GetPlaneAt(0)->GetNative(); // no reference counting - do not Release()
 	m_d3dRender->GetContext()->CopyResource(textureDX11, pTexture);
 
@@ -324,7 +366,7 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 }
 
 void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR) {
-	switch (Settings::Instance().m_codec) {
+	switch (m_codec) {
 	case ALVR_CODEC_H264:
 		// Disable AUD (NAL Type 9) to produce the same stream format as VideoEncoderNVENC.
 		surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_AUD, false);
@@ -354,7 +396,7 @@ void VideoEncoderVCE::SkipAUD(char **buffer, int *length) {
 	// H.265 encoder always produces AUD NAL even if AMF_VIDEO_ENCODER_HEVC_INSERT_AUD is set. But it is not needed.
 	static const int AUD_NAL_SIZE = 7;
 
-	if (Settings::Instance().m_codec != ALVR_CODEC_H265) {
+	if (m_codec != ALVR_CODEC_H265) {
 		return;
 	}
 

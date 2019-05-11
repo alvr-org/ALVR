@@ -370,5 +370,16 @@ namespace ALVR.Properties {
                 this["renderHeight"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        public double[] eyeFov {
+            get {
+                return ((double[])(this["eyeFov"]));
+            }
+            set {
+                this["eyeFov"] = value;
+            }
+        }
     }
 }

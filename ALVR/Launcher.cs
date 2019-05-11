@@ -786,6 +786,7 @@ namespace ALVR
             var resolution = (ServerConfig.Resolution) resolutionComboBox.SelectedItem;
             widthTextBox.Text = resolution.width.ToString();
             heightTextBox.Text = resolution.height.ToString();
+            Properties.Settings.Default.eyeFov = resolution.eyeFov.eyeFov;
             SaveSettings();
         }
     }

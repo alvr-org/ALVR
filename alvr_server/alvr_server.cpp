@@ -75,8 +75,7 @@ namespace
 			Exception nvencException;
 			try {
 				Log(L"Try to use VideoEncoderVCE.");
-				m_videoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, listener
-					, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
+				m_videoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, listener);
 				m_videoEncoder->Initialize();
 				return;
 			}
@@ -162,6 +161,10 @@ namespace
 		void OnPacketLoss() {
 			m_scheduler.OnPacketLoss();
 		}
+
+		void Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits) {
+			m_videoEncoder->Reconfigure(refreshRate, renderWidth, renderHeight, bitrateInMBits);
+		}
 	private:
 		CThreadEvent m_newFrameReady, m_encodeFinished;
 		std::shared_ptr<VideoEncoder> m_videoEncoder;
@@ -188,17 +191,17 @@ public:
 
 	// Trigger VSync if elapsed time from previous VSync is larger than 30ms.
 	void Run()override {
-		static int INTERVAL = 30 * 1000;
 		while (!m_bExit) {
 			uint64_t current = GetTimestampUs();
 
-			if (current - m_PreviousVsync < INTERVAL - 2000) {
-				int sleepTime = (int)((m_PreviousVsync + INTERVAL) - current) / 1000;
+			int interval = (1000 / m_refreshRate * 1000);
+			if (current - m_PreviousVsync < interval - 2000) {
+				int sleepTime = (int)((m_PreviousVsync + interval) - current) / 1000;
 				Log(L"Skip VSync Event. Sleep %llu ms", sleepTime);
 				Sleep(sleepTime);
 			}
 			else {
-				Log(L"Generate VSync Event");
+				Log(L"Generate VSync Event by VSyncThread");
 				vr::VRServerDriverHost()->VsyncEvent(0);
 				m_PreviousVsync = GetTimestampUs();
 			}
@@ -210,13 +213,18 @@ public:
 	}
 
 	void InsertVsync() {
-		Log(L"Insert VSync Event");
-		vr::VRServerDriverHost()->VsyncEvent(0);
-		m_PreviousVsync = GetTimestampUs();
+		Log(L"Insert VSync Event (Ignore)");
+		//vr::VRServerDriverHost()->VsyncEvent(0);
+		//m_PreviousVsync = GetTimestampUs();
+	}
+
+	void SetRefreshRate(int refreshRate) {
+		m_refreshRate = refreshRate;
 	}
 private:
 	bool m_bExit;
 	uint64_t m_PreviousVsync;
+	int m_refreshRate = 60;
 };
 
 class DisplayComponent : public vr::IVRDisplayComponent
@@ -270,12 +278,12 @@ public:
 
 	virtual void GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom) override
 	{
-		*pfLeft = -1.0;
-		*pfRight = 1.0;
-		*pfTop = -1.0;
-		*pfBottom = 1.0;
+		*pfLeft = -tan(Settings::Instance().m_eyeFov[eEye].left / 180.0 * M_PI);
+		*pfRight = tan(Settings::Instance().m_eyeFov[eEye].right / 180.0 * M_PI);
+		*pfTop = -tan(Settings::Instance().m_eyeFov[eEye].top / 180.0 * M_PI);
+		*pfBottom = tan(Settings::Instance().m_eyeFov[eEye].bottom / 180.0 * M_PI);
 
-		Log(L"GetProjectionRaw %d", eEye);
+		Log(L"GetProjectionRaw %d (l,t,r,b)=(%f,%f,%f,%f)", eEye, *pfLeft, *pfTop, *pfRight, *pfBottom);
 	}
 
 	virtual vr::DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU, float fV) override
@@ -538,8 +546,8 @@ public:
 		m_submitLayer = 0;
 
 		if (m_prevSubmitFrameIndex == m_submitFrameIndex) {
-			Log(L"Discard duplicated frame. FrameIndex=%llu", m_submitFrameIndex);
-			return;
+			Log(L"Discard duplicated frame. FrameIndex=%llu (Ignoring)", m_submitFrameIndex);
+			//return;
 		}
 
 		ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
@@ -722,7 +730,7 @@ public:
 		std::function<void()> launcherCallback = [&]() { Enable(); };
 		std::function<void(std::string, std::string)> commandCallback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
-		std::function<void(int)> newClientCallback = [&](int refreshRate) { OnNewClient(refreshRate); };
+		std::function<void(int, int, int)> newClientCallback = [&](int refreshRate, int renderWidth, int renderHeight) { OnNewClient(refreshRate, renderWidth, renderHeight); };
 		std::function<void()> packetLossCallback = [&]() { OnPacketLoss(); };
 
 		m_Listener->SetLauncherCallback(launcherCallback);
@@ -966,7 +974,7 @@ public:
 			m_Listener->SendCommandResponse("OK\n");
 		}
 		else if (commandName == "GetConfig") {
-			char buf[1000];
+			char buf[4000];
 			snprintf(buf, sizeof(buf)
 				, "%s"
 				"%s %d\n"
@@ -981,7 +989,9 @@ public:
 				"%s %d\n"
 				"GPU %s\n"
 				"Codec %d\n"
-				"Bitrate %dMbps"
+				"Bitrate %dMbps\n"
+				"Resolution %dx%d\n"
+				"RefreshRate %d\n"
 				, m_Listener->DumpConfig().c_str()
 				, k_pch_Settings_DebugLog_Bool, Settings::Instance().m_DebugLog
 				, k_pch_Settings_DebugFrameIndex_Bool, Settings::Instance().m_DebugFrameIndex
@@ -996,6 +1006,8 @@ public:
 				, ToUTF8(m_adapterName).c_str() // TODO: Proper treatment of UNICODE. Sanitizing.
 				, Settings::Instance().m_codec
 				, Settings::Instance().m_encodeBitrateInMBits
+				, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight
+				, Settings::Instance().m_encodeFPS
 			);
 			m_Listener->SendCommandResponse(buf);
 		}else if(commandName == "SetConfig"){
@@ -1093,8 +1105,19 @@ public:
 		}
 	}
 
-	void OnNewClient(int refreshRate) {
+	// When renderWidth and renderHeight are 0, use user specified size.
+	void OnNewClient(int refreshRate, int renderWidth, int renderHeight) {
 		m_refreshRate = refreshRate;
+
+		// LIMITATION: bitrate can only be changed when client is connecting.
+		Settings::Instance().m_flDisplayFrequency = refreshRate;
+		Settings::Instance().m_encodeFPS = refreshRate;
+		//Settings::Instance().m_renderWidth = renderWidth;
+		//Settings::Instance().m_renderHeight = renderHeight;
+
+		m_VSyncThread->SetRefreshRate(refreshRate);
+
+		//m_encoder->Reconfigure(refreshRate, renderWidth, renderHeight, Settings::Instance().m_encodeBitrateInMBits);
 
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, (float)m_refreshRate);
 		// Insert IDR frame for faster startup of decoding.

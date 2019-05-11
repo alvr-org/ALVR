@@ -9,7 +9,13 @@ VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	, m_nFrame(0)
 	, m_Listener(listener)
 	, m_useNV12(useNV12)
+	, m_codec(Settings::Instance().m_codec)
+	, m_refreshRate(Settings::Instance().m_encodeFPS)
+	, m_renderWidth(Settings::Instance().m_renderWidth)
+	, m_renderHeight(Settings::Instance().m_renderHeight)
+	, m_bitrateInMBits(Settings::Instance().m_encodeBitrateInMBits)
 {
+	
 }
 
 VideoEncoderNVENC::~VideoEncoderNVENC()
@@ -17,8 +23,6 @@ VideoEncoderNVENC::~VideoEncoderNVENC()
 
 void VideoEncoderNVENC::Initialize()
 {
-	NvEncoderInitParam EncodeCLIOptions(Settings::Instance().m_EncoderOptions.c_str());
-
 	//
 	// Initialize Encoder
 	//
@@ -28,7 +32,7 @@ void VideoEncoderNVENC::Initialize()
 		format = NV_ENC_BUFFER_FORMAT_NV12;
 	}
 
-	Log(L"Initializing CNvEncoder. Width=%d Height=%d Format=%d (useNV12:%d)", Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight
+	Log(L"Initializing CNvEncoder. Width=%d Height=%d Format=%d (useNV12:%d)", m_renderWidth, m_renderHeight
 		, format, m_useNV12);
 
 	if (m_useNV12) {
@@ -36,14 +40,14 @@ void VideoEncoderNVENC::Initialize()
 			throw MakeException(L"Failed to load nvcuda.dll. Please check if NVIDIA graphic driver is installed.");
 		}
 		try {
-			m_Converter = std::make_shared<CudaConverter>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
+			m_Converter = std::make_shared<CudaConverter>(m_pD3DRender->GetDevice(), m_renderWidth, m_renderHeight);
 		}
 		catch (Exception e) {
 			throw MakeException(L"Exception:%s", e.what());
 		}
 
 		try {
-			m_NvNecoder = std::make_shared<NvEncoderCuda>(m_Converter->GetContext(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
+			m_NvNecoder = std::make_shared<NvEncoderCuda>(m_Converter->GetContext(), m_renderWidth, m_renderHeight, format, 0);
 		}
 		catch (NVENCException e) {
 			throw MakeException(L"NvEnc NvEncoderCuda failed. Code=%d %hs", e.getErrorCode(), e.what());
@@ -51,7 +55,7 @@ void VideoEncoderNVENC::Initialize()
 	}
 	else {
 		try {
-			m_NvNecoder = std::make_shared<NvEncoderD3D11>(m_pD3DRender->GetDevice(), Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight, format, 0);
+			m_NvNecoder = std::make_shared<NvEncoderD3D11>(m_pD3DRender->GetDevice(), m_renderWidth, m_renderHeight, format, 0);
 		}
 		catch (NVENCException e) {
 			throw MakeException(L"NvEnc NvEncoderD3D11 failed. Code=%d %hs", e.getErrorCode(), e.what());
@@ -62,20 +66,25 @@ void VideoEncoderNVENC::Initialize()
 	NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
 
 	initializeParams.encodeConfig = &encodeConfig;
-	GUID EncoderGUID = Settings::Instance().m_codec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
-	m_NvNecoder->CreateDefaultEncoderParams(&initializeParams, EncoderGUID, EncodeCLIOptions.GetPresetGUID());
+	GUID EncoderGUID = m_codec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
+	m_NvNecoder->CreateDefaultEncoderParams(&initializeParams, EncoderGUID, NV_ENC_PRESET_LOW_LATENCY_HQ_GUID);
 
-	if (Settings::Instance().m_codec == ALVR_CODEC_H264) {
+	if (m_codec == ALVR_CODEC_H264) {
 		initializeParams.encodeConfig->encodeCodecConfig.h264Config.repeatSPSPPS = 1;
 	}
 	else {
 		initializeParams.encodeConfig->encodeCodecConfig.hevcConfig.repeatSPSPPS = 1;
 	}
 
-	EncodeCLIOptions.SetInitParams(&initializeParams, format);
+	initializeParams.encodeConfig->rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;
+	initializeParams.frameRateNum = m_refreshRate;
+	initializeParams.encodeConfig->rcParams.maxBitRate =
+		initializeParams.encodeConfig->rcParams.averageBitRate = m_bitrateInMBits * 1000 * 1000;
+	// Disable automatic IDR insertion by NVENC. We need to manually insert IDR when packet is dropped.
+	initializeParams.encodeConfig->gopLength = NVENC_INFINITE_GOPLENGTH;
 
-	std::string parameterDesc = EncodeCLIOptions.FullParamToString(&initializeParams);
-	Log(L"NvEnc Encoder Parameters:\n%hs", parameterDesc.c_str());
+	//initializeParams.maxEncodeWidth = 3840;
+	//initializeParams.maxEncodeHeight = 2160;
 
 	try {
 		m_NvNecoder->CreateEncoder(&initializeParams);
@@ -102,18 +111,92 @@ void VideoEncoderNVENC::Initialize()
 	Log(L"CNvEncoder is successfully initialized.");
 }
 
+void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits)
+{
+	if ((refreshRate != 0 && refreshRate != m_refreshRate) ||
+		(renderWidth != 0 && renderWidth != m_renderWidth) ||
+		(renderHeight != 0 && renderHeight != m_renderHeight) ||
+		(bitrateInMBits != 0 && bitrateInMBits != m_bitrateInMBits)) {
+		NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
+		NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
+
+		reconfigureParams.resetEncoder = 1; // Needed?
+		reconfigureParams.forceIDR = 1;
+		reconfigureParams.reInitEncodeParams.version = NV_ENC_INITIALIZE_PARAMS_VER;
+		reconfigureParams.reInitEncodeParams.encodeConfig = &encodeConfig;
+
+		GUID EncoderGUID = m_codec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
+
+		m_NvNecoder->CreateDefaultEncoderParams(&reconfigureParams.reInitEncodeParams, EncoderGUID, NV_ENC_PRESET_LOW_LATENCY_HQ_GUID);
+
+		if (m_codec == ALVR_CODEC_H264) {
+			reconfigureParams.reInitEncodeParams.encodeConfig->encodeCodecConfig.h264Config.repeatSPSPPS = 1;
+		}
+		else {
+			reconfigureParams.reInitEncodeParams.encodeConfig->encodeCodecConfig.hevcConfig.repeatSPSPPS = 1;
+		}
+
+		reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;
+		reconfigureParams.reInitEncodeParams.frameRateNum = refreshRate;
+		reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.maxBitRate =
+			reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.averageBitRate = bitrateInMBits * 1000 * 1000;
+		// Disable automatic IDR insertion by NVENC. We need to manually insert IDR when packet is dropped.
+		reconfigureParams.reInitEncodeParams.encodeConfig->gopLength = NVENC_INFINITE_GOPLENGTH;
+
+		reconfigureParams.reInitEncodeParams.encodeWidth = reconfigureParams.reInitEncodeParams.darWidth =
+			reconfigureParams.reInitEncodeParams.maxEncodeWidth = renderWidth;
+		reconfigureParams.reInitEncodeParams.encodeHeight = reconfigureParams.reInitEncodeParams.darHeight =
+			reconfigureParams.reInitEncodeParams.maxEncodeHeight = renderHeight;
+
+		bool ret = false;
+		try {
+			ret = m_NvNecoder->Reconfigure(&reconfigureParams);
+		}
+		catch (NVENCException e) {
+			FatalLog(L"NvEnc Reconfigure failed with exception. Code=%d %hs. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)", e.getErrorCode(), e.what()
+				, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
+				, refreshRate, renderWidth, renderHeight, bitrateInMBits
+			);
+			return;
+		}
+		if (!ret) {
+			FatalLog(L"NvEnc Reconfigure failed. Return code=%d. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)", ret
+				, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
+				, refreshRate, renderWidth, renderHeight, bitrateInMBits
+			);
+			return;
+		}
+		Log(L"NvEnc Reconfigure succeeded. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)"
+			, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
+			, refreshRate, renderWidth, renderHeight, bitrateInMBits
+		);
+
+		if (refreshRate != 0) {
+			m_refreshRate = refreshRate;
+		}
+		if (renderWidth != 0) {
+			m_renderWidth = renderWidth;
+		}
+		if (renderHeight != 0) {
+			m_renderHeight = renderHeight;
+		}
+		if (bitrateInMBits != 0) {
+			m_bitrateInMBits = bitrateInMBits;
+		}
+	}
+}
+
 void VideoEncoderNVENC::Shutdown()
 {
 	std::vector<std::vector<uint8_t>> vPacket;
 	m_NvNecoder->EndEncode(vPacket);
+
 	for (std::vector<uint8_t> &packet : vPacket)
 	{
 		if (fpOut) {
 			fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 		}
-		m_Listener->SendVideo(packet.data(), (int)packet.size(), 0);
 	}
-
 	m_NvNecoder->DestroyEncoder();
 	m_NvNecoder.reset();
 

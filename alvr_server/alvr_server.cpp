@@ -154,8 +154,8 @@ namespace
 			m_encodeFinished.Wait();
 		}
 
-		void OnClientConnected() {
-			m_scheduler.OnClientConnected();
+		void OnStreamStart() {
+			m_scheduler.OnStreamStart();
 		}
 
 		void OnPacketLoss() {
@@ -191,20 +191,27 @@ public:
 
 	// Trigger VSync if elapsed time from previous VSync is larger than 30ms.
 	void Run()override {
+		m_PreviousVsync = 0;
+
 		while (!m_bExit) {
 			uint64_t current = GetTimestampUs();
+			uint64_t interval = 1000 * 1000 / m_refreshRate;
 
-			int interval = (1000 / m_refreshRate * 1000);
-			if (current - m_PreviousVsync < interval - 2000) {
-				int sleepTime = (int)((m_PreviousVsync + interval) - current) / 1000;
-				Log(L"Skip VSync Event. Sleep %llu ms", sleepTime);
-				Sleep(sleepTime);
+			if (m_PreviousVsync + interval > current) {
+				uint64_t sleepTimeMs = (m_PreviousVsync + interval - current) / 1000;
+
+				if (sleepTimeMs > 0) {
+					Log(L"Sleep %llu ms for next VSync.", sleepTimeMs);
+					Sleep(sleepTimeMs);
+				}
+
+				m_PreviousVsync += interval;
 			}
 			else {
-				Log(L"Generate VSync Event by VSyncThread");
-				vr::VRServerDriverHost()->VsyncEvent(0);
-				m_PreviousVsync = GetTimestampUs();
+				m_PreviousVsync = current;
 			}
+			Log(L"Generate VSync Event by VSyncThread");
+			vr::VRServerDriverHost()->VsyncEvent(0);
 		}
 	}
 
@@ -552,6 +559,11 @@ public:
 			//return;
 		}
 
+		if (!m_Listener->IsStreaming()) {
+			Log(L"Discard frame because isStreaming=false. FrameIndex=%llu", m_submitFrameIndex);
+			return;
+		}
+
 		ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
 		if (!pSyncTexture)
 		{
@@ -733,12 +745,14 @@ public:
 		std::function<void(std::string, std::string)> commandCallback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
 		std::function<void(int, int, int)> newClientCallback = [&](int refreshRate, int renderWidth, int renderHeight) { OnNewClient(refreshRate, renderWidth, renderHeight); };
+		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
 		std::function<void()> packetLossCallback = [&]() { OnPacketLoss(); };
 
 		m_Listener->SetLauncherCallback(launcherCallback);
 		m_Listener->SetCommandCallback(commandCallback);
 		m_Listener->SetPoseUpdatedCallback(poseCallback);
 		m_Listener->SetNewClientCallback(newClientCallback);
+		m_Listener->SetStreamStartCallback(streamStartCallback);
 		m_Listener->SetPacketLossCallback(packetLossCallback);
 
 		Log(L"CRemoteHmd successfully initialized.");
@@ -1117,8 +1131,11 @@ public:
 		//m_encoder->Reconfigure(refreshRate, renderWidth, renderHeight, Settings::Instance().m_encodeBitrateInMBits);
 
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, (float)refreshRate);
+	}
+
+	void OnStreamStart() {
 		// Insert IDR frame for faster startup of decoding.
-		m_encoder->OnClientConnected();
+		m_encoder->OnStreamStart();
 	}
 
 	void OnPacketLoss() {

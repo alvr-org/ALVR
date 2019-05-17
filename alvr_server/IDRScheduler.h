@@ -11,7 +11,7 @@ public:
 
 	void OnPacketLoss();
 
-	void OnClientConnected();
+	void OnStreamStart();
 
 	bool CheckIDRInsertion();
 private:

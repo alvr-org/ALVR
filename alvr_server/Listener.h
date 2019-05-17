@@ -61,6 +61,9 @@ public:
 	void SetNewClientCallback(std::function<void(int, int, int)> callback) {
 		m_NewClientCallback = callback;
 	}
+	void SetStreamStartCallback(std::function<void()> callback) {
+		m_StreamStartCallback = callback;
+	}
 	void SetPacketLossCallback(std::function<void()> callback) {
 		m_PacketLossCallback = callback;
 	}
@@ -132,7 +135,7 @@ public:
 		}
 	}
 
-	void FECSend(uint8_t *buf, int len, uint64_t frameIndex) {
+	void FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex) {
 		int shardPackets = CalculateFECShardPackets(len, m_fecPercentage);
 
 		int blockSize = shardPackets * ALVR_MAX_VIDEO_BUFFER_SIZE;
@@ -173,8 +176,11 @@ public:
 		uint8_t *payload = packetBuffer + sizeof(VideoFrame);
 		int dataRemain = len;
 
+		Log(L"Sending video frame. trackingFrameIndex=%llu videoFrameIndex=%llu size=%d", frameIndex, videoFrameIndex, len);
+
 		header->type = ALVR_PACKET_TYPE_VIDEO_FRAME;
-		header->frameIndex = frameIndex;
+		header->trackingFrameIndex = frameIndex;
+		header->videoFrameIndex = videoFrameIndex;
 		header->sentTime = GetTimestampUs();
 		header->frameByteSize = len;
 		header->fecIndex = 0;
@@ -224,9 +230,10 @@ public:
 			Log(L"Skip sending packet because streaming is off.");
 			return;
 		}
-		Log(L"Sending %d bytes FrameIndex=%llu", len, frameIndex);
+		Log(L"Sending %d bytes FrameIndex=%llu VideoFrameIndex=%llu", len, frameIndex, mVideoFrameIndex);
 
-		FECSend(buf, len, frameIndex);
+		FECSend(buf, len, frameIndex, mVideoFrameIndex);
+		mVideoFrameIndex++;
 	}
 
 	void SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
@@ -380,6 +387,7 @@ public:
 			if (streamControl->mode == 1) {
 				Log(L"Stream control message: Start stream.");
 				m_Streaming = true;
+				m_StreamStartCallback();
 			}
 			else if (streamControl->mode == 2) {
 				Log(L"Stream control message: Stop stream.");
@@ -721,6 +729,10 @@ public:
 	std::shared_ptr<Statistics> GetStatistics() {
 		return m_Statistics;
 	}
+
+	bool IsStreaming() {
+		return m_Streaming;
+	}
 private:
 	bool m_bExiting;
 	bool m_Enabled;
@@ -742,6 +754,7 @@ private:
 	std::function<void(std::string, std::string)> m_CommandCallback;
 	std::function<void()> m_PoseUpdatedCallback;
 	std::function<void(int, int, int)> m_NewClientCallback;
+	std::function<void()> m_StreamStartCallback;
 	std::function<void()> m_PacketLossCallback;
 	TrackingInfo m_TrackingInfo;
 
@@ -773,4 +786,6 @@ private:
 	static const int INITIAL_FEC_PERCENTAGE = 5;
 	static const int MAX_FEC_PERCENTAGE = 30;
 	int m_fecPercentage = INITIAL_FEC_PERCENTAGE;
+
+	uint64_t mVideoFrameIndex = 1;
 };

@@ -252,8 +252,8 @@ public:
 			}
 
 			// Back button
-			if ((m_previousFlags & TrackingInfo::FLAG_CONTROLLER_BACK) != (info.flags & TrackingInfo::FLAG_CONTROLLER_BACK)) {
-				bool value = (info.flags & TrackingInfo::FLAG_CONTROLLER_BACK) != 0;
+			if ((m_previousButtons & TrackingInfo::CONTROLLER_BUTTON_BACK) != (info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_BACK)) {
+				bool value = (info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_BACK) != 0;
 				if (backButton != -1) {
 					vr::VRDriverInput()->UpdateBooleanComponent(m_handles[backButton], value, 0.0);
 					if (backButton == INPUT_TRIGGER_CLICK) {

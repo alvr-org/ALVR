@@ -30,7 +30,7 @@ void IDRScheduler::OnPacketLoss()
 	}
 }
 
-void IDRScheduler::OnClientConnected()
+void IDRScheduler::OnStreamStart()
 {
 	IPCCriticalSectionLock lock(m_IDRCS);
 	// Force insert IDR-frame

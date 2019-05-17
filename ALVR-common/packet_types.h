@@ -139,7 +139,7 @@ struct TrackingInfo {
 	static const int FLAG_CONTROLLER_LEFTHAND = (1 << 9); // 0: Left hand, 1: Right hand
 	static const int FLAG_CONTROLLER_OCULUSGO = (1 << 10); // 0: Gear VR, 1: Oculus Go
 	static const int FLAG_CONTROLLER_TRACKPAD_TOUCH = (1 << 11); // 0: Not touched, 1: Touched
-	static const int FLAG_CONTROLLER_BACK = (1 << 12);
+	// static const int FLAG_CONTROLLER_BACK = (1 << 12);
 	static const int FLAG_CONTROLLER_VOLUME_UP = (1 << 13);
 	static const int FLAG_CONTROLLER_VOLUME_DOWN = (1 << 14);
 	uint32_t flags;
@@ -215,7 +215,10 @@ struct ChangeSettings {
 struct VideoFrame {
 	uint32_t type; // ALVR_PACKET_TYPE_VIDEO_FRAME
 	uint32_t packetCounter;
-	uint64_t frameIndex;
+	uint64_t trackingFrameIndex;
+	// FEC decoder needs some value for identify video frame number to detect new frame.
+	// trackingFrameIndex becomes sometimes same value as previous video frame (in case of low tracking rate).
+	uint64_t videoFrameIndex;
 	uint64_t sentTime;
 	uint32_t frameByteSize;
 	uint32_t fecIndex;

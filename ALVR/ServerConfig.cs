@@ -25,8 +25,10 @@ namespace ALVR
             }
         }
         public static readonly EyeFov EYE_FOV_GEARVR = new EyeFov(new double[] { 45, 45, 45, 45, 45, 45, 45, 45 });
+        //public static readonly EyeFov EYE_FOV_DAYDREAMVIEW = new EyeFov(new double[] { 53, 45, 44, 53, 45, 53, 44, 53 });
         public static readonly EyeFov EYE_FOV_DAYDREAMVIEW = new EyeFov(new double[] { 53, 45, 53, 44, 45, 53, 53, 44 });
         public static readonly EyeFov EYE_FOV_MIRAGESOLO = new EyeFov(new double[] { 46, 45, 46, 46, 45, 46, 46, 46 });
+        public static readonly EyeFov EYE_FOV_CARDBOARD_V1_FHD = new EyeFov(new double[] { 38.56, 40, 40, 40, 40, 38.56, 40, 40 });
         public class Resolution
         {
             public int width { get; set; }
@@ -64,6 +66,8 @@ namespace ALVR
             , new Resolution(3390, 1726, "Mirage Solo(Max)", EYE_FOV_MIRAGESOLO)
             , new Resolution(2565, 1256, "DaydreamView(Mid)", EYE_FOV_DAYDREAMVIEW)
             , new Resolution(3848, 1884, "DaydreamView(Max)", EYE_FOV_DAYDREAMVIEW)
+            , new Resolution(1529, 780, "CardboardV1FHD(Mid)", EYE_FOV_CARDBOARD_V1_FHD)
+            , new Resolution(2294, 1171, "CardboardV1FHD(Max)", EYE_FOV_CARDBOARD_V1_FHD)
         };
 
         public class ComboBoxCustomItem

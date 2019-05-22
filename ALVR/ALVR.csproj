@@ -63,6 +63,7 @@
   <ItemGroup>
     <Compile Include="ClientList.cs" />
     <Compile Include="ControlSocket.cs" />
+    <Compile Include="DeviceDescriptor.cs" />
     <Compile Include="DriverInstaller.cs" />
     <Compile Include="DynamicJson.cs" />
     <Compile Include="Launcher.cs">
@@ -73,6 +74,7 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="HelloListener.cs" />
     <Compile Include="ServerConfig.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="SoundDevice.cs" />

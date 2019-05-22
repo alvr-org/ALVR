@@ -2,9 +2,6 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="ALVR.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="renderWidth" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">2048</Value>
-    </Setting>
     <Setting Name="bitrate" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">30</Value>
     </Setting>
@@ -86,11 +83,11 @@
     <Setting Name="force60Hz" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
-    <Setting Name="renderHeight" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">1024</Value>
-    </Setting>
     <Setting Name="eyeFov" Type="System.Double[]" Scope="User">
       <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="resolutionScale" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">100</Value>
     </Setting>
   </Settings>
 </SettingsFile>

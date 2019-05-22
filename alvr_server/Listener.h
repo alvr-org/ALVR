@@ -58,7 +58,7 @@ public:
 	void SetPoseUpdatedCallback(std::function<void()> callback) {
 		m_PoseUpdatedCallback = callback;
 	}
-	void SetNewClientCallback(std::function<void(int, int, int)> callback) {
+	void SetNewClientCallback(std::function<void()> callback) {
 		m_NewClientCallback = callback;
 	}
 	void SetStreamStartCallback(std::function<void()> callback) {
@@ -321,6 +321,13 @@ public:
 				, message->deviceCapabilityFlags, message->controllerCapabilityFlags);
 
 			PushRequest(message, addr);
+			if (AddrToStr(addr) == Settings::Instance().m_AutoConnectHost &&
+				ntohs(addr->sin_port) == Settings::Instance().m_AutoConnectPort) {
+				if (!m_Connected) {
+					Log(L"AutoConnect: %s", AddrPortToStr(addr).c_str());
+					Connect(addr);
+				}
+			}
 		}
 		else if (type == ALVR_PACKET_TYPE_RECOVER_CONNECTION && len >= sizeof(RecoverConnection)) {
 			Log(L"Got recover connection message from %hs.", AddrPortToStr(addr).c_str());
@@ -425,7 +432,7 @@ public:
 				char buf[500];
 				snprintf(buf, sizeof(buf), "%s %d %d %s\n"
 					, AddrPortToStr(&it->address).c_str()
-					, it->versionOk, it->refreshRate
+					, it->versionOk, 60
 					, it->deviceName);
 				str += buf;
 			}
@@ -569,15 +576,6 @@ public:
 		request.versionOk = message->version == ALVR_PROTOCOL_VERSION;
 		request.message = *message;
 
-		if (Settings::Instance().m_force60HZ) {
-			// Force 60Hz for workaround for Go's suttuer streaming.
-			request.refreshRate = 60;
-		}
-		else {
-			// First element has highest priority.
-			request.refreshRate = message->refreshRate[0];
-		}
-
 		m_Requests.push_back(request);
 		if (m_Requests.size() > 10) {
 			m_Requests.pop_back();
@@ -653,28 +651,13 @@ public:
 	}
 
 	void FindClientName(const sockaddr_in *addr) {
-		m_clientRefreshRate = 60;
 		m_clientDeviceName = "";
 
 		bool found = false;
 
 		for (auto it = m_Requests.begin(); it != m_Requests.end(); it++) {
 			if (it->address.sin_addr.S_un.S_addr == addr->sin_addr.S_un.S_addr && it->address.sin_port == addr->sin_port) {
-				m_clientRefreshRate = it->refreshRate;
 				m_clientDeviceName = it->deviceName;
-				if (it->message.deviceType == ALVR_DEVICE_TYPE_OCULUS_MOBILE &&
-					(it->message.deviceSubType == ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_GEARVR ||
-						it->message.deviceSubType == ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_GO)) {
-					// Use specified resolution on GearVR and Go.
-					m_clientRenderWidth = 0;
-					m_clientRenderHeight = 0;
-					Log("Temporary workaround to determine render size. Ignore client setting(%dx%d).", it->message.renderWidth, it->message.renderHeight);
-				}
-				else {
-					m_clientRenderWidth = it->message.renderWidth;
-					m_clientRenderHeight = it->message.renderHeight;
-					Log("Temporary workaround to determine render size. Overriden by %dx%d.", it->message.renderWidth, it->message.renderHeight);
-				}
 				found = true;
 				break;
 			}
@@ -682,9 +665,9 @@ public:
 	}
 
 	void Connect(const sockaddr_in *addr) {
-		Log(L"Connected to %hs refreshRate=%d", AddrPortToStr(addr).c_str(), m_clientRefreshRate);
+		Log(L"Connected to %hs", AddrPortToStr(addr).c_str());
 
-		m_NewClientCallback(m_clientRefreshRate, m_clientRenderWidth, m_clientRenderHeight);
+		m_NewClientCallback();
 
 		m_Socket->SetClientAddr(addr);
 		m_Connected = true;
@@ -703,14 +686,13 @@ public:
 		message.videoHeight = Settings::Instance().m_renderHeight;
 		message.bufferSize = Settings::Instance().m_clientRecvBufferSize;
 		message.frameQueueSize = Settings::Instance().m_frameQueueSize;
-		message.refreshRate = m_clientRefreshRate;
+		message.refreshRate = Settings::Instance().m_refreshRate;
 
 		m_Socket->Send((char *)&message, sizeof(message), 0);
 	}
 
 	void Disconnect() {
 		m_Connected = false;
-		m_clientRefreshRate = 60;
 		m_clientDeviceName = "";
 
 		m_Socket->InvalidateClient();
@@ -753,7 +735,7 @@ private:
 	std::function<void()> m_LauncherCallback;
 	std::function<void(std::string, std::string)> m_CommandCallback;
 	std::function<void()> m_PoseUpdatedCallback;
-	std::function<void(int, int, int)> m_NewClientCallback;
+	std::function<void()> m_NewClientCallback;
 	std::function<void()> m_StreamStartCallback;
 	std::function<void()> m_PacketLossCallback;
 	TrackingInfo m_TrackingInfo;
@@ -771,15 +753,11 @@ private:
 		sockaddr_in address;
 		char deviceName[32];
 		bool versionOk;
-		uint32_t refreshRate;
 		HelloMessage message;
 	};
 	std::list<Request> m_Requests;
 
 	std::string m_clientDeviceName;
-	int m_clientRefreshRate;
-	int m_clientRenderWidth;
-	int m_clientRenderHeight;
 	TimeSync m_reportedStatistics;
 	uint64_t m_lastFecFailure = 0;
 	static const uint64_t CONTINUOUS_FEC_FAILURE = 60 * 1000 * 1000;

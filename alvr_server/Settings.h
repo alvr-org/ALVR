@@ -37,6 +37,8 @@ static const char * const k_pch_Settings_ListenHost_String = "listenHost";
 static const char * const k_pch_Settings_ListenPort_Int32 = "listenPort";
 static const char * const k_pch_Settings_ControlListenHost_String = "controlListenHost";
 static const char * const k_pch_Settings_ControlListenPort_Int32 = "controlListenPort";
+static const char * const k_pch_Settings_AutoConnectHost_String = "autoConnectHost";
+static const char * const k_pch_Settings_AutoConnectPort_Int32 = "autoConnectPort";
 
 static const char * const k_pch_Settings_AdapterIndex_Int32 = "adapterIndex";
 
@@ -121,6 +123,8 @@ public:
 	int m_Port;
 	std::string m_ControlHost;
 	int m_ControlPort;
+	std::string m_AutoConnectHost;
+	int m_AutoConnectPort;
 
 	bool m_DebugLog;
 	bool m_DebugFrameIndex;

@@ -744,7 +744,7 @@ public:
 		std::function<void()> launcherCallback = [&]() { Enable(); };
 		std::function<void(std::string, std::string)> commandCallback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
-		std::function<void(int, int, int)> newClientCallback = [&](int refreshRate, int renderWidth, int renderHeight) { OnNewClient(refreshRate, renderWidth, renderHeight); };
+		std::function<void()> newClientCallback = [&]() { OnNewClient(); };
 		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
 		std::function<void()> packetLossCallback = [&]() { OnPacketLoss(); };
 
@@ -1121,16 +1121,7 @@ public:
 		}
 	}
 
-	// When renderWidth and renderHeight are 0, use user specified size.
-	void OnNewClient(int refreshRate, int renderWidth, int renderHeight) {
-		// LIMITATION: resolution and bitrate can only be changed when client is connecting.
-		Settings::Instance().m_refreshRate = refreshRate;
-
-		m_VSyncThread->SetRefreshRate(refreshRate);
-
-		//m_encoder->Reconfigure(refreshRate, renderWidth, renderHeight, Settings::Instance().m_encodeBitrateInMBits);
-
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, (float)refreshRate);
+	void OnNewClient() {
 	}
 
 	void OnStreamStart() {

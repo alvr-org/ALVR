@@ -353,7 +353,7 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 	}
 
 	char *p = reinterpret_cast<char *>(buffer->GetNative());
-	int length = buffer->GetSize();
+	int length = static_cast<int>(buffer->GetSize());
 
 	SkipAUD(&p, &length);
 

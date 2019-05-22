@@ -39,7 +39,7 @@ namespace ALVR
                 }
                 autoConnectList.RemoveAll(d => d.DeviceName == null);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 autoConnectList.Clear();
             }

@@ -5,7 +5,7 @@
 
 static void Serialize(wchar_t **buf, int *len, const picojson::value &value) {
 	std::wstring json = ToWstring(value.serialize());
-	*len = json.size();
+	*len = static_cast<int>(json.size());
 	*buf = new wchar_t[json.size()];
 	memcpy(*buf, json.c_str(), json.size() * sizeof(wchar_t));
 }

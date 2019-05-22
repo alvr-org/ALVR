@@ -80,7 +80,7 @@ namespace ALVR
             {
                 process.Start();
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 throw;
             }

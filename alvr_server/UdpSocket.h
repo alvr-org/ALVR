@@ -1,13 +1,12 @@
 #pragma once
 
-#include <WinSock2.h>
-#include <WinInet.h>
 #include <string>
 #include <memory>
 #include <vector>
 #include <list>
 #include "Poller.h"
 #include "Statistics.h"
+#include "Utils.h"
 
 #define CONTROL_NAMED_PIPE "\\\\.\\pipe\\RemoteGlass_Control"
 

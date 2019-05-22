@@ -31,9 +31,6 @@ namespace ALVR
 
         async public void Start()
         {
-            var remote = new IPEndPoint(IPAddress.Any, PORT);
-
-            // UdpClientを生成
             var client = new UdpClient(PORT);
 
             while (true)
@@ -116,7 +113,7 @@ namespace ALVR
 
                 return descriptor;
             }
-            catch (IndexOutOfRangeException e)
+            catch (IndexOutOfRangeException)
             {
             }
             return null;

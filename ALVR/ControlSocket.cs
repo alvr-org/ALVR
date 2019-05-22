@@ -40,7 +40,7 @@ namespace ALVR
             {
                 client.GetStream().Write(buffer, 0, buffer.Length);
             }
-            catch (Exception e)
+            catch (Exception)
             {
             }
             return await ReadNextMessage();
@@ -54,7 +54,7 @@ namespace ALVR
             {
                 ret = await client.GetStream().ReadAsync(buffer, 0, 1000);
             }
-            catch (Exception e)
+            catch (Exception)
             {
             }
             if (ret == 0 || ret < 0)

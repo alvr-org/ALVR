@@ -1,6 +1,8 @@
 #pragma once
 
+#pragma warning(disable:4005)
 #include <WinSock2.h>
+#pragma warning(default:4005)
 #include <WinInet.h>
 #include <WS2tcpip.h>
 #include <Windows.h>

@@ -53,6 +53,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\;..\libswresample\include;$(SolutionDir)ALVR-common</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WINDLL;NOMINMAX;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -76,6 +77,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\;..\libswresample\include;$(SolutionDir)ALVR-common</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WINDLL;NOMINMAX;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -100,12 +102,14 @@
     <ClCompile Include="amf\common\AMFSTL.cpp" />
     <ClCompile Include="amf\common\Thread.cpp" />
     <ClCompile Include="amf\common\Windows\ThreadWindows.cpp" />
+    <ClCompile Include="AudioCapture.cpp" />
     <ClCompile Include="ControlSocket.cpp" />
     <ClCompile Include="alvr_server.cpp" />
     <ClCompile Include="DeviceQuery.cpp" />
     <ClCompile Include="FrameRender.cpp" />
     <ClCompile Include="FreePIE.cpp" />
     <ClCompile Include="IDRScheduler.cpp" />
+    <ClCompile Include="Listener.cpp" />
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="NvEncoder.cpp" />
     <ClCompile Include="NvEncoderCuda.cpp" />

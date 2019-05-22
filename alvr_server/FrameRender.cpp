@@ -469,16 +469,16 @@ void FrameRender::RenderMessage(const std::string &message)
 	RECT rc;
 	rc.left = x - 10;
 	rc.top = y - 10;
-	rc.right = x + origin.x * scale + 10;
-	rc.bottom = y + origin.y * scale + 10;
+	rc.right = x + static_cast<int>(origin.x * scale) + 10;
+	rc.bottom = y + static_cast<int>(origin.y * scale) + 10;
 	m_SpriteBatch->Draw(m_messageBGResourceView.Get(), rc);
 	rc.left += eyeWidth;
 	rc.right += eyeWidth;
 	m_SpriteBatch->Draw(m_messageBGResourceView.Get(), rc);
 
 	DirectX::SimpleMath::Vector2 FontPos;
-	FontPos.x = x;
-	FontPos.y = y;
+	FontPos.x = static_cast<float>(x);
+	FontPos.y = static_cast<float>(y);
 
 	m_Font->DrawString(m_SpriteBatch.get(), &buf[0],
 		FontPos, DirectX::Colors::Gray, 0.f, DirectX::XMFLOAT2(), scale);

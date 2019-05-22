@@ -1,10 +1,10 @@
 #pragma once
 
-#include <WinSock2.h>
 #include <memory>
 #include <string>
 #include <vector>
 #include "Poller.h"
+#include "Utils.h"
 
 class ControlSocket {
 public:

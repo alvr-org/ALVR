@@ -10,7 +10,6 @@
 #include "systemtime.h"
 #include "d3drender.h"
 
-#include <winsock2.h>
 #include <d3d11.h>
 #include <wrl.h>
 #include <map>
@@ -202,7 +201,7 @@ public:
 
 				if (sleepTimeMs > 0) {
 					Log(L"Sleep %llu ms for next VSync.", sleepTimeMs);
-					Sleep(sleepTimeMs);
+					Sleep(static_cast<DWORD>(sleepTimeMs));
 				}
 
 				m_PreviousVsync += interval;
@@ -286,10 +285,10 @@ public:
 	virtual void GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom) override
 	{
 		auto eyeFov = Settings::Instance().m_eyeFov[eEye];
-		*pfLeft = -tan(eyeFov.left / 180.0 * M_PI);
-		*pfRight = tan(eyeFov.right / 180.0 * M_PI);
-		*pfTop = -tan(eyeFov.top / 180.0 * M_PI);
-		*pfBottom = tan(eyeFov.bottom / 180.0 * M_PI);
+		*pfLeft = -tanf(static_cast<float>(eyeFov.left / 180.0 * M_PI));
+		*pfRight = tanf(static_cast<float>(eyeFov.right / 180.0 * M_PI));
+		*pfTop = -tanf(static_cast<float>(eyeFov.top / 180.0 * M_PI));
+		*pfBottom = tanf(static_cast<float>(eyeFov.bottom / 180.0 * M_PI));
 
 		Log(L"GetProjectionRaw Eye=%d (l,r,t,b)=(%f,%f,%f,%f)", eEye, eyeFov.left, eyeFov.right, eyeFov.top, eyeFov.bottom);
 	}

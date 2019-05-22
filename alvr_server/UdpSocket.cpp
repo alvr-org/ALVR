@@ -1,6 +1,3 @@
-#include <WinSock2.h>
-#include <WS2tcpip.h>
-#include <Windows.h>
 #include "UdpSocket.h"
 #include "Logger.h"
 #include "Utils.h"

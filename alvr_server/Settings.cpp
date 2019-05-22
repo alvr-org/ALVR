@@ -54,10 +54,10 @@ void Settings::Load()
 
 		picojson::array& eyeFov = v.get(k_pch_Settings_EyeFov).get<picojson::array>();
 		for (int eye = 0; eye < 2; eye++) {
-			m_eyeFov[eye].left = eyeFov[eye * 4 + 0].get<double>();
-			m_eyeFov[eye].right = eyeFov[eye * 4 + 1].get<double>();
-			m_eyeFov[eye].top = eyeFov[eye * 4 + 2].get<double>();
-			m_eyeFov[eye].bottom = eyeFov[eye * 4 + 3].get<double>();
+			m_eyeFov[eye].left = static_cast<float>(eyeFov[eye * 4 + 0].get<double>());
+			m_eyeFov[eye].right = static_cast<float>(eyeFov[eye * 4 + 1].get<double>());
+			m_eyeFov[eye].top = static_cast<float>(eyeFov[eye * 4 + 2].get<double>());
+			m_eyeFov[eye].bottom = static_cast<float>(eyeFov[eye * 4 + 3].get<double>());
 		}
 
 		m_enableSound = v.get(k_pch_Settings_EnableSound_Bool).get<bool>();

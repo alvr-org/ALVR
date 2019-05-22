@@ -198,7 +198,7 @@ namespace ALVR
                 }
 
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 MessageBox.Show("Error on creating filemapping.\r\nPlease check the status of vrserver.exe and retry.");
                 return false;

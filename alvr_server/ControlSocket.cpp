@@ -1,5 +1,3 @@
-#include <WS2tcpip.h>
-
 #include "ControlSocket.h"
 #include "Logger.h"
 
@@ -104,8 +102,8 @@ bool ControlSocket::Recv(std::vector<std::string> &commands) {
 	buf[ret] = 0;
 	m_Buf += buf;
 
-	int index;
-	while ((index = m_Buf.find("\n")) != -1) {
+	size_t index;
+	while ((index = m_Buf.find("\n")) != std::string::npos) {
 		commands.push_back(m_Buf.substr(0, index));
 		m_Buf.replace(0, index + 1, "");
 	}
@@ -134,6 +132,6 @@ void ControlSocket::SendCommandResponse(const char * commandResponse)
 {
 	if (m_ClientSocket != INVALID_SOCKET) {
 		// Send including NULL.
-		send(m_ClientSocket, commandResponse, strlen(commandResponse) + 1, 0);
+		send(m_ClientSocket, commandResponse, static_cast<int>(strlen(commandResponse)) + 1, 0);
 	}
 }

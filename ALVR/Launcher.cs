@@ -113,8 +113,13 @@ namespace ALVR
             timer1.Start();
 
             clientList.StartListening();
+
+            ShowFindingPanel();
         }
 
+        /// <summary>
+        /// Load settings and Update UI
+        /// </summary>
         private void LoadSettings()
         {
             var c = Properties.Settings.Default;
@@ -172,6 +177,9 @@ namespace ALVR
             }
         }
 
+        /// <summary>
+        /// Get settings from UI and save it.
+        /// </summary>
         private void SaveSettings()
         {
             var c = Properties.Settings.Default;
@@ -281,6 +289,15 @@ namespace ALVR
                 metroProgressSpinner1.Hide();
                 startServerButton.Hide();
             }
+            else if (socket.status == ControlSocket.ServerStatus.SHUTTINGDOWN)
+            {
+                metroLabel3.Text = "Shutting down...";
+                metroLabel3.BackColor = Color.LimeGreen;
+                metroLabel3.ForeColor = Color.White;
+
+                metroProgressSpinner1.Show();
+                startServerButton.Hide();
+            }
             else
             {
                 if (currentClient != null)
@@ -289,12 +306,16 @@ namespace ALVR
                     metroLabel3.BackColor = Color.Gray;
                     metroLabel3.ForeColor = Color.White;
 
+                    statDataGridView.Rows.Clear();
                     metroProgressSpinner1.Show();
                     startServerButton.Show();
                 }
                 else
                 {
                     metroLabel3.Text = "";
+                    metroLabel3.BackColor = Color.White;
+                    metroLabel3.ForeColor = Color.White;
+                    statDataGridView.Rows.Clear();
                     metroProgressSpinner1.Hide();
                     startServerButton.Hide();
                 }
@@ -312,14 +333,17 @@ namespace ALVR
                 {
                     continue;
                 }
-                if (statDataGridView.Rows.Count <= i){
-                    statDataGridView.Rows.Add(new string[] {  });
+                if (statDataGridView.Rows.Count <= i)
+                {
+                    statDataGridView.Rows.Add(new string[] { });
                 }
                 statDataGridView.Rows[i].Cells[0].Value = elem[0];
                 statDataGridView.Rows[i].Cells[1].Value = elem[1];
 
                 i++;
             }
+            str = await socket.SendCommand("GetConfig");
+            logText.Text = str.Replace("\n", "\r\n");
         }
 
         private Dictionary<string, string> ParsePacket(string str)
@@ -335,7 +359,8 @@ namespace ALVR
                 try
                 {
                     dict.Add(elem[0], elem[1]);
-                }catch(ArgumentException)
+                }
+                catch (ArgumentException)
                 {
                 }
             }
@@ -420,8 +445,30 @@ namespace ALVR
             var autoConnect = clientList.GetAutoConnectableClient();
             if (autoConnect != null)
             {
-                await clientList.Connect(socket, autoConnect);
+                Connect(autoConnect);
             }
+        }
+
+        private void Connect(DeviceDescriptor client)
+        {
+            if (currentClient != null)
+            {
+                // Ignore when connected.
+                return;
+            }
+            currentClient = client;
+
+            connectedLabel.Text = "Connected!\r\n\r\n" + currentClient.DeviceName + "\r\n"
+                + currentClient.ClientAddr.ToString() + "\r\n"
+                + currentClient.RefreshRates[0] + "Hz " + currentClient.DefaultWidth + "x" + currentClient.DefaultHeight;
+
+            autoConnectCheckBox.CheckedChanged -= autoConnectCheckBox_CheckedChanged;
+            autoConnectCheckBox.Checked = clientList.InAutoConnectList(currentClient);
+            autoConnectCheckBox.CheckedChanged += autoConnectCheckBox_CheckedChanged;
+
+            UpdateResolutionLabel();
+            ShowConnectedPanel();
+            UpdateServerStatus();
         }
 
         private void CheckDriverInstallStatus()
@@ -457,7 +504,8 @@ namespace ALVR
             {
                 previousConnectionState = connected;
                 RunConnectCommand(args);
-            }else if (previousConnectionState && !connected)
+            }
+            else if (previousConnectionState && !connected)
             {
                 previousConnectionState = connected;
                 RunDisconnectCommand();
@@ -500,6 +548,7 @@ namespace ALVR
             socket.Update();
             UpdateClients();
             UpdateServerStatus();
+            UpdateClientStatistics();
         }
 
         async private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -507,7 +556,7 @@ namespace ALVR
             if (dataGridView1.Columns[e.ColumnIndex].Name == "Button")
             {
                 var tag = ((ClientTag)dataGridView1.Rows[e.RowIndex].Tag);
-                
+
                 if (!tag.client.Online)
                 {
                     // Remove from auto connect list.
@@ -523,25 +572,8 @@ namespace ALVR
                 }
                 // Reenable auto connect.
                 clientList.EnableAutoConnect = true;
-                //await clientList.Connect(socket, tag.client);
 
-                currentClient = tag.client;
-
-                connectedLabel.Text = "Connected!\r\n\r\n" + currentClient.DeviceName + "\r\n"
-                    + currentClient.ClientAddr.ToString() + "\r\n" 
-                    + currentClient.RefreshRates[0] + "Hz " + currentClient.DefaultWidth + "x" + currentClient.DefaultHeight;
-
-                autoConnectCheckBox.CheckedChanged -= autoConnectCheckBox_CheckedChanged;
-                autoConnectCheckBox.Checked = clientList.InAutoConnectList(currentClient);
-                autoConnectCheckBox.CheckedChanged += autoConnectCheckBox_CheckedChanged;
-
-                UpdateResolutionLabel();
-
-                ShowConnectedPanel();
-
-                UpdateClientStatistics();
-
-                ShowConnectedPanel();
+                Connect(tag.client);
             }
         }
 
@@ -642,14 +674,17 @@ namespace ALVR
         async private void recenterButtonComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             int value = recenterButtonComboBox.SelectedIndex;
-            await socket.SendCommand("SetConfig controllerRecenterButton " + value);
+            await socket.SendCommand("SetConfig controllerRecenterButton " + ServerConfig.recenterButtonIndex[value]);
         }
 
         async private void disconnectButton_Click(object sender, EventArgs e)
         {
             // Disable auto connect to avoid immediate auto reconnection.
             clientList.EnableAutoConnect = false;
+            currentClient = null;
             ShowFindingPanel();
+            socket.Shutdown();
+            UpdateServerStatus();
         }
 
         async private void packetlossButton_Click(object sender, EventArgs e)
@@ -677,7 +712,8 @@ namespace ALVR
             if (autoConnectCheckBox.Checked)
             {
                 clientList.AddAutoConnect(currentClient);
-            } else
+            }
+            else
             {
                 clientList.RemoveAutoConnect(currentClient);
             }
@@ -748,7 +784,7 @@ namespace ALVR
                 width = currentClient.DefaultWidth;
                 height = currentClient.DefaultHeight;
             }
-            resolutionLabel.Text = (width * ServerConfig.supportedScales[resolutionComboBox.SelectedIndex] / 100) 
+            resolutionLabel.Text = (width * ServerConfig.supportedScales[resolutionComboBox.SelectedIndex] / 100)
                 + "x" + (height * ServerConfig.supportedScales[resolutionComboBox.SelectedIndex] / 100);
         }
     }

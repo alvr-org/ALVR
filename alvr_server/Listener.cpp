@@ -45,6 +45,9 @@ void Listener::SetStreamStartCallback(std::function<void()> callback) {
 void Listener::SetPacketLossCallback(std::function<void()> callback) {
 	m_PacketLossCallback = callback;
 }
+void Listener::SetShutdownCallback(std::function<void()> callback) {
+	m_ShutdownCallback = callback;
+}
 
 bool Listener::Startup() {
 	if (!m_ControlSocket->Startup()) {
@@ -301,7 +304,7 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		if (AddrToStr(addr) == Settings::Instance().m_AutoConnectHost &&
 			ntohs(addr->sin_port) == Settings::Instance().m_AutoConnectPort) {
 			if (!m_Connected) {
-				Log(L"AutoConnect: %s", AddrPortToStr(addr).c_str());
+				Log(L"AutoConnect: %hs", AddrPortToStr(addr).c_str());
 				Connect(addr);
 			}
 		}
@@ -435,6 +438,11 @@ void Listener::ProcessCommand(const std::string &commandName, const std::string 
 
 			SendCommandResponse("OK\n");
 		}
+	}
+	else if (commandName == "Shutdown") {
+		Disconnect();
+		m_ShutdownCallback();
+		SendCommandResponse("OK\n");
 	}
 	else if (commandName == "GetStat") {
 		char buf[1000];

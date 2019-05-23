@@ -66,6 +66,9 @@ namespace ALVR
         public static readonly string[] supportedRecenterButton = new string[] {
             "None", "Trigger", "Trackpad click", "Trackpad touch", "Back"
         };
+        public static readonly int[] recenterButtonIndex = new int[] {
+            -1, 24, 28, 29, 21
+        };
 
         public static readonly ComboBoxCustomItem[] supportedCodecs = {
             new ComboBoxCustomItem("H.264 AVC", 0),
@@ -177,8 +180,8 @@ namespace ALVR
                 driverConfig.controllerTrackpadTouchMode = c.controllerTrackpadTouchMode;
                 driverConfig.controllerBackMode = c.controllerBackMode;
 
-                // 0=Disabled, 1=Trigger, 2=Trackpad Click, 3=Trackpad Touch, 4=Back
-                driverConfig.controllerRecenterButton = c.controllerRecenterButton;
+                // -1=Disabled, other=ALVR Input id
+                driverConfig.controllerRecenterButton = recenterButtonIndex[c.controllerRecenterButton];
                 driverConfig.useTrackingReference = c.useTrackingReference;
 
                 driverConfig.enableOffsetPos = c.useOffsetPos;

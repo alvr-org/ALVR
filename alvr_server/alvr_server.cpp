@@ -185,8 +185,9 @@ namespace
 class VSyncThread : public CThread
 {
 public:
-	VSyncThread() 
-		: m_bExit(false) {}
+	VSyncThread(int refreshRate) 
+		: m_bExit(false)
+		, m_refreshRate(refreshRate) {}
 
 	// Trigger VSync if elapsed time from previous VSync is larger than 30ms.
 	void Run()override {
@@ -216,12 +217,6 @@ public:
 
 	void Shutdown() {
 		m_bExit = true;
-	}
-
-	void InsertVsync() {
-		Log(L"Insert VSync Event (Ignore)");
-		//vr::VRServerDriverHost()->VsyncEvent(0);
-		//m_PreviousVsync = GetTimestampUs();
 	}
 
 	void SetRefreshRate(int refreshRate) {
@@ -731,7 +726,6 @@ class CRemoteHmd : public vr::ITrackedDeviceServerDriver
 public:
 	CRemoteHmd(std::shared_ptr<Listener> listener)
 		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
-		, m_nVsyncCounter(0)
 		, m_added(false)
 		, m_Listener(listener)
 	{
@@ -746,6 +740,7 @@ public:
 		std::function<void()> newClientCallback = [&]() { OnNewClient(); };
 		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
 		std::function<void()> packetLossCallback = [&]() { OnPacketLoss(); };
+		std::function<void()> shutdownCallback = [&]() { OnShutdown(); };
 
 		m_Listener->SetLauncherCallback(launcherCallback);
 		m_Listener->SetCommandCallback(commandCallback);
@@ -753,6 +748,7 @@ public:
 		m_Listener->SetNewClientCallback(newClientCallback);
 		m_Listener->SetStreamStartCallback(streamStartCallback);
 		m_Listener->SetPacketLossCallback(packetLossCallback);
+		m_Listener->SetShutdownCallback(shutdownCallback);
 
 		Log(L"CRemoteHmd successfully initialized.");
 	}
@@ -887,7 +883,7 @@ public:
 			}
 		}
 
-		m_VSyncThread = std::make_shared<VSyncThread>();
+		m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
 		m_VSyncThread->Start();
 
 		m_recenterManager = std::make_shared<RecenterManager>();
@@ -1111,9 +1107,6 @@ public:
 			
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
-			Log(L"Generate VSync Event by OnPoseUpdated");
-			m_VSyncThread->InsertVsync();
-
 			if (m_trackingReference) {
 				m_trackingReference->OnPoseUpdated();
 			}
@@ -1131,14 +1124,18 @@ public:
 	void OnPacketLoss() {
 		m_encoder->OnPacketLoss();
 	}
+
+	void OnShutdown() {
+		Log(L"Sending shutdown signal to vrserver.");
+		vr::VREvent_Reserved_t data = { 0, 0 };
+		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_DriverRequestedQuit, (vr::VREvent_Data_t&)data, 0);
+	}
 private:
 	bool m_added;
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 
 	std::wstring m_adapterName;
-
-	uint32_t m_nVsyncCounter;
 
 	std::shared_ptr<CD3DRender> m_D3DRender;
 	std::shared_ptr<CEncoder> m_encoder;

@@ -20,6 +20,7 @@ namespace ALVR
         {
             CONNECTING,
             CONNECTED,
+            SHUTTINGDOWN,
             DEAD
         };
         public ServerStatus status { get; private set; } = ServerStatus.DEAD;
@@ -109,6 +110,12 @@ namespace ALVR
             {
                 status = ServerStatus.DEAD;
             }
+        }
+
+        async public void Shutdown()
+        {
+            status = ServerStatus.SHUTTINGDOWN;
+            await SendCommand("Shutdown");
         }
 
         public void Update()

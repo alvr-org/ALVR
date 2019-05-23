@@ -29,6 +29,7 @@ public:
 	void SetNewClientCallback(std::function<void()> callback);
 	void SetStreamStartCallback(std::function<void()> callback);
 	void SetPacketLossCallback(std::function<void()> callback);
+	void SetShutdownCallback(std::function<void()> callback);
 
 	bool Startup();
 	void Run() override;
@@ -78,6 +79,7 @@ private:
 	std::function<void()> m_NewClientCallback;
 	std::function<void()> m_StreamStartCallback;
 	std::function<void()> m_PacketLossCallback;
+	std::function<void()> m_ShutdownCallback;
 	TrackingInfo m_TrackingInfo;
 
 	uint64_t m_TimeDiff = 0;

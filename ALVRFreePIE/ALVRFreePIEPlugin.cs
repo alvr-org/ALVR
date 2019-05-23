@@ -38,10 +38,10 @@ namespace ALVRFreePIE
             if (index == 0)
             {
                 property.Name = "SomeProperty";
-                property.Caption = "ALVR FreePIE plugin is installed";
-                property.HelpText = "ALVR FreePIE plugin is installed";
+                property.Caption = "ALVR FreePIE v3";
+                property.HelpText = property.Caption;
 
-                property.Choices.Add("ALVR FreePIE plugin is installed", 1);
+                property.Choices.Add(property.Caption, 1);
 
                 property.DefaultValue = 1;
                 return true;
@@ -65,14 +65,14 @@ namespace ALVRFreePIE
             {
                 mutex.WaitOne(-1);
 
-                UInt32 inputControllerButtons = 0;
+                UInt32[] inputControllerButtons = new UInt32[] { 0, 0 };
 
                 using (var mappedStream = memoryMappedFile.CreateViewStream())
                 {
                     var reader = new BinaryReader(mappedStream);
 
                     UInt32 version = reader.ReadUInt32();
-                    if (version == ALVR_FREEPIE_SIGNATURE_V2)
+                    if (version == ALVR_FREEPIE_SIGNATURE_V3)
                     {
                         reader.ReadUInt32();
                         // Head orientation
@@ -80,22 +80,33 @@ namespace ALVRFreePIE
                         global.input_head_orientation[1] = reader.ReadDouble();
                         global.input_head_orientation[2] = reader.ReadDouble();
                         // Controller orientation
-                        global.input_controller_orientation[0] = reader.ReadDouble();
-                        global.input_controller_orientation[1] = reader.ReadDouble();
-                        global.input_controller_orientation[2] = reader.ReadDouble();
+                        for (int i = 0; i < ALVR_FREEPIE_MAX_CONTROLLERS; i++)
+                        {
+                            global.input_controller_orientation[i][0] = reader.ReadDouble();
+                            global.input_controller_orientation[i][1] = reader.ReadDouble();
+                            global.input_controller_orientation[i][2] = reader.ReadDouble();
+                        }
                         // Head position
                         global.input_head_position[0] = reader.ReadDouble();
                         global.input_head_position[1] = reader.ReadDouble();
                         global.input_head_position[2] = reader.ReadDouble();
                         // Controller position
-                        global.input_controller_position[0] = reader.ReadDouble();
-                        global.input_controller_position[1] = reader.ReadDouble();
-                        global.input_controller_position[2] = reader.ReadDouble();
+                        for (int i = 0; i < ALVR_FREEPIE_MAX_CONTROLLERS; i++)
+                        {
+                            global.input_controller_position[i][0] = reader.ReadDouble();
+                            global.input_controller_position[i][1] = reader.ReadDouble();
+                            global.input_controller_position[i][2] = reader.ReadDouble();
+                        }
+                        for (int i = 0; i < ALVR_FREEPIE_MAX_CONTROLLERS; i++)
+                        {
+                            global.input_trackpad[i][0] = reader.ReadDouble();
+                            global.input_trackpad[i][1] = reader.ReadDouble();
+                        }
 
-                        global.input_trackpad[0] = reader.ReadDouble();
-                        global.input_trackpad[1] = reader.ReadDouble();
-
-                        inputControllerButtons = reader.ReadUInt16();
+                        for (int i = 0; i < ALVR_FREEPIE_MAX_CONTROLLERS; i++)
+                        {
+                            inputControllerButtons[i] = reader.ReadUInt32();
+                        }
                     }
                 }
 
@@ -124,9 +135,9 @@ namespace ALVRFreePIE
 
                     mappedStream.Write(BitConverter.GetBytes(flags), 0, sizeof(UInt32));
 
-                    mappedStream.Seek(sizeof(double) * 14 + sizeof(UInt16), SeekOrigin.Current);
+                    mappedStream.Seek(sizeof(double) * 22 + sizeof(UInt32) * 2, SeekOrigin.Current);
 
-                    mappedStream.Write(BitConverter.GetBytes(global.two_controllers ? 2 : 1), 0, sizeof(UInt16));
+                    mappedStream.Write(BitConverter.GetBytes(global.two_controllers ? 2 : 1), 0, sizeof(UInt32));
 
                     UInt32[] buttons = { 0, 0 };
                     for (int j = 0; j < 2; j++)
@@ -185,9 +196,12 @@ namespace ALVRFreePIE
                     mappedStream.WriteByte(0);
                 }
 
-                for (int i = 0; i < INPUT_BUTTONS.Length; i++)
+                for (int i = 0; i < ALVR_FREEPIE_MAX_CONTROLLERS; i++)
                 {
-                    global.input_buttons[i] = (inputControllerButtons & (1U << i)) != 0;
+                    for (int j = 0; j < INPUT_BUTTONS.Length; j++)
+                    {
+                        global.input_buttons[i][j] = (inputControllerButtons[i] & (1U << j)) != 0;
+                    }
                 }
             }
             finally
@@ -215,7 +229,9 @@ namespace ALVRFreePIE
         static readonly string ALVR_FREEPIE_FILEMAPPING_NAME = "ALVR_FREEPIE_FILEMAPPING_13B65572-591A-4248-A2F6-BAC2D89EE3B8";
         static readonly string ALVR_FREEPIE_MUTEX_NAME = "ALVR_FREEPIE_MUTEX_AA77F1C3-86E4-4EF9-AAA2-5C40CF380D7A";
 
-        static readonly UInt32 ALVR_FREEPIE_SIGNATURE_V2 = 0x11223345;
+        static readonly UInt32 ALVR_FREEPIE_SIGNATURE_V3 = 0x11223346;
+
+        static readonly UInt32 ALVR_FREEPIE_MAX_CONTROLLERS = 2;
 
         static readonly UInt32 ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_ORIENTATION = 1 << 0;
         static readonly UInt32 ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION0 = 1 << 1;
@@ -225,7 +241,8 @@ namespace ALVRFreePIE
 
         static readonly int ALVR_FREEPIE_MESSAGE_LENGTH = 512;
 
-        public static readonly string[] INPUT_BUTTONS = {"trackpad_click", "trackpad_touch", "trigger", "back", "volume_up", "volume_down"};
+        public static readonly string[] INPUT_BUTTONS = {"trackpad_click", "trackpad_touch", "back", "volume_up", "volume_down",
+        "a", "b", "rthumb", "rshoulder", "x", "y", "lthumb", "lshoulder"};
         public static readonly string[] BUTTONS = {"system", "application_menu", "grip"
                 , "dpad_left", "dpad_up", "dpad_right", "dpad_down"
                 , "a", "b", "x", "y"
@@ -279,10 +296,10 @@ namespace ALVRFreePIE
 
         // yaw pitch roll
         public double[] input_head_orientation { get; set; } = new double[3];
-        public double[] input_controller_orientation { get; set; } = new double[3];
+        public double[][] input_controller_orientation { get; set; } = { new double[3], new double[3] };
         // x y z
         public double[] input_head_position { get; set; } = new double[3];
-        public double[] input_controller_position { get; set; } = new double[3];
+        public double[][] input_controller_position { get; set; } = { new double[3], new double[3] };
 
         // yaw pitch roll
         public double[] head_orientation { get; set; } = new double[3];
@@ -292,11 +309,11 @@ namespace ALVRFreePIE
         public double[][] controller_position { get; set; } = { new double[3], new double[3] };
 
 
-        public bool[] input_buttons { get; set; } = new bool[6];
+        public bool[][] input_buttons { get; set; } = { new bool[ALVRFreePIEPlugin.INPUT_BUTTONS.Length], new bool[ALVRFreePIEPlugin.INPUT_BUTTONS.Length] };
         public bool[][] buttons { get; set; } = { new bool[ALVRFreePIEPlugin.BUTTONS.Length], new bool[ALVRFreePIEPlugin.BUTTONS.Length] };
 
         // x y
-        public double[] input_trackpad { get; set; } = new double[2];
+        public double[][] input_trackpad { get; set; } = { new double[2], new double[2] };
 
         public double[] trigger { get; set; } = new double[2];
         public double[] trigger_left { get; set; } = new double[2];

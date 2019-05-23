@@ -25,7 +25,7 @@ namespace ALVR
                     var newobj = new DeviceDescriptor();
                     newobj.DeviceName = d.DeviceName;
                     newobj.ClientHost = d.ClientHost;
-                    newobj.ClientPort = d.ClientPort;
+                    newobj.ClientPort = (int)d.ClientPort;
                     newobj.Version = (UInt32)d.Version;
                     newobj.RefreshRates = (byte[])d.RefreshRates;
                     newobj.RenderWidth = (UInt16)d.RenderWidth;
@@ -79,13 +79,6 @@ namespace ALVR
                 return list.First();
             }
             return null;
-        }
-
-        async public Task<bool> Connect(ControlSocket socket, DeviceDescriptor client)
-        {
-            //var ret = await socket.SendCommand("Connect " + client.Address);
-            //return ret == "OK";
-            return true;
         }
 
         public bool InAutoConnectList(DeviceDescriptor client)

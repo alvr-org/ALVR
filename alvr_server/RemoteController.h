@@ -117,28 +117,28 @@ public:
 
 		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger_left/value", &m_handles[INPUT_TRIGGER_LEFT_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
 		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger_right/value", &m_handles[INPUT_TRIGGER_RIGHT_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-		
+
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/shoulder_left/click", &m_handles[INPUT_SHOULDER_LEFT_CLICK]);
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/shoulder_right/click", &m_handles[INPUT_SHOULDER_RIGHT_CLICK]);
 
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/joystick_left/click", &m_handles[INPUT_JOYSTICK_LEFT_CLICK]);
 		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_left/x", &m_handles[INPUT_JOYSTICK_LEFT_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
 		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_left/y", &m_handles[INPUT_JOYSTICK_LEFT_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-		
+
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/joystick_right/click", &m_handles[INPUT_JOYSTICK_RIGHT_CLICK]);
 		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_right/x", &m_handles[INPUT_JOYSTICK_RIGHT_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
 		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_right/y", &m_handles[INPUT_JOYSTICK_RIGHT_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-		
+
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/back/click", &m_handles[INPUT_BACK_CLICK]);
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/guide/click", &m_handles[INPUT_GUIDE_CLICK]);
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/start/click", &m_handles[INPUT_START_CLICK]);
 
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trigger/click", &m_handles[INPUT_TRIGGER_CLICK]);
 		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger/value", &m_handles[INPUT_TRIGGER_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-		
+
 		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/x", &m_handles[INPUT_TRACKPAD_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
 		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/y", &m_handles[INPUT_TRACKPAD_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-		
+
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/click", &m_handles[INPUT_TRACKPAD_CLICK]);
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/touch", &m_handles[INPUT_TRACKPAD_TOUCH]);
 
@@ -197,9 +197,11 @@ public:
 
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));
 
+		auto& c = info.controller[m_index];
+
 		// If enableControllerButton is set true by FreePIE, we don't use button assign from GUI but use FreePIE.
 		// Second controller is always controlled by FreePIE.
-		if (enableControllerButton || m_index == 1) {
+		if (enableControllerButton) {
 			for (int i = 0; i < FreePIE::ALVR_FREEPIE_BUTTONS; i++) {
 				bool value = (freePIEData.controllerButtons[m_index] & (1 << i)) != 0;
 				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[FreePIE::BUTTON_MAP[i]], value, 0.0);
@@ -208,7 +210,7 @@ public:
 				}
 			}
 
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], (float) freePIEData.trigger[m_index], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], (float)freePIEData.trigger[m_index], 0.0);
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_LEFT_VALUE], (float)freePIEData.trigger_left[m_index], 0.0);
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_RIGHT_VALUE], (float)freePIEData.trigger_right[m_index], 0.0);
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_X], (float)freePIEData.joystick_left[m_index][0], 0.0);
@@ -217,77 +219,56 @@ public:
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_Y], (float)freePIEData.joystick_right[m_index][1], 0.0);
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_X], (float)freePIEData.trackpad[m_index][0], 0.0);
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_Y], (float)freePIEData.trackpad[m_index][1], 0.0);
-		}else{
-			int32_t triggerButton = Settings::Instance().m_controllerTriggerMode;
-			int32_t trackpadClickButton = Settings::Instance().m_controllerTrackpadClickMode;
+		}
+		else {
 			int32_t trackpadTouchButton = Settings::Instance().m_controllerTrackpadTouchMode;
-			int32_t backButton = Settings::Instance().m_controllerBackMode;
 
-			// Trigger pressed (ovrButton_A)
-			if ((m_previousButtons & TrackingInfo::CONTROLLER_BUTTON_TRIGGER_CLICK) != (info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_TRIGGER_CLICK)) {
-				bool value = (info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_TRIGGER_CLICK) != 0;
-				if (triggerButton != -1) {
-					vr::VRDriverInput()->UpdateBooleanComponent(m_handles[triggerButton], value, 0.0);
-					if (triggerButton == INPUT_TRIGGER_CLICK) {
-						vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
+			for (int i = 0; i < ALVR_INPUT_COUNT; i++) {
+				uint32_t b = 1 << i;
+				if ((m_previousButtons & b) != (c.buttons & b)) {
+					int mapped = b;
+					if (b == ALVR_INPUT_TRIGGER_CLICK) {
+						mapped = Settings::Instance().m_controllerTriggerMode;
 					}
-				}
-				if (value && Settings::Instance().m_controllerRecenterButton == 1) {
-					recenterRequest = true;
-				}
-			}
-
-			// Trackpad click (ovrButton_Enter)
-			if ((m_previousButtons & TrackingInfo::CONTROLLER_BUTTON_TRACKPAD_CLICK) != (info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_TRACKPAD_CLICK)) {
-				bool value = (info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_TRACKPAD_CLICK) != 0;
-				if (triggerButton != -1) {
-					vr::VRDriverInput()->UpdateBooleanComponent(m_handles[trackpadClickButton], value, 0.0);
-					if (trackpadClickButton == INPUT_TRIGGER_CLICK) {
-						vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
+					else if (b == ALVR_INPUT_TRACKPAD_CLICK) {
+						mapped = Settings::Instance().m_controllerTrackpadClickMode;
 					}
-				}
-				if (value && Settings::Instance().m_controllerRecenterButton == 2) {
-					recenterRequest = true;
-				}
-			}
-
-			// Back button
-			if ((m_previousButtons & TrackingInfo::CONTROLLER_BUTTON_BACK) != (info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_BACK)) {
-				bool value = (info.controllerButtons & TrackingInfo::CONTROLLER_BUTTON_BACK) != 0;
-				if (backButton != -1) {
-					vr::VRDriverInput()->UpdateBooleanComponent(m_handles[backButton], value, 0.0);
-					if (backButton == INPUT_TRIGGER_CLICK) {
-						vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
+					else if (b == ALVR_INPUT_BACK_CLICK) {
+						mapped = Settings::Instance().m_controllerBackMode;
 					}
-				}
-				if (value && Settings::Instance().m_controllerRecenterButton == 4) {
-					recenterRequest = true;
-				}
-			}
-			// Trackpad touch
-			if ((m_previousFlags & TrackingInfo::FLAG_CONTROLLER_TRACKPAD_TOUCH) != (info.flags & TrackingInfo::FLAG_CONTROLLER_TRACKPAD_TOUCH)) {
-				bool value = (info.flags & TrackingInfo::FLAG_CONTROLLER_TRACKPAD_TOUCH) != 0;
-				if (trackpadTouchButton != -1) {
-					vr::VRDriverInput()->UpdateBooleanComponent(m_handles[trackpadTouchButton], value, 0.0);
-					if (trackpadTouchButton == INPUT_TRIGGER_CLICK) {
-						vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
+					bool value = (c.buttons & b) != 0;
+					if (mapped != -1) {
+						vr::VRDriverInput()->UpdateBooleanComponent(m_handles[mapped], value, 0.0);
+						if (mapped == INPUT_TRIGGER_CLICK) {
+							vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
+						}
 					}
-				}
-				if (value && Settings::Instance().m_controllerRecenterButton == 3) {
-					recenterRequest = true;
+					if (value && Settings::Instance().m_controllerRecenterButton == mapped) {
+						recenterRequest = true;
+					}
 				}
 			}
 
 			// Positions are already normalized to -1.0~+1.0 on client side.
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_X], info.controllerTrackpadPosition.x, 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_Y], info.controllerTrackpadPosition.y, 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_X], c.trackpadPosition.x, 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_Y], c.trackpadPosition.y, 0.0);
+			if (c.flags & TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_QUEST) {
+				if (m_index == 0) {
+					vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_X], c.trackpadPosition.x, 0.0);
+					vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_Y], c.trackpadPosition.y, 0.0);
+				}
+				else {
+					vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_X], c.trackpadPosition.x, 0.0);
+					vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_Y], c.trackpadPosition.y, 0.0);
+				}
+			}
 		}
 
 		// Battery
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, info.controllerBatteryPercentRemaining / 100.0f);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, c.batteryPercentRemaining / 100.0f);
 
-		m_previousButtons = info.controllerButtons;
-		m_previousFlags = info.flags;
+		m_previousButtons = c.buttons;
+		m_previousFlags = c.flags;
 
 		return recenterRequest;
 	}

@@ -221,23 +221,25 @@ public:
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_Y], (float)freePIEData.trackpad[m_index][1], 0.0);
 		}
 		else {
-			int32_t trackpadTouchButton = Settings::Instance().m_controllerTrackpadTouchMode;
-
+			Log(L"Controller%d: %08X %08X", m_index, c.buttons, c.flags);
 			for (int i = 0; i < ALVR_INPUT_COUNT; i++) {
 				uint32_t b = 1 << i;
 				if ((m_previousButtons & b) != (c.buttons & b)) {
-					int mapped = b;
-					if (b == ALVR_INPUT_TRIGGER_CLICK) {
+					int mapped = i;
+					if (i == ALVR_INPUT_TRIGGER_CLICK) {
 						mapped = Settings::Instance().m_controllerTriggerMode;
 					}
-					else if (b == ALVR_INPUT_TRACKPAD_CLICK) {
+					else if (i == ALVR_INPUT_TRACKPAD_CLICK) {
 						mapped = Settings::Instance().m_controllerTrackpadClickMode;
 					}
-					else if (b == ALVR_INPUT_BACK_CLICK) {
+					else if (i == ALVR_INPUT_TRACKPAD_TOUCH) {
+						mapped = Settings::Instance().m_controllerTrackpadTouchMode;
+					}
+					else if (i == ALVR_INPUT_BACK_CLICK) {
 						mapped = Settings::Instance().m_controllerBackMode;
 					}
 					bool value = (c.buttons & b) != 0;
-					if (mapped != -1) {
+					if (mapped != -1 && mapped <= ALVR_INPUT_MAX) {
 						vr::VRDriverInput()->UpdateBooleanComponent(m_handles[mapped], value, 0.0);
 						if (mapped == INPUT_TRIGGER_CLICK) {
 							vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);

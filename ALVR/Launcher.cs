@@ -286,6 +286,8 @@ namespace ALVR
                 metroLabel3.BackColor = Color.LimeGreen;
                 metroLabel3.ForeColor = Color.White;
 
+                closeServerButton.Text = "Close server";
+                closeServerButton.Enabled = true;
                 metroProgressSpinner1.Hide();
                 startServerButton.Hide();
             }
@@ -295,6 +297,8 @@ namespace ALVR
                 metroLabel3.BackColor = Color.LimeGreen;
                 metroLabel3.ForeColor = Color.White;
 
+                closeServerButton.Text = "Close server";
+                closeServerButton.Enabled = false;
                 metroProgressSpinner1.Show();
                 startServerButton.Hide();
             }
@@ -306,6 +310,8 @@ namespace ALVR
                     metroLabel3.BackColor = Color.Gray;
                     metroLabel3.ForeColor = Color.White;
 
+                    closeServerButton.Text = "Disconnect";
+                    closeServerButton.Enabled = true;
                     statDataGridView.Rows.Clear();
                     metroProgressSpinner1.Show();
                     startServerButton.Show();
@@ -315,6 +321,8 @@ namespace ALVR
                     metroLabel3.Text = "";
                     metroLabel3.BackColor = Color.White;
                     metroLabel3.ForeColor = Color.White;
+                    closeServerButton.Text = "Disconnect";
+                    closeServerButton.Enabled = false;
                     statDataGridView.Rows.Clear();
                     metroProgressSpinner1.Hide();
                     startServerButton.Hide();

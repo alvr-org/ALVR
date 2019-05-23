@@ -245,7 +245,7 @@ public:
 							vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
 						}
 					}
-					if (value && Settings::Instance().m_controllerRecenterButton == mapped) {
+					if (value && Settings::Instance().m_controllerRecenterButton == i) {
 						recenterRequest = true;
 					}
 				}

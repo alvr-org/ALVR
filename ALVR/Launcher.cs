@@ -123,12 +123,6 @@ namespace ALVR
         private void LoadSettings()
         {
             var c = Properties.Settings.Default;
-            if (c.UpgradeRequired)
-            {
-                c.Upgrade();
-                c.UpgradeRequired = false;
-                c.Save();
-            }
             // Disable changed listener on controls.
             loadingSettings = true;
 

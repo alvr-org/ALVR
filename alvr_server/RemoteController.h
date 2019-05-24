@@ -6,42 +6,6 @@
 #include "packet_types.h"
 #include "FreePIE.h"
 
-enum {
-	INPUT_SYSTEM_CLICK = 0,
-	INPUT_APPLICATION_MENU_CLICK = 1,
-	INPUT_GRIP_CLICK = 2,
-	INPUT_DPAD_LEFT_CLICK = 3,
-	INPUT_DPAD_UP_CLICK = 4,
-	INPUT_DPAD_RIGHT_CLICK = 5,
-	INPUT_DPAD_DOWN_CLICK = 6,
-	INPUT_A_CLICK = 7,
-	INPUT_B_CLICK = 8,
-	INPUT_X_CLICK = 9,
-	INPUT_Y_CLICK = 10,
-	INPUT_TRIGGER_LEFT_VALUE = 11,
-	INPUT_TRIGGER_RIGHT_VALUE = 12,
-	INPUT_SHOULDER_LEFT_CLICK = 13,
-	INPUT_SHOULDER_RIGHT_CLICK = 14,
-	INPUT_JOYSTICK_LEFT_CLICK = 15,
-	INPUT_JOYSTICK_LEFT_X = 16,
-	INPUT_JOYSTICK_LEFT_Y = 17,
-	INPUT_JOYSTICK_RIGHT_CLICK = 18,
-	INPUT_JOYSTICK_RIGHT_X = 19,
-	INPUT_JOYSTICK_RIGHT_Y = 20,
-	INPUT_BACK_CLICK = 21,
-	INPUT_GUIDE_CLICK = 22,
-	INPUT_START_CLICK = 23,
-	INPUT_TRIGGER_CLICK = 24,
-	INPUT_TRIGGER_VALUE = 25,
-	INPUT_TRACKPAD_X = 26,
-	INPUT_TRACKPAD_Y = 27,
-	INPUT_TRACKPAD_CLICK = 28,
-	INPUT_TRACKPAD_TOUCH = 29,
-
-	INPUT_MAX = 29,
-	INPUT_COUNT = 30
-};
-
 class RemoteControllerServerDriver : public vr::ITrackedDeviceServerDriver
 {
 public:
@@ -101,46 +65,46 @@ public:
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_InputProfilePath_String, "{alvr_server}/input/vive_controller_profile.json");
 		int i = 0;
 
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/system/click", &m_handles[INPUT_SYSTEM_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/application_menu/click", &m_handles[INPUT_APPLICATION_MENU_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/grip/click", &m_handles[INPUT_GRIP_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/system/click", &m_handles[ALVR_INPUT_SYSTEM_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/application_menu/click", &m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/grip/click", &m_handles[ALVR_INPUT_GRIP_CLICK]);
 
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/dpad_left/click", &m_handles[INPUT_DPAD_LEFT_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/dpad_up/click", &m_handles[INPUT_DPAD_UP_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/dpad_right/click", &m_handles[INPUT_DPAD_RIGHT_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/dpad_down/click", &m_handles[INPUT_DPAD_DOWN_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/dpad_left/click", &m_handles[ALVR_INPUT_DPAD_LEFT_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/dpad_up/click", &m_handles[ALVR_INPUT_DPAD_UP_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/dpad_right/click", &m_handles[ALVR_INPUT_DPAD_RIGHT_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/dpad_down/click", &m_handles[ALVR_INPUT_DPAD_DOWN_CLICK]);
 
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/a/click", &m_handles[INPUT_A_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/b/click", &m_handles[INPUT_B_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/x/click", &m_handles[INPUT_X_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/y/click", &m_handles[INPUT_Y_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/a/click", &m_handles[ALVR_INPUT_A_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/b/click", &m_handles[ALVR_INPUT_B_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/x/click", &m_handles[ALVR_INPUT_X_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/y/click", &m_handles[ALVR_INPUT_Y_CLICK]);
 
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger_left/value", &m_handles[INPUT_TRIGGER_LEFT_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger_right/value", &m_handles[INPUT_TRIGGER_RIGHT_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger_left/value", &m_handles[ALVR_INPUT_TRIGGER_LEFT_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger_right/value", &m_handles[ALVR_INPUT_TRIGGER_RIGHT_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
 
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/shoulder_left/click", &m_handles[INPUT_SHOULDER_LEFT_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/shoulder_right/click", &m_handles[INPUT_SHOULDER_RIGHT_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/shoulder_left/click", &m_handles[ALVR_INPUT_SHOULDER_LEFT_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/shoulder_right/click", &m_handles[ALVR_INPUT_SHOULDER_RIGHT_CLICK]);
 
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/joystick_left/click", &m_handles[INPUT_JOYSTICK_LEFT_CLICK]);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_left/x", &m_handles[INPUT_JOYSTICK_LEFT_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_left/y", &m_handles[INPUT_JOYSTICK_LEFT_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/joystick_left/click", &m_handles[ALVR_INPUT_JOYSTICK_LEFT_CLICK]);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_left/x", &m_handles[ALVR_INPUT_JOYSTICK_LEFT_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_left/y", &m_handles[ALVR_INPUT_JOYSTICK_LEFT_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
 
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/joystick_right/click", &m_handles[INPUT_JOYSTICK_RIGHT_CLICK]);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_right/x", &m_handles[INPUT_JOYSTICK_RIGHT_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_right/y", &m_handles[INPUT_JOYSTICK_RIGHT_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/joystick_right/click", &m_handles[ALVR_INPUT_JOYSTICK_RIGHT_CLICK]);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_right/x", &m_handles[ALVR_INPUT_JOYSTICK_RIGHT_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick_right/y", &m_handles[ALVR_INPUT_JOYSTICK_RIGHT_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
 
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/back/click", &m_handles[INPUT_BACK_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/guide/click", &m_handles[INPUT_GUIDE_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/start/click", &m_handles[INPUT_START_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/back/click", &m_handles[ALVR_INPUT_BACK_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/guide/click", &m_handles[ALVR_INPUT_GUIDE_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/start/click", &m_handles[ALVR_INPUT_START_CLICK]);
 
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trigger/click", &m_handles[INPUT_TRIGGER_CLICK]);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger/value", &m_handles[INPUT_TRIGGER_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trigger/click", &m_handles[ALVR_INPUT_TRIGGER_CLICK]);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger/value", &m_handles[ALVR_INPUT_TRIGGER_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
 
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/x", &m_handles[INPUT_TRACKPAD_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/y", &m_handles[INPUT_TRACKPAD_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/x", &m_handles[ALVR_INPUT_TRACKPAD_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/y", &m_handles[ALVR_INPUT_TRACKPAD_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
 
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/click", &m_handles[INPUT_TRACKPAD_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/touch", &m_handles[INPUT_TRACKPAD_TOUCH]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/click", &m_handles[ALVR_INPUT_TRACKPAD_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/touch", &m_handles[ALVR_INPUT_TRACKPAD_TOUCH]);
 
 		return vr::VRInitError_None;
 	}
@@ -205,20 +169,20 @@ public:
 			for (int i = 0; i < FreePIE::ALVR_FREEPIE_BUTTONS; i++) {
 				bool value = (freePIEData.controllerButtons[m_index] & (1 << i)) != 0;
 				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[FreePIE::BUTTON_MAP[i]], value, 0.0);
-				if (FreePIE::BUTTON_MAP[i] == INPUT_TRIGGER_CLICK) {
-					vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
+				if (FreePIE::BUTTON_MAP[i] == ALVR_INPUT_TRIGGER_CLICK) {
+					vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
 				}
 			}
 
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], (float)freePIEData.trigger[m_index], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_LEFT_VALUE], (float)freePIEData.trigger_left[m_index], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_RIGHT_VALUE], (float)freePIEData.trigger_right[m_index], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_X], (float)freePIEData.joystick_left[m_index][0], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_Y], (float)freePIEData.joystick_left[m_index][1], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_X], (float)freePIEData.joystick_right[m_index][0], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_Y], (float)freePIEData.joystick_right[m_index][1], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_X], (float)freePIEData.trackpad[m_index][0], 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_Y], (float)freePIEData.trackpad[m_index][1], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRIGGER_VALUE], (float)freePIEData.trigger[m_index], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRIGGER_LEFT_VALUE], (float)freePIEData.trigger_left[m_index], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRIGGER_RIGHT_VALUE], (float)freePIEData.trigger_right[m_index], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_LEFT_X], (float)freePIEData.joystick_left[m_index][0], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_LEFT_Y], (float)freePIEData.joystick_left[m_index][1], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_RIGHT_X], (float)freePIEData.joystick_right[m_index][0], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_RIGHT_Y], (float)freePIEData.joystick_right[m_index][1], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRACKPAD_X], (float)freePIEData.trackpad[m_index][0], 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRACKPAD_Y], (float)freePIEData.trackpad[m_index][1], 0.0);
 		}
 		else {
 			Log(L"Controller%d: %08X %08X", m_index, c.buttons, c.flags);
@@ -241,8 +205,8 @@ public:
 					bool value = (c.buttons & b) != 0;
 					if (mapped != -1 && mapped <= ALVR_INPUT_MAX) {
 						vr::VRDriverInput()->UpdateBooleanComponent(m_handles[mapped], value, 0.0);
-						if (mapped == INPUT_TRIGGER_CLICK) {
-							vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
+						if (mapped == ALVR_INPUT_TRIGGER_CLICK) {
+							vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRIGGER_VALUE], value ? 1.0f : 0.0f, 0.0);
 						}
 					}
 					if (value && Settings::Instance().m_controllerRecenterButton == i) {
@@ -252,16 +216,16 @@ public:
 			}
 
 			// Positions are already normalized to -1.0~+1.0 on client side.
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_X], c.trackpadPosition.x, 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_TRACKPAD_Y], c.trackpadPosition.y, 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRACKPAD_X], c.trackpadPosition.x, 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRACKPAD_Y], c.trackpadPosition.y, 0.0);
 			if (c.flags & TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_QUEST) {
 				if (m_index == 0) {
-					vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_X], c.trackpadPosition.x, 0.0);
-					vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_RIGHT_Y], c.trackpadPosition.y, 0.0);
+					vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_RIGHT_X], c.trackpadPosition.x, 0.0);
+					vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_RIGHT_Y], c.trackpadPosition.y, 0.0);
 				}
 				else {
-					vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_X], c.trackpadPosition.x, 0.0);
-					vr::VRDriverInput()->UpdateScalarComponent(m_handles[INPUT_JOYSTICK_LEFT_Y], c.trackpadPosition.y, 0.0);
+					vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_LEFT_X], c.trackpadPosition.x, 0.0);
+					vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_LEFT_Y], c.trackpadPosition.y, 0.0);
 				}
 			}
 		}
@@ -291,7 +255,7 @@ private:
 	bool m_handed;
 	int m_index;
 
-	vr::VRInputComponentHandle_t m_handles[INPUT_COUNT];
+	vr::VRInputComponentHandle_t m_handles[ALVR_INPUT_COUNT];
 
 	vr::DriverPose_t m_pose;
 };

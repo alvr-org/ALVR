@@ -196,6 +196,7 @@ private:
 		auto data = m_freePIE->GetData();
 		bool enableControllerButton = data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_BUTTONS;
 		m_controllerDetected = data.controllers;
+		bool defaultHand = (info.controller[0].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) != 0;
 
 		// Add controller as specified.
 		for (int i = 0; i < m_controllerDetected; i++) {
@@ -203,11 +204,7 @@ private:
 				// Already enabled.
 				continue;
 			}
-			// false: right hand, true: left hand
-			bool handed = (info.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) != 0;
-			if (i == 1) {
-				handed = !handed;
-			}
+			bool handed = i == 0 ? defaultHand : !defaultHand;
 			m_remoteController[i] = std::make_shared<RemoteControllerServerDriver>(handed, i);
 
 			bool ret = vr::VRServerDriverHost()->TrackedDeviceAdded(

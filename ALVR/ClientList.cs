@@ -23,6 +23,10 @@ namespace ALVR
                 var json = DynamicJson.Parse(serialized);
                 foreach (var d in json) {
                     var newobj = new DeviceDescriptor();
+                    if (d.DeviceName == null)
+                    {
+                        continue;
+                    }
                     newobj.DeviceName = d.DeviceName;
                     newobj.ClientHost = d.ClientHost;
                     newobj.ClientPort = (int)d.ClientPort;
@@ -35,9 +39,10 @@ namespace ALVR
                     newobj.DeviceSubType = (byte)d.DeviceSubType;
                     newobj.DeviceCapabilityFlags = (UInt32)d.DeviceCapabilityFlags;
                     newobj.ControllerCapabilityFlags = (UInt32)d.ControllerCapabilityFlags;
+                    newobj.Online = false;
                     autoConnectList.Add(newobj);
+                    clients.Add(newobj);
                 }
-                autoConnectList.RemoveAll(d => d.DeviceName == null);
             }
             catch (Exception)
             {
@@ -67,7 +72,7 @@ namespace ALVR
         {
             var list = autoConnectList.Where(x =>
             {
-                return clients.Find(y => x.Equals(y) && y.VersionOk) != null;
+                return clients.Find(y => x.Equals(y) && y.VersionOk && y.Online) != null;
             });
             if (list.Count() != 0)
             {
@@ -97,6 +102,11 @@ namespace ALVR
             {
                 var found = clients.FindIndex((d) => d.Equals(descriptor));
                 clients[found] = descriptor;
+                found = autoConnectList.FindIndex((d) => d.Equals(descriptor));
+                if (found != -1)
+                {
+                    autoConnectList[found] = descriptor;
+                }
             }
             else
             {
@@ -114,8 +124,15 @@ namespace ALVR
             {
                 if (TimeSpan.FromTicks(current - clients[i].LastUpdate).TotalSeconds > 5)
                 {
-                    clients.RemoveAt(i);
-                    i--;
+                    if (!InAutoConnectList(clients[i]))
+                    {
+                        clients.RemoveAt(i);
+                        i--;
+                    }
+                    else
+                    {
+                        clients[i].Online = false;
+                    }
                 }
             }
         }

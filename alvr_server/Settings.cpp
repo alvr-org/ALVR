@@ -104,6 +104,9 @@ void Settings::Load()
 		m_controllerModelNumber = v.get(k_pch_Settings_ControllerModelNumber_String).get<std::string>();
 		m_controllerRenderModelName = v.get(k_pch_Settings_ControllerRenderModelName_String).get<std::string>();
 		m_controllerSerialNumber = v.get(k_pch_Settings_ControllerSerialNumber_String).get<std::string>();
+		m_controllerType = v.get(k_pch_Settings_ControllerType_String).get<std::string>();
+		m_controllerLegacyInputProfile = v.get(k_pch_Settings_ControllerLegacyInputProfile_String).get<std::string>();
+		m_controllerInputProfilePath = v.get(k_pch_Settings_ControllerInputProfilePath_String).get<std::string>();
 
 		m_enableController = v.get(k_pch_Settings_EnableController_Bool).get<bool>();
 		m_controllerTriggerMode = (int32_t)v.get(k_pch_Settings_ControllerTriggerMode_Int32).get<int64_t>();

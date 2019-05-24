@@ -93,6 +93,11 @@ public:
 			m_p->inputControllerButtons[i] = info.controller[i].buttons;
 		}
 
+		// When client sends two controller information and FreePIE is not running, detect it here.
+		if (info.controller[1].flags & TrackingInfo::Controller::FLAG_CONTROLLER_ENABLE) {
+			m_p->controllers = 2;
+		}
+
 		m_p->message[ALVR_FREEPIE_MESSAGE_LENGTH - 1] = 0;
 		memcpy(&m_copy, m_p, sizeof(FreePIEFileMapping));
 

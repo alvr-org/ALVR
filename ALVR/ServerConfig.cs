@@ -126,11 +126,6 @@ namespace ALVR
                 driverConfig.controlListenPort = 9944;
                 driverConfig.controlListenHost = "127.0.0.1";
                 driverConfig.useKeyedMutex = true;
-                driverConfig.controllerTrackingSystemName = "ALVR Remote Controller";
-                driverConfig.controllerManufacturerName = "ALVR";
-                driverConfig.controllerModelNumber = "ALVR Remote Controller";
-                driverConfig.controllerRenderModelName = "vr_controller_vive_1_5";
-                driverConfig.controllerSerialNumber = "ALVR Remote Controller";
 
                 driverConfig.codec = c.codec; // 0: H264, 1: H265
                 driverConfig.encodeBitrateInMBits = c.bitrate;
@@ -175,6 +170,29 @@ namespace ALVR
                 driverConfig.force60HZ = c.force60Hz;
 
                 driverConfig.enableController = c.enableController;
+                if(device != null && device.HasTouchController)
+                {
+                    driverConfig.controllerTrackingSystemName = "ALVR Remote Controller";
+                    driverConfig.controllerManufacturerName = "ALVR";
+                    driverConfig.controllerModelNumber = "ALVR Remote Controller";
+                    // There is not render model for Oculus Touch.
+                    driverConfig.controllerRenderModelName = "vr_controller_vive_1_5";
+                    driverConfig.controllerSerialNumber = "ALVR Remote Controller";
+                    driverConfig.controllerType = "oculus_touch";
+                    driverConfig.controllerLegacyInputProfile = "oculus_touch";
+                    driverConfig.controllerInputProfilePath = "{alvr_server}/input/touch_profile.json";
+                }
+                else
+                {
+                    driverConfig.controllerTrackingSystemName = "ALVR Remote Controller";
+                    driverConfig.controllerManufacturerName = "ALVR";
+                    driverConfig.controllerModelNumber = "ALVR Remote Controller";
+                    driverConfig.controllerRenderModelName = "vr_controller_vive_1_5";
+                    driverConfig.controllerSerialNumber = "ALVR Remote Controller";
+                    driverConfig.controllerType = "vive_controller";
+                    driverConfig.controllerLegacyInputProfile = "vive_controller";
+                    driverConfig.controllerInputProfilePath = "{alvr_server}/input/vive_controller_profile.json";
+                }
                 driverConfig.controllerTriggerMode = c.controllerTriggerMode;
                 driverConfig.controllerTrackpadClickMode = c.controllerTrackpadClickMode;
                 driverConfig.controllerTrackpadTouchMode = c.controllerTrackpadTouchMode;

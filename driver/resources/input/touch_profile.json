@@ -1,0 +1,122 @@
+{
+  "jsonid": "input_profile",
+  "controller_type": "oculus_touch",
+  "device_class" : "TrackedDeviceClass_Controller",
+  "resource_root" : "oculus",
+  "driver_name" : "oculus",
+  "legacy_binding" : "{oculus}/input/legacy_bindings_touch.json",
+  "input_bindingui_mode" : "controller_handed",
+  "should_show_binding_errors" :  true,
+  "input_bindingui_left" :
+  {
+    "image": "{oculus}/icons/oculus_touch_left.svg"
+  },
+  "input_bindingui_right" :
+  {
+    "image": "{oculus}/icons/oculus_touch_right.svg"
+  },
+  "input_source" :
+  {
+    "/input/joystick" : { 
+        "type" : "joystick",
+        "binding_image_point" : [ 54, 31 ],
+        "click" : true,
+        "touch" : true,
+        "order" : 2
+    },
+    "/input/trigger" : {
+        "type" : "trigger",
+        "binding_image_point" : [ 22, 85 ],
+        "value" : true,
+        "touch" : true,
+        "order" : 1
+    },
+    "/input/grip" : {
+        "type" : "trigger",
+        "binding_image_point" : [ 100, 86 ],
+        "value" : true,
+        "touch" : true,
+        "order" : 3
+    },
+    "/input/a" : {
+        "type" : "button",
+        "side" : "right",
+        "binding_image_point" : [ 70, 49 ],
+        "click" : true,
+        "touch" : true,
+        "order" : 4
+    },
+    "/input/b" : {
+        "type" : "button",
+        "side" : "right",
+        "binding_image_point" : [ 54, 55 ],
+        "click" : true,
+        "touch" : true,
+        "order" : 5
+    },
+    "/input/x" : {
+        "type" : "button",
+        "side" : "left",
+        "binding_image_point" : [ 70, 49 ],
+        "click" : true,
+        "touch" : true,
+        "order" : 4
+    },
+    "/input/y" : {
+        "type" : "button",
+        "side" : "left",
+        "binding_image_point" : [ 54, 55 ],
+        "click" : true,
+        "touch" : true,
+        "order" : 5
+    },
+    "/input/system" : {
+        "type" : "button",
+        "side" : "left",
+        "binding_image_point" : [ 72, 39 ],
+        "click" : true,
+        "touch" : true,
+        "order" : 0
+    },
+    "/input/skeleton/right" : {
+        "type" : "skeleton",
+        "side" : "right",
+        "skeleton" : "/skeleton/hand/right",
+        "binding_image_point" : [ 11, 150 ]
+    },
+    "/input/skeleton/left" : {
+        "type" : "skeleton",
+        "side" : "left",
+        "skeleton" : "/skeleton/hand/left",
+        "binding_image_point" : [ 11, 150 ]
+    },
+    "/output/haptic" : {
+        "type" : "vibration",
+        "binding_image_point" : [ 72, 39 ]
+    },
+    "/pose/raw" : {
+        "type" : "pose",
+        "binding_image_point" : [ 14, 16 ]
+    },
+    "/pose/base" : {
+        "type" : "pose",
+        "binding_image_point" : [ 11, 150 ]
+    },
+    "/pose/handgrip" : {
+        "type" : "pose",
+        "binding_image_point" : [ 24, 86 ]
+    },
+    "/pose/tip" : {
+        "type" : "pose",
+        "binding_image_point" : [ 14, 16 ]
+    }
+  },
+  "default_bindings": [
+  {
+    "app_key": "openvr.component.vrcompositor",
+    "binding_url": "vrcompositor_bindings_touch.json"
+  }
+]
+  
+
+}

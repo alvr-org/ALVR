@@ -61,6 +61,16 @@ namespace ALVR
             set { }
         }
 
+        public bool HasTouchController
+        {
+            get
+            {
+                return DeviceType == HelloListener.ALVR_DEVICE_TYPE_OCULUS_MOBILE &&
+                    DeviceSubType == HelloListener.ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_QUEST;
+            }
+            set { }
+        }
+
         public bool Equals(DeviceDescriptor a)
         {
             return ClientAddr.Equals(a.ClientAddr) && DeviceName.Equals(a.DeviceName);

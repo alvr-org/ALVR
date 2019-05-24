@@ -562,7 +562,7 @@ namespace ALVR
                 if (!tag.client.Online)
                 {
                     // Remove from auto connect list.
-                    //clientList.RemoveAutoConnect(tag.client);
+                    clientList.RemoveAutoConnect(tag.client);
                     SaveSettings();
                     UpdateClients();
                     return;

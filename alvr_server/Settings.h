@@ -50,6 +50,10 @@ static const char * const k_pch_Settings_ControllerManufacturerName_String = "co
 static const char * const k_pch_Settings_ControllerModelNumber_String = "controllerModelNumber";
 static const char * const k_pch_Settings_ControllerRenderModelName_String = "controllerRenderModelName";
 static const char * const k_pch_Settings_ControllerSerialNumber_String = "controllerSerialNumber";
+static const char * const k_pch_Settings_ControllerType_String = "controllerType";
+static const char * const k_pch_Settings_ControllerLegacyInputProfile_String = "controllerLegacyInputProfile";
+static const char * const k_pch_Settings_ControllerInputProfilePath_String = "controllerInputProfilePath";
+
 static const char * const k_pch_Settings_EnableController_Bool = "enableController";
 static const char * const k_pch_Settings_ControllerTriggerMode_Int32 = "controllerTriggerMode";
 static const char * const k_pch_Settings_ControllerTrackpadClickMode_Int32 = "controllerTrackpadClickMode";
@@ -148,6 +152,9 @@ public:
 	std::string m_controllerModelNumber;
 	std::string m_controllerRenderModelName;
 	std::string m_controllerSerialNumber;
+	std::string m_controllerType;
+	std::string m_controllerLegacyInputProfile;
+	std::string m_controllerInputProfilePath;
 	bool m_enableController;
 	int32_t m_controllerTriggerMode;
 	int32_t m_controllerTrackpadClickMode;

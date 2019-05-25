@@ -176,7 +176,8 @@ namespace ALVR
                     driverConfig.controllerManufacturerName = "ALVR";
                     driverConfig.controllerModelNumber = "ALVR Remote Controller";
                     // There is not render model for Oculus Touch.
-                    driverConfig.controllerRenderModelName = "vr_controller_vive_1_5";
+                    driverConfig.controllerRenderModelNameLeft = "oculus_cv1_controller_left";
+                    driverConfig.controllerRenderModelNameRight = "oculus_cv1_controller_right";
                     driverConfig.controllerSerialNumber = "ALVR Remote Controller";
                     driverConfig.controllerType = "oculus_touch";
                     driverConfig.controllerLegacyInputProfile = "oculus_touch";
@@ -187,7 +188,8 @@ namespace ALVR
                     driverConfig.controllerTrackingSystemName = "ALVR Remote Controller";
                     driverConfig.controllerManufacturerName = "ALVR";
                     driverConfig.controllerModelNumber = "ALVR Remote Controller";
-                    driverConfig.controllerRenderModelName = "vr_controller_vive_1_5";
+                    driverConfig.controllerRenderModelNameLeft = "vr_controller_vive_1_5";
+                    driverConfig.controllerRenderModelNameRight = "vr_controller_vive_1_5";
                     driverConfig.controllerSerialNumber = "ALVR Remote Controller";
                     driverConfig.controllerType = "vive_controller";
                     driverConfig.controllerLegacyInputProfile = "vive_controller";

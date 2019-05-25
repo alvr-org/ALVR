@@ -48,7 +48,8 @@ static const char * const k_pch_Settings_LimitTimeslotPackets_Int32 = "limitTime
 static const char * const k_pch_Settings_ControllerTrackingSystemName_String = "controllerTrackingSystemName";
 static const char * const k_pch_Settings_ControllerManufacturerName_String = "controllerManufacturerName";
 static const char * const k_pch_Settings_ControllerModelNumber_String = "controllerModelNumber";
-static const char * const k_pch_Settings_ControllerRenderModelName_String = "controllerRenderModelName";
+static const char * const k_pch_Settings_ControllerRenderModelNameLeft_String = "controllerRenderModelNameLeft";
+static const char * const k_pch_Settings_ControllerRenderModelNameRight_String = "controllerRenderModelNameRight";
 static const char * const k_pch_Settings_ControllerSerialNumber_String = "controllerSerialNumber";
 static const char * const k_pch_Settings_ControllerType_String = "controllerType";
 static const char * const k_pch_Settings_ControllerLegacyInputProfile_String = "controllerLegacyInputProfile";
@@ -150,7 +151,8 @@ public:
 	std::string m_controllerTrackingSystemName;
 	std::string m_controllerManufacturerName;
 	std::string m_controllerModelNumber;
-	std::string m_controllerRenderModelName;
+	std::string m_controllerRenderModelNameLeft;
+	std::string m_controllerRenderModelNameRight;
 	std::string m_controllerSerialNumber;
 	std::string m_controllerType;
 	std::string m_controllerLegacyInputProfile;

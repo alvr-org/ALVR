@@ -102,7 +102,8 @@ void Settings::Load()
 		m_controllerTrackingSystemName = v.get(k_pch_Settings_ControllerTrackingSystemName_String).get<std::string>();
 		m_controllerManufacturerName = v.get(k_pch_Settings_ControllerManufacturerName_String).get<std::string>();
 		m_controllerModelNumber = v.get(k_pch_Settings_ControllerModelNumber_String).get<std::string>();
-		m_controllerRenderModelName = v.get(k_pch_Settings_ControllerRenderModelName_String).get<std::string>();
+		m_controllerRenderModelNameLeft = v.get(k_pch_Settings_ControllerRenderModelNameLeft_String).get<std::string>();
+		m_controllerRenderModelNameRight = v.get(k_pch_Settings_ControllerRenderModelNameRight_String).get<std::string>();
 		m_controllerSerialNumber = v.get(k_pch_Settings_ControllerSerialNumber_String).get<std::string>();
 		m_controllerType = v.get(k_pch_Settings_ControllerType_String).get<std::string>();
 		m_controllerLegacyInputProfile = v.get(k_pch_Settings_ControllerLegacyInputProfile_String).get<std::string>();

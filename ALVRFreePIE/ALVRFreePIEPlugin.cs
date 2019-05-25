@@ -65,7 +65,7 @@ namespace ALVRFreePIE
             {
                 mutex.WaitOne(-1);
 
-                UInt32[] inputControllerButtons = new UInt32[] { 0, 0 };
+                UInt64[] inputControllerButtons = { 0, 0 };
 
                 using (var mappedStream = memoryMappedFile.CreateViewStream())
                 {
@@ -105,7 +105,7 @@ namespace ALVRFreePIE
 
                         for (int i = 0; i < ALVR_FREEPIE_MAX_CONTROLLERS; i++)
                         {
-                            inputControllerButtons[i] = reader.ReadUInt32();
+                            inputControllerButtons[i] = reader.ReadUInt64();
                         }
                     }
                 }
@@ -135,7 +135,7 @@ namespace ALVRFreePIE
 
                     mappedStream.Write(BitConverter.GetBytes(flags), 0, sizeof(UInt32));
 
-                    mappedStream.Seek(sizeof(double) * 22 + sizeof(UInt32) * 2, SeekOrigin.Current);
+                    mappedStream.Seek(sizeof(double) * 22 + sizeof(UInt64) * 2, SeekOrigin.Current);
 
                     mappedStream.Write(BitConverter.GetBytes(global.two_controllers ? 2 : 1), 0, sizeof(UInt32));
 

@@ -204,20 +204,22 @@ private:
 				// Already enabled.
 				continue;
 			}
-			bool handed = i == 0 ? defaultHand : !defaultHand;
-			m_remoteController[i] = std::make_shared<RemoteControllerServerDriver>(handed, i);
+			bool hand = i == 0 ? defaultHand : !m_remoteController[0]->GetHand();
+			m_remoteController[i] = std::make_shared<RemoteControllerServerDriver>(hand, i);
 
 			bool ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 				m_remoteController[i]->GetSerialNumber().c_str(),
 				vr::TrackedDeviceClass_Controller,
 				m_remoteController[i].get());
-			Log(L"TrackedDeviceAdded vr::TrackedDeviceClass_Controller index=%d Ret=%d SerialNumber=%hs"
-				, i, ret, m_remoteController[i]->GetSerialNumber().c_str());
+			Log(L"TrackedDeviceAdded vr::TrackedDeviceClass_Controller index=%d Ret=%d SerialNumber=%hs Hand=%d"
+				, i, ret, m_remoteController[i]->GetSerialNumber().c_str(), hand);
 		}
 
 		for (int i = 0; i < m_controllerDetected; i++) {
 			if (m_remoteController[i]) {
-				bool recenterRequested = m_remoteController[i]->ReportControllerState(info, m_fixedOrientationController[i], m_fixedPositionController[i], enableControllerButton, data);
+				int index = m_remoteController[i]->GetHand() == defaultHand ? 0 : 1;
+				bool recenterRequested = m_remoteController[i]->ReportControllerState(index, info,
+					m_fixedOrientationController[index], m_fixedPositionController[index], enableControllerButton, data);
 				if (recenterRequested) {
 					BeginRecenter();
 				}

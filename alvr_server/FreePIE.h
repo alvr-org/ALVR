@@ -45,7 +45,7 @@ public:
 		double input_head_position[3];
 		double input_controller_position[2][3];
 		double input_trackpad[2][2];
-		uint32_t inputControllerButtons[2];
+		uint64_t inputControllerButtons[2];
 		uint32_t controllers;
 		uint32_t controllerButtons[2];
 		double head_orientation[3];

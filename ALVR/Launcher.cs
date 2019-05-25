@@ -115,6 +115,7 @@ namespace ALVR
             clientList.StartListening();
 
             ShowFindingPanel();
+            UpdateClients();
         }
 
         /// <summary>
@@ -369,7 +370,7 @@ namespace ALVR
             return dict;
         }
 
-        async private void UpdateClients()
+        private void UpdateClients()
         {
             clientList.Refresh();
 
@@ -471,6 +472,10 @@ namespace ALVR
             UpdateResolutionLabel();
             ShowConnectedPanel();
             UpdateServerStatus();
+
+            // To ensure the driver can detect current config (MemoryMappedFile) on startup,
+            // when SteamVR is launched by external.
+            SaveConfig();
         }
 
         private void CheckDriverInstallStatus()
@@ -553,7 +558,7 @@ namespace ALVR
             UpdateClientStatistics();
         }
 
-        async private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (dataGridView1.Columns[e.ColumnIndex].Name == "Button")
             {

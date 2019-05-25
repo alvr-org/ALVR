@@ -9,6 +9,10 @@ xcopy /y libswresample\lib\*.dll release-files\ALVR\driver\bin\win64
 xcopy /y/s/e/i freepie-samples release-files\ALVR\freepie-samples
 xcopy /y ALVRFreePIE\bin\Release\ALVRFreePIE.dll release-files\ALVR
 
+cd release-files
+7z a -tzip ALVR.zip ALVR
+cd ..
+
 "C:\Program Files (x86)\Inno Setup 5\ISCC.exe" installer\installer.iss
 
 pause

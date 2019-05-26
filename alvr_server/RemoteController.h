@@ -51,7 +51,7 @@ public:
 
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_TrackingSystemName_String, Settings::Instance().m_controllerTrackingSystemName.c_str());
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ManufacturerName_String, Settings::Instance().m_controllerManufacturerName.c_str());
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, Settings::Instance().m_controllerModelNumber.c_str());
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, m_hand ? (Settings::Instance().m_controllerModelNumber+" (Left Controller)").c_str() : (Settings::Instance().m_controllerModelNumber + " (Right Controller)").c_str());
 
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, m_hand ? Settings::Instance().m_controllerRenderModelNameLeft.c_str() : Settings::Instance().m_controllerRenderModelNameRight.c_str());
 
@@ -306,7 +306,7 @@ public:
 
 	std::string GetSerialNumber() {
 		char str[100];
-		snprintf(str, sizeof(str), "-%d", m_index);
+		snprintf(str, sizeof(str), "_%s", m_index == 0 ? "Left" : "Right");
 		return Settings::Instance().m_controllerSerialNumber + str;
 	}
 

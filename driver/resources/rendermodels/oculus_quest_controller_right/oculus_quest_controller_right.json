@@ -1,0 +1,84 @@
+{
+    "thumbnail" : "touch_controller_thumbnail.png",
+	"components": {
+		"body": {
+			"filename": "oculus_quest_controller_right_body.obj",
+			"component_local": {
+				"origin": [0.00, 0.00, 0.00]
+			}
+		},
+		"facePlate": {
+			"filename": "oculus_quest_controller_right_facePlate.obj",
+			"component_local": {
+				"origin": [0.00, 0.00, 0.00]
+			}
+		},
+		"joystick": {
+			"filename": "oculus_quest_controller_right_joystick.obj",
+			"component_local": {
+				"origin": [0.00, 0.00, 0.00]
+			}
+		},
+		"buttonB": {
+			"filename": "oculus_quest_controller_right_buttonB.obj",
+			"motion":{
+				"type": "translate",
+				"controller_button": 1,
+				"pressed_path": "/input/b/click",
+				"value_mapping": [0.0, -0.00135],
+				"axis": [0.0, 1.0, 0.0]
+            },
+			"component_local": {
+				"origin": [0.00, 0.00, 0.00]
+			}
+		},
+		"buttonA": {
+			"filename": "oculus_quest_controller_right_buttonA.obj",
+			"motion":{
+				"type": "translate",
+				"controller_button": 7,
+				"pressed_path": "/input/a/click",
+				"value_mapping": [0.0, -0.00135],
+				"axis": [0.0, 1.0, 0.0]
+            },
+			"component_local": {
+				"origin": [0.00, 0.00, 0.00]
+			}
+		},
+		"home": {
+			"filename": "oculus_quest_controller_right_home.obj",
+			"component_local": {
+				"origin": [0.00, 0.00, 0.00]
+			}
+		},
+		"trigger": {
+			"filename": "oculus_quest_controller_right_trigger.obj",
+			"motion": {
+				"type": "rotate",
+				"controller_axis": 1,
+				"controller_axis_component": 0,
+				"value_mapping": [0.0,-7.0],
+				"trigger_path": "/input/trigger",
+				"pivot": [0.0095, 0.032176, -0.012467],
+				"axis": [1.0, 0.0, 0.0]
+			},
+			"component_local": {
+				"origin": [0.00, 0.00, 0.00]
+			}
+		},
+		"grip": {
+			"filename": "oculus_quest_controller_right_grip.obj",
+			"motion":{
+				"type": "translate",
+				"controller_axis": 2,
+				"controller_axis_component": 0,
+				"trigger_path": "/input/grip",
+				"value_mapping": [0.0, 0.00325],
+				"axis": [1.0, 0.0, 0.0]
+            },
+			"component_local": {
+				"origin": [0.00, 0.00, 0.00]
+			}
+		}
+	}
+}

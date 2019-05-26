@@ -45,29 +45,29 @@ namespace ALVR
             ,new ComboBoxCustomItem("System", 0)
             ,new ComboBoxCustomItem("ApplicationMenu", 1)
             ,new ComboBoxCustomItem("Grip", 2)
-            ,new ComboBoxCustomItem("DPad_Left", 3)
-            ,new ComboBoxCustomItem("DPad_Up", 4)
-            ,new ComboBoxCustomItem("DPad_Right", 5)
-            ,new ComboBoxCustomItem("DPad_Down", 6)
-            ,new ComboBoxCustomItem("A Button", 7)
-            ,new ComboBoxCustomItem("B Button", 8)
-            ,new ComboBoxCustomItem("X Button", 9)
-            ,new ComboBoxCustomItem("Y Button", 10)
-            ,new ComboBoxCustomItem("Trackpad", 28) // 28
-            ,new ComboBoxCustomItem("Trigger", 24) // 24
-            ,new ComboBoxCustomItem("Shoulder Left", 13)
-            ,new ComboBoxCustomItem("Shoulder Right", 14)
-            ,new ComboBoxCustomItem("Joystick Left", 15)
-            ,new ComboBoxCustomItem("Joystick Right", 18)
-            ,new ComboBoxCustomItem("Back", 21)
-            ,new ComboBoxCustomItem("Guide", 22)
-            ,new ComboBoxCustomItem("Start", 23)
+            ,new ComboBoxCustomItem("DPad_Left", 5)
+            ,new ComboBoxCustomItem("DPad_Up", 6)
+            ,new ComboBoxCustomItem("DPad_Right", 7)
+            ,new ComboBoxCustomItem("DPad_Down", 8)
+            ,new ComboBoxCustomItem("A Button", 9)
+            ,new ComboBoxCustomItem("B Button", 11)
+            ,new ComboBoxCustomItem("X Button", 13)
+            ,new ComboBoxCustomItem("Y Button", 15)
+            ,new ComboBoxCustomItem("Trackpad", 39)
+            ,new ComboBoxCustomItem("Trigger", 34)
+            ,new ComboBoxCustomItem("Shoulder Left", 19)
+            ,new ComboBoxCustomItem("Shoulder Right", 20)
+            ,new ComboBoxCustomItem("Joystick Left", 21)
+            ,new ComboBoxCustomItem("Joystick Right", 24)
+            ,new ComboBoxCustomItem("Back", 31)
+            ,new ComboBoxCustomItem("Guide", 32)
+            ,new ComboBoxCustomItem("Start", 33)
         };
         public static readonly string[] supportedRecenterButton = new string[] {
             "None", "Trigger", "Trackpad click", "Trackpad touch", "Back"
         };
         public static readonly int[] recenterButtonIndex = new int[] {
-            -1, 24, 28, 29, 21
+            -1, 34, 39, 40, 31
         };
 
         public static readonly ComboBoxCustomItem[] supportedCodecs = {
@@ -90,7 +90,7 @@ namespace ALVR
                     return i;
                 }
             }
-            return -1;
+            return 0;
         }
 
         public int GetBufferSizeKB()

@@ -175,9 +175,16 @@ namespace ALVR
                     driverConfig.controllerTrackingSystemName = "ALVR Remote Controller";
                     driverConfig.controllerManufacturerName = "ALVR";
                     driverConfig.controllerModelNumber = "ALVR Remote Controller";
-                    // There is not render model for Oculus Touch.
-                    driverConfig.controllerRenderModelNameLeft = "oculus_cv1_controller_left";
-                    driverConfig.controllerRenderModelNameRight = "oculus_cv1_controller_right";
+                    if (!Directory.Exists(Utils.GetDriverPath() + "resources\\rendermodels\\oculus_quest_controller_left"))
+                    {
+                        driverConfig.controllerRenderModelNameLeft = "oculus_cv1_controller_left";
+                        driverConfig.controllerRenderModelNameRight = "oculus_cv1_controller_right";
+                    }
+                    else
+                    {
+                        driverConfig.controllerRenderModelNameLeft = Utils.GetDriverPath() + "resources\\rendermodels\\oculus_quest_controller_left";
+                        driverConfig.controllerRenderModelNameRight = Utils.GetDriverPath() + "resources\\rendermodels\\oculus_quest_controller_right";
+                    }
                     driverConfig.controllerSerialNumber = "ALVR Remote Controller";
                     driverConfig.controllerType = "oculus_touch";
                     driverConfig.controllerLegacyInputProfile = "oculus_touch";

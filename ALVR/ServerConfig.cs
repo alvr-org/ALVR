@@ -172,9 +172,9 @@ namespace ALVR
                 driverConfig.enableController = c.enableController;
                 if(device != null && device.HasTouchController)
                 {
-                    driverConfig.controllerTrackingSystemName = "ALVR Remote Controller";
-                    driverConfig.controllerManufacturerName = "ALVR";
-                    driverConfig.controllerModelNumber = "ALVR Remote Controller";
+                    driverConfig.controllerTrackingSystemName = "oculus";
+                    driverConfig.controllerManufacturerName = "Oculus";
+                    driverConfig.controllerModelNumber = "Oculus Rift CV1";
                     if (!Directory.Exists(Utils.GetDriverPath() + "resources\\rendermodels\\oculus_quest_controller_left"))
                     {
                         driverConfig.controllerRenderModelNameLeft = "oculus_cv1_controller_left";
@@ -185,7 +185,7 @@ namespace ALVR
                         driverConfig.controllerRenderModelNameLeft = Utils.GetDriverPath() + "resources\\rendermodels\\oculus_quest_controller_left";
                         driverConfig.controllerRenderModelNameRight = Utils.GetDriverPath() + "resources\\rendermodels\\oculus_quest_controller_right";
                     }
-                    driverConfig.controllerSerialNumber = "ALVR Remote Controller";
+                    driverConfig.controllerSerialNumber = "WMHD000X000XXX_Controller";
                     driverConfig.controllerType = "oculus_touch";
                     driverConfig.controllerLegacyInputProfile = "oculus_touch";
                     driverConfig.controllerInputProfilePath = "{alvr_server}/input/touch_profile.json";

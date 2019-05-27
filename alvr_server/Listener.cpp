@@ -267,6 +267,28 @@ void Listener::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
 	}
 }
 
+void Listener::SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand)
+{
+	if (!m_Socket->IsClientValid()) {
+		Log(L"Skip sending audio packet because client is not connected.");
+		return;
+	}
+	if (!m_Streaming) {
+		Log(L"Skip sending audio packet because streaming is off.");
+		return;
+	}
+	Log(L"Sending haptics feedback. startTime=%llu amplitude=%f duration=%f frequency=%f", startTime, amplitude, duration, frequency);
+
+	HapticsFeedback packetBuffer;
+	packetBuffer.type = ALVR_PACKET_TYPE_HAPTICS;
+	packetBuffer.startTime = startTime;
+	packetBuffer.amplitude = amplitude;
+	packetBuffer.duration = duration;
+	packetBuffer.frequency = frequency;
+	packetBuffer.hand = hand;
+	m_Socket->Send((char *)&packetBuffer, sizeof(HapticsFeedback));
+}
+
 void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 	if (len < 4) {
 		return;

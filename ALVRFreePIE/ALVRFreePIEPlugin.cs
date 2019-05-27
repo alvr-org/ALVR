@@ -237,6 +237,7 @@ namespace ALVRFreePIE
         static readonly string ALVR_FREEPIE_MUTEX_NAME = "ALVR_FREEPIE_MUTEX_AA77F1C3-86E4-4EF9-AAA2-5C40CF380D7A";
 
         static readonly UInt32 ALVR_FREEPIE_SIGNATURE_V3 = 0x11223346;
+        public static readonly int ALVR_FREEPIE_PLUGIN_VERSION = 3;
 
         static readonly UInt32 ALVR_FREEPIE_MAX_CONTROLLERS = 2;
 
@@ -293,6 +294,8 @@ namespace ALVRFreePIE
             }
             return -1;
         }
+
+        public int version { get; set; } = ALVRFreePIEPlugin.ALVR_FREEPIE_PLUGIN_VERSION;
 
         public bool two_controllers { get; set; }
 

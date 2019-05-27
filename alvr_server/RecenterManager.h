@@ -37,7 +37,7 @@ public:
 		m_recentering = false;
 	}
 
-	void OnPoseUpdated(const TrackingInfo &info) {
+	void OnPoseUpdated(const TrackingInfo &info, Listener *listener) {
 		m_hasValidTrackingInfo = true;
 		if (m_recentering) {
 			if (GetTimestampUs() - m_recenterStartTimestamp > RECENTER_DURATION) {
@@ -99,12 +99,19 @@ public:
 			{
 				for (int i = 0; i < 2; i++) {
 					if (m_remoteController[i] && m_remoteController[i]->IsMyHapticComponent(vrEvent.data.hapticVibration.componentHandle)) {
+						Log(L"Haptics %d: %f", i, vrEvent.data.hapticVibration.fAmplitude);
 						// if multiple events occurred within one frame, they are ignored except for last event
 						hapticFeedback[i][0] = vrEvent.data.hapticVibration.fAmplitude;
 						hapticFeedback[i][1] = vrEvent.data.hapticVibration.fDurationSeconds;
 						hapticFeedback[i][2] = vrEvent.data.hapticVibration.fFrequency;
 					}
 				}
+			}
+		}
+
+		for (int i = 0; i < 2; i++) {
+			if (hapticFeedback[i][0] != 0 || hapticFeedback[i][1] != 0 || hapticFeedback[i][2] != 0) {
+				listener->SendHapticsFeedback(0, hapticFeedback[i][0], hapticFeedback[i][1], hapticFeedback[i][2], m_remoteController[i]->GetHand() ? 1 : 0);
 			}
 		}
 
@@ -233,9 +240,12 @@ private:
 				, i, ret, m_remoteController[i]->GetSerialNumber().c_str(), hand);
 		}
 
+		Log(L"UpdateControllerState. detected=%d hand=%d", m_controllerDetected, defaultHand);
+
 		for (int i = 0; i < m_controllerDetected; i++) {
 			if (m_remoteController[i]) {
 				int index = m_remoteController[i]->GetHand() == defaultHand ? 0 : 1;
+				Log(L"UpdateControllerState. Updating %d controller", index);
 				bool recenterRequested = m_remoteController[i]->ReportControllerState(index, info,
 					m_fixedOrientationController[index], m_fixedPositionController[index], enableControllerButton, data);
 				if (recenterRequested) {

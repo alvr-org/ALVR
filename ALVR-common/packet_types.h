@@ -23,6 +23,7 @@ enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_AUDIO_FRAME_START = 10,
 	ALVR_PACKET_TYPE_AUDIO_FRAME = 11,
 	ALVR_PACKET_TYPE_PACKET_ERROR_REPORT = 12,
+	ALVR_PACKET_TYPE_HAPTICS = 13,
 };
 
 enum {
@@ -294,6 +295,15 @@ struct PacketErrorReport {
 	uint32_t lostFrameType;
 	uint32_t fromPacketCounter;
 	uint32_t toPacketCounter;
+};
+// Send haptics feedback from server to client.
+struct HapticsFeedback {
+	uint32_t type; // ALVR_PACKET_TYPE_HAPTICS
+	uint64_t startTime; // Elapsed time from now when start haptics. In microseconds.
+	float amplitude;
+	float duration;
+	float frequency;
+	uint8_t hand; // 0:Right, 1:Left
 };
 #pragma pack(pop)
 

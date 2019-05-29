@@ -228,7 +228,7 @@ namespace ALVRFreePIE
                 memoryMappedFile = MemoryMappedFile.OpenExisting(ALVR_FREEPIE_FILEMAPPING_NAME);
                 mutex = new Mutex(false, ALVR_FREEPIE_MUTEX_NAME);
             }
-            catch (Exception e)
+            catch (Exception)
             {
             }
         }

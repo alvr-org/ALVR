@@ -92,9 +92,18 @@ namespace ALVR
             // Driver check
             //
 
-            DriverInstaller.CheckDriverPath();
-            DriverInstaller.RemoveOtherDriverInstallations();
-            CheckDriverInstallStatus();
+            try
+            {
+                DriverInstaller.CheckDriverPath();
+                DriverInstaller.RemoveOtherDriverInstallations();
+                CheckDriverInstallStatus();
+            }
+            catch (Exception e2)
+            {
+                MessageBox.Show("No SteamVR installation found. Please check installation of SteamVR.\r\n" +
+                    e2.Message, "ALVR Fatal Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Application.Exit();
+            }
 
             //
             // Open server tab
@@ -604,14 +613,14 @@ namespace ALVR
             bitrateLabel.Text = bitrateTrackBar.Value + "Mbps";
         }
 
-        async private void button2_Click(object sender, EventArgs e)
+        async private void sendClientDebugFlagsButton_Click(object sender, EventArgs e)
         {
-            await socket.SendCommand("EnableTestMode " + metroTextBox1.Text);
+            await socket.SendCommand("SetDebugFlags " + clientDebugFlagsTextBox.Text);
         }
 
         async private void button3_Click(object sender, EventArgs e)
         {
-            await socket.SendCommand("EnableDriverTestMode " + metroTextBox2.Text);
+            await socket.SendCommand("EnableDriverTestMode " + driverTestModeTextBox.Text);
         }
 
         async private void metroButton4_Click(object sender, EventArgs e)

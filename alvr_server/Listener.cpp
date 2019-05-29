@@ -12,7 +12,7 @@ Listener::Listener()
 	m_Statistics = std::make_shared<Statistics>();
 
 	m_Settings.type = ALVR_PACKET_TYPE_CHANGE_SETTINGS;
-	m_Settings.enableTestMode = 0;
+	m_Settings.debugFlags = 0;
 	m_Settings.suspend = 0;
 
 	m_Poller.reset(new Poller());
@@ -418,8 +418,8 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 }
 
 void Listener::ProcessCommand(const std::string &commandName, const std::string args) {
-	if (commandName == "EnableTestMode") {
-		m_Settings.enableTestMode = atoi(args.c_str());
+	if (commandName == "SetDebugFlags") {
+		m_Settings.debugFlags = strtol(args.c_str(), NULL, 10);
 		SendChangeSettings();
 		SendCommandResponse("OK\n");
 	}

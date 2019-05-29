@@ -78,10 +78,6 @@ namespace ALVR
         public static List<string> GetDriverList()
         {
             string vrpathreg = GetVRPathRegPath();
-            if (vrpathreg == null)
-            {
-                throw new Exception();
-            }
 
             string driverPath = Utils.GetDriverPath();
             driverPath += "\\";
@@ -134,18 +130,21 @@ namespace ALVR
             RegistryKey regkey = Registry.ClassesRoot.OpenSubKey(@"vrmonitor\Shell\Open\Command", false);
             if (regkey == null)
             {
-                MessageBox.Show("SteamVR is not installed.\r\n(Registry HKEY_CLASSES_ROOT\\vrmonitor\\Shell\\Open\\Command was not found.)\r\nPlease install and retry.");
-                return null;
+                throw new Exception("Registry HKEY_CLASSES_ROOT\\vrmonitor\\Shell\\Open\\Command is not found.");
             }
             string path = (string)regkey.GetValue("");
 
             var m = Regex.Match(path, "^\"(.+)bin\\\\([^\\\\]+)\\\\vrmonitor.exe\" \"%1\"$");
             if (!m.Success)
             {
-                MessageBox.Show("Invalid value in registry HKEY_CLASSES_ROOT\\vrmonitor\\Shell\\Open\\Command.");
-                return null;
+                throw new Exception("Invalid value in registry HKEY_CLASSES_ROOT\\vrmonitor\\Shell\\Open\\Command.");
             }
-            return m.Groups[1].Value + @"bin\win32\vrpathreg.exe";
+            string vrpathreg = m.Groups[1].Value + @"bin\win32\vrpathreg.exe";
+            if (!File.Exists(vrpathreg))
+            {
+                throw new Exception(vrpathreg + " is not found.");
+            }
+            return vrpathreg;
         }
     }
 }

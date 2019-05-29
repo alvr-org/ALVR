@@ -19,7 +19,7 @@ AppUpdatesURL=https://github.com/polygraphene/ALVR
 DefaultDirName={pf}\ALVR
 DefaultGroupName=ALVR
 LicenseFile=..\LICENSE
-OutputDir=..\setup
+OutputDir=..\release-files
 OutputBaseFilename=ALVR-setup-{#ApplicationVersion}
 Compression=lzma
 SolidCompression=yes
@@ -50,6 +50,8 @@ Source: "..\libswresample\lib\swresample-3.dll"; DestDir: "{app}\driver\bin\win6
 Source: "..\freepie-samples\*"; DestDir: "{app}\freepie-samples\"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 Source: "..\ALVRFreePIE\bin\Release\ALVRFreePIE.dll"; DestDir: "{pf32}\FreePIE\plugins"; Flags: ignoreversion; Check: DirExists(ExpandConstant('{pf32}\FreePIE\plugins'))
+Source: "..\add_firewall_rules.bat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\remove_firewall_rules.bat"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\ALVR"; Filename: "{app}\ALVR.exe"
@@ -64,5 +66,9 @@ Type: filesandordirs; Name: "{app}"
 
 Type: files; Name: "{pf32}\FreePIE\plugins\ALVRFreePIE.dll"; 
 
+[Run]
+Filename: {app}\add_firewall_rules.bat; Parameters: "/s"; Flags: runhidden
+
 [UninstallRun]
 Filename: {app}\driver\driver_uninstall.bat; Parameters: "/s"; Flags: runhidden
+Filename: {app}\remove_firewall_rules.bat; Parameters: "/s"; Flags: runhidden

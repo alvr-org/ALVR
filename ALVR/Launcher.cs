@@ -24,6 +24,7 @@ namespace ALVR
         ControlSocket socket = new ControlSocket();
         ServerConfig config = new ServerConfig();
         ClientList clientList;
+        ClientSocket clientSocket;
         DeviceDescriptor currentClient;
         List<DeviceQuery.SoundDevice> soundDevices = new List<DeviceQuery.SoundDevice>();
         int defaultSoundDeviceIndex = 0;
@@ -38,6 +39,7 @@ namespace ALVR
 
         public Launcher()
         {
+            clientSocket = new ClientSocket(OnClientMessageStartServer);
             InitializeComponent();
         }
 
@@ -470,6 +472,8 @@ namespace ALVR
             }
             currentClient = client;
 
+            var task = clientSocket.Connect(currentClient.ClientHost, currentClient.ClientPort);
+
             connectedLabel.Text = "Connected!\r\n\r\n" + currentClient.DeviceName + "\r\n"
                 + currentClient.ClientAddr.ToString() + "\r\n"
                 + currentClient.RefreshRates[0] + "Hz " + currentClient.DefaultWidth + "x" + currentClient.DefaultHeight;
@@ -802,6 +806,11 @@ namespace ALVR
             }
             resolutionLabel.Text = (width * ServerConfig.supportedScales[resolutionComboBox.SelectedIndex] / 100)
                 + "x" + (height * ServerConfig.supportedScales[resolutionComboBox.SelectedIndex] / 100);
+        }
+
+        private void OnClientMessageStartServer()
+        {
+            LaunchServer();
         }
     }
 }

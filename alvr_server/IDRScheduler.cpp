@@ -34,7 +34,7 @@ void IDRScheduler::OnStreamStart()
 {
 	IPCCriticalSectionLock lock(m_IDRCS);
 	// Force insert IDR-frame
-	m_insertIDRTime = GetTimestampUs();
+	m_insertIDRTime = GetTimestampUs() - MIN_IDR_FRAME_INTERVAL * 2;
 	m_scheduled = true;
 }
 

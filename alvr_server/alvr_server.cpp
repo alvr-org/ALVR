@@ -1127,6 +1127,7 @@ public:
 		if (!m_added || !mActivated) {
 			return;
 		}
+		Log(L"OnStreamStart()");
 		// Insert IDR frame for faster startup of decoding.
 		m_encoder->OnStreamStart();
 	}
@@ -1135,6 +1136,7 @@ public:
 		if (!m_added || !mActivated) {
 			return;
 		}
+		Log(L"OnPacketLoss()");
 		m_encoder->OnPacketLoss();
 	}
 

@@ -540,6 +540,7 @@ void Listener::SendChangeSettings() {
 
 void Listener::Stop()
 {
+	Log(L"Listener::Stop().");
 	m_bExiting = true;
 	m_Socket->Shutdown();
 	m_ControlSocket->Shutdown();
@@ -706,6 +707,7 @@ void Listener::Disconnect() {
 }
 
 void Listener::OnFecFailure() {
+	Log(L"Listener::OnFecFailure().");
 	if (GetTimestampUs() - m_lastFecFailure < CONTINUOUS_FEC_FAILURE) {
 		if (m_fecPercentage < MAX_FEC_PERCENTAGE) {
 			m_fecPercentage += 5;

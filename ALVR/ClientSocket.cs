@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ALVR
@@ -33,6 +34,7 @@ namespace ALVR
                 return false;
             }
             Task t = ReadLoop();
+            Task k = KeepAliveLoop();
             return true;
         }
 
@@ -46,36 +48,61 @@ namespace ALVR
             client = null;
         }
 
-        async public Task ReadLoop()
+        async private Task ReadLoop()
         {
             try
             {
-                dynamic message = await ReadNextMessage();
-                switch (message.command)
+                while (true)
                 {
-                    case "StartServer":
-                        StartServerCallback();
-                        await ReplyMessage(message.requestId, "OK");
-                        break;
-                    case "Ping":
-                        await ReplyMessage(message.requestId, "Pong");
-                        break;
-                    case "Close":
-                        break;
+                    dynamic message = await ReadNextMessage();
+                    switch (message.command)
+                    {
+                        case "StartServer":
+                            StartServerCallback();
+                            await ReplyMessage((int)message.requestId, "OK");
+                            break;
+                        case "Ping":
+                            await ReplyMessage((int)message.requestId, "Pong");
+                            break;
+                        case "Pong":
+                            break;
+                        case "Close":
+                            return;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                System.Console.WriteLine(e);
+            }
+            finally
+            {
+                ConnectionClosedCallback();
+                if (client != null)
+                {
+                    client.Close();
+                }
+                client = null;
+            }
+        }
+
+        async private Task KeepAliveLoop()
+        {
+            try
+            {
+                while (client != null)
+                {
+                    var t = SendCommand("Ping");
+                    await Task.Delay(1000);
+                    await t;
                 }
             }
             catch (Exception)
             {
             }
-            ConnectionClosedCallback();
-            if (client != null)
-            {
-                client.Close();
-            }
-            client = null;
         }
 
-        async public Task<dynamic> ReadNextMessage()
+        async private Task<dynamic> ReadNextMessage()
         {
             byte[] buffer = new byte[4];
             int ret = -1;
@@ -107,15 +134,20 @@ namespace ALVR
 
         async private Task SendMessage(byte[] buffer)
         {
+            if (client == null)
+            {
+                return;
+            }
             int length = buffer.Length;
-            byte[] header = new byte[4];
-            header[0] = (byte)length;
-            header[1] = (byte)(length >> 8);
-            header[2] = (byte)(length >> 16);
-            header[3] = (byte)(length >> 24);
+            byte[] packet = new byte[4 + buffer.Length];
+            packet[0] = (byte)length;
+            packet[1] = (byte)(length >> 8);
+            packet[2] = (byte)(length >> 16);
+            packet[3] = (byte)(length >> 24);
 
-            await client.GetStream().WriteAsync(header, 0, 4);
-            await client.GetStream().WriteAsync(buffer, 0, length);
+            Array.Copy(buffer, 0, packet, 4, buffer.Length);
+
+            await client.GetStream().WriteAsync(packet, 0, packet.Length);
         }
 
         async private Task ReplyMessage(int requestId, string s)

@@ -13,10 +13,13 @@ namespace ALVR
     {
         TcpClient client;
         Action StartServerCallback;
+        Action ConnectionClosedCallback;
+        int RequestId = 1;
 
-        public ClientSocket(Action startServerCallback)
+        public ClientSocket(Action startServerCallback, Action connectionClosedCallback)
         {
             StartServerCallback = startServerCallback;
+            ConnectionClosedCallback = connectionClosedCallback;
         }
 
         async public Task<bool> Connect(string host, int port)
@@ -33,63 +36,67 @@ namespace ALVR
             return true;
         }
 
+        async public Task Disconnect()
+        {
+            if (client != null)
+            {
+                await SendCommand("Close");
+                client.Close();
+            }
+            client = null;
+        }
+
         async public Task ReadLoop()
         {
-            dynamic message = await ReadNextMessage();
-            switch (message.command) {
-                case "StartServer":
-                    StartServerCallback();
-                    await ReplyMessage(message.requestId, "OK");
-                    break;
-                case "Ping":
-                    await ReplyMessage(message.requestId, "Pong");
-                    break;
+            try
+            {
+                dynamic message = await ReadNextMessage();
+                switch (message.command)
+                {
+                    case "StartServer":
+                        StartServerCallback();
+                        await ReplyMessage(message.requestId, "OK");
+                        break;
+                    case "Ping":
+                        await ReplyMessage(message.requestId, "Pong");
+                        break;
+                    case "Close":
+                        break;
+                }
             }
+            catch (Exception)
+            {
+            }
+            ConnectionClosedCallback();
+            if (client != null)
+            {
+                client.Close();
+            }
+            client = null;
         }
 
         async public Task<dynamic> ReadNextMessage()
         {
             byte[] buffer = new byte[4];
             int ret = -1;
-            try
-            {
-                ret = await client.GetStream().ReadAsync(buffer, 0, 4);
-                if (ret == 0 || ret < 0)
-                {
-                    // Disconnected
-                    if (client != null)
-                    {
-                        client.Close();
-                    }
-                    client = null;
-                    throw new IOException();
-                }
-                int length = buffer[0]
-                    | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
-                if (length == 0)
-                {
-                    if (client != null)
-                    {
-                        client.Close();
-                    }
-                    client = null;
-                    throw new IOException();
-                }
-                buffer = new byte[length];
-
-                ret = await client.GetStream().ReadAsync(buffer, 0, length);
-            }
-            catch (Exception)
-            {
-            }
+            ret = await client.GetStream().ReadAsync(buffer, 0, 4);
             if (ret == 0 || ret < 0)
             {
                 // Disconnected
-                if (client != null)
-                {
-                    client.Close();
-                }
-                client = null;
+                throw new IOException();
+            }
+            int length = buffer[0]
+                | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+            if (length == 0 || length > 1000 * 1000 * 10)
+            {
+                throw new IOException();
+            }
+            buffer = new byte[length];
+
+            ret = await client.GetStream().ReadAsync(buffer, 0, length);
+            if (ret == 0 || ret < 0)
+            {
+                // Disconnected
                 throw new IOException();
             }
             else
@@ -121,5 +128,14 @@ namespace ALVR
             await SendMessage(Encoding.UTF8.GetBytes(str));
         }
 
+        async private Task SendCommand(string s)
+        {
+            string str = DynamicJson.Serialize(new
+            {
+                requestId = RequestId++,
+                command = s
+            });
+            await SendMessage(Encoding.UTF8.GetBytes(str));
+        }
     }
 }

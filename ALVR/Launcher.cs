@@ -39,7 +39,7 @@ namespace ALVR
 
         public Launcher()
         {
-            clientSocket = new ClientSocket(OnClientMessageStartServer);
+            clientSocket = new ClientSocket(OnClientMessageStartServer, OnClientConnectionClosed);
             InitializeComponent();
         }
 
@@ -697,10 +697,11 @@ namespace ALVR
             await socket.SendCommand("SetConfig controllerRecenterButton " + ServerConfig.recenterButtonIndex[value]);
         }
 
-        async private void disconnectButton_Click(object sender, EventArgs e)
+        private void disconnectButton_Click(object sender, EventArgs e)
         {
             // Disable auto connect to avoid immediate auto reconnection.
             clientList.EnableAutoConnect = false;
+            Task t = clientSocket.Disconnect();
             currentClient = null;
             ShowFindingPanel();
             socket.Shutdown();
@@ -811,6 +812,16 @@ namespace ALVR
         private void OnClientMessageStartServer()
         {
             LaunchServer();
+        }
+
+        private void OnClientConnectionClosed()
+        {
+            currentClient = null;
+
+            clientList.Clear();
+
+            ShowFindingPanel();
+            UpdateServerStatus();
         }
     }
 }

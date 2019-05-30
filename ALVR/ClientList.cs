@@ -137,6 +137,19 @@ namespace ALVR
             }
         }
 
+        /// <summary>
+        /// Clear clients to prevent immediate re-connection after disconnect.
+        /// </summary>
+        public void Clear()
+        {
+            clients.Clear();
+            foreach (var c in autoConnectList)
+            {
+                c.Online = false;
+                clients.Add(c);
+            }
+        }
+
         public IEnumerator<DeviceDescriptor> GetEnumerator()
         {
             return ((IEnumerable<DeviceDescriptor>)clients).GetEnumerator();

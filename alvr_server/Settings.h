@@ -9,7 +9,11 @@
 //
 static const char * const k_pch_Settings_Section = "driver_alvr_server";
 static const char * const k_pch_Settings_SerialNumber_String = "serialNumber";
+static const char * const k_pch_Settings_TrackingSystemName_String = "trackingSystemName";
 static const char * const k_pch_Settings_ModelNumber_String = "modelNumber";
+static const char * const k_pch_Settings_ManufacturerName_String = "manufacturerName";
+static const char * const k_pch_Settings_RenderModelName_String = "renderModelName";
+
 static const char * const k_pch_Settings_RefreshRate_Int32 = "refreshRate";
 static const char * const k_pch_Settings_RenderWidth_Int32 = "renderWidth";
 static const char * const k_pch_Settings_RenderHeight_Int32 = "renderHeight";
@@ -105,8 +109,11 @@ public:
 
 	std::string m_DebugOutputDir;
 
-	std::string m_sSerialNumber;
-	std::string m_sModelNumber;
+	std::string mSerialNumber;
+	std::string mTrackingSystemName;
+	std::string mModelNumber;
+	std::string mManufacturerName;
+	std::string mRenderModelName;
 
 	int32_t m_nAdapterIndex;
 

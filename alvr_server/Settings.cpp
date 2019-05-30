@@ -46,8 +46,11 @@ void Settings::Load()
 			return;
 		}
 
-		m_sSerialNumber = v.get(k_pch_Settings_SerialNumber_String).get<std::string>();
-		m_sModelNumber = v.get(k_pch_Settings_ModelNumber_String).get<std::string>();
+		mSerialNumber = v.get(k_pch_Settings_SerialNumber_String).get<std::string>();
+		mTrackingSystemName = v.get(k_pch_Settings_TrackingSystemName_String).get<std::string>();
+		mModelNumber = v.get(k_pch_Settings_ModelNumber_String).get<std::string>();
+		mManufacturerName = v.get(k_pch_Settings_ManufacturerName_String).get<std::string>();
+		mRenderModelName = v.get(k_pch_Settings_RenderModelName_String).get<std::string>();
 
 		m_renderWidth = (int32_t)v.get(k_pch_Settings_RenderWidth_Int32).get<int64_t>();
 		m_renderHeight = (int32_t)v.get(k_pch_Settings_RenderHeight_Int32).get<int64_t>();
@@ -129,8 +132,9 @@ void Settings::Load()
 			OpenLog((m_DebugOutputDir + "\\" + LOG_FILE).c_str());
 		}
 
-		Log(L"Serial Number: %hs", m_sSerialNumber.c_str());
-		Log(L"Model Number: %hs", m_sModelNumber.c_str());
+		Log(L"Config JSON: %hs", json.c_str());
+		Log(L"Serial Number: %hs", mSerialNumber.c_str());
+		Log(L"Model Number: %hs", mModelNumber.c_str());
 		Log(L"Render Target: %d %d", m_renderWidth, m_renderHeight);
 		Log(L"Seconds from Vsync to Photons: %f", m_flSecondsFromVsyncToPhotons);
 		Log(L"Refresh Rate: %d", m_refreshRate);

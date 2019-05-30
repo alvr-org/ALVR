@@ -114,8 +114,22 @@ namespace ALVR
             {
                 var c = Properties.Settings.Default;
                 dynamic driverConfig = new DynamicJson();
-                driverConfig.serialNumber = "ALVR-001";
-                driverConfig.modelNumber = "ALVR driver server";
+                if (device != null && device.HasTouchController)
+                {
+                    driverConfig.serialNumber = "OculusRift-001";
+                    driverConfig.trackingSystemName = "Oculus Tracker";
+                    driverConfig.modelNumber = "Oculus Rift";
+                    driverConfig.manufacturerName = "Oculus";
+                    driverConfig.renderModelName = "generic_hmd";
+                }
+                else
+                {
+                    driverConfig.serialNumber = "HTCVive-001";
+                    driverConfig.trackingSystemName = "Vive Tracker";
+                    driverConfig.modelNumber = "ALVR driver server";
+                    driverConfig.manufacturerName = "HTC";
+                    driverConfig.renderModelName = "generic_hmd";
+                }
                 driverConfig.adapterIndex = 0;
                 driverConfig.IPD = 0.063;
                 driverConfig.secondsFromVsyncToPhotons = 0.005;

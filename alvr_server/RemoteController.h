@@ -221,6 +221,18 @@ public:
 		m_pose.vecPosition[0] = controllerPosition.x;
 		m_pose.vecPosition[1] = controllerPosition.y;
 		m_pose.vecPosition[2] = controllerPosition.z;
+		m_pose.vecVelocity[0] = info.controller[controllerIndex].linearVelocity.x;
+		m_pose.vecVelocity[1] = info.controller[controllerIndex].linearVelocity.y;
+		m_pose.vecVelocity[2] = info.controller[controllerIndex].linearVelocity.z;
+		m_pose.vecAcceleration[0] = info.controller[controllerIndex].linearAcceleration.x;
+		m_pose.vecAcceleration[1] = info.controller[controllerIndex].linearAcceleration.y;
+		m_pose.vecAcceleration[2] = info.controller[controllerIndex].linearAcceleration.z;
+		m_pose.vecAngularVelocity[0] = info.controller[controllerIndex].angularVelocity.x;
+		m_pose.vecAngularVelocity[1] = info.controller[controllerIndex].angularVelocity.y;
+		m_pose.vecAngularVelocity[2] = info.controller[controllerIndex].angularVelocity.z;
+		m_pose.vecAngularAcceleration[0] = info.controller[controllerIndex].angularAcceleration.x;
+		m_pose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y;
+		m_pose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z;
 
 		m_pose.poseTimeOffset = 0;
 

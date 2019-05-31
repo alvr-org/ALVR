@@ -117,7 +117,7 @@ namespace ALVR
                 if (device != null && device.HasTouchController)
                 {
                     driverConfig.serialNumber = "OculusRift-001";
-                    driverConfig.trackingSystemName = "Oculus Tracker";
+                    driverConfig.trackingSystemName = "oculus";
                     driverConfig.modelNumber = "Oculus Rift";
                     driverConfig.manufacturerName = "Oculus";
                     driverConfig.renderModelName = "generic_hmd";

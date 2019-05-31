@@ -15,9 +15,9 @@ namespace ALVR
         List<DeviceDescriptor> clients = new List<DeviceDescriptor>();
         public bool EnableAutoConnect { get; set; } = true;
 
-        public ClientList(string serialized)
+        public ClientList(string serialized, Action detectedWrongVersionCallback)
         {
-            helloListener = new HelloListener(NewClientCallback);
+            helloListener = new HelloListener(NewClientCallback, detectedWrongVersionCallback);
             try
             {
                 var json = DynamicJson.Parse(serialized);

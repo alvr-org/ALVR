@@ -17,7 +17,7 @@ namespace ALVR
     {
         // Use different port than 9944 used by server.
         public const int PORT = 9943;
-        public const int ALVR_PROTOCOL_VERSION = 20;
+        public const int ALVR_PROTOCOL_VERSION = 21;
         public const int ALVR_PACKET_TYPE_HELLO_MESSAGE = 1;
         public const byte ALVR_DEVICE_TYPE_OCULUS_MOBILE = 1;
         public const byte ALVR_DEVICE_TYPE_DAYDREAM = 2;
@@ -30,10 +30,12 @@ namespace ALVR
         public const byte ALVR_DEVICE_SUBTYPE_CARDBOARD_GENERIC = 1;
 
         Action<DeviceDescriptor> Callback;
+        Action DetectWrongVersionCallback;
 
-        public HelloListener(Action<DeviceDescriptor> callback)
+        public HelloListener(Action<DeviceDescriptor> callback, Action detectWrongVersionCallback)
         {
             Callback = callback;
+            DetectWrongVersionCallback = detectWrongVersionCallback;
         }
 
         async public void Start()
@@ -91,6 +93,7 @@ namespace ALVR
                 descriptor.Version = ReadUInt32(buffer, ref pos);
                 if (descriptor.Version != ALVR_PROTOCOL_VERSION)
                 {
+                    DetectWrongVersionCallback();
                     return null;
                 }
                 descriptor.DeviceName = ReadDeviceName(buffer, ref pos);

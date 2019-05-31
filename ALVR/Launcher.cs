@@ -175,7 +175,7 @@ namespace ALVR
                     soundDeviceComboBox.SelectedIndex = 0;
                 }
 
-                clientList = new ClientList(Properties.Settings.Default.autoConnectList);
+                clientList = new ClientList(Properties.Settings.Default.autoConnectList, OnWrongVersionDetected);
             }
             finally
             {
@@ -809,6 +809,8 @@ namespace ALVR
                 + "x" + (height * ServerConfig.supportedScales[resolutionComboBox.SelectedIndex] / 100);
         }
 
+        // Callbacks for ClientSocket
+
         private void OnClientMessageStartServer()
         {
             LaunchServer();
@@ -822,6 +824,11 @@ namespace ALVR
 
             ShowFindingPanel();
             UpdateServerStatus();
+        }
+
+        private void OnWrongVersionDetected()
+        {
+            wrongVersionLabel.Visible = true;
         }
     }
 }

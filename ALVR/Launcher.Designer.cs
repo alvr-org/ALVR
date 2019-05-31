@@ -154,6 +154,7 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.wrongVersionLabel = new MetroFramework.Controls.MetroLabel();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -240,6 +241,7 @@
             this.findingPanel.Controls.Add(this.noClientLabel);
             this.findingPanel.Controls.Add(this.dataGridView1);
             this.findingPanel.Controls.Add(this.metroProgressSpinner2);
+            this.findingPanel.Controls.Add(this.wrongVersionLabel);
             this.findingPanel.Controls.Add(this.metroLabel4);
             this.findingPanel.HorizontalScrollbarBarColor = true;
             this.findingPanel.HorizontalScrollbarHighlightOnWheel = false;
@@ -788,7 +790,7 @@
             // 
             this.metroLabel32.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel32.AutoSize = true;
-            this.metroLabel32.Location = new System.Drawing.Point(462, -1733);
+            this.metroLabel32.Location = new System.Drawing.Point(462, -1881);
             this.metroLabel32.Name = "metroLabel32";
             this.metroLabel32.Size = new System.Drawing.Size(162, 38);
             this.metroLabel32.TabIndex = 10;
@@ -798,7 +800,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(216, -1337);
+            this.metroLabel22.Location = new System.Drawing.Point(216, -1485);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -1505,6 +1507,21 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
+            // wrongVersionLabel
+            // 
+            this.wrongVersionLabel.BackColor = System.Drawing.Color.White;
+            this.wrongVersionLabel.CustomBackground = true;
+            this.wrongVersionLabel.CustomForeColor = true;
+            this.wrongVersionLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
+            this.wrongVersionLabel.ForeColor = System.Drawing.Color.Crimson;
+            this.wrongVersionLabel.Location = new System.Drawing.Point(446, 224);
+            this.wrongVersionLabel.Name = "wrongVersionLabel";
+            this.wrongVersionLabel.Size = new System.Drawing.Size(207, 43);
+            this.wrongVersionLabel.TabIndex = 9;
+            this.wrongVersionLabel.Text = "Found wrong version client.\r\nCheck for client/server update.";
+            this.wrongVersionLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.wrongVersionLabel.Visible = false;
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -1666,6 +1683,7 @@
         private MetroFramework.Controls.MetroCheckBox defaultSoundDeviceCheckBox;
         private MetroFramework.Controls.MetroCheckBox force60HzCheckBox;
         private MetroFramework.Controls.MetroLabel resolutionLabel;
+        private MetroFramework.Controls.MetroLabel wrongVersionLabel;
     }
 }
 

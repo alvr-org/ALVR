@@ -1,27 +1,21 @@
 # ALVR - Air Light VR
 
-ALVRはPCVRの画面をGear VRやOculus Goに転送して遊ぶためのソフトです。SteamVRのゲームをスタンドアロン型のヘッドセットでプレイすることができます。
+ALVRはPCVR(SteamVR)をリモートでプレイすることのできるオープンソースソフトウェアです。SteamVRのゲームをスタンドアロン型のヘッドセット(Gear VR/Oculus Go/Quest)でプレイすることができます。
 
 [English](https://github.com/polygraphene/ALVR/) | Japanese
 
 ## 特徴
-ALVRはPCVRの画面をエンコードしWi-Fi経由でヘッドセットに転送します。似たソフトとしてRiftcatやTrinus VRがありますが、それらよりもGear VR向けに特化しているのが特徴です。Wi-Fi経由でもGear VRに搭載されたAsynchronous Timewarpを利用してスムーズなヘッドトラッキングを実現できます。
-
-Gear VR / Oculus Go のコントローラーをサポートしました！
-
-注意：PCVRでは6DoFコントローラーや多数のボタンが必要なゲームもあり、プレイできないことも多々あります。
+ALVRはPCVRの画面をエンコードしWi-Fi経由でヘッドセットに転送します。似たソフトとしてRiftcatやTrinus VRがありますが、よりGear VR向けに特化しているのが特徴です。Wi-Fi経由でもGear VRに搭載されたAsynchronous Timewarpを利用してスムーズなヘッドトラッキングを実現します。
 
 参照：[動作確認済みのゲーム一覧](https://github.com/polygraphene/ALVR/wiki/List-of-tested-VR-games-and-experiences)
 
-
-AMD GPUのサポートに関するクラウドファンディングを開始しました。 [BountySource](https://www.bountysource.com/issues/59270271-will-we-get-an-amd-compatible-version-in-the-future). [issue #33](https://github.com/polygraphene/ALVR/issues/33).
-    
 ## 動作環境
 以下の動作環境が必要です。
-- Gear VR または Oculus Go
+- Gear VR または Oculus Go/Quest
 
 |機種|動作確認|
 |---|---|
+|Oculus Quest|OK(alpha)|
 |Oculus Go|OK|
 |GalaxyS9/S9+|OK|
 |GalaxyS8/S8+|OK|
@@ -29,25 +23,30 @@ AMD GPUのサポートに関するクラウドファンディングを開始し�
 |GalaxyS7|OK|
 |GalaxyS6(Edge)|OK|
 
-- NVENCが使えるNVIDIA GPUを搭載したハイエンドPC
-    - 現在、Windows 10のみサポートしています。
+- VR readyなハイエンドPC
+    - NVENCをサポートするNVIDIA GPU、またはAMF VCEをサポートするAMD GPU ([Supported GPUs](https://github.com/polygraphene/ALVR/wiki/Supported-GPU))
+    - Windows 10推奨
+    - Windows 7はNVIDIA GPUのみサポート
 - 802.11n/ac Wi-Fi または 有線接続
     - PCは有線、ヘッドセットは無線がおすすめです (同じルータに接続していればOK)
 - SteamVRがインストール済みであること
-    
-## インストール方法
 
-### ALVR serverのインストールする方法
+## ALVR Serverのインストール
 
 - SteamVRをインストール
-- [ここ](https://www.microsoft.com/en-us/download/details.aspx?id=53840)からvc\_redist.x64.exeをダウンロードしてインストール
-- [Releases](https://github.com/polygraphene/ALVR/releases)からzipをダウンロード
-- 任意のフォルダに展開
+- [Releases](https://github.com/polygraphene/ALVR/releases)からインストーラをダウンロード
+- インストール
 - ALVR.exeを起動
 
-### ALVR clientをヘッドセットにインストールする方法
+## ALVR Clientのインストール
 
-#### Oculus Storeからインストール
+### Oculus Quest: apkのインストール
+
+1. Oculus Questではapkのインストール(サイドローディング)が必要です。
+2. 開発者オプションを有効にする必要があります。
+3. 手順:[Installation](https://github.com/polygraphene/ALVR/wiki/Installation).
+
+### GearVR / Oculus Go: Oculus Storeからインストール
 
 Oculus Storeから"Oculus Key"を使ってインストールできるようになりました。
 
@@ -56,17 +55,6 @@ Oculus Storeから"Oculus Key"を使ってインストールできるように�
 3-a. Androidの場合、Oculusアプリを開き、"もっと見る"(または"設定")をタップ
 3-b. iPhoneの場合は[Oculusのウェブサイト](https://secure.oculus.com/redeem-code)を開きログインする
 4. "コードを利用"を開き、キーを貼り付け
-
-#### Gear VR (Storeを使う場合不要)
-
-- [Releases](https://github.com/polygraphene/ALVR/releases)からapkをダウンロード
-- [Apk Editor](https://play.google.com/store/apps/details?id=com.gmail.heagoo.apkeditor)等でapkのassetsフォルダにosigファイルを置く
-- apkを署名(Apk EditorならBuild)してインストール
-
-#### Oculus Go (Storeを使う場合不要)
-
-- [Releases](https://github.com/polygraphene/ALVR/releases)からapkをダウンロード
-- adbでapkをインストール
 
 ## 使い方
 
@@ -105,8 +93,8 @@ Oculus Storeから"Oculus Key"を使ってインストールできるように�
 
 ## 今後の予定
 
-- H.265のサポート (現状、H.264のみ)
-- インストーラの作成
+- ALVR用のSteamVR dashboardを作成
+- クラウドストリーミング対応
 
 ## ビルド方法
 

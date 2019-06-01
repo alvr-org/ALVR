@@ -60,27 +60,38 @@ namespace ALVR
             var ReleaseBufferFunc = (ReleaseBuffer)Marshal.GetDelegateForFunctionPointer(
                                                                                     ReleaseBufferAddr,
                                                                                     typeof(ReleaseBuffer));
-            IntPtr ptr;
-            int len;
-            GetSoundDevicesFunc(out ptr, out len);
-            string buf = Marshal.PtrToStringUni(ptr, len);
-            ReleaseBufferFunc(ptr);
-
-            var json = DynamicJson.Parse(buf, Encoding.UTF8);
-
-            var deviceList = new List<SoundDevice>();
-            foreach (var elem in json)
+            try
             {
-                var desc = new SoundDevice();
-                desc.name = elem.name;
-                desc.id = elem.id;
-                desc.isDefault = elem.is_default;
-                deviceList.Add(desc);
+
+                IntPtr ptr;
+                int len;
+                GetSoundDevicesFunc(out ptr, out len);
+                string buf = Marshal.PtrToStringUni(ptr, len);
+                ReleaseBufferFunc(ptr);
+
+                var json = DynamicJson.Parse(buf, Encoding.UTF8);
+
+                var deviceList = new List<SoundDevice>();
+                foreach (var elem in json)
+                {
+                    var desc = new SoundDevice();
+                    desc.name = elem.name;
+                    desc.id = elem.id;
+                    desc.isDefault = elem.is_default;
+                    deviceList.Add(desc);
+                }
+
+                bool result = FreeLibrary(pDll);
+
+                return deviceList;
+
             }
-
-            bool result = FreeLibrary(pDll);
-
-            return deviceList;
+            catch (System.Runtime.InteropServices.SEHException ex)
+            {
+                Console.WriteLine(ex.ToString());
+                MessageBox.Show("Get sound device failed: " + ex.GetType() + " (" + ex.ErrorCode + "/0x" + ex.ErrorCode.ToString("X") + ")");
+                throw ex;
+            }
         }
 
     }

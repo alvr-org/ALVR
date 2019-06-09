@@ -146,6 +146,7 @@ namespace ALVR
                     index = ServerConfig.DEFAULT_SCALE_INDEX;
                 }
                 resolutionComboBox.SelectedIndex = index;
+                UpdateResolutionLabel();
 
                 triggerComboBox.DataSource = ServerConfig.supportedButtons.Clone();
                 trackpadClickComboBox.DataSource = ServerConfig.supportedButtons;
@@ -194,7 +195,14 @@ namespace ALVR
             offsetPosZTextBox.Text = Utils.ParseFloat(offsetPosZTextBox.Text).ToString();
             trackingFrameOffsetTextBox.Text = Utils.ParseInt(trackingFrameOffsetTextBox.Text).ToString();
 
-            c.resolutionScale = resolutionComboBox.SelectedIndex;
+            if (resolutionComboBox.SelectedIndex != -1)
+            {
+                c.resolutionScale = ServerConfig.supportedScales[resolutionComboBox.SelectedIndex];
+            }
+            else
+            {
+                c.resolutionScale = ServerConfig.supportedScales[ServerConfig.DEFAULT_SCALE_INDEX];
+            }
 
             c.controllerTriggerMode = ((ServerConfig.ComboBoxCustomItem)triggerComboBox.SelectedItem).value;
             c.controllerTrackpadClickMode = ((ServerConfig.ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).value;

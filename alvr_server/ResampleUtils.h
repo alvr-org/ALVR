@@ -10,9 +10,11 @@ extern "C" {
 
 class Resampler {
 public:
-	Resampler(int src_rate, int dst_rate) {
+	Resampler(int src_rate, int dst_rate, int src_channels, int dst_channels) {
 		this->src_rate = src_rate;
 		this->dst_rate = dst_rate;
+		this->src_ch_layout = mapChannelLayout(src_channels);
+		this->dst_ch_layout = mapChannelLayout(dst_channels);
 		Initialize();
 	}
 
@@ -26,8 +28,30 @@ public:
 		swr_free(&swr_ctx);
 	}
 
+	int64_t mapChannelLayout(int channels) {
+		switch (channels) {
+		case 1:
+			return AV_CH_LAYOUT_MONO;
+		case 2:
+			return AV_CH_LAYOUT_STEREO;
+		case 3:
+			return AV_CH_LAYOUT_2POINT1;
+		case 4:
+			return AV_CH_LAYOUT_3POINT1;
+		case 5:
+			return AV_CH_LAYOUT_4POINT1;
+		case 6:
+			return AV_CH_LAYOUT_5POINT1;
+		case 7:
+			return AV_CH_LAYOUT_6POINT1;
+		case 8:
+			return AV_CH_LAYOUT_7POINT1;
+		default:
+			return AV_CH_LAYOUT_MONO;
+		}
+	}
+
 	void Initialize() {
-		int64_t src_ch_layout = AV_CH_LAYOUT_STEREO, dst_ch_layout = AV_CH_LAYOUT_STEREO;
 		int ret;
 
 		Log(L"Initialize swresample. src_rate=%d dst_rate=%d", src_rate, dst_rate);
@@ -116,7 +140,9 @@ private:
 	uint8_t **src_data = NULL, **dst_data = NULL;
 	int src_linesize, dst_linesize;
 	int src_rate;
+	int64_t src_ch_layout;
 	int dst_rate;
+	int64_t dst_ch_layout;
 	static const int default_src_nb_samples = 1024;
 	int max_dst_nb_samples;
 	int dst_nb_samples;

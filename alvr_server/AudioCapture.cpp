@@ -500,7 +500,7 @@ void AudioCapture::LoopbackCapture() {
 		throw MakeException(L"IAudioClient::Initialize failed: hr = 0x%08x", hr);
 	}
 
-	std::unique_ptr<Resampler> resampler(std::make_unique<Resampler>(pwfx->nSamplesPerSec, DEFAULT_SAMPLE_RATE));
+	std::unique_ptr<Resampler> resampler(std::make_unique<Resampler>(pwfx->nSamplesPerSec, DEFAULT_SAMPLE_RATE, pwfx->nChannels, DEFAULT_CHANNELS));
 
 	// activate an IAudioCaptureClient
 	ComPtr<IAudioCaptureClient> pAudioCaptureClient;

@@ -92,5 +92,6 @@ private:
 	std::wstring m_errorMessage;
 
 	static const int DEFAULT_SAMPLE_RATE = 48000;
+	static const int DEFAULT_CHANNELS = 2;
 };
 

@@ -186,6 +186,10 @@ void AudioCapture::list_devices(std::vector<AudioEndPointDescriptor> &deviceList
 	// TODO: ERole???
 	ComPtr<IMMDevice> pDefaultMMDevice;
 	hr = pMMDeviceEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDefaultMMDevice);
+	if (hr == E_NOTFOUND) {
+		Log("No default audio endpoint found. No audio device?");
+		return;
+	}
 	if (FAILED(hr)) {
 		throw MakeException(L"IMMDeviceEnumerator::GetDefaultAudioEndpoint failed: hr = 0x%08x", hr);
 	}

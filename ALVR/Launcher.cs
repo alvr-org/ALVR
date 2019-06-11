@@ -223,6 +223,11 @@ namespace ALVR
                     c.soundDevice = soundDevices[defaultSoundDeviceIndex].id;
                 }
             }
+            else
+            {
+                c.enableSound = false;
+                c.soundDevice = "";
+            }
 
             c.Save();
         }
@@ -562,8 +567,18 @@ namespace ALVR
 
         private void UpdateSoundCheckboxState()
         {
-            defaultSoundDeviceCheckBox.Enabled = soundCheckBox.Checked;
-            soundDeviceComboBox.Enabled = !defaultSoundDeviceCheckBox.Checked && soundCheckBox.Checked;
+            if (soundDevices.Count == 0)
+            {
+                soundCheckBox.Hide();
+                defaultSoundDeviceCheckBox.Hide();
+                soundDeviceComboBox.Hide();
+                noSoundDeviceLabel.Show();
+            }
+            else
+            {
+                defaultSoundDeviceCheckBox.Enabled = soundCheckBox.Checked;
+                soundDeviceComboBox.Enabled = !defaultSoundDeviceCheckBox.Checked && soundCheckBox.Checked;
+            }
             SaveSettings();
         }
 

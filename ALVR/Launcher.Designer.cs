@@ -51,6 +51,7 @@
             this.refreshRateColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Button = new System.Windows.Forms.DataGridViewButtonColumn();
             this.metroProgressSpinner2 = new MetroFramework.Controls.MetroProgressSpinner();
+            this.wrongVersionLabel = new MetroFramework.Controls.MetroLabel();
             this.metroLabel4 = new MetroFramework.Controls.MetroLabel();
             this.connectedPanel = new MetroFramework.Controls.MetroPanel();
             this.autoConnectCheckBox = new MetroFramework.Controls.MetroCheckBox();
@@ -154,7 +155,7 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.wrongVersionLabel = new MetroFramework.Controls.MetroLabel();
+            this.noSoundDeviceLabel = new MetroFramework.Controls.MetroLabel();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -219,7 +220,7 @@
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 63);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 0;
+            this.metroTabControl1.SelectedIndex = 3;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 396);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -354,6 +355,21 @@
             this.metroProgressSpinner2.Size = new System.Drawing.Size(38, 36);
             this.metroProgressSpinner2.TabIndex = 7;
             this.metroProgressSpinner2.Value = 70;
+            // 
+            // wrongVersionLabel
+            // 
+            this.wrongVersionLabel.BackColor = System.Drawing.Color.White;
+            this.wrongVersionLabel.CustomBackground = true;
+            this.wrongVersionLabel.CustomForeColor = true;
+            this.wrongVersionLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
+            this.wrongVersionLabel.ForeColor = System.Drawing.Color.Crimson;
+            this.wrongVersionLabel.Location = new System.Drawing.Point(446, 224);
+            this.wrongVersionLabel.Name = "wrongVersionLabel";
+            this.wrongVersionLabel.Size = new System.Drawing.Size(207, 43);
+            this.wrongVersionLabel.TabIndex = 9;
+            this.wrongVersionLabel.Text = "Found wrong version client.\r\nCheck for client/server update.";
+            this.wrongVersionLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.wrongVersionLabel.Visible = false;
             // 
             // metroLabel4
             // 
@@ -790,7 +806,7 @@
             // 
             this.metroLabel32.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel32.AutoSize = true;
-            this.metroLabel32.Location = new System.Drawing.Point(462, -1881);
+            this.metroLabel32.Location = new System.Drawing.Point(462, -2029);
             this.metroLabel32.Name = "metroLabel32";
             this.metroLabel32.Size = new System.Drawing.Size(162, 38);
             this.metroLabel32.TabIndex = 10;
@@ -800,7 +816,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(216, -1485);
+            this.metroLabel22.Location = new System.Drawing.Point(216, -1633);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -889,6 +905,7 @@
             // 
             // soundTab
             // 
+            this.soundTab.Controls.Add(this.noSoundDeviceLabel);
             this.soundTab.Controls.Add(this.soundDeviceComboBox);
             this.soundTab.Controls.Add(this.defaultSoundDeviceCheckBox);
             this.soundTab.Controls.Add(this.soundCheckBox);
@@ -1507,20 +1524,15 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // wrongVersionLabel
+            // noSoundDeviceLabel
             // 
-            this.wrongVersionLabel.BackColor = System.Drawing.Color.White;
-            this.wrongVersionLabel.CustomBackground = true;
-            this.wrongVersionLabel.CustomForeColor = true;
-            this.wrongVersionLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.wrongVersionLabel.ForeColor = System.Drawing.Color.Crimson;
-            this.wrongVersionLabel.Location = new System.Drawing.Point(446, 224);
-            this.wrongVersionLabel.Name = "wrongVersionLabel";
-            this.wrongVersionLabel.Size = new System.Drawing.Size(207, 43);
-            this.wrongVersionLabel.TabIndex = 9;
-            this.wrongVersionLabel.Text = "Found wrong version client.\r\nCheck for client/server update.";
-            this.wrongVersionLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.wrongVersionLabel.Visible = false;
+            this.noSoundDeviceLabel.AutoSize = true;
+            this.noSoundDeviceLabel.Location = new System.Drawing.Point(30, 35);
+            this.noSoundDeviceLabel.Name = "noSoundDeviceLabel";
+            this.noSoundDeviceLabel.Size = new System.Drawing.Size(176, 19);
+            this.noSoundDeviceLabel.TabIndex = 4;
+            this.noSoundDeviceLabel.Text = "No sound devices are found.";
+            this.noSoundDeviceLabel.Visible = false;
             // 
             // Launcher
             // 
@@ -1684,6 +1696,7 @@
         private MetroFramework.Controls.MetroCheckBox force60HzCheckBox;
         private MetroFramework.Controls.MetroLabel resolutionLabel;
         private MetroFramework.Controls.MetroLabel wrongVersionLabel;
+        private MetroFramework.Controls.MetroLabel noSoundDeviceLabel;
     }
 }
 

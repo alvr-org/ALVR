@@ -158,15 +158,14 @@ namespace ALVR
                 else
                 {
                     driverConfig.refreshRate = device.RefreshRates[0] == 0 ? DEFAULT_REFRESHRATE : device.RefreshRates[0];
-                    driverConfig.renderWidth = device.DefaultWidth * supportedScales[c.resolutionScale] / 100;
-                    driverConfig.renderHeight = device.DefaultHeight * supportedScales[c.resolutionScale] / 100;
+                    driverConfig.renderWidth = device.DefaultWidth * c.resolutionScale / 100;
+                    driverConfig.renderHeight = device.DefaultHeight * c.resolutionScale / 100;
 
                     driverConfig.autoConnectHost = device.ClientHost;
                     driverConfig.autoConnectPort = device.ClientPort;
 
                     driverConfig.eyeFov = device.EyeFov;
                 }
-
 
                 driverConfig.enableSound = c.enableSound && c.soundDevice != "";
                 driverConfig.soundDevice = c.soundDevice;

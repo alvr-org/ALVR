@@ -166,6 +166,7 @@ namespace ALVR
 
                     driverConfig.eyeFov = device.EyeFov;
                 }
+                driverConfig.disableThrottling = c.disableThrottling;
 
                 driverConfig.enableSound = c.enableSound && c.soundDevice != "";
                 driverConfig.soundDevice = c.soundDevice;

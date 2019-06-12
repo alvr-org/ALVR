@@ -46,14 +46,14 @@ bool ControlSocket::Startup() {
 
 	Log(L"ControlSocket::Startup Successfully bound to %hs:%d", CONTROL_HOST, CONTROL_PORT);
 
-	m_Poller->AddSocket(m_Socket);
+	m_Poller->AddSocket(m_Socket, PollerSocketType::READ);
 
 	return true;
 }
 
 
 bool ControlSocket::Accept() {
-	if (!m_Poller->IsPending(m_Socket)) {
+	if (!m_Poller->IsPending(m_Socket, PollerSocketType::READ)) {
 		return false;
 	}
 
@@ -75,18 +75,21 @@ bool ControlSocket::Accept() {
 	}
 
 	m_ClientSocket = s;
-	m_Poller->AddSocket(m_ClientSocket);
+	m_Poller->AddSocket(m_ClientSocket, PollerSocketType::READ);
 
 	return true;
 }
 
 bool ControlSocket::Recv(std::vector<std::string> &commands) {
-	if (m_ClientSocket == INVALID_SOCKET || !m_Poller->IsPending(m_ClientSocket)) {
+	if (m_ClientSocket == INVALID_SOCKET || !m_Poller->IsPending(m_ClientSocket, PollerSocketType::READ)) {
 		return false;
 	}
 
+	Log(L"ControlSocket::Recv(). recv");
+
 	char buf[1000];
 	int ret = recv(m_ClientSocket, buf, sizeof(buf) - 1, 0);
+	Log(L"ControlSocket::Recv(). recv leave: ret=%d", ret);
 	if (ret == 0) {
 		Log(L"Control connection has closed");
 		m_Buf = "";
@@ -102,6 +105,7 @@ bool ControlSocket::Recv(std::vector<std::string> &commands) {
 	buf[ret] = 0;
 	m_Buf += buf;
 
+	Log(L"ControlSocket::Recv(). while");
 	size_t index;
 	while ((index = m_Buf.find("\n")) != std::string::npos) {
 		commands.push_back(m_Buf.substr(0, index));
@@ -113,7 +117,7 @@ bool ControlSocket::Recv(std::vector<std::string> &commands) {
 
 void ControlSocket::CloseClient() {
 	if (m_ClientSocket != INVALID_SOCKET) {
-		m_Poller->RemoveSocket(m_ClientSocket);
+		m_Poller->RemoveSocket(m_ClientSocket, PollerSocketType::READ);
 		closesocket(m_ClientSocket);
 		m_ClientSocket = INVALID_SOCKET;
 	}
@@ -122,7 +126,7 @@ void ControlSocket::CloseClient() {
 void ControlSocket::Shutdown() {
 	CloseClient();
 	if (m_Socket != INVALID_SOCKET) {
-		m_Poller->RemoveSocket(m_Socket);
+		m_Poller->RemoveSocket(m_Socket, PollerSocketType::READ);
 		closesocket(m_Socket);
 		m_Socket = INVALID_SOCKET;
 	}

@@ -1,4 +1,5 @@
 #include "Listener.h"
+#include "Bitrate.h"
 
 Listener::Listener()
 	: m_bExiting(false)
@@ -55,7 +56,8 @@ bool Listener::Startup() {
 	}
 	if (Settings::Instance().IsLoaded()) {
 		m_Enabled = true;
-		m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port, m_Poller, m_Statistics);
+		m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port
+			, m_Poller, m_Statistics, Settings::Instance().mThrottlingBitrate);
 		if (!m_Socket->Startup()) {
 			return false;
 		}
@@ -68,7 +70,10 @@ bool Listener::Startup() {
 void Listener::Run() {
 	while (!m_bExiting) {
 		CheckTimeout();
-		if (m_Poller->Do() <= 0) {
+		if (m_Poller->Do() == 0) {
+			if (m_Socket) {
+				m_Socket->Run();
+			}
 			continue;
 		}
 
@@ -80,13 +85,15 @@ void Listener::Run() {
 			if (m_Socket->Recv(buf, &len, &addr, addrlen)) {
 				ProcessRecv(buf, len, &addr);
 			}
+			m_Socket->Run();
 		}
 
 		if (m_ControlSocket->Accept()) {
 			if (!m_Enabled) {
 				m_Enabled = true;
 				Settings::Instance().Load();
-				m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port, m_Poller, m_Statistics);
+				m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port
+					, m_Poller, m_Statistics, Settings::Instance().mThrottlingBitrate);
 				if (!m_Socket->Startup()) {
 					return;
 				}
@@ -210,8 +217,6 @@ void Listener::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 		Log(L"Skip sending packet because streaming is off.");
 		return;
 	}
-	Log(L"Sending %d bytes FrameIndex=%llu VideoFrameIndex=%llu", len, frameIndex, mVideoFrameIndex);
-
 	FECSend(buf, len, frameIndex, mVideoFrameIndex);
 	mVideoFrameIndex++;
 }
@@ -227,7 +232,7 @@ void Listener::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
 		Log(L"Skip sending audio packet because streaming is off.");
 		return;
 	}
-	Log(L"Sending audio %d bytes", len);
+	Log(L"Sending audio frame. Size=%d bytes", len);
 
 	int remainBuffer = len;
 	for (int i = 0; remainBuffer != 0; i++) {

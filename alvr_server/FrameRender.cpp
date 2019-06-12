@@ -48,7 +48,7 @@ bool FrameRender::Startup()
 
 	HRESULT hr = m_pD3DRender->GetDevice()->CreateRenderTargetView(m_pStagingTexture.Get(), NULL, &m_pRenderTargetView);
 	if (FAILED(hr)) {
-		Log(L"CreateRenderTargetView %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateRenderTargetView %p %s", hr, GetErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -68,7 +68,7 @@ bool FrameRender::Startup()
 	descDepth.MiscFlags = 0;
 	hr = m_pD3DRender->GetDevice()->CreateTexture2D(&descDepth, nullptr, &m_pDepthStencil);
 	if (FAILED(hr)) {
-		Log(L"CreateTexture2D %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateTexture2D %p %s", hr, GetErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -81,7 +81,7 @@ bool FrameRender::Startup()
 	descDSV.Texture2D.MipSlice = 0;
 	hr = m_pD3DRender->GetDevice()->CreateDepthStencilView(m_pDepthStencil.Get(), &descDSV, &m_pDepthStencilView);
 	if (FAILED(hr)) {
-		Log(L"CreateDepthStencilView %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateDepthStencilView %p %s", hr, GetErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -108,7 +108,7 @@ bool FrameRender::Startup()
 
 	hr = m_pD3DRender->GetDevice()->CreateVertexShader((const DWORD*)&vshader[0], vshader.size(), NULL, &m_pVertexShader);
 	if (FAILED(hr)) {
-		Log(L"CreateVertexShader %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateVertexShader %p %s", hr, GetErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -120,7 +120,7 @@ bool FrameRender::Startup()
 
 	hr = m_pD3DRender->GetDevice()->CreatePixelShader((const DWORD*)&pshader[0], pshader.size(), NULL, &m_pPixelShader);
 	if (FAILED(hr)) {
-		Log(L"CreatePixelShader %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreatePixelShader %p %s", hr, GetErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -142,7 +142,7 @@ bool FrameRender::Startup()
 	hr = m_pD3DRender->GetDevice()->CreateInputLayout(layout, numElements, &vshader[0],
 		vshader.size(), &m_pVertexLayout);
 	if (FAILED(hr)) {
-		Log(L"CreateInputLayout %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateInputLayout %p %s", hr, GetErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -165,7 +165,7 @@ bool FrameRender::Startup()
 
 	hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, NULL, &m_pVertexBuffer);
 	if (FAILED(hr)) {
-		Log(L"CreateBuffer 1 %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateBuffer 1 %p %s", hr, GetErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -198,7 +198,7 @@ bool FrameRender::Startup()
 
 	hr = m_pD3DRender->GetDevice()->CreateBuffer(&bd, &InitData, &m_pIndexBuffer);
 	if (FAILED(hr)) {
-		Log(L"CreateBuffer 2 %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateBuffer 2 %p %s", hr, GetErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -220,7 +220,7 @@ bool FrameRender::Startup()
 	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	hr = m_pD3DRender->GetDevice()->CreateSamplerState(&sampDesc, &m_pSamplerLinear);
 	if (FAILED(hr)) {
-		Log(L"CreateSamplerState %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateSamplerState %p %s", hr, GetErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -262,7 +262,7 @@ bool FrameRender::Startup()
 
 	hr = m_pD3DRender->GetDevice()->CreateBlendState(&BlendDesc, &m_pBlendStateFirst);
 	if (FAILED(hr)) {
-		Log(L"CreateBlendState %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateBlendState %p %s", hr, GetErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -282,7 +282,7 @@ bool FrameRender::Startup()
 
 	hr = m_pD3DRender->GetDevice()->CreateBlendState(&BlendDesc, &m_pBlendState);
 	if (FAILED(hr)) {
-		Log(L"CreateBlendState %p %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"CreateBlendState %p %s", hr, GetErrorStr(hr).c_str());
 		return false;
 	}
 
@@ -357,12 +357,12 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 
 		HRESULT hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(textures[0], &SRVDesc, pShaderResourceView[0].ReleaseAndGetAddressOf());
 		if (FAILED(hr)) {
-			Log(L"CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
+			Log(L"CreateShaderResourceView %p %s", hr, GetErrorStr(hr).c_str());
 			return false;
 		}
 		hr = m_pD3DRender->GetDevice()->CreateShaderResourceView(textures[1], &SRVDesc, pShaderResourceView[1].ReleaseAndGetAddressOf());
 		if (FAILED(hr)) {
-			Log(L"CreateShaderResourceView %p %s", hr, GetDxErrorStr(hr).c_str());
+			Log(L"CreateShaderResourceView %p %s", hr, GetErrorStr(hr).c_str());
 			return false;
 		}
 		
@@ -401,7 +401,7 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 		D3D11_MAPPED_SUBRESOURCE mapped = { 0 };
 		hr = m_pD3DRender->GetContext()->Map(m_pVertexBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 		if (FAILED(hr)) {
-			Log(L"Map %p %s", hr, GetDxErrorStr(hr).c_str());
+			Log(L"Map %p %s", hr, GetErrorStr(hr).c_str());
 			return false;
 		}
 		memcpy(mapped.pData, vertices, sizeof(vertices));
@@ -531,9 +531,9 @@ void FrameRender::CreateResourceTexture()
 	HRESULT hr = DirectX::CreateWICTextureFromMemory(m_pD3DRender->GetDevice(), (uint8_t *)&texture[0], texture.size(),
 		&m_recenterTexture, &m_recenterResourceView);
 	if (!m_recenterTexture) {
-		Log(L"Failed to create recenter texture. %d %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"Failed to create recenter texture. %d %s", hr, GetErrorStr(hr).c_str());
 	}else if (!m_recenterResourceView) {
-		Log(L"Failed to create recenter resource view. %d %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"Failed to create recenter resource view. %d %s", hr, GetErrorStr(hr).c_str());
 	}
 
 	if (!ReadBinaryResource(texture, IDR_MESSAGE_BG_TEXTURE)) {
@@ -544,9 +544,9 @@ void FrameRender::CreateResourceTexture()
 	hr = DirectX::CreateWICTextureFromMemory(m_pD3DRender->GetDevice(), (uint8_t *)&texture[0], texture.size(),
 		&m_messageBGTexture, &m_messageBGResourceView);
 	if (!m_messageBGTexture) {
-		Log(L"Failed to create message_bg texture. %d %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"Failed to create message_bg texture. %d %s", hr, GetErrorStr(hr).c_str());
 	}
 	else if (!m_messageBGResourceView) {
-		Log(L"Failed to create message_bg resource view. %d %s", hr, GetDxErrorStr(hr).c_str());
+		Log(L"Failed to create message_bg resource view. %d %s", hr, GetErrorStr(hr).c_str());
 	}
 }

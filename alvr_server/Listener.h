@@ -105,7 +105,7 @@ private:
 	uint64_t m_lastFecFailure = 0;
 	static const uint64_t CONTINUOUS_FEC_FAILURE = 60 * 1000 * 1000;
 	static const int INITIAL_FEC_PERCENTAGE = 5;
-	static const int MAX_FEC_PERCENTAGE = 30;
+	static const int MAX_FEC_PERCENTAGE = 10;
 	int m_fecPercentage = INITIAL_FEC_PERCENTAGE;
 
 	uint64_t mVideoFrameIndex = 1;

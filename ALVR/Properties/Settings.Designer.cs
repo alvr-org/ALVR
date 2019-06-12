@@ -357,5 +357,17 @@ namespace ALVR.Properties {
                 this["resolutionScale"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool disableThrottling {
+            get {
+                return ((bool)(this["disableThrottling"]));
+            }
+            set {
+                this["disableThrottling"] = value;
+            }
+        }
     }
 }

@@ -79,7 +79,15 @@ void Settings::Load()
 
 		m_codec = (int32_t)v.get(k_pch_Settings_Codec_Int32).get<int64_t>();
 		m_refreshRate = (int)v.get(k_pch_Settings_RefreshRate_Int32).get<int64_t>();
-		m_encodeBitrateInMBits = (int)v.get(k_pch_Settings_EncodeBitrateInMBits_Int32).get<int64_t>();
+		mEncodeBitrate = Bitrate::fromMiBits((int)v.get(k_pch_Settings_EncodeBitrateInMBits_Int32).get<int64_t>());
+
+		if (v.get(k_pch_Settings_DisableThrottling_Bool).get<bool>()) {
+			mThrottlingBitrate = Bitrate::fromBits(0);
+		}
+		else {
+			// Is 150% reasonable?
+			mThrottlingBitrate = Bitrate::fromBits(mEncodeBitrate.toBits() * 3 / 2);
+		}
 
 		m_DebugOutputDir = v.get(k_pch_Settings_DebugOutputDir).get<std::string>();
 

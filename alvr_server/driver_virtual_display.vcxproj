@@ -103,6 +103,7 @@
     <ClCompile Include="amf\common\Thread.cpp" />
     <ClCompile Include="amf\common\Windows\ThreadWindows.cpp" />
     <ClCompile Include="AudioCapture.cpp" />
+    <ClCompile Include="Bitrate.cpp" />
     <ClCompile Include="ControlSocket.cpp" />
     <ClCompile Include="alvr_server.cpp" />
     <ClCompile Include="DeviceQuery.cpp" />
@@ -116,6 +117,7 @@
     <ClCompile Include="NvEncoderD3D11.cpp" />
     <ClCompile Include="Poller.cpp" />
     <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="ThrottlingBuffer.cpp" />
     <ClCompile Include="UdpSocket.cpp" />
     <ClCompile Include="VideoEncoder.cpp" />
     <ClCompile Include="VideoEncoderNVENC.cpp" />
@@ -168,6 +170,7 @@
     <ClInclude Include="amf\include\core\Variant.h" />
     <ClInclude Include="amf\include\core\Version.h" />
     <ClInclude Include="AudioCapture.h" />
+    <ClInclude Include="Bitrate.h" />
     <ClInclude Include="common-utils.h" />
     <ClInclude Include="ControlSocket.h" />
     <ClInclude Include="CudaConverter.h" />
@@ -191,6 +194,7 @@
     <ClInclude Include="RGBToNV12ConverterD3D11.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="Statistics.h" />
+    <ClInclude Include="ThrottlingBuffer.h" />
     <ClInclude Include="Tracking.h" />
     <ClInclude Include="UdpSocket.h" />
     <ClInclude Include="Utils.h" />

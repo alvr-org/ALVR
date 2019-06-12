@@ -2,6 +2,7 @@
 
 #include <openvr_driver.h>
 #include "common-utils.h"
+#include "Bitrate.h"
 #include "Utils.h"
 
 //
@@ -43,6 +44,7 @@ static const char * const k_pch_Settings_ControlListenHost_String = "controlList
 static const char * const k_pch_Settings_ControlListenPort_Int32 = "controlListenPort";
 static const char * const k_pch_Settings_AutoConnectHost_String = "autoConnectHost";
 static const char * const k_pch_Settings_AutoConnectPort_Int32 = "autoConnectPort";
+static const char * const k_pch_Settings_DisableThrottling_Bool = "disableThrottling";
 
 static const char * const k_pch_Settings_AdapterIndex_Int32 = "adapterIndex";
 
@@ -129,7 +131,7 @@ public:
 
 	int m_codec;
 	std::string m_EncoderOptions;
-	int m_encodeBitrateInMBits;
+	Bitrate mEncodeBitrate;
 
 	std::string m_Host;
 	int m_Port;
@@ -137,6 +139,7 @@ public:
 	int m_ControlPort;
 	std::string m_AutoConnectHost;
 	int m_AutoConnectPort;
+	Bitrate mThrottlingBitrate;
 
 	bool m_DebugLog;
 	bool m_DebugFrameIndex;

@@ -576,7 +576,7 @@ public:
 				HRESULT hr = pKeyedMutex->AcquireSync(0, 10);
 				if (hr != S_OK)
 				{
-					Log(L"[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %s", hr, hr, GetDxErrorStr(hr).c_str());
+					Log(L"[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %s", hr, hr, GetErrorStr(hr).c_str());
 					pKeyedMutex->Release();
 					return;
 				}
@@ -653,7 +653,7 @@ public:
 				Log(L"Writing Debug DDS. m_LastReferencedFrameIndex=%llu layer=%d/%d", 0, i, layerCount);
 				_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", Settings::Instance().m_DebugOutputDir.c_str(), m_submitFrameIndex, i, layerCount);
 				HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture[i][0], buf);
-				Log(L"Writing Debug DDS: End hr=%p %s", hr, GetDxErrorStr(hr).c_str());
+				Log(L"Writing Debug DDS: End hr=%p %s", hr, GetErrorStr(hr).c_str());
 			}
 			Settings::Instance().m_captureLayerDDSTrigger = false;
 		}
@@ -1006,7 +1006,7 @@ public:
 				"%s %d\n"
 				"GPU %s\n"
 				"Codec %d\n"
-				"Bitrate %dMbps\n"
+				"Bitrate %lluMbps\n"
 				"Resolution %dx%d\n"
 				"RefreshRate %d\n"
 				, m_Listener->DumpConfig().c_str()
@@ -1022,7 +1022,7 @@ public:
 				, k_pch_Settings_ControllerRecenterButton_Int32, Settings::Instance().m_controllerRecenterButton
 				, ToUTF8(m_adapterName).c_str() // TODO: Proper treatment of UNICODE. Sanitizing.
 				, Settings::Instance().m_codec
-				, Settings::Instance().m_encodeBitrateInMBits
+				, Settings::Instance().mEncodeBitrate.toMiBits()
 				, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight
 				, Settings::Instance().m_refreshRate
 			);

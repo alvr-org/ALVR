@@ -49,7 +49,7 @@ inline std::string DumpMatrix(const float *m) {
 	return std::string(buf);
 }
 
-inline std::wstring GetDxErrorStr(HRESULT hr) {
+inline std::wstring GetErrorStr(HRESULT hr) {
 	wchar_t *s = NULL;
 	std::wstring ret;
 	FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -59,13 +59,11 @@ inline std::wstring GetDxErrorStr(HRESULT hr) {
 	ret = s;
 	LocalFree(s);
 
-	if (ret.size() >= 1) {
-		if (ret[ret.size() - 1] == L'\n') {
-			ret.erase(ret.size() - 1, 1);
-		}
-		if (ret[ret.size() - 1] == L'\r') {
-			ret.erase(ret.size() - 1, 1);
-		}
+	if (ret.size() >= 1 && ret[ret.size() - 1] == L'\n') {
+		ret.erase(ret.size() - 1, 1);
+	}
+	if (ret.size() >= 1 && ret[ret.size() - 1] == L'\r') {
+		ret.erase(ret.size() - 1, 1);
 	}
 	return ret;
 }

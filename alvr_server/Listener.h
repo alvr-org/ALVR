@@ -58,38 +58,38 @@ public:
 	std::shared_ptr<Statistics> GetStatistics();
 	bool IsStreaming();
 private:
-	bool m_bExiting;
-	bool m_Enabled;
-	std::shared_ptr<Poller> m_Poller;
-	std::shared_ptr<UdpSocket> m_Socket;
-	std::shared_ptr<ControlSocket> m_ControlSocket;
-	std::shared_ptr<Statistics> m_Statistics;
+	bool mExiting;
+	bool mEnabled;
+	std::shared_ptr<Poller> mPoller;
+	std::shared_ptr<UdpSocket> mSocket;
+	std::shared_ptr<ControlSocket> mControlSocket;
+	std::shared_ptr<Statistics> mStatistics;
 
 	// Maximum UDP payload
 	static const int PACKET_SIZE = 1400;
 	static const int64_t REQUEST_TIMEOUT = 5 * 1000 * 1000;
 	static const int64_t CONNECTION_TIMEOUT = 5 * 1000 * 1000;
 
-	uint32_t videoPacketCounter = 0;
-	uint32_t soundPacketCounter = 0;
+	uint32_t mVideoPacketCounter = 0;
+	uint32_t mSoundPacketCounter = 0;
 
-	time_t m_LastSeen;
-	std::function<void()> m_LauncherCallback;
-	std::function<void(std::string, std::string)> m_CommandCallback;
-	std::function<void()> m_PoseUpdatedCallback;
-	std::function<void()> m_NewClientCallback;
-	std::function<void()> m_StreamStartCallback;
-	std::function<void()> m_PacketLossCallback;
-	std::function<void()> m_ShutdownCallback;
-	TrackingInfo m_TrackingInfo;
+	time_t mLastSeen;
+	std::function<void()> mLauncherCallback;
+	std::function<void(std::string, std::string)> mCommandCallback;
+	std::function<void()> mPoseUpdatedCallback;
+	std::function<void()> mNewClientCallback;
+	std::function<void()> mStreamStartCallback;
+	std::function<void()> mPacketLossCallback;
+	std::function<void()> mShutdownCallback;
+	TrackingInfo mTrackingInfo;
 
-	uint64_t m_TimeDiff = 0;
-	CRITICAL_SECTION m_CS;
+	uint64_t mTimeDiff = 0;
+	CRITICAL_SECTION mCS;
 
-	ChangeSettings m_Settings;
+	ChangeSettings mSettings;
 
-	bool m_Connected;
-	bool m_Streaming;
+	bool mConnected;
+	bool mStreaming;
 
 	struct Request {
 		uint64_t timestamp;
@@ -98,15 +98,15 @@ private:
 		bool versionOk;
 		HelloMessage message;
 	};
-	std::list<Request> m_Requests;
+	std::list<Request> mRequests;
 
-	std::string m_clientDeviceName;
-	TimeSync m_reportedStatistics;
-	uint64_t m_lastFecFailure = 0;
+	std::string mClientDeviceName;
+	TimeSync mReportedStatistics;
+	uint64_t mLastFecFailure = 0;
 	static const uint64_t CONTINUOUS_FEC_FAILURE = 60 * 1000 * 1000;
 	static const int INITIAL_FEC_PERCENTAGE = 5;
 	static const int MAX_FEC_PERCENTAGE = 10;
-	int m_fecPercentage = INITIAL_FEC_PERCENTAGE;
+	int mFecPercentage = INITIAL_FEC_PERCENTAGE;
 
 	uint64_t mVideoFrameIndex = 1;
 };

@@ -31,32 +31,32 @@ public:
 
 	ComPtr<ID3D11Texture2D> GetTexture();
 private:
-	std::shared_ptr<CD3DRender> m_pD3DRender;
-	ComPtr<ID3D11Texture2D> m_pStagingTexture;
+	std::shared_ptr<CD3DRender> mD3DRender;
+	ComPtr<ID3D11Texture2D> mStagingTexture;
 
-	ComPtr<ID3D11VertexShader> m_pVertexShader;
-	ComPtr<ID3D11PixelShader> m_pPixelShader;
+	ComPtr<ID3D11VertexShader> mVertexShader;
+	ComPtr<ID3D11PixelShader> mPixelShader;
 
-	ComPtr<ID3D11InputLayout> m_pVertexLayout;
-	ComPtr<ID3D11Buffer> m_pVertexBuffer;
-	ComPtr<ID3D11Buffer> m_pIndexBuffer;
+	ComPtr<ID3D11InputLayout> mVertexLayout;
+	ComPtr<ID3D11Buffer> mVertexBuffer;
+	ComPtr<ID3D11Buffer> mIndexBuffer;
 
-	ComPtr<ID3D11SamplerState> m_pSamplerLinear;
+	ComPtr<ID3D11SamplerState> mSamplerLinear;
 
-	ComPtr<ID3D11Texture2D> m_pDepthStencil;
-	ComPtr<ID3D11RenderTargetView> m_pRenderTargetView;
-	ComPtr<ID3D11DepthStencilView> m_pDepthStencilView;
+	ComPtr<ID3D11Texture2D> mDepthStencil;
+	ComPtr<ID3D11RenderTargetView> mRenderTargetView;
+	ComPtr<ID3D11DepthStencilView> mDepthStencilView;
 
-	ComPtr<ID3D11BlendState> m_pBlendStateFirst;
-	ComPtr<ID3D11BlendState> m_pBlendState;
+	ComPtr<ID3D11BlendState> mBlendStateFirst;
+	ComPtr<ID3D11BlendState> mBlendState;
 
-	ComPtr<ID3D11Resource> m_recenterTexture;
-	ComPtr<ID3D11ShaderResourceView> m_recenterResourceView;
-	ComPtr<ID3D11Resource> m_messageBGTexture;
-	ComPtr<ID3D11ShaderResourceView> m_messageBGResourceView;
+	ComPtr<ID3D11Resource> mRecenterTexture;
+	ComPtr<ID3D11ShaderResourceView> mRecenterResourceView;
+	ComPtr<ID3D11Resource> mMessageBGTexture;
+	ComPtr<ID3D11ShaderResourceView> mMessageBGResourceView;
 
-	std::unique_ptr<DirectX::SpriteFont> m_Font;
-	std::unique_ptr<DirectX::SpriteBatch> m_SpriteBatch;
+	std::unique_ptr<DirectX::SpriteFont> mFont;
+	std::unique_ptr<DirectX::SpriteBatch> mSpriteBatch;
 
 	uint64_t m_frameIndex2;
 	struct SimpleVertex

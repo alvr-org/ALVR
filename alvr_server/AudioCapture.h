@@ -19,25 +19,25 @@ using Microsoft::WRL::ComPtr;
 
 class Handle {
 public:
-	Handle(HANDLE handle = NULL) : m_handle(handle) {
+	Handle(HANDLE handle = NULL) : mHandle(handle) {
 	}
 	~Handle() {
-		if (m_handle != NULL) {
-			CloseHandle(m_handle);
+		if (mHandle != NULL) {
+			CloseHandle(mHandle);
 		}
 	}
 	void Set(HANDLE handle) {
-		m_handle = handle;
+		mHandle = handle;
 	}
 	bool IsValid() {
-		return m_handle != NULL;
+		return mHandle != NULL;
 	}
 	HANDLE Get() {
-		return m_handle;
+		return mHandle;
 	}
 
 private:
-	HANDLE m_handle;
+	HANDLE mHandle;
 };
 
 class AudioEndPointDescriptor {
@@ -51,9 +51,9 @@ public:
 
 	static std::wstring GetDeviceName(const ComPtr<IMMDevice> &pMMDevice);
 private:
-	std::wstring m_name;
-	std::wstring m_id;
-	bool m_isDefault;
+	std::wstring mName;
+	std::wstring mID;
+	bool mIsDefault;
 };
 
 class AudioCapture
@@ -78,18 +78,18 @@ public:
 	void WriteWaveHeader(HMMIO hFile, LPCWAVEFORMATEX pwfx, MMCKINFO *pckRIFF, MMCKINFO *pckData);
 	void FinishWaveFile(HMMIO hFile, MMCKINFO *pckRIFF, MMCKINFO *pckData);
 private:
-	Handle m_hThread;
-	std::shared_ptr<Listener> m_listener;
+	Handle mThread;
+	std::shared_ptr<Listener> mListener;
 
-	ComPtr<IMMDevice> m_pMMDevice;
-	PWAVEFORMATEX m_pwfx;
-	UINT32 m_frames;
+	ComPtr<IMMDevice> mMMDevice;
+	PWAVEFORMATEX mWaveFormat;
+	UINT32 mFrames;
 
-	IPCEvent m_startedEvent;
-	IPCEvent m_stopEvent;
+	IPCEvent mStartedEvent;
+	IPCEvent mStopEvent;
 
-	bool m_canRetry;
-	std::wstring m_errorMessage;
+	bool mCanRetry;
+	std::wstring mErrorMessage;
 
 	static const int DEFAULT_SAMPLE_RATE = 48000;
 	static const int DEFAULT_CHANNELS = 2;

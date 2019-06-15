@@ -5,21 +5,21 @@
 class Exception : public std::exception {
 public:
 	Exception(std::wstring what)
-		: m_what(what) {
+		: mWhat(what) {
 	}
 	Exception() {
 	}
 
 	virtual const wchar_t *what() {
-		return m_what.c_str();
+		return mWhat.c_str();
 	}
 
 	Exception& operator=(const Exception &src) {
-		m_what = src.m_what;
+		mWhat = src.mWhat;
 		return *this;
 	}
 private:
-	std::wstring m_what;
+	std::wstring mWhat;
 };
 
 Exception FormatExceptionV(const wchar_t *format, va_list args);

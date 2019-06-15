@@ -23,21 +23,21 @@ static const char *APP_NAME = "ALVR Server";
 static const int STARTUP_LOG_SIZE = 500;
 static const int TAIL_LOG_SIZE = 500;
 
-extern HINSTANCE g_hInstance;
+extern HINSTANCE gInstance;
 
-static FILE *logFile = nullptr;
-static bool Opened = false;
-static bool OpenFailed = false;
-static uint64_t lastRefresh = 0;
-static std::wstring lastException;
-static IPCMutex g_mutex(NULL);
-static std::list<std::wstring> startupLog;
-static std::list<std::wstring> tailLog[2];
-static int currentLog = 0;
+static FILE *gLogFile = nullptr;
+static bool gOpened = false;
+static bool gOpenFailed = false;
+static uint64_t gLastRefresh = 0;
+static std::wstring gLastException;
+static IPCMutex gMutex(NULL);
+static std::list<std::wstring> gStartupLog;
+static std::list<std::wstring> gTailLog[2];
+static int gCurrentLog = 0;
 
 static std::wstring GetCrashReportPath() {
 	wchar_t cpath[10000];
-	GetModuleFileNameW(g_hInstance, cpath, sizeof(cpath) / sizeof(wchar_t));
+	GetModuleFileNameW(gInstance, cpath, sizeof(cpath) / sizeof(wchar_t));
 	wchar_t *p = wcsrchr(cpath, L'\\');
 	*p = L'\0';
 	wcsncat_s(cpath, L"\\..\\..\\..\\CrashReport.exe", sizeof(cpath) / sizeof(wchar_t));
@@ -93,7 +93,7 @@ static void OutputCrashLog(PEXCEPTION_POINTERS pExceptionPtrs) {
 	wchar_t *p;
 	SYSTEMTIME st;
 
-	GetModuleFileNameW(g_hInstance, cpath, sizeof(cpath) / sizeof(wchar_t));
+	GetModuleFileNameW(gInstance, cpath, sizeof(cpath) / sizeof(wchar_t));
 	p = wcsrchr(cpath, L'\\');
 	*p = L'\0';
 
@@ -107,27 +107,27 @@ static void OutputCrashLog(PEXCEPTION_POINTERS pExceptionPtrs) {
 		return;
 	}
 
-	fwprintf(fp, L"Exception: %s\n", lastException.c_str());
+	fwprintf(fp, L"Exception: %s\n", gLastException.c_str());
 	fwprintf(fp, L"OSVer: %s\n", GetWindowsOSVersion().c_str());
-	fwprintf(fp, L"Module: %p\n", g_hInstance);
+	fwprintf(fp, L"Module: %p\n", gInstance);
 	fwprintf(fp, L"========== Startup Log ==========\n");
 
-	g_mutex.Wait();
-	for (auto line : startupLog) {
+	gMutex.Wait();
+	for (auto line : gStartupLog) {
 		fputws(line.c_str(), fp);
 		fputws(L"\n", fp);
 	}
 	fwprintf(fp, L"========== Tail Log 1 ==========\n");
-	for (auto line : tailLog[1 - currentLog]) {
+	for (auto line : gTailLog[1 - gCurrentLog]) {
 		fputws(line.c_str(), fp);
 		fputws(L"\n", fp);
 	}
 	fwprintf(fp, L"========== Tail Log 2 ==========\n");
-	for (auto line : tailLog[currentLog]) {
+	for (auto line : gTailLog[gCurrentLog]) {
 		fputws(line.c_str(), fp);
 		fputws(L"\n", fp);
 	}
-	g_mutex.Release();
+	gMutex.Release();
 
 	fclose(fp);
 
@@ -141,13 +141,13 @@ static void ReportError(PEXCEPTION_POINTERS pExceptionPtrs) {
 
 	OutputCrashLog(pExceptionPtrs);
 
-	ShellExecuteW(NULL, L"", GetCrashReportPath().c_str(), (L"\"" + lastException + L"\"").c_str(), L"", SW_SHOWNORMAL);
+	ShellExecuteW(NULL, L"", GetCrashReportPath().c_str(), (L"\"" + gLastException + L"\"").c_str(), L"", SW_SHOWNORMAL);
 }
 
 static LONG WINAPI MyUnhandledExceptionFilter(PEXCEPTION_POINTERS pExceptionPtrs)
 {
 	LogException("Unhandled Exception.\nExceptionCode=%X\nAddress=%p (%p + %p)", pExceptionPtrs->ExceptionRecord->ExceptionCode, pExceptionPtrs->ExceptionRecord->ExceptionAddress
-		, g_hInstance, (char*)pExceptionPtrs->ExceptionRecord->ExceptionAddress - (char*)g_hInstance);
+		, gInstance, (char*)pExceptionPtrs->ExceptionRecord->ExceptionAddress - (char*)gInstance);
 	ReportError(pExceptionPtrs);
 	return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -157,18 +157,18 @@ void InitCrashHandler() {
 }
 
 void OpenLog(const char *fileName) {
-	if (!Opened) {
+	if (!gOpened) {
 		// ccs=UTF-8 converts wchar_t to UTF-8 on output.
 		// _SH_DENYNO allows other process read log.
-		logFile = _fsopen(fileName, "w, ccs=UTF-8", _SH_DENYNO);
+		gLogFile = _fsopen(fileName, "w, ccs=UTF-8", _SH_DENYNO);
 	}
-	Opened = true;
+	gOpened = true;
 }
 
 void CloseLog() {
-	if (logFile != nullptr) {
-		fclose(logFile);
-		logFile = nullptr;
+	if (gLogFile != nullptr) {
+		fclose(gLogFile);
+		gLogFile = nullptr;
 	}
 }
 
@@ -191,35 +191,35 @@ void LogS(const wchar_t *str)
 
 	std::wstring line = std::wstring(buf) + str;
 
-	g_mutex.Wait();
+	gMutex.Wait();
 	// Store log into list for crash log.
-	if (startupLog.size() < STARTUP_LOG_SIZE) {
-		startupLog.push_back(line);
+	if (gStartupLog.size() < STARTUP_LOG_SIZE) {
+		gStartupLog.push_back(line);
 	}
 	else {
-		if (tailLog[currentLog].size() < TAIL_LOG_SIZE) {
-			tailLog[currentLog].push_back(line);
+		if (gTailLog[gCurrentLog].size() < TAIL_LOG_SIZE) {
+			gTailLog[gCurrentLog].push_back(line);
 		}
 		else {
-			currentLog = 1 - currentLog;
-			tailLog[currentLog].clear();
-			tailLog[currentLog].push_back(line);
+			gCurrentLog = 1 - gCurrentLog;
+			gTailLog[gCurrentLog].clear();
+			gTailLog[gCurrentLog].push_back(line);
 		}
 	}
-	g_mutex.Release();
+	gMutex.Release();
 
-	if (logFile == nullptr) {
+	if (gLogFile == nullptr) {
 		return;
 	}
 
-	g_mutex.Wait();
-	fputws(line.c_str(), logFile);
-	fputws(L"\n", logFile);
-	g_mutex.Release();
+	gMutex.Wait();
+	fputws(line.c_str(), gLogFile);
+	fputws(L"\n", gLogFile);
+	gMutex.Release();
 
-	if (lastRefresh / 1000000 != q / 1000000) {
-		lastRefresh = q;
-		fflush(logFile);
+	if (gLastRefresh / 1000000 != q / 1000000) {
+		gLastRefresh = q;
+		fflush(gLogFile);
 	}
 }
 
@@ -268,7 +268,7 @@ void LogException(const wchar_t *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	LogV(format, args, &lastException);
+	LogV(format, args, &gLastException);
 	va_end(args);
 }
 
@@ -276,14 +276,14 @@ void LogException(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	LogV(format, args, &lastException);
+	LogV(format, args, &gLastException);
 	va_end(args);
 }
 
 void FatalLog(const wchar_t *format, ...) {
 	va_list args;
 	va_start(args, format);
-	LogV(format, args, &lastException);
+	LogV(format, args, &gLastException);
 	va_end(args);
 
 	ReportError(NULL);
@@ -292,7 +292,7 @@ void FatalLog(const wchar_t *format, ...) {
 void FatalLog(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
-	LogV(format, args, &lastException);
+	LogV(format, args, &gLastException);
 	va_end(args);
 
 	ReportError(NULL);
@@ -305,7 +305,7 @@ Exception MakeException(const wchar_t *format, ...) {
 	va_end(args);
 
 	LogS(e.what());
-	lastException = e.what();
+	gLastException = e.what();
 	FlushLog();
 
 	return e;
@@ -318,15 +318,15 @@ Exception MakeException(const char *format, ...) {
 	va_end(args);
 
 	LogS(e.what());
-	lastException = e.what();
+	gLastException = e.what();
 	FlushLog();
 
 	return e;
 }
 
 void FlushLog() {
-	if (logFile == nullptr) {
+	if (gLogFile == nullptr) {
 		return;
 	}
-	fflush(logFile);
+	fflush(gLogFile);
 }

@@ -2,63 +2,63 @@
 #include "Bitrate.h"
 
 Listener::Listener()
-	: m_bExiting(false)
-	, m_Enabled(false)
-	, m_Connected(false)
-	, m_Streaming(false)
-	, m_LastSeen(0) {
-	memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
-	InitializeCriticalSection(&m_CS);
+	: mExiting(false)
+	, mEnabled(false)
+	, mConnected(false)
+	, mStreaming(false)
+	, mLastSeen(0) {
+	memset(&mTrackingInfo, 0, sizeof(mTrackingInfo));
+	InitializeCriticalSection(&mCS);
 
-	m_Statistics = std::make_shared<Statistics>();
+	mStatistics = std::make_shared<Statistics>();
 
-	m_Settings.type = ALVR_PACKET_TYPE_CHANGE_SETTINGS;
-	m_Settings.debugFlags = 0;
-	m_Settings.suspend = 0;
+	mSettings.type = ALVR_PACKET_TYPE_CHANGE_SETTINGS;
+	mSettings.debugFlags = 0;
+	mSettings.suspend = 0;
 
-	m_Poller.reset(new Poller());
-	m_ControlSocket.reset(new ControlSocket(m_Poller));
+	mPoller.reset(new Poller());
+	mControlSocket.reset(new ControlSocket(mPoller));
 
-	m_Streaming = false;
+	mStreaming = false;
 
 	reed_solomon_init();
 }
 
 Listener::~Listener() {
-	DeleteCriticalSection(&m_CS);
+	DeleteCriticalSection(&mCS);
 }
 
 void Listener::SetLauncherCallback(std::function<void()> callback) {
-	m_LauncherCallback = callback;
+	mLauncherCallback = callback;
 }
 void Listener::SetCommandCallback(std::function<void(std::string, std::string)> callback) {
-	m_CommandCallback = callback;
+	mCommandCallback = callback;
 }
 void Listener::SetPoseUpdatedCallback(std::function<void()> callback) {
-	m_PoseUpdatedCallback = callback;
+	mPoseUpdatedCallback = callback;
 }
 void Listener::SetNewClientCallback(std::function<void()> callback) {
-	m_NewClientCallback = callback;
+	mNewClientCallback = callback;
 }
 void Listener::SetStreamStartCallback(std::function<void()> callback) {
-	m_StreamStartCallback = callback;
+	mStreamStartCallback = callback;
 }
 void Listener::SetPacketLossCallback(std::function<void()> callback) {
-	m_PacketLossCallback = callback;
+	mPacketLossCallback = callback;
 }
 void Listener::SetShutdownCallback(std::function<void()> callback) {
-	m_ShutdownCallback = callback;
+	mShutdownCallback = callback;
 }
 
 bool Listener::Startup() {
-	if (!m_ControlSocket->Startup()) {
+	if (!mControlSocket->Startup()) {
 		return false;
 	}
 	if (Settings::Instance().IsLoaded()) {
-		m_Enabled = true;
-		m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port
-			, m_Poller, m_Statistics, Settings::Instance().mThrottlingBitrate);
-		if (!m_Socket->Startup()) {
+		mEnabled = true;
+		mSocket = std::make_shared<UdpSocket>(Settings::Instance().mHost, Settings::Instance().mPort
+			, mPoller, mStatistics, Settings::Instance().mThrottlingBitrate);
+		if (!mSocket->Startup()) {
 			return false;
 		}
 	}
@@ -68,40 +68,40 @@ bool Listener::Startup() {
 }
 
 void Listener::Run() {
-	while (!m_bExiting) {
+	while (!mExiting) {
 		CheckTimeout();
-		if (m_Poller->Do() == 0) {
-			if (m_Socket) {
-				m_Socket->Run();
+		if (mPoller->Do() == 0) {
+			if (mSocket) {
+				mSocket->Run();
 			}
 			continue;
 		}
 
-		if (m_Socket) {
+		if (mSocket) {
 			sockaddr_in addr;
 			int addrlen = sizeof(addr);
 			char buf[2000];
 			int len = sizeof(buf);
-			if (m_Socket->Recv(buf, &len, &addr, addrlen)) {
+			if (mSocket->Recv(buf, &len, &addr, addrlen)) {
 				ProcessRecv(buf, len, &addr);
 			}
-			m_Socket->Run();
+			mSocket->Run();
 		}
 
-		if (m_ControlSocket->Accept()) {
-			if (!m_Enabled) {
-				m_Enabled = true;
+		if (mControlSocket->Accept()) {
+			if (!mEnabled) {
+				mEnabled = true;
 				Settings::Instance().Load();
-				m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port
-					, m_Poller, m_Statistics, Settings::Instance().mThrottlingBitrate);
-				if (!m_Socket->Startup()) {
+				mSocket = std::make_shared<UdpSocket>(Settings::Instance().mHost, Settings::Instance().mPort
+					, mPoller, mStatistics, Settings::Instance().mThrottlingBitrate);
+				if (!mSocket->Startup()) {
 					return;
 				}
 			}
-			m_LauncherCallback();
+			mLauncherCallback();
 		}
 		std::vector<std::string> commands;
-		if (m_ControlSocket->Recv(commands)) {
+		if (mControlSocket->Recv(commands)) {
 			for (auto it = commands.begin(); it != commands.end(); ++it) {
 				std::string commandName, args;
 
@@ -123,12 +123,12 @@ void Listener::Run() {
 }
 
 void Listener::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex) {
-	int shardPackets = CalculateFECShardPackets(len, m_fecPercentage);
+	int shardPackets = CalculateFECShardPackets(len, mFecPercentage);
 
 	int blockSize = shardPackets * ALVR_MAX_VIDEO_BUFFER_SIZE;
 
 	int dataShards = (len + blockSize - 1) / blockSize;
-	int totalParityShards = CalculateParityShards(dataShards, m_fecPercentage);
+	int totalParityShards = CalculateParityShards(dataShards, mFecPercentage);
 	int totalShards = dataShards + totalParityShards;
 
 	assert(totalShards <= DATA_SHARDS_MAX);
@@ -171,7 +171,7 @@ void Listener::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t vide
 	header->sentTime = GetTimestampUs();
 	header->frameByteSize = len;
 	header->fecIndex = 0;
-	header->fecPercentage = m_fecPercentage;
+	header->fecPercentage = mFecPercentage;
 	for (int i = 0; i < dataShards; i++) {
 		for (int j = 0; j < shardPackets; j++) {
 			int copyLength = std::min(ALVR_MAX_VIDEO_BUFFER_SIZE, dataRemain);
@@ -181,9 +181,9 @@ void Listener::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t vide
 			memcpy(payload, shards[i] + j * ALVR_MAX_VIDEO_BUFFER_SIZE, copyLength);
 			dataRemain -= ALVR_MAX_VIDEO_BUFFER_SIZE;
 
-			header->packetCounter = videoPacketCounter;
-			videoPacketCounter++;
-			m_Socket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, frameIndex);
+			header->packetCounter = mVideoPacketCounter;
+			mVideoPacketCounter++;
+			mSocket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, frameIndex);
 			header->fecIndex++;
 		}
 	}
@@ -193,9 +193,9 @@ void Listener::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t vide
 			int copyLength = ALVR_MAX_VIDEO_BUFFER_SIZE;
 			memcpy(payload, shards[dataShards + i] + j * ALVR_MAX_VIDEO_BUFFER_SIZE, copyLength);
 
-			header->packetCounter = videoPacketCounter;
-			videoPacketCounter++;
-			m_Socket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, frameIndex);
+			header->packetCounter = mVideoPacketCounter;
+			mVideoPacketCounter++;
+			mSocket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, frameIndex);
 			header->fecIndex++;
 		}
 	}
@@ -209,11 +209,11 @@ void Listener::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t vide
 }
 
 void Listener::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
-	if (!m_Socket->IsClientValid()) {
+	if (!mSocket->IsClientValid()) {
 		Log(L"Skip sending packet because client is not connected. Packet Length=%d FrameIndex=%llu", len, frameIndex);
 		return;
 	}
-	if (!m_Streaming) {
+	if (!mStreaming) {
 		Log(L"Skip sending packet because streaming is off.");
 		return;
 	}
@@ -224,11 +224,11 @@ void Listener::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 void Listener::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
 	uint8_t packetBuffer[2000];
 
-	if (!m_Socket->IsClientValid()) {
+	if (!mSocket->IsClientValid()) {
 		Log(L"Skip sending audio packet because client is not connected. Packet Length=%d", len);
 		return;
 	}
-	if (!m_Streaming) {
+	if (!mStreaming) {
 		Log(L"Skip sending audio packet because streaming is off.");
 		return;
 	}
@@ -243,7 +243,7 @@ void Listener::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
 			auto header = (AudioFrameStart *)packetBuffer;
 
 			header->type = ALVR_PACKET_TYPE_AUDIO_FRAME_START;
-			header->packetCounter = soundPacketCounter;
+			header->packetCounter = mSoundPacketCounter;
 			header->presentationTime = presentationTime;
 			header->frameByteSize = len;
 
@@ -254,7 +254,7 @@ void Listener::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
 			auto header = (AudioFrame *)packetBuffer;
 
 			header->type = ALVR_PACKET_TYPE_AUDIO_FRAME;
-			header->packetCounter = soundPacketCounter;
+			header->packetCounter = mSoundPacketCounter;
 
 			pos = sizeof(*header);
 		}
@@ -265,20 +265,20 @@ void Listener::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
 		pos += size;
 		remainBuffer -= size;
 
-		soundPacketCounter++;
+		mSoundPacketCounter++;
 
-		int ret = m_Socket->Send((char *)packetBuffer, pos);
+		int ret = mSocket->Send((char *)packetBuffer, pos);
 
 	}
 }
 
 void Listener::SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand)
 {
-	if (!m_Socket->IsClientValid()) {
+	if (!mSocket->IsClientValid()) {
 		Log(L"Skip sending audio packet because client is not connected.");
 		return;
 	}
-	if (!m_Streaming) {
+	if (!mStreaming) {
 		Log(L"Skip sending audio packet because streaming is off.");
 		return;
 	}
@@ -291,7 +291,7 @@ void Listener::SendHapticsFeedback(uint64_t startTime, float amplitude, float du
 	packetBuffer.duration = duration;
 	packetBuffer.frequency = frequency;
 	packetBuffer.hand = hand;
-	m_Socket->Send((char *)&packetBuffer, sizeof(HapticsFeedback));
+	mSocket->Send((char *)&packetBuffer, sizeof(HapticsFeedback));
 }
 
 void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
@@ -328,9 +328,9 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			, message->deviceCapabilityFlags, message->controllerCapabilityFlags);
 
 		PushRequest(message, addr);
-		if (AddrToStr(addr) == Settings::Instance().m_AutoConnectHost &&
-			ntohs(addr->sin_port) == Settings::Instance().m_AutoConnectPort) {
-			if (!m_Connected) {
+		if (AddrToStr(addr) == Settings::Instance().mAutoConnectHost &&
+			ntohs(addr->sin_port) == Settings::Instance().mAutoConnectPort) {
+			if (!mConnected) {
 				Log(L"AutoConnect: %hs", AddrPortToStr(addr).c_str());
 				Connect(addr);
 			}
@@ -338,31 +338,31 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 	}
 	else if (type == ALVR_PACKET_TYPE_RECOVER_CONNECTION && len >= sizeof(RecoverConnection)) {
 		Log(L"Got recover connection message from %hs.", AddrPortToStr(addr).c_str());
-		if (m_Socket->IsLegitClient(addr)) {
+		if (mSocket->IsLegitClient(addr)) {
 			Log(L"This is the legit client. Send connection message.");
 			Connect(addr);
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
-		if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
+		if (!mConnected || !mSocket->IsLegitClient(addr)) {
 			Log(L"Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;
 		}
 		UpdateLastSeen();
 
-		EnterCriticalSection(&m_CS);
-		m_TrackingInfo = *(TrackingInfo *)buf;
-		LeaveCriticalSection(&m_CS);
+		EnterCriticalSection(&mCS);
+		mTrackingInfo = *(TrackingInfo *)buf;
+		LeaveCriticalSection(&mCS);
 
-		Log(L"got tracking info %d %f %f %f %f", (int)m_TrackingInfo.FrameIndex,
-			m_TrackingInfo.HeadPose_Pose_Orientation.x,
-			m_TrackingInfo.HeadPose_Pose_Orientation.y,
-			m_TrackingInfo.HeadPose_Pose_Orientation.z,
-			m_TrackingInfo.HeadPose_Pose_Orientation.w);
-		m_PoseUpdatedCallback();
+		Log(L"got tracking info %d %f %f %f %f", (int)mTrackingInfo.FrameIndex,
+			mTrackingInfo.HeadPose_Pose_Orientation.x,
+			mTrackingInfo.HeadPose_Pose_Orientation.y,
+			mTrackingInfo.HeadPose_Pose_Orientation.z,
+			mTrackingInfo.HeadPose_Pose_Orientation.w);
+		mPoseUpdatedCallback();
 	}
 	else if (type == ALVR_PACKET_TYPE_TIME_SYNC && len >= sizeof(TimeSync)) {
-		if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
+		if (!mConnected || !mSocket->IsLegitClient(addr)) {
 			Log(L"Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;
 		}
@@ -372,11 +372,11 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		uint64_t Current = GetTimestampUs();
 
 		if (timeSync->mode == 0) {
-			m_reportedStatistics = *timeSync;
+			mReportedStatistics = *timeSync;
 			TimeSync sendBuf = *timeSync;
 			sendBuf.mode = 1;
 			sendBuf.serverTime = Current;
-			m_Socket->Send((char *)&sendBuf, sizeof(sendBuf), 0);
+			mSocket->Send((char *)&sendBuf, sizeof(sendBuf), 0);
 
 			if (timeSync->fecFailure) {
 				OnFecFailure();
@@ -387,12 +387,12 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			uint64_t RTT = Current - timeSync->serverTime;
 			// Estimated difference between server and client clock
 			uint64_t TimeDiff = Current - (timeSync->clientTime + RTT / 2);
-			m_TimeDiff = TimeDiff;
+			mTimeDiff = TimeDiff;
 			Log(L"TimeSync: server - client = %lld us RTT = %lld us", TimeDiff, RTT);
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE && len >= sizeof(StreamControlMessage)) {
-		if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
+		if (!mConnected || !mSocket->IsLegitClient(addr)) {
 			Log(L"Recieved message from invalid address: %s:%d", AddrPortToStr(addr));
 			return;
 		}
@@ -400,16 +400,16 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 
 		if (streamControl->mode == 1) {
 			Log(L"Stream control message: Start stream.");
-			m_Streaming = true;
-			m_StreamStartCallback();
+			mStreaming = true;
+			mStreamStartCallback();
 		}
 		else if (streamControl->mode == 2) {
 			Log(L"Stream control message: Stop stream.");
-			m_Streaming = false;
+			mStreaming = false;
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_PACKET_ERROR_REPORT && len >= sizeof(PacketErrorReport)) {
-		if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
+		if (!mConnected || !mSocket->IsLegitClient(addr)) {
 			Log(L"Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;
 		}
@@ -424,18 +424,18 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 
 void Listener::ProcessCommand(const std::string &commandName, const std::string args) {
 	if (commandName == "SetDebugFlags") {
-		m_Settings.debugFlags = strtol(args.c_str(), NULL, 10);
+		mSettings.debugFlags = strtol(args.c_str(), NULL, 10);
 		SendChangeSettings();
 		SendCommandResponse("OK\n");
 	}
 	else if (commandName == "Suspend") {
-		m_Settings.suspend = atoi(args.c_str());
+		mSettings.suspend = atoi(args.c_str());
 		SendChangeSettings();
 		SendCommandResponse("OK\n");
 	}
 	else if (commandName == "GetRequests") {
 		std::string str;
-		for (auto it = m_Requests.begin(); it != m_Requests.end(); it++) {
+		for (auto it = mRequests.begin(); it != mRequests.end(); it++) {
 			char buf[500];
 			snprintf(buf, sizeof(buf), "%s %d %d %s\n"
 				, AddrPortToStr(&it->address).c_str()
@@ -468,7 +468,7 @@ void Listener::ProcessCommand(const std::string &commandName, const std::string 
 	}
 	else if (commandName == "Shutdown") {
 		Disconnect();
-		m_ShutdownCallback();
+		mShutdownCallback();
 		SendCommandResponse("OK\n");
 	}
 	else if (commandName == "GetStat") {
@@ -490,22 +490,22 @@ void Listener::ProcessCommand(const std::string &commandName, const std::string 
 			"FecFailureInSecond %llu Packets/s\n"
 			"ClientFPS %d\n"
 			"ServerFPS %d\n"
-			, m_Statistics->GetPacketsSentTotal()
-			, m_Statistics->GetPacketsSentInSecond()
-			, m_reportedStatistics.packetsLostTotal
-			, m_reportedStatistics.packetsLostInSecond
-			, m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000
-			, m_Statistics->GetBitsSentInSecond() / 1000 / 1000.0
-			, m_reportedStatistics.averageTotalLatency / 1000.0
-			, (double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS
-			, (double)(m_Statistics->GetEncodeLatencyMax()) / US_TO_MS
-			, m_reportedStatistics.averageTransportLatency / 1000.0
-			, m_reportedStatistics.averageDecodeLatency / 1000.0
-			, m_fecPercentage
-			, m_reportedStatistics.fecFailureTotal
-			, m_reportedStatistics.fecFailureInSecond
-			, m_reportedStatistics.fps
-			, m_Statistics->GetFPS());
+			, mStatistics->GetPacketsSentTotal()
+			, mStatistics->GetPacketsSentInSecond()
+			, mReportedStatistics.packetsLostTotal
+			, mReportedStatistics.packetsLostInSecond
+			, mStatistics->GetBitsSentTotal() / 8 / 1000 / 1000
+			, mStatistics->GetBitsSentInSecond() / 1000 / 1000.0
+			, mReportedStatistics.averageTotalLatency / 1000.0
+			, (double)(mStatistics->GetEncodeLatencyAverage()) / US_TO_MS
+			, (double)(mStatistics->GetEncodeLatencyMax()) / US_TO_MS
+			, mReportedStatistics.averageTransportLatency / 1000.0
+			, mReportedStatistics.averageDecodeLatency / 1000.0
+			, mFecPercentage
+			, mReportedStatistics.fecFailureTotal
+			, mReportedStatistics.fecFailureInSecond
+			, mReportedStatistics.fps
+			, mStatistics->GetFPS());
 		SendCommandResponse(buf);
 	}
 	else if (commandName == "Disconnect") {
@@ -520,8 +520,8 @@ void Listener::ProcessCommand(const std::string &commandName, const std::string 
 		else {
 			auto name = args.substr(0, index);
 			if (name == k_pch_Settings_FrameQueueSize_Int32) {
-				Settings::Instance().m_frameQueueSize = atoi(args.substr(index + 1).c_str());
-				m_Settings.frameQueueSize = Settings::Instance().m_frameQueueSize;
+				Settings::Instance().mFrameQueueSize = atoi(args.substr(index + 1).c_str());
+				mSettings.frameQueueSize = Settings::Instance().mFrameQueueSize;
 				SendChangeSettings();
 			}
 			else {
@@ -532,53 +532,53 @@ void Listener::ProcessCommand(const std::string &commandName, const std::string 
 		}
 	}
 	else {
-		m_CommandCallback(commandName, args);
+		mCommandCallback(commandName, args);
 	}
 }
 
 void Listener::SendChangeSettings() {
-	if (!m_Socket->IsClientValid()) {
+	if (!mSocket->IsClientValid()) {
 		return;
 	}
-	m_Socket->Send((char *)&m_Settings, sizeof(m_Settings), 0);
+	mSocket->Send((char *)&mSettings, sizeof(mSettings), 0);
 }
 
 void Listener::Stop()
 {
 	Log(L"Listener::Stop().");
-	m_bExiting = true;
-	m_Socket->Shutdown();
-	m_ControlSocket->Shutdown();
+	mExiting = true;
+	mSocket->Shutdown();
+	mControlSocket->Shutdown();
 	Join();
 }
 
 bool Listener::HasValidTrackingInfo() const {
-	return m_TrackingInfo.type == ALVR_PACKET_TYPE_TRACKING_INFO;
+	return mTrackingInfo.type == ALVR_PACKET_TYPE_TRACKING_INFO;
 }
 
 void Listener::GetTrackingInfo(TrackingInfo &info) {
-	EnterCriticalSection(&m_CS);
-	info = m_TrackingInfo;
-	LeaveCriticalSection(&m_CS);
+	EnterCriticalSection(&mCS);
+	info = mTrackingInfo;
+	LeaveCriticalSection(&mCS);
 }
 
 uint64_t Listener::clientToServerTime(uint64_t clientTime) const {
-	return clientTime + m_TimeDiff;
+	return clientTime + mTimeDiff;
 }
 
 uint64_t Listener::serverToClientTime(uint64_t serverTime) const {
-	return serverTime - m_TimeDiff;
+	return serverTime - mTimeDiff;
 }
 
 void Listener::SendCommandResponse(const char *commandResponse) {
 	Log(L"SendCommandResponse: %hs", commandResponse);
-	m_ControlSocket->SendCommandResponse(commandResponse);
+	mControlSocket->SendCommandResponse(commandResponse);
 }
 
 void Listener::PushRequest(HelloMessage *message, sockaddr_in *addr) {
-	for (auto it = m_Requests.begin(); it != m_Requests.end(); ++it) {
+	for (auto it = mRequests.begin(); it != mRequests.end(); ++it) {
 		if (it->address.sin_addr.S_un.S_addr == addr->sin_addr.S_un.S_addr && it->address.sin_port == addr->sin_port) {
-			m_Requests.erase(it);
+			mRequests.erase(it);
 			break;
 		}
 	}
@@ -589,9 +589,9 @@ void Listener::PushRequest(HelloMessage *message, sockaddr_in *addr) {
 	request.versionOk = message->version == ALVR_PROTOCOL_VERSION;
 	request.message = *message;
 
-	m_Requests.push_back(request);
-	if (m_Requests.size() > 10) {
-		m_Requests.pop_back();
+	mRequests.push_back(request);
+	if (mRequests.size() > 10) {
+		mRequests.pop_back();
 	}
 }
 
@@ -612,8 +612,8 @@ std::string Listener::DumpConfig() {
 	char buf[1000];
 
 	sockaddr_in addr = {};
-	if (m_Connected) {
-		addr = m_Socket->GetClientAddr();
+	if (mConnected) {
+		addr = mSocket->GetClientAddr();
 	}
 	else {
 		addr.sin_family = AF_INET;
@@ -626,32 +626,32 @@ std::string Listener::DumpConfig() {
 		"Client %s:%d\n"
 		"ClientName %s\n"
 		"Streaming %d\n"
-		, m_Connected ? 1 : 0
+		, mConnected ? 1 : 0
 		, host, htons(addr.sin_port)
-		, m_clientDeviceName.c_str()
-		, m_Streaming);
+		, mClientDeviceName.c_str()
+		, mStreaming);
 
 	return buf;
 }
 
 void Listener::CheckTimeout() {
 	// Remove old requests
-	for (auto it = m_Requests.begin(); it != m_Requests.end(); ) {
+	for (auto it = mRequests.begin(); it != mRequests.end(); ) {
 		if (GetTimestampUs() - it->timestamp > REQUEST_TIMEOUT) {
-			it = m_Requests.erase(it);
+			it = mRequests.erase(it);
 		}
 		else {
 			it++;
 		}
 	}
 
-	if (!m_Connected) {
+	if (!mConnected) {
 		return;
 	}
 
 	uint64_t Current = GetTimestampUs();
 
-	if (Current - m_LastSeen > CONNECTION_TIMEOUT) {
+	if (Current - mLastSeen > CONNECTION_TIMEOUT) {
 		// idle for 300 seconcd
 		// Invalidate client
 		Disconnect();
@@ -660,17 +660,17 @@ void Listener::CheckTimeout() {
 }
 
 void Listener::UpdateLastSeen() {
-	m_LastSeen = GetTimestampUs();
+	mLastSeen = GetTimestampUs();
 }
 
 void Listener::FindClientName(const sockaddr_in *addr) {
-	m_clientDeviceName = "";
+	mClientDeviceName = "";
 
 	bool found = false;
 
-	for (auto it = m_Requests.begin(); it != m_Requests.end(); it++) {
+	for (auto it = mRequests.begin(); it != mRequests.end(); it++) {
 		if (it->address.sin_addr.S_un.S_addr == addr->sin_addr.S_un.S_addr && it->address.sin_port == addr->sin_port) {
-			m_clientDeviceName = it->deviceName;
+			mClientDeviceName = it->deviceName;
 			found = true;
 			break;
 		}
@@ -680,52 +680,52 @@ void Listener::FindClientName(const sockaddr_in *addr) {
 void Listener::Connect(const sockaddr_in *addr) {
 	Log(L"Connected to %hs", AddrPortToStr(addr).c_str());
 
-	m_NewClientCallback();
+	mNewClientCallback();
 
-	m_Socket->SetClientAddr(addr);
-	m_Connected = true;
-	videoPacketCounter = 0;
-	soundPacketCounter = 0;
-	m_fecPercentage = INITIAL_FEC_PERCENTAGE;
-	memset(&m_reportedStatistics, 0, sizeof(m_reportedStatistics));
-	m_Statistics->ResetAll();
+	mSocket->SetClientAddr(addr);
+	mConnected = true;
+	mVideoPacketCounter = 0;
+	mSoundPacketCounter = 0;
+	mFecPercentage = INITIAL_FEC_PERCENTAGE;
+	memset(&mReportedStatistics, 0, sizeof(mReportedStatistics));
+	mStatistics->ResetAll();
 	UpdateLastSeen();
 
 	ConnectionMessage message = {};
 	message.type = ALVR_PACKET_TYPE_CONNECTION_MESSAGE;
 	message.version = ALVR_PROTOCOL_VERSION;
-	message.codec = Settings::Instance().m_codec;
-	message.videoWidth = Settings::Instance().m_renderWidth;
-	message.videoHeight = Settings::Instance().m_renderHeight;
-	message.bufferSize = Settings::Instance().m_clientRecvBufferSize;
-	message.frameQueueSize = Settings::Instance().m_frameQueueSize;
-	message.refreshRate = Settings::Instance().m_refreshRate;
+	message.codec = Settings::Instance().mCodec;
+	message.videoWidth = Settings::Instance().mRenderWidth;
+	message.videoHeight = Settings::Instance().mRenderHeight;
+	message.bufferSize = Settings::Instance().mClientRecvBufferSize;
+	message.frameQueueSize = Settings::Instance().mFrameQueueSize;
+	message.refreshRate = Settings::Instance().mRefreshRate;
 
-	m_Socket->Send((char *)&message, sizeof(message), 0);
+	mSocket->Send((char *)&message, sizeof(message), 0);
 }
 
 void Listener::Disconnect() {
-	m_Connected = false;
-	m_clientDeviceName = "";
+	mConnected = false;
+	mClientDeviceName = "";
 
-	m_Socket->InvalidateClient();
+	mSocket->InvalidateClient();
 }
 
 void Listener::OnFecFailure() {
 	Log(L"Listener::OnFecFailure().");
-	if (GetTimestampUs() - m_lastFecFailure < CONTINUOUS_FEC_FAILURE) {
-		if (m_fecPercentage < MAX_FEC_PERCENTAGE) {
-			m_fecPercentage += 5;
+	if (GetTimestampUs() - mLastFecFailure < CONTINUOUS_FEC_FAILURE) {
+		if (mFecPercentage < MAX_FEC_PERCENTAGE) {
+			mFecPercentage += 5;
 		}
 	}
-	m_lastFecFailure = GetTimestampUs();
-	m_PacketLossCallback();
+	mLastFecFailure = GetTimestampUs();
+	mPacketLossCallback();
 }
 
 std::shared_ptr<Statistics> Listener::GetStatistics() {
-	return m_Statistics;
+	return mStatistics;
 }
 
 bool Listener::IsStreaming() {
-	return m_Streaming;
+	return mStreaming;
 }

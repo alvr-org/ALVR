@@ -22,9 +22,9 @@ public:
 	void Shutdown();
 	void Submit(amf::AMFData *data);
 private:
-	amf::AMFComponentPtr m_amfEncoder;
-	std::thread *m_thread = NULL;
-	AMFTextureReceiver m_receiver;
+	amf::AMFComponentPtr mEncoder;
+	std::thread *mThread = NULL;
+	AMFTextureReceiver mReceiver;
 
 	void Run();
 };
@@ -41,9 +41,9 @@ public:
 	void Shutdown();
 	void Submit(amf::AMFData *data);
 private:
-	amf::AMFComponentPtr m_amfConverter;
-	std::thread *m_thread = NULL;
-	AMFTextureReceiver m_receiver;
+	amf::AMFComponentPtr mConverter;
+	std::thread *mThread = NULL;
+	AMFTextureReceiver mReceiver;
 
 	void Run();
 };
@@ -72,20 +72,20 @@ private:
 	const uint64_t MILLISEC_TIME = 10000;
 	const uint64_t MICROSEC_TIME = 10;
 
-	amf::AMFContextPtr m_amfContext;
-	std::shared_ptr<AMFTextureEncoder> m_encoder;
-	std::shared_ptr<AMFTextureConverter> m_converter;
+	amf::AMFContextPtr mContext;
+	std::shared_ptr<AMFTextureEncoder> mEncoder;
+	std::shared_ptr<AMFTextureConverter> mConverter;
 
-	std::ofstream fpOut;
+	std::ofstream mOutput;
 
-	std::shared_ptr<CD3DRender> m_d3dRender;
-	std::shared_ptr<Listener> m_Listener;
+	std::shared_ptr<CD3DRender> mD3DRender;
+	std::shared_ptr<Listener> mListener;
 
-	int m_codec;
-	int m_refreshRate;
-	int m_renderWidth;
-	int m_renderHeight;
-	int m_bitrateInMBits;
+	int mCodec;
+	int mRefreshRate;
+	int mRenderWidth;
+	int mRenderHeight;
+	int mBitrateInMBits;
 
 	void ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR);
 	void SkipAUD(char **buffer, int *length);

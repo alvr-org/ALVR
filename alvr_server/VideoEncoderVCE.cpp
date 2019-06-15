@@ -13,7 +13,7 @@ const wchar_t *VideoEncoderVCE::FRAME_INDEX_PROPERTY = L"FrameIndexProperty";
 AMFTextureEncoder::AMFTextureEncoder(const amf::AMFContextPtr &amfContext
 	, int codec, int width, int height, int refreshRate, int bitrateInMbits
 	, amf::AMF_SURFACE_FORMAT inputFormat
-	, AMFTextureReceiver receiver) : m_receiver(receiver)
+	, AMFTextureReceiver receiver) : mReceiver(receiver)
 {
 	const wchar_t *pCodec;
 
@@ -32,36 +32,36 @@ AMFTextureEncoder::AMFTextureEncoder(const amf::AMFContextPtr &amfContext
 	}
 
 	// Create encoder component.
-	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateComponent(amfContext, pCodec, &m_amfEncoder));
+	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateComponent(amfContext, pCodec, &mEncoder));
 
 	if (codec == ALVR_CODEC_H264)
 	{
-		m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_USAGE, AMF_VIDEO_ENCODER_USAGE_ULTRA_LOW_LATENCY);
+		mEncoder->SetProperty(AMF_VIDEO_ENCODER_USAGE, AMF_VIDEO_ENCODER_USAGE_ULTRA_LOW_LATENCY);
 
-		m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_B_PIC_PATTERN, 0);
-		m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY);
+		mEncoder->SetProperty(AMF_VIDEO_ENCODER_B_PIC_PATTERN, 0);
+		mEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY);
 
-		m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
-		m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMESIZE, ::AMFConstructSize(width, height));
-		m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
+		mEncoder->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
+		mEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMESIZE, ::AMFConstructSize(width, height));
+		mEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
 
 		//m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE, AMF_VIDEO_ENCODER_PROFILE_HIGH);
 		//m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE_LEVEL, 51);
 	}
 	else
 	{
-		m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_USAGE, AMF_VIDEO_ENCODER_HEVC_USAGE_ULTRA_LOW_LATENCY);
+		mEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_USAGE, AMF_VIDEO_ENCODER_HEVC_USAGE_ULTRA_LOW_LATENCY);
 
-		m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_QUALITY);
+		mEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_QUALITY);
 
-		m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
-		m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMESIZE, ::AMFConstructSize(width, height));
-		m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
+		mEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
+		mEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMESIZE, ::AMFConstructSize(width, height));
+		mEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
 
 		//m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_TIER, AMF_VIDEO_ENCODER_HEVC_TIER_HIGH);
 		//m_amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PROFILE_LEVEL, AMF_LEVEL_5);
 	}
-	AMF_THROW_IF(m_amfEncoder->Init(inputFormat, width, height));
+	AMF_THROW_IF(mEncoder->Init(inputFormat, width, height));
 
 	Log(L"Initialized AMFTextureEncoder.");
 }
@@ -72,18 +72,18 @@ AMFTextureEncoder::~AMFTextureEncoder()
 
 void AMFTextureEncoder::Start()
 {
-	m_thread = new std::thread(&AMFTextureEncoder::Run, this);
+	mThread = new std::thread(&AMFTextureEncoder::Run, this);
 }
 
 void AMFTextureEncoder::Shutdown()
 {
 	Log(L"AMFTextureEncoder::Shutdown() m_amfEncoder->Drain");
-	m_amfEncoder->Drain();
+	mEncoder->Drain();
 	Log(L"AMFTextureEncoder::Shutdown() m_thread->join");
-	m_thread->join();
+	mThread->join();
 	Log(L"AMFTextureEncoder::Shutdown() joined.");
-	delete m_thread;
-	m_thread = NULL;
+	delete mThread;
+	mThread = NULL;
 }
 
 void AMFTextureEncoder::Submit(amf::AMFData *data)
@@ -91,7 +91,7 @@ void AMFTextureEncoder::Submit(amf::AMFData *data)
 	while (true)
 	{
 		Log(L"AMFTextureEncoder::Submit.");
-		auto res = m_amfEncoder->SubmitInput(data);
+		auto res = mEncoder->SubmitInput(data);
 		if (res == AMF_INPUT_FULL)
 		{
 			return;
@@ -109,7 +109,7 @@ void AMFTextureEncoder::Run()
 	amf::AMFDataPtr data;
 	while (true)
 	{
-		auto res = m_amfEncoder->QueryOutput(&data);
+		auto res = mEncoder->QueryOutput(&data);
 		if (res == AMF_EOF)
 		{
 			Log(L"m_amfEncoder->QueryOutput returns AMF_EOF.");
@@ -118,7 +118,7 @@ void AMFTextureEncoder::Run()
 
 		if (data != NULL)
 		{
-			m_receiver(data);
+			mReceiver(data);
 		}
 		else
 		{
@@ -134,15 +134,15 @@ void AMFTextureEncoder::Run()
 AMFTextureConverter::AMFTextureConverter(const amf::AMFContextPtr &amfContext
 	, int width, int height
 	, amf::AMF_SURFACE_FORMAT inputFormat, amf::AMF_SURFACE_FORMAT outputFormat
-	, AMFTextureReceiver receiver) : m_receiver(receiver)
+	, AMFTextureReceiver receiver) : mReceiver(receiver)
 {
-	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateComponent(amfContext, AMFVideoConverter, &m_amfConverter));
+	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateComponent(amfContext, AMFVideoConverter, &mConverter));
 
-	AMF_THROW_IF(m_amfConverter->SetProperty(AMF_VIDEO_CONVERTER_MEMORY_TYPE, amf::AMF_MEMORY_DX11));
-	AMF_THROW_IF(m_amfConverter->SetProperty(AMF_VIDEO_CONVERTER_OUTPUT_FORMAT, outputFormat));
-	AMF_THROW_IF(m_amfConverter->SetProperty(AMF_VIDEO_CONVERTER_OUTPUT_SIZE, ::AMFConstructSize(width, height)));
+	AMF_THROW_IF(mConverter->SetProperty(AMF_VIDEO_CONVERTER_MEMORY_TYPE, amf::AMF_MEMORY_DX11));
+	AMF_THROW_IF(mConverter->SetProperty(AMF_VIDEO_CONVERTER_OUTPUT_FORMAT, outputFormat));
+	AMF_THROW_IF(mConverter->SetProperty(AMF_VIDEO_CONVERTER_OUTPUT_SIZE, ::AMFConstructSize(width, height)));
 
-	AMF_THROW_IF(m_amfConverter->Init(inputFormat, width, height));
+	AMF_THROW_IF(mConverter->Init(inputFormat, width, height));
 
 	Log(L"Initialized AMFTextureConverter.");
 }
@@ -153,18 +153,18 @@ AMFTextureConverter::~AMFTextureConverter()
 
 void AMFTextureConverter::Start()
 {
-	m_thread = new std::thread(&AMFTextureConverter::Run, this);
+	mThread = new std::thread(&AMFTextureConverter::Run, this);
 }
 
 void AMFTextureConverter::Shutdown()
 {
 	Log(L"AMFTextureConverter::Shutdown() m_amfConverter->Drain");
-	m_amfConverter->Drain();
+	mConverter->Drain();
 	Log(L"AMFTextureConverter::Shutdown() m_thread->join");
-	m_thread->join();
+	mThread->join();
 	Log(L"AMFTextureConverter::Shutdown() joined.");
-	delete m_thread;
-	m_thread = NULL;
+	delete mThread;
+	mThread = NULL;
 }
 
 void AMFTextureConverter::Submit(amf::AMFData *data)
@@ -172,7 +172,7 @@ void AMFTextureConverter::Submit(amf::AMFData *data)
 	while (true)
 	{
 		Log(L"AMFTextureConverter::Submit.");
-		auto res = m_amfConverter->SubmitInput(data);
+		auto res = mConverter->SubmitInput(data);
 		if (res == AMF_INPUT_FULL)
 		{
 			return;
@@ -190,7 +190,7 @@ void AMFTextureConverter::Run()
 	amf::AMFDataPtr data;
 	while (true)
 	{
-		auto res = m_amfConverter->QueryOutput(&data);
+		auto res = mConverter->QueryOutput(&data);
 		if (res == AMF_EOF)
 		{
 			Log(L"m_amfConverter->QueryOutput returns AMF_EOF.");
@@ -199,7 +199,7 @@ void AMFTextureConverter::Run()
 
 		if (data != NULL)
 		{
-			m_receiver(data);
+			mReceiver(data);
 		}
 		else
 		{
@@ -214,13 +214,13 @@ void AMFTextureConverter::Run()
 
 VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, std::shared_ptr<Listener> listener)
-	: m_d3dRender(d3dRender)
-	, m_Listener(listener)
-	, m_codec(Settings::Instance().m_codec)
-	, m_refreshRate(Settings::Instance().m_refreshRate)
-	, m_renderWidth(Settings::Instance().m_renderWidth)
-	, m_renderHeight(Settings::Instance().m_renderHeight)
-	, m_bitrateInMBits(Settings::Instance().mEncodeBitrate.toMiBits())
+	: mD3DRender(d3dRender)
+	, mListener(listener)
+	, mCodec(Settings::Instance().mCodec)
+	, mRefreshRate(Settings::Instance().mRefreshRate)
+	, mRenderWidth(Settings::Instance().mRenderWidth)
+	, mRenderHeight(Settings::Instance().mRenderHeight)
+	, mBitrateInMBits(Settings::Instance().mEncodeBitrate.toMiBits())
 {
 }
 
@@ -234,27 +234,27 @@ void VideoEncoderVCE::Initialize()
 
 	::amf_increase_timer_precision();
 
-	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateContext(&m_amfContext));
-	AMF_THROW_IF(m_amfContext->InitDX11(m_d3dRender->GetDevice()));
+	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateContext(&mContext));
+	AMF_THROW_IF(mContext->InitDX11(mD3DRender->GetDevice()));
 
-	m_encoder = std::make_shared<AMFTextureEncoder>(m_amfContext
-		, m_codec, m_renderWidth, m_renderHeight, m_refreshRate, m_bitrateInMBits
+	mEncoder = std::make_shared<AMFTextureEncoder>(mContext
+		, mCodec, mRenderWidth, mRenderHeight, mRefreshRate, mBitrateInMBits
 		, ENCODER_INPUT_FORMAT, std::bind(&VideoEncoderVCE::Receive, this, std::placeholders::_1));
-	m_converter = std::make_shared<AMFTextureConverter>(m_amfContext
-		, m_renderWidth, m_renderHeight
+	mConverter = std::make_shared<AMFTextureConverter>(mContext
+		, mRenderWidth, mRenderHeight
 		, CONVERTER_INPUT_FORMAT, ENCODER_INPUT_FORMAT
-		, std::bind(&AMFTextureEncoder::Submit, m_encoder.get(), std::placeholders::_1));
+		, std::bind(&AMFTextureEncoder::Submit, mEncoder.get(), std::placeholders::_1));
 
-	m_encoder->Start();
-	m_converter->Start();
+	mEncoder->Start();
+	mConverter->Start();
 
 	//
 	// Initialize debug video output
 	//
 
-	if (Settings::Instance().m_DebugCaptureOutput) {
-		fpOut = std::ofstream(Settings::Instance().GetVideoOutput(), std::ios::out | std::ios::binary);
-		if (!fpOut)
+	if (Settings::Instance().mDebugCaptureOutput) {
+		mOutput = std::ofstream(Settings::Instance().GetVideoOutput(), std::ios::out | std::ios::binary);
+		if (!mOutput)
 		{
 			Log(L"Unable to open output file %hs", Settings::Instance().GetVideoOutput().c_str());
 		}
@@ -265,13 +265,13 @@ void VideoEncoderVCE::Initialize()
 
 void VideoEncoderVCE::Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits)
 {
-	if ((refreshRate != 0 && refreshRate != m_refreshRate) ||
-		(renderWidth != 0 && renderWidth != m_renderWidth) ||
-		(renderHeight != 0 && renderHeight != m_renderHeight) ||
-		(bitrateInMBits != 0 && bitrateInMBits != m_bitrateInMBits)) {
+	if ((refreshRate != 0 && refreshRate != mRefreshRate) ||
+		(renderWidth != 0 && renderWidth != mRenderWidth) ||
+		(renderHeight != 0 && renderHeight != mRenderHeight) ||
+		(bitrateInMBits != 0 && bitrateInMBits != mBitrateInMBits)) {
 
 		Log(L"VideoEncoderVCE: Start to reconfigure. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)"
-			, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
+			, mRefreshRate, mRenderWidth, mRenderHeight, mBitrateInMBits
 			, refreshRate, renderWidth, renderHeight, bitrateInMBits
 		);
 
@@ -279,16 +279,16 @@ void VideoEncoderVCE::Reconfigure(int refreshRate, int renderWidth, int renderHe
 			Shutdown();
 
 			if (refreshRate != 0) {
-				m_refreshRate = refreshRate;
+				mRefreshRate = refreshRate;
 			}
 			if (renderWidth != 0) {
-				m_renderWidth = renderWidth;
+				mRenderWidth = renderWidth;
 			}
 			if (renderHeight != 0) {
-				m_renderHeight = renderHeight;
+				mRenderHeight = renderHeight;
 			}
 			if (bitrateInMBits != 0) {
-				m_bitrateInMBits = bitrateInMBits;
+				mBitrateInMBits = bitrateInMBits;
 			}
 
 			Initialize();
@@ -306,13 +306,13 @@ void VideoEncoderVCE::Shutdown()
 {
 	Log(L"Shutting down VideoEncoderVCE.");
 
-	m_encoder->Shutdown();
-	m_converter->Shutdown();
+	mEncoder->Shutdown();
+	mConverter->Shutdown();
 
 	amf_restore_timer_precision();
 
-	if (fpOut) {
-		fpOut.close();
+	if (mOutput) {
+		mOutput.close();
 	}
 	Log(L"Successfully shutdown VideoEncoderVCE.");
 }
@@ -321,9 +321,9 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 {
 	amf::AMFSurfacePtr surface;
 	// Surface is cached by AMF.
-	AMF_THROW_IF(m_amfContext->AllocSurface(amf::AMF_MEMORY_DX11, CONVERTER_INPUT_FORMAT, m_renderWidth, m_renderHeight, &surface));
+	AMF_THROW_IF(mContext->AllocSurface(amf::AMF_MEMORY_DX11, CONVERTER_INPUT_FORMAT, mRenderWidth, mRenderHeight, &surface));
 	ID3D11Texture2D *textureDX11 = (ID3D11Texture2D*)surface->GetPlaneAt(0)->GetNative(); // no reference counting - do not Release()
-	m_d3dRender->GetContext()->CopyResource(textureDX11, pTexture);
+	mD3DRender->GetContext()->CopyResource(textureDX11, pTexture);
 
 	amf_pts start_time = amf_high_precision_clock();
 	surface->SetProperty(START_TIME_PROPERTY, start_time);
@@ -332,7 +332,7 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 	ApplyFrameProperties(surface, insertIDR);
 
 	Log(L"Submit surface. frameIndex=%llu", frameIndex);
-	m_converter->Submit(surface);
+	mConverter->Submit(surface);
 }
 
 void VideoEncoderVCE::Receive(amf::AMFData *data)
@@ -348,8 +348,8 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 	Log(L"VCE encode latency: %.4f ms. Size=%d bytes frameIndex=%llu", double(current_time - start_time) / (double)MILLISEC_TIME, (int)buffer->GetSize()
 		, frameIndex);
 
-	if (m_Listener) {
-		m_Listener->GetStatistics()->EncodeOutput((current_time - start_time) / MICROSEC_TIME);
+	if (mListener) {
+		mListener->GetStatistics()->EncodeOutput((current_time - start_time) / MICROSEC_TIME);
 	}
 
 	char *p = reinterpret_cast<char *>(buffer->GetNative());
@@ -357,16 +357,16 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 
 	SkipAUD(&p, &length);
 
-	if (fpOut) {
-		fpOut.write(p, length);
+	if (mOutput) {
+		mOutput.write(p, length);
 	}
-	if (m_Listener) {
-		m_Listener->SendVideo(reinterpret_cast<uint8_t *>(p), length, frameIndex);
+	if (mListener) {
+		mListener->SendVideo(reinterpret_cast<uint8_t *>(p), length, frameIndex);
 	}
 }
 
 void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR) {
-	switch (m_codec) {
+	switch (mCodec) {
 	case ALVR_CODEC_H264:
 		// Disable AUD (NAL Type 9) to produce the same stream format as VideoEncoderNVENC.
 		surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_AUD, false);
@@ -396,7 +396,7 @@ void VideoEncoderVCE::SkipAUD(char **buffer, int *length) {
 	// H.265 encoder always produces AUD NAL even if AMF_VIDEO_ENCODER_HEVC_INSERT_AUD is set. But it is not needed.
 	static const int AUD_NAL_SIZE = 7;
 
-	if (m_codec != ALVR_CODEC_H265) {
+	if (mCodec != ALVR_CODEC_H265) {
 		return;
 	}
 

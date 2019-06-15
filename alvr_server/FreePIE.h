@@ -64,8 +64,8 @@ public:
 #pragma pack(pop)
 
 	FreePIE()
-		: m_fileMapping(ALVR_FREEPIE_FILEMAPPING_NAME, sizeof(FreePIEFileMapping))
-		, m_mutex(ALVR_FREEPIE_MUTEX_NAME) {
+		: mFileMapping(ALVR_FREEPIE_FILEMAPPING_NAME, sizeof(FreePIEFileMapping))
+		, mMutex(ALVR_FREEPIE_MUTEX_NAME) {
 		Initialize();
 	}
 	~FreePIE() {
@@ -76,70 +76,68 @@ public:
 		, const TrackingVector3 &head_position
 		, const TrackingVector3 controller_position[TrackingInfo::MAX_CONTROLLERS]
 		, double haptic_feedback[2][3]) {
-		m_mutex.Wait();
+		mMutex.Wait();
 
-		QuaternionToEulerAngle(head_orientation, m_p->input_head_orientation);
-		m_p->input_head_position[0] = head_position.x;
-		m_p->input_head_position[1] = head_position.y;
-		m_p->input_head_position[2] = head_position.z;
+		QuaternionToEulerAngle(head_orientation, mMapped->input_head_orientation);
+		mMapped->input_head_position[0] = head_position.x;
+		mMapped->input_head_position[1] = head_position.y;
+		mMapped->input_head_position[2] = head_position.z;
 
 		for (int i = 0; i < TrackingInfo::MAX_CONTROLLERS; i++) {
-			QuaternionToEulerAngle(controller_orientation[i], m_p->input_controller_orientation[i]);
-			m_p->input_controller_position[i][0] = controller_position[i].x;
-			m_p->input_controller_position[i][1] = controller_position[i].y;
-			m_p->input_controller_position[i][2] = controller_position[i].z;
+			QuaternionToEulerAngle(controller_orientation[i], mMapped->input_controller_orientation[i]);
+			mMapped->input_controller_position[i][0] = controller_position[i].x;
+			mMapped->input_controller_position[i][1] = controller_position[i].y;
+			mMapped->input_controller_position[i][2] = controller_position[i].z;
 
-			m_p->input_trackpad[i][0] = info.controller[i].trackpadPosition.x;
-			m_p->input_trackpad[i][1] = info.controller[i].trackpadPosition.y;
+			mMapped->input_trackpad[i][0] = info.controller[i].trackpadPosition.x;
+			mMapped->input_trackpad[i][1] = info.controller[i].trackpadPosition.y;
 
-			m_p->inputControllerButtons[i] = info.controller[i].buttons;
+			mMapped->inputControllerButtons[i] = info.controller[i].buttons;
 		}
 
 		// When client sends two controller information and FreePIE is not running, detect it here.
 		if (info.controller[1].flags & TrackingInfo::Controller::FLAG_CONTROLLER_ENABLE) {
-			m_p->controllers = 2;
+			mMapped->controllers = 2;
 		}
 
-		m_p->message[ALVR_FREEPIE_MESSAGE_LENGTH - 1] = 0;
+		mMapped->message[ALVR_FREEPIE_MESSAGE_LENGTH - 1] = 0;
 
-		m_p->input_haptic_feedback[0][0] = haptic_feedback[0][0];
-		m_p->input_haptic_feedback[0][1] = haptic_feedback[0][1];
-		m_p->input_haptic_feedback[0][2] = haptic_feedback[0][2];
-		m_p->input_haptic_feedback[1][0] = haptic_feedback[1][0];
-		m_p->input_haptic_feedback[1][1] = haptic_feedback[1][1];
-		m_p->input_haptic_feedback[1][2] = haptic_feedback[1][2];
+		mMapped->input_haptic_feedback[0][0] = haptic_feedback[0][0];
+		mMapped->input_haptic_feedback[0][1] = haptic_feedback[0][1];
+		mMapped->input_haptic_feedback[0][2] = haptic_feedback[0][2];
+		mMapped->input_haptic_feedback[1][0] = haptic_feedback[1][0];
+		mMapped->input_haptic_feedback[1][1] = haptic_feedback[1][1];
+		mMapped->input_haptic_feedback[1][2] = haptic_feedback[1][2];
 
-		memcpy(&m_copy, m_p, sizeof(FreePIEFileMapping));
+		memcpy(&mCopy, mMapped, sizeof(FreePIEFileMapping));
 
-		m_mutex.Release();
+		mMutex.Release();
 	}
 
 	const FreePIEFileMapping& GetData() {
-		return m_copy;
+		return mCopy;
 	}
 
 private:
 	void Initialize() {
-		m_mutex.Wait();
+		mMutex.Wait();
 
-		m_p = (FreePIEFileMapping *)m_fileMapping.Map(FILE_MAP_WRITE);
-		memset(m_p, 0, sizeof(FreePIEFileMapping));
-		m_p->version = ALVR_FREEPIE_SIGNATURE_V3;
-		m_p->flags = 0;
+		mMapped = (FreePIEFileMapping *)mFileMapping.Map(FILE_MAP_WRITE);
+		memset(mMapped, 0, sizeof(FreePIEFileMapping));
+		mMapped->version = ALVR_FREEPIE_SIGNATURE_V3;
+		mMapped->flags = 0;
 
-		m_p->controllers = 1;
+		mMapped->controllers = 1;
 
-		memcpy(&m_copy, m_p, sizeof(FreePIEFileMapping));
+		memcpy(&mCopy, mMapped, sizeof(FreePIEFileMapping));
 
-		m_mutex.Release();
+		mMutex.Release();
 	}
 
-	IPCFileMapping m_fileMapping;
-	IPCMutex m_mutex;
+	IPCFileMapping mFileMapping;
+	IPCMutex mMutex;
 
-
-	FreePIEFileMapping *m_p;
-	FreePIEFileMapping m_copy;
-
+	FreePIEFileMapping *mMapped;
+	FreePIEFileMapping mCopy;
 };
 

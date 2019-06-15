@@ -23,20 +23,20 @@ public:
 
 	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR);
 private:
-	std::ofstream fpOut;
-	std::shared_ptr<NvEncoder> m_NvNecoder;
+	std::ofstream mOutput;
+	std::shared_ptr<NvEncoder> mEncoder;
 
-	std::shared_ptr<CD3DRender> m_pD3DRender;
-	int m_nFrame;
+	std::shared_ptr<CD3DRender> mD3DRender;
+	int mFrame;
 
-	std::shared_ptr<Listener> m_Listener;
+	std::shared_ptr<Listener> mListener;
 
-	const bool m_useNV12;
-	std::shared_ptr<CudaConverter> m_Converter;
+	const bool mUseNV12;
+	std::shared_ptr<CudaConverter> mConverter;
 
-	int m_codec;
-	int m_refreshRate;
-	int m_renderWidth;
-	int m_renderHeight;
-	int m_bitrateInMBits;
+	int mCodec;
+	int mRefreshRate;
+	int mRenderWidth;
+	int mRenderHeight;
+	int mBitrateInMBits;
 };

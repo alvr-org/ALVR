@@ -10,18 +10,18 @@ extern uint64_t g_DriverTestMode;
 Settings Settings::m_Instance;
 
 Settings::Settings()
-	: m_EnableOffsetPos(false)
-	, m_loaded(false)
+	: mEnableOffsetPos(false)
+	, mLoaded(false)
 {
-	m_OffsetPos[0] = 0.0f;
-	m_OffsetPos[1] = 0.0f;
-	m_OffsetPos[2] = 0.0f;
+	mOffsetPos[0] = 0.0f;
+	mOffsetPos[1] = 0.0f;
+	mOffsetPos[2] = 0.0f;
 }
 
 
 Settings::~Settings()
 {
-	if (m_DebugLog) {
+	if (mDebugLog) {
 		CloseLog();
 	}
 }
@@ -53,33 +53,33 @@ void Settings::Load()
 		mRenderModelName = v.get(k_pch_Settings_RenderModelName_String).get<std::string>();
 		mRegisteredDeviceType = v.get(k_pch_Settings_RegisteredDeviceType_String).get<std::string>();
 
-		m_renderWidth = (int32_t)v.get(k_pch_Settings_RenderWidth_Int32).get<int64_t>();
-		m_renderHeight = (int32_t)v.get(k_pch_Settings_RenderHeight_Int32).get<int64_t>();
+		mRenderWidth = (int32_t)v.get(k_pch_Settings_RenderWidth_Int32).get<int64_t>();
+		mRenderHeight = (int32_t)v.get(k_pch_Settings_RenderHeight_Int32).get<int64_t>();
 
 		picojson::array& eyeFov = v.get(k_pch_Settings_EyeFov).get<picojson::array>();
 		for (int eye = 0; eye < 2; eye++) {
-			m_eyeFov[eye].left = static_cast<float>(eyeFov[eye * 4 + 0].get<double>());
-			m_eyeFov[eye].right = static_cast<float>(eyeFov[eye * 4 + 1].get<double>());
-			m_eyeFov[eye].top = static_cast<float>(eyeFov[eye * 4 + 2].get<double>());
-			m_eyeFov[eye].bottom = static_cast<float>(eyeFov[eye * 4 + 3].get<double>());
+			mEyeFov[eye].left = static_cast<float>(eyeFov[eye * 4 + 0].get<double>());
+			mEyeFov[eye].right = static_cast<float>(eyeFov[eye * 4 + 1].get<double>());
+			mEyeFov[eye].top = static_cast<float>(eyeFov[eye * 4 + 2].get<double>());
+			mEyeFov[eye].bottom = static_cast<float>(eyeFov[eye * 4 + 3].get<double>());
 		}
 
-		m_enableSound = v.get(k_pch_Settings_EnableSound_Bool).get<bool>();
-		m_soundDevice = v.get(k_pch_Settings_SoundDevice_String).get<std::string>();
+		mEnableSound = v.get(k_pch_Settings_EnableSound_Bool).get<bool>();
+		mSoundDevice = v.get(k_pch_Settings_SoundDevice_String).get<std::string>();
 
-		m_flSecondsFromVsyncToPhotons = (float)v.get(k_pch_Settings_SecondsFromVsyncToPhotons_Float).get<double>();
+		mSecondsFromVsyncToPhotons = (float)v.get(k_pch_Settings_SecondsFromVsyncToPhotons_Float).get<double>();
 
-		m_flIPD = (float)v.get(k_pch_Settings_IPD_Float).get<double>();
+		mIPD = (float)v.get(k_pch_Settings_IPD_Float).get<double>();
 
-		m_clientRecvBufferSize = (uint32_t)v.get(k_pch_Settings_ClientRecvBufferSize_Int32).get<int64_t>();
-		m_frameQueueSize = (uint32_t)v.get(k_pch_Settings_FrameQueueSize_Int32).get<int64_t>();
+		mClientRecvBufferSize = (uint32_t)v.get(k_pch_Settings_ClientRecvBufferSize_Int32).get<int64_t>();
+		mFrameQueueSize = (uint32_t)v.get(k_pch_Settings_FrameQueueSize_Int32).get<int64_t>();
 
-		m_force60HZ = v.get(k_pch_Settings_Force60HZ_Bool).get<bool>();
+		mForce60HZ = v.get(k_pch_Settings_Force60HZ_Bool).get<bool>();
 
-		m_nAdapterIndex = (int32_t)v.get(k_pch_Settings_AdapterIndex_Int32).get<int64_t>();
+		mAdapterIndex = (int32_t)v.get(k_pch_Settings_AdapterIndex_Int32).get<int64_t>();
 
-		m_codec = (int32_t)v.get(k_pch_Settings_Codec_Int32).get<int64_t>();
-		m_refreshRate = (int)v.get(k_pch_Settings_RefreshRate_Int32).get<int64_t>();
+		mCodec = (int32_t)v.get(k_pch_Settings_Codec_Int32).get<int64_t>();
+		mRefreshRate = (int)v.get(k_pch_Settings_RefreshRate_Int32).get<int64_t>();
 		mEncodeBitrate = Bitrate::fromMiBits((int)v.get(k_pch_Settings_EncodeBitrateInMBits_Int32).get<int64_t>());
 
 		if (v.get(k_pch_Settings_DisableThrottling_Bool).get<bool>()) {
@@ -93,71 +93,71 @@ void Settings::Load()
 			mThrottlingBitrate = Bitrate::fromBits(mEncodeBitrate.toBits() * 3 / 2 + audioBitrate.toBits());
 		}
 
-		m_DebugOutputDir = v.get(k_pch_Settings_DebugOutputDir).get<std::string>();
+		mDebugOutputDir = v.get(k_pch_Settings_DebugOutputDir).get<std::string>();
 
 		// Listener Parameters
-		m_Host = v.get(k_pch_Settings_ListenHost_String).get<std::string>();
-		m_Port = (int)v.get(k_pch_Settings_ListenPort_Int32).get<int64_t>();
+		mHost = v.get(k_pch_Settings_ListenHost_String).get<std::string>();
+		mPort = (int)v.get(k_pch_Settings_ListenPort_Int32).get<int64_t>();
 
-		m_SendingTimeslotUs = (uint64_t)v.get(k_pch_Settings_SendingTimeslotUs_Int32).get<int64_t>();
-		m_LimitTimeslotPackets = (uint64_t)v.get(k_pch_Settings_LimitTimeslotPackets_Int32).get<int64_t>();
+		mSendingTimeslotUs = (uint64_t)v.get(k_pch_Settings_SendingTimeslotUs_Int32).get<int64_t>();
+		mLimitTimeslotPackets = (uint64_t)v.get(k_pch_Settings_LimitTimeslotPackets_Int32).get<int64_t>();
 
-		m_ControlHost = v.get(k_pch_Settings_ControlListenHost_String).get<std::string>();
-		m_ControlPort = (int)v.get(k_pch_Settings_ControlListenPort_Int32).get<int64_t>();
+		mControlHost = v.get(k_pch_Settings_ControlListenHost_String).get<std::string>();
+		mControlPort = (int)v.get(k_pch_Settings_ControlListenPort_Int32).get<int64_t>();
 
-		m_AutoConnectHost = v.get(k_pch_Settings_AutoConnectHost_String).get<std::string>();
-		m_AutoConnectPort = (int)v.get(k_pch_Settings_AutoConnectPort_Int32).get<int64_t>();
+		mAutoConnectHost = v.get(k_pch_Settings_AutoConnectHost_String).get<std::string>();
+		mAutoConnectPort = (int)v.get(k_pch_Settings_AutoConnectPort_Int32).get<int64_t>();
 
-		m_DebugLog = v.get(k_pch_Settings_DebugLog_Bool).get<bool>();
-		m_DebugFrameIndex = v.get(k_pch_Settings_DebugFrameIndex_Bool).get<bool>();
-		m_DebugFrameOutput = v.get(k_pch_Settings_DebugFrameOutput_Bool).get<bool>();
-		m_DebugCaptureOutput = v.get(k_pch_Settings_DebugCaptureOutput_Bool).get<bool>();
-		m_UseKeyedMutex = v.get(k_pch_Settings_UseKeyedMutex_Bool).get<bool>();
+		mDebugLog = v.get(k_pch_Settings_DebugLog_Bool).get<bool>();
+		mDebugFrameIndex = v.get(k_pch_Settings_DebugFrameIndex_Bool).get<bool>();
+		mDebugFrameOutput = v.get(k_pch_Settings_DebugFrameOutput_Bool).get<bool>();
+		mDebugCaptureOutput = v.get(k_pch_Settings_DebugCaptureOutput_Bool).get<bool>();
+		mUseKeyedMutex = v.get(k_pch_Settings_UseKeyedMutex_Bool).get<bool>();
 
-		m_controllerTrackingSystemName = v.get(k_pch_Settings_ControllerTrackingSystemName_String).get<std::string>();
-		m_controllerManufacturerName = v.get(k_pch_Settings_ControllerManufacturerName_String).get<std::string>();
-		m_controllerModelNumber = v.get(k_pch_Settings_ControllerModelNumber_String).get<std::string>();
-		m_controllerRenderModelNameLeft = v.get(k_pch_Settings_ControllerRenderModelNameLeft_String).get<std::string>();
-		m_controllerRenderModelNameRight = v.get(k_pch_Settings_ControllerRenderModelNameRight_String).get<std::string>();
-		m_controllerSerialNumber = v.get(k_pch_Settings_ControllerSerialNumber_String).get<std::string>();
-		m_controllerType = v.get(k_pch_Settings_ControllerType_String).get<std::string>();
+		mControllerTrackingSystemName = v.get(k_pch_Settings_ControllerTrackingSystemName_String).get<std::string>();
+		mControllerManufacturerName = v.get(k_pch_Settings_ControllerManufacturerName_String).get<std::string>();
+		mControllerModelNumber = v.get(k_pch_Settings_ControllerModelNumber_String).get<std::string>();
+		mControllerRenderModelNameLeft = v.get(k_pch_Settings_ControllerRenderModelNameLeft_String).get<std::string>();
+		mControllerRenderModelNameRight = v.get(k_pch_Settings_ControllerRenderModelNameRight_String).get<std::string>();
+		mControllerSerialNumber = v.get(k_pch_Settings_ControllerSerialNumber_String).get<std::string>();
+		mControllerType = v.get(k_pch_Settings_ControllerType_String).get<std::string>();
 		mControllerRegisteredDeviceType = v.get(k_pch_Settings_ControllerRegisteredDeviceType_String).get<std::string>();
-		m_controllerLegacyInputProfile = v.get(k_pch_Settings_ControllerLegacyInputProfile_String).get<std::string>();
-		m_controllerInputProfilePath = v.get(k_pch_Settings_ControllerInputProfilePath_String).get<std::string>();
+		mControllerLegacyInputProfile = v.get(k_pch_Settings_ControllerLegacyInputProfile_String).get<std::string>();
+		mControllerInputProfilePath = v.get(k_pch_Settings_ControllerInputProfilePath_String).get<std::string>();
 
-		m_enableController = v.get(k_pch_Settings_EnableController_Bool).get<bool>();
-		m_controllerTriggerMode = (int32_t)v.get(k_pch_Settings_ControllerTriggerMode_Int32).get<int64_t>();
-		m_controllerTrackpadClickMode = (int32_t)v.get(k_pch_Settings_ControllerTrackpadClickMode_Int32).get<int64_t>();
-		m_controllerTrackpadTouchMode = (int32_t)v.get(k_pch_Settings_ControllerTrackpadTouchMode_Int32).get<int64_t>();
-		m_controllerBackMode = (int32_t)v.get(k_pch_Settings_ControllerBackMode_Int32).get<int64_t>();
-		m_controllerRecenterButton = (int32_t)v.get(k_pch_Settings_ControllerRecenterButton_Int32).get<int64_t>();
+		mEnableController = v.get(k_pch_Settings_EnableController_Bool).get<bool>();
+		mControllerTriggerMode = (int32_t)v.get(k_pch_Settings_ControllerTriggerMode_Int32).get<int64_t>();
+		mControllerTrackpadClickMode = (int32_t)v.get(k_pch_Settings_ControllerTrackpadClickMode_Int32).get<int64_t>();
+		mControllerTrackpadTouchMode = (int32_t)v.get(k_pch_Settings_ControllerTrackpadTouchMode_Int32).get<int64_t>();
+		mControllerBackMode = (int32_t)v.get(k_pch_Settings_ControllerBackMode_Int32).get<int64_t>();
+		mControllerRecenterButton = (int32_t)v.get(k_pch_Settings_ControllerRecenterButton_Int32).get<int64_t>();
 
-		m_useTrackingReference = v.get(k_pch_Settings_UseTrackingReference_Bool).get<bool>();
+		mUseTrackingReference = v.get(k_pch_Settings_UseTrackingReference_Bool).get<bool>();
 
-		m_EnableOffsetPos = v.get(k_pch_Settings_EnableOffsetPos_Bool).get<bool>();
-		m_OffsetPos[0] = (float)v.get(k_pch_Settings_OffsetPosX_Float).get<double>();
-		m_OffsetPos[1] = (float)v.get(k_pch_Settings_OffsetPosY_Float).get<double>();
-		m_OffsetPos[2] = (float)v.get(k_pch_Settings_OffsetPosZ_Float).get<double>();
+		mEnableOffsetPos = v.get(k_pch_Settings_EnableOffsetPos_Bool).get<bool>();
+		mOffsetPos[0] = (float)v.get(k_pch_Settings_OffsetPosX_Float).get<double>();
+		mOffsetPos[1] = (float)v.get(k_pch_Settings_OffsetPosY_Float).get<double>();
+		mOffsetPos[2] = (float)v.get(k_pch_Settings_OffsetPosZ_Float).get<double>();
 
-		m_trackingFrameOffset = (int32_t)v.get(k_pch_Settings_TrackingFrameOffset_Int32).get<int64_t>();
+		mTrackingFrameOffset = (int32_t)v.get(k_pch_Settings_TrackingFrameOffset_Int32).get<int64_t>();
 
-		if (m_DebugLog) {
-			OpenLog((m_DebugOutputDir + "\\" + LOG_FILE).c_str());
+		if (mDebugLog) {
+			OpenLog((mDebugOutputDir + "\\" + LOG_FILE).c_str());
 		}
 
 		Log(L"Config JSON: %hs", json.c_str());
 		Log(L"Serial Number: %hs", mSerialNumber.c_str());
 		Log(L"Model Number: %hs", mModelNumber.c_str());
-		Log(L"Render Target: %d %d", m_renderWidth, m_renderHeight);
-		Log(L"Seconds from Vsync to Photons: %f", m_flSecondsFromVsyncToPhotons);
-		Log(L"Refresh Rate: %d", m_refreshRate);
-		Log(L"IPD: %f", m_flIPD);
+		Log(L"Render Target: %d %d", mRenderWidth, mRenderHeight);
+		Log(L"Seconds from Vsync to Photons: %f", mSecondsFromVsyncToPhotons);
+		Log(L"Refresh Rate: %d", mRefreshRate);
+		Log(L"IPD: %f", mIPD);
 
 		Log(L"debugOptions: Log:%d FrameIndex:%d FrameOutput:%d CaptureOutput:%d UseKeyedMutex:%d"
-			, m_DebugLog, m_DebugFrameIndex, m_DebugFrameOutput, m_DebugCaptureOutput, m_UseKeyedMutex);
+			, mDebugLog, mDebugFrameIndex, mDebugFrameOutput, mDebugCaptureOutput, mUseKeyedMutex);
 		Log(L"EncoderOptions: %hs", m_EncoderOptions.c_str());
 
-		m_loaded = true;
+		mLoaded = true;
 	}
 	catch (std::exception &e) {
 		FatalLog(L"Exception on parsing json: %hs", e.what());

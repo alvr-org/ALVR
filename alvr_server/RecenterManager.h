@@ -10,69 +10,69 @@ class RecenterManager
 {
 public:
 	RecenterManager()
-		: m_hasValidTrackingInfo(false)
-		, m_recentering(false)
-		, m_recenterStartTimestamp(0)
-		, m_centerPitch(0.0)
-		, m_rotationDiffLastInitialized(0)
-		, m_freePIE(std::make_shared<FreePIE>())
-		, m_controllerDetected(false)
+		: mHasValidTrackingInfo(false)
+		, mRecentering(false)
+		, mRecenterStartTimestamp(0)
+		, mCenterPitch(0.0)
+		, mRotationDiffLastInitialized(0)
+		, mFreePIE(std::make_shared<FreePIE>())
+		, mControllerDetected(false)
 	{
 	}
 
 	bool HasValidTrackingInfo() {
-		return m_hasValidTrackingInfo;
+		return mHasValidTrackingInfo;
 	}
 
 	bool IsRecentering() {
-		return m_recentering;
+		return mRecentering;
 	}
 
 	void BeginRecenter() {
-		m_recenterStartTimestamp = GetTimestampUs();
-		m_recentering = true;
+		mRecenterStartTimestamp = GetTimestampUs();
+		mRecentering = true;
 	}
 
 	void EndRecenter() {
-		m_recentering = false;
+		mRecentering = false;
 	}
 
 	void OnPoseUpdated(const TrackingInfo &info, Listener *listener) {
-		m_hasValidTrackingInfo = true;
-		if (m_recentering) {
-			if (GetTimestampUs() - m_recenterStartTimestamp > RECENTER_DURATION) {
-				m_centerPitch = PitchFromQuaternion(info.HeadPose_Pose_Orientation);
+		mHasValidTrackingInfo = true;
+		if (mRecentering) {
+			if (GetTimestampUs() - mRecenterStartTimestamp > RECENTER_DURATION) {
+				mCenterPitch = PitchFromQuaternion(info.HeadPose_Pose_Orientation);
 
 				Log(L"Do recentered: Cur=(%f,%f,%f,%f) pitch=%f"
 					, info.HeadPose_Pose_Orientation.x
 					, info.HeadPose_Pose_Orientation.y
 					, info.HeadPose_Pose_Orientation.z
 					, info.HeadPose_Pose_Orientation.w
-					, m_centerPitch
+					, mCenterPitch
 				);
 
-				m_recentering = false;
+				mRecentering = false;
 			}
 		}
 
-		m_fixedOrientationHMD = MultiplyPitchQuaternion(
-			-m_centerPitch
+		mFixedOrientationHMD = MultiplyPitchQuaternion(
+			-mCenterPitch
 			, info.HeadPose_Pose_Orientation.x
 			, info.HeadPose_Pose_Orientation.y
 			, info.HeadPose_Pose_Orientation.z
 			, info.HeadPose_Pose_Orientation.w);
 
-		m_fixedPositionHMD = RotateVectorQuaternion(info.HeadPose_Pose_Position, m_centerPitch);
+		mFixedPositionHMD = RotateVectorQuaternion(info.HeadPose_Pose_Position, mCenterPitch);
 
 		for (int i = 0; i < TrackingInfo::MAX_CONTROLLERS; i++) {
-			m_fixedOrientationController[i] = MultiplyPitchQuaternion(
-				-m_centerPitch
+			mFixedOrientationController[i] = MultiplyPitchQuaternion(
+				-mCenterPitch
 				, info.controller[i].orientation.x
 				, info.controller[i].orientation.y
 				, info.controller[i].orientation.z
 				, info.controller[i].orientation.w);
 
-			m_fixedPositionController[i] = RotateVectorQuaternion(info.controller[i].position, m_centerPitch);
+			mFixedPositionController[i] = RotateVectorQuaternion(info.controller[i].position, mCenterPitch);
 		}
 
 		if (info.flags & TrackingInfo::FLAG_OTHER_TRACKING_SOURCE) {
@@ -81,14 +81,14 @@ public:
 		Log(L"GetRecenteredHMD: Old=(%f,%f,%f,%f) New=(%f,%f,%f,%f) pitch=%f-%f"
 			, info.HeadPose_Pose_Orientation.x, info.HeadPose_Pose_Orientation.y
 			, info.HeadPose_Pose_Orientation.z, info.HeadPose_Pose_Orientation.w
-			, m_fixedOrientationHMD.x, m_fixedOrientationHMD.y
-			, m_fixedOrientationHMD.z, m_fixedOrientationHMD.w
-			, m_centerPitch
+			, mFixedOrientationHMD.x, mFixedOrientationHMD.y
+			, mFixedOrientationHMD.z, mFixedOrientationHMD.w
+			, mCenterPitch
 			, PitchFromQuaternion(
-				m_fixedOrientationHMD.x
-				, m_fixedOrientationHMD.y
-				, m_fixedOrientationHMD.z
-				, m_fixedOrientationHMD.w));
+				mFixedOrientationHMD.x
+				, mFixedOrientationHMD.y
+				, mFixedOrientationHMD.z
+				, mFixedOrientationHMD.w));
 
 		double  hapticFeedback[2][3]{ {0,0,0},{0,0,0} };
 		vr::VREvent_t vrEvent;
@@ -98,7 +98,7 @@ public:
 			if (vrEvent.eventType == vr::VREvent_Input_HapticVibration)
 			{
 				for (int i = 0; i < 2; i++) {
-					if (m_remoteController[i] && m_remoteController[i]->IsMyHapticComponent(vrEvent.data.hapticVibration.componentHandle)) {
+					if (mRemoteController[i] && mRemoteController[i]->IsMyHapticComponent(vrEvent.data.hapticVibration.componentHandle)) {
 						Log(L"Haptics %d: %f", i, vrEvent.data.hapticVibration.fAmplitude);
 						// if multiple events occurred within one frame, they are ignored except for last event
 						hapticFeedback[i][0] = vrEvent.data.hapticVibration.fAmplitude;
@@ -115,43 +115,43 @@ public:
 					static_cast<float>(hapticFeedback[i][0]),
 					static_cast<float>(hapticFeedback[i][1]),
 					static_cast<float>(hapticFeedback[i][2]),
-					m_remoteController[i]->GetHand() ? 1 : 0);
+					mRemoteController[i]->GetHand() ? 1 : 0);
 			}
 		}
 
-		m_freePIE->UpdateTrackingInfoByFreePIE(info, m_fixedOrientationHMD, m_fixedOrientationController, m_fixedPositionHMD, m_fixedPositionController, hapticFeedback);
+		mFreePIE->UpdateTrackingInfoByFreePIE(info, mFixedOrientationHMD, mFixedOrientationController, mFixedPositionHMD, mFixedPositionController, hapticFeedback);
 
-		auto data = m_freePIE->GetData();
+		auto data = mFreePIE->GetData();
 
 		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_ORIENTATION) {
-			m_fixedOrientationHMD = EulerAngleToQuaternion(data.head_orientation);
+			mFixedOrientationHMD = EulerAngleToQuaternion(data.head_orientation);
 		}
 		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_ORIENTATION0) {
 			for (int i = 0; i < TrackingInfo::MAX_CONTROLLERS; i++) {
-				m_fixedOrientationController[i] = EulerAngleToQuaternion(data.controller_orientation[i]);
+				mFixedOrientationController[i] = EulerAngleToQuaternion(data.controller_orientation[i]);
 			}
 		}
 		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_POSITION) {
-			m_fixedPositionHMD.x = (float) data.head_position[0];
-			m_fixedPositionHMD.y = (float) data.head_position[1];
-			m_fixedPositionHMD.z = (float) data.head_position[2];
+			mFixedPositionHMD.x = (float) data.head_position[0];
+			mFixedPositionHMD.y = (float) data.head_position[1];
+			mFixedPositionHMD.z = (float) data.head_position[2];
 		}
 		if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_CONTROLLER_POSITION0) {
 			for (int i = 0; i < TrackingInfo::MAX_CONTROLLERS; i++) {
-				m_fixedPositionController[i].x = (float)data.controller_position[i][0];
-				m_fixedPositionController[i].y = (float)data.controller_position[i][1];
-				m_fixedPositionController[i].z = (float)data.controller_position[i][2];
+				mFixedPositionController[i].x = (float)data.controller_position[i][0];
+				mFixedPositionController[i].y = (float)data.controller_position[i][1];
+				mFixedPositionController[i].z = (float)data.controller_position[i][2];
 			}
 		}
 
-		if (Settings::Instance().m_EnableOffsetPos) {
-			m_fixedPositionHMD.x += Settings::Instance().m_OffsetPos[0];
-			m_fixedPositionHMD.y += Settings::Instance().m_OffsetPos[1];
-			m_fixedPositionHMD.z += Settings::Instance().m_OffsetPos[2];
+		if (Settings::Instance().mEnableOffsetPos) {
+			mFixedPositionHMD.x += Settings::Instance().mOffsetPos[0];
+			mFixedPositionHMD.y += Settings::Instance().mOffsetPos[1];
+			mFixedPositionHMD.z += Settings::Instance().mOffsetPos[2];
 			for (int i = 0; i < TrackingInfo::MAX_CONTROLLERS; i++) {
-				m_fixedPositionController[i].x += Settings::Instance().m_OffsetPos[0];
-				m_fixedPositionController[i].y += Settings::Instance().m_OffsetPos[1];
-				m_fixedPositionController[i].z += Settings::Instance().m_OffsetPos[2];
+				mFixedPositionController[i].x += Settings::Instance().mOffsetPos[0];
+				mFixedPositionController[i].y += Settings::Instance().mOffsetPos[1];
+				mFixedPositionController[i].z += Settings::Instance().mOffsetPos[2];
 			}
 		}
 
@@ -159,34 +159,34 @@ public:
 	}
 
 	vr::HmdQuaternion_t GetRecenteredHMD() {
-		return m_fixedOrientationHMD;
+		return mFixedOrientationHMD;
 	}
 
 	TrackingVector3 GetRecenteredPositionHMD() {
-		return m_fixedPositionHMD;
+		return mFixedPositionHMD;
 	}
 
 	std::string GetFreePIEMessage() {
-		return m_freePIE->GetData().message;
+		return mFreePIE->GetData().message;
 	}
 
 private:
 	void UpdateOtherTrackingSource(const TrackingInfo &info) {
-		if (m_rotationDiffLastInitialized == 0) {
-			m_basePosition = info.Other_Tracking_Source_Position;
-			m_rotationDiff = 0.0;
-			m_rotatedBasePosition = m_basePosition;
+		if (mRotationDiffLastInitialized == 0) {
+			mBasePosition = info.Other_Tracking_Source_Position;
+			mRotationDiff = 0.0;
+			mRotatedBasePosition = mBasePosition;
 		}
 		TrackingVector3 transformed;
-		double theta = m_rotationDiff + m_centerPitch;
-		transformed.x = (float) ((info.Other_Tracking_Source_Position.x - m_basePosition.x) * cos(theta) - (info.Other_Tracking_Source_Position.z - m_basePosition.z) * sin(theta));
+		double theta = mRotationDiff + mCenterPitch;
+		transformed.x = (float) ((info.Other_Tracking_Source_Position.x - mBasePosition.x) * cos(theta) - (info.Other_Tracking_Source_Position.z - mBasePosition.z) * sin(theta));
 		transformed.y = info.Other_Tracking_Source_Position.y;
-		transformed.z = (float)((info.Other_Tracking_Source_Position.x - m_basePosition.x) * sin(theta) + (info.Other_Tracking_Source_Position.z - m_basePosition.z) * cos(theta));
+		transformed.z = (float)((info.Other_Tracking_Source_Position.x - mBasePosition.x) * sin(theta) + (info.Other_Tracking_Source_Position.z - mBasePosition.z) * cos(theta));
 
-		transformed.x += m_rotatedBasePosition.x;
-		transformed.z += m_rotatedBasePosition.z;
+		transformed.x += mRotatedBasePosition.x;
+		transformed.z += mRotatedBasePosition.z;
 
-		if (GetTimestampUs() - m_rotationDiffLastInitialized > 2 * 1000 * 1000) {
+		if (GetTimestampUs() - mRotationDiffLastInitialized > 2 * 1000 * 1000) {
 			double p1 = PitchFromQuaternion(info.Other_Tracking_Source_Orientation);
 			double pitch_tracking = PitchFromQuaternion(info.HeadPose_Pose_Orientation);
 			double diff = p1 - pitch_tracking;
@@ -194,21 +194,21 @@ private:
 				diff += M_PI * 2;
 			}
 
-			m_rotationDiffLastInitialized = GetTimestampUs();
-			m_rotationDiff = diff;
-			m_basePosition = info.Other_Tracking_Source_Position;
+			mRotationDiffLastInitialized = GetTimestampUs();
+			mRotationDiff = diff;
+			mBasePosition = info.Other_Tracking_Source_Position;
 
-			m_rotatedBasePosition = transformed;
+			mRotatedBasePosition = transformed;
 		}
 
-		m_fixedPositionHMD.x += transformed.x;
-		m_fixedPositionHMD.y += transformed.y;
-		m_fixedPositionHMD.z += transformed.z;
+		mFixedPositionHMD.x += transformed.x;
+		mFixedPositionHMD.y += transformed.y;
+		mFixedPositionHMD.z += transformed.z;
 
 		for (int i = 0; i < TrackingInfo::MAX_CONTROLLERS; i++) {
-			m_fixedPositionController[i].x += transformed.x;
-			m_fixedPositionController[i].y += transformed.y;
-			m_fixedPositionController[i].z += transformed.z;
+			mFixedPositionController[i].x += transformed.x;
+			mFixedPositionController[i].y += transformed.y;
+			mFixedPositionController[i].z += transformed.z;
 		}
 
 		Log(L"OtherTrackingSource (diff:%f) (%f,%f,%f) (%f,%f,%f)",
@@ -219,39 +219,39 @@ private:
 	}
 
 	void UpdateControllerState(const TrackingInfo& info) {
-		if (!Settings::Instance().m_enableController) {
+		if (!Settings::Instance().mEnableController) {
 			return;
 		}
-		auto data = m_freePIE->GetData();
+		auto data = mFreePIE->GetData();
 		bool enableControllerButton = data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_BUTTONS;
-		m_controllerDetected = data.controllers;
+		mControllerDetected = data.controllers;
 		bool defaultHand = (info.controller[0].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) != 0;
 
 		// Add controller as specified.
-		for (int i = 0; i < m_controllerDetected; i++) {
-			if (m_remoteController[i]) {
+		for (int i = 0; i < mControllerDetected; i++) {
+			if (mRemoteController[i]) {
 				// Already enabled.
 				continue;
 			}
-			bool hand = i == 0 ? defaultHand : !m_remoteController[0]->GetHand();
-			m_remoteController[i] = std::make_shared<RemoteControllerServerDriver>(hand, i);
+			bool hand = i == 0 ? defaultHand : !mRemoteController[0]->GetHand();
+			mRemoteController[i] = std::make_shared<RemoteControllerServerDriver>(hand, i);
 
 			bool ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-				m_remoteController[i]->GetSerialNumber().c_str(),
+				mRemoteController[i]->GetSerialNumber().c_str(),
 				vr::TrackedDeviceClass_Controller,
-				m_remoteController[i].get());
+				mRemoteController[i].get());
 			Log(L"TrackedDeviceAdded vr::TrackedDeviceClass_Controller index=%d Ret=%d SerialNumber=%hs Hand=%d"
-				, i, ret, m_remoteController[i]->GetSerialNumber().c_str(), hand);
+				, i, ret, mRemoteController[i]->GetSerialNumber().c_str(), hand);
 		}
 
-		Log(L"UpdateControllerState. detected=%d hand=%d", m_controllerDetected, defaultHand);
+		Log(L"UpdateControllerState. detected=%d hand=%d", mControllerDetected, defaultHand);
 
-		for (int i = 0; i < m_controllerDetected; i++) {
-			if (m_remoteController[i]) {
-				int index = m_remoteController[i]->GetHand() == defaultHand ? 0 : 1;
+		for (int i = 0; i < mControllerDetected; i++) {
+			if (mRemoteController[i]) {
+				int index = mRemoteController[i]->GetHand() == defaultHand ? 0 : 1;
 				Log(L"UpdateControllerState. Updating %d controller", index);
-				bool recenterRequested = m_remoteController[i]->ReportControllerState(index, info,
-					m_fixedOrientationController[index], m_fixedPositionController[index], enableControllerButton, data);
+				bool recenterRequested = mRemoteController[i]->ReportControllerState(index, info,
+					mFixedOrientationController[index], mFixedPositionController[index], enableControllerButton, data);
 				if (recenterRequested) {
 					BeginRecenter();
 				}
@@ -259,24 +259,24 @@ private:
 		}
 	}
 
-	int m_controllerDetected;
-	std::shared_ptr<RemoteControllerServerDriver> m_remoteController[2];
+	int mControllerDetected;
+	std::shared_ptr<RemoteControllerServerDriver> mRemoteController[2];
 
-	std::shared_ptr<FreePIE> m_freePIE;
+	std::shared_ptr<FreePIE> mFreePIE;
 
-	bool m_hasValidTrackingInfo;
-	bool m_recentering;
-	uint64_t m_recenterStartTimestamp;
-	double m_centerPitch;
-	vr::HmdQuaternion_t m_fixedOrientationHMD;
-	TrackingVector3 m_fixedPositionHMD;
-	vr::HmdQuaternion_t m_fixedOrientationController[2];
-	TrackingVector3 m_fixedPositionController[2];
+	bool mHasValidTrackingInfo;
+	bool mRecentering;
+	uint64_t mRecenterStartTimestamp;
+	double mCenterPitch;
+	vr::HmdQuaternion_t mFixedOrientationHMD;
+	TrackingVector3 mFixedPositionHMD;
+	vr::HmdQuaternion_t mFixedOrientationController[2];
+	TrackingVector3 mFixedPositionController[2];
 
-	TrackingVector3 m_basePosition;
-	TrackingVector3 m_rotatedBasePosition;
-	double m_rotationDiff;
-	uint64_t m_rotationDiffLastInitialized;
+	TrackingVector3 mBasePosition;
+	TrackingVector3 mRotatedBasePosition;
+	double mRotationDiff;
+	uint64_t mRotationDiffLastInitialized;
 
 	static const int RECENTER_DURATION = 400 * 1000;
 };

@@ -34,7 +34,7 @@
 #include "VideoEncoderVCE.h"
 #include "IDRScheduler.h"
 
-HINSTANCE g_hInstance;
+HINSTANCE gInstance;
 
 uint64_t g_DriverTestMode = 0;
 
@@ -236,11 +236,11 @@ public:
 
 	virtual void GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight) override
 	{
-		Log(L"GetWindowBounds %dx%d - %dx%d", 0, 0, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
+		Log(L"GetWindowBounds %dx%d - %dx%d", 0, 0, Settings::Instance().mRenderWidth, Settings::Instance().mRenderHeight);
 		*pnX = 0;
 		*pnY = 0;
-		*pnWidth = Settings::Instance().m_renderWidth;
-		*pnHeight = Settings::Instance().m_renderHeight;
+		*pnWidth = Settings::Instance().mRenderWidth;
+		*pnHeight = Settings::Instance().mRenderHeight;
 	}
 
 	virtual bool IsDisplayOnDesktop() override
@@ -255,16 +255,16 @@ public:
 
 	virtual void GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight) override
 	{
-		*pnWidth = Settings::Instance().m_renderWidth / 2;
-		*pnHeight = Settings::Instance().m_renderHeight;
+		*pnWidth = Settings::Instance().mRenderWidth / 2;
+		*pnHeight = Settings::Instance().mRenderHeight;
 		Log(L"GetRecommendedRenderTargetSize %dx%d", *pnWidth, *pnHeight);
 	}
 
 	virtual void GetEyeOutputViewport(vr::EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight) override
 	{
 		*pnY = 0;
-		*pnWidth = Settings::Instance().m_renderWidth / 2;
-		*pnHeight = Settings::Instance().m_renderHeight;
+		*pnWidth = Settings::Instance().mRenderWidth / 2;
+		*pnHeight = Settings::Instance().mRenderHeight;
 
 		if (eEye == vr::Eye_Left)
 		{
@@ -272,14 +272,14 @@ public:
 		}
 		else
 		{
-			*pnX = Settings::Instance().m_renderWidth / 2;
+			*pnX = Settings::Instance().mRenderWidth / 2;
 		}
 		Log(L"GetEyeOutputViewport Eye=%d %dx%d %dx%d", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
 	}
 
 	virtual void GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom) override
 	{
-		auto eyeFov = Settings::Instance().m_eyeFov[eEye];
+		auto eyeFov = Settings::Instance().mEyeFov[eEye];
 		*pfLeft = -tanf(static_cast<float>(eyeFov.left / 180.0 * M_PI));
 		*pfRight = tanf(static_cast<float>(eyeFov.right / 180.0 * M_PI));
 		*pfTop = -tanf(static_cast<float>(eyeFov.top / 180.0 * M_PI));
@@ -540,7 +540,7 @@ public:
 	/** Submits queued layers for display. */
 	virtual void Present(vr::SharedTextureHandle_t syncTexture) override
 	{
-		bool useMutex = Settings::Instance().m_UseKeyedMutex;
+		bool useMutex = Settings::Instance().mUseKeyedMutex;
 		Log(L"Present syncTexture=%p (use:%d) m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu", syncTexture, useMutex, m_prevSubmitFrameIndex, m_submitFrameIndex);
 
 		IDXGIKeyedMutex *pKeyedMutex = NULL;
@@ -646,16 +646,16 @@ public:
 
 		Log(L"Waiting for finish of previous encode.");
 
-		if (Settings::Instance().m_captureLayerDDSTrigger) {
+		if (Settings::Instance().mCaptureLayerDDSTrigger) {
 			wchar_t buf[1000];
 
 			for (uint32_t i = 0; i < layerCount; i++) {
 				Log(L"Writing Debug DDS. m_LastReferencedFrameIndex=%llu layer=%d/%d", 0, i, layerCount);
-				_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", Settings::Instance().m_DebugOutputDir.c_str(), m_submitFrameIndex, i, layerCount);
+				_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", Settings::Instance().mDebugOutputDir.c_str(), m_submitFrameIndex, i, layerCount);
 				HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture[i][0], buf);
 				Log(L"Writing Debug DDS: End hr=%p %s", hr, GetErrorStr(hr).c_str());
 			}
-			Settings::Instance().m_captureLayerDDSTrigger = false;
+			Settings::Instance().mCaptureLayerDDSTrigger = false;
 		}
 
 		// Wait for the encoder to be ready.  This is important because the encoder thread
@@ -664,7 +664,7 @@ public:
 
 		std::string debugText;
 
-		if (Settings::Instance().m_DebugFrameIndex) {
+		if (Settings::Instance().mDebugFrameIndex) {
 			TrackingInfo info;
 			m_Listener->GetTrackingInfo(info);
 
@@ -673,9 +673,9 @@ public:
 			debugText = buf;
 		}
 
-		uint64_t submitFrameIndex = m_submitFrameIndex + Settings::Instance().m_trackingFrameOffset;
+		uint64_t submitFrameIndex = m_submitFrameIndex + Settings::Instance().mTrackingFrameOffset;
 		Log(L"Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu"
-			, m_submitFrameIndex, Settings::Instance().m_trackingFrameOffset, submitFrameIndex);
+			, m_submitFrameIndex, Settings::Instance().mTrackingFrameOffset, submitFrameIndex);
 
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
 		m_pEncoder->CopyToStaging(pTexture, bounds, layerCount, m_recenterManager->IsRecentering(), presentationTime, submitFrameIndex, m_submitClientTime, m_recenterManager->GetFreePIEMessage(), debugText);
@@ -803,7 +803,7 @@ public:
 			vr::TrackedDeviceClass_HMD,
 			this);
 		Log(L"TrackedDeviceAdded(HMD) Ret=%d SerialNumber=%hs", ret, GetSerialNumber().c_str());
-		if (Settings::Instance().m_useTrackingReference) {
+		if (Settings::Instance().mUseTrackingReference) {
 			m_trackingReference = std::make_shared<TrackingReference>();
 			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 				m_trackingReference->GetSerialNumber().c_str(),
@@ -826,10 +826,10 @@ public:
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ManufacturerName_String, Settings::Instance().mManufacturerName.c_str());
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, Settings::Instance().mRenderModelName.c_str());
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RegisteredDeviceType_String, Settings::Instance().mRegisteredDeviceType.c_str());
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserIpdMeters_Float, Settings::Instance().m_flIPD);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserIpdMeters_Float, Settings::Instance().mIPD);
 		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().m_refreshRate));
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_SecondsFromVsyncToPhotons_Float, Settings::Instance().m_flSecondsFromVsyncToPhotons);
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().mRefreshRate));
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_SecondsFromVsyncToPhotons_Float, Settings::Instance().mSecondsFromVsyncToPhotons);
 
 		// return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
 		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_CurrentUniverseId_Uint64, 2);
@@ -841,7 +841,7 @@ public:
 		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true);
 
 		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
-		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().m_flIPD);
+		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().mIPD);
 
 		m_D3DRender = std::make_shared<CD3DRender>();
 
@@ -849,9 +849,9 @@ public:
 		// It seems vrcompositor selects always(?) first adapter. vrcompositor may use Intel iGPU when user sets it as primary adapter. I don't know what happens on laptop which support optimus.
 		// Prop_GraphicsAdapterLuid_Uint64 is only for redirect display and is ignored on direct mode driver. So we can't specify an adapter for vrcompositor.
 		// m_nAdapterIndex is set 0 on the launcher.
-		if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
+		if (!m_D3DRender->Initialize(Settings::Instance().mAdapterIndex))
 		{
-			FatalLog(L"Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
+			FatalLog(L"Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().mAdapterIndex);
 			return vr::VRInitError_Driver_Failed;
 		}
 
@@ -876,10 +876,10 @@ public:
 		}
 		m_encoder->Start();
 
-		if (Settings::Instance().m_enableSound) {
+		if (Settings::Instance().mEnableSound) {
 			m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
 			try {
-				m_audioCapture->Start(ToWstring(Settings::Instance().m_soundDevice));
+				m_audioCapture->Start(ToWstring(Settings::Instance().mSoundDevice));
 			}
 			catch (Exception e) {
 				FatalLog(L"Failed to start audio capture. %s", e.what());
@@ -887,7 +887,7 @@ public:
 			}
 		}
 
-		m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
+		m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().mRefreshRate);
 		m_VSyncThread->Start();
 
 		m_recenterManager = std::make_shared<RecenterManager>();
@@ -1011,21 +1011,21 @@ public:
 				"Resolution %dx%d\n"
 				"RefreshRate %d\n"
 				, m_Listener->DumpConfig().c_str()
-				, k_pch_Settings_DebugLog_Bool, Settings::Instance().m_DebugLog
-				, k_pch_Settings_DebugFrameIndex_Bool, Settings::Instance().m_DebugFrameIndex
-				, k_pch_Settings_DebugFrameOutput_Bool, Settings::Instance().m_DebugFrameOutput
-				, k_pch_Settings_DebugCaptureOutput_Bool, Settings::Instance().m_DebugCaptureOutput
-				, k_pch_Settings_UseKeyedMutex_Bool, Settings::Instance().m_UseKeyedMutex
-				, k_pch_Settings_ControllerTriggerMode_Int32, Settings::Instance().m_controllerTriggerMode
-				, k_pch_Settings_ControllerTrackpadClickMode_Int32, Settings::Instance().m_controllerTrackpadClickMode
-				, k_pch_Settings_ControllerTrackpadTouchMode_Int32, Settings::Instance().m_controllerTrackpadTouchMode
-				, k_pch_Settings_ControllerBackMode_Int32, Settings::Instance().m_controllerBackMode
-				, k_pch_Settings_ControllerRecenterButton_Int32, Settings::Instance().m_controllerRecenterButton
+				, k_pch_Settings_DebugLog_Bool, Settings::Instance().mDebugLog
+				, k_pch_Settings_DebugFrameIndex_Bool, Settings::Instance().mDebugFrameIndex
+				, k_pch_Settings_DebugFrameOutput_Bool, Settings::Instance().mDebugFrameOutput
+				, k_pch_Settings_DebugCaptureOutput_Bool, Settings::Instance().mDebugCaptureOutput
+				, k_pch_Settings_UseKeyedMutex_Bool, Settings::Instance().mUseKeyedMutex
+				, k_pch_Settings_ControllerTriggerMode_Int32, Settings::Instance().mControllerTriggerMode
+				, k_pch_Settings_ControllerTrackpadClickMode_Int32, Settings::Instance().mControllerTrackpadClickMode
+				, k_pch_Settings_ControllerTrackpadTouchMode_Int32, Settings::Instance().mControllerTrackpadTouchMode
+				, k_pch_Settings_ControllerBackMode_Int32, Settings::Instance().mControllerBackMode
+				, k_pch_Settings_ControllerRecenterButton_Int32, Settings::Instance().mControllerRecenterButton
 				, ToUTF8(m_adapterName).c_str() // TODO: Proper treatment of UNICODE. Sanitizing.
-				, Settings::Instance().m_codec
+				, Settings::Instance().mCodec
 				, Settings::Instance().mEncodeBitrate.toMiBits()
-				, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight
-				, Settings::Instance().m_refreshRate
+				, Settings::Instance().mRenderWidth, Settings::Instance().mRenderHeight
+				, Settings::Instance().mRefreshRate
 			);
 			m_Listener->SendCommandResponse(buf);
 		}else if(commandName == "SetConfig"){
@@ -1036,42 +1036,42 @@ public:
 			else {
 				auto name = args.substr(0, index);
 				if (name == k_pch_Settings_DebugFrameIndex_Bool) {
-					Settings::Instance().m_DebugFrameIndex = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mDebugFrameIndex = atoi(args.substr(index + 1).c_str());
 				}else if(name == k_pch_Settings_DebugFrameOutput_Bool){
-					Settings::Instance().m_DebugFrameOutput = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mDebugFrameOutput = atoi(args.substr(index + 1).c_str());
 				}
 				else if (name == k_pch_Settings_DebugCaptureOutput_Bool) {
-					Settings::Instance().m_DebugCaptureOutput = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mDebugCaptureOutput = atoi(args.substr(index + 1).c_str());
 				}
 				else if (name == k_pch_Settings_UseKeyedMutex_Bool) {
-					Settings::Instance().m_UseKeyedMutex = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mUseKeyedMutex = atoi(args.substr(index + 1).c_str());
 				}
 				else if (name == k_pch_Settings_ControllerTriggerMode_Int32) {
-					Settings::Instance().m_controllerTriggerMode = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mControllerTriggerMode = atoi(args.substr(index + 1).c_str());
 				}
 				else if (name == k_pch_Settings_ControllerTrackpadClickMode_Int32) {
-					Settings::Instance().m_controllerTrackpadClickMode = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mControllerTrackpadClickMode = atoi(args.substr(index + 1).c_str());
 				}
 				else if (name == k_pch_Settings_ControllerTrackpadTouchMode_Int32) {
-					Settings::Instance().m_controllerTrackpadTouchMode = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mControllerTrackpadTouchMode = atoi(args.substr(index + 1).c_str());
 				}
 				else if (name == k_pch_Settings_ControllerBackMode_Int32) {
-					Settings::Instance().m_controllerBackMode = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mControllerBackMode = atoi(args.substr(index + 1).c_str());
 				}
 				else if (name == k_pch_Settings_ControllerRecenterButton_Int32) {
-					Settings::Instance().m_controllerRecenterButton = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mControllerRecenterButton = atoi(args.substr(index + 1).c_str());
 				}
 				else if (name == "causePacketLoss") {
-					Settings::Instance().m_causePacketLoss = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mCausePacketLoss = atoi(args.substr(index + 1).c_str());
 				}
 				else if (name == "trackingFrameOffset") {
-					Settings::Instance().m_trackingFrameOffset = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mTrackingFrameOffset = atoi(args.substr(index + 1).c_str());
 				}
 				else if (name == "captureLayerDDS") {
-					Settings::Instance().m_captureLayerDDSTrigger = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mCaptureLayerDDSTrigger = atoi(args.substr(index + 1).c_str());
 				}
 				else if (name == "captureComposedDDS") {
-					Settings::Instance().m_captureComposedDDSTrigger = atoi(args.substr(index + 1).c_str());
+					Settings::Instance().mCaptureComposedDDSTrigger = atoi(args.substr(index + 1).c_str());
 				}
 				else {
 					m_Listener->SendCommandResponse("NG\n");
@@ -1085,11 +1085,11 @@ public:
 			std::string x = GetNextToken(args, " ");
 			std::string y = GetNextToken(args, " ");
 			std::string z = GetNextToken(args, " ");
-			Settings::Instance().m_OffsetPos[0] = (float)atof(x.c_str());
-			Settings::Instance().m_OffsetPos[1] = (float)atof(y.c_str());
-			Settings::Instance().m_OffsetPos[2] = (float)atof(z.c_str());
+			Settings::Instance().mOffsetPos[0] = (float)atof(x.c_str());
+			Settings::Instance().mOffsetPos[1] = (float)atof(y.c_str());
+			Settings::Instance().mOffsetPos[2] = (float)atof(z.c_str());
 
-			Settings::Instance().m_EnableOffsetPos = atoi(enabled.c_str()) != 0;
+			Settings::Instance().mEnableOffsetPos = atoi(enabled.c_str()) != 0;
 
 			m_Listener->SendCommandResponse("OK\n");
 		}else {
@@ -1269,7 +1269,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
 {
 	switch (dwReason) {
 	case DLL_PROCESS_ATTACH:
-		g_hInstance = hInstance;
+		gInstance = hInstance;
 	}
 
 	return TRUE;

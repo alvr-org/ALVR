@@ -90,7 +90,7 @@ static const wchar_t * const DEBUG_AUDIO_CAPTURE_OUTPUT_NAME = L"capture.wav";
 class Settings
 {
 	static Settings m_Instance;
-	bool m_loaded;
+	bool mLoaded;
 
 	Settings();
 	virtual ~Settings();
@@ -102,17 +102,17 @@ public:
 	}
 
 	bool IsLoaded() {
-		return m_loaded;
+		return mLoaded;
 	}
 
 	std::string GetVideoOutput() {
-		return m_DebugOutputDir + "\\" + DEBUG_VIDEO_CAPTURE_OUTPUT_NAME;
+		return mDebugOutputDir + "\\" + DEBUG_VIDEO_CAPTURE_OUTPUT_NAME;
 	}
 	std::wstring GetAudioOutput() {
-		return ToWstring(m_DebugOutputDir) + L"\\" + DEBUG_AUDIO_CAPTURE_OUTPUT_NAME;
+		return ToWstring(mDebugOutputDir) + L"\\" + DEBUG_AUDIO_CAPTURE_OUTPUT_NAME;
 	}
 
-	std::string m_DebugOutputDir;
+	std::string mDebugOutputDir;
 
 	std::string mSerialNumber;
 	std::string mTrackingSystemName;
@@ -121,75 +121,74 @@ public:
 	std::string mRenderModelName;
 	std::string mRegisteredDeviceType;
 
-	int32_t m_nAdapterIndex;
+	int32_t mAdapterIndex;
 
-	int m_refreshRate;
-	int32_t m_renderWidth;
-	int32_t m_renderHeight;
-	EyeFov m_eyeFov[2];
-	float m_flSecondsFromVsyncToPhotons;
-	float m_flIPD;
+	int mRefreshRate;
+	int32_t mRenderWidth;
+	int32_t mRenderHeight;
+	EyeFov mEyeFov[2];
+	float mSecondsFromVsyncToPhotons;
+	float mIPD;
 
-	bool m_enableSound;
-	std::string m_soundDevice;
+	bool mEnableSound;
+	std::string mSoundDevice;
 
-	int m_codec;
+	int mCodec;
 	std::string m_EncoderOptions;
 	Bitrate mEncodeBitrate;
 
-	std::string m_Host;
-	int m_Port;
-	std::string m_ControlHost;
-	int m_ControlPort;
-	std::string m_AutoConnectHost;
-	int m_AutoConnectPort;
+	std::string mHost;
+	int mPort;
+	std::string mControlHost;
+	int mControlPort;
+	std::string mAutoConnectHost;
+	int mAutoConnectPort;
 	Bitrate mThrottlingBitrate;
 
-	bool m_DebugLog;
-	bool m_DebugFrameIndex;
-	bool m_DebugFrameOutput;
-	bool m_DebugCaptureOutput;
-	bool m_UseKeyedMutex;
+	bool mDebugLog;
+	bool mDebugFrameIndex;
+	bool mDebugFrameOutput;
+	bool mDebugCaptureOutput;
+	bool mUseKeyedMutex;
 
 
-	uint64_t m_SendingTimeslotUs;
-	uint64_t m_LimitTimeslotPackets;
+	uint64_t mSendingTimeslotUs;
+	uint64_t mLimitTimeslotPackets;
 
-	uint32_t m_clientRecvBufferSize;
+	uint32_t mClientRecvBufferSize;
 
-	uint32_t m_frameQueueSize;
+	uint32_t mFrameQueueSize;
 
-	bool m_force60HZ;
+	bool mForce60HZ;
 
 	// Controller configs
-	std::string m_controllerTrackingSystemName;
-	std::string m_controllerManufacturerName;
-	std::string m_controllerModelNumber;
-	std::string m_controllerRenderModelNameLeft;
-	std::string m_controllerRenderModelNameRight;
-	std::string m_controllerSerialNumber;
-	std::string m_controllerType;
+	std::string mControllerTrackingSystemName;
+	std::string mControllerManufacturerName;
+	std::string mControllerModelNumber;
+	std::string mControllerRenderModelNameLeft;
+	std::string mControllerRenderModelNameRight;
+	std::string mControllerSerialNumber;
+	std::string mControllerType;
 	std::string mControllerRegisteredDeviceType;
-	std::string m_controllerLegacyInputProfile;
-	std::string m_controllerInputProfilePath;
-	bool m_enableController;
-	int32_t m_controllerTriggerMode;
-	int32_t m_controllerTrackpadClickMode;
-	int32_t m_controllerTrackpadTouchMode;
-	int32_t m_controllerBackMode;
-	int32_t m_controllerRecenterButton;
+	std::string mControllerLegacyInputProfile;
+	std::string mControllerInputProfilePath;
+	bool mEnableController;
+	int32_t mControllerTriggerMode;
+	int32_t mControllerTrackpadClickMode;
+	int32_t mControllerTrackpadTouchMode;
+	int32_t mControllerBackMode;
+	int32_t mControllerRecenterButton;
 
-	float m_OffsetPos[3];
-	bool m_EnableOffsetPos;
+	float mOffsetPos[3];
+	bool mEnableOffsetPos;
 
-	int32_t m_causePacketLoss;
+	bool mUseTrackingReference;
 
-	bool m_useTrackingReference;
-
-	int32_t m_trackingFrameOffset;
+	int32_t mTrackingFrameOffset;
 
 	// They are not in config json and set by "SetConfig" command.
-	bool m_captureLayerDDSTrigger = false;
-	bool m_captureComposedDDSTrigger = false;
+	bool mCaptureLayerDDSTrigger = false;
+	bool mCaptureComposedDDSTrigger = false;
+	int32_t mCausePacketLoss = 0;
 };
 

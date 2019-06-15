@@ -110,21 +110,21 @@ AudioEndPointDescriptor::AudioEndPointDescriptor(const ComPtr<IMMDevice> &device
 	device->GetId(&idStr);
 	TaskMem idMem(idStr);
 
-	m_id = idStr;
-	m_name = GetDeviceName(device);
-	m_isDefault = isDefault;
+	mID = idStr;
+	mName = GetDeviceName(device);
+	mIsDefault = isDefault;
 }
 std::wstring AudioEndPointDescriptor::GetName() const {
-	return m_name;
+	return mName;
 }
 std::wstring AudioEndPointDescriptor::GetId() const {
-	return m_id;
+	return mID;
 }
 bool AudioEndPointDescriptor::IsDefault() const {
-	return m_isDefault;
+	return mIsDefault;
 }
 bool AudioEndPointDescriptor::operator==(const AudioEndPointDescriptor& a) {
-	return a.GetId() == m_id;
+	return a.GetId() == mID;
 }
 bool AudioEndPointDescriptor::operator!=(const AudioEndPointDescriptor& a) {
 	return !operator==(a);
@@ -156,11 +156,11 @@ std::wstring AudioEndPointDescriptor::GetDeviceName(const ComPtr<IMMDevice> &pMM
 //
 
 AudioCapture::AudioCapture(std::shared_ptr<Listener> listener)
-	: m_pMMDevice(NULL)
-	, m_pwfx(NULL)
-	, m_startedEvent(NULL)
-	, m_stopEvent(NULL)
-	, m_listener(listener) {
+	: mMMDevice(NULL)
+	, mWaveFormat(NULL)
+	, mStartedEvent(NULL)
+	, mStopEvent(NULL)
+	, mListener(listener) {
 }
 
 AudioCapture::~AudioCapture() {
@@ -252,7 +252,7 @@ void AudioCapture::OpenDevice(const std::wstring &id) {
 		throw MakeException(L"CoCreateInstance(IMMDeviceEnumerator) failed: hr = 0x%08x", hr);
 	}
 
-	hr = pMMDeviceEnumerator->GetDevice(id.c_str(), &m_pMMDevice);
+	hr = pMMDeviceEnumerator->GetDevice(id.c_str(), &mMMDevice);
 	if (FAILED(hr)) {
 		throw MakeException(L"Could not find a device id %s. hr = 0x%08x", id.c_str(), hr);
 	}
@@ -262,26 +262,26 @@ void AudioCapture::Start(const std::wstring &id) {
 	CoInitialize(NULL);
 
 	OpenDevice(id);
-	Log(L"Audio device: %s", AudioEndPointDescriptor::GetDeviceName(m_pMMDevice).c_str());
+	Log(L"Audio device: %s", AudioEndPointDescriptor::GetDeviceName(mMMDevice).c_str());
 
-	m_hThread.Set(CreateThread(
+	mThread.Set(CreateThread(
 		NULL, 0,
 		LoopbackCaptureThreadFunction, this,
 		0, NULL
 	));
-	if (!m_hThread.IsValid()) {
+	if (!mThread.IsValid()) {
 		throw MakeException(L"CreateThread failed: last error is %u", GetLastError());
 	}
 
 	// wait for either capture to start or the thread to end
-	HANDLE waitArray[2] = { m_startedEvent.Get(), m_hThread.Get() };
+	HANDLE waitArray[2] = { mStartedEvent.Get(), mThread.Get() };
 	DWORD waitResult = WaitForMultipleObjects(
 		sizeof(waitArray) / sizeof(waitArray[0]), waitArray,
 		FALSE, INFINITE
 	);
 
 	if (WAIT_OBJECT_0 + 1 == waitResult) {
-		throw MakeException(L"Thread aborted before starting to loopback capture. message=%s", m_errorMessage.c_str());
+		throw MakeException(L"Thread aborted before starting to loopback capture. message=%s", mErrorMessage.c_str());
 	}
 
 	if (WAIT_OBJECT_0 != waitResult) {
@@ -290,8 +290,8 @@ void AudioCapture::Start(const std::wstring &id) {
 }
 
 void AudioCapture::Shutdown() {
-	m_stopEvent.SetEvent();
-	DWORD waitResult = WaitForSingleObject(m_hThread.Get(), INFINITE);
+	mStopEvent.SetEvent();
+	DWORD waitResult = WaitForSingleObject(mThread.Get(), INFINITE);
 	if (WAIT_OBJECT_0 != waitResult) {
 		Log(L"WaitForSingleObject returned unexpected result 0x%08x, last error is %d", waitResult, GetLastError());
 	}
@@ -299,7 +299,7 @@ void AudioCapture::Shutdown() {
 	// at this point the thread is definitely finished
 
 	DWORD exitCode;
-	if (!GetExitCodeThread(m_hThread.Get(), &exitCode)) {
+	if (!GetExitCodeThread(mThread.Get(), &exitCode)) {
 		throw MakeException(L"GetExitCodeThread failed: last error is %u", GetLastError());
 	}
 
@@ -307,7 +307,7 @@ void AudioCapture::Shutdown() {
 		throw MakeException(L"Loopback capture thread exit code is %u; expected 0", exitCode);
 	}
 
-	if (Settings::Instance().m_DebugCaptureOutput) {
+	if (Settings::Instance().mDebugCaptureOutput) {
 		// reopen the file in read/write mode
 		MMIOINFO mi = { 0 };
 		MMIOHandle file(mmioOpenW((LPWSTR)Settings::Instance().GetAudioOutput().c_str(), &mi, MMIO_READWRITE));
@@ -334,11 +334,11 @@ void AudioCapture::Shutdown() {
 		// write the correct data to the fact chunk
 		LONG lBytesWritten = mmioWrite(
 			file.Get(),
-			reinterpret_cast<PCHAR>(&m_frames),
-			sizeof(m_frames)
+			reinterpret_cast<PCHAR>(&mFrames),
+			sizeof(mFrames)
 		);
-		if (lBytesWritten != sizeof(m_frames)) {
-			throw MakeException(L"Updating the fact chunk wrote %u bytes; expected %u", lBytesWritten, (UINT32)sizeof(m_frames));
+		if (lBytesWritten != sizeof(mFrames)) {
+			throw MakeException(L"Updating the fact chunk wrote %u bytes; expected %u", lBytesWritten, (UINT32)sizeof(mFrames));
 		}
 
 		// ascend out of the fact chunk
@@ -369,16 +369,16 @@ DWORD WINAPI AudioCapture::LoopbackCaptureThreadFunction(LPVOID pContext) {
 void AudioCapture::CaptureRetry() {
 	while (true) {
 		try {
-			m_canRetry = false;
+			mCanRetry = false;
 			LoopbackCapture();
 			break;
 		}
 		catch (Exception e) {
-			if (m_canRetry) {
+			if (mCanRetry) {
 				Log(L"Exception on sound capture (Retry). message=%s", e.what());
 				continue;
 			}
-			m_errorMessage = e.what();
+			mErrorMessage = e.what();
 			Log(L"Exception on sound capture. message=%s", e.what());
 			break;
 		}
@@ -390,7 +390,7 @@ void AudioCapture::LoopbackCapture() {
 
 	// activate an IAudioClient
 	ComPtr<IAudioClient> pAudioClient;
-	hr = m_pMMDevice->Activate(
+	hr = mMMDevice->Activate(
 		__uuidof(IAudioClient),
 		CLSCTX_ALL, NULL,
 		(void**)&pAudioClient
@@ -454,7 +454,7 @@ void AudioCapture::LoopbackCapture() {
 	MMCKINFO ckRIFF = { 0 };
 	MMCKINFO ckData = { 0 };
 	MMIOHandle hFile;
-	if (Settings::Instance().m_DebugCaptureOutput) {
+	if (Settings::Instance().mDebugCaptureOutput) {
 		MMIOINFO mi = { 0 };
 
 		hFile.Set(mmioOpenW(
@@ -484,7 +484,7 @@ void AudioCapture::LoopbackCapture() {
 	}
 
 	UINT32 nBlockAlign = pwfx->nBlockAlign;
-	m_frames = 0;
+	mFrames = 0;
 
 	// call IAudioClient::Initialize
 	// note that AUDCLNT_STREAMFLAGS_LOOPBACK and AUDCLNT_STREAMFLAGS_EVENTCALLBACK
@@ -543,10 +543,10 @@ void AudioCapture::LoopbackCapture() {
 	}
 	AudioClientStopOnExit stopAudioClient(pAudioClient.Get());
 
-	m_startedEvent.SetEvent();
+	mStartedEvent.SetEvent();
 
 	// loopback capture loop
-	HANDLE waitArray[2] = { m_stopEvent.Get(), wakeUp.Get() };
+	HANDLE waitArray[2] = { mStopEvent.Get(), wakeUp.Get() };
 
 	bool bDone = false;
 	bool bFirstPacket = true;
@@ -571,39 +571,39 @@ void AudioCapture::LoopbackCapture() {
 				NULL
 			);
 			if (FAILED(hr)) {
-				throw MakeException(L"IAudioCaptureClient::GetBuffer failed on pass %u after %u frames: hr = 0x%08x", nPasses, m_frames, hr);
+				throw MakeException(L"IAudioCaptureClient::GetBuffer failed on pass %u after %u frames: hr = 0x%08x", nPasses, mFrames, hr);
 			}
 
 			if (bFirstPacket && AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY == dwFlags) {
 				Log(L"Probably spurious glitch reported on first packet");
 			}
 			else if (0 != dwFlags) {
-				Log(L"IAudioCaptureClient::GetBuffer set flags to 0x%08x on pass %u after %u frames", dwFlags, nPasses, m_frames);
+				Log(L"IAudioCaptureClient::GetBuffer set flags to 0x%08x on pass %u after %u frames", dwFlags, nPasses, mFrames);
 			}
 
 			if (0 == nNumFramesToRead) {
-				throw MakeException(L"IAudioCaptureClient::GetBuffer said to read 0 frames on pass %u after %u frames", nPasses, m_frames);
+				throw MakeException(L"IAudioCaptureClient::GetBuffer said to read 0 frames on pass %u after %u frames", nPasses, mFrames);
 			}
 
 			LONG lBytesToWrite = nNumFramesToRead * nBlockAlign;
 			resampler->FeedInput(nNumFramesToRead, (uint8_t *)pData);
 
-			m_listener->SendAudio(resampler->GetDest(), resampler->GetDestBufSize(), GetTimestampUs());
+			mListener->SendAudio(resampler->GetDest(), resampler->GetDestBufSize(), GetTimestampUs());
 
-			m_frames += nNumFramesToRead;
+			mFrames += nNumFramesToRead;
 
 			if (hFile.IsValid()) {
 #pragma prefast(suppress: __WARNING_INCORRECT_ANNOTATION, "IAudioCaptureClient::GetBuffer SAL annotation implies a 1-byte buffer")
 				LONG lBytesWritten = mmioWrite(hFile.Get(), reinterpret_cast<PCHAR>(pData), lBytesToWrite);
 				if (lBytesToWrite != lBytesWritten) {
-					Log(L"mmioWrite wrote %u bytes on pass %u after %u frames: expected %u bytes", lBytesWritten, nPasses, m_frames, lBytesToWrite);
+					Log(L"mmioWrite wrote %u bytes on pass %u after %u frames: expected %u bytes", lBytesWritten, nPasses, mFrames, lBytesToWrite);
 					hFile.Close();
 				}
 			}
 
 			hr = pAudioCaptureClient->ReleaseBuffer(nNumFramesToRead);
 			if (FAILED(hr)) {
-				throw MakeException(L"IAudioCaptureClient::ReleaseBuffer failed on pass %u after %u frames: hr = 0x%08x", nPasses, m_frames, hr);
+				throw MakeException(L"IAudioCaptureClient::ReleaseBuffer failed on pass %u after %u frames: hr = 0x%08x", nPasses, mFrames, hr);
 			}
 
 			bFirstPacket = false;
@@ -613,9 +613,9 @@ void AudioCapture::LoopbackCapture() {
 			if (hr == AUDCLNT_E_DEVICE_INVALIDATED) {
 				// When configuration of the sound device was changed. (e.g. sample rate, sample format)
 				// We can retry to capture.
-				m_canRetry = true;
+				mCanRetry = true;
 			}
-			throw MakeException(L"IAudioCaptureClient::GetNextPacketSize failed on pass %u after %u frames: hr = 0x%08x", nPasses, m_frames, hr);
+			throw MakeException(L"IAudioCaptureClient::GetNextPacketSize failed on pass %u after %u frames: hr = 0x%08x", nPasses, mFrames, hr);
 		}
 
 		DWORD waitResult = WaitForMultipleObjects(
@@ -624,13 +624,13 @@ void AudioCapture::LoopbackCapture() {
 		);
 
 		if (WAIT_OBJECT_0 == waitResult) {
-			Log(L"Received stop event after %u passes and %u frames", nPasses, m_frames);
+			Log(L"Received stop event after %u passes and %u frames", nPasses, mFrames);
 			bDone = true;
 			continue; // exits loop
 		}
 
 		if (WAIT_OBJECT_0 + 1 != waitResult) {
-			throw MakeException(L"Unexpected WaitForMultipleObjects return value %u on pass %u after %u frames", waitResult, nPasses, m_frames);
+			throw MakeException(L"Unexpected WaitForMultipleObjects return value %u on pass %u after %u frames", waitResult, nPasses, mFrames);
 		}
 	} // capture loop
 

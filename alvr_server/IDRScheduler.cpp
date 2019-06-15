@@ -13,36 +13,36 @@ IDRScheduler::~IDRScheduler()
 
 void IDRScheduler::OnPacketLoss()
 {
-	IPCCriticalSectionLock lock(m_IDRCS);
-	if (m_scheduled) {
+	IPCCriticalSectionLock lock(mCS);
+	if (mScheduled) {
 		// Waiting next insertion.
 		return;
 	}
-	if (GetTimestampUs() - m_insertIDRTime > MIN_IDR_FRAME_INTERVAL) {
+	if (GetTimestampUs() - mInsertIDRTime > MIN_IDR_FRAME_INTERVAL) {
 		// Insert immediately
-		m_insertIDRTime = GetTimestampUs();
-		m_scheduled = true;
+		mInsertIDRTime = GetTimestampUs();
+		mScheduled = true;
 	}
 	else {
 		// Schedule next insertion.
-		m_insertIDRTime += MIN_IDR_FRAME_INTERVAL;
-		m_scheduled = true;
+		mInsertIDRTime += MIN_IDR_FRAME_INTERVAL;
+		mScheduled = true;
 	}
 }
 
 void IDRScheduler::OnStreamStart()
 {
-	IPCCriticalSectionLock lock(m_IDRCS);
+	IPCCriticalSectionLock lock(mCS);
 	// Force insert IDR-frame
-	m_insertIDRTime = GetTimestampUs() - MIN_IDR_FRAME_INTERVAL * 2;
-	m_scheduled = true;
+	mInsertIDRTime = GetTimestampUs() - MIN_IDR_FRAME_INTERVAL * 2;
+	mScheduled = true;
 }
 
 bool IDRScheduler::CheckIDRInsertion() {
-	IPCCriticalSectionLock lock(m_IDRCS);
-	if (m_scheduled) {
-		if (m_insertIDRTime <= GetTimestampUs()) {
-			m_scheduled = false;
+	IPCCriticalSectionLock lock(mCS);
+	if (mScheduled) {
+		if (mInsertIDRTime <= GetTimestampUs()) {
+			mScheduled = false;
 			return true;
 		}
 	}

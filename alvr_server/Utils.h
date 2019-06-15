@@ -18,7 +18,7 @@
 #include "openvr_driver.h"
 #include "packet_types.h"
 
-extern HINSTANCE g_hInstance;
+extern HINSTANCE gInstance;
 
 const uint64_t US_TO_MS = 1000;
 extern uint64_t gPerformanceCounterFrequency;
@@ -98,16 +98,16 @@ inline std::string AddrPortToStr(const sockaddr_in *addr) {
 }
 
 inline bool ReadBinaryResource(std::vector<char> &buffer, int resource) {
-	HRSRC hResource = FindResource(g_hInstance, MAKEINTRESOURCE(resource), RT_RCDATA);
+	HRSRC hResource = FindResource(gInstance, MAKEINTRESOURCE(resource), RT_RCDATA);
 	if (hResource == NULL) {
 		return false;
 	}
-	HGLOBAL hResData = LoadResource(g_hInstance, hResource);
+	HGLOBAL hResData = LoadResource(gInstance, hResource);
 	if (hResData == NULL) {
 		return false;
 	}
 	void *data = LockResource(hResData);
-	int dataSize = SizeofResource(g_hInstance, hResource);
+	int dataSize = SizeofResource(gInstance, hResource);
 
 	buffer.resize(dataSize);
 	memcpy(&buffer[0], data, dataSize);

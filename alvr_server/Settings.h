@@ -14,6 +14,7 @@ static const char * const k_pch_Settings_TrackingSystemName_String = "trackingSy
 static const char * const k_pch_Settings_ModelNumber_String = "modelNumber";
 static const char * const k_pch_Settings_ManufacturerName_String = "manufacturerName";
 static const char * const k_pch_Settings_RenderModelName_String = "renderModelName";
+static const char * const k_pch_Settings_RegisteredDeviceType_String = "registeredDeviceType";
 
 static const char * const k_pch_Settings_RefreshRate_Int32 = "refreshRate";
 static const char * const k_pch_Settings_RenderWidth_Int32 = "renderWidth";
@@ -58,8 +59,10 @@ static const char * const k_pch_Settings_ControllerRenderModelNameLeft_String = 
 static const char * const k_pch_Settings_ControllerRenderModelNameRight_String = "controllerRenderModelNameRight";
 static const char * const k_pch_Settings_ControllerSerialNumber_String = "controllerSerialNumber";
 static const char * const k_pch_Settings_ControllerType_String = "controllerType";
+static const char * const k_pch_Settings_ControllerRegisteredDeviceType_String = "controllerRegisteredDeviceType";
 static const char * const k_pch_Settings_ControllerLegacyInputProfile_String = "controllerLegacyInputProfile";
 static const char * const k_pch_Settings_ControllerInputProfilePath_String = "controllerInputProfilePath";
+
 
 static const char * const k_pch_Settings_EnableController_Bool = "enableController";
 static const char * const k_pch_Settings_ControllerTriggerMode_Int32 = "controllerTriggerMode";
@@ -116,6 +119,7 @@ public:
 	std::string mModelNumber;
 	std::string mManufacturerName;
 	std::string mRenderModelName;
+	std::string mRegisteredDeviceType;
 
 	int32_t m_nAdapterIndex;
 
@@ -165,6 +169,7 @@ public:
 	std::string m_controllerRenderModelNameRight;
 	std::string m_controllerSerialNumber;
 	std::string m_controllerType;
+	std::string mControllerRegisteredDeviceType;
 	std::string m_controllerLegacyInputProfile;
 	std::string m_controllerInputProfilePath;
 	bool m_enableController;

@@ -116,11 +116,12 @@ namespace ALVR
                 dynamic driverConfig = new DynamicJson();
                 if (device != null && device.HasTouchController)
                 {
-                    driverConfig.serialNumber = "OculusRift-001";
+                    driverConfig.serialNumber = "WMHD000X000XXX";
                     driverConfig.trackingSystemName = "oculus";
-                    driverConfig.modelNumber = "Oculus Rift";
-                    driverConfig.manufacturerName = "Oculus";
+                    driverConfig.modelNumber = "Oculus Rift S";
+                    driverConfig.manufacturerName = "Oculus driver 1.38.0";
                     driverConfig.renderModelName = "generic_hmd";
+                    driverConfig.registeredDeviceType = "oculus_rifts";
                 }
                 else
                 {
@@ -129,6 +130,7 @@ namespace ALVR
                     driverConfig.modelNumber = "ALVR driver server";
                     driverConfig.manufacturerName = "HTC";
                     driverConfig.renderModelName = "generic_hmd";
+                    driverConfig.registeredDeviceType = "vive";
                 }
                 driverConfig.adapterIndex = 0;
                 driverConfig.IPD = 0.063;
@@ -188,19 +190,12 @@ namespace ALVR
                 {
                     driverConfig.controllerTrackingSystemName = "oculus";
                     driverConfig.controllerManufacturerName = "Oculus";
-                    driverConfig.controllerModelNumber = "Oculus Rift CV1";
-                    if (!Directory.Exists(Utils.GetDriverPath() + "resources\\rendermodels\\oculus_quest_controller_left"))
-                    {
-                        driverConfig.controllerRenderModelNameLeft = "oculus_cv1_controller_left";
-                        driverConfig.controllerRenderModelNameRight = "oculus_cv1_controller_right";
-                    }
-                    else
-                    {
-                        driverConfig.controllerRenderModelNameLeft = Utils.GetDriverPath() + "resources\\rendermodels\\oculus_quest_controller_left";
-                        driverConfig.controllerRenderModelNameRight = Utils.GetDriverPath() + "resources\\rendermodels\\oculus_quest_controller_right";
-                    }
+                    driverConfig.controllerModelNumber = "Oculus Rift S";
+                    driverConfig.controllerRenderModelNameLeft = "oculus_rifts_controller_left";
+                    driverConfig.controllerRenderModelNameRight = "oculus_rifts_controller_right";
                     driverConfig.controllerSerialNumber = "WMHD000X000XXX_Controller";
                     driverConfig.controllerType = "oculus_touch";
+                    driverConfig.controllerRegisteredDeviceType = "oculus_touch";
                     driverConfig.controllerLegacyInputProfile = "oculus_touch";
                     driverConfig.controllerInputProfilePath = "{alvr_server}/input/touch_profile.json";
                 }
@@ -213,6 +208,7 @@ namespace ALVR
                     driverConfig.controllerRenderModelNameRight = "vr_controller_vive_1_5";
                     driverConfig.controllerSerialNumber = "ALVR Remote Controller";
                     driverConfig.controllerType = "vive_controller";
+                    driverConfig.controllerRegisteredDeviceType = "vive_controller";
                     driverConfig.controllerLegacyInputProfile = "vive_controller";
                     driverConfig.controllerInputProfilePath = "{alvr_server}/input/vive_controller_profile.json";
                 }

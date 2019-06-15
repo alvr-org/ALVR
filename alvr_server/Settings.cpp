@@ -51,6 +51,7 @@ void Settings::Load()
 		mModelNumber = v.get(k_pch_Settings_ModelNumber_String).get<std::string>();
 		mManufacturerName = v.get(k_pch_Settings_ManufacturerName_String).get<std::string>();
 		mRenderModelName = v.get(k_pch_Settings_RenderModelName_String).get<std::string>();
+		mRegisteredDeviceType = v.get(k_pch_Settings_RegisteredDeviceType_String).get<std::string>();
 
 		m_renderWidth = (int32_t)v.get(k_pch_Settings_RenderWidth_Int32).get<int64_t>();
 		m_renderHeight = (int32_t)v.get(k_pch_Settings_RenderHeight_Int32).get<int64_t>();
@@ -120,6 +121,7 @@ void Settings::Load()
 		m_controllerRenderModelNameRight = v.get(k_pch_Settings_ControllerRenderModelNameRight_String).get<std::string>();
 		m_controllerSerialNumber = v.get(k_pch_Settings_ControllerSerialNumber_String).get<std::string>();
 		m_controllerType = v.get(k_pch_Settings_ControllerType_String).get<std::string>();
+		mControllerRegisteredDeviceType = v.get(k_pch_Settings_ControllerRegisteredDeviceType_String).get<std::string>();
 		m_controllerLegacyInputProfile = v.get(k_pch_Settings_ControllerLegacyInputProfile_String).get<std::string>();
 		m_controllerInputProfilePath = v.get(k_pch_Settings_ControllerInputProfilePath_String).get<std::string>();
 

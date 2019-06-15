@@ -4,8 +4,13 @@
 
 ThrottlingBuffer::ThrottlingBuffer(const Bitrate &bitrate) : mBitrate(bitrate)
 {
-	mBytesPerSlot = mBitrate.toBytes() / (1000 * 1000 / TIME_SLOT_US);
-	Log(L"ThrottlingBuffer::ThrottlingBuffer(). Limit=%llu Mbps %llu bytes/slot", mBitrate.toMiBits(), mBytesPerSlot);
+	// mWindow bytes can be sent at a time.
+	mWindow = mBitrate.toBytes() / (1000 * 1000 / BURST_US);
+	if (mWindow < 2000) {
+		// Ensure single packet can be sent
+		mWindow = 2000;
+	}
+	Log(L"ThrottlingBuffer::ThrottlingBuffer(). Limit=%llu Mbps %llu bytes/slot Current=%llu", mBitrate.toMiBits(), mWindow, GetCounterUs());
 }
 
 ThrottlingBuffer::~ThrottlingBuffer()
@@ -27,7 +32,7 @@ void ThrottlingBuffer::Push(char *buf, int len, uint64_t frameIndex)
 bool ThrottlingBuffer::Send(std::function<bool(char*, int)> sendFunc)
 {
 	IPCCriticalSectionLock lock(mCS);
-	uint64_t current = GetTimestampUs();
+	uint64_t current = GetCounterUs();
 	if (CanSend(current)) {
 		SendBuffer &buffer = mQueue.front();
 		if (sendFunc(buffer.buf.get(), buffer.len)) {
@@ -57,17 +62,17 @@ bool ThrottlingBuffer::CanSend(uint64_t current)
 		return true;
 	}
 
-	if (current - mCurrentTimeSlotUs > TIME_SLOT_US) {
-		// New time slot.
+	int64_t fullup = static_cast<int64_t>(mBitrate.toBytes() * static_cast<double>(current - mLastSent) / 1000000.0);
+	mByteCount -= fullup;
+	if (mByteCount < 0) {
 		mByteCount = 0;
-		mCurrentTimeSlotUs = current;
-		Log(L"ThrottlingBuffer::CanSend(). New time slot.");
 	}
 
-	uint64_t BytesPerSlot = mBitrate.toBytes() / (1000 * 1000 / TIME_SLOT_US);
-	int len = mQueue.front().len;
-	Log(L"ThrottlingBuffer::CanSend(). Check %llu <= %llu: %d Buffered=%llu", len + mByteCount, BytesPerSlot, len + mByteCount <= BytesPerSlot, mBuffered);
-	if (len + mByteCount <= BytesPerSlot) {
+	mLastSent = current;
+
+	Log(L"ThrottlingBuffer::CanSend(). %03llu.%03llu Check %llu <= %llu: %d Buffered=%llu Fillup=%llu", (current / 1000) % 1000, current % 1000
+		, mByteCount, mWindow, mByteCount <= mWindow, mBuffered, fullup);
+	if (mByteCount <= mWindow) {
 		return true;
 	}
 	return false;

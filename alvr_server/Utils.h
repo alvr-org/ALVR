@@ -21,6 +21,7 @@
 extern HINSTANCE g_hInstance;
 
 const uint64_t US_TO_MS = 1000;
+extern uint64_t gPerformanceCounterFrequency;
 
 // Get elapsed time in us from Unix Epoch
 inline uint64_t GetTimestampUs() {
@@ -33,6 +34,20 @@ inline uint64_t GetTimestampUs() {
 	Current /= 10;
 
 	return Current;
+}
+
+// Get performance counter in us
+inline uint64_t GetCounterUs() {
+	if (gPerformanceCounterFrequency == 0) {
+		LARGE_INTEGER freq;
+		QueryPerformanceFrequency(&freq);
+		gPerformanceCounterFrequency = freq.QuadPart;
+	}
+
+	LARGE_INTEGER counter;
+	QueryPerformanceCounter(&counter);
+
+	return counter.QuadPart * 1000000LLU / gPerformanceCounterFrequency;
 }
 
 inline std::string DumpMatrix(const float *m) {

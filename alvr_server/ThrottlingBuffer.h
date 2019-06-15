@@ -32,11 +32,14 @@ private:
 	std::list<SendBuffer> mQueue;
 	IPCCriticalSection mCS;
 
-	uint64_t mBytesPerSlot;
-	uint64_t mByteCount = 0;
+	uint64_t mWindow;
+	int64_t mByteCount = 0;
 	uint64_t mCurrentTimeSlotUs = 0;
-	// Windows has 990us ~ 1000us resolution of timer in my environment.
-	static const uint64_t TIME_SLOT_US = 900;
+	uint64_t mLastSent = 0;
+
+	// Permit burst sending for performance (or implementation) reason.
+	// Maximum size we can send at a time is mBitrate * BurstTime.
+	static const uint64_t BURST_US = 1000;
 
 	bool CanSend(uint64_t current);
 };

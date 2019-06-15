@@ -119,6 +119,7 @@
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="ThrottlingBuffer.cpp" />
     <ClCompile Include="UdpSocket.cpp" />
+    <ClCompile Include="Utils.cpp" />
     <ClCompile Include="VideoEncoder.cpp" />
     <ClCompile Include="VideoEncoderNVENC.cpp" />
     <ClCompile Include="VideoEncoderVCE.cpp" />

@@ -12,7 +12,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}</ProjectGuid>
-    <RootNamespace>driver_virtual_display</RootNamespace>
+    <RootNamespace>alvr_server</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
     <ProjectName>alvr_server</ProjectName>
   </PropertyGroup>

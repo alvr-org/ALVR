@@ -1,7 +1,7 @@
 
 #include "VideoEncoderNVENC.h"
-#include "NvCodecUtils.h"
-#include "nvencoderclioptions.h"
+#include "..\NvEnc\NvCodecUtils.h"
+#include "..\NvEnc\nvencoderclioptions.h"
 
 VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	, std::shared_ptr<Listener> listener, bool useNV12)
@@ -36,18 +36,8 @@ void VideoEncoderNVENC::Initialize()
 		, format, mUseNV12);
 
 	if (mUseNV12) {
-		if (!LoadCudaDLL()) {
-			throw MakeException(L"Failed to load nvcuda.dll. Please check if NVIDIA graphic driver is installed.");
-		}
 		try {
-			mConverter = std::make_shared<CudaConverter>(mD3DRender->GetDevice(), mRenderWidth, mRenderHeight);
-		}
-		catch (Exception e) {
-			throw MakeException(L"Exception:%s", e.what());
-		}
-
-		try {
-			mEncoder = std::make_shared<NvEncoderCuda>(mConverter->GetContext(), mRenderWidth, mRenderHeight, format, 0);
+			mEncoder = std::make_shared<NvTextureEncoderCuda>(mD3DRender->GetDevice(), mRenderWidth, mRenderHeight, format, 0);
 		}
 		catch (NVENCException e) {
 			throw MakeException(L"NvEnc NvEncoderCuda failed. Code=%d %hs", e.getErrorCode(), e.what());
@@ -55,7 +45,7 @@ void VideoEncoderNVENC::Initialize()
 	}
 	else {
 		try {
-			mEncoder = std::make_shared<NvEncoderD3D11>(mD3DRender->GetDevice(), mRenderWidth, mRenderHeight, format, 0);
+			mEncoder = std::make_shared<NvTextureEncoderD3D11>(mD3DRender->GetDevice(), mRenderWidth, mRenderHeight, format, 0);
 		}
 		catch (NVENCException e) {
 			throw MakeException(L"NvEnc NvEncoderD3D11 failed. Code=%d %hs", e.getErrorCode(), e.what());
@@ -211,29 +201,12 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 {
 	std::vector<std::vector<uint8_t>> vPacket;
 
-	const NvEncInputFrame* encoderInputFrame = mEncoder->GetNextInputFrame();
-
-	if (mUseNV12)
-	{
-		try {
-			mConverter->Convert(pTexture, encoderInputFrame);
-		}
-		catch (NVENCException e) {
-			FatalLog(L"Exception:%hs", e.what());
-			return;
-		}
-	}
-	else {
-		ID3D11Texture2D *pInputTexture = reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr);
-		mD3DRender->GetContext()->CopyResource(pInputTexture, pTexture);
-	}
-
 	NV_ENC_PIC_PARAMS picParams = {};
 	if (insertIDR) {
 		Log(L"Inserting IDR frame.");
 		picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
 	}
-	mEncoder->EncodeFrame(vPacket, &picParams);
+	mEncoder->EncodeFrame(vPacket, &picParams, mD3DRender->GetContext(), pTexture);
 
 	Log(L"Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - mListener->clientToServerTime(clientTime), frameIndex);
 	Log(L"Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
@@ -255,7 +228,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 
 	if (Settings::Instance().mDebugFrameOutput) {
 		if (!mUseNV12) {
-			SaveDebugOutput(mD3DRender, vPacket, reinterpret_cast<ID3D11Texture2D*>(encoderInputFrame->inputPtr), frameIndex2);
+			SaveDebugOutput(mD3DRender, vPacket, pTexture, frameIndex2);
 		}
 	}
 }

@@ -8,9 +8,8 @@
 #include <cuda_runtime_api.h>
 #include <cuda_d3d11_interop.h>
 
-#include <RGBToNV12.h>
-
-#include "Logger.h"
+#include "RGBToNV12.h"
+#include "..\alvr_server\Logger.h"
 
 using Microsoft::WRL::ComPtr;
 

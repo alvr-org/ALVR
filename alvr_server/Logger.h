@@ -2,7 +2,7 @@
 
 #include <iostream>
 #include <fstream>
-#include "exception.h"
+#include <exception.h>
 
 void InitCrashHandler();
 

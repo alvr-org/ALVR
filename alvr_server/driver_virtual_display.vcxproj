@@ -51,13 +51,13 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\;..\libswresample\include;$(SolutionDir)ALVR-common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;..\libswresample\include;$(SolutionDir)ALVR-common</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WINDLL;NOMINMAX;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>nvcuda.dll</DelayLoadDLLs>
     </Link>
     <CustomBuildStep>
@@ -75,7 +75,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;$(CUDA_PATH)/include;$(SolutionDir)CUDA\;..\libswresample\include;$(SolutionDir)ALVR-common</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../shared;../openvr/headers;include;$(SolutionDir)include;..\libswresample\include;$(SolutionDir)ALVR-common</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WINDLL;NOMINMAX;_WINSOCKAPI_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
@@ -83,7 +83,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>nvcuda.dll</DelayLoadDLLs>
     </Link>
     <CustomBuildStep>
@@ -112,9 +112,9 @@
     <ClCompile Include="IDRScheduler.cpp" />
     <ClCompile Include="Listener.cpp" />
     <ClCompile Include="Logger.cpp" />
-    <ClCompile Include="NvEncoder.cpp" />
-    <ClCompile Include="NvEncoderCuda.cpp" />
-    <ClCompile Include="NvEncoderD3D11.cpp" />
+    <ClCompile Include="nvenc\NvEncoder.cpp" />
+    <ClCompile Include="nvenc\NvEncoderD3D11.cpp" />
+    <ClCompile Include="nvenc\NvTextureEncoderD3D11.cpp" />
     <ClCompile Include="Poller.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="ThrottlingBuffer.cpp" />
@@ -174,25 +174,24 @@
     <ClInclude Include="Bitrate.h" />
     <ClInclude Include="common-utils.h" />
     <ClInclude Include="ControlSocket.h" />
-    <ClInclude Include="CudaConverter.h" />
     <ClInclude Include="DeviceQuery.h" />
     <ClInclude Include="FrameRender.h" />
     <ClInclude Include="FreePIE.h" />
     <ClInclude Include="IDRScheduler.h" />
+    <ClInclude Include="nvenc\INvTextureEncoder.h" />
     <ClInclude Include="Listener.h" />
     <ClInclude Include="Logger.h" />
-    <ClInclude Include="NvCodecUtils.h" />
-    <ClInclude Include="nvEncodeAPI.h" />
-    <ClInclude Include="NvEncoder.h" />
-    <ClInclude Include="nvencoderclioptions.h" />
-    <ClInclude Include="NvEncoderCuda.h" />
-    <ClInclude Include="NvEncoderD3D11.h" />
+    <ClInclude Include="nvenc\NvCodecUtils.h" />
+    <ClInclude Include="nvenc\nvEncodeAPI.h" />
+    <ClInclude Include="nvenc\NvEncoder.h" />
+    <ClInclude Include="nvenc\nvencoderclioptions.h" />
+    <ClInclude Include="nvenc\NvEncoderD3D11.h" />
+    <ClInclude Include="nvenc\NvTextureEncoderD3D11.h" />
     <ClInclude Include="Poller.h" />
     <ClInclude Include="RecenterManager.h" />
     <ClInclude Include="RemoteController.h" />
     <ClInclude Include="ResampleUtils.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="RGBToNV12ConverterD3D11.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="Statistics.h" />
     <ClInclude Include="ThrottlingBuffer.h" />

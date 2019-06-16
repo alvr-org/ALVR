@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <mutex>
 #include <cuda.h>
-#include "NvEncoder.h"
+#include "..\alvr_server\nvenc\NvEncoder.h"
 
 
 /**

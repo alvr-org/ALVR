@@ -4,9 +4,8 @@
 #include "d3drender.h"
 #include "Listener.h"
 #include "VideoEncoder.h"
-#include "NvEncoderD3D11.h"
-#include "NvEncoderCuda.h"
-#include "CudaConverter.h"
+#include "nvenc\NvTextureEncoderD3D11.h"
+#include "..\CUDA\NvTextureEncoderCuda.h"
 #include "ipctools.h"
 
 // Video encoder for NVIDIA NvEnc.
@@ -24,7 +23,7 @@ public:
 	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR);
 private:
 	std::ofstream mOutput;
-	std::shared_ptr<NvEncoder> mEncoder;
+	std::shared_ptr<INvTextureEncoder> mEncoder;
 
 	std::shared_ptr<CD3DRender> mD3DRender;
 	int mFrame;
@@ -32,7 +31,6 @@ private:
 	std::shared_ptr<Listener> mListener;
 
 	const bool mUseNV12;
-	std::shared_ptr<CudaConverter> mConverter;
 
 	int mCodec;
 	int mRefreshRate;

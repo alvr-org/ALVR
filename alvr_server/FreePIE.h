@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ipctools.h"
+#include "openvr-utils\ipctools.h"
 #include "resource.h"
 #include "packet_types.h"
 #include "Utils.h"

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include "d3drender.h"
+#include "openvr-utils\d3drender.h"
 #include "Listener.h"
 
 class VideoEncoder

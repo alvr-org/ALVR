@@ -1,5 +1,6 @@
 //===================== Copyright (c) Valve Corporation. All Rights Reserved. ======================
 #include "d3drender.h"
+#include <algorithm>
 #include <D3d11_4.h>
 #include <Evntprov.h>
 
@@ -440,7 +441,7 @@ void CD3DRender::CopyTextureData( BYTE *pDst, uint32_t nDstRowPitch,
 	}
 	else
 	{
-		uint32_t nMinRowPitch = min( nDstRowPitch, nSrcRowPitch );
+		uint32_t nMinRowPitch = std::min( nDstRowPitch, nSrcRowPitch );
 		for ( uint32_t i = 0; i < nHeight; i++ )
 		{
 			memcpy( pDst, pSrc, nMinRowPitch );

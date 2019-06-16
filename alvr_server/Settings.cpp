@@ -1,6 +1,6 @@
 #include "Settings.h"
 #include "Logger.h"
-#include "ipctools.h"
+#include "openvr-utils\ipctools.h"
 #include "resource.h"
 #define PICOJSON_USE_INT64
 #include <picojson.h>

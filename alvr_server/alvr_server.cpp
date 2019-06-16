@@ -5,10 +5,10 @@
 //==================================================================================================
 
 #include "openvr_driver.h"
-#include "sharedstate.h"
-#include "threadtools.h"
-#include "systemtime.h"
-#include "d3drender.h"
+#include "openvr-utils\sharedstate.h"
+#include "openvr-utils\threadtools.h"
+#include "openvr-utils\systemtime.h"
+#include "openvr-utils\d3drender.h"
 
 #include <d3d11.h>
 #include <wrl.h>

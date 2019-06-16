@@ -7,7 +7,7 @@
 #include <avrt.h>
 #include <functiondiscoverykeys_devpkey.h>
 #include <wrl.h>
-#include <ipctools.h>
+#include "openvr-utils\ipctools.h"
 
 #include "Logger.h"
 #include "Settings.h"

@@ -12,7 +12,7 @@
 #include <SpriteFont.h>
 #include <SimpleMath.h>
 
-#include "d3drender.h"
+#include "openvr-utils\d3drender.h"
 #include "openvr_driver.h"
 
 using Microsoft::WRL::ComPtr;

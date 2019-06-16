@@ -6,7 +6,7 @@
 #include <list>
 #include "Logger.h"
 #include "Utils.h"
-#include "ipctools.h"
+#include "openvr-utils\ipctools.h"
 #include "exception.h"
 #include "common-utils.h"
 

@@ -1,12 +1,12 @@
 #pragma once
 
 #include <memory>
-#include "d3drender.h"
+#include "openvr-utils\d3drender.h"
+#include "openvr-utils\ipctools.h"
 #include "Listener.h"
 #include "VideoEncoder.h"
 #include "nvenc\NvTextureEncoderD3D11.h"
 #include "..\CUDA\NvTextureEncoderCuda.h"
-#include "ipctools.h"
 
 // Video encoder for NVIDIA NvEnc.
 class VideoEncoderNVENC : public VideoEncoder

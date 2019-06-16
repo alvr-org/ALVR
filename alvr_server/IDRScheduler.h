@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "ipctools.h"
+#include "openvr-utils\ipctools.h"
 
 class IDRScheduler
 {

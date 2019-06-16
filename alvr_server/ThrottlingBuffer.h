@@ -5,7 +5,7 @@
 #include <functional>
 
 #include "Bitrate.h"
-#include "ipctools.h"
+#include "openvr-utils\ipctools.h"
 
 struct SendBuffer {
 	std::shared_ptr<char> buf;

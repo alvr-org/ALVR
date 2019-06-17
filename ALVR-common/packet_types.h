@@ -22,7 +22,7 @@ enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_VIDEO_FRAME = 9,
 	ALVR_PACKET_TYPE_AUDIO_FRAME_START = 10,
 	ALVR_PACKET_TYPE_AUDIO_FRAME = 11,
-	ALVR_PACKET_TYPE_PACKET_ERROR_REPORT = 12,
+	ALVR_PACKET_TYPE_FRAME_FAILED_REPORT = 12,
 	ALVR_PACKET_TYPE_HAPTICS = 13,
 };
 
@@ -197,11 +197,11 @@ struct TrackingInfo {
 	static const uint32_t MAX_CONTROLLERS = 2;
 
 	struct Controller {
-		static const uint32_t FLAG_CONTROLLER_ENABLE         = (1 << 0);
-		static const uint32_t FLAG_CONTROLLER_LEFTHAND       = (1 << 1); // 0: Left hand, 1: Right hand
-		static const uint32_t FLAG_CONTROLLER_GEARVR         = (1 << 2);
-		static const uint32_t FLAG_CONTROLLER_OCULUS_GO      = (1 << 3);
-		static const uint32_t FLAG_CONTROLLER_OCULUS_QUEST   = (1 << 4);
+		static const uint32_t FLAG_CONTROLLER_ENABLE = (1 << 0);
+		static const uint32_t FLAG_CONTROLLER_LEFTHAND = (1 << 1); // 0: Left hand, 1: Right hand
+		static const uint32_t FLAG_CONTROLLER_GEARVR = (1 << 2);
+		static const uint32_t FLAG_CONTROLLER_OCULUS_GO = (1 << 3);
+		static const uint32_t FLAG_CONTROLLER_OCULUS_QUEST = (1 << 4);
 		uint32_t flags;
 
 		uint64_t buttons;
@@ -252,7 +252,6 @@ struct TimeSync {
 	uint32_t maxDecodeLatency;
 	uint32_t minDecodeLatency;
 
-	uint32_t fecFailure;
 	uint64_t fecFailureInSecond;
 	uint64_t fecFailureTotal;
 
@@ -289,12 +288,12 @@ struct AudioFrame {
 	uint32_t packetCounter;
 	// char frameBuffer[];
 };
-// Report packet loss/error from client to server.
-struct PacketErrorReport {
-	uint32_t type; // ALVR_PACKET_TYPE_PACKET_ERROR_REPORT
+// Report frame failed (fec failed) from client to server.
+struct FrameFailedReport {
+	uint32_t type; // ALVR_PACKET_TYPE_FRAME_FAILED_REPORT
 	uint32_t lostFrameType;
-	uint32_t fromPacketCounter;
-	uint32_t toPacketCounter;
+	uint64_t startOfFailedFrame;
+	uint64_t endOfFailedFrame;
 };
 // Send haptics feedback from server to client.
 struct HapticsFeedback {

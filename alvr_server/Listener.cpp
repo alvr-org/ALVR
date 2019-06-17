@@ -43,8 +43,8 @@ void Listener::SetNewClientCallback(std::function<void()> callback) {
 void Listener::SetStreamStartCallback(std::function<void()> callback) {
 	mStreamStartCallback = callback;
 }
-void Listener::SetPacketLossCallback(std::function<void()> callback) {
-	mPacketLossCallback = callback;
+void Listener::SetFrameFailedCallback(std::function<void(uint64_t, uint64_t)> callback) {
+	mFrameFailedCallback = callback;
 }
 void Listener::SetShutdownCallback(std::function<void()> callback) {
 	mShutdownCallback = callback;
@@ -384,10 +384,6 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			sendBuf.mode = 1;
 			sendBuf.serverTime = Current;
 			mSocket->Send((char *)&sendBuf, sizeof(sendBuf));
-
-			if (timeSync->fecFailure) {
-				OnFecFailure();
-			}
 		}
 		else if (timeSync->mode == 2) {
 			// Calclate RTT
@@ -415,16 +411,17 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			mStreaming = false;
 		}
 	}
-	else if (type == ALVR_PACKET_TYPE_PACKET_ERROR_REPORT && len >= sizeof(PacketErrorReport)) {
+	else if (type == ALVR_PACKET_TYPE_FRAME_FAILED_REPORT && len >= sizeof(FrameFailedReport)) {
 		if (!mConnected || !mSocket->IsLegitClient(addr)) {
 			Log(L"Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;
 		}
-		auto *packetErrorReport = (PacketErrorReport *)buf;
-		Log(L"Packet loss was reported. Type=%d %lu - %lu", packetErrorReport->lostFrameType, packetErrorReport->fromPacketCounter, packetErrorReport->toPacketCounter);
-		if (packetErrorReport->lostFrameType == ALVR_LOST_FRAME_TYPE_VIDEO) {
+		auto *frameFailedReport = (FrameFailedReport *)buf;
+		Log(L"Packet loss was reported. Type=%d %llu - %llu", frameFailedReport->lostFrameType, frameFailedReport->startOfFailedFrame, frameFailedReport->endOfFailedFrame);
+		if (frameFailedReport->lostFrameType == ALVR_LOST_FRAME_TYPE_VIDEO &&
+			frameFailedReport->startOfFailedFrame != 0 && frameFailedReport->endOfFailedFrame != 0) {
 			// Recover video frame.
-			OnFecFailure();
+			OnFecFailure(frameFailedReport->startOfFailedFrame, frameFailedReport->endOfFailedFrame);
 		}
 	}
 }
@@ -718,15 +715,15 @@ void Listener::Disconnect() {
 	mSocket->InvalidateClient();
 }
 
-void Listener::OnFecFailure() {
-	Log(L"Listener::OnFecFailure().");
+void Listener::OnFecFailure(uint64_t startOfFailedFrame, uint64_t endOfFailedFrame) {
+	Log(L"Listener::OnFecFailure(). %llu - %llu", startOfFailedFrame, endOfFailedFrame);
 	if (GetTimestampUs() - mLastFecFailure < CONTINUOUS_FEC_FAILURE) {
 		if (mFecPercentage < MAX_FEC_PERCENTAGE) {
 			mFecPercentage += 5;
 		}
 	}
 	mLastFecFailure = GetTimestampUs();
-	mPacketLossCallback();
+	mFrameFailedCallback(startOfFailedFrame, endOfFailedFrame);
 }
 
 std::shared_ptr<Statistics> Listener::GetStatistics() {

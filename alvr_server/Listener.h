@@ -28,7 +28,7 @@ public:
 	void SetPoseUpdatedCallback(std::function<void()> callback);
 	void SetNewClientCallback(std::function<void()> callback);
 	void SetStreamStartCallback(std::function<void()> callback);
-	void SetPacketLossCallback(std::function<void()> callback);
+	void SetFrameFailedCallback(std::function<void(uint64_t, uint64_t)> callback);
 	void SetShutdownCallback(std::function<void()> callback);
 
 	bool Startup();
@@ -54,7 +54,7 @@ public:
 	void FindClientName(const sockaddr_in *addr);
 	void Connect(const sockaddr_in *addr);
 	void Disconnect();
-	void OnFecFailure();
+	void OnFecFailure(uint64_t startOfFailedFrame, uint64_t endOfFailedFrame);
 	std::shared_ptr<Statistics> GetStatistics();
 	bool IsStreaming();
 private:
@@ -79,7 +79,7 @@ private:
 	std::function<void()> mPoseUpdatedCallback;
 	std::function<void()> mNewClientCallback;
 	std::function<void()> mStreamStartCallback;
-	std::function<void()> mPacketLossCallback;
+	std::function<void(uint64_t, uint64_t)> mFrameFailedCallback;
 	std::function<void()> mShutdownCallback;
 	TrackingInfo mTrackingInfo;
 

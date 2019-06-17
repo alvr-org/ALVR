@@ -156,8 +156,16 @@ namespace
 			mScheduler.OnStreamStart();
 		}
 
-		void OnPacketLoss() {
-			mScheduler.OnPacketLoss();
+		void OnFrameFailed(uint64_t startOfFailedFrame, uint64_t endOfFailedFrame) {
+			if (mVideoEncoder->SupportsReferenceFrameInvalidation()) {
+				for (uint64_t videoFrameIndex = startOfFailedFrame;
+					videoFrameIndex <= endOfFailedFrame; videoFrameIndex++) {
+					mVideoEncoder->InvalidateReferenceFrame(videoFrameIndex);
+				}
+			}
+			else {
+				mScheduler.OnPacketLoss();
+			}
 		}
 
 		void Reconfigure(int refreshRate, int renderWidth, int renderHeight, Bitrate bitrate) {
@@ -739,7 +747,9 @@ public:
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
 		std::function<void()> newClientCallback = [&]() { OnNewClient(); };
 		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
-		std::function<void()> packetLossCallback = [&]() { OnPacketLoss(); };
+		std::function<void(uint64_t, uint64_t)> frameFailedCallback = [&](uint64_t startOfFailedFrame, uint64_t endOfFailedFrame) {
+			OnFrameFailed(startOfFailedFrame, endOfFailedFrame);
+		};
 		std::function<void()> shutdownCallback = [&]() { OnShutdown(); };
 
 		m_Listener->SetLauncherCallback(launcherCallback);
@@ -747,7 +757,7 @@ public:
 		m_Listener->SetPoseUpdatedCallback(poseCallback);
 		m_Listener->SetNewClientCallback(newClientCallback);
 		m_Listener->SetStreamStartCallback(streamStartCallback);
-		m_Listener->SetPacketLossCallback(packetLossCallback);
+		m_Listener->SetFrameFailedCallback(frameFailedCallback);
 		m_Listener->SetShutdownCallback(shutdownCallback);
 
 		Log(L"CRemoteHmd successfully initialized.");
@@ -1134,12 +1144,12 @@ public:
 		m_encoder->OnStreamStart();
 	}
 
-	void OnPacketLoss() {
+	void OnFrameFailed(uint64_t startOfFailedFrame, uint64_t endOfFailedFrame) {
 		if (!m_added || !mActivated) {
 			return;
 		}
-		Log(L"OnPacketLoss()");
-		m_encoder->OnPacketLoss();
+		Log(L"OnFrameFailed()");
+		m_encoder->OnFrameFailed(startOfFailedFrame, endOfFailedFrame);
 	}
 
 	void OnShutdown() {

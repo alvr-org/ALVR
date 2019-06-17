@@ -8,8 +8,7 @@
 #include "Statistics.h"
 #include "Utils.h"
 #include "ThrottlingBuffer.h"
-
-#define CONTROL_NAMED_PIPE "\\\\.\\pipe\\RemoteGlass_Control"
+#include "PacketBuffer.h"
 
 class UdpSocket
 {
@@ -20,7 +19,8 @@ public:
 	virtual bool Startup();
 	virtual bool Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen);
 	void Run();
-	virtual bool Send(char *buf, int len, uint64_t frameIndex = 0);
+	virtual bool SendVideo(VideoFrame *buf, int len, uint64_t videoFrameIndex);
+	virtual bool Send(char *buf, int len);
 	virtual void Shutdown();
 	void SetClientAddr(const sockaddr_in *addr);
 	virtual sockaddr_in GetClientAddr()const;
@@ -40,7 +40,8 @@ private:
 	std::shared_ptr<Poller> mPoller;
 	std::shared_ptr<Statistics> mStatistics;
 
-	ThrottlingBuffer mBuffer;
+	ThrottlingBuffer mVideoBuffer;
+	PacketBuffer mAudioBuffer;
 
 	bool DoSend(char *buf, int len);
 };

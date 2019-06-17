@@ -172,10 +172,13 @@ void Listener::FECSend(uint8_t *buf, int len, uint64_t videoFrameIndex, uint64_t
 	header->frameByteSize = len;
 	header->fecIndex = 0;
 	header->fecPercentage = mFecPercentage;
+
+	// Send data shards.
 	for (int i = 0; i < dataShards; i++) {
 		for (int j = 0; j < shardPackets; j++) {
 			int copyLength = std::min(ALVR_MAX_VIDEO_BUFFER_SIZE, dataRemain);
 			if (copyLength <= 0) {
+				// Skip to send padding packets.
 				break;
 			}
 			memcpy(payload, shards[i] + j * ALVR_MAX_VIDEO_BUFFER_SIZE, copyLength);
@@ -183,11 +186,13 @@ void Listener::FECSend(uint8_t *buf, int len, uint64_t videoFrameIndex, uint64_t
 
 			header->packetCounter = mVideoPacketCounter;
 			mVideoPacketCounter++;
-			mSocket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, trackingFrameIndex);
+			mSocket->SendVideo(header, sizeof(VideoFrame) + copyLength, trackingFrameIndex);
 			header->fecIndex++;
 		}
 	}
+	// Reset fecIndex to skip padding packets.
 	header->fecIndex = dataShards * shardPackets;
+	// Send parity shards.
 	for (int i = 0; i < totalParityShards; i++) {
 		for (int j = 0; j < shardPackets; j++) {
 			int copyLength = ALVR_MAX_VIDEO_BUFFER_SIZE;
@@ -195,10 +200,13 @@ void Listener::FECSend(uint8_t *buf, int len, uint64_t videoFrameIndex, uint64_t
 
 			header->packetCounter = mVideoPacketCounter;
 			mVideoPacketCounter++;
-			mSocket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, trackingFrameIndex);
+			mSocket->SendVideo(header, sizeof(VideoFrame) + copyLength, trackingFrameIndex);
 			header->fecIndex++;
 		}
 	}
+
+	// Wake poller to immediately start sending.
+	mPoller->Wake();
 
 	if (len % blockSize != 0) {
 		delete[] shards[dataShards - 1];
@@ -375,7 +383,7 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			TimeSync sendBuf = *timeSync;
 			sendBuf.mode = 1;
 			sendBuf.serverTime = Current;
-			mSocket->Send((char *)&sendBuf, sizeof(sendBuf), 0);
+			mSocket->Send((char *)&sendBuf, sizeof(sendBuf));
 
 			if (timeSync->fecFailure) {
 				OnFecFailure();
@@ -539,7 +547,7 @@ void Listener::SendChangeSettings() {
 	if (!mSocket->IsClientValid()) {
 		return;
 	}
-	mSocket->Send((char *)&mSettings, sizeof(mSettings), 0);
+	mSocket->Send((char *)&mSettings, sizeof(mSettings));
 }
 
 void Listener::Stop()
@@ -700,7 +708,7 @@ void Listener::Connect(const sockaddr_in *addr) {
 	message.frameQueueSize = Settings::Instance().mFrameQueueSize;
 	message.refreshRate = Settings::Instance().mRefreshRate;
 
-	mSocket->Send((char *)&message, sizeof(message), 0);
+	mSocket->Send((char *)&message, sizeof(message));
 }
 
 void Listener::Disconnect() {

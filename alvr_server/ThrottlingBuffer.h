@@ -6,15 +6,7 @@
 
 #include "Bitrate.h"
 #include "openvr-utils\ipctools.h"
-
-struct SendBuffer {
-	std::shared_ptr<char> buf;
-	int len;
-	uint64_t frameIndex;
-
-	SendBuffer() : buf(NULL, [](char *p) { delete[] p; }) {
-	}
-};
+#include <packet_types.h>
 
 class ThrottlingBuffer
 {
@@ -22,11 +14,20 @@ public:
 	ThrottlingBuffer(const Bitrate &bitrate);
 	~ThrottlingBuffer();
 
-	void Push(char *buf, int len, uint64_t frameIndex);
+	void Push(VideoFrame *buf, int len, uint64_t frameIndex);
 	bool Send(std::function<bool(char *, int)> sendFunc);
 
 	bool IsEmpty();
 private:
+	struct SendBuffer {
+		std::shared_ptr<char> buf;
+		int len;
+		uint64_t frameIndex;
+
+		SendBuffer() : buf(NULL, [](char *p) { delete[] p; }) {
+		}
+	};
+
 	Bitrate mBitrate;
 	uint64_t mBuffered = 0;
 	std::list<SendBuffer> mQueue;

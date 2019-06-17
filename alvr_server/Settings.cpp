@@ -89,8 +89,8 @@ void Settings::Load()
 		else {
 			// Audio stream: 48kHz * 16bits * 2ch
 			Bitrate audioBitrate = Bitrate::fromMiBits(2);
-			// +100% for mergin
-			mThrottlingBitrate = Bitrate::fromBits(mEncodeBitrate.toBits() * 2 + audioBitrate.toBits());
+			// +20% for mergin
+			mThrottlingBitrate = Bitrate::fromBits(mEncodeBitrate.toBits() * 12 / 10 + audioBitrate.toBits());
 		}
 
 		mDebugOutputDir = v.get(k_pch_Settings_DebugOutputDir).get<std::string>();

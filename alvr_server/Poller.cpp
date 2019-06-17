@@ -16,12 +16,7 @@ Poller::~Poller() {
 int Poller::Do() {
 	timeval timeout;
 	timeout.tv_sec = 0;
-	timeout.tv_usec = CalculateNextWake();
-	if (timeout.tv_usec == 0) {
-		Log(L"Poller::Do(). Wake.");
-		ClearNextWake();
-		return 0;
-	}
+	timeout.tv_usec = mSmallSleep ? SMALL_WAIT_TIME_US : DEFAULT_WAIT_TIME_US;
 	Log(L"Poller::Do(). Select %ld us", timeout.tv_usec);
 	memcpy(&mReadFDs, &mOrgReadFDs, sizeof(fd_set));
 	memcpy(&mWriteFDs, &mOrgWriteFDs, sizeof(fd_set));
@@ -62,11 +57,14 @@ void Poller::RemoveSocket(SOCKET s, PollerSocketType type) {
 	}
 }
 
-void Poller::WakeLater(uint64_t elapsedMs)
+void Poller::SleepAndWake()
 {
-	mNextWake = 900LLU + GetTimestampUs();
+	mSmallSleep = true;
+}
 
-	//sendto(mQueueSocket, "1", 1, 0, (sockaddr *)&mQueueAddr, sizeof(mQueueAddr));
+void Poller::Wake()
+{
+	sendto(mQueueSocket, "1", 1, 0, (sockaddr *)&mQueueAddr, sizeof(mQueueAddr));
 }
 
 bool Poller::BindQueueSocket()
@@ -121,24 +119,4 @@ void Poller::ReadQueueSocket()
 			break;
 		}
 	}
-}
-
-int Poller::CalculateNextWake()
-{
-	if (mNextWake == 0) {
-		return DEFAULT_WAIT_TIME_US;
-	}
-	uint64_t current = GetTimestampUs();
-	if (mNextWake < current) {
-		return 0;
-	}
-	if (mNextWake - current > DEFAULT_WAIT_TIME_US) {
-		return DEFAULT_WAIT_TIME_US;
-	}
-	return mNextWake - current;
-}
-
-void Poller::ClearNextWake()
-{
-	mNextWake = 0;
 }

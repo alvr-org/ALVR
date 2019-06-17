@@ -9,7 +9,7 @@ UdpSocket::UdpSocket(std::string host, int port, std::shared_ptr<Poller> poller,
 	, mSocket(INVALID_SOCKET)
 	, mPoller(poller)
 	, mStatistics(statistics)
-	, mBuffer(bitrate)
+	, mVideoBuffer(bitrate)
 	
 {
 	mClientAddr.sin_family = 0;
@@ -73,19 +73,36 @@ bool UdpSocket::Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen) {
 
 void UdpSocket::Run()
 {
-	Log(L"Try to send.");
-	while (mBuffer.Send([this](char *buf, int len) {return DoSend(buf, len); })) {}
+	Log(L"UdpSocket::Run(). Try to send.");
+	while (mAudioBuffer.Send([this](char *buf, int len) {return DoSend(buf, len); })) {}
+	// To send audio packet faster, we send video packet only when audio buffer is empty. 
+	if (mAudioBuffer.IsEmpty()) {
+		while (mVideoBuffer.Send([this](char *buf, int len) {return DoSend(buf, len); })) {}
+	}
 
-	if (!mBuffer.IsEmpty()) {
-		mPoller->WakeLater(1);
+	if (!mAudioBuffer.IsEmpty() || !mVideoBuffer.IsEmpty()) {
+		// Request to re-call Run() after short sleep.
+		mPoller->SleepAndWake();
 	}
 }
 
-bool UdpSocket::Send(char *buf, int len, uint64_t frameIndex) {
+bool UdpSocket::SendVideo(VideoFrame *buf, int len, uint64_t frameIndex)
+{
 	if (!IsClientValid()) {
 		return false;
 	}
-	mBuffer.Push(buf, len, frameIndex);
+	mVideoBuffer.Push(buf, len, frameIndex);
+
+	return true;
+}
+
+bool UdpSocket::Send(char *buf, int len) {
+	if (!IsClientValid()) {
+		return false;
+	}
+	mAudioBuffer.Push(buf, len);
+	// Wake poller to immediately send packet.
+	mPoller->Wake();
 
 	return true;
 }

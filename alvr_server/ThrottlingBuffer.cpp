@@ -5,7 +5,7 @@
 ThrottlingBuffer::ThrottlingBuffer(const Bitrate &bitrate) : mBitrate(bitrate)
 {
 	// mWindow bytes can be sent at a time.
-	mWindow = mBitrate.toBytes() / (1000 * 1000 / BURST_US);
+	mWindow = mBitrate.toBytes() * BURST_US / (1000 * 1000);
 	if (mWindow < 2000) {
 		// Ensure single packet can be sent
 		mWindow = 2000;
@@ -17,7 +17,7 @@ ThrottlingBuffer::~ThrottlingBuffer()
 {
 }
 
-void ThrottlingBuffer::Push(char *buf, int len, uint64_t frameIndex)
+void ThrottlingBuffer::Push(VideoFrame *buf, int len, uint64_t frameIndex)
 {
 	IPCCriticalSectionLock lock(mCS);
 	SendBuffer buffer;
@@ -71,8 +71,8 @@ bool ThrottlingBuffer::CanSend(uint64_t current)
 	mLastSent = current;
 
 	Log(L"ThrottlingBuffer::CanSend(). %03llu.%03llu Check %llu <= %llu: %d Buffered=%llu Fillup=%llu", (current / 1000) % 1000, current % 1000
-		, mByteCount, mWindow, mByteCount <= mWindow, mBuffered, fullup);
-	if (mByteCount <= mWindow) {
+		, mByteCount, mWindow, mByteCount <= static_cast<int64_t>(mWindow), mBuffered, fullup);
+	if (mByteCount <= static_cast<int64_t>(mWindow)) {
 		return true;
 	}
 	return false;

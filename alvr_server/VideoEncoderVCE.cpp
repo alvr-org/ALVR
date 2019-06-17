@@ -239,7 +239,7 @@ void VideoEncoderVCE::Initialize()
 	AMF_THROW_IF(mContext->InitDX11(mD3DRender->GetDevice()));
 
 	mEncoder = std::make_shared<AMFTextureEncoder>(mContext
-		, mCodec, mRenderWidth, mRenderHeight, mRefreshRate, mBitrate.toMiBits()
+		, mCodec, mRenderWidth, mRenderHeight, mRefreshRate, static_cast<int>(mBitrate.toMiBits())
 		, ENCODER_INPUT_FORMAT, std::bind(&VideoEncoderVCE::Receive, this, std::placeholders::_1));
 	mConverter = std::make_shared<AMFTextureConverter>(mContext
 		, mRenderWidth, mRenderHeight

@@ -122,6 +122,7 @@
     <ClCompile Include="openvr-utils\ipctools.cpp" />
     <ClCompile Include="openvr-utils\systemtime.cpp" />
     <ClCompile Include="openvr-utils\threadtools.cpp" />
+    <ClCompile Include="PacketBuffer.cpp" />
     <ClCompile Include="Poller.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="ThrottlingBuffer.cpp" />
@@ -191,6 +192,7 @@
     <ClInclude Include="openvr-utils\sharedstate.h" />
     <ClInclude Include="openvr-utils\systemtime.h" />
     <ClInclude Include="openvr-utils\threadtools.h" />
+    <ClInclude Include="PacketBuffer.h" />
     <ClInclude Include="Poller.h" />
     <ClInclude Include="RecenterManager.h" />
     <ClInclude Include="RemoteController.h" />

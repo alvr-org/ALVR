@@ -430,6 +430,11 @@ void NvEncoder::GetSequenceParams(std::vector<uint8_t> &seqParams)
     seqParams.insert(seqParams.end(), &spsppsData[0], &spsppsData[spsppsSize]);
 }
 
+void NvEncoder::InvalidateRefFrames(uint64_t invalidRefFrameTimeStamp)
+{
+	NVENC_API_CALL(m_nvenc.nvEncInvalidateRefFrames(m_hEncoder, invalidRefFrameTimeStamp));
+}
+
 void NvEncoder::DoEncode(NV_ENC_INPUT_PTR inputBuffer, std::vector<std::vector<uint8_t>> &vPacket, NV_ENC_PIC_PARAMS *pPicParams)
 {
     NV_ENC_PIC_PARAMS picParams = {};

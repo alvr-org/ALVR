@@ -4,6 +4,7 @@
 #include "openvr-utils\d3drender.h"
 #include "openvr-utils\ipctools.h"
 #include "Listener.h"
+#include "Bitrate.h"
 #include "VideoEncoder.h"
 #include "nvenc\NvTextureEncoderD3D11.h"
 #include "..\CUDA\NvTextureEncoderCuda.h"
@@ -16,14 +17,17 @@ public:
 		, std::shared_ptr<Listener> listener, bool useNV12);
 	~VideoEncoderNVENC();
 
+	bool SupportsReferenceFrameInvalidation() { return mSupportsReferenceFrameInvalidation; };
+
 	void Initialize();
-	void Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBit);
+	void Reconfigure(int refreshRate, int renderWidth, int renderHeight, Bitrate bitrate);
 	void Shutdown();
 
-	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR);
+	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t videoFrameIndex, uint64_t trackingFrameIndex, uint64_t clientTime, bool insertIDR);
+	void InvalidateReferenceFrame(uint64_t videoFrameIndex);
 private:
 	std::ofstream mOutput;
-	std::shared_ptr<INvTextureEncoder> mEncoder;
+	std::shared_ptr<NvTextureEncoder> mEncoder;
 
 	std::shared_ptr<CD3DRender> mD3DRender;
 	int mFrame;
@@ -36,5 +40,8 @@ private:
 	int mRefreshRate;
 	int mRenderWidth;
 	int mRenderHeight;
-	int mBitrateInMBits;
+	Bitrate mBitrate;
+	bool mSupportsReferenceFrameInvalidation = false;
+
+	void FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, Bitrate bitrate);
 };

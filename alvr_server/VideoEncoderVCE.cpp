@@ -4,7 +4,8 @@
 if(res != AMF_OK){throw MakeException(L"AMF Error %d. %s", res, L#expr);}}
 
 const wchar_t *VideoEncoderVCE::START_TIME_PROPERTY = L"StartTimeProperty";
-const wchar_t *VideoEncoderVCE::FRAME_INDEX_PROPERTY = L"FrameIndexProperty";
+const wchar_t *VideoEncoderVCE::VIDEO_FRAME_INDEX_PROPERTY = L"VideoFrameIndexProperty";
+const wchar_t *VideoEncoderVCE::TRACKING_FRAME_INDEX_PROPERTY = L"TrackingFrameIndexProperty";
 
 //
 // AMFTextureEncoder
@@ -220,7 +221,7 @@ VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, mRefreshRate(Settings::Instance().mRefreshRate)
 	, mRenderWidth(Settings::Instance().mRenderWidth)
 	, mRenderHeight(Settings::Instance().mRenderHeight)
-	, mBitrateInMBits(Settings::Instance().mEncodeBitrate.toMiBits())
+	, mBitrate(Settings::Instance().mEncodeBitrate)
 {
 }
 
@@ -238,7 +239,7 @@ void VideoEncoderVCE::Initialize()
 	AMF_THROW_IF(mContext->InitDX11(mD3DRender->GetDevice()));
 
 	mEncoder = std::make_shared<AMFTextureEncoder>(mContext
-		, mCodec, mRenderWidth, mRenderHeight, mRefreshRate, mBitrateInMBits
+		, mCodec, mRenderWidth, mRenderHeight, mRefreshRate, mBitrate.toMiBits()
 		, ENCODER_INPUT_FORMAT, std::bind(&VideoEncoderVCE::Receive, this, std::placeholders::_1));
 	mConverter = std::make_shared<AMFTextureConverter>(mContext
 		, mRenderWidth, mRenderHeight
@@ -263,16 +264,16 @@ void VideoEncoderVCE::Initialize()
 	Log(L"Successfully initialized VideoEncoderVCE.");
 }
 
-void VideoEncoderVCE::Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits)
+void VideoEncoderVCE::Reconfigure(int refreshRate, int renderWidth, int renderHeight, Bitrate bitrate)
 {
 	if ((refreshRate != 0 && refreshRate != mRefreshRate) ||
 		(renderWidth != 0 && renderWidth != mRenderWidth) ||
 		(renderHeight != 0 && renderHeight != mRenderHeight) ||
-		(bitrateInMBits != 0 && bitrateInMBits != mBitrateInMBits)) {
+		(bitrate.toBits() != 0 && bitrate.toBits() != mBitrate.toBits())) {
 
 		Log(L"VideoEncoderVCE: Start to reconfigure. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)"
-			, mRefreshRate, mRenderWidth, mRenderHeight, mBitrateInMBits
-			, refreshRate, renderWidth, renderHeight, bitrateInMBits
+			, mRefreshRate, mRenderWidth, mRenderHeight, mBitrate.toMiBits()
+			, refreshRate, renderWidth, renderHeight, bitrate.toMiBits()
 		);
 
 		try {
@@ -287,8 +288,8 @@ void VideoEncoderVCE::Reconfigure(int refreshRate, int renderWidth, int renderHe
 			if (renderHeight != 0) {
 				mRenderHeight = renderHeight;
 			}
-			if (bitrateInMBits != 0) {
-				mBitrateInMBits = bitrateInMBits;
+			if (bitrate.toBits() != 0) {
+				mBitrate = bitrate;
 			}
 
 			Initialize();
@@ -317,7 +318,7 @@ void VideoEncoderVCE::Shutdown()
 	Log(L"Successfully shutdown VideoEncoderVCE.");
 }
 
-void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR)
+void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t videoFrameIndex, uint64_t trackingFrameIndex, uint64_t clientTime, bool insertIDR)
 {
 	amf::AMFSurfacePtr surface;
 	// Surface is cached by AMF.
@@ -327,11 +328,12 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 
 	amf_pts start_time = amf_high_precision_clock();
 	surface->SetProperty(START_TIME_PROPERTY, start_time);
-	surface->SetProperty(FRAME_INDEX_PROPERTY, frameIndex);
+	surface->SetProperty(VIDEO_FRAME_INDEX_PROPERTY, videoFrameIndex);
+	surface->SetProperty(TRACKING_FRAME_INDEX_PROPERTY, trackingFrameIndex);
 
 	ApplyFrameProperties(surface, insertIDR);
 
-	Log(L"Submit surface. frameIndex=%llu", frameIndex);
+	Log(L"Submit surface. frameIndex=%llu", trackingFrameIndex);
 	mConverter->Submit(surface);
 }
 
@@ -339,14 +341,15 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 {
 	amf_pts current_time = amf_high_precision_clock();
 	amf_pts start_time = 0;
-	uint64_t frameIndex;
+	uint64_t videoFrameIndex, trackingFrameIndex;
 	data->GetProperty(START_TIME_PROPERTY, &start_time);
-	data->GetProperty(FRAME_INDEX_PROPERTY, &frameIndex);
+	data->GetProperty(VIDEO_FRAME_INDEX_PROPERTY, &videoFrameIndex);
+	data->GetProperty(TRACKING_FRAME_INDEX_PROPERTY, &trackingFrameIndex);
 
 	amf::AMFBufferPtr buffer(data); // query for buffer interface
 
-	Log(L"VCE encode latency: %.4f ms. Size=%d bytes frameIndex=%llu", double(current_time - start_time) / (double)MILLISEC_TIME, (int)buffer->GetSize()
-		, frameIndex);
+	Log(L"VCE encode latency: %.4f ms. Size=%d bytes trackingFrameIndex=%llu", double(current_time - start_time) / (double)MILLISEC_TIME, (int)buffer->GetSize()
+		, trackingFrameIndex);
 
 	if (mListener) {
 		mListener->GetStatistics()->EncodeOutput((current_time - start_time) / MICROSEC_TIME);
@@ -361,7 +364,7 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 		mOutput.write(p, length);
 	}
 	if (mListener) {
-		mListener->SendVideo(reinterpret_cast<uint8_t *>(p), length, frameIndex);
+		mListener->SendVideo(reinterpret_cast<uint8_t *>(p), length, videoFrameIndex, trackingFrameIndex);
 	}
 }
 

@@ -117,6 +117,7 @@
     <ClCompile Include="nvenc\NvEncoder.cpp" />
     <ClCompile Include="nvenc\NvEncoderD3D11.cpp" />
     <ClCompile Include="nvenc\NvTextureEncoderD3D11.cpp" />
+    <ClCompile Include="nvenc\NvTextureEncoder.cpp" />
     <ClCompile Include="openvr-utils\d3drender.cpp" />
     <ClCompile Include="openvr-utils\ipctools.cpp" />
     <ClCompile Include="openvr-utils\systemtime.cpp" />
@@ -176,7 +177,7 @@
     <ClInclude Include="FrameRender.h" />
     <ClInclude Include="FreePIE.h" />
     <ClInclude Include="IDRScheduler.h" />
-    <ClInclude Include="nvenc\INvTextureEncoder.h" />
+    <ClInclude Include="nvenc\NvTextureEncoder.h" />
     <ClInclude Include="Listener.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="nvenc\NvCodecUtils.h" />

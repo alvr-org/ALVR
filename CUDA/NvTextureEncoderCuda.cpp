@@ -13,14 +13,14 @@ NvTextureEncoderCuda::NvTextureEncoderCuda(ID3D11Device* D3D11Device, uint32_t w
 		throw MakeException(L"Failed to load nvcuda.dll. Please check if NVIDIA graphic driver is installed.");
 	}
 	try {
-		mConverter = std::make_shared<CudaConverter>(D3D11Device, width, height);
+		mConverter = new CudaConverter(D3D11Device, width, height);
 	}
 	catch (Exception e) {
 		throw MakeException(L"Exception:%s", e.what());
 	}
 
 	try {
-		mEncoder = std::make_shared<NvEncoderCuda>(mConverter->GetContext(), width, height, format, extraOutputDelay);
+		mEncoder = new NvEncoderCuda(mConverter->GetContext(), width, height, format, extraOutputDelay);
 	}
 	catch (NVENCException e) {
 		throw MakeException(L"NvEnc NvEncoderCuda failed. Code=%d %hs", e.getErrorCode(), e.what());
@@ -30,6 +30,8 @@ NvTextureEncoderCuda::NvTextureEncoderCuda(ID3D11Device* D3D11Device, uint32_t w
 
 NvTextureEncoderCuda::~NvTextureEncoderCuda()
 {
+	delete mConverter;
+	delete mEncoder;
 }
 
 // Delay loading for Cuda driver API to correctly work on non-NVIDIA GPU.
@@ -40,16 +42,6 @@ bool NvTextureEncoderCuda::LoadCudaDLL() {
 	__except (EXCEPTION_EXECUTE_HANDLER) {
 	}
 	return false;
-}
-
-void NvTextureEncoderCuda::CreateDefaultEncoderParams(NV_ENC_INITIALIZE_PARAMS * pIntializeParams, GUID codecGuid, GUID presetGuid)
-{
-	mEncoder->CreateDefaultEncoderParams(pIntializeParams, codecGuid, presetGuid);
-}
-
-void NvTextureEncoderCuda::CreateEncoder(const NV_ENC_INITIALIZE_PARAMS * pEncoderParams)
-{
-	mEncoder->CreateEncoder(pEncoderParams);
 }
 
 void NvTextureEncoderCuda::EncodeFrame(std::vector<std::vector<uint8_t>>& vPacket, NV_ENC_PIC_PARAMS * pPicParams, ID3D11DeviceContext *d3dContext, ID3D11Texture2D *texture)
@@ -63,19 +55,4 @@ void NvTextureEncoderCuda::EncodeFrame(std::vector<std::vector<uint8_t>>& vPacke
 	}
 
 	mEncoder->EncodeFrame(vPacket, pPicParams);
-}
-
-bool NvTextureEncoderCuda::Reconfigure(const NV_ENC_RECONFIGURE_PARAMS * pReconfigureParams)
-{
-	return mEncoder->Reconfigure(pReconfigureParams);
-}
-
-void NvTextureEncoderCuda::EndEncode(std::vector<std::vector<uint8_t>>& vPacket)
-{
-	mEncoder->EndEncode(vPacket);
-}
-
-void NvTextureEncoderCuda::DestroyEncoder()
-{
-	mEncoder->DestroyEncoder();
 }

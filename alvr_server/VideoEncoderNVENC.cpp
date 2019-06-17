@@ -13,7 +13,7 @@ VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	, mRefreshRate(Settings::Instance().mRefreshRate)
 	, mRenderWidth(Settings::Instance().mRenderWidth)
 	, mRenderHeight(Settings::Instance().mRenderHeight)
-	, mBitrateInMBits(Settings::Instance().mEncodeBitrate.toMiBits())
+	, mBitrate(Settings::Instance().mEncodeBitrate)
 {
 	
 }
@@ -54,27 +54,9 @@ void VideoEncoderNVENC::Initialize()
 
 	NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
 	NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
-
 	initializeParams.encodeConfig = &encodeConfig;
-	GUID EncoderGUID = mCodec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
-	mEncoder->CreateDefaultEncoderParams(&initializeParams, EncoderGUID, NV_ENC_PRESET_LOW_LATENCY_HQ_GUID);
 
-	if (mCodec == ALVR_CODEC_H264) {
-		initializeParams.encodeConfig->encodeCodecConfig.h264Config.repeatSPSPPS = 1;
-	}
-	else {
-		initializeParams.encodeConfig->encodeCodecConfig.hevcConfig.repeatSPSPPS = 1;
-	}
-
-	initializeParams.encodeConfig->rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;
-	initializeParams.frameRateNum = mRefreshRate;
-	initializeParams.encodeConfig->rcParams.maxBitRate =
-		initializeParams.encodeConfig->rcParams.averageBitRate = mBitrateInMBits * 1000 * 1000;
-	// Disable automatic IDR insertion by NVENC. We need to manually insert IDR when packet is dropped.
-	initializeParams.encodeConfig->gopLength = NVENC_INFINITE_GOPLENGTH;
-
-	//initializeParams.maxEncodeWidth = 3840;
-	//initializeParams.maxEncodeHeight = 2160;
+	FillEncodeConfig(initializeParams, mRefreshRate, mRenderWidth, mRenderHeight, mBitrate);
 
 	try {
 		mEncoder->CreateEncoder(&initializeParams);
@@ -101,12 +83,12 @@ void VideoEncoderNVENC::Initialize()
 	Log(L"CNvEncoder is successfully initialized.");
 }
 
-void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits)
+void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int renderHeight, Bitrate bitrate)
 {
 	if ((refreshRate != 0 && refreshRate != mRefreshRate) ||
 		(renderWidth != 0 && renderWidth != mRenderWidth) ||
 		(renderHeight != 0 && renderHeight != mRenderHeight) ||
-		(bitrateInMBits != 0 && bitrateInMBits != mBitrateInMBits)) {
+		(bitrate.toBits() != 0 && bitrate.toBits() != mBitrate.toBits())) {
 		NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
 		NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
 
@@ -115,28 +97,10 @@ void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int render
 		reconfigureParams.reInitEncodeParams.version = NV_ENC_INITIALIZE_PARAMS_VER;
 		reconfigureParams.reInitEncodeParams.encodeConfig = &encodeConfig;
 
-		GUID EncoderGUID = mCodec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
+		FillEncodeConfig(reconfigureParams.reInitEncodeParams, refreshRate, renderWidth, renderHeight, bitrate);
 
-		mEncoder->CreateDefaultEncoderParams(&reconfigureParams.reInitEncodeParams, EncoderGUID, NV_ENC_PRESET_LOW_LATENCY_HQ_GUID);
-
-		if (mCodec == ALVR_CODEC_H264) {
-			reconfigureParams.reInitEncodeParams.encodeConfig->encodeCodecConfig.h264Config.repeatSPSPPS = 1;
-		}
-		else {
-			reconfigureParams.reInitEncodeParams.encodeConfig->encodeCodecConfig.hevcConfig.repeatSPSPPS = 1;
-		}
-
-		reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;
-		reconfigureParams.reInitEncodeParams.frameRateNum = refreshRate;
-		reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.maxBitRate =
-			reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.averageBitRate = bitrateInMBits * 1000 * 1000;
-		// Disable automatic IDR insertion by NVENC. We need to manually insert IDR when packet is dropped.
-		reconfigureParams.reInitEncodeParams.encodeConfig->gopLength = NVENC_INFINITE_GOPLENGTH;
-
-		reconfigureParams.reInitEncodeParams.encodeWidth = reconfigureParams.reInitEncodeParams.darWidth =
-			reconfigureParams.reInitEncodeParams.maxEncodeWidth = renderWidth;
-		reconfigureParams.reInitEncodeParams.encodeHeight = reconfigureParams.reInitEncodeParams.darHeight =
-			reconfigureParams.reInitEncodeParams.maxEncodeHeight = renderHeight;
+		reconfigureParams.reInitEncodeParams.maxEncodeWidth = mRenderWidth;
+		reconfigureParams.reInitEncodeParams.maxEncodeHeight = mRenderHeight;
 
 		bool ret = false;
 		try {
@@ -144,21 +108,21 @@ void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int render
 		}
 		catch (NVENCException e) {
 			FatalLog(L"NvEnc Reconfigure failed with exception. Code=%d %hs. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)", e.getErrorCode(), e.what()
-				, mRefreshRate, mRenderWidth, mRenderHeight, mBitrateInMBits
-				, refreshRate, renderWidth, renderHeight, bitrateInMBits
+				, mRefreshRate, mRenderWidth, mRenderHeight, mBitrate.toMiBits()
+				, refreshRate, renderWidth, renderHeight, bitrate.toMiBits()
 			);
 			return;
 		}
 		if (!ret) {
 			FatalLog(L"NvEnc Reconfigure failed. Return code=%d. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)", ret
-				, mRefreshRate, mRenderWidth, mRenderHeight, mBitrateInMBits
-				, refreshRate, renderWidth, renderHeight, bitrateInMBits
+				, mRefreshRate, mRenderWidth, mRenderHeight, mBitrate.toMiBits()
+				, refreshRate, renderWidth, renderHeight, bitrate.toMiBits()
 			);
 			return;
 		}
 		Log(L"NvEnc Reconfigure succeeded. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)"
-			, mRefreshRate, mRenderWidth, mRenderHeight, mBitrateInMBits
-			, refreshRate, renderWidth, renderHeight, bitrateInMBits
+			, mRefreshRate, mRenderWidth, mRenderHeight, mBitrate.toMiBits()
+			, refreshRate, renderWidth, renderHeight, bitrate.toMiBits()
 		);
 
 		if (refreshRate != 0) {
@@ -170,8 +134,8 @@ void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int render
 		if (renderHeight != 0) {
 			mRenderHeight = renderHeight;
 		}
-		if (bitrateInMBits != 0) {
-			mBitrateInMBits = bitrateInMBits;
+		if (bitrate.toBits() != 0) {
+			mBitrate = bitrate;
 		}
 	}
 }
@@ -197,7 +161,7 @@ void VideoEncoderNVENC::Shutdown()
 	}
 }
 
-void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR)
+void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t videoFrameIndex, uint64_t trackingFrameIndex, uint64_t clientTime, bool insertIDR)
 {
 	std::vector<std::vector<uint8_t>> vPacket;
 
@@ -206,10 +170,12 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 		Log(L"Inserting IDR frame.");
 		picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
 	}
+	// To invalidate reference frame when frame dropped.
+	picParams.inputTimeStamp = videoFrameIndex;
 	mEncoder->EncodeFrame(vPacket, &picParams, mD3DRender->GetContext(), pTexture);
 
-	Log(L"Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - mListener->clientToServerTime(clientTime), frameIndex);
-	Log(L"Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
+	Log(L"Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - mListener->clientToServerTime(clientTime), trackingFrameIndex);
+	Log(L"Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, trackingFrameIndex);
 
 	if (mListener) {
 		mListener->GetStatistics()->EncodeOutput(GetTimestampUs() - presentationTime);
@@ -222,13 +188,106 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 			mOutput.write(reinterpret_cast<char*>(packet.data()), packet.size());
 		}
 		if (mListener) {
-			mListener->SendVideo(packet.data(), (int)packet.size(), frameIndex);
+			mListener->SendVideo(packet.data(), (int)packet.size(), videoFrameIndex, trackingFrameIndex);
 		}
 	}
 
 	if (Settings::Instance().mDebugFrameOutput) {
 		if (!mUseNV12) {
-			SaveDebugOutput(mD3DRender, vPacket, pTexture, frameIndex2);
+			SaveDebugOutput(mD3DRender, vPacket, pTexture, videoFrameIndex);
 		}
 	}
+}
+
+void VideoEncoderNVENC::InvalidateReferenceFrame(uint64_t videoFrameIndex)
+{
+	if (!mSupportsReferenceFrameInvalidation) {
+		return;
+	}
+	Log(L"Invalidate reference frame: %llu", videoFrameIndex);
+	mEncoder->InvalidateRefFrames(videoFrameIndex);
+}
+
+void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, Bitrate bitrate)
+{
+	auto &encodeConfig = *initializeParams.encodeConfig;
+	GUID EncoderGUID = mCodec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
+
+	// According to the docment, NVIDIA Video Encoder (NVENC) Interface 8.1,
+	// following configrations are recommended for low latency application:
+	// 1. Low-latency high quality preset
+	// 2. Rate control mode = CBR
+	// 3. Very low VBV buffer size(single frame)
+	// 4. No B Frames
+	// 5. Infinite GOP length
+	// 6. Long term reference pictures
+	// 7. Intra refresh
+	// 8. Adaptive quantization(AQ) enabled
+
+	mEncoder->CreateDefaultEncoderParams(&initializeParams, EncoderGUID, NV_ENC_PRESET_LOW_LATENCY_HQ_GUID);
+
+	initializeParams.encodeWidth  = initializeParams.darWidth  = renderWidth;
+	initializeParams.encodeHeight = initializeParams.darHeight = renderHeight;
+	initializeParams.frameRateNum = refreshRate;
+	initializeParams.frameRateDen = 1;
+
+	// Use reference frame invalidation to faster recovery from frame loss if supported.
+	mSupportsReferenceFrameInvalidation = mEncoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_REF_PIC_INVALIDATION);
+	bool supportsIntraRefresh = mEncoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_INTRA_REFRESH);
+
+	Log(L"VideoEncoderNVENC: SupportsReferenceFrameInvalidation: %d", mSupportsReferenceFrameInvalidation);
+	Log(L"VideoEncoderNVENC: SupportsIntraRefresh: %d", supportsIntraRefresh);
+
+	if (mCodec == ALVR_CODEC_H264) {
+		auto &config = encodeConfig.encodeCodecConfig.h264Config;
+		config.repeatSPSPPS = 1;
+		if (supportsIntraRefresh) {
+			config.enableIntraRefresh = 1;
+			// Do intra refresh every 10sec.
+			config.intraRefreshPeriod = mRefreshRate * 10;
+			config.intraRefreshCnt = mRefreshRate;
+		}
+		if (mSupportsReferenceFrameInvalidation) {
+			// 16 is recommended when using reference frame invalidation.
+			config.maxNumRefFrames = 16;
+		}
+		config.idrPeriod = NVENC_INFINITE_GOPLENGTH;
+	}
+	else {
+		auto &config = encodeConfig.encodeCodecConfig.hevcConfig;
+		config.repeatSPSPPS = 1;
+		if (supportsIntraRefresh) {
+			config.enableIntraRefresh = 1;
+			// Do intra refresh every 10sec.
+			config.intraRefreshPeriod = refreshRate * 10;
+			config.intraRefreshCnt = refreshRate;
+		}
+		if (mSupportsReferenceFrameInvalidation) {
+			// 16 is recommended when using reference frame invalidation.
+			config.maxNumRefFramesInDPB = 16;
+		}
+		config.idrPeriod = NVENC_INFINITE_GOPLENGTH;
+	}
+
+	// According to the document, NVIDIA Video Encoder Interface 5.0,
+	// following configrations are recommended for low latency application:
+	// 1. NV_ENC_PARAMS_RC_2_PASS_FRAMESIZE_CAP rate control mode.
+	// 2. Set vbvBufferSize and vbvInitialDelay to maxFrameSize.
+	// 3. Inifinite GOP length.
+	// NV_ENC_PARAMS_RC_2_PASS_FRAMESIZE_CAP also assures maximum frame size,
+	// which introduces lower transport latency and fewer packet losses.
+
+	// Disable automatic IDR insertion by NVENC. We need to manually insert IDR when packet is dropped
+	// if don't use reference frame invalidation.
+	encodeConfig.gopLength = NVENC_INFINITE_GOPLENGTH;
+	encodeConfig.frameIntervalP = 1;
+
+	// NV_ENC_PARAMS_RC_CBR_HQ is equivalent to NV_ENC_PARAMS_RC_2_PASS_FRAMESIZE_CAP.
+	encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_HQ;
+	uint32_t maxFrameSize = bitrate.toBits() / refreshRate;
+	Log(L"VideoEncoderNVENC: maxFrameSize=%d bits", maxFrameSize);
+	encodeConfig.rcParams.vbvBufferSize = maxFrameSize;
+	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize;
+	encodeConfig.rcParams.maxBitRate = bitrate.toBits();
+	encodeConfig.rcParams.averageBitRate = bitrate.toBits();
 }

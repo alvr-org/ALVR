@@ -51,31 +51,31 @@ namespace
 	{
 	public:
 		CEncoder()
-			: m_bExiting( false )
-			, m_frameIndex(0)
-			, m_frameIndex2(0)
+			: mExiting( false )
+			, mTrackingFrameIndex(0)
+			, mVideoFrameIndex(0)
 		{
-			m_encodeFinished.Set();
+			mEncodeFinished.Set();
 		}
 
 		~CEncoder()
 		{
-			if (m_videoEncoder)
+			if (mVideoEncoder)
 			{
-				m_videoEncoder->Shutdown();
-				m_videoEncoder.reset();
+				mVideoEncoder->Shutdown();
+				mVideoEncoder.reset();
 			}
 		}
 
 		void Initialize(std::shared_ptr<CD3DRender> d3dRender, std::shared_ptr<Listener> listener) {
-			m_FrameRender = std::make_shared<FrameRender>(d3dRender);
+			mFrameRender = std::make_shared<FrameRender>(d3dRender);
 
 			Exception vceException;
 			Exception nvencException;
 			try {
 				Log(L"Try to use VideoEncoderVCE.");
-				m_videoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, listener);
-				m_videoEncoder->Initialize();
+				mVideoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, listener);
+				mVideoEncoder->Initialize();
 				return;
 			}
 			catch (Exception e) {
@@ -83,9 +83,9 @@ namespace
 			}
 			try {
 				Log(L"Try to use VideoEncoderNVENC.");
-				m_videoEncoder = std::make_shared<VideoEncoderNVENC>(d3dRender, listener
+				mVideoEncoder = std::make_shared<VideoEncoderNVENC>(d3dRender, listener
 					, ShouldUseNV12Texture());
-				m_videoEncoder->Initialize();
+				mVideoEncoder->Initialize();
 				return;
 			}
 			catch (Exception e) {
@@ -97,15 +97,15 @@ namespace
 		bool CopyToStaging( ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering
 			, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime, const std::string& message, const std::string& debugText)
 		{
-			m_presentationTime = presentationTime;
-			m_frameIndex = frameIndex;
-			m_clientTime = clientTime;
-			m_FrameRender->Startup();
+			mPresentationTime = presentationTime;
+			mTrackingFrameIndex = frameIndex;
+			mClientTime = clientTime;
+			mFrameRender->Startup();
 
 			char buf[200];
-			snprintf(buf, sizeof(buf), "\nindex2: %llu", m_frameIndex2);
+			snprintf(buf, sizeof(buf), "\nvfindex: %llu", mVideoFrameIndex);
 
-			m_FrameRender->RenderFrame(pTexture, bounds, layerCount, recentering, message, debugText + buf);
+			mFrameRender->RenderFrame(pTexture, bounds, layerCount, recentering, message, debugText + buf);
 			return true;
 		}
 
@@ -114,69 +114,68 @@ namespace
 			Log(L"CEncoder: Start thread. Id=%d", GetCurrentThreadId());
 			SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_MOST_URGENT );
 
-			while ( !m_bExiting )
+			while ( !mExiting )
 			{
 				Log(L"CEncoder: Waiting for new frame...");
 
-				m_newFrameReady.Wait();
-				if ( m_bExiting )
+				mNewFrameReady.Wait();
+				if ( mExiting )
 					break;
 
-				if ( m_FrameRender->GetTexture() )
+				if ( mFrameRender->GetTexture() )
 				{
-					m_videoEncoder->Transmit(m_FrameRender->GetTexture().Get(), m_presentationTime, m_frameIndex, m_frameIndex2, m_clientTime, m_scheduler.CheckIDRInsertion());
+					mVideoEncoder->Transmit(mFrameRender->GetTexture().Get(), mPresentationTime, mVideoFrameIndex, mTrackingFrameIndex, mClientTime, mScheduler.CheckIDRInsertion());
+					mVideoFrameIndex++;
 				}
 
-				m_frameIndex2++;
-
-				m_encodeFinished.Set();
+				mEncodeFinished.Set();
 			}
 		}
 
 		void Stop()
 		{
-			m_bExiting = true;
-			m_newFrameReady.Set();
+			mExiting = true;
+			mNewFrameReady.Set();
 			Join();
-			m_FrameRender.reset();
+			mFrameRender.reset();
 		}
 
 		void NewFrameReady()
 		{
 			Log(L"New Frame Ready");
-			m_encodeFinished.Reset();
-			m_newFrameReady.Set();
+			mEncodeFinished.Reset();
+			mNewFrameReady.Set();
 		}
 
 		void WaitForEncode()
 		{
-			m_encodeFinished.Wait();
+			mEncodeFinished.Wait();
 		}
 
 		void OnStreamStart() {
-			m_scheduler.OnStreamStart();
+			mScheduler.OnStreamStart();
 		}
 
 		void OnPacketLoss() {
-			m_scheduler.OnPacketLoss();
+			mScheduler.OnPacketLoss();
 		}
 
-		void Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits) {
-			m_videoEncoder->Reconfigure(refreshRate, renderWidth, renderHeight, bitrateInMBits);
+		void Reconfigure(int refreshRate, int renderWidth, int renderHeight, Bitrate bitrate) {
+			mVideoEncoder->Reconfigure(refreshRate, renderWidth, renderHeight, bitrate);
 		}
 	private:
-		CThreadEvent m_newFrameReady, m_encodeFinished;
-		std::shared_ptr<VideoEncoder> m_videoEncoder;
-		bool m_bExiting;
-		uint64_t m_presentationTime;
-		uint64_t m_frameIndex;
-		uint64_t m_clientTime;
+		CThreadEvent mNewFrameReady, mEncodeFinished;
+		std::shared_ptr<VideoEncoder> mVideoEncoder;
+		bool mExiting;
+		uint64_t mPresentationTime;
+		uint64_t mTrackingFrameIndex;
+		uint64_t mClientTime;
 
-		uint64_t m_frameIndex2;
+		uint64_t mVideoFrameIndex;
 
-		std::shared_ptr<FrameRender> m_FrameRender;
+		std::shared_ptr<FrameRender> mFrameRender;
 
-		IDRScheduler m_scheduler;
+		IDRScheduler mScheduler;
 	};
 }
 

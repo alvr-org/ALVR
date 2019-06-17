@@ -33,8 +33,8 @@ public:
 
 	bool Startup();
 	void Run() override;
-	void FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex);
-	void SendVideo(uint8_t *buf, int len, uint64_t frameIndex);
+	void FECSend(uint8_t *buf, int len, uint64_t videoFrameIndex, uint64_t trackingFrameIndex);
+	void SendVideo(uint8_t *buf, int len, uint64_t videoFrameIndex, uint64_t trackingFrameIndex);
 	void SendAudio(uint8_t *buf, int len, uint64_t presentationTime);
 	void SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand);
 	void ProcessRecv(char *buf, int len, sockaddr_in *addr);
@@ -107,6 +107,4 @@ private:
 	static const int INITIAL_FEC_PERCENTAGE = 5;
 	static const int MAX_FEC_PERCENTAGE = 10;
 	int mFecPercentage = INITIAL_FEC_PERCENTAGE;
-
-	uint64_t mVideoFrameIndex = 1;
 };

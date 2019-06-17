@@ -122,7 +122,7 @@ void Listener::Run() {
 	}
 }
 
-void Listener::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex) {
+void Listener::FECSend(uint8_t *buf, int len, uint64_t videoFrameIndex, uint64_t trackingFrameIndex) {
 	int shardPackets = CalculateFECShardPackets(len, mFecPercentage);
 
 	int blockSize = shardPackets * ALVR_MAX_VIDEO_BUFFER_SIZE;
@@ -163,10 +163,10 @@ void Listener::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t vide
 	uint8_t *payload = packetBuffer + sizeof(VideoFrame);
 	int dataRemain = len;
 
-	Log(L"Sending video frame. trackingFrameIndex=%llu videoFrameIndex=%llu size=%d", frameIndex, videoFrameIndex, len);
+	Log(L"Sending video frame. trackingFrameIndex=%llu videoFrameIndex=%llu size=%d", trackingFrameIndex, videoFrameIndex, len);
 
 	header->type = ALVR_PACKET_TYPE_VIDEO_FRAME;
-	header->trackingFrameIndex = frameIndex;
+	header->trackingFrameIndex = trackingFrameIndex;
 	header->videoFrameIndex = videoFrameIndex;
 	header->sentTime = GetTimestampUs();
 	header->frameByteSize = len;
@@ -183,7 +183,7 @@ void Listener::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t vide
 
 			header->packetCounter = mVideoPacketCounter;
 			mVideoPacketCounter++;
-			mSocket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, frameIndex);
+			mSocket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, trackingFrameIndex);
 			header->fecIndex++;
 		}
 	}
@@ -195,7 +195,7 @@ void Listener::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t vide
 
 			header->packetCounter = mVideoPacketCounter;
 			mVideoPacketCounter++;
-			mSocket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, frameIndex);
+			mSocket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, trackingFrameIndex);
 			header->fecIndex++;
 		}
 	}
@@ -208,17 +208,16 @@ void Listener::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t vide
 	}
 }
 
-void Listener::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
+void Listener::SendVideo(uint8_t *buf, int len, uint64_t videoFrameIndex, uint64_t trackingFrameIndex) {
 	if (!mSocket->IsClientValid()) {
-		Log(L"Skip sending packet because client is not connected. Packet Length=%d FrameIndex=%llu", len, frameIndex);
+		Log(L"Skip sending packet because client is not connected. Packet Length=%d FrameIndex=%llu", len, trackingFrameIndex);
 		return;
 	}
 	if (!mStreaming) {
 		Log(L"Skip sending packet because streaming is off.");
 		return;
 	}
-	FECSend(buf, len, frameIndex, mVideoFrameIndex);
-	mVideoFrameIndex++;
+	FECSend(buf, len, videoFrameIndex, trackingFrameIndex);
 }
 
 void Listener::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {

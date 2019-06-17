@@ -211,6 +211,8 @@ public:
     */
     void GetSequenceParams(std::vector<uint8_t> &seqParams);
 
+	void InvalidateRefFrames(uint64_t invalidRefFrameTimeStamp);
+
     /**
     *  @brief  NvEncoder class virtual destructor.
     */

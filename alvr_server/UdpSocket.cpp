@@ -107,6 +107,11 @@ bool UdpSocket::Send(char *buf, int len) {
 	return true;
 }
 
+bool UdpSocket::GetFirstBufferedFrame(uint64_t *videoFrameIndex)
+{
+	return mVideoBuffer.GetFirstBufferedFrame(videoFrameIndex);
+}
+
 void UdpSocket::Shutdown() {
 	if (mSocket != INVALID_SOCKET) {
 		closesocket(mSocket);

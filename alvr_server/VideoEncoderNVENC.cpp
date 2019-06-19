@@ -167,15 +167,15 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 
 	NV_ENC_PIC_PARAMS picParams = {};
 	if (insertIDR) {
-		Log(L"Inserting IDR frame.");
+		Log(L"Inserting IDR frame. VideoFrameIndex=%llu", videoFrameIndex);
 		picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
 	}
 	// To invalidate reference frame when frame dropped.
 	picParams.inputTimeStamp = videoFrameIndex;
 	mEncoder->EncodeFrame(vPacket, &picParams, mD3DRender->GetContext(), pTexture);
 
-	Log(L"Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - mListener->clientToServerTime(clientTime), trackingFrameIndex);
-	Log(L"Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, trackingFrameIndex);
+	Log(L"Tracking info delay: %lld us Encoding delay=%lld us VideoFrameIndex=%llu", GetTimestampUs() - mListener->clientToServerTime(clientTime)
+		, GetTimestampUs() - presentationTime, videoFrameIndex);
 
 	if (mListener) {
 		mListener->GetStatistics()->EncodeOutput(GetTimestampUs() - presentationTime);
@@ -205,7 +205,12 @@ void VideoEncoderNVENC::InvalidateReferenceFrame(uint64_t videoFrameIndex)
 		return;
 	}
 	Log(L"Invalidate reference frame: %llu", videoFrameIndex);
-	mEncoder->InvalidateRefFrames(videoFrameIndex);
+	try {
+		mEncoder->InvalidateRefFrames(videoFrameIndex);
+	}
+	catch (NVENCException &e) {
+		Log(L"Failed to invalidate reference frame. Code=%d %hs", e.getErrorCode(), e.what());
+	}
 }
 
 void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, Bitrate bitrate)

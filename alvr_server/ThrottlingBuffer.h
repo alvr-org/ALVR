@@ -17,6 +17,8 @@ public:
 	void Push(VideoFrame *buf, int len, uint64_t frameIndex);
 	bool Send(std::function<bool(char *, int)> sendFunc);
 
+	bool GetFirstBufferedFrame(uint64_t *videoFrameIndex);
+
 	bool IsEmpty();
 private:
 	struct SendBuffer {

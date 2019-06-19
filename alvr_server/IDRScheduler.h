@@ -14,10 +14,17 @@ public:
 	void OnStreamStart();
 
 	bool CheckIDRInsertion();
+
+	void OnFrameAck(bool result, bool isIDR);
+
+	bool CanEncodeFrame();
 private:
-	static const int MIN_IDR_FRAME_INTERVAL = 2 * 1000 * 1000; // 2-seconds
-	uint64_t mInsertIDRTime = 0;
-	bool mScheduled = false;
-	IPCCriticalSection mCS;
+	enum State {
+		NOT_STREAMING, // Client not connected or not requested streaming
+		REQUESTING_IDR, // Wait for IDR insertion. After streaming requested or IDR lost.
+		SENDING_IDR, // Wait for acknoledgement of sent IDR from client.
+		STREAMING // Sending P-Frames after successful ack.
+	};
+	State mState;
 };
 

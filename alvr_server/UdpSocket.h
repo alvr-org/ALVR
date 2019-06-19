@@ -21,6 +21,8 @@ public:
 	void Run();
 	virtual bool SendVideo(VideoFrame *buf, int len, uint64_t videoFrameIndex);
 	virtual bool Send(char *buf, int len);
+	bool GetFirstBufferedFrame(uint64_t *videoFrameIndex);
+
 	virtual void Shutdown();
 	void SetClientAddr(const sockaddr_in *addr);
 	virtual sockaddr_in GetClientAddr()const;

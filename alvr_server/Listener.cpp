@@ -4,11 +4,9 @@
 Listener::Listener()
 	: mExiting(false)
 	, mEnabled(false)
-	, mConnected(false)
-	, mStreaming(false)
+	, mState(State::NOT_CONNECTED)
 	, mLastSeen(0) {
 	memset(&mTrackingInfo, 0, sizeof(mTrackingInfo));
-	InitializeCriticalSection(&mCS);
 
 	mStatistics = std::make_shared<Statistics>();
 
@@ -19,35 +17,10 @@ Listener::Listener()
 	mPoller.reset(new Poller());
 	mControlSocket.reset(new ControlSocket(mPoller));
 
-	mStreaming = false;
-
 	reed_solomon_init();
 }
 
 Listener::~Listener() {
-	DeleteCriticalSection(&mCS);
-}
-
-void Listener::SetLauncherCallback(std::function<void()> callback) {
-	mLauncherCallback = callback;
-}
-void Listener::SetCommandCallback(std::function<void(std::string, std::string)> callback) {
-	mCommandCallback = callback;
-}
-void Listener::SetPoseUpdatedCallback(std::function<void()> callback) {
-	mPoseUpdatedCallback = callback;
-}
-void Listener::SetNewClientCallback(std::function<void()> callback) {
-	mNewClientCallback = callback;
-}
-void Listener::SetStreamStartCallback(std::function<void()> callback) {
-	mStreamStartCallback = callback;
-}
-void Listener::SetFrameFailedCallback(std::function<void(uint64_t, uint64_t)> callback) {
-	mFrameFailedCallback = callback;
-}
-void Listener::SetShutdownCallback(std::function<void()> callback) {
-	mShutdownCallback = callback;
 }
 
 bool Listener::Startup() {
@@ -98,7 +71,7 @@ void Listener::Run() {
 					return;
 				}
 			}
-			mLauncherCallback();
+			mCallback->OnLauncher();
 		}
 		std::vector<std::string> commands;
 		if (mControlSocket->Recv(commands)) {
@@ -221,11 +194,16 @@ void Listener::SendVideo(uint8_t *buf, int len, uint64_t videoFrameIndex, uint64
 		Log(L"Skip sending packet because client is not connected. Packet Length=%d FrameIndex=%llu", len, trackingFrameIndex);
 		return;
 	}
-	if (!mStreaming) {
+	if (mState != State::STREAMING) {
 		Log(L"Skip sending packet because streaming is off.");
 		return;
 	}
 	FECSend(buf, len, videoFrameIndex, trackingFrameIndex);
+}
+
+bool Listener::GetFirstBufferedFrame(uint64_t * videoFrameIndex)
+{
+	return mSocket ? mSocket->GetFirstBufferedFrame(videoFrameIndex) : false;
 }
 
 void Listener::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
@@ -235,7 +213,7 @@ void Listener::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
 		Log(L"Skip sending audio packet because client is not connected. Packet Length=%d", len);
 		return;
 	}
-	if (!mStreaming) {
+	if (mState != State::STREAMING) {
 		Log(L"Skip sending audio packet because streaming is off.");
 		return;
 	}
@@ -285,7 +263,7 @@ void Listener::SendHapticsFeedback(uint64_t startTime, float amplitude, float du
 		Log(L"Skip sending audio packet because client is not connected.");
 		return;
 	}
-	if (!mStreaming) {
+	if (mState != State::STREAMING) {
 		Log(L"Skip sending audio packet because streaming is off.");
 		return;
 	}
@@ -337,7 +315,7 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		PushRequest(message, addr);
 		if (AddrToStr(addr) == Settings::Instance().mAutoConnectHost &&
 			ntohs(addr->sin_port) == Settings::Instance().mAutoConnectPort) {
-			if (!mConnected) {
+			if (!IsConnected()) {
 				Log(L"AutoConnect: %hs", AddrPortToStr(addr).c_str());
 				Connect(addr);
 			}
@@ -351,25 +329,26 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
-		if (!mConnected || !mSocket->IsLegitClient(addr)) {
+		if (!IsConnected() || !mSocket->IsLegitClient(addr)) {
 			Log(L"Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;
 		}
 		UpdateLastSeen();
 
-		EnterCriticalSection(&mCS);
-		mTrackingInfo = *(TrackingInfo *)buf;
-		LeaveCriticalSection(&mCS);
+		{
+			IPCCriticalSectionLock lock(mCS);
+			mTrackingInfo = *(TrackingInfo *)buf;
+		}
 
 		Log(L"got tracking info %d %f %f %f %f", (int)mTrackingInfo.FrameIndex,
 			mTrackingInfo.HeadPose_Pose_Orientation.x,
 			mTrackingInfo.HeadPose_Pose_Orientation.y,
 			mTrackingInfo.HeadPose_Pose_Orientation.z,
 			mTrackingInfo.HeadPose_Pose_Orientation.w);
-		mPoseUpdatedCallback();
+		mCallback->OnPoseUpdated();
 	}
 	else if (type == ALVR_PACKET_TYPE_TIME_SYNC && len >= sizeof(TimeSync)) {
-		if (!mConnected || !mSocket->IsLegitClient(addr)) {
+		if (!IsConnected() || !mSocket->IsLegitClient(addr)) {
 			Log(L"Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;
 		}
@@ -395,7 +374,7 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE && len >= sizeof(StreamControlMessage)) {
-		if (!mConnected || !mSocket->IsLegitClient(addr)) {
+		if (!IsConnected() || !mSocket->IsLegitClient(addr)) {
 			Log(L"Recieved message from invalid address: %s:%d", AddrPortToStr(addr));
 			return;
 		}
@@ -403,25 +382,24 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 
 		if (streamControl->mode == 1) {
 			Log(L"Stream control message: Start stream.");
-			mStreaming = true;
-			mStreamStartCallback();
+			mState = State::STREAMING;
+			mCallback->OnStreamStart();
 		}
 		else if (streamControl->mode == 2) {
 			Log(L"Stream control message: Stop stream.");
-			mStreaming = false;
+			mState = State::CONNECTED;
 		}
 	}
-	else if (type == ALVR_PACKET_TYPE_FRAME_FAILED_REPORT && len >= sizeof(FrameFailedReport)) {
-		if (!mConnected || !mSocket->IsLegitClient(addr)) {
+	else if (type == ALVR_PACKET_TYPE_VIDEO_FRAME_ACK && len >= sizeof(VideoFrameAck)) {
+		if (!IsConnected() || !mSocket->IsLegitClient(addr)) {
 			Log(L"Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;
 		}
-		auto *frameFailedReport = (FrameFailedReport *)buf;
-		Log(L"Packet loss was reported. Type=%d %llu - %llu", frameFailedReport->lostFrameType, frameFailedReport->startOfFailedFrame, frameFailedReport->endOfFailedFrame);
-		if (frameFailedReport->lostFrameType == ALVR_LOST_FRAME_TYPE_VIDEO &&
-			frameFailedReport->startOfFailedFrame != 0 && frameFailedReport->endOfFailedFrame != 0) {
-			// Recover video frame.
-			OnFecFailure(frameFailedReport->startOfFailedFrame, frameFailedReport->endOfFailedFrame);
+		VideoFrameAck *packet = (VideoFrameAck *)buf;
+		mCallback->OnFrameAck(packet->ackType == ALVR_FRAME_ACK_TYPE_ACK, packet->ackType == ALVR_FRAME_ACK_VIDEO_FRAME_TYPE_IDR,
+			packet->startFrame, packet->endFrame);
+		if (packet->ackType == ALVR_FRAME_ACK_TYPE_NACK && packet->ackType != ALVR_FRAME_ACK_VIDEO_FRAME_TYPE_IDR) {
+			OnFecFailure(packet->startFrame, packet->endFrame);
 		}
 	}
 }
@@ -472,7 +450,7 @@ void Listener::ProcessCommand(const std::string &commandName, const std::string 
 	}
 	else if (commandName == "Shutdown") {
 		Disconnect();
-		mShutdownCallback();
+		mCallback->OnShutdown();
 		SendCommandResponse("OK\n");
 	}
 	else if (commandName == "GetStat") {
@@ -536,7 +514,7 @@ void Listener::ProcessCommand(const std::string &commandName, const std::string 
 		}
 	}
 	else {
-		mCommandCallback(commandName, args);
+		mCallback->OnCommand(commandName, args);
 	}
 }
 
@@ -561,9 +539,8 @@ bool Listener::HasValidTrackingInfo() const {
 }
 
 void Listener::GetTrackingInfo(TrackingInfo &info) {
-	EnterCriticalSection(&mCS);
+	IPCCriticalSectionLock lock(mCS);
 	info = mTrackingInfo;
-	LeaveCriticalSection(&mCS);
 }
 
 uint64_t Listener::clientToServerTime(uint64_t clientTime) const {
@@ -616,7 +593,7 @@ std::string Listener::DumpConfig() {
 	char buf[1000];
 
 	sockaddr_in addr = {};
-	if (mConnected) {
+	if (IsConnected()) {
 		addr = mSocket->GetClientAddr();
 	}
 	else {
@@ -630,10 +607,10 @@ std::string Listener::DumpConfig() {
 		"Client %s:%d\n"
 		"ClientName %s\n"
 		"Streaming %d\n"
-		, mConnected ? 1 : 0
+		, IsConnected() ? 1 : 0
 		, host, htons(addr.sin_port)
 		, mClientDeviceName.c_str()
-		, mStreaming);
+		, mState == State::STREAMING);
 
 	return buf;
 }
@@ -649,7 +626,7 @@ void Listener::CheckTimeout() {
 		}
 	}
 
-	if (!mConnected) {
+	if (!IsConnected()) {
 		return;
 	}
 
@@ -684,10 +661,10 @@ void Listener::FindClientName(const sockaddr_in *addr) {
 void Listener::Connect(const sockaddr_in *addr) {
 	Log(L"Connected to %hs", AddrPortToStr(addr).c_str());
 
-	mNewClientCallback();
+	mCallback->OnNewClient();
 
 	mSocket->SetClientAddr(addr);
-	mConnected = true;
+	mState = State::CONNECTED;
 	mVideoPacketCounter = 0;
 	mSoundPacketCounter = 0;
 	mFecPercentage = INITIAL_FEC_PERCENTAGE;
@@ -709,21 +686,20 @@ void Listener::Connect(const sockaddr_in *addr) {
 }
 
 void Listener::Disconnect() {
-	mConnected = false;
+	mState = State::NOT_CONNECTED;
 	mClientDeviceName = "";
 
 	mSocket->InvalidateClient();
 }
 
-void Listener::OnFecFailure(uint64_t startOfFailedFrame, uint64_t endOfFailedFrame) {
-	Log(L"Listener::OnFecFailure(). %llu - %llu", startOfFailedFrame, endOfFailedFrame);
+void Listener::OnFecFailure(uint64_t startFrame, uint64_t endFrame) {
+	Log(L"Listener::OnFecFailure(). %llu - %llu", startFrame, endFrame);
 	if (GetTimestampUs() - mLastFecFailure < CONTINUOUS_FEC_FAILURE) {
 		if (mFecPercentage < MAX_FEC_PERCENTAGE) {
 			mFecPercentage += 5;
 		}
 	}
 	mLastFecFailure = GetTimestampUs();
-	mFrameFailedCallback(startOfFailedFrame, endOfFailedFrame);
 }
 
 std::shared_ptr<Statistics> Listener::GetStatistics() {
@@ -731,5 +707,10 @@ std::shared_ptr<Statistics> Listener::GetStatistics() {
 }
 
 bool Listener::IsStreaming() {
-	return mStreaming;
+	return mState = State::STREAMING;
+}
+
+void Listener::SetCallback(Callback * callback)
+{
+	mCallback = callback;
 }

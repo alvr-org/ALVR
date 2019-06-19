@@ -22,7 +22,7 @@ enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_VIDEO_FRAME = 9,
 	ALVR_PACKET_TYPE_AUDIO_FRAME_START = 10,
 	ALVR_PACKET_TYPE_AUDIO_FRAME = 11,
-	ALVR_PACKET_TYPE_FRAME_FAILED_REPORT = 12,
+	ALVR_PACKET_TYPE_VIDEO_FRAME_ACK = 12,
 	ALVR_PACKET_TYPE_HAPTICS = 13,
 };
 
@@ -115,6 +115,16 @@ enum ALVR_INPUT {
 	ALVR_INPUT_COUNT = ALVR_INPUT_MAX + 1
 };
 #define ALVR_BUTTON_FLAG(input) (1ULL << input)
+
+enum ALVR_FRAME_ACK_TYPE {
+	ALVR_FRAME_ACK_TYPE_ACK,
+	ALVR_FRAME_ACK_TYPE_NACK
+};
+
+enum ALVR_FRAME_ACK_VIDEO_FRAME_TYPE {
+	ALVR_FRAME_ACK_VIDEO_FRAME_TYPE_IDR,
+	ALVR_FRAME_ACK_VIDEO_FRAME_TYPE_P
+};
 
 #pragma pack(push, 1)
 // Represent FOV for each eye in degree.
@@ -288,12 +298,13 @@ struct AudioFrame {
 	uint32_t packetCounter;
 	// char frameBuffer[];
 };
-// Report frame failed (fec failed) from client to server.
-struct FrameFailedReport {
-	uint32_t type; // ALVR_PACKET_TYPE_FRAME_FAILED_REPORT
-	uint32_t lostFrameType;
-	uint64_t startOfFailedFrame;
-	uint64_t endOfFailedFrame;
+// Acknowledgement for video frame arrival from client to server.
+struct VideoFrameAck {
+	uint32_t type; // ALVR_PACKET_TYPE_VIDEO_FRAME_ACK
+	uint32_t ackType;
+	uint32_t frameType;
+	uint64_t startFrame;
+	uint64_t endFrame;
 };
 // Send haptics feedback from server to client.
 struct HapticsFeedback {

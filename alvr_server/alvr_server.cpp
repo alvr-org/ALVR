@@ -69,6 +69,7 @@ namespace
 
 		void Initialize(std::shared_ptr<CD3DRender> d3dRender, std::shared_ptr<Listener> listener) {
 			mFrameRender = std::make_shared<FrameRender>(d3dRender);
+			mListener = listener;
 
 			Exception vceException;
 			Exception nvencException;
@@ -97,6 +98,16 @@ namespace
 		bool CopyToStaging( ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering
 			, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime, const std::string& message, const std::string& debugText)
 		{
+			uint64_t firstVideoFrameInBuffer;
+			// We can buffer only 2-frames in throttling buffer.
+			if (mListener->GetFirstBufferedFrame(&firstVideoFrameInBuffer) && firstVideoFrameInBuffer + 2 <= mVideoFrameIndex) {
+				Log(L"Drop frame because of large throttling buffer. firstVideoFrameInBuffer=%llu Current=%llu", firstVideoFrameInBuffer, mVideoFrameIndex);
+				return true;
+			}
+			if (!mScheduler.CanEncodeFrame()) {
+				Log(L"Skipping encode because of sending IDR or not streaming.");
+				return true;
+			}
 			mPresentationTime = presentationTime;
 			mTrackingFrameIndex = frameIndex;
 			mClientTime = clientTime;
@@ -156,15 +167,26 @@ namespace
 			mScheduler.OnStreamStart();
 		}
 
-		void OnFrameFailed(uint64_t startOfFailedFrame, uint64_t endOfFailedFrame) {
-			if (mVideoEncoder->SupportsReferenceFrameInvalidation()) {
-				for (uint64_t videoFrameIndex = startOfFailedFrame;
-					videoFrameIndex <= endOfFailedFrame; videoFrameIndex++) {
-					mVideoEncoder->InvalidateReferenceFrame(videoFrameIndex);
+		void OnFrameAck(bool result, bool isIDR, uint64_t startFrame, uint64_t endFrame) {
+			Log(L"OnFrameAck: result=%d isIDR=%d VideoFrame=%llu-%llu", result, isIDR, startFrame, endFrame);
+			mScheduler.OnFrameAck(result, isIDR);
+			if (!result && !isIDR) {
+				if (mVideoEncoder->SupportsReferenceFrameInvalidation()) {
+					if (startFrame + 16 < mVideoFrameIndex || mVideoFrameIndex < endFrame) {
+						Log(L"Invalid reference frame for invalidation. %llu - %llu CurrentVideoFrameIndex=%llu",
+							startFrame, endFrame, mVideoFrameIndex);
+						// Fallback to IDR frame insertion.
+						mScheduler.OnPacketLoss();
+						return;
+					}
+					for (uint64_t videoFrameIndex = startFrame;
+						videoFrameIndex <= endFrame; videoFrameIndex++) {
+						mVideoEncoder->InvalidateReferenceFrame(videoFrameIndex);
+					}
 				}
-			}
-			else {
-				mScheduler.OnPacketLoss();
+				else {
+					mScheduler.OnPacketLoss();
+				}
 			}
 		}
 
@@ -174,6 +196,7 @@ namespace
 	private:
 		CThreadEvent mNewFrameReady, mEncodeFinished;
 		std::shared_ptr<VideoEncoder> mVideoEncoder;
+		std::shared_ptr<Listener> mListener;
 		bool mExiting;
 		uint64_t mPresentationTime;
 		uint64_t mTrackingFrameIndex;
@@ -304,7 +327,7 @@ public:
 		coordinates.rfGreen[1] = fV;
 		coordinates.rfRed[0] = fU;
 		coordinates.rfRed[1] = fV;
-		Log(L"ComputeDistortion %f,%f", fU, fV);
+		//Log(L"ComputeDistortion %f,%f", fU, fV);
 		return coordinates;
 	}
 };
@@ -728,7 +751,7 @@ private:
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-class CRemoteHmd : public vr::ITrackedDeviceServerDriver
+class CRemoteHmd : public vr::ITrackedDeviceServerDriver, public Listener::Callback
 {
 public:
 	CRemoteHmd(std::shared_ptr<Listener> listener)
@@ -742,23 +765,7 @@ public:
 
 		Log(L"Startup: %hs %hs", APP_MODULE_NAME, APP_VERSION_STRING);
 
-		std::function<void()> launcherCallback = [&]() { Enable(); };
-		std::function<void(std::string, std::string)> commandCallback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
-		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
-		std::function<void()> newClientCallback = [&]() { OnNewClient(); };
-		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
-		std::function<void(uint64_t, uint64_t)> frameFailedCallback = [&](uint64_t startOfFailedFrame, uint64_t endOfFailedFrame) {
-			OnFrameFailed(startOfFailedFrame, endOfFailedFrame);
-		};
-		std::function<void()> shutdownCallback = [&]() { OnShutdown(); };
-
-		m_Listener->SetLauncherCallback(launcherCallback);
-		m_Listener->SetCommandCallback(commandCallback);
-		m_Listener->SetPoseUpdatedCallback(poseCallback);
-		m_Listener->SetNewClientCallback(newClientCallback);
-		m_Listener->SetStreamStartCallback(streamStartCallback);
-		m_Listener->SetFrameFailedCallback(frameFailedCallback);
-		m_Listener->SetShutdownCallback(shutdownCallback);
+		m_Listener->SetCallback(this);
 
 		Log(L"CRemoteHmd successfully initialized.");
 	}
@@ -993,8 +1000,7 @@ public:
 		}
 	}
 
-
-	void CommandCallback(std::string commandName, std::string args)
+	virtual void OnCommand(std::string commandName, std::string args)
 	{
 		if (commandName == "EnableDriverTestMode") {
 			g_DriverTestMode = strtoull(args.c_str(), NULL, 0);
@@ -1108,7 +1114,11 @@ public:
 		
 	}
 
-	void OnPoseUpdated() {
+	virtual void OnLauncher() {
+		Enable();
+	};
+
+	virtual void OnPoseUpdated() {
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
 		{
 			if (!m_Listener->HasValidTrackingInfo()) {
@@ -1132,10 +1142,10 @@ public:
 		}
 	}
 
-	void OnNewClient() {
+	virtual void OnNewClient() {
 	}
 
-	void OnStreamStart() {
+	virtual void OnStreamStart() {
 		if (!m_added || !mActivated) {
 			return;
 		}
@@ -1144,15 +1154,14 @@ public:
 		m_encoder->OnStreamStart();
 	}
 
-	void OnFrameFailed(uint64_t startOfFailedFrame, uint64_t endOfFailedFrame) {
+	virtual void OnFrameAck(bool result, bool isIDR, uint64_t startFrame, uint64_t endFrame) {
 		if (!m_added || !mActivated) {
 			return;
 		}
-		Log(L"OnFrameFailed()");
-		m_encoder->OnFrameFailed(startOfFailedFrame, endOfFailedFrame);
-	}
+		m_encoder->OnFrameAck(result, isIDR, startFrame, endFrame);
+	};
 
-	void OnShutdown() {
+	virtual void OnShutdown() {
 		if (!m_added || !mActivated) {
 			return;
 		}

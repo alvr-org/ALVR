@@ -45,6 +45,18 @@ bool ThrottlingBuffer::Send(std::function<bool(char*, int)> sendFunc)
 	return false;
 }
 
+bool ThrottlingBuffer::GetFirstBufferedFrame(uint64_t *videoFrameIndex)
+{
+	IPCCriticalSectionLock lock(mCS);
+	if (mQueue.empty()) {
+		return false;
+	}
+
+	auto videoFrame = (VideoFrame *)mQueue.front().buf.get();
+	*videoFrameIndex = videoFrame->videoFrameIndex;
+	return true;
+}
+
 bool ThrottlingBuffer::IsEmpty()
 {
 	IPCCriticalSectionLock lock(mCS);
@@ -70,8 +82,9 @@ bool ThrottlingBuffer::CanSend(uint64_t current)
 
 	mLastSent = current;
 
-	Log(L"ThrottlingBuffer::CanSend(). %03llu.%03llu Check %llu <= %llu: %d Buffered=%llu Fillup=%llu", (current / 1000) % 1000, current % 1000
-		, mByteCount, mWindow, mByteCount <= static_cast<int64_t>(mWindow), mBuffered, fullup);
+	auto videoFrame = (VideoFrame *)mQueue.front().buf.get();
+	Log(L"ThrottlingBuffer::CanSend(). %03llu.%03llu Check %llu <= %llu: %d Packet=%u(%u) VideoFrame=%llu Buffered=%llu Fillup=%llu", (current / 1000) % 1000, current % 1000
+		, mByteCount, mWindow, mByteCount <= static_cast<int64_t>(mWindow), videoFrame->packetCounter, videoFrame->fecIndex, videoFrame->videoFrameIndex, mBuffered, fullup);
 	if (mByteCount <= static_cast<int64_t>(mWindow)) {
 		return true;
 	}

@@ -20,21 +20,14 @@ extern "C" {
 
 class Listener : public CThread {
 public:
-
 	Listener();
 	~Listener();
-	void SetLauncherCallback(std::function<void()> callback);
-	void SetCommandCallback(std::function<void(std::string, std::string)> callback);
-	void SetPoseUpdatedCallback(std::function<void()> callback);
-	void SetNewClientCallback(std::function<void()> callback);
-	void SetStreamStartCallback(std::function<void()> callback);
-	void SetFrameFailedCallback(std::function<void(uint64_t, uint64_t)> callback);
-	void SetShutdownCallback(std::function<void()> callback);
 
 	bool Startup();
 	void Run() override;
 	void FECSend(uint8_t *buf, int len, uint64_t videoFrameIndex, uint64_t trackingFrameIndex);
 	void SendVideo(uint8_t *buf, int len, uint64_t videoFrameIndex, uint64_t trackingFrameIndex);
+	bool GetFirstBufferedFrame(uint64_t *videoFrameIndex);
 	void SendAudio(uint8_t *buf, int len, uint64_t presentationTime);
 	void SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand);
 	void ProcessRecv(char *buf, int len, sockaddr_in *addr);
@@ -54,9 +47,22 @@ public:
 	void FindClientName(const sockaddr_in *addr);
 	void Connect(const sockaddr_in *addr);
 	void Disconnect();
-	void OnFecFailure(uint64_t startOfFailedFrame, uint64_t endOfFailedFrame);
+	void OnFecFailure(uint64_t startFrame, uint64_t endFrame);
 	std::shared_ptr<Statistics> GetStatistics();
 	bool IsStreaming();
+
+	class Callback {
+	public:
+		virtual void OnLauncher() {};
+		virtual void OnCommand(std::string commandName, std::string args) {};
+		virtual void OnPoseUpdated() {};
+		virtual void OnNewClient() {};
+		virtual void OnStreamStart() {};
+		virtual void OnFrameAck(bool result, bool isIDR, uint64_t, uint64_t) {};
+		virtual void OnShutdown() {};
+	};
+
+	void SetCallback(Callback *callback);
 private:
 	bool mExiting;
 	bool mEnabled;
@@ -64,6 +70,8 @@ private:
 	std::shared_ptr<UdpSocket> mSocket;
 	std::shared_ptr<ControlSocket> mControlSocket;
 	std::shared_ptr<Statistics> mStatistics;
+	Callback mNullCallback;
+	Callback *mCallback = &mNullCallback;
 
 	// Maximum UDP payload
 	static const int PACKET_SIZE = 1400;
@@ -74,22 +82,20 @@ private:
 	uint32_t mSoundPacketCounter = 0;
 
 	time_t mLastSeen;
-	std::function<void()> mLauncherCallback;
-	std::function<void(std::string, std::string)> mCommandCallback;
-	std::function<void()> mPoseUpdatedCallback;
-	std::function<void()> mNewClientCallback;
-	std::function<void()> mStreamStartCallback;
-	std::function<void(uint64_t, uint64_t)> mFrameFailedCallback;
-	std::function<void()> mShutdownCallback;
 	TrackingInfo mTrackingInfo;
 
 	uint64_t mTimeDiff = 0;
-	CRITICAL_SECTION mCS;
+	IPCCriticalSection mCS;
 
 	ChangeSettings mSettings;
 
-	bool mConnected;
-	bool mStreaming;
+	enum State {
+		NOT_CONNECTED,
+		CONNECTED,
+		STREAMING
+	};
+	State mState;
+	bool IsConnected() { return mState != NOT_CONNECTED; }
 
 	struct Request {
 		uint64_t timestamp;
@@ -105,6 +111,6 @@ private:
 	uint64_t mLastFecFailure = 0;
 	static const uint64_t CONTINUOUS_FEC_FAILURE = 60 * 1000 * 1000;
 	static const int INITIAL_FEC_PERCENTAGE = 5;
-	static const int MAX_FEC_PERCENTAGE = 10;
+	static const int MAX_FEC_PERCENTAGE = 30;
 	int mFecPercentage = INITIAL_FEC_PERCENTAGE;
 };

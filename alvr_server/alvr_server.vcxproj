@@ -109,6 +109,7 @@
     <ClCompile Include="ControlSocket.cpp" />
     <ClCompile Include="alvr_server.cpp" />
     <ClCompile Include="DeviceQuery.cpp" />
+    <ClCompile Include="FrameEncoder.cpp" />
     <ClCompile Include="FrameRender.cpp" />
     <ClCompile Include="FreePIE.cpp" />
     <ClCompile Include="IDRScheduler.cpp" />
@@ -122,6 +123,9 @@
     <ClCompile Include="openvr-utils\ipctools.cpp" />
     <ClCompile Include="openvr-utils\systemtime.cpp" />
     <ClCompile Include="openvr-utils\threadtools.cpp" />
+    <ClCompile Include="OpenVRDirectModeComponent.cpp" />
+    <ClCompile Include="OpenVRDisplayComponent.cpp" />
+    <ClCompile Include="OpenVRServerDriver.cpp" />
     <ClCompile Include="PacketBuffer.cpp" />
     <ClCompile Include="Poller.cpp" />
     <ClCompile Include="Settings.cpp" />
@@ -131,6 +135,7 @@
     <ClCompile Include="VideoEncoder.cpp" />
     <ClCompile Include="VideoEncoderNVENC.cpp" />
     <ClCompile Include="VideoEncoderVCE.cpp" />
+    <ClCompile Include="VSyncThread.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ALVR-common\exception.h" />
@@ -175,6 +180,7 @@
     <ClInclude Include="common-utils.h" />
     <ClInclude Include="ControlSocket.h" />
     <ClInclude Include="DeviceQuery.h" />
+    <ClInclude Include="FrameEncoder.h" />
     <ClInclude Include="FrameRender.h" />
     <ClInclude Include="FreePIE.h" />
     <ClInclude Include="IDRScheduler.h" />
@@ -192,6 +198,9 @@
     <ClInclude Include="openvr-utils\sharedstate.h" />
     <ClInclude Include="openvr-utils\systemtime.h" />
     <ClInclude Include="openvr-utils\threadtools.h" />
+    <ClInclude Include="OpenVRDirectModeComponent.h" />
+    <ClInclude Include="OpenVRDisplayComponent.h" />
+    <ClInclude Include="OpenVRServerDriver.h" />
     <ClInclude Include="PacketBuffer.h" />
     <ClInclude Include="Poller.h" />
     <ClInclude Include="RecenterManager.h" />
@@ -207,6 +216,7 @@
     <ClInclude Include="VideoEncoder.h" />
     <ClInclude Include="VideoEncoderNVENC.h" />
     <ClInclude Include="VideoEncoderVCE.h" />
+    <ClInclude Include="VSyncThread.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

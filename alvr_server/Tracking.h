@@ -14,13 +14,13 @@ public:
 	{
 		Log(L"TrackingReference::Activate. objectId=%d", unObjectId);
 
-		m_unObjectId = unObjectId;
-		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
+		mObjectId = unObjectId;
+		mPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(mObjectId);
 
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, "TrackingReference-Model001");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, "TrackingReference-Model001");
+		vr::VRProperties()->SetStringProperty(mPropertyContainer, vr::Prop_ModelNumber_String, "TrackingReference-Model001");
+		vr::VRProperties()->SetStringProperty(mPropertyContainer, vr::Prop_RenderModelName_String, "TrackingReference-Model001");
 
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_AttachedDeviceId_String, GetSerialNumber().c_str());
+		vr::VRProperties()->SetStringProperty(mPropertyContainer, vr::Prop_AttachedDeviceId_String, GetSerialNumber().c_str());
 
 		return vr::VRInitError_None;
 	}
@@ -28,7 +28,7 @@ public:
 	virtual void Deactivate()
 	{
 		Log(L"TrackingReference::Deactivate");
-		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+		mObjectId = vr::k_unTrackedDeviceIndexInvalid;
 	}
 
 	virtual void EnterStandby()
@@ -73,10 +73,10 @@ public:
 
 	void OnPoseUpdated()
 	{
-		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
+		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(mObjectId, GetPose(), sizeof(vr::DriverPose_t));
 	}
 
 private:
-	vr::TrackedDeviceIndex_t m_unObjectId;
-	vr::PropertyContainerHandle_t m_ulPropertyContainer;
+	vr::TrackedDeviceIndex_t mObjectId;
+	vr::PropertyContainerHandle_t mPropertyContainer;
 };

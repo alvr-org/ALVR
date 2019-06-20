@@ -7,7 +7,7 @@
 
 extern uint64_t g_DriverTestMode;
 
-Settings Settings::m_Instance;
+Settings Settings::mInstance;
 
 Settings::Settings()
 	: mEnableOffsetPos(false)

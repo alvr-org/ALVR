@@ -13,7 +13,7 @@ public:
 	void Shutdown();
 	void SetRefreshRate(int refreshRate);
 private:
-	bool m_bExit;
-	uint64_t m_PreviousVsync;
-	int m_refreshRate = 60;
+	bool mExit;
+	uint64_t mPreviousVsync;
+	int mRefreshRate = 60;
 };

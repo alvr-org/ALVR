@@ -31,7 +31,7 @@ public:
 
 private:
 	std::shared_ptr<OpenVRServerDriver> m_pRemoteHmd;
-	std::shared_ptr<Listener> m_Listener;
+	std::shared_ptr<Listener> mListener;
 	std::shared_ptr<IPCMutex> m_mutex;
 };
 
@@ -49,13 +49,13 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 
 	Settings::Instance().Load();
 
-	m_Listener = std::make_shared<Listener>();
-	if (!m_Listener->Startup())
+	mListener = std::make_shared<Listener>();
+	if (!mListener->Startup())
 	{
 		return vr::VRInitError_Driver_Failed;
 	}
 
-	m_pRemoteHmd = std::make_shared<OpenVRServerDriver>(m_Listener);
+	m_pRemoteHmd = std::make_shared<OpenVRServerDriver>(mListener);
 
 	if (Settings::Instance().IsLoaded()) {
 		// Launcher is running. Enable driver.
@@ -67,7 +67,7 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 
 void CServerDriver_DisplayRedirect::Cleanup()
 {
-	m_Listener.reset();
+	mListener.reset();
 	m_pRemoteHmd.reset();
 	m_mutex.reset();
 

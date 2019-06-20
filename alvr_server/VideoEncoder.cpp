@@ -1,7 +1,7 @@
 #include <ScreenGrab.h>
 #include "VideoEncoder.h"
 
-void VideoEncoder::SaveDebugOutput(std::shared_ptr<CD3DRender> m_pD3DRender, std::vector<std::vector<uint8_t>> &vPacket, ID3D11Texture2D *texture, uint64_t frameIndex) {
+void VideoEncoder::SaveDebugOutput(std::shared_ptr<CD3DRender> mD3DRender, std::vector<std::vector<uint8_t>> &vPacket, ID3D11Texture2D *texture, uint64_t frameIndex) {
 	if (vPacket.size() == 0) {
 		return;
 	}
@@ -23,6 +23,6 @@ void VideoEncoder::SaveDebugOutput(std::shared_ptr<CD3DRender> m_pD3DRender, std
 			}
 			fclose(fp);
 		}
-		DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), texture, filename2);
+		DirectX::SaveDDSTextureToFile(mD3DRender->GetContext(), texture, filename2);
 	}
 }

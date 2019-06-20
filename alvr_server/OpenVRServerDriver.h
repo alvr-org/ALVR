@@ -48,22 +48,22 @@ public:
 	virtual void OnFrameAck(bool result, bool isIDR, uint64_t startFrame, uint64_t endFrame);;
 	virtual void OnShutdown();
 private:
-	bool m_added;
+	bool mAdded;
 	bool mActivated;
-	vr::TrackedDeviceIndex_t m_unObjectId;
-	vr::PropertyContainerHandle_t m_ulPropertyContainer;
+	vr::TrackedDeviceIndex_t mObjectId;
+	vr::PropertyContainerHandle_t mPropertyContainer;
 
-	std::wstring m_adapterName;
+	std::wstring mAdapterName;
 
-	std::shared_ptr<CD3DRender> m_D3DRender;
-	std::shared_ptr<FrameEncoder> m_encoder;
-	std::shared_ptr<AudioCapture> m_audioCapture;
-	std::shared_ptr<Listener> m_Listener;
-	std::shared_ptr<VSyncThread> m_VSyncThread;
-	std::shared_ptr<RecenterManager> m_recenterManager;
+	std::shared_ptr<CD3DRender> mD3DRender;
+	std::shared_ptr<FrameEncoder> mEncoder;
+	std::shared_ptr<AudioCapture> mAudioCapture;
+	std::shared_ptr<Listener> mListener;
+	std::shared_ptr<VSyncThread> mVSyncThread;
+	std::shared_ptr<RecenterManager> mRecenterManager;
 
-	std::shared_ptr<OpenVRDisplayComponent> m_displayComponent;
-	std::shared_ptr<OpenVRDirectModeComponent> m_directModeComponent;
+	std::shared_ptr<OpenVRDisplayComponent> mDisplayComponent;
+	std::shared_ptr<OpenVRDirectModeComponent> mDirectModeComponent;
 
-	std::shared_ptr<TrackingReference> m_trackingReference;
+	std::shared_ptr<TrackingReference> mTrackingReference;
 };

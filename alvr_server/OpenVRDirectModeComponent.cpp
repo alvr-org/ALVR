@@ -11,14 +11,14 @@
 extern uint64_t g_DriverTestMode;
 
 OpenVRDirectModeComponent::OpenVRDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender, std::shared_ptr<FrameEncoder> pEncoder, std::shared_ptr<Listener> Listener, std::shared_ptr<RecenterManager> recenterManager)
-	: m_pD3DRender(pD3DRender)
-	, m_pEncoder(pEncoder)
-	, m_Listener(Listener)
-	, m_recenterManager(recenterManager)
-	, m_poseMutex(NULL)
-	, m_submitLayer(0)
-	, m_LastReferencedFrameIndex(0)
-	, m_LastReferencedClientTime(0) {
+	: mD3DRender(pD3DRender)
+	, mEncoder(pEncoder)
+	, mListener(Listener)
+	, mRecenterManager(recenterManager)
+	, mPoseMutex(NULL)
+	, mSubmitLayer(0)
+	, mLastReferencedFrameIndex(0)
+	, mLastReferencedClientTime(0) {
 }
 
 void OpenVRDirectModeComponent::OnPoseUpdated(TrackingInfo & info) {
@@ -26,7 +26,7 @@ void OpenVRDirectModeComponent::OnPoseUpdated(TrackingInfo & info) {
 	TrackingHistoryFrame history;
 	history.info = info;
 
-	vr::HmdQuaternion_t recentered = m_recenterManager->GetRecenteredHMD();
+	vr::HmdQuaternion_t recentered = mRecenterManager->GetRecenteredHMD();
 	HmdMatrix_QuatToMat(recentered.w,
 		recentered.x,
 		recentered.y,
@@ -38,23 +38,23 @@ void OpenVRDirectModeComponent::OnPoseUpdated(TrackingInfo & info) {
 		, history.rotationMatrix.m[1][0], history.rotationMatrix.m[1][1], history.rotationMatrix.m[1][2], history.rotationMatrix.m[1][3]
 		, history.rotationMatrix.m[2][0], history.rotationMatrix.m[2][1], history.rotationMatrix.m[2][2], history.rotationMatrix.m[2][3]);
 
-	m_poseMutex.Wait(INFINITE);
-	if (m_poseBuffer.size() == 0) {
-		m_poseBuffer.push_back(history);
+	mPoseMutex.Wait(INFINITE);
+	if (mPoseBuffer.size() == 0) {
+		mPoseBuffer.push_back(history);
 	}
 	else {
-		if (m_poseBuffer.back().info.FrameIndex != info.FrameIndex) {
+		if (mPoseBuffer.back().info.FrameIndex != info.FrameIndex) {
 			// New track info
-			m_poseBuffer.push_back(history);
+			mPoseBuffer.push_back(history);
 		}
 	}
-	if (m_poseBuffer.size() > 10) {
-		m_poseBuffer.pop_front();
+	if (mPoseBuffer.size() > 10) {
+		mPoseBuffer.pop_front();
 	}
-	m_poseMutex.Release();
+	mPoseMutex.Release();
 
-	m_LastReferencedFrameIndex = info.FrameIndex;
-	m_LastReferencedClientTime = info.clientTime;
+	mLastReferencedFrameIndex = info.FrameIndex;
+	mLastReferencedClientTime = info.clientTime;
 }
 
 /** Specific to Oculus compositor support, textures supplied must be created using this method. */
@@ -87,7 +87,7 @@ void OpenVRDirectModeComponent::CreateSwapTextureSet(uint32_t unPid, const SwapT
 	processResource->pid = unPid;
 
 	for (int i = 0; i < 3; i++) {
-		HRESULT hr = m_pD3DRender->GetDevice()->CreateTexture2D(&SharedTextureDesc, NULL, &processResource->textures[i]);
+		HRESULT hr = mD3DRender->GetDevice()->CreateTexture2D(&SharedTextureDesc, NULL, &processResource->textures[i]);
 		//Log(L"texture%d %p res:%d %s", i, texture[i], hr, GetDxErrorStr(hr).c_str());
 
 		IDXGIResource* pResource;
@@ -174,17 +174,17 @@ void OpenVRDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2
 	// position
 	// x = pPose->m[0][3], y = pPose->m[1][3], z = pPose->m[2][3]
 
-	if (m_submitLayer == 0) {
+	if (mSubmitLayer == 0) {
 		// Detect FrameIndex of submitted frame by pPose.
 		// This is important part to achieve smooth headtracking.
 		// We search for history of TrackingInfo and find the TrackingInfo which have nearest matrix value.
 
-		m_poseMutex.Wait(INFINITE);
+		mPoseMutex.Wait(INFINITE);
 		float minDiff = 100000;
 		int index = 0;
 		int minIndex = 0;
-		auto minIt = m_poseBuffer.begin();
-		for (auto it = m_poseBuffer.begin(); it != m_poseBuffer.end(); it++, index++) {
+		auto minIt = mPoseBuffer.begin();
+		for (auto it = mPoseBuffer.begin(); it != mPoseBuffer.end(); it++, index++) {
 			float distance = 0;
 			// Rotation matrix composes a part of ViewMatrix of TrackingInfo.
 			// Be carefull of transpose.
@@ -201,32 +201,32 @@ void OpenVRDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2
 				minDiff = distance;
 			}
 		}
-		if (minIt != m_poseBuffer.end()) {
+		if (minIt != mPoseBuffer.end()) {
 			// found the frameIndex
-			m_prevSubmitFrameIndex = m_submitFrameIndex;
-			m_prevSubmitClientTime = m_submitClientTime;
-			m_submitFrameIndex = minIt->info.FrameIndex;
-			m_submitClientTime = minIt->info.clientTime;
+			mPrevSubmitFrameIndex = mSubmitFrameIndex;
+			mPrevSubmitClientTime = mSubmitClientTime;
+			mSubmitFrameIndex = minIt->info.FrameIndex;
+			mSubmitClientTime = minIt->info.clientTime;
 
-			m_prevFramePoseRotation = m_framePoseRotation;
-			m_framePoseRotation.x = minIt->info.HeadPose_Pose_Orientation.x;
-			m_framePoseRotation.y = minIt->info.HeadPose_Pose_Orientation.y;
-			m_framePoseRotation.z = minIt->info.HeadPose_Pose_Orientation.z;
-			m_framePoseRotation.w = minIt->info.HeadPose_Pose_Orientation.w;
+			mPrevFramePoseRotation = mFramePoseRotation;
+			mFramePoseRotation.x = minIt->info.HeadPose_Pose_Orientation.x;
+			mFramePoseRotation.y = minIt->info.HeadPose_Pose_Orientation.y;
+			mFramePoseRotation.z = minIt->info.HeadPose_Pose_Orientation.z;
+			mFramePoseRotation.w = minIt->info.HeadPose_Pose_Orientation.w;
 
-			Log(L"Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu minDiff=%f", m_prevSubmitFrameIndex, m_submitFrameIndex, minDiff);
+			Log(L"Frame pose found. mPrevSubmitFrameIndex=%llu mSubmitFrameIndex=%llu minDiff=%f", mPrevSubmitFrameIndex, mSubmitFrameIndex, minDiff);
 		}
 		else {
-			m_submitFrameIndex = 0;
-			m_submitClientTime = 0;
-			m_framePoseRotation = HmdQuaternion_Init(0.0, 0.0, 0.0, 0.0);
+			mSubmitFrameIndex = 0;
+			mSubmitClientTime = 0;
+			mFramePoseRotation = HmdQuaternion_Init(0.0, 0.0, 0.0, 0.0);
 		}
-		m_poseMutex.Release();
+		mPoseMutex.Release();
 	}
-	if (m_submitLayer < MAX_LAYERS) {
-		m_submitLayers[m_submitLayer][0] = perEye[0];
-		m_submitLayers[m_submitLayer][1] = perEye[1];
-		m_submitLayer++;
+	if (mSubmitLayer < MAX_LAYERS) {
+		mSubmitLayers[mSubmitLayer][0] = perEye[0];
+		mSubmitLayers[mSubmitLayer][1] = perEye[1];
+		mSubmitLayer++;
 	}
 	else {
 		Log(L"Too many layers submitted!");
@@ -244,24 +244,24 @@ void OpenVRDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2
 void OpenVRDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 {
 	bool useMutex = Settings::Instance().mUseKeyedMutex;
-	Log(L"Present syncTexture=%p (use:%d) m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu", syncTexture, useMutex, m_prevSubmitFrameIndex, m_submitFrameIndex);
+	Log(L"Present syncTexture=%p (use:%d) mPrevSubmitFrameIndex=%llu mSubmitFrameIndex=%llu", syncTexture, useMutex, mPrevSubmitFrameIndex, mSubmitFrameIndex);
 
 	IDXGIKeyedMutex *pKeyedMutex = NULL;
 
-	uint32_t layerCount = m_submitLayer;
-	m_submitLayer = 0;
+	uint32_t layerCount = mSubmitLayer;
+	mSubmitLayer = 0;
 
-	if (m_prevSubmitFrameIndex == m_submitFrameIndex) {
-		Log(L"Discard duplicated frame. FrameIndex=%llu (Ignoring)", m_submitFrameIndex);
+	if (mPrevSubmitFrameIndex == mSubmitFrameIndex) {
+		Log(L"Discard duplicated frame. FrameIndex=%llu (Ignoring)", mSubmitFrameIndex);
 		//return;
 	}
 
-	if (!m_Listener->IsStreaming()) {
-		Log(L"Discard frame because isStreaming=false. FrameIndex=%llu", m_submitFrameIndex);
+	if (!mListener->IsStreaming()) {
+		Log(L"Discard frame because isStreaming=false. FrameIndex=%llu", mSubmitFrameIndex);
 		return;
 	}
 
-	ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
+	ID3D11Texture2D *pSyncTexture = mD3DRender->GetSharedTexture((HANDLE)syncTexture);
 	if (!pSyncTexture)
 	{
 		Log(L"[VDispDvr] SyncTexture is NULL!");
@@ -299,7 +299,7 @@ void OpenVRDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 		Log(L"[VDispDvr] Mutex Released.");
 	}
 
-	m_pEncoder->NewFrameReady();
+	mEncoder->NewFrameReady();
 }
 
 void OpenVRDirectModeComponent::CopyTexture(uint32_t layerCount) {
@@ -312,7 +312,7 @@ void OpenVRDirectModeComponent::CopyTexture(uint32_t layerCount) {
 
 	for (uint32_t i = 0; i < layerCount; i++) {
 		// Find left eye texture.
-		HANDLE leftEyeTexture = (HANDLE)m_submitLayers[i][0].hTexture;
+		HANDLE leftEyeTexture = (HANDLE)mSubmitLayers[i][0].hTexture;
 		auto it = m_handleMap.find(leftEyeTexture);
 		if (it == m_handleMap.end()) {
 			// Ignore this layer.
@@ -326,7 +326,7 @@ void OpenVRDirectModeComponent::CopyTexture(uint32_t layerCount) {
 			Log(L"CopyTexture: layer=%d/%d pid=%d Texture Size=%dx%d Format=%d", i, layerCount, it->second.first->pid, desc.Width, desc.Height, desc.Format);
 
 			// Find right eye texture.
-			HANDLE rightEyeTexture = (HANDLE)m_submitLayers[i][1].hTexture;
+			HANDLE rightEyeTexture = (HANDLE)mSubmitLayers[i][1].hTexture;
 			it = m_handleMap.find(rightEyeTexture);
 			if (it == m_handleMap.end()) {
 				// Ignore this layer
@@ -340,12 +340,12 @@ void OpenVRDirectModeComponent::CopyTexture(uint32_t layerCount) {
 
 		pTexture[i][0] = Texture[i][0].Get();
 		pTexture[i][1] = Texture[i][1].Get();
-		bounds[i][0] = m_submitLayers[i][0].bounds;
-		bounds[i][1] = m_submitLayers[i][1].bounds;
+		bounds[i][0] = mSubmitLayers[i][0].bounds;
+		bounds[i][1] = mSubmitLayers[i][1].bounds;
 	}
 
 	// This can go away, but is useful to see it as a separate packet on the gpu in traces.
-	m_pD3DRender->GetContext()->Flush();
+	mD3DRender->GetContext()->Flush();
 
 	Log(L"Waiting for finish of previous encode.");
 
@@ -353,9 +353,9 @@ void OpenVRDirectModeComponent::CopyTexture(uint32_t layerCount) {
 		wchar_t buf[1000];
 
 		for (uint32_t i = 0; i < layerCount; i++) {
-			Log(L"Writing Debug DDS. m_LastReferencedFrameIndex=%llu layer=%d/%d", 0, i, layerCount);
-			_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", Settings::Instance().mDebugOutputDir.c_str(), m_submitFrameIndex, i, layerCount);
-			HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture[i][0], buf);
+			Log(L"Writing Debug DDS. mLastReferencedFrameIndex=%llu layer=%d/%d", 0, i, layerCount);
+			_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", Settings::Instance().mDebugOutputDir.c_str(), mSubmitFrameIndex, i, layerCount);
+			HRESULT hr = DirectX::SaveDDSTextureToFile(mD3DRender->GetContext(), pTexture[i][0], buf);
 			Log(L"Writing Debug DDS: End hr=%p %s", hr, GetErrorStr(hr).c_str());
 		}
 		Settings::Instance().mCaptureLayerDDSTrigger = false;
@@ -363,25 +363,25 @@ void OpenVRDirectModeComponent::CopyTexture(uint32_t layerCount) {
 
 	// Wait for the encoder to be ready.  This is important because the encoder thread
 	// blocks on transmit which uses our shared d3d context (which is not thread safe).
-	m_pEncoder->WaitForEncode();
+	mEncoder->WaitForEncode();
 
 	std::string debugText;
 
 	if (Settings::Instance().mDebugFrameIndex) {
 		TrackingInfo info;
-		m_Listener->GetTrackingInfo(info);
+		mListener->GetTrackingInfo(info);
 
 		char buf[2000];
-		snprintf(buf, sizeof(buf), "%llu\n%f\n%f", m_prevSubmitFrameIndex, m_prevFramePoseRotation.x, info.HeadPose_Pose_Orientation.x);
+		snprintf(buf, sizeof(buf), "%llu\n%f\n%f", mPrevSubmitFrameIndex, mPrevFramePoseRotation.x, info.HeadPose_Pose_Orientation.x);
 		debugText = buf;
 	}
 
-	uint64_t submitFrameIndex = m_submitFrameIndex + Settings::Instance().mTrackingFrameOffset;
+	uint64_t submitFrameIndex = mSubmitFrameIndex + Settings::Instance().mTrackingFrameOffset;
 	Log(L"Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu"
-		, m_submitFrameIndex, Settings::Instance().mTrackingFrameOffset, submitFrameIndex);
+		, mSubmitFrameIndex, Settings::Instance().mTrackingFrameOffset, submitFrameIndex);
 
 	// Copy entire texture to staging so we can read the pixels to send to remote device.
-	m_pEncoder->CopyToStaging(pTexture, bounds, layerCount, m_recenterManager->IsRecentering(), presentationTime, submitFrameIndex, m_submitClientTime, m_recenterManager->GetFreePIEMessage(), debugText);
+	mEncoder->CopyToStaging(pTexture, bounds, layerCount, mRecenterManager->IsRecentering(), presentationTime, submitFrameIndex, mSubmitClientTime, mRecenterManager->GetFreePIEMessage(), debugText);
 
-	m_pD3DRender->GetContext()->Flush();
+	mD3DRender->GetContext()->Flush();
 }

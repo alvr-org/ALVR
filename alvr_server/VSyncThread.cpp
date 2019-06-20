@@ -2,29 +2,29 @@
 #include "Logger.h"
 
 VSyncThread::VSyncThread(int refreshRate)
-	: m_bExit(false)
-	, m_refreshRate(refreshRate) {}
+	: mExit(false)
+	, mRefreshRate(refreshRate) {}
 
 // Trigger VSync if elapsed time from previous VSync is larger than 30ms.
 void VSyncThread::Run() {
-	m_PreviousVsync = 0;
+	mPreviousVsync = 0;
 
-	while (!m_bExit) {
+	while (!mExit) {
 		uint64_t current = GetTimestampUs();
-		uint64_t interval = 1000 * 1000 / m_refreshRate;
+		uint64_t interval = 1000 * 1000 / mRefreshRate;
 
-		if (m_PreviousVsync + interval > current) {
-			uint64_t sleepTimeMs = (m_PreviousVsync + interval - current) / 1000;
+		if (mPreviousVsync + interval > current) {
+			uint64_t sleepTimeMs = (mPreviousVsync + interval - current) / 1000;
 
 			if (sleepTimeMs > 0) {
 				Log(L"Sleep %llu ms for next VSync.", sleepTimeMs);
 				Sleep(static_cast<DWORD>(sleepTimeMs));
 			}
 
-			m_PreviousVsync += interval;
+			mPreviousVsync += interval;
 		}
 		else {
-			m_PreviousVsync = current;
+			mPreviousVsync = current;
 		}
 		Log(L"Generate VSync Event by VSyncThread");
 		vr::VRServerDriverHost()->VsyncEvent(0);
@@ -32,9 +32,9 @@ void VSyncThread::Run() {
 }
 
 void VSyncThread::Shutdown() {
-	m_bExit = true;
+	mExit = true;
 }
 
 void VSyncThread::SetRefreshRate(int refreshRate) {
-	m_refreshRate = refreshRate;
+	mRefreshRate = refreshRate;
 }

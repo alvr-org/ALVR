@@ -48,10 +48,10 @@ public:
 	void CopyTexture(uint32_t layerCount);
 
 private:
-	std::shared_ptr<CD3DRender> m_pD3DRender;
-	std::shared_ptr<FrameEncoder> m_pEncoder;
-	std::shared_ptr<Listener> m_Listener;
-	std::shared_ptr<RecenterManager> m_recenterManager;
+	std::shared_ptr<CD3DRender> mD3DRender;
+	std::shared_ptr<FrameEncoder> mEncoder;
+	std::shared_ptr<Listener> mListener;
+	std::shared_ptr<RecenterManager> mRecenterManager;
 
 	// Resource for each process
 	struct ProcessResource {
@@ -62,22 +62,22 @@ private:
 	std::map<HANDLE, std::pair<ProcessResource *, int> > m_handleMap;
 
 	static const int MAX_LAYERS = 10;
-	int m_submitLayer;
-	SubmitLayerPerEye_t m_submitLayers[MAX_LAYERS][2];
-	vr::HmdQuaternion_t m_prevFramePoseRotation;
-	vr::HmdQuaternion_t m_framePoseRotation;
-	uint64_t m_submitFrameIndex;
-	uint64_t m_submitClientTime;
-	uint64_t m_prevSubmitFrameIndex;
-	uint64_t m_prevSubmitClientTime;
+	int mSubmitLayer;
+	SubmitLayerPerEye_t mSubmitLayers[MAX_LAYERS][2];
+	vr::HmdQuaternion_t mPrevFramePoseRotation;
+	vr::HmdQuaternion_t mFramePoseRotation;
+	uint64_t mSubmitFrameIndex;
+	uint64_t mSubmitClientTime;
+	uint64_t mPrevSubmitFrameIndex;
+	uint64_t mPrevSubmitClientTime;
 
-	uint64_t m_LastReferencedFrameIndex;
-	uint64_t m_LastReferencedClientTime;
+	uint64_t mLastReferencedFrameIndex;
+	uint64_t mLastReferencedClientTime;
 
-	IPCMutex m_poseMutex;
+	IPCMutex mPoseMutex;
 	struct TrackingHistoryFrame {
 		TrackingInfo info;
 		vr::HmdMatrix34_t rotationMatrix;
 	};
-	std::list<TrackingHistoryFrame> m_poseBuffer;
+	std::list<TrackingHistoryFrame> mPoseBuffer;
 };

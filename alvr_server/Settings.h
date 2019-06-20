@@ -89,7 +89,7 @@ static const wchar_t * const DEBUG_AUDIO_CAPTURE_OUTPUT_NAME = L"capture.wav";
 
 class Settings
 {
-	static Settings m_Instance;
+	static Settings mInstance;
 	bool mLoaded;
 
 	Settings();
@@ -98,7 +98,7 @@ class Settings
 public:
 	void Load();
 	static Settings &Instance() {
-		return m_Instance;
+		return mInstance;
 	}
 
 	bool IsLoaded() {

@@ -9,54 +9,54 @@
 uint64_t g_DriverTestMode = 0;
 
 OpenVRServerDriver::OpenVRServerDriver(std::shared_ptr<Listener> listener)
-	: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
-	, m_added(false)
+	: mObjectId(vr::k_unTrackedDeviceIndexInvalid)
+	, mAdded(false)
 	, mActivated(false)
-	, m_Listener(listener)
+	, mListener(listener)
 {
-	m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-	m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
+	mObjectId = vr::k_unTrackedDeviceIndexInvalid;
+	mPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
 	Log(L"Startup: %hs %hs", APP_MODULE_NAME, APP_VERSION_STRING);
 
-	m_Listener->SetCallback(this);
+	mListener->SetCallback(this);
 
 	Log(L"OpenVRServerDriver successfully initialized.");
 }
 
 OpenVRServerDriver::~OpenVRServerDriver()
 {
-	if (m_encoder)
+	if (mEncoder)
 	{
-		m_encoder->Stop();
-		m_encoder.reset();
+		mEncoder->Stop();
+		mEncoder.reset();
 	}
 
-	if (m_audioCapture)
+	if (mAudioCapture)
 	{
-		m_audioCapture->Shutdown();
-		m_audioCapture.reset();
+		mAudioCapture->Shutdown();
+		mAudioCapture.reset();
 	}
 
-	if (m_Listener)
+	if (mListener)
 	{
-		m_Listener->Stop();
-		m_Listener.reset();
+		mListener->Stop();
+		mListener.reset();
 	}
 
-	if (m_VSyncThread)
+	if (mVSyncThread)
 	{
-		m_VSyncThread->Shutdown();
-		m_VSyncThread.reset();
+		mVSyncThread->Shutdown();
+		mVSyncThread.reset();
 	}
 
-	if (m_D3DRender)
+	if (mD3DRender)
 	{
-		m_D3DRender->Shutdown();
-		m_D3DRender.reset();
+		mD3DRender->Shutdown();
+		mD3DRender.reset();
 	}
 
-	m_recenterManager.reset();
+	mRecenterManager.reset();
 }
 
 std::string OpenVRServerDriver::GetSerialNumber() const
@@ -66,10 +66,10 @@ std::string OpenVRServerDriver::GetSerialNumber() const
 
 void OpenVRServerDriver::Enable()
 {
-	if (m_added) {
+	if (mAdded) {
 		return;
 	}
-	m_added = true;
+	mAdded = true;
 	bool ret;
 	ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 		GetSerialNumber().c_str(),
@@ -77,11 +77,11 @@ void OpenVRServerDriver::Enable()
 		this);
 	Log(L"TrackedDeviceAdded(HMD) Ret=%d SerialNumber=%hs", ret, GetSerialNumber().c_str());
 	if (Settings::Instance().mUseTrackingReference) {
-		m_trackingReference = std::make_shared<TrackingReference>();
+		mTrackingReference = std::make_shared<TrackingReference>();
 		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-			m_trackingReference->GetSerialNumber().c_str(),
+			mTrackingReference->GetSerialNumber().c_str(),
 			vr::TrackedDeviceClass_TrackingReference,
-			m_trackingReference.get());
+			mTrackingReference.get());
 		Log(L"TrackedDeviceAdded(TrackingReference) Ret=%d SerialNumber=%hs", ret, GetSerialNumber().c_str());
 	}
 
@@ -91,68 +91,68 @@ vr::EVRInitError OpenVRServerDriver::Activate(vr::TrackedDeviceIndex_t unObjectI
 {
 	Log(L"OpenVRServerDriver Activate %d", unObjectId);
 
-	m_unObjectId = unObjectId;
-	m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
+	mObjectId = unObjectId;
+	mPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(mObjectId);
 
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_TrackingSystemName_String, Settings::Instance().mTrackingSystemName.c_str());
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, Settings::Instance().mModelNumber.c_str());
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ManufacturerName_String, Settings::Instance().mManufacturerName.c_str());
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, Settings::Instance().mRenderModelName.c_str());
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RegisteredDeviceType_String, Settings::Instance().mRegisteredDeviceType.c_str());
-	vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserIpdMeters_Float, Settings::Instance().mIPD);
-	vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
-	vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().mRefreshRate));
-	vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_SecondsFromVsyncToPhotons_Float, Settings::Instance().mSecondsFromVsyncToPhotons);
+	vr::VRProperties()->SetStringProperty(mPropertyContainer, vr::Prop_TrackingSystemName_String, Settings::Instance().mTrackingSystemName.c_str());
+	vr::VRProperties()->SetStringProperty(mPropertyContainer, vr::Prop_ModelNumber_String, Settings::Instance().mModelNumber.c_str());
+	vr::VRProperties()->SetStringProperty(mPropertyContainer, vr::Prop_ManufacturerName_String, Settings::Instance().mManufacturerName.c_str());
+	vr::VRProperties()->SetStringProperty(mPropertyContainer, vr::Prop_RenderModelName_String, Settings::Instance().mRenderModelName.c_str());
+	vr::VRProperties()->SetStringProperty(mPropertyContainer, vr::Prop_RegisteredDeviceType_String, Settings::Instance().mRegisteredDeviceType.c_str());
+	vr::VRProperties()->SetFloatProperty(mPropertyContainer, vr::Prop_UserIpdMeters_Float, Settings::Instance().mIPD);
+	vr::VRProperties()->SetFloatProperty(mPropertyContainer, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
+	vr::VRProperties()->SetFloatProperty(mPropertyContainer, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().mRefreshRate));
+	vr::VRProperties()->SetFloatProperty(mPropertyContainer, vr::Prop_SecondsFromVsyncToPhotons_Float, Settings::Instance().mSecondsFromVsyncToPhotons);
 
 	// return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
-	vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_CurrentUniverseId_Uint64, 2);
+	vr::VRProperties()->SetUint64Property(mPropertyContainer, vr::Prop_CurrentUniverseId_Uint64, 2);
 
 	// avoid "not fullscreen" warnings from vrmonitor
-	vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_IsOnDesktop_Bool, false);
+	vr::VRProperties()->SetBoolProperty(mPropertyContainer, vr::Prop_IsOnDesktop_Bool, false);
 
 	// Manually send VSync events on direct mode. ref:https://github.com/ValveSoftware/virtual_display/issues/1
-	vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true);
+	vr::VRProperties()->SetBoolProperty(mPropertyContainer, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true);
 
 	float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
 	vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().mIPD);
 
-	m_D3DRender = std::make_shared<CD3DRender>();
+	mD3DRender = std::make_shared<CD3DRender>();
 
 	// Use the same adapter as vrcompositor uses. If another adapter is used, vrcompositor says "failed to open shared texture" and then crashes.
 	// It seems vrcompositor selects always(?) first adapter. vrcompositor may use Intel iGPU when user sets it as primary adapter. I don't know what happens on laptop which support optimus.
 	// Prop_GraphicsAdapterLuid_Uint64 is only for redirect display and is ignored on direct mode driver. So we can't specify an adapter for vrcompositor.
 	// m_nAdapterIndex is set 0 on the launcher.
-	if (!m_D3DRender->Initialize(Settings::Instance().mAdapterIndex))
+	if (!mD3DRender->Initialize(Settings::Instance().mAdapterIndex))
 	{
 		FatalLog(L"Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().mAdapterIndex);
 		return vr::VRInitError_Driver_Failed;
 	}
 
 	int32_t nDisplayAdapterIndex;
-	if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, m_adapterName))
+	if (!mD3DRender->GetAdapterInfo(&nDisplayAdapterIndex, mAdapterName))
 	{
 		FatalLog(L"Failed to get primary adapter info!");
 		return vr::VRInitError_Driver_Failed;
 	}
 
-	Log(L"Using %s as primary graphics adapter.", m_adapterName.c_str());
+	Log(L"Using %s as primary graphics adapter.", mAdapterName.c_str());
 	Log(L"OSVer: %s", GetWindowsOSVersion().c_str());
 
 	// Spin up a separate thread to handle the overlapped encoding/transmit step.
-	m_encoder = std::make_shared<FrameEncoder>();
+	mEncoder = std::make_shared<FrameEncoder>();
 	try {
-		m_encoder->Initialize(m_D3DRender, m_Listener);
+		mEncoder->Initialize(mD3DRender, mListener);
 	}
 	catch (Exception e) {
 		FatalLog(L"Failed to initialize CEncoder. %s", e.what());
 		return vr::VRInitError_Driver_Failed;
 	}
-	m_encoder->Start();
+	mEncoder->Start();
 
 	if (Settings::Instance().mEnableSound) {
-		m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
+		mAudioCapture = std::make_shared<AudioCapture>(mListener);
 		try {
-			m_audioCapture->Start(ToWstring(Settings::Instance().mSoundDevice));
+			mAudioCapture->Start(ToWstring(Settings::Instance().mSoundDevice));
 		}
 		catch (Exception e) {
 			FatalLog(L"Failed to start audio capture. %s", e.what());
@@ -160,13 +160,13 @@ vr::EVRInitError OpenVRServerDriver::Activate(vr::TrackedDeviceIndex_t unObjectI
 		}
 	}
 
-	m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().mRefreshRate);
-	m_VSyncThread->Start();
+	mVSyncThread = std::make_shared<VSyncThread>(Settings::Instance().mRefreshRate);
+	mVSyncThread->Start();
 
-	m_recenterManager = std::make_shared<RecenterManager>();
+	mRecenterManager = std::make_shared<RecenterManager>();
 
-	m_displayComponent = std::make_shared<OpenVRDisplayComponent>();
-	m_directModeComponent = std::make_shared<OpenVRDirectModeComponent>(m_D3DRender, m_encoder, m_Listener, m_recenterManager);
+	mDisplayComponent = std::make_shared<OpenVRDisplayComponent>();
+	mDirectModeComponent = std::make_shared<OpenVRDirectModeComponent>(mD3DRender, mEncoder, mListener, mRecenterManager);
 
 	mActivated = true;
 
@@ -177,7 +177,7 @@ void OpenVRServerDriver::Deactivate()
 {
 	Log(L"OpenVRServerDriver Deactivate");
 	mActivated = false;
-	m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+	mObjectId = vr::k_unTrackedDeviceIndexInvalid;
 }
 
 void OpenVRServerDriver::EnterStandby()
@@ -189,11 +189,11 @@ void * OpenVRServerDriver::GetComponent(const char * pchComponentNameAndVersion)
 	Log(L"GetComponent %hs", pchComponentNameAndVersion);
 	if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
 	{
-		return m_displayComponent.get();
+		return mDisplayComponent.get();
 	}
 	if (!_stricmp(pchComponentNameAndVersion, vr::IVRDriverDirectModeComponent_Version))
 	{
-		return m_directModeComponent.get();
+		return mDirectModeComponent.get();
 	}
 
 	// override this to add a component to a driver
@@ -219,10 +219,10 @@ vr::DriverPose_t OpenVRServerDriver::GetPose()
 	pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 	pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-	if (m_recenterManager->HasValidTrackingInfo()) {
-		pose.qRotation = m_recenterManager->GetRecenteredHMD();
+	if (mRecenterManager->HasValidTrackingInfo()) {
+		pose.qRotation = mRecenterManager->GetRecenteredHMD();
 
-		TrackingVector3 position = m_recenterManager->GetRecenteredPositionHMD();
+		TrackingVector3 position = mRecenterManager->GetRecenteredPositionHMD();
 		pose.vecPosition[0] = position.x;
 		pose.vecPosition[1] = position.y;
 		pose.vecPosition[2] = position.z;
@@ -250,7 +250,7 @@ void OpenVRServerDriver::RunFrame()
 	// In a real driver, this should happen from some pose tracking thread.
 	// The RunFrame interval is unspecified and can be very irregular if some other
 	// driver blocks it for some periodic task.
-	if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
+	if (mObjectId != vr::k_unTrackedDeviceIndexInvalid)
 	{
 		//Log(L"RunFrame");
 		//vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
@@ -265,7 +265,7 @@ void OpenVRServerDriver::OnCommand(std::string commandName, std::string args)
 {
 	if (commandName == "EnableDriverTestMode") {
 		g_DriverTestMode = strtoull(args.c_str(), NULL, 0);
-		m_Listener->SendCommandResponse("OK\n");
+		mListener->SendCommandResponse("OK\n");
 	}
 	else if (commandName == "GetConfig") {
 		char buf[4000];
@@ -286,7 +286,7 @@ void OpenVRServerDriver::OnCommand(std::string commandName, std::string args)
 			"Bitrate %lluMbps\n"
 			"Resolution %dx%d\n"
 			"RefreshRate %d\n"
-			, m_Listener->DumpConfig().c_str()
+			, mListener->DumpConfig().c_str()
 			, k_pch_Settings_DebugLog_Bool, Settings::Instance().mDebugLog
 			, k_pch_Settings_DebugFrameIndex_Bool, Settings::Instance().mDebugFrameIndex
 			, k_pch_Settings_DebugFrameOutput_Bool, Settings::Instance().mDebugFrameOutput
@@ -297,18 +297,18 @@ void OpenVRServerDriver::OnCommand(std::string commandName, std::string args)
 			, k_pch_Settings_ControllerTrackpadTouchMode_Int32, Settings::Instance().mControllerTrackpadTouchMode
 			, k_pch_Settings_ControllerBackMode_Int32, Settings::Instance().mControllerBackMode
 			, k_pch_Settings_ControllerRecenterButton_Int32, Settings::Instance().mControllerRecenterButton
-			, ToUTF8(m_adapterName).c_str() // TODO: Proper treatment of UNICODE. Sanitizing.
+			, ToUTF8(mAdapterName).c_str() // TODO: Proper treatment of UNICODE. Sanitizing.
 			, Settings::Instance().mCodec
 			, Settings::Instance().mEncodeBitrate.toMiBits()
 			, Settings::Instance().mRenderWidth, Settings::Instance().mRenderHeight
 			, Settings::Instance().mRefreshRate
 		);
-		m_Listener->SendCommandResponse(buf);
+		mListener->SendCommandResponse(buf);
 	}
 	else if (commandName == "SetConfig") {
 		auto index = args.find(" ");
 		if (index == std::string::npos) {
-			m_Listener->SendCommandResponse("NG\n");
+			mListener->SendCommandResponse("NG\n");
 		}
 		else {
 			auto name = args.substr(0, index);
@@ -352,10 +352,10 @@ void OpenVRServerDriver::OnCommand(std::string commandName, std::string args)
 				Settings::Instance().mCaptureComposedDDSTrigger = atoi(args.substr(index + 1).c_str());
 			}
 			else {
-				m_Listener->SendCommandResponse("NG\n");
+				mListener->SendCommandResponse("NG\n");
 				return;
 			}
-			m_Listener->SendCommandResponse("OK\n");
+			mListener->SendCommandResponse("OK\n");
 		}
 	}
 	else if (commandName == "SetOffsetPos") {
@@ -369,11 +369,11 @@ void OpenVRServerDriver::OnCommand(std::string commandName, std::string args)
 
 		Settings::Instance().mEnableOffsetPos = atoi(enabled.c_str()) != 0;
 
-		m_Listener->SendCommandResponse("OK\n");
+		mListener->SendCommandResponse("OK\n");
 	}
 	else {
 		Log(L"Invalid control command: %hs", commandName.c_str());
-		m_Listener->SendCommandResponse("NG\n");
+		mListener->SendCommandResponse("NG\n");
 	}
 
 }
@@ -383,25 +383,25 @@ void OpenVRServerDriver::OnLauncher() {
 }
 
 void OpenVRServerDriver::OnPoseUpdated() {
-	if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
+	if (mObjectId != vr::k_unTrackedDeviceIndexInvalid)
 	{
-		if (!m_Listener->HasValidTrackingInfo()) {
+		if (!mListener->HasValidTrackingInfo()) {
 			return;
 		}
-		if (!m_added || !mActivated) {
+		if (!mAdded || !mActivated) {
 			return;
 		}
 
 		TrackingInfo info;
-		m_Listener->GetTrackingInfo(info);
+		mListener->GetTrackingInfo(info);
 
-		m_recenterManager->OnPoseUpdated(info, m_Listener.get());
-		m_directModeComponent->OnPoseUpdated(info);
+		mRecenterManager->OnPoseUpdated(info, mListener.get());
+		mDirectModeComponent->OnPoseUpdated(info);
 
-		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
+		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(mObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
-		if (m_trackingReference) {
-			m_trackingReference->OnPoseUpdated();
+		if (mTrackingReference) {
+			mTrackingReference->OnPoseUpdated();
 		}
 	}
 }
@@ -410,26 +410,26 @@ void OpenVRServerDriver::OnNewClient() {
 }
 
 void OpenVRServerDriver::OnStreamStart() {
-	if (!m_added || !mActivated) {
+	if (!mAdded || !mActivated) {
 		return;
 	}
 	Log(L"OnStreamStart()");
 	// Insert IDR frame for faster startup of decoding.
-	m_encoder->OnStreamStart();
+	mEncoder->OnStreamStart();
 }
 
 void OpenVRServerDriver::OnFrameAck(bool result, bool isIDR, uint64_t startFrame, uint64_t endFrame) {
-	if (!m_added || !mActivated) {
+	if (!mAdded || !mActivated) {
 		return;
 	}
-	m_encoder->OnFrameAck(result, isIDR, startFrame, endFrame);
+	mEncoder->OnFrameAck(result, isIDR, startFrame, endFrame);
 }
 
 void OpenVRServerDriver::OnShutdown() {
-	if (!m_added || !mActivated) {
+	if (!mAdded || !mActivated) {
 		return;
 	}
 	Log(L"Sending shutdown signal to vrserver.");
 	vr::VREvent_Reserved_t data = { 0, 0 };
-	vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_DriverRequestedQuit, (vr::VREvent_Data_t&)data, 0);
+	vr::VRServerDriverHost()->VendorSpecificEvent(mObjectId, vr::VREvent_DriverRequestedQuit, (vr::VREvent_Data_t&)data, 0);
 }

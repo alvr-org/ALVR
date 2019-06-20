@@ -10,20 +10,19 @@
 
 #include "Listener.h"
 #include "resource.h"
-#include "FrameRender.h"
 #include "FrameEncoder.h"
 #include "VSyncThread.h"
-#include "Tracking.h"
 #include "AudioCapture.h"
 #include "RecenterManager.h"
 #include "OpenVRDisplayComponent.h"
 #include "OpenVRDirectModeComponent.h"
+#include "OpenVRFakeTrackingReference.h"
 
-class OpenVRServerDriver : public vr::ITrackedDeviceServerDriver, public Listener::Callback
+class OpenVRHmd : public vr::ITrackedDeviceServerDriver, public Listener::Callback
 {
 public:
-	OpenVRServerDriver(std::shared_ptr<Listener> listener);
-	virtual ~OpenVRServerDriver();
+	OpenVRHmd(std::shared_ptr<Listener> listener);
+	virtual ~OpenVRHmd();
 
 	std::string GetSerialNumber() const;
 	void Enable();
@@ -65,5 +64,5 @@ private:
 	std::shared_ptr<OpenVRDisplayComponent> mDisplayComponent;
 	std::shared_ptr<OpenVRDirectModeComponent> mDirectModeComponent;
 
-	std::shared_ptr<TrackingReference> mTrackingReference;
+	std::shared_ptr<OpenVRFakeTrackingReference> mTrackingReference;
 };

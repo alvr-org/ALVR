@@ -8,7 +8,7 @@
 
 #include <ScreenGrab.h>
 
-extern uint64_t g_DriverTestMode;
+extern uint64_t gDriverTestMode;
 
 OpenVRDirectModeComponent::OpenVRDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender, std::shared_ptr<FrameEncoder> pEncoder, std::shared_ptr<Listener> Listener, std::shared_ptr<RecenterManager> recenterManager)
 	: mD3DRender(pD3DRender)
@@ -232,7 +232,7 @@ void OpenVRDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2
 		Log(L"Too many layers submitted!");
 	}
 
-	if (g_DriverTestMode & 8) {
+	if (gDriverTestMode & 8) {
 		// Crash test
 		*(char*)0 = 1;
 	}

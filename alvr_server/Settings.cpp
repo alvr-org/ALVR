@@ -5,7 +5,7 @@
 #define PICOJSON_USE_INT64
 #include <picojson.h>
 
-extern uint64_t g_DriverTestMode;
+extern uint64_t gDriverTestMode;
 
 Settings Settings::mInstance;
 

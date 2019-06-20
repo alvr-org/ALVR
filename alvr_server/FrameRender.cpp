@@ -5,7 +5,7 @@
 #include "Settings.h"
 #include "WICTextureLoader.h"
 
-extern uint64_t g_DriverTestMode;
+extern uint64_t gDriverTestMode;
 
 
 FrameRender::FrameRender(std::shared_ptr<CD3DRender> pD3DRender)

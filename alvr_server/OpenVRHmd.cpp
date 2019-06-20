@@ -4,11 +4,11 @@
 //
 //==================================================================================================
 
-#include "OpenVRServerDriver.h"
+#include "OpenVRHmd.h"
 
-uint64_t g_DriverTestMode = 0;
+uint64_t gDriverTestMode = 0;
 
-OpenVRServerDriver::OpenVRServerDriver(std::shared_ptr<Listener> listener)
+OpenVRHmd::OpenVRHmd(std::shared_ptr<Listener> listener)
 	: mObjectId(vr::k_unTrackedDeviceIndexInvalid)
 	, mAdded(false)
 	, mActivated(false)
@@ -21,10 +21,10 @@ OpenVRServerDriver::OpenVRServerDriver(std::shared_ptr<Listener> listener)
 
 	mListener->SetCallback(this);
 
-	Log(L"OpenVRServerDriver successfully initialized.");
+	Log(L"OpenVRHmd successfully initialized.");
 }
 
-OpenVRServerDriver::~OpenVRServerDriver()
+OpenVRHmd::~OpenVRHmd()
 {
 	if (mEncoder)
 	{
@@ -59,12 +59,12 @@ OpenVRServerDriver::~OpenVRServerDriver()
 	mRecenterManager.reset();
 }
 
-std::string OpenVRServerDriver::GetSerialNumber() const
+std::string OpenVRHmd::GetSerialNumber() const
 {
 	return Settings::Instance().mSerialNumber;
 }
 
-void OpenVRServerDriver::Enable()
+void OpenVRHmd::Enable()
 {
 	if (mAdded) {
 		return;
@@ -77,19 +77,19 @@ void OpenVRServerDriver::Enable()
 		this);
 	Log(L"TrackedDeviceAdded(HMD) Ret=%d SerialNumber=%hs", ret, GetSerialNumber().c_str());
 	if (Settings::Instance().mUseTrackingReference) {
-		mTrackingReference = std::make_shared<TrackingReference>();
+		mTrackingReference = std::make_shared<OpenVRFakeTrackingReference>();
 		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 			mTrackingReference->GetSerialNumber().c_str(),
 			vr::TrackedDeviceClass_TrackingReference,
 			mTrackingReference.get());
-		Log(L"TrackedDeviceAdded(TrackingReference) Ret=%d SerialNumber=%hs", ret, GetSerialNumber().c_str());
+		Log(L"TrackedDeviceAdded(OpenVRFakeTrackingReference) Ret=%d SerialNumber=%hs", ret, GetSerialNumber().c_str());
 	}
 
 }
 
-vr::EVRInitError OpenVRServerDriver::Activate(vr::TrackedDeviceIndex_t unObjectId)
+vr::EVRInitError OpenVRHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 {
-	Log(L"OpenVRServerDriver Activate %d", unObjectId);
+	Log(L"OpenVRHmd Activate %d", unObjectId);
 
 	mObjectId = unObjectId;
 	mPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(mObjectId);
@@ -173,18 +173,18 @@ vr::EVRInitError OpenVRServerDriver::Activate(vr::TrackedDeviceIndex_t unObjectI
 	return vr::VRInitError_None;
 }
 
-void OpenVRServerDriver::Deactivate()
+void OpenVRHmd::Deactivate()
 {
-	Log(L"OpenVRServerDriver Deactivate");
+	Log(L"OpenVRHmd Deactivate");
 	mActivated = false;
 	mObjectId = vr::k_unTrackedDeviceIndexInvalid;
 }
 
-void OpenVRServerDriver::EnterStandby()
+void OpenVRHmd::EnterStandby()
 {
 }
 
-void * OpenVRServerDriver::GetComponent(const char * pchComponentNameAndVersion)
+void * OpenVRHmd::GetComponent(const char * pchComponentNameAndVersion)
 {
 	Log(L"GetComponent %hs", pchComponentNameAndVersion);
 	if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
@@ -202,13 +202,13 @@ void * OpenVRServerDriver::GetComponent(const char * pchComponentNameAndVersion)
 
 /** debug request from a client */
 
-void OpenVRServerDriver::DebugRequest(const char * pchRequest, char * pchResponseBuffer, uint32_t unResponseBufferSize)
+void OpenVRHmd::DebugRequest(const char * pchRequest, char * pchResponseBuffer, uint32_t unResponseBufferSize)
 {
 	if (unResponseBufferSize >= 1)
 		pchResponseBuffer[0] = 0;
 }
 
-vr::DriverPose_t OpenVRServerDriver::GetPose()
+vr::DriverPose_t OpenVRHmd::GetPose()
 {
 	vr::DriverPose_t pose = { 0 };
 	pose.poseIsValid = true;
@@ -245,7 +245,7 @@ vr::DriverPose_t OpenVRServerDriver::GetPose()
 	return pose;
 }
 
-void OpenVRServerDriver::RunFrame()
+void OpenVRHmd::RunFrame()
 {
 	// In a real driver, this should happen from some pose tracking thread.
 	// The RunFrame interval is unspecified and can be very irregular if some other
@@ -261,10 +261,10 @@ void OpenVRServerDriver::RunFrame()
 // Implementation of Listener::Callback
 //
 
-void OpenVRServerDriver::OnCommand(std::string commandName, std::string args)
+void OpenVRHmd::OnCommand(std::string commandName, std::string args)
 {
 	if (commandName == "EnableDriverTestMode") {
-		g_DriverTestMode = strtoull(args.c_str(), NULL, 0);
+		gDriverTestMode = strtoull(args.c_str(), NULL, 0);
 		mListener->SendCommandResponse("OK\n");
 	}
 	else if (commandName == "GetConfig") {
@@ -378,11 +378,11 @@ void OpenVRServerDriver::OnCommand(std::string commandName, std::string args)
 
 }
 
-void OpenVRServerDriver::OnLauncher() {
+void OpenVRHmd::OnLauncher() {
 	Enable();
 }
 
-void OpenVRServerDriver::OnPoseUpdated() {
+void OpenVRHmd::OnPoseUpdated() {
 	if (mObjectId != vr::k_unTrackedDeviceIndexInvalid)
 	{
 		if (!mListener->HasValidTrackingInfo()) {
@@ -406,10 +406,10 @@ void OpenVRServerDriver::OnPoseUpdated() {
 	}
 }
 
-void OpenVRServerDriver::OnNewClient() {
+void OpenVRHmd::OnNewClient() {
 }
 
-void OpenVRServerDriver::OnStreamStart() {
+void OpenVRHmd::OnStreamStart() {
 	if (!mAdded || !mActivated) {
 		return;
 	}
@@ -418,14 +418,14 @@ void OpenVRServerDriver::OnStreamStart() {
 	mEncoder->OnStreamStart();
 }
 
-void OpenVRServerDriver::OnFrameAck(bool result, bool isIDR, uint64_t startFrame, uint64_t endFrame) {
+void OpenVRHmd::OnFrameAck(bool result, bool isIDR, uint64_t startFrame, uint64_t endFrame) {
 	if (!mAdded || !mActivated) {
 		return;
 	}
 	mEncoder->OnFrameAck(result, isIDR, startFrame, endFrame);
 }
 
-void OpenVRServerDriver::OnShutdown() {
+void OpenVRHmd::OnShutdown() {
 	if (!mAdded || !mActivated) {
 		return;
 	}

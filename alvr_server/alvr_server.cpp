@@ -7,7 +7,7 @@
 #include <openvr_driver.h>
 
 #include "Logger.h"
-#include "OpenVRServerDriver.h"
+#include "OpenVRHmd.h"
 
 HINSTANCE gInstance;
 
@@ -15,7 +15,7 @@ class CServerDriver_DisplayRedirect : public vr::IServerTrackedDeviceProvider
 {
 public:
 	CServerDriver_DisplayRedirect()
-		: m_pRemoteHmd( NULL )
+		: mHmd( NULL )
 	{}
 
 	virtual vr::EVRInitError Init( vr::IVRDriverContext *pContext ) override;
@@ -30,17 +30,17 @@ public:
 	virtual void LeaveStandby() override {}
 
 private:
-	std::shared_ptr<OpenVRServerDriver> m_pRemoteHmd;
+	std::shared_ptr<OpenVRHmd> mHmd;
 	std::shared_ptr<Listener> mListener;
-	std::shared_ptr<IPCMutex> m_mutex;
+	std::shared_ptr<IPCMutex> mMutex;
 };
 
 vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pContext )
 {
 	VR_INIT_SERVER_DRIVER_CONTEXT( pContext );
 
-	m_mutex = std::make_shared<IPCMutex>(APP_MUTEX_NAME, true);
-	if (m_mutex->AlreadyExist()) {
+	mMutex = std::make_shared<IPCMutex>(APP_MUTEX_NAME, true);
+	if (mMutex->AlreadyExist()) {
 		// Duplicate driver installation.
 		FatalLog(L"ALVR Server driver is installed on multiple locations. This causes some issues.\r\n"
 			"Please check the installed driver list on About tab and uninstall old drivers.");
@@ -55,11 +55,11 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 		return vr::VRInitError_Driver_Failed;
 	}
 
-	m_pRemoteHmd = std::make_shared<OpenVRServerDriver>(mListener);
+	mHmd = std::make_shared<OpenVRHmd>(mListener);
 
 	if (Settings::Instance().IsLoaded()) {
 		// Launcher is running. Enable driver.
-		m_pRemoteHmd->Enable();
+		mHmd->Enable();
 	}
 
 	return vr::VRInitError_None;
@@ -68,8 +68,8 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 void CServerDriver_DisplayRedirect::Cleanup()
 {
 	mListener.reset();
-	m_pRemoteHmd.reset();
-	m_mutex.reset();
+	mHmd.reset();
+	mMutex.reset();
 
 	VR_CLEANUP_SERVER_DRIVER_CONTEXT();
 }

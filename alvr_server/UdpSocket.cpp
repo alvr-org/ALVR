@@ -58,6 +58,8 @@ bool UdpSocket::IsLegitClient(const sockaddr_in * addr)
 void UdpSocket::InvalidateClient()
 {
 	mClientAddr.sin_family = 0;
+	mVideoBuffer.Clear();
+	mAudioBuffer.Clear();
 }
 
 bool UdpSocket::Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen) {

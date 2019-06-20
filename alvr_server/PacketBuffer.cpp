@@ -39,3 +39,9 @@ bool PacketBuffer::IsEmpty()
 	IPCCriticalSectionLock lock(mCS);
 	return mQueue.empty();
 }
+
+void PacketBuffer::Clear()
+{
+	IPCCriticalSectionLock lock(mCS);
+	mQueue.clear();
+}

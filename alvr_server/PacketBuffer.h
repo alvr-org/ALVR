@@ -16,6 +16,7 @@ public:
 	bool Send(std::function<bool(char *, int)> sendFunc);
 
 	bool IsEmpty();
+	void Clear();
 private:
 	struct SendBuffer {
 		std::shared_ptr<char> buf;

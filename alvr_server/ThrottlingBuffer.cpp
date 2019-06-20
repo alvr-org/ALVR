@@ -63,6 +63,15 @@ bool ThrottlingBuffer::IsEmpty()
 	return mQueue.empty();
 }
 
+void ThrottlingBuffer::Clear()
+{
+	IPCCriticalSectionLock lock(mCS);
+	mQueue.clear();
+	mByteCount = 0;
+	mBuffered = 0;
+	mLastSent = 0;
+}
+
 bool ThrottlingBuffer::CanSend(uint64_t current)
 {
 	if (mQueue.empty()) {

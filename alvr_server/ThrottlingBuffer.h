@@ -20,6 +20,8 @@ public:
 	bool GetFirstBufferedFrame(uint64_t *videoFrameIndex);
 
 	bool IsEmpty();
+
+	void Clear();
 private:
 	struct SendBuffer {
 		std::shared_ptr<char> buf;
@@ -37,7 +39,6 @@ private:
 
 	uint64_t mWindow;
 	int64_t mByteCount = 0;
-	uint64_t mCurrentTimeSlotUs = 0;
 	uint64_t mLastSent = 0;
 
 	// Permit burst sending for performance (or implementation) reason.

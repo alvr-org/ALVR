@@ -167,15 +167,16 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 
 	NV_ENC_PIC_PARAMS picParams = {};
 	if (insertIDR) {
-		Log(L"Inserting IDR frame. VideoFrameIndex=%llu", videoFrameIndex);
 		picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
 	}
+	Log(L"Frame[%llu:%llu] Encoding frame. Type=%s", videoFrameIndex, trackingFrameIndex, insertIDR ? "IDR-Frame" : "P-Frame");
 	// To invalidate reference frame when frame dropped.
 	picParams.inputTimeStamp = videoFrameIndex;
 	mEncoder->EncodeFrame(vPacket, &picParams, mD3DRender->GetContext(), pTexture);
 
-	Log(L"Tracking info delay: %lld us Encoding delay=%lld us VideoFrameIndex=%llu", GetTimestampUs() - mListener->clientToServerTime(clientTime)
-		, GetTimestampUs() - presentationTime, videoFrameIndex);
+	Log(L"Frame[%llu:%llu] Encoding done. Tracking info delay: %lld us Encoding delay=%lld us VideoFrameIndex=%llu", videoFrameIndex, trackingFrameIndex
+		, GetTimestampUs() - mListener->clientToServerTime(clientTime)
+		, GetTimestampUs() - presentationTime);
 
 	if (mListener) {
 		mListener->GetStatistics()->EncodeOutput(GetTimestampUs() - presentationTime);
@@ -239,9 +240,12 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	// Use reference frame invalidation to faster recovery from frame loss if supported.
 	mSupportsReferenceFrameInvalidation = mEncoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_REF_PIC_INVALIDATION);
 	bool supportsIntraRefresh = mEncoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_INTRA_REFRESH);
-
 	Log(L"VideoEncoderNVENC: SupportsReferenceFrameInvalidation: %d", mSupportsReferenceFrameInvalidation);
 	Log(L"VideoEncoderNVENC: SupportsIntraRefresh: %d", supportsIntraRefresh);
+
+	// 16 is recommended when using reference frame invalidation. But it has caused bad visual quality.
+	// Now, use 0 (use default).
+	int maxNumRefFrames = 0;
 
 	if (mCodec == ALVR_CODEC_H264) {
 		auto &config = encodeConfig.encodeCodecConfig.h264Config;
@@ -249,13 +253,10 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		if (supportsIntraRefresh) {
 			config.enableIntraRefresh = 1;
 			// Do intra refresh every 10sec.
-			config.intraRefreshPeriod = mRefreshRate * 10;
-			config.intraRefreshCnt = mRefreshRate;
+			config.intraRefreshPeriod = refreshRate * 10;
+			config.intraRefreshCnt = refreshRate;
 		}
-		if (mSupportsReferenceFrameInvalidation) {
-			// 16 is recommended when using reference frame invalidation.
-			config.maxNumRefFrames = 16;
-		}
+		config.maxNumRefFrames = maxNumRefFrames;
 		config.idrPeriod = NVENC_INFINITE_GOPLENGTH;
 	}
 	else {
@@ -267,10 +268,7 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 			config.intraRefreshPeriod = refreshRate * 10;
 			config.intraRefreshCnt = refreshRate;
 		}
-		if (mSupportsReferenceFrameInvalidation) {
-			// 16 is recommended when using reference frame invalidation.
-			config.maxNumRefFramesInDPB = 16;
-		}
+		config.maxNumRefFramesInDPB = maxNumRefFrames;
 		config.idrPeriod = NVENC_INFINITE_GOPLENGTH;
 	}
 
@@ -288,6 +286,7 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	encodeConfig.frameIntervalP = 1;
 
 	// NV_ENC_PARAMS_RC_CBR_HQ is equivalent to NV_ENC_PARAMS_RC_2_PASS_FRAMESIZE_CAP.
+	//encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;// NV_ENC_PARAMS_RC_CBR_HQ;
 	encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_HQ;
 	uint32_t maxFrameSize = static_cast<uint32_t>(bitrate.toBits() / refreshRate);
 	Log(L"VideoEncoderNVENC: maxFrameSize=%d bits", maxFrameSize);

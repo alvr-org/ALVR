@@ -396,7 +396,7 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			return;
 		}
 		VideoFrameAck *packet = (VideoFrameAck *)buf;
-		mCallback->OnFrameAck(packet->ackType == ALVR_FRAME_ACK_TYPE_ACK, packet->ackType == ALVR_FRAME_ACK_VIDEO_FRAME_TYPE_IDR,
+		mCallback->OnFrameAck(packet->ackType == ALVR_FRAME_ACK_TYPE_ACK, packet->frameType == ALVR_FRAME_ACK_VIDEO_FRAME_TYPE_IDR,
 			packet->startFrame, packet->endFrame);
 		if (packet->ackType == ALVR_FRAME_ACK_TYPE_NACK && packet->ackType != ALVR_FRAME_ACK_VIDEO_FRAME_TYPE_IDR) {
 			OnFecFailure(packet->startFrame, packet->endFrame);
@@ -660,6 +660,8 @@ void Listener::FindClientName(const sockaddr_in *addr) {
 
 void Listener::Connect(const sockaddr_in *addr) {
 	Log(L"Connected to %hs", AddrPortToStr(addr).c_str());
+
+	mSocket->InvalidateClient();
 
 	mCallback->OnNewClient();
 

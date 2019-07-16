@@ -853,5 +853,27 @@ namespace ALVR
         {
             wrongVersionLabel.Visible = true;
         }
+
+        private void metroTextBox1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void zControllerOffset_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void applyControllerOffset_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        async private void saveControllerOffset_Click(object sender, EventArgs e)
+        {
+            SaveSettings();
+            await socket.SendCommand("SetControllerOffset " + (controllerChbx.Checked ? "1" : "0") + " " + xControllerOffset.Text + " " + yControllerOffset.Text + " " + zControllerOffset.Text + " " + controllerPitch.Text);
+
+        }
     }
 }

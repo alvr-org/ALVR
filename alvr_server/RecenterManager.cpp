@@ -65,10 +65,13 @@ void RecenterManager::OnPoseUpdated(const TrackingInfo & info, Listener * listen
 
 		mFixedPositionController[i] = RotateVectorQuaternion(info.controller[i].position, mCenterPitch);
 
-	
-		double offset[3] = { 0.0, 0.0, 30 * M_PI / 180 };
-		mFixedOrientationController[i] = quatMultipy(&mFixedOrientationController[i], &EulerAngleToQuaternion(offset));
+		if (Settings::Instance().mEnableControllerOffset) {
+			double offset[3] = { 0.0, 0.0, Settings::Instance().mControllerPitch * M_PI / 180 };
+			mFixedOrientationController[i] = quatMultipy(&mFixedOrientationController[i], &EulerAngleToQuaternion(offset));
+		}
+
 		mFixedPositionController[i] = RotateVectorQuaternion(info.controller[i].position, mCenterPitch);
+
 		
 	}
 
@@ -141,9 +144,13 @@ void RecenterManager::OnPoseUpdated(const TrackingInfo & info, Listener * listen
 		}
 	}
 
-	for (int i = 0; i < TrackingInfo::MAX_CONTROLLERS; i++) {
-		//quest offset
-		mFixedPositionController[i].y += 0.05;
+	if (Settings::Instance().mEnableControllerOffset) {
+		for (int i = 0; i < TrackingInfo::MAX_CONTROLLERS; i++) {
+			//quest offset
+			mFixedPositionController[i].x += Settings::Instance().mControllerOffset[0];
+			mFixedPositionController[i].y += Settings::Instance().mControllerOffset[1];
+			mFixedPositionController[i].z += Settings::Instance().mControllerOffset[2];
+		}
 	}
 
 	if (Settings::Instance().mEnableOffsetPos) {

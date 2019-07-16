@@ -371,6 +371,21 @@ void OpenVRHmd::OnCommand(std::string commandName, std::string args)
 
 		mListener->SendCommandResponse("OK\n");
 	}
+	else if (commandName == "SetControllerOffset") {
+	std::string enabled = GetNextToken(args, " ");
+	std::string x = GetNextToken(args, " ");
+	std::string y = GetNextToken(args, " ");
+	std::string z = GetNextToken(args, " ");
+	std::string pitch = GetNextToken(args, " ");
+	Settings::Instance().mControllerOffset[0] = (float)atof(x.c_str());
+	Settings::Instance().mControllerOffset[1] = (float)atof(y.c_str());
+	Settings::Instance().mControllerOffset[2] = (float)atof(z.c_str());
+	Settings::Instance().mControllerPitch = (float)atof(pitch.c_str());
+
+	Settings::Instance().mEnableControllerOffset = atoi(enabled.c_str()) != 0;
+
+	mListener->SendCommandResponse("OK\n");
+	}
 	else {
 		Log(L"Invalid control command: %hs", commandName.c_str());
 		mListener->SendCommandResponse("NG\n");

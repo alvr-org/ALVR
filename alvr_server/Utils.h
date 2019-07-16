@@ -302,6 +302,15 @@ inline bool ShouldUseNV12Texture() {
 	return IsWindows8OrGreater() == FALSE;
 }
 
+inline vr::HmdQuaternion_t quatMultipy(const vr::HmdQuaternion_t *a, const vr::HmdQuaternion_t *b) {
+	vr::HmdQuaternion_t dest;
+	dest.x = a->x * b->w + a->w * b->x + a->y * b->z - a->z * b->y;
+	dest.y = a->y * b->w + a->w * b->y + a->z * b->x - a->x * b->z;
+	dest.z = a->z * b->w + a->w * b->z + a->x * b->y - a->y * b->x;
+	dest.w = a->w * b->w - a->x * b->x - a->y * b->y - a->z * b->z;
+	return dest;
+}
+
 typedef void (WINAPI *RtlGetVersion_FUNC)(OSVERSIONINFOEXW*);
 
 inline std::wstring GetWindowsOSVersion() {

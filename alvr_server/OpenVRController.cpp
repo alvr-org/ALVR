@@ -215,15 +215,15 @@ bool OpenVRController::ReportControllerState(int controllerIndex, const Tracking
 	mPose.vecVelocity[0] = info.controller[controllerIndex].linearVelocity.x;
 	mPose.vecVelocity[1] = info.controller[controllerIndex].linearVelocity.y;
 	mPose.vecVelocity[2] = info.controller[controllerIndex].linearVelocity.z;
-	mPose.vecAcceleration[0] = info.controller[controllerIndex].linearAcceleration.x;
-	mPose.vecAcceleration[1] = info.controller[controllerIndex].linearAcceleration.y;
-	mPose.vecAcceleration[2] = info.controller[controllerIndex].linearAcceleration.z;
+	//mPose.vecAcceleration[0] = info.controller[controllerIndex].linearAcceleration.x;
+	//mPose.vecAcceleration[1] = info.controller[controllerIndex].linearAcceleration.y;
+	//mPose.vecAcceleration[2] = info.controller[controllerIndex].linearAcceleration.z;
 	mPose.vecAngularVelocity[0] = info.controller[controllerIndex].angularVelocity.x;
 	mPose.vecAngularVelocity[1] = info.controller[controllerIndex].angularVelocity.y;
 	mPose.vecAngularVelocity[2] = info.controller[controllerIndex].angularVelocity.z;
-	mPose.vecAngularAcceleration[0] = info.controller[controllerIndex].angularAcceleration.x;
-	mPose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y;
-	mPose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z;
+	//mPose.vecAngularAcceleration[0] = info.controller[controllerIndex].angularAcceleration.x;
+	//mPose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y;
+	//mPose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z;
 
 	mPose.poseTimeOffset = 0;
 

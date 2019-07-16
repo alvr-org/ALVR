@@ -190,9 +190,9 @@ namespace ALVR
         private void SaveSettings()
         {
             var c = Properties.Settings.Default;
-            offsetPosXTextBox.Text = Utils.ParseFloat(offsetPosXTextBox.Text).ToString();
-            offsetPosYTextBox.Text = Utils.ParseFloat(offsetPosYTextBox.Text).ToString();
-            offsetPosZTextBox.Text = Utils.ParseFloat(offsetPosZTextBox.Text).ToString();
+            //offsetPosXTextBox.Text = Utils.ParseFloat(offsetPosXTextBox.Text).ToString();
+           // offsetPosYTextBox.Text = Utils.ParseFloat(offsetPosYTextBox.Text).ToString();
+           // offsetPosZTextBox.Text = Utils.ParseFloat(offsetPosZTextBox.Text).ToString();
             trackingFrameOffsetTextBox.Text = Utils.ParseInt(trackingFrameOffsetTextBox.Text).ToString();
 
             if (resolutionComboBox.SelectedIndex != -1)

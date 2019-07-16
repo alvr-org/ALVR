@@ -64,6 +64,12 @@ void RecenterManager::OnPoseUpdated(const TrackingInfo & info, Listener * listen
 			, info.controller[i].orientation.w);
 
 		mFixedPositionController[i] = RotateVectorQuaternion(info.controller[i].position, mCenterPitch);
+
+	
+		double offset[3] = { 0.0, 0.0, 30 * M_PI / 180 };
+		mFixedOrientationController[i] = quatMultipy(&mFixedOrientationController[i], &EulerAngleToQuaternion(offset));
+		mFixedPositionController[i] = RotateVectorQuaternion(info.controller[i].position, mCenterPitch);
+		
 	}
 
 	if (info.flags & TrackingInfo::FLAG_OTHER_TRACKING_SOURCE) {
@@ -133,6 +139,11 @@ void RecenterManager::OnPoseUpdated(const TrackingInfo & info, Listener * listen
 			mFixedPositionController[i].y = (float)data.controller_position[i][1];
 			mFixedPositionController[i].z = (float)data.controller_position[i][2];
 		}
+	}
+
+	for (int i = 0; i < TrackingInfo::MAX_CONTROLLERS; i++) {
+		//quest offset
+		mFixedPositionController[i].y += 0.05;
 	}
 
 	if (Settings::Instance().mEnableOffsetPos) {

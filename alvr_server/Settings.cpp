@@ -139,6 +139,12 @@ void Settings::Load()
 		mOffsetPos[1] = (float)v.get(k_pch_Settings_OffsetPosY_Float).get<double>();
 		mOffsetPos[2] = (float)v.get(k_pch_Settings_OffsetPosZ_Float).get<double>();
 
+		mEnableControllerOffset = v.get(k_pch_Settings_UseControllerOffset_Bool).get<bool>();
+		mControllerOffset[0] = (float)v.get(k_pch_Settings_xControllerOffset_Float).get<double>();
+		mControllerOffset[1] = (float)v.get(k_pch_Settings_yControllerOffset_Float).get<double>();
+		mControllerOffset[2] = (float)v.get(k_pch_Settings_zControllerOffset_Float).get<double>();
+		mControllerPitch = (float)v.get(k_pch_Settings_pitchControllerOffset_Float).get<double>();
+
 		mTrackingFrameOffset = (int32_t)v.get(k_pch_Settings_TrackingFrameOffset_Int32).get<int64_t>();
 
 		if (mDebugLog) {

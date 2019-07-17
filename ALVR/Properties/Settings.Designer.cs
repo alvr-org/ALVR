@@ -373,12 +373,12 @@ namespace ALVR.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool useControllerOffser {
+        public bool useControllerOffset {
             get {
-                return ((bool)(this["useControllerOffser"]));
+                return ((bool)(this["useControllerOffset"]));
             }
             set {
-                this["useControllerOffser"] = value;
+                this["useControllerOffset"] = value;
             }
         }
         

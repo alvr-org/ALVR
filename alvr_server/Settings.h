@@ -78,6 +78,12 @@ static const char * const k_pch_Settings_OffsetPosX_Float = "offsetPosX";
 static const char * const k_pch_Settings_OffsetPosY_Float = "offsetPosY";
 static const char * const k_pch_Settings_OffsetPosZ_Float = "offsetPosZ";
 
+static const char * const k_pch_Settings_UseControllerOffset_Bool = "useControllerOffset";
+static const char * const k_pch_Settings_xControllerOffset_Float = "xControllerOffset";
+static const char * const k_pch_Settings_yControllerOffset_Float = "yControllerOffset";
+static const char * const k_pch_Settings_zControllerOffset_Float = "zControllerOffset";
+static const char * const k_pch_Settings_pitchControllerOffset_Float = "pitchControllerOffset";
+
 static const char * const k_pch_Settings_TrackingFrameOffset_Int32 = "trackingFrameOffset";
 //
 // Constants
@@ -120,6 +126,7 @@ public:
 	std::string mManufacturerName;
 	std::string mRenderModelName;
 	std::string mRegisteredDeviceType;
+
 
 	int32_t mAdapterIndex;
 
@@ -185,6 +192,8 @@ public:
 	float mControllerOffset[3];
 	bool mEnableControllerOffset;
 	float mControllerPitch;
+
+	float mControllerDelay;
 
 
 	bool mUseTrackingReference;

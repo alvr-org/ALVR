@@ -372,20 +372,21 @@ void OpenVRHmd::OnCommand(std::string commandName, std::string args)
 		mListener->SendCommandResponse("OK\n");
 	}
 	else if (commandName == "SetControllerOffset") {
-	std::string enabled = GetNextToken(args, " ");
-	std::string x = GetNextToken(args, " ");
-	std::string y = GetNextToken(args, " ");
-	std::string z = GetNextToken(args, " ");
-	std::string pitch = GetNextToken(args, " ");
-	Settings::Instance().mControllerOffset[0] = (float)atof(x.c_str());
-	Settings::Instance().mControllerOffset[1] = (float)atof(y.c_str());
-	Settings::Instance().mControllerOffset[2] = (float)atof(z.c_str());
-	Settings::Instance().mControllerPitch = (float)atof(pitch.c_str());
+		std::string enabled = GetNextToken(args, " ");
+		std::string x = GetNextToken(args, " ");
+		std::string y = GetNextToken(args, " ");
+		std::string z = GetNextToken(args, " ");
+		std::string pitch = GetNextToken(args, " ");
+		Settings::Instance().mControllerOffset[0] = (float)atof(x.c_str());
+		Settings::Instance().mControllerOffset[1] = (float)atof(y.c_str());
+		Settings::Instance().mControllerOffset[2] = (float)atof(z.c_str());
+		Settings::Instance().mControllerPitch = (float)atof(pitch.c_str());
 
-	Settings::Instance().mEnableControllerOffset = atoi(enabled.c_str()) != 0;
+		Settings::Instance().mEnableControllerOffset = atoi(enabled.c_str()) != 0;
 
-	mListener->SendCommandResponse("OK\n");
+		mListener->SendCommandResponse("OK\n");
 	}
+	
 	else {
 		Log(L"Invalid control command: %hs", commandName.c_str());
 		mListener->SendCommandResponse("NG\n");
@@ -407,15 +408,21 @@ void OpenVRHmd::OnPoseUpdated() {
 			return;
 		}
 
+		//get tracking info from listener
 		TrackingInfo info;
 		mListener->GetTrackingInfo(info);
-
+		
+		//set listener and tracking on recenterManager
 		mRecenterManager->OnPoseUpdated(info, mListener.get());
+			   			   
+		//pose for rendering?
 		mDirectModeComponent->OnPoseUpdated(info);
 
+		//update OpenVR HMD Pose
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(mObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
-		if (mTrackingReference) {
+		//tracking reference??		
+		if (mTrackingReference) {		
 			mTrackingReference->OnPoseUpdated();
 		}
 	}

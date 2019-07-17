@@ -62,9 +62,11 @@
             this.connectedLabel = new MetroFramework.Controls.MetroLabel();
             this.messagePanel = new MetroFramework.Controls.MetroPanel();
             this.messageLabel = new MetroFramework.Controls.MetroLabel();
+            this.soundTab = new MetroFramework.Controls.MetroTabPage();
+            this.noSoundDeviceLabel = new MetroFramework.Controls.MetroLabel();
+            this.soundDeviceComboBox = new MetroFramework.Controls.MetroComboBox();
             this.otherTab = new MetroFramework.Controls.MetroTabPage();
             this.metroLabel12 = new MetroFramework.Controls.MetroLabel();
-            this.controllerPitch = new MetroFramework.Controls.MetroTextBox();
             this.saveControllerOffset = new MetroFramework.Controls.MetroButton();
             this.metroLabel30 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel29 = new MetroFramework.Controls.MetroLabel();
@@ -108,9 +110,6 @@
             this.metroLabel20 = new MetroFramework.Controls.MetroLabel();
             this.triggerComboBox = new MetroFramework.Controls.MetroComboBox();
             this.metroLabel21 = new MetroFramework.Controls.MetroLabel();
-            this.soundTab = new MetroFramework.Controls.MetroTabPage();
-            this.noSoundDeviceLabel = new MetroFramework.Controls.MetroLabel();
-            this.soundDeviceComboBox = new MetroFramework.Controls.MetroComboBox();
             this.debugTab = new MetroFramework.Controls.MetroTabPage();
             this.metroLabel5 = new MetroFramework.Controls.MetroLabel();
             this.logText = new MetroFramework.Controls.MetroTextBox();
@@ -141,8 +140,7 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.defaultSoundDeviceCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.controllerPitch = new MetroFramework.Controls.MetroTextBox();
             this.zControllerOffset = new MetroFramework.Controls.MetroTextBox();
             this.yControllerOffset = new MetroFramework.Controls.MetroTextBox();
             this.xControllerOffset = new MetroFramework.Controls.MetroTextBox();
@@ -159,6 +157,8 @@
             this.suppressFrameDropCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.onlySteamVRCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.fakeTrackingReferenceCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.defaultSoundDeviceCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.bufferTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.bitrateTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.enableControllerCheckBox = new MetroFramework.Controls.MetroCheckBox();
@@ -171,10 +171,10 @@
             this.connectedPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).BeginInit();
             this.messagePanel.SuspendLayout();
+            this.soundTab.SuspendLayout();
             this.otherTab.SuspendLayout();
             this.videoTab.SuspendLayout();
             this.controllerTab.SuspendLayout();
-            this.soundTab.SuspendLayout();
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).BeginInit();
@@ -220,15 +220,15 @@
             // metroTabControl1
             // 
             this.metroTabControl1.Controls.Add(this.serverTab);
-            this.metroTabControl1.Controls.Add(this.soundTab);
             this.metroTabControl1.Controls.Add(this.otherTab);
+            this.metroTabControl1.Controls.Add(this.soundTab);
             this.metroTabControl1.Controls.Add(this.videoTab);
             this.metroTabControl1.Controls.Add(this.controllerTab);
             this.metroTabControl1.Controls.Add(this.debugTab);
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 68);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 2;
+            this.metroTabControl1.SelectedIndex = 1;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 429);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -530,6 +530,40 @@
             this.messageLabel.TabIndex = 9;
             this.messageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // soundTab
+            // 
+            this.soundTab.Controls.Add(this.noSoundDeviceLabel);
+            this.soundTab.Controls.Add(this.soundDeviceComboBox);
+            this.soundTab.Controls.Add(this.defaultSoundDeviceCheckBox);
+            this.soundTab.Controls.Add(this.soundCheckBox);
+            this.soundTab.HorizontalScrollbarBarColor = true;
+            this.soundTab.HorizontalScrollbarSize = 11;
+            this.soundTab.Location = new System.Drawing.Point(4, 35);
+            this.soundTab.Name = "soundTab";
+            this.soundTab.Size = new System.Drawing.Size(656, 390);
+            this.soundTab.TabIndex = 8;
+            this.soundTab.Text = "Sound";
+            this.soundTab.VerticalScrollbarBarColor = true;
+            // 
+            // noSoundDeviceLabel
+            // 
+            this.noSoundDeviceLabel.AutoSize = true;
+            this.noSoundDeviceLabel.Location = new System.Drawing.Point(30, 38);
+            this.noSoundDeviceLabel.Name = "noSoundDeviceLabel";
+            this.noSoundDeviceLabel.Size = new System.Drawing.Size(176, 19);
+            this.noSoundDeviceLabel.TabIndex = 4;
+            this.noSoundDeviceLabel.Text = "No sound devices are found.";
+            this.noSoundDeviceLabel.Visible = false;
+            // 
+            // soundDeviceComboBox
+            // 
+            this.soundDeviceComboBox.FormattingEnabled = true;
+            this.soundDeviceComboBox.ItemHeight = 23;
+            this.soundDeviceComboBox.Location = new System.Drawing.Point(76, 126);
+            this.soundDeviceComboBox.Name = "soundDeviceComboBox";
+            this.soundDeviceComboBox.Size = new System.Drawing.Size(471, 29);
+            this.soundDeviceComboBox.TabIndex = 3;
+            // 
             // otherTab
             // 
             this.otherTab.Controls.Add(this.metroLabel12);
@@ -575,20 +609,11 @@
             // metroLabel12
             // 
             this.metroLabel12.AutoSize = true;
-            this.metroLabel12.Location = new System.Drawing.Point(106, 150);
+            this.metroLabel12.Location = new System.Drawing.Point(70, 146);
             this.metroLabel12.Name = "metroLabel12";
             this.metroLabel12.Size = new System.Drawing.Size(40, 19);
             this.metroLabel12.TabIndex = 26;
             this.metroLabel12.Text = "Pitch:";
-            // 
-            // controllerPitch
-            // 
-            this.controllerPitch.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "pitchControllerOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.controllerPitch.Location = new System.Drawing.Point(152, 150);
-            this.controllerPitch.Name = "controllerPitch";
-            this.controllerPitch.Size = new System.Drawing.Size(34, 23);
-            this.controllerPitch.TabIndex = 25;
-            this.controllerPitch.Text = global::ALVR.Properties.Settings.Default.pitchControllerOffset;
             // 
             // saveControllerOffset
             // 
@@ -602,7 +627,7 @@
             // metroLabel30
             // 
             this.metroLabel30.AutoSize = true;
-            this.metroLabel30.Location = new System.Drawing.Point(55, 354);
+            this.metroLabel30.Location = new System.Drawing.Point(353, 358);
             this.metroLabel30.Name = "metroLabel30";
             this.metroLabel30.Size = new System.Drawing.Size(279, 38);
             this.metroLabel30.TabIndex = 18;
@@ -612,7 +637,7 @@
             // metroLabel29
             // 
             this.metroLabel29.AutoSize = true;
-            this.metroLabel29.Location = new System.Drawing.Point(26, 321);
+            this.metroLabel29.Location = new System.Drawing.Point(14, 363);
             this.metroLabel29.Name = "metroLabel29";
             this.metroLabel29.Size = new System.Drawing.Size(129, 19);
             this.metroLabel29.TabIndex = 18;
@@ -621,7 +646,7 @@
             // metroLabel28
             // 
             this.metroLabel28.AutoSize = true;
-            this.metroLabel28.Location = new System.Drawing.Point(30, 265);
+            this.metroLabel28.Location = new System.Drawing.Point(18, 307);
             this.metroLabel28.Name = "metroLabel28";
             this.metroLabel28.Size = new System.Drawing.Size(92, 19);
             this.metroLabel28.TabIndex = 17;
@@ -630,7 +655,7 @@
             // metroLabel27
             // 
             this.metroLabel27.AutoSize = true;
-            this.metroLabel27.Location = new System.Drawing.Point(46, 234);
+            this.metroLabel27.Location = new System.Drawing.Point(34, 276);
             this.metroLabel27.Name = "metroLabel27";
             this.metroLabel27.Size = new System.Drawing.Size(76, 19);
             this.metroLabel27.TabIndex = 17;
@@ -638,7 +663,7 @@
             // 
             // refDisconnectCommandButton
             // 
-            this.refDisconnectCommandButton.Location = new System.Drawing.Point(518, 265);
+            this.refDisconnectCommandButton.Location = new System.Drawing.Point(506, 307);
             this.refDisconnectCommandButton.Name = "refDisconnectCommandButton";
             this.refDisconnectCommandButton.Size = new System.Drawing.Size(52, 25);
             this.refDisconnectCommandButton.TabIndex = 16;
@@ -647,7 +672,7 @@
             // 
             // refConnectCommandButton
             // 
-            this.refConnectCommandButton.Location = new System.Drawing.Point(518, 234);
+            this.refConnectCommandButton.Location = new System.Drawing.Point(506, 276);
             this.refConnectCommandButton.Name = "refConnectCommandButton";
             this.refConnectCommandButton.Size = new System.Drawing.Size(52, 25);
             this.refConnectCommandButton.TabIndex = 16;
@@ -656,7 +681,7 @@
             // 
             // saveTrackingFrameOffsetButton
             // 
-            this.saveTrackingFrameOffsetButton.Location = new System.Drawing.Point(275, 316);
+            this.saveTrackingFrameOffsetButton.Location = new System.Drawing.Point(263, 358);
             this.saveTrackingFrameOffsetButton.Name = "saveTrackingFrameOffsetButton";
             this.saveTrackingFrameOffsetButton.Size = new System.Drawing.Size(75, 25);
             this.saveTrackingFrameOffsetButton.TabIndex = 10;
@@ -675,7 +700,7 @@
             // metroLabel26
             // 
             this.metroLabel26.AutoSize = true;
-            this.metroLabel26.Location = new System.Drawing.Point(26, 204);
+            this.metroLabel26.Location = new System.Drawing.Point(14, 246);
             this.metroLabel26.Name = "metroLabel26";
             this.metroLabel26.Size = new System.Drawing.Size(95, 19);
             this.metroLabel26.TabIndex = 3;
@@ -946,7 +971,7 @@
             // 
             this.metroLabel32.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel32.AutoSize = true;
-            this.metroLabel32.Location = new System.Drawing.Point(462, -3008);
+            this.metroLabel32.Location = new System.Drawing.Point(462, -3173);
             this.metroLabel32.Name = "metroLabel32";
             this.metroLabel32.Size = new System.Drawing.Size(162, 38);
             this.metroLabel32.TabIndex = 10;
@@ -956,7 +981,7 @@
             // 
             this.metroLabel22.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(216, -2579);
+            this.metroLabel22.Location = new System.Drawing.Point(216, -2744);
             this.metroLabel22.Name = "metroLabel22";
             this.metroLabel22.Size = new System.Drawing.Size(240, 38);
             this.metroLabel22.TabIndex = 10;
@@ -1042,40 +1067,6 @@
             this.metroLabel21.Size = new System.Drawing.Size(64, 25);
             this.metroLabel21.TabIndex = 8;
             this.metroLabel21.Text = "Trigger";
-            // 
-            // soundTab
-            // 
-            this.soundTab.Controls.Add(this.noSoundDeviceLabel);
-            this.soundTab.Controls.Add(this.soundDeviceComboBox);
-            this.soundTab.Controls.Add(this.defaultSoundDeviceCheckBox);
-            this.soundTab.Controls.Add(this.soundCheckBox);
-            this.soundTab.HorizontalScrollbarBarColor = true;
-            this.soundTab.HorizontalScrollbarSize = 11;
-            this.soundTab.Location = new System.Drawing.Point(4, 35);
-            this.soundTab.Name = "soundTab";
-            this.soundTab.Size = new System.Drawing.Size(656, 390);
-            this.soundTab.TabIndex = 8;
-            this.soundTab.Text = "Sound";
-            this.soundTab.VerticalScrollbarBarColor = true;
-            // 
-            // noSoundDeviceLabel
-            // 
-            this.noSoundDeviceLabel.AutoSize = true;
-            this.noSoundDeviceLabel.Location = new System.Drawing.Point(30, 38);
-            this.noSoundDeviceLabel.Name = "noSoundDeviceLabel";
-            this.noSoundDeviceLabel.Size = new System.Drawing.Size(176, 19);
-            this.noSoundDeviceLabel.TabIndex = 4;
-            this.noSoundDeviceLabel.Text = "No sound devices are found.";
-            this.noSoundDeviceLabel.Visible = false;
-            // 
-            // soundDeviceComboBox
-            // 
-            this.soundDeviceComboBox.FormattingEnabled = true;
-            this.soundDeviceComboBox.ItemHeight = 23;
-            this.soundDeviceComboBox.Location = new System.Drawing.Point(76, 126);
-            this.soundDeviceComboBox.Name = "soundDeviceComboBox";
-            this.soundDeviceComboBox.Size = new System.Drawing.Size(471, 29);
-            this.soundDeviceComboBox.TabIndex = 3;
             // 
             // debugTab
             // 
@@ -1376,33 +1367,14 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // defaultSoundDeviceCheckBox
+            // controllerPitch
             // 
-            this.defaultSoundDeviceCheckBox.AutoSize = true;
-            this.defaultSoundDeviceCheckBox.Checked = global::ALVR.Properties.Settings.Default.useDefaultSoundDevice;
-            this.defaultSoundDeviceCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.defaultSoundDeviceCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useDefaultSoundDevice", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.defaultSoundDeviceCheckBox.Location = new System.Drawing.Point(53, 83);
-            this.defaultSoundDeviceCheckBox.Name = "defaultSoundDeviceCheckBox";
-            this.defaultSoundDeviceCheckBox.Size = new System.Drawing.Size(119, 15);
-            this.defaultSoundDeviceCheckBox.TabIndex = 2;
-            this.defaultSoundDeviceCheckBox.Text = "Use default device";
-            this.defaultSoundDeviceCheckBox.UseVisualStyleBackColor = true;
-            this.defaultSoundDeviceCheckBox.CheckedChanged += new System.EventHandler(this.defaultSoundDeviceCheckBox_CheckedChanged);
-            // 
-            // soundCheckBox
-            // 
-            this.soundCheckBox.AutoSize = true;
-            this.soundCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableSound;
-            this.soundCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.soundCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableSound", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.soundCheckBox.Location = new System.Drawing.Point(30, 38);
-            this.soundCheckBox.Name = "soundCheckBox";
-            this.soundCheckBox.Size = new System.Drawing.Size(92, 15);
-            this.soundCheckBox.TabIndex = 2;
-            this.soundCheckBox.Text = "Steam sound";
-            this.soundCheckBox.UseVisualStyleBackColor = true;
-            this.soundCheckBox.CheckedChanged += new System.EventHandler(this.soundCheckBox_CheckedChanged);
+            this.controllerPitch.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "pitchControllerOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.controllerPitch.Location = new System.Drawing.Point(128, 146);
+            this.controllerPitch.Name = "controllerPitch";
+            this.controllerPitch.Size = new System.Drawing.Size(34, 23);
+            this.controllerPitch.TabIndex = 25;
+            this.controllerPitch.Text = global::ALVR.Properties.Settings.Default.pitchControllerOffset;
             // 
             // zControllerOffset
             // 
@@ -1436,8 +1408,8 @@
             // controllerChbx
             // 
             this.controllerChbx.AutoSize = true;
-            this.controllerChbx.Checked = global::ALVR.Properties.Settings.Default.useControllerOffser;
-            this.controllerChbx.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useControllerOffser", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.controllerChbx.Checked = global::ALVR.Properties.Settings.Default.useControllerOffset;
+            this.controllerChbx.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useControllerOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.controllerChbx.Location = new System.Drawing.Point(9, 118);
             this.controllerChbx.Name = "controllerChbx";
             this.controllerChbx.Size = new System.Drawing.Size(142, 15);
@@ -1449,7 +1421,7 @@
             // trackingFrameOffsetTextBox
             // 
             this.trackingFrameOffsetTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "trackingFrameOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.trackingFrameOffsetTextBox.Location = new System.Drawing.Point(181, 316);
+            this.trackingFrameOffsetTextBox.Location = new System.Drawing.Point(169, 358);
             this.trackingFrameOffsetTextBox.Name = "trackingFrameOffsetTextBox";
             this.trackingFrameOffsetTextBox.Size = new System.Drawing.Size(86, 25);
             this.trackingFrameOffsetTextBox.TabIndex = 19;
@@ -1458,7 +1430,7 @@
             // disconnectCommandTextBox
             // 
             this.disconnectCommandTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "disconnectCommand", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.disconnectCommandTextBox.Location = new System.Drawing.Point(128, 265);
+            this.disconnectCommandTextBox.Location = new System.Drawing.Point(116, 307);
             this.disconnectCommandTextBox.Name = "disconnectCommandTextBox";
             this.disconnectCommandTextBox.Size = new System.Drawing.Size(383, 25);
             this.disconnectCommandTextBox.TabIndex = 15;
@@ -1467,7 +1439,7 @@
             // connectCommandTextBox
             // 
             this.connectCommandTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "connectCommand", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.connectCommandTextBox.Location = new System.Drawing.Point(128, 234);
+            this.connectCommandTextBox.Location = new System.Drawing.Point(116, 276);
             this.connectCommandTextBox.Name = "connectCommandTextBox";
             this.connectCommandTextBox.Size = new System.Drawing.Size(383, 25);
             this.connectCommandTextBox.TabIndex = 15;
@@ -1575,6 +1547,34 @@
             this.fakeTrackingReferenceCheckBox.Text = "Fake base station";
             this.fakeTrackingReferenceCheckBox.UseVisualStyleBackColor = true;
             // 
+            // defaultSoundDeviceCheckBox
+            // 
+            this.defaultSoundDeviceCheckBox.AutoSize = true;
+            this.defaultSoundDeviceCheckBox.Checked = global::ALVR.Properties.Settings.Default.useDefaultSoundDevice;
+            this.defaultSoundDeviceCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.defaultSoundDeviceCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useDefaultSoundDevice", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.defaultSoundDeviceCheckBox.Location = new System.Drawing.Point(53, 83);
+            this.defaultSoundDeviceCheckBox.Name = "defaultSoundDeviceCheckBox";
+            this.defaultSoundDeviceCheckBox.Size = new System.Drawing.Size(119, 15);
+            this.defaultSoundDeviceCheckBox.TabIndex = 2;
+            this.defaultSoundDeviceCheckBox.Text = "Use default device";
+            this.defaultSoundDeviceCheckBox.UseVisualStyleBackColor = true;
+            this.defaultSoundDeviceCheckBox.CheckedChanged += new System.EventHandler(this.defaultSoundDeviceCheckBox_CheckedChanged);
+            // 
+            // soundCheckBox
+            // 
+            this.soundCheckBox.AutoSize = true;
+            this.soundCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableSound;
+            this.soundCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.soundCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableSound", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.soundCheckBox.Location = new System.Drawing.Point(30, 38);
+            this.soundCheckBox.Name = "soundCheckBox";
+            this.soundCheckBox.Size = new System.Drawing.Size(92, 15);
+            this.soundCheckBox.TabIndex = 2;
+            this.soundCheckBox.Text = "Steam sound";
+            this.soundCheckBox.UseVisualStyleBackColor = true;
+            this.soundCheckBox.CheckedChanged += new System.EventHandler(this.soundCheckBox_CheckedChanged);
+            // 
             // bufferTrackBar
             // 
             this.bufferTrackBar.BackColor = System.Drawing.Color.Transparent;
@@ -1664,14 +1664,14 @@
             this.connectedPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).EndInit();
             this.messagePanel.ResumeLayout(false);
+            this.soundTab.ResumeLayout(false);
+            this.soundTab.PerformLayout();
             this.otherTab.ResumeLayout(false);
             this.otherTab.PerformLayout();
             this.videoTab.ResumeLayout(false);
             this.videoTab.PerformLayout();
             this.controllerTab.ResumeLayout(false);
             this.controllerTab.PerformLayout();
-            this.soundTab.ResumeLayout(false);
-            this.soundTab.PerformLayout();
             this.debugTab.ResumeLayout(false);
             this.debugTab.PerformLayout();
             this.aboutTab.ResumeLayout(false);

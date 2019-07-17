@@ -363,6 +363,10 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			sendBuf.mode = 1;
 			sendBuf.serverTime = Current;
 			mSocket->Send((char *)&sendBuf, sizeof(sendBuf));
+
+
+			//set the controller input delelay to to current transport latency
+			Settings::Instance().mControllerDelay = mReportedStatistics.averageTransportLatency / (1000.0f * 1000.0f);
 		}
 		else if (timeSync->mode == 2) {
 			// Calclate RTT

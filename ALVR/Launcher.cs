@@ -875,5 +875,6 @@ namespace ALVR
             await socket.SendCommand("SetControllerOffset " + (controllerChbx.Checked ? "1" : "0") + " " + xControllerOffset.Text + " " + yControllerOffset.Text + " " + zControllerOffset.Text + " " + controllerPitch.Text);
 
         }
+
     }
 }

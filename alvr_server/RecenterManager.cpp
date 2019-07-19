@@ -30,6 +30,11 @@ void RecenterManager::EndRecenter() {
 
 void RecenterManager::OnPoseUpdated(const TrackingInfo & info, Listener * listener) {
 	mHasValidTrackingInfo = true;
+
+
+	//HEADSET
+	
+	//never called
 	if (mRecentering) {
 		if (GetTimestampUs() - mRecenterStartTimestamp > RECENTER_DURATION) {
 			mCenterPitch = PitchFromQuaternion(info.HeadPose_Pose_Orientation);
@@ -46,15 +51,21 @@ void RecenterManager::OnPoseUpdated(const TrackingInfo & info, Listener * listen
 		}
 	}
 
+	//does nothing, mCenterPitch = 0
 	mFixedOrientationHMD = MultiplyPitchQuaternion(
 		-mCenterPitch
 		, info.HeadPose_Pose_Orientation.x
 		, info.HeadPose_Pose_Orientation.y
 		, info.HeadPose_Pose_Orientation.z
-		, info.HeadPose_Pose_Orientation.w);
+		, info.HeadPose_Pose_Orientation.w);	
 
 	mFixedPositionHMD = RotateVectorQuaternion(info.HeadPose_Pose_Position, mCenterPitch);
 
+	//END HEADSET
+
+	//CONTROLLER
+
+	//run trough controller
 	for (int i = 0; i < TrackingInfo::MAX_CONTROLLERS; i++) {
 		mFixedOrientationController[i] = MultiplyPitchQuaternion(
 			-mCenterPitch
@@ -71,13 +82,15 @@ void RecenterManager::OnPoseUpdated(const TrackingInfo & info, Listener * listen
 		}
 
 		mFixedPositionController[i] = RotateVectorQuaternion(info.controller[i].position, mCenterPitch);
-
 		
 	}
+	   
 
+	//quest has no other tracking source
 	if (info.flags & TrackingInfo::FLAG_OTHER_TRACKING_SOURCE) {
 		UpdateOtherTrackingSource(info);
 	}
+
 	Log(L"GetRecenteredHMD: Old=(%f,%f,%f,%f) New=(%f,%f,%f,%f) pitch=%f-%f"
 		, info.HeadPose_Pose_Orientation.x, info.HeadPose_Pose_Orientation.y
 		, info.HeadPose_Pose_Orientation.z, info.HeadPose_Pose_Orientation.w
@@ -90,9 +103,14 @@ void RecenterManager::OnPoseUpdated(const TrackingInfo & info, Listener * listen
 			, mFixedOrientationHMD.z
 			, mFixedOrientationHMD.w));
 
+
+
+	//haptic feedback for controllers
+
 	double  hapticFeedback[2][3]{ { 0,0,0 },{ 0,0,0 } };
 	vr::VREvent_t vrEvent;
 
+	//poll feedback events from openvr
 	while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent)))
 	{
 		if (vrEvent.eventType == vr::VREvent_Input_HapticVibration)
@@ -109,6 +127,7 @@ void RecenterManager::OnPoseUpdated(const TrackingInfo & info, Listener * listen
 		}
 	}
 
+	//send feedback to headset
 	for (int i = 0; i < 2; i++) {
 		if (hapticFeedback[i][0] != 0 || hapticFeedback[i][1] != 0 || hapticFeedback[i][2] != 0) {
 			listener->SendHapticsFeedback(0,
@@ -118,10 +137,16 @@ void RecenterManager::OnPoseUpdated(const TrackingInfo & info, Listener * listen
 				mRemoteController[i]->GetHand() ? 1 : 0);
 		}
 	}
+	 
 
+	//WTF???
 	mFreePIE->UpdateTrackingInfoByFreePIE(info, mFixedOrientationHMD, mFixedOrientationController, mFixedPositionHMD, mFixedPositionController, hapticFeedback);
 
+
+	//read data back??
 	auto data = mFreePIE->GetData();
+
+	//override reale tracking data with data from freePIE and check override flags
 
 	if (data.flags & FreePIE::ALVR_FREEPIE_FLAG_OVERRIDE_HEAD_ORIENTATION) {
 		mFixedOrientationHMD = EulerAngleToQuaternion(data.head_orientation);
@@ -144,6 +169,8 @@ void RecenterManager::OnPoseUpdated(const TrackingInfo & info, Listener * listen
 		}
 	}
 
+	//override position with data from settings / ui	
+
 	if (Settings::Instance().mEnableControllerOffset) {
 		for (int i = 0; i < TrackingInfo::MAX_CONTROLLERS; i++) {
 			//quest offset
@@ -163,6 +190,7 @@ void RecenterManager::OnPoseUpdated(const TrackingInfo & info, Listener * listen
 			mFixedPositionController[i].z += Settings::Instance().mOffsetPos[2];
 		}
 	}
+	
 
 	UpdateControllerState(info);
 }
@@ -242,12 +270,16 @@ void RecenterManager::UpdateControllerState(const TrackingInfo & info) {
 			continue;
 		}
 		bool hand = i == 0 ? defaultHand : !mRemoteController[0]->GetHand();
+
 		mRemoteController[i] = std::make_shared<OpenVRController>(hand, i);
 
+		//register openVR controller
 		bool ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 			mRemoteController[i]->GetSerialNumber().c_str(),
 			vr::TrackedDeviceClass_Controller,
 			mRemoteController[i].get());
+
+		
 		Log(L"TrackedDeviceAdded vr::TrackedDeviceClass_Controller index=%d Ret=%d SerialNumber=%hs Hand=%d"
 			, i, ret, mRemoteController[i]->GetSerialNumber().c_str(), hand);
 	}
@@ -257,9 +289,14 @@ void RecenterManager::UpdateControllerState(const TrackingInfo & info) {
 	for (int i = 0; i < mControllerDetected; i++) {
 		if (mRemoteController[i]) {
 			int index = mRemoteController[i]->GetHand() == defaultHand ? 0 : 1;
+
+
 			Log(L"UpdateControllerState. Updating %d controller", index);
-			bool recenterRequested = mRemoteController[i]->ReportControllerState(index, info,
-				mFixedOrientationController[index], mFixedPositionController[index], enableControllerButton, data);
+
+			//update openVR controller
+			bool recenterRequested = mRemoteController[i]->ReportControllerState(index, info, 
+mFixedOrientationController[index], mFixedPositionController[index], enableControllerButton, data);
+					
 			if (recenterRequested) {
 				BeginRecenter();
 			}

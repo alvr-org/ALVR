@@ -1,5 +1,7 @@
 #pragma once
 
+//Main ALVR Logic
+
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -14,6 +16,7 @@
 #include "packet_types.h"
 #include "Settings.h"
 #include "Statistics.h"
+
 extern "C" {
 #include "reedsolomon/rs.h"
 };

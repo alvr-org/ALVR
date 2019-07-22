@@ -1,6 +1,8 @@
 #include "Listener.h"
 #include "Bitrate.h"
 
+//implementation of main ALVR logic
+
 Listener::Listener()
 	: mExiting(false)
 	, mEnabled(false)
@@ -15,6 +17,8 @@ Listener::Listener()
 	mSettings.suspend = 0;
 
 	mPoller.reset(new Poller());
+
+	//set pointer to control socket -> socket server -> C# UI connection
 	mControlSocket.reset(new ControlSocket(mPoller));
 
 	reed_solomon_init();
@@ -24,18 +28,23 @@ Listener::~Listener() {
 }
 
 bool Listener::Startup() {
+	//init connection to the ui
 	if (!mControlSocket->Startup()) {
 		return false;
 	}
 	if (Settings::Instance().IsLoaded()) {
 		mEnabled = true;
+
+		//setup udb socket to the HMD
 		mSocket = std::make_shared<UdpSocket>(Settings::Instance().mHost, Settings::Instance().mPort
 			, mPoller, mStatistics, Settings::Instance().mThrottlingBitrate);
+
+		//init socket
 		if (!mSocket->Startup()) {
 			return false;
 		}
 	}
-	// Start thread.
+	// Start this thread.
 	Start();
 	return true;
 }
@@ -618,6 +627,7 @@ std::string Listener::DumpConfig() {
 
 	return buf;
 }
+
 
 void Listener::CheckTimeout() {
 	// Remove old requests

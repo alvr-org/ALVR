@@ -4,6 +4,10 @@
 //
 //==================================================================================================
 
+/**
+* Virtual display attached to SteamVR as dll driver
+*/
+
 #include <openvr_driver.h>
 
 #include "Logger.h"
@@ -47,14 +51,17 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 		return vr::VRInitError_Driver_Failed;
 	}
 
+	//load settings from ALVR frontend
 	Settings::Instance().Load();
 
+	//create and initialize ALVR
 	mListener = std::make_shared<Listener>();
 	if (!mListener->Startup())
 	{
 		return vr::VRInitError_Driver_Failed;
 	}
 
+	//create virtual headset
 	mHmd = std::make_shared<OpenVRHmd>(mListener);
 
 	if (Settings::Instance().IsLoaded()) {

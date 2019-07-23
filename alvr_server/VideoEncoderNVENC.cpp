@@ -245,7 +245,7 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 
 	// 16 is recommended when using reference frame invalidation. But it has caused bad visual quality.
 	// Now, use 0 (use default).
-	int maxNumRefFrames = 16;
+	int maxNumRefFrames = 0;
 
 	if (mCodec == ALVR_CODEC_H264) {
 		auto &config = encodeConfig.encodeCodecConfig.h264Config;

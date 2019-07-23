@@ -64,18 +64,25 @@ std::string OpenVRHmd::GetSerialNumber() const
 	return Settings::Instance().mSerialNumber;
 }
 
+//starts virtual hmd
 void OpenVRHmd::Enable()
 {
+	//add only once
 	if (mAdded) {
 		return;
 	}
 	mAdded = true;
+
+
 	bool ret;
 	ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 		GetSerialNumber().c_str(),
 		vr::TrackedDeviceClass_HMD,
 		this);
 	Log(L"TrackedDeviceAdded(HMD) Ret=%d SerialNumber=%hs", ret, GetSerialNumber().c_str());
+
+
+	//fake base station setting, unused for quest?
 	if (Settings::Instance().mUseTrackingReference) {
 		mTrackingReference = std::make_shared<OpenVRFakeTrackingReference>();
 		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
@@ -87,6 +94,8 @@ void OpenVRHmd::Enable()
 
 }
 
+
+//called from steamVR?? Init HMD
 vr::EVRInitError OpenVRHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 {
 	Log(L"OpenVRHmd Activate %d", unObjectId);
@@ -160,6 +169,7 @@ vr::EVRInitError OpenVRHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		}
 	}
 
+	//thread triggers vsync events in OpenVR
 	mVSyncThread = std::make_shared<VSyncThread>(Settings::Instance().mRefreshRate);
 	mVSyncThread->Start();
 
@@ -184,6 +194,7 @@ void OpenVRHmd::EnterStandby()
 {
 }
 
+//method to get component for SteamVR??
 void * OpenVRHmd::GetComponent(const char * pchComponentNameAndVersion)
 {
 	Log(L"GetComponent %hs", pchComponentNameAndVersion);
@@ -208,6 +219,7 @@ void OpenVRHmd::DebugRequest(const char * pchRequest, char * pchResponseBuffer, 
 		pchResponseBuffer[0] = 0;
 }
 
+//return current pose to OpenVR, uses RecenterManger to adjust poses
 vr::DriverPose_t OpenVRHmd::GetPose()
 {
 	vr::DriverPose_t pose = { 0 };
@@ -421,7 +433,7 @@ void OpenVRHmd::OnPoseUpdated() {
 		//update OpenVR HMD Pose
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(mObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
-		//tracking reference??		
+		//fake tracking reference update, unused for quest		
 		if (mTrackingReference) {		
 			mTrackingReference->OnPoseUpdated();
 		}

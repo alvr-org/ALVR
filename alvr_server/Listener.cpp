@@ -288,6 +288,8 @@ void Listener::SendHapticsFeedback(uint64_t startTime, float amplitude, float du
 	mSocket->Send((char *)&packetBuffer, sizeof(HapticsFeedback));
 }
 
+
+//process messages from HMD
 void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 	if (len < 4) {
 		return;
@@ -417,6 +419,7 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 	}
 }
 
+//Process messages from UI
 void Listener::ProcessCommand(const std::string &commandName, const std::string args) {
 	if (commandName == "SetDebugFlags") {
 		mSettings.debugFlags = strtol(args.c_str(), NULL, 10);
@@ -527,6 +530,7 @@ void Listener::ProcessCommand(const std::string &commandName, const std::string 
 		}
 	}
 	else {
+		//send command to OpenVRHmd
 		mCallback->OnCommand(commandName, args);
 	}
 }

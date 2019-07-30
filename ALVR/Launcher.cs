@@ -190,9 +190,9 @@ namespace ALVR
         private void SaveSettings()
         {
             var c = Properties.Settings.Default;
-            //offsetPosXTextBox.Text = Utils.ParseFloat(offsetPosXTextBox.Text).ToString();
-           // offsetPosYTextBox.Text = Utils.ParseFloat(offsetPosYTextBox.Text).ToString();
-           // offsetPosZTextBox.Text = Utils.ParseFloat(offsetPosZTextBox.Text).ToString();
+            offsetPosXTextBox.Text = Utils.ParseFloat(offsetPosXTextBox.Text).ToString();
+            offsetPosYTextBox.Text = Utils.ParseFloat(offsetPosYTextBox.Text).ToString();
+            offsetPosZTextBox.Text = Utils.ParseFloat(offsetPosZTextBox.Text).ToString();
             trackingFrameOffsetTextBox.Text = Utils.ParseInt(trackingFrameOffsetTextBox.Text).ToString();
 
             if (resolutionComboBox.SelectedIndex != -1)
@@ -853,28 +853,5 @@ namespace ALVR
         {
             wrongVersionLabel.Visible = true;
         }
-
-        private void metroTextBox1_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void zControllerOffset_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void applyControllerOffset_CheckedChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        async private void saveControllerOffset_Click(object sender, EventArgs e)
-        {
-            SaveSettings();
-            await socket.SendCommand("SetControllerOffset " + (controllerChbx.Checked ? "1" : "0") + " " + xControllerOffset.Text + " " + yControllerOffset.Text + " " + zControllerOffset.Text + " " + controllerPitch.Text);
-
-        }
-
     }
 }

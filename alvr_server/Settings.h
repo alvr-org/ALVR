@@ -189,13 +189,6 @@ public:
 	float mOffsetPos[3];
 	bool mEnableOffsetPos;
 
-	float mControllerOffset[3];
-	bool mEnableControllerOffset;
-	float mControllerPitch;
-
-	float mControllerDelay;
-
-
 	bool mUseTrackingReference;
 
 	int32_t mTrackingFrameOffset;

@@ -64,25 +64,18 @@ std::string OpenVRHmd::GetSerialNumber() const
 	return Settings::Instance().mSerialNumber;
 }
 
-//starts virtual hmd
 void OpenVRHmd::Enable()
 {
-	//add only once
 	if (mAdded) {
 		return;
 	}
 	mAdded = true;
-
-
 	bool ret;
 	ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 		GetSerialNumber().c_str(),
 		vr::TrackedDeviceClass_HMD,
 		this);
 	Log(L"TrackedDeviceAdded(HMD) Ret=%d SerialNumber=%hs", ret, GetSerialNumber().c_str());
-
-
-	//fake base station setting, unused for quest?
 	if (Settings::Instance().mUseTrackingReference) {
 		mTrackingReference = std::make_shared<OpenVRFakeTrackingReference>();
 		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
@@ -94,8 +87,6 @@ void OpenVRHmd::Enable()
 
 }
 
-
-//called from steamVR?? Init HMD
 vr::EVRInitError OpenVRHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 {
 	Log(L"OpenVRHmd Activate %d", unObjectId);
@@ -169,7 +160,6 @@ vr::EVRInitError OpenVRHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		}
 	}
 
-	//thread triggers vsync events in OpenVR
 	mVSyncThread = std::make_shared<VSyncThread>(Settings::Instance().mRefreshRate);
 	mVSyncThread->Start();
 
@@ -194,7 +184,6 @@ void OpenVRHmd::EnterStandby()
 {
 }
 
-//method to get component for SteamVR??
 void * OpenVRHmd::GetComponent(const char * pchComponentNameAndVersion)
 {
 	Log(L"GetComponent %hs", pchComponentNameAndVersion);
@@ -219,7 +208,6 @@ void OpenVRHmd::DebugRequest(const char * pchRequest, char * pchResponseBuffer, 
 		pchResponseBuffer[0] = 0;
 }
 
-//return current pose to OpenVR, uses RecenterManger to adjust poses
 vr::DriverPose_t OpenVRHmd::GetPose()
 {
 	vr::DriverPose_t pose = { 0 };
@@ -383,22 +371,6 @@ void OpenVRHmd::OnCommand(std::string commandName, std::string args)
 
 		mListener->SendCommandResponse("OK\n");
 	}
-	else if (commandName == "SetControllerOffset") {
-		std::string enabled = GetNextToken(args, " ");
-		std::string x = GetNextToken(args, " ");
-		std::string y = GetNextToken(args, " ");
-		std::string z = GetNextToken(args, " ");
-		std::string pitch = GetNextToken(args, " ");
-		Settings::Instance().mControllerOffset[0] = (float)atof(x.c_str());
-		Settings::Instance().mControllerOffset[1] = (float)atof(y.c_str());
-		Settings::Instance().mControllerOffset[2] = (float)atof(z.c_str());
-		Settings::Instance().mControllerPitch = (float)atof(pitch.c_str());
-
-		Settings::Instance().mEnableControllerOffset = atoi(enabled.c_str()) != 0;
-
-		mListener->SendCommandResponse("OK\n");
-	}
-	
 	else {
 		Log(L"Invalid control command: %hs", commandName.c_str());
 		mListener->SendCommandResponse("NG\n");
@@ -420,21 +392,15 @@ void OpenVRHmd::OnPoseUpdated() {
 			return;
 		}
 
-		//get tracking info from listener
 		TrackingInfo info;
 		mListener->GetTrackingInfo(info);
-		
-		//set listener and tracking on recenterManager
+
 		mRecenterManager->OnPoseUpdated(info, mListener.get());
-			   			   
-		//pose for rendering?
 		mDirectModeComponent->OnPoseUpdated(info);
 
-		//update OpenVR HMD Pose
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(mObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
-		//fake tracking reference update, unused for quest		
-		if (mTrackingReference) {		
+		if (mTrackingReference) {
 			mTrackingReference->OnPoseUpdated();
 		}
 	}

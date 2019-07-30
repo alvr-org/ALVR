@@ -225,7 +225,7 @@ bool OpenVRController::ReportControllerState(int controllerIndex, const Tracking
 	mPose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y;
 	mPose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z;
 
-	mPose.poseTimeOffset = Settings::Instance().mControllerDelay;
+	mPose.poseTimeOffset = 0;
 
 	vr::VRServerDriverHost()->TrackedDevicePoseUpdated(mObjectId, mPose, sizeof(vr::DriverPose_t));
 

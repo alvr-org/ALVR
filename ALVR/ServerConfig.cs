@@ -186,7 +186,7 @@ namespace ALVR
                 driverConfig.force60HZ = c.force60Hz;
 
                 driverConfig.enableController = c.enableController;
-                if(device != null && device.HasTouchController)
+                if (device != null && device.HasTouchController)
                 {
                     driverConfig.controllerTrackingSystemName = "oculus";
                     driverConfig.controllerManufacturerName = "Oculus";
@@ -228,14 +228,6 @@ namespace ALVR
 
                 driverConfig.trackingFrameOffset = Utils.ParseInt(c.trackingFrameOffset);
 
-                driverConfig.xControllerOffset = Utils.ParseFloat(c.xControllerOffset);
-                driverConfig.yControllerOffset = Utils.ParseFloat(c.yControllerOffset);
-                driverConfig.zControllerOffset = Utils.ParseFloat(c.zControllerOffset);
-                driverConfig.useControllerOffset = c.useControllerOffset;
-
-                driverConfig.pitchControllerOffset =  Utils.ParseFloat(c.pitchControllerOffset);
-
-
                 byte[] bytes = Encoding.UTF8.GetBytes(driverConfig.ToString());
                 memoryMappedFile = MemoryMappedFile.CreateOrOpen(APP_FILEMAPPING_NAME, sizeof(int) + bytes.Length);
 
@@ -244,8 +236,6 @@ namespace ALVR
                     mappedStream.Write(BitConverter.GetBytes(bytes.Length), 0, sizeof(int));
                     mappedStream.Write(bytes, 0, bytes.Length);
                 }
-                              
-
 
             }
             catch (Exception)

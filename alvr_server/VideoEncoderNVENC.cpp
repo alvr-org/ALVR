@@ -239,7 +239,7 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 
 	// Use reference frame invalidation to faster recovery from frame loss if supported.
 	mSupportsReferenceFrameInvalidation = mEncoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_REF_PIC_INVALIDATION);
-	bool supportsIntraRefresh = mEncoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_INTRA_REFRESH);
+	bool supportsIntraRefresh = false;//mEncoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_INTRA_REFRESH);
 	Log(L"VideoEncoderNVENC: SupportsReferenceFrameInvalidation: %d", mSupportsReferenceFrameInvalidation);
 	Log(L"VideoEncoderNVENC: SupportsIntraRefresh: %d", supportsIntraRefresh);
 
@@ -287,7 +287,7 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 
 	// NV_ENC_PARAMS_RC_CBR_HQ is equivalent to NV_ENC_PARAMS_RC_2_PASS_FRAMESIZE_CAP.
 	//encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;// NV_ENC_PARAMS_RC_CBR_HQ;
-	encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;
+	encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_HQ;
 	uint32_t maxFrameSize = static_cast<uint32_t>(bitrate.toBits() / refreshRate);
 	Log(L"VideoEncoderNVENC: maxFrameSize=%d bits", maxFrameSize);
 	encodeConfig.rcParams.vbvBufferSize = maxFrameSize;

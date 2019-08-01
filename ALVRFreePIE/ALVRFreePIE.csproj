@@ -31,7 +31,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FreePIE.Core.Contracts">
-      <HintPath>..\..\..\Program Files (x86)\FreePIE\FreePIE.Core.Contracts.dll</HintPath>
+      <HintPath>..\..\..\..\..\Program Files (x86)\FreePIE\FreePIE.Core.Contracts.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

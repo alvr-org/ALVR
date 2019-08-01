@@ -1073,6 +1073,9 @@ public:
 				else if (name == "captureComposedDDS") {
 					Settings::Instance().m_captureComposedDDSTrigger = atoi(args.substr(index + 1).c_str());
 				}
+				else if (name == "controllerPoseOffset") {
+					Settings::Instance().m_controllerPoseOffset = (float)atof(args.substr(index + 1).c_str());
+				}
 				else {
 					m_Listener->SendCommandResponse("NG\n");
 					return;

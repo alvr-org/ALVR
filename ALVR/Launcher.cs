@@ -853,5 +853,10 @@ namespace ALVR
         {
             wrongVersionLabel.Visible = true;
         }
+
+        async private void metroButton1_Click(object sender, EventArgs e)
+        {
+              await socket.SendCommand("SetConfig controllerPoseOffset " + controllerPoseOffset.Text);
+        }
     }
 }

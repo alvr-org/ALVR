@@ -239,7 +239,12 @@ public:
 		m_pose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y;
 		m_pose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z;
 
-		m_pose.poseTimeOffset = 0;
+		double rotation[3] = {0.0, 0.0, 36 * M_PI / 180};
+		m_pose.qDriverFromHeadRotation = EulerAngleToQuaternion(rotation);			
+		m_pose.vecDriverFromHeadTranslation[1] = 0.031153;
+		m_pose.vecDriverFromHeadTranslation[2] = -0.042878;
+		
+		m_pose.poseTimeOffset = Settings::Instance().m_controllerPoseOffset;
 
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));
 

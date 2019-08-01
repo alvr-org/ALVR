@@ -89,5 +89,8 @@
     <Setting Name="disableThrottling" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
+    <Setting Name="controllerPoseOffset" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0.08</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

@@ -23,6 +23,9 @@ public:
 
 	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR);
 private:
+	void FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, Bitrate bitrate);
+
+
 	std::ofstream fpOut;
 	std::shared_ptr<NvEncoder> m_NvNecoder;
 
@@ -33,6 +36,7 @@ private:
 
 	const bool m_useNV12;
 	std::shared_ptr<CudaConverter> m_Converter;
+	bool mSupportsReferenceFrameInvalidation = false;
 
 	int m_codec;
 	int m_refreshRate;

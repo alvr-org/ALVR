@@ -78,6 +78,8 @@ static const char * const k_pch_Settings_OffsetPosX_Float = "offsetPosX";
 static const char * const k_pch_Settings_OffsetPosY_Float = "offsetPosY";
 static const char * const k_pch_Settings_OffsetPosZ_Float = "offsetPosZ";
 
+static const char * const k_pch_Settings_controllerPoseOffset_Float = "controllerPoseOffset";
+
 static const char * const k_pch_Settings_TrackingFrameOffset_Int32 = "trackingFrameOffset";
 //
 // Constants
@@ -178,6 +180,8 @@ public:
 	int32_t m_controllerTrackpadTouchMode;
 	int32_t m_controllerBackMode;
 	int32_t m_controllerRecenterButton;
+
+	double m_controllerPoseOffset = 0;
 
 	float m_OffsetPos[3];
 	bool m_EnableOffsetPos;

@@ -229,22 +229,43 @@ public:
 		m_pose.vecVelocity[0] = info.controller[controllerIndex].linearVelocity.x;
 		m_pose.vecVelocity[1] = info.controller[controllerIndex].linearVelocity.y;
 		m_pose.vecVelocity[2] = info.controller[controllerIndex].linearVelocity.z;
-		m_pose.vecAcceleration[0] = info.controller[controllerIndex].linearAcceleration.x;
-		m_pose.vecAcceleration[1] = info.controller[controllerIndex].linearAcceleration.y;
-		m_pose.vecAcceleration[2] = info.controller[controllerIndex].linearAcceleration.z;
+		//m_pose.vecAcceleration[0] = info.controller[controllerIndex].linearAcceleration.x;
+		//m_pose.vecAcceleration[1] = info.controller[controllerIndex].linearAcceleration.y;
+		//m_pose.vecAcceleration[2] = info.controller[controllerIndex].linearAcceleration.z;
 		m_pose.vecAngularVelocity[0] = info.controller[controllerIndex].angularVelocity.x;
 		m_pose.vecAngularVelocity[1] = info.controller[controllerIndex].angularVelocity.y;
 		m_pose.vecAngularVelocity[2] = info.controller[controllerIndex].angularVelocity.z;
-		m_pose.vecAngularAcceleration[0] = info.controller[controllerIndex].angularAcceleration.x;
-		m_pose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y;
-		m_pose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z;
+		//m_pose.vecAngularAcceleration[0] = info.controller[controllerIndex].angularAcceleration.x;
+		//m_pose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y;
+		//m_pose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z;
 
+		
 		double rotation[3] = {0.0, 0.0, 36 * M_PI / 180};
 		m_pose.qDriverFromHeadRotation = EulerAngleToQuaternion(rotation);			
 		m_pose.vecDriverFromHeadTranslation[1] = 0.031153;
 		m_pose.vecDriverFromHeadTranslation[2] = -0.042878;
 		
 		m_pose.poseTimeOffset = Settings::Instance().m_controllerPoseOffset;
+
+		//double r[3] = { 0, -0.031153 ,0.042878 };
+		double r[3] = { 0, 0 ,-0.053 };
+		double v1[3] = { m_pose.vecVelocity[0], m_pose.vecVelocity[1], m_pose.vecVelocity[2]};
+		double w[3] = { m_pose.vecAngularVelocity[0], m_pose.vecAngularVelocity[1], m_pose.vecAngularVelocity[2] };
+		
+		double tmp[3] = { 0, 0 ,0 };
+		tmp[0] = (w[1] * r[2]) - (w[2] * r[1]);
+		tmp[1] = (w[2] * r[0]) - (w[0] * r[2]);
+		tmp[2] = (w[0] * r[1]) - (w[1] * r[0]);
+	
+		m_pose.vecVelocity[0] = m_pose.vecVelocity[0] + tmp[0];
+		m_pose.vecVelocity[1] = m_pose.vecVelocity[1] + tmp[1];
+		m_pose.vecVelocity[2] = m_pose.vecVelocity[2] + tmp[2];
+
+		//Log("Velocity2 %lf -  %lf - %lf", m_pose.vecVelocity[0], m_pose.vecVelocity[1], m_pose.vecVelocity[2]);
+
+
+
+
 
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));
 

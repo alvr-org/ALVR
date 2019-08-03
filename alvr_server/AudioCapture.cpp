@@ -155,7 +155,7 @@ std::wstring AudioEndPointDescriptor::GetDeviceName(const ComPtr<IMMDevice> &pMM
 // AudioCapture
 //
 
-AudioCapture::AudioCapture(std::shared_ptr<Listener> listener)
+AudioCapture::AudioCapture(std::shared_ptr<ClientConnection> listener)
 	: m_pMMDevice(NULL)
 	, m_pwfx(NULL)
 	, m_startedEvent(NULL)

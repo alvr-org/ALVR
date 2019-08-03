@@ -139,6 +139,31 @@ inline vr::HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y, doub
 	return quat;
 }
 
+inline vr::HmdQuaternion_t HmdQuaternion_Scale(vr::HmdQuaternion_t *q, double s)
+{
+	return HmdQuaternion_Init(q->w*s, q->x*s, q->y*s, q->z*s);
+	
+}
+
+inline double HmdQuaternion_Norm(vr::HmdQuaternion_t *q) {
+	return (q->w*q->w + q->x * q->x + q->y * q->y + q->z * q->z);
+}
+
+inline vr::HmdQuaternion_t HmdQuaternion_Conjugate(vr::HmdQuaternion_t *q)
+{
+	return HmdQuaternion_Init(q->w, -q->x, -q->y, -q->z);
+}
+
+inline vr::HmdQuaternion_t HmdQuaternion_Inverse(vr::HmdQuaternion_t *q)
+{
+
+	vr::HmdQuaternion_t res;
+	res = HmdQuaternion_Conjugate(q);
+
+	return HmdQuaternion_Scale(&res , 1 / HmdQuaternion_Norm(&res));
+}
+
+
 inline void HmdMatrix_SetIdentity(vr::HmdMatrix34_t *pMatrix)
 {
 	pMatrix->m[0][0] = 1.f;

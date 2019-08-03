@@ -2,7 +2,7 @@
 
 #include <memory>
 #include "d3drender.h"
-#include "Listener.h"
+#include "ClientConnection.h"
 #include "NvEncoderD3D11.h"
 #include "NvEncoderCuda.h"
 

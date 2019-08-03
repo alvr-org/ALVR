@@ -2,7 +2,7 @@
 
 #include <memory>
 #include "d3drender.h"
-#include "Listener.h"
+#include "ClientConnection.h"
 #include "VideoEncoder.h"
 #include "NvEncoderD3D11.h"
 #include "NvEncoderCuda.h"
@@ -14,7 +14,7 @@ class VideoEncoderNVENC : public VideoEncoder
 {
 public:
 	VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
-		, std::shared_ptr<Listener> listener, bool useNV12);
+		, std::shared_ptr<ClientConnection> listener, bool useNV12);
 	~VideoEncoderNVENC();
 
 	void Initialize();
@@ -32,7 +32,7 @@ private:
 	std::shared_ptr<CD3DRender> m_pD3DRender;
 	int m_nFrame;
 
-	std::shared_ptr<Listener> m_Listener;
+	std::shared_ptr<ClientConnection> m_Listener;
 
 	const bool m_useNV12;
 	std::shared_ptr<CudaConverter> m_Converter;

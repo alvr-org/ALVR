@@ -104,17 +104,22 @@
     <ClCompile Include="amf\common\Windows\ThreadWindows.cpp" />
     <ClCompile Include="AudioCapture.cpp" />
     <ClCompile Include="Bitrate.cpp" />
+    <ClCompile Include="CEncoder.cpp" />
     <ClCompile Include="ControlSocket.cpp" />
     <ClCompile Include="alvr_server.cpp" />
     <ClCompile Include="DeviceQuery.cpp" />
     <ClCompile Include="FrameRender.cpp" />
     <ClCompile Include="FreePIE.cpp" />
     <ClCompile Include="IDRScheduler.cpp" />
-    <ClCompile Include="Listener.cpp" />
+    <ClCompile Include="ClientConnection.cpp" />
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="NvEncoder.cpp" />
     <ClCompile Include="NvEncoderCuda.cpp" />
     <ClCompile Include="NvEncoderD3D11.cpp" />
+    <ClCompile Include="OvrDirectModeComponent.cpp" />
+    <ClCompile Include="OvrDisplayComponent.cpp" />
+    <ClCompile Include="OvrHMD.cpp" />
+    <ClCompile Include="ovrTrackedDeviceManager.cpp" />
     <ClCompile Include="Poller.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="ThrottlingBuffer.cpp" />
@@ -123,6 +128,7 @@
     <ClCompile Include="VideoEncoder.cpp" />
     <ClCompile Include="VideoEncoderNVENC.cpp" />
     <ClCompile Include="VideoEncoderVCE.cpp" />
+    <ClCompile Include="VSyncThread.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CUDA\CUDA.vcxproj">
@@ -172,6 +178,7 @@
     <ClInclude Include="amf\include\core\Version.h" />
     <ClInclude Include="AudioCapture.h" />
     <ClInclude Include="Bitrate.h" />
+    <ClInclude Include="CEncoder.h" />
     <ClInclude Include="common-utils.h" />
     <ClInclude Include="ControlSocket.h" />
     <ClInclude Include="CudaConverter.h" />
@@ -179,7 +186,7 @@
     <ClInclude Include="FrameRender.h" />
     <ClInclude Include="FreePIE.h" />
     <ClInclude Include="IDRScheduler.h" />
-    <ClInclude Include="Listener.h" />
+    <ClInclude Include="ClientConnection.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="NvCodecUtils.h" />
     <ClInclude Include="nvEncodeAPI.h" />
@@ -187,6 +194,10 @@
     <ClInclude Include="nvencoderclioptions.h" />
     <ClInclude Include="NvEncoderCuda.h" />
     <ClInclude Include="NvEncoderD3D11.h" />
+    <ClInclude Include="OvrDirectModeComponent.h" />
+    <ClInclude Include="OvrDisplayComponent.h" />
+    <ClInclude Include="OvrHMD.h" />
+    <ClInclude Include="ovrTrackedDeviceManager.h" />
     <ClInclude Include="Poller.h" />
     <ClInclude Include="RecenterManager.h" />
     <ClInclude Include="RemoteController.h" />
@@ -196,12 +207,12 @@
     <ClInclude Include="Settings.h" />
     <ClInclude Include="Statistics.h" />
     <ClInclude Include="ThrottlingBuffer.h" />
-    <ClInclude Include="Tracking.h" />
     <ClInclude Include="UdpSocket.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="VideoEncoder.h" />
     <ClInclude Include="VideoEncoderNVENC.h" />
     <ClInclude Include="VideoEncoderVCE.h" />
+    <ClInclude Include="VSyncThread.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

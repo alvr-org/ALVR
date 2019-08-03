@@ -1,7 +1,7 @@
-#include "Listener.h"
+#include "ClientConnection.h"
 #include "Bitrate.h"
 
-Listener::Listener()
+ClientConnection::ClientConnection()
 	: m_bExiting(false)
 	, m_Enabled(false)
 	, m_Connected(false)
@@ -24,33 +24,33 @@ Listener::Listener()
 	reed_solomon_init();
 }
 
-Listener::~Listener() {
+ClientConnection::~ClientConnection() {
 	DeleteCriticalSection(&m_CS);
 }
 
-void Listener::SetLauncherCallback(std::function<void()> callback) {
+void ClientConnection::SetLauncherCallback(std::function<void()> callback) {
 	m_LauncherCallback = callback;
 }
-void Listener::SetCommandCallback(std::function<void(std::string, std::string)> callback) {
+void ClientConnection::SetCommandCallback(std::function<void(std::string, std::string)> callback) {
 	m_CommandCallback = callback;
 }
-void Listener::SetPoseUpdatedCallback(std::function<void()> callback) {
+void ClientConnection::SetPoseUpdatedCallback(std::function<void()> callback) {
 	m_PoseUpdatedCallback = callback;
 }
-void Listener::SetNewClientCallback(std::function<void()> callback) {
+void ClientConnection::SetNewClientCallback(std::function<void()> callback) {
 	m_NewClientCallback = callback;
 }
-void Listener::SetStreamStartCallback(std::function<void()> callback) {
+void ClientConnection::SetStreamStartCallback(std::function<void()> callback) {
 	m_StreamStartCallback = callback;
 }
-void Listener::SetPacketLossCallback(std::function<void()> callback) {
+void ClientConnection::SetPacketLossCallback(std::function<void()> callback) {
 	m_PacketLossCallback = callback;
 }
-void Listener::SetShutdownCallback(std::function<void()> callback) {
+void ClientConnection::SetShutdownCallback(std::function<void()> callback) {
 	m_ShutdownCallback = callback;
 }
 
-bool Listener::Startup() {
+bool ClientConnection::Startup() {
 	if (!m_ControlSocket->Startup()) {
 		return false;
 	}
@@ -67,7 +67,7 @@ bool Listener::Startup() {
 	return true;
 }
 
-void Listener::Run() {
+void ClientConnection::Run() {
 	while (!m_bExiting) {
 		CheckTimeout();
 		if (m_Poller->Do() == 0) {
@@ -122,7 +122,7 @@ void Listener::Run() {
 	}
 }
 
-void Listener::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex) {
+void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex) {
 	int shardPackets = CalculateFECShardPackets(len, m_fecPercentage);
 
 	int blockSize = shardPackets * ALVR_MAX_VIDEO_BUFFER_SIZE;
@@ -208,7 +208,7 @@ void Listener::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t vide
 	}
 }
 
-void Listener::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
+void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 	if (!m_Socket->IsClientValid()) {
 		Log(L"Skip sending packet because client is not connected. Packet Length=%d FrameIndex=%llu", len, frameIndex);
 		return;
@@ -221,7 +221,7 @@ void Listener::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 	mVideoFrameIndex++;
 }
 
-void Listener::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
+void ClientConnection::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
 	uint8_t packetBuffer[2000];
 
 	if (!m_Socket->IsClientValid()) {
@@ -272,7 +272,7 @@ void Listener::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
 	}
 }
 
-void Listener::SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand)
+void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand)
 {
 	if (!m_Socket->IsClientValid()) {
 		Log(L"Skip sending audio packet because client is not connected.");
@@ -294,7 +294,7 @@ void Listener::SendHapticsFeedback(uint64_t startTime, float amplitude, float du
 	m_Socket->Send((char *)&packetBuffer, sizeof(HapticsFeedback));
 }
 
-void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
+void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 	if (len < 4) {
 		return;
 	}
@@ -422,7 +422,7 @@ void Listener::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 	}
 }
 
-void Listener::ProcessCommand(const std::string &commandName, const std::string args) {
+void ClientConnection::ProcessCommand(const std::string &commandName, const std::string args) {
 	if (commandName == "SetDebugFlags") {
 		m_Settings.debugFlags = strtol(args.c_str(), NULL, 10);
 		SendChangeSettings();
@@ -536,14 +536,14 @@ void Listener::ProcessCommand(const std::string &commandName, const std::string 
 	}
 }
 
-void Listener::SendChangeSettings() {
+void ClientConnection::SendChangeSettings() {
 	if (!m_Socket->IsClientValid()) {
 		return;
 	}
 	m_Socket->Send((char *)&m_Settings, sizeof(m_Settings), 0);
 }
 
-void Listener::Stop()
+void ClientConnection::Stop()
 {
 	Log(L"Listener::Stop().");
 	m_bExiting = true;
@@ -552,30 +552,30 @@ void Listener::Stop()
 	Join();
 }
 
-bool Listener::HasValidTrackingInfo() const {
+bool ClientConnection::HasValidTrackingInfo() const {
 	return m_TrackingInfo.type == ALVR_PACKET_TYPE_TRACKING_INFO;
 }
 
-void Listener::GetTrackingInfo(TrackingInfo &info) {
+void ClientConnection::GetTrackingInfo(TrackingInfo &info) {
 	EnterCriticalSection(&m_CS);
 	info = m_TrackingInfo;
 	LeaveCriticalSection(&m_CS);
 }
 
-uint64_t Listener::clientToServerTime(uint64_t clientTime) const {
+uint64_t ClientConnection::clientToServerTime(uint64_t clientTime) const {
 	return clientTime + m_TimeDiff;
 }
 
-uint64_t Listener::serverToClientTime(uint64_t serverTime) const {
+uint64_t ClientConnection::serverToClientTime(uint64_t serverTime) const {
 	return serverTime - m_TimeDiff;
 }
 
-void Listener::SendCommandResponse(const char *commandResponse) {
+void ClientConnection::SendCommandResponse(const char *commandResponse) {
 	Log(L"SendCommandResponse: %hs", commandResponse);
 	m_ControlSocket->SendCommandResponse(commandResponse);
 }
 
-void Listener::PushRequest(HelloMessage *message, sockaddr_in *addr) {
+void ClientConnection::PushRequest(HelloMessage *message, sockaddr_in *addr) {
 	for (auto it = m_Requests.begin(); it != m_Requests.end(); ++it) {
 		if (it->address.sin_addr.S_un.S_addr == addr->sin_addr.S_un.S_addr && it->address.sin_port == addr->sin_port) {
 			m_Requests.erase(it);
@@ -595,7 +595,7 @@ void Listener::PushRequest(HelloMessage *message, sockaddr_in *addr) {
 	}
 }
 
-void Listener::SanitizeDeviceName(char deviceName[32]) {
+void ClientConnection::SanitizeDeviceName(char deviceName[32]) {
 	deviceName[31] = 0;
 	auto len = strlen(deviceName);
 	if (len != 31) {
@@ -608,7 +608,7 @@ void Listener::SanitizeDeviceName(char deviceName[32]) {
 	}
 }
 
-std::string Listener::DumpConfig() {
+std::string ClientConnection::DumpConfig() {
 	char buf[1000];
 
 	sockaddr_in addr = {};
@@ -634,7 +634,7 @@ std::string Listener::DumpConfig() {
 	return buf;
 }
 
-void Listener::CheckTimeout() {
+void ClientConnection::CheckTimeout() {
 	// Remove old requests
 	for (auto it = m_Requests.begin(); it != m_Requests.end(); ) {
 		if (GetTimestampUs() - it->timestamp > REQUEST_TIMEOUT) {
@@ -659,11 +659,11 @@ void Listener::CheckTimeout() {
 	}
 }
 
-void Listener::UpdateLastSeen() {
+void ClientConnection::UpdateLastSeen() {
 	m_LastSeen = GetTimestampUs();
 }
 
-void Listener::FindClientName(const sockaddr_in *addr) {
+void ClientConnection::FindClientName(const sockaddr_in *addr) {
 	m_clientDeviceName = "";
 
 	bool found = false;
@@ -677,7 +677,7 @@ void Listener::FindClientName(const sockaddr_in *addr) {
 	}
 }
 
-void Listener::Connect(const sockaddr_in *addr) {
+void ClientConnection::Connect(const sockaddr_in *addr) {
 	Log(L"Connected to %hs", AddrPortToStr(addr).c_str());
 
 	m_NewClientCallback();
@@ -704,14 +704,14 @@ void Listener::Connect(const sockaddr_in *addr) {
 	m_Socket->Send((char *)&message, sizeof(message), 0);
 }
 
-void Listener::Disconnect() {
+void ClientConnection::Disconnect() {
 	m_Connected = false;
 	m_clientDeviceName = "";
 
 	m_Socket->InvalidateClient();
 }
 
-void Listener::OnFecFailure() {
+void ClientConnection::OnFecFailure() {
 	Log(L"Listener::OnFecFailure().");
 	if (GetTimestampUs() - m_lastFecFailure < CONTINUOUS_FEC_FAILURE) {
 		if (m_fecPercentage < MAX_FEC_PERCENTAGE) {
@@ -722,10 +722,10 @@ void Listener::OnFecFailure() {
 	m_PacketLossCallback();
 }
 
-std::shared_ptr<Statistics> Listener::GetStatistics() {
+std::shared_ptr<Statistics> ClientConnection::GetStatistics() {
 	return m_Statistics;
 }
 
-bool Listener::IsStreaming() {
+bool ClientConnection::IsStreaming() {
 	return m_Streaming;
 }

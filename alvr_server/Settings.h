@@ -125,6 +125,8 @@ public:
 
 	int32_t m_nAdapterIndex;
 
+	uint64_t m_DriverTestMode = 0;
+
 	int m_refreshRate;
 	int32_t m_renderWidth;
 	int32_t m_renderHeight;

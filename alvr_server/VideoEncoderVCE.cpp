@@ -213,7 +213,7 @@ void AMFTextureConverter::Run()
 //
 
 VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
-	, std::shared_ptr<Listener> listener)
+	, std::shared_ptr<ClientConnection> listener)
 	: m_d3dRender(d3dRender)
 	, m_Listener(listener)
 	, m_codec(Settings::Instance().m_codec)

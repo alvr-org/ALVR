@@ -2,9 +2,10 @@
 #include <openvr_driver.h>
 #include <string>
 #include "Logger.h"
-#include "Listener.h"
+#include "ClientConnection.h"
 #include "packet_types.h"
 #include "FreePIE.h"
+#include <openvr_math.h>
 
 class RemoteControllerServerDriver : public vr::ITrackedDeviceServerDriver
 {
@@ -221,7 +222,10 @@ public:
 			return false;
 		}
 
-		m_pose.qRotation = controllerRotation;
+		m_pose.qRotation = HmdQuaternion_Init(info.controller[controllerIndex].orientation.w,
+			info.controller[controllerIndex].orientation.x,
+			info.controller[controllerIndex].orientation.y,
+			info.controller[controllerIndex].orientation.z);   //controllerRotation;
 
 		m_pose.vecPosition[0] = controllerPosition.x;
 		m_pose.vecPosition[1] = controllerPosition.y;
@@ -240,6 +244,29 @@ public:
 		//m_pose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z;
 
 		
+
+		vr::HmdVector3d_t vector;
+		vector.v[0] = m_pose.vecAngularVelocity[0];
+		vector.v[1] = m_pose.vecAngularVelocity[1];
+		vector.v[2] = m_pose.vecAngularVelocity[2];
+		vr::HmdVector3d_t res = vrmath::quaternionRotateVector(m_pose.qRotation,vector,true);
+		m_pose.vecAngularVelocity[0] = res.v[0];
+		m_pose.vecAngularVelocity[1] = res.v[1];
+		m_pose.vecAngularVelocity[2] = res.v[2];
+
+		vr::HmdVector3d_t vector2;
+		vector.v[0] = m_pose.vecVelocity[0];
+		vector.v[1] = m_pose.vecVelocity[1];
+		vector.v[2] = m_pose.vecVelocity[2];
+		vr::HmdVector3d_t res2 = vrmath::quaternionRotateVector(m_pose.qRotation, vector2, true);
+		m_pose.vecVelocity[0] = res2.v[0];
+		m_pose.vecVelocity[1] = res2.v[1];
+		m_pose.vecVelocity[2] = res2.v[2];
+		
+
+		
+
+		
 		double rotation[3] = {0.0, 0.0, 36 * M_PI / 180};
 		m_pose.qDriverFromHeadRotation = EulerAngleToQuaternion(rotation);			
 		m_pose.vecDriverFromHeadTranslation[1] = 0.031153;
@@ -256,15 +283,17 @@ public:
 		tmp[0] = (w[1] * r[2]) - (w[2] * r[1]);
 		tmp[1] = (w[2] * r[0]) - (w[0] * r[2]);
 		tmp[2] = (w[0] * r[1]) - (w[1] * r[0]);
+
+		
 	
 		m_pose.vecVelocity[0] = m_pose.vecVelocity[0] + tmp[0];
 		m_pose.vecVelocity[1] = m_pose.vecVelocity[1] + tmp[1];
 		m_pose.vecVelocity[2] = m_pose.vecVelocity[2] + tmp[2];
+		
 
 		//Log("Velocity2 %lf -  %lf - %lf", m_pose.vecVelocity[0], m_pose.vecVelocity[1], m_pose.vecVelocity[2]);
 
-
-
+			
 
 
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));

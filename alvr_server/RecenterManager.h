@@ -37,7 +37,7 @@ public:
 		m_recentering = false;
 	}
 
-	void OnPoseUpdated(const TrackingInfo &info, Listener *listener) {
+	void OnPoseUpdated(const TrackingInfo &info, ClientConnection *listener) {
 		m_hasValidTrackingInfo = true;
 		if (m_recentering) {
 			if (GetTimestampUs() - m_recenterStartTimestamp > RECENTER_DURATION) {

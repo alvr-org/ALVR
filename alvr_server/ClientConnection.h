@@ -18,11 +18,11 @@ extern "C" {
 #include "reedsolomon/rs.h"
 };
 
-class Listener : public CThread {
+class ClientConnection : public CThread {
 public:
 
-	Listener();
-	~Listener();
+	ClientConnection();
+	~ClientConnection();
 	void SetLauncherCallback(std::function<void()> callback);
 	void SetCommandCallback(std::function<void(std::string, std::string)> callback);
 	void SetPoseUpdatedCallback(std::function<void()> callback);

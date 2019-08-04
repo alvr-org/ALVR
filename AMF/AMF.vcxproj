@@ -164,6 +164,7 @@
     <ClInclude Include="..\alvr_server\amf\include\components\VideoEncoderHEVC.h" />
     <ClInclude Include="..\alvr_server\amf\include\components\VideoEncoderVCE.h" />
     <ClInclude Include="..\alvr_server\amf\include\core\AudioBuffer.h" />
+    <ClInclude Include="..\alvr_server\amf\include\core\Buffer.h" />
     <ClInclude Include="..\alvr_server\amf\include\core\Compute.h" />
     <ClInclude Include="..\alvr_server\amf\include\core\ComputeFactory.h" />
     <ClInclude Include="..\alvr_server\amf\include\core\Context.h" />

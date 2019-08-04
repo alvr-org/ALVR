@@ -134,7 +134,6 @@
     <ClInclude Include="..\ALVR-common\exception.h" />
     <ClInclude Include="..\ALVR-common\packet_types.h" />
     <ClInclude Include="..\ALVR-common\reedsolomon\rs.h" />
-    <ClInclude Include="amf\include\core\Buffer.h" />
     <ClInclude Include="AudioCapture.h" />
     <ClInclude Include="Bitrate.h" />
     <ClInclude Include="CEncoder.h" />

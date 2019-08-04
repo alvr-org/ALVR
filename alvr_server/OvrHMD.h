@@ -11,7 +11,6 @@
 #include "Utils.h"
 #include "FrameRender.h"
 #include "Settings.h"
-#include "RemoteController.h"
 
 #include "packet_types.h"
 #include "resource.h"

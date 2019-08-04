@@ -83,7 +83,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\AMF.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>nvcuda.dll</DelayLoadDLLs>
     </Link>
     <CustomBuildStep>
@@ -98,10 +98,6 @@
     <ClCompile Include="..\ALVR-common\common-utils.cpp" />
     <ClCompile Include="..\ALVR-common\exception.cpp" />
     <ClCompile Include="..\ALVR-common\reedsolomon\rs.c" />
-    <ClCompile Include="amf\common\AMFFactory.cpp" />
-    <ClCompile Include="amf\common\AMFSTL.cpp" />
-    <ClCompile Include="amf\common\Thread.cpp" />
-    <ClCompile Include="amf\common\Windows\ThreadWindows.cpp" />
     <ClCompile Include="AudioCapture.cpp" />
     <ClCompile Include="Bitrate.cpp" />
     <ClCompile Include="CEncoder.cpp" />
@@ -109,18 +105,13 @@
     <ClCompile Include="alvr_server.cpp" />
     <ClCompile Include="DeviceQuery.cpp" />
     <ClCompile Include="FrameRender.cpp" />
-    <ClCompile Include="FreePIE.cpp" />
     <ClCompile Include="IDRScheduler.cpp" />
     <ClCompile Include="ClientConnection.cpp" />
     <ClCompile Include="Logger.cpp" />
-    <ClCompile Include="NvEncoder.cpp" />
-    <ClCompile Include="NvEncoderCuda.cpp" />
-    <ClCompile Include="NvEncoderD3D11.cpp" />
     <ClCompile Include="OvrController.cpp" />
     <ClCompile Include="OvrDirectModeComponent.cpp" />
     <ClCompile Include="OvrDisplayComponent.cpp" />
     <ClCompile Include="OvrHMD.cpp" />
-    <ClCompile Include="ovrTrackedDeviceManager.cpp" />
     <ClCompile Include="Poller.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="ThrottlingBuffer.cpp" />
@@ -143,40 +134,7 @@
     <ClInclude Include="..\ALVR-common\exception.h" />
     <ClInclude Include="..\ALVR-common\packet_types.h" />
     <ClInclude Include="..\ALVR-common\reedsolomon\rs.h" />
-    <ClInclude Include="amf\common\AMFFactory.h" />
-    <ClInclude Include="amf\common\AMFSTL.h" />
-    <ClInclude Include="amf\common\Thread.h" />
-    <ClInclude Include="amf\include\components\Component.h" />
-    <ClInclude Include="amf\include\components\ComponentCaps.h" />
-    <ClInclude Include="amf\include\components\FFMPEGAudioConverter.h" />
-    <ClInclude Include="amf\include\components\FFMPEGAudioDecoder.h" />
-    <ClInclude Include="amf\include\components\FFMPEGAudioEncoder.h" />
-    <ClInclude Include="amf\include\components\FFMPEGComponents.h" />
-    <ClInclude Include="amf\include\components\FFMPEGFileDemuxer.h" />
-    <ClInclude Include="amf\include\components\FFMPEGFileMuxer.h" />
-    <ClInclude Include="amf\include\components\MediaSource.h" />
-    <ClInclude Include="amf\include\components\VideoConverter.h" />
-    <ClInclude Include="amf\include\components\VideoDecoderUVD.h" />
-    <ClInclude Include="amf\include\components\VideoEncoderHEVC.h" />
-    <ClInclude Include="amf\include\components\VideoEncoderVCE.h" />
-    <ClInclude Include="amf\include\core\AudioBuffer.h" />
     <ClInclude Include="amf\include\core\Buffer.h" />
-    <ClInclude Include="amf\include\core\Compute.h" />
-    <ClInclude Include="amf\include\core\ComputeFactory.h" />
-    <ClInclude Include="amf\include\core\Context.h" />
-    <ClInclude Include="amf\include\core\Data.h" />
-    <ClInclude Include="amf\include\core\Debug.h" />
-    <ClInclude Include="amf\include\core\Factory.h" />
-    <ClInclude Include="amf\include\core\Interface.h" />
-    <ClInclude Include="amf\include\core\Plane.h" />
-    <ClInclude Include="amf\include\core\Platform.h" />
-    <ClInclude Include="amf\include\core\PropertyStorage.h" />
-    <ClInclude Include="amf\include\core\PropertyStorageEx.h" />
-    <ClInclude Include="amf\include\core\Result.h" />
-    <ClInclude Include="amf\include\core\Surface.h" />
-    <ClInclude Include="amf\include\core\Trace.h" />
-    <ClInclude Include="amf\include\core\Variant.h" />
-    <ClInclude Include="amf\include\core\Version.h" />
     <ClInclude Include="AudioCapture.h" />
     <ClInclude Include="Bitrate.h" />
     <ClInclude Include="CEncoder.h" />
@@ -185,24 +143,14 @@
     <ClInclude Include="CudaConverter.h" />
     <ClInclude Include="DeviceQuery.h" />
     <ClInclude Include="FrameRender.h" />
-    <ClInclude Include="FreePIE.h" />
     <ClInclude Include="IDRScheduler.h" />
     <ClInclude Include="ClientConnection.h" />
     <ClInclude Include="Logger.h" />
-    <ClInclude Include="NvCodecUtils.h" />
-    <ClInclude Include="nvEncodeAPI.h" />
-    <ClInclude Include="NvEncoder.h" />
-    <ClInclude Include="nvencoderclioptions.h" />
-    <ClInclude Include="NvEncoderCuda.h" />
-    <ClInclude Include="NvEncoderD3D11.h" />
     <ClInclude Include="OvrController.h" />
     <ClInclude Include="OvrDirectModeComponent.h" />
     <ClInclude Include="OvrDisplayComponent.h" />
     <ClInclude Include="OvrHMD.h" />
-    <ClInclude Include="ovrTrackedDeviceManager.h" />
     <ClInclude Include="Poller.h" />
-    <ClInclude Include="RecenterManager.h" />
-    <ClInclude Include="RemoteController.h" />
     <ClInclude Include="ResampleUtils.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="RGBToNV12ConverterD3D11.h" />

@@ -81,7 +81,18 @@
     <CudaCompile Include="RGBToNV12.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\alvr_server\NvCodecUtils.h" />
+    <ClInclude Include="..\alvr_server\nvEncodeAPI.h" />
+    <ClInclude Include="..\alvr_server\NvEncoder.h" />
+    <ClInclude Include="..\alvr_server\nvencoderclioptions.h" />
+    <ClInclude Include="..\alvr_server\NvEncoderCuda.h" />
+    <ClInclude Include="..\alvr_server\NvEncoderD3D11.h" />
     <ClInclude Include="RGBToNV12.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\alvr_server\NvEncoder.cpp" />
+    <ClCompile Include="..\alvr_server\NvEncoderCuda.cpp" />
+    <ClCompile Include="..\alvr_server\NvEncoderD3D11.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

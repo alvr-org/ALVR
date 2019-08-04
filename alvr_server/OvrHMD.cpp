@@ -78,6 +78,20 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			vr::TrackedDeviceClass_HMD,
 			this);
 
+
+		m_leftController = std::make_shared<OvrController>(true, 0);
+		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+			m_leftController->GetSerialNumber().c_str(),
+			vr::TrackedDeviceClass_Controller,
+			m_leftController.get());
+
+		m_rightController = std::make_shared<OvrController>(false, 1);
+		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+			m_rightController->GetSerialNumber().c_str(),
+			vr::TrackedDeviceClass_Controller,
+			m_rightController.get());
+
+
 	}
 
 	 vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
@@ -156,12 +170,13 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
 		m_VSyncThread->Start();
 
-		m_recenterManager = std::make_shared<RecenterManager>();
+	
 
 		m_displayComponent = std::make_shared<OvrDisplayComponent>();
-		m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_encoder, m_Listener, m_recenterManager);
+		m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_encoder, m_Listener);
 
 		mActivated = true;
+
 
 		return vr::VRInitError_None;
 	}
@@ -384,16 +399,105 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			if (!m_added || !mActivated) {
 				return;
 			}
-
 			
 			m_Listener->GetTrackingInfo(mLastTrackingInfo);
-
-			
 			m_directModeComponent->OnPoseUpdated(mLastTrackingInfo);
+			updateController(mLastTrackingInfo);
+
 
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
 		}
+	}
+
+	void OvrHmd::updateController(const TrackingInfo& info) {
+		
+	
+
+		
+		//Update remove haptic feedback
+
+		double  hapticFeedbackLeft[3]{0,0,0};
+		double  hapticFeedbackRight[3]{ 0,0,0 };
+		vr::VREvent_t vrEvent;
+
+		//collect events since the last update
+		while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent)))
+		{
+			if (vrEvent.eventType == vr::VREvent_Input_HapticVibration)
+			{
+				
+					if (m_leftController->getHapticComponent() == vrEvent.data.hapticVibration.componentHandle) {
+						Log(L"Haptics left: %f", vrEvent.data.hapticVibration.fAmplitude);
+
+
+						hapticFeedbackLeft[0] = vrEvent.data.hapticVibration.fAmplitude;
+						hapticFeedbackLeft[1] = vrEvent.data.hapticVibration.fDurationSeconds;
+						hapticFeedbackLeft[2] = vrEvent.data.hapticVibration.fFrequency;
+
+					} else if (m_rightController->getHapticComponent() == vrEvent.data.hapticVibration.componentHandle) {
+						Log(L"Haptics right: %f", vrEvent.data.hapticVibration.fAmplitude);
+						// if multiple events occurred within one frame, they are ignored except for last event
+						hapticFeedbackRight[0] = vrEvent.data.hapticVibration.fAmplitude;
+						hapticFeedbackRight[1] = vrEvent.data.hapticVibration.fDurationSeconds;
+						hapticFeedbackRight[2] = vrEvent.data.hapticVibration.fFrequency;
+					}
+				
+			}
+		}
+
+		Log(L"Haptics: %lf %lf", hapticFeedbackLeft[0], hapticFeedbackRight[0]);
+
+
+		
+		/*
+		//send feedback if changed
+		if (hapticFeedbackLeft[0] != 0 ||
+			hapticFeedbackLeft[1] != 0 ||
+			hapticFeedbackLeft[2] != 0 ) {
+			Log(L"Haptics left: %lf %lf %lf", hapticFeedbackLeft[0], hapticFeedbackLeft[1], hapticFeedbackLeft[2] );
+
+			m_Listener->SendHapticsFeedback(0,
+				static_cast<float>(hapticFeedbackLeft[0]),
+				static_cast<float>(hapticFeedbackLeft[1]),
+				static_cast<float>(hapticFeedbackLeft[2]),
+				m_leftController->GetHand() ? 1 : 0);
+
+		}
+		
+		
+		if (hapticFeedbackRight[0] != 0 ||
+			hapticFeedbackRight[1] != 0 ||
+			hapticFeedbackRight[2] != 0) {
+
+			Log(L"Haptics left: %lf %lf %lf", hapticFeedbackRight[0], hapticFeedbackRight[1], hapticFeedbackRight[2]);
+
+			m_Listener->SendHapticsFeedback(0,
+				static_cast<float>(hapticFeedbackRight[0]),
+				static_cast<float>(hapticFeedbackRight[1]),
+				static_cast<float>(hapticFeedbackRight[2]),
+				m_rightController->GetHand() ? 1 : 0);
+
+		}
+		*/
+		
+		
+
+		for (int i = 0; i < 2; i++) {
+			Log(L"Updating %d controller deviceID %d", i, info.controller[i].deviceIndex);
+
+
+			if (info.controller[i].deviceIndex == 0) {
+				m_leftController->onPoseUpdate(i, info);
+
+			}
+			else if (info.controller[i].deviceIndex == 1) {
+				m_rightController->onPoseUpdate(i, info);
+			}
+
+		}
+		
+		
 	}
 
 	void OvrHmd::OnNewClient() {

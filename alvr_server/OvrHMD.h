@@ -12,7 +12,7 @@
 #include "FrameRender.h"
 #include "Settings.h"
 #include "RemoteController.h"
-#include "RecenterManager.h"
+
 #include "packet_types.h"
 #include "resource.h"
 #include "AudioCapture.h"
@@ -24,6 +24,7 @@
 #include "VSyncThread.h"
 #include "OvrDisplayComponent.h"
 #include "OvrDirectModeComponent.h"
+#include "OvrController.h"
 
 //-----------------------------------------------------------------------------
 // Purpose:
@@ -32,6 +33,7 @@ class OvrHmd : public vr::ITrackedDeviceServerDriver
 {
 public:
 	OvrHmd(std::shared_ptr<ClientConnection> listener);
+
 
 	virtual ~OvrHmd();
 
@@ -67,11 +69,16 @@ public:
 
 	void OnShutdown();
 
+
+	void updateController(const TrackingInfo& info);
+
 private:
 	bool m_added;
 	bool mActivated;
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
+
+
 
 	std::wstring m_adapterName;
 
@@ -82,7 +89,13 @@ private:
 	std::shared_ptr<AudioCapture> m_audioCapture;
 	std::shared_ptr<ClientConnection> m_Listener;
 	std::shared_ptr<VSyncThread> m_VSyncThread;
-	std::shared_ptr<RecenterManager> m_recenterManager;
+
+	std::shared_ptr<OvrController> m_leftController;
+	std::shared_ptr<OvrController> m_rightController;
+
+
+
+
 
 	std::shared_ptr<OvrDisplayComponent> m_displayComponent;
 	std::shared_ptr<OvrDirectModeComponent> m_directModeComponent;

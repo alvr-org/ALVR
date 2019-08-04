@@ -2,12 +2,10 @@
 
 OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender,
 	std::shared_ptr<CEncoder> pEncoder,
-	std::shared_ptr<ClientConnection> Listener,
-	std::shared_ptr<RecenterManager> recenterManager)
+	std::shared_ptr<ClientConnection> Listener)
 	: m_pD3DRender(pD3DRender)
 	, m_pEncoder(pEncoder)
 	, m_Listener(Listener)
-	, m_recenterManager(recenterManager)
 	, m_poseMutex(NULL)
 	, m_submitLayer(0)
 	, m_LastReferencedFrameIndex(0)
@@ -19,11 +17,11 @@ void OvrDirectModeComponent::OnPoseUpdated(TrackingInfo &info) {
 	TrackingHistoryFrame history;
 	history.info = info;
 
-	vr::HmdQuaternion_t recentered = m_recenterManager->GetRecenteredHMD();
-	HmdMatrix_QuatToMat(recentered.w,
-		recentered.x,
-		recentered.y,
-		recentered.z,
+
+	HmdMatrix_QuatToMat(info.HeadPose_Pose_Orientation.w,
+		info.HeadPose_Pose_Orientation.x,
+		info.HeadPose_Pose_Orientation.y,
+		info.HeadPose_Pose_Orientation.z,
 		&history.rotationMatrix);
 
 	Log(L"Rotation Matrix=(%f, %f, %f, %f) (%f, %f, %f, %f) (%f, %f, %f, %f)"
@@ -373,7 +371,7 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 		, m_submitFrameIndex, Settings::Instance().m_trackingFrameOffset, submitFrameIndex);
 
 	// Copy entire texture to staging so we can read the pixels to send to remote device.
-	m_pEncoder->CopyToStaging(pTexture, bounds, layerCount, m_recenterManager->IsRecentering(), presentationTime, submitFrameIndex, m_submitClientTime, m_recenterManager->GetFreePIEMessage(), debugText);
+	m_pEncoder->CopyToStaging(pTexture, bounds, layerCount,false, presentationTime, submitFrameIndex, m_submitClientTime,"", debugText);
 
 	m_pD3DRender->GetContext()->Flush();
 }

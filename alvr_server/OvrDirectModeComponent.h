@@ -3,7 +3,7 @@
 #include "ClientConnection.h"
 #include "Utils.h"
 #include "CEncoder.h"
-#include "RecenterManager.h"
+
 #include "Settings.h"
 
 
@@ -12,8 +12,7 @@ class OvrDirectModeComponent : public vr::IVRDriverDirectModeComponent
 public:
 	OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender,
 		std::shared_ptr<CEncoder> pEncoder,
-		std::shared_ptr<ClientConnection> Listener,
-		std::shared_ptr<RecenterManager> recenterManager);
+		std::shared_ptr<ClientConnection> Listener);
 
 	void OnPoseUpdated(TrackingInfo &info);
 
@@ -42,7 +41,7 @@ private:
 	std::shared_ptr<CD3DRender> m_pD3DRender;
 	std::shared_ptr<CEncoder> m_pEncoder;
 	std::shared_ptr<ClientConnection> m_Listener;
-	std::shared_ptr<RecenterManager> m_recenterManager;
+	
 
 	// Resource for each process
 	struct ProcessResource {

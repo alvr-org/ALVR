@@ -116,6 +116,7 @@
     <ClCompile Include="NvEncoder.cpp" />
     <ClCompile Include="NvEncoderCuda.cpp" />
     <ClCompile Include="NvEncoderD3D11.cpp" />
+    <ClCompile Include="OvrController.cpp" />
     <ClCompile Include="OvrDirectModeComponent.cpp" />
     <ClCompile Include="OvrDisplayComponent.cpp" />
     <ClCompile Include="OvrHMD.cpp" />
@@ -194,6 +195,7 @@
     <ClInclude Include="nvencoderclioptions.h" />
     <ClInclude Include="NvEncoderCuda.h" />
     <ClInclude Include="NvEncoderD3D11.h" />
+    <ClInclude Include="OvrController.h" />
     <ClInclude Include="OvrDirectModeComponent.h" />
     <ClInclude Include="OvrDisplayComponent.h" />
     <ClInclude Include="OvrHMD.h" />

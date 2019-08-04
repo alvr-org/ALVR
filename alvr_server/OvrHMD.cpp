@@ -401,10 +401,12 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			}
 			
 			m_Listener->GetTrackingInfo(mLastTrackingInfo);
-			m_directModeComponent->OnPoseUpdated(mLastTrackingInfo);
+
+			//TODO: Right order?
 			updateController(mLastTrackingInfo);
 
-
+			m_directModeComponent->OnPoseUpdated(mLastTrackingInfo);
+		
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
 		}
@@ -412,11 +414,8 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 	void OvrHmd::updateController(const TrackingInfo& info) {
 		
-	
-
 		
-		//Update remove haptic feedback
-
+		//haptic feedback
 		double  hapticFeedbackLeft[3]{0,0,0};
 		double  hapticFeedbackRight[3]{ 0,0,0 };
 		vr::VREvent_t vrEvent;
@@ -426,18 +425,17 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		{
 			if (vrEvent.eventType == vr::VREvent_Input_HapticVibration)
 			{
+
+				// if multiple events occurred within one frame, they are ignored except for last event
 				
 					if (m_leftController->getHapticComponent() == vrEvent.data.hapticVibration.componentHandle) {
-						Log(L"Haptics left: %f", vrEvent.data.hapticVibration.fAmplitude);
-
-
+					
 						hapticFeedbackLeft[0] = vrEvent.data.hapticVibration.fAmplitude;
 						hapticFeedbackLeft[1] = vrEvent.data.hapticVibration.fDurationSeconds;
 						hapticFeedbackLeft[2] = vrEvent.data.hapticVibration.fFrequency;
 
 					} else if (m_rightController->getHapticComponent() == vrEvent.data.hapticVibration.componentHandle) {
-						Log(L"Haptics right: %f", vrEvent.data.hapticVibration.fAmplitude);
-						// if multiple events occurred within one frame, they are ignored except for last event
+					
 						hapticFeedbackRight[0] = vrEvent.data.hapticVibration.fAmplitude;
 						hapticFeedbackRight[1] = vrEvent.data.hapticVibration.fDurationSeconds;
 						hapticFeedbackRight[2] = vrEvent.data.hapticVibration.fFrequency;
@@ -446,17 +444,12 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			}
 		}
 
-		Log(L"Haptics: %lf %lf", hapticFeedbackLeft[0], hapticFeedbackRight[0]);
 
-
-		
-		/*
 		//send feedback if changed
 		if (hapticFeedbackLeft[0] != 0 ||
 			hapticFeedbackLeft[1] != 0 ||
 			hapticFeedbackLeft[2] != 0 ) {
-			Log(L"Haptics left: %lf %lf %lf", hapticFeedbackLeft[0], hapticFeedbackLeft[1], hapticFeedbackLeft[2] );
-
+	
 			m_Listener->SendHapticsFeedback(0,
 				static_cast<float>(hapticFeedbackLeft[0]),
 				static_cast<float>(hapticFeedbackLeft[1]),
@@ -470,8 +463,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			hapticFeedbackRight[1] != 0 ||
 			hapticFeedbackRight[2] != 0) {
 
-			Log(L"Haptics left: %lf %lf %lf", hapticFeedbackRight[0], hapticFeedbackRight[1], hapticFeedbackRight[2]);
-
+	
 			m_Listener->SendHapticsFeedback(0,
 				static_cast<float>(hapticFeedbackRight[0]),
 				static_cast<float>(hapticFeedbackRight[1]),
@@ -479,9 +471,9 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 				m_rightController->GetHand() ? 1 : 0);
 
 		}
-		*/
 		
 		
+		//Update controller
 
 		for (int i = 0; i < 2; i++) {
 			Log(L"Updating %d controller deviceID %d", i, info.controller[i].deviceIndex);

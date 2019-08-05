@@ -81,7 +81,6 @@ private:
 
 	std::wstring m_adapterName;
 
-	TrackingInfo mLastTrackingInfo;
 
 	std::shared_ptr<CD3DRender> m_D3DRender;
 	std::shared_ptr<CEncoder> m_encoder;

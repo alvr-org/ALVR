@@ -228,15 +228,19 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 		if (m_Listener->HasValidTrackingInfo()) {
 
-			pose.qRotation = HmdQuaternion_Init(mLastTrackingInfo.HeadPose_Pose_Orientation.w,
-				mLastTrackingInfo.HeadPose_Pose_Orientation.x, 
-				mLastTrackingInfo.HeadPose_Pose_Orientation.y, 
-				mLastTrackingInfo.HeadPose_Pose_Orientation.z);
+			TrackingInfo info;
+			m_Listener->GetTrackingInfo(info);
+
+
+			pose.qRotation = HmdQuaternion_Init(info.HeadPose_Pose_Orientation.w,
+				info.HeadPose_Pose_Orientation.x, 
+				info.HeadPose_Pose_Orientation.y,
+				info.HeadPose_Pose_Orientation.z);
 
 			
-			pose.vecPosition[0] = mLastTrackingInfo.HeadPose_Pose_Position.x;
-			pose.vecPosition[1] = mLastTrackingInfo.HeadPose_Pose_Position.y;
-			pose.vecPosition[2] = mLastTrackingInfo.HeadPose_Pose_Position.z;
+			pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
+			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
+			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
 
 			Log(L"GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)",
 				pose.qRotation.x,
@@ -400,12 +404,13 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 				return;
 			}
 			
-			m_Listener->GetTrackingInfo(mLastTrackingInfo);
+			TrackingInfo info;
+			m_Listener->GetTrackingInfo(info);
 
 			//TODO: Right order?
-			updateController(mLastTrackingInfo);
+			updateController(info);
 
-			m_directModeComponent->OnPoseUpdated(mLastTrackingInfo);
+			m_directModeComponent->OnPoseUpdated(info);
 		
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
@@ -444,6 +449,8 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			}
 		}
 
+		
+
 
 		//send feedback if changed
 		if (hapticFeedbackLeft[0] != 0 ||
@@ -475,15 +482,14 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		
 		//Update controller
 
-		for (int i = 0; i < 2; i++) {
+		for (int i = 0; i < 2; i++) {	
+
+			bool leftHand = (info.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) != 0;
 			Log(L"Updating %d controller deviceID %d", i, info.controller[i].deviceIndex);
 
-
-			if (info.controller[i].deviceIndex == 0) {
+			if (leftHand) {
 				m_leftController->onPoseUpdate(i, info);
-
-			}
-			else if (info.controller[i].deviceIndex == 1) {
+			} else {
 				m_rightController->onPoseUpdate(i, info);
 			}
 

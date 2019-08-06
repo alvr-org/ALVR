@@ -174,6 +174,8 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	m_pose.vecPosition[1] = info.controller[controllerIndex].position.y;
 	m_pose.vecPosition[2] = info.controller[controllerIndex].position.z;
 
+	
+
 	m_pose.vecVelocity[0] = info.controller[controllerIndex].linearVelocity.x;
 	m_pose.vecVelocity[1] = info.controller[controllerIndex].linearVelocity.y;
 	m_pose.vecVelocity[2] = info.controller[controllerIndex].linearVelocity.z;
@@ -187,6 +189,8 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	//m_pose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y;
 	//m_pose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z;
 
+
+	
 	
 	//correct direction of velocities
 	vr::HmdVector3d_t vector;
@@ -198,6 +202,8 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	m_pose.vecAngularVelocity[1] = res.v[1];
 	m_pose.vecAngularVelocity[2] = res.v[2];
 
+
+
 	vr::HmdVector3d_t vector2;
 	vector.v[0] = m_pose.vecVelocity[0];
 	vector.v[1] = m_pose.vecVelocity[1];
@@ -207,8 +213,10 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	m_pose.vecVelocity[1] = res2.v[1];
 	m_pose.vecVelocity[2] = res2.v[2];
 
-	
+	Log(L"CONTROLLER %d %f,%f,%f - %f,%f,%f", m_index, m_pose.vecVelocity[0], m_pose.vecVelocity[1], m_pose.vecVelocity[2], m_pose.vecAngularVelocity[0], m_pose.vecAngularVelocity[1], m_pose.vecAngularVelocity[2]);
+
 	/*
+	
 
 
 	double rotation[3] = { 0.0, 0.0, 36 * M_PI / 180 };
@@ -238,7 +246,9 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 
 	m_pose.poseTimeOffset = 0.01;
 
-	vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));
+
+
+	
 
 	auto& c = info.controller[controllerIndex];
 	Log(L"Controller%d %d %lu: %08llX %08X %f:%f", m_index,controllerIndex, (unsigned long)m_unObjectId, c.buttons, c.flags, c.trackpadPosition.x, c.trackpadPosition.y);
@@ -283,8 +293,11 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 
 
 	
+
 	// Battery
 	vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, c.batteryPercentRemaining / 100.0f);
+	
+	vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));
 
 
 	return false;

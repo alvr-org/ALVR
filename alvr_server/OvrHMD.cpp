@@ -485,8 +485,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		for (int i = 0; i < 2; i++) {	
 
 			bool leftHand = (info.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) != 0;
-			Log(L"Updating %d controller deviceID %d", i, info.controller[i].deviceIndex);
-
+		
 			if (leftHand) {
 				m_leftController->onPoseUpdate(i, info);
 			} else {

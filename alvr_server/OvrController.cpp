@@ -188,37 +188,39 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	//m_pose.vecAngularAcceleration[0] = info.controller[controllerIndex].angularAcceleration.x;
 	//m_pose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y;
 	//m_pose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z;
-
-
+	
 	
 	
 	//correct direction of velocities
-	vr::HmdVector3d_t vector;
-	vector.v[0] = m_pose.vecAngularVelocity[0];
-	vector.v[1] = m_pose.vecAngularVelocity[1];
-	vector.v[2] = m_pose.vecAngularVelocity[2];
-	vr::HmdVector3d_t res = vrmath::quaternionRotateVector(m_pose.qRotation, vector, true);
-	m_pose.vecAngularVelocity[0] = res.v[0];
-	m_pose.vecAngularVelocity[1] = res.v[1];
-	m_pose.vecAngularVelocity[2] = res.v[2];
-
-
-
-	vr::HmdVector3d_t vector2;
-	vector.v[0] = m_pose.vecVelocity[0];
-	vector.v[1] = m_pose.vecVelocity[1];
-	vector.v[2] = m_pose.vecVelocity[2];
-	vr::HmdVector3d_t res2 = vrmath::quaternionRotateVector(m_pose.qRotation, vector2, true);
-	m_pose.vecVelocity[0] = res2.v[0];
-	m_pose.vecVelocity[1] = res2.v[1];
-	m_pose.vecVelocity[2] = res2.v[2];
-
-	Log(L"CONTROLLER %d %f,%f,%f - %f,%f,%f", m_index, m_pose.vecVelocity[0], m_pose.vecVelocity[1], m_pose.vecVelocity[2], m_pose.vecAngularVelocity[0], m_pose.vecAngularVelocity[1], m_pose.vecAngularVelocity[2]);
-
-	/*
+	vr::HmdVector3d_t angVel;
+	angVel.v[0] = m_pose.vecAngularVelocity[0];
+	angVel.v[1] = m_pose.vecAngularVelocity[1];
+	angVel.v[2] = m_pose.vecAngularVelocity[2];
+	vr::HmdVector3d_t angVelRes = vrmath::quaternionRotateVector(m_pose.qRotation, angVel, true);
+	m_pose.vecAngularVelocity[0] = angVelRes.v[0];
+	m_pose.vecAngularVelocity[1] = angVelRes.v[1];
+	m_pose.vecAngularVelocity[2] = angVelRes.v[2];
 	
 
 
+
+	/*
+	vr::HmdVector3d_t vel;
+	vel.v[0] = m_pose.vecVelocity[0];
+	vel.v[1] = m_pose.vecVelocity[1];
+	vel.v[2] = m_pose.vecVelocity[2];
+	vr::HmdVector3d_t velRes = vrmath::quaternionRotateVector(m_pose.qRotation, vel, true);
+	m_pose.vecVelocity[0] = velRes.v[0];
+	m_pose.vecVelocity[1] = velRes.v[1];
+	m_pose.vecVelocity[2] = velRes.v[2];
+	*/
+	
+
+	Log(L"CONTROLLER %d %f,%f,%f - %f,%f,%f", m_index, m_pose.vecVelocity[0], m_pose.vecVelocity[1], m_pose.vecVelocity[2], m_pose.vecAngularVelocity[0], m_pose.vecAngularVelocity[1], m_pose.vecAngularVelocity[2]);
+	
+	
+
+	/*
 	double rotation[3] = { 0.0, 0.0, 36 * M_PI / 180 };
 	m_pose.qDriverFromHeadRotation = EulerAngleToQuaternion(rotation);
 	m_pose.vecDriverFromHeadTranslation[1] = 0.031153;
@@ -241,14 +243,12 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	m_pose.vecVelocity[0] = m_pose.vecVelocity[0] + tmp[0];
 	m_pose.vecVelocity[1] = m_pose.vecVelocity[1] + tmp[1];
 	m_pose.vecVelocity[2] = m_pose.vecVelocity[2] + tmp[2];
-
 	*/
-
-	m_pose.poseTimeOffset = 0.01;
-
-
-
 	
+
+	m_pose.poseTimeOffset = Settings::Instance().m_controllerPoseOffset;
+
+	   
 
 	auto& c = info.controller[controllerIndex];
 	Log(L"Controller%d %d %lu: %08llX %08X %f:%f", m_index,controllerIndex, (unsigned long)m_unObjectId, c.buttons, c.flags, c.trackpadPosition.x, c.trackpadPosition.y);

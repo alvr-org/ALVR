@@ -15,8 +15,17 @@ OvrController::OvrController(bool isLeftHand, int index)
 	//controller is rotated and translated, prepare pose
 	double rotation[3] = { 0.0, 0.0, 36 * M_PI / 180 };
 	m_pose.qDriverFromHeadRotation = EulerAngleToQuaternion(rotation);
-	m_pose.vecDriverFromHeadTranslation[1] = 0.031153;
-	m_pose.vecDriverFromHeadTranslation[2] = -0.042878;
+
+	vr::HmdVector3d_t offset;
+	offset.v[0] =	0;
+	offset.v[1] =	0.009;
+	offset.v[2] = -0.053;
+
+	vr::HmdVector3d_t offetRes = vrmath::quaternionRotateVector(m_pose.qDriverFromHeadRotation, offset, false);
+
+	m_pose.vecDriverFromHeadTranslation[0] = offetRes.v[0];
+	m_pose.vecDriverFromHeadTranslation[1] = offetRes.v[1];
+	m_pose.vecDriverFromHeadTranslation[2] = offetRes.v[2];
 
 	m_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
 

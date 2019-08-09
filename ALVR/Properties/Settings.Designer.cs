@@ -349,9 +349,9 @@ namespace ALVR.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("100")]
-        public int resolutionScale {
+        public float resolutionScale {
             get {
-                return ((int)(this["resolutionScale"]));
+                return ((float)(this["resolutionScale"]));
             }
             set {
                 this["resolutionScale"] = value;
@@ -372,7 +372,7 @@ namespace ALVR.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0.08")]
+        [global::System.Configuration.DefaultSettingValueAttribute("0.01")]
         public string controllerPoseOffset {
             get {
                 return ((string)(this["controllerPoseOffset"]));

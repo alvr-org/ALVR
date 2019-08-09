@@ -83,12 +83,8 @@ namespace ALVR
 
             config.Save(null);
 
-            //
-            // Set UI state
-            //
-
-            UpdateEnableControllerState();
-            UpdateSoundCheckboxState();
+         
+   
 
             //
             // Driver check
@@ -147,16 +143,7 @@ namespace ALVR
                 }
                 resolutionComboBox.SelectedIndex = index;
                 UpdateResolutionLabel();
-
-                triggerComboBox.DataSource = ServerConfig.supportedButtons.Clone();
-                trackpadClickComboBox.DataSource = ServerConfig.supportedButtons;
-                backComboBox.DataSource = ServerConfig.supportedButtons.Clone();
-                triggerComboBox.SelectedIndex = ServerConfig.FindButton(c.controllerTriggerMode);
-                trackpadClickComboBox.SelectedIndex = ServerConfig.FindButton(c.controllerTrackpadClickMode);
-                backComboBox.SelectedIndex = ServerConfig.FindButton(c.controllerBackMode);
-
-                recenterButtonComboBox.DataSource = ServerConfig.supportedRecenterButton;
-                recenterButtonComboBox.SelectedIndex = c.controllerRecenterButton;
+                
 
                 codecComboBox.SelectedIndex = c.codec;
 
@@ -190,9 +177,7 @@ namespace ALVR
         private void SaveSettings()
         {
             var c = Properties.Settings.Default;
-            offsetPosXTextBox.Text = Utils.ParseFloat(offsetPosXTextBox.Text).ToString();
-            offsetPosYTextBox.Text = Utils.ParseFloat(offsetPosYTextBox.Text).ToString();
-            offsetPosZTextBox.Text = Utils.ParseFloat(offsetPosZTextBox.Text).ToString();
+      
             trackingFrameOffsetTextBox.Text = Utils.ParseInt(trackingFrameOffsetTextBox.Text).ToString();
 
             if (resolutionComboBox.SelectedIndex != -1)
@@ -202,12 +187,9 @@ namespace ALVR
             else
             {
                 c.resolutionScale = ServerConfig.supportedScales[ServerConfig.DEFAULT_SCALE_INDEX];
+
             }
 
-            c.controllerTriggerMode = ((ServerConfig.ComboBoxCustomItem)triggerComboBox.SelectedItem).value;
-            c.controllerTrackpadClickMode = ((ServerConfig.ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).value;
-            c.controllerBackMode = ((ServerConfig.ComboBoxCustomItem)backComboBox.SelectedItem).value;
-            c.controllerRecenterButton = recenterButtonComboBox.SelectedIndex;
             c.autoConnectList = clientList.Serialize();
 
             c.codec = codecComboBox.SelectedIndex;
@@ -517,19 +499,9 @@ namespace ALVR
                 driverLabel.Style = MetroFramework.MetroColorStyle.Red;
             }
         }
+  
 
-        private void UpdateEnableControllerState()
-        {
-            triggerComboBox.Enabled = enableControllerCheckBox.Checked;
-            trackpadClickComboBox.Enabled = enableControllerCheckBox.Checked;
-            recenterButtonComboBox.Enabled = enableControllerCheckBox.Checked;
-        }
-
-        async private Task SendOffsetPos()
-        {
-            SaveSettings();
-            await socket.SendCommand("SetOffsetPos " + (offsetPosCheckBox.Checked ? "1" : "0") + " " + offsetPosXTextBox.Text + " " + offsetPosYTextBox.Text + " " + offsetPosZTextBox.Text);
-        }
+       
 
         private void UpdateConnectionState(bool connected, string args = "")
         {
@@ -629,11 +601,7 @@ namespace ALVR
         {
             await socket.SendCommand("SetConfig captureComposedDDS 1");
         }
-
-        async private void sendOffsetPos_Click(object sender, EventArgs e)
-        {
-            await SendOffsetPos();
-        }
+      
 
         private void bitrateTrackBar_ValueChanged(object sender, EventArgs e)
         {
@@ -694,31 +662,9 @@ namespace ALVR
 
             CheckDriverInstallStatus();
         }
+              
 
-        async private void triggerComboBox_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            int value = ((ServerConfig.ComboBoxCustomItem)triggerComboBox.SelectedItem).value;
-            await socket.SendCommand("SetConfig controllerTriggerMode " + value);
-        }
-
-        async private void trackpadClickComboBox_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            int value = ((ServerConfig.ComboBoxCustomItem)trackpadClickComboBox.SelectedItem).value;
-            await socket.SendCommand("SetConfig controllerTrackpadClickMode " + value);
-            //await socket.SendCommand("SetConfig controllerTrackpadTouchMode " + value);
-        }
-
-        async private void backClickComboBox_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            int value = ((ServerConfig.ComboBoxCustomItem)backComboBox.SelectedItem).value;
-            await socket.SendCommand("SetConfig controllerBackMode " + value);
-        }
-
-        async private void recenterButtonComboBox_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            int value = recenterButtonComboBox.SelectedIndex;
-            await socket.SendCommand("SetConfig controllerRecenterButton " + ServerConfig.recenterButtonIndex[value]);
-        }
+      
 
         private void disconnectButton_Click(object sender, EventArgs e)
         {
@@ -736,15 +682,11 @@ namespace ALVR
             await socket.SendCommand("SetConfig causePacketLoss 1000");
         }
 
-        private void enableControllerCheckBox_CheckedChanged(object sender, EventArgs e)
-        {
-            UpdateEnableControllerState();
-        }
-
         private void listDriversButton_Click(object sender, EventArgs e)
         {
             DriverInstaller.ListDrivers();
         }
+
 
         private void Launcher_FormClosed(object sender, FormClosedEventArgs e)
         {
@@ -814,7 +756,7 @@ namespace ALVR
             {
                 return;
             }
-            Properties.Settings.Default.resolutionScale = ServerConfig.supportedScales[resolutionComboBox.SelectedIndex];
+            Properties.Settings.Default.resolutionScale =ServerConfig.supportedScales[resolutionComboBox.SelectedIndex];
             UpdateResolutionLabel();
             SaveSettings();
         }
@@ -828,8 +770,8 @@ namespace ALVR
                 width = currentClient.DefaultWidth;
                 height = currentClient.DefaultHeight;
             }
-            resolutionLabel.Text = (width * ServerConfig.supportedScales[resolutionComboBox.SelectedIndex] / 100)
-                + "x" + (height * ServerConfig.supportedScales[resolutionComboBox.SelectedIndex] / 100);
+            resolutionLabel.Text = (int)(width * ServerConfig.supportedScales[resolutionComboBox.SelectedIndex] / 100 )
+                + "x" + (int)(height * ServerConfig.supportedScales[resolutionComboBox.SelectedIndex] / 100 );
         }
 
         // Callbacks for ClientSocket
@@ -857,6 +799,11 @@ namespace ALVR
         async private void metroButton1_Click(object sender, EventArgs e)
         {
               await socket.SendCommand("SetConfig controllerPoseOffset " + controllerPoseOffset.Text);
+        }
+
+        private void controllerPoseOffset_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

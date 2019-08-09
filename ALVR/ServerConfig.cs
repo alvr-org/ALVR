@@ -19,9 +19,9 @@ namespace ALVR
         public static readonly int DEFAULT_SCALE_INDEX = 3; // 100%
         public static readonly int[] supportedScales = { 25, 50, 75, 100, 125, 150, 175, 200 };
 
-        public static readonly int DEFAULT_REFRESHRATE = 60;
-        public static readonly int DEFAULT_WIDTH = 2048;
-        public static readonly int DEFAULT_HEIGHT = 1024;
+        public static readonly int DEFAULT_REFRESHRATE = 72;
+        public static readonly int DEFAULT_WIDTH = 2432;
+        public static readonly int DEFAULT_HEIGHT = 1344;
 
         public class ComboBoxCustomItem
         {

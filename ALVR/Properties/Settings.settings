@@ -90,7 +90,7 @@
       <Value Profile="(Default)">False</Value>
     </Setting>
     <Setting Name="controllerPoseOffset" Type="System.String" Scope="User">
-      <Value Profile="(Default)">0.08</Value>
+      <Value Profile="(Default)">0.01</Value>
     </Setting>
   </Settings>
 </SettingsFile>

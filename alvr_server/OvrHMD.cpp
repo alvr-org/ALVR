@@ -507,6 +507,9 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		Log(L"OnStreamStart()");
 		// Insert IDR frame for faster startup of decoding.
 		m_encoder->OnStreamStart();
+
+
+
 	}
 
 	void OvrHmd::OnPacketLoss() {

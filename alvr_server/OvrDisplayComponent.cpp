@@ -24,8 +24,8 @@ void OvrDisplayComponent::GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *
 
  void OvrDisplayComponent::GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight)
 {
-	*pnWidth = Settings::Instance().m_renderWidth / 2;
-	*pnHeight = Settings::Instance().m_renderHeight;
+	*pnWidth = Settings::Instance().m_recommendedTargetWidth / 2;
+	*pnHeight = Settings::Instance().m_recommendedTargetHeight;
 	Log(L"GetRecommendedRenderTargetSize %dx%d", *pnWidth, *pnHeight);
 }
 

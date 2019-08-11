@@ -55,6 +55,9 @@ void Settings::Load()
 
 		m_renderWidth = (int32_t)v.get(k_pch_Settings_RenderWidth_Int32).get<int64_t>();
 		m_renderHeight = (int32_t)v.get(k_pch_Settings_RenderHeight_Int32).get<int64_t>();
+		m_recommendedTargetWidth = (int32_t)v.get(k_pch_Settings_RecommendedRenderWidth_Int32).get<int64_t>();
+		m_recommendedTargetHeight = (int32_t)v.get(k_pch_Settings_RecommendedRenderHeight_Int32).get<int64_t>();
+
 
 		picojson::array& eyeFov = v.get(k_pch_Settings_EyeFov).get<picojson::array>();
 		for (int eye = 0; eye < 2; eye++) {

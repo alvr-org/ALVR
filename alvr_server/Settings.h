@@ -19,6 +19,8 @@ static const char * const k_pch_Settings_RegisteredDeviceType_String = "register
 static const char * const k_pch_Settings_RefreshRate_Int32 = "refreshRate";
 static const char * const k_pch_Settings_RenderWidth_Int32 = "renderWidth";
 static const char * const k_pch_Settings_RenderHeight_Int32 = "renderHeight";
+static const char * const k_pch_Settings_RecommendedRenderWidth_Int32 = "recommendedRenderWidth";
+static const char * const k_pch_Settings_RecommendedRenderHeight_Int32 = "recommendedRenderHeight";
 static const char * const k_pch_Settings_EyeFov = "eyeFov";
 static const char * const k_pch_Settings_IPD_Float = "IPD";
 static const char * const k_pch_Settings_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
@@ -130,6 +132,10 @@ public:
 	int m_refreshRate;
 	int32_t m_renderWidth;
 	int32_t m_renderHeight;
+	int32_t m_recommendedTargetWidth;
+	int32_t m_recommendedTargetHeight;
+
+
 	EyeFov m_eyeFov[2];
 	float m_flSecondsFromVsyncToPhotons;
 	float m_flIPD;

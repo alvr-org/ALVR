@@ -151,6 +151,8 @@ namespace ALVR
                     driverConfig.refreshRate = DEFAULT_REFRESHRATE;
                     driverConfig.renderWidth = DEFAULT_WIDTH;
                     driverConfig.renderHeight = DEFAULT_HEIGHT;
+                    driverConfig.recomendedRenderWidth = DEFAULT_WIDTH;
+                    driverConfig.recomendedRenderHeight = DEFAULT_HEIGHT;
 
                     driverConfig.autoConnectHost = "";
                     driverConfig.autoConnectPort = 0;
@@ -162,6 +164,8 @@ namespace ALVR
                     driverConfig.refreshRate = device.RefreshRates[0] == 0 ? DEFAULT_REFRESHRATE : device.RefreshRates[0];
                     driverConfig.renderWidth = device.DefaultWidth * c.resolutionScale / 100;
                     driverConfig.renderHeight = device.DefaultHeight * c.resolutionScale / 100;
+                    driverConfig.recommendedRenderWidth = device.DefaultWidth;
+                    driverConfig.recommendedRenderHeight = device.DefaultHeight;
 
                     driverConfig.autoConnectHost = device.ClientHost;
                     driverConfig.autoConnectPort = device.ClientPort;

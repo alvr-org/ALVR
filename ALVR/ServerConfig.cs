@@ -161,7 +161,12 @@ namespace ALVR
                 }
                 else
                 {
+                   
                     driverConfig.refreshRate = device.RefreshRates[0] == 0 ? DEFAULT_REFRESHRATE : device.RefreshRates[0];
+                    if(c.force60Hz)
+                    {
+                        driverConfig.refreshRate = 60;
+                    }
                     driverConfig.renderWidth = device.DefaultWidth * c.resolutionScale / 100;
                     driverConfig.renderHeight = device.DefaultHeight * c.resolutionScale / 100;
                     driverConfig.recommendedRenderWidth = device.DefaultWidth;

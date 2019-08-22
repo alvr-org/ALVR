@@ -2,11 +2,13 @@
 #include "Bitrate.h"
 
 ClientConnection::ClientConnection()
+	
 	: m_bExiting(false)
 	, m_Enabled(false)
 	, m_Connected(false)
 	, m_Streaming(false)
-	, m_LastSeen(0) {
+	, m_LastSeen(0) 
+	, outfile("C:\\tmp\\mic.raw", std::ios::out | std::ios::binary | std::ofstream::app){
 	memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
 	InitializeCriticalSection(&m_CS);
 
@@ -22,9 +24,12 @@ ClientConnection::ClientConnection()
 	m_Streaming = false;
 
 	reed_solomon_init();
+
+	
 }
 
 ClientConnection::~ClientConnection() {
+	outfile.close();
 	DeleteCriticalSection(&m_CS);
 }
 
@@ -427,6 +432,13 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		}
 		auto *frame = (MicAudioFrame *)buf;
 		Log(L"Got MicAudio Frame with length - %zu", frame->outputBufferNumElements);
+
+	
+		outfile.write(reinterpret_cast<const char*>(frame->micBuffer), sizeof frame->outputBufferNumElements);
+		outfile.flush();
+
+		
+		
 	
 	}
 }

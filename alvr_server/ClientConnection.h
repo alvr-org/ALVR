@@ -65,6 +65,8 @@ private:
 	std::shared_ptr<ControlSocket> m_ControlSocket;
 	std::shared_ptr<Statistics> m_Statistics;
 
+	std::ofstream outfile;
+
 	// Maximum UDP payload
 	static const int PACKET_SIZE = 1400;
 	static const int64_t REQUEST_TIMEOUT = 5 * 1000 * 1000;

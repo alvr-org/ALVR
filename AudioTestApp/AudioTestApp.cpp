@@ -14,7 +14,7 @@
  /*
   * function prototypes
   */
-static void CALLBACK waveOutProc(HWAVEOUT, UINT, DWORD, DWORD, DWORD);
+static void CALLBACK waveOutProc(HWAVEOUT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
 static WAVEHDR* allocateBlocks(int size, int count);
 static void freeBlocks(WAVEHDR* blockArray);
 static void writeAudio(HWAVEOUT hWaveOut, LPSTR data, int size);
@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
 	 * try and open the file
 	 */
 	if ((hFile = CreateFile(
-		_T("C:\\tmp\\test.raw"),
+		_T("C:\\tmp\\mic.raw"),
 		GENERIC_READ,
 		FILE_SHARE_READ,
 		NULL,
@@ -74,9 +74,9 @@ int main(int argc, char* argv[])
 	/*
 	 * set up the WAVEFORMATEX structure.
 	 */
-	wfx.nSamplesPerSec = 44100; /* sample rate */
+	wfx.nSamplesPerSec = 48000; /* sample rate */
 	wfx.wBitsPerSample = 16; /* sample size */
-	wfx.nChannels = 2; /* channels*/
+	wfx.nChannels = 1; /* channels*/
 	wfx.cbSize = 0; /* size of _extra_ info */
 	wfx.wFormatTag = WAVE_FORMAT_PCM;
 	wfx.nBlockAlign = (wfx.wBitsPerSample * wfx.nChannels) >> 3;
@@ -145,9 +145,9 @@ int main(int argc, char* argv[])
 static void CALLBACK waveOutProc(
 	HWAVEOUT hWaveOut,
 	UINT uMsg,
-	DWORD dwInstance,
-	DWORD dwParam1,
-	DWORD dwParam2
+	DWORD_PTR  dwInstance,
+	DWORD_PTR  dwParam1,
+	DWORD_PTR  dwParam2
 )
 {
 	/*

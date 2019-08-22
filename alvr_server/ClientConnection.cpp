@@ -420,6 +420,15 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			OnFecFailure();
 		}
 	}
+	else if (type == ALVR_PACKET_TYPE_MIC_AUDIO && len >= sizeof(MicAudioFrame)) {
+		if (!m_Connected || !m_Socket->IsLegitClient(addr)) {
+			Log(L"Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
+			return;
+		}
+		auto *frame = (MicAudioFrame *)buf;
+		Log(L"Got MicAudio Frame with length - %zu", frame->outputBufferNumElements);
+	
+	}
 }
 
 void ClientConnection::ProcessCommand(const std::string &commandName, const std::string args) {

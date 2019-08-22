@@ -8,6 +8,9 @@
 static const int ALVR_MAX_PACKET_SIZE = 1400;
 static const int ALVR_REFRESH_RATE_LIST_SIZE = 4;
 
+// Maximum UDP packet size
+static const int MAX_PACKET_UDP_PACKET_SIZE = 2000;
+
 static const char *ALVR_HELLO_PACKET_SIGNATURE = "ALVR";
 
 enum ALVR_PACKET_TYPE {
@@ -24,6 +27,7 @@ enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_AUDIO_FRAME = 11,
 	ALVR_PACKET_TYPE_PACKET_ERROR_REPORT = 12,
 	ALVR_PACKET_TYPE_HAPTICS = 13,
+	ALVR_PACKET_TYPE_MIC_AUDIO = 14,
 };
 
 enum {
@@ -158,6 +162,7 @@ struct ConnectionMessage {
 	uint32_t bufferSize; // in bytes
 	uint32_t frameQueueSize;
 	uint8_t refreshRate;
+	bool streamMic;
 };
 struct RecoverConnection {
 	uint32_t type; // ALVR_PACKET_TYPE_RECOVER_CONNECTION
@@ -196,14 +201,14 @@ struct TrackingInfo {
 
 	static const uint32_t MAX_CONTROLLERS = 2;
 
-	struct Controller {
-		static const uint32_t FLAG_CONTROLLER_ENABLE         = (1 << 0);
-		static const uint32_t FLAG_CONTROLLER_LEFTHAND       = (1 << 1); // 0: Left hand, 1: Right hand
-		static const uint32_t FLAG_CONTROLLER_GEARVR         = (1 << 2);
-		static const uint32_t FLAG_CONTROLLER_OCULUS_GO      = (1 << 3);
-		static const uint32_t FLAG_CONTROLLER_OCULUS_QUEST   = (1 << 4);
-		uint32_t flags;
 
+	struct Controller {
+		static const uint32_t FLAG_CONTROLLER_ENABLE = (1 << 0);
+		static const uint32_t FLAG_CONTROLLER_LEFTHAND = (1 << 1); // 0: Left hand, 1: Right hand
+		static const uint32_t FLAG_CONTROLLER_GEARVR = (1 << 2);
+		static const uint32_t FLAG_CONTROLLER_OCULUS_GO = (1 << 3);
+		static const uint32_t FLAG_CONTROLLER_OCULUS_QUEST = (1 << 4);
+		uint32_t flags;
 		uint64_t buttons;
 
 		struct {
@@ -289,6 +294,12 @@ struct AudioFrame {
 	uint32_t packetCounter;
 	// char frameBuffer[];
 };
+struct MicAudioFrame {
+	uint32_t type; // ALVR_PACKET_TYPE_MIC_AUDIO_FRAME
+	size_t outputBufferNumElements;
+	int16_t micBuffer[100];
+};
+
 // Report packet loss/error from client to server.
 struct PacketErrorReport {
 	uint32_t type; // ALVR_PACKET_TYPE_PACKET_ERROR_REPORT

@@ -14,6 +14,8 @@
 #include "packet_types.h"
 #include "Settings.h"
 #include "Statistics.h"
+#include "MicPlayer.h"
+
 extern "C" {
 #include "reedsolomon/rs.h"
 };
@@ -64,6 +66,7 @@ private:
 	std::shared_ptr<UdpSocket> m_Socket;
 	std::shared_ptr<ControlSocket> m_ControlSocket;
 	std::shared_ptr<Statistics> m_Statistics;
+	std::shared_ptr<MicPlayer> m_MicPlayer;
 
 	std::ofstream outfile;
 

@@ -193,6 +193,7 @@ namespace ALVR
             c.autoConnectList = clientList.Serialize();
 
             c.codec = codecComboBox.SelectedIndex;
+            c.streamMic = streamMic.Checked;
 
             if (soundDevices.Count > 0)
             {
@@ -693,7 +694,8 @@ namespace ALVR
             SaveSettings();
         }
 
-        async private void autoConnectCheckBox_CheckedChanged(object sender, EventArgs e)
+        async private void 
+            autoConnectCheckBox_CheckedChanged(object sender, EventArgs e)
         {
             if (autoConnectCheckBox.Checked)
             {
@@ -804,6 +806,11 @@ namespace ALVR
         private void controllerPoseOffset_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void metroCheckBox4_CheckedChanged(object sender, EventArgs e)
+        {
+            SaveSettings();
         }
     }
 }

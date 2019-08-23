@@ -83,14 +83,17 @@
     <Setting Name="eyeFov" Type="System.Double[]" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
-    <Setting Name="resolutionScale" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">100</Value>
-    </Setting>
     <Setting Name="disableThrottling" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
     <Setting Name="controllerPoseOffset" Type="System.String" Scope="User">
       <Value Profile="(Default)">0.01</Value>
+    </Setting>
+    <Setting Name="resolutionScale" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="streamMic" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
     </Setting>
   </Settings>
 </SettingsFile>

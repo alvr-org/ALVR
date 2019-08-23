@@ -17,8 +17,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gtest", "test\gtest\gtest.v
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AMF", "AMF\AMF.vcxproj", "{B040F09F-3DE1-4E72-AC89-F45DC4ECDE76}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AudioTestApp", "AudioTestApp\AudioTestApp.vcxproj", "{FC47282D-B7AA-418F-85F1-42031BE026B1}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -95,16 +93,6 @@ Global
 		{B040F09F-3DE1-4E72-AC89-F45DC4ECDE76}.Release|x64.Build.0 = Release|x64
 		{B040F09F-3DE1-4E72-AC89-F45DC4ECDE76}.Release|x86.ActiveCfg = Release|Win32
 		{B040F09F-3DE1-4E72-AC89-F45DC4ECDE76}.Release|x86.Build.0 = Release|Win32
-		{FC47282D-B7AA-418F-85F1-42031BE026B1}.Debug|Any CPU.ActiveCfg = Debug|Win32
-		{FC47282D-B7AA-418F-85F1-42031BE026B1}.Debug|x64.ActiveCfg = Debug|x64
-		{FC47282D-B7AA-418F-85F1-42031BE026B1}.Debug|x64.Build.0 = Debug|x64
-		{FC47282D-B7AA-418F-85F1-42031BE026B1}.Debug|x86.ActiveCfg = Debug|Win32
-		{FC47282D-B7AA-418F-85F1-42031BE026B1}.Debug|x86.Build.0 = Debug|Win32
-		{FC47282D-B7AA-418F-85F1-42031BE026B1}.Release|Any CPU.ActiveCfg = Release|Win32
-		{FC47282D-B7AA-418F-85F1-42031BE026B1}.Release|x64.ActiveCfg = Release|x64
-		{FC47282D-B7AA-418F-85F1-42031BE026B1}.Release|x64.Build.0 = Release|x64
-		{FC47282D-B7AA-418F-85F1-42031BE026B1}.Release|x86.ActiveCfg = Release|Win32
-		{FC47282D-B7AA-418F-85F1-42031BE026B1}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

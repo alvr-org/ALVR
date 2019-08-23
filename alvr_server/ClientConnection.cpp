@@ -7,12 +7,12 @@ ClientConnection::ClientConnection()
 	, m_Enabled(false)
 	, m_Connected(false)
 	, m_Streaming(false)
-	, m_LastSeen(0) 
-	, outfile("C:\\tmp\\mic.raw", std::ios::out | std::ios::binary | std::ofstream::app){
+	, m_LastSeen(0) {
 	memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
 	InitializeCriticalSection(&m_CS);
 
 	m_Statistics = std::make_shared<Statistics>();
+	m_MicPlayer  = std::make_shared<MicPlayer>();
 
 	m_Settings.type = ALVR_PACKET_TYPE_CHANGE_SETTINGS;
 	m_Settings.debugFlags = 0;
@@ -24,12 +24,10 @@ ClientConnection::ClientConnection()
 	m_Streaming = false;
 
 	reed_solomon_init();
-
 	
 }
 
 ClientConnection::~ClientConnection() {
-	outfile.close();
 	DeleteCriticalSection(&m_CS);
 }
 
@@ -431,14 +429,9 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			return;
 		}
 		auto *frame = (MicAudioFrame *)buf;
-		Log(L"Got MicAudio Frame with length - %zu", frame->outputBufferNumElements);
+		Log(L"Got MicAudio Frame with length - %zu  %zu index: %i", frame->outputBufferNumElements, frame->completeSize, frame->packetIndex);
 
-	
-		outfile.write(reinterpret_cast<const char*>(frame->micBuffer), sizeof frame->outputBufferNumElements);
-		outfile.flush();
-
-		
-		
+		m_MicPlayer->playAudio( (char*)frame->micBuffer , sizeof(int16_t)  *  frame->outputBufferNumElements);
 	
 	}
 }
@@ -721,6 +714,7 @@ void ClientConnection::Connect(const sockaddr_in *addr) {
 	message.bufferSize = Settings::Instance().m_clientRecvBufferSize;
 	message.frameQueueSize = Settings::Instance().m_frameQueueSize;
 	message.refreshRate = Settings::Instance().m_refreshRate;
+	message.streamMic = Settings::Instance().m_streamMic && m_MicPlayer->getCableHWID() != -1;
 
 	m_Socket->Send((char *)&message, sizeof(message), 0);
 }

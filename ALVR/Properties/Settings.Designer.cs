@@ -348,18 +348,6 @@ namespace ALVR.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("100")]
-        public float resolutionScale {
-            get {
-                return ((float)(this["resolutionScale"]));
-            }
-            set {
-                this["resolutionScale"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool disableThrottling {
             get {
@@ -379,6 +367,30 @@ namespace ALVR.Properties {
             }
             set {
                 this["controllerPoseOffset"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int resolutionScale {
+            get {
+                return ((int)(this["resolutionScale"]));
+            }
+            set {
+                this["resolutionScale"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool streamMic {
+            get {
+                return ((bool)(this["streamMic"]));
+            }
+            set {
+                this["streamMic"] = value;
             }
         }
     }

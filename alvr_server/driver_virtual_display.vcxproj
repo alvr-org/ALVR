@@ -108,6 +108,7 @@
     <ClCompile Include="IDRScheduler.cpp" />
     <ClCompile Include="ClientConnection.cpp" />
     <ClCompile Include="Logger.cpp" />
+    <ClCompile Include="MicPlayer.cpp" />
     <ClCompile Include="OvrController.cpp" />
     <ClCompile Include="OvrDirectModeComponent.cpp" />
     <ClCompile Include="OvrDisplayComponent.cpp" />
@@ -145,6 +146,7 @@
     <ClInclude Include="IDRScheduler.h" />
     <ClInclude Include="ClientConnection.h" />
     <ClInclude Include="Logger.h" />
+    <ClInclude Include="MicPlayer.h" />
     <ClInclude Include="OvrController.h" />
     <ClInclude Include="OvrDirectModeComponent.h" />
     <ClInclude Include="OvrDisplayComponent.h" />

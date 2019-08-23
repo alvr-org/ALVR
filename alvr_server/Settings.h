@@ -31,6 +31,7 @@ static const char * const k_pch_Settings_Force60HZ_Bool = "force60HZ";
 
 static const char * const k_pch_Settings_EnableSound_Bool = "enableSound";
 static const char * const k_pch_Settings_SoundDevice_String = "soundDevice";
+static const char * const k_pch_Settings_StreamMic_Bool = "streamMic";
 
 static const char * const k_pch_Settings_Codec_Int32 = "codec";
 static const char * const k_pch_Settings_EncoderOptions_String = "nvencOptions";
@@ -142,6 +143,8 @@ public:
 
 	bool m_enableSound;
 	std::string m_soundDevice;
+
+	bool m_streamMic;
 
 	int m_codec;
 	std::string m_EncoderOptions;

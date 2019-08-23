@@ -69,6 +69,7 @@ void Settings::Load()
 
 		m_enableSound = v.get(k_pch_Settings_EnableSound_Bool).get<bool>();
 		m_soundDevice = v.get(k_pch_Settings_SoundDevice_String).get<std::string>();
+		m_streamMic = v.get(k_pch_Settings_StreamMic_Bool).get<bool>();
 
 		m_flSecondsFromVsyncToPhotons = (float)v.get(k_pch_Settings_SecondsFromVsyncToPhotons_Float).get<double>();
 
@@ -79,6 +80,7 @@ void Settings::Load()
 
 		m_force60HZ = v.get(k_pch_Settings_Force60HZ_Bool).get<bool>();
 
+		
 		m_nAdapterIndex = (int32_t)v.get(k_pch_Settings_AdapterIndex_Int32).get<int64_t>();
 
 		m_codec = (int32_t)v.get(k_pch_Settings_Codec_Int32).get<int64_t>();

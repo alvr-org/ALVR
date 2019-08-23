@@ -181,6 +181,7 @@ namespace ALVR
 
                 driverConfig.enableSound = c.enableSound && c.soundDevice != "";
                 driverConfig.soundDevice = c.soundDevice;
+                driverConfig.streamMic = c.streamMic;
 
                 driverConfig.debugOutputDir = Utils.GetOutputPath();
                 driverConfig.debugLog = c.debugLog;

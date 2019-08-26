@@ -53,7 +53,8 @@ class VideoEncoderVCE : public VideoEncoder
 {
 public:
 	VideoEncoderVCE(std::shared_ptr<CD3DRender> pD3DRender
-		, std::shared_ptr<ClientConnection> listener);
+		, std::shared_ptr<ClientConnection> listener
+		, int width, int height);
 	~VideoEncoderVCE();
 
 	void Initialize();

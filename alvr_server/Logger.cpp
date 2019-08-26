@@ -298,6 +298,14 @@ void FatalLog(const char *format, ...) {
 	ReportError(NULL);
 }
 
+void LogHR(const std::wstring &message, HRESULT hr) {
+	Log(L"%ls HR=%p %ls", message.c_str(), hr, GetErrorStr(hr).c_str());
+}
+
+void ThrowHR(const std::wstring &message, HRESULT hr) {
+	throw MakeException(L"%ls HR=%p %ls", message.c_str(), hr, GetErrorStr(hr).c_str());
+}
+
 Exception MakeException(const wchar_t *format, ...) {
 	va_list args;
 	va_start(args, format);

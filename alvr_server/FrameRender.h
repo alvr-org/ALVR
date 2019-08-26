@@ -14,6 +14,7 @@
 
 #include "d3drender.h"
 #include "openvr_driver.h"
+#include "FFR.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -28,6 +29,7 @@ public:
 	void RenderMessage(const std::string& message);
 	void RenderDebugText(const std::string& debugText);
 	void CreateResourceTexture();
+	void GetEncodingResolution(uint32_t *width, uint32_t *height);
 
 	ComPtr<ID3D11Texture2D> GetTexture();
 private:
@@ -67,5 +69,8 @@ private:
 	};
 	// Parameter for Draw method. 2-triangles for both eyes.
 	static const int VERTEX_INDEX_COUNT = 12;
+
+	std::unique_ptr<FFR> m_ffr;
+	bool enableFFR;
 };
 

@@ -4,15 +4,16 @@
 #include "nvencoderclioptions.h"
 
 VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
-	, std::shared_ptr<ClientConnection> listener, bool useNV12)
+	, std::shared_ptr<ClientConnection> listener, bool useNV12
+	, int width, int height)
 	: m_pD3DRender(pD3DRender)
 	, m_nFrame(0)
 	, m_Listener(listener)
 	, m_useNV12(useNV12)
 	, m_codec(Settings::Instance().m_codec)
 	, m_refreshRate(Settings::Instance().m_refreshRate)
-	, m_renderWidth(Settings::Instance().m_renderWidth)
-	, m_renderHeight(Settings::Instance().m_renderHeight)
+	, m_renderWidth(width)
+	, m_renderHeight(height)
 	, m_bitrateInMBits(Settings::Instance().mEncodeBitrate.toMiBits())
 {
 	

@@ -100,7 +100,7 @@ bool FrameRender::Startup()
 	// Compile shaders
 	//
 	
-	std::vector<char> vshader;
+	std::vector<uint8_t> vshader;
 	if (!ReadBinaryResource(vshader, IDR_VS)) {
 		Log(L"Failed to load resource for IDR_VS.");
 		return false;
@@ -112,7 +112,7 @@ bool FrameRender::Startup()
 		return false;
 	}
 
-	std::vector<char> pshader;
+	std::vector<uint8_t> pshader;
 	if (!ReadBinaryResource(pshader, IDR_PS)) {
 		Log(L"Failed to load resource for IDR_PS.");
 		return false;
@@ -228,7 +228,7 @@ bool FrameRender::Startup()
 	// Load spritefont for debug text output
 	//
 
-	std::vector<char> fontBuffer;
+	std::vector<uint8_t> fontBuffer;
 	if (ReadBinaryResource(fontBuffer, IDR_FONT)) {
 		m_Font = std::make_unique<DirectX::SpriteFont>(m_pD3DRender->GetDevice(), (uint8_t *)&fontBuffer[0], fontBuffer.size());
 		m_SpriteBatch = std::make_unique<DirectX::SpriteBatch>(m_pD3DRender->GetContext());
@@ -287,6 +287,13 @@ bool FrameRender::Startup()
 	}
 
 	CreateResourceTexture();
+
+	enableFFR = Settings::Instance().m_foveationStrengthMean > 0.;
+
+	if (enableFFR) {
+		m_ffr = std::make_unique<FFR>(m_pD3DRender->GetDevice());
+		m_ffr->Initialize(m_pStagingTexture.Get());
+	}
 
 	Log(L"Staging Texture created");
 
@@ -446,6 +453,10 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 	}
 	RenderDebugText(debugText);
 
+	if (enableFFR) {
+		m_ffr->Render();
+	}
+
 	m_pD3DRender->GetContext()->Flush();
 
 	return true;
@@ -516,12 +527,18 @@ void FrameRender::RenderDebugText(const std::string & debugText)
 
 ComPtr<ID3D11Texture2D> FrameRender::GetTexture()
 {
-	return m_pStagingTexture;
+	if (enableFFR) {
+		return m_ffr->GetOutputTexture();
+	}
+	else {
+		return m_pStagingTexture;
+	}
+
 }
 
 void FrameRender::CreateResourceTexture()
 {
-	std::vector<char> texture;
+	std::vector<uint8_t> texture;
 	if (!ReadBinaryResource(texture, IDR_RECENTER_TEXTURE)) {
 		Log(L"Failed to load resource for IDR_RECENTER_TEXTURE.");
 		return;
@@ -549,4 +566,15 @@ void FrameRender::CreateResourceTexture()
 	else if (!m_messageBGResourceView) {
 		Log(L"Failed to create message_bg resource view. %d %s", hr, GetErrorStr(hr).c_str());
 	}
+}
+
+void FrameRender::GetEncodingResolution(uint32_t *width, uint32_t *height) {
+	if (enableFFR) {
+		m_ffr->GetOptimizedResolution(width, height);
+	}
+	else {
+		*width = Settings::Instance().m_renderWidth;
+		*height = Settings::Instance().m_renderHeight;
+	}
+	
 }

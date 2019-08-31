@@ -117,15 +117,15 @@ void FFR::Initialize(ID3D11Texture2D *compositionTexture) {
 		throw MakeException(L"Failed to load resource for IDR_DISTORTION_SHADER.");
 	}
 
-	mHorizontalBlurPipeline.Initialize({ compositionTexture }, mQuadVertexShader.Get(),
-		horizontalBlurShaderCSO, horizontalBlurredTexture.Get(), foveatedRenderingBuffer.Get());
+	/*mHorizontalBlurPipeline.Initialize({ compositionTexture }, mQuadVertexShader.Get(),
+		horizontalBlurShaderCSO, horizontalBlurredTexture.Get(), foveatedRenderingBuffer.Get());*/
 
-	mDistortionPipeline.Initialize({ horizontalBlurredTexture.Get() }, mQuadVertexShader.Get(),
+	mDistortionPipeline.Initialize({ compositionTexture }, mQuadVertexShader.Get(),
 		distortionShaderCSO, mDistortedTexture.Get(), foveatedRenderingBuffer.Get());
 }
 
 void FFR::Render() {
-	mHorizontalBlurPipeline.Render();
+	//mHorizontalBlurPipeline.Render();
 	mDistortionPipeline.Render();
 }
 

@@ -195,6 +195,9 @@ namespace ALVR
             c.codec = codecComboBox.SelectedIndex;
             c.streamMic = streamMic.Checked;
 
+            c.foveationStrengthMean = ffrMeanBox.Text;
+            c.foveationShapeRatio = ffrRatioBox.Text;
+
             if (soundDevices.Count > 0)
             {
                 if (!defaultSoundDeviceCheckBox.Checked && soundDeviceComboBox.SelectedIndex != -1)
@@ -816,6 +819,21 @@ namespace ALVR
         private void metroLink1_Click(object sender, EventArgs e)
         {
             System.Diagnostics.Process.Start("https://www.vb-audio.com/Cable/");
+        }
+
+        private void videoTab_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void metroLabel21_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void ffrMeanBox_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

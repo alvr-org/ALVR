@@ -239,6 +239,9 @@ namespace ALVR
                 driverConfig.trackingFrameOffset = Utils.ParseInt(c.trackingFrameOffset);
                 driverConfig.controllerPoseOffset = Utils.ParseFloat(c.controllerPoseOffset);
 
+                driverConfig.foveationStrengthMean = Utils.ParseFloat(c.foveationStrengthMean);
+                driverConfig.foveationShapeRatio = Utils.ParseFloat(c.foveationShapeRatio);
+
                 byte[] bytes = Encoding.UTF8.GetBytes(driverConfig.ToString());
                 memoryMappedFile = MemoryMappedFile.CreateOrOpen(APP_FILEMAPPING_NAME, sizeof(int) + bytes.Length);
 

@@ -83,6 +83,10 @@ static const char * const k_pch_Settings_OffsetPosZ_Float = "offsetPosZ";
 
 static const char * const k_pch_Settings_controllerPoseOffset_Float = "controllerPoseOffset";
 
+static const char * const k_pch_Settings_foveationStrengthMean_Float = "foveationStrengthMean";
+static const char * const k_pch_Settings_foveationShapeRatio_Float = "foveationShapeRatio";
+
+
 static const char * const k_pch_Settings_TrackingFrameOffset_Int32 = "trackingFrameOffset";
 //
 // Constants
@@ -140,7 +144,7 @@ public:
 	EyeFov m_eyeFov[2];
 	float m_flSecondsFromVsyncToPhotons;
 	float m_flIPD;
-	float m_foveationStrengthMean = 10; // higher value means less detail outside the foveated region
+	float m_foveationStrengthMean = 2; // higher value means less detail outside the foveated region
 	float m_foveationShapeRatio = 1.5;  // aspect ratio of the foveated region
 
 	bool m_enableSound;

@@ -95,5 +95,11 @@
     <Setting Name="streamMic" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
+    <Setting Name="foveationStrengthMean" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="foveationShapeRatio" Type="System.String" Scope="User">
+      <Value Profile="(Default)">1.5</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

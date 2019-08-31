@@ -715,6 +715,8 @@ void ClientConnection::Connect(const sockaddr_in *addr) {
 	message.frameQueueSize = Settings::Instance().m_frameQueueSize;
 	message.refreshRate = Settings::Instance().m_refreshRate;
 	message.streamMic = Settings::Instance().m_streamMic && m_MicPlayer->getCableHWID() != -1;
+	message.foveationStrengthMean = Settings::Instance().m_foveationStrengthMean;
+	message.foveationShapeRatio = Settings::Instance().m_foveationShapeRatio;
 
 	m_Socket->Send((char *)&message, sizeof(message), 0);
 }

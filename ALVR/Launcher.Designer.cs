@@ -62,13 +62,6 @@
             this.connectedLabel = new MetroFramework.Controls.MetroLabel();
             this.messagePanel = new MetroFramework.Controls.MetroPanel();
             this.messageLabel = new MetroFramework.Controls.MetroLabel();
-            this.soundTab = new MetroFramework.Controls.MetroTabPage();
-            this.metroLink1 = new MetroFramework.Controls.MetroLink();
-            this.streamMic = new MetroFramework.Controls.MetroCheckBox();
-            this.noSoundDeviceLabel = new MetroFramework.Controls.MetroLabel();
-            this.soundDeviceComboBox = new MetroFramework.Controls.MetroComboBox();
-            this.defaultSoundDeviceCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.videoTab = new MetroFramework.Controls.MetroTabPage();
             this.label3 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
@@ -89,27 +82,22 @@
             this.metroLabel10 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel31 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel7 = new MetroFramework.Controls.MetroLabel();
-            this.bufferTrackBar = new MetroFramework.Controls.MetroTrackBar();
-            this.bitrateTrackBar = new MetroFramework.Controls.MetroTrackBar();
+            this.soundTab = new MetroFramework.Controls.MetroTabPage();
+            this.metroLabel20 = new MetroFramework.Controls.MetroLabel();
+            this.metroLink1 = new MetroFramework.Controls.MetroLink();
+            this.noSoundDeviceLabel = new MetroFramework.Controls.MetroLabel();
+            this.soundDeviceComboBox = new MetroFramework.Controls.MetroComboBox();
             this.otherTab = new MetroFramework.Controls.MetroTabPage();
             this.metroButton1 = new MetroFramework.Controls.MetroButton();
-            this.controllerPoseOffset = new MetroFramework.Controls.MetroTextBox();
             this.metroLabel12 = new MetroFramework.Controls.MetroLabel();
-            this.trackingFrameOffsetTextBox = new MetroFramework.Controls.MetroTextBox();
             this.metroLabel30 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel29 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel28 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel27 = new MetroFramework.Controls.MetroLabel();
             this.refDisconnectCommandButton = new MetroFramework.Controls.MetroButton();
             this.refConnectCommandButton = new MetroFramework.Controls.MetroButton();
-            this.disconnectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.connectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
             this.saveTrackingFrameOffsetButton = new MetroFramework.Controls.MetroButton();
             this.metroLabel26 = new MetroFramework.Controls.MetroLabel();
-            this.disableThrottlingCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.force60HzCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.suppressFrameDropCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.onlySteamVRCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.debugTab = new MetroFramework.Controls.MetroTabPage();
             this.metroLabel5 = new MetroFramework.Controls.MetroLabel();
             this.logText = new MetroFramework.Controls.MetroTextBox();
@@ -124,8 +112,6 @@
             this.packetlossButton = new MetroFramework.Controls.MetroButton();
             this.metroButton4 = new MetroFramework.Controls.MetroButton();
             this.captureLayerDDSButton = new MetroFramework.Controls.MetroButton();
-            this.debugCaptureOutputCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.debugLogCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.aboutTab = new MetroFramework.Controls.MetroTabPage();
             this.driverLabel = new MetroFramework.Controls.MetroLabel();
             this.uninstallButton = new MetroFramework.Controls.MetroButton();
@@ -142,7 +128,27 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.metroLabel20 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel21 = new MetroFramework.Controls.MetroLabel();
+            this.ffrMeanLabel = new MetroFramework.Controls.MetroLabel();
+            this.label4 = new System.Windows.Forms.Label();
+            this.metroLabel22 = new MetroFramework.Controls.MetroLabel();
+            this.ffrRatioBox = new MetroFramework.Controls.MetroTextBox();
+            this.ffrMeanBox = new MetroFramework.Controls.MetroTextBox();
+            this.bufferTrackBar = new MetroFramework.Controls.MetroTrackBar();
+            this.bitrateTrackBar = new MetroFramework.Controls.MetroTrackBar();
+            this.defaultSoundDeviceCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.streamMic = new MetroFramework.Controls.MetroCheckBox();
+            this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.suppressFrameDropCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.disableThrottlingCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.controllerPoseOffset = new MetroFramework.Controls.MetroTextBox();
+            this.trackingFrameOffsetTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.disconnectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.connectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.force60HzCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.onlySteamVRCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.debugCaptureOutputCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.debugLogCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -150,8 +156,8 @@
             this.connectedPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).BeginInit();
             this.messagePanel.SuspendLayout();
-            this.soundTab.SuspendLayout();
             this.videoTab.SuspendLayout();
+            this.soundTab.SuspendLayout();
             this.otherTab.SuspendLayout();
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
@@ -527,103 +533,14 @@
             this.messageLabel.TabIndex = 9;
             this.messageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
-            // soundTab
-            // 
-            this.soundTab.Controls.Add(this.metroLabel20);
-            this.soundTab.Controls.Add(this.metroLink1);
-            this.soundTab.Controls.Add(this.streamMic);
-            this.soundTab.Controls.Add(this.noSoundDeviceLabel);
-            this.soundTab.Controls.Add(this.soundDeviceComboBox);
-            this.soundTab.Controls.Add(this.defaultSoundDeviceCheckBox);
-            this.soundTab.Controls.Add(this.soundCheckBox);
-            this.soundTab.HorizontalScrollbarBarColor = true;
-            this.soundTab.HorizontalScrollbarSize = 14;
-            this.soundTab.Location = new System.Drawing.Point(4, 39);
-            this.soundTab.Margin = new System.Windows.Forms.Padding(4);
-            this.soundTab.Name = "soundTab";
-            this.soundTab.Size = new System.Drawing.Size(877, 485);
-            this.soundTab.TabIndex = 8;
-            this.soundTab.Text = "Sound";
-            this.soundTab.VerticalScrollbarBarColor = true;
-            this.soundTab.VerticalScrollbarSize = 13;
-            // 
-            // metroLink1
-            // 
-            this.metroLink1.Location = new System.Drawing.Point(245, 263);
-            this.metroLink1.Margin = new System.Windows.Forms.Padding(4);
-            this.metroLink1.Name = "metroLink1";
-            this.metroLink1.Size = new System.Drawing.Size(505, 28);
-            this.metroLink1.TabIndex = 6;
-            this.metroLink1.Text = " https://www.vb-audio.com/Cable/";
-            this.metroLink1.Click += new System.EventHandler(this.metroLink1_Click);
-            // 
-            // streamMic
-            // 
-            this.streamMic.AutoSize = true;
-            this.streamMic.Checked = global::ALVR.Properties.Settings.Default.streamMic;
-            this.streamMic.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "streamMic", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.streamMic.Location = new System.Drawing.Point(40, 237);
-            this.streamMic.Margin = new System.Windows.Forms.Padding(4);
-            this.streamMic.Name = "streamMic";
-            this.streamMic.Size = new System.Drawing.Size(178, 17);
-            this.streamMic.TabIndex = 5;
-            this.streamMic.Text = "Stream Quest Microphone";
-            this.streamMic.UseVisualStyleBackColor = true;
-            this.streamMic.CheckedChanged += new System.EventHandler(this.metroCheckBox4_CheckedChanged);
-            // 
-            // noSoundDeviceLabel
-            // 
-            this.noSoundDeviceLabel.AutoSize = true;
-            this.noSoundDeviceLabel.Location = new System.Drawing.Point(40, 47);
-            this.noSoundDeviceLabel.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.noSoundDeviceLabel.Name = "noSoundDeviceLabel";
-            this.noSoundDeviceLabel.Size = new System.Drawing.Size(188, 20);
-            this.noSoundDeviceLabel.TabIndex = 4;
-            this.noSoundDeviceLabel.Text = "No sound devices are found.";
-            this.noSoundDeviceLabel.Visible = false;
-            // 
-            // soundDeviceComboBox
-            // 
-            this.soundDeviceComboBox.FormattingEnabled = true;
-            this.soundDeviceComboBox.ItemHeight = 24;
-            this.soundDeviceComboBox.Location = new System.Drawing.Point(101, 155);
-            this.soundDeviceComboBox.Margin = new System.Windows.Forms.Padding(4);
-            this.soundDeviceComboBox.Name = "soundDeviceComboBox";
-            this.soundDeviceComboBox.Size = new System.Drawing.Size(627, 30);
-            this.soundDeviceComboBox.TabIndex = 3;
-            // 
-            // defaultSoundDeviceCheckBox
-            // 
-            this.defaultSoundDeviceCheckBox.AutoSize = true;
-            this.defaultSoundDeviceCheckBox.Checked = global::ALVR.Properties.Settings.Default.useDefaultSoundDevice;
-            this.defaultSoundDeviceCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.defaultSoundDeviceCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useDefaultSoundDevice", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.defaultSoundDeviceCheckBox.Location = new System.Drawing.Point(71, 102);
-            this.defaultSoundDeviceCheckBox.Margin = new System.Windows.Forms.Padding(4);
-            this.defaultSoundDeviceCheckBox.Name = "defaultSoundDeviceCheckBox";
-            this.defaultSoundDeviceCheckBox.Size = new System.Drawing.Size(131, 17);
-            this.defaultSoundDeviceCheckBox.TabIndex = 2;
-            this.defaultSoundDeviceCheckBox.Text = "Use default device";
-            this.defaultSoundDeviceCheckBox.UseVisualStyleBackColor = true;
-            this.defaultSoundDeviceCheckBox.CheckedChanged += new System.EventHandler(this.defaultSoundDeviceCheckBox_CheckedChanged);
-            // 
-            // soundCheckBox
-            // 
-            this.soundCheckBox.AutoSize = true;
-            this.soundCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableSound;
-            this.soundCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.soundCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableSound", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.soundCheckBox.Location = new System.Drawing.Point(40, 47);
-            this.soundCheckBox.Margin = new System.Windows.Forms.Padding(4);
-            this.soundCheckBox.Name = "soundCheckBox";
-            this.soundCheckBox.Size = new System.Drawing.Size(100, 17);
-            this.soundCheckBox.TabIndex = 2;
-            this.soundCheckBox.Text = "Steam sound";
-            this.soundCheckBox.UseVisualStyleBackColor = true;
-            this.soundCheckBox.CheckedChanged += new System.EventHandler(this.soundCheckBox_CheckedChanged);
-            // 
             // videoTab
             // 
+            this.videoTab.Controls.Add(this.metroLabel22);
+            this.videoTab.Controls.Add(this.label4);
+            this.videoTab.Controls.Add(this.ffrMeanLabel);
+            this.videoTab.Controls.Add(this.ffrRatioBox);
+            this.videoTab.Controls.Add(this.metroLabel21);
+            this.videoTab.Controls.Add(this.ffrMeanBox);
             this.videoTab.Controls.Add(this.label3);
             this.videoTab.Controls.Add(this.label2);
             this.videoTab.Controls.Add(this.label1);
@@ -655,11 +572,12 @@
             this.videoTab.Text = "Video";
             this.videoTab.VerticalScrollbarBarColor = true;
             this.videoTab.VerticalScrollbarSize = 13;
+            this.videoTab.Click += new System.EventHandler(this.videoTab_Click);
             // 
             // label3
             // 
             this.label3.BackColor = System.Drawing.Color.DarkGray;
-            this.label3.Location = new System.Drawing.Point(39, 79);
+            this.label3.Location = new System.Drawing.Point(39, 61);
             this.label3.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(800, 1);
@@ -668,7 +586,7 @@
             // label2
             // 
             this.label2.BackColor = System.Drawing.Color.DarkGray;
-            this.label2.Location = new System.Drawing.Point(39, 313);
+            this.label2.Location = new System.Drawing.Point(39, 238);
             this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(800, 1);
@@ -677,7 +595,7 @@
             // label1
             // 
             this.label1.BackColor = System.Drawing.Color.DarkGray;
-            this.label1.Location = new System.Drawing.Point(39, 198);
+            this.label1.Location = new System.Drawing.Point(39, 165);
             this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(800, 1);
@@ -686,7 +604,7 @@
             // metroLabel13
             // 
             this.metroLabel13.AutoSize = true;
-            this.metroLabel13.Location = new System.Drawing.Point(228, 417);
+            this.metroLabel13.Location = new System.Drawing.Point(228, 454);
             this.metroLabel13.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.metroLabel13.Name = "metroLabel13";
             this.metroLabel13.Size = new System.Drawing.Size(311, 20);
@@ -696,7 +614,7 @@
             // metroLabel19
             // 
             this.metroLabel19.AutoSize = true;
-            this.metroLabel19.Location = new System.Drawing.Point(75, 379);
+            this.metroLabel19.Location = new System.Drawing.Point(75, 304);
             this.metroLabel19.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.metroLabel19.Name = "metroLabel19";
             this.metroLabel19.Size = new System.Drawing.Size(597, 20);
@@ -707,7 +625,7 @@
             // metroLabel11
             // 
             this.metroLabel11.AutoSize = true;
-            this.metroLabel11.Location = new System.Drawing.Point(75, 158);
+            this.metroLabel11.Location = new System.Drawing.Point(75, 135);
             this.metroLabel11.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.metroLabel11.Name = "metroLabel11";
             this.metroLabel11.Size = new System.Drawing.Size(336, 20);
@@ -739,7 +657,7 @@
             "150%",
             "175%",
             "200%"});
-            this.resolutionComboBox.Location = new System.Drawing.Point(247, 218);
+            this.resolutionComboBox.Location = new System.Drawing.Point(247, 188);
             this.resolutionComboBox.Margin = new System.Windows.Forms.Padding(4);
             this.resolutionComboBox.Name = "resolutionComboBox";
             this.resolutionComboBox.Size = new System.Drawing.Size(319, 27);
@@ -751,7 +669,7 @@
             // 
             this.bufferLabel.AutoSize = true;
             this.bufferLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.bufferLabel.Location = new System.Drawing.Point(745, 345);
+            this.bufferLabel.Location = new System.Drawing.Point(745, 270);
             this.bufferLabel.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.bufferLabel.Name = "bufferLabel";
             this.bufferLabel.Size = new System.Drawing.Size(60, 25);
@@ -762,7 +680,7 @@
             // 
             this.bitrateLabel.AutoSize = true;
             this.bitrateLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.bitrateLabel.Location = new System.Drawing.Point(745, 114);
+            this.bitrateLabel.Location = new System.Drawing.Point(745, 91);
             this.bitrateLabel.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.bitrateLabel.Name = "bitrateLabel";
             this.bitrateLabel.Size = new System.Drawing.Size(77, 25);
@@ -772,7 +690,7 @@
             // metroLabel18
             // 
             this.metroLabel18.AutoSize = true;
-            this.metroLabel18.Location = new System.Drawing.Point(711, 310);
+            this.metroLabel18.Location = new System.Drawing.Point(711, 238);
             this.metroLabel18.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.metroLabel18.Name = "metroLabel18";
             this.metroLabel18.Size = new System.Drawing.Size(56, 20);
@@ -782,7 +700,7 @@
             // metroLabel9
             // 
             this.metroLabel9.AutoSize = true;
-            this.metroLabel9.Location = new System.Drawing.Point(697, 94);
+            this.metroLabel9.Location = new System.Drawing.Point(697, 71);
             this.metroLabel9.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.metroLabel9.Name = "metroLabel9";
             this.metroLabel9.Size = new System.Drawing.Size(67, 20);
@@ -792,7 +710,7 @@
             // metroLabel17
             // 
             this.metroLabel17.AutoSize = true;
-            this.metroLabel17.Location = new System.Drawing.Point(215, 315);
+            this.metroLabel17.Location = new System.Drawing.Point(215, 240);
             this.metroLabel17.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.metroLabel17.Name = "metroLabel17";
             this.metroLabel17.Size = new System.Drawing.Size(45, 20);
@@ -802,7 +720,7 @@
             // metroLabel8
             // 
             this.metroLabel8.AutoSize = true;
-            this.metroLabel8.Location = new System.Drawing.Point(215, 94);
+            this.metroLabel8.Location = new System.Drawing.Point(215, 71);
             this.metroLabel8.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.metroLabel8.Name = "metroLabel8";
             this.metroLabel8.Size = new System.Drawing.Size(48, 20);
@@ -813,7 +731,7 @@
             // 
             this.metroLabel16.AutoSize = true;
             this.metroLabel16.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel16.Location = new System.Drawing.Point(33, 320);
+            this.metroLabel16.Location = new System.Drawing.Point(33, 245);
             this.metroLabel16.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.metroLabel16.Name = "metroLabel16";
             this.metroLabel16.Size = new System.Drawing.Size(93, 25);
@@ -824,7 +742,7 @@
             // 
             this.resolutionLabel.AutoSize = true;
             this.resolutionLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.resolutionLabel.Location = new System.Drawing.Point(595, 218);
+            this.resolutionLabel.Location = new System.Drawing.Point(595, 188);
             this.resolutionLabel.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.resolutionLabel.Name = "resolutionLabel";
             this.resolutionLabel.Size = new System.Drawing.Size(97, 25);
@@ -835,7 +753,7 @@
             // 
             this.metroLabel10.AutoSize = true;
             this.metroLabel10.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel10.Location = new System.Drawing.Point(33, 218);
+            this.metroLabel10.Location = new System.Drawing.Point(33, 188);
             this.metroLabel10.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.metroLabel10.Name = "metroLabel10";
             this.metroLabel10.Size = new System.Drawing.Size(143, 25);
@@ -857,60 +775,92 @@
             // 
             this.metroLabel7.AutoSize = true;
             this.metroLabel7.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel7.Location = new System.Drawing.Point(33, 114);
+            this.metroLabel7.Location = new System.Drawing.Point(33, 91);
             this.metroLabel7.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.metroLabel7.Name = "metroLabel7";
             this.metroLabel7.Size = new System.Drawing.Size(63, 25);
             this.metroLabel7.TabIndex = 3;
             this.metroLabel7.Text = "Bitrate";
             // 
-            // bufferTrackBar
+            // soundTab
             // 
-            this.bufferTrackBar.BackColor = System.Drawing.Color.Transparent;
-            this.bufferTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bufferSize", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.bufferTrackBar.Location = new System.Drawing.Point(247, 345);
-            this.bufferTrackBar.Margin = new System.Windows.Forms.Padding(4);
-            this.bufferTrackBar.Name = "bufferTrackBar";
-            this.bufferTrackBar.Size = new System.Drawing.Size(491, 31);
-            this.bufferTrackBar.TabIndex = 2;
-            this.bufferTrackBar.Text = "metroTrackBar1";
-            this.bufferTrackBar.Value = global::ALVR.Properties.Settings.Default.bufferSize;
-            this.bufferTrackBar.ValueChanged += new System.EventHandler(this.bufferTrackBar_ValueChanged);
+            this.soundTab.Controls.Add(this.metroLabel20);
+            this.soundTab.Controls.Add(this.metroLink1);
+            this.soundTab.Controls.Add(this.noSoundDeviceLabel);
+            this.soundTab.Controls.Add(this.soundDeviceComboBox);
+            this.soundTab.Controls.Add(this.streamMic);
+            this.soundTab.Controls.Add(this.defaultSoundDeviceCheckBox);
+            this.soundTab.Controls.Add(this.soundCheckBox);
+            this.soundTab.HorizontalScrollbarBarColor = true;
+            this.soundTab.HorizontalScrollbarSize = 14;
+            this.soundTab.Location = new System.Drawing.Point(4, 39);
+            this.soundTab.Margin = new System.Windows.Forms.Padding(4);
+            this.soundTab.Name = "soundTab";
+            this.soundTab.Size = new System.Drawing.Size(877, 485);
+            this.soundTab.TabIndex = 8;
+            this.soundTab.Text = "Sound";
+            this.soundTab.VerticalScrollbarBarColor = true;
+            this.soundTab.VerticalScrollbarSize = 13;
             // 
-            // bitrateTrackBar
+            // metroLabel20
             // 
-            this.bitrateTrackBar.BackColor = System.Drawing.Color.Transparent;
-            this.bitrateTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bitrate", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.bitrateTrackBar.Location = new System.Drawing.Point(247, 123);
-            this.bitrateTrackBar.Margin = new System.Windows.Forms.Padding(4);
-            this.bitrateTrackBar.Maximum = 250;
-            this.bitrateTrackBar.Minimum = 1;
-            this.bitrateTrackBar.Name = "bitrateTrackBar";
-            this.bitrateTrackBar.Size = new System.Drawing.Size(491, 31);
-            this.bitrateTrackBar.TabIndex = 2;
-            this.bitrateTrackBar.Text = "metroTrackBar1";
-            this.bitrateTrackBar.Value = global::ALVR.Properties.Settings.Default.bitrate;
-            this.bitrateTrackBar.ValueChanged += new System.EventHandler(this.bitrateTrackBar_ValueChanged);
+            this.metroLabel20.AutoSize = true;
+            this.metroLabel20.Location = new System.Drawing.Point(58, 271);
+            this.metroLabel20.Name = "metroLabel20";
+            this.metroLabel20.Size = new System.Drawing.Size(180, 20);
+            this.metroLabel20.TabIndex = 7;
+            this.metroLabel20.Text = "Requires Cable audio driver";
+            // 
+            // metroLink1
+            // 
+            this.metroLink1.Location = new System.Drawing.Point(245, 263);
+            this.metroLink1.Margin = new System.Windows.Forms.Padding(4);
+            this.metroLink1.Name = "metroLink1";
+            this.metroLink1.Size = new System.Drawing.Size(505, 28);
+            this.metroLink1.TabIndex = 6;
+            this.metroLink1.Text = " https://www.vb-audio.com/Cable/";
+            this.metroLink1.Click += new System.EventHandler(this.metroLink1_Click);
+            // 
+            // noSoundDeviceLabel
+            // 
+            this.noSoundDeviceLabel.AutoSize = true;
+            this.noSoundDeviceLabel.Location = new System.Drawing.Point(40, 47);
+            this.noSoundDeviceLabel.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.noSoundDeviceLabel.Name = "noSoundDeviceLabel";
+            this.noSoundDeviceLabel.Size = new System.Drawing.Size(188, 20);
+            this.noSoundDeviceLabel.TabIndex = 4;
+            this.noSoundDeviceLabel.Text = "No sound devices are found.";
+            this.noSoundDeviceLabel.Visible = false;
+            // 
+            // soundDeviceComboBox
+            // 
+            this.soundDeviceComboBox.FormattingEnabled = true;
+            this.soundDeviceComboBox.ItemHeight = 24;
+            this.soundDeviceComboBox.Location = new System.Drawing.Point(101, 155);
+            this.soundDeviceComboBox.Margin = new System.Windows.Forms.Padding(4);
+            this.soundDeviceComboBox.Name = "soundDeviceComboBox";
+            this.soundDeviceComboBox.Size = new System.Drawing.Size(627, 30);
+            this.soundDeviceComboBox.TabIndex = 3;
             // 
             // otherTab
             // 
             this.otherTab.Controls.Add(this.metroButton1);
-            this.otherTab.Controls.Add(this.controllerPoseOffset);
             this.otherTab.Controls.Add(this.metroLabel12);
-            this.otherTab.Controls.Add(this.trackingFrameOffsetTextBox);
             this.otherTab.Controls.Add(this.metroLabel30);
             this.otherTab.Controls.Add(this.metroLabel29);
             this.otherTab.Controls.Add(this.metroLabel28);
             this.otherTab.Controls.Add(this.metroLabel27);
             this.otherTab.Controls.Add(this.refDisconnectCommandButton);
             this.otherTab.Controls.Add(this.refConnectCommandButton);
-            this.otherTab.Controls.Add(this.disconnectCommandTextBox);
-            this.otherTab.Controls.Add(this.connectCommandTextBox);
             this.otherTab.Controls.Add(this.saveTrackingFrameOffsetButton);
             this.otherTab.Controls.Add(this.metroLabel26);
-            this.otherTab.Controls.Add(this.disableThrottlingCheckBox);
             this.otherTab.Controls.Add(this.force60HzCheckBox);
+            this.otherTab.Controls.Add(this.disableThrottlingCheckBox);
             this.otherTab.Controls.Add(this.suppressFrameDropCheckBox);
+            this.otherTab.Controls.Add(this.controllerPoseOffset);
+            this.otherTab.Controls.Add(this.trackingFrameOffsetTextBox);
+            this.otherTab.Controls.Add(this.disconnectCommandTextBox);
+            this.otherTab.Controls.Add(this.connectCommandTextBox);
             this.otherTab.Controls.Add(this.onlySteamVRCheckBox);
             this.otherTab.HorizontalScrollbarBarColor = true;
             this.otherTab.HorizontalScrollbarSize = 14;
@@ -934,17 +884,6 @@
             this.metroButton1.Text = "Save";
             this.metroButton1.Click += new System.EventHandler(this.metroButton1_Click);
             // 
-            // controllerPoseOffset
-            // 
-            this.controllerPoseOffset.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "controllerPoseOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.controllerPoseOffset.Location = new System.Drawing.Point(249, 33);
-            this.controllerPoseOffset.Margin = new System.Windows.Forms.Padding(4);
-            this.controllerPoseOffset.Name = "controllerPoseOffset";
-            this.controllerPoseOffset.Size = new System.Drawing.Size(69, 23);
-            this.controllerPoseOffset.TabIndex = 21;
-            this.controllerPoseOffset.Text = global::ALVR.Properties.Settings.Default.controllerPoseOffset;
-            this.controllerPoseOffset.Click += new System.EventHandler(this.controllerPoseOffset_Click);
-            // 
             // metroLabel12
             // 
             this.metroLabel12.AutoSize = true;
@@ -954,16 +893,6 @@
             this.metroLabel12.Size = new System.Drawing.Size(144, 20);
             this.metroLabel12.TabIndex = 20;
             this.metroLabel12.Text = "Controller Pose Offset";
-            // 
-            // trackingFrameOffsetTextBox
-            // 
-            this.trackingFrameOffsetTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "trackingFrameOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.trackingFrameOffsetTextBox.Location = new System.Drawing.Point(257, 330);
-            this.trackingFrameOffsetTextBox.Margin = new System.Windows.Forms.Padding(4);
-            this.trackingFrameOffsetTextBox.Name = "trackingFrameOffsetTextBox";
-            this.trackingFrameOffsetTextBox.Size = new System.Drawing.Size(115, 31);
-            this.trackingFrameOffsetTextBox.TabIndex = 19;
-            this.trackingFrameOffsetTextBox.Text = global::ALVR.Properties.Settings.Default.trackingFrameOffset;
             // 
             // metroLabel30
             // 
@@ -1026,26 +955,6 @@
             this.refConnectCommandButton.Text = "...";
             this.refConnectCommandButton.Click += new System.EventHandler(this.refConnectCommandButton_Click);
             // 
-            // disconnectCommandTextBox
-            // 
-            this.disconnectCommandTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "disconnectCommand", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.disconnectCommandTextBox.Location = new System.Drawing.Point(181, 271);
-            this.disconnectCommandTextBox.Margin = new System.Windows.Forms.Padding(4);
-            this.disconnectCommandTextBox.Name = "disconnectCommandTextBox";
-            this.disconnectCommandTextBox.Size = new System.Drawing.Size(511, 31);
-            this.disconnectCommandTextBox.TabIndex = 15;
-            this.disconnectCommandTextBox.Text = global::ALVR.Properties.Settings.Default.disconnectCommand;
-            // 
-            // connectCommandTextBox
-            // 
-            this.connectCommandTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "connectCommand", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.connectCommandTextBox.Location = new System.Drawing.Point(181, 233);
-            this.connectCommandTextBox.Margin = new System.Windows.Forms.Padding(4);
-            this.connectCommandTextBox.Name = "connectCommandTextBox";
-            this.connectCommandTextBox.Size = new System.Drawing.Size(511, 31);
-            this.connectCommandTextBox.TabIndex = 15;
-            this.connectCommandTextBox.Text = global::ALVR.Properties.Settings.Default.connectCommand;
-            // 
             // saveTrackingFrameOffsetButton
             // 
             this.saveTrackingFrameOffsetButton.Location = new System.Drawing.Point(383, 330);
@@ -1065,61 +974,6 @@
             this.metroLabel26.Size = new System.Drawing.Size(99, 20);
             this.metroLabel26.TabIndex = 3;
             this.metroLabel26.Text = "Run command";
-            // 
-            // disableThrottlingCheckBox
-            // 
-            this.disableThrottlingCheckBox.AutoSize = true;
-            this.disableThrottlingCheckBox.Checked = global::ALVR.Properties.Settings.Default.disableThrottling;
-            this.disableThrottlingCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "disableThrottling", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.disableThrottlingCheckBox.Location = new System.Drawing.Point(543, 185);
-            this.disableThrottlingCheckBox.Margin = new System.Windows.Forms.Padding(4);
-            this.disableThrottlingCheckBox.Name = "disableThrottlingCheckBox";
-            this.disableThrottlingCheckBox.Size = new System.Drawing.Size(156, 17);
-            this.disableThrottlingCheckBox.TabIndex = 2;
-            this.disableThrottlingCheckBox.Text = "Disable send throttling";
-            this.disableThrottlingCheckBox.UseVisualStyleBackColor = true;
-            this.disableThrottlingCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
-            // 
-            // force60HzCheckBox
-            // 
-            this.force60HzCheckBox.AutoSize = true;
-            this.force60HzCheckBox.Checked = global::ALVR.Properties.Settings.Default.force60Hz;
-            this.force60HzCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "force60Hz", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.force60HzCheckBox.Location = new System.Drawing.Point(543, 134);
-            this.force60HzCheckBox.Margin = new System.Windows.Forms.Padding(4);
-            this.force60HzCheckBox.Name = "force60HzCheckBox";
-            this.force60HzCheckBox.Size = new System.Drawing.Size(89, 17);
-            this.force60HzCheckBox.TabIndex = 2;
-            this.force60HzCheckBox.Text = "Force 60Hz";
-            this.force60HzCheckBox.UseVisualStyleBackColor = true;
-            this.force60HzCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
-            // 
-            // suppressFrameDropCheckBox
-            // 
-            this.suppressFrameDropCheckBox.AutoSize = true;
-            this.suppressFrameDropCheckBox.Checked = global::ALVR.Properties.Settings.Default.suppressFrameDrop;
-            this.suppressFrameDropCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "suppressFrameDrop", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.suppressFrameDropCheckBox.Location = new System.Drawing.Point(543, 79);
-            this.suppressFrameDropCheckBox.Margin = new System.Windows.Forms.Padding(4);
-            this.suppressFrameDropCheckBox.Name = "suppressFrameDropCheckBox";
-            this.suppressFrameDropCheckBox.Size = new System.Drawing.Size(149, 17);
-            this.suppressFrameDropCheckBox.TabIndex = 2;
-            this.suppressFrameDropCheckBox.Text = "Suppress frame drop";
-            this.suppressFrameDropCheckBox.UseVisualStyleBackColor = true;
-            this.suppressFrameDropCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
-            // 
-            // onlySteamVRCheckBox
-            // 
-            this.onlySteamVRCheckBox.AutoSize = true;
-            this.onlySteamVRCheckBox.Checked = global::ALVR.Properties.Settings.Default.onlySteamVR;
-            this.onlySteamVRCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "onlySteamVR", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.onlySteamVRCheckBox.Location = new System.Drawing.Point(543, 21);
-            this.onlySteamVRCheckBox.Margin = new System.Windows.Forms.Padding(4);
-            this.onlySteamVRCheckBox.Name = "onlySteamVRCheckBox";
-            this.onlySteamVRCheckBox.Size = new System.Drawing.Size(237, 17);
-            this.onlySteamVRCheckBox.TabIndex = 2;
-            this.onlySteamVRCheckBox.Text = "Launch only SteamVR without Steam.";
-            this.onlySteamVRCheckBox.UseVisualStyleBackColor = true;
             // 
             // debugTab
             // 
@@ -1287,32 +1141,6 @@
             this.captureLayerDDSButton.Text = "Capture Layer";
             this.captureLayerDDSButton.Click += new System.EventHandler(this.captureLayerDDSButton_Click);
             // 
-            // debugCaptureOutputCheckBox
-            // 
-            this.debugCaptureOutputCheckBox.AutoSize = true;
-            this.debugCaptureOutputCheckBox.Checked = global::ALVR.Properties.Settings.Default.debugCaptureOutput;
-            this.debugCaptureOutputCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "debugCaptureOutput", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.debugCaptureOutputCheckBox.Location = new System.Drawing.Point(9, 278);
-            this.debugCaptureOutputCheckBox.Margin = new System.Windows.Forms.Padding(4);
-            this.debugCaptureOutputCheckBox.Name = "debugCaptureOutputCheckBox";
-            this.debugCaptureOutputCheckBox.Size = new System.Drawing.Size(149, 17);
-            this.debugCaptureOutputCheckBox.TabIndex = 9;
-            this.debugCaptureOutputCheckBox.Text = "DebugCaptureOutput";
-            this.debugCaptureOutputCheckBox.UseVisualStyleBackColor = true;
-            // 
-            // debugLogCheckBox
-            // 
-            this.debugLogCheckBox.AutoSize = true;
-            this.debugLogCheckBox.Checked = global::ALVR.Properties.Settings.Default.debugLog;
-            this.debugLogCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "debugLog", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.debugLogCheckBox.Location = new System.Drawing.Point(9, 236);
-            this.debugLogCheckBox.Margin = new System.Windows.Forms.Padding(4);
-            this.debugLogCheckBox.Name = "debugLogCheckBox";
-            this.debugLogCheckBox.Size = new System.Drawing.Size(85, 17);
-            this.debugLogCheckBox.TabIndex = 9;
-            this.debugLogCheckBox.Text = "DebugLog";
-            this.debugLogCheckBox.UseVisualStyleBackColor = true;
-            // 
             // aboutTab
             // 
             this.aboutTab.Controls.Add(this.driverLabel);
@@ -1475,14 +1303,256 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // metroLabel20
+            // metroLabel21
             // 
-            this.metroLabel20.AutoSize = true;
-            this.metroLabel20.Location = new System.Drawing.Point(58, 271);
-            this.metroLabel20.Name = "metroLabel20";
-            this.metroLabel20.Size = new System.Drawing.Size(180, 20);
-            this.metroLabel20.TabIndex = 7;
-            this.metroLabel20.Text = "Requires Cable audio driver";
+            this.metroLabel21.AutoSize = true;
+            this.metroLabel21.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel21.Location = new System.Drawing.Point(33, 353);
+            this.metroLabel21.Name = "metroLabel21";
+            this.metroLabel21.Size = new System.Drawing.Size(206, 25);
+            this.metroLabel21.TabIndex = 11;
+            this.metroLabel21.Text = "Fixed Fovead Rendering";
+            this.metroLabel21.Click += new System.EventHandler(this.metroLabel21_Click);
+            // 
+            // ffrMeanLabel
+            // 
+            this.ffrMeanLabel.AutoSize = true;
+            this.ffrMeanLabel.Location = new System.Drawing.Point(188, 391);
+            this.ffrMeanLabel.Name = "ffrMeanLabel";
+            this.ffrMeanLabel.Size = new System.Drawing.Size(153, 20);
+            this.ffrMeanLabel.TabIndex = 13;
+            this.ffrMeanLabel.Text = "foveationStrengthMean";
+            // 
+            // label4
+            // 
+            this.label4.BackColor = System.Drawing.Color.DarkGray;
+            this.label4.Location = new System.Drawing.Point(38, 339);
+            this.label4.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(800, 1);
+            this.label4.TabIndex = 14;
+            // 
+            // metroLabel22
+            // 
+            this.metroLabel22.AutoSize = true;
+            this.metroLabel22.Location = new System.Drawing.Point(498, 391);
+            this.metroLabel22.Name = "metroLabel22";
+            this.metroLabel22.Size = new System.Drawing.Size(134, 20);
+            this.metroLabel22.TabIndex = 15;
+            this.metroLabel22.Text = "foveationShapeRatio";
+            // 
+            // ffrRatioBox
+            // 
+            this.ffrRatioBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "foveationShapeRatio", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.ffrRatioBox.Location = new System.Drawing.Point(670, 391);
+            this.ffrRatioBox.Name = "ffrRatioBox";
+            this.ffrRatioBox.Size = new System.Drawing.Size(75, 23);
+            this.ffrRatioBox.TabIndex = 12;
+            this.ffrRatioBox.Text = global::ALVR.Properties.Settings.Default.foveationShapeRatio;
+            // 
+            // ffrMeanBox
+            // 
+            this.ffrMeanBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "foveationStrengthMean", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.ffrMeanBox.Location = new System.Drawing.Point(383, 391);
+            this.ffrMeanBox.Name = "ffrMeanBox";
+            this.ffrMeanBox.Size = new System.Drawing.Size(75, 23);
+            this.ffrMeanBox.TabIndex = 10;
+            this.ffrMeanBox.Text = global::ALVR.Properties.Settings.Default.foveationStrengthMean;
+            this.ffrMeanBox.Click += new System.EventHandler(this.ffrMeanBox_Click);
+            // 
+            // bufferTrackBar
+            // 
+            this.bufferTrackBar.BackColor = System.Drawing.Color.Transparent;
+            this.bufferTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bufferSize", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.bufferTrackBar.Location = new System.Drawing.Point(247, 270);
+            this.bufferTrackBar.Margin = new System.Windows.Forms.Padding(4);
+            this.bufferTrackBar.Name = "bufferTrackBar";
+            this.bufferTrackBar.Size = new System.Drawing.Size(491, 31);
+            this.bufferTrackBar.TabIndex = 2;
+            this.bufferTrackBar.Text = "metroTrackBar1";
+            this.bufferTrackBar.Value = global::ALVR.Properties.Settings.Default.bufferSize;
+            this.bufferTrackBar.ValueChanged += new System.EventHandler(this.bufferTrackBar_ValueChanged);
+            // 
+            // bitrateTrackBar
+            // 
+            this.bitrateTrackBar.BackColor = System.Drawing.Color.Transparent;
+            this.bitrateTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bitrate", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.bitrateTrackBar.Location = new System.Drawing.Point(247, 100);
+            this.bitrateTrackBar.Margin = new System.Windows.Forms.Padding(4);
+            this.bitrateTrackBar.Maximum = 250;
+            this.bitrateTrackBar.Minimum = 1;
+            this.bitrateTrackBar.Name = "bitrateTrackBar";
+            this.bitrateTrackBar.Size = new System.Drawing.Size(491, 31);
+            this.bitrateTrackBar.TabIndex = 2;
+            this.bitrateTrackBar.Text = "metroTrackBar1";
+            this.bitrateTrackBar.Value = global::ALVR.Properties.Settings.Default.bitrate;
+            this.bitrateTrackBar.ValueChanged += new System.EventHandler(this.bitrateTrackBar_ValueChanged);
+            // 
+            // defaultSoundDeviceCheckBox
+            // 
+            this.defaultSoundDeviceCheckBox.AutoSize = true;
+            this.defaultSoundDeviceCheckBox.Checked = global::ALVR.Properties.Settings.Default.useDefaultSoundDevice;
+            this.defaultSoundDeviceCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.defaultSoundDeviceCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useDefaultSoundDevice", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.defaultSoundDeviceCheckBox.Location = new System.Drawing.Point(71, 102);
+            this.defaultSoundDeviceCheckBox.Margin = new System.Windows.Forms.Padding(4);
+            this.defaultSoundDeviceCheckBox.Name = "defaultSoundDeviceCheckBox";
+            this.defaultSoundDeviceCheckBox.Size = new System.Drawing.Size(131, 17);
+            this.defaultSoundDeviceCheckBox.TabIndex = 2;
+            this.defaultSoundDeviceCheckBox.Text = "Use default device";
+            this.defaultSoundDeviceCheckBox.UseVisualStyleBackColor = true;
+            this.defaultSoundDeviceCheckBox.CheckedChanged += new System.EventHandler(this.defaultSoundDeviceCheckBox_CheckedChanged);
+            // 
+            // streamMic
+            // 
+            this.streamMic.AutoSize = true;
+            this.streamMic.Checked = global::ALVR.Properties.Settings.Default.streamMic;
+            this.streamMic.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "streamMic", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.streamMic.Location = new System.Drawing.Point(40, 237);
+            this.streamMic.Margin = new System.Windows.Forms.Padding(4);
+            this.streamMic.Name = "streamMic";
+            this.streamMic.Size = new System.Drawing.Size(178, 17);
+            this.streamMic.TabIndex = 5;
+            this.streamMic.Text = "Stream Quest Microphone";
+            this.streamMic.UseVisualStyleBackColor = true;
+            this.streamMic.CheckedChanged += new System.EventHandler(this.metroCheckBox4_CheckedChanged);
+            // 
+            // soundCheckBox
+            // 
+            this.soundCheckBox.AutoSize = true;
+            this.soundCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableSound;
+            this.soundCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.soundCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableSound", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.soundCheckBox.Location = new System.Drawing.Point(40, 47);
+            this.soundCheckBox.Margin = new System.Windows.Forms.Padding(4);
+            this.soundCheckBox.Name = "soundCheckBox";
+            this.soundCheckBox.Size = new System.Drawing.Size(100, 17);
+            this.soundCheckBox.TabIndex = 2;
+            this.soundCheckBox.Text = "Steam sound";
+            this.soundCheckBox.UseVisualStyleBackColor = true;
+            this.soundCheckBox.CheckedChanged += new System.EventHandler(this.soundCheckBox_CheckedChanged);
+            // 
+            // suppressFrameDropCheckBox
+            // 
+            this.suppressFrameDropCheckBox.AutoSize = true;
+            this.suppressFrameDropCheckBox.Checked = global::ALVR.Properties.Settings.Default.suppressFrameDrop;
+            this.suppressFrameDropCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "suppressFrameDrop", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.suppressFrameDropCheckBox.Location = new System.Drawing.Point(543, 79);
+            this.suppressFrameDropCheckBox.Margin = new System.Windows.Forms.Padding(4);
+            this.suppressFrameDropCheckBox.Name = "suppressFrameDropCheckBox";
+            this.suppressFrameDropCheckBox.Size = new System.Drawing.Size(149, 17);
+            this.suppressFrameDropCheckBox.TabIndex = 2;
+            this.suppressFrameDropCheckBox.Text = "Suppress frame drop";
+            this.suppressFrameDropCheckBox.UseVisualStyleBackColor = true;
+            this.suppressFrameDropCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
+            // 
+            // disableThrottlingCheckBox
+            // 
+            this.disableThrottlingCheckBox.AutoSize = true;
+            this.disableThrottlingCheckBox.Checked = global::ALVR.Properties.Settings.Default.disableThrottling;
+            this.disableThrottlingCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "disableThrottling", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.disableThrottlingCheckBox.Location = new System.Drawing.Point(543, 185);
+            this.disableThrottlingCheckBox.Margin = new System.Windows.Forms.Padding(4);
+            this.disableThrottlingCheckBox.Name = "disableThrottlingCheckBox";
+            this.disableThrottlingCheckBox.Size = new System.Drawing.Size(156, 17);
+            this.disableThrottlingCheckBox.TabIndex = 2;
+            this.disableThrottlingCheckBox.Text = "Disable send throttling";
+            this.disableThrottlingCheckBox.UseVisualStyleBackColor = true;
+            this.disableThrottlingCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
+            // 
+            // controllerPoseOffset
+            // 
+            this.controllerPoseOffset.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "controllerPoseOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.controllerPoseOffset.Location = new System.Drawing.Point(249, 33);
+            this.controllerPoseOffset.Margin = new System.Windows.Forms.Padding(4);
+            this.controllerPoseOffset.Name = "controllerPoseOffset";
+            this.controllerPoseOffset.Size = new System.Drawing.Size(69, 23);
+            this.controllerPoseOffset.TabIndex = 21;
+            this.controllerPoseOffset.Text = global::ALVR.Properties.Settings.Default.controllerPoseOffset;
+            this.controllerPoseOffset.Click += new System.EventHandler(this.controllerPoseOffset_Click);
+            // 
+            // trackingFrameOffsetTextBox
+            // 
+            this.trackingFrameOffsetTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "trackingFrameOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.trackingFrameOffsetTextBox.Location = new System.Drawing.Point(257, 330);
+            this.trackingFrameOffsetTextBox.Margin = new System.Windows.Forms.Padding(4);
+            this.trackingFrameOffsetTextBox.Name = "trackingFrameOffsetTextBox";
+            this.trackingFrameOffsetTextBox.Size = new System.Drawing.Size(115, 31);
+            this.trackingFrameOffsetTextBox.TabIndex = 19;
+            this.trackingFrameOffsetTextBox.Text = global::ALVR.Properties.Settings.Default.trackingFrameOffset;
+            // 
+            // disconnectCommandTextBox
+            // 
+            this.disconnectCommandTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "disconnectCommand", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.disconnectCommandTextBox.Location = new System.Drawing.Point(181, 271);
+            this.disconnectCommandTextBox.Margin = new System.Windows.Forms.Padding(4);
+            this.disconnectCommandTextBox.Name = "disconnectCommandTextBox";
+            this.disconnectCommandTextBox.Size = new System.Drawing.Size(511, 31);
+            this.disconnectCommandTextBox.TabIndex = 15;
+            this.disconnectCommandTextBox.Text = global::ALVR.Properties.Settings.Default.disconnectCommand;
+            // 
+            // connectCommandTextBox
+            // 
+            this.connectCommandTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "connectCommand", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.connectCommandTextBox.Location = new System.Drawing.Point(181, 233);
+            this.connectCommandTextBox.Margin = new System.Windows.Forms.Padding(4);
+            this.connectCommandTextBox.Name = "connectCommandTextBox";
+            this.connectCommandTextBox.Size = new System.Drawing.Size(511, 31);
+            this.connectCommandTextBox.TabIndex = 15;
+            this.connectCommandTextBox.Text = global::ALVR.Properties.Settings.Default.connectCommand;
+            // 
+            // force60HzCheckBox
+            // 
+            this.force60HzCheckBox.AutoSize = true;
+            this.force60HzCheckBox.Checked = global::ALVR.Properties.Settings.Default.force60Hz;
+            this.force60HzCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "force60Hz", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.force60HzCheckBox.Location = new System.Drawing.Point(543, 134);
+            this.force60HzCheckBox.Margin = new System.Windows.Forms.Padding(4);
+            this.force60HzCheckBox.Name = "force60HzCheckBox";
+            this.force60HzCheckBox.Size = new System.Drawing.Size(89, 17);
+            this.force60HzCheckBox.TabIndex = 2;
+            this.force60HzCheckBox.Text = "Force 60Hz";
+            this.force60HzCheckBox.UseVisualStyleBackColor = true;
+            this.force60HzCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
+            // 
+            // onlySteamVRCheckBox
+            // 
+            this.onlySteamVRCheckBox.AutoSize = true;
+            this.onlySteamVRCheckBox.Checked = global::ALVR.Properties.Settings.Default.onlySteamVR;
+            this.onlySteamVRCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "onlySteamVR", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.onlySteamVRCheckBox.Location = new System.Drawing.Point(543, 21);
+            this.onlySteamVRCheckBox.Margin = new System.Windows.Forms.Padding(4);
+            this.onlySteamVRCheckBox.Name = "onlySteamVRCheckBox";
+            this.onlySteamVRCheckBox.Size = new System.Drawing.Size(237, 17);
+            this.onlySteamVRCheckBox.TabIndex = 2;
+            this.onlySteamVRCheckBox.Text = "Launch only SteamVR without Steam.";
+            this.onlySteamVRCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // debugCaptureOutputCheckBox
+            // 
+            this.debugCaptureOutputCheckBox.AutoSize = true;
+            this.debugCaptureOutputCheckBox.Checked = global::ALVR.Properties.Settings.Default.debugCaptureOutput;
+            this.debugCaptureOutputCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "debugCaptureOutput", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.debugCaptureOutputCheckBox.Location = new System.Drawing.Point(9, 278);
+            this.debugCaptureOutputCheckBox.Margin = new System.Windows.Forms.Padding(4);
+            this.debugCaptureOutputCheckBox.Name = "debugCaptureOutputCheckBox";
+            this.debugCaptureOutputCheckBox.Size = new System.Drawing.Size(149, 17);
+            this.debugCaptureOutputCheckBox.TabIndex = 9;
+            this.debugCaptureOutputCheckBox.Text = "DebugCaptureOutput";
+            this.debugCaptureOutputCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // debugLogCheckBox
+            // 
+            this.debugLogCheckBox.AutoSize = true;
+            this.debugLogCheckBox.Checked = global::ALVR.Properties.Settings.Default.debugLog;
+            this.debugLogCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "debugLog", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.debugLogCheckBox.Location = new System.Drawing.Point(9, 236);
+            this.debugLogCheckBox.Margin = new System.Windows.Forms.Padding(4);
+            this.debugLogCheckBox.Name = "debugLogCheckBox";
+            this.debugLogCheckBox.Size = new System.Drawing.Size(85, 17);
+            this.debugLogCheckBox.TabIndex = 9;
+            this.debugLogCheckBox.Text = "DebugLog";
+            this.debugLogCheckBox.UseVisualStyleBackColor = true;
             // 
             // Launcher
             // 
@@ -1510,10 +1580,10 @@
             this.connectedPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).EndInit();
             this.messagePanel.ResumeLayout(false);
-            this.soundTab.ResumeLayout(false);
-            this.soundTab.PerformLayout();
             this.videoTab.ResumeLayout(false);
             this.videoTab.PerformLayout();
+            this.soundTab.ResumeLayout(false);
+            this.soundTab.PerformLayout();
             this.otherTab.ResumeLayout(false);
             this.otherTab.PerformLayout();
             this.debugTab.ResumeLayout(false);
@@ -1634,6 +1704,12 @@
         private MetroFramework.Controls.MetroCheckBox streamMic;
         private MetroFramework.Controls.MetroLink metroLink1;
         private MetroFramework.Controls.MetroLabel metroLabel20;
+        private MetroFramework.Controls.MetroLabel metroLabel21;
+        private MetroFramework.Controls.MetroTextBox ffrMeanBox;
+        private MetroFramework.Controls.MetroTextBox ffrRatioBox;
+        private MetroFramework.Controls.MetroLabel metroLabel22;
+        private System.Windows.Forms.Label label4;
+        private MetroFramework.Controls.MetroLabel ffrMeanLabel;
     }
 }
 

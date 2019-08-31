@@ -393,5 +393,29 @@ namespace ALVR.Properties {
                 this["streamMic"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public string foveationStrengthMean {
+            get {
+                return ((string)(this["foveationStrengthMean"]));
+            }
+            set {
+                this["foveationStrengthMean"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1.5")]
+        public string foveationShapeRatio {
+            get {
+                return ((string)(this["foveationShapeRatio"]));
+            }
+            set {
+                this["foveationShapeRatio"] = value;
+            }
+        }
     }
 }

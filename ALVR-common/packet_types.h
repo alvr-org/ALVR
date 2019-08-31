@@ -163,6 +163,8 @@ struct ConnectionMessage {
 	uint32_t frameQueueSize;
 	uint8_t refreshRate;
 	bool streamMic;
+	float foveationStrengthMean;
+	float foveationShapeRatio;
 };
 struct RecoverConnection {
 	uint32_t type; // ALVR_PACKET_TYPE_RECOVER_CONNECTION

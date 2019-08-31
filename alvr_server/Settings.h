@@ -140,6 +140,8 @@ public:
 	EyeFov m_eyeFov[2];
 	float m_flSecondsFromVsyncToPhotons;
 	float m_flIPD;
+	float m_foveationStrengthMean = 10; // higher value means less detail outside the foveated region
+	float m_foveationShapeRatio = 1.5;  // aspect ratio of the foveated region
 
 	bool m_enableSound;
 	std::string m_soundDevice;

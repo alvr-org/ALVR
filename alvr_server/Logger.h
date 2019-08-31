@@ -3,6 +3,9 @@
 #include <iostream>
 #include <fstream>
 #include "exception.h"
+#include <wrl.h>
+
+#include "Utils.h"
 
 void InitCrashHandler();
 
@@ -15,6 +18,8 @@ void LogException(const wchar_t *format, ...);
 void LogException(const char *format, ...);
 void FatalLog(const wchar_t *format, ...);
 void FatalLog(const char *format, ...);
+void LogHR(const std::wstring &message, HRESULT hr);
+void ThrowHR(const std::wstring &message, HRESULT hr);
 
 Exception MakeException(const wchar_t *format, ...);
 Exception MakeException(const char *format, ...);

@@ -97,7 +97,7 @@ inline std::string AddrPortToStr(const sockaddr_in *addr) {
 	return buf2;
 }
 
-inline bool ReadBinaryResource(std::vector<char> &buffer, int resource) {
+inline bool ReadBinaryResource(std::vector<uint8_t> &buffer, int resource) {
 	HRSRC hResource = FindResource(g_hInstance, MAKEINTRESOURCE(resource), RT_RCDATA);
 	if (hResource == NULL) {
 		return false;

@@ -21,12 +21,15 @@
 
 		void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender, std::shared_ptr<ClientConnection> listener) {
 			m_FrameRender = std::make_shared<FrameRender>(d3dRender);
+			m_FrameRender->Startup();
+			uint32_t encoderWidth, encoderHeight;
+			m_FrameRender->GetEncodingResolution(&encoderWidth, &encoderHeight);
 
 			Exception vceException;
 			Exception nvencException;
 			try {
 				Log(L"Try to use VideoEncoderVCE.");
-				m_videoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, listener);
+				m_videoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, listener, encoderWidth, encoderHeight);
 				m_videoEncoder->Initialize();
 				return;
 			}
@@ -36,7 +39,7 @@
 			try {
 				Log(L"Try to use VideoEncoderNVENC.");
 				m_videoEncoder = std::make_shared<VideoEncoderNVENC>(d3dRender, listener
-					, ShouldUseNV12Texture());
+					, ShouldUseNV12Texture(), encoderWidth, encoderHeight);
 				m_videoEncoder->Initialize();
 				return;
 			}

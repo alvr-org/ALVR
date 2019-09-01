@@ -396,7 +396,7 @@ namespace ALVR.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        [global::System.Configuration.DefaultSettingValueAttribute("2")]
         public string foveationStrengthMean {
             get {
                 return ((string)(this["foveationStrengthMean"]));
@@ -415,6 +415,18 @@ namespace ALVR.Properties {
             }
             set {
                 this["foveationShapeRatio"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool ffrEnabled {
+            get {
+                return ((bool)(this["ffrEnabled"]));
+            }
+            set {
+                this["ffrEnabled"] = value;
             }
         }
     }

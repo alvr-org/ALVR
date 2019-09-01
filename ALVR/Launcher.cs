@@ -115,6 +115,37 @@ namespace ALVR
 
             UpdateServerStatus();
 
+
+
+
+            //add tooltips
+            ToolTip toolTip1 = new ToolTip();
+            toolTip1.AutoPopDelay = 50000;
+            toolTip1.SetToolTip(this.codecHelp, "Used Video codec \n Choose h265 if possible for better visual quality on lower bitrates");
+            toolTip1.SetToolTip(this.bitrateHelp, "Bitrate of video streaming. 30Mbps is recommended. \n Higher bitrates result in better image but also higher latency and network traffic ");
+            toolTip1.SetToolTip(this.resolutionHelp, "100% results in the native 2880x1600 resolution of the Oculus Quest \n " +
+                "Setting the resolution can bring some improvement in visual quality, but is not recommended \n" +
+                " A resolution lower than 100% can reduce latency and network perfomance\n" +
+                " Resolutions below 100% require the codec to be h264 wo work properly");
+
+            toolTip1.SetToolTip(this.bufferHelp, "Buffer size on client side\n 200kB is recommended.If you experience packet loss, enlarge buffer.");
+            toolTip1.SetToolTip(this.ffrHelp, "Technique where the center of the image is rendered in high resolution while the outskirts are rendered in lower resolution\n " +
+                "Results in a much lower video resolution that needs to be transmitted over the network. \n The smaller video at the same bitrate can preserve more details and lowers the latency at the same time \n " +
+                "FFR causes some visual artefacts at the edges of the view that are more or lesse visible depending on the settings and the game");
+
+            toolTip1.SetToolTip(this.ffrStrengthHelp, "Range from 0 - 5\n" +
+                "higher value means less detail outside the foveated region and more artefacts \n" +
+                " 0 = off");
+
+            toolTip1.SetToolTip(this.ffrShapeRatioHelp, "Range from 1.5 to 2 \n Aspect ratio of the foveated region");
+
+
+
+
+
+
+
+
             socket.Update();
 
             timer1.Start();
@@ -193,10 +224,29 @@ namespace ALVR
             c.autoConnectList = clientList.Serialize();
 
             c.codec = codecComboBox.SelectedIndex;
-            c.streamMic = streamMic.Checked;
+       
 
-            c.foveationStrengthMean = ffrMeanBox.Text;
-            c.foveationShapeRatio = ffrRatioBox.Text;
+
+            float ffrMean = Utils.ParseFloat(ffrMeanBox.Text);
+            if(ffrMean > 5)
+            {
+                ffrMeanBox.Text = "5";
+            } else if(ffrMean < 0)
+            {
+                ffrMeanBox.Text = "0";
+            }
+
+            float ffrShape = Utils.ParseFloat(ffrRatioBox.Text);
+            if (ffrShape > 2)
+            {
+                ffrMeanBox.Text = "2";
+            }
+            else if (ffrShape < 1.5)
+            {
+                ffrRatioBox.Text = "1.5";
+            }
+
+           
 
             if (soundDevices.Count > 0)
             {
@@ -834,6 +884,11 @@ namespace ALVR
         private void ffrMeanBox_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void metroCheckBox4_CheckedChanged_1(object sender, EventArgs e)
+        {
+            SaveSettings();
         }
     }
 }

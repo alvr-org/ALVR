@@ -262,7 +262,7 @@
             this.noClientLabel.Size = new System.Drawing.Size(292, 76);
             this.noClientLabel.TabIndex = 10;
             this.noClientLabel.Text = "Headset not found.\r\n\r\nMake sure the client is launched.\r\nOr check the firewall se" +
-    "ttings (permit UDP/9944).";
+    "ttings (permit UDP/9943 and UDP/9944).";
             this.noClientLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // dataGridView1

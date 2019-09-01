@@ -14,7 +14,7 @@ All games that work with a Oculus Rift (s) should work with ALVR
 
 ALVR requires any of the following devices:
 
-- Oculus Quest
+- Oculus Quest (Headset-Version 358570.6090.0 or later)
 
 - High-end gaming PC
     - with NVIDIA GPU which supports NVENC ([Supported GPUs](https://github.com/polygraphene/ALVR/wiki/Supported-GPU))

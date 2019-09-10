@@ -30,6 +30,7 @@ namespace ALVR
         int defaultSoundDeviceIndex = 0;
         bool previousConnectionState = false;
         bool loadingSettings = false;
+        bool initComponents = true;
 
         class ClientTag
         {
@@ -40,7 +41,9 @@ namespace ALVR
         public Launcher()
         {
             clientSocket = new ClientSocket(OnClientMessageStartServer, OnClientConnectionClosed);
+
             InitializeComponent();
+            initComponents = false;
         }
 
         private void Launcher_Load(object sender, EventArgs e)
@@ -221,6 +224,7 @@ namespace ALVR
                 c.resolutionScale = ServerConfig.supportedScales[ServerConfig.DEFAULT_SCALE_INDEX];
 
             }
+                       
 
             c.autoConnectList = clientList.Serialize();
 
@@ -808,7 +812,7 @@ namespace ALVR
 
         private void resolutionComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (loadingSettings)
+            if (loadingSettings || initComponents)
             {
                 return;
             }
@@ -864,6 +868,10 @@ namespace ALVR
 
         private void metroCheckBox4_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings  || initComponents)
+            {
+                return;
+            }
             SaveSettings();
         }
 
@@ -889,6 +897,19 @@ namespace ALVR
 
         private void metroCheckBox4_CheckedChanged_1(object sender, EventArgs e)
         {
+            if (loadingSettings || initComponents)
+            {
+                return;
+            }
+            SaveSettings();
+        }
+
+        private void codecComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (loadingSettings || initComponents)
+            {
+                return;
+            }
             SaveSettings();
         }
     }

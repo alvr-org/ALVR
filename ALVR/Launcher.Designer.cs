@@ -155,6 +155,7 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.metroLabel11 = new MetroFramework.Controls.MetroLabel();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -237,6 +238,7 @@
             // 
             // findingPanel
             // 
+            this.findingPanel.Controls.Add(this.metroLabel11);
             this.findingPanel.Controls.Add(this.noClientLabel);
             this.findingPanel.Controls.Add(this.dataGridView1);
             this.findingPanel.Controls.Add(this.metroProgressSpinner2);
@@ -257,12 +259,12 @@
             // noClientLabel
             // 
             this.noClientLabel.AutoSize = true;
-            this.noClientLabel.Location = new System.Drawing.Point(79, 114);
+            this.noClientLabel.Location = new System.Drawing.Point(115, 101);
             this.noClientLabel.Name = "noClientLabel";
-            this.noClientLabel.Size = new System.Drawing.Size(292, 76);
+            this.noClientLabel.Size = new System.Drawing.Size(211, 95);
             this.noClientLabel.TabIndex = 10;
             this.noClientLabel.Text = "Headset not found.\r\n\r\nMake sure the client is launched.\r\nOr check the firewall se" +
-    "ttings (permit UDP/9943 and UDP/9944).";
+    "ttings\r\n(permit UDP/9943 and UDP/9944).";
             this.noClientLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // dataGridView1
@@ -314,7 +316,7 @@
             this.dataGridView1.RowTemplate.DefaultCellStyle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
             this.dataGridView1.RowTemplate.Height = 40;
             this.dataGridView1.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dataGridView1.Size = new System.Drawing.Size(392, 327);
+            this.dataGridView1.Size = new System.Drawing.Size(392, 274);
             this.dataGridView1.TabIndex = 2;
             this.dataGridView1.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView1_CellContentClick);
             // 
@@ -970,10 +972,10 @@
             // soundDeviceComboBox
             // 
             this.soundDeviceComboBox.FormattingEnabled = true;
-            this.soundDeviceComboBox.ItemHeight = 24;
+            this.soundDeviceComboBox.ItemHeight = 23;
             this.soundDeviceComboBox.Location = new System.Drawing.Point(76, 126);
             this.soundDeviceComboBox.Name = "soundDeviceComboBox";
-            this.soundDeviceComboBox.Size = new System.Drawing.Size(471, 30);
+            this.soundDeviceComboBox.Size = new System.Drawing.Size(471, 29);
             this.soundDeviceComboBox.TabIndex = 3;
             // 
             // streamMic
@@ -1549,6 +1551,15 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
+            // metroLabel11
+            // 
+            this.metroLabel11.AutoSize = true;
+            this.metroLabel11.Location = new System.Drawing.Point(29, 335);
+            this.metroLabel11.Name = "metroLabel11";
+            this.metroLabel11.Size = new System.Drawing.Size(469, 19);
+            this.metroLabel11.TabIndex = 11;
+            this.metroLabel11.Text = "For better performace, use only 5ghz wifi and limit the channel width to 40mhz";
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -1710,6 +1721,7 @@
         private MetroFramework.Controls.MetroLabel ffrHelp;
         private MetroFramework.Controls.MetroLabel ffrStrengthHelp;
         private MetroFramework.Controls.MetroLabel ffrShapeRatioHelp;
+        private MetroFramework.Controls.MetroLabel metroLabel11;
     }
 }
 

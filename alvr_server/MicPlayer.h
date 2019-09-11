@@ -9,7 +9,7 @@
 /*
  * some good values for block size and count
  */
-#define BLOCK_SIZE 1024
+#define BLOCK_SIZE 4096
 #define BLOCK_COUNT 20
 
 

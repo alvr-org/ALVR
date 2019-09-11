@@ -194,9 +194,10 @@ namespace ALVR
                 driverConfig.frameQueueSize = GetFrameQueueSize(c.suppressFrameDrop);
 
                 driverConfig.force60HZ = c.force60Hz;
+                      
+                driverConfig.disableController = c.disableController;
 
-                driverConfig.enableController = c.enableController;
-                if(device != null && device.HasTouchController)
+                if (device != null && device.HasTouchController)
                 {
                     driverConfig.controllerTrackingSystemName = "oculus";
                     driverConfig.controllerManufacturerName = "Oculus";

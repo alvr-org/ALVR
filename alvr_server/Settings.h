@@ -67,7 +67,7 @@ static const char * const k_pch_Settings_ControllerLegacyInputProfile_String = "
 static const char * const k_pch_Settings_ControllerInputProfilePath_String = "controllerInputProfilePath";
 
 
-static const char * const k_pch_Settings_EnableController_Bool = "enableController";
+static const char * const k_pch_Settings_DisableController_Bool = "disableController";
 static const char * const k_pch_Settings_ControllerTriggerMode_Int32 = "controllerTriggerMode";
 static const char * const k_pch_Settings_ControllerTrackpadClickMode_Int32 = "controllerTrackpadClickMode";
 static const char * const k_pch_Settings_ControllerTrackpadTouchMode_Int32 = "controllerTrackpadTouchMode";
@@ -193,7 +193,7 @@ public:
 	std::string mControllerRegisteredDeviceType;
 	std::string m_controllerLegacyInputProfile;
 	std::string m_controllerInputProfilePath;
-	bool m_enableController;
+	bool m_disableController;
 	int32_t m_controllerTriggerMode;
 	int32_t m_controllerTrackpadClickMode;
 	int32_t m_controllerTrackpadTouchMode;

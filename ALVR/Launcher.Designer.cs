@@ -63,6 +63,13 @@
             this.messagePanel = new MetroFramework.Controls.MetroPanel();
             this.messageLabel = new MetroFramework.Controls.MetroLabel();
             this.videoTab = new MetroFramework.Controls.MetroTabPage();
+            this.ffrShapeRatioHelp = new MetroFramework.Controls.MetroLabel();
+            this.ffrStrengthHelp = new MetroFramework.Controls.MetroLabel();
+            this.ffrHelp = new MetroFramework.Controls.MetroLabel();
+            this.bufferHelp = new MetroFramework.Controls.MetroLabel();
+            this.resolutionHelp = new MetroFramework.Controls.MetroLabel();
+            this.bitrateHelp = new MetroFramework.Controls.MetroLabel();
+            this.codecHelp = new MetroFramework.Controls.MetroLabel();
             this.metroLabel22 = new MetroFramework.Controls.MetroLabel();
             this.label4 = new System.Windows.Forms.Label();
             this.ffrMeanLabel = new MetroFramework.Controls.MetroLabel();
@@ -130,6 +137,7 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.metroCheckBox4 = new MetroFramework.Controls.MetroCheckBox();
             this.ffrEnableCheckbox = new MetroFramework.Controls.MetroCheckBox();
             this.ffrRatioBox = new MetroFramework.Controls.MetroTextBox();
             this.ffrMeanBox = new MetroFramework.Controls.MetroTextBox();
@@ -148,13 +156,6 @@
             this.onlySteamVRCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.debugCaptureOutputCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.debugLogCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.codecHelp = new MetroFramework.Controls.MetroLabel();
-            this.bitrateHelp = new MetroFramework.Controls.MetroLabel();
-            this.resolutionHelp = new MetroFramework.Controls.MetroLabel();
-            this.bufferHelp = new MetroFramework.Controls.MetroLabel();
-            this.ffrHelp = new MetroFramework.Controls.MetroLabel();
-            this.ffrStrengthHelp = new MetroFramework.Controls.MetroLabel();
-            this.ffrShapeRatioHelp = new MetroFramework.Controls.MetroLabel();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -217,7 +218,7 @@
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 68);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 1;
+            this.metroTabControl1.SelectedIndex = 3;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 429);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -404,7 +405,7 @@
             this.autoConnectCheckBox.AutoSize = true;
             this.autoConnectCheckBox.Location = new System.Drawing.Point(73, 221);
             this.autoConnectCheckBox.Name = "autoConnectCheckBox";
-            this.autoConnectCheckBox.Size = new System.Drawing.Size(147, 15);
+            this.autoConnectCheckBox.Size = new System.Drawing.Size(148, 15);
             this.autoConnectCheckBox.TabIndex = 13;
             this.autoConnectCheckBox.Text = "Auto connect next time";
             this.autoConnectCheckBox.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -528,13 +529,10 @@
             this.videoTab.Controls.Add(this.resolutionHelp);
             this.videoTab.Controls.Add(this.bitrateHelp);
             this.videoTab.Controls.Add(this.codecHelp);
-            this.videoTab.Controls.Add(this.ffrEnableCheckbox);
             this.videoTab.Controls.Add(this.metroLabel22);
             this.videoTab.Controls.Add(this.label4);
             this.videoTab.Controls.Add(this.ffrMeanLabel);
-            this.videoTab.Controls.Add(this.ffrRatioBox);
             this.videoTab.Controls.Add(this.metroLabel21);
-            this.videoTab.Controls.Add(this.ffrMeanBox);
             this.videoTab.Controls.Add(this.label3);
             this.videoTab.Controls.Add(this.label2);
             this.videoTab.Controls.Add(this.label1);
@@ -552,6 +550,9 @@
             this.videoTab.Controls.Add(this.metroLabel10);
             this.videoTab.Controls.Add(this.metroLabel31);
             this.videoTab.Controls.Add(this.metroLabel7);
+            this.videoTab.Controls.Add(this.ffrEnableCheckbox);
+            this.videoTab.Controls.Add(this.ffrRatioBox);
+            this.videoTab.Controls.Add(this.ffrMeanBox);
             this.videoTab.Controls.Add(this.bufferTrackBar);
             this.videoTab.Controls.Add(this.bitrateTrackBar);
             this.videoTab.HorizontalScrollbarBarColor = true;
@@ -563,6 +564,90 @@
             this.videoTab.Text = "Video";
             this.videoTab.VerticalScrollbarBarColor = true;
             this.videoTab.Click += new System.EventHandler(this.videoTab_Click);
+            // 
+            // ffrShapeRatioHelp
+            // 
+            this.ffrShapeRatioHelp.AutoSize = true;
+            this.ffrShapeRatioHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.ffrShapeRatioHelp.Location = new System.Drawing.Point(512, 312);
+            this.ffrShapeRatioHelp.Name = "ffrShapeRatioHelp";
+            this.ffrShapeRatioHelp.Size = new System.Drawing.Size(15, 19);
+            this.ffrShapeRatioHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.ffrShapeRatioHelp.TabIndex = 23;
+            this.ffrShapeRatioHelp.Text = "?";
+            this.ffrShapeRatioHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // ffrStrengthHelp
+            // 
+            this.ffrStrengthHelp.AutoSize = true;
+            this.ffrStrengthHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.ffrStrengthHelp.Location = new System.Drawing.Point(281, 314);
+            this.ffrStrengthHelp.Name = "ffrStrengthHelp";
+            this.ffrStrengthHelp.Size = new System.Drawing.Size(15, 19);
+            this.ffrStrengthHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.ffrStrengthHelp.TabIndex = 22;
+            this.ffrStrengthHelp.Text = "?";
+            this.ffrStrengthHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // ffrHelp
+            // 
+            this.ffrHelp.AutoSize = true;
+            this.ffrHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.ffrHelp.Location = new System.Drawing.Point(211, 287);
+            this.ffrHelp.Name = "ffrHelp";
+            this.ffrHelp.Size = new System.Drawing.Size(15, 19);
+            this.ffrHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.ffrHelp.TabIndex = 21;
+            this.ffrHelp.Text = "?";
+            this.ffrHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // bufferHelp
+            // 
+            this.bufferHelp.AutoSize = true;
+            this.bufferHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.bufferHelp.Location = new System.Drawing.Point(108, 199);
+            this.bufferHelp.Name = "bufferHelp";
+            this.bufferHelp.Size = new System.Drawing.Size(15, 19);
+            this.bufferHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.bufferHelp.TabIndex = 20;
+            this.bufferHelp.Text = "?";
+            this.bufferHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // resolutionHelp
+            // 
+            this.resolutionHelp.AutoSize = true;
+            this.resolutionHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.resolutionHelp.Location = new System.Drawing.Point(156, 151);
+            this.resolutionHelp.Name = "resolutionHelp";
+            this.resolutionHelp.Size = new System.Drawing.Size(15, 19);
+            this.resolutionHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.resolutionHelp.TabIndex = 19;
+            this.resolutionHelp.Text = "?";
+            this.resolutionHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // bitrateHelp
+            // 
+            this.bitrateHelp.AutoSize = true;
+            this.bitrateHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.bitrateHelp.Location = new System.Drawing.Point(77, 74);
+            this.bitrateHelp.Name = "bitrateHelp";
+            this.bitrateHelp.Size = new System.Drawing.Size(15, 19);
+            this.bitrateHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.bitrateHelp.TabIndex = 18;
+            this.bitrateHelp.Text = "?";
+            this.bitrateHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // codecHelp
+            // 
+            this.codecHelp.AutoSize = true;
+            this.codecHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.codecHelp.Location = new System.Drawing.Point(77, 17);
+            this.codecHelp.Name = "codecHelp";
+            this.codecHelp.Size = new System.Drawing.Size(15, 19);
+            this.codecHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.codecHelp.TabIndex = 17;
+            this.codecHelp.Text = "?";
+            this.codecHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // metroLabel22
             // 
@@ -832,6 +917,7 @@
             // 
             // otherTab
             // 
+            this.otherTab.Controls.Add(this.metroCheckBox4);
             this.otherTab.Controls.Add(this.metroButton1);
             this.otherTab.Controls.Add(this.metroLabel12);
             this.otherTab.Controls.Add(this.metroLabel30);
@@ -1005,7 +1091,7 @@
             this.metroCheckBox3.AutoSize = true;
             this.metroCheckBox3.Location = new System.Drawing.Point(281, 226);
             this.metroCheckBox3.Name = "metroCheckBox3";
-            this.metroCheckBox3.Size = new System.Drawing.Size(56, 15);
+            this.metroCheckBox3.Size = new System.Drawing.Size(57, 15);
             this.metroCheckBox3.TabIndex = 9;
             this.metroCheckBox3.Text = "Mutex";
             this.metroCheckBox3.UseVisualStyleBackColor = true;
@@ -1027,7 +1113,7 @@
             this.metroCheckBox1.AutoSize = true;
             this.metroCheckBox1.Location = new System.Drawing.Point(156, 192);
             this.metroCheckBox1.Name = "metroCheckBox1";
-            this.metroCheckBox1.Size = new System.Drawing.Size(119, 15);
+            this.metroCheckBox1.Size = new System.Drawing.Size(120, 15);
             this.metroCheckBox1.TabIndex = 9;
             this.metroCheckBox1.Text = "DebugFrameIndex";
             this.metroCheckBox1.UseVisualStyleBackColor = true;
@@ -1250,6 +1336,18 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
+            // metroCheckBox4
+            // 
+            this.metroCheckBox4.AutoSize = true;
+            this.metroCheckBox4.Checked = global::ALVR.Properties.Settings.Default.force3DOF;
+            this.metroCheckBox4.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "force3DOF", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.metroCheckBox4.Location = new System.Drawing.Point(407, 117);
+            this.metroCheckBox4.Name = "metroCheckBox4";
+            this.metroCheckBox4.Size = new System.Drawing.Size(84, 15);
+            this.metroCheckBox4.TabIndex = 23;
+            this.metroCheckBox4.Text = "Force 3DOF";
+            this.metroCheckBox4.UseVisualStyleBackColor = true;
+            // 
             // ffrEnableCheckbox
             // 
             this.ffrEnableCheckbox.AutoSize = true;
@@ -1357,7 +1455,7 @@
             this.force60HzCheckBox.AutoSize = true;
             this.force60HzCheckBox.Checked = global::ALVR.Properties.Settings.Default.force60Hz;
             this.force60HzCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "force60Hz", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.force60HzCheckBox.Location = new System.Drawing.Point(407, 109);
+            this.force60HzCheckBox.Location = new System.Drawing.Point(407, 86);
             this.force60HzCheckBox.Name = "force60HzCheckBox";
             this.force60HzCheckBox.Size = new System.Drawing.Size(81, 15);
             this.force60HzCheckBox.TabIndex = 2;
@@ -1383,7 +1481,7 @@
             this.suppressFrameDropCheckBox.AutoSize = true;
             this.suppressFrameDropCheckBox.Checked = global::ALVR.Properties.Settings.Default.suppressFrameDrop;
             this.suppressFrameDropCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "suppressFrameDrop", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.suppressFrameDropCheckBox.Location = new System.Drawing.Point(407, 64);
+            this.suppressFrameDropCheckBox.Location = new System.Drawing.Point(407, 51);
             this.suppressFrameDropCheckBox.Name = "suppressFrameDropCheckBox";
             this.suppressFrameDropCheckBox.Size = new System.Drawing.Size(132, 15);
             this.suppressFrameDropCheckBox.TabIndex = 2;
@@ -1463,90 +1561,6 @@
             this.debugLogCheckBox.TabIndex = 9;
             this.debugLogCheckBox.Text = "DebugLog";
             this.debugLogCheckBox.UseVisualStyleBackColor = true;
-            // 
-            // codecHelp
-            // 
-            this.codecHelp.AutoSize = true;
-            this.codecHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.codecHelp.Location = new System.Drawing.Point(77, 17);
-            this.codecHelp.Name = "codecHelp";
-            this.codecHelp.Size = new System.Drawing.Size(15, 19);
-            this.codecHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.codecHelp.TabIndex = 17;
-            this.codecHelp.Text = "?";
-            this.codecHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // bitrateHelp
-            // 
-            this.bitrateHelp.AutoSize = true;
-            this.bitrateHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.bitrateHelp.Location = new System.Drawing.Point(77, 74);
-            this.bitrateHelp.Name = "bitrateHelp";
-            this.bitrateHelp.Size = new System.Drawing.Size(15, 19);
-            this.bitrateHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.bitrateHelp.TabIndex = 18;
-            this.bitrateHelp.Text = "?";
-            this.bitrateHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // resolutionHelp
-            // 
-            this.resolutionHelp.AutoSize = true;
-            this.resolutionHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.resolutionHelp.Location = new System.Drawing.Point(156, 151);
-            this.resolutionHelp.Name = "resolutionHelp";
-            this.resolutionHelp.Size = new System.Drawing.Size(15, 19);
-            this.resolutionHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.resolutionHelp.TabIndex = 19;
-            this.resolutionHelp.Text = "?";
-            this.resolutionHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // bufferHelp
-            // 
-            this.bufferHelp.AutoSize = true;
-            this.bufferHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.bufferHelp.Location = new System.Drawing.Point(108, 199);
-            this.bufferHelp.Name = "bufferHelp";
-            this.bufferHelp.Size = new System.Drawing.Size(15, 19);
-            this.bufferHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.bufferHelp.TabIndex = 20;
-            this.bufferHelp.Text = "?";
-            this.bufferHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // ffrHelp
-            // 
-            this.ffrHelp.AutoSize = true;
-            this.ffrHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.ffrHelp.Location = new System.Drawing.Point(211, 287);
-            this.ffrHelp.Name = "ffrHelp";
-            this.ffrHelp.Size = new System.Drawing.Size(15, 19);
-            this.ffrHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.ffrHelp.TabIndex = 21;
-            this.ffrHelp.Text = "?";
-            this.ffrHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // ffrStrengthHelp
-            // 
-            this.ffrStrengthHelp.AutoSize = true;
-            this.ffrStrengthHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.ffrStrengthHelp.Location = new System.Drawing.Point(281, 314);
-            this.ffrStrengthHelp.Name = "ffrStrengthHelp";
-            this.ffrStrengthHelp.Size = new System.Drawing.Size(15, 19);
-            this.ffrStrengthHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.ffrStrengthHelp.TabIndex = 22;
-            this.ffrStrengthHelp.Text = "?";
-            this.ffrStrengthHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // ffrShapeRatioHelp
-            // 
-            this.ffrShapeRatioHelp.AutoSize = true;
-            this.ffrShapeRatioHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.ffrShapeRatioHelp.Location = new System.Drawing.Point(512, 312);
-            this.ffrShapeRatioHelp.Name = "ffrShapeRatioHelp";
-            this.ffrShapeRatioHelp.Size = new System.Drawing.Size(15, 19);
-            this.ffrShapeRatioHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.ffrShapeRatioHelp.TabIndex = 23;
-            this.ffrShapeRatioHelp.Text = "?";
-            this.ffrShapeRatioHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // Launcher
             // 
@@ -1709,6 +1723,7 @@
         private MetroFramework.Controls.MetroLabel ffrHelp;
         private MetroFramework.Controls.MetroLabel ffrStrengthHelp;
         private MetroFramework.Controls.MetroLabel ffrShapeRatioHelp;
+        private MetroFramework.Controls.MetroCheckBox metroCheckBox4;
     }
 }
 

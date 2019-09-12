@@ -114,4 +114,6 @@ private:
 	int m_fecPercentage = INITIAL_FEC_PERCENTAGE;
 
 	uint64_t mVideoFrameIndex = 1;
+
+	bool m_Force3DOF;
 };

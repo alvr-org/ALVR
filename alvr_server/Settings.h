@@ -29,6 +29,8 @@ static const char * const k_pch_Settings_FrameQueueSize_Int32 = "frameQueueSize"
 
 static const char * const k_pch_Settings_Force60HZ_Bool = "force60HZ";
 
+static const char * const k_pch_Settings_Force3DOF_Bool = "force3DOF";
+
 static const char * const k_pch_Settings_EnableSound_Bool = "enableSound";
 static const char * const k_pch_Settings_SoundDevice_String = "soundDevice";
 static const char * const k_pch_Settings_StreamMic_Bool = "streamMic";
@@ -181,6 +183,8 @@ public:
 	uint32_t m_frameQueueSize;
 
 	bool m_force60HZ;
+
+	bool m_force3DOF;
 
 	// Controller configs
 	std::string m_controllerTrackingSystemName;

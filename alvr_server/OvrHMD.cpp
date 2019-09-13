@@ -78,19 +78,19 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			vr::TrackedDeviceClass_HMD,
 			this);
 
+		if (!Settings::Instance().m_disableController) {
+			m_leftController = std::make_shared<OvrController>(true, 0);
+			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+				m_leftController->GetSerialNumber().c_str(),
+				vr::TrackedDeviceClass_Controller,
+				m_leftController.get());
 
-		m_leftController = std::make_shared<OvrController>(true, 0);
-		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-			m_leftController->GetSerialNumber().c_str(),
-			vr::TrackedDeviceClass_Controller,
-			m_leftController.get());
-
-		m_rightController = std::make_shared<OvrController>(false, 1);
-		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-			m_rightController->GetSerialNumber().c_str(),
-			vr::TrackedDeviceClass_Controller,
-			m_rightController.get());
-
+			m_rightController = std::make_shared<OvrController>(false, 1);
+			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+				m_rightController->GetSerialNumber().c_str(),
+				vr::TrackedDeviceClass_Controller,
+				m_rightController.get());
+		}
 
 	}
 
@@ -408,7 +408,10 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			m_Listener->GetTrackingInfo(info);
 
 			//TODO: Right order?
-			updateController(info);
+
+			if (!Settings::Instance().m_disableController) {
+				updateController(info);
+			}
 
 			m_directModeComponent->OnPoseUpdated(info);
 		

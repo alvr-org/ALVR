@@ -8,6 +8,7 @@
 #include <d3d11.h>
 #include <stdint.h>
 #include <vector>
+#include <string>
 
 void EventWriteString( const wchar_t* pwchEvent ); // gpuview event
 

@@ -96,6 +96,8 @@ private:
 	bool m_Connected;
 	bool m_Streaming;
 
+	bool m_Force3DOF;
+
 	struct Request {
 		uint64_t timestamp;
 		sockaddr_in address;

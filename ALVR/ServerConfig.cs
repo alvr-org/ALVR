@@ -194,6 +194,7 @@ namespace ALVR
                 driverConfig.frameQueueSize = GetFrameQueueSize(c.suppressFrameDrop);
 
                 driverConfig.force60HZ = c.force60Hz;
+                driverConfig.force3DOF = c.force3DOF;
                       
                 driverConfig.disableController = c.disableController;
 

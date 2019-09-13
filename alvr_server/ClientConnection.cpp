@@ -25,6 +25,7 @@ ClientConnection::ClientConnection()
 
 	reed_solomon_init();
 	
+	m_Force3DOF = false;
 }
 
 ClientConnection::~ClientConnection() {
@@ -58,6 +59,7 @@ bool ClientConnection::Startup() {
 		return false;
 	}
 	if (Settings::Instance().IsLoaded()) {
+		m_Force3DOF = Settings::Instance().m_force3DOF;
 		m_Enabled = true;
 		m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port
 			, m_Poller, m_Statistics, Settings::Instance().mThrottlingBitrate);
@@ -356,6 +358,13 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		EnterCriticalSection(&m_CS);
 		m_TrackingInfo = *(TrackingInfo *)buf;
 		LeaveCriticalSection(&m_CS);
+
+		// if 3DOF, zero the positional data!
+		if (m_Force3DOF) {
+			m_TrackingInfo.HeadPose_Pose_Position.x = 0;
+			m_TrackingInfo.HeadPose_Pose_Position.y = 0;
+			m_TrackingInfo.HeadPose_Pose_Position.z = 0;
+		}
 
 		Log(L"got tracking info %d %f %f %f %f", (int)m_TrackingInfo.FrameIndex,
 			m_TrackingInfo.HeadPose_Pose_Orientation.x,

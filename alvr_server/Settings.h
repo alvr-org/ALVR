@@ -29,6 +29,8 @@ static const char * const k_pch_Settings_FrameQueueSize_Int32 = "frameQueueSize"
 
 static const char * const k_pch_Settings_Force60HZ_Bool = "force60HZ";
 
+static const char * const k_pch_Settings_Force3DOF_Bool = "force3DOF";
+
 static const char * const k_pch_Settings_EnableSound_Bool = "enableSound";
 static const char * const k_pch_Settings_SoundDevice_String = "soundDevice";
 static const char * const k_pch_Settings_StreamMic_Bool = "streamMic";
@@ -210,6 +212,8 @@ public:
 	bool m_useTrackingReference;
 
 	int32_t m_trackingFrameOffset;
+
+	bool m_force3DOF;
 
 	// They are not in config json and set by "SetConfig" command.
 	bool m_captureLayerDDSTrigger = false;

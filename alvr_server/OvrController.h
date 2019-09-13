@@ -36,7 +36,7 @@ public:
 
 	virtual vr::DriverPose_t GetPose();
 
-	vr::VRInputComponentHandle_t OvrController::getHapticComponent();
+	vr::VRInputComponentHandle_t getHapticComponent();
 
 	bool onPoseUpdate(int controllerIndex, const TrackingInfo &info);
 	std::string GetSerialNumber();

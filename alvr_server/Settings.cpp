@@ -80,7 +80,8 @@ void Settings::Load()
 
 		m_force60HZ = v.get(k_pch_Settings_Force60HZ_Bool).get<bool>();
 
-		
+		m_force3DOF = v.get(k_pch_Settings_Force3DOF_Bool).get<bool>();
+
 		m_nAdapterIndex = (int32_t)v.get(k_pch_Settings_AdapterIndex_Int32).get<int64_t>();
 
 		m_codec = (int32_t)v.get(k_pch_Settings_Codec_Int32).get<int64_t>();

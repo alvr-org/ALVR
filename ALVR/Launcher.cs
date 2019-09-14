@@ -77,6 +77,7 @@ namespace ALVR
                 return;
             }
 
+
             //
             // Load config and create memory mapped object
             //
@@ -117,7 +118,7 @@ namespace ALVR
             //
 
             UpdateServerStatus();
-
+            UpdateSoundCheckboxState();
 
 
 
@@ -598,6 +599,7 @@ namespace ALVR
 
         private void UpdateSoundCheckboxState()
         {
+          
             if (soundDevices.Count == 0)
             {
                 soundCheckBox.Hide();
@@ -607,6 +609,11 @@ namespace ALVR
             }
             else
             {
+                soundCheckBox.Show();
+                defaultSoundDeviceCheckBox.Show();
+                soundDeviceComboBox.Show();
+                noSoundDeviceLabel.Hide();
+
                 defaultSoundDeviceCheckBox.Enabled = soundCheckBox.Checked;
                 soundDeviceComboBox.Enabled = !defaultSoundDeviceCheckBox.Checked && soundCheckBox.Checked;
             }

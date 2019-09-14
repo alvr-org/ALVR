@@ -55,8 +55,11 @@ ALVR requires any of the following devices:
 - Press "Connect" button
 
 ## Troubleshoot
+- Floorlevel: Use the SteamVR room setup and calibrate the room as standing only. Put your Quest on the ground while calibrating. Make sure that the stream is still working by covering the light sensor of the quest. Enter a height of 0 into the room setup.
+Now you can press and hold the oculus key on the right controller to recenter SteamVR and fix the floor height at any time.
 
 - If you got some error, please check [Troubleshooting](https://github.com/polygraphene/ALVR/wiki/Troubleshooting)
+
 
 ## Uninstallation
 
@@ -72,10 +75,10 @@ ALVR requires any of the following devices:
 
 ### ALVR Server and GUI (Launcher)
 
-- Open ALVR.sln with Visual Studio 2017 and build
+- Open ALVR.sln with Visual Studio 2019 and build
     - alvr\_server project is the driver for SteamVR written in C++
     - ALVR project is the launcher GUI written in C#
-- Requires Cuda 9.2
+- Requires Cuda 10.1
 
 ### ALVR Client
 

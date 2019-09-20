@@ -58,7 +58,8 @@ ALVR requires any of the following devices:
 - Floorlevel: Use the SteamVR room setup and calibrate the room as standing only. Put your Quest on the ground while calibrating. Make sure that the stream is still working by covering the light sensor of the quest. Enter a height of 0 into the room setup.
 Now you can press and hold the oculus key on the right controller to recenter SteamVR and fix the floor height at any time.
 
-- If you got some error, please check [Troubleshooting](https://github.com/polygraphene/ALVR/wiki/Troubleshooting)
+- If you got some error, please check the original [Troubleshooting](https://github.com/polygraphene/ALVR/wiki/Troubleshooting)
+- You find some setup advice [here](https://github.com/JackD83/ALVR/wiki/Setup-advice)
 
 
 ## Uninstallation

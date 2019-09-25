@@ -4,6 +4,7 @@
 #include "common-utils.h"
 #include "Bitrate.h"
 #include "Utils.h"
+#include "FFR.h"
 
 //
 // Settings
@@ -147,9 +148,9 @@ public:
 	float m_flSecondsFromVsyncToPhotons;
 	float m_flIPD;
 
-	float m_foveationStrengthMean = 2; // higher value means less detail outside the foveated region
-
-	float m_foveationShapeRatio = 1.5;  // aspect ratio of the foveated region
+	FFR_MODE m_foveationMode = FFR_MODE_SLICES;// FFR_MODE_WARP;//
+	float m_foveationStrengthMean;
+	float m_foveationShapeRatio;
 
 	bool m_enableSound;
 	std::string m_soundDevice;

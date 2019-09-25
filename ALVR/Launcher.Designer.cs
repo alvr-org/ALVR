@@ -63,36 +63,17 @@
             this.connectedLabel = new MetroFramework.Controls.MetroLabel();
             this.messagePanel = new MetroFramework.Controls.MetroPanel();
             this.messageLabel = new MetroFramework.Controls.MetroLabel();
-            this.otherTab = new MetroFramework.Controls.MetroTabPage();
-            this.force3DOFCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.disableController = new MetroFramework.Controls.MetroCheckBox();
-            this.metroButton1 = new MetroFramework.Controls.MetroButton();
-            this.metroLabel12 = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel30 = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel29 = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel28 = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel27 = new MetroFramework.Controls.MetroLabel();
-            this.refDisconnectCommandButton = new MetroFramework.Controls.MetroButton();
-            this.refConnectCommandButton = new MetroFramework.Controls.MetroButton();
-            this.saveTrackingFrameOffsetButton = new MetroFramework.Controls.MetroButton();
-            this.metroLabel26 = new MetroFramework.Controls.MetroLabel();
-            this.force60HzCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.disableThrottlingCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.suppressFrameDropCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.controllerPoseOffset = new MetroFramework.Controls.MetroTextBox();
-            this.trackingFrameOffsetTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.disconnectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.connectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
-            this.onlySteamVRCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.videoTab = new MetroFramework.Controls.MetroTabPage();
-            this.ffrShapeRatioHelp = new MetroFramework.Controls.MetroLabel();
+            this.foveationStrengthTrackBar = new MetroFramework.Controls.MetroTrackBar();
+            this.label5 = new System.Windows.Forms.Label();
+            this.FoveationStrengthLabel = new MetroFramework.Controls.MetroLabel();
+            this.foveationComboBox = new MetroFramework.Controls.MetroComboBox();
             this.ffrStrengthHelp = new MetroFramework.Controls.MetroLabel();
             this.ffrHelp = new MetroFramework.Controls.MetroLabel();
             this.bufferHelp = new MetroFramework.Controls.MetroLabel();
             this.resolutionHelp = new MetroFramework.Controls.MetroLabel();
             this.bitrateHelp = new MetroFramework.Controls.MetroLabel();
             this.codecHelp = new MetroFramework.Controls.MetroLabel();
-            this.metroLabel22 = new MetroFramework.Controls.MetroLabel();
             this.label4 = new System.Windows.Forms.Label();
             this.ffrMeanLabel = new MetroFramework.Controls.MetroLabel();
             this.metroLabel21 = new MetroFramework.Controls.MetroLabel();
@@ -113,9 +94,6 @@
             this.metroLabel10 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel31 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel7 = new MetroFramework.Controls.MetroLabel();
-            this.ffrEnableCheckbox = new MetroFramework.Controls.MetroCheckBox();
-            this.ffrRatioBox = new MetroFramework.Controls.MetroTextBox();
-            this.ffrMeanBox = new MetroFramework.Controls.MetroTextBox();
             this.bufferTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.bitrateTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.soundTab = new MetroFramework.Controls.MetroTabPage();
@@ -123,9 +101,30 @@
             this.metroLink1 = new MetroFramework.Controls.MetroLink();
             this.noSoundDeviceLabel = new MetroFramework.Controls.MetroLabel();
             this.soundDeviceComboBox = new MetroFramework.Controls.MetroComboBox();
-            this.streamMic = new MetroFramework.Controls.MetroCheckBox();
             this.defaultSoundDeviceCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.streamMic = new MetroFramework.Controls.MetroCheckBox();
             this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.otherTab = new MetroFramework.Controls.MetroTabPage();
+            this.metroButton1 = new MetroFramework.Controls.MetroButton();
+            this.metroLabel12 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel30 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel29 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel28 = new MetroFramework.Controls.MetroLabel();
+            this.metroLabel27 = new MetroFramework.Controls.MetroLabel();
+            this.refDisconnectCommandButton = new MetroFramework.Controls.MetroButton();
+            this.refConnectCommandButton = new MetroFramework.Controls.MetroButton();
+            this.saveTrackingFrameOffsetButton = new MetroFramework.Controls.MetroButton();
+            this.metroLabel26 = new MetroFramework.Controls.MetroLabel();
+            this.suppressFrameDropCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.force3DOFCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.disableController = new MetroFramework.Controls.MetroCheckBox();
+            this.force60HzCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.disableThrottlingCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.controllerPoseOffset = new MetroFramework.Controls.MetroTextBox();
+            this.trackingFrameOffsetTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.disconnectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.connectCommandTextBox = new MetroFramework.Controls.MetroTextBox();
+            this.onlySteamVRCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.debugTab = new MetroFramework.Controls.MetroTabPage();
             this.metroLabel5 = new MetroFramework.Controls.MetroLabel();
             this.logText = new MetroFramework.Controls.MetroTextBox();
@@ -165,9 +164,9 @@
             this.connectedPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).BeginInit();
             this.messagePanel.SuspendLayout();
-            this.otherTab.SuspendLayout();
             this.videoTab.SuspendLayout();
             this.soundTab.SuspendLayout();
+            this.otherTab.SuspendLayout();
             this.debugTab.SuspendLayout();
             this.aboutTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).BeginInit();
@@ -213,15 +212,15 @@
             // metroTabControl1
             // 
             this.metroTabControl1.Controls.Add(this.serverTab);
-            this.metroTabControl1.Controls.Add(this.soundTab);
             this.metroTabControl1.Controls.Add(this.otherTab);
             this.metroTabControl1.Controls.Add(this.videoTab);
+            this.metroTabControl1.Controls.Add(this.soundTab);
             this.metroTabControl1.Controls.Add(this.debugTab);
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 68);
             this.metroTabControl1.Name = "metroTabControl1";
             this.metroTabControl1.SelectedIndex = 1;
-            this.metroTabControl1.Size = new System.Drawing.Size(664, 429);
+            this.metroTabControl1.Size = new System.Drawing.Size(664, 433);
             this.metroTabControl1.TabIndex = 8;
             // 
             // serverTab
@@ -233,7 +232,7 @@
             this.serverTab.HorizontalScrollbarSize = 11;
             this.serverTab.Location = new System.Drawing.Point(4, 35);
             this.serverTab.Name = "serverTab";
-            this.serverTab.Size = new System.Drawing.Size(656, 390);
+            this.serverTab.Size = new System.Drawing.Size(656, 394);
             this.serverTab.TabIndex = 3;
             this.serverTab.Text = "Server";
             this.serverTab.VerticalScrollbarBarColor = true;
@@ -532,10 +531,495 @@
             this.messageLabel.TabIndex = 9;
             this.messageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // videoTab
+            // 
+            this.videoTab.Controls.Add(this.foveationStrengthTrackBar);
+            this.videoTab.Controls.Add(this.label5);
+            this.videoTab.Controls.Add(this.FoveationStrengthLabel);
+            this.videoTab.Controls.Add(this.foveationComboBox);
+            this.videoTab.Controls.Add(this.ffrStrengthHelp);
+            this.videoTab.Controls.Add(this.ffrHelp);
+            this.videoTab.Controls.Add(this.bufferHelp);
+            this.videoTab.Controls.Add(this.resolutionHelp);
+            this.videoTab.Controls.Add(this.bitrateHelp);
+            this.videoTab.Controls.Add(this.codecHelp);
+            this.videoTab.Controls.Add(this.label4);
+            this.videoTab.Controls.Add(this.ffrMeanLabel);
+            this.videoTab.Controls.Add(this.metroLabel21);
+            this.videoTab.Controls.Add(this.label3);
+            this.videoTab.Controls.Add(this.label2);
+            this.videoTab.Controls.Add(this.label1);
+            this.videoTab.Controls.Add(this.metroLabel13);
+            this.videoTab.Controls.Add(this.codecComboBox);
+            this.videoTab.Controls.Add(this.resolutionComboBox);
+            this.videoTab.Controls.Add(this.bufferLabel);
+            this.videoTab.Controls.Add(this.bitrateLabel);
+            this.videoTab.Controls.Add(this.metroLabel18);
+            this.videoTab.Controls.Add(this.metroLabel9);
+            this.videoTab.Controls.Add(this.metroLabel17);
+            this.videoTab.Controls.Add(this.metroLabel8);
+            this.videoTab.Controls.Add(this.metroLabel16);
+            this.videoTab.Controls.Add(this.resolutionLabel);
+            this.videoTab.Controls.Add(this.metroLabel10);
+            this.videoTab.Controls.Add(this.metroLabel31);
+            this.videoTab.Controls.Add(this.metroLabel7);
+            this.videoTab.Controls.Add(this.bufferTrackBar);
+            this.videoTab.Controls.Add(this.bitrateTrackBar);
+            this.videoTab.HorizontalScrollbarBarColor = true;
+            this.videoTab.HorizontalScrollbarSize = 11;
+            this.videoTab.Location = new System.Drawing.Point(4, 35);
+            this.videoTab.Name = "videoTab";
+            this.videoTab.Size = new System.Drawing.Size(656, 394);
+            this.videoTab.TabIndex = 5;
+            this.videoTab.Text = "Video";
+            this.videoTab.VerticalScrollbarBarColor = true;
+            this.videoTab.Click += new System.EventHandler(this.videoTab_Click);
+            // 
+            // foveationStrengthTrackBar
+            // 
+            this.foveationStrengthTrackBar.BackColor = System.Drawing.Color.Transparent;
+            this.foveationStrengthTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "foveationStrength", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.foveationStrengthTrackBar.LargeChange = 100;
+            this.foveationStrengthTrackBar.Location = new System.Drawing.Point(185, 306);
+            this.foveationStrengthTrackBar.Maximum = 500;
+            this.foveationStrengthTrackBar.Name = "foveationStrengthTrackBar";
+            this.foveationStrengthTrackBar.Size = new System.Drawing.Size(368, 25);
+            this.foveationStrengthTrackBar.SmallChange = 10;
+            this.foveationStrengthTrackBar.TabIndex = 30;
+            this.foveationStrengthTrackBar.Text = "metroTrackBar1";
+            this.foveationStrengthTrackBar.Value = global::ALVR.Properties.Settings.Default.foveationStrength;
+            this.foveationStrengthTrackBar.ValueChanged += new System.EventHandler(this.FoveationStrengthTrackBar_ValueChanged);
+            // 
+            // label5
+            // 
+            this.label5.BackColor = System.Drawing.Color.DarkGray;
+            this.label5.Location = new System.Drawing.Point(28, 245);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(600, 1);
+            this.label5.TabIndex = 29;
+            // 
+            // FoveationStrengthLabel
+            // 
+            this.FoveationStrengthLabel.AutoSize = true;
+            this.FoveationStrengthLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.FoveationStrengthLabel.Location = new System.Drawing.Point(559, 306);
+            this.FoveationStrengthLabel.Name = "FoveationStrengthLabel";
+            this.FoveationStrengthLabel.Size = new System.Drawing.Size(21, 25);
+            this.FoveationStrengthLabel.TabIndex = 26;
+            this.FoveationStrengthLabel.Text = "2";
+            // 
+            // foveationComboBox
+            // 
+            this.foveationComboBox.FormattingEnabled = true;
+            this.foveationComboBox.ItemHeight = 23;
+            this.foveationComboBox.Items.AddRange(new object[] {
+            "Disabled",
+            "Slices",
+            "Warp"});
+            this.foveationComboBox.Location = new System.Drawing.Point(254, 261);
+            this.foveationComboBox.Name = "foveationComboBox";
+            this.foveationComboBox.Size = new System.Drawing.Size(192, 29);
+            this.foveationComboBox.TabIndex = 24;
+            this.foveationComboBox.SelectedIndexChanged += new System.EventHandler(this.FoveationComboBox_SelectedIndexChanged);
+            // 
+            // ffrStrengthHelp
+            // 
+            this.ffrStrengthHelp.AutoSize = true;
+            this.ffrStrengthHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.ffrStrengthHelp.Location = new System.Drawing.Point(139, 302);
+            this.ffrStrengthHelp.Name = "ffrStrengthHelp";
+            this.ffrStrengthHelp.Size = new System.Drawing.Size(15, 19);
+            this.ffrStrengthHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.ffrStrengthHelp.TabIndex = 22;
+            this.ffrStrengthHelp.Text = "?";
+            this.ffrStrengthHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // ffrHelp
+            // 
+            this.ffrHelp.AutoSize = true;
+            this.ffrHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.ffrHelp.Location = new System.Drawing.Point(211, 261);
+            this.ffrHelp.Name = "ffrHelp";
+            this.ffrHelp.Size = new System.Drawing.Size(15, 19);
+            this.ffrHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.ffrHelp.TabIndex = 21;
+            this.ffrHelp.Text = "?";
+            this.ffrHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // bufferHelp
+            // 
+            this.bufferHelp.AutoSize = true;
+            this.bufferHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.bufferHelp.Location = new System.Drawing.Point(108, 200);
+            this.bufferHelp.Name = "bufferHelp";
+            this.bufferHelp.Size = new System.Drawing.Size(15, 19);
+            this.bufferHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.bufferHelp.TabIndex = 20;
+            this.bufferHelp.Text = "?";
+            this.bufferHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // resolutionHelp
+            // 
+            this.resolutionHelp.AutoSize = true;
+            this.resolutionHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.resolutionHelp.Location = new System.Drawing.Point(156, 135);
+            this.resolutionHelp.Name = "resolutionHelp";
+            this.resolutionHelp.Size = new System.Drawing.Size(15, 19);
+            this.resolutionHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.resolutionHelp.TabIndex = 19;
+            this.resolutionHelp.Text = "?";
+            this.resolutionHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // bitrateHelp
+            // 
+            this.bitrateHelp.AutoSize = true;
+            this.bitrateHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.bitrateHelp.Location = new System.Drawing.Point(77, 74);
+            this.bitrateHelp.Name = "bitrateHelp";
+            this.bitrateHelp.Size = new System.Drawing.Size(15, 19);
+            this.bitrateHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.bitrateHelp.TabIndex = 18;
+            this.bitrateHelp.Text = "?";
+            this.bitrateHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // codecHelp
+            // 
+            this.codecHelp.AutoSize = true;
+            this.codecHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.codecHelp.Location = new System.Drawing.Point(77, 17);
+            this.codecHelp.Name = "codecHelp";
+            this.codecHelp.Size = new System.Drawing.Size(15, 19);
+            this.codecHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.codecHelp.TabIndex = 17;
+            this.codecHelp.Text = "?";
+            this.codecHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // label4
+            // 
+            this.label4.BackColor = System.Drawing.Color.DarkGray;
+            this.label4.Location = new System.Drawing.Point(28, 343);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(600, 1);
+            this.label4.TabIndex = 14;
+            // 
+            // ffrMeanLabel
+            // 
+            this.ffrMeanLabel.AutoSize = true;
+            this.ffrMeanLabel.Location = new System.Drawing.Point(31, 306);
+            this.ffrMeanLabel.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.ffrMeanLabel.Name = "ffrMeanLabel";
+            this.ffrMeanLabel.Size = new System.Drawing.Size(112, 19);
+            this.ffrMeanLabel.TabIndex = 13;
+            this.ffrMeanLabel.Text = "foveationStrength";
+            // 
+            // metroLabel21
+            // 
+            this.metroLabel21.AutoSize = true;
+            this.metroLabel21.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel21.Location = new System.Drawing.Point(25, 261);
+            this.metroLabel21.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.metroLabel21.Name = "metroLabel21";
+            this.metroLabel21.Size = new System.Drawing.Size(193, 25);
+            this.metroLabel21.TabIndex = 11;
+            this.metroLabel21.Text = "Fixed Fovead Rendering";
+            this.metroLabel21.Click += new System.EventHandler(this.metroLabel21_Click);
+            // 
+            // label3
+            // 
+            this.label3.BackColor = System.Drawing.Color.DarkGray;
+            this.label3.Location = new System.Drawing.Point(29, 50);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(600, 1);
+            this.label3.TabIndex = 9;
+            // 
+            // label2
+            // 
+            this.label2.BackColor = System.Drawing.Color.DarkGray;
+            this.label2.Location = new System.Drawing.Point(29, 177);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(600, 1);
+            this.label2.TabIndex = 9;
+            // 
+            // label1
+            // 
+            this.label1.BackColor = System.Drawing.Color.DarkGray;
+            this.label1.Location = new System.Drawing.Point(29, 118);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(600, 1);
+            this.label1.TabIndex = 8;
+            // 
+            // metroLabel13
+            // 
+            this.metroLabel13.AutoSize = true;
+            this.metroLabel13.Location = new System.Drawing.Point(173, 358);
+            this.metroLabel13.Name = "metroLabel13";
+            this.metroLabel13.Size = new System.Drawing.Size(292, 19);
+            this.metroLabel13.TabIndex = 7;
+            this.metroLabel13.Text = "These settings will be applied after restart server.";
+            // 
+            // codecComboBox
+            // 
+            this.codecComboBox.FormattingEnabled = true;
+            this.codecComboBox.ItemHeight = 23;
+            this.codecComboBox.Location = new System.Drawing.Point(254, 14);
+            this.codecComboBox.Name = "codecComboBox";
+            this.codecComboBox.Size = new System.Drawing.Size(192, 29);
+            this.codecComboBox.TabIndex = 6;
+            this.codecComboBox.SelectedIndexChanged += new System.EventHandler(this.codecComboBox_SelectedIndexChanged);
+            // 
+            // resolutionComboBox
+            // 
+            this.resolutionComboBox.DisplayMember = "width";
+            this.resolutionComboBox.FontSize = MetroFramework.MetroLinkSize.Small;
+            this.resolutionComboBox.FormattingEnabled = true;
+            this.resolutionComboBox.ItemHeight = 19;
+            this.resolutionComboBox.Items.AddRange(new object[] {
+            "25%",
+            "50%",
+            "75%",
+            "100%",
+            "125%",
+            "150%",
+            "175%",
+            "200%"});
+            this.resolutionComboBox.Location = new System.Drawing.Point(254, 137);
+            this.resolutionComboBox.Name = "resolutionComboBox";
+            this.resolutionComboBox.Size = new System.Drawing.Size(192, 25);
+            this.resolutionComboBox.TabIndex = 6;
+            this.resolutionComboBox.ValueMember = "width";
+            this.resolutionComboBox.SelectedIndexChanged += new System.EventHandler(this.resolutionComboBox_SelectedIndexChanged);
+            // 
+            // bufferLabel
+            // 
+            this.bufferLabel.AutoSize = true;
+            this.bufferLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.bufferLabel.Location = new System.Drawing.Point(559, 211);
+            this.bufferLabel.Name = "bufferLabel";
+            this.bufferLabel.Size = new System.Drawing.Size(57, 25);
+            this.bufferLabel.TabIndex = 5;
+            this.bufferLabel.Text = "200kB";
+            // 
+            // bitrateLabel
+            // 
+            this.bitrateLabel.AutoSize = true;
+            this.bitrateLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.bitrateLabel.Location = new System.Drawing.Point(559, 78);
+            this.bitrateLabel.Name = "bitrateLabel";
+            this.bitrateLabel.Size = new System.Drawing.Size(72, 25);
+            this.bitrateLabel.TabIndex = 5;
+            this.bitrateLabel.Text = "30Mbps";
+            // 
+            // metroLabel18
+            // 
+            this.metroLabel18.AutoSize = true;
+            this.metroLabel18.Location = new System.Drawing.Point(533, 185);
+            this.metroLabel18.Name = "metroLabel18";
+            this.metroLabel18.Size = new System.Drawing.Size(51, 19);
+            this.metroLabel18.TabIndex = 4;
+            this.metroLabel18.Text = "2000kB";
+            // 
+            // metroLabel9
+            // 
+            this.metroLabel9.AutoSize = true;
+            this.metroLabel9.Location = new System.Drawing.Point(523, 58);
+            this.metroLabel9.Name = "metroLabel9";
+            this.metroLabel9.Size = new System.Drawing.Size(63, 19);
+            this.metroLabel9.TabIndex = 4;
+            this.metroLabel9.Text = "250Mbps";
+            // 
+            // metroLabel17
+            // 
+            this.metroLabel17.AutoSize = true;
+            this.metroLabel17.Location = new System.Drawing.Point(161, 187);
+            this.metroLabel17.Name = "metroLabel17";
+            this.metroLabel17.Size = new System.Drawing.Size(42, 19);
+            this.metroLabel17.TabIndex = 4;
+            this.metroLabel17.Text = "100kB";
+            // 
+            // metroLabel8
+            // 
+            this.metroLabel8.AutoSize = true;
+            this.metroLabel8.Location = new System.Drawing.Point(161, 58);
+            this.metroLabel8.Name = "metroLabel8";
+            this.metroLabel8.Size = new System.Drawing.Size(47, 19);
+            this.metroLabel8.TabIndex = 4;
+            this.metroLabel8.Text = "1Mbps";
+            // 
+            // metroLabel16
+            // 
+            this.metroLabel16.AutoSize = true;
+            this.metroLabel16.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel16.Location = new System.Drawing.Point(25, 200);
+            this.metroLabel16.Name = "metroLabel16";
+            this.metroLabel16.Size = new System.Drawing.Size(90, 25);
+            this.metroLabel16.TabIndex = 3;
+            this.metroLabel16.Text = "Buffer size";
+            // 
+            // resolutionLabel
+            // 
+            this.resolutionLabel.AutoSize = true;
+            this.resolutionLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.resolutionLabel.Location = new System.Drawing.Point(462, 137);
+            this.resolutionLabel.Name = "resolutionLabel";
+            this.resolutionLabel.Size = new System.Drawing.Size(91, 25);
+            this.resolutionLabel.TabIndex = 3;
+            this.resolutionLabel.Text = "2048x1024";
+            // 
+            // metroLabel10
+            // 
+            this.metroLabel10.AutoSize = true;
+            this.metroLabel10.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel10.Location = new System.Drawing.Point(25, 137);
+            this.metroLabel10.Name = "metroLabel10";
+            this.metroLabel10.Size = new System.Drawing.Size(136, 25);
+            this.metroLabel10.TabIndex = 3;
+            this.metroLabel10.Text = "Video resolution";
+            // 
+            // metroLabel31
+            // 
+            this.metroLabel31.AutoSize = true;
+            this.metroLabel31.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel31.Location = new System.Drawing.Point(25, 18);
+            this.metroLabel31.Name = "metroLabel31";
+            this.metroLabel31.Size = new System.Drawing.Size(60, 25);
+            this.metroLabel31.TabIndex = 3;
+            this.metroLabel31.Text = "Codec";
+            // 
+            // metroLabel7
+            // 
+            this.metroLabel7.AutoSize = true;
+            this.metroLabel7.FontSize = MetroFramework.MetroLabelSize.Tall;
+            this.metroLabel7.Location = new System.Drawing.Point(25, 74);
+            this.metroLabel7.Name = "metroLabel7";
+            this.metroLabel7.Size = new System.Drawing.Size(60, 25);
+            this.metroLabel7.TabIndex = 3;
+            this.metroLabel7.Text = "Bitrate";
+            // 
+            // bufferTrackBar
+            // 
+            this.bufferTrackBar.BackColor = System.Drawing.Color.Transparent;
+            this.bufferTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bufferSize", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.bufferTrackBar.Location = new System.Drawing.Point(185, 211);
+            this.bufferTrackBar.Name = "bufferTrackBar";
+            this.bufferTrackBar.Size = new System.Drawing.Size(368, 25);
+            this.bufferTrackBar.TabIndex = 2;
+            this.bufferTrackBar.Text = "metroTrackBar1";
+            this.bufferTrackBar.Value = global::ALVR.Properties.Settings.Default.bufferSize;
+            this.bufferTrackBar.ValueChanged += new System.EventHandler(this.bufferTrackBar_ValueChanged);
+            // 
+            // bitrateTrackBar
+            // 
+            this.bitrateTrackBar.BackColor = System.Drawing.Color.Transparent;
+            this.bitrateTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bitrate", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.bitrateTrackBar.Location = new System.Drawing.Point(185, 81);
+            this.bitrateTrackBar.Maximum = 250;
+            this.bitrateTrackBar.Minimum = 1;
+            this.bitrateTrackBar.Name = "bitrateTrackBar";
+            this.bitrateTrackBar.Size = new System.Drawing.Size(368, 25);
+            this.bitrateTrackBar.TabIndex = 2;
+            this.bitrateTrackBar.Text = "metroTrackBar1";
+            this.bitrateTrackBar.Value = global::ALVR.Properties.Settings.Default.bitrate;
+            this.bitrateTrackBar.ValueChanged += new System.EventHandler(this.bitrateTrackBar_ValueChanged);
+            // 
+            // soundTab
+            // 
+            this.soundTab.Controls.Add(this.metroLabel20);
+            this.soundTab.Controls.Add(this.metroLink1);
+            this.soundTab.Controls.Add(this.noSoundDeviceLabel);
+            this.soundTab.Controls.Add(this.soundDeviceComboBox);
+            this.soundTab.Controls.Add(this.defaultSoundDeviceCheckBox);
+            this.soundTab.Controls.Add(this.streamMic);
+            this.soundTab.Controls.Add(this.soundCheckBox);
+            this.soundTab.HorizontalScrollbarBarColor = true;
+            this.soundTab.HorizontalScrollbarSize = 11;
+            this.soundTab.Location = new System.Drawing.Point(4, 35);
+            this.soundTab.Name = "soundTab";
+            this.soundTab.Size = new System.Drawing.Size(656, 394);
+            this.soundTab.TabIndex = 8;
+            this.soundTab.Text = "Sound";
+            this.soundTab.VerticalScrollbarBarColor = true;
+            // 
+            // metroLabel20
+            // 
+            this.metroLabel20.AutoSize = true;
+            this.metroLabel20.Location = new System.Drawing.Point(44, 220);
+            this.metroLabel20.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.metroLabel20.Name = "metroLabel20";
+            this.metroLabel20.Size = new System.Drawing.Size(172, 19);
+            this.metroLabel20.TabIndex = 7;
+            this.metroLabel20.Text = "Requires Cable audio driver";
+            // 
+            // metroLink1
+            // 
+            this.metroLink1.Location = new System.Drawing.Point(184, 214);
+            this.metroLink1.Name = "metroLink1";
+            this.metroLink1.Size = new System.Drawing.Size(379, 23);
+            this.metroLink1.TabIndex = 6;
+            this.metroLink1.Text = " https://www.vb-audio.com/Cable/";
+            this.metroLink1.Click += new System.EventHandler(this.metroLink1_Click);
+            // 
+            // noSoundDeviceLabel
+            // 
+            this.noSoundDeviceLabel.AutoSize = true;
+            this.noSoundDeviceLabel.Location = new System.Drawing.Point(30, 38);
+            this.noSoundDeviceLabel.Name = "noSoundDeviceLabel";
+            this.noSoundDeviceLabel.Size = new System.Drawing.Size(176, 19);
+            this.noSoundDeviceLabel.TabIndex = 4;
+            this.noSoundDeviceLabel.Text = "No sound devices are found.";
+            this.noSoundDeviceLabel.Visible = false;
+            // 
+            // soundDeviceComboBox
+            // 
+            this.soundDeviceComboBox.FormattingEnabled = true;
+            this.soundDeviceComboBox.ItemHeight = 23;
+            this.soundDeviceComboBox.Location = new System.Drawing.Point(76, 126);
+            this.soundDeviceComboBox.Name = "soundDeviceComboBox";
+            this.soundDeviceComboBox.Size = new System.Drawing.Size(471, 29);
+            this.soundDeviceComboBox.TabIndex = 3;
+            // 
+            // defaultSoundDeviceCheckBox
+            // 
+            this.defaultSoundDeviceCheckBox.AutoSize = true;
+            this.defaultSoundDeviceCheckBox.Checked = global::ALVR.Properties.Settings.Default.useDefaultSoundDevice;
+            this.defaultSoundDeviceCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.defaultSoundDeviceCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useDefaultSoundDevice", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.defaultSoundDeviceCheckBox.Location = new System.Drawing.Point(53, 83);
+            this.defaultSoundDeviceCheckBox.Name = "defaultSoundDeviceCheckBox";
+            this.defaultSoundDeviceCheckBox.Size = new System.Drawing.Size(119, 15);
+            this.defaultSoundDeviceCheckBox.TabIndex = 2;
+            this.defaultSoundDeviceCheckBox.Text = "Use default device";
+            this.defaultSoundDeviceCheckBox.UseVisualStyleBackColor = true;
+            this.defaultSoundDeviceCheckBox.CheckedChanged += new System.EventHandler(this.defaultSoundDeviceCheckBox_CheckedChanged);
+            // 
+            // streamMic
+            // 
+            this.streamMic.AutoSize = true;
+            this.streamMic.Checked = global::ALVR.Properties.Settings.Default.streamMic;
+            this.streamMic.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "streamMic", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.streamMic.Location = new System.Drawing.Point(30, 193);
+            this.streamMic.Name = "streamMic";
+            this.streamMic.Size = new System.Drawing.Size(162, 15);
+            this.streamMic.TabIndex = 5;
+            this.streamMic.Text = "Stream Quest Microphone";
+            this.streamMic.UseVisualStyleBackColor = true;
+            this.streamMic.CheckedChanged += new System.EventHandler(this.metroCheckBox4_CheckedChanged);
+            // 
+            // soundCheckBox
+            // 
+            this.soundCheckBox.AutoSize = true;
+            this.soundCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableSound;
+            this.soundCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.soundCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableSound", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.soundCheckBox.Location = new System.Drawing.Point(30, 38);
+            this.soundCheckBox.Name = "soundCheckBox";
+            this.soundCheckBox.Size = new System.Drawing.Size(92, 15);
+            this.soundCheckBox.TabIndex = 2;
+            this.soundCheckBox.Text = "Steam sound";
+            this.soundCheckBox.UseVisualStyleBackColor = true;
+            this.soundCheckBox.CheckedChanged += new System.EventHandler(this.soundCheckBox_CheckedChanged);
+            // 
             // otherTab
             // 
-            this.otherTab.Controls.Add(this.force3DOFCheckBox);
-            this.otherTab.Controls.Add(this.disableController);
             this.otherTab.Controls.Add(this.metroButton1);
             this.otherTab.Controls.Add(this.metroLabel12);
             this.otherTab.Controls.Add(this.metroLabel30);
@@ -546,9 +1030,11 @@
             this.otherTab.Controls.Add(this.refConnectCommandButton);
             this.otherTab.Controls.Add(this.saveTrackingFrameOffsetButton);
             this.otherTab.Controls.Add(this.metroLabel26);
+            this.otherTab.Controls.Add(this.suppressFrameDropCheckBox);
+            this.otherTab.Controls.Add(this.force3DOFCheckBox);
+            this.otherTab.Controls.Add(this.disableController);
             this.otherTab.Controls.Add(this.force60HzCheckBox);
             this.otherTab.Controls.Add(this.disableThrottlingCheckBox);
-            this.otherTab.Controls.Add(this.suppressFrameDropCheckBox);
             this.otherTab.Controls.Add(this.controllerPoseOffset);
             this.otherTab.Controls.Add(this.trackingFrameOffsetTextBox);
             this.otherTab.Controls.Add(this.disconnectCommandTextBox);
@@ -558,35 +1044,11 @@
             this.otherTab.HorizontalScrollbarSize = 11;
             this.otherTab.Location = new System.Drawing.Point(4, 35);
             this.otherTab.Name = "otherTab";
-            this.otherTab.Size = new System.Drawing.Size(656, 390);
+            this.otherTab.Size = new System.Drawing.Size(656, 394);
             this.otherTab.TabIndex = 7;
             this.otherTab.Text = "Other";
             this.otherTab.VerticalScrollbar = true;
             this.otherTab.VerticalScrollbarBarColor = true;
-            // 
-            // force3DOFCheckBox
-            // 
-            this.force3DOFCheckBox.AutoSize = true;
-            this.force3DOFCheckBox.Checked = global::ALVR.Properties.Settings.Default.force3DOF;
-            this.force3DOFCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "force3DOF", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.force3DOFCheckBox.Location = new System.Drawing.Point(407, 122);
-            this.force3DOFCheckBox.Name = "force3DOFCheckBox";
-            this.force3DOFCheckBox.Size = new System.Drawing.Size(84, 15);
-            this.force3DOFCheckBox.TabIndex = 23;
-            this.force3DOFCheckBox.Text = "Force 3DOF";
-            this.force3DOFCheckBox.UseVisualStyleBackColor = true;
-            // 
-            // disableController
-            // 
-            this.disableController.AutoSize = true;
-            this.disableController.Checked = global::ALVR.Properties.Settings.Default.disableController;
-            this.disableController.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "disableController", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.disableController.Location = new System.Drawing.Point(407, 101);
-            this.disableController.Name = "disableController";
-            this.disableController.Size = new System.Drawing.Size(115, 15);
-            this.disableController.TabIndex = 23;
-            this.disableController.Text = "Disable controller";
-            this.disableController.UseVisualStyleBackColor = true;
             // 
             // metroButton1
             // 
@@ -679,6 +1141,43 @@
             this.metroLabel26.TabIndex = 3;
             this.metroLabel26.Text = "Run command";
             // 
+            // suppressFrameDropCheckBox
+            // 
+            this.suppressFrameDropCheckBox.AutoSize = true;
+            this.suppressFrameDropCheckBox.Checked = global::ALVR.Properties.Settings.Default.suppressFrameDrop;
+            this.suppressFrameDropCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "suppressFrameDrop", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.suppressFrameDropCheckBox.Location = new System.Drawing.Point(407, 38);
+            this.suppressFrameDropCheckBox.Name = "suppressFrameDropCheckBox";
+            this.suppressFrameDropCheckBox.Size = new System.Drawing.Size(132, 15);
+            this.suppressFrameDropCheckBox.TabIndex = 2;
+            this.suppressFrameDropCheckBox.Text = "Suppress frame drop";
+            this.suppressFrameDropCheckBox.UseVisualStyleBackColor = true;
+            this.suppressFrameDropCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
+            // 
+            // force3DOFCheckBox
+            // 
+            this.force3DOFCheckBox.AutoSize = true;
+            this.force3DOFCheckBox.Checked = global::ALVR.Properties.Settings.Default.force3DOF;
+            this.force3DOFCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "force3DOF", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.force3DOFCheckBox.Location = new System.Drawing.Point(407, 122);
+            this.force3DOFCheckBox.Name = "force3DOFCheckBox";
+            this.force3DOFCheckBox.Size = new System.Drawing.Size(84, 15);
+            this.force3DOFCheckBox.TabIndex = 23;
+            this.force3DOFCheckBox.Text = "Force 3DOF";
+            this.force3DOFCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // disableController
+            // 
+            this.disableController.AutoSize = true;
+            this.disableController.Checked = global::ALVR.Properties.Settings.Default.disableController;
+            this.disableController.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "disableController", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.disableController.Location = new System.Drawing.Point(407, 101);
+            this.disableController.Name = "disableController";
+            this.disableController.Size = new System.Drawing.Size(115, 15);
+            this.disableController.TabIndex = 23;
+            this.disableController.Text = "Disable controller";
+            this.disableController.UseVisualStyleBackColor = true;
+            // 
             // force60HzCheckBox
             // 
             this.force60HzCheckBox.AutoSize = true;
@@ -704,19 +1203,6 @@
             this.disableThrottlingCheckBox.Text = "Disable send throttling";
             this.disableThrottlingCheckBox.UseVisualStyleBackColor = true;
             this.disableThrottlingCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
-            // 
-            // suppressFrameDropCheckBox
-            // 
-            this.suppressFrameDropCheckBox.AutoSize = true;
-            this.suppressFrameDropCheckBox.Checked = global::ALVR.Properties.Settings.Default.suppressFrameDrop;
-            this.suppressFrameDropCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "suppressFrameDrop", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.suppressFrameDropCheckBox.Location = new System.Drawing.Point(407, 38);
-            this.suppressFrameDropCheckBox.Name = "suppressFrameDropCheckBox";
-            this.suppressFrameDropCheckBox.Size = new System.Drawing.Size(132, 15);
-            this.suppressFrameDropCheckBox.TabIndex = 2;
-            this.suppressFrameDropCheckBox.Text = "Suppress frame drop";
-            this.suppressFrameDropCheckBox.UseVisualStyleBackColor = true;
-            this.suppressFrameDropCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
             // 
             // controllerPoseOffset
             // 
@@ -767,504 +1253,6 @@
             this.onlySteamVRCheckBox.Text = "Launch only SteamVR without Steam.";
             this.onlySteamVRCheckBox.UseVisualStyleBackColor = true;
             // 
-            // videoTab
-            // 
-            this.videoTab.Controls.Add(this.ffrShapeRatioHelp);
-            this.videoTab.Controls.Add(this.ffrStrengthHelp);
-            this.videoTab.Controls.Add(this.ffrHelp);
-            this.videoTab.Controls.Add(this.bufferHelp);
-            this.videoTab.Controls.Add(this.resolutionHelp);
-            this.videoTab.Controls.Add(this.bitrateHelp);
-            this.videoTab.Controls.Add(this.codecHelp);
-            this.videoTab.Controls.Add(this.metroLabel22);
-            this.videoTab.Controls.Add(this.label4);
-            this.videoTab.Controls.Add(this.ffrMeanLabel);
-            this.videoTab.Controls.Add(this.metroLabel21);
-            this.videoTab.Controls.Add(this.label3);
-            this.videoTab.Controls.Add(this.label2);
-            this.videoTab.Controls.Add(this.label1);
-            this.videoTab.Controls.Add(this.metroLabel13);
-            this.videoTab.Controls.Add(this.codecComboBox);
-            this.videoTab.Controls.Add(this.resolutionComboBox);
-            this.videoTab.Controls.Add(this.bufferLabel);
-            this.videoTab.Controls.Add(this.bitrateLabel);
-            this.videoTab.Controls.Add(this.metroLabel18);
-            this.videoTab.Controls.Add(this.metroLabel9);
-            this.videoTab.Controls.Add(this.metroLabel17);
-            this.videoTab.Controls.Add(this.metroLabel8);
-            this.videoTab.Controls.Add(this.metroLabel16);
-            this.videoTab.Controls.Add(this.resolutionLabel);
-            this.videoTab.Controls.Add(this.metroLabel10);
-            this.videoTab.Controls.Add(this.metroLabel31);
-            this.videoTab.Controls.Add(this.metroLabel7);
-            this.videoTab.Controls.Add(this.ffrEnableCheckbox);
-            this.videoTab.Controls.Add(this.ffrRatioBox);
-            this.videoTab.Controls.Add(this.ffrMeanBox);
-            this.videoTab.Controls.Add(this.bufferTrackBar);
-            this.videoTab.Controls.Add(this.bitrateTrackBar);
-            this.videoTab.HorizontalScrollbarBarColor = true;
-            this.videoTab.HorizontalScrollbarSize = 11;
-            this.videoTab.Location = new System.Drawing.Point(4, 35);
-            this.videoTab.Name = "videoTab";
-            this.videoTab.Size = new System.Drawing.Size(656, 390);
-            this.videoTab.TabIndex = 5;
-            this.videoTab.Text = "Video";
-            this.videoTab.VerticalScrollbarBarColor = true;
-            this.videoTab.Click += new System.EventHandler(this.videoTab_Click);
-            // 
-            // ffrShapeRatioHelp
-            // 
-            this.ffrShapeRatioHelp.AutoSize = true;
-            this.ffrShapeRatioHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.ffrShapeRatioHelp.Location = new System.Drawing.Point(512, 312);
-            this.ffrShapeRatioHelp.Name = "ffrShapeRatioHelp";
-            this.ffrShapeRatioHelp.Size = new System.Drawing.Size(15, 19);
-            this.ffrShapeRatioHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.ffrShapeRatioHelp.TabIndex = 23;
-            this.ffrShapeRatioHelp.Text = "?";
-            this.ffrShapeRatioHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // ffrStrengthHelp
-            // 
-            this.ffrStrengthHelp.AutoSize = true;
-            this.ffrStrengthHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.ffrStrengthHelp.Location = new System.Drawing.Point(281, 314);
-            this.ffrStrengthHelp.Name = "ffrStrengthHelp";
-            this.ffrStrengthHelp.Size = new System.Drawing.Size(15, 19);
-            this.ffrStrengthHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.ffrStrengthHelp.TabIndex = 22;
-            this.ffrStrengthHelp.Text = "?";
-            this.ffrStrengthHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // ffrHelp
-            // 
-            this.ffrHelp.AutoSize = true;
-            this.ffrHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.ffrHelp.Location = new System.Drawing.Point(211, 287);
-            this.ffrHelp.Name = "ffrHelp";
-            this.ffrHelp.Size = new System.Drawing.Size(15, 19);
-            this.ffrHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.ffrHelp.TabIndex = 21;
-            this.ffrHelp.Text = "?";
-            this.ffrHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // bufferHelp
-            // 
-            this.bufferHelp.AutoSize = true;
-            this.bufferHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.bufferHelp.Location = new System.Drawing.Point(108, 199);
-            this.bufferHelp.Name = "bufferHelp";
-            this.bufferHelp.Size = new System.Drawing.Size(15, 19);
-            this.bufferHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.bufferHelp.TabIndex = 20;
-            this.bufferHelp.Text = "?";
-            this.bufferHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // resolutionHelp
-            // 
-            this.resolutionHelp.AutoSize = true;
-            this.resolutionHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.resolutionHelp.Location = new System.Drawing.Point(156, 151);
-            this.resolutionHelp.Name = "resolutionHelp";
-            this.resolutionHelp.Size = new System.Drawing.Size(15, 19);
-            this.resolutionHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.resolutionHelp.TabIndex = 19;
-            this.resolutionHelp.Text = "?";
-            this.resolutionHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // bitrateHelp
-            // 
-            this.bitrateHelp.AutoSize = true;
-            this.bitrateHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.bitrateHelp.Location = new System.Drawing.Point(77, 74);
-            this.bitrateHelp.Name = "bitrateHelp";
-            this.bitrateHelp.Size = new System.Drawing.Size(15, 19);
-            this.bitrateHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.bitrateHelp.TabIndex = 18;
-            this.bitrateHelp.Text = "?";
-            this.bitrateHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // codecHelp
-            // 
-            this.codecHelp.AutoSize = true;
-            this.codecHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.codecHelp.Location = new System.Drawing.Point(77, 17);
-            this.codecHelp.Name = "codecHelp";
-            this.codecHelp.Size = new System.Drawing.Size(15, 19);
-            this.codecHelp.Style = MetroFramework.MetroColorStyle.Blue;
-            this.codecHelp.TabIndex = 17;
-            this.codecHelp.Text = "?";
-            this.codecHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // metroLabel22
-            // 
-            this.metroLabel22.AutoSize = true;
-            this.metroLabel22.Location = new System.Drawing.Point(387, 318);
-            this.metroLabel22.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.metroLabel22.Name = "metroLabel22";
-            this.metroLabel22.Size = new System.Drawing.Size(129, 19);
-            this.metroLabel22.TabIndex = 15;
-            this.metroLabel22.Text = "foveationShapeRatio";
-            // 
-            // label4
-            // 
-            this.label4.BackColor = System.Drawing.Color.DarkGray;
-            this.label4.Location = new System.Drawing.Point(28, 275);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(600, 1);
-            this.label4.TabIndex = 14;
-            // 
-            // ffrMeanLabel
-            // 
-            this.ffrMeanLabel.AutoSize = true;
-            this.ffrMeanLabel.Location = new System.Drawing.Point(141, 318);
-            this.ffrMeanLabel.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.ffrMeanLabel.Name = "ffrMeanLabel";
-            this.ffrMeanLabel.Size = new System.Drawing.Size(145, 19);
-            this.ffrMeanLabel.TabIndex = 13;
-            this.ffrMeanLabel.Text = "foveationStrengthMean";
-            // 
-            // metroLabel21
-            // 
-            this.metroLabel21.AutoSize = true;
-            this.metroLabel21.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel21.Location = new System.Drawing.Point(25, 287);
-            this.metroLabel21.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.metroLabel21.Name = "metroLabel21";
-            this.metroLabel21.Size = new System.Drawing.Size(193, 25);
-            this.metroLabel21.TabIndex = 11;
-            this.metroLabel21.Text = "Fixed Fovead Rendering";
-            this.metroLabel21.Click += new System.EventHandler(this.metroLabel21_Click);
-            // 
-            // label3
-            // 
-            this.label3.BackColor = System.Drawing.Color.DarkGray;
-            this.label3.Location = new System.Drawing.Point(29, 50);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(600, 1);
-            this.label3.TabIndex = 9;
-            // 
-            // label2
-            // 
-            this.label2.BackColor = System.Drawing.Color.DarkGray;
-            this.label2.Location = new System.Drawing.Point(29, 193);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(600, 1);
-            this.label2.TabIndex = 9;
-            // 
-            // label1
-            // 
-            this.label1.BackColor = System.Drawing.Color.DarkGray;
-            this.label1.Location = new System.Drawing.Point(29, 134);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(600, 1);
-            this.label1.TabIndex = 8;
-            // 
-            // metroLabel13
-            // 
-            this.metroLabel13.AutoSize = true;
-            this.metroLabel13.Location = new System.Drawing.Point(171, 369);
-            this.metroLabel13.Name = "metroLabel13";
-            this.metroLabel13.Size = new System.Drawing.Size(292, 19);
-            this.metroLabel13.TabIndex = 7;
-            this.metroLabel13.Text = "These settings will be applied after restart server.";
-            // 
-            // codecComboBox
-            // 
-            this.codecComboBox.FormattingEnabled = true;
-            this.codecComboBox.ItemHeight = 23;
-            this.codecComboBox.Location = new System.Drawing.Point(185, 14);
-            this.codecComboBox.Name = "codecComboBox";
-            this.codecComboBox.Size = new System.Drawing.Size(192, 29);
-            this.codecComboBox.TabIndex = 6;
-            this.codecComboBox.SelectedIndexChanged += new System.EventHandler(this.codecComboBox_SelectedIndexChanged);
-            // 
-            // resolutionComboBox
-            // 
-            this.resolutionComboBox.DisplayMember = "width";
-            this.resolutionComboBox.FontSize = MetroFramework.MetroLinkSize.Small;
-            this.resolutionComboBox.FormattingEnabled = true;
-            this.resolutionComboBox.ItemHeight = 19;
-            this.resolutionComboBox.Items.AddRange(new object[] {
-            "25%",
-            "50%",
-            "75%",
-            "100%",
-            "125%",
-            "150%",
-            "175%",
-            "200%"});
-            this.resolutionComboBox.Location = new System.Drawing.Point(185, 153);
-            this.resolutionComboBox.Name = "resolutionComboBox";
-            this.resolutionComboBox.Size = new System.Drawing.Size(240, 25);
-            this.resolutionComboBox.TabIndex = 6;
-            this.resolutionComboBox.ValueMember = "width";
-            this.resolutionComboBox.SelectedIndexChanged += new System.EventHandler(this.resolutionComboBox_SelectedIndexChanged);
-            // 
-            // bufferLabel
-            // 
-            this.bufferLabel.AutoSize = true;
-            this.bufferLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.bufferLabel.Location = new System.Drawing.Point(559, 219);
-            this.bufferLabel.Name = "bufferLabel";
-            this.bufferLabel.Size = new System.Drawing.Size(57, 25);
-            this.bufferLabel.TabIndex = 5;
-            this.bufferLabel.Text = "200kB";
-            // 
-            // bitrateLabel
-            // 
-            this.bitrateLabel.AutoSize = true;
-            this.bitrateLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.bitrateLabel.Location = new System.Drawing.Point(559, 74);
-            this.bitrateLabel.Name = "bitrateLabel";
-            this.bitrateLabel.Size = new System.Drawing.Size(72, 25);
-            this.bitrateLabel.TabIndex = 5;
-            this.bitrateLabel.Text = "30Mbps";
-            // 
-            // metroLabel18
-            // 
-            this.metroLabel18.AutoSize = true;
-            this.metroLabel18.Location = new System.Drawing.Point(533, 193);
-            this.metroLabel18.Name = "metroLabel18";
-            this.metroLabel18.Size = new System.Drawing.Size(51, 19);
-            this.metroLabel18.TabIndex = 4;
-            this.metroLabel18.Text = "2000kB";
-            // 
-            // metroLabel9
-            // 
-            this.metroLabel9.AutoSize = true;
-            this.metroLabel9.Location = new System.Drawing.Point(523, 58);
-            this.metroLabel9.Name = "metroLabel9";
-            this.metroLabel9.Size = new System.Drawing.Size(63, 19);
-            this.metroLabel9.TabIndex = 4;
-            this.metroLabel9.Text = "250Mbps";
-            // 
-            // metroLabel17
-            // 
-            this.metroLabel17.AutoSize = true;
-            this.metroLabel17.Location = new System.Drawing.Point(161, 195);
-            this.metroLabel17.Name = "metroLabel17";
-            this.metroLabel17.Size = new System.Drawing.Size(42, 19);
-            this.metroLabel17.TabIndex = 4;
-            this.metroLabel17.Text = "100kB";
-            // 
-            // metroLabel8
-            // 
-            this.metroLabel8.AutoSize = true;
-            this.metroLabel8.Location = new System.Drawing.Point(161, 58);
-            this.metroLabel8.Name = "metroLabel8";
-            this.metroLabel8.Size = new System.Drawing.Size(47, 19);
-            this.metroLabel8.TabIndex = 4;
-            this.metroLabel8.Text = "1Mbps";
-            // 
-            // metroLabel16
-            // 
-            this.metroLabel16.AutoSize = true;
-            this.metroLabel16.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel16.Location = new System.Drawing.Point(25, 199);
-            this.metroLabel16.Name = "metroLabel16";
-            this.metroLabel16.Size = new System.Drawing.Size(90, 25);
-            this.metroLabel16.TabIndex = 3;
-            this.metroLabel16.Text = "Buffer size";
-            // 
-            // resolutionLabel
-            // 
-            this.resolutionLabel.AutoSize = true;
-            this.resolutionLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.resolutionLabel.Location = new System.Drawing.Point(446, 153);
-            this.resolutionLabel.Name = "resolutionLabel";
-            this.resolutionLabel.Size = new System.Drawing.Size(91, 25);
-            this.resolutionLabel.TabIndex = 3;
-            this.resolutionLabel.Text = "2048x1024";
-            // 
-            // metroLabel10
-            // 
-            this.metroLabel10.AutoSize = true;
-            this.metroLabel10.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel10.Location = new System.Drawing.Point(25, 153);
-            this.metroLabel10.Name = "metroLabel10";
-            this.metroLabel10.Size = new System.Drawing.Size(136, 25);
-            this.metroLabel10.TabIndex = 3;
-            this.metroLabel10.Text = "Video resolution";
-            // 
-            // metroLabel31
-            // 
-            this.metroLabel31.AutoSize = true;
-            this.metroLabel31.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel31.Location = new System.Drawing.Point(25, 18);
-            this.metroLabel31.Name = "metroLabel31";
-            this.metroLabel31.Size = new System.Drawing.Size(60, 25);
-            this.metroLabel31.TabIndex = 3;
-            this.metroLabel31.Text = "Codec";
-            // 
-            // metroLabel7
-            // 
-            this.metroLabel7.AutoSize = true;
-            this.metroLabel7.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.metroLabel7.Location = new System.Drawing.Point(25, 74);
-            this.metroLabel7.Name = "metroLabel7";
-            this.metroLabel7.Size = new System.Drawing.Size(60, 25);
-            this.metroLabel7.TabIndex = 3;
-            this.metroLabel7.Text = "Bitrate";
-            // 
-            // ffrEnableCheckbox
-            // 
-            this.ffrEnableCheckbox.AutoSize = true;
-            this.ffrEnableCheckbox.Checked = global::ALVR.Properties.Settings.Default.ffrEnabled;
-            this.ffrEnableCheckbox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.ffrEnableCheckbox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "ffrEnabled", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.ffrEnableCheckbox.Location = new System.Drawing.Point(56, 322);
-            this.ffrEnableCheckbox.Name = "ffrEnableCheckbox";
-            this.ffrEnableCheckbox.Size = new System.Drawing.Size(65, 15);
-            this.ffrEnableCheckbox.TabIndex = 16;
-            this.ffrEnableCheckbox.Text = "enabled";
-            this.ffrEnableCheckbox.UseVisualStyleBackColor = true;
-            this.ffrEnableCheckbox.CheckedChanged += new System.EventHandler(this.metroCheckBox4_CheckedChanged_1);
-            // 
-            // ffrRatioBox
-            // 
-            this.ffrRatioBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "foveationShapeRatio", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.ffrRatioBox.Location = new System.Drawing.Point(534, 318);
-            this.ffrRatioBox.Margin = new System.Windows.Forms.Padding(2);
-            this.ffrRatioBox.Name = "ffrRatioBox";
-            this.ffrRatioBox.Size = new System.Drawing.Size(56, 19);
-            this.ffrRatioBox.TabIndex = 12;
-            this.ffrRatioBox.Text = global::ALVR.Properties.Settings.Default.foveationShapeRatio;
-            // 
-            // ffrMeanBox
-            // 
-            this.ffrMeanBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "foveationStrengthMean", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.ffrMeanBox.Location = new System.Drawing.Point(305, 318);
-            this.ffrMeanBox.Margin = new System.Windows.Forms.Padding(2);
-            this.ffrMeanBox.Name = "ffrMeanBox";
-            this.ffrMeanBox.Size = new System.Drawing.Size(56, 19);
-            this.ffrMeanBox.TabIndex = 10;
-            this.ffrMeanBox.Text = global::ALVR.Properties.Settings.Default.foveationStrengthMean;
-            this.ffrMeanBox.Click += new System.EventHandler(this.ffrMeanBox_Click);
-            // 
-            // bufferTrackBar
-            // 
-            this.bufferTrackBar.BackColor = System.Drawing.Color.Transparent;
-            this.bufferTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bufferSize", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.bufferTrackBar.Location = new System.Drawing.Point(185, 219);
-            this.bufferTrackBar.Name = "bufferTrackBar";
-            this.bufferTrackBar.Size = new System.Drawing.Size(368, 25);
-            this.bufferTrackBar.TabIndex = 2;
-            this.bufferTrackBar.Text = "metroTrackBar1";
-            this.bufferTrackBar.Value = global::ALVR.Properties.Settings.Default.bufferSize;
-            this.bufferTrackBar.ValueChanged += new System.EventHandler(this.bufferTrackBar_ValueChanged);
-            // 
-            // bitrateTrackBar
-            // 
-            this.bitrateTrackBar.BackColor = System.Drawing.Color.Transparent;
-            this.bitrateTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bitrate", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.bitrateTrackBar.Location = new System.Drawing.Point(185, 81);
-            this.bitrateTrackBar.Maximum = 250;
-            this.bitrateTrackBar.Minimum = 1;
-            this.bitrateTrackBar.Name = "bitrateTrackBar";
-            this.bitrateTrackBar.Size = new System.Drawing.Size(368, 25);
-            this.bitrateTrackBar.TabIndex = 2;
-            this.bitrateTrackBar.Text = "metroTrackBar1";
-            this.bitrateTrackBar.Value = global::ALVR.Properties.Settings.Default.bitrate;
-            this.bitrateTrackBar.ValueChanged += new System.EventHandler(this.bitrateTrackBar_ValueChanged);
-            // 
-            // soundTab
-            // 
-            this.soundTab.Controls.Add(this.metroLabel20);
-            this.soundTab.Controls.Add(this.metroLink1);
-            this.soundTab.Controls.Add(this.noSoundDeviceLabel);
-            this.soundTab.Controls.Add(this.soundDeviceComboBox);
-            this.soundTab.Controls.Add(this.streamMic);
-            this.soundTab.Controls.Add(this.defaultSoundDeviceCheckBox);
-            this.soundTab.Controls.Add(this.soundCheckBox);
-            this.soundTab.HorizontalScrollbarBarColor = true;
-            this.soundTab.HorizontalScrollbarSize = 11;
-            this.soundTab.Location = new System.Drawing.Point(4, 35);
-            this.soundTab.Name = "soundTab";
-            this.soundTab.Size = new System.Drawing.Size(656, 390);
-            this.soundTab.TabIndex = 8;
-            this.soundTab.Text = "Sound";
-            this.soundTab.VerticalScrollbarBarColor = true;
-            // 
-            // metroLabel20
-            // 
-            this.metroLabel20.AutoSize = true;
-            this.metroLabel20.Location = new System.Drawing.Point(44, 220);
-            this.metroLabel20.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.metroLabel20.Name = "metroLabel20";
-            this.metroLabel20.Size = new System.Drawing.Size(172, 19);
-            this.metroLabel20.TabIndex = 7;
-            this.metroLabel20.Text = "Requires Cable audio driver";
-            // 
-            // metroLink1
-            // 
-            this.metroLink1.Location = new System.Drawing.Point(184, 214);
-            this.metroLink1.Name = "metroLink1";
-            this.metroLink1.Size = new System.Drawing.Size(379, 23);
-            this.metroLink1.TabIndex = 6;
-            this.metroLink1.Text = " https://www.vb-audio.com/Cable/";
-            this.metroLink1.Click += new System.EventHandler(this.metroLink1_Click);
-            // 
-            // noSoundDeviceLabel
-            // 
-            this.noSoundDeviceLabel.AutoSize = true;
-            this.noSoundDeviceLabel.Location = new System.Drawing.Point(30, 38);
-            this.noSoundDeviceLabel.Name = "noSoundDeviceLabel";
-            this.noSoundDeviceLabel.Size = new System.Drawing.Size(176, 19);
-            this.noSoundDeviceLabel.TabIndex = 4;
-            this.noSoundDeviceLabel.Text = "No sound devices are found.";
-            this.noSoundDeviceLabel.Visible = false;
-            // 
-            // soundDeviceComboBox
-            // 
-            this.soundDeviceComboBox.FormattingEnabled = true;
-            this.soundDeviceComboBox.ItemHeight = 23;
-            this.soundDeviceComboBox.Location = new System.Drawing.Point(76, 126);
-            this.soundDeviceComboBox.Name = "soundDeviceComboBox";
-            this.soundDeviceComboBox.Size = new System.Drawing.Size(471, 29);
-            this.soundDeviceComboBox.TabIndex = 3;
-            // 
-            // streamMic
-            // 
-            this.streamMic.AutoSize = true;
-            this.streamMic.Checked = global::ALVR.Properties.Settings.Default.streamMic;
-            this.streamMic.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "streamMic", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.streamMic.Location = new System.Drawing.Point(30, 193);
-            this.streamMic.Name = "streamMic";
-            this.streamMic.Size = new System.Drawing.Size(162, 15);
-            this.streamMic.TabIndex = 5;
-            this.streamMic.Text = "Stream Quest Microphone";
-            this.streamMic.UseVisualStyleBackColor = true;
-            this.streamMic.CheckedChanged += new System.EventHandler(this.metroCheckBox4_CheckedChanged);
-            // 
-            // defaultSoundDeviceCheckBox
-            // 
-            this.defaultSoundDeviceCheckBox.AutoSize = true;
-            this.defaultSoundDeviceCheckBox.Checked = global::ALVR.Properties.Settings.Default.useDefaultSoundDevice;
-            this.defaultSoundDeviceCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.defaultSoundDeviceCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useDefaultSoundDevice", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.defaultSoundDeviceCheckBox.Location = new System.Drawing.Point(53, 83);
-            this.defaultSoundDeviceCheckBox.Name = "defaultSoundDeviceCheckBox";
-            this.defaultSoundDeviceCheckBox.Size = new System.Drawing.Size(119, 15);
-            this.defaultSoundDeviceCheckBox.TabIndex = 2;
-            this.defaultSoundDeviceCheckBox.Text = "Use default device";
-            this.defaultSoundDeviceCheckBox.UseVisualStyleBackColor = true;
-            this.defaultSoundDeviceCheckBox.CheckedChanged += new System.EventHandler(this.defaultSoundDeviceCheckBox_CheckedChanged);
-            // 
-            // soundCheckBox
-            // 
-            this.soundCheckBox.AutoSize = true;
-            this.soundCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableSound;
-            this.soundCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.soundCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableSound", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.soundCheckBox.Location = new System.Drawing.Point(30, 38);
-            this.soundCheckBox.Name = "soundCheckBox";
-            this.soundCheckBox.Size = new System.Drawing.Size(92, 15);
-            this.soundCheckBox.TabIndex = 2;
-            this.soundCheckBox.Text = "Steam sound";
-            this.soundCheckBox.UseVisualStyleBackColor = true;
-            this.soundCheckBox.CheckedChanged += new System.EventHandler(this.soundCheckBox_CheckedChanged);
-            // 
             // debugTab
             // 
             this.debugTab.Controls.Add(this.metroLabel5);
@@ -1289,7 +1277,7 @@
             this.debugTab.HorizontalScrollbarSize = 11;
             this.debugTab.Location = new System.Drawing.Point(4, 35);
             this.debugTab.Name = "debugTab";
-            this.debugTab.Size = new System.Drawing.Size(656, 390);
+            this.debugTab.Size = new System.Drawing.Size(656, 394);
             this.debugTab.TabIndex = 2;
             this.debugTab.Text = "Debug";
             this.debugTab.VerticalScrollbarBarColor = true;
@@ -1455,7 +1443,7 @@
             this.aboutTab.HorizontalScrollbarSize = 11;
             this.aboutTab.Location = new System.Drawing.Point(4, 35);
             this.aboutTab.Name = "aboutTab";
-            this.aboutTab.Size = new System.Drawing.Size(656, 390);
+            this.aboutTab.Size = new System.Drawing.Size(656, 394);
             this.aboutTab.TabIndex = 4;
             this.aboutTab.Text = "About";
             this.aboutTab.VerticalScrollbarBarColor = true;
@@ -1592,7 +1580,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(710, 522);
+            this.ClientSize = new System.Drawing.Size(710, 518);
             this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.startServerButton);
             this.Controls.Add(this.metroProgressSpinner1);
@@ -1613,12 +1601,12 @@
             this.connectedPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).EndInit();
             this.messagePanel.ResumeLayout(false);
-            this.otherTab.ResumeLayout(false);
-            this.otherTab.PerformLayout();
             this.videoTab.ResumeLayout(false);
             this.videoTab.PerformLayout();
             this.soundTab.ResumeLayout(false);
             this.soundTab.PerformLayout();
+            this.otherTab.ResumeLayout(false);
+            this.otherTab.PerformLayout();
             this.debugTab.ResumeLayout(false);
             this.debugTab.PerformLayout();
             this.aboutTab.ResumeLayout(false);
@@ -1736,22 +1724,21 @@
         private MetroFramework.Controls.MetroLink metroLink1;
         private MetroFramework.Controls.MetroLabel metroLabel20;
         private MetroFramework.Controls.MetroLabel metroLabel21;
-        private MetroFramework.Controls.MetroTextBox ffrMeanBox;
-        private MetroFramework.Controls.MetroTextBox ffrRatioBox;
-        private MetroFramework.Controls.MetroLabel metroLabel22;
         private System.Windows.Forms.Label label4;
         private MetroFramework.Controls.MetroLabel ffrMeanLabel;
-        private MetroFramework.Controls.MetroCheckBox ffrEnableCheckbox;
         private MetroFramework.Controls.MetroLabel codecHelp;
         private MetroFramework.Controls.MetroLabel bitrateHelp;
         private MetroFramework.Controls.MetroLabel resolutionHelp;
         private MetroFramework.Controls.MetroLabel bufferHelp;
         private MetroFramework.Controls.MetroLabel ffrHelp;
         private MetroFramework.Controls.MetroLabel ffrStrengthHelp;
-        private MetroFramework.Controls.MetroLabel ffrShapeRatioHelp;
         private MetroFramework.Controls.MetroLabel metroLabel11;
         private MetroFramework.Controls.MetroCheckBox force3DOFCheckBox;
         private MetroFramework.Controls.MetroCheckBox disableController;
+        private System.Windows.Forms.Label label5;
+        private MetroFramework.Controls.MetroLabel FoveationStrengthLabel;
+        private MetroFramework.Controls.MetroComboBox foveationComboBox;
+        private MetroFramework.Controls.MetroTrackBar foveationStrengthTrackBar;
     }
 }
 

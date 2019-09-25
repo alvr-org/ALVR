@@ -139,10 +139,7 @@ namespace ALVR
                 "FFR causes some visual artefacts at the edges of the view that are more or lesse visible depending on the settings and the game");
 
             toolTip1.SetToolTip(this.ffrStrengthHelp, "Range from 0 - 5\n" +
-                "higher value means less detail outside the foveated region and more artefacts \n" +
-                "0 = off");
-
-            toolTip1.SetToolTip(this.ffrShapeRatioHelp, "Range from 1.5 to 2 \nAspect ratio of the foveated region");
+                "higher value means less detail outside the foveated region and more artefacts");
 
 
 
@@ -179,9 +176,10 @@ namespace ALVR
                 }
                 resolutionComboBox.SelectedIndex = index;
                 UpdateResolutionLabel();
-                
 
                 codecComboBox.SelectedIndex = c.codec;
+
+                foveationComboBox.SelectedIndex = c.foveationMode;
 
                 if (c.soundDevice != "")
                 {
@@ -223,35 +221,21 @@ namespace ALVR
             else
             {
                 c.resolutionScale = ServerConfig.supportedScales[ServerConfig.DEFAULT_SCALE_INDEX];
-
             }
-                       
+
+            if (foveationComboBox.SelectedIndex != -1)
+            {
+                c.foveationMode = foveationComboBox.SelectedIndex;
+            }
+            else
+            {
+                c.resolutionScale = 0;
+            }
+
 
             c.autoConnectList = clientList.Serialize();
 
             c.codec = codecComboBox.SelectedIndex;
-       
-
-
-            float ffrMean = Utils.ParseFloat(ffrMeanBox.Text);
-            if(ffrMean > 5)
-            {
-                ffrMeanBox.Text = "5";
-            } else if(ffrMean < 0)
-            {
-                ffrMeanBox.Text = "0";
-            }
-
-            float ffrShape = Utils.ParseFloat(ffrRatioBox.Text);
-            if (ffrShape > 2)
-            {
-                ffrMeanBox.Text = "2";
-            }
-            else if (ffrShape < 1.5)
-            {
-                ffrRatioBox.Text = "1.5";
-            }
-
            
 
             if (soundDevices.Count > 0)
@@ -897,11 +881,6 @@ namespace ALVR
 
         }
 
-        private void ffrMeanBox_Click(object sender, EventArgs e)
-        {
-
-        }
-
         private void metroCheckBox4_CheckedChanged_1(object sender, EventArgs e)
         {
             if (loadingSettings || initComponents)
@@ -912,6 +891,20 @@ namespace ALVR
         }
 
         private void codecComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (loadingSettings || initComponents)
+            {
+                return;
+            }
+            SaveSettings();
+        }
+
+        private void FoveationStrengthTrackBar_ValueChanged(object sender, EventArgs e)
+        {
+            FoveationStrengthLabel.Text = (foveationStrengthTrackBar.Value / 100f).ToString();
+        }
+
+        private void FoveationComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (loadingSettings || initComponents)
             {

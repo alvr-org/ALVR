@@ -2,10 +2,10 @@
 
 #include "d3d-render-utils/RenderPipeline.h"
 
-enum FFR_MODE {
-	FFR_MODE_DISABLED = 0,
-	FFR_MODE_SLICES = 1,
-	FFR_MODE_WARP = 2,
+enum FOVEATION_MODE {
+	FOVEATION_MODE_DISABLED = 0,
+	FOVEATION_MODE_SLICES = 1,
+	FOVEATION_MODE_WARP = 2,
 };
 
 class FFR

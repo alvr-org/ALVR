@@ -72,7 +72,7 @@ namespace {
 		// foveated center X assuming screen plane with unit width
 		float focusPositionX = leftHalfWidth / (leftHalfWidth + rightHalfWidth);
 		// align focus position to a number of pixel multiple of 4 to avoid blur and artifacts
-		if (mode == FFR_MODE_SLICES) {
+		if (mode == FOVEATION_MODE_SLICES) {
 			focusPositionX = Align4Normalized(focusPositionX, targetEyeWidth);
 		}
 
@@ -82,7 +82,7 @@ namespace {
 		float bottomHalfHeight = tan(leftEye.top * DEG_TO_RAD);
 		float focusPositionY = topHalfHeight / (topHalfHeight + bottomHalfHeight);
 		//focusPositionY = Align4Normalized(focusPositionY, targetEyeHeight);
-		if (mode == FFR_MODE_SLICES) {
+		if (mode == FOVEATION_MODE_SLICES) {
 			focusPositionY = Align4Normalized(focusPositionY, targetEyeHeight);
 		}
 
@@ -91,16 +91,16 @@ namespace {
 		// /{ foveationScaleX * foveationScaleY = (mFoveationStrengthMean)^2
 		// \{ foveationScaleX / foveationScaleY = 1 / mFoveationShapeRatio
 		// then foveationScaleX := foveationScaleX / (targetEyeWidth / targetEyeHeight) to compensate for non square frame.
-		float strengthMean = Settings::Instance().m_foveationStrengthMean;
-		float strengthRatio = Settings::Instance().m_foveationShapeRatio;
-		if (mode == FFR_MODE_SLICES) {
-			strengthMean = 1.f / (strengthMean + 1.f);
-			strengthRatio = 1.f / strengthRatio;
+		float foveationStrength = Settings::Instance().m_foveationStrength;
+		float foveationShape = Settings::Instance().m_foveationShape;
+		if (mode == FOVEATION_MODE_SLICES) {
+			foveationStrength = 1.f / (foveationStrength / 2.f + 1.f);
+			foveationShape = 1.f / foveationShape;
 		}
-		float scaleCoeff = strengthMean * sqrt(strengthRatio);
-		float foveationScaleX = scaleCoeff / strengthRatio / (targetEyeWidth / targetEyeHeight);
+		float scaleCoeff = foveationStrength * sqrt(foveationShape);
+		float foveationScaleX = scaleCoeff / foveationShape / (targetEyeWidth / targetEyeHeight);
 		float foveationScaleY = scaleCoeff;
-		if (mode == FFR_MODE_SLICES) {
+		if (mode == FOVEATION_MODE_SLICES) {
 			foveationScaleX = Align4Normalized(foveationScaleX, targetEyeWidth);
 			foveationScaleY = Align4Normalized(foveationScaleY, targetEyeHeight);
 		}
@@ -112,11 +112,11 @@ namespace {
 		float distortedWidth = 0;
 		float distortedHeight = 0;
 
-		if (mode == FFR_MODE_SLICES) {
+		if (mode == FOVEATION_MODE_SLICES) {
 			optimizedEyeWidth = CalcOptimalDimensionForSlicing(foveationScaleX, targetEyeWidth);
 			optimizedEyeHeight = CalcOptimalDimensionForSlicing(foveationScaleY, targetEyeHeight);
 		}
-		else if (mode == FFR_MODE_WARP) {
+		else if (mode == FOVEATION_MODE_WARP) {
 			boundStartX = CalcBoundStart(focusPositionX, foveationScaleX);
 			boundStartY = CalcBoundStart(focusPositionY, foveationScaleY);
 
@@ -162,10 +162,10 @@ void FFR::Initialize(ID3D11Texture2D* compositionTexture) {
 		fovVars.optimizedEyeHeight, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
 
 	switch (Settings::Instance().m_foveationMode) {
-	case FFR_MODE_DISABLED:
+	case FOVEATION_MODE_DISABLED:
 		mOptimizedTexture = compositionTexture;
 		break;
-	case FFR_MODE_SLICES:
+	case FOVEATION_MODE_SLICES:
 	{
 		std::vector<uint8_t> compressSlicesShaderCSO;
 		if (!ReadBinaryResource(compressSlicesShaderCSO, IDR_COMPRESS_SLICES_SHADER)) {
@@ -179,7 +179,7 @@ void FFR::Initialize(ID3D11Texture2D* compositionTexture) {
 		mPipelines.push_back(compressSlicesPipeline);
 		break;
 	}
-	case FFR_MODE_WARP:
+	case FOVEATION_MODE_WARP:
 
 		/*ComPtr<ID3D11Texture2D> horizontalBlurredTexture = CreateTexture(mDevice.Get(),
 			fovVars.targetEyeWidth * 2, fovVars.targetEyeHeight,

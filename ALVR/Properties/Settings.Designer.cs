@@ -396,42 +396,6 @@ namespace ALVR.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("2")]
-        public string foveationStrengthMean {
-            get {
-                return ((string)(this["foveationStrengthMean"]));
-            }
-            set {
-                this["foveationStrengthMean"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("1.5")]
-        public string foveationShapeRatio {
-            get {
-                return ((string)(this["foveationShapeRatio"]));
-            }
-            set {
-                this["foveationShapeRatio"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool ffrEnabled {
-            get {
-                return ((bool)(this["ffrEnabled"]));
-            }
-            set {
-                this["ffrEnabled"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool force3DOF {
             get {
@@ -451,6 +415,30 @@ namespace ALVR.Properties {
             }
             set {
                 this["disableController"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("200")]
+        public int foveationStrength {
+            get {
+                return ((int)(this["foveationStrength"]));
+            }
+            set {
+                this["foveationStrength"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int foveationMode {
+            get {
+                return ((int)(this["foveationMode"]));
+            }
+            set {
+                this["foveationMode"] = value;
             }
         }
     }

@@ -86,8 +86,9 @@ static const char * const k_pch_Settings_OffsetPosZ_Float = "offsetPosZ";
 
 static const char * const k_pch_Settings_controllerPoseOffset_Float = "controllerPoseOffset";
 
-static const char * const k_pch_Settings_foveationStrengthMean_Float = "foveationStrengthMean";
-static const char * const k_pch_Settings_foveationShapeRatio_Float = "foveationShapeRatio";
+static const char * const k_pch_Settings_foveationMode_Int32 = "foveationMode";
+static const char * const k_pch_Settings_foveationStrength_Float = "foveationStrength";
+static const char * const k_pch_Settings_foveationShape_Float = "foveationShape";
 
 
 static const char * const k_pch_Settings_TrackingFrameOffset_Int32 = "trackingFrameOffset";
@@ -148,9 +149,9 @@ public:
 	float m_flSecondsFromVsyncToPhotons;
 	float m_flIPD;
 
-	FFR_MODE m_foveationMode = FFR_MODE_SLICES;// FFR_MODE_WARP;//
-	float m_foveationStrengthMean;
-	float m_foveationShapeRatio;
+	FOVEATION_MODE m_foveationMode;
+	float m_foveationStrength;
+	float m_foveationShape;
 
 	bool m_enableSound;
 	std::string m_soundDevice;

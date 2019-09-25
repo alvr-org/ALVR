@@ -288,7 +288,7 @@ bool FrameRender::Startup()
 
 	CreateResourceTexture();
 
-	enableFFR = Settings::Instance().m_foveationMode != FFR_MODE_DISABLED;
+	enableFFR = Settings::Instance().m_foveationMode != FOVEATION_MODE_DISABLED;
 
 	if (enableFFR) {
 		m_ffr = std::make_unique<FFR>(m_pD3DRender->GetDevice());

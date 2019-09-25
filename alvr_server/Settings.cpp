@@ -148,8 +148,9 @@ void Settings::Load()
 		m_trackingFrameOffset = (int32_t)v.get(k_pch_Settings_TrackingFrameOffset_Int32).get<int64_t>();
 		m_controllerPoseOffset = (double)v.get(k_pch_Settings_controllerPoseOffset_Float).get<double>();
 
-		m_foveationStrengthMean = (float)v.get(k_pch_Settings_foveationStrengthMean_Float).get<double>();
-		m_foveationShapeRatio = (float)v.get(k_pch_Settings_foveationShapeRatio_Float).get<double>();
+		m_foveationMode = (FOVEATION_MODE)v.get(k_pch_Settings_foveationMode_Int32).get<int64_t>();
+		m_foveationStrength = (float)v.get(k_pch_Settings_foveationStrength_Float).get<double>();
+		m_foveationShape = (float)v.get(k_pch_Settings_foveationShape_Float).get<double>();
 
 
 

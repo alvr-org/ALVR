@@ -4,6 +4,7 @@
 #include "common-utils.h"
 #include "Bitrate.h"
 #include "Utils.h"
+#include "FFR.h"
 
 //
 // Settings
@@ -85,8 +86,9 @@ static const char * const k_pch_Settings_OffsetPosZ_Float = "offsetPosZ";
 
 static const char * const k_pch_Settings_controllerPoseOffset_Float = "controllerPoseOffset";
 
-static const char * const k_pch_Settings_foveationStrengthMean_Float = "foveationStrengthMean";
-static const char * const k_pch_Settings_foveationShapeRatio_Float = "foveationShapeRatio";
+static const char * const k_pch_Settings_foveationMode_Int32 = "foveationMode";
+static const char * const k_pch_Settings_foveationStrength_Float = "foveationStrength";
+static const char * const k_pch_Settings_foveationShape_Float = "foveationShape";
 
 
 static const char * const k_pch_Settings_TrackingFrameOffset_Int32 = "trackingFrameOffset";
@@ -147,9 +149,9 @@ public:
 	float m_flSecondsFromVsyncToPhotons;
 	float m_flIPD;
 
-	float m_foveationStrengthMean = 2; // higher value means less detail outside the foveated region
-
-	float m_foveationShapeRatio = 1.5;  // aspect ratio of the foveated region
+	FOVEATION_MODE m_foveationMode;
+	float m_foveationStrength;
+	float m_foveationShape;
 
 	bool m_enableSound;
 	std::string m_soundDevice;

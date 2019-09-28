@@ -727,6 +727,7 @@ void ClientConnection::Connect(const sockaddr_in *addr) {
 	message.foveationMode = (uint8_t)Settings::Instance().m_foveationMode;
 	message.foveationStrength = Settings::Instance().m_foveationStrength;
 	message.foveationShape = Settings::Instance().m_foveationShape;
+	message.foveationVerticalOffset = Settings::Instance().m_foveationVerticalOffset;
 
 	m_Socket->Send((char *)&message, sizeof(message), 0);
 }

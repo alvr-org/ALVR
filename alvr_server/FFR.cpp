@@ -81,7 +81,7 @@ namespace {
 		float topHalfHeight = tan(leftEye.bottom * DEG_TO_RAD);
 		float bottomHalfHeight = tan(leftEye.top * DEG_TO_RAD);
 		float focusPositionY = topHalfHeight / (topHalfHeight + bottomHalfHeight);
-		//focusPositionY = Align4Normalized(focusPositionY, targetEyeHeight);
+		focusPositionY += Settings::Instance().m_foveationVerticalOffset;
 		if (mode == FOVEATION_MODE_SLICES) {
 			focusPositionY = Align4Normalized(focusPositionY, targetEyeHeight);
 		}

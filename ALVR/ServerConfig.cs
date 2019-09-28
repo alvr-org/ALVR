@@ -244,6 +244,7 @@ namespace ALVR
                 driverConfig.foveationMode = c.foveationMode;
                 driverConfig.foveationStrength = c.foveationStrength / 100f;
                 driverConfig.foveationShape = 1.5f;
+                driverConfig.foveationVerticalOffset = c.foveationVerticalOffset / 100f;
 
 
                 byte[] bytes = Encoding.UTF8.GetBytes(driverConfig.ToString());

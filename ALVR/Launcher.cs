@@ -138,8 +138,11 @@ namespace ALVR
                 "The smaller video at the same bitrate can preserve more details and lowers the latency at the same time \n" +
                 "FFR causes some visual artefacts at the edges of the view that are more or lesse visible depending on the settings and the game");
 
-            toolTip1.SetToolTip(this.ffrStrengthHelp, "Range from 0 - 5\n" +
-                "higher value means less detail outside the foveated region and more artefacts");
+            toolTip1.SetToolTip(this.ffrStrengthHelp, "Range 0 - 5\n" +
+                "higher value means less detail toward the edges of the frame and more artefacts");
+            
+            toolTip1.SetToolTip(this.ffrVerticalOffsetHelp, "Range -0.1 - 0.1\n" +
+                "higher value means the high quality frame region is moved further down");
 
 
 
@@ -901,7 +904,7 @@ namespace ALVR
 
         private void FoveationStrengthTrackBar_ValueChanged(object sender, EventArgs e)
         {
-            FoveationStrengthLabel.Text = (foveationStrengthTrackBar.Value / 100f).ToString();
+            foveationStrengthLabel.Text = (foveationStrengthTrackBar.Value / 100f).ToString();
         }
 
         private void FoveationComboBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -911,6 +914,11 @@ namespace ALVR
                 return;
             }
             SaveSettings();
+        }
+
+        private void FoveationVerticalOffsetTrackBar_ValueChanged(object sender, EventArgs e)
+        {
+            foveationVerticalOffsetLabel.Text = (foveationVerticalOffsetTrackBar.Value / 100f).ToString();
         }
     }
 }

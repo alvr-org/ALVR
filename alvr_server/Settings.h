@@ -89,6 +89,7 @@ static const char * const k_pch_Settings_controllerPoseOffset_Float = "controlle
 static const char * const k_pch_Settings_foveationMode_Int32 = "foveationMode";
 static const char * const k_pch_Settings_foveationStrength_Float = "foveationStrength";
 static const char * const k_pch_Settings_foveationShape_Float = "foveationShape";
+static const char * const k_pch_Settings_foveationVerticalOffset_Float = "foveationVerticalOffset";
 
 
 static const char * const k_pch_Settings_TrackingFrameOffset_Int32 = "trackingFrameOffset";
@@ -152,6 +153,7 @@ public:
 	FOVEATION_MODE m_foveationMode;
 	float m_foveationStrength;
 	float m_foveationShape;
+	float m_foveationVerticalOffset;
 
 	bool m_enableSound;
 	std::string m_soundDevice;

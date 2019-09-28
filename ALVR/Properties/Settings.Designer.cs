@@ -441,5 +441,17 @@ namespace ALVR.Properties {
                 this["foveationMode"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int foveationVerticalOffset {
+            get {
+                return ((int)(this["foveationVerticalOffset"]));
+            }
+            set {
+                this["foveationVerticalOffset"] = value;
+            }
+        }
     }
 }

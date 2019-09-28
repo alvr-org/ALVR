@@ -166,6 +166,7 @@ struct ConnectionMessage {
 	uint8_t foveationMode;
 	float foveationStrength;
 	float foveationShape;
+	float foveationVerticalOffset;
 };
 struct RecoverConnection {
 	uint32_t type; // ALVR_PACKET_TYPE_RECOVER_CONNECTION

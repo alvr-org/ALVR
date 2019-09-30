@@ -453,5 +453,17 @@ namespace ALVR.Properties {
                 this["foveationVerticalOffset"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool aggressiveKeyframeResend {
+            get {
+                return ((bool)(this["aggressiveKeyframeResend"]));
+            }
+            set {
+                this["aggressiveKeyframeResend"] = value;
+            }
+        }
     }
 }

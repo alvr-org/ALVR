@@ -150,6 +150,8 @@
             this.defaultSoundDeviceCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.force3DOFCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.aggressiveKeyframeResend = new MetroFramework.Controls.MetroCheckBox();
+            this.aggressiveKeyframeResendHelp = new MetroFramework.Controls.MetroLabel();
             this.disableThrottlingCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.force60HzCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.suppressFrameDropCheckBox = new MetroFramework.Controls.MetroCheckBox();
@@ -989,6 +991,8 @@
             this.otherTab.Controls.Add(this.saveTrackingFrameOffsetButton);
             this.otherTab.Controls.Add(this.metroLabel26);
             this.otherTab.Controls.Add(this.force3DOFCheckBox);
+            this.otherTab.Controls.Add(this.aggressiveKeyframeResend);
+            this.otherTab.Controls.Add(this.aggressiveKeyframeResendHelp);
             this.otherTab.Controls.Add(this.disableThrottlingCheckBox);
             this.otherTab.Controls.Add(this.force60HzCheckBox);
             this.otherTab.Controls.Add(this.suppressFrameDropCheckBox);
@@ -1508,6 +1512,31 @@
             this.force3DOFCheckBox.Text = "Force 3DOF";
             this.force3DOFCheckBox.UseVisualStyleBackColor = true;
             // 
+            // aggressiveKeyframeResend
+            // 
+            this.aggressiveKeyframeResend.AutoSize = true;
+            this.aggressiveKeyframeResend.Checked = global::ALVR.Properties.Settings.Default.aggressiveKeyframeResend;
+            this.aggressiveKeyframeResend.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "aggressiveKeyframeResend", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.aggressiveKeyframeResend.Location = new System.Drawing.Point(407, 144);
+            this.aggressiveKeyframeResend.Name = "aggressiveKeyframeResend";
+            this.aggressiveKeyframeResend.Size = new System.Drawing.Size(163, 15);
+            this.aggressiveKeyframeResend.TabIndex = 24;
+            this.aggressiveKeyframeResend.Text = "Aggressive keyframe resend";
+            this.aggressiveKeyframeResend.UseVisualStyleBackColor = true;
+            // 
+            // aggressiveKeyframeResendHelp
+            // 
+            this.aggressiveKeyframeResendHelp.AutoSize = true;
+            this.aggressiveKeyframeResendHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.aggressiveKeyframeResendHelp.FontSize = MetroFramework.MetroLabelSize.Small;
+            this.aggressiveKeyframeResendHelp.Location = new System.Drawing.Point(573, 140);
+            this.aggressiveKeyframeResendHelp.Name = "aggressiveKeyframeResendHelp";
+            this.aggressiveKeyframeResendHelp.Size = new System.Drawing.Size(15, 19);
+            this.aggressiveKeyframeResendHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.aggressiveKeyframeResendHelp.TabIndex = 0;
+            this.aggressiveKeyframeResendHelp.Text = "?";
+            this.aggressiveKeyframeResendHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
             // disableThrottlingCheckBox
             // 
             this.disableThrottlingCheckBox.AutoSize = true;
@@ -1790,6 +1819,8 @@
         private MetroFramework.Controls.MetroLabel ffrStrengthHelp;
         private MetroFramework.Controls.MetroLabel metroLabel11;
         private MetroFramework.Controls.MetroCheckBox force3DOFCheckBox;
+        private MetroFramework.Controls.MetroCheckBox aggressiveKeyframeResend;
+        private MetroFramework.Controls.MetroLabel aggressiveKeyframeResendHelp;
         private MetroFramework.Controls.MetroCheckBox disableController;
         private System.Windows.Forms.Label label5;
         private MetroFramework.Controls.MetroLabel foveationStrengthLabel;

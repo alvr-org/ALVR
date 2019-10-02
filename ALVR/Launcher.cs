@@ -144,8 +144,8 @@ namespace ALVR
             toolTip1.SetToolTip(this.ffrVerticalOffsetHelp, "Range -0.1 - 0.1\n" +
                 "higher value means the high quality frame region is moved further down");
 
-
-
+            toolTip1.SetToolTip(this.aggressiveKeyframeResendHelp, "Decrease minimum interval between keyframes from 100 ms to 5 ms. \n" +
+                "Used only when packet loss is detected. Improves experience on networks with packet loss.");
 
 
 

@@ -18,20 +18,25 @@ void IDRScheduler::OnPacketLoss()
 		// Waiting next insertion.
 		return;
 	}
-	if (GetTimestampUs() - m_insertIDRTime > MIN_IDR_FRAME_INTERVAL) {
+	if (GetTimestampUs() - m_insertIDRTime > m_minIDRFrameInterval) {
 		// Insert immediately
 		m_insertIDRTime = GetTimestampUs();
 		m_scheduled = true;
 	}
 	else {
 		// Schedule next insertion.
-		m_insertIDRTime += MIN_IDR_FRAME_INTERVAL;
+		m_insertIDRTime += m_minIDRFrameInterval;
 		m_scheduled = true;
 	}
 }
 
 void IDRScheduler::OnStreamStart()
 {
+	if (Settings::Instance().IsLoaded() && Settings::Instance().m_aggressiveKeyframeResend) {
+		m_minIDRFrameInterval = MIN_IDR_FRAME_INTERVAL_AGGRESSIVE;
+	} else {
+		m_minIDRFrameInterval = MIN_IDR_FRAME_INTERVAL;
+	}
 	IPCCriticalSectionLock lock(m_IDRCS);
 	// Force insert IDR-frame
 	m_insertIDRTime = GetTimestampUs() - MIN_IDR_FRAME_INTERVAL * 2;

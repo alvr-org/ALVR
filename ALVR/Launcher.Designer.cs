@@ -150,6 +150,8 @@
             this.defaultSoundDeviceCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.force3DOFCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.aggressiveKeyframeResend = new MetroFramework.Controls.MetroCheckBox();
+            this.aggressiveKeyframeResendHelp = new MetroFramework.Controls.MetroLabel();
             this.disableThrottlingCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.force60HzCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.suppressFrameDropCheckBox = new MetroFramework.Controls.MetroCheckBox();
@@ -989,6 +991,8 @@
             this.otherTab.Controls.Add(this.saveTrackingFrameOffsetButton);
             this.otherTab.Controls.Add(this.metroLabel26);
             this.otherTab.Controls.Add(this.force3DOFCheckBox);
+            this.otherTab.Controls.Add(this.aggressiveKeyframeResend);
+            this.otherTab.Controls.Add(this.aggressiveKeyframeResendHelp);
             this.otherTab.Controls.Add(this.disableThrottlingCheckBox);
             this.otherTab.Controls.Add(this.force60HzCheckBox);
             this.otherTab.Controls.Add(this.suppressFrameDropCheckBox);
@@ -1068,7 +1072,7 @@
             this.refDisconnectCommandButton.Location = new System.Drawing.Point(526, 220);
             this.refDisconnectCommandButton.Name = "refDisconnectCommandButton";
             this.refDisconnectCommandButton.Size = new System.Drawing.Size(52, 25);
-            this.refDisconnectCommandButton.TabIndex = 16;
+            this.refDisconnectCommandButton.TabIndex = 26;
             this.refDisconnectCommandButton.Text = "...";
             this.refDisconnectCommandButton.Click += new System.EventHandler(this.refDisconnectCommandButton_Click);
             // 
@@ -1077,7 +1081,7 @@
             this.refConnectCommandButton.Location = new System.Drawing.Point(526, 189);
             this.refConnectCommandButton.Name = "refConnectCommandButton";
             this.refConnectCommandButton.Size = new System.Drawing.Size(52, 25);
-            this.refConnectCommandButton.TabIndex = 16;
+            this.refConnectCommandButton.TabIndex = 24;
             this.refConnectCommandButton.Text = "...";
             this.refConnectCommandButton.Click += new System.EventHandler(this.refConnectCommandButton_Click);
             // 
@@ -1086,7 +1090,7 @@
             this.saveTrackingFrameOffsetButton.Location = new System.Drawing.Point(287, 268);
             this.saveTrackingFrameOffsetButton.Name = "saveTrackingFrameOffsetButton";
             this.saveTrackingFrameOffsetButton.Size = new System.Drawing.Size(75, 25);
-            this.saveTrackingFrameOffsetButton.TabIndex = 10;
+            this.saveTrackingFrameOffsetButton.TabIndex = 28;
             this.saveTrackingFrameOffsetButton.Text = "Save";
             this.saveTrackingFrameOffsetButton.Click += new System.EventHandler(this.saveTrackingFrameOffsetButton_Click);
             // 
@@ -1504,9 +1508,34 @@
             this.force3DOFCheckBox.Location = new System.Drawing.Point(407, 122);
             this.force3DOFCheckBox.Name = "force3DOFCheckBox";
             this.force3DOFCheckBox.Size = new System.Drawing.Size(84, 15);
-            this.force3DOFCheckBox.TabIndex = 23;
+            this.force3DOFCheckBox.TabIndex = 34;
             this.force3DOFCheckBox.Text = "Force 3DOF";
             this.force3DOFCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // aggressiveKeyframeResend
+            // 
+            this.aggressiveKeyframeResend.AutoSize = true;
+            this.aggressiveKeyframeResend.Checked = global::ALVR.Properties.Settings.Default.aggressiveKeyframeResend;
+            this.aggressiveKeyframeResend.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "aggressiveKeyframeResend", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.aggressiveKeyframeResend.Location = new System.Drawing.Point(407, 144);
+            this.aggressiveKeyframeResend.Name = "aggressiveKeyframeResend";
+            this.aggressiveKeyframeResend.Size = new System.Drawing.Size(163, 15);
+            this.aggressiveKeyframeResend.TabIndex = 35;
+            this.aggressiveKeyframeResend.Text = "Aggressive keyframe resend";
+            this.aggressiveKeyframeResend.UseVisualStyleBackColor = true;
+            // 
+            // aggressiveKeyframeResendHelp
+            // 
+            this.aggressiveKeyframeResendHelp.AutoSize = true;
+            this.aggressiveKeyframeResendHelp.BackColor = System.Drawing.SystemColors.ControlDark;
+            this.aggressiveKeyframeResendHelp.FontSize = MetroFramework.MetroLabelSize.Small;
+            this.aggressiveKeyframeResendHelp.Location = new System.Drawing.Point(573, 140);
+            this.aggressiveKeyframeResendHelp.Name = "aggressiveKeyframeResendHelp";
+            this.aggressiveKeyframeResendHelp.Size = new System.Drawing.Size(15, 19);
+            this.aggressiveKeyframeResendHelp.Style = MetroFramework.MetroColorStyle.Blue;
+            this.aggressiveKeyframeResendHelp.TabIndex = 0;
+            this.aggressiveKeyframeResendHelp.Text = "?";
+            this.aggressiveKeyframeResendHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // disableThrottlingCheckBox
             // 
@@ -1516,10 +1545,9 @@
             this.disableThrottlingCheckBox.Location = new System.Drawing.Point(407, 80);
             this.disableThrottlingCheckBox.Name = "disableThrottlingCheckBox";
             this.disableThrottlingCheckBox.Size = new System.Drawing.Size(142, 15);
-            this.disableThrottlingCheckBox.TabIndex = 2;
+            this.disableThrottlingCheckBox.TabIndex = 32;
             this.disableThrottlingCheckBox.Text = "Disable send throttling";
             this.disableThrottlingCheckBox.UseVisualStyleBackColor = true;
-            this.disableThrottlingCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
             // 
             // force60HzCheckBox
             // 
@@ -1529,10 +1557,9 @@
             this.force60HzCheckBox.Location = new System.Drawing.Point(407, 59);
             this.force60HzCheckBox.Name = "force60HzCheckBox";
             this.force60HzCheckBox.Size = new System.Drawing.Size(81, 15);
-            this.force60HzCheckBox.TabIndex = 2;
+            this.force60HzCheckBox.TabIndex = 31;
             this.force60HzCheckBox.Text = "Force 60Hz";
             this.force60HzCheckBox.UseVisualStyleBackColor = true;
-            this.force60HzCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
             // 
             // suppressFrameDropCheckBox
             // 
@@ -1542,7 +1569,7 @@
             this.suppressFrameDropCheckBox.Location = new System.Drawing.Point(407, 38);
             this.suppressFrameDropCheckBox.Name = "suppressFrameDropCheckBox";
             this.suppressFrameDropCheckBox.Size = new System.Drawing.Size(132, 15);
-            this.suppressFrameDropCheckBox.TabIndex = 2;
+            this.suppressFrameDropCheckBox.TabIndex = 30;
             this.suppressFrameDropCheckBox.Text = "Suppress frame drop";
             this.suppressFrameDropCheckBox.UseVisualStyleBackColor = true;
             this.suppressFrameDropCheckBox.CheckedChanged += new System.EventHandler(this.suppressFrameDropCheckBox_CheckedChanged);
@@ -1555,7 +1582,7 @@
             this.disableController.Location = new System.Drawing.Point(407, 101);
             this.disableController.Name = "disableController";
             this.disableController.Size = new System.Drawing.Size(115, 15);
-            this.disableController.TabIndex = 23;
+            this.disableController.TabIndex = 33;
             this.disableController.Text = "Disable controller";
             this.disableController.UseVisualStyleBackColor = true;
             // 
@@ -1575,7 +1602,7 @@
             this.trackingFrameOffsetTextBox.Location = new System.Drawing.Point(193, 268);
             this.trackingFrameOffsetTextBox.Name = "trackingFrameOffsetTextBox";
             this.trackingFrameOffsetTextBox.Size = new System.Drawing.Size(86, 25);
-            this.trackingFrameOffsetTextBox.TabIndex = 19;
+            this.trackingFrameOffsetTextBox.TabIndex = 27;
             this.trackingFrameOffsetTextBox.Text = global::ALVR.Properties.Settings.Default.trackingFrameOffset;
             // 
             // disconnectCommandTextBox
@@ -1584,7 +1611,7 @@
             this.disconnectCommandTextBox.Location = new System.Drawing.Point(136, 220);
             this.disconnectCommandTextBox.Name = "disconnectCommandTextBox";
             this.disconnectCommandTextBox.Size = new System.Drawing.Size(383, 25);
-            this.disconnectCommandTextBox.TabIndex = 15;
+            this.disconnectCommandTextBox.TabIndex = 25;
             this.disconnectCommandTextBox.Text = global::ALVR.Properties.Settings.Default.disconnectCommand;
             // 
             // connectCommandTextBox
@@ -1593,7 +1620,7 @@
             this.connectCommandTextBox.Location = new System.Drawing.Point(136, 189);
             this.connectCommandTextBox.Name = "connectCommandTextBox";
             this.connectCommandTextBox.Size = new System.Drawing.Size(383, 25);
-            this.connectCommandTextBox.TabIndex = 15;
+            this.connectCommandTextBox.TabIndex = 23;
             this.connectCommandTextBox.Text = global::ALVR.Properties.Settings.Default.connectCommand;
             // 
             // onlySteamVRCheckBox
@@ -1604,7 +1631,7 @@
             this.onlySteamVRCheckBox.Location = new System.Drawing.Point(407, 17);
             this.onlySteamVRCheckBox.Name = "onlySteamVRCheckBox";
             this.onlySteamVRCheckBox.Size = new System.Drawing.Size(221, 15);
-            this.onlySteamVRCheckBox.TabIndex = 2;
+            this.onlySteamVRCheckBox.TabIndex = 29;
             this.onlySteamVRCheckBox.Text = "Launch only SteamVR without Steam.";
             this.onlySteamVRCheckBox.UseVisualStyleBackColor = true;
             // 
@@ -1790,6 +1817,8 @@
         private MetroFramework.Controls.MetroLabel ffrStrengthHelp;
         private MetroFramework.Controls.MetroLabel metroLabel11;
         private MetroFramework.Controls.MetroCheckBox force3DOFCheckBox;
+        private MetroFramework.Controls.MetroCheckBox aggressiveKeyframeResend;
+        private MetroFramework.Controls.MetroLabel aggressiveKeyframeResendHelp;
         private MetroFramework.Controls.MetroCheckBox disableController;
         private System.Windows.Forms.Label label5;
         private MetroFramework.Controls.MetroLabel foveationStrengthLabel;

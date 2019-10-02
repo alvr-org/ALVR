@@ -195,7 +195,8 @@ namespace ALVR
 
                 driverConfig.force60HZ = c.force60Hz;
                 driverConfig.force3DOF = c.force3DOF;
-                      
+                driverConfig.aggressiveKeyframeResend = c.aggressiveKeyframeResend;
+
                 driverConfig.disableController = c.disableController;
 
                 if (device != null && device.HasTouchController)

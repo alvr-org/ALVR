@@ -1476,7 +1476,6 @@
             // 
             this.defaultSoundDeviceCheckBox.AutoSize = true;
             this.defaultSoundDeviceCheckBox.Checked = global::ALVR.Properties.Settings.Default.useDefaultSoundDevice;
-            this.defaultSoundDeviceCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
             this.defaultSoundDeviceCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useDefaultSoundDevice", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.defaultSoundDeviceCheckBox.Location = new System.Drawing.Point(53, 83);
             this.defaultSoundDeviceCheckBox.Name = "defaultSoundDeviceCheckBox";
@@ -1490,7 +1489,6 @@
             // 
             this.soundCheckBox.AutoSize = true;
             this.soundCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableSound;
-            this.soundCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
             this.soundCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableSound", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.soundCheckBox.Location = new System.Drawing.Point(30, 38);
             this.soundCheckBox.Name = "soundCheckBox";

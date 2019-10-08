@@ -11,7 +11,7 @@
 #define APP_VERSION_MAJOR 2
 #define APP_VERSION_MINOR 4
 #define APP_VERSION_PATCH 0
-#define APP_VERSION_SUFFIX "-experimental v6"
+#define APP_VERSION_SUFFIX "-experimental v7"
 #define APP_VERSION_STRING__(major, minor, patch, suffix) #major "." #minor "." #patch "" suffix
 #define APP_VERSION_STRING_(major, minor, patch, suffix) APP_VERSION_STRING__(major, minor, patch, suffix)
 #define APP_VERSION_STRING APP_VERSION_STRING_(APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_PATCH, APP_VERSION_SUFFIX)

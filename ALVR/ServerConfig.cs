@@ -119,7 +119,7 @@ namespace ALVR
                     driverConfig.serialNumber = "WMHD000X000XXX";
                     driverConfig.trackingSystemName = "oculus";
                     driverConfig.modelNumber = "Oculus Rift S";
-                    driverConfig.manufacturerName = "Oculus driver 1.38.0";
+                    driverConfig.manufacturerName = "Oculus";
                     driverConfig.renderModelName = "generic_hmd";
                     driverConfig.registeredDeviceType = "oculus_rifts";
                 }
@@ -210,7 +210,7 @@ namespace ALVR
                     driverConfig.controllerType = "oculus_touch";
                     driverConfig.controllerRegisteredDeviceType = "oculus_touch";
                     driverConfig.controllerLegacyInputProfile = "oculus_touch";
-                    driverConfig.controllerInputProfilePath = "{alvr_server}/input/touch_profile.json";
+                    driverConfig.controllerInputProfilePath = "{oculus}/input/touch_profile.json";
                 }
                 else
                 {

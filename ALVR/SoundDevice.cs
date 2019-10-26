@@ -11,16 +11,16 @@ namespace ALVR
 {
     class DeviceQuery
     {
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr LoadLibrary(string dllToLoad);
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr GetProcAddress(IntPtr hModule, string procedureName);
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool FreeLibrary(IntPtr hModule);
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool SetDllDirectory(string path);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

@@ -69,7 +69,6 @@ static const char * const k_pch_Settings_ControllerRenderModelNameRight_String =
 static const char * const k_pch_Settings_ControllerSerialNumber_String = "controllerSerialNumber";
 static const char * const k_pch_Settings_ControllerType_String = "controllerType";
 static const char * const k_pch_Settings_ControllerRegisteredDeviceType_String = "controllerRegisteredDeviceType";
-static const char * const k_pch_Settings_ControllerLegacyInputProfile_String = "controllerLegacyInputProfile";
 static const char * const k_pch_Settings_ControllerInputProfilePath_String = "controllerInputProfilePath";
 
 
@@ -201,7 +200,6 @@ public:
 	std::string m_controllerSerialNumber;
 	std::string m_controllerType;
 	std::string mControllerRegisteredDeviceType;
-	std::string m_controllerLegacyInputProfile;
 	std::string m_controllerInputProfilePath;
 	bool m_disableController;
 	int32_t m_controllerTriggerMode;

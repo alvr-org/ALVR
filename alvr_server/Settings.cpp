@@ -131,7 +131,6 @@ void Settings::Load()
 		m_controllerSerialNumber = v.get(k_pch_Settings_ControllerSerialNumber_String).get<std::string>();
 		m_controllerType = v.get(k_pch_Settings_ControllerType_String).get<std::string>();
 		mControllerRegisteredDeviceType = v.get(k_pch_Settings_ControllerRegisteredDeviceType_String).get<std::string>();
-		m_controllerLegacyInputProfile = v.get(k_pch_Settings_ControllerLegacyInputProfile_String).get<std::string>();
 		m_controllerInputProfilePath = v.get(k_pch_Settings_ControllerInputProfilePath_String).get<std::string>();
 
 		m_disableController = v.get(k_pch_Settings_DisableController_Bool).get<bool>();

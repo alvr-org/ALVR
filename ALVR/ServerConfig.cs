@@ -114,24 +114,15 @@ namespace ALVR
             {
                 var c = Properties.Settings.Default;
                 dynamic driverConfig = new DynamicJson();
-                if (device != null && device.HasTouchController)
-                {
-                    driverConfig.serialNumber = "WMHD000X000XXX";
-                    driverConfig.trackingSystemName = "oculus";
-                    driverConfig.modelNumber = "Oculus Rift S";
-                    driverConfig.manufacturerName = "Oculus";
-                    driverConfig.renderModelName = "generic_hmd";
-                    driverConfig.registeredDeviceType = "oculus_rifts";
-                }
-                else
-                {
-                    driverConfig.serialNumber = "HTCVive-001";
-                    driverConfig.trackingSystemName = "Vive Tracker";
-                    driverConfig.modelNumber = "ALVR driver server";
-                    driverConfig.manufacturerName = "HTC";
-                    driverConfig.renderModelName = "generic_hmd";
-                    driverConfig.registeredDeviceType = "vive";
-                }
+              
+                driverConfig.trackingSystemName = "oculus";
+                driverConfig.serialNumber = "1WMGH000XX0000";
+                driverConfig.modelNumber = "Oculus Rift S";
+                driverConfig.manufacturerName = "Oculus";
+                driverConfig.renderModelName = "generic_hmd";
+                driverConfig.registeredDeviceType = "oculus/1WMGH000XX0000";
+                driverConfig.driverVersion = "1.42.0";
+                
                 driverConfig.adapterIndex = 0;
                 driverConfig.IPD = 0.063;
                 driverConfig.secondsFromVsyncToPhotons = 0.005;
@@ -199,32 +190,19 @@ namespace ALVR
 
                 driverConfig.disableController = c.disableController;
 
-                if (device != null && device.HasTouchController)
-                {
-                    driverConfig.controllerTrackingSystemName = "oculus";
-                    driverConfig.controllerManufacturerName = "Oculus";
-                    driverConfig.controllerModelNumber = "Oculus Rift S";
-                    driverConfig.controllerRenderModelNameLeft = "oculus_rifts_controller_left";
-                    driverConfig.controllerRenderModelNameRight = "oculus_rifts_controller_right";
-                    driverConfig.controllerSerialNumber = "WMHD000X000XXX_Controller";
-                    driverConfig.controllerType = "oculus_touch";
-                    driverConfig.controllerRegisteredDeviceType = "oculus_touch";
-                    driverConfig.controllerLegacyInputProfile = "oculus_touch";
-                    driverConfig.controllerInputProfilePath = "{oculus}/input/touch_profile.json";
-                }
-                else
-                {
-                    driverConfig.controllerTrackingSystemName = "ALVR Remote Controller";
-                    driverConfig.controllerManufacturerName = "ALVR";
-                    driverConfig.controllerModelNumber = "ALVR Remote Controller";
-                    driverConfig.controllerRenderModelNameLeft = "vr_controller_vive_1_5";
-                    driverConfig.controllerRenderModelNameRight = "vr_controller_vive_1_5";
-                    driverConfig.controllerSerialNumber = "ALVR Remote Controller";
-                    driverConfig.controllerType = "vive_controller";
-                    driverConfig.controllerRegisteredDeviceType = "vive_controller";
-                    driverConfig.controllerLegacyInputProfile = "vive_controller";
-                    driverConfig.controllerInputProfilePath = "{alvr_server}/input/vive_controller_profile.json";
-                }
+
+               
+                driverConfig.controllerTrackingSystemName = "oculus";
+                driverConfig.controllerSerialNumber = "1WMGH000XX0000_Controller"; //requires _Left & _Right
+                driverConfig.controllerModelNumber = "Oculus Rift S"; //requires (Left Controller) & (Right Controller)
+                driverConfig.controllerManufacturerName = "Oculus";
+                driverConfig.controllerRenderModelNameLeft = "oculus_rifts_controller_left";
+                driverConfig.controllerRenderModelNameRight = "oculus_rifts_controller_right";
+                driverConfig.controllerRegisteredDeviceType = "oculus/1WMGH000XX0000_Controller"; //requires _Left & _Right
+                driverConfig.controllerInputProfilePath = "{oculus}/input/touch_profile.json";
+                driverConfig.controllerType = "oculus_touch";
+               
+                
                 driverConfig.controllerTriggerMode = c.controllerTriggerMode;
                 driverConfig.controllerTrackpadClickMode = c.controllerTrackpadClickMode;
                 driverConfig.controllerTrackpadTouchMode = c.controllerTrackpadTouchMode;

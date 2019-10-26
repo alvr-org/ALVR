@@ -49,6 +49,7 @@ void Settings::Load()
 		mSerialNumber = v.get(k_pch_Settings_SerialNumber_String).get<std::string>();
 		mTrackingSystemName = v.get(k_pch_Settings_TrackingSystemName_String).get<std::string>();
 		mModelNumber = v.get(k_pch_Settings_ModelNumber_String).get<std::string>();
+		mDriverVersion = v.get(k_pch_Settings_DriverVersion_String).get<std::string>();
 		mManufacturerName = v.get(k_pch_Settings_ManufacturerName_String).get<std::string>();
 		mRenderModelName = v.get(k_pch_Settings_RenderModelName_String).get<std::string>();
 		mRegisteredDeviceType = v.get(k_pch_Settings_RegisteredDeviceType_String).get<std::string>();

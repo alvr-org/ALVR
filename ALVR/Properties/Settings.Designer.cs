@@ -465,5 +465,17 @@ namespace ALVR.Properties {
                 this["aggressiveKeyframeResend"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool nv12 {
+            get {
+                return ((bool)(this["nv12"]));
+            }
+            set {
+                this["nv12"] = value;
+            }
+        }
     }
 }

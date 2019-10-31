@@ -39,7 +39,7 @@
 			try {
 				Log(L"Try to use VideoEncoderNVENC.");
 				m_videoEncoder = std::make_shared<VideoEncoderNVENC>(d3dRender, listener
-					, ShouldUseNV12Texture(), encoderWidth, encoderHeight);
+					, Settings::Instance().m_nv12 || ShouldUseNV12Texture(), encoderWidth, encoderHeight);
 				m_videoEncoder->Initialize();
 				return;
 			}

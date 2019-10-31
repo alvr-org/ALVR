@@ -147,6 +147,8 @@ namespace ALVR
             toolTip1.SetToolTip(this.aggressiveKeyframeResendHelp, "Decrease minimum interval between keyframes from 100 ms to 5 ms. \n" +
                 "Used only when packet loss is detected. Improves experience on networks with packet loss.");
 
+            toolTip1.SetToolTip(this.nv12Tooltip, "Use NV12 color space instead of RGB. \n" +
+               "May create more efficiant video. NV12 is always used on Windows 7");
 
 
 

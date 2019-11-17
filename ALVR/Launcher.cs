@@ -132,7 +132,7 @@ namespace ALVR
                 "A resolution lower than 100% can reduce latency and network perfomance\n" +
                 "Resolutions below 100% require the codec to be h264 wo work properly");
 
-            toolTip1.SetToolTip(this.bufferHelp, "Buffer size on client side\n 200kB is recommended.If you experience packet loss, enlarge buffer.");
+            toolTip1.SetToolTip(this.bufferHelp, "Buffer size on client side\n Depends on the bitrate\n Calculated size is recommended.If you experience packet loss, enlarge buffer.");
             toolTip1.SetToolTip(this.ffrHelp, "Technique where the center of the image is rendered in high resolution while the outskirts are rendered in lower resolution\n" +
                 "Results in a much lower video resolution that needs to be transmitted over the network. \n" +
                 "The smaller video at the same bitrate can preserve more details and lowers the latency at the same time \n" +
@@ -147,8 +147,8 @@ namespace ALVR
             toolTip1.SetToolTip(this.aggressiveKeyframeResendHelp, "Decrease minimum interval between keyframes from 100 ms to 5 ms. \n" +
                 "Used only when packet loss is detected. Improves experience on networks with packet loss.");
 
-            toolTip1.SetToolTip(this.nv12Tooltip, "Use NV12 color space instead of RGB. \n" +
-               "May create more efficiant video. NV12 is always used on Windows 7");
+            toolTip1.SetToolTip(this.nv12Tooltip, "Use custom NV12 color space conversion. \n" +
+               "May create more efficient video. This is always used on Windows 7");
 
 
 
@@ -354,6 +354,7 @@ namespace ALVR
             }
             else
             {
+
                 if (currentClient != null)
                 {
                     metroLabel3.Text = "Server is down";
@@ -428,6 +429,7 @@ namespace ALVR
         private void UpdateClients()
         {
             clientList.Refresh();
+            dataGridView1.ScrollBars = ScrollBars.None;
 
             foreach (var row in dataGridView1.Rows.Cast<DataGridViewRow>())
             {
@@ -661,6 +663,8 @@ namespace ALVR
         private void bitrateTrackBar_ValueChanged(object sender, EventArgs e)
         {
             bitrateLabel.Text = bitrateTrackBar.Value + "Mbps";
+            bufferLabel.Text = config.GetBufferSizeKB() + "kB";
+
         }
 
         async private void sendClientDebugFlagsButton_Click(object sender, EventArgs e)

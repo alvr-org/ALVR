@@ -6,7 +6,7 @@
       <Value Profile="(Default)">30</Value>
     </Setting>
     <Setting Name="bufferSize" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">5</Value>
+      <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="enableController" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>

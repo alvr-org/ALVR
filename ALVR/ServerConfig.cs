@@ -95,12 +95,12 @@ namespace ALVR
 
         public int GetBufferSizeKB()
         {
-            if (Properties.Settings.Default.bufferSize == 5)
+            int buffer = Properties.Settings.Default.bitrate * 2 + Properties.Settings.Default.bufferSize;
+            if(buffer < 0)
             {
-                return 200;
+                buffer = 0;
             }
-            // Map 0 - 100 to 100kB - 2000kB
-            return Properties.Settings.Default.bufferSize * 1900 / 100 + 100;
+            return buffer;
         }
 
         public int GetFrameQueueSize(bool suppressFrameDrop)

@@ -47,10 +47,6 @@
             this.metroLabel11 = new MetroFramework.Controls.MetroLabel();
             this.noClientLabel = new MetroFramework.Controls.MetroLabel();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
-            this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.AddressColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.refreshRateColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Button = new System.Windows.Forms.DataGridViewButtonColumn();
             this.metroProgressSpinner2 = new MetroFramework.Controls.MetroProgressSpinner();
             this.wrongVersionLabel = new MetroFramework.Controls.MetroLabel();
             this.metroLabel4 = new MetroFramework.Controls.MetroLabel();
@@ -64,6 +60,9 @@
             this.messagePanel = new MetroFramework.Controls.MetroPanel();
             this.messageLabel = new MetroFramework.Controls.MetroLabel();
             this.videoTab = new MetroFramework.Controls.MetroTabPage();
+            this.metroLabel19 = new MetroFramework.Controls.MetroLabel();
+            this.nv12Tooltip = new MetroFramework.Controls.MetroLabel();
+            this.forceNV12 = new MetroFramework.Controls.MetroCheckBox();
             this.foveationVerticalOffsetTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.foveationVerticalOffsetLabel = new MetroFramework.Controls.MetroLabel();
             this.ffrVerticalOffsetHelp = new MetroFramework.Controls.MetroLabel();
@@ -163,8 +162,10 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.forceNV12 = new MetroFramework.Controls.MetroCheckBox();
-            this.nv12Tooltip = new MetroFramework.Controls.MetroLabel();
+            this.NameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.AddressColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.refreshRateColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Button = new System.Windows.Forms.DataGridViewButtonColumn();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -227,7 +228,7 @@
             this.metroTabControl1.Controls.Add(this.aboutTab);
             this.metroTabControl1.Location = new System.Drawing.Point(23, 68);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 1;
+            this.metroTabControl1.SelectedIndex = 0;
             this.metroTabControl1.Size = new System.Drawing.Size(664, 450);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -315,7 +316,7 @@
             dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
             dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
             this.dataGridView1.DefaultCellStyle = dataGridViewCellStyle2;
-            this.dataGridView1.Location = new System.Drawing.Point(29, 30);
+            this.dataGridView1.Location = new System.Drawing.Point(29, 16);
             this.dataGridView1.Name = "dataGridView1";
             this.dataGridView1.ReadOnly = true;
             dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
@@ -327,6 +328,7 @@
             dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
             this.dataGridView1.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
             this.dataGridView1.RowHeadersVisible = false;
+            this.dataGridView1.RowHeadersWidth = 51;
             dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
             dataGridViewCellStyle4.SelectionBackColor = System.Drawing.Color.White;
             dataGridViewCellStyle4.SelectionForeColor = System.Drawing.Color.Black;
@@ -334,36 +336,9 @@
             this.dataGridView1.RowTemplate.DefaultCellStyle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
             this.dataGridView1.RowTemplate.Height = 40;
             this.dataGridView1.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dataGridView1.Size = new System.Drawing.Size(392, 274);
+            this.dataGridView1.Size = new System.Drawing.Size(397, 274);
             this.dataGridView1.TabIndex = 2;
             this.dataGridView1.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView1_CellContentClick);
-            // 
-            // NameColumn
-            // 
-            this.NameColumn.HeaderText = "Name";
-            this.NameColumn.Name = "NameColumn";
-            this.NameColumn.ReadOnly = true;
-            // 
-            // AddressColumn
-            // 
-            this.AddressColumn.HeaderText = "IPAddress";
-            this.AddressColumn.Name = "AddressColumn";
-            this.AddressColumn.ReadOnly = true;
-            // 
-            // refreshRateColumn
-            // 
-            this.refreshRateColumn.HeaderText = "Hz";
-            this.refreshRateColumn.Name = "refreshRateColumn";
-            this.refreshRateColumn.ReadOnly = true;
-            this.refreshRateColumn.Width = 55;
-            // 
-            // Button
-            // 
-            this.Button.HeaderText = "Button";
-            this.Button.Name = "Button";
-            this.Button.ReadOnly = true;
-            this.Button.Text = "Connect";
-            this.Button.Width = 135;
             // 
             // metroProgressSpinner2
             // 
@@ -424,7 +399,7 @@
             this.autoConnectCheckBox.AutoSize = true;
             this.autoConnectCheckBox.Location = new System.Drawing.Point(73, 221);
             this.autoConnectCheckBox.Name = "autoConnectCheckBox";
-            this.autoConnectCheckBox.Size = new System.Drawing.Size(148, 15);
+            this.autoConnectCheckBox.Size = new System.Drawing.Size(147, 15);
             this.autoConnectCheckBox.TabIndex = 13;
             this.autoConnectCheckBox.Text = "Auto connect next time";
             this.autoConnectCheckBox.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -470,6 +445,7 @@
             dataGridViewCellStyle7.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
             this.statDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle7;
             this.statDataGridView.RowHeadersVisible = false;
+            this.statDataGridView.RowHeadersWidth = 51;
             this.statDataGridView.RowTemplate.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.White;
             this.statDataGridView.RowTemplate.DefaultCellStyle.SelectionForeColor = System.Drawing.Color.Black;
             this.statDataGridView.RowTemplate.Height = 21;
@@ -480,6 +456,7 @@
             // Name1
             // 
             this.Name1.HeaderText = "Column1";
+            this.Name1.MinimumWidth = 6;
             this.Name1.Name = "Name1";
             this.Name1.ReadOnly = true;
             this.Name1.Width = 160;
@@ -487,6 +464,7 @@
             // Value1
             // 
             this.Value1.HeaderText = "Column1";
+            this.Value1.MinimumWidth = 6;
             this.Value1.Name = "Value1";
             this.Value1.ReadOnly = true;
             this.Value1.Width = 160;
@@ -541,6 +519,7 @@
             // 
             // videoTab
             // 
+            this.videoTab.Controls.Add(this.metroLabel19);
             this.videoTab.Controls.Add(this.nv12Tooltip);
             this.videoTab.Controls.Add(this.forceNV12);
             this.videoTab.Controls.Add(this.foveationVerticalOffsetTrackBar);
@@ -588,6 +567,37 @@
             this.videoTab.Text = "Video";
             this.videoTab.VerticalScrollbarBarColor = true;
             this.videoTab.Click += new System.EventHandler(this.videoTab_Click);
+            // 
+            // metroLabel19
+            // 
+            this.metroLabel19.AutoSize = true;
+            this.metroLabel19.Location = new System.Drawing.Point(292, 185);
+            this.metroLabel19.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.metroLabel19.Name = "metroLabel19";
+            this.metroLabel19.Size = new System.Drawing.Size(48, 19);
+            this.metroLabel19.TabIndex = 37;
+            this.metroLabel19.Text = "Buffer:";
+            // 
+            // nv12Tooltip
+            // 
+            this.nv12Tooltip.AutoSize = true;
+            this.nv12Tooltip.Location = new System.Drawing.Point(575, 11);
+            this.nv12Tooltip.Name = "nv12Tooltip";
+            this.nv12Tooltip.Size = new System.Drawing.Size(15, 19);
+            this.nv12Tooltip.TabIndex = 36;
+            this.nv12Tooltip.Text = "?";
+            // 
+            // forceNV12
+            // 
+            this.forceNV12.AutoSize = true;
+            this.forceNV12.Checked = global::ALVR.Properties.Settings.Default.nv12;
+            this.forceNV12.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "nv12", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.forceNV12.Location = new System.Drawing.Point(462, 20);
+            this.forceNV12.Name = "forceNV12";
+            this.forceNV12.Size = new System.Drawing.Size(115, 15);
+            this.forceNV12.TabIndex = 35;
+            this.forceNV12.Text = "use custom NV12";
+            this.forceNV12.UseVisualStyleBackColor = true;
             // 
             // foveationVerticalOffsetTrackBar
             // 
@@ -712,7 +722,7 @@
             // 
             this.bufferHelp.AutoSize = true;
             this.bufferHelp.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.bufferHelp.Location = new System.Drawing.Point(108, 200);
+            this.bufferHelp.Location = new System.Drawing.Point(391, 179);
             this.bufferHelp.Name = "bufferHelp";
             this.bufferHelp.Size = new System.Drawing.Size(15, 19);
             this.bufferHelp.Style = MetroFramework.MetroColorStyle.Blue;
@@ -855,7 +865,7 @@
             // 
             this.bufferLabel.AutoSize = true;
             this.bufferLabel.FontSize = MetroFramework.MetroLabelSize.Tall;
-            this.bufferLabel.Location = new System.Drawing.Point(559, 211);
+            this.bufferLabel.Location = new System.Drawing.Point(335, 182);
             this.bufferLabel.Name = "bufferLabel";
             this.bufferLabel.Size = new System.Drawing.Size(57, 25);
             this.bufferLabel.TabIndex = 5;
@@ -876,9 +886,9 @@
             this.metroLabel18.AutoSize = true;
             this.metroLabel18.Location = new System.Drawing.Point(533, 185);
             this.metroLabel18.Name = "metroLabel18";
-            this.metroLabel18.Size = new System.Drawing.Size(51, 19);
+            this.metroLabel18.Size = new System.Drawing.Size(42, 19);
             this.metroLabel18.TabIndex = 4;
-            this.metroLabel18.Text = "2000kB";
+            this.metroLabel18.Text = "100kb";
             // 
             // metroLabel9
             // 
@@ -894,9 +904,9 @@
             this.metroLabel17.AutoSize = true;
             this.metroLabel17.Location = new System.Drawing.Point(161, 187);
             this.metroLabel17.Name = "metroLabel17";
-            this.metroLabel17.Size = new System.Drawing.Size(42, 19);
+            this.metroLabel17.Size = new System.Drawing.Size(48, 19);
             this.metroLabel17.TabIndex = 4;
-            this.metroLabel17.Text = "100kB";
+            this.metroLabel17.Text = "-100kB";
             // 
             // metroLabel8
             // 
@@ -913,9 +923,9 @@
             this.metroLabel16.FontSize = MetroFramework.MetroLabelSize.Tall;
             this.metroLabel16.Location = new System.Drawing.Point(25, 200);
             this.metroLabel16.Name = "metroLabel16";
-            this.metroLabel16.Size = new System.Drawing.Size(90, 25);
+            this.metroLabel16.Size = new System.Drawing.Size(103, 25);
             this.metroLabel16.TabIndex = 3;
-            this.metroLabel16.Text = "Buffer size";
+            this.metroLabel16.Text = "Buffer offset";
             // 
             // resolutionLabel
             // 
@@ -962,6 +972,7 @@
             this.bufferTrackBar.BackColor = System.Drawing.Color.Transparent;
             this.bufferTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bufferSize", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.bufferTrackBar.Location = new System.Drawing.Point(185, 211);
+            this.bufferTrackBar.Minimum = -100;
             this.bufferTrackBar.Name = "bufferTrackBar";
             this.bufferTrackBar.Size = new System.Drawing.Size(368, 25);
             this.bufferTrackBar.TabIndex = 2;
@@ -1394,7 +1405,7 @@
             this.metroCheckBox3.AutoSize = true;
             this.metroCheckBox3.Location = new System.Drawing.Point(281, 226);
             this.metroCheckBox3.Name = "metroCheckBox3";
-            this.metroCheckBox3.Size = new System.Drawing.Size(57, 15);
+            this.metroCheckBox3.Size = new System.Drawing.Size(56, 15);
             this.metroCheckBox3.TabIndex = 9;
             this.metroCheckBox3.Text = "Mutex";
             this.metroCheckBox3.UseVisualStyleBackColor = true;
@@ -1416,7 +1427,7 @@
             this.metroCheckBox1.AutoSize = true;
             this.metroCheckBox1.Location = new System.Drawing.Point(156, 192);
             this.metroCheckBox1.Name = "metroCheckBox1";
-            this.metroCheckBox1.Size = new System.Drawing.Size(120, 15);
+            this.metroCheckBox1.Size = new System.Drawing.Size(119, 15);
             this.metroCheckBox1.TabIndex = 9;
             this.metroCheckBox1.Text = "DebugFrameIndex";
             this.metroCheckBox1.UseVisualStyleBackColor = true;
@@ -1663,26 +1674,42 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // forceNV12
+            // NameColumn
             // 
-            this.forceNV12.AutoSize = true;
-            this.forceNV12.Checked = global::ALVR.Properties.Settings.Default.nv12;
-            this.forceNV12.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "nv12", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.forceNV12.Location = new System.Drawing.Point(476, 21);
-            this.forceNV12.Name = "forceNV12";
-            this.forceNV12.Size = new System.Drawing.Size(72, 15);
-            this.forceNV12.TabIndex = 35;
-            this.forceNV12.Text = "use NV12";
-            this.forceNV12.UseVisualStyleBackColor = true;
+            this.NameColumn.HeaderText = "Name";
+            this.NameColumn.MinimumWidth = 6;
+            this.NameColumn.Name = "NameColumn";
+            this.NameColumn.ReadOnly = true;
+            this.NameColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.NameColumn.Width = 110;
             // 
-            // nv12Tooltip
+            // AddressColumn
             // 
-            this.nv12Tooltip.AutoSize = true;
-            this.nv12Tooltip.Location = new System.Drawing.Point(554, 14);
-            this.nv12Tooltip.Name = "nv12Tooltip";
-            this.nv12Tooltip.Size = new System.Drawing.Size(15, 19);
-            this.nv12Tooltip.TabIndex = 36;
-            this.nv12Tooltip.Text = "?";
+            this.AddressColumn.HeaderText = "IPAddress";
+            this.AddressColumn.MinimumWidth = 6;
+            this.AddressColumn.Name = "AddressColumn";
+            this.AddressColumn.ReadOnly = true;
+            this.AddressColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.AddressColumn.Width = 125;
+            // 
+            // refreshRateColumn
+            // 
+            this.refreshRateColumn.HeaderText = "Hz";
+            this.refreshRateColumn.MinimumWidth = 6;
+            this.refreshRateColumn.Name = "refreshRateColumn";
+            this.refreshRateColumn.ReadOnly = true;
+            this.refreshRateColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.refreshRateColumn.Width = 55;
+            // 
+            // Button
+            // 
+            this.Button.HeaderText = "Button";
+            this.Button.MinimumWidth = 6;
+            this.Button.Name = "Button";
+            this.Button.ReadOnly = true;
+            this.Button.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.Button.Text = "Connect";
+            this.Button.Width = 135;
             // 
             // Launcher
             // 
@@ -1782,10 +1809,6 @@
         private MetroFramework.Controls.MetroLabel driverLabel;
         private MetroFramework.Controls.MetroButton uninstallButton;
         private MetroFramework.Controls.MetroButton installButton;
-        private System.Windows.Forms.DataGridViewTextBoxColumn NameColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn AddressColumn;
-        private System.Windows.Forms.DataGridViewTextBoxColumn refreshRateColumn;
-        private System.Windows.Forms.DataGridViewButtonColumn Button;
         private MetroFramework.Controls.MetroPanel connectedPanel;
         private System.Windows.Forms.DataGridView statDataGridView;
         private MetroFramework.Controls.MetroButton closeServerButton;
@@ -1855,6 +1878,11 @@
         private MetroFramework.Controls.MetroLabel metroLabel23;
         private MetroFramework.Controls.MetroLabel nv12Tooltip;
         private MetroFramework.Controls.MetroCheckBox forceNV12;
+        private MetroFramework.Controls.MetroLabel metroLabel19;
+        private System.Windows.Forms.DataGridViewTextBoxColumn NameColumn;
+        private System.Windows.Forms.DataGridViewTextBoxColumn AddressColumn;
+        private System.Windows.Forms.DataGridViewTextBoxColumn refreshRateColumn;
+        private System.Windows.Forms.DataGridViewButtonColumn Button;
     }
 }
 

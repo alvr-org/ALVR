@@ -9,7 +9,7 @@ VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	: m_pD3DRender(pD3DRender)
 	, m_nFrame(0)
 	, m_Listener(listener)
-	, m_useNV12(useNV12)
+	, m_useNV12(true)
 	, m_codec(Settings::Instance().m_codec)
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)

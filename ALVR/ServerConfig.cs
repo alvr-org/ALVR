@@ -226,6 +226,12 @@ namespace ALVR
                 driverConfig.foveationShape = 1.5f;
                 driverConfig.foveationVerticalOffset = c.foveationVerticalOffset / 100f;
 
+                driverConfig.enableColorCorrection = c.enableColorCorrection;
+                driverConfig.brightness = (float)c.brightness;
+                driverConfig.contrast = (float)c.contrast;
+                driverConfig.saturation = (float)c.saturation;
+                driverConfig.gamma = (float)c.gamma;
+
 
                 byte[] bytes = Encoding.UTF8.GetBytes(driverConfig.ToString());
                 memoryMappedFile = MemoryMappedFile.CreateOrOpen(APP_FILEMAPPING_NAME, sizeof(int) + bytes.Length);

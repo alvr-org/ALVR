@@ -7,6 +7,8 @@
 
 extern uint64_t g_DriverTestMode;
 
+using namespace d3d_render_utils;
+
 
 FrameRender::FrameRender(std::shared_ptr<CD3DRender> pD3DRender)
 	: m_pD3DRender(pD3DRender)
@@ -29,24 +31,26 @@ bool FrameRender::Startup()
 	// This is input texture of Video Encoder and is render target of both eyes.
 	//
 
-	D3D11_TEXTURE2D_DESC stagingTextureDesc;
-	ZeroMemory(&stagingTextureDesc, sizeof(stagingTextureDesc));
-	stagingTextureDesc.Width = Settings::Instance().m_renderWidth;
-	stagingTextureDesc.Height = Settings::Instance().m_renderHeight;
-	stagingTextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-	stagingTextureDesc.MipLevels = 1;
-	stagingTextureDesc.ArraySize = 1;
-	stagingTextureDesc.SampleDesc.Count = 1;
-	stagingTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-	stagingTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+	D3D11_TEXTURE2D_DESC compositionTextureDesc;
+	ZeroMemory(&compositionTextureDesc, sizeof(compositionTextureDesc));
+	compositionTextureDesc.Width = Settings::Instance().m_renderWidth;
+	compositionTextureDesc.Height = Settings::Instance().m_renderHeight;
+	compositionTextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	compositionTextureDesc.MipLevels = 1;
+	compositionTextureDesc.ArraySize = 1;
+	compositionTextureDesc.SampleDesc.Count = 1;
+	compositionTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+	compositionTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
 
-	if (FAILED(m_pD3DRender->GetDevice()->CreateTexture2D(&stagingTextureDesc, NULL, &m_pStagingTexture)))
+	ComPtr<ID3D11Texture2D> compositionTexture;
+
+	if (FAILED(m_pD3DRender->GetDevice()->CreateTexture2D(&compositionTextureDesc, NULL, &compositionTexture)))
 	{
 		Log(L"Failed to create staging texture!");
 		return false;
 	}
 
-	HRESULT hr = m_pD3DRender->GetDevice()->CreateRenderTargetView(m_pStagingTexture.Get(), NULL, &m_pRenderTargetView);
+	HRESULT hr = m_pD3DRender->GetDevice()->CreateRenderTargetView(compositionTexture.Get(), NULL, &m_pRenderTargetView);
 	if (FAILED(hr)) {
 		Log(L"CreateRenderTargetView %p %s", hr, GetErrorStr(hr).c_str());
 		return false;
@@ -55,8 +59,8 @@ bool FrameRender::Startup()
 	// Create depth stencil texture
 	D3D11_TEXTURE2D_DESC descDepth;
 	ZeroMemory(&descDepth, sizeof(descDepth));
-	descDepth.Width = stagingTextureDesc.Width;
-	descDepth.Height = stagingTextureDesc.Height;
+	descDepth.Width = compositionTextureDesc.Width;
+	descDepth.Height = compositionTextureDesc.Height;
 	descDepth.MipLevels = 1;
 	descDepth.ArraySize = 1;
 	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -288,11 +292,49 @@ bool FrameRender::Startup()
 
 	CreateResourceTexture();
 
-	enableFFR = Settings::Instance().m_foveationMode != FOVEATION_MODE_DISABLED;
+	m_pStagingTexture = compositionTexture;
 
+
+	std::vector<uint8_t> quadShaderCSO;
+	if (!ReadBinaryResource(quadShaderCSO, IDR_QUAD_SHADER)) {
+		throw MakeException(L"Failed to load resource for IDR_QUAD_SHADER.");
+	}
+	ComPtr<ID3D11VertexShader> quadVertexShader = CreateVertexShader(m_pD3DRender->GetDevice(), quadShaderCSO);
+
+	enableColorCorrection = Settings::Instance().m_enableColorCorrection;
+	if (enableColorCorrection) {
+		std::vector<uint8_t> colorCorrectionShaderCSO;
+		if (!ReadBinaryResource(colorCorrectionShaderCSO, IDR_COLOR_CORRECTION_SHADER)) {
+			throw MakeException(L"Failed to load resource for IDR_COLOR_CORRECTION_SHADER.");
+		}
+
+		ComPtr<ID3D11Texture2D> colorCorrectedTexture = CreateTexture(m_pD3DRender->GetDevice(),
+			Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight,
+			DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
+
+		struct ColorCorrection {
+			float brightness;
+			float contrast;
+			float saturation;
+			float gamma;
+		};
+		ColorCorrection colorCorrectionStruct = { Settings::Instance().m_brightness, Settings::Instance().m_contrast + 1.f,
+												  Settings::Instance().m_saturation + 1.f, Settings::Instance().m_gamma };
+		ComPtr<ID3D11Buffer> colorCorrectionBuffer = CreateBuffer(m_pD3DRender->GetDevice(), colorCorrectionStruct);
+
+		m_colorCorrectionPipeline = std::make_unique<RenderPipeline>(m_pD3DRender->GetDevice());
+		m_colorCorrectionPipeline->Initialize({ m_pStagingTexture.Get() }, quadVertexShader.Get(), colorCorrectionShaderCSO,
+											  colorCorrectedTexture.Get(), colorCorrectionBuffer.Get());
+
+		m_pStagingTexture = colorCorrectedTexture;
+	}
+
+	enableFFR = Settings::Instance().m_foveationMode != FOVEATION_MODE_DISABLED;
 	if (enableFFR) {
 		m_ffr = std::make_unique<FFR>(m_pD3DRender->GetDevice());
 		m_ffr->Initialize(m_pStagingTexture.Get());
+
+		m_pStagingTexture = m_ffr->GetOutputTexture();
 	}
 
 	Log(L"Staging Texture created");
@@ -453,6 +495,10 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 	}
 	RenderDebugText(debugText);
 
+	if (enableColorCorrection) {
+		m_colorCorrectionPipeline->Render();
+	}
+
 	if (enableFFR) {
 		m_ffr->Render();
 	}
@@ -527,13 +573,7 @@ void FrameRender::RenderDebugText(const std::string & debugText)
 
 ComPtr<ID3D11Texture2D> FrameRender::GetTexture()
 {
-	if (enableFFR) {
-		return m_ffr->GetOutputTexture();
-	}
-	else {
-		return m_pStagingTexture;
-	}
-
+	return m_pStagingTexture;
 }
 
 void FrameRender::CreateResourceTexture()

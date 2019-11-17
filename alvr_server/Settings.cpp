@@ -157,7 +157,11 @@ void Settings::Load()
 		m_foveationShape = (float)v.get(k_pch_Settings_foveationShape_Float).get<double>();
 		m_foveationVerticalOffset = (float)v.get(k_pch_Settings_foveationVerticalOffset_Float).get<double>();
 
-
+		m_enableColorCorrection = (FOVEATION_MODE)v.get(k_pch_Settings_EnableColorCorrection_Bool).get<bool>();
+		m_brightness = (float)v.get(k_pch_Settings_Brightness_Float).get<double>();
+		m_contrast = (float)v.get(k_pch_Settings_Contrast_Float).get<double>();
+		m_saturation = (float)v.get(k_pch_Settings_Saturation_Float).get<double>();
+		m_gamma = (float)v.get(k_pch_Settings_Gamma_Float).get<double>();
 
 
 		if (m_DebugLog) {

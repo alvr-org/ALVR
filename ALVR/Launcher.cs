@@ -132,7 +132,9 @@ namespace ALVR
                 "A resolution lower than 100% can reduce latency and network perfomance\n" +
                 "Resolutions below 100% require the codec to be h264 wo work properly");
 
-            toolTip1.SetToolTip(this.bufferHelp, "Buffer size on client side\n Depends on the bitrate\n Calculated size is recommended.If you experience packet loss, enlarge buffer.");
+            toolTip1.SetToolTip(this.bufferHelp, "Buffer size on client side\n Depends on the bitrate\n Calculated size is recommended. If you experience packet loss, enlarge buffer.");
+            toolTip1.SetToolTip(this.bufferOffsetHelp, "Offset to increase or decrease the calculated buffer size. Buffer can not be negative");
+
             toolTip1.SetToolTip(this.ffrHelp, "Technique where the center of the image is rendered in high resolution while the outskirts are rendered in lower resolution\n" +
                 "Results in a much lower video resolution that needs to be transmitted over the network. \n" +
                 "The smaller video at the same bitrate can preserve more details and lowers the latency at the same time \n" +

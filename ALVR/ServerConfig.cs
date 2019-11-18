@@ -95,7 +95,7 @@ namespace ALVR
 
         public int GetBufferSizeKB()
         {
-            int buffer = Properties.Settings.Default.bitrate * 2 + Properties.Settings.Default.bufferSize;
+            int buffer = Properties.Settings.Default.bitrate * 2 + Properties.Settings.Default.bufferOffset;
             if(buffer < 0)
             {
                 buffer = 0;

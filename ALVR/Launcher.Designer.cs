@@ -105,7 +105,6 @@
             this.metroLabel2 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel1 = new MetroFramework.Controls.MetroLabel();
             this.metroButton5 = new MetroFramework.Controls.MetroButton();
-            this.packetlossButton = new MetroFramework.Controls.MetroButton();
             this.metroButton4 = new MetroFramework.Controls.MetroButton();
             this.captureLayerDDSButton = new MetroFramework.Controls.MetroButton();
             this.debugCaptureOutputCheckBox = new MetroFramework.Controls.MetroCheckBox();
@@ -191,6 +190,12 @@
             this.tableLayoutPanel12 = new System.Windows.Forms.TableLayoutPanel();
             this.tableLayoutPanel13 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel17 = new System.Windows.Forms.FlowLayoutPanel();
+            this.tableLayoutPanel14 = new System.Windows.Forms.TableLayoutPanel();
+            this.flowLayoutPanel18 = new System.Windows.Forms.FlowLayoutPanel();
+            this.flowLayoutPanel19 = new System.Windows.Forms.FlowLayoutPanel();
+            this.flowLayoutPanel20 = new System.Windows.Forms.FlowLayoutPanel();
+            this.flowLayoutPanel21 = new System.Windows.Forms.FlowLayoutPanel();
+            this.packetlossButton = new MetroFramework.Controls.MetroButton();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -235,11 +240,16 @@
             this.tableLayoutPanel12.SuspendLayout();
             this.tableLayoutPanel13.SuspendLayout();
             this.flowLayoutPanel17.SuspendLayout();
+            this.tableLayoutPanel14.SuspendLayout();
+            this.flowLayoutPanel18.SuspendLayout();
+            this.flowLayoutPanel19.SuspendLayout();
+            this.flowLayoutPanel20.SuspendLayout();
+            this.flowLayoutPanel21.SuspendLayout();
             this.SuspendLayout();
             // 
             // sendClientDebugFlagsButton
             // 
-            this.sendClientDebugFlagsButton.Location = new System.Drawing.Point(281, 68);
+            this.sendClientDebugFlagsButton.Location = new System.Drawing.Point(242, 3);
             this.sendClientDebugFlagsButton.Name = "sendClientDebugFlagsButton";
             this.sendClientDebugFlagsButton.Size = new System.Drawing.Size(75, 25);
             this.sendClientDebugFlagsButton.TabIndex = 6;
@@ -248,7 +258,7 @@
             // 
             // sendDriverTestModeButton
             // 
-            this.sendDriverTestModeButton.Location = new System.Drawing.Point(281, 113);
+            this.sendDriverTestModeButton.Location = new System.Drawing.Point(270, 3);
             this.sendDriverTestModeButton.Name = "sendDriverTestModeButton";
             this.sendDriverTestModeButton.Size = new System.Drawing.Size(75, 25);
             this.sendDriverTestModeButton.TabIndex = 6;
@@ -266,7 +276,7 @@
             // 
             // captureComposedDDSButton
             // 
-            this.captureComposedDDSButton.Location = new System.Drawing.Point(258, 160);
+            this.captureComposedDDSButton.Location = new System.Drawing.Point(186, 3);
             this.captureComposedDDSButton.Name = "captureComposedDDSButton";
             this.captureComposedDDSButton.Size = new System.Drawing.Size(98, 25);
             this.captureComposedDDSButton.TabIndex = 6;
@@ -284,7 +294,7 @@
             this.metroTabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.metroTabControl1.Location = new System.Drawing.Point(20, 65);
             this.metroTabControl1.Name = "metroTabControl1";
-            this.metroTabControl1.SelectedIndex = 2;
+            this.metroTabControl1.SelectedIndex = 4;
             this.metroTabControl1.Size = new System.Drawing.Size(670, 406);
             this.metroTabControl1.TabIndex = 8;
             // 
@@ -980,24 +990,7 @@
             // 
             // debugTab
             // 
-            this.debugTab.Controls.Add(this.metroLabel5);
-            this.debugTab.Controls.Add(this.logText);
-            this.debugTab.Controls.Add(this.metroCheckBox3);
-            this.debugTab.Controls.Add(this.metroCheckBox2);
-            this.debugTab.Controls.Add(this.metroCheckBox1);
-            this.debugTab.Controls.Add(this.driverTestModeTextBox);
-            this.debugTab.Controls.Add(this.clientDebugFlagsTextBox);
-            this.debugTab.Controls.Add(this.metroLabel2);
-            this.debugTab.Controls.Add(this.metroLabel1);
-            this.debugTab.Controls.Add(this.metroButton5);
-            this.debugTab.Controls.Add(this.packetlossButton);
-            this.debugTab.Controls.Add(this.metroButton4);
-            this.debugTab.Controls.Add(this.captureLayerDDSButton);
-            this.debugTab.Controls.Add(this.captureComposedDDSButton);
-            this.debugTab.Controls.Add(this.sendDriverTestModeButton);
-            this.debugTab.Controls.Add(this.sendClientDebugFlagsButton);
-            this.debugTab.Controls.Add(this.debugCaptureOutputCheckBox);
-            this.debugTab.Controls.Add(this.debugLogCheckBox);
+            this.debugTab.Controls.Add(this.tableLayoutPanel14);
             this.debugTab.HorizontalScrollbarBarColor = true;
             this.debugTab.HorizontalScrollbarSize = 11;
             this.debugTab.Location = new System.Drawing.Point(4, 35);
@@ -1006,13 +999,15 @@
             this.debugTab.TabIndex = 2;
             this.debugTab.Text = "Debug";
             this.debugTab.VerticalScrollbarBarColor = true;
+            this.debugTab.Click += new System.EventHandler(this.debugTab_Click);
             // 
             // metroLabel5
             // 
+            this.metroLabel5.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.metroLabel5.AutoSize = true;
             this.metroLabel5.CustomForeColor = true;
             this.metroLabel5.ForeColor = System.Drawing.Color.Red;
-            this.metroLabel5.Location = new System.Drawing.Point(88, 22);
+            this.metroLabel5.Location = new System.Drawing.Point(103, 25);
             this.metroLabel5.Name = "metroLabel5";
             this.metroLabel5.Size = new System.Drawing.Size(148, 19);
             this.metroLabel5.TabIndex = 11;
@@ -1020,17 +1015,20 @@
             // 
             // logText
             // 
-            this.logText.Location = new System.Drawing.Point(384, 12);
+            this.logText.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.logText.Location = new System.Drawing.Point(375, 13);
+            this.logText.Margin = new System.Windows.Forms.Padding(20, 3, 3, 20);
             this.logText.Multiline = true;
             this.logText.Name = "logText";
             this.logText.ReadOnly = true;
-            this.logText.Size = new System.Drawing.Size(253, 368);
+            this.tableLayoutPanel14.SetRowSpan(this.logText, 6);
+            this.logText.Size = new System.Drawing.Size(284, 334);
             this.logText.TabIndex = 10;
             // 
             // metroCheckBox3
             // 
             this.metroCheckBox3.AutoSize = true;
-            this.metroCheckBox3.Location = new System.Drawing.Point(281, 226);
+            this.metroCheckBox3.Location = new System.Drawing.Point(221, 24);
             this.metroCheckBox3.Name = "metroCheckBox3";
             this.metroCheckBox3.Size = new System.Drawing.Size(57, 15);
             this.metroCheckBox3.TabIndex = 9;
@@ -1041,7 +1039,7 @@
             // metroCheckBox2
             // 
             this.metroCheckBox2.AutoSize = true;
-            this.metroCheckBox2.Location = new System.Drawing.Point(156, 226);
+            this.metroCheckBox2.Location = new System.Drawing.Point(147, 24);
             this.metroCheckBox2.Name = "metroCheckBox2";
             this.metroCheckBox2.Size = new System.Drawing.Size(68, 15);
             this.metroCheckBox2.TabIndex = 9;
@@ -1052,7 +1050,7 @@
             // metroCheckBox1
             // 
             this.metroCheckBox1.AutoSize = true;
-            this.metroCheckBox1.Location = new System.Drawing.Point(156, 192);
+            this.metroCheckBox1.Location = new System.Drawing.Point(87, 3);
             this.metroCheckBox1.Name = "metroCheckBox1";
             this.metroCheckBox1.Size = new System.Drawing.Size(120, 15);
             this.metroCheckBox1.TabIndex = 9;
@@ -1061,7 +1059,7 @@
             // 
             // driverTestModeTextBox
             // 
-            this.driverTestModeTextBox.Location = new System.Drawing.Point(159, 113);
+            this.driverTestModeTextBox.Location = new System.Drawing.Point(148, 3);
             this.driverTestModeTextBox.Name = "driverTestModeTextBox";
             this.driverTestModeTextBox.Size = new System.Drawing.Size(116, 25);
             this.driverTestModeTextBox.TabIndex = 8;
@@ -1069,7 +1067,7 @@
             // 
             // clientDebugFlagsTextBox
             // 
-            this.clientDebugFlagsTextBox.Location = new System.Drawing.Point(159, 67);
+            this.clientDebugFlagsTextBox.Location = new System.Drawing.Point(120, 3);
             this.clientDebugFlagsTextBox.Name = "clientDebugFlagsTextBox";
             this.clientDebugFlagsTextBox.Size = new System.Drawing.Size(116, 25);
             this.clientDebugFlagsTextBox.TabIndex = 8;
@@ -1078,7 +1076,7 @@
             // metroLabel2
             // 
             this.metroLabel2.AutoSize = true;
-            this.metroLabel2.Location = new System.Drawing.Point(1, 117);
+            this.metroLabel2.Location = new System.Drawing.Point(3, 0);
             this.metroLabel2.Name = "metroLabel2";
             this.metroLabel2.Size = new System.Drawing.Size(139, 19);
             this.metroLabel2.TabIndex = 7;
@@ -1087,7 +1085,7 @@
             // metroLabel1
             // 
             this.metroLabel1.AutoSize = true;
-            this.metroLabel1.Location = new System.Drawing.Point(1, 73);
+            this.metroLabel1.Location = new System.Drawing.Point(3, 0);
             this.metroLabel1.Name = "metroLabel1";
             this.metroLabel1.Size = new System.Drawing.Size(111, 19);
             this.metroLabel1.TabIndex = 7;
@@ -1095,25 +1093,16 @@
             // 
             // metroButton5
             // 
-            this.metroButton5.Location = new System.Drawing.Point(281, 192);
+            this.metroButton5.Location = new System.Drawing.Point(3, 45);
             this.metroButton5.Name = "metroButton5";
             this.metroButton5.Size = new System.Drawing.Size(75, 25);
             this.metroButton5.TabIndex = 6;
             this.metroButton5.Text = "Send";
             this.metroButton5.Click += new System.EventHandler(this.metroButton5_Click);
             // 
-            // packetlossButton
-            // 
-            this.packetlossButton.Location = new System.Drawing.Point(250, 249);
-            this.packetlossButton.Name = "packetlossButton";
-            this.packetlossButton.Size = new System.Drawing.Size(106, 25);
-            this.packetlossButton.TabIndex = 6;
-            this.packetlossButton.Text = "Cause packet loss";
-            this.packetlossButton.Click += new System.EventHandler(this.packetlossButton_Click);
-            // 
             // metroButton4
             // 
-            this.metroButton4.Location = new System.Drawing.Point(70, 160);
+            this.metroButton4.Location = new System.Drawing.Point(3, 3);
             this.metroButton4.Name = "metroButton4";
             this.metroButton4.Size = new System.Drawing.Size(75, 25);
             this.metroButton4.TabIndex = 6;
@@ -1122,7 +1111,7 @@
             // 
             // captureLayerDDSButton
             // 
-            this.captureLayerDDSButton.Location = new System.Drawing.Point(156, 160);
+            this.captureLayerDDSButton.Location = new System.Drawing.Point(84, 3);
             this.captureLayerDDSButton.Name = "captureLayerDDSButton";
             this.captureLayerDDSButton.Size = new System.Drawing.Size(96, 25);
             this.captureLayerDDSButton.TabIndex = 6;
@@ -1134,7 +1123,7 @@
             this.debugCaptureOutputCheckBox.AutoSize = true;
             this.debugCaptureOutputCheckBox.Checked = global::ALVR.Properties.Settings.Default.debugCaptureOutput;
             this.debugCaptureOutputCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "debugCaptureOutput", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.debugCaptureOutputCheckBox.Location = new System.Drawing.Point(7, 226);
+            this.debugCaptureOutputCheckBox.Location = new System.Drawing.Point(3, 24);
             this.debugCaptureOutputCheckBox.Name = "debugCaptureOutputCheckBox";
             this.debugCaptureOutputCheckBox.Size = new System.Drawing.Size(138, 15);
             this.debugCaptureOutputCheckBox.TabIndex = 9;
@@ -1146,7 +1135,7 @@
             this.debugLogCheckBox.AutoSize = true;
             this.debugLogCheckBox.Checked = global::ALVR.Properties.Settings.Default.debugLog;
             this.debugLogCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "debugLog", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.debugLogCheckBox.Location = new System.Drawing.Point(7, 192);
+            this.debugLogCheckBox.Location = new System.Drawing.Point(3, 3);
             this.debugLogCheckBox.Name = "debugLogCheckBox";
             this.debugLogCheckBox.Size = new System.Drawing.Size(78, 15);
             this.debugLogCheckBox.TabIndex = 9;
@@ -2235,6 +2224,92 @@
             this.flowLayoutPanel17.TabIndex = 0;
             this.flowLayoutPanel17.WrapContents = false;
             // 
+            // tableLayoutPanel14
+            // 
+            this.tableLayoutPanel14.BackColor = System.Drawing.SystemColors.Window;
+            this.tableLayoutPanel14.ColumnCount = 2;
+            this.tableLayoutPanel14.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 355F));
+            this.tableLayoutPanel14.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel14.Controls.Add(this.metroLabel5, 0, 0);
+            this.tableLayoutPanel14.Controls.Add(this.flowLayoutPanel18, 0, 1);
+            this.tableLayoutPanel14.Controls.Add(this.flowLayoutPanel19, 0, 2);
+            this.tableLayoutPanel14.Controls.Add(this.flowLayoutPanel20, 0, 3);
+            this.tableLayoutPanel14.Controls.Add(this.packetlossButton, 0, 5);
+            this.tableLayoutPanel14.Controls.Add(this.flowLayoutPanel21, 0, 4);
+            this.tableLayoutPanel14.Controls.Add(this.logText, 1, 0);
+            this.tableLayoutPanel14.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tableLayoutPanel14.Location = new System.Drawing.Point(0, 0);
+            this.tableLayoutPanel14.Name = "tableLayoutPanel14";
+            this.tableLayoutPanel14.Padding = new System.Windows.Forms.Padding(0, 10, 0, 0);
+            this.tableLayoutPanel14.RowCount = 6;
+            this.tableLayoutPanel14.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 50F));
+            this.tableLayoutPanel14.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel14.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel14.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel14.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel14.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel14.Size = new System.Drawing.Size(662, 367);
+            this.tableLayoutPanel14.TabIndex = 12;
+            // 
+            // flowLayoutPanel18
+            // 
+            this.flowLayoutPanel18.AutoSize = true;
+            this.flowLayoutPanel18.Controls.Add(this.metroLabel1);
+            this.flowLayoutPanel18.Controls.Add(this.clientDebugFlagsTextBox);
+            this.flowLayoutPanel18.Controls.Add(this.sendClientDebugFlagsButton);
+            this.flowLayoutPanel18.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel18.Location = new System.Drawing.Point(3, 63);
+            this.flowLayoutPanel18.Name = "flowLayoutPanel18";
+            this.flowLayoutPanel18.Size = new System.Drawing.Size(349, 31);
+            this.flowLayoutPanel18.TabIndex = 12;
+            // 
+            // flowLayoutPanel19
+            // 
+            this.flowLayoutPanel19.AutoSize = true;
+            this.flowLayoutPanel19.Controls.Add(this.metroLabel2);
+            this.flowLayoutPanel19.Controls.Add(this.driverTestModeTextBox);
+            this.flowLayoutPanel19.Controls.Add(this.sendDriverTestModeButton);
+            this.flowLayoutPanel19.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel19.Location = new System.Drawing.Point(3, 100);
+            this.flowLayoutPanel19.Name = "flowLayoutPanel19";
+            this.flowLayoutPanel19.Size = new System.Drawing.Size(349, 31);
+            this.flowLayoutPanel19.TabIndex = 13;
+            // 
+            // flowLayoutPanel20
+            // 
+            this.flowLayoutPanel20.AutoSize = true;
+            this.flowLayoutPanel20.Controls.Add(this.metroButton4);
+            this.flowLayoutPanel20.Controls.Add(this.captureLayerDDSButton);
+            this.flowLayoutPanel20.Controls.Add(this.captureComposedDDSButton);
+            this.flowLayoutPanel20.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel20.Location = new System.Drawing.Point(3, 137);
+            this.flowLayoutPanel20.Name = "flowLayoutPanel20";
+            this.flowLayoutPanel20.Size = new System.Drawing.Size(349, 31);
+            this.flowLayoutPanel20.TabIndex = 14;
+            // 
+            // flowLayoutPanel21
+            // 
+            this.flowLayoutPanel21.Controls.Add(this.debugLogCheckBox);
+            this.flowLayoutPanel21.Controls.Add(this.metroCheckBox1);
+            this.flowLayoutPanel21.Controls.Add(this.debugCaptureOutputCheckBox);
+            this.flowLayoutPanel21.Controls.Add(this.metroCheckBox2);
+            this.flowLayoutPanel21.Controls.Add(this.metroCheckBox3);
+            this.flowLayoutPanel21.Controls.Add(this.metroButton5);
+            this.flowLayoutPanel21.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel21.Location = new System.Drawing.Point(3, 174);
+            this.flowLayoutPanel21.Name = "flowLayoutPanel21";
+            this.flowLayoutPanel21.Size = new System.Drawing.Size(349, 159);
+            this.flowLayoutPanel21.TabIndex = 15;
+            // 
+            // packetlossButton
+            // 
+            this.packetlossButton.Location = new System.Drawing.Point(3, 339);
+            this.packetlossButton.Name = "packetlossButton";
+            this.packetlossButton.Size = new System.Drawing.Size(106, 25);
+            this.packetlossButton.TabIndex = 6;
+            this.packetlossButton.Text = "Cause packet loss";
+            this.packetlossButton.Click += new System.EventHandler(this.packetlossButton_Click);
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -2263,7 +2338,6 @@
             this.soundTab.ResumeLayout(false);
             this.otherTab.ResumeLayout(false);
             this.debugTab.ResumeLayout(false);
-            this.debugTab.PerformLayout();
             this.aboutTab.ResumeLayout(false);
             this.aboutTab.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).EndInit();
@@ -2326,6 +2400,15 @@
             this.tableLayoutPanel13.PerformLayout();
             this.flowLayoutPanel17.ResumeLayout(false);
             this.flowLayoutPanel17.PerformLayout();
+            this.tableLayoutPanel14.ResumeLayout(false);
+            this.tableLayoutPanel14.PerformLayout();
+            this.flowLayoutPanel18.ResumeLayout(false);
+            this.flowLayoutPanel18.PerformLayout();
+            this.flowLayoutPanel19.ResumeLayout(false);
+            this.flowLayoutPanel19.PerformLayout();
+            this.flowLayoutPanel20.ResumeLayout(false);
+            this.flowLayoutPanel21.ResumeLayout(false);
+            this.flowLayoutPanel21.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -2378,7 +2461,6 @@
         private MetroFramework.Controls.MetroLabel connectedLabel;
         private System.Windows.Forms.DataGridViewTextBoxColumn Name1;
         private System.Windows.Forms.DataGridViewTextBoxColumn Value1;
-        private MetroFramework.Controls.MetroButton packetlossButton;
         private MetroFramework.Controls.MetroTabPage otherTab;
         private MetroFramework.Controls.MetroButton listDriversButton;
         private System.Windows.Forms.BindingSource resolutionBindingSource;
@@ -2486,6 +2568,12 @@
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel12;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel13;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel17;
+        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel14;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel18;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel19;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel20;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel21;
+        private MetroFramework.Controls.MetroButton packetlossButton;
     }
 }
 

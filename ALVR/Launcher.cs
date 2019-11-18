@@ -956,5 +956,10 @@ namespace ALVR
         {
 
         }
+
+        private void debugTab_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

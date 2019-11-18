@@ -184,6 +184,13 @@
             this.tableLayoutPanel9 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel13 = new System.Windows.Forms.FlowLayoutPanel();
             this.flowLayoutPanel14 = new System.Windows.Forms.FlowLayoutPanel();
+            this.tableLayoutPanel10 = new System.Windows.Forms.TableLayoutPanel();
+            this.flowLayoutPanel15 = new System.Windows.Forms.FlowLayoutPanel();
+            this.tableLayoutPanel11 = new System.Windows.Forms.TableLayoutPanel();
+            this.flowLayoutPanel16 = new System.Windows.Forms.FlowLayoutPanel();
+            this.tableLayoutPanel12 = new System.Windows.Forms.TableLayoutPanel();
+            this.tableLayoutPanel13 = new System.Windows.Forms.TableLayoutPanel();
+            this.flowLayoutPanel17 = new System.Windows.Forms.FlowLayoutPanel();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -221,6 +228,13 @@
             this.tableLayoutPanel9.SuspendLayout();
             this.flowLayoutPanel13.SuspendLayout();
             this.flowLayoutPanel14.SuspendLayout();
+            this.tableLayoutPanel10.SuspendLayout();
+            this.flowLayoutPanel15.SuspendLayout();
+            this.tableLayoutPanel11.SuspendLayout();
+            this.flowLayoutPanel16.SuspendLayout();
+            this.tableLayoutPanel12.SuspendLayout();
+            this.tableLayoutPanel13.SuspendLayout();
+            this.flowLayoutPanel17.SuspendLayout();
             this.SuspendLayout();
             // 
             // sendClientDebugFlagsButton
@@ -603,7 +617,7 @@
             this.videoTab.Location = new System.Drawing.Point(4, 35);
             this.videoTab.Margin = new System.Windows.Forms.Padding(3, 10, 3, 3);
             this.videoTab.Name = "videoTab";
-            this.videoTab.Size = new System.Drawing.Size(662, 643);
+            this.videoTab.Size = new System.Drawing.Size(662, 367);
             this.videoTab.TabIndex = 5;
             this.videoTab.Text = "Video";
             this.videoTab.VerticalScrollbarSize = 0;
@@ -655,11 +669,12 @@
             // 
             // soundDeviceComboBox
             // 
+            this.soundDeviceComboBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.soundDeviceComboBox.FormattingEnabled = true;
             this.soundDeviceComboBox.ItemHeight = 23;
             this.soundDeviceComboBox.Location = new System.Drawing.Point(183, 34);
             this.soundDeviceComboBox.Name = "soundDeviceComboBox";
-            this.soundDeviceComboBox.Size = new System.Drawing.Size(471, 29);
+            this.soundDeviceComboBox.Size = new System.Drawing.Size(476, 29);
             this.soundDeviceComboBox.TabIndex = 3;
             // 
             // streamMic
@@ -708,41 +723,22 @@
             // 
             // otherTab
             // 
-            this.otherTab.Controls.Add(this.metroButton1);
-            this.otherTab.Controls.Add(this.metroLabel12);
-            this.otherTab.Controls.Add(this.metroLabel30);
-            this.otherTab.Controls.Add(this.metroLabel29);
-            this.otherTab.Controls.Add(this.metroLabel28);
-            this.otherTab.Controls.Add(this.metroLabel27);
-            this.otherTab.Controls.Add(this.refDisconnectCommandButton);
-            this.otherTab.Controls.Add(this.refConnectCommandButton);
-            this.otherTab.Controls.Add(this.saveTrackingFrameOffsetButton);
-            this.otherTab.Controls.Add(this.metroLabel26);
-            this.otherTab.Controls.Add(this.force3DOFCheckBox);
-            this.otherTab.Controls.Add(this.aggressiveKeyframeResend);
-            this.otherTab.Controls.Add(this.aggressiveKeyframeResendHelp);
-            this.otherTab.Controls.Add(this.disableThrottlingCheckBox);
-            this.otherTab.Controls.Add(this.force60HzCheckBox);
-            this.otherTab.Controls.Add(this.suppressFrameDropCheckBox);
-            this.otherTab.Controls.Add(this.disableController);
-            this.otherTab.Controls.Add(this.controllerPoseOffset);
-            this.otherTab.Controls.Add(this.trackingFrameOffsetTextBox);
-            this.otherTab.Controls.Add(this.disconnectCommandTextBox);
-            this.otherTab.Controls.Add(this.connectCommandTextBox);
-            this.otherTab.Controls.Add(this.onlySteamVRCheckBox);
+            this.otherTab.Controls.Add(this.tableLayoutPanel11);
             this.otherTab.HorizontalScrollbarBarColor = true;
-            this.otherTab.HorizontalScrollbarSize = 11;
+            this.otherTab.HorizontalScrollbarSize = 0;
             this.otherTab.Location = new System.Drawing.Point(4, 35);
             this.otherTab.Name = "otherTab";
-            this.otherTab.Size = new System.Drawing.Size(662, 396);
+            this.otherTab.Size = new System.Drawing.Size(662, 367);
             this.otherTab.TabIndex = 7;
             this.otherTab.Text = "Other";
             this.otherTab.VerticalScrollbar = true;
             this.otherTab.VerticalScrollbarBarColor = true;
+            this.otherTab.VerticalScrollbarSize = 0;
             // 
             // metroButton1
             // 
-            this.metroButton1.Location = new System.Drawing.Point(245, 22);
+            this.metroButton1.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.metroButton1.Location = new System.Drawing.Point(205, 3);
             this.metroButton1.Name = "metroButton1";
             this.metroButton1.Size = new System.Drawing.Size(75, 25);
             this.metroButton1.TabIndex = 22;
@@ -751,17 +747,19 @@
             // 
             // metroLabel12
             // 
+            this.metroLabel12.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.metroLabel12.AutoSize = true;
-            this.metroLabel12.Location = new System.Drawing.Point(26, 28);
+            this.metroLabel12.Location = new System.Drawing.Point(3, 6);
             this.metroLabel12.Name = "metroLabel12";
             this.metroLabel12.Size = new System.Drawing.Size(138, 19);
             this.metroLabel12.TabIndex = 20;
             this.metroLabel12.Text = "Controller Pose Offset";
+            this.metroLabel12.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // metroLabel30
             // 
             this.metroLabel30.AutoSize = true;
-            this.metroLabel30.Location = new System.Drawing.Point(67, 306);
+            this.metroLabel30.Location = new System.Drawing.Point(333, 0);
             this.metroLabel30.Name = "metroLabel30";
             this.metroLabel30.Size = new System.Drawing.Size(279, 38);
             this.metroLabel30.TabIndex = 18;
@@ -770,8 +768,9 @@
             // 
             // metroLabel29
             // 
+            this.metroLabel29.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.metroLabel29.AutoSize = true;
-            this.metroLabel29.Location = new System.Drawing.Point(38, 273);
+            this.metroLabel29.Location = new System.Drawing.Point(3, 6);
             this.metroLabel29.Name = "metroLabel29";
             this.metroLabel29.Size = new System.Drawing.Size(129, 19);
             this.metroLabel29.TabIndex = 18;
@@ -779,8 +778,9 @@
             // 
             // metroLabel28
             // 
+            this.metroLabel28.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.metroLabel28.AutoSize = true;
-            this.metroLabel28.Location = new System.Drawing.Point(38, 220);
+            this.metroLabel28.Location = new System.Drawing.Point(3, 57);
             this.metroLabel28.Name = "metroLabel28";
             this.metroLabel28.Size = new System.Drawing.Size(92, 19);
             this.metroLabel28.TabIndex = 17;
@@ -788,8 +788,9 @@
             // 
             // metroLabel27
             // 
+            this.metroLabel27.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.metroLabel27.AutoSize = true;
-            this.metroLabel27.Location = new System.Drawing.Point(54, 189);
+            this.metroLabel27.Location = new System.Drawing.Point(3, 25);
             this.metroLabel27.Name = "metroLabel27";
             this.metroLabel27.Size = new System.Drawing.Size(76, 19);
             this.metroLabel27.TabIndex = 17;
@@ -797,7 +798,7 @@
             // 
             // refDisconnectCommandButton
             // 
-            this.refDisconnectCommandButton.Location = new System.Drawing.Point(526, 220);
+            this.refDisconnectCommandButton.Location = new System.Drawing.Point(512, 53);
             this.refDisconnectCommandButton.Name = "refDisconnectCommandButton";
             this.refDisconnectCommandButton.Size = new System.Drawing.Size(52, 25);
             this.refDisconnectCommandButton.TabIndex = 26;
@@ -806,7 +807,7 @@
             // 
             // refConnectCommandButton
             // 
-            this.refConnectCommandButton.Location = new System.Drawing.Point(526, 189);
+            this.refConnectCommandButton.Location = new System.Drawing.Point(512, 22);
             this.refConnectCommandButton.Name = "refConnectCommandButton";
             this.refConnectCommandButton.Size = new System.Drawing.Size(52, 25);
             this.refConnectCommandButton.TabIndex = 24;
@@ -815,7 +816,8 @@
             // 
             // saveTrackingFrameOffsetButton
             // 
-            this.saveTrackingFrameOffsetButton.Location = new System.Drawing.Point(287, 268);
+            this.saveTrackingFrameOffsetButton.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.saveTrackingFrameOffsetButton.Location = new System.Drawing.Point(246, 3);
             this.saveTrackingFrameOffsetButton.Name = "saveTrackingFrameOffsetButton";
             this.saveTrackingFrameOffsetButton.Size = new System.Drawing.Size(75, 25);
             this.saveTrackingFrameOffsetButton.TabIndex = 28;
@@ -824,8 +826,9 @@
             // 
             // metroLabel26
             // 
+            this.metroLabel26.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.metroLabel26.AutoSize = true;
-            this.metroLabel26.Location = new System.Drawing.Point(34, 159);
+            this.metroLabel26.Location = new System.Drawing.Point(3, 0);
             this.metroLabel26.Name = "metroLabel26";
             this.metroLabel26.Size = new System.Drawing.Size(95, 19);
             this.metroLabel26.TabIndex = 3;
@@ -833,10 +836,11 @@
             // 
             // force3DOFCheckBox
             // 
+            this.force3DOFCheckBox.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.force3DOFCheckBox.AutoSize = true;
             this.force3DOFCheckBox.Checked = global::ALVR.Properties.Settings.Default.force3DOF;
             this.force3DOFCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "force3DOF", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.force3DOFCheckBox.Location = new System.Drawing.Point(407, 122);
+            this.force3DOFCheckBox.Location = new System.Drawing.Point(3, 108);
             this.force3DOFCheckBox.Name = "force3DOFCheckBox";
             this.force3DOFCheckBox.Size = new System.Drawing.Size(84, 15);
             this.force3DOFCheckBox.TabIndex = 34;
@@ -845,10 +849,11 @@
             // 
             // aggressiveKeyframeResend
             // 
+            this.aggressiveKeyframeResend.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.aggressiveKeyframeResend.AutoSize = true;
             this.aggressiveKeyframeResend.Checked = global::ALVR.Properties.Settings.Default.aggressiveKeyframeResend;
             this.aggressiveKeyframeResend.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "aggressiveKeyframeResend", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.aggressiveKeyframeResend.Location = new System.Drawing.Point(407, 144);
+            this.aggressiveKeyframeResend.Location = new System.Drawing.Point(3, 3);
             this.aggressiveKeyframeResend.Name = "aggressiveKeyframeResend";
             this.aggressiveKeyframeResend.Size = new System.Drawing.Size(170, 15);
             this.aggressiveKeyframeResend.TabIndex = 35;
@@ -860,7 +865,7 @@
             this.aggressiveKeyframeResendHelp.AutoSize = true;
             this.aggressiveKeyframeResendHelp.BackColor = System.Drawing.SystemColors.ControlDark;
             this.aggressiveKeyframeResendHelp.FontSize = MetroFramework.MetroLabelSize.Small;
-            this.aggressiveKeyframeResendHelp.Location = new System.Drawing.Point(573, 140);
+            this.aggressiveKeyframeResendHelp.Location = new System.Drawing.Point(179, 0);
             this.aggressiveKeyframeResendHelp.Name = "aggressiveKeyframeResendHelp";
             this.aggressiveKeyframeResendHelp.Size = new System.Drawing.Size(12, 15);
             this.aggressiveKeyframeResendHelp.Style = MetroFramework.MetroColorStyle.Blue;
@@ -870,10 +875,11 @@
             // 
             // disableThrottlingCheckBox
             // 
+            this.disableThrottlingCheckBox.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.disableThrottlingCheckBox.AutoSize = true;
             this.disableThrottlingCheckBox.Checked = global::ALVR.Properties.Settings.Default.disableThrottling;
             this.disableThrottlingCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "disableThrottling", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.disableThrottlingCheckBox.Location = new System.Drawing.Point(407, 80);
+            this.disableThrottlingCheckBox.Location = new System.Drawing.Point(3, 66);
             this.disableThrottlingCheckBox.Name = "disableThrottlingCheckBox";
             this.disableThrottlingCheckBox.Size = new System.Drawing.Size(142, 15);
             this.disableThrottlingCheckBox.TabIndex = 32;
@@ -882,10 +888,11 @@
             // 
             // force60HzCheckBox
             // 
+            this.force60HzCheckBox.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.force60HzCheckBox.AutoSize = true;
             this.force60HzCheckBox.Checked = global::ALVR.Properties.Settings.Default.force60Hz;
             this.force60HzCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "force60Hz", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.force60HzCheckBox.Location = new System.Drawing.Point(407, 59);
+            this.force60HzCheckBox.Location = new System.Drawing.Point(3, 24);
             this.force60HzCheckBox.Name = "force60HzCheckBox";
             this.force60HzCheckBox.Size = new System.Drawing.Size(81, 15);
             this.force60HzCheckBox.TabIndex = 31;
@@ -894,10 +901,11 @@
             // 
             // suppressFrameDropCheckBox
             // 
+            this.suppressFrameDropCheckBox.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.suppressFrameDropCheckBox.AutoSize = true;
             this.suppressFrameDropCheckBox.Checked = global::ALVR.Properties.Settings.Default.suppressFrameDrop;
             this.suppressFrameDropCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "suppressFrameDrop", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.suppressFrameDropCheckBox.Location = new System.Drawing.Point(407, 38);
+            this.suppressFrameDropCheckBox.Location = new System.Drawing.Point(3, 45);
             this.suppressFrameDropCheckBox.Name = "suppressFrameDropCheckBox";
             this.suppressFrameDropCheckBox.Size = new System.Drawing.Size(132, 15);
             this.suppressFrameDropCheckBox.TabIndex = 30;
@@ -907,10 +915,11 @@
             // 
             // disableController
             // 
+            this.disableController.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.disableController.AutoSize = true;
             this.disableController.Checked = global::ALVR.Properties.Settings.Default.disableController;
             this.disableController.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "disableController", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.disableController.Location = new System.Drawing.Point(407, 101);
+            this.disableController.Location = new System.Drawing.Point(3, 87);
             this.disableController.Name = "disableController";
             this.disableController.Size = new System.Drawing.Size(115, 15);
             this.disableController.TabIndex = 33;
@@ -919,8 +928,9 @@
             // 
             // controllerPoseOffset
             // 
+            this.controllerPoseOffset.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.controllerPoseOffset.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "controllerPoseOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.controllerPoseOffset.Location = new System.Drawing.Point(187, 27);
+            this.controllerPoseOffset.Location = new System.Drawing.Point(147, 6);
             this.controllerPoseOffset.Name = "controllerPoseOffset";
             this.controllerPoseOffset.Size = new System.Drawing.Size(52, 19);
             this.controllerPoseOffset.TabIndex = 21;
@@ -929,17 +939,18 @@
             // 
             // trackingFrameOffsetTextBox
             // 
+            this.trackingFrameOffsetTextBox.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.trackingFrameOffsetTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "trackingFrameOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.trackingFrameOffsetTextBox.Location = new System.Drawing.Point(193, 268);
+            this.trackingFrameOffsetTextBox.Location = new System.Drawing.Point(138, 3);
             this.trackingFrameOffsetTextBox.Name = "trackingFrameOffsetTextBox";
-            this.trackingFrameOffsetTextBox.Size = new System.Drawing.Size(86, 25);
+            this.trackingFrameOffsetTextBox.Size = new System.Drawing.Size(102, 25);
             this.trackingFrameOffsetTextBox.TabIndex = 27;
             this.trackingFrameOffsetTextBox.Text = global::ALVR.Properties.Settings.Default.trackingFrameOffset;
             // 
             // disconnectCommandTextBox
             // 
             this.disconnectCommandTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "disconnectCommand", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.disconnectCommandTextBox.Location = new System.Drawing.Point(136, 220);
+            this.disconnectCommandTextBox.Location = new System.Drawing.Point(123, 53);
             this.disconnectCommandTextBox.Name = "disconnectCommandTextBox";
             this.disconnectCommandTextBox.Size = new System.Drawing.Size(383, 25);
             this.disconnectCommandTextBox.TabIndex = 25;
@@ -948,7 +959,7 @@
             // connectCommandTextBox
             // 
             this.connectCommandTextBox.DataBindings.Add(new System.Windows.Forms.Binding("Text", global::ALVR.Properties.Settings.Default, "connectCommand", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.connectCommandTextBox.Location = new System.Drawing.Point(136, 189);
+            this.connectCommandTextBox.Location = new System.Drawing.Point(123, 22);
             this.connectCommandTextBox.Name = "connectCommandTextBox";
             this.connectCommandTextBox.Size = new System.Drawing.Size(383, 25);
             this.connectCommandTextBox.TabIndex = 23;
@@ -956,10 +967,11 @@
             // 
             // onlySteamVRCheckBox
             // 
+            this.onlySteamVRCheckBox.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.onlySteamVRCheckBox.AutoSize = true;
             this.onlySteamVRCheckBox.Checked = global::ALVR.Properties.Settings.Default.onlySteamVR;
             this.onlySteamVRCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "onlySteamVR", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.onlySteamVRCheckBox.Location = new System.Drawing.Point(407, 17);
+            this.onlySteamVRCheckBox.Location = new System.Drawing.Point(3, 3);
             this.onlySteamVRCheckBox.Name = "onlySteamVRCheckBox";
             this.onlySteamVRCheckBox.Size = new System.Drawing.Size(221, 15);
             this.onlySteamVRCheckBox.TabIndex = 29;
@@ -990,7 +1002,7 @@
             this.debugTab.HorizontalScrollbarSize = 11;
             this.debugTab.Location = new System.Drawing.Point(4, 35);
             this.debugTab.Name = "debugTab";
-            this.debugTab.Size = new System.Drawing.Size(662, 396);
+            this.debugTab.Size = new System.Drawing.Size(662, 367);
             this.debugTab.TabIndex = 2;
             this.debugTab.Text = "Debug";
             this.debugTab.VerticalScrollbarBarColor = true;
@@ -1156,7 +1168,7 @@
             this.aboutTab.HorizontalScrollbarSize = 11;
             this.aboutTab.Location = new System.Drawing.Point(4, 35);
             this.aboutTab.Name = "aboutTab";
-            this.aboutTab.Size = new System.Drawing.Size(662, 396);
+            this.aboutTab.Size = new System.Drawing.Size(662, 367);
             this.aboutTab.TabIndex = 4;
             this.aboutTab.Text = "About";
             this.aboutTab.VerticalScrollbarBarColor = true;
@@ -1399,7 +1411,7 @@
             this.metroLabel13.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.metroLabel13.AutoSize = true;
             this.tableLayoutPanel1.SetColumnSpan(this.metroLabel13, 3);
-            this.metroLabel13.Location = new System.Drawing.Point(3, 624);
+            this.metroLabel13.Location = new System.Drawing.Point(3, 348);
             this.metroLabel13.Name = "metroLabel13";
             this.metroLabel13.Size = new System.Drawing.Size(292, 19);
             this.metroLabel13.TabIndex = 7;
@@ -1952,7 +1964,7 @@
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 20F));
-            this.tableLayoutPanel1.Size = new System.Drawing.Size(662, 643);
+            this.tableLayoutPanel1.Size = new System.Drawing.Size(662, 367);
             this.tableLayoutPanel1.TabIndex = 38;
             this.tableLayoutPanel1.Paint += new System.Windows.Forms.PaintEventHandler(this.tableLayoutPanel1_Paint);
             // 
@@ -2096,6 +2108,133 @@
             this.flowLayoutPanel14.Size = new System.Drawing.Size(482, 29);
             this.flowLayoutPanel14.TabIndex = 6;
             // 
+            // tableLayoutPanel10
+            // 
+            this.tableLayoutPanel10.ColumnCount = 1;
+            this.tableLayoutPanel10.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel10.Controls.Add(this.onlySteamVRCheckBox, 0, 0);
+            this.tableLayoutPanel10.Controls.Add(this.force60HzCheckBox, 0, 1);
+            this.tableLayoutPanel10.Controls.Add(this.suppressFrameDropCheckBox, 0, 2);
+            this.tableLayoutPanel10.Controls.Add(this.disableThrottlingCheckBox, 0, 3);
+            this.tableLayoutPanel10.Controls.Add(this.disableController, 0, 4);
+            this.tableLayoutPanel10.Controls.Add(this.force3DOFCheckBox, 0, 5);
+            this.tableLayoutPanel10.Controls.Add(this.flowLayoutPanel15, 0, 6);
+            this.tableLayoutPanel10.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tableLayoutPanel10.Location = new System.Drawing.Point(339, 10);
+            this.tableLayoutPanel10.Margin = new System.Windows.Forms.Padding(50, 0, 0, 0);
+            this.tableLayoutPanel10.Name = "tableLayoutPanel10";
+            this.tableLayoutPanel10.RowCount = 7;
+            this.tableLayoutPanel10.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel10.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel10.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel10.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel10.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel10.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel10.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel10.Size = new System.Drawing.Size(323, 151);
+            this.tableLayoutPanel10.TabIndex = 36;
+            // 
+            // flowLayoutPanel15
+            // 
+            this.flowLayoutPanel15.Controls.Add(this.aggressiveKeyframeResend);
+            this.flowLayoutPanel15.Controls.Add(this.aggressiveKeyframeResendHelp);
+            this.flowLayoutPanel15.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel15.Location = new System.Drawing.Point(0, 126);
+            this.flowLayoutPanel15.Margin = new System.Windows.Forms.Padding(0);
+            this.flowLayoutPanel15.Name = "flowLayoutPanel15";
+            this.flowLayoutPanel15.Size = new System.Drawing.Size(323, 100);
+            this.flowLayoutPanel15.TabIndex = 35;
+            // 
+            // tableLayoutPanel11
+            // 
+            this.tableLayoutPanel11.BackColor = System.Drawing.SystemColors.Window;
+            this.tableLayoutPanel11.ColumnCount = 2;
+            this.tableLayoutPanel11.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tableLayoutPanel11.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel11.Controls.Add(this.tableLayoutPanel10, 1, 0);
+            this.tableLayoutPanel11.Controls.Add(this.flowLayoutPanel16, 0, 0);
+            this.tableLayoutPanel11.Controls.Add(this.tableLayoutPanel12, 0, 2);
+            this.tableLayoutPanel11.Controls.Add(this.tableLayoutPanel13, 0, 3);
+            this.tableLayoutPanel11.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tableLayoutPanel11.Location = new System.Drawing.Point(0, 0);
+            this.tableLayoutPanel11.Name = "tableLayoutPanel11";
+            this.tableLayoutPanel11.Padding = new System.Windows.Forms.Padding(0, 10, 0, 0);
+            this.tableLayoutPanel11.RowCount = 4;
+            this.tableLayoutPanel11.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel11.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel11.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 84F));
+            this.tableLayoutPanel11.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 42F));
+            this.tableLayoutPanel11.Size = new System.Drawing.Size(662, 367);
+            this.tableLayoutPanel11.TabIndex = 37;
+            this.tableLayoutPanel11.Paint += new System.Windows.Forms.PaintEventHandler(this.tableLayoutPanel11_Paint);
+            // 
+            // flowLayoutPanel16
+            // 
+            this.flowLayoutPanel16.AutoSize = true;
+            this.flowLayoutPanel16.Controls.Add(this.metroLabel12);
+            this.flowLayoutPanel16.Controls.Add(this.controllerPoseOffset);
+            this.flowLayoutPanel16.Controls.Add(this.metroButton1);
+            this.flowLayoutPanel16.Location = new System.Drawing.Point(3, 13);
+            this.flowLayoutPanel16.Name = "flowLayoutPanel16";
+            this.flowLayoutPanel16.Size = new System.Drawing.Size(283, 31);
+            this.flowLayoutPanel16.TabIndex = 37;
+            this.flowLayoutPanel16.WrapContents = false;
+            // 
+            // tableLayoutPanel12
+            // 
+            this.tableLayoutPanel12.ColumnCount = 3;
+            this.tableLayoutPanel11.SetColumnSpan(this.tableLayoutPanel12, 2);
+            this.tableLayoutPanel12.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 120F));
+            this.tableLayoutPanel12.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tableLayoutPanel12.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 30F));
+            this.tableLayoutPanel12.Controls.Add(this.metroLabel26, 0, 0);
+            this.tableLayoutPanel12.Controls.Add(this.metroLabel27, 0, 1);
+            this.tableLayoutPanel12.Controls.Add(this.metroLabel28, 0, 2);
+            this.tableLayoutPanel12.Controls.Add(this.connectCommandTextBox, 1, 1);
+            this.tableLayoutPanel12.Controls.Add(this.disconnectCommandTextBox, 1, 2);
+            this.tableLayoutPanel12.Controls.Add(this.refDisconnectCommandButton, 2, 2);
+            this.tableLayoutPanel12.Controls.Add(this.refConnectCommandButton, 2, 1);
+            this.tableLayoutPanel12.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tableLayoutPanel12.Location = new System.Drawing.Point(0, 241);
+            this.tableLayoutPanel12.Margin = new System.Windows.Forms.Padding(0);
+            this.tableLayoutPanel12.Name = "tableLayoutPanel12";
+            this.tableLayoutPanel12.RowCount = 3;
+            this.tableLayoutPanel12.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel12.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel12.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel12.Size = new System.Drawing.Size(662, 84);
+            this.tableLayoutPanel12.TabIndex = 38;
+            // 
+            // tableLayoutPanel13
+            // 
+            this.tableLayoutPanel13.ColumnCount = 2;
+            this.tableLayoutPanel11.SetColumnSpan(this.tableLayoutPanel13, 2);
+            this.tableLayoutPanel13.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tableLayoutPanel13.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel13.Controls.Add(this.flowLayoutPanel17, 0, 0);
+            this.tableLayoutPanel13.Controls.Add(this.metroLabel30, 1, 0);
+            this.tableLayoutPanel13.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tableLayoutPanel13.Location = new System.Drawing.Point(0, 325);
+            this.tableLayoutPanel13.Margin = new System.Windows.Forms.Padding(0);
+            this.tableLayoutPanel13.Name = "tableLayoutPanel13";
+            this.tableLayoutPanel13.RowCount = 1;
+            this.tableLayoutPanel13.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel13.Size = new System.Drawing.Size(662, 42);
+            this.tableLayoutPanel13.TabIndex = 39;
+            // 
+            // flowLayoutPanel17
+            // 
+            this.flowLayoutPanel17.AutoSize = true;
+            this.flowLayoutPanel17.Controls.Add(this.metroLabel29);
+            this.flowLayoutPanel17.Controls.Add(this.trackingFrameOffsetTextBox);
+            this.flowLayoutPanel17.Controls.Add(this.saveTrackingFrameOffsetButton);
+            this.flowLayoutPanel17.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel17.Location = new System.Drawing.Point(3, 3);
+            this.flowLayoutPanel17.Name = "flowLayoutPanel17";
+            this.flowLayoutPanel17.Size = new System.Drawing.Size(324, 36);
+            this.flowLayoutPanel17.TabIndex = 0;
+            this.flowLayoutPanel17.WrapContents = false;
+            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -2123,7 +2262,6 @@
             this.videoTab.PerformLayout();
             this.soundTab.ResumeLayout(false);
             this.otherTab.ResumeLayout(false);
-            this.otherTab.PerformLayout();
             this.debugTab.ResumeLayout(false);
             this.debugTab.PerformLayout();
             this.aboutTab.ResumeLayout(false);
@@ -2174,6 +2312,20 @@
             this.flowLayoutPanel13.PerformLayout();
             this.flowLayoutPanel14.ResumeLayout(false);
             this.flowLayoutPanel14.PerformLayout();
+            this.tableLayoutPanel10.ResumeLayout(false);
+            this.tableLayoutPanel10.PerformLayout();
+            this.flowLayoutPanel15.ResumeLayout(false);
+            this.flowLayoutPanel15.PerformLayout();
+            this.tableLayoutPanel11.ResumeLayout(false);
+            this.tableLayoutPanel11.PerformLayout();
+            this.flowLayoutPanel16.ResumeLayout(false);
+            this.flowLayoutPanel16.PerformLayout();
+            this.tableLayoutPanel12.ResumeLayout(false);
+            this.tableLayoutPanel12.PerformLayout();
+            this.tableLayoutPanel13.ResumeLayout(false);
+            this.tableLayoutPanel13.PerformLayout();
+            this.flowLayoutPanel17.ResumeLayout(false);
+            this.flowLayoutPanel17.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -2327,6 +2479,13 @@
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel9;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel13;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel14;
+        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel11;
+        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel10;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel15;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel16;
+        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel12;
+        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel13;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel17;
     }
 }
 

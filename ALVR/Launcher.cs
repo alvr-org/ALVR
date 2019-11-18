@@ -931,5 +931,25 @@ namespace ALVR
         {
 
         }
+
+        private void tableLayoutPanel7_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void wrongVersionLabel_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void tableLayoutPanel7_Paint_1(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void statDataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
     }
 }

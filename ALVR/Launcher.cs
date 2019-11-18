@@ -926,5 +926,10 @@ namespace ALVR
         {
             foveationVerticalOffsetLabel.Text = (foveationVerticalOffsetTrackBar.Value / 100f).ToString();
         }
+
+        private void tableLayoutPanel1_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
     }
 }

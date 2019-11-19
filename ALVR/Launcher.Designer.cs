@@ -68,6 +68,17 @@
             this.closeServerButton = new MetroFramework.Controls.MetroButton();
             this.connectedLabel = new MetroFramework.Controls.MetroLabel();
             this.autoConnectCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.soundTab = new MetroFramework.Controls.MetroTabPage();
+            this.tableLayoutPanel9 = new System.Windows.Forms.TableLayoutPanel();
+            this.flowLayoutPanel13 = new System.Windows.Forms.FlowLayoutPanel();
+            this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
+            this.noSoundDeviceLabel = new MetroFramework.Controls.MetroLabel();
+            this.soundDeviceComboBox = new MetroFramework.Controls.MetroComboBox();
+            this.streamMic = new MetroFramework.Controls.MetroCheckBox();
+            this.flowLayoutPanel14 = new System.Windows.Forms.FlowLayoutPanel();
+            this.metroLabel20 = new MetroFramework.Controls.MetroLabel();
+            this.metroLink1 = new MetroFramework.Controls.MetroLink();
+            this.defaultSoundDeviceCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.videoTab = new MetroFramework.Controls.MetroTabPage();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
@@ -119,17 +130,6 @@
             this.metroLabel23 = new MetroFramework.Controls.MetroLabel();
             this.ffrVerticalOffsetHelp = new MetroFramework.Controls.MetroLabel();
             this.foveationVerticalOffsetLabel = new MetroFramework.Controls.MetroLabel();
-            this.soundTab = new MetroFramework.Controls.MetroTabPage();
-            this.tableLayoutPanel9 = new System.Windows.Forms.TableLayoutPanel();
-            this.flowLayoutPanel13 = new System.Windows.Forms.FlowLayoutPanel();
-            this.soundCheckBox = new MetroFramework.Controls.MetroCheckBox();
-            this.noSoundDeviceLabel = new MetroFramework.Controls.MetroLabel();
-            this.soundDeviceComboBox = new MetroFramework.Controls.MetroComboBox();
-            this.streamMic = new MetroFramework.Controls.MetroCheckBox();
-            this.flowLayoutPanel14 = new System.Windows.Forms.FlowLayoutPanel();
-            this.metroLabel20 = new MetroFramework.Controls.MetroLabel();
-            this.metroLink1 = new MetroFramework.Controls.MetroLink();
-            this.defaultSoundDeviceCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.otherTab = new MetroFramework.Controls.MetroTabPage();
             this.tableLayoutPanel11 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel16 = new System.Windows.Forms.FlowLayoutPanel();
@@ -211,6 +211,10 @@
             this.connectedPanel.SuspendLayout();
             this.tableLayoutPanel8.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).BeginInit();
+            this.soundTab.SuspendLayout();
+            this.tableLayoutPanel9.SuspendLayout();
+            this.flowLayoutPanel13.SuspendLayout();
+            this.flowLayoutPanel14.SuspendLayout();
             this.videoTab.SuspendLayout();
             this.tableLayoutPanel1.SuspendLayout();
             this.flowLayoutPanel2.SuspendLayout();
@@ -227,10 +231,6 @@
             this.flowLayoutPanel10.SuspendLayout();
             this.tableLayoutPanel4.SuspendLayout();
             this.flowLayoutPanel11.SuspendLayout();
-            this.soundTab.SuspendLayout();
-            this.tableLayoutPanel9.SuspendLayout();
-            this.flowLayoutPanel13.SuspendLayout();
-            this.flowLayoutPanel14.SuspendLayout();
             this.otherTab.SuspendLayout();
             this.tableLayoutPanel11.SuspendLayout();
             this.flowLayoutPanel16.SuspendLayout();
@@ -291,8 +291,8 @@
             // metroTabControl1
             // 
             this.metroTabControl1.Controls.Add(this.serverTab);
-            this.metroTabControl1.Controls.Add(this.videoTab);
             this.metroTabControl1.Controls.Add(this.soundTab);
+            this.metroTabControl1.Controls.Add(this.videoTab);
             this.metroTabControl1.Controls.Add(this.otherTab);
             this.metroTabControl1.Controls.Add(this.debugTab);
             this.metroTabControl1.Controls.Add(this.aboutTab);
@@ -713,6 +713,154 @@
             this.autoConnectCheckBox.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.autoConnectCheckBox.UseVisualStyleBackColor = true;
             this.autoConnectCheckBox.CheckedChanged += new System.EventHandler(this.autoConnectCheckBox_CheckedChanged);
+            // 
+            // soundTab
+            // 
+            this.soundTab.Controls.Add(this.tableLayoutPanel9);
+            this.soundTab.HorizontalScrollbarBarColor = true;
+            this.soundTab.HorizontalScrollbarSize = 0;
+            this.soundTab.Location = new System.Drawing.Point(4, 35);
+            this.soundTab.Name = "soundTab";
+            this.soundTab.Size = new System.Drawing.Size(662, 367);
+            this.soundTab.TabIndex = 8;
+            this.soundTab.Text = "Sound";
+            this.soundTab.VerticalScrollbarBarColor = true;
+            this.soundTab.VerticalScrollbarSize = 0;
+            // 
+            // tableLayoutPanel9
+            // 
+            this.tableLayoutPanel9.BackColor = System.Drawing.SystemColors.Window;
+            this.tableLayoutPanel9.ColumnCount = 3;
+            this.tableLayoutPanel9.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 180F));
+            this.tableLayoutPanel9.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tableLayoutPanel9.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel9.Controls.Add(this.flowLayoutPanel13, 0, 0);
+            this.tableLayoutPanel9.Controls.Add(this.soundDeviceComboBox, 2, 1);
+            this.tableLayoutPanel9.Controls.Add(this.streamMic, 0, 2);
+            this.tableLayoutPanel9.Controls.Add(this.flowLayoutPanel14, 1, 2);
+            this.tableLayoutPanel9.Controls.Add(this.defaultSoundDeviceCheckBox, 0, 1);
+            this.tableLayoutPanel9.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tableLayoutPanel9.Location = new System.Drawing.Point(0, 0);
+            this.tableLayoutPanel9.Name = "tableLayoutPanel9";
+            this.tableLayoutPanel9.Padding = new System.Windows.Forms.Padding(0, 10, 0, 0);
+            this.tableLayoutPanel9.RowCount = 4;
+            this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel9.Size = new System.Drawing.Size(662, 367);
+            this.tableLayoutPanel9.TabIndex = 8;
+            // 
+            // flowLayoutPanel13
+            // 
+            this.flowLayoutPanel13.AutoSize = true;
+            this.flowLayoutPanel13.Controls.Add(this.soundCheckBox);
+            this.flowLayoutPanel13.Controls.Add(this.noSoundDeviceLabel);
+            this.flowLayoutPanel13.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel13.Location = new System.Drawing.Point(0, 10);
+            this.flowLayoutPanel13.Margin = new System.Windows.Forms.Padding(0);
+            this.flowLayoutPanel13.Name = "flowLayoutPanel13";
+            this.flowLayoutPanel13.Size = new System.Drawing.Size(180, 21);
+            this.flowLayoutPanel13.TabIndex = 0;
+            this.flowLayoutPanel13.WrapContents = false;
+            // 
+            // soundCheckBox
+            // 
+            this.soundCheckBox.AutoSize = true;
+            this.soundCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableSound;
+            this.soundCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.soundCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableSound", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.soundCheckBox.Location = new System.Drawing.Point(3, 3);
+            this.soundCheckBox.Name = "soundCheckBox";
+            this.soundCheckBox.Size = new System.Drawing.Size(92, 15);
+            this.soundCheckBox.TabIndex = 2;
+            this.soundCheckBox.Text = "Steam sound";
+            this.soundCheckBox.UseVisualStyleBackColor = true;
+            this.soundCheckBox.CheckedChanged += new System.EventHandler(this.soundCheckBox_CheckedChanged);
+            // 
+            // noSoundDeviceLabel
+            // 
+            this.noSoundDeviceLabel.AutoSize = true;
+            this.noSoundDeviceLabel.Location = new System.Drawing.Point(101, 0);
+            this.noSoundDeviceLabel.Name = "noSoundDeviceLabel";
+            this.noSoundDeviceLabel.Size = new System.Drawing.Size(176, 19);
+            this.noSoundDeviceLabel.TabIndex = 4;
+            this.noSoundDeviceLabel.Text = "No sound devices are found.";
+            this.noSoundDeviceLabel.Visible = false;
+            // 
+            // soundDeviceComboBox
+            // 
+            this.soundDeviceComboBox.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.soundDeviceComboBox.FormattingEnabled = true;
+            this.soundDeviceComboBox.ItemHeight = 23;
+            this.soundDeviceComboBox.Location = new System.Drawing.Point(183, 34);
+            this.soundDeviceComboBox.Name = "soundDeviceComboBox";
+            this.soundDeviceComboBox.Size = new System.Drawing.Size(476, 29);
+            this.soundDeviceComboBox.TabIndex = 3;
+            // 
+            // streamMic
+            // 
+            this.streamMic.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.streamMic.AutoSize = true;
+            this.streamMic.Checked = global::ALVR.Properties.Settings.Default.streamMic;
+            this.streamMic.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "streamMic", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.streamMic.Location = new System.Drawing.Point(3, 73);
+            this.streamMic.Name = "streamMic";
+            this.streamMic.Size = new System.Drawing.Size(162, 15);
+            this.streamMic.TabIndex = 5;
+            this.streamMic.Text = "Stream Quest Microphone";
+            this.streamMic.UseVisualStyleBackColor = true;
+            this.streamMic.CheckedChanged += new System.EventHandler(this.metroCheckBox4_CheckedChanged);
+            // 
+            // flowLayoutPanel14
+            // 
+            this.flowLayoutPanel14.AutoSize = true;
+            this.tableLayoutPanel9.SetColumnSpan(this.flowLayoutPanel14, 2);
+            this.flowLayoutPanel14.Controls.Add(this.metroLabel20);
+            this.flowLayoutPanel14.Controls.Add(this.metroLink1);
+            this.flowLayoutPanel14.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel14.Location = new System.Drawing.Point(180, 66);
+            this.flowLayoutPanel14.Margin = new System.Windows.Forms.Padding(0);
+            this.flowLayoutPanel14.Name = "flowLayoutPanel14";
+            this.flowLayoutPanel14.Size = new System.Drawing.Size(482, 29);
+            this.flowLayoutPanel14.TabIndex = 6;
+            // 
+            // metroLabel20
+            // 
+            this.metroLabel20.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.metroLabel20.AutoSize = true;
+            this.metroLabel20.Location = new System.Drawing.Point(2, 5);
+            this.metroLabel20.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.metroLabel20.Name = "metroLabel20";
+            this.metroLabel20.Size = new System.Drawing.Size(172, 19);
+            this.metroLabel20.TabIndex = 7;
+            this.metroLabel20.Text = "Requires Cable audio driver";
+            // 
+            // metroLink1
+            // 
+            this.metroLink1.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.metroLink1.Location = new System.Drawing.Point(179, 3);
+            this.metroLink1.Name = "metroLink1";
+            this.metroLink1.Size = new System.Drawing.Size(203, 23);
+            this.metroLink1.TabIndex = 6;
+            this.metroLink1.Text = " https://www.vb-audio.com/Cable/";
+            this.metroLink1.Click += new System.EventHandler(this.metroLink1_Click);
+            // 
+            // defaultSoundDeviceCheckBox
+            // 
+            this.defaultSoundDeviceCheckBox.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.defaultSoundDeviceCheckBox.AutoSize = true;
+            this.defaultSoundDeviceCheckBox.Checked = global::ALVR.Properties.Settings.Default.useDefaultSoundDevice;
+            this.defaultSoundDeviceCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.defaultSoundDeviceCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useDefaultSoundDevice", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.defaultSoundDeviceCheckBox.Location = new System.Drawing.Point(20, 41);
+            this.defaultSoundDeviceCheckBox.Margin = new System.Windows.Forms.Padding(20, 3, 3, 3);
+            this.defaultSoundDeviceCheckBox.Name = "defaultSoundDeviceCheckBox";
+            this.defaultSoundDeviceCheckBox.Size = new System.Drawing.Size(119, 15);
+            this.defaultSoundDeviceCheckBox.TabIndex = 2;
+            this.defaultSoundDeviceCheckBox.Text = "Use default device";
+            this.defaultSoundDeviceCheckBox.UseVisualStyleBackColor = true;
+            this.defaultSoundDeviceCheckBox.CheckedChanged += new System.EventHandler(this.defaultSoundDeviceCheckBox_CheckedChanged);
             // 
             // videoTab
             // 
@@ -1400,154 +1548,6 @@
             this.foveationVerticalOffsetLabel.TabIndex = 33;
             this.foveationVerticalOffsetLabel.Text = "0.1";
             this.foveationVerticalOffsetLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
-            // soundTab
-            // 
-            this.soundTab.Controls.Add(this.tableLayoutPanel9);
-            this.soundTab.HorizontalScrollbarBarColor = true;
-            this.soundTab.HorizontalScrollbarSize = 0;
-            this.soundTab.Location = new System.Drawing.Point(4, 35);
-            this.soundTab.Name = "soundTab";
-            this.soundTab.Size = new System.Drawing.Size(662, 367);
-            this.soundTab.TabIndex = 8;
-            this.soundTab.Text = "Sound";
-            this.soundTab.VerticalScrollbarBarColor = true;
-            this.soundTab.VerticalScrollbarSize = 0;
-            // 
-            // tableLayoutPanel9
-            // 
-            this.tableLayoutPanel9.BackColor = System.Drawing.SystemColors.Window;
-            this.tableLayoutPanel9.ColumnCount = 3;
-            this.tableLayoutPanel9.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 180F));
-            this.tableLayoutPanel9.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
-            this.tableLayoutPanel9.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel9.Controls.Add(this.flowLayoutPanel13, 0, 0);
-            this.tableLayoutPanel9.Controls.Add(this.soundDeviceComboBox, 2, 1);
-            this.tableLayoutPanel9.Controls.Add(this.streamMic, 0, 2);
-            this.tableLayoutPanel9.Controls.Add(this.flowLayoutPanel14, 1, 2);
-            this.tableLayoutPanel9.Controls.Add(this.defaultSoundDeviceCheckBox, 0, 1);
-            this.tableLayoutPanel9.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel9.Location = new System.Drawing.Point(0, 0);
-            this.tableLayoutPanel9.Name = "tableLayoutPanel9";
-            this.tableLayoutPanel9.Padding = new System.Windows.Forms.Padding(0, 10, 0, 0);
-            this.tableLayoutPanel9.RowCount = 4;
-            this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel9.Size = new System.Drawing.Size(662, 367);
-            this.tableLayoutPanel9.TabIndex = 8;
-            // 
-            // flowLayoutPanel13
-            // 
-            this.flowLayoutPanel13.AutoSize = true;
-            this.flowLayoutPanel13.Controls.Add(this.soundCheckBox);
-            this.flowLayoutPanel13.Controls.Add(this.noSoundDeviceLabel);
-            this.flowLayoutPanel13.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel13.Location = new System.Drawing.Point(0, 10);
-            this.flowLayoutPanel13.Margin = new System.Windows.Forms.Padding(0);
-            this.flowLayoutPanel13.Name = "flowLayoutPanel13";
-            this.flowLayoutPanel13.Size = new System.Drawing.Size(180, 21);
-            this.flowLayoutPanel13.TabIndex = 0;
-            this.flowLayoutPanel13.WrapContents = false;
-            // 
-            // soundCheckBox
-            // 
-            this.soundCheckBox.AutoSize = true;
-            this.soundCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableSound;
-            this.soundCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.soundCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableSound", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.soundCheckBox.Location = new System.Drawing.Point(3, 3);
-            this.soundCheckBox.Name = "soundCheckBox";
-            this.soundCheckBox.Size = new System.Drawing.Size(92, 15);
-            this.soundCheckBox.TabIndex = 2;
-            this.soundCheckBox.Text = "Steam sound";
-            this.soundCheckBox.UseVisualStyleBackColor = true;
-            this.soundCheckBox.CheckedChanged += new System.EventHandler(this.soundCheckBox_CheckedChanged);
-            // 
-            // noSoundDeviceLabel
-            // 
-            this.noSoundDeviceLabel.AutoSize = true;
-            this.noSoundDeviceLabel.Location = new System.Drawing.Point(101, 0);
-            this.noSoundDeviceLabel.Name = "noSoundDeviceLabel";
-            this.noSoundDeviceLabel.Size = new System.Drawing.Size(176, 19);
-            this.noSoundDeviceLabel.TabIndex = 4;
-            this.noSoundDeviceLabel.Text = "No sound devices are found.";
-            this.noSoundDeviceLabel.Visible = false;
-            // 
-            // soundDeviceComboBox
-            // 
-            this.soundDeviceComboBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.soundDeviceComboBox.FormattingEnabled = true;
-            this.soundDeviceComboBox.ItemHeight = 23;
-            this.soundDeviceComboBox.Location = new System.Drawing.Point(183, 34);
-            this.soundDeviceComboBox.Name = "soundDeviceComboBox";
-            this.soundDeviceComboBox.Size = new System.Drawing.Size(476, 29);
-            this.soundDeviceComboBox.TabIndex = 3;
-            // 
-            // streamMic
-            // 
-            this.streamMic.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.streamMic.AutoSize = true;
-            this.streamMic.Checked = global::ALVR.Properties.Settings.Default.streamMic;
-            this.streamMic.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "streamMic", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.streamMic.Location = new System.Drawing.Point(3, 73);
-            this.streamMic.Name = "streamMic";
-            this.streamMic.Size = new System.Drawing.Size(162, 15);
-            this.streamMic.TabIndex = 5;
-            this.streamMic.Text = "Stream Quest Microphone";
-            this.streamMic.UseVisualStyleBackColor = true;
-            this.streamMic.CheckedChanged += new System.EventHandler(this.metroCheckBox4_CheckedChanged);
-            // 
-            // flowLayoutPanel14
-            // 
-            this.flowLayoutPanel14.AutoSize = true;
-            this.tableLayoutPanel9.SetColumnSpan(this.flowLayoutPanel14, 2);
-            this.flowLayoutPanel14.Controls.Add(this.metroLabel20);
-            this.flowLayoutPanel14.Controls.Add(this.metroLink1);
-            this.flowLayoutPanel14.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel14.Location = new System.Drawing.Point(180, 66);
-            this.flowLayoutPanel14.Margin = new System.Windows.Forms.Padding(0);
-            this.flowLayoutPanel14.Name = "flowLayoutPanel14";
-            this.flowLayoutPanel14.Size = new System.Drawing.Size(482, 29);
-            this.flowLayoutPanel14.TabIndex = 6;
-            // 
-            // metroLabel20
-            // 
-            this.metroLabel20.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.metroLabel20.AutoSize = true;
-            this.metroLabel20.Location = new System.Drawing.Point(2, 5);
-            this.metroLabel20.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.metroLabel20.Name = "metroLabel20";
-            this.metroLabel20.Size = new System.Drawing.Size(172, 19);
-            this.metroLabel20.TabIndex = 7;
-            this.metroLabel20.Text = "Requires Cable audio driver";
-            // 
-            // metroLink1
-            // 
-            this.metroLink1.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.metroLink1.Location = new System.Drawing.Point(179, 3);
-            this.metroLink1.Name = "metroLink1";
-            this.metroLink1.Size = new System.Drawing.Size(203, 23);
-            this.metroLink1.TabIndex = 6;
-            this.metroLink1.Text = " https://www.vb-audio.com/Cable/";
-            this.metroLink1.Click += new System.EventHandler(this.metroLink1_Click);
-            // 
-            // defaultSoundDeviceCheckBox
-            // 
-            this.defaultSoundDeviceCheckBox.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.defaultSoundDeviceCheckBox.AutoSize = true;
-            this.defaultSoundDeviceCheckBox.Checked = global::ALVR.Properties.Settings.Default.useDefaultSoundDevice;
-            this.defaultSoundDeviceCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.defaultSoundDeviceCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useDefaultSoundDevice", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.defaultSoundDeviceCheckBox.Location = new System.Drawing.Point(20, 41);
-            this.defaultSoundDeviceCheckBox.Margin = new System.Windows.Forms.Padding(20, 3, 3, 3);
-            this.defaultSoundDeviceCheckBox.Name = "defaultSoundDeviceCheckBox";
-            this.defaultSoundDeviceCheckBox.Size = new System.Drawing.Size(119, 15);
-            this.defaultSoundDeviceCheckBox.TabIndex = 2;
-            this.defaultSoundDeviceCheckBox.Text = "Use default device";
-            this.defaultSoundDeviceCheckBox.UseVisualStyleBackColor = true;
-            this.defaultSoundDeviceCheckBox.CheckedChanged += new System.EventHandler(this.defaultSoundDeviceCheckBox_CheckedChanged);
             // 
             // otherTab
             // 
@@ -2382,6 +2382,13 @@
             this.tableLayoutPanel8.ResumeLayout(false);
             this.tableLayoutPanel8.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.statDataGridView)).EndInit();
+            this.soundTab.ResumeLayout(false);
+            this.tableLayoutPanel9.ResumeLayout(false);
+            this.tableLayoutPanel9.PerformLayout();
+            this.flowLayoutPanel13.ResumeLayout(false);
+            this.flowLayoutPanel13.PerformLayout();
+            this.flowLayoutPanel14.ResumeLayout(false);
+            this.flowLayoutPanel14.PerformLayout();
             this.videoTab.ResumeLayout(false);
             this.videoTab.PerformLayout();
             this.tableLayoutPanel1.ResumeLayout(false);
@@ -2414,13 +2421,6 @@
             this.tableLayoutPanel4.PerformLayout();
             this.flowLayoutPanel11.ResumeLayout(false);
             this.flowLayoutPanel11.PerformLayout();
-            this.soundTab.ResumeLayout(false);
-            this.tableLayoutPanel9.ResumeLayout(false);
-            this.tableLayoutPanel9.PerformLayout();
-            this.flowLayoutPanel13.ResumeLayout(false);
-            this.flowLayoutPanel13.PerformLayout();
-            this.flowLayoutPanel14.ResumeLayout(false);
-            this.flowLayoutPanel14.PerformLayout();
             this.otherTab.ResumeLayout(false);
             this.tableLayoutPanel11.ResumeLayout(false);
             this.tableLayoutPanel11.PerformLayout();

@@ -94,6 +94,12 @@ static const char * const k_pch_Settings_foveationStrength_Float = "foveationStr
 static const char * const k_pch_Settings_foveationShape_Float = "foveationShape";
 static const char * const k_pch_Settings_foveationVerticalOffset_Float = "foveationVerticalOffset";
 
+static const char* const k_pch_Settings_EnableColorCorrection_Bool = "enableColorCorrection";
+static const char* const k_pch_Settings_Brightness_Float = "brightness";
+static const char* const k_pch_Settings_Contrast_Float = "contrast";
+static const char* const k_pch_Settings_Saturation_Float = "saturation";
+static const char* const k_pch_Settings_Gamma_Float = "gamma";
+
 
 static const char * const k_pch_Settings_TrackingFrameOffset_Int32 = "trackingFrameOffset";
 //
@@ -158,6 +164,12 @@ public:
 	float m_foveationStrength;
 	float m_foveationShape;
 	float m_foveationVerticalOffset;
+
+	bool m_enableColorCorrection;
+	float m_brightness;
+	float m_contrast;
+	float m_saturation;
+	float m_gamma;
 
 	bool m_enableSound;
 	std::string m_soundDevice;

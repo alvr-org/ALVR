@@ -141,16 +141,22 @@ namespace ALVR
                 "FFR causes some visual artefacts at the edges of the view that are more or lesse visible depending on the settings and the game");
 
             toolTip1.SetToolTip(this.ffrStrengthHelp, "Range 0 - 5\n" +
-                "higher value means less detail toward the edges of the frame and more artefacts");
+                "Higher value means less detail toward the edges of the frame and more artefacts");
             
             toolTip1.SetToolTip(this.ffrVerticalOffsetHelp, "Range -0.1 - 0.1\n" +
-                "higher value means the high quality frame region is moved further down");
+                "Higher value means the high quality frame region is moved further down");
 
             toolTip1.SetToolTip(this.aggressiveKeyframeResendHelp, "Decrease minimum interval between keyframes from 100 ms to 5 ms. \n" +
                 "Used only when packet loss is detected. Improves experience on networks with packet loss.");
 
             toolTip1.SetToolTip(this.nv12Tooltip, "Use custom NV12 color space conversion. \n" +
                "May create more efficient video. This is always used on Windows 7");
+
+            toolTip1.SetToolTip(this.colorCorrectionHelp, "The color transformations are applied in the order: gamma, brightness, contrast, saturation.\n\n" +
+                "Gamma: range [0;5], default 1. Use a value of 2.2 to correct color from sRGB to RGB space.\n" +
+                "Brightness: range [-1;1], default 0. -1 is completely black and 1 is completely white.\n" +
+                "Contrast: range [-1;1], default 0. -1 is completely gray.\n" +
+                "Saturation: range [-1;1], default 0. -1 is black and white.");
 
 
 

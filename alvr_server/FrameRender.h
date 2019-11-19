@@ -70,6 +70,9 @@ private:
 	// Parameter for Draw method. 2-triangles for both eyes.
 	static const int VERTEX_INDEX_COUNT = 12;
 
+	std::unique_ptr<d3d_render_utils::RenderPipeline> m_colorCorrectionPipeline;
+	bool enableColorCorrection;
+
 	std::unique_ptr<FFR> m_ffr;
 	bool enableFFR;
 };

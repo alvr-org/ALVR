@@ -489,5 +489,64 @@ namespace ALVR.Properties {
                 this["bufferOffset"] = value;
             }
         }
+       [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool enableColorCorrection {
+            get {
+                return ((bool)(this["enableColorCorrection"]));
+            }
+            set {
+                this["enableColorCorrection"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public decimal brightness {
+            get {
+                return ((decimal)(this["brightness"]));
+            }
+            set {
+                this["brightness"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public decimal contrast {
+            get {
+                return ((decimal)(this["contrast"]));
+            }
+            set {
+                this["contrast"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public decimal saturation {
+            get {
+                return ((decimal)(this["saturation"]));
+            }
+            set {
+                this["saturation"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public decimal gamma {
+            get {
+                return ((decimal)(this["gamma"]));
+            }
+            set {
+                this["gamma"] = value;
+            }
+        }
     }
 }

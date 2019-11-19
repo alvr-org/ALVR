@@ -963,5 +963,10 @@ namespace ALVR
         {
 
         }
+
+        private void bitrateTrackBar_Scroll(object sender, ScrollEventArgs e)
+        {
+
+        }
     }
 }

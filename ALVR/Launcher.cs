@@ -672,6 +672,7 @@ namespace ALVR
         {
             bitrateLabel.Text = bitrateTrackBar.Value + "Mbps";
             bufferLabel.Text = config.GetBufferSizeKB() + "kB";
+         
 
         }
 
@@ -714,6 +715,7 @@ namespace ALVR
         private void bufferTrackBar_ValueChanged(object sender, EventArgs e)
         {
             bufferLabel.Text = config.GetBufferSizeKB() + "kB";
+            bufferOffsetLabel.Text = bufferTrackBar.Value + "kB";
         }
 
         private void installButton_Click(object sender, EventArgs e)
@@ -971,6 +973,11 @@ namespace ALVR
         }
 
         private void bitrateTrackBar_Scroll(object sender, ScrollEventArgs e)
+        {
+
+        }
+
+        private void bufferTrackBar_Scroll(object sender, ScrollEventArgs e)
         {
 
         }

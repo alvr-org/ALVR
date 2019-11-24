@@ -111,6 +111,7 @@
             this.foveationVerticalOffsetTrackBar = new MetroFramework.Controls.MetroTrackBar();
             this.foveationVerticalOffsetLabel = new MetroFramework.Controls.MetroLabel();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.metroLabel34 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel18 = new MetroFramework.Controls.MetroLabel();
             this.metroLabel17 = new MetroFramework.Controls.MetroLabel();
             this.panel2 = new System.Windows.Forms.Panel();
@@ -134,6 +135,9 @@
             this.flowLayoutPanel31 = new System.Windows.Forms.FlowLayoutPanel();
             this.metroLabel24 = new MetroFramework.Controls.MetroLabel();
             this.gammaBox = new System.Windows.Forms.NumericUpDown();
+            this.flowLayoutPanel34 = new System.Windows.Forms.FlowLayoutPanel();
+            this.metroLabel35 = new MetroFramework.Controls.MetroLabel();
+            this.bufferOffsetLabel = new MetroFramework.Controls.MetroLabel();
             this.soundTab = new MetroFramework.Controls.MetroTabPage();
             this.tableLayoutPanel9 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel13 = new System.Windows.Forms.FlowLayoutPanel();
@@ -215,10 +219,6 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.metroLabel34 = new MetroFramework.Controls.MetroLabel();
-            this.flowLayoutPanel34 = new System.Windows.Forms.FlowLayoutPanel();
-            this.metroLabel35 = new MetroFramework.Controls.MetroLabel();
-            this.bufferOffsetLabel = new MetroFramework.Controls.MetroLabel();
             this.metroTabControl1.SuspendLayout();
             this.serverTab.SuspendLayout();
             this.findingPanel.SuspendLayout();
@@ -255,6 +255,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.brightnessBox)).BeginInit();
             this.flowLayoutPanel31.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.gammaBox)).BeginInit();
+            this.flowLayoutPanel34.SuspendLayout();
             this.soundTab.SuspendLayout();
             this.tableLayoutPanel9.SuspendLayout();
             this.flowLayoutPanel13.SuspendLayout();
@@ -279,7 +280,6 @@
             this.flowLayoutPanel23.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            this.flowLayoutPanel34.SuspendLayout();
             this.SuspendLayout();
             // 
             // sendClientDebugFlagsButton
@@ -737,7 +737,7 @@
             this.autoConnectCheckBox.AutoSize = true;
             this.autoConnectCheckBox.Location = new System.Drawing.Point(81, 191);
             this.autoConnectCheckBox.Name = "autoConnectCheckBox";
-            this.autoConnectCheckBox.Size = new System.Drawing.Size(148, 15);
+            this.autoConnectCheckBox.Size = new System.Drawing.Size(147, 15);
             this.autoConnectCheckBox.TabIndex = 13;
             this.autoConnectCheckBox.Text = "Auto connect next time";
             this.autoConnectCheckBox.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -909,7 +909,7 @@
             this.flowLayoutPanel3.AutoSize = true;
             this.flowLayoutPanel3.Controls.Add(this.metroLabel7);
             this.flowLayoutPanel3.Controls.Add(this.bitrateHelp);
-            this.flowLayoutPanel3.Location = new System.Drawing.Point(159, 49);
+            this.flowLayoutPanel3.Location = new System.Drawing.Point(159, 48);
             this.flowLayoutPanel3.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
             this.flowLayoutPanel3.Name = "flowLayoutPanel3";
             this.flowLayoutPanel3.Size = new System.Drawing.Size(68, 19);
@@ -943,7 +943,7 @@
             this.bitrateLabel.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.bitrateLabel.AutoSize = true;
             this.bitrateLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.bitrateLabel.Location = new System.Drawing.Point(508, 49);
+            this.bitrateLabel.Location = new System.Drawing.Point(508, 48);
             this.bitrateLabel.Name = "bitrateLabel";
             this.bitrateLabel.Size = new System.Drawing.Size(60, 19);
             this.bitrateLabel.TabIndex = 5;
@@ -954,7 +954,7 @@
             this.bitrateTrackBar.BackColor = System.Drawing.Color.Transparent;
             this.bitrateTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bitrate", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.bitrateTrackBar.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.bitrateTrackBar.Location = new System.Drawing.Point(233, 74);
+            this.bitrateTrackBar.Location = new System.Drawing.Point(233, 73);
             this.bitrateTrackBar.Maximum = 250;
             this.bitrateTrackBar.Minimum = 1;
             this.bitrateTrackBar.Name = "bitrateTrackBar";
@@ -971,7 +971,7 @@
             this.flowLayoutPanel5.AutoSize = true;
             this.flowLayoutPanel5.Controls.Add(this.metroLabel10);
             this.flowLayoutPanel5.Controls.Add(this.resolutionHelp);
-            this.flowLayoutPanel5.Location = new System.Drawing.Point(102, 109);
+            this.flowLayoutPanel5.Location = new System.Drawing.Point(102, 107);
             this.flowLayoutPanel5.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
             this.flowLayoutPanel5.Name = "flowLayoutPanel5";
             this.flowLayoutPanel5.Size = new System.Drawing.Size(125, 19);
@@ -1005,7 +1005,7 @@
             this.resolutionLabel.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.resolutionLabel.AutoSize = true;
             this.resolutionLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.resolutionLabel.Location = new System.Drawing.Point(508, 109);
+            this.resolutionLabel.Location = new System.Drawing.Point(508, 107);
             this.resolutionLabel.Name = "resolutionLabel";
             this.resolutionLabel.Size = new System.Drawing.Size(79, 19);
             this.resolutionLabel.TabIndex = 3;
@@ -1027,7 +1027,7 @@
             "150%",
             "175%",
             "200%"});
-            this.resolutionComboBox.Location = new System.Drawing.Point(233, 105);
+            this.resolutionComboBox.Location = new System.Drawing.Point(233, 104);
             this.resolutionComboBox.Name = "resolutionComboBox";
             this.resolutionComboBox.Size = new System.Drawing.Size(269, 25);
             this.resolutionComboBox.TabIndex = 6;
@@ -1040,7 +1040,7 @@
             this.flowLayoutPanel6.AutoSize = true;
             this.flowLayoutPanel6.Controls.Add(this.metroLabel16);
             this.flowLayoutPanel6.Controls.Add(this.bufferOffsetHelp);
-            this.flowLayoutPanel6.Location = new System.Drawing.Point(123, 138);
+            this.flowLayoutPanel6.Location = new System.Drawing.Point(123, 135);
             this.flowLayoutPanel6.Name = "flowLayoutPanel6";
             this.flowLayoutPanel6.Size = new System.Drawing.Size(104, 19);
             this.flowLayoutPanel6.TabIndex = 42;
@@ -1070,7 +1070,7 @@
             this.flowLayoutPanel8.Controls.Add(this.metroLabel19);
             this.flowLayoutPanel8.Controls.Add(this.bufferLabel);
             this.flowLayoutPanel8.Controls.Add(this.bufferHelp);
-            this.flowLayoutPanel8.Location = new System.Drawing.Point(508, 138);
+            this.flowLayoutPanel8.Location = new System.Drawing.Point(508, 135);
             this.flowLayoutPanel8.Name = "flowLayoutPanel8";
             this.flowLayoutPanel8.Size = new System.Drawing.Size(116, 19);
             this.flowLayoutPanel8.TabIndex = 44;
@@ -1117,7 +1117,7 @@
             this.enableColorCorrectionCheckBox.AutoSize = true;
             this.enableColorCorrectionCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableColorCorrection;
             this.enableColorCorrectionCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableColorCorrection", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.enableColorCorrectionCheckBox.Location = new System.Drawing.Point(233, 298);
+            this.enableColorCorrectionCheckBox.Location = new System.Drawing.Point(233, 295);
             this.enableColorCorrectionCheckBox.Name = "enableColorCorrectionCheckBox";
             this.enableColorCorrectionCheckBox.Size = new System.Drawing.Size(58, 15);
             this.enableColorCorrectionCheckBox.TabIndex = 40;
@@ -1129,10 +1129,10 @@
             this.bufferTrackBar.BackColor = System.Drawing.Color.Transparent;
             this.bufferTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "bufferOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.bufferTrackBar.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.bufferTrackBar.Location = new System.Drawing.Point(233, 163);
+            this.bufferTrackBar.Location = new System.Drawing.Point(233, 160);
             this.bufferTrackBar.Minimum = -100;
             this.bufferTrackBar.Name = "bufferTrackBar";
-            this.bufferTrackBar.Size = new System.Drawing.Size(269, 19);
+            this.bufferTrackBar.Size = new System.Drawing.Size(269, 20);
             this.bufferTrackBar.TabIndex = 2;
             this.bufferTrackBar.Text = "metroTrackBar1";
             this.bufferTrackBar.Value = global::ALVR.Properties.Settings.Default.bufferOffset;
@@ -1145,7 +1145,7 @@
             this.flowLayoutPanel9.AutoSize = true;
             this.flowLayoutPanel9.Controls.Add(this.metroLabel21);
             this.flowLayoutPanel9.Controls.Add(this.ffrHelp);
-            this.flowLayoutPanel9.Location = new System.Drawing.Point(54, 193);
+            this.flowLayoutPanel9.Location = new System.Drawing.Point(54, 191);
             this.flowLayoutPanel9.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
             this.flowLayoutPanel9.Name = "flowLayoutPanel9";
             this.flowLayoutPanel9.Size = new System.Drawing.Size(173, 19);
@@ -1185,7 +1185,7 @@
             "Disabled",
             "Slices",
             "Warp"});
-            this.foveationComboBox.Location = new System.Drawing.Point(233, 188);
+            this.foveationComboBox.Location = new System.Drawing.Point(233, 186);
             this.foveationComboBox.Name = "foveationComboBox";
             this.foveationComboBox.Size = new System.Drawing.Size(269, 29);
             this.foveationComboBox.TabIndex = 24;
@@ -1196,7 +1196,7 @@
             this.flowLayoutPanel10.AutoSize = true;
             this.flowLayoutPanel10.Controls.Add(this.ffrMeanLabel);
             this.flowLayoutPanel10.Controls.Add(this.ffrStrengthHelp);
-            this.flowLayoutPanel10.Location = new System.Drawing.Point(230, 221);
+            this.flowLayoutPanel10.Location = new System.Drawing.Point(230, 218);
             this.flowLayoutPanel10.Margin = new System.Windows.Forms.Padding(0);
             this.flowLayoutPanel10.Name = "flowLayoutPanel10";
             this.flowLayoutPanel10.Size = new System.Drawing.Size(142, 19);
@@ -1230,7 +1230,7 @@
             this.foveationStrengthLabel.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.foveationStrengthLabel.AutoSize = true;
             this.foveationStrengthLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.foveationStrengthLabel.Location = new System.Drawing.Point(508, 221);
+            this.foveationStrengthLabel.Location = new System.Drawing.Point(508, 218);
             this.foveationStrengthLabel.Name = "foveationStrengthLabel";
             this.foveationStrengthLabel.Size = new System.Drawing.Size(17, 19);
             this.foveationStrengthLabel.TabIndex = 26;
@@ -1243,7 +1243,7 @@
             this.foveationStrengthTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "foveationStrength", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.foveationStrengthTrackBar.Dock = System.Windows.Forms.DockStyle.Fill;
             this.foveationStrengthTrackBar.LargeChange = 100;
-            this.foveationStrengthTrackBar.Location = new System.Drawing.Point(233, 243);
+            this.foveationStrengthTrackBar.Location = new System.Drawing.Point(233, 240);
             this.foveationStrengthTrackBar.Maximum = 500;
             this.foveationStrengthTrackBar.MaximumSize = new System.Drawing.Size(0, 14);
             this.foveationStrengthTrackBar.Name = "foveationStrengthTrackBar";
@@ -1259,7 +1259,7 @@
             this.flowLayoutPanel11.AutoSize = true;
             this.flowLayoutPanel11.Controls.Add(this.metroLabel23);
             this.flowLayoutPanel11.Controls.Add(this.ffrVerticalOffsetHelp);
-            this.flowLayoutPanel11.Location = new System.Drawing.Point(230, 256);
+            this.flowLayoutPanel11.Location = new System.Drawing.Point(230, 253);
             this.flowLayoutPanel11.Margin = new System.Windows.Forms.Padding(0);
             this.flowLayoutPanel11.Name = "flowLayoutPanel11";
             this.flowLayoutPanel11.Size = new System.Drawing.Size(113, 19);
@@ -1294,7 +1294,7 @@
             this.foveationVerticalOffsetTrackBar.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "foveationVerticalOffset", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.foveationVerticalOffsetTrackBar.Dock = System.Windows.Forms.DockStyle.Fill;
             this.foveationVerticalOffsetTrackBar.LargeChange = 2;
-            this.foveationVerticalOffsetTrackBar.Location = new System.Drawing.Point(233, 278);
+            this.foveationVerticalOffsetTrackBar.Location = new System.Drawing.Point(233, 275);
             this.foveationVerticalOffsetTrackBar.Maximum = 10;
             this.foveationVerticalOffsetTrackBar.Minimum = -10;
             this.foveationVerticalOffsetTrackBar.MouseWheelBarPartitions = 1;
@@ -1310,7 +1310,7 @@
             this.foveationVerticalOffsetLabel.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.foveationVerticalOffsetLabel.AutoSize = true;
             this.foveationVerticalOffsetLabel.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.foveationVerticalOffsetLabel.Location = new System.Drawing.Point(508, 256);
+            this.foveationVerticalOffsetLabel.Location = new System.Drawing.Point(508, 253);
             this.foveationVerticalOffsetLabel.Name = "foveationVerticalOffsetLabel";
             this.foveationVerticalOffsetLabel.Size = new System.Drawing.Size(28, 19);
             this.foveationVerticalOffsetLabel.TabIndex = 33;
@@ -1324,10 +1324,20 @@
             this.panel1.Controls.Add(this.metroLabel18);
             this.panel1.Controls.Add(this.metroLabel17);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panel1.Location = new System.Drawing.Point(233, 138);
+            this.panel1.Location = new System.Drawing.Point(233, 135);
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(269, 19);
             this.panel1.TabIndex = 50;
+            // 
+            // metroLabel34
+            // 
+            this.metroLabel34.Anchor = System.Windows.Forms.AnchorStyles.Top;
+            this.metroLabel34.AutoSize = true;
+            this.metroLabel34.Location = new System.Drawing.Point(128, 0);
+            this.metroLabel34.Name = "metroLabel34";
+            this.metroLabel34.Size = new System.Drawing.Size(12, 19);
+            this.metroLabel34.TabIndex = 5;
+            this.metroLabel34.Text = "|";
             // 
             // metroLabel18
             // 
@@ -1354,7 +1364,7 @@
             this.panel2.Controls.Add(this.metroLabel9);
             this.panel2.Controls.Add(this.metroLabel8);
             this.panel2.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panel2.Location = new System.Drawing.Point(233, 49);
+            this.panel2.Location = new System.Drawing.Point(233, 48);
             this.panel2.Name = "panel2";
             this.panel2.Size = new System.Drawing.Size(269, 19);
             this.panel2.TabIndex = 51;
@@ -1386,8 +1396,8 @@
             this.flowLayoutPanel27.AutoSize = true;
             this.flowLayoutPanel27.Controls.Add(this.metroLabel22);
             this.flowLayoutPanel27.Controls.Add(this.colorCorrectionHelp);
-            this.flowLayoutPanel27.Location = new System.Drawing.Point(98, 297);
-            this.flowLayoutPanel27.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.flowLayoutPanel27.Location = new System.Drawing.Point(98, 294);
+            this.flowLayoutPanel27.Margin = new System.Windows.Forms.Padding(2);
             this.flowLayoutPanel27.Name = "flowLayoutPanel27";
             this.flowLayoutPanel27.Size = new System.Drawing.Size(130, 19);
             this.flowLayoutPanel27.TabIndex = 52;
@@ -1431,7 +1441,7 @@
             this.flowLayoutPanel32.Controls.Add(this.flowLayoutPanel28);
             this.flowLayoutPanel32.Controls.Add(this.flowLayoutPanel30);
             this.flowLayoutPanel32.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel32.Location = new System.Drawing.Point(230, 318);
+            this.flowLayoutPanel32.Location = new System.Drawing.Point(230, 315);
             this.flowLayoutPanel32.Margin = new System.Windows.Forms.Padding(0);
             this.flowLayoutPanel32.Name = "flowLayoutPanel32";
             this.flowLayoutPanel32.Size = new System.Drawing.Size(275, 28);
@@ -1537,7 +1547,7 @@
             this.flowLayoutPanel33.Controls.Add(this.flowLayoutPanel29);
             this.flowLayoutPanel33.Controls.Add(this.flowLayoutPanel31);
             this.flowLayoutPanel33.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel33.Location = new System.Drawing.Point(230, 346);
+            this.flowLayoutPanel33.Location = new System.Drawing.Point(230, 343);
             this.flowLayoutPanel33.Margin = new System.Windows.Forms.Padding(0);
             this.flowLayoutPanel33.Name = "flowLayoutPanel33";
             this.flowLayoutPanel33.Size = new System.Drawing.Size(275, 29);
@@ -1632,6 +1642,35 @@
             this.gammaBox.TabIndex = 42;
             this.gammaBox.Value = global::ALVR.Properties.Settings.Default.gamma;
             // 
+            // flowLayoutPanel34
+            // 
+            this.flowLayoutPanel34.AutoSize = true;
+            this.flowLayoutPanel34.Controls.Add(this.metroLabel35);
+            this.flowLayoutPanel34.Controls.Add(this.bufferOffsetLabel);
+            this.flowLayoutPanel34.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel34.Location = new System.Drawing.Point(508, 160);
+            this.flowLayoutPanel34.Name = "flowLayoutPanel34";
+            this.flowLayoutPanel34.Size = new System.Drawing.Size(144, 20);
+            this.flowLayoutPanel34.TabIndex = 59;
+            // 
+            // metroLabel35
+            // 
+            this.metroLabel35.AutoSize = true;
+            this.metroLabel35.Location = new System.Drawing.Point(3, 0);
+            this.metroLabel35.Name = "metroLabel35";
+            this.metroLabel35.Size = new System.Drawing.Size(83, 19);
+            this.metroLabel35.TabIndex = 0;
+            this.metroLabel35.Text = "Buffer offset:";
+            // 
+            // bufferOffsetLabel
+            // 
+            this.bufferOffsetLabel.AutoSize = true;
+            this.bufferOffsetLabel.Location = new System.Drawing.Point(92, 0);
+            this.bufferOffsetLabel.Name = "bufferOffsetLabel";
+            this.bufferOffsetLabel.Size = new System.Drawing.Size(31, 19);
+            this.bufferOffsetLabel.TabIndex = 1;
+            this.bufferOffsetLabel.Text = "0Kb";
+            // 
             // soundTab
             // 
             this.soundTab.Controls.Add(this.tableLayoutPanel9);
@@ -1639,7 +1678,7 @@
             this.soundTab.HorizontalScrollbarSize = 0;
             this.soundTab.Location = new System.Drawing.Point(4, 35);
             this.soundTab.Name = "soundTab";
-            this.soundTab.Size = new System.Drawing.Size(654, 398);
+            this.soundTab.Size = new System.Drawing.Size(655, 398);
             this.soundTab.TabIndex = 8;
             this.soundTab.Text = "Sound";
             this.soundTab.VerticalScrollbarBarColor = true;
@@ -1666,7 +1705,7 @@
             this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel9.Size = new System.Drawing.Size(654, 398);
+            this.tableLayoutPanel9.Size = new System.Drawing.Size(655, 398);
             this.tableLayoutPanel9.TabIndex = 8;
             // 
             // flowLayoutPanel13
@@ -1711,9 +1750,9 @@
             this.soundDeviceComboBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.soundDeviceComboBox.FormattingEnabled = true;
             this.soundDeviceComboBox.ItemHeight = 24;
-            this.soundDeviceComboBox.Location = new System.Drawing.Point(384, 34);
+            this.soundDeviceComboBox.Location = new System.Drawing.Point(183, 34);
             this.soundDeviceComboBox.Name = "soundDeviceComboBox";
-            this.soundDeviceComboBox.Size = new System.Drawing.Size(267, 30);
+            this.soundDeviceComboBox.Size = new System.Drawing.Size(469, 30);
             this.soundDeviceComboBox.TabIndex = 3;
             // 
             // streamMic
@@ -1740,7 +1779,7 @@
             this.flowLayoutPanel14.Location = new System.Drawing.Point(180, 67);
             this.flowLayoutPanel14.Margin = new System.Windows.Forms.Padding(0);
             this.flowLayoutPanel14.Name = "flowLayoutPanel14";
-            this.flowLayoutPanel14.Size = new System.Drawing.Size(474, 29);
+            this.flowLayoutPanel14.Size = new System.Drawing.Size(475, 29);
             this.flowLayoutPanel14.TabIndex = 6;
             // 
             // metroLabel20
@@ -1787,7 +1826,7 @@
             this.otherTab.HorizontalScrollbarSize = 0;
             this.otherTab.Location = new System.Drawing.Point(4, 35);
             this.otherTab.Name = "otherTab";
-            this.otherTab.Size = new System.Drawing.Size(654, 398);
+            this.otherTab.Size = new System.Drawing.Size(655, 398);
             this.otherTab.TabIndex = 7;
             this.otherTab.Text = "Other";
             this.otherTab.VerticalScrollbar = true;
@@ -1820,7 +1859,7 @@
             this.tableLayoutPanel11.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel11.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel11.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tableLayoutPanel11.Size = new System.Drawing.Size(654, 398);
+            this.tableLayoutPanel11.Size = new System.Drawing.Size(655, 398);
             this.tableLayoutPanel11.TabIndex = 37;
             this.tableLayoutPanel11.Paint += new System.Windows.Forms.PaintEventHandler(this.tableLayoutPanel11_Paint);
             // 
@@ -1882,7 +1921,7 @@
             this.flowLayoutPanel26.Location = new System.Drawing.Point(333, 50);
             this.flowLayoutPanel26.Name = "flowLayoutPanel26";
             this.flowLayoutPanel26.Padding = new System.Windows.Forms.Padding(50, 0, 0, 0);
-            this.flowLayoutPanel26.Size = new System.Drawing.Size(318, 226);
+            this.flowLayoutPanel26.Size = new System.Drawing.Size(319, 226);
             this.flowLayoutPanel26.TabIndex = 40;
             this.flowLayoutPanel26.WrapContents = false;
             // 
@@ -2065,7 +2104,7 @@
             this.flowLayoutPanel24.Location = new System.Drawing.Point(0, 298);
             this.flowLayoutPanel24.Margin = new System.Windows.Forms.Padding(0);
             this.flowLayoutPanel24.Name = "flowLayoutPanel24";
-            this.flowLayoutPanel24.Size = new System.Drawing.Size(654, 31);
+            this.flowLayoutPanel24.Size = new System.Drawing.Size(655, 31);
             this.flowLayoutPanel24.TabIndex = 41;
             // 
             // metroLabel27
@@ -2117,7 +2156,7 @@
             this.flowLayoutPanel25.Location = new System.Drawing.Point(0, 329);
             this.flowLayoutPanel25.Margin = new System.Windows.Forms.Padding(0);
             this.flowLayoutPanel25.Name = "flowLayoutPanel25";
-            this.flowLayoutPanel25.Size = new System.Drawing.Size(654, 31);
+            this.flowLayoutPanel25.Size = new System.Drawing.Size(655, 31);
             this.flowLayoutPanel25.TabIndex = 42;
             // 
             // metroLabel28
@@ -2155,7 +2194,7 @@
             this.debugTab.HorizontalScrollbarSize = 0;
             this.debugTab.Location = new System.Drawing.Point(4, 35);
             this.debugTab.Name = "debugTab";
-            this.debugTab.Size = new System.Drawing.Size(654, 398);
+            this.debugTab.Size = new System.Drawing.Size(655, 398);
             this.debugTab.TabIndex = 2;
             this.debugTab.Text = "Debug";
             this.debugTab.VerticalScrollbarBarColor = true;
@@ -2186,7 +2225,7 @@
             this.tableLayoutPanel14.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel14.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel14.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tableLayoutPanel14.Size = new System.Drawing.Size(654, 398);
+            this.tableLayoutPanel14.Size = new System.Drawing.Size(655, 398);
             this.tableLayoutPanel14.TabIndex = 12;
             // 
             // metroLabel5
@@ -2329,7 +2368,7 @@
             this.metroCheckBox1.AutoSize = true;
             this.metroCheckBox1.Location = new System.Drawing.Point(87, 3);
             this.metroCheckBox1.Name = "metroCheckBox1";
-            this.metroCheckBox1.Size = new System.Drawing.Size(120, 15);
+            this.metroCheckBox1.Size = new System.Drawing.Size(119, 15);
             this.metroCheckBox1.TabIndex = 9;
             this.metroCheckBox1.Text = "DebugFrameIndex";
             this.metroCheckBox1.UseVisualStyleBackColor = true;
@@ -2362,7 +2401,7 @@
             this.metroCheckBox3.AutoSize = true;
             this.metroCheckBox3.Location = new System.Drawing.Point(221, 24);
             this.metroCheckBox3.Name = "metroCheckBox3";
-            this.metroCheckBox3.Size = new System.Drawing.Size(57, 15);
+            this.metroCheckBox3.Size = new System.Drawing.Size(56, 15);
             this.metroCheckBox3.TabIndex = 9;
             this.metroCheckBox3.Text = "Mutex";
             this.metroCheckBox3.UseVisualStyleBackColor = true;
@@ -2386,7 +2425,7 @@
             this.logText.Name = "logText";
             this.logText.ReadOnly = true;
             this.tableLayoutPanel14.SetRowSpan(this.logText, 6);
-            this.logText.Size = new System.Drawing.Size(276, 365);
+            this.logText.Size = new System.Drawing.Size(277, 365);
             this.logText.TabIndex = 10;
             // 
             // aboutTab
@@ -2396,7 +2435,7 @@
             this.aboutTab.HorizontalScrollbarSize = 0;
             this.aboutTab.Location = new System.Drawing.Point(4, 35);
             this.aboutTab.Name = "aboutTab";
-            this.aboutTab.Size = new System.Drawing.Size(654, 398);
+            this.aboutTab.Size = new System.Drawing.Size(655, 398);
             this.aboutTab.TabIndex = 4;
             this.aboutTab.Text = "About";
             this.aboutTab.VerticalScrollbarBarColor = true;
@@ -2426,7 +2465,7 @@
             this.tableLayoutPanel15.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel15.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel15.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tableLayoutPanel15.Size = new System.Drawing.Size(654, 398);
+            this.tableLayoutPanel15.Size = new System.Drawing.Size(655, 398);
             this.tableLayoutPanel15.TabIndex = 7;
             // 
             // flowLayoutPanel22
@@ -2493,7 +2532,7 @@
             this.licenseTextBox.ReadOnly = true;
             this.tableLayoutPanel15.SetRowSpan(this.licenseTextBox, 5);
             this.licenseTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.licenseTextBox.Size = new System.Drawing.Size(368, 357);
+            this.licenseTextBox.Size = new System.Drawing.Size(369, 357);
             this.licenseTextBox.TabIndex = 3;
             // 
             // metroLabel15
@@ -2586,45 +2625,6 @@
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
             // 
-            // metroLabel34
-            // 
-            this.metroLabel34.Anchor = System.Windows.Forms.AnchorStyles.Top;
-            this.metroLabel34.AutoSize = true;
-            this.metroLabel34.Location = new System.Drawing.Point(128, 0);
-            this.metroLabel34.Name = "metroLabel34";
-            this.metroLabel34.Size = new System.Drawing.Size(12, 19);
-            this.metroLabel34.TabIndex = 5;
-            this.metroLabel34.Text = "|";
-            // 
-            // flowLayoutPanel34
-            // 
-            this.flowLayoutPanel34.AutoSize = true;
-            this.flowLayoutPanel34.Controls.Add(this.metroLabel35);
-            this.flowLayoutPanel34.Controls.Add(this.bufferOffsetLabel);
-            this.flowLayoutPanel34.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel34.Location = new System.Drawing.Point(508, 163);
-            this.flowLayoutPanel34.Name = "flowLayoutPanel34";
-            this.flowLayoutPanel34.Size = new System.Drawing.Size(144, 19);
-            this.flowLayoutPanel34.TabIndex = 59;
-            // 
-            // metroLabel35
-            // 
-            this.metroLabel35.AutoSize = true;
-            this.metroLabel35.Location = new System.Drawing.Point(3, 0);
-            this.metroLabel35.Name = "metroLabel35";
-            this.metroLabel35.Size = new System.Drawing.Size(83, 19);
-            this.metroLabel35.TabIndex = 0;
-            this.metroLabel35.Text = "Buffer offset:";
-            // 
-            // bufferOffsetLabel
-            // 
-            this.bufferOffsetLabel.AutoSize = true;
-            this.bufferOffsetLabel.Location = new System.Drawing.Point(92, 0);
-            this.bufferOffsetLabel.Name = "bufferOffsetLabel";
-            this.bufferOffsetLabel.Size = new System.Drawing.Size(31, 19);
-            this.bufferOffsetLabel.TabIndex = 1;
-            this.bufferOffsetLabel.Text = "0Kb";
-            // 
             // Launcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -2698,6 +2698,8 @@
             this.flowLayoutPanel31.ResumeLayout(false);
             this.flowLayoutPanel31.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.gammaBox)).EndInit();
+            this.flowLayoutPanel34.ResumeLayout(false);
+            this.flowLayoutPanel34.PerformLayout();
             this.soundTab.ResumeLayout(false);
             this.tableLayoutPanel9.ResumeLayout(false);
             this.tableLayoutPanel9.PerformLayout();
@@ -2738,8 +2740,6 @@
             this.flowLayoutPanel23.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            this.flowLayoutPanel34.ResumeLayout(false);
-            this.flowLayoutPanel34.PerformLayout();
             this.ResumeLayout(false);
 
         }

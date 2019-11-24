@@ -44,6 +44,7 @@ namespace ALVR
 
             InitializeComponent();
             initComponents = false;
+
         }
 
         private void Launcher_Load(object sender, EventArgs e)
@@ -83,6 +84,7 @@ namespace ALVR
             //
 
             codecComboBox.Items.AddRange(ServerConfig.supportedCodecs);
+           
             LoadSettings();
 
             config.Save(null);

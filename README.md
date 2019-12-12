@@ -1,7 +1,7 @@
 # ALVR - Air Light VR
 
 ALVR is an open source remote VR display. With it, you can play SteamVR games in your standalone headset.
-This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that is only working on the Oculus Quest
+This is a fork of a fork [ALVR](https://github.com/polygraphene/ALVR) that is only working on the Oculus Quest and includes an experimental (and hacked together) GPU priority fix taken from OBS.
 
 
 ## Description

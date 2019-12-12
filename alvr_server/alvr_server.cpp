@@ -4,6 +4,7 @@
 //
 //==================================================================================================
 
+#include <windows.h>
 #include "openvr_driver.h"
 #include "sharedstate.h"
 #include "ClientConnection.h"
@@ -12,6 +13,41 @@
 HINSTANCE g_hInstance;
 
 
+
+static void load_debug_privilege(void)
+{
+	const DWORD flags = TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY;
+	TOKEN_PRIVILEGES tp;
+	HANDLE token;
+	LUID val;
+
+	if (!OpenProcessToken(GetCurrentProcess(), flags, &token)) {
+		return;
+	}
+
+	if (!!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &val)) {
+		tp.PrivilegeCount = 1;
+		tp.Privileges[0].Luid = val;
+		tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+		AdjustTokenPrivileges(token, false, &tp, sizeof(tp), NULL,
+			NULL);
+	}
+
+	if (!!LookupPrivilegeValue(NULL, SE_INC_BASE_PRIORITY_NAME, &val)) {
+		tp.PrivilegeCount = 1;
+		tp.Privileges[0].Luid = val;
+		tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+		if (!AdjustTokenPrivileges(token, false, &tp, sizeof(tp), NULL, NULL)) {
+			Log(L"[GPU PRIO FIX] Could not set privilege to increase GPU priority");
+		}
+	}
+
+	Log(L"[GPU PRIO FIX] Succeeded to set some sort of priority.");
+
+	CloseHandle(token);
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: Server interface implementation.
@@ -73,6 +109,8 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 		m_pRemoteHmd->Enable();
 	}
 
+
+
 	return vr::VRInitError_None;
 }
 
@@ -99,6 +137,8 @@ void *HmdDriverFactory( const char *pInterfaceName, int *pReturnCode )
 {
 	//init logger
 	InitCrashHandler();
+
+	load_debug_privilege();
 
 	Log(L"HmdDriverFactory %hs (%hs)", pInterfaceName, vr::IServerTrackedDeviceProvider_Version);
 	if ( 0 == strcmp( vr::IServerTrackedDeviceProvider_Version, pInterfaceName ) )

@@ -41,6 +41,9 @@ namespace ALVR
 
         public Launcher()
         {
+            this.WindowState = FormWindowState.Minimized;
+            Hide();
+
             clientSocket = new ClientSocket(OnClientMessageStartServer, OnClientConnectionClosed);
 
             InitializeComponent();
@@ -206,6 +209,9 @@ namespace ALVR
                 Hide();
                 notifyIcon1.Visible = true;
 
+            } else
+            {
+                this.WindowState = FormWindowState.Normal;
             }
         }
 

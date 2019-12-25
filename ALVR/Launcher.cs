@@ -31,6 +31,7 @@ namespace ALVR
         bool previousConnectionState = false;
         bool loadingSettings = false;
         bool initComponents = true;
+ 
 
         class ClientTag
         {
@@ -45,7 +46,29 @@ namespace ALVR
             InitializeComponent();
             initComponents = false;
 
+           
         }
+
+        private void Form1_Resize(object sender, EventArgs e)
+        {
+            //if the form is minimized  
+            //hide it from the task bar  
+            //and show the system tray icon (represented by the NotifyIcon control)  
+            if (this.WindowState == FormWindowState.Minimized)
+            {
+                Hide();
+                notifyIcon1.Visible = true;
+            }
+        }
+
+        private void notifyIcon1_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            Show();
+            this.WindowState = FormWindowState.Normal;
+            notifyIcon1.Visible = false;
+          
+        }
+
 
         private void Launcher_Load(object sender, EventArgs e)
         {
@@ -89,8 +112,10 @@ namespace ALVR
 
             config.Save(null);
 
-         
-   
+
+           
+
+
 
             //
             // Driver check
@@ -160,6 +185,8 @@ namespace ALVR
                 "Contrast: range [-1;1], default 0. -1 is completely gray.\n" +
                 "Saturation: range [-1;1], default 0. -1 is black and white.");
 
+            toolTip1.SetToolTip(this.autoLaunchHelp, "Launch Steam / SteamVR as soon as a headset is connected");
+
 
 
 
@@ -171,6 +198,15 @@ namespace ALVR
 
             ShowFindingPanel();
             UpdateClients();
+
+            //check if form should be minimized
+            if (Properties.Settings.Default.launchMinimized)
+            {
+                this.WindowState = FormWindowState.Minimized;
+                Hide();
+                notifyIcon1.Visible = true;
+
+            }
         }
 
         /// <summary>
@@ -624,6 +660,7 @@ namespace ALVR
         //
         // Event handlers
         //
+
 
         private void timer1_Tick(object sender, EventArgs e)
         {

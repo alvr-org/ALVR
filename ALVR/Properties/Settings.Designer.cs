@@ -480,17 +480,6 @@ namespace ALVR.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public int bufferOffset {
-            get {
-                return ((int)(this["bufferOffset"]));
-            }
-            set {
-                this["bufferOffset"] = value;
-            }
-        }
-       [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool enableColorCorrection {
             get {
@@ -546,6 +535,42 @@ namespace ALVR.Properties {
             }
             set {
                 this["gamma"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int bufferOffset {
+            get {
+                return ((int)(this["bufferOffset"]));
+            }
+            set {
+                this["bufferOffset"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool steamAutolaunch {
+            get {
+                return ((bool)(this["steamAutolaunch"]));
+            }
+            set {
+                this["steamAutolaunch"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool launchMinimized {
+            get {
+                return ((bool)(this["launchMinimized"]));
+            }
+            set {
+                this["launchMinimized"] = value;
             }
         }
     }

@@ -33,6 +33,12 @@ namespace ALVR
             catch (Exception) {
                 return false;
             }
+
+            if(Properties.Settings.Default.steamAutolaunch) {
+                StartServerCallback();
+            }
+           
+
             Task t = ReadLoop();
             Task k = KeepAliveLoop();
             return true;

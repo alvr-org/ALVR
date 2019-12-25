@@ -116,10 +116,6 @@
     <Setting Name="nv12" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
-            <setting name="bufferOffset" serializeAs="String">
-                <value>0</value>
-            </setting>
-    
     <Setting Name="enableColorCorrection" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
@@ -134,5 +130,15 @@
     </Setting>
     <Setting Name="gamma" Type="System.Decimal" Scope="User">
       <Value Profile="(Default)">1</Value>
-    </Setting>  </Settings>
+    </Setting>
+    <Setting Name="bufferOffset" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="steamAutolaunch" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="launchMinimized" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+  </Settings>
 </SettingsFile>

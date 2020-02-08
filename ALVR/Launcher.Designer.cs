@@ -288,6 +288,8 @@
             ((System.ComponentModel.ISupportInitialize)(this.resolutionBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.flowLayoutPanel36.SuspendLayout();
+			this.flowLayoutPanel37.SuspendLayout();
+			this.flowLayoutPanel38.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.saturationBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.contrastBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.brightnessBox)).BeginInit();
@@ -887,6 +889,7 @@
             this.tableLayoutPanel11.Controls.Add(this.flowLayoutPanel24, 0, 5);
             this.tableLayoutPanel11.Controls.Add(this.metroLabel26, 0, 4);
             this.tableLayoutPanel11.Controls.Add(this.flowLayoutPanel25, 0, 6);
+            this.tableLayoutPanel11.Controls.Add(this.flowLayoutPanel37, 0, 1);
             this.tableLayoutPanel11.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel11.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel11.Name = "tableLayoutPanel11";

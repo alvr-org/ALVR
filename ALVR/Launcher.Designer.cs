@@ -195,6 +195,10 @@
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
+			this.flowLayoutPanel37 = new System.Windows.Forms.FlowLayoutPanel();
+			this.flowLayoutPanel38 = new System.Windows.Forms.FlowLayoutPanel();
+			this.metroLabel36 = new MetroFramework.Controls.MetroLabel();
+			this.controllerModeComboBox = new MetroFramework.Controls.MetroComboBox();
             this.autoLaunchHelp = new MetroFramework.Controls.MetroLabel();
             this.flowLayoutPanel36 = new System.Windows.Forms.FlowLayoutPanel();
             this.forceNV12 = new MetroFramework.Controls.MetroCheckBox();
@@ -2268,6 +2272,44 @@
             this.notifyIcon1.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon1.Icon")));
             this.notifyIcon1.Text = "ALVR";
             this.notifyIcon1.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.notifyIcon1_MouseDoubleClick);
+			// 
+			// flowLayoutPanel37
+			// 
+			this.flowLayoutPanel37.Controls.Add(this.flowLayoutPanel38);
+			this.flowLayoutPanel37.Dock = System.Windows.Forms.DockStyle.Fill;
+			this.flowLayoutPanel37.Location = new System.Drawing.Point(3, 68);
+			this.flowLayoutPanel37.Name = "flowLayoutPanel37";
+			this.flowLayoutPanel37.Size = new System.Drawing.Size(458, 333);
+			this.flowLayoutPanel37.TabIndex = 43;
+			// 
+			// flowLayoutPanel38
+			// 
+			this.flowLayoutPanel38.Controls.Add(this.metroLabel36);
+			this.flowLayoutPanel38.Controls.Add(this.controllerModeComboBox);
+			this.flowLayoutPanel38.Location = new System.Drawing.Point(3, 3);
+			this.flowLayoutPanel38.Name = "flowLayoutPanel38";
+			this.flowLayoutPanel38.Size = new System.Drawing.Size(448, 100);
+			this.flowLayoutPanel38.TabIndex = 0;
+			// 
+			// metroLabel36
+			// 
+			this.metroLabel36.AutoSize = true;
+			this.metroLabel36.Location = new System.Drawing.Point(3, 0);
+			this.metroLabel36.Name = "metroLabel36";
+			this.metroLabel36.Size = new System.Drawing.Size(107, 19);
+			this.metroLabel36.TabIndex = 0;
+			this.metroLabel36.Text = "Controller Mode";
+			// 
+			// controllerModeComboBox
+			// 
+			this.controllerModeComboBox.Dock = System.Windows.Forms.DockStyle.Fill;
+			this.controllerModeComboBox.FormattingEnabled = true;
+			this.controllerModeComboBox.ItemHeight = 23;
+			this.controllerModeComboBox.Location = new System.Drawing.Point(116, 3);
+			this.controllerModeComboBox.Name = "controllerModeComboBox";
+			this.controllerModeComboBox.Size = new System.Drawing.Size(232, 29);
+			this.controllerModeComboBox.TabIndex = 1;
+			this.controllerModeComboBox.SelectedIndexChanged += new System.EventHandler(this.metroComboBox1_SelectedIndexChanged);
             // 
             // autoLaunchHelp
             // 
@@ -3012,6 +3054,10 @@
         private MetroFramework.Controls.MetroLabel autoLaunchHelp;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel36;
         private MetroFramework.Controls.MetroCheckBox launchMinimized;
+		private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel37;
+		private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel38;
+		private MetroFramework.Controls.MetroLabel metroLabel36;
+		private MetroFramework.Controls.MetroComboBox controllerModeComboBox;
     }
 }
 

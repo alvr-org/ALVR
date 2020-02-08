@@ -75,6 +75,12 @@ namespace ALVR
             new ComboBoxCustomItem("H.265 HEVC", 1)
         };
 
+        //A3
+        public static readonly ComboBoxCustomItem[] controllerModes = {
+            new ComboBoxCustomItem("Oculus Rift S", 0),
+            new ComboBoxCustomItem("Valve Index", 1)
+        };
+
         MemoryMappedFile memoryMappedFile;
 
         public ServerConfig()
@@ -192,16 +198,34 @@ namespace ALVR
                 driverConfig.disableController = c.disableController;
 
 
-               
-                driverConfig.controllerTrackingSystemName = "oculus";
-                driverConfig.controllerSerialNumber = "1WMGH000XX0000_Controller"; //requires _Left & _Right
-                driverConfig.controllerModelNumber = "Oculus Rift S"; //requires (Left Controller) & (Right Controller)
-                driverConfig.controllerManufacturerName = "Oculus";
-                driverConfig.controllerRenderModelNameLeft = "oculus_rifts_controller_left";
-                driverConfig.controllerRenderModelNameRight = "oculus_rifts_controller_right";
-                driverConfig.controllerRegisteredDeviceType = "oculus/1WMGH000XX0000_Controller"; //requires _Left & _Right
-                driverConfig.controllerInputProfilePath = "{oculus}/input/touch_profile.json";
-                driverConfig.controllerType = "oculus_touch";
+                //A3
+                switch (c.controllerMode)
+                {
+                    case 0:
+                        driverConfig.controllerTrackingSystemName = "oculus";
+                        driverConfig.controllerSerialNumber = "1WMGH000XX0000_Controller"; //requires _Left & _Right
+                        driverConfig.controllerModelNumber = "Oculus Rift S"; //requires (Left Controller) & (Right Controller)
+                        driverConfig.controllerManufacturerName = "Oculus";
+                        driverConfig.controllerRenderModelNameLeft = "oculus_rifts_controller_left";
+                        driverConfig.controllerRenderModelNameRight = "oculus_rifts_controller_right";
+                        driverConfig.controllerRegisteredDeviceType = "oculus/1WMGH000XX0000_Controller"; //requires _Left & _Right
+                        driverConfig.controllerInputProfilePath = "{oculus}/input/touch_profile.json";
+                        driverConfig.controllerType = "oculus_touch";
+                        driverConfig.controllerMode = 0;
+                        break;
+                    case 1:
+                        driverConfig.controllerTrackingSystemName = "indexcontroller";
+                        driverConfig.controllerSerialNumber = "ALVR Remote Controller";
+                        driverConfig.controllerModelNumber = "Knuckles";
+                        driverConfig.controllerManufacturerName = "Valve";
+                        driverConfig.controllerRenderModelNameLeft = "valve_controller_knu_ev2_0_left";
+                        driverConfig.controllerRenderModelNameRight = "valve_controller_knu_ev2_0_right";
+                        driverConfig.controllerRegisteredDeviceType = "valve/index_controllerLHR-E217CD00"; //requires _Left & _Right
+                        driverConfig.controllerInputProfilePath = "{indexcontroller}/input/index_controller_profile.json";
+                        driverConfig.controllerType = "knuckles";
+                        driverConfig.controllerMode = 1;
+                        break;
+                }
                
                 
                 driverConfig.controllerTriggerMode = c.controllerTriggerMode;

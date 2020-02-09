@@ -78,7 +78,9 @@ namespace ALVR
         //A3
         public static readonly ComboBoxCustomItem[] controllerModes = {
             new ComboBoxCustomItem("Oculus Rift S", 0),
-            new ComboBoxCustomItem("Valve Index", 1)
+            new ComboBoxCustomItem("Oculus Rift S no pinch", 1),
+            new ComboBoxCustomItem("Valve Index", 2),
+            new ComboBoxCustomItem("Valve Index no pinch", 3)
         };
 
         MemoryMappedFile memoryMappedFile;
@@ -202,6 +204,7 @@ namespace ALVR
                 switch (c.controllerMode)
                 {
                     case 0:
+                    case 1:
                         driverConfig.controllerTrackingSystemName = "oculus";
                         driverConfig.controllerSerialNumber = "1WMGH000XX0000_Controller"; //requires _Left & _Right
                         driverConfig.controllerModelNumber = "Oculus Rift S"; //requires (Left Controller) & (Right Controller)
@@ -211,9 +214,10 @@ namespace ALVR
                         driverConfig.controllerRegisteredDeviceType = "oculus/1WMGH000XX0000_Controller"; //requires _Left & _Right
                         driverConfig.controllerInputProfilePath = "{oculus}/input/touch_profile.json";
                         driverConfig.controllerType = "oculus_touch";
-                        driverConfig.controllerMode = 0;
+                        driverConfig.controllerMode = c.controllerMode;
                         break;
-                    case 1:
+                    case 2:
+                    case 3:
                         driverConfig.controllerTrackingSystemName = "indexcontroller";
                         driverConfig.controllerSerialNumber = "ALVR Remote Controller";
                         driverConfig.controllerModelNumber = "Knuckles";
@@ -223,7 +227,7 @@ namespace ALVR
                         driverConfig.controllerRegisteredDeviceType = "valve/index_controllerLHR-E217CD00"; //requires _Left & _Right
                         driverConfig.controllerInputProfilePath = "{indexcontroller}/input/index_controller_profile.json";
                         driverConfig.controllerType = "knuckles";
-                        driverConfig.controllerMode = 1;
+                        driverConfig.controllerMode = c.controllerMode;
                         break;
                 }
                

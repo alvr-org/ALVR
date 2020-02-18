@@ -170,6 +170,7 @@ public:
 	float m_contrast;
 	float m_saturation;
 	float m_gamma;
+	float m_sharpening = 1;
 
 	bool m_enableSound;
 	std::string m_soundDevice;

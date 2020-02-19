@@ -111,6 +111,8 @@ namespace ALVR
 
             codecComboBox.Items.AddRange(ServerConfig.supportedCodecs);
            
+            controllerModeComboBox.Items.AddRange(ServerConfig.controllerModes);
+           
             LoadSettings();
 
             config.Save(null);
@@ -235,6 +237,7 @@ namespace ALVR
                 UpdateResolutionLabel();
 
                 codecComboBox.SelectedIndex = c.codec;
+                controllerModeComboBox.SelectedIndex = c.controllerMode;
 
                 foveationComboBox.SelectedIndex = c.foveationMode;
 
@@ -294,6 +297,7 @@ namespace ALVR
 
             c.codec = codecComboBox.SelectedIndex;
            
+            c.controllerMode = controllerModeComboBox.SelectedIndex;
 
             if (soundDevices.Count > 0)
             {
@@ -1025,6 +1029,15 @@ namespace ALVR
         private void bufferTrackBar_Scroll(object sender, ScrollEventArgs e)
         {
 
+        }
+        
+        private void metroComboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (loadingSettings || initComponents)
+            {
+                return;
+            }
+            SaveSettings();
         }
     }
 }

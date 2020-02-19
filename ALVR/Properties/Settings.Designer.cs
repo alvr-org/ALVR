@@ -573,5 +573,17 @@ namespace ALVR.Properties {
                 this["launchMinimized"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int controllerMode {
+            get {
+                return ((int)(this["controllerMode"]));
+            }
+            set {
+                this["controllerMode"] = value;
+            }
+        }
     }
 }

@@ -140,7 +140,10 @@
     <Setting Name="launchMinimized" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
-        <Setting Name="controllerMode" Type="System.Int32" Scope="User">
+    <Setting Name="controllerMode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="sharpening" Type="System.Decimal" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
   </Settings>

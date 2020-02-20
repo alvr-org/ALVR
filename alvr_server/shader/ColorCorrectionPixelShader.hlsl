@@ -7,6 +7,7 @@ cbuffer ColorCorrectionParams {
 	float saturation;
 	float gamma;
 	float sharpening;
+	float _align;
 };
 
 const static float DX = 1. / renderWidth;

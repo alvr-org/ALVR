@@ -320,8 +320,9 @@ bool FrameRender::Startup()
 			float saturation;
 			float gamma;
 			float sharpening;
+			float _align;
 		};
-		ColorCorrection colorCorrectionStruct = { Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight,
+		ColorCorrection colorCorrectionStruct = { (float)Settings::Instance().m_renderWidth, (float)Settings::Instance().m_renderHeight,
 												  Settings::Instance().m_brightness, Settings::Instance().m_contrast + 1.f,
 												  Settings::Instance().m_saturation + 1.f, Settings::Instance().m_gamma,
 												  Settings::Instance().m_sharpening };

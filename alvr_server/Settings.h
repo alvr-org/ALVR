@@ -102,6 +102,9 @@ static const char* const k_pch_Settings_Gamma_Float = "gamma";
 
 
 static const char * const k_pch_Settings_TrackingFrameOffset_Int32 = "trackingFrameOffset";
+
+static const char* const k_pch_Settings_ControllerMode_Int32 = "controllerMode";
+
 //
 // Constants
 //
@@ -242,5 +245,7 @@ public:
 	// They are not in config json and set by "SetConfig" command.
 	bool m_captureLayerDDSTrigger = false;
 	bool m_captureComposedDDSTrigger = false;
+	
+	int m_controllerMode = 0;
 };
 

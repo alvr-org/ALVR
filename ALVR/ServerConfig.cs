@@ -259,6 +259,7 @@ namespace ALVR
                 driverConfig.contrast = (float)c.contrast;
                 driverConfig.saturation = (float)c.saturation;
                 driverConfig.gamma = (float)c.gamma;
+                driverConfig.sharpening = (float)c.sharpening;
 
 
                 byte[] bytes = Encoding.UTF8.GetBytes(driverConfig.ToString());

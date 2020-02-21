@@ -99,6 +99,7 @@ static const char* const k_pch_Settings_Brightness_Float = "brightness";
 static const char* const k_pch_Settings_Contrast_Float = "contrast";
 static const char* const k_pch_Settings_Saturation_Float = "saturation";
 static const char* const k_pch_Settings_Gamma_Float = "gamma";
+static const char* const k_pch_Settings_Sharpening_Float = "sharpening";
 
 
 static const char * const k_pch_Settings_TrackingFrameOffset_Int32 = "trackingFrameOffset";
@@ -173,6 +174,7 @@ public:
 	float m_contrast;
 	float m_saturation;
 	float m_gamma;
+	float m_sharpening;
 
 	bool m_enableSound;
 	std::string m_soundDevice;

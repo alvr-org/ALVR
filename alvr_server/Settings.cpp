@@ -162,6 +162,7 @@ void Settings::Load()
 		m_contrast = (float)v.get(k_pch_Settings_Contrast_Float).get<double>();
 		m_saturation = (float)v.get(k_pch_Settings_Saturation_Float).get<double>();
 		m_gamma = (float)v.get(k_pch_Settings_Gamma_Float).get<double>();
+		m_sharpening = (float)v.get(k_pch_Settings_Sharpening_Float).get<double>();
 
 		m_controllerMode = (int32_t)v.get(k_pch_Settings_ControllerMode_Int32).get<int64_t>();
 

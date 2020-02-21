@@ -184,7 +184,8 @@ namespace ALVR
             toolTip1.SetToolTip(this.nv12Tooltip, "Use custom NV12 color space conversion. \n" +
                "May create more efficient video. This is always used on Windows 7");
 
-            toolTip1.SetToolTip(this.colorCorrectionHelp, "The color transformations are applied in the order: gamma, brightness, contrast, saturation.\n\n" +
+            toolTip1.SetToolTip(this.colorCorrectionHelp, "The color transformations are applied in the order: sharpening, gamma, brightness, contrast, saturation.\n\n" +
+                "Sharpening: range [-1;5], default 0. -1 is the most blurry and 5 is the most sharp.\n" +
                 "Gamma: range [0;5], default 1. Use a value of 2.2 to correct color from sRGB to RGB space.\n" +
                 "Brightness: range [-1;1], default 0. -1 is completely black and 1 is completely white.\n" +
                 "Contrast: range [-1;1], default 0. -1 is completely gray.\n" +

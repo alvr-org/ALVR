@@ -313,13 +313,19 @@ bool FrameRender::Startup()
 			DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
 
 		struct ColorCorrection {
+			float renderWidth;
+			float renderHeight;
 			float brightness;
 			float contrast;
 			float saturation;
 			float gamma;
+			float sharpening;
+			float _align;
 		};
-		ColorCorrection colorCorrectionStruct = { Settings::Instance().m_brightness, Settings::Instance().m_contrast + 1.f,
-												  Settings::Instance().m_saturation + 1.f, Settings::Instance().m_gamma };
+		ColorCorrection colorCorrectionStruct = { (float)Settings::Instance().m_renderWidth, (float)Settings::Instance().m_renderHeight,
+												  Settings::Instance().m_brightness, Settings::Instance().m_contrast + 1.f,
+												  Settings::Instance().m_saturation + 1.f, Settings::Instance().m_gamma,
+												  Settings::Instance().m_sharpening };
 		ComPtr<ID3D11Buffer> colorCorrectionBuffer = CreateBuffer(m_pD3DRender->GetDevice(), colorCorrectionStruct);
 
 		m_colorCorrectionPipeline = std::make_unique<RenderPipeline>(m_pD3DRender->GetDevice());

@@ -1040,5 +1040,11 @@ namespace ALVR
             }
             SaveSettings();
         }
+
+        private void revertToDefaultButton_Click(object sender, EventArgs e)
+        {
+            Properties.Settings.Default.Reset();
+            LoadSettings();
+        }
     }
 }

@@ -21,6 +21,7 @@
 extern HINSTANCE g_hInstance;
 
 const uint64_t US_TO_MS = 1000;
+const float DEG_TO_RAD = M_PI / 180.;
 extern uint64_t gPerformanceCounterFrequency;
 
 // Get elapsed time in us from Unix Epoch

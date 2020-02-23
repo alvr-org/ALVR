@@ -87,6 +87,13 @@ static const char * const k_pch_Settings_OffsetPosX_Float = "offsetPosX";
 static const char * const k_pch_Settings_OffsetPosY_Float = "offsetPosY";
 static const char * const k_pch_Settings_OffsetPosZ_Float = "offsetPosZ";
 
+static const char* const k_pch_Settings_leftControllerPositionOffsetX_Float = "leftControllerPositionOffsetX";
+static const char* const k_pch_Settings_leftControllerPositionOffsetY_Float = "leftControllerPositionOffsetY";
+static const char* const k_pch_Settings_leftControllerPositionOffsetZ_Float = "leftControllerPositionOffsetZ";
+static const char* const k_pch_Settings_leftControllerPitchOffset_Float = "leftControllerPitchOffset";
+static const char* const k_pch_Settings_leftControllerYawOffset_Float = "leftControllerYawOffset";
+static const char* const k_pch_Settings_leftControllerRollOffset_Float = "leftControllerRollOffset";
+
 static const char * const k_pch_Settings_controllerPoseOffset_Float = "controllerPoseOffset";
 
 static const char * const k_pch_Settings_foveationMode_Int32 = "foveationMode";
@@ -232,6 +239,9 @@ public:
 
 	float m_OffsetPos[3];
 	bool m_EnableOffsetPos;
+
+	double m_leftControllerPositionOffset[3];
+	double m_leftControllerRotationOffset[3];
 
 	int32_t m_causePacketLoss;
 

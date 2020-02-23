@@ -193,6 +193,14 @@ namespace ALVR
 
             toolTip1.SetToolTip(this.autoLaunchHelp, "Launch Steam / SteamVR as soon as a headset is connected");
 
+            toolTip1.SetToolTip(this.handTrackingModeHelp, "This is just a proof of concept and it is not usable for most games that require buttons");
+
+            toolTip1.SetToolTip(this.controllerPositionOffsetHelp, "Position offset in meters for the left controller.\n" +
+                "For the right controller, x value is mirrored");
+
+            toolTip1.SetToolTip(this.controllerRotationOffsetHelp, "Rotation offset in degrees for the left controller.\n" +
+                "For the right controller, yaw and roll values are mirrored");
+
 
 
 

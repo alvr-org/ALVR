@@ -1054,5 +1054,13 @@ namespace ALVR
             Properties.Settings.Default.Reset();
             LoadSettings();
         }
+
+        private void fixBoneworksControllersButton_Click(object sender, EventArgs e)
+        {
+            Properties.Settings.Default.leftControllerPositionOffsetX = 0;
+            Properties.Settings.Default.leftControllerPositionOffsetY = 0;
+            Properties.Settings.Default.leftControllerPositionOffsetZ = 0;
+            Properties.Settings.Default.leftControllerPitchOffset = -20;
+        }
     }
 }

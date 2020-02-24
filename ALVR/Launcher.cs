@@ -1061,6 +1061,18 @@ namespace ALVR
             Properties.Settings.Default.leftControllerPositionOffsetY = 0;
             Properties.Settings.Default.leftControllerPositionOffsetZ = 0;
             Properties.Settings.Default.leftControllerPitchOffset = -20;
+            Properties.Settings.Default.leftControllerYawOffset = 0;
+            Properties.Settings.Default.leftControllerRollOffset = 0;
+        }
+
+        private void defaultControllerOffsetsButton_Click(object sender, EventArgs e)
+        {
+            Properties.Settings.Default.leftControllerPositionOffsetX = (decimal)-0.007;
+            Properties.Settings.Default.leftControllerPositionOffsetY = (decimal)0.005;
+            Properties.Settings.Default.leftControllerPositionOffsetZ = (decimal)-0.053;
+            Properties.Settings.Default.leftControllerPitchOffset = 36;
+            Properties.Settings.Default.leftControllerYawOffset = 0;
+            Properties.Settings.Default.leftControllerRollOffset = 0;
         }
     }
 }

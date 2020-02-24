@@ -597,5 +597,77 @@ namespace ALVR.Properties {
                 this["sharpening"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-0.007")]
+        public decimal leftControllerPositionOffsetX {
+            get {
+                return ((decimal)(this["leftControllerPositionOffsetX"]));
+            }
+            set {
+                this["leftControllerPositionOffsetX"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0.005")]
+        public decimal leftControllerPositionOffsetY {
+            get {
+                return ((decimal)(this["leftControllerPositionOffsetY"]));
+            }
+            set {
+                this["leftControllerPositionOffsetY"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-0.053")]
+        public decimal leftControllerPositionOffsetZ {
+            get {
+                return ((decimal)(this["leftControllerPositionOffsetZ"]));
+            }
+            set {
+                this["leftControllerPositionOffsetZ"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("36")]
+        public decimal leftControllerPitchOffset {
+            get {
+                return ((decimal)(this["leftControllerPitchOffset"]));
+            }
+            set {
+                this["leftControllerPitchOffset"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public decimal leftControllerYawOffset {
+            get {
+                return ((decimal)(this["leftControllerYawOffset"]));
+            }
+            set {
+                this["leftControllerYawOffset"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public decimal leftControllerRollOffset {
+            get {
+                return ((decimal)(this["leftControllerRollOffset"]));
+            }
+            set {
+                this["leftControllerRollOffset"] = value;
+            }
+        }
     }
 }

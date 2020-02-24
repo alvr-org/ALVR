@@ -249,6 +249,13 @@ namespace ALVR
                 driverConfig.trackingFrameOffset = Utils.ParseInt(c.trackingFrameOffset);
                 driverConfig.controllerPoseOffset = Utils.ParseFloat(c.controllerPoseOffset);
 
+                driverConfig.leftControllerPositionOffsetX = (float)c.leftControllerPositionOffsetX;
+                driverConfig.leftControllerPositionOffsetY = (float)c.leftControllerPositionOffsetY;
+                driverConfig.leftControllerPositionOffsetZ = (float)c.leftControllerPositionOffsetZ;
+                driverConfig.leftControllerPitchOffset = (float)c.leftControllerPitchOffset;
+                driverConfig.leftControllerYawOffset = (float)c.leftControllerYawOffset;
+                driverConfig.leftControllerRollOffset = (float)c.leftControllerRollOffset;
+
                 driverConfig.foveationMode = c.foveationMode;
                 driverConfig.foveationStrength = c.foveationStrength / 100f;
                 driverConfig.foveationShape = 1.5f;

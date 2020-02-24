@@ -7,19 +7,25 @@ OvrController::OvrController(bool isLeftHand, int index)
 	, m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 	, m_index(index)
 {
+	double rightHandSignFlip = isLeftHand ? 1. : -1.;
+
 	memset(&m_pose, 0, sizeof(m_pose));
 	m_pose.poseIsValid = true;
 	m_pose.result = vr::TrackingResult_Running_OK;
 	m_pose.deviceIsConnected = true;
 
 	//controller is rotated and translated, prepare pose
-	double rotation[3] = { 0.0, 0.0, 36 * M_PI / 180 };
+	double rotation[3] = {
+		Settings::Instance().m_leftControllerRotationOffset[1] * DEG_TO_RAD * rightHandSignFlip,
+		Settings::Instance().m_leftControllerRotationOffset[2] * DEG_TO_RAD * rightHandSignFlip,
+		Settings::Instance().m_leftControllerRotationOffset[0] * DEG_TO_RAD,
+	};
 	m_pose.qDriverFromHeadRotation = EulerAngleToQuaternion(rotation);
 
 	vr::HmdVector3d_t offset;
-	offset.v[0] =	0;
-	offset.v[1] =	0.009;
-	offset.v[2] = -0.053;
+	offset.v[0] = Settings::Instance().m_leftControllerPositionOffset[0] * rightHandSignFlip;
+	offset.v[1] = Settings::Instance().m_leftControllerPositionOffset[1];
+	offset.v[2] = Settings::Instance().m_leftControllerPositionOffset[2];
 
 	vr::HmdVector3d_t offetRes = vrmath::quaternionRotateVector(m_pose.qDriverFromHeadRotation, offset, false);
 

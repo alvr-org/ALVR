@@ -152,12 +152,19 @@ void Settings::Load()
 		m_trackingFrameOffset = (int32_t)v.get(k_pch_Settings_TrackingFrameOffset_Int32).get<int64_t>();
 		m_controllerPoseOffset = (double)v.get(k_pch_Settings_controllerPoseOffset_Float).get<double>();
 
+		m_leftControllerPositionOffset[0] = v.get(k_pch_Settings_leftControllerPositionOffsetX_Float).get<double>();
+		m_leftControllerPositionOffset[1] = v.get(k_pch_Settings_leftControllerPositionOffsetY_Float).get<double>();
+		m_leftControllerPositionOffset[2] = v.get(k_pch_Settings_leftControllerPositionOffsetZ_Float).get<double>();
+		m_leftControllerRotationOffset[0] = v.get(k_pch_Settings_leftControllerPitchOffset_Float).get<double>();
+		m_leftControllerRotationOffset[1] = v.get(k_pch_Settings_leftControllerYawOffset_Float).get<double>();
+		m_leftControllerRotationOffset[2] = v.get(k_pch_Settings_leftControllerRollOffset_Float).get<double>();
+
 		m_foveationMode = (FOVEATION_MODE)v.get(k_pch_Settings_foveationMode_Int32).get<int64_t>();
 		m_foveationStrength = (float)v.get(k_pch_Settings_foveationStrength_Float).get<double>();
 		m_foveationShape = (float)v.get(k_pch_Settings_foveationShape_Float).get<double>();
 		m_foveationVerticalOffset = (float)v.get(k_pch_Settings_foveationVerticalOffset_Float).get<double>();
 
-		m_enableColorCorrection = (FOVEATION_MODE)v.get(k_pch_Settings_EnableColorCorrection_Bool).get<bool>();
+		m_enableColorCorrection = v.get(k_pch_Settings_EnableColorCorrection_Bool).get<bool>();
 		m_brightness = (float)v.get(k_pch_Settings_Brightness_Float).get<double>();
 		m_contrast = (float)v.get(k_pch_Settings_Contrast_Float).get<double>();
 		m_saturation = (float)v.get(k_pch_Settings_Saturation_Float).get<double>();

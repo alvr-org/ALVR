@@ -193,6 +193,14 @@ namespace ALVR
 
             toolTip1.SetToolTip(this.autoLaunchHelp, "Launch Steam / SteamVR as soon as a headset is connected");
 
+            toolTip1.SetToolTip(this.handTrackingModeHelp, "This is just a proof of concept and it is not usable for most games that require buttons");
+
+            toolTip1.SetToolTip(this.controllerPositionOffsetHelp, "Position offset in meters for the left controller.\n" +
+                "For the right controller, x value is mirrored");
+
+            toolTip1.SetToolTip(this.controllerRotationOffsetHelp, "Rotation offset in degrees for the left controller.\n" +
+                "For the right controller, yaw and roll values are mirrored");
+
 
 
 
@@ -1039,6 +1047,32 @@ namespace ALVR
                 return;
             }
             SaveSettings();
+        }
+
+        private void revertToDefaultButton_Click(object sender, EventArgs e)
+        {
+            Properties.Settings.Default.Reset();
+            LoadSettings();
+        }
+
+        private void fixBoneworksControllersButton_Click(object sender, EventArgs e)
+        {
+            Properties.Settings.Default.leftControllerPositionOffsetX = 0;
+            Properties.Settings.Default.leftControllerPositionOffsetY = 0;
+            Properties.Settings.Default.leftControllerPositionOffsetZ = 0;
+            Properties.Settings.Default.leftControllerPitchOffset = -20;
+            Properties.Settings.Default.leftControllerYawOffset = 0;
+            Properties.Settings.Default.leftControllerRollOffset = 0;
+        }
+
+        private void defaultControllerOffsetsButton_Click(object sender, EventArgs e)
+        {
+            Properties.Settings.Default.leftControllerPositionOffsetX = (decimal)-0.007;
+            Properties.Settings.Default.leftControllerPositionOffsetY = (decimal)0.005;
+            Properties.Settings.Default.leftControllerPositionOffsetZ = (decimal)-0.053;
+            Properties.Settings.Default.leftControllerPitchOffset = 36;
+            Properties.Settings.Default.leftControllerYawOffset = 0;
+            Properties.Settings.Default.leftControllerRollOffset = 0;
         }
     }
 }

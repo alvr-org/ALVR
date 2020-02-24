@@ -146,5 +146,23 @@
     <Setting Name="sharpening" Type="System.Decimal" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
+    <Setting Name="leftControllerPositionOffsetX" Type="System.Decimal" Scope="User">
+      <Value Profile="(Default)">-0.007</Value>
+    </Setting>
+    <Setting Name="leftControllerPositionOffsetY" Type="System.Decimal" Scope="User">
+      <Value Profile="(Default)">0.005</Value>
+    </Setting>
+    <Setting Name="leftControllerPositionOffsetZ" Type="System.Decimal" Scope="User">
+      <Value Profile="(Default)">-0.053</Value>
+    </Setting>
+    <Setting Name="leftControllerPitchOffset" Type="System.Decimal" Scope="User">
+      <Value Profile="(Default)">36</Value>
+    </Setting>
+    <Setting Name="leftControllerYawOffset" Type="System.Decimal" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="leftControllerRollOffset" Type="System.Decimal" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

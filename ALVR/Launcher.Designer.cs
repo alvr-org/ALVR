@@ -157,6 +157,9 @@
             this.otherTab = new MetroFramework.Controls.MetroTabPage();
             this.tableLayoutPanel11 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel45 = new System.Windows.Forms.FlowLayoutPanel();
+            this.flowLayoutPanel46 = new System.Windows.Forms.FlowLayoutPanel();
+            this.metroLabel43 = new MetroFramework.Controls.MetroLabel();
+            this.headsetModeComboBox = new MetroFramework.Controls.MetroComboBox();
             this.metroLabel41 = new MetroFramework.Controls.MetroLabel();
             this.flowLayoutPanel16 = new System.Windows.Forms.FlowLayoutPanel();
             this.metroLabel12 = new MetroFramework.Controls.MetroLabel();
@@ -193,6 +196,7 @@
             this.flowLayoutPanel15 = new System.Windows.Forms.FlowLayoutPanel();
             this.aggressiveKeyframeResend = new MetroFramework.Controls.MetroCheckBox();
             this.aggressiveKeyframeResendHelp = new MetroFramework.Controls.MetroLabel();
+            this.metroCheckBox4 = new MetroFramework.Controls.MetroCheckBox();
             this.flowLayoutPanel17 = new System.Windows.Forms.FlowLayoutPanel();
             this.metroLabel29 = new MetroFramework.Controls.MetroLabel();
             this.trackingFrameOffsetTextBox = new MetroFramework.Controls.MetroTextBox();
@@ -211,6 +215,7 @@
             this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel44 = new System.Windows.Forms.FlowLayoutPanel();
             this.fixBoneworksControllersButton = new MetroFramework.Controls.MetroButton();
+            this.fixDCSButton = new MetroFramework.Controls.MetroButton();
             this.metroLabel38 = new MetroFramework.Controls.MetroLabel();
             this.flowLayoutPanel42 = new System.Windows.Forms.FlowLayoutPanel();
             this.revertToDefaultButton = new MetroFramework.Controls.MetroButton();
@@ -304,6 +309,7 @@
             this.otherTab.SuspendLayout();
             this.tableLayoutPanel11.SuspendLayout();
             this.flowLayoutPanel45.SuspendLayout();
+            this.flowLayoutPanel46.SuspendLayout();
             this.flowLayoutPanel16.SuspendLayout();
             this.flowLayoutPanel38.SuspendLayout();
             this.flowLayoutPanel37.SuspendLayout();
@@ -1991,6 +1997,7 @@
             // 
             // flowLayoutPanel45
             // 
+            this.flowLayoutPanel45.Controls.Add(this.flowLayoutPanel46);
             this.flowLayoutPanel45.Controls.Add(this.metroLabel41);
             this.flowLayoutPanel45.Controls.Add(this.flowLayoutPanel16);
             this.flowLayoutPanel45.Controls.Add(this.flowLayoutPanel38);
@@ -2003,12 +2010,40 @@
             this.flowLayoutPanel45.Size = new System.Drawing.Size(405, 276);
             this.flowLayoutPanel45.TabIndex = 41;
             // 
+            // flowLayoutPanel46
+            // 
+            this.flowLayoutPanel46.Controls.Add(this.metroLabel43);
+            this.flowLayoutPanel46.Controls.Add(this.headsetModeComboBox);
+            this.flowLayoutPanel46.Location = new System.Drawing.Point(3, 3);
+            this.flowLayoutPanel46.Name = "flowLayoutPanel46";
+            this.flowLayoutPanel46.Size = new System.Drawing.Size(399, 35);
+            this.flowLayoutPanel46.TabIndex = 41;
+            // 
+            // metroLabel43
+            // 
+            this.metroLabel43.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.metroLabel43.AutoSize = true;
+            this.metroLabel43.Location = new System.Drawing.Point(3, 8);
+            this.metroLabel43.Name = "metroLabel43";
+            this.metroLabel43.Size = new System.Drawing.Size(157, 19);
+            this.metroLabel43.TabIndex = 0;
+            this.metroLabel43.Text = "Headset emulation mode";
+            // 
+            // headsetModeComboBox
+            // 
+            this.headsetModeComboBox.FormattingEnabled = true;
+            this.headsetModeComboBox.ItemHeight = 23;
+            this.headsetModeComboBox.Location = new System.Drawing.Point(166, 3);
+            this.headsetModeComboBox.Name = "headsetModeComboBox";
+            this.headsetModeComboBox.Size = new System.Drawing.Size(222, 29);
+            this.headsetModeComboBox.TabIndex = 1;
+            // 
             // metroLabel41
             // 
             this.metroLabel41.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.metroLabel41.AutoSize = true;
             this.metroLabel41.FontWeight = MetroFramework.MetroLabelWeight.Regular;
-            this.metroLabel41.Location = new System.Drawing.Point(3, 0);
+            this.metroLabel41.Location = new System.Drawing.Point(3, 41);
             this.metroLabel41.Name = "metroLabel41";
             this.metroLabel41.Size = new System.Drawing.Size(125, 19);
             this.metroLabel41.TabIndex = 40;
@@ -2020,7 +2055,7 @@
             this.flowLayoutPanel16.Controls.Add(this.metroLabel12);
             this.flowLayoutPanel16.Controls.Add(this.controllerPoseOffset);
             this.flowLayoutPanel16.Controls.Add(this.metroButton1);
-            this.flowLayoutPanel16.Location = new System.Drawing.Point(3, 22);
+            this.flowLayoutPanel16.Location = new System.Drawing.Point(3, 63);
             this.flowLayoutPanel16.Name = "flowLayoutPanel16";
             this.flowLayoutPanel16.Size = new System.Drawing.Size(399, 31);
             this.flowLayoutPanel16.TabIndex = 37;
@@ -2063,7 +2098,7 @@
             this.flowLayoutPanel38.Controls.Add(this.metroLabel36);
             this.flowLayoutPanel38.Controls.Add(this.handTrackingModeHelp);
             this.flowLayoutPanel38.Controls.Add(this.controllerModeComboBox);
-            this.flowLayoutPanel38.Location = new System.Drawing.Point(3, 59);
+            this.flowLayoutPanel38.Location = new System.Drawing.Point(3, 100);
             this.flowLayoutPanel38.Name = "flowLayoutPanel38";
             this.flowLayoutPanel38.Size = new System.Drawing.Size(399, 35);
             this.flowLayoutPanel38.TabIndex = 0;
@@ -2105,7 +2140,7 @@
             this.flowLayoutPanel37.Controls.Add(this.numericUpDown1);
             this.flowLayoutPanel37.Controls.Add(this.numericUpDown2);
             this.flowLayoutPanel37.Controls.Add(this.numericUpDown3);
-            this.flowLayoutPanel37.Location = new System.Drawing.Point(3, 100);
+            this.flowLayoutPanel37.Location = new System.Drawing.Point(3, 141);
             this.flowLayoutPanel37.Name = "flowLayoutPanel37";
             this.flowLayoutPanel37.Size = new System.Drawing.Size(399, 26);
             this.flowLayoutPanel37.TabIndex = 38;
@@ -2212,7 +2247,7 @@
             this.flowLayoutPanel43.Controls.Add(this.numericUpDown4);
             this.flowLayoutPanel43.Controls.Add(this.numericUpDown5);
             this.flowLayoutPanel43.Controls.Add(this.numericUpDown6);
-            this.flowLayoutPanel43.Location = new System.Drawing.Point(3, 132);
+            this.flowLayoutPanel43.Location = new System.Drawing.Point(3, 173);
             this.flowLayoutPanel43.Name = "flowLayoutPanel43";
             this.flowLayoutPanel43.Size = new System.Drawing.Size(399, 26);
             this.flowLayoutPanel43.TabIndex = 39;
@@ -2305,6 +2340,7 @@
             this.flowLayoutPanel26.Controls.Add(this.disableController);
             this.flowLayoutPanel26.Controls.Add(this.force3DOFCheckBox);
             this.flowLayoutPanel26.Controls.Add(this.flowLayoutPanel15);
+            this.flowLayoutPanel26.Controls.Add(this.metroCheckBox4);
             this.flowLayoutPanel26.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel26.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.flowLayoutPanel26.Location = new System.Drawing.Point(414, 13);
@@ -2483,6 +2519,19 @@
             this.aggressiveKeyframeResendHelp.TabIndex = 0;
             this.aggressiveKeyframeResendHelp.Text = "?";
             this.aggressiveKeyframeResendHelp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // metroCheckBox4
+            // 
+            this.metroCheckBox4.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.metroCheckBox4.AutoSize = true;
+            this.metroCheckBox4.Checked = global::ALVR.Properties.Settings.Default.swapTopBottomFov;
+            this.metroCheckBox4.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "swapTopBottomFov", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.metroCheckBox4.Location = new System.Drawing.Point(8, 192);
+            this.metroCheckBox4.Name = "metroCheckBox4";
+            this.metroCheckBox4.Size = new System.Drawing.Size(120, 15);
+            this.metroCheckBox4.TabIndex = 39;
+            this.metroCheckBox4.Text = "Fix image warping";
+            this.metroCheckBox4.UseVisualStyleBackColor = true;
             // 
             // flowLayoutPanel17
             // 
@@ -2671,6 +2720,7 @@
             // 
             this.flowLayoutPanel44.AutoSize = true;
             this.flowLayoutPanel44.Controls.Add(this.fixBoneworksControllersButton);
+            this.flowLayoutPanel44.Controls.Add(this.fixDCSButton);
             this.flowLayoutPanel44.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel44.Location = new System.Drawing.Point(103, 50);
             this.flowLayoutPanel44.Name = "flowLayoutPanel44";
@@ -2686,6 +2736,16 @@
             this.fixBoneworksControllersButton.TabIndex = 23;
             this.fixBoneworksControllersButton.Text = "Boneworks controllers offset";
             this.fixBoneworksControllersButton.Click += new System.EventHandler(this.fixBoneworksControllersButton_Click);
+            // 
+            // fixDCSButton
+            // 
+            this.fixDCSButton.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.fixDCSButton.Location = new System.Drawing.Point(172, 3);
+            this.fixDCSButton.Name = "fixDCSButton";
+            this.fixDCSButton.Size = new System.Drawing.Size(163, 25);
+            this.fixDCSButton.TabIndex = 24;
+            this.fixDCSButton.Text = "DCS World";
+            this.fixDCSButton.Click += new System.EventHandler(this.fixDCSButton_Click);
             // 
             // metroLabel38
             // 
@@ -3278,6 +3338,8 @@
             this.tableLayoutPanel11.PerformLayout();
             this.flowLayoutPanel45.ResumeLayout(false);
             this.flowLayoutPanel45.PerformLayout();
+            this.flowLayoutPanel46.ResumeLayout(false);
+            this.flowLayoutPanel46.PerformLayout();
             this.flowLayoutPanel16.ResumeLayout(false);
             this.flowLayoutPanel16.PerformLayout();
             this.flowLayoutPanel38.ResumeLayout(false);
@@ -3555,6 +3617,11 @@
         private MetroFramework.Controls.MetroLabel metroLabel42;
         private MetroFramework.Controls.MetroButton defaultControllerOffsetsButton;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel45;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel46;
+        private MetroFramework.Controls.MetroLabel metroLabel43;
+        private MetroFramework.Controls.MetroComboBox headsetModeComboBox;
+        private MetroFramework.Controls.MetroCheckBox metroCheckBox4;
+        private MetroFramework.Controls.MetroButton fixDCSButton;
     }
 }
 

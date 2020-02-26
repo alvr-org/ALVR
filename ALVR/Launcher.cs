@@ -110,9 +110,9 @@ namespace ALVR
             //
 
             codecComboBox.Items.AddRange(ServerConfig.supportedCodecs);
-           
+            headsetModeComboBox.Items.AddRange(ServerConfig.headsetModes);
             controllerModeComboBox.Items.AddRange(ServerConfig.controllerModes);
-           
+
             LoadSettings();
 
             config.Save(null);
@@ -246,6 +246,7 @@ namespace ALVR
                 UpdateResolutionLabel();
 
                 codecComboBox.SelectedIndex = c.codec;
+                headsetModeComboBox.SelectedIndex = c.headsetModeIdx;
                 controllerModeComboBox.SelectedIndex = c.controllerMode;
 
                 foveationComboBox.SelectedIndex = c.foveationMode;
@@ -292,20 +293,12 @@ namespace ALVR
                 c.resolutionScale = ServerConfig.supportedScales[ServerConfig.DEFAULT_SCALE_INDEX];
             }
 
-            if (foveationComboBox.SelectedIndex != -1)
-            {
-                c.foveationMode = foveationComboBox.SelectedIndex;
-            }
-            else
-            {
-                c.resolutionScale = 0;
-            }
-
+            c.foveationMode = foveationComboBox.SelectedIndex;
 
             c.autoConnectList = clientList.Serialize();
 
             c.codec = codecComboBox.SelectedIndex;
-           
+            c.headsetModeIdx = headsetModeComboBox.SelectedIndex;
             c.controllerMode = controllerModeComboBox.SelectedIndex;
 
             if (soundDevices.Count > 0)
@@ -1051,7 +1044,12 @@ namespace ALVR
 
         private void revertToDefaultButton_Click(object sender, EventArgs e)
         {
+            // fix comboboxes not updating
+            this.Update();
+            Properties.Settings.Default.swapTopBottomFov = false;
+
             Properties.Settings.Default.Reset();
+
             LoadSettings();
         }
 
@@ -1073,6 +1071,17 @@ namespace ALVR
             Properties.Settings.Default.leftControllerPitchOffset = 36;
             Properties.Settings.Default.leftControllerYawOffset = 0;
             Properties.Settings.Default.leftControllerRollOffset = 0;
+        }
+
+        private void fixDCSButton_Click(object sender, EventArgs e)
+        {
+            // fix comboboxes not updating
+            this.Update();
+
+            Properties.Settings.Default.swapTopBottomFov = true;
+            Properties.Settings.Default.headsetModeIdx = 1;
+
+            LoadSettings();
         }
     }
 }

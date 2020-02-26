@@ -141,7 +141,7 @@
       <Value Profile="(Default)">False</Value>
     </Setting>
     <Setting Name="controllerMode" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
+      <Value Profile="(Default)">1</Value>
     </Setting>
     <Setting Name="sharpening" Type="System.Decimal" Scope="User">
       <Value Profile="(Default)">0</Value>
@@ -163,6 +163,12 @@
     </Setting>
     <Setting Name="leftControllerRollOffset" Type="System.Decimal" Scope="User">
       <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="headsetModeIdx" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="swapTopBottomFov" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
     </Setting>
   </Settings>
 </SettingsFile>

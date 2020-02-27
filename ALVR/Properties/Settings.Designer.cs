@@ -576,7 +576,7 @@ namespace ALVR.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
         public int controllerMode {
             get {
                 return ((int)(this["controllerMode"]));
@@ -667,6 +667,30 @@ namespace ALVR.Properties {
             }
             set {
                 this["leftControllerRollOffset"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int headsetModeIdx {
+            get {
+                return ((int)(this["headsetModeIdx"]));
+            }
+            set {
+                this["headsetModeIdx"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool swapTopBottomFov {
+            get {
+                return ((bool)(this["swapTopBottomFov"]));
+            }
+            set {
+                this["swapTopBottomFov"] = value;
             }
         }
     }

@@ -75,6 +75,11 @@ namespace ALVR
             new ComboBoxCustomItem("H.265 HEVC", 1)
         };
 
+        public static readonly ComboBoxCustomItem[] headsetModes = {
+            new ComboBoxCustomItem("Oculus Rift S", 0),
+            new ComboBoxCustomItem("HTC Vive", 1),
+        };
+
         //A3
         public static readonly ComboBoxCustomItem[] controllerModes = {
             new ComboBoxCustomItem("Oculus Rift S", 0),
@@ -122,15 +127,29 @@ namespace ALVR
             {
                 var c = Properties.Settings.Default;
                 dynamic driverConfig = new DynamicJson();
-              
-                driverConfig.trackingSystemName = "oculus";
-                driverConfig.serialNumber = "1WMGH000XX0000";
-                driverConfig.modelNumber = "Oculus Rift S";
-                driverConfig.manufacturerName = "Oculus";
-                driverConfig.renderModelName = "generic_hmd";
-                driverConfig.registeredDeviceType = "oculus/1WMGH000XX0000";
-                driverConfig.driverVersion = "1.42.0";
-                
+
+                switch (c.headsetModeIdx)
+                {
+                    case 0:
+                        driverConfig.trackingSystemName = "oculus";
+                        driverConfig.serialNumber = "1WMGH000XX0000";
+                        driverConfig.modelNumber = "Oculus Rift S";
+                        driverConfig.manufacturerName = "Oculus";
+                        driverConfig.renderModelName = "generic_hmd";
+                        driverConfig.registeredDeviceType = "oculus/1WMGH000XX0000";
+                        driverConfig.driverVersion = "1.42.0";
+                        break;
+                    case 1:
+                        driverConfig.serialNumber = "HTCVive-001";
+                        driverConfig.trackingSystemName = "Vive Tracker";
+                        driverConfig.modelNumber = "ALVR driver server";
+                        driverConfig.manufacturerName = "HTC";
+                        driverConfig.renderModelName = "generic_hmd";
+                        driverConfig.registeredDeviceType = "vive";
+                        driverConfig.driverVersion = "";
+                        break;
+                }
+
                 driverConfig.adapterIndex = 0;
                 driverConfig.IPD = 0.063;
                 driverConfig.secondsFromVsyncToPhotons = 0.005;
@@ -174,7 +193,15 @@ namespace ALVR
                     driverConfig.autoConnectHost = device.ClientHost;
                     driverConfig.autoConnectPort = device.ClientPort;
 
-                    driverConfig.eyeFov = device.EyeFov;
+                    double[] fov = device.EyeFov.ToArray();
+                    if (c.swapTopBottomFov)
+                    {
+                        fov[2] = device.EyeFov[3];
+                        fov[3] = device.EyeFov[2];
+                        fov[6] = device.EyeFov[7];
+                        fov[7] = device.EyeFov[6];
+                    }
+                    driverConfig.eyeFov = fov;
                 }
                 driverConfig.disableThrottling = c.disableThrottling;
 

@@ -17,7 +17,7 @@ namespace ALVR
     {
         // Use different port than 9944 used by server.
         public const int PORT = 9943;
-        public const int ALVR_PROTOCOL_VERSION = 23;
+        public const int ALVR_PROTOCOL_VERSION = 24;
         public const int ALVR_PACKET_TYPE_HELLO_MESSAGE = 1;
         public const byte ALVR_DEVICE_TYPE_OCULUS_MOBILE = 1;
         public const byte ALVR_DEVICE_TYPE_DAYDREAM = 2;

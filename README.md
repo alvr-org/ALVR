@@ -36,6 +36,8 @@ ALVR requires any of the following devices:
 4. Run add_firewall_rules.bat as admin
 4. Open ALVR Launcher
 
+- If you have previously used ALVR, it is recommended to delete the old config found in %LOCALAPPDATA%\ALVR
+
 ## Install ALVR client for headset
 
 ### For Quest: Install from apk
@@ -46,6 +48,8 @@ ALVR requires any of the following devices:
 
 
 ## Usage
+
+
 
 - Launch ALVR.exe
 - Press "Start Server" button or launch VR game

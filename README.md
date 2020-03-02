@@ -40,11 +40,14 @@ ALVR requires any of the following devices:
 
 ## Install ALVR client for headset
 
-### For Quest: Install from apk
+### Install from apk
 
 - Need to enable developer option for Quest.
 - Download apk from [Releases](https://github.com/JackD83/ALVR/releases)
 - Check [Installation](https://github.com/polygraphene/ALVR/wiki/Installation).
+
+### Install from SideQuest
+- This ALVR fork is now available on [SideQuest](https://sidequestvr.com/)
 
 
 ## Usage

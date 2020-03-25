@@ -570,7 +570,10 @@ void ClientConnection::Stop()
 {
 	Log(L"Listener::Stop().");
 	m_bExiting = true;
-	m_Socket->Shutdown();
+
+	if (m_Socket) {
+		m_Socket->Shutdown();
+	}
 	m_ControlSocket->Shutdown();
 	Join();
 }

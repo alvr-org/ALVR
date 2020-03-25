@@ -43,7 +43,7 @@ public:
 
 	int getControllerIndex();
 
-
+	void GetBoneTransform(bool withController, vr::VRBoneTransform_t m_boneTransform[], int boneCount, bool isLeftHand, TrackingInfo::Controller c);
 
 private:
 	static const int SKELTON_BONE_COUNT = 31;

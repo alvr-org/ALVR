@@ -235,6 +235,24 @@ inline vr::HmdQuaternion_t EulerAngleToQuaternion(const double *yaw_pitch_roll)
 	return q;
 }
 
+inline vr::HmdQuaternionf_t EulerAngleToQuaternionF(const float* yaw_pitch_roll)
+{
+	vr::HmdQuaternionf_t q;
+	// Abbreviations for the various angular functions
+	double cy = cos(yaw_pitch_roll[0] * 0.5);
+	double sy = sin(yaw_pitch_roll[0] * 0.5);
+	double cr = cos(yaw_pitch_roll[2] * 0.5);
+	double sr = sin(yaw_pitch_roll[2] * 0.5);
+	double cp = cos(yaw_pitch_roll[1] * 0.5);
+	double sp = sin(yaw_pitch_roll[1] * 0.5);
+
+	q.w = float(cy * cr * cp + sy * sr * sp);
+	q.x = float(cy * sr * cp - sy * cr * sp);
+	q.y = float(cy * cr * sp + sy * sr * cp);
+	q.z = float(sy * cr * cp - cy * sr * sp);
+	return q;
+}
+
 inline double PitchFromQuaternion(double x, double y, double z, double w) {
 	// (xx, yy, zz) = rotate (0, 0, -1) by quaternion
 	double xx = -2 * y * w

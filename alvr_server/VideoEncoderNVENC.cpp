@@ -155,7 +155,8 @@ void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int render
 void VideoEncoderNVENC::Shutdown()
 {
 	std::vector<std::vector<uint8_t>> vPacket;
-	m_NvNecoder->EndEncode(vPacket);
+	if(m_NvNecoder)
+		m_NvNecoder->EndEncode(vPacket);
 
 	for (std::vector<uint8_t> &packet : vPacket)
 	{
@@ -163,8 +164,10 @@ void VideoEncoderNVENC::Shutdown()
 			fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 		}
 	}
-	m_NvNecoder->DestroyEncoder();
-	m_NvNecoder.reset();
+	if (m_NvNecoder) {
+		m_NvNecoder->DestroyEncoder();
+		m_NvNecoder.reset();
+	}
 
 	Log(L"CNvEncoder::Shutdown");
 

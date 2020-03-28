@@ -1,7 +1,6 @@
 #include "OvrController.h"
 
 
-
 OvrController::OvrController(bool isLeftHand, int index)
 	: m_isLeftHand(isLeftHand)
 	, m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
@@ -101,7 +100,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/b/click", &m_handles[ALVR_INPUT_B_CLICK]);
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/b/touch", &m_handles[ALVR_INPUT_B_TOUCH]);
 
-		vr::VRDriverInput()->CreateSkeletonComponent(m_ulPropertyContainer, "/input/skeleton/right", "/skeleton/hand/right", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, SKELTON_BONE_COUNT, &m_compSkeleton);
+		vr::VRDriverInput()->CreateSkeletonComponent(m_ulPropertyContainer, "/input/skeleton/right", "/skeleton/hand/right", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, SKELETON_BONE_COUNT, &m_compSkeleton);
 	}
 	else {
 		// X,Y for left hand.
@@ -110,7 +109,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/y/click", &m_handles[ALVR_INPUT_Y_CLICK]);
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/y/touch", &m_handles[ALVR_INPUT_Y_TOUCH]);
 
-		vr::VRDriverInput()->CreateSkeletonComponent(m_ulPropertyContainer, "/input/skeleton/left", "/skeleton/hand/left", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, SKELTON_BONE_COUNT, &m_compSkeleton);
+		vr::VRDriverInput()->CreateSkeletonComponent(m_ulPropertyContainer, "/input/skeleton/left", "/skeleton/hand/left", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, SKELETON_BONE_COUNT, &m_compSkeleton);
 	}
 
 	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/joystick/click", &m_handles[ALVR_INPUT_JOYSTICK_CLICK]);
@@ -598,84 +597,126 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 
 		case 0:
 		case 1:
-
-	vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_SYSTEM_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_SYSTEM_CLICK)) != 0, 0.0);
-	vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_APPLICATION_MENU_CLICK)) != 0, 0.0);
-	vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GRIP_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_CLICK)) != 0, 0.0);
-	vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_GRIP_VALUE], c.gripValue, 0.0);
-	vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GRIP_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_TOUCH)) != 0, 0.0);
-
-
-	if (!m_isLeftHand) {
-		// A,B for right hand.
-		vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_A_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK)) != 0, 0.0);
-		vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_A_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH)) != 0, 0.0);
-		vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_B_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_B_CLICK)) != 0, 0.0);
-		vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_B_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH)) != 0, 0.0);
-
-	}
-	else {
-		// X,Y for left hand.
-		vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_X_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_X_CLICK)) != 0, 0.0);
-		vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_X_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH)) != 0, 0.0);
-		vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_Y_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_Y_CLICK)) != 0, 0.0);
-		vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_Y_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH)) != 0, 0.0);
-	}
-
-	vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_JOYSTICK_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_CLICK)) != 0, 0.0);
-	vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_X], c.trackpadPosition.x, 0.0);
-	vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_Y], c.trackpadPosition.y, 0.0);
-	vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_JOYSTICK_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH)) != 0, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_SYSTEM_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_SYSTEM_CLICK)) != 0, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_APPLICATION_MENU_CLICK)) != 0, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GRIP_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_CLICK)) != 0, 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_GRIP_VALUE], c.gripValue, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GRIP_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_TOUCH)) != 0, 0.0);
 
 
-	vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_BACK_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_BACK_CLICK)) != 0, 0.0);
-	vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GUIDE_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GUIDE_CLICK)) != 0, 0.0);
-vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_START_CLICK], (c.buttons& ALVR_BUTTON_FLAG(ALVR_INPUT_START_CLICK)) != 0, 0.0);
+			if (!m_isLeftHand) {
+				// A,B for right hand.
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_A_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK)) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_A_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH)) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_B_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_B_CLICK)) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_B_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH)) != 0, 0.0);
 
-vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRIGGER_CLICK], (c.buttons& ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK)) != 0, 0.0);
-vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRIGGER_VALUE], c.triggerValue, 0.0);
-vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRIGGER_TOUCH], (c.buttons& ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH)) != 0, 0.0);
+			}
+			else {
+				// X,Y for left hand.
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_X_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_X_CLICK)) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_X_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH)) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_Y_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_Y_CLICK)) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_Y_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH)) != 0, 0.0);
+			}
 
-
-vr::VRBoneTransform_t boneTransforms[SKELTON_BONE_COUNT];
-
-// Perform whatever logic is necessary to convert your device's input into a skeletal pose,
-// first to create a pose "With Controller", that is as close to the pose of the user's real
-// hand as possible
-GetBoneTransform(true, boneTransforms, SKELTON_BONE_COUNT, m_isLeftHand, c);
-
-// Then update the WithController pose on the component with those transforms
-vr::EVRInputError err = vr::VRDriverInput()->UpdateSkeletonComponent(m_compSkeleton, vr::VRSkeletalMotionRange_WithController, boneTransforms, SKELTON_BONE_COUNT);
-if (err != vr::VRInputError_None)
-{
-	// Handle failure case
-	Log("UpdateSkeletonComponentfailed.  Error: %i\n", err);
-}
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_JOYSTICK_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_CLICK)) != 0, 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_X], c.trackpadPosition.x, 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_Y], c.trackpadPosition.y, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_JOYSTICK_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH)) != 0, 0.0);
 
 
-GetBoneTransform(false, boneTransforms, SKELTON_BONE_COUNT, m_isLeftHand, c);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_BACK_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_BACK_CLICK)) != 0, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GUIDE_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GUIDE_CLICK)) != 0, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_START_CLICK], (c.buttons& ALVR_BUTTON_FLAG(ALVR_INPUT_START_CLICK)) != 0, 0.0);
 
-// Then update the WithoutController pose on the component 
-err = vr::VRDriverInput()->UpdateSkeletonComponent(m_compSkeleton, vr::VRSkeletalMotionRange_WithoutController, boneTransforms, SKELTON_BONE_COUNT);
-if (err != vr::VRInputError_None)
-{
-	// Handle failure case
-	Log("UpdateSkeletonComponentfailed.  Error: %i\n", err);
-}
-break;
-	}
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRIGGER_CLICK], (c.buttons& ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK)) != 0, 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRIGGER_VALUE], c.triggerValue, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRIGGER_TOUCH], (c.buttons& ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH)) != 0, 0.0);
 
-	// Battery
-	vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, c.batteryPercentRemaining / 100.0f);
+			float *animationProgress;
+			TrackingInfo::Controller *lastPoseInfo;
+			if (m_isLeftHand) {
+				animationProgress = &m_leftControllerAnimationProgress;
+				lastPoseInfo = &m_lastLeftControllerPoseInfo;
+			}
+			else {
+				animationProgress = &m_rightControllerAnimationProgress;
+				lastPoseInfo = &m_lastRightControllerPoseInfo;
+			}
 
-	vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));
+			bool shouldAnimate = lastPoseInfo->buttons != c.buttons;
+			if (shouldAnimate) {
+				*animationProgress += 1. / ANIMATION_FRAMES_N;
+				if (*animationProgress > 1.) {
+					*animationProgress = 0;
+					*lastPoseInfo = c;
+				}
+			}
+			else {
+				*animationProgress = 0;
+			}
+			
+			vr::VRBoneTransform_t boneTransforms[SKELETON_BONE_COUNT];
+
+			// Perform whatever logic is necessary to convert your device's input into a skeletal pose,
+			// first to create a pose "With Controller", that is as close to the pose of the user's real
+			// hand as possible
+			GetBoneTransformInterpolation(true, m_isLeftHand, *animationProgress, *lastPoseInfo, c, boneTransforms);
+
+			// Then update the WithController pose on the component with those transforms
+			vr::EVRInputError err = vr::VRDriverInput()->UpdateSkeletonComponent(m_compSkeleton, vr::VRSkeletalMotionRange_WithController, boneTransforms, SKELETON_BONE_COUNT);
+			if (err != vr::VRInputError_None)
+			{
+				// Handle failure case
+				Log("UpdateSkeletonComponentfailed.  Error: %i\n", err);
+			}
+
+
+			GetBoneTransformInterpolation(false, m_isLeftHand, *animationProgress, *lastPoseInfo, c, boneTransforms);
+
+			// Then update the WithoutController pose on the component 
+			err = vr::VRDriverInput()->UpdateSkeletonComponent(m_compSkeleton, vr::VRSkeletalMotionRange_WithoutController, boneTransforms, SKELETON_BONE_COUNT);
+			if (err != vr::VRInputError_None)
+			{
+				// Handle failure case
+				Log("UpdateSkeletonComponentfailed.  Error: %i\n", err);
+			}
+			break;
+		}
+
+		// Battery
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, c.batteryPercentRemaining / 100.0f);
+
+		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));
 
 	}
 
 	return false;
 }
 
-void OvrController::GetBoneTransform(bool withController, vr::VRBoneTransform_t m_boneTransform[], int boneCount, bool isLeftHand, TrackingInfo::Controller c) {
+void OvrController::GetBoneTransformInterpolation(bool withController, bool isLeftHand, float animationProgress, const TrackingInfo::Controller &lastPoseInfo, const TrackingInfo::Controller &currentPoseInfo, vr::VRBoneTransform_t outBoneTransform[]) {
+	vr::VRBoneTransform_t lastBoneTransform[SKELETON_BONE_COUNT], currentBoneTransform[SKELETON_BONE_COUNT];
+	GetBoneTransform(withController, isLeftHand, lastPoseInfo, lastBoneTransform);
+	GetBoneTransform(withController, isLeftHand, currentPoseInfo, currentBoneTransform);
+
+	for (int boneIdx = 0; boneIdx < SKELETON_BONE_COUNT; boneIdx++) {
+		outBoneTransform[boneIdx].position = Lerp(lastBoneTransform[boneIdx].position, currentBoneTransform[boneIdx].position, animationProgress);
+		
+		vr::HmdQuaternionf_t *lastOrient = &lastBoneTransform[boneIdx].orientation;
+		vr::HmdQuaternionf_t *curOrient = &currentBoneTransform[boneIdx].orientation;
+
+		// Slerp function degenerates if the two quaternions coincide.
+		if (lastOrient->w != curOrient->w || lastOrient->x != curOrient->x || lastOrient->y != curOrient->y || lastOrient->z != curOrient->z) {
+			outBoneTransform[boneIdx].orientation = Slerp(lastBoneTransform[boneIdx].orientation, currentBoneTransform[boneIdx].orientation, animationProgress);
+		}
+		else {
+			outBoneTransform[boneIdx].orientation = currentBoneTransform[boneIdx].orientation;
+		}
+	}
+}
+
+void OvrController::GetBoneTransform(bool withController, bool isLeftHand, const TrackingInfo::Controller &c, vr::VRBoneTransform_t m_boneTransform[]) {
 
 	if (isLeftHand) {
 

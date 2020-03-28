@@ -342,6 +342,49 @@ inline TrackingVector3 RotateVectorQuaternion(const TrackingVector3& v, double p
 	return dest;
 }
 
+inline vr::HmdVector4_t Lerp(vr::HmdVector4_t& v1, vr::HmdVector4_t& v2, double lambda)
+{
+	vr::HmdVector4_t res;
+	res.v[0] = (1 - lambda) * v1.v[0] + lambda * v2.v[0];
+	res.v[1] = (1 - lambda) * v1.v[1] + lambda * v2.v[1];
+	res.v[2] = (1 - lambda) * v1.v[2] + lambda * v2.v[2];
+	res.v[3] = 1;
+
+	return res;
+}
+
+inline vr::HmdQuaternionf_t Slerp(vr::HmdQuaternionf_t &q1, vr::HmdQuaternionf_t &q2, double lambda)
+{
+	float dotproduct = q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w;
+	float theta, st, sut, sout, coeff1, coeff2;
+
+	// algorithm adapted from Shoemake's paper
+	lambda = lambda / 2.0;
+
+	theta = (float)acos(dotproduct);
+	if (theta < 0.0) theta = -theta;
+
+	st = (float)sin(theta);
+	sut = (float)sin(lambda * theta);
+	sout = (float)sin((1 - lambda) * theta);
+	coeff1 = sout / st;
+	coeff2 = sut / st;
+
+	vr::HmdQuaternionf_t res;
+	res.w = coeff1 * q1.w + coeff2 * q2.w;
+	res.x = coeff1 * q1.x + coeff2 * q2.x;
+	res.y = coeff1 * q1.y + coeff2 * q2.y;
+	res.z = coeff1 * q1.z + coeff2 * q2.z;
+
+	float norm = res.w * res.w + res.x * res.x + res.y * res.y + res.z * res.z;
+	res.w /= norm;
+	res.x /= norm;
+	res.y /= norm;
+	res.z /= norm;
+
+	return res;
+}
+
 // Use NV12 texture on Windows 7
 inline bool ShouldUseNV12Texture() {
 	return IsWindows8OrGreater() == FALSE;

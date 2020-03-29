@@ -1,5 +1,9 @@
 #pragma once
 
+#include <windows.h>
+#include <dxgi.h>
+#include <unknwn.h>
+
 #include <exception>
 #include <d3d11.h>
 #include <wrl.h>
@@ -12,7 +16,29 @@
 
 #include "Logger.h"
 
+#include <cinttypes>
+
+#define GPU_PRIORITY_VAL 7
+
 using Microsoft::WRL::ComPtr;
+
+template<class T> class ComQIPtr : public ComPtr<T> {
+
+public:
+	inline ComQIPtr(IUnknown* unk)
+	{
+		this->ptr_ = nullptr;
+		unk->QueryInterface(__uuidof(T), (void**)this->GetAddressOf());
+	}
+
+	inline ComPtr<T>& operator=(IUnknown* unk)
+	{
+		ComPtr<T>::Clear();
+		unk->QueryInterface(__uuidof(T), (void**)this->GetAddressOf());
+		return *this;
+	}
+};
+
 
 class CudaConverter {
 public:
@@ -112,6 +138,8 @@ private:
 		if (result != CUDA_SUCCESS) {
 			throw MakeException(L"Failed to create CUDA context.");
 		}
+
+		CudaConverter::SetGpuPriority(device);
 	}
 
 	void RegisterTexture(const ComPtr<ID3D11Texture2D> &texture) {
@@ -123,6 +151,52 @@ private:
 		if (cuStatus != cudaSuccess) {
 			throw MakeException(L"cudaGraphicsD3D11RegisterResource failed.");
 		}
+	}
+
+	static bool SetGpuPriority(ID3D11Device* device)
+	{
+		typedef enum _D3DKMT_SCHEDULINGPRIORITYCLASS {
+			D3DKMT_SCHEDULINGPRIORITYCLASS_IDLE,
+			D3DKMT_SCHEDULINGPRIORITYCLASS_BELOW_NORMAL,
+			D3DKMT_SCHEDULINGPRIORITYCLASS_NORMAL,
+			D3DKMT_SCHEDULINGPRIORITYCLASS_ABOVE_NORMAL,
+			D3DKMT_SCHEDULINGPRIORITYCLASS_HIGH,
+			D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME
+		} D3DKMT_SCHEDULINGPRIORITYCLASS;
+
+		ComQIPtr<IDXGIDevice> dxgiDevice(device);
+		if (!dxgiDevice) {
+			Log("[GPU PRIO FIX] Failed to get IDXGIDevice");
+			return false;
+		}
+
+		HMODULE gdi32 = GetModuleHandleW(L"GDI32");
+		if (!gdi32) {
+			Log("[GPU PRIO FIX] Failed to get GDI32");
+			return false;
+		}
+
+		NTSTATUS(WINAPI* d3dkmt_spspc)(HANDLE, D3DKMT_SCHEDULINGPRIORITYCLASS);
+		d3dkmt_spspc = (decltype(d3dkmt_spspc))GetProcAddress(gdi32, "D3DKMTSetProcessSchedulingPriorityClass");
+		if (!d3dkmt_spspc) {
+			Log(L"[GPU PRIO FIX] Failed to get d3dkmt_spspc\n");
+			return false;
+		}
+		
+		NTSTATUS status = d3dkmt_spspc(GetCurrentProcess(), D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME);
+		if (status != 0) {
+			Log(L"[GPU PRIO FIX] Failed to set process (%d) priority class: %u", GetCurrentProcess(), status);
+			return false;
+		}
+
+		HRESULT hr = dxgiDevice->SetGPUThreadPriority(GPU_PRIORITY_VAL);
+		if (FAILED(hr)) {
+			Log("[GPU PRIO FIX] SetGPUThreadPriority failed");
+			return false;
+		}
+
+		Log("[GPU PRIO FIX] D3D11 GPU priority setup success");
+		return true;
 	}
 
 private:

@@ -43,13 +43,11 @@ public:
 
 	int getControllerIndex();
 
-	void GetBoneTransformInterpolation(bool withController, bool isLeftHand, float animationProgress, const TrackingInfo::Controller &currentPoseInfo, const TrackingInfo::Controller &lastPoseInfo, vr::VRBoneTransform_t outBoneTransform[]);
-
-	void GetBoneTransform(bool withController, bool isLeftHand, const TrackingInfo::Controller &c, vr::VRBoneTransform_t outBoneTransform[]);
+	void GetBoneTransform(bool withController, bool isLeftHand, float thumbAnimationProgress, float indexAnimationProgress, uint64_t lastPoseTouch, const TrackingInfo::Controller& currentPoseInfo, vr::VRBoneTransform_t outBoneTransform[]);
 
 private:
 	static const int SKELETON_BONE_COUNT = 31;
-	static const int ANIMATION_FRAMES_N = 15;
+	static const int ANIMATION_FRAME_COUNT = 15;
 
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
@@ -100,8 +98,8 @@ private:
 
 	vr::DriverPose_t m_pose;
 
-	float m_leftControllerAnimationProgress = 0;
-	float m_rightControllerAnimationProgress = 0;
-	TrackingInfo::Controller m_lastLeftControllerPoseInfo = {};
-	TrackingInfo::Controller m_lastRightControllerPoseInfo = {};
+	float m_thumbAnimationProgress = 0;
+	float m_indexAnimationProgress = 0;
+	uint64_t m_lastThumbTouch = 0;
+	uint64_t m_lastIndexTouch = 0;
 };

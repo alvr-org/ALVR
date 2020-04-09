@@ -264,34 +264,31 @@ void Log(const char *format, ...)
 	va_end(args);
 }
 
-void LogException(const wchar_t *format, ...)
-{
+
+void LogDriver(const char* format, ...) {
 	va_list args;
 	va_start(args, format);
-	LogV(format, args, &lastException);
+	DriverLogVarArgs(format, args);
+	LogV(format, args, nullptr);
 	va_end(args);
 }
+
 
 void LogException(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
+	DriverLogVarArgs(format, args);
 	LogV(format, args, &lastException);
 	va_end(args);
 }
 
-void FatalLog(const wchar_t *format, ...) {
-	va_list args;
-	va_start(args, format);
-	LogV(format, args, &lastException);
-	va_end(args);
 
-	ReportError(NULL);
-}
 
 void FatalLog(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
+	DriverLogVarArgs(format, args);
 	LogV(format, args, &lastException);
 	va_end(args);
 
@@ -299,11 +296,11 @@ void FatalLog(const char *format, ...) {
 }
 
 void LogHR(const std::wstring &message, HRESULT hr) {
-	Log(L"%ls HR=%p %ls", message.c_str(), hr, GetErrorStr(hr).c_str());
+	Log("%ls HR=%p %ls", message.c_str(), hr, GetErrorStr(hr).c_str());
 }
 
 void ThrowHR(const std::wstring &message, HRESULT hr) {
-	throw MakeException(L"%ls HR=%p %ls", message.c_str(), hr, GetErrorStr(hr).c_str());
+	throw MakeException("%ls HR=%p %ls", message.c_str(), hr, GetErrorStr(hr).c_str());
 }
 
 Exception MakeException(const wchar_t *format, ...) {

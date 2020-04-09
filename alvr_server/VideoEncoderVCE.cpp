@@ -295,7 +295,7 @@ void VideoEncoderVCE::Reconfigure(int refreshRate, int renderWidth, int renderHe
 			Initialize();
 		}
 		catch (Exception &e) {
-			FatalLog(L"VideoEncoderVCE: Failed to reconfigure. %hs"
+			FatalLog("VideoEncoderVCE: Failed to reconfigure. %hs"
 				, e.what()
 			);
 			return;

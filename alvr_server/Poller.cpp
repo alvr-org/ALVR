@@ -73,7 +73,7 @@ bool Poller::BindQueueSocket()
 {
 	mQueueSocket = socket(AF_INET, SOCK_DGRAM, 0);
 	if (mQueueSocket == INVALID_SOCKET) {
-		FatalLog(L"Poller::BindQueueSocket socket creation error: %d %s", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		FatalLog("Poller::BindQueueSocket socket creation error: %d %s", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 
@@ -90,7 +90,7 @@ bool Poller::BindQueueSocket()
 
 	int ret = bind(mQueueSocket, (sockaddr *)&addr, sizeof(addr));
 	if (ret != 0) {
-		FatalLog(L"Poller::BindQueueSocket bind error : %d %s", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		FatalLog("Poller::BindQueueSocket bind error : %d %s", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 
@@ -98,7 +98,7 @@ bool Poller::BindQueueSocket()
 	int len = sizeof(mQueueAddr);
 	ret = getsockname(mQueueSocket, (sockaddr *)&mQueueAddr, &len);
 	if (ret != 0) {
-		FatalLog(L"Poller::BindQueueSocket getsockname error : %d %hs", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		FatalLog("Poller::BindQueueSocket getsockname error : %d %hs", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 	char buf[30];

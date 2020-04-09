@@ -106,7 +106,7 @@ bool UdpSocket::BindSocket()
 {
 	mSocket = socket(AF_INET, SOCK_DGRAM, 0);
 	if (mSocket == INVALID_SOCKET) {
-		FatalLog(L"UdpSocket::BindSocket socket creation error: %d %s", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		FatalLog("UdpSocket::BindSocket socket creation error: %d %s", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 
@@ -123,7 +123,7 @@ bool UdpSocket::BindSocket()
 
 	int ret = bind(mSocket, (sockaddr *)&addr, sizeof(addr));
 	if (ret != 0) {
-		FatalLog(L"UdpSocket::BindSocket bind error : Address=%hs:%d %d %s", mHost.c_str(), mPort, WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		FatalLog("UdpSocket::BindSocket bind error : Address=%hs:%d %d %s", mHost.c_str(), mPort, WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 	Log(L"UdpSocket::BindSocket successfully bound to %hs:%d", mHost.c_str(), mPort);

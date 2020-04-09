@@ -9,6 +9,7 @@
 #include "sharedstate.h"
 #include "ClientConnection.h"
 #include "OvrHMD.h"
+#include "driverlog.h"
 
 HINSTANCE g_hInstance;
 
@@ -79,11 +80,13 @@ private:
 vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pContext )
 {
 	VR_INIT_SERVER_DRIVER_CONTEXT( pContext );
+	InitDriverLog(vr::VRDriverLog());
+	
 
 	m_mutex = std::make_shared<IPCMutex>(APP_MUTEX_NAME, true);
 	if (m_mutex->AlreadyExist()) {
 		// Duplicate driver installation.
-		FatalLog(L"ALVR Server driver is installed on multiple locations. This causes some issues.\r\n"
+		FatalLog("ALVR Server driver is installed on multiple locations. This causes some issues.\r\n"
 			"Please check the installed driver list on About tab and uninstall old drivers.");
 		return vr::VRInitError_Driver_Failed;
 	}
@@ -119,6 +122,8 @@ void CServerDriver_DisplayRedirect::Cleanup()
 	m_Listener.reset();
 	m_pRemoteHmd.reset();
 	m_mutex.reset();
+
+	CleanupDriverLog();
 
 	VR_CLEANUP_SERVER_DRIVER_CONTEXT();
 }

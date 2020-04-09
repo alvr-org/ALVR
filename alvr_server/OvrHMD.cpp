@@ -145,14 +145,14 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		// m_nAdapterIndex is set 0 on the launcher.
 		if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
 		{
-			FatalLog(L"Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
+			FatalLog("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
 			return vr::VRInitError_Driver_Failed;
 		}
 
 		int32_t nDisplayAdapterIndex;
 		if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, m_adapterName))
 		{
-			FatalLog(L"Failed to get primary adapter info!");
+			FatalLog("Failed to get primary adapter info!");
 			return vr::VRInitError_Driver_Failed;
 		}
 
@@ -165,7 +165,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			m_encoder->Initialize(m_D3DRender, m_Listener);
 		}
 		catch (Exception e) {
-			FatalLog(L"Failed to initialize CEncoder. %s", e.what());
+			FatalLog("Failed to initialize CEncoder. %s", e.what());
 			return vr::VRInitError_Driver_Failed;
 		}
 		m_encoder->Start();
@@ -176,7 +176,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 				m_audioCapture->Start(ToWstring(Settings::Instance().m_soundDevice));
 			}
 			catch (Exception e) {
-				FatalLog(L"Failed to start audio capture. %s", e.what());
+				FatalLog("Failed to start audio capture. %s", e.what());
 				return vr::VRInitError_Driver_Failed;
 			}
 		}

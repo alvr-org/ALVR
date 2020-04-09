@@ -119,14 +119,14 @@ void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int render
 			ret = m_NvNecoder->Reconfigure(&reconfigureParams);
 		}
 		catch (NVENCException e) {
-			FatalLog(L"NvEnc Reconfigure failed with exception. Code=%d %hs. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)", e.getErrorCode(), e.what()
+			FatalLog("NvEnc Reconfigure failed with exception. Code=%d %hs. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)", e.getErrorCode(), e.what()
 				, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
 				, refreshRate, renderWidth, renderHeight, bitrateInMBits
 			);
 			return;
 		}
 		if (!ret) {
-			FatalLog(L"NvEnc Reconfigure failed. Return code=%d. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)", ret
+			FatalLog("NvEnc Reconfigure failed. Return code=%d. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)", ret
 				, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
 				, refreshRate, renderWidth, renderHeight, bitrateInMBits
 			);
@@ -188,7 +188,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 			m_Converter->Convert(pTexture, encoderInputFrame);
 		}
 		catch (NVENCException e) {
-			FatalLog(L"Exception:%hs", e.what());
+			FatalLog("Exception:%hs", e.what());
 			return;
 		}
 	}

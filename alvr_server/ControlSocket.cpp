@@ -21,7 +21,7 @@ bool ControlSocket::Startup() {
 
 	m_Socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (m_Socket == INVALID_SOCKET) {
-		FatalLog(L"ControlSocket::Startup socket error : %d", WSAGetLastError());
+		FatalLog("ControlSocket::Startup socket error : %d", WSAGetLastError());
 		return false;
 	}
 
@@ -35,12 +35,12 @@ bool ControlSocket::Startup() {
 	inet_pton(AF_INET, CONTROL_HOST, &addr.sin_addr);
 
 	if (bind(m_Socket, (sockaddr *)&addr, sizeof(addr))) {
-		FatalLog(L"ControlSocket::Startup bind error : %d", WSAGetLastError());
+		FatalLog("ControlSocket::Startup bind error : %d", WSAGetLastError());
 		return false;
 	}
 
 	if (listen(m_Socket, 10)) {
-		FatalLog(L"ControlSocket::Startup listen error : %d", WSAGetLastError());
+		FatalLog("ControlSocket::Startup listen error : %d", WSAGetLastError());
 		return false;
 	}
 

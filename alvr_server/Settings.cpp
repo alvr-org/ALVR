@@ -42,7 +42,7 @@ void Settings::Load()
 		picojson::value v;
 		std::string err = picojson::parse(v, json);
 		if (!err.empty()) {
-			FatalLog(L"Error on parsing json: %hs", err.c_str());
+			FatalLog("Error on parsing json: %hs", err.c_str());
 			return;
 		}
 
@@ -192,6 +192,6 @@ void Settings::Load()
 		m_loaded = true;
 	}
 	catch (std::exception &e) {
-		FatalLog(L"Exception on parsing json: %hs", e.what());
+		FatalLog("Exception on parsing json: %hs", e.what());
 	}
 }

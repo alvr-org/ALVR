@@ -74,12 +74,12 @@ namespace
 		ID3D11Multithread *D3D11Multithread = NULL;
 		HRESULT hr = (*pD3D11Context)->QueryInterface(__uuidof(ID3D11Multithread), (void **)&D3D11Multithread);
 		if (SUCCEEDED(hr)) {
-			Log(L"Successfully get ID3D11Multithread interface. We set SetMultithreadProtected(TRUE)");
+			Log("Successfully get ID3D11Multithread interface. We set SetMultithreadProtected(TRUE)");
 			D3D11Multithread->SetMultithreadProtected(TRUE);
 			D3D11Multithread->Release();
 		}
 		else {
-			Log(L"Failed to get ID3D11Multithread interface. Ignore.");
+			Log("Failed to get ID3D11Multithread interface. Ignore.");
 		}
 
 		return true;

@@ -9,7 +9,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
-		Log(L"Startup: %hs %hs", APP_MODULE_NAME, APP_VERSION_STRING);
+		LogDriver("Startup: %hs %hs", APP_MODULE_NAME, APP_VERSION_STRING);
 
 		std::function<void()> launcherCallback = [&]() { Enable(); };
 		std::function<void(std::string, std::string)> commandCallback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
@@ -27,7 +27,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		m_Listener->SetPacketLossCallback(packetLossCallback);
 		m_Listener->SetShutdownCallback(shutdownCallback);
 
-		Log(L"CRemoteHmd successfully initialized.");
+		LogDriver("CRemoteHmd successfully initialized.");
 	}
 
 	OvrHmd::~OvrHmd()
@@ -96,7 +96,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 	 vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	{
-		Log(L"CRemoteHmd Activate %d", unObjectId);
+		LogDriver("CRemoteHmd Activate %d", unObjectId);
 
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
@@ -156,8 +156,8 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			return vr::VRInitError_Driver_Failed;
 		}
 
-		Log(L"Using %s as primary graphics adapter.", m_adapterName.c_str());
-		Log(L"OSVer: %s", GetWindowsOSVersion().c_str());
+		LogDriver("Using %s as primary graphics adapter.", m_adapterName.c_str());
+		LogDriver("OSVer: %s", GetWindowsOSVersion().c_str());
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
 		m_encoder = std::make_shared<CEncoder>();
@@ -197,7 +197,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 	 void OvrHmd::Deactivate() 
 	{
-		Log(L"CRemoteHmd Deactivate");
+		LogDriver("CRemoteHmd Deactivate");
 		mActivated = false;
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 	}
@@ -208,7 +208,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 	void* OvrHmd::GetComponent(const char *pchComponentNameAndVersion)
 	{
-		Log(L"GetComponent %hs", pchComponentNameAndVersion);
+		LogDriver("GetComponent %hs", pchComponentNameAndVersion);
 		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
 		{
 			return m_displayComponent.get();
@@ -256,7 +256,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
 			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
 
-			Log(L"GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)",
+			Log("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)",
 				pose.qRotation.x,
 				pose.qRotation.y,
 				pose.qRotation.z,
@@ -282,7 +282,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		// driver blocks it for some periodic task.
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
 		{
-			//Log(L"RunFrame");
+			//LogDriver("RunFrame");
 			//vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 		}
 	}
@@ -402,7 +402,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			m_Listener->SendCommandResponse("OK\n");
 		}
 		else {
-			Log(L"Invalid control command: %hs", commandName.c_str());
+			LogDriver("Invalid control command: %hs", commandName.c_str());
 			m_Listener->SendCommandResponse("NG\n");
 		}
 
@@ -521,7 +521,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		if (!m_added || !mActivated) {
 			return;
 		}
-		Log(L"OnStreamStart()");
+		LogDriver("OnStreamStart()");
 		// Insert IDR frame for faster startup of decoding.
 		m_encoder->OnStreamStart();
 
@@ -533,7 +533,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		if (!m_added || !mActivated) {
 			return;
 		}
-		Log(L"OnPacketLoss()");
+		LogDriver("OnPacketLoss()");
 		m_encoder->OnPacketLoss();
 	}
 
@@ -541,7 +541,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		if (!m_added || !mActivated) {
 			return;
 		}
-		Log(L"Sending shutdown signal to vrserver.");
+		LogDriver("Sending shutdown signal to vrserver.");
 		vr::VREvent_Reserved_t data = { 0, 0 };
 		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_DriverRequestedQuit, (vr::VREvent_Data_t&)data, 0);
 	}

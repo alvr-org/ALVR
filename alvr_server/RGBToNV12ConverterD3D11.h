@@ -82,7 +82,7 @@ public:
 		D3D11_VIDEO_PROCESSOR_STREAM stream = { TRUE, 0, 0, 0, 0, NULL, pInputView, NULL };
 		HRESULT hr = pVideoContext->VideoProcessorBlt(pVideoProcessor, pOutputView, 0, 1, &stream);
 		if (FAILED(hr)) {
-			Log(L"Failed on VideoProcessorBlt. hr=%p %s", hr, GetDxErrorStr(hr).c_str());
+			LogDriver("Failed on VideoProcessorBlt. hr=%p %s", hr, GetDxErrorStr(hr).c_str());
 		}
 		return;
 	}

@@ -39,7 +39,7 @@ UINT MicPlayer::getCableHWID() {
 		MMRESULT mmr = waveOutGetDevCaps(dev, &caps, sizeof(caps));
 
 		if (MMSYSERR_NOERROR != mmr) {
-			Log(L"waveOutGetDevCaps failed: mmr = 0x%08x", mmr);
+			LogDriver("waveOutGetDevCaps failed: mmr = 0x%08x", mmr);
 			return -1;
 		}
 
@@ -59,7 +59,7 @@ UINT MicPlayer::getCableHWID() {
 
 		if (name.find("CABLE") == 0)
 		{
-			Log(L"CABLE Device found: %u", dev);
+			LogDriver("CABLE Device found: %u", dev);
 			return dev;
 		}
 	}	

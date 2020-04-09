@@ -41,11 +41,11 @@ static void load_debug_privilege(void)
 		tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
 		if (!AdjustTokenPrivileges(token, false, &tp, sizeof(tp), NULL, NULL)) {
-			Log(L"[GPU PRIO FIX] Could not set privilege to increase GPU priority");
+			LogDriver("[GPU PRIO FIX] Could not set privilege to increase GPU priority");
 		}
 	}
 
-	Log(L"[GPU PRIO FIX] Succeeded to set some sort of priority.");
+	LogDriver("[GPU PRIO FIX] Succeeded to set some sort of priority.");
 
 	CloseHandle(token);
 }
@@ -145,10 +145,10 @@ void *HmdDriverFactory( const char *pInterfaceName, int *pReturnCode )
 
 	load_debug_privilege();
 
-	Log(L"HmdDriverFactory %hs (%hs)", pInterfaceName, vr::IServerTrackedDeviceProvider_Version);
+	LogDriver("HmdDriverFactory %hs (%hs)", pInterfaceName, vr::IServerTrackedDeviceProvider_Version);
 	if ( 0 == strcmp( vr::IServerTrackedDeviceProvider_Version, pInterfaceName ) )
 	{
-		Log(L"HmdDriverFactory server return");
+		LogDriver("HmdDriverFactory server return");
 		return &g_serverDriverDisplayRedirect;
 	}
 

@@ -177,17 +177,17 @@ void Settings::Load()
 			OpenLog((m_DebugOutputDir + "\\" + LOG_FILE).c_str());
 		}
 
-		Log(L"Config JSON: %hs", json.c_str());
-		Log(L"Serial Number: %hs", mSerialNumber.c_str());
-		Log(L"Model Number: %hs", mModelNumber.c_str());
-		Log(L"Render Target: %d %d", m_renderWidth, m_renderHeight);
-		Log(L"Seconds from Vsync to Photons: %f", m_flSecondsFromVsyncToPhotons);
-		Log(L"Refresh Rate: %d", m_refreshRate);
-		Log(L"IPD: %f", m_flIPD);
+		LogDriver("Config JSON: %hs", json.c_str());
+		LogDriver("Serial Number: %hs", mSerialNumber.c_str());
+		LogDriver("Model Number: %hs", mModelNumber.c_str());
+		LogDriver("Render Target: %d %d", m_renderWidth, m_renderHeight);
+		LogDriver("Seconds from Vsync to Photons: %f", m_flSecondsFromVsyncToPhotons);
+		LogDriver("Refresh Rate: %d", m_refreshRate);
+		LogDriver("IPD: %f", m_flIPD);
 
-		Log(L"debugOptions: Log:%d FrameIndex:%d FrameOutput:%d CaptureOutput:%d UseKeyedMutex:%d"
+		LogDriver("debugOptions: Log:%d FrameIndex:%d FrameOutput:%d CaptureOutput:%d UseKeyedMutex:%d"
 			, m_DebugLog, m_DebugFrameIndex, m_DebugFrameOutput, m_DebugCaptureOutput, m_UseKeyedMutex);
-		Log(L"EncoderOptions: %hs", m_EncoderOptions.c_str());
+		LogDriver("EncoderOptions: %hs", m_EncoderOptions.c_str());
 
 		m_loaded = true;
 	}

@@ -33,7 +33,7 @@ void VideoEncoderNVENC::Initialize()
 		format = NV_ENC_BUFFER_FORMAT_NV12;
 	}
 
-	Log(L"Initializing CNvEncoder. Width=%d Height=%d Format=%d (useNV12:%d)", m_renderWidth, m_renderHeight
+	LogDriver("Initializing CNvEncoder. Width=%d Height=%d Format=%d (useNV12:%d)", m_renderWidth, m_renderHeight
 		, format, m_useNV12);
 
 	if (m_useNV12) {
@@ -88,11 +88,11 @@ void VideoEncoderNVENC::Initialize()
 		fpOut = std::ofstream(Settings::Instance().GetVideoOutput(), std::ios::out | std::ios::binary);
 		if (!fpOut)
 		{
-			Log(L"unable to open output file %hs", Settings::Instance().GetVideoOutput().c_str());
+			LogDriver("unable to open output file %hs", Settings::Instance().GetVideoOutput().c_str());
 		}
 	}
 
-	Log(L"CNvEncoder is successfully initialized.");
+	LogDriver("CNvEncoder is successfully initialized.");
 }
 
 void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits)
@@ -132,7 +132,7 @@ void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int render
 			);
 			return;
 		}
-		Log(L"NvEnc Reconfigure succeeded. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)"
+		LogDriver("NvEnc Reconfigure succeeded. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)"
 			, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
 			, refreshRate, renderWidth, renderHeight, bitrateInMBits
 		);
@@ -169,7 +169,7 @@ void VideoEncoderNVENC::Shutdown()
 		m_NvNecoder.reset();
 	}
 
-	Log(L"CNvEncoder::Shutdown");
+	LogDriver("CNvEncoder::Shutdown");
 
 	if (fpOut) {
 		fpOut.close();
@@ -199,13 +199,13 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 
 	NV_ENC_PIC_PARAMS picParams = {};
 	if (insertIDR) {
-		Log(L"Inserting IDR frame.");
+		LogDriver("Inserting IDR frame.");
 		picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
 	}
 	m_NvNecoder->EncodeFrame(vPacket, &picParams);
 
-	Log(L"Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
-	Log(L"Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
+	Log("Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
+	Log("Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
 
 	if (m_Listener) {
 		m_Listener->GetStatistics()->EncodeOutput(GetTimestampUs() - presentationTime);
@@ -255,8 +255,8 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	// Use reference frame invalidation to faster recovery from frame loss if supported.
 	mSupportsReferenceFrameInvalidation = m_NvNecoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_REF_PIC_INVALIDATION);
 	bool supportsIntraRefresh = m_NvNecoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_INTRA_REFRESH);
-	Log(L"VideoEncoderNVENC: SupportsReferenceFrameInvalidation: %d", mSupportsReferenceFrameInvalidation);
-	Log(L"VideoEncoderNVENC: SupportsIntraRefresh: %d", supportsIntraRefresh);
+	LogDriver("VideoEncoderNVENC: SupportsReferenceFrameInvalidation: %d", mSupportsReferenceFrameInvalidation);
+	LogDriver("VideoEncoderNVENC: SupportsIntraRefresh: %d", supportsIntraRefresh);
 
 	// 16 is recommended when using reference frame invalidation. But it has caused bad visual quality.
 	// Now, use 0 (use default).
@@ -304,7 +304,7 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	//encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;// NV_ENC_PARAMS_RC_CBR_HQ;
 	encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;
 	uint32_t maxFrameSize = static_cast<uint32_t>(bitrate.toBits() / refreshRate);
-	Log(L"VideoEncoderNVENC: maxFrameSize=%d bits", maxFrameSize);
+	LogDriver("VideoEncoderNVENC: maxFrameSize=%d bits", maxFrameSize);
 	encodeConfig.rcParams.vbvBufferSize = maxFrameSize;
 	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize;
 	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrate.toBits());

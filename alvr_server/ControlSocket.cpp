@@ -44,7 +44,7 @@ bool ControlSocket::Startup() {
 		return false;
 	}
 
-	Log(L"ControlSocket::Startup Successfully bound to %hs:%d", CONTROL_HOST, CONTROL_PORT);
+	LogDriver("ControlSocket::Startup Successfully bound to %hs:%d", CONTROL_HOST, CONTROL_PORT);
 
 	m_Poller->AddSocket(m_Socket, PollerSocketType::READ);
 
@@ -69,7 +69,7 @@ bool ControlSocket::Accept() {
 	}
 
 	if (m_ClientSocket != INVALID_SOCKET) {
-		Log(L"Closing old control client");
+		LogDriver("Closing old control client");
 		m_Buf = "";
 		CloseClient();
 	}
@@ -85,19 +85,19 @@ bool ControlSocket::Recv(std::vector<std::string> &commands) {
 		return false;
 	}
 
-	Log(L"ControlSocket::Recv(). recv");
+	Log("ControlSocket::Recv(). recv");
 
 	char buf[1000];
 	int ret = recv(m_ClientSocket, buf, sizeof(buf) - 1, 0);
-	Log(L"ControlSocket::Recv(). recv leave: ret=%d", ret);
+	Log("ControlSocket::Recv(). recv leave: ret=%d", ret);
 	if (ret == 0) {
-		Log(L"Control connection has closed");
+		LogDriver("Control connection has closed");
 		m_Buf = "";
 		CloseClient();
 		return false;
 	}
 	if (ret < 0) {
-		Log(L"Error on recv. close control client: %d", WSAGetLastError());
+		LogDriver("Error on recv. close control client: %d", WSAGetLastError());
 		m_Buf = "";
 		CloseClient();
 		return false;
@@ -105,7 +105,7 @@ bool ControlSocket::Recv(std::vector<std::string> &commands) {
 	buf[ret] = 0;
 	m_Buf += buf;
 
-	Log(L"ControlSocket::Recv(). while");
+	Log("ControlSocket::Recv(). while");
 	size_t index;
 	while ((index = m_Buf.find("\n")) != std::string::npos) {
 		commands.push_back(m_Buf.substr(0, index));

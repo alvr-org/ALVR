@@ -54,7 +54,7 @@ bool OvrController::GetHand() {
 
 vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 {
-	Log(L"RemoteController::Activate. objectId=%d", unObjectId);
+	LogDriver("RemoteController::Activate. objectId=%d", unObjectId);
 
 	m_unObjectId = unObjectId;
 	m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
@@ -188,7 +188,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 void OvrController::Deactivate()
 {
-	Log(L"RemoteController::Deactivate");
+	LogDriver("RemoteController::Deactivate");
 	m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 }
 
@@ -198,7 +198,7 @@ void OvrController::EnterStandby()
 
 void *OvrController::GetComponent(const char *pchComponentNameAndVersion)
 {
-	Log(L"RemoteController::GetComponent. Name=%hs", pchComponentNameAndVersion);
+	LogDriver("RemoteController::GetComponent. Name=%hs", pchComponentNameAndVersion);
 
 	return NULL;
 }
@@ -217,7 +217,7 @@ void *OvrController::GetComponent(const char *pchComponentNameAndVersion)
  vr::DriverPose_t OvrController::GetPose()
 {
 
-	 Log(L"Controller%d getPose %lf %lf %lf", m_index, m_pose.vecPosition[0], m_pose.vecPosition[1], m_pose.vecPosition[2]);
+	 Log("Controller%d getPose %lf %lf %lf", m_index, m_pose.vecPosition[0], m_pose.vecPosition[1], m_pose.vecPosition[2]);
 
 	return m_pose;
 }
@@ -351,7 +351,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	*/
 	
 
-	Log(L"CONTROLLER %d %f,%f,%f - %f,%f,%f", m_index, m_pose.vecVelocity[0], m_pose.vecVelocity[1], m_pose.vecVelocity[2], m_pose.vecAngularVelocity[0], m_pose.vecAngularVelocity[1], m_pose.vecAngularVelocity[2]);
+	Log("CONTROLLER %d %f,%f,%f - %f,%f,%f", m_index, m_pose.vecVelocity[0], m_pose.vecVelocity[1], m_pose.vecVelocity[2], m_pose.vecAngularVelocity[0], m_pose.vecAngularVelocity[1], m_pose.vecAngularVelocity[2]);
 	
 	
 
@@ -386,7 +386,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	   
 
 	auto& c = info.controller[controllerIndex];
-	Log(L"Controller%d %d %lu: %08llX %08X %f:%f", m_index,controllerIndex, (unsigned long)m_unObjectId, c.buttons, c.flags, c.trackpadPosition.x, c.trackpadPosition.y);
+	Log("Controller%d %d %lu: %08llX %08X %f:%f", m_index,controllerIndex, (unsigned long)m_unObjectId, c.buttons, c.flags, c.trackpadPosition.x, c.trackpadPosition.y);
 
 	if (c.flags & TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND) {
 

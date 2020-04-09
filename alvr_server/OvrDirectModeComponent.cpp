@@ -24,7 +24,7 @@ void OvrDirectModeComponent::OnPoseUpdated(TrackingInfo &info) {
 		info.HeadPose_Pose_Orientation.z,
 		&history.rotationMatrix);
 
-	Log(L"Rotation Matrix=(%f, %f, %f, %f) (%f, %f, %f, %f) (%f, %f, %f, %f)"
+	Log("Rotation Matrix=(%f, %f, %f, %f) (%f, %f, %f, %f) (%f, %f, %f, %f)"
 		, history.rotationMatrix.m[0][0], history.rotationMatrix.m[0][1], history.rotationMatrix.m[0][2], history.rotationMatrix.m[0][3]
 		, history.rotationMatrix.m[1][0], history.rotationMatrix.m[1][1], history.rotationMatrix.m[1][2], history.rotationMatrix.m[1][3]
 		, history.rotationMatrix.m[2][0], history.rotationMatrix.m[2][1], history.rotationMatrix.m[2][2], history.rotationMatrix.m[2][3]);
@@ -51,7 +51,7 @@ void OvrDirectModeComponent::OnPoseUpdated(TrackingInfo &info) {
 /** Specific to Oculus compositor support, textures supplied must be created using this method. */
 void OvrDirectModeComponent::CreateSwapTextureSet(uint32_t unPid, const SwapTextureSetDesc_t *pSwapTextureSetDesc, vr::SharedTextureHandle_t(*pSharedTextureHandles)[3])
 {
-	Log(L"CreateSwapTextureSet pid=%d Format=%d %dx%d SampleCount=%d", unPid, pSwapTextureSetDesc->nFormat
+	Log("CreateSwapTextureSet pid=%d Format=%d %dx%d SampleCount=%d", unPid, pSwapTextureSetDesc->nFormat
 		, pSwapTextureSetDesc->nWidth, pSwapTextureSetDesc->nHeight, pSwapTextureSetDesc->nSampleCount);
 
 	//HRESULT hr = D3D11CreateDevice(pAdapter, D3D_DRIVER_TYPE_HARDWARE, NULL, creationFlags, NULL, 0, D3D11_SDK_VERSION, &pDevice, &eFeatureLevel, &pContext);
@@ -78,14 +78,14 @@ void OvrDirectModeComponent::CreateSwapTextureSet(uint32_t unPid, const SwapText
 
 	for (int i = 0; i < 3; i++) {
 		HRESULT hr = m_pD3DRender->GetDevice()->CreateTexture2D(&SharedTextureDesc, NULL, &processResource->textures[i]);
-		//Log(L"texture%d %p res:%d %s", i, texture[i], hr, GetDxErrorStr(hr).c_str());
+		//LogDriver("texture%d %p res:%d %s", i, texture[i], hr, GetDxErrorStr(hr).c_str());
 
 		IDXGIResource* pResource;
 		hr = processResource->textures[i]->QueryInterface(__uuidof(IDXGIResource), (void**)&pResource);
-		//Log(L"QueryInterface %p res:%d %s", pResource, hr, GetDxErrorStr(hr).c_str());
+		//LogDriver("QueryInterface %p res:%d %s", pResource, hr, GetDxErrorStr(hr).c_str());
 
 		hr = pResource->GetSharedHandle(&processResource->sharedHandles[i]);
-		//Log(L"GetSharedHandle %p res:%d %s", processResource->sharedHandles[i], hr, GetDxErrorStr(hr).c_str());
+		//LogDriver("GetSharedHandle %p res:%d %s", processResource->sharedHandles[i], hr, GetDxErrorStr(hr).c_str());
 
 		m_handleMap.insert(std::make_pair(processResource->sharedHandles[i], std::make_pair(processResource, i)));
 
@@ -93,7 +93,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(uint32_t unPid, const SwapText
 
 		pResource->Release();
 
-		Log(L"Created Texture %d %p", i, processResource->sharedHandles[i]);
+		Log("Created Texture %d %p", i, processResource->sharedHandles[i]);
 	}
 	//m_processMap.insert(std::pair<uint32_t, ProcessResource *>(unPid, processResource));
 }
@@ -101,7 +101,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(uint32_t unPid, const SwapText
 /** Used to textures created using CreateSwapTextureSet.  Only one of the set's handles needs to be used to destroy the entire set. */
 void OvrDirectModeComponent::DestroySwapTextureSet(vr::SharedTextureHandle_t sharedTextureHandle)
 {
-	Log(L"DestroySwapTextureSet %p", sharedTextureHandle);
+	Log("DestroySwapTextureSet %p", sharedTextureHandle);
 
 	auto it = m_handleMap.find((HANDLE)sharedTextureHandle);
 	if (it != m_handleMap.end()) {
@@ -113,14 +113,14 @@ void OvrDirectModeComponent::DestroySwapTextureSet(vr::SharedTextureHandle_t sha
 		delete p;
 	}
 	else {
-		Log(L"Requested to destroy not managing texture. handle:%p", sharedTextureHandle);
+		Log("Requested to destroy not managing texture. handle:%p", sharedTextureHandle);
 	}
 }
 
 /** Used to purge all texture sets for a given process. */
 void OvrDirectModeComponent::DestroyAllSwapTextureSets(uint32_t unPid)
 {
-	Log(L"DestroyAllSwapTextureSets pid=%d", unPid);
+	Log("DestroyAllSwapTextureSets pid=%d", unPid);
 
 	for (auto it = m_handleMap.begin(); it != m_handleMap.end();) {
 		if (it->second.first->pid == unPid) {
@@ -138,7 +138,7 @@ void OvrDirectModeComponent::DestroyAllSwapTextureSets(uint32_t unPid)
 /** After Present returns, calls this to get the next index to use for rendering. */
 void OvrDirectModeComponent::GetNextSwapTextureSetIndex(vr::SharedTextureHandle_t sharedTextureHandles[2], uint32_t(*pIndices)[2])
 {
-	Log(L"GetNextSwapTextureSetIndex %p %p %d %d", sharedTextureHandles[0], sharedTextureHandles[1], (*pIndices)[0], (*pIndices)[1]);
+	Log("GetNextSwapTextureSetIndex %p %p %d %d", sharedTextureHandles[0], sharedTextureHandles[1], (*pIndices)[0], (*pIndices)[1]);
 	(*pIndices)[0]++;
 	(*pIndices)[0] %= 3;
 	(*pIndices)[1]++;
@@ -149,7 +149,7 @@ void OvrDirectModeComponent::GetNextSwapTextureSetIndex(vr::SharedTextureHandle_
 * using CreateSwapTextureSet and should be alternated per frame.  Call Present once all layers have been submitted. */
 void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2], const vr::HmdMatrix34_t *pPose)
 {
-	Log(L"SubmitLayer Handles=%p,%p DepthHandles=%p,%p %f-%f,%f-%f %f-%f,%f-%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f"
+	Log("SubmitLayer Handles=%p,%p DepthHandles=%p,%p %f-%f,%f-%f %f-%f,%f-%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f"
 		, perEye[0].hTexture, perEye[1].hTexture, perEye[0].hDepthTexture, perEye[1].hDepthTexture
 		, perEye[0].bounds.uMin, perEye[0].bounds.uMax, perEye[0].bounds.vMin, perEye[0].bounds.vMax
 		, perEye[1].bounds.uMin, perEye[1].bounds.uMax, perEye[1].bounds.vMin, perEye[1].bounds.vMax
@@ -184,7 +184,7 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2], 
 					distance += pow(it->rotationMatrix.m[j][i] - pPose->m[j][i], 2);
 				}
 			}
-			//Log(L"diff %f %llu", distance, it->info.FrameIndex);
+			//LogDriver("diff %f %llu", distance, it->info.FrameIndex);
 			if (minDiff > distance) {
 				minIndex = index;
 				minIt = it;
@@ -204,7 +204,7 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2], 
 			m_framePoseRotation.z = minIt->info.HeadPose_Pose_Orientation.z;
 			m_framePoseRotation.w = minIt->info.HeadPose_Pose_Orientation.w;
 
-			Log(L"Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu minDiff=%f", m_prevSubmitFrameIndex, m_submitFrameIndex, minDiff);
+			Log("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu minDiff=%f", m_prevSubmitFrameIndex, m_submitFrameIndex, minDiff);
 		}
 		else {
 			m_submitFrameIndex = 0;
@@ -219,7 +219,7 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2], 
 		m_submitLayer++;
 	}
 	else {
-		Log(L"Too many layers submitted!");
+		LogDriver("Too many layers submitted!");
 	}
 
 	if (Settings::Instance().m_DriverTestMode & 8) {
@@ -234,7 +234,7 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2], 
 void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 {
 	bool useMutex = Settings::Instance().m_UseKeyedMutex;
-	Log(L"Present syncTexture=%p (use:%d) m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu", syncTexture, useMutex, m_prevSubmitFrameIndex, m_submitFrameIndex);
+	Log("Present syncTexture=%p (use:%d) m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu", syncTexture, useMutex, m_prevSubmitFrameIndex, m_submitFrameIndex);
 
 	IDXGIKeyedMutex *pKeyedMutex = NULL;
 
@@ -242,19 +242,19 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 	m_submitLayer = 0;
 
 	if (m_prevSubmitFrameIndex == m_submitFrameIndex) {
-		Log(L"Discard duplicated frame. FrameIndex=%llu (Ignoring)", m_submitFrameIndex);
+		Log("Discard duplicated frame. FrameIndex=%llu (Ignoring)", m_submitFrameIndex);
 		//return;
 	}
 
 	if (!m_Listener->IsStreaming()) {
-		Log(L"Discard frame because isStreaming=false. FrameIndex=%llu", m_submitFrameIndex);
+		Log("Discard frame because isStreaming=false. FrameIndex=%llu", m_submitFrameIndex);
 		return;
 	}
 
 	ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
 	if (!pSyncTexture)
 	{
-		Log(L"[VDispDvr] SyncTexture is NULL!");
+		LogDriver("[VDispDvr] SyncTexture is NULL!");
 		return;
 	}
 
@@ -264,18 +264,18 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 		// This enforces scheduling of work on the gpu between processes.
 		if (SUCCEEDED(pSyncTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void **)&pKeyedMutex)))
 		{
-			Log(L"[VDispDvr] Wait for SyncTexture Mutex.");
+			Log("[VDispDvr] Wait for SyncTexture Mutex.");
 			// TODO: Reasonable timeout and timeout handling
 			HRESULT hr = pKeyedMutex->AcquireSync(0, 10);
 			if (hr != S_OK)
 			{
-				Log(L"[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %s", hr, hr, GetErrorStr(hr).c_str());
+				LogDriver("[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %s", hr, hr, GetErrorStr(hr).c_str());
 				pKeyedMutex->Release();
 				return;
 			}
 		}
 
-		Log(L"[VDispDvr] Mutex Acquired.");
+		Log("[VDispDvr] Mutex Acquired.");
 	}
 
 	CopyTexture(layerCount);
@@ -286,7 +286,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 			pKeyedMutex->ReleaseSync(0);
 			pKeyedMutex->Release();
 		}
-		Log(L"[VDispDvr] Mutex Released.");
+		Log("[VDispDvr] Mutex Released.");
 	}
 
 	m_pEncoder->NewFrameReady();
@@ -306,21 +306,21 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 		auto it = m_handleMap.find(leftEyeTexture);
 		if (it == m_handleMap.end()) {
 			// Ignore this layer.
-			Log(L"Submitted texture is not found on HandleMap. eye=right layer=%d/%d Texture Handle=%p", i, layerCount, leftEyeTexture);
+			LogDriver("Submitted texture is not found on HandleMap. eye=right layer=%d/%d Texture Handle=%p", i, layerCount, leftEyeTexture);
 		}
 		else {
 			Texture[i][0] = it->second.first->textures[it->second.second];
 			D3D11_TEXTURE2D_DESC desc;
 			Texture[i][0]->GetDesc(&desc);
 
-			Log(L"CopyTexture: layer=%d/%d pid=%d Texture Size=%dx%d Format=%d", i, layerCount, it->second.first->pid, desc.Width, desc.Height, desc.Format);
+			Log("CopyTexture: layer=%d/%d pid=%d Texture Size=%dx%d Format=%d", i, layerCount, it->second.first->pid, desc.Width, desc.Height, desc.Format);
 
 			// Find right eye texture.
 			HANDLE rightEyeTexture = (HANDLE)m_submitLayers[i][1].hTexture;
 			it = m_handleMap.find(rightEyeTexture);
 			if (it == m_handleMap.end()) {
 				// Ignore this layer
-				Log(L"Submitted texture is not found on HandleMap. eye=left layer=%d/%d Texture Handle=%p", i, layerCount, rightEyeTexture);
+				Log("Submitted texture is not found on HandleMap. eye=left layer=%d/%d Texture Handle=%p", i, layerCount, rightEyeTexture);
 				Texture[i][0].Reset();
 			}
 			else {
@@ -337,16 +337,16 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 	// This can go away, but is useful to see it as a separate packet on the gpu in traces.
 	m_pD3DRender->GetContext()->Flush();
 
-	Log(L"Waiting for finish of previous encode.");
+	Log("Waiting for finish of previous encode.");
 
 	if (Settings::Instance().m_captureLayerDDSTrigger) {
 		wchar_t buf[1000];
 
 		for (uint32_t i = 0; i < layerCount; i++) {
-			Log(L"Writing Debug DDS. m_LastReferencedFrameIndex=%llu layer=%d/%d", 0, i, layerCount);
+			LogDriver("Writing Debug DDS. m_LastReferencedFrameIndex=%llu layer=%d/%d", 0, i, layerCount);
 			_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", Settings::Instance().m_DebugOutputDir.c_str(), m_submitFrameIndex, i, layerCount);
 			HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture[i][0], buf);
-			Log(L"Writing Debug DDS: End hr=%p %s", hr, GetErrorStr(hr).c_str());
+			LogDriver("Writing Debug DDS: End hr=%p %s", hr, GetErrorStr(hr).c_str());
 		}
 		Settings::Instance().m_captureLayerDDSTrigger = false;
 	}
@@ -367,7 +367,7 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 	}
 
 	uint64_t submitFrameIndex = m_submitFrameIndex + Settings::Instance().m_trackingFrameOffset;
-	Log(L"Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu"
+	Log("Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu"
 		, m_submitFrameIndex, Settings::Instance().m_trackingFrameOffset, submitFrameIndex);
 
 	// Copy entire texture to staging so we can read the pixels to send to remote device.

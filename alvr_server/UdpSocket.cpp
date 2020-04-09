@@ -31,7 +31,7 @@ bool UdpSocket::Startup() {
 
 	mPoller->AddSocket(mSocket, PollerSocketType::READ);
 
-	Log(L"UdpSocket::Startup success");
+	LogDriver("UdpSocket::Startup success");
 
 	return true;
 }
@@ -73,7 +73,7 @@ bool UdpSocket::Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen) {
 
 void UdpSocket::Run()
 {
-	Log(L"Try to send.");
+	Log("Try to send.");
 	while (mBuffer.Send([this](char *buf, int len) {return DoSend(buf, len); })) {}
 
 	if (!mBuffer.IsEmpty()) {
@@ -126,7 +126,7 @@ bool UdpSocket::BindSocket()
 		FatalLog("UdpSocket::BindSocket bind error : Address=%hs:%d %d %s", mHost.c_str(), mPort, WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
-	Log(L"UdpSocket::BindSocket successfully bound to %hs:%d", mHost.c_str(), mPort);
+	LogDriver("UdpSocket::BindSocket successfully bound to %hs:%d", mHost.c_str(), mPort);
 	
 	return true;
 }
@@ -139,7 +139,7 @@ bool UdpSocket::DoSend(char * buf, int len)
 		return true;
 	}
 	if (WSAGetLastError() != WSAEWOULDBLOCK) {
-		Log(L"UdpSocket::DoSend() Error on sendto. %d %s", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		LogDriver("UdpSocket::DoSend() Error on sendto. %d %s", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 	}
 	return false;
 }

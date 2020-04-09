@@ -24,7 +24,7 @@ inline bool check(CUresult e, int iLine, const char *szFile) {
     if (e != CUDA_SUCCESS) {
         const char *szErrName = NULL;
         cuGetErrorName(e, &szErrName);
-		Log(L"CUDA driver API error %hs at line %d in file %hs", szErrName, iLine, szFile);
+		LogDriver("CUDA driver API error %hs at line %d in file %hs", szErrName, iLine, szFile);
         return false;
     }
     return true;

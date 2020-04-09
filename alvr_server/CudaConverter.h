@@ -132,7 +132,7 @@ private:
 
 		cudaDeviceProp deviceProp;
 		cudaGetDeviceProperties(&deviceProp, cuDevice);
-		Log(L"Using CUDA Device %d: %hs\n", cuDevice, deviceProp.name);
+		LogDriver("Using CUDA Device %d: %hs\n", cuDevice, deviceProp.name);
 
 		result = cuCtxCreate(&m_cuContext, 0, cuDevice);
 		if (result != CUDA_SUCCESS) {
@@ -179,13 +179,13 @@ private:
 		NTSTATUS(WINAPI* d3dkmt_spspc)(HANDLE, D3DKMT_SCHEDULINGPRIORITYCLASS);
 		d3dkmt_spspc = (decltype(d3dkmt_spspc))GetProcAddress(gdi32, "D3DKMTSetProcessSchedulingPriorityClass");
 		if (!d3dkmt_spspc) {
-			Log(L"[GPU PRIO FIX] Failed to get d3dkmt_spspc\n");
+			LogDriver("[GPU PRIO FIX] Failed to get d3dkmt_spspc\n");
 			return false;
 		}
 		
 		NTSTATUS status = d3dkmt_spspc(GetCurrentProcess(), D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME);
 		if (status != 0) {
-			Log(L"[GPU PRIO FIX] Failed to set process (%d) priority class: %u", GetCurrentProcess(), status);
+			LogDriver("[GPU PRIO FIX] Failed to set process (%d) priority class: %u", GetCurrentProcess(), status);
 			return false;
 		}
 

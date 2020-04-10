@@ -280,11 +280,11 @@ void ClientConnection::SendAudio(uint8_t *buf, int len, uint64_t presentationTim
 void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand)
 {
 	if (!m_Socket->IsClientValid()) {
-		LogDriver("Skip sending audio packet because client is not connected.");
+		LogDriver("Skip sending haptics packet because client is not connected.");
 		return;
 	}
 	if (!m_Streaming) {
-		LogDriver("Skip sending audio packet because streaming is off.");
+		LogDriver("Skip sending haptics packet because streaming is off.");
 		return;
 	}
 	Log("Sending haptics feedback. startTime=%llu amplitude=%f duration=%f frequency=%f", startTime, amplitude, duration, frequency);

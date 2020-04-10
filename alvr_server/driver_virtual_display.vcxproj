@@ -57,7 +57,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;$(SolutionDir)$(Platform)\$(Configuration)\CUDA.lib;$(SolutionDir)\libswresample\lib\swresample.lib;$(SolutionDir)\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(SolutionDir)$(Platform)\$(Configuration)\AMF.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>nvcuda.dll</DelayLoadDLLs>
     </Link>
     <CustomBuildStep>

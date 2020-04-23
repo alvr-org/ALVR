@@ -96,6 +96,8 @@ static const char* const k_pch_Settings_leftControllerRollOffset_Float = "leftCo
 
 static const char * const k_pch_Settings_controllerPoseOffset_Float = "controllerPoseOffset";
 
+static const char* const k_pch_Settings_hapticsIntensity_Float = "hapticsIntensity";
+
 static const char * const k_pch_Settings_foveationMode_Int32 = "foveationMode";
 static const char * const k_pch_Settings_foveationStrength_Float = "foveationStrength";
 static const char * const k_pch_Settings_foveationShape_Float = "foveationShape";
@@ -242,6 +244,8 @@ public:
 
 	double m_leftControllerPositionOffset[3];
 	double m_leftControllerRotationOffset[3];
+
+	float m_hapticsIntensity;
 
 	int32_t m_causePacketLoss;
 

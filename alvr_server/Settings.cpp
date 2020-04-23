@@ -159,6 +159,8 @@ void Settings::Load()
 		m_leftControllerRotationOffset[1] = v.get(k_pch_Settings_leftControllerYawOffset_Float).get<double>();
 		m_leftControllerRotationOffset[2] = v.get(k_pch_Settings_leftControllerRollOffset_Float).get<double>();
 
+		m_hapticsIntensity = v.get(k_pch_Settings_hapticsIntensity_Float).get<double>();
+
 		m_foveationMode = (FOVEATION_MODE)v.get(k_pch_Settings_foveationMode_Int32).get<int64_t>();
 		m_foveationStrength = (float)v.get(k_pch_Settings_foveationStrength_Float).get<double>();
 		m_foveationShape = (float)v.get(k_pch_Settings_foveationShape_Float).get<double>();

@@ -452,13 +452,13 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 				
 					if (m_leftController->getHapticComponent() == vrEvent.data.hapticVibration.componentHandle) {
 					
-						hapticFeedbackLeft[0] = vrEvent.data.hapticVibration.fAmplitude;
+						hapticFeedbackLeft[0] = vrEvent.data.hapticVibration.fAmplitude * Settings::Instance().m_hapticsIntensity;
 						hapticFeedbackLeft[1] = vrEvent.data.hapticVibration.fDurationSeconds;
 						hapticFeedbackLeft[2] = vrEvent.data.hapticVibration.fFrequency;
 
 					} else if (m_rightController->getHapticComponent() == vrEvent.data.hapticVibration.componentHandle) {
 					
-						hapticFeedbackRight[0] = vrEvent.data.hapticVibration.fAmplitude;
+						hapticFeedbackRight[0] = vrEvent.data.hapticVibration.fAmplitude * Settings::Instance().m_hapticsIntensity;
 						hapticFeedbackRight[1] = vrEvent.data.hapticVibration.fDurationSeconds;
 						hapticFeedbackRight[2] = vrEvent.data.hapticVibration.fFrequency;
 					}

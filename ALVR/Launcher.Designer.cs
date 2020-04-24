@@ -181,6 +181,9 @@
             this.numericUpDown4 = new System.Windows.Forms.NumericUpDown();
             this.numericUpDown5 = new System.Windows.Forms.NumericUpDown();
             this.numericUpDown6 = new System.Windows.Forms.NumericUpDown();
+            this.flowLayoutPanel47 = new System.Windows.Forms.FlowLayoutPanel();
+            this.metroLabel44 = new MetroFramework.Controls.MetroLabel();
+            this.numericUpDown7 = new System.Windows.Forms.NumericUpDown();
             this.flowLayoutPanel26 = new System.Windows.Forms.FlowLayoutPanel();
             this.onlySteamVRCheckBox = new MetroFramework.Controls.MetroCheckBox();
             this.flowLayoutPanel35 = new System.Windows.Forms.FlowLayoutPanel();
@@ -320,6 +323,8 @@
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown4)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown5)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown6)).BeginInit();
+            this.flowLayoutPanel47.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown7)).BeginInit();
             this.flowLayoutPanel26.SuspendLayout();
             this.flowLayoutPanel35.SuspendLayout();
             this.flowLayoutPanel36.SuspendLayout();
@@ -1859,6 +1864,7 @@
             // 
             this.soundCheckBox.AutoSize = true;
             this.soundCheckBox.Checked = global::ALVR.Properties.Settings.Default.enableSound;
+            this.soundCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
             this.soundCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "enableSound", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.soundCheckBox.Location = new System.Drawing.Point(3, 3);
             this.soundCheckBox.Name = "soundCheckBox";
@@ -1941,6 +1947,7 @@
             this.defaultSoundDeviceCheckBox.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.defaultSoundDeviceCheckBox.AutoSize = true;
             this.defaultSoundDeviceCheckBox.Checked = global::ALVR.Properties.Settings.Default.useDefaultSoundDevice;
+            this.defaultSoundDeviceCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
             this.defaultSoundDeviceCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::ALVR.Properties.Settings.Default, "useDefaultSoundDevice", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.defaultSoundDeviceCheckBox.Location = new System.Drawing.Point(20, 41);
             this.defaultSoundDeviceCheckBox.Margin = new System.Windows.Forms.Padding(20, 3, 3, 3);
@@ -2001,6 +2008,7 @@
             this.flowLayoutPanel45.Controls.Add(this.flowLayoutPanel38);
             this.flowLayoutPanel45.Controls.Add(this.flowLayoutPanel37);
             this.flowLayoutPanel45.Controls.Add(this.flowLayoutPanel43);
+            this.flowLayoutPanel45.Controls.Add(this.flowLayoutPanel47);
             this.flowLayoutPanel45.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel45.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.flowLayoutPanel45.Location = new System.Drawing.Point(3, 13);
@@ -2326,6 +2334,45 @@
             this.numericUpDown6.Size = new System.Drawing.Size(45, 20);
             this.numericUpDown6.TabIndex = 56;
             this.numericUpDown6.Value = global::ALVR.Properties.Settings.Default.leftControllerRollOffset;
+            // 
+            // flowLayoutPanel47
+            // 
+            this.flowLayoutPanel47.Controls.Add(this.metroLabel44);
+            this.flowLayoutPanel47.Controls.Add(this.numericUpDown7);
+            this.flowLayoutPanel47.Location = new System.Drawing.Point(3, 205);
+            this.flowLayoutPanel47.Name = "flowLayoutPanel47";
+            this.flowLayoutPanel47.Size = new System.Drawing.Size(399, 26);
+            this.flowLayoutPanel47.TabIndex = 42;
+            // 
+            // metroLabel44
+            // 
+            this.metroLabel44.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.metroLabel44.AutoSize = true;
+            this.metroLabel44.Location = new System.Drawing.Point(3, 3);
+            this.metroLabel44.Name = "metroLabel44";
+            this.metroLabel44.Size = new System.Drawing.Size(101, 19);
+            this.metroLabel44.TabIndex = 0;
+            this.metroLabel44.Text = "Haptics intensity";
+            // 
+            // numericUpDown7
+            // 
+            this.numericUpDown7.DataBindings.Add(new System.Windows.Forms.Binding("Value", global::ALVR.Properties.Settings.Default, "hapticsIntensity", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.numericUpDown7.DecimalPlaces = 1;
+            this.numericUpDown7.Increment = new decimal(new int[] {
+            1,
+            0,
+            0,
+            65536});
+            this.numericUpDown7.Location = new System.Drawing.Point(110, 3);
+            this.numericUpDown7.Maximum = new decimal(new int[] {
+            50,
+            0,
+            0,
+            65536});
+            this.numericUpDown7.Name = "numericUpDown7";
+            this.numericUpDown7.Size = new System.Drawing.Size(45, 20);
+            this.numericUpDown7.TabIndex = 54;
+            this.numericUpDown7.Value = global::ALVR.Properties.Settings.Default.hapticsIntensity;
             // 
             // flowLayoutPanel26
             // 
@@ -3352,6 +3399,9 @@
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown4)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown5)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown6)).EndInit();
+            this.flowLayoutPanel47.ResumeLayout(false);
+            this.flowLayoutPanel47.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown7)).EndInit();
             this.flowLayoutPanel26.ResumeLayout(false);
             this.flowLayoutPanel26.PerformLayout();
             this.flowLayoutPanel35.ResumeLayout(false);
@@ -3620,6 +3670,9 @@
         private MetroFramework.Controls.MetroComboBox headsetModeComboBox;
         private MetroFramework.Controls.MetroCheckBox metroCheckBox4;
         private MetroFramework.Controls.MetroButton fixDCSButton;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel47;
+        private MetroFramework.Controls.MetroLabel metroLabel44;
+        private System.Windows.Forms.NumericUpDown numericUpDown7;
     }
 }
 

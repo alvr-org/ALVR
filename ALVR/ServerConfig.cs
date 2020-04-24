@@ -283,6 +283,8 @@ namespace ALVR
                 driverConfig.leftControllerYawOffset = (float)c.leftControllerYawOffset;
                 driverConfig.leftControllerRollOffset = (float)c.leftControllerRollOffset;
 
+                driverConfig.hapticsIntensity = (float)c.hapticsIntensity;
+
                 driverConfig.foveationMode = c.foveationMode;
                 driverConfig.foveationStrength = c.foveationStrength / 100f;
                 driverConfig.foveationShape = 1.5f;

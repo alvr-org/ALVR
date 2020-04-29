@@ -213,7 +213,7 @@ void AudioCapture::list_devices(std::vector<AudioEndPointDescriptor> &deviceList
 	}
 	LogDriver("Active render endpoints found: %u", count);
 
-	LogDriver("DefaultDevice:%s ID:%s", defaultDescriptor.GetName().c_str(), defaultDescriptor.GetId().c_str());
+	LogDriver("DefaultDevice:%ls ID:%ls", defaultDescriptor.GetName().c_str(), defaultDescriptor.GetId().c_str());
 
 	for (UINT i = 0; i < count; i++) {
 		ComPtr<IMMDevice> pMMDevice;
@@ -231,7 +231,7 @@ void AudioCapture::list_devices(std::vector<AudioEndPointDescriptor> &deviceList
 		}
 		deviceList.push_back(descriptor);
 
-		LogDriver("Device%u:%s ID:%s", i, descriptor.GetName().c_str(), descriptor.GetId().c_str());
+		LogDriver("Device%u:%ls ID:%ls", i, descriptor.GetName().c_str(), descriptor.GetId().c_str());
 	}
 }
 
@@ -254,7 +254,7 @@ void AudioCapture::OpenDevice(const std::wstring &id) {
 
 	hr = pMMDeviceEnumerator->GetDevice(id.c_str(), &m_pMMDevice);
 	if (FAILED(hr)) {
-		throw MakeException(L"Could not find a device id %s. hr = 0x%08x", id.c_str(), hr);
+		throw MakeException(L"Could not find a device id %ls. hr = 0x%08x", id.c_str(), hr);
 	}
 }
 
@@ -262,7 +262,7 @@ void AudioCapture::Start(const std::wstring &id) {
 	CoInitialize(NULL);
 
 	OpenDevice(id);
-	LogDriver("Audio device: %s", AudioEndPointDescriptor::GetDeviceName(m_pMMDevice).c_str());
+	LogDriver("Audio device: %ls", AudioEndPointDescriptor::GetDeviceName(m_pMMDevice).c_str());
 
 	m_hThread.Set(CreateThread(
 		NULL, 0,
@@ -281,7 +281,7 @@ void AudioCapture::Start(const std::wstring &id) {
 	);
 
 	if (WAIT_OBJECT_0 + 1 == waitResult) {
-		throw MakeException(L"Thread aborted before starting to loopback capture. message=%s", m_errorMessage.c_str());
+		throw MakeException(L"Thread aborted before starting to loopback capture. message=%ls", m_errorMessage.c_str());
 	}
 
 	if (WAIT_OBJECT_0 != waitResult) {
@@ -312,7 +312,7 @@ void AudioCapture::Shutdown() {
 		MMIOINFO mi = { 0 };
 		MMIOHandle file(mmioOpenW((LPWSTR)Settings::Instance().GetAudioOutput().c_str(), &mi, MMIO_READWRITE));
 		if (!file.IsValid()) {
-			throw MakeException(L"mmioOpen(\"%s\", ...) failed. wErrorRet == %u", Settings::Instance().GetAudioOutput().c_str(), mi.wErrorRet);
+			throw MakeException(L"mmioOpen(\"%ls\", ...) failed. wErrorRet == %u", Settings::Instance().GetAudioOutput().c_str(), mi.wErrorRet);
 		}
 
 		// descend into the RIFF/WAVE chunk
@@ -466,7 +466,7 @@ void AudioCapture::LoopbackCapture() {
 		));
 
 		if (!hFile.IsValid()) {
-			LogDriver("Error on open audio debug output. mmioOpen(\"%s\", ...) failed. wErrorRet == %u", Settings::Instance().GetAudioOutput().c_str(), mi.wErrorRet);
+			LogDriver("Error on open audio debug output. mmioOpen(\"%ls\", ...) failed. wErrorRet == %u", Settings::Instance().GetAudioOutput().c_str(), mi.wErrorRet);
 		}
 		try {
 			WriteWaveHeader(hFile.Get(), pwfx, &ckRIFF, &ckData);

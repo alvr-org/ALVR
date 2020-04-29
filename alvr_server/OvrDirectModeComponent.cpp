@@ -269,7 +269,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 			HRESULT hr = pKeyedMutex->AcquireSync(0, 10);
 			if (hr != S_OK)
 			{
-				LogDriver("[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %s", hr, hr, GetErrorStr(hr).c_str());
+				LogDriver("[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %ls", hr, hr, GetErrorStr(hr).c_str());
 				pKeyedMutex->Release();
 				return;
 			}
@@ -346,7 +346,7 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 			LogDriver("Writing Debug DDS. m_LastReferencedFrameIndex=%llu layer=%d/%d", 0, i, layerCount);
 			_snwprintf_s(buf, sizeof(buf), L"%hs\\debug-%llu-%d-%d.dds", Settings::Instance().m_DebugOutputDir.c_str(), m_submitFrameIndex, i, layerCount);
 			HRESULT hr = DirectX::SaveDDSTextureToFile(m_pD3DRender->GetContext(), pTexture[i][0], buf);
-			LogDriver("Writing Debug DDS: End hr=%p %s", hr, GetErrorStr(hr).c_str());
+			LogDriver("Writing Debug DDS: End hr=%p %ls", hr, GetErrorStr(hr).c_str());
 		}
 		Settings::Instance().m_captureLayerDDSTrigger = false;
 	}

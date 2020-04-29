@@ -107,8 +107,8 @@ static void OutputCrashLog(PEXCEPTION_POINTERS pExceptionPtrs) {
 		return;
 	}
 
-	fwprintf(fp, L"Exception: %s\n", lastException.c_str());
-	fwprintf(fp, L"OSVer: %s\n", GetWindowsOSVersion().c_str());
+	fwprintf(fp, L"Exception: %ls\n", lastException.c_str());
+	fwprintf(fp, L"OSVer: %ls\n", GetWindowsOSVersion().c_str());
 	fwprintf(fp, L"Module: %p\n", g_hInstance);
 	fwprintf(fp, L"========== Startup Log ==========\n");
 

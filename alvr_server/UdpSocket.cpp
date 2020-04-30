@@ -106,7 +106,7 @@ bool UdpSocket::BindSocket()
 {
 	mSocket = socket(AF_INET, SOCK_DGRAM, 0);
 	if (mSocket == INVALID_SOCKET) {
-		FatalLog("UdpSocket::BindSocket socket creation error: %d %s", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		FatalLog("UdpSocket::BindSocket socket creation error: %d %ls", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 
@@ -123,7 +123,7 @@ bool UdpSocket::BindSocket()
 
 	int ret = bind(mSocket, (sockaddr *)&addr, sizeof(addr));
 	if (ret != 0) {
-		FatalLog("UdpSocket::BindSocket bind error : Address=%hs:%d %d %s", mHost.c_str(), mPort, WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		FatalLog("UdpSocket::BindSocket bind error : Address=%hs:%d %d %ls", mHost.c_str(), mPort, WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 	LogDriver("UdpSocket::BindSocket successfully bound to %hs:%d", mHost.c_str(), mPort);
@@ -139,7 +139,7 @@ bool UdpSocket::DoSend(char * buf, int len)
 		return true;
 	}
 	if (WSAGetLastError() != WSAEWOULDBLOCK) {
-		LogDriver("UdpSocket::DoSend() Error on sendto. %d %s", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		LogDriver("UdpSocket::DoSend() Error on sendto. %d %ls", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 	}
 	return false;
 }

@@ -46,7 +46,11 @@
 			catch (Exception e) {
 				nvencException = e;
 			}
-			throw MakeException(L"All VideoEncoder are not available. VCE: %s, NVENC: %s", vceException.what(), nvencException.what());
+			Exception e = MakeException(L"All VideoEncoder are not available. VCE: %s, NVENC: %s", vceException.what(), nvencException.what());
+			if (0 == strcmp(e.what, L"Failed to initialize CEncoder. All VideoEncoder are not available. VCE: AMF Error 4. m_amfContext->InitDX11(m_d3dRender->GetDevice()), NVENC: Failed to load nvcuda.dll. Please check if NVIDIA graphic driver is installed.")) {
+				 e = MakeException(L"%s *** %s", e.what, L"This error has been reported to occur when you are running an unsupported GPU, for example an integrated GPU of a CPU, as a main GPU of your system. Please ensure the cable of your monitor is connected to a supported dedicated GPU directly. For more information see github.com/JackD83/ALVR/issues/130");
+			}
+			throw e;
 		}
 
 		bool CEncoder::CopyToStaging(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering

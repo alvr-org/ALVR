@@ -269,6 +269,8 @@ void LogDriver(const char* format, ...) {
 	va_list args;
 	va_start(args, format);
 	DriverLogVarArgs(format, args);
+	va_end(args);
+	va_start(args, format);
 	LogV(format, args, nullptr);
 	va_end(args);
 }
@@ -279,6 +281,8 @@ void LogException(const char *format, ...)
 	va_list args;
 	va_start(args, format);
 	DriverLogVarArgs(format, args);
+	va_end(args);
+	va_start(args, format);
 	LogV(format, args, &lastException);
 	va_end(args);
 }
@@ -289,6 +293,8 @@ void FatalLog(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
 	DriverLogVarArgs(format, args);
+	va_end(args);
+	va_start(args, format);
 	LogV(format, args, &lastException);
 	va_end(args);
 

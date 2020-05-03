@@ -173,7 +173,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		if (Settings::Instance().m_enableSound) {
 			m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
 			try {
-				m_audioCapture->Start(ToWstring(Settings::Instance().m_soundDevice));
+				m_audioCapture->Start(ToWString(Settings::Instance().m_soundDevice));
 			}
 			catch (Exception e) {
 				FatalLog("Failed to start audio capture. %s", e.what());
@@ -324,7 +324,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 				, k_pch_Settings_ControllerTrackpadTouchMode_Int32, Settings::Instance().m_controllerTrackpadTouchMode
 				, k_pch_Settings_ControllerBackMode_Int32, Settings::Instance().m_controllerBackMode
 				, k_pch_Settings_ControllerRecenterButton_Int32, Settings::Instance().m_controllerRecenterButton
-				, ToUTF8(m_adapterName).c_str() // TODO: Proper treatment of UNICODE. Sanitizing.
+				, ToString(m_adapterName).c_str() // TODO: Proper treatment of UNICODE. Sanitizing.
 				, Settings::Instance().m_codec
 				, Settings::Instance().mEncodeBitrate.toMiBits()
 				, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight

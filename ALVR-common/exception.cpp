@@ -21,7 +21,7 @@ Exception FormatExceptionV(const char *format, va_list args) {
 #else
     vsnprintf(buf, sizeof(buf) / sizeof(buf[0]), format, args);
 #endif
-	return Exception(ToWstring(buf));
+	return Exception(ToWString(buf));
 }
 
 Exception FormatException(const char *format, ...) {

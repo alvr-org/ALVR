@@ -225,7 +225,7 @@ void LogS(const wchar_t *str)
 
 void LogS(const char *str)
 {
-	LogS(ToWstring(str).c_str());
+	LogS(ToWString(str).c_str());
 }
 
 void LogV(const wchar_t *format, va_list args, std::wstring *out) {
@@ -244,7 +244,7 @@ void LogV(const char *format, va_list args, std::wstring *out) {
 
 	LogS(buf);
 	if (out != nullptr) {
-		*out = ToWstring(buf);
+		*out = ToWString(buf);
 	}
 }
 

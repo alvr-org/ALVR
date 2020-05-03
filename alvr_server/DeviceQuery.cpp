@@ -4,7 +4,7 @@
 #include "AudioCapture.h"
 
 static void Serialize(wchar_t **buf, int *len, const picojson::value &value) {
-	std::wstring json = ToWstring(value.serialize());
+	std::wstring json = ToWString(value.serialize());
 	*len = static_cast<int>(json.size());
 	*buf = new wchar_t[json.size()];
 	memcpy(*buf, json.c_str(), json.size() * sizeof(wchar_t));
@@ -19,8 +19,8 @@ void GetSoundDevices(wchar_t **buf, int *len) {
 	picojson::array deviceListObj;
 	for (auto it = deviceList.begin(); it != deviceList.end(); it++) {
 		picojson::object elem;
-		elem.insert(std::make_pair("id", picojson::value(ToUTF8(it->GetId()))));
-		elem.insert(std::make_pair("name", picojson::value(ToUTF8(it->GetName()))));
+		elem.insert(std::make_pair("id", picojson::value(ToString(it->GetId()))));
+		elem.insert(std::make_pair("name", picojson::value(ToString(it->GetName()))));
 		elem.insert(std::make_pair("is_default", picojson::value(it->IsDefault())));
 
 		deviceListObj.push_back(picojson::value(elem));

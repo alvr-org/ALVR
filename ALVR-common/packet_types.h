@@ -148,6 +148,17 @@ enum ALVR_HAND {
 	alvrHandBone_Pinky3 = 18,	// pinky distal phalange bone
 	alvrHandBone_MaxSkinnable = 19,
 };
+enum ALVR_FINGER_PINCH {
+	alvrFingerPinch_Index = 0,
+	alvrFingerPinch_Middle = 1,
+	alvrFingerPinch_Ring = 2,
+	alvrFingerPinch_Pinky = 3,
+	alvrFingerPinch_MaxPinches = 4,
+};
+enum ALVR_HAND_CONFIDENCE {
+	alvrHandConfidence_High = 0x3f800000,
+	alvrHandConfidence_Low = 0x00000000,
+};
 typedef enum ALVR_HAND_INPUT
 {
 	alvrInputStateHandStatus_PointerValid = (1 << 1),	// if this is set the PointerPose and PinchStrength contain valid data, otherwise they should not be used.
@@ -282,6 +293,8 @@ struct TrackingInfo {
 		TrackingQuat boneRootOrientation;
 		TrackingVector3 boneRootPosition;
 		uint32_t inputStateStatus;
+		float fingerPinchStrengths[alvrFingerPinch_MaxPinches];
+		uint32_t handConfidence;
 	} controller[2];
 };
 // Client >----(mode 0)----> Server

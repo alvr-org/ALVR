@@ -8,6 +8,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ALVR", "ALVR\ALVR.csproj", "{EF437C2D-9F33-4A80-985D-FAFD8ABCF304}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "alvr_server", "alvr_server\driver_virtual_display.vcxproj", "{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B040F09F-3DE1-4E72-AC89-F45DC4ECDE76} = {B040F09F-3DE1-4E72-AC89-F45DC4ECDE76}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CUDA", "CUDA\CUDA.vcxproj", "{12336478-A663-42F8-8D52-8D093CD99992}"
 EndProject

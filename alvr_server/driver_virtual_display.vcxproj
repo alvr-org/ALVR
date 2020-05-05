@@ -69,6 +69,9 @@
     <PostBuildEvent>
       <Command>xcopy "$(TargetPath)" "$(SolutionDir)driver\bin\win64\" /Y</Command>
     </PostBuildEvent>
+    <FxCompile>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -95,6 +98,9 @@
     <PostBuildEvent>
       <Command>xcopy "$(TargetPath)" "$(SolutionDir)driver\bin\win64\" /Y</Command>
     </PostBuildEvent>
+    <FxCompile>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\ALVR-common\common-utils.cpp" />
@@ -177,6 +183,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="shader\color.hlsli" />
     <None Include="shader\FoveatedRendering.hlsli" />
   </ItemGroup>
   <ItemGroup>

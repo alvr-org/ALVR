@@ -145,7 +145,7 @@ public:
 		return m_DebugOutputDir + "\\" + DEBUG_VIDEO_CAPTURE_OUTPUT_NAME;
 	}
 	std::wstring GetAudioOutput() {
-		return ToWstring(m_DebugOutputDir) + L"\\" + DEBUG_AUDIO_CAPTURE_OUTPUT_NAME;
+		return ToWString(m_DebugOutputDir) + L"\\" + DEBUG_AUDIO_CAPTURE_OUTPUT_NAME;
 	}
 
 	std::string m_DebugOutputDir;

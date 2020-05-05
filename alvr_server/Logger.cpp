@@ -225,7 +225,7 @@ void LogS(const wchar_t *str)
 
 void LogS(const char *str)
 {
-	LogS(ToWstring(str).c_str());
+	LogS(ToWString(str).c_str());
 }
 
 void LogV(const wchar_t *format, va_list args, std::wstring *out) {
@@ -244,7 +244,7 @@ void LogV(const char *format, va_list args, std::wstring *out) {
 
 	LogS(buf);
 	if (out != nullptr) {
-		*out = ToWstring(buf);
+		*out = ToWString(buf);
 	}
 }
 
@@ -269,6 +269,8 @@ void LogDriver(const char* format, ...) {
 	va_list args;
 	va_start(args, format);
 	DriverLogVarArgs(format, args);
+	va_end(args);
+	va_start(args, format);
 	LogV(format, args, nullptr);
 	va_end(args);
 }
@@ -279,6 +281,8 @@ void LogException(const char *format, ...)
 	va_list args;
 	va_start(args, format);
 	DriverLogVarArgs(format, args);
+	va_end(args);
+	va_start(args, format);
 	LogV(format, args, &lastException);
 	va_end(args);
 }
@@ -289,6 +293,8 @@ void FatalLog(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
 	DriverLogVarArgs(format, args);
+	va_end(args);
+	va_start(args, format);
 	LogV(format, args, &lastException);
 	va_end(args);
 

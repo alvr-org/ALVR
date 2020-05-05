@@ -42,9 +42,11 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>driver_alvr_server</TargetName>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\driver\bin\win64</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>driver_alvr_server</TargetName>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\driver\bin\win64</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>

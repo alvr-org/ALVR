@@ -1,3 +1,5 @@
+#include "color.hlsli"
+
 Texture2D txLeft : register(t0);
 Texture2D txRight : register(t1);
 SamplerState samLinear : register(s0);
@@ -26,10 +28,15 @@ PS_INPUT VS(VS_INPUT input)
 }
 float4 PS(PS_INPUT input) : SV_Target
 {
+	float4 output;
 	if (input.View == (uint)0) { // Left View
-		return txLeft.Sample(samLinear, input.Tex);
+		output = txLeft.Sample(samLinear, input.Tex);
+		output.rgb = Rec709ToRec2020(output.rgb);
+		return output;
 	}
 	else { // Right View
-		return txRight.Sample(samLinear, input.Tex);
+		output = txRight.Sample(samLinear, input.Tex);
+		output.rgb = Rec709ToRec2020(output.rgb);
+		return output;
 	}
 };

@@ -1,0 +1,16 @@
+[package]
+name = 'alvr_server_driver_ext'
+version = '11.0.0-alpha.0'
+authors = ['Riccardo Zaglia <riccardo.zaglia5@gmail.com>']
+license = 'MIT'
+edition = '2018'
+
+[lib]
+crate-type = ['staticlib']
+
+[dependencies]
+log = '^0.4.8'
+msgbox = { git = 'https://github.com/zarik5/msgbox-rs'}
+lazy_static = '^1.4'
+alvr_common = { path = '../common' }
+alvr_xtask = { path = '../xtask' }

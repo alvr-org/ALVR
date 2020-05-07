@@ -83,10 +83,18 @@ Now you can press and hold the oculus key on the right controller to recenter St
 
 ### ALVR Server and GUI (Launcher)
 
-- Open ALVR.sln with Visual Studio 2019 and build
-    - alvr\_server project is the driver for SteamVR written in C++
-    - ALVR project is the launcher GUI written in C#
-- Requires Cuda 10.1
+- Install Visual Studio Code and the extension rust-analyzer (optional)
+- Install `MSBuild` using Visual Studio Installer
+- Install CUDA 10.1
+- Install [rustup](https://rustup.rs/)
+- On the project root execute:
+
+    ```bash
+    cargo xtask install-deps
+    cargo xtask build-server --release
+    ```
+
+- The ALVR server will be in the folder `/build/alvr_server_windows`.
 
 ### ALVR Client
 

@@ -1,0 +1,7 @@
+[parse]
+parse_deps = true
+include = ['alvr_common']
+extra_bindings = ['alvr_common']
+
+[parse.expand]
+crates = ['alvr_common']

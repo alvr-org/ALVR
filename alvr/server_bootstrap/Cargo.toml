@@ -1,0 +1,16 @@
+[package]
+name = 'alvr_server_bootstrap'
+version = '11.0.0-alpha.0'
+authors = ['Riccardo Zaglia <riccardo.zaglia5@gmail.com>']
+license = 'MIT'
+edition = '2018'
+
+[dependencies]
+alvr_common = { path = '../common' }
+
+[target.'cfg(not(windows))'.dependencies]
+web-view = '^0.6.2'
+
+[target.'cfg(windows)'.dependencies]
+web-view = '^0.6.2' # needs webkit2gtk on linux
+# todo: use 'edge' feature when Chromium based Edge is available for webview

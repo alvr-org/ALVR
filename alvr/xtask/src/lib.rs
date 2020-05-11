@@ -3,8 +3,6 @@ use std::{env, error::Error, fs, path::*, process::*};
 
 type BResult<T = ()> = Result<T, Box<dyn Error>>;
 
-pub const DEFAULT_PORTS: [u16; 2] = [9943, 9944];
-
 const NIGHTLY_TOOLCHAIN_VERSION: &str = "nightly-2020-04-30";
 
 #[cfg(target_os = "linux")]
@@ -58,9 +56,11 @@ fn path_to_string(path: &Path) -> String {
 }
 
 fn msbuild_path() -> PathBuf {
-    PathBuf::from(
-        r"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe",
-    )
+    let msbuild_dir = env::var("MSBUILD_DIR").unwrap_or_else(|_| {
+        "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin"
+            .to_owned()
+    });
+    Path::new(&msbuild_dir).join("MSBuild.exe")
 }
 
 #[cfg(target_os = "linux")]

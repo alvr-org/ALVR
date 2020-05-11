@@ -70,6 +70,7 @@ async fn run() -> StrResult {
 
     // todo: find a way to clone the tail stream to avoid creating multiple log reader processes.
     //       This would also remove the need for unwrap() for failing without crashing.
+    //       ALTERNATIVE: get log lines directly from the log backend
     let log_subscription = warp::path("log").map(|| {
         sse::reply(
             sse::keep_alive().stream(

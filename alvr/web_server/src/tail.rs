@@ -12,7 +12,11 @@ const TRACE_CONTEXT: &str = "Tail command";
 #[cfg(not(windows))]
 fn tail_byte_reader(fname: &str) -> StrResult<impl AsyncRead> {
     Ok(trace_none!(
-        trace_err!(Command::new("tail").args(&["--follow", fname]).spawn())?.stdout
+        trace_err!(Command::new("tail")
+            .args(&["--follow", fname])
+            .stdout(Stdio::piped())
+            .spawn())?
+        .stdout
     ))
 }
 #[cfg(windows)]

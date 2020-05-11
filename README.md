@@ -84,8 +84,9 @@ Now you can press and hold the oculus key on the right controller to recenter St
 ### ALVR Server and GUI (Launcher)
 
 - Install Visual Studio Code and the extension rust-analyzer (optional)
-- Install `MSBuild` using Visual Studio Installer
-- Install CUDA 10.1
+- Install [Visual Studio Community 2019](https://visualstudio.microsoft.com/downloads) with C++ build tools
+- Alternatively, if you already have a Visual Studio 2019 installation, you can add the environment variable `MSBUILD_DIR` pointing to the folder containing `MsBuild.exe`
+- Install [CUDA 10.1](https://developer.nvidia.com/cuda-10.1-download-archive-base?target_os=Windows&target_arch=x86_64&target_version=10&target_type=exenetwork)
 - Install [rustup](https://rustup.rs/)
 - On the project root execute:
 

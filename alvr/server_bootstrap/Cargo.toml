@@ -9,8 +9,11 @@ edition = '2018'
 alvr_common = { path = '../common' }
 
 [target.'cfg(not(windows))'.dependencies]
-web-view = '^0.6.2'
+web-view = '^0.6.2' # needs webkit2gtk on linux
 
 [target.'cfg(windows)'.dependencies]
-web-view = '^0.6.2' # needs webkit2gtk on linux
-# todo: use 'edge' feature when Chromium based Edge is available for webview
+web-view = { version = '^0.6.2', features = ['edge'] }
+# edge feature needed for SSE (server sent events)
+
+[build-dependencies]
+winres = '^0.1.11'

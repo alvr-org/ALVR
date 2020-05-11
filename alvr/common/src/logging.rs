@@ -1,5 +1,9 @@
 pub type StrResult<T = ()> = Result<T, String>;
 
+pub const DRIVER_LOG_FNAME: &str = "driver_log.txt";
+pub const SESSION_LOG_FNAME: &str = "session_log.txt";
+pub const CRASH_LOG_FNAME: &str = "crash_log.txt";
+
 fn default_show_error_fn(_: &str) {}
 pub static mut _SHOW_ERROR_CB: fn(&str) = default_show_error_fn;
 

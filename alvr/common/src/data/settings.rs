@@ -6,6 +6,8 @@ use std::{ffi::CString, fs, os::raw::c_char, path::*};
 
 const TRACE_CONTEXT: &str = "Settings";
 
+pub const SETTINGS_FNAME: &str = "settings.json";
+
 macro_rules! native_getter {
     ($struct_name:ident, $field_name:ident, String) => {
         /// # Safety
@@ -87,13 +89,13 @@ pub struct FrameSize {
 #[repr(C)]
 #[derive(SettingsSchema, Serialize, Deserialize)]
 pub struct Fov {
-    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
+    #[schema(min = -90., max = 0., step = 0.1, gui = "UpDown")]
     pub left: f32,
 
     #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub right: f32,
 
-    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
+    #[schema(min = -90., max = 0., step = 0.1, gui = "UpDown")]
     pub top: f32,
 
     #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
@@ -170,8 +172,6 @@ extern_getters! {
         pub foveated_rendering: Switch<FoveatedRenderingDesc>,
         pub color_correction: Switch<ColorCorrectionDesc>,
 
-        #[schema(placeholder = "codec_dropdown")]
-
         pub codec: CodecType,
 
         #[schema(min = 1, max = 250)]
@@ -200,45 +200,6 @@ extern_getters! {
     pub struct AudioSection {
         pub game_audio: Switch<AudioDesc>,
         pub microphone: Switch<AudioDesc>,
-    }
-}
-
-extern_getters! {
-    #[derive(SettingsSchema, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct HmdDesc {
-        #[schema(placeholder = "headset_emulation_mode")]
-
-        #[schema(advanced)]
-        pub serial_number: String,
-
-        #[schema(advanced)]
-        pub tracking_system_name: String,
-
-        #[schema(advanced)]
-        pub model_number: String,
-
-        #[schema(advanced)]
-        pub driver_version: String,
-
-        #[schema(advanced)]
-        pub manufacturer_name: String,
-
-        #[schema(advanced)]
-        pub render_model_name: String,
-
-        #[schema(advanced)]
-        pub registered_device_type: String,
-
-        pub tracking_frame_offset: i32,
-
-        #[schema(advanced)]
-        pub position_offset: [f32; 3],
-
-        #[schema(advanced)]
-        pub use_tracking_reference: bool,
-
-        pub force_3dof: bool,
     }
 }
 
@@ -309,6 +270,47 @@ extern_getters! {
 extern_getters! {
     #[derive(SettingsSchema, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
+    pub struct HeadsetDesc {
+        #[schema(placeholder = "headset_emulation_mode")]
+
+        #[schema(advanced)]
+        pub serial_number: String,
+
+        #[schema(advanced)]
+        pub tracking_system_name: String,
+
+        #[schema(advanced)]
+        pub model_number: String,
+
+        #[schema(advanced)]
+        pub driver_version: String,
+
+        #[schema(advanced)]
+        pub manufacturer_name: String,
+
+        #[schema(advanced)]
+        pub render_model_name: String,
+
+        #[schema(advanced)]
+        pub registered_device_type: String,
+
+        pub tracking_frame_offset: i32,
+
+        #[schema(advanced)]
+        pub position_offset: [f32; 3],
+
+        #[schema(advanced)]
+        pub use_tracking_reference: bool,
+
+        pub force_3dof: bool,
+
+        pub controllers: Switch<ControllersDesc>,
+    }
+}
+
+extern_getters! {
+    #[derive(SettingsSchema, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
     pub struct ConnectionDesc {
         #[schema(advanced)]
         pub host: String,
@@ -363,7 +365,9 @@ pub enum ChoiceTest {
     B(u32),
 
     #[serde(rename_all = "camelCase")]
-    C { test_c: f32 },
+    C {
+        test_c: f32,
+    },
 }
 
 #[repr(C)]
@@ -380,8 +384,7 @@ extern_getters! {
     pub struct Settings {
         pub video: VideoDesc,
         pub audio: AudioSection,
-        pub hmd: HmdDesc,
-        pub controllers: Switch<ControllersDesc>,
+        pub headset: HeadsetDesc,
         pub connection: ConnectionDesc,
 
         #[schema(advanced)]
@@ -464,7 +467,7 @@ pub fn settings_default() -> SettingsDefault {
                 content: AudioDescDefault { device: "".into() },
             },
         },
-        hmd: HmdDescDefault {
+        headset: HeadsetDescDefault {
             serial_number: "1WMGH000XX0000".into(),
             tracking_system_name: "oculus".into(),
             model_number: "Oculus Rift S".into(),
@@ -476,29 +479,29 @@ pub fn settings_default() -> SettingsDefault {
             position_offset: [0., 0., 0.],
             use_tracking_reference: false,
             force_3dof: false,
-        },
-        controllers: SwitchDefault {
-            enabled: true,
-            content: ControllersDescDefault {
-                ctrl_tracking_system_name: "oculus".into(),
-                ctrl_manufacturer_name: "Oculus".into(),
-                ctrl_model_number: "Oculus Rift S".into(),
-                render_model_name_left: "oculus_rifts_controller_left".into(),
-                render_model_name_right: "oculus_rifts_controller_right".into(),
-                ctrl_serial_number: "1WMGH000XX0000_Controller".into(),
-                ctrl_type: "oculus_touch".into(),
-                ctrl_registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
-                input_profile_path: "{oculus}/input/touch_profile.json".into(),
-                trigger_mode: 24,
-                trackpad_click_mode: 28,
-                trackpad_touch_mode: 29,
-                back_mode: 0,
-                recenter_button: 0,
-                pose_time_offset: 0,
-                position_offset_left: [0., 0., 0.],
-                rotation_offset_left: [36., 0., 0.],
-                haptics_intensity: 1.,
-                ctrl_mode_idx: 1,
+            controllers: SwitchDefault {
+                enabled: true,
+                content: ControllersDescDefault {
+                    ctrl_tracking_system_name: "oculus".into(),
+                    ctrl_manufacturer_name: "Oculus".into(),
+                    ctrl_model_number: "Oculus Rift S".into(),
+                    render_model_name_left: "oculus_rifts_controller_left".into(),
+                    render_model_name_right: "oculus_rifts_controller_right".into(),
+                    ctrl_serial_number: "1WMGH000XX0000_Controller".into(),
+                    ctrl_type: "oculus_touch".into(),
+                    ctrl_registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
+                    input_profile_path: "{oculus}/input/touch_profile.json".into(),
+                    trigger_mode: 24,
+                    trackpad_click_mode: 28,
+                    trackpad_touch_mode: 29,
+                    back_mode: 0,
+                    recenter_button: 0,
+                    pose_time_offset: 0,
+                    position_offset_left: [0., 0., 0.],
+                    rotation_offset_left: [36., 0., 0.],
+                    haptics_intensity: 1.,
+                    ctrl_mode_idx: 1,
+                },
             },
         },
         connection: ConnectionDescDefault {

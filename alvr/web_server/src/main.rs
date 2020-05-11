@@ -15,10 +15,8 @@ const WEB_GUI_DIR_STR: &str = "web_gui";
 fn try_log_redirect(line: &str, level: log::Level) -> bool {
     let level_label = &format!("[{}]", level);
     if line.starts_with(level_label) {
-        let line_without_label = &line[level_label.len() + 1..];
-
         if level == log::Level::Error {
-            show_err!(Err::<(), &str>(line_without_label)).ok();
+            show_err!(Err::<(), &str>(line)).ok();
         } else {
             log::log!(level, "{}", &line[level_label.len() + 1..]);
         }
@@ -59,6 +57,8 @@ async fn run() -> StrResult {
     let index_request = warp::path::end().and(wfs::file(web_gui_dir.join("index.html")));
     let files_requests = wfs::dir(web_gui_dir);
 
+    let settings_schema_request = warp::path("settings-schema").map(|| env!("SETTINGS_SCHEMA"));
+
     let session_requests = warp::path("session").and(
         body::json()
             .map(|data| {
@@ -82,6 +82,7 @@ async fn run() -> StrResult {
 
     warp::serve(
         index_request
+            .or(settings_schema_request)
             .or(session_requests)
             .or(log_subscription)
             .or(files_requests),

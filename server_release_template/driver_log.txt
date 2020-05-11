@@ -1,0 +1,5 @@
+[DEBUG] Test debug
+[INFO] Test info
+[WARN] Test warning
+[ERROR] Test error
+Test untagged

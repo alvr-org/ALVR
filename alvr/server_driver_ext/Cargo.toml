@@ -10,7 +10,7 @@ crate-type = ['staticlib']
 
 [dependencies]
 log = '^0.4.8'
-msgbox = { git = 'https://github.com/zarik5/msgbox-rs'}
+fern = '^0.6.0'
 lazy_static = '^1.4'
 alvr_common = { path = '../common' }
 alvr_xtask = { path = '../xtask' }

@@ -1,4 +1,4 @@
-pub mod logging_backend;
+mod logging_backend;
 
 use alvr_common::{data::*, *};
 use alvr_xtask::*;
@@ -6,7 +6,9 @@ use lazy_static::lazy_static;
 use std::ptr;
 
 #[no_mangle]
-pub extern "C" fn init_logging() {}
+pub extern "C" fn init_logging() {
+    logging_backend::init_logging();
+}
 
 // If settings cannot be loaded, this method shows an error and returns null.
 #[no_mangle]
@@ -14,10 +16,8 @@ pub extern "C" fn settings() -> *const Settings {
     lazy_static! {
         static ref MAYBE_SETTINGS: StrResult<Settings> = {
             match get_alvr_dir_using_vrpathreg() {
-                Ok(alvr_dir) => {
-                    load_settings(&alvr_dir.join("settings.json"))
-                }
-                Err(e) => Err(e.to_string())
+                Ok(alvr_dir) => load_settings(&alvr_dir.join(SETTINGS_FNAME)),
+                Err(e) => Err(e.to_string()),
             }
         };
     }

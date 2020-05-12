@@ -1,9 +1,9 @@
-mod constants;
+mod version;
 mod settings;
 
 use serde::{Deserialize, Serialize};
 
-pub use constants::*;
+pub use version::*;
 pub use settings::*;
 
 type SettingsCache = SettingsDefault;

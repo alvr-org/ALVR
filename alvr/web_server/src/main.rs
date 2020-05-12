@@ -15,10 +15,11 @@ const WEB_GUI_DIR_STR: &str = "web_gui";
 fn try_log_redirect(line: &str, level: log::Level) -> bool {
     let level_label = &format!("[{}]", level);
     if line.starts_with(level_label) {
+        let untagged_line = &line[level_label.len() + 1..];
         if level == log::Level::Error {
-            show_err!(Err::<(), &str>(line)).ok();
+            show_err!(Err::<(), &str>(untagged_line)).ok();
         } else {
-            log::log!(level, "{}", &line[level_label.len() + 1..]);
+            log::log!(level, "{}", untagged_line);
         }
 
         true

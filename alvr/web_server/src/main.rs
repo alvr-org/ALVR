@@ -2,11 +2,23 @@ mod logging_backend;
 mod tail;
 
 use alvr_common::{data::*, logging::*, *};
+use futures::SinkExt;
 use logging_backend::*;
-use std::{convert::Infallible, path::PathBuf};
+use std::{
+    convert::Infallible,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 use tail::tail_stream;
-use tokio::stream::StreamExt;
-use warp::{body, fs as wfs, reply, sse, Filter, Rejection, Reply};
+use tokio::{
+    stream::StreamExt,
+    sync::mpsc::{self, *},
+};
+use warp::{
+    body, fs as wfs, reply,
+    ws::{Message, WebSocket, Ws},
+    Filter, Rejection, Reply,
+};
 
 const TRACE_CONTEXT: &str = "Web server main";
 
@@ -36,7 +48,20 @@ fn update_settings(session_desc: SessionDesc) {
     // todo
 }
 
-async fn run() -> StrResult {
+// todo: Use tokio mpsc channels to broadcast log lines from a single log stream.
+// todo: get log lines directly from the log backend
+async fn subscribed_to_log(mut socket: WebSocket, mut log_receiver: UnboundedReceiver<String>) {
+    // if let Ok(mut log_stream) = show_err!(tail_stream(SESSION_LOG_FNAME)) {
+    while let Some(line) = log_receiver.next().await {
+        if let Err(e) = socket.send(Message::text(line)).await {
+            log::info!("Failed to send log with websocket: {}", e);
+            break;
+        }
+    }
+    // }
+}
+
+async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult {
     let driver_log_redirect = tokio::spawn(
         tail_stream(DRIVER_LOG_FNAME)?
             .map(|maybe_line: std::io::Result<String>| {
@@ -69,17 +94,10 @@ async fn run() -> StrResult {
             .or(wfs::file(SESSION_FNAME).recover(handle_session_not_found)),
     );
 
-    // todo: find a way to clone the tail stream to avoid creating multiple log reader processes.
-    //       This would also remove the need for unwrap() for failing without crashing.
-    //       ALTERNATIVE: get log lines directly from the log backend
-    let log_subscription = warp::path("log").map(|| {
-        sse::reply(
-            sse::keep_alive().stream(
-                show_err!(tail_stream(SESSION_LOG_FNAME))
-                    .unwrap()
-                    .map(|maybe_line| maybe_line.map(sse::data)),
-            ),
-        )
+    let log_subscription = warp::path("log").and(warp::ws()).map(move |ws: Ws| {
+        let (log_sender, log_receiver) = mpsc::unbounded_channel();
+        log_senders.lock().unwrap().push(log_sender);
+        ws.on_upgrade(|socket| subscribed_to_log(socket, log_receiver))
     });
 
     warp::serve(
@@ -89,7 +107,7 @@ async fn run() -> StrResult {
             .or(log_subscription)
             .or(files_requests),
     )
-    .run(([127, 0, 0, 1], 80))
+    .run(([127, 0, 0, 1], 8080))
     .await;
 
     trace_err!(driver_log_redirect.await)?;
@@ -99,6 +117,13 @@ async fn run() -> StrResult {
 
 #[tokio::main]
 async fn main() {
-    init_logging();
-    show_err!(run().await).ok();
+    let mutex = single_instance::SingleInstance::new("alvr_web_server_mutex").unwrap();
+    if mutex.is_single() {
+        let log_senders = Arc::new(Mutex::new(vec![]));
+        init_logging(log_senders.clone());
+
+        if let Err(e) = run(log_senders).await {
+            log::error!("{}", e);
+        }
+    }
 }

@@ -15,18 +15,33 @@ pub extern "C" fn init_logging() {
 pub extern "C" fn settings() -> *const Settings {
     lazy_static! {
         static ref MAYBE_SETTINGS: StrResult<Settings> = {
-            match get_alvr_dir_using_vrpathreg() {
+            let maybe_settings = match get_alvr_dir_using_vrpathreg() {
                 Ok(alvr_dir) => load_settings(&alvr_dir.join(SETTINGS_FNAME)),
                 Err(e) => Err(e.to_string()),
+            };
+            if let Err(e) = &maybe_settings {
+                log::error!("{}", e);
             }
+            maybe_settings
         };
     }
-
-    show_err!(MAYBE_SETTINGS.as_ref()).ok();
 
     if let Ok(settings) = &*MAYBE_SETTINGS {
         settings as _
     } else {
         ptr::null()
     }
+}
+
+#[no_mangle]
+pub extern "C" fn maybe_launch_web_server() {
+    match get_alvr_dir_using_vrpathreg() {
+        Ok(alvr_dir) => alvr_common::maybe_launch_web_server(&alvr_dir),
+        Err(e) => log::error!("{}", e),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn maybe_kill_web_server() {
+    alvr_common::maybe_kill_web_server();
 }

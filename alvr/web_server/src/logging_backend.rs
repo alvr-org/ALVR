@@ -1,34 +1,44 @@
 use alvr_common::logging::*;
 use fern::{log_file, Dispatch};
 use log::LevelFilter;
+use tokio::sync::mpsc::UnboundedSender;
+use std::sync::{Mutex, Arc};
 
 // Define logging modes, create crash log and (re)create session log
-pub fn init_logging() {
+pub fn init_logging(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) {
     std::fs::remove_file(SESSION_LOG_FNAME).ok();
 
     if cfg!(debug_assertions) {
         Dispatch::new()
-            .format(|out, message, record| {
-                out.finish(format_args!(
-                    "{} [{}] At {}:{}:\n{}",
+            .format(move |out, message, record| {
+                let log_line = format!(
+                    "{} [{}] At {}:{}: {}",
                     chrono::Local::now().format("%H:%M:%S.%f"),
                     record.level(),
                     record.file().unwrap(),
                     record.line().unwrap(),
                     message
-                ))
+                );
+                for sender in &*log_senders.lock().unwrap() {
+                    sender.send(log_line.clone()).ok();
+                }
+                out.finish(format_args!("{}", log_line));
             })
-            .level(LevelFilter::Trace)
+            .level(LevelFilter::Debug)
             .chain(std::io::stdout())
     } else {
         Dispatch::new()
-            .format(|out, message, record| {
-                out.finish(format_args!(
+            .format(move |out, message, record| {
+                let log_line = format!(
                     "{} [{}] {}",
                     chrono::Local::now().format("%H:%M:%S.%f"),
                     record.level(),
                     message
-                ))
+                );
+                for sender in &*log_senders.lock().unwrap() {
+                    sender.send(log_line.clone()).ok();
+                }
+                out.finish(format_args!("{}", log_line));
             })
             .level(LevelFilter::Info)
     }

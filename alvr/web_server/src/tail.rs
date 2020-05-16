@@ -12,12 +12,10 @@ fn tail_command(fname: &str) -> Command {
 }
 #[cfg(windows)]
 fn tail_command(fname: &str) -> Command {
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
     let mut command = Command::new("PowerShell.exe");
     command
         .args(&["Get-Content", fname, "-Wait"])
-        .creation_flags(CREATE_NO_WINDOW);
+        .creation_flags(process::CREATE_NO_WINDOW);
     command
 }
 

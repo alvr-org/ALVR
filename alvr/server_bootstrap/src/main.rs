@@ -1,6 +1,6 @@
 #![windows_subsystem = "windows"]
 
-use alvr_common::{data::*, *};
+use alvr_common::{data::*, process::*};
 
 fn main() {
     let mutex = single_instance::SingleInstance::new("alvr_server_bootstrap_mutex").unwrap();

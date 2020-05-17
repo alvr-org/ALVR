@@ -6,7 +6,7 @@ use futures::SinkExt;
 use logging_backend::*;
 use std::{
     convert::Infallible,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 use tail::tail_stream;
@@ -44,21 +44,21 @@ async fn handle_session_not_found(_: Rejection) -> Result<impl Reply, Infallible
     Ok(reply::json(&SessionDesc::default()))
 }
 
-fn update_settings(session_desc: SessionDesc) {
-    // todo
+fn update_settings_and_session(session_desc: SessionDesc) -> StrResult {
+    save_json(&session_desc, &Path::new(SESSION_FNAME))?;
+    save_json(
+        &session_to_settings(&session_desc),
+        &Path::new(SETTINGS_FNAME),
+    )
 }
 
-// todo: Use tokio mpsc channels to broadcast log lines from a single log stream.
-// todo: get log lines directly from the log backend
 async fn subscribed_to_log(mut socket: WebSocket, mut log_receiver: UnboundedReceiver<String>) {
-    // if let Ok(mut log_stream) = show_err!(tail_stream(SESSION_LOG_FNAME)) {
     while let Some(line) = log_receiver.next().await {
         if let Err(e) = socket.send(Message::text(line)).await {
             log::info!("Failed to send log with websocket: {}", e);
             break;
         }
     }
-    // }
 }
 
 async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult {
@@ -88,7 +88,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
     let session_requests = warp::path("session").and(
         body::json()
             .map(|data| {
-                update_settings(data);
+                show_err!(update_settings_and_session(data)).ok();
                 warp::reply()
             })
             .or(wfs::file(SESSION_FNAME).recover(handle_session_not_found)),

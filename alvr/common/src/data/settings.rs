@@ -1,10 +1,6 @@
-use crate::*;
 use serde::{Deserialize, Serialize};
-use serde_json as json;
 use settings_schema::*;
-use std::{ffi::CString, fs, os::raw::c_char, path::*};
-
-const TRACE_CONTEXT: &str = "Settings";
+use std::{ffi::CString, os::raw::c_char};
 
 pub const SETTINGS_FNAME: &str = "settings.json";
 
@@ -359,7 +355,6 @@ extern_getters! {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum ChoiceTest {
-    #[serde(rename_all = "camelCase")]
     A,
 
     B(u32),
@@ -392,18 +387,7 @@ extern_getters! {
     }
 }
 
-pub fn load_settings(path: &Path) -> StrResult<Settings> {
-    trace_err!(json::from_str(&trace_err!(fs::read_to_string(path))?))
-}
-
-pub fn save_settings(settings: &Settings, path: &Path) -> StrResult {
-    trace_err!(fs::write(
-        path,
-        trace_err!(json::to_string_pretty(settings))?
-    ))
-}
-
-pub fn settings_default() -> SettingsDefault {
+pub fn settings_cache_default() -> SettingsDefault {
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,

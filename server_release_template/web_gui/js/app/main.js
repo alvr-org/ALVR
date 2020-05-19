@@ -1,12 +1,12 @@
 define([
-"jquery",
-"lib/bootstrap.bundle.min",
-"lib/lodash",
-"app/alvrSettings"
+    "jquery",
+    "lib/bootstrap.bundle.min",
+    "lib/lodash",
+    "app/alvrSettings"
 
 
-], function($, bootstrap, _, ALVRSettings) {
-    $(function() {
+], function ($, bootstrap, _, ALVRSettings) {
+    $(function () {
         new ALVRSettings();
     });
 });

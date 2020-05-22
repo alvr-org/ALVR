@@ -9,7 +9,7 @@ fn main() {
 
         web_view::builder()
             .title(&format!("{} v{}", ALVR_NAME, ALVR_SERVER_VERSION))
-            .content(web_view::Content::Url("http://127.0.0.1:8080"))
+            .content(web_view::Content::Url("http://127.0.0.1:8082"))
             .size(800, 600)
             .resizable(false)
             .frameless(false)

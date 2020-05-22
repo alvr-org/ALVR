@@ -2,15 +2,19 @@ mod settings;
 mod version;
 
 use crate::*;
+use semver::{Version, VersionReq};
 use serde::*;
 use serde_json as json;
 use settings_schema::SchemaNode;
-use std::{fs, path::Path};
+use std::os::raw::c_char;
+use std::{
+    fs,
+    ops::{Deref, DerefMut},
+    path::{Path, PathBuf},
+};
 
 pub use settings::*;
 pub use version::*;
-
-const TRACE_CONTEXT: &str = "Data";
 
 type SettingsCache = SettingsDefault;
 
@@ -21,37 +25,38 @@ pub fn load_json<T: de::DeserializeOwned>(path: &Path) -> StrResult<T> {
 }
 
 pub fn save_json<T: Serialize>(obj: &T, path: &Path) -> StrResult {
-    trace_err!(fs::write(
-        path,
-        trace_err!(json::to_string_pretty(obj))?
-    ))
+    trace_err!(fs::write(path, trace_err!(json::to_string_pretty(obj))?))
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ClientHandshakePacket {
-    packet_type: u32,
-    alvr_name: [u8; 4],
-    protocol_version: u32,
-    device_name_utf8: [u8; 32],
-    refresh_rates: [u8; 4],
-    render_width: u16,
-    render_height: u16,
-    eye_fov: [Fov; 2],
-    device_type: u8,
-    device_sub_type: u8,
-    device_capability_flags: u32,
-    controller_capability_flags: u32,
+pub fn is_version_compatible(version: &str, requirement: &str) -> StrResult<bool> {
+    let version = trace_err!(Version::parse(version))?;
+    let requirement = trace_err!(VersionReq::parse(requirement))?;
+    Ok(requirement.matches(&version))
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ClientConnectionDesc {
-    available: bool,
-    last_update_ms_since_epoch: u64,
-    address: String,
-    port: u16,
-    handshake_packet: ClientHandshakePacket,
+extern_getters! {
+    #[derive(Serialize, Deserialize, PartialEq)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ClientHandshakePacket {
+        pub alvr_name: String,
+        pub version: String,
+        pub device_name: String,
+        pub client_refresh_rate: u16,
+        pub render_width: u32,
+        pub render_height: u32,
+        pub client_fov: [Fov; 2],
+    }
+}
+
+extern_getters! {
+    #[derive(Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ClientConnectionDesc {
+        pub available: bool,
+        pub last_update_ms_since_epoch: u64,
+        pub address: String,
+        pub handshake_packet: ClientHandshakePacket,
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -162,6 +167,58 @@ fn cache_to_settings_impl(cache_value: &json::Value, schema: &SchemaNode) -> jso
 }
 
 // todo: settings_to_cache() -> useful for manual editing of settings
+
+// SessionDesc wrapper that saves settings.json and session.json on destruction.
+pub struct SessionLock<'a> {
+    session_desc: &'a mut SessionDesc,
+    dir: &'a Path,
+}
+
+impl Deref for SessionLock<'_> {
+    type Target = SessionDesc;
+    fn deref(&self) -> &SessionDesc {
+        self.session_desc
+    }
+}
+
+impl DerefMut for SessionLock<'_> {
+    fn deref_mut(&mut self) -> &mut SessionDesc {
+        self.session_desc
+    }
+}
+
+impl Drop for SessionLock<'_> {
+    fn drop(&mut self) {
+        save_json(self.session_desc, &self.dir.join(SESSION_FNAME)).ok();
+        save_json(
+            &session_to_settings(self.session_desc),
+            &self.dir.join(SETTINGS_FNAME),
+        )
+        .ok();
+    }
+}
+
+pub struct SessionManager {
+    session_desc: SessionDesc,
+    dir: PathBuf,
+}
+
+impl SessionManager {
+    pub fn new(dir: &Path) -> Self {
+        let session_desc = load_json(&dir.join(SESSION_FNAME)).unwrap_or_default();
+        Self {
+            session_desc,
+            dir: dir.to_owned(),
+        }
+    }
+
+    pub fn get_mut(&mut self) -> SessionLock {
+        SessionLock {
+            session_desc: &mut self.session_desc,
+            dir: &self.dir,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

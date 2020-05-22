@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 use settings_schema::*;
-use std::{ffi::CString, os::raw::c_char};
+use std::os::raw::c_char;
 
 pub const SETTINGS_FNAME: &str = "settings.json";
 
-macro_rules! native_getter {
-    ($struct_name:ident, $field_name:ident, String) => {
+#[macro_export]
+macro_rules! extern_getters {
+    (@ $struct_name:ident, $field_name:ident, String) => {
         /// # Safety
         /// settings and string_buf memory must not overlap
         #[no_mangle]
@@ -14,6 +15,8 @@ macro_rules! native_getter {
             string_buf: *mut c_char,
             buf_len: usize,
         ) {
+            use std::ffi::CString;
+
             let cstring = CString::new(settings.$field_name.clone()).unwrap();
             std::ptr::copy_nonoverlapping(
                 cstring.as_ptr(),
@@ -22,7 +25,7 @@ macro_rules! native_getter {
             )
         }
     };
-    ($struct_name:ident, $field_name:ident, [$inner_type:ty; $len:tt]) => {
+    (@ $struct_name:ident, $field_name:ident, [$inner_type:ty; $len:tt]) => {
         #[no_mangle]
         pub extern "C" fn $field_name<'a>(
             settings: &'a $struct_name,
@@ -31,7 +34,7 @@ macro_rules! native_getter {
             *array = &settings.$field_name
         }
     };
-    ($struct_name:ident, $field_name:ident, Switch<$inner_type:ty>) => {
+    (@ $struct_name:ident, $field_name:ident, Switch<$inner_type:ty>) => {
         #[no_mangle]
         pub extern "C" fn $field_name<'a>(
             settings: &'a $struct_name,
@@ -45,15 +48,13 @@ macro_rules! native_getter {
             }
         }
     };
-    ($struct_name:ident, $field_name:ident, $field_type:tt) => {
+    (@ $struct_name:ident, $field_name:ident, $field_type:tt) => {
         #[no_mangle]
         pub extern "C" fn $field_name(settings: &$struct_name) -> &$field_type {
             &settings.$field_name
         }
     };
-}
 
-macro_rules! extern_getters {
     (
         $(#[$($attrs:tt)*])*
         pub struct $struct_name:ident {
@@ -71,7 +72,7 @@ macro_rules! extern_getters {
             )*
         }
 
-        $(native_getter!($struct_name, $field_name, $field_type $(<$field_type_args>)?);)*
+        $(extern_getters!(@ $struct_name, $field_name, $field_type $(<$field_type_args>)?);)*
     };
 }
 
@@ -83,7 +84,7 @@ pub struct FrameSize {
 }
 
 #[repr(C)]
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq)]
 pub struct Fov {
     #[schema(min = -90., max = 0., step = 0.1, gui = "UpDown")]
     pub left: f32,

@@ -2,8 +2,6 @@ use alvr_common::*;
 use std::process::Stdio;
 use tokio::{io::AsyncBufReadExt, io::BufReader, process::Command, stream::Stream};
 
-const TRACE_CONTEXT: &str = "Tail command";
-
 #[cfg(not(windows))]
 fn tail_command(fname: &str) -> Command {
     let mut command = Command::new("tail");

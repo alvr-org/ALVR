@@ -296,9 +296,9 @@ define([
 
             var el = `<div class="parameter ${getAdvancedClass(advanced)}">
                 <div class="card-title">
-                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}">${getI18n(name).name}</a>
+                    <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">${getI18n(name).name}</a>
                 </div>   
-                <div id="collapse_${index}" class="collapse">
+                <div id="collapse_${index}" class="collapse show">
                     <div class="card-body">
                     </div>
                 </div> 
@@ -313,9 +313,9 @@ define([
         function addRadioContainer(index, element, name, advanced) {
             var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
-                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}">${getI18n(name).name}</a>
+                    ${getI18n(name).name}
                 </div>   
-                <div id="collapse_${index}" class="collapse">
+                <div>
                     <div class="card-body">
                     </div>
                 </div> 
@@ -354,11 +354,11 @@ define([
             var el = `<div class="parameter switch ${getAdvancedClass(advanced)}" >   
                 <div class="card-title">
                     <input id="${path}_${name}_enabled" type="checkbox" ${checked} " />
-                    <a class="accordion-toggle collapsed" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}">
+                    <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">
                     ${getI18n(name).name}</a> 
                     ${getHelpReset(name +"_enabled", path, node.content.defaultEnabled)}
                 </div>   
-                <div id="collapse_${index}" class="collapse">
+                <div id="collapse_${index}" class="collapse show">
                     <div class="card-body">
                     </div>      
                 </div> 

@@ -1,4 +1,4 @@
-use alvr_common::logging::DRIVER_LOG_FNAME;
+use alvr_common::logging::*;
 use fern::{log_file, Dispatch};
 use log::LevelFilter;
 use std::sync::Once;
@@ -13,7 +13,7 @@ pub fn init_logging() {
             Dispatch::new()
                 .format(|out, message, record| {
                     out.finish(format_args!(
-                        "[{}] At {}:{}:\n{}",
+                        "[{}] At {}:{}: {}",
                         record.level(),
                         record.file().unwrap(),
                         record.line().unwrap(),
@@ -33,4 +33,6 @@ pub fn init_logging() {
         .apply()
         .unwrap();
     });
+
+    set_show_error_fn_and_panic_hook(|_| ());
 }

@@ -225,7 +225,7 @@ pub fn firewall_rules(root_server_dir: &Path, add: bool) -> BResult {
     let script_fname = if add {
         "add_firewall_rules.bat"
     } else {
-        "remove_firewall_rule.bat"
+        "remove_firewall_rules.bat"
     };
 
     let script_path = path_to_string(&root_server_dir.join(script_fname));

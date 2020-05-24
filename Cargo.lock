@@ -58,6 +58,8 @@ name = "alvr_web_server"
 version = "11.0.0-alpha.0"
 dependencies = [
  "alvr_common",
+ "alvr_xtask",
+ "bincode",
  "chrono",
  "fern",
  "futures",
@@ -163,6 +165,16 @@ name = "base64"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53d1ccbaf7d9ec9537465a97bf19edc1a4e158ecb49fc16178202238c569cc42"
+
+[[package]]
+name = "bincode"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5753e2a71534719bf3f4e57006c3a4f0d2c672a4b676eec84161f763eca87dbf"
+dependencies = [
+ "byteorder",
+ "serde",
+]
 
 [[package]]
 name = "bitflags"

@@ -1,14 +1,26 @@
 use fs_extra::{self as fsx, dir as dirx};
-use std::{env, error::Error, fs, path::*, process::*};
+use std::{
+    env,
+    error::Error,
+    fs,
+    io::{Read, Write},
+    path::*,
+    process::*,
+};
 
 type BResult<T = ()> = Result<T, Box<dyn Error>>;
 
 const NIGHTLY_TOOLCHAIN_VERSION: &str = "nightly-2020-04-30";
 
 #[cfg(target_os = "linux")]
-const DRIVER_REL_DIR_STR: &str = "bin/linux64";
+const SERVER_BUILD_DIR_NAME: &str = "alvr_server_linux";
 #[cfg(windows)]
-const DRIVER_REL_DIR_STR: &str = "bin/win64";
+const SERVER_BUILD_DIR_NAME: &str = "alvr_server_windows";
+
+#[cfg(target_os = "linux")]
+const STEAMVR_OS_DIR_NAME: &str = "linux64";
+#[cfg(windows)]
+const STEAMVR_OS_DIR_NAME: &str = "win64";
 
 #[cfg(target_os = "linux")]
 const DRIVER_FNAME: &str = "driver_alvr_server.so";
@@ -39,7 +51,7 @@ fn run_with_args(cmd: &str, args: &[&str]) -> BResult {
         Ok(())
     } else {
         Err(format!(
-            "\nCommand failed\n{}",
+            "Command failed: {}",
             String::from_utf8_lossy(&output.stderr)
         )
         .into())
@@ -87,12 +99,7 @@ pub fn build_dir() -> PathBuf {
 }
 
 pub fn server_build_dir() -> PathBuf {
-    #[cfg(target_os = "linux")]
-    const OS_STR: &str = "linux";
-    #[cfg(windows)]
-    const OS_STR: &str = "windows";
-
-    build_dir().join(format!("alvr_server_{}", OS_STR))
+    build_dir().join(SERVER_BUILD_DIR_NAME)
 }
 
 pub fn remove_build_dir() {
@@ -101,11 +108,8 @@ pub fn remove_build_dir() {
 }
 
 pub fn reset_server_build_folder() -> BResult {
-    fs::create_dir_all(build_dir())?;
-    let server_build_dir = server_build_dir();
-    fs::remove_dir_all(&server_build_dir).ok();
-
-    fs::create_dir_all(&server_build_dir)?;
+    fs::remove_dir_all(&server_build_dir()).ok();
+    fs::create_dir_all(&server_build_dir())?;
 
     // get all file and folder paths at depth 1, excluded template root (at index 0)
     let dir_content =
@@ -115,7 +119,45 @@ pub fn reset_server_build_folder() -> BResult {
         .chain(dir_content.files.iter())
         .collect();
 
-    fsx::copy_items(&items, server_build_dir, &dirx::CopyOptions::new())?;
+    fsx::copy_items(&items, server_build_dir(), &dirx::CopyOptions::new())?;
+
+    Ok(())
+}
+
+// https://github.com/mvdnes/zip-rs/blob/master/examples/write_dir.rs
+fn zip_dir(dir: &Path) -> BResult {
+    let parent_dir = dir.parent().unwrap();
+    let zip_file = fs::File::create(parent_dir.join(format!(
+        "{}.zip",
+        dir.file_name().unwrap().to_string_lossy()
+    )))?;
+    let mut zip = zip::ZipWriter::new(zip_file);
+
+    let mut buffer = Vec::new();
+    let iterator = walkdir::WalkDir::new(dir)
+        .into_iter()
+        .filter_map(|e| e.ok());
+    for entry in iterator {
+        let path = entry.path();
+        let name = path.strip_prefix(Path::new(parent_dir))?;
+
+        // Write file or directory explicitly
+        // Some unzip tools unzip files with directory paths correctly, some do not!
+        if path.is_file() {
+            println!("adding file {:?} as {:?} ...", path, name);
+            zip.start_file_from_path(name, <_>::default())?;
+            let mut f = fs::File::open(path)?;
+
+            f.read_to_end(&mut buffer)?;
+            zip.write_all(&*buffer)?;
+            buffer.clear();
+        } else if !name.as_os_str().is_empty() {
+            // Only if not root! Avoids path spec / warning
+            // and mapname conversion failed error on unzip
+            println!("adding dir {:?} as {:?} ...", path, name);
+            zip.add_directory_from_path(name, <_>::default())?;
+        }
+    }
 
     Ok(())
 }
@@ -127,10 +169,8 @@ pub fn build_server(is_release: bool) -> BResult {
     let server_driver_dir = workspace_dir().join("alvr/server_driver");
     let target_dir = target_dir();
     let artifacts_dir = target_dir.join(build_type);
-    let build_dir = build_dir();
-    let lib_build_dir = build_dir.join("lib");
-    let server_build_dir = server_build_dir();
-    let driver_dst_dir = server_build_dir.join(DRIVER_REL_DIR_STR);
+    let lib_build_dir = build_dir().join("lib");
+    let driver_dst_dir = server_build_dir().join("bin").join(STEAMVR_OS_DIR_NAME);
 
     reset_server_build_folder()?;
     fs::create_dir_all(&lib_build_dir)?;
@@ -172,7 +212,7 @@ pub fn build_server(is_release: bool) -> BResult {
     run(&format!("cargo build -p alvr_web_server {}", build_flag))?;
     fs::copy(
         artifacts_dir.join(exec_fname("alvr_web_server")),
-        server_build_dir.join(exec_fname("alvr_web_server")),
+        server_build_dir().join(exec_fname("alvr_web_server")),
     )?;
     run(&format!(
         "cargo build -p alvr_server_bootstrap {}",
@@ -180,7 +220,7 @@ pub fn build_server(is_release: bool) -> BResult {
     ))?;
     fs::copy(
         artifacts_dir.join(exec_fname("alvr_server_bootstrap")),
-        server_build_dir.join(exec_fname("ALVR")),
+        server_build_dir().join(exec_fname("ALVR")),
     )?;
 
     // if cfg!(target_os = "linux") {
@@ -198,6 +238,42 @@ pub fn build_server(is_release: bool) -> BResult {
     //     ))?;
     // }
 
+    if is_release {
+        zip_dir(&server_build_dir())?;
+    }
+
+    Ok(())
+}
+
+pub fn build_client(is_release: bool) -> BResult {
+    let build_type = if is_release { "release" } else { "debug" };
+    let build_task = if is_release {
+        "assembleRelease"
+    } else {
+        "assembleDebug"
+    };
+
+    let client_hmd_dir = workspace_dir().join("alvr/client_hmd");
+    let command_name = if cfg!(not(windows)) {
+        "gradlew"
+    } else {
+        "gradlew.bat"
+    };
+
+    fs::create_dir_all(&build_dir())?;
+
+    env::set_current_dir(workspace_dir().join("alvr/client_hmd"))?;
+    run(&format!("{} {}", command_name, build_task))?;
+    env::set_current_dir(workspace_dir())?;
+
+    fs::copy(
+        client_hmd_dir
+            .join("app/build/outputs/apk")
+            .join(build_type)
+            .join(format!("app-{}.apk", build_type)),
+        build_dir().join("alvr_client.apk"),
+    )?;
+
     Ok(())
 }
 
@@ -208,20 +284,27 @@ pub fn driver_registration(root_server_dir: &Path, register: bool) -> BResult {
     }
 
     let exec = steamvr_bin_dir.join(exec_fname("vrpathreg"));
-    let cmd = if register {
+    let subcommand = if register {
         "adddriver"
     } else {
         "removedriver"
     };
-    run(&format!(
-        "{} {} {}",
-        path_to_string(&exec),
-        cmd,
-        path_to_string(&root_server_dir)
-    ))
+
+    let exit_status = Command::new(exec)
+        .args(&[subcommand, &root_server_dir.to_string_lossy()])
+        .status()?;
+
+    if exit_status.success() {
+        Ok(())
+    } else {
+        Err(format!("Error registering driver: {}", exit_status).into())
+    }
 }
 
-pub fn firewall_rules(root_server_dir: &Path, add: bool) -> BResult {
+// Errors:
+// 1: firewall rule is already set
+// other: command failed
+pub fn firewall_rules(root_server_dir: &Path, add: bool) -> Result<(), i32> {
     let script_fname = if add {
         "add_firewall_rules.bat"
     } else {
@@ -235,12 +318,13 @@ pub fn firewall_rules(root_server_dir: &Path, add: bool) -> BResult {
         .arg("/s")
         .show(cfg!(target_os = "linux"))
         .gui(true) // UAC, if available
-        .status()?;
+        .status()
+        .map_err(|_| -1)?;
 
     if exit_status.success() {
         Ok(())
     } else {
-        Err(format!("\nCommand failed\n{}", exit_status).into())
+        Err(exit_status.code().unwrap())
     }
 }
 

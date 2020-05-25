@@ -2,11 +2,9 @@ mod settings;
 mod version;
 
 use crate::*;
-use semver::{Version, VersionReq};
 use serde::*;
 use serde_json as json;
 use settings_schema::SchemaNode;
-use std::os::raw::c_char;
 use std::{
     fs,
     ops::{Deref, DerefMut},
@@ -28,35 +26,27 @@ pub fn save_json<T: Serialize>(obj: &T, path: &Path) -> StrResult {
     trace_err!(fs::write(path, trace_err!(json::to_string_pretty(obj))?))
 }
 
-pub fn is_version_compatible(version: &str, requirement: &str) -> StrResult<bool> {
-    let version = trace_err!(Version::parse(version))?;
-    let requirement = trace_err!(VersionReq::parse(requirement))?;
-    Ok(requirement.matches(&version))
+#[repr(C)]
+#[derive(Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientHandshakePacket {
+    pub alvr_name: [u8; 4],
+    pub version: [u8; 32],
+    pub device_name: [u8; 32],
+    pub client_refresh_rate: u16,
+    pub render_width: u32,
+    pub render_height: u32,
+    pub client_fov: [Fov; 2],
 }
 
-extern_getters! {
-    #[derive(Serialize, Deserialize, PartialEq)]
-    #[serde(rename_all = "camelCase")]
-    pub struct ClientHandshakePacket {
-        pub alvr_name: String,
-        pub version: String,
-        pub device_name: String,
-        pub client_refresh_rate: u16,
-        pub render_width: u32,
-        pub render_height: u32,
-        pub client_fov: [Fov; 2],
-    }
-}
-
-extern_getters! {
-    #[derive(Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct ClientConnectionDesc {
-        pub available: bool,
-        pub last_update_ms_since_epoch: u64,
-        pub address: String,
-        pub handshake_packet: ClientHandshakePacket,
-    }
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientConnectionDesc {
+    pub available: bool,
+    pub connect_automatically: bool,
+    pub last_update_ms_since_epoch: u64,
+    pub address: String,
+    pub handshake_packet: ClientHandshakePacket,
 }
 
 #[derive(Serialize, Deserialize)]

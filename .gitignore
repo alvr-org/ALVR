@@ -40,3 +40,17 @@ release-files/
 
 /build/
 .vscode/
+
+*.iml
+.gradle
+local.properties
+.idea/workspace.xml
+.idea/libraries
+.idea/caches
+.idea/dictionaries
+.DS_Store
+build
+captures
+.externalNativeBuild
+app/src/main/assets/oculussig_*
+app/*/release/

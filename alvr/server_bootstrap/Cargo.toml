@@ -6,12 +6,9 @@ license = 'MIT'
 edition = '2018'
 
 [dependencies]
-web-view = '^0.6.2' # needs webkit2gtk on linux
+alcro = { git = 'https://github.com/Srinivasa314/alcro' }
 alvr_common = { path = '../common' }
 single-instance = '^0.1.2'
-
-# [target.'cfg(windows)'.dependencies]
-# web-view = { version = '^0.6.2', features = ['edge'] }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = '^0.1.11'

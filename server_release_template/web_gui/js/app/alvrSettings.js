@@ -1,15 +1,14 @@
 
 define([
     "json!../../settings-schema",
-    "json!../../session", 
+    "json!../../session",
     "lib/lodash",
     "i18n!app/nls/locale"
 
 ], function (schema, session, _, i18n) {
     return function () {
         var advanced = false;
-        var targetSettings = {};
-        session = session.settingsCache //these are the settings defined by the schema
+        var updating = false;
 
         function init() {
             targetSettings = session;
@@ -17,19 +16,20 @@ define([
             updateSwitchContent();
             toggleAdvanced();
             addListeners();
-            addHelpTooltips();
-            setProperties(session, "root_Main");
+            addHelpTooltips();            
+            setProperties(session.settingsCache, "root_Main");
             addChangeListener();
+
         }
 
-        function getI18n(id) {                 
-         
+        function getI18n(id) {
+
             if (i18n === undefined) {
                 console.log("names not ready");
                 return { "name": id, "description": "" };
             } else {
                 if (i18n[id + ".name"] !== undefined) {
-                    return  { "name": i18n[id + ".name"], "description": i18n[id + ".description"]}; ;
+                    return { "name": i18n[id + ".name"], "description": i18n[id + ".description"] };;
                 } else {
                     return { "name": id, "description": "" };
                 }
@@ -38,14 +38,16 @@ define([
 
         function addChangeListener() {
             $('.parameter input').change((evt) => {
-                var el = $(evt.target);
-                storeParam(el);
+                if (!updating) {
+                    var el = $(evt.target);
+                    storeParam(el);
+                }
             })
         }
 
         function storeAllParams() {
             $('.parameter input').each((index, el) => {
-                storeParam(el);
+                storeParam($(el));
             })
         }
 
@@ -55,11 +57,13 @@ define([
 
             if (el.prop("type") == "checkbox") {
                 val = el.prop("checked")
-            } else {
-                if (el.prop("type") == "text") {
+            } else {              
+                if (el.prop("type") == "text" && el.attr("guitype") != "numeric" ) {                   
                     val = el.val();
+                } else if(el.prop("type") == "radio" ) {
+                    val = el.attr("value");
                 } else {
-                    val = Number.parseFloat(el.val());
+                    val = Number.parseFloat(el.val());                  
                 }
             }
             id = id.replace("root_Main_", "");
@@ -74,12 +78,32 @@ define([
                 }
             });
 
-            _.set(targetSettings, finalPath, val);
+            _.set(session.settingsCache, finalPath, val);
+
+            $.ajax({
+                type: "PUT",
+                url: "../../session",
+                contentType: "application/json;charset=UTF-8",
+                data: JSON.stringify(session),
+                processData: false,
+                success: function (res) {
+                    if (res === "") {
+                        console.log("SUCCESS")
+                    } else {
+                        console.log("FAILED")
+                        updating = true;
+                        session = res;
+                        setProperties(res.settingsCache, "root_Main");
+                        updating = false;
+                    }
+                }
+            });
         }
 
 
 
         function setProperties(object, path) {
+      
             for (const item in object) {
                 if (Array.isArray(object[item])) {
                     object[item].forEach((element, index) => {
@@ -102,7 +126,7 @@ define([
                         el.change();
                     }
                 }
-            }
+            }         
         }
 
 
@@ -356,7 +380,7 @@ define([
                     <input id="${path}_${name}_enabled" type="checkbox" ${checked} " />
                     <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">
                     ${getI18n(name).name}</a> 
-                    ${getHelpReset(name +"_enabled", path, node.content.defaultEnabled)}
+                    ${getHelpReset(name + "_enabled", path, node.content.defaultEnabled)}
                 </div>   
                 <div id="collapse_${index}" class="collapse show">
                     <div class="card-body">
@@ -416,8 +440,8 @@ define([
             max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"> ${getHelpReset(name, path, node.content.default)}`;
                     break;
 
-                case "textbox":
-                    base += ` <input id="${path}_${name}"  type="text" min="${node.content.min}" 
+                case "textbox":                  
+                    base += ` <input id="${path}_${name}"  type="text" min="${node.content.min}" guiType="numeric" 
             max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}" > ${getHelpReset(name, path, node.content.default)}`;
                     break;
 
@@ -459,7 +483,7 @@ define([
             if ($("#" + path + "_" + name).prop("disabled")) {
                 return;
             }
-    
+
             if ($("#" + path + "_" + name).prop("type") == "checkbox") {
                 if (defaultVal == "true") {
                     $("#" + path + "_" + name).prop('checked', true);

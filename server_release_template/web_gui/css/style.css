@@ -351,6 +351,14 @@ margin-bottom: 10px;
   margin-top: 10px;
 }
 
+.parameter input[type="number"] {
+ width: 100px;
+}
+
+.parameter input[type="text"] {
+  width: 100px;
+ }
+
 .parameter input[type="range"] {
   width: 50%;
   display: block;

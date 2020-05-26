@@ -16,7 +16,7 @@ define([
             updateSwitchContent();
             toggleAdvanced();
             addListeners();
-            addHelpTooltips();            
+            addHelpTooltips();
             setProperties(session.settingsCache, "root_Main");
             addChangeListener();
 
@@ -55,19 +55,30 @@ define([
             var id = el.prop("id");
             var val;
 
-            if (el.prop("type") == "checkbox") {
+            if (el.prop("type") == "checkbox" || el.prop("type") == "radio") {
                 val = el.prop("checked")
-            } else {              
-                if (el.prop("type") == "text" && el.attr("guitype") != "numeric" ) {                   
+            } else {
+                if (el.prop("type") == "text" && el.attr("guitype") != "numeric") {
                     val = el.val();
-                } else if(el.prop("type") == "radio" ) {
+                } else if (el.prop("type") == "radio") {
                     val = el.attr("value");
                 } else {
-                    val = Number.parseFloat(el.val());                  
+                    val = Number.parseFloat(el.val());
                 }
             }
             id = id.replace("root_Main_", "");
             var path = id.split("_");
+
+
+            //choice handling
+            if (el.prop("type") == "radio") {
+                var name = path[path.length - 1];
+                path[path.length - 1] = "variant"
+                if (val) {
+                    val = name;
+                }
+            }
+
             var finalPath = "";
             path.forEach((element, index) => {
                 if (Number.isInteger(Number.parseInt(element))) {
@@ -76,7 +87,7 @@ define([
                     if (index != 0) finalPath += ".";
                     finalPath += element;
                 }
-            });
+            });          
 
             _.set(session.settingsCache, finalPath, val);
 
@@ -103,8 +114,8 @@ define([
 
 
         function setProperties(object, path) {
-      
-            for (const item in object) {
+
+            for (var item in object) {
                 if (Array.isArray(object[item])) {
                     object[item].forEach((element, index) => {
                         setProperties(element, path + "_" + item + "_" + index)
@@ -112,12 +123,21 @@ define([
                 } else if (Object.prototype.toString.call(object[item]) === '[object Object]') {
                     setProperties(object[item], path + "_" + item);
                 } else {
-                    const el = $("#" + path + "_" + item);
+
+                  
+                    var pathItem = item;
+                    //choice
+                    if (item == "variant") {
+                        pathItem = object[item]                       
+                    }
+
+                    const el = $("#" + path + "_" + pathItem);
+
                     if (el.length == 0) {
                         console.log("NOT FOUND")
                         console.log("setting value: ", path + "_" + item, object[item])
                     } else {
-                        if (el.prop("type") == "checkbox") {
+                        if (el.prop("type") == "checkbox" || el.prop("type") == "radio") {
                             el.prop("checked", object[item])
                         } else {
                             el.val(object[item]);
@@ -126,7 +146,7 @@ define([
                         el.change();
                     }
                 }
-            }         
+            }
         }
 
 
@@ -248,7 +268,7 @@ define([
 
                 case "choice":
 
-                    element = addRadioContainer(index, element, name);
+                    element = addRadioContainer(index, element, name, advanced, path, node);
                     node.content.variants.forEach((el, index) => {
 
                         var variantElement = addRadioVariant(element, el[0], name, el[1], path + "_" + name, el[0] == node.content.default);
@@ -334,10 +354,10 @@ define([
             return element;
         }
 
-        function addRadioContainer(index, element, name, advanced) {
+        function addRadioContainer(index, element, name, advanced, path, node) {
             var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
-                    ${getI18n(name).name}
+                    ${getI18n(name).name}  ${getHelpReset(name + "_" + node.content.default , path, true)}
                 </div>   
                 <div>
                     <div class="card-body">
@@ -358,7 +378,7 @@ define([
             }
 
             var el = `<div class="${getAdvancedClass(advanced)}" >
-                <input type="radio" id="${path}_variant" name="${radioName}"  value="${name}" ${checked}> 
+                <input type="radio" id="${path}_${name}" name="${radioName}"  value="${name}" ${checked}> 
                 <label for="${path}_${name}">${getI18n(name).name}</label>
                 <div class="radioContent">
                 </div>
@@ -440,7 +460,7 @@ define([
             max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"> ${getHelpReset(name, path, node.content.default)}`;
                     break;
 
-                case "textbox":                  
+                case "textbox":
                     base += ` <input id="${path}_${name}"  type="text" min="${node.content.min}" guiType="numeric" 
             max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}" > ${getHelpReset(name, path, node.content.default)}`;
                     break;
@@ -484,7 +504,7 @@ define([
                 return;
             }
 
-            if ($("#" + path + "_" + name).prop("type") == "checkbox") {
+            if ($("#" + path + "_" + name).prop("type") == "checkbox" || $("#" + path + "_" + name).prop("type") == "radio") {
                 if (defaultVal == "true") {
                     $("#" + path + "_" + name).prop('checked', true);
                 } else {

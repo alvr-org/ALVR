@@ -4,6 +4,7 @@ define([
     "json!../../session",
     "lib/lodash",
     "i18n!app/nls/locale"
+   
 
 ], function (schema, session, _, i18n) {
     return function () {
@@ -87,7 +88,7 @@ define([
                     if (index != 0) finalPath += ".";
                     finalPath += element;
                 }
-            });          
+            });
 
             _.set(session.settingsCache, finalPath, val);
 
@@ -99,8 +100,18 @@ define([
                 processData: false,
                 success: function (res) {
                     if (res === "") {
-                        console.log("SUCCESS")
+                        console.log("SUCCESS")                   
                     } else {
+
+                        Lobibox.notify("error", {
+                            size: "mini",
+                            rounded: true,
+                            delayIndicator: false,
+                            sound: false,
+                            title: getI18n("settingsStoreError").name,
+                            msg: getI18n("settingsStoreError").description
+                        })
+
                         console.log("FAILED")
                         updating = true;
                         session = res;
@@ -124,11 +135,11 @@ define([
                     setProperties(object[item], path + "_" + item);
                 } else {
 
-                  
+
                     var pathItem = item;
                     //choice
                     if (item == "variant") {
-                        pathItem = object[item]                       
+                        pathItem = object[item]
                     }
 
                     const el = $("#" + path + "_" + pathItem);
@@ -357,7 +368,7 @@ define([
         function addRadioContainer(index, element, name, advanced, path, node) {
             var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
-                    ${getI18n(name).name}  ${getHelpReset(name + "_" + node.content.default , path, true)}
+                    ${getI18n(name).name}  ${getHelpReset(name + "_" + node.content.default, path, true)}
                 </div>   
                 <div>
                     <div class="card-body">

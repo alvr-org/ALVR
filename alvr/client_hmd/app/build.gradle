@@ -1,0 +1,73 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 29
+    defaultConfig {
+        applicationId "com.polygraphene.alvr"
+        minSdkVersion 21
+        targetSdkVersion 29
+        versionCode 28
+        versionName " experimental v10"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17 -fexceptions -frtti"
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
+            debuggable = true
+            jniDebuggable = true
+            renderscriptOptimLevel = 3
+            ndk {
+                abiFilters "arm64-v8a", "armeabi-v7a"
+            }
+        }
+        debug {
+            ndk {
+                abiFilters "arm64-v8a", "armeabi-v7a"
+            }
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ["src/main/jniLibs"]
+        }
+    }
+    // Remove osig file from release apk
+    applicationVariants.all { variant ->
+        if (variant.buildType.name == 'release') {
+            variant.mergeAssetsProvider.get().doLast {
+                delete(fileTree(dir: variant.mergeAssets.outputDir, includes: ['oculussig_*']))
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = '1.8'
+        targetCompatibility = '1.8'
+    }
+    buildToolsVersion = '29.0.0'
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar', '*.so'])
+   // api 'androidx.appcompat:appcompat:1.0.0'
+    implementation 'com.android.support:appcompat-v7:26.1.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
+    implementation 'com.android.support:design:26.1.0'
+    implementation 'com.koushikdutta.async:androidasync:2.2.1'
+    implementation 'com.google.code.gson:gson:2.8.5'
+    testImplementation 'junit:junit:4.12'
+}
+
+build.dependsOn(':extractNdk')

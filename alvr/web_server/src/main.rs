@@ -24,12 +24,16 @@ use warp::{
 
 const WEB_GUI_DIR_STR: &str = "web_gui";
 
+fn alvr_server_dir() -> PathBuf {
+    std::env::current_exe().unwrap().parent().unwrap().to_owned()
+}
+
 fn try_log_redirect(line: &str, level: log::Level) -> bool {
     let level_label = &format!("[{}]", level);
     if line.starts_with(level_label) {
         let untagged_line = &line[level_label.len() + 1..];
         if level == log::Level::Error {
-            show_err(Err::<(), &str>(untagged_line)).ok();
+            show_err::<(), _>(Err(untagged_line)).ok();
         } else {
             log::log!(level, "{}", untagged_line);
         }
@@ -75,6 +79,7 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             } else {
                 session_desc_ref.last_clients.push(ClientConnectionDesc {
                     available: true,
+                    connect_automatically: false,
                     last_update_ms_since_epoch: now_ms as _,
                     address: address.to_string(),
                     handshake_packet,
@@ -86,8 +91,6 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
 
 async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult {
     let session_manager = Arc::new(Mutex::new(SessionManager::new(&Path::new("./"))));
-
-    warn!(id: LogId::ClientFoundOk, "Hello test");
 
     tokio::spawn(client_discovery(session_manager.clone()));
 
@@ -134,15 +137,18 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
 
     let driver_registration_requests = warp::path!("driver" / String).map(|action_str: String| {
         let register = action_str == "register";
-        show_err(alvr_xtask::driver_registration(&Path::new(""), register)).ok();
+        show_err(alvr_xtask::driver_registration(&alvr_server_dir(), register)).ok();
         warp::reply()
     });
 
     let firewall_rules_requests =
         warp::path!("firewall-rules" / String).map(|action_str: String| {
             let add = action_str == "add";
-            show_err(alvr_xtask::firewall_rules(&Path::new(""), add)).ok();
-            warp::reply()
+            let maybe_err = alvr_xtask::firewall_rules(&alvr_server_dir(), add).err();
+            if let Some(e) = &maybe_err {
+                error!("Setting firewall rules failed: code {}", e);
+            }
+            reply::json(&maybe_err.unwrap_or(0))
         });
 
     warp::serve(

@@ -1,0 +1,4 @@
+<resources>
+    <string name="title_activity_decoder_test">DecoderTestActivity</string>
+    <string name="app_name">ALVR</string>
+</resources>

@@ -38,54 +38,48 @@ pub fn show_err<T, E: std::fmt::Display>(res: Result<T, E>) -> Result<T, ()> {
 
 // Log id is serialized as #{ "id": "...", "data": [...|null] }#
 // Pound signs are used to identify start and finish of json
+#[repr(u8)]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "id", content = "data")]
 pub enum LogId {
-    None,
     ClientFoundOk,
     ClientFoundInvalid,
     ClientFoundWrongIp,
-    ClientFoundWrongVersion(String),
+    // Note: this should be a string but rust strings are not C compatible
+    ClientFoundWrongVersion([u8; 32]),
 }
 
 #[macro_export]
-macro_rules! _format_id {
+macro_rules! format_id {
     ($id:expr) => {
-        &format!("#{}#", serde_json::to_string(&$id).unwrap())
+        format!("#{}#", serde_json::to_string(&$id).unwrap())
     };
 }
 
 #[macro_export]
-macro_rules! _format_id_address_message_impl {
-    ($id:expr, $($message_fmt:expr $(, $args:expr)*)?) => {
-        String::new()
-            + _format_id!($id)
-            + &format!(" At {}:{}", file!(), line!())
-            $(+ ", " + &format!($message_fmt $(, $args)*))?
+macro_rules! _format_err {
+    (@ $($($args:tt)+)?) => {
+        format!("At {}:{}", file!(), line!()) $(+ ", " + &format!($($args)+))?
     };
-}
-
-#[macro_export]
-macro_rules! _format_id_address_message {
     (id: $id:expr $(, $($args_rest:tt)+)?) => {
-        _format_id_address_message_impl!($id, $($($args_rest)+)?)
+        format_id!($id) + " " + &_format_err!(@ $($($args_rest)+)?)
     };
     ($($args:tt)*) => {
-        _format_id_address_message_impl!($crate::logging::LogId::None, $($args)*)
+        _format_err!(@ $($args)*)
     };
 }
 
 #[macro_export]
 macro_rules! trace_str {
     ($($args:tt)*) => {
-        Err(_format_id_address_message!($($args)*))
+        Err(_format_err!($($args)*))
     };
 }
 
 #[macro_export]
 macro_rules! trace_err {
     ($res:expr $(, $($args_rest:tt)+)?) => {
-        $res.map_err(|e| _format_id_address_message!($($($args_rest)+)?) + &format!(": {}", e))
+        $res.map_err(|e| _format_err!($($($args_rest)+)?) + &format!(": {}", e))
     };
 }
 
@@ -93,62 +87,54 @@ macro_rules! trace_err {
 #[macro_export]
 macro_rules! trace_err_dbg {
     ($res:expr $(, $($args_rest:tt)+)?) => {
-        $res.map_err(|e| _format_id_address_message!($($($args_rest)+)?) + &format!(": {:?}", e))
+        $res.map_err(|e| _format_err!($($($args_rest)+)?) + &format!(": {:?}", e))
     };
 }
 
 #[macro_export]
 macro_rules! trace_none {
     ($res:expr $(, $($args_rest:tt)+)?) => {
-        $res.ok_or_else(|| _format_id_address_message!($($($args_rest)+)?))
-    };
-}
-
-#[macro_export]
-macro_rules! _log_impl {
-    ($level_ident:ident, $id:expr, $($message_fmt:expr $(, $args:expr)*)?) => {
-        log::log!(
-            log::Level::$level_ident,
-            "{}",
-            String::new() + _format_id!($id) + " " $(+ &format!($message_fmt $(, $args)*))?
-        )
+        $res.ok_or_else(|| _format_err!($($($args_rest)+)?))
     };
 }
 
 #[macro_export]
 macro_rules! _log {
-    ($level_ident:ident, id: $id:expr $(, $($args_rest:tt)+)?) => {
-        _log_impl!($level_ident, $id, $($($args_rest)+)?)
+    (@ $level:expr, $($args:tt)+) => {
+        log::log!($level, $($args)+)
     };
-    ($level_ident:ident $(, $($args_rest:tt)+)?) => {
-        _log_impl!($level_ident, $crate::logging::LogId::None, $($($args_rest)+)?)
+    ($level:expr, id: $id:expr $(, $($args_rest:tt)+)?) => {
+        _log!(@ $level, "{}", format_id!($id) $(+ " " + &format!($($args_rest)+))?)
+    };
+    ($level:expr, $($args:tt)+) => {
+        _log!(@ $level, $($args)+)
     };
 }
 
 #[macro_export]
 macro_rules! error {
     ($($args:tt)*) => {
-        _log!(Error, $($args)*)
+        _log!(log::Level::Error, $($args)*)
     };
 }
 
 #[macro_export]
 macro_rules! warn {
     ($($args:tt)*) => {
-        _log!(Warn, $($args)*)
+        _log!(log::Level::Warn, $($args)*)
     };
 }
 
 #[macro_export]
 macro_rules! info {
     ($($args:tt)*) => {
-        _log!(Info, $($args)*)
+        _log!(log::Level::Info, $($args)*)
     };
 }
 
 #[macro_export]
 macro_rules! debug {
     ($($args:tt)*) => {
-        _log!(Debug, $($args)*)
+        _log!(log::Level::Debug, $($args)*)
     };
 }

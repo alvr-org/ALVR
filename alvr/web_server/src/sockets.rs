@@ -7,50 +7,6 @@ const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 4_000;
 const HANDSHAKE_PORT: u16 = 9943;
 const MULTICAST_ADDR: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 123);
 
-async fn try_find_client(
-    listener: &mut UdpSocket,
-    packet_buffer: &mut [u8],
-    target_client_ip: Option<IpAddr>,
-) -> Result<(IpAddr, ClientHandshakePacket), ()> {
-    let (hanshake_packet_size, address) = listener
-        .recv_from(packet_buffer)
-        .await
-        .map_err(|e| debug!("Error receiving handshake packet: {}", e))?;
-
-    if let Some(ip) = target_client_ip {
-        if address.ip() != ip {
-            info!(id: LogId::ClientFoundWrongIp);
-            return Err(());
-        }
-    }
-
-    let client_handshake_packet: ClientHandshakePacket =
-        bincode::deserialize(&packet_buffer[..hanshake_packet_size]).map_err(|e| {
-            warn!(
-                id: LogId::ClientFoundInvalid,
-                "Received handshake packet: {}", e
-            )
-        })?;
-
-    if client_handshake_packet.alvr_name != ALVR_NAME {
-        warn!(
-            id: LogId::ClientFoundInvalid,
-            "Handshake packet has wrong name"
-        );
-        return Err(());
-    }
-
-    if is_version_compatible(&client_handshake_packet.version, ALVR_CLIENT_VERSION_REQ).unwrap() {
-        warn!(
-            id: LogId::ClientFoundWrongVersion(client_handshake_packet.version),
-            "Handshake packet is invalid"
-        );
-        return Err(());
-    }
-
-    Ok((address.ip(), client_handshake_packet))
-}
-
 pub async fn search_client(
     client_ip: Option<String>,
 ) -> StrResult<(IpAddr, ClientHandshakePacket)> {
@@ -66,10 +22,63 @@ pub async fn search_client(
     let mut packet_buffer = [0u8; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
 
     loop {
-        if let Ok(pair) =
-            try_find_client(&mut listener, &mut packet_buffer, maybe_target_client_ip).await
-        {
-            break Ok(pair);
+        let (hanshake_packet_size, address) = match listener.recv_from(&mut packet_buffer).await {
+            Ok(pair) => pair,
+            Err(e) => {
+                debug!("Error receiving handshake packet: {}", e);
+                continue;
+            }
+        };
+
+        if let Some(ip) = maybe_target_client_ip {
+            if address.ip() != ip {
+                info!(id: LogId::ClientFoundWrongIp);
+                continue;
+            }
         }
+
+        let client_handshake_packet: ClientHandshakePacket =
+            match bincode::deserialize(&packet_buffer[..hanshake_packet_size]) {
+                Ok(client_handshake_packet) => client_handshake_packet,
+                Err(e) => {
+                    warn!(
+                        id: LogId::ClientFoundInvalid,
+                        "Received handshake packet: {}", e
+                    );
+                    continue;
+                }
+            };
+
+        if client_handshake_packet.alvr_name != [b'A', b'L', b'V', b'R'] {
+            warn!(
+                id: LogId::ClientFoundInvalid,
+                "Handshake packet has wrong name"
+            );
+            continue;
+        }
+
+        let maybe_compatible_condition =
+            std::ffi::CStr::from_bytes_with_nul(&client_handshake_packet.version)
+                .map_err(|e| e.to_string())
+                .and_then(|client_version_cstr| {
+                    is_version_compatible(
+                        &client_version_cstr.to_string_lossy(),
+                        ALVR_CLIENT_VERSION_REQ,
+                    )
+                });
+        match maybe_compatible_condition {
+            Ok(compatible) => {
+                if !compatible {
+                    warn!(id: LogId::ClientFoundWrongVersion(client_handshake_packet.version));
+                    continue;
+                }
+            }
+            Err(e) => {
+                warn!(id: LogId::ClientFoundInvalid, "{}", e);
+                continue;
+            }
+        }
+
+        break Ok((address.ip(), client_handshake_packet));
     }
 }

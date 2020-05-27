@@ -16,11 +16,11 @@
 <body>
     <div class="nav-side-menu">
         <div class="brand"> <img src="web_hi_res_512.png" /> ALVR-NEXT</div>
-        <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
+        <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-list"></i>
 
-        <div class="menu-list">
+        <div id="menu-list" class="menu-list collapse out">
 
-            <ul id="menu-content" class="list-group menu-content collapse out">
+            <ul id="menu-content" class="list-group menu-content ">
 
                 <li>
                     <a href="#main" data-toggle="tab">
@@ -52,8 +52,8 @@
 
     <div class="content">
 
-        <div class="container">
-            <div class="tab-content">
+        <div class="container contentHeight">
+            <div class="tab-content contentHeight">
                 <div class="tab-pane container active" id="main">
                     <h1>ALVR - Air Light VR</h1>
                     ALVR is an open source remote VR display. With it, you can play SteamVR games in your standalone headset.
@@ -61,9 +61,9 @@
                 </div>
                 <div class="tab-pane container fade" id="monitor">Monitor</div>
 
-                <div class="tab-pane container fade noselect" id="config">
-                    <div class="row">
-                        <div class="cm-md-1" id="configContainer">
+                <div class="tab-pane container fade noselect contentHeight" id="config">
+                    <div class="row contentHeight">
+                        <div class="cm-md-1 contentHeight" id="configContainer">
                             <ul class="nav nav-tabs" id="configTabs">
 
                             </ul>

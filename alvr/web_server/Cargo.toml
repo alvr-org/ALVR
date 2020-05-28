@@ -15,7 +15,7 @@ warp = '^0.2.2'
 log = '^0.4.8'
 chrono = '^0.4.11'
 fern = '^0.6.0'
-msgbox = { git = 'https://github.com/zarik5/msgbox-rs'}
+msgbox = { git = 'https://github.com/bekker/msgbox-rs'}
 alvr_xtask = { path = '../xtask' }
 alvr_common = { path = '../common' }
 single-instance = '^0.1.2'

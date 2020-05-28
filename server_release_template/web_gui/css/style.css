@@ -160,7 +160,7 @@ margin-bottom: 10px;
 }
 
 #configContent {
-  height: 100%;
+  height: calc(100% - 41px);
   overflow: auto;
   padding-right: 15px;
 }

@@ -1,0 +1,9 @@
+.wizardContent {
+    min-height: 250px;
+}
+
+.wizardContent button {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+}

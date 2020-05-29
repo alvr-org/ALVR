@@ -252,3 +252,7 @@ margin-bottom: 10px;
             user-select: none; /* Non-prefixed version, currently
                                   supported by Chrome, Edge, Opera and Firefox */
 }
+
+#runSetupWizard {
+  margin-top: 20px;
+}

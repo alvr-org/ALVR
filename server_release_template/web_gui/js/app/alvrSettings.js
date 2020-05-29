@@ -4,12 +4,17 @@ define([
     "json!../../session",
     "lib/lodash",
     "i18n!app/nls/locale"
-   
+
 
 ], function (schema, session, _, i18n) {
     return function () {
         var advanced = false;
         var updating = false;
+
+        this.disableWizard = function () {
+            session.setupWizard = false;
+            updateSession();
+        }
 
         function init() {
             targetSettings = session;
@@ -92,6 +97,10 @@ define([
 
             _.set(session.settingsCache, finalPath, val);
 
+            updateSession();
+        }
+
+        function updateSession() {
             $.ajax({
                 type: "PUT",
                 url: "../../session",
@@ -100,7 +109,7 @@ define([
                 processData: false,
                 success: function (res) {
                     if (res === "") {
-                        console.log("SUCCESS")                   
+                        console.log("SUCCESS")
                     } else {
 
                         Lobibox.notify("error", {

@@ -1,9 +1,18 @@
 .wizardContent {
     min-height: 250px;
+    display: flex;
+    flex-direction: column;
 }
 
-.wizardContent button {
-    position: absolute;
-    right: 20px;
-    bottom: 20px;
+#poseOffsetGroup label input {
+    display: none;
+}
+
+.wizzardSettings {   
+ 
+    flex: 1;
+    justify-content: center;
+    display: flex;
+    align-items: center;
+
 }

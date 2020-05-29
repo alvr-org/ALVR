@@ -11,8 +11,16 @@ define([
 
 ], function ($, bootstrap, _, ALVRSettings, SetupWizard, session) {
     $(function () {
-        new ALVRSettings();
+        var settings = new ALVRSettings();
 
-        new SetupWizard();
+        var wizard = new SetupWizard(settings);
+
+        if(session.setupWizard) {
+            wizard.showWizard();
+        }   
+        $("#runSetupWizard").click(()=> {
+            wizard.showWizard();
+        })   
+       
     });
 });

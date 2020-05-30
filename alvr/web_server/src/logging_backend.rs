@@ -1,12 +1,21 @@
 use alvr_common::logging::*;
 use fern::{log_file, Dispatch};
 use log::LevelFilter;
+use std::{
+    fs,
+    sync::{Arc, Mutex},
+};
 use tokio::sync::mpsc::UnboundedSender;
-use std::sync::{Mutex, Arc};
 
 // Define logging modes, create crash log and (re)create session log
 pub fn init_logging(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) {
-    std::fs::remove_file(SESSION_LOG_FNAME).ok();
+    fs::remove_file(SESSION_LOG_FNAME).ok();
+
+    // create driver log file or else the tail command will not work
+    fs::OpenOptions::new()
+        .create(true)
+        .open(driver_log_path())
+        .ok();
 
     if cfg!(debug_assertions) {
         Dispatch::new()

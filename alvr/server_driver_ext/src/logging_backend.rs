@@ -7,7 +7,7 @@ pub fn init_logging() {
     static INIT_LOGGING_ENTRY_POINT: Once = Once::new();
 
     INIT_LOGGING_ENTRY_POINT.call_once(|| {
-        std::fs::remove_file(DRIVER_LOG_FNAME).ok();
+        std::fs::remove_file(driver_log_path()).ok();
 
         if cfg!(debug_assertions) {
             Dispatch::new()
@@ -29,7 +29,7 @@ pub fn init_logging() {
                 })
                 .level(LevelFilter::Info)
         }
-        .chain(log_file(DRIVER_LOG_FNAME).unwrap())
+        .chain(log_file(driver_log_path()).unwrap())
         .apply()
         .unwrap();
     });

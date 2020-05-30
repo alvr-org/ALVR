@@ -2,12 +2,10 @@
 
 # ALVR - Air Light VR
 
-Stream VR games from your PC to your Oculus Quest via Wi-FI.
-
+Stream VR games from your PC to your Oculus Quest via Wi-FI.  
 ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience.
 
-All games that work with a Oculus Rift (s) should work with ALVR
-
+All games that work with an Oculus Rift (s) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only with Oculus Quest.
 
 ## Requirements
@@ -48,7 +46,7 @@ Install the client on your headset through [SideQuest](https://sidequestvr.com/)
 
 - Floorlevel: Use the SteamVR room setup to calibrate the room as standing only. Put your Quest on the ground while calibrating. Make sure that the stream is still working by covering the light sensor of the quest. Enter a height of 0 into the room setup.
 Now you can press and hold the oculus key on the right controller to recenter SteamVR and fix the floor height at any time.
-- To reset ALVR, delete the files `session.json` and `settings.json` from the installation folder.
+- To reset ALVR, delete the file `session.json` from the installation folder.
 - Please check the [Troubleshooting](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) page on the original repository.
 - You can find some setup advice [here](https://github.com/JackD83/ALVR/wiki/Setup-advice).
 
@@ -64,7 +62,7 @@ If you have a version prior to 11.0 you need to launch `remove_firewall_rules.ba
 - Install [Visual Studio Community 2019](https://visualstudio.microsoft.com/downloads) with C++ build tools
 - Alternatively, if you already have a Visual Studio 2019 installation, you can add the environment variable `MSBUILD_DIR` pointing to the folder containing `MSBuild.exe`
 - Install [CUDA 10.2](https://developer.nvidia.com/cuda-downloads?target_os=Windows&target_arch=x86_64&target_version=10&target_type=exenetwork)
-- Install Android Studio >=3.4, API Level 29. Requires LLDB and NDK
+- Install Android Studio >=3.4, API Level 29. Requires LLDB and NDK. The environment variable `JAVA_HOME` must be set.
 - Install [rustup](https://rustup.rs/)
 - Download this repository and on the project root execute:
 

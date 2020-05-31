@@ -1352,7 +1352,7 @@ dependencies = [
 [[package]]
 name = "msgbox"
 version = "0.5.0"
-source = "git+https://github.com/zarik5/msgbox-rs#6d7ab96509fe7004e60d7ab46de3e2721232de26"
+source = "git+https://github.com/bekker/msgbox-rs#66384fb2855346bb33be01581718f53a569cc75f"
 dependencies = [
  "cocoa",
  "gtk",

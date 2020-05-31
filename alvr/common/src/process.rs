@@ -61,6 +61,6 @@ pub fn maybe_kill_web_server() {
 
 pub fn launch_steamvr() {
     Command::new(steamvr_bin_dir().join(exec_fname("vrmonitor")))
-        .output()
+        .spawn()
         .ok();
 }

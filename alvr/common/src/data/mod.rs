@@ -57,7 +57,6 @@ pub struct ClientConnectionDesc {
 #[serde(rename_all = "camelCase")]
 pub struct SessionDesc {
     pub setup_wizard: bool,
-    pub version: String,
     pub revert_confirm_dialog: bool,
     pub restart_confirm_dialog: bool,
     pub last_clients: Vec<ClientConnectionDesc>,
@@ -67,7 +66,6 @@ pub struct SessionDesc {
 impl Default for SessionDesc {
     fn default() -> Self {
         Self {
-            version: ALVR_SERVER_VERSION.into(),
             setup_wizard: true,
             revert_confirm_dialog: true,
             restart_confirm_dialog: true,

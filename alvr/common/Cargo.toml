@@ -13,6 +13,7 @@ log = '^0.4.8'
 backtrace = '^0.3.46'
 settings-schema = { git = 'https://github.com/zarik5/settings-schema-rs', features = ['rename_camel_case'] }
 sysinfo = '^0.14.1'
+alvr_xtask = { path = '../xtask' }
 
 [build-dependencies]
 alvr_xtask = { path = '../xtask' }

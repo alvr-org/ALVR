@@ -28,11 +28,11 @@ const DRIVER_FNAME: &str = "driver_alvr_server.so";
 const DRIVER_FNAME: &str = "driver_alvr_server.dll";
 
 #[cfg(target_os = "linux")]
-fn exec_fname(name: &str) -> String {
+pub fn exec_fname(name: &str) -> String {
     name.to_owned()
 }
 #[cfg(windows)]
-fn exec_fname(name: &str) -> String {
+pub fn exec_fname(name: &str) -> String {
     format!("{}.exe", name)
 }
 
@@ -76,13 +76,13 @@ fn msbuild_path() -> PathBuf {
 }
 
 #[cfg(target_os = "linux")]
-fn steamvr_bin_dir() -> PathBuf {
+pub fn steamvr_bin_dir() -> PathBuf {
     dirs::home_dir()
         .unwrap()
         .join(".steam/steam/steamapps/common/SteamVR/bin/linux64")
 }
 #[cfg(windows)]
-fn steamvr_bin_dir() -> PathBuf {
+pub fn steamvr_bin_dir() -> PathBuf {
     PathBuf::from("C:/Program Files (x86)/Steam/steamapps/common/SteamVR/bin/win64")
 }
 

@@ -170,6 +170,11 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             reply::json(&maybe_err.unwrap_or(0))
         });
 
+    let launch_steamvr_request = warp::path("launch_steamvr").map(|| {
+        process::launch_steamvr();
+        warp::reply()
+    });
+
     warp::serve(
         index_request
             .or(settings_schema_request)
@@ -177,6 +182,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             .or(log_subscription)
             .or(driver_registration_requests)
             .or(firewall_rules_requests)
+            .or(launch_steamvr_request)
             .or(files_requests)
             .with(reply::with::header(
                 "Cache-Control",

@@ -98,7 +98,7 @@ private:
 
     bool mExtraLatencyMode = false;
 
-    static const int DEFAULT_REFRESH_RATE = 60;
+    static const int DEFAULT_REFRESH_RATE = 72;
     int m_currentRefreshRate = DEFAULT_REFRESH_RATE;
 
     uint64_t FrameIndex = 0;

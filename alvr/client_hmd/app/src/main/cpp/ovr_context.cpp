@@ -50,8 +50,7 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager,
         return;
     }
 
-    UseMultiview = (multi_view &&
-                    vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_MULTIVIEW_AVAILABLE));
+    UseMultiview = multi_view;
     LOG("UseMultiview:%d", UseMultiview);
 
     GLint textureUnits;

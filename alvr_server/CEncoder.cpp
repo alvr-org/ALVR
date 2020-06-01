@@ -46,7 +46,9 @@
 			catch (Exception e) {
 				nvencException = e;
 			}
-			throw MakeException(L"All VideoEncoder are not available. VCE: %s, NVENC: %s", vceException.what(), nvencException.what());
+			throw MakeException(L"All VideoEncoder are not available. VCE: %s, NVENC: %s *** Please check if you have a supported GPU and the latest drivers \
+					*** This error has also been reported to occur when you are running an unsupported GPU, for example an integrated GPU of a CPU, as a main GPU of your system. \
+					Please ensure the cable of your monitor is connected to a supported dedicated GPU directly. For more information see github.com/JackD83/ALVR/issues/130", vceException.what(), nvencException.what());
 		}
 
 		bool CEncoder::CopyToStaging(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering

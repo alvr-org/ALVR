@@ -38,7 +38,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.label1.AutoSize = true;
             this.label1.Font = new System.Drawing.Font("MS UI Gothic", 14F);
-            this.label1.Location = new System.Drawing.Point(89, 9);
+            this.label1.Location = new System.Drawing.Point(89, 10);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(223, 38);
             this.label1.TabIndex = 0;
@@ -50,18 +50,19 @@
             this.textBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBox1.Font = new System.Drawing.Font("MS UI Gothic", 14F);
-            this.textBox1.Location = new System.Drawing.Point(25, 58);
+            this.textBox1.Location = new System.Drawing.Point(25, 63);
             this.textBox1.Multiline = true;
             this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(343, 117);
+            this.textBox1.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.textBox1.Size = new System.Drawing.Size(343, 126);
             this.textBox1.TabIndex = 1;
             // 
             // CrashReport
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(395, 187);
+            this.ClientSize = new System.Drawing.Size(395, 203);
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.label1);
             this.ForeColor = System.Drawing.Color.Black;

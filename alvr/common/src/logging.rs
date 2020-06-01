@@ -2,9 +2,12 @@ use serde::{Deserialize, Serialize};
 
 pub type StrResult<T = ()> = Result<T, String>;
 
-pub const DRIVER_LOG_FNAME: &str = "driver_log.txt";
 pub const SESSION_LOG_FNAME: &str = "session_log.txt";
 pub const CRASH_LOG_FNAME: &str = "crash_log.txt";
+
+pub fn driver_log_path() -> std::path::PathBuf {
+    std::env::temp_dir().join("alvr_driver_log.txt")
+}
 
 fn default_show_error_fn(_: &str) {}
 
@@ -36,12 +39,13 @@ pub fn show_err<T, E: std::fmt::Display>(res: Result<T, E>) -> Result<T, ()> {
     })
 }
 
-// Log id is serialized as #{ "id": "...", "data": [...|null] }#
+// Log id is serialized as #{ "id": "..." [, "data": ...] }#
 // Pound signs are used to identify start and finish of json
 #[repr(u8)]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "id", content = "data")]
 pub enum LogId {
+    SettingsCacheExtrapolationFailed,
     ClientFoundOk,
     ClientFoundInvalid,
     ClientFoundWrongIp,

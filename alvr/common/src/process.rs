@@ -1,3 +1,4 @@
+use alvr_xtask::*;
 use std::{path::Path, process::*};
 use sysinfo::*;
 
@@ -6,15 +7,6 @@ use std::os::windows::process::CommandExt;
 
 #[cfg(windows)]
 pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
-#[cfg(target_os = "linux")]
-fn exec_fname(name: &str) -> String {
-    name.to_owned()
-}
-#[cfg(windows)]
-fn exec_fname(name: &str) -> String {
-    format!("{}.exe", name)
-}
 
 // Launch web server. If another instance exists, the one just spawned will close itself.
 pub fn maybe_launch_web_server(root_server_dir: &Path) {
@@ -65,4 +57,10 @@ pub fn maybe_kill_web_server() {
             kill_process(process.pid());
         }
     }
+}
+
+pub fn launch_steamvr() {
+    Command::new(steamvr_bin_dir().join(exec_fname("vrmonitor")))
+        .spawn()
+        .ok();
 }

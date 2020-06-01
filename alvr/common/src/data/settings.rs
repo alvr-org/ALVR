@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 use settings_schema::*;
 use std::os::raw::c_char;
 
-pub const SETTINGS_FNAME: &str = "settings.json";
-
 #[macro_export]
 macro_rules! extern_getters {
     (@ $struct_name:ident, $field_name:ident, String) => {

@@ -14,17 +14,23 @@ pub extern "C" fn init_logging() {
     logging_backend::init_logging();
 }
 
+fn get_session_desc() -> StrResult<SessionDesc> {
+    get_alvr_dir_using_vrpathreg()
+        .map_err(|e| e.to_string())
+        .and_then(|alvr_dir| load_session(&alvr_dir.join(SESSION_FNAME)))
+}
+
 // If settings cannot be loaded, this method shows an error and returns null.
 #[no_mangle]
 pub extern "C" fn settings() -> *const Settings {
     lazy_static! {
-        static ref MAYBE_SETTINGS: StrResult<Settings> = get_alvr_dir_using_vrpathreg()
-            .map_err(|e| e.to_string())
-            .and_then(|alvr_dir| load_json(&alvr_dir.join(SETTINGS_FNAME)))
-            .map_err(|e| {
+        static ref MAYBE_SETTINGS: StrResult<Settings> = match get_session_desc() {
+            Ok(session_desc) => Ok(session_to_settings(&session_desc)),
+            Err(e) => {
                 error!("{}", e);
-                e
-            });
+                Err(e)
+            }
+        };
     }
 
     if let Ok(settings) = &*MAYBE_SETTINGS {
@@ -56,9 +62,7 @@ pub unsafe extern "C" fn get_connected_client_packet(
 ) -> *const ClientHandshakePacket {
     lazy_static! {
         static ref MAYBE_CLIENT_CONNECTION_DESC: StrResult<ClientConnectionDesc> =
-            get_alvr_dir_using_vrpathreg()
-                .map_err(|e| e.to_string())
-                .and_then(|alvr_dir| load_json(&alvr_dir.join(SESSION_FNAME)))
+            get_session_desc()
                 .and_then(|session_desc: SessionDesc| {
                     for client_connection in session_desc.last_clients {
                         if client_connection.available {

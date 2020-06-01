@@ -16,12 +16,12 @@ namespace ALVR
     {
         private static readonly string APP_FILEMAPPING_NAME = "ALVR_DRIVER_FILEMAPPING_0B124897-7730-4B84-AA32-088E9B92851F";
 
-        public static readonly int DEFAULT_SCALE_INDEX = 3; // 100%
+        public static readonly int DEFAULT_SCALE_INDEX = 4; // 100%
         public static readonly int[] supportedScales = { 25, 50, 66, 75, 100, 125, 150, 175, 200 };
 
         public static readonly int DEFAULT_REFRESHRATE = 72;
-        public static readonly int DEFAULT_WIDTH = 2432;
-        public static readonly int DEFAULT_HEIGHT = 1344;
+        public static readonly int DEFAULT_WIDTH = 2880;
+        public static readonly int DEFAULT_HEIGHT = 1600;
 
         public class ComboBoxCustomItem
         {

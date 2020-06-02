@@ -185,8 +185,8 @@ namespace ALVR
                     {
                         driverConfig.refreshRate = 60;
                     }
-                    driverConfig.renderWidth = device.DefaultWidth * c.resolutionScale / 100;
-                    driverConfig.renderHeight = device.DefaultHeight * c.resolutionScale / 100;
+                    driverConfig.renderWidth = (int)((float)device.DefaultWidth * c.resolutionScale / 100 / 32) * 32;
+                    driverConfig.renderHeight = (int)((float)device.DefaultHeight * c.resolutionScale / 100 / 32) * 32;
                     driverConfig.recommendedRenderWidth = device.DefaultWidth;
                     driverConfig.recommendedRenderHeight = device.DefaultHeight;
 

@@ -29,12 +29,10 @@ float4 PS(PS_INPUT input) : SV_Target
 	float4 output;
 	if (input.View == (uint)0) { // Left View
 		output = txLeft.Sample(samLinear, input.Tex);
-		//output.rgb = Rec709ToRec2020(output.rgb);
 		return output;
 	}
 	else { // Right View
 		output = txRight.Sample(samLinear, input.Tex);
-		//output.rgb = Rec709ToRec2020(output.rgb);
 		return output;
 	}
 };

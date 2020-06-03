@@ -480,7 +480,7 @@ namespace ALVR.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
         public bool enableColorCorrection {
             get {
                 return ((bool)(this["enableColorCorrection"]));
@@ -528,7 +528,7 @@ namespace ALVR.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        [global::System.Configuration.DefaultSettingValueAttribute("1.12")]
         public decimal gamma {
             get {
                 return ((decimal)(this["gamma"]));

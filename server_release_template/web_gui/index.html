@@ -11,12 +11,35 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="google" content="notranslate" />
+
+    <style>
+        #loading {
+            width: 100vw;
+            height: 100vh;             
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0.7;
+            background-color: #fff;
+            z-index: 99;        
+        }
+        #loading-image {
+            flex: 0;
+            z-index: 100;
+        }
+    </style>
 </head>
 
 <body>
-    <div id="bodyContent">
-
+    <div id="loading">
+        <img id="loading-image" src="images/ajax-loader.gif" alt="Loading..." />
     </div>
+
+
+    <div id="bodyContent" style="display: none;">
+    </div>
+
+
 
     <script data-main="js/app" src="js/lib/require.js"></script>
 

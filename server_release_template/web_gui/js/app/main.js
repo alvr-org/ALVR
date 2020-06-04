@@ -19,11 +19,16 @@ define([
             "title": i18n.title,
         });
 
-        $("#bodyContent").append(template);
+       
+        $("#bodyContent").append(template);       
         $(document).ready(() => {
+            $('#loading').remove();
+          
+
             var settings = new ALVRSettings();
             var wizard = new SetupWizard(settings);
 
+            $("#bodyContent").show();
 
             if (session.setupWizard) {
                 wizard.showWizard();

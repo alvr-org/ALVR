@@ -1,18 +1,42 @@
 define([
     "lib/lodash",
     "text!app/templates/wizard.html",
+    "i18n!app/nls/wizard",
     "css!app/templates/wizard.css"
-], function (_, wizardTemplate) {
+], function (_, wizardTemplate, i18n) {
     return function (alvrSettings) {
 
 
         this.showWizard = function () {
             var currentPage = 0;
             var compiledTemplate = _.template(wizardTemplate);
-            var test = compiledTemplate();
+            var template = compiledTemplate({
+                "title": i18n.title,
+                "subtitle": i18n.subtitle,
+                "titleFirewall": i18n.titleFirewall,
+                "textFirewall": i18n.textFirewall,
+                "buttonFirewall": i18n.buttonFirewall,
+                "titleDriver": i18n.titleDriver,
+                "textDriver": i18n.textDriver,
+                "buttonDriver": i18n.buttonDriver,
+                "titleTracking": i18n.titleTracking,
+                "textTracking": i18n.textTracking,
+                "normalTracking": i18n.normalTracking,
+                "mediumTracking": i18n.mediumTracking,
+                "fastTracking": i18n.fastTracking,
+                "titlePerformance": i18n.titlePerformance,
+                "textPerformance": i18n.textPerformance,
+                "compatPerformance": i18n.compatPerformance,
+                "perfPerformance": i18n.perfPerformance,
+                "titleFinished": i18n.titleFinished,
+                "textFinished": i18n.textFinished,
+                "buttonNext": i18n.buttonNext,
+                "buttonClose": i18n.buttonClose
+
+            });
 
             $("#setupWizard").remove();
-            $("body").append(test);
+            $("body").append(template);
             $(document).ready(() => {
                 $('#setupWizard').modal({
                     backdrop: 'static',
@@ -26,7 +50,7 @@ define([
                                 rounded: true,
                                 delayIndicator: false,
                                 sound: false,
-                                msg: "Registering driver failed"
+                                msg: i18n.driverFailed
                             })
                         } else {
                             Lobibox.notify("success", {
@@ -34,7 +58,7 @@ define([
                                 rounded: true,
                                 delayIndicator: false,
                                 sound: false,
-                                msg: "Driver successfully registred"
+                                msg: i18n.driverSuccess
                             })
                         }
                     })
@@ -48,7 +72,7 @@ define([
                                 rounded: true,
                                 delayIndicator: false,
                                 sound: false,
-                                msg: "Setting firewall rules failed"
+                                msg: i18n.firewallFailed
                             })
                         } else {
                             Lobibox.notify("success", {
@@ -56,7 +80,7 @@ define([
                                 rounded: true,
                                 delayIndicator: false,
                                 sound: false,
-                                msg: "Firewall rules successfully set"
+                                msg: i18n.firewallSuccess
                             })
                         }
                     })
@@ -109,7 +133,7 @@ define([
                     }
 
                     if (currentPage >= $("#wizardMain").children().length - 2) {
-                        $("#wizardNextButton").text("Close")
+                        $("#wizardNextButton").text(i18n.buttonClose)
                     }
 
 

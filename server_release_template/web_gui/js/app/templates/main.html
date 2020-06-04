@@ -1,0 +1,80 @@
+
+        <div class="nav-side-menu">
+            <div class="brand"> <img src="web_hi_res_512.png" /> ALVR-NEXT</div>
+            <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-list"></i>
+
+            <div id="menu-list" class="menu-list collapse out">
+
+                <ul id="menu-content" class="list-group menu-content ">
+
+                    <li>
+                        <a href="#main" data-toggle="tab">
+                            <i class="fa fa-circle fa-lg"></i> ALVR
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#monitor" data-toggle="tab">
+                            <i class="fas fa-tachometer-alt"></i> Monitor
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#config" data-toggle="tab">
+                            <i class="fa fa-cogs fa-lg"></i> Settings
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#about" data-toggle="tab">
+                            <i class="fa fa-info-circle fa-lg"></i> About
+                        </a>
+                    </li>
+
+                </ul>
+            </div>
+        </div>
+
+        <div class="content">
+
+            <div class="container contentHeight">
+                <div class="tab-content contentHeight">
+                    <div class="tab-pane container active" id="main">
+                        <h1>ALVR - Air Light VR</h1>
+                        ALVR is an open source remote VR display. With it, you can play SteamVR games in your standalone
+                        headset.
+                        This is a fork of ALVR that is only working on the Oculus Quest.
+
+                        <button id="runSetupWizard" type="button" class="btn btn-primary">Run setup wizard</button>
+                    </div>
+                    <div class="tab-pane container fade" id="monitor">Monitor</div>
+
+                    <div class="tab-pane container fade noselect contentHeight" id="config">
+                        <div class="row contentHeight">
+                            <div class="cm-md-1 contentHeight" id="configContainer">
+                                <ul class="nav nav-tabs" id="configTabs">
+
+                                </ul>
+
+                                <div class="tab-content" id="configContent">
+                                    <div id="toggleAdvanced"> Show advanced options
+                                        <i class="fas fa-toggle-on" data-toggle="tooltip"
+                                            title="show advanced options"></i>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="tab-pane container fade" id="about">
+                        <h1>About</h1>
+
+                        Visit us on GitHub <a
+                            href="https://github.com/JackD83/ALVR/">https://github.com/JackD83/ALVR/</a>
+
+                    </div>
+                </div>
+            </div>
+        </div>

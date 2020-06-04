@@ -3,7 +3,7 @@ define([
     "json!../../settings-schema",
     "json!../../session",
     "lib/lodash",
-    "i18n!app/nls/locale"
+    "i18n!app/nls/settings"
 
 
 ], function (schema, session, _, i18n) {

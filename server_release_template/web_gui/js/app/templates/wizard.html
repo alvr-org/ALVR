@@ -6,8 +6,8 @@
             <!-- Modal Header -->
             <div class="modal-header">
                 <div>
-                    <h4 class="modal-title">Welcome to ALVR</h4>
-                    This wizard will guide you to the basic setup of ALVR
+                    <h4 class="modal-title"><%= title %></h4>
+                    <%= subtitle %>
                 </div>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
@@ -16,69 +16,66 @@
             <div id="wizardMain" class="modal-body">
                 <div class="wizardContent">
                     <div>
-                        <h6>Firewall</h6>
-                        To communicate with the headset, some firewall rules need to be set.
-                        This requires administrator rights.
+                        <h6><%= titleFirewall %></h6>
+                        <%= textFirewall %>
                     </div>
                     <div class="wizzardSettings">
-                        <button id="addFirewall" type="button" class="btn btn-primary">Add firewall rules</button>
+                        <button id="addFirewall" type="button" class="btn btn-primary"><%= buttonFirewall %>s</button>
                     </div>
                 </div>
                 <div class="wizardContent" style="display: none;">
                     <div>
-                        <h6>Driver</h6>
-                        The ALVR driver needs to be registred with SteamVR
+                        <h6><%= titleDriver %></h6>
+                        <%= textDriver %>
                     </div>
                     <div class="wizzardSettings">
-                        <button id="installDriver" type="button" class="btn btn-primary">Register driver</button>
+                        <button id="installDriver" type="button" class="btn btn-primary"><%= buttonDriver %></button>
                     </div>
                 </div>
                 <div class="wizardContent" style="display: none;">
                     <div>
-                        <h6>Tracking</h6>
-                        How should the tracking of the controller be handled.
-                        f you plan on playing fast pased games like Beatsaber, choose medium or fast. For slower games
-                        like
-                        Skyrim leave it on normal.
+                        <h6><%= titleTracking %></h6>
+                        <%= textTracking %>
+                        
                     </div>
                     <div class="wizzardSettings">
                         <div id="poseOffsetGroup" class="btn-group" data-toggle="buttons">
                             <label class="btn btn-primary active">
                                 <input type="radio" name="poseOffset" class="poseOffsetButton" value="normal"
-                                    autocomplete="off" checked> normal
+                                    autocomplete="off" checked> <%= normalTracking %>
                             </label>
                             <label class="btn btn-primary">
                                 <input type="radio" name="poseOffset" class="poseOffsetButton" autocomplete="off"
-                                    value="medium"> medium </label>
+                                    value="medium"> <%= mediumTracking %> </label>
                             <label class="btn btn-primary">
                                 <input type="radio" name="poseOffset" class="poseOffsetButton" autocomplete="off"
-                                    value="fast"> fast </label>
+                                    value="fast"> <%= fastTracking %> </label>
                         </div>
                     </div>
                 </div>
 
                 <div class="wizardContent" style="display: none;">
                     <div>
-                        <h6>Performance preset</h6>
-                        Please choose preset that fits your setup. This will adjust some settings for you.
+                        <h6><%= titlePerformance %></h6>
+                        <%= textPerformance %>
                     </div>
                     <div class="wizzardSettings">
                         <div id="poseOffsetGroup" class="btn-group" data-toggle="buttons">
                             <label class="btn btn-primary active">
                                 <input type="radio" name="performanceOptions" class="performaceOffsetButton"
-                                    autocomplete="off" checked value="compatibility"> compatibility
+                                    autocomplete="off" checked value="compatibility">  <%= compatPerformance %>
                             </label>
                             <label class="btn btn-primary">
                                 <input type="radio" name="performanceOptions" class="performaceOffsetButton"
-                                    autocomplete="off" value="performance"> performance </label>
+                                    autocomplete="off" value="performance"> <%= perfPerformance %> </label>
                         </div>
                     </div>
                 </div>
 
                 <div class="wizardContent" style="display: none;">
                     <div>
-                        <h6>Finished</h6>
-                        You can always restart this wizard from the ALVR-tab on the left
+                        <h6><%= titleFinished %></h6>
+                        <%= textFinished %>                        
                     </div>
                 </div>
 
@@ -87,7 +84,7 @@
 
             <!-- Modal footer -->
             <div class="modal-footer">
-                <button id="wizardNextButton" type="button" class="btn btn-info">Next</button>
+                <button id="wizardNextButton" type="button" class="btn btn-info"><%= buttonNext %></button>
             </div>
 
         </div>

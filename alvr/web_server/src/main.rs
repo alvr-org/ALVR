@@ -6,7 +6,7 @@ use alvr_common::{data::*, logging::*, *};
 use futures::SinkExt;
 use logging_backend::*;
 use std::{
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{Arc, Mutex},
     time::SystemTime,
 };
@@ -17,6 +17,7 @@ use tokio::{
 };
 use warp::{
     body, fs as wfs,
+    http::StatusCode,
     reply,
     ws::{Message, WebSocket, Ws},
     Filter,
@@ -25,7 +26,11 @@ use warp::{
 const WEB_GUI_DIR_STR: &str = "web_gui";
 
 fn alvr_server_dir() -> PathBuf {
-    std::env::current_exe().unwrap().parent().unwrap().to_owned()
+    std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_owned()
 }
 
 fn try_log_redirect(line: &str, level: log::Level) -> bool {
@@ -90,12 +95,12 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
 }
 
 async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult {
-    let session_manager = Arc::new(Mutex::new(SessionManager::new(&Path::new("./"))));
+    let session_manager = Arc::new(Mutex::new(SessionManager::new(&alvr_server_dir())));
 
     tokio::spawn(client_discovery(session_manager.clone()));
 
     let driver_log_redirect = tokio::spawn(
-        tail_stream(DRIVER_LOG_FNAME)?
+        tail_stream(&driver_log_path())?
             .map(|maybe_line: std::io::Result<String>| {
                 if let Ok(line) = maybe_line {
                     if !(try_log_redirect(&line, log::Level::Error)
@@ -118,15 +123,25 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
     let settings_schema_request = warp::path("settings-schema").map(|| env!("SETTINGS_SCHEMA"));
 
     let session_requests = warp::path("session").and(
-        body::json()
+        warp::get()
             .map({
                 let session_manager = session_manager.clone();
-                move |data| {
-                    *session_manager.lock().unwrap().get_mut() = data;
-                    warp::reply()
-                }
+                move || reply::json(&*session_manager.lock().unwrap().get_mut())
             })
-            .or(warp::any().map(move || reply::json(&*session_manager.lock().unwrap().get_mut()))),
+            .or(warp::post().and(body::json().map(move |value| {
+                let res = session_manager
+                    .lock()
+                    .unwrap()
+                    .get_mut()
+                    .merge_from_json(value);
+                if let Err(e) = res {
+                    warn!("{}", e);
+                    // HTTP Code: WARNING
+                    reply::with_status(reply(), StatusCode::from_u16(199).unwrap())
+                } else {
+                    reply::with_status(reply(), StatusCode::OK)
+                }
+            }))),
     );
 
     let log_subscription = warp::path("log").and(warp::ws()).map(move |ws: Ws| {
@@ -137,7 +152,11 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
 
     let driver_registration_requests = warp::path!("driver" / String).map(|action_str: String| {
         let register = action_str == "register";
-        show_err(alvr_xtask::driver_registration(&alvr_server_dir(), register)).ok();
+        show_err(alvr_xtask::driver_registration(
+            &alvr_server_dir(),
+            register,
+        ))
+        .ok();
         warp::reply()
     });
 
@@ -151,6 +170,11 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             reply::json(&maybe_err.unwrap_or(0))
         });
 
+    let launch_steamvr_request = warp::path("launch_steamvr").map(|| {
+        process::launch_steamvr();
+        warp::reply()
+    });
+
     warp::serve(
         index_request
             .or(settings_schema_request)
@@ -158,6 +182,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             .or(log_subscription)
             .or(driver_registration_requests)
             .or(firewall_rules_requests)
+            .or(launch_steamvr_request)
             .or(files_requests)
             .with(reply::with::header(
                 "Cache-Control",

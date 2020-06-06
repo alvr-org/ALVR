@@ -28,11 +28,11 @@ const DRIVER_FNAME: &str = "driver_alvr_server.so";
 const DRIVER_FNAME: &str = "driver_alvr_server.dll";
 
 #[cfg(target_os = "linux")]
-fn exec_fname(name: &str) -> String {
+pub fn exec_fname(name: &str) -> String {
     name.to_owned()
 }
 #[cfg(windows)]
-fn exec_fname(name: &str) -> String {
+pub fn exec_fname(name: &str) -> String {
     format!("{}.exe", name)
 }
 
@@ -76,13 +76,13 @@ fn msbuild_path() -> PathBuf {
 }
 
 #[cfg(target_os = "linux")]
-fn steamvr_bin_dir() -> PathBuf {
+pub fn steamvr_bin_dir() -> PathBuf {
     dirs::home_dir()
         .unwrap()
         .join(".steam/steam/steamapps/common/SteamVR/bin/linux64")
 }
 #[cfg(windows)]
-fn steamvr_bin_dir() -> PathBuf {
+pub fn steamvr_bin_dir() -> PathBuf {
     PathBuf::from("C:/Program Files (x86)/Steam/steamapps/common/SteamVR/bin/win64")
 }
 
@@ -176,10 +176,21 @@ pub fn build_server(is_release: bool) -> BResult {
     fs::create_dir_all(&lib_build_dir)?;
     fs::create_dir_all(&driver_dst_dir)?;
 
+    run("cargo update")?;
+
     run(&format!(
-        "cargo build -p alvr_server_driver_ext {}",
+        "cargo build -p alvr_server_driver_ext -p alvr_web_server -p alvr_server_bootstrap {}",
         build_flag
     ))?;
+    fs::copy(
+        artifacts_dir.join(exec_fname("alvr_web_server")),
+        server_build_dir().join(exec_fname("alvr_web_server")),
+    )?;
+    fs::copy(
+        artifacts_dir.join(exec_fname("alvr_server_bootstrap")),
+        server_build_dir().join(exec_fname("ALVR")),
+    )?;
+
     println!("Please wait for cbindgen...");
     run(&format!(
         "rustup run {} cbindgen --config alvr/server_driver_ext/cbindgen.toml \
@@ -208,20 +219,6 @@ pub fn build_server(is_release: bool) -> BResult {
             driver_dst_dir.join(DRIVER_FNAME),
         )?;
     }
-
-    run(&format!("cargo build -p alvr_web_server {}", build_flag))?;
-    fs::copy(
-        artifacts_dir.join(exec_fname("alvr_web_server")),
-        server_build_dir().join(exec_fname("alvr_web_server")),
-    )?;
-    run(&format!(
-        "cargo build -p alvr_server_bootstrap {}",
-        build_flag
-    ))?;
-    fs::copy(
-        artifacts_dir.join(exec_fname("alvr_server_bootstrap")),
-        server_build_dir().join(exec_fname("ALVR")),
-    )?;
 
     // if cfg!(target_os = "linux") {
     //     use std::io::Write;

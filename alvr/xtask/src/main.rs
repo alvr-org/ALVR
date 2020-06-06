@@ -27,7 +27,6 @@ USAGE:
     cargo xtask <SUBCOMMAND> [FLAG]
 
 SUBCOMMANDS:
-    install-deps        Install toolchains and required cargo third-party subcommands
     build-server        Build server driver and GUI, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
     build-all           'build-server' + 'build-client'
@@ -53,7 +52,6 @@ fn main() {
 
         if args.finish().is_ok() {
             match subcommand.as_str() {
-                "install-deps" => ok_or_exit(install_deps()),
                 "build-server" => ok_or_exit(build_server(is_release)),
                 "build-client" => ok_or_exit(build_client(is_release)),
                 "build-all" => {

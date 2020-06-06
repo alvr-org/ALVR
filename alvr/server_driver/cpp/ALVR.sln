@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29409.12
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "shared", "shared\shared.vcxproj", "{10868996-D864-4E88-8BCB-BA530AF64712}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "alvr_server", "alvr_server\driver_virtual_display.vcxproj", "{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CUDA", "CUDA\CUDA.vcxproj", "{12336478-A663-42F8-8D52-8D093CD99992}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AMF", "AMF\AMF.vcxproj", "{B040F09F-3DE1-4E72-AC89-F45DC4ECDE76}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{10868996-D864-4E88-8BCB-BA530AF64712}.Debug|x64.ActiveCfg = Debug|x64
+		{10868996-D864-4E88-8BCB-BA530AF64712}.Debug|x64.Build.0 = Debug|x64
+		{10868996-D864-4E88-8BCB-BA530AF64712}.Release|x64.ActiveCfg = Release|x64
+		{10868996-D864-4E88-8BCB-BA530AF64712}.Release|x64.Build.0 = Release|x64
+		{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}.Debug|x64.ActiveCfg = Debug|x64
+		{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}.Debug|x64.Build.0 = Debug|x64
+		{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}.Release|x64.ActiveCfg = Release|x64
+		{6FB51D67-327E-4A18-BC74-7AA6AAB4C827}.Release|x64.Build.0 = Release|x64
+		{12336478-A663-42F8-8D52-8D093CD99992}.Debug|x64.ActiveCfg = Debug|x64
+		{12336478-A663-42F8-8D52-8D093CD99992}.Debug|x64.Build.0 = Debug|x64
+		{12336478-A663-42F8-8D52-8D093CD99992}.Release|x64.ActiveCfg = Release|x64
+		{12336478-A663-42F8-8D52-8D093CD99992}.Release|x64.Build.0 = Release|x64
+		{B040F09F-3DE1-4E72-AC89-F45DC4ECDE76}.Debug|x64.ActiveCfg = Debug|x64
+		{B040F09F-3DE1-4E72-AC89-F45DC4ECDE76}.Debug|x64.Build.0 = Debug|x64
+		{B040F09F-3DE1-4E72-AC89-F45DC4ECDE76}.Release|x64.ActiveCfg = Release|x64
+		{B040F09F-3DE1-4E72-AC89-F45DC4ECDE76}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F7547D2D-C607-483D-B856-E7250F9499C6}
+	EndGlobalSection
+EndGlobal

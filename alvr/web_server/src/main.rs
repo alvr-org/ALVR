@@ -175,6 +175,9 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
         warp::reply()
     });
 
+    let audio_devices_request = warp::path("audio_devices")
+        .map(|| reply::json(&audio::output_audio_device_names().ok()));
+
     warp::serve(
         index_request
             .or(settings_schema_request)
@@ -183,6 +186,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             .or(driver_registration_requests)
             .or(firewall_rules_requests)
             .or(launch_steamvr_request)
+            .or(audio_devices_request)
             .or(files_requests)
             .with(reply::with::header(
                 "Cache-Control",

@@ -156,8 +156,12 @@ enum ALVR_FINGER_PINCH {
 	alvrFingerPinch_MaxPinches = 4,
 };
 enum ALVR_HAND_CONFIDENCE {
-	alvrHandConfidence_High = 0x3f800000,
-	alvrHandConfidence_Low = 0x00000000,
+	alvrThumbConfidence_High = (1 << 0),
+	alvrIndexConfidence_High = (1 << 1),
+	alvrMiddleConfidence_High = (1 << 2),
+	alvrRingConfidence_High = (1 << 3),
+	alvrPinkyConfidence_High = (1 << 4),
+	alvrHandConfidence_High = (1 << 5),
 };
 typedef enum ALVR_HAND_INPUT
 {
@@ -294,7 +298,7 @@ struct TrackingInfo {
 		TrackingVector3 boneRootPosition;
 		uint32_t inputStateStatus;
 		float fingerPinchStrengths[alvrFingerPinch_MaxPinches];
-		uint32_t handConfidence;
+		uint32_t handFingerConfidences;
 	} controller[2];
 };
 // Client >----(mode 0)----> Server

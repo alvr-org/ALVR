@@ -9,7 +9,6 @@ Release
 *.exe
 *.mexw64
 *.aps
-*.cso
 
 # editor
 .vs/

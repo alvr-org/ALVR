@@ -59,19 +59,18 @@ If you have a version prior to 11.0 you need to launch `remove_firewall_rules.ba
 ## Build from source
 
 - Install Visual Studio Code and the extension rust-analyzer (optional)
-- Install [Visual Studio Community 2019](https://visualstudio.microsoft.com/downloads) with C++ build tools
-- Alternatively, if you already have a Visual Studio 2019 installation, you can add the environment variable `MSBUILD_DIR` pointing to the folder containing `MSBuild.exe`
-- Install [CUDA 10.2](https://developer.nvidia.com/cuda-downloads?target_os=Windows&target_arch=x86_64&target_version=10&target_type=exenetwork)
+- Install the MSVC compiler (for example installing C++ build tools with [Visual Studio](https://visualstudio.microsoft.com/downloads))
 - Install Android Studio >=3.4, API Level 29. Requires LLDB and NDK. The environment variable `JAVA_HOME` must be set.
 - Install [rustup](https://rustup.rs/)
 - Download this repository and on the project root execute:
 
     ```bash
-    cargo xtask install-deps
     cargo xtask build-all --release
     ```
 
 - ALVR server and client will be in `/build`.
+
+Note: The Visual Studio solution is left only for IDE support while coding. If compiled, the resulting binary will not be valid.
 
 ## License
 

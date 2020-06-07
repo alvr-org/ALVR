@@ -14,6 +14,14 @@
 </head>
 
 <body>
+    <script>
+        // This script should be executed as soon as possible
+        var locationX = (screen.availWidth - window.innerWidth) / 2;
+        var locationY = (screen.availHeight - window.innerHeight) / 2;
+        if (locationX > 0) {
+            window.moveTo(locationX, locationY);
+        }
+    </script>
     <div class="nav-side-menu">
         <div class="brand"> <img src="web_hi_res_512.png" /> ALVR-NEXT</div>
         <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-list"></i>

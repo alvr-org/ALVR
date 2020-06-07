@@ -30,7 +30,6 @@ pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
     ))
 }
 
-#[repr(C)]
 #[derive(Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ClientHandshakePacket {
@@ -309,7 +308,8 @@ fn extrapolate_settings_cache(
 
             // todo: default field cannot be properly validated until I implement plain settings
             // validation (not to be confused with session/settings_cache validation). Any
-            // problem inside this new_cache default will result in the loss all data in session.
+            // problem inside this new_cache default will result in the loss all data in the new
+            // settings_cache.
             let default = new_cache
                 .get("default")
                 .cloned()

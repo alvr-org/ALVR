@@ -41,7 +41,6 @@ pub fn show_err<T, E: std::fmt::Display>(res: Result<T, E>) -> Result<T, ()> {
 
 // Log id is serialized as #{ "id": "..." [, "data": ...] }#
 // Pound signs are used to identify start and finish of json
-#[repr(u8)]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "id", content = "data")]
 pub enum LogId {
@@ -49,8 +48,7 @@ pub enum LogId {
     ClientFoundOk,
     ClientFoundInvalid,
     ClientFoundWrongIp,
-    // Note: this should be a string but rust strings are not C compatible
-    ClientFoundWrongVersion([u8; 32]),
+    ClientFoundWrongVersion(String),
 }
 
 #[macro_export]

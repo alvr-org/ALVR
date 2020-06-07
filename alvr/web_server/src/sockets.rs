@@ -1,5 +1,8 @@
 use alvr_common::{data::*, logging::*, *};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::{
+    ffi::CStr,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+};
 use tokio::net::*;
 
 const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
@@ -58,7 +61,7 @@ pub async fn search_client(
         }
 
         let maybe_compatible_condition =
-            std::ffi::CStr::from_bytes_with_nul(&client_handshake_packet.version)
+            CStr::from_bytes_with_nul(&client_handshake_packet.version)
                 .map_err(|e| e.to_string())
                 .and_then(|client_version_cstr| {
                     is_version_compatible(
@@ -69,7 +72,11 @@ pub async fn search_client(
         match maybe_compatible_condition {
             Ok(compatible) => {
                 if !compatible {
-                    warn!(id: LogId::ClientFoundWrongVersion(client_handshake_packet.version));
+                    let version_c_str =
+                        CStr::from_bytes_with_nul(&client_handshake_packet.version).unwrap();
+                    warn!(id: LogId::ClientFoundWrongVersion(
+                        version_c_str.to_string_lossy().into_owned()
+                    ));
                     continue;
                 }
             }

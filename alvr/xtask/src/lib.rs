@@ -10,8 +10,6 @@ use std::{
 
 type BResult<T = ()> = Result<T, Box<dyn Error>>;
 
-const NIGHTLY_TOOLCHAIN_VERSION: &str = "nightly-2020-04-30";
-
 #[cfg(target_os = "linux")]
 const SERVER_BUILD_DIR_NAME: &str = "alvr_server_linux";
 #[cfg(windows)]
@@ -34,6 +32,15 @@ pub fn exec_fname(name: &str) -> String {
 #[cfg(windows)]
 pub fn exec_fname(name: &str) -> String {
     format!("{}.exe", name)
+}
+
+#[cfg(target_os = "linux")]
+fn dynlib_fname(name: &str) -> String {
+    format!("lib{}.so", name)
+}
+#[cfg(windows)]
+fn dynlib_fname(name: &str) -> String {
+    format!("{}.dll", name)
 }
 
 fn run_with_args(cmd: &str, args: &[&str]) -> BResult {
@@ -65,14 +72,6 @@ fn run(cmd: &str) -> BResult {
 
 fn path_to_string(path: &Path) -> String {
     format!("\"{}\"", path.to_string_lossy())
-}
-
-fn msbuild_path() -> PathBuf {
-    let msbuild_dir = env::var("MSBUILD_DIR").unwrap_or_else(|_| {
-        "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin"
-            .to_owned()
-    });
-    Path::new(&msbuild_dir).join("MSBuild.exe")
 }
 
 #[cfg(target_os = "linux")]
@@ -166,22 +165,23 @@ pub fn build_server(is_release: bool) -> BResult {
     let build_type = if is_release { "release" } else { "debug" };
     let build_flag = if is_release { "--release" } else { "" };
 
-    let server_driver_dir = workspace_dir().join("alvr/server_driver");
     let target_dir = target_dir();
     let artifacts_dir = target_dir.join(build_type);
-    let lib_build_dir = build_dir().join("lib");
     let driver_dst_dir = server_build_dir().join("bin").join(STEAMVR_OS_DIR_NAME);
 
     reset_server_build_folder()?;
-    fs::create_dir_all(&lib_build_dir)?;
     fs::create_dir_all(&driver_dst_dir)?;
 
     run("cargo update")?;
 
     run(&format!(
-        "cargo build -p alvr_server_driver_ext -p alvr_web_server -p alvr_server_bootstrap {}",
+        "cargo build -p alvr_server_driver -p alvr_web_server -p alvr_server_bootstrap {}",
         build_flag
     ))?;
+    fs::copy(
+        artifacts_dir.join(dynlib_fname("alvr_server_driver")),
+        driver_dst_dir.join(DRIVER_FNAME),
+    )?;
     fs::copy(
         artifacts_dir.join(exec_fname("alvr_web_server")),
         server_build_dir().join(exec_fname("alvr_web_server")),
@@ -190,35 +190,6 @@ pub fn build_server(is_release: bool) -> BResult {
         artifacts_dir.join(exec_fname("alvr_server_bootstrap")),
         server_build_dir().join(exec_fname("ALVR")),
     )?;
-
-    println!("Please wait for cbindgen...");
-    run(&format!(
-        "rustup run {} cbindgen --config alvr/server_driver_ext/cbindgen.toml \
-            --crate alvr_server_driver_ext --output build/include/alvr_server_driver_ext.h",
-        NIGHTLY_TOOLCHAIN_VERSION
-    ))?;
-
-    if cfg!(windows) {
-        fs::copy(
-            artifacts_dir.join("alvr_server_driver_ext.lib"),
-            lib_build_dir.join("alvr_server_driver_ext.lib"),
-        )?;
-        run_with_args(
-            &msbuild_path().to_string_lossy(),
-            &[
-                "alvr/server_driver/ALVR.sln",
-                &format!("-p:Configuration={}", build_type),
-                "-p:Platform=x64",
-            ],
-        )?;
-        fs::copy(
-            server_driver_dir
-                .join("x64")
-                .join(build_type)
-                .join(DRIVER_FNAME),
-            driver_dst_dir.join(DRIVER_FNAME),
-        )?;
-    }
 
     // if cfg!(target_os = "linux") {
     //     use std::io::Write;
@@ -335,23 +306,12 @@ fn get_version(dir_name: &str) -> String {
 }
 
 pub fn server_version() -> String {
-    get_version("server_driver_ext")
+    get_version("server_driver")
 }
 
 // pub fn client_version() -> String {
 //     get_version("client_hmd")
 // }
-
-pub fn install_deps() -> BResult {
-    run(&format!(
-        "rustup toolchain install {}",
-        NIGHTLY_TOOLCHAIN_VERSION
-    ))?;
-    run(&format!(
-        "cargo +{} install cbindgen --force",
-        NIGHTLY_TOOLCHAIN_VERSION
-    ))
-}
 
 pub fn get_alvr_dir_using_vrpathreg() -> BResult<PathBuf> {
     let output = Command::new(steamvr_bin_dir().join(exec_fname("vrpathreg"))).output()?;

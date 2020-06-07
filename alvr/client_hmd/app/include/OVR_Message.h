@@ -49,6 +49,7 @@
 #include "OVR_NetSyncSessionArray.h"
 #include "OVR_NetSyncSessionsChangedNotification.h"
 #include "OVR_NetSyncSetSessionPropertyResult.h"
+#include "OVR_NetSyncVoipAttenuationValueArray.h"
 #include "OVR_NetworkingPeer.h"
 #include "OVR_OrgScopedID.h"
 #include "OVR_Party.h"
@@ -123,6 +124,7 @@ OVRP_PUBLIC_FUNCTION(ovrNetSyncConnectionHandle)                  ovr_Message_Ge
 OVRP_PUBLIC_FUNCTION(ovrNetSyncSessionArrayHandle)                ovr_Message_GetNetSyncSessionArray(const ovrMessageHandle obj);
 OVRP_PUBLIC_FUNCTION(ovrNetSyncSessionsChangedNotificationHandle) ovr_Message_GetNetSyncSessionsChangedNotification(const ovrMessageHandle obj);
 OVRP_PUBLIC_FUNCTION(ovrNetSyncSetSessionPropertyResultHandle)    ovr_Message_GetNetSyncSetSessionPropertyResult(const ovrMessageHandle obj);
+OVRP_PUBLIC_FUNCTION(ovrNetSyncVoipAttenuationValueArrayHandle)   ovr_Message_GetNetSyncVoipAttenuationValueArray(const ovrMessageHandle obj);
 OVRP_PUBLIC_FUNCTION(ovrNetworkingPeerHandle)                     ovr_Message_GetNetworkingPeer(const ovrMessageHandle obj);
 OVRP_PUBLIC_FUNCTION(ovrOrgScopedIDHandle)                        ovr_Message_GetOrgScopedID(const ovrMessageHandle obj);
 OVRP_PUBLIC_FUNCTION(ovrPartyHandle)                              ovr_Message_GetParty(const ovrMessageHandle obj);

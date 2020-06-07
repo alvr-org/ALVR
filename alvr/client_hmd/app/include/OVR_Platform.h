@@ -73,6 +73,8 @@
 #include "OVR_NetSyncSessionArray.h"
 #include "OVR_NetSyncSessionsChangedNotification.h"
 #include "OVR_NetSyncSetSessionPropertyResult.h"
+#include "OVR_NetSyncVoipAttenuationValue.h"
+#include "OVR_NetSyncVoipAttenuationValueArray.h"
 #include "OVR_NetworkingPeer.h"
 #include "OVR_OrgScopedID.h"
 #include "OVR_Packet.h"

@@ -17,6 +17,10 @@ Copyright   :   Copyright (c) Facebook Technologies, LLC and its affiliates. All
 #include "VrApi_Config.h"
 #include "VrApi_Types.h"
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 /// Describes button input types.
 /// For the Gear VR Controller and headset, only the following ovrButton types are reported to the
 /// application:
@@ -44,9 +48,9 @@ typedef enum ovrButton_ {
     ovrButton_Down = 0x00020000,
     ovrButton_Left = 0x00040000,
     ovrButton_Right = 0x00080000,
-    ovrButton_Enter = 0x00100000, //< Set for touchpad click on the Gear VR and Go Controllers, menu
+    ovrButton_Enter = 0x00100000, //< Set for touchpad click on the Go Controller, menu
                                   // button on Left Quest Controller
-    ovrButton_Back = 0x00200000, //< Back button on the headset or Gear VR Controller (only set when
+    ovrButton_Back = 0x00200000, //< Back button on the Go Controller (only set when
                                  // a short press comes up)
         ovrButton_GripTrigger = 0x04000000, //< grip trigger engaged
         ovrButton_Trigger = 0x20000000, //< Index Trigger engaged
@@ -74,7 +78,7 @@ typedef enum ovrTouch_ {
     ovrTouch_LThumb = 0x00000400, //< The Left controller Joystick has a finger/thumb resting on it.
     ovrTouch_RThumb =
         0x00000800, //< The Right controller Joystick has a finger/thumb resting on it.
-    ovrTouch_EnumSize
+        ovrTouch_EnumSize
 } ovrTouch;
 
 /// Specifies which controller is connected; multiple can be connected at once.
@@ -83,8 +87,7 @@ typedef enum ovrControllerType_ {
     ovrControllerType_Reserved0 = (1 << 0), //< LTouch in CAPI
     ovrControllerType_Reserved1 = (1 << 1), //< RTouch in CAPI
     ovrControllerType_TrackedRemote = (1 << 2),
-    ovrControllerType_Headset = (1 << 3),
-    ovrControllerType_Gamepad = (1 << 4), //< Xbox in CAPI
+        ovrControllerType_Gamepad = (1 << 4), // Deprecated, will be removed in a future release
     ovrControllerType_Hand = (1 << 5),
 
         ovrControllerType_EnumSize = 0x7fffffff
@@ -167,37 +170,8 @@ typedef struct ovrInputTrackedRemoteCapabilities_ {
     uint32_t Reserved5;
 } ovrInputTrackedRemoteCapabilities;
 
-/// Capabilities for the Head Mounted Tracking device (i.e. the headset).
-/// Note that the GearVR headset firmware always sends relative coordinates
-/// with the initial touch position offset by (1280,720). There is no way
-/// to get purely raw coordinates from the headset. In addition, these
-/// coordinates get adjusted for acceleration resulting in a slow movement
-/// from one edge to the other the having a coordinate range of about 300
-/// units, while a fast movement from edge to edge may result in a range
-/// close to 900 units.
-/// This means the headset touchpad needs to be handled differently than
-/// the GearVR Controller touchpad.
-typedef struct ovrInputHeadsetCapabilities_ {
-    ovrInputCapabilityHeader Header;
-
-    /// Mask of controller capabilities described by ovrControllerCapabilities
-    uint32_t ControllerCapabilities;
-
-    /// Mask of button capabilities described by ovrButton
-    uint32_t ButtonCapabilities;
-
-    /// Maximum coordinates of the Trackpad, bottom right exclusive
-    /// For a 300x200 Trackpad, return 299x199
-    uint16_t TrackpadMaxX;
-    uint16_t TrackpadMaxY;
-
-    /// Size of the Trackpad in mm (millimeters)
-    float TrackpadSizeX;
-    float TrackpadSizeY;
-} ovrInputHeadsetCapabilities;
-
 /// Capabilities for an XBox style game pad
-typedef struct ovrInputGamepadCapabilities_ {
+OVR_VRAPI_DEPRECATED(typedef struct ovrInputGamepadCapabilities_ {
     ovrInputCapabilityHeader Header;
 
     /// Mask of controller capabilities described by ovrControllerCapabilities
@@ -208,7 +182,7 @@ typedef struct ovrInputGamepadCapabilities_ {
 
     // Reserved for future use.
     uint64_t Reserved[20];
-} ovrInputGamepadCapabilities;
+} ovrInputGamepadCapabilities);
 
 
 /// The buffer data for playing haptics
@@ -276,26 +250,8 @@ typedef struct ovrInputStateTrackedRemote_ {
 } ovrInputStateTrackedRemote;
 
 
-/// ovrInputStateHeadset describes the complete input state for the
-/// GearVR headset. The TrackpadPosition coordinates return for the
-/// headset are relative coordinates, centered at (1280,720). See the
-/// comments on ovrInputHeadsetCapabilities for more information.
-typedef struct ovrInputStateHeadset_ {
-    ovrInputStateHeader Header;
-
-    /// Values for buttons described by ovrButton.
-    uint32_t Buttons;
-
-    /// finger contact status for trackpad
-    /// true = finger is on trackpad, false = finger is off trackpad
-    uint32_t TrackpadStatus;
-
-    /// X and Y coordinates of the Trackpad
-    ovrVector2f TrackpadPosition;
-} ovrInputStateHeadset;
-
 /// ovrInputStateGamepad describes the input state gamepad input devices
-typedef struct ovrInputStateGamepad_ {
+OVR_VRAPI_DEPRECATED(typedef struct ovrInputStateGamepad_ {
     ovrInputStateHeader Header;
 
     /// Values for buttons described by ovrButton.
@@ -313,12 +269,19 @@ typedef struct ovrInputStateGamepad_ {
 
     // Reserved for future use.
     uint64_t Reserved[20];
-} ovrInputStateGamepad;
+} ovrInputStateGamepad);
 
 
 //-----------------------------------------------------------------
 // Hand tracking
 //-----------------------------------------------------------------
+
+/// Specifies left or right handedness.
+typedef enum ovrHandedness_ {
+    VRAPI_HAND_UNKNOWN = 0,
+    VRAPI_HAND_LEFT = 1,
+    VRAPI_HAND_RIGHT = 2
+} ovrHandedness;
 
 //-----------------------------------------------------------------
 // Hand capabilities
@@ -474,6 +437,10 @@ typedef enum ovrInputStateHandStatus_ {
         (1 << 5), // if this is set the pinch gesture for that finger is on
     ovrInputStateHandStatus_SystemGestureProcessing =
         (1 << 6), // if this is set the hand is currently processing a system gesture
+    ovrInputStateHandStatus_DominantHand =
+        (1 << 7), // if this is set the hand is considered the dominant hand
+    ovrInputStateHandStatus_MenuPressed =
+        (1 << 8), // if this is set the hand performed the system gesture as the non-dominant hand
     ovrInputStateHandStatus_EnumSize = 0x7fffffff
 } ovrInputStateHandStatus;
 
@@ -629,9 +596,6 @@ typedef struct ovrHandMesh_V1_ {
 OVR_VRAPI_EXPORT ovrResult
 vrapi_GetHandMesh(ovrMobile* ovr, const ovrHandedness handedness, ovrHandMeshHeader* header);
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
 /// Enumerates the input devices connected to the system
 /// Start with index=0 and counting up. Stop when ovrResult is < 0

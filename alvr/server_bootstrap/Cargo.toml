@@ -1,12 +1,12 @@
 [package]
 name = 'alvr_server_bootstrap'
-version = '11.0.0-alpha.0'
+version = '12.0.0-alpha.0'
 authors = ['Riccardo Zaglia <riccardo.zaglia5@gmail.com>']
 license = 'MIT'
 edition = '2018'
 
 [dependencies]
-alcro = { git = 'https://github.com/Srinivasa314/alcro' }
+alcro = '^0.1.4'
 alvr_common = { path = '../common' }
 single-instance = '^0.1.2'
 

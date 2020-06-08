@@ -31,6 +31,15 @@
 </head>
 
 <body>
+    <script>
+        // This script should be executed as soon as possible
+        var locationX = (screen.availWidth - window.innerWidth) / 2;
+        var locationY = (screen.availHeight - window.innerHeight) / 2;
+        if (locationX > 0) {
+            window.moveTo(locationX, locationY);
+        }
+    </script>
+
     <div id="loading">
         <img id="loading-image" src="images/ajax-loader.gif" alt="Loading..." />
     </div>

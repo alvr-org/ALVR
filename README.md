@@ -2,12 +2,10 @@
 
 # ALVR - Air Light VR
 
-Stream VR games from your PC to your Oculus Quest via Wi-FI.
-
+Stream VR games from your PC to your Oculus Quest via Wi-FI.  
 ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience.
 
-All games that work with a Oculus Rift (s) should work with ALVR
-
+All games that work with an Oculus Rift (s) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only with Oculus Quest.
 
 ## Requirements
@@ -18,7 +16,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only w
   - Windows 10 May 2020 update is recommended. If you are on an older version, you need to install Chrome or another Chromium based browser.
   - NVIDIA GPU that supports NVENC ([Supported GPUs](https://github.com/polygraphene/ALVR/wiki/Supported-GPU)) (or with an AMD GPU that supports AMF VCE) with the latest driver.
   - Currently only NVIDIA GPUs are supported on Windows 7.
-  - Laptops with dual GPU have to disable the on-board GPU.
+  - Laptops with an onboard (Intel HD, AMD iGPU) and an additional dedicated GPU (NVidia GTX/RTX, AMD HD/R5/R7): you should assign the dedicated GPU or "high performance graphics adapter" to the applications ALVR, SteamVR for best performance and compatibility. (NVidia: Nvidia control panel->3d settings->application settings; AMD: similiar way)
 - 802.11ac wireless or ethernet wired connection
   - It is recommended to use 802.11ac for the headset and ethernet for PC
   - You need to connect both the PC and the headset to same router (or use a routed connection as described [here](https://github.com/JackD83/ALVR/wiki/ALVR-client-and-server-on-separate-networks))
@@ -48,7 +46,7 @@ Install the client on your headset through [SideQuest](https://sidequestvr.com/)
 
 - Floorlevel: Use the SteamVR room setup to calibrate the room as standing only. Put your Quest on the ground while calibrating. Make sure that the stream is still working by covering the light sensor of the quest. Enter a height of 0 into the room setup.
 Now you can press and hold the oculus key on the right controller to recenter SteamVR and fix the floor height at any time.
-- To reset ALVR, delete the files `session.json` and `settings.json` from the installation folder.
+- To reset ALVR, delete the file `session.json` from the installation folder.
 - Please check the [Troubleshooting](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) page on the original repository.
 - You can find some setup advice [here](https://github.com/JackD83/ALVR/wiki/Setup-advice).
 
@@ -61,19 +59,18 @@ If you have a version prior to 11.0 you need to launch `remove_firewall_rules.ba
 ## Build from source
 
 - Install Visual Studio Code and the extension rust-analyzer (optional)
-- Install [Visual Studio Community 2019](https://visualstudio.microsoft.com/downloads) with C++ build tools
-- Alternatively, if you already have a Visual Studio 2019 installation, you can add the environment variable `MSBUILD_DIR` pointing to the folder containing `MSBuild.exe`
-- Install [CUDA 10.2](https://developer.nvidia.com/cuda-downloads?target_os=Windows&target_arch=x86_64&target_version=10&target_type=exenetwork)
-- Install Android Studio >=3.4, API Level 29. Requires LLDB and NDK
+- Install the MSVC compiler (for example installing C++ build tools with [Visual Studio](https://visualstudio.microsoft.com/downloads))
+- Install Android Studio >=3.4, API Level 29. Requires LLDB and NDK. The environment variable `JAVA_HOME` must be set.
 - Install [rustup](https://rustup.rs/)
 - Download this repository and on the project root execute:
 
     ```bash
-    cargo xtask install-deps
     cargo xtask build-all --release
     ```
 
 - ALVR server and client will be in `/build`.
+
+Note: The Visual Studio solution is left only for IDE support while coding. If compiled, the resulting binary will not be valid.
 
 ## License
 

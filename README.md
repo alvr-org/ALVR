@@ -3,8 +3,8 @@
 # ALVR - Air Light VR
 
 Stream VR games from your PC to your Oculus Quest via Wi-FI.  
-ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience.
 
+ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience.  
 All games that work with an Oculus Rift (s) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only with Oculus Quest.
 
@@ -14,8 +14,8 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only w
 - SteamVR
 - High-end gaming PC
   - Windows 10 May 2020 update is recommended. If you are on an older version, you need to install Chrome or another Chromium based browser.
+  - Minimum supported OS version is Windows 8.
   - NVIDIA GPU that supports NVENC ([Supported GPUs](https://github.com/polygraphene/ALVR/wiki/Supported-GPU)) (or with an AMD GPU that supports AMF VCE) with the latest driver.
-  - Currently only NVIDIA GPUs are supported on Windows 7.
   - Laptops with an onboard (Intel HD, AMD iGPU) and an additional dedicated GPU (NVidia GTX/RTX, AMD HD/R5/R7): you should assign the dedicated GPU or "high performance graphics adapter" to the applications ALVR, SteamVR for best performance and compatibility. (NVidia: Nvidia control panel->3d settings->application settings; AMD: similiar way)
 - 802.11ac wireless or ethernet wired connection
   - It is recommended to use 802.11ac for the headset and ethernet for PC
@@ -23,10 +23,10 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only w
 
 ## Install
 
-Please uninstall any other VR streaming software on your PC. This includes versions of ALVR prior to v11.0.
+Please uninstall any other VR streaming software on your PC. This includes versions of ALVR prior to v12.0.
 
 To install ALVR just download and unzip `alvr_server_windows.zip` wherever you want and launch `ALVR.exe`. It's important not to move the folder after the first launch.
-To keep settings from a previous installation of ALVR (>=v11.0) you can unzip over the old installation folder.
+To keep settings from a previous installation of ALVR (>=v12.0) you can unzip over the old installation folder.
 
 Install the client on your headset through [SideQuest](https://sidequestvr.com/).
 
@@ -44,7 +44,7 @@ Install the client on your headset through [SideQuest](https://sidequestvr.com/)
 
 ## Troubleshooting
 
-- Floorlevel: Use the SteamVR room setup to calibrate the room as standing only. Put your Quest on the ground while calibrating. Make sure that the stream is still working by covering the light sensor of the quest. Enter a height of 0 into the room setup.
+- Floorlevel: Use the SteamVR room setup to calibrate the room as standing only. Put your Quest on the ground while calibrating. Make sure that the stream is still working by covering the proximity sensor of the quest. Enter a height of 0 into the room setup.
 Now you can press and hold the oculus key on the right controller to recenter SteamVR and fix the floor height at any time.
 - To reset ALVR, delete the file `session.json` from the installation folder.
 - Please check the [Troubleshooting](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) page on the original repository.
@@ -54,7 +54,7 @@ Now you can press and hold the oculus key on the right controller to recenter St
 
 Launch `ALVR.exe`, go to `About` tab, press `Uninstall driver` and `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
 
-If you have a version prior to 11.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder manually.
+If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder manually.
 
 ## Build from source
 

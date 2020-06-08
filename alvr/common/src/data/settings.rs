@@ -2,9 +2,17 @@ use serde::{Deserialize, Serialize};
 use settings_schema::*;
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-pub struct FrameSize {
-    pub width: u32,
-    pub height: u32,
+#[serde(rename_all = "camelCase")]
+pub enum FrameSize {
+    #[schema(min = 0.25, max = 2., step = 0.25)]
+    Scale(f32),
+
+    Absolute {
+        #[schema(min = 32, step = 32)]
+        width: u32,
+        #[schema(min = 32, step = 32)]
+        height: u32,
+    },
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq)]
@@ -93,7 +101,6 @@ pub struct VideoDesc {
     pub encode_bitrate_mbs: u64,
 
     pub force_60hz: bool,
-    pub nv12: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -269,12 +276,20 @@ pub fn settings_cache_default() -> SettingsDefault {
             adapter_index: 0,
             refresh_rate: 72,
             render_resolution: FrameSizeDefault {
-                width: 2880,
-                height: 1600,
+                variant: FrameSizeDefaultVariant::Scale,
+                Scale: 1.,
+                Absolute: FrameSizeAbsoluteDefault {
+                    width: 2880,
+                    height: 1600,
+                },
             },
             recommended_target_resolution: FrameSizeDefault {
-                width: 2880,
-                height: 1600,
+                variant: FrameSizeDefaultVariant::Scale,
+                Scale: 1.,
+                Absolute: FrameSizeAbsoluteDefault {
+                    width: 2880,
+                    height: 1600,
+                },
             },
             eye_fov: [
                 FovDefault {
@@ -315,7 +330,6 @@ pub fn settings_cache_default() -> SettingsDefault {
             },
             encode_bitrate_mbs: 30,
             force_60hz: false,
-            nv12: false,
         },
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {

@@ -12,13 +12,19 @@ define([
         var advanced = false;
         var updating = false;
 
+        var sessionCopy;
+
+        const video_scales = [25,50,66,75,100,125,150,200];
+
         this.disableWizard = function () {
             session.setupWizard = false;
             updateSession();
         }
 
         function init() {
-            targetSettings = session;
+
+            sessionCopy = JSON.parse(JSON.stringify(session))
+           
             fillNode(schema, "Main", 0, $("#configContent"), "root", undefined);
             updateSwitchContent();
             toggleAdvanced();
@@ -29,8 +35,20 @@ define([
 
             //special case for audio devices
             setDeviceList();
+            setVideoScale();
 
-            addChangeListener();
+            addChangeListener();         
+        }
+
+        function setVideoScale() {
+            const el = $("#root_Main_video_resolutionDropdown");
+            const targetWidth = $("#root_Main_video_renderResolution_width");
+            const targetHeight = $("#root_Main_video_renderResolution_height");
+
+            video_scales.forEach(scale => {             
+                el.append(`<option value="${scale}"> ${scale}% </option>`)
+            });
+            
         }
 
 
@@ -39,7 +57,7 @@ define([
             const target = $("#root_Main_audio_gameAudio_content_device");
             let current = "";
             try {
-                current = targetSettings.settingsCache.audio.gameAudio.content.device;
+                current = session.settingsCache.audio.gameAudio.content.device;
             } catch (err) {
                 console.err("Layout of settings changed, audio devices can not be added. Please report this bug!");
             }
@@ -101,7 +119,7 @@ define([
         }
 
         function storeParam(el) {
-            var id = el.prop("id");
+            var id = el.prop("id");          
             var val;
 
             if (el.prop("type") == "checkbox" || el.prop("type") == "radio") {
@@ -116,6 +134,7 @@ define([
                 }
             }
             id = id.replace("root_Main_", "");
+            id = id.replace("-choice-", "");
             var path = id.split("_");
 
 
@@ -198,14 +217,14 @@ define([
                     var pathItem = item;
                     //choice
                     if (item == "variant") {
-                        pathItem = object[item]
+                        pathItem = object[item] + "-choice-";
                     }
 
                     const el = $("#" + path + "_" + pathItem);
 
                     if (el.length == 0) {
                         console.log("NOT FOUND")
-                        console.log("setting value: ", path + "_" + item, object[item])
+                        console.log("setting value: ", path + "_" + pathItem, object[item])
                     } else {
                         if (el.prop("type") == "checkbox" || el.prop("type") == "radio") {
                             el.prop("checked", object[item])
@@ -273,8 +292,15 @@ define([
             index += 1;
 
             if (node == null) {
-                if (name === "deviceDropdown") {
-                    addDropdown(element, name, path, advanced)
+
+                switch (name) {
+                    case "deviceDropdown":
+                    case "resolutionDropdown":
+                        addDropdown(element, name, path, advanced)
+                        break;
+                    default:
+                        console.log("null", name);
+                        break;
                 }
                 return;
             }
@@ -462,7 +488,7 @@ define([
             }
 
             var el = `<div class="${getAdvancedClass(advanced)}" >
-                <input type="radio" id="${path}_${name}" name="${radioName}"  value="${name}" ${checked}> 
+                <input type="radio" id="${path}_${name}-choice-" name="${radioName}"  value="${name}" ${checked}> 
                 <label for="${path}_${name}">${getI18n(name).name}</label>
                 <div class="radioContent">
                 </div>

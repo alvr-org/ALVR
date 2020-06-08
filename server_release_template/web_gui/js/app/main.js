@@ -15,15 +15,11 @@ define([
     $(function () {
 
         var compiledTemplate = _.template(mainTemplate);
-        var template = compiledTemplate({
-            "title": i18n.title,
-        });
-
+        var template = compiledTemplate(i18n);
        
         $("#bodyContent").append(template);       
         $(document).ready(() => {
-            $('#loading').remove();
-          
+            $('#loading').remove();          
 
             var settings = new ALVRSettings();
             var wizard = new SetupWizard(settings);
@@ -37,22 +33,5 @@ define([
                 wizard.showWizard();
             })
         });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     });
 });

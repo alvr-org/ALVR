@@ -102,7 +102,7 @@ define([
 
         function updateSession() {
             $.ajax({
-                type: "PUT",
+                type: "POST",
                 url: "../../session",
                 contentType: "application/json;charset=UTF-8",
                 data: JSON.stringify(session),
@@ -127,6 +127,13 @@ define([
                         setProperties(res.settingsCache, "root_Main");
                         updating = false;
                     }
+                },
+                error: function (res) {
+                    console.log("FAILED")
+                    updating = true;
+                    session = res;
+                    setProperties(res.settingsCache, "root_Main");
+                    updating = false;
                 }
             });
         }

@@ -10,30 +10,7 @@ define([
         this.showWizard = function () {
             var currentPage = 0;
             var compiledTemplate = _.template(wizardTemplate);
-            var template = compiledTemplate({
-                "title": i18n.title,
-                "subtitle": i18n.subtitle,
-                "titleFirewall": i18n.titleFirewall,
-                "textFirewall": i18n.textFirewall,
-                "buttonFirewall": i18n.buttonFirewall,
-                "titleDriver": i18n.titleDriver,
-                "textDriver": i18n.textDriver,
-                "buttonDriver": i18n.buttonDriver,
-                "titleTracking": i18n.titleTracking,
-                "textTracking": i18n.textTracking,
-                "normalTracking": i18n.normalTracking,
-                "mediumTracking": i18n.mediumTracking,
-                "fastTracking": i18n.fastTracking,
-                "titlePerformance": i18n.titlePerformance,
-                "textPerformance": i18n.textPerformance,
-                "compatPerformance": i18n.compatPerformance,
-                "perfPerformance": i18n.perfPerformance,
-                "titleFinished": i18n.titleFinished,
-                "textFinished": i18n.textFinished,
-                "buttonNext": i18n.buttonNext,
-                "buttonClose": i18n.buttonClose
-
-            });
+            var template = compiledTemplate(i18n);
 
             $("#setupWizard").remove();
             $("body").append(template);

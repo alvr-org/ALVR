@@ -274,7 +274,7 @@ define([
 
             if (node == null) {
                 if (name === "deviceDropdown") {
-                    addDeviceDropdown(element, name, path, advanced)
+                    addDropdown(element, name, path, advanced)
                 }
                 return;
             }
@@ -442,7 +442,7 @@ define([
             return element;
         }
 
-        function addDeviceDropdown(element, name, path, advanced) {
+        function addDropdown(element, name, path, advanced) {
             element.append(`<div class="parameter ${getAdvancedClass(advanced)}" >     
             <label for="${path}_${name}">${getI18n(name).name} </label> 
            

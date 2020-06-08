@@ -202,7 +202,7 @@ margin-bottom: 10px;
 }
 
 .card-body {
-  padding-top: 10px;
+  padding-top: 2px !important;
 }
 
 .card-title .accordion-toggle:after {

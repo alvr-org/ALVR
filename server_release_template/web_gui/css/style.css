@@ -169,14 +169,8 @@ margin-bottom: 10px;
   overflow: auto;
   padding-right: 15px;
 }
-
-
 .rangeValue {
   display: inline;
-}
-
-.parameter {  
-  margin-top: 10px;
 }
 
 .parameter input[type="number"] {
@@ -225,7 +219,8 @@ margin-bottom: 10px;
 }
 
 .card-body .parameter {
-  margin: 0px;
+  margin: 10px 0px 0px 0px;
+
 }
 
 .radioContent {

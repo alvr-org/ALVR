@@ -1,4 +1,4 @@
-#include <GLES2/gl2.h>
+#include <GLES3/gl3.h>
 #include <GLES2/gl2ext.h>
 
 #include "render.h"
@@ -145,161 +145,166 @@ static const char *GlFrameBufferStatusString(GLenum status) {
     }
 }
 
-static const char VERTEX_SHADER[] =
-        "#ifndef DISABLE_MULTIVIEW\n"
-                "    #define DISABLE_MULTIVIEW 0\n"
-                "#endif\n"
-                "#define NUM_VIEWS 2\n"
-                "#if defined( GL_OVR_multiview2 ) && ! DISABLE_MULTIVIEW\n"
-                "    #extension GL_OVR_multiview2 : enable\n"
-                "    layout(num_views=NUM_VIEWS) in;\n"
-                "    #define VIEW_ID gl_ViewID_OVR\n"
-                "#else\n"
-                "    uniform lowp int ViewID;\n"
-                "    #define VIEW_ID ViewID\n"
-                "#endif\n"
-                "in vec3 vertexPosition;\n"
-                "in vec4 vertexColor;\n"
-                "in mat4 vertexTransform;\n"
-                "in vec2 vertexUv;\n"
-                "uniform mat4 mvpMatrix[NUM_VIEWS];\n"
-                "out vec4 fragmentColor;\n"
-                "out vec2 uv;\n"
-                "void main()\n"
-                "{\n"
-                "    gl_Position = mvpMatrix[VIEW_ID] * vec4( vertexPosition, 1.0 );\n"
-                "    if(uint(VIEW_ID) == uint(0)){\n"
-                "        uv = vec2(vertexUv.x, vertexUv.y);\n"
-                "    }else{\n"
-                "        uv = vec2(vertexUv.x + 0.5, vertexUv.y);\n"
-                "    }\n"
-                "    fragmentColor = vertexColor;\n"
-                "}\n";
+static const char VERTEX_SHADER[] = R"glsl(
+#ifndef DISABLE_MULTIVIEW
+    #define DISABLE_MULTIVIEW 0
+#endif
+#define NUM_VIEWS 2
+#if defined( GL_OVR_multiview2 ) && ! DISABLE_MULTIVIEW
+    #extension GL_OVR_multiview2 : enable
+    layout(num_views=NUM_VIEWS) in;
+    #define VIEW_ID gl_ViewID_OVR
+#else
+    uniform lowp int ViewID;
+    #define VIEW_ID ViewID
+#endif
+in vec3 vertexPosition;
+in vec4 vertexColor;
+in mat4 vertexTransform;
+in vec2 vertexUv;
+uniform mat4 mvpMatrix[NUM_VIEWS];
+out vec4 fragmentColor;
+out vec2 uv;
+void main()
+{
+    gl_Position = mvpMatrix[VIEW_ID] * vec4( vertexPosition, 1.0 );
+    if(uint(VIEW_ID) == uint(0)){
+        uv = vec2(vertexUv.x, vertexUv.y);
+    }else{
+        uv = vec2(vertexUv.x + 0.5, vertexUv.y);
+    }
+    fragmentColor = vertexColor;
+}
+)glsl";
 
-static const char FRAGMENT_SHADER[] =
-        "#extension GL_OES_EGL_image_external_essl3 : enable\n"
-                "#extension GL_OES_EGL_image_external : enable\n"
-                "in lowp vec2 uv;\n"
-                "in lowp vec4 fragmentColor;\n"
-                "out lowp vec4 outColor;\n"
-                "uniform %s Texture0;\n"
-                "void main()\n"
-                "{\n"
-                "    outColor = texture(Texture0, uv);\n"
-                "}\n";
 
-static const char FRAGMENT_SHADER_AR[] =
-        "#extension GL_OES_EGL_image_external_essl3 : enable\n"
-                "#extension GL_OES_EGL_image_external : enable\n"
-                "in lowp vec2 uv;\n"
-                "in lowp vec4 fragmentColor;\n"
-                "out lowp vec4 outColor;\n"
-                "uniform samplerExternalOES Texture0;\n"
-                "uniform %s Texture1;\n"
-                "uniform lowp float alpha;\n"
-                "void main()\n"
-                "{\n"
-                "    if(alpha > 1.0f){ // Non AR\n"
-                "        outColor = texture(Texture0, uv);\n"
-                "    } else if(alpha < -0.5f){ // Completely AR\n"
-                "        if(uv.x < 0.5f){\n"
-                "            outColor = texture(Texture1, vec2(uv.x * 2.0f, uv.y));\n"
-                "        }else{\n"
-                "            outColor = texture(Texture1, vec2(uv.x * 2.0f - 1.0f, uv.y));\n"
-                "        }\n"
-                "    }else{ // VR+AR\n"
-                "        lowp vec4 arColor;\n"
-                "        if(uv.x < 0.5f){\n"
-                "            arColor = texture(Texture1, vec2(uv.x * 2.0f, uv.y));\n"
-                "        }else{\n"
-                "            arColor = texture(Texture1, vec2(uv.x * 2.0f - 1.0f, uv.y));\n"
-                "        }\n"
-                "        outColor = texture(Texture0, uv) * alpha\n"
-                "                    + arColor * (1.0f - alpha);\n"
-                "    }\n"
-                "}\n";
+static const char FRAGMENT_SHADER[] = R"glsl(
+#extension GL_OES_EGL_image_external_essl3 : enable
+#extension GL_OES_EGL_image_external : enable
+in lowp vec2 uv;
+in lowp vec4 fragmentColor;
+out lowp vec4 outColor;
+uniform %s Texture0;
+void main()
+{
+    outColor = texture(Texture0, uv);
+}
+)glsl";
 
-static const char VERTEX_SHADER_LOADING[] =
-        "#ifndef DISABLE_MULTIVIEW\n"
-                "    #define DISABLE_MULTIVIEW 0\n"
-                "#endif\n"
-                "#define NUM_VIEWS 2\n"
-                "#if defined( GL_OVR_multiview2 ) && ! DISABLE_MULTIVIEW\n"
-                "    #extension GL_OVR_multiview2 : enable\n"
-                "    layout(num_views=NUM_VIEWS) in;\n"
-                "    #define VIEW_ID gl_ViewID_OVR\n"
-                "#else\n"
-                "    uniform lowp int ViewID;\n"
-                "    #define VIEW_ID ViewID\n"
-                "#endif\n"
-                "in vec3 vertexPosition;\n"
-                "in vec4 vertexColor;\n"
-                "in mat4 vertexTransform;\n"
-                "in vec2 vertexUv;\n"
-                "in vec3 vertexNormal;\n"
-                "uniform mat4 mvpMatrix[NUM_VIEWS];\n"
-                "uniform lowp vec4 Color;\n"
-                "uniform mat4 mMatrix;\n"
-                "out vec4 fragmentColor;\n"
-                "out vec2 uv;\n"
-                "out lowp float fragmentLight;\n"
-                "out lowp vec3 lightPoint;\n"
-                "out lowp vec3 normal;\n"
-                "out lowp vec3 position;\n"
-                "void main()\n"
-                "{\n"
-                "    lowp vec4 position4 = mMatrix * vec4( vertexPosition, 1.0 );\n"
-                "    gl_Position = mvpMatrix[VIEW_ID] * position4;\n"
-                "    uv = vertexUv;\n"
-                "    position = position4.xyz / position4.w;\n"
-                "    lowp vec4 lightPoint4 = mvpMatrix[VIEW_ID] * vec4(100.0, 10000.0, 100.0, 1.0);\n"
-                "    lightPoint = lightPoint4.xyz / lightPoint4.w;\n"
-                "    normal = normalize((mvpMatrix[VIEW_ID] * mMatrix * vec4(vertexNormal, 1.0)).xyz);\n"
-                "    lowp float light = clamp(dot(normal, normalize(vec3(0.3, 1.0, 0.3))), 0.3, 1.0);\n"
-                "    fragmentLight = light;\n"
-                "    fragmentColor = Color;\n"
-                "}\n";
+static const char FRAGMENT_SHADER_AR[] = R"glsl(
+#extension GL_OES_EGL_image_external_essl3 : enable
+#extension GL_OES_EGL_image_external : enable
+in lowp vec2 uv;
+in lowp vec4 fragmentColor;
+out lowp vec4 outColor;
+uniform samplerExternalOES Texture0;
+uniform %s Texture1;
+uniform lowp float alpha;
+void main()
+{
+    if(alpha > 1.0f){ // Non AR
+        outColor = texture(Texture0, uv);
+    } else if(alpha < -0.5f){ // Completely AR
+        if(uv.x < 0.5f){
+            outColor = texture(Texture1, vec2(uv.x * 2.0f, uv.y));
+        }else{
+            outColor = texture(Texture1, vec2(uv.x * 2.0f - 1.0f, uv.y));
+        }
+    }else{ // VR+AR
+        lowp vec4 arColor;
+        if(uv.x < 0.5f){
+            arColor = texture(Texture1, vec2(uv.x * 2.0f, uv.y));
+        }else{
+            arColor = texture(Texture1, vec2(uv.x * 2.0f - 1.0f, uv.y));
+        }
+        outColor = texture(Texture0, uv) * alpha
+                    + arColor * (1.0f - alpha);
+    }
+}
+)glsl";
 
-static const char FRAGMENT_SHADER_LOADING[] =
-        "in lowp vec2 uv;\n"
-                "in lowp vec4 fragmentColor;\n"
-                "in lowp float fragmentLight;\n"
-                "in lowp vec3 lightPoint;\n"
-                "in lowp vec3 normal;\n"
-                "in lowp vec3 position;\n"
-                "out lowp vec4 outColor;\n"
-                "uniform sampler2D sTexture;\n"
-                "uniform lowp int Mode;\n"
-                "void main()\n"
-                "{\n"
-                "    if(Mode == 0){\n"
-                "        lowp float distance = length(position.xz);\n"
-                "        // Pick a coordinate to visualize in a grid\n"
-                "        lowp vec2 coord = position.xz / 2.0;\n"
-                "        // Compute anti-aliased world-space grid lines\n"
-                "        lowp vec2 grid = abs(fract(coord - 0.5) - 0.5) / fwidth(coord);\n"
-                "        lowp float line = min(grid.x, grid.y);\n"
-                "        outColor.rgb = vec3(min(line, 1.0) * (1.0 - exp(-distance / 5.0 - 0.01) / 4.0));\n"
-                "        if(distance > 3.0){\n"
-                "            lowp float coef = 1.0 - 3.0 / distance;\n"
-                "            outColor.rgb = (1.0 - coef) * outColor.rgb + coef * vec3(1.0, 1.0, 1.0);\n"
-                "        }\n"
-                "        outColor.a = 1.0;\n"
-                "    } else if(Mode == 1) {\n"
-                "        outColor = texture(sTexture, uv);\n"
-                "    } else {\n"
-                "        lowp float coef = 1.0;\n"
-                "        if(position.y < 50.0){\n"
-                "            coef = position.y / 100.0;\n"
-                "        }else if(position.y < 100.0){\n"
-                "            coef = (position.y - 50.0) / 50.0 * 0.3 + 0.5;\n"
-                "        }else{\n"
-                "            coef = (position.y - 100.0) / 150.0 * 0.2 + 0.8;\n"
-                "        }\n"
-                "        outColor = vec4(0.8, 0.8, 1.0, 1.0) * coef + vec4(1.0, 1.0, 1.0, 1.0) * (1.0 - coef);\n"
-                "    }\n"
-                "}\n";
+static const char VERTEX_SHADER_LOADING[] = R"glsl(
+#ifndef DISABLE_MULTIVIEW
+    #define DISABLE_MULTIVIEW 0
+#endif
+#define NUM_VIEWS 2
+#if defined( GL_OVR_multiview2 ) && ! DISABLE_MULTIVIEW
+    #extension GL_OVR_multiview2 : enable
+    layout(num_views=NUM_VIEWS) in;
+    #define VIEW_ID gl_ViewID_OVR
+#else
+    uniform lowp int ViewID;
+    #define VIEW_ID ViewID
+#endif
+in vec3 vertexPosition;
+in vec4 vertexColor;
+in mat4 vertexTransform;
+in vec2 vertexUv;
+in vec3 vertexNormal;
+uniform mat4 mvpMatrix[NUM_VIEWS];
+uniform lowp vec4 Color;
+uniform mat4 mMatrix;
+out vec4 fragmentColor;
+out vec2 uv;
+out lowp float fragmentLight;
+out lowp vec3 lightPoint;
+out lowp vec3 normal;
+out lowp vec3 position;
+void main()
+{
+    lowp vec4 position4 = mMatrix * vec4( vertexPosition, 1.0 );
+    gl_Position = mvpMatrix[VIEW_ID] * position4;
+    uv = vertexUv;
+    position = position4.xyz / position4.w;
+    lowp vec4 lightPoint4 = mvpMatrix[VIEW_ID] * vec4(100.0, 10000.0, 100.0, 1.0);
+    lightPoint = lightPoint4.xyz / lightPoint4.w;
+    normal = normalize((mvpMatrix[VIEW_ID] * mMatrix * vec4(vertexNormal, 1.0)).xyz);
+    lowp float light = clamp(dot(normal, normalize(vec3(0.3, 1.0, 0.3))), 0.3, 1.0);
+    fragmentLight = light;
+    fragmentColor = Color;
+}
+)glsl";
 
+static const char FRAGMENT_SHADER_LOADING[] = R"glsl(
+in lowp vec2 uv;
+in lowp vec4 fragmentColor;
+in lowp float fragmentLight;
+in lowp vec3 lightPoint;
+in lowp vec3 normal;
+in lowp vec3 position;
+out lowp vec4 outColor;
+uniform sampler2D sTexture;
+uniform lowp int Mode;
+void main()
+{
+    if(Mode == 0){
+        lowp float distance = length(position.xz);
+        // Pick a coordinate to visualize in a grid
+        lowp vec2 coord = position.xz / 2.0;
+        // Compute anti-aliased world-space grid lines
+        lowp vec2 grid = abs(fract(coord - 0.5) - 0.5) / fwidth(coord);
+        lowp float line = min(grid.x, grid.y);
+        outColor.rgb = vec3(min(line, 1.0) * (1.0 - exp(-distance / 5.0 - 0.01) / 4.0));
+        if(distance > 3.0){
+            lowp float coef = 1.0 - 3.0 / distance;
+            outColor.rgb = (1.0 - coef) * outColor.rgb + coef * vec3(1.0, 1.0, 1.0);
+        }
+        outColor.a = 1.0;
+    } else if(Mode == 1) {
+        outColor = texture(sTexture, uv);
+    } else {
+        lowp float coef = 1.0;
+        if(position.y < 50.0){
+            coef = position.y / 100.0;
+        }else if(position.y < 100.0){
+            coef = (position.y - 50.0) / 50.0 * 0.3 + 0.5;
+        }else{
+            coef = (position.y - 100.0) / 150.0 * 0.2 + 0.8;
+        }
+        outColor = vec4(0.8, 0.8, 1.0, 1.0) * coef + vec4(1.0, 1.0, 1.0, 1.0) * (1.0 - coef);
+    }
+}
+)glsl";
 
 void eglInit() {
     EGLint major, minor;

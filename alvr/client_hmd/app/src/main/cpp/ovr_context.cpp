@@ -9,7 +9,6 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
-#include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #include <string>
 #include <map>
@@ -50,8 +49,7 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager,
         return;
     }
 
-    UseMultiview = (multi_view &&
-                    vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_MULTIVIEW_AVAILABLE));
+    UseMultiview = multi_view;
     LOG("UseMultiview:%d", UseMultiview);
 
     GLint textureUnits;
@@ -856,6 +854,13 @@ void OvrContext::enterVrMode() {
     if (Ovr == nullptr) {
         LOGE("Invalid ANativeWindow");
         return;
+    }
+
+    {
+        // set Color Space
+        ovrHmdColorDesc colorDesc{};
+        colorDesc.ColorSpace = VRAPI_COLORSPACE_REC_2020;
+        vrapi_SetClientColorDesc(Ovr, &colorDesc);
     }
 
     LOGI("Setting refresh rate. %d Hz", m_currentRefreshRate);

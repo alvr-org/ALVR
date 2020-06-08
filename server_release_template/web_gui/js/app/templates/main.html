@@ -1,0 +1,77 @@
+
+        <div class="nav-side-menu">
+            <div class="brand"> <img src="web_hi_res_512.png" /> <%= title%></div>
+            <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-list"></i>
+
+            <div id="menu-list" class="menu-list collapse out">
+
+                <ul id="menu-content" class="list-group menu-content ">
+
+                    <li>
+                        <a href="#main" data-toggle="tab">
+                            <i class="fa fa-circle fa-lg"></i> <%= title%>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#monitor" data-toggle="tab">
+                            <i class="fas fa-tachometer-alt"></i> <%= monitor%>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#config" data-toggle="tab">
+                            <i class="fa fa-cogs fa-lg"></i> <%= settings%>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="#about" data-toggle="tab">
+                            <i class="fa fa-info-circle fa-lg"></i> <%= about%>
+                        </a>
+                    </li>
+
+                </ul>
+            </div>
+        </div>
+
+        <div class="content">
+
+            <div class="container contentHeight">
+                <div class="tab-content contentHeight">
+                    <div class="tab-pane container active" id="main">
+                        <h1><%= titleHead%></h1>
+                        <%= description%>
+                        <button id="runSetupWizard" type="button" class="btn btn-primary"> <%= runSetupWizard%> </button>
+                    </div>
+                    <div class="tab-pane container fade" id="monitor">
+                         <%= monitor%>
+                    </div>
+
+                    <div class="tab-pane container fade noselect contentHeight" id="config">
+                        <div class="row contentHeight">
+                            <div class="cm-md-1 contentHeight" id="configContainer">
+                                <ul class="nav nav-tabs" id="configTabs">
+
+                                </ul>
+
+                                <div class="tab-content" id="configContent">
+                                    <div id="toggleAdvanced"> <%= toggleAdvanced%>
+                                        <i class="fas fa-toggle-on" data-toggle="tooltip"
+                                            title="show advanced options"></i>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="tab-pane container fade" id="about">
+                        <h1><%= about%></h1>
+                        <%= aboutText%>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>

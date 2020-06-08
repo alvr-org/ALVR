@@ -158,7 +158,7 @@ class OvrThread implements SurfaceHolder.Callback {
     public void startup() {
         Utils.logi(TAG, () -> "OvrThread started.");
 
-        mOvrContext.initialize(mActivity, mActivity.getAssets(), this, false, 60);
+        mOvrContext.initialize(mActivity, mActivity.getAssets(), this, false, 72);
 
         mSurfaceTexture = new SurfaceTexture(mOvrContext.getSurfaceTextureID());
         mSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
@@ -227,7 +227,7 @@ class OvrThread implements SurfaceHolder.Callback {
 
             mOvrContext.renderLoading();
             mHandler.removeCallbacks(mIdleRenderRunnable);
-            mHandler.postDelayed(mIdleRenderRunnable, 100);
+            mHandler.postDelayed(mIdleRenderRunnable, 13); // 72Hz = 13.8888ms
         }
     }
 

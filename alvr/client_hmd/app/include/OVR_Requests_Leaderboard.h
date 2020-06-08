@@ -112,7 +112,7 @@
 ///   }
 ///
 
-/// Requests a block of Leaderboard Entries.
+/// Requests a block of leaderboard entries.
 /// \param leaderboardName The name of the leaderboard whose entries to return.
 /// \param limit Defines the maximum number of entries to return.
 /// \param filter Allows you to restrict the returned values by friends.
@@ -129,7 +129,7 @@
 /// Extract the payload from the message handle with ::ovr_Message_GetLeaderboardEntryArray().
 OVRP_PUBLIC_FUNCTION(ovrRequest) ovr_Leaderboard_GetEntries(const char *leaderboardName, int limit, ovrLeaderboardFilterType filter, ovrLeaderboardStartAt startAt);
 
-/// Requests a block of leaderboard Entries.
+/// Requests a block of leaderboard entries.
 /// \param leaderboardName The name of the leaderboard.
 /// \param limit The maximum number of entries to return.
 /// \param afterRank The position after which to start.  For example, 10 returns leaderboard results starting with the 11th user.
@@ -141,6 +141,22 @@ OVRP_PUBLIC_FUNCTION(ovrRequest) ovr_Leaderboard_GetEntries(const char *leaderbo
 /// If no error occurred, the message will contain a payload of type ::ovrLeaderboardEntryArrayHandle.
 /// Extract the payload from the message handle with ::ovr_Message_GetLeaderboardEntryArray().
 OVRP_PUBLIC_FUNCTION(ovrRequest) ovr_Leaderboard_GetEntriesAfterRank(const char *leaderboardName, int limit, unsigned long long afterRank);
+
+/// Requests a block of leaderboard entries. Will return only entries matching
+/// the user IDs passed in.
+/// \param leaderboardName The name of the leaderboard whose entries to return.
+/// \param limit Defines the maximum number of entries to return.
+/// \param startAt Defines whether to center the query on the user or start at the top of the leaderboard. If this is ovrLeaderboard_StartAtCenteredOnViewer or ovrLeaderboard_StartAtCenteredOnViewerOrTop, then the current user's ID will be automatically added to the query.
+/// \param userIDs Defines a list of user ids to get entries for.
+/// \param userIDLength The number of user IDs provided.
+///
+/// A message with type ::ovrMessage_Leaderboard_GetEntriesByIds will be generated in response.
+///
+/// First call ::ovr_Message_IsError() to check if an error occurred.
+///
+/// If no error occurred, the message will contain a payload of type ::ovrLeaderboardEntryArrayHandle.
+/// Extract the payload from the message handle with ::ovr_Message_GetLeaderboardEntryArray().
+OVRP_PUBLIC_FUNCTION(ovrRequest) ovr_Leaderboard_GetEntriesByIds(const char *leaderboardName, int limit, ovrLeaderboardStartAt startAt, ovrID *userIDs, unsigned int userIDLength);
 
 /// Requests the next block of leaderboard entries.
 /// \param handle The return value from ovr_Message_GetLeaderboardEntryArray().

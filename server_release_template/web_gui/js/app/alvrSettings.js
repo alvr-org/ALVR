@@ -2,11 +2,12 @@
 define([
     "json!../../settings-schema",
     "json!../../session",
+    "json!../../audio_devices",
     "lib/lodash",
-    "i18n!app/nls/locale"
+    "i18n!app/nls/settings"
 
 
-], function (schema, session, _, i18n) {
+], function (schema, session, audio_devices, _, i18n) {
     return function () {
         var advanced = false;
         var updating = false;
@@ -23,9 +24,51 @@ define([
             toggleAdvanced();
             addListeners();
             addHelpTooltips();
-            setProperties(session.settingsCache, "root_Main");
-            addChangeListener();
 
+            setProperties(session.settingsCache, "root_Main");
+
+            //special case for audio devices
+            setDeviceList();
+
+            addChangeListener();
+        }
+
+
+        function setDeviceList() {
+            const el = $("#root_Main_audio_gameAudio_content_deviceDropdown");
+            const target = $("#root_Main_audio_gameAudio_content_device");
+            let current = "";
+            try {
+                current = targetSettings.settingsCache.audio.gameAudio.content.device;
+            } catch (err) {
+                console.err("Layout of settings changed, audio devices can not be added. Please report this bug!");
+            }
+            audio_devices.list.forEach(device => {
+                let name = device;
+                if (device === audio_devices.default) {
+                    name = "(default) " + device;
+                }
+                el.append(`<option value="${device}"> ${name}  </option>`)
+            });
+
+            //set default as current audio device if empty
+            if (current === "") {
+                target.val(audio_devices.default);
+                target.change();
+            }
+
+            //move selected audio device to top of list
+            var $el = $("#root_Main_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
+            $("#root_Main_audio_gameAudio_content_deviceDropdown").find('option:eq(0)').before($el);
+
+            //select the current option in dropdown
+            el.val(target.val());
+
+            //add listener to change
+            el.change((ev) => {
+                target.val($(ev.target).val());
+                target.change();
+            })
         }
 
         function getI18n(id) {
@@ -102,7 +145,7 @@ define([
 
         function updateSession() {
             $.ajax({
-                type: "PUT",
+                type: "POST",
                 url: "../../session",
                 contentType: "application/json;charset=UTF-8",
                 data: JSON.stringify(session),
@@ -127,6 +170,13 @@ define([
                         setProperties(res.settingsCache, "root_Main");
                         updating = false;
                     }
+                },
+                error: function (res) {
+                    console.log("FAILED")
+                    updating = true;
+                    session = res;
+                    setProperties(res.settingsCache, "root_Main");
+                    updating = false;
                 }
             });
         }
@@ -220,12 +270,12 @@ define([
 
 
         function fillNode(node, name, level, element, path, parentType, advanced = false) {
-
             index += 1;
 
-            //console.log(level, path + "_" + name, parentType)
-
             if (node == null) {
+                if (name === "deviceDropdown") {
+                    addDeviceDropdown(element, name, path, advanced)
+                }
                 return;
             }
 
@@ -356,6 +406,8 @@ define([
             return element;
         }
 
+
+
         function addContainer(index, element, name, advanced) {
 
             var el = `<div class="parameter ${getAdvancedClass(advanced)}">
@@ -388,6 +440,18 @@ define([
             element.append(el);
             element = element.find(".card-body").last();
             return element;
+        }
+
+        function addDeviceDropdown(element, name, path, advanced) {
+            element.append(`<div class="parameter ${getAdvancedClass(advanced)}" >     
+            <label for="${path}_${name}">${getI18n(name).name} </label> 
+           
+            <select id="${path}_${name}" >
+           
+            </select>
+        </div>`);
+
+
         }
 
 

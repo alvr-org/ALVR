@@ -284,6 +284,10 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 			HmdQuaternion_Init(-0.5, 0.5, 0.5, -0.5) :
 			HmdQuaternion_Init(0.5, 0.5, 0.5, 0.5);
 		m_pose.qRotation = QuatMultiply(&rootBoneRot, &boneFixer);
+		m_pose.vecPosition[0] = info.controller[controllerIndex].boneRootPosition.x;
+		m_pose.vecPosition[1] = info.controller[controllerIndex].boneRootPosition.y;
+		m_pose.vecPosition[2] = info.controller[controllerIndex].boneRootPosition.z;
+		
 		if (info.controller[controllerIndex].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) {
 			double bonePosFixer[3] = { 0.0,0.05,-0.05 };
 			m_pose.vecPosition[0] = info.controller[controllerIndex].boneRootPosition.x + bonePosFixer[0];
@@ -296,6 +300,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 			m_pose.vecPosition[1] = info.controller[controllerIndex].boneRootPosition.y + bonePosFixer[1];
 			m_pose.vecPosition[2] = info.controller[controllerIndex].boneRootPosition.z + bonePosFixer[2];
 		}
+		
 	}
 	else {
 
@@ -389,7 +394,6 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	Log("Controller%d %d %lu: %08llX %08X %f:%f", m_index,controllerIndex, (unsigned long)m_unObjectId, c.buttons, c.flags, c.trackpadPosition.x, c.trackpadPosition.y);
 
 	if (c.flags & TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND) {
-
 		float rotThumb = (c.boneRotations[alvrHandBone_Thumb0].z + c.boneRotations[alvrHandBone_Thumb0].y + c.boneRotations[alvrHandBone_Thumb1].z + c.boneRotations[alvrHandBone_Thumb1].y + c.boneRotations[alvrHandBone_Thumb2].z + c.boneRotations[alvrHandBone_Thumb2].y + c.boneRotations[alvrHandBone_Thumb3].z + c.boneRotations[alvrHandBone_Thumb3].y) * 0.67f;
 		float rotIndex = (c.boneRotations[alvrHandBone_Index1].z + c.boneRotations[alvrHandBone_Index2].z + c.boneRotations[alvrHandBone_Index3].z) * 0.67f;
 		float rotMiddle = (c.boneRotations[alvrHandBone_Middle1].z + c.boneRotations[alvrHandBone_Middle2].z + c.boneRotations[alvrHandBone_Middle3].z) * 0.67f;
@@ -397,24 +401,30 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 		float rotPinky = (c.boneRotations[alvrHandBone_Pinky1].z + c.boneRotations[alvrHandBone_Pinky2].z + c.boneRotations[alvrHandBone_Pinky3].z) * 0.67f;
 		float grip = std::min({ rotMiddle,rotRing,rotPinky }) * 4.0f - 3.0f;
 
+		// Currently only the index pinch seems to have a system gesture. Otherwise just make sure the pinching fingers have high confidence.
+		bool registerIndexPinch = (c.handFingerConfidences & alvrIndexConfidence_High) && (c.handFingerConfidences & alvrThumbConfidence_High) && !(c.inputStateStatus & alvrInputStateHandStatus_SystemGestureProcessing);
+		bool registerMiddlePinch = (c.handFingerConfidences & alvrMiddleConfidence_High) && (c.handFingerConfidences & alvrThumbConfidence_High);
+		bool registerRingPinch = (c.handFingerConfidences & alvrRingConfidence_High) && (c.handFingerConfidences & alvrThumbConfidence_High);
+		bool registerPinkyPinch = (c.handFingerConfidences & alvrPinkyConfidence_High) && (c.handFingerConfidences & alvrThumbConfidence_High);
+
 		switch(Settings::Instance().m_controllerMode){
 		case 0:
-			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_SYSTEM_CLICK], (c.inputStateStatus & alvrInputStateHandStatus_RingPinching) != 0, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_SYSTEM_CLICK], registerPinkyPinch && (c.inputStateStatus & alvrInputStateHandStatus_PinkyPinching) != 0, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK], false, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GRIP_CLICK], grip > 0.9f, 0.0);
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_GRIP_VALUE], grip, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GRIP_TOUCH], grip > 0.7f, 0.0);
 			if (!m_isLeftHand) {
-				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_A_CLICK], (c.inputStateStatus & alvrInputStateHandStatus_MiddlePinching) != 0, 0.0);
-				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_A_TOUCH], (c.inputStateStatus & alvrInputStateHandStatus_MiddlePinching) != 0, 0.0);
-				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_B_CLICK], (c.inputStateStatus & alvrInputStateHandStatus_IndexPinching) != 0, 0.0);
-				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_B_TOUCH], (c.inputStateStatus & alvrInputStateHandStatus_IndexPinching) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_A_CLICK], registerRingPinch && (c.inputStateStatus & alvrInputStateHandStatus_RingPinching) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_A_TOUCH], registerRingPinch && (c.inputStateStatus & alvrInputStateHandStatus_RingPinching) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_B_CLICK], registerMiddlePinch && (c.inputStateStatus & alvrInputStateHandStatus_MiddlePinching) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_B_TOUCH], registerMiddlePinch && (c.inputStateStatus & alvrInputStateHandStatus_MiddlePinching) != 0, 0.0);
 			}
 			else {
-				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_X_CLICK], (c.inputStateStatus & alvrInputStateHandStatus_MiddlePinching) != 0, 0.0);
-				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_X_TOUCH], (c.inputStateStatus & alvrInputStateHandStatus_MiddlePinching) != 0, 0.0);
-				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_Y_CLICK], (c.inputStateStatus & alvrInputStateHandStatus_IndexPinching) != 0, 0.0);
-				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_Y_TOUCH], (c.inputStateStatus & alvrInputStateHandStatus_IndexPinching) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_X_CLICK], registerRingPinch && (c.inputStateStatus & alvrInputStateHandStatus_RingPinching) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_X_TOUCH], registerRingPinch && (c.inputStateStatus & alvrInputStateHandStatus_RingPinching) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_Y_CLICK], registerMiddlePinch && (c.inputStateStatus & alvrInputStateHandStatus_MiddlePinching) != 0, 0.0);
+				vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_Y_TOUCH], registerMiddlePinch && (c.inputStateStatus & alvrInputStateHandStatus_MiddlePinching) != 0, 0.0);
 			}
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_JOYSTICK_CLICK], rotThumb > 0.9f, 0.0);
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_JOYSTICK_X], 0.0, 0.0);
@@ -423,9 +433,9 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_BACK_CLICK], false, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GUIDE_CLICK], false, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_START_CLICK], false, 0.0);
-			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRIGGER_CLICK], rotIndex > 0.9f, 0.0);
-			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRIGGER_VALUE], rotIndex, 0.0);
-			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRIGGER_TOUCH], rotIndex > 0.7f, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRIGGER_CLICK], registerIndexPinch && (c.inputStateStatus & alvrInputStateHandStatus_IndexPinching) != 0, 0.0);
+			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRIGGER_VALUE], registerIndexPinch ? c.fingerPinchStrengths[alvrFingerPinch_Index] : 0.0, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRIGGER_TOUCH], registerIndexPinch && (c.fingerPinchStrengths[alvrFingerPinch_Index] > 0.7f), 0.0);
 			break;
 		case 1:
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_SYSTEM_CLICK], false, 0.0);
@@ -506,13 +516,10 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 #define SIZE4(b) (sqrt(b.v[0]*b.v[0]+b.v[1]*b.v[1]+b.v[2]*b.v[2]))
 #define APPSIZE4(a,b,c) do{a.v[0]*=b/c;a.v[1]*=b/c;a.v[2]*=b/c;}while(0)
 
-		vr::HmdQuaternion_t inv = vrmath::quaternionConjugate(m_pose.qRotation);
-		COPY4(c.boneRootOrientation, m_boneTransform[HSB_Wrist].orientation);
-		vr::HmdQuaternionf_t hoge = QuatMultiply(&inv, &m_boneTransform[HSB_Wrist].orientation);
+		vr::HmdQuaternion_t boneFixer = HmdQuaternion_Init(0, 0, 0.924, -0.383);
 		COPY4(c.boneRotations[alvrHandBone_WristRoot], m_boneTransform[HSB_Wrist].orientation);
-		m_boneTransform[HSB_Wrist].orientation = QuatMultiply(&hoge, &m_boneTransform[HSB_Wrist].orientation);
+		m_boneTransform[HSB_Wrist].orientation = QuatMultiply(&m_boneTransform[HSB_Wrist].orientation, &boneFixer);
 
-		//COPY4(c.boneRotations[alvrHandBone_WristRoot], m_boneTransform[HSB_Wrist].orientation);
 		COPY4(c.boneRotations[alvrHandBone_Thumb0], m_boneTransform[HSB_Thumb0].orientation);
 		COPY4(c.boneRotations[alvrHandBone_Thumb1], m_boneTransform[HSB_Thumb1].orientation);
 		COPY4(c.boneRotations[alvrHandBone_Thumb2], m_boneTransform[HSB_Thumb2].orientation);
@@ -531,25 +538,110 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 		COPY4(c.boneRotations[alvrHandBone_Pinky2], m_boneTransform[HSB_PinkyFinger2].orientation);
 		COPY4(c.boneRotations[alvrHandBone_Pinky3], m_boneTransform[HSB_PinkyFinger3].orientation);
 		
+		// Will use one of the existing poses from the implementation below instead for position data.
 		//COPY3(c.boneRootPosition, m_boneTransform[HSB_Root].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_WristRoot], m_boneTransform[HSB_Wrist].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Thumb0], m_boneTransform[HSB_Thumb0].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Thumb1], m_boneTransform[HSB_Thumb1].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Thumb2], m_boneTransform[HSB_Thumb2].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Thumb3], m_boneTransform[HSB_Thumb3].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Index1], m_boneTransform[HSB_IndexFinger1].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Index2], m_boneTransform[HSB_IndexFinger2].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Index3], m_boneTransform[HSB_IndexFinger3].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Middle1], m_boneTransform[HSB_MiddleFinger1].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Middle2], m_boneTransform[HSB_MiddleFinger2].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Middle3], m_boneTransform[HSB_MiddleFinger3].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Ring1], m_boneTransform[HSB_RingFinger1].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Ring2], m_boneTransform[HSB_RingFinger2].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Ring3], m_boneTransform[HSB_RingFinger3].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Pinky0], m_boneTransform[HSB_PinkyFinger0].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Pinky1], m_boneTransform[HSB_PinkyFinger1].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Pinky2], m_boneTransform[HSB_PinkyFinger2].position);
-		COPY3(c.bonePositionsBase[alvrHandBone_Pinky3], m_boneTransform[HSB_PinkyFinger3].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_WristRoot], m_boneTransform[HSB_Wrist].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Thumb0], m_boneTransform[HSB_Thumb0].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Thumb1], m_boneTransform[HSB_Thumb1].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Thumb2], m_boneTransform[HSB_Thumb2].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Thumb3], m_boneTransform[HSB_Thumb3].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Index1], m_boneTransform[HSB_IndexFinger1].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Index2], m_boneTransform[HSB_IndexFinger2].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Index3], m_boneTransform[HSB_IndexFinger3].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Middle1], m_boneTransform[HSB_MiddleFinger1].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Middle2], m_boneTransform[HSB_MiddleFinger2].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Middle3], m_boneTransform[HSB_MiddleFinger3].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Ring1], m_boneTransform[HSB_RingFinger1].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Ring2], m_boneTransform[HSB_RingFinger2].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Ring3], m_boneTransform[HSB_RingFinger3].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Pinky0], m_boneTransform[HSB_PinkyFinger0].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Pinky1], m_boneTransform[HSB_PinkyFinger1].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Pinky2], m_boneTransform[HSB_PinkyFinger2].position);
+		//COPY3(c.bonePositionsBase[alvrHandBone_Pinky3], m_boneTransform[HSB_PinkyFinger3].position);
+
+		// Use position data (and orientation for missing bones - index, middle and ring finger bone 0)
+		// from the functions below.
+		if (m_isLeftHand) {
+			m_boneTransform[2].position = { -0.012083, 0.028070, 0.025050, 1 };
+			m_boneTransform[3].position = { 0.040406, 0.000000, -0.000000, 1 };
+			m_boneTransform[4].position = { 0.032517, 0.000000, 0.000000, 1 };
+
+			m_boneTransform[6].position = { 0.000632, 0.026866, 0.015002, 1 };
+			m_boneTransform[7].position = { 0.074204, -0.005002, 0.000234, 1 };
+			m_boneTransform[8].position = { 0.043930, -0.000000, -0.000000, 1 };
+			m_boneTransform[9].position = { 0.028695, 0.000000, 0.000000, 1 };
+
+			m_boneTransform[11].position = { 0.002177, 0.007120, 0.016319, 1 };
+			m_boneTransform[12].position = { 0.070953, 0.000779, 0.000997, 1 };
+			m_boneTransform[13].position = { 0.043108, 0.000000, 0.000000, 1 };
+			m_boneTransform[14].position = { 0.033266, 0.000000, 0.000000, 1 };
+
+			m_boneTransform[16].position = { 0.000513, -0.006545, 0.016348, 1 };
+			m_boneTransform[17].position = { 0.065876, 0.001786, 0.000693, 1 };
+			m_boneTransform[18].position = { 0.040697, 0.000000, 0.000000, 1 };
+			m_boneTransform[19].position = { 0.028747, -0.000000, -0.000000, 1 };
+
+			m_boneTransform[21].position = { -0.002478, -0.018981, 0.015214, 1 };
+			m_boneTransform[22].position = { 0.062878, 0.002844, 0.000332, 1 };
+			m_boneTransform[23].position = { 0.030220, 0.000000, 0.000000, 1 };
+			m_boneTransform[24].position = { 0.018187, 0.000000, 0.000000, 1 };
+
+			m_boneTransform[6].orientation =  {0.644251, 0.421979 , -0.478202 , 0.422133};
+			m_boneTransform[11].orientation = {0.546723, 0.541277 , -0.442520 , 0.460749};
+			m_boneTransform[16].orientation = {0.516692, 0.550144 , -0.495548 , 0.429888};
+		}
+		else {
+			m_boneTransform[2].position = { 0.012330, 0.028661, 0.025049, 1 };
+			m_boneTransform[3].position = { -0.040406, -0.000000, 0.000000, 1 };
+			m_boneTransform[4].position = { -0.032517, -0.000000, -0.000000, 1 };
+
+			m_boneTransform[6].position = { -0.000632, 0.026866, 0.015002, 1 };
+			m_boneTransform[7].position = { -0.074204, 0.005002, -0.000234, 1 };
+			m_boneTransform[8].position = { -0.043930, 0.000000, 0.000000, 1 };
+			m_boneTransform[9].position = { -0.028695, -0.000000, -0.000000, 1 };
+
+			m_boneTransform[11].position = { -0.002177, 0.007120, 0.016319, 1 };
+			m_boneTransform[12].position = { -0.070953, -0.000779, -0.000997, 1 };
+			m_boneTransform[13].position = { -0.043108, -0.000000, -0.000000, 1 };
+			m_boneTransform[14].position = { -0.033266, -0.000000, -0.000000, 1 };
+
+			m_boneTransform[16].position = { -0.000513, -0.006545, 0.016348, 1 };
+			m_boneTransform[17].position = { -0.065876, -0.001786, -0.000693, 1 };
+			m_boneTransform[18].position = { -0.040697, -0.000000, -0.000000, 1 };
+			m_boneTransform[19].position = { -0.028747, 0.000000, 0.000000, 1 };
+
+			m_boneTransform[21].position = { 0.002478, -0.018981, 0.015214, 1 };
+			m_boneTransform[22].position = { -0.062878, -0.002844, -0.000332, 1 };
+			m_boneTransform[23].position = { -0.030220, -0.000000, -0.000000, 1 };
+			m_boneTransform[24].position = { -0.018187, -0.000000, -0.000000, 1 };
+
+			m_boneTransform[6].orientation =  {0.421833, -0.643793 , 0.422458 , 0.478661};
+			m_boneTransform[11].orientation = {0.541874, -0.547427 , 0.459996 , 0.441701};
+			m_boneTransform[16].orientation = {0.548983, -0.519068 , 0.426914 , 0.496920};
+		}
+
+		// Move the hand itself back to counteract the translation applied to the controller position. (more or less)
+		float bonePosFixer[3] = { 0.025, 0, 0.1 };
+		if (!m_isLeftHand)
+			bonePosFixer[0] = -bonePosFixer[0];
+		m_boneTransform[HSB_Root].position.v[0] = m_boneTransform[HSB_Root].position.v[0] + bonePosFixer[0];
+		m_boneTransform[HSB_Root].position.v[1] = m_boneTransform[HSB_Root].position.v[1] + bonePosFixer[1];
+		m_boneTransform[HSB_Root].position.v[2] = m_boneTransform[HSB_Root].position.v[2] + bonePosFixer[2];
+
+		// Rotate thumb0 and pinky0 properly.
+		if (m_isLeftHand)
+		{
+			vr::HmdQuaternion_t fixer = HmdQuaternion_Init(0.5, 0.5, -0.5, 0.5);
+			m_boneTransform[HSB_Thumb0].orientation = QuatMultiply(&fixer, &m_boneTransform[HSB_Thumb0].orientation);
+			m_boneTransform[HSB_PinkyFinger0].orientation = QuatMultiply(&fixer, &m_boneTransform[HSB_PinkyFinger0].orientation);
+		}
+		else
+		{
+			vr::HmdQuaternion_t fixer = HmdQuaternion_Init(0.5, -0.5, 0.5, 0.5);
+			m_boneTransform[HSB_Thumb0].orientation = QuatMultiply(&fixer, &m_boneTransform[HSB_Thumb0].orientation);
+			m_boneTransform[HSB_PinkyFinger0].orientation = QuatMultiply(&fixer, &m_boneTransform[HSB_PinkyFinger0].orientation);
+		}
+		
 
 		vr::VRDriverInput()->UpdateSkeletonComponent(m_compSkeleton, vr::VRSkeletalMotionRange_WithController, m_boneTransform, HSB_Count);
 		vr::VRDriverInput()->UpdateSkeletonComponent(m_compSkeleton, vr::VRSkeletalMotionRange_WithoutController, m_boneTransform, HSB_Count);

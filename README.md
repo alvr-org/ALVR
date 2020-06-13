@@ -3,7 +3,7 @@
 ALVR is an open source remote VR display. With it, you can play SteamVR games in your standalone headset.
 This is a fork of a fork [ALVR](https://github.com/polygraphene/ALVR) that is only working on the Oculus Quest and includes an experimental (and hacked together) GPU priority fix taken from OBS.
 
-Join us on our new discord server[ALVR](https://discord.gg/KbKk3UM)!
+Join us on our new discord server [ALVR](https://discord.gg/KbKk3UM)!
 
 
 ## Description

@@ -3,6 +3,8 @@
 ALVR is an open source remote VR display. With it, you can play SteamVR games in your standalone headset.
 This is a fork of a fork [ALVR](https://github.com/polygraphene/ALVR) that is only working on the Oculus Quest and includes an experimental (and hacked together) GPU priority fix taken from OBS.
 
+Join us on our new discord server[ALVR](https://discord.gg/KbKk3UM)!
+
 
 ## Description
 
@@ -24,7 +26,7 @@ ALVR requires any of the following devices:
     - Laptops with dual GPU have to disable the on-board GPU
 - 802.11n/ac wireless or ethernet wired connection
     - It is recommended to use 802.11ac for the headset and ethernet for PC
-        - You need to connect both to the same router (or use a routed connection as described [here](https://github.com/JackD83/ALVR/wiki/ALVR-client-and-server-on-separate-networks))
+    - You need to connect both to the same router (or use a routed connection as described [here](https://github.com/JackD83/ALVR/wiki/ALVR-client-and-server-on-separate-networks))
     - Lower the channel width to 40Mhz to prevent stuttering (sources: [here](https://www.reddit.com/r/OculusQuest/comments/ckx0qx/this_is_how_to_remove_periodic_frame/) and [here](https://otasyumi.site/vr/oculus-quest-steamvr-try-alvr-corresponding-to-the-latest-build-of-oculusquest) )
 - SteamVR
 

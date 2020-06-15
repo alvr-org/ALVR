@@ -289,6 +289,7 @@ define([
                 $("#toggleAdvanced i").removeClass("fa-toggle-on");
                 $("#toggleAdvanced i").addClass("fa-toggle-off");
             }
+            //addHelpTooltips();
         }
 
         //nodes
@@ -440,7 +441,7 @@ define([
 
             var el = `<div class="parameter ${getAdvancedClass(advanced)}">
                 <div class="card-title">
-                    <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">${getI18n(name).name}</a>
+                    <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">${getI18n(path + "_" + name).name}</a>
                 </div>   
                 <div id="collapse_${index}" class="collapse show">
                     <div class="card-body">
@@ -457,7 +458,7 @@ define([
         function addRadioContainer(element, path, name, advanced, node) {
             var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
-                    ${getI18n(name).name}  ${getHelpReset(name + "_" + node.content.default, path, true)}
+                    ${getI18n(path + "_" + name).name}  ${getHelpReset(name + "_" + node.content.default, path, true)}
                 </div>   
                 <div>
                     <div class="card-body">
@@ -472,7 +473,7 @@ define([
 
         function addDropdown(element, path, name, advanced) {
             element.append(`<div class="parameter ${getAdvancedClass(advanced)}" >     
-            <label for="${path}_${name}">${getI18n(name).name} </label> 
+            <label for="${path}_${name}">${getI18n(path + "_" + name).name} </label> 
            
             <select id="${path}_${name}" >
            
@@ -490,7 +491,7 @@ define([
 
             var el = `<div class="${getAdvancedClass(advanced)}" >
                 <input type="radio" id="${path}_${name}-choice-" name="${radioName}"  value="${name}" ${checked}> 
-                <label for="${path}_${name}">${getI18n(name).name}</label>
+                <label for="${path}_${name}-choice-">${getI18n(path + "_" + name + "-choice-").name}</label>
                 <div class="radioContent">
                 </div>
             </div>`;
@@ -510,7 +511,7 @@ define([
                 <div class="card-title">
                     <input id="${path}_${name}_enabled" type="checkbox" ${checked} " />
                     <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">
-                    ${getI18n(name).name}</a> 
+                    ${getI18n(path + "_" + name).name}</a> 
                     ${getHelpReset(name + "_enabled", path, node.content.defaultEnabled)}
                 </div>   
                 <div id="collapse_${index}" class="collapse show">
@@ -530,7 +531,7 @@ define([
 
         function addTextType(element, path, name, advanced, node) {
             element.append(`<div class="parameter ${getAdvancedClass(advanced)}" >     
-                        <label for="${path}_${name}">${getI18n(name).name} </label> 
+                        <label for="${path}_${name}">${getI18n(path + "_" + name).name} </label> 
                         ${getHelpReset(name, path, node.content.default)}
                         <input id="${path}_${name}" type="text" value="${node.content.default}" >
                         </input>
@@ -545,7 +546,7 @@ define([
 
             element.append(`<div class="parameter ${getAdvancedClass(advanced)}" > 
                         <input id="${path}_${name}" type="checkbox" ${checked} />
-                        <label for="${path}_${name}">${getI18n(name).name} ${getMinMaxLabel(node)} </label>
+                        <label for="${path}_${name}">${getI18n(path + "_" + name).name} ${getMinMaxLabel(node)} </label>
                          ${getHelpReset(name, path, node.content.default)}                         
                     </div>`);
         }
@@ -554,7 +555,7 @@ define([
             let type = getNumericGuiType(node.content);
 
             let base = `<div class="parameter ${getAdvancedClass(advanced)}" >
-                    <label for="${path}_${name}">${getI18n(name).name} ${getMinMaxLabel(node)}: 
+                    <label for="${path}_${name}">${getI18n(path + "_" + name).name} ${getMinMaxLabel(node)}: 
                     </label>`;
 
             switch (type) {
@@ -598,7 +599,7 @@ define([
         }
 
         function getHelp(name, path, defaultVal) {
-            return getI18n(name).description;
+            return getI18n(path + "_" + name).description;
         }
 
         function getAdvancedClass(advanced) {

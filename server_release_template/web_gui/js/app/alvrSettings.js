@@ -12,18 +12,15 @@ define([
         var advanced = false;
         var updating = false;
 
-        var sessionCopy;
-
         const video_scales = [25,50,66,75,100,125,150,200];
+        var index = 0;
 
         this.disableWizard = function () {
             session.setupWizard = false;
             updateSession();
         }
 
-        function init() {
-
-            sessionCopy = JSON.parse(JSON.stringify(session))
+        function init() {       
            
             fillNode(schema, "Main", 0, $("#configContent"), "root", undefined);
             updateSwitchContent();
@@ -37,20 +34,33 @@ define([
             setDeviceList();
             setVideoScale();
 
-            addChangeListener();         
+            addChangeListener();   
+            
+            console.log(session)
+
         }
 
         function setVideoScale() {
             const el = $("#root_Main_video_resolutionDropdown");
-            const targetWidth = $("#root_Main_video_renderResolution_width");
-            const targetHeight = $("#root_Main_video_renderResolution_height");
+            const targetWidth = $("#root_Main_video_renderResolution_absolute_width");
+            const targetHeight = $("#root_Main_video_renderResolution_absolute_height");
+
+            const scale = $("#root_Main_video_renderResolution_scale");
 
             video_scales.forEach(scale => {             
                 el.append(`<option value="${scale}"> ${scale}% </option>`)
             });
+
+            el.change((ev) => {
+                const val = $(ev.target).val();
+                scale.val(val / 100);
+                scale.change();
+                scale.trigger("input");
+            });
+
+
             
         }
-
 
         function setDeviceList() {
             const el = $("#root_Main_audio_gameAudio_content_deviceDropdown");
@@ -200,8 +210,6 @@ define([
             });
         }
 
-
-
         function setProperties(object, path) {
 
             for (var item in object) {
@@ -237,9 +245,7 @@ define([
                 }
             }
         }
-
-
-        var index = 0;
+     
         function updateSwitchContent() {
             $(".switch").each((index, el) => {
                 var checked = $(el).find("input").first().prop("checked");
@@ -287,7 +293,7 @@ define([
             }
         }
 
-
+        //nodes
         function fillNode(node, name, level, element, path, parentType, advanced = false) {
             index += 1;
 
@@ -415,7 +421,7 @@ define([
 
             $("#configTabs").append(`
                     <li class="nav-item ${getAdvancedClass(advanced)}">
-                        <a class="nav-link" data-toggle="tab" href="#${path + "_" + name}" id="${path + "_" + name + "_tab"}">${getI18n(name).name}</a>
+                        <a class="nav-link" data-toggle="tab" href="#${path + "_" + name}" id="${path + "_" + name + "_tab"}">${getI18n(path + "_" + name + "_tab").name}</a>
                     </li>                    
                     `);
             $("#configContent").append(`
@@ -431,8 +437,6 @@ define([
             element = $("#" + path + "_" + name);
             return element;
         }
-
-
 
         function addContainer(index, element, name, advanced) {
 
@@ -479,7 +483,6 @@ define([
 
 
         }
-
 
         function addRadioVariant(element, name, radioName, node, path, isDefault, advanced) {
             let checked = "";
@@ -549,7 +552,6 @@ define([
                     </div>`);
         }
 
-
         function addNumericType(element, name, node, path, advanced) {
             let type = getNumericGuiType(node.content);
 
@@ -589,7 +591,7 @@ define([
         }
 
 
-
+        //helper
         function getHelpReset(name, path, defaultVal) {
             return `<div class="helpReset">
                 <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(name, path)}" ></i>
@@ -625,7 +627,6 @@ define([
             }
             $("#" + path + "_" + name).change();
         }
-
 
         function getMinMaxLabel(node) {
             if (node.content.min == null || node.content.max == null) {

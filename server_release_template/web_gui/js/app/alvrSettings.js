@@ -12,7 +12,7 @@ define([
         var advanced = false;
         var updating = false;
 
-        const video_scales = [25,50,66,75,100,125,150,200];
+        const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
         var index = 0;
 
         this.disableWizard = function () {
@@ -20,34 +20,34 @@ define([
             updateSession();
         }
 
-        function init() {       
-           
-            fillNode(schema, "Main", 0, $("#configContent"), "root", undefined);
+        function init() {
+
+            fillNode(schema, "root", 0, $("#configContent"), "", undefined);
             updateSwitchContent();
             toggleAdvanced();
             addListeners();
             addHelpTooltips();
 
-            setProperties(session.settingsCache, "root_Main");
+            setProperties(session.settingsCache, "_root");
 
             //special case for audio devices
             setDeviceList();
             setVideoScale();
 
-            addChangeListener();   
-            
+            addChangeListener();
+
             console.log(session)
 
         }
 
         function setVideoScale() {
-            const el = $("#root_Main_video_resolutionDropdown");
-            const targetWidth = $("#root_Main_video_renderResolution_absolute_width");
-            const targetHeight = $("#root_Main_video_renderResolution_absolute_height");
+            const el = $("#_root_video_resolutionDropdown");
+            const targetWidth = $("#_root_video_renderResolution_absolute_width");
+            const targetHeight = $("#_root_video_renderResolution_absolute_height");
 
-            const scale = $("#root_Main_video_renderResolution_scale");
+            const scale = $("#_root_video_renderResolution_scale");
 
-            video_scales.forEach(scale => {             
+            video_scales.forEach(scale => {
                 el.append(`<option value="${scale}"> ${scale}% </option>`)
             });
 
@@ -58,13 +58,11 @@ define([
                 scale.trigger("input");
             });
 
-
-            
         }
 
         function setDeviceList() {
-            const el = $("#root_Main_audio_gameAudio_content_deviceDropdown");
-            const target = $("#root_Main_audio_gameAudio_content_device");
+            const el = $("#_root_audio_gameAudio_content_deviceDropdown");
+            const target = $("#_root_audio_gameAudio_content_device");
             let current = "";
             try {
                 current = session.settingsCache.audio.gameAudio.content.device;
@@ -86,8 +84,8 @@ define([
             }
 
             //move selected audio device to top of list
-            var $el = $("#root_Main_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
-            $("#root_Main_audio_gameAudio_content_deviceDropdown").find('option:eq(0)').before($el);
+            var $el = $("#_root_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
+            $("#_root_audio_gameAudio_content_deviceDropdown").find('option:eq(0)').before($el);
 
             //select the current option in dropdown
             el.val(target.val());
@@ -129,7 +127,7 @@ define([
         }
 
         function storeParam(el) {
-            var id = el.prop("id");          
+            var id = el.prop("id");
             var val;
 
             if (el.prop("type") == "checkbox" || el.prop("type") == "radio") {
@@ -143,7 +141,7 @@ define([
                     val = Number.parseFloat(el.val());
                 }
             }
-            id = id.replace("root_Main_", "");
+            id = id.replace("_root_", "");
             id = id.replace("-choice-", "");
             var path = id.split("_");
 
@@ -196,7 +194,7 @@ define([
                         console.log("FAILED")
                         updating = true;
                         session = res;
-                        setProperties(res.settingsCache, "root_Main");
+                        setProperties(res.settingsCache, "_root");
                         updating = false;
                     }
                 },
@@ -204,7 +202,7 @@ define([
                     console.log("FAILED")
                     updating = true;
                     session = res;
-                    setProperties(res.settingsCache, "root_Main");
+                    setProperties(res.settingsCache, "_root");
                     updating = false;
                 }
             });
@@ -245,7 +243,7 @@ define([
                 }
             }
         }
-     
+
         function updateSwitchContent() {
             $(".switch").each((index, el) => {
                 var checked = $(el).find("input").first().prop("checked");
@@ -302,7 +300,7 @@ define([
                 switch (name) {
                     case "deviceDropdown":
                     case "resolutionDropdown":
-                        addDropdown(element, name, path, advanced)
+                        addDropdown(element, path, name, advanced)
                         break;
                     default:
                         console.log("null", name);
@@ -317,12 +315,12 @@ define([
 
                     //section in level 1
                     if (level == 1) {
-                        element = createTab(path, name, advanced);
+                        element = createTab(element, path, name, advanced);
 
                     } else if (level > 1) {
 
                         if (parentType != "switch") { //switch adds section
-                            element = addContainer(index, element, name, advanced);
+                            element = addContainer(element, path, name, advanced);
                         }
                     }
 
@@ -347,17 +345,17 @@ define([
                 case "switch":
 
                     if (level == 1) {
-                        element = createTab(path, name, advanced);
-                        element = addSwitchContainer(index, element, name, node, path, advanced);
+                        element = createTab(element, path, name, advanced);
+                        element = addSwitchContainer(element, path, name, advanced, node);
                     } else if (level > 1) {
-                        element = addSwitchContainer(index, element, name, node, path, advanced);
+                        element = addSwitchContainer(element, path, name, advanced, node);
                     }
 
                     fillNode(node.content.content, name, level + 1, element, path, node.type, node.content.advanced);
                     break;
 
                 case "array":
-                    element = addContainer(index, element, name, advanced);
+                    element = addContainer(element, path, name, advanced);
                     node.content.forEach((el, index) => {
                         var arrayName = name + "_" + index
 
@@ -370,10 +368,10 @@ define([
 
                 case "choice":
 
-                    element = addRadioContainer(index, element, name, advanced, path, node);
+                    element = addRadioContainer(element, path, name, advanced, node);
                     node.content.variants.forEach((el, index) => {
 
-                        var variantElement = addRadioVariant(element, el[0], name, el[1], path + "_" + name, el[0] == node.content.default);
+                        var variantElement = addRadioVariant(element, path + "_" + name, el[0], advanced, name, el[1], el[0] == node.content.default);
 
                         if (el[1] != null) {
                             fillNode(el[1].content, el[0], level + 1, variantElement, path + "_" + name + "_" + el[0], "choice", el[1].advanced);
@@ -388,21 +386,21 @@ define([
                     if (parentType == "choice" || parentType == "array") {
                         path = path.replace("_" + name, "");
                     }
-                    addNumericType(element, name, node, path, advanced);
+                    addNumericType(element, path, name, advanced, node);
                     break;
 
                 case "boolean":
                     if (parentType == "choice" || parentType == "array") {
                         path = path.replace("_" + name, "");
                     }
-                    addBooleanType(element, name, node, path, advanced);
+                    addBooleanType(element, path, name, advanced, node);
                     break;
 
                 case "text":
                     if (parentType == "choice" || parentType == "array") {
                         path = path.replace("_" + name, "");
                     }
-                    addTextType(element, name, node, path, advanced);
+                    addTextType(element, path, name, advanced, node);
                     break;
 
                 default:
@@ -417,7 +415,7 @@ define([
 
         }
 
-        function createTab(path, name, advanced) {
+        function createTab(element, path, name, advanced) {
 
             $("#configTabs").append(`
                     <li class="nav-item ${getAdvancedClass(advanced)}">
@@ -438,7 +436,7 @@ define([
             return element;
         }
 
-        function addContainer(index, element, name, advanced) {
+        function addContainer(element, path, name, advanced) {
 
             var el = `<div class="parameter ${getAdvancedClass(advanced)}">
                 <div class="card-title">
@@ -456,7 +454,7 @@ define([
             return element;
         }
 
-        function addRadioContainer(index, element, name, advanced, path, node) {
+        function addRadioContainer(element, path, name, advanced, node) {
             var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
                     ${getI18n(name).name}  ${getHelpReset(name + "_" + node.content.default, path, true)}
@@ -472,7 +470,7 @@ define([
             return element;
         }
 
-        function addDropdown(element, name, path, advanced) {
+        function addDropdown(element, path, name, advanced) {
             element.append(`<div class="parameter ${getAdvancedClass(advanced)}" >     
             <label for="${path}_${name}">${getI18n(name).name} </label> 
            
@@ -484,7 +482,7 @@ define([
 
         }
 
-        function addRadioVariant(element, name, radioName, node, path, isDefault, advanced) {
+        function addRadioVariant(element, path, name, advanced, radioName, node, isDefault) {
             let checked = "";
             if (isDefault) {
                 checked = "checked";
@@ -502,7 +500,7 @@ define([
             return element;
         }
 
-        function addSwitchContainer(index, element, name, node, path, advanced) {
+        function addSwitchContainer(element, path, name, advanced, node) {
             let checked = "";
             if (node.content.defaultEnabled) {
                 checked = "checked";
@@ -530,7 +528,7 @@ define([
             return element;
         }
 
-        function addTextType(element, name, node, path, advanced) {
+        function addTextType(element, path, name, advanced, node) {
             element.append(`<div class="parameter ${getAdvancedClass(advanced)}" >     
                         <label for="${path}_${name}">${getI18n(name).name} </label> 
                         ${getHelpReset(name, path, node.content.default)}
@@ -539,7 +537,7 @@ define([
                     </div>`);
         }
 
-        function addBooleanType(element, name, node, path, advanced) {
+        function addBooleanType(element, path, name, advanced, node) {
             let checked = "";
             if (node.content.default) {
                 checked = "checked";
@@ -552,7 +550,7 @@ define([
                     </div>`);
         }
 
-        function addNumericType(element, name, node, path, advanced) {
+        function addNumericType(element, path, name, advanced, node) {
             let type = getNumericGuiType(node.content);
 
             let base = `<div class="parameter ${getAdvancedClass(advanced)}" >

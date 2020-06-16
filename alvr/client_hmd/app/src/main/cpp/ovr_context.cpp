@@ -220,6 +220,7 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime) {
             c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND;
 
             c.inputStateStatus = inputStateHand.InputStateStatus;
+            memcpy(&c.fingerPinchStrengths, &inputStateHand.PinchStrength, sizeof(c.fingerPinchStrengths));
 
             memcpy(&c.orientation, &inputStateHand.PointerPose.Orientation, sizeof(inputStateHand.PointerPose.Orientation));
             memcpy(&c.position, &inputStateHand.PointerPose.Position, sizeof(inputStateHand.PointerPose.Position));
@@ -243,6 +244,13 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime) {
             if (vrapi_GetHandPose(Ovr, handCapabilities.Header.DeviceID, 0, &handPose.Header ) != ovrSuccess) {
                 LOG("VrHands - failed to get hand pose");
             } else {
+                if (handPose.HandConfidence == ovrConfidence_HIGH) {
+                    c.handFingerConfidences |= alvrHandConfidence_High;
+                }
+                for (int i = 0; i < ovrHandFinger_Max; i++) {
+                    c.handFingerConfidences |= handPose.FingerConfidences[i] == ovrConfidence_HIGH ? (1 << i) : 0;
+                }
+
                 memcpy(&c.boneRootOrientation, &handPose.RootPose.Orientation, sizeof(handPose.RootPose.Orientation));
                 memcpy(&c.boneRootPosition, &handPose.RootPose.Position, sizeof(handPose.RootPose.Position));
                 for(int i=0;i<ovrHandBone_MaxSkinnable;i++) {

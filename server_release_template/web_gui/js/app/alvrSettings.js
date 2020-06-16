@@ -36,8 +36,6 @@ define([
 
             addChangeListener();
 
-            console.log(session)
-
         }
 
         function setVideoScale() {
@@ -106,6 +104,8 @@ define([
                 if (i18n[id + ".name"] !== undefined) {
                     return { "name": i18n[id + ".name"], "description": i18n[id + ".description"] };;
                 } else {
+                    console.log("Missing i18n", `"${id}.name":"", \r\n "${id}.description":"", \r\n`);
+
                     return { "name": id, "description": "" };
                 }
             }
@@ -458,7 +458,7 @@ define([
         function addRadioContainer(element, path, name, advanced, node) {
             var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
-                    ${getI18n(path + "_" + name).name}  ${getHelpReset(name + "_" + node.content.default, path, true)}
+                    ${getI18n(path + "_" + name + "-choice-").name}  ${getHelpReset(name + "_" + node.content.default + "-choice-", path, true)}
                 </div>   
                 <div>
                     <div class="card-body">
@@ -591,10 +591,10 @@ define([
 
 
         //helper
-        function getHelpReset(name, path, defaultVal) {
+        function getHelpReset(name, path, defaultVal, postFix = "") {
             return `<div class="helpReset">
                 <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(name, path)}" ></i>
-                <i class="fa fa-redo fa-lg paramReset" name="${name}" path="${path}" default="${defaultVal}")" ></i>
+                <i class="fa fa-redo fa-lg paramReset" name="${name}${postFix}" path="${path}" default="${defaultVal}")" ></i>
             </div>`;
         }
 
@@ -614,6 +614,8 @@ define([
             if ($("#" + path + "_" + name).prop("disabled")) {
                 return;
             }
+
+            console.log("reset", path, name, $("#" + path + "_" + name).prop("type"))
 
             if ($("#" + path + "_" + name).prop("type") == "checkbox" || $("#" + path + "_" + name).prop("type") == "radio") {
                 if (defaultVal == "true") {

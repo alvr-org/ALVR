@@ -70,19 +70,24 @@ fn run(cmd: &str) -> BResult {
     run_with_args(cmd_args[0], &cmd_args[1..])
 }
 
-fn path_to_string(path: &Path) -> String {
-    format!("\"{}\"", path.to_string_lossy())
+#[cfg(target_os = "linux")]
+fn steamvr_dir() -> PathBuf {
+    dirs::home_dir()
+        .unwrap()
+        .join(".steam/steam/steamapps/common/SteamVR")
+}
+#[cfg(windows)]
+pub fn steamvr_dir() -> PathBuf {
+    PathBuf::from(r"C:\Program Files (x86)\Steam\steamapps\common\SteamVR")
 }
 
 #[cfg(target_os = "linux")]
 pub fn steamvr_bin_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap()
-        .join(".steam/steam/steamapps/common/SteamVR/bin/linux64")
+    steamvr_dir().join("bin/linux64")
 }
 #[cfg(windows)]
 pub fn steamvr_bin_dir() -> PathBuf {
-    PathBuf::from("C:/Program Files (x86)/Steam/steamapps/common/SteamVR/bin/win64")
+    steamvr_dir().join(r"bin\win64")
 }
 
 pub fn target_dir() -> PathBuf {
@@ -90,7 +95,12 @@ pub fn target_dir() -> PathBuf {
 }
 
 pub fn workspace_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .into()
 }
 
 pub fn build_dir() -> PathBuf {
@@ -168,6 +178,7 @@ pub fn build_server(is_release: bool) -> BResult {
     let target_dir = target_dir();
     let artifacts_dir = target_dir.join(build_type);
     let driver_dst_dir = server_build_dir().join("bin").join(STEAMVR_OS_DIR_NAME);
+    let swresample_dir = workspace_dir().join("alvr/server_driver/cpp/libswresample/lib");
 
     reset_server_build_folder()?;
     fs::create_dir_all(&driver_dst_dir)?;
@@ -181,6 +192,14 @@ pub fn build_server(is_release: bool) -> BResult {
     fs::copy(
         artifacts_dir.join(dynlib_fname("alvr_server_driver")),
         driver_dst_dir.join(DRIVER_FNAME),
+    )?;
+    fs::copy(
+        swresample_dir.join("avutil-56.dll"),
+        driver_dst_dir.join("avutil-56.dll"),
+    )?;
+    fs::copy(
+        swresample_dir.join("swresample-3.dll"),
+        driver_dst_dir.join("swresample-3.dll"),
     )?;
     fs::copy(
         artifacts_dir.join(exec_fname("alvr_web_server")),
@@ -230,7 +249,7 @@ pub fn build_client(is_release: bool) -> BResult {
 
     fs::create_dir_all(&build_dir())?;
 
-    env::set_current_dir(workspace_dir().join("alvr/client_hmd"))?;
+    env::set_current_dir(&client_hmd_dir)?;
     run(&format!("{} {}", command_name, build_task))?;
     env::set_current_dir(workspace_dir())?;
 
@@ -269,21 +288,51 @@ pub fn driver_registration(root_server_dir: &Path, register: bool) -> BResult {
     }
 }
 
+fn netsh_add_rule_command_string(rule_name: &str, program_path: &Path) -> String {
+    format!(
+        "netsh advfirewall firewall add rule name=\"{}\" dir=in program=\"{}\" action=allow",
+        rule_name,
+        program_path.to_string_lossy()
+    )
+}
+
+fn netsh_delete_rule_command_string(rule_name: &str) -> String {
+    format!(
+        "netsh advfirewall firewall delete rule name=\"{}\"",
+        rule_name,
+    )
+}
+
 // Errors:
 // 1: firewall rule is already set
 // other: command failed
 pub fn firewall_rules(root_server_dir: &Path, add: bool) -> Result<(), i32> {
-    let script_fname = if add {
-        "add_firewall_rules.bat"
-    } else {
-        "remove_firewall_rules.bat"
-    };
+    let script_path = env::temp_dir().join("alvr_firewall_rules.bat");
 
-    let script_path = path_to_string(&root_server_dir.join(script_fname));
+    let firewall_rules_script_content = if add {
+        format!(
+            "{}\n{}\n{}",
+            netsh_add_rule_command_string("ALVR Launcher", root_server_dir),
+            netsh_add_rule_command_string(
+                "SteamVR ALVR vrserver",
+                &steamvr_dir().join("bin").join("win64").join("vrserver.exe")
+            ),
+            netsh_add_rule_command_string(
+                "SteamVR ALVR vrserver",
+                &steamvr_dir().join("bin").join("win32").join("vrserver.exe")
+            ),
+        )
+    } else {
+        format!(
+            "{}\n{}",
+            netsh_delete_rule_command_string("ALVR Launcher"),
+            netsh_delete_rule_command_string("SteamVR ALVR vrserver")
+        )
+    };
+    fs::write(&script_path, firewall_rules_script_content).map_err(|_| -1)?;
 
     // run with admin priviles
     let exit_status = runas::Command::new(script_path)
-        .arg("/s")
         .show(cfg!(target_os = "linux"))
         .gui(true) // UAC, if available
         .status()
@@ -294,6 +343,14 @@ pub fn firewall_rules(root_server_dir: &Path, add: bool) -> Result<(), i32> {
     } else {
         Err(exit_status.code().unwrap())
     }
+}
+
+// Avoid Oculus link popups when debugging the client
+pub fn kill_oculus_processes() {
+    runas::Command::new("taskkill")
+        .args(&["/F", "/IM", "OVR*", "/T"])
+        .status()
+        .ok();
 }
 
 fn get_version(dir_name: &str) -> String {
@@ -313,17 +370,32 @@ pub fn server_version() -> String {
 //     get_version("client_hmd")
 // }
 
-pub fn get_alvr_dir_using_vrpathreg() -> BResult<PathBuf> {
+pub fn get_registered_drivers() -> BResult<Vec<PathBuf>> {
     let output = Command::new(steamvr_bin_dir().join(exec_fname("vrpathreg"))).output()?;
     let output = String::from_utf8_lossy(&output.stdout);
 
-    let maybe_captures = regex::Regex::new(r"^\t(.*)$")?
+    let dirs = regex::Regex::new(r"\t([^\t\r\n]*)")?
         .captures_iter(&output)
-        .last();
-    if let Some(captures) = maybe_captures {
-        if let Some(cap_match) = captures.get(1) {
-            return Ok(PathBuf::from(cap_match.as_str()));
+        .filter_map(|captures| captures.get(1))
+        .map(|cap_match| PathBuf::from(cap_match.as_str()))
+        .collect::<Vec<_>>();
+    Ok(dirs)
+}
+
+pub fn get_alvr_dir() -> BResult<PathBuf> {
+    for dir in get_registered_drivers()? {
+        if dir.join(exec_fname("ALVR")).exists() && dir.join("web_gui").exists() {
+            return Ok(dir);
         }
     }
-    Err("No directory found".into())
+
+    Err("ALVR driver is not registered".into())
+}
+
+pub fn unregister_all_drivers() -> BResult {
+    for dir in get_registered_drivers()? {
+        driver_registration(&dir, false)?;
+    }
+
+    Ok(())
 }

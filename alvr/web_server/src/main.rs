@@ -5,6 +5,7 @@ mod tail;
 use alvr_common::{data::*, logging::*, *};
 use futures::SinkExt;
 use logging_backend::*;
+use settings_schema::Switch;
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -24,6 +25,10 @@ use warp::{
 };
 
 const WEB_GUI_DIR_STR: &str = "web_gui";
+
+fn align32(value: f32) -> u32 {
+    ((value / 32.).floor() * 32.) as u32
+}
 
 fn alvr_server_dir() -> PathBuf {
     std::env::current_exe()
@@ -59,13 +64,13 @@ async fn subscribed_to_log(mut socket: WebSocket, mut log_receiver: UnboundedRec
 }
 
 async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
-    loop {
-        if let Ok((address, handshake_packet)) = sockets::search_client(None).await {
-            let now_ms = SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_millis();
+    let res = sockets::search_client(None, |address, client_handshake_packet| {
+        let now_ms = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
 
+        {
             let session_manager_ref = &mut session_manager.lock().unwrap();
             let session_desc_ref = &mut session_manager_ref.get_mut();
 
@@ -75,26 +80,114 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
                     .iter_mut()
                     .find(|connection_desc| {
                         connection_desc.address == address.to_string()
-                            && connection_desc.handshake_packet == handshake_packet
+                            && connection_desc.handshake_packet == client_handshake_packet
                     });
 
             if let Some(known_client_ref) = maybe_known_client_ref {
-                known_client_ref.available = true;
+                if matches!(
+                    known_client_ref.state,
+                    ClientConnectionState::UnavailableTrusted
+                ) {
+                    known_client_ref.state = ClientConnectionState::AvailableTrusted
+                }
                 known_client_ref.last_update_ms_since_epoch = now_ms as _;
             } else {
                 session_desc_ref.last_clients.push(ClientConnectionDesc {
-                    available: true,
-                    connect_automatically: false,
+                    state: ClientConnectionState::AvailableUntrusted,
                     last_update_ms_since_epoch: now_ms as _,
                     address: address.to_string(),
-                    handshake_packet,
-                })
+                    handshake_packet: client_handshake_packet,
+                });
+
+                return None;
             }
         }
+
+        let settings = session_manager.lock().unwrap().get_mut().to_settings();
+
+        let video_width;
+        let video_height;
+        match settings.video.render_resolution {
+            FrameSize::Scale(scale) => {
+                video_width = align32(client_handshake_packet.render_width as f32 * scale);
+                video_height = align32(client_handshake_packet.render_height as f32 * scale);
+            }
+            FrameSize::Absolute { width, height } => {
+                video_width = width;
+                video_height = height;
+            }
+        }
+
+        let foveation_mode;
+        let foveation_strength;
+        let foveation_shape;
+        let foveation_vertical_offset;
+        if let Switch::Enabled(foveation_data) = settings.video.foveated_rendering {
+            foveation_mode = true as u8;
+            foveation_strength = foveation_data.strength;
+            foveation_shape = foveation_data.shape;
+            foveation_vertical_offset = foveation_data.vertical_offset;
+        } else {
+            foveation_mode = false as u8;
+            foveation_strength = 0.;
+            foveation_shape = 0.;
+            foveation_vertical_offset = 0.;
+        }
+
+        let mut server_handshake_packet = ServerHandshakePacket {
+            packet_type: 2,
+            codec: settings.video.codec as _,
+            video_width,
+            video_height,
+            buffer_size_bytes: settings.connection.client_recv_buffer_size as _,
+            frame_queue_size: settings.connection.frame_queue_size as _,
+            refresh_rate: settings.video.refresh_rate as _,
+            stream_mic: settings.audio.microphone,
+            foveation_mode,
+            foveation_strength,
+            foveation_shape,
+            foveation_vertical_offset,
+            web_gui_url: [0; 32],
+        };
+
+        // show_err::<(), _>(trace_str!("{:#?}", server_handshake_packet));
+
+        let mut maybe_host_address = None;
+
+        // todo: get the host address using another handshake round instead
+        for adapter in ipconfig::get_adapters().expect("PC network adapters") {
+            for host_address in adapter.ip_addresses() {
+                let address_string = host_address.to_string();
+                if address_string.starts_with("192.168") {
+                    maybe_host_address = Some(*host_address);
+                }
+            }
+        }
+        if let Some(host_address) = maybe_host_address {
+            let host_address_c_string = std::ffi::CString::new(host_address.to_string()).unwrap();
+            let host_address_bytes = host_address_c_string.as_bytes_with_nul();
+            server_handshake_packet.web_gui_url = [0; 32];
+            server_handshake_packet.web_gui_url[0..host_address_bytes.len()]
+                .copy_from_slice(host_address_bytes);
+
+            process::launch_steamvr();
+
+            Some(server_handshake_packet)
+            // None
+        } else {
+            None
+        }
+    })
+    .await;
+
+    if let Err(e) = res {
+        show_err::<(), _>(trace_str!("Error while listening for client: {}", e)).ok();
     }
 }
 
 async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult {
+    // The lock on this mutex does not need to be held across await points, so I don't need a tokio
+    // Mutex
     let session_manager = Arc::new(Mutex::new(SessionManager::new(&alvr_server_dir())));
 
     tokio::spawn(client_discovery(session_manager.clone()));
@@ -170,13 +263,8 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             reply::json(&maybe_err.unwrap_or(0))
         });
 
-    let launch_steamvr_request = warp::path("launch_steamvr").map(|| {
-        process::launch_steamvr();
-        warp::reply()
-    });
-
-    let audio_devices_request = warp::path("audio_devices")
-        .map(|| reply::json(&audio::output_audio_device_names().ok()));
+    let audio_devices_request =
+        warp::path("audio_devices").map(|| reply::json(&audio::output_audio_device_names().ok()));
 
     warp::serve(
         index_request
@@ -185,7 +273,6 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             .or(log_subscription)
             .or(driver_registration_requests)
             .or(firewall_rules_requests)
-            .or(launch_steamvr_request)
             .or(audio_devices_request)
             .or(files_requests)
             .with(reply::with::header(

@@ -1,13 +1,26 @@
 #pragma once
 
+#include <stdint.h>
+
 // bindings for Rust:
 
-extern "C" __declspec(dllexport) const char *g_alvrDir;
+extern "C" const uint8_t *FRAME_RENDER_VS_CSO_PTR;
+extern "C" uint32_t FRAME_RENDER_VS_CSO_LEN;
+extern "C" const uint8_t *FRAME_RENDER_PS_CSO_PTR;
+extern "C" uint32_t FRAME_RENDER_PS_CSO_LEN;
+extern "C" const uint8_t *QUAD_SHADER_CSO_PTR;
+extern "C" uint32_t QUAD_SHADER_CSO_LEN;
+extern "C" const uint8_t *COMPRESS_SLICES_CSO_PTR;
+extern "C" uint32_t COMPRESS_SLICES_CSO_LEN;
+extern "C" const uint8_t *COLOR_CORRECTION_CSO_PTR;
+extern "C" uint32_t COLOR_CORRECTION_CSO_LEN;
 
-extern "C" __declspec(dllexport) void (*LogError)(const char *stringPtr);
-extern "C" __declspec(dllexport) void (*LogWarn)(const char *stringPtr);
-extern "C" __declspec(dllexport) void (*LogInfo)(const char *stringPtr);
-extern "C" __declspec(dllexport) void (*LogDebug)(const char *stringPtr);
-extern "C" __declspec(dllexport) void (*MaybeKillWebServer)();
+extern "C" const char *g_alvrDir;
 
-extern "C" __declspec(dllexport) void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
+extern "C" void (*LogError)(const char *stringPtr);
+extern "C" void (*LogWarn)(const char *stringPtr);
+extern "C" void (*LogInfo)(const char *stringPtr);
+extern "C" void (*LogDebug)(const char *stringPtr);
+extern "C" void (*MaybeKillWebServer)();
+
+extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);

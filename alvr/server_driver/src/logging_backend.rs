@@ -1,14 +1,12 @@
 use alvr_common::logging::*;
-use fern::{log_file, Dispatch};
+use fern::Dispatch;
 use log::LevelFilter;
-use std::sync::Once;
+use std::{fs::OpenOptions, sync::Once};
 
 pub fn init_logging() {
     static INIT_LOGGING_ENTRY_POINT: Once = Once::new();
 
     INIT_LOGGING_ENTRY_POINT.call_once(|| {
-        std::fs::remove_file(driver_log_path()).ok();
-
         if cfg!(debug_assertions) {
             Dispatch::new()
                 .format(|out, message, record| {
@@ -29,7 +27,14 @@ pub fn init_logging() {
                 })
                 .level(LevelFilter::Info)
         }
-        .chain(log_file(driver_log_path()).unwrap())
+        .chain(
+            OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(driver_log_path())
+                .unwrap(),
+        )
         .apply()
         .unwrap();
     });

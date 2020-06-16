@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use settings_schema::*;
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum FrameSize {
     #[schema(min = 0.25, max = 2., step = 0.25)]
     Scale(f32),
@@ -17,13 +17,13 @@ pub enum FrameSize {
 
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq)]
 pub struct Fov {
-    #[schema(min = -90., max = 0., step = 0.1, gui = "UpDown")]
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub left: f32,
 
     #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub right: f32,
 
-    #[schema(min = -90., max = 0., step = 0.1, gui = "UpDown")]
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub top: f32,
 
     #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
@@ -61,7 +61,8 @@ pub struct ColorCorrectionDesc {
     pub sharpening: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug)]
+#[repr(u8)]
 pub enum CodecType {
     H264,
     HEVC,
@@ -76,6 +77,11 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub refresh_rate: u32,
 
+    // Dropdown with 25%, 50%, 75%, 100%, 125%, 150% etc or custom
+    // Should set renderResolution (always in scale mode).
+    // When the user sets a resolution not obtainable with the preset scales, set the dropdown to
+    // custom.
+    // Warping compensation is already applied by the web server and driver
     #[schema(placeholder = "resolution_dropdown")]
     #[schema(advanced)]
     pub render_resolution: FrameSize,
@@ -106,6 +112,7 @@ pub struct VideoDesc {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioDesc {
+    // deviceDropdown should poll the available audio devices and set "device"
     #[schema(placeholder = "device_dropdown")]
     #[schema(advanced)]
     pub device: String,
@@ -121,7 +128,16 @@ pub struct AudioSection {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ControllersDesc {
+    // Dropdown:
+    // Oculus Rift S
+    // Oculus Rift S (no handtracking pinch)
+    // Valve Index
+    // Valve Index (no handtracking pinch)
+    // modeIdx and the following strings must be set accordingly
     #[schema(placeholder = "controller_mode")]
+    #[schema(advanced)]
+    pub mode_idx: i32,
+
     #[schema(advanced)]
     pub tracking_system_name: String,
 
@@ -174,14 +190,12 @@ pub struct ControllersDesc {
 
     #[schema(min = 0., max = 5., step = 0.1)]
     pub haptics_intensity: f32,
-
-    #[schema(advanced)]
-    pub mode_idx: i32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HeadsetDesc {
+    // Oculus Rift S or HTC Vive. Should all the following strings accordingly
     #[schema(placeholder = "headset_emulation_mode")]
     #[schema(advanced)]
     pub serial_number: String,
@@ -226,15 +240,12 @@ pub struct ConnectionDesc {
     #[schema(advanced)]
     pub listen_port: u16,
 
-    #[schema(advanced)]
-    pub control_host: String,
-
-    #[schema(advanced)]
-    pub control_port: u16,
-
+    // If disableThrottling=true, set throttlingBitrateBits to 0,
+    // Given audioBitrate=2000'000:
+    // If false, set throttlingBitrateBits=encodeBitrateMbs * 1000'000 * 3 / 2 + audioBitrate
     #[schema(placeholder = "disable_throttling")]
     #[schema(advanced)]
-    pub throttling_bitrate_mbs: u64,
+    pub throttling_bitrate_bits: u64,
 
     #[schema(advanced)]
     pub sending_timeslot_us: u64,
@@ -242,10 +253,13 @@ pub struct ConnectionDesc {
     #[schema(advanced)]
     pub limit_timeslot_packets: u64,
 
+    // clientRecvBufferSize=max(encodeBitrateMbs * 2 + bufferOffset, 0)
     #[schema(placeholder = "buffer_offset")]
     #[schema(advanced)]
     pub client_recv_buffer_size: u64,
 
+    // If suppressframeDrop=true, set frameQueueSize=5
+    // If suppressframeDrop=false, set frameQueueSize=1
     #[schema(placeholder = "suppress_frame_drop")]
     #[schema(advanced)]
     pub frame_queue_size: u64,
@@ -293,16 +307,16 @@ pub fn settings_cache_default() -> SettingsDefault {
             },
             eye_fov: [
                 FovDefault {
-                    left: 45.,
-                    right: 45.,
-                    top: 45.,
-                    bottom: 45.,
+                    left: 52.,
+                    right: 42.,
+                    top: 53.,
+                    bottom: 47.,
                 },
                 FovDefault {
-                    left: 45.,
-                    right: 45.,
-                    top: 45.,
-                    bottom: 45.,
+                    left: 42.,
+                    right: 52.,
+                    top: 53.,
+                    bottom: 47.,
                 },
             ],
             seconds_from_vsync_to_photons: 0.005,
@@ -333,7 +347,7 @@ pub fn settings_cache_default() -> SettingsDefault {
         },
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {
-                enabled: true,
+                enabled: false,
                 content: AudioDescDefault { device: "".into() },
             },
             microphone: false,
@@ -353,6 +367,7 @@ pub fn settings_cache_default() -> SettingsDefault {
             controllers: SwitchDefault {
                 enabled: true,
                 content: ControllersDescDefault {
+                    mode_idx: 1,
                     tracking_system_name: "oculus".into(),
                     manufacturer_name: "Oculus".into(),
                     model_number: "Oculus Rift S".into(),
@@ -371,16 +386,13 @@ pub fn settings_cache_default() -> SettingsDefault {
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,
-                    mode_idx: 1,
                 },
             },
         },
         connection: ConnectionDescDefault {
             listen_host: "0.0.0.0".into(),
             listen_port: 9944,
-            control_host: "0.0.0.0".into(),
-            control_port: 9944,
-            throttling_bitrate_mbs: 0,
+            throttling_bitrate_bits: 0,
             sending_timeslot_us: 500,
             limit_timeslot_packets: 0,
             client_recv_buffer_size: 60_000,

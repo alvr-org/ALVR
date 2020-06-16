@@ -19,20 +19,28 @@ type SettingsCache = SettingsDefault;
 
 pub const SESSION_FNAME: &str = "session.json";
 
-pub fn load_session(path: &Path) -> StrResult<SessionDesc> {
-    trace_err!(json::from_str(&trace_err!(fs::read_to_string(path))?))
-}
-
-pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
-    trace_err!(fs::write(
-        path,
-        trace_err!(json::to_string_pretty(session_desc))?
-    ))
+#[derive(Serialize, Debug)]
+pub struct ServerHandshakePacket {
+    pub packet_type: u32,
+    pub codec: u32,
+    pub video_width: u32,
+    pub video_height: u32,
+    pub buffer_size_bytes: u32,
+    pub frame_queue_size: u32,
+    pub refresh_rate: u8,
+    pub stream_mic: bool,
+    pub foveation_mode: u8,
+    pub foveation_strength: f32,
+    pub foveation_shape: f32,
+    pub foveation_vertical_offset: f32,
+    pub web_gui_url: [u8; 32], // serde do not support arrays larger than 32. Slices can be of any
+                               // size, but are not c compatible
 }
 
 #[derive(Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ClientHandshakePacket {
+    pub packet_type: u32,
     pub alvr_name: [u8; 4],
     pub version: [u8; 32],
     pub device_name: [u8; 32],
@@ -44,12 +52,30 @@ pub struct ClientHandshakePacket {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub enum ClientConnectionState {
+    AvailableUntrusted,
+    AvailableTrusted,
+    UnavailableTrusted,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ClientConnectionDesc {
-    pub available: bool,
-    pub connect_automatically: bool,
+    pub state: ClientConnectionState,
     pub last_update_ms_since_epoch: u64,
     pub address: String,
     pub handshake_packet: ClientHandshakePacket,
+}
+
+pub fn load_session(path: &Path) -> StrResult<SessionDesc> {
+    trace_err!(json::from_str(&trace_err!(fs::read_to_string(path))?))
+}
+
+pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
+    trace_err!(fs::write(
+        path,
+        trace_err!(json::to_string_pretty(session_desc))?
+    ))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -136,6 +162,14 @@ impl SessionDesc {
         }
 
         Ok(())
+    }
+
+    // This function requires that settings enums with data have tag = "type" and content = "content", and
+    // enums without data do not have tag and content set.
+    pub fn to_settings(&self) -> Settings {
+        let cache_json = json::to_value(&self.settings_cache).unwrap();
+        let schema = settings_schema(settings_cache_default());
+        json::from_value(json_cache_to_settings(&cache_json, &schema)).unwrap()
     }
 }
 
@@ -350,14 +384,6 @@ fn extrapolate_settings_cache(
     }
 }
 
-// This function requires that settings enums with data have tag = "type" and content = "content", and
-// enums without data do not have tag and content set.
-pub fn session_to_settings(session: &SessionDesc) -> Settings {
-    let cache_json = json::to_value(&session.settings_cache).unwrap();
-    let schema = settings_schema(settings_cache_default());
-    json::from_value(json_cache_to_settings(&cache_json, &schema)).unwrap()
-}
-
 fn json_cache_to_settings(cache: &json::Value, schema: &SchemaNode) -> json::Value {
     match schema {
         SchemaNode::Section { entries } => json::Value::Object(
@@ -432,9 +458,7 @@ fn json_cache_to_settings(cache: &json::Value, schema: &SchemaNode) -> json::Val
             array_schema
                 .iter()
                 .enumerate()
-                .map(|(idx, element_schema)| {
-                    json_cache_to_settings(&cache[idx], element_schema)
-                })
+                .map(|(idx, element_schema)| json_cache_to_settings(&cache[idx], element_schema))
                 .collect(),
         ),
 
@@ -482,7 +506,7 @@ impl SessionManager {
                     Err(_) => {
                         fs::write(dir.join("session_old.json"), &session_string).ok();
                         let mut session_desc = SessionDesc::default();
-                        session_desc.merge_from_json(json_value).unwrap();
+                        session_desc.merge_from_json(json_value).ok();
                         warn!(
                             "Session extrapolated. Old session.json is stored as session_old.json"
                         );
@@ -513,7 +537,7 @@ mod tests {
 
     #[test]
     fn test_session_to_settings() {
-        let _settings = session_to_settings(&SessionDesc::default());
+        let _settings = SessionDesc::default().to_settings();
     }
 
     // todo: add more tests

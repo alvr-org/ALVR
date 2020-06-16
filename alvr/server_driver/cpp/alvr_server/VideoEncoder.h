@@ -4,7 +4,6 @@
 #include "d3drender.h"
 #include "ClientConnection.h"
 #include "NvEncoderD3D11.h"
-#include "NvEncoderCuda.h"
 
 class VideoEncoder
 {

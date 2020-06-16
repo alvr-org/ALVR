@@ -57,24 +57,19 @@ void ServerConnectionNative::initialize(JNIEnv *env, jobject instance, jint hell
 
     mHelloMessage.type = ALVR_PACKET_TYPE_HELLO_MESSAGE;
     memcpy(mHelloMessage.signature, ALVR_HELLO_PACKET_SIGNATURE, sizeof(mHelloMessage.signature));
-    mHelloMessage.version = ALVR_PROTOCOL_VERSION;
+    strcpy(mHelloMessage.version, ALVR_VERSION);
 
     auto deviceName = GetStringFromJNIString(env, deviceName_);
 
     memcpy(mHelloMessage.deviceName, deviceName.c_str(),
            std::min(deviceName.length(), sizeof(mHelloMessage.deviceName)));
 
-    loadRefreshRates(env, refreshRates_);
+    mHelloMessage.refreshRate = 72;
 
-    mHelloMessage.renderWidth = static_cast<uint16_t>(renderWidth);
-    mHelloMessage.renderHeight = static_cast<uint16_t>(renderHeight);
+    mHelloMessage.renderWidth = static_cast<uint32_t>(renderWidth);
+    mHelloMessage.renderHeight = static_cast<uint32_t>(renderHeight);
 
     loadFov(env, fov);
-
-    mHelloMessage.deviceType = static_cast<uint8_t>(deviceType);
-    mHelloMessage.deviceSubType = static_cast<uint8_t>(deviceSubType);
-    mHelloMessage.deviceCapabilityFlags = static_cast<uint32_t>(deviceCapabilityFlags);
-    mHelloMessage.controllerCapabilityFlags = static_cast<uint32_t>(controllerCapabilityFlags);
 
     //
     // UdpSocket
@@ -507,14 +502,6 @@ void ServerConnectionNative::checkConnection() {
 
 void ServerConnectionNative::updateTimeout() {
     m_lastReceived = getTimestampUs();
-}
-
-void ServerConnectionNative::loadRefreshRates(JNIEnv *env, jintArray refreshRates_) {
-    jint *refreshRates = env->GetIntArrayElements(refreshRates_, nullptr);
-    for(int i = 0; i < ALVR_REFRESH_RATE_LIST_SIZE; i++) {
-        mHelloMessage.refreshRate[i] = (uint8_t) refreshRates[i];
-    }
-    env->ReleaseIntArrayElements(refreshRates_, refreshRates, 0);
 }
 
 void ServerConnectionNative::loadFov(JNIEnv *env, jfloatArray fov_) {

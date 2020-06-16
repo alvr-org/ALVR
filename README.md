@@ -1,9 +1,10 @@
-<img align="left" width="128" height="128" src="https://github.com/JackD83/ALVR/blob/web-ui/server_release_template/web_gui/web_hi_res_512.png">
+<img align="left" width="120" height="120" src="https://github.com/JackD83/ALVR/blob/web-ui/server_release_template/web_gui/web_hi_res_512.png">
 
 # ALVR - Air Light VR
 
-Stream VR games from your PC to your Oculus Quest via Wi-FI.  
+[![Badge-Discord]][Link-Discord]
 
+Stream VR games from your PC to your Oculus Quest via Wi-FI.  
 ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience.  
 All games that work with an Oculus Rift (s) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only with Oculus Quest.
@@ -32,14 +33,14 @@ Install the client on your headset through [SideQuest](https://sidequestvr.com/)
 
 ## Usage
 
-- Launch `ALVR.exe`. The first time a setup wizard will guide you through the installation.
-- Launch ALVR on your headset. In the VR dashboard, next to the client entry, check `Connect automatically` then press `Start`.
+- Launch `ALVR.exe` (ALVR dashboard). The first time a setup wizard will guide you through the installation.
+- Launch ALVR on your headset. While the headset screen is on, click `Trust` next to the client entry (on the PC) to start streaming.
+- If you trusted a client, you can start streaming by just launching ALVR on your headset, then SteamVR or the ALVR dashboard on PC.
 - To change settings, open the dashboard with the menu button (on the left controller), change what you want and then press `Apply`. SteamVR will restart, so any unsaved progress will be lost.
 - To shutdown ALVR you need to close both the ALVR window on PC and SteamVR.
 
 ### Notes
 
-- After the first time configuration, ALVR can be launched by simply launching SteamVR, but first you need to put on the headset and launch ALVR client.
 - You can access ALVR dashboard from your smartphone. On the browser you need to type the local IP of your PC followed by `:8082` (for example: `192.168.0.3:8082` ).
 
 ## Troubleshooting
@@ -59,8 +60,9 @@ If you have a version prior to v12.0 you need to launch `remove_firewall_rules.b
 ## Build from source
 
 - Install Visual Studio Code and the extension rust-analyzer (optional)
+- Install [LLVM](https://releases.llvm.org/download.html)
 - Install the MSVC compiler (for example installing C++ build tools with [Visual Studio](https://visualstudio.microsoft.com/downloads))
-- Install Android Studio >=3.4, API Level 29. Requires LLDB and NDK. The environment variable `JAVA_HOME` must be set.
+- Install Android Studio >=4.0, API Level 30. Requires LLDB and NDK. The environment variable `JAVA_HOME` must be set.
 - Install [rustup](https://rustup.rs/)
 - Download this repository and on the project root execute:
 
@@ -94,3 +96,6 @@ If you cannot use this link, please try the following.
 ### Donate with bitcoin
 
 bitcoin:1FCbmFVSjsmpnAj6oLx2EhnzQzzhyxTLEv
+
+[Badge-Discord]: https://img.shields.io/discord/720612397580025886?style=for-the-badge&logo=discord "Join us on Discord"
+[Link-Discord]: https://discord.gg/KbKk3UM

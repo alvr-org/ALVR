@@ -102,25 +102,15 @@ bool FrameRender::Startup()
 	//
 	// Compile shaders
 	//
-	
-	std::vector<uint8_t> vshader;
-	if (!ReadBinaryResource(vshader, IDR_VS)) {
-		LogDriver("Failed to load resource for IDR_VS.");
-		return false;
-	}
 
+	std::vector<uint8_t> vshader(FRAME_RENDER_VS_CSO_PTR, FRAME_RENDER_VS_CSO_PTR + FRAME_RENDER_VS_CSO_LEN);
 	hr = m_pD3DRender->GetDevice()->CreateVertexShader((const DWORD*)&vshader[0], vshader.size(), NULL, &m_pVertexShader);
 	if (FAILED(hr)) {
 		LogDriver("CreateVertexShader %p %ls", hr, GetErrorStr(hr).c_str());
 		return false;
 	}
 
-	std::vector<uint8_t> pshader;
-	if (!ReadBinaryResource(pshader, IDR_PS)) {
-		LogDriver("Failed to load resource for IDR_PS.");
-		return false;
-	}
-
+	std::vector<uint8_t> pshader(FRAME_RENDER_PS_CSO_PTR, FRAME_RENDER_PS_CSO_PTR + FRAME_RENDER_PS_CSO_LEN);
 	hr = m_pD3DRender->GetDevice()->CreatePixelShader((const DWORD*)&pshader[0], pshader.size(), NULL, &m_pPixelShader);
 	if (FAILED(hr)) {
 		LogDriver("CreatePixelShader %p %ls", hr, GetErrorStr(hr).c_str());
@@ -278,19 +268,12 @@ bool FrameRender::Startup()
 
 	m_pStagingTexture = compositionTexture;
 
-
-	std::vector<uint8_t> quadShaderCSO;
-	if (!ReadBinaryResource(quadShaderCSO, IDR_QUAD_SHADER)) {
-		throw MakeException("Failed to load resource for IDR_QUAD_SHADER.");
-	}
+	std::vector<uint8_t> quadShaderCSO(QUAD_SHADER_CSO_PTR, QUAD_SHADER_CSO_PTR + QUAD_SHADER_CSO_LEN);
 	ComPtr<ID3D11VertexShader> quadVertexShader = CreateVertexShader(m_pD3DRender->GetDevice(), quadShaderCSO);
 
 	enableColorCorrection = Settings::Instance().m_enableColorCorrection;
 	if (enableColorCorrection) {
-		std::vector<uint8_t> colorCorrectionShaderCSO;
-		if (!ReadBinaryResource(colorCorrectionShaderCSO, IDR_COLOR_CORRECTION_SHADER)) {
-			throw MakeException("Failed to load resource for IDR_COLOR_CORRECTION_SHADER.");
-		}
+		std::vector<uint8_t> colorCorrectionShaderCSO(COLOR_CORRECTION_CSO_PTR, COLOR_CORRECTION_CSO_PTR + COLOR_CORRECTION_CSO_LEN);
 
 		ComPtr<ID3D11Texture2D> colorCorrectedTexture = CreateTexture(m_pD3DRender->GetDevice(),
 			Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight,

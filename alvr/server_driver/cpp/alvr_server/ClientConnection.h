@@ -10,7 +10,6 @@
 #include "UdpSocket.h"
 #include "Utils.h"
 #include "Poller.h"
-#include "ControlSocket.h"
 #include "packet_types.h"
 #include "Settings.h"
 #include "Statistics.h"
@@ -25,10 +24,7 @@ public:
 
 	ClientConnection();
 	~ClientConnection();
-	void SetLauncherCallback(std::function<void()> callback);
-	void SetCommandCallback(std::function<void(std::string, std::string)> callback);
 	void SetPoseUpdatedCallback(std::function<void()> callback);
-	void SetNewClientCallback(std::function<void()> callback);
 	void SetStreamStartCallback(std::function<void()> callback);
 	void SetPacketLossCallback(std::function<void()> callback);
 	void SetShutdownCallback(std::function<void()> callback);
@@ -40,31 +36,19 @@ public:
 	void SendAudio(uint8_t *buf, int len, uint64_t presentationTime);
 	void SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand);
 	void ProcessRecv(char *buf, int len, sockaddr_in *addr);
-	void ProcessCommand(const std::string &commandName, const std::string args);
-	void SendChangeSettings();
 	void Stop();
 	bool HasValidTrackingInfo() const;
 	void GetTrackingInfo(TrackingInfo &info);
 	uint64_t clientToServerTime(uint64_t clientTime) const;
 	uint64_t serverToClientTime(uint64_t serverTime) const;
-	void SendCommandResponse(const char *commandResponse);
-	void PushRequest(HelloMessage *message, sockaddr_in *addr);
-	void SanitizeDeviceName(char deviceName[32]);
-	std::string DumpConfig();
-	void CheckTimeout();
-	void UpdateLastSeen();
-	void FindClientName(const sockaddr_in *addr);
 	void Connect(const sockaddr_in *addr);
-	void Disconnect();
 	void OnFecFailure();
 	std::shared_ptr<Statistics> GetStatistics();
 	bool IsStreaming();
 private:
 	bool m_bExiting;
-	bool m_Enabled;
 	std::shared_ptr<Poller> m_Poller;
 	std::shared_ptr<UdpSocket> m_Socket;
-	std::shared_ptr<ControlSocket> m_ControlSocket;
 	std::shared_ptr<Statistics> m_Statistics;
 	std::shared_ptr<MicPlayer> m_MicPlayer;
 
@@ -79,11 +63,7 @@ private:
 	uint32_t videoPacketCounter = 0;
 	uint32_t soundPacketCounter = 0;
 
-	time_t m_LastSeen;
-	std::function<void()> m_LauncherCallback;
-	std::function<void(std::string, std::string)> m_CommandCallback;
 	std::function<void()> m_PoseUpdatedCallback;
-	std::function<void()> m_NewClientCallback;
 	std::function<void()> m_StreamStartCallback;
 	std::function<void()> m_PacketLossCallback;
 	std::function<void()> m_ShutdownCallback;
@@ -92,23 +72,8 @@ private:
 	uint64_t m_TimeDiff = 0;
 	CRITICAL_SECTION m_CS;
 
-	ChangeSettings m_Settings;
-
-	bool m_Connected;
 	bool m_Streaming;
 
-	bool m_Force3DOF;
-
-	struct Request {
-		uint64_t timestamp;
-		sockaddr_in address;
-		char deviceName[32];
-		bool versionOk;
-		HelloMessage message;
-	};
-	std::list<Request> m_Requests;
-
-	std::string m_clientDeviceName;
 	TimeSync m_reportedStatistics;
 	uint64_t m_lastFecFailure = 0;
 	static const uint64_t CONTINUOUS_FEC_FAILURE = 60 * 1000 * 1000;

@@ -14,6 +14,11 @@ extern uint64_t g_DriverTestMode;
 
 Settings Settings::m_Instance;
 
+
+uint32_t align32(double value) {
+	return (uint32_t)(value / 32) * 32;
+}
+
 Settings::Settings()
 	: m_EnableOffsetPos(false)
 	, m_loaded(false)
@@ -48,16 +53,14 @@ void Settings::Load()
 		picojson::value *lastConnection = nullptr;
 		auto clientConnections = v.get("lastClients").get<picojson::array>();
 		for (auto &connection : clientConnections) {
-			if (connection.get("connect_automatically").get<bool>()) {
-				if (connection.get("available").get<bool>()) {
-					activeConnection = &connection;
-				}
-				if (lastConnection == nullptr ||
-					(connection.get("last_update_ms_since_epoch").get<int64_t>()
-					> lastConnection->get("last_update_ms_since_epoch").get<int64_t>()))
-				{
-					lastConnection = &connection;
-				}
+			if (connection.get("state").get<std::string>() == "availableTrusted") {
+				activeConnection = &connection;
+			}
+			if (lastConnection == nullptr ||
+				(connection.get("lastUpdateMsSinceEpoch").get<int64_t>() 
+				> lastConnection->get("lastUpdateMsSinceEpoch").get<int64_t>()))
+			{
+				lastConnection = &connection;
 			}
 		}
 
@@ -67,17 +70,19 @@ void Settings::Load()
 		} else if (lastConnection != nullptr) {
 			connectedClient = *activeConnection;
 		} else {
-			Error("No client set to connect automatically");
+			Error("No client found");
 			return;
 		}
 
-		auto settings_cache = v.get("settings_cache");
+		auto clientHandshakePacket = connectedClient.get("handshakePacket");
 
-		auto video = settings_cache.get("video");
-		auto audio = settings_cache.get("audio");
-		auto headset = settings_cache.get("headset");
+		auto settingsCache = v.get("settingsCache");
+
+		auto video = settingsCache.get("video");
+		auto audio = settingsCache.get("audio");
+		auto headset = settingsCache.get("headset");
 		auto controllers = headset.get("controllers").get("content");
-		auto connection = settings_cache.get("connection");
+		auto connection = settingsCache.get("connection");
 
 		mSerialNumber = headset.get("serialNumber").get<std::string>();
 		mTrackingSystemName = headset.get("trackingSystemName").get<std::string>();
@@ -87,10 +92,39 @@ void Settings::Load()
 		mRenderModelName = headset.get("renderModelName").get<std::string>();
 		mRegisteredDeviceType = headset.get("registeredDeviceType").get<std::string>();
 
-		m_renderWidth = (int32_t)video.get("renderResolution").get("width").get<int64_t>();
-		m_renderHeight = (int32_t)video.get("renderResolution").get("height").get<int64_t>();
-		m_recommendedTargetWidth = (int32_t)video.get("recommendedTargetResolution").get("width").get<int64_t>();
-		m_recommendedTargetHeight = (int32_t)video.get("recommendedTargetResolution").get("height").get<int64_t>();
+		auto renderResolutionMode = video.get("renderResolution").get("variant").get<std::string>();
+		if (renderResolutionMode == "scale") {
+			auto scale = video.get("renderResolution").get("scale").get<double>();
+			m_renderWidth = align32((double)clientHandshakePacket.get("renderWidth").get<int64_t>() * scale);
+			m_renderHeight = align32((double)clientHandshakePacket.get("renderHeight").get<int64_t>() * scale);
+		}
+		else if (renderResolutionMode == "absolute")
+		{
+			m_renderWidth = align32(video.get("renderResolution").get("absolute").get("width").get<int64_t>());
+			m_renderHeight = align32(video.get("renderResolution").get("absolute").get("height").get<int64_t>());
+		}
+		else
+		{
+			Error("Invalid renderResolution");
+			return;
+		}
+
+		auto targetResolutionMode = video.get("recommendedTargetResolution").get("variant").get<std::string>();
+		if (targetResolutionMode == "scale")
+		{
+			auto scale = video.get("recommendedTargetResolution").get("scale").get<double>();
+			m_recommendedTargetWidth = align32((double)clientHandshakePacket.get("renderWidth").get<int64_t>() * scale);
+			m_recommendedTargetHeight = align32((double)clientHandshakePacket.get("renderHeight").get<int64_t>() * scale);
+		}
+		else if (renderResolutionMode == "absolute")
+		{
+			m_recommendedTargetWidth = align32(video.get("recommendedTargetResolution").get("absolute").get("width").get<int64_t>());
+			m_recommendedTargetHeight = align32(video.get("recommendedTargetResolution").get("absolute").get("height").get<int64_t>());
+		}
+		else {
+			Error("Invalid recommendedTargetResolution");
+			return;
+		}
 
 		picojson::array &eyeFov = video.get("eyeFov").get<picojson::array>();
 		for (int eye = 0; eye < 2; eye++) {
@@ -123,7 +157,7 @@ void Settings::Load()
 		m_refreshRate = (int)video.get("refreshRate").get<int64_t>();
 		mEncodeBitrate = Bitrate::fromMiBits((int)video.get("encodeBitrateMbs").get<int64_t>());
 
-		mThrottlingBitrate = Bitrate::fromBits((int)video.get("throttlingBitrateBits").get<int64_t>());
+		mThrottlingBitrate = Bitrate::fromBits((int)connection.get("throttlingBitrateBits").get<int64_t>());
 
 		// Listener Parameters
 		m_Host = connection.get("listenHost").get<std::string>();
@@ -132,11 +166,7 @@ void Settings::Load()
 		m_SendingTimeslotUs = (uint64_t)connection.get("sendingTimeslotUs").get<int64_t>();
 		m_LimitTimeslotPackets = (uint64_t)connection.get("limitTimeslotPackets").get<int64_t>();
 
-		m_ControlHost = connection.get("controlHost").get<std::string>();
-		m_ControlPort = (int)connection.get("controlPort").get<int64_t>();
-
-		m_AutoConnectHost = connectedClient.get("address").get<std::string>();
-		m_AutoConnectPort = 9943;
+		m_ConnectedClient = connectedClient.get("address").get<std::string>();
 
 		m_controllerTrackingSystemName = controllers.get("trackingSystemName").get<std::string>();
 		m_controllerManufacturerName = controllers.get("trackingSystemName").get<std::string>();

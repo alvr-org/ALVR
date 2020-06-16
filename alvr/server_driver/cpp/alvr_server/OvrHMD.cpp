@@ -11,18 +11,12 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 		LogDriver("Startup: %hs %hs", APP_MODULE_NAME, APP_VERSION_STRING);
 
-		std::function<void()> launcherCallback = [&]() { Enable(); };
-		std::function<void(std::string, std::string)> commandCallback = [&](std::string commandName, std::string args) { CommandCallback(commandName, args); };
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
-		std::function<void()> newClientCallback = [&]() { OnNewClient(); };
 		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
 		std::function<void()> packetLossCallback = [&]() { OnPacketLoss(); };
 		std::function<void()> shutdownCallback = [&]() { OnShutdown(); };
 
-		m_Listener->SetLauncherCallback(launcherCallback);
-		m_Listener->SetCommandCallback(commandCallback);
 		m_Listener->SetPoseUpdatedCallback(poseCallback);
-		m_Listener->SetNewClientCallback(newClientCallback);
 		m_Listener->SetStreamStartCallback(streamStartCallback);
 		m_Listener->SetPacketLossCallback(packetLossCallback);
 		m_Listener->SetShutdownCallback(shutdownCallback);
@@ -286,12 +280,6 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		}
 	}
 
-
-	void OvrHmd::CommandCallback(std::string commandName, std::string args)
-	{
-
-	}
-
 	void OvrHmd::OnPoseUpdated() {
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
 		{
@@ -396,9 +384,6 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		}
 		
 		
-	}
-
-	void OvrHmd::OnNewClient() {
 	}
 
 	void OvrHmd::OnStreamStart() {

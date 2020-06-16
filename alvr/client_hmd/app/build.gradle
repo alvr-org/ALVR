@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 29
+    compileSdkVersion 30
     defaultConfig {
         applicationId "com.polygraphene.alvr"
-        minSdkVersion 21
-        targetSdkVersion 29
-        versionCode 28
-        versionName " experimental v10"
+        minSdkVersion 24
+        targetSdkVersion 30
+        versionCode 30
+        versionName "12.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
@@ -17,19 +17,15 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.debug
-            debuggable = true
-            jniDebuggable = true
-            renderscriptOptimLevel = 3
             ndk {
-                abiFilters "arm64-v8a", "armeabi-v7a"
+                abiFilters "arm64-v8a"
             }
         }
         debug {
+            jniDebuggable = true
             ndk {
-                abiFilters "arm64-v8a", "armeabi-v7a"
+                abiFilters "arm64-v8a"
             }
         }
     }
@@ -56,7 +52,7 @@ android {
         sourceCompatibility = '1.8'
         targetCompatibility = '1.8'
     }
-    buildToolsVersion = '29.0.0'
+    buildToolsVersion = '30.0.0'
 }
 
 dependencies {

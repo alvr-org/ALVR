@@ -116,7 +116,7 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager,
 
 
     ovrRenderer_Create(&Renderer, UseMultiview, FrameBufferWidth, FrameBufferHeight,
-                       SurfaceTextureID, loadingTexture, CameraTexture, m_ARMode, {FOVEATION_MODE_DISABLED});
+                       SurfaceTextureID, loadingTexture, CameraTexture, m_ARMode, {false});
     ovrRenderer_CreateScene(&Renderer);
 
     position_offset_y = 0.0;
@@ -724,7 +724,7 @@ void OvrContext::setFrameGeometry(int width, int height) {
     int eye_width = width / 2;
 
     if (eye_width != FrameBufferWidth || height != FrameBufferHeight ||
-            usedFoveationMode != mFoveationMode ||
+            usedFoveationEnabled != mFoveationEnabled ||
             usedFoveationStrength != mFoveationStrength ||
             usedFoveationShape != mFoveationShape ||
             usedFoveationVerticalOffset != mFoveationVerticalOffset) {
@@ -734,7 +734,7 @@ void OvrContext::setFrameGeometry(int width, int height) {
         FrameBufferWidth = eye_width;
         FrameBufferHeight = height;
 
-        usedFoveationMode = mFoveationMode;
+        usedFoveationEnabled = mFoveationEnabled;
         usedFoveationStrength = mFoveationStrength;
         usedFoveationShape = mFoveationShape;
         usedFoveationVerticalOffset = mFoveationVerticalOffset;
@@ -742,7 +742,7 @@ void OvrContext::setFrameGeometry(int width, int height) {
         ovrRenderer_Destroy(&Renderer);
         ovrRenderer_Create(&Renderer, UseMultiview, FrameBufferWidth, FrameBufferHeight,
                            SurfaceTextureID, loadingTexture, CameraTexture, m_ARMode,
-                           {usedFoveationMode, (uint32_t)FrameBufferWidth, (uint32_t)FrameBufferHeight,
+                           {usedFoveationEnabled, (uint32_t)FrameBufferWidth, (uint32_t)FrameBufferHeight,
                             getFov().first, usedFoveationStrength, usedFoveationShape, usedFoveationVerticalOffset});
         ovrRenderer_CreateScene(&Renderer);
     } else {
@@ -813,7 +813,7 @@ void OvrContext::setStreamMic(bool streamMic) {
 void OvrContext::setFFRParams(int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset) {
     LOGI("SSetting FFR params %d %f %f %f", foveationMode, foveationStrength, foveationShape, foveationVerticalOffset);
 
-    mFoveationMode = (FOVEATION_MODE)foveationMode;
+    mFoveationEnabled = (bool)foveationMode;
     mFoveationStrength = foveationStrength;
     mFoveationShape = foveationShape;
     mFoveationVerticalOffset = foveationVerticalOffset;

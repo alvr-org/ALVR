@@ -101,7 +101,6 @@
     <ClCompile Include="alvr_server.cpp" />
     <ClCompile Include="d3d-render-utils\RenderPipeline.cpp" />
     <ClCompile Include="d3d-render-utils\RenderUtils.cpp" />
-    <ClCompile Include="DeviceQuery.cpp" />
     <ClCompile Include="driverlog.cpp" />
     <ClCompile Include="FFR.cpp" />
     <ClCompile Include="FrameRender.cpp" />
@@ -145,7 +144,6 @@
     <ClInclude Include="ControlSocket.h" />
     <ClInclude Include="d3d-render-utils\RenderPipeline.h" />
     <ClInclude Include="d3d-render-utils\RenderUtils.h" />
-    <ClInclude Include="DeviceQuery.h" />
     <ClInclude Include="driverlog.h" />
     <ClInclude Include="FFR.h" />
     <ClInclude Include="FrameRender.h" />

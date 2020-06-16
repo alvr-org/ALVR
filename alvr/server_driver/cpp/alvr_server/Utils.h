@@ -98,24 +98,6 @@ inline std::string AddrPortToStr(const sockaddr_in *addr) {
 	return buf2;
 }
 
-inline bool ReadBinaryResource(std::vector<uint8_t> &buffer, int resource) {
-	HRSRC hResource = FindResource(g_hInstance, MAKEINTRESOURCE(resource), RT_RCDATA);
-	if (hResource == NULL) {
-		return false;
-	}
-	HGLOBAL hResData = LoadResource(g_hInstance, hResource);
-	if (hResData == NULL) {
-		return false;
-	}
-	void *data = LockResource(hResData);
-	int dataSize = SizeofResource(g_hInstance, hResource);
-
-	buffer.resize(dataSize);
-	memcpy(&buffer[0], data, dataSize);
-
-	return true;
-}
-
 inline std::string GetNextToken(std::string &str, const char *splitter) {
 	auto pos = str.find(splitter);
 	if (pos != std::string::npos) {

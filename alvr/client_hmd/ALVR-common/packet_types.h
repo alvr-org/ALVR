@@ -13,6 +13,8 @@ static const int MAX_PACKET_UDP_PACKET_SIZE = 2000;
 
 static const char *ALVR_HELLO_PACKET_SIGNATURE = "ALVR";
 
+static const char *ALVR_VERSION = "12.0.0";
+
 enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_HELLO_MESSAGE = 1,
 	ALVR_PACKET_TYPE_CONNECTION_MESSAGE = 2,
@@ -28,10 +30,6 @@ enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_PACKET_ERROR_REPORT = 12,
 	ALVR_PACKET_TYPE_HAPTICS = 13,
     ALVR_PACKET_TYPE_MIC_AUDIO = 14,
-};
-
-enum {
-	ALVR_PROTOCOL_VERSION = 24
 };
 
 enum ALVR_CODEC {
@@ -155,30 +153,20 @@ struct EyeFov {
 struct HelloMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_HELLO_MESSAGE
 	char signature[4]; // Ascii string "ALVR". NOT null-terminated.
-	uint32_t version; // ALVR_PROTOCOL_VERSION
+	char version[32];  // ALVR client semver version (null terminated)
 
 	char deviceName[32]; // null-terminated
 
-	// List of supported refresh rate in priority order.
-	// High prio=first element. Empty element become 0.
-	uint8_t refreshRate[ALVR_REFRESH_RATE_LIST_SIZE];
+	uint16_t refreshRate;
 
-	uint16_t renderWidth;
-	uint16_t renderHeight;
+	uint32_t renderWidth;
+	uint32_t renderHeight;
 
 	// FOV of left and right eyes.
 	struct EyeFov eyeFov[2];
-
-	uint8_t deviceType; // enum ALVR_DEVICE_TYPE
-	uint8_t deviceSubType; // enum ALVR_DEVICE_SUB_TYPE
-	uint32_t deviceCapabilityFlags; // enum ALVR_DEVICE_CAPABILITY_FLAG
-
-	uint32_t controllerCapabilityFlags; // enum ALVR_CONTROLLER_CAPABILITY_FLAG
-
 };
 struct ConnectionMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_CONNECTION_MESSAGE
-	uint32_t version; // ALVR_PROTOCOL_VERSION
 	uint32_t codec; // enum ALVR_CODEC
 	uint32_t videoWidth; // in pixels
 	uint32_t videoHeight; // in pixels
@@ -190,6 +178,7 @@ struct ConnectionMessage {
     float foveationStrength;
     float foveationShape;
     float foveationVerticalOffset;
+	char webGuiUrl[32];
 };
 struct RecoverConnection {
 	uint32_t type; // ALVR_PACKET_TYPE_RECOVER_CONNECTION

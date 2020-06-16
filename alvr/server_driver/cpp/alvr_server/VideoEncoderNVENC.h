@@ -5,7 +5,6 @@
 #include "ClientConnection.h"
 #include "VideoEncoder.h"
 #include "NvEncoderD3D11.h"
-#include "NvEncoderCuda.h"
 #include "ipctools.h"
 
 // Video encoder for NVIDIA NvEnc.

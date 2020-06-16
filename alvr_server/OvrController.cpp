@@ -290,15 +290,17 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 		
 		if (info.controller[controllerIndex].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) {
 			double bonePosFixer[3] = { 0.0,0.05,-0.05 };
-			m_pose.vecPosition[0] = info.controller[controllerIndex].boneRootPosition.x + bonePosFixer[0];
-			m_pose.vecPosition[1] = info.controller[controllerIndex].boneRootPosition.y + bonePosFixer[1];
-			m_pose.vecPosition[2] = info.controller[controllerIndex].boneRootPosition.z + bonePosFixer[2];
+			vr::HmdVector3d_t posFix = vrmath::quaternionRotateVector(m_pose.qRotation, bonePosFixer);
+			m_pose.vecPosition[0] = info.controller[controllerIndex].boneRootPosition.x + posFix.v[0];
+			m_pose.vecPosition[1] = info.controller[controllerIndex].boneRootPosition.y + posFix.v[1];
+			m_pose.vecPosition[2] = info.controller[controllerIndex].boneRootPosition.z + posFix.v[2];
 		}
 		else {
 			double bonePosFixer[3] = { 0.0,0.05,-0.05 };
-			m_pose.vecPosition[0] = info.controller[controllerIndex].boneRootPosition.x + bonePosFixer[0];
-			m_pose.vecPosition[1] = info.controller[controllerIndex].boneRootPosition.y + bonePosFixer[1];
-			m_pose.vecPosition[2] = info.controller[controllerIndex].boneRootPosition.z + bonePosFixer[2];
+			vr::HmdVector3d_t posFix = vrmath::quaternionRotateVector(m_pose.qRotation, bonePosFixer);
+			m_pose.vecPosition[0] = info.controller[controllerIndex].boneRootPosition.x + posFix.v[0];
+			m_pose.vecPosition[1] = info.controller[controllerIndex].boneRootPosition.y + posFix.v[1];
+			m_pose.vecPosition[2] = info.controller[controllerIndex].boneRootPosition.z + posFix.v[2];
 		}
 		
 	}
@@ -537,7 +539,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 		COPY4(c.boneRotations[alvrHandBone_Pinky1], m_boneTransform[HSB_PinkyFinger1].orientation);
 		COPY4(c.boneRotations[alvrHandBone_Pinky2], m_boneTransform[HSB_PinkyFinger2].orientation);
 		COPY4(c.boneRotations[alvrHandBone_Pinky3], m_boneTransform[HSB_PinkyFinger3].orientation);
-		
+
 		// Will use one of the existing poses from the implementation below instead for position data.
 		//COPY3(c.boneRootPosition, m_boneTransform[HSB_Root].position);
 		//COPY3(c.bonePositionsBase[alvrHandBone_WristRoot], m_boneTransform[HSB_Wrist].position);
@@ -624,9 +626,9 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 		float bonePosFixer[3] = { 0.025, 0, 0.1 };
 		if (!m_isLeftHand)
 			bonePosFixer[0] = -bonePosFixer[0];
-		m_boneTransform[HSB_Root].position.v[0] = m_boneTransform[HSB_Root].position.v[0] + bonePosFixer[0];
-		m_boneTransform[HSB_Root].position.v[1] = m_boneTransform[HSB_Root].position.v[1] + bonePosFixer[1];
-		m_boneTransform[HSB_Root].position.v[2] = m_boneTransform[HSB_Root].position.v[2] + bonePosFixer[2];
+		m_boneTransform[HSB_Wrist].position.v[0] = m_boneTransform[HSB_Wrist].position.v[0] + bonePosFixer[0];
+		m_boneTransform[HSB_Wrist].position.v[1] = m_boneTransform[HSB_Wrist].position.v[1] + bonePosFixer[1];
+		m_boneTransform[HSB_Wrist].position.v[2] = m_boneTransform[HSB_Wrist].position.v[2] + bonePosFixer[2];
 
 		// Rotate thumb0 and pinky0 properly.
 		if (m_isLeftHand)

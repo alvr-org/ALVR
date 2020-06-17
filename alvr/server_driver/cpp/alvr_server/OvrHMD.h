@@ -54,12 +54,7 @@ public:
 
 	void RunFrame();
 
-
-	void CommandCallback(std::string commandName, std::string args);
-
 	void OnPoseUpdated();
-
-	void OnNewClient();
 
 	void OnStreamStart();
 

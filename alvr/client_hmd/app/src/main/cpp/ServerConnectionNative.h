@@ -64,7 +64,6 @@ private:
     void onBroadcastRequest();
     void onPacketRecv(const char *packet, size_t packetSize);
 
-    void loadRefreshRates(JNIEnv *refreshRates, jintArray pArray);
     void loadFov(JNIEnv *env, jfloatArray fov_);
 
 private:

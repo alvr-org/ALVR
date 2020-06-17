@@ -6,15 +6,8 @@
 #include "gl_render_utils/render_pipeline.h"
 #include "packet_types.h"
 
-
-enum FOVEATION_MODE {
-    FOVEATION_MODE_DISABLED = 0,
-    FOVEATION_MODE_SLICES = 1,
-    FOVEATION_MODE_WARP = 2,
-};
-
 struct FFRData {
-    FOVEATION_MODE mode;
+    bool enabled;
     uint32_t eyeWidth;
     uint32_t eyeHeight;
     EyeFov leftEyeFov;

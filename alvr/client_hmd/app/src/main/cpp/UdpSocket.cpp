@@ -198,13 +198,6 @@ void UdpSocket::parse(char *packet, int packetSize, const sockaddr_in &addr)
 
             ConnectionMessage *connectionMessage = (ConnectionMessage *) packet;
 
-            if (connectionMessage->version != ALVR_PROTOCOL_VERSION)
-            {
-                LOGE("Received connection message which has unsupported version. Received Version=%d Our Version=%d",
-                     connectionMessage->version, ALVR_PROTOCOL_VERSION);
-                return;
-            }
-
             LOGI("Try setting recv buffer size = %d bytes", connectionMessage->bufferSize);
             int val = connectionMessage->bufferSize;
             setsockopt(m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, sizeof(val));

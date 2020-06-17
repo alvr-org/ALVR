@@ -45,7 +45,6 @@ Exception MakeException(const char *format, ...)
 	va_list args;
 	va_start(args, format);
 	Exception e = FormatExceptionV(format, args);
-	_log(format, args, LogError);
 	va_end(args);
 
 	return e;

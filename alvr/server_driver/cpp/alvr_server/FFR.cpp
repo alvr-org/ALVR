@@ -128,21 +128,14 @@ void FFR::Initialize(ID3D11Texture2D* compositionTexture) {
 	auto fovVars = CalculateFoveationVars();
 	ComPtr<ID3D11Buffer> foveatedRenderingBuffer = CreateBuffer(mDevice.Get(), fovVars);
 
-	std::vector<uint8_t> quadShaderCSO;
-	if (!ReadBinaryResource(quadShaderCSO, IDR_QUAD_SHADER)) {
-		throw MakeException("Failed to load resource for IDR_QUAD_SHADER.");
-	}
+	std::vector<uint8_t> quadShaderCSO(QUAD_SHADER_CSO_PTR, QUAD_SHADER_CSO_PTR + QUAD_SHADER_CSO_LEN);
 	mQuadVertexShader = CreateVertexShader(mDevice.Get(), quadShaderCSO);
 
 	mOptimizedTexture = CreateTexture(mDevice.Get(), fovVars.optimizedEyeWidth * 2,
 		fovVars.optimizedEyeHeight, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
 
 	if (Settings::Instance().m_enableFoveatedRendering) {
-		std::vector<uint8_t> compressSlicesShaderCSO;
-		if (!ReadBinaryResource(compressSlicesShaderCSO, IDR_COMPRESS_SLICES_SHADER)) {
-			throw MakeException("Failed to load resource for IDR_COMPRESS_SLICES_SHADER.");
-		}
-
+		std::vector<uint8_t> compressSlicesShaderCSO(COMPRESS_SLICES_CSO_PTR, COMPRESS_SLICES_CSO_PTR + COMPRESS_SLICES_CSO_LEN);
 		auto compressSlicesPipeline = RenderPipeline(mDevice.Get());
 		compressSlicesPipeline.Initialize({ compositionTexture }, mQuadVertexShader.Get(),
 			compressSlicesShaderCSO, mOptimizedTexture.Get(), foveatedRenderingBuffer.Get());

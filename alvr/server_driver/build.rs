@@ -2,7 +2,6 @@ use std::{env, path::PathBuf};
 
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let cuda_dir = PathBuf::from(env::var("CUDA_PATH").unwrap());
     let cpp_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("cpp");
 
     let cpp_paths = walkdir::WalkDir::new("cpp")
@@ -28,8 +27,6 @@ fn main() {
         .include("cpp/shared")
         .include("cpp/openvr/headers")
         .include("cpp/alvr_server/include")
-        .include(cuda_dir.join("include"))
-        .include("cpp/CUDA")
         .include("cpp/libswresample/include")
         .include("cpp/ALVR-common");
     if cfg!(windows) {
@@ -37,7 +34,12 @@ fn main() {
             .define("_WINDLL", None)
             .define("NOMINMAX", None)
             .define("_WINSOCKAPI_", None)
-            .define("_MBCS", None);
+            .define("_MBCS", None)
+            .define("_MT", None)
+            .define("_DLL", None);
+    }
+    if cfg!(debug_assertions) {
+        build.define("_DEBUG", None);
     }
     build.compile("bindings");
 
@@ -64,25 +66,28 @@ fn main() {
         // println!("cargo:rustc-link-lib=uuid");
         // println!("cargo:rustc-link-lib=odbc32");
         // println!("cargo:rustc-link-lib=odbccp32");
+
         println!("cargo:rustc-link-lib=avrt");
+
         // println!("cargo:rustc-link-lib=winmm");
         // println!("cargo:rustc-link-lib=ws2_32");
         // println!("cargo:rustc-link-lib=userenv");
+
+        if cfg!(debug_assertions) {
+            // /MDd
+            println!("cargo:rustc-link-lib=msvcrtd");
+        } else {
+            // /MD
+            println!("cargo:rustc-link-lib=msvcrt");
+        }
     }
 
     println!(
         "cargo:rustc-link-search=native={}/libswresample/lib",
         cpp_dir.to_string_lossy()
     );
-    println!(
-        "cargo:rustc-link-search=native={}/lib/x64",
-        cuda_dir.to_string_lossy()
-    );
     println!("cargo:rustc-link-lib=swresample");
     println!("cargo:rustc-link-lib=avutil");
-    println!("cargo:rustc-link-lib=cudart_static");
-    println!("cargo:rustc-link-lib=cuda");
-
     for path in cpp_paths {
         println!("cargo:rerun-if-changed={}", path.to_string_lossy());
     }

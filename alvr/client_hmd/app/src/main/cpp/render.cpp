@@ -921,7 +921,7 @@ ovrRenderer_Create(ovrRenderer *renderer, const bool useMultiview, int width, in
     renderer->NumBuffers = useMultiview ? 1 : VRAPI_FRAME_LAYER_EYE_MAX;
     renderer->UseMultiview = useMultiview;
 
-    renderer->enableFFR = ffrData.mode != FOVEATION_MODE_DISABLED;
+    renderer->enableFFR = ffrData.enabled;
     if (renderer->enableFFR) {
         renderer->ffrSourceTexture = std::make_unique<gl_render_utils::Texture>(SurfaceTextureID, true);
         renderer->ffr = std::make_unique<FFR>(renderer->ffrSourceTexture.get());

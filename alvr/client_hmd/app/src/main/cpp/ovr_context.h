@@ -58,7 +58,7 @@ public:
 
     void setStreamMic(bool streamMic);
 
-   void setFFRParams(int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
+    void setFFRParams(int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
 
 private:
     ANativeWindow *window = NULL;
@@ -87,11 +87,11 @@ private:
     bool Resumed = false;
     int FrameBufferWidth = 0;
     int FrameBufferHeight = 0;
-    FOVEATION_MODE mFoveationMode = FOVEATION_MODE_DISABLED;
+    bool mFoveationEnabled = false;
     float mFoveationStrength = 0;
     float mFoveationShape = 1.5;
     float mFoveationVerticalOffset = 0;
-    FOVEATION_MODE usedFoveationMode = FOVEATION_MODE_DISABLED;
+    bool usedFoveationEnabled = false;
     float usedFoveationStrength = 0;
     float usedFoveationShape = 0;
     float usedFoveationVerticalOffset = 0;

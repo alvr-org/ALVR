@@ -259,19 +259,15 @@ namespace {
         // foveated center X assuming screen plane with unit width
         float focusPositionX = leftHalfWidth / (leftHalfWidth + rightHalfWidth);
         // align focus position to a number of pixel multiple of 4 to avoid blur and artifacts
-        if (data.mode == FOVEATION_MODE_SLICES) {
-            focusPositionX = Align4Normalized(focusPositionX, targetEyeWidth);
-        }
+        focusPositionX = Align4Normalized(focusPositionX, targetEyeWidth);
 
         // NB: swapping top/bottom fov
         float topHalfHeight = tan(data.leftEyeFov.bottom * DEG_TO_RAD);
         float bottomHalfHeight = tan(data.leftEyeFov.top * DEG_TO_RAD);
         float focusPositionY = topHalfHeight / (topHalfHeight + bottomHalfHeight);
         focusPositionY += data.foveationVerticalOffset;
-        if (data.mode == FOVEATION_MODE_SLICES) {
-            focusPositionY = Align4Normalized(focusPositionY, targetEyeHeight);
-        }
-
+        focusPositionY = Align4Normalized(focusPositionY, targetEyeHeight);
+        
         //calculate foveation scale such as the "area" of the foveation region remains equal to (mFoveationStrengthMean)^2
         // solve for {foveationScaleX, foveationScaleY}:
         // /{ foveationScaleX * foveationScaleY = (mFoveationStrengthMean)^2
@@ -279,17 +275,13 @@ namespace {
         // then foveationScaleX := foveationScaleX / (targetEyeWidth / targetEyeHeight) to compensate for non square frame.
         float foveationStrength = data.foveationStrength;
         float foveationShape = data.foveationShape;
-        if (data.mode == FOVEATION_MODE_SLICES) {
-            foveationStrength = 1.f / (foveationStrength / 2.f + 1.f);
-            foveationShape = 1.f / foveationShape;
-        }
+        foveationStrength = 1.f / (foveationStrength / 2.f + 1.f);
+        foveationShape = 1.f / foveationShape;
         float scaleCoeff = foveationStrength * sqrt(foveationShape);
         float foveationScaleX = scaleCoeff / foveationShape / (targetEyeWidth / targetEyeHeight);
         float foveationScaleY = scaleCoeff;
-        if (data.mode == FOVEATION_MODE_SLICES) {
-            foveationScaleX = Align4Normalized(foveationScaleX, targetEyeWidth);
-            foveationScaleY = Align4Normalized(foveationScaleY, targetEyeHeight);
-        }
+        foveationScaleX = Align4Normalized(foveationScaleX, targetEyeWidth);
+        foveationScaleY = Align4Normalized(foveationScaleY, targetEyeHeight);
 
         float optimizedEyeWidth = 0;
         float optimizedEyeHeight = 0;
@@ -298,22 +290,8 @@ namespace {
         float distortedWidth = 0;
         float distortedHeight = 0;
 
-        if (data.mode == FOVEATION_MODE_SLICES) {
-            optimizedEyeWidth = CalcOptimalDimensionForSlicing(foveationScaleX, targetEyeWidth);
-            optimizedEyeHeight = CalcOptimalDimensionForSlicing(foveationScaleY, targetEyeHeight);
-
-        } else if (data.mode == FOVEATION_MODE_WARP) {
-            boundStartX = CalcBoundStart(focusPositionX, foveationScaleX);
-            boundStartY = CalcBoundStart(focusPositionY, foveationScaleY);
-
-            distortedWidth = CalcDistortedDimension(focusPositionX, foveationScaleX);
-            distortedHeight = CalcDistortedDimension(focusPositionY, foveationScaleY);
-
-            optimizedEyeWidth = CalcOptimalDimensionForWarp(
-                    foveationScaleX, distortedWidth, targetEyeWidth);
-            optimizedEyeHeight = CalcOptimalDimensionForWarp(
-                    foveationScaleY, distortedHeight, targetEyeHeight);
-        }
+        optimizedEyeWidth = CalcOptimalDimensionForSlicing(foveationScaleX, targetEyeWidth);
+        optimizedEyeHeight = CalcOptimalDimensionForSlicing(foveationScaleY, targetEyeHeight);
 
         // round the frame dimensions to a number of pixel multiple of 32 for the encoder
         auto optimizedEyeWidthAligned = (uint32_t)ceil(optimizedEyeWidth / 32.f) * 32;
@@ -342,32 +320,14 @@ void FFR::Initialize(FFRData ffrData) {
     mExpandedTexture.reset(new Texture(false, ffrData.eyeWidth * 2, ffrData.eyeHeight, GL_RGB8));
 
 
-    switch (ffrData.mode) {
-        case FOVEATION_MODE_DISABLED:
-            mExpandedTexture.reset(mInputSurface);
-            break;
-        case FOVEATION_MODE_SLICES: {
-            auto decompressSlicesShaderStr = ffrCommonShaderStr + DECOMPRESS_SLICES_FRAGMENT_SHADER;
-            auto decompressSlicesPipeline = new RenderPipeline(
-                    {mInputSurface}, decompressSlicesShaderStr, mExpandedTexture.get());
+    if (ffrData.enabled) {
+        auto decompressSlicesShaderStr = ffrCommonShaderStr + DECOMPRESS_SLICES_FRAGMENT_SHADER;
+        auto decompressSlicesPipeline = new RenderPipeline(
+                {mInputSurface}, decompressSlicesShaderStr, mExpandedTexture.get());
 
-            mPipelines.push_back(std::unique_ptr<RenderPipeline>(decompressSlicesPipeline));
-            break;
-        }
-        case FOVEATION_MODE_WARP:
-            //mSharpenedTexture = std::make_unique<Texture>(false, ffrData.eyeWidth * 2, ffrData.eyeHeight,
-            //                                              GL_RGB8);
-
-            auto undistortShaderStr = ffrCommonShaderStr + UNDISTORT_FRAGMENT_SHADER;
-            //auto sharpeningShaderStr = ffrCommonShaderStr + SHARPENING_FRAGMENT_SHADER;
-
-            auto undistortPipeline = new RenderPipeline(
-                    {mInputSurface}, undistortShaderStr, mExpandedTexture.get());
-            //auto sharpeningPipeline = RenderPipeline({mDistortedTexture.get()}, sharpeningShaderStr,
-            //                                              mSharpenedTexture.get()));
-
-            mPipelines.push_back(std::unique_ptr<RenderPipeline>(undistortPipeline));
-            break;
+        mPipelines.push_back(std::unique_ptr<RenderPipeline>(decompressSlicesPipeline));
+    } else {
+        mExpandedTexture.reset(mInputSurface);
     }
 
 

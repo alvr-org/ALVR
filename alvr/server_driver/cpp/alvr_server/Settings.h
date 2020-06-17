@@ -70,10 +70,7 @@ public:
 
 	std::string m_Host;
 	int m_Port;
-	std::string m_ControlHost;
-	int m_ControlPort;
-	std::string m_AutoConnectHost;
-	int m_AutoConnectPort;
+	std::string m_ConnectedClient;
 	Bitrate mThrottlingBitrate;
 
 

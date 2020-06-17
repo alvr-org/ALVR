@@ -30,7 +30,6 @@ class OvrThread implements SurfaceHolder.Callback {
     // Worker threads
     private DecoderThread mDecoderThread;
     private ServerConnection mReceiverThread;
-    private LauncherSocket mLauncherSocket;
 
     private EGLContext mEGLContext;
 
@@ -81,8 +80,6 @@ class OvrThread implements SurfaceHolder.Callback {
         // and onFrameAvailable won't be called after next output.
         // To avoid deadlock caused by it, we need to flush last output.
         mHandler.post(() -> {
-            mLauncherSocket = new LauncherSocket(mLauncherSocketCallback);
-            mLauncherSocket.listen();
 
             mReceiverThread = new ServerConnection(mUdpReceiverConnectionListener);
 
@@ -124,11 +121,6 @@ class OvrThread implements SurfaceHolder.Callback {
         Utils.logi(TAG, () -> "OvrThread.onPause: Stopping worker threads.");
         // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
         mHandler.post(() -> {
-            if (mLauncherSocket != null) {
-                mLauncherSocket.close();
-                mLauncherSocket = null;
-            }
-
             // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
             if (mDecoderThread != null) {
                 Utils.log(TAG, () -> "OvrThread.onPause: Stopping DecoderThread.");
@@ -212,17 +204,9 @@ class OvrThread implements SurfaceHolder.Callback {
             {
                 mLoadingTexture.drawMessage(Utils.getVersionName(mActivity) + "\n \nConnected!\nStreaming will begin soon!");
             }
-            else if(mLauncherSocket != null && mLauncherSocket.isConnected())
-            {
-                mLoadingTexture.drawMessage(Utils.getVersionName(mActivity) + "\n \nConnected!\nPress Trigger\nto start SteamVR.");
-                if (mOvrContext.getButtonDown())
-                {
-                    mLauncherSocket.sendCommand("StartServer");
-                }
-            }
             else
             {
-                mLoadingTexture.drawMessage(Utils.getVersionName(mActivity) + "\n \nPress CONNECT button\non ALVR server.");
+                mLoadingTexture.drawMessage(Utils.getVersionName(mActivity) + "\n \nOpen ALVR on PC and\nclick on \"Trust\" next to\nthe client entry");
             }
 
             mOvrContext.renderLoading();
@@ -322,12 +306,6 @@ class OvrThread implements SurfaceHolder.Callback {
         @Override
         public void onFrameDecoded() {
             mDecoderThread.releaseBuffer();
-        }
-    };
-
-    private LauncherSocket.LauncherSocketCallback mLauncherSocketCallback = new LauncherSocket.LauncherSocketCallback() {
-        @Override
-        public void onConnect() {
         }
     };
 }

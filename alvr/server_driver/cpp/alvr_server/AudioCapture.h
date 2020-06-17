@@ -63,8 +63,6 @@ public:
 
 	virtual ~AudioCapture();
 
-	static void list_devices(std::vector<AudioEndPointDescriptor> &deviceList);
-
 	void OpenDevice(const std::wstring &id);
 	void Start(const std::wstring &id);
 
@@ -75,7 +73,6 @@ public:
 
 	void LoopbackCapture();
 
-	void WriteWaveHeader(HMMIO hFile, LPCWAVEFORMATEX pwfx, MMCKINFO *pckRIFF, MMCKINFO *pckData);
 	void FinishWaveFile(HMMIO hFile, MMCKINFO *pckRIFF, MMCKINFO *pckData);
 private:
 	Handle m_hThread;

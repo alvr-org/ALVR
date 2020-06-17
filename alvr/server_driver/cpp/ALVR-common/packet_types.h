@@ -30,10 +30,6 @@ enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_MIC_AUDIO = 14,
 };
 
-enum {
-	ALVR_PROTOCOL_VERSION = 24
-};
-
 enum ALVR_CODEC {
 	ALVR_CODEC_H264 = 0,
 	ALVR_CODEC_H265 = 1,
@@ -182,46 +178,6 @@ struct EyeFov {
 	float right;
 	float top;
 	float bottom;
-};
-// hello message
-struct HelloMessage {
-	uint32_t type; // ALVR_PACKET_TYPE_HELLO_MESSAGE
-	char signature[4]; // Ascii string "ALVR". NOT null-terminated.
-	uint32_t version; // ALVR_PROTOCOL_VERSION
-
-	char deviceName[32]; // null-terminated
-
-	// List of supported refresh rate in priority order.
-	// High prio=first element. Empty element become 0.
-	uint8_t refreshRate[ALVR_REFRESH_RATE_LIST_SIZE];
-
-	uint16_t renderWidth;
-	uint16_t renderHeight;
-
-	// FOV of left and right eyes.
-	struct EyeFov eyeFov[2];
-
-	uint8_t deviceType; // enum ALVR_DEVICE_TYPE
-	uint8_t deviceSubType; // enum ALVR_DEVICE_SUB_TYPE
-	uint32_t deviceCapabilityFlags; // enum ALVR_DEVICE_CAPABILITY_FLAG
-
-	uint32_t controllerCapabilityFlags; // enum ALVR_CONTROLLER_CAPABILITY_FLAG
-
-};
-struct ConnectionMessage {
-	uint32_t type; // ALVR_PACKET_TYPE_CONNECTION_MESSAGE
-	uint32_t version; // ALVR_PROTOCOL_VERSION
-	uint32_t codec; // enum ALVR_CODEC
-	uint32_t videoWidth; // in pixels
-	uint32_t videoHeight; // in pixels
-	uint32_t bufferSize; // in bytes
-	uint32_t frameQueueSize;
-	uint8_t refreshRate;
-	bool streamMic;
-	uint8_t foveationMode;
-	float foveationStrength;
-	float foveationShape;
-	float foveationVerticalOffset;
 };
 struct RecoverConnection {
 	uint32_t type; // ALVR_PACKET_TYPE_RECOVER_CONNECTION

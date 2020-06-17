@@ -92,9 +92,6 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 		return vr::VRInitError_Driver_Failed;
 	}
 
-	//load settings from mapped file
-	Settings::Instance().Load();
-
 	//create listener
 	m_Listener = std::make_shared<ClientConnection>();
 
@@ -107,13 +104,8 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 	//create new virtuall hmd
 	m_pRemoteHmd = std::make_shared<OvrHmd>(m_Listener);
 
-	
-	if (Settings::Instance().IsLoaded()) {
-		// Launcher is running. Enable driver.Settings access mem mapped file
-		m_pRemoteHmd->Enable();
-	}
-
-
+	// Launcher is running. Enable driver.
+	m_pRemoteHmd->Enable();
 
 	return vr::VRInitError_None;
 }
@@ -148,6 +140,17 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
 
 // bindigs for Rust
 
+const uint8_t *FRAME_RENDER_VS_CSO_PTR;
+uint32_t FRAME_RENDER_VS_CSO_LEN;
+const uint8_t *FRAME_RENDER_PS_CSO_PTR;
+uint32_t FRAME_RENDER_PS_CSO_LEN;
+const uint8_t *QUAD_SHADER_CSO_PTR;
+uint32_t QUAD_SHADER_CSO_LEN;
+const uint8_t *COMPRESS_SLICES_CSO_PTR;
+uint32_t COMPRESS_SLICES_CSO_LEN;
+const uint8_t *COLOR_CORRECTION_CSO_PTR;
+uint32_t COLOR_CORRECTION_CSO_LEN;
+
 const char *g_alvrDir;
 
 void (*LogError)(const char *stringPtr);
@@ -159,6 +162,9 @@ void (*MaybeKillWebServer)();
 
 void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 {
+
+	Settings::Instance().Load();
+
 	load_debug_privilege();
 
 	LogDriver("HmdDriverFactory %hs (%hs)", pInterfaceName, vr::IServerTrackedDeviceProvider_Version);

@@ -1,0 +1,72 @@
+#connection .card {
+    margin-bottom: 5px;
+}
+
+#connection .card .card-header{
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.clientList {
+    min-height: 50px;
+    margin-bottom: 20px;
+}
+
+.clientList .card {
+    height: 30px;
+    line-height: 30px;
+    padding-left: 10px;
+}
+
+#monitor .tab-content {
+    height: calc(100% - 41px);
+    overflow: auto;
+    padding-bottom: 20px;
+}
+
+.client {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    background-color: lightgray;
+}
+
+.client button {
+    max-width: 80px;
+    width: 80px;
+    height: 23px;
+    line-height: 20px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-right: 10px;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+#statisticsTable {
+    width: 100%;
+}
+
+#loggingTable {  
+    width: 100%;
+    font-size: 12px;
+}
+
+#loggingTable td {
+    vertical-align: top;
+}
+
+#loggingTable tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+#loggingTable tr td:first-child {
+   width: 120px;
+}
+
+#loggingTable tr td:nth-child(2) {  
+    width: 50px;
+ }
+
+
+

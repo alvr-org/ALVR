@@ -1,0 +1,36 @@
+<div class="modal" id="addClientModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <div>
+                    <h4 class="modal-title">Add client</h4>
+                </div>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+
+            <!-- Modal body -->
+            <div id="addClientMain" class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <label for="clientTypeSelect">Type:</label>
+                        <select class="form-control" id="clientTypeSelect">
+                            <option>Oculus Quest</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="clientIP">Ip-Address:</label>
+                        <input class="form-control" type="text" id="clientIP" value="192.168.1.222"></input>
+                        <small id="emailHelp" class="form-text text-muted">Enter know IP-address of the HMD</small>
+                    </div>
+                </form>
+
+            </div>
+            <!-- Modal footer -->
+            <div class="modal-footer">
+                <button id="clientAddButton" type="button" class="btn btn-info">Add client</button>
+            </div>
+        </div>
+    </div>
+</div>

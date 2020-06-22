@@ -269,8 +269,23 @@ pub struct ConnectionDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DebugDesc {
-    log: bool,
+pub enum LogLevel {
+    Error,
+    Warning,
+    Info,
+    Debug,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtraDesc {
+    pub revert_confirm_dialog: bool,
+    pub restart_confirm_dialog: bool,
+
+    #[schema(advanced)]
+    pub notification_level: LogLevel,
+    #[schema(advanced)]
+    pub exclude_notifications_without_id: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -279,9 +294,7 @@ pub struct Settings {
     pub audio: AudioSection,
     pub headset: HeadsetDesc,
     pub connection: ConnectionDesc,
-
-    #[schema(advanced)]
-    pub debug: DebugDesc,
+    pub extra: ExtraDesc,
 }
 
 pub fn settings_cache_default() -> SettingsDefault {
@@ -399,6 +412,14 @@ pub fn settings_cache_default() -> SettingsDefault {
             frame_queue_size: 1,
             aggressive_keyframe_resend: false,
         },
-        debug: DebugDescDefault { log: true },
+        extra: ExtraDescDefault {
+            revert_confirm_dialog: true,
+            restart_confirm_dialog: true,
+
+            notification_level: LogLevelDefault {
+                variant: LogLevelDefaultVariant::Warning,
+            },
+            exclude_notifications_without_id: false,
+        },
     }
 }

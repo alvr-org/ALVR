@@ -36,7 +36,7 @@ Install the client on your headset through [SideQuest](https://sidequestvr.com/)
 - Launch `ALVR.exe` (ALVR dashboard). The first time a setup wizard will guide you through the installation.
 - Launch ALVR on your headset. While the headset screen is on, click `Trust` next to the client entry (on the PC) to start streaming.
 - If you trusted a client, you can start streaming by just launching ALVR on your headset, then SteamVR or the ALVR dashboard on PC.
-- To change settings, open the dashboard with the menu button (on the left controller), change what you want and then press `Apply`. SteamVR will restart, so any unsaved progress will be lost.
+- To change settings, open the dashboard on the headset with the menu button (on the left controller), change what you want and then press `Apply`. SteamVR will restart, so any unsaved progress will be lost.
 - To shutdown ALVR you need to close both the ALVR window on PC and SteamVR.
 
 ### Notes

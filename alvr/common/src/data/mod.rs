@@ -82,8 +82,6 @@ pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
 #[serde(rename_all = "camelCase")]
 pub struct SessionDesc {
     pub setup_wizard: bool,
-    pub revert_confirm_dialog: bool,
-    pub restart_confirm_dialog: bool,
     pub last_clients: Vec<ClientConnectionDesc>,
     pub settings_cache: SettingsCache,
 }
@@ -92,8 +90,6 @@ impl Default for SessionDesc {
     fn default() -> Self {
         Self {
             setup_wizard: true,
-            revert_confirm_dialog: true,
-            restart_confirm_dialog: true,
             last_clients: vec![],
             settings_cache: settings_cache_default(),
         }

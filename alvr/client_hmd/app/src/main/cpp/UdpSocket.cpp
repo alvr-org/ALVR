@@ -193,6 +193,7 @@ void UdpSocket::parse(char *packet, int packetSize, const sockaddr_in &addr)
                 return;
 
             m_serverAddr = addr;
+            m_serverAddr.sin_port = htons(9944);
             m_connected = true;
             m_hasServerAddress = true;
 

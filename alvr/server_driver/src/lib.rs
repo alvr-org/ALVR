@@ -1,4 +1,5 @@
 #![allow(clippy::missing_safety_doc)]
+#![allow(non_camel_case_types, non_upper_case_globals)]
 
 mod logging_backend;
 

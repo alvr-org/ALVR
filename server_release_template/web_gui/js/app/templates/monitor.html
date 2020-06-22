@@ -1,43 +1,43 @@
 <ul class="nav nav-tabs">
     <li class="nav-item">
-        <a class="nav-link active" data-toggle="tab" href="#connection">Connection</a>
+        <a class="nav-link active" data-toggle="tab" href="#connection"><%= connection%></a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" data-toggle="tab" href="#logging">Logging</a>
+        <a class="nav-link" data-toggle="tab" href="#logging"><%= logging%></a>
     </li>
 </ul>
-<!-- Tab panes -->
+
 <div class="tab-content">
     <div class="tab-pane container active noselect" id="connection">
         <div class="card">
-            <div class="card-header">Clients</div>
+            <div class="card-header"><%= clients%></div>
             <div class="card-body">
-                <h5>New Clients:</h5>
+                <h5><%= newClients%>:</h5>
                 <div class="clientList" id="newClientsDiv">
 
                 </div>
-                <h5>Trusted Clients:</h5>
+                <h5><%= trustedClients%>:</h5>
                 <div class="clientList" id="trustedClientsDiv">
 
                 </div>
 
-                <button type="button" class="btn btn-primary" id="showAddClientModal">Manually add client</button>
+                <button type="button" class="btn btn-primary" id="showAddClientModal"><%= manAddClient%></button>
             </div>
         </div>
         <div class="card">
-            <div class="card-header">Statistics</div>
+            <div class="card-header"><%= statistics%></div>
             <div class="card-body">
                 <table id="statisticsTable">
                     <tr>
-                        <td>Total Packets:</td>
+                        <td><%= totalPackets%>:</td>
                         <td>0</td>
-                        <td>Packate rate:</td>
+                        <td><%= packetRate%>:</td>
                         <td>50</td>
                     </tr>
                     <tr>
-                        <td>Encoder latency:</td>
+                        <td><%= encoderLatency%>:</td>
                         <td>9ms</td>
-                        <td>Decoder latency:</td>
+                        <td><%= decoderLatency%>:</td>
                         <td>14ms</td>
                     </tr>
                 </table>
@@ -46,8 +46,6 @@
     </div>
     <div class="tab-pane container fade" id="logging">
         <table id="loggingTable">
-          
         </table>
-
     </div>
 </div>

@@ -88,15 +88,15 @@ define([
                     notificationLevels = ["[ERROR]"];
                     break;
                 case "warning":
-                    notificationLevels = ["[ERROR]", "[WARNING]"];
+                    notificationLevels = ["[ERROR]", "[WARN]"];
                     break;
 
                 case "info":
-                    notificationLevels = ["[ERROR]", "[WARNING]", "[INFO]"];
+                    notificationLevels = ["[ERROR]", "[WARN]", "[INFO]"];
                     break;
 
                 case "debug":
-                    notificationLevels = ["[ERROR]", "[WARNING]", "[INFO]", "[DEBUG]"];
+                    notificationLevels = ["[ERROR]", "[WARN]", "[INFO]", "[DEBUG]"];
                     break;
 
                 default:
@@ -187,8 +187,8 @@ define([
                         rounded: true,
                         delayIndicator: false,
                         sound: false,
-                        title: getI18nNotification(idObject, line).title,
-                        msg: getI18nNotification(idObject, line).msg
+                        title: getI18nNotification(idObject, line, split[1]).title,
+                        msg: getI18nNotification(idObject, line, split[1]).msg
                     })
                 }
             }
@@ -200,9 +200,9 @@ define([
             }
         }
 
-        function getI18nNotification(idObject, line) {
+        function getI18nNotification(idObject, line, level) {
             if (idObject === undefined) {
-                return { "title": "Info", "msg": line };
+                return { "title": level, "msg": line };
             } else {
                 //TODO: line could contain additional info for the msg
                 return { "title": i18nNotifications[idObject.id + ".title"], "msg": i18nNotifications[idObject.id + ".msg"] };
@@ -213,7 +213,7 @@ define([
             switch (logSeverity.trim()) {
                 case "[ERROR]":
                     return "error";
-                case "[WARNING]":
+                case "[WARN]":
                     return "warning";
                 case "[INFO]":
                     return "info";

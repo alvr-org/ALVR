@@ -122,6 +122,7 @@ public class OvrContext {
 
     private native int getLoadingTextureNative(long handle);
     private native int getSurfaceTextureIDNative(long handle);
+    private native int getWebViewSurfaceTextureNative(long handle);
     public native int getCameraTextureNative(long handle);
 
     private native boolean isVrModeNative(long handle);

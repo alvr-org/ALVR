@@ -3,6 +3,7 @@ package com.polygraphene.alvr;
 import android.app.Activity;
 import android.opengl.EGLContext;
 import android.util.Log;
+import android.webkit.WebView;
 
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
@@ -33,6 +34,8 @@ class ServerConnection extends ThreadBase
     private String mPreviousServerAddress;
     private int mPreviousServerPort;
 
+    private WebView mWebview;
+
     interface ConnectionListener {
         void onConnected(int width, int height, int codec, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
 
@@ -59,9 +62,10 @@ class ServerConnection extends ThreadBase
     private long mNativeHandle = 0;
     private final Object mWaiter = new Object();
 
-    ServerConnection(ConnectionListener connectionListener)
+    ServerConnection(ConnectionListener connectionListener, WebView webView)
     {
         mConnectionListener = connectionListener;
+        mWebview = webView;
     }
 
     private String getDeviceName()
@@ -280,6 +284,10 @@ class ServerConnection extends ThreadBase
         mNALCallback.pushNAL(nal);
     }
 
+    @SuppressWarnings("unused")
+    public void setWebViewURL(String url) {
+        mWebview.loadUrl(url);
+    }
 
 
     private native long initializeSocket(int helloPort, int port, String deviceName, String[] broadcastAddrList,

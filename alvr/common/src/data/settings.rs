@@ -4,7 +4,7 @@ use settings_schema::*;
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum FrameSize {
-    #[schema(min = 0.25, max = 2., step = 0.25)]
+    #[schema(min = 0.25, max = 2., step = 0.01)]
     Scale(f32),
 
     Absolute {

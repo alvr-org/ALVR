@@ -22,8 +22,12 @@ class OvrThread implements SurfaceHolder.Callback {
     private Handler mHandler;
     private HandlerThread mHandlerThread;
 
+    private OffscreenWebView mWebView;
+
     private SurfaceTexture mSurfaceTexture;
     private Surface mSurface;
+    private SurfaceTexture mWebViewSurfaceTexture;
+    private Surface mWebViewSurface;
 
     private LoadingTexture mLoadingTexture = new LoadingTexture();
 
@@ -50,6 +54,8 @@ class OvrThread implements SurfaceHolder.Callback {
         mHandlerThread.start();
         mHandler = new Handler(mHandlerThread.getLooper());
         mHandler.post(() -> startup());
+
+        mWebView = new OffscreenWebView(activity.getApplicationContext());
     }
 
     //SurfaceHolder Callbacks
@@ -81,7 +87,7 @@ class OvrThread implements SurfaceHolder.Callback {
         // To avoid deadlock caused by it, we need to flush last output.
         mHandler.post(() -> {
 
-            mReceiverThread = new ServerConnection(mUdpReceiverConnectionListener);
+            mReceiverThread = new ServerConnection(mUdpReceiverConnectionListener, mWebView);
 
             PersistentConfig.ConnectionState connectionState = new PersistentConfig.ConnectionState();
             PersistentConfig.loadConnectionState(mActivity, connectionState);

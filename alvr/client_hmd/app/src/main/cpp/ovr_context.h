@@ -44,6 +44,9 @@ public:
     int getSurfaceTextureID(){
         return SurfaceTextureID;
     }
+    int getWebViewSurfaceTexture(){
+        return SurfaceTextureID;
+    }
     int getCameraTexture(){
         return CameraTexture;
     }
@@ -81,6 +84,7 @@ private:
 
     bool UseMultiview = true;
     GLuint SurfaceTextureID = 0;
+    GLuint webViewSurfaceTexture = 0;
     GLuint loadingTexture = 0;
     GLuint CameraTexture = 0;
     int suspend = 0;

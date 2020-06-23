@@ -67,13 +67,25 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager,
     //
     m_ARMode = ARMode;
 
-    GLuint textures[2];
-    glGenTextures(2, textures);
+    GLuint textures[3];
+    glGenTextures(3, textures);
 
     SurfaceTextureID = textures[0];
-    loadingTexture = textures[1];
+    webViewSurfaceTexture = textures[1];
+    loadingTexture = textures[2];
 
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, SurfaceTextureID);
+
+    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER,
+                    GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER,
+                    GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S,
+                    GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T,
+                    GL_CLAMP_TO_EDGE);
+
+    glBindTexture(GL_TEXTURE_EXTERNAL_OES, webViewSurfaceTexture);
 
     glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER,
                     GL_LINEAR);
@@ -94,7 +106,6 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager,
                     GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
                     GL_CLAMP_TO_EDGE);
-
 
     if (m_ARMode) {
         glGenTextures(1, &CameraTexture);
@@ -154,8 +165,8 @@ void OvrContext::destroy(JNIEnv *env) {
 
     ovrRenderer_Destroy(&Renderer);
 
-    GLuint textures[2] = {SurfaceTextureID, loadingTexture};
-    glDeleteTextures(2, textures);
+    GLuint textures[3] = {SurfaceTextureID, webViewSurfaceTexture, loadingTexture};
+    glDeleteTextures(3, textures);
     if (m_ARMode) {
         glDeleteTextures(1, &CameraTexture);
     }
@@ -1206,6 +1217,13 @@ JNIEXPORT jint JNICALL
 Java_com_polygraphene_alvr_OvrContext_getSurfaceTextureIDNative(JNIEnv *env, jobject instance,
                                                                 jlong handle) {
     return ((OvrContext *) handle)->getSurfaceTextureID();
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_polygraphene_alvr_OvrContext_getWebViewSurfaceTextureNative(JNIEnv *env, jobject instance,
+                                                                jlong handle) {
+    return ((OvrContext *) handle)->getWebViewSurfaceTexture();
 }
 
 extern "C"

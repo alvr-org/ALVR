@@ -4,16 +4,19 @@ define([
     "json!../../session",
     "json!../../audio_devices",
     "lib/lodash",
-    "i18n!app/nls/settings"
+    "i18n!app/nls/settings",
+    "i18n!app/nls/revert",
+    "text!app/templates/revertConfirm.html",
 
 
-], function (schema, session, audio_devices, _, i18n) {
+], function (schema, session, audio_devices, _, i18n,revertI18n, revertConfirm) {
     return function () {
         var advanced = false;
         var updating = false;
 
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
         var index = 0;
+        const usedi18n = {};
 
         this.disableWizard = function () {
             session.setupWizard = false;
@@ -21,6 +24,7 @@ define([
         }
 
         function init() {
+
 
             fillNode(schema, "root", 0, $("#configContent"), "", undefined);
             updateSwitchContent();
@@ -35,6 +39,7 @@ define([
             setVideoScale();
 
             addChangeListener();
+            printUnusedi18n();
 
         }
 
@@ -95,13 +100,21 @@ define([
             })
         }
 
-        function getI18n(id) {
+        function printUnusedi18n() {
+            for (var key in i18n) {
+                if (usedi18n[key] === undefined)
+                    console.log("Unused i18n key:", key)
+            }
+        }
 
+        function getI18n(id) {
             if (i18n === undefined) {
                 console.log("names not ready");
                 return { "name": id, "description": "" };
             } else {
                 if (i18n[id + ".name"] !== undefined) {
+                    usedi18n[id + ".name"] = true;
+                    usedi18n[id + ".description"] = true;
                     return { "name": i18n[id + ".name"], "description": i18n[id + ".description"] };;
                 } else {
                     console.log("Missing i18n", `"${id}.name":"", \r\n "${id}.description":"", \r\n`);
@@ -264,7 +277,18 @@ define([
                 var path = el.attr("path");
                 var def = el.attr("default");
 
-                resetToDefault(name, path, def);
+                if (!$("#" + path + "_" + name).prop("disabled")) {
+                    const confirm = $("#_root_extra_revertConfirmDialog").prop("checked");
+                    if (confirm) {
+                        showConfirmDialog(def).then((res) => {
+                            if (res) {
+                                resetToDefault(name, path, def);
+                            }
+                        });
+                    } else {
+                        resetToDefault(name, path, def);
+                    }
+                }
             })
         }
 
@@ -304,7 +328,7 @@ define([
                         addDropdown(element, path, name, advanced)
                         break;
                     default:
-                        console.log("null", name);
+                        console.log("Unhandled node without content. Should be implemented as special case:", name);
                         break;
                 }
                 return;
@@ -461,8 +485,10 @@ define([
                     ${getI18n(path + "_" + name + "-choice-").name}  ${getHelpReset(name + "_" + node.content.default + "-choice-", path, true)}
                 </div>   
                 <div>
+                <form id="${path + '_' + name + '-choice-'}">
                     <div class="card-body">
                     </div>
+                </form>
                 </div> 
             </div>`;
 
@@ -611,9 +637,7 @@ define([
         }
 
         function resetToDefault(name, path, defaultVal) {
-            if ($("#" + path + "_" + name).prop("disabled")) {
-                return;
-            }
+
 
             console.log("reset", path, name, $("#" + path + "_" + name).prop("type"))
 
@@ -635,6 +659,36 @@ define([
             } else {
                 return `(${node.content.min}-${node.content.max})`
             }
+        }
+
+        function showConfirmDialog(defaultVal) {
+            return new Promise((resolve, reject) => {
+                var compiledTemplate = _.template(revertConfirm);
+                         revertI18n.settingDefault = defaultVal;
+                
+                var template = compiledTemplate(revertI18n);
+                $("#confirmModal").remove();
+                $("body").append(template);
+                $(document).ready(() => {
+                    $('#confirmModal').modal({
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                    $('#confirmModal').on('hidden.bs.modal', (e) => {
+                        resolve(false)
+                    })
+                    $("#okRevertButton").click(() => {
+                        resolve(true)
+                        $('#confirmModal').modal('hide');
+                        $('#confirmModal').remove();
+                    })
+                    $("#cancelRevertButton").click(() => {
+                        resolve(false)
+                        $('#confirmModal').modal('hide');
+                        $('#confirmModal').remove();
+                    })
+                });
+            });
         }
 
         function getNumericGuiType(nodeContent) {

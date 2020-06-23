@@ -1,0 +1,20 @@
+<div class="modal" id="confirmModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <div>
+                    <h4 class="modal-title"><%= confirmRevertTitle%></h4>
+                </div>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+
+            <div id="confirmRevertBody" class="modal-body">
+                <%= revertText%> [<%= settingDefault%>]?
+            </div>
+            <div class="modal-footer">
+                <button id="okRevertButton" type="button" class="btn btn-info"><%= okRevertButton%></button><button id="cancelRevertButton" type="button" class="btn btn-info"><%= cancelRevertButton%></button>
+            </div>
+        </div>
+    </div>
+</div>

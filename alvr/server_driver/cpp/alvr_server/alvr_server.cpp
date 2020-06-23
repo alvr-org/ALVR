@@ -162,6 +162,7 @@ void (*MaybeKillWebServer)();
 
 void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 {
+	Warn("Test warn from driver");
 
 	Settings::Instance().Load();
 

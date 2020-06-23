@@ -12,6 +12,8 @@ pub fn init_logging(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) {
     // create driver log file or else the tail command will not work
     fs::OpenOptions::new()
         .create(true)
+        .write(true)
+        .truncate(true)
         .open(driver_log_path())
         .ok();
 

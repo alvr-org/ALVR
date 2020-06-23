@@ -68,7 +68,7 @@ void Settings::Load()
 		if (activeConnection != nullptr) {
 			connectedClient = *activeConnection;
 		} else if (lastConnection != nullptr) {
-			connectedClient = *activeConnection;
+			connectedClient = *lastConnection;
 		} else {
 			Error("No client found");
 			return;

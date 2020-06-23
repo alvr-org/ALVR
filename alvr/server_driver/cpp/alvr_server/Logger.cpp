@@ -12,7 +12,7 @@ void Log(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	_log(format, args, LogInfo);
+	_log(format, args, LogDebug);
 	va_end(args);
 }
 
@@ -20,7 +20,7 @@ void LogDriver(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	_log(format, args, LogInfo);
+	_log(format, args, LogDebug);
 	va_end(args);
 }
 

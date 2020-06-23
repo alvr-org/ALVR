@@ -417,7 +417,7 @@ pub fn settings_cache_default() -> SettingsDefault {
             restart_confirm_dialog: true,
 
             notification_level: LogLevelDefault {
-                variant: LogLevelDefaultVariant::Warning,
+                variant: LogLevelDefaultVariant::Info,
             },
             exclude_notifications_without_id: false,
         },

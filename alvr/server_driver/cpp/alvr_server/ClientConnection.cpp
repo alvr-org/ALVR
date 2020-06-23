@@ -295,6 +295,8 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 
 	Log("Received packet. Type=%d", type);
 	if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
+		Info("ALVR_PACKET_TYPE_TRACKING_INFO packet");
+
 		if (!m_Socket->IsLegitClient(addr)) {
 			LogDriver("Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;
@@ -319,6 +321,8 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		m_PoseUpdatedCallback();
 	}
 	else if (type == ALVR_PACKET_TYPE_TIME_SYNC && len >= sizeof(TimeSync)) {
+		Info("ALVR_PACKET_TYPE_TIME_SYNC packet");
+
 		if (!m_Socket->IsLegitClient(addr)) {
 			LogDriver("Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;
@@ -348,6 +352,8 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE && len >= sizeof(StreamControlMessage)) {
+		Info("ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE packet");
+
 		if (!m_Socket->IsLegitClient(addr)) {
 			LogDriver("Recieved message from invalid address: %s:%d", AddrPortToStr(addr));
 			return;
@@ -365,6 +371,8 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_PACKET_ERROR_REPORT && len >= sizeof(PacketErrorReport)) {
+		Info("ALVR_PACKET_TYPE_PACKET_ERROR_REPORT packet");
+
 		if (!m_Socket->IsLegitClient(addr)) {
 			LogDriver("Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;
@@ -377,6 +385,8 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_MIC_AUDIO && len >= sizeof(MicAudioFrame)) {
+		Info("ALVR_PACKET_TYPE_MIC_AUDIO packet");
+
 		if (!m_Socket->IsLegitClient(addr)) {
 			LogDriver("Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;

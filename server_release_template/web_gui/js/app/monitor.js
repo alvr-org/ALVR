@@ -213,7 +213,7 @@ define([
             switch (logSeverity.trim()) {
                 case "[ERROR]":
                     return "error";
-                case "[WARNING]":
+                case "[WARN]":
                     return "warning";
                 case "[INFO]":
                     return "info";

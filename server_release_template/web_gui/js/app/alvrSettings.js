@@ -4,10 +4,12 @@ define([
     "json!../../session",
     "json!../../audio_devices",
     "lib/lodash",
-    "i18n!app/nls/settings"
+    "i18n!app/nls/settings",
+    "i18n!app/nls/revert",
+    "text!app/templates/revertConfirm.html",
 
 
-], function (schema, session, audio_devices, _, i18n) {
+], function (schema, session, audio_devices, _, i18n,revertI18n, revertConfirm) {
     return function () {
         var advanced = false;
         var updating = false;
@@ -275,7 +277,18 @@ define([
                 var path = el.attr("path");
                 var def = el.attr("default");
 
-                resetToDefault(name, path, def);
+                if (!$("#" + path + "_" + name).prop("disabled")) {
+                    const confirm = $("#_root_extra_revertConfirmDialog").prop("checked");
+                    if (confirm) {
+                        showConfirmDialog(def).then((res) => {
+                            if (res) {
+                                resetToDefault(name, path, def);
+                            }
+                        });
+                    } else {
+                        resetToDefault(name, path, def);
+                    }
+                }
             })
         }
 
@@ -622,9 +635,7 @@ define([
         }
 
         function resetToDefault(name, path, defaultVal) {
-            if ($("#" + path + "_" + name).prop("disabled")) {
-                return;
-            }
+
 
             console.log("reset", path, name, $("#" + path + "_" + name).prop("type"))
 
@@ -646,6 +657,36 @@ define([
             } else {
                 return `(${node.content.min}-${node.content.max})`
             }
+        }
+
+        function showConfirmDialog(defaultVal) {
+            return new Promise((resolve, reject) => {
+                var compiledTemplate = _.template(revertConfirm);
+                         revertI18n.settingDefault = defaultVal;
+                
+                var template = compiledTemplate(revertI18n);
+                $("#confirmModal").remove();
+                $("body").append(template);
+                $(document).ready(() => {
+                    $('#confirmModal').modal({
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                    $('#confirmModal').on('hidden.bs.modal', (e) => {
+                        resolve(false)
+                    })
+                    $("#okRevertButton").click(() => {
+                        resolve(true)
+                        $('#confirmModal').modal('hide');
+                        $('#confirmModal').remove();
+                    })
+                    $("#cancelRevertButton").click(() => {
+                        resolve(false)
+                        $('#confirmModal').modal('hide');
+                        $('#confirmModal').remove();
+                    })
+                });
+            });
         }
 
         function getNumericGuiType(nodeContent) {

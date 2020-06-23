@@ -14,6 +14,7 @@ define([
 
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
         var index = 0;
+        const usedi18n = {};
 
         this.disableWizard = function () {
             session.setupWizard = false;
@@ -21,6 +22,7 @@ define([
         }
 
         function init() {
+
 
             fillNode(schema, "root", 0, $("#configContent"), "", undefined);
             updateSwitchContent();
@@ -35,6 +37,7 @@ define([
             setVideoScale();
 
             addChangeListener();
+            printUnusedi18n();
 
         }
 
@@ -95,13 +98,21 @@ define([
             })
         }
 
-        function getI18n(id) {
+        function printUnusedi18n() {
+            for (var key in i18n) {
+                if (usedi18n[key] === undefined)
+                    console.log("Unused i18n key:", key)
+            }
+        }
 
+        function getI18n(id) {
             if (i18n === undefined) {
                 console.log("names not ready");
                 return { "name": id, "description": "" };
             } else {
                 if (i18n[id + ".name"] !== undefined) {
+                    usedi18n[id + ".name"] = true;
+                    usedi18n[id + ".description"] = true;
                     return { "name": i18n[id + ".name"], "description": i18n[id + ".description"] };;
                 } else {
                     console.log("Missing i18n", `"${id}.name":"", \r\n "${id}.description":"", \r\n`);

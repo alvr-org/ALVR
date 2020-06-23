@@ -315,7 +315,7 @@ define([
                         addDropdown(element, path, name, advanced)
                         break;
                     default:
-                        console.log("null", name);
+                        console.log("Unhandled node without content. Should be implemented as special case:", name);
                         break;
                 }
                 return;

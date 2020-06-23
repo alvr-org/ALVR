@@ -15,15 +15,15 @@ define([
             const log_listener = new WebSocket("ws://" + arr[2] + "/log");
 
             log_listener.onopen = (ev) => {
-                console.log("log listener started")
+                console.log("Log listener started")
             }
 
             log_listener.onerror = (ev) => {
-                console.log("log error", ev)
+                console.log("Log error", ev)
             }
 
             log_listener.onclose = (ev) => {
-                console.log("log closed", ev)
+                console.log("Log closed", ev)
             }
 
             log_listener.addEventListener('message', function (e) { addLogLine(e.data) });
@@ -70,17 +70,16 @@ define([
             });
         }
 
-
         function addNewClient(type, ip) {
             const id = ip.replace(/\./g, '');
 
             if ($("#newClient_" + id).length > 0) {
-                console.log("client already in new list");
+                console.warn("Client already in new list:", type, ip);
                 return;
             }
 
             if ($("#trustedClient_" + id).length > 0) {
-                console.log("client already in trusted list");
+                console.warn("Client already in trusted list:", type, ip);
                 return;
             }
 
@@ -102,12 +101,12 @@ define([
             const id = ip.replace(/\./g, '');
 
             if ($("#newClient_" + id).length > 0) {
-                console.log("client already in new list");
+                console.warn("Client already in new list:", type, ip);
                 return;
             }
 
             if ($("#trustedClient_" + id).length > 0) {
-                console.log("client already in trusted list");
+                console.warn("Client already in trusted list:",type, ip);
                 return;
             }
 

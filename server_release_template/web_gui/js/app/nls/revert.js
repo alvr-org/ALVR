@@ -5,5 +5,5 @@ define({
         "cancelRevertButton" : "Cancel",
         "revertText" : "Revert the property to the default value of", 
     },
-    "de-de": true
+    "de-de": false
 });

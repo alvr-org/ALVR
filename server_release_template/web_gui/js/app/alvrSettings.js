@@ -485,8 +485,10 @@ define([
                     ${getI18n(path + "_" + name + "-choice-").name}  ${getHelpReset(name + "_" + node.content.default + "-choice-", path, true)}
                 </div>   
                 <div>
+                <form id="${path + '_' + name + '-choice-'}">
                     <div class="card-body">
                     </div>
+                </form>
                 </div> 
             </div>`;
 

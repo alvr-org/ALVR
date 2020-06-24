@@ -178,7 +178,7 @@ void Settings::Load()
 		mControllerRegisteredDeviceType = controllers.get("registeredDeviceType").get<std::string>();
 		m_controllerInputProfilePath = controllers.get("inputProfilePath").get<std::string>();
 
-		m_disableController = headset.get("controllers").get("enabled").get<bool>();
+		m_disableController = !headset.get("controllers").get("enabled").get<bool>();
 		m_controllerTriggerMode = (int32_t)controllers.get("triggerMode").get<int64_t>();
 		m_controllerTrackpadClickMode = (int32_t)controllers.get("trackpadClickMode").get<int64_t>();
 		m_controllerTrackpadTouchMode = (int32_t)controllers.get("trackpadTouchMode").get<int64_t>();

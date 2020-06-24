@@ -184,6 +184,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 		mActivated = true;
 
+		OnStreamStart();
 
 		return vr::VRInitError_None;
 	}

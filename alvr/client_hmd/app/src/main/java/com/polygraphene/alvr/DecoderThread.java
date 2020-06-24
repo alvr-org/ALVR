@@ -320,6 +320,8 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
             return;
         }
 
+        Utils.loge(TAG, () -> nal.length + " " + nal.type + " " + nal.frameIndex);
+
         long presentationTime = System.nanoTime() / 1000;
 
         boolean consumed = false;

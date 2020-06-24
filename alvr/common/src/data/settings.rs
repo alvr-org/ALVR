@@ -405,7 +405,7 @@ pub fn settings_cache_default() -> SettingsDefault {
         connection: ConnectionDescDefault {
             listen_host: "0.0.0.0".into(),
             listen_port: 9944,
-            throttling_bitrate_bits: 0,
+            throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,
             sending_timeslot_us: 500,
             limit_timeslot_packets: 0,
             client_recv_buffer_size: 60_000,

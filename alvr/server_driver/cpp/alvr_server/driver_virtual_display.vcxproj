@@ -57,7 +57,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;userenv.lib;../x64/Debug/AMF.lib;../x64/Debug/CUDA.lib;..\libswresample\lib\swresample.lib;..\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;userenv.lib;../x64/Debug/AMF.lib;../x64/Debug/CUDA.lib;..\libswresample\lib\swresample.lib;..\libswresample\lib\avutil.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>nvcuda.dll</DelayLoadDLLs>
     </Link>
     <CustomBuildStep>
@@ -81,8 +81,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;userenv.lib;../../../build/lib/alvr_server_driver_ext.lib;../x64/Release/AMF.lib;../x64/Release/CUDA.lib;..\libswresample\lib\swresample.lib;..\libswresample\lib\avutil.lib;$(CUDA_PATH)\lib\x64\cudart_static.lib;$(CUDA_PATH)\lib\x64\cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <DelayLoadDLLs>nvcuda.dll</DelayLoadDLLs>
+      <AdditionalDependencies>avrt.lib;ole32.lib;winmm.lib;ws2_32.lib;userenv.lib;../x64/Release/AMF.lib;../x64/Release/CUDA.lib;..\libswresample\lib\swresample.lib;..\libswresample\lib\avutil.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -97,7 +98,6 @@
     <ClCompile Include="AudioCapture.cpp" />
     <ClCompile Include="Bitrate.cpp" />
     <ClCompile Include="CEncoder.cpp" />
-    <ClCompile Include="ControlSocket.cpp" />
     <ClCompile Include="alvr_server.cpp" />
     <ClCompile Include="d3d-render-utils\RenderPipeline.cpp" />
     <ClCompile Include="d3d-render-utils\RenderUtils.cpp" />
@@ -141,7 +141,6 @@
     <ClInclude Include="Bitrate.h" />
     <ClInclude Include="CEncoder.h" />
     <ClInclude Include="common-utils.h" />
-    <ClInclude Include="ControlSocket.h" />
     <ClInclude Include="d3d-render-utils\RenderPipeline.h" />
     <ClInclude Include="d3d-render-utils\RenderUtils.h" />
     <ClInclude Include="driverlog.h" />

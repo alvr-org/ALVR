@@ -13,8 +13,6 @@ ClientConnection::ClientConnection()
 
 	m_Poller.reset(new Poller());
 
-	m_Streaming = false;
-
 	reed_solomon_init();
 }
 
@@ -49,6 +47,8 @@ bool ClientConnection::Startup() {
 
 	// Start thread.
 	Start();
+
+	m_Streaming = true;
 	return true;
 }
 
@@ -295,8 +295,6 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 
 	Log("Received packet. Type=%d", type);
 	if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
-		Info("ALVR_PACKET_TYPE_TRACKING_INFO packet");
-
 		if (!m_Socket->IsLegitClient(addr)) {
 			LogDriver("Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;

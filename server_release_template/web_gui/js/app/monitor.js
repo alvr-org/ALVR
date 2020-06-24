@@ -10,6 +10,7 @@ define([
     return function (alvrSettings) {
 
         var notificationLevels = [];
+        var timeoutHandler;
 
         function logInit() {
             var url = window.location.href
@@ -35,7 +36,6 @@ define([
             $("#_root_extra_notificationLevel-choice-").change((ev) => {
                 initNotificationLevel();
             });
-
 
         }
 
@@ -169,8 +169,10 @@ define([
                 var index2 = line.indexOf("#", index1 + 1)
                 idObject = line.substring(index1 + 1, index2);
 
+                //TODO: should we log the #{}# object?
                 line = line.substring(index2 + 1, line.length);
             } else {
+
                 line = line.replace(split[0] + " " + split[1], "");
             }
 
@@ -178,11 +180,12 @@ define([
 
             if (idObject !== undefined) {
                 idObject = JSON.parse(idObject);
+                handleJson(idObject);
             }
 
             if (notificationLevels.includes(split[1].trim())) {
-                if (!(skipWithoutId && idObject === undefined)) {
-                    Lobibox.notify(getNotificationType(split[1]), {
+                if (!(skipWithoutId && idObject === undefined) && Lobibox.notify.list.length < 2) {
+                    var box = Lobibox.notify(getNotificationType(split[1]), {
                         size: "mini",
                         rounded: true,
                         delayIndicator: false,
@@ -223,6 +226,31 @@ define([
                 default:
                     return "default";
             }
+        }
+
+        function handleJson(json) {
+            switch (json.id) {
+                case "statistics":
+                    updateStatistics(json.content);
+                    break;
+                default:
+                    break;
+
+            }
+        }
+   
+        function updateStatistics(statistics) {
+            clearTimeout(timeoutHandler);
+            $("#connectionCard").hide();
+            $("#statisticsCard").show();
+
+            for (var stat in statistics) {
+                $("#statistic_" + stat).text(statistics[stat]);
+            }
+            timeoutHandler = setTimeout(() => {
+                $("#connectionCard").show();
+                $("#statisticsCard").hide();
+            }, 2000);
         }
 
         init();

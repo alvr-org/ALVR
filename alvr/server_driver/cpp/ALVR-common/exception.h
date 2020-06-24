@@ -4,13 +4,13 @@
 
 class Exception : public std::exception {
 public:
-	Exception(std::wstring what)
+	Exception(std::string what)
 		: m_what(what) {
 	}
 	Exception() {
 	}
 
-	virtual const wchar_t *what() {
+	virtual const char *what() {
 		return m_what.c_str();
 	}
 
@@ -19,9 +19,8 @@ public:
 		return *this;
 	}
 private:
-	std::wstring m_what;
+	std::string m_what;
 };
 
-Exception FormatExceptionV(const wchar_t *format, va_list args);
 Exception FormatExceptionV(const char *format, va_list args);
 Exception FormatException(const char *format, ...);

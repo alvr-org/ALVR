@@ -40,22 +40,6 @@ private:
 	HANDLE m_handle;
 };
 
-class AudioEndPointDescriptor {
-public:
-	AudioEndPointDescriptor(const ComPtr<IMMDevice> &device, bool isDefault);
-	std::wstring GetName() const;
-	std::wstring GetId() const;
-	bool IsDefault() const;
-	bool operator==(const AudioEndPointDescriptor& a);
-	bool operator!=(const AudioEndPointDescriptor& a);
-
-	static std::wstring GetDeviceName(const ComPtr<IMMDevice> &pMMDevice);
-private:
-	std::wstring m_name;
-	std::wstring m_id;
-	bool m_isDefault;
-};
-
 class AudioCapture
 {
 public:
@@ -63,8 +47,8 @@ public:
 
 	virtual ~AudioCapture();
 
-	void OpenDevice(const std::wstring &id);
-	void Start(const std::wstring &id);
+	void OpenDevice(const std::string &id);
+	void Start(const std::string &id);
 
 	void Shutdown();
 
@@ -86,7 +70,7 @@ private:
 	IPCEvent m_stopEvent;
 
 	bool m_canRetry;
-	std::wstring m_errorMessage;
+	std::string m_errorMessage;
 
 	static const int DEFAULT_SAMPLE_RATE = 48000;
 	static const int DEFAULT_CHANNELS = 2;

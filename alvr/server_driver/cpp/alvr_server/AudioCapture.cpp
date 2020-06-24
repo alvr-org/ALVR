@@ -1,25 +1,5 @@
 #include "AudioCapture.h"
 
-class PropVariant {
-public:
-	PropVariant() {
-		PropVariantInit(&pv);
-	}
-
-	~PropVariant() {
-		HRESULT hr = PropVariantClear(&pv);
-		if (FAILED(hr)) {
-			LogDriver("PropVariantClear failed: hr = 0x%08x", hr);
-		}
-	}
-
-	PROPVARIANT &Get() {
-		return pv;
-	}
-private:
-	PROPVARIANT pv;
-};
-
 class TaskMem {
 public:
 	TaskMem(void *p) {
@@ -102,56 +82,6 @@ private:
 };
 
 //
-// AudioEndPointDescriptor
-//
-
-AudioEndPointDescriptor::AudioEndPointDescriptor(const ComPtr<IMMDevice> &device, bool isDefault) {
-	wchar_t *idStr;
-	device->GetId(&idStr);
-	TaskMem idMem(idStr);
-
-	m_id = idStr;
-	m_name = GetDeviceName(device);
-	m_isDefault = isDefault;
-}
-std::wstring AudioEndPointDescriptor::GetName() const {
-	return m_name;
-}
-std::wstring AudioEndPointDescriptor::GetId() const {
-	return m_id;
-}
-bool AudioEndPointDescriptor::IsDefault() const {
-	return m_isDefault;
-}
-bool AudioEndPointDescriptor::operator==(const AudioEndPointDescriptor& a) {
-	return a.GetId() == m_id;
-}
-bool AudioEndPointDescriptor::operator!=(const AudioEndPointDescriptor& a) {
-	return !operator==(a);
-}
-
-std::wstring AudioEndPointDescriptor::GetDeviceName(const ComPtr<IMMDevice> &pMMDevice) {
-	// open the property store on that device
-	ComPtr<IPropertyStore> pPropertyStore;
-	HRESULT hr = pMMDevice->OpenPropertyStore(STGM_READ, &pPropertyStore);
-	if (FAILED(hr)) {
-		throw MakeException("IMMDevice::OpenPropertyStore failed: hr = 0x%08x", hr);
-	}
-
-	// get the long name property
-	PropVariant pv;
-	hr = pPropertyStore->GetValue(PKEY_Device_FriendlyName, &pv.Get());
-	if (FAILED(hr)) {
-		throw MakeException("IPropertyStore::GetValue failed: hr = 0x%08x", hr);
-	}
-
-	if (VT_LPWSTR != pv.Get().vt) {
-		throw MakeException("PKEY_Device_FriendlyName variant type is %u - expected VT_LPWSTR", pv.Get().vt);
-	}
-	return pv.Get().pwszVal;
-}
-
-//
 // AudioCapture
 //
 
@@ -166,7 +96,7 @@ AudioCapture::AudioCapture(std::shared_ptr<ClientConnection> listener)
 AudioCapture::~AudioCapture() {
 }
 
-void AudioCapture::OpenDevice(const std::wstring &id) {
+void AudioCapture::OpenDevice(const std::string &id) {
 	CoInitialize(NULL);
 
 	HRESULT hr = S_OK;
@@ -182,18 +112,17 @@ void AudioCapture::OpenDevice(const std::wstring &id) {
 	if (FAILED(hr)) {
 		throw MakeException("CoCreateInstance(IMMDeviceEnumerator) failed: hr = 0x%08x", hr);
 	}
-
-	hr = pMMDeviceEnumerator->GetDevice(id.c_str(), &m_pMMDevice);
+	
+	hr = pMMDeviceEnumerator->GetDevice(ToWstring(id).c_str(), &m_pMMDevice);
 	if (FAILED(hr)) {
 		throw MakeException("Could not find a device id %ls. hr = 0x%08x", id.c_str(), hr);
 	}
 }
 
-void AudioCapture::Start(const std::wstring &id) {
+void AudioCapture::Start(const std::string &id) {
 	CoInitialize(NULL);
 
 	OpenDevice(id);
-	LogDriver("Audio device: %ls", AudioEndPointDescriptor::GetDeviceName(m_pMMDevice).c_str());
 
 	m_hThread.Set(CreateThread(
 		NULL, 0,
@@ -212,7 +141,7 @@ void AudioCapture::Start(const std::wstring &id) {
 	);
 
 	if (WAIT_OBJECT_0 + 1 == waitResult) {
-		throw MakeException("Thread aborted before starting to loopback capture. message=%ls", m_errorMessage.c_str());
+		throw MakeException("Thread aborted before starting to loopback capture. message=%s", m_errorMessage.c_str());
 	}
 
 	if (WAIT_OBJECT_0 != waitResult) {

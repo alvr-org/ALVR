@@ -360,7 +360,7 @@ pub fn settings_cache_default() -> SettingsDefault {
         },
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {
-                enabled: false,
+                enabled: true,
                 content: AudioDescDefault { device: "".into() },
             },
             microphone: false,

@@ -166,7 +166,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		if (Settings::Instance().m_enableSound) {
 			m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
 			try {
-				m_audioCapture->Start(ToWstring(Settings::Instance().m_soundDevice));
+				m_audioCapture->Start(Settings::Instance().m_soundDevice);
 			}
 			catch (Exception e) {
 				FatalLog("Failed to start audio capture. %s", e.what());

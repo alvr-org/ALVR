@@ -136,6 +136,7 @@ dependencies = [
  "termion",
  "toml",
  "walkdir",
+ "winreg 0.7.0",
  "zip",
 ]
 
@@ -243,9 +244,9 @@ checksum = "e223af0dc48c96d4f8342ec01a4974f139df863896b316681efd36742f22cc67"
 
 [[package]]
 name = "bincode"
-version = "1.3.0"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1596f02a1f089e295623489ec1f9bb3c1e4795b3b9a0d97931c340a517634381"
+checksum = "f30d3a39baa26f9651f17b375061f3233dde33424a8b72b0dbe93a68a0bc896d"
 dependencies = [
  "byteorder",
  "serde",
@@ -1295,7 +1296,7 @@ dependencies = [
  "socket2",
  "widestring 0.4.2",
  "winapi 0.3.8",
- "winreg",
+ "winreg 0.6.2",
 ]
 
 [[package]]
@@ -2433,9 +2434,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.14.5"
+version = "0.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b796215da5a4b2a1a5db53ee55866c13b74a89acd259ab762eb10e28e937cb5"
+checksum = "628593dd8c0c48b6f2c74bb3ec05db26b152a3719a24b7ad88e9b355e3e4532f"
 dependencies = [
  "cfg-if",
  "doc-comment",
@@ -2721,9 +2722,9 @@ checksum = "caaa9d531767d1ff2150b9332433f32a24622147e5ebb1f26409d5da67afd479"
 
 [[package]]
 name = "unicode-xid"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "826e7639553986605ec5979c7dd957c7895e93eabed50ab2ffa7f6128a75097c"
+checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
 
 [[package]]
 name = "url"
@@ -2959,6 +2960,15 @@ name = "winreg"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2986deb581c4fe11b621998a5e53361efe6b48a151178d0cd9eeffa4dc6acc9"
+dependencies = [
+ "winapi 0.3.8",
+]
+
+[[package]]
+name = "winreg"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0120db82e8a1e0b9fb3345a539c478767c0048d842860994d96113d5b667bd69"
 dependencies = [
  "winapi 0.3.8",
 ]

@@ -1,3 +1,4 @@
+use crate::*;
 use alvr_xtask::*;
 use std::{path::Path, process::*};
 use sysinfo::*;
@@ -59,8 +60,14 @@ pub fn maybe_kill_web_server() {
     }
 }
 
-pub fn launch_steamvr() {
-    Command::new(steamvr_bin_dir().join(exec_fname("vrmonitor")))
-        .spawn()
-        .ok();
+pub fn launch_steamvr() -> StrResult {
+    Command::new(
+        steamvr_bin_dir()
+            .map_err(|e| e.to_string())?
+            .join(exec_fname("vrmonitor")),
+    )
+    .spawn()
+    .ok();
+
+    Ok(())
 }

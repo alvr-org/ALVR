@@ -71,23 +71,38 @@ fn run(cmd: &str) -> BResult {
 }
 
 #[cfg(target_os = "linux")]
-fn steamvr_dir() -> PathBuf {
-    dirs::home_dir()
+fn steamvr_bin_dir() -> BResult<PathBuf> {
+    Ok(dirs::home_dir()
         .unwrap()
-        .join(".steam/steam/steamapps/common/SteamVR")
+        .join(".steam/steam/steamapps/common/SteamVR/bin/linux64"))
 }
 #[cfg(windows)]
-pub fn steamvr_dir() -> PathBuf {
-    PathBuf::from(r"C:\Program Files (x86)\Steam\steamapps\common\SteamVR")
+pub fn steamvr_bin_dir() -> BResult<PathBuf> {
+    use winreg::*;
+    let key =
+        RegKey::predef(enums::HKEY_CLASSES_ROOT).open_subkey("vrmonitor\\Shell\\Open\\Command")?;
+    let command_string: String = key.get_value("")?;
+
+    let path_string = regex::Regex::new(r#""(.+)\\vrmonitor.exe""#)?
+        .captures(&command_string)
+        .ok_or_else::<Box<dyn Error>, _>(|| "regex failed".into())?
+        .get(1)
+        .ok_or_else::<Box<dyn Error>, _>(|| "regex failed".into())?
+        .as_str();
+
+    Ok(PathBuf::from(path_string))
+
+    // Ok()
+    // PathBuf::from(r"C:\Program Files (x86)\Steam\steamapps\common\SteamVR")
 }
 
-#[cfg(target_os = "linux")]
-pub fn steamvr_bin_dir() -> PathBuf {
-    steamvr_dir().join("bin/linux64")
-}
-#[cfg(windows)]
-pub fn steamvr_bin_dir() -> PathBuf {
-    steamvr_dir().join(r"bin\win64")
+fn steamvr_dir() -> BResult<PathBuf> {
+    Ok(steamvr_bin_dir()?
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .into())
 }
 
 pub fn target_dir() -> PathBuf {
@@ -265,7 +280,7 @@ pub fn build_client(is_release: bool) -> BResult {
 }
 
 pub fn driver_registration(root_server_dir: &Path, register: bool) -> BResult {
-    let steamvr_bin_dir = steamvr_bin_dir();
+    let steamvr_bin_dir = steamvr_bin_dir()?;
     if cfg!(target_os = "linux") {
         env::set_var("LD_LIBRARY_PATH", &steamvr_bin_dir);
     }
@@ -315,11 +330,19 @@ pub fn firewall_rules(root_server_dir: &Path, add: bool) -> Result<(), i32> {
             netsh_add_rule_command_string("ALVR Launcher", root_server_dir),
             netsh_add_rule_command_string(
                 "SteamVR ALVR vrserver",
-                &steamvr_dir().join("bin").join("win64").join("vrserver.exe")
+                &steamvr_dir()
+                    .map_err(|_| -1)?
+                    .join("bin")
+                    .join("win64")
+                    .join("vrserver.exe")
             ),
             netsh_add_rule_command_string(
                 "SteamVR ALVR vrserver",
-                &steamvr_dir().join("bin").join("win32").join("vrserver.exe")
+                &steamvr_dir()
+                    .map_err(|_| -1)?
+                    .join("bin")
+                    .join("win32")
+                    .join("vrserver.exe")
             ),
         )
     } else {
@@ -371,7 +394,7 @@ pub fn server_version() -> String {
 // }
 
 pub fn get_registered_drivers() -> BResult<Vec<PathBuf>> {
-    let output = Command::new(steamvr_bin_dir().join(exec_fname("vrpathreg"))).output()?;
+    let output = Command::new(steamvr_bin_dir()?.join(exec_fname("vrpathreg"))).output()?;
     let output = String::from_utf8_lossy(&output.stdout);
 
     let dirs = regex::Regex::new(r"\t([^\t\r\n]*)")?

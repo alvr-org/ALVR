@@ -17,3 +17,6 @@ zip = '^0.5.5'
 
 [target.'cfg(not(windows))'.dependencies]
 termion = '^1.5'
+
+[target.'cfg(windows)'.dependencies]
+winreg = '^0.7.0'

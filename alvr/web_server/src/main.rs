@@ -170,7 +170,7 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             server_handshake_packet.web_gui_url[0..host_address_bytes.len()]
                 .copy_from_slice(host_address_bytes);
 
-            process::launch_steamvr();
+            process::launch_steamvr().ok();
 
             Some(server_handshake_packet)
             // None

@@ -9,7 +9,6 @@ VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	: m_pD3DRender(pD3DRender)
 	, m_nFrame(0)
 	, m_Listener(listener)
-	, m_useNV12(true)
 	, m_codec(Settings::Instance().m_codec)
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)
@@ -29,12 +28,8 @@ void VideoEncoderNVENC::Initialize()
 	//
 
 	NV_ENC_BUFFER_FORMAT format = NV_ENC_BUFFER_FORMAT_ABGR;
-	if (m_useNV12) {
-		format = NV_ENC_BUFFER_FORMAT_NV12;
-	}
 
-	LogDriver("Initializing CNvEncoder. Width=%d Height=%d Format=%d (useNV12:%d)", m_renderWidth, m_renderHeight
-		, format, m_useNV12);
+	LogDriver("Initializing CNvEncoder. Width=%d Height=%d Format=%d", m_renderWidth, m_renderHeight, format);
 
 	try {
 		m_NvNecoder = std::make_shared<NvEncoderD3D11>(m_pD3DRender->GetDevice(), m_renderWidth, m_renderHeight, format, 0);

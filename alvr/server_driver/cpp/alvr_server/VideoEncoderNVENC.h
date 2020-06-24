@@ -33,7 +33,6 @@ private:
 
 	std::shared_ptr<ClientConnection> m_Listener;
 
-	const bool m_useNV12;
 	bool mSupportsReferenceFrameInvalidation = false;
 
 	int m_codec;

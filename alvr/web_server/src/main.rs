@@ -264,7 +264,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
         });
 
     let audio_devices_request =
-        warp::path("audio_devices").map(|| reply::json(&audio::output_audio_device_names().ok()));
+        warp::path("audio_devices").map(|| reply::json(&audio::output_audio_devices().ok()));
 
     warp::serve(
         index_request

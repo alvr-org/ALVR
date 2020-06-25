@@ -115,7 +115,7 @@ void AudioCapture::OpenDevice(const std::string &id) {
 	
 	hr = pMMDeviceEnumerator->GetDevice(ToWstring(id).c_str(), &m_pMMDevice);
 	if (FAILED(hr)) {
-		throw MakeException("Could not find a device id %ls. hr = 0x%08x", id.c_str(), hr);
+		throw MakeException("Could not find a device id %s. hr = 0x%08x", id.c_str(), hr);
 	}
 }
 

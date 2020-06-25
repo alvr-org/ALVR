@@ -81,5 +81,9 @@
      display: none;
  }
 
+.lobibox-notify.notify-mini {
+    margin-right: 10px;
+}
+
 
 

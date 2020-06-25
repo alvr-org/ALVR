@@ -208,7 +208,16 @@ define([
                 return { "title": level, "msg": line };
             } else {
                 //TODO: line could contain additional info for the msg
-                return { "title": i18nNotifications[idObject.id + ".title"], "msg": i18nNotifications[idObject.id + ".msg"] };
+
+                if (i18nNotifications[idObject.id + ".title"] !== undefined) {
+                    return { "title": i18nNotifications[idObject.id + ".title"], "msg": i18nNotifications[idObject.id + ".msg"] };
+                } else {
+                    console.log("Notification with additional info: ", idObject.id)
+                    return { "title": level, "msg": idObject.id + ": " + line };
+                }
+
+
+
             }
         }
 
@@ -238,7 +247,7 @@ define([
 
             }
         }
-   
+
         function updateStatistics(statistics) {
             clearTimeout(timeoutHandler);
             $("#connectionCard").hide();

@@ -81,9 +81,9 @@ define([
             });
 
             //set default as current audio device if empty
-            if (current === "") {
+            if (current.trim() === "") {           
                 target.val(audio_devices.default);
-                target.change();
+                storeParam(target);
             }
 
             //move selected audio device to top of list

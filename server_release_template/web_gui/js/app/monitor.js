@@ -165,7 +165,7 @@ define([
             $("#trustedClientsDiv").append(client);
             $(document).ready(() => {
                 $("#trustedClient_" + id + " button").click(() => {                  
-                    alvrSettings.updateClientTrustState(sessionListIndex, "availableUntrusted");                
+                    alvrSettings.removeClient(sessionListIndex);                
                 })
             });
         }

@@ -28,6 +28,11 @@ define([
             storeSession();
         }
 
+        this.removeClient = function (sessionListIndex) {
+            session.lastClients.splice(sessionListIndex, 1);
+            storeSession();
+        }
+
         function init() {
 
 

@@ -84,13 +84,16 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
                     });
 
             if let Some(known_client_ref) = maybe_known_client_ref {
+                known_client_ref.last_update_ms_since_epoch = now_ms as _;
+
                 if matches!(
                     known_client_ref.state,
-                    ClientConnectionState::UnavailableTrusted
+                    ClientConnectionState::AvailableUntrusted
                 ) {
-                    known_client_ref.state = ClientConnectionState::AvailableTrusted
+                    return None;
+                } else {
+                    known_client_ref.state = ClientConnectionState::AvailableTrusted;
                 }
-                known_client_ref.last_update_ms_since_epoch = now_ms as _;
             } else {
                 session_desc_ref.last_clients.push(ClientConnectionDesc {
                     state: ClientConnectionState::AvailableUntrusted,
@@ -173,7 +176,6 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             process::launch_steamvr().ok();
 
             Some(server_handshake_packet)
-            // None
         } else {
             None
         }

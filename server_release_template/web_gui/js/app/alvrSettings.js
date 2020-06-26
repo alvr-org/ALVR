@@ -41,7 +41,6 @@ define([
 
             addChangeListener();
             printUnusedi18n();
-
         }
 
         function setVideoOptions() {
@@ -68,7 +67,7 @@ define([
 
             bitrate.change((ev) => {
                 bufferSize.val(bitrate.val() * 2 * 1000);
-                storeParam(bufferSize);          
+                storeParam(bufferSize);
 
                 //set default reset value to value defined by bitrate
                 var def = bufferSize.parent().find("i[default]");
@@ -79,7 +78,7 @@ define([
                 storeParam(throttleBitrate);
 
                 def = throttleBitrate.parent().find("i[default]");
-                def.attr("default", throttleBitrate.val());  
+                def.attr("default", throttleBitrate.val());
 
             });
 
@@ -183,7 +182,14 @@ define([
                 } else if (el.prop("type") == "radio") {
                     val = el.attr("value");
                 } else {
-                    val = Number.parseFloat(el.val());
+                    const numericType = el.attr("numericType");
+                    if (numericType == "float") {
+                        val = Number.parseFloat(el.val());   
+                        el.val(val); //input number could have been parsed and altered                   
+                    } else if (numericType == "integer") {
+                        val = Number.parseInt(el.val());
+                        el.val(val); //input number could have been parsed and altered     
+                    }
                 }
             }
             id = id.replace("_root_", "");
@@ -210,7 +216,7 @@ define([
                 }
             });
 
-            _.set(session.settingsCache, finalPath, val);
+            _.set(session.settingsCache, finalPath, val);         
 
             updateSession();
         }
@@ -443,7 +449,7 @@ define([
                     if (parentType == "choice" || parentType == "array") {
                         path = path.replace("_" + name, "");
                     }
-                    addNumericType(element, path, name, advanced, node);
+                    addNumericType(element, path, name, advanced, node, node);
                     break;
 
                 case "boolean":
@@ -619,24 +625,23 @@ define([
             switch (type) {
                 case "slider":
                     base += `<div class="rangeValue" id="${path}_${name}_label">[${node.content.default}]</div>${getHelpReset(name, path, node.content.default)}
-            <input id="${path}_${name}" type="range" min="${node.content.min}" 
+            <input numericType="${node.type}" id="${path}_${name}" type="range" min="${node.content.min}" 
             max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"  >`;
                     break;
 
                 case "upDown":
                 case "updown":
-                    base += `<input id="${path}_${name}" type="number" min="${node.content.min}" 
+                    base += `<input numericType="${node.type}" id="${path}_${name}" type="number" min="${node.content.min}" 
             max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"> ${getHelpReset(name, path, node.content.default)}`;
                     break;
 
                 case "textbox":
-                    base += ` <input id="${path}_${name}"  type="text" min="${node.content.min}" guiType="numeric" 
+                    base += ` <input numericType="${node.type}" id="${path}_${name}"  type="text" min="${node.content.min}" guiType="numeric" 
             max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}" > ${getHelpReset(name, path, node.content.default)}`;
                     break;
 
                 default:
                     console.log("numeric type was: ", type)
-
 
             }
 

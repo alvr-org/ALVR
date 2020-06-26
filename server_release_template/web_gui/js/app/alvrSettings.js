@@ -9,7 +9,7 @@ define([
     "text!app/templates/revertConfirm.html",
 
 
-], function (schema, session, audio_devices, _, i18n,revertI18n, revertConfirm) {
+], function (schema, session, audio_devices, _, i18n, revertI18n, revertConfirm) {
     return function () {
         var advanced = false;
         var updating = false;
@@ -36,14 +36,15 @@ define([
 
             //special case for audio devices
             setDeviceList();
-            setVideoScale();
+            setVideoOptions();
+
 
             addChangeListener();
             printUnusedi18n();
 
         }
 
-        function setVideoScale() {
+        function setVideoOptions() {
             const el = $("#_root_video_resolutionDropdown");
             const targetWidth = $("#_root_video_renderResolution_absolute_width");
             const targetHeight = $("#_root_video_renderResolution_absolute_height");
@@ -61,6 +62,22 @@ define([
                 scale.trigger("input");
             });
 
+            const bitrate = $("#_root_video_encodeBitrateMbs");
+            const bufferSize = $("#_root_connection_clientRecvBufferSize");
+
+            bitrate.change((ev) => {
+                bufferSize.val(bitrate.val() * 2 * 1000);
+                storeParam(bufferSize);
+
+                //set default reset value to value defined by bitrate
+                const def = bufferSize.parent().find("i[default]");
+                def.attr("default", bufferSize.val());
+
+            });
+
+            //set default reset buffer size according to bitrate
+            const def = bufferSize.parent().find("i[default]");
+            def.attr("default", bitrate.val() * 2 * 1000);
         }
 
         function setDeviceList() {
@@ -72,16 +89,18 @@ define([
             } catch (err) {
                 console.err("Layout of settings changed, audio devices can not be added. Please report this bug!");
             }
+
+
             audio_devices.list.forEach(device => {
-                let name = device;
-                if (device === audio_devices.default) {
-                    name = "(default) " + device;
+                let name = device[1];
+                if (device[0] === audio_devices.default) {
+                    name = "(default) " + device[1];
                 }
-                el.append(`<option value="${device}"> ${name}  </option>`)
+                el.append(`<option value="${device[0]}"> ${name}  </option>`)
             });
 
             //set default as current audio device if empty
-            if (current.trim() === "") {           
+            if (current.trim() === "") {
                 target.val(audio_devices.default);
                 storeParam(target);
             }
@@ -664,8 +683,8 @@ define([
         function showConfirmDialog(defaultVal) {
             return new Promise((resolve, reject) => {
                 var compiledTemplate = _.template(revertConfirm);
-                         revertI18n.settingDefault = defaultVal;
-                
+                revertI18n.settingDefault = defaultVal;
+
                 var template = compiledTemplate(revertI18n);
                 $("#confirmModal").remove();
                 $("body").append(template);

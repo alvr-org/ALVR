@@ -30,27 +30,27 @@
                 <table id="statisticsTable">
                     <tr>
                         <td><%= totalPackets%>:</td>
-                        <td><div id="statistic_totalPackets" >0</div></td>
+                        <td><div id="statistic_totalPackets" >0</div> <%= packets%></td>
                     </tr>
                     <tr>
                         <td><%= packetRate%>:</td>
-                        <td><div id="statistic_packetRate" >0</div></td>
+                        <td><div id="statistic_packetRate" >0</div> <%= packetss%></td>
                     </tr>
                     <tr>
                         <td><%= packetsLostTotal%>:</td>
-                        <td><div id="statistic_packetsLostTotal" >0</div></td>
+                        <td><div id="statistic_packetsLostTotal" >0</div> <%= packets%></td>
                     </tr>
                     <tr>
                         <td><%= packetsLostPerSecond%>:</td>
-                        <td><div id="statistic_packetsLostPerSecond">0</div> /s</td>
+                        <td><div id="statistic_packetsLostPerSecond">0</div> <%= packetss%></td>
                     </tr>
                     <tr>
                         <td><%= totalSent%>:</td>
-                        <td><div id="statistic_totalSent">0</div></td>
+                        <td><div id="statistic_totalSent">0</div>Mb</td>
                     </tr>
                     <tr>
                         <td><%= sentRate%>:</td>
-                        <td><div id="statistic_sentRate">0</div> /s</td>
+                        <td><div id="statistic_sentRate">0</div> Mbps</td>
                     </tr>
                     <tr>
                         <td><%= totalLatency%>:</td>
@@ -78,11 +78,11 @@
                     </tr>
                     <tr>
                         <td><%= fecFailureTotal%>:</td>
-                        <td><div id="statistic_fecFailureTotal">0</div></td>
+                        <td><div id="statistic_fecFailureTotal">0</div> <%= packets%></td>
                     </tr>
                     <tr>
                         <td><%= fecFailureInSecond%>:</td>
-                        <td><div id="statistic_fecFailureInSecond">0</div></td>
+                        <td><div id="statistic_fecFailureInSecond">0</div> <%= packetss%></td>
                     </tr>
                     <tr>
                         <td><%= clientFPS%>:</td>

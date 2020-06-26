@@ -64,20 +64,33 @@ define([
 
             const bitrate = $("#_root_video_encodeBitrateMbs");
             const bufferSize = $("#_root_connection_clientRecvBufferSize");
+            const throttleBitrate = $("#_root_connection_throttlingBitrateBits");
 
             bitrate.change((ev) => {
                 bufferSize.val(bitrate.val() * 2 * 1000);
-                storeParam(bufferSize);
+                storeParam(bufferSize);          
 
                 //set default reset value to value defined by bitrate
-                const def = bufferSize.parent().find("i[default]");
+                var def = bufferSize.parent().find("i[default]");
                 def.attr("default", bufferSize.val());
+
+                //50% margin
+                throttleBitrate.val(bitrate.val() * 1000000 * 3 / 2 + 2000000); //2mbit for audio
+                storeParam(throttleBitrate);
+
+                def = throttleBitrate.parent().find("i[default]");
+                def.attr("default", throttleBitrate.val());  
 
             });
 
             //set default reset buffer size according to bitrate
-            const def = bufferSize.parent().find("i[default]");
+            var def = bufferSize.parent().find("i[default]");
             def.attr("default", bitrate.val() * 2 * 1000);
+
+            def = throttleBitrate.parent().find("i[default]");
+            def.attr("default", bitrate.val() * 1000000 * 3 / 2 + 2000000);    //2mbit for audio
+
+
         }
 
         function setDeviceList() {

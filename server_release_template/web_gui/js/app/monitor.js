@@ -1,12 +1,13 @@
 define([
     "text!app/templates/addClientModal.html",
     "text!app/templates/monitor.html",
+    "json!../../session",
     "lib/lodash",
     "i18n!app/nls/monitor",
     "i18n!app/nls/notifications",
     "css!app/templates/monitor.css"
 
-], function (addClientModalTemplate, monitorTemplate, _, i18n, i18nNotifications) {
+], function (addClientModalTemplate, monitorTemplate,session, _, i18n, i18nNotifications) {
     return function (alvrSettings) {
 
         var notificationLevels = [];
@@ -39,7 +40,7 @@ define([
 
         }
 
-        function init() {
+        function init() {           
             var compiledTemplate = _.template(monitorTemplate);
             var template = compiledTemplate(i18n);
 
@@ -161,6 +162,8 @@ define([
 
         function addLogLine(line) {
             var idObject = undefined;
+
+            console.log(line)
 
             //find parts of log line
             var split = line.split(" ");

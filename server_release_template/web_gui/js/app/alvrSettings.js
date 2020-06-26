@@ -9,7 +9,7 @@ define([
     "text!app/templates/revertConfirm.html",
 
 
-], function (schema, session, audio_devices, _, i18n,revertI18n, revertConfirm) {
+], function (schema, session, audio_devices, _, i18n, revertI18n, revertConfirm) {
     return function () {
         var advanced = false;
         var updating = false;
@@ -36,14 +36,14 @@ define([
 
             //special case for audio devices
             setDeviceList();
-            setVideoScale();
+            setVideoOptions();
+
 
             addChangeListener();
             printUnusedi18n();
-
         }
 
-        function setVideoScale() {
+        function setVideoOptions() {
             const el = $("#_root_video_resolutionDropdown");
             const targetWidth = $("#_root_video_renderResolution_absolute_width");
             const targetHeight = $("#_root_video_renderResolution_absolute_height");
@@ -61,6 +61,35 @@ define([
                 scale.trigger("input");
             });
 
+            const bitrate = $("#_root_video_encodeBitrateMbs");
+            const bufferSize = $("#_root_connection_clientRecvBufferSize");
+            const throttleBitrate = $("#_root_connection_throttlingBitrateBits");
+
+            bitrate.change((ev) => {
+                bufferSize.val(bitrate.val() * 2 * 1000);
+                storeParam(bufferSize);
+
+                //set default reset value to value defined by bitrate
+                var def = bufferSize.parent().find("i[default]");
+                def.attr("default", bufferSize.val());
+
+                //50% margin
+                throttleBitrate.val(bitrate.val() * 1000000 * 3 / 2 + 2000000); //2mbit for audio
+                storeParam(throttleBitrate);
+
+                def = throttleBitrate.parent().find("i[default]");
+                def.attr("default", throttleBitrate.val());
+
+            });
+
+            //set default reset buffer size according to bitrate
+            var def = bufferSize.parent().find("i[default]");
+            def.attr("default", bitrate.val() * 2 * 1000);
+
+            def = throttleBitrate.parent().find("i[default]");
+            def.attr("default", bitrate.val() * 1000000 * 3 / 2 + 2000000);    //2mbit for audio
+
+
         }
 
         function setDeviceList() {
@@ -72,16 +101,18 @@ define([
             } catch (err) {
                 console.err("Layout of settings changed, audio devices can not be added. Please report this bug!");
             }
+
+
             audio_devices.list.forEach(device => {
-                let name = device;
-                if (device === audio_devices.default) {
-                    name = "(default) " + device;
+                let name = device[1];
+                if (device[0] === audio_devices.default) {
+                    name = "(default) " + device[1];
                 }
-                el.append(`<option value="${device}"> ${name}  </option>`)
+                el.append(`<option value="${device[0]}"> ${name}  </option>`)
             });
 
             //set default as current audio device if empty
-            if (current.trim() === "") {           
+            if (current.trim() === "") {
                 target.val(audio_devices.default);
                 storeParam(target);
             }
@@ -151,7 +182,14 @@ define([
                 } else if (el.prop("type") == "radio") {
                     val = el.attr("value");
                 } else {
-                    val = Number.parseFloat(el.val());
+                    const numericType = el.attr("numericType");
+                    if (numericType == "float") {
+                        val = Number.parseFloat(el.val());   
+                        el.val(val); //input number could have been parsed and altered                   
+                    } else if (numericType == "integer") {
+                        val = Number.parseInt(el.val());
+                        el.val(val); //input number could have been parsed and altered     
+                    }
                 }
             }
             id = id.replace("_root_", "");
@@ -178,7 +216,7 @@ define([
                 }
             });
 
-            _.set(session.settingsCache, finalPath, val);
+            _.set(session.settingsCache, finalPath, val);         
 
             updateSession();
         }
@@ -411,7 +449,7 @@ define([
                     if (parentType == "choice" || parentType == "array") {
                         path = path.replace("_" + name, "");
                     }
-                    addNumericType(element, path, name, advanced, node);
+                    addNumericType(element, path, name, advanced, node, node);
                     break;
 
                 case "boolean":
@@ -587,24 +625,23 @@ define([
             switch (type) {
                 case "slider":
                     base += `<div class="rangeValue" id="${path}_${name}_label">[${node.content.default}]</div>${getHelpReset(name, path, node.content.default)}
-            <input id="${path}_${name}" type="range" min="${node.content.min}" 
+            <input numericType="${node.type}" id="${path}_${name}" type="range" min="${node.content.min}" 
             max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"  >`;
                     break;
 
                 case "upDown":
                 case "updown":
-                    base += `<input id="${path}_${name}" type="number" min="${node.content.min}" 
+                    base += `<input numericType="${node.type}" id="${path}_${name}" type="number" min="${node.content.min}" 
             max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"> ${getHelpReset(name, path, node.content.default)}`;
                     break;
 
                 case "textbox":
-                    base += ` <input id="${path}_${name}"  type="text" min="${node.content.min}" guiType="numeric" 
+                    base += ` <input numericType="${node.type}" id="${path}_${name}"  type="text" min="${node.content.min}" guiType="numeric" 
             max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}" > ${getHelpReset(name, path, node.content.default)}`;
                     break;
 
                 default:
                     console.log("numeric type was: ", type)
-
 
             }
 
@@ -664,8 +701,8 @@ define([
         function showConfirmDialog(defaultVal) {
             return new Promise((resolve, reject) => {
                 var compiledTemplate = _.template(revertConfirm);
-                         revertI18n.settingDefault = defaultVal;
-                
+                revertI18n.settingDefault = defaultVal;
+
                 var template = compiledTemplate(revertI18n);
                 $("#confirmModal").remove();
                 $("body").append(template);

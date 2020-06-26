@@ -180,7 +180,7 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub recenter_button: u32,
 
-    pub pose_time_offset: u32,
+    pub pose_time_offset: f32,
 
     #[schema(advanced)]
     pub position_offset_left: [f32; 3],
@@ -395,7 +395,7 @@ pub fn settings_cache_default() -> SettingsDefault {
                     trackpad_touch_mode: 29,
                     back_mode: 0,
                     recenter_button: 0,
-                    pose_time_offset: 0,
+                    pose_time_offset: 0.,
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,

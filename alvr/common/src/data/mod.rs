@@ -483,6 +483,7 @@ impl DerefMut for SessionLock<'_> {
 
 impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
+        info!(id: LogId::SessionUpdated);
         save_session(self.session_desc, &self.dir.join(SESSION_FNAME)).ok();
     }
 }

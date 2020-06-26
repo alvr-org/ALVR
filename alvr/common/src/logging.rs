@@ -44,6 +44,7 @@ pub fn show_err<T, E: std::fmt::Display>(res: Result<T, E>) -> Result<T, ()> {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "id", content = "data")]
 pub enum LogId {
+    SessionUpdated,
     SettingsCacheExtrapolationFailed,
     ClientFoundOk,
     ClientFoundInvalid,

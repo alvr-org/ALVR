@@ -20,7 +20,12 @@ define([
 
         this.disableWizard = function () {
             session.setupWizard = false;
-            updateSession();
+            storeSession();
+        }
+
+        this.updateClientTrustState = function (sessionListIndex, state) {
+            session.lastClients[sessionListIndex].state = state;
+            storeSession();
         }
 
         function init() {
@@ -41,6 +46,13 @@ define([
 
             addChangeListener();
             printUnusedi18n();
+        }
+
+        this.updateSession = function (newSession) {
+            updating = true;
+            session = newSession;
+            setProperties(newSession.settingsCache, "_root");
+            updating = false;
         }
 
         function setVideoOptions() {
@@ -66,6 +78,10 @@ define([
             const throttleBitrate = $("#_root_connection_throttlingBitrateBits");
 
             bitrate.change((ev) => {
+                if(updating) {
+                    return;
+                }
+
                 bufferSize.val(bitrate.val() * 2 * 1000);
                 storeParam(bufferSize);
 
@@ -161,6 +177,7 @@ define([
                     var el = $(evt.target);
                     storeParam(el);
                 }
+
             })
         }
 
@@ -184,7 +201,7 @@ define([
                 } else {
                     const numericType = el.attr("numericType");
                     if (numericType == "float") {
-                        val = Number.parseFloat(el.val());   
+                        val = Number.parseFloat(el.val());
                         el.val(val); //input number could have been parsed and altered                   
                     } else if (numericType == "integer") {
                         val = Number.parseInt(el.val());
@@ -216,12 +233,16 @@ define([
                 }
             });
 
-            _.set(session.settingsCache, finalPath, val);         
+            _.set(session.settingsCache, finalPath, val);
 
-            updateSession();
+            storeSession();
         }
 
-        function updateSession() {
+        function storeSession() {
+            if (updating) {                
+                return;
+            }
+
             $.ajax({
                 type: "POST",
                 url: "../../session",

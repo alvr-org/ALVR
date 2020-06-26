@@ -7,7 +7,7 @@ define([
     "i18n!app/nls/notifications",
     "css!app/templates/monitor.css"
 
-], function (addClientModalTemplate, monitorTemplate,session, _, i18n, i18nNotifications) {
+], function (addClientModalTemplate, monitorTemplate, session, _, i18n, i18nNotifications) {
     return function (alvrSettings) {
 
         var notificationLevels = [];
@@ -40,7 +40,7 @@ define([
 
         }
 
-        function init() {           
+        function init() {
             var compiledTemplate = _.template(monitorTemplate);
             var template = compiledTemplate(i18n);
 
@@ -53,11 +53,7 @@ define([
                 logInit();
                 initNotificationLevel();
 
-                //DEBUG
-                addNewClient("Oculus Quest", "192.168.1.223")
-                addNewClient("Oculus Quest", "192.168.1.223")
-                addNewClient("Oculus Quest", "192.168.1.190")
-                ///
+                updateClients();
 
                 $("#showAddClientModal").click(() => {
                     $("#addClientModal").remove();
@@ -78,6 +74,22 @@ define([
                     });
                 })
 
+            });
+        }
+
+        function updateClients() {
+            $("#newClientsDiv").empty();
+            $("#trustedClientsDiv").empty();
+
+
+            session.lastClients.forEach((client, sessionListIndex) => {
+                var type = pack(client.handshakePacket.deviceName);
+
+                if (client.state == "availableUntrusted") {
+                    addNewClient(type, client.address, sessionListIndex);
+                } else if (client.state == "availableTrusted") {
+                    addTrustedClient(type, client.address, sessionListIndex);
+                }
             });
         }
 
@@ -108,7 +120,7 @@ define([
 
         }
 
-        function addNewClient(type, ip) {
+        function addNewClient(type, ip, sessionListIndex) {
             const id = ip.replace(/\./g, '');
 
             if ($("#newClient_" + id).length > 0) {
@@ -127,15 +139,13 @@ define([
 
             $("#newClientsDiv").append(client);
             $(document).ready(() => {
-                $("#newClient_" + id + " button").click(() => {
-                    $("#newClient_" + id).remove();
-                    addTrustedClient(type, ip);
-
+                $("#newClient_" + id + " button").click(() => {         
+                    alvrSettings.updateClientTrustState(sessionListIndex, "availableTrusted");   
                 })
             });
         }
 
-        function addTrustedClient(type, ip) {
+        function addTrustedClient(type, ip, sessionListIndex) {
             const id = ip.replace(/\./g, '');
 
             if ($("#newClient_" + id).length > 0) {
@@ -154,8 +164,8 @@ define([
 
             $("#trustedClientsDiv").append(client);
             $(document).ready(() => {
-                $("#trustedClient_" + id + " button").click(() => {
-                    $("#trustedClient_" + id).remove();
+                $("#trustedClient_" + id + " button").click(() => {                  
+                    alvrSettings.updateClientTrustState(sessionListIndex, "availableUntrusted");                
                 })
             });
         }
@@ -245,6 +255,8 @@ define([
                 case "statistics":
                     updateStatistics(json.content);
                     break;
+                case "sessionUpdated":
+                    updateSession();
                 default:
                     break;
 
@@ -263,6 +275,42 @@ define([
                 $("#connectionCard").show();
                 $("#statisticsCard").hide();
             }, 2000);
+        }
+
+        function updateSession() {           
+            require(["json!session"], (newSession) => {
+                session = newSession;
+                updateClients();
+                alvrSettings.updateSession(session);
+            });
+        }
+
+        function pack(data) {
+            const extraByteMap = [1, 1, 1, 1, 2, 2, 3, 0];
+            var count = data.length;
+            var str = "";
+
+            for (var index = 0; index < count;) {
+                var ch = data[index++];
+                if (ch & 0x80) {
+                    var extra = extraByteMap[(ch >> 3) & 0x07];
+                    if (!(ch & 0x40) || !extra || ((index + extra) > count))
+                        return null;
+
+                    ch = ch & (0x3F >> extra);
+                    for (; extra > 0; extra -= 1) {
+                        var chx = data[index++];
+                        if ((chx & 0xC0) != 0x80)
+                            return null;
+
+                        ch = (ch << 6) | (chx & 0x3F);
+                    }
+                }
+
+                str += String.fromCharCode(ch);
+            }
+
+            return str;
         }
 
         init();

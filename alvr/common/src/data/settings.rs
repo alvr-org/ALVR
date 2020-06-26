@@ -218,7 +218,7 @@ pub struct HeadsetDesc {
     #[schema(advanced)]
     pub registered_device_type: String,
 
-    pub tracking_frame_offset: f32,
+    pub tracking_frame_offset: i32,
 
     #[schema(advanced)]
     pub position_offset: [f32; 3],
@@ -373,7 +373,7 @@ pub fn settings_cache_default() -> SettingsDefault {
             manufacturer_name: "Oculus".into(),
             render_model_name: "generic_hmd".into(),
             registered_device_type: "oculus/1WMGH000XX0000".into(),
-            tracking_frame_offset: 0.,
+            tracking_frame_offset: 0,
             position_offset: [0., 0., 0.],
             use_tracking_reference: false,
             force_3dof: false,

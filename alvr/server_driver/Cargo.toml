@@ -14,8 +14,7 @@ serde_json = '^1.0.53'
 fern = '^0.6.0'
 alvr_common = { path = '../common' }
 alvr_xtask = { path = '../xtask' }
-lazy_static = '^1.4'
-lazy-static-include = '^2.2'
+lazy-static-include = '^2.3'
 
 [build-dependencies]
 walkdir = '^2.3'

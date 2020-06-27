@@ -61,13 +61,10 @@ pub fn maybe_kill_web_server() {
 }
 
 pub fn launch_steamvr() -> StrResult {
-    Command::new(
-        steamvr_bin_dir()
-            .map_err(|e| e.to_string())?
-            .join(exec_fname("vrmonitor")),
-    )
-    .spawn()
-    .ok();
+    Command::new("cmd")
+        .args(&["/C", "start", "steam://run/250820"])
+        .spawn()
+        .ok();
 
     Ok(())
 }

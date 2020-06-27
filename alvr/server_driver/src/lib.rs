@@ -7,7 +7,6 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_common::*;
 use alvr_xtask::*;
-use lazy_static::lazy_static;
 use lazy_static_include::*;
 use std::{
     ffi::{c_void, CStr, CString},

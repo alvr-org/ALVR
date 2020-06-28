@@ -158,7 +158,7 @@ void OvrContext::destroy(JNIEnv *env) {
     env->DeleteGlobalRef(mServerConnection);
 
     delete[] micBuffer;
-
+    delete[] m_GuardianPoints;
 
 }
 
@@ -496,10 +496,7 @@ void OvrContext::sendTrackingInfo(JNIEnv *env_, jobject udpReceiverThread) {
     env_->CallVoidMethod(udpReceiverThread, mServerConnection_send, reinterpret_cast<jlong>(&info),
                          static_cast<jint>(sizeof(info)));
 
-
-
-
-
+    checkShouldSyncGuardian();
 }
 
 // Called TrackingThread. So, we can't use this->env.
@@ -593,6 +590,8 @@ void OvrContext::onResume() {
     if(mMicHandle && mStreamMic) {
         ovr_Microphone_Start(mMicHandle);
     }
+
+    checkShouldSyncGuardian();
 }
 
 void OvrContext::onPause() {
@@ -1200,6 +1199,104 @@ bool OvrContext::getButtonDown() {
     return ret;
 }
 
+void OvrContext::sendGuardianInfo(JNIEnv *env_, jobject udpReceiverThread) {
+    if (m_ShouldSyncGuardian) {
+        if (!prepareGuardianData()) {
+            m_ShouldSyncGuardian = false;
+            return;
+        }
+
+        GuardianSyncStart packet;
+        packet.type = ALVR_PACKET_TYPE_GUARDIAN_SYNC_START;
+        packet.timestamp = m_GuardianTimestamp;
+        packet.totalPointCount = m_GuardianPointCount;
+
+        ovrPosef spacePose = vrapi_LocateTrackingSpace(Ovr, VRAPI_TRACKING_SPACE_LOCAL_FLOOR);
+        memcpy(&packet.standingPosRotation, &spacePose.Orientation, sizeof(TrackingQuat));
+        memcpy(&packet.standingPosPosition, &spacePose.Position, sizeof(TrackingVector3));
+
+        ovrVector3f bboxScale;
+        vrapi_GetBoundaryOrientedBoundingBox(Ovr, &spacePose /* dummy variable */, &bboxScale);
+        packet.playAreaSize.x = 2.0f * bboxScale.x;
+        packet.playAreaSize.y = 2.0f * bboxScale.z;
+
+        env_->CallVoidMethod(udpReceiverThread, mServerConnection_send,
+                             reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
+    } else if (m_GuardianSyncing) {
+        GuardianSegmentData packet;
+        packet.type = ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA;
+        packet.timestamp = m_GuardianTimestamp;
+
+        uint32_t segmentIndex = m_AckedGuardianSegment + 1;
+        packet.segmentIndex = segmentIndex;
+        uint32_t remainingPoints = m_GuardianPointCount - segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE;
+        size_t countToSend = remainingPoints > ALVR_GUARDIAN_SEGMENT_SIZE ? ALVR_GUARDIAN_SEGMENT_SIZE : remainingPoints;
+
+        memcpy(&packet.points, m_GuardianPoints + segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE, sizeof(TrackingVector3) * countToSend);
+
+        env_->CallVoidMethod(udpReceiverThread, mServerConnection_send,
+                             reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
+    }
+}
+
+void OvrContext::onGuardianSyncAck(uint64_t timestamp) {
+    if (timestamp != m_GuardianTimestamp) {
+        return;
+    }
+
+    m_ShouldSyncGuardian = false;
+    m_GuardianSyncing = true;
+}
+
+void OvrContext::onGuardianSegmentAck(uint64_t timestamp, uint32_t segmentIndex) {
+    if (timestamp != m_GuardianTimestamp || segmentIndex != m_AckedGuardianSegment + 1) {
+        return;
+    }
+
+    m_AckedGuardianSegment = segmentIndex;
+    uint32_t segments = m_GuardianPointCount / ALVR_GUARDIAN_SEGMENT_SIZE;
+    if (m_GuardianPointCount % ALVR_GUARDIAN_SEGMENT_SIZE > 0) {
+        segments++;
+    }
+
+    if (m_AckedGuardianSegment >= segments - 1) {
+        m_GuardianSyncing = false;
+    }
+}
+
+void OvrContext::checkShouldSyncGuardian() {
+    int recenterCount = vrapi_GetSystemStatusInt(&java, VRAPI_SYS_STATUS_RECENTER_COUNT);
+    if (recenterCount <= m_LastHMDRecenterCount) {
+        return;
+    }
+
+    m_ShouldSyncGuardian = true;
+    m_GuardianSyncing = false;
+    m_GuardianTimestamp = getTimestampUs();
+    delete [] m_GuardianPoints;
+    m_GuardianPoints = nullptr;
+    m_AckedGuardianSegment = -1;
+
+    m_LastHMDRecenterCount = recenterCount;
+}
+
+bool OvrContext::prepareGuardianData() {
+    if (m_GuardianPoints != nullptr) {
+        return false;
+    }
+
+    vrapi_GetBoundaryGeometry(Ovr, 0, &m_GuardianPointCount, nullptr);
+
+    if (m_GuardianPointCount <= 0) {
+        return false;
+    }
+
+    m_GuardianPoints = new ovrVector3f[m_GuardianPointCount];
+    vrapi_GetBoundaryGeometry(Ovr, m_GuardianPointCount, &m_GuardianPointCount, m_GuardianPoints);
+
+    return true;
+}
+
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_com_polygraphene_alvr_OvrContext_initializeNative(JNIEnv *env, jobject instance,
@@ -1268,6 +1365,14 @@ Java_com_polygraphene_alvr_OvrContext_sendTrackingInfoNative(JNIEnv *env, jobjec
                                                               jobject udpReceiverThread
                                                              ) {
         ((OvrContext *) handle)->sendTrackingInfo(env, udpReceiverThread);
+}
+
+// Called from TrackingThread
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_polygraphene_alvr_OvrContext_sendGuardianInfoNative(JNIEnv *env, jobject instance,
+                                                             jlong handle, jobject udpReceiverThread) {
+    ((OvrContext *) handle)->sendGuardianInfo(env, udpReceiverThread);
 }
 
 // Called from TrackingThread
@@ -1384,4 +1489,20 @@ Java_com_polygraphene_alvr_OvrContext_getButtonDownNative(JNIEnv *env, jobject i
                                                           jlong handle) {
 
     return static_cast<jboolean>(((OvrContext *) handle)->getButtonDown());
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_polygraphene_alvr_OvrContext_onGuardianSyncAckNative(JNIEnv *env,
+                                                              jobject instance, jlong handle,
+                                                              jlong timestamp) {
+    ((OvrContext *) handle)->onGuardianSyncAck(static_cast<uint64_t>(timestamp));
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_polygraphene_alvr_OvrContext_onGuardianSegmentAckNative(JNIEnv *env, jobject instance, jlong handle,
+                                                                 jlong timestamp, jint segmentIndex) {
+    ((OvrContext *) handle)->onGuardianSegmentAck(static_cast<uint64_t>(timestamp),
+                                                  static_cast<uint32_t>(segmentIndex));
 }

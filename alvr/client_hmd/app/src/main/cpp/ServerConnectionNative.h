@@ -97,6 +97,8 @@ private:
     jmethodID mOnChangeSettingsMethodID;
     jmethodID mOnDisconnectedMethodID;
     jmethodID mOnHapticsFeedbackID;
+    jmethodID mOnGuardianSyncAckID;
+    jmethodID mOnGuardianSegmentAckID;
 
     //
     // Send buffer

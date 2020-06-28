@@ -3,7 +3,7 @@
 #include <openvr.h>
 
 inline void MakeTransformFromVecQuat(const TrackingVector3 &p, const TrackingQuat &q, std::shared_ptr<vr::HmdMatrix34_t> result)
-{	
+{
 	float sqw = q.w * q.w;
 	float sqx = q.x * q.x;
 	float sqy = q.y * q.y;
@@ -35,11 +35,15 @@ inline void MakeTransformFromVecQuat(const TrackingVector3 &p, const TrackingQua
 ChaperoneUpdater::ChaperoneUpdater()
 {
 	m_Transform = std::make_shared<vr::HmdMatrix34_t>();
+
+	this->Start();
 }
 
 ChaperoneUpdater::~ChaperoneUpdater()
 {
 	delete[] m_ChaperonePoints;
+	m_Exiting = true;
+	m_ChaperoneDataReady.Set();
 }
 
 void ChaperoneUpdater::ResetData(uint64_t timestamp, uint32_t pointCount)
@@ -47,13 +51,10 @@ void ChaperoneUpdater::ResetData(uint64_t timestamp, uint32_t pointCount)
 	m_Timestamp = timestamp;
 	m_TotalPointCount = pointCount;
 
+	std::unique_lock<std::mutex> chapDataLock(m_ChaperoneDataMtx);
 	delete[] m_ChaperonePoints;
 	m_ChaperonePoints = new vr::HmdVector2_t[pointCount];
-
-	for (int i = 0; i < pointCount; ++i) {
-		m_ChaperonePoints[i].v[0] = 0;
-		m_ChaperonePoints[i].v[1] = 0;
-	}
+	chapDataLock.unlock();
 
 	m_SegmentCount = pointCount / ALVR_GUARDIAN_SEGMENT_SIZE;
 	if (pointCount % ALVR_GUARDIAN_SEGMENT_SIZE > 0)
@@ -95,26 +96,43 @@ bool ChaperoneUpdater::MaybeCommitData()
 		return false;
 	}
 
-	vr::EVRInitError error;
-	vr::VR_Init(&error, vr::VRApplication_Utility);
-
-	if (error != vr::VRInitError_None) {
-		//Error("Failed to init OpenVR client to update Chaperone boundary! Error: %d", error);
-		// TODO: logging
-		return false;
-	}
-
-	vr::VRChaperoneSetup()->RoomSetupStarting();
-	vr::VRChaperoneSetup()->SetWorkingPerimeter(m_ChaperonePoints, m_TotalPointCount);
-	vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(m_Transform.get());
-	vr::VRChaperoneSetup()->SetWorkingSeatedZeroPoseToRawTrackingPose(m_Transform.get());
-	vr::VRChaperoneSetup()->SetWorkingPlayAreaSize(m_PlayArea.x, m_PlayArea.y);
-	vr::VRChaperoneSetup()->CommitWorkingCopy(vr::EChaperoneConfigFile_Live);
-
-	vr::VR_Shutdown();
+	m_ChaperoneDataReady.Set();
 
 	m_CommitDone = true;
 	return true;
+}
+
+void ChaperoneUpdater::Run()
+{
+	while (!m_Exiting)
+	{
+		m_ChaperoneDataReady.Wait();
+		if (m_Exiting) {
+			break;
+		}
+
+		vr::EVRInitError error;
+		vr::VR_Init(&error, vr::VRApplication_Utility);
+
+		if (error != vr::VRInitError_None) {
+			//Error("Failed to init OpenVR client to update Chaperone boundary! Error: %d", error);
+			// TODO: logging
+			continue;
+		}
+
+		vr::VRChaperoneSetup()->RoomSetupStarting();
+
+		std::unique_lock<std::mutex> chapDataLock(m_ChaperoneDataMtx);
+		vr::VRChaperoneSetup()->SetWorkingPerimeter(m_ChaperonePoints, m_TotalPointCount);
+		chapDataLock.unlock();
+
+		vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(m_Transform.get());
+		vr::VRChaperoneSetup()->SetWorkingSeatedZeroPoseToRawTrackingPose(m_Transform.get());
+		vr::VRChaperoneSetup()->SetWorkingPlayAreaSize(m_PlayArea.x, m_PlayArea.y);
+		vr::VRChaperoneSetup()->CommitWorkingCopy(vr::EChaperoneConfigFile_Live);
+
+		vr::VR_Shutdown();
+	}
 }
 
 uint64_t ChaperoneUpdater::GetDataTimestamp()

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <stdint.h>
+#include "threadtools.h"
 #include "packet_types.h"
 
 namespace vr {
@@ -11,7 +13,7 @@ namespace vr {
 	struct HmdMatrix34_t;
 }
 
-class ChaperoneUpdater {
+class ChaperoneUpdater : public CThread {
 public:
 	ChaperoneUpdater();
 	~ChaperoneUpdater();
@@ -21,6 +23,8 @@ public:
 	void SetSegment(uint32_t segmentIndex, const TrackingVector3 *points);
 
 	bool MaybeCommitData();
+
+	virtual void Run();
 
 	uint64_t GetDataTimestamp();
 	uint32_t GetTotalPointCount();
@@ -34,4 +38,9 @@ private:
 	uint32_t m_TotalPointCount = 0;
 	uint32_t m_SegmentCount = 0;
 	bool m_CommitDone = true;
+
+	bool m_Exiting = false;
+
+	CThreadEvent m_ChaperoneDataReady;
+	std::mutex m_ChaperoneDataMtx;
 };

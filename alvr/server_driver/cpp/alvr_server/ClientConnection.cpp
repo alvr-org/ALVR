@@ -8,8 +8,9 @@ ClientConnection::ClientConnection()
 	memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
 	InitializeCriticalSection(&m_CS);
 
-	m_Statistics = std::make_shared<Statistics>();
-	m_MicPlayer  = std::make_shared<MicPlayer>();
+	m_Statistics       = std::make_shared<Statistics>();
+	m_MicPlayer	       = std::make_shared<MicPlayer>();
+	m_ChaperoneUpdater = std::make_shared<ChaperoneUpdater>();
 
 	m_Poller.reset(new Poller());
 
@@ -388,6 +389,56 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 
 		m_MicPlayer->playAudio( (char*)frame->micBuffer , sizeof(int16_t)  *  frame->outputBufferNumElements);
 	
+	}
+	else if (type == ALVR_PACKET_TYPE_GUARDIAN_SYNC_START && len >= sizeof(GuardianSyncStart)) {
+		if (!m_Socket->IsLegitClient(addr)) {
+			LogDriver("Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
+			return;
+		}
+
+		auto* gsync = (GuardianSyncStart*)buf;
+
+		if (gsync->timestamp <= m_ChaperoneUpdater->GetDataTimestamp()) {
+			return; // Ignore old data
+		}
+
+		GuardianSyncStartAck ack;
+		ack.type = ALVR_PACKET_TYPE_GUARDIAN_SYNC_ACK;
+		ack.timestamp = gsync->timestamp;
+		m_Socket->Send((char*)&ack, sizeof(ack), 0);
+
+		Debug("Starting Guardian sync - total points: %i", gsync->totalPointCount);
+
+		m_ChaperoneUpdater->ResetData(gsync->timestamp, gsync->totalPointCount);
+		m_ChaperoneUpdater->SetTransform(gsync->standingPosPosition, gsync->standingPosRotation, gsync->playAreaSize);
+	}
+	else if (type == ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA && len >= sizeof(GuardianSegmentData)) {
+		if (!m_Socket->IsLegitClient(addr)) {
+			LogDriver("Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
+			return;
+		}
+
+		auto* gsegment = (GuardianSegmentData*)buf;
+
+		if (gsegment->timestamp != m_ChaperoneUpdater->GetDataTimestamp()) {
+			return; // Ignore old data
+		}
+
+		GuardianSegmentAck ack;
+		ack.type = ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_ACK;
+		ack.timestamp = gsegment->timestamp;
+		ack.segmentIndex = gsegment->segmentIndex;
+		m_Socket->Send((char*)&ack, sizeof(ack), 0);
+
+		Debug("Received Guardian sync segment - index: %i", gsegment->segmentIndex);
+
+		m_ChaperoneUpdater->SetSegment(gsegment->segmentIndex, gsegment->points);
+
+		if (gsegment->segmentIndex >= m_ChaperoneUpdater->GetSegmentCount() - 1) {
+			if (m_ChaperoneUpdater->MaybeCommitData()) {
+				Info("Synced Guardian data to SteamVR Chaperone.");
+			}
+		}
 	}
 }
 

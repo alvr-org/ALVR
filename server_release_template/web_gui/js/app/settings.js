@@ -327,7 +327,9 @@ define([
                         addDropdown(element, path, name, advanced)
                         break;
                     case "suppressFrameDrop":
+                    case "disableThrottling":
                         addBooleanType(element, path, name, advanced, {content: {default:false}});
+                        break;
 
                     default:
                         console.log("Unhandled node without content. Should be implemented as special case:", name);

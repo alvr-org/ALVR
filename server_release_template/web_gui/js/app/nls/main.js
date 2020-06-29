@@ -1,6 +1,6 @@
 define({
     "root": {
-        "title": "ALVR-NEXT",
+        "title": "ALVR",
         "monitor": "Monitor",
         "settings": "Settings",   
         "about": "About",

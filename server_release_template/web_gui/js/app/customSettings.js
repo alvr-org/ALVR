@@ -12,6 +12,7 @@ define([
             setVideoOptions();
             setBitrateOptions();
             setSuppressFrameDrop();
+            setDisableThrottling();
         }
 
         function setSuppressFrameDrop() {
@@ -21,7 +22,7 @@ define([
             suppress.unbind();
 
             suppress.parent().find(".helpReset").remove();
-            suppress.after(alvrSettings.getHelpReset("suppressFrameDrop", "_root_connection", true));
+            suppress.after(alvrSettings.getHelpReset("suppressFrameDrop", "_root_connection", false));
 
 
             var updating = false;
@@ -41,15 +42,56 @@ define([
             });
 
             suppress.change((ev) => {
-                if (alvrSettings.isUpdating()  || updating ) {
+                if (alvrSettings.isUpdating() || updating) {
                     return;
                 }
                 if (suppress.prop("checked")) {
                     queue.val(5);
                 } else {
                     queue.val(1);
-                }   
-                alvrSettings.storeParam(queue);             
+                }
+                alvrSettings.storeParam(queue);
+            });
+        }
+
+        function setDisableThrottling() {
+            const disableThrottling = $("#_root_connection_disableThrottling");
+            const throttleBitrate = $("#_root_connection_throttlingBitrateBits");
+            const bitrate = $("#_root_video_encodeBitrateMbs");
+
+            disableThrottling.parent().addClass("special");
+            disableThrottling.unbind();
+
+            disableThrottling.parent().find(".helpReset").remove();
+            disableThrottling.after(alvrSettings.getHelpReset("disableThrottling", "_root_connection", false));
+
+            var updating = false;
+            var updateCheckbox = function () {
+                updating = true;
+                if (throttleBitrate.val() == 0) {
+                    disableThrottling.prop("checked", true);
+                } else {
+                    disableThrottling.prop("checked", false);
+                }
+                updating = false;
+            }
+            updateCheckbox();
+
+            throttleBitrate.change((ev) => {
+                updateCheckbox();
+            });
+
+
+            disableThrottling.change((ev) => {
+                if (alvrSettings.isUpdating() || updating) {
+                    return;
+                }
+                if (disableThrottling.prop("checked")) {
+                    throttleBitrate.val(0);
+                } else {
+                    throttleBitrate.val(bitrate.val() * 1000000 * 3 / 2 + 2000000); //2mbit for audio
+                }
+                alvrSettings.storeParam(throttleBitrate);
             });
         }
 
@@ -124,8 +166,8 @@ define([
                 }
 
                 //force scale mode
-                $("#_root_video_renderResolution_scale-choice-").prop("checked", true);   
-                alvrSettings.storeParam( $("#_root_video_renderResolution_scale-choice-") , true);         
+                $("#_root_video_renderResolution_scale-choice-").prop("checked", true);
+                alvrSettings.storeParam($("#_root_video_renderResolution_scale-choice-"), true);
 
                 alvrSettings.storeSession();
             });
@@ -136,6 +178,7 @@ define([
             const bitrate = $("#_root_video_encodeBitrateMbs");
             const bufferSize = $("#_root_connection_clientRecvBufferSize");
             const throttleBitrate = $("#_root_connection_throttlingBitrateBits");
+            const disableThrottling = $("#_root_connection_disableThrottling");
 
             bitrate.unbind();
 
@@ -154,13 +197,18 @@ define([
                 def.attr("default", bufferSize.val());
 
                 //50% margin
-                throttleBitrate.val(bitrate.val() * 1000000 * 3 / 2 + 2000000); //2mbit for audio
+                if (disableThrottling.prop("checked")) {
+                    throttleBitrate.val(0);
+                } else {
+                    throttleBitrate.val(bitrate.val() * 1000000 * 3 / 2 + 2000000); //2mbit for audio
+                }
+
                 alvrSettings.storeParam(throttleBitrate, true);
 
                 def = throttleBitrate.parent().find("i[default]");
                 def.attr("default", throttleBitrate.val());
 
-                
+
 
                 alvrSettings.storeSession();
 

@@ -218,8 +218,10 @@ define({
         "_root_extra_notificationLevel_debug-choice-.name": "Debug",
         "_root_extra_excludeNotificationsWithoutId.name": "Exclude Notifications without Id",
         "_root_extra_excludeNotificationsWithoutId.description": "Don't show notifications that don't have an Id",
-
-
+        "_root_connection_disableThrottling.name" : "Disable throttling",
+        "_root_connection_disableThrottling.description" :"Disables the throttling. Send data as fast as possible",
+        "_root_connection_suppressFrameDrop.name": "Suppress frame drops",
+        "_root_connection_suppressFrameDrop.description": "Try to suppress frame drops",
     },
     "de-de": true
 });

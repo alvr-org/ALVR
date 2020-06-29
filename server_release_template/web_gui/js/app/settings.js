@@ -2,218 +2,72 @@
 define([
     "json!../../settings-schema",
     "json!../../session",
-    "json!../../audio_devices",
+
+    "app/customSettings",
     "lib/lodash",
     "i18n!app/nls/settings",
     "i18n!app/nls/revert",
     "text!app/templates/revertConfirm.html",
 
 
-], function (schema, session, audio_devices, _, i18n, revertI18n, revertConfirm) {
+], function (schema, session, CustomSettings, _, i18n, revertI18n, revertConfirm) {
     return function () {
+        var self = this;
+
         var advanced = false;
         var updating = false;
+        var customSettings = new CustomSettings(self);
 
-        const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
+      
         var index = 0;
         const usedi18n = {};
 
-        this.disableWizard = function () {
+        self.disableWizard = function () {
             session.setupWizard = false;
-            storeSession();
+            self.storeSession();
         }
 
-        this.updateClientTrustState = function (sessionListIndex, state) {
+        self.updateClientTrustState = function (sessionListIndex, state) {
             session.lastClients[sessionListIndex].state = state;
-            storeSession();
+            self.storeSession();
         }
 
-        this.removeClient = function (sessionListIndex) {
+        self.removeClient = function (sessionListIndex) {
             session.lastClients.splice(sessionListIndex, 1);
-            storeSession();
+            self.storeSession();
         }
 
         function init() {
 
-
             fillNode(schema, "root", 0, $("#configContent"), "", undefined);
             updateSwitchContent();
 
-
             setProperties(session.settingsCache, "_root");
 
-            //special case for audio devices
-            setDeviceList();
-            setVideoOptions();
+            toggleAdvanced();         
+            addChangeListener();
 
-            toggleAdvanced();
+            //special
+            customSettings.setCustomSettings();
+
             addListeners();
             addHelpTooltips();
-            addChangeListener();
             printUnusedi18n();
         }
 
-        this.updateSession = function (newSession) {
+        self.updateSession = function (newSession) {
             updating = true;
             session = newSession;
             setProperties(newSession.settingsCache, "_root");
             updating = false;
         }
 
-        function setVideoOptions() {
-            const el = $("#_root_video_resolutionDropdown");
-            el.after(getHelpReset("resolutionDropdown", "_root_video", "100"));
-            el.parent().addClass("special");
-
-            const targetWidth = $("#_root_video_renderResolution_absolute_width");
-            const targetHeight = $("#_root_video_renderResolution_absolute_height");
-
-            const scale = $("#_root_video_renderResolution_scale");
-
-            const useScale = $("#_root_video_renderResolution_scale-choice-").prop("checked");
-
-            video_scales.forEach(scale => {
-                el.append(`<option value="${scale}"> ${scale}% </option>`);
-            });
-            el.append(`<option value="custom"> ${i18n.customVideoScale}</option>`);
-
-            var absWidth;
-            var absHeight;
-
-            var updateDropdown = function () {
-                if (useScale) {
-                    if (video_scales.indexOf(scale.val() * 100) != -1) {
-                        el.val(scale.val() * 100);
-                    } else {
-                        el.val("custom");
-                    }
-                } else if (session.lastClients.length > 0) {
-
-                    //TODO: always custom or try to determine scale?
-
-                    absWidth = session.lastClients[0].handshakePacket.renderWidth;
-                    absHeight = session.lastClients[0].handshakePacket.renderHeight;
-
-                    var factor = targetWidth.val() / absWidth;
-
-                    if (video_scales.indexOf(factor * 100) != -1) {
-                        el.val(factor * 100);
-                    } else {
-                        el.val("custom");
-                    }
-
-                } else {
-                    //always custom
-                    el.val("custom");
-                }
-            }
-            updateDropdown();
-
-            $("#_root_video_renderResolution_absolute_width,#_root_video_renderResolution_absolute_height,#_root_video_renderResolution_scale").change((ev) => {
-                updateDropdown();
-            })
-
-
-            el.change((ev) => {
-                const val = $(ev.target).val();
-                scale.val(val / 100);
-
-                storeParam(scale, true);
-
-                //TODO: set custom res?
-                if (absWidth !== undefined && absHeight !== undefined) {
-                    targetWidth.val(scale * absWidth);
-                    targetHeight.val(scale * absHeight);
-
-                    storeParam(targetWidth, true);
-                    storeParam(targetHeight, true);
-                }
-
-                //force scale mode
-                $("#_root_video_renderResolution_scale-choice-").prop("checked", true);
-                $("#_root_video_renderResolution_scale-choice-").change();
-
-                storeSession();
-            });
-
-
-
-
-            const bitrate = $("#_root_video_encodeBitrateMbs");
-            const bufferSize = $("#_root_connection_clientRecvBufferSize");
-            const throttleBitrate = $("#_root_connection_throttlingBitrateBits");
-
-            bitrate.change((ev) => {
-                if (updating) {
-                    return;
-                }
-
-                bufferSize.val(bitrate.val() * 2 * 1000);
-                storeParam(bufferSize);
-
-                //set default reset value to value defined by bitrate
-                var def = bufferSize.parent().find("i[default]");
-                def.attr("default", bufferSize.val());
-
-                //50% margin
-                throttleBitrate.val(bitrate.val() * 1000000 * 3 / 2 + 2000000); //2mbit for audio
-                storeParam(throttleBitrate);
-
-                def = throttleBitrate.parent().find("i[default]");
-                def.attr("default", throttleBitrate.val());
-
-            });
-
-            //set default reset buffer size according to bitrate
-            var def = bufferSize.parent().find("i[default]");
-            def.attr("default", bitrate.val() * 2 * 1000);
-
-            def = throttleBitrate.parent().find("i[default]");
-            def.attr("default", bitrate.val() * 1000000 * 3 / 2 + 2000000);    //2mbit for audio
-
-
+        self.isUpdating = function () {
+            return updating;
         }
 
-        function setDeviceList() {
-            const el = $("#_root_audio_gameAudio_content_deviceDropdown");
-            el.parent().addClass("special")
-
-            const target = $("#_root_audio_gameAudio_content_device");
-            let current = "";
-            try {
-                current = session.settingsCache.audio.gameAudio.content.device;
-            } catch (err) {
-                console.err("Layout of settings changed, audio devices can not be added. Please report this bug!");
-            }
-
-
-            audio_devices.list.forEach(device => {
-                let name = device[1];
-                if (device[0] === audio_devices.default) {
-                    name = "(default) " + device[1];
-                    el.after(getHelpReset("deviceDropdown", "_root_audio_gameAudio_content", device[0]));
-                }
-                el.append(`<option value="${device[0]}"> ${name}  </option>`)
-            });
-
-            //set default as current audio device if empty
-            if (current.trim() === "") {
-                target.val(audio_devices.default);
-                storeParam(target);
-            }
-
-            //move selected audio device to top of list
-            var $el = $("#_root_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
-            $("#_root_audio_gameAudio_content_deviceDropdown").find('option:eq(0)').before($el);
-
-            //select the current option in dropdown
-            el.val(target.val());
-
-            //add listener to change
-            el.change((ev) => {
-                target.val($(ev.target).val());
-                target.change();
-            })
+        self.getSession = function () {
+            return session;
         }
 
         function printUnusedi18n() {
@@ -244,7 +98,7 @@ define([
             $('.parameter input').change((evt) => {
                 if (!updating) {
                     var el = $(evt.target);
-                    storeParam(el);
+                    self.storeParam(el);
                 }
 
             })
@@ -253,13 +107,13 @@ define([
         function storeAllParams() {
             $('.parameter input').each((index, el) => {
                 console.log(el)
-                storeParam($(el), true);
+                self.storeParam($(el), true);
             })
-            storeSession();
+            self.storeSession();
 
         }
 
-        function storeParam(el, skipStoreSession = false) {
+        self.storeParam = function (el, skipstoreSession = false) {
             var id = el.prop("id");
             var val;
 
@@ -307,12 +161,12 @@ define([
 
             _.set(session.settingsCache, finalPath, val);
 
-            if (!skipStoreSession) {
-                storeSession();
+            if (!skipstoreSession) {
+                self.storeSession();
             }
         }
 
-        function storeSession() {
+        self.storeSession = function () {
             if (updating) {
                 return;
             }
@@ -472,6 +326,9 @@ define([
                     case "resolutionDropdown":
                         addDropdown(element, path, name, advanced)
                         break;
+                    case "suppressFrameDrop":
+                        addBooleanType(element, path, name, advanced, {content: {default:false}});
+
                     default:
                         console.log("Unhandled node without content. Should be implemented as special case:", name);
                         break;
@@ -627,7 +484,7 @@ define([
         function addRadioContainer(element, path, name, advanced, node) {
             var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
-                    ${getI18n(path + "_" + name + "-choice-").name}  ${getHelpReset(name + "_" + node.content.default + "-choice-", path, true)}
+                    ${getI18n(path + "_" + name + "-choice-").name}  ${self.getHelpReset(name + "_" + node.content.default + "-choice-", path, true)}
                 </div>   
                 <div>
                 <form id="${path + '_' + name + '-choice-'}">
@@ -683,7 +540,7 @@ define([
                     <input id="${path}_${name}_enabled" type="checkbox" ${checked} " />
                     <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">
                     ${getI18n(path + "_" + name).name}</a> 
-                    ${getHelpReset(name + "_enabled", path, node.content.defaultEnabled)}
+                    ${self.getHelpReset(name + "_enabled", path, node.content.defaultEnabled)}
                 </div>   
                 <div id="collapse_${index}" class="collapse show">
                     <div class="card-body">
@@ -703,7 +560,7 @@ define([
         function addTextType(element, path, name, advanced, node) {
             element.append(`<div class="parameter ${getAdvancedClass(advanced)}" >     
                         <label for="${path}_${name}">${getI18n(path + "_" + name).name} </label> 
-                        ${getHelpReset(name, path, node.content.default)}
+                        ${self.getHelpReset(name, path, node.content.default)}
                         <input id="${path}_${name}" type="text" value="${node.content.default}" >
                         </input>
                     </div>`);
@@ -711,14 +568,14 @@ define([
 
         function addBooleanType(element, path, name, advanced, node) {
             let checked = "";
-            if (node.content.default) {
+            if (node !== undefined && node.content.default) {
                 checked = "checked";
             }
 
             element.append(`<div class="parameter ${getAdvancedClass(advanced)}" > 
                         <input id="${path}_${name}" type="checkbox" ${checked} />
                         <label for="${path}_${name}">${getI18n(path + "_" + name).name} ${getMinMaxLabel(node)} </label>
-                         ${getHelpReset(name, path, node.content.default)}                         
+                         ${self.getHelpReset(name, path, node.content.default)}                         
                     </div>`);
         }
 
@@ -731,7 +588,7 @@ define([
 
             switch (type) {
                 case "slider":
-                    base += `<div class="rangeValue" id="${path}_${name}_label">[${node.content.default}]</div>${getHelpReset(name, path, node.content.default)}
+                    base += `<div class="rangeValue" id="${path}_${name}_label">[${node.content.default}]</div>${self.getHelpReset(name, path, node.content.default)}
             <input numericType="${node.type}" id="${path}_${name}" type="range" min="${node.content.min}" 
             max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"  >`;
                     break;
@@ -739,12 +596,12 @@ define([
                 case "upDown":
                 case "updown":
                     base += `<input numericType="${node.type}" id="${path}_${name}" type="number" min="${node.content.min}" 
-            max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"> ${getHelpReset(name, path, node.content.default)}`;
+            max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"> ${self.getHelpReset(name, path, node.content.default)}`;
                     break;
 
                 case "textbox":
                     base += ` <input numericType="${node.type}" id="${path}_${name}"  type="text" min="${node.content.min}" guiType="numeric" 
-            max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}" > ${getHelpReset(name, path, node.content.default)}`;
+            max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}" > ${self.getHelpReset(name, path, node.content.default)}`;
                     break;
 
                 default:
@@ -761,7 +618,7 @@ define([
 
 
         //helper
-        function getHelpReset(name, path, defaultVal, postFix = "") {
+        self.getHelpReset = function (name, path, defaultVal, postFix = "") {
             return `<div class="helpReset">
                 <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(name, path)}" ></i>
                 <i class="fa fa-redo fa-lg paramReset" name="${name}${postFix}" path="${path}" default="${defaultVal}")" ></i>
@@ -798,7 +655,7 @@ define([
         }
 
         function getMinMaxLabel(node) {
-            if (node.content.min == null || node.content.max == null) {
+            if (node !== undefined && (node.content.min == null || node.content.max == null)) {
                 return "";
             } else {
                 return `(${node.content.min}-${node.content.max})`

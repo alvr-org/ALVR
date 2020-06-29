@@ -4,7 +4,7 @@ define([
     "lib/lodash",
     "text!app/templates/main.html",
     "i18n!app/nls/main",
-    "app/alvrSettings",
+    "app/settings",
     "app/setupWizard",
     "app/monitor",
     "json!../../session",
@@ -13,7 +13,7 @@ define([
     "css!js/lib/lobibox.min.css"
 
 
-], function ($, bootstrap, _, mainTemplate, i18n, ALVRSettings, SetupWizard, Monitor, session) {
+], function ($, bootstrap, _, mainTemplate, i18n, Settings, SetupWizard, Monitor, session) {
     $(function () {
 
         var compiledTemplate = _.template(mainTemplate);
@@ -23,7 +23,7 @@ define([
         $(document).ready(() => {
             $('#loading').remove();          
 
-            var settings = new ALVRSettings();
+            var settings = new Settings();
             var wizard = new SetupWizard(settings);
             var monitor = new Monitor(settings);
 

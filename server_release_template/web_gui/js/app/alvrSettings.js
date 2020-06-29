@@ -38,9 +38,7 @@ define([
 
             fillNode(schema, "root", 0, $("#configContent"), "", undefined);
             updateSwitchContent();
-            toggleAdvanced();
-            addListeners();
-            addHelpTooltips();
+
 
             setProperties(session.settingsCache, "_root");
 
@@ -48,7 +46,9 @@ define([
             setDeviceList();
             setVideoOptions();
 
-
+            toggleAdvanced();
+            addListeners();
+            addHelpTooltips();
             addChangeListener();
             printUnusedi18n();
         }
@@ -62,28 +62,89 @@ define([
 
         function setVideoOptions() {
             const el = $("#_root_video_resolutionDropdown");
+            el.after(getHelpReset("resolutionDropdown", "_root_video", "100"));
+            el.parent().addClass("special");
+
             const targetWidth = $("#_root_video_renderResolution_absolute_width");
             const targetHeight = $("#_root_video_renderResolution_absolute_height");
 
             const scale = $("#_root_video_renderResolution_scale");
 
+            const useScale = $("#_root_video_renderResolution_scale-choice-").prop("checked");
+
             video_scales.forEach(scale => {
-                el.append(`<option value="${scale}"> ${scale}% </option>`)
+                el.append(`<option value="${scale}"> ${scale}% </option>`);
             });
+            el.append(`<option value="custom"> ${i18n.customVideoScale}</option>`);
+
+            var absWidth;
+            var absHeight;
+
+            var updateDropdown = function () {
+                if (useScale) {
+                    if (video_scales.indexOf(scale.val() * 100) != -1) {
+                        el.val(scale.val() * 100);
+                    } else {
+                        el.val("custom");
+                    }
+                } else if (session.lastClients.length > 0) {
+
+                    //TODO: always custom or try to determine scale?
+
+                    absWidth = session.lastClients[0].handshakePacket.renderWidth;
+                    absHeight = session.lastClients[0].handshakePacket.renderHeight;
+
+                    var factor = targetWidth.val() / absWidth;
+
+                    if (video_scales.indexOf(factor * 100) != -1) {
+                        el.val(factor * 100);
+                    } else {
+                        el.val("custom");
+                    }
+
+                } else {
+                    //always custom
+                    el.val("custom");
+                }
+            }
+            updateDropdown();
+
+            $("#_root_video_renderResolution_absolute_width,#_root_video_renderResolution_absolute_height,#_root_video_renderResolution_scale").change((ev) => {
+                updateDropdown();
+            })
+
 
             el.change((ev) => {
                 const val = $(ev.target).val();
                 scale.val(val / 100);
-                scale.change();
-                scale.trigger("input");
+
+                storeParam(scale, true);
+
+                //TODO: set custom res?
+                if (absWidth !== undefined && absHeight !== undefined) {
+                    targetWidth.val(scale * absWidth);
+                    targetHeight.val(scale * absHeight);
+
+                    storeParam(targetWidth, true);
+                    storeParam(targetHeight, true);
+                }
+
+                //force scale mode
+                $("#_root_video_renderResolution_scale-choice-").prop("checked", true);
+                $("#_root_video_renderResolution_scale-choice-").change();
+
+                storeSession();
             });
+
+
+
 
             const bitrate = $("#_root_video_encodeBitrateMbs");
             const bufferSize = $("#_root_connection_clientRecvBufferSize");
             const throttleBitrate = $("#_root_connection_throttlingBitrateBits");
 
             bitrate.change((ev) => {
-                if(updating) {
+                if (updating) {
                     return;
                 }
 
@@ -115,6 +176,8 @@ define([
 
         function setDeviceList() {
             const el = $("#_root_audio_gameAudio_content_deviceDropdown");
+            el.parent().addClass("special")
+
             const target = $("#_root_audio_gameAudio_content_device");
             let current = "";
             try {
@@ -128,6 +191,7 @@ define([
                 let name = device[1];
                 if (device[0] === audio_devices.default) {
                     name = "(default) " + device[1];
+                    el.after(getHelpReset("deviceDropdown", "_root_audio_gameAudio_content", device[0]));
                 }
                 el.append(`<option value="${device[0]}"> ${name}  </option>`)
             });
@@ -188,11 +252,14 @@ define([
 
         function storeAllParams() {
             $('.parameter input').each((index, el) => {
-                storeParam($(el));
+                console.log(el)
+                storeParam($(el), true);
             })
+            storeSession();
+
         }
 
-        function storeParam(el) {
+        function storeParam(el, skipStoreSession = false) {
             var id = el.prop("id");
             var val;
 
@@ -240,11 +307,13 @@ define([
 
             _.set(session.settingsCache, finalPath, val);
 
-            storeSession();
+            if (!skipStoreSession) {
+                storeSession();
+            }
         }
 
         function storeSession() {
-            if (updating) {                
+            if (updating) {
                 return;
             }
 
@@ -369,6 +438,18 @@ define([
                     $(el).removeClass("advancedHidden");
                 }
             })
+
+            //special cases like device dropdown
+            $("#configContainer .special").each((index, el) => {
+                if (advanced) {
+                    $(el).addClass("advancedHidden");
+
+                } else {
+                    $(el).removeClass("advancedHidden");
+                }
+            })
+
+
 
             if (advanced) {
                 $("#toggleAdvanced i").removeClass("fa-toggle-off");

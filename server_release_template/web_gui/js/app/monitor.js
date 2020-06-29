@@ -183,7 +183,8 @@ define([
                 idObject = line.substring(index1 + 1, index2);
 
                 //TODO: should we log the #{}# object?
-                line = line.substring(index2 + 1, line.length);
+                //line = line.substring(index2 + 1, line.length);
+                line = line.replace(split[0] + " " + split[1], "");
             } else {
 
                 line = line.replace(split[0] + " " + split[1], "");

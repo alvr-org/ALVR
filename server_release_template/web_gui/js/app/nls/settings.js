@@ -1,5 +1,6 @@
 define({
     "root": {
+        "customVideoScale" :"custom",
         "_root_video_tab.name": "Video",
         "_root_video_tab.description": "Video settings",
         "_root_audio_tab.name": "Audio",
@@ -101,7 +102,7 @@ define({
         "_root_audio_gameAudio_enabled.name": "unused",
         "_root_audio_gameAudio_enabled.description": "Enables the streaming of game audio to the HMD",
         "_root_audio_gameAudio_content_deviceDropdown.name": "Select audio device",
-        "_root_audio_gameAudio_content_deviceDropdown.description": "unused",
+        "_root_audio_gameAudio_content_deviceDropdown.description": "Audio device used to capture audio",
         "_root_audio_gameAudio_content_device.name": "Used audio device",
         "_root_audio_gameAudio_content_device.description": "Used audio device for streaming",
         "_root_audio_microphone.name": "Stream microphone",

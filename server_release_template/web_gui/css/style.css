@@ -256,3 +256,7 @@ margin-bottom: 10px;
 #runSetupWizard {
   margin-top: 20px;
 }
+
+.tooltip-inner {
+  white-space:pre-wrap;
+}

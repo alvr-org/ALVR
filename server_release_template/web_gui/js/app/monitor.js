@@ -139,8 +139,8 @@ define([
 
             $("#newClientsDiv").append(client);
             $(document).ready(() => {
-                $("#newClient_" + id + " button").click(() => {         
-                    alvrSettings.updateClientTrustState(sessionListIndex, "availableTrusted");   
+                $("#newClient_" + id + " button").click(() => {
+                    alvrSettings.updateClientTrustState(sessionListIndex, "availableTrusted");
                 })
             });
         }
@@ -164,8 +164,8 @@ define([
 
             $("#trustedClientsDiv").append(client);
             $(document).ready(() => {
-                $("#trustedClient_" + id + " button").click(() => {                  
-                    alvrSettings.removeClient(sessionListIndex);                
+                $("#trustedClient_" + id + " button").click(() => {
+                    alvrSettings.removeClient(sessionListIndex);
                 })
             });
         }
@@ -278,11 +278,18 @@ define([
             }, 2000);
         }
 
-        function updateSession() {           
-            require(["json!session"], (newSession) => {
+        var isUpdating = false;
+        function updateSession() {
+            //ugly hack to avoid loop
+            if (isUpdating) {
+                return;
+            }
+            isUpdating = true; 
+            $.getJSON("session", function (newSession) {              
                 session = newSession;
                 updateClients();
                 alvrSettings.updateSession(session);
+                isUpdating = false;
             });
         }
 

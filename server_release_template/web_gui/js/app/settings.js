@@ -329,6 +329,7 @@ define([
                         break;
                     case "bufferOffset":
                         addNumericType(element, path, name, advanced, { content: { default: 0, gui: "slider" } })
+                        break;
 
                     default:
                         console.log("Unhandled node without content. Should be implemented as special case:", name);

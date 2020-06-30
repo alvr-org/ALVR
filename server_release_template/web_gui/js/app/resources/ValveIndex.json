@@ -1,0 +1,11 @@
+{
+    "trackingSystemName": "indexcontroller",
+    "manufacturerName": "Valve",
+    "modelNumber": "Knuckles",
+    "renderModelNameLeft": "valve_controller_knu_ev2_0_left",
+    "renderModelNameRight": "valve_controller_knu_ev2_0_right",
+    "serialNumber": "ALVR Remote Controller",
+    "ctrlType": "knuckles",
+    "registeredDeviceType": "valve/index_controllerLHR-E217CD00",
+    "inputProfilePath": "{indexcontroller}/input/index_controller_profile.json"
+}

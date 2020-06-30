@@ -1,14 +1,11 @@
-
 define([
     "json!../../settings-schema",
     "json!../../session",
-
     "app/customSettings",
     "lib/lodash",
     "i18n!app/nls/settings",
     "i18n!app/nls/revert",
     "text!app/templates/revertConfirm.html",
-
 
 ], function (schema, session, CustomSettings, _, i18n, revertI18n, revertConfirm) {
     return function () {
@@ -17,8 +14,6 @@ define([
         var advanced = false;
         var updating = false;
         var customSettings = new CustomSettings(self);
-
-      
         var index = 0;
         const usedi18n = {};
 
@@ -44,7 +39,7 @@ define([
 
             setProperties(session.settingsCache, "_root");
 
-            toggleAdvanced();         
+            toggleAdvanced();
             addChangeListener();
 
             //special
@@ -324,11 +319,13 @@ define([
                 switch (name) {
                     case "deviceDropdown":
                     case "resolutionDropdown":
+                    case "headsetEmulationMode":
+                    case "controllerMode":
                         addDropdown(element, path, name, advanced)
                         break;
                     case "suppressFrameDrop":
                     case "disableThrottling":
-                        addBooleanType(element, path, name, advanced, {content: {default:false}});
+                        addBooleanType(element, path, name, advanced, { content: { default: false } });
                         break;
 
                     default:
@@ -617,7 +614,6 @@ define([
                 $("#" + el.target.id + "_label").text("[" + el.target.value + "]")
             });
         }
-
 
         //helper
         self.getHelpReset = function (name, path, defaultVal, postFix = "") {

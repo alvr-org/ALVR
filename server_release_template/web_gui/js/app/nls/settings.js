@@ -222,6 +222,10 @@ define({
         "_root_connection_disableThrottling.description" :"Disables the throttling. Send data as fast as possible",
         "_root_connection_suppressFrameDrop.name": "Suppress frame drops",
         "_root_connection_suppressFrameDrop.description": "Try to suppress frame drops",
+        "_root_headset_headsetEmulationMode.name" :"Headset emulation mode",
+        "_root_headset_headsetEmulationMode.description" : "Emulates different headsets for better compatibility",
+        "_root_headset_controllers_content_controllerMode.name" :"Controller emulation mode",
+        "_root_headset_controllers_content_controllerMode.description" : "Emulates different controller for better compatibility or enables hand tracking"
     },
     "de-de": true
 });

@@ -1,8 +1,12 @@
 define([
     "i18n!app/nls/settings",
     "json!../../audio_devices",
+    "text!app/resources/HTCVive.json",
+    "text!app/resources/OculusRift.json",
+    "text!app/resources/OculusTouch.json",
+    "text!app/resources/ValveIndex.json",
 
-], function (i18n, audio_devices) {
+], function (i18n, audio_devices, vive, rifts, touch, index) {
     return function (alvrSettings) {
         var self = this;
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
@@ -13,6 +17,66 @@ define([
             setBitrateOptions();
             setSuppressFrameDrop();
             setDisableThrottling();
+            setHeadsetEmulation();
+            setControllerEmulation();
+        }
+
+        function setControllerEmulation() {
+            const controller = $("#_root_headset_controllers_content_controllerMode");
+            controller.unbind();
+            controller.after(alvrSettings.getHelpReset("controllerMode", "_root_headset_controllers_content", 0));
+            controller.parent().addClass("special");
+
+            const controllerBase = "#_root_headset_controllers_content_";
+            const controllerMode = $(controllerBase + "modeIdx")
+            const controllerOptions = [JSON.parse(touch), JSON.parse(touch), JSON.parse(index), JSON.parse(index)];
+
+            controller.append(`<option value="0">Oculus Rift S</option>`);
+            controller.append(`<option value="1">Oculus Rift S (no handtracking pinch)</option>`);
+            controller.append(`<option value="2">Valve Index</option>`);
+            controller.append(`<option value="3">Valve Index (no handtracking pinch)</option>`);
+
+            controller.change((ev) => {
+                for (var key in controllerOptions[controller.val()]) {
+                    const target = $(controllerBase + key);
+                    target.val(controllerOptions[controller.val()][key]);
+                    alvrSettings.storeParam(target, true);
+                }
+                controllerMode.val(controller.val());
+                alvrSettings.storeParam(controllerMode, true);
+
+                alvrSettings.storeSession();
+            });
+
+            controller.val(controllerMode.val());
+        }
+
+        function setHeadsetEmulation() {
+            const headset = $("#_root_headset_headsetEmulationMode");
+            headset.unbind();
+            headset.after(alvrSettings.getHelpReset("headsetEmulationMode", "_root_headset", 0));
+            headset.parent().addClass("special");
+
+            const headsetBase = "#_root_headset_";
+            const headsetOptions = [JSON.parse(rifts), JSON.parse(vive)];
+
+            headset.append(`<option value="0">Oculus Rift S</option>`);
+            headset.append(`<option value="1">HTC Vice</option>`);
+
+            headset.change((ev) => {
+                for (var key in headsetOptions[headset.val()]) {
+                    const target = $(headsetBase + key);
+                    target.val(headsetOptions[headset.val()][key]);
+                    alvrSettings.storeParam(target, true);
+                }
+                alvrSettings.storeSession();
+            });
+
+            if ($(headsetBase + "modelNumber").val() == "Oculus Rift S") {
+                headset.val(0);
+            } else {
+                headset.val(1);
+            }
         }
 
         function setSuppressFrameDrop() {
@@ -225,7 +289,7 @@ define([
         function setDeviceList() {
             const el = $("#_root_audio_gameAudio_content_deviceDropdown");
             el.parent().addClass("special")
-            //el.unbind();
+            el.unbind();
 
             const target = $("#_root_audio_gameAudio_content_device");
             let current = "";

@@ -225,7 +225,9 @@ define({
         "_root_headset_headsetEmulationMode.name" :"Headset emulation mode",
         "_root_headset_headsetEmulationMode.description" : "Emulates different headsets for better compatibility",
         "_root_headset_controllers_content_controllerMode.name" :"Controller emulation mode",
-        "_root_headset_controllers_content_controllerMode.description" : "Emulates different controller for better compatibility or enables hand tracking"
+        "_root_headset_controllers_content_controllerMode.description" : "Emulates different controller for better compatibility or enables hand tracking",
+        "_root_connection_bufferOffset.name" : "Buffer offset",
+        "_root_connection_bufferOffset.description" : "Adjusts the receiving buffer of the client. Increase buffer if you encounter lost frames"
     },
     "de-de": true
 });

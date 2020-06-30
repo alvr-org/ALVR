@@ -116,7 +116,7 @@ define([
                     notificationLevels = [];
             }
 
-            console.log("Notification levels are now: ", notificationLevels);
+            //console.log("Notification levels are now: ", notificationLevels);
 
         }
 

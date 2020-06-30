@@ -19,6 +19,41 @@ define([
             setDisableThrottling();
             setHeadsetEmulation();
             setControllerEmulation();
+            setBufferOffset();
+
+        }
+
+        function setBufferOffset() {
+            const bufferOffset = $("#_root_connection_bufferOffset");
+            bufferOffset.unbind();
+            bufferOffset.parent().addClass("special");
+
+            //readd the slider input listener to update the current value
+            bufferOffset.on("input", (el) => {
+                $("#_root_connection_bufferOffset_label").text("[" + el.target.value + "]")
+            });
+
+            bufferOffset.prop("min", "-100");
+            bufferOffset.prop("max", "100");
+            bufferOffset.prop("step", "1");
+
+            const bitrate = $("#_root_video_encodeBitrateMbs");
+            const bufferSize = $("#_root_connection_clientRecvBufferSize");
+
+            bufferOffset.val((bufferSize.val() / 1000) - bitrate.val() * 2);
+            $("#_root_connection_bufferOffset_label").text("[" + bufferOffset.val() + "]")
+
+            bufferOffset.change((ev) => {
+                bufferSize.val(Math.max(bitrate.val() * 2 * 1000 + bufferOffset.val() * 1000, 0));
+
+                console.log("buffer size now", bufferSize.val())
+                alvrSettings.storeParam(bufferSize);
+
+                //set default reset value to value defined by bitrate
+                var def = bufferSize.parent().find("i[default]");
+                def.attr("default", bufferSize.val());
+            });
+
         }
 
         function setControllerEmulation() {
@@ -240,6 +275,7 @@ define([
 
         function setBitrateOptions() {
             const bitrate = $("#_root_video_encodeBitrateMbs");
+            const bufferOffset = $("#_root_connection_bufferOffset");
             const bufferSize = $("#_root_connection_clientRecvBufferSize");
             const throttleBitrate = $("#_root_connection_throttlingBitrateBits");
             const disableThrottling = $("#_root_connection_disableThrottling");
@@ -253,7 +289,7 @@ define([
 
                 alvrSettings.storeParam(bitrate, true);
 
-                bufferSize.val(bitrate.val() * 2 * 1000);
+                bufferSize.val(Math.max(bitrate.val() * 2 * 1000 + bufferOffset.val() * 1000, 0));
                 alvrSettings.storeParam(bufferSize, true);
 
                 //set default reset value to value defined by bitrate

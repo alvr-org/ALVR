@@ -2,6 +2,9 @@
 //#include "Logger.h"
 #include <openvr.h>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 inline void MakeTransformFromVecQuat(const TrackingVector3 &p, const TrackingQuat &q, std::shared_ptr<vr::HmdMatrix34_t> result)
 {
 	float sqw = q.w * q.w;
@@ -87,6 +90,19 @@ void ChaperoneUpdater::SetSegment(uint32_t segmentIndex, const TrackingVector3* 
 	for (int i = 0; i < actualPointCount; ++i) {
 		m_ChaperonePoints[segmentStart + i].v[0] = points[i].x;
 		m_ChaperonePoints[segmentStart + i].v[1] = points[i].z;
+	}
+}
+
+void ChaperoneUpdater::GenerateStandingGuardian(float scale)
+{
+	m_TotalPointCount = ALVR_STANDING_CHAPERONE_POINT_COUNT;
+
+	delete[] m_ChaperonePoints;
+	m_ChaperonePoints = new vr::HmdVector2_t[m_TotalPointCount];
+
+	for (int i = 0; i < m_TotalPointCount; ++i) {
+		double x = i * 2.0 * M_PI / m_TotalPointCount;
+		m_ChaperonePoints[i] = { cosf(x) * scale, sinf(x) * scale };
 	}
 }
 

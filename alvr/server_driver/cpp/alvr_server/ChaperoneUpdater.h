@@ -13,6 +13,8 @@ namespace vr {
 	struct HmdMatrix34_t;
 }
 
+const int ALVR_STANDING_CHAPERONE_POINT_COUNT = 64;
+
 class ChaperoneUpdater : public CThread {
 public:
 	ChaperoneUpdater();
@@ -21,6 +23,7 @@ public:
 	void ResetData(uint64_t timestamp, uint32_t pointCount);
 	void SetTransform(const TrackingVector3& position, const TrackingQuat& rotation, const TrackingVector2& playAreaSize);
 	void SetSegment(uint32_t segmentIndex, const TrackingVector3 *points);
+	void GenerateStandingGuardian(float scale = 0.25f);
 
 	bool MaybeCommitData();
 

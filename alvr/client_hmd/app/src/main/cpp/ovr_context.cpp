@@ -1203,7 +1203,6 @@ void OvrContext::sendGuardianInfo(JNIEnv *env_, jobject udpReceiverThread) {
     if (m_ShouldSyncGuardian) {
         if (!prepareGuardianData()) {
             m_ShouldSyncGuardian = false;
-            return;
         }
 
         GuardianSyncStart packet;
@@ -1244,8 +1243,10 @@ void OvrContext::onGuardianSyncAck(uint64_t timestamp) {
         return;
     }
 
-    m_ShouldSyncGuardian = false;
-    m_GuardianSyncing = true;
+    if (m_ShouldSyncGuardian) {
+        m_GuardianSyncing = true;
+        m_ShouldSyncGuardian = false;
+    }
 }
 
 void OvrContext::onGuardianSegmentAck(uint64_t timestamp, uint32_t segmentIndex) {

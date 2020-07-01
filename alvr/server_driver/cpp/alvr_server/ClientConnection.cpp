@@ -411,6 +411,11 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 
 		m_ChaperoneUpdater->ResetData(gsync->timestamp, gsync->totalPointCount);
 		m_ChaperoneUpdater->SetTransform(gsync->standingPosPosition, gsync->standingPosRotation, gsync->playAreaSize);
+
+		if (gsync->totalPointCount <= 0) {
+			m_ChaperoneUpdater->GenerateStandingGuardian();
+			m_ChaperoneUpdater->MaybeCommitData();
+		}
 	}
 	else if (type == ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA && len >= sizeof(GuardianSegmentData)) {
 		if (!m_Socket->IsLegitClient(addr)) {

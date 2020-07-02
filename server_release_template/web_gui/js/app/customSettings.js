@@ -1,10 +1,11 @@
 define([
     "i18n!app/nls/settings",
     "json!../../audio_devices",
-    "text!app/resources/HTCVive.json",
-    "text!app/resources/OculusRift.json",
-    "text!app/resources/OculusTouch.json",
-    "text!app/resources/ValveIndex.json",
+    "json!app/resources/HTCVive.json",
+    "json!app/resources/OculusRift.json",
+    "json!app/resources/OculusTouch.json",
+    "json!app/resources/ValveIndex.json"
+ 
 
 ], function (i18n, audio_devices, vive, rifts, touch, index) {
     return function (alvrSettings) {
@@ -64,7 +65,7 @@ define([
 
             const controllerBase = "#_root_headset_controllers_content_";
             const controllerMode = $(controllerBase + "modeIdx")
-            const controllerOptions = [JSON.parse(touch), JSON.parse(touch), JSON.parse(index), JSON.parse(index)];
+            const controllerOptions = [touch, touch, index, index];
 
             controller.append(`<option value="0">Oculus Rift S</option>`);
             controller.append(`<option value="1">Oculus Rift S (no handtracking pinch)</option>`);
@@ -93,7 +94,7 @@ define([
             headset.parent().addClass("special");
 
             const headsetBase = "#_root_headset_";
-            const headsetOptions = [JSON.parse(rifts), JSON.parse(vive)];
+            const headsetOptions = [rifts, vive];
 
             headset.append(`<option value="0">Oculus Rift S</option>`);
             headset.append(`<option value="1">HTC Vice</option>`);

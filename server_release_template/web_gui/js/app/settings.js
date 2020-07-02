@@ -27,12 +27,17 @@ define([
             self.storeSession();
         }
 
+        self.pushManualClient = function (descriptor) {
+            session.lastClients.push(descriptor);
+            self.storeSession();
+        }
+
         self.removeClient = function (sessionListIndex) {
             session.lastClients.splice(sessionListIndex, 1);
             self.storeSession();
         }
 
-        function init() {
+        function init() {          
 
             fillNode(schema, "root", 0, $("#configContent"), "", undefined);
             updateSwitchContent();
@@ -99,15 +104,6 @@ define([
             })
         }
 
-        function storeAllParams() {
-            $('.parameter input').each((index, el) => {
-                console.log(el)
-                self.storeParam($(el), true);
-            })
-            self.storeSession();
-
-        }
-
         self.storeParam = function (el, skipstoreSession = false) {
             var id = el.prop("id");
             var val;
@@ -123,9 +119,11 @@ define([
                     const numericType = el.attr("numericType");
                     if (numericType == "float") {
                         val = Number.parseFloat(el.val());
+                        val = clampNumeric(el, val);
                         el.val(val); //input number could have been parsed and altered                   
                     } else if (numericType == "integer") {
                         val = Number.parseInt(el.val());
+                        val = clampNumeric(el, val);
                         el.val(val); //input number could have been parsed and altered     
                     }
                 }
@@ -691,6 +689,15 @@ define([
                     })
                 });
             });
+        }
+
+        function clampNumeric(element, value) {
+            if (element.attr("min") !== "null" && element.attr("max") !== "null") {
+                console.log("clamping", element.attr("min"))
+                return _.clamp(value, element.attr("min"), element.attr("max"))
+            } else {
+                return value;
+            }
         }
 
         function getNumericGuiType(nodeContent) {

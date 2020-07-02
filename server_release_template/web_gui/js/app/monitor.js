@@ -5,9 +5,10 @@ define([
     "lib/lodash",
     "i18n!app/nls/monitor",
     "i18n!app/nls/notifications",
+    "json!app/resources/descriptors/OculusQuest.json",
     "css!app/templates/monitor.css"
 
-], function (addClientModalTemplate, monitorTemplate, session, _, i18n, i18nNotifications) {
+], function (addClientModalTemplate, monitorTemplate, session, _, i18n, i18nNotifications, descriptorQuest) {
     return function (alvrSettings) {
 
         var notificationLevels = [];
@@ -67,7 +68,7 @@ define([
                             //TODO: input validation
                             const type = $("#clientTypeSelect").val();
                             const ip = $("#clientIP").val();
-                            addTrustedClient(type, ip);
+                            manualAddClient(type, ip)
                             $('#addClientModal').modal('hide');
                             $('#addClientModal').remove();
                         })
@@ -75,6 +76,17 @@ define([
                 })
 
             });
+        }
+
+        function manualAddClient(type, ip) {
+            //TODO: input validation
+            var desc; 
+            if(type == "Oculus Quest") {
+                desc = descriptorQuest;
+            }
+
+            desc.address = ip;
+            alvrSettings.pushManualClient(desc);
         }
 
         function updateClients() {
@@ -204,6 +216,7 @@ define([
                         rounded: true,
                         delayIndicator: false,
                         sound: false,
+                        position: "bottom left",
                         title: getI18nNotification(idObject, line, split[1]).title,
                         msg: getI18nNotification(idObject, line, split[1]).msg
                     })
@@ -284,8 +297,8 @@ define([
             if (isUpdating) {
                 return;
             }
-            isUpdating = true; 
-            $.getJSON("session", function (newSession) {              
+            isUpdating = true;
+            $.getJSON("session", function (newSession) {
                 session = newSession;
                 updateClients();
                 alvrSettings.updateSession(session);

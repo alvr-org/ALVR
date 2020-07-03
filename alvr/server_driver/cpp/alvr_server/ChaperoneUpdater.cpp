@@ -147,6 +147,9 @@ void ChaperoneUpdater::Run()
 		vr::VRChaperoneSetup()->SetWorkingPlayAreaSize(m_PlayArea.x, m_PlayArea.y);
 		vr::VRChaperoneSetup()->CommitWorkingCopy(vr::EChaperoneConfigFile_Live);
 
+		// Hide SteamVR Chaperone
+		vr::VRSettings()->SetFloat(vr::k_pch_CollisionBounds_Section, vr::k_pch_CollisionBounds_FadeDistance_Float, 0.0f);
+
 		vr::VR_Shutdown();
 	}
 }

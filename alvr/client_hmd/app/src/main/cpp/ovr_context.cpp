@@ -1201,9 +1201,7 @@ bool OvrContext::getButtonDown() {
 
 void OvrContext::sendGuardianInfo(JNIEnv *env_, jobject udpReceiverThread) {
     if (m_ShouldSyncGuardian) {
-        if (!prepareGuardianData()) {
-            m_ShouldSyncGuardian = false;
-        }
+        prepareGuardianData();
 
         GuardianSyncStart packet;
         packet.type = ALVR_PACKET_TYPE_GUARDIAN_SYNC_START;
@@ -1244,8 +1242,10 @@ void OvrContext::onGuardianSyncAck(uint64_t timestamp) {
     }
 
     if (m_ShouldSyncGuardian) {
-        m_GuardianSyncing = true;
         m_ShouldSyncGuardian = false;
+        if (m_GuardianPointCount > 0) {
+            m_GuardianSyncing = true;
+        }
     }
 }
 
@@ -1289,7 +1289,7 @@ bool OvrContext::prepareGuardianData() {
     vrapi_GetBoundaryGeometry(Ovr, 0, &m_GuardianPointCount, nullptr);
 
     if (m_GuardianPointCount <= 0) {
-        return false;
+        return true;
     }
 
     m_GuardianPoints = new ovrVector3f[m_GuardianPointCount];

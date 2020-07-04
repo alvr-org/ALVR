@@ -1199,8 +1199,15 @@ bool OvrContext::getButtonDown() {
     return ret;
 }
 
+// Called TrackingThread. So, we can't use this->env.
 void OvrContext::sendGuardianInfo(JNIEnv *env_, jobject udpReceiverThread) {
     if (m_ShouldSyncGuardian) {
+        double currentTime = GetTimeInSeconds();
+        if (currentTime - m_LastGuardianSyncTry < ALVR_GUARDIAN_RESEND_CD_SEC) {
+            return; // Don't spam the sync start packet
+        }
+        LOGI("Sending Guardian");
+        m_LastGuardianSyncTry = currentTime;
         prepareGuardianData();
 
         GuardianSyncStart packet;

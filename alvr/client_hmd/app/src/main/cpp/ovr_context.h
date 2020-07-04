@@ -116,6 +116,8 @@ private:
     uint64_t m_GuardianTimestamp = 0;
     uint32_t m_GuardianPointCount = 0;
     ovrVector3f* m_GuardianPoints = nullptr;
+    double m_LastGuardianSyncTry = 0.0;
+
     static const int MAXIMUM_TRACKING_FRAMES = 180;
 
     struct TrackingFrame {

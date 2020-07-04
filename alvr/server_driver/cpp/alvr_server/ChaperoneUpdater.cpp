@@ -93,7 +93,7 @@ void ChaperoneUpdater::SetSegment(uint32_t segmentIndex, const TrackingVector3* 
 	}
 }
 
-void ChaperoneUpdater::GenerateStandingGuardian(float scale)
+void ChaperoneUpdater::GenerateStandingChaperone(float scale)
 {
 	m_TotalPointCount = ALVR_STANDING_CHAPERONE_POINT_COUNT;
 
@@ -104,6 +104,8 @@ void ChaperoneUpdater::GenerateStandingGuardian(float scale)
 		double x = i * 2.0 * M_PI / m_TotalPointCount;
 		m_ChaperonePoints[i] = { cosf(x) * scale, sinf(x) * scale };
 	}
+
+	m_PlayArea = { scale, scale };
 }
 
 bool ChaperoneUpdater::MaybeCommitData()
@@ -112,6 +114,7 @@ bool ChaperoneUpdater::MaybeCommitData()
 		return false;
 	}
 
+	// defer the actual commit to a separate thread
 	m_ChaperoneDataReady.Set();
 
 	m_CommitDone = true;

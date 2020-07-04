@@ -15,6 +15,7 @@ static const char *ALVR_HELLO_PACKET_SIGNATURE = "ALVR";
 
 // Guardian syncing constants
 static const int ALVR_GUARDIAN_SEGMENT_SIZE = 100;
+static const double ALVR_GUARDIAN_RESEND_CD_SEC = 1.0;
 
 static const char *ALVR_VERSION = "12.0.0";
 

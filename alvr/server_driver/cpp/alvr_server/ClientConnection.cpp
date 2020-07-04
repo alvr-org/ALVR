@@ -413,7 +413,7 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		m_ChaperoneUpdater->SetTransform(gsync->standingPosPosition, gsync->standingPosRotation, gsync->playAreaSize);
 
 		if (gsync->totalPointCount <= 0) {
-			m_ChaperoneUpdater->GenerateStandingGuardian();
+			m_ChaperoneUpdater->GenerateStandingChaperone();
 			m_ChaperoneUpdater->MaybeCommitData();
 		}
 	}

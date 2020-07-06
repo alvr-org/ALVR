@@ -1,4 +1,4 @@
-#include "render_utils.h"
+#include "texture.h"
 
 #include "../utils.h"
 
@@ -16,6 +16,7 @@ namespace gl_render_utils {
 
     void Texture::initialize(bool external, GLuint externalHandle, bool oes, uint32_t width,
                              uint32_t height, GLenum format) {
+        mOES = oes;
         mWidth = width;
         mHeight = height;
         mTarget = oes ? GL_TEXTURE_EXTERNAL_OES : GL_TEXTURE_2D;

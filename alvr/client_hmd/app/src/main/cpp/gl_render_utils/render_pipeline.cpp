@@ -27,7 +27,7 @@ namespace gl_render_utils {
     RenderPipeline::RenderPipeline(const std::vector<Texture *> &inputTextures,
                                    const std::string &fragmentShader,
                                    Texture *renderTarget, size_t uniformBlockSize) {
-        Initialize(inputTextures, QUAD_VERTEX_SHADER, fragmentShader, renderTarget,
+        Initialize(inputTextures, QUAD_2D_VERTEX_SHADER, fragmentShader, renderTarget,
                    uniformBlockSize);
     }
 
@@ -103,8 +103,6 @@ namespace gl_render_utils {
             GL(glBindBuffer(GL_UNIFORM_BUFFER, mBlockBuffer));
             GL(glBufferSubData(GL_UNIFORM_BUFFER, 0, mUniformBlockSize, uniformBlockData));
         }
-
-       // LOGE("%d", glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER));
 
         GL(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
     }

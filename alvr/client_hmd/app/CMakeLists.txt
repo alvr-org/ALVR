@@ -26,7 +26,7 @@ add_library( # Sets the name of the library.
              SHARED
 
              # Provides a relative path to your source file(s).
-        src/main/cpp/ServerConnectionNative.cpp
+             src/main/cpp/ServerConnectionNative.cpp
              src/main/cpp/UdpSocket.cpp
              src/main/cpp/nal.cpp
              src/main/cpp/render.cpp
@@ -36,8 +36,9 @@ add_library( # Sets the name of the library.
              src/main/cpp/asset.cpp
              src/main/cpp/gltf_model.cpp
              src/main/cpp/utils.cpp
+             src/main/cpp/gl_render_utils/texture.cpp
              src/main/cpp/gl_render_utils/render_pipeline.cpp
-             src/main/cpp/gl_render_utils/render_utils.cpp
+             src/main/cpp/gl_render_utils/textured_quad.cpp
              ../ALVR-common/reedsolomon/rs.c
              ../ALVR-common/common-utils.cpp
              ../ALVR-common/exception.cpp

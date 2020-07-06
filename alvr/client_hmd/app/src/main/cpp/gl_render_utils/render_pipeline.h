@@ -1,8 +1,17 @@
 #pragma once
 
-#include "render_utils.h"
+#include "texture.h"
 
 namespace gl_render_utils {
+
+    const std::string QUAD_2D_VERTEX_SHADER = R"glsl(
+        #version 300 es
+        out vec2 uv;
+        void main() {
+            uv = vec2(gl_VertexID & 1, gl_VertexID >> 1);
+            gl_Position = vec4((uv - 0.5) * 2., 0, 1);
+        }
+    )glsl";
 
     class RenderPipeline {
     public:

@@ -8,15 +8,6 @@
 
 namespace gl_render_utils {
 
-    const std::string QUAD_VERTEX_SHADER = R"glsl(
-        #version 300 es
-        out vec2 uv;
-        void main() {
-            uv = vec2(gl_VertexID & 1, gl_VertexID >> 1);
-            gl_Position = vec4((uv - 0.5) * 2., 0, 1);
-        }
-    )glsl";
-
     class Texture {
     public:
         Texture(bool oes, uint32_t width = 0, uint32_t height = 0, GLenum format = GL_RGBA);
@@ -32,6 +23,8 @@ namespace gl_render_utils {
 
         GLenum GetTarget() { return mTarget; }
 
+        bool IsOES() { return mOES; }
+
         ~Texture();
 
     private:
@@ -39,6 +32,7 @@ namespace gl_render_utils {
         initialize(bool external, GLuint externalHandle, bool oes, uint32_t width, uint32_t height,
                    GLenum format);
 
+        bool mOES;
         uint32_t mWidth, mHeight;
         GLuint mGLTexture;
         GLenum mTarget;

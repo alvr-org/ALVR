@@ -15,15 +15,15 @@ namespace gl_render_utils {
         Texture(GLuint externalHandle, bool oes, uint32_t width = 0, uint32_t height = 0,
                 GLenum format = GL_RGBA);
 
-        uint32_t GetWidth() { return mWidth; }
+        uint32_t GetWidth() const { return mWidth; }
 
-        uint32_t GetHeight() { return mHeight; }
+        uint32_t GetHeight() const { return mHeight; }
 
-        GLuint GetGLTexture() { return mGLTexture; }
+        GLuint GetGLTexture() const { return mGLTexture; }
 
-        GLenum GetTarget() { return mTarget; }
+        GLenum GetTarget() const { return mTarget; }
 
-        bool IsOES() { return mOES; }
+        bool IsOES() const { return mOES; }
 
         ~Texture();
 

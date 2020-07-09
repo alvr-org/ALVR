@@ -8,9 +8,9 @@ namespace gl_render_utils {
     // Textured quad in 3D. Without transformations, the quad is a square of side 1 centered at the origin.
     class TexturedQuad {
     public:
-        TexturedQuad(Texture *texture, glm::mat4 transform, Texture *renderTarget);
+        TexturedQuad(const Texture *texture, glm::mat4 transform);
 
-        void SetTransform(glm::mat4 transform) {
+        void SetTransform(const glm::mat4 &transform) {
             mTransform = transform;
         }
 
@@ -18,7 +18,7 @@ namespace gl_render_utils {
             mOpacity = opacity;
         }
 
-        void Render(glm::mat4 camera);
+        void Render(const RenderState &renderState, const glm::mat4 &camera) const;
 
     private:
         struct UniformBlock {
@@ -28,7 +28,7 @@ namespace gl_render_utils {
 
         std::unique_ptr<RenderPipeline> mPipeline;
         glm::mat4 mTransform;
-        float mOpacity;
+        float mOpacity = 1;
     };
 
 }

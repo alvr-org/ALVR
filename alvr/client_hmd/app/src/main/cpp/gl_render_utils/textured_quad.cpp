@@ -5,6 +5,7 @@
 #include <string>
 
 using namespace std;
+using namespace glm;
 
 const string QUAD_3D_VERTEX_SHADER = R"glsl(
     #version 300 es
@@ -42,21 +43,20 @@ const string QUAD_3D_FRAGMENT_SHADER_FORMAT = R"glsl(
 )glsl";
 
 namespace gl_render_utils {
-    TexturedQuad::TexturedQuad(Texture *texture, glm::mat4 transform, Texture *renderTarget) {
+    TexturedQuad::TexturedQuad(const Texture *texture, mat4 transform) {
         mTransform = transform;
 
         bool samplerString = texture->IsOES() ? "samplerExternalOES" : "sampler2D";
         string fragmentShader = string_format(QUAD_3D_FRAGMENT_SHADER_FORMAT, samplerString);
 
-        mPipeline.reset(
-                new RenderPipeline({texture}, QUAD_3D_VERTEX_SHADER, fragmentShader, renderTarget,
-                                   sizeof(UniformBlock)));
+        mPipeline.reset(new RenderPipeline({texture}, QUAD_3D_VERTEX_SHADER, fragmentShader,
+                                           sizeof(UniformBlock)));
     }
 
-    void TexturedQuad::Render(glm::mat4 camera) {
+    void TexturedQuad::Render(const RenderState &renderState, const mat4 &camera) const {
         auto mvp = camera * mTransform;
         UniformBlock block = {mvp, mOpacity};
 
-        mPipeline->Render(&block);
+        mPipeline->Render(renderState, &block);
     }
 }

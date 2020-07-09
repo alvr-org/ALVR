@@ -22,7 +22,7 @@ public:
 
     void Initialize(FFRData ffrData);
 
-    void Render();
+    void Render() const;
 
     gl_render_utils::Texture *GetOutputTexture() { return mExpandedTexture.get(); }
 
@@ -30,6 +30,6 @@ private:
 
     gl_render_utils::Texture *mInputSurface;
     std::unique_ptr<gl_render_utils::Texture> mExpandedTexture;
-
-    std::vector<std::unique_ptr<gl_render_utils::RenderPipeline>> mPipelines;
+    std::unique_ptr<gl_render_utils::RenderState> mExpandedTextureState;
+    std::unique_ptr<gl_render_utils::RenderPipeline> mDecompressSlicesPipeline;
 };

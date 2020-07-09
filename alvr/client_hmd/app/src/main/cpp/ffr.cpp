@@ -5,10 +5,11 @@
 
 #include "utils.h"
 
+using namespace std;
 using namespace gl_render_utils;
 
 namespace {
-    const std::string FFR_COMMON_SHADER_FORMAT = R"glsl(
+    const string FFR_COMMON_SHADER_FORMAT = R"glsl(
         #version 300 es
         #extension GL_OES_EGL_image_external_essl3 : enable
         precision highp float;
@@ -117,7 +118,7 @@ namespace {
         }
     )glsl";
 
-    const std::string UNDISTORT_FRAGMENT_SHADER = R"glsl(
+    const string UNDISTORT_FRAGMENT_SHADER = R"glsl(
         uniform samplerExternalOES tex0;
         in vec2 uv;
         out vec4 color;
@@ -128,7 +129,7 @@ namespace {
         }
     )glsl";
 
-    const std::string SHARPENING_FRAGMENT_SHADER = R"glsl(
+    const string SHARPENING_FRAGMENT_SHADER = R"glsl(
         const float SHARPEN_STRENGTH = 0.5;
         const vec2 SHARPEN_SCALE = SHARPEN_STRENGTH / vec2(TARGET_RESOLUTION);
 
@@ -152,7 +153,7 @@ namespace {
         }
     )glsl";
 
-    const std::string DECOMPRESS_SLICES_FRAGMENT_SHADER = R"glsl(
+    const string DECOMPRESS_SLICES_FRAGMENT_SHADER = R"glsl(
         const vec2 PADDING = 1. / vec2(TARGET_RESOLUTION);
 
         uniform samplerExternalOES tex0;
@@ -231,7 +232,7 @@ namespace {
     }
 
     float CalcOptimalDimensionForSlicing(float scale, float originalDim) {
-        return (1. + 3. * scale) / 4. * originalDim + 6;
+        return (1.f + 3.f * scale) / 4.f * originalDim + 6.f;
     }
 
     struct FoveationVars {
@@ -267,7 +268,7 @@ namespace {
         float focusPositionY = topHalfHeight / (topHalfHeight + bottomHalfHeight);
         focusPositionY += data.foveationVerticalOffset;
         focusPositionY = Align4Normalized(focusPositionY, targetEyeHeight);
-        
+
         //calculate foveation scale such as the "area" of the foveation region remains equal to (mFoveationStrengthMean)^2
         // solve for {foveationScaleX, foveationScaleY}:
         // /{ foveationScaleX * foveationScaleY = (mFoveationStrengthMean)^2
@@ -294,8 +295,8 @@ namespace {
         optimizedEyeHeight = CalcOptimalDimensionForSlicing(foveationScaleY, targetEyeHeight);
 
         // round the frame dimensions to a number of pixel multiple of 32 for the encoder
-        auto optimizedEyeWidthAligned = (uint32_t)ceil(optimizedEyeWidth / 32.f) * 32;
-        auto optimizedEyeHeightAligned = (uint32_t)ceil(optimizedEyeHeight / 32.f) * 32;
+        auto optimizedEyeWidthAligned = (uint32_t) ceil(optimizedEyeWidth / 32.f) * 32;
+        auto optimizedEyeHeightAligned = (uint32_t) ceil(optimizedEyeHeight / 32.f) * 32;
 
         return {data.eyeWidth, data.eyeHeight, optimizedEyeWidthAligned, optimizedEyeHeightAligned,
                 focusPositionX, focusPositionY, foveationScaleX, foveationScaleY,
@@ -317,24 +318,22 @@ void FFR::Initialize(FFRData ffrData) {
                                             fv.foveationScaleX, fv.foveationScaleY,
                                             fv.boundStartX, fv.boundStartY,
                                             fv.distortedWidth, fv.distortedHeight);
-    mExpandedTexture.reset(new Texture(false, ffrData.eyeWidth * 2, ffrData.eyeHeight, GL_RGB8));
-
 
     if (ffrData.enabled) {
-        auto decompressSlicesShaderStr = ffrCommonShaderStr + DECOMPRESS_SLICES_FRAGMENT_SHADER;
-        auto decompressSlicesPipeline = new RenderPipeline(
-                {mInputSurface}, decompressSlicesShaderStr, mExpandedTexture.get());
+        mExpandedTexture.reset(
+                new Texture(false, ffrData.eyeWidth * 2, ffrData.eyeHeight, GL_RGB8));
+        mExpandedTextureState = make_unique<RenderState>(mExpandedTexture.get());
 
-        mPipelines.push_back(std::unique_ptr<RenderPipeline>(decompressSlicesPipeline));
+        auto decompressSlicesShaderStr = ffrCommonShaderStr + DECOMPRESS_SLICES_FRAGMENT_SHADER;
+        mDecompressSlicesPipeline = unique_ptr<RenderPipeline>(
+                new RenderPipeline({mInputSurface}, QUAD_2D_VERTEX_SHADER,
+                                   decompressSlicesShaderStr));
     } else {
         mExpandedTexture.reset(mInputSurface);
     }
-
-
 }
 
-void FFR::Render() {
-    for (auto &p : mPipelines) {
-        p->Render();
-    }
+void FFR::Render() const {
+    mExpandedTextureState->Clear();
+    mDecompressSlicesPipeline->Render(*mExpandedTextureState);
 }

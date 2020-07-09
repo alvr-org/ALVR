@@ -89,7 +89,7 @@ static void GLCheckErrors(const char* file, int line) {
     }
 }
 
-#define GL(func)        func; GLCheckErrors(__FILE__, __LINE__ );
+#define GL(func)        func; GLCheckErrors(__FILE__, __LINE__ )
 #else // CHECK_GL_ERRORS
 #define GL(func)        func;
 #endif // CHECK_GL_ERRORS

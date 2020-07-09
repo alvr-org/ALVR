@@ -1,51 +1,55 @@
 #include "render_pipeline.h"
 #include "../utils.h"
 
-namespace {
+using namespace std;
 
-    GLuint createShader(GLenum type, const std::string &shaderStr) {
-        auto shader = glCreateShader(type);
-        auto *shaderCStr = shaderStr.c_str();
-        GL(glShaderSource(shader, 1, &shaderCStr, nullptr));
+GLuint createShader(GLenum type, const string &shaderStr) {
+    auto shader = glCreateShader(type);
+    auto *shaderCStr = shaderStr.c_str();
+    GL(glShaderSource(shader, 1, &shaderCStr, nullptr));
 
-        GLint compiled;
-        GL(glCompileShader(shader));
-        GL(glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled));
-        if (!compiled) {
-            char errorLog[1000];
-            GL(glGetShaderInfoLog(shader, sizeof(errorLog), nullptr, errorLog));
-            LOGE("SHADER COMPILATION ERROR: %s\nSHADER:\n%s", errorLog, shaderCStr);
-        }
-        return shader;
+    GLint compiled;
+    GL(glCompileShader(shader));
+    GL(glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled));
+    if (!compiled) {
+        char errorLog[1000];
+        GL(glGetShaderInfoLog(shader, sizeof(errorLog), nullptr, errorLog));
+        LOGE("SHADER COMPILATION ERROR: %s\nSHADER:\n%s", errorLog, shaderCStr);
     }
+    return shader;
 }
 
 namespace gl_render_utils {
 
+    RenderState::RenderState(const Texture *renderTarget) {
+        mRenderTarget = renderTarget;
+        mDepthTarget = make_unique<Texture>(false, renderTarget->GetWidth(),
+                                            renderTarget->GetHeight(), GL_DEPTH_COMPONENT32F);
+
+        GL(glGenFramebuffers(1, &mFrameBuffer));
+        GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mFrameBuffer));
+        GL(glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                  mRenderTarget->GetTarget(), renderTarget->GetGLTexture(), 0));
+        GL(glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                                  mDepthTarget->GetTarget(), mDepthTarget->GetGLTexture(), 0));
+    }
+
+    RenderState::~RenderState() {
+        GL(glDeleteFramebuffers(1, &mFrameBuffer));
+    }
+
+    void RenderState::Clear() const {
+        GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mFrameBuffer));
+        GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    }
+
     GLuint RenderPipeline::mBindingPointCounter = 0;
 
-    RenderPipeline::RenderPipeline(const std::vector<Texture *> &inputTextures,
-                                   const std::string &fragmentShader,
-                                   Texture *renderTarget, size_t uniformBlockSize) {
-        Initialize(inputTextures, QUAD_2D_VERTEX_SHADER, fragmentShader, renderTarget,
-                   uniformBlockSize);
-    }
-
-    RenderPipeline::RenderPipeline(const std::vector<Texture *> &inputTextures,
-                                   const std::string &vertexShader,
-                                   const std::string &fragmentShader,
-                                   Texture *renderTarget, size_t uniformBlockSize) {
-        Initialize(inputTextures, vertexShader, fragmentShader, renderTarget, uniformBlockSize);
-    }
-
-    void RenderPipeline::Initialize(const std::vector<Texture *> &inputTextures,
-                                    const std::string &vertexShaderStr,
-                                    const std::string &fragmentShaderStr,
-                                    Texture *renderTarget, size_t uniformBlockSize) {
-        mRenderTarget = renderTarget;
-
-        mVertexShader = createShader(GL_VERTEX_SHADER, vertexShaderStr);
-        mFragmentShader = createShader(GL_FRAGMENT_SHADER, fragmentShaderStr);
+    RenderPipeline::RenderPipeline(const vector<const Texture *> &inputTextures,
+                                   const string &vertexShader, const string &fragmentShader,
+                                   size_t uniformBlockSize) {
+        mVertexShader = createShader(GL_VERTEX_SHADER, vertexShader);
+        mFragmentShader = createShader(GL_FRAGMENT_SHADER, fragmentShader);
 
         mProgram = glCreateProgram();
         GL(glAttachShader(mProgram, mVertexShader));
@@ -63,7 +67,7 @@ namespace gl_render_utils {
         for (size_t i = 0; i < inputTextures.size(); i++) {
             mInputTexturesInfo.push_back(
                     {inputTextures[i],
-                     glGetUniformLocation(mProgram, ("tex" + std::to_string(i)).c_str())});
+                     glGetUniformLocation(mProgram, ("tex" + to_string(i)).c_str())});
         }
 
         mUniformBlockSize = uniformBlockSize;
@@ -75,22 +79,19 @@ namespace gl_render_utils {
             GL(glBindBufferBase(GL_UNIFORM_BUFFER, mBindingPointCounter, mBlockBuffer));
             mBindingPointCounter++;
         }
-
-        GL(glGenFramebuffers(1, &mFrameBuffer));
-        GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mFrameBuffer));
-        GL(glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                                  mRenderTarget->GetGLTexture(), 0));
     }
 
-    void RenderPipeline::Render(const void *uniformBlockData) {
+    void
+    RenderPipeline::Render(const RenderState &renderState, const void *uniformBlockData) const {
         GL(glUseProgram(mProgram));
-        GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mFrameBuffer));
+        GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, renderState.GetFrameBuffer()));
 
         GL(glDisable(GL_SCISSOR_TEST));
-        GL(glDepthMask(GL_FALSE));
-        GL(glDisable(GL_DEPTH_TEST));
-        GL(glDisable(GL_CULL_FACE));
-        GL(glViewport(0, 0, mRenderTarget->GetWidth(), mRenderTarget->GetHeight()));
+        GL(glDepthMask(GL_TRUE));
+        GL(glEnable(GL_CULL_FACE));
+        GL(glEnable(GL_DEPTH_TEST));
+        GL(glViewport(0, 0, renderState.GetRenderTarget()->GetWidth(),
+                      renderState.GetRenderTarget()->GetHeight()));
 
         for (size_t i = 0; i < mInputTexturesInfo.size(); i++) {
             GL(glActiveTexture(GL_TEXTURE0 + i));
@@ -108,8 +109,7 @@ namespace gl_render_utils {
     }
 
     RenderPipeline::~RenderPipeline() {
-        GL(glDeleteFramebuffers(1, &mFrameBuffer));
-        GL(glDeleteBuffers(1, &mBlockBuffer))
+        GL(glDeleteBuffers(1, &mBlockBuffer));
         GL(glDeleteShader(mVertexShader));
         GL(glDeleteShader(mFragmentShader));
         GL(glDeleteProgram(mProgram));

@@ -5,7 +5,7 @@ void _log(const char *format, va_list args, void (*logFn)(const char *))
 	char buf[1024];
 	vsnprintf(buf, sizeof(buf), format, args);
 	logFn(buf);
-	DriverLogVarArgs(format, args);
+	//DriverLogVarArgs(format, args);
 }
 
 void Log(const char *format, ...)

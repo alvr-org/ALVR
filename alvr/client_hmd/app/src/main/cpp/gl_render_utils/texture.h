@@ -10,10 +10,11 @@ namespace gl_render_utils {
 
     class Texture {
     public:
-        Texture(bool oes, uint32_t width = 0, uint32_t height = 0, GLenum format = GL_RGBA);
+        Texture(bool oes, uint32_t width = 0, uint32_t height = 0, GLenum format = GL_RGBA,
+                std::vector<uint8_t> content = {});
 
         Texture(GLuint externalHandle, bool oes, uint32_t width = 0, uint32_t height = 0,
-                GLenum format = GL_RGBA);
+                GLenum format = GL_RGBA, std::vector<uint8_t> content = {});
 
         uint32_t GetWidth() const { return mWidth; }
 
@@ -30,7 +31,7 @@ namespace gl_render_utils {
     private:
         void
         initialize(bool external, GLuint externalHandle, bool oes, uint32_t width, uint32_t height,
-                   GLenum format);
+                   GLenum format, std::vector<uint8_t> &content);
 
         bool mOES;
         uint32_t mWidth, mHeight;

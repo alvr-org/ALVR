@@ -9,7 +9,7 @@ namespace gl_render_utils {
         out vec2 uv;
         void main() {
             uv = vec2(gl_VertexID & 1, gl_VertexID >> 1);
-            gl_Position = vec4((uv - 0.5) * 2., 0.5, 1);
+            gl_Position = vec4((uv - 0.5) * 2., 0, 1);
         }
     )glsl";
 
@@ -32,7 +32,7 @@ namespace gl_render_utils {
     private:
         const Texture *mRenderTarget;
         std::unique_ptr<Texture> mDepthTarget;
-        GLuint mFrameBuffer;
+        GLuint mFrameBuffer = 0;
     };
 
     // Supports rendering a single quad without vertex buffers. The geometry must be defined in the vertex shader.

@@ -319,18 +319,14 @@ void FFR::Initialize(FFRData ffrData) {
                                             fv.boundStartX, fv.boundStartY,
                                             fv.distortedWidth, fv.distortedHeight);
 
-    if (ffrData.enabled) {
-        mExpandedTexture.reset(
-                new Texture(false, ffrData.eyeWidth * 2, ffrData.eyeHeight, GL_RGB8));
-        mExpandedTextureState = make_unique<RenderState>(mExpandedTexture.get());
+    mExpandedTexture.reset(
+            new Texture(false, ffrData.eyeWidth * 2, ffrData.eyeHeight, GL_RGB8));
+    mExpandedTextureState = make_unique<RenderState>(mExpandedTexture.get());
 
-        auto decompressSlicesShaderStr = ffrCommonShaderStr + DECOMPRESS_SLICES_FRAGMENT_SHADER;
-        mDecompressSlicesPipeline = unique_ptr<RenderPipeline>(
-                new RenderPipeline({mInputSurface}, QUAD_2D_VERTEX_SHADER,
-                                   decompressSlicesShaderStr));
-    } else {
-        mExpandedTexture.reset(mInputSurface);
-    }
+    auto decompressSlicesShaderStr = ffrCommonShaderStr + DECOMPRESS_SLICES_FRAGMENT_SHADER;
+    mDecompressSlicesPipeline = unique_ptr<RenderPipeline>(
+            new RenderPipeline({mInputSurface}, QUAD_2D_VERTEX_SHADER,
+                               decompressSlicesShaderStr));
 }
 
 void FFR::Render() const {

@@ -1,66 +1,13 @@
 #include <GLES3/gl3.h>
 #include <GLES2/gl2ext.h>
+#include <memory>
 
 #include "render.h"
 #include "utils.h"
 #include "gltf_model.h"
+#include <glm/gtc/type_ptr.hpp>
 
-static const int NUM_MULTI_SAMPLES = 1;
 Render_EGL egl;
-
-#if !defined( EGL_OPENGL_ES3_BIT_KHR )
-#define EGL_OPENGL_ES3_BIT_KHR		0x0040
-#endif
-
-// EXT_texture_border_clamp
-#ifndef GL_CLAMP_TO_BORDER
-#define GL_CLAMP_TO_BORDER            0x812D
-#endif
-
-#ifndef GL_TEXTURE_BORDER_COLOR
-#define GL_TEXTURE_BORDER_COLOR        0x1004
-#endif
-
-#if !defined( GL_EXT_multisampled_render_to_texture )
-
-typedef void (GL_APIENTRY *PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC)(GLenum target,
-        GLsizei samples,
-GLenum internalformat,
-        GLsizei width,
-GLsizei height);
-
-typedef void (GL_APIENTRY *PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEEXTPROC)(GLenum target,
-        GLenum attachment,
-GLenum textarget,
-        GLuint texture, GLint level,
-        GLsizei samples);
-
-#endif
-
-#if !defined( GL_OVR_multiview )
-static const int GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_NUM_VIEWS_OVR = 0x9630;
-static const int GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_BASE_VIEW_INDEX_OVR = 0x9632;
-static const int GL_MAX_VIEWS_OVR = 0x9631;
-
-typedef void (GL_APIENTRY *PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC)(GLenum target,
-        GLenum attachment,
-GLuint texture, GLint level,
-GLint baseViewIndex,
-        GLsizei numViews);
-
-#endif
-
-#if !defined( GL_OVR_multiview_multisampled_render_to_texture )
-
-typedef void (GL_APIENTRY *PFNGLFRAMEBUFFERTEXTUREMULTISAMPLEMULTIVIEWOVRPROC)(GLenum target,
-        GLenum attachment,
-GLuint texture,
-        GLint level,
-GLsizei samples,
-        GLint baseViewIndex,
-GLsizei numViews);
-
-#endif
 
 /*
 ================================================================================
@@ -76,20 +23,6 @@ typedef struct {
 } OpenGLExtensions_t;
 
 OpenGLExtensions_t glExtensions;
-
-void EglInitExtensions(bool *multi_view) {
-    const char *allExtensions = (const char *) glGetString(GL_EXTENSIONS);
-    if (allExtensions != nullptr) {
-        glExtensions.multi_view = strstr(allExtensions, "GL_OVR_multiview2") &&
-                                  strstr(allExtensions,
-                                         "GL_OVR_multiview_multisampled_render_to_texture");
-
-        glExtensions.EXT_texture_border_clamp =
-                strstr(allExtensions, "GL_EXT_texture_border_clamp") ||
-                strstr(allExtensions, "GL_OES_texture_border_clamp");
-    }
-    *multi_view = glExtensions.multi_view;
-}
 
 static const char *EglErrorString(const EGLint error) {
     switch (error) {
@@ -188,38 +121,6 @@ uniform %s Texture0;
 void main()
 {
     outColor = texture(Texture0, uv);
-}
-)glsl";
-
-static const char FRAGMENT_SHADER_AR[] = R"glsl(
-#extension GL_OES_EGL_image_external_essl3 : enable
-#extension GL_OES_EGL_image_external : enable
-in lowp vec2 uv;
-in lowp vec4 fragmentColor;
-out lowp vec4 outColor;
-uniform samplerExternalOES Texture0;
-uniform %s Texture1;
-uniform lowp float alpha;
-void main()
-{
-    if(alpha > 1.0f){ // Non AR
-        outColor = texture(Texture0, uv);
-    } else if(alpha < -0.5f){ // Completely AR
-        if(uv.x < 0.5f){
-            outColor = texture(Texture1, vec2(uv.x * 2.0f, uv.y));
-        }else{
-            outColor = texture(Texture1, vec2(uv.x * 2.0f - 1.0f, uv.y));
-        }
-    }else{ // VR+AR
-        lowp vec4 arColor;
-        if(uv.x < 0.5f){
-            arColor = texture(Texture1, vec2(uv.x * 2.0f, uv.y));
-        }else{
-            arColor = texture(Texture1, vec2(uv.x * 2.0f - 1.0f, uv.y));
-        }
-        outColor = texture(Texture0, uv) * alpha
-                    + arColor * (1.0f - alpha);
-    }
 }
 )glsl";
 
@@ -441,186 +342,38 @@ void eglDestroy()
 
 #ifdef OVR_SDK
 
-void ovrFramebuffer_Clear(ovrFramebuffer *frameBuffer) {
-    frameBuffer->Width = 0;
-    frameBuffer->Height = 0;
-    frameBuffer->Multisamples = 0;
-    frameBuffer->TextureSwapChainLength = 0;
-    frameBuffer->TextureSwapChainIndex = 0;
-    frameBuffer->UseMultiview = false;
-    frameBuffer->ColorTextureSwapChain = NULL;
-    frameBuffer->DepthBuffers = NULL;
-    frameBuffer->FrameBuffers = NULL;
-}
-
-bool ovrFramebuffer_Create(ovrFramebuffer *frameBuffer, const bool useMultiview,
-                                  const GLenum colorFormat, const int width,
-                                  const int height, const int multisamples) {
-    PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC glRenderbufferStorageMultisampleEXT =
-            (PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC) eglGetProcAddress(
-                    "glRenderbufferStorageMultisampleEXT");
-    PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEEXTPROC glFramebufferTexture2DMultisampleEXT =
-            (PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEEXTPROC) eglGetProcAddress(
-                    "glFramebufferTexture2DMultisampleEXT");
-
-    PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC glFramebufferTextureMultiviewOVR =
-            (PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC) eglGetProcAddress(
-                    "glFramebufferTextureMultiviewOVR");
-    PFNGLFRAMEBUFFERTEXTUREMULTISAMPLEMULTIVIEWOVRPROC glFramebufferTextureMultisampleMultiviewOVR =
-            (PFNGLFRAMEBUFFERTEXTUREMULTISAMPLEMULTIVIEWOVRPROC) eglGetProcAddress(
-                    "glFramebufferTextureMultisampleMultiviewOVR");
-
-    frameBuffer->Width = width;
-    frameBuffer->Height = height;
-    frameBuffer->Multisamples = multisamples;
-    frameBuffer->UseMultiview = (useMultiview && (glFramebufferTextureMultiviewOVR != NULL)) ? true
-                                                                                             : false;
-
+bool ovrFramebuffer_Create(ovrFramebuffer *frameBuffer, const GLenum colorFormat, const int width,
+                            const int height) {
+    const int PREFERRED_SWAPCHAIN_SIZE = 3;
     frameBuffer->ColorTextureSwapChain = vrapi_CreateTextureSwapChain3(
-            frameBuffer->UseMultiview ? VRAPI_TEXTURE_TYPE_2D_ARRAY : VRAPI_TEXTURE_TYPE_2D,
-            colorFormat, width, height, 1, 3);
+            VRAPI_TEXTURE_TYPE_2D, colorFormat, width, height, 1, PREFERRED_SWAPCHAIN_SIZE);
     frameBuffer->TextureSwapChainLength = vrapi_GetTextureSwapChainLength(
             frameBuffer->ColorTextureSwapChain);
-    frameBuffer->DepthBuffers = (GLuint *) malloc(
-            frameBuffer->TextureSwapChainLength * sizeof(GLuint));
-    frameBuffer->FrameBuffers = (GLuint *) malloc(
-            frameBuffer->TextureSwapChainLength * sizeof(GLuint));
-
-    LOG("        frameBuffer->UseMultiview = %d", frameBuffer->UseMultiview);
 
     for (int i = 0; i < frameBuffer->TextureSwapChainLength; i++) {
-        // Create the color buffer texture.
-        const GLuint colorTexture = vrapi_GetTextureSwapChainHandle(
+        const GLuint glRenderTarget = vrapi_GetTextureSwapChainHandle(
                 frameBuffer->ColorTextureSwapChain, i);
-        GLenum colorTextureTarget = frameBuffer->UseMultiview ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
-        GL(glBindTexture(colorTextureTarget, colorTexture));
-        if (glExtensions.EXT_texture_border_clamp) {
-            GL(glTexParameteri(colorTextureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER));
-            GL(glTexParameteri(colorTextureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER));
-            GLfloat borderColor[] = {0.0f, 0.0f, 0.0f, 0.0f};
-            GL(glTexParameterfv(colorTextureTarget, GL_TEXTURE_BORDER_COLOR, borderColor));
-        } else {
-            // Just clamp to edge. However, this requires manually clearing the border
-            // around the layer to clear the edge texels.
-            GL(glTexParameteri(colorTextureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
-            GL(glTexParameteri(colorTextureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-        }
-        GL(glTexParameteri(colorTextureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-        GL(glTexParameteri(colorTextureTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-        GL(glBindTexture(colorTextureTarget, 0));
-
-        if (frameBuffer->UseMultiview) {
-            // Create the depth buffer texture.
-            GL(glGenTextures(1, &frameBuffer->DepthBuffers[i]));
-            GL(glBindTexture(GL_TEXTURE_2D_ARRAY, frameBuffer->DepthBuffers[i]));
-            GL(glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_DEPTH_COMPONENT24, width, height, 2));
-            GL(glBindTexture(GL_TEXTURE_2D_ARRAY, 0));
-
-            // Create the frame buffer.
-            GL(glGenFramebuffers(1, &frameBuffer->FrameBuffers[i]));
-            GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer->FrameBuffers[i]));
-            if (multisamples > 1 && (glFramebufferTextureMultisampleMultiviewOVR != NULL)) {
-                GL(glFramebufferTextureMultisampleMultiviewOVR(GL_DRAW_FRAMEBUFFER,
-                                                               GL_DEPTH_ATTACHMENT,
-                                                               frameBuffer->DepthBuffers[i],
-                                                               0 /* level */,
-                                                               multisamples /* samples */,
-                                                               0 /* baseViewIndex */,
-                                                               2 /* numViews */ ));
-                GL(glFramebufferTextureMultisampleMultiviewOVR(GL_DRAW_FRAMEBUFFER,
-                                                               GL_COLOR_ATTACHMENT0, colorTexture,
-                                                               0 /* level */,
-                                                               multisamples /* samples */,
-                                                               0 /* baseViewIndex */,
-                                                               2 /* numViews */ ));
-            } else {
-                GL(glFramebufferTextureMultiviewOVR(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                                                    frameBuffer->DepthBuffers[i], 0 /* level */,
-                                                    0 /* baseViewIndex */, 2 /* numViews */ ));
-                GL(glFramebufferTextureMultiviewOVR(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                                    colorTexture, 0 /* level */,
-                                                    0 /* baseViewIndex */, 2 /* numViews */ ));
-            }
-
-            GL(GLenum renderFramebufferStatus = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER));
-            GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
-            if (renderFramebufferStatus != GL_FRAMEBUFFER_COMPLETE) {
-                LOGE("Incomplete frame buffer object: %s",
-                     GlFrameBufferStatusString(renderFramebufferStatus));
-                return false;
-            }
-        } else {
-            if (multisamples > 1 && glRenderbufferStorageMultisampleEXT != NULL &&
-                glFramebufferTexture2DMultisampleEXT != NULL) {
-                // Create multisampled depth buffer.
-                GL(glGenRenderbuffers(1, &frameBuffer->DepthBuffers[i]));
-                GL(glBindRenderbuffer(GL_RENDERBUFFER, frameBuffer->DepthBuffers[i]));
-                GL(glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER, multisamples,
-                                                       GL_DEPTH_COMPONENT24, width, height));
-                GL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
-
-                // Create the frame buffer.
-                // NOTE: glFramebufferTexture2DMultisampleEXT only works with GL_FRAMEBUFFER.
-                GL(glGenFramebuffers(1, &frameBuffer->FrameBuffers[i]));
-                GL(glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer->FrameBuffers[i]));
-                GL(glFramebufferTexture2DMultisampleEXT(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                                        GL_TEXTURE_2D, colorTexture, 0,
-                                                        multisamples));
-                GL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
-                                             frameBuffer->DepthBuffers[i]));
-                GL(GLenum renderFramebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER));
-                GL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-                if (renderFramebufferStatus != GL_FRAMEBUFFER_COMPLETE) {
-                    LOGE("Incomplete frame buffer object: %s",
-                         GlFrameBufferStatusString(renderFramebufferStatus));
-                    return false;
-                }
-            } else {
-                // Create depth buffer.
-                GL(glGenRenderbuffers(1, &frameBuffer->DepthBuffers[i]));
-                GL(glBindRenderbuffer(GL_RENDERBUFFER, frameBuffer->DepthBuffers[i]));
-                GL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height));
-                GL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
-
-                // Create the frame buffer.
-                GL(glGenFramebuffers(1, &frameBuffer->FrameBuffers[i]));
-                GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer->FrameBuffers[i]));
-                GL(glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                                             GL_RENDERBUFFER, frameBuffer->DepthBuffers[i]));
-                GL(glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                                          colorTexture, 0));
-                GL(GLenum renderFramebufferStatus = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER));
-                GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
-                if (renderFramebufferStatus != GL_FRAMEBUFFER_COMPLETE) {
-                    LOGE("Incomplete frame buffer object: %s",
-                         GlFrameBufferStatusString(renderFramebufferStatus));
-                    return false;
-                }
-            }
-        }
+        frameBuffer->renderTargets.push_back(std::make_unique<gl_render_utils::Texture>(
+                glRenderTarget, false, width, height));
+        frameBuffer->renderStates.push_back(std::make_unique<gl_render_utils::RenderState>(
+                frameBuffer->renderTargets[i].get()));
     }
 
     return true;
 }
 
 void ovrFramebuffer_Destroy(ovrFramebuffer *frameBuffer) {
-    GL(glDeleteFramebuffers(frameBuffer->TextureSwapChainLength, frameBuffer->FrameBuffers));
-    if (frameBuffer->UseMultiview) {
-        GL(glDeleteTextures(frameBuffer->TextureSwapChainLength, frameBuffer->DepthBuffers));
-    } else {
-        GL(glDeleteRenderbuffers(frameBuffer->TextureSwapChainLength, frameBuffer->DepthBuffers));
-    }
+    frameBuffer->renderStates.clear();
+    frameBuffer->renderTargets.clear();
+    frameBuffer->TextureSwapChainLength = 0;
+    frameBuffer->TextureSwapChainIndex = 0;
+    frameBuffer->ColorTextureSwapChain = nullptr;
     vrapi_DestroyTextureSwapChain(frameBuffer->ColorTextureSwapChain);
-
-    free(frameBuffer->DepthBuffers);
-    free(frameBuffer->FrameBuffers);
-
-    ovrFramebuffer_Clear(frameBuffer);
 }
 
 void ovrFramebuffer_SetCurrent(ovrFramebuffer *frameBuffer) {
     GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                         frameBuffer->FrameBuffers[frameBuffer->TextureSwapChainIndex]));
+            frameBuffer->renderStates[frameBuffer->TextureSwapChainIndex]->GetFrameBuffer()));
 }
 
 void ovrFramebuffer_SetNone() {
@@ -800,8 +553,7 @@ static ovrUniform ProgramUniforms[] =
 static const char *programVersion = "#version 300 es\n";
 
 bool
-ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource,
-                  const bool useMultiview) {
+ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource) {
     GLint r;
 
     LOGI("Compiling shaders.");
@@ -811,11 +563,7 @@ ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fra
         return false;
     }
 
-    const char *vertexSources[3] = {programVersion,
-                                    (useMultiview) ? "#define DISABLE_MULTIVIEW 0\n"
-                                                   : "#define DISABLE_MULTIVIEW 1\n",
-                                    vertexSource
-    };
+    const char *vertexSources[3] = {programVersion, "#define DISABLE_MULTIVIEW 1\n", vertexSource};
     GL(glShaderSource(program->VertexShader, 3, vertexSources, 0));
     GL(glCompileShader(program->VertexShader));
     GL(glGetShaderiv(program->VertexShader, GL_COMPILE_STATUS, &r));
@@ -915,11 +663,9 @@ void ovrProgram_Destroy(ovrProgram *program) {
 // ovrRenderer
 //
 
-void
-ovrRenderer_Create(ovrRenderer *renderer, const bool useMultiview, int width, int height
-        , int SurfaceTextureID, int LoadingTexture, int CameraTexture, bool ARMode, FFRData ffrData) {
-    renderer->NumBuffers = useMultiview ? 1 : VRAPI_FRAME_LAYER_EYE_MAX;
-    renderer->UseMultiview = useMultiview;
+void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, int SurfaceTextureID,
+                   int LoadingTexture, FFRData ffrData) {
+    renderer->NumBuffers = VRAPI_FRAME_LAYER_EYE_MAX;
 
     renderer->enableFFR = ffrData.enabled;
     if (renderer->enableFFR) {
@@ -931,21 +677,16 @@ ovrRenderer_Create(ovrRenderer *renderer, const bool useMultiview, int width, in
 #ifdef OVR_SDK
     // Create the frame buffers.
     for (int eye = 0; eye < renderer->NumBuffers; eye++) {
-        ovrFramebuffer_Create(&renderer->FrameBuffer[eye], useMultiview,
-                              GL_RGBA8,
-                              width, height,
-                              NUM_MULTI_SAMPLES);
-
+        ovrFramebuffer_Create(&renderer->FrameBuffer[eye], GL_RGBA8, width, height);
     }
 #endif
 
     renderer->SurfaceTextureID = SurfaceTextureID;
     renderer->LoadingTexture = LoadingTexture;
-    renderer->CameraTexture = CameraTexture;
     renderer->SceneCreated = false;
-    renderer->ARMode = ARMode;
     renderer->loadingScene = new GltfModel();
     renderer->loadingScene->load();
+    renderer->gui = std::make_unique<VRGUI>();
 }
 
 
@@ -954,17 +695,13 @@ void ovrRenderer_CreateScene(ovrRenderer *renderer) {
         return;
     }
     const char *fragment_shader_fmt = FRAGMENT_SHADER;
-    if(renderer->ARMode) {
-        fragment_shader_fmt = FRAGMENT_SHADER_AR;
-    }
 
     std::string fragment_shader;
     fragment_shader = string_format(fragment_shader_fmt,
             renderer->enableFFR ? "sampler2D" : "samplerExternalOES");
 
-    ovrProgram_Create(&renderer->Program, VERTEX_SHADER, fragment_shader.c_str(), renderer->UseMultiview);
-    ovrProgram_Create(&renderer->ProgramLoading, VERTEX_SHADER_LOADING, FRAGMENT_SHADER_LOADING,
-                      renderer->UseMultiview);
+    ovrProgram_Create(&renderer->Program, VERTEX_SHADER, fragment_shader.c_str());
+    ovrProgram_Create(&renderer->ProgramLoading, VERTEX_SHADER_LOADING, FRAGMENT_SHADER_LOADING);
     ovrGeometry_CreatePanel(&renderer->Panel);
     ovrGeometry_CreateVAO(&renderer->Panel);
     renderer->SceneCreated = true;
@@ -991,7 +728,7 @@ void ovrRenderer_Destroy(ovrRenderer *renderer) {
 #ifdef OVR_SDK
 
 ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,
-                                                   bool loading, int AROverlayMode) {
+                                                   bool loading) {
     if (renderer->enableFFR) {
         renderer->ffr->Render();
     }
@@ -1032,8 +769,17 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
         mvpMatrix[1] = ovrMatrix4f_Multiply(&tracking->Eye[1].ProjectionMatrix,
                                             &mvpMatrix[1]);
 
-        Recti viewport = {0, 0, frameBuffer->Width, frameBuffer->Height};
-        renderEye(eye, mvpMatrix, &viewport, renderer, loading, AROverlayMode);
+        Recti viewport = {0, 0, (int)frameBuffer->renderTargets[0]->GetWidth(),
+                          (int)frameBuffer->renderTargets[0]->GetHeight()};
+
+        renderEye(eye, mvpMatrix, &viewport, renderer, loading);
+
+        if (loading) {
+            glm::mat4 glCameraMatrix;
+            memcpy(glm::value_ptr(glCameraMatrix), mvpMatrix[eye].M, 16 * 4);
+            renderer->gui->Render(*frameBuffer->renderStates[frameBuffer->TextureSwapChainIndex],
+                                  glCameraMatrix);
+        }
 
         ovrFramebuffer_Resolve(frameBuffer);
         ovrFramebuffer_Advance(frameBuffer);
@@ -1047,7 +793,7 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
 #endif
 
 void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *renderer,
-               bool loading, int AROverlayMode) {
+               bool loading) {
     if (loading) {
         GL(glUseProgram(renderer->ProgramLoading.Program));
         if (renderer->ProgramLoading.UniformLocation[UNIFORM_VIEW_ID] >=
@@ -1107,40 +853,17 @@ void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *
         GL(glUniformMatrix4fv(renderer->Program.UniformLocation[UNIFORM_MVP_MATRIX], 2, true,
                               (float *) mvpMatrix));
 
-        if(AROverlayMode == 0) {
-            // VR 100%
-            GL(glUniform1f(renderer->Program.UniformLocation[UNIFORM_ALPHA], 2.0f));
-            GL(glActiveTexture(GL_TEXTURE0));
-            if (renderer->enableFFR) {
-                GL(glBindTexture(GL_TEXTURE_2D,
-                                 renderer->ffr->GetOutputTexture()->GetGLTexture()));
-            } else {
-                GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, renderer->SurfaceTextureID));
-            }
-
-            GL(glDrawElements(GL_TRIANGLES, renderer->Panel.IndexCount, GL_UNSIGNED_SHORT, NULL));
-        }else {
-            if(AROverlayMode == 1) {
-                // AR 30% VR 70%
-                GL(glUniform1f(renderer->Program.UniformLocation[UNIFORM_ALPHA], 0.7f));
-            }else if(AROverlayMode == 2) {
-                // AR 70% VR 30%
-                GL(glUniform1f(renderer->Program.UniformLocation[UNIFORM_ALPHA], 0.3f));
-            }else if(AROverlayMode == 3) {
-                // AR 100%
-                GL(glUniform1f(renderer->Program.UniformLocation[UNIFORM_ALPHA], -2.0f));
-            }
-            GL(glActiveTexture(GL_TEXTURE0));
-            if (renderer->enableFFR) {
-                GL(glBindTexture(GL_TEXTURE_2D,
-                                 renderer->ffr->GetOutputTexture()->GetGLTexture()));
-            } else {
-                GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, renderer->SurfaceTextureID));
-            }
-            GL(glActiveTexture(GL_TEXTURE1));
-            GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, renderer->CameraTexture));
-            GL(glDrawElements(GL_TRIANGLES, renderer->Panel.IndexCount, GL_UNSIGNED_SHORT, NULL));
+        GL(glUniform1f(renderer->Program.UniformLocation[UNIFORM_ALPHA], 2.0f));
+        GL(glActiveTexture(GL_TEXTURE0));
+        if (renderer->enableFFR) {
+            GL(glBindTexture(GL_TEXTURE_2D,
+                             renderer->ffr->GetOutputTexture()->GetGLTexture()));
+        } else {
+            GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, renderer->SurfaceTextureID));
         }
+
+        GL(glDrawElements(GL_TRIANGLES, renderer->Panel.IndexCount, GL_UNSIGNED_SHORT, NULL));
+
         GL(glBindVertexArray(0));
 
         GL(glActiveTexture(GL_TEXTURE0));
@@ -1150,23 +873,5 @@ void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *
     }
 
     GL(glUseProgram(0));
-
-    // Explicitly clear the border texels to black when GL_CLAMP_TO_BORDER is not available.
-    if (!glExtensions.EXT_texture_border_clamp) {
-        // Clear to fully opaque black.
-        GL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
-        // bottom
-        GL(glScissor(viewport->x, viewport->y, viewport->width, 1));
-        GL(glClear(GL_COLOR_BUFFER_BIT));
-        // top
-        GL(glScissor(viewport->x, viewport->height - 1, viewport->width, 1));
-        GL(glClear(GL_COLOR_BUFFER_BIT));
-        // left
-        GL(glScissor(viewport->x, viewport->y, 1, viewport->height));
-        GL(glClear(GL_COLOR_BUFFER_BIT));
-        // right
-        GL(glScissor(viewport->x + viewport->width - 1, viewport->y, 1, viewport->height));
-        GL(glClear(GL_COLOR_BUFFER_BIT));
-    }
 }
 

@@ -38,9 +38,6 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager,
 
     eglInit();
 
-    bool multi_view;
-    EglInitExtensions(&multi_view);
-
     const ovrInitParms initParms = vrapi_DefaultInitParms(&java);
     int32_t initResult = vrapi_Initialize(&initParms);
     if (initResult != VRAPI_INITIALIZE_SUCCESS) {
@@ -48,9 +45,6 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager,
         LOGE("vrapi_Initialize failed");
         return;
     }
-
-    UseMultiview = multi_view;
-    LOG("UseMultiview:%d", UseMultiview);
 
     GLint textureUnits;
     glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &textureUnits);
@@ -65,7 +59,6 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager,
     //
     // Generate texture for SurfaceTexture which is output of MediaCodec.
     //
-    m_ARMode = ARMode;
 
     GLuint textures[3];
     glGenTextures(3, textures);
@@ -107,30 +100,14 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
                     GL_CLAMP_TO_EDGE);
 
-    if (m_ARMode) {
-        glGenTextures(1, &CameraTexture);
-        glBindTexture(GL_TEXTURE_EXTERNAL_OES, CameraTexture);
-
-        glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER,
-                        GL_NEAREST);
-        glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER,
-                        GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S,
-                        GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T,
-                        GL_CLAMP_TO_EDGE);
-    }
-
     //use the quest panel resolution and not the downscaled suggestion
     FrameBufferWidth = 1440;//vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH);
     FrameBufferHeight = 1600;//vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT);
 
 
-    ovrRenderer_Create(&Renderer, UseMultiview, FrameBufferWidth, FrameBufferHeight,
-                       SurfaceTextureID, loadingTexture, CameraTexture, m_ARMode, {false});
+    ovrRenderer_Create(&Renderer, FrameBufferWidth, FrameBufferHeight,
+                       SurfaceTextureID, loadingTexture, {false});
     ovrRenderer_CreateScene(&Renderer);
-
-    position_offset_y = 0.0;
 
     jclass clazz = env->FindClass("com/polygraphene/alvr/ServerConnection");
     mServerConnection_send = env->GetMethodID(clazz, "send", "(JI)V");
@@ -167,9 +144,6 @@ void OvrContext::destroy(JNIEnv *env) {
 
     GLuint textures[3] = {SurfaceTextureID, webViewSurfaceTexture, loadingTexture};
     glDeleteTextures(3, textures);
-    if (m_ARMode) {
-        glDeleteTextures(1, &CameraTexture);
-    }
 
     if (mMicHandle){
         ovr_Microphone_Destroy(mMicHandle);
@@ -672,7 +646,7 @@ void OvrContext::render(uint64_t renderedFrameIndex) {
 
 // Render eye images and setup the primary layer using ovrTracking2.
     const ovrLayerProjection2 worldLayer =
-            ovrRenderer_RenderFrame(&Renderer, &frame->tracking, false, g_AROverlayMode);
+            ovrRenderer_RenderFrame(&Renderer, &frame->tracking, false);
 
     LatencyCollector::Instance().rendered2(renderedFrameIndex);
 
@@ -717,10 +691,41 @@ void OvrContext::renderLoading() {
     FrameIndex++;
 
     double displayTime = vrapi_GetPredictedDisplayTime(Ovr, FrameIndex);
-    ovrTracking2 tracking = vrapi_GetPredictedTracking2(Ovr, displayTime);
+    ovrTracking2 headTracking = vrapi_GetPredictedTracking2(Ovr, displayTime);
 
-    const ovrLayerProjection2 worldLayer =
-            ovrRenderer_RenderFrame(&Renderer, &tracking, true, g_AROverlayMode);
+    GUIInput guiInput = {};
+    auto pos = headTracking.HeadPose.Pose.Position;
+    guiInput.headPosition = glm::vec3(pos.x, pos.y, pos.z);
+
+    ovrInputCapabilityHeader deviceCaps;
+    int ctrlIdx = 0;
+    for (uint32_t deviceIndex = 0;
+         vrapi_EnumerateInputDevices(Ovr, deviceIndex, &deviceCaps) >= 0; deviceIndex++) {
+        if (deviceCaps.Type == ovrControllerType_TrackedRemote) {
+            ovrInputStateTrackedRemote inputState;
+            auto res = vrapi_GetCurrentInputState(Ovr, deviceCaps.DeviceID,
+                                                  &inputState.Header);
+            if (res != ovrSuccess) {
+                continue;
+            }
+            guiInput.actionButtonsDown[ctrlIdx] =
+                    inputState.Buttons & (ovrButton_A | ovrButton_X | ovrButton_Trigger);
+
+            ovrTracking tracking;
+            if (vrapi_GetInputTrackingState(Ovr, deviceCaps.DeviceID, 0, &tracking) != ovrSuccess) {
+                continue;
+            }
+            auto pos = tracking.HeadPose.Pose.Position;
+            guiInput.controllersPosition[ctrlIdx] = glm::vec3(pos.x, pos.y, pos.z);
+            auto rot = tracking.HeadPose.Pose.Orientation;
+            guiInput.controllersRotation[ctrlIdx] = glm::quat(rot.w, rot.x, rot.y, rot.z);
+
+            ctrlIdx++;
+        }
+    }
+    Renderer.gui->Update(guiInput);
+
+    const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(&Renderer, &headTracking, true);
 
     const ovrLayerHeader2 *layers[] =
             {
@@ -759,8 +764,8 @@ void OvrContext::setFrameGeometry(int width, int height) {
         usedFoveationVerticalOffset = mFoveationVerticalOffset;
 
         ovrRenderer_Destroy(&Renderer);
-        ovrRenderer_Create(&Renderer, UseMultiview, FrameBufferWidth, FrameBufferHeight,
-                           SurfaceTextureID, loadingTexture, CameraTexture, m_ARMode,
+        ovrRenderer_Create(&Renderer, FrameBufferWidth, FrameBufferHeight,
+                           SurfaceTextureID, loadingTexture,
                            {usedFoveationEnabled, (uint32_t)FrameBufferWidth, (uint32_t)FrameBufferHeight,
                             getFov().first, usedFoveationStrength, usedFoveationShape, usedFoveationVerticalOffset});
         ovrRenderer_CreateScene(&Renderer);
@@ -1230,7 +1235,7 @@ extern "C"
 JNIEXPORT jint JNICALL
 Java_com_polygraphene_alvr_OvrContext_getCameraTextureNative(JNIEnv *env, jobject instance,
                                                              jlong handle) {
-    return ((OvrContext *) handle)->getCameraTexture();
+    return 0;
 }
 
 extern "C"

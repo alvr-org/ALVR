@@ -47,9 +47,6 @@ public:
     int getWebViewSurfaceTexture(){
         return SurfaceTextureID;
     }
-    int getCameraTexture(){
-        return CameraTexture;
-    }
 
     void setRefreshRate(int refreshRate, bool forceChange = true);
 
@@ -82,11 +79,9 @@ private:
     jobject mVrThread = nullptr;
     jobject mServerConnection = nullptr;
 
-    bool UseMultiview = true;
     GLuint SurfaceTextureID = 0;
     GLuint webViewSurfaceTexture = 0;
     GLuint loadingTexture = 0;
-    GLuint CameraTexture = 0;
     int suspend = 0;
     bool Resumed = false;
     int FrameBufferWidth = 0;
@@ -106,16 +101,6 @@ private:
     int m_currentRefreshRate = DEFAULT_REFRESH_RATE;
 
     uint64_t FrameIndex = 0;
-
-
-
-
-    // For ARCore
-    bool m_ARMode = false;
-    float position_offset_y = 0.0f;
-    bool previousHeadsetTrackpad = false;
-    float previousHeadsetY = 0.0f;
-    int g_AROverlayMode = 0; // 0: VR only, 1: AR 30% 2: AR 70% 3: AR 100%
 
     static const int MAXIMUM_TRACKING_FRAMES = 180;
 

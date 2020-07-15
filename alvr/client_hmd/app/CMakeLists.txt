@@ -42,10 +42,11 @@ add_library( # Sets the name of the library.
              src/main/cpp/asset.cpp
              src/main/cpp/gltf_model.cpp
              src/main/cpp/utils.cpp
+             src/main/cpp/ovr_context.cpp
              ../ALVR-common/reedsolomon/rs.c
              ../ALVR-common/common-utils.cpp
              ../ALVR-common/exception.cpp
-             "src/main/cpp/ovr_context.cpp"
+             ../ALVR-common/lodepng/lodepng.cpp
              )
 
 # Searches for a specified prebuilt library and stores the path as a

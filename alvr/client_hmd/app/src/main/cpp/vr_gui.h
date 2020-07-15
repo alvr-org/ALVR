@@ -16,8 +16,8 @@ struct GUIInput {
 
 class VRGUI {
 public:
-    VRGUI(const gl_render_utils::Texture *cursorTexture,
-          const gl_render_utils::Texture *pointerBarTexture);
+    // requires a GL context and initialized asset manager
+    VRGUI();
 
     void AddPanel(InteractivePanel *panel) {
         mPanels.push_back(panel);
@@ -32,10 +32,11 @@ public:
 private:
     GUIInput mPrevInput = {};
 
-
     std::vector<InteractivePanel *> mPanels;
     InteractivePanel *mActivePanel;
 
+    std::unique_ptr<gl_render_utils::Texture> mCursorTexture;
+    std::unique_ptr<gl_render_utils::Texture> mPointerBarTexture;
     glm::mat4 mPointerBarModelTransform;
 
     struct ControllerState {

@@ -3,6 +3,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/intersect.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <lodepng/lodepng.h>
+#include "asset.h"
+#include "utils.h"
 
 using namespace std;
 using namespace glm;
@@ -54,14 +57,26 @@ bool cursorPositionOnQuad(const vec3 &controllerPosition, const vec3 &direction,
 
 VRGUI::ControllerState::ControllerState() : cursorAnimation(Linear, 0.5s) {}
 
-VRGUI::VRGUI(const Texture *cursorTexture, const Texture *pointerBarTexture) {
+VRGUI::VRGUI() {
+    vector<uint8_t> pngData, textureData;
+    uint32_t width;
+    uint32_t height;
+
+    loadAsset("cursor.png", pngData);
+    lodepng::decode(textureData, width, height, pngData);
+    mCursorTexture.reset(new Texture(false, width, height, GL_RGBA, textureData));
+
+    loadAsset("pointer_bar_gradient.png", pngData);
+    lodepng::decode(textureData, width, height, pngData);
+    mPointerBarTexture.reset(new Texture(false, width, height, GL_RGBA, textureData));
+
     mPointerBarModelTransform = scale(mat4(), {POINTER_BAR_WIDTH, POINTER_BAR_LENGTH, 1});
     mPointerBarModelTransform = translate(mPointerBarModelTransform,
                                           {0, POINTER_BAR_LENGTH / 2, 0});
 
-    for (auto &state: mControllerStates) {
-        state.cursorQuad = make_unique<TexturedQuad>(cursorTexture, mat4());
-        state.pointerBarQuad = make_unique<TexturedQuad>(pointerBarTexture,
+    for (auto &state : mControllerStates) {
+        state.cursorQuad = make_unique<TexturedQuad>(mCursorTexture.get(), mat4());
+        state.pointerBarQuad = make_unique<TexturedQuad>(mPointerBarTexture.get(),
                                                          mPointerBarModelTransform);
     }
 }
@@ -72,7 +87,7 @@ void VRGUI::RemovePanel(const InteractivePanel *panel) {
         mPanels.erase(panelIt);
     }
     if (mActivePanel == panel) {
-
+        mActivePanel = nullptr;
     }
 }
 
@@ -92,7 +107,7 @@ void VRGUI::Update(const GUIInput &input) {
         vec2 cursorCoords;
         float minDist = FLT_MAX;
         InteractivePanel *closestPanel = nullptr;
-        for (auto panel: mPanels) {
+        for (auto panel : mPanels) {
             vec3 postition;
             vec2 coords;
             float dist;
@@ -131,7 +146,7 @@ void VRGUI::Update(const GUIInput &input) {
 
             float scaleValue =
                     controllerState.cursorAnimation.GetValue() * minDist * CURSOR_SCALE_FACTOR;
-            auto transform = scale(mat4(), {scaleValue, scaleValue, 1 });
+            auto transform = scale(mat4(), {scaleValue, scaleValue, 1});
             transform = mActivePanel->GetRotation() * transform;
             transform = translate(transform, cursorPosition);
             controllerState.cursorQuad->SetTransform(transform);
@@ -141,12 +156,12 @@ void VRGUI::Update(const GUIInput &input) {
     }
 }
 
-void VRGUI::Render(const RenderState &renderState, const glm::mat4 &camera) const {
-    for (auto panel: mPanels) {
+void VRGUI::Render(const RenderState &renderState, const mat4 &camera) const {
+    for (auto panel : mPanels) {
         panel->Render(renderState, camera);
     }
 
-    for (auto &state: mControllerStates) {
+    for (auto &state : mControllerStates) {
         state.cursorQuad->Render(renderState, camera);
         state.pointerBarQuad->Render(renderState, camera);
     }

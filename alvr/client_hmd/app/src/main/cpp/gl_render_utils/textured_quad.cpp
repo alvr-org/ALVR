@@ -13,7 +13,7 @@ const string QUAD_3D_VERTEX_SHADER = R"glsl(
     uniform UniformBlock {
         mat4 mvp;
         float opacity;
-    }
+    };
 
     out vec2 uv;
 
@@ -30,7 +30,7 @@ const string QUAD_3D_FRAGMENT_SHADER_FORMAT = R"glsl(
     uniform UniformBlock {
         mat4 mvp;
         float opacity;
-    }
+    };
     uniform %s tex0;
 
     in vec2 uv;
@@ -46,7 +46,7 @@ namespace gl_render_utils {
     TexturedQuad::TexturedQuad(const Texture *texture, mat4 transform) {
         mTransform = transform;
 
-        bool samplerString = texture->IsOES() ? "samplerExternalOES" : "sampler2D";
+        const char *samplerString = texture->IsOES() ? "samplerExternalOES" : "sampler2D";
         string fragmentShader = string_format(QUAD_3D_FRAGMENT_SHADER_FORMAT, samplerString);
 
         mPipeline.reset(new RenderPipeline({texture}, QUAD_3D_VERTEX_SHADER, fragmentShader,

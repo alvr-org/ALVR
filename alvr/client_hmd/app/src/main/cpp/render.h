@@ -28,28 +28,21 @@ extern Render_EGL egl;
 
 void eglInit();
 void eglDestroy();
-void EglInitExtensions(bool *multi_view);
 
 //
 // ovrFramebuffer
 //
 
 typedef struct {
-    int Width;
-    int Height;
-    int Multisamples;
     int TextureSwapChainLength;
     int TextureSwapChainIndex;
-    bool UseMultiview;
     ovrTextureSwapChain *ColorTextureSwapChain;
-    GLuint *DepthBuffers;
-    GLuint *FrameBuffers;
+    std::vector<std::unique_ptr<gl_render_utils::Texture>> renderTargets;
+    std::vector<std::unique_ptr<gl_render_utils::RenderState>> renderStates;
 } ovrFramebuffer;
 
-void ovrFramebuffer_Clear(ovrFramebuffer *frameBuffer);
-bool ovrFramebuffer_Create(ovrFramebuffer *frameBuffer, const bool useMultiview,
-                                  const GLenum colorFormat, const int width,
-                                  const int height, const int multisamples);
+bool ovrFramebuffer_Create(ovrFramebuffer *frameBuffer, const GLenum colorFormat, const int width,
+                            const int height);
 void ovrFramebuffer_Destroy(ovrFramebuffer *frameBuffer);
 void ovrFramebuffer_SetCurrent(ovrFramebuffer *frameBuffer);
 void ovrFramebuffer_SetNone();
@@ -114,8 +107,7 @@ typedef struct {
 
 
 bool
-ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource,
-                  const bool useMultiview);
+ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource);
 void ovrProgram_Destroy(ovrProgram *program);
 
 //
@@ -126,32 +118,29 @@ void ovrProgram_Destroy(ovrProgram *program);
 typedef struct {
     ovrFramebuffer FrameBuffer[VRAPI_FRAME_LAYER_EYE_MAX];
     int NumBuffers;
-    bool UseMultiview;
     bool SceneCreated;
     ovrProgram Program;
     ovrProgram ProgramLoading;
     ovrGeometry Panel;
     GLuint SurfaceTextureID;
-    GLuint CameraTexture;
     GLuint LoadingTexture;
-    bool ARMode;
     GltfModel *loadingScene;
     std::unique_ptr<FFR> ffr;
     std::unique_ptr<gl_render_utils::Texture> ffrSourceTexture;
     bool enableFFR;
+    std::unique_ptr<VRGUI> gui;
 } ovrRenderer;
 
-void ovrRenderer_Create(ovrRenderer *renderer, const bool useMultiview, int width, int height,
-                        int SurfaceTextureID, int LoadingTexture, int CameraTexture, bool ARMode,
-                        FFRData ffrData);
+void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, int SurfaceTextureID,
+                        int LoadingTexture, FFRData ffrData);
 void ovrRenderer_Destroy(ovrRenderer *renderer);
 void ovrRenderer_CreateScene(ovrRenderer *renderer);
 // Set up an OVR frame, render it, and submit it.
 ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,
-                                                   bool loading, int AROverlayMode);
+                                            bool loading);
 
 // Render the contents of the frame in an SDK-neutral manner.
 void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *renderer,
-               bool loading, int AROverlayMode);
+               bool loading);
 
 #endif //ALVRCLIENT_RENDER_H

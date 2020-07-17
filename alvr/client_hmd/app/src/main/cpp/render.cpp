@@ -758,7 +758,7 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
         ovrFramebuffer_SetCurrent(frameBuffer);
 
         ovrMatrix4f mvpMatrix[2];
-        mvpMatrix[1] = mvpMatrix[0] = ovrMatrix4f_CreateTranslation(0, -1.5f, 0);
+        mvpMatrix[1] = mvpMatrix[0] = ovrMatrix4f_CreateTranslation(0, WORLD_VERTICAL_OFFSET, 0);
 
         mvpMatrix[0] = ovrMatrix4f_Multiply(&tracking->Eye[0].ViewMatrix,
                                             &mvpMatrix[0]);
@@ -777,6 +777,7 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
         if (loading) {
             glm::mat4 glCameraMatrix;
             memcpy(glm::value_ptr(glCameraMatrix), mvpMatrix[eye].M, 16 * 4);
+            glCameraMatrix = glm::transpose(glCameraMatrix);
             renderer->gui->Render(*frameBuffer->renderStates[frameBuffer->TextureSwapChainIndex],
                                   glCameraMatrix);
         }

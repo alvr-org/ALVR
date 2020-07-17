@@ -19,7 +19,7 @@ const string QUAD_3D_VERTEX_SHADER = R"glsl(
 
     void main() {
         uv = vec2(gl_VertexID & 1, gl_VertexID >> 1);
-        gl_Position = mvp * vec4((uv - 0.5) * 2., 0, 1);
+        gl_Position = mvp * vec4(uv.x - 0.5, -uv.y + 0.5, 0, 1);
     }
 )glsl";
 

@@ -702,21 +702,29 @@ void OvrContext::renderLoading() {
     for (uint32_t deviceIndex = 0;
          vrapi_EnumerateInputDevices(Ovr, deviceIndex, &deviceCaps) >= 0; deviceIndex++) {
         if (deviceCaps.Type == ovrControllerType_TrackedRemote) {
-            ovrInputStateTrackedRemote inputState;
-            auto res = vrapi_GetCurrentInputState(Ovr, deviceCaps.DeviceID,
-                                                  &inputState.Header);
+            ovrInputTrackedRemoteCapabilities inputCaps;
+            inputCaps.Header = deviceCaps;
+            auto res = vrapi_GetInputDeviceCapabilities(Ovr, &inputCaps.Header);
             if (res != ovrSuccess) {
                 continue;
             }
+
+            ovrInputStateTrackedRemote inputState;
+            inputState.Header.ControllerType = inputCaps.Header.Type;
+            res = vrapi_GetCurrentInputState(Ovr, inputCaps.Header.DeviceID, &inputState.Header);
+            if (res != ovrSuccess) {
+                continue;
+            }
+
             guiInput.actionButtonsDown[ctrlIdx] =
                     inputState.Buttons & (ovrButton_A | ovrButton_X | ovrButton_Trigger);
 
             ovrTracking tracking;
-            if (vrapi_GetInputTrackingState(Ovr, deviceCaps.DeviceID, 0, &tracking) != ovrSuccess) {
+            if (vrapi_GetInputTrackingState(Ovr, deviceCaps.DeviceID, displayTime, &tracking) != ovrSuccess) {
                 continue;
             }
             auto pos = tracking.HeadPose.Pose.Position;
-            guiInput.controllersPosition[ctrlIdx] = glm::vec3(pos.x, pos.y, pos.z);
+            guiInput.controllersPosition[ctrlIdx] = glm::vec3(pos.x, pos.y - WORLD_VERTICAL_OFFSET, pos.z);
             auto rot = tracking.HeadPose.Pose.Orientation;
             guiInput.controllersRotation[ctrlIdx] = glm::quat(rot.w, rot.x, rot.y, rot.z);
 

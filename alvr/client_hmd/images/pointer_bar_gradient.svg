@@ -12,9 +12,9 @@
    inkscape:version="1.0 (4035a4fb49, 2020-05-01)"
    id="svg8"
    version="1.1"
-   viewBox="0 0 0.26458333 270.93333"
-   height="1024"
-   width="1">
+   viewBox="0 0 4.2333332 135.46666"
+   height="512"
+   width="16">
   <defs
      id="defs2">
     <linearGradient
@@ -27,14 +27,15 @@
       <stop
          id="stop24"
          offset="1"
-         style="stop-color:#ffffff;stop-opacity:1" />
+         style="stop-color:#c5f8f6;stop-opacity:1" />
     </linearGradient>
     <linearGradient
+       gradientTransform="scale(14.580579,0.49865377)"
        gradientUnits="userSpaceOnUse"
        y2="15.967834"
-       x2="0.13435872"
-       y1="-4.0000028e-08"
-       x1="0.13125814"
+       x2="0.14959596"
+       y1="2.4064796e-06"
+       x1="0.15050519"
        id="linearGradient28"
        xlink:href="#linearGradient26"
        inkscape:collect="always" />
@@ -49,13 +50,13 @@
      inkscape:window-width="1920"
      width="1px"
      units="px"
-     showgrid="false"
+     showgrid="true"
      inkscape:document-rotation="0"
      inkscape:current-layer="layer1"
      inkscape:document-units="mm"
-     inkscape:cy="38.727762"
-     inkscape:cx="-6.7972166"
-     inkscape:zoom="8"
+     inkscape:cy="272.24267"
+     inkscape:cx="-414.97622"
+     inkscape:zoom="1"
      inkscape:pageshadow="2"
      inkscape:pageopacity="0.0"
      borderopacity="1.0"
@@ -63,20 +64,20 @@
      pagecolor="#ffffff"
      id="base">
     <sodipodi:guide
-       id="guide14"
-       orientation="0,1"
-       position="0,270.93333" />
+       id="guide841"
+       orientation="0,16"
+       position="0,135.46666" />
     <sodipodi:guide
-       id="guide16"
-       orientation="1024,0"
-       position="0.26458333,270.93333" />
+       id="guide843"
+       orientation="512,0"
+       position="4.2333332,135.46666" />
     <sodipodi:guide
-       id="guide18"
-       orientation="0,-1"
-       position="0.26458333,0" />
+       id="guide845"
+       orientation="0,-16"
+       position="4.2333332,0" />
     <sodipodi:guide
-       id="guide20"
-       orientation="-1024,0"
+       id="guide847"
+       orientation="-512,0"
        position="0,0" />
   </sodipodi:namedview>
   <metadata
@@ -92,19 +93,19 @@
     </rdf:RDF>
   </metadata>
   <g
-     style="opacity:0.80451128"
+     style="opacity:1"
      id="layer1"
      inkscape:groupmode="layer"
      inkscape:label="Layer 1">
     <rect
-       inkscape:export-ydpi="6"
-       inkscape:export-xdpi="6"
-       inkscape:export-filename="C:\Users\ricca\bitmap.png"
+       inkscape:export-ydpi="12"
+       inkscape:export-xdpi="12"
+       inkscape:export-filename="C:\Users\ricca\OneDrive\Desktop\pointer_bar_gradient.png"
        y="-4.0011173e-08"
        x="2.4286129e-17"
-       height="270.93335"
-       width="0.26458332"
+       height="135.46666"
+       width="4.2333336"
        id="rect10"
-       style="fill:url(#linearGradient28);stroke-width:5.64203;fill-opacity:1" />
+       style="fill:url(#linearGradient28);fill-opacity:1;stroke-width:15.2132" />
   </g>
 </svg>

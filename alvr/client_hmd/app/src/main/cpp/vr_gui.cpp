@@ -66,16 +66,19 @@ VRGUI::VRGUI() {
     lodepng::decode(textureData, width, height, pngData);
     mCursorTexture.reset(new Texture(false, width, height, GL_RGBA, textureData));
 
+    pngData.clear();
+    textureData.clear();
     loadAsset("pointer_bar_gradient.png", pngData);
     lodepng::decode(textureData, width, height, pngData);
     mPointerBarTexture.reset(new Texture(false, width, height, GL_RGBA, textureData));
 
-    mPointerBarModelTransform = scale(mat4(), {POINTER_BAR_WIDTH, POINTER_BAR_LENGTH, 1});
-    mPointerBarModelTransform = translate(mPointerBarModelTransform,
-                                          {0, POINTER_BAR_LENGTH / 2, 0});
+    auto scaling = scale(mat4(1.f), {POINTER_BAR_WIDTH, POINTER_BAR_LENGTH, 1});
+    auto rotation = rotate(mat4(1.f), (float) -M_PI_2, {1, 0, 0});
+    auto translation = translate(mat4(1.f), {0, 0, -POINTER_BAR_LENGTH / 2});
+    mPointerBarModelTransform = translation * rotation * scaling;
 
     for (auto &state : mControllerStates) {
-        state.cursorQuad = make_unique<TexturedQuad>(mCursorTexture.get(), mat4());
+        state.cursorQuad = make_unique<TexturedQuad>(mCursorTexture.get(), mat4(1.f));
         state.pointerBarQuad = make_unique<TexturedQuad>(mPointerBarTexture.get(),
                                                          mPointerBarModelTransform);
     }
@@ -96,10 +99,10 @@ void VRGUI::Update(const GUIInput &input) {
         auto &controllerState = mControllerStates[i];
 
         auto ctrlRotation = toMat4(input.controllersRotation[i]);
-        auto transform = ctrlRotation * mPointerBarModelTransform;
-        transform = translate(transform, input.controllersPosition[i]);
+        auto ctrlTranslation = translate(mat4(1.f), input.controllersPosition[i]);
+        auto ctrlTransform = ctrlTranslation * ctrlRotation * mPointerBarModelTransform;
         // todo: rotate to face headPosition
-        controllerState.pointerBarQuad->SetTransform(transform);
+        controllerState.pointerBarQuad->SetTransform(ctrlTransform);
 
         auto direction = ctrlRotation * vec4(0, 0, -1, 0);
 
@@ -146,7 +149,7 @@ void VRGUI::Update(const GUIInput &input) {
 
             float scaleValue =
                     controllerState.cursorAnimation.GetValue() * minDist * CURSOR_SCALE_FACTOR;
-            auto transform = scale(mat4(), {scaleValue, scaleValue, 1});
+            auto transform = scale(mat4(1.f), {scaleValue, scaleValue, 1});
             transform = mActivePanel->GetRotation() * transform;
             transform = translate(transform, cursorPosition);
             controllerState.cursorQuad->SetTransform(transform);

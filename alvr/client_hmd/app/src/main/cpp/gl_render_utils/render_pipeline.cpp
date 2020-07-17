@@ -88,7 +88,7 @@ namespace gl_render_utils {
 
         GL(glDisable(GL_SCISSOR_TEST));
         GL(glDepthMask(GL_TRUE));
-        GL(glEnable(GL_CULL_FACE));
+        GL(glDisable(GL_CULL_FACE));
         GL(glEnable(GL_DEPTH_TEST));
         GL(glViewport(0, 0, renderState.GetRenderTarget()->GetWidth(),
                       renderState.GetRenderTarget()->GetHeight()));

@@ -104,9 +104,11 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager,
     FrameBufferWidth = 1440;//vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH);
     FrameBufferHeight = 1600;//vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT);
 
+    mWebViewInteractionCallback = [](InteractionType, glm::vec2){};
 
     ovrRenderer_Create(&Renderer, FrameBufferWidth, FrameBufferHeight,
-                       SurfaceTextureID, loadingTexture, {false});
+                       SurfaceTextureID, loadingTexture, webViewSurfaceTexture,
+                       mWebViewInteractionCallback, {false});
     ovrRenderer_CreateScene(&Renderer);
 
     jclass clazz = env->FindClass("com/polygraphene/alvr/ServerConnection");
@@ -773,7 +775,8 @@ void OvrContext::setFrameGeometry(int width, int height) {
 
         ovrRenderer_Destroy(&Renderer);
         ovrRenderer_Create(&Renderer, FrameBufferWidth, FrameBufferHeight,
-                           SurfaceTextureID, loadingTexture,
+                           SurfaceTextureID, loadingTexture, webViewSurfaceTexture,
+                           mWebViewInteractionCallback,
                            {usedFoveationEnabled, (uint32_t)FrameBufferWidth, (uint32_t)FrameBufferHeight,
                             getFov().first, usedFoveationStrength, usedFoveationShape, usedFoveationVerticalOffset});
         ovrRenderer_CreateScene(&Renderer);

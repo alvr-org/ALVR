@@ -45,7 +45,7 @@ public:
         return SurfaceTextureID;
     }
     int getWebViewSurfaceTexture(){
-        return SurfaceTextureID;
+        return webViewSurfaceTexture;
     }
 
     void setRefreshRate(int refreshRate, bool forceChange = true);
@@ -94,6 +94,7 @@ private:
     float usedFoveationStrength = 0;
     float usedFoveationShape = 0;
     float usedFoveationVerticalOffset = 0;
+    std::function<void(InteractionType, glm::vec2)> mWebViewInteractionCallback;
 
     bool mExtraLatencyMode = false;
 

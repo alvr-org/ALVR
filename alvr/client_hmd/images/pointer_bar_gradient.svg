@@ -8,77 +8,77 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   sodipodi:docname="pointer_bar_gradient.svg"
-   inkscape:version="1.0 (4035a4fb49, 2020-05-01)"
-   id="svg8"
-   version="1.1"
-   viewBox="0 0 4.2333332 135.46666"
+   width="16"
    height="512"
-   width="16">
+   viewBox="0 0 4.2333332 135.46666"
+   version="1.1"
+   id="svg8"
+   inkscape:version="1.0 (4035a4fb49, 2020-05-01)"
+   sodipodi:docname="pointer_bar_gradient.svg">
   <defs
      id="defs2">
     <linearGradient
-       id="linearGradient26"
-       inkscape:collect="always">
+       inkscape:collect="always"
+       id="linearGradient26">
       <stop
-         id="stop22"
+         style="stop-color:#c5f8f6;stop-opacity:0"
          offset="0"
-         style="stop-color:#000000;stop-opacity:0" />
+         id="stop22" />
       <stop
-         id="stop24"
+         style="stop-color:#c5f8f6;stop-opacity:1"
          offset="1"
-         style="stop-color:#c5f8f6;stop-opacity:1" />
+         id="stop24" />
     </linearGradient>
     <linearGradient
-       gradientTransform="scale(14.580579,0.49865377)"
-       gradientUnits="userSpaceOnUse"
-       y2="15.967834"
-       x2="0.14959596"
-       y1="2.4064796e-06"
-       x1="0.15050519"
-       id="linearGradient28"
+       inkscape:collect="always"
        xlink:href="#linearGradient26"
-       inkscape:collect="always" />
+       id="linearGradient28"
+       x1="0.15050519"
+       y1="2.4064796e-06"
+       x2="0.14959596"
+       y2="15.967834"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="scale(14.580579,0.49865377)" />
   </defs>
   <sodipodi:namedview
-     borderlayer="false"
-     inkscape:pagecheckerboard="true"
-     inkscape:window-maximized="1"
-     inkscape:window-y="-8"
-     inkscape:window-x="1272"
-     inkscape:window-height="1017"
-     inkscape:window-width="1920"
-     width="1px"
-     units="px"
-     showgrid="true"
-     inkscape:document-rotation="0"
-     inkscape:current-layer="layer1"
-     inkscape:document-units="mm"
-     inkscape:cy="272.24267"
-     inkscape:cx="-414.97622"
-     inkscape:zoom="1"
-     inkscape:pageshadow="2"
-     inkscape:pageopacity="0.0"
-     borderopacity="1.0"
-     bordercolor="#666666"
+     id="base"
      pagecolor="#ffffff"
-     id="base">
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="8"
+     inkscape:cx="1.1690931"
+     inkscape:cy="2.0884686"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     inkscape:document-rotation="0"
+     showgrid="true"
+     units="px"
+     width="1px"
+     inkscape:window-width="1920"
+     inkscape:window-height="1017"
+     inkscape:window-x="1272"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:pagecheckerboard="true"
+     borderlayer="false">
     <sodipodi:guide
-       id="guide841"
+       position="0,135.46666"
        orientation="0,16"
-       position="0,135.46666" />
+       id="guide841" />
     <sodipodi:guide
-       id="guide843"
+       position="4.2333332,135.46666"
        orientation="512,0"
-       position="4.2333332,135.46666" />
+       id="guide843" />
     <sodipodi:guide
-       id="guide845"
+       position="4.2333332,0"
        orientation="0,-16"
-       position="4.2333332,0" />
+       id="guide845" />
     <sodipodi:guide
-       id="guide847"
+       position="0,0"
        orientation="-512,0"
-       position="0,0" />
+       id="guide847" />
   </sodipodi:namedview>
   <metadata
      id="metadata5">
@@ -88,24 +88,24 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
   <g
-     style="opacity:1"
-     id="layer1"
+     inkscape:label="Layer 1"
      inkscape:groupmode="layer"
-     inkscape:label="Layer 1">
+     id="layer1"
+     style="opacity:1">
     <rect
-       inkscape:export-ydpi="12"
-       inkscape:export-xdpi="12"
-       inkscape:export-filename="C:\Users\ricca\OneDrive\Desktop\pointer_bar_gradient.png"
-       y="-4.0011173e-08"
-       x="2.4286129e-17"
-       height="135.46666"
-       width="4.2333336"
+       style="fill:url(#linearGradient28);fill-opacity:1;stroke-width:15.2132"
        id="rect10"
-       style="fill:url(#linearGradient28);fill-opacity:1;stroke-width:15.2132" />
+       width="4.2333336"
+       height="135.46666"
+       x="2.4286129e-17"
+       y="-4.0011173e-08"
+       inkscape:export-filename="C:\Users\ricca\OneDrive\Desktop\pointer_bar_gradient.png"
+       inkscape:export-xdpi="12"
+       inkscape:export-ydpi="12" />
   </g>
 </svg>

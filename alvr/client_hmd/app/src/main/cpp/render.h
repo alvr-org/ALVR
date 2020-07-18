@@ -130,11 +130,15 @@ typedef struct {
     std::unique_ptr<FFR> ffr;
     std::unique_ptr<gl_render_utils::Texture> ffrSourceTexture;
     bool enableFFR;
+    std::unique_ptr<gl_render_utils::Texture> webViewTexture;
+    std::unique_ptr<InteractivePanel> webViewPanel;
     std::unique_ptr<VRGUI> gui;
 } ovrRenderer;
 
 void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, int SurfaceTextureID,
-                        int LoadingTexture, FFRData ffrData);
+                        int LoadingTexture, int webViewSurfaceTexture,
+                        std::function<void(InteractionType, glm::vec2)> webViewInteractionCallback,
+                        FFRData ffrData);
 void ovrRenderer_Destroy(ovrRenderer *renderer);
 void ovrRenderer_CreateScene(ovrRenderer *renderer);
 // Set up an OVR frame, render it, and submit it.

@@ -1,6 +1,9 @@
 package com.polygraphene.alvr;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.SurfaceTexture;
 import android.opengl.EGL14;
 import android.opengl.EGLContext;
@@ -10,11 +13,25 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
+import android.webkit.WebView;
 
 import java.util.concurrent.TimeUnit;
 
 class OvrThread implements SurfaceHolder.Callback {
     private static final String TAG = "OvrThread";
+
+    private static final int WEBVIEW_WIDTH = 800;
+    private static final int WEBVIEW_HEIGHT = 600;
+
+    private static final String SERVER_NOT_FOUND_HTML = "<html><body>" +
+            "<h1>Test</h1>" +
+            "<script>" +
+            "setInterval(function(){" +
+            "   var colors = ['red','blue','green','yellow','cyan','orange'];" +
+            "   var new_color = colors[Math.floor(Math.random()*colors.length)];" +
+            "   document.body.style.backgroundColor = new_color;" +
+            "}, 1000);" +
+            "</script></body></html>";
 
     private Activity mActivity;
 
@@ -22,7 +39,7 @@ class OvrThread implements SurfaceHolder.Callback {
     private Handler mHandler;
     private HandlerThread mHandlerThread;
 
-    private OffscreenWebView mWebView;
+    private WebView mWebView;
 
     private SurfaceTexture mSurfaceTexture;
     private Surface mSurface;
@@ -55,7 +72,11 @@ class OvrThread implements SurfaceHolder.Callback {
         mHandler = new Handler(mHandlerThread.getLooper());
         mHandler.post(() -> startup());
 
-        mWebView = new OffscreenWebView(activity.getApplicationContext());
+        mWebView = new WebView(activity.getApplicationContext());
+        mWebView.getSettings().setJavaScriptEnabled(true);
+        mWebView.getSettings().setDomStorageEnabled(true);
+        mWebView.layout(0,0, WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
+        mWebView.loadData(SERVER_NOT_FOUND_HTML, "text/html", "UTF-8");
     }
 
     //SurfaceHolder Callbacks
@@ -167,6 +188,10 @@ class OvrThread implements SurfaceHolder.Callback {
         }, new Handler(Looper.getMainLooper()));
         mSurface = new Surface(mSurfaceTexture);
 
+        mWebViewSurfaceTexture = new SurfaceTexture(mOvrContext.getWebViewSurfaceTexture());
+        mWebViewSurfaceTexture.setDefaultBufferSize(WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
+        mWebViewSurface = new Surface(mWebViewSurfaceTexture);
+
         mLoadingTexture.initializeMessageCanvas(mOvrContext.getLoadingTexture());
         mLoadingTexture.drawMessage(Utils.getVersionName(mActivity) + "\nLoading...");
 
@@ -213,6 +238,17 @@ class OvrThread implements SurfaceHolder.Callback {
             else
             {
                 mLoadingTexture.drawMessage(Utils.getVersionName(mActivity) + "\n \nOpen ALVR on PC and\nclick on \"Trust\" next to\nthe client entry");
+            }
+
+            if (mWebViewSurface != null && mWebViewSurfaceTexture != null){
+                try {
+                    final Canvas surfaceCanvas = mWebViewSurface.lockCanvas(null);
+                    mWebView.draw(surfaceCanvas);
+                    mWebViewSurface.unlockCanvasAndPost(surfaceCanvas);
+                    mWebViewSurfaceTexture.updateTexImage();
+                } catch (Surface.OutOfResourcesException e) {
+                    Utils.loge(TAG, () -> e.toString());
+                }
             }
 
             mOvrContext.renderLoading();

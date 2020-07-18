@@ -12,14 +12,14 @@ InteractivePanel::InteractivePanel(const Texture *texture, float width, float he
                                    function<void(InteractionType, vec2)> &interactionCallback) {
     mModelTransform = scale(mat4(1.f), {width, height, 1});
     mRotation = eulerAngleXY(pitch, yaw);
-    mWorldTransform = translate(mRotation * mModelTransform, position);
+    mWorldTransform = translate(mat4(1.f), position) * mRotation * mModelTransform;
     mQuad = make_unique<TexturedQuad>(texture, mWorldTransform);
     mInteractionCallback = interactionCallback;
 }
 
 void InteractivePanel::SetPoseTransform(const vec3 &position, float yaw, float pitch) {
     mRotation = eulerAngleXY(pitch, yaw);
-    mWorldTransform = translate(mRotation * mModelTransform, position);
+    mWorldTransform = translate(mat4(1.f), position) * mRotation * mModelTransform;
     mQuad->SetTransform(mWorldTransform);
 }
 

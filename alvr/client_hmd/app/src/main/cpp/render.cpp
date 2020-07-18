@@ -664,7 +664,9 @@ void ovrProgram_Destroy(ovrProgram *program) {
 //
 
 void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, int SurfaceTextureID,
-                   int LoadingTexture, FFRData ffrData) {
+                        int LoadingTexture, int webViewSurfaceTexture,
+                        std::function<void(InteractionType, glm::vec2)> webViewInteractionCallback,
+                        FFRData ffrData) {
     renderer->NumBuffers = VRAPI_FRAME_LAYER_EYE_MAX;
 
     renderer->enableFFR = ffrData.enabled;
@@ -687,6 +689,11 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, int Surfac
     renderer->loadingScene = new GltfModel();
     renderer->loadingScene->load();
     renderer->gui = std::make_unique<VRGUI>();
+    renderer->webViewTexture = std::make_unique<gl_render_utils::Texture>(webViewSurfaceTexture, true);
+    renderer->webViewPanel = std::make_unique<InteractivePanel>(
+            renderer->webViewTexture.get(), 2, 1.5, glm::vec3(0, -WORLD_VERTICAL_OFFSET, -1.5),
+            0, 0, webViewInteractionCallback);
+    renderer->gui->AddPanel(renderer->webViewPanel.get());
 }
 
 

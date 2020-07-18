@@ -68,6 +68,10 @@ public class OvrContext {
         return getSurfaceTextureIDNative(handle);
     }
 
+    public int getWebViewSurfaceTexture() {
+        return getWebViewSurfaceTextureNative(handle);
+    }
+
     public int getCameraTexture() {
         return getCameraTextureNative(handle);
     }

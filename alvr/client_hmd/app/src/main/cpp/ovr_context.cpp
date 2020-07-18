@@ -1070,6 +1070,12 @@ void OvrContext::updateHapticsState() {
 
         uint64_t currentUs = getTimestampUs();
 
+        if(s.fresh) {
+            s.startUs = s.startUs + currentUs;
+            s.endUs = s.startUs + s.endUs;
+            s.fresh = false;
+        }
+
         if(s.startUs <= 0) {
             // No requested haptics for this hand.
             if(s.buffered) {
@@ -1109,7 +1115,7 @@ void OvrContext::updateHapticsState() {
             for (int i = 0; i < remoteCapabilities.HapticSamplesMax; i++) {
                 float current = ((currentUs - s.startUs) / 1000000.0f) + (remoteCapabilities.HapticSampleDurationMS * i) / 1000.0f;
                 float intensity =
-                        sinf(static_cast<float>(current * M_PI * 2 * s.frequency)) * s.amplitude;
+                        (sinf(static_cast<float>(current * M_PI * 2 * s.frequency)) + 1.0f) * 0.5f * s.amplitude;
                 if (intensity < 0) {
                     intensity = 0;
                 } else if (intensity > 1.0) {
@@ -1137,10 +1143,11 @@ void OvrContext::onHapticsFeedback(uint64_t startTime, float amplitude, float du
 
     int curHandIndex = (hand == 0) ? 0 : 1;
     auto &s = mHapticsState[curHandIndex];
-    s.startUs = getTimestampUs() + startTime;
-    s.endUs = s.startUs + static_cast<uint64_t>(duration * 1000000);
+    s.startUs = startTime;
+    s.endUs = static_cast<uint64_t>(duration * 1000000);
     s.amplitude = amplitude;
     s.frequency = frequency;
+    s.fresh = true;
     s.buffered = false;
 }
 

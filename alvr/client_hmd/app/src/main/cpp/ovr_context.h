@@ -125,6 +125,7 @@ private:
         uint64_t endUs;
         float amplitude;
         float frequency;
+        bool fresh;
         bool buffered;
     };
     // mHapticsState[0]: right hand state

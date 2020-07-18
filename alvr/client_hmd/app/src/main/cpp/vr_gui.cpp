@@ -13,7 +13,8 @@ using namespace gl_render_utils;
 
 const float POINTER_BAR_WIDTH = 0.01;
 const float POINTER_BAR_LENGTH = 0.3;
-const float CURSOR_SCALE_FACTOR = 0.05; // -> m at 1 meter of distance
+const float CURSOR_SCALE_BASE = 0.01;
+const float CURSOR_SCALE_FACTOR = 0.015; // -> m at 1 meter of distance
 const float CURSOR_OFFSET = 0.001;
 const float CURSOR_PRESSED_SCALE_FACTOR = 0.7;
 
@@ -45,9 +46,9 @@ bool cursorPositionOnQuad(const vec3 &controllerPosition, const vec3 &direction,
         intersection = intersectRayTriangle(controllerPosition, direction, vert3, vert2, vert1,
                                             *outCoords, *outDistance);
         if (intersection) {
+            *outPosition = (1.f - outCoords->x - outCoords->y) * vert3 + outCoords->x * vert2 +
+                           outCoords->y * vert1 + offset;
             *outCoords = 1.f - *outCoords;
-            *outPosition = (1.f - outCoords->x - outCoords->x) * vert3 + outCoords->x * vert2 +
-                           outCoords->x * vert1 + offset;
             return true;
         } else {
             return false;
@@ -55,22 +56,26 @@ bool cursorPositionOnQuad(const vec3 &controllerPosition, const vec3 &direction,
     }
 }
 
-VRGUI::ControllerState::ControllerState() : cursorAnimation(Linear, 0.5s) {}
-
 VRGUI::VRGUI() {
-    vector<uint8_t> pngData, textureData;
     uint32_t width;
     uint32_t height;
 
-    loadAsset("cursor.png", pngData);
+    vector<uint8_t> pngData, textureData;
+    loadAsset("cursor_idle.png", pngData);
     lodepng::decode(textureData, width, height, pngData);
-    mCursorTexture.reset(new Texture(false, width, height, GL_RGBA, textureData));
+    mCursorIdleTexture = make_unique<Texture>(false, width, height, GL_RGBA, textureData);
+
+    pngData.clear();
+    textureData.clear();
+    loadAsset("cursor_press.png", pngData);
+    lodepng::decode(textureData, width, height, pngData);
+    mCursorPressTexture = make_unique<Texture>(false, width, height, GL_RGBA, textureData);
 
     pngData.clear();
     textureData.clear();
     loadAsset("pointer_bar_gradient.png", pngData);
     lodepng::decode(textureData, width, height, pngData);
-    mPointerBarTexture.reset(new Texture(false, width, height, GL_RGBA, textureData));
+    mPointerBarTexture = make_unique<Texture>(false, width, height, GL_RGBA, textureData);
 
     auto scaling = scale(mat4(1.f), {POINTER_BAR_WIDTH, POINTER_BAR_LENGTH, 1});
     auto rotation = rotate(mat4(1.f), (float) -M_PI_2, {1, 0, 0});
@@ -78,7 +83,8 @@ VRGUI::VRGUI() {
     mPointerBarModelTransform = translation * rotation * scaling;
 
     for (auto &state : mControllerStates) {
-        state.cursorQuad = make_unique<TexturedQuad>(mCursorTexture.get(), mat4(1.f));
+        state.cursorIdleQuad = make_unique<TexturedQuad>(mCursorIdleTexture.get(), mat4(1.f));
+        state.cursorPressQuad = make_unique<TexturedQuad>(mCursorPressTexture.get(), mat4(1.f));
         state.pointerBarQuad = make_unique<TexturedQuad>(mPointerBarTexture.get(),
                                                          mPointerBarModelTransform);
     }
@@ -104,6 +110,11 @@ void VRGUI::Update(const GUIInput &input) {
         // todo: rotate to face headPosition
         controllerState.pointerBarQuad->SetTransform(ctrlTransform);
 
+        controllerState.cursorIdleQuad->SetOpacity(0);
+        controllerState.cursorIdleQuad->SetTransform(translate(mat4(1.f), {0, 0, 1}));
+        controllerState.cursorPressQuad->SetOpacity(0);
+        controllerState.cursorPressQuad->SetTransform(translate(mat4(1.f), {0, 0, 1}));
+
         auto direction = ctrlRotation * vec4(0, 0, -1, 0);
 
         vec3 cursorPosition;
@@ -116,7 +127,7 @@ void VRGUI::Update(const GUIInput &input) {
             float dist;
             bool intersection = cursorPositionOnQuad(input.controllersPosition[i], direction,
                                                      panel->GetWorldTransform(), &coords,
-                                                     &cursorPosition, &dist);
+                                                     &postition, &dist);
             if (intersection && dist < minDist) {
                 minDist = dist;
                 cursorPosition = postition;
@@ -130,8 +141,6 @@ void VRGUI::Update(const GUIInput &input) {
         }
 
         if (closestPanel != nullptr) {
-            controllerState.cursorQuad->SetOpacity(1);
-
             if (closestPanel != mActivePanel) {
                 mActivePanel = closestPanel;
                 mActivePanel->SendEvent(InteractionType::CURSOR_ENTER);
@@ -141,20 +150,20 @@ void VRGUI::Update(const GUIInput &input) {
 
             if (!mPrevInput.actionButtonsDown[i] && input.actionButtonsDown[i]) {
                 mActivePanel->SendEvent(InteractionType::BUTTON_DOWN);
-                controllerState.cursorAnimation.Start(1, CURSOR_PRESSED_SCALE_FACTOR);
             } else if (mPrevInput.actionButtonsDown[i] && !input.actionButtonsDown[i]) {
                 mActivePanel->SendEvent(InteractionType::BUTTON_UP);
-                controllerState.cursorAnimation.Start(CURSOR_PRESSED_SCALE_FACTOR, 1);
             }
 
-            float scaleValue =
-                    controllerState.cursorAnimation.GetValue() * minDist * CURSOR_SCALE_FACTOR;
-            auto transform = scale(mat4(1.f), {scaleValue, scaleValue, 1});
-            transform = mActivePanel->GetRotation() * transform;
-            transform = translate(transform, cursorPosition);
-            controllerState.cursorQuad->SetTransform(transform);
-        } else {
-            controllerState.cursorQuad->SetOpacity(0);
+            auto cursorQuad = input.actionButtonsDown[i] ? controllerState.cursorPressQuad.get()
+                    : controllerState.cursorIdleQuad.get();
+
+            float headCursorDist = distance(input.headPosition, cursorPosition);
+            float scaleValue = headCursorDist * CURSOR_SCALE_FACTOR + CURSOR_SCALE_BASE;
+            auto scaling = scale(mat4(1.f), {scaleValue, scaleValue, 1});
+            auto rotation = mActivePanel->GetRotation();
+            auto translation = translate(mat4(1.f), cursorPosition);
+            cursorQuad->SetTransform(translation * rotation * scaling);
+            cursorQuad->SetOpacity(1);
         }
     }
 }
@@ -165,7 +174,8 @@ void VRGUI::Render(const RenderState &renderState, const mat4 &camera) const {
     }
 
     for (auto &state : mControllerStates) {
-        state.cursorQuad->Render(renderState, camera);
+        state.cursorIdleQuad->Render(renderState, camera);
+        state.cursorPressQuad->Render(renderState, camera);
         state.pointerBarQuad->Render(renderState, camera);
     }
 }

@@ -697,7 +697,7 @@ void OvrContext::renderLoading() {
 
     GUIInput guiInput = {};
     auto pos = headTracking.HeadPose.Pose.Position;
-    guiInput.headPosition = glm::vec3(pos.x, pos.y, pos.z);
+    guiInput.headPosition = glm::vec3(pos.x, pos.y - WORLD_VERTICAL_OFFSET, pos.z);
 
     ovrInputCapabilityHeader deviceCaps;
     int ctrlIdx = 0;

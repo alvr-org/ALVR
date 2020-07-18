@@ -33,17 +33,16 @@ private:
     GUIInput mPrevInput = {};
 
     std::vector<InteractivePanel *> mPanels;
-    InteractivePanel *mActivePanel;
+    InteractivePanel *mActivePanel = nullptr;
 
-    std::unique_ptr<gl_render_utils::Texture> mCursorTexture;
+    std::unique_ptr<gl_render_utils::Texture> mCursorIdleTexture;
+    std::unique_ptr<gl_render_utils::Texture> mCursorPressTexture;
     std::unique_ptr<gl_render_utils::Texture> mPointerBarTexture;
     glm::mat4 mPointerBarModelTransform;
 
     struct ControllerState {
-        AnimationCurve cursorAnimation;
-        std::unique_ptr<gl_render_utils::TexturedQuad> cursorQuad;
+        std::unique_ptr<gl_render_utils::TexturedQuad> cursorIdleQuad;
+        std::unique_ptr<gl_render_utils::TexturedQuad> cursorPressQuad;
         std::unique_ptr<gl_render_utils::TexturedQuad> pointerBarQuad;
-
-        ControllerState();
     } mControllerStates[2];
 };

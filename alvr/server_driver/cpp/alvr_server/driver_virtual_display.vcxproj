@@ -99,6 +99,7 @@
     <ClCompile Include="Bitrate.cpp" />
     <ClCompile Include="CEncoder.cpp" />
     <ClCompile Include="alvr_server.cpp" />
+    <ClCompile Include="ChaperoneUpdater.cpp" />
     <ClCompile Include="d3d-render-utils\RenderPipeline.cpp" />
     <ClCompile Include="d3d-render-utils\RenderUtils.cpp" />
     <ClCompile Include="driverlog.cpp" />
@@ -140,6 +141,7 @@
     <ClInclude Include="AudioCapture.h" />
     <ClInclude Include="Bitrate.h" />
     <ClInclude Include="CEncoder.h" />
+    <ClInclude Include="ChaperoneUpdater.h" />
     <ClInclude Include="common-utils.h" />
     <ClInclude Include="d3d-render-utils\RenderPipeline.h" />
     <ClInclude Include="d3d-render-utils\RenderUtils.h" />

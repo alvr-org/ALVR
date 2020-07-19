@@ -5,7 +5,9 @@ void _log(const char *format, va_list args, void (*logFn)(const char *))
 	char buf[1024];
 	vsnprintf(buf, sizeof(buf), format, args);
 	logFn(buf);
-	//DriverLogVarArgs(format, args);
+
+	//TODO: driver logger should concider current log level
+	DriverLogVarArgs(format, args);
 }
 
 void Log(const char *format, ...)

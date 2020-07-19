@@ -79,11 +79,8 @@ class OvrThread implements SurfaceHolder.Callback {
             WebView webView = new WebView(mActivity.getApplicationContext());
             webView.getSettings().setJavaScriptEnabled(true);
             webView.getSettings().setDomStorageEnabled(true);
-            webView.setInitialScale(1);
-            webView.getSettings().setUseWideViewPort(true);
-            webView.getSettings().setLoadWithOverviewMode(true);
+            webView.setInitialScale(100);
             webView.layout(0,0, WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
-//            mWebView.loadData(SERVER_NOT_FOUND_HTML, "text/html", "UTF-8");
             webView.loadUrl(url);
 
             mWebViewWrapper.webView = webView;
@@ -147,7 +144,7 @@ class OvrThread implements SurfaceHolder.Callback {
                     return;
                 }
             } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-                e.printStackTrace();
+                Utils.loge(TAG, () -> e.toString());
             }
 
             Utils.logi(TAG, () -> "OvrThread.onResume: mOvrContext.onResume().");
@@ -227,10 +224,11 @@ class OvrThread implements SurfaceHolder.Callback {
 
             if (mWebViewWrapper.webView != null && mWebViewSurface != null && mWebViewSurfaceTexture != null){
                 try {
-                    final Canvas surfaceCanvas = mWebViewSurface.lockCanvas(null);
+                    Canvas surfaceCanvas = mWebViewSurface.lockCanvas(null);
                     mWebViewWrapper.webView.draw(surfaceCanvas);
                     mWebViewSurface.unlockCanvasAndPost(surfaceCanvas);
                     mWebViewSurfaceTexture.updateTexImage();
+                    surfaceCanvas = null;
                 } catch (Surface.OutOfResourcesException e) {
                     Utils.loge(TAG, () -> e.toString());
                 }

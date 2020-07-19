@@ -735,7 +735,7 @@ void ovrRenderer_Destroy(ovrRenderer *renderer) {
 #ifdef OVR_SDK
 
 ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,
-                                                   bool loading) {
+                                                   bool loading, bool showDashboard) {
     if (renderer->enableFFR) {
         renderer->ffr->Render();
     }
@@ -781,7 +781,9 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
 
         renderEye(eye, mvpMatrix, &viewport, renderer, loading);
 
-        if (loading) {
+        if (showDashboard) {
+            frameBuffer->renderStates[frameBuffer->TextureSwapChainIndex]->ClearDepth();
+
             glm::mat4 glCameraMatrix;
             memcpy(glm::value_ptr(glCameraMatrix), mvpMatrix[eye].M, 16 * 4);
             glCameraMatrix = glm::transpose(glCameraMatrix);

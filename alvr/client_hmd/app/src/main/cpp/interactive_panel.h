@@ -8,7 +8,8 @@
 enum class InteractionType {
     CURSOR_ENTER,
     CURSOR_LEAVE,
-    CURSOR_MOVE,
+    CURSOR_HOVER,
+    CURSOR_DRAG,
     BUTTON_DOWN,
     BUTTON_UP,
 };

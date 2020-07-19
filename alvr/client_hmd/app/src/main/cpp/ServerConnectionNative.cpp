@@ -375,6 +375,9 @@ void ServerConnectionNative::onConnect(const ConnectionMessage &connectionMessag
             m_connectionMessage.foveationShape,
             m_connectionMessage.foveationVerticalOffset);
 
+    jstring jstr = m_env->NewStringUTF(m_connectionMessage.webGuiUrl);
+    m_env->CallVoidMethod(m_instance, mSetWebGuiUrlID, jstr);
+
     if (mSinkPrepared) {
         LOGSOCKETI("onConnect: Send stream start packet.");
         sendStreamStartPacket();
@@ -531,6 +534,7 @@ void ServerConnectionNative::initializeJNICallbacks(JNIEnv *env, jobject instanc
     mOnChangeSettingsMethodID = env->GetMethodID(clazz, "onChangeSettings", "(JII)V");
     mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
     mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
+    mSetWebGuiUrlID = env->GetMethodID(clazz, "setWebViewURL", "(Ljava/lang/String;)V");
 
     env->DeleteLocalRef(clazz);
 }

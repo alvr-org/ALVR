@@ -104,11 +104,15 @@ void VRGUI::Update(const GUIInput &input) {
     for (int i = 0; i < 2; i++) {
         auto &controllerState = mControllerStates[i];
 
+        // Pointer bar
+
         auto ctrlRotation = toMat4(input.controllersRotation[i]);
         auto ctrlTranslation = translate(mat4(1.f), input.controllersPosition[i]);
         auto ctrlTransform = ctrlTranslation * ctrlRotation * mPointerBarModelTransform;
         // todo: rotate to face headPosition
         controllerState.pointerBarQuad->SetTransform(ctrlTransform);
+
+        // Cursor position and appearance
 
         controllerState.cursorIdleQuad->SetOpacity(0);
         controllerState.cursorIdleQuad->SetTransform(translate(mat4(1.f), {0, 0, 1}));
@@ -136,36 +140,49 @@ void VRGUI::Update(const GUIInput &input) {
             }
         }
 
-        if (mActivePanel != nullptr && mActivePanel != closestPanel) {
-            mActivePanel->SendEvent(InteractionType::CURSOR_LEAVE);
-        }
-
         if (closestPanel != nullptr) {
-            if (closestPanel != mActivePanel) {
-                mActivePanel = closestPanel;
-                mActivePanel->SendEvent(InteractionType::CURSOR_ENTER);
-            }
-
-            mActivePanel->SendEvent(InteractionType::CURSOR_MOVE, cursorCoords);
-
-            if (!mPrevInput.actionButtonsDown[i] && input.actionButtonsDown[i]) {
-                mActivePanel->SendEvent(InteractionType::BUTTON_DOWN);
-            } else if (mPrevInput.actionButtonsDown[i] && !input.actionButtonsDown[i]) {
-                mActivePanel->SendEvent(InteractionType::BUTTON_UP);
-            }
-
             auto cursorQuad = input.actionButtonsDown[i] ? controllerState.cursorPressQuad.get()
-                    : controllerState.cursorIdleQuad.get();
+                                                         : controllerState.cursorIdleQuad.get();
 
             float headCursorDist = distance(input.headPosition, cursorPosition);
             float scaleValue = headCursorDist * CURSOR_SCALE_FACTOR + CURSOR_SCALE_BASE;
             auto scaling = scale(mat4(1.f), {scaleValue, scaleValue, 1});
-            auto rotation = mActivePanel->GetRotation();
+            auto rotation = closestPanel->GetRotation();
             auto translation = translate(mat4(1.f), cursorPosition);
             cursorQuad->SetTransform(translation * rotation * scaling);
             cursorQuad->SetOpacity(1);
         }
+
+        // Interaction
+
+        if (i == mActiveControllerIdx || input.actionButtonsDown[i]) {
+            mActiveControllerIdx = i;
+
+            if (mActivePanel != nullptr && mActivePanel != closestPanel) {
+                mActivePanel->SendEvent(InteractionType::CURSOR_LEAVE, cursorCoords);
+                mActivePanel = nullptr;
+            }
+
+            if (closestPanel != nullptr) {
+                if (closestPanel != mActivePanel) {
+                    mActivePanel = closestPanel;
+                    mActivePanel->SendEvent(InteractionType::CURSOR_ENTER, cursorCoords);
+                }
+
+                if (!mPrevInput.actionButtonsDown[i] && input.actionButtonsDown[i]) {
+                    mActivePanel->SendEvent(InteractionType::BUTTON_DOWN, cursorCoords);
+                } else if (mPrevInput.actionButtonsDown[i] && !input.actionButtonsDown[i]) {
+                    mActivePanel->SendEvent(InteractionType::BUTTON_UP, cursorCoords);
+                } else if (mPrevInput.actionButtonsDown[i] && input.actionButtonsDown[i]) {
+                    mActivePanel->SendEvent(InteractionType::CURSOR_DRAG, cursorCoords);
+                } else {
+                    mActivePanel->SendEvent(InteractionType::CURSOR_HOVER, cursorCoords);
+                }
+            }
+        }
     }
+
+    mPrevInput = input;
 }
 
 void VRGUI::Render(const RenderState &renderState, const mat4 &camera) const {

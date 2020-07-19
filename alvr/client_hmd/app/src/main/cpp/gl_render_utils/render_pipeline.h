@@ -17,7 +17,7 @@ namespace gl_render_utils {
     public:
         RenderState(const Texture *renderTarget);
 
-        void Clear() const;
+        void ClearDepth() const;
 
         GLuint GetFrameBuffer() const {
             return mFrameBuffer;

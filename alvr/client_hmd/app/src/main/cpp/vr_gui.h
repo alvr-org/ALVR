@@ -31,6 +31,7 @@ public:
 
 private:
     GUIInput mPrevInput = {};
+    int mActiveControllerIdx = -1;
 
     std::vector<InteractivePanel *> mPanels;
     InteractivePanel *mActivePanel = nullptr;

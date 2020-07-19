@@ -34,7 +34,7 @@ class ServerConnection extends ThreadBase
     private String mPreviousServerAddress;
     private int mPreviousServerPort;
 
-    private WebView mWebview;
+    private OvrThread mParent;
 
     interface ConnectionListener {
         void onConnected(int width, int height, int codec, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
@@ -62,10 +62,10 @@ class ServerConnection extends ThreadBase
     private long mNativeHandle = 0;
     private final Object mWaiter = new Object();
 
-    ServerConnection(ConnectionListener connectionListener, WebView webView)
+    ServerConnection(ConnectionListener connectionListener, OvrThread parent)
     {
         mConnectionListener = connectionListener;
-        mWebview = webView;
+        mParent = parent;
     }
 
     private String getDeviceName()
@@ -286,7 +286,7 @@ class ServerConnection extends ThreadBase
 
     @SuppressWarnings("unused")
     public void setWebViewURL(String url) {
-        mWebview.loadUrl(url);
+        mParent.createWebView(url);
     }
 
 

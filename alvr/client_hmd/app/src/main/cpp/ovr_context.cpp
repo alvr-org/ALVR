@@ -23,8 +23,12 @@
 #include "asset.h"
 #include <inttypes.h>
 
-void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager, jobject vrThread,
-                            bool ARMode, int initialRefreshRate) {
+using namespace std;
+
+const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 1s;
+
+void OvrContext::initialize(JNIEnv *env, jobject activity, jobject jOvrContext, jobject assetManager,
+                            jobject vrThread, bool ARMode, int initialRefreshRate) {
     LOG("Initializing EGL.");
 
     setAssetManager(env, assetManager);
@@ -35,6 +39,24 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager,
     java.ActivityObject = env->NewGlobalRef(activity);
 
     mVrThread = env->NewGlobalRef(vrThread);
+    mjOvrContext = env->NewGlobalRef(jOvrContext);
+
+    jclass clazz = env->FindClass("com/polygraphene/alvr/OvrContext");
+    auto jWebViewInteractionCallback = env->GetMethodID(clazz, "applyWebViewInteractionEvent",
+                                                        "(IFF)V");
+    env->DeleteLocalRef(clazz);
+
+    mWebViewInteractionCallback = [jWebViewInteractionCallback, this](InteractionType type, glm::vec2 coord){
+        if (mjOvrContext != nullptr && mShowDashboard) {
+            JNIEnv *env;
+            jint res = java.Vm->AttachCurrentThread(&env, nullptr);
+            if (res == JNI_OK) {
+                    env->CallVoidMethod(mjOvrContext, jWebViewInteractionCallback, (int)type, coord.x, coord.y);
+            } else {
+                LOGE("Failed to attach java thread for dashboard interaction");
+            }
+        }
+    };
 
     eglInit();
 
@@ -104,14 +126,12 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject assetManager,
     FrameBufferWidth = 1440;//vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH);
     FrameBufferHeight = 1600;//vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT);
 
-    mWebViewInteractionCallback = [](InteractionType, glm::vec2){};
-
     ovrRenderer_Create(&Renderer, FrameBufferWidth, FrameBufferHeight,
                        SurfaceTextureID, loadingTexture, webViewSurfaceTexture,
                        mWebViewInteractionCallback, {false});
     ovrRenderer_CreateScene(&Renderer);
 
-    jclass clazz = env->FindClass("com/polygraphene/alvr/ServerConnection");
+    clazz = env->FindClass("com/polygraphene/alvr/ServerConnection");
     mServerConnection_send = env->GetMethodID(clazz, "send", "(JI)V");
     env->DeleteLocalRef(clazz);
 
@@ -158,14 +178,14 @@ void OvrContext::destroy(JNIEnv *env) {
     env->DeleteGlobalRef(mVrThread);
     env->DeleteGlobalRef(java.ActivityObject);
     env->DeleteGlobalRef(mServerConnection);
+    env->DeleteGlobalRef(mjOvrContext);
+    mjOvrContext = nullptr;
 
     delete[] micBuffer;
-
-
 }
 
 
-void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime) {
+void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiInput) {
     ovrInputCapabilityHeader curCaps;
     ovrResult result;
     int controller = 0;
@@ -286,6 +306,17 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime) {
 
             if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) != 0) {
                 c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND;
+
+                if (remoteInputState.Buttons & ovrButton_Enter) {
+                    if (!mMenuLongPressActivated && std::chrono::system_clock::now()
+                            - mMenuNotPressedLastInstant > MENU_BUTTON_LONG_PRESS_DURATION) {
+                        mShowDashboard = !mShowDashboard;
+                        mMenuLongPressActivated = true;
+                    }
+                } else {
+                    mMenuNotPressedLastInstant = std::chrono::system_clock::now();
+                    mMenuLongPressActivated = false;
+                }
             }
 
             if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_ModelGearVR) !=
@@ -301,26 +332,31 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime) {
                 c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_QUEST;
             }
 
-            c.buttons = mapButtons(&remoteCapabilities, &remoteInputState);
-
-            if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_HasJoystick) != 0) {
-                c.trackpadPosition.x = remoteInputState.JoystickNoDeadZone.x;
-                c.trackpadPosition.y = remoteInputState.JoystickNoDeadZone.y;
+            if (mShowDashboard) {
+                guiInput->actionButtonsDown[controller] =
+                        remoteInputState.Buttons & (ovrButton_A | ovrButton_X | ovrButton_Trigger);
             } else {
-                // Normalize to -1.0 - +1.0 for OpenVR Input. y-asix should be reversed.
-                c.trackpadPosition.x =
-                        remoteInputState.TrackpadPosition.x / remoteCapabilities.TrackpadMaxX *
-                        2.0f - 1.0f;
-                c.trackpadPosition.y =
-                        remoteInputState.TrackpadPosition.y / remoteCapabilities.TrackpadMaxY *
-                        2.0f - 1.0f;
-                c.trackpadPosition.y = -c.trackpadPosition.y;
-            }
-            c.triggerValue = remoteInputState.IndexTrigger;
-            c.gripValue = remoteInputState.GripTrigger;
+                c.buttons = mapButtons(&remoteCapabilities, &remoteInputState);
 
-            c.batteryPercentRemaining = remoteInputState.BatteryPercentRemaining;
-            c.recenterCount = remoteInputState.RecenterCount;
+                if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_HasJoystick) != 0) {
+                    c.trackpadPosition.x = remoteInputState.JoystickNoDeadZone.x;
+                    c.trackpadPosition.y = remoteInputState.JoystickNoDeadZone.y;
+                } else {
+                    // Normalize to -1.0 - +1.0 for OpenVR Input. y-asix should be reversed.
+                    c.trackpadPosition.x =
+                            remoteInputState.TrackpadPosition.x / remoteCapabilities.TrackpadMaxX *
+                            2.0f - 1.0f;
+                    c.trackpadPosition.y =
+                            remoteInputState.TrackpadPosition.y / remoteCapabilities.TrackpadMaxY *
+                            2.0f - 1.0f;
+                    c.trackpadPosition.y = -c.trackpadPosition.y;
+                }
+                c.triggerValue = remoteInputState.IndexTrigger;
+                c.gripValue = remoteInputState.GripTrigger;
+
+                c.batteryPercentRemaining = remoteInputState.BatteryPercentRemaining;
+                c.recenterCount = remoteInputState.RecenterCount;
+            }
 
             ovrTracking tracking;
             if (vrapi_GetInputTrackingState(Ovr, remoteCapabilities.Header.DeviceID,
@@ -352,7 +388,10 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime) {
                        &tracking.HeadPose.LinearAcceleration,
                        sizeof(tracking.HeadPose.LinearAcceleration));
 
-
+                auto pos = tracking.HeadPose.Pose.Position;
+                guiInput->controllersPosition[controller] = glm::vec3(pos.x, pos.y - WORLD_VERTICAL_OFFSET, pos.z);
+                auto rot = tracking.HeadPose.Pose.Orientation;
+                guiInput->controllersRotation[controller] = glm::quat(rot.w, rot.x, rot.y, rot.z);
             }
             controller++;
         }
@@ -456,8 +495,13 @@ void OvrContext::setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTr
            sizeof(ovrQuatf));
     memcpy(&packet->HeadPose_Pose_Position, &tracking->HeadPose.Pose.Position, sizeof(ovrVector3f));
 
+    GUIInput guiInput = {};
+    auto pos = tracking->HeadPose.Pose.Position;
+    guiInput.headPosition = glm::vec3(pos.x, pos.y - WORLD_VERTICAL_OFFSET, pos.z);
 
-    setControllerInfo(packet, displayTime);
+    setControllerInfo(packet, displayTime, &guiInput);
+
+    Renderer.gui->Update(guiInput);
 
     FrameLog(FrameIndex, "Sending tracking info.");
 }
@@ -497,11 +541,6 @@ void OvrContext::sendTrackingInfo(JNIEnv *env_, jobject udpReceiverThread) {
 
     env_->CallVoidMethod(udpReceiverThread, mServerConnection_send, reinterpret_cast<jlong>(&info),
                          static_cast<jint>(sizeof(info)));
-
-
-
-
-
 }
 
 // Called TrackingThread. So, we can't use this->env.
@@ -648,7 +687,7 @@ void OvrContext::render(uint64_t renderedFrameIndex) {
 
 // Render eye images and setup the primary layer using ovrTracking2.
     const ovrLayerProjection2 worldLayer =
-            ovrRenderer_RenderFrame(&Renderer, &frame->tracking, false);
+            ovrRenderer_RenderFrame(&Renderer, &frame->tracking, false, mShowDashboard);
 
     LatencyCollector::Instance().rendered2(renderedFrameIndex);
 
@@ -695,47 +734,7 @@ void OvrContext::renderLoading() {
     double displayTime = vrapi_GetPredictedDisplayTime(Ovr, FrameIndex);
     ovrTracking2 headTracking = vrapi_GetPredictedTracking2(Ovr, displayTime);
 
-    GUIInput guiInput = {};
-    auto pos = headTracking.HeadPose.Pose.Position;
-    guiInput.headPosition = glm::vec3(pos.x, pos.y - WORLD_VERTICAL_OFFSET, pos.z);
-
-    ovrInputCapabilityHeader deviceCaps;
-    int ctrlIdx = 0;
-    for (uint32_t deviceIndex = 0;
-         vrapi_EnumerateInputDevices(Ovr, deviceIndex, &deviceCaps) >= 0; deviceIndex++) {
-        if (deviceCaps.Type == ovrControllerType_TrackedRemote) {
-            ovrInputTrackedRemoteCapabilities inputCaps;
-            inputCaps.Header = deviceCaps;
-            auto res = vrapi_GetInputDeviceCapabilities(Ovr, &inputCaps.Header);
-            if (res != ovrSuccess) {
-                continue;
-            }
-
-            ovrInputStateTrackedRemote inputState;
-            inputState.Header.ControllerType = inputCaps.Header.Type;
-            res = vrapi_GetCurrentInputState(Ovr, inputCaps.Header.DeviceID, &inputState.Header);
-            if (res != ovrSuccess) {
-                continue;
-            }
-
-            guiInput.actionButtonsDown[ctrlIdx] =
-                    inputState.Buttons & (ovrButton_A | ovrButton_X | ovrButton_Trigger);
-
-            ovrTracking tracking;
-            if (vrapi_GetInputTrackingState(Ovr, deviceCaps.DeviceID, displayTime, &tracking) != ovrSuccess) {
-                continue;
-            }
-            auto pos = tracking.HeadPose.Pose.Position;
-            guiInput.controllersPosition[ctrlIdx] = glm::vec3(pos.x, pos.y - WORLD_VERTICAL_OFFSET, pos.z);
-            auto rot = tracking.HeadPose.Pose.Orientation;
-            guiInput.controllersRotation[ctrlIdx] = glm::quat(rot.w, rot.x, rot.y, rot.z);
-
-            ctrlIdx++;
-        }
-    }
-    Renderer.gui->Update(guiInput);
-
-    const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(&Renderer, &headTracking, true);
+    const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(&Renderer, &headTracking, true, false);
 
     const ovrLayerHeader2 *layers[] =
             {
@@ -1210,7 +1209,7 @@ Java_com_polygraphene_alvr_OvrContext_initializeNative(JNIEnv *env, jobject inst
                                                        jobject vrThread, jboolean ARMode,
                                                        jint initialRefreshRate) {
     OvrContext *context = new OvrContext();
-    context->initialize(env, activity, assetManager, vrThread, ARMode, initialRefreshRate);
+    context->initialize(env, activity, instance, assetManager, vrThread, ARMode, initialRefreshRate);
     return (jlong) context;
 }
 

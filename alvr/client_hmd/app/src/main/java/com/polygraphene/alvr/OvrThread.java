@@ -20,18 +20,8 @@ import java.util.concurrent.TimeUnit;
 class OvrThread implements SurfaceHolder.Callback {
     private static final String TAG = "OvrThread";
 
-    private static final int WEBVIEW_WIDTH = 800;
-    private static final int WEBVIEW_HEIGHT = 600;
-
-    private static final String SERVER_NOT_FOUND_HTML = "<html><body>" +
-            "<h1>Test</h1>" +
-            "<script>" +
-            "setInterval(function(){" +
-            "   var colors = ['red','blue','green','yellow','cyan','orange'];" +
-            "   var new_color = colors[Math.floor(Math.random()*colors.length)];" +
-            "   document.body.style.backgroundColor = new_color;" +
-            "}, 1000);" +
-            "</script></body></html>";
+    public static final int WEBVIEW_WIDTH = 800;
+    public static final int WEBVIEW_HEIGHT = 600;
 
     private Activity mActivity;
 
@@ -39,7 +29,12 @@ class OvrThread implements SurfaceHolder.Callback {
     private Handler mHandler;
     private HandlerThread mHandlerThread;
 
-    private WebView mWebView;
+    // Wrapper used to emulate pointer/pass by reference
+    public class WebViewWrapper {
+        public WebView webView = null;
+    }
+
+    private WebViewWrapper mWebViewWrapper = null;
 
     private SurfaceTexture mSurfaceTexture;
     private Surface mSurface;
@@ -72,11 +67,27 @@ class OvrThread implements SurfaceHolder.Callback {
         mHandler = new Handler(mHandlerThread.getLooper());
         mHandler.post(() -> startup());
 
-        mWebView = new WebView(activity.getApplicationContext());
-        mWebView.getSettings().setJavaScriptEnabled(true);
-        mWebView.getSettings().setDomStorageEnabled(true);
-        mWebView.layout(0,0, WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
-        mWebView.loadData(SERVER_NOT_FOUND_HTML, "text/html", "UTF-8");
+        mWebViewWrapper = new WebViewWrapper();
+
+        mOvrContext.mWebViewWrapper = mWebViewWrapper;
+    }
+
+    // since the webview is offscreen (not attached to a window) I cannot .post() a command for setting
+    // the url later. So the webview can be created only when I have the url.
+    public void createWebView(String url) {
+        mHandler.post(() -> {
+            WebView webView = new WebView(mActivity.getApplicationContext());
+            webView.getSettings().setJavaScriptEnabled(true);
+            webView.getSettings().setDomStorageEnabled(true);
+            webView.setInitialScale(1);
+            webView.getSettings().setUseWideViewPort(true);
+            webView.getSettings().setLoadWithOverviewMode(true);
+            webView.layout(0,0, WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
+//            mWebView.loadData(SERVER_NOT_FOUND_HTML, "text/html", "UTF-8");
+            webView.loadUrl(url);
+
+            mWebViewWrapper.webView = webView;
+        });
     }
 
     //SurfaceHolder Callbacks
@@ -108,7 +119,7 @@ class OvrThread implements SurfaceHolder.Callback {
         // To avoid deadlock caused by it, we need to flush last output.
         mHandler.post(() -> {
 
-            mReceiverThread = new ServerConnection(mUdpReceiverConnectionListener, mWebView);
+            mReceiverThread = new ServerConnection(mUdpReceiverConnectionListener, this);
 
             PersistentConfig.ConnectionState connectionState = new PersistentConfig.ConnectionState();
             PersistentConfig.loadConnectionState(mActivity, connectionState);
@@ -213,6 +224,18 @@ class OvrThread implements SurfaceHolder.Callback {
                 return;
             }
             long renderedFrameIndex = mDecoderThread.clearAvailable(mSurfaceTexture);
+
+            if (mWebViewWrapper.webView != null && mWebViewSurface != null && mWebViewSurfaceTexture != null){
+                try {
+                    final Canvas surfaceCanvas = mWebViewSurface.lockCanvas(null);
+                    mWebViewWrapper.webView.draw(surfaceCanvas);
+                    mWebViewSurface.unlockCanvasAndPost(surfaceCanvas);
+                    mWebViewSurfaceTexture.updateTexImage();
+                } catch (Surface.OutOfResourcesException e) {
+                    Utils.loge(TAG, () -> e.toString());
+                }
+            }
+
             if (renderedFrameIndex != -1)
             {
                 mOvrContext.render(renderedFrameIndex);
@@ -238,17 +261,6 @@ class OvrThread implements SurfaceHolder.Callback {
             else
             {
                 mLoadingTexture.drawMessage(Utils.getVersionName(mActivity) + "\n \nOpen ALVR on PC and\nclick on \"Trust\" next to\nthe client entry");
-            }
-
-            if (mWebViewSurface != null && mWebViewSurfaceTexture != null){
-                try {
-                    final Canvas surfaceCanvas = mWebViewSurface.lockCanvas(null);
-                    mWebView.draw(surfaceCanvas);
-                    mWebViewSurface.unlockCanvasAndPost(surfaceCanvas);
-                    mWebViewSurfaceTexture.updateTexImage();
-                } catch (Surface.OutOfResourcesException e) {
-                    Utils.loge(TAG, () -> e.toString());
-                }
             }
 
             mOvrContext.renderLoading();

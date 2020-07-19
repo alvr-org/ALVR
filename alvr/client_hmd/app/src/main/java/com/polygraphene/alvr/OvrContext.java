@@ -2,13 +2,19 @@ package com.polygraphene.alvr;
 
 import android.app.Activity;
 import android.content.res.AssetManager;
+import android.os.SystemClock;
+import android.view.InputDevice;
+import android.view.MotionEvent;
 import android.view.Surface;
+import android.webkit.WebView;
 
 public class OvrContext {
 
     static {
         System.loadLibrary("native-lib");
     }
+
+    public OvrThread.WebViewWrapper mWebViewWrapper = null;
 
     private long handle;
 
@@ -139,4 +145,50 @@ public class OvrContext {
     private native void onHapticsFeedbackNative(long handle, long startTime, float amplitude, float duration, float frequency, boolean hand);
 
     private native boolean getButtonDownNative(long handle);
+
+    @SuppressWarnings("unused")
+    public void applyWebViewInteractionEvent(int type, float x, float y) {
+        if (mWebViewWrapper != null && mWebViewWrapper.webView != null) {
+            long time = SystemClock.uptimeMillis();
+
+            int action = 0;
+            boolean touchEvent = false;
+            switch (type) {
+                case 0:
+                    action = MotionEvent.ACTION_HOVER_ENTER;
+                    touchEvent = false;
+                    break;
+                case 1:
+                    action = MotionEvent.ACTION_HOVER_EXIT;
+                    touchEvent = false;
+                    break;
+                case 2:
+                    action = MotionEvent.ACTION_HOVER_MOVE;
+                    touchEvent = false;
+                    break;
+                case 3:
+                    action = MotionEvent.ACTION_MOVE;
+                    touchEvent = true;
+                    break;
+                case 4:
+                    action = MotionEvent.ACTION_DOWN;
+                    touchEvent = true;
+                    break;
+                case 5:
+                    action = MotionEvent.ACTION_UP;
+                    touchEvent = true;
+                    break;
+            }
+
+            x = x * OvrThread.WEBVIEW_WIDTH;
+            y = y * OvrThread.WEBVIEW_HEIGHT;
+
+            MotionEvent ev = MotionEvent.obtain(time, time, action, x, y, 0);
+            if (touchEvent) {
+                mWebViewWrapper.webView.dispatchTouchEvent(ev);
+            } else {
+                mWebViewWrapper.webView.dispatchGenericMotionEvent(ev);
+            }
+        }
+    }
 }

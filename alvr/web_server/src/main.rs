@@ -25,6 +25,7 @@ use warp::{
 };
 
 const WEB_GUI_DIR_STR: &str = "web_gui";
+const WEB_SERVER_PORT: u16 = 8082;
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -167,11 +168,12 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             }
         }
         if let Some(host_address) = maybe_host_address {
-            let host_address_c_string = std::ffi::CString::new(host_address.to_string()).unwrap();
-            let host_address_bytes = host_address_c_string.as_bytes_with_nul();
             server_handshake_packet.web_gui_url = [0; 32];
-            server_handshake_packet.web_gui_url[0..host_address_bytes.len()]
-                .copy_from_slice(host_address_bytes);
+            let url_string = format!("http://{}:{}/", host_address, WEB_SERVER_PORT);
+            let url_c_string = std::ffi::CString::new(url_string).unwrap();
+            let url_bytes = url_c_string.as_bytes_with_nul();
+            server_handshake_packet.web_gui_url[0..url_bytes.len()]
+                .copy_from_slice(url_bytes);
 
             process::launch_steamvr().ok();
 
@@ -282,7 +284,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
                 "no-cache, no-store, must-revalidate",
             )),
     )
-    .run(([127, 0, 0, 1], 8082))
+    .run(([0, 0, 0, 0], WEB_SERVER_PORT))
     .await;
 
     trace_err!(driver_log_redirect.await)?;

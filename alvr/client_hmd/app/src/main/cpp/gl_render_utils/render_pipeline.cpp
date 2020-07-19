@@ -38,9 +38,9 @@ namespace gl_render_utils {
         GL(glDeleteFramebuffers(1, &mFrameBuffer));
     }
 
-    void RenderState::Clear() const {
+    void RenderState::ClearDepth() const {
         GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mFrameBuffer));
-        GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+        GL(glClear(GL_DEPTH_BUFFER_BIT));
     }
 
     GLuint RenderPipeline::mBindingPointCounter = 0;

@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <map>
+#include <chrono>
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <android/input.h>
@@ -17,7 +18,7 @@ uint32_t ovrButton_Unknown1 = 0x01000000;
 
 class OvrContext {
 public:
-    void initialize(JNIEnv *env, jobject activity, jobject assetManager, jobject vrThread, bool ARMode, int initialRefreshRate);
+    void initialize(JNIEnv *env, jobject activity, jobject jOvrContext, jobject assetManager, jobject vrThread, bool ARMode, int initialRefreshRate);
     void destroy(JNIEnv *env);
 
 
@@ -65,6 +66,7 @@ private:
     ovrMobile *Ovr;
     ovrJava java;
     JNIEnv *env;
+    JNIEnv *jOvrContextEnv;
 
 
     int16_t* micBuffer;
@@ -78,12 +80,14 @@ private:
 
     jobject mVrThread = nullptr;
     jobject mServerConnection = nullptr;
+    jobject mjOvrContext = nullptr;
 
     GLuint SurfaceTextureID = 0;
     GLuint webViewSurfaceTexture = 0;
     GLuint loadingTexture = 0;
     int suspend = 0;
     bool Resumed = false;
+    bool mShowDashboard = false;
     int FrameBufferWidth = 0;
     int FrameBufferHeight = 0;
     bool mFoveationEnabled = false;
@@ -131,11 +135,15 @@ private:
     // mHapticsState[1]: left hand state
     HapticsState mHapticsState[2];
 
+
+    std::chrono::system_clock::time_point mMenuNotPressedLastInstant;
+    bool mMenuLongPressActivated = false;
+
     // Previous trigger button state.
     bool mButtonPressed;
     uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities, ovrInputStateTrackedRemote *remoteInputState);
 
-    void setControllerInfo(TrackingInfo *packet, double displayTime);
+    void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiInput);
 
     void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tracking  );
 

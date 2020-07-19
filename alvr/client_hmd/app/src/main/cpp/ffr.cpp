@@ -330,6 +330,6 @@ void FFR::Initialize(FFRData ffrData) {
 }
 
 void FFR::Render() const {
-    mExpandedTextureState->Clear();
+    mExpandedTextureState->ClearDepth();
     mDecompressSlicesPipeline->Render(*mExpandedTextureState);
 }

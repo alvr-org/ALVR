@@ -98,6 +98,8 @@ private:
     jmethodID mOnDisconnectedMethodID;
     jmethodID mOnHapticsFeedbackID;
     jmethodID mSetWebGuiUrlID;
+    jmethodID mOnGuardianSyncAckID;
+    jmethodID mOnGuardianSegmentAckID;
 
     //
     // Send buffer

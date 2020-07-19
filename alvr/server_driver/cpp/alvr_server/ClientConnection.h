@@ -14,6 +14,7 @@
 #include "Settings.h"
 #include "Statistics.h"
 #include "MicPlayer.h"
+#include "ChaperoneUpdater.h"
 
 extern "C" {
 #include "reedsolomon/rs.h"
@@ -51,6 +52,7 @@ private:
 	std::shared_ptr<UdpSocket> m_Socket;
 	std::shared_ptr<Statistics> m_Statistics;
 	std::shared_ptr<MicPlayer> m_MicPlayer;
+	std::shared_ptr<ChaperoneUpdater> m_ChaperoneUpdater;
 
 	std::ofstream outfile;
 

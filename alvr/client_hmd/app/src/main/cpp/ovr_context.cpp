@@ -182,6 +182,7 @@ void OvrContext::destroy(JNIEnv *env) {
     mjOvrContext = nullptr;
 
     delete[] micBuffer;
+    delete[] m_GuardianPoints;
 }
 
 
@@ -541,6 +542,7 @@ void OvrContext::sendTrackingInfo(JNIEnv *env_, jobject udpReceiverThread) {
 
     env_->CallVoidMethod(udpReceiverThread, mServerConnection_send, reinterpret_cast<jlong>(&info),
                          static_cast<jint>(sizeof(info)));
+    checkShouldSyncGuardian();
 }
 
 // Called TrackingThread. So, we can't use this->env.
@@ -634,6 +636,8 @@ void OvrContext::onResume() {
     if(mMicHandle && mStreamMic) {
         ovr_Microphone_Start(mMicHandle);
     }
+
+    checkShouldSyncGuardian();
 }
 
 void OvrContext::onPause() {
@@ -1069,6 +1073,12 @@ void OvrContext::updateHapticsState() {
 
         uint64_t currentUs = getTimestampUs();
 
+        if(s.fresh) {
+            s.startUs = s.startUs + currentUs;
+            s.endUs = s.startUs + s.endUs;
+            s.fresh = false;
+        }
+
         if(s.startUs <= 0) {
             // No requested haptics for this hand.
             if(s.buffered) {
@@ -1108,7 +1118,7 @@ void OvrContext::updateHapticsState() {
             for (int i = 0; i < remoteCapabilities.HapticSamplesMax; i++) {
                 float current = ((currentUs - s.startUs) / 1000000.0f) + (remoteCapabilities.HapticSampleDurationMS * i) / 1000.0f;
                 float intensity =
-                        sinf(static_cast<float>(current * M_PI * 2 * s.frequency)) * s.amplitude;
+                        (sinf(static_cast<float>(current * M_PI * 2 * s.frequency)) + 1.0f) * 0.5f * s.amplitude;
                 if (intensity < 0) {
                     intensity = 0;
                 } else if (intensity > 1.0) {
@@ -1136,10 +1146,11 @@ void OvrContext::onHapticsFeedback(uint64_t startTime, float amplitude, float du
 
     int curHandIndex = (hand == 0) ? 0 : 1;
     auto &s = mHapticsState[curHandIndex];
-    s.startUs = getTimestampUs() + startTime;
-    s.endUs = s.startUs + static_cast<uint64_t>(duration * 1000000);
+    s.startUs = startTime;
+    s.endUs = static_cast<uint64_t>(duration * 1000000);
     s.amplitude = amplitude;
     s.frequency = frequency;
+    s.fresh = true;
     s.buffered = false;
 }
 
@@ -1200,6 +1211,112 @@ bool OvrContext::getButtonDown() {
     bool ret = buttonPressed && !mButtonPressed;
     mButtonPressed = buttonPressed;
     return ret;
+}
+
+// Called TrackingThread. So, we can't use this->env.
+void OvrContext::sendGuardianInfo(JNIEnv *env_, jobject udpReceiverThread) {
+    if (m_ShouldSyncGuardian) {
+        double currentTime = GetTimeInSeconds();
+        if (currentTime - m_LastGuardianSyncTry < ALVR_GUARDIAN_RESEND_CD_SEC) {
+            return; // Don't spam the sync start packet
+        }
+        LOGI("Sending Guardian");
+        m_LastGuardianSyncTry = currentTime;
+        prepareGuardianData();
+
+        GuardianSyncStart packet;
+        packet.type = ALVR_PACKET_TYPE_GUARDIAN_SYNC_START;
+        packet.timestamp = m_GuardianTimestamp;
+        packet.totalPointCount = m_GuardianPointCount;
+
+        ovrPosef spacePose = vrapi_LocateTrackingSpace(Ovr, VRAPI_TRACKING_SPACE_LOCAL_FLOOR);
+        memcpy(&packet.standingPosRotation, &spacePose.Orientation, sizeof(TrackingQuat));
+        memcpy(&packet.standingPosPosition, &spacePose.Position, sizeof(TrackingVector3));
+
+        ovrVector3f bboxScale;
+        vrapi_GetBoundaryOrientedBoundingBox(Ovr, &spacePose /* dummy variable */, &bboxScale);
+        packet.playAreaSize.x = 2.0f * bboxScale.x;
+        packet.playAreaSize.y = 2.0f * bboxScale.z;
+
+        env_->CallVoidMethod(udpReceiverThread, mServerConnection_send,
+                             reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
+    } else if (m_GuardianSyncing) {
+        GuardianSegmentData packet;
+        packet.type = ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA;
+        packet.timestamp = m_GuardianTimestamp;
+
+        uint32_t segmentIndex = m_AckedGuardianSegment + 1;
+        packet.segmentIndex = segmentIndex;
+        uint32_t remainingPoints = m_GuardianPointCount - segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE;
+        size_t countToSend = remainingPoints > ALVR_GUARDIAN_SEGMENT_SIZE ? ALVR_GUARDIAN_SEGMENT_SIZE : remainingPoints;
+
+        memcpy(&packet.points, m_GuardianPoints + segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE, sizeof(TrackingVector3) * countToSend);
+
+        env_->CallVoidMethod(udpReceiverThread, mServerConnection_send,
+                             reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
+    }
+}
+
+void OvrContext::onGuardianSyncAck(uint64_t timestamp) {
+    if (timestamp != m_GuardianTimestamp) {
+        return;
+    }
+
+    if (m_ShouldSyncGuardian) {
+        m_ShouldSyncGuardian = false;
+        if (m_GuardianPointCount > 0) {
+            m_GuardianSyncing = true;
+        }
+    }
+}
+
+void OvrContext::onGuardianSegmentAck(uint64_t timestamp, uint32_t segmentIndex) {
+    if (timestamp != m_GuardianTimestamp || segmentIndex != m_AckedGuardianSegment + 1) {
+        return;
+    }
+
+    m_AckedGuardianSegment = segmentIndex;
+    uint32_t segments = m_GuardianPointCount / ALVR_GUARDIAN_SEGMENT_SIZE;
+    if (m_GuardianPointCount % ALVR_GUARDIAN_SEGMENT_SIZE > 0) {
+        segments++;
+    }
+
+    if (m_AckedGuardianSegment >= segments - 1) {
+        m_GuardianSyncing = false;
+    }
+}
+
+void OvrContext::checkShouldSyncGuardian() {
+    int recenterCount = vrapi_GetSystemStatusInt(&java, VRAPI_SYS_STATUS_RECENTER_COUNT);
+    if (recenterCount <= m_LastHMDRecenterCount) {
+        return;
+    }
+
+    m_ShouldSyncGuardian = true;
+    m_GuardianSyncing = false;
+    m_GuardianTimestamp = getTimestampUs();
+    delete [] m_GuardianPoints;
+    m_GuardianPoints = nullptr;
+    m_AckedGuardianSegment = -1;
+
+    m_LastHMDRecenterCount = recenterCount;
+}
+
+bool OvrContext::prepareGuardianData() {
+    if (m_GuardianPoints != nullptr) {
+        return false;
+    }
+
+    vrapi_GetBoundaryGeometry(Ovr, 0, &m_GuardianPointCount, nullptr);
+
+    if (m_GuardianPointCount <= 0) {
+        return true;
+    }
+
+    m_GuardianPoints = new ovrVector3f[m_GuardianPointCount];
+    vrapi_GetBoundaryGeometry(Ovr, m_GuardianPointCount, &m_GuardianPointCount, m_GuardianPoints);
+
+    return true;
 }
 
 extern "C"
@@ -1270,6 +1387,14 @@ Java_com_polygraphene_alvr_OvrContext_sendTrackingInfoNative(JNIEnv *env, jobjec
                                                               jobject udpReceiverThread
                                                              ) {
         ((OvrContext *) handle)->sendTrackingInfo(env, udpReceiverThread);
+}
+
+// Called from TrackingThread
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_polygraphene_alvr_OvrContext_sendGuardianInfoNative(JNIEnv *env, jobject instance,
+                                                             jlong handle, jobject udpReceiverThread) {
+    ((OvrContext *) handle)->sendGuardianInfo(env, udpReceiverThread);
 }
 
 // Called from TrackingThread
@@ -1386,4 +1511,20 @@ Java_com_polygraphene_alvr_OvrContext_getButtonDownNative(JNIEnv *env, jobject i
                                                           jlong handle) {
 
     return static_cast<jboolean>(((OvrContext *) handle)->getButtonDown());
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_polygraphene_alvr_OvrContext_onGuardianSyncAckNative(JNIEnv *env,
+                                                              jobject instance, jlong handle,
+                                                              jlong timestamp) {
+    ((OvrContext *) handle)->onGuardianSyncAck(static_cast<uint64_t>(timestamp));
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_polygraphene_alvr_OvrContext_onGuardianSegmentAckNative(JNIEnv *env, jobject instance, jlong handle,
+                                                                 jlong timestamp, jint segmentIndex) {
+    ((OvrContext *) handle)->onGuardianSegmentAck(static_cast<uint64_t>(timestamp),
+                                                  static_cast<uint32_t>(segmentIndex));
 }

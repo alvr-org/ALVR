@@ -194,6 +194,7 @@ pub fn build_server(is_release: bool) -> BResult {
     let artifacts_dir = target_dir.join(build_type);
     let driver_dst_dir = server_build_dir().join("bin").join(STEAMVR_OS_DIR_NAME);
     let swresample_dir = workspace_dir().join("alvr/server_driver/cpp/libswresample/lib");
+    let openvr_api_dir = workspace_dir().join("alvr/server_driver/cpp/openvr/lib");
 
     reset_server_build_folder()?;
     fs::create_dir_all(&driver_dst_dir)?;
@@ -215,6 +216,10 @@ pub fn build_server(is_release: bool) -> BResult {
     fs::copy(
         swresample_dir.join("swresample-3.dll"),
         driver_dst_dir.join("swresample-3.dll"),
+    )?;
+    fs::copy(
+        openvr_api_dir.join("openvr_api.dll"),
+        driver_dst_dir.join("openvr_api.dll"),
     )?;
     fs::copy(
         artifacts_dir.join(exec_fname("alvr_web_server")),

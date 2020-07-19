@@ -484,6 +484,25 @@ void ServerConnectionNative::onPacketRecv(const char *packet, size_t packetSize)
 
         m_env->CallVoidMethod(m_instance, mOnHapticsFeedbackID, static_cast<jlong>(header->startTime),
                 header->amplitude, header->duration, header->frequency, static_cast<jboolean>(header->hand));
+
+    } else if (type == ALVR_PACKET_TYPE_GUARDIAN_SYNC_ACK) {
+        if (packetSize < sizeof(GuardianSyncStartAck)) {
+            return;
+        }
+
+        auto ack = (GuardianSyncStartAck *) packet;
+
+        m_env->CallVoidMethod(m_instance, mOnGuardianSyncAckID, static_cast<jlong>(ack->timestamp));
+    } else if (type == ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_ACK) {
+        if (packetSize < sizeof(GuardianSegmentAck)) {
+            return;
+        }
+
+        auto ack = (GuardianSegmentAck *) packet;
+
+        m_env->CallVoidMethod(m_instance, mOnGuardianSegmentAckID,
+                              static_cast<jlong>(ack->timestamp),
+                              static_cast<jint>(ack->segmentIndex));
     }
 }
 
@@ -535,6 +554,8 @@ void ServerConnectionNative::initializeJNICallbacks(JNIEnv *env, jobject instanc
     mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
     mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
     mSetWebGuiUrlID = env->GetMethodID(clazz, "setWebViewURL", "(Ljava/lang/String;)V");
+    mOnGuardianSyncAckID = env->GetMethodID(clazz, "onGuardianSyncAck", "(J)V");
+    mOnGuardianSegmentAckID = env->GetMethodID(clazz, "onGuardianSegmentAck", "(JI)V");
 
     env->DeleteLocalRef(clazz);
 }

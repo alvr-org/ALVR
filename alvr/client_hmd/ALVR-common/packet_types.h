@@ -13,6 +13,10 @@ static const int MAX_PACKET_UDP_PACKET_SIZE = 2000;
 
 static const char *ALVR_HELLO_PACKET_SIGNATURE = "ALVR";
 
+// Guardian syncing constants
+static const int ALVR_GUARDIAN_SEGMENT_SIZE = 100;
+static const double ALVR_GUARDIAN_RESEND_CD_SEC = 1.0;
+
 static const char *ALVR_VERSION = "12.0.0";
 
 enum ALVR_PACKET_TYPE {
@@ -30,6 +34,10 @@ enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_PACKET_ERROR_REPORT = 12,
 	ALVR_PACKET_TYPE_HAPTICS = 13,
     ALVR_PACKET_TYPE_MIC_AUDIO = 14,
+	ALVR_PACKET_TYPE_GUARDIAN_SYNC_START = 15,
+	ALVR_PACKET_TYPE_GUARDIAN_SYNC_ACK = 16,
+	ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA = 17,
+	ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_ACK = 18,
 };
 
 enum ALVR_CODEC {
@@ -216,6 +224,10 @@ struct TrackingVector3 {
 	float y;
 	float z;
 };
+struct TrackingVector2 {
+	float x;
+	float y;
+};
 struct TrackingInfo {
 	uint32_t type; // ALVR_PACKET_TYPE_TRACKING_INFO
 	static const uint32_t FLAG_OTHER_TRACKING_SOURCE = (1 << 0); // Other_Tracking_Source_Position has valid value (For ARCore)
@@ -358,6 +370,30 @@ struct HapticsFeedback {
 	float duration;
 	float frequency;
 	uint8_t hand; // 0:Right, 1:Left
+};
+// Send Oculus guardian data
+struct GuardianSyncStart {
+	uint32_t type; // ALVR_PACKET_TYPE_GUARDIAN_SYNC_START
+	uint64_t timestamp;
+	TrackingQuat standingPosRotation;
+	TrackingVector3 standingPosPosition;
+	TrackingVector2 playAreaSize;
+	uint32_t totalPointCount;
+};
+struct GuardianSyncStartAck {
+	uint32_t type; // ALVR_PACKET_TYPE_GUARDIAN_SYNC_ACK
+	uint64_t timestamp;
+};
+struct GuardianSegmentData {
+	uint32_t type; // ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA
+	uint64_t timestamp;
+	uint32_t segmentIndex;
+	TrackingVector3 points[ALVR_GUARDIAN_SEGMENT_SIZE];
+};
+struct GuardianSegmentAck {
+	uint32_t type; // ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_ACK
+	uint64_t timestamp;
+	uint32_t segmentIndex;
 };
 #pragma pack(pop)
 

@@ -327,6 +327,9 @@ class OvrThread implements SurfaceHolder.Callback {
 
                 //TODO: maybe use own thread, but works fine with tracking
                 mOvrContext.sendMicData(mReceiverThread);
+
+                //TODO: same as above
+                mOvrContext.sendGuardianInfo(mReceiverThread);
             }
         }
 
@@ -336,6 +339,20 @@ class OvrThread implements SurfaceHolder.Callback {
                 if (mOvrContext.isVrMode()) {
                     mOvrContext.onHapticsFeedback(startTime, amplitude, duration, frequency, hand);
                 }
+            });
+        }
+
+        @Override
+        public void onGuardianSyncAck(long timestamp) {
+            mHandler.post(() -> {
+                mOvrContext.onGuardianSyncAck(timestamp);
+            });
+        }
+
+        @Override
+        public void onGuardianSegmentAck(long timestamp, int segmentIndex) {
+            mHandler.post(() -> {
+                mOvrContext.onGuardianSegmentAck(timestamp, segmentIndex);
             });
         }
     };

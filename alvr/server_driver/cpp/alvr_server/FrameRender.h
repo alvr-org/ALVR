@@ -10,11 +10,35 @@
 #include <directxmath.h>
 #include <directxcolors.h>
 
+#include <windows.h>
+#include <dxgi.h>
+#include <unknwn.h>
+#include <cinttypes>
+
 #include "d3drender.h"
 #include "openvr_driver.h"
 #include "FFR.h"
 
+#define GPU_PRIORITY_VAL 7
+
 using Microsoft::WRL::ComPtr;
+
+template<class T> class ComQIPtr : public ComPtr<T> {
+
+public:
+	inline ComQIPtr(IUnknown* unk)
+	{
+		this->ptr_ = nullptr;
+		unk->QueryInterface(__uuidof(T), (void**)this->GetAddressOf());
+	}
+
+	inline ComPtr<T>& operator=(IUnknown* unk)
+	{
+		ComPtr<T>::Clear();
+		unk->QueryInterface(__uuidof(T), (void**)this->GetAddressOf());
+		return *this;
+	}
+};
 
 class FrameRender
 {
@@ -67,5 +91,51 @@ private:
 
 	std::unique_ptr<FFR> m_ffr;
 	bool enableFFR;
+
+	static bool SetGpuPriority(ID3D11Device* device)
+	{
+		typedef enum _D3DKMT_SCHEDULINGPRIORITYCLASS {
+			D3DKMT_SCHEDULINGPRIORITYCLASS_IDLE,
+			D3DKMT_SCHEDULINGPRIORITYCLASS_BELOW_NORMAL,
+			D3DKMT_SCHEDULINGPRIORITYCLASS_NORMAL,
+			D3DKMT_SCHEDULINGPRIORITYCLASS_ABOVE_NORMAL,
+			D3DKMT_SCHEDULINGPRIORITYCLASS_HIGH,
+			D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME
+		} D3DKMT_SCHEDULINGPRIORITYCLASS;
+
+		ComQIPtr<IDXGIDevice> dxgiDevice(device);
+		if (!dxgiDevice) {
+			LogDriver("[GPU PRIO FIX] Failed to get IDXGIDevice");
+			return false;
+		}
+
+		HMODULE gdi32 = GetModuleHandleW(L"GDI32");
+		if (!gdi32) {
+			LogDriver("[GPU PRIO FIX] Failed to get GDI32");
+			return false;
+		}
+
+		NTSTATUS(WINAPI* d3dkmt_spspc)(HANDLE, D3DKMT_SCHEDULINGPRIORITYCLASS);
+		d3dkmt_spspc = (decltype(d3dkmt_spspc))GetProcAddress(gdi32, "D3DKMTSetProcessSchedulingPriorityClass");
+		if (!d3dkmt_spspc) {
+			LogDriver("[GPU PRIO FIX] Failed to get d3dkmt_spspc\n");
+			return false;
+		}
+		
+		NTSTATUS status = d3dkmt_spspc(GetCurrentProcess(), D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME);
+		if (status != 0) {
+			LogDriver("[GPU PRIO FIX] Failed to set process (%d) priority class: %u", GetCurrentProcess(), status);
+			return false;
+		}
+
+		HRESULT hr = dxgiDevice->SetGPUThreadPriority(GPU_PRIORITY_VAL);
+		if (FAILED(hr)) {
+			LogDriver("[GPU PRIO FIX] SetGPUThreadPriority failed");
+			return false;
+		}
+
+		LogDriver("[GPU PRIO FIX] D3D11 GPU priority setup success");
+		return true;
+	}
 };
 

@@ -12,6 +12,7 @@ using namespace d3d_render_utils;
 FrameRender::FrameRender(std::shared_ptr<CD3DRender> pD3DRender)
 	: m_pD3DRender(pD3DRender)
 {
+		FrameRender::SetGpuPriority(m_pD3DRender->GetDevice());
 }
 
 

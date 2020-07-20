@@ -12,7 +12,7 @@ bincode = '^1.2.1'
 settings-schema = { git = 'https://github.com/zarik5/settings-schema-rs' }
 futures = '^0.3.5'
 tokio = { version = '^0.2.20', features = ['macros', 'process', 'io-util', 'stream', 'udp'] }
-warp = '^0.2.2'
+warp = '=0.2.3'
 log = '^0.4.8'
 chrono = '^0.4.11'
 fern = '^0.6.0'

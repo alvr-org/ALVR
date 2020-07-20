@@ -223,7 +223,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
         warp::get()
             .map({
                 let session_manager = session_manager.clone();
-                move || reply::json(&*session_manager.lock().unwrap().get_mut())
+                move || reply::json(session_manager.lock().unwrap().get())
             })
             .or(warp::post().and(body::json().map(move |value| {
                 let res = session_manager

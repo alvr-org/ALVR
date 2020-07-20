@@ -520,6 +520,10 @@ impl SessionManager {
         }
     }
 
+    pub fn get(&self) -> &SessionDesc {
+        &self.session_desc
+    }
+
     pub fn get_mut(&mut self) -> SessionLock {
         SessionLock {
             session_desc: &mut self.session_desc,

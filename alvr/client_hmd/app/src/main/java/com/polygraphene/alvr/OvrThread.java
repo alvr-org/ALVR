@@ -1,9 +1,6 @@
 package com.polygraphene.alvr;
 
 import android.app.Activity;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.SurfaceTexture;
 import android.opengl.EGL14;
 import android.opengl.EGLContext;
@@ -13,7 +10,6 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
-import android.webkit.WebView;
 
 import java.util.concurrent.TimeUnit;
 
@@ -29,9 +25,11 @@ class OvrThread implements SurfaceHolder.Callback {
     private Handler mHandler;
     private HandlerThread mHandlerThread;
 
+    private Handler mMainHandler;
+
     // Wrapper used to emulate pointer/pass by reference
     public class WebViewWrapper {
-        public WebView webView = null;
+        public SurfaceWebView webView = null;
     }
 
     private WebViewWrapper mWebViewWrapper = null;
@@ -59,7 +57,7 @@ class OvrThread implements SurfaceHolder.Callback {
     private Runnable mIdleRenderRunnable = () -> render();
 
 
-    public OvrThread(Activity activity) {
+    public OvrThread(Activity activity, SurfaceWebView webView) {
         this.mActivity = activity;
 
         mHandlerThread = new HandlerThread("OvrThread");
@@ -67,23 +65,22 @@ class OvrThread implements SurfaceHolder.Callback {
         mHandler = new Handler(mHandlerThread.getLooper());
         mHandler.post(() -> startup());
 
+        mMainHandler = new Handler(activity.getMainLooper());
+
         mWebViewWrapper = new WebViewWrapper();
+        mWebViewWrapper.webView = webView;
 
         mOvrContext.mWebViewWrapper = mWebViewWrapper;
     }
 
-    // since the webview is offscreen (not attached to a window) I cannot .post() a command for setting
-    // the url later. So the webview can be created only when I have the url.
-    public void createWebView(String url) {
-        mHandler.post(() -> {
-            WebView webView = new WebView(mActivity.getApplicationContext());
+    public void setupWebView(String url) {
+        // We now have dashboard url, so we can post() to the main thread to set up our WebView.
+        mMainHandler.post(() -> {
+            SurfaceWebView webView = mWebViewWrapper.webView;
             webView.getSettings().setJavaScriptEnabled(true);
             webView.getSettings().setDomStorageEnabled(true);
             webView.setInitialScale(100);
-            webView.layout(0,0, WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
             webView.loadUrl(url);
-
-            mWebViewWrapper.webView = webView;
         });
     }
 
@@ -200,6 +197,9 @@ class OvrThread implements SurfaceHolder.Callback {
         mWebViewSurfaceTexture.setDefaultBufferSize(WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
         mWebViewSurface = new Surface(mWebViewSurfaceTexture);
 
+        // Doesn't need to be posted to the main thread since it's our method.
+        mWebViewWrapper.webView.setSurface(mWebViewSurface);
+
         mLoadingTexture.initializeMessageCanvas(mOvrContext.getLoadingTexture());
         mLoadingTexture.drawMessage(Utils.getVersionName(mActivity) + "\nLoading...");
 
@@ -222,16 +222,8 @@ class OvrThread implements SurfaceHolder.Callback {
             }
             long renderedFrameIndex = mDecoderThread.clearAvailable(mSurfaceTexture);
 
-            if (mWebViewWrapper.webView != null && mWebViewSurface != null && mWebViewSurfaceTexture != null){
-                try {
-                    Canvas surfaceCanvas = mWebViewSurface.lockCanvas(null);
-                    mWebViewWrapper.webView.draw(surfaceCanvas);
-                    mWebViewSurface.unlockCanvasAndPost(surfaceCanvas);
-                    mWebViewSurfaceTexture.updateTexImage();
-                    surfaceCanvas = null;
-                } catch (Surface.OutOfResourcesException e) {
-                    Utils.loge(TAG, () -> e.toString());
-                }
+            if (mWebViewSurfaceTexture != null){
+                mWebViewSurfaceTexture.updateTexImage();
             }
 
             if (renderedFrameIndex != -1)

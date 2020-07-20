@@ -2,6 +2,7 @@ package com.polygraphene.alvr;
 
 import android.app.Activity;
 import android.content.res.AssetManager;
+import android.os.Handler;
 import android.os.SystemClock;
 import android.view.InputDevice;
 import android.view.MotionEvent;
@@ -14,12 +15,18 @@ public class OvrContext {
         System.loadLibrary("native-lib");
     }
 
+    private Handler mMainHandler;
+
     public OvrThread.WebViewWrapper mWebViewWrapper = null;
 
     private long handle;
 
     public void initialize(Activity activity, AssetManager assetManager, OvrThread ovrThread, boolean ARMode, int initialRefreshRate) {
         handle = initializeNative(activity, assetManager, ovrThread, ARMode, initialRefreshRate);
+
+        // Grab the activity's looper into a handler so that we can post() to the main thread to
+        // interact with our WebView.
+        mMainHandler = new Handler(activity.getMainLooper());
     }
 
     public void destroy() {
@@ -163,47 +170,49 @@ public class OvrContext {
 
     @SuppressWarnings("unused")
     public void applyWebViewInteractionEvent(int type, float x, float y) {
-        if (mWebViewWrapper != null && mWebViewWrapper.webView != null) {
-            long time = SystemClock.uptimeMillis();
+        mMainHandler.post(() -> {
+            if (mWebViewWrapper != null && mWebViewWrapper.webView != null) {
+                long time = SystemClock.uptimeMillis();
 
-            int action = 0;
-            boolean touchEvent = false;
-            switch (type) {
-                case 0:
-                    action = MotionEvent.ACTION_HOVER_ENTER;
-                    touchEvent = false;
-                    break;
-                case 1:
-                    action = MotionEvent.ACTION_HOVER_EXIT;
-                    touchEvent = false;
-                    break;
-                case 2:
-                    action = MotionEvent.ACTION_HOVER_MOVE;
-                    touchEvent = false;
-                    break;
-                case 3:
-                    action = MotionEvent.ACTION_MOVE;
-                    touchEvent = true;
-                    break;
-                case 4:
-                    action = MotionEvent.ACTION_DOWN;
-                    touchEvent = true;
-                    break;
-                case 5:
-                    action = MotionEvent.ACTION_UP;
-                    touchEvent = true;
-                    break;
+                int action = 0;
+                boolean touchEvent = false;
+                switch (type) {
+                    case 0:
+                        action = MotionEvent.ACTION_HOVER_ENTER;
+                        touchEvent = false;
+                        break;
+                    case 1:
+                        action = MotionEvent.ACTION_HOVER_EXIT;
+                        touchEvent = false;
+                        break;
+                    case 2:
+                        action = MotionEvent.ACTION_HOVER_MOVE;
+                        touchEvent = false;
+                        break;
+                    case 3:
+                        action = MotionEvent.ACTION_MOVE;
+                        touchEvent = true;
+                        break;
+                    case 4:
+                        action = MotionEvent.ACTION_DOWN;
+                        touchEvent = true;
+                        break;
+                    case 5:
+                        action = MotionEvent.ACTION_UP;
+                        touchEvent = true;
+                        break;
+                }
+
+                float mx = x * OvrThread.WEBVIEW_WIDTH;
+                float my = y * OvrThread.WEBVIEW_HEIGHT;
+
+                MotionEvent ev = MotionEvent.obtain(time, time, action, mx, my, 0);
+                if (touchEvent) {
+                    mWebViewWrapper.webView.dispatchTouchEvent(ev);
+                } else {
+                    mWebViewWrapper.webView.dispatchGenericMotionEvent(ev);
+                }
             }
-
-            x = x * OvrThread.WEBVIEW_WIDTH;
-            y = y * OvrThread.WEBVIEW_HEIGHT;
-
-            MotionEvent ev = MotionEvent.obtain(time, time, action, x, y, 0);
-            if (touchEvent) {
-                mWebViewWrapper.webView.dispatchTouchEvent(ev);
-            } else {
-                mWebViewWrapper.webView.dispatchGenericMotionEvent(ev);
-            }
-        }
+        });
     }
 }

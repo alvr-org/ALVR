@@ -7,10 +7,10 @@ import android.media.AudioManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
@@ -19,6 +19,7 @@ public class OvrActivity extends BaseActivity {
     private final static String TAG = "OvrActivity";
 
     private OvrThread mOvrThread = null;
+    private SurfaceWebView mWebView = null;
 
 
     @Override
@@ -32,8 +33,11 @@ public class OvrActivity extends BaseActivity {
         setContentView(R.layout.activity_main);
         SurfaceView surfaceView = findViewById(R.id.surfaceview);
 
+        mWebView = new SurfaceWebView(this);
+        addContentView(mWebView, new ViewGroup.LayoutParams(OvrThread.WEBVIEW_WIDTH, OvrThread.WEBVIEW_HEIGHT));
+
         Utils.logi(TAG, () -> "onCreate: Starting OvrThread");
-        mOvrThread = new OvrThread(this);
+        mOvrThread = new OvrThread(this, mWebView);
 
 
         SurfaceHolder holder = surfaceView.getHolder();

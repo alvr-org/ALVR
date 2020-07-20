@@ -3,7 +3,6 @@ package com.polygraphene.alvr;
 import android.app.Activity;
 import android.opengl.EGLContext;
 import android.util.Log;
-import android.webkit.WebView;
 
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
@@ -300,7 +299,7 @@ class ServerConnection extends ThreadBase
 
     @SuppressWarnings("unused")
     public void setWebViewURL(String url) {
-        mParent.createWebView(url);
+        mParent.setupWebView(url);
     }
 
 

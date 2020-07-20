@@ -49,11 +49,11 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject jOvrContext, 
     mWebViewInteractionCallback = [jWebViewInteractionCallback, this](InteractionType type, glm::vec2 coord){
         if (mjOvrContext != nullptr && mShowDashboard) {
             JNIEnv *env;
-            jint res = java.Vm->AttachCurrentThread(&env, nullptr);
+            jint res = java.Vm->GetEnv((void **)&env, JNI_VERSION_1_6);
             if (res == JNI_OK) {
                     env->CallVoidMethod(mjOvrContext, jWebViewInteractionCallback, (int)type, coord.x, coord.y);
             } else {
-                LOGE("Failed to attach java thread for dashboard interaction");
+                LOGE("Failed to get JNI environment for dashboard interaction");
             }
         }
     };

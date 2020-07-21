@@ -18,7 +18,7 @@ define({
         "compatPerformance" :"compatibility",
         "perfPerformance" : "performance",
         "titleFinished": "Finished",
-        "textFinished":"You can always restart this wizard from the ALVR-tab on the left",
+        "textFinished":"You can always restart this wizard from the \"Installation\" tab on the left",
         "buttonNext" :"Next",
         "buttonClose" :"Close",
         "driverFailed" :"Registering driver failed",

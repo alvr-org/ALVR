@@ -415,9 +415,12 @@ pub fn settings_cache_default() -> SettingsDefault {
         extra: ExtraDescDefault {
             revert_confirm_dialog: true,
             restart_confirm_dialog: true,
-
             notification_level: LogLevelDefault {
-                variant: LogLevelDefaultVariant::Info,
+                variant: if cfg!(debug_assertions) {
+                    LogLevelDefaultVariant::Info
+                } else {
+                    LogLevelDefaultVariant::Warning
+                },
             },
             exclude_notifications_without_id: false,
         },

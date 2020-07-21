@@ -275,15 +275,20 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
         ws.on_upgrade(|socket| subscribed_to_log(socket, log_receiver))
     });
 
-    let driver_registration_requests = warp::path!("driver" / String).map(|action_str: String| {
-        let register = action_str == "register";
-        show_err(alvr_xtask::driver_registration(
-            &alvr_server_dir(),
-            register,
-        ))
-        .ok();
-        warp::reply()
-    });
+    let driver_registration_requests =
+        warp::path!("driver" / String).map(|action_string: String| {
+            let res = show_err(match action_string.as_str() {
+                "register" => alvr_xtask::driver_registration(&alvr_server_dir(), true),
+                "unregister" => alvr_xtask::driver_registration(&alvr_server_dir(), false),
+                "unregister-all" => alvr_xtask::unregister_all_drivers(),
+                _ => return reply::with_status(reply(), StatusCode::BAD_REQUEST),
+            });
+            if res.is_ok() {
+                reply::with_status(reply(), StatusCode::OK)
+            } else {
+                reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        });
 
     let firewall_rules_requests =
         warp::path!("firewall-rules" / String).map(|action_str: String| {

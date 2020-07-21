@@ -5,9 +5,9 @@
     font-weight: 200;
     background-color: #2e353d;
     /* flex: 1; */
-    max-width: 300px;
+    max-width: 150px;
     color: #e1ffff;
-    min-width: 300px;
+    min-width: 150px;
   }
   .nav-side-menu .brand {
     background-color: #23282e;

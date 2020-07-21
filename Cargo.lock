@@ -503,12 +503,12 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cced8691919c02aac3cb0a1bc2e9b73d89e832bf9a06fc579d4e71b68a2da061"
+checksum = "09ee0cc8804d5393478d743b035099520087a5186f3b93fa58cec08fa62407b6"
 dependencies = [
+ "cfg-if",
  "crossbeam-utils",
- "maybe-uninit",
 ]
 
 [[package]]
@@ -2313,9 +2313,9 @@ dependencies = [
 
 [[package]]
 name = "tinyfiledialogs"
-version = "3.3.9"
+version = "3.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "848eb50d6d21430349d82418c2244f611b1ad3e1c52c675320338b3102d06554"
+checksum = "c45fb26c3f37d9a8b556e51f6d7f13f685af766017030af56e9247e638aa6194"
 dependencies = [
  "cc",
  "libc",

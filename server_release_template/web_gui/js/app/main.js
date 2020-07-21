@@ -32,8 +32,79 @@ define([
             if (session.setupWizard) {
                 wizard.showWizard();
             }
+
             $("#runSetupWizard").click(() => {
                 wizard.showWizard();
+            })
+
+            $("#addFirewallRules").click(() => {
+                $.get("firewall-rules/add", undefined, (res) => {
+                    if (res == 0) {
+                        Lobibox.notify("success", {
+                            size: "mini",
+                            rounded: true,
+                            delayIndicator: false,
+                            sound: false,
+                            msg: i18n.firewallSuccess
+                        })
+                    }
+                })
+            })
+
+            $("#removeFirewallRules").click(() => {
+                $.get("firewall-rules/remove", undefined, (res) => {
+                    if (res == 0) {
+                        Lobibox.notify("success", {
+                            size: "mini",
+                            rounded: true,
+                            delayIndicator: false,
+                            sound: false,
+                            msg: i18n.firewallSuccess
+                        })
+                    }
+                })
+            })
+
+            $("#registerAlvrDriver").click(() => {
+                $.get("driver/register", undefined, (res) => {
+                    if (res != -1) {
+                        Lobibox.notify("success", {
+                            size: "mini",
+                            rounded: true,
+                            delayIndicator: false,
+                            sound: false,
+                            msg: i18n.registerAlvrDriverSuccess
+                        })
+                    }
+                })
+            })
+
+            $("#unregisterAlvrDriver").click(() => {
+                $.get("driver/unregister", undefined, (res) => {
+                    if (res != -1) {
+                        Lobibox.notify("success", {
+                            size: "mini",
+                            rounded: true,
+                            delayIndicator: false,
+                            sound: false,
+                            msg: i18n.unregisterAlvrDriverSuccess
+                        })
+                    }
+                })
+            })
+
+            $("#unregisterAllDrivers").click(() => {
+                $.get("driver/unregister-all", undefined, (res) => {
+                    if (res != -1) {
+                        Lobibox.notify("success", {
+                            size: "mini",
+                            rounded: true,
+                            delayIndicator: false,
+                            sound: false,
+                            msg: i18n.unregisterAllDriversSuccess
+                        })
+                    }
+                })
             })
         });
     });

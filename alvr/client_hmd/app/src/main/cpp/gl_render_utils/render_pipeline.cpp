@@ -90,6 +90,8 @@ namespace gl_render_utils {
         GL(glDepthMask(GL_TRUE));
         GL(glDisable(GL_CULL_FACE));
         GL(glEnable(GL_DEPTH_TEST));
+        GL(glEnable(GL_BLEND));
+        GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
         GL(glViewport(0, 0, renderState.GetRenderTarget()->GetWidth(),
                       renderState.GetRenderTarget()->GetHeight()));
 

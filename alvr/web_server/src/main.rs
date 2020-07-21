@@ -309,6 +309,8 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
         warp::reply()
     });
 
+    let version_request = warp::path("version").map(|| ALVR_SERVER_VERSION);
+
     warp::serve(
         index_request
             .or(settings_schema_request)
@@ -319,6 +321,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             .or(audio_devices_request)
             .or(files_requests)
             .or(restart_steamvr_request)
+            .or(version_request)
             .with(reply::with::header(
                 "Cache-Control",
                 "no-cache, no-store, must-revalidate",

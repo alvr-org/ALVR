@@ -8,12 +8,13 @@ define([
     "app/setupWizard",
     "app/monitor",
     "json!../../session",
+    "text!../../version",
     "app/monitor",
     "js/lib/lobibox.min.js",
     "css!js/lib/lobibox.min.css"
 
 
-], function ($, bootstrap, _, mainTemplate, i18n, Settings, SetupWizard, Monitor, session) {
+], function ($, bootstrap, _, mainTemplate, i18n, Settings, SetupWizard, Monitor, session, version) {
     $(function () {
 
         var compiledTemplate = _.template(mainTemplate);
@@ -106,6 +107,8 @@ define([
                     }
                 })
             })
+
+            $("#version").text("v" + version);
         });
     });
 });

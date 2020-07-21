@@ -1,8 +1,3 @@
-# Heads-up!
-The instructions below refer to an unreleased version of ALVR. If you need the instructions for the latest ALVR release go to the [experimental branch](https://github.com/JackD83/ALVR/tree/experimental).
-
-----
-
 <img align="left" width="120" height="120" src="https://github.com/JackD83/ALVR/blob/master/server_release_template/web_gui/web_hi_res_512.png">
 
 # ALVR - Air Light VR

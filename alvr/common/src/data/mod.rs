@@ -1,7 +1,7 @@
 mod settings;
 mod version;
 
-use crate::*;
+use crate::{logging::SessionUpdateType, *};
 use serde::*;
 use serde_json as json;
 use settings_schema::SchemaNode;
@@ -18,6 +18,7 @@ pub use version::*;
 type SettingsCache = SettingsDefault;
 
 pub const SESSION_FNAME: &str = "session.json";
+pub const SERVER_SESSION_UPDATE_ID: &str = "";
 
 #[derive(Serialize, Debug)]
 pub struct ServerHandshakePacket {
@@ -466,6 +467,8 @@ fn json_cache_to_settings(cache: &json::Value, schema: &SchemaNode) -> json::Val
 pub struct SessionLock<'a> {
     session_desc: &'a mut SessionDesc,
     dir: &'a Path,
+    update_author_id: &'a str,
+    update_type: SessionUpdateType,
 }
 
 impl Deref for SessionLock<'_> {
@@ -484,7 +487,10 @@ impl DerefMut for SessionLock<'_> {
 impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
         save_session(self.session_desc, &self.dir.join(SESSION_FNAME)).ok();
-        info!(id: LogId::SessionUpdated);
+        info!(id: LogId::SessionUpdated {
+            web_client_id: self.update_author_id.to_owned(),
+            update_type: self.update_type
+        });
     }
 }
 
@@ -524,10 +530,16 @@ impl SessionManager {
         &self.session_desc
     }
 
-    pub fn get_mut(&mut self) -> SessionLock {
+    pub fn get_mut<'a>(
+        &'a mut self,
+        update_author_id: &'a str,
+        update_type: SessionUpdateType,
+    ) -> SessionLock {
         SessionLock {
             session_desc: &mut self.session_desc,
             dir: &self.dir,
+            update_author_id,
+            update_type,
         }
     }
 }

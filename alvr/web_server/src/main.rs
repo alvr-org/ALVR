@@ -73,7 +73,8 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
 
         {
             let session_manager_ref = &mut session_manager.lock().unwrap();
-            let session_desc_ref = &mut session_manager_ref.get_mut();
+            let session_desc_ref = &mut session_manager_ref
+                .get_mut(SERVER_SESSION_UPDATE_ID, SessionUpdateType::ClientList);
 
             let maybe_known_client_ref =
                 session_desc_ref
@@ -107,7 +108,7 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             }
         }
 
-        let settings = session_manager.lock().unwrap().get_mut().to_settings();
+        let settings = session_manager.lock().unwrap().get().to_settings();
 
         let video_width;
         let video_height;
@@ -172,10 +173,9 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             let url_string = format!("http://{}:{}/", host_address, WEB_SERVER_PORT);
             let url_c_string = std::ffi::CString::new(url_string).unwrap();
             let url_bytes = url_c_string.as_bytes_with_nul();
-            server_handshake_packet.web_gui_url[0..url_bytes.len()]
-                .copy_from_slice(url_bytes);
+            server_handshake_packet.web_gui_url[0..url_bytes.len()].copy_from_slice(url_bytes);
 
-            process::launch_steamvr().ok();
+            process::maybe_launch_steamvr();
 
             Some(server_handshake_packet)
         } else {
@@ -225,11 +225,39 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
                 let session_manager = session_manager.clone();
                 move || reply::json(session_manager.lock().unwrap().get())
             })
+            .or(warp::path!(String).and(body::json()).map({
+                let session_manager = session_manager.clone();
+                move |meta_str: String, value: serde_json::Value| {
+                    let meta_list = meta_str.split('?').collect::<Vec<_>>();
+                    if meta_list.len() == 2 {
+                        let update_author_id = meta_list[0];
+                        if let Ok(update_type) = serde_json::from_str(meta_list[1]) {
+                            let res = session_manager
+                                .lock()
+                                .unwrap()
+                                .get_mut(update_author_id, update_type)
+                                .merge_from_json(value);
+                            if let Err(e) = res {
+                                warn!("{}", e);
+                                // HTTP Code: WARNING
+                                return reply::with_status(
+                                    reply(),
+                                    StatusCode::from_u16(199).unwrap(),
+                                );
+                            } else {
+                                return reply::with_status(reply(), StatusCode::OK);
+                            }
+                        }
+                    }
+                    reply::with_status(reply(), StatusCode::BAD_REQUEST)
+                }
+            }))
+            // stopgap. todo: remove
             .or(warp::post().and(body::json().map(move |value| {
                 let res = session_manager
                     .lock()
                     .unwrap()
-                    .get_mut()
+                    .get_mut("", SessionUpdateType::Settings)
                     .merge_from_json(value);
                 if let Err(e) = res {
                     warn!("{}", e);
@@ -270,6 +298,12 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
     let audio_devices_request =
         warp::path("audio_devices").map(|| reply::json(&audio::output_audio_devices().ok()));
 
+    let restart_steamvr_request = warp::path("restart_steamvr").map(move || {
+        process::kill_steamvr();
+        process::maybe_launch_steamvr();
+        warp::reply()
+    });
+
     warp::serve(
         index_request
             .or(settings_schema_request)
@@ -279,6 +313,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             .or(firewall_rules_requests)
             .or(audio_devices_request)
             .or(files_requests)
+            .or(restart_steamvr_request)
             .with(reply::with::header(
                 "Cache-Control",
                 "no-cache, no-store, must-revalidate",

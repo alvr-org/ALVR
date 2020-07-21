@@ -1,4 +1,3 @@
-use crate::*;
 use alvr_xtask::*;
 use std::{path::Path, process::*};
 use sysinfo::*;
@@ -9,6 +8,15 @@ use std::os::windows::process::CommandExt;
 #[cfg(windows)]
 pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
+#[cfg(windows)]
+fn kill_process(pid: usize) {
+    Command::new("taskkill.exe")
+        .args(&["/PID", &pid.to_string(), "/F"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .ok();
+}
+
 // Launch web server. If another instance exists, the one just spawned will close itself.
 pub fn maybe_launch_web_server(root_server_dir: &Path) {
     let mut command = Command::new(root_server_dir.join("alvr_web_server"));
@@ -18,15 +26,6 @@ pub fn maybe_launch_web_server(root_server_dir: &Path) {
     command.creation_flags(CREATE_NO_WINDOW);
 
     command.spawn().ok();
-}
-
-#[cfg(windows)]
-fn kill_process(pid: usize) {
-    Command::new("taskkill.exe")
-        .args(&["/PID", &pid.to_string(), "/F"])
-        .creation_flags(CREATE_NO_WINDOW)
-        .output()
-        .ok();
 }
 
 // Kill web server and its child processes if only one of bootstrap or driver is alive.
@@ -60,11 +59,32 @@ pub fn maybe_kill_web_server() {
     }
 }
 
-pub fn launch_steamvr() -> StrResult {
-    Command::new("cmd")
-        .args(&["/C", "start", "steam://run/250820"])
-        .spawn()
-        .ok();
+pub fn maybe_launch_steamvr() {
+    let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
+    system.refresh_processes();
 
-    Ok(())
+    if system
+        .get_process_by_name(&exec_fname("vrserver"))
+        .is_empty()
+    {
+        Command::new("cmd")
+            .args(&["/C", "start", "steam://run/250820"])
+            .spawn()
+            .ok();
+    }
+}
+
+// this does not kill any child processes, including possibly the web server
+pub fn kill_steamvr() {
+    let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
+    system.refresh_processes();
+
+    for process_name in ["vrserver", "vrcompositor", "vrdashboard", "vrmonitor"].iter() {
+        for process in system.get_process_by_name(&exec_fname(process_name)) {
+            #[cfg(not(windows))]
+            process.kill(Signal::Term);
+            #[cfg(windows)]
+            kill_process(process.pid());
+        }
+    }
 }

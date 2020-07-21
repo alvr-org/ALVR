@@ -39,12 +39,23 @@ pub fn show_err<T, E: std::fmt::Display>(res: Result<T, E>) -> Result<T, ()> {
     })
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum SessionUpdateType {
+    Settings,
+    ClientList,
+    Other, // other top level flags, like "setup_wizard"
+}
+
 // Log id is serialized as #{ "id": "..." [, "data": ...] }#
 // Pound signs are used to identify start and finish of json
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "id", content = "data")]
 pub enum LogId {
-    SessionUpdated,
+    SessionUpdated {
+        web_client_id: String,
+        update_type: SessionUpdateType,
+    },
     SettingsCacheExtrapolationFailed,
     ClientFoundOk,
     ClientFoundInvalid,

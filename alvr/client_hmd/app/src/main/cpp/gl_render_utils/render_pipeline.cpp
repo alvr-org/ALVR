@@ -40,6 +40,7 @@ namespace gl_render_utils {
 
     void RenderState::ClearDepth() const {
         GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mFrameBuffer));
+        GL(glDisable(GL_SCISSOR_TEST));
         GL(glClear(GL_DEPTH_BUFFER_BIT));
     }
 

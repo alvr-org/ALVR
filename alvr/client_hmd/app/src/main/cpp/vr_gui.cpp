@@ -115,9 +115,9 @@ void VRGUI::Update(const GUIInput &input) {
         // Cursor position and appearance
 
         controllerState.cursorIdleQuad->SetOpacity(0);
-        controllerState.cursorIdleQuad->SetTransform(translate(mat4(1.f), {0, 0, 1}));
+        controllerState.cursorIdleQuad->SetTransform(mat4(1.f));
         controllerState.cursorPressQuad->SetOpacity(0);
-        controllerState.cursorPressQuad->SetTransform(translate(mat4(1.f), {0, 0, 1}));
+        controllerState.cursorPressQuad->SetTransform(mat4(1.f));
 
         auto direction = ctrlRotation * vec4(0, 0, -1, 0);
 

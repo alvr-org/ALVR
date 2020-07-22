@@ -195,6 +195,8 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime, GUI
          vrapi_EnumerateInputDevices(Ovr, deviceIndex, &curCaps) >= 0; deviceIndex++) {
         LOG("Device %d: Type=%d ID=%d", deviceIndex, curCaps.Type, curCaps.DeviceID);
         if (curCaps.Type == ovrControllerType_Hand) {  //A3
+            mShowDashboard = false;
+
             // Oculus Quest Hand Tracking
             if (controller >= 2) {
                 LOG("Device %d: Ignore.", deviceIndex);

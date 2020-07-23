@@ -260,3 +260,7 @@ margin-bottom: 10px;
 .tooltip-inner {
   white-space:pre-wrap;
 }
+
+.button-spacer {
+  height: 80px;
+}

@@ -22,6 +22,7 @@
 #include "ServerConnectionNative.h"
 #include "asset.h"
 #include <inttypes.h>
+#include <glm/gtx/euler_angles.hpp>
 
 using namespace std;
 
@@ -315,6 +316,22 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime, GUI
                             - mMenuNotPressedLastInstant > MENU_BUTTON_LONG_PRESS_DURATION) {
                         mShowDashboard = !mShowDashboard;
                         mMenuLongPressActivated = true;
+
+                        if (mShowDashboard) {
+                            auto q = packet->HeadPose_Pose_Orientation;
+                            auto glQuat = glm::quat(q.w, q.x, q.y, q.z);
+                            auto rotEuler = glm::eulerAngles(glQuat);
+                            float yaw;
+                            if (abs(rotEuler.x) < M_PI_2) {
+                                yaw = rotEuler.y;
+                            } else {
+                                yaw = M_PI - rotEuler.y;
+                            }
+                            auto rotation = glm::eulerAngleY(yaw);
+                            auto pos = glm::vec4(0, 0, -1.5, 1);
+                            glm::vec3 position = glm::vec3(rotation * pos) + guiInput->headPosition;
+                            Renderer.webViewPanel->SetPoseTransform(position, yaw, 0);
+                        }
                     }
                 } else {
                     mMenuNotPressedLastInstant = std::chrono::system_clock::now();

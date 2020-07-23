@@ -378,8 +378,6 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_MIC_AUDIO && len >= sizeof(MicAudioFrame)) {
-		Info("ALVR_PACKET_TYPE_MIC_AUDIO packet");
-
 		if (!m_Socket->IsLegitClient(addr)) {
 			LogDriver("Recieved message from invalid address: %hs", AddrPortToStr(addr).c_str());
 			return;

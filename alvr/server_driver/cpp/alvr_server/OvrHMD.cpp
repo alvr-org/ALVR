@@ -1,5 +1,13 @@
 #include "OvrHMD.h"
 
+void fixInvalidHaptics(float hapticFeedback[3])
+{
+	// Assign a 5ms duration to legacy haptics pulses which otherwise have 0 duration and wouldn't play.
+	if (hapticFeedback[1] == 0.0f) {
+		hapticFeedback[1] = 0.005f;
+	}
+}
+
 OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 		, m_added(false)
@@ -311,8 +319,8 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		
 		
 		//haptic feedback
-		double  hapticFeedbackLeft[3]{0,0,0};
-		double  hapticFeedbackRight[3]{ 0,0,0 };
+		float  hapticFeedbackLeft[3]{0,0,0};
+		float  hapticFeedbackRight[3]{ 0,0,0 };
 		vr::VREvent_t vrEvent;
 
 		//collect events since the last update
@@ -329,11 +337,15 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 						hapticFeedbackLeft[1] = vrEvent.data.hapticVibration.fDurationSeconds;
 						hapticFeedbackLeft[2] = vrEvent.data.hapticVibration.fFrequency;
 
+						fixInvalidHaptics(hapticFeedbackLeft);
+
 					} else if (m_rightController->getHapticComponent() == vrEvent.data.hapticVibration.componentHandle) {
 					
 						hapticFeedbackRight[0] = vrEvent.data.hapticVibration.fAmplitude * Settings::Instance().m_hapticsIntensity;
 						hapticFeedbackRight[1] = vrEvent.data.hapticVibration.fDurationSeconds;
 						hapticFeedbackRight[2] = vrEvent.data.hapticVibration.fFrequency;
+
+						fixInvalidHaptics(hapticFeedbackRight);
 					}
 				
 			}
@@ -348,9 +360,9 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			hapticFeedbackLeft[2] != 0 ) {
 	
 			m_Listener->SendHapticsFeedback(0,
-				static_cast<float>(hapticFeedbackLeft[0]),
-				static_cast<float>(hapticFeedbackLeft[1]),
-				static_cast<float>(hapticFeedbackLeft[2]),
+				hapticFeedbackLeft[0],
+				hapticFeedbackLeft[1],
+				hapticFeedbackLeft[2],
 				m_leftController->GetHand() ? 1 : 0);
 
 		}
@@ -362,9 +374,9 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 	
 			m_Listener->SendHapticsFeedback(0,
-				static_cast<float>(hapticFeedbackRight[0]),
-				static_cast<float>(hapticFeedbackRight[1]),
-				static_cast<float>(hapticFeedbackRight[2]),
+				hapticFeedbackRight[0],
+				hapticFeedbackRight[1],
+				hapticFeedbackRight[2],
 				m_rightController->GetHand() ? 1 : 0);
 
 		}

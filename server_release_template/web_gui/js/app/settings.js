@@ -37,7 +37,7 @@ define([
             self.storeSession();
         }
 
-        function init() {          
+        function init() {
 
             fillNode(schema, "root", 0, $("#configContent"), "", undefined);
             updateSwitchContent();
@@ -250,7 +250,7 @@ define([
                 toggleAdvanced();
             })
 
-            $("#reloadSteamVR").click(() => {
+            $("#restartSteamVR").click(() => {
                 $.get("restart_steamvr", undefined, (res) => {
                     if (res == 0) {
                         Lobibox.notify("success", {
@@ -261,7 +261,7 @@ define([
                             msg: i18n.steamVRRestartSuccess
                         })
                     }
-                })               
+                })
             })
 
             $(".paramReset").click((evt) => {

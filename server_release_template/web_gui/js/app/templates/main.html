@@ -53,8 +53,9 @@
                             <div id="toggleAdvanced"> <%= toggleAdvanced%>
                                 <i class="fas fa-toggle-on" data-toggle="tooltip" title="show advanced options"></i>
                             </div>
-                            <div id="reloadSteamVR">
-                                <button id="reloadSteamVRButton" type="button" class="btn btn-primary"><%= reloadSteamVR%></button>                              
+                            <div id="restartSteamVR">
+                                <button id="restartSteamVRButton" type="button"
+                                    class="btn btn-primary"><%= restartSteamVR%></button>
                             </div>
                         </div>
 
@@ -66,11 +67,15 @@
                 <button id="runSetupWizard" type="button" class="btn btn-primary"> <%= runSetupWizard%> </button>
                 <br /> <br />
                 <button id="addFirewallRules" type="button" class="btn btn-primary"> <%= addFirewallRules%> </button>
-                <button id="removeFirewallRules" type="button" class="btn btn-primary"> <%= removeFirewallRules%> </button>
+                <button id="removeFirewallRules" type="button" class="btn btn-primary"> <%= removeFirewallRules%>
+                </button>
                 <br /> <br />
-                <button id="registerAlvrDriver" type="button" class="btn btn-primary"> <%= registerAlvrDriver%> </button>
-                <button id="unregisterAlvrDriver" type="button" class="btn btn-primary"> <%= unregisterAlvrDriver%> </button>
-                <button id="unregisterAllDrivers" type="button" class="btn btn-primary"> <%= unregisterAllDrivers%> </button>
+                <button id="registerAlvrDriver" type="button" class="btn btn-primary"> <%= registerAlvrDriver%>
+                </button>
+                <button id="unregisterAlvrDriver" type="button" class="btn btn-primary"> <%= unregisterAlvrDriver%>
+                </button>
+                <button id="unregisterAllDrivers" type="button" class="btn btn-primary"> <%= unregisterAllDrivers%>
+                </button>
             </div>
 
             <div class="tab-pane alvrSection fade" id="about">

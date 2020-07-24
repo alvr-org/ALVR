@@ -31,5 +31,6 @@ define({
         "packets" : "Packets",
         "packetss" : "Packets/s"
     },
+    "it-it": true,
     "de-de": false
 });

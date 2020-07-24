@@ -36,8 +36,8 @@ Install the client on your headset through [SideQuest](https://sidequestvr.com/)
 - Launch `ALVR.exe` (ALVR dashboard). The first time a setup wizard will guide you through the installation.
 - Launch ALVR on your headset. While the headset screen is on, click `Trust` next to the client entry (on the PC) to start streaming.
 - If you trusted a client, you can start streaming by just launching ALVR on your headset, then SteamVR or the ALVR dashboard on PC.
-- To change settings, open the dashboard on the headset with the menu button (on the left controller), change what you want and then press `Apply`. SteamVR will restart, so any unsaved progress will be lost.
-- To shutdown ALVR you need to close both the ALVR window on PC and SteamVR.
+- To change settings, open the dashboard on the headset with a long press of the menu button (on the left controller), change what you want and then press `Restart SteamVR`. The current playing game could shutdown so any unsaved progress could be lost.
+- To shutdown ALVR you need to close both the ALVR dashboard on PC and SteamVR.
 
 ### Notes
 
@@ -45,8 +45,6 @@ Install the client on your headset through [SideQuest](https://sidequestvr.com/)
 
 ## Troubleshooting
 
-- Floorlevel: Use the SteamVR room setup to calibrate the room as standing only. Put your Quest on the ground while calibrating. Make sure that the stream is still working by covering the proximity sensor of the quest. Enter a height of 0 into the room setup.
-Now you can press and hold the oculus key on the right controller to recenter SteamVR and fix the floor height at any time.
 - To reset ALVR, delete the file `session.json` from the installation folder.
 - Please check the [Troubleshooting](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) page on the original repository.
 - You can find some setup advice [here](https://github.com/JackD83/ALVR/wiki/Setup-advice).

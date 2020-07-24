@@ -97,7 +97,7 @@ define([
             const headsetOptions = [rifts, vive];
 
             headset.append(`<option value="0">Oculus Rift S</option>`);
-            headset.append(`<option value="1">HTC Vice</option>`);
+            headset.append(`<option value="1">HTC Vive</option>`);
 
             headset.change((ev) => {
                 for (var key in headsetOptions[headset.val()]) {

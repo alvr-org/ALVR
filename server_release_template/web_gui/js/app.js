@@ -10,11 +10,6 @@ requirejs.config({
         style: "../../css",
         app: "../../js/app"
     },
-    config: {
-        i18n: {
-            locale: 'en-en'
-        }
-    },
     shim: {
         'js/lib/lobibox.min.js': {
             deps: ['jquery']

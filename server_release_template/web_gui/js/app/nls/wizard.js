@@ -4,7 +4,7 @@ define({
         "subtitle": "This wizard will guide you to the basic setup of ALVR",
         "titleFirewall": "Firewall",
         "textFirewall": "To communicate with the headset, some firewall rules need to be set.This requires administrator rights.",
-        "buttonFirewall" : "Add firewall rule",
+        "buttonFirewall" : "Add firewall rules",
         "titleDriver": "Driver",
         "textDriver"  : "The ALVR driver needs to be registered with SteamVR",
         "buttonDriver" : "Register driver",
@@ -26,5 +26,6 @@ define({
         "firewallFailed" : "Setting firewall rules failed",
         "firewallSuccess" : "Firewall rules successfully set"
     },
+    "it-it": true,
     "de-de": false
 });

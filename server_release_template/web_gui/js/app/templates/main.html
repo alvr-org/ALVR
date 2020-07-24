@@ -36,13 +36,13 @@
 
 <div class="content">
 
-    <div class="container contentHeight">
+    <div class="contentHeight">
         <div class="tab-content contentHeight">
-            <div class="tab-pane container contentHeight active" id="monitor">
+            <div class="tab-pane alvrSection contentHeight active" id="monitor">
 
             </div>
 
-            <div class="tab-pane container fade noselect contentHeight" id="config">
+            <div class="tab-pane alvrSection fade noselect contentHeight" id="config">
                 <div class="row contentHeight">
                     <div class="cm-md-1 contentHeight" id="configContainer">
                         <ul class="nav nav-tabs" id="configTabs">
@@ -53,13 +53,16 @@
                             <div id="toggleAdvanced"> <%= toggleAdvanced%>
                                 <i class="fas fa-toggle-on" data-toggle="tooltip" title="show advanced options"></i>
                             </div>
+                            <div id="reloadSteamVR">
+                                <button id="reloadSteamVRButton" type="button" class="btn btn-primary"><%= reloadSteamVR%></button>                              
+                            </div>
                         </div>
 
                     </div>
                 </div>
             </div>
 
-            <div class="tab-pane container fade" id="installation">
+            <div class="tab-pane alvrSection fade" id="installation">
                 <button id="runSetupWizard" type="button" class="btn btn-primary"> <%= runSetupWizard%> </button>
                 <br /> <br />
                 <button id="addFirewallRules" type="button" class="btn btn-primary"> <%= addFirewallRules%> </button>
@@ -70,7 +73,7 @@
                 <button id="unregisterAllDrivers" type="button" class="btn btn-primary"> <%= unregisterAllDrivers%> </button>
             </div>
 
-            <div class="tab-pane container fade" id="about">
+            <div class="tab-pane alvrSection fade" id="about">
                 <h3>ALVR server <span id="version"></span></h3>
                 <%= aboutText%>
             </div>

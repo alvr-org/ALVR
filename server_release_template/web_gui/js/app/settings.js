@@ -250,6 +250,20 @@ define([
                 toggleAdvanced();
             })
 
+            $("#reloadSteamVR").click(() => {
+                $.get("restart_steamvr", undefined, (res) => {
+                    if (res == 0) {
+                        Lobibox.notify("success", {
+                            size: "mini",
+                            rounded: true,
+                            delayIndicator: false,
+                            sound: false,
+                            msg: i18n.steamVRRestartSuccess
+                        })
+                    }
+                })               
+            })
+
             $(".paramReset").click((evt) => {
                 var el = $(evt.target);
 
@@ -458,8 +472,8 @@ define([
                     <div class="tab-pane fade ${getAdvancedClass(advanced)}" id="${path + "_" + name}" role="tabpanel" >
                     </div>`);
 
-            //check if the tab is the first, then set classes to activate. First child is advanced button
-            if ($("#configContent").children().length == 2) {
+            //check if the tab is the first, then set classes to activate. First child is advanced button, second the reload steamVr
+            if ($("#configContent").children().length == 3) {
                 $("#" + path + "_" + name).addClass("show active")
                 $("#" + path + "_" + name + "_tab").addClass("show active")
             }

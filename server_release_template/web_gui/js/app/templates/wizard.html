@@ -35,20 +35,22 @@
                     <div>
                         <h6><%= titleTracking %></h6>
                         <%= textTracking %>
-                        
+
                     </div>
                     <div class="wizzardSettings">
-                        <div id="poseOffsetGroup" class="btn-group" data-toggle="buttons">
-                            <label class="btn btn-primary active">
-                                <input type="radio" name="poseOffset" class="poseOffsetButton" value="normal"
-                                    autocomplete="off" checked> <%= normalTracking %>
+                        <div class="btn-group" data-toggle="buttons">
+                            <label class="btn btn-primary">
+                                <input type="radio" class="poseOffsetButton" autocomplete="off" value="normal">
+                                <%= normalTracking %>
                             </label>
                             <label class="btn btn-primary">
-                                <input type="radio" name="poseOffset" class="poseOffsetButton" autocomplete="off"
-                                    value="medium"> <%= mediumTracking %> </label>
+                                <input type="radio" class="poseOffsetButton" autocomplete="off" value="medium">
+                                <%= mediumTracking %>
+                            </label>
                             <label class="btn btn-primary">
-                                <input type="radio" name="poseOffset" class="poseOffsetButton" autocomplete="off"
-                                    value="fast"> <%= fastTracking %> </label>
+                                <input type="radio" class="poseOffsetButton" autocomplete="off" value="fast">
+                                <%= fastTracking %>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -59,14 +61,15 @@
                         <%= textPerformance %>
                     </div>
                     <div class="wizzardSettings">
-                        <div id="poseOffsetGroup" class="btn-group" data-toggle="buttons">
-                            <label class="btn btn-primary active">
-                                <input type="radio" name="performanceOptions" class="performaceOffsetButton"
-                                    autocomplete="off" checked value="compatibility">  <%= compatPerformance %>
+                        <div class="btn-group" data-toggle="buttons">
+                            <label class="btn btn-primary">
+                                <input type="radio" class="performanceOptions" autocomplete="off" value="compatibility">
+                                <%= compatPerformance %>
                             </label>
                             <label class="btn btn-primary">
-                                <input type="radio" name="performanceOptions" class="performaceOffsetButton"
-                                    autocomplete="off" value="performance"> <%= perfPerformance %> </label>
+                                <input type="radio" class="performanceOptions" autocomplete="off" value="visual_quality">
+                                <%= qualityPerformance %>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -74,7 +77,7 @@
                 <div class="wizardContent" style="display: none;">
                     <div>
                         <h6><%= titleFinished %></h6>
-                        <%= textFinished %>                        
+                        <%= textFinished %>
                     </div>
                 </div>
 

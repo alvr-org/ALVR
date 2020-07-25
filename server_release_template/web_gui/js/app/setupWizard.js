@@ -66,18 +66,22 @@ define([
                 $(".poseOffsetButton").change((ev) => {
                     var target = $(ev.target);
 
-                    //IDs depend on the schema!
+                    var poseTimeOffsetTarget = $("#_root_headset_controllers_content_poseTimeOffset");
+
                     switch (target.attr("value")) {
                         case "normal":
-                            $("#root_Main_headset_controllers_content_poseTimeOffset").val("0.01")
+                            poseTimeOffsetTarget.val("0.01");
                             break;
                         case "medium":
-                            $("#root_Main_headset_controllers_content_poseTimeOffset").val("0")
+                            poseTimeOffsetTarget.val("0");
+                            break;
                         case "fast":
-                            $("#root_Main_headset_controllers_content_poseTimeOffset").val("-1")
+                            poseTimeOffsetTarget.val("-1");
+                            break;
                         default:
                             break;
                     }
+                    alvrSettings.storeParam(poseTimeOffsetTarget);
 
                     console.log(target.attr("value"))
                 })
@@ -85,18 +89,42 @@ define([
                 $(".performanceOptions").change((ev) => {
                     var target = $(ev.target);
 
-                    //IDs depend on the schema!
+                    var resolutionTarget = $("#_root_video_renderResolution_scale-choice-");
+                    resolutionTarget.prop("checked", true);
+                    alvrSettings.storeParam(resolutionTarget);
+
+                    var resolutionScaleTarget = $("#_root_video_renderResolution_scale");
+                    var enableFfrTarget = $("#_root_video_foveatedRendering_enabled");
+                    var ffrStrengthTarget = $("#_root_video_foveatedRendering_content_strength");
+                    var bitrateTarget = $("#_root_video_encodeBitrateMbs");
+
                     switch (target.attr("value")) {
                         case "compatibility":
-                            //TODO: add compat options
+                            resolutionScaleTarget.val(0.75);
+                            bitrateTarget.val(15);
+                            enableFfrTarget.prop("checked", true);
+                            ffrStrengthTarget.val(2);
+                            
+                            var h264CodecTarget = $("#_root_video_codec_H264-choice-");
+                            h264CodecTarget.prop("checked", true);
+                            alvrSettings.storeParam(h264CodecTarget);
                             break;
-                        case "performance":
-                            //TODO: add performance options
-                            break;
+                        case "visual_quality":
+                            resolutionScaleTarget.val(1);
+                            bitrateTarget.val(40);
+                            enableFfrTarget.prop("checked", false);
 
+                            var hevcCodecTarget = $("#_root_video_codec_HEVC-choice-");
+                            hevcCodecTarget.prop("checked", true);
+                            alvrSettings.storeParam(hevcCodecTarget);
+                            break;
                         default:
                             break;
                     }
+                    alvrSettings.storeParam(resolutionScaleTarget);
+                    alvrSettings.storeParam(enableFfrTarget);
+                    alvrSettings.storeParam(ffrStrengthTarget);
+                    alvrSettings.storeParam(bitrateTarget);
 
                     console.log(target.attr("value"))
                 })

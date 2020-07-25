@@ -15,7 +15,7 @@ define({
     "titlePerformance" : "Impostazioni per la performance",
     "textPerformance" : "Scegli la modalità più adatta al tuo PC. Verrano impostati alcuni valori in automatico.",
     "compatPerformance" :"Compatibilità",
-    "perfPerformance" : "Performance",
+    "qualityPerformance" : "Qualità visuale",
     "titleFinished": "Finito",
     "textFinished":`Potrai ricomiciare questa guida dalla sezione "Installazione" a sinistra`,
     "buttonNext" :"Avanti",

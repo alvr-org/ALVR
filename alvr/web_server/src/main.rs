@@ -8,7 +8,7 @@ use logging_backend::*;
 use settings_schema::Switch;
 use std::{
     path::PathBuf,
-    sync::{Arc, Mutex, atomic::*},
+    sync::{Arc, Mutex},
     time::SystemTime,
 };
 use tail::tail_stream;

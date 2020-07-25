@@ -81,7 +81,7 @@ define([
                 controllerMode.val(controller.val());
                 alvrSettings.storeParam(controllerMode, true);
 
-                alvrSettings.storeSession();
+                alvrSettings.storeSession("settings");
             });
 
             controller.val(controllerMode.val());
@@ -105,7 +105,7 @@ define([
                     target.val(headsetOptions[headset.val()][key]);
                     alvrSettings.storeParam(target, true);
                 }
-                alvrSettings.storeSession();
+                alvrSettings.storeSession("settings");
             });
 
             if ($(headsetBase + "modelNumber").val() == "Oculus Rift S") {
@@ -269,7 +269,7 @@ define([
                 $("#_root_video_renderResolution_scale-choice-").prop("checked", true);
                 alvrSettings.storeParam($("#_root_video_renderResolution_scale-choice-"), true);
 
-                alvrSettings.storeSession();
+                alvrSettings.storeSession("settings");
             });
 
         }
@@ -311,7 +311,7 @@ define([
 
 
 
-                alvrSettings.storeSession();
+                alvrSettings.storeSession("settings");
 
             });
 

@@ -8,7 +8,7 @@ use logging_backend::*;
 use settings_schema::Switch;
 use std::{
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, atomic::*},
     time::SystemTime,
 };
 use tail::tail_stream;
@@ -225,48 +225,27 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
                 let session_manager = session_manager.clone();
                 move || reply::json(session_manager.lock().unwrap().get())
             })
-            .or(warp::path!(String).and(body::json()).map({
+            .or(warp::path!(String / String).and(body::json()).map({
                 let session_manager = session_manager.clone();
-                move |meta_str: String, value: serde_json::Value| {
-                    let meta_list = meta_str.split('?').collect::<Vec<_>>();
-                    if meta_list.len() == 2 {
-                        let update_author_id = meta_list[0];
-                        if let Ok(update_type) = serde_json::from_str(meta_list[1]) {
-                            let res = session_manager
-                                .lock()
-                                .unwrap()
-                                .get_mut(update_author_id, update_type)
-                                .merge_from_json(value);
-                            if let Err(e) = res {
-                                warn!("{}", e);
-                                // HTTP Code: WARNING
-                                return reply::with_status(
-                                    reply(),
-                                    StatusCode::from_u16(199).unwrap(),
-                                );
-                            } else {
-                                return reply::with_status(reply(), StatusCode::OK);
-                            }
+                move |update_type: String, update_author_id: String, value: serde_json::Value| {
+                    if let Ok(update_type) = serde_json::from_str(&format!("\"{}\"", update_type)) {
+                        let res = session_manager
+                            .lock()
+                            .unwrap()
+                            .get_mut(&update_author_id, update_type)
+                            .merge_from_json(value);
+                        if let Err(e) = res {
+                            warn!("{}", e);
+                            // HTTP Code: WARNING
+                            reply::with_status(reply(), StatusCode::from_u16(199).unwrap())
+                        } else {
+                            reply::with_status(reply(), StatusCode::OK)
                         }
+                    } else {
+                        reply::with_status(reply(), StatusCode::BAD_REQUEST)
                     }
-                    reply::with_status(reply(), StatusCode::BAD_REQUEST)
                 }
-            }))
-            // stopgap. todo: remove
-            .or(warp::post().and(body::json().map(move |value| {
-                let res = session_manager
-                    .lock()
-                    .unwrap()
-                    .get_mut("", SessionUpdateType::Settings)
-                    .merge_from_json(value);
-                if let Err(e) = res {
-                    warn!("{}", e);
-                    // HTTP Code: WARNING
-                    reply::with_status(reply(), StatusCode::from_u16(199).unwrap())
-                } else {
-                    reply::with_status(reply(), StatusCode::OK)
-                }
-            }))),
+            })),
     );
 
     let log_subscription = warp::path("log").and(warp::ws()).map(move |ws: Ws| {

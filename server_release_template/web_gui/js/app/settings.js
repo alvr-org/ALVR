@@ -17,24 +17,36 @@ define([
         var index = 0;
         const usedi18n = {};
 
+        function randomAlphanumericID() {
+            const len = 10;
+            const arr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghilmnopqrstuvwxyz0123456789";
+            var ans = '';
+            for (var i = len; i > 0; i--) {
+                ans += arr[Math.floor(Math.random() * arr.length)];
+            }
+            return ans;
+        }
+
+        var webClientId = randomAlphanumericID();
+
         self.disableWizard = function () {
             session.setupWizard = false;
-            self.storeSession();
+            self.storeSession("other");
         }
 
         self.updateClientTrustState = function (sessionListIndex, state) {
             session.lastClients[sessionListIndex].state = state;
-            self.storeSession();
+            self.storeSession("clientList");
         }
 
         self.pushManualClient = function (descriptor) {
             session.lastClients.push(descriptor);
-            self.storeSession();
+            self.storeSession("clientList");
         }
 
         self.removeClient = function (sessionListIndex) {
             session.lastClients.splice(sessionListIndex, 1);
-            self.storeSession();
+            self.storeSession("clientList");
         }
 
         function init() {
@@ -155,18 +167,18 @@ define([
             _.set(session.settingsCache, finalPath, val);
 
             if (!skipstoreSession) {
-                self.storeSession();
+                self.storeSession("settings");
             }
         }
 
-        self.storeSession = function () {
+        self.storeSession = function (updateType) {
             if (updating) {
                 return;
             }
 
             $.ajax({
                 type: "POST",
-                url: "../../session",
+                url: `../../session/${updateType}/${webClientId}`,
                 contentType: "application/json;charset=UTF-8",
                 data: JSON.stringify(session),
                 processData: false,

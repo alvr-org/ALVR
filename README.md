@@ -28,8 +28,8 @@ Please uninstall any other VR streaming software on your PC. This includes versi
 
 Install the latest [Visual C++ Redistrubutable x64 package](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads). Do this every time you install a new ALVR version!
 
-To install ALVR just download and unzip `alvr_server_windows.zip` wherever you want and launch `ALVR.exe`. It's important not to move the folder after the first launch.
-To keep settings from a previous installation of ALVR (>=v12.0) you can unzip over the old installation folder. The first time you open ALVR.exe you may have to allow it in the SmartScreen prompt and allow the network access to alvr_web_server in another popup window (it could be behind the actual ALVR window).
+To install ALVR download and unzip `alvr_server_windows.zip` wherever you want and launch `ALVR.exe`. The first time you open ALVR.exe you may have to allow it in the SmartScreen prompt and allow the network access to alvr_web_server in another popup window (it could be behind the actual ALVR window).  
+It's important not to move the folder after the first launch. To keep settings from a previous installation of ALVR (>=v12.0) you can unzip over the old installation folder.
 
 Install the client on your headset through [SideQuest](https://sidequestvr.com/).
 

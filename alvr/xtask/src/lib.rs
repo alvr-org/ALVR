@@ -328,11 +328,12 @@ fn netsh_delete_rule_command_string(rule_name: &str) -> String {
 // other: command failed
 pub fn firewall_rules(root_server_dir: &Path, add: bool) -> Result<(), i32> {
     let script_path = env::temp_dir().join("alvr_firewall_rules.bat");
+    let web_server_path = root_server_dir.join(exec_fname("alvr_web_server"));
 
     let firewall_rules_script_content = if add {
         format!(
             "{}\n{}\n{}",
-            netsh_add_rule_command_string("ALVR Launcher", root_server_dir),
+            netsh_add_rule_command_string("ALVR Launcher", &web_server_path),
             netsh_add_rule_command_string(
                 "SteamVR ALVR vrserver",
                 &steamvr_dir()

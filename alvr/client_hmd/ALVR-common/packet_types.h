@@ -17,7 +17,7 @@ static const char *ALVR_HELLO_PACKET_SIGNATURE = "ALVR";
 static const int ALVR_GUARDIAN_SEGMENT_SIZE = 100;
 static const double ALVR_GUARDIAN_RESEND_CD_SEC = 1.0;
 
-static const char *ALVR_VERSION = "12.0.0";
+static const char *ALVR_VERSION = "13.0.0";
 
 enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_HELLO_MESSAGE = 1,
@@ -230,7 +230,6 @@ struct TrackingVector2 {
 };
 struct TrackingInfo {
 	uint32_t type; // ALVR_PACKET_TYPE_TRACKING_INFO
-	static const uint32_t FLAG_OTHER_TRACKING_SOURCE = (1 << 0); // Other_Tracking_Source_Position has valid value (For ARCore)
 	uint32_t flags;
 
 	uint64_t clientTime;
@@ -238,9 +237,6 @@ struct TrackingInfo {
 	double predictedDisplayTime;
 	TrackingQuat HeadPose_Pose_Orientation;
 	TrackingVector3 HeadPose_Pose_Position;
-
-	TrackingVector3 Other_Tracking_Source_Position;
-	TrackingQuat Other_Tracking_Source_Orientation;
 
 	static const uint32_t MAX_CONTROLLERS = 2;
 

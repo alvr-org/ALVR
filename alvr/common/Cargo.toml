@@ -1,19 +1,23 @@
 [package]
 name = 'alvr_common'
-version = '12.0.0-beta.2'
+version = '13.0.0-alpha.0'
 authors = ['Riccardo Zaglia <riccardo.zaglia5@gmail.com>']
 license = 'MIT'
 edition = '2018'
 
 [dependencies]
+parking_lot = '^0.11.0'
+bitflags = '^1.2'
 semver = '^0.10.0'
 serde = { version = '^1.0', features = ['derive'] }
 serde_json = '^1.0'
+bincode = '^1.3.1'
 log = '^0.4.8'
 backtrace = '^0.3.46'
 settings-schema = { git = 'https://github.com/zarik5/settings-schema-rs', features = ['rename_camel_case'] }
-sysinfo = '^0.14.1'
+sysinfo = '^0.15.0'
 alvr_xtask = { path = '../xtask' }
+tokio = { version = '^0.2.20', features = ['macros', 'process', 'io-util', 'stream', 'udp'] }
 # cpal = { git = 'https://github.com/RustAudio/cpal' }
 winapi = { version = '^0.3.8', features = ['mmdeviceapi', 'propsys', 'coml2api', 'propidl', 'functiondiscoverykeys_devpkey', 'wtypes'] }
 wio = '^0.2.2'

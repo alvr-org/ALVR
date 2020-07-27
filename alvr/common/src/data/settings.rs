@@ -3,6 +3,19 @@ use settings_schema::*;
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum ConnectionMode {
+    UDP,
+
+    TCP,
+
+    #[serde(rename_all = "camelCase")]
+    QUIC {
+        send_small_packets_unreliably: bool,
+    },
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum FrameSize {
     #[schema(min = 0.25, max = 2., step = 0.01)]
     Scale(f32),
@@ -234,6 +247,11 @@ pub struct HeadsetDesc {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDesc {
+    pub mode: ConnectionMode,
+
+    #[schema(advanced)]
+    pub web_server_port: u16,
+
     #[schema(advanced)]
     pub listen_host: String,
 
@@ -403,6 +421,13 @@ pub fn settings_cache_default() -> SettingsDefault {
             },
         },
         connection: ConnectionDescDefault {
+            mode: ConnectionModeDefault {
+                variant: ConnectionModeDefaultVariant::TCP,
+                QUIC: ConnectionModeQUICDefault {
+                    send_small_packets_unreliably: true,
+                },
+            },
+            web_server_port: 8082,
             listen_host: "0.0.0.0".into(),
             listen_port: 9944,
             throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,

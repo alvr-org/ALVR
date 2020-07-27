@@ -91,9 +91,6 @@ pub fn steamvr_bin_dir() -> BResult<PathBuf> {
         .as_str();
 
     Ok(PathBuf::from(path_string))
-
-    // Ok()
-    // PathBuf::from(r"C:\Program Files (x86)\Steam\steamapps\common\SteamVR")
 }
 
 fn steamvr_dir() -> BResult<PathBuf> {

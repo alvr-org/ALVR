@@ -1,19 +1,25 @@
-use alvr_common::{data::*, logging::*, *};
+use crate::{data::*, logging::*, *};
+use parking_lot::Mutex;
 use std::{
+    collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::{mpsc::Sender, Arc},
 };
+use thread_loop::ThreadLoop;
 use tokio::net::*;
 
 const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 4_000;
-const HANDSHAKE_PORT: u16 = 9943;
+const MULTICAST_ADDR: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 123);
+const CONTROL_PORT: u16 = 9943;
+const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 256;
 
 pub async fn search_client(
     client_ip: Option<String>,
-    client_found_cb: impl Fn(IpAddr, ClientHandshakePacket) -> Option<ServerHandshakePacket>,
+    client_found_cb: impl Fn(IpAddr),
 ) -> StrResult {
     let mut handshake_socket =
-        trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, HANDSHAKE_PORT)).await)?;
+        trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, CONTROL_PORT)).await)?;
+    trace_err!(handshake_socket.join_multicast_v4(MULTICAST_ADDR, Ipv4Addr::UNSPECIFIED))?;
 
     let maybe_target_client_ip = match client_ip {
         Some(ip_str) => Some(trace_err!(ip_str.parse::<IpAddr>(), "Client IP")?),
@@ -39,7 +45,7 @@ pub async fn search_client(
             }
         }
 
-        let client_handshake_packet: ClientHandshakePacket =
+        let handshake_packet: HandshakePacket =
             match bincode::deserialize(&packet_buffer[..hanshake_packet_size]) {
                 Ok(client_handshake_packet) => client_handshake_packet,
                 Err(e) => {
@@ -51,7 +57,7 @@ pub async fn search_client(
                 }
             };
 
-        if client_handshake_packet.alvr_name != [b'A', b'L', b'V', b'R'] {
+        if handshake_packet.alvr_name != ALVR_NAME {
             warn!(
                 id: LogId::ClientFoundInvalid,
                 "Received handshake packet: wrong name"
@@ -59,19 +65,10 @@ pub async fn search_client(
             continue;
         }
 
-        let version = {
-            let nul_range_end = client_handshake_packet
-                .version
-                .iter()
-                .position(|&c| c == b'\0')
-                .unwrap_or_else(|| client_handshake_packet.version.len());
-            String::from_utf8_lossy(&client_handshake_packet.version[0..nul_range_end])
-        };
-
-        match is_version_compatible(&version, ALVR_CLIENT_VERSION_REQ) {
+        match is_version_compatible(&handshake_packet.version, ALVR_CLIENT_VERSION_REQ) {
             Ok(compatible) => {
                 if !compatible {
-                    warn!(id: LogId::ClientFoundWrongVersion(version.into()));
+                    warn!(id: LogId::ClientFoundWrongVersion(handshake_packet.version));
                     continue;
                 }
             }
@@ -84,15 +81,35 @@ pub async fn search_client(
             }
         }
 
-        let maybe_server_handshake_packet =
-            client_found_cb(address.ip(), client_handshake_packet);
+        client_found_cb(address.ip());
 
-        if let Some(server_handshake_packet) = maybe_server_handshake_packet {
-            let packet = trace_err!(bincode::serialize(&server_handshake_packet))?;
-            handshake_socket
-                .send_to(&packet, SocketAddr::new(address.ip(), 9944))
-                .await
-                .ok();
-        }
+        // if let Some(server_handshake_packet) = maybe_server_handshake_packet {
+        //     let packet = trace_err!(bincode::serialize(&server_handshake_packet))?;
+        //     handshake_socket
+        //         .send_to(&packet, SocketAddr::new(address.ip(), 9944))
+        //         .await
+        //         .ok();
+        // }
     }
 }
+
+struct ControlSocket {
+}
+
+impl ControlSocket {
+    pub fn connect_to_client(client_ip: IpAddr) {
+
+    }
+}
+
+trait StreamSocket {
+    fn receive(&self);
+    fn send_reliable(&self, stream_id: u8);
+    fn send_unreliable(&self, stream_id: u8);
+}
+
+struct QuicSocket {}
+
+// impl StreamSocket for QuicSocket {
+
+// }

@@ -21,7 +21,7 @@ pub struct ClientConnectionDesc {
     pub trusted: bool,
     pub manually_added: bool,
     pub last_update_ms_since_epoch: u64,
-    pub address: String,
+    pub ip: String,
     pub device_name: Option<String>,
 }
 

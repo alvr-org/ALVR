@@ -28,7 +28,7 @@ pub enum FrameSize {
     },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, PartialEq)]
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Fov {
     #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub left: f32,

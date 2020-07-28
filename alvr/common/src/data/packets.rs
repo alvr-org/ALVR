@@ -1,6 +1,7 @@
 use super::settings::*;
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
+use std::net::IpAddr;
 
 #[derive(Serialize, Deserialize)]
 pub struct HandshakePacket {
@@ -8,30 +9,30 @@ pub struct HandshakePacket {
     pub version: String,
 }
 
-pub struct ServerConfig {
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ServerConfigPacket {
     pub device_name: String,
     pub native_eye_resolution: (u32, u32),
     pub native_fov: [Fov; 2],
     pub native_fps: u32,
+    pub server_ip: IpAddr,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct ClientConfig {
+pub struct ClientConfigPacket {
     pub settings: Settings,
     pub eye_resolution: (u32, u32),
-    pub web_gui_port: String,
+    pub web_gui_url: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum ServerControlPacket {
-    Handshake(HandshakePacket),
-    Config(Box<ClientConfig>),
+    Test,
     Shutdown,
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
-    Config(ClientConfig),
     Disconnect,
 }
 

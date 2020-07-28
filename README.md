@@ -53,9 +53,9 @@ Install the client on your headset through [SideQuest](https://sidequestvr.com/)
 
 ## Uninstall
 
-Launch `ALVR.exe`, go to `About` tab, press `Uninstall driver` and `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
+Launch `ALVR.exe`, go to `Installation` tab, press `Unregister ALVR driver` and `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
 
-If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder manually.
+If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder.
 
 ## Build from source
 

@@ -163,7 +163,7 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
         for adapter in ipconfig::get_adapters().expect("PC network adapters") {
             for host_address in adapter.ip_addresses() {
                 let address_string = host_address.to_string();
-                if address_string.starts_with("192.168.") || address_string.starts_with("10.") || address_string.starts_with("172.16."){
+                if address_string.starts_with("192.168.") || address_string.starts_with("10.") || address_string.starts_with("172."){
                     maybe_host_address = Some(*host_address);
                 }
             }

@@ -26,6 +26,8 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only w
 
 Please uninstall any other VR streaming software on your PC. This includes versions of ALVR prior to v12.0.
 
+If you didn't already, install SteamVR, launch it and then close it (this is to make sure SteamVR executes its first time setup).
+
 Install the latest [Visual C++ Redistrubutable x64 package](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads). Do this every time you install a new ALVR version!
 
 To install ALVR download and unzip `alvr_server_windows.zip` wherever you want and launch `ALVR.exe`. The first time you open ALVR.exe you may have to allow it in the SmartScreen prompt and allow the network access to alvr_web_server in another popup window (it could be behind the actual ALVR window).  

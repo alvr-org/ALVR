@@ -6,7 +6,7 @@ license = 'MIT'
 edition = '2018'
 
 [dependencies]
-dirs = '^2.0'
+dirs = '^3.0'
 fs_extra = '^1.1'
 pico-args = '^0.3.1'
 toml = '^0.5.6'

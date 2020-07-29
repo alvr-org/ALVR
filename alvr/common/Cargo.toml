@@ -21,7 +21,14 @@ settings-schema = { git = 'https://github.com/zarik5/settings-schema-rs', featur
 sysinfo = '^0.15.0'
 alvr_xtask = { path = '../xtask' }
 # cpal = { git = 'https://github.com/RustAudio/cpal' }
-winapi = { version = '^0.3.8', features = ['mmdeviceapi', 'propsys', 'coml2api', 'propidl', 'functiondiscoverykeys_devpkey', 'wtypes'] }
+winapi = { version = '^0.3.8', features = [
+    'mmdeviceapi',
+    'propsys',
+    'coml2api',
+    'propidl',
+    'functiondiscoverykeys_devpkey',
+    'wtypes',
+] }
 wio = '^0.2.2'
 widestring = '^0.4.2'
 

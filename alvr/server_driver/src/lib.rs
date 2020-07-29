@@ -13,17 +13,11 @@ use std::{
     os::raw::c_char,
 };
 
-lazy_static_include_bytes!(FRAME_RENDER_VS_CSO, "cpp/alvr_server/FrameRenderVS.cso");
-lazy_static_include_bytes!(FRAME_RENDER_PS_CSO, "cpp/alvr_server/FrameRenderPS.cso");
-lazy_static_include_bytes!(QUAD_SHADER_CSO, "cpp/alvr_server/QuadVertexShader.cso");
-lazy_static_include_bytes!(
-    COMPRESS_SLICES_CSO,
-    "cpp/alvr_server/CompressSlicesPixelShader.cso"
-);
-lazy_static_include_bytes!(
-    COLOR_CORRECTION_CSO,
-    "cpp/alvr_server/ColorCorrectionPixelShader.cso"
-);
+lazy_static_include_bytes!(FRAME_RENDER_VS_CSO => "cpp/alvr_server/FrameRenderVS.cso");
+lazy_static_include_bytes!(FRAME_RENDER_PS_CSO => "cpp/alvr_server/FrameRenderPS.cso");
+lazy_static_include_bytes!(QUAD_SHADER_CSO  => "cpp/alvr_server/QuadVertexShader.cso");
+lazy_static_include_bytes!(COMPRESS_SLICES_CSO => "cpp/alvr_server/CompressSlicesPixelShader.cso");
+lazy_static_include_bytes!(COLOR_CORRECTION_CSO => "cpp/alvr_server/ColorCorrectionPixelShader.cso");
 
 extern "C" fn maybe_kill_web_server() {
     process::maybe_kill_web_server();

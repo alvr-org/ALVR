@@ -9,7 +9,7 @@ assignees: ''
 
 # Please follow the general troubleshooting steps first:
 
-- [ ] I ran "add_firewall_rules.bat" as adimistrator and checked that the ports are open in the firewall
+- [ ] I carefully followed the instructions in the [README](https://github.com/JackD83/ALVR/blob/master/README.md) and completed successfully the setup wizard.
 - [ ] I read the ALVR Wikis [here](https://github.com/polygraphene/ALVR/wiki) and [here](https://github.com/JackD83/ALVR/wiki)
 
 If your issue is about games not working, please open an issue for every game and list the game in the title.

@@ -60,7 +60,9 @@ define([
             addChangeListener();
 
             //special
+            updating = true;
             customSettings.setCustomSettings();
+            updating = false;
 
             addListeners();
             addHelpTooltips();
@@ -682,6 +684,7 @@ define([
                 $("#" + path + "_" + name).val(defaultVal).trigger("input");
             }
             $("#" + path + "_" + name).change();
+          
         }
 
         function getMinMaxLabel(node) {
@@ -723,8 +726,7 @@ define([
         }
 
         function clampNumeric(element, value) {
-            if (element.attr("min") !== "null" && element.attr("max") !== "null") {
-                console.log("clamping", element.attr("min"))
+            if (element.attr("min") !== "null" && element.attr("max") !== "null") {         
                 return _.clamp(value, element.attr("min"), element.attr("max"))
             } else {
                 return value;

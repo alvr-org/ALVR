@@ -106,7 +106,7 @@ define([
 
             const select = new Selectal('#_root_headset_headsetEmulationMode');
             headset = $("#_root_headset_headsetEmulationMode");
-         
+
             headset.change((ev) => {
                 for (var key in headsetOptions[headset.val()]) {
                     const target = $(headsetBase + key);
@@ -348,6 +348,7 @@ define([
             el.unbind();
 
             const target = $("#_root_audio_gameAudio_content_device");
+
             let current = "";
             try {
                 current = alvrSettings.getSession().settingsCache.audio.gameAudio.content.device;
@@ -358,8 +359,11 @@ define([
             audio_devices.list.forEach(device => {
                 let name = device[1];
                 if (device[0] === audio_devices.default) {
-                    name = "(default) " + device[1];
+                    name = "(default) " + device[1];            
                     el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_gameAudio_content", device[0]));
+
+                    const deviceReset = $("#_root_audio_gameAudio_content_device").parent().find(".helpReset .paramReset");
+                    deviceReset.attr("default", device[0])
                 }
                 el.append(`<option value="${device[0]}"> ${name}  </option>`)
             });
@@ -368,12 +372,13 @@ define([
             if (current.trim() === "") {
                 target.val(audio_devices.default);
                 target.change();
+                alvrSettings.storeParam(target);
             }
+
 
             //move selected audio device to top of list
             var $el = $("#_root_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
             $("#_root_audio_gameAudio_content_deviceDropdown").find('option:eq(0)').before($el);
-
 
             var select = new Selectal('#_root_audio_gameAudio_content_deviceDropdown');
             el = $("#_root_audio_gameAudio_content_deviceDropdown");
@@ -381,10 +386,25 @@ define([
             //select the current option in dropdown
             el.val(target.val());
 
+
+            var updating = false;
             //add listener to change
             el.change((ev) => {
-                target.val($(ev.target).val());
-                target.change();
+                if (!updating) {
+                    updating = true;
+                    target.val($(ev.target).val());
+                    target.change();
+                    updating = false;
+                }
+            })
+
+            target.change(() => {
+                if (!updating) {
+                    updating = true;                  
+                    el.val(target.val());
+                    el.change();
+                    updating = false;
+                }
             })
         }
 

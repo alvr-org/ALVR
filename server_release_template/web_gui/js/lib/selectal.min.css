@@ -1,7 +1,7 @@
 /* Contains the default styles for the selectal box */
 .selectal-group {
   font-family: arial;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.2;
   -webkit-user-select: none;
   /* Safari */

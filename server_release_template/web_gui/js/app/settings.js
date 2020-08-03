@@ -60,9 +60,8 @@ define([
             addChangeListener();
 
             //special
-            updating = true;
-            customSettings.setCustomSettings();
-            updating = false;
+        
+            customSettings.setCustomSettings();       
 
             addListeners();
             addHelpTooltips();

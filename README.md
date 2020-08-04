@@ -64,17 +64,21 @@ If you have a version prior to v12.0 you need to launch `remove_firewall_rules.b
 - Install Visual Studio Code and the extension rust-analyzer (optional)
 - Install [LLVM](https://releases.llvm.org/download.html)
 - Install the MSVC compiler (for example installing C++ build tools with [Visual Studio](https://visualstudio.microsoft.com/downloads))
-- Install Android Studio >=4.0, API Level 30. Requires LLDB and NDK. The environment variable `JAVA_HOME` must be set.
+- Install Android Studio >=4.0, API Level 30. Requires LLDB and NDK.
+- Set the environment variable `JAVA_HOME` to `C:\Program Files\Android\androidStudio\jre`.
 - Install [rustup](https://rustup.rs/)
 - Download this repository and on the project root execute:
 
     ```bash
-    cargo xtask build-all --release
+    cargo xtask build-server --release
+    cargo xtask build-client --release
     ```
 
 - ALVR server and client will be in `/build`.
 
-Note: The Visual Studio solution is left only for IDE support while coding. If compiled, the resulting binary will not be valid.
+Notes:  
+To debug the client you can just open Android Studio, connect your Oculus Quest and press run, without the above cargo commands.  
+The Visual Studio solution is left only for IDE support while coding. If compiled, the resulting binary will not be valid.
 
 ## License
 

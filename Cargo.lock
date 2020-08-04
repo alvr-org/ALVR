@@ -42,24 +42,27 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "12.0.0-beta.3"
+version = "12.0.0"
 dependencies = [
- "alvr_xtask",
  "backtrace",
  "log 0.4.11",
+ "regex",
+ "runas",
  "semver",
  "serde",
  "serde_json",
  "settings-schema",
  "sysinfo",
+ "toml",
  "widestring 0.4.2",
  "winapi 0.3.9",
+ "winreg 0.7.0",
  "wio",
 ]
 
 [[package]]
 name = "alvr_server_bootstrap"
-version = "12.0.0-beta.3"
+version = "12.0.0"
 dependencies = [
  "alcro",
  "alvr_common",
@@ -69,10 +72,9 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_driver"
-version = "12.0.0-beta.3"
+version = "12.0.0"
 dependencies = [
  "alvr_common",
- "alvr_xtask",
  "bindgen",
  "cc",
  "fern",
@@ -84,10 +86,9 @@ dependencies = [
 
 [[package]]
 name = "alvr_web_server"
-version = "12.0.0-beta.3"
+version = "12.0.0"
 dependencies = [
  "alvr_common",
- "alvr_xtask",
  "bincode",
  "chrono",
  "fern",
@@ -110,12 +111,9 @@ dependencies = [
  "dirs",
  "fs_extra",
  "pico-args",
- "regex",
  "runas",
  "termion",
- "toml",
  "walkdir",
- "winreg 0.7.0",
  "zip",
 ]
 
@@ -570,11 +568,10 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "2.0.2"
+version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13aea89a5c93364a98e9b37b2fa237effbb694d5cfe01c5b70941f7eb087d5e3"
+checksum = "142995ed02755914747cc6ca76fc7e4583cd18578746716d0508ea6ed558b9ff"
 dependencies = [
- "cfg-if",
  "dirs-sys",
 ]
 
@@ -1557,9 +1554,9 @@ checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
 
 [[package]]
 name = "os_str_bytes"
-version = "2.3.1"
+version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06de47b848347d8c4c94219ad8ecd35eb90231704b067e67e6ae2e36ee023510"
+checksum = "2ac6fe3538f701e339953a3ebbe4f39941aababa8a3f6964635b24ab526daeac"
 
 [[package]]
 name = "pango"
@@ -2202,9 +2199,9 @@ checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 
 [[package]]
 name = "syn"
-version = "1.0.36"
+version = "1.0.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cdb98bcb1f9d81d07b536179c269ea15999b5d14ea958196413869445bb5250"
+checksum = "239f255b9e3429350f188c27b807fc9920a15eb9145230ff1a7d054c08fec319"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2225,9 +2222,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.14.15"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2983daff11a197c7c406b130579bc362177aa54cf2cc1f34d6ac88fccaa6a5e1"
+checksum = "f597c00e6548b9ddd54c11b8e8534fc11223f28509d57e021f01797b50ca5ca1"
 dependencies = [
  "cfg-if",
  "doc-comment",
@@ -2405,9 +2402,9 @@ checksum = "e987b6bf443f4b5b3b6f38704195592cca41c5bb7aedd3c3693c7081f8289860"
 
 [[package]]
 name = "tracing"
-version = "0.1.17"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbdf4ccd1652592b01286a5dbe1e2a77d78afaa34beadd9872a5f7396f92aaa9"
+checksum = "f0aae59226cf195d8e74d4b34beae1859257efb4e5fed3f147d2dc2c7d372178"
 dependencies = [
  "cfg-if",
  "log 0.4.11",
@@ -2416,9 +2413,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94ae75f0d28ae10786f3b1895c55fe72e79928fd5ccdebb5438c75e93fec178f"
+checksum = "b2734b5a028fa697686f16c6d18c2c6a3c7e41513f9a213abb6754c4acb3c8d7"
 dependencies = [
  "lazy_static",
 ]

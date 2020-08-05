@@ -348,7 +348,7 @@ define([
             el.unbind();
 
             const target = $("#_root_audio_gameAudio_content_device");
-
+         
             let current = "";
             try {
                 current = alvrSettings.getSession().settingsCache.audio.gameAudio.content.device;
@@ -378,7 +378,7 @@ define([
 
             //move selected audio device to top of list
             var $el = $("#_root_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
-            $("#_root_audio_gameAudio_content_deviceDropdown").find('option:eq(0)').before($el);
+            $("#_root_audio_gameAudio_content_deviceDropdown").prepend($el);
 
             var select = new Selectal('#_root_audio_gameAudio_content_deviceDropdown');
             el = $("#_root_audio_gameAudio_content_deviceDropdown");

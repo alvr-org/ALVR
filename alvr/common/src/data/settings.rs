@@ -4,12 +4,12 @@ use settings_schema::*;
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum SocketConfig {
-    UDP,
+    Udp,
 
-    TCP,
+    Tcp,
 
     #[serde(rename_all = "camelCase")]
-    QUIC {
+    Quic {
         send_small_packets_unreliably: bool,
     },
 }
@@ -76,9 +76,10 @@ pub struct ColorCorrectionDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Debug)]
 #[repr(u8)]
+#[serde(rename_all = "camelCase")]
 pub enum CodecType {
     H264,
-    HEVC,
+    Hevc,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -402,8 +403,8 @@ pub fn settings_cache_default() -> SettingsDefault {
         },
         connection: ConnectionDescDefault {
             stream_socket_config: SocketConfigDefault {
-                variant: SocketConfigDefaultVariant::TCP,
-                QUIC: SocketConfigQUICDefault {
+                variant: SocketConfigDefaultVariant::Tcp,
+                Quic: SocketConfigQuicDefault {
                     send_small_packets_unreliably: true,
                 },
             },

@@ -2294,8 +2294,8 @@ dependencies = [
 
 [[package]]
 name = "settings-schema"
-version = "0.3.0"
-source = "git+https://github.com/zarik5/settings-schema-rs#cdbcd3a0fa4ecbc0c0f2471267b2b8b340212634"
+version = "0.3.1"
+source = "git+https://github.com/zarik5/settings-schema-rs#a7e450ba1d48d00324a6ec1b8cf7a3213f320e81"
 dependencies = [
  "serde",
  "serde_json",
@@ -2305,7 +2305,7 @@ dependencies = [
 [[package]]
 name = "settings-schema-derive"
 version = "0.3.0"
-source = "git+https://github.com/zarik5/settings-schema-rs#cdbcd3a0fa4ecbc0c0f2471267b2b8b340212634"
+source = "git+https://github.com/zarik5/settings-schema-rs#a7e450ba1d48d00324a6ec1b8cf7a3213f320e81"
 dependencies = [
  "heck",
  "proc-macro2",

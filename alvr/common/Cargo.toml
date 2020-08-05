@@ -15,7 +15,7 @@ serde_json = '^1.0'
 nalgebra = { version = '^0.21.1', features = ["serde-serialize"] }
 bincode = '^1.3.1'
 async-bincode = '^0.5.1'
-tokio = { version = '^0.2.20', features = ['macros', 'process', 'io-util', 'stream', 'udp', 'tcp'] }
+tokio = { version = '^0.2.20', features = ['macros', 'process', 'io-util', 'stream', 'udp', 'tcp', 'time'] }
 futures = '^0.3.5'
 log = '^0.4.8'
 backtrace = '^0.3.46'

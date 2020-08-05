@@ -20,7 +20,7 @@ use warp::{
     http::StatusCode,
     reply,
     ws::{Message, WebSocket, Ws},
-    Filter,
+    Filter, Rejection, Reply,
 };
 
 type TMutex<T> = tokio::sync::Mutex<T>;
@@ -66,7 +66,7 @@ async fn subscribed_to_log(mut socket: WebSocket, mut log_receiver: UnboundedRec
 }
 
 async fn client_discovery(
-    session_manager: Arc<Mutex<SessionManager>>,
+    session_manager: Arc<TMutex<SessionManager>>,
     control_socket: Arc<TMutex<Option<ControlSocket<ClientControlPacket, ServerControlPacket>>>>,
 ) {
     let res = search_client_loop(None, |client_ip| {
@@ -79,7 +79,7 @@ async fn client_discovery(
                 .as_millis();
 
             {
-                let session_manager_ref = &mut session_manager.lock().unwrap();
+                let session_manager_ref = &mut session_manager.lock().await;
                 let session_desc_ref = &mut session_manager_ref
                     .get_mut(SERVER_SESSION_UPDATE_ID, SessionUpdateType::ClientList);
 
@@ -116,7 +116,7 @@ async fn client_discovery(
             // drop early to free the socket port
             *control_socket_ref = None;
 
-            let settings = session_manager.lock().unwrap().get().to_settings();
+            let settings = session_manager.lock().await.get().to_settings();
             let maybe_control_socket = ControlSocket::connect_to_client(
                 client_ip,
                 |server_config: ServerConfigPacket, server_ip| {
@@ -162,13 +162,51 @@ async fn client_discovery(
     }
 }
 
+async fn get_session_handler(
+    session_manager: Arc<TMutex<SessionManager>>,
+) -> Result<impl Reply, Rejection> {
+    error!("request session");
+    let session = session_manager.lock().await;
+    error!("got session");
+    error!("{:?}", serde_json::to_value(session.get()));
+    Ok(reply::json(session.get()))
+}
+
+async fn set_session_handler(
+    session_manager: Arc<TMutex<SessionManager>>,
+    update_type: String,
+    update_author_id: String,
+    value: serde_json::Value,
+) -> Result<impl Reply, Rejection> {
+    if let Ok(update_type) = serde_json::from_str(&format!("\"{}\"", update_type)) {
+        let res = session_manager
+            .lock()
+            .await
+            .get_mut(&update_author_id, update_type)
+            .merge_from_json(value);
+
+        if let Err(e) = res {
+            warn!("{}", e);
+            // HTTP Code: WARNING
+            Ok(reply::with_status(
+                reply(),
+                StatusCode::from_u16(199).unwrap(),
+            ))
+        } else {
+            Ok(reply::with_status(reply(), StatusCode::OK))
+        }
+    } else {
+    Ok(reply::with_status(reply(), StatusCode::BAD_REQUEST))
+    }
+}
+
 async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult {
     // The lock on this mutex does not need to be held across await points, so I don't need a tokio
     // Mutex
-    let session_manager = Arc::new(Mutex::new(SessionManager::new(&alvr_server_dir())));
-    let control_socket = Arc::new(TMutex::new(None));
+    let session_manager = Arc::new(TMutex::new(SessionManager::new(&alvr_server_dir())));
+    // let control_socket = Arc::new(TMutex::new(None));
 
-    tokio::spawn(client_discovery(session_manager.clone(), control_socket));
+    // tokio::spawn(client_discovery(session_manager.clone(), control_socket));
 
     let driver_log_redirect = tokio::spawn(
         tail_stream(&driver_log_path())?
@@ -196,29 +234,19 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
 
     let session_requests = warp::path("session").and(
         warp::get()
-            .map({
+            .and_then({
                 let session_manager = session_manager.clone();
-                move || reply::json(session_manager.lock().unwrap().get())
+                move || get_session_handler(session_manager.clone())
             })
-            .or(warp::path!(String / String).and(body::json()).map({
+            .or(warp::path!(String / String).and(body::json()).and_then({
                 let session_manager = session_manager.clone();
                 move |update_type: String, update_author_id: String, value: serde_json::Value| {
-                    if let Ok(update_type) = serde_json::from_str(&format!("\"{}\"", update_type)) {
-                        let res = session_manager
-                            .lock()
-                            .unwrap()
-                            .get_mut(&update_author_id, update_type)
-                            .merge_from_json(value);
-                        if let Err(e) = res {
-                            warn!("{}", e);
-                            // HTTP Code: WARNING
-                            reply::with_status(reply(), StatusCode::from_u16(199).unwrap())
-                        } else {
-                            reply::with_status(reply(), StatusCode::OK)
-                        }
-                    } else {
-                        reply::with_status(reply(), StatusCode::BAD_REQUEST)
-                    }
+                    set_session_handler(
+                        session_manager.clone(),
+                        update_type,
+                        update_author_id,
+                        value,
+                    )
                 }
             })),
     );
@@ -265,6 +293,14 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
 
     let version_request = warp::path("version").map(|| ALVR_SERVER_VERSION);
 
+    let web_server_port = session_manager
+        .lock()
+        .await
+        .get()
+        .to_settings()
+        .connection
+        .web_server_port;
+
     warp::serve(
         index_request
             .or(settings_schema_request)
@@ -281,16 +317,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
                 "no-cache, no-store, must-revalidate",
             )),
     )
-    .run((
-        [0, 0, 0, 0],
-        session_manager
-            .lock()
-            .unwrap()
-            .get()
-            .to_settings()
-            .connection
-            .web_server_port,
-    ))
+    .run(([0, 0, 0, 0], web_server_port))
     .await;
 
     trace_err!(driver_log_redirect.await)?;

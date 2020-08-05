@@ -35,6 +35,8 @@ It's important not to move the folder after the first launch. To keep settings f
 
 Install the client on your headset through [SideQuest](https://sidequestvr.com/).
 
+To make the Oculus Quest microphone work you need to install the [Virtual Audio Cable](https://www.vb-audio.com/Cable/).
+
 ## Usage
 
 - Launch `ALVR.exe` (ALVR dashboard). The first time a setup wizard will guide you through the installation.

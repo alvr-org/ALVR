@@ -142,9 +142,6 @@ void Settings::Load()
 
 		m_flIPD = (float)video.get("ipd").get<double>();
 
-		m_clientRecvBufferSize = (uint32_t)connection.get("clientRecvBufferSize").get<int64_t>();
-		m_frameQueueSize = (uint32_t)connection.get("frameQueueSize").get<int64_t>();
-
 		m_force60HZ = video.get("force60hz").get<bool>();
 
 		m_force3DOF = headset.get("force3dof").get<bool>();
@@ -156,17 +153,6 @@ void Settings::Load()
 		m_codec = (int32_t)(video.get("codec").get("variant").get<std::string>() == "HEVC");
 		m_refreshRate = (int)video.get("refreshRate").get<int64_t>();
 		mEncodeBitrate = Bitrate::fromMiBits((int)video.get("encodeBitrateMbs").get<int64_t>());
-
-		mThrottlingBitrate = Bitrate::fromBits((int)connection.get("throttlingBitrateBits").get<int64_t>());
-
-		// Listener Parameters
-		m_Host = connection.get("listenHost").get<std::string>();
-		m_Port = (int)connection.get("listenPort").get<int64_t>();
-
-		m_SendingTimeslotUs = (uint64_t)connection.get("sendingTimeslotUs").get<int64_t>();
-		m_LimitTimeslotPackets = (uint64_t)connection.get("limitTimeslotPackets").get<int64_t>();
-
-		m_ConnectedClient = connectedClient.get("address").get<std::string>();
 
 		m_controllerTrackingSystemName = controllers.get("trackingSystemName").get<std::string>();
 		m_controllerManufacturerName = controllers.get("trackingSystemName").get<std::string>();

@@ -52,9 +52,7 @@ private:
 class VideoEncoderVCE : public VideoEncoder
 {
 public:
-	VideoEncoderVCE(std::shared_ptr<CD3DRender> pD3DRender
-		, std::shared_ptr<ClientConnection> listener
-		, int width, int height);
+	VideoEncoderVCE(std::shared_ptr<CD3DRender> pD3DRender, int width, int height);
 	~VideoEncoderVCE();
 
 	void Initialize();
@@ -80,7 +78,6 @@ private:
 	std::ofstream fpOut;
 
 	std::shared_ptr<CD3DRender> m_d3dRender;
-	std::shared_ptr<ClientConnection> m_Listener;
 
 	int m_codec;
 	int m_refreshRate;

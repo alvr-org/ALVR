@@ -2,7 +2,7 @@
 
 #include <memory>
 #include "d3drender.h"
-#include "ClientConnection.h"
+#include "Bitrate.h"
 #include "VideoEncoder.h"
 #include "NvEncoderD3D11.h"
 #include "ipctools.h"
@@ -11,9 +11,7 @@
 class VideoEncoderNVENC : public VideoEncoder
 {
 public:
-	VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
-		, std::shared_ptr<ClientConnection> listener, bool useNV12
-		, int width, int height);
+	VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender, int width, int height);
 	~VideoEncoderNVENC();
 
 	void Initialize();
@@ -30,8 +28,6 @@ private:
 
 	std::shared_ptr<CD3DRender> m_pD3DRender;
 	int m_nFrame;
-
-	std::shared_ptr<ClientConnection> m_Listener;
 
 	bool mSupportsReferenceFrameInvalidation = false;
 

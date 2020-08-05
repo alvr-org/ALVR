@@ -12,7 +12,6 @@
 #include "Logger.h"
 #include "Settings.h"
 #include "Utils.h"
-#include "ClientConnection.h"
 #include "ResampleUtils.h"
 
 using Microsoft::WRL::ComPtr;
@@ -43,7 +42,7 @@ private:
 class AudioCapture
 {
 public:
-	AudioCapture(std::shared_ptr<ClientConnection> listener);
+	AudioCapture();
 
 	virtual ~AudioCapture();
 
@@ -60,7 +59,6 @@ public:
 	void FinishWaveFile(HMMIO hFile, MMCKINFO *pckRIFF, MMCKINFO *pckData);
 private:
 	Handle m_hThread;
-	std::shared_ptr<ClientConnection> m_listener;
 
 	ComPtr<IMMDevice> m_pMMDevice;
 	PWAVEFORMATEX m_pwfx;

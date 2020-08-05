@@ -10,33 +10,34 @@ fn main() {
         .map(|entry| entry.into_path())
         .collect::<Vec<_>>();
 
-    let source_files_paths = cpp_paths.iter().filter(|path| {
-        path.extension()
-            .filter(|ext| {
-                let ext_str = ext.to_string_lossy();
-                ext_str == "c" || ext_str == "cpp"
-            })
-            .is_some()
-    });
-
     let mut build = cc::Build::new();
-    build
-        .cpp(true)
-        .files(source_files_paths)
-        .include("cpp/alvr_server")
-        .include("cpp/shared")
-        .include("cpp/openvr/headers")
-        .include("cpp/alvr_server/include")
-        .include("cpp/libswresample/include")
-        .include("cpp/ALVR-common");
     if cfg!(windows) {
+        let source_files_paths = cpp_paths.iter().filter(|path| {
+            path.extension()
+                .filter(|ext| {
+                    let ext_str = ext.to_string_lossy();
+                    ext_str == "c" || ext_str == "cpp"
+                })
+                .is_some()
+        });
+
         build
+            .cpp(true)
+            .files(source_files_paths)
+            .include("cpp/alvr_server")
+            .include("cpp/shared")
+            .include("cpp/openvr/headers")
+            .include("cpp/alvr_server/include")
+            .include("cpp/libswresample/include")
+            .include("cpp/ALVR-common")
             .define("_WINDLL", None)
             .define("NOMINMAX", None)
             .define("_WINSOCKAPI_", None)
             .define("_MBCS", None)
             .define("_MT", None)
             .define("_DLL", None);
+    } else {
+        build.cpp(true).file("cpp/alvr_server/alvr_server.cpp");
     }
     if cfg!(debug_assertions) {
         build.define("_DEBUG", None);
@@ -80,19 +81,20 @@ fn main() {
             // /MD
             println!("cargo:rustc-link-lib=msvcrt");
         }
+
+        println!(
+            "cargo:rustc-link-search=native={}/libswresample/lib",
+            cpp_dir.to_string_lossy()
+        );
+        println!(
+            "cargo:rustc-link-search=native={}/openvr/lib",
+            cpp_dir.to_string_lossy()
+        );
+        println!("cargo:rustc-link-lib=swresample");
+        println!("cargo:rustc-link-lib=avutil");
+        println!("cargo:rustc-link-lib=openvr_api");
     }
 
-    println!(
-        "cargo:rustc-link-search=native={}/libswresample/lib",
-        cpp_dir.to_string_lossy()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}/openvr/lib",
-        cpp_dir.to_string_lossy()
-    );
-    println!("cargo:rustc-link-lib=swresample");
-    println!("cargo:rustc-link-lib=avutil");
-    println!("cargo:rustc-link-lib=openvr_api");
     for path in cpp_paths {
         println!("cargo:rerun-if-changed={}", path.to_string_lossy());
     }

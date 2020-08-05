@@ -85,12 +85,11 @@ private:
 // AudioCapture
 //
 
-AudioCapture::AudioCapture(std::shared_ptr<ClientConnection> listener)
+AudioCapture::AudioCapture()
 	: m_pMMDevice(NULL)
 	, m_pwfx(NULL)
 	, m_startedEvent(NULL)
-	, m_stopEvent(NULL)
-	, m_listener(listener) {
+	, m_stopEvent(NULL) {
 }
 
 AudioCapture::~AudioCapture() {
@@ -385,7 +384,7 @@ void AudioCapture::LoopbackCapture() {
 			LONG lBytesToWrite = nNumFramesToRead * nBlockAlign;
 			resampler->FeedInput(nNumFramesToRead, (uint8_t *)pData);
 
-			m_listener->SendAudio(resampler->GetDest(), resampler->GetDestBufSize(), GetTimestampUs());
+			// m_listener->SendAudio(resampler->GetDest(), resampler->GetDestBufSize(), GetTimestampUs());
 
 			m_frames += nNumFramesToRead;
 

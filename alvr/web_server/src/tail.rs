@@ -3,9 +3,9 @@ use std::{path::Path, process::Stdio};
 use tokio::{io::AsyncBufReadExt, io::BufReader, process::Command, stream::Stream};
 
 #[cfg(not(windows))]
-fn tail_command(fname: &str) -> Command {
+fn tail_command(fname: &Path) -> Command {
     let mut command = Command::new("tail");
-    command.args(&["-F", fname]); // todo: -F for debug purposes, change to -f
+    command.args(&["-F", &fname.to_string_lossy()]); // todo: -F for debug purposes, change to -f
     command
 }
 #[cfg(windows)]

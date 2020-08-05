@@ -1,6 +1,5 @@
 #pragma once
 #include "openvr_driver.h"
-#include "ClientConnection.h"
 #include "Utils.h"
 #include "CEncoder.h"
 
@@ -11,8 +10,7 @@ class OvrDirectModeComponent : public vr::IVRDriverDirectModeComponent
 {
 public:
 	OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender,
-		std::shared_ptr<CEncoder> pEncoder,
-		std::shared_ptr<ClientConnection> Listener);
+		std::shared_ptr<CEncoder> pEncoder);
 
 	void OnPoseUpdated(TrackingInfo &info);
 
@@ -40,7 +38,6 @@ public:
 private:
 	std::shared_ptr<CD3DRender> m_pD3DRender;
 	std::shared_ptr<CEncoder> m_pEncoder;
-	std::shared_ptr<ClientConnection> m_Listener;
 	
 
 	// Resource for each process

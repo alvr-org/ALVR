@@ -2,7 +2,7 @@
 
 #include <memory>
 #include "d3drender.h"
-#include "ClientConnection.h"
+#include "Settings.h"
 #include "NvEncoderD3D11.h"
 
 class VideoEncoder

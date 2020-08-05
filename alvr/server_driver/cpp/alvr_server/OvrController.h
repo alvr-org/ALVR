@@ -3,7 +3,7 @@
 #include <openvr_driver.h>
 #include <string>
 #include "Logger.h"
-#include "ClientConnection.h"
+#include "Settings.h"
 #include "packet_types.h"
 //#include "FreePIE.h"
 #include <openvr_math.h>

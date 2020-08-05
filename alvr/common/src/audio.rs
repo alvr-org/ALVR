@@ -1,7 +1,10 @@
 use crate::*;
 // use cpal::traits::{DeviceTrait, HostTrait, DeviceTrait};
+
 use std::ptr;
+#[cfg(windows)]
 use widestring::*;
+#[cfg(windows)]
 use winapi::{
     shared::{winerror::*, wtypes::VT_LPWSTR},
     um::{
@@ -11,6 +14,7 @@ use winapi::{
     },
     Class, Interface,
 };
+#[cfg(windows)]
 use wio::com::ComPtr;
 
 #[derive(serde::Serialize)]
@@ -36,6 +40,7 @@ pub struct AudioDevicesDesc {
 // }
 
 // from AudioEndPointDescriptor::GetDeviceName
+#[cfg(windows)]
 fn get_device_name(mm_device: ComPtr<IMMDevice>) -> StrResult<String> {
     unsafe {
         let mut property_store_ptr: *mut IPropertyStore = ptr::null_mut();
@@ -64,12 +69,13 @@ fn get_device_name(mm_device: ComPtr<IMMDevice>) -> StrResult<String> {
         if FAILED(hr) {
             return trace_str!("PropVariantClear failed: hr = 0x{:08x}", hr);
         }
-        
+
         res
     }
 }
 
 // from AudioEndPointDescriptor contructor
+#[cfg(windows)]
 fn get_audio_device_id_and_name(device: ComPtr<IMMDevice>) -> StrResult<(String, String)> {
     let id_str = unsafe {
         let mut id_str_ptr = ptr::null_mut();
@@ -83,7 +89,12 @@ fn get_audio_device_id_and_name(device: ComPtr<IMMDevice>) -> StrResult<(String,
     Ok((id_str, get_device_name(device)?))
 }
 
+#[cfg(not(windows))]
+pub fn output_audio_devices() -> StrResult<AudioDevicesDesc> {
+    todo!()
+}
 // from AudioCapture::list_devices
+#[cfg(windows)]
 pub fn output_audio_devices() -> StrResult<AudioDevicesDesc> {
     let mut device_list = vec![];
     unsafe {

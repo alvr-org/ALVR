@@ -6,10 +6,11 @@
 
 #include "bindings.h"
 
+#if _WIN32
+
 #include <windows.h>
 #include "openvr_driver.h"
 #include "sharedstate.h"
-#include "ClientConnection.h"
 #include "OvrHMD.h"
 #include "driverlog.h"
 
@@ -73,8 +74,7 @@ public:
 	virtual void LeaveStandby() override {}
 
 private:
-	std::shared_ptr<OvrHmd> m_pRemoteHmd; 
-	std::shared_ptr<ClientConnection> m_Listener; 
+	std::shared_ptr<OvrHmd> m_pRemoteHmd;
 	std::shared_ptr<IPCMutex> m_mutex; 
 };
 
@@ -93,26 +93,26 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 	}
 
 	//create listener
-	m_Listener = std::make_shared<ClientConnection>();
+	// m_Listener = std::make_shared<ClientConnection>();
 
 	//init listener
-	if (!m_Listener->Startup())
-	{
-		return vr::VRInitError_Driver_Failed;
-	}
+	// if (!m_Listener->Startup())
+	// {
+	// 	return vr::VRInitError_Driver_Failed;
+	// }
 
 	//create new virtuall hmd
-	m_pRemoteHmd = std::make_shared<OvrHmd>(m_Listener);
+	// m_pRemoteHmd = std::make_shared<OvrHmd>(m_Listener);
 
 	// Launcher is running. Enable driver.
-	m_pRemoteHmd->Enable();
+	// m_pRemoteHmd->Enable();
 
 	return vr::VRInitError_None;
 }
 
 void CServerDriver_DisplayRedirect::Cleanup()
 {
-	m_Listener.reset();
+	// m_Listener.reset();
 	m_pRemoteHmd.reset();
 	m_mutex.reset();
 
@@ -138,6 +138,8 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
 	return TRUE;
 }
 
+#endif
+
 // bindigs for Rust
 
 const uint8_t *FRAME_RENDER_VS_CSO_PTR;
@@ -162,6 +164,7 @@ void (*MaybeKillWebServer)();
 
 void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 {
+#if _WIN32
 	Settings::Instance().Load();
 
 	load_debug_privilege();
@@ -175,6 +178,7 @@ void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 
 	if (pReturnCode)
 		*pReturnCode = vr::VRInitError_Init_InterfaceNotFound;
+#endif
 
-	return NULL;
+	return nullptr;
 }

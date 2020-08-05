@@ -68,19 +68,6 @@ public:
 	std::string m_EncoderOptions;
 	Bitrate mEncodeBitrate;
 
-	std::string m_Host;
-	int m_Port;
-	std::string m_ConnectedClient;
-	Bitrate mThrottlingBitrate;
-
-
-	uint64_t m_SendingTimeslotUs;
-	uint64_t m_LimitTimeslotPackets;
-
-	uint32_t m_clientRecvBufferSize;
-
-	uint32_t m_frameQueueSize;
-
 	bool m_force60HZ;
 
 	bool m_nv12;

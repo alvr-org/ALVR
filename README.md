@@ -57,7 +57,7 @@ Launch `ALVR.exe`, go to `About` tab, press `Uninstall driver` and `Remove firew
 
 If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder manually.
 
-## Build from source
+## Build from source (Windows)
 
 - Install Visual Studio Code and the extension rust-analyzer (optional)
 - Install [LLVM](https://releases.llvm.org/download.html)
@@ -73,6 +73,12 @@ If you have a version prior to v12.0 you need to launch `remove_firewall_rules.b
 - ALVR server and client will be in `/build`.
 
 Note: The Visual Studio solution is left only for IDE support while coding. If compiled, the resulting binary will not be valid.
+
+## Ubuntu dependencies
+
+```bash
+sudo apt install clang libgtk-3-dev
+```
 
 ## License
 

@@ -8,11 +8,10 @@ void fixInvalidHaptics(float hapticFeedback[3])
 	}
 }
 
-OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
+OvrHmd::OvrHmd()
 		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 		, m_added(false)
 		, mActivated(false)
-		, m_Listener(listener)
 	{
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
@@ -24,10 +23,10 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		std::function<void()> packetLossCallback = [&]() { OnPacketLoss(); };
 		std::function<void()> shutdownCallback = [&]() { OnShutdown(); };
 
-		m_Listener->SetPoseUpdatedCallback(poseCallback);
-		m_Listener->SetStreamStartCallback(streamStartCallback);
-		m_Listener->SetPacketLossCallback(packetLossCallback);
-		m_Listener->SetShutdownCallback(shutdownCallback);
+		// m_Listener->SetPoseUpdatedCallback(poseCallback);
+		// m_Listener->SetStreamStartCallback(streamStartCallback);
+		// m_Listener->SetPacketLossCallback(packetLossCallback);
+		// m_Listener->SetShutdownCallback(shutdownCallback);
 
 		LogDriver("CRemoteHmd successfully initialized.");
 	}
@@ -48,11 +47,11 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			m_audioCapture.reset();
 		}
 
-		if (m_Listener)
-		{
-			m_Listener->Stop();
-			m_Listener.reset();
-		}
+		// if (m_Listener)
+		// {
+		// 	m_Listener->Stop();
+		// 	m_Listener.reset();
+		// }
 
 		if (m_VSyncThread)
 		{
@@ -163,7 +162,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
 		m_encoder = std::make_shared<CEncoder>();
 		try {
-			m_encoder->Initialize(m_D3DRender, m_Listener);
+			// m_encoder->Initialize(m_D3DRender, m_Listener);
 		}
 		catch (Exception e) {
 			FatalLog("Failed to initialize CEncoder. %s", e.what());
@@ -172,7 +171,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		m_encoder->Start();
 
 		if (Settings::Instance().m_enableSound) {
-			m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
+			// m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
 			try {
 				m_audioCapture->Start(Settings::Instance().m_soundDevice);
 			}
@@ -188,7 +187,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 	
 
 		m_displayComponent = std::make_shared<OvrDisplayComponent>();
-		m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_encoder, m_Listener);
+		// m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_encoder, m_Listener);
 
 		mActivated = true;
 
@@ -242,36 +241,36 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 		pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-		if (m_Listener->HasValidTrackingInfo()) {
+		// if (m_Listener->HasValidTrackingInfo()) {
 
-			TrackingInfo info;
-			m_Listener->GetTrackingInfo(info);
+		// 	TrackingInfo info;
+		// 	m_Listener->GetTrackingInfo(info);
 
 
-			pose.qRotation = HmdQuaternion_Init(info.HeadPose_Pose_Orientation.w,
-				info.HeadPose_Pose_Orientation.x, 
-				info.HeadPose_Pose_Orientation.y,
-				info.HeadPose_Pose_Orientation.z);
+		// 	pose.qRotation = HmdQuaternion_Init(info.HeadPose_Pose_Orientation.w,
+		// 		info.HeadPose_Pose_Orientation.x, 
+		// 		info.HeadPose_Pose_Orientation.y,
+		// 		info.HeadPose_Pose_Orientation.z);
 
 			
-			pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
-			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
-			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
+		// 	pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
+		// 	pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
+		// 	pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
 
-			Log("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)",
-				pose.qRotation.x,
-				pose.qRotation.y,
-				pose.qRotation.z,
-				pose.qRotation.w,
-				pose.vecPosition[0],
-				pose.vecPosition[1],
-				pose.vecPosition[2]
-			);
+		// 	Log("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)",
+		// 		pose.qRotation.x,
+		// 		pose.qRotation.y,
+		// 		pose.qRotation.z,
+		// 		pose.qRotation.w,
+		// 		pose.vecPosition[0],
+		// 		pose.vecPosition[1],
+		// 		pose.vecPosition[2]
+		// 	);
 
-			// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
+		// 	// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
 
-			pose.poseTimeOffset = 0;
-		}
+		// 	pose.poseTimeOffset = 0;
+		// }
 
 		return pose;
 	}
@@ -292,15 +291,15 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 	void OvrHmd::OnPoseUpdated() {
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
 		{
-			if (!m_Listener->HasValidTrackingInfo()) {
-				return;
-			}
+			// if (!m_Listener->HasValidTrackingInfo()) {
+			// 	return;
+			// }
 			if (!m_added || !mActivated) {
 				return;
 			}
 			
 			TrackingInfo info;
-			m_Listener->GetTrackingInfo(info);
+			// m_Listener->GetTrackingInfo(info);
 
 			//TODO: Right order?
 
@@ -359,11 +358,11 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			hapticFeedbackLeft[1] != 0 ||
 			hapticFeedbackLeft[2] != 0 ) {
 	
-			m_Listener->SendHapticsFeedback(0,
-				hapticFeedbackLeft[0],
-				hapticFeedbackLeft[1],
-				hapticFeedbackLeft[2],
-				m_leftController->GetHand() ? 1 : 0);
+			// m_Listener->SendHapticsFeedback(0,
+			// 	hapticFeedbackLeft[0],
+			// 	hapticFeedbackLeft[1],
+			// 	hapticFeedbackLeft[2],
+			// 	m_leftController->GetHand() ? 1 : 0);
 
 		}
 		
@@ -373,11 +372,11 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			hapticFeedbackRight[2] != 0) {
 
 	
-			m_Listener->SendHapticsFeedback(0,
-				hapticFeedbackRight[0],
-				hapticFeedbackRight[1],
-				hapticFeedbackRight[2],
-				m_rightController->GetHand() ? 1 : 0);
+			// m_Listener->SendHapticsFeedback(0,
+			// 	hapticFeedbackRight[0],
+			// 	hapticFeedbackRight[1],
+			// 	hapticFeedbackRight[2],
+			// 	m_rightController->GetHand() ? 1 : 0);
 
 		}
 		

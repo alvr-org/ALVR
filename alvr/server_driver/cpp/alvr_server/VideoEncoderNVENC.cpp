@@ -3,12 +3,9 @@
 #include "NvCodecUtils.h"
 #include "nvencoderclioptions.h"
 
-VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
-	, std::shared_ptr<ClientConnection> listener, bool useNV12
-	, int width, int height)
+VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender, int width, int height)
 	: m_pD3DRender(pD3DRender)
 	, m_nFrame(0)
-	, m_Listener(listener)
 	, m_codec(Settings::Instance().m_codec)
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)
@@ -155,12 +152,12 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	}
 	m_NvNecoder->EncodeFrame(vPacket, &picParams);
 
-	Log("Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
+	// Log("Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
 	Log("Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
 
-	if (m_Listener) {
-		m_Listener->GetStatistics()->EncodeOutput(GetTimestampUs() - presentationTime);
-	}
+	// if (m_Listener) {
+	// 	m_Listener->GetStatistics()->EncodeOutput(GetTimestampUs() - presentationTime);
+	// }
 
 	m_nFrame += (int)vPacket.size();
 	for (std::vector<uint8_t> &packet : vPacket)
@@ -168,9 +165,9 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 		if (fpOut) {
 			fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 		}
-		if (m_Listener) {
-			m_Listener->SendVideo(packet.data(), (int)packet.size(), frameIndex);
-		}
+		// if (m_Listener) {
+		// 	m_Listener->SendVideo(packet.data(), (int)packet.size(), frameIndex);
+		// }
 	}
 }
 

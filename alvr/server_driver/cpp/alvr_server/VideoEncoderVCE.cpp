@@ -213,10 +213,8 @@ void AMFTextureConverter::Run()
 //
 
 VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
-	, std::shared_ptr<ClientConnection> listener
 	, int width, int height)
 	: m_d3dRender(d3dRender)
-	, m_Listener(listener)
 	, m_codec(Settings::Instance().m_codec)
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)
@@ -337,9 +335,9 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 	LogDriver("VCE encode latency: %.4f ms. Size=%d bytes frameIndex=%llu", double(current_time - start_time) / (double)MILLISEC_TIME, (int)buffer->GetSize()
 		, frameIndex);
 
-	if (m_Listener) {
-		m_Listener->GetStatistics()->EncodeOutput((current_time - start_time) / MICROSEC_TIME);
-	}
+	// if (m_Listener) {
+	// 	m_Listener->GetStatistics()->EncodeOutput((current_time - start_time) / MICROSEC_TIME);
+	// }
 
 	char *p = reinterpret_cast<char *>(buffer->GetNative());
 	int length = static_cast<int>(buffer->GetSize());
@@ -349,9 +347,9 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 	if (fpOut) {
 		fpOut.write(p, length);
 	}
-	if (m_Listener) {
-		m_Listener->SendVideo(reinterpret_cast<uint8_t *>(p), length, frameIndex);
-	}
+	// if (m_Listener) {
+	// 	m_Listener->SendVideo(reinterpret_cast<uint8_t *>(p), length, frameIndex);
+	// }
 }
 
 void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR) {

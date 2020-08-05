@@ -6,7 +6,6 @@
 #include "openvr_driver.h"
 #include "sharedstate.h"
 #include "Logger.h"
-#include "ClientConnection.h"
 #include "Utils.h"
 #include "FrameRender.h"
 #include "Settings.h"
@@ -30,7 +29,7 @@
 class OvrHmd : public vr::ITrackedDeviceServerDriver
 {
 public:
-	OvrHmd(std::shared_ptr<ClientConnection> listener);
+	OvrHmd();
 
 
 	virtual ~OvrHmd();
@@ -79,7 +78,6 @@ private:
 	std::shared_ptr<CD3DRender> m_D3DRender;
 	std::shared_ptr<CEncoder> m_encoder;
 	std::shared_ptr<AudioCapture> m_audioCapture;
-	std::shared_ptr<ClientConnection> m_Listener;
 	std::shared_ptr<VSyncThread> m_VSyncThread;
 
 	std::shared_ptr<OvrController> m_leftController;

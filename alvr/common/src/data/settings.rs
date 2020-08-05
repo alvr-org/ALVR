@@ -3,7 +3,7 @@ use settings_schema::*;
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
-pub enum ConnectionMode {
+pub enum SocketConfig {
     UDP,
 
     TCP,
@@ -120,6 +120,9 @@ pub struct VideoDesc {
     pub encode_bitrate_mbs: u64,
 
     pub force_60hz: bool,
+
+    #[schema(advanced, min = 5, max = 1000)]
+    pub keyframe_resend_interval_ms: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -247,42 +250,18 @@ pub struct HeadsetDesc {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDesc {
-    pub mode: ConnectionMode,
+    pub stream_socket_config: SocketConfig,
+
+    #[schema(advanced)]
+    pub stream_port: u16,
 
     #[schema(advanced)]
     pub web_server_port: u16,
-
-    #[schema(advanced)]
-    pub listen_host: String,
-
-    #[schema(advanced)]
-    pub listen_port: u16,
-
-    // If disableThrottling=true, set throttlingBitrateBits to 0,
-    // Given audioBitrate=2000'000:
-    // If false, set throttlingBitrateBits=encodeBitrateMbs * 1000'000 * 3 / 2 + audioBitrate
-    #[schema(placeholder = "disable_throttling")]
-    #[schema(advanced)]
-    pub throttling_bitrate_bits: u64,
-
-    #[schema(advanced)]
-    pub sending_timeslot_us: u64,
-
-    #[schema(advanced)]
-    pub limit_timeslot_packets: u64,
 
     // clientRecvBufferSize=max(encodeBitrateMbs * 2 + bufferOffset, 0)
     #[schema(placeholder = "buffer_offset")]
     #[schema(advanced)]
     pub client_recv_buffer_size: u64,
-
-    // If suppressframeDrop=true, set frameQueueSize=5
-    // If suppressframeDrop=false, set frameQueueSize=1
-    #[schema(placeholder = "suppress_frame_drop")]
-    #[schema(advanced)]
-    pub frame_queue_size: u64,
-
-    pub aggressive_keyframe_resend: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -375,6 +354,7 @@ pub fn settings_cache_default() -> SettingsDefault {
             },
             encode_bitrate_mbs: 30,
             force_60hz: false,
+            keyframe_resend_interval_ms: 100,
         },
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {
@@ -421,21 +401,15 @@ pub fn settings_cache_default() -> SettingsDefault {
             },
         },
         connection: ConnectionDescDefault {
-            mode: ConnectionModeDefault {
-                variant: ConnectionModeDefaultVariant::TCP,
-                QUIC: ConnectionModeQUICDefault {
+            stream_socket_config: SocketConfigDefault {
+                variant: SocketConfigDefaultVariant::TCP,
+                QUIC: SocketConfigQUICDefault {
                     send_small_packets_unreliably: true,
                 },
             },
+            stream_port: 9944,
             web_server_port: 8082,
-            listen_host: "0.0.0.0".into(),
-            listen_port: 9944,
-            throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,
-            sending_timeslot_us: 500,
-            limit_timeslot_packets: 0,
             client_recv_buffer_size: 60_000,
-            frame_queue_size: 1,
-            aggressive_keyframe_resend: false,
         },
         extra: ExtraDescDefault {
             revert_confirm_dialog: true,

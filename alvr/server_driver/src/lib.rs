@@ -7,10 +7,13 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_common::*;
 use alvr_xtask::*;
+use lazy_static::lazy_static;
 use lazy_static_include::*;
+use logging::show_err;
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
+    thread,
 };
 
 lazy_static_include_bytes!(FRAME_RENDER_VS_CSO => "cpp/alvr_server/FrameRenderVS.cso");
@@ -43,23 +46,54 @@ unsafe extern "C" fn log_debug(string_ptr: *const c_char) {
     log(log::Level::Debug, string_ptr);
 }
 
+// lazy_static! {
+//     ref
+// }
+
+async fn connection_loop() -> StrResult {
+    todo!()
+}
+
+// lazy_static! {
+//     ref r
+// }
+
+fn begin_client_connection() -> StrResult {
+    let runtime_loop = || {
+        let mut rt = trace_err!(tokio::runtime::Runtime::new())?;
+        rt.block_on(connection_loop())
+    };
+
+    trace_err!(thread::Builder::new()
+        .name("Connection loop".into())
+        .spawn(move || {
+            show_err(runtime_loop()).ok();
+        }))?;
+
+    Ok(())
+}
+// pub unsafe extern "C" fn
+
+pub fn init() -> StrResult {
+    logging_backend::init_logging();
+
+    let alvr_dir = get_alvr_dir().map_err(|e| e.to_string())?;
+    // launch web server
+    process::maybe_launch_web_server(&alvr_dir);
+
+    let alvr_dir_c_string = CString::new(alvr_dir.to_string_lossy().to_string()).unwrap();
+    unsafe { g_alvrDir = alvr_dir_c_string.into_raw()};
+
+    Ok(())
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,
     return_code: *mut i32,
 ) -> *mut c_void {
-    logging_backend::init_logging();
 
-    match get_alvr_dir() {
-        Ok(alvr_dir) => {
-            // launch web server
-            process::maybe_launch_web_server(&alvr_dir);
-
-            let alvr_dir_c_string = CString::new(alvr_dir.to_string_lossy().to_string()).unwrap();
-            g_alvrDir = alvr_dir_c_string.into_raw();
-        }
-        Err(e) => log::error!("{}", e),
-    }
+    show_err(init()).ok();
 
     FRAME_RENDER_VS_CSO_PTR = FRAME_RENDER_VS_CSO.as_ptr();
     FRAME_RENDER_VS_CSO_LEN = FRAME_RENDER_VS_CSO.len() as _;

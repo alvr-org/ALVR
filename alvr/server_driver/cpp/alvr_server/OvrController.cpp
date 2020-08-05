@@ -1,4 +1,5 @@
 #include "OvrController.h"
+#include <algorithm>
 
 
 OvrController::OvrController(bool isLeftHand, int index)

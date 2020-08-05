@@ -1,7 +1,7 @@
 #pragma once
 #include "openvr_driver.h"
 #include "Logger.h"
-#include "ClientConnection.h"
+#include "Settings.h"
 #include "Utils.h"
 
 class OvrDisplayComponent : public vr::IVRDisplayComponent

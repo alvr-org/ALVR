@@ -1,5 +1,6 @@
 use super::settings::*;
 use bitflags::bitflags;
+use nalgebra::{Point3, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 
@@ -67,15 +68,15 @@ pub struct Quat {
 
 #[derive(Serialize, Deserialize)]
 pub struct Pose {
-    pub position: [f32; 3],
-    pub orientation: Quat,
+    pub position: Point3<f32>,
+    pub orientation: UnitQuaternion<f32>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct MotionSampleDesc {
     pub pose: Pose,
-    pub linear_velocity: [f32; 3],
-    pub angular_velocity: [f32; 3],
+    pub linear_velocity: Vector3<f32>,
+    pub angular_velocity: Vector3<f32>,
 }
 
 #[derive(Serialize, Deserialize)]

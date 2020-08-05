@@ -83,14 +83,6 @@ pub async fn search_client_loop<F: Future>(
         }
 
         client_found_cb(address.ip()).await;
-
-        // if let Some(server_handshake_packet) = maybe_server_handshake_packet {
-        //     let packet = trace_err!(bincode::serialize(&server_handshake_packet))?;
-        //     handshake_socket
-        //         .send_to(&packet, SocketAddr::new(address.ip(), 9944))
-        //         .await
-        //         .ok();
-        // }
     }
 }
 
@@ -319,6 +311,12 @@ impl<R, S: Serialize> ControlSocket<R, S> {
     }
 }
 
+enum StreamMode {
+    Default,
+    Reliable,
+    PreferUnreliable,
+}
+
 trait StreamSocket {
     fn receive(&self);
     fn send_reliable(&self, stream_id: u8);
@@ -333,4 +331,10 @@ struct QuicSocket {}
 
 pub struct StreamManager {
     socket: Box<dyn StreamSocket>,
+}
+
+impl StreamManager {
+    pub fn new(peer_ip: IpAddr, port: u16, stream_socket_config: SocketConfig) {
+        todo!()
+    }
 }

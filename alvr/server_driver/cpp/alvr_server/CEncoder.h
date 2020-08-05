@@ -9,7 +9,6 @@
 #include <d3d11_1.h>
 #include <wincodec.h>
 #include <wincodecsdk.h>
-#include "ClientConnection.h"
 #include "Utils.h"
 #include "FrameRender.h"
 #include "VideoEncoder.h"
@@ -31,7 +30,7 @@
 		CEncoder();
 		~CEncoder();
 
-		void Initialize(std::shared_ptr<CD3DRender> d3dRender, std::shared_ptr<ClientConnection> listener);
+		void Initialize(std::shared_ptr<CD3DRender> d3dRender);
 
 		bool CopyToStaging(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering
 			, uint64_t presentationTime, uint64_t frameIndex, uint64_t clientTime, const std::string& message, const std::string& debugText);

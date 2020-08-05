@@ -1,11 +1,9 @@
 #include "OvrDirectModeComponent.h"
 
 OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender,
-	std::shared_ptr<CEncoder> pEncoder,
-	std::shared_ptr<ClientConnection> Listener)
+	std::shared_ptr<CEncoder> pEncoder)
 	: m_pD3DRender(pD3DRender)
 	, m_pEncoder(pEncoder)
-	, m_Listener(Listener)
 	, m_poseMutex(NULL)
 	, m_submitLayer(0)
 	, m_LastReferencedFrameIndex(0)
@@ -246,10 +244,10 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 		//return;
 	}
 
-	if (!m_Listener->IsStreaming()) {
-		Log("Discard frame because isStreaming=false. FrameIndex=%llu", m_submitFrameIndex);
-		return;
-	}
+	// if (!m_Listener->IsStreaming()) {
+	// 	Log("Discard frame because isStreaming=false. FrameIndex=%llu", m_submitFrameIndex);
+	// 	return;
+	// }
 
 	ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
 	if (!pSyncTexture)

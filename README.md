@@ -26,9 +26,11 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only w
 
 Please uninstall any other VR streaming software on your PC. This includes versions of ALVR prior to v12.0.
 
+If you didn't already, install SteamVR, launch it and then close it (this is to make sure SteamVR executes its first time setup).
+
 Install the latest [Visual C++ Redistrubutable x64 package](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads). Do this every time you install a new ALVR version!
 
-To install ALVR download and unzip `alvr_server_windows.zip` wherever you want and launch `ALVR.exe`. The first time you open ALVR.exe you may have to allow it in the SmartScreen prompt and allow the network access to alvr_web_server in another popup window (it could be behind the actual ALVR window).  
+To install ALVR download `alvr_server_windows.zip` from the [releases page](https://github.com/JackD83/ALVR/releases), unzip it wherever you want and launch `ALVR.exe`. The first time you open ALVR.exe you may have to allow it in the SmartScreen prompt and allow the network access to alvr_web_server in another popup window (it could be behind the actual ALVR window).  
 It's important not to move the folder after the first launch. To keep settings from a previous installation of ALVR (>=v12.0) you can unzip over the old installation folder.
 
 Install the client on your headset through [SideQuest](https://sidequestvr.com/).
@@ -53,26 +55,30 @@ Install the client on your headset through [SideQuest](https://sidequestvr.com/)
 
 ## Uninstall
 
-Launch `ALVR.exe`, go to `About` tab, press `Uninstall driver` and `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
+Launch `ALVR.exe`, go to `Installation` tab, press `Unregister ALVR driver` and `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
 
-If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder manually.
+If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder.
 
 ## Build from source (Windows)
 
 - Install Visual Studio Code and the extension rust-analyzer (optional)
 - Install [LLVM](https://releases.llvm.org/download.html)
 - Install the MSVC compiler (for example installing C++ build tools with [Visual Studio](https://visualstudio.microsoft.com/downloads))
-- Install Android Studio >=4.0, API Level 30. Requires LLDB and NDK. The environment variable `JAVA_HOME` must be set.
+- Install Android Studio >=4.0, API Level 30. Requires LLDB and NDK.
+- Set the environment variable `JAVA_HOME` to `C:\Program Files\Android\androidStudio\jre`.
 - Install [rustup](https://rustup.rs/)
 - Download this repository and on the project root execute:
 
     ```bash
-    cargo xtask build-all --release
+    cargo xtask build-server --release
+    cargo xtask build-client --release
     ```
 
 - ALVR server and client will be in `/build`.
 
-Note: The Visual Studio solution is left only for IDE support while coding. If compiled, the resulting binary will not be valid.
+Notes:  
+To debug the client you can just open Android Studio, connect your Oculus Quest and press run, without the above cargo commands.  
+The Visual Studio solution is left only for IDE support while coding. If compiled, the resulting binary will not be valid.
 
 ## Ubuntu dependencies
 

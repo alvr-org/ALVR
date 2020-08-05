@@ -6,6 +6,8 @@ daysUntilClose: 7
 exemptLabels:
   - pinned
   - security
+  - enhancement
+  - bug
 exemptAssignees: true
 # Label to use when marking an issue as stale
 staleLabel: wontfix

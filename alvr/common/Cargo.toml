@@ -8,6 +8,7 @@ edition = '2018'
 [dependencies]
 parking_lot = '^0.11.0'
 bitflags = '^1.2'
+regex = '^1.3.9'
 semver = '^0.10.0'
 serde = { version = '^1.0', features = ['derive'] }
 serde_json = '^1.0'
@@ -20,9 +21,10 @@ log = '^0.4.8'
 backtrace = '^0.3.46'
 settings-schema = { git = 'https://github.com/zarik5/settings-schema-rs', features = ['rename_camel_case'] }
 sysinfo = '^0.15.0'
-alvr_xtask = { path = '../xtask' }
-
+runas = '^0.2.1'
 # cpal = { git = 'https://github.com/RustAudio/cpal' }
+
+[target.'cfg(windows)'.dependencies]
 winapi = { version = '^0.3.8', features = [
     'mmdeviceapi',
     'propsys',
@@ -30,9 +32,11 @@ winapi = { version = '^0.3.8', features = [
     'propidl',
     'functiondiscoverykeys_devpkey',
     'wtypes',
+    'objbase',
 ] }
 wio = '^0.2.2'
 widestring = '^0.4.2'
+winreg = '^0.7.0'
 
 [build-dependencies]
-alvr_xtask = { path = '../xtask' }
+toml = '^0.5.6'

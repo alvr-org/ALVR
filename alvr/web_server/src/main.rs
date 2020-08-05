@@ -1,7 +1,7 @@
 mod logging_backend;
 mod tail;
 
-use alvr_common::{data::*, logging::*, sockets::*, *};
+use alvr_common::{data::*, logging::*, process::*, sockets::*, *};
 use futures::SinkExt;
 use logging_backend::*;
 use std::{
@@ -232,9 +232,9 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
     let driver_registration_requests =
         warp::path!("driver" / String).map(|action_string: String| {
             let res = show_err(match action_string.as_str() {
-                "register" => alvr_xtask::driver_registration(&alvr_server_dir(), true),
-                "unregister" => alvr_xtask::driver_registration(&alvr_server_dir(), false),
-                "unregister-all" => alvr_xtask::unregister_all_drivers(),
+                "register" => driver_registration(&alvr_server_dir(), true),
+                "unregister" => driver_registration(&alvr_server_dir(), false),
+                "unregister-all" => unregister_all_drivers(),
                 _ => return reply::with_status(reply(), StatusCode::BAD_REQUEST),
             });
             if res.is_ok() {
@@ -247,7 +247,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
     let firewall_rules_requests =
         warp::path!("firewall-rules" / String).map(|action_str: String| {
             let add = action_str == "add";
-            let maybe_err = alvr_xtask::firewall_rules(&alvr_server_dir(), add).err();
+            let maybe_err = firewall_rules(&alvr_server_dir(), add).err();
             if let Some(e) = &maybe_err {
                 error!("Setting firewall rules failed: code {}", e);
             }
@@ -258,8 +258,8 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
         warp::path("audio_devices").map(|| reply::json(&audio::output_audio_devices().ok()));
 
     let restart_steamvr_request = warp::path("restart_steamvr").map(move || {
-        process::kill_steamvr();
-        process::maybe_launch_steamvr();
+        kill_steamvr();
+        maybe_launch_steamvr();
         warp::reply()
     });
 

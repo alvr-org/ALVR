@@ -5,8 +5,7 @@ mod logging_backend;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use alvr_common::*;
-use alvr_xtask::*;
+use alvr_common::{process::*, *};
 use lazy_static::lazy_static;
 use lazy_static_include::*;
 use logging::show_err;
@@ -75,14 +74,15 @@ fn begin_client_connection() -> StrResult {
 // pub unsafe extern "C" fn
 
 pub fn init() -> StrResult {
-    logging_backend::init_logging();
 
-    let alvr_dir = get_alvr_dir().map_err(|e| e.to_string())?;
+    begin_client_connection()?;
+
+    let alvr_dir = get_alvr_dir()?;
     // launch web server
     process::maybe_launch_web_server(&alvr_dir);
 
     let alvr_dir_c_string = CString::new(alvr_dir.to_string_lossy().to_string()).unwrap();
-    unsafe { g_alvrDir = alvr_dir_c_string.into_raw()};
+    unsafe { g_alvrDir = alvr_dir_c_string.into_raw() };
 
     Ok(())
 }
@@ -92,6 +92,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,
     return_code: *mut i32,
 ) -> *mut c_void {
+    logging_backend::init_logging();
 
     show_err(init()).ok();
 

@@ -23,7 +23,7 @@ use warp::{
     Filter, Rejection, Reply,
 };
 
-type TMutex<T> = tokio::sync::Mutex<T>;
+type AMutex<T> = tokio::sync::Mutex<T>;
 
 const WEB_GUI_DIR_STR: &str = "web_gui";
 const TEST_CONNECTION_TIMEOUT: Duration = Duration::from_millis(500);
@@ -66,8 +66,8 @@ async fn subscribed_to_log(mut socket: WebSocket, mut log_receiver: UnboundedRec
 }
 
 async fn client_discovery(
-    session_manager: Arc<TMutex<SessionManager>>,
-    control_socket: Arc<TMutex<Option<ControlSocket<ClientControlPacket, ServerControlPacket>>>>,
+    session_manager: Arc<AMutex<SessionManager>>,
+    control_socket: Arc<AMutex<Option<ControlSocket<ClientControlPacket, ServerControlPacket>>>>,
 ) {
     let res = search_client_loop(None, |client_ip| {
         let session_manager = session_manager.clone();
@@ -86,7 +86,7 @@ async fn client_discovery(
                 let maybe_known_client_ref = session_desc_ref
                     .last_clients
                     .iter_mut()
-                    .find(|connection_desc| connection_desc.ip == client_ip.to_string());
+                    .find(|connection_desc| connection_desc.ip == client_ip);
 
                 if let Some(known_client_ref) = maybe_known_client_ref {
                     known_client_ref.last_update_ms_since_epoch = now_ms as _;
@@ -95,7 +95,7 @@ async fn client_discovery(
                         trusted: false,
                         manually_added: false,
                         last_update_ms_since_epoch: now_ms as _,
-                        ip: client_ip.to_string(),
+                        ip: client_ip,
                         device_name: None,
                     });
 
@@ -150,8 +150,16 @@ async fn client_discovery(
             )
             .await;
 
-            if let Ok(control_socket) = show_err(maybe_control_socket) {
-                *control_socket_ref = Some(control_socket);
+            match maybe_control_socket {
+                Ok(control_socket) => {
+                    session_manager
+                        .lock()
+                        .await
+                        .get_mut("", SessionUpdateType::Other)
+                        .connected_client_ip = Some(client_ip);
+                    *control_socket_ref = Some(control_socket);
+                }
+                Err(e) => warn!("{}", e),
             }
         }
     })
@@ -163,7 +171,7 @@ async fn client_discovery(
 }
 
 async fn get_session_handler(
-    session_manager: Arc<TMutex<SessionManager>>,
+    session_manager: Arc<AMutex<SessionManager>>,
 ) -> Result<impl Reply, Rejection> {
     error!("request session");
     let session = session_manager.lock().await;
@@ -173,7 +181,7 @@ async fn get_session_handler(
 }
 
 async fn set_session_handler(
-    session_manager: Arc<TMutex<SessionManager>>,
+    session_manager: Arc<AMutex<SessionManager>>,
     update_type: String,
     update_author_id: String,
     value: serde_json::Value,
@@ -196,17 +204,15 @@ async fn set_session_handler(
             Ok(reply::with_status(reply(), StatusCode::OK))
         }
     } else {
-    Ok(reply::with_status(reply(), StatusCode::BAD_REQUEST))
+        Ok(reply::with_status(reply(), StatusCode::BAD_REQUEST))
     }
 }
 
 async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult {
-    // The lock on this mutex does not need to be held across await points, so I don't need a tokio
-    // Mutex
-    let session_manager = Arc::new(TMutex::new(SessionManager::new(&alvr_server_dir())));
-    // let control_socket = Arc::new(TMutex::new(None));
+    let session_manager = Arc::new(AMutex::new(SessionManager::new(&alvr_server_dir())));
+    let control_socket = Arc::new(AMutex::new(None));
 
-    // tokio::spawn(client_discovery(session_manager.clone(), control_socket));
+    tokio::spawn(client_discovery(session_manager.clone(), control_socket));
 
     let driver_log_redirect = tokio::spawn(
         tail_stream(&driver_log_path())?

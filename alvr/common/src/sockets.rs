@@ -334,7 +334,7 @@ pub struct StreamManager {
 }
 
 impl StreamManager {
-    pub fn new(peer_ip: IpAddr, port: u16, stream_socket_config: SocketConfig) {
+    pub async fn new(peer_ip: IpAddr, port: u16, stream_socket_config: SocketConfig) -> StrResult<Self> {
         todo!()
     }
 }

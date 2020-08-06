@@ -7,7 +7,7 @@ use settings_schema::SchemaNode;
 use std::{
     fs,
     ops::{Deref, DerefMut},
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, net::IpAddr,
 };
 
 pub const SESSION_FNAME: &str = "session.json";
@@ -21,7 +21,7 @@ pub struct ClientConnectionDesc {
     pub trusted: bool,
     pub manually_added: bool,
     pub last_update_ms_since_epoch: u64,
-    pub ip: String,
+    pub ip: IpAddr,
     pub device_name: Option<String>,
 }
 
@@ -41,6 +41,7 @@ pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
 pub struct SessionDesc {
     pub setup_wizard: bool,
     pub last_clients: Vec<ClientConnectionDesc>,
+    pub connected_client_ip: Option<IpAddr>,
     pub settings_cache: SettingsCache,
 }
 
@@ -49,6 +50,7 @@ impl Default for SessionDesc {
         Self {
             setup_wizard: true,
             last_clients: vec![],
+            connected_client_ip: None,
             settings_cache: settings_cache_default(),
         }
     }

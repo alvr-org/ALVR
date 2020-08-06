@@ -155,12 +155,13 @@ uint32_t COLOR_CORRECTION_CSO_LEN;
 
 const char *g_alvrDir;
 
-void (*LogError)(const char *stringPtr);
-void (*LogWarn)(const char *stringPtr);
-void (*LogInfo)(const char *stringPtr);
-void (*LogDebug)(const char *stringPtr);
+void (*LogError)(const char *);
+void (*LogWarn)(const char *);
+void (*LogInfo)(const char *);
+void (*LogDebug)(const char *);
 void (*MaybeLaunchWebServer)();
 void (*MaybeKillWebServer)();
+void (*SetRunning)(bool);
 
 void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 {

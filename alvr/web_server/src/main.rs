@@ -2,7 +2,7 @@ mod logging_backend;
 mod sockets;
 mod tail;
 
-use alvr_common::{data::*, logging::*, *};
+use alvr_common::{data::*, logging::*, process::*, *};
 use futures::SinkExt;
 use logging_backend::*;
 use settings_schema::Switch;
@@ -163,7 +163,10 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
         for adapter in ipconfig::get_adapters().expect("PC network adapters") {
             for host_address in adapter.ip_addresses() {
                 let address_string = host_address.to_string();
-                if address_string.starts_with("192.168.") || address_string.starts_with("10.") || address_string.starts_with("172."){
+                if address_string.starts_with("192.168.")
+                    || address_string.starts_with("10.")
+                    || address_string.starts_with("172.")
+                {
                     maybe_host_address = Some(*host_address);
                 }
             }
@@ -175,7 +178,7 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             let url_bytes = url_c_string.as_bytes_with_nul();
             server_handshake_packet.web_gui_url[0..url_bytes.len()].copy_from_slice(url_bytes);
 
-            process::maybe_launch_steamvr();
+            maybe_launch_steamvr();
 
             Some(server_handshake_packet)
         } else {
@@ -257,9 +260,9 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
     let driver_registration_requests =
         warp::path!("driver" / String).map(|action_string: String| {
             let res = show_err(match action_string.as_str() {
-                "register" => alvr_xtask::driver_registration(&alvr_server_dir(), true),
-                "unregister" => alvr_xtask::driver_registration(&alvr_server_dir(), false),
-                "unregister-all" => alvr_xtask::unregister_all_drivers(),
+                "register" => driver_registration(&alvr_server_dir(), true),
+                "unregister" => driver_registration(&alvr_server_dir(), false),
+                "unregister-all" => unregister_all_drivers(),
                 _ => return reply::with_status(reply(), StatusCode::BAD_REQUEST),
             });
             if res.is_ok() {
@@ -272,7 +275,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
     let firewall_rules_requests =
         warp::path!("firewall-rules" / String).map(|action_str: String| {
             let add = action_str == "add";
-            let maybe_err = alvr_xtask::firewall_rules(&alvr_server_dir(), add).err();
+            let maybe_err = firewall_rules(&alvr_server_dir(), add).err();
             if let Some(e) = &maybe_err {
                 error!("Setting firewall rules failed: code {}", e);
             }
@@ -283,8 +286,8 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
         warp::path("audio_devices").map(|| reply::json(&audio::output_audio_devices().ok()));
 
     let restart_steamvr_request = warp::path("restart_steamvr").map(move || {
-        process::kill_steamvr();
-        process::maybe_launch_steamvr();
+        kill_steamvr();
+        maybe_launch_steamvr();
         warp::reply()
     });
 

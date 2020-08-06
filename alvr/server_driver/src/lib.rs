@@ -6,7 +6,6 @@ mod logging_backend;
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_common::*;
-use alvr_xtask::*;
 use lazy_static_include::*;
 use std::{
     ffi::{c_void, CStr, CString},
@@ -56,7 +55,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
 ) -> *mut c_void {
     logging_backend::init_logging();
 
-    match get_alvr_dir() {
+    match process::get_alvr_dir() {
         Ok(alvr_dir) => {
             // launch web server
             process::maybe_launch_web_server(&alvr_dir);

@@ -72,7 +72,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_driver"
-version = "12.0.0"
+version = "12.0.1"
 dependencies = [
  "alvr_common",
  "bindgen",
@@ -86,7 +86,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_web_server"
-version = "12.0.0"
+version = "12.0.1"
 dependencies = [
  "alvr_common",
  "bincode",
@@ -419,9 +419,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.33.1"
+version = "2.33.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdfa80d47f954d53a35a64987ca1422f495b8d6483c0fe9f7117b36c2a792129"
+checksum = "10040cdf04294b565d9e0319955430099ec3813a64c952b86a41200ad714ae48"
 dependencies = [
  "ansi_term",
  "atty",
@@ -2102,8 +2102,8 @@ dependencies = [
 
 [[package]]
 name = "settings-schema"
-version = "0.3.0"
-source = "git+https://github.com/zarik5/settings-schema-rs#cdbcd3a0fa4ecbc0c0f2471267b2b8b340212634"
+version = "0.3.1"
+source = "git+https://github.com/zarik5/settings-schema-rs#a7e450ba1d48d00324a6ec1b8cf7a3213f320e81"
 dependencies = [
  "serde",
  "serde_json",
@@ -2113,7 +2113,7 @@ dependencies = [
 [[package]]
 name = "settings-schema-derive"
 version = "0.3.0"
-source = "git+https://github.com/zarik5/settings-schema-rs#cdbcd3a0fa4ecbc0c0f2471267b2b8b340212634"
+source = "git+https://github.com/zarik5/settings-schema-rs#a7e450ba1d48d00324a6ec1b8cf7a3213f320e81"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -2141,9 +2141,9 @@ checksum = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 
 [[package]]
 name = "signal-hook-registry"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94f478ede9f64724c5d173d7bb56099ec3e2d9fc2774aac65d34b8b890405f41"
+checksum = "a3e12110bc539e657a646068aaf5eb5b63af9d0c1f7b29c97113fad80e15f035"
 dependencies = [
  "arc-swap",
  "libc",
@@ -2199,9 +2199,9 @@ checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 
 [[package]]
 name = "syn"
-version = "1.0.37"
+version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "239f255b9e3429350f188c27b807fc9920a15eb9145230ff1a7d054c08fec319"
+checksum = "e69abc24912995b3038597a7a593be5053eb0fb44f3cc5beec0deb421790c1f4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2413,9 +2413,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2734b5a028fa697686f16c6d18c2c6a3c7e41513f9a213abb6754c4acb3c8d7"
+checksum = "d593f98af59ebc017c0648f0117525db358745a8894a8d684e185ba3f45954f9"
 dependencies = [
  "lazy_static",
 ]

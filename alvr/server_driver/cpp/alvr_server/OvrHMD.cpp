@@ -33,7 +33,7 @@ OvrHmd::OvrHmd()
 
 	OvrHmd::~OvrHmd()
 	{
-		MaybeKillWebServer();
+		ShutdownRuntime();
 
 		if (m_encoder)
 		{
@@ -46,12 +46,6 @@ OvrHmd::OvrHmd()
 			m_audioCapture->Shutdown();
 			m_audioCapture.reset();
 		}
-
-		// if (m_Listener)
-		// {
-		// 	m_Listener->Stop();
-		// 	m_Listener.reset();
-		// }
 
 		if (m_VSyncThread)
 		{

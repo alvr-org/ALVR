@@ -1,4 +1,6 @@
+use futures::Future;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 pub type StrResult<T = ()> = Result<T, String>;
 
@@ -32,11 +34,17 @@ pub fn set_show_error_fn_and_panic_hook(cb: fn(&str)) {
     }))
 }
 
-pub fn show_err<T, E: std::fmt::Display>(res: Result<T, E>) -> Result<T, ()> {
+pub fn show_err<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
     res.map_err(|e| {
         log::error!("{}", e);
         unsafe { SHOW_ERROR_CB(&format!("{}", e)) };
     })
+}
+
+pub async fn show_err_async<T, E: Display>(
+    future_res: impl Future<Output = Result<T, E>>,
+) -> Result<T, ()> {
+    show_err(future_res.await)
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]

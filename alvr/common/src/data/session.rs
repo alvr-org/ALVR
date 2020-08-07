@@ -41,7 +41,6 @@ pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
 pub struct SessionDesc {
     pub setup_wizard: bool,
     pub last_clients: Vec<ClientConnectionDesc>,
-    pub connected_client_ip: Option<IpAddr>,
     pub settings_cache: SettingsCache,
 }
 
@@ -50,7 +49,6 @@ impl Default for SessionDesc {
         Self {
             setup_wizard: true,
             last_clients: vec![],
-            connected_client_ip: None,
             settings_cache: settings_cache_default(),
         }
     }

@@ -15,7 +15,7 @@ USAGE:
     cargo xtask <SUBCOMMAND> [FLAG]
 
 SUBCOMMANDS:
-    build-server        Build server driver and GUI, then copy binaries to build folder
+    build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
     publish             Build server and client in release mode, zip server and copy the pdb file.
     clean               Removes build folder
@@ -185,7 +185,7 @@ pub fn build_server(is_release: bool) -> BResult {
     run("cargo update")?;
 
     run(&format!(
-        "cargo build -p alvr_server_driver -p alvr_web_server -p alvr_server_bootstrap {}",
+        "cargo build -p alvr_server_driver -p alvr_server_bootstrap {}",
         build_flag
     ))?;
     fs::copy(

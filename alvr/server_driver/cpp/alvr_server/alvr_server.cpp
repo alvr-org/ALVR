@@ -140,7 +140,9 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
 
 #endif
 
-// bindigs for Rust
+//--------------------------------------------------------------------------
+
+// Rust to C++:
 
 const uint8_t *FRAME_RENDER_VS_CSO_PTR;
 uint32_t FRAME_RENDER_VS_CSO_LEN;
@@ -159,9 +161,11 @@ void (*LogError)(const char *);
 void (*LogWarn)(const char *);
 void (*LogInfo)(const char *);
 void (*LogDebug)(const char *);
-void (*MaybeLaunchWebServer)();
-void (*MaybeKillWebServer)();
-void (*SetRunning)(bool);
+void (*ShutdownRuntime)();
+
+// C++ to Rust:
+
+void (*ShutdownSteamvr)();
 
 void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 {

@@ -73,6 +73,7 @@ version = "13.0.0-alpha.0"
 dependencies = [
  "alcro",
  "alvr_common",
+ "msgbox",
  "single-instance",
  "winres",
 ]
@@ -85,13 +86,18 @@ dependencies = [
  "alvr_xtask",
  "bindgen",
  "cc",
+ "chrono",
  "fern",
+ "futures",
  "lazy-static-include",
  "lazy_static",
  "log 0.4.11",
+ "msgbox",
+ "parking_lot",
  "serde_json",
  "tokio",
  "walkdir",
+ "warp",
 ]
 
 [[package]]

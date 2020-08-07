@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use settings_schema::*;
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum SocketConfig {
     Udp,
@@ -14,7 +14,7 @@ pub enum SocketConfig {
     },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum FrameSize {
     #[schema(min = 0.25, max = 2., step = 0.01)]
@@ -43,7 +43,7 @@ pub struct Fov {
     pub bottom: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FoveatedRenderingDesc {
     #[schema(min = 0.5, max = 10., step = 0.1)]
@@ -56,7 +56,7 @@ pub struct FoveatedRenderingDesc {
     pub vertical_offset: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ColorCorrectionDesc {
     #[schema(min = -1., max = 1., step = 0.01)]
     pub brightness: f32,
@@ -74,7 +74,7 @@ pub struct ColorCorrectionDesc {
     pub sharpening: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Debug)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Clone)]
 #[repr(u8)]
 #[serde(rename_all = "camelCase")]
 pub enum CodecType {
@@ -82,7 +82,7 @@ pub enum CodecType {
     Hevc,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct VideoDesc {
     #[schema(advanced)]
@@ -126,7 +126,7 @@ pub struct VideoDesc {
     pub keyframe_resend_interval_ms: u64,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioDesc {
     // deviceDropdown should poll the available audio devices and set "device"
@@ -135,14 +135,14 @@ pub struct AudioDesc {
     pub device: String,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioSection {
     pub game_audio: Switch<AudioDesc>,
     pub microphone: bool,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ControllersDesc {
     // Dropdown:
@@ -209,7 +209,7 @@ pub struct ControllersDesc {
     pub haptics_intensity: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct HeadsetDesc {
     // Oculus Rift S or HTC Vive. Should all the following strings accordingly
@@ -248,7 +248,7 @@ pub struct HeadsetDesc {
     pub controllers: Switch<ControllersDesc>,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDesc {
     pub stream_socket_config: SocketConfig,
@@ -265,7 +265,7 @@ pub struct ConnectionDesc {
     pub client_recv_buffer_size: u64,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize,Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum LogLevel {
     Error,
@@ -274,7 +274,7 @@ pub enum LogLevel {
     Debug,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtraDesc {
     pub revert_confirm_dialog: bool,
@@ -286,7 +286,7 @@ pub struct ExtraDesc {
     pub exclude_notifications_without_id: bool,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct Settings {
     pub video: VideoDesc,
     pub audio: AudioSection,

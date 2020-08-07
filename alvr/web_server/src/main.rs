@@ -281,7 +281,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
     let firewall_rules_requests =
         warp::path!("firewall-rules" / String).map(|action_str: String| {
             let add = action_str == "add";
-            let maybe_err = firewall_rules(&alvr_server_dir(), add).err();
+            let maybe_err = firewall_rules(add).err();
             if let Some(e) = &maybe_err {
                 error!("Setting firewall rules failed: code {}", e);
             }

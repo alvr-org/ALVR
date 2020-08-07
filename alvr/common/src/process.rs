@@ -9,6 +9,8 @@ use sysinfo::*;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
+pub const DRIVER_BACKUP_FNAME: &str = "alvr_steamvr_drivers_backup.txt";
+
 #[cfg(windows)]
 pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
@@ -56,48 +58,6 @@ fn kill_process(pid: usize) {
         .creation_flags(CREATE_NO_WINDOW)
         .output()
         .ok();
-}
-
-// Launch web server. If another instance exists, the one just spawned will close itself.
-pub fn maybe_launch_web_server(root_server_dir: &Path) {
-    let mut command = Command::new(root_server_dir.join("alvr_web_server"));
-
-    // somehow the console is always empty, so it's useless
-    #[cfg(windows)]
-    command.creation_flags(CREATE_NO_WINDOW);
-
-    command.spawn().ok();
-}
-
-// Kill web server and its child processes if only one of bootstrap or driver is alive.
-pub fn maybe_kill_web_server() {
-    let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
-    system.refresh_processes();
-
-    let bootstrap_or_driver_count = system.get_process_by_name(&exec_fname("ALVR")).len()
-        + system.get_process_by_name(&exec_fname("vrserver")).len();
-
-    if bootstrap_or_driver_count <= 1 {
-        for process in system.get_processes().values() {
-            if let Some(parent_pid) = process.parent() {
-                if let Some(parent_proc) = system.get_process(parent_pid) {
-                    if parent_proc.name() == exec_fname("alvr_web_server") {
-                        // Using built-in method causes cmd to pop up repeatedly on Windows
-                        #[cfg(not(windows))]
-                        process.kill(Signal::Term);
-                        #[cfg(windows)]
-                        kill_process(process.pid());
-                    }
-                }
-            }
-        }
-        for process in system.get_process_by_name(&exec_fname("alvr_web_server")) {
-            #[cfg(not(windows))]
-            process.kill(Signal::Term);
-            #[cfg(windows)]
-            kill_process(process.pid());
-        }
-    }
 }
 
 pub fn maybe_launch_steamvr() {
@@ -172,14 +132,12 @@ fn netsh_delete_rule_command_string(rule_name: &str) -> String {
 // Errors:
 // 1: firewall rule is already set
 // other: command failed
-pub fn firewall_rules(root_server_dir: &Path, add: bool) -> Result<(), i32> {
+pub fn firewall_rules(add: bool) -> Result<(), i32> {
     let script_path = env::temp_dir().join("alvr_firewall_rules.bat");
-    let web_server_path = root_server_dir.join(exec_fname("alvr_web_server"));
 
     let firewall_rules_script_content = if add {
         format!(
-            "{}\n{}\n{}",
-            netsh_add_rule_command_string("ALVR Launcher", &web_server_path),
+            "{}\n{}",
             netsh_add_rule_command_string(
                 "SteamVR ALVR vrserver",
                 &steamvr_dir()
@@ -249,4 +207,29 @@ pub fn unregister_all_drivers() -> StrResult {
     }
 
     Ok(())
+}
+
+pub fn backup_driver_paths(paths: &[PathBuf]) -> StrResult {
+    let backup_path = env::temp_dir().join(DRIVER_BACKUP_FNAME);
+    let backup_content = paths
+        .iter()
+        .map(|p| p.to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("\n");
+    trace_err!(fs::write(backup_path, backup_content))
+}
+
+pub fn restore_driver_paths_backup() -> StrResult {
+    let backup_path = env::temp_dir().join(DRIVER_BACKUP_FNAME);
+
+    let paths = trace_err!(fs::read_to_string(&backup_path))?
+        .split("\n")
+        .map(|s| PathBuf::from(s))
+        .collect::<Vec<_>>();
+
+    for path in paths {
+        driver_registration(&path, true)?;
+    }
+
+    trace_err!(fs::remove_file(backup_path))
 }

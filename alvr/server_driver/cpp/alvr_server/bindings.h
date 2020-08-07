@@ -21,9 +21,10 @@ extern "C" void (*LogError)(const char *);
 extern "C" void (*LogWarn)(const char *);
 extern "C" void (*LogInfo)(const char *);
 extern "C" void (*LogDebug)(const char *);
-extern "C" void (*MaybeKillWebServer)();
-extern "C" void (*SetRunning)(bool);
+extern "C" void (*ShutdownRuntime)();
 
-// C++ to Rust
+// C++ to Rust:
+
+extern "C" void (*ShutdownSteamvr)();
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);

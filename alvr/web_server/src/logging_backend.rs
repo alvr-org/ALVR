@@ -4,6 +4,7 @@ use log::LevelFilter;
 use std::{
     fs::{self, OpenOptions},
     sync::{Arc, Mutex},
+    thread,
 };
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -68,6 +69,9 @@ pub fn init_logging(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) {
     .unwrap();
 
     crate::logging::set_show_error_fn_and_panic_hook(|message| {
-        msgbox::create("ALVR crashed", &message, msgbox::IconType::Error)
+        let message = message.to_owned();
+        thread::spawn(move || {
+            msgbox::create("ALVR crashed", &message, msgbox::IconType::Error);
+        });
     });
 }

@@ -10,6 +10,7 @@ use sysinfo::*;
 use std::os::windows::process::CommandExt;
 
 pub const DRIVER_BACKUP_FNAME: &str = "alvr_steamvr_drivers_backup.txt";
+pub const ALVR_DIR_STORE_FNAME: &str = "alvr_dir.txt";
 
 #[cfg(windows)]
 pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -192,6 +193,11 @@ pub fn get_registered_drivers() -> StrResult<Vec<PathBuf>> {
 }
 
 pub fn get_alvr_dir() -> StrResult<PathBuf> {
+    let alvr_dir_store_path = env::temp_dir().join(ALVR_DIR_STORE_FNAME);
+    if let Ok(path) = fs::read_to_string(alvr_dir_store_path) {
+        return Ok(PathBuf::from(path));
+    }
+
     for dir in get_registered_drivers()? {
         if dir.join(exec_fname("ALVR")).exists() && dir.join("web_gui").exists() {
             return Ok(dir);
@@ -199,6 +205,19 @@ pub fn get_alvr_dir() -> StrResult<PathBuf> {
     }
 
     Err("ALVR driver is not registered".into())
+}
+
+pub fn store_alvr_dir(alvr_dir: &Path) -> StrResult {
+    let alvr_dir_store_path = env::temp_dir().join(ALVR_DIR_STORE_FNAME);
+
+    trace_err!(fs::write(
+        alvr_dir_store_path,
+        alvr_dir.to_string_lossy().as_bytes()
+    ))
+}
+
+pub fn maybe_delete_alvr_dir_store() {
+    fs::remove_file(env::temp_dir().join(ALVR_DIR_STORE_FNAME)).ok();
 }
 
 pub fn unregister_all_drivers() -> StrResult {

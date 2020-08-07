@@ -10,7 +10,7 @@ fn window_mode() -> StrResult {
     if mutex.is_single() {
         if steamvr_bin_dir().is_err() {}
 
-        let maybe_alvr_dir = get_alvr_dir();
+        maybe_delete_alvr_dir_store();
 
         if get_alvr_dir().is_err() {
             match get_registered_drivers() {

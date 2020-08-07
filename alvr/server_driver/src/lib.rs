@@ -53,7 +53,7 @@ fn shutdown_runtime() {
         // shutdown_background() is non blocking and it does not guarantee that every internal
         // thread is terminated in a timely manner. Using shutdown_background() instead of just
         // dropping the runtime has the benefit of giving SteamVR a chance to clean itself as
-        // much as possible before the process is killed because of alvr_bootstrap timeout.
+        // much as possible before the process is killed because of alvr_server_bootstrap timeout.
     }
 }
 
@@ -67,7 +67,7 @@ fn restart_steamvr() {
             }
         }
 
-        // todo: launch alvr_bootstrap
+        // todo: launch alvr_server_bootstrap with "restart" flag
     });
 }
 
@@ -257,11 +257,9 @@ async fn web_server(
     .run(([0, 0, 0, 0], web_server_port));
 
     tokio::select! {
-        _ = web_server_future => (),
-        _ = shutdown_receiver.recv() => ()
+        _ = web_server_future => trace_str!("Web server closed unexpectedly"),
+        _ = shutdown_receiver.recv() => Ok(()),
     }
-
-    Ok(())
 }
 
 async fn client_found_callback(session_manager: Arc<AMutex<SessionManager>>, client_ip: IpAddr) {

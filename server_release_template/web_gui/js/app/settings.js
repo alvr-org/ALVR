@@ -4,10 +4,11 @@ define([
     "app/customSettings",
     "lib/lodash",
     "i18n!app/nls/settings",
-    "i18n!app/nls/revert",
+    "i18n!app/nls/revertRestart",
     "text!app/templates/revertConfirm.html",
+    "text!app/templates/restartConfirm.html",
 
-], function (schema, session, CustomSettings, _, i18n, revertI18n, revertConfirm) {
+], function (schema, session, CustomSettings, _, i18n, revertRestartI18n, revertConfirm, restartConfirm) {
     return function () {
         var self = this;
 
@@ -60,8 +61,8 @@ define([
             addChangeListener();
 
             //special
-        
-            customSettings.setCustomSettings();       
+
+            customSettings.setCustomSettings();
 
             addListeners();
             addHelpTooltips();
@@ -264,17 +265,7 @@ define([
             })
 
             $("#restartSteamVR").click(() => {
-                $.get("restart_steamvr", undefined, (res) => {
-                    if (res == 0) {
-                        Lobibox.notify("success", {
-                            size: "mini",
-                            rounded: true,
-                            delayIndicator: false,
-                            sound: false,
-                            msg: i18n.steamVRRestartSuccess
-                        })
-                    }
-                })
+                restartSteamVR();
             })
 
             $(".paramReset").click((evt) => {
@@ -287,7 +278,7 @@ define([
                 if (!$("#" + path + "_" + name).prop("disabled")) {
                     const confirm = $("#_root_extra_revertConfirmDialog").prop("checked");
                     if (confirm) {
-                        showConfirmDialog(def).then((res) => {
+                        showResetConfirmDialog(def).then((res) => {
                             if (res) {
                                 resetToDefault(name, path, def);
                             }
@@ -301,6 +292,33 @@ define([
 
         function addHelpTooltips() {
             $('[data-toggle="tooltip"]').tooltip()
+        }
+
+        function restartSteamVR() {
+            const triggerRestart = () => {
+                $.get("restart_steamvr", undefined, (res) => {
+                    if (res == 0) {
+                        Lobibox.notify("success", {
+                            size: "mini",
+                            rounded: true,
+                            delayIndicator: false,
+                            sound: false,
+                            msg: i18n.steamVRRestartSuccess
+                        })
+                    }
+                })
+            }
+
+            const confirm = $("#_root_extra_restartConfirmDialog").prop("checked");
+            if (confirm) {
+                showRestartConfirmDialog().then((res) => {
+                    if (res) {
+                        triggerRestart();
+                    }
+                });
+            } else {
+                triggerRestart();
+            }
         }
 
         function toggleAdvanced() {
@@ -683,7 +701,7 @@ define([
                 $("#" + path + "_" + name).val(defaultVal).trigger("input");
             }
             $("#" + path + "_" + name).change();
-          
+
         }
 
         function getMinMaxLabel(node) {
@@ -694,15 +712,54 @@ define([
             }
         }
 
-        function showConfirmDialog(defaultVal) {
+        function showRestartConfirmDialog() {
+            return new Promise((resolve, reject) => {
+                var compiledTemplate = _.template(restartConfirm);
+
+                var template = compiledTemplate(revertRestartI18n);
+                $("#confirmModal").remove();
+                $("body").append(template);
+                $(document).ready(() => {              
+
+                    $('#confirmModal').modal({
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                    $('#confirmModal').on('hidden.bs.modal', (e) => {
+                        resolve(false)
+                    })
+                    $("#okRestartButton").click(() => {
+                        resolve(true)
+
+                        //disable future confirmation
+                        if ($("#confirmRestartCheckbox").prop("checked")) {
+                            const confirm = $("#_root_extra_restartConfirmDialog").prop("checked", false);
+                            confirm.change();
+                        }
+
+                        $('#confirmModal').modal('hide');
+                        $('#confirmModal').remove();
+                    })
+                    $("#cancelRestartButton").click(() => {
+                        resolve(false)
+                        $('#confirmModal').modal('hide');
+                        $('#confirmModal').remove();
+                    })
+                });
+            });
+        }
+
+
+        function showResetConfirmDialog(defaultVal) {
             return new Promise((resolve, reject) => {
                 var compiledTemplate = _.template(revertConfirm);
-                revertI18n.settingDefault = defaultVal;
+                revertRestartI18n.settingDefault = defaultVal;
 
-                var template = compiledTemplate(revertI18n);
+                var template = compiledTemplate(revertRestartI18n);
                 $("#confirmModal").remove();
                 $("body").append(template);
                 $(document).ready(() => {
+
                     $('#confirmModal').modal({
                         backdrop: 'static',
                         keyboard: false
@@ -725,7 +782,7 @@ define([
         }
 
         function clampNumeric(element, value) {
-            if (element.attr("min") !== "null" && element.attr("max") !== "null") {         
+            if (element.attr("min") !== "null" && element.attr("max") !== "null") {
                 return _.clamp(value, element.attr("min"), element.attr("max"))
             } else {
                 return value;

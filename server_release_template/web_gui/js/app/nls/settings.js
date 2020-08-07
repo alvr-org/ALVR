@@ -1,6 +1,6 @@
 define({
     "root": {
-        "customVideoScale": "custom",
+        "customVideoScale": "custom resolution",
         "steamVRRestartSuccess" : "SteamVR successfully restarted",
         "_root_video_tab.name": "Video",
         "_root_video_tab.description": "Video settings",

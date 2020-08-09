@@ -1,0 +1,23 @@
+<div class="modal" id="confirmModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <div>
+                    <h4 class="modal-title"><%= confirmRestartTitle%></h4>
+                </div>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+
+            <div id="confirmRevertBody" class="modal-body">
+                <%= restartText%>               
+                <br />
+                <br />
+                <input type="checkbox" id="confirmRestartCheckbox"> <%= dontAskRestart%></input>                
+            </div>
+            <div class="modal-footer">
+                <button id="okRestartButton" type="button" class="btn btn-info"><%= okRestartButton%></button><button id="cancelRestartButton" type="button" class="btn btn-info"><%= cancelRestartButton%></button>
+            </div>
+        </div>
+    </div>
+</div>

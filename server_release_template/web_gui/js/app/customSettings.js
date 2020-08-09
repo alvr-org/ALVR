@@ -206,10 +206,10 @@ define([
         }
 
         function setVideoOptions() {
-            var el = $("#_root_video_resolutionDropdown");
-            el.after(alvrSettings.getHelpReset("resolutionDropdown", "_root_video", "100"));
-            el.parent().addClass("special");
-            el.unbind();
+            var dropdown = $("#_root_video_resolutionDropdown");
+            dropdown.after(alvrSettings.getHelpReset("resolutionDropdown", "_root_video", "100"));
+            dropdown.parent().addClass("special");
+            dropdown.unbind();
 
 
             const targetWidth = $("#_root_video_renderResolution_absolute_width");
@@ -217,26 +217,37 @@ define([
 
             const scale = $("#_root_video_renderResolution_scale");
 
-            const useScale = $("#_root_video_renderResolution_scale-choice-").prop("checked");
+            var useScale = $("#_root_video_renderResolution_scale-choice-").prop("checked");
 
             video_scales.forEach(scale => {
-                el.append(`<option value="${scale}"> ${scale}% </option>`);
+                dropdown.append(`<option value="${scale}"> ${scale}% </option>`);
             });
-            el.append(`<option value="custom"> ${i18n.customVideoScale}</option>`);
+
+            //dropdown.append(`<option value="custom"> ${i18n.customVideoScale}</option>`);
 
             var absWidth;
             var absHeight;
 
             const select = new Selectal('#_root_video_resolutionDropdown');
-            el = $("#_root_video_resolutionDropdown");
+            dropdown = $("#_root_video_resolutionDropdown");
 
+            var customRes = `<div style="display:inline;" id="customVideoScale"><b>${i18n.customVideoScale} </b></div>`;
+            $("#_root_video_resolutionDropdown-selectal").after(customRes);
+            customRes = $("#customVideoScale");
+            customRes.hide();
+
+            var update = false;
 
             var updateDropdown = function () {
+                useScale = $("#_root_video_renderResolution_scale-choice-").prop("checked");
                 if (useScale) {
                     if (video_scales.indexOf(scale.val() * 100) != -1) {
-                        el.val(scale.val() * 100);
+                        dropdown.val(scale.val() * 100);
+                        $("#_root_video_resolutionDropdown-selectal").show();
+                        customRes.hide();
                     } else {
-                        el.val("custom");
+                        $("#_root_video_resolutionDropdown-selectal").hide()
+                        customRes.show();                      
                     }
                 } else if (alvrSettings.getSession().lastClients.length > 0) {
 
@@ -248,29 +259,44 @@ define([
                     var factor = targetWidth.val() / absWidth;
 
                     if (video_scales.indexOf(factor * 100) != -1) {
-                        el.val(factor * 100);
+                        dropdown.val(factor * 100);
+                        $("#_root_video_resolutionDropdown-selectal").show()
+                        customRes.hide();
                     } else {
-                        el.val("custom");
+                        $("#_root_video_resolutionDropdown-selectal").hide()
+                        customRes.show();
                     }
 
                 } else {
+                    $("#_root_video_resolutionDropdown-selectal").hide()
                     //always custom
-                    el.val("custom");
+                    customRes.show();
                 }
-                el.change();
+                dropdown.change();
             }
 
             updateDropdown();
 
 
             $("#_root_video_renderResolution_absolute_width,#_root_video_renderResolution_absolute_height,#_root_video_renderResolution_scale").change((ev) => {
+                if (update) {
+                    return;
+                }
+
+                update = true;
                 updateDropdown();
+                update = false;
             })
 
 
-            el.change((ev) => {
+            dropdown.change((ev) => {
+                if (update) {
+                    return;
+                }
 
-                const val = el.val();
+                update = true;
+
+                const val = dropdown.val();
                 scale.val(val / 100);
 
                 alvrSettings.storeParam(scale, true);
@@ -287,8 +313,9 @@ define([
                 //force scale mode
                 $("#_root_video_renderResolution_scale-choice-").prop("checked", true);
                 alvrSettings.storeParam($("#_root_video_renderResolution_scale-choice-"), true);
-
                 alvrSettings.storeSession("settings");
+
+                update = false;
             });
 
         }
@@ -348,7 +375,7 @@ define([
             el.unbind();
 
             const target = $("#_root_audio_gameAudio_content_device");
-         
+
             let current = "";
             try {
                 current = alvrSettings.getSession().settingsCache.audio.gameAudio.content.device;
@@ -359,7 +386,7 @@ define([
             audio_devices.list.forEach(device => {
                 let name = device[1];
                 if (device[0] === audio_devices.default) {
-                    name = "(default) " + device[1];            
+                    name = "(default) " + device[1];
                     el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_gameAudio_content", device[0]));
 
                     const deviceReset = $("#_root_audio_gameAudio_content_device").parent().find(".helpReset .paramReset");
@@ -400,7 +427,7 @@ define([
 
             target.change(() => {
                 if (!updating) {
-                    updating = true;                  
+                    updating = true;
                     el.val(target.val());
                     el.change();
                     updating = false;

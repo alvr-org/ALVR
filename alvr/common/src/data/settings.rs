@@ -2,16 +2,44 @@ use serde::{Deserialize, Serialize};
 use settings_schema::*;
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct QuicConfig {
+    pub send_small_packets_unreliably: bool,
+
+    // quinn::ClientConfig / ServerConfig
+    pub enable_0rtt: bool,
+    pub enable_keylog: bool,
+    pub use_stateless_retry: Option<bool>,
+
+    // quinn::TransportConfig
+    pub stream_window_bidi: Option<u64>,
+    pub stream_window_uni: Option<u64>,
+    pub max_idle_timeout_ms: Option<Switch<u64>>,
+    pub stream_receive_window: Option<u64>,
+    pub receive_window: Option<u64>,
+    pub send_window: Option<u64>,
+    pub max_tlps: Option<u32>,
+    pub packet_threshold: Option<u32>,
+    pub time_threshold: Option<f32>,
+    pub initial_rtt_ms: Option<u64>,
+    pub persistent_congestion_threshold: Option<u32>,
+    pub keep_alive_interval_ms: Option<Switch<u64>>,
+    pub crypto_buffer_size: Option<u64>,
+    pub allow_spin: Option<bool>,
+    pub datagram_receive_buffer_size: Option<Switch<u64>>,
+    pub datagram_send_buffer_size: Option<u64>,
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum SocketConfig {
     Udp,
 
     Tcp,
 
-    #[serde(rename_all = "camelCase")]
-    Quic {
-        send_small_packets_unreliably: bool,
-    },
+    #[schema(advanced)]
+    Quic(QuicConfig),
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -253,7 +281,7 @@ pub struct HeadsetDesc {
 pub struct ConnectionDesc {
     pub stream_socket_config: SocketConfig,
 
-    #[schema(advanced)]
+    #[schema(advanced, min = 1024, max = 65535)]
     pub stream_port: u16,
 
     #[schema(advanced)]
@@ -265,7 +293,7 @@ pub struct ConnectionDesc {
     pub client_recv_buffer_size: u64,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize,Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum LogLevel {
     Error,
@@ -404,8 +432,92 @@ pub fn settings_cache_default() -> SettingsDefault {
         connection: ConnectionDescDefault {
             stream_socket_config: SocketConfigDefault {
                 variant: SocketConfigDefaultVariant::Tcp,
-                Quic: SocketConfigQuicDefault {
-                    send_small_packets_unreliably: true,
+                Quic: {
+                    const EXPECTED_RTT: u64 = 100;
+                    const MAX_STREAM_BANDWIDTH: u64 = 12500 * 1000;
+                    const STREAM_RWND: u64 = MAX_STREAM_BANDWIDTH / 1000 * EXPECTED_RTT;
+                    QuicConfigDefault {
+                        send_small_packets_unreliably: true,
+                        enable_0rtt: false,
+                        enable_keylog: false,
+                        use_stateless_retry: OptionalDefault {
+                            set: true,
+                            content: true,
+                        },
+                        stream_window_bidi: OptionalDefault {
+                            set: false,
+                            content: 32,
+                        },
+                        stream_window_uni: OptionalDefault {
+                            set: false,
+                            content: 32,
+                        },
+                        max_idle_timeout_ms: OptionalDefault {
+                            set: false,
+                            content: SwitchDefault {
+                                enabled: true,
+                                content: 10_000,
+                            },
+                        },
+                        stream_receive_window: OptionalDefault {
+                            set: false,
+                            content: STREAM_RWND,
+                        },
+                        receive_window: OptionalDefault {
+                            set: false,
+                            content: 8 * STREAM_RWND,
+                        },
+                        send_window: OptionalDefault {
+                            set: false,
+                            content: 8 * STREAM_RWND,
+                        },
+                        max_tlps: OptionalDefault {
+                            set: false,
+                            content: 2,
+                        },
+                        packet_threshold: OptionalDefault {
+                            set: false,
+                            content: 3,
+                        },
+                        time_threshold: OptionalDefault {
+                            set: false,
+                            content: 9.0 / 8.0,
+                        },
+                        initial_rtt_ms: OptionalDefault {
+                            set: false,
+                            content: 333,
+                        },
+                        persistent_congestion_threshold: OptionalDefault {
+                            set: false,
+                            content: 3,
+                        },
+                        keep_alive_interval_ms: OptionalDefault {
+                            set: false,
+                            content: SwitchDefault {
+                                enabled: false,
+                                content: 0,
+                            },
+                        },
+                        crypto_buffer_size: OptionalDefault {
+                            set: false,
+                            content: 16 * 1024,
+                        },
+                        allow_spin: OptionalDefault {
+                            set: false,
+                            content: true,
+                        },
+                        datagram_receive_buffer_size: OptionalDefault {
+                            set: false,
+                            content: SwitchDefault {
+                                enabled: true,
+                                content: STREAM_RWND,
+                            },
+                        },
+                        datagram_send_buffer_size: OptionalDefault {
+                            set: false,
+                            content: 1024 * 1024,
+                        },
+                    }
                 },
             },
             stream_port: 9944,

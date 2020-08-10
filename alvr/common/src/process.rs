@@ -111,7 +111,7 @@ pub fn driver_registration(root_server_dir: &Path, register: bool) -> StrResult 
     if exit_status.success() {
         Ok(())
     } else {
-        Err(format!("Error registering driver: {}", exit_status).into())
+        Err(format!("Error registering driver: {}", exit_status))
     }
 }
 
@@ -243,7 +243,7 @@ pub fn restore_driver_paths_backup() -> StrResult {
 
     let paths = trace_err!(fs::read_to_string(&backup_path))?
         .split("\n")
-        .map(|s| PathBuf::from(s))
+        .map(PathBuf::from)
         .collect::<Vec<_>>();
 
     for path in paths {

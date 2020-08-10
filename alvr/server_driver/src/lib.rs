@@ -122,14 +122,14 @@ async fn set_session_handler(
 }
 
 enum ClientListAction {
-    AddIfMissing(IpAddr),
+    AddIfMissing { ip: IpAddr, certificate_pem: String },
     TrustAndMaybeAddIp(Option<IpAddr>),
     RemoveIpOrEntry(Option<IpAddr>),
 }
 
 async fn update_client_list(
     session_manager: Arc<AMutex<SessionManager>>,
-    certificate_pem: String,
+    hostname: String,
     action: ClientListAction,
     update_client_listeners_notifier: broadcast::Sender<()>,
 ) {
@@ -142,10 +142,13 @@ async fn update_client_list(
     let session_desc_ref =
         &mut session_manager_ref.get_mut(SERVER_SESSION_UPDATE_ID, SessionUpdateType::ClientList);
 
-    let maybe_client_entry = session_desc_ref.last_clients.entry(certificate_pem);
+    let maybe_client_entry = session_desc_ref.last_clients.entry(hostname);
 
     match action {
-        ClientListAction::AddIfMissing(ip) => match maybe_client_entry {
+        ClientListAction::AddIfMissing {
+            ip,
+            certificate_pem,
+        } => match maybe_client_entry {
             Entry::Occupied(mut existing_entry) => {
                 let client_connection_ref = existing_entry.get_mut();
                 client_connection_ref.last_update_ms_since_epoch = now_ms as _;
@@ -157,7 +160,8 @@ async fn update_client_list(
                     last_update_ms_since_epoch: now_ms as _,
                     last_ip: ip,
                     manual_ips: HashSet::new(),
-                    device_name: None,
+                    display_name: None,
+                    certificate_pem,
                 };
                 new_entry.insert(client_connection_desc);
             }
@@ -192,7 +196,6 @@ async fn update_client_list(
 async fn web_server(
     session_manager: Arc<AMutex<SessionManager>>,
     log_sender: broadcast::Sender<String>,
-    mut shutdown_receiver: broadcast::Receiver<()>,
     update_client_listeners_notifier: broadcast::Sender<()>,
 ) -> StrResult {
     let settings_changed = Arc::new(AtomicBool::new(false));
@@ -279,14 +282,14 @@ async fn web_server(
     let trust_client_request = warp::path("clients/trust").and(body::json()).and_then({
         let session_manager = session_manager.clone();
         let update_client_listeners_notifier = update_client_listeners_notifier.clone();
-        move |(cert_pem, ip): (String, Option<IpAddr>)| {
+        move |(hostname, maybe_ip): (String, Option<IpAddr>)| {
             let session_manager = session_manager.clone();
             let update_client_listeners_notifier = update_client_listeners_notifier.clone();
             async move {
                 update_client_list(
                     session_manager,
-                    cert_pem,
-                    ClientListAction::TrustAndMaybeAddIp(ip),
+                    hostname,
+                    ClientListAction::TrustAndMaybeAddIp(maybe_ip),
                     update_client_listeners_notifier,
                 )
                 .await;
@@ -297,14 +300,14 @@ async fn web_server(
     });
     let remove_client_request = warp::path("clients/remove").and(body::json()).and_then({
         let session_manager = session_manager.clone();
-        move |(cert_pem, ip): (String, Option<IpAddr>)| {
+        move |(hostname, maybe_ip): (String, Option<IpAddr>)| {
             let session_manager = session_manager.clone();
             let update_client_listeners_notifier = update_client_listeners_notifier.clone();
             async move {
                 update_client_list(
                     session_manager,
-                    cert_pem,
-                    ClientListAction::RemoveIpOrEntry(ip),
+                    hostname,
+                    ClientListAction::RemoveIpOrEntry(maybe_ip),
                     update_client_listeners_notifier,
                 )
                 .await;
@@ -324,7 +327,7 @@ async fn web_server(
         .connection
         .web_server_port;
 
-    let web_server_future = warp::serve(
+    warp::serve(
         index_request
             .or(settings_schema_request)
             .or(get_session_request)
@@ -345,21 +348,19 @@ async fn web_server(
                 "no-cache, no-store, must-revalidate",
             )),
     )
-    .run(([0, 0, 0, 0], web_server_port));
+    .run(([0, 0, 0, 0], web_server_port))
+    .await;
 
-    tokio::select! {
-        _ = web_server_future => trace_str!("Web server closed unexpectedly"),
-        _ = shutdown_receiver.recv() => Ok(()),
-    }
+    trace_str!("Web server closed unexpectedly")
 }
 
 async fn create_control_socket(
-    clients_data: HashMap<IpAddr, String>,
+    clients_data: HashMap<IpAddr, Identity>,
     settings: Settings,
-) -> StrResult<(
-    String,
+) -> (
+    Identity,
     ControlSocket<ClientControlPacket, ServerControlPacket>,
-)> {
+) {
     loop {
         let maybe_control_socket = ControlSocket::connect_to_client(
             &clients_data.keys().cloned().collect::<Vec<_>>(),
@@ -396,9 +397,8 @@ async fn create_control_socket(
 
         match maybe_control_socket {
             Ok(control_socket) => {
-                let certificate_pem =
-                    trace_none!(clients_data.get(&control_socket.peer_ip()))?.clone();
-                break Ok((certificate_pem, control_socket));
+                let identity = clients_data.get(&control_socket.peer_ip()).unwrap().clone();
+                break (identity, control_socket);
             }
             Err(e) => warn!("{}", e),
         }
@@ -407,12 +407,13 @@ async fn create_control_socket(
 
 async fn setup_streams(
     settings: Settings,
-    certificate_pem: String,
+    client_identity: Identity,
     control_socket: &ControlSocket<ClientControlPacket, ServerControlPacket>,
 ) -> StrResult {
-    let stream_manager = StreamManager::new(
+    let stream_manager = StreamManager::connect_to_client(
         control_socket.peer_ip(),
         settings.connection.stream_port,
+        client_identity,
         settings.connection.stream_socket_config,
     )
     .await?;
@@ -425,7 +426,6 @@ async fn setup_streams(
 async fn connection_loop(
     session_manager: Arc<AMutex<SessionManager>>,
     update_client_listeners_notifier: broadcast::Sender<()>,
-    mut shutdown_receiver: broadcast::Receiver<()>,
 ) -> StrResult {
     // Some settings cannot be applied right away because they were used to initialize some key
     // driver components. For these settings, send the cached values to the client.
@@ -439,11 +439,14 @@ async fn connection_loop(
             let update_client_listeners_notifier = update_client_listeners_notifier.clone();
             async move {
                 let res = search_client_loop(None, {
-                    |client_ip, certificate_pem| {
+                    |client_ip, client_identity| {
                         update_client_list(
                             session_manager.clone(),
-                            certificate_pem,
-                            ClientListAction::AddIfMissing(client_ip),
+                            client_identity.hostname,
+                            ClientListAction::AddIfMissing {
+                                ip: client_ip,
+                                certificate_pem: client_identity.certificate_pem,
+                            },
                             update_client_listeners_notifier.clone(),
                         )
                     }
@@ -456,28 +459,30 @@ async fn connection_loop(
 
         let clients_data = session_manager.lock().await.get().last_clients.iter().fold(
             HashMap::new(),
-            |mut clients_data, (cert_pem, client)| {
-                clients_data.insert(client.last_ip, cert_pem.clone());
-                clients_data.extend(client.manual_ips.iter().map(|&ip| (ip, cert_pem.clone())));
+            |mut clients_data, (hostname, client)| {
+                let id = Identity {
+                    hostname: hostname.clone(),
+                    certificate_pem: client.certificate_pem.clone(),
+                };
+                clients_data.extend(client.manual_ips.iter().map(|&ip| (ip, id.clone())));
+                clients_data.insert(client.last_ip, id);
                 clients_data
             },
         );
         let get_control_socket = create_control_socket(clients_data, settings_cache.clone());
 
-        let (certificate_pem, mut control_socket) = tokio::select! {
+        let (identity, mut control_socket) = tokio::select! {
             Err(e) = client_discovery => break trace_str!("Client discovery failed: {}", e),
-            Ok(pair) = get_control_socket => pair,
+            pair = get_control_socket => pair,
             _ = update_client_listeners_receiver.recv() => continue,
-            _ = shutdown_receiver.recv() => break Ok(()),
-            else => unreachable!()
         };
 
-        setup_streams(settings_cache.clone(), certificate_pem, &control_socket).await?;
+        if let Err(e) = setup_streams(settings_cache.clone(), identity, &control_socket).await {
+            warn!("Setup streams failed: {}", e);
+            continue;
+        };
 
-        tokio::select! {
-            _ = control_socket.recv() => continue,
-            _ = shutdown_receiver.recv() => break Ok(()),
-        }
+        control_socket.recv().await.ok();
     }
 }
 
@@ -496,20 +501,29 @@ pub fn init(log_sender: broadcast::Sender<String>) -> StrResult {
     if let Some(runtime) = &*MAYBE_RUNTIME.lock() {
         let session_manager = Arc::new(AMutex::new(SessionManager::new(&alvr_dir)));
 
-        let (shutdown_notifier, shutdown_receiver) = broadcast::channel(1);
+        let (shutdown_notifier, mut shutdown_receiver) = broadcast::channel(1);
         let (update_client_listeners_notifier, _) = broadcast::channel(1);
 
-        runtime.spawn(show_err_async(web_server(
-            session_manager.clone(),
-            log_sender,
-            shutdown_receiver,
-            update_client_listeners_notifier.clone(),
-        )));
-        runtime.spawn(show_err_async(connection_loop(
-            session_manager,
-            update_client_listeners_notifier,
-            shutdown_notifier.subscribe(),
-        )));
+        runtime.spawn({
+            async move {
+                let web_server = show_err_async(web_server(
+                    session_manager.clone(),
+                    log_sender,
+                    update_client_listeners_notifier.clone(),
+                ));
+
+                let connection_loop = show_err_async(connection_loop(
+                    session_manager,
+                    update_client_listeners_notifier,
+                ));
+
+                tokio::select! {
+                    _ = web_server => (),
+                    _ = connection_loop => (),
+                    _ = shutdown_receiver.recv() => (),
+                }
+            }
+        });
 
         *MAYBE_SHUTDOWN_NOTIFIER.lock() = Some(shutdown_notifier);
     }

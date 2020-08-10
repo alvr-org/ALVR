@@ -23,7 +23,8 @@ pub struct ClientConnectionDesc {
     pub last_update_ms_since_epoch: u64,
     pub last_ip: IpAddr,
     pub manual_ips: HashSet<IpAddr>,
-    pub device_name: Option<String>,
+    pub display_name: Option<String>,
+    pub certificate_pem: String,
 }
 
 pub fn load_session(path: &Path) -> StrResult<SessionDesc> {
@@ -41,7 +42,7 @@ pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
 #[serde(rename_all = "camelCase")]
 pub struct SessionDesc {
     pub setup_wizard: bool,
-    // The hashmap key is the certificate
+    // The hashmap key is the hostname
     pub last_clients: HashMap<String, ClientConnectionDesc>,
     pub settings_cache: SettingsCache,
 }

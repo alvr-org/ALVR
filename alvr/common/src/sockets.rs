@@ -7,6 +7,7 @@ use futures::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4},
+    sync::Arc,
     time::Duration,
 };
 use tokio::{net::*, time::timeout};
@@ -28,17 +29,18 @@ pub enum StreamType {
 }
 
 pub struct Certificate {
+    hostname: String,
     certificate_pem: String,
     key_pem: String,
 }
 
-pub fn create_certificate() -> StrResult<Certificate> {
-    let certificate = trace_err!(rcgen::generate_simple_self_signed(vec![format!(
-        "{}",
-        rand::random::<u128>()
-    )]))?;
+pub fn create_certificate(hostname: Option<String>) -> StrResult<Certificate> {
+    let hostname = hostname.unwrap_or(format!("{}.client.alvr", rand::random::<u16>()));
+
+    let certificate = trace_err!(rcgen::generate_simple_self_signed(vec![hostname.clone()]))?;
 
     Ok(Certificate {
+        hostname,
         certificate_pem: trace_err!(certificate.serialize_pem())?,
         key_pem: certificate.serialize_private_key_pem(),
     })
@@ -46,7 +48,7 @@ pub fn create_certificate() -> StrResult<Certificate> {
 
 pub async fn search_client_loop<F: Future>(
     client_ip: Option<String>,
-    client_found_cb: impl Fn(IpAddr, String) -> F,
+    client_found_cb: impl Fn(IpAddr, Identity) -> F,
 ) -> StrResult {
     let mut handshake_socket =
         trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, CONTROL_PORT)).await)?;
@@ -112,7 +114,18 @@ pub async fn search_client_loop<F: Future>(
             }
         }
 
-        client_found_cb(address.ip(), handshake_packet.certificate_pem).await;
+        let identity = match handshake_packet.identity {
+            Some(id) => id,
+            None => {
+                warn!(
+                    id: LogId::ClientFoundInvalid,
+                    "Received handshake packet: no identity",
+                );
+                continue;
+            }
+        };
+
+        client_found_cb(address.ip(), identity).await;
     }
 }
 
@@ -133,6 +146,7 @@ pub struct ControlSocket<R, S> {
 impl ControlSocket<ServerControlPacket, ClientControlPacket> {
     pub async fn connect_to_server(
         server_config: ServerConfigPacket,
+        hostname: String,
         certificate_pem: String,
     ) -> StrResult<(Self, ClientConfigPacket)> {
         let handshake_address = SocketAddr::V4(SocketAddrV4::new(MULTICAST_ADDR, CONTROL_PORT));
@@ -147,7 +161,10 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
         let client_handshake_packet = trace_err!(bincode::serialize(&HandshakePacket {
             alvr_name: ALVR_NAME.into(),
             version: ALVR_CLIENT_VERSION.into(),
-            certificate_pem
+            identity: Some(Identity {
+                hostname,
+                certificate_pem
+            }),
         }))?;
 
         loop {
@@ -279,7 +296,7 @@ impl ControlSocket<ClientControlPacket, ServerControlPacket> {
         let handshake_packet = HandshakePacket {
             alvr_name: ALVR_NAME.into(),
             version: ALVR_SERVER_VERSION.into(),
-            certificate_pem: "".into(),
+            identity: None,
         };
 
         let (receiver_socket, sender_socket) = socket.split();
@@ -360,17 +377,149 @@ trait StreamSocket {
     fn send_unreliable(&self, stream_id: u8);
 }
 
-struct QuicStreamSocket {}
+struct QuicStreamSocket {
+    connection: quinn::Connection,
+}
 
 impl QuicStreamSocket {
-    async fn connect_to_client(
-        peer_ip: IpAddr,
+    async fn try_connect(peer_addr: SocketAddr, incoming: &mut quinn::Incoming) -> StrResult {
+        let new_connection = trace_err!(trace_none!(incoming.next().await)?.await)?;
+
+        if new_connection.connection.remote_address() != peer_addr {
+            return trace_str!("Found wrong address");
+        }
+
+        Ok(())
+    }
+
+    // this method creates a "server socket" for the client to listen and connect to the server
+    async fn connect_to_server(
+        server_ip: IpAddr,
         port: u16,
-        send_small_packets_unreliably: bool,
+        certificate_pem: String,
+        key_pem: String,
+        config: QuicConfig,
     ) -> StrResult<Self> {
-        let builder = quinn::Endpoint::builder();
-        // builder.listen(config);
-        // quinn::ClientConfigBuilder::default()
+        let mut transport_config = quinn::TransportConfig::default();
+        if let Some(val) = config.stream_window_bidi {
+            transport_config.stream_window_bidi(val);
+        }
+        if let Some(val) = config.stream_window_uni {
+            transport_config.stream_window_uni(val);
+        }
+        if let Some(val) = config.max_idle_timeout_ms {
+            trace_err!(
+                transport_config.max_idle_timeout(val.into_option().map(Duration::from_millis))
+            )?;
+        }
+        if let Some(val) = config.stream_receive_window {
+            transport_config.stream_receive_window(val);
+        }
+        if let Some(val) = config.receive_window {
+            transport_config.receive_window(val);
+        }
+        if let Some(val) = config.send_window {
+            transport_config.send_window(val);
+        }
+        if let Some(val) = config.max_tlps {
+            transport_config.max_tlps(val);
+        }
+        if let Some(val) = config.packet_threshold {
+            transport_config.packet_threshold(val);
+        }
+        if let Some(val) = config.time_threshold {
+            transport_config.time_threshold(val);
+        }
+        if let Some(val) = config.initial_rtt_ms {
+            transport_config.initial_rtt(Duration::from_millis(val));
+        }
+        if let Some(val) = config.persistent_congestion_threshold {
+            transport_config.persistent_congestion_threshold(val);
+        }
+        if let Some(val) = config.keep_alive_interval_ms {
+            transport_config.keep_alive_interval(val.into_option().map(Duration::from_millis));
+        }
+        if let Some(val) = config.crypto_buffer_size {
+            transport_config.crypto_buffer_size(val as _);
+        }
+        if let Some(val) = config.allow_spin {
+            transport_config.allow_spin(val);
+        }
+        if let Some(val) = config.datagram_receive_buffer_size {
+            transport_config.datagram_receive_buffer_size(val.into_option().map(|val| val as _));
+        }
+        if let Some(val) = config.datagram_send_buffer_size {
+            transport_config.datagram_send_buffer_size(val as _);
+        }
+
+        let mut socket_config = quinn::ServerConfig::default();
+        socket_config.transport = Arc::new(transport_config);
+
+        let mut socket_config = quinn::ServerConfigBuilder::new(socket_config);
+
+        if let Some(val) = config.use_stateless_retry {
+            socket_config.use_stateless_retry(val);
+        }
+
+        let private_key = trace_err!(quinn::PrivateKey::from_pem(key_pem.as_bytes()))?;
+        let cert_chain = trace_err!(quinn::CertificateChain::from_pem(
+            certificate_pem.as_bytes()
+        ))?;
+        trace_err!(socket_config.certificate(cert_chain, private_key))?;
+
+        let socket_config = socket_config.build();
+        debug!("QUIC socket config: {:?}", socket_config);
+
+        let mut endpoint = quinn::Endpoint::builder();
+        endpoint.listen(socket_config);
+
+        let (_, mut incoming) = trace_err!(endpoint.bind(&SocketAddr::new(LOCAL_IP, port)))?;
+
+        let peer_addr = SocketAddr::new(server_ip, port);
+        loop {
+            if let Err(e) = QuicStreamSocket::try_connect(peer_addr, &mut incoming).await {
+                warn!("Error while listening for server: {}", e);
+            }
+        }
+
+        todo!()
+    }
+
+    // this method creates a "client socket" for the server to connect to the client
+    async fn connect_to_client(
+        client_ip: IpAddr,
+        port: u16,
+        client_identity: Identity,
+        config: QuicConfig,
+    ) -> StrResult<Self> {
+        let mut endpoint = quinn::Endpoint::builder();
+
+        let mut socket_config = quinn::ClientConfigBuilder::default();
+        trace_err!(socket_config.add_certificate_authority(trace_err!(
+            quinn::Certificate::from_pem(client_identity.certificate_pem.as_bytes())
+        )?))?;
+        if config.enable_0rtt {
+            socket_config.enable_0rtt();
+        }
+        if config.enable_keylog {
+            socket_config.enable_keylog();
+        }
+        // socket_config.protocols(...);
+
+        let socket_config = socket_config.build();
+        debug!("QUIC socket config: {:?}", socket_config);
+
+        endpoint.default_client_config(socket_config);
+
+        let (endpoint, _) = trace_err!(endpoint.bind(&SocketAddr::new(LOCAL_IP, port)))?;
+
+        let new_connection = trace_err!(
+            trace_err!(
+                endpoint.connect(&SocketAddr::new(client_ip, port), &client_identity.hostname)
+            )?
+            .await
+        )?;
+
         todo!()
     }
 }
@@ -384,9 +533,10 @@ pub struct StreamManager {
 }
 
 impl StreamManager {
-    pub async fn new(
+    pub async fn connect_to_client(
         peer_ip: IpAddr,
         port: u16,
+        client_identity: Identity,
         stream_socket_config: SocketConfig,
     ) -> StrResult<Self> {
         todo!()

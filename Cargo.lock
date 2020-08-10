@@ -97,7 +97,6 @@ dependencies = [
  "log 0.4.11",
  "msgbox",
  "parking_lot",
- "serde",
  "serde_json",
  "tokio",
  "walkdir",

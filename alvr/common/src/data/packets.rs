@@ -4,11 +4,17 @@ use nalgebra::{Point3, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Identity {
+    pub hostname: String,
+    pub certificate_pem: String,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct HandshakePacket {
     pub alvr_name: String,
     pub version: String,
-    pub certificate_pem: String,
+    pub identity: Option<Identity>
 }
 
 #[derive(Serialize, Deserialize, Clone)]

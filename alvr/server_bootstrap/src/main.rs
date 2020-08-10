@@ -8,8 +8,6 @@ use std::env;
 fn window_mode() -> StrResult {
     let mutex = single_instance::SingleInstance::new("alvr_server_bootstrap_mutex").unwrap();
     if mutex.is_single() {
-        if steamvr_bin_dir().is_err() {}
-
         maybe_delete_alvr_dir_store();
 
         if get_alvr_dir().is_err() {

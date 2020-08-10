@@ -6,11 +6,12 @@ mod logging_backend;
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_common::{data::*, logging::*, process::*, sockets::*, *};
-use futures::{future, SinkExt};
+use futures::SinkExt;
 use lazy_static::lazy_static;
 use lazy_static_include::*;
 use parking_lot::Mutex;
 use std::{
+    collections::{hash_map::Entry, HashMap, HashSet},
     convert::Infallible,
     ffi::{c_void, CStr, CString},
     net::IpAddr,
@@ -120,6 +121,74 @@ async fn set_session_handler(
     }
 }
 
+enum ClientListAction {
+    AddIfMissing(IpAddr),
+    TrustAndMaybeAddIp(Option<IpAddr>),
+    RemoveIpOrEntry(Option<IpAddr>),
+}
+
+async fn update_client_list(
+    session_manager: Arc<AMutex<SessionManager>>,
+    certificate_pem: String,
+    action: ClientListAction,
+    update_client_listeners_notifier: broadcast::Sender<()>,
+) {
+    let now_ms = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+
+    let session_manager_ref = &mut session_manager.lock().await;
+    let session_desc_ref =
+        &mut session_manager_ref.get_mut(SERVER_SESSION_UPDATE_ID, SessionUpdateType::ClientList);
+
+    let maybe_client_entry = session_desc_ref.last_clients.entry(certificate_pem);
+
+    match action {
+        ClientListAction::AddIfMissing(ip) => match maybe_client_entry {
+            Entry::Occupied(mut existing_entry) => {
+                let client_connection_ref = existing_entry.get_mut();
+                client_connection_ref.last_update_ms_since_epoch = now_ms as _;
+                client_connection_ref.last_ip = ip;
+            }
+            Entry::Vacant(new_entry) => {
+                let client_connection_desc = ClientConnectionDesc {
+                    trusted: false,
+                    last_update_ms_since_epoch: now_ms as _,
+                    last_ip: ip,
+                    manual_ips: HashSet::new(),
+                    device_name: None,
+                };
+                new_entry.insert(client_connection_desc);
+            }
+        },
+        ClientListAction::TrustAndMaybeAddIp(maybe_ip) => {
+            if let Entry::Occupied(mut entry) = maybe_client_entry {
+                let client_connection_ref = entry.get_mut();
+                client_connection_ref.trusted = true;
+                if let Some(ip) = maybe_ip {
+                    client_connection_ref.manual_ips.insert(ip);
+                }
+            }
+            // else: never happens. The UI cannot request a new entry creation because in that case
+            // it wouldn't have the certificate
+        }
+        ClientListAction::RemoveIpOrEntry(maybe_ip) => {
+            if let Entry::Occupied(mut entry) = maybe_client_entry {
+                if let Some(ip) = maybe_ip {
+                    entry.get_mut().manual_ips.remove(&ip);
+                } else {
+                    entry.remove_entry();
+                }
+            }
+        }
+    }
+
+    if let Err(e) = update_client_listeners_notifier.send(()) {
+        warn!("Failed to notify client list update: {:?}", e);
+    }
+}
+
 async fn web_server(
     session_manager: Arc<AMutex<SessionManager>>,
     log_sender: broadcast::Sender<String>,
@@ -135,53 +204,57 @@ async fn web_server(
     let settings_schema_request = warp::path("settings-schema")
         .map(|| reply::json(&settings_schema(settings_cache_default())));
 
-    let session_requests =
-        warp::path("session").and(
-            warp::get()
-                .and_then({
-                    let session_manager = session_manager.clone();
-                    move || {
-                        let session_manager = session_manager.clone();
-                        async move {
-                            Ok::<_, Infallible>(reply::json(session_manager.lock().await.get()))
-                        }
-                    }
-                })
-                .or(warp::path!(String / String).and(body::json()).and_then({
-                    let session_manager = session_manager.clone();
-                    move |update_type: String,
-                          update_author_id: String,
-                          value: serde_json::Value| {
-                        settings_changed.store(true, Ordering::Relaxed);
-                        set_session_handler(
-                            session_manager.clone(),
-                            update_type,
-                            update_author_id,
-                            value,
-                        )
-                    }
-                })),
-        );
+    let get_session_request = warp::get().and(warp::path("session")).and_then({
+        let session_manager = session_manager.clone();
+        move || {
+            let session_manager = session_manager.clone();
+            async move { Ok::<_, Infallible>(reply::json(session_manager.lock().await.get())) }
+        }
+    });
+    let post_session_request = warp::post()
+        .and(warp::path!("session" / String / String))
+        .and(warp::post())
+        .and(body::json())
+        .and_then({
+            let session_manager = session_manager.clone();
+            move |update_type: String, update_author_id: String, value: serde_json::Value| {
+                settings_changed.store(true, Ordering::Relaxed);
+                set_session_handler(
+                    session_manager.clone(),
+                    update_type,
+                    update_author_id,
+                    value,
+                )
+            }
+        });
 
     let log_subscription = warp::path("log").and(warp::ws()).map(move |ws: Ws| {
         let log_receiver = log_sender.subscribe();
         ws.on_upgrade(|socket| subscribed_to_log(socket, log_receiver))
     });
 
-    let driver_registration_requests = warp::path!("driver" / String).map({
-        |action_string: String| {
-            let alvr_dir = get_alvr_dir().unwrap();
-            let res = show_err(match action_string.as_str() {
-                "register" => driver_registration(&alvr_dir.clone(), true),
-                "unregister" => driver_registration(&alvr_dir.clone(), false),
-                "unregister-all" => unregister_all_drivers(),
-                _ => return reply::with_status(reply(), StatusCode::BAD_REQUEST),
+    let register_driver_request = warp::path("driver/register").map(|| {
+        if driver_registration(&get_alvr_dir().unwrap(), true).is_ok() {
+            reply::with_status(reply(), StatusCode::OK)
+        } else {
+            reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    });
+    let unregister_driver_request =
+        warp::path("driver/unregister")
+            .and(body::json())
+            .map(|path: PathBuf| {
+                if driver_registration(&path, false).is_ok() {
+                    reply::with_status(reply(), StatusCode::OK)
+                } else {
+                    reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
+                }
             });
-            if res.is_ok() {
-                reply::with_status(reply(), StatusCode::OK)
-            } else {
-                reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
-            }
+    let list_drivers_request = warp::path("driver/list").map(|| {
+        if let Ok(list) = get_registered_drivers() {
+            reply::json(&list)
+        } else {
+            reply::json(&Vec::<PathBuf>::new())
         }
     });
 
@@ -203,24 +276,38 @@ async fn web_server(
         warp::reply()
     });
 
-    let client_trusted_request = warp::path("trust_client").and(body::json()).and_then({
+    let trust_client_request = warp::path("clients/trust").and(body::json()).and_then({
         let session_manager = session_manager.clone();
-        move |ip: IpAddr| {
-            let update_client_listeners_notifier = update_client_listeners_notifier.clone();
+        let update_client_listeners_notifier = update_client_listeners_notifier.clone();
+        move |(cert_pem, ip): (String, Option<IpAddr>)| {
             let session_manager = session_manager.clone();
+            let update_client_listeners_notifier = update_client_listeners_notifier.clone();
             async move {
-                let mut session_manager_ref = session_manager.lock().await;
-                let session_ref =
-                    &mut *session_manager_ref.get_mut("", SessionUpdateType::ClientList);
-                let maybe_client_entry_ref =
-                    session_ref.last_clients.iter_mut().find(|c| c.ip == ip);
-                if let Some(client_entry_ref) = maybe_client_entry_ref {
-                    client_entry_ref.trusted = true;
-                }
+                update_client_list(
+                    session_manager,
+                    cert_pem,
+                    ClientListAction::TrustAndMaybeAddIp(ip),
+                    update_client_listeners_notifier,
+                )
+                .await;
 
-                if let Err(e) = update_client_listeners_notifier.send(()) {
-                    warn!("Failed to notify client listeners restart: {:?}", e);
-                };
+                Ok::<_, Infallible>(reply::with_status(reply(), StatusCode::OK))
+            }
+        }
+    });
+    let remove_client_request = warp::path("clients/remove").and(body::json()).and_then({
+        let session_manager = session_manager.clone();
+        move |(cert_pem, ip): (String, Option<IpAddr>)| {
+            let session_manager = session_manager.clone();
+            let update_client_listeners_notifier = update_client_listeners_notifier.clone();
+            async move {
+                update_client_list(
+                    session_manager,
+                    cert_pem,
+                    ClientListAction::RemoveIpOrEntry(ip),
+                    update_client_listeners_notifier,
+                )
+                .await;
 
                 Ok::<_, Infallible>(reply::with_status(reply(), StatusCode::OK))
             }
@@ -240,13 +327,17 @@ async fn web_server(
     let web_server_future = warp::serve(
         index_request
             .or(settings_schema_request)
-            .or(session_requests)
+            .or(get_session_request)
+            .or(post_session_request)
             .or(log_subscription)
-            .or(driver_registration_requests)
+            .or(register_driver_request)
+            .or(unregister_driver_request)
+            .or(list_drivers_request)
             .or(firewall_rules_requests)
             .or(audio_devices_request)
             .or(restart_steamvr_request)
-            .or(client_trusted_request)
+            .or(trust_client_request)
+            .or(remove_client_request)
             .or(version_request)
             .or(files_requests)
             .with(reply::with::header(
@@ -262,41 +353,16 @@ async fn web_server(
     }
 }
 
-async fn client_found_callback(session_manager: Arc<AMutex<SessionManager>>, client_ip: IpAddr) {
-    let now_ms = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_millis();
-
-    let session_manager_ref = &mut session_manager.lock().await;
-    let session_desc_ref =
-        &mut session_manager_ref.get_mut(SERVER_SESSION_UPDATE_ID, SessionUpdateType::ClientList);
-
-    let maybe_known_client_ref = session_desc_ref
-        .last_clients
-        .iter_mut()
-        .find(|connection_desc| connection_desc.ip == client_ip);
-
-    if let Some(known_client_ref) = maybe_known_client_ref {
-        known_client_ref.last_update_ms_since_epoch = now_ms as _;
-    } else {
-        session_desc_ref.last_clients.push(ClientConnectionDesc {
-            trusted: false,
-            manually_added: false,
-            last_update_ms_since_epoch: now_ms as _,
-            ip: client_ip,
-            device_name: None,
-        });
-    }
-}
-
 async fn create_control_socket(
-    client_ip: IpAddr,
+    clients_data: HashMap<IpAddr, String>,
     settings: Settings,
-) -> StrResult<ControlSocket<ClientControlPacket, ServerControlPacket>> {
+) -> StrResult<(
+    String,
+    ControlSocket<ClientControlPacket, ServerControlPacket>,
+)> {
     loop {
         let maybe_control_socket = ControlSocket::connect_to_client(
-            client_ip,
+            &clients_data.keys().cloned().collect::<Vec<_>>(),
             |server_config: ServerConfigPacket, server_ip| {
                 let eye_width;
                 let eye_height;
@@ -329,7 +395,11 @@ async fn create_control_socket(
         .await;
 
         match maybe_control_socket {
-            Ok(control_socket) => break Ok(control_socket),
+            Ok(control_socket) => {
+                let certificate_pem =
+                    trace_none!(clients_data.get(&control_socket.peer_ip()))?.clone();
+                break Ok((certificate_pem, control_socket));
+            }
             Err(e) => warn!("{}", e),
         }
     }
@@ -337,6 +407,7 @@ async fn create_control_socket(
 
 async fn setup_streams(
     settings: Settings,
+    certificate_pem: String,
     control_socket: &ControlSocket<ClientControlPacket, ServerControlPacket>,
 ) -> StrResult {
     let stream_manager = StreamManager::new(
@@ -363,37 +434,45 @@ async fn connection_loop(
     loop {
         let mut update_client_listeners_receiver = update_client_listeners_notifier.subscribe();
 
-        let client_discovery = async {
-            let res = search_client_loop(None, |client_ip| {
-                client_found_callback(session_manager.clone(), client_ip)
-            })
-            .await;
+        let client_discovery = {
+            let session_manager = session_manager.clone();
+            let update_client_listeners_notifier = update_client_listeners_notifier.clone();
+            async move {
+                let res = search_client_loop(None, {
+                    |client_ip, certificate_pem| {
+                        update_client_list(
+                            session_manager.clone(),
+                            certificate_pem,
+                            ClientListAction::AddIfMissing(client_ip),
+                            update_client_listeners_notifier.clone(),
+                        )
+                    }
+                })
+                .await;
 
-            Err::<(), _>(res.err().unwrap())
+                Err::<(), _>(res.err().unwrap())
+            }
         };
 
-        let get_control_sockets = session_manager
-            .lock()
-            .await
-            .get()
-            .last_clients
-            .iter()
-            .map(|client| Box::pin(create_control_socket(client.ip, settings_cache.clone())))
-            .collect::<Vec<_>>();
+        let clients_data = session_manager.lock().await.get().last_clients.iter().fold(
+            HashMap::new(),
+            |mut clients_data, (cert_pem, client)| {
+                clients_data.insert(client.last_ip, cert_pem.clone());
+                clients_data.extend(client.manual_ips.iter().map(|&ip| (ip, cert_pem.clone())));
+                clients_data
+            },
+        );
+        let get_control_socket = create_control_socket(clients_data, settings_cache.clone());
 
-        // launch all futures at once, get the output of the first that completes, cancel all other
-        // futures.
-        let mut control_socket: ControlSocket<ClientControlPacket, ServerControlPacket> = tokio::select! {
+        let (certificate_pem, mut control_socket) = tokio::select! {
             Err(e) = client_discovery => break trace_str!("Client discovery failed: {}", e),
-            (Ok(control_socket), _, _) = future::select_all(get_control_sockets) => {
-                control_socket
-            }
+            Ok(pair) = get_control_socket => pair,
             _ = update_client_listeners_receiver.recv() => continue,
             _ = shutdown_receiver.recv() => break Ok(()),
             else => unreachable!()
         };
 
-        setup_streams(settings_cache.clone(), &control_socket).await?;
+        setup_streams(settings_cache.clone(), certificate_pem, &control_socket).await?;
 
         tokio::select! {
             _ = control_socket.recv() => continue,

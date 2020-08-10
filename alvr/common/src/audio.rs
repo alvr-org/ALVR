@@ -1,6 +1,7 @@
 use crate::*;
 // use cpal::traits::{DeviceTrait, HostTrait, DeviceTrait};
 
+#[cfg(windows)]
 use std::ptr;
 #[cfg(windows)]
 use widestring::*;

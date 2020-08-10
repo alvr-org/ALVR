@@ -1,3 +1,6 @@
+// Note: for the StreamManager, the client uses a server socket, the server uses a client socket.
+// This is because of certificate management. The server needs to trust a client and its certificate
+
 use crate::{data::*, logging::*, *};
 use async_bincode::*;
 use futures::prelude::*;
@@ -14,9 +17,36 @@ const CONTROL_PORT: u16 = 9943;
 const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 256;
 const CLIENT_HANDSHAKE_RESEND_INTERVAL: Duration = Duration::from_secs(1);
 
+pub enum StreamType {
+    Statistics, // used as a heartbeat
+    Input,
+    Haptics,
+    PlayspaceSync,
+    AudioStart,
+    Audio,
+    Video,
+}
+
+pub struct Certificate {
+    certificate_pem: String,
+    key_pem: String,
+}
+
+pub fn create_certificate() -> StrResult<Certificate> {
+    let certificate = trace_err!(rcgen::generate_simple_self_signed(vec![format!(
+        "{}",
+        rand::random::<u128>()
+    )]))?;
+
+    Ok(Certificate {
+        certificate_pem: trace_err!(certificate.serialize_pem())?,
+        key_pem: certificate.serialize_private_key_pem(),
+    })
+}
+
 pub async fn search_client_loop<F: Future>(
     client_ip: Option<String>,
-    client_found_cb: impl Fn(IpAddr) -> F,
+    client_found_cb: impl Fn(IpAddr, String) -> F,
 ) -> StrResult {
     let mut handshake_socket =
         trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, CONTROL_PORT)).await)?;
@@ -82,7 +112,7 @@ pub async fn search_client_loop<F: Future>(
             }
         }
 
-        client_found_cb(address.ip()).await;
+        client_found_cb(address.ip(), handshake_packet.certificate_pem).await;
     }
 }
 
@@ -103,6 +133,7 @@ pub struct ControlSocket<R, S> {
 impl ControlSocket<ServerControlPacket, ClientControlPacket> {
     pub async fn connect_to_server(
         server_config: ServerConfigPacket,
+        certificate_pem: String,
     ) -> StrResult<(Self, ClientConfigPacket)> {
         let handshake_address = SocketAddr::V4(SocketAddrV4::new(MULTICAST_ADDR, CONTROL_PORT));
 
@@ -116,6 +147,7 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
         let client_handshake_packet = trace_err!(bincode::serialize(&HandshakePacket {
             alvr_name: ALVR_NAME.into(),
             version: ALVR_CLIENT_VERSION.into(),
+            certificate_pem
         }))?;
 
         loop {
@@ -230,19 +262,24 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
 
 impl ControlSocket<ClientControlPacket, ServerControlPacket> {
     pub async fn connect_to_client(
-        client_ip: IpAddr,
+        client_ips: &[IpAddr],
         config_callback: impl FnOnce(ServerConfigPacket, IpAddr) -> ClientConfigPacket,
     ) -> StrResult<Self> {
-        let client_address = SocketAddr::new(client_ip, CONTROL_PORT);
+        let client_addresses = client_ips
+            .iter()
+            .map(|&ip| SocketAddr::new(ip, CONTROL_PORT))
+            .collect::<Vec<_>>();
+        // let client_address = SocketAddr::new(client_ip, CONTROL_PORT);
 
         let mut socket = trace_err!(
-            TcpStream::connect(client_address).await,
+            TcpStream::connect(client_addresses.as_slice()).await,
             "Failed to connect to client"
         )?;
 
         let handshake_packet = HandshakePacket {
             alvr_name: ALVR_NAME.into(),
             version: ALVR_SERVER_VERSION.into(),
+            certificate_pem: "".into(),
         };
 
         let (receiver_socket, sender_socket) = socket.split();
@@ -276,7 +313,7 @@ impl ControlSocket<ClientControlPacket, ServerControlPacket> {
                 )?;
 
                 Ok(Self {
-                    peer_ip: client_ip,
+                    peer_ip: trace_err!(socket.peer_addr())?.ip(),
                     socket: AsyncBincodeStream::from(socket).for_async(),
                 })
             }
@@ -323,7 +360,20 @@ trait StreamSocket {
     fn send_unreliable(&self, stream_id: u8);
 }
 
-struct QuicSocket {}
+struct QuicStreamSocket {}
+
+impl QuicStreamSocket {
+    async fn connect_to_client(
+        peer_ip: IpAddr,
+        port: u16,
+        send_small_packets_unreliably: bool,
+    ) -> StrResult<Self> {
+        let builder = quinn::Endpoint::builder();
+        // builder.listen(config);
+        // quinn::ClientConfigBuilder::default()
+        todo!()
+    }
+}
 
 // impl StreamSocket for QuicSocket {
 
@@ -334,7 +384,11 @@ pub struct StreamManager {
 }
 
 impl StreamManager {
-    pub async fn new(peer_ip: IpAddr, port: u16, stream_socket_config: SocketConfig) -> StrResult<Self> {
+    pub async fn new(
+        peer_ip: IpAddr,
+        port: u16,
+        stream_socket_config: SocketConfig,
+    ) -> StrResult<Self> {
         todo!()
     }
 }

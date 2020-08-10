@@ -8,6 +8,7 @@ use std::net::IpAddr;
 pub struct HandshakePacket {
     pub alvr_name: String,
     pub version: String,
+    pub certificate_pem: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

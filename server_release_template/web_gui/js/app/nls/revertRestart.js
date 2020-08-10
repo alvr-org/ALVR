@@ -10,6 +10,6 @@ define({
         "okRestartButton":"OK",
         "cancelRestartButton" : "Cancel",
     },
-    "it-it": true,
+    "it": true,
     "de-de": false
 });

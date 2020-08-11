@@ -257,20 +257,34 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
         ws.on_upgrade(|socket| subscribed_to_log(socket, log_receiver))
     });
 
-    let driver_registration_requests =
-        warp::path!("driver" / String).map(|action_string: String| {
-            let res = show_err(match action_string.as_str() {
-                "register" => driver_registration(&alvr_server_dir(), true),
-                "unregister" => driver_registration(&alvr_server_dir(), false),
-                "unregister-all" => unregister_all_drivers(),
-                _ => return reply::with_status(reply(), StatusCode::BAD_REQUEST),
-            });
-            if res.is_ok() {
-                reply::with_status(reply(), StatusCode::OK)
-            } else {
-                reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
-            }
-        });
+    let driver_registration_requests = warp::path("driver").and(
+        warp::path("register")
+            .map(|| {
+                if driver_registration(&alvr_server_dir(), true).is_ok() {
+                    reply::with_status(reply(), StatusCode::OK)
+                } else {
+                    reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
+                }
+            })
+            .or(warp::path("unregister")
+                .and(body::json())
+                .map(|path: PathBuf| {
+                    if driver_registration(&path, false).is_ok() {
+                        reply::with_status(reply(), StatusCode::OK)
+                    } else {
+                        reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
+                    }
+                }))
+            .or(warp::path("list").map(|| reply::json(&get_registered_drivers().unwrap_or(vec![]))))
+            // old API. todo: remove
+            .or(warp::path("unregister-all").map(|| {
+                if unregister_all_drivers().is_ok() {
+                    reply::with_status(reply(), StatusCode::OK)
+                } else {
+                    reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
+                }
+            })),
+    );
 
     let firewall_rules_requests =
         warp::path!("firewall-rules" / String).map(|action_str: String| {

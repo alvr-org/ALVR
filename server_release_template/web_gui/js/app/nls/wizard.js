@@ -26,6 +26,6 @@ define({
         "firewallFailed" : "Setting firewall rules failed",
         "firewallSuccess" : "Firewall rules successfully set"
     },
-    "it-it": true,
+    "it": true,
     "de-de": false
 });

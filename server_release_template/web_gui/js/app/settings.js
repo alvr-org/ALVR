@@ -54,7 +54,8 @@ define([
 
             fillNode(schema, "root", 0, $("#configContent"), "", undefined);
             updateSwitchContent();
-
+            updateOptionalContent();
+          
             setProperties(session.settingsCache, "_root");
 
             toggleAdvanced();
@@ -109,7 +110,7 @@ define([
         }
 
         function addChangeListener() {
-            $('.parameter input').change((evt) => {
+            $('.parameter input:not(.skipInput)').change((evt) => {
                 if (!updating) {
                     var el = $(evt.target);
                     self.storeParam(el);
@@ -254,9 +255,30 @@ define([
         function updateSwitchContent() {
             $(".switch").each((index, el) => {
                 var checked = $(el).find("input").first().prop("checked");
-                $(el).find(".card-body input").prop("disabled", !checked)
+                if(checked) {
+                    $(el).find(".card-body").show();
+                } else {
+                    $(el).find(".card-body").hide();
+                }
             })
         }
+
+        function updateOptionalContent() {     
+                
+            $(".optional").each((index, el) => {
+                var checked = $(el).find("input[type='checkbox']").first().prop("checked");   
+                      
+                if(checked) {  
+                    $(el).find(".optionalSet").button("toggle");
+                    $(el).find(".card-body").show();
+                } else {
+                    $(el).find(".optionalUnset").button("toggle");
+                    $(el).find(".card-body").hide();
+                }                
+            })              
+        }
+
+       
 
         function addListeners() {
             $("#toggleAdvanced").click(() => {
@@ -381,6 +403,13 @@ define([
                 return;
             }
 
+
+            //special case for optional and switch, values are now named with "_content"
+            if (parentType == "optional" || parentType == "switch" ) {
+                name = name + "_content";
+            }
+
+
             switch (node.type) {
 
                 case "section":
@@ -390,8 +419,7 @@ define([
                         element = createTab(element, path, name, advanced);
 
                     } else if (level > 1) {
-
-                        if (parentType != "switch") { //switch adds section
+                        if (parentType != "switch" && parentType != "optional") { //switch and optional add own sections
                             element = addContainer(element, path, name, advanced);
                         }
                     }
@@ -399,8 +427,6 @@ define([
                     var newPath = path + "_" + name;
                     if (parentType == "array") {
                         newPath = path;
-                    } else if (parentType == "switch") {
-                        newPath = path + "_" + name + "_content";
                     } else if (parentType == "choice") {
                         newPath = path;
                     }
@@ -457,6 +483,17 @@ define([
                     });
 
                     break;
+
+                case "optional":
+                    if (level == 1) {
+                        element = createTab(element, path, name, advanced);
+                        element = addOptionalContainer(element, path, name, advanced, node);
+                    } else if (level > 1) {
+                        element = addOptionalContainer(element, path, name, advanced, node);
+                    }
+
+                    fillNode(node.content.content, name, level + 1, element, path, node.type, node.content.advanced);
+                    break;         
 
                 case "integer":
                 case "float":
@@ -526,6 +563,54 @@ define([
             </div>`;
 
             element.append(el);
+            element = element.find(".card-body").last();
+
+            return element;
+        }
+
+        function addOptionalContainer(element, path, name, advanced, node) {
+
+            let checked = "";
+            if (node.content.defaultSet) {
+                checked = "checked";
+            }
+
+            var el = `<div class="parameter optional ${getAdvancedClass(advanced)}" >   
+                <div class="card-title">
+                    <div class="btn-group btn-group-sm" data-toggle="buttons">
+                        <label class="btn btn-primary optionalSet"><input class="skipInput" type="radio" name="${path}_${name}" id="${path}_${name}_setRadio" >Set</label>
+                        <label class="btn btn-primary optionalUnset"><input class="skipInput" type="radio" name="${path}_${name}" id="${path}_${name}_unsetRadio" >Unset</label>               
+                    </div>
+                    <input  id="${path}_${name}_set" type="checkbox" ${checked}  style="visibility:hidden" />
+                    <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">
+                    ${getI18n(path + "_" + name).name}</a> 
+                    ${self.getHelpReset(name + "_set", path, node.content.defaultSet)}
+                </div>   
+                <div id="collapse_${index}" class="collapse show">
+                    <div class="card-body">
+                    </div>      
+                </div> 
+            </div>`;
+
+            element.append(el);
+
+            $(document).ready( () => {
+            
+
+                $("#" + path + "_"  + name + "_setRadio").parent().click(() => {   
+                    $("#" + path + "_"  + name + "_set").prop("checked", true)
+                    $("#" + path + "_"  + name + "_set").change();                 
+                })
+                $("#" + path + "_"  + name + "_unsetRadio").parent().click(() => {                      
+                    $("#" + path + "_"  + name + "_set").prop("checked", false);
+                    $("#" + path + "_"  + name + "_set").change();
+                  
+                })
+
+            });
+
+            $("#" + path + "_" + name + "_set").on("change", updateOptionalContent);
+
             element = element.find(".card-body").last();
 
             return element;
@@ -719,7 +804,7 @@ define([
                 var template = compiledTemplate(revertRestartI18n);
                 $("#confirmModal").remove();
                 $("body").append(template);
-                $(document).ready(() => {              
+                $(document).ready(() => {
 
                     $('#confirmModal').modal({
                         backdrop: 'static',

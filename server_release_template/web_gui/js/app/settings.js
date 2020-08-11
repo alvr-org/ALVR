@@ -106,7 +106,7 @@ define([
                     var name = id.substring(id.lastIndexOf("_") + 1, id.length);
                     name = name.replace("-choice-", ""); 
 
-                    return { "name": name, "description": "" };
+                    return { "name": name, "description": undefined };
                 }
             }
         }
@@ -755,8 +755,13 @@ define([
 
         //helper
         self.getHelpReset = function (name, path, defaultVal, postFix = "") {
+            var getVisibility = function() {
+                if(getHelp(name, path) === undefined) {
+                    return `style="display:none"`;
+                }
+            }
             return `<div class="helpReset">
-                <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(name, path)}" ></i>
+                <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(name, path)}" ${getVisibility()}></i>
                 <i class="fa fa-redo fa-lg paramReset" name="${name}${postFix}" path="${path}" default="${defaultVal}")" ></i>
             </div>`;
         }

@@ -55,7 +55,7 @@ define([
             fillNode(schema, "root", 0, $("#configContent"), "", undefined);
             updateSwitchContent();
             updateOptionalContent();
-          
+
             setProperties(session.settingsCache, "_root");
 
             toggleAdvanced();
@@ -103,8 +103,10 @@ define([
                     return { "name": i18n[id + ".name"], "description": i18n[id + ".description"] };;
                 } else {
                     console.log("Missing i18n", `"${id}.name":"", \r\n "${id}.description":"", \r\n`);
+                    var name = id.substring(id.lastIndexOf("_") + 1, id.length);
+                    name = name.replace("-choice-", ""); 
 
-                    return { "name": id, "description": "" };
+                    return { "name": name, "description": "" };
                 }
             }
         }
@@ -255,7 +257,7 @@ define([
         function updateSwitchContent() {
             $(".switch").each((index, el) => {
                 var checked = $(el).find("input").first().prop("checked");
-                if(checked) {
+                if (checked) {
                     $(el).find(".card-body").show();
                 } else {
                     $(el).find(".card-body").hide();
@@ -263,22 +265,22 @@ define([
             })
         }
 
-        function updateOptionalContent() {     
-                
+        function updateOptionalContent() {
+
             $(".optional").each((index, el) => {
-                var checked = $(el).find("input[type='checkbox']").first().prop("checked");   
-                      
-                if(checked) {  
+                var checked = $(el).find("input[type='checkbox']").first().prop("checked");
+
+                if (checked) {
                     $(el).find(".optionalSet").button("toggle");
                     $(el).find(".card-body").show();
                 } else {
                     $(el).find(".optionalUnset").button("toggle");
                     $(el).find(".card-body").hide();
-                }                
-            })              
+                }
+            })
         }
 
-       
+
 
         function addListeners() {
             $("#toggleAdvanced").click(() => {
@@ -405,7 +407,7 @@ define([
 
 
             //special case for optional and switch, values are now named with "_content"
-            if (parentType == "optional" || parentType == "switch" ) {
+            if (parentType == "optional" || parentType == "switch") {
                 name = name + "_content";
             }
 
@@ -493,7 +495,7 @@ define([
                     }
 
                     fillNode(node.content.content, name, level + 1, element, path, node.type, node.content.advanced);
-                    break;         
+                    break;
 
                 case "integer":
                 case "float":
@@ -594,17 +596,17 @@ define([
 
             element.append(el);
 
-            $(document).ready( () => {
-            
+            $(document).ready(() => {
 
-                $("#" + path + "_"  + name + "_setRadio").parent().click(() => {   
-                    $("#" + path + "_"  + name + "_set").prop("checked", true)
-                    $("#" + path + "_"  + name + "_set").change();                 
+
+                $("#" + path + "_" + name + "_setRadio").parent().click(() => {
+                    $("#" + path + "_" + name + "_set").prop("checked", true)
+                    $("#" + path + "_" + name + "_set").change();
                 })
-                $("#" + path + "_"  + name + "_unsetRadio").parent().click(() => {                      
-                    $("#" + path + "_"  + name + "_set").prop("checked", false);
-                    $("#" + path + "_"  + name + "_set").change();
-                  
+                $("#" + path + "_" + name + "_unsetRadio").parent().click(() => {
+                    $("#" + path + "_" + name + "_set").prop("checked", false);
+                    $("#" + path + "_" + name + "_set").change();
+
                 })
 
             });

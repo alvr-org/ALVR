@@ -6,10 +6,11 @@ define([
     "json!app/resources/OculusRift.json",
     "json!app/resources/OculusTouch.json",
     "json!app/resources/ValveIndex.json",
+    "json!app/resources/HTCViveWand.json",
     "css!js/lib/selectal.min.css"
 
 
-], function (i18n, select, audio_devices, vive, rifts, touch, index) {
+], function (i18n, select, audio_devices, vive, rifts, touch, index, vivewand) {
     return function (alvrSettings) {
         var self = this;
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
@@ -66,12 +67,14 @@ define([
 
             const controllerBase = "#_root_headset_controllers_content_";
             const controllerMode = $(controllerBase + "modeIdx")
-            const controllerOptions = [touch, touch, index, index];
+            const controllerOptions = [touch, touch, index, index, vivewand, vivewand];
 
             controller.append(`<option value="0">Oculus Rift S</option>`);
             controller.append(`<option value="1">Oculus Rift S (no handtracking pinch)</option>`);
             controller.append(`<option value="2">Valve Index</option>`);
             controller.append(`<option value="3">Valve Index (no handtracking pinch)</option>`);
+            controller.append(`<option value="4">HTC Vive</option>`);
+            controller.append(`<option value="5">HTC Vive (no handtracking pinch)</option>`);
 
             const select = new Selectal('#_root_headset_controllers_content_controllerMode');
             controller = $("#_root_headset_controllers_content_controllerMode");

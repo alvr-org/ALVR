@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump-client-patch:
+        description: 'Bump client patch (1.2.X) version?'
+        required: true
+        default: true
+      bump-client-major:
+        description: 'Bump client minor (1.X.3) version?'
+        required: true
+        default: false
+      bump-client-release:
+        description: 'Bump client major (X.2.3) version?'
+        required: true
+        default: false
+      bump-server-patch:
+        description: 'Bump server patch (1.2.X) version?'
+        required: true
+        default: true
+      bump-server-major:
+        description: 'Bump server minor (1.X.3) version?'
+        required: true
+        default: false
+      bump-server-release:
+        description: 'Bump server major (X.2.3) version?'
+        required: true
+        default: false
+
+jobs:
+  #bump-version:
+   
+  build:
+    # Windows latest has Rust, Android NDK
+    # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
+    runs-on: windows-latest
+
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    - name: Build a release package.
+      run: cargo xtask publish
+      
+    - uses: actions/upload-artifact@v2
+      with:
+        name: Windows Server ZIP
+        path: build/alve_server_windows.zip

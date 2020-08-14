@@ -29,7 +29,12 @@ jobs:
           rust-version: stable
           targets: x86_64-pc-windows-msvc
       - name: Build and package ALVR (.zip, .pdb, .apk)
-        run: cargo xtask publish
+        run: |
+          rustup target list
+          rustup component list
+          rustup toolchain list
+          echo $PATH
+          cargo xtask publish
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1

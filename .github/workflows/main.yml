@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      client-version:
+        description: 'Client version'
+        required: true
+        default: '12.0.0'
+      server-version:
+        description: 'Server version'
+        required: true
+        default: '12.0.0'
+
+jobs:
+  #bump-version:
+   
+  build-windows:
+    # Windows latest has Rust, Android NDK
+    # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Build and package ALVR (.zip, .pdb, .apk)
+        run: cargo xtask publish
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.event.inputs.server-version }}
+          release_name: ALVR v${{ github.event.inputs.server-version }}
+          draft: true
+          prerelease: false
+      # Three release asset upload actions for three assets - .zip, .pdb and .apk
+      - name: Upload ALVR Windows Server .zip
+        id: upload-release-windows-zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/alvr_server_windows.zip
+          asset_name: alvr_server_windows.zip
+          asset_content_type: application/zip
+      - name: Upload ALVR Client .apk
+        id: upload-release-apk
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/alvr_client.apk
+          asset_name: alvr_client.apk
+          asset_content_type: application/vnd.android.package-archive
+      - name: Upload ALVR Windows Server .zip
+        id: upload-release-windows-pdb
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/alvr_server_driver.pdb
+          asset_name: alvr_server_driver.pdb
+          asset_content_type: application/octet-stream

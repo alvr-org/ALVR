@@ -28,6 +28,8 @@ define([
                     } else {                       
                         updateHeader(res.length, elementId);
 
+               
+                        $("#driverList_" + elementId + " table").empty(); //clears table, helps with race condition 
                         res.forEach(driver => {
 
                             $("#driverList_" + elementId + " table").append(`<tr>
@@ -39,7 +41,7 @@ define([
 
                         $(document).ready(() => {
                             $("#driverList_" + elementId + " * > .removeDriverButton").click((evt) => {
-                                const path = $(".removeDriverButton").attr("path");
+                                const path = $(evt.target).attr("path");
 
                                 $.ajax({
                                     type: "POST",

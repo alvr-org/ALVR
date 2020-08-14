@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.0.1
       - name: Build and package ALVR (.zip, .pdb, .apk)
         run: cargo xtask publish
       - name: Create Release

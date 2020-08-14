@@ -2,6 +2,8 @@
     min-height: 250px;
     display: flex;
     flex-direction: column;
+    max-height: 20vh;
+    
 }
 
 .btn-group label input {
@@ -14,5 +16,11 @@
     justify-content: center;
     display: flex;
     align-items: center;
+   
 
+}
+
+#installDriver {
+    margin-top: 10px;
+    margin-bottom: 10px;
 }

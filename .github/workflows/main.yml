@@ -23,8 +23,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1.0.1
+      - name: Use Rust toolchain x86_64-pc-windows-msvc
+        uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: stable
+          toolchain: x86_64-pc-windows-msvc
       - name: Build and package ALVR (.zip, .pdb, .apk)
         run: cargo xtask publish
       - name: Create Release

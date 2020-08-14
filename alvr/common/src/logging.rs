@@ -67,7 +67,6 @@ pub enum LogId {
     SettingsCacheExtrapolationFailed,
     ClientFoundOk,
     ClientFoundInvalid,
-    ClientFoundWrongIp,
     ClientFoundWrongVersion(String),
     IncompatibleServer,
 }

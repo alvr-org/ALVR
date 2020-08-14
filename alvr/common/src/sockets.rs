@@ -46,23 +46,30 @@ pub fn create_certificate(hostname: Option<String>) -> StrResult<Certificate> {
     })
 }
 
+fn handle_old_client(packet_bytes: &[u8]) {
+    if packet_bytes.len() > 5 {
+        if packet_bytes[..5] == b"\u01ALVR" {
+            warn!(id: LogId::ClientFoundWrongVersion("11 or previous"));
+        } else if packet_bytes[..4] == b"ALVR" {
+            warn!(id: LogId::ClientFoundWrongVersion("12.x.x"));
+        } else {
+            debug!("Found unrelated packet during client discovery");
+        }
+    } else {
+        debug!("Found unrelated packet during client discovery");
+    }
+}
+
 pub async fn search_client_loop<F: Future>(
-    client_ip: Option<String>,
     client_found_cb: impl Fn(IpAddr, Identity) -> F,
 ) -> StrResult {
     let mut handshake_socket =
         trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, CONTROL_PORT)).await)?;
-    trace_err!(handshake_socket.join_multicast_v4(MULTICAST_ADDR, Ipv4Addr::UNSPECIFIED))?;
-
-    let maybe_target_client_ip = match client_ip {
-        Some(ip_str) => Some(trace_err!(ip_str.parse::<IpAddr>(), "Client IP")?),
-        None => None,
-    };
 
     let mut packet_buffer = [0u8; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
 
     loop {
-        let (hanshake_packet_size, address) =
+        let (handshake_packet_size, address) =
             match handshake_socket.recv_from(&mut packet_buffer).await {
                 Ok(pair) => pair,
                 Err(e) => {
@@ -71,15 +78,13 @@ pub async fn search_client_loop<F: Future>(
                 }
             };
 
-        if let Some(ip) = maybe_target_client_ip {
-            if address.ip() != ip {
-                info!(id: LogId::ClientFoundWrongIp);
-                continue;
-            }
+        if address.ip() != MULTICAST_ADDR {
+            handle_old_client(&packet_buffer[..handshake_packet_size]);
+            continue;
         }
 
         let handshake_packet: HandshakePacket =
-            match bincode::deserialize(&packet_buffer[..hanshake_packet_size]) {
+            match bincode::deserialize(&packet_buffer[..handshake_packet_size]) {
                 Ok(client_handshake_packet) => client_handshake_packet,
                 Err(e) => {
                     warn!(

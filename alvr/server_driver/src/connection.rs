@@ -91,7 +91,7 @@ pub async fn connection_loop(
             let session_manager = session_manager.clone();
             let update_client_listeners_notifier = update_client_listeners_notifier.clone();
             async move {
-                let res = search_client_loop(None, {
+                let res = search_client_loop(
                     |client_ip, client_identity| {
                         update_client_list(
                             session_manager.clone(),
@@ -103,7 +103,7 @@ pub async fn connection_loop(
                             update_client_listeners_notifier.clone(),
                         )
                     }
-                })
+                )
                 .await;
 
                 Err::<(), _>(res.err().unwrap())

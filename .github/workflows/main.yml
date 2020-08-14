@@ -27,7 +27,7 @@ jobs:
         uses: hecrj/setup-rust-action@v1
         with:
           rust-version: stable
-          toolchain: x86_64-pc-windows-msvc
+          targets: x86_64-pc-windows-msvc
       - name: Build and package ALVR (.zip, .pdb, .apk)
         run: cargo xtask publish
       - name: Create Release

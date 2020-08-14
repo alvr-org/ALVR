@@ -19,6 +19,8 @@ jobs:
     # Windows latest has Rust, Android NDK
     # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
     runs-on: windows-latest
+    env:
+      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
 
     steps:
       - name: Checkout code
@@ -30,10 +32,7 @@ jobs:
           targets: x86_64-pc-windows-msvc
       - name: Build and package ALVR (.zip, .pdb, .apk)
         run: |
-          rustup target list
-          rustup component list
-          rustup toolchain list
-          echo $PATH
+          dir 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
           cargo xtask publish
       - name: Create Release
         id: create_release

@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # otherwise, push will fail
         
       # TODO: the actual version bump, using a script (or xtask)
       

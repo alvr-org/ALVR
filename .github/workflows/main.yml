@@ -24,11 +24,10 @@ jobs:
         
       # TODO: the actual version bump, using a script (or xtask)
       
-      - name: Push version bump
-        uses: actions-go/push@v1
+      - name: Push changes
+        uses: ad-m/github-push-action@master
         with:
-          commit-message: '[Auto] Bump version'
-          remote: origin
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           
   prepare_release:
     runs-on: windows-latest

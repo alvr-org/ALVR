@@ -316,7 +316,7 @@ fn main() {
 
         if args.finish().is_ok() {
             match subcommand.as_str() {
-                "build-server" => ok_or_exit(build_server(is_release), true),
+                "build-server" => ok_or_exit(build_server(is_release, true)),
                 "build-client" => ok_or_exit(build_client(is_release)),
                 "publish" => ok_or_exit(build_publish()),
                 "clean" => remove_build_dir(),

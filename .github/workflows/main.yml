@@ -14,7 +14,7 @@ on:
 
 jobs:
   bump_version:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     outputs:
       # TODO: use tag from step
       version_tag: v${{ github.event.inputs.server_version }}
@@ -32,10 +32,11 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           
   prepare_release:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     needs: [bump_version]
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
     steps:
       - name: Create Release
         id: create_release
@@ -59,7 +60,6 @@ jobs:
       # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
       # This is specific to the GitHub windows-latest runner.
       LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -95,3 +95,13 @@ jobs:
           asset_path: ./build/alvr_client.apk
           asset_name: alvr_client.apk
           asset_content_type: application/vnd.android.package-archive
+          
+  publish_release:
+    runs-on: ubuntu-latest
+    needs: [prepare_release, build_windows]
+    steps:
+      - uses: eregon/publish-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_id: ${{ needs.prepare_release.outputs.release_id }}

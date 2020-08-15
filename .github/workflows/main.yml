@@ -45,8 +45,8 @@ jobs:
         with:
           # Release tag is taken from the bump_version job.
           # If both client and server were bumped, format is v12.0.0, otherwise v12.0.0-server or v12.0.0-client
-          tag_name: ${{ needs.bump-version.outputs.version_tag }}
-          release_name: ALVR ${{ needs.bump-version.outputs.version_tag }}
+          tag_name: ${{ needs.bump_version.outputs.version_tag }}
+          release_name: ALVR ${{ needs.bump_version.outputs.version_tag }}
           draft: true
           prerelease: false
 

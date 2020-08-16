@@ -16,9 +16,13 @@ fn window_mode() -> StrResult {
         maybe_delete_alvr_dir_store();
 
         let current_path = trace_err!(env::current_exe())?;
-        let alvr_dir = trace_none!(current_path.parent())?;
+        let current_alvr_dir = trace_none!(current_path.parent())?;
 
-        if get_alvr_dir().is_err() {
+        let driver_registered = get_alvr_dir()
+            .ok()
+            .filter(|dir| dir == current_alvr_dir)
+            .is_some();
+        if !driver_registered {
             match get_registered_drivers() {
                 Ok(paths) => {
                     if !paths.is_empty() {
@@ -30,10 +34,11 @@ fn window_mode() -> StrResult {
                     return Ok(());
                 }
             }
-            driver_registration(alvr_dir, true)?;
+            driver_registration(current_alvr_dir, true)?;
         }
 
-        if load_session(&alvr_dir.join(SESSION_FNAME)).is_err() {
+        let first_time_launch = load_session(&current_alvr_dir.join(SESSION_FNAME)).is_err();
+        if first_time_launch {
             warn!(
                 "{} {}",
                 "If you didn't already, please install the latest Visual C++ Redistributable",

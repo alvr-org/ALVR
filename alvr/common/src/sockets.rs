@@ -48,10 +48,10 @@ pub fn create_certificate(hostname: Option<String>) -> StrResult<Certificate> {
 
 fn handle_old_client(packet_bytes: &[u8]) {
     if packet_bytes.len() > 5 {
-        if packet_bytes[..5] == b"\u01ALVR" {
-            warn!(id: LogId::ClientFoundWrongVersion("11 or previous"));
-        } else if packet_bytes[..4] == b"ALVR" {
-            warn!(id: LogId::ClientFoundWrongVersion("12.x.x"));
+        if packet_bytes[..5] == *b"\x01ALVR" {
+            warn!(id: LogId::ClientFoundWrongVersion("11 or previous".into()));
+        } else if packet_bytes[..4] == *b"ALVR" {
+            warn!(id: LogId::ClientFoundWrongVersion("12.x.x".into()));
         } else {
             debug!("Found unrelated packet during client discovery");
         }

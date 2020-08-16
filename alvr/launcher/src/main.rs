@@ -2,13 +2,21 @@
 
 mod logging_backend;
 
-use alvr_common::{logging::show_err, process::*, *};
+use alvr_common::{
+    data::{load_session, SESSION_FNAME},
+    logging::show_err,
+    process::*,
+    *,
+};
 use std::env;
 
 fn window_mode() -> StrResult {
     let mutex = single_instance::SingleInstance::new("alvr_launcher_mutex").unwrap();
     if mutex.is_single() {
         maybe_delete_alvr_dir_store();
+
+        let current_path = trace_err!(env::current_exe())?;
+        let alvr_dir = trace_none!(current_path.parent())?;
 
         if get_alvr_dir().is_err() {
             match get_registered_drivers() {
@@ -18,18 +26,20 @@ fn window_mode() -> StrResult {
                     }
                 }
                 Err(_) => {
-                    warn!("Please install SteamVR, run it once, then close it.".into());
+                    warn!("Please install SteamVR, run it once, then close it.");
                     return Ok(());
+                }
             }
-
-            let current_path = trace_err!(env::current_exe())?;
-            let alvr_dir = trace_none!(current_path.parent())?;
             driver_registration(alvr_dir, true)?;
         }
-        
-        if load_session(SESSION_FNAME).is_err() {
-            warn!("If you didn't already, please install the latest Visual C++ Redistributable package. Go to github.com/JackD83/ALVR for the instructions.");
-        } 
+
+        if load_session(&alvr_dir.join(SESSION_FNAME)).is_err() {
+            warn!(
+                "{} {}",
+                "If you didn't already, please install the latest Visual C++ Redistributable",
+                "package. Go to github.com/JackD83/ALVR for the instructions."
+            );
+        }
 
         maybe_launch_steamvr();
 

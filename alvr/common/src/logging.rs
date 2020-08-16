@@ -1,6 +1,6 @@
 use futures::Future;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::{fmt::Display, thread};
 
 pub type StrResult<T = ()> = Result<T, String>;
 
@@ -21,7 +21,7 @@ pub fn set_panic_hook() {
 
         log::error!("{}", err_str);
 
-         #[cfg(not(android))]
+        #[cfg(not(target_os = "android"))]
         thread::spawn(move || {
             msgbox::create("ALVR panicked", &err_str, msgbox::IconType::Error);
         });
@@ -33,10 +33,15 @@ pub fn show_err<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
     res.map_err(|e| {
         log::error!("{}", e);
 
-        #[cfg(not(android))]
+        let err_string = e.to_string();
+
+        #[cfg(not(target_os = "android"))]
         thread::spawn(move || {
-            let message = e.to_owned();
-            msgbox::create("ALVR encountered an error", &message, msgbox::IconType::Error);
+            msgbox::create(
+                "ALVR encountered an error",
+                &err_string,
+                msgbox::IconType::Error,
+            );
         });
     })
 }

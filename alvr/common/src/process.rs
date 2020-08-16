@@ -242,7 +242,7 @@ pub fn restore_driver_paths_backup() -> StrResult {
     let backup_path = env::temp_dir().join(DRIVER_BACKUP_FNAME);
 
     let paths = trace_err!(fs::read_to_string(&backup_path))?
-        .split("\n")
+        .split('\n')
         .map(PathBuf::from)
         .collect::<Vec<_>>();
 

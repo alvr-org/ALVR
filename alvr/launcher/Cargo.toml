@@ -7,6 +7,8 @@ edition = '2018'
 
 [dependencies]
 single-instance = '^0.1.2'
+log = '^0.4.8'
+fern = '^0.6.0'
 msgbox = { git = 'https://github.com/bekker/msgbox-rs' } 
 alcro = '^0.1.4'
 alvr_common = { path = '../common' }

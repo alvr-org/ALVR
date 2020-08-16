@@ -205,10 +205,6 @@ pub fn build_server(is_release: bool) -> BResult {
         driver_dst_dir.join("openvr_api.dll"),
     )?;
     fs::copy(
-        artifacts_dir.join(exec_fname("alvr_web_server")),
-        server_build_dir().join(exec_fname("alvr_web_server")),
-    )?;
-    fs::copy(
         artifacts_dir.join(exec_fname("alvr_launcher")),
         server_build_dir().join(exec_fname("ALVR launcher")),
     )?;

@@ -1,14 +1,16 @@
-use alvr_common::logging::*;
+use fern::Dispatch;
+use log::{Level, LevelFilter};
+use msgbox::IconType;
 
 const MSGBOX_TITLE: &str = "ALVR launcher";
 
 pub fn init_logging() {
     let mut log_dispatch = Dispatch::new().format(move |out, message, record| {
-        match record.level {
-            LevelFilter::Info => msgbox::create(MSGBOX_TITLE, message, IconType::Info),
-            LevelFilter::Error => msgbox::create(MSGBOX_TITLE, message, IconType::Error),
+        match record.level() {
+            Level::Info => msgbox::create(MSGBOX_TITLE, &message.to_string(), IconType::Info),
+            Level::Error => msgbox::create(MSGBOX_TITLE, &message.to_string(), IconType::Error),
             // note: msgbox does not have a warning icon
-            _ => msgbox::create(MSGBOX_TITLE, message, IconType::None),
+            _ => msgbox::create(MSGBOX_TITLE, &message.to_string(), IconType::None),
         }
 
         out.finish(format_args!("{}", message));
@@ -22,7 +24,5 @@ pub fn init_logging() {
         log_dispatch = log_dispatch.level(LevelFilter::Info);
     }
 
-    log_dispatch
-        .apply()
-        .unwrap();
+    log_dispatch.apply().unwrap();
 }

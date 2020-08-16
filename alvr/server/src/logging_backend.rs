@@ -42,10 +42,5 @@ pub fn init_logging(log_sender: Sender<String>) {
         .apply()
         .unwrap();
 
-    crate::logging::set_show_error_fn_and_panic_hook(|message| {
-        let message = message.to_owned();
-        thread::spawn(move || {
-            msgbox::create("ALVR crashed", &message, msgbox::IconType::Error);
-        });
-    });
+    crate::logging::set_panic_hook();
 }

@@ -39,7 +39,7 @@ pub fn shutdown_runtime() {
         // shutdown_background() is non blocking and it does not guarantee that every internal
         // thread is terminated in a timely manner. Using shutdown_background() instead of just
         // dropping the runtime has the benefit of giving SteamVR a chance to clean itself as
-        // much as possible before the process is killed because of alvr_server_bootstrap timeout.
+        // much as possible before the process is killed because of alvr_launcher timeout.
     }
 }
 
@@ -53,7 +53,7 @@ pub fn restart_steamvr() {
             }
         }
 
-        // todo: launch alvr_server_bootstrap with "restart" flag
+        // todo: launch alvr_launcher with "restart" flag
     });
 }
 

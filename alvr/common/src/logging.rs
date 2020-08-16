@@ -7,37 +7,37 @@ pub type StrResult<T = ()> = Result<T, String>;
 pub const SESSION_LOG_FNAME: &str = "session_log.txt";
 pub const CRASH_LOG_FNAME: &str = "crash_log.txt";
 
-pub fn driver_log_path() -> std::path::PathBuf {
-    std::env::temp_dir().join("alvr_driver_log.txt")
-}
-
-fn default_show_error_fn(_: &str) {}
-
-// todo: consider using atomics or lazy_static
-static mut SHOW_ERROR_CB: fn(&str) = default_show_error_fn;
-
-pub fn set_show_error_fn_and_panic_hook(cb: fn(&str)) {
-    unsafe { SHOW_ERROR_CB = cb };
+pub fn set_panic_hook() {
     std::panic::set_hook(Box::new(|panic_info| {
         let message = panic_info
             .payload()
             .downcast_ref::<&str>()
             .unwrap_or(&"Unavailable");
-
         let err_str = format!(
-            "ALVR panicked.\nMessage: {:?}\nBacktrace:\n{:?}",
+            "Message: {:?}\nBacktrace:\n{:?}",
             message,
             backtrace::Backtrace::new()
         );
+
         log::error!("{}", err_str);
-        unsafe { SHOW_ERROR_CB(&err_str) };
+
+         #[cfg(not(android))]
+        thread::spawn(move || {
+            msgbox::create("ALVR panicked", &err_str, msgbox::IconType::Error);
+        });
     }))
 }
 
+// log error and show it in a messagebox (if applicable)
 pub fn show_err<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
     res.map_err(|e| {
         log::error!("{}", e);
-        unsafe { SHOW_ERROR_CB(&format!("{}", e)) };
+
+        #[cfg(not(android))]
+        thread::spawn(move || {
+            let message = e.to_owned();
+            msgbox::create("ALVR encountered an error", &message, msgbox::IconType::Error);
+        });
     })
 }
 

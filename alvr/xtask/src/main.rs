@@ -176,8 +176,8 @@ pub fn build_server(is_release: bool) -> BResult {
     let target_dir = target_dir();
     let artifacts_dir = target_dir.join(build_type);
     let driver_dst_dir = server_build_dir().join("bin").join(STEAMVR_OS_DIR_NAME);
-    let swresample_dir = workspace_dir().join("alvr/server_driver/cpp/libswresample/lib");
-    let openvr_api_dir = workspace_dir().join("alvr/server_driver/cpp/openvr/lib");
+    let swresample_dir = workspace_dir().join("alvr/server/cpp/libswresample/lib");
+    let openvr_api_dir = workspace_dir().join("alvr/server/cpp/openvr/lib");
 
     reset_server_build_folder()?;
     fs::create_dir_all(&driver_dst_dir)?;
@@ -185,11 +185,11 @@ pub fn build_server(is_release: bool) -> BResult {
     run("cargo update")?;
 
     run(&format!(
-        "cargo build -p alvr_server_driver -p alvr_server_bootstrap {}",
+        "cargo build -p alvr_server -p alvr_launcher {}",
         build_flag
     ))?;
     fs::copy(
-        artifacts_dir.join(dynlib_fname("alvr_server_driver")),
+        artifacts_dir.join(dynlib_fname("alvr_server")),
         driver_dst_dir.join(DRIVER_FNAME),
     )?;
     fs::copy(
@@ -209,8 +209,8 @@ pub fn build_server(is_release: bool) -> BResult {
         server_build_dir().join(exec_fname("alvr_web_server")),
     )?;
     fs::copy(
-        artifacts_dir.join(exec_fname("alvr_server_bootstrap")),
-        server_build_dir().join(exec_fname("ALVR")),
+        artifacts_dir.join(exec_fname("alvr_launcher")),
+        server_build_dir().join(exec_fname("ALVR launcher")),
     )?;
 
     // if cfg!(target_os = "linux") {
@@ -270,8 +270,8 @@ pub fn build_publish() -> BResult {
 
     if cfg!(windows) {
         fs::copy(
-            target_dir().join("release").join("alvr_server_driver.pdb"),
-            build_dir().join("alvr_server_driver.pdb"),
+            target_dir().join("release").join("alvr_server.pdb"),
+            build_dir().join("alvr_server.pdb"),
         )?;
     }
 

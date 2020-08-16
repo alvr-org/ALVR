@@ -6,7 +6,7 @@ use alvr_common::{logging::show_err, process::*, *};
 use std::env;
 
 fn window_mode() -> StrResult {
-    let mutex = single_instance::SingleInstance::new("alvr_server_bootstrap_mutex").unwrap();
+    let mutex = single_instance::SingleInstance::new("alvr_launcher_mutex").unwrap();
     if mutex.is_single() {
         maybe_delete_alvr_dir_store();
 
@@ -14,16 +14,22 @@ fn window_mode() -> StrResult {
             match get_registered_drivers() {
                 Ok(paths) => {
                     if !paths.is_empty() {
-                        trace_err!(backup_driver_paths(&paths))?;
+                        backup_driver_paths(&paths)?;
                     }
                 }
-                Err(_) => return Err("Please install SteamVR, run it once, then close it.".into()),
+                Err(_) => {
+                    warn!("Please install SteamVR, run it once, then close it.".into());
+                    return Ok(());
             }
 
             let current_path = trace_err!(env::current_exe())?;
             let alvr_dir = trace_none!(current_path.parent())?;
             driver_registration(alvr_dir, true)?;
         }
+        
+        if load_session(SESSION_FNAME).is_err() {
+            warn!("If you didn't already, please install the latest Visual C++ Redistributable package. Go to github.com/JackD83/ALVR for the instructions.");
+        } 
 
         maybe_launch_steamvr();
 

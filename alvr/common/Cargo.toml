@@ -44,5 +44,8 @@ winreg = '^0.7.0'
 [target.'cfg(not(windows))'.dependencies]
 dirs = '^3.0.1'
 
+[target.'cfg(not(android))'.dependencies]
+msgbox = { git = 'https://github.com/bekker/msgbox-rs' }
+
 [build-dependencies]
 toml = '^0.5.6'

@@ -10,7 +10,7 @@ fn get_version(dir_name: &str) -> String {
 }
 
 pub fn server_version() -> String {
-    get_version("server_driver")
+    get_version("server")
 }
 
 // pub fn client_version() -> String {

@@ -1,5 +1,5 @@
 [package]
-name = 'alvr_server_driver'
+name = 'alvr_server'
 version = '13.0.0-alpha.0'
 authors = ['Riccardo Zaglia <riccardo.zaglia5@gmail.com>']
 license = 'MIT'
@@ -13,7 +13,6 @@ parking_lot = '^0.11.0'
 chrono = '^0.4.13'
 log = '^0.4.8'
 fern = '^0.6.0'
-msgbox = { git = 'https://github.com/bekker/msgbox-rs' }
 serde_json = '^1.0.53'
 alvr_common = { path = '../common' }
 lazy_static = '^1.4.0'

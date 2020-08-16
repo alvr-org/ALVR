@@ -2,6 +2,6 @@
 members = [
     'alvr/xtask',
     'alvr/common',
-    'alvr/server_driver',
-    'alvr/server_bootstrap',
+    'alvr/server',
+    'alvr/launcher',
 ]

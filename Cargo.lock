@@ -51,6 +51,7 @@ dependencies = [
  "dirs",
  "futures",
  "log 0.4.11",
+ "msgbox",
  "nalgebra",
  "parking_lot",
  "quinn",
@@ -72,7 +73,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "alvr_server_bootstrap"
+name = "alvr_launcher"
 version = "13.0.0-alpha.0"
 dependencies = [
  "alcro",
@@ -83,7 +84,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "alvr_server_driver"
+name = "alvr_server"
 version = "13.0.0-alpha.0"
 dependencies = [
  "alvr_common",
@@ -95,7 +96,6 @@ dependencies = [
  "lazy-static-include",
  "lazy_static",
  "log 0.4.11",
- "msgbox",
  "parking_lot",
  "serde_json",
  "tokio",

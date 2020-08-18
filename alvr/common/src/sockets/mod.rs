@@ -24,7 +24,7 @@ type LDC = tokio_util::codec::LengthDelimitedCodec;
 const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
 const MULTICAST_ADDR: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 123);
 const CONTROL_PORT: u16 = 9943;
-const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 256;
+const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 4_000;
 
 pub struct Certificate {
     hostname: String,
@@ -65,21 +65,13 @@ impl SendStorage {
     }
 }
 
-pub struct ReceivedPacket {
-    buffer: Bytes,
-}
+pub struct ReceivedPacket(Bytes);
 
 impl ReceivedPacket {
     pub fn decode<T: DeserializeOwned>(&self) -> StrResult<T> {
-        trace_err!(cbor::from_reader(self.buffer.as_ref().reader()))
+        trace_err!(cbor::from_reader(self.0.as_ref().reader()))
     }
 }
-
-// #[derive(Serialize, Deserialize)]
-// struct IdPacket<T> {
-//     id: StreamId,
-//     packet: T,
-// }
 
 // Traits with generics cannot be made into objects. Erased traits must be used.
 // todo: find a way to propagate packet type information.
@@ -92,7 +84,7 @@ pub trait StreamSender {
 
 #[async_trait]
 pub trait StreamReceiver {
-    async fn recv(&self) -> ReceivedPacket;
+    async fn recv(&mut self) -> StrResult<ReceivedPacket>;
 }
 
 #[async_trait]
@@ -102,11 +94,11 @@ pub trait StreamSocket {
 
     async fn request_stream(
         &self,
-        stream_type: StreamId,
+        stream_id: StreamId,
         mode: StreamMode,
     ) -> StrResult<Self::Sender>;
 
-    async fn subscribe_to_stream(&self, stream_type: StreamId) -> StrResult<Self::Receiver>;
+    async fn subscribe_to_stream(&mut self, stream_id: StreamId) -> StrResult<Self::Receiver>;
 }
 
 pub async fn connect_to_server(
@@ -141,91 +133,69 @@ pub async fn connect_to_client(
     }
 }
 
-fn handle_old_client(packet_bytes: &[u8]) {
-    if packet_bytes.len() > 5 {
-        if packet_bytes[..5] == *b"\x01ALVR" {
-            warn!(id: LogId::ClientFoundWrongVersion("11 or previous".into()));
-        } else if packet_bytes[..4] == *b"ALVR" {
-            warn!(id: LogId::ClientFoundWrongVersion("12.x.x".into()));
+async fn try_connect_to_client(
+    handshake_socket: &mut UdpSocket,
+    packet_buffer: &mut [u8],
+) -> StrResult<Option<(IpAddr, Identity)>> {
+    let (handshake_packet_size, address) = match handshake_socket.recv_from(packet_buffer).await {
+        Ok(pair) => pair,
+        Err(e) => {
+            debug!("Error receiving handshake packet: {}", e);
+            return Ok(None);
+        }
+    };
+
+    if address.ip() != MULTICAST_ADDR {
+        // Handle wrong client
+        if &packet_buffer[..5] == b"\x01ALVR" {
+            return trace_str!(id: LogId::ClientFoundWrongVersion("11 or previous".into()));
+        } else if &packet_buffer[..4] == b"ALVR" {
+            return trace_str!(id: LogId::ClientFoundWrongVersion("12.x.x".into()));
         } else {
             debug!("Found unrelated packet during client discovery");
         }
-    } else {
-        debug!("Found unrelated packet during client discovery");
+        return Ok(None);
     }
+
+    let handshake_packet: HandshakePacket = trace_err!(
+        serde_cbor::from_slice(&packet_buffer[..handshake_packet_size]),
+        id: LogId::ClientFoundInvalid
+    )?;
+
+    if handshake_packet.alvr_name != ALVR_NAME {
+        return trace_str!(id: LogId::ClientFoundInvalid);
+    }
+
+    let compatible = trace_err!(is_version_compatible(
+        &handshake_packet.version,
+        ALVR_CLIENT_VERSION_REQ
+    ))?;
+    if !compatible {
+        return trace_str!(id: LogId::ClientFoundWrongVersion(handshake_packet.version));
+    }
+
+    let identity = trace_none!(handshake_packet.identity, id: LogId::ClientFoundInvalid)?;
+
+    Ok(Some((address.ip(), identity)))
 }
 
 // todo: use CBOR with SymmetricallyFramed
 pub async fn search_client_loop<F: Future>(
     client_found_cb: impl Fn(IpAddr, Identity) -> F,
 ) -> StrResult {
+    // use naked UdpSocket + [u8] packet buffer to have more control over datagram data
     let mut handshake_socket =
         trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, CONTROL_PORT)).await)?;
 
     let mut packet_buffer = [0u8; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
 
     loop {
-        let (handshake_packet_size, address) =
-            match handshake_socket.recv_from(&mut packet_buffer).await {
-                Ok(pair) => pair,
-                Err(e) => {
-                    debug!("Error receiving handshake packet: {}", e);
-                    continue;
-                }
-            };
-
-        if address.ip() != MULTICAST_ADDR {
-            handle_old_client(&packet_buffer[..handshake_packet_size]);
-            continue;
-        }
-
-        let handshake_packet: HandshakePacket =
-            match serde_cbor::from_slice(&packet_buffer[..handshake_packet_size]) {
-                Ok(client_handshake_packet) => client_handshake_packet,
-                Err(e) => {
-                    warn!(
-                        id: LogId::ClientFoundInvalid,
-                        "Received handshake packet: {}", e
-                    );
-                    continue;
-                }
-            };
-
-        if handshake_packet.alvr_name != ALVR_NAME {
-            warn!(
-                id: LogId::ClientFoundInvalid,
-                "Received handshake packet: wrong name"
-            );
-            continue;
-        }
-
-        match is_version_compatible(&handshake_packet.version, ALVR_CLIENT_VERSION_REQ) {
-            Ok(compatible) => {
-                if !compatible {
-                    warn!(id: LogId::ClientFoundWrongVersion(handshake_packet.version));
-                    continue;
-                }
+        match try_connect_to_client(&mut handshake_socket, &mut packet_buffer).await {
+            Ok(Some((client_ip, identity))) => {
+                client_found_cb(client_ip, identity).await;
             }
-            Err(e) => {
-                warn!(
-                    id: LogId::ClientFoundInvalid,
-                    "Received handshake packet: {}", e
-                );
-                continue;
-            }
+            Err(e) => warn!("Error while connecting to client: {}", e),
+            Ok(None) => (),
         }
-
-        let identity = match handshake_packet.identity {
-            Some(id) => id,
-            None => {
-                warn!(
-                    id: LogId::ClientFoundInvalid,
-                    "Received handshake packet: no identity",
-                );
-                continue;
-            }
-        };
-
-        client_found_cb(address.ip(), identity).await;
     }
 }

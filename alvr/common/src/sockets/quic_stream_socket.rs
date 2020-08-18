@@ -4,7 +4,7 @@ use bytes::{buf::BufExt, Buf, Bytes, BytesMut};
 use quinn::*;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::sync::{mpsc, Mutex};
-use tokio_util::codec::FramedWrite;
+use tokio_util::codec::{FramedRead, FramedWrite};
 
 type StreamId = super::StreamId;
 type Certificate = quinn::Certificate;
@@ -15,7 +15,7 @@ struct StreamConfigPacket {
     reliable: bool,
 }
 
-pub enum QuickStreamSender {
+pub enum QuicStreamSender {
     Reliable(FramedWrite<SendStream, LDC>),
     Unreliable {
         stream_id_bytes: Vec<u8>,
@@ -24,9 +24,9 @@ pub enum QuickStreamSender {
 }
 
 #[async_trait]
-impl StreamSender for QuickStreamSender {
+impl StreamSender for QuicStreamSender {
     async fn get_storage(&self) -> SendStorage {
-        let prefix = if let QuickStreamSender::Unreliable {
+        let prefix = if let QuicStreamSender::Unreliable {
             stream_id_bytes, ..
         } = self
         {
@@ -43,40 +43,51 @@ impl StreamSender for QuickStreamSender {
 
     async fn send(&mut self, packet: &mut SendStorage) -> StrResult {
         match self {
-            QuickStreamSender::Reliable(send_stream) => {
+            QuicStreamSender::Reliable(send_stream) => {
                 trace_err!(send_stream.send(packet.buffer.to_bytes()).await)
             }
-            QuickStreamSender::Unreliable { connection, .. } => {
+            QuicStreamSender::Unreliable { connection, .. } => {
                 trace_err!(connection.send_datagram(packet.buffer.to_bytes()))
             }
         }
     }
 }
 
-pub enum QuickStreamReceiver {
-    Reliable(),
-    Unreliable {},
+pub enum QuicStreamReceiver {
+    Reliable(FramedRead<RecvStream, LDC>),
+    Unreliable(mpsc::UnboundedReceiver<Bytes>),
 }
 
 #[async_trait]
-impl StreamReceiver for QuickStreamReceiver {
-    async fn recv(&self) -> ReceivedPacket {
-        todo!()
+impl StreamReceiver for QuicStreamReceiver {
+    async fn recv(&mut self) -> StrResult<ReceivedPacket> {
+        match self {
+            QuicStreamReceiver::Reliable(receive_stream) => {
+                let bytes = trace_err!(trace_none!(receive_stream.next().await)?)?;
+                Ok(ReceivedPacket(bytes.into()))
+            }
+            QuicStreamReceiver::Unreliable(dequeuer) => {
+                let bytes = trace_none!(dequeuer.next().await)?;
+                Ok(ReceivedPacket(bytes))
+            }
+        }
     }
 }
 
 pub struct QuicStreamSocket {
     connection: Connection,
-    reliable_streams_listener: Arc<Mutex<IncomingUniStreams>>,
-    unpaired_receive_streams: Arc<Mutex<HashMap<StreamId, RecvStream>>>,
-    unreliable_packet_enqueuers: Arc<Mutex<HashMap<StreamId, mpsc::Sender<Bytes>>>>,
+    reliable_streams_listener: IncomingUniStreams,
+    unpaired_stream_receivers: HashMap<StreamId, QuicStreamReceiver>,
+    unreliable_packet_enqueuers: Arc<Mutex<HashMap<StreamId, mpsc::UnboundedSender<Bytes>>>>,
 }
 
 impl QuicStreamSocket {
     fn create_stream_socket(new_connection: NewConnection) -> Self {
         let mut unreliable_stream = new_connection.datagrams;
-        let unreliable_packet_enqueuers =
-            Arc::new(Mutex::new(HashMap::<StreamId, mpsc::Sender<Bytes>>::new()));
+        let unreliable_packet_enqueuers = Arc::new(Mutex::new(HashMap::<
+            StreamId,
+            mpsc::UnboundedSender<Bytes>,
+        >::new()));
 
         let unreliable_receive_loop = {
             let unreliable_packet_enqueuers = unreliable_packet_enqueuers.clone();
@@ -89,7 +100,7 @@ impl QuicStreamSocket {
                     if let Some(enqueuer) =
                         unreliable_packet_enqueuers.lock().await.get_mut(&stream_id)
                     {
-                        trace_err!(enqueuer.send(packet_reader.into_inner()).await)?;
+                        trace_err!(enqueuer.send(packet_reader.into_inner()))?;
                     }
                 }
 
@@ -105,9 +116,8 @@ impl QuicStreamSocket {
 
         Self {
             connection: new_connection.connection,
-            reliable_streams_listener: Arc::new(Mutex::new(new_connection.uni_streams)),
-            // unreliable_stream: Arc::new(Mutex::new(new_connection.datagrams)),
-            unpaired_receive_streams: Arc::new(Mutex::new(HashMap::new())),
+            reliable_streams_listener: new_connection.uni_streams,
+            unpaired_stream_receivers: HashMap::new(),
             unreliable_packet_enqueuers,
         }
     }
@@ -242,14 +252,14 @@ impl QuicStreamSocket {
 
 #[async_trait]
 impl StreamSocket for QuicStreamSocket {
-    type Sender = QuickStreamSender;
-    type Receiver = QuickStreamReceiver;
+    type Sender = QuicStreamSender;
+    type Receiver = QuicStreamReceiver;
 
     async fn request_stream(
         &self,
         stream_id: StreamId,
         mode: StreamMode,
-    ) -> StrResult<QuickStreamSender> {
+    ) -> StrResult<QuicStreamSender> {
         // in case of unreliable stream, use the reliable send_stream only to configure the stream
         let send_stream = trace_err!(self.connection.open_uni().await)?;
         let mut send_stream = FramedWrite::new(send_stream, LDC::new());
@@ -261,16 +271,44 @@ impl StreamSocket for QuicStreamSocket {
         trace_err!(send_stream.send(stream_config_bytes.into()).await)?;
 
         match mode {
-            StreamMode::PreferReliable => Ok(QuickStreamSender::Reliable(send_stream)),
-            StreamMode::PreferUnreliable => Ok(QuickStreamSender::Unreliable {
+            StreamMode::PreferReliable => Ok(QuicStreamSender::Reliable(send_stream)),
+            StreamMode::PreferUnreliable => Ok(QuicStreamSender::Unreliable {
                 stream_id_bytes: trace_err!(cbor::to_vec(&stream_id))?,
                 connection: self.connection.clone(),
             }),
         }
     }
 
-    async fn subscribe_to_stream(&self, stream_type: StreamId) -> StrResult<QuickStreamReceiver> {
-        // reliable_streams_listener.
-        todo!()
+    async fn subscribe_to_stream(&mut self, stream_id: StreamId) -> StrResult<QuicStreamReceiver> {
+        match self.unpaired_stream_receivers.remove(&stream_id) {
+            Some(stream_receiver) => Ok(stream_receiver),
+            None => loop {
+                let receive_stream =
+                    trace_err!(trace_none!(self.reliable_streams_listener.next().await)?)?;
+                let mut receive_stream = FramedRead::new(receive_stream, LDC::new());
+
+                let stream_config_bytes = trace_err!(trace_none!(receive_stream.next().await)?)?;
+                let stream_config: StreamConfigPacket =
+                    trace_err!(cbor::from_slice(&stream_config_bytes))?;
+
+                let stream_receiver = if stream_config.reliable {
+                    QuicStreamReceiver::Reliable(receive_stream)
+                } else {
+                    let (enqueuer, dequeuer) = mpsc::unbounded_channel();
+                    self.unreliable_packet_enqueuers
+                        .lock()
+                        .await
+                        .insert(stream_config.stream_id, enqueuer);
+                    QuicStreamReceiver::Unreliable(dequeuer)
+                };
+
+                if stream_config.stream_id == stream_id {
+                    break Ok(stream_receiver);
+                } else {
+                    self.unpaired_stream_receivers
+                        .insert(stream_config.stream_id, stream_receiver);
+                }
+            },
+        }
     }
 }

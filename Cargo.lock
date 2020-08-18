@@ -49,7 +49,6 @@ dependencies = [
  "bitflags",
  "bytes",
  "dirs",
- "erased-serde",
  "futures",
  "log 0.4.11",
  "msgbox",
@@ -67,7 +66,6 @@ dependencies = [
  "settings-schema",
  "sysinfo",
  "tokio",
- "tokio-serde",
  "tokio-util",
  "toml",
  "widestring 0.4.2",
@@ -619,17 +617,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "derivative"
-version = "2.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb582b60359da160a9477ee80f15c8d784c477e69c217ef2cdd4169c24ea380f"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "digest"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -687,15 +674,6 @@ dependencies = [
  "log 0.4.11",
  "regex",
  "termcolor",
-]
-
-[[package]]
-name = "erased-serde"
-version = "0.3.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ca8b296792113e1500fd935ae487be6e00ce318952a6880555554824d6ebf38"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -2817,19 +2795,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-serde"
-version = "0.6.1"
-source = "git+https://github.com/carllerche/tokio-serde#7217fb5be0fd854ded3279060375db2eb1db4575"
-dependencies = [
- "bytes",
- "derivative",
- "futures",
- "pin-project",
- "serde",
- "serde_cbor",
-]
-
-[[package]]
 name = "tokio-tungstenite"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2885,9 +2850,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fe233f4227389ab7df5b32649239da7ebe0b281824b4e84b342d04d3fd8c25e"
+checksum = "80e0ccfc3378da0cce270c946b676a376943f5cd16aeba64568e7939806f4ada"
 dependencies = [
  "proc-macro2",
  "quote",

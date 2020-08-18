@@ -1,11 +1,10 @@
 use super::*;
 use crate::{data::*, logging::*, *};
-use bytes::{buf::BufMutExt, Buf, BytesMut};
+use bytes::{buf::BufExt, Buf, Bytes, BytesMut};
 use quinn::*;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
-use tokio::sync::Mutex;
-use tokio_serde::{formats::SymmetricalCbor, SymmetricallyFramed};
-use tokio_util::codec::{FramedWrite, LengthDelimitedCodec};
+use tokio::sync::{mpsc, Mutex};
+use tokio_util::codec::FramedWrite;
 
 type StreamId = super::StreamId;
 type Certificate = quinn::Certificate;
@@ -17,38 +16,38 @@ struct StreamConfigPacket {
 }
 
 pub enum QuickStreamSender {
-    Reliable(
-        SymmetricallyFramed<
-            FramedWrite<SendStream, LengthDelimitedCodec>,
-            BoxPacket,
-            SymmetricalCbor<BoxPacket>,
-        >,
-    ),
+    Reliable(FramedWrite<SendStream, LDC>),
     Unreliable {
-        stream_id: StreamId,
+        stream_id_bytes: Vec<u8>,
         connection: Connection,
-        packet_storage: BytesMut,
     },
 }
 
 #[async_trait]
 impl StreamSender for QuickStreamSender {
-    async fn send(&mut self, packet: BoxPacket) -> StrResult {
-        match self {
-            QuickStreamSender::Reliable(send_stream) => trace_err!(send_stream.send(packet).await),
-            QuickStreamSender::Unreliable {
-                stream_id,
-                connection,
-                packet_storage,
-            } => {
-                let id_packet = IdPacket {
-                    id: *stream_id,
-                    packet,
-                };
-                trace_err!(serde_cbor::to_writer(packet_storage.writer(), &id_packet))?;
+    async fn get_storage(&self) -> SendStorage {
+        let prefix = if let QuickStreamSender::Unreliable {
+            stream_id_bytes, ..
+        } = self
+        {
+            stream_id_bytes.clone()
+        } else {
+            vec![]
+        };
 
-                // consumes all bytes inside packet_storage
-                trace_err!(connection.send_datagram(packet_storage.to_bytes()))
+        SendStorage {
+            prefix,
+            buffer: BytesMut::new(),
+        }
+    }
+
+    async fn send(&mut self, packet: &mut SendStorage) -> StrResult {
+        match self {
+            QuickStreamSender::Reliable(send_stream) => {
+                trace_err!(send_stream.send(packet.buffer.to_bytes()).await)
+            }
+            QuickStreamSender::Unreliable { connection, .. } => {
+                trace_err!(connection.send_datagram(packet.buffer.to_bytes()))
             }
         }
     }
@@ -69,17 +68,47 @@ impl StreamReceiver for QuickStreamReceiver {
 pub struct QuicStreamSocket {
     connection: Connection,
     reliable_streams_listener: Arc<Mutex<IncomingUniStreams>>,
-    unreliable_stream: Arc<Mutex<Datagrams>>,
     unpaired_receive_streams: Arc<Mutex<HashMap<StreamId, RecvStream>>>,
+    unreliable_packet_enqueuers: Arc<Mutex<HashMap<StreamId, mpsc::Sender<Bytes>>>>,
 }
 
 impl QuicStreamSocket {
     fn create_stream_socket(new_connection: NewConnection) -> Self {
+        let mut unreliable_stream = new_connection.datagrams;
+        let unreliable_packet_enqueuers =
+            Arc::new(Mutex::new(HashMap::<StreamId, mpsc::Sender<Bytes>>::new()));
+
+        let unreliable_receive_loop = {
+            let unreliable_packet_enqueuers = unreliable_packet_enqueuers.clone();
+            async move {
+                while let Some(maybe_packet) = unreliable_stream.next().await {
+                    let packet = trace_err!(maybe_packet)?;
+                    let mut packet_reader = packet.reader();
+                    let stream_id: StreamId = trace_err!(cbor::from_reader(&mut packet_reader))?;
+
+                    if let Some(enqueuer) =
+                        unreliable_packet_enqueuers.lock().await.get_mut(&stream_id)
+                    {
+                        trace_err!(enqueuer.send(packet_reader.into_inner()).await)?;
+                    }
+                }
+
+                Ok::<_, String>(())
+            }
+        };
+
+        tokio::spawn(async move {
+            if let Err(e) = unreliable_receive_loop.await {
+                warn!("Unreliable receive loop interrupted: {}", e);
+            }
+        });
+
         Self {
             connection: new_connection.connection,
             reliable_streams_listener: Arc::new(Mutex::new(new_connection.uni_streams)),
-            unreliable_stream: Arc::new(Mutex::new(new_connection.datagrams)),
+            // unreliable_stream: Arc::new(Mutex::new(new_connection.datagrams)),
             unpaired_receive_streams: Arc::new(Mutex::new(HashMap::new())),
+            unreliable_packet_enqueuers,
         }
     }
 
@@ -221,35 +250,27 @@ impl StreamSocket for QuicStreamSocket {
         stream_id: StreamId,
         mode: StreamMode,
     ) -> StrResult<QuickStreamSender> {
+        // in case of unreliable stream, use the reliable send_stream only to configure the stream
         let send_stream = trace_err!(self.connection.open_uni().await)?;
+        let mut send_stream = FramedWrite::new(send_stream, LDC::new());
 
-        let mut send_stream = SymmetricallyFramed::new(
-            FramedWrite::new(send_stream, LengthDelimitedCodec::new()),
-            SymmetricalCbor::default(),
-        );
-
-        let stream_config = StreamConfigPacket {
+        let stream_config_bytes = trace_err!(cbor::to_vec(&StreamConfigPacket {
             stream_id,
             reliable: matches!(mode, StreamMode::PreferReliable),
-        };
-        trace_err!(send_stream.send(stream_config).await)?;
+        }))?;
+        trace_err!(send_stream.send(stream_config_bytes.into()).await)?;
 
         match mode {
-            StreamMode::PreferReliable => {
-                let send_stream =
-                    SymmetricallyFramed::new(send_stream.into_inner(), <_>::default());
-
-                Ok(QuickStreamSender::Reliable(send_stream))
-            }
+            StreamMode::PreferReliable => Ok(QuickStreamSender::Reliable(send_stream)),
             StreamMode::PreferUnreliable => Ok(QuickStreamSender::Unreliable {
-                stream_id,
+                stream_id_bytes: trace_err!(cbor::to_vec(&stream_id))?,
                 connection: self.connection.clone(),
-                packet_storage: BytesMut::new(),
             }),
         }
     }
 
     async fn subscribe_to_stream(&self, stream_type: StreamId) -> StrResult<QuickStreamReceiver> {
+        // reliable_streams_listener.
         todo!()
     }
 }

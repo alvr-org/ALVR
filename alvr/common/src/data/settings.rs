@@ -3,6 +3,13 @@ use settings_schema::*;
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub enum StreamMode {
+    PreferReliable,
+    PreferUnreliable,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct QuicConfig {
     pub send_small_packets_unreliably: bool,
 
@@ -152,6 +159,8 @@ pub struct VideoDesc {
 
     #[schema(advanced, min = 5, max = 1000)]
     pub keyframe_resend_interval_ms: u64,
+
+    pub stream_mode: StreamMode,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -161,6 +170,8 @@ pub struct AudioDesc {
     #[schema(placeholder = "device_dropdown")]
     #[schema(advanced)]
     pub device: String,
+
+    pub stream_mode: StreamMode,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -168,6 +179,7 @@ pub struct AudioDesc {
 pub struct AudioSection {
     pub game_audio: Switch<AudioDesc>,
     pub microphone: bool,
+    pub microphone_stream_mode: StreamMode,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -272,6 +284,8 @@ pub struct HeadsetDesc {
     pub use_tracking_reference: bool,
 
     pub force_3dof: bool,
+
+    pub tracking_stream_mode: StreamMode,
 
     pub controllers: Switch<ControllersDesc>,
 }
@@ -384,13 +398,24 @@ pub fn settings_cache_default() -> SettingsDefault {
             encode_bitrate_mbs: 30,
             force_60hz: false,
             keyframe_resend_interval_ms: 100,
+            stream_mode: StreamModeDefault {
+                variant: StreamModeDefaultVariant::PreferReliable,
+            },
         },
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {
                 enabled: true,
-                content: AudioDescDefault { device: "".into() },
+                content: AudioDescDefault {
+                    device: "".into(),
+                    stream_mode: StreamModeDefault {
+                        variant: StreamModeDefaultVariant::PreferUnreliable,
+                    },
+                },
             },
             microphone: false,
+            microphone_stream_mode: StreamModeDefault {
+                variant: StreamModeDefaultVariant::PreferUnreliable
+            }
         },
         headset: HeadsetDescDefault {
             serial_number: "1WMGH000XX0000".into(),
@@ -403,7 +428,10 @@ pub fn settings_cache_default() -> SettingsDefault {
             tracking_frame_offset: 0,
             position_offset: [0., 0., 0.],
             use_tracking_reference: false,
-            force_3dof: false,
+            force_3dof: false, 
+            tracking_stream_mode: StreamModeDefault {
+                variant: StreamModeDefaultVariant::PreferUnreliable
+            },
             controllers: SwitchDefault {
                 enabled: true,
                 content: ControllersDescDefault {

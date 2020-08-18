@@ -18,14 +18,12 @@ sysinfo = '^0.15.0'
 runas = '^0.2.1'
 nalgebra = { version = '^0.21.1', features = ["serde-serialize"] }
 serde = { version = '^1.0', features = ['derive'] }
-erased-serde = '^0.3.12'
 serde_json = '^1.0'
 serde_cbor = '0.11.1'
 futures = '^0.3.5'
 async-trait = '^0.1.38'
 tokio = { version = '^0.2.20', features = ['macros', 'process', 'io-util', 'stream', 'udp', 'tcp', 'time'] }
 tokio-util = { version = '^0.3.1', features = ['codec', 'udp'] }
-tokio-serde = { git = 'https://github.com/carllerche/tokio-serde', features = ['cbor'] }# todo: use registry version (>0.6.1)
 bytes = '^0.5.6'
 rcgen = '^0.8.5'
 quinn = { git = 'https://github.com/djc/quinn' }# todo: use registry version (>0.6.1)

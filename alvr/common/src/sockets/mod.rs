@@ -1,4 +1,4 @@
-// Note: for the StreamManager, the client uses a server socket, the server uses a client socket.
+// Note: for SteamSockets, the client uses a server socket, the server uses a client socket.
 // This is because of certificate management. The server needs to trust a client and its certificate
 
 mod control_socket;
@@ -9,13 +9,17 @@ pub use quic_stream_socket::*;
 
 use crate::{data::*, logging::*, *};
 use async_trait::async_trait;
-use erased_serde as erased;
+use bytes::{
+    buf::{BufExt, BufMutExt},
+    Bytes, BytesMut,
+};
 use futures::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_cbor as cbor;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::*;
 
-type BoxPacket = Box<dyn erased::Serialize + Send>;
+type LDC = tokio_util::codec::LengthDelimitedCodec;
 
 const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
 const MULTICAST_ADDR: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 123);
@@ -40,39 +44,50 @@ pub fn create_certificate(hostname: Option<String>) -> StrResult<Certificate> {
     })
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone)]
+#[derive(Serialize, Deserialize, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum StreamId {
-    Video,
+    Video(),
     Audio,
     Input,
     Haptics,
 }
 
-pub enum StreamMode {
-    PreferReliable,
-    PreferUnreliable,
+pub struct SendStorage {
+    prefix: Vec<u8>,
+    buffer: BytesMut,
 }
 
-#[derive(Serialize, Deserialize)]
-struct IdPacket<T> {
-    id: StreamId,
-    packet: T,
+impl SendStorage {
+    pub fn encode<T: Serialize>(&mut self, packet: &T) -> StrResult {
+        self.buffer.clear();
+        self.buffer.extend_from_slice(&self.prefix);
+        trace_err!(cbor::to_writer(self.buffer.as_mut().writer(), packet))
+    }
 }
+
+pub struct ReceivedPacket {
+    buffer: Bytes,
+}
+
+impl ReceivedPacket {
+    pub fn decode<T: DeserializeOwned>(&self) -> StrResult<T> {
+        trace_err!(cbor::from_reader(self.buffer.as_ref().reader()))
+    }
+}
+
+// #[derive(Serialize, Deserialize)]
+// struct IdPacket<T> {
+//     id: StreamId,
+//     packet: T,
+// }
 
 // Traits with generics cannot be made into objects. Erased traits must be used.
 // todo: find a way to propagate packet type information.
 
 #[async_trait]
 pub trait StreamSender {
-    async fn send(&mut self, packet: BoxPacket) -> StrResult;
-}
-
-pub struct ReceivedPacket {}
-
-impl ReceivedPacket {
-    pub fn get<'a, T: Deserialize<'a>>(&'a self) -> StrResult<T> {
-        todo!()
-    }
+    async fn get_storage(&self) -> SendStorage;
+    async fn send(&mut self, packet: &mut SendStorage) -> StrResult;
 }
 
 #[async_trait]

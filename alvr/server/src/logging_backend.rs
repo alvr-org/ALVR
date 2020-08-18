@@ -1,7 +1,7 @@
 use alvr_common::logging::*;
 use fern::Dispatch;
 use log::LevelFilter;
-use std::{fs, thread};
+use std::fs;
 use tokio::sync::broadcast::Sender;
 
 // Define logging modes, create crash log and (re)create session log

@@ -63,7 +63,7 @@ async fn setup_streams(
     client_identity: Identity,
     control_socket: &ControlSocket<ClientControlPacket, ServerControlPacket>,
 ) -> StrResult {
-    let stream_manager = StreamManager::connect_to_client(
+    let stream_socket = connect_to_client(
         control_socket.peer_ip(),
         settings.connection.stream_port,
         client_identity,
@@ -91,19 +91,17 @@ pub async fn connection_loop(
             let session_manager = session_manager.clone();
             let update_client_listeners_notifier = update_client_listeners_notifier.clone();
             async move {
-                let res = search_client_loop(
-                    |client_ip, client_identity| {
-                        update_client_list(
-                            session_manager.clone(),
-                            client_identity.hostname,
-                            ClientListAction::AddIfMissing {
-                                ip: client_ip,
-                                certificate_pem: client_identity.certificate_pem,
-                            },
-                            update_client_listeners_notifier.clone(),
-                        )
-                    }
-                )
+                let res = search_client_loop(|client_ip, client_identity| {
+                    update_client_list(
+                        session_manager.clone(),
+                        client_identity.hostname,
+                        ClientListAction::AddIfMissing {
+                            ip: client_ip,
+                            certificate_pem: client_identity.certificate_pem,
+                        },
+                        update_client_listeners_notifier.clone(),
+                    )
+                })
                 .await;
 
                 Err::<(), _>(res.err().unwrap())

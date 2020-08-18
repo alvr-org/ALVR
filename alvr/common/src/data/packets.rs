@@ -14,7 +14,7 @@ pub struct Identity {
 pub struct HandshakePacket {
     pub alvr_name: String,
     pub version: String,
-    pub identity: Option<Identity>
+    pub identity: Option<Identity>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -41,6 +41,8 @@ pub enum ServerControlPacket {
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
+    Statistics,
+    PlayspaceSync {},
     Disconnect,
 }
 

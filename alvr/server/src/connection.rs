@@ -63,7 +63,7 @@ async fn setup_streams(
     client_identity: Identity,
     control_socket: &ControlSocket<ClientControlPacket, ServerControlPacket>,
 ) -> StrResult {
-    let stream_socket = connect_to_client(
+    let stream_socket = StreamSocket::connect_to_client(
         control_socket.peer_ip(),
         settings.connection.stream_port,
         client_identity,

@@ -30,14 +30,14 @@ If you didn't already, install SteamVR, launch it and then close it (this is to 
 
 Install the latest [Visual C++ Redistrubutable x64 package](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads). Do this every time you install a new ALVR version!
 
-To install ALVR download `alvr_server_windows.zip` from the [releases page](https://github.com/JackD83/ALVR/releases), unzip it wherever you want and launch `ALVR.exe`. The first time you open ALVR.exe you may have to allow it in the SmartScreen prompt.  
+To install ALVR download `alvr_server_windows.zip` from the [releases page](https://github.com/JackD83/ALVR/releases), unzip it wherever you want and launch `ALVR launcher.exe`. The first time you open ALVR launcher.exe you may have to allow it in the SmartScreen prompt.  
 It's important not to move the folder after the first launch. To keep settings from a previous installation of ALVR (>=v12.0) you can unzip over the old installation folder.
 
 Install the client on your headset through [SideQuest](https://sidequestvr.com/).
 
 ## Usage
 
-- Launch `ALVR.exe` (ALVR dashboard). The first time a setup wizard will guide you through the installation.
+- Open `ALVR launcher.exe` (ALVR dashboard). The first time a setup wizard will guide you through the installation.
 - Launch ALVR on your headset. While the headset screen is on, click `Trust` next to the client entry (on the PC) to start streaming.
 - If you trusted a client, you can start streaming by just launching ALVR on your headset, then SteamVR or the ALVR dashboard on PC.
 - To change settings, open the dashboard on the headset with a long press of the menu button (on the left controller), change what you want and then press `Restart SteamVR`. The current playing game could shutdown so any unsaved progress could be lost.
@@ -55,7 +55,7 @@ Install the client on your headset through [SideQuest](https://sidequestvr.com/)
 
 ## Uninstall
 
-Launch `ALVR.exe`, go to `Installation` tab, press `Unregister ALVR driver` and `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
+Launch `ALVR launcher.exe`, go to `Installation` tab, press `Unregister ALVR driver` and `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
 
 If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder.
 

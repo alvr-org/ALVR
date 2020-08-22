@@ -335,9 +335,7 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 	LogDriver("VCE encode latency: %.4f ms. Size=%d bytes frameIndex=%llu", double(current_time - start_time) / (double)MILLISEC_TIME, (int)buffer->GetSize()
 		, frameIndex);
 
-	// if (m_Listener) {
-	// 	m_Listener->GetStatistics()->EncodeOutput((current_time - start_time) / MICROSEC_TIME);
-	// }
+	ReportEncodeLatency((current_time - start_time) / MICROSEC_TIME);
 
 	char *p = reinterpret_cast<char *>(buffer->GetNative());
 	int length = static_cast<int>(buffer->GetSize());
@@ -347,9 +345,8 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 	if (fpOut) {
 		fpOut.write(p, length);
 	}
-	// if (m_Listener) {
-	// 	m_Listener->SendVideo(reinterpret_cast<uint8_t *>(p), length, frameIndex);
-	// }
+	SendVideo(m_packetIndex, reinterpret_cast<uint8_t *>(p), length, frameIndex);
+	m_packetIndex++;
 }
 
 void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR) {

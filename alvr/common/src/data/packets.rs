@@ -41,13 +41,57 @@ pub enum ServerControlPacket {
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
-    Statistics,
-    PlayspaceSync {},
+    Statistics {
+        server_time: u64,
+        client_time: u64,
+
+        packets_lost_total: u64,
+        packets_lost_per_second: u64,
+
+        average_total_latency: u32,
+        max_total_latency: u32,
+        min_total_latency: u32,
+
+        average_transport_latency: u32,
+        max_transport_latency: u32,
+        min_transport_latency: u32,
+
+        average_decode_latency: u32,
+        max_decode_latency: u32,
+        min_decode_latency: u32,
+
+        fps: u32,
+    },
+    PlayspaceSync {
+        position: Point3<f32>,
+        rotation: UnitQuaternion<f32>,
+        space_rectangle: (f32, f32),
+        points: Vec<Point3<f32>>,
+    },
+    RequestIdrFrame,
     Disconnect,
 }
 
-#[repr(i32)]
 #[derive(Serialize, Deserialize)]
+pub struct VideoPacket {
+    packet_index: u64,
+    tracking_index: u64,
+
+    #[serde(with = "serde_bytes")]
+    buffer: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AudioPacket {
+    packet_index: u64,
+    presentation_time: u64,
+
+    #[serde(with = "serde_bytes")]
+    buffer: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[repr(i8)]
 pub enum TrackedDeviceType {
     HMD = 0, // HMD = 0 is enforced by OpenVR
     LeftController,
@@ -68,11 +112,11 @@ pub enum TrackedDeviceType {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Quat {
-    x: f32,
-    y: f32,
-    z: f32,
-    w: f32,
+pub struct HapticsPacket {
+    amplitude: f32,
+    duration: f32,
+    frequency: f32,
+    device: TrackedDeviceType,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -153,7 +197,7 @@ pub struct OculusTouchInput {
 
 #[derive(Serialize, Deserialize)]
 pub struct OculusHand {
-    bone_rotations: [Quat; 24],
+    bone_rotations: [UnitQuaternion<f32>; 24],
     confidence: OculusHandConfidence,
 }
 

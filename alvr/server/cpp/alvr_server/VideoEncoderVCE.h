@@ -85,6 +85,8 @@ private:
 	int m_renderHeight;
 	int m_bitrateInMBits;
 
+	uint64_t m_packetIndex;
+
 	void ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR);
 	void SkipAUD(char **buffer, int *length);
 };

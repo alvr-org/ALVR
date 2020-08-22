@@ -57,7 +57,7 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
             incompatible_server = true;
         }
 
-        match is_version_compatible(&server_handshake_packet.version, ALVR_SERVER_VERSION_REQ) {
+        match is_version_compatible(&server_handshake_packet.version, ALVR_SERVER_VERSION) {
             Ok(compatible) => {
                 if !compatible {
                     warn!(

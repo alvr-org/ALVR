@@ -155,9 +155,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	// Log("Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
 	Log("Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
 
-	// if (m_Listener) {
-	// 	m_Listener->GetStatistics()->EncodeOutput(GetTimestampUs() - presentationTime);
-	// }
+	ReportEncodeLatency(GetTimestampUs() - presentationTime);
 
 	m_nFrame += (int)vPacket.size();
 	for (std::vector<uint8_t> &packet : vPacket)
@@ -165,9 +163,8 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 		if (fpOut) {
 			fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 		}
-		// if (m_Listener) {
-		// 	m_Listener->SendVideo(packet.data(), (int)packet.size(), frameIndex);
-		// }
+		SendVideo(m_packetIndex, packet.data(), (int)packet.size(), frameIndex);
+		m_packetIndex++;
 	}
 }
 

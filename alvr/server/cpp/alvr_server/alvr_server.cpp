@@ -13,6 +13,8 @@
 #include "sharedstate.h"
 #include "OvrHMD.h"
 #include "driverlog.h"
+#include "MicPlayer.h"
+#include "ChaperoneUpdater.h"
 
 HINSTANCE g_hInstance;
 
@@ -73,7 +75,6 @@ public:
 	virtual void EnterStandby() override {}
 	virtual void LeaveStandby() override {}
 
-private:
 	std::shared_ptr<OvrHmd> m_pRemoteHmd;
 	std::shared_ptr<IPCMutex> m_mutex; 
 };
@@ -86,33 +87,21 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 
 	m_mutex = std::make_shared<IPCMutex>(APP_MUTEX_NAME, true);
 	if (m_mutex->AlreadyExist()) {
-		// Duplicate driver installation.
-		FatalLog("ALVR Server driver is installed on multiple locations. This causes some issues.\r\n"
-			"Please check the installed driver list on About tab and uninstall old drivers.");
+		FatalLog("ALVR driver is already running.");
 		return vr::VRInitError_Driver_Failed;
 	}
 
-	//create listener
-	// m_Listener = std::make_shared<ClientConnection>();
-
-	//init listener
-	// if (!m_Listener->Startup())
-	// {
-	// 	return vr::VRInitError_Driver_Failed;
-	// }
-
 	//create new virtuall hmd
-	// m_pRemoteHmd = std::make_shared<OvrHmd>(m_Listener);
+	m_pRemoteHmd = std::make_shared<OvrHmd>();
 
 	// Launcher is running. Enable driver.
-	// m_pRemoteHmd->Enable();
+	m_pRemoteHmd->Enable();
 
 	return vr::VRInitError_None;
 }
 
 void CServerDriver_DisplayRedirect::Cleanup()
 {
-	// m_Listener.reset();
 	m_pRemoteHmd.reset();
 	m_mutex.reset();
 
@@ -126,6 +115,8 @@ void CServerDriver_DisplayRedirect::RunFrame()
 }
 
 CServerDriver_DisplayRedirect g_serverDriverDisplayRedirect;
+std::shared_ptr<MicPlayer> g_MicPlayer;
+std::shared_ptr<ChaperoneUpdater> g_ChaperoneUpdater;
 
 
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
@@ -161,11 +152,13 @@ void (*LogError)(const char *);
 void (*LogWarn)(const char *);
 void (*LogInfo)(const char *);
 void (*LogDebug)(const char *);
+void (*SendVideo)(uint64_t, uint8_t *, int, uint64_t);
+void (*SendAudio)(uint64_t, uint8_t *, int, uint64_t);
+void (*SendHapticsFeedback)(uint64_t, float, float, float, uint8_t);
+void (*ReportEncodeLatency)(uint64_t);
 void (*ShutdownRuntime)();
 
 // C++ to Rust:
-
-void (*ShutdownSteamvr)();
 
 void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 {
@@ -186,4 +179,47 @@ void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 #endif
 
 	return nullptr;
+}
+void InitalizeStreaming() {
+	g_serverDriverDisplayRedirect.m_pRemoteHmd->OnStreamStart();
+	g_MicPlayer	= std::make_shared<MicPlayer>();
+	g_ChaperoneUpdater = std::make_shared<ChaperoneUpdater>();
+}
+void UpdatePose(TrackingInfo info) {
+	g_serverDriverDisplayRedirect.m_pRemoteHmd->OnPoseUpdated(info);
+}
+void HandlePacketLoss() {
+	g_serverDriverDisplayRedirect.m_pRemoteHmd->OnPacketLoss();
+}
+void PlayMicAudio(uint8_t *data, int size) {
+	if (g_MicPlayer) {
+		g_MicPlayer->playAudio((char *)data, size);
+	}
+}
+void UpdateChaperone(
+	TrackingVector3 standingPosPosition,
+	TrackingQuat standingPosRotation,
+	TrackingVector2 playAreaSize,
+	TrackingVector3 *points,
+	int count)
+{
+	if (g_ChaperoneUpdater) {
+		g_ChaperoneUpdater->ResetData(0, count);
+		g_ChaperoneUpdater->SetTransform(standingPosPosition, standingPosRotation, playAreaSize);
+		
+		if (count == 0) {
+			g_ChaperoneUpdater->GenerateStandingChaperone();
+		} else {
+			for (int i = 0; i < (count + 1) % 100; i++) {
+				g_ChaperoneUpdater->SetSegment(i, &points[i * 100]);
+			}
+		}
+
+		if (g_ChaperoneUpdater->MaybeCommitData()) {
+			Info("Synced Guardian data to SteamVR Chaperone.");
+		}
+	}
+}
+extern "C" void ShutdownSteamvr() {
+	g_serverDriverDisplayRedirect.m_pRemoteHmd->OnShutdown();
 }

@@ -36,4 +36,6 @@ private:
 	int m_renderWidth;
 	int m_renderHeight;
 	int m_bitrateInMBits;
+
+	uint64_t m_packetIndex;
 };

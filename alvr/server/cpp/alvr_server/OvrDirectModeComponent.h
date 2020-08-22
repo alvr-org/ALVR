@@ -35,6 +35,8 @@ public:
 
 	void CopyTexture(uint32_t layerCount);
 
+	bool m_isStreaming = false;
+
 private:
 	std::shared_ptr<CD3DRender> m_pD3DRender;
 	std::shared_ptr<CEncoder> m_pEncoder;
@@ -60,8 +62,6 @@ private:
 
 	uint64_t m_LastReferencedFrameIndex;
 	uint64_t m_LastReferencedClientTime;
-
-	
 
 	IPCMutex m_poseMutex;
 	struct TrackingHistoryFrame {

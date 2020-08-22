@@ -72,5 +72,7 @@ private:
 
 	static const int DEFAULT_SAMPLE_RATE = 48000;
 	static const int DEFAULT_CHANNELS = 2;
+
+	uint64_t m_packetIndex = 0;
 };
 

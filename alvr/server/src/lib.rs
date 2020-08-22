@@ -1,8 +1,9 @@
 #![allow(clippy::missing_safety_doc)]
-#![allow(non_camel_case_types, non_upper_case_globals)]
+#![allow(non_camel_case_types, non_upper_case_globals, non_snake_case)]
 
 mod connection;
 mod logging_backend;
+mod statistics;
 mod web_server;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -47,11 +48,7 @@ pub fn restart_steamvr() {
     thread::spawn(|| {
         shutdown_runtime();
 
-        unsafe {
-            if let Some(shutdown_steamvr_callback) = ShutdownSteamvr {
-                shutdown_steamvr_callback();
-            }
-        }
+        unsafe { ShutdownSteamvr() };
 
         // todo: launch alvr_launcher with "restart" flag
     });

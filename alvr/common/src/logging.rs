@@ -65,6 +65,7 @@ pub enum SessionUpdateType {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "id", content = "data")]
 pub enum LogId {
+    #[serde(rename_all = "camelCase")]
     SessionUpdated {
         web_client_id: String,
         update_type: SessionUpdateType,
@@ -74,6 +75,23 @@ pub enum LogId {
     ClientFoundInvalid,
     ClientFoundWrongVersion(String),
     IncompatibleServer,
+
+    #[serde(rename_all = "camelCase")]
+    Statistics {
+        total_packets: u64,
+        packet_rate: u64,
+        packets_lost_total: u64,
+        packets_lost_per_second: u64,
+        total_sent: u64,
+        sent_rate: f32,
+        total_latency: f32,
+        encode_latency: f32,
+        encode_latency_max: f32,
+        transport_latency: f32,
+        decode_latency: f32,
+        client_fps: u32,
+        server_fps: u32,
+    }
 }
 
 #[macro_export]

@@ -384,7 +384,8 @@ void AudioCapture::LoopbackCapture() {
 			LONG lBytesToWrite = nNumFramesToRead * nBlockAlign;
 			resampler->FeedInput(nNumFramesToRead, (uint8_t *)pData);
 
-			// m_listener->SendAudio(resampler->GetDest(), resampler->GetDestBufSize(), GetTimestampUs());
+			SendAudio(m_packetIndex, resampler->GetDest(), resampler->GetDestBufSize(), GetTimestampUs());
+			m_packetIndex++;
 
 			m_frames += nNumFramesToRead;
 

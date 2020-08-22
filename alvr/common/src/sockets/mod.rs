@@ -5,10 +5,10 @@ pub use control_socket::*;
 pub use stream_socket::*;
 
 use crate::{data::*, logging::*, *};
+use futures::Future;
 use serde_cbor as cbor;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::*;
-use futures::Future;
 
 type LDC = tokio_util::codec::LengthDelimitedCodec;
 
@@ -70,7 +70,7 @@ async fn try_connect_to_client(
 
     let compatible = trace_err!(is_version_compatible(
         &handshake_packet.version,
-        ALVR_CLIENT_VERSION_REQ
+        ALVR_CLIENT_VERSION
     ))?;
     if !compatible {
         return trace_str!(id: LogId::ClientFoundWrongVersion(handshake_packet.version));

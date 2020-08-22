@@ -244,10 +244,10 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 		//return;
 	}
 
-	// if (!m_Listener->IsStreaming()) {
-	// 	Log("Discard frame because isStreaming=false. FrameIndex=%llu", m_submitFrameIndex);
-	// 	return;
-	// }
+	if (!m_isStreaming) {
+		Log("Discard frame because isStreaming=false. FrameIndex=%llu", m_submitFrameIndex);
+		return;
+	}
 
 	ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
 	if (!pSyncTexture)

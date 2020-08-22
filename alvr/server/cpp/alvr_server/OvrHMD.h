@@ -53,7 +53,7 @@ public:
 
 	void RunFrame();
 
-	void OnPoseUpdated();
+	void OnPoseUpdated(TrackingInfo &info);
 
 	void OnStreamStart();
 
@@ -70,7 +70,7 @@ private:
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 
-
+	TrackingInfo m_lastTrackingInfo;
 
 	std::wstring m_adapterName;
 

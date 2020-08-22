@@ -18,6 +18,8 @@
 #include "openvr_driver.h"
 #include "packet_types.h"
 
+#include "bindings.h"
+
 extern HINSTANCE g_hInstance;
 
 const uint64_t US_TO_MS = 1000;

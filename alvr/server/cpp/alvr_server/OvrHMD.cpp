@@ -18,16 +18,6 @@ OvrHmd::OvrHmd()
 
 		LogDriver("Startup: %hs %hs", APP_MODULE_NAME, APP_VERSION_STRING);
 
-		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
-		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
-		std::function<void()> packetLossCallback = [&]() { OnPacketLoss(); };
-		std::function<void()> shutdownCallback = [&]() { OnShutdown(); };
-
-		// m_Listener->SetPoseUpdatedCallback(poseCallback);
-		// m_Listener->SetStreamStartCallback(streamStartCallback);
-		// m_Listener->SetPacketLossCallback(packetLossCallback);
-		// m_Listener->SetShutdownCallback(shutdownCallback);
-
 		LogDriver("CRemoteHmd successfully initialized.");
 	}
 
@@ -153,35 +143,13 @@ OvrHmd::OvrHmd()
 		LogDriver("Using %ls as primary graphics adapter.", m_adapterName.c_str());
 		LogDriver("OSVer: %ls", GetWindowsOSVersion().c_str());
 
-		// Spin up a separate thread to handle the overlapped encoding/transmit step.
-		m_encoder = std::make_shared<CEncoder>();
-		try {
-			// m_encoder->Initialize(m_D3DRender, m_Listener);
-		}
-		catch (Exception e) {
-			FatalLog("Failed to initialize CEncoder. %s", e.what());
-			return vr::VRInitError_Driver_Failed;
-		}
-		m_encoder->Start();
-
-		if (Settings::Instance().m_enableSound) {
-			// m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
-			try {
-				m_audioCapture->Start(Settings::Instance().m_soundDevice);
-			}
-			catch (Exception e) {
-				FatalLog("Failed to start audio capture. %s", e.what());
-				return vr::VRInitError_Driver_Failed;
-			}
-		}
-
 		m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
 		m_VSyncThread->Start();
 
 	
 
 		m_displayComponent = std::make_shared<OvrDisplayComponent>();
-		// m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_encoder, m_Listener);
+		m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_encoder);
 
 		mActivated = true;
 
@@ -235,36 +203,31 @@ OvrHmd::OvrHmd()
 		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 		pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-		// if (m_Listener->HasValidTrackingInfo()) {
+		auto info = m_lastTrackingInfo;
 
-		// 	TrackingInfo info;
-		// 	m_Listener->GetTrackingInfo(info);
+		pose.qRotation = HmdQuaternion_Init(info.HeadPose_Pose_Orientation.w,
+			info.HeadPose_Pose_Orientation.x, 
+			info.HeadPose_Pose_Orientation.y,
+			info.HeadPose_Pose_Orientation.z);
 
+		
+		pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
+		pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
+		pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
 
-		// 	pose.qRotation = HmdQuaternion_Init(info.HeadPose_Pose_Orientation.w,
-		// 		info.HeadPose_Pose_Orientation.x, 
-		// 		info.HeadPose_Pose_Orientation.y,
-		// 		info.HeadPose_Pose_Orientation.z);
+		Log("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)",
+			pose.qRotation.x,
+			pose.qRotation.y,
+			pose.qRotation.z,
+			pose.qRotation.w,
+			pose.vecPosition[0],
+			pose.vecPosition[1],
+			pose.vecPosition[2]
+		);
 
-			
-		// 	pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
-		// 	pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
-		// 	pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
+		// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
 
-		// 	Log("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)",
-		// 		pose.qRotation.x,
-		// 		pose.qRotation.y,
-		// 		pose.qRotation.z,
-		// 		pose.qRotation.w,
-		// 		pose.vecPosition[0],
-		// 		pose.vecPosition[1],
-		// 		pose.vecPosition[2]
-		// 	);
-
-		// 	// To disable time warp (or pose prediction), we dont set (set to zero) velocity and acceleration.
-
-		// 	pose.poseTimeOffset = 0;
-		// }
+		pose.poseTimeOffset = 0;
 
 		return pose;
 	}
@@ -282,18 +245,14 @@ OvrHmd::OvrHmd()
 		}
 	}
 
-	void OvrHmd::OnPoseUpdated() {
+	void OvrHmd::OnPoseUpdated(TrackingInfo &info) {
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
 		{
-			// if (!m_Listener->HasValidTrackingInfo()) {
-			// 	return;
-			// }
 			if (!m_added || !mActivated) {
 				return;
 			}
 			
-			TrackingInfo info;
-			// m_Listener->GetTrackingInfo(info);
+			m_lastTrackingInfo = info;
 
 			//TODO: Right order?
 
@@ -352,11 +311,11 @@ OvrHmd::OvrHmd()
 			hapticFeedbackLeft[1] != 0 ||
 			hapticFeedbackLeft[2] != 0 ) {
 	
-			// m_Listener->SendHapticsFeedback(0,
-			// 	hapticFeedbackLeft[0],
-			// 	hapticFeedbackLeft[1],
-			// 	hapticFeedbackLeft[2],
-			// 	m_leftController->GetHand() ? 1 : 0);
+			SendHapticsFeedback(0,
+				hapticFeedbackLeft[0],
+				hapticFeedbackLeft[1],
+				hapticFeedbackLeft[2],
+				m_leftController->GetHand() ? 1 : 0);
 
 		}
 		
@@ -366,11 +325,11 @@ OvrHmd::OvrHmd()
 			hapticFeedbackRight[2] != 0) {
 
 	
-			// m_Listener->SendHapticsFeedback(0,
-			// 	hapticFeedbackRight[0],
-			// 	hapticFeedbackRight[1],
-			// 	hapticFeedbackRight[2],
-			// 	m_rightController->GetHand() ? 1 : 0);
+			SendHapticsFeedback(0,
+				hapticFeedbackRight[0],
+				hapticFeedbackRight[1],
+				hapticFeedbackRight[2],
+				m_rightController->GetHand() ? 1 : 0);
 
 		}
 		
@@ -396,12 +355,34 @@ OvrHmd::OvrHmd()
 		if (!m_added || !mActivated) {
 			return;
 		}
+
+		// Spin up a separate thread to handle the overlapped encoding/transmit step.
+		m_encoder = std::make_shared<CEncoder>();
+		try {
+			m_encoder->Initialize(m_D3DRender);
+		}
+		catch (Exception e) {
+			FatalLog("Failed to initialize CEncoder. %s", e.what());
+			return;
+		}
+		m_encoder->Start();
+
+		if (Settings::Instance().m_enableSound) {
+			m_audioCapture = std::make_shared<AudioCapture>();
+			try {
+				m_audioCapture->Start(Settings::Instance().m_soundDevice);
+			}
+			catch (Exception e) {
+				FatalLog("Failed to start audio capture. %s", e.what());
+				return;
+			}
+		}
+
 		LogDriver("OnStreamStart()");
 		// Insert IDR frame for faster startup of decoding.
 		m_encoder->OnStreamStart();
 
-
-
+		m_directModeComponent->m_isStreaming = true;
 	}
 
 	void OvrHmd::OnPacketLoss() {

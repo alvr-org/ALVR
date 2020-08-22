@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include "threadtools.h"
 #include "packet_types.h"
+#include "bindings.h"
 
 // This header cannot include openvr_api.h. It would lead to conflicts with openvr_driver.h
 // included where this header is also needed, so just forward declare the required stuff here.

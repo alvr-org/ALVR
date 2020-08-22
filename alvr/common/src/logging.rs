@@ -78,20 +78,17 @@ pub enum LogId {
 
     #[serde(rename_all = "camelCase")]
     Statistics {
-        total_packets: u64,
-        packet_rate: u64,
         packets_lost_total: u64,
-        packets_lost_per_second: u64,
-        total_sent: u64,
-        sent_rate: f32,
-        total_latency: f32,
-        encode_latency: f32,
-        encode_latency_max: f32,
-        transport_latency: f32,
-        decode_latency: f32,
+        packets_lost_per_second: u32,
+        total_latency_ms: u32,
+        encode_latency_ms: u32,
+        transport_latency_ms: u32,
+        decode_latency_ms: u32,
         client_fps: u32,
         server_fps: u32,
-    }
+    },
+
+    ClientDisconnected,
 }
 
 #[macro_export]

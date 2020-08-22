@@ -154,7 +154,7 @@ void (*LogInfo)(const char *);
 void (*LogDebug)(const char *);
 void (*SendVideo)(uint64_t, uint8_t *, int, uint64_t);
 void (*SendAudio)(uint64_t, uint8_t *, int, uint64_t);
-void (*SendHapticsFeedback)(uint64_t, float, float, float, uint8_t);
+void (*SendHapticsFeedback)(float, float, float, uint8_t);
 void (*ReportEncodeLatency)(uint64_t);
 void (*ShutdownRuntime)();
 

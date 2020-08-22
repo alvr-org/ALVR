@@ -3,23 +3,25 @@
 
 mod connection;
 mod logging_backend;
-mod statistics;
+mod statistics_manager;
 mod web_server;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use alvr_common::{data::*, logging::*, process::*, *};
+use alvr_common::{data::*, logging::*, process::*, sockets::*, *};
 use lazy_static::lazy_static;
 use lazy_static_include::*;
 use parking_lot::Mutex;
+use statistics_manager::StatisticsManager;
 use std::{
     collections::{hash_map::Entry, HashSet},
     ffi::{c_void, CStr, CString},
     net::IpAddr,
     os::raw::c_char,
+    slice,
     sync::{Arc, Once},
     thread,
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 use tokio::{runtime::Runtime, sync::broadcast};
 
@@ -28,6 +30,10 @@ pub type AMutex<T> = tokio::sync::Mutex<T>;
 lazy_static! {
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
     static ref MAYBE_SHUTDOWN_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
+    static ref MAYBE_VIDEO_SENDER: Mutex<Option<StreamSender<VideoPacket>>> = Mutex::new(None);
+    static ref MAYBE_AUDIO_SENDER: Mutex<Option<StreamSender<AudioPacket>>> = Mutex::new(None);
+    static ref MAYBE_HAPTICS_SENDER: Mutex<Option<StreamSender<HapticsPacket>>> = Mutex::new(None);
+    static ref STATISTICS: Mutex<StatisticsManager> = Mutex::new(StatisticsManager::new());
 }
 
 pub fn shutdown_runtime() {
@@ -227,6 +233,90 @@ pub unsafe extern "C" fn HmdDriverFactory(
         log(log::Level::Debug, string_ptr);
     }
 
+    unsafe extern "C" fn send_video(
+        packet_index: u64,
+        raw_buffer: *mut u8,
+        len: i32,
+        tracking_index: u64,
+    ) {
+        if let (Some(runtime), Some(sender)) =
+            (&mut *MAYBE_RUNTIME.lock(), &mut *MAYBE_VIDEO_SENDER.lock())
+        {
+            let buf_slice = slice::from_raw_parts(raw_buffer, len as _);
+
+            // use block_on() instead of spawn() because "sender" must remain valid
+            runtime.block_on(async move {
+                let res = sender
+                    .send(&VideoPacket {
+                        packet_index,
+                        tracking_index,
+                        buffer: buf_slice.to_vec(),
+                    })
+                    .await;
+                if let Err(e) = res {
+                    debug!("Failed to send video packet: {}", e);
+                }
+            });
+        }
+    }
+
+    unsafe extern "C" fn send_audio(
+        packet_index: u64,
+        raw_buffer: *mut u8,
+        len: i32,
+        presentation_time_us: u64,
+    ) {
+        if let (Some(runtime), Some(sender)) =
+            (&mut *MAYBE_RUNTIME.lock(), &mut *MAYBE_AUDIO_SENDER.lock())
+        {
+            let buf_slice = slice::from_raw_parts(raw_buffer, len as _);
+
+            runtime.block_on(async move {
+                let res = sender
+                    .send(&AudioPacket {
+                        packet_index,
+                        presentation_time: Duration::from_micros(presentation_time_us),
+                        buffer: buf_slice.to_vec(),
+                    })
+                    .await;
+                if let Err(e) = res {
+                    debug!("Failed to send video packet: {}", e);
+                }
+            });
+        }
+    }
+
+    unsafe extern "C" fn send_haptics(amplitude: f32, duration: f32, frequency: f32, hand: u8) {
+        if let (Some(runtime), Some(sender)) = (
+            &mut *MAYBE_RUNTIME.lock(),
+            &mut *MAYBE_HAPTICS_SENDER.lock(),
+        ) {
+            runtime.block_on(async move {
+                let res = sender
+                    .send(&HapticsPacket {
+                        amplitude,
+                        duration,
+                        frequency,
+                        device: if hand == 0 {
+                            TrackedDeviceType::LeftController
+                        } else {
+                            TrackedDeviceType::RightController
+                        },
+                    })
+                    .await;
+                if let Err(e) = res {
+                    debug!("Failed to send video packet: {}", e);
+                }
+            });
+        }
+    }
+
+    unsafe extern "C" fn report_encode_latency(latency_us: u64) {
+        STATISTICS
+            .lock()
+            .report_encode_latency(Duration::from_micros(latency_us));
+    }
+
     extern "C" fn _shutdown_runtime() {
         shutdown_runtime();
     }
@@ -235,6 +325,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogWarn = Some(log_warn);
     LogInfo = Some(log_info);
     LogDebug = Some(log_debug);
+    SendVideo = Some(send_video);
+    SendAudio = Some(send_audio);
+    SendHapticsFeedback = Some(send_haptics);
+    ReportEncodeLatency = Some(report_encode_latency);
     ShutdownRuntime = Some(_shutdown_runtime);
 
     CppEntryPoint(interface_name, return_code)

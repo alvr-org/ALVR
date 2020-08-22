@@ -2,7 +2,7 @@ use super::settings::*;
 use bitflags::bitflags;
 use nalgebra::{Point3, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
-use std::net::IpAddr;
+use std::{collections::HashMap, net::IpAddr, time::Duration};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Identity {
@@ -35,65 +35,58 @@ pub struct ClientConfigPacket {
 
 #[derive(Serialize, Deserialize)]
 pub enum ServerControlPacket {
-    Test,
     Shutdown,
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct ClientStatistics {
+    pub packets_lost_total: u64,
+    pub packets_lost_per_second: u32,
+
+    pub average_total_latency: Duration,
+    pub average_transport_latency: Duration,
+    pub average_decode_latency: Duration,
+
+    pub fps: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PlayspaceSyncPacket {
+    pub position: Point3<f32>,
+    pub rotation: UnitQuaternion<f32>,
+    pub space_rectangle: (f32, f32),
+    pub points: Vec<Point3<f32>>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
-    Statistics {
-        server_time: u64,
-        client_time: u64,
-
-        packets_lost_total: u64,
-        packets_lost_per_second: u64,
-
-        average_total_latency: u32,
-        max_total_latency: u32,
-        min_total_latency: u32,
-
-        average_transport_latency: u32,
-        max_transport_latency: u32,
-        min_transport_latency: u32,
-
-        average_decode_latency: u32,
-        max_decode_latency: u32,
-        min_decode_latency: u32,
-
-        fps: u32,
-    },
-    PlayspaceSync {
-        position: Point3<f32>,
-        rotation: UnitQuaternion<f32>,
-        space_rectangle: (f32, f32),
-        points: Vec<Point3<f32>>,
-    },
+    Statistics(ClientStatistics),
+    PlayspaceSync(PlayspaceSyncPacket),
     RequestIdrFrame,
     Disconnect,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct VideoPacket {
-    packet_index: u64,
-    tracking_index: u64,
+    pub packet_index: u64,
+    pub tracking_index: u64,
 
     #[serde(with = "serde_bytes")]
-    buffer: Vec<u8>,
+    pub buffer: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct AudioPacket {
-    packet_index: u64,
-    presentation_time: u64,
+    pub packet_index: u64,
+    pub presentation_time: Duration,
 
     #[serde(with = "serde_bytes")]
-    buffer: Vec<u8>,
+    pub buffer: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Hash)]
 #[repr(i8)]
 pub enum TrackedDeviceType {
-    HMD = 0, // HMD = 0 is enforced by OpenVR
     LeftController,
     RightController,
     Gamepad,
@@ -113,10 +106,10 @@ pub enum TrackedDeviceType {
 
 #[derive(Serialize, Deserialize)]
 pub struct HapticsPacket {
-    amplitude: f32,
-    duration: f32,
-    frequency: f32,
-    device: TrackedDeviceType,
+    pub amplitude: f32,
+    pub duration: f32,
+    pub frequency: f32,
+    pub device: TrackedDeviceType,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -126,17 +119,11 @@ pub struct Pose {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct MotionSampleDesc {
+pub struct MotionDesc {
+    pub timestamp: Duration,
     pub pose: Pose,
     pub linear_velocity: Vector3<f32>,
     pub angular_velocity: Vector3<f32>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct DeviceMotionDesc {
-    pub device_type: TrackedDeviceType,
-    pub sample: MotionSampleDesc,
-    pub timestamp_ns: u64,
 }
 
 bitflags! {
@@ -189,16 +176,17 @@ bitflags! {
 
 #[derive(Serialize, Deserialize)]
 pub struct OculusTouchInput {
-    thumbstick_coord: (f32, f32),
-    trigger: f32,
-    grip: f32,
-    digital_input: OculusTouchDigitalInput,
+    pub thumbstick_coord: (f32, f32),
+    pub trigger: f32,
+    pub grip: f32,
+    pub digital_input: OculusTouchDigitalInput,
+    pub battery_percentage: u8,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct OculusHand {
-    bone_rotations: [UnitQuaternion<f32>; 24],
-    confidence: OculusHandConfidence,
+    pub bone_rotations: [UnitQuaternion<f32>; 24],
+    pub confidence: OculusHandConfidence,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -209,13 +197,30 @@ pub enum InputDeviceData {
         trigger_left: f32,
         trigger_right: f32,
         digital_input: GamepadDigitalInput,
+        battery_percentage: u8,
     },
     OculusTouchPair([OculusTouchInput; 2]),
     OculusHands(Box<[OculusHand; 2]>),
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct InputPacket {
-    pub device_motions: Vec<DeviceMotionDesc>,
+    pub client_time: u64,
+    pub frame_index: u64,
+
+    pub head_motion: MotionDesc,
+    pub device_motions: HashMap<TrackedDeviceType, MotionDesc>,
     pub input_data: InputDeviceData,
-    pub input_data_timestamp_ns: u64,
+    pub input_data_timestamp: Duration,
+
+    // some fields are already covered in InputDeviceData. The following fields are used to pass
+    // data until the input handling code is rewritten
+    pub buttons: [u64; 2],
+    pub bone_rotations: [[UnitQuaternion<f32>; 19]; 2],
+    pub bone_positions_base: [[Point3<f32>; 19]; 2],
+    pub bone_root_oritentation: [UnitQuaternion<f32>; 2],
+    pub bone_root_position: [Point3<f32>; 2],
+    pub input_state_status: [u32; 2],
+    pub finger_pinch_strength: [[f32; 4]; 2],
+    pub hand_finger_confidences: [u32; 2],
 }

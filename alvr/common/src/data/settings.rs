@@ -247,6 +247,8 @@ pub struct ControllersDesc {
 
     #[schema(min = 0., max = 5., step = 0.1)]
     pub haptics_intensity: f32,
+
+    pub haptics_stream_mode: StreamMode,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -414,8 +416,8 @@ pub fn settings_cache_default() -> SettingsDefault {
             },
             microphone: false,
             microphone_stream_mode: StreamModeDefault {
-                variant: StreamModeDefaultVariant::PreferUnreliable
-            }
+                variant: StreamModeDefaultVariant::PreferUnreliable,
+            },
         },
         headset: HeadsetDescDefault {
             serial_number: "1WMGH000XX0000".into(),
@@ -428,9 +430,9 @@ pub fn settings_cache_default() -> SettingsDefault {
             tracking_frame_offset: 0,
             position_offset: [0., 0., 0.],
             use_tracking_reference: false,
-            force_3dof: false, 
+            force_3dof: false,
             tracking_stream_mode: StreamModeDefault {
-                variant: StreamModeDefaultVariant::PreferUnreliable
+                variant: StreamModeDefaultVariant::PreferUnreliable,
             },
             controllers: SwitchDefault {
                 enabled: true,
@@ -454,6 +456,9 @@ pub fn settings_cache_default() -> SettingsDefault {
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,
+                    haptics_stream_mode: StreamModeDefault {
+                        variant: StreamModeDefaultVariant::PreferUnreliable,
+                    },
                 },
             },
         },

@@ -311,7 +311,7 @@ OvrHmd::OvrHmd()
 			hapticFeedbackLeft[1] != 0 ||
 			hapticFeedbackLeft[2] != 0 ) {
 	
-			SendHapticsFeedback(0,
+			SendHapticsFeedback(
 				hapticFeedbackLeft[0],
 				hapticFeedbackLeft[1],
 				hapticFeedbackLeft[2],
@@ -325,7 +325,7 @@ OvrHmd::OvrHmd()
 			hapticFeedbackRight[2] != 0) {
 
 	
-			SendHapticsFeedback(0,
+			SendHapticsFeedback(
 				hapticFeedbackRight[0],
 				hapticFeedbackRight[1],
 				hapticFeedbackRight[2],

@@ -35,6 +35,7 @@ struct QuicStreamConfigPacket {
     reliable: bool,
 }
 
+#[allow(clippy::type_complexity)]
 enum StreamSenderType {
     Udp {
         peer_addr: SocketAddr,
@@ -58,7 +59,7 @@ impl<T: Serialize> StreamSender<T> {
     // todo: check if this really helps reducing allocations.
     // NB: memory transferred to the socket cannot be reused because of its send() signature (it
     // takes ownership of a Bytes object)
-    async fn send(&mut self, packet: &T) -> StrResult {
+    pub async fn send(&mut self, packet: &T) -> StrResult {
         let mut buffer = self.buffer.take().unwrap_or_default();
         buffer.clear();
 
@@ -106,7 +107,7 @@ pub struct StreamReceiver<T> {
 }
 
 impl<T: DeserializeOwned> StreamReceiver<T> {
-    async fn recv(&mut self) -> StrResult<T> {
+    pub async fn recv(&mut self) -> StrResult<T> {
         let bytes = match &mut self.receiver_type {
             StreamReceiverType::Dequeuer(dequeuer) => trace_none!(dequeuer.next().await)?,
             StreamReceiverType::QuicReliable(receive_stream) => {
@@ -118,6 +119,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
     }
 }
 
+#[allow(clippy::type_complexity)]
 enum StreamSocketType {
     Udp {
         peer_addr: SocketAddr,
@@ -137,7 +139,7 @@ pub struct StreamSocket {
 }
 
 impl StreamSocket {
-    async fn request_stream<T>(
+    pub async fn request_stream<T>(
         &self,
         stream_id: StreamId,
         mode: StreamMode,
@@ -166,7 +168,7 @@ impl StreamSocket {
         })
     }
 
-    async fn subscribe_to_stream<T>(
+    pub async fn subscribe_to_stream<T>(
         &mut self,
         stream_id: StreamId,
     ) -> StrResult<StreamReceiver<T>> {

@@ -23,7 +23,7 @@ extern "C" void (*LogInfo)(const char *);
 extern "C" void (*LogDebug)(const char *);
 extern "C" void (*SendVideo)(uint64_t, uint8_t *, int, uint64_t);
 extern "C" void (*SendAudio)(uint64_t, uint8_t *, int, uint64_t);
-extern "C" void (*SendHapticsFeedback)(uint64_t, float, float, float, uint8_t);
+extern "C" void (*SendHapticsFeedback)(float, float, float, uint8_t);
 extern "C" void (*ReportEncodeLatency)(uint64_t);
 extern "C" void (*ShutdownRuntime)();
 
@@ -54,11 +54,6 @@ struct TrackingInfo
     double predictedDisplayTime;
     TrackingQuat HeadPose_Pose_Orientation;
     TrackingVector3 HeadPose_Pose_Position;
-
-    TrackingVector3 Other_Tracking_Source_Position;
-    TrackingQuat Other_Tracking_Source_Orientation;
-
-    static const uint32_t MAX_CONTROLLERS = 2;
 
     struct Controller
     {

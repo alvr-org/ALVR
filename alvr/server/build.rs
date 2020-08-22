@@ -47,6 +47,7 @@ fn main() {
     bindgen::builder()
         .clang_arg("-xc++")
         .header("cpp/alvr_server/bindings.h")
+        .derive_default(true)
         .generate()
         .expect("bindings")
         .write_to_file(out_dir.join("bindings.rs"))

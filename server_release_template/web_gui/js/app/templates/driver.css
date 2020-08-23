@@ -3,8 +3,18 @@
     padding-bottom: 3px;
 }
 
- {
+.driverCard div div table tr td button {
+    max-width: 80px;
+    width: 80px;
+    height: 23px;
+    line-height: 20px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-right: 10px;
+    margin-top: auto;
+    margin-bottom: auto;
 }
+
 .driverCard div div table tr td {
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -12,16 +22,20 @@
 }
 
 .driverCard div div table tr td:first-child { 
-  width: 100%;
+    width: 100%;
 }
 
 .driverCard div div table tr td:last-child { 
-    width: 100px;
-  }
-
+    width: 90px;
+}
 
 .driverCard div div table {
     max-width: 100%;
     overflow: hidden;
     table-layout: fixed;
+}
+
+.registerAlvrDriver {
+    margin-top: 10px;
+    margin-bottom: 10px;
 }

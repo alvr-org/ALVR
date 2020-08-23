@@ -4,11 +4,10 @@ define({
         "noDrivers" : "No Drives registered",
         "removeDriver" : "remove",
         "driverUnregisterSuccessful" : "Driver successfully unregistred",
-        "driverUnregisterFailed" : "Unregistering driver failed"
-        
-
-        
+        "driverUnregisterFailed" : "Unregistering driver failed",
+        "registerAlvrDriver": "Register ALVR driver",
+        "registerAlvrDriverSuccess": "Driver successfully registered"
     },
-    "it": false,
+    "it": true,
     "de-de": false
 });

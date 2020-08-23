@@ -7,11 +7,28 @@ define([
     return new function () {
 
         var self = this;
+            
+        $(document).on("click", ".registerAlvrDriver", () => {
+            alert("hello");
+            $.get("driver/register", undefined, (res) => {
+                if (res != -1) {
+                    Lobibox.notify("success", {
+                        size: "mini",
+                        rounded: true,
+                        delayIndicator: false,
+                        sound: false,
+                        msg: i18n.registerAlvrDriverSuccess
+                    })
+                }
+            })
+            self.fillDriverList("driverListPlaceholder");
+            self.fillDriverList("registeredDriversInst");
+        })
 
         this.fillDriverList = function (elementId) {
 
             var compiledTemplate = _.template(driverTemplate);
-            var template = compiledTemplate({id:elementId});
+            var template = compiledTemplate({id:elementId, ...i18n});
 
             $("#" + elementId).empty();
             $("#" + elementId).append(template);

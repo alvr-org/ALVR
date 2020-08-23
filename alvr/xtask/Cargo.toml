@@ -12,6 +12,10 @@ pico-args = '^0.3.1'
 runas = '^0.2.1'
 walkdir = '^2.3'
 zip = '^0.5.5'
+alvr_common = { path = '../common' }
+gradle-sync = { git = 'https://github.com/maxer456/gradle-sync' }   # Use an updated fork of gradle-sync until the official package bumps dependencies.
+toml_edit = '^0.2.0'
+semver = '^0.10.0'
 
 [target.'cfg(not(windows))'.dependencies]
 termion = '^1.5'

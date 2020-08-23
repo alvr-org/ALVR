@@ -22,6 +22,7 @@ SUBCOMMANDS:
     publish             Build server and client in release mode, zip server and copy the pdb file.
     clean               Removes build folder
     kill-oculus         Kill all Oculus processes
+    bump-versions        Bump server and/or client package versions
 
 FLAGS:
     --release           Optimized build without debug info. Used only for build subcommands
@@ -306,6 +307,61 @@ fn ok_or_exit<T, E: std::fmt::Display>(res: Result<T, E>) {
     }
 }
 
+fn bump_client_gradle_version(new_version: String) {
+    use gradle_sync::BuildGradleFile;
+    use semver::Version;
+    use alvr_common::data::ALVR_CLIENT_VERSION;
+    println!("Bumping HMD client version: {} -> {}", ALVR_CLIENT_VERSION, new_version);
+
+    let new_version = Version::parse(&new_version).unwrap();
+
+    let mut gradle_file = BuildGradleFile::new(
+        workspace_dir().join("alvr/client_hmd/app").join("build.gradle").to_str().unwrap()
+    ).unwrap();
+    gradle_file.sync_version(&new_version).unwrap();
+    gradle_file.write().unwrap();
+}
+
+fn bump_server_cargo_version(new_version: String) {
+    use toml_edit::Document;
+    use std::str::FromStr;
+    use std::fs::File;
+    use alvr_common::data::ALVR_SERVER_VERSION;
+
+    println!("Bumping server version: {} -> {}", ALVR_SERVER_VERSION, new_version);
+    let manifest_path = workspace_dir().join("alvr/server_driver").join("Cargo.toml");
+
+    let mut manifest = Document::from_str(
+        &fs::read_to_string(&manifest_path).unwrap()
+    ).unwrap();
+
+    manifest["package"]["version"] = toml_edit::value(new_version);
+    let s = manifest.to_string_in_original_order();
+    let new_contents_bytes = s.as_bytes();
+
+    let mut file = File::create(&manifest_path).unwrap();
+    file.write_all(new_contents_bytes).unwrap();
+}
+
+fn bump_versions(values: Vec<String>) {
+    if values.len() != 2 {
+        println!("Version bump failed: supply 2 versions.");
+        return;
+    }
+
+    use alvr_common::data::bumped_versions;
+    let versions = bumped_versions(&values[0], &values[1]);
+    match versions {
+        Ok((client_version, server_version)) => {
+            bump_client_gradle_version(client_version);
+            bump_server_cargo_version(server_version);
+        }
+        Err(msg) => {
+            println!("Version bump failed: {}", msg);
+        }
+    }
+}
+
 fn main() {
     let mut args = Arguments::from_env();
 
@@ -313,14 +369,15 @@ fn main() {
         println!("{}", HELP_STR);
     } else if let Ok(Some(subcommand)) = args.subcommand() {
         let is_release = args.contains("--release");
-
-        if args.finish().is_ok() {
+        let free_args = args.free();
+        if free_args.is_ok() {
             match subcommand.as_str() {
                 "build-server" => ok_or_exit(build_server(is_release, true)),
                 "build-client" => ok_or_exit(build_client(is_release)),
                 "publish" => ok_or_exit(build_publish()),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
+                "bump-versions" => bump_versions(free_args.unwrap()),
                 _ => {
                     println!("\nUnrecognized subcommand.");
                     println!("{}", HELP_STR);

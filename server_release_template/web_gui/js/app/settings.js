@@ -732,8 +732,22 @@ define([
 
                 case "upDown":
                 case "updown":
-                    base += `<input numericType="${node.type}" id="${path}_${name}" type="number" min="${node.content.min}" 
-            max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"> ${self.getHelpReset(name, path, node.content.default)}`;
+                    var el = `<input numericType="${node.type}" id="${path}_${name}" type="number" min="${node.content.min}" 
+                    max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}">`;
+                    
+                    var grp = `<div class="upDownGrp" ><div class="input-group">
+                    <div class="input-group-prepend">
+                        <button class="btn btn-primary btn-sm" id="minus-btn"><i class="fa fa-minus"></i></button>
+                    </div>
+                    ${el}
+                    <div class="input-group-append">
+                        <button class="btn btn-primary btn-sm" id="plus-btn"><i class="fa fa-plus"></i></button>
+                    </div>
+                    
+                    </div></div>${self.getHelpReset(name, path, node.content.default)}`;
+                    
+                    
+                    base += grp;  
                     break;
 
                 case "textbox":
@@ -750,6 +764,43 @@ define([
 
             $("#" + path + "_" + name).on("input", (el) => {
                 $("#" + el.target.id + "_label").text("[" + el.target.value + "]")
+            });
+
+
+
+            //add spinner functions
+            $("#" + path + "_" + name + "[type=number]" ).prev().on("click", (el) => {
+                var val = new Number($("#" + path + "_" + name).val());
+                var step = 1;
+                if(node.content.step !== null) {
+                    step = node.content.step;
+                }
+
+                val = val - step;
+
+                if(node.content.min != null && val < node.content.min) {
+                    val = node.content.min;
+                }
+                $("#" + path + "_" + name).val(val);          
+                $("#" + path + "_" + name).change();   
+
+            });
+
+            $("#" + path + "_" + name + "[type=number]" ).next().on("click", (el) => {
+                var val = new Number($("#" + path + "_" + name).val());
+
+                var step = 1;
+                if(node.content.step !== null) {
+                    step = node.content.step;
+                }
+
+                val = val + step;    
+
+                if(node.content.max != null && val > node.content.max) {
+                    val = node.content.max;
+                }
+                $("#" + path + "_" + name).val(val);
+                $("#" + path + "_" + name).change();
             });
         }
 

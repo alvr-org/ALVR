@@ -72,7 +72,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_driver"
-version = "12.0.1"
+version = "12.1.0"
 dependencies = [
  "alvr_common",
  "bindgen",
@@ -86,7 +86,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_web_server"
-version = "12.0.1"
+version = "12.1.0"
 dependencies = [
  "alvr_common",
  "bincode",

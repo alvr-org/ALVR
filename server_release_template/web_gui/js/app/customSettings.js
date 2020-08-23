@@ -77,7 +77,10 @@ define([
             controller.append(`<option value="5">HTC Vive (no handtracking pinch)</option>`);
 
             const select = new Selectal('#_root_headset_controllers_content_controllerMode');
-            controller = $("#_root_headset_controllers_content_controllerMode");
+            controller = $("#_root_headset_controllers_content_controllerMode");        
+
+            controller.val(controllerMode.val());
+            controller.change();
 
             controller.change((ev) => {
                 for (var key in controllerOptions[controller.val()]) {
@@ -90,9 +93,6 @@ define([
 
                 alvrSettings.storeSession("settings");
             });
-
-            controller.val(controllerMode.val());
-            controller.change();
         }
 
         function setHeadsetEmulation() {
@@ -109,6 +109,15 @@ define([
 
             const select = new Selectal('#_root_headset_headsetEmulationMode');
             headset = $("#_root_headset_headsetEmulationMode");
+        
+
+            if ($(headsetBase + "modelNumber").val() == "Oculus Rift S") {
+                headset.val(0);
+            } else {
+                headset.val(1);
+            }
+
+            headset.change();
 
             headset.change((ev) => {
                 for (var key in headsetOptions[headset.val()]) {
@@ -118,14 +127,6 @@ define([
                 }
                 alvrSettings.storeSession("settings");
             });
-
-            if ($(headsetBase + "modelNumber").val() == "Oculus Rift S") {
-                headset.val(0);
-            } else {
-                headset.val(1);
-            }
-
-            headset.change();
         }
 
         function setSuppressFrameDrop() {

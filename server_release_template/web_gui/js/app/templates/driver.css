@@ -1,0 +1,27 @@
+.driverCard .card-header {
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+
+ {
+}
+.driverCard div div table tr td {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.driverCard div div table tr td:first-child { 
+  width: 100%;
+}
+
+.driverCard div div table tr td:last-child { 
+    width: 100px;
+  }
+
+
+.driverCard div div table {
+    max-width: 100%;
+    overflow: hidden;
+    table-layout: fixed;
+}

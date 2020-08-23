@@ -2,7 +2,8 @@
     min-height: 250px;
     display: flex;
     flex-direction: column;
-    max-height: 20vh;
+    max-height: 50vh;
+    overflow: hidden;
     
 }
 
@@ -16,7 +17,6 @@
     justify-content: center;
     display: flex;
     align-items: center;
-   
 
 }
 
@@ -24,3 +24,24 @@
     margin-top: 10px;
     margin-bottom: 10px;
 }
+
+.installDriverDiv, .registeredDriversInst {
+    flex-grow: 0;
+}
+
+.driverList {
+    flex: 1;
+    display: flex;
+}
+
+
+.driverList * .card-body{
+    overflow: auto;
+}
+
+
+#driverListPlaceholder {
+    overflow: hidden;
+    display: flex;
+}
+

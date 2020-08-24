@@ -48,7 +48,7 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
 
         let server_handshake_packet_bytes = trace_err!(trace_none!(socket.next().await)?)?;
         let server_handshake_packet: HandshakePacket =
-            trace_err!(cbor::from_slice(&server_handshake_packet_bytes))?;
+            trace_err!(bincode::deserialize(&server_handshake_packet_bytes))?;
 
         let mut incompatible_server = false;
 
@@ -57,30 +57,22 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
             incompatible_server = true;
         }
 
-        match is_version_compatible(&server_handshake_packet.version, ALVR_SERVER_VERSION) {
-            Ok(compatible) => {
-                if !compatible {
-                    warn!(
-                        "Server found with wrong version: {}",
-                        server_handshake_packet.version
-                    );
-                    incompatible_server = true;
-                }
-            }
-            Err(e) => {
-                warn!("Received handshake packet: {}", e);
-                incompatible_server = true;
-            }
+        if !is_version_compatible(&server_handshake_packet.version, &ALVR_SERVER_VERSION) {
+            warn!(
+                "Server found with wrong version: {}",
+                server_handshake_packet.version
+            );
+            incompatible_server = true;
         }
 
         if incompatible_server {
-            let response_bytes = trace_err!(cbor::to_vec(
+            let response_bytes = trace_err!(bincode::serialize(
                 &HandshakeClientResponse::IncompatibleServerVersion
             ))?;
             trace_err!(socket.send(response_bytes.into()).await)?;
             return Ok(None);
         } else {
-            let response_bytes = trace_err!(cbor::to_vec(&HandshakeClientResponse::Ok {
+            let response_bytes = trace_err!(bincode::serialize(&HandshakeClientResponse::Ok {
                 server_config: server_config.clone(),
                 server_ip: server_address.ip(),
             }))?;
@@ -88,7 +80,7 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
         }
 
         let client_config_bytes = trace_err!(trace_none!(socket.next().await)?)?;
-        let client_config = trace_err!(cbor::from_slice(&client_config_bytes))?;
+        let client_config = trace_err!(bincode::deserialize(&client_config_bytes))?;
 
         Ok(Some((
             Self {
@@ -115,9 +107,9 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
         let mut listener =
             trace_err!(TcpListener::bind(SocketAddr::new(LOCAL_IP, CONTROL_PORT)).await)?;
 
-        let client_handshake_packet = trace_err!(serde_cbor::to_vec(&HandshakePacket {
+        let client_handshake_packet = trace_err!(bincode::serialize(&HandshakePacket {
             alvr_name: ALVR_NAME.into(),
-            version: ALVR_CLIENT_VERSION.into(),
+            version: ALVR_CLIENT_VERSION.clone(),
             identity: Some(Identity {
                 hostname,
                 certificate_pem
@@ -155,23 +147,25 @@ impl ControlSocket<ClientControlPacket, ServerControlPacket> {
         let peer_ip = trace_err!(socket.peer_addr())?.ip();
         let mut socket = Framed::new(socket, LDC::new());
 
-        let handshake_packet_bytes = trace_err!(cbor::to_vec(&HandshakePacket {
+        let handshake_packet_bytes = trace_err!(bincode::serialize(&HandshakePacket {
             alvr_name: ALVR_NAME.into(),
-            version: ALVR_SERVER_VERSION.into(),
+            version: ALVR_SERVER_VERSION.clone(),
             identity: None,
         }))?;
         trace_err!(socket.send(handshake_packet_bytes.into()).await)?;
 
         let client_response_bytes = trace_err!(trace_none!(socket.next().await)?)?;
-        let client_response = trace_err!(cbor::from_slice(&client_response_bytes))?;
+        let client_response = trace_err!(bincode::deserialize(&client_response_bytes))?;
 
         match client_response {
             HandshakeClientResponse::Ok {
                 server_config,
                 server_ip,
             } => {
-                let client_config_bytes =
-                    trace_err!(cbor::to_vec(&config_callback(server_config, server_ip)))?;
+                let client_config_bytes = trace_err!(bincode::serialize(&config_callback(
+                    server_config,
+                    server_ip
+                )))?;
                 trace_err!(socket.send(client_config_bytes.into()).await)?;
 
                 Ok(Self {
@@ -195,7 +189,7 @@ impl<R, S> ControlSocket<R, S> {
 
 impl<R, S: Serialize> ControlSocket<R, S> {
     pub async fn send(&mut self, packet: S) -> StrResult {
-        let packet_bytes = trace_err!(cbor::to_vec(&packet))?;
+        let packet_bytes = trace_err!(bincode::serialize(&packet))?;
         trace_err!(self.socket.send(packet_bytes.into()).await)
     }
 }
@@ -203,6 +197,6 @@ impl<R, S: Serialize> ControlSocket<R, S> {
 impl<R: DeserializeOwned, S> ControlSocket<R, S> {
     pub async fn recv(&mut self) -> StrResult<R> {
         let packet_bytes = trace_err!(trace_none!(self.socket.next().await)?)?;
-        trace_err!(cbor::from_slice(&packet_bytes))
+        trace_err!(bincode::deserialize(&packet_bytes))
     }
 }

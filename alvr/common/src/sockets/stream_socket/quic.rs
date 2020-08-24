@@ -13,7 +13,7 @@ pub(super) async fn request_stream(
     let send_stream = trace_err!(connection.open_uni().await)?;
     let mut send_stream = FramedWrite::new(send_stream, LDC::new());
 
-    let stream_config_bytes = trace_err!(cbor::to_vec(&QuicStreamConfigPacket {
+    let stream_config_bytes = trace_err!(bincode::serialize(&QuicStreamConfigPacket {
         stream_id,
         reliable: matches!(mode, StreamMode::PreferReliable),
     }))?;
@@ -39,7 +39,7 @@ pub(super) async fn subscribe_to_stream(
 
             let stream_config_bytes = trace_err!(trace_none!(receive_stream.next().await)?)?;
             let stream_config: QuicStreamConfigPacket =
-                trace_err!(cbor::from_slice(&stream_config_bytes))?;
+                trace_err!(bincode::deserialize(&stream_config_bytes))?;
 
             let stream_receiver = if stream_config.reliable {
                 StreamReceiverType::QuicReliable(receive_stream)
@@ -72,7 +72,8 @@ fn create_socket(new_connection: NewConnection) -> StreamSocket {
             while let Some(maybe_packet) = unreliable_stream.next().await {
                 let packet = trace_err!(maybe_packet)?;
                 let mut packet_reader = packet.reader();
-                let stream_id: StreamId = trace_err!(cbor::from_reader(&mut packet_reader))?;
+                let stream_id: StreamId =
+                    trace_err!(bincode::deserialize_from(&mut packet_reader))?;
 
                 if let Some(enqueuer) = unreliable_packet_enqueuers.lock().await.get_mut(&stream_id)
                 {

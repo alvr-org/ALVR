@@ -182,7 +182,7 @@ pub async fn web_server(
         }
     });
 
-    let version_request = warp::path("version").map(|| ALVR_SERVER_VERSION.to_owned());
+    let version_request = warp::path("version").map(|| ALVR_SERVER_VERSION.to_string());
 
     let web_server_port = session_manager
         .lock()

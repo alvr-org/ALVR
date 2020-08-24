@@ -65,7 +65,7 @@ impl<T: Serialize> StreamSender<T> {
 
         buffer.extend_from_slice(&self.stream_id_bytes);
         let mut buffer_writer = buffer.writer();
-        trace_err!(cbor::to_writer(&mut buffer_writer, packet))?;
+        trace_err!(bincode::serialize_into(&mut buffer_writer, packet))?;
 
         let mut buffer = buffer_writer.into_inner();
         let packet_bytes = buffer.split().freeze();
@@ -115,7 +115,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             }
         };
 
-        trace_err!(cbor::from_reader(bytes.reader()))
+        trace_err!(bincode::deserialize_from(bytes.reader()))
     }
 }
 
@@ -161,7 +161,7 @@ impl StreamSocket {
         };
 
         Ok(StreamSender {
-            stream_id_bytes: trace_err!(cbor::to_vec(&stream_id))?,
+            stream_id_bytes: trace_err!(bincode::serialize(&stream_id))?,
             buffer: None,
             sender_type,
             _phantom: PhantomData,

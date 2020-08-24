@@ -6,7 +6,6 @@ pub use stream_socket::*;
 
 use crate::{data::*, logging::*, *};
 use futures::Future;
-use serde_cbor as cbor;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::*;
 
@@ -60,7 +59,7 @@ async fn try_connect_to_client(
     }
 
     let handshake_packet: HandshakePacket = trace_err!(
-        serde_cbor::from_slice(&packet_buffer[..handshake_packet_size]),
+        bincode::deserialize(&packet_buffer[..handshake_packet_size]),
         id: LogId::ClientFoundInvalid
     )?;
 
@@ -68,12 +67,8 @@ async fn try_connect_to_client(
         return trace_str!(id: LogId::ClientFoundInvalid);
     }
 
-    let compatible = trace_err!(is_version_compatible(
-        &handshake_packet.version,
-        ALVR_CLIENT_VERSION
-    ))?;
-    if !compatible {
-        return trace_str!(id: LogId::ClientFoundWrongVersion(handshake_packet.version));
+    if !is_version_compatible(&handshake_packet.version, &ALVR_CLIENT_VERSION) {
+        return trace_str!(id: LogId::ClientFoundWrongVersion(handshake_packet.version.to_string()));
     }
 
     let identity = trace_none!(handshake_packet.identity, id: LogId::ClientFoundInvalid)?;
@@ -81,7 +76,6 @@ async fn try_connect_to_client(
     Ok(Some((address.ip(), identity)))
 }
 
-// todo: use CBOR with SymmetricallyFramed
 pub async fn search_client_loop<F: Future>(
     client_found_cb: impl Fn(IpAddr, Identity) -> F,
 ) -> StrResult {

@@ -3,6 +3,7 @@ use bitflags::bitflags;
 use nalgebra::{Point3, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::IpAddr, time::Duration};
+use semver::Version;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Identity {
@@ -13,7 +14,7 @@ pub struct Identity {
 #[derive(Serialize, Deserialize)]
 pub struct HandshakePacket {
     pub alvr_name: String,
-    pub version: String,
+    pub version: Version,
     pub identity: Option<Identity>,
 }
 

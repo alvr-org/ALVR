@@ -18,7 +18,8 @@ pub(super) async fn create_socket(peer_addr: SocketAddr) -> StrResult<StreamSock
                 }
 
                 let mut packet_reader = packet.reader();
-                let stream_id: StreamId = trace_err!(cbor::from_reader(&mut packet_reader))?;
+                let stream_id: StreamId =
+                    trace_err!(bincode::deserialize_from(&mut packet_reader))?;
 
                 if let Some(enqueuer) = packet_enqueuers.lock().await.get_mut(&stream_id) {
                     trace_err!(enqueuer.send(packet_reader.into_inner().freeze()))?;

@@ -12,7 +12,8 @@ fn create_socket(socket: TcpStream) -> StreamSocket {
             while let Some(maybe_packet) = receive_stream.next().await {
                 let packet = trace_err!(maybe_packet)?;
                 let mut packet_reader = packet.reader();
-                let stream_id: StreamId = trace_err!(cbor::from_reader(&mut packet_reader))?;
+                let stream_id: StreamId =
+                    trace_err!(bincode::deserialize_from(&mut packet_reader))?;
 
                 if let Some(enqueuer) = packet_enqueuers.lock().await.get_mut(&stream_id) {
                     trace_err!(enqueuer.send(packet_reader.into_inner().freeze()))?;

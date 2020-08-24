@@ -1,9 +1,10 @@
 define([
     "lib/lodash",
+    "app/driverList",
     "text!app/templates/wizard.html",
     "i18n!app/nls/wizard",
     "css!app/templates/wizard.css"
-], function (_, wizardTemplate, i18n) {
+], function (_, driverList, wizardTemplate, i18n) {
     return function (alvrSettings) {
 
 
@@ -15,6 +16,9 @@ define([
             $("#setupWizard").remove();
             $("body").append(template);
             $(document).ready(() => {
+
+                driverList.fillDriverList("driverListPlaceholder");
+
                 $('#setupWizard').modal({
                     backdrop: 'static',
                     keyboard: false
@@ -36,7 +40,9 @@ define([
                                 delayIndicator: false,
                                 sound: false,
                                 msg: i18n.driverSuccess
-                            })
+                            });
+                            driverList.fillDriverList("driverListPlaceholder");
+                            driverList.fillDriverList("registeredDriversInst"); //for the installation tab
                         }
                     })
                 })

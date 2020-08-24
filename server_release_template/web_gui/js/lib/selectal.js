@@ -39,7 +39,12 @@ var Selectal = function (selectStr) {
 
     this.selectedItem = document.createElement('p');
     this.selectedItem.className = "selectal-selected-item";
-    this.selectedItem.innerHTML = options[0].innerHTML;
+
+
+    if (options !== undefined && options.length > 0) {
+        this.selectedItem.innerHTML = options[0].innerHTML;
+    }
+
     this.selectBtn.appendChild(this.selectedItem);
 
     this.arrow = document.createElement('span');
@@ -50,24 +55,29 @@ var Selectal = function (selectStr) {
     this.dropdown = document.createElement('div');
     this.dropdown.className = "selectal-dropdown selectal-hidden";
 
-    for (var i = 0; i < options.length; i++) {
-        var option = document.createElement('p');
-        option.className = "selectal-dropdown-option";
-        option.id = options[i].value;
-        option.innerHTML = options[i].innerHTML;
-        this.dropdown.appendChild(option);
+    if (options !== undefined) {
+        for (var i = 0; i < options.length; i++) {
+            var option = document.createElement('p');
+            option.className = "selectal-dropdown-option";
+            option.id = options[i].value;
+            option.innerHTML = options[i].innerHTML;
+            this.dropdown.appendChild(option);
+        }
     }
     this.selectGroup.appendChild(this.dropdown);
 
     var selectId = select.id;
     this.input = document.createElement('input');
     this.input.type = "hidden";
-    this.input.value = options[0].value;
+
+    if (options !== undefined && options.length > 0) {
+        this.input.value = options[0].value;
+    }
     this.input.id = select.id;
     this.selectGroup.appendChild(this.input);
 
 
-    $(this.input).change(() => {       
+    $(this.input).change(() => {
         this.setValue(this.getValue());
     })
 
@@ -81,7 +91,7 @@ var Selectal = function (selectStr) {
 }
 
 function addEventListeners(selectal) {
-    var options = document.querySelectorAll("#" +  selectal.selectGroup.id + ' .selectal-dropdown-option');
+    var options = document.querySelectorAll("#" + selectal.selectGroup.id + ' .selectal-dropdown-option');
 
     selectal.selectBtn.addEventListener('click', function () {
         var dropdown = this.parentNode.querySelector('.selectal-dropdown');

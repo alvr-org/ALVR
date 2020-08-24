@@ -6,10 +6,11 @@ define([
     "json!app/resources/OculusRift.json",
     "json!app/resources/OculusTouch.json",
     "json!app/resources/ValveIndex.json",
+    "json!app/resources/HTCViveWand.json",
     "css!js/lib/selectal.min.css"
 
 
-], function (i18n, select, audio_devices, vive, rifts, touch, index) {
+], function (i18n, select, audio_devices, vive, rifts, touch, index, vivewand) {
     return function (alvrSettings) {
         var self = this;
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
@@ -66,15 +67,20 @@ define([
 
             const controllerBase = "#_root_headset_controllers_content_";
             const controllerMode = $(controllerBase + "modeIdx")
-            const controllerOptions = [touch, touch, index, index];
+            const controllerOptions = [touch, touch, index, index, vivewand, vivewand];
 
             controller.append(`<option value="0">Oculus Rift S</option>`);
             controller.append(`<option value="1">Oculus Rift S (no handtracking pinch)</option>`);
             controller.append(`<option value="2">Valve Index</option>`);
             controller.append(`<option value="3">Valve Index (no handtracking pinch)</option>`);
+            controller.append(`<option value="4">HTC Vive</option>`);
+            controller.append(`<option value="5">HTC Vive (no handtracking pinch)</option>`);
 
             const select = new Selectal('#_root_headset_controllers_content_controllerMode');
-            controller = $("#_root_headset_controllers_content_controllerMode");
+            controller = $("#_root_headset_controllers_content_controllerMode");        
+
+            controller.val(controllerMode.val());
+            controller.change();
 
             controller.change((ev) => {
                 for (var key in controllerOptions[controller.val()]) {
@@ -87,9 +93,6 @@ define([
 
                 alvrSettings.storeSession("settings");
             });
-
-            controller.val(controllerMode.val());
-            controller.change();
         }
 
         function setHeadsetEmulation() {
@@ -106,6 +109,15 @@ define([
 
             const select = new Selectal('#_root_headset_headsetEmulationMode');
             headset = $("#_root_headset_headsetEmulationMode");
+        
+
+            if ($(headsetBase + "modelNumber").val() == "Oculus Rift S") {
+                headset.val(0);
+            } else {
+                headset.val(1);
+            }
+
+            headset.change();
 
             headset.change((ev) => {
                 for (var key in headsetOptions[headset.val()]) {
@@ -115,14 +127,6 @@ define([
                 }
                 alvrSettings.storeSession("settings");
             });
-
-            if ($(headsetBase + "modelNumber").val() == "Oculus Rift S") {
-                headset.val(0);
-            } else {
-                headset.val(1);
-            }
-
-            headset.change();
         }
 
         function setSuppressFrameDrop() {
@@ -206,10 +210,10 @@ define([
         }
 
         function setVideoOptions() {
-            var el = $("#_root_video_resolutionDropdown");
-            el.after(alvrSettings.getHelpReset("resolutionDropdown", "_root_video", "100"));
-            el.parent().addClass("special");
-            el.unbind();
+            var dropdown = $("#_root_video_resolutionDropdown");
+            dropdown.after(alvrSettings.getHelpReset("resolutionDropdown", "_root_video", "100"));
+            dropdown.parent().addClass("special");
+            dropdown.unbind();
 
 
             const targetWidth = $("#_root_video_renderResolution_absolute_width");
@@ -217,26 +221,37 @@ define([
 
             const scale = $("#_root_video_renderResolution_scale");
 
-            const useScale = $("#_root_video_renderResolution_scale-choice-").prop("checked");
+            var useScale = $("#_root_video_renderResolution_scale-choice-").prop("checked");
 
             video_scales.forEach(scale => {
-                el.append(`<option value="${scale}"> ${scale}% </option>`);
+                dropdown.append(`<option value="${scale}"> ${scale}% </option>`);
             });
-            el.append(`<option value="custom"> ${i18n.customVideoScale}</option>`);
+
+            //dropdown.append(`<option value="custom"> ${i18n.customVideoScale}</option>`);
 
             var absWidth;
             var absHeight;
 
             const select = new Selectal('#_root_video_resolutionDropdown');
-            el = $("#_root_video_resolutionDropdown");
+            dropdown = $("#_root_video_resolutionDropdown");
 
+            var customRes = `<div style="display:inline;" id="customVideoScale"><b>${i18n.customVideoScale} </b></div>`;
+            $("#_root_video_resolutionDropdown-selectal").after(customRes);
+            customRes = $("#customVideoScale");
+            customRes.hide();
+
+            var update = false;
 
             var updateDropdown = function () {
+                useScale = $("#_root_video_renderResolution_scale-choice-").prop("checked");
                 if (useScale) {
                     if (video_scales.indexOf(scale.val() * 100) != -1) {
-                        el.val(scale.val() * 100);
+                        dropdown.val(scale.val() * 100);
+                        $("#_root_video_resolutionDropdown-selectal").show();
+                        customRes.hide();
                     } else {
-                        el.val("custom");
+                        $("#_root_video_resolutionDropdown-selectal").hide()
+                        customRes.show();                      
                     }
                 } else if (alvrSettings.getSession().lastClients.length > 0) {
 
@@ -248,29 +263,44 @@ define([
                     var factor = targetWidth.val() / absWidth;
 
                     if (video_scales.indexOf(factor * 100) != -1) {
-                        el.val(factor * 100);
+                        dropdown.val(factor * 100);
+                        $("#_root_video_resolutionDropdown-selectal").show()
+                        customRes.hide();
                     } else {
-                        el.val("custom");
+                        $("#_root_video_resolutionDropdown-selectal").hide()
+                        customRes.show();
                     }
 
                 } else {
+                    $("#_root_video_resolutionDropdown-selectal").hide()
                     //always custom
-                    el.val("custom");
+                    customRes.show();
                 }
-                el.change();
+                dropdown.change();
             }
 
             updateDropdown();
 
 
             $("#_root_video_renderResolution_absolute_width,#_root_video_renderResolution_absolute_height,#_root_video_renderResolution_scale").change((ev) => {
+                if (update) {
+                    return;
+                }
+
+                update = true;
                 updateDropdown();
+                update = false;
             })
 
 
-            el.change((ev) => {
+            dropdown.change((ev) => {
+                if (update) {
+                    return;
+                }
 
-                const val = el.val();
+                update = true;
+
+                const val = dropdown.val();
                 scale.val(val / 100);
 
                 alvrSettings.storeParam(scale, true);
@@ -287,8 +317,9 @@ define([
                 //force scale mode
                 $("#_root_video_renderResolution_scale-choice-").prop("checked", true);
                 alvrSettings.storeParam($("#_root_video_renderResolution_scale-choice-"), true);
-
                 alvrSettings.storeSession("settings");
+
+                update = false;
             });
 
         }
@@ -359,7 +390,7 @@ define([
             audio_devices.list.forEach(device => {
                 let name = device[1];
                 if (device[0] === audio_devices.default) {
-                    name = "(default) " + device[1];            
+                    name = "(default) " + device[1];
                     el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_gameAudio_content", device[0]));
 
                     const deviceReset = $("#_root_audio_gameAudio_content_device").parent().find(".helpReset .paramReset");
@@ -378,7 +409,7 @@ define([
 
             //move selected audio device to top of list
             var $el = $("#_root_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
-            $("#_root_audio_gameAudio_content_deviceDropdown").find('option:eq(0)').before($el);
+            $("#_root_audio_gameAudio_content_deviceDropdown").prepend($el);
 
             var select = new Selectal('#_root_audio_gameAudio_content_deviceDropdown');
             el = $("#_root_audio_gameAudio_content_deviceDropdown");
@@ -400,7 +431,7 @@ define([
 
             target.change(() => {
                 if (!updating) {
-                    updating = true;                  
+                    updating = true;
                     el.val(target.val());
                     el.change();
                     updating = false;

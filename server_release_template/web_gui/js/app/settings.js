@@ -4,10 +4,11 @@ define([
     "app/customSettings",
     "lib/lodash",
     "i18n!app/nls/settings",
-    "i18n!app/nls/revert",
+    "i18n!app/nls/revertRestart",
     "text!app/templates/revertConfirm.html",
+    "text!app/templates/restartConfirm.html",
 
-], function (schema, session, CustomSettings, _, i18n, revertI18n, revertConfirm) {
+], function (schema, session, CustomSettings, _, i18n, revertRestartI18n, revertConfirm, restartConfirm) {
     return function () {
         var self = this;
 
@@ -53,6 +54,7 @@ define([
 
             fillNode(schema, "root", 0, $("#configContent"), "", undefined);
             updateSwitchContent();
+            updateOptionalContent();
 
             setProperties(session.settingsCache, "_root");
 
@@ -60,8 +62,8 @@ define([
             addChangeListener();
 
             //special
-        
-            customSettings.setCustomSettings();       
+
+            customSettings.setCustomSettings();
 
             addListeners();
             addHelpTooltips();
@@ -101,14 +103,16 @@ define([
                     return { "name": i18n[id + ".name"], "description": i18n[id + ".description"] };;
                 } else {
                     console.log("Missing i18n", `"${id}.name":"", \r\n "${id}.description":"", \r\n`);
+                    var name = id.substring(id.lastIndexOf("_") + 1, id.length);
+                    name = name.replace("-choice-", ""); 
 
-                    return { "name": id, "description": "" };
+                    return { "name": name, "description": undefined };
                 }
             }
         }
 
         function addChangeListener() {
-            $('.parameter input').change((evt) => {
+            $('.parameter input:not(.skipInput)').change((evt) => {
                 if (!updating) {
                     var el = $(evt.target);
                     self.storeParam(el);
@@ -253,9 +257,30 @@ define([
         function updateSwitchContent() {
             $(".switch").each((index, el) => {
                 var checked = $(el).find("input").first().prop("checked");
-                $(el).find(".card-body input").prop("disabled", !checked)
+                if (checked) {
+                    $(el).find(".card-body").show();
+                } else {
+                    $(el).find(".card-body").hide();
+                }
             })
         }
+
+        function updateOptionalContent() {
+
+            $(".optional").each((index, el) => {
+                var checked = $(el).find("input[type='checkbox']").first().prop("checked");
+
+                if (checked) {
+                    $(el).find(".optionalSet").button("toggle");
+                    $(el).find(".card-body").show();
+                } else {
+                    $(el).find(".optionalUnset").button("toggle");
+                    $(el).find(".card-body").hide();
+                }
+            })
+        }
+
+
 
         function addListeners() {
             $("#toggleAdvanced").click(() => {
@@ -264,17 +289,7 @@ define([
             })
 
             $("#restartSteamVR").click(() => {
-                $.get("restart_steamvr", undefined, (res) => {
-                    if (res == 0) {
-                        Lobibox.notify("success", {
-                            size: "mini",
-                            rounded: true,
-                            delayIndicator: false,
-                            sound: false,
-                            msg: i18n.steamVRRestartSuccess
-                        })
-                    }
-                })
+                restartSteamVR();
             })
 
             $(".paramReset").click((evt) => {
@@ -287,7 +302,7 @@ define([
                 if (!$("#" + path + "_" + name).prop("disabled")) {
                     const confirm = $("#_root_extra_revertConfirmDialog").prop("checked");
                     if (confirm) {
-                        showConfirmDialog(def).then((res) => {
+                        showResetConfirmDialog(def).then((res) => {
                             if (res) {
                                 resetToDefault(name, path, def);
                             }
@@ -301,6 +316,33 @@ define([
 
         function addHelpTooltips() {
             $('[data-toggle="tooltip"]').tooltip()
+        }
+
+        function restartSteamVR() {
+            const triggerRestart = () => {
+                $.get("restart_steamvr", undefined, (res) => {
+                    if (res == 0) {
+                        Lobibox.notify("success", {
+                            size: "mini",
+                            rounded: true,
+                            delayIndicator: false,
+                            sound: false,
+                            msg: i18n.steamVRRestartSuccess
+                        })
+                    }
+                })
+            }
+
+            const confirm = $("#_root_extra_restartConfirmDialog").prop("checked");
+            if (confirm) {
+                showRestartConfirmDialog().then((res) => {
+                    if (res) {
+                        triggerRestart();
+                    }
+                });
+            } else {
+                triggerRestart();
+            }
         }
 
         function toggleAdvanced() {
@@ -363,6 +405,13 @@ define([
                 return;
             }
 
+
+            //special case for optional and switch, values are now named with "_content"
+            if (parentType == "optional" || parentType == "switch") {
+                name = name + "_content";
+            }
+
+
             switch (node.type) {
 
                 case "section":
@@ -372,8 +421,7 @@ define([
                         element = createTab(element, path, name, advanced);
 
                     } else if (level > 1) {
-
-                        if (parentType != "switch") { //switch adds section
+                        if (parentType != "switch" && parentType != "optional") { //switch and optional add own sections
                             element = addContainer(element, path, name, advanced);
                         }
                     }
@@ -381,8 +429,6 @@ define([
                     var newPath = path + "_" + name;
                     if (parentType == "array") {
                         newPath = path;
-                    } else if (parentType == "switch") {
-                        newPath = path + "_" + name + "_content";
                     } else if (parentType == "choice") {
                         newPath = path;
                     }
@@ -438,6 +484,17 @@ define([
 
                     });
 
+                    break;
+
+                case "optional":
+                    if (level == 1) {
+                        element = createTab(element, path, name, advanced);
+                        element = addOptionalContainer(element, path, name, advanced, node);
+                    } else if (level > 1) {
+                        element = addOptionalContainer(element, path, name, advanced, node);
+                    }
+
+                    fillNode(node.content.content, name, level + 1, element, path, node.type, node.content.advanced);
                     break;
 
                 case "integer":
@@ -508,6 +565,54 @@ define([
             </div>`;
 
             element.append(el);
+            element = element.find(".card-body").last();
+
+            return element;
+        }
+
+        function addOptionalContainer(element, path, name, advanced, node) {
+
+            let checked = "";
+            if (node.content.defaultSet) {
+                checked = "checked";
+            }
+
+            var el = `<div class="parameter optional ${getAdvancedClass(advanced)}" >   
+                <div class="card-title">
+                    <div class="btn-group btn-group-sm" data-toggle="buttons">
+                        <label class="btn btn-primary optionalSet"><input class="skipInput" type="radio" name="${path}_${name}" id="${path}_${name}_setRadio" >Set</label>
+                        <label class="btn btn-primary optionalUnset"><input class="skipInput" type="radio" name="${path}_${name}" id="${path}_${name}_unsetRadio" >Unset</label>               
+                    </div>
+                    <input  id="${path}_${name}_set" type="checkbox" ${checked}  style="visibility:hidden" />
+                    <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">
+                    ${getI18n(path + "_" + name).name}</a> 
+                    ${self.getHelpReset(name + "_set", path, node.content.defaultSet)}
+                </div>   
+                <div id="collapse_${index}" class="collapse show">
+                    <div class="card-body">
+                    </div>      
+                </div> 
+            </div>`;
+
+            element.append(el);
+
+            $(document).ready(() => {
+
+
+                $("#" + path + "_" + name + "_setRadio").parent().click(() => {
+                    $("#" + path + "_" + name + "_set").prop("checked", true)
+                    $("#" + path + "_" + name + "_set").change();
+                })
+                $("#" + path + "_" + name + "_unsetRadio").parent().click(() => {
+                    $("#" + path + "_" + name + "_set").prop("checked", false);
+                    $("#" + path + "_" + name + "_set").change();
+
+                })
+
+            });
+
+            $("#" + path + "_" + name + "_set").on("change", updateOptionalContent);
+
             element = element.find(".card-body").last();
 
             return element;
@@ -627,8 +732,22 @@ define([
 
                 case "upDown":
                 case "updown":
-                    base += `<input numericType="${node.type}" id="${path}_${name}" type="number" min="${node.content.min}" 
-            max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"> ${self.getHelpReset(name, path, node.content.default)}`;
+                    var el = `<input numericType="${node.type}" id="${path}_${name}" type="number" min="${node.content.min}" 
+                    max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}">`;
+                    
+                    var grp = `<div class="upDownGrp" ><div class="input-group">
+                    <div class="input-group-prepend">
+                        <button class="btn btn-primary btn-sm" id="minus-btn"><i class="fa fa-minus"></i></button>
+                    </div>
+                    ${el}
+                    <div class="input-group-append">
+                        <button class="btn btn-primary btn-sm" id="plus-btn"><i class="fa fa-plus"></i></button>
+                    </div>
+                    
+                    </div></div>${self.getHelpReset(name, path, node.content.default)}`;
+                    
+                    
+                    base += grp;  
                     break;
 
                 case "textbox":
@@ -646,12 +765,54 @@ define([
             $("#" + path + "_" + name).on("input", (el) => {
                 $("#" + el.target.id + "_label").text("[" + el.target.value + "]")
             });
+
+
+
+            //add spinner functions
+            $("#" + path + "_" + name + "[type=number]" ).prev().on("click", (el) => {
+                var val = new Number($("#" + path + "_" + name).val());
+                var step = 1;
+                if(node.content.step !== null) {
+                    step = node.content.step;
+                }
+
+                val = val - step;
+
+                if(node.content.min != null && val < node.content.min) {
+                    val = node.content.min;
+                }
+                $("#" + path + "_" + name).val(val);          
+                $("#" + path + "_" + name).change();   
+
+            });
+
+            $("#" + path + "_" + name + "[type=number]" ).next().on("click", (el) => {
+                var val = new Number($("#" + path + "_" + name).val());
+
+                var step = 1;
+                if(node.content.step !== null) {
+                    step = node.content.step;
+                }
+
+                val = val + step;    
+
+                if(node.content.max != null && val > node.content.max) {
+                    val = node.content.max;
+                }
+                $("#" + path + "_" + name).val(val);
+                $("#" + path + "_" + name).change();
+            });
         }
 
         //helper
         self.getHelpReset = function (name, path, defaultVal, postFix = "") {
+            var getVisibility = function() {
+                if(getHelp(name, path) === undefined) {
+                    return `style="display:none"`;
+                }
+            }
             return `<div class="helpReset">
-                <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(name, path)}" ></i>
+                <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(name, path)}" ${getVisibility()}></i>
                 <i class="fa fa-redo fa-lg paramReset" name="${name}${postFix}" path="${path}" default="${defaultVal}")" ></i>
             </div>`;
         }
@@ -683,7 +844,7 @@ define([
                 $("#" + path + "_" + name).val(defaultVal).trigger("input");
             }
             $("#" + path + "_" + name).change();
-          
+
         }
 
         function getMinMaxLabel(node) {
@@ -694,15 +855,54 @@ define([
             }
         }
 
-        function showConfirmDialog(defaultVal) {
+        function showRestartConfirmDialog() {
             return new Promise((resolve, reject) => {
-                var compiledTemplate = _.template(revertConfirm);
-                revertI18n.settingDefault = defaultVal;
+                var compiledTemplate = _.template(restartConfirm);
 
-                var template = compiledTemplate(revertI18n);
+                var template = compiledTemplate(revertRestartI18n);
                 $("#confirmModal").remove();
                 $("body").append(template);
                 $(document).ready(() => {
+
+                    $('#confirmModal').modal({
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                    $('#confirmModal').on('hidden.bs.modal', (e) => {
+                        resolve(false)
+                    })
+                    $("#okRestartButton").click(() => {
+                        resolve(true)
+
+                        //disable future confirmation
+                        if ($("#confirmRestartCheckbox").prop("checked")) {
+                            const confirm = $("#_root_extra_restartConfirmDialog").prop("checked", false);
+                            confirm.change();
+                        }
+
+                        $('#confirmModal').modal('hide');
+                        $('#confirmModal').remove();
+                    })
+                    $("#cancelRestartButton").click(() => {
+                        resolve(false)
+                        $('#confirmModal').modal('hide');
+                        $('#confirmModal').remove();
+                    })
+                });
+            });
+        }
+
+
+        function showResetConfirmDialog(defaultVal) {
+            return new Promise((resolve, reject) => {
+                var compiledTemplate = _.template(revertConfirm);
+                revertRestartI18n.settingDefault = defaultVal;
+
+                var template = compiledTemplate(revertRestartI18n);
+                $("#confirmModal").remove();
+                $("body").append(template);
+                $(document).ready(() => {
+
                     $('#confirmModal').modal({
                         backdrop: 'static',
                         keyboard: false
@@ -725,7 +925,7 @@ define([
         }
 
         function clampNumeric(element, value) {
-            if (element.attr("min") !== "null" && element.attr("max") !== "null") {         
+            if (element.attr("min") !== "null" && element.attr("max") !== "null") {
                 return _.clamp(value, element.attr("min"), element.attr("max"))
             } else {
                 return value;

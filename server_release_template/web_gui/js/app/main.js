@@ -7,6 +7,7 @@ define([
     "app/settings",
     "app/setupWizard",
     "app/monitor",
+    "app/driverList",
     "json!../../session",
     "text!../../version",
     "app/monitor",
@@ -14,7 +15,7 @@ define([
     "css!js/lib/lobibox.min.css"
 
 
-], function ($, bootstrap, _, mainTemplate, i18n, Settings, SetupWizard, Monitor, session, version) {
+], function ($, bootstrap, _, mainTemplate, i18n, Settings, SetupWizard, Monitor,driverList, session, version) {
     $(function () {
 
         var compiledTemplate = _.template(mainTemplate);
@@ -67,6 +68,7 @@ define([
             })
 
             $("#registerAlvrDriver").click(() => {
+                driverList.fillDriverList("registeredDriversInst");
                 $.get("driver/register", undefined, (res) => {
                     if (res != -1) {
                         Lobibox.notify("success", {
@@ -78,24 +80,11 @@ define([
                         })
                     }
                 })
-            })
-
-            $("#unregisterAlvrDriver").click(() => {
-                $.get("driver/unregister", undefined, (res) => {
-                    if (res != -1) {
-                        Lobibox.notify("success", {
-                            size: "mini",
-                            rounded: true,
-                            delayIndicator: false,
-                            sound: false,
-                            msg: i18n.unregisterAlvrDriverSuccess
-                        })
-                    }
-                })
-            })
+            })          
 
             $("#unregisterAllDrivers").click(() => {
                 $.get("driver/unregister-all", undefined, (res) => {
+                    driverList.fillDriverList("registeredDriversInst");
                     if (res != -1) {
                         Lobibox.notify("success", {
                             size: "mini",
@@ -109,6 +98,10 @@ define([
             })
 
             $("#version").text("v" + version);
+
+            driverList.fillDriverList("registeredDriversInst");
+
+            
         });
     });
 });

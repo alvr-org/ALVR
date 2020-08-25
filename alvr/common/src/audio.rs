@@ -177,7 +177,7 @@ pub fn output_audio_devices() -> StrResult<AudioDevicesDesc> {
         }
     }
 
-    let default = Some(device_list[0].0.clone());
+    let default = device_list.get(0).map(|dev| dev.0.clone());
     let audio_devices_desc = AudioDevicesDesc {
         list: device_list,
         default,

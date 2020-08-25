@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>ALVR Launcher</title>
+</head>
+
+<body>
+    <div id="not-ready" style="display:none">
+        <h3>Installation</h3>
+        <div>
+            SteamVR
+            <span id="steamvr-check"></span>
+        </div>
+        <div>
+            <a href="https://aka.ms/vs/16/release/vc_redist.x64.exe">
+                Visual C++ Redistributable package x64
+            </a>
+            <span id="msvcp-check"></span>
+        </div>
+    </div>
+    <div id="ready" style="display:none">
+        <div>Waiting for driver to load...</div>
+        <button id="restart-btn" style="display:none">Restart SteamVR</dibuttonv>
+    </div>
+
+    <script>
+        function resize_and_center(width, height) {
+            window.resizeTo(width, height);
+            var locationX = (screen.availWidth - window.outerWidth) / 2;
+            var locationY = (screen.availHeight - window.outerHeight) / 2;
+            window.moveTo(locationX, locationY);
+        }
+        resize_and_center(500, 300);
+
+        function ping_web_server() {
+            return new Promise(resolve => {
+                xhttp = new XMLHttpRequest();
+                xhttp.open("GET", "https://127.0.0.1:8082");
+                xhttp.onreadystatechange = function () {
+                    if (xhttp.readyState == XMLHttpRequest.DONE) {
+                        if (xhttp.status == 200) {
+                            resolve(true);
+                        } else {
+                            resolve(false);
+                        }
+                    }
+                }
+                xhttp.send();
+            });
+        }
+
+        async function checkInstallation() {
+            let steamvrInstalled = await checkSteamvrInstallation();
+            let msvcpInstalled = await checkMsvcpInstallation();
+
+            if (steamvrInstalled && msvcpInstalled) {
+                document.getElementById("not-ready").style.display = "none";
+                document.getElementById("ready").style.display = "block";
+
+                // await maybeLaunchSteamvr();
+
+                while (true) {
+                    let success;
+                    for (i = 0; i < 5; i++) {
+                        if (await ping_web_server()) {
+                            success = true;
+                            break;
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        console.log("retry ping...");
+                    }
+                    if (success) {
+                        resize_and_center(800, 600);
+                        window.location.assign("https://127.0.0.1:8082");
+                        break;
+                    } else {
+                        document.getElementById("restart-btn").style.display = "block";
+                        // await maybeLaunchSteamvr();
+                    }
+                }
+
+                return true;
+            } else {
+                if (steamvrInstalled) {
+                    document.getElementById("steamvr-check").innerText = "[Installed]";
+                } else {
+                    document.getElementById("steamvr-check").innerText =
+                        "[Not installed] Check that you ran it at least once";
+                }
+                if (msvcpInstalled) {
+                    document.getElementById("msvcp-check").innerText = "[Installed]";
+                } else {
+                    document.getElementById("msvcp-check").innerText = "[Not installed]";
+                }
+
+                document.getElementById("not-ready").style.display = "block";
+                document.getElementById("ready").style.display = "none";
+
+                return false;
+            }
+        }
+
+        function init() {
+            document.getElementById("restart-btn").onclick = function () {
+                (async () => {
+                    await killSteamvr();
+                    // await maybeLaunchSteamvr();
+                })();
+            };
+
+            (async () => {
+                while (!await checkInstallation()) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            })()
+        }
+
+    </script>
+</body>
+
+</html>

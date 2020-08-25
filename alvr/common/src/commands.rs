@@ -45,7 +45,7 @@ pub fn steamvr_bin_dir() -> StrResult<PathBuf> {
         .ok_or_else(|| "regex failed")?
         .as_str();
 
-    Ok(PathBuf::from(path_string))
+    Ok(PathBuf::from(&path_string))
 }
 
 fn steamvr_dir() -> StrResult<PathBuf> {
@@ -76,7 +76,6 @@ pub fn maybe_launch_steamvr() {
     }
 }
 
-// this does not kill any child processes, including possibly the web server
 pub fn kill_steamvr() {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
@@ -251,4 +250,15 @@ pub fn restore_driver_paths_backup() -> StrResult {
     }
 
     trace_err!(fs::remove_file(backup_path))
+}
+
+#[cfg(windows)]
+pub fn check_msvcp_installation() -> StrResult<bool> {
+    let output = trace_err!(Command::new("where")
+        .arg("msvcp140_2.dll")
+        .creation_flags(CREATE_NO_WINDOW)
+        .output())?;
+    let output = String::from_utf8_lossy(&output.stdout);
+
+    Ok(output.contains("msvcp140_2.dll"))
 }

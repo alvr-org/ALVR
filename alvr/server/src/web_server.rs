@@ -1,5 +1,5 @@
 use crate::*;
-use alvr_common::{data::*, logging::*, process::*, *};
+use alvr_common::{commands::*, data::*, logging::*, *};
 use futures::{future::BoxFuture, SinkExt};
 use std::{
     convert::Infallible,
@@ -184,6 +184,9 @@ pub async fn web_server(
 
     let version_request = warp::path("version").map(|| ALVR_SERVER_VERSION.to_string());
 
+    let graphics_devices_request =
+        warp::path("graphics_devices").map(|| reply::json(&graphics::get_gpus_info()));
+
     let web_server_port = session_manager
         .lock()
         .await
@@ -201,6 +204,7 @@ pub async fn web_server(
                 .or(files_requests)
                 .or(settings_schema_request)
                 .or(audio_devices_request)
+                .or(graphics_devices_request)
                 .or(restart_steamvr_request)
                 .or(log_subscription)
                 .or(register_driver_request)

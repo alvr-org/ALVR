@@ -8,7 +8,7 @@ mod web_server;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use alvr_common::{data::*, logging::*, process::*, sockets::*, *};
+use alvr_common::{data::*, logging::*, commands::*, sockets::*, *};
 use lazy_static::lazy_static;
 use lazy_static_include::*;
 use parking_lot::Mutex;
@@ -48,6 +48,8 @@ pub fn shutdown_runtime() {
         // dropping the runtime has the benefit of giving SteamVR a chance to clean itself as
         // much as possible before the process is killed because of alvr_launcher timeout.
     }
+
+    maybe_delete_alvr_dir_store();
 }
 
 pub fn restart_steamvr() {

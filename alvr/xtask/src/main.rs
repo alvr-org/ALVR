@@ -124,7 +124,7 @@ pub fn reset_server_build_folder() -> BResult {
     let items = dir_content.directories[1..]
         .iter()
         .chain(dir_content.files.iter())
-        .collect();
+        .collect::<Vec<_>>();
 
     fsx::copy_items(&items, server_build_dir(), &dirx::CopyOptions::new())?;
 

@@ -23,11 +23,12 @@ serde_json = '^1.0'
 bincode = '^1.3'
 serde_bytes = '^0.11.5'
 futures = '^0.3.5'
-tokio = { version = '^0.2.20', features = ['macros', 'process', 'io-util', 'stream', 'udp', 'tcp', 'time'] }
+tokio = { version = '^0.2.20', features = ['macros', 'net', 'sync'] }
 tokio-util = { version = '^0.3.1', features = ['codec', 'udp'] }
 bytes = '^0.5.6'
 rcgen = '^0.8.5'
 quinn = { git = 'https://github.com/djc/quinn' }# todo: use registry version (>0.6.1)
+gfx-hal = '^0.6.0'
 # cpal = '^0.12.1'
 
 [target.'cfg(windows)'.dependencies]
@@ -43,6 +44,7 @@ winapi = { version = '^0.3.8', features = [
 wio = '^0.2.2'
 widestring = '^0.4.2'
 winreg = '^0.7.0'
+gfx-backend-dx11 = '^0.6.0'
 
 [target.'cfg(not(windows))'.dependencies]
 dirs = '^3.0.1'

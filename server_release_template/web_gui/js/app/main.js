@@ -67,36 +67,6 @@ define([
                 })
             })
 
-            $("#registerAlvrDriver").click(() => {
-                driverList.fillDriverList("registeredDriversInst");
-                $.get("driver/register", undefined, (res) => {
-                    if (res != -1) {
-                        Lobibox.notify("success", {
-                            size: "mini",
-                            rounded: true,
-                            delayIndicator: false,
-                            sound: false,
-                            msg: i18n.registerAlvrDriverSuccess
-                        })
-                    }
-                })
-            })          
-
-            $("#unregisterAllDrivers").click(() => {
-                $.get("driver/unregister-all", undefined, (res) => {
-                    driverList.fillDriverList("registeredDriversInst");
-                    if (res != -1) {
-                        Lobibox.notify("success", {
-                            size: "mini",
-                            rounded: true,
-                            delayIndicator: false,
-                            sound: false,
-                            msg: i18n.unregisterAllDriversSuccess
-                        })
-                    }
-                })
-            })
-
             $("#version").text("v" + version);
 
             driverList.fillDriverList("registeredDriversInst");

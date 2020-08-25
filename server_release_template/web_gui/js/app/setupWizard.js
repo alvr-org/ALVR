@@ -23,29 +23,6 @@ define([
                     backdrop: 'static',
                     keyboard: false
                 });
-                $("#installDriver").click(() => {
-                    $.get("driver/register", undefined, (res) => {
-                        if (res == -1) {
-                            Lobibox.notify("error", {
-                                size: "mini",
-                                rounded: true,
-                                delayIndicator: false,
-                                sound: false,
-                                msg: i18n.driverFailed
-                            })
-                        } else {
-                            Lobibox.notify("success", {
-                                size: "mini",
-                                rounded: true,
-                                delayIndicator: false,
-                                sound: false,
-                                msg: i18n.driverSuccess
-                            });
-                            driverList.fillDriverList("driverListPlaceholder");
-                            driverList.fillDriverList("registeredDriversInst"); //for the installation tab
-                        }
-                    })
-                })
 
                 $("#addFirewall").click(() => {
                     $.get("firewall-rules/add", undefined, (res) => {

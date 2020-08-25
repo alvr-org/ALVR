@@ -1,8 +1,10 @@
 define({
     "title": "Benvenuto su ALVR",
     "subtitle": "Questa guida ti aiuterà ad installare e configurare ALVR",
+    "titleHardwareReq": "Requisiti hardware",
+    "textHardwareReq": "ALVR richiede una scheda grafica dedicata e recente (Intel HD graphics non e' supportato). Qui puoi vedere una <a target='_blank' href='https://github.com/polygraphene/ALVR/wiki/Supported-GPU'>lista delle GPU supportate</a>. <br/> <br/> Controlla di avere almeno un dispositivo audio di output.",
     "titleSoftwareReq": "Requisiti software",
-    "textSoftwareReq": "Controlla di aver installato SteamVR e di averlo avviato almeno una volta e poi chiuso. <br/> Se non l'hai già fatto, installa l'ultimo pacchetto <a  target='_blank' href='https://support.microsoft.com/it-it/help/2977003/the-latest-supported-visual-c-downloads'>Visual C++ Redistrubutable x64</a>.",
+    "textSoftwareReq": "Controlla di aver installato SteamVR e di averlo avviato almeno una volta e poi chiuso. <br/> <br/> Se non l'hai già fatto, installa l'ultimo pacchetto <a  target='_blank' href='https://support.microsoft.com/it-it/help/2977003/the-latest-supported-visual-c-downloads'>Visual C++ Redistrubutable x64</a>. <br/> <br/> Per trasmettere l'audio del microfono del visore devi installare il <a  target='_blank' href='https://www.vb-audio.com/Cable/'>Virtual Audio Cable</a>.",
     "titleFirewall": "Firewall",
     "textFirewall": "Per comunicare con il visore, devono essere impostate alcune eccezioni del firewall. Questo richiede privilegi di amministratore.",
     "buttonFirewall" : "Aggiungi eccezione firewall",

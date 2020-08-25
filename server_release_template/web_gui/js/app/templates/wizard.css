@@ -20,15 +20,6 @@
 
 }
 
-#installDriver {
-    margin-top: 10px;
-    margin-bottom: 10px;
-}
-
-.installDriverDiv, .registeredDriversInst {
-    flex-grow: 0;
-}
-
 .driverList {
     flex: 1;
     display: flex;
@@ -42,6 +33,5 @@
 
 #driverListPlaceholder {
     overflow: hidden;
-    display: flex;
+    margin-top: 20px;
 }
-

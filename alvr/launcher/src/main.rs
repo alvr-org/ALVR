@@ -3,7 +3,25 @@
 use alvr_common::{commands::*, *};
 use logging::show_err;
 use serde_json as json;
-use std::env;
+use std::{
+    env, thread,
+    time::{Duration, Instant},
+};
+
+const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
+
+fn restart_mode() {
+    let deadline = Instant::now() + SHUTDOWN_TIMEOUT;
+
+    while Instant::now() < deadline && is_steamvr_running() {
+        thread::sleep(Duration::from_millis(500));
+    }
+
+    // Note: if SteamVR already shutdown cleanly, this does nothing
+    kill_steamvr();
+
+    maybe_launch_steamvr();
+}
 
 fn maybe_register_alvr_driver() -> StrResult {
     let current_path = trace_err!(env::current_exe())?;
@@ -50,7 +68,9 @@ fn window_mode() -> StrResult {
 
         trace_err!(window.bind("maybeLaunchSteamvr", |_| {
             show_err(maybe_register_alvr_driver()).ok();
-            maybe_launch_steamvr();
+            if !is_steamvr_running() {
+                maybe_launch_steamvr();
+            }
             Ok(json::Value::Null)
         }))?;
 
@@ -67,5 +87,12 @@ fn window_mode() -> StrResult {
 }
 
 fn main() {
-    show_err(window_mode()).ok();
+    let args = env::args().collect::<Vec<_>>();
+
+    match args.get(1) {
+        Some(flag) if flag == "restart-steamvr" => restart_mode(),
+        _ => {
+            show_err(window_mode()).ok();
+        }
+    }
 }

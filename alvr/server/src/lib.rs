@@ -58,7 +58,7 @@ pub fn restart_steamvr() {
 
         unsafe { ShutdownSteamvr() };
 
-        // todo: launch alvr_launcher with "restart" flag
+        restart_steamvr_with_timeout().ok();
     });
 }
 

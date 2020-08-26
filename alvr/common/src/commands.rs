@@ -61,21 +61,23 @@ fn kill_process(pid: usize) {
         .ok();
 }
 
-pub fn maybe_launch_steamvr() {
+pub fn is_steamvr_running() -> bool {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
 
-    if system
+    !system
         .get_process_by_name(&exec_fname("vrserver"))
         .is_empty()
-    {
-        Command::new("cmd")
-            .args(&["/C", "start", "steam://run/250820"])
-            .spawn()
-            .ok();
-    }
 }
 
+pub fn maybe_launch_steamvr() {
+    Command::new("cmd")
+        .args(&["/C", "start", "steam://run/250820"])
+        .spawn()
+        .ok();
+}
+
+// this will not kill the child process "ALVR launcher"
 pub fn kill_steamvr() {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
@@ -261,4 +263,12 @@ pub fn check_msvcp_installation() -> StrResult<bool> {
     let output = String::from_utf8_lossy(&output.stdout);
 
     Ok(output.contains("msvcp140_2.dll"))
+}
+
+pub fn restart_steamvr_with_timeout() -> StrResult {
+    let alvr_dir = get_alvr_dir()?;
+    trace_err!(Command::new(alvr_dir.join(exec_fname("ALVR launcher")))
+        .arg("restart-steamvr")
+        .status())?;
+    Ok(())
 }

@@ -211,7 +211,7 @@ impl StreamSocket {
         key_pem: String,
         stream_socket_config: SocketConfig,
     ) -> StrResult<Self> {
-        let server_addr = SocketAddr::new(server_ip, port);
+        let server_addr = (server_ip, port).into();
         match stream_socket_config {
             SocketConfig::Udp => udp::create_socket(server_addr).await,
             SocketConfig::Tcp => tcp::connect_to_server(server_addr).await,
@@ -227,7 +227,7 @@ impl StreamSocket {
         client_identity: Identity,
         stream_socket_config: SocketConfig,
     ) -> StrResult<Self> {
-        let client_addr = SocketAddr::new(client_ip, port);
+        let client_addr = (client_ip, port).into();
         match stream_socket_config {
             SocketConfig::Udp => udp::create_socket(client_addr).await,
             SocketConfig::Tcp => tcp::connect_to_client(client_addr).await,

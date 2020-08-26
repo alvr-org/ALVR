@@ -145,7 +145,7 @@ pub async fn web_server(
         });
 
     let audio_devices_request =
-        warp::path("audio_devices").map(|| reply::json(&audio::output_audio_devices().ok()));
+        warp::path("audio-devices").map(|| reply::json(&audio::output_audio_devices().ok()));
 
     let restart_steamvr_request = warp::path("restart_steamvr").map(move || {
         restart_steamvr();
@@ -185,7 +185,7 @@ pub async fn web_server(
     let version_request = warp::path("version").map(|| ALVR_SERVER_VERSION.to_string());
 
     let graphics_devices_request =
-        warp::path("graphics_devices").map(|| reply::json(&graphics::get_gpus_info()));
+        warp::path("graphics-devices").map(|| reply::json(&graphics::get_gpus_info()));
 
     let web_server_port = session_manager
         .lock()

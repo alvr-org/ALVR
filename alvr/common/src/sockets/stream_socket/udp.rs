@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) async fn create_socket(peer_addr: SocketAddr) -> StrResult<StreamSocket> {
-    let socket = trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, peer_addr.port())).await)?;
+    let socket = trace_err!(UdpSocket::bind((LOCAL_IP, peer_addr.port())).await)?;
     let socket = UdpFramed::new(socket, LDC::new());
     let (send_stream, mut receive_stream) = socket.split();
 

@@ -36,8 +36,7 @@ fn create_socket(socket: TcpStream) -> StreamSocket {
 }
 
 pub(super) async fn connect_to_server(server_addr: SocketAddr) -> StrResult<StreamSocket> {
-    let mut listener =
-        trace_err!(TcpListener::bind(SocketAddr::new(LOCAL_IP, CONTROL_PORT)).await)?;
+    let mut listener = trace_err!(TcpListener::bind((LOCAL_IP, CONTROL_PORT)).await)?;
     let (socket, server_address) = trace_err!(listener.accept().await)?;
 
     if server_address != server_addr {

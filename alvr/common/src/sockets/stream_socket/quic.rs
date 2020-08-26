@@ -175,8 +175,7 @@ pub(super) async fn connect_to_server(
     let mut endpoint = Endpoint::builder();
     endpoint.listen(socket_config);
 
-    let (_, mut incoming) =
-        trace_err!(endpoint.bind(&SocketAddr::new(LOCAL_IP, server_addr.port())))?;
+    let (_, mut incoming) = trace_err!(endpoint.bind(&(LOCAL_IP, server_addr.port()).into()))?;
 
     let new_connection = trace_err!(trace_none!(incoming.next().await)?.await)?;
 
@@ -211,7 +210,7 @@ pub(super) async fn connect_to_client(
 
     endpoint.default_client_config(socket_config);
 
-    let (endpoint, _) = trace_err!(endpoint.bind(&SocketAddr::new(LOCAL_IP, client_addr.port())))?;
+    let (endpoint, _) = trace_err!(endpoint.bind(&(LOCAL_IP, client_addr.port()).into()))?;
 
     let new_connection =
         trace_err!(trace_err!(endpoint.connect(&client_addr, &client_identity.hostname))?.await)?;

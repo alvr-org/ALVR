@@ -4,7 +4,7 @@ use futures::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     marker::PhantomData,
-    net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4},
+    net::{IpAddr, Ipv4Addr},
     time::Duration,
 };
 use tokio::{net::*, time::timeout};
@@ -97,15 +97,15 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
         hostname: String,
         certificate_pem: String,
     ) -> StrResult<(Self, ClientConfigPacket)> {
-        let handshake_address = SocketAddr::V4(SocketAddrV4::new(MULTICAST_ADDR, CONTROL_PORT));
-
-        let mut handshake_socket =
-            trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, CONTROL_PORT)).await)?;
+        let mut handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;
         trace_err!(handshake_socket.join_multicast_v4(MULTICAST_ADDR, Ipv4Addr::UNSPECIFIED))?;
-        trace_err!(handshake_socket.connect(handshake_address).await)?;
+        trace_err!(
+            handshake_socket
+                .connect((MULTICAST_ADDR, CONTROL_PORT))
+                .await
+        )?;
 
-        let mut listener =
-            trace_err!(TcpListener::bind(SocketAddr::new(LOCAL_IP, CONTROL_PORT)).await)?;
+        let mut listener = trace_err!(TcpListener::bind((LOCAL_IP, CONTROL_PORT)).await)?;
 
         let client_handshake_packet = trace_err!(bincode::serialize(&HandshakePacket {
             alvr_name: ALVR_NAME.into(),
@@ -140,7 +140,7 @@ impl ControlSocket<ClientControlPacket, ServerControlPacket> {
     ) -> StrResult<Self> {
         let client_addresses = client_ips
             .iter()
-            .map(|&ip| SocketAddr::new(ip, CONTROL_PORT))
+            .map(|&ip| (ip, CONTROL_PORT).into())
             .collect::<Vec<_>>();
 
         let socket = trace_err!(TcpStream::connect(client_addresses.as_slice()).await)?;

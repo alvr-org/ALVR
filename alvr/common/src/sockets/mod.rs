@@ -6,7 +6,7 @@ pub use stream_socket::*;
 
 use crate::{data::*, logging::*, *};
 use futures::Future;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr};
 use tokio::net::*;
 
 type LDC = tokio_util::codec::LengthDelimitedCodec;
@@ -80,8 +80,7 @@ pub async fn search_client_loop<F: Future>(
     client_found_cb: impl Fn(IpAddr, Identity) -> F,
 ) -> StrResult {
     // use naked UdpSocket + [u8] packet buffer to have more control over datagram data
-    let mut handshake_socket =
-        trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, CONTROL_PORT)).await)?;
+    let mut handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;
 
     let mut packet_buffer = [0u8; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
 

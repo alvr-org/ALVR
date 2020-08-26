@@ -25,15 +25,15 @@
     </div>
 
     <script>
-        function resize_and_center(width, height) {
+        function resizeAndCenter(width, height) {
             window.resizeTo(width, height);
             var locationX = (screen.availWidth - window.outerWidth) / 2;
             var locationY = (screen.availHeight - window.outerHeight) / 2;
             window.moveTo(locationX, locationY);
         }
-        resize_and_center(500, 300);
+        resizeAndCenter(500, 300);
 
-        function ping_web_server() {
+        function pingWebServer() {
             return new Promise(resolve => {
                 xhttp = new XMLHttpRequest();
                 xhttp.open("GET", "https://127.0.0.1:8082");
@@ -61,9 +61,9 @@
                 // await maybeLaunchSteamvr();
 
                 while (true) {
-                    let success;
-                    for (i = 0; i < 5; i++) {
-                        if (await ping_web_server()) {
+                    let success = false;
+                    for (let i = 0; i < 1; i++) { // todo: change to 5
+                        if (await pingWebServer()) {
                             success = true;
                             break;
                         }
@@ -71,7 +71,7 @@
                         console.log("retry ping...");
                     }
                     if (success) {
-                        resize_and_center(800, 600);
+                        resizeAndCenter(800, 600);
                         window.location.assign("https://127.0.0.1:8082");
                         break;
                     } else {
@@ -86,7 +86,7 @@
                     document.getElementById("steamvr-check").innerText = "[Installed]";
                 } else {
                     document.getElementById("steamvr-check").innerText =
-                        "[Not installed] Check that you ran it at least once";
+                        "[Not installed] Check that you ran it at least once, then close it";
                 }
                 if (msvcpInstalled) {
                     document.getElementById("msvcp-check").innerText = "[Installed]";
@@ -105,7 +105,7 @@
             document.getElementById("restart-btn").onclick = function () {
                 (async () => {
                     await killSteamvr();
-                    // await maybeLaunchSteamvr();
+                    await maybeLaunchSteamvr();
                 })();
             };
 

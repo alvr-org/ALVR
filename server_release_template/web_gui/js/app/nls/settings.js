@@ -1,7 +1,7 @@
 define({
     "root": {
         "customVideoScale": "custom resolution",
-        "steamVRRestartSuccess" : "SteamVR successfully restarted",
+        "steamVRRestartSuccess": "SteamVR successfully restarted",
         "_root_video_tab.name": "Video",
         "_root_video_tab.description": "Video settings",
         "_root_audio_tab.name": "Audio",
@@ -237,5 +237,6 @@ define({
         "_root_connection_bufferOffset.description": "Offset to increase or decrease the calculated client buffer size. The client buffer can not be negative"
     },
     "it": true,
+    "es": true,
     "de-de": true
 });

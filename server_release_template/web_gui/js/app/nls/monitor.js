@@ -28,9 +28,10 @@ define({
         "fecFailureInSecond": "Fec failure / s",
         "clientFPS": "Client fps",
         "serverFPS": "Server fps",
-        "packets" : "Packets",
-        "packetss" : "Packets/s"
+        "packets": "Packets",
+        "packetss": "Packets/s"
     },
     "it": true,
+    "es": true,
     "de-de": false
 });

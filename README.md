@@ -57,7 +57,7 @@ To make the Oculus Quest microphone work you need to install the [Virtual Audio 
 
 ## Uninstall
 
-Launch `ALVR.exe`, go to `Installation` tab, press `Unregister ALVR driver` and `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
+Launch `ALVR.exe`, go to `Installation` tab, press `Remove` next to the current ALVR installation path, then `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
 
 If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder.
 

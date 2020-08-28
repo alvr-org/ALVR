@@ -24,7 +24,6 @@ pub struct ServerConfigPacket {
     pub native_eye_resolution: (u32, u32),
     pub native_fov: [Fov; 2],
     pub native_fps: u32,
-    pub server_ip: IpAddr,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -36,6 +35,7 @@ pub struct ClientConfigPacket {
 
 #[derive(Serialize, Deserialize)]
 pub enum ServerControlPacket {
+    Restarting,
     Shutdown,
 }
 

@@ -6,6 +6,7 @@ license = 'MIT'
 edition = '2018'
 
 [dependencies]
+settings-schema = { git = 'https://github.com/zarik5/settings-schema-rs', features = ['rename_camel_case'] }
 rand = '^0.7.3'
 lazy_static = '^1.4.0'
 parking_lot = '^0.11.0'
@@ -14,10 +15,9 @@ regex = '^1.3.9'
 semver = { version = '^0.10.0', features = ['serde'] }
 log = '^0.4.8'
 backtrace = '^0.3.46'
-settings-schema = { git = 'https://github.com/zarik5/settings-schema-rs', features = ['rename_camel_case'] }
 sysinfo = '^0.15.0'
 runas = '^0.2.1'
-nalgebra = { version = '^0.21.1', features = ["serde-serialize"] }
+nalgebra = { version = '^0.22.0', features = ["serde-serialize"] }
 serde = { version = '^1.0', features = ['derive'] }
 serde_json = '^1.0'
 bincode = '^1.3'

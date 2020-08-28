@@ -58,11 +58,11 @@
                 document.getElementById("not-ready").style.display = "none";
                 document.getElementById("ready").style.display = "block";
 
-                // await maybeLaunchSteamvr();
+                await maybeLaunchSteamvr();
 
                 while (true) {
                     let success = false;
-                    for (let i = 0; i < 1; i++) { // todo: change to 5
+                    for (let i = 0; i < 5; i++) {
                         if (await pingWebServer()) {
                             success = true;
                             break;
@@ -76,7 +76,7 @@
                         break;
                     } else {
                         document.getElementById("restart-btn").style.display = "block";
-                        // await maybeLaunchSteamvr();
+                        await maybeLaunchSteamvr();
                     }
                 }
 

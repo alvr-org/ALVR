@@ -1,3 +1,4 @@
+use crate::*;
 use alvr_common::logging::*;
 use fern::Dispatch;
 use log::LevelFilter;
@@ -31,13 +32,13 @@ pub fn init_logging(log_sender: Sender<String>) {
                 .write(true)
                 .create(true)
                 .truncate(true)
-                .open(SESSION_LOG_FNAME)
+                .open(ALVR_DIR.join(SESSION_LOG_FNAME))
                 .unwrap(),
         )
         .chain(
             Dispatch::new()
                 .level(LevelFilter::Error)
-                .chain(fern::log_file(CRASH_LOG_FNAME).unwrap()),
+                .chain(fern::log_file(ALVR_DIR.join(CRASH_LOG_FNAME)).unwrap()),
         )
         .apply()
         .unwrap();

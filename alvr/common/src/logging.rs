@@ -70,7 +70,7 @@ pub enum LogId {
         web_client_id: String,
         update_type: SessionUpdateType,
     },
-    SettingsCacheExtrapolationFailed,
+    SessionSettingsExtrapolationFailed,
     ClientFoundOk,
     ClientFoundInvalid,
     ClientFoundWrongVersion(String),

@@ -8,7 +8,7 @@ mod web_server;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use alvr_common::{data::*, logging::*, commands::*, sockets::*, *};
+use alvr_common::{commands::*, data::*, logging::*, sockets::*, *};
 use lazy_static::lazy_static;
 use lazy_static_include::*;
 use parking_lot::Mutex;
@@ -18,6 +18,7 @@ use std::{
     ffi::{c_void, CStr, CString},
     net::IpAddr,
     os::raw::c_char,
+    path::PathBuf,
     slice,
     sync::{Arc, Once},
     thread,
@@ -28,6 +29,9 @@ use tokio::{runtime::Runtime, sync::broadcast};
 pub type AMutex<T> = tokio::sync::Mutex<T>;
 
 lazy_static! {
+    // Since ALVR_DIR is needed to initialize logging, if error then just panic
+    static ref ALVR_DIR: PathBuf = get_alvr_dir().unwrap();
+
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
     static ref MAYBE_SHUTDOWN_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
     static ref MAYBE_VIDEO_SENDER: Mutex<Option<StreamSender<VideoPacket>>> = Mutex::new(None);
@@ -83,7 +87,7 @@ pub async fn update_client_list(
     let session_desc_ref =
         &mut session_manager_ref.get_mut(SERVER_SESSION_UPDATE_ID, SessionUpdateType::ClientList);
 
-    let maybe_client_entry = session_desc_ref.last_clients.entry(hostname);
+    let maybe_client_entry = session_desc_ref.client_connections.entry(hostname);
 
     match action {
         ClientListAction::AddIfMissing {
@@ -137,47 +141,47 @@ pub async fn update_client_list(
 fn init(log_sender: broadcast::Sender<String>) -> StrResult {
     let alvr_dir = get_alvr_dir()?;
 
-    if let Err(e) = restore_driver_paths_backup() {
-        info!(
-            "Failed to restore drivers paths backup (usually not an error): {}",
-            e
-        );
-        // This is not fatal. This happens if the user did register ALVR driver through the setup
-        // wizard.
-    }
+    // if let Err(e) = restore_driver_paths_backup() {
+    //     info!(
+    //         "Failed to restore drivers paths backup (usually not an error): {}",
+    //         e
+    //     );
+    //     // This is not fatal. This happens if the user did register ALVR driver through the setup
+    //     // wizard.
+    // }
 
-    if let Some(runtime) = &*MAYBE_RUNTIME.lock() {
-        let session_manager = Arc::new(AMutex::new(SessionManager::new(&alvr_dir)));
+    // if let Some(runtime) = &*MAYBE_RUNTIME.lock() {
+    let session_manager = Arc::new(AMutex::new(SessionManager::new(&alvr_dir)));
 
-        let (shutdown_notifier, mut shutdown_receiver) = broadcast::channel(1);
-        let (update_client_listeners_notifier, _) = broadcast::channel(1);
+    //     let (shutdown_notifier, mut shutdown_receiver) = broadcast::channel(1);
+    //     let (update_client_listeners_notifier, _) = broadcast::channel(1);
 
-        // Error: reached the type-length limit while instantiating ...
-        // I need to split my future into separate .spawn()
+    //     // Error: reached the type-length limit while instantiating ...
+    //     // I need to split my future into separate .spawn()
 
-        runtime.spawn({
-            async move {
-                let web_server = show_err_async(web_server::web_server(
-                    session_manager.clone(),
-                    log_sender,
-                    update_client_listeners_notifier.clone(),
-                ));
+    //     runtime.spawn({
+    //         async move {
+    //             let web_server = show_err_async(web_server::web_server(
+    //                 session_manager.clone(),
+    //                 log_sender,
+    //                 update_client_listeners_notifier.clone(),
+    //             ));
 
-                let connection_loop = show_err_async(connection::connection_loop(
-                    session_manager,
-                    update_client_listeners_notifier,
-                ));
+    //             let connection_loop = show_err_async(connection::connection_loop(
+    //                 session_manager,
+    //                 update_client_listeners_notifier,
+    //             ));
 
-                tokio::select! {
-                    _ = web_server => (),
-                    _ = connection_loop => (),
-                    _ = shutdown_receiver.recv() => (),
-                }
-            }
-        });
+    //             tokio::select! {
+    //                 _ = web_server => (),
+    //                 _ = connection_loop => (),
+    //                 _ = shutdown_receiver.recv() => (),
+    //             }
+    //         }
+    //     });
 
-        *MAYBE_SHUTDOWN_NOTIFIER.lock() = Some(shutdown_notifier);
-    }
+    //     *MAYBE_SHUTDOWN_NOTIFIER.lock() = Some(shutdown_notifier);
+    // }
 
     let alvr_dir_c_string = CString::new(alvr_dir.to_string_lossy().to_string()).unwrap();
     unsafe { g_alvrDir = alvr_dir_c_string.into_raw() };
@@ -215,12 +219,12 @@ pub unsafe extern "C" fn HmdDriverFactory(
     COLOR_CORRECTION_CSO_PTR = COLOR_CORRECTION_CSO.as_ptr();
     COLOR_CORRECTION_CSO_LEN = COLOR_CORRECTION_CSO.len() as _;
 
-    unsafe fn log(level: log::Level, string_ptr: *const c_char) {
-        _log!(level, "{}", CStr::from_ptr(string_ptr).to_string_lossy());
+    unsafe extern "C" fn log_error(string_ptr: *const c_char) {
+        show_err::<(), _>(Err(CStr::from_ptr(string_ptr).to_string_lossy())).ok();
     }
 
-    unsafe extern "C" fn log_error(string_ptr: *const c_char) {
-        log(log::Level::Error, string_ptr);
+    unsafe fn log(level: log::Level, string_ptr: *const c_char) {
+        _log!(level, "{}", CStr::from_ptr(string_ptr).to_string_lossy());
     }
 
     unsafe extern "C" fn log_warn(string_ptr: *const c_char) {

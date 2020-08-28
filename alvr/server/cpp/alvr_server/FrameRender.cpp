@@ -4,8 +4,6 @@
 #include "resource.h"
 #include "Settings.h"
 
-extern uint64_t g_DriverTestMode;
-
 using namespace d3d_render_utils;
 
 

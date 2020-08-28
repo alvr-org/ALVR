@@ -9,20 +9,20 @@
 class Settings
 {
 	static Settings m_Instance;
-	bool m_loaded;
 
 	Settings();
 	virtual ~Settings();
 
 public:
 	void Load();
-	static Settings &Instance() {
+	void UpdateForStream(StreamSettings settings);
+
+	static Settings &Instance()
+	{
 		return m_Instance;
 	}
 
-	bool IsLoaded() {
-		return m_loaded;
-	}
+	// OpenVR config (used early)
 
 	std::string mSerialNumber;
 	std::string mTrackingSystemName;
@@ -34,14 +34,11 @@ public:
 
 	int32_t m_nAdapterIndex;
 
-	uint64_t m_DriverTestMode = 0;
-
 	int m_refreshRate;
 	int32_t m_renderWidth;
 	int32_t m_renderHeight;
 	int32_t m_recommendedTargetWidth;
 	int32_t m_recommendedTargetHeight;
-
 
 	EyeFov m_eyeFov[2];
 	float m_flSecondsFromVsyncToPhotons;
@@ -59,20 +56,6 @@ public:
 	float m_gamma;
 	float m_sharpening;
 
-	bool m_enableSound;
-	std::string m_soundDevice;
-
-	bool m_streamMic;
-
-	int m_codec;
-	std::string m_EncoderOptions;
-	Bitrate mEncodeBitrate;
-
-	bool m_force60HZ;
-
-	bool m_nv12;
-
-	// Controller configs
 	std::string m_controllerTrackingSystemName;
 	std::string m_controllerManufacturerName;
 	std::string m_controllerModelNumber;
@@ -83,36 +66,29 @@ public:
 	std::string mControllerRegisteredDeviceType;
 	std::string m_controllerInputProfilePath;
 	bool m_disableController;
-	int32_t m_controllerTriggerMode;
-	int32_t m_controllerTrackpadClickMode;
-	int32_t m_controllerTrackpadTouchMode;
-	int32_t m_controllerBackMode;
-	int32_t m_controllerRecenterButton;
+
+	// Stream config (used after the stream starts)
+
+	bool m_enableSound = false;
+	char *m_soundDevice;
+
+	bool m_streamMic = false;
+
+	int m_codec = 0;
+	Bitrate mEncodeBitrate = Bitrate::fromMiBits(30);
 
 	double m_controllerPoseOffset = 0;
 
-	float m_OffsetPos[3];
-	bool m_EnableOffsetPos;
+	float m_OffsetPos[3] = {0};
 
-	double m_leftControllerPositionOffset[3];
-	double m_leftControllerRotationOffset[3];
+	double m_leftControllerPositionOffset[3] = {0};
+	double m_leftControllerRotationOffset[3] = {0};
 
-	float m_hapticsIntensity;
+	float m_hapticsIntensity = 0;
 
-	int32_t m_causePacketLoss;
+	int32_t m_trackingFrameOffset = 0;
 
-	bool m_useTrackingReference;
+	int64_t m_keyframeResendIntervalMs = 100;
 
-	int32_t m_trackingFrameOffset;
-
-	bool m_force3DOF;
-
-	bool m_aggressiveKeyframeResend;
-
-	// They are not in config json and set by "SetConfig" command.
-	bool m_captureLayerDDSTrigger = false;
-	bool m_captureComposedDDSTrigger = false;
-	
 	int m_controllerMode = 0;
 };
-

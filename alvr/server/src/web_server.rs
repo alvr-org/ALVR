@@ -79,7 +79,7 @@ pub async fn web_server(
     let files_requests = wfs::dir(web_gui_dir);
 
     let settings_schema_request = warp::path("settings-schema")
-        .map(|| reply::json(&settings_schema(settings_cache_default())));
+        .map(|| reply::json(&settings_schema(session_settings_default())));
 
     let get_session_request = warp::get().and(warp::path("session")).and_then({
         let session_manager = session_manager.clone();

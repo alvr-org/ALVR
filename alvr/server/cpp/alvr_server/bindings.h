@@ -29,6 +29,21 @@ extern "C" void (*ShutdownRuntime)();
 
 // C++ to Rust:
 
+//Stream settings can be re-applied without restarting SteamVR
+struct StreamSettings {
+    bool gameAudio;
+    char *gameAudioDevice;
+    bool microphone;
+    uint64_t keyframeResendIntervalMs;
+    int codec;
+    uint64_t encodeBitrateMbs;
+    int32_t trackingFrameOffset;
+    float poseTimeOffset;
+    float positionOffsetLeft[3];
+    float rotationOffsetLeft[3];
+    float hapticsIntensity;
+};
+
 struct TrackingQuat
 {
     float x;
@@ -99,7 +114,7 @@ struct TrackingInfo
 };
 
 extern "C" void *CppEntryPoint(const char *, int *);
-extern "C" void InitalizeStreaming();
+extern "C" void InitalizeStreaming(StreamSettings settings);
 extern "C" void UpdatePose(TrackingInfo);
 extern "C" void HandlePacketLoss();
 extern "C" void PlayMicAudio(uint8_t *, int);

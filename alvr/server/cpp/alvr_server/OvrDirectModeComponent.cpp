@@ -220,11 +220,6 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2], 
 		LogDriver("Too many layers submitted!");
 	}
 
-	if (Settings::Instance().m_DriverTestMode & 8) {
-		// Crash test
-		*(char*)0 = 1;
-	}
-
 	//CopyTexture();
 }
 

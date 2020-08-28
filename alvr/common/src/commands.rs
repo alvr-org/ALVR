@@ -70,9 +70,11 @@ pub fn is_steamvr_running() -> bool {
         .is_empty()
 }
 
+#[cfg(windows)]
 pub fn maybe_launch_steamvr() {
     Command::new("cmd")
-        .args(&["/C", "start", "steam://run/250820"])
+        .args(&["/C", "start", "steam://rungameid/250820"])
+        .creation_flags(CREATE_NO_WINDOW)
         .spawn()
         .ok();
 }

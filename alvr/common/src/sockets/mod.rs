@@ -25,7 +25,7 @@ pub struct Certificate {
 pub fn create_certificate(hostname: Option<String>) -> StrResult<Certificate> {
     let hostname = hostname.unwrap_or(format!("{}.client.alvr", rand::random::<u16>()));
 
-    let certificate = trace_err!(rcgen::generate_simple_self_signed(vec![hostname.clone()]))?;
+    let certificate = trace_err!(rcgen::generate_simple_self_signed([hostname.clone()]))?;
 
     Ok(Certificate {
         hostname,

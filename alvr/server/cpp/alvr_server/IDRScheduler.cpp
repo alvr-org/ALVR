@@ -32,11 +32,7 @@ void IDRScheduler::OnPacketLoss()
 
 void IDRScheduler::OnStreamStart()
 {
-	if (Settings::Instance().IsLoaded() && Settings::Instance().m_aggressiveKeyframeResend) {
-		m_minIDRFrameInterval = MIN_IDR_FRAME_INTERVAL_AGGRESSIVE;
-	} else {
-		m_minIDRFrameInterval = MIN_IDR_FRAME_INTERVAL;
-	}
+	m_minIDRFrameInterval = Settings::Instance().m_keyframeResendIntervalMs * 1000;
 	IPCCriticalSectionLock lock(m_IDRCS);
 	// Force insert IDR-frame
 	m_insertIDRTime = GetTimestampUs() - MIN_IDR_FRAME_INTERVAL * 2;

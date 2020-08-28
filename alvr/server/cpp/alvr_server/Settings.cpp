@@ -10,24 +10,14 @@
 
 using namespace std;
 
-extern uint64_t g_DriverTestMode;
-
 Settings Settings::m_Instance;
 
-
-uint32_t align32(double value) {
-	return (uint32_t)(value / 32) * 32;
-}
-
 Settings::Settings()
-	: m_EnableOffsetPos(false)
-	, m_loaded(false)
 {
 	m_OffsetPos[0] = 0.0f;
 	m_OffsetPos[1] = 0.0f;
 	m_OffsetPos[2] = 0.0f;
 }
-
 
 Settings::~Settings()
 {
@@ -35,7 +25,8 @@ Settings::~Settings()
 
 void Settings::Load()
 {
-	try {
+	try
+	{
 		auto sessionFile = std::ifstream(g_alvrDir + "/session.json"s);
 
 		auto json = std::string(
@@ -44,183 +35,100 @@ void Settings::Load()
 
 		picojson::value v;
 		std::string err = picojson::parse(v, json);
-		if (!err.empty()) {
+		if (!err.empty())
+		{
 			Error("Error on parsing json: %hs", err.c_str());
 			return;
 		}
 
-		picojson::value *activeConnection = nullptr;
-		picojson::value *lastConnection = nullptr;
-		auto clientConnections = v.get("lastClients").get<picojson::array>();
-		for (auto &connection : clientConnections) {
-			if (connection.get("state").get<std::string>() == "availableTrusted") {
-				activeConnection = &connection;
-			}
-			if (lastConnection == nullptr ||
-				(connection.get("lastUpdateMsSinceEpoch").get<int64_t>() 
-				> lastConnection->get("lastUpdateMsSinceEpoch").get<int64_t>()))
-			{
-				lastConnection = &connection;
-			}
-		}
+		auto openvrConfig = v.get("openvrConfig");
 
-		picojson::value connectedClient;
-		if (activeConnection != nullptr) {
-			connectedClient = *activeConnection;
-		} else if (lastConnection != nullptr) {
-			connectedClient = *lastConnection;
-		} else {
-			Error("No client found");
-			return;
-		}
+		mSerialNumber = openvrConfig.get("headsetSerialNumber").get<std::string>().c_str();
+		mTrackingSystemName = openvrConfig.get("headsetTrackingSystemName").get<std::string>();
+		mModelNumber = openvrConfig.get("headsetModelNumber").get<std::string>();
+		mDriverVersion = openvrConfig.get("headsetDriverVersion").get<std::string>();
+		mManufacturerName = openvrConfig.get("headsetManufacturerName").get<std::string>();
+		mRenderModelName = openvrConfig.get("headsetRenderModelName").get<std::string>();
+		mRegisteredDeviceType = openvrConfig.get("headsetRegisteredDeviceType").get<std::string>();
 
-		auto clientHandshakePacket = connectedClient.get("handshakePacket");
+		auto eyeResolution = openvrConfig.get("eyeResolution").get<picojson::array>();
+		m_renderWidth = eyeResolution[0].get<int64_t>() * 2;
+		m_renderHeight = eyeResolution[1].get<int64_t>();
 
-		auto settingsCache = v.get("settingsCache");
+		auto targetEyeResolution = openvrConfig.get("targetEyeResolution").get<picojson::array>();
+		m_recommendedTargetWidth = targetEyeResolution[0].get<int64_t>() * 2;
+		m_recommendedTargetHeight = targetEyeResolution[1].get<int64_t>();
 
-		auto video = settingsCache.get("video");
-		auto audio = settingsCache.get("audio");
-		auto headset = settingsCache.get("headset");
-		auto controllers = headset.get("controllers").get("content");
-		auto connection = settingsCache.get("connection");
-
-		mSerialNumber = headset.get("serialNumber").get<std::string>();
-		mTrackingSystemName = headset.get("trackingSystemName").get<std::string>();
-		mModelNumber = headset.get("modelNumber").get<std::string>();
-		mDriverVersion = headset.get("driverVersion").get<std::string>();
-		mManufacturerName = headset.get("manufacturerName").get<std::string>();
-		mRenderModelName = headset.get("renderModelName").get<std::string>();
-		mRegisteredDeviceType = headset.get("registeredDeviceType").get<std::string>();
-
-		auto renderResolutionMode = video.get("renderResolution").get("variant").get<std::string>();
-		if (renderResolutionMode == "scale") {
-			auto scale = video.get("renderResolution").get("scale").get<double>();
-			m_renderWidth = align32((double)clientHandshakePacket.get("renderWidth").get<int64_t>() * scale);
-			m_renderHeight = align32((double)clientHandshakePacket.get("renderHeight").get<int64_t>() * scale);
-		}
-		else if (renderResolutionMode == "absolute")
+		picojson::array &eyeFov = openvrConfig.get("fov").get<picojson::array>();
+		for (int eye = 0; eye < 2; eye++)
 		{
-			m_renderWidth = align32(video.get("renderResolution").get("absolute").get("width").get<int64_t>());
-			m_renderHeight = align32(video.get("renderResolution").get("absolute").get("height").get<int64_t>());
-		}
-		else
-		{
-			Error("Invalid renderResolution");
-			return;
-		}
-
-		auto targetResolutionMode = video.get("recommendedTargetResolution").get("variant").get<std::string>();
-		if (targetResolutionMode == "scale")
-		{
-			auto scale = video.get("recommendedTargetResolution").get("scale").get<double>();
-			m_recommendedTargetWidth = align32((double)clientHandshakePacket.get("renderWidth").get<int64_t>() * scale);
-			m_recommendedTargetHeight = align32((double)clientHandshakePacket.get("renderHeight").get<int64_t>() * scale);
-		}
-		else if (renderResolutionMode == "absolute")
-		{
-			m_recommendedTargetWidth = align32(video.get("recommendedTargetResolution").get("absolute").get("width").get<int64_t>());
-			m_recommendedTargetHeight = align32(video.get("recommendedTargetResolution").get("absolute").get("height").get<int64_t>());
-		}
-		else {
-			Error("Invalid recommendedTargetResolution");
-			return;
-		}
-
-		picojson::array &eyeFov = video.get("eyeFov").get<picojson::array>();
-		for (int eye = 0; eye < 2; eye++) {
 			m_eyeFov[eye].left = static_cast<float>(eyeFov[eye].get("left").get<double>());
 			m_eyeFov[eye].right = static_cast<float>(eyeFov[eye].get("right").get<double>());
 			m_eyeFov[eye].top = static_cast<float>(eyeFov[eye].get("top").get<double>());
 			m_eyeFov[eye].bottom = static_cast<float>(eyeFov[eye].get("bottom").get<double>());
 		}
 
-		m_enableSound = audio.get("gameAudio").get("enabled").get<bool>();
-		m_soundDevice = audio.get("gameAudio").get("content").get("device").get<std::string>();
-		m_streamMic = audio.get("microphone").get<bool>();
+		m_flSecondsFromVsyncToPhotons = (float)openvrConfig.get("secondsFromVsyncToPhotons").get<double>();
 
-		m_flSecondsFromVsyncToPhotons = (float)video.get("secondsFromVsyncToPhotons").get<double>();
+		m_flIPD = (float)openvrConfig.get("ipd").get<double>();
 
-		m_flIPD = (float)video.get("ipd").get<double>();
+		m_nAdapterIndex = (int32_t)openvrConfig.get("adapterIndex").get<int64_t>();
 
-		m_force60HZ = video.get("force60hz").get<bool>();
+		m_refreshRate = (int)openvrConfig.get("fps").get<int64_t>();
 
-		m_force3DOF = headset.get("force3dof").get<bool>();
+		m_controllerTrackingSystemName = openvrConfig.get("controllersTrackingSystemName").get<std::string>();
+		m_controllerManufacturerName = openvrConfig.get("controllersManufacturerName").get<std::string>();
+		m_controllerModelNumber = openvrConfig.get("controllersModelNumber").get<std::string>();
+		m_controllerRenderModelNameLeft = openvrConfig.get("renderModelNameLeftcontroller").get<std::string>();
+		m_controllerRenderModelNameRight = openvrConfig.get("renderModelNameRightcontroller").get<std::string>();
+		m_controllerSerialNumber = openvrConfig.get("controllersSerialNumber").get<std::string>();
+		m_controllerType = openvrConfig.get("controllersType").get<std::string>();
+		mControllerRegisteredDeviceType = openvrConfig.get("controllersRegisteredDeviceType").get<std::string>();
+		m_controllerInputProfilePath = openvrConfig.get("controllersInputProfilePath").get<std::string>();
 
-		m_aggressiveKeyframeResend = connection.get("aggressiveKeyframeResend").get<bool>();
+		m_controllerMode = (int32_t)openvrConfig.get("controllersModeIdx").get<int64_t>();
 
-		m_nAdapterIndex = (int32_t)video.get("adapterIndex").get<int64_t>();
+		m_disableController = !openvrConfig.get("controllersEnabled").get<bool>();
 
-		m_codec = (int32_t)(video.get("codec").get("variant").get<std::string>() == "HEVC");
-		m_refreshRate = (int)video.get("refreshRate").get<int64_t>();
-		mEncodeBitrate = Bitrate::fromMiBits((int)video.get("encodeBitrateMbs").get<int64_t>());
+		m_enableFoveatedRendering = openvrConfig.get("enableFoveatedRendering").get<bool>();
+		m_foveationStrength = (float)openvrConfig.get("foveationStrength").get<double>();
+		m_foveationShape = (float)openvrConfig.get("foveationShape").get<double>();
+		m_foveationVerticalOffset = (float)openvrConfig.get("foveationVerticalOffset").get<double>();
 
-		m_controllerTrackingSystemName = controllers.get("trackingSystemName").get<std::string>();
-		m_controllerManufacturerName = controllers.get("trackingSystemName").get<std::string>();
-		m_controllerModelNumber = controllers.get("modelNumber").get<std::string>();
-		m_controllerRenderModelNameLeft = controllers.get("renderModelNameLeft").get<std::string>();
-		m_controllerRenderModelNameRight = controllers.get("renderModelNameRight").get<std::string>();
-		m_controllerSerialNumber = controllers.get("serialNumber").get<std::string>();
-		m_controllerType = controllers.get("ctrlType").get<std::string>();
-		mControllerRegisteredDeviceType = controllers.get("registeredDeviceType").get<std::string>();
-		m_controllerInputProfilePath = controllers.get("inputProfilePath").get<std::string>();
-
-		m_disableController = !headset.get("controllers").get("enabled").get<bool>();
-		m_controllerTriggerMode = (int32_t)controllers.get("triggerMode").get<int64_t>();
-		m_controllerTrackpadClickMode = (int32_t)controllers.get("trackpadClickMode").get<int64_t>();
-		m_controllerTrackpadTouchMode = (int32_t)controllers.get("trackpadTouchMode").get<int64_t>();
-		m_controllerBackMode = (int32_t)controllers.get("backMode").get<int64_t>();
-		m_controllerRecenterButton = (int32_t)controllers.get("recenterButton").get<int64_t>();
-
-		m_useTrackingReference = headset.get("useTrackingReference").get<bool>();
-
-		m_EnableOffsetPos = true;
-		auto headsetPositionOffset = headset.get("positionOffset").get<picojson::array>();
-		m_OffsetPos[0] = (float)headsetPositionOffset[0].get<double>();
-		m_OffsetPos[1] = (float)headsetPositionOffset[1].get<double>();
-		m_OffsetPos[2] = (float)headsetPositionOffset[2].get<double>();
-
-		m_trackingFrameOffset = (int32_t)headset.get("trackingFrameOffset").get<int64_t>();
-		m_controllerPoseOffset = (double)controllers.get("poseTimeOffset").get<double>();
-
-		auto leftControllerPositionOffset = controllers.get("positionOffsetLeft").get<picojson::array>();
-		m_leftControllerPositionOffset[0] = leftControllerPositionOffset[0].get<double>();
-		m_leftControllerPositionOffset[1] = leftControllerPositionOffset[1].get<double>();
-		m_leftControllerPositionOffset[2] = leftControllerPositionOffset[2].get<double>();
-
-		auto leftControllerRotationOffset = controllers.get("rotationOffsetLeft").get<picojson::array>();
-		m_leftControllerRotationOffset[0] = leftControllerRotationOffset[0].get<double>();
-		m_leftControllerRotationOffset[1] = leftControllerRotationOffset[1].get<double>();
-		m_leftControllerRotationOffset[2] = leftControllerRotationOffset[2].get<double>();
-
-		m_hapticsIntensity = controllers.get("hapticsIntensity").get<double>();
-
-		m_enableFoveatedRendering = video.get("foveatedRendering").get("enabled").get<bool>();
-		m_foveationStrength = (float)video.get("foveatedRendering").get("content").get("strength").get<double>();
-		m_foveationShape = (float)video.get("foveatedRendering").get("content").get("shape").get<double>();
-		m_foveationVerticalOffset = (float)video.get("foveatedRendering").get("content").get("verticalOffset").get<double>();
-
-		m_enableColorCorrection = video.get("colorCorrection").get("enabled").get<bool>();
-		m_brightness = (float)video.get("colorCorrection").get("content").get("brightness").get<double>();
-		m_contrast = (float)video.get("colorCorrection").get("content").get("contrast").get<double>();
-		m_saturation = (float)video.get("colorCorrection").get("content").get("saturation").get<double>();
-		m_gamma = (float)video.get("colorCorrection").get("content").get("gamma").get<double>();
-		m_sharpening = (float)video.get("colorCorrection").get("content").get("sharpening").get<double>();
-
-		m_controllerMode = (int32_t)controllers.get("modeIdx").get<int64_t>();
-
-		LogDriver("Config JSON: %hs", json.c_str());
-		LogDriver("Serial Number: %hs", mSerialNumber.c_str());
-		LogDriver("Model Number: %hs", mModelNumber.c_str());
-		LogDriver("Render Target: %d %d", m_renderWidth, m_renderHeight);
-		LogDriver("Seconds from Vsync to Photons: %f", m_flSecondsFromVsyncToPhotons);
-		LogDriver("Refresh Rate: %d", m_refreshRate);
-		LogDriver("IPD: %f", m_flIPD);
-
-		LogDriver("EncoderOptions: %hs", m_EncoderOptions.c_str());
-
-		m_loaded = true;
+		m_enableColorCorrection = openvrConfig.get("enableColorCorrection").get<bool>();
+		m_brightness = (float)openvrConfig.get("brightness").get<double>();
+		m_contrast = (float)openvrConfig.get("contrast").get<double>();
+		m_saturation = (float)openvrConfig.get("saturation").get<double>();
+		m_gamma = (float)openvrConfig.get("gamma").get<double>();
+		m_sharpening = (float)openvrConfig.get("sharpening").get<double>();
 	}
-	catch (std::exception &e) {
+	catch (std::exception &e)
+	{
 		FatalLog("Exception on parsing json: %hs", e.what());
 	}
+}
+
+void Settings::UpdateForStream(StreamSettings settings)
+{
+	m_enableSound = settings.gameAudio;
+	m_soundDevice = settings.gameAudioDevice;
+	m_streamMic = settings.microphone;
+
+	m_keyframeResendIntervalMs = settings.keyframeResendIntervalMs;
+
+	m_codec = settings.codec;
+	mEncodeBitrate = Bitrate::fromMiBits(settings.encodeBitrateMbs);
+
+	m_trackingFrameOffset = settings.trackingFrameOffset;
+	m_controllerPoseOffset = settings.poseTimeOffset;
+
+	m_leftControllerPositionOffset[0] = settings.positionOffsetLeft[0];
+	m_leftControllerPositionOffset[1] = settings.positionOffsetLeft[1];
+	m_leftControllerPositionOffset[2] = settings.positionOffsetLeft[2];
+
+	m_leftControllerRotationOffset[0] = settings.rotationOffsetLeft[0];
+	m_leftControllerRotationOffset[1] = settings.rotationOffsetLeft[1];
+	m_leftControllerRotationOffset[2] = settings.rotationOffsetLeft[2];
+
+	m_hapticsIntensity = settings.hapticsIntensity;
 }

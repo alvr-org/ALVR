@@ -63,7 +63,7 @@ pub enum FrameSize {
     },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Clone, Default)]
 pub struct Fov {
     #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub left: f32,
@@ -124,7 +124,7 @@ pub struct VideoDesc {
     pub adapter_index: u32,
 
     #[schema(advanced)]
-    pub refresh_rate: u32,
+    pub refresh_rate: Option<u32>,
 
     // Dropdown with 25%, 50%, 75%, 100%, 125%, 150% etc or custom
     // Should set renderResolution (always in scale mode).
@@ -139,7 +139,7 @@ pub struct VideoDesc {
     pub recommended_target_resolution: FrameSize,
 
     #[schema(advanced)]
-    pub eye_fov: [Fov; 2],
+    pub eye_fov: Option<[Fov; 2]>,
 
     #[schema(advanced)]
     pub seconds_from_vsync_to_photons: f32,
@@ -339,11 +339,14 @@ pub struct Settings {
     pub extra: ExtraDesc,
 }
 
-pub fn settings_cache_default() -> SettingsDefault {
+pub fn session_settings_default() -> SettingsDefault {
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
-            refresh_rate: 72,
+            refresh_rate: OptionalDefault {
+                set: false,
+                content: 72,
+            },
             render_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
                 Scale: 1.,
@@ -360,20 +363,23 @@ pub fn settings_cache_default() -> SettingsDefault {
                     height: 1600,
                 },
             },
-            eye_fov: [
-                FovDefault {
-                    left: 52.,
-                    right: 42.,
-                    top: 53.,
-                    bottom: 47.,
-                },
-                FovDefault {
-                    left: 42.,
-                    right: 52.,
-                    top: 53.,
-                    bottom: 47.,
-                },
-            ],
+            eye_fov: OptionalDefault {
+                set: false,
+                content: [
+                    FovDefault {
+                        left: 52.,
+                        right: 42.,
+                        top: 53.,
+                        bottom: 47.,
+                    },
+                    FovDefault {
+                        left: 42.,
+                        right: 52.,
+                        top: 53.,
+                        bottom: 47.,
+                    },
+                ],
+            },
             seconds_from_vsync_to_photons: 0.005,
             ipd: 0.063,
             foveated_rendering: SwitchDefault {

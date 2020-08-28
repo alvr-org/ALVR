@@ -1,5 +1,6 @@
 use crate::*;
 use alvr_common::{data::*, logging::*, sockets::*, *};
+use futures::Future;
 use nalgebra::{Point3, UnitQuaternion, Vector3};
 use settings_schema::Switch;
 use std::{collections::HashMap, net::IpAddr, sync::Arc};
@@ -34,61 +35,11 @@ fn unit_quat_to_tracking_quat(quat: &UnitQuaternion<f32>) -> TrackingQuat {
     }
 }
 
-async fn create_control_socket(
-    clients_data: HashMap<IpAddr, Identity>,
-    settings: Settings,
-) -> (
-    Identity,
-    ControlSocket<ClientControlPacket, ServerControlPacket>,
-) {
-    loop {
-        let maybe_control_socket = ControlSocket::connect_to_client(
-            &clients_data.keys().cloned().collect::<Vec<_>>(),
-            |server_config: ServerConfigPacket, server_ip| {
-                let eye_width;
-                let eye_height;
-                match settings.video.render_resolution {
-                    FrameSize::Scale(scale) => {
-                        let (native_eye_width, native_eye_height) =
-                            server_config.native_eye_resolution;
-                        eye_width = native_eye_width as f32 * scale;
-                        eye_height = native_eye_height as f32 * scale;
-                    }
-                    FrameSize::Absolute { width, height } => {
-                        eye_width = width as f32 / 2_f32;
-                        eye_height = height as f32 / 2_f32;
-                    }
-                }
-                let eye_resolution = (align32(eye_width), align32(eye_height));
-
-                let web_gui_url = format!(
-                    "http://{}:{}/",
-                    server_ip, settings.connection.web_server_port
-                );
-
-                ClientConfigPacket {
-                    settings: settings.clone(),
-                    eye_resolution,
-                    web_gui_url,
-                }
-            },
-        )
-        .await;
-
-        match maybe_control_socket {
-            Ok(control_socket) => {
-                let identity = clients_data.get(&control_socket.peer_ip()).unwrap().clone();
-                break (identity, control_socket);
-            }
-            Err(e) => warn!("{}", e),
-        }
-    }
-}
-
 async fn setup_streams(
     settings: Settings,
     client_identity: Identity,
     control_socket: &ControlSocket<ClientControlPacket, ServerControlPacket>,
+    server_config: ServerConfigPacket,
 ) -> StrResult {
     let mut stream_socket = StreamSocket::connect_to_client(
         control_socket.peer_ip(),
@@ -104,7 +55,7 @@ async fn setup_streams(
             .await
     )?);
 
-    if let Switch::Enabled(audio_desc) = settings.audio.game_audio {
+    if let Switch::Enabled(audio_desc) = settings.audio.game_audio.clone() {
         *MAYBE_AUDIO_SENDER.lock() = Some(trace_err!(
             stream_socket
                 .request_stream(StreamId::Audio, audio_desc.stream_mode)
@@ -112,7 +63,7 @@ async fn setup_streams(
         )?);
     }
 
-    if let Switch::Enabled(controllers_desc) = settings.headset.controllers {
+    if let Switch::Enabled(controllers_desc) = settings.headset.controllers.clone() {
         *MAYBE_HAPTICS_SENDER.lock() = Some(trace_err!(
             stream_socket
                 .request_stream(StreamId::Haptics, controllers_desc.haptics_stream_mode)
@@ -245,17 +196,117 @@ async fn setup_streams(
         });
     }
 
+    let mut game_audio_enabled = false;
+    let mut game_audio_device = std::ptr::null_mut();
+    if let Switch::Enabled(config) = settings.audio.game_audio {
+        game_audio_enabled = true;
+        // Note: game_audio_device memory will not be cleaned up but it's not a problem
+        game_audio_device = trace_err!(std::ffi::CString::new(config.device))?.into_raw();
+    }
+
+    let mut pose_time_offset = 0_f32;
+    let mut position_offset_left = [0_f32; 3];
+    let mut rotation_offset_left = [0_f32; 3];
+    let mut haptics_intensity = 0_f32;
+    if let Switch::Enabled(config) = settings.headset.controllers {
+        pose_time_offset = config.pose_time_offset;
+        position_offset_left = config.position_offset_left;
+        rotation_offset_left = config.rotation_offset_left;
+        haptics_intensity = config.haptics_intensity;
+    }
+
+    unsafe {
+        // Initialize components on C++ side
+        InitalizeStreaming(StreamSettings {
+            gameAudio: game_audio_enabled,
+            gameAudioDevice: game_audio_device,
+            microphone: settings.audio.microphone,
+            keyframeResendIntervalMs: settings.video.keyframe_resend_interval_ms,
+            codec: matches!(settings.video.codec, CodecType::Hevc) as i32,
+            encodeBitrateMbs: settings.video.encode_bitrate_mbs,
+            trackingFrameOffset: settings.headset.tracking_frame_offset,
+            poseTimeOffset: pose_time_offset,
+            positionOffsetLeft: position_offset_left,
+            rotationOffsetLeft: rotation_offset_left,
+            hapticsIntensity: haptics_intensity,
+        });
+    }
+
     Ok(())
+}
+
+async fn connect_to_any_client(
+    clients_data: HashMap<IpAddr, Identity>,
+    session_manager: Arc<AMutex<SessionManager>>,
+) -> ControlSocket<ClientControlPacket, ServerControlPacket> {
+    loop {
+        let maybe_pending_connection = ControlSocket::begin_connecting_to_client(
+            &clients_data.keys().cloned().collect::<Vec<_>>(),
+        )
+        .await;
+        let PendingClientConnection {
+            pending_socket,
+            server_ip,
+            server_config,
+        } = match maybe_pending_connection {
+            Ok(pending_connection) => pending_connection,
+            Err(e) => {
+                warn!("{}", e);
+                continue;
+            }
+        };
+
+        let settings = session_manager.lock().await.get().to_settings();
+
+        let eye_width;
+        let eye_height;
+        match settings.video.render_resolution {
+            FrameSize::Scale(scale) => {
+                let (native_eye_width, native_eye_height) = server_config.native_eye_resolution;
+                eye_width = native_eye_width as f32 * scale;
+                eye_height = native_eye_height as f32 * scale;
+            }
+            FrameSize::Absolute { width, height } => {
+                eye_width = width as f32 / 2_f32;
+                eye_height = height as f32 / 2_f32;
+            }
+        }
+        let eye_resolution = (align32(eye_width), align32(eye_height));
+
+        let web_gui_url = format!(
+            "http://{}:{}/",
+            server_ip, settings.connection.web_server_port
+        );
+
+        let client_config = ClientConfigPacket {
+            settings: settings.clone(),
+            eye_resolution,
+            web_gui_url,
+        };
+
+        let control_socket =
+            match ControlSocket::finish_connecting_to_client(pending_socket, client_config).await {
+                Ok(control_socket) => control_socket,
+                Err(e) => {
+                    warn!("{}", e);
+                    continue;
+                }
+            };
+
+        let identity = clients_data.get(&control_socket.peer_ip()).unwrap().clone();
+
+        if let Err(e) = setup_streams(settings, identity, &control_socket, server_config).await {
+            warn!("Setup streams failed: {}", e);
+        } else {
+            break control_socket;
+        }
+    }
 }
 
 pub async fn connection_loop(
     session_manager: Arc<AMutex<SessionManager>>,
     update_client_listeners_notifier: broadcast::Sender<()>,
 ) -> StrResult {
-    // Some settings cannot be applied right away because they were used to initialize some key
-    // driver components. For these settings, send the cached values to the client.
-    let settings_cache = session_manager.lock().await.get().to_settings();
-
     loop {
         let mut update_client_listeners_receiver = update_client_listeners_notifier.subscribe();
 
@@ -280,9 +331,13 @@ pub async fn connection_loop(
             }
         };
 
-        let clients_data = session_manager.lock().await.get().last_clients.iter().fold(
-            HashMap::new(),
-            |mut clients_data, (hostname, client)| {
+        let clients_data = session_manager
+            .lock()
+            .await
+            .get()
+            .client_connections
+            .iter()
+            .fold(HashMap::new(), |mut clients_data, (hostname, client)| {
                 let id = Identity {
                     hostname: hostname.clone(),
                     certificate_pem: client.certificate_pem.clone(),
@@ -290,19 +345,13 @@ pub async fn connection_loop(
                 clients_data.extend(client.manual_ips.iter().map(|&ip| (ip, id.clone())));
                 clients_data.insert(client.last_ip, id);
                 clients_data
-            },
-        );
-        let get_control_socket = create_control_socket(clients_data, settings_cache.clone());
+            });
+        let get_control_socket = connect_to_any_client(clients_data, session_manager.clone());
 
-        let (identity, mut control_socket) = tokio::select! {
+        let mut control_socket = tokio::select! {
             Err(e) = client_discovery => break trace_str!("Client discovery failed: {}", e),
-            pair = get_control_socket => pair,
+            control_socket = get_control_socket => control_socket,
             _ = update_client_listeners_receiver.recv() => continue,
-        };
-
-        if let Err(e) = setup_streams(settings_cache.clone(), identity, &control_socket).await {
-            warn!("Setup streams failed: {}", e);
-            continue;
         };
 
         loop {

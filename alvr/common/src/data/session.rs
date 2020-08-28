@@ -5,27 +5,19 @@ use serde::*;
 use serde_json as json;
 use settings_schema::SchemaNode;
 use std::{
+    collections::{HashMap, HashSet},
     fs,
     net::IpAddr,
     ops::{Deref, DerefMut},
-    path::{Path, PathBuf}, collections::{HashSet, HashMap},
+    path::{Path, PathBuf},
 };
 
 pub const SESSION_FNAME: &str = "session.json";
 pub const SERVER_SESSION_UPDATE_ID: &str = "";
 
-type SettingsCache = SettingsDefault;
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ClientConnectionDesc {
-    pub trusted: bool,
-    pub last_update_ms_since_epoch: u64,
-    pub last_ip: IpAddr,
-    pub manual_ips: HashSet<IpAddr>,
-    pub display_name: Option<String>,
-    pub certificate_pem: String,
-}
+// SessionSettings is similar to Settings but it contains every branch, even unused ones. This is
+// the settings representation that the UI uses.
+type SessionSettings = SettingsDefault;
 
 pub fn load_session(path: &Path) -> StrResult<SessionDesc> {
     trace_err!(json::from_str(&trace_err!(fs::read_to_string(path))?))
@@ -38,21 +30,107 @@ pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
     ))
 }
 
+// This structure is used to store the minimum configuration data that ALVR driver needs to
+// initialize OpenVR before having the chance to communicate with a client. When a client is
+// connected, a new OpenvrConfig instance is generated, then the connection is accepted only if that
+// instance is equivalent to the one stored in the session, otherwise SteamVR is restarted.
+// Other components (like the encoder, audio recorder) don't need this treatment and are initialized
+// dynamically.
+// todo: properties that can be set after the OpenVR initialization should be removed and set with
+// UpdateForStream.
+#[derive(Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenvrConfig {
+    pub headset_serial_number: String,
+    pub headset_tracking_system_name: String,
+    pub headset_model_number: String,
+    pub headset_driver_version: String,
+    pub headset_manufacturer_name: String,
+    pub headset_render_model_name: String,
+    pub headset_registered_device_name: String,
+    pub eye_resolution: (u32, u32),
+    pub target_eye_resolution: (u32, u32),
+    pub fov: [Fov; 2],
+    pub seconds_from_vsync_to_photons: f32,
+    pub ipd: f32,
+    pub adapter_index: i32,
+    pub fps: u32,
+    pub controllers_tracking_system_name: String,
+    pub controllers_manufacturer_name: String,
+    pub controllers_model_number: String,
+    pub render_model_name_left_controller: String,
+    pub render_model_name_right_controller: String,
+    pub controllers_serial_number: String,
+    pub controllers_type: String,
+    pub controllers_registered_device_type: String,
+    pub controllers_input_profile_path: String,
+    pub controllers_mode_idx: i32,
+    pub controllers_enabled: bool,
+    pub enable_foveated_rendering: bool,
+    pub foveation_strength: f32,
+    pub foveation_shape: f32,
+    pub foveation_vertical_offset: f32,
+    pub enable_color_correction: bool,
+    pub brightness: f32,
+    pub contrast: f32,
+    pub saturation: f32,
+    pub gamma: f32,
+    pub sharpening: f32,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientConnectionDesc {
+    pub trusted: bool,
+    pub last_update_ms_since_epoch: u64,
+    pub last_ip: IpAddr,
+    pub manual_ips: HashSet<IpAddr>,
+    pub display_name: Option<String>,
+    pub certificate_pem: String,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionDesc {
     pub setup_wizard: bool,
+    pub openvr_config: OpenvrConfig,
     // The hashmap key is the hostname
-    pub last_clients: HashMap<String, ClientConnectionDesc>,
-    pub settings_cache: SettingsCache,
+    pub client_connections: HashMap<String, ClientConnectionDesc>,
+    pub settings: SessionSettings,
 }
 
 impl Default for SessionDesc {
     fn default() -> Self {
+        let fov_default = Fov {
+            left: 45_f32,
+            right: 45_f32,
+            top: 45_f32,
+            bottom: 45_f32,
+        };
         Self {
             setup_wizard: true,
-            last_clients: HashMap::new(),
-            settings_cache: settings_cache_default(),
+            openvr_config: OpenvrConfig {
+                headset_serial_number: "1WMGH000XX0000".into(),
+                headset_tracking_system_name: "oculus".into(),
+                headset_model_number: "Oculus Rift S".into(),
+                headset_driver_version: "1.42.0".into(),
+                headset_manufacturer_name: "Oculus".into(),
+                headset_render_model_name: "generic_hmd".into(),
+                headset_registered_device_name: "oculus/1WMGH000XX0000".into(),
+                eye_resolution: (960, 1080),
+                target_eye_resolution: (960, 1080),
+                fov: [fov_default.clone(), fov_default],
+                seconds_from_vsync_to_photons: 0.005,
+                ipd: 0.063,
+                adapter_index: 0,
+                fps: 60,
+                controllers_enabled: false,
+                enable_foveated_rendering: false,
+                enable_color_correction: false,
+                ..<_>::default()
+            },
+            client_connections: HashMap::new(),
+            settings: session_settings_default(),
         }
     }
 }
@@ -60,13 +138,13 @@ impl Default for SessionDesc {
 impl SessionDesc {
     // If json_value is not a valid representation of SessionDesc (because of version upgrade), use
     // some fuzzy logic to extrapolate as much information as possible.
-    // Since SessionDesc cannot have a schema (because SettingsCache would need to also have a
+    // Since SessionDesc cannot have a schema (because SessionSettings would need to also have a
     // schema, but it is generated out of our control), I only do basic name checking on fields and
     // deserialization will fail if the type of values does not match. Because of this,
-    // `settings_cache` must be handled separately to do a better job of retrieving data using the
+    // `session_settings` must be handled separately to do a better job of retrieving data using the
     // settings schema.
     pub fn merge_from_json(&mut self, json_value: json::Value) -> StrResult {
-        const SETTINGS_CACHE_STR: &str = "settings_cache";
+        const SESSION_SETTINGS_STR: &str = "session_settings";
 
         if let Ok(session_desc) = json::from_value(json_value.clone()) {
             *self = session_desc;
@@ -77,13 +155,13 @@ impl SessionDesc {
         let old_session_fields = old_session_json.as_object().unwrap();
         let new_session_fields = json_value.as_object().unwrap();
 
-        let settings_cache_json = new_session_fields
-            .get(SETTINGS_CACHE_STR)
-            .map(|new_cache_json| {
-                extrapolate_settings_cache(
-                    &old_session_json[SETTINGS_CACHE_STR],
-                    new_cache_json,
-                    &settings_schema(settings_cache_default()),
+        let session_settings_json = new_session_fields
+            .get(SESSION_SETTINGS_STR)
+            .map(|new_session_settings_json| {
+                extrapolate_session_settings(
+                    &old_session_json[SESSION_SETTINGS_STR],
+                    new_session_settings_json,
+                    &settings_schema(session_settings_default()),
                 )
             })
             .unwrap_or_else(|| json_value.clone());
@@ -91,8 +169,8 @@ impl SessionDesc {
         let new_fields = old_session_fields
             .iter()
             .map(|(name, json_value)| {
-                let new_json_value = if name == SETTINGS_CACHE_STR {
-                    json::to_value(settings_cache_default()).unwrap()
+                let new_json_value = if name == SESSION_SETTINGS_STR {
+                    json::to_value(session_settings_default()).unwrap()
                 } else {
                     new_session_fields.get(name).unwrap_or(json_value).clone()
                 };
@@ -103,16 +181,16 @@ impl SessionDesc {
         let mut session_desc_mut =
             json::from_value::<SessionDesc>(json::Value::Object(new_fields)).unwrap_or_default();
 
-        match json::from_value::<SettingsCache>(settings_cache_json) {
-            Ok(settings_cache) => {
-                session_desc_mut.settings_cache = settings_cache;
+        match json::from_value::<SessionSettings>(session_settings_json) {
+            Ok(session_settings) => {
+                session_desc_mut.settings = session_settings;
                 *self = session_desc_mut;
             }
             Err(e) => {
                 *self = session_desc_mut;
                 return trace_str!(
-                    id: LogId::SettingsCacheExtrapolationFailed,
-                    "Error while deserializing extrapolated settings cache: {}",
+                    id: LogId::SessionSettingsExtrapolationFailed,
+                    "Error while deserializing extrapolated settings session_settings: {}",
                     e
                 );
             }
@@ -124,9 +202,13 @@ impl SessionDesc {
     // This function requires that settings enums with data have tag = "type" and content = "content", and
     // enums without data do not have tag and content set.
     pub fn to_settings(&self) -> Settings {
-        let cache_json = json::to_value(&self.settings_cache).unwrap();
-        let schema = settings_schema(settings_cache_default());
-        json::from_value(json_cache_to_settings(&cache_json, &schema)).unwrap()
+        let session_settings_json = json::to_value(&self.settings).unwrap();
+        let schema = settings_schema(session_settings_default());
+        json::from_value(json_session_settings_to_settings(
+            &session_settings_json,
+            &schema,
+        ))
+        .unwrap()
     }
 }
 
@@ -135,9 +217,9 @@ impl SessionDesc {
 // all data is lost.
 // Future strategies: check if value respects schema constraints, fuzzy field name matching, accept
 // integer to float and float to integer, tree traversal.
-fn extrapolate_settings_cache(
-    old_cache: &json::Value,
-    new_cache: &json::Value,
+fn extrapolate_session_settings(
+    old_session_settings: &json::Value,
+    new_session_settings: &json::Value,
     schema: &SchemaNode,
 ) -> json::Value {
     match schema {
@@ -146,15 +228,16 @@ fn extrapolate_settings_cache(
                 .iter()
                 .filter_map(|(field_name, maybe_data)| {
                     maybe_data.as_ref().map(|data_schema| {
-                        let value_json = if let Some(new_value_json) = new_cache.get(field_name) {
-                            extrapolate_settings_cache(
-                                &old_cache[field_name],
-                                new_value_json,
-                                &data_schema.content,
-                            )
-                        } else {
-                            old_cache[field_name].clone()
-                        };
+                        let value_json =
+                            if let Some(new_value_json) = new_session_settings.get(field_name) {
+                                extrapolate_session_settings(
+                                    &old_session_settings[field_name],
+                                    new_value_json,
+                                    &data_schema.content,
+                                )
+                            } else {
+                                old_session_settings[field_name].clone()
+                            };
                         (field_name.clone(), value_json)
                     })
                 })
@@ -162,7 +245,7 @@ fn extrapolate_settings_cache(
         ),
 
         SchemaNode::Choice { variants, .. } => {
-            let variant_json = new_cache
+            let variant_json = new_session_settings
                 .get("variant")
                 .cloned()
                 .filter(|new_variant_json| {
@@ -175,21 +258,22 @@ fn extrapolate_settings_cache(
                         })
                         .is_some()
                 })
-                .unwrap_or_else(|| old_cache["variant"].clone());
+                .unwrap_or_else(|| old_session_settings["variant"].clone());
 
             let mut fields: json::Map<_, _> = variants
                 .iter()
                 .filter_map(|(variant_name, maybe_data)| {
                     maybe_data.as_ref().map(|data_schema| {
-                        let value_json = if let Some(new_value_json) = new_cache.get(variant_name) {
-                            extrapolate_settings_cache(
-                                &old_cache[variant_name],
-                                new_value_json,
-                                &data_schema.content,
-                            )
-                        } else {
-                            old_cache[variant_name].clone()
-                        };
+                        let value_json =
+                            if let Some(new_value_json) = new_session_settings.get(variant_name) {
+                                extrapolate_session_settings(
+                                    &old_session_settings[variant_name],
+                                    new_value_json,
+                                    &data_schema.content,
+                                )
+                            } else {
+                                old_session_settings[variant_name].clone()
+                            };
                         (variant_name.clone(), value_json)
                     })
                 })
@@ -200,18 +284,22 @@ fn extrapolate_settings_cache(
         }
 
         SchemaNode::Optional { content, .. } => {
-            let set_json = new_cache
+            let set_json = new_session_settings
                 .get("set")
                 .cloned()
                 .filter(|new_set_json| new_set_json.is_boolean())
-                .unwrap_or_else(|| old_cache["set"].clone());
+                .unwrap_or_else(|| old_session_settings["set"].clone());
 
-            let content_json = new_cache
+            let content_json = new_session_settings
                 .get("content")
                 .map(|new_content_json| {
-                    extrapolate_settings_cache(&old_cache["content"], new_content_json, content)
+                    extrapolate_session_settings(
+                        &old_session_settings["content"],
+                        new_content_json,
+                        content,
+                    )
                 })
-                .unwrap_or_else(|| old_cache["content"].clone());
+                .unwrap_or_else(|| old_session_settings["content"].clone());
 
             json::json!({
                 "set": set_json,
@@ -220,18 +308,22 @@ fn extrapolate_settings_cache(
         }
 
         SchemaNode::Switch { content, .. } => {
-            let enabled_json = new_cache
+            let enabled_json = new_session_settings
                 .get("enabled")
                 .cloned()
                 .filter(|new_enabled_json| new_enabled_json.is_boolean())
-                .unwrap_or_else(|| old_cache["enabled"].clone());
+                .unwrap_or_else(|| old_session_settings["enabled"].clone());
 
-            let content_json = new_cache
+            let content_json = new_session_settings
                 .get("content")
                 .map(|new_content_json| {
-                    extrapolate_settings_cache(&old_cache["content"], new_content_json, content)
+                    extrapolate_session_settings(
+                        &old_session_settings["content"],
+                        new_content_json,
+                        content,
+                    )
                 })
-                .unwrap_or_else(|| old_cache["content"].clone());
+                .unwrap_or_else(|| old_session_settings["content"].clone());
 
             json::json!({
                 "enabled": enabled_json,
@@ -240,44 +332,44 @@ fn extrapolate_settings_cache(
         }
 
         SchemaNode::Boolean { .. } => {
-            if new_cache.is_boolean() {
-                new_cache.clone()
+            if new_session_settings.is_boolean() {
+                new_session_settings.clone()
             } else {
-                old_cache.clone()
+                old_session_settings.clone()
             }
         }
 
         SchemaNode::Integer { .. } => {
-            if new_cache.is_i64() {
-                new_cache.clone()
+            if new_session_settings.is_i64() {
+                new_session_settings.clone()
             } else {
-                old_cache.clone()
+                old_session_settings.clone()
             }
         }
 
         SchemaNode::Float { .. } => {
-            if new_cache.is_f64() {
-                new_cache.clone()
+            if new_session_settings.is_f64() {
+                new_session_settings.clone()
             } else {
-                old_cache.clone()
+                old_session_settings.clone()
             }
         }
 
         SchemaNode::Text { .. } => {
-            if new_cache.is_string() {
-                new_cache.clone()
+            if new_session_settings.is_string() {
+                new_session_settings.clone()
             } else {
-                old_cache.clone()
+                old_session_settings.clone()
             }
         }
 
         SchemaNode::Array(array_schema) => {
             let array_vec = (0..array_schema.len())
                 .map(|idx| {
-                    new_cache
+                    new_session_settings
                         .get(idx)
                         .cloned()
-                        .unwrap_or_else(|| old_cache[idx].clone())
+                        .unwrap_or_else(|| old_session_settings[idx].clone())
                 })
                 .collect();
             json::Value::Array(array_vec)
@@ -286,25 +378,25 @@ fn extrapolate_settings_cache(
         SchemaNode::Vector {
             default_element, ..
         } => {
-            let element_json = new_cache
+            let element_json = new_session_settings
                 .get("element")
                 .map(|new_element_json| {
-                    extrapolate_settings_cache(
-                        &old_cache["content"],
+                    extrapolate_session_settings(
+                        &old_session_settings["content"],
                         new_element_json,
                         default_element,
                     )
                 })
-                .unwrap_or_else(|| old_cache["content"].clone());
+                .unwrap_or_else(|| old_session_settings["content"].clone());
 
             // todo: default field cannot be properly validated until I implement plain settings
-            // validation (not to be confused with session/settings_cache validation). Any
-            // problem inside this new_cache default will result in the loss all data in the new
-            // settings_cache.
-            let default = new_cache
+            // validation (not to be confused with session/session_settings validation). Any
+            // problem inside this new_session_settings default will result in the loss all data in the new
+            // session_settings.
+            let default = new_session_settings
                 .get("default")
                 .cloned()
-                .unwrap_or_else(|| old_cache["default"].clone());
+                .unwrap_or_else(|| old_session_settings["default"].clone());
 
             json::json!({
                 "element": element_json,
@@ -313,24 +405,28 @@ fn extrapolate_settings_cache(
         }
 
         SchemaNode::Dictionary { default_value, .. } => {
-            let key_json = new_cache
+            let key_json = new_session_settings
                 .get("key")
                 .cloned()
                 .filter(|new_key| new_key.is_string())
-                .unwrap_or_else(|| old_cache["key"].clone());
+                .unwrap_or_else(|| old_session_settings["key"].clone());
 
-            let value_json = new_cache
+            let value_json = new_session_settings
                 .get("value")
                 .map(|new_value_json| {
-                    extrapolate_settings_cache(&old_cache["value"], new_value_json, default_value)
+                    extrapolate_session_settings(
+                        &old_session_settings["value"],
+                        new_value_json,
+                        default_value,
+                    )
                 })
-                .unwrap_or_else(|| old_cache["content"].clone());
+                .unwrap_or_else(|| old_session_settings["content"].clone());
 
             // todo: validate default using settings validation
-            let default = new_cache
+            let default = new_session_settings
                 .get("default")
                 .cloned()
-                .unwrap_or_else(|| old_cache["default"].clone());
+                .unwrap_or_else(|| old_session_settings["default"].clone());
 
             json::json!({
                 "key": key_json,
@@ -341,7 +437,10 @@ fn extrapolate_settings_cache(
     }
 }
 
-fn json_cache_to_settings(cache: &json::Value, schema: &SchemaNode) -> json::Value {
+fn json_session_settings_to_settings(
+    session_settings: &json::Value,
+    schema: &SchemaNode,
+) -> json::Value {
     match schema {
         SchemaNode::Section { entries } => json::Value::Object(
             entries
@@ -350,7 +449,10 @@ fn json_cache_to_settings(cache: &json::Value, schema: &SchemaNode) -> json::Val
                     maybe_data.as_ref().map(|data_schema| {
                         (
                             field_name.clone(),
-                            json_cache_to_settings(&cache[field_name], &data_schema.content),
+                            json_session_settings_to_settings(
+                                &session_settings[field_name],
+                                &data_schema.content,
+                            ),
                         )
                     })
                 })
@@ -358,7 +460,7 @@ fn json_cache_to_settings(cache: &json::Value, schema: &SchemaNode) -> json::Val
         ),
 
         SchemaNode::Choice { variants, .. } => {
-            let variant = cache["variant"].clone();
+            let variant = session_settings["variant"].clone();
             let only_tag = variants
                 .iter()
                 .all(|(_, maybe_data)| matches!(maybe_data, None));
@@ -372,7 +474,10 @@ fn json_cache_to_settings(cache: &json::Value, schema: &SchemaNode) -> json::Val
                     .map(|(_, maybe_data)| maybe_data.as_ref())
                     .unwrap()
                     .map(|data_schema| {
-                        json_cache_to_settings(&cache[variant], &data_schema.content)
+                        json_session_settings_to_settings(
+                            &session_settings[variant],
+                            &data_schema.content,
+                        )
                     });
                 json::json!({
                     "type": variant,
@@ -382,8 +487,8 @@ fn json_cache_to_settings(cache: &json::Value, schema: &SchemaNode) -> json::Val
         }
 
         SchemaNode::Optional { content, .. } => {
-            if cache["set"].as_bool().unwrap() {
-                json_cache_to_settings(&cache["content"], content)
+            if session_settings["set"].as_bool().unwrap() {
+                json_session_settings_to_settings(&session_settings["content"], content)
             } else {
                 json::Value::Null
             }
@@ -392,9 +497,12 @@ fn json_cache_to_settings(cache: &json::Value, schema: &SchemaNode) -> json::Val
         SchemaNode::Switch { content, .. } => {
             let state;
             let maybe_content;
-            if cache["enabled"].as_bool().unwrap() {
+            if session_settings["enabled"].as_bool().unwrap() {
                 state = "enabled";
-                maybe_content = Some(json_cache_to_settings(&cache["content"], content))
+                maybe_content = Some(json_session_settings_to_settings(
+                    &session_settings["content"],
+                    content,
+                ))
             } else {
                 state = "disabled";
                 maybe_content = None;
@@ -409,17 +517,21 @@ fn json_cache_to_settings(cache: &json::Value, schema: &SchemaNode) -> json::Val
         SchemaNode::Boolean { .. }
         | SchemaNode::Integer { .. }
         | SchemaNode::Float { .. }
-        | SchemaNode::Text { .. } => cache.clone(),
+        | SchemaNode::Text { .. } => session_settings.clone(),
 
         SchemaNode::Array(array_schema) => json::Value::Array(
             array_schema
                 .iter()
                 .enumerate()
-                .map(|(idx, element_schema)| json_cache_to_settings(&cache[idx], element_schema))
+                .map(|(idx, element_schema)| {
+                    json_session_settings_to_settings(&session_settings[idx], element_schema)
+                })
                 .collect(),
         ),
 
-        SchemaNode::Vector { .. } | SchemaNode::Dictionary { .. } => cache["default"].clone(),
+        SchemaNode::Vector { .. } | SchemaNode::Dictionary { .. } => {
+            session_settings["default"].clone()
+        }
     }
 }
 

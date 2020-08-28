@@ -133,11 +133,21 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
     }
 }
 
+pub struct PendingSocket {
+    socket: Framed<TcpStream, LDC>,
+    peer_ip: IpAddr,
+}
+
+pub struct PendingClientConnection {
+    pub pending_socket: PendingSocket,
+    pub server_ip: IpAddr,
+    pub server_config: ServerConfigPacket,
+}
+
 impl ControlSocket<ClientControlPacket, ServerControlPacket> {
-    pub async fn connect_to_client(
+    pub async fn begin_connecting_to_client(
         client_ips: &[IpAddr],
-        config_callback: impl FnOnce(ServerConfigPacket, IpAddr) -> ClientConfigPacket,
-    ) -> StrResult<Self> {
+    ) -> StrResult<PendingClientConnection> {
         let client_addresses = client_ips
             .iter()
             .map(|&ip| (ip, CONTROL_PORT).into())
@@ -161,23 +171,34 @@ impl ControlSocket<ClientControlPacket, ServerControlPacket> {
             HandshakeClientResponse::Ok {
                 server_config,
                 server_ip,
-            } => {
-                let client_config_bytes = trace_err!(bincode::serialize(&config_callback(
-                    server_config,
-                    server_ip
-                )))?;
-                trace_err!(socket.send(client_config_bytes.into()).await)?;
-
-                Ok(Self {
-                    peer_ip,
-                    socket,
-                    _phantom: PhantomData,
-                })
-            }
+            } => Ok(PendingClientConnection {
+                pending_socket: PendingSocket { socket, peer_ip },
+                server_ip,
+                server_config,
+            }),
             HandshakeClientResponse::IncompatibleServerVersion => {
                 trace_str!(id: LogId::IncompatibleServer)
             }
         }
+    }
+
+    pub async fn finish_connecting_to_client(
+        pending_socket: PendingSocket,
+        client_config: ClientConfigPacket,
+    ) -> StrResult<Self> {
+        let PendingSocket {
+            mut socket,
+            peer_ip,
+        } = pending_socket;
+
+        let client_config_bytes = trace_err!(bincode::serialize(&client_config))?;
+        trace_err!(socket.send(client_config_bytes.into()).await)?;
+
+        Ok(Self {
+            peer_ip,
+            socket,
+            _phantom: PhantomData,
+        })
     }
 }
 

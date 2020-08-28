@@ -56,7 +56,7 @@ define([
             updateSwitchContent();
             updateOptionalContent();
 
-            setProperties(session.settingsCache, "_root");
+            setProperties(session.settings, "_root");
 
             toggleAdvanced();
             addChangeListener();
@@ -73,7 +73,7 @@ define([
         self.updateSession = function (newSession) {
             updating = true;
             session = newSession;
-            setProperties(newSession.settingsCache, "_root");
+            setProperties(newSession.settings, "_root");
             updating = false;
         }
 
@@ -169,7 +169,7 @@ define([
                 }
             });
 
-            _.set(session.settingsCache, finalPath, val);
+            _.set(session.settings, finalPath, val);
 
             if (!skipstoreSession) {
                 self.storeSession("settings");
@@ -204,7 +204,7 @@ define([
                         console.log("FAILED")
                         updating = true;
                         session = res;
-                        setProperties(res.settingsCache, "_root");
+                        setProperties(res.settings, "_root");
                         updating = false;
                     }
                 },
@@ -212,7 +212,7 @@ define([
                     console.log("FAILED")
                     updating = true;
                     session = res;
-                    setProperties(res.settingsCache, "_root");
+                    setProperties(res.settings, "_root");
                     updating = false;
                 }
             });

@@ -52,11 +52,11 @@ fn window_mode() -> StrResult {
         maybe_delete_alvr_dir_store();
 
         let html_content = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/html/index.html"));
-        let window = alcro::UIBuilder::new()
+        let window = trace_err!(alcro::UIBuilder::new()
             .content(alcro::Content::Html(html_content))
             .size(200, 200)
             .custom_args(&["--disk-cache-size=1"])
-            .run();
+            .run())?;
 
         trace_err!(window.bind("checkSteamvrInstallation", |_| {
             Ok(json::to_value(steamvr_bin_dir().is_ok()).unwrap())

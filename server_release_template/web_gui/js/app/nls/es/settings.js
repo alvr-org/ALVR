@@ -210,7 +210,7 @@ Una resolución inferior al 100% puede reducir la latencia y mejorar la calidad 
     "_root_connection_frameQueueSize.name": "Tamaño de la cola de cuadros",
     "_root_connection_frameQueueSize.description": "Tamaño máximo de la cola de fotogramas utilizado por el cliente.",
     "_root_connection_aggressiveKeyframeResend.name": "Reenvía los fotogramas clave de forma agresiva",
-    "_root_connection_aggressiveKeyframeResend.description": `Reducir el intervalo de reenvío de cuadros de 100ms a 5ms.
+    "_root_connection_aggressiveKeyframeResend.description": `Reducir el intervalo de reenvío de cuadros de tipo "I" (key frames) de 100ms a 5ms.
 Sólo se utiliza cuando se detecta una pérdida de paquetes. Mejora la experiencia visual en caso de pérdida de paquetes.`,
     "_root_extra_tab.name": "Extra",
     "_root_extra_revertConfirmDialog.name": "Confirmar los valores de restablecimiento",

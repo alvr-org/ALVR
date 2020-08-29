@@ -27,6 +27,10 @@ pub fn bumped_versions(server_version: Option<String>, client_version: Option<St
     let client_req = trace_err!(VersionReq::parse(&client_req))?;
     let client_version = trace_err!(Version::parse(client_version))?;
 
+    if client_version.major != server_version.major {
+        return Err("Bumped versions need to have the same major version!".to_owned());
+    }
+
     let server_version = if server_req.matches(&server_version) {
         format!("{}", server_version)
     } else {
@@ -40,7 +44,7 @@ pub fn bumped_versions(server_version: Option<String>, client_version: Option<St
     };
 
     if client_version == ALVR_CLIENT_VERSION && server_version == ALVR_SERVER_VERSION {
-        Err(String::from("Didn't bump any version!"))
+        Err("Didn't bump any version!".to_owned())
     } else {
         Ok((client_version, server_version))
     }

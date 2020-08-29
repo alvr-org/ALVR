@@ -150,38 +150,43 @@ fn init(log_sender: broadcast::Sender<String>) -> StrResult {
     //     // wizard.
     // }
 
-    // if let Some(runtime) = &*MAYBE_RUNTIME.lock() {
-    let session_manager = Arc::new(AMutex::new(SessionManager::new(&alvr_dir)));
+    if let Some(runtime) = MAYBE_RUNTIME.lock().as_mut() {
+        let session_manager = Arc::new(AMutex::new(SessionManager::new(&alvr_dir)));
 
-    //     let (shutdown_notifier, mut shutdown_receiver) = broadcast::channel(1);
-    //     let (update_client_listeners_notifier, _) = broadcast::channel(1);
+        // this is needed until all c++ code is rewritten. todo: remove
+        runtime
+            .block_on(session_manager.lock())
+            .get_mut("", SessionUpdateType::Other);
 
-    //     // Error: reached the type-length limit while instantiating ...
-    //     // I need to split my future into separate .spawn()
+        //     let (shutdown_notifier, mut shutdown_receiver) = broadcast::channel(1);
+        //     let (update_client_listeners_notifier, _) = broadcast::channel(1);
 
-    //     runtime.spawn({
-    //         async move {
-    //             let web_server = show_err_async(web_server::web_server(
-    //                 session_manager.clone(),
-    //                 log_sender,
-    //                 update_client_listeners_notifier.clone(),
-    //             ));
+        //     // Error: reached the type-length limit while instantiating ...
+        //     // I need to split my future into separate .spawn()
 
-    //             let connection_loop = show_err_async(connection::connection_loop(
-    //                 session_manager,
-    //                 update_client_listeners_notifier,
-    //             ));
+        //     runtime.spawn({
+        //         async move {
+        //             let web_server = show_err_async(web_server::web_server(
+        //                 session_manager.clone(),
+        //                 log_sender,
+        //                 update_client_listeners_notifier.clone(),
+        //             ));
 
-    //             tokio::select! {
-    //                 _ = web_server => (),
-    //                 _ = connection_loop => (),
-    //                 _ = shutdown_receiver.recv() => (),
-    //             }
-    //         }
-    //     });
+        //             let connection_loop = show_err_async(connection::connection_loop(
+        //                 session_manager,
+        //                 update_client_listeners_notifier,
+        //             ));
 
-    //     *MAYBE_SHUTDOWN_NOTIFIER.lock() = Some(shutdown_notifier);
-    // }
+        //             tokio::select! {
+        //                 _ = web_server => (),
+        //                 _ = connection_loop => (),
+        //                 _ = shutdown_receiver.recv() => (),
+        //             }
+        //         }
+        //     });
+
+        //     *MAYBE_SHUTDOWN_NOTIFIER.lock() = Some(shutdown_notifier);
+    }
 
     let alvr_dir_c_string = CString::new(alvr_dir.to_string_lossy().to_string()).unwrap();
     unsafe { g_alvrDir = alvr_dir_c_string.into_raw() };

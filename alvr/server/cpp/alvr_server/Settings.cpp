@@ -43,7 +43,7 @@ void Settings::Load()
 
 		auto openvrConfig = v.get("openvrConfig");
 
-		mSerialNumber = openvrConfig.get("headsetSerialNumber").get<std::string>().c_str();
+		mSerialNumber = openvrConfig.get("headsetSerialNumber").get<std::string>();
 		mTrackingSystemName = openvrConfig.get("headsetTrackingSystemName").get<std::string>();
 		mModelNumber = openvrConfig.get("headsetModelNumber").get<std::string>();
 		mDriverVersion = openvrConfig.get("headsetDriverVersion").get<std::string>();
@@ -79,8 +79,8 @@ void Settings::Load()
 		m_controllerTrackingSystemName = openvrConfig.get("controllersTrackingSystemName").get<std::string>();
 		m_controllerManufacturerName = openvrConfig.get("controllersManufacturerName").get<std::string>();
 		m_controllerModelNumber = openvrConfig.get("controllersModelNumber").get<std::string>();
-		m_controllerRenderModelNameLeft = openvrConfig.get("renderModelNameLeftcontroller").get<std::string>();
-		m_controllerRenderModelNameRight = openvrConfig.get("renderModelNameRightcontroller").get<std::string>();
+		m_controllerRenderModelNameLeft = openvrConfig.get("renderModelNameLeftController").get<std::string>();
+		m_controllerRenderModelNameRight = openvrConfig.get("renderModelNameRightController").get<std::string>();
 		m_controllerSerialNumber = openvrConfig.get("controllersSerialNumber").get<std::string>();
 		m_controllerType = openvrConfig.get("controllersType").get<std::string>();
 		mControllerRegisteredDeviceType = openvrConfig.get("controllersRegisteredDeviceType").get<std::string>();

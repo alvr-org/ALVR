@@ -163,21 +163,19 @@ void (*ShutdownRuntime)();
 void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 {
 #if _WIN32
-	Error("CppEntryPoint2");
 	Settings::Instance().Load();
-	Error("CppEntryPoint3");
 
-// 	load_debug_privilege();
+	load_debug_privilege();
 
-// 	LogDriver("HmdDriverFactory %hs (%hs)", pInterfaceName, vr::IServerTrackedDeviceProvider_Version);
-// 	if (0 == strcmp(vr::IServerTrackedDeviceProvider_Version, pInterfaceName))
-// 	{
-// 		LogDriver("HmdDriverFactory server return");
-// 		return &g_serverDriverDisplayRedirect;
-// 	}
+	LogDriver("HmdDriverFactory %hs (%hs)", pInterfaceName, vr::IServerTrackedDeviceProvider_Version);
+	if (0 == strcmp(vr::IServerTrackedDeviceProvider_Version, pInterfaceName))
+	{
+		LogDriver("HmdDriverFactory server return");
+		// return &g_serverDriverDisplayRedirect;
+	}
 
-// 	if (pReturnCode)
-// 		*pReturnCode = vr::VRInitError_Init_InterfaceNotFound;
+	if (pReturnCode)
+		*pReturnCode = vr::VRInitError_Init_InterfaceNotFound;
 #endif
 
 	return nullptr;

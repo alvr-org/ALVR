@@ -1,3 +1,6 @@
+mod version;
+
+use version::bump_versions;
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
 use std::{
@@ -314,56 +317,6 @@ fn ok_or_exit<T, E: std::fmt::Display>(res: Result<T, E>) {
         println!("{}", e);
 
         exit(1);
-    }
-}
-
-fn bump_client_gradle_version(new_version: String) {
-    use gradle_sync::BuildGradleFile;
-    use semver::Version;
-    use alvr_common::data::ALVR_CLIENT_VERSION;
-    println!("Bumping HMD client version: {} -> {}", ALVR_CLIENT_VERSION, new_version);
-
-    let new_version = Version::parse(&new_version).unwrap();
-
-    let mut gradle_file = BuildGradleFile::new(
-        workspace_dir().join("alvr/client_hmd/app").join("build.gradle").to_str().unwrap()
-    ).unwrap();
-    gradle_file.sync_version(&new_version).unwrap();
-    gradle_file.write().unwrap();
-}
-
-fn bump_server_cargo_version(new_version: String) {
-    use toml_edit::Document;
-    use std::str::FromStr;
-    use std::fs::File;
-    use alvr_common::data::ALVR_SERVER_VERSION;
-
-    println!("Bumping server version: {} -> {}", ALVR_SERVER_VERSION, new_version);
-    let manifest_path = workspace_dir().join("alvr/server_driver").join("Cargo.toml");
-
-    let mut manifest = Document::from_str(
-        &fs::read_to_string(&manifest_path).unwrap()
-    ).unwrap();
-
-    manifest["package"]["version"] = toml_edit::value(new_version);
-    let s = manifest.to_string_in_original_order();
-    let new_contents_bytes = s.as_bytes();
-
-    let mut file = File::create(&manifest_path).unwrap();
-    file.write_all(new_contents_bytes).unwrap();
-}
-
-fn bump_versions(server_version: Option<String>, client_version: Option<String>) {
-    use alvr_common::data::bumped_versions;
-    let versions = bumped_versions(server_version, client_version);
-    match versions {
-        Ok((client_version, server_version)) => {
-            bump_client_gradle_version(client_version);
-            bump_server_cargo_version(server_version);
-        }
-        Err(msg) => {
-            println!("Version bump failed: {}", msg);
-        }
     }
 }
 

@@ -171,7 +171,7 @@ void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 	if (0 == strcmp(vr::IServerTrackedDeviceProvider_Version, pInterfaceName))
 	{
 		LogDriver("HmdDriverFactory server return");
-		// return &g_serverDriverDisplayRedirect;
+		return &g_serverDriverDisplayRedirect;
 	}
 
 	if (pReturnCode)

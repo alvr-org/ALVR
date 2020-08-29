@@ -153,7 +153,6 @@ OvrHmd::OvrHmd()
 
 		mActivated = true;
 
-		OnStreamStart();
 
 		return vr::VRInitError_None;
 	}
@@ -354,6 +353,18 @@ OvrHmd::OvrHmd()
 	void OvrHmd::OnStreamStart() {
 		if (!m_added || !mActivated) {
 			return;
+		}
+
+		if (m_encoder)
+		{
+			m_encoder->Stop();
+			m_encoder.reset();
+		}
+
+		if (m_audioCapture)
+		{
+			m_audioCapture->Shutdown();
+			m_audioCapture.reset();
 		}
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.

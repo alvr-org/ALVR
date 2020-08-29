@@ -15,7 +15,7 @@ const CLIENT_HANDSHAKE_RESEND_INTERVAL: Duration = Duration::from_secs(1);
 #[derive(Serialize, Deserialize)]
 enum HandshakeClientResponse {
     Ok {
-        server_config: ServerConfigPacket,
+        headset_info: HeadsetInfoPacket,
         server_ip: IpAddr,
     },
     IncompatibleServerVersion,
@@ -32,7 +32,7 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
         handshake_socket: &mut UdpSocket,
         listener: &mut TcpListener,
         client_handshake_packet: &[u8],
-        server_config: ServerConfigPacket,
+        headset_info: HeadsetInfoPacket,
     ) -> StrResult<Option<(Self, ClientConfigPacket)>> {
         trace_err!(handshake_socket.send(client_handshake_packet).await)?;
 
@@ -73,7 +73,7 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
             return Ok(None);
         } else {
             let response_bytes = trace_err!(bincode::serialize(&HandshakeClientResponse::Ok {
-                server_config: server_config.clone(),
+                headset_info: headset_info.clone(),
                 server_ip: server_address.ip(),
             }))?;
             trace_err!(socket.send(response_bytes.into()).await)?;
@@ -93,7 +93,7 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
     }
 
     pub async fn connect_to_server(
-        server_config: ServerConfigPacket,
+        headset_info: HeadsetInfoPacket,
         hostname: String,
         certificate_pem: String,
     ) -> StrResult<(Self, ClientConfigPacket)> {
@@ -121,7 +121,7 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
                 &mut handshake_socket,
                 &mut listener,
                 &client_handshake_packet,
-                server_config.clone(),
+                headset_info.clone(),
             )
             .await
             {
@@ -141,7 +141,7 @@ pub struct PendingSocket {
 pub struct PendingClientConnection {
     pub pending_socket: PendingSocket,
     pub server_ip: IpAddr,
-    pub server_config: ServerConfigPacket,
+    pub headset_info: HeadsetInfoPacket,
 }
 
 impl ControlSocket<ClientControlPacket, ServerControlPacket> {
@@ -169,12 +169,12 @@ impl ControlSocket<ClientControlPacket, ServerControlPacket> {
 
         match client_response {
             HandshakeClientResponse::Ok {
-                server_config,
+                headset_info,
                 server_ip,
             } => Ok(PendingClientConnection {
                 pending_socket: PendingSocket { socket, peer_ip },
                 server_ip,
-                server_config,
+                headset_info,
             }),
             HandshakeClientResponse::IncompatibleServerVersion => {
                 trace_str!(id: LogId::IncompatibleServer)

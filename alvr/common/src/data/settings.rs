@@ -121,7 +121,7 @@ pub enum CodecType {
 #[serde(rename_all = "camelCase")]
 pub struct VideoDesc {
     #[schema(advanced)]
-    pub adapter_index: u32,
+    pub adapter_index: i32,
 
     #[schema(advanced)]
     pub refresh_rate: Option<u32>,
@@ -139,7 +139,7 @@ pub struct VideoDesc {
     pub recommended_target_resolution: FrameSize,
 
     #[schema(advanced)]
-    pub eye_fov: Option<[Fov; 2]>,
+    pub eyes_fov: Option<[Fov; 2]>,
 
     #[schema(advanced)]
     pub seconds_from_vsync_to_photons: f32,
@@ -221,21 +221,6 @@ pub struct ControllersDesc {
 
     #[schema(advanced)]
     pub input_profile_path: String,
-
-    #[schema(advanced)]
-    pub trigger_mode: u32,
-
-    #[schema(advanced)]
-    pub trackpad_click_mode: u32,
-
-    #[schema(advanced)]
-    pub trackpad_touch_mode: u32,
-
-    #[schema(advanced)]
-    pub back_mode: u32,
-
-    #[schema(advanced)]
-    pub recenter_button: u32,
 
     pub pose_time_offset: f32,
 
@@ -363,7 +348,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     height: 1600,
                 },
             },
-            eye_fov: OptionalDefault {
+            eyes_fov: OptionalDefault {
                 set: false,
                 content: [
                     FovDefault {
@@ -453,11 +438,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     ctrl_type: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
-                    trigger_mode: 24,
-                    trackpad_click_mode: 28,
-                    trackpad_touch_mode: 29,
-                    back_mode: 0,
-                    recenter_button: 0,
                     pose_time_offset: 0.,
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],

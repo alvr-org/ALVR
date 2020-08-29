@@ -2,7 +2,7 @@ use super::settings::*;
 use bitflags::bitflags;
 use nalgebra::{Point3, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, net::IpAddr, time::Duration};
+use std::{collections::HashMap, time::Duration};
 use semver::Version;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -19,10 +19,10 @@ pub struct HandshakePacket {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct ServerConfigPacket {
+pub struct HeadsetInfoPacket {
     pub device_name: String,
     pub native_eye_resolution: (u32, u32),
-    pub native_fov: [Fov; 2],
+    pub native_eyes_fov: [Fov; 2],
     pub native_fps: u32,
 }
 
@@ -30,6 +30,8 @@ pub struct ServerConfigPacket {
 pub struct ClientConfigPacket {
     pub settings: Settings,
     pub eye_resolution: (u32, u32),
+    pub eyes_fov: [Fov; 2],
+    pub fps: u32,
     pub web_gui_url: String,
 }
 

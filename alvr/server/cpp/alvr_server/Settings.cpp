@@ -59,7 +59,7 @@ void Settings::Load()
 		m_recommendedTargetWidth = targetEyeResolution[0].get<int64_t>() * 2;
 		m_recommendedTargetHeight = targetEyeResolution[1].get<int64_t>();
 
-		picojson::array &eyeFov = openvrConfig.get("fov").get<picojson::array>();
+		picojson::array &eyeFov = openvrConfig.get("eyesFov").get<picojson::array>();
 		for (int eye = 0; eye < 2; eye++)
 		{
 			m_eyeFov[eye].left = static_cast<float>(eyeFov[eye].get("left").get<double>());

@@ -1,6 +1,5 @@
 use crate::*;
 use alvr_common::{data::*, logging::*, sockets::*, *};
-use futures::Future;
 use nalgebra::{Point3, UnitQuaternion, Vector3};
 use settings_schema::Switch;
 use std::{collections::HashMap, net::IpAddr, sync::Arc};
@@ -39,7 +38,7 @@ async fn setup_streams(
     settings: Settings,
     client_identity: Identity,
     control_socket: &ControlSocket<ClientControlPacket, ServerControlPacket>,
-    server_config: ServerConfigPacket,
+    headset_info: HeadsetInfoPacket,
 ) -> StrResult {
     let mut stream_socket = StreamSocket::connect_to_client(
         control_socket.peer_ip(),
@@ -236,18 +235,18 @@ async fn setup_streams(
 }
 
 async fn connect_to_any_client(
-    clients_data: HashMap<IpAddr, Identity>,
+    clients_info: HashMap<IpAddr, Identity>,
     session_manager: Arc<AMutex<SessionManager>>,
 ) -> ControlSocket<ClientControlPacket, ServerControlPacket> {
     loop {
         let maybe_pending_connection = ControlSocket::begin_connecting_to_client(
-            &clients_data.keys().cloned().collect::<Vec<_>>(),
+            &clients_info.keys().cloned().collect::<Vec<_>>(),
         )
         .await;
         let PendingClientConnection {
             pending_socket,
             server_ip,
-            server_config,
+            headset_info,
         } = match maybe_pending_connection {
             Ok(pending_connection) => pending_connection,
             Err(e) => {
@@ -262,7 +261,7 @@ async fn connect_to_any_client(
         let eye_height;
         match settings.video.render_resolution {
             FrameSize::Scale(scale) => {
-                let (native_eye_width, native_eye_height) = server_config.native_eye_resolution;
+                let (native_eye_width, native_eye_height) = headset_info.native_eye_resolution;
                 eye_width = native_eye_width as f32 * scale;
                 eye_height = native_eye_height as f32 * scale;
             }
@@ -273,6 +272,18 @@ async fn connect_to_any_client(
         }
         let eye_resolution = (align32(eye_width), align32(eye_height));
 
+        let eyes_fov = if let Some(eyes_fov) = settings.video.eyes_fov.clone() {
+            eyes_fov
+        } else {
+            headset_info.native_eyes_fov.clone()
+        };
+
+        let fps = if let Some(fps) = settings.video.refresh_rate {
+            fps
+        } else {
+            headset_info.native_fps
+        };
+
         let web_gui_url = format!(
             "http://{}:{}/",
             server_ip, settings.connection.web_server_port
@@ -281,6 +292,8 @@ async fn connect_to_any_client(
         let client_config = ClientConfigPacket {
             settings: settings.clone(),
             eye_resolution,
+            eyes_fov: eyes_fov.clone(),
+            fps,
             web_gui_url,
         };
 
@@ -293,9 +306,109 @@ async fn connect_to_any_client(
                 }
             };
 
-        let identity = clients_data.get(&control_socket.peer_ip()).unwrap().clone();
+        let mut controllers_tracking_system_name = "".into();
+        let mut controllers_manufacturer_name = "".into();
+        let mut controllers_model_number = "".into();
+        let mut render_model_name_left_controller = "".into();
+        let mut render_model_name_right_controller = "".into();
+        let mut controllers_serial_number = "".into();
+        let mut controllers_type = "".into();
+        let mut controllers_registered_device_type = "".into();
+        let mut controllers_input_profile_path = "".into();
+        let mut controllers_mode_idx = 0;
+        let mut controllers_enabled = false;
+        if let Switch::Enabled(config) = settings.headset.controllers.clone() {
+            controllers_tracking_system_name = config.tracking_system_name;
+            controllers_manufacturer_name = config.manufacturer_name;
+            controllers_model_number = config.model_number;
+            render_model_name_left_controller = config.render_model_name_left;
+            render_model_name_right_controller = config.render_model_name_right;
+            controllers_serial_number = config.serial_number;
+            controllers_type = config.ctrl_type;
+            controllers_registered_device_type = config.registered_device_type;
+            controllers_input_profile_path = config.input_profile_path;
+            controllers_mode_idx = config.mode_idx;
+            controllers_enabled = true;
+        }
 
-        if let Err(e) = setup_streams(settings, identity, &control_socket, server_config).await {
+        let mut enable_foveated_rendering = false;
+        let mut foveation_strength = 0_f32;
+        let mut foveation_shape = 1_f32;
+        let mut foveation_vertical_offset = 0_f32;
+        if let Switch::Enabled(config) = settings.video.foveated_rendering.clone() {
+            enable_foveated_rendering = true;
+            foveation_strength = config.strength;
+            foveation_shape = config.shape;
+            foveation_vertical_offset = config.vertical_offset
+        }
+
+        let mut enable_color_correction = false;
+        let mut brightness = 0_f32;
+        let mut contrast = 0_f32;
+        let mut saturation = 0_f32;
+        let mut gamma = 1_f32;
+        let mut sharpening = 0_f32;
+        if let Switch::Enabled(config) = settings.video.color_correction.clone() {
+            enable_color_correction = true;
+            brightness = config.brightness;
+            contrast = config.contrast;
+            saturation = config.saturation;
+            gamma = config.gamma;
+            sharpening = config.sharpening;
+        }
+
+        // check that OpenVR has been initialized correctly, otherwise restart SteamVR
+        let new_openvr_config = OpenvrConfig {
+            headset_serial_number: settings.headset.serial_number.clone(),
+            headset_tracking_system_name: settings.headset.tracking_system_name.clone(),
+            headset_model_number: settings.headset.model_number.clone(),
+            headset_driver_version: settings.headset.driver_version.clone(),
+            headset_manufacturer_name: settings.headset.manufacturer_name.clone(),
+            headset_render_model_name: settings.headset.render_model_name.clone(),
+            headset_registered_device_type: settings.headset.registered_device_type.clone(),
+            eye_resolution,
+            target_eye_resolution: eye_resolution,
+            eyes_fov,
+            seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
+            ipd: settings.video.ipd,
+            adapter_index: settings.video.adapter_index,
+            fps,
+            controllers_tracking_system_name,
+            controllers_manufacturer_name,
+            controllers_model_number,
+            render_model_name_left_controller,
+            render_model_name_right_controller,
+            controllers_serial_number,
+            controllers_type,
+            controllers_registered_device_type,
+            controllers_input_profile_path,
+            controllers_mode_idx,
+            controllers_enabled,
+            enable_foveated_rendering,
+            foveation_strength,
+            foveation_shape,
+            foveation_vertical_offset,
+            enable_color_correction,
+            brightness,
+            contrast,
+            saturation,
+            gamma,
+            sharpening,
+        };
+
+        if session_manager.lock().await.get().openvr_config != new_openvr_config {
+            session_manager
+                .lock()
+                .await
+                .get_mut("", SessionUpdateType::Other)
+                .openvr_config = new_openvr_config;
+
+            restart_steamvr();
+        }
+
+        let identity = clients_info.get(&control_socket.peer_ip()).unwrap().clone();
+
+        if let Err(e) = setup_streams(settings, identity, &control_socket, headset_info).await {
             warn!("Setup streams failed: {}", e);
         } else {
             break control_socket;
@@ -331,22 +444,22 @@ pub async fn connection_loop(
             }
         };
 
-        let clients_data = session_manager
+        let clients_info = session_manager
             .lock()
             .await
             .get()
             .client_connections
             .iter()
-            .fold(HashMap::new(), |mut clients_data, (hostname, client)| {
+            .fold(HashMap::new(), |mut clients_info, (hostname, client)| {
                 let id = Identity {
                     hostname: hostname.clone(),
                     certificate_pem: client.certificate_pem.clone(),
                 };
-                clients_data.extend(client.manual_ips.iter().map(|&ip| (ip, id.clone())));
-                clients_data.insert(client.last_ip, id);
-                clients_data
+                clients_info.extend(client.manual_ips.iter().map(|&ip| (ip, id.clone())));
+                clients_info.insert(client.last_ip, id);
+                clients_info
             });
-        let get_control_socket = connect_to_any_client(clients_data, session_manager.clone());
+        let get_control_socket = connect_to_any_client(clients_info, session_manager.clone());
 
         let mut control_socket = tokio::select! {
             Err(e) = client_discovery => break trace_str!("Client discovery failed: {}", e),

@@ -24,7 +24,8 @@ jobs:
         with:
           fetch-depth: 0 # otherwise, push will fail
         
-      # TODO: the actual version bump, using a script (or xtask)
+      - name: Bump versions
+        run: cargo xtask bump-versions --server ${{ github.event.inputs.server_version }} --client ${{ github.event.inputs.client_version}}
       
       - name: Push changes
         uses: ad-m/github-push-action@master
@@ -97,12 +98,12 @@ jobs:
           asset_name: alvr_client.apk
           asset_content_type: application/vnd.android.package-archive
           
-  publish_release:
-    runs-on: ubuntu-latest
-    needs: [prepare_release, build_windows]
-    steps:
-      - uses: eregon/publish-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          release_id: ${{ needs.prepare_release.outputs.release_id }}
+#  publish_release:
+#    runs-on: ubuntu-latest
+#    needs: [prepare_release, build_windows]
+#    steps:
+#      - uses: eregon/publish-release@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          release_id: ${{ needs.prepare_release.outputs.release_id }}

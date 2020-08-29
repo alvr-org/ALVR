@@ -140,7 +140,7 @@ Una resolución inferior al 100% puede reducir la latencia y mejorar la calidad 
     "_root_headset_useTrackingReference.name": "Utilizar el sistema de referencia para el seguimiento",
     "_root_headset_useTrackingReference.description": "sin usar",
     "_root_headset_force3dof.name": "Modo 3DOF",
-    "_root_headset_force3dof.description": "Forzar sólo 3 grados de libertad para el visor (sólo rotación)",
+    "_root_headset_force3dof.description": "Forzar modo de sólo 3 grados de libertad para el visor (sólo rotación)",
     "_root_headset_controllers.name": "Mandos",
     "_root_headset_controllers.description": "sin usar",
     "_root_headset_controllers_enabled.name": "Habilitar",
@@ -210,8 +210,8 @@ Una resolución inferior al 100% puede reducir la latencia y mejorar la calidad 
     "_root_connection_frameQueueSize.name": "Tamaño de la cola de cuadros",
     "_root_connection_frameQueueSize.description": "Tamaño máximo de la cola de fotogramas utilizado por el cliente.",
     "_root_connection_aggressiveKeyframeResend.name": "Reenvía los fotogramas clave de forma agresiva",
-    "_root_connection_aggressiveKeyframeResend.description": `Reducir el intervalo de reenvío de los cuadros de tipo 'I' de 100ms a 5ms.
-Sólo se utiliza cuando se detecta pérdida de paquetes. Mejora la experiencia visual en caso de pérdida de paquetes.`,
+    "_root_connection_aggressiveKeyframeResend.description": `Reducir el intervalo de reenvío de cuadros de tipo "I" (key frames) de 100ms a 5ms.
+Sólo se utiliza cuando se detecta una pérdida de paquetes. Mejora la experiencia visual en caso de pérdida de paquetes.`,
     "_root_extra_tab.name": "Extra",
     "_root_extra_revertConfirmDialog.name": "Confirmar los valores de restablecimiento",
     "_root_extra_revertConfirmDialog.description": "Pedir confirmación antes de restablecer los ajustes al valor predeterminado.",

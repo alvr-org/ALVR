@@ -14,7 +14,7 @@ cargo xtask
 Developement actions for ALVR.
 
 USAGE:
-    cargo xtask <SUBCOMMAND> [FLAG]
+    cargo xtask <SUBCOMMAND> [FLAG] [ARGS]
 
 SUBCOMMANDS:
     build-server        Build server driver and GUI, then copy binaries to build folder
@@ -22,14 +22,24 @@ SUBCOMMANDS:
     publish             Build server and client in release mode, zip server and copy the pdb file.
     clean               Removes build folder
     kill-oculus         Kill all Oculus processes
-    bump-versions        Bump server and/or client package versions
+    bump-versions       Bump server and/or client package versions
 
 FLAGS:
     --release           Optimized build without debug info. Used only for build subcommands
     --help              Print this text
+
+ARGS:
+    --client <VERSION>  Specify client version to set with the bump-versions subcommand
+    --server <VERSION>  Specify server version to set with the bump-versions subcommand
 "#;
 
 type BResult<T = ()> = Result<T, Box<dyn Error>>;
+
+struct Args {
+    is_release: bool,
+    server_version: Option<String>,
+    client_version: Option<String>,
+}
 
 #[cfg(target_os = "linux")]
 const SERVER_BUILD_DIR_NAME: &str = "alvr_server_linux";
@@ -343,14 +353,9 @@ fn bump_server_cargo_version(new_version: String) {
     file.write_all(new_contents_bytes).unwrap();
 }
 
-fn bump_versions(values: Vec<String>) {
-    if values.len() != 2 {
-        println!("Version bump failed: supply 2 versions.");
-        return;
-    }
-
+fn bump_versions(server_version: Option<String>, client_version: Option<String>) {
     use alvr_common::data::bumped_versions;
-    let versions = bumped_versions(&values[0], &values[1]);
+    let versions = bumped_versions(server_version, client_version);
     match versions {
         Ok((client_version, server_version)) => {
             bump_client_gradle_version(client_version);
@@ -368,16 +373,19 @@ fn main() {
     if args.contains(["-h", "--help"]) {
         println!("{}", HELP_STR);
     } else if let Ok(Some(subcommand)) = args.subcommand() {
-        let is_release = args.contains("--release");
-        let free_args = args.free();
-        if free_args.is_ok() {
+        let args_values = Args {
+            is_release: args.contains("--release"),
+            server_version: args.opt_value_from_str("--server").unwrap(),
+            client_version: args.opt_value_from_str("--client").unwrap()
+        };
+        if args.finish().is_ok() {
             match subcommand.as_str() {
-                "build-server" => ok_or_exit(build_server(is_release, true)),
-                "build-client" => ok_or_exit(build_client(is_release)),
+                "build-server" => ok_or_exit(build_server(args_values.is_release, true)),
+                "build-client" => ok_or_exit(build_client(args_values.is_release)),
                 "publish" => ok_or_exit(build_publish()),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
-                "bump-versions" => bump_versions(free_args.unwrap()),
+                "bump-versions" => bump_versions(args_values.server_version, args_values.client_version),
                 _ => {
                     println!("\nUnrecognized subcommand.");
                     println!("{}", HELP_STR);

@@ -14,7 +14,7 @@ on:
 
 jobs:
   bump_version:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     outputs:
       # TODO: use tag from step
       version_tag: v${{ github.event.inputs.server_version }}
@@ -25,7 +25,9 @@ jobs:
           fetch-depth: 0 # otherwise, push will fail
         
       - name: Bump versions
-        run: cargo xtask bump-versions --server ${{ github.event.inputs.server_version }} --client ${{ github.event.inputs.client_version}}
+        run: |
+          cargo xtask bump-versions --server ${{ github.event.inputs.server_version }} --client ${{ github.event.inputs.client_version}}
+          git commit -a -m "[Auto] Bump versions"
       
       - name: Push changes
         uses: ad-m/github-push-action@master
@@ -34,7 +36,7 @@ jobs:
           branch: ${{ github.ref }}
           
   prepare_release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: [bump_version]
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}

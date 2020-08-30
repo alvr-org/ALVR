@@ -238,6 +238,6 @@ define({
     },
     "it": true,
     "es": true,
-	"fr": true,
+    "fr": true,
     "de-de": true
 });

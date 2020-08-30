@@ -6,7 +6,7 @@ define({
     "_root_audio_tab.description": "Impostazioni audio",
     "_root_headset_tab.name": "Casque",
     "_root_connection_tab.name": "Connexion",
-	"_root_extra_tab.name": "Extra",
+    "_root_extra_tab.name": "Extra",
 	
     "_root_video_encodeBitrateMbs.name": "Bitrate video",
     "_root_video_encodeBitrateMbs.description": "Bitrate du streaming video.30Mbps est recommandé. \nUn bitrate plus élevé donne une meilleure image mais rajoute de la latence ainsi que du traffic réseau.",

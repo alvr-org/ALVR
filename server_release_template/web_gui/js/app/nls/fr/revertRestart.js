@@ -1,5 +1,5 @@
 define({    
-	"confirmRevertTitle": "Restaurer paramètre?",
+    "confirmRevertTitle": "Restaurer paramètre?",
     "okRevertButton": "OK",
     "cancelRevertButton": "Anuler",
     "revertText": "Restaurer la valeur par default sur",

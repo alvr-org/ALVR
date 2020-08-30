@@ -16,8 +16,8 @@ jobs:
   bump_version:
     runs-on: windows-latest
     outputs:
-      version_tag:
-      release_ref:
+      version_tag: ${{ steps.bump_versions.outputs.version_tag }}
+      release_ref: ${{ steps.output_ref.outputs.release_ref }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -25,6 +25,7 @@ jobs:
           ref: ${{ github.head_ref }}
         
       - name: Bump versions
+        id: bump_versions
         run: |
           $serverarg = "${{ github.event.inputs.server_version }}"
           $serverarg = If ($serverarg.Length -gt 0) { "--server $serverarg" } else { "" }
@@ -40,6 +41,7 @@ jobs:
           commit_message: "[Auto] Bump version"
       
       - name: Output ref for later checkouts
+        id: output_ref
         run: echo "::set-output name=release_ref::$(git rev-parse HEAD)"
           
   prepare_release:

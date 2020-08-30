@@ -111,8 +111,9 @@ dependencies = [
  "alvr_common",
  "dirs",
  "fs_extra",
- "gradle-sync",
+ "lazy_static",
  "pico-args",
+ "regex",
  "runas",
  "semver",
  "termion",
@@ -997,15 +998,6 @@ dependencies = [
  "glib-sys",
  "libc",
  "pkg-config",
-]
-
-[[package]]
-name = "gradle-sync"
-version = "0.2.0"
-source = "git+https://github.com/maxer456/gradle-sync#cc39cd9a3786693c348ec0310c9debe3c1d4274d"
-dependencies = [
- "regex",
- "semver",
 ]
 
 [[package]]

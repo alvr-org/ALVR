@@ -1,14 +1,20 @@
 use crate::*;
 use alvr_common::data::{ALVR_CLIENT_VERSION, ALVR_SERVER_VERSION};
 
+use lazy_static::lazy_static;
 use semver::{Version, VersionReq};
-use gradle_sync::BuildGradleFile;
+use regex::{Regex, Captures};
 use toml_edit::Document;
 use std::str::FromStr;
 use std::fs::File;
 use std::cmp::Ordering;
 
-fn bumped_versions(server_version: Option<&str>, client_version: Option<&str>) -> Result<(Version, Version), Box<dyn Error>>{
+lazy_static! {
+    static ref GRADLE_VERSIONNAME_REGEX: Regex = Regex::new(r#"versionName\s+"[\d.]+""#).unwrap();
+    static ref GRADLE_VERSIONCODE_REGEX: Regex = Regex::new(r#"versionCode\s+(?P<code>\d+)"#).unwrap();
+}
+
+fn bumped_versions(server_version: Option<&str>, client_version: Option<&str>) -> BResult<(Version, Version)>{
     let server_version = server_version.unwrap_or(ALVR_SERVER_VERSION);
     let client_version = client_version.unwrap_or(ALVR_CLIENT_VERSION);
 
@@ -42,23 +48,28 @@ fn bumped_versions(server_version: Option<&str>, client_version: Option<&str>) -
 fn bump_client_gradle_version(new_version: &Version) -> BResult {
     println!("Bumping HMD client version: {} -> {}", ALVR_CLIENT_VERSION, new_version);
 
-    let gradle_file = BuildGradleFile::new(
-        workspace_dir().join("alvr/client_hmd/app").join("build.gradle").to_str().unwrap()
-    );
+    let gradle_file_path = workspace_dir().join("alvr/client_hmd/app").join("build.gradle");
+    let mut gradle_file = File::open(&gradle_file_path)?;
+    let mut data = String::new();
+    gradle_file.read_to_string(&mut data)?;
+    drop(gradle_file);
 
-    match gradle_file {
-        Ok(mut file) => {
-            if let Err(e) = file.sync_version(new_version) {
-                return Err(format!("{:#?}", e).into());
-            }
-            if let Err(e) = file.write() {
-                return Err(format!("{:#?}", e).into());
-            }
+    let data = GRADLE_VERSIONNAME_REGEX.replace(&data, |_: &Captures| {
+        format!(r#"versionName "{}""#, new_version)
+    });
+    let client_version = Version::parse(ALVR_CLIENT_VERSION)?;
+    let data = GRADLE_VERSIONCODE_REGEX.replace(&data, |caps: &Captures| {
+        if new_version > &client_version {
+            let code: u32 = (&caps["code"]).parse().unwrap();
+            format!("versionCode {}", code + 1)
+        } else {
+            format!("versionCode {}", &caps["code"])
         }
-        Err(e) => {
-            return Err(format!("{:#?}", e).into());
-        }
-    }
+    });
+    
+    let mut gradle_file = File::create(&gradle_file_path)?;
+    gradle_file.write_all(data.as_bytes())?;
+    
     Ok(())
 }
 

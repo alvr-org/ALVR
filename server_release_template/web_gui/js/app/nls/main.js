@@ -15,5 +15,6 @@ define({
     },
     "it": true,
     "es": true,
+    "fr": true,
     "de-de": false
 });

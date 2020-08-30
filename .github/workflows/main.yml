@@ -5,10 +5,12 @@ on:
     inputs:
       client_version:
         description: 'Client version'
-        required: false
+        required: true
+        default: ''
       server_version:
         description: 'Server version'
-        required: false
+        required: true
+        default: ''
 
 jobs:
   bump_version:
@@ -24,7 +26,11 @@ jobs:
         
       - name: Bump versions
         run: |
-          $out = cargo xtask bump-versions --server ${{ github.event.inputs.server_version }} --client ${{ github.event.inputs.client_version}}
+          $serverarg = "${{ github.event.inputs.server_version }}"
+          $serverarg = If ($serverarg.Length -gt 0) { "--server $serverarg" } else { "" }
+          $clientarg = "${{ github.event.inputs.client_version }}"
+          $clientarg = If ($clientarg.Length -gt 0) { "--client $clientarg" } else { "" }
+          $out = cargo xtask bump-versions $serverarg.split() $clientarg.split()
           echo $out
           echo "::set-output name=version_tag::$(echo $out | sls -CaseSensitive -Pattern '^v.*$')"
       

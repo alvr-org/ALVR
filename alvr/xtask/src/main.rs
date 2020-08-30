@@ -338,7 +338,7 @@ fn main() {
                 "publish" => ok_or_exit(build_publish()),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
-                "bump-versions" => bump_versions(args_values.server_version, args_values.client_version),
+                "bump-versions" => ok_or_exit(bump_versions(args_values.server_version, args_values.client_version)),
                 _ => {
                     println!("\nUnrecognized subcommand.");
                     println!("{}", HELP_STR);

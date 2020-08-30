@@ -91,7 +91,7 @@ fn bump_server_cargo_version(new_version: &Version) -> BResult {
     Ok(())
 }
 
-pub fn bump_versions(server_arg: Option<String>, client_arg: Option<String>) {
+pub fn bump_versions(server_arg: Option<String>, client_arg: Option<String>) -> BResult {
     let versions = bumped_versions(server_arg.as_deref(), client_arg.as_deref());
     match versions {
         Ok((client_version, server_version)) => {
@@ -113,9 +113,10 @@ pub fn bump_versions(server_arg: Option<String>, client_arg: Option<String>) {
             };
 
             println!("Git tag:\n{}", tag);
+            Ok(())
         }
         Err(msg) => {
-            println!("Version bump failed: {}", msg);
+            Err(format!("Version bump failed: {}", msg).into())
         }
     }
 }

@@ -5,11 +5,11 @@ on:
     inputs:
       client_version:
         description: 'Client version'
-        required: true
+        required: false
         default: ''
       server_version:
         description: 'Server version'
-        required: true
+        required: false
         default: ''
 
 jobs:

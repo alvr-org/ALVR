@@ -22,18 +22,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          fetch-depth: 0 # otherwise, push will fail
+          ref: ${{ github.head_ref }}
         
       - name: Bump versions
         run: |
           cargo xtask bump-versions --server ${{ github.event.inputs.server_version }} --client ${{ github.event.inputs.client_version}}
-          git commit -a -m "[Auto] Bump versions"
       
       - name: Push changes
-        uses: ad-m/github-push-action@master
+        uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
+          commit_message: "[Auto] Bump version"
           
   prepare_release:
     runs-on: windows-latest

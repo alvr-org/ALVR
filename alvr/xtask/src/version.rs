@@ -8,9 +8,9 @@ use std::str::FromStr;
 use std::fs::File;
 use std::cmp::Ordering;
 
-fn bumped_versions(server_version: &Option<String>, client_version: &Option<String>) -> Result<(Version, Version), Box<dyn Error>>{
-    let server_version = server_version.as_deref().unwrap_or(ALVR_SERVER_VERSION);
-    let client_version = client_version.as_deref().unwrap_or(ALVR_CLIENT_VERSION);
+fn bumped_versions(server_version: Option<&str>, client_version: Option<&str>) -> Result<(Version, Version), Box<dyn Error>>{
+    let server_version = server_version.unwrap_or(ALVR_SERVER_VERSION);
+    let client_version = client_version.unwrap_or(ALVR_CLIENT_VERSION);
 
     let server_req: String = format!(">={}", ALVR_SERVER_VERSION).into();
     let server_req = VersionReq::parse(&server_req)?;
@@ -81,7 +81,7 @@ fn bump_server_cargo_version(new_version: &Version) -> BResult {
 }
 
 pub fn bump_versions(server_arg: Option<String>, client_arg: Option<String>) {
-    let versions = bumped_versions(&server_arg, &client_arg);
+    let versions = bumped_versions(server_arg.as_deref(), client_arg.as_deref());
     match versions {
         Ok((client_version, server_version)) => {
             ok_or_exit(bump_client_gradle_version(&client_version));

@@ -5,19 +5,17 @@ on:
     inputs:
       client_version:
         description: 'Client version'
-        required: true
-        default: '12.0.0'
+        required: false
       server_version:
         description: 'Server version'
-        required: true
-        default: '12.0.0'
+        required: false
 
 jobs:
   bump_version:
     runs-on: windows-latest
     outputs:
-      # TODO: use tag from step
-      version_tag: v${{ github.event.inputs.server_version }}
+      version_tag:
+      release_ref:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -26,12 +24,17 @@ jobs:
         
       - name: Bump versions
         run: |
-          cargo xtask bump-versions --server ${{ github.event.inputs.server_version }} --client ${{ github.event.inputs.client_version}}
+          $out = cargo xtask bump-versions --server ${{ github.event.inputs.server_version }} --client ${{ github.event.inputs.client_version}}
+          echo $out
+          echo "::set-output name=version_tag::$(echo $out | sls -CaseSensitive -Pattern '^v.*$')"
       
       - name: Push changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: "[Auto] Bump version"
+      
+      - name: Output ref for later checkouts
+        run: echo "::set-output name=release_ref::$(git rev-parse HEAD)"
           
   prepare_release:
     runs-on: windows-latest
@@ -57,7 +60,7 @@ jobs:
     # Windows latest has Rust, Android NDK and LLVM already installed.
     # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
     runs-on: windows-latest
-    needs: [prepare_release]
+    needs: [bump_version, prepare_release]
     env:
       # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
       # This is specific to the GitHub windows-latest runner.
@@ -65,6 +68,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          ref: ${{ needs.bump_version.outputs.release_ref }}
 
       - name: Build and package ALVR (.zip, .pdb, .apk)
         run: cargo xtask publish

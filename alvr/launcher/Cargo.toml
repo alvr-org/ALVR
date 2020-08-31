@@ -6,6 +6,7 @@ license = 'MIT'
 edition = '2018'
 
 [dependencies]
+parking_lot = '^0.11.0'
 alvr_common = { path = '../common' }
 single-instance = '^0.1.2'
 alcro = '^0.2.0'

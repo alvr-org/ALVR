@@ -46,6 +46,10 @@ pub fn show_err<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
     })
 }
 
+pub fn show_e<E: Display>(e: E) {
+    show_err::<(), _>(Err(e)).ok();
+}
+
 pub async fn show_err_async<T, E: Display>(
     future_res: impl Future<Output = Result<T, E>>,
 ) -> Result<T, ()> {

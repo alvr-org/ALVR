@@ -440,7 +440,7 @@ pub async fn connection_loop(
                 })
                 .await;
 
-                Err::<(), _>(res.err().unwrap())
+                Err::<(), _>(res.err().unwrap_or_else(|| "".into()))
             }
         };
 

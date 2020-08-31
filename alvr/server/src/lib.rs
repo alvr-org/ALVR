@@ -52,8 +52,6 @@ pub fn shutdown_runtime() {
         // dropping the runtime has the benefit of giving SteamVR a chance to clean itself as
         // much as possible before the process is killed because of alvr_launcher timeout.
     }
-
-    maybe_delete_alvr_dir_store();
 }
 
 pub fn restart_steamvr() {
@@ -62,7 +60,7 @@ pub fn restart_steamvr() {
 
         unsafe { ShutdownSteamvr() };
 
-        restart_steamvr_with_timeout().ok();
+        restart_steamvr_with_timeout(&ALVR_DIR).ok();
     });
 }
 
@@ -139,19 +137,8 @@ pub async fn update_client_list(
 }
 
 fn init(log_sender: broadcast::Sender<String>) -> StrResult {
-    let alvr_dir = get_alvr_dir()?;
-
-    // if let Err(e) = restore_driver_paths_backup() {
-    //     info!(
-    //         "Failed to restore drivers paths backup (usually not an error): {}",
-    //         e
-    //     );
-    //     // This is not fatal. This happens if the user did register ALVR driver through the setup
-    //     // wizard.
-    // }
-
     if let Some(runtime) = MAYBE_RUNTIME.lock().as_mut() {
-        let session_manager = Arc::new(AMutex::new(SessionManager::new(&alvr_dir)));
+        let session_manager = Arc::new(AMutex::new(SessionManager::new(&ALVR_DIR)));
 
         // this is needed until all c++ code is rewritten. todo: remove
         runtime
@@ -188,8 +175,11 @@ fn init(log_sender: broadcast::Sender<String>) -> StrResult {
         //     *MAYBE_SHUTDOWN_NOTIFIER.lock() = Some(shutdown_notifier);
     }
 
-    let alvr_dir_c_string = CString::new(alvr_dir.to_string_lossy().to_string()).unwrap();
+    let alvr_dir_c_string = CString::new(ALVR_DIR.to_string_lossy().into_owned()).unwrap();
     unsafe { g_alvrDir = alvr_dir_c_string.into_raw() };
+    
+    // ALVR_DIR has been used (and so initialized). I don't need alvr_dir storage on disk anymore
+    maybe_delete_alvr_dir_storage();
 
     Ok(())
 }
@@ -225,7 +215,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     COLOR_CORRECTION_CSO_LEN = COLOR_CORRECTION_CSO.len() as _;
 
     unsafe extern "C" fn log_error(string_ptr: *const c_char) {
-        show_err::<(), _>(Err(CStr::from_ptr(string_ptr).to_string_lossy())).ok();
+        show_e(CStr::from_ptr(string_ptr).to_string_lossy());
     }
 
     unsafe fn log(level: log::Level, string_ptr: *const c_char) {

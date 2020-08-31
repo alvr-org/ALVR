@@ -7,11 +7,11 @@ edition = '2018'
 
 [dependencies]
 settings-schema = { git = 'https://github.com/zarik5/settings-schema-rs', features = ['rename_camel_case'] }
+dirs = '^3.0.1'
 rand = '^0.7.3'
 lazy_static = '^1.4.0'
 parking_lot = '^0.11.0'
 bitflags = '^1.2'
-regex = '^1.3.9'
 semver = { version = '^0.10.0', features = ['serde'] }
 log = '^0.4.8'
 backtrace = '^0.3.46'
@@ -33,6 +33,7 @@ gfx-hal = '^0.6.0'
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = '^0.3.8', features = [
+    'impl-default',
     'mmdeviceapi',
     'propsys',
     'coml2api',
@@ -43,11 +44,7 @@ winapi = { version = '^0.3.8', features = [
 ] }
 wio = '^0.2.2'
 widestring = '^0.4.2'
-winreg = '^0.7.0'
 gfx-backend-dx11 = '^0.6.0'
-
-[target.'cfg(not(windows))'.dependencies]
-dirs = '^3.0.1'
 
 [target.'cfg(not(android))'.dependencies]
 msgbox = { git = 'https://github.com/bekker/msgbox-rs' }

@@ -110,7 +110,7 @@ pub async fn web_server(
     });
 
     let register_driver_request = warp::path("driver/register").map(|| {
-        if driver_registration(&get_alvr_dir().unwrap(), true).is_ok() {
+        if driver_registration(&[ALVR_DIR.clone()], true).is_ok() {
             reply::with_status(reply(), StatusCode::OK)
         } else {
             reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
@@ -120,7 +120,7 @@ pub async fn web_server(
         warp::path("driver/unregister")
             .and(body::json())
             .map(|path: PathBuf| {
-                if driver_registration(&path, false).is_ok() {
+                if driver_registration(&[path], false).is_ok() {
                     reply::with_status(reply(), StatusCode::OK)
                 } else {
                     reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)

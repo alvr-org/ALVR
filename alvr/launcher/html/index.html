@@ -72,6 +72,7 @@
                     }
                     if (success) {
                         resizeAndCenter(800, 600);
+                        await restoreDriverPaths();
                         window.location.assign("https://127.0.0.1:8082");
                         break;
                     } else {

@@ -98,18 +98,17 @@ pub fn bump_versions(server_arg: Option<String>, client_arg: Option<String>) -> 
             ok_or_exit(bump_client_gradle_version(&client_version));
             ok_or_exit(bump_server_cargo_version(&server_version));
 
-            let tag = if server_arg.is_some() && client_arg.is_some() {
-                match client_version.cmp(&server_version) {
-                    Ordering::Less => format!("v{}", server_version),
-                    Ordering::Greater => format!("v{}", client_version),
-                    Ordering::Equal => format!("v{}", client_version)
-                }
-            } else {
-                match client_version.cmp(&server_version) {
-                    Ordering::Less => format!("v{}-server", server_version),
-                    Ordering::Greater => format!("v{}-client", client_version),
-                    Ordering::Equal => format!("v{}", client_version)
-                }
+            let tag = match (server_arg, client_arg) {
+                (Some(_), Some(_)) => {
+                    match client_version.cmp(&server_version) {
+                        Ordering::Less => format!("v{}", server_version),
+                        Ordering::Greater => format!("v{}", client_version),
+                        Ordering::Equal => format!("v{}", client_version)
+                    }
+                },
+                (Some(_), None) => format!("v{}-server", server_version),
+                (None, Some(_)) => format!("v{}-client", client_version),
+                (None, None) => { unreachable!(); } // handled in bumped_versions
             };
 
             println!("Git tag:\n{}", tag);

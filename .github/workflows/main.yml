@@ -33,6 +33,7 @@ jobs:
           $clientarg = If ($clientarg.Length -gt 0) { "--client $clientarg" } else { "" }
           $out = cargo xtask bump-versions $serverarg.split() $clientarg.split()
           echo $out
+          cargo update -p alvr_server_driver
           echo "::set-output name=version_tag::$(echo $out | sls -CaseSensitive -Pattern '^v.*$')"
       
       - name: Push changes

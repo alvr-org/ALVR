@@ -203,7 +203,7 @@ pub async fn web_server(
     );
     headers.insert(
         ACCESS_CONTROL_ALLOW_ORIGIN,
-        HeaderValue::from_static("null"),
+        HeaderValue::from_static("*"),
     );
 
     // BoxFuture is needed to avoid error: "reached the type-length limit while instantiating ..."

@@ -145,39 +145,36 @@ fn init(log_sender: broadcast::Sender<String>) -> StrResult {
             .block_on(session_manager.lock())
             .get_mut("", SessionUpdateType::Other);
 
-        //     let (shutdown_notifier, mut shutdown_receiver) = broadcast::channel(1);
-        //     let (update_client_listeners_notifier, _) = broadcast::channel(1);
+        let (shutdown_notifier, mut shutdown_receiver) = broadcast::channel(1);
+        let (update_client_listeners_notifier, _) = broadcast::channel(1);
 
-        //     // Error: reached the type-length limit while instantiating ...
-        //     // I need to split my future into separate .spawn()
+        runtime.spawn({
+            async move {
+                let web_server = show_err_async(web_server::web_server(
+                    session_manager.clone(),
+                    log_sender,
+                    update_client_listeners_notifier.clone(),
+                ));
 
-        //     runtime.spawn({
-        //         async move {
-        //             let web_server = show_err_async(web_server::web_server(
-        //                 session_manager.clone(),
-        //                 log_sender,
-        //                 update_client_listeners_notifier.clone(),
-        //             ));
+                // let connection_loop = show_err_async(connection::connection_loop(
+                //     session_manager,
+                //     update_client_listeners_notifier,
+                // ));
 
-        //             let connection_loop = show_err_async(connection::connection_loop(
-        //                 session_manager,
-        //                 update_client_listeners_notifier,
-        //             ));
+                tokio::select! {
+                    _ = web_server => (),
+                    // _ = connection_loop => (),
+                    _ = shutdown_receiver.recv() => (),
+                }
+            }
+        });
 
-        //             tokio::select! {
-        //                 _ = web_server => (),
-        //                 _ = connection_loop => (),
-        //                 _ = shutdown_receiver.recv() => (),
-        //             }
-        //         }
-        //     });
-
-        //     *MAYBE_SHUTDOWN_NOTIFIER.lock() = Some(shutdown_notifier);
+        *MAYBE_SHUTDOWN_NOTIFIER.lock() = Some(shutdown_notifier);
     }
 
     let alvr_dir_c_string = CString::new(ALVR_DIR.to_string_lossy().into_owned()).unwrap();
     unsafe { g_alvrDir = alvr_dir_c_string.into_raw() };
-    
+
     // ALVR_DIR has been used (and so initialized). I don't need alvr_dir storage on disk anymore
     maybe_delete_alvr_dir_storage();
 

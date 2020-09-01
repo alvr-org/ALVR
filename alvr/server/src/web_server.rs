@@ -74,7 +74,7 @@ pub async fn web_server(
 ) -> StrResult {
     let settings_changed = Arc::new(AtomicBool::new(false));
 
-    let web_gui_dir = PathBuf::from(WEB_GUI_DIR_STR);
+    let web_gui_dir = ALVR_DIR.join(WEB_GUI_DIR_STR);
     let index_request = warp::path::end().and(wfs::file(web_gui_dir.join("index.html")));
     let files_requests = wfs::dir(web_gui_dir);
 
@@ -109,7 +109,7 @@ pub async fn web_server(
         ws.on_upgrade(|socket| subscribed_to_log(socket, log_receiver))
     });
 
-    let register_driver_request = warp::path("driver/register").map(|| {
+    let register_driver_request = warp::path!("driver" / "register").map(|| {
         if driver_registration(&[ALVR_DIR.clone()], true).is_ok() {
             reply::with_status(reply(), StatusCode::OK)
         } else {
@@ -117,7 +117,7 @@ pub async fn web_server(
         }
     });
     let unregister_driver_request =
-        warp::path("driver/unregister")
+        warp::path!("driver" / "unregister")
             .and(body::json())
             .map(|path: PathBuf| {
                 if driver_registration(&[path], false).is_ok() {
@@ -126,7 +126,7 @@ pub async fn web_server(
                     reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
                 }
             });
-    let list_drivers_request = warp::path("driver/list").map(|| {
+    let list_drivers_request = warp::path!("driver" / "list").map(|| {
         if let Ok(list) = get_registered_drivers() {
             reply::json(&list)
         } else {

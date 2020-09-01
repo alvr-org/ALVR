@@ -36,7 +36,7 @@
         function pingWebServer() {
             return new Promise(resolve => {
                 xhttp = new XMLHttpRequest();
-                xhttp.open("GET", "https://127.0.0.1:8082");
+                xhttp.open("GET", "http://127.0.0.1:8082");
                 xhttp.onreadystatechange = function () {
                     if (xhttp.readyState == XMLHttpRequest.DONE) {
                         if (xhttp.status == 200) {
@@ -73,7 +73,7 @@
                     if (success) {
                         resizeAndCenter(800, 600);
                         await restoreDriverPaths();
-                        window.location.assign("https://127.0.0.1:8082");
+                        window.location.assign("http://127.0.0.1:8082");
                         break;
                     } else {
                         document.getElementById("restart-btn").style.display = "block";

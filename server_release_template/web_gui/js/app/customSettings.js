@@ -1,7 +1,7 @@
 define([
     "i18n!app/nls/settings",
     "lib/selectal",
-    "json!../../audio_devices",
+    "json!../../audio-devices",
     "json!app/resources/HTCVive.json",
     "json!app/resources/OculusRift.json",
     "json!app/resources/OculusTouch.json",

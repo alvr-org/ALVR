@@ -1,6 +1,5 @@
 mod version;
 
-use version::bump_versions;
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
 use std::{
@@ -11,6 +10,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
+use version::bump_versions;
 
 const HELP_STR: &str = r#"
 cargo xtask
@@ -329,7 +329,7 @@ fn main() {
         let args_values = Args {
             is_release: args.contains("--release"),
             server_version: args.opt_value_from_str("--server").unwrap(),
-            client_version: args.opt_value_from_str("--client").unwrap()
+            client_version: args.opt_value_from_str("--client").unwrap(),
         };
         if args.finish().is_ok() {
             match subcommand.as_str() {
@@ -338,7 +338,10 @@ fn main() {
                 "publish" => ok_or_exit(build_publish()),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
-                "bump-versions" => ok_or_exit(bump_versions(args_values.server_version, args_values.client_version)),
+                "bump-versions" => ok_or_exit(bump_versions(
+                    args_values.server_version,
+                    args_values.client_version,
+                )),
                 _ => {
                     println!("\nUnrecognized subcommand.");
                     println!("{}", HELP_STR);

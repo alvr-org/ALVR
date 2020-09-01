@@ -1,5 +1,5 @@
+use regex::Regex;
 use std::{fs, path::Path};
-use regex::{Regex};
 
 fn get_version(dir_name: &str) -> String {
     let cargo_path = Path::new("..").join(dir_name).join("Cargo.toml");
@@ -17,8 +17,10 @@ pub fn server_version() -> String {
 pub fn client_version() -> String {
     let re = Regex::new(r#"versionName\s+"(?P<name>[\d.]+)""#).unwrap();
     re.captures(
-        &fs::read_to_string(Path::new("..").join("client_hmd/app").join("build.gradle")).unwrap()
-    ).unwrap()["name"].into()
+        &fs::read_to_string(Path::new("..").join("client_hmd/app").join("build.gradle")).unwrap(),
+    )
+    .unwrap()["name"]
+        .into()
 }
 
 fn main() {

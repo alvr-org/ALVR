@@ -13,7 +13,8 @@ use tokio::{
 };
 use warp::{
     body, fs as wfs,
-    http::StatusCode,
+    http::{HeaderValue, StatusCode},
+    hyper::{header::*, HeaderMap},
     reply,
     ws::{Message, WebSocket, Ws},
     Filter, Reply,
@@ -195,6 +196,16 @@ pub async fn web_server(
         .connection
         .web_server_port;
 
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        CACHE_CONTROL,
+        HeaderValue::from_static("no-cache, no-store, must-revalidate"),
+    );
+    headers.insert(
+        ACCESS_CONTROL_ALLOW_ORIGIN,
+        HeaderValue::from_static("null"),
+    );
+
     // BoxFuture is needed to avoid error: "reached the type-length limit while instantiating ..."
     // todo: switch to Rocket
     let web_server: BoxFuture<()> = Box::pin(
@@ -214,10 +225,7 @@ pub async fn web_server(
                 .or(get_session_request)
                 .or(post_session_request)
                 .or(client_list_action_request)
-                .with(reply::with::header(
-                    "Cache-Control",
-                    "no-cache, no-store, must-revalidate",
-                )),
+                .with(reply::with::headers(headers)),
         )
         .run(([0, 0, 0, 0], web_server_port)),
     );

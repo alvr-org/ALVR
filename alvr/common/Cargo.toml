@@ -7,7 +7,6 @@ edition = '2018'
 
 [dependencies]
 settings-schema = { git = 'https://github.com/zarik5/settings-schema-rs', features = ['rename_camel_case'] }
-dirs = '^3.0.1'
 rand = '^0.7.3'
 lazy_static = '^1.4.0'
 parking_lot = '^0.11.0'
@@ -15,7 +14,6 @@ bitflags = '^1.2'
 semver = { version = '^0.10.0', features = ['serde'] }
 log = '^0.4.8'
 backtrace = '^0.3.46'
-runas = '^0.2.1'
 nalgebra = { version = '^0.22.0', features = ["serde-serialize"] }
 serde = { version = '^1.0', features = ['derive'] }
 serde_json = '^1.0'
@@ -29,6 +27,12 @@ rcgen = '^0.8.5'
 quinn = { git = 'https://github.com/djc/quinn' }# todo: use registry version (>0.6.1)
 gfx-hal = '^0.6.0'
 # cpal = '^0.12.1'
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+dirs = '^3.0.1'
+sysinfo = '^0.15.0'
+runas = '^0.2.1'
+msgbox = { git = 'https://github.com/bekker/msgbox-rs' }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = '^0.3.8', features = [
@@ -44,10 +48,6 @@ winapi = { version = '^0.3.8', features = [
 wio = '^0.2.2'
 widestring = '^0.4.2'
 gfx-backend-dx11 = '^0.6.0'
-
-[target.'cfg(not(target_os = "android"))'.dependencies]
-msgbox = { git = 'https://github.com/bekker/msgbox-rs' }
-sysinfo = '^0.15.0'
 
 [build-dependencies]
 toml = '^0.5.6'

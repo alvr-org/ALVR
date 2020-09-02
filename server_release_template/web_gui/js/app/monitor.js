@@ -8,8 +8,8 @@ define([
     "json!app/resources/descriptors/OculusQuest.json",
     "css!app/templates/monitor.css"
 
-], function (addClientModalTemplate, monitorTemplate, session, _, i18n, i18nNotifications, descriptorQuest) {
-    return function (alvrSettings) {
+], function(addClientModalTemplate, monitorTemplate, session, _, i18n, i18nNotifications, descriptorQuest) {
+    return function(alvrSettings) {
 
         var notificationLevels = [];
         var timeoutHandler;
@@ -33,7 +33,7 @@ define([
                 console.log("Log closed", ev)
             }
 
-            log_listener.addEventListener('message', function (e) { addLogLine(e.data) });
+            log_listener.addEventListener('message', function(e) { addLogLine(e.data) });
 
             $("#_root_extra_notificationLevel-choice-").change((ev) => {
                 initNotificationLevel();
@@ -80,8 +80,8 @@ define([
 
         function manualAddClient(type, ip) {
             //TODO: input validation
-            var desc; 
-            if(type == "Oculus Quest") {
+            var desc;
+            if (type == "Oculus Quest") {
                 desc = descriptorQuest;
             }
 
@@ -171,7 +171,7 @@ define([
             }
 
             var client = `<div class="card client" type="${type}" ip="${ip}" id="trustedClient_${id}">
-                        ${type} ${ip} <button type="button" class="btn btn-primary">remove</button>
+                        ${type} ${ip} <button type="button" class="btn btn-primary">${i18n["removeTrustedClient"]}</button>
                         </div>`
 
             $("#trustedClientsDiv").append(client);
@@ -292,13 +292,14 @@ define([
         }
 
         var isUpdating = false;
+
         function updateSession() {
             //ugly hack to avoid loop
             if (isUpdating) {
                 return;
             }
             isUpdating = true;
-            $.getJSON("session", function (newSession) {
+            $.getJSON("session", function(newSession) {
                 session = newSession;
                 updateClients();
                 alvrSettings.updateSession(session);

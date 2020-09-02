@@ -12,7 +12,6 @@ pico-args = '^0.3.1'
 runas = '^0.2.1'
 walkdir = '^2.3'
 zip = '^0.5.5'
-alvr_common = { path = '../common' }
 toml_edit = '^0.2.0'
 semver = '^0.10.0'
 regex = '^1.3.9'

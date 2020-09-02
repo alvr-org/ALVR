@@ -1,5 +1,4 @@
 use crate::*;
-use alvr_common::data::{ALVR_CLIENT_VERSION, ALVR_SERVER_VERSION};
 
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
@@ -19,14 +18,17 @@ fn bumped_versions(
     server_version: Option<&str>,
     client_version: Option<&str>,
 ) -> BResult<(Version, Version)> {
-    let server_version = server_version.unwrap_or(ALVR_SERVER_VERSION);
-    let client_version = client_version.unwrap_or(ALVR_CLIENT_VERSION);
+    let old_server_version = alvr_xtask::server_version();
+    let old_client_version = alvr_xtask::client_version();
 
-    let server_req: String = format!(">={}", ALVR_SERVER_VERSION);
+    let server_version = server_version.unwrap_or(&old_server_version);
+    let client_version = client_version.unwrap_or(&old_client_version);
+
+    let server_req: String = format!(">={}", old_server_version);
     let server_req = VersionReq::parse(&server_req)?;
     let server_version = Version::parse(server_version)?;
 
-    let client_req: String = format!(">={}", ALVR_CLIENT_VERSION);
+    let client_req: String = format!(">={}", old_client_version);
     let client_req = VersionReq::parse(&client_req)?;
     let client_version = Version::parse(client_version)?;
 
@@ -39,7 +41,7 @@ fn bumped_versions(
     if !server_req.matches(&server_version) {
         return Err(format!(
             "Cannot bump server version: {} -> {}",
-            ALVR_SERVER_VERSION, server_version
+            old_server_version, server_version
         )
         .into());
     }
@@ -47,13 +49,13 @@ fn bumped_versions(
     if !client_req.matches(&client_version) {
         return Err(format!(
             "Cannot bump client version: {} -> {}",
-            ALVR_CLIENT_VERSION, client_version
+            old_client_version, client_version
         )
         .into());
     }
 
-    if client_version == ALVR_CLIENT_VERSION.parse()?
-        && server_version == ALVR_SERVER_VERSION.parse()?
+    if client_version == old_client_version.parse()?
+        && server_version == old_server_version.parse()?
     {
         Err("Didn't bump any version!".to_owned().into())
     } else {
@@ -62,9 +64,11 @@ fn bumped_versions(
 }
 
 fn bump_client_gradle_version(new_version: &Version) -> BResult {
+    let old_client_version = alvr_xtask::client_version();
+
     println!(
         "Bumping HMD client version: {} -> {}",
-        ALVR_CLIENT_VERSION, new_version
+        old_client_version, new_version
     );
 
     let gradle_file_path = workspace_dir()
@@ -78,7 +82,7 @@ fn bump_client_gradle_version(new_version: &Version) -> BResult {
     let data = GRADLE_VERSIONNAME_REGEX.replace(&data, |_: &Captures| {
         format!(r#"versionName "{}""#, new_version)
     });
-    let client_version = Version::parse(ALVR_CLIENT_VERSION)?;
+    let client_version = Version::parse(&old_client_version)?;
     let data = GRADLE_VERSIONCODE_REGEX.replace(&data, |caps: &Captures| {
         if new_version > &client_version {
             let code: u32 = (&caps["code"]).parse().unwrap();
@@ -97,7 +101,8 @@ fn bump_client_gradle_version(new_version: &Version) -> BResult {
 fn bump_server_cargo_version(new_version: &Version) -> BResult {
     println!(
         "Bumping server version: {} -> {}",
-        ALVR_SERVER_VERSION, new_version
+        alvr_xtask::server_version(),
+        new_version
     );
     let manifest_path = workspace_dir()
         .join("alvr/server_driver")

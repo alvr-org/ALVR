@@ -1,0 +1,123 @@
+name: Create release
+
+on:
+  workflow_dispatch:
+    inputs:
+      client_version:
+        description: 'Client version'
+        required: false
+        default: ''
+      server_version:
+        description: 'Server version'
+        required: false
+        default: ''
+
+jobs:
+  bump_version:
+    runs-on: windows-latest
+    outputs:
+      version_tag: ${{ steps.bump_versions.outputs.version_tag }}
+      release_ref: ${{ steps.output_ref.outputs.release_ref }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.head_ref }}
+        
+      - name: Bump versions
+        id: bump_versions
+        run: |
+          $serverarg = "${{ github.event.inputs.server_version }}"
+          $serverarg = If ($serverarg.Length -gt 0) { "--server $serverarg" } else { "" }
+          $clientarg = "${{ github.event.inputs.client_version }}"
+          $clientarg = If ($clientarg.Length -gt 0) { "--client $clientarg" } else { "" }
+          $out = cargo xtask bump-versions $serverarg.split() $clientarg.split()
+          echo $out
+          cargo update -p alvr_server_driver
+          echo "::set-output name=version_tag::$(echo $out | sls -CaseSensitive -Pattern '^v.*$')"
+      
+      - name: Push changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "[Auto] Bump version"
+      
+      - name: Output ref for later checkouts
+        id: output_ref
+        run: echo "::set-output name=release_ref::$(git rev-parse HEAD)"
+          
+  prepare_release:
+    runs-on: windows-latest
+    needs: [bump_version]
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Release tag is taken from the bump_version job.
+          # If both client and server were bumped, format is v12.0.0, otherwise v12.0.0-server or v12.0.0-client
+          tag_name: ${{ needs.bump_version.outputs.version_tag }}
+          release_name: ALVR ${{ needs.bump_version.outputs.version_tag }}
+          draft: true
+          prerelease: false
+
+  build_windows:
+    # Windows latest has Rust, Android NDK and LLVM already installed.
+    # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
+    runs-on: windows-latest
+    needs: [bump_version, prepare_release]
+    env:
+      # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
+      # This is specific to the GitHub windows-latest runner.
+      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ needs.bump_version.outputs.release_ref }}
+
+      - name: Build and package ALVR (.zip, .pdb, .apk)
+        run: cargo xtask publish
+
+      # Three release asset upload actions for three assets - .zip, .pdb and .apk
+      - name: Upload ALVR Windows Server .zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+          asset_path: ./build/alvr_server_windows.zip
+          asset_name: alvr_server_windows.zip
+          asset_content_type: application/zip
+      - name: Upload ALVR Windows Server .pdb
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+          asset_path: ./build/alvr_server_driver.pdb
+          asset_name: alvr_server_driver.pdb
+          asset_content_type: application/octet-stream
+      - name: Upload ALVR Client .apk
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+          asset_path: ./build/alvr_client.apk
+          asset_name: alvr_client.apk
+          asset_content_type: application/vnd.android.package-archive
+          
+#  publish_release:
+#    runs-on: ubuntu-latest
+#    needs: [prepare_release, build_windows]
+#    steps:
+#      - uses: eregon/publish-release@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          release_id: ${{ needs.prepare_release.outputs.release_id }}

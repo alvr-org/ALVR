@@ -50,4 +50,4 @@ widestring = '^0.4.2'
 gfx-backend-dx11 = '^0.6.0'
 
 [build-dependencies]
-toml = '^0.5.6'
+alvr_xtask = { path = '../xtask' }

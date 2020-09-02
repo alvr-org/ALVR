@@ -62,6 +62,7 @@ dependencies = [
 name = "alvr_common"
 version = "13.0.0-alpha.0"
 dependencies = [
+ "alvr_xtask",
  "backtrace",
  "bincode",
  "bitflags",
@@ -87,7 +88,6 @@ dependencies = [
  "sysinfo",
  "tokio",
  "tokio-util",
- "toml",
  "widestring 0.4.2",
  "winapi 0.3.9",
  "wio",
@@ -133,9 +133,13 @@ version = "0.1.0"
 dependencies = [
  "dirs",
  "fs_extra",
+ "lazy_static",
  "pico-args",
+ "regex",
  "runas",
+ "semver",
  "termion",
+ "toml_edit",
  "walkdir",
  "zip",
 ]
@@ -169,6 +173,12 @@ name = "arrayvec"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cff77d8686867eceff3105329d4698d96c2391c176d5d03adc90c7389162b5b8"
+
+[[package]]
+name = "ascii"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eab1c04a571841102f5345a8fc0f6bb3d31c315dec879b5c6e42e40ce7ffa34e"
 
 [[package]]
 name = "atk"
@@ -495,6 +505,19 @@ dependencies = [
  "foreign-types",
  "libc",
  "objc",
+]
+
+[[package]]
+name = "combine"
+version = "3.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da3da6baa321ec19e1cc41d31bf599f00c783d0517095cdaf0332e3fe8d20680"
+dependencies = [
+ "ascii",
+ "byteorder",
+ "either",
+ "memchr",
+ "unreachable",
 ]
 
 [[package]]
@@ -1031,9 +1054,9 @@ dependencies = [
 
 [[package]]
 name = "gfx-backend-dx11"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "687266b2373107d9726e2a0b769d43ba6b1a5c31c48138a468b0966cebe7cd0e"
+checksum = "19a636ed1ce1a7d14fff8228bf4fac93512ee1dcf884654d525a391717f5174e"
 dependencies = [
  "bitflags",
  "gfx-auxil",
@@ -1434,6 +1457,12 @@ dependencies = [
  "cfg-if",
  "winapi 0.3.9",
 ]
+
+[[package]]
+name = "linked-hash-map"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8dd5a6d5999d9907cda8ed67bbd137d3af8085216c2ac62de5be860bd41f304a"
 
 [[package]]
 name = "lock_api"
@@ -2893,6 +2922,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "toml_edit"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09391a441b373597cf0888d2b052dcf82c5be4fee05da3636ae30fb57aad8484"
+dependencies = [
+ "chrono",
+ "combine",
+ "linked-hash-map",
+]
+
+[[package]]
 name = "tower-service"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3025,6 +3065,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
 
 [[package]]
+name = "unreachable"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "382810877fe448991dfc7f0dd6e3ae5d58088fd0ea5e35189655f84e6814fa56"
+dependencies = [
+ "void",
+]
+
+[[package]]
 name = "untrusted"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3070,6 +3119,12 @@ name = "version_check"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5a972e5669d67ba988ce3dc826706fb0a8b01471c088cb0b6110b805cc36aed"
+
+[[package]]
+name = "void"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
 
 [[package]]
 name = "walkdir"

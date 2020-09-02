@@ -2,5 +2,10 @@ define({
     "confirmRevertTitle" : "Reimpostare valore?",
     "okRevertButton":"OK",
     "cancelRevertButton" : "Annulla",
-    "revertText" : "Ripristinare impostazione al suo valore predefinito, cioè "
+    "revertText" : "Ripristinare impostazione al suo valore predefinito, cioè ",
+    "confirmRestartTitle": "Riavviare SteamVR?",
+    "restartText": "Riavviare SteamVR? Questo chiuderà l'app/gioco aperto al momento",
+    "dontAskRestart": "Non chiedere più",
+    "okRestartButton": "OK",
+    "cancelRestartButton": "Annulla",
 });

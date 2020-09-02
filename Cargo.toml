@@ -1,7 +1,8 @@
 [workspace]
 members = [
-    'alvr/xtask',
-    'alvr/common',
-    'alvr/server',
-    'alvr/launcher',
+    "alvr/xtask",
+    "alvr/common",
+    "alvr/client",
+    "alvr/server",
+    "alvr/launcher",
 ]

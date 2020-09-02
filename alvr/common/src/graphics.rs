@@ -24,6 +24,7 @@ fn is_gpu_supported(vendor_id: usize, device_id: usize, _device_name: String) ->
     }
 }
 
+#[cfg(windows)]
 pub fn get_gpus_info() -> Vec<GpuInfo> {
     let instance = gfx_backend_dx11::Instance::create("ALVR", 0).unwrap();
     let adapters = instance.enumerate_adapters();

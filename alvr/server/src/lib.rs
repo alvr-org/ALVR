@@ -107,6 +107,11 @@ pub async fn update_client_list(
                     certificate_pem,
                 };
                 new_entry.insert(client_connection_desc);
+
+                info!(id: LogId::SessionUpdated {
+                    web_client_id: SERVER_SESSION_UPDATE_ID.into(),
+                    update_type: SessionUpdateType::ClientList
+                });
             }
         },
         ClientListAction::TrustAndMaybeAddIp(maybe_ip) => {
@@ -116,6 +121,11 @@ pub async fn update_client_list(
                 if let Some(ip) = maybe_ip {
                     client_connection_ref.manual_ips.insert(ip);
                 }
+
+                info!(id: LogId::SessionUpdated {
+                    web_client_id: SERVER_SESSION_UPDATE_ID.into(),
+                    update_type: SessionUpdateType::ClientList
+                });
             }
             // else: never happens. The UI cannot request a new entry creation because in that case
             // it wouldn't have the certificate
@@ -127,6 +137,11 @@ pub async fn update_client_list(
                 } else {
                     entry.remove_entry();
                 }
+
+                info!(id: LogId::SessionUpdated {
+                    web_client_id: SERVER_SESSION_UPDATE_ID.into(),
+                    update_type: SessionUpdateType::ClientList
+                });
             }
         }
     }
@@ -148,24 +163,22 @@ fn init(log_sender: broadcast::Sender<String>) -> StrResult {
         let (shutdown_notifier, mut shutdown_receiver) = broadcast::channel(1);
         let (update_client_listeners_notifier, _) = broadcast::channel(1);
 
-        runtime.spawn({
-            async move {
-                let web_server = show_err_async(web_server::web_server(
-                    session_manager.clone(),
-                    log_sender,
-                    update_client_listeners_notifier.clone(),
-                ));
+        runtime.spawn(async move {
+            let web_server = show_err_async(web_server::web_server(
+                session_manager.clone(),
+                log_sender,
+                update_client_listeners_notifier.clone(),
+            ));
 
-                // let connection_loop = show_err_async(connection::connection_loop(
-                //     session_manager,
-                //     update_client_listeners_notifier,
-                // ));
+            // let connection_loop = show_err_async(connection::connection_loop(
+            //     session_manager,
+            //     update_client_listeners_notifier,
+            // ));
 
-                tokio::select! {
-                    _ = web_server => (),
-                    // _ = connection_loop => (),
-                    _ = shutdown_receiver.recv() => (),
-                }
+            tokio::select! {
+                _ = web_server => (),
+                // _ = connection_loop => (),
+                _ = shutdown_receiver.recv() => (),
             }
         });
 

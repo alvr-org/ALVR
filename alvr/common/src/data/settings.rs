@@ -132,6 +132,7 @@ pub struct VideoDesc {
     // custom.
     // Warping compensation is already applied by the web server and driver
     #[schema(placeholder = "resolution_dropdown")]
+    //
     #[schema(advanced)]
     pub render_resolution: FrameSize,
 
@@ -168,6 +169,7 @@ pub struct VideoDesc {
 pub struct AudioDesc {
     // deviceDropdown should poll the available audio devices and set "device"
     #[schema(placeholder = "device_dropdown")]
+    //
     #[schema(advanced)]
     pub device: String,
 
@@ -192,6 +194,7 @@ pub struct ControllersDesc {
     // Valve Index (no handtracking pinch)
     // modeIdx and the following strings must be set accordingly
     #[schema(placeholder = "controller_mode")]
+    //
     #[schema(advanced)]
     pub mode_idx: i32,
 
@@ -241,6 +244,7 @@ pub struct ControllersDesc {
 pub struct HeadsetDesc {
     // Oculus Rift S or HTC Vive. Should all the following strings accordingly
     #[schema(placeholder = "headset_emulation_mode")]
+    //
     #[schema(advanced)]
     pub serial_number: String,
 
@@ -290,6 +294,7 @@ pub struct ConnectionDesc {
 
     // clientRecvBufferSize=max(encodeBitrateMbs * 2 + bufferOffset, 0)
     #[schema(placeholder = "buffer_offset")]
+    //
     #[schema(advanced)]
     pub client_recv_buffer_size: u64,
 }

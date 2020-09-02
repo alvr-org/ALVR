@@ -75,7 +75,6 @@ pub enum LogId {
         update_type: SessionUpdateType,
     },
     SessionSettingsExtrapolationFailed,
-    ClientFoundOk,
     ClientFoundInvalid,
     ClientFoundWrongVersion(String),
     IncompatibleServer,

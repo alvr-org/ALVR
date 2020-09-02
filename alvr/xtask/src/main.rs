@@ -137,7 +137,7 @@ pub fn reset_server_build_folder() -> BResult {
     // get all file and folder paths at depth 1, excluded template root (at index 0)
     let dir_content =
         dirx::get_dir_content2("server_release_template", &dirx::DirOptions { depth: 1 })?;
-    let items = dir_content.directories[1..]
+    let items: Vec<&String> = dir_content.directories[1..]
         .iter()
         .chain(dir_content.files.iter())
         .collect();

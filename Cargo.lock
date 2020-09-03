@@ -60,7 +60,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "13.0.0-alpha.0"
+version = "1.0.0"
 dependencies = [
  "alvr_xtask",
  "backtrace",
@@ -129,7 +129,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "dirs",
  "fs_extra",

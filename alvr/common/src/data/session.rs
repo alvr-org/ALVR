@@ -601,9 +601,9 @@ impl SessionManager {
         &self.session_desc
     }
 
-    pub fn get_mut<'a>(
-        &'a mut self,
-        update_author_id: &'a str,
+    pub fn get_mut(
+        &mut self,
+        update_author_id: Option<String>,
         update_type: SessionUpdateType,
     ) -> SessionLock {
         SessionLock {

@@ -1,4 +1,3 @@
-use regex::Regex;
 use std::{fs, path::Path, path::PathBuf};
 
 fn packages_dir() -> PathBuf {
@@ -18,14 +17,9 @@ fn get_version(dir_name: &str) -> String {
 }
 
 pub fn server_version() -> String {
-    get_version("server_driver")
+    get_version("server")
 }
 
 pub fn client_version() -> String {
-    let re = Regex::new(r#"versionName\s+"(?P<name>[\d.]+)""#).unwrap();
-    re.captures(
-        &fs::read_to_string(packages_dir().join("client_hmd/app").join("build.gradle")).unwrap(),
-    )
-    .unwrap()["name"]
-        .into()
+    get_version("client")
 }

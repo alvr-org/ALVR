@@ -50,7 +50,7 @@ async fn set_session_handler(
         let res = session_manager
             .lock()
             .await
-            .get_mut(&update_author_id, update_type)
+            .get_mut(Some(update_author_id), update_type)
             .merge_from_json(value);
 
         if let Err(e) = res {

@@ -400,7 +400,7 @@ async fn connect_to_any_client(
             session_manager
                 .lock()
                 .await
-                .get_mut("", SessionUpdateType::Other)
+                .get_mut(None, SessionUpdateType::Other)
                 .openvr_config = new_openvr_config;
 
             restart_steamvr();

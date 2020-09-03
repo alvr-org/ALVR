@@ -83,7 +83,7 @@ pub async fn update_client_list(
 
     let session_manager_ref = &mut session_manager.lock().await;
     let session_desc_ref =
-        &mut session_manager_ref.get_mut(SERVER_SESSION_UPDATE_ID, SessionUpdateType::ClientList);
+        &mut session_manager_ref.get_mut(None, SessionUpdateType::ClientList);
 
     let maybe_client_entry = session_desc_ref.client_connections.entry(hostname);
 
@@ -158,7 +158,7 @@ fn init(log_sender: broadcast::Sender<String>) -> StrResult {
         // this is needed until all c++ code is rewritten. todo: remove
         runtime
             .block_on(session_manager.lock())
-            .get_mut("", SessionUpdateType::Other);
+            .get_mut(None, SessionUpdateType::Other);
 
         let (shutdown_notifier, mut shutdown_receiver) = broadcast::channel(1);
         let (update_client_listeners_notifier, _) = broadcast::channel(1);

@@ -66,6 +66,7 @@ If you have a version prior to v12.0 you need to launch `remove_firewall_rules.b
 - Install Visual Studio Code and the extension rust-analyzer (optional)
 - Install [LLVM](https://releases.llvm.org/download.html)
 - Install the MSVC compiler (for example installing C++ build tools with [Visual Studio](https://visualstudio.microsoft.com/downloads))
+- Install [Python](https://www.microsoft.com/store/productId/9MSSZTT1N39L)
 - Install Android Studio >=4.0, API Level 30. Requires LLDB and NDK.
 - Set the environment variable `JAVA_HOME` to `C:\Program Files\Android\androidStudio\jre`.
 - Install [rustup](https://rustup.rs/)

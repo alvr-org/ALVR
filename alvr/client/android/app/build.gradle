@@ -73,6 +73,7 @@ cargo {
     module  = "../.."
     libname = "alvr_client"
     targets = ["arm64"]
+    verbose = true
 }
 
 tasks.whenTaskAdded { task ->

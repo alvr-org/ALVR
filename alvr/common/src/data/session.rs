@@ -13,7 +13,6 @@ use std::{
 };
 
 pub const SESSION_FNAME: &str = "session.json";
-pub const SERVER_SESSION_UPDATE_ID: &str = "";
 
 // SessionSettings is similar to Settings but it contains every branch, even unused ones. This is
 // the settings representation that the UI uses.
@@ -539,7 +538,7 @@ fn json_session_settings_to_settings(
 pub struct SessionLock<'a> {
     session_desc: &'a mut SessionDesc,
     dir: &'a Path,
-    update_author_id: &'a str,
+    update_author_id: Option<String>,
     update_type: SessionUpdateType,
 }
 

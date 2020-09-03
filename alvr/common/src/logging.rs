@@ -72,7 +72,7 @@ pub enum SessionUpdateType {
 pub enum LogId {
     #[serde(rename_all = "camelCase")]
     SessionUpdated {
-        web_client_id: String,
+        web_client_id: Option<String>,
         update_type: SessionUpdateType,
     },
     SessionSettingsExtrapolationFailed,

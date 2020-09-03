@@ -109,7 +109,7 @@ pub async fn update_client_list(
                 new_entry.insert(client_connection_desc);
 
                 info!(id: LogId::SessionUpdated {
-                    web_client_id: SERVER_SESSION_UPDATE_ID.into(),
+                    web_client_id: None,
                     update_type: SessionUpdateType::ClientList
                 });
             }
@@ -123,7 +123,7 @@ pub async fn update_client_list(
                 }
 
                 info!(id: LogId::SessionUpdated {
-                    web_client_id: SERVER_SESSION_UPDATE_ID.into(),
+                    web_client_id: None,
                     update_type: SessionUpdateType::ClientList
                 });
             }
@@ -139,7 +139,7 @@ pub async fn update_client_list(
                 }
 
                 info!(id: LogId::SessionUpdated {
-                    web_client_id: SERVER_SESSION_UPDATE_ID.into(),
+                    web_client_id: None,
                     update_type: SessionUpdateType::ClientList
                 });
             }

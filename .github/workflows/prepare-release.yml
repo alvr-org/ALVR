@@ -64,6 +64,7 @@ jobs:
           release_name: ALVR ${{ needs.bump_version.outputs.version_tag }}
           draft: true
           prerelease: false
+          commitish: ${{ needs.bump_version.outputs.release_ref }}
 
   build_windows:
     # Windows latest has Rust, Android NDK and LLVM already installed.

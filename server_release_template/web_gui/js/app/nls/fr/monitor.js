@@ -5,7 +5,7 @@ define({
     "newClients": "Nouveau client",
     "trustedClients": "Client approuvés",
     "manAddClient": "Ajouter un client manuellment",
-    "removeTrustedClient": "Supprimer",
+    "removeTrustedClient": "Retirer",
     "statistics": "Statistiques de streaming",
     "addClient": "Ajouter client",
     "clientType": "type",

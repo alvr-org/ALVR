@@ -1,7 +1,7 @@
 define({
     "registeredDrivers" : "Drivers enregistrés",
     "noDrivers" : "Aucun drivers enregistré",
-    "removeDriver" : "Supprimer",
+    "removeDriver" : "Retirer",
     "driverUnregisterSuccessful" : "Les drivers ont bien été supprimé",
     "driverUnregisterFailed" : "Les drivers n'ont pas pu s'enregistrer",
     "registerAlvrDriver": "Ajouter les drivers ALVR",

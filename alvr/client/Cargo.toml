@@ -6,11 +6,13 @@ license = 'MIT'
 edition = '2018'
 
 [lib]
-crate_type = ["staticlib", "dylib"]
+crate_type = ["staticlib", "cdylib"]
+# crate_type = ["staticlib", "dylib"]
 
 [dependencies]
-alvr_common = { path = '../common' }
-ndk = '0.1.0'
+# alvr_common = { path = '../common' }
+# ndk = '0.1.0'
+jni = '^0.17.0'
 
 # [build-dependencies]
 # walkdir = '^2.3'

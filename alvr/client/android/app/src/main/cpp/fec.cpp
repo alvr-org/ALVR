@@ -14,15 +14,15 @@ FECQueue::FECQueue() {
     m_fecFailure = false;
 
     if (!reed_solomon_initialized) {
-        reed_solomon_init();
+//        reed_solomon_init();
         reed_solomon_initialized = true;
     }
 }
 
 FECQueue::~FECQueue() {
-    if (m_rs != NULL) {
-        reed_solomon_release(m_rs);
-    }
+//    if (m_rs != NULL) {
+//        reed_solomon_release(m_rs);
+//    }
 }
 
 // Add packet to queue. packet must point to buffer whose size=ALVR_MAX_PACKET_SIZE.
@@ -50,9 +50,9 @@ void FECQueue::addVideoPacket(const VideoFrame *packet, int packetSize, bool &fe
         }
         m_currentFrame = *packet;
         m_recovered = false;
-        if (m_rs != NULL) {
-            reed_solomon_release(m_rs);
-        }
+//        if (m_rs != NULL) {
+//            reed_solomon_release(m_rs);
+//        }
 
         uint32_t fecDataPackets = (packet->frameByteSize + ALVR_MAX_VIDEO_BUFFER_SIZE - 1) /
                                   ALVR_MAX_VIDEO_BUFFER_SIZE;
@@ -75,10 +75,10 @@ void FECQueue::addVideoPacket(const VideoFrame *packet, int packetSize, bool &fe
 
         m_shards.resize(m_totalShards);
 
-        m_rs = reed_solomon_new(m_totalDataShards, m_totalParityShards);
-        if (m_rs == NULL) {
-            return;
-        }
+//        m_rs = reed_solomon_new(m_totalDataShards, m_totalParityShards);
+//        if (m_rs == NULL) {
+//            return;
+//        }
 
         m_marks.resize(m_shardPackets);
         for (int i = 0; i < m_shardPackets; i++) {
@@ -178,14 +178,14 @@ bool FECQueue::reconstruct() {
             m_recoveredPacket[packet] = true;
             continue;
         }
-        m_rs->shards = m_receivedDataShards[packet] +
-                       m_receivedParityShards[packet]; //Don't let RS complain about missing parity packets
+//        m_rs->shards = m_receivedDataShards[packet] +
+//                       m_receivedParityShards[packet]; //Don't let RS complain about missing parity packets
 
-        if (m_rs->shards < m_totalDataShards) {
-            // Not enough parity data
-            ret = false;
-            continue;
-        }
+//        if (m_rs->shards < m_totalDataShards) {
+//            // Not enough parity data
+//            ret = false;
+//            continue;
+//        }
 
         FrameLog(m_currentFrame.trackingFrameIndex,
                  "Recovering. packetIndex=%d receivedDataShards=%d/%d receivedParityShards=%d/%d",
@@ -196,16 +196,16 @@ bool FECQueue::reconstruct() {
             m_shards[i] = &m_frameBuffer[(i * m_shardPackets + packet) * ALVR_MAX_VIDEO_BUFFER_SIZE];
         }
 
-        int result = reed_solomon_reconstruct(m_rs, (unsigned char **) &m_shards[0],
-                                              &m_marks[packet][0],
-                                              m_totalShards, ALVR_MAX_VIDEO_BUFFER_SIZE);
-        m_recoveredPacket[packet] = true;
+//        int result = reed_solomon_reconstruct(m_rs, (unsigned char **) &m_shards[0],
+//                                              &m_marks[packet][0],
+//                                              m_totalShards, ALVR_MAX_VIDEO_BUFFER_SIZE);
+//        m_recoveredPacket[packet] = true;
         // We should always provide enough parity to recover the missing data successfully.
         // If this fails, something is probably wrong with our FEC state.
-        if (result != 0) {
-            LOGE("reed_solomon_reconstruct failed.");
-            return false;
-        }
+//        if (result != 0) {
+//            LOGE("reed_solomon_reconstruct failed.");
+//            return false;
+//        }
         /*
         for(int i = 0; i < m_totalShards * m_shardPackets; i++) {
             char *p = &frameBuffer[ALVR_MAX_VIDEO_BUFFER_SIZE * i];

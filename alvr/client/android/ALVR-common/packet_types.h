@@ -2,7 +2,6 @@
 #define ALVRCLIENT_PACKETTYPES_H
 #include <stdint.h>
 #include <assert.h>
-#include "reedsolomon/rs.h"
 
 // Maximum UDP packet size (payload size in bytes)
 static const int ALVR_MAX_PACKET_SIZE = 1400;

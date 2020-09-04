@@ -4,7 +4,6 @@
 #include <list>
 #include <vector>
 #include "packet_types.h"
-#include "reedsolomon/rs.h"
 
 class FECQueue {
 public:
@@ -35,7 +34,7 @@ private:
     std::vector<std::byte *> m_shards;
     bool m_recovered;
     bool m_fecFailure;
-    reed_solomon *m_rs = NULL;
+//    reed_solomon *m_rs = NULL;
 
     static bool reed_solomon_initialized;
 };

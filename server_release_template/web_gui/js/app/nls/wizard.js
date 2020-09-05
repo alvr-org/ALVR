@@ -33,5 +33,6 @@ define({
     "it": true,
     "es": true,
     "fr": true,
+    "ja": true,
     "de-de": false
 });

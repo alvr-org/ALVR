@@ -46,7 +46,7 @@ define({
     "_root_video_codec_HEVC-choice-.name": "HEVC (H.265)",
     "_root_video_codec_HEVC-choice-.description": "HEVC (H.265)コーデックを使用する",
 
-	"_root_audio_gameAudio.name": "ゲーム音声のストリーミング",
+    "_root_audio_gameAudio.name": "ゲーム音声のストリーミング",
     "_root_audio_gameAudio.description": "ゲームの音声をHMDにストリーミングする",
     "_root_audio_gameAudio_enabled.name": "有効化",
     "_root_audio_gameAudio_enabled.description": "HMDへのゲーム音声のストリーミングを有効化する",

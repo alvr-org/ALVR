@@ -1,7 +1,7 @@
 mod settings;
 mod version;
 
-use crate::{logging::SessionUpdateType, *};
+use crate::{logging::*, *};
 use serde::*;
 use serde_json as json;
 use settings_schema::SchemaNode;
@@ -11,7 +11,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use logging::LogId;
 pub use settings::*;
 pub use version::*;
 
@@ -106,59 +105,54 @@ impl SessionDesc {
     // `settings_cache` must be handled separately to do a better job of retrieving data using the
     // settings schema.
     pub fn merge_from_json(&mut self, json_value: json::Value) -> StrResult {
-        const SETTINGS_CACHE_STR: &str = "settings_cache";
+        const SETTINGS_CACHE_STR: &str = "settingsCache";
 
         if let Ok(session_desc) = json::from_value(json_value.clone()) {
             *self = session_desc;
             return Ok(());
         }
 
-        let old_session_json = json::to_value(SessionDesc::default()).unwrap();
-        let old_session_fields = old_session_json.as_object().unwrap();
-        let new_session_fields = json_value.as_object().unwrap();
+        let old_session_json = trace_err!(json::to_value(SessionDesc::default()))?;
+        let old_session_fields = trace_none!(old_session_json.as_object())?;
 
-        let settings_cache_json = new_session_fields
-            .get(SETTINGS_CACHE_STR)
-            .map(|new_cache_json| {
-                extrapolate_settings_cache(
-                    &old_session_json[SETTINGS_CACHE_STR],
-                    new_cache_json,
-                    &settings_schema(settings_cache_default()),
-                )
-            })
-            .unwrap_or_else(|| json_value.clone());
+        let settings_cache_json = json_value.get(SETTINGS_CACHE_STR).map(|new_cache_json| {
+            extrapolate_settings_cache(
+                &old_session_json[SETTINGS_CACHE_STR],
+                new_cache_json,
+                &settings_schema(settings_cache_default()),
+            )
+        });
 
         let new_fields = old_session_fields
             .iter()
-            .map(|(name, json_value)| {
-                let new_json_value = if name == SETTINGS_CACHE_STR {
+            .map(|(name, json_field_value)| {
+                let new_json_field_value = if name == SETTINGS_CACHE_STR {
                     json::to_value(settings_cache_default()).unwrap()
                 } else {
-                    new_session_fields.get(name).unwrap_or(json_value).clone()
+                    json_value.get(name).unwrap_or(json_field_value).clone()
                 };
-                (name.clone(), new_json_value)
+                (name.clone(), new_json_field_value)
             })
             .collect();
         // Failure to extrapolate other session_desc fields is not notified.
         let mut session_desc_mut =
             json::from_value::<SessionDesc>(json::Value::Object(new_fields)).unwrap_or_default();
 
-        match json::from_value::<SettingsCache>(settings_cache_json) {
+        match json::from_value::<SettingsCache>(trace_none!(settings_cache_json)?) {
             Ok(settings_cache) => {
                 session_desc_mut.settings_cache = settings_cache;
                 *self = session_desc_mut;
+                Ok(())
             }
             Err(e) => {
                 *self = session_desc_mut;
-                return trace_str!(
+                trace_str!(
                     id: LogId::SettingsCacheExtrapolationFailed,
                     "Error while deserializing extrapolated settings cache: {}",
                     e
-                );
+                )
             }
         }
-
-        Ok(())
     }
 
     // This function requires that settings enums with data have tag = "type" and content = "content", and
@@ -501,7 +495,8 @@ pub struct SessionManager {
 
 impl SessionManager {
     pub fn new(dir: &Path) -> Self {
-        let session_desc = match fs::read_to_string(dir.join(SESSION_FNAME)) {
+        let session_path = dir.join(SESSION_FNAME);
+        let session_desc = match fs::read_to_string(&session_path) {
             Ok(session_string) => {
                 let json_value = json::from_str::<json::Value>(&session_string).unwrap();
                 match json::from_value(json_value.clone()) {
@@ -509,10 +504,22 @@ impl SessionManager {
                     Err(_) => {
                         fs::write(dir.join("session_old.json"), &session_string).ok();
                         let mut session_desc = SessionDesc::default();
-                        session_desc.merge_from_json(json_value).ok();
-                        warn!(
-                            "Session extrapolated. Old session.json is stored as session_old.json"
-                        );
+                        match session_desc.merge_from_json(json_value) {
+                            Ok(_) => info!(
+                                "{} {}",
+                                "Session extrapolated successfully.",
+                                "Old session.json is stored as session_old.json"
+                            ),
+                            Err(e) => error!(
+                                "{} {} {}",
+                                "Error while extrapolating session.",
+                                "Old session.json is stored as session_old.json.",
+                                e
+                            ),
+                        }
+                        // not essential, but useful to avoid duplicated errors
+                        save_session(&session_desc, &session_path).ok();
+
                         session_desc
                     }
                 }

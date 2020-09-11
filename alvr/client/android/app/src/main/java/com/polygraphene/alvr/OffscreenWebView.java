@@ -49,7 +49,7 @@ public class OffscreenWebView extends WebView {
                 super.onDraw(surfaceCanvas);
                 surface.unlockCanvasAndPost(surfaceCanvas);
             } catch (Surface.OutOfResourcesException e) {
-                Utils.loge(TAG, () -> e.toString());
+                Utils.loge(TAG, e::toString);
             }
         }
     }

@@ -33,7 +33,10 @@ import java.util.concurrent.TimeUnit;
 import static com.polygraphene.alvr.OffscreenWebView.WEBVIEW_HEIGHT;
 import static com.polygraphene.alvr.OffscreenWebView.WEBVIEW_WIDTH;
 
-public class OvrActivity extends BaseActivity {
+public class OvrActivity extends Activity {
+    static {
+        System.loadLibrary("alvr_client");
+    }
     private final static String TAG = "OvrActivity";
 
     //Create placeholder for user's consent to record_audio permission.
@@ -83,7 +86,7 @@ public class OvrActivity extends BaseActivity {
         }
     }
 
-    class DecoderCallbacks implements DecoderThread.DecoderCallback {
+    static class DecoderCallbacks implements DecoderThread.DecoderCallback {
         @Override
         public void onFrameInput(long frameIdx) {
             onFrameInputNative(frameIdx);
@@ -94,8 +97,6 @@ public class OvrActivity extends BaseActivity {
             onFrameOutputNative(frameIdx);
         }
     }
-
-    ;
 
     OffscreenWebView mWebView = null;
     Handler mMainHandler = null;
@@ -108,7 +109,7 @@ public class OvrActivity extends BaseActivity {
     DecoderThread mDecoderThread = null;
     DecoderThread.DecoderCallback mDecoderCallbacks = new DecoderCallbacks();
     boolean mStreaming = false;
-    boolean mShowingWebView = true;
+    boolean mWebViewVisible = true;
     String mDashboardURL = "";
     long mPreviousRender = 0;
     float mRefreshRate = 60;
@@ -133,7 +134,7 @@ public class OvrActivity extends BaseActivity {
 
         mWebView = new OffscreenWebView(this);
         mWebView.setMessage("Launch ALVR on PC and click on \"Trust\" next to the client entry");
-        addContentView(mWebView, new ViewGroup.LayoutParams(WEBVIEW_WIDTH, WEBVIEW_HEIGHT));
+        setWebViewVisibility(true);
 
         mMainHandler = new Handler(this.getMainLooper());
 
@@ -182,7 +183,10 @@ public class OvrActivity extends BaseActivity {
 
         mStreamSurfaceTexture = new SurfaceTexture(params.streamSurfaceHandle);
         mStreamSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
-            mDecoderThread.onFrameAvailable();
+            if (mDecoderThread != null) {
+                mDecoderThread.onFrameAvailable();
+            }
+
             mRenderingHandler.removeCallbacks(this::render);
             mRenderingHandler.post(this::render);
         }, new Handler(Looper.getMainLooper()));
@@ -212,21 +216,31 @@ public class OvrActivity extends BaseActivity {
 
     //Handling callback
     @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case MY_PERMISSIONS_RECORD_AUDIO: {
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission was granted, yay!
-                    //recordAudio();
-                } else {
-                    // permission denied, boo! Disable the
-                    // functionality that depends on this permission.
-                    Toast.makeText(this, "Permissions Denied to record audio", Toast.LENGTH_LONG).show();
-                }
-                return;
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == MY_PERMISSIONS_RECORD_AUDIO) {
+            if (grantResults.length <= 0
+                    || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Permissions Denied to record audio", Toast.LENGTH_LONG).show();
             }
+        }
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP) {
+            int direction = 0;
+            if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP) {
+                direction = 1;
+            } else if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                direction = -1;
+            }
+
+            AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0);
+
+            return true;
+        } else {
+            return super.dispatchKeyEvent(event);
         }
     }
 
@@ -235,7 +249,6 @@ public class OvrActivity extends BaseActivity {
         super.onResume();
 
         mResumed = true;
-
         maybeResume();
     }
 
@@ -262,7 +275,7 @@ public class OvrActivity extends BaseActivity {
     }
 
     private void render() {
-        if (mShowingWebView) {
+        if (mWebViewVisible) {
             mWebViewSurfaceTexture.updateTexImage();
         }
 
@@ -326,25 +339,6 @@ public class OvrActivity extends BaseActivity {
         super.onDestroy();
     }
 
-    @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
-        if (event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP) {
-            int direction = 0;
-            if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP) {
-                direction = 1;
-            } else if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
-                direction = -1;
-            }
-
-            AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-            audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0);
-
-            return true;
-        } else {
-            return super.dispatchKeyEvent(event);
-        }
-    }
-
 
     // INTEROPERATION WITH RUST:
 
@@ -389,6 +383,9 @@ public class OvrActivity extends BaseActivity {
             mDecoderThread.onDisconnect();
         }
         mDecoderThread = new DecoderThread(mStreamSurface, this, mDecoderCallbacks);
+
+        mWebViewVisible = false;
+        mStreaming = true;
     }
 
     @SuppressWarnings("unused")
@@ -417,8 +414,8 @@ public class OvrActivity extends BaseActivity {
         } else {
             mMainHandler.post(() -> mWebView.setMessage("Server disconnected."));
         }
-        mStreaming = true;
-        mShowingWebView = false;
+        mStreaming = false;
+        mWebViewVisible = true;
 
         if (mDecoderThread != null) {
             mDecoderThread.onDisconnect();
@@ -470,6 +467,17 @@ public class OvrActivity extends BaseActivity {
                 mWebView.dispatchGenericMotionEvent(ev);
             }
         });
+    }
+
+    @SuppressWarnings("unused")
+    public void setWebViewVisibility(boolean visible) {
+        if (visible && !mWebViewVisible) {
+            this.addContentView(mWebView, new ViewGroup.LayoutParams(WEBVIEW_WIDTH, WEBVIEW_HEIGHT));
+        } else if (!visible && mWebViewVisible) {
+            ((ViewGroup)mWebView.getParent()).removeView(mWebView);
+        }
+
+        mWebViewVisible = visible;
     }
 }
 

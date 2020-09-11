@@ -36,7 +36,7 @@ fn unit_quat_to_tracking_quat(quat: &UnitQuaternion<f32>) -> TrackingQuat {
 
 async fn setup_streams(
     settings: Settings,
-    client_identity: Identity,
+    client_identity: PublicIdentity,
     control_socket: &ControlSocket<ClientControlPacket, ServerControlPacket>,
     headset_info: HeadsetInfoPacket,
 ) -> StrResult {
@@ -235,7 +235,7 @@ async fn setup_streams(
 }
 
 async fn connect_to_any_client(
-    clients_info: HashMap<IpAddr, Identity>,
+    clients_info: HashMap<IpAddr, PublicIdentity>,
     session_manager: Arc<AMutex<SessionManager>>,
 ) -> ControlSocket<ClientControlPacket, ServerControlPacket> {
     loop {
@@ -451,7 +451,7 @@ pub async fn connection_loop(
             .client_connections
             .iter()
             .fold(HashMap::new(), |mut clients_info, (hostname, client)| {
-                let id = Identity {
+                let id = PublicIdentity {
                     hostname: hostname.clone(),
                     certificate_pem: client.certificate_pem.clone(),
                 };

@@ -188,7 +188,7 @@ pub(super) async fn connect_to_server(
 
 pub(super) async fn connect_to_client(
     client_addr: SocketAddr,
-    client_identity: Identity,
+    client_identity: PublicIdentity,
     config: QuicConfig,
 ) -> StrResult<StreamSocket> {
     let mut endpoint = Endpoint::builder();

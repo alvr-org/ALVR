@@ -51,6 +51,7 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
     public interface DecoderCallback {
         void onPrepared();
         void onDestroy();
+        void onFrameInput();
         void onFrameDecoded();
     }
 
@@ -93,6 +94,8 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
         mContext = context;
         mQueue = new OutputFrameQueue();
         mDecoderCallback = callback;
+
+        start();
     }
 
     public void start() {
@@ -383,12 +386,10 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
         }
     }
 
-    @Override
     public NAL obtainNAL(int length) {
         return mNalQueue.obtain(length);
     }
 
-    @Override
     public void pushNAL(NAL nal) {
         Message message = mHandler.obtainMessage(MESSAGE_PUSH_NAL, nal);
         mHandler.sendMessage(message);

@@ -1,21 +1,15 @@
-use super::settings::*;
+use super::{settings::*, *};
 use bitflags::bitflags;
 use nalgebra::{Point3, UnitQuaternion, Vector3};
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, time::Duration};
-use semver::Version;
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct Identity {
-    pub hostname: String,
-    pub certificate_pem: String,
-}
 
 #[derive(Serialize, Deserialize)]
 pub struct HandshakePacket {
     pub alvr_name: String,
     pub version: Version,
-    pub identity: Option<Identity>,
+    pub identity: Option<PublicIdentity>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

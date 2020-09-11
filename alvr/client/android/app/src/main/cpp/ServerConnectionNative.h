@@ -1,6 +1,8 @@
 #ifndef ALVRCLIENT_UDP_H
 #define ALVRCLIENT_UDP_H
 
+#include "bindings.h"
+
 #include <functional>
 #include <list>
 #include <string>

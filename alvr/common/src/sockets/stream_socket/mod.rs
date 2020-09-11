@@ -224,7 +224,7 @@ impl StreamSocket {
     pub async fn connect_to_client(
         client_ip: IpAddr,
         port: u16,
-        client_identity: Identity,
+        client_identity: PublicIdentity,
         stream_socket_config: SocketConfig,
     ) -> StrResult<Self> {
         let client_addr = (client_ip, port).into();

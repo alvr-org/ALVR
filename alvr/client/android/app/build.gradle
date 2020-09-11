@@ -10,11 +10,12 @@ android {
         versionCode 32
         versionName "13.0.0-alpha.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-//        externalNativeBuild {
-//            cmake {
-//                cppFlags "-std=c++17 -fexceptions -frtti"
-//            }
-//        }
+        // cmake used only for IDE support while prototyping. todo: remove
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17 -fexceptions -frtti"
+            }
+        }
     }
     buildTypes {
         release {
@@ -30,16 +31,17 @@ android {
             }
         }
     }
-//    externalNativeBuild {
-//        cmake {
-//            path "CMakeLists.txt"
-//        }
-//    }
-//    sourceSets {
-//        main {
-//            jniLibs.srcDirs = ["src/main/jniLibs"]
-//        }
-//    }
+    // cmake used only for IDE support while prototyping. todo: remove
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ["src/main/jniLibs"]
+        }
+    }
     // Remove osig file from release apk
     applicationVariants.all { variant ->
         if (variant.buildType.name == 'release') {
@@ -73,6 +75,7 @@ cargo {
     module  = "../.."
     libname = "alvr_client"
     targets = ["arm64"]
+    targetDirectory = "../../../../target"
     verbose = true
 }
 

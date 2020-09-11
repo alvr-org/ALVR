@@ -7,14 +7,21 @@ edition = '2018'
 
 [lib]
 crate_type = ["staticlib", "cdylib"]
-# crate_type = ["staticlib", "dylib"]
 
 [dependencies]
-# alvr_common = { path = '../common' }
-# ndk = '0.1.0'
+parking_lot = '^0.11.0'
+lazy_static = '^1.4'
+alvr_common = { path = '../common' }
+futures = '^0.3.5'
+tokio = { version = '^0.2.22', features = ['rt-threaded'] }
+# todo: move to target_os = "android"
 jni = '^0.17.0'
 
-# [build-dependencies]
-# walkdir = '^2.3'
-# cc = { version = '^1.0', features = ["parallel"] }
-# bindgen = '^0.55.0'
+[target.'cfg(target_os = "android")'.dependencies]
+ndk = '0.1.0'
+android_logger = '^0.9.0'
+
+[build-dependencies]
+walkdir = '^2.3'
+cc = { version = '^1.0', features = ["parallel"] }
+bindgen = '^0.55.0'

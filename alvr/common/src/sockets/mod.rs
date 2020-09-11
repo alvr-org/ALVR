@@ -16,28 +16,10 @@ const MULTICAST_ADDR: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 123);
 const CONTROL_PORT: u16 = 9943;
 const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 4_000;
 
-pub struct Certificate {
-    hostname: String,
-    certificate_pem: String,
-    key_pem: String,
-}
-
-pub fn create_certificate(hostname: Option<String>) -> StrResult<Certificate> {
-    let hostname = hostname.unwrap_or(format!("{}.client.alvr", rand::random::<u16>()));
-
-    let certificate = trace_err!(rcgen::generate_simple_self_signed([hostname.clone()]))?;
-
-    Ok(Certificate {
-        hostname,
-        certificate_pem: trace_err!(certificate.serialize_pem())?,
-        key_pem: certificate.serialize_private_key_pem(),
-    })
-}
-
 async fn try_connect_to_client(
     handshake_socket: &mut UdpSocket,
     packet_buffer: &mut [u8],
-) -> StrResult<Option<(IpAddr, Identity)>> {
+) -> StrResult<Option<(IpAddr, PublicIdentity)>> {
     let (handshake_packet_size, address) = match handshake_socket.recv_from(packet_buffer).await {
         Ok(pair) => pair,
         Err(e) => {
@@ -77,7 +59,7 @@ async fn try_connect_to_client(
 }
 
 pub async fn search_client_loop<F: Future>(
-    client_found_cb: impl Fn(IpAddr, Identity) -> F,
+    client_found_cb: impl Fn(IpAddr, PublicIdentity) -> F,
 ) -> StrResult {
     // use naked UdpSocket + [u8] packet buffer to have more control over datagram data
     let mut handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;

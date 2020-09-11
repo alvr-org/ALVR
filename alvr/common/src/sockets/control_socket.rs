@@ -110,7 +110,7 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
         let client_handshake_packet = trace_err!(bincode::serialize(&HandshakePacket {
             alvr_name: ALVR_NAME.into(),
             version: ALVR_CLIENT_VERSION.clone(),
-            identity: Some(Identity {
+            identity: Some(PublicIdentity {
                 hostname,
                 certificate_pem
             }),

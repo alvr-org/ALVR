@@ -1,6 +1,8 @@
 #ifndef ALVRCLIENT_UTILS_H
 #define ALVRCLIENT_UTILS_H
 
+#include "bindings.h"
+
 #include <stdint.h>
 #include <math.h>
 #include <time.h>

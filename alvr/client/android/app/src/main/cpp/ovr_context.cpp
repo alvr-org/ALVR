@@ -5,7 +5,18 @@
 #include <VrApi_Helpers.h>
 #include <VrApi_SystemUtils.h>
 #include <VrApi_Input.h>
-
+#include <memory>
+#include <map>
+#include <chrono>
+#include <android/native_window.h>
+#include <android/native_window_jni.h>
+#include <android/input.h>
+#include "packet_types.h"
+#include "render.h"
+#include "utils.h"
+#include "ServerConnectionNative.h"
+#include "OVR_Platform.h"
+#include "ffr.h"
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
@@ -13,46 +24,154 @@
 #include <string>
 #include <map>
 #include <vector>
-#include <packet_types.h>
-#include "utils.h"
-#include "render.h"
-#include "ovr_context.h"
 #include "latency_collector.h"
-#include "packet_types.h"
-#include "ServerConnectionNative.h"
 #include "asset.h"
 #include <inttypes.h>
 #include <glm/gtx/euler_angles.hpp>
 
 using namespace std;
 
+const int DEFAULT_REFRESH_RATE = 72;
+const int MAXIMUM_TRACKING_FRAMES = 180;
+const uint32_t ovrButton_Unknown1 = 0x01000000;
 const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 1s;
 
-void OvrContext::initialize(JNIEnv *env, jobject activity, jobject jOvrContext, jobject assetManager,
-                            jobject vrThread, bool ARMode, int initialRefreshRate) {
+class OvrContext {
+
+//    bool isVrMode() { return Ovr != NULL; }
+
+public:
+    ANativeWindow *window = NULL;
+    ovrMobile *Ovr;
+    ovrJava java;
+    JNIEnv *env;
+
+    int16_t *micBuffer;
+    bool mStreamMic;
+    size_t mMicMaxElements;
+
+    ovrMicrophoneHandle mMicHandle;
+
+    GLuint streamSurfaceTexture = 0;
+    GLuint webViewSurfaceTexture = 0;
+    GLuint loadingTexture = 0;
+    int suspend = 0;
+    bool Resumed = false;
+    bool mShowDashboard = false;
+    int FrameBufferWidth = 0;
+    int FrameBufferHeight = 0;
+    bool mFoveationEnabled = false;
+    float mFoveationStrength = 0;
+    float mFoveationShape = 1.5;
+    float mFoveationVerticalOffset = 0;
+    bool usedFoveationEnabled = false;
+    float usedFoveationStrength = 0;
+    float usedFoveationShape = 0;
+    float usedFoveationVerticalOffset = 0;
+    std::function<void(InteractionType, glm::vec2)> mWebViewInteractionCallback;
+
+    bool mExtraLatencyMode = false;
+
+    int m_currentRefreshRate = DEFAULT_REFRESH_RATE;
+
+    uint64_t FrameIndex = 0;
+
+    // Oculus guardian
+    int m_LastHMDRecenterCount = -1;
+    bool m_ShouldSyncGuardian = false;
+    bool m_GuardianSyncing = false;
+    uint32_t m_AckedGuardianSegment = -1;
+    uint64_t m_GuardianTimestamp = 0;
+    uint32_t m_GuardianPointCount = 0;
+    ovrVector3f *m_GuardianPoints = nullptr;
+    double m_LastGuardianSyncTry = 0.0;
+
+
+    struct TrackingFrame {
+        ovrTracking2 tracking;
+        uint64_t frameIndex;
+        uint64_t fetchTime;
+        double displayTime;
+    };
+    typedef std::map<uint64_t, std::shared_ptr<TrackingFrame> > TRACKING_FRAME_MAP;
+
+    TRACKING_FRAME_MAP trackingFrameMap;
+    std::mutex trackingFrameMutex;
+
+    ovrRenderer Renderer;
+
+    jmethodID mServerConnection_send;
+
+    struct HapticsState {
+        uint64_t startUs;
+        uint64_t endUs;
+        float amplitude;
+        float frequency;
+        bool fresh;
+        bool buffered;
+    };
+    // mHapticsState[0]: right hand state
+    // mHapticsState[1]: left hand state
+    HapticsState mHapticsState[2];
+
+
+    std::chrono::system_clock::time_point mMenuNotPressedLastInstant;
+    bool mMenuLongPressActivated = false;
+
+    // Previous trigger button state.
+    bool mButtonPressed;
+
+//    uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities, ovrInputStateTrackedRemote *remoteInputState);
+
+//    void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiInput);
+//
+//    void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tracking  );
+//
+//    void setInitialRefreshRate(int initialRefreshRate);
+//
+//
+//    void onVrModeChange();
+//    void enterVrMode();
+//    void leaveVrMode();
+//
+//    void getRefreshRates(JNIEnv *env_, jintArray refreshRates);
+//    std::pair<EyeFov, EyeFov> getFov();
+//
+//    void updateHapticsState();
+//    void finishHapticsBuffer(ovrDeviceID DeviceID);
+//
+//    void reflectExtraLatencyMode(bool always);
+//
+//    void checkShouldSyncGuardian();
+//    bool prepareGuardianData();
+};
+
+OvrContext g_ovrContext;
+
+void
+initializeOvrContext(JNIEnv *env, jobject activity, jobject assetManager) {
     LOG("Initializing EGL.");
 
     setAssetManager(env, assetManager);
 
-    this->env = env;
-    java.Env = env;
-    env->GetJavaVM(&java.Vm);
-    java.ActivityObject = env->NewGlobalRef(activity);
-
-    mVrThread = env->NewGlobalRef(vrThread);
-    mjOvrContext = env->NewGlobalRef(jOvrContext);
+    g_ovrContext.env = env;
+    g_ovrContext.java.Env = env;
+    env->GetJavaVM(&g_ovrContext.java.Vm);
+    g_ovrContext.java.ActivityObject = env->NewGlobalRef(activity);
 
     jclass clazz = env->FindClass("com/polygraphene/alvr/OvrContext");
     auto jWebViewInteractionCallback = env->GetMethodID(clazz, "applyWebViewInteractionEvent",
                                                         "(IFF)V");
     env->DeleteLocalRef(clazz);
 
-    mWebViewInteractionCallback = [jWebViewInteractionCallback, this](InteractionType type, glm::vec2 coord){
-        if (mjOvrContext != nullptr && mShowDashboard) {
+    g_ovrContext.mWebViewInteractionCallback = [jWebViewInteractionCallback](
+            InteractionType type, glm::vec2 coord) {
+        if (g_ovrContext.java.ActivityObject != nullptr && g_ovrContext.mShowDashboard) {
             JNIEnv *env;
-            jint res = java.Vm->GetEnv((void **)&env, JNI_VERSION_1_6);
+            jint res = g_ovrContext.java.Vm->GetEnv((void **) &env, JNI_VERSION_1_6);
             if (res == JNI_OK) {
-                    env->CallVoidMethod(mjOvrContext, jWebViewInteractionCallback, (int)type, coord.x, coord.y);
+                env->CallVoidMethod(g_ovrContext.java.ActivityObject, jWebViewInteractionCallback,
+                                    (int) type, coord.x, coord.y);
             } else {
                 LOGE("Failed to get JNI environment for dashboard interaction");
             }
@@ -61,7 +180,7 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject jOvrContext, 
 
     eglInit();
 
-    const ovrInitParms initParms = vrapi_DefaultInitParms(&java);
+    const ovrInitParms initParms = vrapi_DefaultInitParms(&g_ovrContext.java);
     int32_t initResult = vrapi_Initialize(&initParms);
     if (initResult != VRAPI_INITIALIZE_SUCCESS) {
         // If initialization failed, vrapi_* function calls will not be available.
@@ -76,8 +195,7 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject jOvrContext, 
     LOGI("GL_VERSION=%s", glGetString(GL_VERSION));
     LOGI("GL_MAX_TEXTURE_IMAGE_UNITS=%d", textureUnits);
 
-    m_currentRefreshRate = DEFAULT_REFRESH_RATE;
-    setInitialRefreshRate(initialRefreshRate);
+    g_ovrContext.m_currentRefreshRate = DEFAULT_REFRESH_RATE;
 
     //
     // Generate texture for SurfaceTexture which is output of MediaCodec.
@@ -86,22 +204,10 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject jOvrContext, 
     GLuint textures[3];
     glGenTextures(3, textures);
 
-    SurfaceTextureID = textures[0];
-    webViewSurfaceTexture = textures[1];
-    loadingTexture = textures[2];
+    g_ovrContext.streamSurfaceTexture = textures[0];
+    g_ovrContext.webViewSurfaceTexture = textures[1];
 
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, SurfaceTextureID);
-
-    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER,
-                    GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER,
-                    GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S,
-                    GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T,
-                    GL_CLAMP_TO_EDGE);
-
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, webViewSurfaceTexture);
+    glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ovrContext.streamSurfaceTexture);
 
     glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER,
                     GL_LINEAR);
@@ -112,15 +218,15 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject jOvrContext, 
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T,
                     GL_CLAMP_TO_EDGE);
 
-    glBindTexture(GL_TEXTURE_2D, loadingTexture);
+    glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ovrContext.webViewSurfaceTexture);
 
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                    GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER,
                     GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
+    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER,
+                    GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S,
                     GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
+    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T,
                     GL_CLAMP_TO_EDGE);
 
     //use the quest panel resolution and not the downscaled suggestion
@@ -148,7 +254,7 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject jOvrContext, 
     req = ovr_User_GetLoggedInUser();
 
 
-    LOGI("Logged in user is %" PRIu64  "\n", req);
+    LOGI("Logged in user is %" PRIu64 "\n", req);
 
     //init mic
     mMicHandle = ovr_Microphone_Create();
@@ -160,7 +266,7 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject jOvrContext, 
 }
 
 
-void OvrContext::destroy(JNIEnv *env) {
+void uninitializeOvrContext(JNIEnv *env) {
     LOG("Destroying EGL.");
 
     ovrRenderer_Destroy(&Renderer);
@@ -168,7 +274,7 @@ void OvrContext::destroy(JNIEnv *env) {
     GLuint textures[3] = {SurfaceTextureID, webViewSurfaceTexture, loadingTexture};
     glDeleteTextures(3, textures);
 
-    if (mMicHandle){
+    if (mMicHandle) {
         ovr_Microphone_Destroy(mMicHandle);
     }
 
@@ -187,7 +293,7 @@ void OvrContext::destroy(JNIEnv *env) {
 }
 
 
-void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiInput) {
+void OvrContextSetControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiInput) {
     ovrInputCapabilityHeader curCaps;
     ovrResult result;
     int controller = 0;
@@ -210,7 +316,7 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime, GUI
             ovrInputStateHand inputStateHand;
             handCapabilities.Header = curCaps;
 
-            result = vrapi_GetInputDeviceCapabilities(Ovr, &handCapabilities.Header );
+            result = vrapi_GetInputDeviceCapabilities(Ovr, &handCapabilities.Header);
 
             if (result != ovrSuccess) {
                 continue;
@@ -221,7 +327,8 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime, GUI
             }
             inputStateHand.Header.ControllerType = handCapabilities.Header.Type;
 
-            result = vrapi_GetCurrentInputState(Ovr, handCapabilities.Header.DeviceID, &inputStateHand.Header);
+            result = vrapi_GetCurrentInputState(Ovr, handCapabilities.Header.DeviceID,
+                                                &inputStateHand.Header);
             if (result != ovrSuccess) {
                 continue;
             }
@@ -231,19 +338,25 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime, GUI
             c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND;
 
             c.inputStateStatus = inputStateHand.InputStateStatus;
-            memcpy(&c.fingerPinchStrengths, &inputStateHand.PinchStrength, sizeof(c.fingerPinchStrengths));
+            memcpy(&c.fingerPinchStrengths, &inputStateHand.PinchStrength,
+                   sizeof(c.fingerPinchStrengths));
 
-            memcpy(&c.orientation, &inputStateHand.PointerPose.Orientation, sizeof(inputStateHand.PointerPose.Orientation));
-            memcpy(&c.position, &inputStateHand.PointerPose.Position, sizeof(inputStateHand.PointerPose.Position));
+            memcpy(&c.orientation, &inputStateHand.PointerPose.Orientation,
+                   sizeof(inputStateHand.PointerPose.Orientation));
+            memcpy(&c.position, &inputStateHand.PointerPose.Position,
+                   sizeof(inputStateHand.PointerPose.Position));
 
-            ovrHandedness handedness = handCapabilities.HandCapabilities & ovrHandCaps_LeftHand ? VRAPI_HAND_LEFT : VRAPI_HAND_RIGHT;
+            ovrHandedness handedness =
+                    handCapabilities.HandCapabilities & ovrHandCaps_LeftHand ? VRAPI_HAND_LEFT
+                                                                             : VRAPI_HAND_RIGHT;
             ovrHandSkeleton handSkeleton;
             handSkeleton.Header.Version = ovrHandVersion_1;
-            if (vrapi_GetHandSkeleton(Ovr, handedness, &handSkeleton.Header ) != ovrSuccess) {
+            if (vrapi_GetHandSkeleton(Ovr, handedness, &handSkeleton.Header) != ovrSuccess) {
                 LOG("VrHands - failed to get hand skeleton");
             } else {
-                for(int i=0;i<ovrHandBone_MaxSkinnable;i++) {
-                    memcpy(&c.bonePositionsBase[i], &handSkeleton.BonePoses[i].Position, sizeof(handSkeleton.BonePoses[i].Position));
+                for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
+                    memcpy(&c.bonePositionsBase[i], &handSkeleton.BonePoses[i].Position,
+                           sizeof(handSkeleton.BonePoses[i].Position));
                 }
                 //for(int i=0;i<ovrHandBone_MaxSkinnable;i++) {
                 //    memcpy(&c.boneRotationsBase[i], &handSkeleton.BonePoses[i].Orientation, sizeof(handSkeleton.BonePoses[i].Orientation));
@@ -252,20 +365,25 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime, GUI
 
             ovrHandPose handPose;
             handPose.Header.Version = ovrHandVersion_1;
-            if (vrapi_GetHandPose(Ovr, handCapabilities.Header.DeviceID, 0, &handPose.Header ) != ovrSuccess) {
+            if (vrapi_GetHandPose(Ovr, handCapabilities.Header.DeviceID, 0, &handPose.Header) !=
+                ovrSuccess) {
                 LOG("VrHands - failed to get hand pose");
             } else {
                 if (handPose.HandConfidence == ovrConfidence_HIGH) {
                     c.handFingerConfidences |= alvrHandConfidence_High;
                 }
                 for (int i = 0; i < ovrHandFinger_Max; i++) {
-                    c.handFingerConfidences |= handPose.FingerConfidences[i] == ovrConfidence_HIGH ? (1 << i) : 0;
+                    c.handFingerConfidences |=
+                            handPose.FingerConfidences[i] == ovrConfidence_HIGH ? (1 << i) : 0;
                 }
 
-                memcpy(&c.boneRootOrientation, &handPose.RootPose.Orientation, sizeof(handPose.RootPose.Orientation));
-                memcpy(&c.boneRootPosition, &handPose.RootPose.Position, sizeof(handPose.RootPose.Position));
-                for(int i=0;i<ovrHandBone_MaxSkinnable;i++) {
-                    memcpy(&c.boneRotations[i], &handPose.BoneRotations[i], sizeof(handPose.BoneRotations[i]));
+                memcpy(&c.boneRootOrientation, &handPose.RootPose.Orientation,
+                       sizeof(handPose.RootPose.Orientation));
+                memcpy(&c.boneRootPosition, &handPose.RootPose.Position,
+                       sizeof(handPose.RootPose.Position));
+                for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
+                    memcpy(&c.boneRotations[i], &handPose.BoneRotations[i],
+                           sizeof(handPose.BoneRotations[i]));
                 }
             }
             controller++;
@@ -313,7 +431,8 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime, GUI
 
                 if (remoteInputState.Buttons & ovrButton_Enter) {
                     if (!mMenuLongPressActivated && std::chrono::system_clock::now()
-                            - mMenuNotPressedLastInstant > MENU_BUTTON_LONG_PRESS_DURATION) {
+                                                    - mMenuNotPressedLastInstant >
+                                                    MENU_BUTTON_LONG_PRESS_DURATION) {
                         mShowDashboard = !mShowDashboard;
                         mMenuLongPressActivated = true;
 
@@ -358,7 +477,8 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime, GUI
             } else {
                 c.buttons = mapButtons(&remoteCapabilities, &remoteInputState);
 
-                if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_HasJoystick) != 0) {
+                if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_HasJoystick) !=
+                    0) {
                     c.trackpadPosition.x = remoteInputState.JoystickNoDeadZone.x;
                     c.trackpadPosition.y = remoteInputState.JoystickNoDeadZone.y;
                 } else {
@@ -409,7 +529,9 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime, GUI
                        sizeof(tracking.HeadPose.LinearAcceleration));
 
                 auto pos = tracking.HeadPose.Pose.Position;
-                guiInput->controllersPosition[controller] = glm::vec3(pos.x, pos.y - WORLD_VERTICAL_OFFSET, pos.z);
+                guiInput->controllersPosition[controller] = glm::vec3(pos.x,
+                                                                      pos.y - WORLD_VERTICAL_OFFSET,
+                                                                      pos.z);
                 auto rot = tracking.HeadPose.Pose.Orientation;
                 guiInput->controllersRotation[controller] = glm::quat(rot.w, rot.x, rot.y, rot.z);
             }
@@ -418,7 +540,7 @@ void OvrContext::setControllerInfo(TrackingInfo *packet, double displayTime, GUI
     }
 }
 
-uint64_t OvrContext::mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
+uint64_t OvrContextMapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
                                 ovrInputStateTrackedRemote *remoteInputState) {
     uint64_t buttons = 0;
     if (remoteCapabilities->ControllerCapabilities & ovrControllerCaps_ModelOculusTouch) {
@@ -500,7 +622,7 @@ uint64_t OvrContext::mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabil
 
 
 // Called TrackingThread. So, we can't use this->env.
-void OvrContext::setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tracking) {
+void OvrContextSetTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tracking) {
     memset(packet, 0, sizeof(TrackingInfo));
 
     uint64_t clientTime = getTimestampUs();
@@ -527,7 +649,7 @@ void OvrContext::setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTr
 }
 
 // Called TrackingThread. So, we can't use this->env.
-void OvrContext::sendTrackingInfo(JNIEnv *env_, jobject udpReceiverThread) {
+void OvrContextSendTrackingInfo(JNIEnv *env_, jobject udpReceiverThread) {
     std::shared_ptr<TrackingFrame> frame(new TrackingFrame());
 
     FrameIndex++;
@@ -547,9 +669,9 @@ void OvrContext::sendTrackingInfo(JNIEnv *env_, jobject udpReceiverThread) {
 
     {
         std::lock_guard<decltype(trackingFrameMutex)> lock(trackingFrameMutex);
-        trackingFrameMap.insert(std::pair<uint64_t, std::shared_ptr<TrackingFrame> >(FrameIndex, frame));
-        if (trackingFrameMap.size() > MAXIMUM_TRACKING_FRAMES)
-        {
+        trackingFrameMap.insert(
+                std::pair<uint64_t, std::shared_ptr<TrackingFrame> >(FrameIndex, frame));
+        if (trackingFrameMap.size() > MAXIMUM_TRACKING_FRAMES) {
             trackingFrameMap.erase(trackingFrameMap.cbegin());
         }
     }
@@ -565,17 +687,17 @@ void OvrContext::sendTrackingInfo(JNIEnv *env_, jobject udpReceiverThread) {
 }
 
 // Called TrackingThread. So, we can't use this->env.
-void OvrContext::sendMicData(JNIEnv *env_, jobject udpReceiverThread) {
-    if(!mStreamMic) {
+void OvrContextSendMicData(JNIEnv *env_, jobject udpReceiverThread) {
+    if (!mStreamMic) {
         return;
     }
 
     size_t outputBufferNumElements = ovr_Microphone_GetPCM(mMicHandle, micBuffer, mMicMaxElements);
-    if(outputBufferNumElements > 0) {
-        int count =0;
+    if (outputBufferNumElements > 0) {
+        int count = 0;
 
-        for (int i = 0; i <outputBufferNumElements; i+=100) {
-            int rest = outputBufferNumElements - count*100;
+        for (int i = 0; i < outputBufferNumElements; i += 100) {
+            int rest = outputBufferNumElements - count * 100;
 
             MicAudioFrame audio;
             memset(&audio, 0, sizeof(MicAudioFrame));
@@ -584,13 +706,13 @@ void OvrContext::sendMicData(JNIEnv *env_, jobject udpReceiverThread) {
             audio.packetIndex = count;
             audio.completeSize = outputBufferNumElements;
 
-            if(rest >= 100) {
+            if (rest >= 100) {
                 audio.outputBufferNumElements = 100;
             } else {
                 audio.outputBufferNumElements = rest;
             }
 
-            memcpy(&audio.micBuffer ,
+            memcpy(&audio.micBuffer,
                    micBuffer + count * 100,
                    sizeof(int16_t) * audio.outputBufferNumElements);
 
@@ -606,19 +728,19 @@ void OvrContext::sendMicData(JNIEnv *env_, jobject udpReceiverThread) {
 }
 
 
-void OvrContext::onChangeSettings(int Suspend) {
+void OvrContextOnChangeSettings(int Suspend) {
     suspend = Suspend;
     reflectExtraLatencyMode(false);
 }
 
-void OvrContext::onSurfaceCreated(jobject surface) {
+void OvrContextOnSurfaceCreated(jobject surface) {
     LOG("onSurfaceCreated called. Resumed=%d Window=%p Ovr=%p", Resumed, window, Ovr);
     window = ANativeWindow_fromSurface(env, surface);
 
     onVrModeChange();
 }
 
-void OvrContext::onSurfaceDestroyed() {
+void OvrContextOnSurfaceDestroyed() {
     LOG("onSurfaceDestroyed called. Resumed=%d Window=%p Ovr=%p", Resumed, window, Ovr);
     if (window != nullptr) {
         ANativeWindow_release(window);
@@ -628,7 +750,7 @@ void OvrContext::onSurfaceDestroyed() {
     onVrModeChange();
 }
 
-void OvrContext::onSurfaceChanged(jobject surface) {
+void OvrContextOnSurfaceChanged(jobject surface) {
     LOG("onSurfaceChanged called. Resumed=%d Window=%p Ovr=%p", Resumed, window, Ovr);
     ANativeWindow *newWindow = ANativeWindow_fromSurface(env, surface);
     if (newWindow != window) {
@@ -647,29 +769,29 @@ void OvrContext::onSurfaceChanged(jobject surface) {
     }
 }
 
-void OvrContext::onResume() {
+void OvrContextOnResume() {
     LOG("onResume called. Resumed=%d Window=%p Ovr=%p", Resumed, window, Ovr);
     Resumed = true;
     onVrModeChange();
 
-    if(mMicHandle && mStreamMic) {
+    if (mMicHandle && mStreamMic) {
         ovr_Microphone_Start(mMicHandle);
     }
 
     checkShouldSyncGuardian();
 }
 
-void OvrContext::onPause() {
+void OvrContextOnPause() {
     LOG("onPause called. Resumed=%d Window=%p Ovr=%p", Resumed, window, Ovr);
     Resumed = false;
     onVrModeChange();
 
-    if(mMicHandle && mStreamMic) {
+    if (mMicHandle && mStreamMic) {
         ovr_Microphone_Stop(mMicHandle);
     }
 }
 
-void OvrContext::render(uint64_t renderedFrameIndex) {
+void OvrContextRender(uint64_t renderedFrameIndex) {
     LatencyCollector::Instance().rendered1(renderedFrameIndex);
     FrameLog(renderedFrameIndex, "Got frame for render.");
 
@@ -681,19 +803,15 @@ void OvrContext::render(uint64_t renderedFrameIndex) {
     {
         std::lock_guard<decltype(trackingFrameMutex)> lock(trackingFrameMutex);
 
-        if (!trackingFrameMap.empty())
-        {
+        if (!trackingFrameMap.empty()) {
             oldestFrame = trackingFrameMap.cbegin()->second->frameIndex;
             mostRecentFrame = trackingFrameMap.crbegin()->second->frameIndex;
         }
 
         const auto it = trackingFrameMap.find(renderedFrameIndex);
-        if (it != trackingFrameMap.end())
-        {
+        if (it != trackingFrameMap.end()) {
             frame = it->second;
-        }
-        else
-        {
+        } else {
             // No matching tracking info. Too old frame.
             LOG("Too old frame has arrived. Instead, we use most old tracking data in trackingFrameMap."
                 "FrameIndex=%lu trackingFrameMap=(%lu - %lu)",
@@ -748,7 +866,7 @@ void OvrContext::render(uint64_t renderedFrameIndex) {
 }
 
 
-void OvrContext::renderLoading() {
+void OvrContextRenderLoading() {
     double DisplayTime = GetTimeInSeconds();
 
     // Show a loading icon.
@@ -757,7 +875,8 @@ void OvrContext::renderLoading() {
     double displayTime = vrapi_GetPredictedDisplayTime(Ovr, FrameIndex);
     ovrTracking2 headTracking = vrapi_GetPredictedTracking2(Ovr, displayTime);
 
-    const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(&Renderer, &headTracking, true, false);
+    const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(&Renderer, &headTracking, true,
+                                                                   false);
 
     const ovrLayerHeader2 *layers[] =
             {
@@ -776,14 +895,14 @@ void OvrContext::renderLoading() {
     vrapi_SubmitFrame2(Ovr, &frameDesc);
 }
 
-void OvrContext::setFrameGeometry(int width, int height) {
+void OvrContextSetFrameGeometry(int width, int height) {
     int eye_width = width / 2;
 
     if (eye_width != FrameBufferWidth || height != FrameBufferHeight ||
-            usedFoveationEnabled != mFoveationEnabled ||
-            usedFoveationStrength != mFoveationStrength ||
-            usedFoveationShape != mFoveationShape ||
-            usedFoveationVerticalOffset != mFoveationVerticalOffset) {
+        usedFoveationEnabled != mFoveationEnabled ||
+        usedFoveationStrength != mFoveationStrength ||
+        usedFoveationShape != mFoveationShape ||
+        usedFoveationVerticalOffset != mFoveationVerticalOffset) {
 
         LOG("Changing FrameBuffer geometry. Old=%dx%d New=%dx%d", FrameBufferWidth,
             FrameBufferHeight, eye_width, height);
@@ -799,8 +918,10 @@ void OvrContext::setFrameGeometry(int width, int height) {
         ovrRenderer_Create(&Renderer, FrameBufferWidth, FrameBufferHeight,
                            SurfaceTextureID, loadingTexture, webViewSurfaceTexture,
                            mWebViewInteractionCallback,
-                           {usedFoveationEnabled, (uint32_t)FrameBufferWidth, (uint32_t)FrameBufferHeight,
-                            getFov().first, usedFoveationStrength, usedFoveationShape, usedFoveationVerticalOffset});
+                           {usedFoveationEnabled, (uint32_t) FrameBufferWidth,
+                            (uint32_t) FrameBufferHeight,
+                            getFov().first, usedFoveationStrength, usedFoveationShape,
+                            usedFoveationVerticalOffset});
         ovrRenderer_CreateScene(&Renderer);
     } else {
         LOG("Not Changing FrameBuffer geometry. %dx%d", FrameBufferWidth,
@@ -808,7 +929,7 @@ void OvrContext::setFrameGeometry(int width, int height) {
     }
 }
 
-void OvrContext::getRefreshRates(JNIEnv *env_, jintArray refreshRates) {
+void OvrContextGetRefreshRates(JNIEnv *env_, jintArray refreshRates) {
     jint *refreshRates_ = env_->GetIntArrayElements(refreshRates, nullptr);
 
     // Fill empty entry with 0.
@@ -838,7 +959,7 @@ void OvrContext::getRefreshRates(JNIEnv *env_, jintArray refreshRates) {
     env_->ReleaseIntArrayElements(refreshRates, refreshRates_, 0);
 }
 
-void OvrContext::setRefreshRate(int refreshRate, bool forceChange) {
+void OvrContextSetRefreshRate(int refreshRate, bool forceChange) {
     if (m_currentRefreshRate == refreshRate) {
         LOGI("Refresh rate not changed. %d Hz", refreshRate);
         return;
@@ -849,15 +970,15 @@ void OvrContext::setRefreshRate(int refreshRate, bool forceChange) {
         m_currentRefreshRate = refreshRate;
     } else {
         LOGE("Failed to change refresh rate. %d Hz Force=%d Result=%d", refreshRate, forceChange,
-            result);
+             result);
     }
 }
 
-void OvrContext::setStreamMic(bool streamMic) {
+void OvrContextSetStreamMic(bool streamMic) {
     LOGI("Setting mic streaming %d", streamMic);
     mStreamMic = streamMic;
-    if(mMicHandle) {
-        if(mStreamMic) {
+    if (mMicHandle) {
+        if (mStreamMic) {
             LOG("Starting mic");
             ovr_Microphone_Start(mMicHandle);
         } else {
@@ -867,22 +988,19 @@ void OvrContext::setStreamMic(bool streamMic) {
 
 }
 
-void OvrContext::setFFRParams(int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset) {
-    LOGI("SSetting FFR params %d %f %f %f", foveationMode, foveationStrength, foveationShape, foveationVerticalOffset);
+void OvrContextSetFFRParams(int foveationMode, float foveationStrength, float foveationShape,
+                              float foveationVerticalOffset) {
+    LOGI("SSetting FFR params %d %f %f %f", foveationMode, foveationStrength, foveationShape,
+         foveationVerticalOffset);
 
-    mFoveationEnabled = (bool)foveationMode;
+    mFoveationEnabled = (bool) foveationMode;
     mFoveationStrength = foveationStrength;
     mFoveationShape = foveationShape;
     mFoveationVerticalOffset = foveationVerticalOffset;
 }
 
 
-
-void OvrContext::setInitialRefreshRate(int initialRefreshRate) {
-    setRefreshRate(initialRefreshRate, false);
-}
-
-void OvrContext::onVrModeChange() {
+void OvrContextOnVrModeChange() {
     if (Resumed && window != nullptr) {
         if (Ovr == nullptr) {
             enterVrMode();
@@ -894,7 +1012,7 @@ void OvrContext::onVrModeChange() {
     }
 }
 
-void OvrContext::enterVrMode() {
+void OvrContextEnterVrMode() {
     LOGI("Entering VR mode.");
 
     ovrModeParms parms = vrapi_DefaultModeParms(&java);
@@ -945,7 +1063,7 @@ void OvrContext::enterVrMode() {
     env->DeleteLocalRef(clazz);
 }
 
-void OvrContext::leaveVrMode() {
+void OvrContextLeaveVrMode() {
     LOGI("Leaving VR mode.");
 
     vrapi_LeaveVrMode(Ovr);
@@ -961,7 +1079,7 @@ void OvrContext::leaveVrMode() {
 }
 
 // Fill device descriptor.
-void OvrContext::getDeviceDescriptor(JNIEnv *env, jobject deviceDescriptor) {
+void OvrContextGetDeviceDescriptor(JNIEnv *env, jobject deviceDescriptor) {
     int renderWidth = 1440;//vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH);
     renderWidth *= 2;
     int renderHeight = 1600;//vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT);
@@ -975,7 +1093,7 @@ void OvrContext::getDeviceDescriptor(JNIEnv *env, jobject deviceDescriptor) {
     //if (VRAPI_DEVICE_TYPE_GEARVR_START <= ovrDeviceType &&
     //    ovrDeviceType <= VRAPI_DEVICE_TYPE_GEARVR_END) {
     if (0 <= ovrDeviceType &&
-    ovrDeviceType <= VRAPI_DEVICE_TYPE_OCULUSGO_START-1) {
+        ovrDeviceType <= VRAPI_DEVICE_TYPE_OCULUSGO_START - 1) {
         deviceSubType = ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_GEARVR;
     } else if (VRAPI_DEVICE_TYPE_OCULUSGO_START <= ovrDeviceType &&
                ovrDeviceType <= VRAPI_DEVICE_TYPE_OCULUSGO_END) {
@@ -1030,7 +1148,7 @@ void OvrContext::getDeviceDescriptor(JNIEnv *env, jobject deviceDescriptor) {
     env->DeleteLocalRef(clazz);
 }
 
-std::pair<EyeFov, EyeFov> OvrContext::getFov() {
+std::pair<EyeFov, EyeFov> OvrContextGetFov() {
     float fovX = vrapi_GetSystemPropertyFloat(&java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X);
     float fovY = vrapi_GetSystemPropertyFloat(&java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y);
     LOGI("OvrContext::getFov: X=%f Y=%f", fovX, fovY);
@@ -1073,7 +1191,7 @@ std::pair<EyeFov, EyeFov> OvrContext::getFov() {
 }
 
 
-void OvrContext::updateHapticsState() {
+void OvrContextUpdateHapticsState() {
     ovrInputCapabilityHeader curCaps;
     ovrResult result;
 
@@ -1087,30 +1205,31 @@ void OvrContext::updateHapticsState() {
             continue;
         }
 
-        int curHandIndex = (remoteCapabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) ? 1 : 0;
+        int curHandIndex = (remoteCapabilities.ControllerCapabilities & ovrControllerCaps_LeftHand)
+                           ? 1 : 0;
         auto &s = mHapticsState[curHandIndex];
 
         uint64_t currentUs = getTimestampUs();
 
-        if(s.fresh) {
+        if (s.fresh) {
             s.startUs = s.startUs + currentUs;
             s.endUs = s.startUs + s.endUs;
             s.fresh = false;
         }
 
-        if(s.startUs <= 0) {
+        if (s.startUs <= 0) {
             // No requested haptics for this hand.
-            if(s.buffered) {
+            if (s.buffered) {
                 finishHapticsBuffer(curCaps.DeviceID);
                 s.buffered = false;
             }
             continue;
         }
 
-        if(currentUs >= s.endUs) {
+        if (currentUs >= s.endUs) {
             // No more haptics is needed.
             s.startUs = 0;
-            if(s.buffered) {
+            if (s.buffered) {
                 finishHapticsBuffer(curCaps.DeviceID);
                 s.buffered = false;
             }
@@ -1123,21 +1242,26 @@ void OvrContext::updateHapticsState() {
 
             // First, call with buffer.Terminated = false and when haptics is no more needed call with buffer.Terminated = true (to stop haptics?).
             LOG("Send haptic buffer. HapticSamplesMax=%d HapticSampleDurationMS=%d",
-                 remoteCapabilities.HapticSamplesMax, remoteCapabilities.HapticSampleDurationMS);
+                remoteCapabilities.HapticSamplesMax, remoteCapabilities.HapticSampleDurationMS);
 
-            uint32_t requiredHapticsBuffer = static_cast<uint32_t >((s.endUs - currentUs) / remoteCapabilities.HapticSampleDurationMS * 1000);
+            uint32_t requiredHapticsBuffer = static_cast<uint32_t >((s.endUs - currentUs) /
+                                                                    remoteCapabilities.HapticSampleDurationMS *
+                                                                    1000);
 
             std::vector<uint8_t> hapticBuffer(remoteCapabilities.HapticSamplesMax);
             ovrHapticBuffer buffer;
             buffer.BufferTime = vrapi_GetPredictedDisplayTime(Ovr, FrameIndex);
             buffer.HapticBuffer = &hapticBuffer[0];
-            buffer.NumSamples = std::min(remoteCapabilities.HapticSamplesMax, requiredHapticsBuffer);
+            buffer.NumSamples = std::min(remoteCapabilities.HapticSamplesMax,
+                                         requiredHapticsBuffer);
             buffer.Terminated = false;
 
             for (int i = 0; i < remoteCapabilities.HapticSamplesMax; i++) {
-                float current = ((currentUs - s.startUs) / 1000000.0f) + (remoteCapabilities.HapticSampleDurationMS * i) / 1000.0f;
+                float current = ((currentUs - s.startUs) / 1000000.0f) +
+                                (remoteCapabilities.HapticSampleDurationMS * i) / 1000.0f;
                 float intensity =
-                        (sinf(static_cast<float>(current * M_PI * 2 * s.frequency)) + 1.0f) * 0.5f * s.amplitude;
+                        (sinf(static_cast<float>(current * M_PI * 2 * s.frequency)) + 1.0f) * 0.5f *
+                        s.amplitude;
                 if (intensity < 0) {
                     intensity = 0;
                 } else if (intensity > 1.0) {
@@ -1159,9 +1283,11 @@ void OvrContext::updateHapticsState() {
     }
 }
 
-void OvrContext::onHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency,
+void
+OvrContextOnHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency,
                               int hand) {
-    LOGI("OvrContext::onHapticsFeedback: processing haptics. %" PRIu64 " %f %f %f, %d", startTime, amplitude, duration, frequency, hand);
+    LOGI("OvrContext::onHapticsFeedback: processing haptics. %" PRIu64 " %f %f %f, %d", startTime,
+         amplitude, duration, frequency, hand);
 
     int curHandIndex = (hand == 0) ? 0 : 1;
     auto &s = mHapticsState[curHandIndex];
@@ -1173,7 +1299,7 @@ void OvrContext::onHapticsFeedback(uint64_t startTime, float amplitude, float du
     s.buffered = false;
 }
 
-void OvrContext::finishHapticsBuffer(ovrDeviceID DeviceID) {
+void OvrContextFinishHapticsBuffer(ovrDeviceID DeviceID) {
     uint8_t hapticBuffer[1] = {0};
     ovrHapticBuffer buffer;
     buffer.BufferTime = vrapi_GetPredictedDisplayTime(Ovr, FrameIndex);
@@ -1187,18 +1313,20 @@ void OvrContext::finishHapticsBuffer(ovrDeviceID DeviceID) {
     }
 }
 
-void OvrContext::reflectExtraLatencyMode(bool always) {
+void OvrContextReflectExtraLatencyMode(bool always) {
     if (always || (!gDisableExtraLatencyMode) != mExtraLatencyMode) {
         mExtraLatencyMode = !gDisableExtraLatencyMode;
         LOGI("Setting ExtraLatencyMode %s", mExtraLatencyMode ? "On" : "Off");
-        ovrResult result = vrapi_SetExtraLatencyMode(Ovr, mExtraLatencyMode ? VRAPI_EXTRA_LATENCY_MODE_ON : VRAPI_EXTRA_LATENCY_MODE_OFF);
+        ovrResult result = vrapi_SetExtraLatencyMode(Ovr,
+                                                     mExtraLatencyMode ? VRAPI_EXTRA_LATENCY_MODE_ON
+                                                                       : VRAPI_EXTRA_LATENCY_MODE_OFF);
         LOGI("vrapi_SetExtraLatencyMode. Result=%d", result);
     }
 }
 
 /// Check if buttons to send launch signal to server is down on current frame.
 /// \return true if down at current frame.
-bool OvrContext::getButtonDown() {
+bool OvrContextGetButtonDown() {
     ovrInputCapabilityHeader curCaps;
     ovrResult result;
     bool buttonPressed = false;
@@ -1223,7 +1351,8 @@ bool OvrContext::getButtonDown() {
             }
 
             buttonPressed = buttonPressed || (remoteInputState.Buttons &
-                    (ovrButton_Trigger | ovrButton_A | ovrButton_B | ovrButton_X | ovrButton_Y)) != 0;
+                                              (ovrButton_Trigger | ovrButton_A | ovrButton_B |
+                                               ovrButton_X | ovrButton_Y)) != 0;
         }
     }
 
@@ -1233,7 +1362,7 @@ bool OvrContext::getButtonDown() {
 }
 
 // Called TrackingThread. So, we can't use this->env.
-void OvrContext::sendGuardianInfo(JNIEnv *env_, jobject udpReceiverThread) {
+void OvrContextSendGuardianInfo(JNIEnv *env_, jobject udpReceiverThread) {
     if (m_ShouldSyncGuardian) {
         double currentTime = GetTimeInSeconds();
         if (currentTime - m_LastGuardianSyncTry < ALVR_GUARDIAN_RESEND_CD_SEC) {
@@ -1267,16 +1396,19 @@ void OvrContext::sendGuardianInfo(JNIEnv *env_, jobject udpReceiverThread) {
         uint32_t segmentIndex = m_AckedGuardianSegment + 1;
         packet.segmentIndex = segmentIndex;
         uint32_t remainingPoints = m_GuardianPointCount - segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE;
-        size_t countToSend = remainingPoints > ALVR_GUARDIAN_SEGMENT_SIZE ? ALVR_GUARDIAN_SEGMENT_SIZE : remainingPoints;
+        size_t countToSend =
+                remainingPoints > ALVR_GUARDIAN_SEGMENT_SIZE ? ALVR_GUARDIAN_SEGMENT_SIZE
+                                                             : remainingPoints;
 
-        memcpy(&packet.points, m_GuardianPoints + segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE, sizeof(TrackingVector3) * countToSend);
+        memcpy(&packet.points, m_GuardianPoints + segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE,
+               sizeof(TrackingVector3) * countToSend);
 
         env_->CallVoidMethod(udpReceiverThread, mServerConnection_send,
                              reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
     }
 }
 
-void OvrContext::onGuardianSyncAck(uint64_t timestamp) {
+void OvrContextOnGuardianSyncAck(uint64_t timestamp) {
     if (timestamp != m_GuardianTimestamp) {
         return;
     }
@@ -1289,7 +1421,7 @@ void OvrContext::onGuardianSyncAck(uint64_t timestamp) {
     }
 }
 
-void OvrContext::onGuardianSegmentAck(uint64_t timestamp, uint32_t segmentIndex) {
+void OvrContextOnGuardianSegmentAck(uint64_t timestamp, uint32_t segmentIndex) {
     if (timestamp != m_GuardianTimestamp || segmentIndex != m_AckedGuardianSegment + 1) {
         return;
     }
@@ -1305,7 +1437,7 @@ void OvrContext::onGuardianSegmentAck(uint64_t timestamp, uint32_t segmentIndex)
     }
 }
 
-void OvrContext::checkShouldSyncGuardian() {
+void OvrContextCheckShouldSyncGuardian() {
     int recenterCount = vrapi_GetSystemStatusInt(&java, VRAPI_SYS_STATUS_RECENTER_COUNT);
     if (recenterCount <= m_LastHMDRecenterCount) {
         return;
@@ -1314,14 +1446,14 @@ void OvrContext::checkShouldSyncGuardian() {
     m_ShouldSyncGuardian = true;
     m_GuardianSyncing = false;
     m_GuardianTimestamp = getTimestampUs();
-    delete [] m_GuardianPoints;
+    delete[] m_GuardianPoints;
     m_GuardianPoints = nullptr;
     m_AckedGuardianSegment = -1;
 
     m_LastHMDRecenterCount = recenterCount;
 }
 
-bool OvrContext::prepareGuardianData() {
+bool OvrContextPrepareGuardianData() {
     if (m_GuardianPoints != nullptr) {
         return false;
     }
@@ -1338,212 +1470,212 @@ bool OvrContext::prepareGuardianData() {
     return true;
 }
 
-extern "C"
-JNIEXPORT jlong JNICALL
-Java_com_polygraphene_alvr_OvrContext_initializeNative(JNIEnv *env, jobject instance,
-                                                       jobject activity, jobject assetManager,
-                                                       jobject vrThread, jboolean ARMode,
-                                                       jint initialRefreshRate) {
-    OvrContext *context = new OvrContext();
-    context->initialize(env, activity, instance, assetManager, vrThread, ARMode, initialRefreshRate);
-    return (jlong) context;
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_destroyNative(JNIEnv *env, jobject instance, jlong handle) {
-    ((OvrContext *) handle)->destroy(env);
-}
-
-
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_polygraphene_alvr_OvrContext_getLoadingTextureNative(JNIEnv *env, jobject instance,
-                                                              jlong handle) {
-    return ((OvrContext *) handle)->getLoadingTexture();
-}
-
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_polygraphene_alvr_OvrContext_getSurfaceTextureIDNative(JNIEnv *env, jobject instance,
-                                                                jlong handle) {
-    return ((OvrContext *) handle)->getSurfaceTextureID();
-}
-
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_polygraphene_alvr_OvrContext_getWebViewSurfaceTextureNative(JNIEnv *env, jobject instance,
-                                                                jlong handle) {
-    return ((OvrContext *) handle)->getWebViewSurfaceTexture();
-}
-
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_polygraphene_alvr_OvrContext_getCameraTextureNative(JNIEnv *env, jobject instance,
-                                                             jlong handle) {
-    return 0;
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_renderNative(JNIEnv *env, jobject instance, jlong handle,
-                                                   jlong renderedFrameIndex) {
-    return ((OvrContext *) handle)->render(static_cast<uint64_t>(renderedFrameIndex));
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_renderLoadingNative(JNIEnv *env, jobject instance,
-                                                          jlong handle) {
-    return ((OvrContext *) handle)->renderLoading();
-}
-
-// Called from TrackingThread
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_sendTrackingInfoNative(JNIEnv *env, jobject instance,
-                                                              jlong handle,
-                                                              jobject udpReceiverThread
-                                                             ) {
-        ((OvrContext *) handle)->sendTrackingInfo(env, udpReceiverThread);
-}
-
-// Called from TrackingThread
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_sendGuardianInfoNative(JNIEnv *env, jobject instance,
-                                                             jlong handle, jobject udpReceiverThread) {
-    ((OvrContext *) handle)->sendGuardianInfo(env, udpReceiverThread);
-}
-
-// Called from TrackingThread
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_sendMicDataNative(JNIEnv *env, jobject instance,
-                                                             jlong handle,
-                                                             jobject udpReceiverThread
-) {
-    ((OvrContext *) handle)->sendMicData(env, udpReceiverThread);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_onChangeSettingsNative(JNIEnv *env, jobject instance,
-                                                             jlong handle, jint Suspend) {
-    ((OvrContext *) handle)->onChangeSettings(Suspend);
-}
-
+//extern "C"
+//JNIEXPORT jlong JNICALL
+//Java_com_polygraphene_alvr_OvrContext_initializeNative(JNIEnv *env, jobject instance,
+//                                                       jobject activity, jobject assetManager,
+//                                                       jobject vrThread, jboolean ARMode,
+//                                                       jint initialRefreshRate) {
+//    OvrContext *context = new OvrContext();
+//    context->initialize(env, activity, instance, assetManager, vrThread, ARMode, initialRefreshRate);
+//    return (jlong) context;
+//}
 //
-// Life cycle management.
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_destroyNative(JNIEnv *env, jobject instance, jlong handle) {
+//    ((OvrContext *) handle)->destroy(env);
+//}
 //
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_onSurfaceCreatedNative(JNIEnv *env, jobject instance,
-                                                             jlong handle,
-                                                             jobject surface) {
-    ((OvrContext *) handle)->onSurfaceCreated(surface);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_onSurfaceDestroyedNative(JNIEnv *env, jobject instance,
-                                                               jlong handle) {
-    ((OvrContext *) handle)->onSurfaceDestroyed();
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_onSurfaceChangedNative(JNIEnv *env, jobject instance,
-                                                             jlong handle, jobject surface) {
-    ((OvrContext *) handle)->onSurfaceChanged(surface);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_onResumeNative(JNIEnv *env, jobject instance, jlong handle) {
-    ((OvrContext *) handle)->onResume();
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_onPauseNative(JNIEnv *env, jobject instance, jlong handle) {
-    ((OvrContext *) handle)->onPause();
-}
-
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_com_polygraphene_alvr_OvrContext_isVrModeNative(JNIEnv *env, jobject instance, jlong handle) {
-    return static_cast<jboolean>(((OvrContext *) handle)->isVrMode());
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_getDeviceDescriptorNative(JNIEnv *env, jobject instance,
-                                                                jlong handle,
-                                                                jobject deviceDescriptor) {
-    ((OvrContext *) handle)->getDeviceDescriptor(env, deviceDescriptor);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_setFrameGeometryNative(JNIEnv *env, jobject instance,
-                                                             jlong handle, jint width,
-                                                             jint height) {
-    ((OvrContext *) handle)->setFrameGeometry(width, height);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_setRefreshRateNative(JNIEnv *env, jobject instance,
-                                                           jlong handle, jint refreshRate) {
-    return ((OvrContext *) handle)->setRefreshRate(refreshRate);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_setStreamMicNative(JNIEnv *env, jobject instance,
-                                                           jlong handle, jboolean streamMic) {
-    return ((OvrContext *) handle)->setStreamMic(streamMic);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_setFFRParamsNative(JNIEnv *env, jobject instance,
-                                                         jlong handle, jint foveationMode, jfloat foveationStrength, jfloat foveationShape, jfloat foveationVerticalOffset) {
-    return ((OvrContext *) handle)->setFFRParams(foveationMode, foveationStrength, foveationShape, foveationVerticalOffset);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_onHapticsFeedbackNative(JNIEnv *env, jobject instance,
-                                                              jlong handle, jlong startTime,
-                                                              jfloat amplitude, jfloat duration,
-                                                              jfloat frequency, jboolean hand) {
-    return ((OvrContext *) handle)->onHapticsFeedback(static_cast<uint64_t>(startTime), amplitude,
-                                                      duration, frequency, hand == 0 ? 0 : 1);
-}
-
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_com_polygraphene_alvr_OvrContext_getButtonDownNative(JNIEnv *env, jobject instance,
-                                                          jlong handle) {
-
-    return static_cast<jboolean>(((OvrContext *) handle)->getButtonDown());
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_onGuardianSyncAckNative(JNIEnv *env,
-                                                              jobject instance, jlong handle,
-                                                              jlong timestamp) {
-    ((OvrContext *) handle)->onGuardianSyncAck(static_cast<uint64_t>(timestamp));
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrContext_onGuardianSegmentAckNative(JNIEnv *env, jobject instance, jlong handle,
-                                                                 jlong timestamp, jint segmentIndex) {
-    ((OvrContext *) handle)->onGuardianSegmentAck(static_cast<uint64_t>(timestamp),
-                                                  static_cast<uint32_t>(segmentIndex));
-}
+//
+//extern "C"
+//JNIEXPORT jint JNICALL
+//Java_com_polygraphene_alvr_OvrContext_getLoadingTextureNative(JNIEnv *env, jobject instance,
+//                                                              jlong handle) {
+//    return ((OvrContext *) handle)->getLoadingTexture();
+//}
+//
+//extern "C"
+//JNIEXPORT jint JNICALL
+//Java_com_polygraphene_alvr_OvrContext_getSurfaceTextureIDNative(JNIEnv *env, jobject instance,
+//                                                                jlong handle) {
+//    return ((OvrContext *) handle)->getSurfaceTextureID();
+//}
+//
+//extern "C"
+//JNIEXPORT jint JNICALL
+//Java_com_polygraphene_alvr_OvrContext_getWebViewSurfaceTextureNative(JNIEnv *env, jobject instance,
+//                                                                jlong handle) {
+//    return ((OvrContext *) handle)->getWebViewSurfaceTexture();
+//}
+//
+//extern "C"
+//JNIEXPORT jint JNICALL
+//Java_com_polygraphene_alvr_OvrContext_getCameraTextureNative(JNIEnv *env, jobject instance,
+//                                                             jlong handle) {
+//    return 0;
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_renderNative(JNIEnv *env, jobject instance, jlong handle,
+//                                                   jlong renderedFrameIndex) {
+//    return ((OvrContext *) handle)->render(static_cast<uint64_t>(renderedFrameIndex));
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_renderLoadingNative(JNIEnv *env, jobject instance,
+//                                                          jlong handle) {
+//    return ((OvrContext *) handle)->renderLoading();
+//}
+//
+//// Called from TrackingThread
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_sendTrackingInfoNative(JNIEnv *env, jobject instance,
+//                                                              jlong handle,
+//                                                              jobject udpReceiverThread
+//                                                             ) {
+//        ((OvrContext *) handle)->sendTrackingInfo(env, udpReceiverThread);
+//}
+//
+//// Called from TrackingThread
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_sendGuardianInfoNative(JNIEnv *env, jobject instance,
+//                                                             jlong handle, jobject udpReceiverThread) {
+//    ((OvrContext *) handle)->sendGuardianInfo(env, udpReceiverThread);
+//}
+//
+//// Called from TrackingThread
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_sendMicDataNative(JNIEnv *env, jobject instance,
+//                                                             jlong handle,
+//                                                             jobject udpReceiverThread
+//) {
+//    ((OvrContext *) handle)->sendMicData(env, udpReceiverThread);
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_onChangeSettingsNative(JNIEnv *env, jobject instance,
+//                                                             jlong handle, jint Suspend) {
+//    ((OvrContext *) handle)->onChangeSettings(Suspend);
+//}
+//
+////
+//// Life cycle management.
+////
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_onSurfaceCreatedNative(JNIEnv *env, jobject instance,
+//                                                             jlong handle,
+//                                                             jobject surface) {
+//    ((OvrContext *) handle)->onSurfaceCreated(surface);
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_onSurfaceDestroyedNative(JNIEnv *env, jobject instance,
+//                                                               jlong handle) {
+//    ((OvrContext *) handle)->onSurfaceDestroyed();
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_onSurfaceChangedNative(JNIEnv *env, jobject instance,
+//                                                             jlong handle, jobject surface) {
+//    ((OvrContext *) handle)->onSurfaceChanged(surface);
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_onResumeNative(JNIEnv *env, jobject instance, jlong handle) {
+//    ((OvrContext *) handle)->onResume();
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_onPauseNative(JNIEnv *env, jobject instance, jlong handle) {
+//    ((OvrContext *) handle)->onPause();
+//}
+//
+//extern "C"
+//JNIEXPORT jboolean JNICALL
+//Java_com_polygraphene_alvr_OvrContext_isVrModeNative(JNIEnv *env, jobject instance, jlong handle) {
+//    return static_cast<jboolean>(((OvrContext *) handle)->isVrMode());
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_getDeviceDescriptorNative(JNIEnv *env, jobject instance,
+//                                                                jlong handle,
+//                                                                jobject deviceDescriptor) {
+//    ((OvrContext *) handle)->getDeviceDescriptor(env, deviceDescriptor);
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_setFrameGeometryNative(JNIEnv *env, jobject instance,
+//                                                             jlong handle, jint width,
+//                                                             jint height) {
+//    ((OvrContext *) handle)->setFrameGeometry(width, height);
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_setRefreshRateNative(JNIEnv *env, jobject instance,
+//                                                           jlong handle, jint refreshRate) {
+//    return ((OvrContext *) handle)->setRefreshRate(refreshRate);
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_setStreamMicNative(JNIEnv *env, jobject instance,
+//                                                           jlong handle, jboolean streamMic) {
+//    return ((OvrContext *) handle)->setStreamMic(streamMic);
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_setFFRParamsNative(JNIEnv *env, jobject instance,
+//                                                         jlong handle, jint foveationMode, jfloat foveationStrength, jfloat foveationShape, jfloat foveationVerticalOffset) {
+//    return ((OvrContext *) handle)->setFFRParams(foveationMode, foveationStrength, foveationShape, foveationVerticalOffset);
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_onHapticsFeedbackNative(JNIEnv *env, jobject instance,
+//                                                              jlong handle, jlong startTime,
+//                                                              jfloat amplitude, jfloat duration,
+//                                                              jfloat frequency, jboolean hand) {
+//    return ((OvrContext *) handle)->onHapticsFeedback(static_cast<uint64_t>(startTime), amplitude,
+//                                                      duration, frequency, hand == 0 ? 0 : 1);
+//}
+//
+//extern "C"
+//JNIEXPORT jboolean JNICALL
+//Java_com_polygraphene_alvr_OvrContext_getButtonDownNative(JNIEnv *env, jobject instance,
+//                                                          jlong handle) {
+//
+//    return static_cast<jboolean>(((OvrContext *) handle)->getButtonDown());
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_onGuardianSyncAckNative(JNIEnv *env,
+//                                                              jobject instance, jlong handle,
+//                                                              jlong timestamp) {
+//    ((OvrContext *) handle)->onGuardianSyncAck(static_cast<uint64_t>(timestamp));
+//}
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_OvrContext_onGuardianSegmentAckNative(JNIEnv *env, jobject instance, jlong handle,
+//                                                                 jlong timestamp, jint segmentIndex) {
+//    ((OvrContext *) handle)->onGuardianSegmentAck(static_cast<uint64_t>(timestamp),
+//                                                  static_cast<uint32_t>(segmentIndex));
+//}

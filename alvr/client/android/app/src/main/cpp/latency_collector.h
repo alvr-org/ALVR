@@ -1,6 +1,8 @@
 #ifndef ALVRCLIENT_LATENCY_COLLECTOR_H
 #define ALVRCLIENT_LATENCY_COLLECTOR_H
 
+#include "bindings.h"
+
 #include <memory>
 #include <vector>
 

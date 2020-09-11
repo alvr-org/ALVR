@@ -257,19 +257,16 @@ async fn connect_to_any_client(
 
         let settings = session_manager.lock().await.get().to_settings();
 
-        let eye_width;
-        let eye_height;
-        match settings.video.render_resolution {
+        let (eye_width, eye_height) = match settings.video.render_resolution {
             FrameSize::Scale(scale) => {
                 let (native_eye_width, native_eye_height) = headset_info.native_eye_resolution;
-                eye_width = native_eye_width as f32 * scale;
-                eye_height = native_eye_height as f32 * scale;
+                (
+                    native_eye_width as f32 * scale,
+                    native_eye_height as f32 * scale,
+                )
             }
-            FrameSize::Absolute { width, height } => {
-                eye_width = width as f32 / 2_f32;
-                eye_height = height as f32 / 2_f32;
-            }
-        }
+            FrameSize::Absolute { width, height } => (width as f32 / 2_f32, height as f32 / 2_f32),
+        };
         let eye_resolution = (align32(eye_width), align32(eye_height));
 
         let eyes_fov = if let Some(eyes_fov) = settings.video.eyes_fov.clone() {
@@ -290,11 +287,12 @@ async fn connect_to_any_client(
         );
 
         let client_config = ClientConfigPacket {
-            settings: settings.clone(),
+            settings: serde_json::to_value(&settings).unwrap(),
             eye_resolution,
             eyes_fov: eyes_fov.clone(),
             fps,
             web_gui_url,
+            reserved: serde_json::json!({}),
         };
 
         let control_socket =
@@ -501,6 +499,7 @@ pub async fn connection_loop(
                         info!(id: LogId::ClientDisconnected, "Client disconnected gracefully");
                         break;
                     }
+                    Ok(ClientControlPacket::Reserved(_)) => (),
                     Err(e) => {
                         warn!(
                             id: LogId::ClientDisconnected,

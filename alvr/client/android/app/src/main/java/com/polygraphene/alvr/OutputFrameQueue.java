@@ -24,6 +24,7 @@ public class OutputFrameQueue {
     private FrameMap mFrameMap = new FrameMap();
     private final int mQueueSize = 1;
     private Element mSurface = new Element();
+    private DecoderThread.DecoderCallback mCallbacks;
 
     private enum SurfaceState {
         Idle, Rendering, Available
@@ -31,8 +32,10 @@ public class OutputFrameQueue {
 
     SurfaceState mState = SurfaceState.Idle;
 
-    OutputFrameQueue()
+    OutputFrameQueue(DecoderThread.DecoderCallback callbacks)
     {
+        mCallbacks = callbacks;
+
         for (int i = 0; i < mQueueSize; i++) {
             mUnusedList.add(new Element());
         }
@@ -77,7 +80,7 @@ public class OutputFrameQueue {
         elem.frameIndex = foundFrameIndex;
         mQueue.add(elem);
 
-        LatencyCollector.DecoderOutput(foundFrameIndex);
+        mCallbacks.onFrameOutput(foundFrameIndex);
         Utils.frameLog(foundFrameIndex, () -> "Current queue state=" + mQueue.size() + "/" + mQueueSize + " pushed index=" + index);
 
         render();
@@ -144,38 +147,6 @@ public class OutputFrameQueue {
         render();
 
         return frameIndex;
-    }
-
-    synchronized public boolean discardStaleFrames(SurfaceTexture surfaceTexture)
-    {
-        if (mStopped) {
-            return false;
-        }
-        if (mQueue.size() == 0 || mState == SurfaceState.Rendering) {
-            return false;
-        }
-        if (mState == SurfaceState.Available) {
-            mState = SurfaceState.Idle;
-            if (surfaceTexture != null) {
-                surfaceTexture.updateTexImage();
-            }
-        }
-
-        while (true) {
-            if (mQueue.size() > 1) {
-                // Discard because this elem is not latest frame.
-                Element elem = mQueue.poll();
-                Utils.frameLog(elem.frameIndex, () -> "discardStaleFrames: releaseOutputBuffer(false)");
-                mCodec.releaseOutputBuffer(elem.index, false);
-                mUnusedList.add(elem);
-            } else {
-                // Latest frame.
-                Element elem = mQueue.peek();
-                Utils.frameLog(elem.frameIndex, () -> "discardStaleFrames: releaseOutputBuffer(true)");
-                render();
-                return true;
-            }
-        }
     }
 
     synchronized public void stop() {

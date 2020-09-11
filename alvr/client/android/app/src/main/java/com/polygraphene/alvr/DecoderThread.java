@@ -16,7 +16,7 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.Queue;
 
-public class DecoderThread extends ThreadBase implements ServerConnection.NALCallback, Handler.Callback {
+public class DecoderThread extends ThreadBase implements Handler.Callback {
     private static final String TAG = "DecoderThread";
 
     private static final int CODEC_H264 = 0;
@@ -49,10 +49,8 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
     private Handler mHandler;
 
     public interface DecoderCallback {
-        void onPrepared();
-        void onDestroy();
-        void onFrameInput();
-        void onFrameDecoded();
+        void onFrameInput(long frameIdx);
+        void onFrameOutput(long frameIdx);
     }
 
     private final DecoderCallback mDecoderCallback;
@@ -89,11 +87,17 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
 
     private final Queue<Integer> mAvailableInputs = new LinkedList<>();
 
-    public DecoderThread(Surface surface, Context context, DecoderCallback callback) {
+    public DecoderThread(Surface surface, Context context, DecoderCallback callbacks) {
         mSurface = surface;
         mContext = context;
-        mQueue = new OutputFrameQueue();
-        mDecoderCallback = callback;
+        mQueue = new OutputFrameQueue(callbacks);
+        mDecoderCallback = callbacks;
+
+        if (mCodec == CODEC_H264) {
+            mFormat = VIDEO_FORMAT_H264;
+        } else {
+            mFormat = VIDEO_FORMAT_H265;
+        }
 
         start();
     }
@@ -134,7 +138,7 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
                 MediaCodec.BufferInfo info = (MediaCodec.BufferInfo) msg.obj;
 
                 mQueue.pushOutputBuffer(index2, info);
-                mDecoderCallback.onFrameDecoded();
+                this.releaseBuffer();
                 return true;
         }
         return false;
@@ -150,7 +154,6 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
             Utils.logi(TAG, () -> "Stopping decoder.");
             mQueue.stop();
 
-            mDecoderCallback.onDestroy();
             if (mDecoder != null) {
                 try {
                     mDecoder.stop();
@@ -196,30 +199,9 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
 
         Utils.logi(TAG, () -> "Codec created. Type=" + mFormat + " Name=" + mDecoder.getCodecInfo().getName());
 
-        mDecoderCallback.onPrepared();
-
         mWaitNextIDR = true;
 
         Looper.loop();
-    }
-
-    // Output IDR frame in external media dir for debugging. (/sdcard/Android/media/...)
-    private void debugIDRFrame(NAL buf, NAL spsBuffer, NAL ppsBuffer) {
-        if (spsBuffer == null || ppsBuffer == null) {
-            return;
-        }
-        if (mDebugIDRFrame) {
-            try {
-                String path = mContext.getExternalMediaDirs()[0].getAbsolutePath() + "/" + buf.frameIndex + ".h264";
-                FileOutputStream stream = new FileOutputStream(path);
-                stream.write(spsBuffer.buf, 0, spsBuffer.length);
-                stream.write(ppsBuffer.buf, 0, ppsBuffer.length);
-                stream.write(buf.buf, 0, buf.length);
-                stream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     private boolean pushInputBuffer(NAL nal, long presentationTimeUs, int flags) {
@@ -280,34 +262,8 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
         }
     }
 
-    public void onConnect(int codec, int frameQueueSize) {
-        Utils.logi(TAG, () -> "onConnect()");
-        if (mQueue != null) {
-            mQueue.reset();
-        }
-        notifyCodecChange(codec);
-    }
-
     public void onDisconnect() {
         mQueue.stop();
-    }
-
-    private void notifyCodecChange(int codec) {
-        if (codec != mCodec) {
-            Utils.logi(TAG, () -> "notifyCodecChange: Codec was changed. New Codec=" + codec);
-            stopAndWait();
-            mCodec = codec;
-            if (mCodec == CODEC_H264) {
-                mFormat = VIDEO_FORMAT_H264;
-            } else {
-                mFormat = VIDEO_FORMAT_H265;
-            }
-            mQueue.reset();
-            start();
-        } else {
-            Utils.logi(TAG, () -> "notifyCodecChange: Codec was not changed. Codec=" + codec);
-            //mWaitNextIDR = true;
-        }
     }
 
     private void pushNALInternal() {
@@ -338,12 +294,12 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
             // IDR-Frame
             Utils.frameLog(nal.frameIndex, () -> "Feed IDR-Frame. Size=" + nal.length + " PresentationTime=" + presentationTime);
 
-            LatencyCollector.DecoderInput(nal.frameIndex);
+            mDecoderCallback.onFrameInput(nal.frameIndex);
 
             consumed = pushInputBuffer(nal, presentationTime, 0);
         } else {
             // PFrame
-            LatencyCollector.DecoderInput(nal.frameIndex);
+            mDecoderCallback.onFrameInput(nal.frameIndex);
 
             if (mWaitNextIDR) {
                 // Ignore P-Frame until next I-Frame
@@ -405,9 +361,5 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
 
     public long clearAvailable(SurfaceTexture surfaceTexture) {
         return mQueue.clearAvailable(surfaceTexture);
-    }
-
-    public boolean discartStaleFrames(SurfaceTexture surfaceTexture) {
-        return mQueue.discardStaleFrames(surfaceTexture);
     }
 }

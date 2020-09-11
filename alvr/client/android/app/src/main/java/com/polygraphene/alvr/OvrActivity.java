@@ -66,53 +66,57 @@ public class OvrActivity extends BaseActivity {
 
         @Override
         public void surfaceCreated(@NonNull SurfaceHolder holder) {
-            mRenderingHandler.post(() -> surfaceCreatedNative(holder.getSurface()));
+            mSurfaceValid = true;
+            maybeResume();
         }
 
         @Override
         public void surfaceChanged(@NonNull SurfaceHolder holder, int fmt, int w, int h) {
-            mRenderingHandler.post(() -> surfaceChangedNative(holder.getSurface()));
+            maybePause();
+            maybeResume();
         }
 
         @Override
         public void surfaceDestroyed(@NonNull SurfaceHolder surfaceHolder) {
-            mRenderingHandler.post(OvrActivity::surfaceDestroyedNative);
+            maybePause();
+            mSurfaceValid = false;
         }
     }
 
     class DecoderCallbacks implements DecoderThread.DecoderCallback {
         @Override
-        public void onPrepared() {
-            mDecoderPrepared = true;
-            mReceiverThread.setSinkPrepared(mVrMode && mDecoderPrepared);
+        public void onFrameInput(long frameIdx) {
+            onFrameInputNative(frameIdx);
         }
 
         @Override
-        public void onDestroy() {
-            mDecoderPrepared = false;
-            mReceiverThread.setSinkPrepared(mVrMode && mDecoderPrepared);
+        public void onFrameOutput(long frameIdx) {
+            onFrameOutputNative(frameIdx);
         }
+    }
 
-        @Override
-        public void onFrameDecoded() {
-            mDecoderThread.releaseBuffer();
-        }
-    };
+    ;
 
     OffscreenWebView mWebView = null;
     Handler mMainHandler = null;
     Handler mRenderingHandler = null;
+    HandlerThread mRenderingHandlerThread = null;
     SurfaceTexture mStreamSurfaceTexture = null;
     Surface mStreamSurface = null;
     SurfaceTexture mWebViewSurfaceTexture = null;
     Surface mWebViewSurface = null;
     DecoderThread mDecoderThread = null;
     DecoderThread.DecoderCallback mDecoderCallbacks = new DecoderCallbacks();
-    boolean mDecoderPrepared = false;
-    boolean mConnected = false;
     boolean mStreaming = false;
     boolean mShowingWebView = true;
     String mDashboardURL = "";
+    long mPreviousRender = 0;
+    float mRefreshRate = 60;
+
+    // When all of the following flags become true, call onResumeNative
+    // When any of the following flags become false, call onPauseNative
+    boolean mResumed = false;
+    boolean mSurfaceValid = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -133,9 +137,9 @@ public class OvrActivity extends BaseActivity {
 
         mMainHandler = new Handler(this.getMainLooper());
 
-        HandlerThread handlerThread = new HandlerThread("Rendering thread");
-        handlerThread.start();
-        mRenderingHandler = new Handler(handlerThread.getLooper());
+        mRenderingHandlerThread = new HandlerThread("Rendering thread");
+        mRenderingHandlerThread.start();
+        mRenderingHandler = new Handler(mRenderingHandlerThread.getLooper());
         mRenderingHandler.post(this::startup);
 
         SurfaceHolder holder = surfaceView.getHolder();
@@ -230,29 +234,31 @@ public class OvrActivity extends BaseActivity {
     protected void onResume() {
         super.onResume();
 
-        mRenderingHandler.post(() -> {
-            PrivateIdentity id = this.getCertificate();
+        mResumed = true;
 
-            OnResumeNativeParams params = new OnResumeNativeParams();
-            params.hostname = id.hostname;
-            params.certificatePEM = id.certificatePEM;
-            params.privateKey = id.privateKey;
+        maybeResume();
+    }
 
-            onResumeNative(params);
+    void maybeResume() {
+        if (mResumed && mSurfaceValid) {
+            mRenderingHandler.post(() -> {
+                // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
+                // and onFrameAvailable won't be called after next output.
+                // To avoid deadlock caused by it, we need to flush last output.
+                mStreamSurfaceTexture.updateTexImage();
 
-            // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
-            // and onFrameAvailable won't be called after next output.
-            // To avoid deadlock caused by it, we need to flush last output.
-            mStreamSurfaceTexture.updateTexImage();
+                PrivateIdentity id = this.getCertificate();
 
-            mDecoderThread = new DecoderThread(mStreamSurface, this, mDecoderCallbacks);
+                OnResumeNativeParams params = new OnResumeNativeParams();
+                params.hostname = id.hostname;
+                params.certificatePEM = id.certificatePEM;
+                params.privateKey = id.privateKey;
 
-            try {
-                mDecoderThread.start();
-            } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-                Utils.loge(TAG, e::toString);
-            }
-        });
+                // initialize Ovr, enable vr mode, startup sockets
+                onResumeNative(params);
+            });
+            mRenderingHandler.postDelayed(this::render, 13);
+        }
     }
 
     private void render() {
@@ -260,97 +266,78 @@ public class OvrActivity extends BaseActivity {
             mWebViewSurfaceTexture.updateTexImage();
         }
 
-        if (mStreaming)
-        {
+        if (mStreaming) {
             long next = checkRenderTiming();
-            if(next > 0) {
+            if (next > 0) {
                 mRenderingHandler.postDelayed(this::render, next);
                 return;
             }
             long renderedFrameIndex = mDecoderThread.clearAvailable(mStreamSurfaceTexture);
 
-            if (renderedFrameIndex != -1)
-            {
-                renderNative(false, renderedFrameIndex);
+            if (renderedFrameIndex != -1) {
+                renderNative(true, renderedFrameIndex);
                 mPreviousRender = System.nanoTime();
 
-                mRenderingHandler.postDelayed(mRenderRunnable, 5);
-            }
-            else
-            {
+                mRenderingHandler.postDelayed(this::render, 5);
+            } else {
                 mRenderingHandler.removeCallbacks(this::render);
                 mRenderingHandler.postDelayed(this::render, 50);
             }
-        }
-        else
-        {
-            if (!mOvrContext.isVrMode())
-                return;
+        } else {
+            renderNative(false, 0);
 
-            if (mReceiverThread.isConnected())
-            {
-                mLoadingTexture.drawMessage(Utils.getVersionName(mActivity) + "\n \nConnected!\nStreaming will begin soon!");
-            }
-            else
-            {
-                mLoadingTexture.drawMessage(Utils.getVersionName(mActivity) + "\n \nOpen ALVR on PC and\nclick on \"Trust\" next to\nthe client entry");
-            }
-            mHandler.removeCallbacks(mIdleRenderRunnable);
-            mHandler.postDelayed(mIdleRenderRunnable, 13); // 72Hz = 13.8888ms
+            mRenderingHandler.removeCallbacks(this::render);
+            mRenderingHandler.postDelayed(this::render, (long) (1 / mRefreshRate));
         }
-
-        renderNative(mStreaming, );
     }
 
     private long checkRenderTiming() {
         long current = System.nanoTime();
-        long threashold = TimeUnit.SECONDS.toNanos(1) / mRefreshRate -
+        long threshold = (long) (TimeUnit.SECONDS.toNanos(1) / mRefreshRate) -
                 TimeUnit.MILLISECONDS.toNanos(5);
-        return TimeUnit.NANOSECONDS.toMillis(threashold - (current - mPreviousRender));
+        return TimeUnit.NANOSECONDS.toMillis(threshold - (current - mPreviousRender));
     }
 
     @Override
     protected void onPause() {
+        maybePause();
+
+        mResumed = false;
+
         super.onPause();
+    }
 
-        // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
-        mHandler.post(() -> {
-            // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
-            if (mDecoderThread != null) {
-                mDecoderThread.stopAndWait();
-            }
-            if (mReceiverThread != null) {
-                mReceiverThread.stopAndWait();
-            }
-
-            mOvrContext.onPause();
-        });
+    void maybePause() {
+        // the check (mResumed && mSurfaceValid) is intended: either mResumed or mSurfaceValid will
+        // be set to false once this method returns.
+        if (mResumed && mSurfaceValid) {
+            mRenderingHandler.post(OvrActivity::onPauseNative);
+        }
     }
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
-
-        mHandler.post(() -> {
-            mLoadingTexture.destroyTexture();
+        mRenderingHandler.post(() -> {
             Utils.logi(TAG, () -> "Destroying vrapi state.");
-            mOvrContext.destroy();
+            onDestroyNative();
         });
-        mHandlerThread.quitSafely();
+        mRenderingHandlerThread.quitSafely();
+
+        super.onDestroy();
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        //Utils.log(TAG, () ->  "dispatchKeyEvent: " + event.getKeyCode());
         if (event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP) {
+            int direction = 0;
             if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP) {
-                adjustVolume(1);
-                return true;
+                direction = 1;
+            } else if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                direction = -1;
             }
-            if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
-                adjustVolume(-1);
-                return true;
-            }
+
+            AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0);
 
             return true;
         } else {
@@ -358,13 +345,8 @@ public class OvrActivity extends BaseActivity {
         }
     }
 
-    private void adjustVolume(int direction) {
-        AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0);
-    }
 
     // INTEROPERATION WITH RUST:
-
 
     // Java to Rust:
 
@@ -374,22 +356,17 @@ public class OvrActivity extends BaseActivity {
 
     static native void onCreateNative(OnCreateNativeParams data);
 
-    static native void surfaceCreatedNative(Surface surface);
-
-    static native void surfaceChangedNative(Surface surface);
-
-    static native void surfaceDestroyedNative();
-
-    static native void initSockets();
-
     static native void onResumeNative(OnResumeNativeParams params);
 
     static native void renderNative(boolean streaming, long frameIdx);
 
+    static native void onFrameInputNative(long frameIdx); // only for statistics
+
+    static native void onFrameOutputNative(long frameIdx); // only for statistics
+
     static native void onPauseNative();
 
     static native void onDestroyNative();
-
 
     // Rust to Java:
 
@@ -399,7 +376,7 @@ public class OvrActivity extends BaseActivity {
         if (isCompatible) {
             mDashboardURL = url;
         } else {
-            mMainHandler.post(() -> mWebView.setMessage("Server found, the stream will begin shortly"));
+            mMainHandler.post(() -> mWebView.setMessage("Found unsupported server. Make sure the client and the server are up to date."));
         }
     }
 
@@ -411,11 +388,7 @@ public class OvrActivity extends BaseActivity {
         if (mDecoderThread != null) {
             mDecoderThread.onDisconnect();
         }
-        mDecoderThread = new DecoderThread();
-
-
-//        mStreaming = true;
-//        mShowingWebView = false;
+        mDecoderThread = new DecoderThread(mStreamSurface, this, mDecoderCallbacks);
     }
 
     @SuppressWarnings("unused")
@@ -430,7 +403,7 @@ public class OvrActivity extends BaseActivity {
     }
 
     @SuppressWarnings("unused")
-    public NAL pushNAL(NAL nal) {
+    public void pushNAL(NAL nal) {
         if (mDecoderThread != null) {
             mDecoderThread.pushNAL(nal);
         }
@@ -452,16 +425,6 @@ public class OvrActivity extends BaseActivity {
             mDecoderThread = null;
         }
     }
-
-//    @SuppressWarnings("unused")
-//    public void onVrModeChanged(boolean enter) {
-//        mVrMode = enter;
-//        Utils.logi(TAG, () -> "onVrModeChanged. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
-//        mReceiverThread.setSinkPrepared(mVrMode && mDecoderPrepared);
-//        if (mVrMode) {
-//            mHandler.post(mRenderRunnable);
-//        }
-//    }
 
     @SuppressWarnings("unused")
     public void applyWebViewInteractionEvent(int type, float x, float y) {

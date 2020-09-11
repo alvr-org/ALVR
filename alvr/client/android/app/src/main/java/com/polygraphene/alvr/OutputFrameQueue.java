@@ -13,7 +13,7 @@ public class OutputFrameQueue {
 
     private boolean mStopped = false;
 
-    private class Element {
+    private static class Element {
         public int index;
         public long frameIndex;
     }
@@ -74,6 +74,7 @@ public class OutputFrameQueue {
             Log.e(TAG, "FrameQueue is full. Discard old frame.");
 
             elem = mQueue.poll();
+            assert elem != null;
             mCodec.releaseOutputBuffer(elem.index, false);
         }
         elem.index = index;

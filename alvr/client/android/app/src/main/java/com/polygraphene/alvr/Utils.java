@@ -7,9 +7,6 @@ import android.util.Log;
 
 public class Utils {
     public static boolean sEnableLog = false;
-    public static long gDebugFlags = 0;
-
-    public static native void setFrameLogEnabled();
 
     public interface LogProvider
     {
@@ -48,7 +45,6 @@ public class Utils {
         Log.e(tag, s.obtain());
     }
 
-
     public static String getVersionName(Context context)
     {
         try {
@@ -59,13 +55,5 @@ public class Utils {
             e.printStackTrace();
             return context.getString(R.string.app_name) + " Unknown version";
         }
-    }
-
-    public static void setDebugFlags(long debugFlags)
-    {
-        sEnableLog = (debugFlags & 1) != 0;
-        Log.i("ALVR", "DebugFlags is changed. New=" + debugFlags);
-        setFrameLogEnabled();
-        gDebugFlags = debugFlags;
     }
 }

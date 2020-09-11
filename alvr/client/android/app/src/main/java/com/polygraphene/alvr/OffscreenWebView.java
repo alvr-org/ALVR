@@ -1,5 +1,6 @@
 package com.polygraphene.alvr;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.support.annotation.NonNull;
@@ -21,33 +22,35 @@ public class OffscreenWebView extends WebView {
     public static final int WEBVIEW_WIDTH = 800;
     public static final int WEBVIEW_HEIGHT = 600;
 
-    private Surface surface;
-    private Context context;
+    private Surface mSurface;
+    private String mMsgTitle;
 
+    @SuppressLint("SetJavaScriptEnabled")
     public OffscreenWebView(@NonNull Context context) {
         super(context);
 
         this.getSettings().setJavaScriptEnabled(true);
         this.getSettings().setDomStorageEnabled(true);
         this.setInitialScale(100);
+
+        mMsgTitle = Utils.getVersionName(context);
     }
 
     public void setSurface(Surface surface) {
-        this.surface = surface;
+        this.mSurface = surface;
     }
 
     public void setMessage(String msg) {
-        String title = Utils.getVersionName(context);
-        this.loadData(String.format(MSG_TEMPLATE, title, msg), "text/html; charset=utf-8", "UTF-8");
+        this.loadData(String.format(MSG_TEMPLATE, mMsgTitle, msg), "text/html; charset=utf-8", "UTF-8");
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (surface != null) {
+        if (mSurface != null) {
             try {
-                final Canvas surfaceCanvas = surface.lockCanvas(null);
+                final Canvas surfaceCanvas = mSurface.lockCanvas(null);
                 super.onDraw(surfaceCanvas);
-                surface.unlockCanvasAndPost(surfaceCanvas);
+                mSurface.unlockCanvasAndPost(surfaceCanvas);
             } catch (Surface.OutOfResourcesException e) {
                 Utils.loge(TAG, e::toString);
             }

@@ -37,6 +37,7 @@ public class OvrActivity extends Activity {
     static {
         System.loadLibrary("alvr_client");
     }
+
     private final static String TAG = "OvrActivity";
 
     //Create placeholder for user's consent to record_audio permission.
@@ -105,7 +106,6 @@ public class OvrActivity extends Activity {
     SurfaceTexture mStreamSurfaceTexture = null;
     Surface mStreamSurface = null;
     SurfaceTexture mWebViewSurfaceTexture = null;
-    Surface mWebViewSurface = null;
     DecoderThread mDecoderThread = null;
     DecoderThread.DecoderCallback mDecoderCallbacks = new DecoderCallbacks();
     boolean mStreaming = false;
@@ -113,6 +113,7 @@ public class OvrActivity extends Activity {
     String mDashboardURL = "";
     long mPreviousRender = 0;
     float mRefreshRate = 60;
+    int mCodec = 0;
 
     // When all of the following flags become true, call onResumeNative
     // When any of the following flags become false, call onPauseNative
@@ -194,7 +195,8 @@ public class OvrActivity extends Activity {
 
         mWebViewSurfaceTexture = new SurfaceTexture(params.webviewSurfaceHandle);
         mWebViewSurfaceTexture.setDefaultBufferSize(WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
-        mWebViewSurface = new Surface(mWebViewSurfaceTexture);
+        Surface webViewSurface = new Surface(mWebViewSurfaceTexture);
+        mWebView.setSurface(webViewSurface);
     }
 
     private void requestAudioPermissions() {
@@ -366,23 +368,23 @@ public class OvrActivity extends Activity {
 
     @SuppressLint("SetJavaScriptEnabled")
     @SuppressWarnings("unused")
-    public void onServerFound(boolean isCompatible, String url, String incompatibleMessage) {
+    public void onServerFound(boolean isCompatible, String url, String incompatibleMessage, int codec) {
         if (isCompatible) {
             mDashboardURL = url;
+            mMainHandler.post(() -> mWebView.setMessage("Server found, the stream will begin shortly"));
         } else {
             mMainHandler.post(() -> mWebView.setMessage("Found unsupported server. Make sure the client and the server are up to date."));
         }
+
+        mCodec = codec;
     }
 
     @SuppressWarnings("unused")
     public void onServerConnected() {
-        // We now have dashboard url, so we can post() to the main thread to set up our WebView.
-        mMainHandler.post(() -> mWebView.setMessage("Server found, the stream will begin shortly"));
-
         if (mDecoderThread != null) {
             mDecoderThread.onDisconnect();
         }
-        mDecoderThread = new DecoderThread(mStreamSurface, this, mDecoderCallbacks);
+        mDecoderThread = new DecoderThread(mStreamSurface, mDecoderCallbacks, mCodec);
 
         mWebViewVisible = false;
         mStreaming = true;
@@ -405,7 +407,6 @@ public class OvrActivity extends Activity {
             mDecoderThread.pushNAL(nal);
         }
     }
-
 
     @SuppressWarnings("unused")
     public void onServerDisconnected(boolean restarting) {
@@ -474,7 +475,7 @@ public class OvrActivity extends Activity {
         if (visible && !mWebViewVisible) {
             this.addContentView(mWebView, new ViewGroup.LayoutParams(WEBVIEW_WIDTH, WEBVIEW_HEIGHT));
         } else if (!visible && mWebViewVisible) {
-            ((ViewGroup)mWebView.getParent()).removeView(mWebView);
+            ((ViewGroup) mWebView.getParent()).removeView(mWebView);
         }
 
         mWebViewVisible = visible;

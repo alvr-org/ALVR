@@ -1,11 +1,5 @@
 package com.polygraphene.alvr;
 
-import android.util.LongSparseArray;
-
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLongArray;
 
 // Stores mapping of presentationTime to frameIndex for tracking frameIndex on decoding.

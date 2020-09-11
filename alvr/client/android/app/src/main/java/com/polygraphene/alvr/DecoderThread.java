@@ -1,6 +1,5 @@
 package com.polygraphene.alvr;
 
-import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
@@ -10,7 +9,6 @@ import android.os.Message;
 import android.support.annotation.NonNull;
 import android.view.Surface;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
@@ -21,23 +19,16 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
 
     private static final int CODEC_H264 = 0;
     private static final int CODEC_H265 = 1;
-    private int mCodec = CODEC_H265;
+    private int mCodec;
 
     private static final String VIDEO_FORMAT_H264 = "video/avc";
     private static final String VIDEO_FORMAT_H265 = "video/hevc";
-    private String mFormat = VIDEO_FORMAT_H265;
+    private String mFormat;
 
     private MediaCodec mDecoder = null;
     private Surface mSurface;
 
     private boolean mWaitNextIDR = false;
-
-    @SuppressWarnings("unused")
-    private Context mContext = null;
-
-    private boolean mDebugIDRFrame = false;
-
-    private static final int NAL_QUEUE_MAX = 100;
 
     private NalQueue mNalQueue = new NalQueue();
     private OutputFrameQueue mQueue;
@@ -56,23 +47,17 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
     private final DecoderCallback mDecoderCallback;
 
     private static final int NAL_TYPE_SPS = 7;
-    private static final int NAL_TYPE_PPS = 8;
     private static final int NAL_TYPE_IDR = 5;
     private static final int NAL_TYPE_P = 1;
 
-    private static final int H265_NAL_TYPE_TRAIL_R = 1;
     private static final int H265_NAL_TYPE_IDR_W_RADL = 19;
     private static final int H265_NAL_TYPE_VPS = 32;
-    private static final int H265_NAL_TYPE_SPS = 33;
-    private static final int H265_NAL_TYPE_PPS = 34;
 
     // Dummy SPS/PPS for some decoders which crashes on not set csd-0/csd-1. (e.g. Galaxy S6 Exynos decoder)
     private byte[] DummySPS = new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x67, (byte) 0x64, (byte) 0x00, (byte) 0x20, (byte) 0xac, (byte) 0x2b, (byte) 0x40, (byte) 0x20,
             0x02, (byte) 0x0d, (byte) 0x80, (byte) 0x88, (byte) 0x00, (byte) 0x00, (byte) 0x1f, (byte) 0x40, (byte) 0x00, (byte) 0x0e, (byte) 0xa6, (byte) 0x04,
             0x7a, (byte) 0x55};
     private byte[] DummyPPS = new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x68, (byte) 0xee, (byte) 0x3c, (byte) 0xb0};
-    private int DummyWidth = 1024;
-    private int DummyHeight = 512;
 
     private byte[] DummyCSD_H265 = new byte[]{
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x40, (byte) 0x01, (byte) 0x0c, (byte) 0x01, (byte) 0xff, (byte) 0xff, (byte) 0x21, (byte) 0x40,
@@ -87,17 +72,17 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
 
     private final Queue<Integer> mAvailableInputs = new LinkedList<>();
 
-    public DecoderThread(Surface surface, Context context, DecoderCallback callbacks) {
+    public DecoderThread(Surface surface, DecoderCallback callbacks, int codec) {
         mSurface = surface;
-        mContext = context;
         mQueue = new OutputFrameQueue(callbacks);
         mDecoderCallback = callbacks;
 
-        if (mCodec == CODEC_H264) {
+        if (codec == CODEC_H264) {
             mFormat = VIDEO_FORMAT_H264;
         } else {
             mFormat = VIDEO_FORMAT_H265;
         }
+        mCodec = codec;
 
         start();
     }
@@ -174,7 +159,9 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
         Looper.prepare();
         mHandler = new Handler(this);
 
-        MediaFormat format = MediaFormat.createVideoFormat(mFormat, DummyWidth, DummyHeight);
+        int dummyWidth = 1024;
+        int dummyHeight = 512;
+        MediaFormat format = MediaFormat.createVideoFormat(mFormat, dummyWidth, dummyHeight);
         format.setString("KEY_MIME", mFormat);
 
         format.setInteger(MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE);
@@ -217,6 +204,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
             }
             ByteBuffer buffer = mDecoder.getInputBuffer(bufferIndex);
 
+            assert buffer != null;
             int copyLength = Math.min(nal.length, buffer.remaining());
             buffer.put(nal.buf, 0, copyLength);
 
@@ -281,7 +269,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
 
         long presentationTime = System.nanoTime() / 1000;
 
-        boolean consumed = false;
+        boolean consumed;
 
         if (nal.type == NAL_TYPE_SPS) {
             // (VPS + )SPS + PPS

@@ -38,7 +38,6 @@ async fn setup_streams(
     settings: Settings,
     client_identity: PublicIdentity,
     control_socket: &ControlSocket<ClientControlPacket, ServerControlPacket>,
-    headset_info: HeadsetInfoPacket,
 ) -> StrResult {
     let mut stream_socket = StreamSocket::connect_to_client(
         control_socket.peer_ip(),
@@ -259,7 +258,7 @@ async fn connect_to_any_client(
 
         let (eye_width, eye_height) = match settings.video.render_resolution {
             FrameSize::Scale(scale) => {
-                let (native_eye_width, native_eye_height) = headset_info.native_eye_resolution;
+                let (native_eye_width, native_eye_height) = headset_info.recommended_eye_resolution;
                 (
                     native_eye_width as f32 * scale,
                     native_eye_height as f32 * scale,
@@ -269,16 +268,30 @@ async fn connect_to_any_client(
         };
         let eye_resolution = (align32(eye_width), align32(eye_height));
 
-        let eyes_fov = if let Some(eyes_fov) = settings.video.eyes_fov.clone() {
-            eyes_fov
+        let left_eye_fov = if let Some(left_eye_fov) = settings.video.left_eye_fov.clone() {
+            left_eye_fov
         } else {
-            headset_info.native_eyes_fov.clone()
+            headset_info.recommended_left_eye_fov.clone()
         };
 
-        let fps = if let Some(fps) = settings.video.refresh_rate {
-            fps
+        let fps = if let Some(fps) = settings.video.fps {
+            let mut best_match = 0;
+            let mut min_diff = f32::MAX;
+            for rr in &headset_info.available_refresh_rates {
+                let diff = (rr - fps as f32).abs();
+                if diff < min_diff {
+                    best_match = *rr as u32;
+                    min_diff = diff;
+                }
+            }
+            best_match
         } else {
-            headset_info.native_fps
+            headset_info
+                .available_refresh_rates
+                .iter()
+                .map(|&f| f as u32)
+                .max()
+                .unwrap()
         };
 
         let web_gui_url = format!(
@@ -289,7 +302,7 @@ async fn connect_to_any_client(
         let client_config = ClientConfigPacket {
             settings: serde_json::to_value(&settings).unwrap(),
             eye_resolution,
-            eyes_fov: eyes_fov.clone(),
+            left_eye_fov: left_eye_fov.clone(),
             fps,
             web_gui_url,
             reserved: serde_json::json!({}),
@@ -366,7 +379,7 @@ async fn connect_to_any_client(
             headset_registered_device_type: settings.headset.registered_device_type.clone(),
             eye_resolution,
             target_eye_resolution: eye_resolution,
-            eyes_fov,
+            left_eye_fov,
             seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
             ipd: settings.video.ipd,
             adapter_index: settings.video.adapter_index,
@@ -406,7 +419,7 @@ async fn connect_to_any_client(
 
         let identity = clients_info.get(&control_socket.peer_ip()).unwrap().clone();
 
-        if let Err(e) = setup_streams(settings, identity, &control_socket, headset_info).await {
+        if let Err(e) = setup_streams(settings, identity, &control_socket).await {
             warn!("Setup streams failed: {}", e);
         } else {
             break control_socket;

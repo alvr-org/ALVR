@@ -23,7 +23,7 @@ pub fn set_panic_hook() {
 
         #[cfg(not(target_os = "android"))]
         std::thread::spawn(move || {
-            msgbox::create("ALVR panicked", &err_str, msgbox::IconType::Error);
+            msgbox::create("ALVR panicked", &err_str, msgbox::IconType::Error).ok();
         });
     }))
 }
@@ -41,7 +41,7 @@ pub fn show_err<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
                     "ALVR encountered an error",
                     &err_string,
                     msgbox::IconType::Error,
-                );
+                ).ok();
             }
         });
     })

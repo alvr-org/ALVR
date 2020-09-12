@@ -16,9 +16,9 @@ pub struct HandshakePacket {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct HeadsetInfoPacket {
     pub device_name: String,
-    pub native_eye_resolution: (u32, u32),
-    pub native_eyes_fov: [Fov; 2],
-    pub native_fps: u32,
+    pub recommended_eye_resolution: (u32, u32),
+    pub recommended_left_eye_fov: Fov,
+    pub available_refresh_rates: Vec<f32>,
 
     // reserved field is used to add features in a minor release that otherwise would break the
     // packets schema
@@ -29,7 +29,7 @@ pub struct HeadsetInfoPacket {
 pub struct ClientConfigPacket {
     pub settings: json::Value,
     pub eye_resolution: (u32, u32),
-    pub eyes_fov: [Fov; 2],
+    pub left_eye_fov: Fov,
     pub fps: u32,
     pub web_gui_url: String,
     pub reserved: json::Value,

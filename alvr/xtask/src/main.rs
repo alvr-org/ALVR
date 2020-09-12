@@ -168,7 +168,7 @@ fn zip_dir(dir: &Path) -> BResult {
         // Some unzip tools unzip files with directory paths correctly, some do not!
         if path.is_file() {
             println!("adding file {:?} as {:?} ...", path, name);
-            zip.start_file_from_path(name, <_>::default())?;
+            zip.start_file(name.to_string_lossy(), <_>::default())?;
             let mut f = fs::File::open(path)?;
 
             f.read_to_end(&mut buffer)?;
@@ -178,7 +178,7 @@ fn zip_dir(dir: &Path) -> BResult {
             // Only if not root! Avoids path spec / warning
             // and mapname conversion failed error on unzip
             println!("adding dir {:?} as {:?} ...", path, name);
-            zip.add_directory_from_path(name, <_>::default())?;
+            zip.add_directory(name.to_string_lossy(), <_>::default())?;
         }
     }
 

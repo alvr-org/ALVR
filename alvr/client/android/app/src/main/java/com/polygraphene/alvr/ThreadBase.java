@@ -1,7 +1,5 @@
 package com.polygraphene.alvr;
 
-import android.util.Log;
-
 public class ThreadBase {
     private Thread mThread;
     private boolean mStopped = false;

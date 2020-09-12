@@ -64,26 +64,28 @@ public class OvrActivity extends Activity {
         String hostname;
         String certificatePEM;
         String privateKey;
+        Surface screenSurface;
     }
 
     class RenderingCallbacks implements SurfaceHolder.Callback {
 
         @Override
         public void surfaceCreated(@NonNull SurfaceHolder holder) {
-            mSurfaceValid = true;
+            mScreenSurface = holder.getSurface();
             maybeResume();
         }
 
         @Override
         public void surfaceChanged(@NonNull SurfaceHolder holder, int fmt, int w, int h) {
             maybePause();
+            mScreenSurface = holder.getSurface();
             maybeResume();
         }
 
         @Override
         public void surfaceDestroyed(@NonNull SurfaceHolder surfaceHolder) {
             maybePause();
-            mSurfaceValid = false;
+            mScreenSurface = null;
         }
     }
 
@@ -99,32 +101,31 @@ public class OvrActivity extends Activity {
         }
     }
 
-    OffscreenWebView mWebView = null;
+    PrivateIdentity mIdentity = null;
+    boolean mResumed = false;
     Handler mMainHandler = null;
     Handler mRenderingHandler = null;
     HandlerThread mRenderingHandlerThread = null;
+    Surface mScreenSurface = null;
     SurfaceTexture mStreamSurfaceTexture = null;
     Surface mStreamSurface = null;
     SurfaceTexture mWebViewSurfaceTexture = null;
-    DecoderThread mDecoderThread = null;
-    DecoderThread.DecoderCallback mDecoderCallbacks = new DecoderCallbacks();
-    boolean mStreaming = false;
+    OffscreenWebView mWebView = null;
     boolean mWebViewVisible = true;
     String mDashboardURL = "";
+    DecoderThread mDecoderThread = null;
+    DecoderThread.DecoderCallback mDecoderCallbacks = new DecoderCallbacks();
+    int mCodec = 0;
     long mPreviousRender = 0;
     float mRefreshRate = 60;
-    int mCodec = 0;
-
-    // When all of the following flags become true, call onResumeNative
-    // When any of the following flags become false, call onPauseNative
-    boolean mResumed = false;
-    boolean mSurfaceValid = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         initNativeRuntime();
+
+        mIdentity = this.getCertificate();
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -135,7 +136,6 @@ public class OvrActivity extends Activity {
 
         mWebView = new OffscreenWebView(this);
         mWebView.setMessage("Launch ALVR on PC and click on \"Trust\" next to the client entry");
-        setWebViewVisibility(true);
 
         mMainHandler = new Handler(this.getMainLooper());
 
@@ -255,19 +255,19 @@ public class OvrActivity extends Activity {
     }
 
     void maybeResume() {
-        if (mResumed && mSurfaceValid) {
+        if (mResumed && mScreenSurface != null) {
             mRenderingHandler.post(() -> {
+                setWebViewVisible(true);
                 // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
                 // and onFrameAvailable won't be called after next output.
                 // To avoid deadlock caused by it, we need to flush last output.
                 mStreamSurfaceTexture.updateTexImage();
 
-                PrivateIdentity id = this.getCertificate();
-
                 OnResumeNativeParams params = new OnResumeNativeParams();
-                params.hostname = id.hostname;
-                params.certificatePEM = id.certificatePEM;
-                params.privateKey = id.privateKey;
+                params.hostname = mIdentity.hostname;
+                params.certificatePEM = mIdentity.certificatePEM;
+                params.privateKey = mIdentity.privateKey;
+                params.screenSurface = mScreenSurface;
 
                 // initialize Ovr, enable vr mode, startup sockets
                 onResumeNative(params);
@@ -277,32 +277,34 @@ public class OvrActivity extends Activity {
     }
 
     private void render() {
-        if (mWebViewVisible) {
-            mWebViewSurfaceTexture.updateTexImage();
-        }
-
-        if (mStreaming) {
-            long next = checkRenderTiming();
-            if (next > 0) {
-                mRenderingHandler.postDelayed(this::render, next);
-                return;
+        if (mResumed && mScreenSurface != null) {
+            if (mWebViewVisible) {
+                mWebViewSurfaceTexture.updateTexImage();
             }
-            long renderedFrameIndex = mDecoderThread.clearAvailable(mStreamSurfaceTexture);
 
-            if (renderedFrameIndex != -1) {
-                renderNative(true, renderedFrameIndex);
-                mPreviousRender = System.nanoTime();
+            if (mDecoderThread != null) {
+                long next = checkRenderTiming();
+                if (next > 0) {
+                    mRenderingHandler.postDelayed(this::render, next);
+                    return;
+                }
+                long renderedFrameIndex = mDecoderThread.clearAvailable(mStreamSurfaceTexture);
 
-                mRenderingHandler.postDelayed(this::render, 5);
+                if (renderedFrameIndex != -1) {
+                    renderNative(true, renderedFrameIndex);
+                    mPreviousRender = System.nanoTime();
+
+                    mRenderingHandler.postDelayed(this::render, 5);
+                } else {
+                    mRenderingHandler.removeCallbacks(this::render);
+                    mRenderingHandler.postDelayed(this::render, 50);
+                }
             } else {
-                mRenderingHandler.removeCallbacks(this::render);
-                mRenderingHandler.postDelayed(this::render, 50);
-            }
-        } else {
-            renderNative(false, 0);
+                renderNative(false, 0);
 
-            mRenderingHandler.removeCallbacks(this::render);
-            mRenderingHandler.postDelayed(this::render, (long) (1 / mRefreshRate));
+                mRenderingHandler.removeCallbacks(this::render);
+                mRenderingHandler.postDelayed(this::render, (long) (1 / mRefreshRate));
+            }
         }
     }
 
@@ -316,7 +318,6 @@ public class OvrActivity extends Activity {
     @Override
     protected void onPause() {
         maybePause();
-
         mResumed = false;
 
         super.onPause();
@@ -325,7 +326,9 @@ public class OvrActivity extends Activity {
     void maybePause() {
         // the check (mResumed && mSurfaceValid) is intended: either mResumed or mSurfaceValid will
         // be set to false once this method returns.
-        if (mResumed && mSurfaceValid) {
+        if (mResumed && mScreenSurface != null) {
+            onStreamStop(false);
+
             mRenderingHandler.post(OvrActivity::onPauseNative);
         }
     }
@@ -350,7 +353,7 @@ public class OvrActivity extends Activity {
 
     static native void createIdentity(PrivateIdentity id); // id fields are reset
 
-    static native void onCreateNative(OnCreateNativeParams data);
+    static native void onCreateNative(OnCreateNativeParams params);
 
     static native void onResumeNative(OnResumeNativeParams params);
 
@@ -380,14 +383,13 @@ public class OvrActivity extends Activity {
     }
 
     @SuppressWarnings("unused")
-    public void onServerConnected() {
+    public void onStreamStart() {
         if (mDecoderThread != null) {
             mDecoderThread.onDisconnect();
         }
         mDecoderThread = new DecoderThread(mStreamSurface, mDecoderCallbacks, mCodec);
 
-        mWebViewVisible = false;
-        mStreaming = true;
+        setWebViewVisible(false);
     }
 
     @SuppressWarnings("unused")
@@ -408,15 +410,13 @@ public class OvrActivity extends Activity {
         }
     }
 
-    @SuppressWarnings("unused")
-    public void onServerDisconnected(boolean restarting) {
+    public void onStreamStop(boolean restarting) {
         if (restarting) {
             mMainHandler.post(() -> mWebView.setMessage("Server is restarting, please wait."));
         } else {
             mMainHandler.post(() -> mWebView.setMessage("Server disconnected."));
         }
-        mStreaming = false;
-        mWebViewVisible = true;
+        setWebViewVisible(true);
 
         if (mDecoderThread != null) {
             mDecoderThread.onDisconnect();
@@ -470,8 +470,8 @@ public class OvrActivity extends Activity {
         });
     }
 
-    @SuppressWarnings("unused")
-    public void setWebViewVisibility(boolean visible) {
+    public void setWebViewVisible(boolean visible) {
+        // detach webview from view tree when not needed
         if (visible && !mWebViewVisible) {
             this.addContentView(mWebView, new ViewGroup.LayoutParams(WEBVIEW_WIDTH, WEBVIEW_HEIGHT));
         } else if (!visible && mWebViewVisible) {
@@ -481,4 +481,3 @@ public class OvrActivity extends Activity {
         mWebViewVisible = visible;
     }
 }
-

@@ -663,16 +663,17 @@ void ovrProgram_Destroy(ovrProgram *program) {
 // ovrRenderer
 //
 
-void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, int SurfaceTextureID,
-                        int LoadingTexture, int webViewSurfaceTexture,
+void ovrRenderer_Create(ovrRenderer *renderer, int width, int height,
+                        gl_render_utils::Texture *streamTexture,
+                        gl_render_utils::Texture *webViewTexture,
                         std::function<void(InteractionType, glm::vec2)> webViewInteractionCallback,
                         FFRData ffrData) {
     renderer->NumBuffers = VRAPI_FRAME_LAYER_EYE_MAX;
 
     renderer->enableFFR = ffrData.enabled;
     if (renderer->enableFFR) {
-        renderer->ffrSourceTexture = std::make_unique<gl_render_utils::Texture>(SurfaceTextureID, true);
-        renderer->ffr = std::make_unique<FFR>(renderer->ffrSourceTexture.get());
+        renderer->ffrSourceTexture = streamTexture;
+        renderer->ffr = std::make_unique<FFR>(streamTexture);
         renderer->ffr->Initialize(ffrData);
     }
 
@@ -683,15 +684,14 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, int Surfac
     }
 #endif
 
-    renderer->SurfaceTextureID = SurfaceTextureID;
-    renderer->LoadingTexture = LoadingTexture;
+    renderer->SurfaceTextureID = streamTexture->GetGLTexture();
     renderer->SceneCreated = false;
     renderer->loadingScene = new GltfModel();
     renderer->loadingScene->load();
     renderer->gui = std::make_unique<VRGUI>();
-    renderer->webViewTexture = std::make_unique<gl_render_utils::Texture>(webViewSurfaceTexture, true);
+    renderer->webViewTexture = webViewTexture;
     renderer->webViewPanel = std::make_unique<InteractivePanel>(
-            renderer->webViewTexture.get(), 2, 1.5, glm::vec3(0, -WORLD_VERTICAL_OFFSET, -1.5),
+            webViewTexture, 2, 1.5, glm::vec3(0, -WORLD_VERTICAL_OFFSET, -1.5),
             0, 0, webViewInteractionCallback);
     renderer->gui->AddPanel(renderer->webViewPanel.get());
 }
@@ -735,7 +735,7 @@ void ovrRenderer_Destroy(ovrRenderer *renderer) {
 #ifdef OVR_SDK
 
 ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,
-                                                   bool loading, bool showDashboard) {
+                                                   bool streaming, bool showDashboard) {
     if (renderer->enableFFR) {
         renderer->ffr->Render();
     }
@@ -779,7 +779,7 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
         Recti viewport = {0, 0, (int)frameBuffer->renderTargets[0]->GetWidth(),
                           (int)frameBuffer->renderTargets[0]->GetHeight()};
 
-        renderEye(eye, mvpMatrix, &viewport, renderer, loading);
+        renderEye(eye, mvpMatrix, &viewport, renderer, streaming);
 
         if (showDashboard) {
             frameBuffer->renderStates[frameBuffer->TextureSwapChainIndex]->ClearDepth();
@@ -803,8 +803,8 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
 #endif
 
 void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *renderer,
-               bool loading) {
-    if (loading) {
+               bool streaming) {
+    if (!streaming) {
         GL(glUseProgram(renderer->ProgramLoading.Program));
         if (renderer->ProgramLoading.UniformLocation[UNIFORM_VIEW_ID] >=
             0)  // NOTE: will not be present when multiview path is enabled.
@@ -828,7 +828,7 @@ void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *
     GL(glViewport(viewport->x, viewport->y, viewport->width, viewport->height));
     GL(glScissor(viewport->x, viewport->y, viewport->width, viewport->height));
 
-    if (loading) {
+    if (!streaming) {
         // For drawing back frace of the sphere in gltf
         GL(glDisable(GL_CULL_FACE));
         GL(glClearColor(0.88f, 0.95f, 0.95f, 1.0f));

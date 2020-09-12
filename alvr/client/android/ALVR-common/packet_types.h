@@ -2,6 +2,7 @@
 #define ALVRCLIENT_PACKETTYPES_H
 #include <stdint.h>
 #include <assert.h>
+#include "bindings.h"
 
 // Maximum UDP packet size (payload size in bytes)
 static const int ALVR_MAX_PACKET_SIZE = 1400;
@@ -164,13 +165,6 @@ enum ALVR_HAND_CONFIDENCE {
 #define ALVR_BUTTON_FLAG(input) (1ULL << input)
 
 #pragma pack(push, 1)
-// Represent FOV for each eye in degree.
-struct EyeFov {
-	float left;
-	float right;
-	float top;
-	float bottom;
-};
 // hello message
 struct HelloMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_HELLO_MESSAGE

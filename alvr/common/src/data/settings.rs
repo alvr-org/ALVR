@@ -124,7 +124,7 @@ pub struct VideoDesc {
     pub adapter_index: i32,
 
     #[schema(advanced)]
-    pub refresh_rate: Option<u32>,
+    pub fps: Option<u32>,
 
     // Dropdown with 25%, 50%, 75%, 100%, 125%, 150% etc or custom
     // Should set renderResolution (always in scale mode).
@@ -140,7 +140,7 @@ pub struct VideoDesc {
     pub recommended_target_resolution: FrameSize,
 
     #[schema(advanced)]
-    pub eyes_fov: Option<[Fov; 2]>,
+    pub left_eye_fov: Option<Fov>,
 
     #[schema(advanced)]
     pub seconds_from_vsync_to_photons: f32,
@@ -155,8 +155,6 @@ pub struct VideoDesc {
 
     #[schema(min = 1, max = 250)]
     pub encode_bitrate_mbs: u64,
-
-    pub force_60hz: bool,
 
     #[schema(advanced, min = 5, max = 1000)]
     pub keyframe_resend_interval_ms: u64,
@@ -333,7 +331,7 @@ pub fn session_settings_default() -> SettingsDefault {
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
-            refresh_rate: OptionalDefault {
+            fps: OptionalDefault {
                 set: false,
                 content: 72,
             },
@@ -353,22 +351,14 @@ pub fn session_settings_default() -> SettingsDefault {
                     height: 1600,
                 },
             },
-            eyes_fov: OptionalDefault {
+            left_eye_fov: OptionalDefault {
                 set: false,
-                content: [
-                    FovDefault {
-                        left: 52.,
-                        right: 42.,
-                        top: 53.,
-                        bottom: 47.,
-                    },
-                    FovDefault {
-                        left: 42.,
-                        right: 52.,
-                        top: 53.,
-                        bottom: 47.,
-                    },
-                ],
+                content: FovDefault {
+                    left: 52.,
+                    right: 42.,
+                    top: 53.,
+                    bottom: 47.,
+                },
             },
             seconds_from_vsync_to_photons: 0.005,
             ipd: 0.063,
@@ -394,7 +384,6 @@ pub fn session_settings_default() -> SettingsDefault {
                 variant: CodecTypeDefaultVariant::H264,
             },
             encode_bitrate_mbs: 30,
-            force_60hz: false,
             keyframe_resend_interval_ms: 100,
             stream_mode: StreamModeDefault {
                 variant: StreamModeDefaultVariant::PreferReliable,

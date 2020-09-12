@@ -49,7 +49,7 @@ pub struct OpenvrConfig {
     pub headset_registered_device_type: String,
     pub eye_resolution: (u32, u32),
     pub target_eye_resolution: (u32, u32),
-    pub eyes_fov: [Fov; 2],
+    pub left_eye_fov: Fov,
     pub seconds_from_vsync_to_photons: f32,
     pub ipd: f32,
     pub adapter_index: i32,
@@ -100,12 +100,6 @@ pub struct SessionDesc {
 
 impl Default for SessionDesc {
     fn default() -> Self {
-        let fov_default = Fov {
-            left: 45_f32,
-            right: 45_f32,
-            top: 45_f32,
-            bottom: 45_f32,
-        };
         Self {
             setup_wizard: true,
             openvr_config: OpenvrConfig {
@@ -118,7 +112,12 @@ impl Default for SessionDesc {
                 headset_registered_device_type: "oculus/1WMGH000XX0000".into(),
                 eye_resolution: (960, 1080),
                 target_eye_resolution: (960, 1080),
-                eyes_fov: [fov_default.clone(), fov_default],
+                left_eye_fov: Fov {
+                    left: 45_f32,
+                    right: 45_f32,
+                    top: 45_f32,
+                    bottom: 45_f32,
+                },
                 seconds_from_vsync_to_photons: 0.005,
                 ipd: 0.063,
                 adapter_index: 0,

@@ -52,19 +52,11 @@ public class OvrActivity extends Activity {
 
     static class OnCreateNativeParams {
         // input:
-        Activity javaParent;
         AssetManager assetManager;
 
         //output:
         int streamSurfaceHandle;
         int webviewSurfaceHandle;
-    }
-
-    static class OnResumeNativeParams {
-        String hostname;
-        String certificatePEM;
-        String privateKey;
-        Surface screenSurface;
     }
 
     class RenderingCallbacks implements SurfaceHolder.Callback {
@@ -101,7 +93,6 @@ public class OvrActivity extends Activity {
         }
     }
 
-    PrivateIdentity mIdentity = null;
     boolean mResumed = false;
     Handler mMainHandler = null;
     Handler mRenderingHandler = null;
@@ -117,15 +108,13 @@ public class OvrActivity extends Activity {
     DecoderThread.DecoderCallback mDecoderCallbacks = new DecoderCallbacks();
     int mCodec = 0;
     long mPreviousRender = 0;
-    float mRefreshRate = 60;
+    float mRefreshRate = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        initNativeRuntime();
-
-        mIdentity = this.getCertificate();
+        initNativeLogging();
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -150,32 +139,8 @@ public class OvrActivity extends Activity {
         requestAudioPermissions();
     }
 
-    PrivateIdentity getCertificate() {
-        PrivateIdentity id = new PrivateIdentity();
-
-        SharedPreferences prefs = this.getSharedPreferences("pref", Context.MODE_PRIVATE);
-
-        id.hostname = prefs.getString("hostname", "");
-        id.certificatePEM = prefs.getString("certificate", "");
-        id.privateKey = prefs.getString("private-key", "");
-
-        if (Objects.equals(id.hostname, "") || Objects.equals(id.certificatePEM, "") || Objects.equals(id.privateKey, "")) {
-            createIdentity(id);
-
-            SharedPreferences.Editor editor = prefs.edit();
-            editor.putString("hostname", id.hostname);
-            editor.putString("certificate", id.certificatePEM);
-            editor.putString("private-key", id.privateKey);
-
-            editor.apply();
-        }
-
-        return id;
-    }
-
     public void startup() {
         OnCreateNativeParams params = new OnCreateNativeParams();
-        params.javaParent = this;
         params.assetManager = this.getAssets();
 
         // this call initializes a GL context, and this must be done within the scope of the
@@ -246,6 +211,29 @@ public class OvrActivity extends Activity {
         }
     }
 
+    PrivateIdentity getCertificate() {
+        PrivateIdentity id = new PrivateIdentity();
+
+        SharedPreferences prefs = this.getSharedPreferences("pref", Context.MODE_PRIVATE);
+
+        id.hostname = prefs.getString("hostname", "");
+        id.certificatePEM = prefs.getString("certificate", "");
+        id.privateKey = prefs.getString("private-key", "");
+
+        if (Objects.equals(id.hostname, "") || Objects.equals(id.certificatePEM, "") || Objects.equals(id.privateKey, "")) {
+            createIdentity(id);
+
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putString("hostname", id.hostname);
+            editor.putString("certificate", id.certificatePEM);
+            editor.putString("private-key", id.privateKey);
+
+            editor.apply();
+        }
+
+        return id;
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -263,14 +251,10 @@ public class OvrActivity extends Activity {
                 // To avoid deadlock caused by it, we need to flush last output.
                 mStreamSurfaceTexture.updateTexImage();
 
-                OnResumeNativeParams params = new OnResumeNativeParams();
-                params.hostname = mIdentity.hostname;
-                params.certificatePEM = mIdentity.certificatePEM;
-                params.privateKey = mIdentity.privateKey;
-                params.screenSurface = mScreenSurface;
+                PrivateIdentity id = this.getCertificate();
 
                 // initialize Ovr, enable vr mode, startup sockets
-                onResumeNative(params);
+                mRefreshRate = onResumeNative(id.hostname, id.certificatePEM, id.privateKey, mScreenSurface);
             });
             mRenderingHandler.postDelayed(this::render, 13);
         }
@@ -349,13 +333,13 @@ public class OvrActivity extends Activity {
 
     // Java to Rust:
 
-    static native void initNativeRuntime();
+    static native void initNativeLogging();
 
     static native void createIdentity(PrivateIdentity id); // id fields are reset
 
     static native void onCreateNative(OnCreateNativeParams params);
 
-    static native void onResumeNative(OnResumeNativeParams params);
+    static native float onResumeNative(String hostname, String certificatePEM, String privateKey, Surface screenSurface); // returns default framerate
 
     static native void renderNative(boolean streaming, long frameIdx);
 

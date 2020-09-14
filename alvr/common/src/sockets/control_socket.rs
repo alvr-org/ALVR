@@ -93,7 +93,7 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
     }
 
     pub async fn connect_to_server(
-        headset_info: HeadsetInfoPacket,
+        headset_info: &HeadsetInfoPacket,
         hostname: String,
         certificate_pem: String,
     ) -> StrResult<(Self, ClientConfigPacket)> {

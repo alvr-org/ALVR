@@ -70,6 +70,7 @@ dependencies = [
  "lazy_static",
  "ndk",
  "parking_lot",
+ "serde_json",
  "tokio",
  "walkdir",
 ]

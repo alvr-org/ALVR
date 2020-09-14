@@ -122,7 +122,7 @@ namespace {
 
 OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     auto *env = (JNIEnv *) v_env;
-    auto activity = (jobject) v_activity;
+    auto activity = (jclass) v_activity;
     auto assetManager = (jobject) v_assetManager;
 
     LOG("Initializing EGL.");
@@ -173,41 +173,10 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
 
 //    memset(mHapticsState, 0, sizeof(mHapticsState));
 
-
-    auto resultData = OnCreateResult();
-
-    auto ovrDeviceType = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DEVICE_TYPE);
-    if (VRAPI_DEVICE_TYPE_OCULUSQUEST_START <= ovrDeviceType &&
-        ovrDeviceType <= VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
-        resultData.deviceType = DeviceType::OCULUS_QUEST;
-    } else if (ovrDeviceType > VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
-        resultData.deviceType = DeviceType::OCULUS_QUEST_NEXT;
-    }
-
-    resultData.recommendedEyeWidth = vrapi_GetSystemPropertyInt(&g_ctx.java,
-                                                                VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH);
-    resultData.recommendedEyeHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
-                                                                 VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT);
-    g_ctx.defaultRenderWidth = resultData.recommendedEyeWidth;
-    g_ctx.defaultRenderHeight = resultData.recommendedEyeHeight;
-
-    resultData.refreshRatesCount = vrapi_GetSystemPropertyInt(&g_ctx.java,
-                                                              VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
-    vrapi_GetSystemPropertyFloatArray(&g_ctx.java, VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
-                                      resultData.refreshRates, resultData.refreshRatesCount);
-    // choose highest supported refresh rate as default
-    for (int i = 0; i < resultData.refreshRatesCount; i++) {
-        if (resultData.refreshRates[i] > resultData.defaultRefreshRate) {
-            resultData.defaultRefreshRate = resultData.refreshRates[i];
-        }
-    }
-
-    // default fov cannot be queried now (?) so Rust chooses some constants based on deviceType.
-
-    return resultData;
+    return {(int) g_ctx.streamTexture->GetGLTexture(), (int) g_ctx.webViewTexture->GetGLTexture()};
 }
 
-void onResume(void *v_env, void *v_surface) {
+OnResumeResult onResume(void *v_env, void *v_surface) {
     auto *env = (JNIEnv *) v_env;
     auto surface = (jobject) v_surface;
 
@@ -228,7 +197,6 @@ void onResume(void *v_env, void *v_surface) {
 
     if (g_ctx.Ovr == nullptr) {
         LOGE("Invalid ANativeWindow");
-        return;
     }
 
     {
@@ -254,6 +222,43 @@ void onResume(void *v_env, void *v_surface) {
     //    I/VrApi: FPS=71,Prd=76ms,Tear=0,Early=66,Stale=0,VSnc=1,Lat=1,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/N/N,Mem=1804MHz,Free=906MB,PSM=0,PLS=0,Temp=38.0C/0.0C,TW=1.93ms,App=1.46ms,GD=0.00ms
     // We need to set ExtraLatencyMode On to workaround for this issue.
     vrapi_SetExtraLatencyMode(g_ctx.Ovr, VRAPI_EXTRA_LATENCY_MODE_OFF);
+
+
+    auto resultData = OnResumeResult();
+
+    auto ovrDeviceType = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DEVICE_TYPE);
+    if (VRAPI_DEVICE_TYPE_OCULUSQUEST_START <= ovrDeviceType &&
+        ovrDeviceType <= VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
+        resultData.deviceType = DeviceType::OCULUS_QUEST;
+    } else if (ovrDeviceType > VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
+        resultData.deviceType = DeviceType::OCULUS_QUEST_2;
+    } else {
+        resultData.deviceType = DeviceType::UNKNOWN;
+    }
+
+    resultData.recommendedEyeWidth = vrapi_GetSystemPropertyInt(&g_ctx.java,
+                                                                VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH);
+    resultData.recommendedEyeHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
+                                                                 VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT);
+    g_ctx.defaultRenderWidth = resultData.recommendedEyeWidth;
+    g_ctx.defaultRenderHeight = resultData.recommendedEyeHeight;
+
+    resultData.refreshRatesCount = vrapi_GetSystemPropertyInt(&g_ctx.java,
+                                                              VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
+    vrapi_GetSystemPropertyFloatArray(&g_ctx.java, VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
+                                      resultData.refreshRates, resultData.refreshRatesCount);
+
+    // choose highest supported refresh rate as default
+    for (int i = 0; i < resultData.refreshRatesCount; i++) {
+        if (resultData.refreshRates[i] > resultData.defaultRefreshRate) {
+            resultData.defaultRefreshRate = resultData.refreshRates[i];
+        }
+    }
+    g_ctx.defaultRefreshRate = resultData.defaultRefreshRate;
+
+    // default fov cannot be queried now (?) so Rust chooses some constants based on deviceType.
+
+    return resultData;
 }
 
 void onStreamStart(OnStreamStartParams params) {
@@ -282,7 +287,7 @@ void onStreamStart(OnStreamStartParams params) {
     }
 }
 
-void render(bool streaming, uint64_t renderedFrameIndex) {
+void render(bool streaming, long long renderedFrameIndex) {
     if (streaming) {
         LatencyCollector::Instance().rendered1(renderedFrameIndex);
         FrameLog(renderedFrameIndex, "Got frame for render.");
@@ -305,7 +310,7 @@ void render(bool streaming, uint64_t renderedFrameIndex) {
             } else {
                 // No matching tracking info. Too old frame.
                 LOG("Too old frame has arrived. Instead, we use most old tracking data in trackingFrameMap."
-                    "FrameIndex=%lu trackingFrameMap=(%lu - %lu)",
+                    "FrameIndex=%lld trackingFrameMap=(%lu - %lu)",
                     renderedFrameIndex, oldestFrame, mostRecentFrame);
                 if (!g_ctx.trackingFrameMap.empty())
                     frame = g_ctx.trackingFrameMap.cbegin()->second;
@@ -319,7 +324,8 @@ void render(bool streaming, uint64_t renderedFrameIndex) {
 
 // Render eye images and setup the primary layer using ovrTracking2.
         const ovrLayerProjection2 worldLayer =
-                ovrRenderer_RenderFrame(g_ctx.renderer.get(), &frame->tracking, true, g_ctx.mShowDashboard);
+                ovrRenderer_RenderFrame(g_ctx.renderer.get(), &frame->tracking, true,
+                                        g_ctx.mShowDashboard);
 
         LatencyCollector::Instance().rendered2(renderedFrameIndex);
 
@@ -357,7 +363,8 @@ void render(bool streaming, uint64_t renderedFrameIndex) {
         ovrTracking2 headTracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, displayTime);
 
         const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(g_ctx.renderer.get(),
-                                                                       &headTracking, false, g_ctx.mShowDashboard);
+                                                                       &headTracking, false,
+                                                                       g_ctx.mShowDashboard);
 
         const ovrLayerHeader2 *layers[] =
                 {
@@ -1189,18 +1196,13 @@ void onStreamStop() {
     }
 }
 
-void onPause(void *v_env) {
-    auto *env = (JNIEnv *) v_env;
-
-
-
-
-//    ovrRenderer_Destroy(&Renderer);
-
+void onPause() {
     ANativeWindow_release(g_ctx.window);
 }
 
-void onDestroy(JNIEnv *env) {
+void onDestroy(void *v_env) {
+    auto *env = (JNIEnv *) v_env;
+
     LOG("Destroying EGL.");
 
     vrapi_Shutdown();

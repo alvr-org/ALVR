@@ -155,14 +155,21 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
             key_pem: trace_err!(env.get_string(jprivate_key))?.into(),
         };
 
-        let (on_pause_notifier, _) = broadcast::channel(1);
-
+        let (on_pause_notifier, mut on_pause_receiver) = broadcast::channel(1);
         let runtime = trace_err!(Runtime::new())?;
-        runtime.spawn(connection::connection_loop(
-            headset_info,
-            private_identity,
-            on_pause_notifier.clone(),
-        ));
+
+        runtime.spawn({
+            let on_pause_notifier = on_pause_notifier.clone();
+            async move {
+                let connection_loop =
+                    connection::connection_loop(headset_info, private_identity, on_pause_notifier);
+
+                tokio::select! {
+                    _ = connection_loop => (),
+                    _ = on_pause_receiver.recv() => ()
+                };
+            }
+        });
 
         *MAYBE_RUNTIME.lock() = Some(runtime);
         *MAYBE_ON_PAUSE_NOTIFIER.lock() = Some(on_pause_notifier);

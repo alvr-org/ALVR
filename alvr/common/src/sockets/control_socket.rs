@@ -73,7 +73,7 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
             return Ok(None);
         } else {
             let response_bytes = trace_err!(bincode::serialize(&HandshakeClientResponse::Ok {
-                headset_info: headset_info.clone(),
+                headset_info,
                 server_ip: server_address.ip(),
             }))?;
             trace_err!(socket.send(response_bytes.into()).await)?;

@@ -71,6 +71,7 @@ dependencies = [
  "ndk",
  "parking_lot",
  "serde_json",
+ "settings-schema",
  "tokio",
  "walkdir",
 ]

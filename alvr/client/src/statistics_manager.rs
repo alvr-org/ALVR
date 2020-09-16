@@ -7,11 +7,11 @@ impl StatisticsManager {
         Self {}
     }
 
-    pub fn reportFrameToBeDecoded(&mut self, idx: i64) {
+    pub fn report_frame_to_be_decoded(&mut self, idx: i64) {
         todo!()
     }
 
-    pub fn reportDecodedFrame(&mut self, idx: i64) {
+    pub fn report_decoded_frame(&mut self, idx: i64) {
         todo!()
     }
 

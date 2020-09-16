@@ -50,11 +50,7 @@ public class OvrActivity extends Activity {
         String privateKey;
     }
 
-    static class OnCreateNativeParams {
-        // input:
-        AssetManager assetManager;
-
-        //output:
+    static class OnCreateNativeOutParams {
         int streamSurfaceHandle;
         int webviewSurfaceHandle;
     }
@@ -140,12 +136,10 @@ public class OvrActivity extends Activity {
     }
 
     public void startup() {
-        OnCreateNativeParams params = new OnCreateNativeParams();
-        params.assetManager = this.getAssets();
-
         // this call initializes a GL context, and this must be done within the scope of the
         // rendering handler, so successive rendering calls don't fail.
-        onCreateNative(params);
+        OnCreateNativeOutParams params = new OnCreateNativeOutParams();
+        onCreateNative(this.getAssets(), params);
 
         mStreamSurfaceTexture = new SurfaceTexture(params.streamSurfaceHandle);
         mStreamSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
@@ -337,15 +331,21 @@ public class OvrActivity extends Activity {
 
     static native void createIdentity(PrivateIdentity id); // id fields are reset
 
-    static native void onCreateNative(OnCreateNativeParams params);
+    static native void onCreateNative(AssetManager assetManager, OnCreateNativeOutParams outParams);
 
     static native float onResumeNative(String hostname, String certificatePEM, String privateKey, Surface screenSurface); // returns default framerate
+
+    // this callback is needed to call C++ code inside the gl context using the rendering handler
+    static native float onStreamStartNative();
 
     static native void renderNative(boolean streaming, long frameIdx);
 
     static native void onFrameInputNative(long frameIdx); // only for statistics
 
     static native void onFrameOutputNative(long frameIdx); // only for statistics
+
+    // this callback is needed to call C++ code inside the gl context using the rendering handler
+    static native float onStreamStopNative();
 
     static native void onPauseNative();
 
@@ -355,19 +355,21 @@ public class OvrActivity extends Activity {
 
     @SuppressLint("SetJavaScriptEnabled")
     @SuppressWarnings("unused")
-    public void onServerFound(boolean isCompatible, String url, String incompatibleMessage, int codec) {
+    public void onServerFound(boolean isCompatible, String url, int codec) {
         if (isCompatible) {
             mDashboardURL = url;
+            mCodec = codec;
+
             mMainHandler.post(() -> mWebView.setMessage("Server found, the stream will begin shortly"));
         } else {
             mMainHandler.post(() -> mWebView.setMessage("Found unsupported server. Make sure the client and the server are up to date."));
         }
-
-        mCodec = codec;
     }
 
     @SuppressWarnings("unused")
     public void onStreamStart() {
+        mRenderingHandler.post(OvrActivity::onStreamStartNative);
+
         if (mDecoderThread != null) {
             mDecoderThread.onDisconnect();
         }
@@ -406,6 +408,8 @@ public class OvrActivity extends Activity {
             mDecoderThread.onDisconnect();
             mDecoderThread = null;
         }
+
+        mRenderingHandler.post(OvrActivity::onStreamStopNative);
     }
 
     @SuppressWarnings("unused")

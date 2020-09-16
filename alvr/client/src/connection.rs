@@ -11,8 +11,10 @@ async fn try_connect(
     headset_info: &HeadsetInfoPacket,
     private_identity: &PrivateIdentity,
     on_pause_notifier: broadcast::Sender<()>,
+    java_vm: &JavaVM,
+    activity_ref: &GlobalRef,
 ) -> StrResult {
-    let (mut control_socket, client_config) = trace_err!(
+    let maybe_connection_res = trace_err!(
         ControlSocket::connect_to_server(
             &headset_info,
             private_identity.hostname.clone(),
@@ -21,9 +23,51 @@ async fn try_connect(
         .await
     )?;
 
+    let (mut control_socket, client_config) = if let Some(pair) = maybe_connection_res {
+        pair
+    } else {
+        // Note: env = java_vm.attach_current_thread() cannot be saved into a variable because it is
+        // not Send (compile error). This makes sense since tokio could move the execution of this
+        // task to another thread at any time, and env is valid only within a specific thread. For
+        // the same reason, other jni objects cannot be made into variables and the arguments must
+        // be created inline within the call_method() call
+        trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
+            activity_ref,
+            "onServerFound",
+            "(ZLjava/lang/String;I)V",
+            &[
+                false.into(),
+                trace_err!(trace_err!(java_vm.attach_current_thread())?.new_string(""))?.into(),
+                0_i32.into(),
+            ],
+        ))?;
+
+        return trace_str!("Found unupported server");
+    };
+
     // todo: go through session representation. this requires settings -> session representation
     // conversion code
     let settings = trace_err!(serde_json::from_value::<Settings>(client_config.settings))?;
+
+    // let server_compatible = settings.
+
+    trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
+        activity_ref,
+        "onServerFound",
+        "(ZLjava/lang/String;I)V",
+        &[
+            true.into(),
+            trace_err!(
+                trace_err!(java_vm.attach_current_thread())?.new_string(client_config.web_gui_url)
+            )?
+            .into(),
+            match settings.video.codec {
+                CodecType::H264 => 0_i32,
+                CodecType::Hevc => 1_i32,
+            }
+            .into()
+        ],
+    ))?;
 
     let mut stream_socket = StreamSocket::connect_to_server(
         control_socket.peer_ip(),
@@ -38,7 +82,7 @@ async fn try_connect(
         .request_stream::<InputPacket>(StreamId::Input, settings.headset.tracking_stream_mode)
         .await?;
 
-    let microphone_sender = if settings.audio.microphone {
+    let maybe_microphone_sender = if settings.audio.microphone {
         Some(
             stream_socket
                 .request_stream::<AudioPacket>(
@@ -103,8 +147,41 @@ async fn try_connect(
 
     // todo: send guardian here
 
+    let mut foveation_enabled = false;
+    let mut foveation_strength = 0_f32;
+    let mut foveation_shape = 0_f32;
+    let mut foveation_vertical_offset = 0_f32;
+    if let Switch::Enabled(foveation_vars) = settings.video.foveated_rendering {
+        foveation_enabled = true;
+        foveation_strength = foveation_vars.strength;
+        foveation_shape = foveation_vars.shape;
+        foveation_vertical_offset = foveation_vars.vertical_offset;
+    }
+
+    *ON_STREAM_START_PARAMS_TEMP.lock() = Some(OnStreamStartParams {
+        eyeWidth: client_config.eye_resolution.0 as _,
+        eyeHeight: client_config.eye_resolution.1 as _,
+        leftEyeFov: EyeFov {
+            left: client_config.left_eye_fov.left,
+            right: client_config.left_eye_fov.right,
+            top: client_config.left_eye_fov.top,
+            bottom: client_config.left_eye_fov.bottom,
+        },
+        foveationEnabled: foveation_enabled,
+        foveationStrength: foveation_strength,
+        foveationShape: foveation_shape,
+        foveationVerticalOffset: foveation_vertical_offset,
+        enableMicrophone: settings.audio.microphone,
+    });
+
+    trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
+        activity_ref,
+        "onStreamStart",
+        "()V",
+        &[],
+    ))?;
+
     let last_statistics_send_time = Instant::now() - STATISTICS_SEND_INTERVAL;
-    let last_input_time = Instant::now();
     loop {
         let input_loop_deadline = time::Instant::now() + INPUT_SEND_INTERVAL;
 
@@ -121,7 +198,34 @@ async fn try_connect(
             )?;
         }
 
-        time::delay_until(input_loop_deadline).await;
+        tokio::select! {
+            maybe_packet = control_socket.recv() => {
+                match trace_err!(maybe_packet)? {
+                    ServerControlPacket::Restarting => {
+                        trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
+                            activity_ref,
+                            "onStreamStop",
+                            "(Z)V",
+                            &[true.into()],
+                        ))?;
+
+                        break Ok(());
+                    }
+                    ServerControlPacket::Shutdown => {
+                        trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
+                            activity_ref,
+                            "onStreamStop",
+                            "(Z)V",
+                            &[false.into()],
+                        ))?;
+
+                        break Ok(());
+                    }
+                    ServerControlPacket::Reserved(_) => ()
+                }
+            }
+            _ = time::delay_until(input_loop_deadline) => ()
+        }
     }
 }
 
@@ -129,9 +233,21 @@ pub async fn connection_loop(
     headset_info: HeadsetInfoPacket,
     private_identity: PrivateIdentity,
     on_pause_notifier: broadcast::Sender<()>,
+    java_vm: JavaVM,
+    activity_ref: GlobalRef,
 ) {
+    // this loop has no exit, but the execution can be halted by the caller with tokio::select!{}
     loop {
-        show_err(try_connect(&headset_info, &private_identity, on_pause_notifier.clone()).await)
-            .ok();
+        show_err(
+            try_connect(
+                &headset_info,
+                &private_identity,
+                on_pause_notifier.clone(),
+                &java_vm,
+                &activity_ref,
+            )
+            .await,
+        )
+        .ok();
     }
 }

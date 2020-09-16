@@ -92,11 +92,12 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
         )))
     }
 
+    // Return Some if server is compatible, otherwise return None
     pub async fn connect_to_server(
         headset_info: &HeadsetInfoPacket,
         hostname: String,
         certificate_pem: String,
-    ) -> StrResult<(Self, ClientConfigPacket)> {
+    ) -> StrResult<Option<(Self, ClientConfigPacket)>> {
         let mut handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;
         trace_err!(handshake_socket.join_multicast_v4(MULTICAST_ADDR, Ipv4Addr::UNSPECIFIED))?;
         trace_err!(
@@ -125,9 +126,8 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
             )
             .await
             {
-                Ok(Some(pair)) => break Ok(pair),
+                Ok(maybe_pair) => break Ok(maybe_pair),
                 Err(e) => warn!("Error while connecting to server: {}", e),
-                Ok(None) => (),
             }
         }
     }

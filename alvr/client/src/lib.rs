@@ -1,3 +1,5 @@
+#![allow(non_upper_case_globals, non_snake_case)]
+
 mod connection;
 mod logging_backend;
 mod statistics_manager;
@@ -17,6 +19,7 @@ lazy_static! {
     static ref MAYBE_INPUT_SENDER: Mutex<Option<StreamSender<VideoPacket>>> = Mutex::new(None);
     static ref MAYBE_MICROPHONE_SENDER: Mutex<Option<StreamSender<AudioPacket>>> = Mutex::new(None);
     static ref STATISTICS: Mutex<StatisticsManager> = Mutex::new(StatisticsManager::new());
+    static ref ON_STREAM_START_PARAMS_TEMP: Mutex<Option<OnStreamStartParams>> = Mutex::new(None);
 }
 
 #[no_mangle]
@@ -52,16 +55,10 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_createIdentity(
 pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNative(
     env: JNIEnv,
     jactivity: JClass,
-    jparams: JObject,
+    jasset_manager: JObject,
+    jout_params: JObject,
 ) {
     show_err(|| -> StrResult {
-        let jasset_manager = trace_err!(env.get_field(
-            jparams,
-            "assetManager",
-            "Landroid/content/res/AssetManager;"
-        ))?;
-        let jasset_manager = trace_err!(jasset_manager.l())?;
-
         let result: OnCreateResult = unsafe {
             onCreate(
                 env.get_native_interface() as _,
@@ -71,13 +68,13 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNative(
         };
 
         trace_err!(env.set_field(
-            jparams,
+            jout_params,
             "streamSurfaceHandle",
             "I",
             result.surfaceTextureHandle.into()
         ))?;
         trace_err!(env.set_field(
-            jparams,
+            jout_params,
             "webviewSurfaceHandle",
             "I",
             result.webViewSurfaceHandle.into()
@@ -89,13 +86,16 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNative(
 #[no_mangle]
 pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
     env: JNIEnv,
-    _: JClass,
+    jactivity: JClass,
     jhostname: JString,
     jcertificate_pem: JString,
     jprivate_key: JString,
     jscreen_surface: JObject,
 ) -> f32 {
     show_err(|| -> StrResult<f32> {
+        let java_vm = trace_err!(env.get_java_vm())?;
+        let activity_ref = trace_err!(env.new_global_ref(jactivity))?;
+
         let result = unsafe { onResume(env.get_native_interface() as _, *jscreen_surface as _) };
 
         let device_name = if result.deviceType == DeviceType_OCULUS_QUEST {
@@ -161,8 +161,13 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
         runtime.spawn({
             let on_pause_notifier = on_pause_notifier.clone();
             async move {
-                let connection_loop =
-                    connection::connection_loop(headset_info, private_identity, on_pause_notifier);
+                let connection_loop = connection::connection_loop(
+                    headset_info,
+                    private_identity,
+                    on_pause_notifier,
+                    java_vm,
+                    activity_ref,
+                );
 
                 tokio::select! {
                     _ = connection_loop => (),
@@ -177,6 +182,16 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
         Ok(result.defaultRefreshRate)
     }())
     .unwrap()
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(
+    _: JNIEnv,
+    _: JClass,
+) {
+    if let Some(params) = ON_STREAM_START_PARAMS_TEMP.lock().take() {
+        unsafe { onStreamStart(params) };
+    }
 }
 
 #[no_mangle]
@@ -195,7 +210,7 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onFrameInputNative
     _: JClass,
     frame_idx: i64,
 ) {
-    STATISTICS.lock().reportFrameToBeDecoded(frame_idx);
+    STATISTICS.lock().report_frame_to_be_decoded(frame_idx);
 }
 
 #[no_mangle]
@@ -204,7 +219,15 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onFrameOutputNativ
     _: JClass,
     frame_idx: i64,
 ) {
-    STATISTICS.lock().reportDecodedFrame(frame_idx);
+    STATISTICS.lock().report_decoded_frame(frame_idx);
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative(
+    _: JNIEnv,
+    _: JClass,
+) {
+    unsafe { onStreamStop() };
 }
 
 #[no_mangle]

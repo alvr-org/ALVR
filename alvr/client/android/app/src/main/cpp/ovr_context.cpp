@@ -82,6 +82,8 @@ public:
 
     unique_ptr<ovrRenderer> renderer = nullptr;
 
+    unique_ptr<SoundPlayer> soundPlayer = nullptr;
+
     ovrMicrophoneHandle mMicHandle = nullptr;
     std::vector<int16_t> micBuffer;
     size_t mMicMaxElements;
@@ -309,6 +311,14 @@ void onStreamStart(OnStreamStartParams params) {
                         params.leftEyeFov, params.foveationStrength, params.foveationShape,
                         params.foveationVerticalOffset});
     ovrRenderer_CreateScene(g_ctx.renderer.get());
+
+    if (params.enableGameAudio) {
+        g_ctx.soundPlayer = std::make_unique<SoundPlayer>();
+        if (g_ctx.soundPlayer->initialize() != 0) {
+            LOGE("Failed on SoundPlayer initialize.");
+            g_ctx.soundPlayer.reset();
+        }
+    }
 
     if (params.enableMicrophone) {
         g_ctx.mMicHandle = ovr_Microphone_Create();
@@ -916,6 +926,12 @@ TrackingInfo getTrackingInfo() {
     return info;
 }
 
+void enqueueAudio(unsigned char *buf, int len) {
+    if (g_ctx.soundPlayer) {
+        g_ctx.soundPlayer->putData(buf, len);
+    }
+}
+
 // Called TrackingThread. So, we can't use this->env.
 MicAudioFrame getMicData() {
     size_t outputBufferNumElements = ovr_Microphone_GetPCM(g_ctx.mMicHandle, &g_ctx.micBuffer[0],
@@ -982,6 +998,8 @@ void onStreamStop() {
         ovr_Microphone_Destroy(g_ctx.mMicHandle);
         g_ctx.mMicHandle = nullptr;
     }
+
+    g_ctx.soundPlayer.reset();
 
     initRendererForLoadingRoom();
 }

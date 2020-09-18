@@ -306,7 +306,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 let res = sender
                     .send(&HapticsPacket {
                         amplitude,
-                        duration,
+                        duration: Duration::from_secs_f32(duration),
                         frequency,
                         device: if hand == 0 {
                             TrackedDeviceType::LeftController

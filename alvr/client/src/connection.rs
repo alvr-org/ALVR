@@ -4,6 +4,7 @@ use nalgebra::{Point3, Quaternion, UnitQuaternion, Vector3};
 use settings_schema::Switch;
 use std::{
     collections::HashMap,
+    sync::Arc,
     time::{Duration, Instant},
 };
 use tokio::time;
@@ -36,8 +37,8 @@ async fn try_connect(
     headset_info: &HeadsetInfoPacket,
     private_identity: &PrivateIdentity,
     on_stream_stop_notifier: broadcast::Sender<()>,
-    java_vm: &JavaVM,
-    activity_ref: &GlobalRef,
+    java_vm: Arc<JavaVM>,
+    activity_ref: Arc<GlobalRef>,
 ) -> StrResult {
     let maybe_connection_res = trace_err!(
         ControlSocket::connect_to_server(
@@ -57,7 +58,7 @@ async fn try_connect(
         // the same reason, other jni objects cannot be made into variables and the arguments must
         // be created inline within the call_method() call
         trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
-            activity_ref,
+            &*activity_ref,
             "onServerFound",
             "(ZLjava/lang/String;I)V",
             &[
@@ -75,7 +76,7 @@ async fn try_connect(
     let settings = trace_err!(serde_json::from_value::<Settings>(client_config.settings))?;
 
     trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
-        activity_ref,
+        &*activity_ref,
         "onServerFound",
         "(ZLjava/lang/String;I)V",
         &[
@@ -118,20 +119,21 @@ async fn try_connect(
         None
     };
 
-    let mut video_receiver = stream_socket
+    let video_receiver = stream_socket
         .subscribe_to_stream::<VideoPacket>(StreamId::Video())
         .await?;
+    let video_loop = video::receive_and_process_frames_loop(
+        java_vm.clone(),
+        activity_ref.clone(),
+        video_receiver,
+        settings.video.codec,
+    );
     let mut on_stream_stop_receiver = on_stream_stop_notifier.subscribe();
     tokio::spawn(async move {
-        loop {
-            let packet = tokio::select! {
-                Ok(packet) = video_receiver.recv() => packet,
-                _ = on_stream_stop_receiver.recv() => break,
-                else => break,
-            };
-
-            // todo
-        }
+        tokio::select! {
+            _ = show_err_async(video_loop) => (),
+            _ = on_stream_stop_receiver.recv() => (),
+        };
     });
 
     if matches!(settings.audio.game_audio, Switch::Enabled(_)) {
@@ -147,7 +149,7 @@ async fn try_connect(
                     else => break,
                 };
 
-                // todo
+                unsafe { enqueueAudio(packet.buffer.as_ptr() as _, packet.buffer.len() as _) }
             }
         });
     }
@@ -164,12 +166,21 @@ async fn try_connect(
                 else => break,
             };
 
-            // todo
+            unsafe {
+                onHapticsFeedback(
+                    0,
+                    packet.amplitude,
+                    packet.duration.as_secs_f32(),
+                    packet.frequency,
+                    matches!(packet.device, TrackedDeviceType::RightController) as _,
+                )
+            }
         }
     });
 
     {
         // GuardianData contains raw pointers that are not ffi safe. Force it to be treated as safe.
+        // This is needed by tokio.
         unsafe impl Send for GuardianData {}
 
         let data = unsafe { getGuardianInfo() };
@@ -227,11 +238,12 @@ async fn try_connect(
             foveationStrength: foveation_strength,
             foveationShape: foveation_shape,
             foveationVerticalOffset: foveation_vertical_offset,
+            enableGameAudio: matches!(settings.audio.game_audio, Switch::Enabled(_)),
             enableMicrophone: settings.audio.microphone,
             refreshRate: client_config.fps as _,
         });
         trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
-            activity_ref,
+            &*activity_ref,
             "onStreamStart",
             "()V",
             &[],
@@ -431,8 +443,8 @@ async fn try_connect(
                 ],
             };
 
-            if input_sender.send(&input_packet).await.is_err() {
-                stopStream(java_vm, activity_ref, &mut control_socket, false).await?;
+            if show_err(input_sender.send(&input_packet).await).is_err() {
+                stopStream(&*java_vm, &*activity_ref, &mut control_socket, false).await?;
             }
         }
 
@@ -446,16 +458,15 @@ async fn try_connect(
             }
             .to_vec();
 
-            if sender
+            let res = sender
                 .send(&AudioPacket {
                     packet_index: 0,
                     presentation_time: Duration::from_secs(0),
                     buffer,
                 })
-                .await
-                .is_err()
-            {
-                stopStream(java_vm, activity_ref, &mut control_socket, false).await?;
+                .await;
+            if show_err(res).is_err() {
+                stopStream(&*java_vm, &*activity_ref, &mut control_socket, false).await?;
             }
         }
 
@@ -466,7 +477,7 @@ async fn try_connect(
                 .send(ClientControlPacket::Statistics(stats))
                 .await
             {
-                stopStream(java_vm, activity_ref, &mut control_socket, false).await?;
+                stopStream(&*java_vm, &*activity_ref, &mut control_socket, false).await?;
 
                 return trace_str!("{}", e);
             }
@@ -476,10 +487,10 @@ async fn try_connect(
             maybe_packet = control_socket.recv() => {
                 match trace_err!(maybe_packet)? {
                     ServerControlPacket::Restarting => {
-                        stopStream(java_vm, activity_ref, &mut control_socket, true).await?;
+                        stopStream(&*java_vm, &*activity_ref, &mut control_socket, true).await?;
                     }
                     ServerControlPacket::Shutdown => {
-                        stopStream(java_vm, activity_ref, &mut control_socket, false).await?;
+                        stopStream(&*java_vm, &*activity_ref, &mut control_socket, false).await?;
                     }
                     ServerControlPacket::Reserved(_) => ()
                 }
@@ -493,8 +504,8 @@ pub async fn connection_loop(
     headset_info: HeadsetInfoPacket,
     private_identity: PrivateIdentity,
     on_stream_stop_notifier: broadcast::Sender<()>,
-    java_vm: JavaVM,
-    activity_ref: GlobalRef,
+    java_vm: Arc<JavaVM>,
+    activity_ref: Arc<GlobalRef>,
 ) {
     let mut on_stream_stop_receiver = on_stream_stop_notifier.subscribe();
 
@@ -504,8 +515,8 @@ pub async fn connection_loop(
             &headset_info,
             &private_identity,
             on_stream_stop_notifier.clone(),
-            &java_vm,
-            &activity_ref,
+            java_vm.clone(),
+            activity_ref.clone(),
         ));
 
         tokio::select! {

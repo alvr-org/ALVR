@@ -112,7 +112,7 @@ pub enum TrackedDeviceType {
 #[derive(Serialize, Deserialize)]
 pub struct HapticsPacket {
     pub amplitude: f32,
-    pub duration: f32,
+    pub duration: Duration,
     pub frequency: f32,
     pub device: TrackedDeviceType,
 }

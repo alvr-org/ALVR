@@ -68,6 +68,7 @@ dependencies = [
  "futures",
  "jni",
  "lazy_static",
+ "log 0.4.11",
  "nalgebra",
  "parking_lot",
  "serde_json",

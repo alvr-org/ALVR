@@ -3,10 +3,11 @@
 mod connection;
 mod logging_backend;
 mod statistics_manager;
+mod video;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use std::slice;
+use std::{slice, sync::Arc};
 
 use alvr_common::{data::*, logging::*, *};
 use jni::{objects::*, *};
@@ -145,8 +146,8 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
                     headset_info,
                     private_identity,
                     on_stream_stop_notifier,
-                    java_vm,
-                    activity_ref,
+                    Arc::new(java_vm),
+                    Arc::new(activity_ref),
                 );
 
                 tokio::select! {

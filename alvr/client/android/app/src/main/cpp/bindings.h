@@ -36,6 +36,7 @@ struct OnStreamStartParams {
     float foveationStrength;
     float foveationShape;
     float foveationVerticalOffset;
+    bool enableGameAudio;
     bool enableMicrophone;
     float refreshRate;
 };
@@ -131,6 +132,8 @@ extern "C" void onStreamStart(OnStreamStartParams params);
 extern "C" void render(bool streaming, long long renderedFrameIndex);
 
 extern "C" TrackingInfo getTrackingInfo();
+
+extern "C" void enqueueAudio(unsigned char *buf, int len);
 
 extern "C" MicAudioFrame getMicData();
 

@@ -8,7 +8,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use std::slice;
 
-use alvr_common::{data::*, logging::*, sockets::*, *};
+use alvr_common::{data::*, logging::*, *};
 use jni::{objects::*, *};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
@@ -20,8 +20,6 @@ lazy_static! {
     static ref MAYBE_ON_STREAM_STOP_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> =
         Mutex::new(None);
     static ref MAYBE_ON_PAUSE_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
-    static ref MAYBE_INPUT_SENDER: Mutex<Option<StreamSender<VideoPacket>>> = Mutex::new(None);
-    static ref MAYBE_MICROPHONE_SENDER: Mutex<Option<StreamSender<AudioPacket>>> = Mutex::new(None);
     static ref STATISTICS: Mutex<StatisticsManager> = Mutex::new(StatisticsManager::new());
     static ref ON_STREAM_START_PARAMS_TEMP: Mutex<Option<OnStreamStartParams>> = Mutex::new(None);
 }

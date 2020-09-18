@@ -814,7 +814,6 @@ void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiIn
                 c.gripValue = remoteInputState.GripTrigger;
 
                 c.batteryPercentRemaining = remoteInputState.BatteryPercentRemaining;
-                c.recenterCount = remoteInputState.RecenterCount;
             }
 
             ovrTracking tracking;

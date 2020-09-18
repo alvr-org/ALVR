@@ -91,7 +91,6 @@ struct TrackingInfo
         float gripValue;
 
         uint8_t batteryPercentRemaining;
-        uint8_t recenterCount;
 
         // Tracking info of controller. (float * 19 = 76 bytes)
         TrackingQuat orientation;

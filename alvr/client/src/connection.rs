@@ -1,11 +1,36 @@
 use crate::*;
 use alvr_common::{data::*, logging::*, sockets::*, *};
+use nalgebra::{Point3, Quaternion, UnitQuaternion, Vector3};
 use settings_schema::Switch;
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 use tokio::time;
 
 const STATISTICS_SEND_INTERVAL: Duration = Duration::from_secs(1);
 const INPUT_SEND_INTERVAL: Duration = Duration::from_millis(8);
+
+async fn stopStream(
+    java_vm: &JavaVM,
+    activity_ref: &GlobalRef,
+    control_socket: &mut ControlSocket<ServerControlPacket, ClientControlPacket>,
+    restart: bool,
+) -> StrResult {
+    control_socket
+        .send(ClientControlPacket::Disconnect)
+        .await
+        .ok();
+
+    trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
+        activity_ref,
+        "onStreamStop",
+        "(Z)V",
+        &[restart.into()],
+    ))?;
+
+    Ok(())
+}
 
 async fn try_connect(
     headset_info: &HeadsetInfoPacket,
@@ -76,11 +101,11 @@ async fn try_connect(
     )
     .await?;
 
-    let input_sender = stream_socket
+    let mut input_sender = stream_socket
         .request_stream::<InputPacket>(StreamId::Input, settings.headset.tracking_stream_mode)
         .await?;
 
-    let maybe_microphone_sender = if settings.audio.microphone {
+    let mut maybe_microphone_sender = if settings.audio.microphone {
         Some(
             stream_socket
                 .request_stream::<AudioPacket>(
@@ -143,50 +168,296 @@ async fn try_connect(
         }
     });
 
-    // todo: send guardian here
+    {
+        // GuardianData contains raw pointers that are not ffi safe. Force it to be treated as safe.
+        unsafe impl Send for GuardianData {}
 
-    let mut foveation_enabled = false;
-    let mut foveation_strength = 0_f32;
-    let mut foveation_shape = 0_f32;
-    let mut foveation_vertical_offset = 0_f32;
-    if let Switch::Enabled(foveation_vars) = settings.video.foveated_rendering {
-        foveation_enabled = true;
-        foveation_strength = foveation_vars.strength;
-        foveation_shape = foveation_vars.shape;
-        foveation_vertical_offset = foveation_vars.vertical_offset;
+        let data = unsafe { getGuardianInfo() };
+
+        let points = unsafe { slice::from_raw_parts(data.points, data.totalPointCount as _) };
+        let points = points
+            .iter()
+            .map(|vec3| Point3::new(vec3.x, vec3.y, vec3.z))
+            .collect::<Vec<_>>();
+
+        let packet = PlayspaceSyncPacket {
+            position: Point3::new(
+                data.standingPosPosition.x,
+                data.standingPosPosition.y,
+                data.standingPosPosition.z,
+            ),
+            rotation: UnitQuaternion::from_quaternion(Quaternion::new(
+                data.standingPosRotation.w,
+                data.standingPosRotation.x,
+                data.standingPosRotation.y,
+                data.standingPosRotation.z,
+            )),
+            space_rectangle: (data.playAreaSize.x, data.playAreaSize.y),
+            points,
+        };
+
+        control_socket
+            .send(ClientControlPacket::PlayspaceSync(packet))
+            .await?;
     }
 
-    // Store the parameters in a temporary variable so we don't need to pass them to java
-    *ON_STREAM_START_PARAMS_TEMP.lock() = Some(OnStreamStartParams {
-        eyeWidth: client_config.eye_resolution.0 as _,
-        eyeHeight: client_config.eye_resolution.1 as _,
-        leftEyeFov: EyeFov {
-            left: client_config.left_eye_fov.left,
-            right: client_config.left_eye_fov.right,
-            top: client_config.left_eye_fov.top,
-            bottom: client_config.left_eye_fov.bottom,
-        },
-        foveationEnabled: foveation_enabled,
-        foveationStrength: foveation_strength,
-        foveationShape: foveation_shape,
-        foveationVerticalOffset: foveation_vertical_offset,
-        enableMicrophone: settings.audio.microphone,
-        refreshRate: client_config.fps as _,
-    });
-    trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
-        activity_ref,
-        "onStreamStart",
-        "()V",
-        &[],
-    ))?;
+    {
+        let mut foveation_enabled = false;
+        let mut foveation_strength = 0_f32;
+        let mut foveation_shape = 0_f32;
+        let mut foveation_vertical_offset = 0_f32;
+        if let Switch::Enabled(foveation_vars) = settings.video.foveated_rendering {
+            foveation_enabled = true;
+            foveation_strength = foveation_vars.strength;
+            foveation_shape = foveation_vars.shape;
+            foveation_vertical_offset = foveation_vars.vertical_offset;
+        }
+
+        // Store the parameters in a temporary variable so we don't need to pass them to java
+        *ON_STREAM_START_PARAMS_TEMP.lock() = Some(OnStreamStartParams {
+            eyeWidth: client_config.eye_resolution.0 as _,
+            eyeHeight: client_config.eye_resolution.1 as _,
+            leftEyeFov: EyeFov {
+                left: client_config.left_eye_fov.left,
+                right: client_config.left_eye_fov.right,
+                top: client_config.left_eye_fov.top,
+                bottom: client_config.left_eye_fov.bottom,
+            },
+            foveationEnabled: foveation_enabled,
+            foveationStrength: foveation_strength,
+            foveationShape: foveation_shape,
+            foveationVerticalOffset: foveation_vertical_offset,
+            enableMicrophone: settings.audio.microphone,
+            refreshRate: client_config.fps as _,
+        });
+        trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
+            activity_ref,
+            "onStreamStart",
+            "()V",
+            &[],
+        ))?;
+    }
 
     let last_statistics_send_time = Instant::now() - STATISTICS_SEND_INTERVAL;
     loop {
         let input_loop_deadline = time::Instant::now() + INPUT_SEND_INTERVAL;
 
-        // todo: send input
+        {
+            unsafe impl Send for TrackingInfo {}
 
-        // todo: maybe send microphone
+            let info = unsafe { getTrackingInfo() };
+
+            let timestamp = Duration::from_secs_f64(info.predictedDisplayTime);
+
+            let mut device_motions = HashMap::new();
+            device_motions.insert(
+                TrackedDeviceType::LeftController,
+                MotionDesc {
+                    timestamp,
+                    pose: Pose {
+                        position: Point3::new(
+                            info.controller[0].position.x,
+                            info.controller[0].position.y,
+                            info.controller[0].position.z,
+                        ),
+                        orientation: UnitQuaternion::from_quaternion(Quaternion::new(
+                            info.controller[0].orientation.w,
+                            info.controller[0].orientation.x,
+                            info.controller[0].orientation.y,
+                            info.controller[0].orientation.z,
+                        )),
+                    },
+                    linear_velocity: Vector3::new(
+                        info.controller[0].linearVelocity.x,
+                        info.controller[0].linearVelocity.y,
+                        info.controller[0].linearVelocity.z,
+                    ),
+                    angular_velocity: Vector3::new(
+                        info.controller[0].angularVelocity.x,
+                        info.controller[0].angularVelocity.y,
+                        info.controller[0].angularVelocity.z,
+                    ),
+                },
+            );
+            device_motions.insert(
+                TrackedDeviceType::RightController,
+                MotionDesc {
+                    timestamp,
+                    pose: Pose {
+                        position: Point3::new(
+                            info.controller[1].position.x,
+                            info.controller[1].position.y,
+                            info.controller[1].position.z,
+                        ),
+                        orientation: UnitQuaternion::from_quaternion(Quaternion::new(
+                            info.controller[1].orientation.w,
+                            info.controller[1].orientation.x,
+                            info.controller[1].orientation.y,
+                            info.controller[1].orientation.z,
+                        )),
+                    },
+                    linear_velocity: Vector3::new(
+                        info.controller[1].linearVelocity.x,
+                        info.controller[1].linearVelocity.y,
+                        info.controller[1].linearVelocity.z,
+                    ),
+                    angular_velocity: Vector3::new(
+                        info.controller[1].angularVelocity.x,
+                        info.controller[1].angularVelocity.y,
+                        info.controller[1].angularVelocity.z,
+                    ),
+                },
+            );
+
+            let input_data = InputDeviceData::OculusTouchPair([
+                OculusTouchInput {
+                    thumbstick_coord: (
+                        info.controller[0].trackpadPosition.x,
+                        info.controller[0].trackpadPosition.y,
+                    ),
+                    trigger: info.controller[0].triggerValue,
+                    grip: info.controller[0].gripValue,
+                    battery_percentage: info.controller[0].batteryPercentRemaining,
+                    digital_input: OculusTouchDigitalInput::empty(),
+                },
+                OculusTouchInput {
+                    thumbstick_coord: (
+                        info.controller[1].trackpadPosition.x,
+                        info.controller[1].trackpadPosition.y,
+                    ),
+                    trigger: info.controller[1].triggerValue,
+                    grip: info.controller[1].gripValue,
+                    battery_percentage: info.controller[1].batteryPercentRemaining,
+                    digital_input: OculusTouchDigitalInput::empty(),
+                },
+            ]);
+
+            let bone_rotations_vec = info.controller[0]
+                .boneRotations
+                .iter()
+                .map(|q| UnitQuaternion::from_quaternion(Quaternion::new(q.w, q.x, q.y, q.z)))
+                .collect::<Vec<_>>();
+            let mut bone_rotations_left = [UnitQuaternion::default(); 19];
+            bone_rotations_left.copy_from_slice(&bone_rotations_vec);
+
+            let bone_rotations_vec = info.controller[1]
+                .boneRotations
+                .iter()
+                .map(|q| UnitQuaternion::from_quaternion(Quaternion::new(q.w, q.x, q.y, q.z)))
+                .collect::<Vec<_>>();
+            let mut bone_rotations_right = [UnitQuaternion::default(); 19];
+            bone_rotations_right.copy_from_slice(&bone_rotations_vec);
+
+            let bone_positions_vec = info.controller[0]
+                .boneRotations
+                .iter()
+                .map(|v| Point3::new(v.x, v.y, v.z))
+                .collect::<Vec<_>>();
+            let mut bone_positions_left = [Point3::new(0_f32, 0_f32, 0_f32); 19];
+            bone_positions_left.copy_from_slice(&bone_positions_vec);
+
+            let bone_positions_vec = info.controller[1]
+                .boneRotations
+                .iter()
+                .map(|v| Point3::new(v.x, v.y, v.z))
+                .collect::<Vec<_>>();
+            let mut bone_positions_right = [Point3::new(0_f32, 0_f32, 0_f32); 19];
+            bone_positions_right.copy_from_slice(&bone_positions_vec);
+
+            let input_packet = InputPacket {
+                client_time: info.clientTime,
+                frame_index: info.FrameIndex,
+                head_motion: MotionDesc {
+                    timestamp,
+                    pose: Pose {
+                        position: Point3::new(
+                            info.HeadPose_Pose_Position.x,
+                            info.HeadPose_Pose_Position.y,
+                            info.HeadPose_Pose_Position.z,
+                        ),
+                        orientation: UnitQuaternion::from_quaternion(Quaternion::new(
+                            info.HeadPose_Pose_Orientation.w,
+                            info.HeadPose_Pose_Orientation.x,
+                            info.HeadPose_Pose_Orientation.y,
+                            info.HeadPose_Pose_Orientation.z,
+                        )),
+                    },
+                    linear_velocity: Vector3::new(0_f32, 0_f32, 0_f32),
+                    angular_velocity: Vector3::new(0_f32, 0_f32, 0_f32),
+                },
+                device_motions,
+                input_data,
+                input_data_timestamp: timestamp,
+                buttons: [info.controller[0].buttons, info.controller[1].buttons],
+                bone_rotations: [bone_rotations_left, bone_rotations_right],
+                bone_positions_base: [bone_positions_left, bone_positions_right],
+                bone_root_oritentation: [
+                    UnitQuaternion::from_quaternion(Quaternion::new(
+                        info.controller[0].boneRootOrientation.w,
+                        info.controller[0].boneRootOrientation.x,
+                        info.controller[0].boneRootOrientation.y,
+                        info.controller[0].boneRootOrientation.z,
+                    )),
+                    UnitQuaternion::from_quaternion(Quaternion::new(
+                        info.controller[1].boneRootOrientation.w,
+                        info.controller[1].boneRootOrientation.x,
+                        info.controller[1].boneRootOrientation.y,
+                        info.controller[1].boneRootOrientation.z,
+                    )),
+                ],
+                bone_root_position: [
+                    Point3::new(
+                        info.controller[0].boneRootPosition.x,
+                        info.controller[0].boneRootPosition.y,
+                        info.controller[0].boneRootPosition.z,
+                    ),
+                    Point3::new(
+                        info.controller[1].boneRootPosition.x,
+                        info.controller[1].boneRootPosition.y,
+                        info.controller[1].boneRootPosition.z,
+                    ),
+                ],
+                input_state_status: [
+                    info.controller[0].inputStateStatus,
+                    info.controller[1].inputStateStatus,
+                ],
+                finger_pinch_strength: [
+                    info.controller[0].fingerPinchStrengths,
+                    info.controller[1].fingerPinchStrengths,
+                ],
+                hand_finger_confidences: [
+                    info.controller[0].handFingerConfidences,
+                    info.controller[1].handFingerConfidences,
+                ],
+            };
+
+            if input_sender.send(&input_packet).await.is_err() {
+                stopStream(java_vm, activity_ref, &mut control_socket, false).await?;
+            }
+        }
+
+        if let Some(sender) = &mut maybe_microphone_sender {
+            unsafe impl Send for MicAudioFrame {}
+
+            let frame = unsafe { getMicData() };
+
+            let buffer = unsafe {
+                slice::from_raw_parts(frame.buffer as *const u8, 2 * frame.size as usize)
+            }
+            .to_vec();
+
+            if sender
+                .send(&AudioPacket {
+                    packet_index: 0,
+                    presentation_time: Duration::from_secs(0),
+                    buffer,
+                })
+                .await
+                .is_err()
+            {
+                stopStream(java_vm, activity_ref, &mut control_socket, false).await?;
+            }
+        }
 
         if Instant::now() - last_statistics_send_time > STATISTICS_SEND_INTERVAL {
             let stats = STATISTICS.lock().get();
@@ -195,12 +466,7 @@ async fn try_connect(
                 .send(ClientControlPacket::Statistics(stats))
                 .await
             {
-                trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
-                    activity_ref,
-                    "onStreamStop",
-                    "(Z)V",
-                    &[false.into()],
-                ))?;
+                stopStream(java_vm, activity_ref, &mut control_socket, false).await?;
 
                 return trace_str!("{}", e);
             }
@@ -210,24 +476,10 @@ async fn try_connect(
             maybe_packet = control_socket.recv() => {
                 match trace_err!(maybe_packet)? {
                     ServerControlPacket::Restarting => {
-                        control_socket.send(ClientControlPacket::Disconnect).await.ok();
-
-                        trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
-                            activity_ref,
-                            "onStreamStop",
-                            "(Z)V",
-                            &[true.into()],
-                        ))?;
+                        stopStream(java_vm, activity_ref, &mut control_socket, true).await?;
                     }
                     ServerControlPacket::Shutdown => {
-                        control_socket.send(ClientControlPacket::Disconnect).await.ok();
-
-                        trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
-                            activity_ref,
-                            "onStreamStop",
-                            "(Z)V",
-                            &[false.into()],
-                        ))?;
+                        stopStream(java_vm, activity_ref, &mut control_socket, false).await?;
                     }
                     ServerControlPacket::Reserved(_) => ()
                 }

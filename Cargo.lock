@@ -68,6 +68,7 @@ dependencies = [
  "futures",
  "jni",
  "lazy_static",
+ "nalgebra",
  "parking_lot",
  "serde_json",
  "settings-schema",

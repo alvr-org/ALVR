@@ -10,7 +10,7 @@ const INPUT_SEND_INTERVAL: Duration = Duration::from_millis(8);
 async fn try_connect(
     headset_info: &HeadsetInfoPacket,
     private_identity: &PrivateIdentity,
-    on_pause_notifier: broadcast::Sender<()>,
+    on_stream_stop_notifier: broadcast::Sender<()>,
     java_vm: &JavaVM,
     activity_ref: &GlobalRef,
 ) -> StrResult {
@@ -96,12 +96,12 @@ async fn try_connect(
     let mut video_receiver = stream_socket
         .subscribe_to_stream::<VideoPacket>(StreamId::Video())
         .await?;
-    let mut on_pause_receiver = on_pause_notifier.subscribe();
+    let mut on_stream_stop_receiver = on_stream_stop_notifier.subscribe();
     tokio::spawn(async move {
         loop {
             let packet = tokio::select! {
                 Ok(packet) = video_receiver.recv() => packet,
-                _ = on_pause_receiver.recv() => break,
+                _ = on_stream_stop_receiver.recv() => break,
                 else => break,
             };
 
@@ -113,12 +113,12 @@ async fn try_connect(
         let mut audio_receiver = stream_socket
             .subscribe_to_stream::<AudioPacket>(StreamId::Audio)
             .await?;
-        let mut on_pause_receiver = on_pause_notifier.subscribe();
+        let mut on_stream_stop_receiver = on_stream_stop_notifier.subscribe();
         tokio::spawn(async move {
             loop {
                 let packet = tokio::select! {
                     Ok(packet) = audio_receiver.recv() => packet,
-                    _ = on_pause_receiver.recv() => break,
+                    _ = on_stream_stop_receiver.recv() => break,
                     else => break,
                 };
 
@@ -130,12 +130,12 @@ async fn try_connect(
     let mut haptics_receiver = stream_socket
         .subscribe_to_stream::<HapticsPacket>(StreamId::Haptics)
         .await?;
-    let mut on_pause_receiver = on_pause_notifier.subscribe();
+    let mut on_stream_stop_receiver = on_stream_stop_notifier.subscribe();
     tokio::spawn(async move {
         loop {
             let packet = tokio::select! {
                 Ok(packet) = haptics_receiver.recv() => packet,
-                _ = on_pause_receiver.recv() => break,
+                _ = on_stream_stop_receiver.recv() => break,
                 else => break,
             };
 
@@ -190,35 +190,44 @@ async fn try_connect(
 
         if Instant::now() - last_statistics_send_time > STATISTICS_SEND_INTERVAL {
             let stats = STATISTICS.lock().get();
-            trace_err!(
-                control_socket
-                    .send(ClientControlPacket::Statistics(stats))
-                    .await
-            )?;
+
+            if let Err(e) = control_socket
+                .send(ClientControlPacket::Statistics(stats))
+                .await
+            {
+                trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
+                    activity_ref,
+                    "onStreamStop",
+                    "(Z)V",
+                    &[false.into()],
+                ))?;
+
+                return trace_str!("{}", e);
+            }
         }
 
         tokio::select! {
             maybe_packet = control_socket.recv() => {
                 match trace_err!(maybe_packet)? {
                     ServerControlPacket::Restarting => {
+                        control_socket.send(ClientControlPacket::Disconnect).await.ok();
+
                         trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
                             activity_ref,
                             "onStreamStop",
                             "(Z)V",
                             &[true.into()],
                         ))?;
-
-                        break Ok(());
                     }
                     ServerControlPacket::Shutdown => {
+                        control_socket.send(ClientControlPacket::Disconnect).await.ok();
+
                         trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
                             activity_ref,
                             "onStreamStop",
                             "(Z)V",
                             &[false.into()],
                         ))?;
-
-                        break Ok(());
                     }
                     ServerControlPacket::Reserved(_) => ()
                 }
@@ -231,22 +240,25 @@ async fn try_connect(
 pub async fn connection_loop(
     headset_info: HeadsetInfoPacket,
     private_identity: PrivateIdentity,
-    on_pause_notifier: broadcast::Sender<()>,
+    on_stream_stop_notifier: broadcast::Sender<()>,
     java_vm: JavaVM,
     activity_ref: GlobalRef,
 ) {
+    let mut on_stream_stop_receiver = on_stream_stop_notifier.subscribe();
+
     // this loop has no exit, but the execution can be halted by the caller with tokio::select!{}
     loop {
-        show_err(
-            try_connect(
-                &headset_info,
-                &private_identity,
-                on_pause_notifier.clone(),
-                &java_vm,
-                &activity_ref,
-            )
-            .await,
-        )
-        .ok();
+        let try_connect_future = show_err_async(try_connect(
+            &headset_info,
+            &private_identity,
+            on_stream_stop_notifier.clone(),
+            &java_vm,
+            &activity_ref,
+        ));
+
+        tokio::select! {
+            _ = try_connect_future => (),
+            _ = on_stream_stop_receiver.recv() => (),
+        }
     }
 }

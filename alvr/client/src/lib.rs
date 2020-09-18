@@ -17,6 +17,8 @@ use tokio::{runtime::Runtime, sync::broadcast};
 
 lazy_static! {
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(None);
+    static ref MAYBE_ON_STREAM_STOP_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> =
+        Mutex::new(None);
     static ref MAYBE_ON_PAUSE_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
     static ref MAYBE_INPUT_SENDER: Mutex<Option<StreamSender<VideoPacket>>> = Mutex::new(None);
     static ref MAYBE_MICROPHONE_SENDER: Mutex<Option<StreamSender<AudioPacket>>> = Mutex::new(None);
@@ -134,16 +136,17 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
             key_pem: trace_err!(env.get_string(jprivate_key))?.into(),
         };
 
-        let (on_pause_notifier, mut on_pause_receiver) = broadcast::channel(1);
         let runtime = trace_err!(Runtime::new())?;
+        let (on_pause_notifier, mut on_pause_receiver) = broadcast::channel(1);
+        let (on_stream_stop_notifier, _) = broadcast::channel(1);
 
         runtime.spawn({
-            let on_pause_notifier = on_pause_notifier.clone();
+            let on_stream_stop_notifier = on_stream_stop_notifier.clone();
             async move {
                 let connection_loop = connection::connection_loop(
                     headset_info,
                     private_identity,
-                    on_pause_notifier,
+                    on_stream_stop_notifier,
                     java_vm,
                     activity_ref,
                 );
@@ -155,8 +158,9 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
             }
         });
 
-        *MAYBE_RUNTIME.lock() = Some(runtime);
+        *MAYBE_ON_STREAM_STOP_NOTIFIER.lock() = Some(on_stream_stop_notifier);
         *MAYBE_ON_PAUSE_NOTIFIER.lock() = Some(on_pause_notifier);
+        *MAYBE_RUNTIME.lock() = Some(runtime);
 
         Ok(result.defaultRefreshRate)
     }())
@@ -206,6 +210,9 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative
     _: JNIEnv,
     _: JClass,
 ) {
+    if let Some(notifier) = MAYBE_ON_STREAM_STOP_NOTIFIER.lock().take() {
+        notifier.send(()).ok();
+    }
     unsafe { onStreamStop() };
 }
 
@@ -215,10 +222,10 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onPauseNative(_: J
         notifier.send(()).ok();
     }
 
+    unsafe { onPause() };
+
     // shutdown and wait for tasks to finish
     drop(MAYBE_RUNTIME.lock().take());
-
-    unsafe { onPause() };
 }
 
 #[no_mangle]

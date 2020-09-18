@@ -206,74 +206,7 @@ struct StreamControlMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE
 	uint32_t mode; // 1=Start stream, 2=Stop stream
 };
-struct TrackingQuat {
-	float x;
-	float y;
-	float z;
-	float w;
-};
-struct TrackingVector3 {
-	float x;
-	float y;
-	float z;
-};
-struct TrackingVector2 {
-	float x;
-	float y;
-};
-struct TrackingInfo {
-	uint32_t type; // ALVR_PACKET_TYPE_TRACKING_INFO
-	uint32_t flags;
 
-	uint64_t clientTime;
-	uint64_t FrameIndex;
-	double predictedDisplayTime;
-	TrackingQuat HeadPose_Pose_Orientation;
-	TrackingVector3 HeadPose_Pose_Position;
-
-	static const uint32_t MAX_CONTROLLERS = 2;
-
-
-	struct Controller {
-		static const uint32_t FLAG_CONTROLLER_ENABLE         = (1 << 0);
-		static const uint32_t FLAG_CONTROLLER_LEFTHAND       = (1 << 1); // 0: Left hand, 1: Right hand
-		static const uint32_t FLAG_CONTROLLER_GEARVR         = (1 << 2);
-		static const uint32_t FLAG_CONTROLLER_OCULUS_GO      = (1 << 3);
-		static const uint32_t FLAG_CONTROLLER_OCULUS_QUEST   = (1 << 4);
-        static const uint32_t FLAG_CONTROLLER_OCULUS_HAND    = (1 << 5);
-		uint32_t flags;
-		uint64_t buttons;
-
-		struct {
-			float x;
-			float y;
-		} trackpadPosition;
-
-		float triggerValue;
-		float gripValue;
-
-		uint8_t batteryPercentRemaining;
-		uint8_t recenterCount;
-
-		// Tracking info of controller. (float * 19 = 76 bytes)
-		TrackingQuat orientation;
-		TrackingVector3 position;
-		TrackingVector3 angularVelocity;
-		TrackingVector3 linearVelocity;
-		TrackingVector3 angularAcceleration;
-		TrackingVector3 linearAcceleration;
-
-        // Tracking info of hand. A3
-        TrackingQuat boneRotations[alvrHandBone_MaxSkinnable];
-        //TrackingQuat boneRotationsBase[alvrHandBone_MaxSkinnable];
-        TrackingVector3 bonePositionsBase[alvrHandBone_MaxSkinnable];
-        TrackingQuat boneRootOrientation;
-        TrackingVector3 boneRootPosition;
-        uint32_t inputStateStatus;
-        float fingerPinchStrengths[alvrFingerPinch_MaxPinches];
-        uint32_t handFingerConfidences;
-	} controller[2];
-};
 // Client >----(mode 0)----> Server
 // Client <----(mode 1)----< Server
 // Client >----(mode 2)----> Server
@@ -337,13 +270,6 @@ struct AudioFrame {
 	uint32_t packetCounter;
 	// char frameBuffer[];
 };
-struct MicAudioFrame {
-    uint32_t type; // ALVR_PACKET_TYPE_AUDIO_FRAME
-    size_t outputBufferNumElements;
-    size_t completeSize;
-    int packetIndex;
-    int16_t micBuffer[100];
-};
 // Report packet loss/error from client to server.
 struct PacketErrorReport {
 	uint32_t type; // ALVR_PACKET_TYPE_PACKET_ERROR_REPORT
@@ -359,30 +285,6 @@ struct HapticsFeedback {
 	float duration;
 	float frequency;
 	uint8_t hand; // 0:Right, 1:Left
-};
-// Send Oculus guardian data
-struct GuardianSyncStart {
-	uint32_t type; // ALVR_PACKET_TYPE_GUARDIAN_SYNC_START
-	uint64_t timestamp;
-	TrackingQuat standingPosRotation;
-	TrackingVector3 standingPosPosition;
-	TrackingVector2 playAreaSize;
-	uint32_t totalPointCount;
-};
-struct GuardianSyncStartAck {
-	uint32_t type; // ALVR_PACKET_TYPE_GUARDIAN_SYNC_ACK
-	uint64_t timestamp;
-};
-struct GuardianSegmentData {
-	uint32_t type; // ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA
-	uint64_t timestamp;
-	uint32_t segmentIndex;
-	TrackingVector3 points[ALVR_GUARDIAN_SEGMENT_SIZE];
-};
-struct GuardianSegmentAck {
-	uint32_t type; // ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_ACK
-	uint64_t timestamp;
-	uint32_t segmentIndex;
 };
 #pragma pack(pop)
 

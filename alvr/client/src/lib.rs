@@ -6,6 +6,8 @@ mod statistics_manager;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+use std::slice;
+
 use alvr_common::{data::*, logging::*, sockets::*, *};
 use jni::{objects::*, *};
 use lazy_static::lazy_static;
@@ -106,37 +108,9 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
             "Unknown device"
         };
 
-        // fov cannot be retrieved from oculus sdk at this point, use apriori values.
-        let recommended_left_eye_fov = if result.deviceType == DeviceType_OCULUS_QUEST {
-            Fov {
-                left: 52.,
-                right: 42.,
-                top: 53.,
-                bottom: 47.,
-            }
-        } else if result.deviceType == DeviceType_OCULUS_QUEST_2 {
-            // todo: use correct values
-            Fov {
-                left: 50.,
-                right: 50.,
-                top: 50.,
-                bottom: 50.,
-            }
-        } else {
-            Fov {
-                left: 45.,
-                right: 45.,
-                top: 45.,
-                bottom: 45.,
-            }
-        };
-
-        let available_refresh_rates = result
-            .refreshRates
-            .iter()
-            .cloned()
-            .take(result.refreshRatesCount as _)
-            .collect::<Vec<_>>();
+        let available_refresh_rates =
+            unsafe { slice::from_raw_parts(result.refreshRates, result.refreshRatesCount as _) }
+                .to_vec();
 
         let headset_info = HeadsetInfoPacket {
             device_name: device_name.into(),
@@ -144,7 +118,12 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
                 result.recommendedEyeWidth as _,
                 result.recommendedEyeHeight as _,
             ),
-            recommended_left_eye_fov,
+            recommended_left_eye_fov: Fov {
+                left: result.leftEyeFov.left,
+                right: result.leftEyeFov.right,
+                top: result.leftEyeFov.top,
+                bottom: result.leftEyeFov.bottom,
+            },
             available_refresh_rates,
             reserved: serde_json::json!({}),
         };

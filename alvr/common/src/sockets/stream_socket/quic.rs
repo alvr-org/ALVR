@@ -21,7 +21,9 @@ pub(super) async fn request_stream(
 
     Ok(match mode {
         StreamMode::PreferReliable => StreamSenderType::QuicReliable(send_stream),
-        StreamMode::PreferUnreliable => StreamSenderType::QuicUnreliable(connection.clone()),
+        StreamMode::PreferSequentialUnreliable | StreamMode::PreferUnorderedUnreliable => {
+            StreamSenderType::QuicUnreliable(connection.clone())
+        }
     })
 }
 

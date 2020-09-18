@@ -49,8 +49,6 @@ async fn try_connect(
     // conversion code
     let settings = trace_err!(serde_json::from_value::<Settings>(client_config.settings))?;
 
-    // let server_compatible = settings.
-
     trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
         activity_ref,
         "onServerFound",
@@ -158,6 +156,7 @@ async fn try_connect(
         foveation_vertical_offset = foveation_vars.vertical_offset;
     }
 
+    // Store the parameters in a temporary variable so we don't need to pass them to java
     *ON_STREAM_START_PARAMS_TEMP.lock() = Some(OnStreamStartParams {
         eyeWidth: client_config.eye_resolution.0 as _,
         eyeHeight: client_config.eye_resolution.1 as _,
@@ -172,8 +171,8 @@ async fn try_connect(
         foveationShape: foveation_shape,
         foveationVerticalOffset: foveation_vertical_offset,
         enableMicrophone: settings.audio.microphone,
+        refreshRate: client_config.fps as _,
     });
-
     trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
         activity_ref,
         "onStreamStart",

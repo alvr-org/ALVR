@@ -37,53 +37,44 @@ const int MAXIMUM_TRACKING_FRAMES = 180;
 const uint32_t ovrButton_Unknown1 = 0x01000000;
 const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 1s;
 
+struct TrackingFrame {
+    ovrTracking2 tracking;
+    uint64_t frameIndex;
+    uint64_t fetchTime;
+    double displayTime;
+};
+
+struct HapticsState {
+    uint64_t startUs;
+    uint64_t endUs;
+    float amplitude;
+    float frequency;
+    bool fresh;
+    bool buffered;
+};
+
 class OvrContext {
 public:
     ANativeWindow *window = nullptr;
-    ovrMobile *Ovr;
+    ovrMobile *Ovr = nullptr;
     ovrJava java;
 
-    int defaultRenderWidth;
-    int defaultRenderHeight;
+    int defaultRenderEyeWidth;
+    int defaultRenderEyeHeight;
     float defaultRefreshRate;
+    vector<float> refreshRates;
 
     unique_ptr<Texture> streamTexture;
     unique_ptr<Texture> webViewTexture;
 
     bool mShowDashboard = false;
-    bool mFoveationEnabled = false;
-    float mFoveationStrength = 0;
-    float mFoveationShape = 1.5;
-    float mFoveationVerticalOffset = 0;
-    bool usedFoveationEnabled = false;
-    float usedFoveationStrength = 0;
-    float usedFoveationShape = 0;
-    float usedFoveationVerticalOffset = 0;
     std::function<void(InteractionType, glm::vec2)> mWebViewInteractionCallback;
-
-    bool mExtraLatencyMode = false;
-
-    int m_currentRefreshRate = DEFAULT_REFRESH_RATE;
 
     uint64_t FrameIndex = 0;
 
-    // Oculus guardian
-    int m_LastHMDRecenterCount = -1;
-    bool m_ShouldSyncGuardian = false;
-    bool m_GuardianSyncing = false;
-    uint32_t m_AckedGuardianSegment = -1;
-    uint64_t m_GuardianTimestamp = 0;
     uint32_t m_GuardianPointCount = 0;
-    ovrVector3f *m_GuardianPoints = nullptr;
-    double m_LastGuardianSyncTry = 0.0;
+    vector<TrackingVector3> m_GuardianPoints;
 
-
-    struct TrackingFrame {
-        ovrTracking2 tracking;
-        uint64_t frameIndex;
-        uint64_t fetchTime;
-        double displayTime;
-    };
     typedef std::map<uint64_t, std::shared_ptr<TrackingFrame> > TRACKING_FRAME_MAP;
 
     TRACKING_FRAME_MAP trackingFrameMap;
@@ -92,28 +83,15 @@ public:
     unique_ptr<ovrRenderer> renderer = nullptr;
 
     ovrMicrophoneHandle mMicHandle = nullptr;
-    int16_t *micBuffer;
-    bool mStreamMic;
+    std::vector<int16_t> micBuffer;
     size_t mMicMaxElements;
 
-    struct HapticsState {
-        uint64_t startUs;
-        uint64_t endUs;
-        float amplitude;
-        float frequency;
-        bool fresh;
-        bool buffered;
-    };
     // mHapticsState[0]: right hand state
     // mHapticsState[1]: left hand state
     HapticsState mHapticsState[2];
 
-
     std::chrono::system_clock::time_point mMenuNotPressedLastInstant;
     bool mMenuLongPressActivated = false;
-
-    // Previous trigger button state.
-    bool mButtonPressed;
 };
 
 namespace {
@@ -171,9 +149,55 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     g_ctx.streamTexture = make_unique<Texture>(true);
     g_ctx.webViewTexture = make_unique<Texture>(true);
 
-//    memset(mHapticsState, 0, sizeof(mHapticsState));
-
     return {(int) g_ctx.streamTexture->GetGLTexture(), (int) g_ctx.webViewTexture->GetGLTexture()};
+}
+
+EyeFov getLeftEyeFov() {
+    double displayTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, 0);
+    ovrTracking2 tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, displayTime);
+
+    EyeFov fov;
+
+    auto projection = tracking.Eye[0].ProjectionMatrix;
+    double a = projection.M[0][0];
+    double b = projection.M[1][1];
+    double c = projection.M[0][2];
+    double d = projection.M[1][2];
+    double n = -projection.M[2][3];
+    double w1 = 2.0 * n / a;
+    double h1 = 2.0 * n / b;
+    double w2 = c * w1;
+    double h2 = d * h1;
+
+    double maxX = (w1 + w2) / 2.0;
+    double minX = w2 - maxX;
+    double maxY = (h1 + h2) / 2.0;
+    double minY = h2 - maxY;
+
+    double rr = 180 / M_PI;
+    LOGI("getFov maxX=%f minX=%f maxY=%f minY=%f a=%f b=%f c=%f d=%f n=%f", maxX, minX, maxY,
+         minY, a, b, c, d, n);
+
+    fov.left = (float) (atan(minX / -n) * rr);
+    fov.right = (float) (-atan(maxX / -n) * rr);
+    fov.top = (float) (atan(minY / -n) * rr);
+    fov.bottom = (float) (-atan(maxY / -n) * rr);
+
+    LOGI("getFov[%d](D) r=%f l=%f t=%f b=%f", 0, fov.left, fov.right, fov.top, fov.bottom);
+
+    return fov;
+}
+
+void initRendererForLoadingRoom() {
+    if (g_ctx.renderer) {
+        ovrRenderer_Destroy(g_ctx.renderer.get());
+    }
+
+    g_ctx.renderer = std::make_unique<ovrRenderer>();
+    ovrRenderer_Create(g_ctx.renderer.get(), g_ctx.defaultRenderEyeWidth,
+                       g_ctx.defaultRenderEyeHeight, g_ctx.streamTexture.get(),
+                       g_ctx.webViewTexture.get(), g_ctx.mWebViewInteractionCallback, {false});
+    ovrRenderer_CreateScene(g_ctx.renderer.get());
 }
 
 OnResumeResult onResume(void *v_env, void *v_surface) {
@@ -224,7 +248,7 @@ OnResumeResult onResume(void *v_env, void *v_surface) {
     vrapi_SetExtraLatencyMode(g_ctx.Ovr, VRAPI_EXTRA_LATENCY_MODE_OFF);
 
 
-    auto resultData = OnResumeResult();
+    OnResumeResult resultData = {};
 
     auto ovrDeviceType = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DEVICE_TYPE);
     if (VRAPI_DEVICE_TYPE_OCULUSQUEST_START <= ovrDeviceType &&
@@ -240,23 +264,31 @@ OnResumeResult onResume(void *v_env, void *v_surface) {
                                                                 VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH);
     resultData.recommendedEyeHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
                                                                  VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT);
-    g_ctx.defaultRenderWidth = resultData.recommendedEyeWidth;
-    g_ctx.defaultRenderHeight = resultData.recommendedEyeHeight;
+    g_ctx.defaultRenderEyeWidth = resultData.recommendedEyeWidth;
+    g_ctx.defaultRenderEyeHeight = resultData.recommendedEyeHeight;
 
     resultData.refreshRatesCount = vrapi_GetSystemPropertyInt(&g_ctx.java,
                                                               VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
+
+    g_ctx.refreshRates = vector<float>(resultData.refreshRatesCount);
     vrapi_GetSystemPropertyFloatArray(&g_ctx.java, VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
-                                      resultData.refreshRates, resultData.refreshRatesCount);
+                                      &g_ctx.refreshRates[0], resultData.refreshRatesCount);
+    resultData.refreshRates = &g_ctx.refreshRates[0];
 
     // choose highest supported refresh rate as default
+    g_ctx.defaultRefreshRate = 0;
     for (int i = 0; i < resultData.refreshRatesCount; i++) {
-        if (resultData.refreshRates[i] > resultData.defaultRefreshRate) {
-            resultData.defaultRefreshRate = resultData.refreshRates[i];
+        if (g_ctx.refreshRates[i] > g_ctx.defaultRefreshRate) {
+            g_ctx.defaultRefreshRate = g_ctx.refreshRates[i];
         }
     }
-    g_ctx.defaultRefreshRate = resultData.defaultRefreshRate;
+    resultData.defaultRefreshRate = g_ctx.defaultRefreshRate;
+
+    resultData.leftEyeFov = getLeftEyeFov();
 
     // default fov cannot be queried now (?) so Rust chooses some constants based on deviceType.
+
+    initRendererForLoadingRoom();
 
     return resultData;
 }
@@ -266,9 +298,9 @@ void onStreamStart(OnStreamStartParams params) {
 
     if (g_ctx.renderer) {
         ovrRenderer_Destroy(g_ctx.renderer.get());
-        g_ctx.renderer.reset();
     }
 
+    g_ctx.renderer.reset(new ovrRenderer());
     ovrRenderer_Create(g_ctx.renderer.get(), params.eyeWidth, params.eyeHeight,
                        g_ctx.streamTexture.get(), g_ctx.webViewTexture.get(),
                        g_ctx.mWebViewInteractionCallback,
@@ -282,8 +314,121 @@ void onStreamStart(OnStreamStartParams params) {
         g_ctx.mMicHandle = ovr_Microphone_Create();
         g_ctx.mMicMaxElements = ovr_Microphone_GetOutputBufferMaxSize(g_ctx.mMicHandle);
         LOGI("Mic_maxElements %zu", g_ctx.mMicMaxElements);
-        g_ctx.micBuffer = new int16_t[g_ctx.mMicMaxElements];
+        if (g_ctx.micBuffer.size() != g_ctx.mMicMaxElements) {
+            g_ctx.micBuffer.assign(g_ctx.mMicMaxElements, 0);
+        }
         ovr_Microphone_Start(g_ctx.mMicHandle);
+    }
+
+    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, params.refreshRate);
+    LOGI("vrapi_SetDisplayRefreshRate: Result=%d", result);
+
+    memset(g_ctx.mHapticsState, 0, sizeof(g_ctx.mHapticsState));
+}
+
+void finishHapticsBuffer(ovrDeviceID DeviceID) {
+    uint8_t hapticBuffer[1] = {0};
+    ovrHapticBuffer buffer;
+    buffer.BufferTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.FrameIndex);
+    buffer.HapticBuffer = &hapticBuffer[0];
+    buffer.NumSamples = 1;
+    buffer.Terminated = true;
+
+    auto result = vrapi_SetHapticVibrationBuffer(g_ctx.Ovr, DeviceID, &buffer);
+    if (result != ovrSuccess) {
+        LOGI("vrapi_SetHapticVibrationBuffer: Failed. result=%d", result);
+    }
+}
+
+void updateHapticsState() {
+    ovrInputCapabilityHeader curCaps;
+    ovrResult result;
+
+    for (uint32_t deviceIndex = 0;
+         vrapi_EnumerateInputDevices(g_ctx.Ovr, deviceIndex, &curCaps) >= 0; deviceIndex++) {
+        ovrInputTrackedRemoteCapabilities remoteCapabilities;
+
+        remoteCapabilities.Header = curCaps;
+        result = vrapi_GetInputDeviceCapabilities(g_ctx.Ovr, &remoteCapabilities.Header);
+        if (result != ovrSuccess) {
+            continue;
+        }
+
+        int curHandIndex = (remoteCapabilities.ControllerCapabilities & ovrControllerCaps_LeftHand)
+                           ? 1 : 0;
+        auto &s = g_ctx.mHapticsState[curHandIndex];
+
+        uint64_t currentUs = getTimestampUs();
+
+        if (s.fresh) {
+            s.startUs = s.startUs + currentUs;
+            s.endUs = s.startUs + s.endUs;
+            s.fresh = false;
+        }
+
+        if (s.startUs <= 0) {
+            // No requested haptics for this hand.
+            if (s.buffered) {
+                finishHapticsBuffer(curCaps.DeviceID);
+                s.buffered = false;
+            }
+            continue;
+        }
+
+        if (currentUs >= s.endUs) {
+            // No more haptics is needed.
+            s.startUs = 0;
+            if (s.buffered) {
+                finishHapticsBuffer(curCaps.DeviceID);
+                s.buffered = false;
+            }
+            continue;
+        }
+
+        if (remoteCapabilities.ControllerCapabilities &
+            ovrControllerCaps_HasBufferedHapticVibration) {
+            // Note: HapticSamplesMax=25 HapticSampleDurationMS=2 on Quest
+
+            // First, call with buffer.Terminated = false and when haptics is no more needed call with buffer.Terminated = true (to stop haptics?).
+            LOG("Send haptic buffer. HapticSamplesMax=%d HapticSampleDurationMS=%d",
+                remoteCapabilities.HapticSamplesMax, remoteCapabilities.HapticSampleDurationMS);
+
+            uint32_t requiredHapticsBuffer = static_cast<uint32_t >((s.endUs - currentUs) /
+                                                                    remoteCapabilities.HapticSampleDurationMS *
+                                                                    1000);
+
+            std::vector<uint8_t> hapticBuffer(remoteCapabilities.HapticSamplesMax);
+            ovrHapticBuffer buffer;
+            buffer.BufferTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.FrameIndex);
+            buffer.HapticBuffer = &hapticBuffer[0];
+            buffer.NumSamples = std::min(remoteCapabilities.HapticSamplesMax,
+                                         requiredHapticsBuffer);
+            buffer.Terminated = false;
+
+            for (int i = 0; i < remoteCapabilities.HapticSamplesMax; i++) {
+                float current = ((currentUs - s.startUs) / 1000000.0f) +
+                                (remoteCapabilities.HapticSampleDurationMS * i) / 1000.0f;
+                float intensity =
+                        (sinf(static_cast<float>(current * M_PI * 2 * s.frequency)) + 1.0f) * 0.5f *
+                        s.amplitude;
+                if (intensity < 0) {
+                    intensity = 0;
+                } else if (intensity > 1.0) {
+                    intensity = 1.0;
+                }
+                hapticBuffer[i] = static_cast<uint8_t>(255 * intensity);
+            }
+
+            result = vrapi_SetHapticVibrationBuffer(g_ctx.Ovr, curCaps.DeviceID, &buffer);
+            if (result != ovrSuccess) {
+                LOGI("vrapi_SetHapticVibrationBuffer: Failed. result=%d", result);
+            }
+            s.buffered = true;
+        } else if (remoteCapabilities.ControllerCapabilities &
+                   ovrControllerCaps_HasSimpleHapticVibration) {
+            LOG("Send simple haptic. amplitude=%f", s.amplitude);
+            vrapi_SetHapticVibrationSimple(g_ctx.Ovr, curCaps.DeviceID, s.amplitude);
+        }
     }
 }
 
@@ -292,9 +437,11 @@ void render(bool streaming, long long renderedFrameIndex) {
         LatencyCollector::Instance().rendered1(renderedFrameIndex);
         FrameLog(renderedFrameIndex, "Got frame for render.");
 
+        updateHapticsState();
+
         uint64_t oldestFrame = 0;
         uint64_t mostRecentFrame = 0;
-        std::shared_ptr<OvrContext::TrackingFrame> frame;
+        std::shared_ptr<TrackingFrame> frame;
         {
             std::lock_guard<decltype(OvrContext::trackingFrameMutex)> lock(
                     g_ctx.trackingFrameMutex);
@@ -322,7 +469,7 @@ void render(bool streaming, long long renderedFrameIndex) {
         FrameLog(renderedFrameIndex, "Frame latency is %lu us.",
                  getTimestampUs() - frame->fetchTime);
 
-// Render eye images and setup the primary layer using ovrTracking2.
+        // Render eye images and setup the primary layer using ovrTracking2.
         const ovrLayerProjection2 worldLayer =
                 ovrRenderer_RenderFrame(g_ctx.renderer.get(), &frame->tracking, true,
                                         g_ctx.mShowDashboard);
@@ -464,16 +611,16 @@ uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
     return buttons;
 }
 
-void OvrContextSetControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiInput) {
+void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiInput) {
     ovrInputCapabilityHeader curCaps;
     ovrResult result;
     int controller = 0;
 
     for (uint32_t deviceIndex = 0;
-         vrapi_EnumerateInputDevices(Ovr, deviceIndex, &curCaps) >= 0; deviceIndex++) {
+         vrapi_EnumerateInputDevices(g_ctx.Ovr, deviceIndex, &curCaps) >= 0; deviceIndex++) {
         LOG("Device %d: Type=%d ID=%d", deviceIndex, curCaps.Type, curCaps.DeviceID);
         if (curCaps.Type == ovrControllerType_Hand) {  //A3
-            mShowDashboard = false;
+            g_ctx.mShowDashboard = false;
 
             // Oculus Quest Hand Tracking
             if (controller >= 2) {
@@ -487,7 +634,7 @@ void OvrContextSetControllerInfo(TrackingInfo *packet, double displayTime, GUIIn
             ovrInputStateHand inputStateHand;
             handCapabilities.Header = curCaps;
 
-            result = vrapi_GetInputDeviceCapabilities(Ovr, &handCapabilities.Header);
+            result = vrapi_GetInputDeviceCapabilities(g_ctx.Ovr, &handCapabilities.Header);
 
             if (result != ovrSuccess) {
                 continue;
@@ -498,7 +645,7 @@ void OvrContextSetControllerInfo(TrackingInfo *packet, double displayTime, GUIIn
             }
             inputStateHand.Header.ControllerType = handCapabilities.Header.Type;
 
-            result = vrapi_GetCurrentInputState(Ovr, handCapabilities.Header.DeviceID,
+            result = vrapi_GetCurrentInputState(g_ctx.Ovr, handCapabilities.Header.DeviceID,
                                                 &inputStateHand.Header);
             if (result != ovrSuccess) {
                 continue;
@@ -522,7 +669,7 @@ void OvrContextSetControllerInfo(TrackingInfo *packet, double displayTime, GUIIn
                                                                              : VRAPI_HAND_RIGHT;
             ovrHandSkeleton handSkeleton;
             handSkeleton.Header.Version = ovrHandVersion_1;
-            if (vrapi_GetHandSkeleton(Ovr, handedness, &handSkeleton.Header) != ovrSuccess) {
+            if (vrapi_GetHandSkeleton(g_ctx.Ovr, handedness, &handSkeleton.Header) != ovrSuccess) {
                 LOG("VrHands - failed to get hand skeleton");
             } else {
                 for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
@@ -536,7 +683,8 @@ void OvrContextSetControllerInfo(TrackingInfo *packet, double displayTime, GUIIn
 
             ovrHandPose handPose;
             handPose.Header.Version = ovrHandVersion_1;
-            if (vrapi_GetHandPose(Ovr, handCapabilities.Header.DeviceID, 0, &handPose.Header) !=
+            if (vrapi_GetHandPose(g_ctx.Ovr, handCapabilities.Header.DeviceID, 0,
+                                  &handPose.Header) !=
                 ovrSuccess) {
                 LOG("VrHands - failed to get hand pose");
             } else {
@@ -572,13 +720,13 @@ void OvrContextSetControllerInfo(TrackingInfo *packet, double displayTime, GUIIn
             ovrInputStateTrackedRemote remoteInputState;
 
             remoteCapabilities.Header = curCaps;
-            result = vrapi_GetInputDeviceCapabilities(Ovr, &remoteCapabilities.Header);
+            result = vrapi_GetInputDeviceCapabilities(g_ctx.Ovr, &remoteCapabilities.Header);
             if (result != ovrSuccess) {
                 continue;
             }
             remoteInputState.Header.ControllerType = remoteCapabilities.Header.Type;
 
-            result = vrapi_GetCurrentInputState(Ovr, remoteCapabilities.Header.DeviceID,
+            result = vrapi_GetCurrentInputState(g_ctx.Ovr, remoteCapabilities.Header.DeviceID,
                                                 &remoteInputState.Header);
             if (result != ovrSuccess) {
                 continue;
@@ -601,13 +749,13 @@ void OvrContextSetControllerInfo(TrackingInfo *packet, double displayTime, GUIIn
                 c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND;
 
                 if (remoteInputState.Buttons & ovrButton_Enter) {
-                    if (!mMenuLongPressActivated && std::chrono::system_clock::now()
-                                                    - mMenuNotPressedLastInstant >
-                                                    MENU_BUTTON_LONG_PRESS_DURATION) {
-                        mShowDashboard = !mShowDashboard;
-                        mMenuLongPressActivated = true;
+                    if (!g_ctx.mMenuLongPressActivated && std::chrono::system_clock::now()
+                                                          - g_ctx.mMenuNotPressedLastInstant >
+                                                          MENU_BUTTON_LONG_PRESS_DURATION) {
+                        g_ctx.mShowDashboard = !g_ctx.mShowDashboard;
+                        g_ctx.mMenuLongPressActivated = true;
 
-                        if (mShowDashboard) {
+                        if (g_ctx.mShowDashboard) {
                             auto q = packet->HeadPose_Pose_Orientation;
                             auto glQuat = glm::quat(q.w, q.x, q.y, q.z);
                             auto rotEuler = glm::eulerAngles(glQuat);
@@ -620,12 +768,12 @@ void OvrContextSetControllerInfo(TrackingInfo *packet, double displayTime, GUIIn
                             auto rotation = glm::eulerAngleY(yaw);
                             auto pos = glm::vec4(0, 0, -1.5, 1);
                             glm::vec3 position = glm::vec3(rotation * pos) + guiInput->headPosition;
-                            Renderer.webViewPanel->SetPoseTransform(position, yaw, 0);
+                            g_ctx.renderer->webViewPanel->SetPoseTransform(position, yaw, 0);
                         }
                     }
                 } else {
-                    mMenuNotPressedLastInstant = std::chrono::system_clock::now();
-                    mMenuLongPressActivated = false;
+                    g_ctx.mMenuNotPressedLastInstant = std::chrono::system_clock::now();
+                    g_ctx.mMenuLongPressActivated = false;
                 }
             }
 
@@ -642,7 +790,7 @@ void OvrContextSetControllerInfo(TrackingInfo *packet, double displayTime, GUIIn
                 c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_QUEST;
             }
 
-            if (mShowDashboard) {
+            if (g_ctx.mShowDashboard) {
                 guiInput->actionButtonsDown[controller] =
                         remoteInputState.Buttons & (ovrButton_A | ovrButton_X | ovrButton_Trigger);
             } else {
@@ -670,7 +818,7 @@ void OvrContextSetControllerInfo(TrackingInfo *packet, double displayTime, GUIIn
             }
 
             ovrTracking tracking;
-            if (vrapi_GetInputTrackingState(Ovr, remoteCapabilities.Header.DeviceID,
+            if (vrapi_GetInputTrackingState(g_ctx.Ovr, remoteCapabilities.Header.DeviceID,
                                             0, &tracking) != ovrSuccess) {
                 LOG("vrapi_GetInputTrackingState failed. Device was disconnected?");
             } else {
@@ -712,43 +860,16 @@ void OvrContextSetControllerInfo(TrackingInfo *packet, double displayTime, GUIIn
 }
 
 // Called TrackingThread. So, we can't use this->env.
-void OvrContextSetTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tracking) {
-    memset(packet, 0, sizeof(TrackingInfo));
-
-    uint64_t clientTime = getTimestampUs();
-
-    packet->type = ALVR_PACKET_TYPE_TRACKING_INFO;
-    packet->flags = 0;
-    packet->clientTime = clientTime;
-    packet->FrameIndex = FrameIndex;
-    packet->predictedDisplayTime = displayTime;
-
-    memcpy(&packet->HeadPose_Pose_Orientation, &tracking->HeadPose.Pose.Orientation,
-           sizeof(ovrQuatf));
-    memcpy(&packet->HeadPose_Pose_Position, &tracking->HeadPose.Pose.Position, sizeof(ovrVector3f));
-
-    GUIInput guiInput = {};
-    auto pos = tracking->HeadPose.Pose.Position;
-    guiInput.headPosition = glm::vec3(pos.x, pos.y - WORLD_VERTICAL_OFFSET, pos.z);
-
-    setControllerInfo(packet, displayTime, &guiInput);
-
-    Renderer.gui->Update(guiInput);
-
-    FrameLog(FrameIndex, "Sending tracking info.");
-}
-
-// Called TrackingThread. So, we can't use this->env.
-void OvrContextSendTrackingInfo(JNIEnv *env_, jobject udpReceiverThread) {
+TrackingInfo getTrackingInfo() {
     std::shared_ptr<TrackingFrame> frame(new TrackingFrame());
 
-    FrameIndex++;
+    g_ctx.FrameIndex++;
 
-    frame->frameIndex = FrameIndex;
+    frame->frameIndex = g_ctx.FrameIndex;
     frame->fetchTime = getTimestampUs();
 
-    frame->displayTime = vrapi_GetPredictedDisplayTime(Ovr, FrameIndex);
-    frame->tracking = vrapi_GetPredictedTracking2(Ovr, frame->displayTime);
+    frame->displayTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.FrameIndex);
+    frame->tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, frame->displayTime);
 
     /*LOGI("MVP %llu: \nL-V:\n%s\nL-P:\n%s\nR-V:\n%s\nR-P:\n%s", FrameIndex,
          DumpMatrix(&frame->tracking.Eye[0].ViewMatrix).c_str(),
@@ -758,265 +879,60 @@ void OvrContextSendTrackingInfo(JNIEnv *env_, jobject udpReceiverThread) {
          );*/
 
     {
-        std::lock_guard<decltype(trackingFrameMutex)> lock(trackingFrameMutex);
-        trackingFrameMap.insert(
-                std::pair<uint64_t, std::shared_ptr<TrackingFrame> >(FrameIndex, frame));
-        if (trackingFrameMap.size() > MAXIMUM_TRACKING_FRAMES) {
-            trackingFrameMap.erase(trackingFrameMap.cbegin());
+        std::lock_guard<decltype(OvrContext::trackingFrameMutex)> lock(g_ctx.trackingFrameMutex);
+        g_ctx.trackingFrameMap.insert(
+                std::pair<uint64_t, std::shared_ptr<TrackingFrame> >(g_ctx.FrameIndex, frame));
+        if (g_ctx.trackingFrameMap.size() > MAXIMUM_TRACKING_FRAMES) {
+            g_ctx.trackingFrameMap.erase(g_ctx.trackingFrameMap.cbegin());
         }
     }
 
     TrackingInfo info;
-    setTrackingInfo(&info, frame->displayTime, &frame->tracking);
+//    setTrackingInfo(&info, frame->displayTime, &frame->tracking);
+    memset(&info, 0, sizeof(TrackingInfo));
+
+    uint64_t clientTime = getTimestampUs();
+
+    info.clientTime = clientTime;
+    info.FrameIndex = g_ctx.FrameIndex;
+    info.predictedDisplayTime = frame->displayTime;
+
+    memcpy(&info.HeadPose_Pose_Orientation, &frame->tracking.HeadPose.Pose.Orientation,
+           sizeof(ovrQuatf));
+    memcpy(&info.HeadPose_Pose_Position, &frame->tracking.HeadPose.Pose.Position,
+           sizeof(ovrVector3f));
+
+    GUIInput guiInput = {};
+    auto pos = frame->tracking.HeadPose.Pose.Position;
+    guiInput.headPosition = glm::vec3(pos.x, pos.y - WORLD_VERTICAL_OFFSET, pos.z);
+
+    setControllerInfo(&info, frame->displayTime, &guiInput);
+
+    g_ctx.renderer->gui->Update(guiInput);
+
+    FrameLog(g_ctx.FrameIndex, "Sending tracking info.");
 
     LatencyCollector::Instance().tracking(frame->frameIndex);
 
-    env_->CallVoidMethod(udpReceiverThread, mServerConnection_send, reinterpret_cast<jlong>(&info),
-                         static_cast<jint>(sizeof(info)));
-    checkShouldSyncGuardian();
+    return info;
 }
 
 // Called TrackingThread. So, we can't use this->env.
-void OvrContextSendMicData(JNIEnv *env_, jobject udpReceiverThread) {
-    if (!mStreamMic) {
-        return;
-    }
+MicAudioFrame getMicData() {
+    size_t outputBufferNumElements = ovr_Microphone_GetPCM(g_ctx.mMicHandle, &g_ctx.micBuffer[0],
+                                                           g_ctx.mMicMaxElements);
 
-    size_t outputBufferNumElements = ovr_Microphone_GetPCM(mMicHandle, micBuffer, mMicMaxElements);
-    if (outputBufferNumElements > 0) {
-        int count = 0;
-
-        for (int i = 0; i < outputBufferNumElements; i += 100) {
-            int rest = outputBufferNumElements - count * 100;
-
-            MicAudioFrame audio;
-            memset(&audio, 0, sizeof(MicAudioFrame));
-
-            audio.type = ALVR_PACKET_TYPE_MIC_AUDIO;
-            audio.packetIndex = count;
-            audio.completeSize = outputBufferNumElements;
-
-            if (rest >= 100) {
-                audio.outputBufferNumElements = 100;
-            } else {
-                audio.outputBufferNumElements = rest;
-            }
-
-            memcpy(&audio.micBuffer,
-                   micBuffer + count * 100,
-                   sizeof(int16_t) * audio.outputBufferNumElements);
-
-            env_->CallVoidMethod(udpReceiverThread, mServerConnection_send,
-                                 reinterpret_cast<jlong>(&audio),
-                                 static_cast<jint>(sizeof(audio)));
-            count++;
-        }
-
-    }
-}
-
-void OvrContextSetRefreshRate(int refreshRate, bool forceChange) {
-    if (m_currentRefreshRate == refreshRate) {
-        LOGI("Refresh rate not changed. %d Hz", refreshRate);
-        return;
-    }
-    ovrResult result = vrapi_SetDisplayRefreshRate(Ovr, refreshRate);
-    if (result == ovrSuccess) {
-        LOGI("Changed refresh rate. %d Hz", refreshRate);
-        m_currentRefreshRate = refreshRate;
-    } else {
-        LOGE("Failed to change refresh rate. %d Hz Force=%d Result=%d", refreshRate, forceChange,
-             result);
-    }
-}
-
-void OvrContextSetStreamMic(bool streamMic) {
-    LOGI("Setting mic streaming %d", streamMic);
-    mStreamMic = streamMic;
-    if (mMicHandle) {
-        if (mStreamMic) {
-            LOG("Starting mic");
-            ovr_Microphone_Start(mMicHandle);
-        } else {
-            ovr_Microphone_Stop(mMicHandle);
-        }
-    }
-
-}
-
-void OvrContextSetFFRParams(int foveationMode, float foveationStrength, float foveationShape,
-                            float foveationVerticalOffset) {
-    LOGI("SSetting FFR params %d %f %f %f", foveationMode, foveationStrength, foveationShape,
-         foveationVerticalOffset);
-
-    mFoveationEnabled = (bool) foveationMode;
-    mFoveationStrength = foveationStrength;
-    mFoveationShape = foveationShape;
-    mFoveationVerticalOffset = foveationVerticalOffset;
-}
-
-void OvrContextEnterVrMode() {
-
-}
-
-void OvrContextLeaveVrMode() {
-    LOGI("Leaving VR mode.");
-
-    vrapi_LeaveVrMode(Ovr);
-
-    LOGI("Leaved VR mode.");
-    Ovr = nullptr;
-
-    // Calling back VrThread to notify Vr state change.
-    jclass clazz = env->GetObjectClass(mVrThread);
-    jmethodID id = env->GetMethodID(clazz, "onVrModeChanged", "(Z)V");
-    env->CallVoidMethod(mVrThread, id, static_cast<jboolean>(false));
-    env->DeleteLocalRef(clazz);
-}
-
-std::pair<EyeFov, EyeFov> OvrContextGetFov() {
-    float fovX = vrapi_GetSystemPropertyFloat(&java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X);
-    float fovY = vrapi_GetSystemPropertyFloat(&java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y);
-    LOGI("OvrContext::getFov: X=%f Y=%f", fovX, fovY);
-
-    double displayTime = vrapi_GetPredictedDisplayTime(Ovr, 0);
-    ovrTracking2 tracking = vrapi_GetPredictedTracking2(Ovr, displayTime);
-
-    EyeFov fov[2];
-
-    for (int eye = 0; eye < 2; eye++) {
-        auto projection = tracking.Eye[eye].ProjectionMatrix;
-        double a = projection.M[0][0];
-        double b = projection.M[1][1];
-        double c = projection.M[0][2];
-        double d = projection.M[1][2];
-        double n = -projection.M[2][3];
-        double w1 = 2.0 * n / a;
-        double h1 = 2.0 * n / b;
-        double w2 = c * w1;
-        double h2 = d * h1;
-
-        double maxX = (w1 + w2) / 2.0;
-        double minX = w2 - maxX;
-        double maxY = (h1 + h2) / 2.0;
-        double minY = h2 - maxY;
-
-        double rr = 180 / M_PI;
-        LOGI("getFov maxX=%f minX=%f maxY=%f minY=%f a=%f b=%f c=%f d=%f n=%f", maxX, minX, maxY,
-             minY, a, b, c, d, n);
-
-        fov[eye].left = (float) (atan(minX / -n) * rr);
-        fov[eye].right = (float) (-atan(maxX / -n) * rr);
-        fov[eye].top = (float) (atan(minY / -n) * rr);
-        fov[eye].bottom = (float) (-atan(maxY / -n) * rr);
-
-        LOGI("getFov[%d](D) r=%f l=%f t=%f b=%f", eye, fov[eye].left, fov[eye].right,
-             fov[eye].top, fov[eye].bottom);
-    }
-    return {fov[0], fov[1]};
-}
-
-
-void OvrContextUpdateHapticsState() {
-    ovrInputCapabilityHeader curCaps;
-    ovrResult result;
-
-    for (uint32_t deviceIndex = 0;
-         vrapi_EnumerateInputDevices(Ovr, deviceIndex, &curCaps) >= 0; deviceIndex++) {
-        ovrInputTrackedRemoteCapabilities remoteCapabilities;
-
-        remoteCapabilities.Header = curCaps;
-        result = vrapi_GetInputDeviceCapabilities(Ovr, &remoteCapabilities.Header);
-        if (result != ovrSuccess) {
-            continue;
-        }
-
-        int curHandIndex = (remoteCapabilities.ControllerCapabilities & ovrControllerCaps_LeftHand)
-                           ? 1 : 0;
-        auto &s = mHapticsState[curHandIndex];
-
-        uint64_t currentUs = getTimestampUs();
-
-        if (s.fresh) {
-            s.startUs = s.startUs + currentUs;
-            s.endUs = s.startUs + s.endUs;
-            s.fresh = false;
-        }
-
-        if (s.startUs <= 0) {
-            // No requested haptics for this hand.
-            if (s.buffered) {
-                finishHapticsBuffer(curCaps.DeviceID);
-                s.buffered = false;
-            }
-            continue;
-        }
-
-        if (currentUs >= s.endUs) {
-            // No more haptics is needed.
-            s.startUs = 0;
-            if (s.buffered) {
-                finishHapticsBuffer(curCaps.DeviceID);
-                s.buffered = false;
-            }
-            continue;
-        }
-
-        if (remoteCapabilities.ControllerCapabilities &
-            ovrControllerCaps_HasBufferedHapticVibration) {
-            // Note: HapticSamplesMax=25 HapticSampleDurationMS=2 on Quest
-
-            // First, call with buffer.Terminated = false and when haptics is no more needed call with buffer.Terminated = true (to stop haptics?).
-            LOG("Send haptic buffer. HapticSamplesMax=%d HapticSampleDurationMS=%d",
-                remoteCapabilities.HapticSamplesMax, remoteCapabilities.HapticSampleDurationMS);
-
-            uint32_t requiredHapticsBuffer = static_cast<uint32_t >((s.endUs - currentUs) /
-                                                                    remoteCapabilities.HapticSampleDurationMS *
-                                                                    1000);
-
-            std::vector<uint8_t> hapticBuffer(remoteCapabilities.HapticSamplesMax);
-            ovrHapticBuffer buffer;
-            buffer.BufferTime = vrapi_GetPredictedDisplayTime(Ovr, FrameIndex);
-            buffer.HapticBuffer = &hapticBuffer[0];
-            buffer.NumSamples = std::min(remoteCapabilities.HapticSamplesMax,
-                                         requiredHapticsBuffer);
-            buffer.Terminated = false;
-
-            for (int i = 0; i < remoteCapabilities.HapticSamplesMax; i++) {
-                float current = ((currentUs - s.startUs) / 1000000.0f) +
-                                (remoteCapabilities.HapticSampleDurationMS * i) / 1000.0f;
-                float intensity =
-                        (sinf(static_cast<float>(current * M_PI * 2 * s.frequency)) + 1.0f) * 0.5f *
-                        s.amplitude;
-                if (intensity < 0) {
-                    intensity = 0;
-                } else if (intensity > 1.0) {
-                    intensity = 1.0;
-                }
-                hapticBuffer[i] = static_cast<uint8_t>(255 * intensity);
-            }
-
-            result = vrapi_SetHapticVibrationBuffer(Ovr, curCaps.DeviceID, &buffer);
-            if (result != ovrSuccess) {
-                LOGI("vrapi_SetHapticVibrationBuffer: Failed. result=%d", result);
-            }
-            s.buffered = true;
-        } else if (remoteCapabilities.ControllerCapabilities &
-                   ovrControllerCaps_HasSimpleHapticVibration) {
-            LOG("Send simple haptic. amplitude=%f", s.amplitude);
-            vrapi_SetHapticVibrationSimple(Ovr, curCaps.DeviceID, s.amplitude);
-        }
-    }
+    return {&g_ctx.micBuffer[0], (long long) outputBufferNumElements};
 }
 
 void
-OvrContextOnHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency,
-                            int hand) {
-    LOGI("OvrContext::onHapticsFeedback: processing haptics. %" PRIu64 " %f %f %f, %d", startTime,
+onHapticsFeedback(unsigned long long startTime, float amplitude, float duration, float frequency,
+                  int hand) {
+    LOGI("OvrContext::onHapticsFeedback: processing haptics. %llu %f %f %f, %d", startTime,
          amplitude, duration, frequency, hand);
 
     int curHandIndex = (hand == 0) ? 0 : 1;
-    auto &s = mHapticsState[curHandIndex];
+    auto &s = g_ctx.mHapticsState[curHandIndex];
     s.startUs = startTime;
     s.endUs = static_cast<uint64_t>(duration * 1000000);
     s.amplitude = amplitude;
@@ -1025,178 +941,59 @@ OvrContextOnHapticsFeedback(uint64_t startTime, float amplitude, float duration,
     s.buffered = false;
 }
 
-void OvrContextFinishHapticsBuffer(ovrDeviceID DeviceID) {
-    uint8_t hapticBuffer[1] = {0};
-    ovrHapticBuffer buffer;
-    buffer.BufferTime = vrapi_GetPredictedDisplayTime(Ovr, FrameIndex);
-    buffer.HapticBuffer = &hapticBuffer[0];
-    buffer.NumSamples = 1;
-    buffer.Terminated = true;
-
-    auto result = vrapi_SetHapticVibrationBuffer(Ovr, DeviceID, &buffer);
-    if (result != ovrSuccess) {
-        LOGI("vrapi_SetHapticVibrationBuffer: Failed. result=%d", result);
-    }
-}
-
-/// Check if buttons to send launch signal to server is down on current frame.
-/// \return true if down at current frame.
-bool OvrContextGetButtonDown() {
-    ovrInputCapabilityHeader curCaps;
-    ovrResult result;
-    bool buttonPressed = false;
-
-    for (uint32_t deviceIndex = 0;
-         vrapi_EnumerateInputDevices(Ovr, deviceIndex, &curCaps) >= 0; deviceIndex++) {
-        if (curCaps.Type == ovrControllerType_TrackedRemote) {
-            ovrInputTrackedRemoteCapabilities remoteCapabilities;
-            ovrInputStateTrackedRemote remoteInputState;
-
-            remoteCapabilities.Header = curCaps;
-            result = vrapi_GetInputDeviceCapabilities(Ovr, &remoteCapabilities.Header);
-            if (result != ovrSuccess) {
-                continue;
-            }
-            remoteInputState.Header.ControllerType = remoteCapabilities.Header.Type;
-
-            result = vrapi_GetCurrentInputState(Ovr, remoteCapabilities.Header.DeviceID,
-                                                &remoteInputState.Header);
-            if (result != ovrSuccess) {
-                continue;
-            }
-
-            buttonPressed = buttonPressed || (remoteInputState.Buttons &
-                                              (ovrButton_Trigger | ovrButton_A | ovrButton_B |
-                                               ovrButton_X | ovrButton_Y)) != 0;
-        }
-    }
-
-    bool ret = buttonPressed && !mButtonPressed;
-    mButtonPressed = buttonPressed;
-    return ret;
-}
-
 // Called TrackingThread. So, we can't use this->env.
-void OvrContextSendGuardianInfo(JNIEnv *env_, jobject udpReceiverThread) {
-    if (m_ShouldSyncGuardian) {
-        double currentTime = GetTimeInSeconds();
-        if (currentTime - m_LastGuardianSyncTry < ALVR_GUARDIAN_RESEND_CD_SEC) {
-            return; // Don't spam the sync start packet
-        }
-        LOGI("Sending Guardian");
-        m_LastGuardianSyncTry = currentTime;
-        prepareGuardianData();
+GuardianData getGuardianInfo() {
+    vrapi_GetBoundaryGeometry(g_ctx.Ovr, 0, &g_ctx.m_GuardianPointCount, nullptr);
 
-        GuardianSyncStart packet;
-        packet.type = ALVR_PACKET_TYPE_GUARDIAN_SYNC_START;
-        packet.timestamp = m_GuardianTimestamp;
-        packet.totalPointCount = m_GuardianPointCount;
+    if (g_ctx.m_GuardianPointCount > 0) {
+        g_ctx.m_GuardianPoints = vector<TrackingVector3>(g_ctx.m_GuardianPointCount);
+        vector<ovrVector3f> temp_points(g_ctx.m_GuardianPointCount);
 
-        ovrPosef spacePose = vrapi_LocateTrackingSpace(Ovr, VRAPI_TRACKING_SPACE_LOCAL_FLOOR);
-        memcpy(&packet.standingPosRotation, &spacePose.Orientation, sizeof(TrackingQuat));
-        memcpy(&packet.standingPosPosition, &spacePose.Position, sizeof(TrackingVector3));
+        vrapi_GetBoundaryGeometry(g_ctx.Ovr, g_ctx.m_GuardianPointCount,
+                                  &g_ctx.m_GuardianPointCount, &temp_points[0]);
 
-        ovrVector3f bboxScale;
-        vrapi_GetBoundaryOrientedBoundingBox(Ovr, &spacePose /* dummy variable */, &bboxScale);
-        packet.playAreaSize.x = 2.0f * bboxScale.x;
-        packet.playAreaSize.y = 2.0f * bboxScale.z;
-
-        env_->CallVoidMethod(udpReceiverThread, mServerConnection_send,
-                             reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
-    } else if (m_GuardianSyncing) {
-        GuardianSegmentData packet;
-        packet.type = ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA;
-        packet.timestamp = m_GuardianTimestamp;
-
-        uint32_t segmentIndex = m_AckedGuardianSegment + 1;
-        packet.segmentIndex = segmentIndex;
-        uint32_t remainingPoints = m_GuardianPointCount - segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE;
-        size_t countToSend =
-                remainingPoints > ALVR_GUARDIAN_SEGMENT_SIZE ? ALVR_GUARDIAN_SEGMENT_SIZE
-                                                             : remainingPoints;
-
-        memcpy(&packet.points, m_GuardianPoints + segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE,
-               sizeof(TrackingVector3) * countToSend);
-
-        env_->CallVoidMethod(udpReceiverThread, mServerConnection_send,
-                             reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
-    }
-}
-
-void OvrContextOnGuardianSyncAck(uint64_t timestamp) {
-    if (timestamp != m_GuardianTimestamp) {
-        return;
+        memcpy(&g_ctx.m_GuardianPoints[0], &temp_points[0],
+               sizeof(TrackingVector3) * g_ctx.m_GuardianPointCount);
     }
 
-    if (m_ShouldSyncGuardian) {
-        m_ShouldSyncGuardian = false;
-        if (m_GuardianPointCount > 0) {
-            m_GuardianSyncing = true;
-        }
-    }
-}
+    GuardianData packet = {};
+    packet.totalPointCount = g_ctx.m_GuardianPointCount;
+    packet.points = &g_ctx.m_GuardianPoints[0];
 
-void OvrContextOnGuardianSegmentAck(uint64_t timestamp, uint32_t segmentIndex) {
-    if (timestamp != m_GuardianTimestamp || segmentIndex != m_AckedGuardianSegment + 1) {
-        return;
-    }
+    ovrPosef spacePose = vrapi_LocateTrackingSpace(g_ctx.Ovr, VRAPI_TRACKING_SPACE_LOCAL_FLOOR);
+    memcpy(&packet.standingPosRotation, &spacePose.Orientation, sizeof(TrackingQuat));
+    memcpy(&packet.standingPosPosition, &spacePose.Position, sizeof(TrackingVector3));
 
-    m_AckedGuardianSegment = segmentIndex;
-    uint32_t segments = m_GuardianPointCount / ALVR_GUARDIAN_SEGMENT_SIZE;
-    if (m_GuardianPointCount % ALVR_GUARDIAN_SEGMENT_SIZE > 0) {
-        segments++;
-    }
+    ovrVector3f bboxScale;
+    vrapi_GetBoundaryOrientedBoundingBox(g_ctx.Ovr, &spacePose /* dummy variable */, &bboxScale);
+    packet.playAreaSize.x = 2.0f * bboxScale.x;
+    packet.playAreaSize.y = 2.0f * bboxScale.z;
 
-    if (m_AckedGuardianSegment >= segments - 1) {
-        m_GuardianSyncing = false;
-    }
-}
-
-void OvrContextCheckShouldSyncGuardian() {
-    int recenterCount = vrapi_GetSystemStatusInt(&java, VRAPI_SYS_STATUS_RECENTER_COUNT);
-    if (recenterCount <= m_LastHMDRecenterCount) {
-        return;
-    }
-
-    m_ShouldSyncGuardian = true;
-    m_GuardianSyncing = false;
-    m_GuardianTimestamp = getTimestampUs();
-    delete[] m_GuardianPoints;
-    m_GuardianPoints = nullptr;
-    m_AckedGuardianSegment = -1;
-
-    m_LastHMDRecenterCount = recenterCount;
-}
-
-bool OvrContextPrepareGuardianData() {
-    if (m_GuardianPoints != nullptr) {
-        return false;
-    }
-
-    vrapi_GetBoundaryGeometry(Ovr, 0, &m_GuardianPointCount, nullptr);
-
-    if (m_GuardianPointCount <= 0) {
-        return true;
-    }
-
-    m_GuardianPoints = new ovrVector3f[m_GuardianPointCount];
-    vrapi_GetBoundaryGeometry(Ovr, m_GuardianPointCount, &m_GuardianPointCount, m_GuardianPoints);
-
-    return true;
+    return packet;
 }
 
 void onStreamStop() {
+    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, g_ctx.defaultRefreshRate);
+    LOGI("vrapi_SetDisplayRefreshRate: Result=%d", result);
+
     vrapi_SetExtraLatencyMode(g_ctx.Ovr, VRAPI_EXTRA_LATENCY_MODE_OFF);
 
     if (g_ctx.mMicHandle) {
         ovr_Microphone_Stop(g_ctx.mMicHandle);
-        delete[] g_ctx.micBuffer;
         ovr_Microphone_Destroy(g_ctx.mMicHandle);
         g_ctx.mMicHandle = nullptr;
     }
+
+    initRendererForLoadingRoom();
 }
 
 void onPause() {
+    ovrRenderer_Destroy(g_ctx.renderer.get());
+    g_ctx.renderer.reset();
+
+    LOGI("Leaving VR mode.");
+    vrapi_LeaveVrMode(g_ctx.Ovr);
+
     ANativeWindow_release(g_ctx.window);
 }
 

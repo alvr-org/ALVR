@@ -5,7 +5,8 @@ use settings_schema::*;
 #[serde(rename_all = "camelCase")]
 pub enum StreamMode {
     PreferReliable,
-    PreferUnreliable,
+    PreferSequentialUnreliable,
+    PreferUnorderedUnreliable,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -395,13 +396,13 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: AudioDescDefault {
                     device: "".into(),
                     stream_mode: StreamModeDefault {
-                        variant: StreamModeDefaultVariant::PreferUnreliable,
+                        variant: StreamModeDefaultVariant::PreferSequentialUnreliable,
                     },
                 },
             },
             microphone: false,
             microphone_stream_mode: StreamModeDefault {
-                variant: StreamModeDefaultVariant::PreferUnreliable,
+                variant: StreamModeDefaultVariant::PreferSequentialUnreliable,
             },
         },
         headset: HeadsetDescDefault {
@@ -417,7 +418,7 @@ pub fn session_settings_default() -> SettingsDefault {
             use_tracking_reference: false,
             force_3dof: false,
             tracking_stream_mode: StreamModeDefault {
-                variant: StreamModeDefaultVariant::PreferUnreliable,
+                variant: StreamModeDefaultVariant::PreferUnorderedUnreliable,
             },
             controllers: SwitchDefault {
                 enabled: true,
@@ -437,7 +438,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,
                     haptics_stream_mode: StreamModeDefault {
-                        variant: StreamModeDefaultVariant::PreferUnreliable,
+                        variant: StreamModeDefaultVariant::PreferUnorderedUnreliable,
                     },
                 },
             },

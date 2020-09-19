@@ -11,7 +11,6 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <android/input.h>
-#include "packet_types.h"
 #include "render.h"
 #include "utils.h"
 #include "OVR_Platform.h"
@@ -23,7 +22,6 @@
 #include <string>
 #include <map>
 #include <vector>
-#include "latency_collector.h"
 #include "asset.h"
 #include "sound.h"
 #include <inttypes.h>
@@ -33,10 +31,61 @@
 using namespace std;
 using namespace gl_render_utils;
 
-const int DEFAULT_REFRESH_RATE = 72;
 const int MAXIMUM_TRACKING_FRAMES = 180;
 const uint32_t ovrButton_Unknown1 = 0x01000000;
 const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 1s;
+
+
+enum ALVR_INPUT {
+    ALVR_INPUT_SYSTEM_CLICK,
+    ALVR_INPUT_APPLICATION_MENU_CLICK,
+    ALVR_INPUT_GRIP_CLICK,
+    ALVR_INPUT_GRIP_VALUE,
+    ALVR_INPUT_GRIP_TOUCH,
+    ALVR_INPUT_DPAD_LEFT_CLICK,
+    ALVR_INPUT_DPAD_UP_CLICK,
+    ALVR_INPUT_DPAD_RIGHT_CLICK,
+    ALVR_INPUT_DPAD_DOWN_CLICK,
+    ALVR_INPUT_A_CLICK,
+    ALVR_INPUT_A_TOUCH,
+    ALVR_INPUT_B_CLICK,
+    ALVR_INPUT_B_TOUCH,
+    ALVR_INPUT_X_CLICK,
+    ALVR_INPUT_X_TOUCH,
+    ALVR_INPUT_Y_CLICK,
+    ALVR_INPUT_Y_TOUCH,
+    ALVR_INPUT_TRIGGER_LEFT_VALUE,
+    ALVR_INPUT_TRIGGER_RIGHT_VALUE,
+    ALVR_INPUT_SHOULDER_LEFT_CLICK,
+    ALVR_INPUT_SHOULDER_RIGHT_CLICK,
+    ALVR_INPUT_JOYSTICK_LEFT_CLICK,
+    ALVR_INPUT_JOYSTICK_LEFT_X,
+    ALVR_INPUT_JOYSTICK_LEFT_Y,
+    ALVR_INPUT_JOYSTICK_RIGHT_CLICK,
+    ALVR_INPUT_JOYSTICK_RIGHT_X,
+    ALVR_INPUT_JOYSTICK_RIGHT_Y,
+    ALVR_INPUT_JOYSTICK_CLICK,
+    ALVR_INPUT_JOYSTICK_X,
+    ALVR_INPUT_JOYSTICK_Y,
+    ALVR_INPUT_JOYSTICK_TOUCH,
+    ALVR_INPUT_BACK_CLICK,
+    ALVR_INPUT_GUIDE_CLICK,
+    ALVR_INPUT_START_CLICK,
+    ALVR_INPUT_TRIGGER_CLICK,
+    ALVR_INPUT_TRIGGER_VALUE,
+    ALVR_INPUT_TRIGGER_TOUCH,
+    ALVR_INPUT_TRACKPAD_X,
+    ALVR_INPUT_TRACKPAD_Y,
+    ALVR_INPUT_TRACKPAD_CLICK,
+    ALVR_INPUT_TRACKPAD_TOUCH,
+
+    ALVR_INPUT_MAX = ALVR_INPUT_TRACKPAD_TOUCH,
+    ALVR_INPUT_COUNT = ALVR_INPUT_MAX + 1
+};
+
+const int alvrHandConfidence_High = (1 << 5);
+
+#define ALVR_BUTTON_FLAG(input) (1ULL << input)
 
 struct TrackingFrame {
     ovrTracking2 tracking;
@@ -445,7 +494,6 @@ void updateHapticsState() {
 
 void render(bool streaming, long long renderedFrameIndex) {
     if (streaming) {
-        LatencyCollector::Instance().rendered1(renderedFrameIndex);
         FrameLog(renderedFrameIndex, "Got frame for render.");
 
         updateHapticsState();
@@ -485,8 +533,6 @@ void render(bool streaming, long long renderedFrameIndex) {
                 ovrRenderer_RenderFrame(g_ctx.renderer.get(), &frame->tracking, true,
                                         g_ctx.mShowDashboard);
 
-        LatencyCollector::Instance().rendered2(renderedFrameIndex);
-
         const ovrLayerHeader2 *layers2[] =
                 {
                         &worldLayer.Header
@@ -501,8 +547,6 @@ void render(bool streaming, long long renderedFrameIndex) {
         frameDesc.Layers = layers2;
 
         ovrResult res = vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
-
-        LatencyCollector::Instance().submit(renderedFrameIndex);
 
         FrameLog(renderedFrameIndex, "vrapi_SubmitFrame2 Orientation=(%f, %f, %f, %f)",
                  frame->tracking.HeadPose.Pose.Orientation.x,
@@ -897,13 +941,9 @@ TrackingInfo getTrackingInfo() {
         }
     }
 
-    TrackingInfo info;
-//    setTrackingInfo(&info, frame->displayTime, &frame->tracking);
-    memset(&info, 0, sizeof(TrackingInfo));
+    TrackingInfo info = {};
 
-    uint64_t clientTime = getTimestampUs();
-
-    info.clientTime = clientTime;
+    info.clientTime = getTimestampUs();
     info.FrameIndex = g_ctx.FrameIndex;
     info.predictedDisplayTime = frame->displayTime;
 
@@ -921,8 +961,6 @@ TrackingInfo getTrackingInfo() {
     g_ctx.renderer->gui->Update(guiInput);
 
     FrameLog(g_ctx.FrameIndex, "Sending tracking info.");
-
-    LatencyCollector::Instance().tracking(frame->frameIndex);
 
     return info;
 }

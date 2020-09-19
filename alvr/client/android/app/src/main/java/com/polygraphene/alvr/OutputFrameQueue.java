@@ -81,7 +81,7 @@ public class OutputFrameQueue {
         elem.frameIndex = foundFrameIndex;
         mQueue.add(elem);
 
-        mCallbacks.onFrameOutput(foundFrameIndex);
+        mCallbacks.onFrameOutput();
         Utils.frameLog(foundFrameIndex, () -> "Current queue state=" + mQueue.size() + "/" + mQueueSize + " pushed index=" + index);
 
         render();

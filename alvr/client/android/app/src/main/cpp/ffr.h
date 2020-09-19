@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "gl_render_utils/render_pipeline.h"
-#include "packet_types.h"
+#include "bindings.h"
 
 struct FFRData {
     bool enabled;

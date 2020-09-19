@@ -20,18 +20,19 @@ impl StatisticsManager {
     pub fn update(&mut self, data: ClientStatistics) {
         let now = Instant::now();
 
+        let total_latency_ms = data.average_total_latency.as_millis() as _;
+        let encode_latency_ms =
+            (self.encode_latency_sum.as_millis() as f32 / self.server_frames_count as f32) as _;
+        let decode_latency_ms = data.average_decode_latency.as_millis() as _;
+
         info!(id: LogId::Statistics {
-            packets_lost_total: data.packets_lost_total,
-            packets_lost_per_second: data.packets_lost_per_second,
-            total_latency_ms: data.average_total_latency.as_millis() as _,
-            encode_latency_ms:
-                (self.encode_latency_sum.as_millis() as f32 / self.server_frames_count as f32) as _,
-            transport_latency_ms: data.average_transport_latency.as_millis() as _,
-            decode_latency_ms: data.average_decode_latency.as_millis() as _,
+            total_latency_ms,
+            encode_latency_ms,
+            decode_latency_ms,
+            other_latency_ms: total_latency_ms - encode_latency_ms - decode_latency_ms,
             client_fps: data.fps,
-            server_fps: (
-                self.server_frames_count as f32 / (now - self.last_update_instant).as_secs_f32()
-            ) as _,
+            server_fps:
+                self.server_frames_count as f32 / (now - self.last_update_instant).as_secs_f32(),
         });
 
         self.last_update_instant = now;

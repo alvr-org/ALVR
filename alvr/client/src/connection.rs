@@ -259,6 +259,8 @@ async fn try_connect(
 
             let info = unsafe { getTrackingInfo() };
 
+            STATISTICS.lock().report_tracking_frame(info.FrameIndex);
+
             let timestamp = Duration::from_secs_f64(info.predictedDisplayTime);
 
             let mut device_motions = HashMap::new();
@@ -471,7 +473,7 @@ async fn try_connect(
         }
 
         if Instant::now() - last_statistics_send_time > STATISTICS_SEND_INTERVAL {
-            let stats = STATISTICS.lock().get();
+            let stats = STATISTICS.lock().get_and_reset();
 
             if let Err(e) = control_socket
                 .send(ClientControlPacket::Statistics(stats))

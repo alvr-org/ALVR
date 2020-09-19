@@ -40,8 +40,8 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
     private Handler mHandler;
 
     public interface DecoderCallback {
-        void onFrameInput(long frameIdx);
-        void onFrameOutput(long frameIdx);
+        void onFrameInput();
+        void onFrameOutput();
     }
 
     private final DecoderCallback mDecoderCallback;
@@ -282,12 +282,12 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
             // IDR-Frame
             Utils.frameLog(nal.frameIndex, () -> "Feed IDR-Frame. Size=" + nal.length + " PresentationTime=" + presentationTime);
 
-            mDecoderCallback.onFrameInput(nal.frameIndex);
+            mDecoderCallback.onFrameInput();
 
             consumed = pushInputBuffer(nal, presentationTime, 0);
         } else {
             // PFrame
-            mDecoderCallback.onFrameInput(nal.frameIndex);
+            mDecoderCallback.onFrameInput();
 
             if (mWaitNextIDR) {
                 // Ignore P-Frame until next I-Frame

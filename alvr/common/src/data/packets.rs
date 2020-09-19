@@ -44,14 +44,9 @@ pub enum ServerControlPacket {
 
 #[derive(Serialize, Deserialize)]
 pub struct ClientStatistics {
-    pub packets_lost_total: u64,
-    pub packets_lost_per_second: u32,
-
     pub average_total_latency: Duration,
-    pub average_transport_latency: Duration,
     pub average_decode_latency: Duration,
-
-    pub fps: u32,
+    pub fps: f32,
 }
 
 #[derive(Serialize, Deserialize)]

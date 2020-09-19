@@ -82,14 +82,12 @@ pub enum LogId {
 
     #[serde(rename_all = "camelCase")]
     Statistics {
-        packets_lost_total: u64,
-        packets_lost_per_second: u32,
         total_latency_ms: u32,
         encode_latency_ms: u32,
-        transport_latency_ms: u32,
         decode_latency_ms: u32,
-        client_fps: u32,
-        server_fps: u32,
+        other_latency_ms: u32,
+        client_fps: f32,
+        server_fps: f32,
     },
 
     ClientDisconnected,

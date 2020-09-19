@@ -14,7 +14,6 @@
 #include "packet_types.h"
 #include "render.h"
 #include "utils.h"
-#include "ServerConnectionNative.h"
 #include "OVR_Platform.h"
 #include "ffr.h"
 #include <EGL/egl.h>
@@ -26,8 +25,10 @@
 #include <vector>
 #include "latency_collector.h"
 #include "asset.h"
+#include "sound.h"
 #include <inttypes.h>
 #include <glm/gtx/euler_angles.hpp>
+#include <mutex>
 
 using namespace std;
 using namespace gl_render_utils;

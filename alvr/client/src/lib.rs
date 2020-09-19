@@ -184,24 +184,23 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderNative(
     frame_idx: i64,
 ) {
     unsafe { render(streaming == 1, frame_idx) };
+    STATISTICS.lock().report_submitted_frame(frame_idx as _);
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onFrameInputNative(
     _: JNIEnv,
     _: JClass,
-    frame_idx: i64,
 ) {
-    STATISTICS.lock().report_frame_to_be_decoded(frame_idx);
+    STATISTICS.lock().report_frame_to_be_decoded();
 }
 
 #[no_mangle]
 pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onFrameOutputNative(
     _: JNIEnv,
     _: JClass,
-    frame_idx: i64,
 ) {
-    STATISTICS.lock().report_decoded_frame(frame_idx);
+    STATISTICS.lock().report_decoded_frame();
 }
 
 #[no_mangle]

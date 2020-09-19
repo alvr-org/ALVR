@@ -79,13 +79,13 @@ public class OvrActivity extends Activity {
 
     static class DecoderCallbacks implements DecoderThread.DecoderCallback {
         @Override
-        public void onFrameInput(long frameIdx) {
-            onFrameInputNative(frameIdx);
+        public void onFrameInput() {
+            onFrameInputNative();
         }
 
         @Override
-        public void onFrameOutput(long frameIdx) {
-            onFrameOutputNative(frameIdx);
+        public void onFrameOutput() {
+            onFrameOutputNative();
         }
     }
 
@@ -340,9 +340,9 @@ public class OvrActivity extends Activity {
 
     static native void renderNative(boolean streaming, long frameIdx);
 
-    static native void onFrameInputNative(long frameIdx); // only for statistics
+    static native void onFrameInputNative(); // only for statistics
 
-    static native void onFrameOutputNative(long frameIdx); // only for statistics
+    static native void onFrameOutputNative(); // only for statistics
 
     // this callback is needed to call C++ code inside the gl context using the rendering handler
     static native float onStreamStopNative();

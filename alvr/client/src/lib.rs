@@ -57,7 +57,8 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_createIdentity(
 #[no_mangle]
 pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNative(
     env: JNIEnv,
-    jactivity: JClass,
+    _: JClass,
+    jactivity: JObject,
     jasset_manager: JObject,
     jout_params: JObject,
 ) {
@@ -65,7 +66,7 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNative(
         let result: OnCreateResult = unsafe {
             onCreate(
                 env.get_native_interface() as _,
-                **jactivity as _,
+                *jactivity as _,
                 *jasset_manager as _,
             )
         };
@@ -89,7 +90,8 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNative(
 #[no_mangle]
 pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
     env: JNIEnv,
-    jactivity: JClass,
+    _: JClass,
+    jactivity: JObject,
     jhostname: JString,
     jcertificate_pem: JString,
     jprivate_key: JString,

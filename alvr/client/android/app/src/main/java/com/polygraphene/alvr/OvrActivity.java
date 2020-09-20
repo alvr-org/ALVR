@@ -139,7 +139,7 @@ public class OvrActivity extends Activity {
         // this call initializes a GL context, and this must be done within the scope of the
         // rendering handler, so successive rendering calls don't fail.
         OnCreateNativeOutParams params = new OnCreateNativeOutParams();
-        onCreateNative(this.getAssets(), params);
+        onCreateNative(this, this.getAssets(), params);
 
         mStreamSurfaceTexture = new SurfaceTexture(params.streamSurfaceHandle);
         mStreamSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
@@ -248,7 +248,7 @@ public class OvrActivity extends Activity {
                 PrivateIdentity id = this.getCertificate();
 
                 // initialize Ovr, enable vr mode, startup sockets
-                mRefreshRate = onResumeNative(id.hostname, id.certificatePEM, id.privateKey, mScreenSurface);
+                mRefreshRate = onResumeNative(this, id.hostname, id.certificatePEM, id.privateKey, mScreenSurface);
             });
             mRenderingHandler.postDelayed(this::render, 13);
         }
@@ -331,9 +331,9 @@ public class OvrActivity extends Activity {
 
     static native void createIdentity(PrivateIdentity id); // id fields are reset
 
-    static native void onCreateNative(AssetManager assetManager, OnCreateNativeOutParams outParams);
+    static native void onCreateNative(Activity activity, AssetManager assetManager, OnCreateNativeOutParams outParams);
 
-    static native float onResumeNative(String hostname, String certificatePEM, String privateKey, Surface screenSurface); // returns default framerate
+    static native float onResumeNative(Activity activity, String hostname, String certificatePEM, String privateKey, Surface screenSurface); // returns default framerate
 
     // this callback is needed to call C++ code inside the gl context using the rendering handler
     static native float onStreamStartNative();

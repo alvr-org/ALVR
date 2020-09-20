@@ -152,7 +152,7 @@ namespace {
 
 OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     auto *env = (JNIEnv *) v_env;
-    auto activity = (jclass) v_activity;
+    auto activity = (jobject) v_activity;
     auto assetManager = (jobject) v_assetManager;
 
     LOG("Initializing EGL.");

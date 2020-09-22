@@ -1,5 +1,7 @@
+mod deps;
 mod version;
 
+use deps::install_deps;
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
 use std::{
@@ -20,6 +22,7 @@ USAGE:
     cargo xtask <SUBCOMMAND> [FLAG] [ARGS]
 
 SUBCOMMANDS:
+    install-deps        Download and compile/install external dependencies
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
     publish             Build server and client in release mode, zip server and copy the pdb file.
@@ -77,7 +80,7 @@ fn dynlib_fname(name: &str) -> String {
     format!("{}.dll", name)
 }
 
-fn run_with_args(cmd: &str, args: &[&str]) -> BResult {
+fn run_with_args_in(workdir: &Path, cmd: &str, args: &[&str]) -> BResult {
     println!(
         "\n{}",
         args.iter().fold(String::from(cmd), |s, arg| s + " " + arg)
@@ -85,6 +88,7 @@ fn run_with_args(cmd: &str, args: &[&str]) -> BResult {
     let output = Command::new(cmd)
         .args(args)
         .stdout(Stdio::inherit())
+        .current_dir(workdir)
         .spawn()?
         .wait_with_output()?;
 
@@ -97,6 +101,10 @@ fn run_with_args(cmd: &str, args: &[&str]) -> BResult {
         )
         .into())
     }
+}
+
+fn run_with_args(cmd: &str, args: &[&str]) -> BResult {
+    run_with_args_in(&env::current_dir().unwrap(), cmd, args)
 }
 
 fn run(cmd: &str) -> BResult {
@@ -329,6 +337,7 @@ fn main() {
         };
         if args.finish().is_ok() {
             match subcommand.as_str() {
+                "install-deps" => ok_or_exit(install_deps()),
                 "build-server" => ok_or_exit(build_server(args_values.is_release, true)),
                 "build-client" => ok_or_exit(build_client(args_values.is_release)),
                 "publish" => ok_or_exit(build_publish()),

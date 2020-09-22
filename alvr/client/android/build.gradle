@@ -11,9 +11,7 @@ buildscript {
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:4.0.1'
-//        classpath 'gradle.plugin.org.mozilla.rust-android-gradle:plugin:0.8.3'
-        classpath files('../../../../../rust-android-gradle/samples/maven-repo/org/mozilla/rust-android-gradle/rust-android/0.8.3/rust-android-0.8.3.jar')
-//        classpath files('../../../../../rust-android-gradle/samples/maven-repo/org/mozilla/rust-android-gradle/plugin/0.8.3/plugin-0.8.3.jar')
+        classpath files('../../../deps/rust-android-gradle/rust-android-0.8.3.jar')
     }
 }
 

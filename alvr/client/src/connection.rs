@@ -226,8 +226,8 @@ async fn try_connect(
 
         // Store the parameters in a temporary variable so we don't need to pass them to java
         *ON_STREAM_START_PARAMS_TEMP.lock() = Some(OnStreamStartParams {
-            eyeWidth: client_config.eye_resolution.0 as _,
-            eyeHeight: client_config.eye_resolution.1 as _,
+            eyeWidth: client_config.eye_resolution_width as _,
+            eyeHeight: client_config.eye_resolution_height as _,
             leftEyeFov: EyeFov {
                 left: client_config.left_eye_fov.left,
                 right: client_config.left_eye_fov.right,

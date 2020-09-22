@@ -51,22 +51,20 @@ void Settings::Load()
 		mRenderModelName = openvrConfig.get("headsetRenderModelName").get<std::string>();
 		mRegisteredDeviceType = openvrConfig.get("headsetRegisteredDeviceType").get<std::string>();
 
-		auto eyeResolution = openvrConfig.get("eyeResolution").get<picojson::array>();
-		m_renderWidth = eyeResolution[0].get<int64_t>() * 2;
-		m_renderHeight = eyeResolution[1].get<int64_t>();
+		m_renderWidth = openvrConfig.get("eyeResolutionWidth").get<int64_t>() * 2;
+		m_renderHeight = openvrConfig.get("eyeResolutionHeight").get<int64_t>();
 
-		auto targetEyeResolution = openvrConfig.get("targetEyeResolution").get<picojson::array>();
-		m_recommendedTargetWidth = targetEyeResolution[0].get<int64_t>() * 2;
-		m_recommendedTargetHeight = targetEyeResolution[1].get<int64_t>();
+		m_recommendedTargetWidth = openvrConfig.get("targetEyeResolutionWidth").get<int64_t>() * 2;
+		m_recommendedTargetHeight = openvrConfig.get("targetEyeResolutionHeight").get<int64_t>();
 
-		picojson::array &eyeFov = openvrConfig.get("eyesFov").get<picojson::array>();
-		for (int eye = 0; eye < 2; eye++)
-		{
-			m_eyeFov[eye].left = static_cast<float>(eyeFov[eye].get("left").get<double>());
-			m_eyeFov[eye].right = static_cast<float>(eyeFov[eye].get("right").get<double>());
-			m_eyeFov[eye].top = static_cast<float>(eyeFov[eye].get("top").get<double>());
-			m_eyeFov[eye].bottom = static_cast<float>(eyeFov[eye].get("bottom").get<double>());
-		}
+		m_eyeFov[0].left = (float)openvrConfig.get("leftEyeFov").get("left").get<double>();
+		m_eyeFov[0].right = (float)openvrConfig.get("leftEyeFov").get("right").get<double>();
+		m_eyeFov[0].top = (float)openvrConfig.get("leftEyeFov").get("top").get<double>();
+		m_eyeFov[0].bottom = (float)openvrConfig.get("leftEyeFov").get("bottom").get<double>();
+		m_eyeFov[1].left = m_eyeFov[0].right; // NB: left and right values are swapped intentonally
+		m_eyeFov[1].right = m_eyeFov[0].left;
+		m_eyeFov[1].top = m_eyeFov[0].top;
+		m_eyeFov[1].bottom = m_eyeFov[0].top;
 
 		m_flSecondsFromVsyncToPhotons = (float)openvrConfig.get("secondsFromVsyncToPhotons").get<double>();
 

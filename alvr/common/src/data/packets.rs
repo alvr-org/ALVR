@@ -28,7 +28,8 @@ pub struct HeadsetInfoPacket {
 #[derive(Serialize, Deserialize)]
 pub struct ClientConfigPacket {
     pub settings: json::Value,
-    pub eye_resolution: (u32, u32),
+    pub eye_resolution_width: u32,
+    pub eye_resolution_height: u32,
     pub left_eye_fov: Fov,
     pub fps: u32,
     pub web_gui_url: String,

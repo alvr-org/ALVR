@@ -266,7 +266,8 @@ async fn connect_to_any_client(
             }
             FrameSize::Absolute { width, height } => (width as f32 / 2_f32, height as f32 / 2_f32),
         };
-        let eye_resolution = (align32(eye_width), align32(eye_height));
+        let eye_resolution_width = align32(eye_width);
+        let eye_resolution_height = align32(eye_height);
 
         let left_eye_fov = if let Some(left_eye_fov) = settings.video.left_eye_fov.clone() {
             left_eye_fov
@@ -301,7 +302,8 @@ async fn connect_to_any_client(
 
         let client_config = ClientConfigPacket {
             settings: serde_json::to_value(&settings).unwrap(),
-            eye_resolution,
+            eye_resolution_width,
+            eye_resolution_height,
             left_eye_fov: left_eye_fov.clone(),
             fps,
             web_gui_url,
@@ -377,8 +379,10 @@ async fn connect_to_any_client(
             headset_manufacturer_name: settings.headset.manufacturer_name.clone(),
             headset_render_model_name: settings.headset.render_model_name.clone(),
             headset_registered_device_type: settings.headset.registered_device_type.clone(),
-            eye_resolution,
-            target_eye_resolution: eye_resolution,
+            eye_resolution_width,
+            eye_resolution_height,
+            target_eye_resolution_width: eye_resolution_width,
+            target_eye_resolution_height: eye_resolution_height,
             left_eye_fov,
             seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
             ipd: settings.video.ipd,

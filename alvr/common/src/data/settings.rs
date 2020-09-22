@@ -12,8 +12,6 @@ pub enum StreamMode {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct QuicConfig {
-    pub send_small_packets_unreliably: bool,
-
     // quinn::ClientConfig / ServerConfig
     pub enable_0rtt: bool,
     pub enable_keylog: bool,
@@ -451,7 +449,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     const MAX_STREAM_BANDWIDTH: u64 = 12500 * 1000;
                     const STREAM_RWND: u64 = MAX_STREAM_BANDWIDTH / 1000 * EXPECTED_RTT;
                     QuicConfigDefault {
-                        send_small_packets_unreliably: true,
                         enable_0rtt: false,
                         enable_keylog: false,
                         use_stateless_retry: OptionalDefault {

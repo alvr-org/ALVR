@@ -73,6 +73,7 @@ If you have a version prior to v12.0 you need to launch `remove_firewall_rules.b
 - Download this repository and on the project root execute:
 
     ```bash
+    cargo xtask install-deps
     cargo xtask build-server --release
     cargo xtask build-client --release
     ```

@@ -90,7 +90,6 @@ public class OvrActivity extends Activity {
     }
 
     boolean mResumed = false;
-    Handler mMainHandler = null;
     Handler mRenderingHandler = null;
     HandlerThread mRenderingHandlerThread = null;
     Surface mScreenSurface = null;
@@ -98,7 +97,7 @@ public class OvrActivity extends Activity {
     Surface mStreamSurface = null;
     SurfaceTexture mWebViewSurfaceTexture = null;
     OffscreenWebView mWebView = null;
-    boolean mWebViewVisible = true;
+    boolean mWebViewVisible = false;
     String mDashboardURL = "";
     DecoderThread mDecoderThread = null;
     DecoderThread.DecoderCallback mDecoderCallbacks = new DecoderCallbacks();
@@ -119,10 +118,8 @@ public class OvrActivity extends Activity {
         setContentView(R.layout.activity_main);
         SurfaceView surfaceView = findViewById(R.id.surfaceview);
 
-        mWebView = new OffscreenWebView(this);
-        mWebView.setMessage("Launch ALVR on PC and click on \"Trust\" next to the client entry");
-
-        mMainHandler = new Handler(this.getMainLooper());
+        Handler webViewHandler = new Handler(this.getMainLooper());
+        mWebView = new OffscreenWebView(this, webViewHandler);
 
         mRenderingHandlerThread = new HandlerThread("Rendering thread");
         mRenderingHandlerThread.start();
@@ -239,7 +236,8 @@ public class OvrActivity extends Activity {
     void maybeResume() {
         if (mResumed && mScreenSurface != null) {
             mRenderingHandler.post(() -> {
-                setWebViewVisible(true);
+                mWebView.setMessage("Launch ALVR on PC and click on \"Trust\" next to the client entry");
+
                 // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
                 // and onFrameAvailable won't be called after next output.
                 // To avoid deadlock caused by it, we need to flush last output.
@@ -258,6 +256,7 @@ public class OvrActivity extends Activity {
         if (mResumed && mScreenSurface != null) {
             if (mWebViewVisible) {
                 mWebViewSurfaceTexture.updateTexImage();
+//                Utils.loge(TAG, () -> "updateTexImage");
             }
 
             if (mDecoderThread != null) {
@@ -360,9 +359,9 @@ public class OvrActivity extends Activity {
             mDashboardURL = url;
             mCodec = codec;
 
-            mMainHandler.post(() -> mWebView.setMessage("Server found, the stream will begin shortly"));
+            mWebView.setMessage("Server found, the stream will begin shortly");
         } else {
-            mMainHandler.post(() -> mWebView.setMessage("Found unsupported server. Make sure the client and the server are up to date."));
+            mWebView.setMessage("Found unsupported server. Make sure the client and the server are up to date.");
         }
     }
 
@@ -374,8 +373,6 @@ public class OvrActivity extends Activity {
             mDecoderThread.onDisconnect();
         }
         mDecoderThread = new DecoderThread(mStreamSurface, mDecoderCallbacks, mCodec);
-
-        setWebViewVisible(false);
     }
 
     @SuppressWarnings("unused")
@@ -398,11 +395,10 @@ public class OvrActivity extends Activity {
 
     public void onStreamStop(boolean restarting) {
         if (restarting) {
-            mMainHandler.post(() -> mWebView.setMessage("Server is restarting, please wait."));
+            mWebView.setMessage("Server is restarting, please wait.");
         } else {
-            mMainHandler.post(() -> mWebView.setMessage("Server disconnected."));
+            mWebView.setMessage("Server disconnected.");
         }
-        setWebViewVisible(true);
 
         if (mDecoderThread != null) {
             mDecoderThread.onDisconnect();
@@ -414,58 +410,20 @@ public class OvrActivity extends Activity {
 
     @SuppressWarnings("unused")
     public void applyWebViewInteractionEvent(int type, float x, float y) {
-        mMainHandler.post(() -> {
-            long time = SystemClock.uptimeMillis();
-
-            int action = 0;
-            boolean touchEvent = false;
-            switch (type) {
-                case 0:
-                    action = MotionEvent.ACTION_HOVER_ENTER;
-                    touchEvent = false;
-                    break;
-                case 1:
-                    action = MotionEvent.ACTION_HOVER_EXIT;
-                    touchEvent = false;
-                    break;
-                case 2:
-                    action = MotionEvent.ACTION_HOVER_MOVE;
-                    touchEvent = false;
-                    break;
-                case 3:
-                    action = MotionEvent.ACTION_MOVE;
-                    touchEvent = true;
-                    break;
-                case 4:
-                    action = MotionEvent.ACTION_DOWN;
-                    touchEvent = true;
-                    break;
-                case 5:
-                    action = MotionEvent.ACTION_UP;
-                    touchEvent = true;
-                    break;
-            }
-
-            float mx = x * WEBVIEW_WIDTH;
-            float my = y * WEBVIEW_HEIGHT;
-
-            MotionEvent ev = MotionEvent.obtain(time, time, action, mx, my, 0);
-            if (touchEvent) {
-                mWebView.dispatchTouchEvent(ev);
-            } else {
-                mWebView.dispatchGenericMotionEvent(ev);
-            }
-        });
+        mWebView.applyWebViewInteractionEvent(type, x, y);
     }
 
-    public void setWebViewVisible(boolean visible) {
+    @SuppressWarnings("unused")
+    public void setWebViewVisibility(boolean visible) {
         // detach webview from view tree when not needed
-        if (visible && !mWebViewVisible) {
-            this.addContentView(mWebView, new ViewGroup.LayoutParams(WEBVIEW_WIDTH, WEBVIEW_HEIGHT));
-        } else if (!visible && mWebViewVisible) {
-            ((ViewGroup) mWebView.getParent()).removeView(mWebView);
-        }
+        this.runOnUiThread(() -> {
+            if (visible && !mWebViewVisible) {
+                this.addContentView(mWebView, new ViewGroup.LayoutParams(WEBVIEW_WIDTH, WEBVIEW_HEIGHT));
+            } else if (!visible && mWebViewVisible) {
+                ((ViewGroup) mWebView.getParent()).removeView(mWebView);
+            }
 
-        mWebViewVisible = visible;
+            mWebViewVisible = visible;
+        });
     }
 }

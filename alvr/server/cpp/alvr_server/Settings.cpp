@@ -61,10 +61,10 @@ void Settings::Load()
 		m_eyeFov[0].right = (float)openvrConfig.get("leftEyeFov").get("right").get<double>();
 		m_eyeFov[0].top = (float)openvrConfig.get("leftEyeFov").get("top").get<double>();
 		m_eyeFov[0].bottom = (float)openvrConfig.get("leftEyeFov").get("bottom").get<double>();
-		m_eyeFov[1].left = m_eyeFov[0].right; // NB: left and right values are swapped intentonally
+		m_eyeFov[1].left = m_eyeFov[0].right; // NB: left and right values are swapped intentionally
 		m_eyeFov[1].right = m_eyeFov[0].left;
 		m_eyeFov[1].top = m_eyeFov[0].top;
-		m_eyeFov[1].bottom = m_eyeFov[0].top;
+		m_eyeFov[1].bottom = m_eyeFov[0].bottom;
 
 		m_flSecondsFromVsyncToPhotons = (float)openvrConfig.get("secondsFromVsyncToPhotons").get<double>();
 

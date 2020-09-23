@@ -3,7 +3,10 @@ package com.polygraphene.alvr;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.os.Handler;
+import android.os.SystemClock;
 import android.support.annotation.NonNull;
+import android.view.MotionEvent;
 import android.view.Surface;
 import android.webkit.WebView;
 
@@ -24,14 +27,18 @@ public class OffscreenWebView extends WebView {
 
     private Surface mSurface;
     private String mMsgTitle;
+    private Handler handler;
 
     @SuppressLint("SetJavaScriptEnabled")
-    public OffscreenWebView(@NonNull Context context) {
+    public OffscreenWebView(@NonNull Context context, Handler handler) {
         super(context);
 
-        this.getSettings().setJavaScriptEnabled(true);
-        this.getSettings().setDomStorageEnabled(true);
-        this.setInitialScale(100);
+        this.handler = handler;
+        handler.post(() -> {
+            this.getSettings().setJavaScriptEnabled(true);
+            this.getSettings().setDomStorageEnabled(true);
+            this.setInitialScale(100);
+        });
 
         mMsgTitle = Utils.getVersionName(context);
     }
@@ -41,7 +48,52 @@ public class OffscreenWebView extends WebView {
     }
 
     public void setMessage(String msg) {
-        this.loadData(String.format(MSG_TEMPLATE, mMsgTitle, msg), "text/html; charset=utf-8", "UTF-8");
+        handler.post(() -> this.loadData(String.format(MSG_TEMPLATE, mMsgTitle, msg), "text/html; charset=utf-8", "UTF-8"));
+    }
+
+    public void applyWebViewInteractionEvent(int type, float x, float y) {
+        handler.post(() -> {
+            long time = SystemClock.uptimeMillis();
+
+            int action = 0;
+            boolean touchEvent = false;
+            switch (type) {
+                case 0:
+                    action = MotionEvent.ACTION_HOVER_ENTER;
+                    touchEvent = false;
+                    break;
+                case 1:
+                    action = MotionEvent.ACTION_HOVER_EXIT;
+                    touchEvent = false;
+                    break;
+                case 2:
+                    action = MotionEvent.ACTION_HOVER_MOVE;
+                    touchEvent = false;
+                    break;
+                case 3:
+                    action = MotionEvent.ACTION_MOVE;
+                    touchEvent = true;
+                    break;
+                case 4:
+                    action = MotionEvent.ACTION_DOWN;
+                    touchEvent = true;
+                    break;
+                case 5:
+                    action = MotionEvent.ACTION_UP;
+                    touchEvent = true;
+                    break;
+            }
+
+            float mx = x * WEBVIEW_WIDTH;
+            float my = y * WEBVIEW_HEIGHT;
+
+            MotionEvent ev = MotionEvent.obtain(time, time, action, mx, my, 0);
+            if (touchEvent) {
+                this.dispatchTouchEvent(ev);
+            } else {
+                this.dispatchGenericMotionEvent(ev);
+            }
+        });
     }
 
     @Override

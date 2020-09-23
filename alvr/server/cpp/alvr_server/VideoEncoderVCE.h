@@ -75,8 +75,6 @@ private:
 	std::shared_ptr<AMFTextureEncoder> m_encoder;
 	std::shared_ptr<AMFTextureConverter> m_converter;
 
-	std::ofstream fpOut;
-
 	std::shared_ptr<CD3DRender> m_d3dRender;
 
 	int m_codec;

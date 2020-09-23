@@ -298,9 +298,6 @@ void VideoEncoderVCE::Shutdown()
 
 	amf_restore_timer_precision();
 
-	if (fpOut) {
-		fpOut.close();
-	}
 	LogDriver("Successfully shutdown VideoEncoderVCE.");
 }
 
@@ -342,9 +339,6 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 
 	SkipAUD(&p, &length);
 
-	if (fpOut) {
-		fpOut.write(p, length);
-	}
 	SendVideo(m_packetIndex, reinterpret_cast<uint8_t *>(p), length, frameIndex);
 	m_packetIndex++;
 }

@@ -22,8 +22,6 @@ public:
 private:
 	void FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, Bitrate bitrate);
 
-
-	std::ofstream fpOut;
 	std::shared_ptr<NvEncoder> m_NvNecoder;
 
 	std::shared_ptr<CD3DRender> m_pD3DRender;

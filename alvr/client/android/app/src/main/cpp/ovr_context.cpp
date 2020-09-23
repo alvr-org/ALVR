@@ -109,6 +109,8 @@ public:
     ovrMobile *Ovr = nullptr;
     ovrJava java;
 
+    jmethodID jsetWebViewVisibility;
+
     int defaultRenderEyeWidth;
     int defaultRenderEyeHeight;
     float defaultRefreshRate;
@@ -117,8 +119,11 @@ public:
     unique_ptr<Texture> streamTexture;
     unique_ptr<Texture> webViewTexture;
 
-    bool mShowDashboard = false;
+    bool streaming = false;
+    bool mShowWebView = false;
     std::function<void(InteractionType, glm::vec2)> mWebViewInteractionCallback;
+    TrackingQuat webViewInitHeadOrientation = { 0, 0, 0, 1};
+    glm::vec3 webViewInitHeadPosition = glm::vec3(0, -WORLD_VERTICAL_OFFSET, 0);
 
     uint64_t FrameIndex = 0;
 
@@ -164,13 +169,14 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     g_ctx.java.ActivityObject = env->NewGlobalRef(activity);
 
     auto clazz = env->GetObjectClass(activity);
+    g_ctx.jsetWebViewVisibility = env->GetMethodID(clazz, "setWebViewVisibility", "(Z)V");
     auto jWebViewInteractionCallback = env->GetMethodID(clazz, "applyWebViewInteractionEvent",
                                                         "(IFF)V");
     env->DeleteLocalRef(clazz);
 
     g_ctx.mWebViewInteractionCallback = [jWebViewInteractionCallback](InteractionType type,
                                                                       glm::vec2 coord) {
-        if (g_ctx.mShowDashboard) {
+        if (g_ctx.mShowWebView) {
             JNIEnv *env;
             jint res = g_ctx.java.Vm->GetEnv((void **) &env, JNI_VERSION_1_6);
             if (res == JNI_OK) {
@@ -250,6 +256,34 @@ void initRendererForLoadingRoom() {
                        g_ctx.defaultRenderEyeHeight, g_ctx.streamTexture.get(),
                        g_ctx.webViewTexture.get(), g_ctx.mWebViewInteractionCallback, {false});
     ovrRenderer_CreateScene(g_ctx.renderer.get());
+}
+
+void setWebViewVisibility(bool visible) {
+    g_ctx.mShowWebView = visible;
+
+    if (g_ctx.mShowWebView) {
+        auto q = g_ctx.webViewInitHeadOrientation;
+        auto glQuat = glm::quat(q.w, q.x, q.y, q.z);
+        auto rotEuler = glm::eulerAngles(glQuat);
+        float yaw;
+        if (abs(rotEuler.x) < M_PI_2) {
+            yaw = rotEuler.y;
+        } else {
+            yaw = M_PI - rotEuler.y;
+        }
+        auto rotation = glm::eulerAngleY(yaw);
+        auto pos = glm::vec4(0, 0, -1.5, 1);
+        glm::vec3 position = glm::vec3(rotation * pos) + g_ctx.webViewInitHeadPosition;
+        g_ctx.renderer->webViewPanel->SetPoseTransform(position, yaw, 0);
+    }
+
+    JNIEnv *env;
+    jint res = g_ctx.java.Vm->GetEnv((void **) &env, JNI_VERSION_1_6);
+    if (res == JNI_OK) {
+        env->CallVoidMethod(g_ctx.java.ActivityObject, g_ctx.jsetWebViewVisibility, visible);
+    } else {
+        LOGE("Failed to get JNI environment for dashboard interaction");
+    }
 }
 
 OnResumeResult onResume(void *v_env, void *v_surface) {
@@ -342,6 +376,8 @@ OnResumeResult onResume(void *v_env, void *v_surface) {
 
     initRendererForLoadingRoom();
 
+    setWebViewVisibility(true);
+
     return resultData;
 }
 
@@ -384,6 +420,8 @@ void onStreamStart(OnStreamStartParams params) {
     LOGI("vrapi_SetDisplayRefreshRate: Result=%d", result);
 
     memset(g_ctx.mHapticsState, 0, sizeof(g_ctx.mHapticsState));
+
+    setWebViewVisibility(false);
 }
 
 void finishHapticsBuffer(ovrDeviceID DeviceID) {
@@ -493,6 +531,7 @@ void updateHapticsState() {
 }
 
 void render(bool streaming, long long renderedFrameIndex) {
+    g_ctx.streaming = streaming;
     if (streaming) {
         FrameLog(renderedFrameIndex, "Got frame for render.");
 
@@ -531,7 +570,7 @@ void render(bool streaming, long long renderedFrameIndex) {
         // Render eye images and setup the primary layer using ovrTracking2.
         const ovrLayerProjection2 worldLayer =
                 ovrRenderer_RenderFrame(g_ctx.renderer.get(), &frame->tracking, true,
-                                        g_ctx.mShowDashboard);
+                                        g_ctx.mShowWebView);
 
         const ovrLayerHeader2 *layers2[] =
                 {
@@ -566,7 +605,7 @@ void render(bool streaming, long long renderedFrameIndex) {
 
         const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(g_ctx.renderer.get(),
                                                                        &headTracking, false,
-                                                                       g_ctx.mShowDashboard);
+                                                                       g_ctx.mShowWebView);
 
         const ovrLayerHeader2 *layers[] =
                 {
@@ -675,7 +714,9 @@ void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiIn
          vrapi_EnumerateInputDevices(g_ctx.Ovr, deviceIndex, &curCaps) >= 0; deviceIndex++) {
         LOG("Device %d: Type=%d ID=%d", deviceIndex, curCaps.Type, curCaps.DeviceID);
         if (curCaps.Type == ovrControllerType_Hand) {  //A3
-            g_ctx.mShowDashboard = false;
+            if (g_ctx.streaming) {
+                setWebViewVisibility(false);
+            }
 
             // Oculus Quest Hand Tracking
             if (controller >= 2) {
@@ -807,24 +848,10 @@ void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiIn
                     if (!g_ctx.mMenuLongPressActivated && std::chrono::system_clock::now()
                                                           - g_ctx.mMenuNotPressedLastInstant >
                                                           MENU_BUTTON_LONG_PRESS_DURATION) {
-                        g_ctx.mShowDashboard = !g_ctx.mShowDashboard;
+                        g_ctx.webViewInitHeadOrientation = packet->HeadPose_Pose_Orientation;
+                        g_ctx.webViewInitHeadPosition = guiInput->headPosition;
+                        setWebViewVisibility(!g_ctx.mShowWebView);
                         g_ctx.mMenuLongPressActivated = true;
-
-                        if (g_ctx.mShowDashboard) {
-                            auto q = packet->HeadPose_Pose_Orientation;
-                            auto glQuat = glm::quat(q.w, q.x, q.y, q.z);
-                            auto rotEuler = glm::eulerAngles(glQuat);
-                            float yaw;
-                            if (abs(rotEuler.x) < M_PI_2) {
-                                yaw = rotEuler.y;
-                            } else {
-                                yaw = M_PI - rotEuler.y;
-                            }
-                            auto rotation = glm::eulerAngleY(yaw);
-                            auto pos = glm::vec4(0, 0, -1.5, 1);
-                            glm::vec3 position = glm::vec3(rotation * pos) + guiInput->headPosition;
-                            g_ctx.renderer->webViewPanel->SetPoseTransform(position, yaw, 0);
-                        }
                     }
                 } else {
                     g_ctx.mMenuNotPressedLastInstant = std::chrono::system_clock::now();
@@ -845,7 +872,7 @@ void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiIn
                 c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_QUEST;
             }
 
-            if (g_ctx.mShowDashboard) {
+            if (g_ctx.mShowWebView) {
                 guiInput->actionButtonsDown[controller] =
                         remoteInputState.Buttons & (ovrButton_A | ovrButton_X | ovrButton_Trigger);
             } else {
@@ -1027,6 +1054,8 @@ GuardianData getGuardianInfo() {
 }
 
 void onStreamStop() {
+    setWebViewVisibility(true);
+
     ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, g_ctx.defaultRefreshRate);
     LOGI("vrapi_SetDisplayRefreshRate: Result=%d", result);
 

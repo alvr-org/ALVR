@@ -170,14 +170,14 @@ fn init(log_sender: broadcast::Sender<String>) -> StrResult {
                 update_client_listeners_notifier.clone(),
             ));
 
-            // let connection_loop = show_err_async(connection::connection_loop(
-            //     session_manager,
-            //     update_client_listeners_notifier,
-            // ));
+            let connection_loop = show_err_async(connection::connection_loop(
+                session_manager,
+                update_client_listeners_notifier,
+            ));
 
             tokio::select! {
                 _ = web_server => (),
-                // _ = connection_loop => (),
+                _ = connection_loop => (),
                 _ = shutdown_receiver.recv() => (),
             }
         });

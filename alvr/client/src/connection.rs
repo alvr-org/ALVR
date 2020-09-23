@@ -68,7 +68,7 @@ async fn try_connect(
             ],
         ))?;
 
-        return trace_str!("Found unupported server");
+        return trace_str!("Found unsupported server");
     };
 
     // todo: go through session representation. this requires settings -> session representation

@@ -36,14 +36,9 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
     ) -> StrResult<Option<(Self, ClientConfigPacket)>> {
         trace_err!(handshake_socket.send(client_handshake_packet).await)?;
 
-        let (socket, server_address) =
-            match timeout(CLIENT_HANDSHAKE_RESEND_INTERVAL, listener.accept()).await {
-                Ok(res) => trace_err!(res)?,
-                Err(_) => {
-                    debug!("Timeout while listening for server, retry");
-                    return Ok(None);
-                }
-            };
+        let (socket, server_address) = trace_err!(trace_err!(
+            timeout(CLIENT_HANDSHAKE_RESEND_INTERVAL, listener.accept()).await
+        )?)?;
         let mut socket = Framed::new(socket, LDC::new());
 
         let server_handshake_packet_bytes = trace_err!(trace_none!(socket.next().await)?)?;

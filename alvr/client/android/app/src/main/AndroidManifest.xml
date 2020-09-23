@@ -8,7 +8,7 @@
     <uses-feature android:name="oculus.software.handtracking" android:required="false" />
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="oculus.permission.handtracking" />
+    <uses-permission android:name="oculus.permission.HAND_TRACKING" />
 
     <uses-feature
         android:glEsVersion="0x00030001"

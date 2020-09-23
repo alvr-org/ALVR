@@ -282,7 +282,7 @@ void setWebViewVisibility(bool visible) {
     if (res == JNI_OK) {
         env->CallVoidMethod(g_ctx.java.ActivityObject, g_ctx.jsetWebViewVisibility, visible);
     } else {
-        LOGE("Failed to get JNI environment for dashboard interaction");
+        LOGE("Failed to get JNI environment for setting webview visibility");
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::*;
 use alvr_common::{data::*, logging::*, sockets::*, *};
+use futures::future::BoxFuture;
 use nalgebra::{Point3, UnitQuaternion, Vector3};
 use settings_schema::Switch;
 use std::{collections::HashMap, net::IpAddr, sync::Arc};
@@ -474,7 +475,16 @@ pub async fn connection_loop(
                 clients_info.insert(client.last_ip, id);
                 clients_info
             });
-        let get_control_socket = connect_to_any_client(clients_info, session_manager.clone());
+        let get_control_socket: BoxFuture<_> = if !clients_info.is_empty() {
+            Box::pin(connect_to_any_client(clients_info, session_manager.clone()))
+        } else {
+            // todo: find a built-in future (in futures or tokio crates) that never returns
+            Box::pin(async {
+                loop {
+                    time::delay_for(Duration::from_secs(10)).await;
+                }
+            })
+        };
 
         let mut control_socket = tokio::select! {
             Err(e) = client_discovery => break trace_str!("Client discovery failed: {}", e),

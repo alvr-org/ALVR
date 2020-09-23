@@ -256,7 +256,6 @@ public class OvrActivity extends Activity {
         if (mResumed && mScreenSurface != null) {
             if (mWebViewVisible) {
                 mWebViewSurfaceTexture.updateTexImage();
-//                Utils.loge(TAG, () -> "updateTexImage");
             }
 
             if (mDecoderThread != null) {

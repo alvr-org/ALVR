@@ -302,13 +302,13 @@ async fn connect_to_any_client(
         );
 
         let client_config = ClientConfigPacket {
-            settings: serde_json::to_value(&settings).unwrap(),
+            settings: serde_json::to_string(&settings).unwrap(),
             eye_resolution_width,
             eye_resolution_height,
             left_eye_fov: left_eye_fov.clone(),
             fps,
             web_gui_url,
-            reserved: serde_json::json!({}),
+            reserved: "".into(),
         };
 
         let control_socket =

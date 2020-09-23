@@ -128,7 +128,7 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
                 bottom: result.leftEyeFov.bottom,
             },
             available_refresh_rates,
-            reserved: serde_json::json!({}),
+            reserved: "".into(),
         };
 
         let private_identity = PrivateIdentity {

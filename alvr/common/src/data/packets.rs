@@ -3,7 +3,6 @@ use bitflags::bitflags;
 use nalgebra::{Point3, UnitQuaternion, Vector3};
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use serde_json as json;
 use std::{collections::HashMap, time::Duration};
 
 #[derive(Serialize, Deserialize)]
@@ -22,25 +21,25 @@ pub struct HeadsetInfoPacket {
 
     // reserved field is used to add features in a minor release that otherwise would break the
     // packets schema
-    pub reserved: json::Value,
+    pub reserved: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct ClientConfigPacket {
-    pub settings: json::Value,
+    pub settings: String,
     pub eye_resolution_width: u32,
     pub eye_resolution_height: u32,
     pub left_eye_fov: Fov,
     pub fps: u32,
     pub web_gui_url: String,
-    pub reserved: json::Value,
+    pub reserved: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum ServerControlPacket {
     Restarting,
     Shutdown,
-    Reserved(json::Value),
+    Reserved(String),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -64,7 +63,7 @@ pub enum ClientControlPacket {
     PlayspaceSync(PlayspaceSyncPacket),
     RequestIdrFrame,
     Disconnect,
-    Reserved(json::Value),
+    Reserved(String),
 }
 
 #[derive(Serialize, Deserialize)]

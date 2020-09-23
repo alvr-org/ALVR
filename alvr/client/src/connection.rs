@@ -73,7 +73,7 @@ async fn try_connect(
 
     // todo: go through session representation. this requires settings -> session representation
     // conversion code
-    let settings = trace_err!(serde_json::from_value::<Settings>(client_config.settings))?;
+    let settings = trace_err!(serde_json::from_str::<Settings>(&client_config.settings))?;
 
     trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
         &*activity_ref,

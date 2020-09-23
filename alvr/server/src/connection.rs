@@ -466,13 +466,15 @@ pub async fn connection_loop(
             .get()
             .client_connections
             .iter()
+            // commented for debug purposes. todo: decomment
+            // .filter(|(_, client)| client.trusted)
             .fold(HashMap::new(), |mut clients_info, (hostname, client)| {
                 let id = PublicIdentity {
                     hostname: hostname.clone(),
                     certificate_pem: client.certificate_pem.clone(),
                 };
                 clients_info.extend(client.manual_ips.iter().map(|&ip| (ip, id.clone())));
-                clients_info.insert(client.last_ip, id);
+                clients_info.insert(client.last_local_ip, id);
                 clients_info
             });
         let get_control_socket: BoxFuture<_> = if !clients_info.is_empty() {

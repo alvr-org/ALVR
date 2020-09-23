@@ -12,7 +12,6 @@ use tokio::net::*;
 type LDC = tokio_util::codec::LengthDelimitedCodec;
 
 const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-const MULTICAST_ADDR: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 123);
 const CONTROL_PORT: u16 = 9943;
 const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 4_000;
 
@@ -59,7 +58,6 @@ pub async fn search_client_loop<F: Future>(
 ) -> StrResult {
     // use naked UdpSocket + [u8] packet buffer to have more control over datagram data
     let mut handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;
-    trace_err!(handshake_socket.join_multicast_v4(MULTICAST_ADDR, Ipv4Addr::UNSPECIFIED))?;
 
     let mut packet_buffer = [0u8; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
 

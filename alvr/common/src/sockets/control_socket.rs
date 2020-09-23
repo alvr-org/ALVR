@@ -94,10 +94,10 @@ impl ControlSocket<ServerControlPacket, ClientControlPacket> {
         certificate_pem: String,
     ) -> StrResult<Option<(Self, ClientConfigPacket)>> {
         let mut handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;
-        trace_err!(handshake_socket.join_multicast_v4(MULTICAST_ADDR, Ipv4Addr::UNSPECIFIED))?;
+        trace_err!(handshake_socket.set_broadcast(true))?;
         trace_err!(
             handshake_socket
-                .connect((MULTICAST_ADDR, CONTROL_PORT))
+                .connect((Ipv4Addr::BROADCAST, CONTROL_PORT))
                 .await
         )?;
 

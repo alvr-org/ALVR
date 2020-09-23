@@ -84,7 +84,7 @@ pub struct OpenvrConfig {
 pub struct ClientConnectionDesc {
     pub trusted: bool,
     pub last_update_ms_since_epoch: u64,
-    pub last_ip: IpAddr,
+    pub last_local_ip: IpAddr,
     pub manual_ips: HashSet<IpAddr>,
     pub display_name: Option<String>,
     pub certificate_pem: String,

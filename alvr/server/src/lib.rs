@@ -95,13 +95,13 @@ pub async fn update_client_list(
             Entry::Occupied(mut existing_entry) => {
                 let client_connection_ref = existing_entry.get_mut();
                 client_connection_ref.last_update_ms_since_epoch = now_ms as _;
-                client_connection_ref.last_ip = ip;
+                client_connection_ref.last_local_ip = ip;
             }
             Entry::Vacant(new_entry) => {
                 let client_connection_desc = ClientConnectionDesc {
                     trusted: false,
                     last_update_ms_since_epoch: now_ms as _,
-                    last_ip: ip,
+                    last_local_ip: ip,
                     manual_ips: HashSet::new(),
                     display_name: None,
                     certificate_pem,

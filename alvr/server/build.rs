@@ -22,6 +22,7 @@ fn main() {
         });
 
         build
+            .debug(false) // This is because we cannot link to msvcrtd (see below)
             .cpp(true)
             .files(source_files_paths)
             .include("cpp/alvr_server")
@@ -38,9 +39,6 @@ fn main() {
             .define("_DLL", None);
     } else {
         build.cpp(true).file("cpp/alvr_server/alvr_server.cpp");
-    }
-    if cfg!(debug_assertions) {
-        build.define("_DEBUG", None);
     }
     build.compile("bindings");
 
@@ -68,20 +66,16 @@ fn main() {
         // println!("cargo:rustc-link-lib=uuid");
         // println!("cargo:rustc-link-lib=odbc32");
         // println!("cargo:rustc-link-lib=odbccp32");
-
-        println!("cargo:rustc-link-lib=avrt");
-
         // println!("cargo:rustc-link-lib=winmm");
         // println!("cargo:rustc-link-lib=ws2_32");
         // println!("cargo:rustc-link-lib=userenv");
+        println!("cargo:rustc-link-lib=avrt");
 
-        if cfg!(debug_assertions) {
-            // /MDd
-            println!("cargo:rustc-link-lib=msvcrtd");
-        } else {
-            // /MD
-            println!("cargo:rustc-link-lib=msvcrt");
-        }
+        // This is the library that is linked when using the /MD flag.
+        // For debug builds, /MDd should be used (that links msvcrtd), but msvcrtd clashes with
+        // spirv_cross, that always use msvcrt (release version). So here the C++ code is always
+        // built as release and only msvcrt is linked
+        println!("cargo:rustc-link-lib=msvcrt");
 
         println!(
             "cargo:rustc-link-search=native={}/libswresample/lib",

@@ -28,22 +28,18 @@ async fn try_connect_to_client(
         }
     };
 
-    if address.ip() != MULTICAST_ADDR {
-        // Handle wrong client
-        if &packet_buffer[..5] == b"\x01ALVR" {
-            return trace_str!(id: LogId::ClientFoundWrongVersion("11 or previous".into()));
-        } else if &packet_buffer[..4] == b"ALVR" {
-            return trace_str!(id: LogId::ClientFoundWrongVersion("12.x.x".into()));
-        } else {
-            debug!("Found unrelated packet during client discovery");
-        }
+    let handshake_packet: HandshakePacket = if let Ok(handshake_packet) =
+        bincode::deserialize(&packet_buffer[..handshake_packet_size])
+    {
+        handshake_packet
+    } else if &packet_buffer[..5] == b"\x01ALVR" {
+        return trace_str!(id: LogId::ClientFoundWrongVersion("11 or previous".into()));
+    } else if &packet_buffer[..4] == b"ALVR" {
+        return trace_str!(id: LogId::ClientFoundWrongVersion("12.x.x".into()));
+    } else {
+        debug!("Found unrelated packet during client discovery");
         return Ok(None);
-    }
-
-    let handshake_packet: HandshakePacket = trace_err!(
-        bincode::deserialize(&packet_buffer[..handshake_packet_size]),
-        id: LogId::ClientFoundInvalid
-    )?;
+    };
 
     if handshake_packet.alvr_name != ALVR_NAME {
         return trace_str!(id: LogId::ClientFoundInvalid);
@@ -63,6 +59,7 @@ pub async fn search_client_loop<F: Future>(
 ) -> StrResult {
     // use naked UdpSocket + [u8] packet buffer to have more control over datagram data
     let mut handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;
+    trace_err!(handshake_socket.join_multicast_v4(MULTICAST_ADDR, Ipv4Addr::UNSPECIFIED))?;
 
     let mut packet_buffer = [0u8; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
 

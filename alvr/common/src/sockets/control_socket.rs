@@ -160,6 +160,7 @@ impl ControlSocket<ClientControlPacket, ServerControlPacket> {
         trace_err!(socket.send(handshake_packet_bytes.into()).await)?;
 
         let client_response_bytes = trace_err!(trace_none!(socket.next().await)?)?;
+        // error!()
         let client_response = trace_err!(bincode::deserialize(&client_response_bytes))?;
 
         match client_response {

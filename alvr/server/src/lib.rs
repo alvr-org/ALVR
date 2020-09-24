@@ -82,11 +82,11 @@ pub async fn update_client_list(
         .as_millis();
 
     let session_manager_ref = &mut session_manager.lock().await;
-    let session_desc_ref =
-        &mut session_manager_ref.get_mut(None, SessionUpdateType::ClientList);
+    let session_desc_ref = &mut session_manager_ref.get_mut(None, SessionUpdateType::ClientList);
 
     let maybe_client_entry = session_desc_ref.client_connections.entry(hostname);
 
+    let mut should_notify = false;
     match action {
         ClientListAction::AddIfMissing {
             ip,
@@ -96,6 +96,8 @@ pub async fn update_client_list(
                 let client_connection_ref = existing_entry.get_mut();
                 client_connection_ref.last_update_ms_since_epoch = now_ms as _;
                 client_connection_ref.last_local_ip = ip;
+
+                // don't notify
             }
             Entry::Vacant(new_entry) => {
                 let client_connection_desc = ClientConnectionDesc {
@@ -108,10 +110,7 @@ pub async fn update_client_list(
                 };
                 new_entry.insert(client_connection_desc);
 
-                info!(id: LogId::SessionUpdated {
-                    web_client_id: None,
-                    update_type: SessionUpdateType::ClientList
-                });
+                should_notify = true;
             }
         },
         ClientListAction::TrustAndMaybeAddIp(maybe_ip) => {
@@ -122,10 +121,7 @@ pub async fn update_client_list(
                     client_connection_ref.manual_ips.insert(ip);
                 }
 
-                info!(id: LogId::SessionUpdated {
-                    web_client_id: None,
-                    update_type: SessionUpdateType::ClientList
-                });
+                should_notify = true;
             }
             // else: never happens. The UI cannot request a new entry creation because in that case
             // it wouldn't have the certificate
@@ -138,16 +134,20 @@ pub async fn update_client_list(
                     entry.remove_entry();
                 }
 
-                info!(id: LogId::SessionUpdated {
-                    web_client_id: None,
-                    update_type: SessionUpdateType::ClientList
-                });
+                should_notify = true;
             }
         }
     }
 
-    if let Err(e) = update_client_listeners_notifier.send(()) {
-        warn!("Failed to notify client list update: {:?}", e);
+    if should_notify {
+        info!(id: LogId::SessionUpdated {
+            web_client_id: None,
+            update_type: SessionUpdateType::ClientList
+        });
+
+        if let Err(e) = update_client_listeners_notifier.send(()) {
+            warn!("Failed to notify client list update: {:?}", e);
+        }
     }
 }
 

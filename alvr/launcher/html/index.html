@@ -33,23 +33,6 @@
         }
         resizeAndCenter(500, 300);
 
-        function pingWebServer() {
-            return new Promise(resolve => {
-                xhttp = new XMLHttpRequest();
-                xhttp.open("GET", "http://127.0.0.1:8082");
-                xhttp.onreadystatechange = function () {
-                    if (xhttp.readyState == XMLHttpRequest.DONE) {
-                        if (xhttp.status == 200) {
-                            resolve(true);
-                        } else {
-                            resolve(false);
-                        }
-                    }
-                }
-                xhttp.send();
-            });
-        }
-
         async function checkInstallation() {
             let steamvrInstalled = await checkSteamvrInstallation();
             let msvcpInstalled = await checkMsvcpInstallation();
@@ -57,29 +40,6 @@
             if (steamvrInstalled && msvcpInstalled) {
                 document.getElementById("not-ready").style.display = "none";
                 document.getElementById("ready").style.display = "block";
-
-                await maybeLaunchSteamvr();
-
-                while (true) {
-                    let success = false;
-                    for (let i = 0; i < 5; i++) {
-                        if (await pingWebServer()) {
-                            success = true;
-                            break;
-                        }
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        console.log("retry ping...");
-                    }
-                    if (success) {
-                        resizeAndCenter(800, 600);
-                        await restoreDriverPaths();
-                        window.location.assign("http://127.0.0.1:8082");
-                        break;
-                    } else {
-                        document.getElementById("restart-btn").style.display = "block";
-                        await maybeLaunchSteamvr();
-                    }
-                }
 
                 return true;
             } else {
@@ -106,7 +66,7 @@
             document.getElementById("restart-btn").onclick = function () {
                 (async () => {
                     await killSteamvr();
-                    await maybeLaunchSteamvr();
+                    // steamvr will be restarted by startDriver() internal loop
                 })();
             };
 
@@ -114,6 +74,16 @@
                 while (!await checkInstallation()) {
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
+
+                (async () => {
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    document.getElementById("restart-btn").style.display = "block";
+                })();
+
+                await startDriver();
+
+                resizeAndCenter(800, 600);
+                window.location.assign("http://127.0.0.1:8082");
             })()
         }
 

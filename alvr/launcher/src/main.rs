@@ -12,23 +12,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
+const RETRY_TIMEOUT: Duration = Duration::from_secs(10);
+const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
 fn current_alvr_dir() -> StrResult<PathBuf> {
     let current_path = trace_err!(env::current_exe())?;
     Ok(trace_none!(current_path.parent())?.to_owned())
-}
-
-fn restart_mode() {
-    let start_time = Instant::now();
-    while start_time.elapsed() < SHUTDOWN_TIMEOUT && is_steamvr_running() {
-        thread::sleep(Duration::from_millis(500));
-    }
-
-    // Note: if SteamVR already shutdown cleanly, this does nothing
-    kill_steamvr();
-
-    maybe_launch_steamvr();
 }
 
 // Return a backup of the registered drivers if ALVR driver wasn't registered, otherwise return none
@@ -69,6 +58,43 @@ fn apply_drivers_backup(drivers_backup: Arc<Mutex<Option<Vec<PathBuf>>>>) -> Str
     Ok(())
 }
 
+fn start_driver(drivers_backup: Arc<Mutex<Option<Vec<PathBuf>>>>) {
+    if let Ok(maybe_driver_paths) = show_err(maybe_register_alvr_driver()) {
+        *drivers_backup.lock() = maybe_driver_paths;
+
+        maybe_launch_steamvr();
+
+        let mut time_start = Instant::now();
+        while !ureq::get("http://127.0.0.1:8082")
+            .timeout(RETRY_TIMEOUT)
+            .call()
+            .ok()
+        {
+            if Instant::now() > time_start + RETRY_TIMEOUT {
+                maybe_launch_steamvr();
+                time_start = Instant::now();
+            }
+        }
+
+        apply_drivers_backup(drivers_backup).ok();
+    }
+}
+
+fn restart_steamvr() {
+
+    let start_time = Instant::now();
+    while start_time.elapsed() < SHUTDOWN_TIMEOUT && is_steamvr_running() {
+        thread::sleep(Duration::from_millis(500));
+    }
+
+    // Note: if SteamVR already shutdown cleanly, this does nothing
+    kill_steamvr();
+
+    thread::sleep(Duration::from_secs(1));
+
+    start_driver(Arc::default()); // argument is not needed
+}
+
 fn window_mode(drivers_backup: Arc<Mutex<Option<Vec<PathBuf>>>>) -> StrResult {
     let mutex = trace_err!(single_instance::SingleInstance::new("alvr_launcher_mutex"))?;
     if mutex.is_single() {
@@ -94,24 +120,8 @@ fn window_mode(drivers_backup: Arc<Mutex<Option<Vec<PathBuf>>>>) -> StrResult {
             ))
         }))?;
 
-        trace_err!(window.bind("maybeLaunchSteamvr", {
-            let drivers_backup = drivers_backup.clone();
-            move |_| {
-                if drivers_backup.lock().is_none() {
-                    if let Ok(maybe_driver_paths) = show_err(maybe_register_alvr_driver()) {
-                        *drivers_backup.lock() = maybe_driver_paths;
-                    }
-                }
-
-                if !is_steamvr_running() {
-                    maybe_launch_steamvr();
-                }
-                Ok(json::Value::Null)
-            }
-        }))?;
-
-        trace_err!(window.bind("restoreDriverPaths", move |_| {
-            apply_drivers_backup(drivers_backup.clone()).ok();
+        trace_err!(window.bind("startDriver", move |_| {
+            start_driver(drivers_backup.clone());
             Ok(json::Value::Null)
         }))?;
 
@@ -131,13 +141,13 @@ fn main() {
     let args = env::args().collect::<Vec<_>>();
 
     match args.get(1) {
-        Some(flag) if flag == "--restart-steamvr" => restart_mode(),
+        Some(flag) if flag == "--restart-steamvr" => restart_steamvr(),
         _ => {
-            let maybe_driver_paths = Arc::new(Mutex::new(None));
-            show_err(window_mode(maybe_driver_paths.clone())).ok();
+            let drivers_backup = Arc::new(Mutex::new(None));
+            show_err(window_mode(drivers_backup.clone())).ok();
 
             // fallback if the window has been closed before loading the dashboard
-            apply_drivers_backup(maybe_driver_paths).ok();
+            apply_drivers_backup(drivers_backup).ok();
         }
     }
 }

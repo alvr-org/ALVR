@@ -136,7 +136,19 @@ pub fn kill_steamvr() {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
 
-    for process_name in ["vrserver", "vrcompositor", "vrdashboard", "vrmonitor"].iter() {
+    for process_name in [
+        "vrserver",
+        "vrcompositor",
+        "vrdashboard",
+        "vrmonitor",
+        "vrwebhelper",
+        "steam",
+        "SteamService",
+        "steamtours",
+        "steamwebhelper"
+    ]
+    .iter()
+    {
         for process in system.get_process_by_name(&exec_fname(process_name)) {
             #[cfg(not(windows))]
             process.kill(Signal::Term);

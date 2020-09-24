@@ -41,9 +41,9 @@ dependencies = [
 
 [[package]]
 name = "alcro"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b72d01f907c356e178b915bc2413d0587ef4eeadd1373db44b908bb97abdd3d6"
+checksum = "e37d788adad6336e16aac77be1ce09af41f5b70fba70918755a416a271deafa7"
 dependencies = [
  "crossbeam-channel",
  "dashmap",
@@ -121,6 +121,7 @@ dependencies = [
  "parking_lot",
  "serde_json",
  "single-instance",
+ "ureq",
  "winres",
 ]
 
@@ -523,6 +524,12 @@ dependencies = [
  "num-traits",
  "time",
 ]
+
+[[package]]
+name = "chunked_transfer"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d29eb15132782371f71da8f947dba48b3717bdb6fa771b9b434d645e40a7193"
 
 [[package]]
 name = "clang-sys"
@@ -2328,6 +2335,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "qstring"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d464fae65fff2680baf48019211ce37aaec0c78e9264c84a3e484717f965104e"
+dependencies = [
+ "percent-encoding",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3504,6 +3520,19 @@ name = "untrusted"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
+
+[[package]]
+name = "ureq"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7fb6c9aba13a511bcbb7770864c0e9b8392acda0454a71104498a2bb112d701"
+dependencies = [
+ "base64 0.12.3",
+ "chunked_transfer",
+ "lazy_static",
+ "qstring",
+ "url",
+]
 
 [[package]]
 name = "url"

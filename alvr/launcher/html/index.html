@@ -33,6 +33,23 @@
         }
         resizeAndCenter(500, 300);
 
+        function pingWebServer() {
+            return new Promise(resolve => {
+                xhttp = new XMLHttpRequest();
+                xhttp.open("GET", "http://127.0.0.1:8082");
+                xhttp.onreadystatechange = function () {
+                    if (xhttp.readyState == XMLHttpRequest.DONE) {
+                        if (xhttp.status == 200) {
+                            resolve(true);
+                        } else {
+                            resolve(false);
+                        }
+                    }
+                }
+                xhttp.send();
+            });
+        }
+
         async function checkInstallation() {
             let steamvrInstalled = await checkSteamvrInstallation();
             let msvcpInstalled = await checkMsvcpInstallation();
@@ -81,6 +98,11 @@
                 })();
 
                 await startDriver();
+
+                while (!await pingWebServer()) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    console.log("retry ping...");
+                }
 
                 resizeAndCenter(800, 600);
                 window.location.assign("http://127.0.0.1:8082");

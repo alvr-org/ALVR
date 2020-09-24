@@ -1,6 +1,7 @@
 use crate::*;
 use serde_json as json;
 use std::{
+    collections::HashSet,
     env, fs,
     path::{Path, PathBuf},
     process::*,
@@ -8,9 +9,10 @@ use std::{
 use sysinfo::*;
 
 #[cfg(windows)]
-use std::{collections::HashSet, os::windows::process::CommandExt};
+use std::os::windows::process::CommandExt;
 
-pub const ALVR_DIR_STORAGE_FNAME: &str = "alvr_dir.txt";
+const ALVR_DIR_STORAGE_FNAME: &str = "alvr_dir.txt";
+const DRIVER_PATHS_BACKUP_FNAME: &str = "alvr_drivers_paths_backup.txt";
 
 #[cfg(windows)]
 pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -136,25 +138,11 @@ pub fn kill_steamvr() {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
 
-    for process_name in [
-        "vrserver",
-        "vrcompositor",
-        "vrdashboard",
-        "vrmonitor",
-        "vrwebhelper",
-        "steam",
-        "SteamService",
-        "steamtours",
-        "steamwebhelper"
-    ]
-    .iter()
-    {
-        for process in system.get_process_by_name(&exec_fname(process_name)) {
-            #[cfg(not(windows))]
-            process.kill(Signal::Term);
-            #[cfg(windows)]
-            kill_process(process.pid());
-        }
+    for process in system.get_process_by_name(&exec_fname("vrcompositor")) {
+        #[cfg(not(windows))]
+        process.kill(Signal::Term);
+        #[cfg(windows)]
+        kill_process(process.pid());
     }
 }
 
@@ -222,7 +210,7 @@ pub fn firewall_rules(add: bool) -> Result<(), i32> {
     }
 }
 
-pub fn get_alvr_dir_from_storage() -> StrResult<PathBuf> {
+fn get_alvr_dir_from_storage() -> StrResult<PathBuf> {
     let alvr_dir_store_path = env::temp_dir().join(ALVR_DIR_STORAGE_FNAME);
     if let Ok(path) = fs::read_to_string(alvr_dir_store_path) {
         Ok(PathBuf::from(path))
@@ -274,6 +262,37 @@ pub fn restart_steamvr_with_timeout(alvr_dir: &Path) -> StrResult {
     trace_err!(Command::new(alvr_dir.join(exec_fname("ALVR launcher")))
         .arg("--restart-steamvr")
         .status())?;
+
+    Ok(())
+}
+
+fn driver_paths_backup_present() -> bool {
+    env::temp_dir().join(DRIVER_PATHS_BACKUP_FNAME).exists()
+}
+
+pub fn maybe_save_driver_paths_backup(paths_backup: &[PathBuf]) -> StrResult {
+    if !driver_paths_backup_present() {
+        trace_err!(fs::write(
+            env::temp_dir().join(DRIVER_PATHS_BACKUP_FNAME),
+            trace_err!(json::to_string_pretty(paths_backup))?,
+        ))?;
+    }
+
+    Ok(())
+}
+
+pub fn apply_driver_paths_backup(alvr_dir: PathBuf) -> StrResult {
+    if driver_paths_backup_present() {
+        let backup_path = env::temp_dir().join(DRIVER_PATHS_BACKUP_FNAME);
+        let driver_paths = trace_err!(json::from_str::<Vec<_>>(&trace_err!(fs::read_to_string(
+            &backup_path
+        ))?))?;
+        trace_err!(fs::remove_file(backup_path))?;
+
+        driver_registration(&[alvr_dir], false)?;
+
+        driver_registration(&driver_paths, true).ok();
+    }
 
     Ok(())
 }

@@ -97,6 +97,8 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 	// Launcher is running. Enable driver.
 	m_pRemoteHmd->Enable();
 
+	RestoreDriverPaths();
+
 	return vr::VRInitError_None;
 }
 
@@ -152,6 +154,7 @@ void (*LogError)(const char *);
 void (*LogWarn)(const char *);
 void (*LogInfo)(const char *);
 void (*LogDebug)(const char *);
+void (*RestoreDriverPaths)();
 void (*SendVideo)(uint64_t, uint8_t *, int, uint64_t);
 void (*SendAudio)(uint64_t, uint8_t *, int, uint64_t);
 void (*SendHapticsFeedback)(float, float, float, uint8_t);

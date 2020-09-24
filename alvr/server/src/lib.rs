@@ -244,6 +244,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
         log(log::Level::Debug, string_ptr);
     }
 
+    extern "C" fn restore_driver_paths() {
+        show_err(apply_driver_paths_backup(ALVR_DIR.clone())).ok();
+    }
+
     unsafe extern "C" fn send_video(
         packet_index: u64,
         raw_buffer: *mut u8,
@@ -336,6 +340,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogWarn = Some(log_warn);
     LogInfo = Some(log_info);
     LogDebug = Some(log_debug);
+    RestoreDriverPaths = Some(restore_driver_paths);
     SendVideo = Some(send_video);
     SendAudio = Some(send_audio);
     SendHapticsFeedback = Some(send_haptics);

@@ -21,6 +21,7 @@ extern "C" void (*LogError)(const char *);
 extern "C" void (*LogWarn)(const char *);
 extern "C" void (*LogInfo)(const char *);
 extern "C" void (*LogDebug)(const char *);
+extern "C" void (*RestoreDriverPaths)();
 extern "C" void (*SendVideo)(uint64_t, uint8_t *, int, uint64_t);
 extern "C" void (*SendAudio)(uint64_t, uint8_t *, int, uint64_t);
 extern "C" void (*SendHapticsFeedback)(float, float, float, uint8_t);

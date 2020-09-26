@@ -514,13 +514,15 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
 name = "chrono"
-version = "0.4.15"
+version = "0.4.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "942f72db697d8767c22d46a598e01f2d3b475501ea43d0db4f16d90259182d0b"
+checksum = "d021fddb7bd3e734370acfa4a83f34095571d8570c039f1420d77540f68d5772"
 dependencies = [
+ "libc",
  "num-integer",
  "num-traits",
  "time",
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -2319,9 +2321,9 @@ checksum = "eba180dafb9038b050a4c280019bbedf9f2467b61e5d892dcad585bb57aadc5a"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.21"
+version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36e28516df94f3dd551a587da5357459d9b36d945a7c37c3557928c1c2ff2a2c"
+checksum = "51ef7cd2518ead700af67bf9d1a658d90b6037d77110fd9c0445429d0ba1c6c9"
 dependencies = [
  "unicode-xid",
 ]
@@ -2335,7 +2337,7 @@ checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 [[package]]
 name = "quinn"
 version = "0.6.1"
-source = "git+https://github.com/djc/quinn#c054fb36cbcf435607419e58846f89138768ce94"
+source = "git+https://github.com/djc/quinn#9eb76ee6bb25a0dc571bf48c8d156852a75e041f"
 dependencies = [
  "bytes",
  "err-derive",
@@ -2352,7 +2354,7 @@ dependencies = [
 [[package]]
 name = "quinn-proto"
 version = "0.6.1"
-source = "git+https://github.com/djc/quinn#c054fb36cbcf435607419e58846f89138768ce94"
+source = "git+https://github.com/djc/quinn#9eb76ee6bb25a0dc571bf48c8d156852a75e041f"
 dependencies = [
  "bytes",
  "ct-logs",
@@ -3091,9 +3093,9 @@ checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 
 [[package]]
 name = "syn"
-version = "1.0.41"
+version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6690e3e9f692504b941dc6c3b188fd28df054f7fb8469ab40680df52fdcc842b"
+checksum = "9c51d92969d209b54a98397e1b91c8ae82d8c87a7bb87df0b29aa2ad81454228"
 dependencies = [
  "proc-macro2",
  "quote",

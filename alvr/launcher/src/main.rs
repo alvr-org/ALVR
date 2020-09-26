@@ -86,14 +86,14 @@ fn window_mode() -> StrResult {
         }))?;
 
         trace_err!(window.bind("startDriver", move |_| {
-            if show_err(maybe_register_alvr_driver()).is_ok() {
+            if !is_steamvr_running() && show_err(maybe_register_alvr_driver()).is_ok() {
                 maybe_launch_steamvr();
             }
             Ok(json::Value::Null)
         }))?;
 
-        trace_err!(window.bind("killSteamvr", |_| {
-            kill_steamvr();
+        trace_err!(window.bind("restartSteamvr", |_| {
+            restart_steamvr();
             Ok(json::Value::Null)
         }))?;
 

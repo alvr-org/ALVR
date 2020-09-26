@@ -82,8 +82,7 @@
         function init() {
             document.getElementById("restart-btn").onclick = function () {
                 (async () => {
-                    await killSteamvr();
-                    // steamvr will be restarted by startDriver() internal loop
+                    await restartSteamvr();
                 })();
             };
 
@@ -100,7 +99,7 @@
                 await startDriver();
 
                 while (!await pingWebServer()) {
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    await new Promise(resolve => setTimeout(resolve, 100));
                     console.log("retry ping...");
                 }
 

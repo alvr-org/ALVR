@@ -10,6 +10,8 @@ use lazy_static_include::*;
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
+    sync::{atomic::AtomicUsize, atomic::Ordering, Arc},
+    thread,
 };
 
 lazy_static_include_bytes!(FRAME_RENDER_VS_CSO, "cpp/alvr_server/FrameRenderVS.cso");
@@ -83,5 +85,26 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogDebug = Some(log_debug);
     MaybeKillWebServer = Some(maybe_kill_web_server);
 
-    CppEntryPoint(interface_name, return_code)
+    // cast to usize to allow the variables to cross thread boundaries
+    let interface_name_usize = interface_name as usize;
+    let return_code_usize = return_code as usize;
+
+    lazy_static::lazy_static! {
+        static ref maybe_ptr_usize: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
+        static ref num_trials: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
+    }
+
+    thread::spawn(move || {
+        num_trials.fetch_add(1, Ordering::Relaxed);
+        if num_trials.load(Ordering::Relaxed) <= 1 {
+            maybe_ptr_usize.store(
+                CppEntryPoint(interface_name_usize as _, return_code_usize as _) as _,
+                Ordering::Relaxed,
+            );
+        }
+    })
+    .join()
+    .ok();
+
+    maybe_ptr_usize.load(Ordering::Relaxed) as _
 }

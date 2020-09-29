@@ -13,6 +13,7 @@ log = '^0.4.8'
 serde_json = '^1.0.53'
 fern = '^0.6.0'
 alvr_common = { path = '../common' }
+lazy_static = '1.4'
 lazy-static-include = '^2.3'
 
 [build-dependencies]

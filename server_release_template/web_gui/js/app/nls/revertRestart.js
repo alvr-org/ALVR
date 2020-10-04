@@ -14,5 +14,6 @@ define({
     "es": true,
     "fr": true,
     "ja": true,
+    "zh": true,
     "de-de": false
 });

@@ -113,6 +113,8 @@ define({
         "_root_audio_gameAudio_content_device.description": "Used audio device for streaming",
         "_root_audio_microphone.name": "Stream microphone",
         "_root_audio_microphone.description": "Streams the HMD microphone",
+        "_root_audio_microphone_content_deviceDropdown.name": "Select virtual microphone",
+        "_root_audio_microphone_content_deviceDropdown.description": "To make the microphone work you need to install VB-Audio Virtual device or another equivalent software",
         "_root_headset_serialNumber.name": "Serial number",
         "_root_headset_serialNumber.description": "Serial number used for the simulated headset",
         "_root_headset_trackingSystemName.name": "Tracking system name",

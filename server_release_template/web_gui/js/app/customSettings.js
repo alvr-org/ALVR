@@ -403,7 +403,7 @@ define([
 
                 //set default as current audio device if empty
                 if (current.trim() === "") {
-                    target.val(audio_devices.default);
+                    target.val(audio_devices.default_game_audio);
                     target.change();
                     alvrSettings.storeParam(target);
                 }

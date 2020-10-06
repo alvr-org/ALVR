@@ -147,7 +147,7 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             buffer_size_bytes: settings.connection.client_recv_buffer_size as _,
             frame_queue_size: settings.connection.frame_queue_size as _,
             refresh_rate: settings.video.refresh_rate as _,
-            stream_mic: settings.audio.microphone,
+            stream_mic: matches!(settings.audio.microphone, Switch::Enabled(_)),
             foveation_mode,
             foveation_strength,
             foveation_shape,

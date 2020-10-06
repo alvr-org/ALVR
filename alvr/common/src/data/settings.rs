@@ -122,7 +122,7 @@ pub struct AudioDesc {
 #[serde(rename_all = "camelCase")]
 pub struct AudioSection {
     pub game_audio: Switch<AudioDesc>,
-    pub microphone: bool,
+    pub microphone: Switch<AudioDesc>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -363,7 +363,10 @@ pub fn settings_cache_default() -> SettingsDefault {
                 enabled: true,
                 content: AudioDescDefault { device: "".into() },
             },
-            microphone: false,
+            microphone: SwitchDefault {
+                enabled: false,
+                content: AudioDescDefault { device: "".into() },
+            },
         },
         headset: HeadsetDescDefault {
             serial_number: "1WMGH000XX0000".into(),

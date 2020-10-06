@@ -63,6 +63,7 @@ public:
 	std::string m_soundDevice;
 
 	bool m_streamMic;
+	std::string m_microphoneDeviceName;
 
 	int m_codec;
 	std::string m_EncoderOptions;

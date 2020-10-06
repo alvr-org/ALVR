@@ -28,7 +28,7 @@ public:
 	void playAudio(LPSTR data, int size);
 	void waveCallback();
 
-	UINT getCableHWID();
+	UINT getMicHWID();
 	
 	
 

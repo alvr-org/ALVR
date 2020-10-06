@@ -30,7 +30,7 @@ void MicPlayer::waveCallback() {
 	LeaveCriticalSection(&waveCriticalSection);
 }
 
-UINT MicPlayer::getCableHWID() {	
+UINT MicPlayer::getMicHWID() {	
 
 	UINT devs = waveOutGetNumDevs();
 	
@@ -57,9 +57,9 @@ UINT MicPlayer::getCableHWID() {
 		);
 		*/
 
-		if (name.find("CABLE") == 0)
+		if (name == Settings::Instance().m_microphoneDeviceName)
 		{
-			LogDriver("CABLE Device found: %u", dev);
+			LogDriver("Microphone Device found: %u", dev);
 			return dev;
 		}
 	}	
@@ -95,14 +95,14 @@ MicPlayer::MicPlayer()
 	wfx.nBlockAlign = (wfx.wBitsPerSample * wfx.nChannels) >> 3;
 	wfx.nAvgBytesPerSec = wfx.nBlockAlign * wfx.nSamplesPerSec;
 
-	deviceID = MicPlayer::getCableHWID();
+	deviceID = MicPlayer::getMicHWID();
 
 	if (!Settings::Instance().m_streamMic) {
 		return;
 	}
 
 	if (deviceID == -1) {
-		Log("CABLE Audio device not found");
+		Log("Microphone Audio device not found");
 		return;
 	}
 

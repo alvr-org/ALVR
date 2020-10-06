@@ -136,7 +136,8 @@ void Settings::Load()
 
 		m_enableSound = audio.get("gameAudio").get("enabled").get<bool>();
 		m_soundDevice = audio.get("gameAudio").get("content").get("device").get<std::string>();
-		m_streamMic = audio.get("microphone").get<bool>();
+		m_streamMic = audio.get("microphone").get("enabled").get<bool>();
+		m_microphoneDeviceName = audio.get("microphone").get("content").get("deviceName").get<std::string>();
 
 		m_flSecondsFromVsyncToPhotons = (float)video.get("secondsFromVsyncToPhotons").get<double>();
 

@@ -16,7 +16,8 @@ use wio::com::ComPtr;
 #[derive(serde::Serialize)]
 pub struct AudioDevicesDesc {
     pub list: Vec<(String, String)>,
-    pub default: Option<String>,
+    pub default_game_audio: Option<String>,
+    pub default_microphone_name: Option<String>,
 }
 
 // pub fn output_audio_device_names() -> StrResult<AudioDevices> {
@@ -64,7 +65,7 @@ fn get_device_name(mm_device: ComPtr<IMMDevice>) -> StrResult<String> {
         if FAILED(hr) {
             return trace_str!("PropVariantClear failed: hr = 0x{:08x}", hr);
         }
-        
+
         res
     }
 }
@@ -165,10 +166,15 @@ pub fn output_audio_devices() -> StrResult<AudioDevicesDesc> {
         }
     }
 
-    let default = Some(device_list[0].0.clone());
+    let default_game_audio = device_list.get(0).map(|dev| dev.0.clone());
+    let default_microphone_name = device_list
+        .iter()
+        .find(|(_, name)| name.to_uppercase().contains("CABLE"))
+        .map(|(_, name)| name.to_owned());
     let audio_devices_desc = AudioDevicesDesc {
         list: device_list,
-        default,
+        default_game_audio,
+        default_microphone_name,
     };
 
     Ok(audio_devices_desc)

@@ -376,13 +376,13 @@ define([
         function setDeviceList() {
             // Game audio
             {
-                var el = $("#_root_audio_gameAudio_content_deviceDropdown");
+                let el = $("#_root_audio_gameAudio_content_deviceDropdown");
                 el.parent().addClass("special")
                 el.unbind();
 
-                var target = $("#_root_audio_gameAudio_content_device");
+                let target = $("#_root_audio_gameAudio_content_device");
 
-                var current = "";
+                let current = "";
                 try {
                     current = alvrSettings.getSession().settingsCache.audio.gameAudio.content.device;
                 } catch (err) {
@@ -410,17 +410,17 @@ define([
 
 
                 //move selected audio device to top of list
-                var $el = $("#_root_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
+                let $el = $("#_root_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
                 $("#_root_audio_gameAudio_content_deviceDropdown").prepend($el);
 
-                var select = new Selectal('#_root_audio_gameAudio_content_deviceDropdown');
+                let select = new Selectal('#_root_audio_gameAudio_content_deviceDropdown');
                 el = $("#_root_audio_gameAudio_content_deviceDropdown");
 
                 //select the current option in dropdown
                 el.val(target.val());
 
 
-                var updating = false;
+                let updating = false;
                 //add listener to change
                 el.change((ev) => {
                     if (!updating) {
@@ -443,13 +443,13 @@ define([
 
             // Microphone
             {
-                var el = $("#_root_audio_microphone_content_deviceDropdown");
+                let el = $("#_root_audio_microphone_content_deviceDropdown");
                 el.parent().addClass("special")
                 el.unbind();
 
-                var target = $("#_root_audio_microphone_content_device");
+                let target = $("#_root_audio_microphone_content_device");
 
-                var current = "";
+                let current = "";
                 try {
                     current = alvrSettings.getSession().settingsCache.audio.microphone.content.device;
                 } catch (err) {
@@ -477,17 +477,17 @@ define([
 
 
                 //move selected audio device to top of list
-                var $el = $("#_root_audio_microphone_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
+                let $el = $("#_root_audio_microphone_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
                 $("#_root_audio_microphone_content_deviceDropdown").prepend($el);
 
-                var select = new Selectal('#_root_audio_microphone_content_deviceDropdown');
+                let select = new Selectal('#_root_audio_microphone_content_deviceDropdown');
                 el = $("#_root_audio_microphone_content_deviceDropdown");
 
                 //select the current option in dropdown
                 el.val(target.val());
 
 
-                var updating = false;
+                let updating = false;
                 //add listener to change
                 el.change((ev) => {
                     if (!updating) {

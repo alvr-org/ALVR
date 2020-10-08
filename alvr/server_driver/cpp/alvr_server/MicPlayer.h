@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <mmsystem.h>
+#include <mmddk.h>
 #include <stdio.h>
 #include <tchar.h>
 #include "Logger.h"

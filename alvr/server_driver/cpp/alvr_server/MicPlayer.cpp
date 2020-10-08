@@ -33,37 +33,48 @@ void MicPlayer::waveCallback() {
 UINT MicPlayer::getMicHWID() {	
 
 	UINT devs = waveOutGetNumDevs();
+	std::wstring micDevId = ToWstring(Settings::Instance().m_microphoneDevice);
+
+	// Include terminating NULL, since the waveOutMessage calls will as well.
+	size_t micDevIdSize = (micDevId.length() + 1) * sizeof(WCHAR);
+
+	WCHAR *pwstrDeviceId = (WCHAR *)CoTaskMemAlloc(micDevIdSize);
+	if (NULL == pwstrDeviceId) {
+		Error("Failed to allocate space for Device ID string.");
+		return -1;
+	}
 	
+	// We get a Windows audio endpoint ID from settings. Find which device
+	// handle has the same id.
 	for (UINT dev = 0; dev < devs; dev++) {
-		WAVEOUTCAPS caps = {};
-		MMRESULT mmr = waveOutGetDevCaps(dev, &caps, sizeof(caps));
+		size_t cbDeviceId = 0;
+		MMRESULT mmr = waveOutMessage((HWAVEOUT)dev, DRV_QUERYFUNCTIONINSTANCEIDSIZE, (DWORD_PTR)&cbDeviceId, NULL);
 
 		if (MMSYSERR_NOERROR != mmr) {
-			LogDriver("waveOutGetDevCaps failed: mmr = 0x%08x", mmr);
-			return -1;
+			Warn("waveOutMessage (DRV_QUERYFUNCTIONINSTANCEIDSIZE) failed. mmr = 0x%08x", mmr);
+			continue;
 		}
 
-		std::string name(caps.szPname);	
+		if (cbDeviceId != micDevIdSize) {
+			Warn("Audio device ID has wrong length: %lld != %lld", cbDeviceId, micDevIdSize);
+			continue;
+		}
 
-		/*
-		Log(
-			"-- waveOut device #%u Manufacturer ID: %un Product ID: %un Version: %u.%un Product Name: %s",
-			dev,
-			caps.wMid,
-			caps.wPid,
-			caps.vDriverVersion / 256, caps.vDriverVersion % 256,
-			caps.szPname
-		
-		);
-		*/
+		mmr = waveOutMessage((HWAVEOUT)dev, DRV_QUERYFUNCTIONINSTANCEID, (DWORD_PTR)pwstrDeviceId, cbDeviceId);
 
-		if (name == Settings::Instance().m_microphoneDeviceName)
-		{
-			LogDriver("Microphone Device found: %u", dev);
+		if (MMSYSERR_NOERROR != mmr) {
+			Warn("waveOutMessage (DRV_QUERYFUNCTIONINSTANCEID) failed. mmr = 0x%08x", mmr);
+			continue;
+		}
+
+		if (lstrcmpiW(pwstrDeviceId, micDevId.c_str()) == 0) {
+			Debug("Microphone device found: %u", dev);
+			CoTaskMemFree(pwstrDeviceId);
 			return dev;
 		}
 	}	
 
+	CoTaskMemFree(pwstrDeviceId);
 	return -1;
 }
 

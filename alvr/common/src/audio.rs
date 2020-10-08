@@ -17,7 +17,7 @@ use wio::com::ComPtr;
 pub struct AudioDevicesDesc {
     pub list: Vec<(String, String)>,
     pub default_game_audio: Option<String>,
-    pub default_microphone_name: Option<String>,
+    pub default_microphone: Option<String>,
 }
 
 // pub fn output_audio_device_names() -> StrResult<AudioDevices> {
@@ -167,14 +167,14 @@ pub fn output_audio_devices() -> StrResult<AudioDevicesDesc> {
     }
 
     let default_game_audio = device_list.get(0).map(|dev| dev.0.clone());
-    let default_microphone_name = device_list
+    let default_microphone = device_list
         .iter()
         .find(|(_, name)| name.to_uppercase().contains("CABLE"))
-        .map(|(_, name)| name.to_owned());
+        .map(|dev| dev.0.clone());
     let audio_devices_desc = AudioDevicesDesc {
         list: device_list,
         default_game_audio,
-        default_microphone_name,
+        default_microphone,
     };
 
     Ok(audio_devices_desc)

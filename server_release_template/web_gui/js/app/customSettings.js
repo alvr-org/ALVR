@@ -458,19 +458,19 @@ define([
 
                 audio_devices.list.forEach(device => {
                     let label = device[1];
-                    if (device[1] === audio_devices.default_microphone_name) {
+                    if (device[0] === audio_devices.default_microphone) {
                         label = "(default) " + device[1];
-                        el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_microphone_content", device[1]));
+                        el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_microphone_content", device[0]));
 
                         const deviceReset = $("#_root_audio_microphone_content_device").parent().find(".helpReset .paramReset");
-                        deviceReset.attr("default", device[1])
+                        deviceReset.attr("default", device[0])
                     }
-                    el.append(`<option value="${device[1]}"> ${label}  </option>`)
+                    el.append(`<option value="${device[0]}"> ${label}  </option>`)
                 });
 
                 //set default as current audio device if empty
                 if (current.trim() === "") {
-                    target.val(audio_devices.default_microphone_name);
+                    target.val(audio_devices.default_microphone);
                     target.change();
                     alvrSettings.storeParam(target);
                 }

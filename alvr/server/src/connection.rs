@@ -446,29 +446,30 @@ pub async fn connection_loop(
     session_manager: Arc<AMutex<SessionManager>>,
     update_client_listeners_notifier: broadcast::Sender<()>,
 ) -> StrResult {
+    let client_discovery = {
+        let session_manager = session_manager.clone();
+        let update_client_listeners_notifier = update_client_listeners_notifier.clone();
+        async move {
+            let res = search_client_loop(|client_ip, client_identity| {
+                update_client_list(
+                    session_manager.clone(),
+                    client_identity.hostname,
+                    ClientListAction::AddIfMissing {
+                        ip: client_ip,
+                        certificate_pem: client_identity.certificate_pem,
+                    },
+                    update_client_listeners_notifier.clone(),
+                )
+            })
+            .await;
+
+            Err::<(), _>(res.err().unwrap_or_else(|| "".into()))
+        }
+    };
+    tokio::pin!(client_discovery);
+
     loop {
         let mut update_client_listeners_receiver = update_client_listeners_notifier.subscribe();
-
-        let client_discovery = {
-            let session_manager = session_manager.clone();
-            let update_client_listeners_notifier = update_client_listeners_notifier.clone();
-            async move {
-                let res = search_client_loop(|client_ip, client_identity| {
-                    update_client_list(
-                        session_manager.clone(),
-                        client_identity.hostname,
-                        ClientListAction::AddIfMissing {
-                            ip: client_ip,
-                            certificate_pem: client_identity.certificate_pem,
-                        },
-                        update_client_listeners_notifier.clone(),
-                    )
-                })
-                .await;
-
-                Err::<(), _>(res.err().unwrap_or_else(|| "".into()))
-            }
-        };
 
         let clients_info = session_manager
             .lock()
@@ -494,7 +495,7 @@ pub async fn connection_loop(
         };
 
         let mut control_socket = tokio::select! {
-            Err(e) = client_discovery => break trace_str!("Client discovery failed: {}", e),
+            Err(e) = &mut client_discovery => break trace_str!("Client discovery failed: {}", e),
             control_socket = get_control_socket => control_socket,
             _ = update_client_listeners_receiver.recv() => continue,
         };
@@ -544,7 +545,7 @@ pub async fn connection_loop(
                     }
                 },
                 _ = time::delay_for(CONTROL_SOCKET_RECEIVE_TIMEOUT) => {
-                    warn!(id: LogId::ClientDisconnected, "CLient lost");
+                    warn!(id: LogId::ClientDisconnected, "Client lost");
                     break;
                 }
             };

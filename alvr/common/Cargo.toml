@@ -24,7 +24,7 @@ tokio = { version = '^0.2.20', features = ['macros', 'net', 'sync'] }
 tokio-util = { version = '^0.3.1', features = ['codec', 'udp'] }
 bytes = '^0.5.6'
 rcgen = '^0.8.5'
-quinn = { git = 'https://github.com/djc/quinn' }# todo: use registry version (>0.6.1)
+quinn = { git = 'https://github.com/djc/quinn', branch = 'main' }# todo: use registry version (>0.6.1)
 gfx-hal = '^0.6.0'
 # cpal = '^0.12.1'
 

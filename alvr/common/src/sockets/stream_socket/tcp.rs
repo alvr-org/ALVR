@@ -36,11 +36,11 @@ fn create_socket(socket: TcpStream) -> StreamSocket {
 }
 
 pub(super) async fn connect_to_server(server_addr: SocketAddr) -> StrResult<StreamSocket> {
-    let mut listener = trace_err!(TcpListener::bind((LOCAL_IP, CONTROL_PORT)).await)?;
+    let mut listener = trace_err!(TcpListener::bind((LOCAL_IP, server_addr.port())).await)?;
     let (socket, server_address) = trace_err!(listener.accept().await)?;
 
-    if server_address != server_addr {
-        return trace_str!("Connected to wrong client");
+    if server_address.ip() != server_addr.ip() {
+        return trace_str!("Connected to wrong client: {} != {}", server_address, server_addr);
     }
 
     Ok(create_socket(socket))

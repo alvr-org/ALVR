@@ -16,14 +16,30 @@ define([
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
 
         self.setCustomSettings = function () {
-            setDeviceList();
-            setVideoOptions();
-            setBitrateOptions();
-            setSuppressFrameDrop();
-            setDisableThrottling();
-            setHeadsetEmulation();
-            setControllerEmulation();
-            setBufferOffset();
+
+            try {
+                setDeviceList();
+                setVideoOptions();
+                setBitrateOptions();
+                setSuppressFrameDrop();
+                setDisableThrottling();
+                setHeadsetEmulation();
+                setControllerEmulation();
+                setBufferOffset();
+            } catch (error) {
+                Lobibox.notify("error", {
+                    rounded: true,
+                    delay : -1,
+                    delayIndicator: false,
+                    sound: false,
+                    position: "bottom left",
+                    iconSource: 'fontAwesome',
+                    msg: error.stack,
+                    closable: true,
+                    messageHeight: 250,
+                });
+            }
+            
         }
 
         function setBufferOffset() {
@@ -77,7 +93,7 @@ define([
             controller.append(`<option value="5">HTC Vive (no handtracking pinch)</option>`);
 
             const select = new Selectal('#_root_headset_controllers_content_controllerMode');
-            controller = $("#_root_headset_controllers_content_controllerMode");        
+            controller = $("#_root_headset_controllers_content_controllerMode");
 
             controller.val(controllerMode.val());
             controller.change();
@@ -109,7 +125,7 @@ define([
 
             const select = new Selectal('#_root_headset_headsetEmulationMode');
             headset = $("#_root_headset_headsetEmulationMode");
-        
+
 
             if ($(headsetBase + "modelNumber").val() == "Oculus Rift S") {
                 headset.val(0);
@@ -251,7 +267,7 @@ define([
                         customRes.hide();
                     } else {
                         $("#_root_video_resolutionDropdown-selectal").hide()
-                        customRes.show();                      
+                        customRes.show();
                     }
                 } else if (alvrSettings.getSession().lastClients.length > 0) {
 
@@ -374,6 +390,27 @@ define([
         }
 
         function setDeviceList() {
+
+            if (audio_devices == null|| audio_devices.length == 0) {
+                $("#_root_audio_gameAudio_content_deviceDropdown").hide();
+                $("#_root_audio_microphone_content_device").hide();
+
+                Lobibox.notify("warning", {
+                    size: "mini",
+                    rounded: true,
+                    delayIndicator: false,
+                    sound: false,
+                    position: "bottom left",
+                    iconSource: 'fontAwesome',
+                    msg: i18n.audioDeviceError,
+                    closable: true,
+                    messageHeight: 250,
+                });
+
+
+                return;
+            }
+
             // Game audio
             {
                 let el = $("#_root_audio_gameAudio_content_deviceDropdown");

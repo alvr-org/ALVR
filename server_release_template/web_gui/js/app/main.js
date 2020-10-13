@@ -15,19 +15,33 @@ define([
     "css!js/lib/lobibox.min.css"
 
 
-], function ($, bootstrap, _, mainTemplate, i18n, Settings, SetupWizard, Monitor,driverList, session, version) {
+], function ($, bootstrap, _, mainTemplate, i18n, Settings, SetupWizard, Monitor, driverList, session, version) {
     $(function () {
 
         var compiledTemplate = _.template(mainTemplate);
         var template = compiledTemplate(i18n);
-       
-        $("#bodyContent").append(template);       
-        $(document).ready(() => {
-            $('#loading').remove();          
 
-            var settings = new Settings();
-            var wizard = new SetupWizard(settings);
-            var monitor = new Monitor(settings);
+        $("#bodyContent").append(template);
+        $(document).ready(() => {
+            $('#loading').remove();
+
+            try {
+                var settings = new Settings();
+                var wizard = new SetupWizard(settings);
+                var monitor = new Monitor(settings);
+            } catch (error) {
+                Lobibox.notify("error", {
+                    rounded: true,
+                    delay : -1,
+                    delayIndicator: false,
+                    sound: false,
+                    position: "bottom left",
+                    iconSource: 'fontAwesome',
+                    msg: error.stack,
+                    closable: true,
+                    messageHeight: 250,
+                });
+            }                     
 
             $("#bodyContent").show();
 
@@ -71,7 +85,7 @@ define([
 
             driverList.fillDriverList("registeredDriversInst");
 
-            
+
         });
     });
 });

@@ -11,7 +11,7 @@ define([
 ], function (schema, session, CustomSettings, _, i18n, revertRestartI18n, revertConfirm, restartConfirm) {
     return function () {
         var self = this;
-
+       
         var advanced = false;
         var updating = false;
         var customSettings = new CustomSettings(self);

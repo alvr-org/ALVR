@@ -7,11 +7,11 @@ define({
     "_root_audio_tab.description": "Ajustes de audio",
     "_root_headset_tab.name": "Visor",
     "_root_connection_tab.name": "Conexión",
-    "_root_video_adapterIndex.name": "Índice de adaptador",
+    "_root_video_adapterIndex.name": "Índice de GPU",
     "_root_video_adapterIndex.description": "El índice que identifica la GPU",
     "_root_video_refreshRate.name": "FPS",
     "_root_video_refreshRate.description": "FPS del visor",
-    "_root_video_encodeBitrateMbs.name": "Bitrate para el video",
+    "_root_video_encodeBitrateMbs.name": "Bitrate de video",
     "_root_video_encodeBitrateMbs.description": `Transmisión de video a velocidad de bits. Se recomiendan 30Mbps.
 Una mayor tasa de bits resulta en una mejor calidad de imagen pero a costa de una mayor latencia y tráfico de red.`,
     "_root_video_force60hz.name": "Forzar 60Hz",
@@ -44,7 +44,7 @@ Una resolución inferior al 100% puede reducir la latencia y mejorar la calidad 
     "_root_video_recommendedTargetResolution_absolute_width.description": "El ancho de fotograma preferido en píxeles",
     "_root_video_recommendedTargetResolution_absolute_height.name": "Altura del fotograma",
     "_root_video_recommendedTargetResolution_absolute_height.description": "La altura de fotograma preferida en píxeles",
-    "_root_video_eyeFov.name": "FOV",
+    "_root_video_eyeFov.name": "Campo de visión (FOV)",
     "_root_video_eyeFov.description": "Tamaño del campo de visión de cada ojo",
     "_root_video_eyeFov_0_eyeFov_0.name": "Ojo izquierdo",
     "_root_video_eyeFov_0_eyeFov_0.description": "Configuración para el ojo izquierdo",
@@ -113,6 +113,8 @@ Una resolución inferior al 100% puede reducir la latencia y mejorar la calidad 
     "_root_audio_gameAudio_content_device.description": "Dispositivo utilizado para capturar el audio del juego",
     "_root_audio_microphone.name": "Micrófono de transmisión",
     "_root_audio_microphone.description": "Transmitir el audio del micrófono del visor al PC",
+    "_root_audio_microphone_content_deviceDropdown.name": "Seleccionar la entrada del micrófono virtual",
+    "_root_audio_microphone_content_deviceDropdown.description": "Para que el micrófono funcione correctamente, debe instalar VB-Audio Virtual u otro software equivalente.",
     "_root_headset_serialNumber.name": "Número de serie",
     "_root_headset_serialNumber.description": "Número de serie del visor simulado",
     "_root_headset_trackingSystemName.name": "Nombre del sistema de rastreo",
@@ -234,5 +236,6 @@ Sólo se utiliza cuando se detecta una pérdida de paquetes. Mejora la experienc
     "_root_headset_controllers_content_controllerMode.name": "Modo de emulación del controlador",
     "_root_headset_controllers_content_controllerMode.description": "Elija el modo de emulación del controlador para mejorar la compatibilidad con ciertos juegos, y elija si desea activar la emulación del disparador con el seguimiento de la mano.",
     "_root_connection_bufferOffset.name": "Offset de buffer",
-    "_root_connection_bufferOffset.description": "Offset utilizado para aumentar o disminuir el tamaño del buffer calculado para el cliente. El tamaño del buffer resultante nunca será negativo."
+    "_root_connection_bufferOffset.description": "Offset utilizado para aumentar o disminuir el tamaño del buffer calculado para el cliente. El tamaño del buffer resultante nunca será negativo.",
+    "audioDeviceError": "No se encontraron dispositivos de audio. No se puede transmitir audio o micrófono."
 });

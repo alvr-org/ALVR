@@ -68,6 +68,6 @@ pub fn init_logging(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) {
     .unwrap();
 
     crate::logging::set_show_error_fn_and_panic_hook(|message| {
-        msgbox::create("ALVR crashed", &message, msgbox::IconType::Error)
+        msgbox::create("ALVR crashed", &message, msgbox::IconType::Error).ok();
     });
 }

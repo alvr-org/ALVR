@@ -10,7 +10,7 @@ fn main() {
         let window = alcro::UIBuilder::new()
             .content(alcro::Content::Url("http://127.0.0.1:8082"))
             .size(800, 600)
-            .run();
+            .run().unwrap();
         window.wait_finish();
 
         maybe_kill_web_server();

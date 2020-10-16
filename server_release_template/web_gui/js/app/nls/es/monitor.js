@@ -5,6 +5,7 @@ define({
     "newClients": "Nuevos clientes",
     "trustedClients": "Clientes de confianza",
     "manAddClient": "Añadir un cliente manualmente",
+    "removeTrustedClient": "Quitar",
     "statistics": "Estadísticas de transmisión",
     "addClient": "Añadir cliente",
     "clientType": "Tipo",
@@ -27,6 +28,6 @@ define({
     "fecFailureInSecond": "Errores FEC por segundo",
     "clientFPS": "FPS del cliente",
     "serverFPS": "FPS del servidor",
-    "packets" : "Paquetes",
-    "packetss" : "Paquetes/s"
+    "packets": "Paquetes",
+    "packetss": "Paquetes/s"
 });

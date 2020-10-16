@@ -6,7 +6,7 @@ license = 'MIT'
 edition = '2018'
 
 [dependencies]
-alcro = '^0.1.4'
+alcro = '^0.3.3'
 alvr_common = { path = '../common' }
 single-instance = '^0.1.2'
 

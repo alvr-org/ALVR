@@ -11,7 +11,7 @@ define([
 ], function (schema, session, CustomSettings, _, i18n, revertRestartI18n, revertConfirm, restartConfirm) {
     return function () {
         var self = this;
-
+       
         var advanced = false;
         var updating = false;
         var customSettings = new CustomSettings(self);
@@ -97,17 +97,15 @@ define([
                 console.log("names not ready");
                 return { "name": id, "description": "" };
             } else {
+                let name;
                 if (i18n[id + ".name"] !== undefined) {
                     usedi18n[id + ".name"] = true;
-                    usedi18n[id + ".description"] = true;
-                    return { "name": i18n[id + ".name"], "description": i18n[id + ".description"] };;
+                    name = i18n[id + ".name"]
                 } else {
-                    console.log("Missing i18n", `"${id}.name":"", \r\n "${id}.description":"", \r\n`);
-                    var name = id.substring(id.lastIndexOf("_") + 1, id.length);
-                    name = name.replace("-choice-", ""); 
-
-                    return { "name": name, "description": undefined };
+                    name = id.substring(id.lastIndexOf("_") + 1, id.length).replace("-choice-", "");
                 }
+
+                return { "name": name, "description": i18n[id + ".description"] };
             }
         }
 

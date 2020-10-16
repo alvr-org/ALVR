@@ -108,6 +108,28 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             }
         }
 
+        // patch for Oculus Quest 2
+        {
+            let session_manager_ref = &mut session_manager.lock().unwrap();
+            let session_desc_ref = &mut session_manager_ref
+                .get_mut(SERVER_SESSION_UPDATE_ID, SessionUpdateType::Settings);
+
+            session_desc_ref.settings_cache.video.eye_fov = [
+                FovDefault {
+                    left: client_handshake_packet.client_fov[0].left,
+                    right: client_handshake_packet.client_fov[0].right,
+                    top: client_handshake_packet.client_fov[0].top,
+                    bottom: client_handshake_packet.client_fov[0].bottom,
+                },
+                FovDefault {
+                    left: client_handshake_packet.client_fov[1].left,
+                    right: client_handshake_packet.client_fov[1].right,
+                    top: client_handshake_packet.client_fov[1].top,
+                    bottom: client_handshake_packet.client_fov[1].bottom,
+                },
+            ];
+        }
+
         let settings = session_manager.lock().unwrap().get().to_settings();
 
         let video_width;
@@ -147,7 +169,7 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             buffer_size_bytes: settings.connection.client_recv_buffer_size as _,
             frame_queue_size: settings.connection.frame_queue_size as _,
             refresh_rate: settings.video.refresh_rate as _,
-            stream_mic: settings.audio.microphone,
+            stream_mic: matches!(settings.audio.microphone, Switch::Enabled(_)),
             foveation_mode,
             foveation_strength,
             foveation_shape,

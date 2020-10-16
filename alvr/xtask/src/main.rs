@@ -1,3 +1,5 @@
+mod version;
+
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
 use std::{
@@ -8,13 +10,14 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
+use version::bump_versions;
 
 const HELP_STR: &str = r#"
 cargo xtask
 Developement actions for ALVR.
 
 USAGE:
-    cargo xtask <SUBCOMMAND> [FLAG]
+    cargo xtask <SUBCOMMAND> [FLAG] [ARGS]
 
 SUBCOMMANDS:
     build-server        Build server driver and GUI, then copy binaries to build folder
@@ -22,13 +25,24 @@ SUBCOMMANDS:
     publish             Build server and client in release mode, zip server and copy the pdb file.
     clean               Removes build folder
     kill-oculus         Kill all Oculus processes
+    bump-versions       Bump server and/or client package versions
 
 FLAGS:
     --release           Optimized build without debug info. Used only for build subcommands
     --help              Print this text
+
+ARGS:
+    --client <VERSION>  Specify client version to set with the bump-versions subcommand
+    --server <VERSION>  Specify server version to set with the bump-versions subcommand
 "#;
 
 type BResult<T = ()> = Result<T, Box<dyn Error>>;
+
+struct Args {
+    is_release: bool,
+    server_version: Option<String>,
+    client_version: Option<String>,
+}
 
 #[cfg(target_os = "linux")]
 const SERVER_BUILD_DIR_NAME: &str = "alvr_server_linux";
@@ -123,7 +137,7 @@ pub fn reset_server_build_folder() -> BResult {
     // get all file and folder paths at depth 1, excluded template root (at index 0)
     let dir_content =
         dirx::get_dir_content2("server_release_template", &dirx::DirOptions { depth: 1 })?;
-    let items = dir_content.directories[1..]
+    let items: Vec<&String> = dir_content.directories[1..]
         .iter()
         .chain(dir_content.files.iter())
         .collect();
@@ -312,15 +326,22 @@ fn main() {
     if args.contains(["-h", "--help"]) {
         println!("{}", HELP_STR);
     } else if let Ok(Some(subcommand)) = args.subcommand() {
-        let is_release = args.contains("--release");
-
+        let args_values = Args {
+            is_release: args.contains("--release"),
+            server_version: args.opt_value_from_str("--server").unwrap(),
+            client_version: args.opt_value_from_str("--client").unwrap(),
+        };
         if args.finish().is_ok() {
             match subcommand.as_str() {
-                "build-server" => ok_or_exit(build_server(is_release, true)),
-                "build-client" => ok_or_exit(build_client(is_release)),
+                "build-server" => ok_or_exit(build_server(args_values.is_release, true)),
+                "build-client" => ok_or_exit(build_client(args_values.is_release)),
                 "publish" => ok_or_exit(build_publish()),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
+                "bump-versions" => ok_or_exit(bump_versions(
+                    args_values.server_version,
+                    args_values.client_version,
+                )),
                 _ => {
                     println!("\nUnrecognized subcommand.");
                     println!("{}", HELP_STR);

@@ -56,7 +56,7 @@ define([
                             poseTimeOffsetTarget.val("0.01");
                             break;
                         case "medium":
-                            poseTimeOffsetTarget.val("0");
+                            poseTimeOffsetTarget.val("-0.03");
                             break;
                         case "fast":
                             poseTimeOffsetTarget.val("-1");

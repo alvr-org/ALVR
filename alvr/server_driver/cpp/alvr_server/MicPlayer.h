@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <mmsystem.h>
+#include <mmddk.h>
 #include <stdio.h>
 #include <tchar.h>
 #include "Logger.h"
@@ -28,7 +29,7 @@ public:
 	void playAudio(LPSTR data, int size);
 	void waveCallback();
 
-	UINT getCableHWID();
+	UINT getMicHWID();
 	
 	
 

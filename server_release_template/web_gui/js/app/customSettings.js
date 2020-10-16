@@ -16,14 +16,30 @@ define([
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
 
         self.setCustomSettings = function () {
-            setDeviceList();
-            setVideoOptions();
-            setBitrateOptions();
-            setSuppressFrameDrop();
-            setDisableThrottling();
-            setHeadsetEmulation();
-            setControllerEmulation();
-            setBufferOffset();
+
+            try {
+                setDeviceList();
+                setVideoOptions();
+                setBitrateOptions();
+                setSuppressFrameDrop();
+                setDisableThrottling();
+                setHeadsetEmulation();
+                setControllerEmulation();
+                setBufferOffset();
+            } catch (error) {
+                Lobibox.notify("error", {
+                    rounded: true,
+                    delay : -1,
+                    delayIndicator: false,
+                    sound: false,
+                    position: "bottom left",
+                    iconSource: 'fontAwesome',
+                    msg: error.stack,
+                    closable: true,
+                    messageHeight: 250,
+                });
+            }
+            
         }
 
         function setBufferOffset() {
@@ -77,7 +93,7 @@ define([
             controller.append(`<option value="5">HTC Vive (no handtracking pinch)</option>`);
 
             const select = new Selectal('#_root_headset_controllers_content_controllerMode');
-            controller = $("#_root_headset_controllers_content_controllerMode");        
+            controller = $("#_root_headset_controllers_content_controllerMode");
 
             controller.val(controllerMode.val());
             controller.change();
@@ -109,7 +125,7 @@ define([
 
             const select = new Selectal('#_root_headset_headsetEmulationMode');
             headset = $("#_root_headset_headsetEmulationMode");
-        
+
 
             if ($(headsetBase + "modelNumber").val() == "Oculus Rift S") {
                 headset.val(0);
@@ -251,7 +267,7 @@ define([
                         customRes.hide();
                     } else {
                         $("#_root_video_resolutionDropdown-selectal").hide()
-                        customRes.show();                      
+                        customRes.show();
                     }
                 } else if (alvrSettings.getSession().lastClients.length > 0) {
 
@@ -374,71 +390,161 @@ define([
         }
 
         function setDeviceList() {
-            var el = $("#_root_audio_gameAudio_content_deviceDropdown");
-            el.parent().addClass("special")
-            el.unbind();
 
-            const target = $("#_root_audio_gameAudio_content_device");
+            if (audio_devices == null|| audio_devices.length == 0) {
+                $("#_root_audio_gameAudio_content_deviceDropdown").hide();
+                $("#_root_audio_microphone_content_device").hide();
 
-            let current = "";
-            try {
-                current = alvrSettings.getSession().settingsCache.audio.gameAudio.content.device;
-            } catch (err) {
-                console.error("Layout of settings changed, audio devices can not be added. Please report this bug!");
+                Lobibox.notify("warning", {
+                    size: "mini",
+                    rounded: true,
+                    delayIndicator: false,
+                    sound: false,
+                    position: "bottom left",
+                    iconSource: 'fontAwesome',
+                    msg: i18n.audioDeviceError,
+                    closable: true,
+                    messageHeight: 250,
+                });
+
+
+                return;
             }
 
-            audio_devices.list.forEach(device => {
-                let name = device[1];
-                if (device[0] === audio_devices.default) {
-                    name = "(default) " + device[1];
-                    el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_gameAudio_content", device[0]));
+            // Game audio
+            {
+                let el = $("#_root_audio_gameAudio_content_deviceDropdown");
+                el.parent().addClass("special")
+                el.unbind();
 
-                    const deviceReset = $("#_root_audio_gameAudio_content_device").parent().find(".helpReset .paramReset");
-                    deviceReset.attr("default", device[0])
+                let target = $("#_root_audio_gameAudio_content_device");
+
+                let current = "";
+                try {
+                    current = alvrSettings.getSession().settingsCache.audio.gameAudio.content.device;
+                } catch (err) {
+                    console.error("Layout of settings changed, audio devices can not be added. Please report this bug!");
                 }
-                el.append(`<option value="${device[0]}"> ${name}  </option>`)
-            });
 
-            //set default as current audio device if empty
-            if (current.trim() === "") {
-                target.val(audio_devices.default);
-                target.change();
-                alvrSettings.storeParam(target);
-            }
+                audio_devices.list.forEach(device => {
+                    let name = device[1];
+                    if (device[0] === audio_devices.default_game_audio) {
+                        name = "(default) " + device[1];
+                        el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_gameAudio_content", device[0]));
 
+                        const deviceReset = $("#_root_audio_gameAudio_content_device").parent().find(".helpReset .paramReset");
+                        deviceReset.attr("default", device[0])
+                    }
+                    el.append(`<option value="${device[0]}"> ${name}  </option>`)
+                });
 
-            //move selected audio device to top of list
-            var $el = $("#_root_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
-            $("#_root_audio_gameAudio_content_deviceDropdown").prepend($el);
-
-            var select = new Selectal('#_root_audio_gameAudio_content_deviceDropdown');
-            el = $("#_root_audio_gameAudio_content_deviceDropdown");
-
-            //select the current option in dropdown
-            el.val(target.val());
-
-
-            var updating = false;
-            //add listener to change
-            el.change((ev) => {
-                if (!updating) {
-                    updating = true;
-                    target.val($(ev.target).val());
+                //set default as current audio device if empty
+                if (current.trim() === "") {
+                    target.val(audio_devices.default_game_audio);
                     target.change();
-                    updating = false;
+                    alvrSettings.storeParam(target);
                 }
-            })
 
-            target.change(() => {
-                if (!updating) {
-                    updating = true;
-                    el.val(target.val());
-                    el.change();
-                    updating = false;
+
+                //move selected audio device to top of list
+                let $el = $("#_root_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
+                $("#_root_audio_gameAudio_content_deviceDropdown").prepend($el);
+
+                let select = new Selectal('#_root_audio_gameAudio_content_deviceDropdown');
+                el = $("#_root_audio_gameAudio_content_deviceDropdown");
+
+                //select the current option in dropdown
+                el.val(target.val());
+
+
+                let updating = false;
+                //add listener to change
+                el.change((ev) => {
+                    if (!updating) {
+                        updating = true;
+                        target.val($(ev.target).val());
+                        target.change();
+                        updating = false;
+                    }
+                })
+
+                target.change(() => {
+                    if (!updating) {
+                        updating = true;
+                        el.val(target.val());
+                        el.change();
+                        updating = false;
+                    }
+                })
+            }
+
+            // Microphone
+            {
+                let el = $("#_root_audio_microphone_content_deviceDropdown");
+                el.parent().addClass("special")
+                el.unbind();
+
+                let target = $("#_root_audio_microphone_content_device");
+
+                let current = "";
+                try {
+                    current = alvrSettings.getSession().settingsCache.audio.microphone.content.device;
+                } catch (err) {
+                    console.error("Layout of settings changed, audio devices can not be added. Please report this bug!");
                 }
-            })
+
+                audio_devices.list.forEach(device => {
+                    let label = device[1];
+                    if (device[0] === audio_devices.default_microphone) {
+                        label = "(default) " + device[1];
+                        el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_microphone_content", device[0]));
+
+                        const deviceReset = $("#_root_audio_microphone_content_device").parent().find(".helpReset .paramReset");
+                        deviceReset.attr("default", device[0])
+                    }
+                    el.append(`<option value="${device[0]}"> ${label}  </option>`)
+                });
+
+                //set default as current audio device if empty
+                if (current.trim() === "") {
+                    target.val(audio_devices.default_microphone);
+                    target.change();
+                    alvrSettings.storeParam(target);
+                }
+
+
+                //move selected audio device to top of list
+                let $el = $("#_root_audio_microphone_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
+                $("#_root_audio_microphone_content_deviceDropdown").prepend($el);
+
+                let select = new Selectal('#_root_audio_microphone_content_deviceDropdown');
+                el = $("#_root_audio_microphone_content_deviceDropdown");
+
+                //select the current option in dropdown
+                el.val(target.val());
+
+
+                let updating = false;
+                //add listener to change
+                el.change((ev) => {
+                    if (!updating) {
+                        updating = true;
+                        target.val($(ev.target).val());
+                        target.change();
+                        updating = false;
+                    }
+                })
+
+                target.change(() => {
+                    if (!updating) {
+                        updating = true;
+                        el.val(target.val());
+                        el.change();
+                        updating = false;
+                    }
+                })
+            }
         }
-
 
     }
 

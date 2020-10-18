@@ -82,7 +82,10 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
                     .iter_mut()
                     .find(|connection_desc| {
                         connection_desc.address == address.to_string()
-                            && connection_desc.handshake_packet == client_handshake_packet
+                            && connection_desc.handshake_packet.device_name
+                                == client_handshake_packet.device_name
+                            && connection_desc.handshake_packet.version
+                                == client_handshake_packet.version
                     });
 
             if let Some(known_client_ref) = maybe_known_client_ref {

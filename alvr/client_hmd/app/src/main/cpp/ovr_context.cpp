@@ -1027,7 +1027,7 @@ void OvrContext::getDeviceDescriptor(JNIEnv *env, jobject deviceDescriptor) {
     fieldID = env->GetFieldID(clazz, "mControllerCapabilityFlags", "I");
     env->SetIntField(deviceDescriptor, fieldID, controllerCapabilityFlags);
     fieldID = env->GetFieldID(clazz, "mIpd", "F");
-    env->SetIntField(deviceDescriptor, fieldID, getIPD());
+    env->SetFloatField(deviceDescriptor, fieldID, getIPD());
 
     env->DeleteLocalRef(clazz);
 }

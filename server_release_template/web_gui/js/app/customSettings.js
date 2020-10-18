@@ -393,7 +393,7 @@ define([
 
             if (audio_devices == null|| audio_devices.length == 0) {
                 $("#_root_audio_gameAudio_content_deviceDropdown").hide();
-                $("#_root_audio_microphone_content_device").hide();
+                $("#_root_audio_microphone_content_deviceDropdown").hide();
 
                 Lobibox.notify("warning", {
                     size: "mini",
@@ -437,6 +437,13 @@ define([
                     }
                     el.append(`<option value="${device[0]}"> ${name}  </option>`)
                 });
+
+                if (audio_devices.default_game_audio === null && audio_devices.list.length != 0) {
+                    el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_gameAudio_content", audio_devices.list[0][0]));
+
+                    const deviceReset = $("#_root_audio_gameAudio_content_device").parent().find(".helpReset .paramReset");
+                    deviceReset.attr("default", audio_devices.list[0][0])
+                }
 
                 //set default as current audio device if empty
                 if (current.trim() === "") {
@@ -504,6 +511,13 @@ define([
                     }
                     el.append(`<option value="${device[0]}"> ${label}  </option>`)
                 });
+
+                if (audio_devices.default_microphone === null && audio_devices.list.length != 0) {
+                    el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_microphone_content", audio_devices.list[0][0]));
+
+                    const deviceReset = $("#_root_audio_microphone_content_device").parent().find(".helpReset .paramReset");
+                    deviceReset.attr("default", audio_devices.list[0][0])
+                }
 
                 //set default as current audio device if empty
                 if (current.trim() === "") {

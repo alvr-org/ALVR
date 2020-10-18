@@ -32,7 +32,7 @@ ServerConnectionNative::~ServerConnectionNative() {
 void ServerConnectionNative::initialize(JNIEnv *env, jobject instance, jint helloPort, jint port, jstring deviceName_,
                             jobjectArray broadcastAddrList_, jintArray refreshRates_, jint renderWidth,
                             jint renderHeight, jfloatArray fov, jint deviceType, jint deviceSubType,
-                            jint deviceCapabilityFlags, jint controllerCapabilityFlags) {
+                            jint deviceCapabilityFlags, jint controllerCapabilityFlags, jfloat ipd) {
     //
     // Initialize variables
     //
@@ -64,10 +64,14 @@ void ServerConnectionNative::initialize(JNIEnv *env, jobject instance, jint hell
     memcpy(mHelloMessage.deviceName, deviceName.c_str(),
            std::min(deviceName.length(), sizeof(mHelloMessage.deviceName)));
 
-    mHelloMessage.refreshRate = 72;
+    jint *refreshRates = env->GetIntArrayElements(refreshRates_, nullptr);
+    mHelloMessage.refreshRate = refreshRates[0];
+    env->ReleaseIntArrayElements(refreshRates_, refreshRates, 0);
 
     mHelloMessage.renderWidth = static_cast<uint32_t>(renderWidth);
     mHelloMessage.renderHeight = static_cast<uint32_t>(renderHeight);
+
+    mHelloMessage.ipd = ipd;
 
     loadFov(env, fov);
 
@@ -566,13 +570,13 @@ Java_com_polygraphene_alvr_ServerConnection_initializeSocket(
         JNIEnv *env, jobject instance,
         jint helloPort, jint port, jstring deviceName_, jobjectArray broadcastAddrList_,
         jintArray refreshRates_, jint renderWidth, jint renderHeight, jfloatArray fov,
-        jint deviceType, jint deviceSubType, jint deviceCapabilityFlags, jint controllerCapabilityFlags) {
+        jint deviceType, jint deviceSubType, jint deviceCapabilityFlags, jint controllerCapabilityFlags, jfloat ipd) {
     auto udpManager = new ServerConnectionNative();
     try {
         udpManager->initialize(env, instance, helloPort, port, deviceName_,
                                broadcastAddrList_, refreshRates_, renderWidth, renderHeight, fov,
                                deviceType, deviceSubType, deviceCapabilityFlags,
-                               controllerCapabilityFlags);
+                               controllerCapabilityFlags, ipd);
     } catch (Exception &e) {
         LOGE("Exception on initializing ServerConnectionNative. e=%ls", e.what());
         delete udpManager;

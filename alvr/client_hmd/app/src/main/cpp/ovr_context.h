@@ -173,6 +173,7 @@ private:
 
     void getRefreshRates(JNIEnv *env_, jintArray refreshRates);
     std::pair<EyeFov, EyeFov> getFov();
+    float getIPD();
 
     void updateHapticsState();
     void finishHapticsBuffer(ovrDeviceID DeviceID);

@@ -1026,8 +1026,16 @@ void OvrContext::getDeviceDescriptor(JNIEnv *env, jobject deviceDescriptor) {
     env->SetIntField(deviceDescriptor, fieldID, deviceCapabilityFlags);
     fieldID = env->GetFieldID(clazz, "mControllerCapabilityFlags", "I");
     env->SetIntField(deviceDescriptor, fieldID, controllerCapabilityFlags);
+    fieldID = env->GetFieldID(clazz, "mIpd", "F");
+    env->SetIntField(deviceDescriptor, fieldID, getIPD());
 
     env->DeleteLocalRef(clazz);
+}
+
+float OvrContext::getIPD() {
+    double displayTime = vrapi_GetPredictedDisplayTime(Ovr, 0);
+    ovrTracking2 tracking = vrapi_GetPredictedTracking2(Ovr, displayTime);
+    return vrapi_GetInterpupillaryDistance(&tracking);
 }
 
 std::pair<EyeFov, EyeFov> OvrContext::getFov() {

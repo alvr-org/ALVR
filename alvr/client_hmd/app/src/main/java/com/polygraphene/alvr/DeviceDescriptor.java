@@ -32,4 +32,5 @@ public class DeviceDescriptor {
     public int mDeviceSubType;
     public int mDeviceCapabilityFlags;
     public int mControllerCapabilityFlags;
+    public float mIpd;
 }

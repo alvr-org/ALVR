@@ -128,6 +128,10 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
                     bottom: client_handshake_packet.client_fov[1].bottom,
                 },
             ];
+
+            session_desc_ref.settings_cache.video.refresh_rate =
+                client_handshake_packet.client_refresh_rate as _;
+            session_desc_ref.settings_cache.video.ipd = client_handshake_packet.ipd;
         }
 
         let settings = session_manager.lock().unwrap().get().to_settings();

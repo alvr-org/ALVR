@@ -187,6 +187,8 @@ struct HelloMessage {
 
 	// FOV of left and right eyes.
 	struct EyeFov eyeFov[2];
+
+	float ipd;
 };
 struct ConnectionMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_CONNECTION_MESSAGE

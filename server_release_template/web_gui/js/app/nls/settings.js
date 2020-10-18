@@ -93,12 +93,13 @@ define({
         "_root_extra_revertConfirmDialog.description": "Ask for confirmation before reverting settings to default value",
         "_root_extra_restartConfirmDialog.name": "Confirm restart",
         "_root_extra_restartConfirmDialog.description": "Ask for confirmation before restarting SteamVR",
-        "audioDeviceError" : "No audio devices found. Cannot stream audio or microphone",
+        "audioDeviceError": "No audio devices found. Cannot stream audio or microphone",
     },
     "it": true,
     "es": true,
     "fr": true,
     "ja": true,
     "zh": true,
+    "ru": true,
     "de-de": true
 });

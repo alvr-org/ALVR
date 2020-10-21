@@ -81,6 +81,40 @@ define([
                 })
             })
 
+            $("#checkForUpdates").click(() => {
+                $.get("https://api.github.com/repos/JackD83/ALVR/releases/latest", (data) => {
+                    if(version == data.tag_name.match(/\d+.\d+.\d+/)[0]) {
+                        Lobibox.notify("success", {
+                            size: "mini",
+                            rounded: true,
+                            delayIndicator: false,
+                            sound: false,
+                            msg: i18n.noNeedForUpdate
+                        })
+                    } else {
+                        Lobibox.notify("warning", {
+                            size: "mini",
+                            rounded: true,
+                            delayIndicator: false,
+                            sound: false,
+                            msg: i18n.needUpdateClickForMore,
+                            onClick: function(){
+                                $.ajax({
+                                    headers: { 
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/json' 
+                                    },
+                                    'type': 'POST',
+                                    'url': "/open",
+                                    'data': JSON.stringify("https://github.com/JackD83/ALVR/releases/latest"),
+                                    'dataType': 'JSON'
+                                })
+                            }
+                        })
+                    }
+                })
+            })
+
             $("#version").text("v" + version);
 
             driverList.fillDriverList("registeredDriversInst");

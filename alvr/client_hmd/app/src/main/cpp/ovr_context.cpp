@@ -913,13 +913,6 @@ void OvrContext::enterVrMode() {
         return;
     }
 
-    {
-        // set Color Space
-        ovrHmdColorDesc colorDesc{};
-        colorDesc.ColorSpace = VRAPI_COLORSPACE_REC_2020;
-        vrapi_SetClientColorDesc(Ovr, &colorDesc);
-    }
-
     LOGI("Setting refresh rate. %d Hz", m_currentRefreshRate);
     ovrResult result = vrapi_SetDisplayRefreshRate(Ovr, m_currentRefreshRate);
     LOGI("vrapi_SetDisplayRefreshRate: Result=%d", result);

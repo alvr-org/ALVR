@@ -343,12 +343,12 @@ pub fn settings_cache_default() -> SettingsDefault {
                 },
             },
             color_correction: SwitchDefault {
-                enabled: true,
+                enabled: false,
                 content: ColorCorrectionDescDefault {
                     brightness: 0.,
                     contrast: 0.,
                     saturation: 0.,
-                    gamma: 1.12,
+                    gamma: 1.,
                     sharpening: 0.,
                 },
             },

@@ -86,7 +86,7 @@ define({
     "_root_connection_aggressiveKeyframeResend.name": "Интенсивный повтор отправки пакетов",
     "_root_connection_aggressiveKeyframeResend.description": `Уменьшает минимальный интервал между ключевыми кадрами со 100мс до 5мс.
     Используется только когда наблюдается потеря пакетов. Улучшает работу в сетях с большой потерей пакетов.`,
-    "_root_connection_disableThrottling.name": "Отключить пропуска тактов",
+    "_root_connection_disableThrottling.name": "Отключить пропуск тактов",
     "_root_connection_disableThrottling.description": "Отключение пропуска (дросселирования) тактов. Отсылает данные так быстро, насколько это возможно",
     "_root_connection_suppressFrameDrop.name": "Подавить потерю кадров",
     "_root_connection_bufferOffset.name": "Смещение буфера",

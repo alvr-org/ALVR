@@ -281,6 +281,11 @@ margin-bottom: 10px;
   margin-top: 40px;
 }
 
+#checkForUpdates {
+  margin-right: 100%; /* lets call it dirty hack*/
+  margin-top: 20px;
+}
+
 input[type=number]::-webkit-inner-spin-button, 
 input[type=number]::-webkit-outer-spin-button { 
   -webkit-appearance: none; 

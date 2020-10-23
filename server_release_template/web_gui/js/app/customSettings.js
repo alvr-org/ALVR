@@ -13,7 +13,6 @@ define([
     return function (alvrSettings) {
         var self = this;
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
-        const themes = ["light", "dark"];
 
         self.setCustomSettings = function () {
 
@@ -581,8 +580,8 @@ define([
             const themeColor = $(themeBase + "theme")
             const themeOptions = [light, dark];
 
-            theme.append(`<option value="light">Light mode</option>`);
-            theme.append(`<option value="dark">Dark mode</option>`);
+            theme.append(`<option value="light">Classic</option>`);
+            theme.append(`<option value="dark">Darkly</option>`);
 
             const select = new Selectal('#_root_appearance_themeDropdown');
             theme = $("#_root_appearance_themeDropdown");

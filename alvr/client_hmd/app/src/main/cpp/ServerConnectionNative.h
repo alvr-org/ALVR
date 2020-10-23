@@ -64,8 +64,6 @@ private:
     void onBroadcastRequest();
     void onPacketRecv(const char *packet, size_t packetSize);
 
-    void loadFov(JNIEnv *env, jfloatArray fov_);
-
 private:
 // Connection has lost when elapsed 3 seconds from last packet.
     static const uint64_t CONNECTION_TIMEOUT = 3 * 1000 * 1000;

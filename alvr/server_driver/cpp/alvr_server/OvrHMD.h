@@ -65,16 +65,20 @@ public:
 
 	void updateController(const TrackingInfo& info);
 
+	void updateIPDandFoV(const TrackingInfo& info);
+
 private:
 	bool m_added;
 	bool mActivated;
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
-
-
+	
+	vr::HmdMatrix34_t m_eyeToHeadLeft;
+	vr::HmdMatrix34_t m_eyeToHeadRight;
+	vr::HmdRect2_t m_eyeFoVLeft;
+	vr::HmdRect2_t m_eyeFoVRight;
 
 	std::wstring m_adapterName;
-
 
 	std::shared_ptr<CD3DRender> m_D3DRender;
 	std::shared_ptr<CEncoder> m_encoder;
@@ -84,10 +88,6 @@ private:
 
 	std::shared_ptr<OvrController> m_leftController;
 	std::shared_ptr<OvrController> m_rightController;
-
-
-
-
 
 	std::shared_ptr<OvrDisplayComponent> m_displayComponent;
 	std::shared_ptr<OvrDirectModeComponent> m_directModeComponent;

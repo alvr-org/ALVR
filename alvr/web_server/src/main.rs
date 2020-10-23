@@ -117,24 +117,8 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             let session_desc_ref = &mut session_manager_ref
                 .get_mut(SERVER_SESSION_UPDATE_ID, SessionUpdateType::Settings);
 
-            session_desc_ref.settings_cache.video.eye_fov = [
-                FovDefault {
-                    left: client_handshake_packet.client_fov[0].left,
-                    right: client_handshake_packet.client_fov[0].right,
-                    top: client_handshake_packet.client_fov[0].top,
-                    bottom: client_handshake_packet.client_fov[0].bottom,
-                },
-                FovDefault {
-                    left: client_handshake_packet.client_fov[1].left,
-                    right: client_handshake_packet.client_fov[1].right,
-                    top: client_handshake_packet.client_fov[1].top,
-                    bottom: client_handshake_packet.client_fov[1].bottom,
-                },
-            ];
-
             session_desc_ref.settings_cache.video.refresh_rate =
                 client_handshake_packet.client_refresh_rate as _;
-            session_desc_ref.settings_cache.video.ipd = client_handshake_packet.ipd;
         }
 
         let settings = session_manager.lock().unwrap().get().to_settings();

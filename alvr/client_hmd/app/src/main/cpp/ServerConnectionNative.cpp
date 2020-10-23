@@ -71,10 +71,6 @@ void ServerConnectionNative::initialize(JNIEnv *env, jobject instance, jint hell
     mHelloMessage.renderWidth = static_cast<uint32_t>(renderWidth);
     mHelloMessage.renderHeight = static_cast<uint32_t>(renderHeight);
 
-    mHelloMessage.ipd = ipd;
-
-    loadFov(env, fov);
-
     //
     // UdpSocket
     //
@@ -528,17 +524,6 @@ void ServerConnectionNative::checkConnection() {
 
 void ServerConnectionNative::updateTimeout() {
     m_lastReceived = getTimestampUs();
-}
-
-void ServerConnectionNative::loadFov(JNIEnv *env, jfloatArray fov_) {
-    jfloat *fov = env->GetFloatArrayElements(fov_, nullptr);
-    for(int eye = 0; eye < 2; eye++) {
-        mHelloMessage.eyeFov[eye].left = fov[eye * 4 + 0];
-        mHelloMessage.eyeFov[eye].right = fov[eye * 4 + 1];
-        mHelloMessage.eyeFov[eye].top = fov[eye * 4 + 2];
-        mHelloMessage.eyeFov[eye].bottom = fov[eye * 4 + 3];
-    }
-    env->ReleaseFloatArrayElements(fov_, fov, 0);
 }
 
 void ServerConnectionNative::sendStreamStartPacket() {

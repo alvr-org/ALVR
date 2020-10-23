@@ -184,11 +184,6 @@ struct HelloMessage {
 
 	uint32_t renderWidth;
 	uint32_t renderHeight;
-
-	// FOV of left and right eyes.
-	struct EyeFov eyeFov[2];
-
-	float ipd;
 };
 struct ConnectionMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_CONNECTION_MESSAGE
@@ -244,9 +239,11 @@ struct TrackingInfo {
 	TrackingVector3 Other_Tracking_Source_Position;
 	TrackingQuat Other_Tracking_Source_Orientation;
 
+	// FOV of left and right eyes.
+	struct EyeFov eyeFov[2];
+	float ipd;
+
 	static const uint32_t MAX_CONTROLLERS = 2;
-
-
 	struct Controller {
 		static const uint32_t FLAG_CONTROLLER_ENABLE         = (1 << 0);
 		static const uint32_t FLAG_CONTROLLER_LEFTHAND       = (1 << 1); // 0: Left hand, 1: Right hand

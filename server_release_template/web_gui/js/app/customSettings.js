@@ -6,8 +6,7 @@ define([
     "json!app/resources/OculusRift.json",
     "json!app/resources/OculusTouch.json",
     "json!app/resources/ValveIndex.json",
-    "json!app/resources/HTCViveWand.json",
-    "css!js/lib/selectal.min.css"
+    "json!app/resources/HTCViveWand.json"
 
 
 ], function (i18n, select, audio_devices, vive, rifts, touch, index, vivewand) {
@@ -26,6 +25,7 @@ define([
                 setHeadsetEmulation();
                 setControllerEmulation();
                 setBufferOffset();
+                setTheme();
             } catch (error) {
                 Lobibox.notify("error", {
                     rounded: true,
@@ -558,6 +558,66 @@ define([
                     }
                 })
             }
+        }
+
+
+
+        function setTheme() {
+            const themes = {
+                "classic": {"bootstrap": "css/bootstrap.min.css", "selectal": "js/lib/selectal.min.css", "style": "css/style.css"},
+                "darkly" : {"bootstrap": "css/darkly/bootstrap.min.css", "selectal": "css/darkly/selectal.min.css", "style": "css/darkly/style.css"}
+            }
+            var bootstrap = $("#bootstrap");
+            var selectal = $("#selectal");
+            var style = $("#style");
+            
+            var themeSelector = $("form#_root_extra_theme-choice-").first();
+            var themeColor = $("input[name='theme']:checked").val();
+
+            if (themeColor == "systemDefault") {
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    themeColor = "darkly";
+                } else {
+                    themeColor = "classic";
+                }
+            }
+
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                themeColor = e.matches ? "darkly" : "classic";
+                bootstrap.attr("href", themes[themeColor]["bootstrap"]);
+                selectal.attr("href", themes[themeColor]["selectal"]);
+                style.attr("href", themes[themeColor]["style"]);
+            });
+
+            bootstrap.attr("href", themes[themeColor]["bootstrap"]);
+            selectal.attr("href", themes[themeColor]["selectal"]);
+            style.attr("href", themes[themeColor]["style"]);
+
+            themeSelector.on("change", function() {
+                themeColor = $("input[name='theme']:checked", "#_root_extra_theme-choice-").val();
+                if (themeColor == "systemDefault") {
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        themeColor = "darkly";
+                    } else {
+                        themeColor = "classic";
+                    }
+                }
+
+                if (bootstrap.attr("href") == themes[themeColor]["bootstrap"]) {
+                    return;
+                } else {
+                    $("body").fadeOut('fast', function() {
+                        console.log("changing theme to " + themeColor)
+                        bootstrap.attr("href", themes[themeColor]["bootstrap"]);
+                        selectal.attr("href", themes[themeColor]["selectal"]);
+                        style.attr("href", themes[themeColor]["style"]);
+                        $(this).fadeIn();
+                    });
+
+                }
+
+            });
+            
         }
 
     }

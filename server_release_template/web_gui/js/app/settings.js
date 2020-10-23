@@ -619,7 +619,7 @@ define([
         function addRadioContainer(element, path, name, advanced, node) {
             var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
-                    ${getI18n(path + "_" + name + "-choice-").name}  ${self.getHelpReset(name + "_" + node.content.default + "-choice-", path, true)}
+                    ${getI18n(path + "_" + name + "-choice-").name}  ${self.getHelpReset(name + "-choice-", path, true)}
                 </div>   
                 <div>
                 <form id="${path + '_' + name + '-choice-'}">

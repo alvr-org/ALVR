@@ -9,7 +9,7 @@ define([
     "json!app/resources/HTCViveWand.json"
 
 
-], function (i18n, select, audio_devices, vive, rifts, touch, index, vivewand, light, dark) {
+], function (i18n, select, audio_devices, vive, rifts, touch, index, vivewand) {
     return function (alvrSettings) {
         var self = this;
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
@@ -564,51 +564,63 @@ define([
 
         function setTheme() {
             const themes = {
-                "light": {"bootstrap": "css/bootstrap.min.css", "selectal": "js/lib/selectal.min.css", "style": "css/style.css"},
-                "dark" : {"bootstrap": "css/darkly/bootstrap.min.css", "selectal": "css/darkly/selectal.min.css", "style": "css/darkly/style.css"}
+                "classic": {"bootstrap": "css/bootstrap.min.css", "selectal": "js/lib/selectal.min.css", "style": "css/style.css"},
+                "darkly" : {"bootstrap": "css/darkly/bootstrap.min.css", "selectal": "css/darkly/selectal.min.css", "style": "css/darkly/style.css"}
             }
             var bootstrap = $("#bootstrap");
             var selectal = $("#selectal");
             var style = $("#style");
-
-            var theme = $("#_root_appearance_themeDropdown");
-            theme.unbind();
-            theme.after(alvrSettings.getHelpReset("theme", "_root_appearance", 0));
-            theme.parent().addClass("special");
-
-            const themeBase = "#_root_appearance_";
-            const themeColor = $(themeBase + "theme")
-            const themeOptions = [light, dark];
-
-            theme.append(`<option value="light">Classic</option>`);
-            theme.append(`<option value="dark">Darkly</option>`);
-
-            const select = new Selectal('#_root_appearance_themeDropdown');
-            theme = $("#_root_appearance_themeDropdown");
             
-            bootstrap.attr("href", themes[themeColor.val()]["bootstrap"]);
-            selectal.attr("href", themes[themeColor.val()]["selectal"]);
-            style.attr("href", themes[themeColor.val()]["style"]);
+            var themeSelector = $("form#_root_extra_theme-choice-").first();
+            var themeColor = $("input[name='theme']:checked").val();
+            // $("label[for='_root_extra_theme_systemDefault-choice-']").text("System");
+            // $("label[for='_root_extra_theme_classic-choice-']").text("Classic");
+            // $("label[for='_root_extra_theme_darkly-choice-']").text("Darkly");
 
-            theme.val(themeColor.val());
-            theme.change();
-
-            theme.change((ev) => {
-                for (var key in themeOptions[theme.val()]) {
-                    const target = $(themeBase + key);
-                    target.val(themeOptions[theme.val()][key]);
-                    alvrSettings.storeParam(target, true);
+            if (themeColor == "systemDefault") {
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    themeColor = "darkly";
+                } else {
+                    themeColor = "classic";
                 }
-                themeColor.val(theme.val());
-                alvrSettings.storeParam(themeColor, true);
-                
-                alvrSettings.storeSession("settings");
+            }
 
-                bootstrap.attr("href", themes[themeColor.val()]["bootstrap"]);
-                selectal.attr("href", themes[themeColor.val()]["selectal"]);
-                style.attr("href", themes[themeColor.val()]["style"]);
-                
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                themeColor = e.matches ? "darkly" : "classic";
+                bootstrap.attr("href", themes[themeColor]["bootstrap"]);
+                selectal.attr("href", themes[themeColor]["selectal"]);
+                style.attr("href", themes[themeColor]["style"]);
             });
+
+            bootstrap.attr("href", themes[themeColor]["bootstrap"]);
+            selectal.attr("href", themes[themeColor]["selectal"]);
+            style.attr("href", themes[themeColor]["style"]);
+
+            themeSelector.on("change", function() {
+                themeColor = $("input[name='theme']:checked", "#_root_extra_theme-choice-").val();
+                if (themeColor == "systemDefault") {
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        themeColor = "darkly";
+                    } else {
+                        themeColor = "classic";
+                    }
+                }
+
+                if (bootstrap.attr("href") == themes[themeColor]["bootstrap"]) {
+                    return;
+                } else {
+                    $("body").fadeOut('fast', function() {
+                        console.log("changing theme to " + themeColor)
+                        bootstrap.attr("href", themes[themeColor]["bootstrap"]);
+                        selectal.attr("href", themes[themeColor]["selectal"]);
+                        style.attr("href", themes[themeColor]["style"]);
+                        $(this).fadeIn();
+                    });
+
+                }
+
+            });
+            
         }
 
     }

@@ -269,10 +269,10 @@ pub struct ConnectionDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AppearanceDesc {
-    #[schema(placeholder = "theme_dropdown")]
-    #[schema(advanced)]
-    pub theme: String,
+pub enum Theme {
+    SystemDefault,
+    Classic,
+    Darkly,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -287,6 +287,7 @@ pub enum LogLevel {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtraDesc {
+    pub theme: Theme,
     pub revert_confirm_dialog: bool,
     pub restart_confirm_dialog: bool,
 
@@ -302,7 +303,6 @@ pub struct Settings {
     pub audio: AudioSection,
     pub headset: HeadsetDesc,
     pub connection: ConnectionDesc,
-    pub appearance: AppearanceDesc,
     pub extra: ExtraDesc,
 }
 
@@ -414,9 +414,6 @@ pub fn settings_cache_default() -> SettingsDefault {
                 },
             },
         },
-        appearance: AppearanceDescDefault {
-            theme: "light".into(),
-        },
         connection: ConnectionDescDefault {
             listen_host: "0.0.0.0".into(),
             listen_port: 9944,
@@ -428,6 +425,9 @@ pub fn settings_cache_default() -> SettingsDefault {
             aggressive_keyframe_resend: false,
         },
         extra: ExtraDescDefault {
+            theme: ThemeDefault {
+                variant: ThemeDefaultVariant::SystemDefault,
+            },
             revert_confirm_dialog: true,
             restart_confirm_dialog: true,
             notification_level: LogLevelDefault {

@@ -565,11 +565,12 @@ define([
 
         function setTheme() {
             const themes = {
-                "light": {"bootstrap": "css/bootstrap.min.css", "selectal": "js/lib/selectal.min.css"},
-                "dark" : {"bootstrap": "css/darkly/bootstrap.min.css", "selectal": "css/darkly/selectal.min.css"}
+                "light": {"bootstrap": "css/bootstrap.min.css", "selectal": "js/lib/selectal.min.css", "style": "css/style.css"},
+                "dark" : {"bootstrap": "css/darkly/bootstrap.min.css", "selectal": "css/darkly/selectal.min.css", "style": "css/darkly/style.css"}
             }
             var bootstrap = $("#bootstrap");
             var selectal = $("#selectal");
+            var style = $("#style");
 
             var theme = $("#_root_appearance_themeDropdown");
             theme.unbind();
@@ -585,6 +586,10 @@ define([
 
             const select = new Selectal('#_root_appearance_themeDropdown');
             theme = $("#_root_appearance_themeDropdown");
+            
+            bootstrap.attr("href", themes[themeColor.val()]["bootstrap"]);
+            selectal.attr("href", themes[themeColor.val()]["selectal"]);
+            style.attr("href", themes[themeColor.val()]["style"]);
 
             theme.val(themeColor.val());
             theme.change();
@@ -602,6 +607,7 @@ define([
 
                 bootstrap.attr("href", themes[themeColor.val()]["bootstrap"]);
                 selectal.attr("href", themes[themeColor.val()]["selectal"]);
+                style.attr("href", themes[themeColor.val()]["style"]);
                 
             });
         }

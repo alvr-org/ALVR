@@ -3,14 +3,14 @@
     font-family: verdana;
     font-size: 12px;
     font-weight: 200;
-    background-color: #2e353d;
+    background-color: #242629;
     /* flex: 1; */
     max-width: 180px;
     color: #e1ffff;
     min-width: 180px;
   }
   .nav-side-menu .brand {
-    background-color: #23282e;
+    background-color: #242629;
     line-height: 50px;
     display: block;
     text-align: center;
@@ -307,9 +307,9 @@ a {
 }
 
 .client {
-  background-color: lightgray;
+  background-color: #252424;
 }
 
 #loggingTable tr:nth-child(even) {
-  background-color: #f2f2f2;
+  background-color: #1d1c1c;
 }

@@ -269,6 +269,14 @@ pub struct ConnectionDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AppearanceDesc {
+    #[schema(placeholder = "theme_dropdown")]
+    #[schema(advanced)]
+    pub theme: String,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum LogLevel {
     Error,
     Warning,
@@ -294,6 +302,7 @@ pub struct Settings {
     pub audio: AudioSection,
     pub headset: HeadsetDesc,
     pub connection: ConnectionDesc,
+    pub appearance: AppearanceDesc,
     pub extra: ExtraDesc,
 }
 
@@ -404,6 +413,9 @@ pub fn settings_cache_default() -> SettingsDefault {
                     haptics_intensity: 1.,
                 },
             },
+        },
+        appearance: AppearanceDescDefault {
+            theme: "light".into(),
         },
         connection: ConnectionDescDefault {
             listen_host: "0.0.0.0".into(),

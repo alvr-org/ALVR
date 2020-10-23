@@ -6,14 +6,14 @@ define([
     "json!app/resources/OculusRift.json",
     "json!app/resources/OculusTouch.json",
     "json!app/resources/ValveIndex.json",
-    "json!app/resources/HTCViveWand.json",
-    "css!js/lib/selectal.min.css"
+    "json!app/resources/HTCViveWand.json"
 
 
-], function (i18n, select, audio_devices, vive, rifts, touch, index, vivewand) {
+], function (i18n, select, audio_devices, vive, rifts, touch, index, vivewand, light, dark) {
     return function (alvrSettings) {
         var self = this;
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
+        const themes = ["light", "dark"];
 
         self.setCustomSettings = function () {
 
@@ -26,6 +26,7 @@ define([
                 setHeadsetEmulation();
                 setControllerEmulation();
                 setBufferOffset();
+                setTheme();
             } catch (error) {
                 Lobibox.notify("error", {
                     rounded: true,
@@ -558,6 +559,51 @@ define([
                     }
                 })
             }
+        }
+
+
+
+        function setTheme() {
+            const themes = {
+                "light": {"bootstrap": "css/bootstrap.min.css", "selectal": "js/lib/selectal.min.css"},
+                "dark" : {"bootstrap": "css/darkly/bootstrap.min.css", "selectal": "css/darkly/selectal.min.css"}
+            }
+            var bootstrap = $("#bootstrap");
+            var selectal = $("#selectal");
+
+            var theme = $("#_root_appearance_themeDropdown");
+            theme.unbind();
+            theme.after(alvrSettings.getHelpReset("theme", "_root_appearance", 0));
+            theme.parent().addClass("special");
+
+            const themeBase = "#_root_appearance_";
+            const themeColor = $(themeBase + "theme")
+            const themeOptions = [light, dark];
+
+            theme.append(`<option value="light">Light mode</option>`);
+            theme.append(`<option value="dark">Dark mode</option>`);
+
+            const select = new Selectal('#_root_appearance_themeDropdown');
+            theme = $("#_root_appearance_themeDropdown");
+
+            theme.val(themeColor.val());
+            theme.change();
+
+            theme.change((ev) => {
+                for (var key in themeOptions[theme.val()]) {
+                    const target = $(themeBase + key);
+                    target.val(themeOptions[theme.val()][key]);
+                    alvrSettings.storeParam(target, true);
+                }
+                themeColor.val(theme.val());
+                alvrSettings.storeParam(themeColor, true);
+                
+                alvrSettings.storeSession("settings");
+
+                bootstrap.attr("href", themes[themeColor.val()]["bootstrap"]);
+                selectal.attr("href", themes[themeColor.val()]["selectal"]);
+                
+            });
         }
 
     }

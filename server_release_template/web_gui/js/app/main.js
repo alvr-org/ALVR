@@ -1,6 +1,6 @@
 define([
     "jquery",
-    "lib/bootstrap.bundle.min",
+    "lib/bootstrap.bundle.min",  
     "lib/lodash",
     "text!app/templates/main.html",
     "i18n!app/nls/main",

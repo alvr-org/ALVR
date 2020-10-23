@@ -284,6 +284,7 @@ margin-bottom: 10px;
 #checkForUpdates {
   margin-right: 100%; /* lets call it dirty hack*/
   margin-top: 20px;
+  width: max-content;
 }
 
 input[type=number]::-webkit-inner-spin-button, 
@@ -294,4 +295,13 @@ input[type=number]::-webkit-outer-spin-button {
 
 .upDownGrp {
   display: inline-block
+}
+
+a {
+  color: #007bff;
+}
+
+.nav-link {
+  display: block;
+  padding: .5rem 1rem;
 }

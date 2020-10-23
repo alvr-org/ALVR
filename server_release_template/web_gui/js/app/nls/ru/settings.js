@@ -9,11 +9,11 @@ define({
 
     "_root_video_adapterIndex.name": "Индекс GPU",
     "_root_video_encodeBitrateMbs.name": "Битрейт видео",
-    "_root_video_encodeBitrateMbs.description": "Битрейт трансляции видео. 30Мб/с - рекомендуемый. \nБолее высокий битрейт обеспечивает более качественное изображение, но также более высокие задержку и сетевой трафик",
+    "_root_video_encodeBitrateMbs.description": "Битрейт трансляции видео. 30Мб/с - рекомендуемый. \nБолее высокий битрейт обеспечивает более качественное изображение, но при этом повышается задержка и кол-во сетевого трафика",
     "_root_video_force60hz.name": "Принудительный режим 60Гц",
     "_root_video_resolutionDropdown.name": "Разрешение видео",
     "_root_video_resolutionDropdown.description": `100% обеспечивает нативное разрешение Oculus Quest 2880x1600.
-    Изменение разрешения может улучшить визуальные впечатления, но оно не рекомендуется. 
+    Изменение разрешения не рекомендовано, однако оно может улучшить визуальные впечатления. 
     Разрешение меньше 100% может уменьшить задержку и увеличить производительность сети`,
     "_root_video_renderResolution-choice-.name": "Изменение разрешения видео",
     "_root_video_recommendedTargetResolution-choice-.name": "Предпочитаемое разрешение рендеринга игр",
@@ -23,8 +23,8 @@ define({
    "_root_video_ipd.name": "Межзрачковое расстояние",
     "_root_video_foveatedRendering.name": "Реновированный рендеринг",
     "_root_video_foveatedRendering_enabled.description": `Реновированный рендеринг (Foveated rendering) - техника рендеринга, при которой центр изображения обрабатывается в высоком разрешении, а периферийные участки - в значительно пониженном.
-    Обеспечивает более низкое разрешение видео, передаваемое по сети.
-    Более низкое видео при том же битрейте сохраняет больше деталей и, в то же время, понижает задержку.`,
+    Обеспечивает более низкое разрешение видео, передаваемого по сети.
+    Видео меньшего объема при том же битрейте сохраняет больше деталей и, в то же время, уменьшает задержку.`,
     "_root_video_foveatedRendering_content_strength.name": "Сила",
     "_root_video_foveatedRendering_content_strength.description": "Более высокое значение уменьшает кол-во деталей у краев поля видимости и увеличивает кол-во артефактов",
     "_root_video_foveatedRendering_content_shape.description": "Форма реновированного рендеринга",
@@ -48,7 +48,7 @@ define({
     "_root_audio_microphone.name": "Трансляция микрофона",
     "_root_audio_microphone.description": "Передает сигнал микрофона гарнитуры",
     "_root_audio_microphone_content_deviceDropdown.name": "Выберите виртуальное устройство ввода",
-    "_root_audio_microphone_content_deviceDropdown.description": "Чтобы ваш микрофон заработал, необходимо установить VB-CABLE Virtual Audio Device или другое похожее ПО",
+    "_root_audio_microphone_content_deviceDropdown.description": "Чтобы ваш микрофон заработал, необходимо установить VB-CABLE Virtual Audio Device или другое аналогичное ПО",
     
     "_root_headset_trackingFrameOffset.name": "Задержка отслеживания",
     "_root_headset_trackingFrameOffset.description": "Задержка алгоритма предсказания расположения гарнитуры",
@@ -81,16 +81,16 @@ define({
     "_root_connection_listenPort.name": "Порт сервера трансляции",
     "_root_connection_throttlingBitrateBits.name": "Макс. битрейт трансляции",
     "_root_connection_clientRecvBufferSize.name": "Размер буфера клиента",
-    "_root_connection_clientRecvBufferSize.description": "Размер буфера на клиентской стороне.\n Зависит от битрейта.\n Рекомендуется рассчитанный размер . Если вы испытываете потерю пакетов - увеличьте буфер.",
+    "_root_connection_clientRecvBufferSize.description": "Размер буфера на клиентской стороне, зависит от битрейта.\n Рекомендуется рассчитанный размер . Если вы испытываете потерю пакетов - увеличьте буфер.",
     "_root_connection_frameQueueSize.description": "Максимум кадров в очереди",
     "_root_connection_aggressiveKeyframeResend.name": "Интенсивный повтор отправки пакетов",
     "_root_connection_aggressiveKeyframeResend.description": `Уменьшает минимальный интервал между ключевыми кадрами со 100мс до 5мс.
     Используется только когда наблюдается потеря пакетов. Улучшает работу в сетях с большой потерей пакетов.`,
     "_root_connection_disableThrottling.name": "Отключить пропуск тактов",
-    "_root_connection_disableThrottling.description": "Отключение пропуска (дросселирования) тактов. Отсылает данные так быстро, насколько это возможно",
+    "_root_connection_disableThrottling.description": "Отключение пропуска (дросселирования) тактов. Отсылает данные настолько быстро, насколько это возможно",
     "_root_connection_suppressFrameDrop.name": "Подавить потерю кадров",
     "_root_connection_bufferOffset.name": "Смещение буфера",
-    "_root_connection_bufferOffset.description": "Смещение для увеличения или уменьшения рассчитанного размера буфера. Буфер клиента не может быть отрицательным",
+    "_root_connection_bufferOffset.description": "Смещение для увеличения или уменьшения рассчитанного размера буфера. Размер буфера клиента не может быть отрицательным",
     
     "_root_extra_revertConfirmDialog.name": "Подтверждать восстановление",
     "_root_extra_revertConfirmDialog.description": "Запрашивать подтверждение перед откатом параметра к стандартному значению",

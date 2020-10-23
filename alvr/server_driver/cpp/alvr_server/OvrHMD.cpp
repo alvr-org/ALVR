@@ -194,6 +194,11 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 		OnStreamStart();
 
+
+		vr::VREvent_Data_t eventData;
+		eventData.ipd = { Settings::Instance().m_flIPD };
+		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_IpdChanged, eventData, 0);
+
 		return vr::VRInitError_None;
 	}
 

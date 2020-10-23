@@ -128,7 +128,5 @@ public:
 	bool m_captureComposedDDSTrigger = false;
 	
 	int m_controllerMode = 0;
-
-	std::string m_appearance;
 };
 

@@ -573,9 +573,6 @@ define([
             
             var themeSelector = $("form#_root_extra_theme-choice-").first();
             var themeColor = $("input[name='theme']:checked").val();
-            // $("label[for='_root_extra_theme_systemDefault-choice-']").text("System");
-            // $("label[for='_root_extra_theme_classic-choice-']").text("Classic");
-            // $("label[for='_root_extra_theme_darkly-choice-']").text("Darkly");
 
             if (themeColor == "systemDefault") {
                 if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {

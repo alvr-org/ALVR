@@ -296,11 +296,12 @@ define([
                 var name = el.attr("name");
                 var path = el.attr("path");
                 var def = el.attr("default");
+                var defText = el.attr("defaultText");
 
                 if (!$("#" + path + "_" + name).prop("disabled")) {
                     const confirm = $("#_root_extra_revertConfirmDialog").prop("checked");
                     if (confirm) {
-                        showResetConfirmDialog(def).then((res) => {
+                        showResetConfirmDialog(def, defText).then((res) => {
                             if (res) {
                                 resetToDefault(name, path, def);
                             }
@@ -619,7 +620,9 @@ define([
         function addRadioContainer(element, path, name, advanced, node) {           
             var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
-                    ${getI18n(path + "_" + name + "-choice-").name}  ${self.getHelpReset(name , path, true , "_" + node.content.default + "-choice-", name + "-choice-" )}
+                    ${getI18n(path + "_" + name + "-choice-").name}  ${self.getHelpReset(name , path, true ,
+                         "_" + node.content.default + "-choice-", name + "-choice-", 
+                         getI18n(path + "_" + name + "_" + node.content.default + "-choice-").name  )}
                 </div>   
                 <div>
                 <form id="${path + '_' + name + '-choice-'}">
@@ -803,9 +806,13 @@ define([
         }
 
         //helper
-        self.getHelpReset = function (name, path, defaultVal, postFix = "", helpName ) {
+        self.getHelpReset = function (name, path, defaultVal, postFix = "", helpName, defaultText ) {
             if(helpName == undefined) {
                 helpName = name;
+            }
+
+            if(defaultText == undefined) {
+                defaultText = defaultVal;
             }
 
             var getVisibility = function() {
@@ -815,7 +822,7 @@ define([
             }
             return `<div class="helpReset">
                 <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(helpName, path)}" ${getVisibility()}></i>
-                <i class="fa fa-redo fa-lg paramReset" name="${name}${postFix}" path="${path}" default="${defaultVal}")" ></i>
+                <i class="fa fa-redo fa-lg paramReset" name="${name}${postFix}" path="${path}" default="${defaultVal}" defaultText="${defaultText}" )" ></i>
             </div>`;
         }
 
@@ -895,10 +902,13 @@ define([
         }
 
 
-        function showResetConfirmDialog(defaultVal) {
+        function showResetConfirmDialog(defaultVal, defaultText) {
             return new Promise((resolve, reject) => {
                 var compiledTemplate = _.template(revertConfirm);
-                revertRestartI18n.settingDefault = defaultVal;
+
+               
+                revertRestartI18n.settingDefault = defaultText;
+
 
                 var template = compiledTemplate(revertRestartI18n);
                 $("#confirmModal").remove();

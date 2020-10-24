@@ -5,7 +5,7 @@ define({
     "newClients": "Новые клиенты",
     "trustedClients": "Одобренные клиенты",
     "manAddClient": "Добавить клиента вручную",
-    "removeTrustedClient": "убрать",
+    "removeTrustedClient": "удалить",
     "statistics": "Статистика Трансляции",
     "addClient": "Добавить клиента",
     "clientType": "Тип",

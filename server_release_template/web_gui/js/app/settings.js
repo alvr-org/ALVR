@@ -619,7 +619,7 @@ define([
         function addRadioContainer(element, path, name, advanced, node) {           
             var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
-                    ${getI18n(path + "_" + name + "-choice-").name}  ${self.getHelpReset(name + "_" + node.content.default + "-choice-", path, true)}
+                    ${getI18n(path + "_" + name + "-choice-").name}  ${self.getHelpReset(name , path, true , "_" + node.content.default + "-choice-", name + "-choice-" )}
                 </div>   
                 <div>
                 <form id="${path + '_' + name + '-choice-'}">
@@ -803,14 +803,18 @@ define([
         }
 
         //helper
-        self.getHelpReset = function (name, path, defaultVal, postFix = "") {
+        self.getHelpReset = function (name, path, defaultVal, postFix = "", helpName ) {
+            if(helpName == undefined) {
+                helpName = name;
+            }
+
             var getVisibility = function() {
-                if(getHelp(name, path) === undefined) {
+                if(getHelp(helpName, path) === undefined) {
                     return `style="display:none"`;
                 }
             }
             return `<div class="helpReset">
-                <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(name, path)}" ${getVisibility()}></i>
+                <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(helpName, path)}" ${getVisibility()}></i>
                 <i class="fa fa-redo fa-lg paramReset" name="${name}${postFix}" path="${path}" default="${defaultVal}")" ></i>
             </div>`;
         }

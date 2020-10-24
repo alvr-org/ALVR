@@ -1023,8 +1023,7 @@ void OvrContext::getDeviceDescriptor(JNIEnv *env, jobject deviceDescriptor) {
 }
 
 float OvrContext::getIPD() {
-    double displayTime = vrapi_GetPredictedDisplayTime(Ovr, FrameIndex);
-    ovrTracking2 tracking = vrapi_GetPredictedTracking2(Ovr, displayTime);
+    ovrTracking2 tracking = vrapi_GetPredictedTracking2(Ovr, 0.0);
     float ipd = vrapi_GetInterpupillaryDistance(&tracking);
     LOGI("OvrContext::getIpd: %f", ipd);
     return ipd;
@@ -1036,8 +1035,7 @@ std::pair<EyeFov, EyeFov> OvrContext::getFov() {
     float fovY = vrapi_GetSystemPropertyFloat(&java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y);
     LOGI("OvrContext::getFov: X=%f Y=%f", fovX, fovY);
 
-    double displayTime = vrapi_GetPredictedDisplayTime(Ovr, FrameIndex);
-    ovrTracking2 tracking = vrapi_GetPredictedTracking2(Ovr, displayTime);
+    ovrTracking2 tracking = vrapi_GetPredictedTracking2(Ovr, 0.0);
 
     EyeFov fov[2];
 

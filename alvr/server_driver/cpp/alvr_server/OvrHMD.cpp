@@ -325,7 +325,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 	}
 
 	void OvrHmd::updateIPDandFoV(const TrackingInfo& info) {
-		Debug("Setting new IPD to: %f", Settings::Instance().m_flIPD);
+		Info("Setting new IPD to: %f", info.ipd);
 
 		m_eyeToHeadLeft.m[0][3]  = -info.ipd / 2.0f;
 		m_eyeToHeadRight.m[0][3] =  info.ipd / 2.0f;

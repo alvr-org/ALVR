@@ -185,22 +185,16 @@ define([
         function addLogLine(line) {
             var idObject = undefined;
 
-            console.log(line)
+            console.log(line);
 
-            //find parts of log line
-            var split = line.split(" ");
-            if (split[2].startsWith("#")) {
-                var index1 = line.indexOf("#")
-                var index2 = line.indexOf("#", index1 + 1)
-                idObject = line.substring(index1 + 1, index2);
-
-                //TODO: should we log the #{}# object?
-                //line = line.substring(index2 + 1, line.length);
-                line = line.replace(split[0] + " " + split[1], "");
-            } else {
-
-                line = line.replace(split[0] + " " + split[1], "");
+            var json_start_idx = line.indexOf("#{");
+            var json_end_idx = line.indexOf("}#");
+            if (json_start_idx != -1 && json_end_idx != -1) {
+                idObject = line.substring(json_start_idx + 1, json_end_idx + 1);
             }
+
+            var split = line.split(" ");
+            line = line.replace(split[0] + " " + split[1], "");
 
             const skipWithoutId = $("#_root_extra_excludeNotificationsWithoutId").prop("checked");
 

@@ -7,7 +7,7 @@ android {
         minSdkVersion 24
         targetSdkVersion 30
         versionCode 32
-        versionName "12.5.0"
+        versionName "12.5.0-pre.2"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {

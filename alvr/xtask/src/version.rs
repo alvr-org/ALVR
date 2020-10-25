@@ -2,14 +2,14 @@ use crate::*;
 
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
-use semver::{Version, VersionReq};
+use semver::Version;
 use std::cmp::Ordering;
 use std::fs::File;
 use std::str::FromStr;
 use toml_edit::Document;
 
 lazy_static! {
-    static ref GRADLE_VERSIONNAME_REGEX: Regex = Regex::new(r#"versionName\s+"[\d.]+""#).unwrap();
+    static ref GRADLE_VERSIONNAME_REGEX: Regex = Regex::new(r#"versionName\s+"[\d.]+[0-9A-Za-z-.]*""#).unwrap();
     static ref GRADLE_VERSIONCODE_REGEX: Regex =
         Regex::new(r#"versionCode\s+(?P<code>\d+)"#).unwrap();
 }
@@ -24,34 +24,13 @@ fn bumped_versions(
     let server_version = server_version.unwrap_or(&old_server_version);
     let client_version = client_version.unwrap_or(&old_client_version);
 
-    let server_req: String = format!(">={}", old_server_version);
-    let server_req = VersionReq::parse(&server_req)?;
     let server_version = Version::parse(server_version)?;
-
-    let client_req: String = format!(">={}", old_client_version);
-    let client_req = VersionReq::parse(&client_req)?;
     let client_version = Version::parse(client_version)?;
 
     if client_version.major != server_version.major {
         return Err("Bumped versions need to have the same major version!"
             .to_owned()
             .into());
-    }
-
-    if !server_req.matches(&server_version) {
-        return Err(format!(
-            "Cannot bump server version: {} -> {}",
-            old_server_version, server_version
-        )
-        .into());
-    }
-
-    if !client_req.matches(&client_version) {
-        return Err(format!(
-            "Cannot bump client version: {} -> {}",
-            old_client_version, client_version
-        )
-        .into());
     }
 
     if client_version == old_client_version.parse()?

@@ -18,25 +18,22 @@ define([
             }
         }
 
-        function CheckGPUSupport(name) {
-            if (/(GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450))|Radeon (((VIVO|[2-9][0-9][0-9][0-9]) ?\S*)|VE|LE|X(1?[0-9][0-5]0)))/.test(name)) { //Kill me pls
-                return '🔴 '+i18n.GPUUnsupported;
-            } else {
-                return '🟢 '+i18n.GPUSupported;
-            }
-        }
+        function CheckGPUSupport(GPU) {
+            var RegExGPU = new RegExp("(Radeon (((VIVO|[2-9][0-9][0-9][0-9]) ?\S*)|VE|LE|X(1?[0-9][0-5]0))"+
+                           "|GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450)))")
 
-        function CheckGPUSSupport(GPU) {
             switch (GPU.dev) {
+                case "NVIDIA":
+                case "AMD":
+                    if (RegExGPU.test(GPU.name)) {
+                        return '🟢 '+i18n.GPUSupported;
+                        break;
+                    }
                 case "Intel(R)":
                     return '🔴 '+i18n.GPUUnsupported;
                     break;
-                case "NVIDIA":
-                case "AMD":
-                    return CheckGPUSupport(GPU.name);
-                    break;
                 default:
-                    return "🟣 WT..?! You wanna say you have no GPU? Are you playing on potato?"
+                    return '🟣 '+i18n.GPUUnknown;
             }
         }
         
@@ -58,7 +55,7 @@ define([
 
                 GPU = new GPU();
                 $("#GPU").text(GPU.fullName);
-                $("#GPUSupportText").text((CheckGPUSSupport(GPU)));
+                $("#GPUSupportText").text((CheckGPUSupport(GPU)));
 
                 $("#addFirewall").click(() => {
                     $.get("firewall-rules/add", undefined, (res) => {

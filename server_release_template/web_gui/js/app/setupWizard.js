@@ -11,10 +11,15 @@ define([
             constructor() {
                 const gl = document.createElement('canvas').getContext('webgl');
                 const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-                var rawGPUInfo = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-
-                this.fullName = rawGPUInfo.match(/((NVIDIA|AMD|Intel)[^\d]*[^\s]+)/)[0];
+                const rawGPUInfo = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                const match = rawGPUInfo.match(/((NVIDIA|AMD|Intel)[^\d]*[^\s]+)/)
+                if(match) {
+                this.fullName = match[0];
                 [this.dev, this.name] = this.fullName.split(/(?<=^\S+)\s/);
+                } else {
+                    this.fullName = this.name = rawGPUInfo;
+                    this.dev = 'unknown'
+                }
             }
         }
 

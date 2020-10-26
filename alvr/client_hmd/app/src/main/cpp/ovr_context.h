@@ -161,6 +161,7 @@ private:
     uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities, ovrInputStateTrackedRemote *remoteInputState);
 
     std::pair<EyeFov, EyeFov> mFov;
+    ovrMatrix4f mProjectionMatrices[2];
 
     void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiInput);
 

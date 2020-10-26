@@ -708,6 +708,9 @@ void OvrContext::render(uint64_t renderedFrameIndex) {
         }
     }
 
+    frame->tracking.Eye[0].ProjectionMatrix = mProjectionMatrices[0];
+    frame->tracking.Eye[1].ProjectionMatrix = mProjectionMatrices[1];
+
     FrameLog(renderedFrameIndex, "Frame latency is %lu us.",
              getTimestampUs() - frame->fetchTime);
 
@@ -1030,6 +1033,7 @@ std::pair<EyeFov, EyeFov> OvrContext::getFov() {
 
     for (int eye = 0; eye < 2; eye++) {
         auto projection = tracking.Eye[eye].ProjectionMatrix;
+        mProjectionMatrices[eye] = projection;
         double a = projection.M[0][0];
         double b = projection.M[1][1];
         double c = projection.M[0][2];

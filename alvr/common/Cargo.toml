@@ -15,6 +15,7 @@ backtrace = '^0.3.46'
 settings-schema = { git = 'https://github.com/zarik5/settings-schema-rs', features = ['rename_camel_case'] }
 sysinfo = '^0.15.0'
 runas = '^0.2.1'
+gfx-hal = '^0.6.0'
 # cpal = { git = 'https://github.com/RustAudio/cpal' }
 
 [target.'cfg(windows)'.dependencies]
@@ -30,6 +31,7 @@ winapi = { version = '^0.3.8', features = [
 wio = '^0.2.2'
 widestring = '^0.4.2'
 winreg = '^0.7.0'
+gfx-backend-dx11 = '^0.6.8'
 
 [build-dependencies]
 alvr_xtask = { path = '../xtask' }

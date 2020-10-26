@@ -2,7 +2,7 @@ mod logging_backend;
 mod sockets;
 mod tail;
 
-use alvr_common::{data::*, logging::*, process::*, *};
+use alvr_common::{data::*, graphics, logging::*, process::*, *};
 use futures::SinkExt;
 use logging_backend::*;
 use settings_schema::Switch;
@@ -309,6 +309,9 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             reply::json(&maybe_err.unwrap_or(0))
         });
 
+    let graphics_devices_request =
+        warp::path("graphics-devices").map(|| reply::json(&graphics::get_gpu_names()));
+
     let audio_devices_request =
         warp::path("audio_devices").map(|| reply::json(&audio::output_audio_devices().ok()));
 
@@ -332,6 +335,7 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             .or(log_subscription)
             .or(driver_registration_requests)
             .or(firewall_rules_requests)
+            .or(graphics_devices_request)
             .or(audio_devices_request)
             .or(files_requests)
             .or(restart_steamvr_request)

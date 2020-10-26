@@ -167,10 +167,10 @@ enum ALVR_HAND_CONFIDENCE {
 #pragma pack(push, 1)
 // Represent FOV for each eye in degree.
 struct EyeFov {
-	float left;
-	float right;
-	float top;
-	float bottom;
+	float left = 45.;
+	float right = 45.;
+	float top = 45.;
+	float bottom = 45.;
 };
 // hello message
 struct HelloMessage {

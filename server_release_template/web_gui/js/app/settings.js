@@ -240,8 +240,13 @@ define([
                         console.log("NOT FOUND")
                         console.log("setting value: ", path + "_" + pathItem, object[item])
                     } else {
-                        if (el.prop("type") == "checkbox" || el.prop("type") == "radio") {
+                        if (el.prop("type") == "checkbox") {
                             el.prop("checked", object[item])
+                        } else if (el.prop("type") == "radio") {
+                            el.prop("checked", object[item])
+                            el.parent().addClass("active")
+                            $(`#${el.parent().parent().parent().attr('id')}radioContent .radioContent`).hide()
+                            $(`div.radioContent[for="${el.attr('id')}"]`).show()
                         } else {
                             el.val(object[item]);
                         }
@@ -625,15 +630,16 @@ define([
                          getI18n(path + "_" + name + "_" + node.content.default + "-choice-").name  )}
                 </div>   
                 <div>
-                <form id="${path + '_' + name + '-choice-'}">
-                    <div class="card-body">
+                <form id="${path + '_' + name + '-choice-'}" class="card-body">
+                    <div class="btn-group btn-group-toggle" data-toggle="buttons">
                     </div>
+                    <div id="${path + '_' + name + '-choice-' + 'radioContent'}"></div>
                 </form>
                 </div> 
             </div>`;
 
             element.append(el);
-            element = element.find(".card-body").last();
+            element = element.find(".btn-group").last();
             return element;
         }
 
@@ -651,19 +657,24 @@ define([
 
         function addRadioVariant(element, path, name, advanced, radioName, node, isDefault) {
             let checked = "";
+            let active = ""
             if (isDefault) {
                 checked = "checked";
+                active = "active";
             }
 
-            var el = `<div class="${getAdvancedClass(advanced)}" >
-                <input type="radio" id="${path}_${name}-choice-" name="${radioName}"  value="${name}" ${checked}> 
-                <label for="${path}_${name}-choice-">${getI18n(path + "_" + name + "-choice-").name}</label>
-                <div class="radioContent">
-                </div>
-            </div>`;
-
+            var el = `<div class="btn btn-primary" ${getAdvancedClass(advanced)}" >
+                <input type="radio" id="${path}_${name}-choice-" name="${radioName}"  value="${name}"> 
+                <label for="${path}_${name}-choice-" style="margin-bottom:0">${getI18n(path + "_" + name + "-choice-").name}</label>
+                </div>`;
+            var content = `<div class="radioContent" for="${path}_${name}-choice-"></div>`;
+            element.next().append(content)
             element.append(el);
-            element = element.find(".radioContent").last();
+            
+            element = element.next().find(".radioContent").last();
+            if (!isDefault) {
+                element.hide();
+            }
             return element;
         }
 
@@ -845,6 +856,9 @@ define([
 
             if ($("#" + path + "_" + name).prop("type") == "checkbox" || $("#" + path + "_" + name).prop("type") == "radio") {
                 if (defaultVal == "true") {
+                    if ($("#" + path + "_" + name).prop("type") == "radio") {
+                        $("#" + path + "_" + name).parent().parent().children().filter(".active").removeClass("active")
+                    }
                     $("#" + path + "_" + name).prop('checked', true);
                 } else {
                     $("#" + path + "_" + name).prop('checked', false);

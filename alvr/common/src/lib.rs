@@ -1,7 +1,7 @@
+pub mod audio;
 pub mod data;
+pub mod graphics;
 pub mod logging;
 pub mod process;
-pub mod audio;
 
 pub use logging::StrResult;
-

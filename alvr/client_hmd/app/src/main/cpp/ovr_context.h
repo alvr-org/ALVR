@@ -160,6 +160,8 @@ private:
     bool mButtonPressed;
     uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities, ovrInputStateTrackedRemote *remoteInputState);
 
+    std::pair<EyeFov, EyeFov> mFov;
+
     void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiInput);
 
     void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tracking  );

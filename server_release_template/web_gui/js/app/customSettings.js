@@ -91,7 +91,7 @@ define([
             controller.append(`<option value="3">Valve Index (no handtracking pinch)</option>`);
             controller.append(`<option value="4">HTC Vive</option>`);
             controller.append(`<option value="5">HTC Vive (no handtracking pinch)</option>`);
-
+            
             const select = new Selectal('#_root_headset_controllers_content_controllerMode');
             controller = $("#_root_headset_controllers_content_controllerMode");
 

@@ -3,7 +3,7 @@ define({
         "title": "Welcome to ALVR",
         "subtitle": "This wizard will guide you to the basic setup of ALVR",
         "titleHardwareReq": "Hardware requirements",
-        "textHardwareReq": "ALVR requires a dedicated and recent graphics card (Intel HD graphics is not supported). Here is the <a target='_blank' href='https://github.com/polygraphene/ALVR/wiki/Supported-GPU'>list of supported GPUs</a>. <br/> <br/> Make sure you have at least one output audio device.",
+        "textHardwareReq": "ALVR requires a dedicated and recent graphics card. <br/> <br/> Make sure you have at least one output audio device. <br/> <br/> ",
         "titleSoftwareReq": "Software requirements",
         "textSoftwareReq": "Make sure you installed SteamVR, launched it at least once and then closed it. <br/> <br/> If you didn't already, please install the latest <a  target='_blank' href='https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads'>Visual C++ Redistrubutable x64</a> package. <br/> <br/> To stream the Quest microphone you need to install the <a  target='_blank' href='https://www.vb-audio.com/Cable/'>Virtual Audio Cable</a>.",
         "titleFirewall": "Firewall",
@@ -28,7 +28,10 @@ define({
         "driverFailed": "Registering driver failed",
         "driverSuccess": "Driver successfully registered",
         "firewallFailed": "Setting firewall rules failed",
-        "firewallSuccess": "Firewall rules successfully set"
+        "firewallSuccess": "Firewall rules successfully set",
+        "YourGPUIs": "Your GPU is",
+        "GPUSupported": "Great! This GPU may be supported!",
+        "GPUUnsupported": "We are sorry, but this card may be unsupported"
     },
     "it": true,
     "es": true,

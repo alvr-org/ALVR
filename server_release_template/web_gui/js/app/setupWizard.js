@@ -7,7 +7,36 @@ define([
 ], function (_, driverList, wizardTemplate, i18n) {
     return function (alvrSettings) {
 
+        class GPU {
+            constructor() {
+                const gl = document.createElement('canvas').getContext('webgl');
+                const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+                var rawGPUInfo = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
 
+                this.fullName = rawGPUInfo.match(/((NVIDIA|AMD|Intel)[^\d]*[^\s]+)/)[0];
+                [this.dev, this.name] = this.fullName.split(/(?<=^\S+)\s/);
+            }
+        }
+
+        function CheckGPUSupport(GPU) {
+            var RegExGPU = new RegExp("(Radeon (((VIVO|[2-9][0-9][0-9][0-9]) ?\S*)|VE|LE|X(1?[0-9][0-5]0))"+
+                           "|GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450)))")
+
+            switch (GPU.dev) {
+                case "NVIDIA":
+                case "AMD":
+                    if (RegExGPU.test(GPU.name)) {
+                        return '🟢 '+i18n.GPUSupported;
+                        break;
+                    }
+                case "Intel(R)":
+                    return '🔴 '+i18n.GPUUnsupported;
+                    break;
+                default:
+                    return '🟣 '+i18n.GPUUnknown;
+            }
+        }
+        
         this.showWizard = function () {
             var currentPage = 0;
             var compiledTemplate = _.template(wizardTemplate);
@@ -23,6 +52,10 @@ define([
                     backdrop: 'static',
                     keyboard: false
                 });
+
+                GPU = new GPU();
+                $("#GPU").text(GPU.fullName);
+                $("#GPUSupportText").text((CheckGPUSupport(GPU)));
 
                 $("#addFirewall").click(() => {
                     $.get("firewall-rules/add", undefined, (res) => {

@@ -2,7 +2,7 @@ define({
     "title": "Добро пожаловать в ALVR",
     "subtitle": "Этот мастер поможет вам с базовой установкой ALVR",
     "titleHardwareReq": "Технические требования",
-    "textHardwareReq": "ALVR требует дискретную и современную графическую карту (Intel HD graphics не поддерживается). Вот <a target='_blank' href='https://github.com/polygraphene/ALVR/wiki/Supported-GPU'>список поддерживаемых GPU</a>. <br/> <br/> Убедитесь в наличии как минимум одного устройства вывода аудио.",
+    "textHardwareReq": "ALVR требует дискретную и современную графическую карту. <br/> <br/> Убедитесь в наличии как минимум одного устройства вывода аудио. <br/> <br/>",
     "titleSoftwareReq": "Программные требования",
     "textSoftwareReq": "Убедитесь, что установили SteamVR, хотя бы один раз его запустили и закрыли после. <br/> <br/> Если вы ещё этого не сделали, пожалуйста, установите последнюю версию пакета <a  target='_blank' href='https://support.microsoft.com/ru-ru/help/2977003/the-latest-supported-visual-c-downloads'>Visual C++ Redistrubutable x64</a>. <br/> <br/> Чтобы использовать микрофон шлема Quest, вам необходимо установить <a  target='_blank' href='https://www.vb-audio.com/Cable/'>Виртуальный Аудио Кабель (VB-Cable)</a>.",
     "titleFirewall": "Брандмауэр",
@@ -27,5 +27,9 @@ define({
     "driverFailed": "Регистрация драйверов не удалась",
     "driverSuccess": "Драйвера успешно зарегистрированы",
     "firewallFailed": "Установка правил брандмауэра не удалась",
-    "firewallSuccess": "Правила брандмауэра успешно установлены"
+    "firewallSuccess": "Правила брандмауэра успешно установлены",
+    "YourGPUIs": "Ваш видеопроцессор -",
+    "GPUSupported": "Отлично! Скорее всего он поддерживается!",
+    "GPUUnsupported": "Сожалеем, данный видеопроцессор вероятнее всего не поддерживается. Но вы всё еще можете попробовать ALVR и выяснить, сработает ли",
+    "GPUUnknown": "Упс. Похоже ваша видеокарта отключена или вместо неё - картошка"
 });

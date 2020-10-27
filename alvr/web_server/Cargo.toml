@@ -20,6 +20,7 @@ msgbox = { git = 'https://github.com/bekker/msgbox-rs'}
 alvr_common = { path = '../common' }
 single-instance = '^0.1.2'
 ipconfig = '^0.2.2' #todo: remove crate and get ip during handshake
+webbrowser = '^0.5.5'
 
 [build-dependencies]
 serde_json = '^1.0'

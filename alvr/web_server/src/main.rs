@@ -2,7 +2,7 @@ mod logging_backend;
 mod sockets;
 mod tail;
 
-use alvr_common::{data::*, logging::*, process::*, *};
+use alvr_common::{data::*, graphics, logging::*, process::*, *};
 use futures::SinkExt;
 use logging_backend::*;
 use settings_schema::Switch;
@@ -82,7 +82,10 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
                     .iter_mut()
                     .find(|connection_desc| {
                         connection_desc.address == address.to_string()
-                            && connection_desc.handshake_packet == client_handshake_packet
+                            && connection_desc.handshake_packet.device_name
+                                == client_handshake_packet.device_name
+                            && connection_desc.handshake_packet.version
+                                == client_handshake_packet.version
                     });
 
             if let Some(known_client_ref) = maybe_known_client_ref {
@@ -114,20 +117,8 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             let session_desc_ref = &mut session_manager_ref
                 .get_mut(SERVER_SESSION_UPDATE_ID, SessionUpdateType::Settings);
 
-            session_desc_ref.settings_cache.video.eye_fov = [
-                FovDefault {
-                    left: client_handshake_packet.client_fov[0].left,
-                    right: client_handshake_packet.client_fov[0].right,
-                    top: client_handshake_packet.client_fov[0].top,
-                    bottom: client_handshake_packet.client_fov[0].bottom,
-                },
-                FovDefault {
-                    left: client_handshake_packet.client_fov[1].left,
-                    right: client_handshake_packet.client_fov[1].right,
-                    top: client_handshake_packet.client_fov[1].top,
-                    bottom: client_handshake_packet.client_fov[1].bottom,
-                },
-            ];
+            session_desc_ref.settings_cache.video.refresh_rate =
+                client_handshake_packet.client_refresh_rate as _;
         }
 
         let settings = session_manager.lock().unwrap().get().to_settings();
@@ -318,6 +309,9 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             reply::json(&maybe_err.unwrap_or(0))
         });
 
+    let graphics_devices_request =
+        warp::path("graphics-devices").map(|| reply::json(&graphics::get_gpu_names()));
+
     let audio_devices_request =
         warp::path("audio_devices").map(|| reply::json(&audio::output_audio_devices().ok()));
 
@@ -329,6 +323,11 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
 
     let version_request = warp::path("version").map(|| ALVR_SERVER_VERSION);
 
+    let open_link_request = warp::path("open").and(body::json()).map(|url: String| {
+        webbrowser::open(&url).ok();
+        warp::reply()
+    });
+
     warp::serve(
         index_request
             .or(settings_schema_request)
@@ -336,10 +335,12 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             .or(log_subscription)
             .or(driver_registration_requests)
             .or(firewall_rules_requests)
+            .or(graphics_devices_request)
             .or(audio_devices_request)
             .or(files_requests)
             .or(restart_steamvr_request)
             .or(version_request)
+            .or(open_link_request)
             .with(reply::with::header(
                 "Cache-Control",
                 "no-cache, no-store, must-revalidate",

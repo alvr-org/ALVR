@@ -56,7 +56,7 @@ UINT MicPlayer::getMicHWID() {
 		}
 
 		if (cbDeviceId != micDevIdSize) {
-			Warn("Audio device ID has wrong length: %lld != %lld", cbDeviceId, micDevIdSize);
+			Debug("Audio device ID has wrong length: %lld != %lld", cbDeviceId, micDevIdSize);
 			continue;
 		}
 
@@ -106,11 +106,11 @@ MicPlayer::MicPlayer()
 	wfx.nBlockAlign = (wfx.wBitsPerSample * wfx.nChannels) >> 3;
 	wfx.nAvgBytesPerSec = wfx.nBlockAlign * wfx.nSamplesPerSec;
 
-	deviceID = MicPlayer::getMicHWID();
-
 	if (!Settings::Instance().m_streamMic) {
 		return;
 	}
+
+	deviceID = MicPlayer::getMicHWID();
 
 	if (deviceID == -1) {
 		Log("Microphone Audio device not found");

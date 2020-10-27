@@ -25,7 +25,7 @@ public:
     void initialize(JNIEnv *env, jobject instance, jint helloPort, jint port, jstring deviceName_,
                         jobjectArray broadcastAddrList_, jintArray refreshRates_, jint renderWidth,
                         jint renderHeight, jfloatArray fov, jint deviceType, jint deviceSubType,
-                        jint deviceCapabilityFlags, jint controllerCapabilityFlags);
+                        jint deviceCapabilityFlags, jint controllerCapabilityFlags, jfloat ipd);
 
     void send(const void *packet, int length);
 
@@ -63,8 +63,6 @@ private:
     void onConnect(const ConnectionMessage &connectionMessage);
     void onBroadcastRequest();
     void onPacketRecv(const char *packet, size_t packetSize);
-
-    void loadFov(JNIEnv *env, jfloatArray fov_);
 
 private:
 // Connection has lost when elapsed 3 seconds from last packet.

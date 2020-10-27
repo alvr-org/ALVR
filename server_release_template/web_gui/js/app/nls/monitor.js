@@ -37,5 +37,6 @@ define({
     "fr": true,
     "ja": true,
     "zh": true,
-    "de-de": false
+    "ru": true,
+    "de": true,
 });

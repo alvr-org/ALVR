@@ -123,9 +123,8 @@ void OvrContext::initialize(JNIEnv *env, jobject activity, jobject jOvrContext, 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
                     GL_CLAMP_TO_EDGE);
 
-    //use the quest panel resolution and not the downscaled suggestion
-    FrameBufferWidth = 1440;//vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH);
-    FrameBufferHeight = 1600;//vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT);
+    FrameBufferWidth = vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
+    FrameBufferHeight = vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
 
     ovrRenderer_Create(&Renderer, FrameBufferWidth, FrameBufferHeight,
                        SurfaceTextureID, loadingTexture, webViewSurfaceTexture,
@@ -511,6 +510,11 @@ void OvrContext::setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTr
     packet->FrameIndex = FrameIndex;
     packet->predictedDisplayTime = displayTime;
 
+    packet->ipd = getIPD();
+    auto fovPair = getFov();
+    packet->eyeFov[0] = fovPair.first;
+    packet->eyeFov[1] = fovPair.second;
+
     memcpy(&packet->HeadPose_Pose_Orientation, &tracking->HeadPose.Pose.Orientation,
            sizeof(ovrQuatf));
     memcpy(&packet->HeadPose_Pose_Position, &tracking->HeadPose.Pose.Position, sizeof(ovrVector3f));
@@ -779,33 +783,23 @@ void OvrContext::renderLoading() {
 void OvrContext::setFrameGeometry(int width, int height) {
     int eye_width = width / 2;
 
-    if (eye_width != FrameBufferWidth || height != FrameBufferHeight ||
-            usedFoveationEnabled != mFoveationEnabled ||
-            usedFoveationStrength != mFoveationStrength ||
-            usedFoveationShape != mFoveationShape ||
-            usedFoveationVerticalOffset != mFoveationVerticalOffset) {
+    LOG("Changing FrameBuffer geometry. Old=%dx%d New=%dx%d", FrameBufferWidth,
+        FrameBufferHeight, eye_width, height);
+    FrameBufferWidth = eye_width;
+    FrameBufferHeight = height;
 
-        LOG("Changing FrameBuffer geometry. Old=%dx%d New=%dx%d", FrameBufferWidth,
-            FrameBufferHeight, eye_width, height);
-        FrameBufferWidth = eye_width;
-        FrameBufferHeight = height;
+    usedFoveationEnabled = mFoveationEnabled;
+    usedFoveationStrength = mFoveationStrength;
+    usedFoveationShape = mFoveationShape;
+    usedFoveationVerticalOffset = mFoveationVerticalOffset;
 
-        usedFoveationEnabled = mFoveationEnabled;
-        usedFoveationStrength = mFoveationStrength;
-        usedFoveationShape = mFoveationShape;
-        usedFoveationVerticalOffset = mFoveationVerticalOffset;
-
-        ovrRenderer_Destroy(&Renderer);
-        ovrRenderer_Create(&Renderer, FrameBufferWidth, FrameBufferHeight,
-                           SurfaceTextureID, loadingTexture, webViewSurfaceTexture,
-                           mWebViewInteractionCallback,
-                           {usedFoveationEnabled, (uint32_t)FrameBufferWidth, (uint32_t)FrameBufferHeight,
-                            getFov().first, usedFoveationStrength, usedFoveationShape, usedFoveationVerticalOffset});
-        ovrRenderer_CreateScene(&Renderer);
-    } else {
-        LOG("Not Changing FrameBuffer geometry. %dx%d", FrameBufferWidth,
-            FrameBufferHeight);
-    }
+    ovrRenderer_Destroy(&Renderer);
+    ovrRenderer_Create(&Renderer, FrameBufferWidth, FrameBufferHeight,
+                       SurfaceTextureID, loadingTexture, webViewSurfaceTexture,
+                       mWebViewInteractionCallback,
+                       {usedFoveationEnabled, (uint32_t)FrameBufferWidth, (uint32_t)FrameBufferHeight,
+                        EyeFov(), usedFoveationStrength, usedFoveationShape, usedFoveationVerticalOffset});
+    ovrRenderer_CreateScene(&Renderer);
 }
 
 void OvrContext::getRefreshRates(JNIEnv *env_, jintArray refreshRates) {
@@ -832,13 +826,14 @@ void OvrContext::getRefreshRates(JNIEnv *env_, jintArray refreshRates) {
             refreshRates_[i] = (int) refreshRatesArray[i];
         }
     }
-    LOG("Supported refresh rates: %s", refreshRateList.c_str());
+    LOGI("Supported refresh rates: %s", refreshRateList.c_str());
     std::sort(refreshRates_, refreshRates_ + ALVR_REFRESH_RATE_LIST_SIZE, std::greater<jint>());
 
     env_->ReleaseIntArrayElements(refreshRates, refreshRates_, 0);
 }
 
 void OvrContext::setRefreshRate(int refreshRate, bool forceChange) {
+
     if (m_currentRefreshRate == refreshRate) {
         LOGI("Refresh rate not changed. %d Hz", refreshRate);
         return;
@@ -913,13 +908,6 @@ void OvrContext::enterVrMode() {
         return;
     }
 
-    {
-        // set Color Space
-        ovrHmdColorDesc colorDesc{};
-        colorDesc.ColorSpace = VRAPI_COLORSPACE_REC_2020;
-        vrapi_SetClientColorDesc(Ovr, &colorDesc);
-    }
-
     LOGI("Setting refresh rate. %d Hz", m_currentRefreshRate);
     ovrResult result = vrapi_SetDisplayRefreshRate(Ovr, m_currentRefreshRate);
     LOGI("vrapi_SetDisplayRefreshRate: Result=%d", result);
@@ -962,9 +950,8 @@ void OvrContext::leaveVrMode() {
 
 // Fill device descriptor.
 void OvrContext::getDeviceDescriptor(JNIEnv *env, jobject deviceDescriptor) {
-    int renderWidth = 1440;//vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_WIDTH);
-    renderWidth *= 2;
-    int renderHeight = 1600;//vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_SUGGESTED_EYE_TEXTURE_HEIGHT);
+    int renderWidth = vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE);
+    int renderHeight = vrapi_GetSystemPropertyInt(&java,VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
 
     int deviceType = ALVR_DEVICE_TYPE_OCULUS_MOBILE;
     int deviceSubType = 0;
@@ -974,14 +961,7 @@ void OvrContext::getDeviceDescriptor(JNIEnv *env, jobject deviceDescriptor) {
     int ovrDeviceType = vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_DEVICE_TYPE);
     //if (VRAPI_DEVICE_TYPE_GEARVR_START <= ovrDeviceType &&
     //    ovrDeviceType <= VRAPI_DEVICE_TYPE_GEARVR_END) {
-    if (0 <= ovrDeviceType &&
-    ovrDeviceType <= VRAPI_DEVICE_TYPE_OCULUSGO_START-1) {
-        deviceSubType = ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_GEARVR;
-    } else if (VRAPI_DEVICE_TYPE_OCULUSGO_START <= ovrDeviceType &&
-               ovrDeviceType <= VRAPI_DEVICE_TYPE_OCULUSGO_END) {
-        // Including MiVR.
-        deviceSubType = ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_GO;
-    } else if (VRAPI_DEVICE_TYPE_OCULUSQUEST_START <= ovrDeviceType &&
+    if (VRAPI_DEVICE_TYPE_OCULUSQUEST_START <= ovrDeviceType &&
                ovrDeviceType <= VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
         deviceSubType = ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_QUEST;
     } else {
@@ -1026,8 +1006,18 @@ void OvrContext::getDeviceDescriptor(JNIEnv *env, jobject deviceDescriptor) {
     env->SetIntField(deviceDescriptor, fieldID, deviceCapabilityFlags);
     fieldID = env->GetFieldID(clazz, "mControllerCapabilityFlags", "I");
     env->SetIntField(deviceDescriptor, fieldID, controllerCapabilityFlags);
+    fieldID = env->GetFieldID(clazz, "mIpd", "F");
+    env->SetFloatField(deviceDescriptor, fieldID, getIPD());
 
     env->DeleteLocalRef(clazz);
+}
+
+float OvrContext::getIPD() {
+    ovrTracking2 tracking = vrapi_GetPredictedTracking2(Ovr, 0.0);
+    float ipd = vrapi_GetInterpupillaryDistance(&tracking);
+    LOGI("OvrContext::getIpd: %f", ipd);
+    return ipd;
+
 }
 
 std::pair<EyeFov, EyeFov> OvrContext::getFov() {
@@ -1035,8 +1025,7 @@ std::pair<EyeFov, EyeFov> OvrContext::getFov() {
     float fovY = vrapi_GetSystemPropertyFloat(&java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y);
     LOGI("OvrContext::getFov: X=%f Y=%f", fovX, fovY);
 
-    double displayTime = vrapi_GetPredictedDisplayTime(Ovr, 0);
-    ovrTracking2 tracking = vrapi_GetPredictedTracking2(Ovr, displayTime);
+    ovrTracking2 tracking = vrapi_GetPredictedTracking2(Ovr, 0.0);
 
     EyeFov fov[2];
 

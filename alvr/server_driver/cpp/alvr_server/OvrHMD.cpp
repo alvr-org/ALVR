@@ -125,8 +125,8 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
 		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().m_flIPD);
 
-
-			   	
+		HmdMatrix_SetIdentity(&m_eyeToHeadLeft);
+		HmdMatrix_SetIdentity(&m_eyeToHeadRight);
 
 		//set the icons in steamvr to the default icons used for Oculus Link
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceOff_String, "{oculus}/icons/quest_headset_off.png");
@@ -193,6 +193,11 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		mActivated = true;
 
 		OnStreamStart();
+
+
+		vr::VREvent_Data_t eventData;
+		eventData.ipd = { Settings::Instance().m_flIPD };
+		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_IpdChanged, eventData, 0);
 
 		return vr::VRInitError_None;
 	}
@@ -308,11 +313,42 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 				updateController(info);
 			}
 
+			if (std::fabs(info.ipd - Settings::Instance().m_flIPD) > 0.0001f
+				|| std::fabs(info.eyeFov[0].left - Settings::Instance().m_eyeFov[0].left) > 0.1f
+				|| std::fabs(info.eyeFov[0].right - Settings::Instance().m_eyeFov[0].right) > 0.1f) {
+				updateIPDandFoV(info);
+			}
+
 			m_directModeComponent->OnPoseUpdated(info);
 		
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
 		}
+	}
+
+	void OvrHmd::updateIPDandFoV(const TrackingInfo& info) {
+		Info("Setting new IPD to: %f", info.ipd);
+
+		m_eyeToHeadLeft.m[0][3]  = -info.ipd / 2.0f;
+		m_eyeToHeadRight.m[0][3] =  info.ipd / 2.0f;
+		vr::VRServerDriverHost()->SetDisplayEyeToHead(m_unObjectId, m_eyeToHeadLeft, m_eyeToHeadRight);
+
+		Settings::Instance().m_eyeFov[0] = info.eyeFov[0];
+		Settings::Instance().m_eyeFov[1] = info.eyeFov[1];
+
+		m_displayComponent->GetProjectionRaw(vr::EVREye::Eye_Left,
+			&m_eyeFoVLeft.vTopLeft.v[0],
+			&m_eyeFoVLeft.vBottomRight.v[0],
+			&m_eyeFoVLeft.vTopLeft.v[1],
+			&m_eyeFoVLeft.vBottomRight.v[1]);
+		m_displayComponent->GetProjectionRaw(vr::EVREye::Eye_Right,
+			&m_eyeFoVRight.vTopLeft.v[0],
+			&m_eyeFoVRight.vBottomRight.v[0],
+			&m_eyeFoVRight.vTopLeft.v[1],
+			&m_eyeFoVRight.vBottomRight.v[1]);
+
+		vr::VRServerDriverHost()->SetDisplayProjectionRaw(m_unObjectId, m_eyeFoVLeft, m_eyeFoVRight);
+		Settings::Instance().m_flIPD = info.ipd;
 	}
 
 	void OvrHmd::updateController(const TrackingInfo& info) {

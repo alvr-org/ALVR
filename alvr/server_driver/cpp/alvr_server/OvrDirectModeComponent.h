@@ -17,7 +17,7 @@ public:
 	void OnPoseUpdated(TrackingInfo &info);
 
 	/** Specific to Oculus compositor support, textures supplied must be created using this method. */
-	virtual void CreateSwapTextureSet(uint32_t unPid, const SwapTextureSetDesc_t *pSwapTextureSetDesc, vr::SharedTextureHandle_t(*pSharedTextureHandles)[3]);
+	virtual void CreateSwapTextureSet( uint32_t unPid, const SwapTextureSetDesc_t *pSwapTextureSetDesc, SwapTextureSet_t *pOutSwapTextureSet );
 
 	/** Used to textures created using CreateSwapTextureSet.  Only one of the set's handles needs to be used to destroy the entire set. */
 	virtual void DestroySwapTextureSet(vr::SharedTextureHandle_t sharedTextureHandle);
@@ -30,7 +30,7 @@ public:
 
 	/** Call once per layer to draw for this frame.  One shared texture handle per eye.  Textures must be created
 	* using CreateSwapTextureSet and should be alternated per frame.  Call Present once all layers have been submitted. */
-	virtual void SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2], const vr::HmdMatrix34_t *pPose);
+	virtual void SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2]);
 
 	/** Submits queued layers for display. */
 	virtual void Present(vr::SharedTextureHandle_t syncTexture);

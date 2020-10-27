@@ -154,7 +154,7 @@ class ServerConnection extends ThreadBase
             mNativeHandle = initializeSocket(HELLO_PORT, PORT, getDeviceName(), targetList,
                     mDeviceDescriptor.mRefreshRates, mDeviceDescriptor.mRenderWidth, mDeviceDescriptor.mRenderHeight, mDeviceDescriptor.mFov,
                     mDeviceDescriptor.mDeviceType, mDeviceDescriptor.mDeviceSubType, mDeviceDescriptor.mDeviceCapabilityFlags,
-                    mDeviceDescriptor.mControllerCapabilityFlags
+                    mDeviceDescriptor.mControllerCapabilityFlags, mDeviceDescriptor.mIpd
             );
             if (mNativeHandle == 0) {
                 Utils.loge(TAG, () -> "Error on initializing socket.");
@@ -305,7 +305,7 @@ class ServerConnection extends ThreadBase
 
     private native long initializeSocket(int helloPort, int port, String deviceName, String[] broadcastAddrList,
                                          int[] refreshRates, int renderWidth, int renderHeight, float[] fov,
-                                         int deviceType, int deviceSubType, int deviceCapabilityFlags, int controllerCapabilityFlags);
+                                         int deviceType, int deviceSubType, int deviceCapabilityFlags, int controllerCapabilityFlags, float ipd);
     private native void closeSocket(long nativeHandle);
     private native void runLoop(long nativeHandle, String serverAddress, int serverPort);
     private native void interruptNative(long nativeHandle);

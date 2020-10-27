@@ -240,8 +240,13 @@ define([
                         console.log("NOT FOUND")
                         console.log("setting value: ", path + "_" + pathItem, object[item])
                     } else {
-                        if (el.prop("type") == "checkbox" || el.prop("type") == "radio") {
+                        if (el.prop("type") == "checkbox") {
                             el.prop("checked", object[item])
+                        } else if (el.prop("type") == "radio") {
+                            el.prop("checked", object[item])
+                            el.parent().addClass("active")
+                            $(`#${el.parent().parent().parent().attr('id')}radioContent .radioContent`).hide()
+                            $(`div.radioContent[for="${el.attr('id')}"]`).show()
                         } else {
                             el.val(object[item]);
                         }
@@ -296,11 +301,12 @@ define([
                 var name = el.attr("name");
                 var path = el.attr("path");
                 var def = el.attr("default");
+                var defText = el.attr("defaultText");
 
                 if (!$("#" + path + "_" + name).prop("disabled")) {
                     const confirm = $("#_root_extra_revertConfirmDialog").prop("checked");
                     if (confirm) {
-                        showResetConfirmDialog(def).then((res) => {
+                        showResetConfirmDialog(def, defText).then((res) => {
                             if (res) {
                                 resetToDefault(name, path, def);
                             }
@@ -616,21 +622,24 @@ define([
             return element;
         }
 
-        function addRadioContainer(element, path, name, advanced, node) {
+        function addRadioContainer(element, path, name, advanced, node) {           
             var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
-                    ${getI18n(path + "_" + name + "-choice-").name}  ${self.getHelpReset(name + "_" + node.content.default + "-choice-", path, true)}
+                    ${getI18n(path + "_" + name + "-choice-").name}  ${self.getHelpReset(name , path, true ,
+                         "_" + node.content.default + "-choice-", name + "-choice-", 
+                         getI18n(path + "_" + name + "_" + node.content.default + "-choice-").name  )}
                 </div>   
                 <div>
-                <form id="${path + '_' + name + '-choice-'}">
-                    <div class="card-body">
+                <form id="${path + '_' + name + '-choice-'}" class="card-body">
+                    <div class="btn-group btn-group-toggle" data-toggle="buttons">
                     </div>
+                    <div id="${path + '_' + name + '-choice-' + 'radioContent'}"></div>
                 </form>
                 </div> 
             </div>`;
 
             element.append(el);
-            element = element.find(".card-body").last();
+            element = element.find(".btn-group").last();
             return element;
         }
 
@@ -648,19 +657,24 @@ define([
 
         function addRadioVariant(element, path, name, advanced, radioName, node, isDefault) {
             let checked = "";
+            let active = ""
             if (isDefault) {
                 checked = "checked";
+                active = "active";
             }
 
-            var el = `<div class="${getAdvancedClass(advanced)}" >
-                <input type="radio" id="${path}_${name}-choice-" name="${radioName}"  value="${name}" ${checked}> 
-                <label for="${path}_${name}-choice-">${getI18n(path + "_" + name + "-choice-").name}</label>
-                <div class="radioContent">
-                </div>
-            </div>`;
-
+            var el = `<div class="btn btn-primary" ${getAdvancedClass(advanced)}" >
+                <input type="radio" id="${path}_${name}-choice-" name="${radioName}"  value="${name}"> 
+                <label for="${path}_${name}-choice-" style="margin-bottom:0">${getI18n(path + "_" + name + "-choice-").name}</label>
+                </div>`;
+            var content = `<div class="radioContent" for="${path}_${name}-choice-"></div>`;
+            element.next().append(content)
             element.append(el);
-            element = element.find(".radioContent").last();
+            
+            element = element.next().find(".radioContent").last();
+            if (!isDefault) {
+                element.hide();
+            }
             return element;
         }
 
@@ -803,15 +817,23 @@ define([
         }
 
         //helper
-        self.getHelpReset = function (name, path, defaultVal, postFix = "") {
+        self.getHelpReset = function (name, path, defaultVal, postFix = "", helpName, defaultText ) {
+            if(helpName == undefined) {
+                helpName = name;
+            }
+
+            if(defaultText == undefined) {
+                defaultText = defaultVal;
+            }
+
             var getVisibility = function() {
-                if(getHelp(name, path) === undefined) {
+                if(getHelp(helpName, path) === undefined) {
                     return `style="display:none"`;
                 }
             }
             return `<div class="helpReset">
-                <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(name, path)}" ${getVisibility()}></i>
-                <i class="fa fa-redo fa-lg paramReset" name="${name}${postFix}" path="${path}" default="${defaultVal}")" ></i>
+                <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(helpName, path)}" ${getVisibility()}></i>
+                <i class="fa fa-redo fa-lg paramReset" name="${name}${postFix}" path="${path}" default="${defaultVal}" defaultText="${defaultText}" )" ></i>
             </div>`;
         }
 
@@ -834,6 +856,9 @@ define([
 
             if ($("#" + path + "_" + name).prop("type") == "checkbox" || $("#" + path + "_" + name).prop("type") == "radio") {
                 if (defaultVal == "true") {
+                    if ($("#" + path + "_" + name).prop("type") == "radio") {
+                        $("#" + path + "_" + name).parent().parent().children().filter(".active").removeClass("active")
+                    }
                     $("#" + path + "_" + name).prop('checked', true);
                 } else {
                     $("#" + path + "_" + name).prop('checked', false);
@@ -891,10 +916,13 @@ define([
         }
 
 
-        function showResetConfirmDialog(defaultVal) {
+        function showResetConfirmDialog(defaultVal, defaultText) {
             return new Promise((resolve, reject) => {
                 var compiledTemplate = _.template(revertConfirm);
-                revertRestartI18n.settingDefault = defaultVal;
+
+               
+                revertRestartI18n.settingDefault = defaultText;
+
 
                 var template = compiledTemplate(revertRestartI18n);
                 $("#confirmModal").remove();

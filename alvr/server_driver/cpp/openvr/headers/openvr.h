@@ -15,8 +15,8 @@
 namespace vr
 {
 	static const uint32_t k_nSteamVRVersionMajor = 1;
-	static const uint32_t k_nSteamVRVersionMinor = 12;
-	static const uint32_t k_nSteamVRVersionBuild = 5;
+	static const uint32_t k_nSteamVRVersionMinor = 14;
+	static const uint32_t k_nSteamVRVersionBuild = 15;
 } // namespace vr
 
 // vrtypes.h
@@ -441,7 +441,7 @@ enum ETrackedDeviceProperty
 	Prop_DriverProvidedChaperoneVisibility_Bool = 2076,
 	Prop_HmdColumnCorrectionSettingPrefix_String = 2077,
 	Prop_CameraSupportsCompatibilityModes_Bool	= 2078,
-
+	Prop_SupportsRoomViewDepthProjection_Bool	= 2079,
 	Prop_DisplayAvailableFrameRates_Float_Array = 2080, // populated by compositor from actual EDID list when available from GPU driver
 	Prop_DisplaySupportsMultipleFramerates_Bool = 2081, // if this is true but Prop_DisplayAvailableFrameRates_Float_Array is empty, explain to user
 	Prop_DisplayColorMultLeft_Vector3			= 2082,
@@ -469,7 +469,8 @@ enum ETrackedDeviceProperty
 
 	Prop_Audio_DefaultPlaybackDeviceId_String		= 2300,
 	Prop_Audio_DefaultRecordingDeviceId_String		= 2301,
-	Prop_Audio_DefaultPlaybackDeviceVolume_Float	= 2302,
+	Prop_Audio_DefaultPlaybackDeviceVolume_Float = 2302,
+	Prop_Audio_SupportsDualSpeakerAndJackOutput_Bool = 2303,
 
 	// Properties that are unique to TrackedDeviceClass_Controller
 	Prop_AttachedDeviceId_String				= 3000,
@@ -784,6 +785,8 @@ enum EVREventType
 	VREvent_RoomViewHidden					= 527, // Sent by compositor whenever room-view is disabled
 	VREvent_ShowUI							= 528, // data is showUi
 	VREvent_ShowDevTools					= 529, // data is showDevTools
+	VREvent_DesktopViewUpdating				= 530,
+	VREvent_DesktopViewReady				= 531,
 
 	VREvent_Notification_Shown				= 600,
 	VREvent_Notification_Hidden				= 601,
@@ -805,6 +808,7 @@ enum EVREventType
 	VREvent_ChaperoneFlushCache				= 805, // Sent when the process needs to reload any cached data it retrieved from VRChaperone()
 	VREvent_ChaperoneRoomSetupStarting	    = 806, // Triggered by CVRChaperoneClient::RoomSetupStarting
 	VREvent_ChaperoneRoomSetupFinished	    = 807, // Triggered by CVRChaperoneClient::CommitWorkingCopy
+	VREvent_StandingZeroPoseReset			= 808,
 
 	VREvent_AudioSettingsHaveChanged		= 820,
 
@@ -1460,6 +1464,7 @@ enum EVRApplicationType
 	VRApplication_SteamWatchdog = 6,// Reserved for Steam
 	VRApplication_Bootstrapper = 7, // reserved for vrstartup
 	VRApplication_WebHelper = 8,	// reserved for vrwebhelper
+	VRApplication_OpenXR = 9,		// reserved for openxr
 
 	VRApplication_Max
 };
@@ -2109,17 +2114,6 @@ public:
 	*/
 	virtual void GetDeviceToAbsoluteTrackingPose( ETrackingUniverseOrigin eOrigin, float fPredictedSecondsToPhotonsFromNow, VR_ARRAY_COUNT(unTrackedDevicePoseArrayCount) TrackedDevicePose_t *pTrackedDevicePoseArray, uint32_t unTrackedDevicePoseArrayCount ) = 0;
 
-	/** Sets the zero pose for the seated tracker coordinate system to the current position and yaw of the HMD. After 
-	* ResetSeatedZeroPose all GetDeviceToAbsoluteTrackingPose calls that pass TrackingUniverseSeated as the origin 
-	* will be relative to this new zero pose. The new zero coordinate system will not change the fact that the Y axis 
-	* is up in the real world, so the next pose returned from GetDeviceToAbsoluteTrackingPose after a call to 
-	* ResetSeatedZeroPose may not be exactly an identity matrix.
-	*
-	* NOTE: This function overrides the user's previously saved seated zero pose and should only be called as the result of a user action. 
-	* Users are also able to set their seated zero pose via the OpenVR Dashboard.
-	**/
-	virtual void ResetSeatedZeroPose() = 0;
-
 	/** Returns the transform from the seated zero pose to the standing absolute tracking system. This allows 
 	* applications to represent the seated origin to used or transform object positions from one coordinate
 	* system to the other. 
@@ -2307,7 +2301,7 @@ public:
 
 };
 
-static const char * const IVRSystem_Version = "IVRSystem_021";
+static const char * const IVRSystem_Version = "IVRSystem_022";
 
 }
 
@@ -2809,15 +2803,15 @@ namespace vr
 	// camera keys
 	static const char * const k_pch_Camera_Section = "camera";
 	static const char * const k_pch_Camera_EnableCamera_Bool = "enableCamera";
-	static const char * const k_pch_Camera_EnableCameraInDashboard_Bool = "enableCameraInDashboard";
+	static const char * const k_pch_Camera_ShowOnController_Bool = "showOnController";
 	static const char * const k_pch_Camera_EnableCameraForCollisionBounds_Bool = "enableCameraForCollisionBounds";
-	static const char * const k_pch_Camera_EnableCameraForRoomView_Bool = "enableCameraForRoomView";
+	static const char * const k_pch_Camera_RoomView_Int32 = "roomView";
 	static const char * const k_pch_Camera_BoundsColorGammaR_Int32 = "cameraBoundsColorGammaR";
 	static const char * const k_pch_Camera_BoundsColorGammaG_Int32 = "cameraBoundsColorGammaG";
 	static const char * const k_pch_Camera_BoundsColorGammaB_Int32 = "cameraBoundsColorGammaB";
 	static const char * const k_pch_Camera_BoundsColorGammaA_Int32 = "cameraBoundsColorGammaA";
 	static const char * const k_pch_Camera_BoundsStrength_Int32 = "cameraBoundsStrength";
-	static const char * const k_pch_Camera_RoomViewMode_Int32 = "cameraRoomViewMode";
+	static const char * const k_pch_Camera_RoomViewStyle_Int32 = "roomViewStyle";
 
 	//-----------------------------------------------------------------------------
 	// audio keys
@@ -2838,6 +2832,7 @@ namespace vr
 	static const char * const k_pch_audio_EnablePlaybackMirrorIndependentVolume_Bool = "enablePlaybackMirrorIndependentVolume";
 	static const char * const k_pch_audio_LastHmdPlaybackDeviceId_String = "lastHmdPlaybackDeviceId";
 	static const char * const k_pch_audio_VIVEHDMIGain = "viveHDMIGain";
+	static const char * const k_pch_audio_DualSpeakerAndJackOutput_Bool = "dualSpeakerAndJackOutput";
 
 	//-----------------------------------------------------------------------------
 	// power management keys
@@ -2988,9 +2983,20 @@ public:
 
 	/** Force the bounds to show, mostly for utilities **/
 	virtual void ForceBoundsVisible( bool bForce ) = 0;
+
+	/** Sets the zero pose for the given tracker coordinate system to the current position and yaw of the HMD. After
+	* ResetZeroPose all GetDeviceToAbsoluteTrackingPose calls as the origin will be relative to this new zero pose.
+	* The new zero coordinate system will not change the fact that the Y axis is up in the real world, so the next
+	* pose returned from GetDeviceToAbsoluteTrackingPose after a call to ResetZeroPose may not be exactly an
+	* identity matrix.
+	*
+	* NOTE: This function overrides the user's previously saved zero pose and should only be called as the result of a user action. 
+	* Users are also able to set their zero pose via the OpenVR Dashboard.
+	**/
+	virtual void ResetZeroPose( ETrackingUniverseOrigin eTrackingUniverseOrigin ) = 0;
 };
 
-static const char * const IVRChaperone_Version = "IVRChaperone_003";
+static const char * const IVRChaperone_Version = "IVRChaperone_004";
 
 #pragma pack( pop )
 

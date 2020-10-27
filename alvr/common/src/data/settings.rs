@@ -269,6 +269,14 @@ pub struct ConnectionDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub enum Theme {
+    SystemDefault,
+    Classic,
+    Darkly,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum LogLevel {
     Error,
     Warning,
@@ -279,6 +287,7 @@ pub enum LogLevel {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtraDesc {
+    pub theme: Theme,
     pub revert_confirm_dialog: bool,
     pub restart_confirm_dialog: bool,
 
@@ -343,12 +352,12 @@ pub fn settings_cache_default() -> SettingsDefault {
                 },
             },
             color_correction: SwitchDefault {
-                enabled: true,
+                enabled: false,
                 content: ColorCorrectionDescDefault {
                     brightness: 0.,
                     contrast: 0.,
                     saturation: 0.,
-                    gamma: 1.12,
+                    gamma: 1.,
                     sharpening: 0.,
                 },
             },
@@ -416,6 +425,9 @@ pub fn settings_cache_default() -> SettingsDefault {
             aggressive_keyframe_resend: false,
         },
         extra: ExtraDescDefault {
+            theme: ThemeDefault {
+                variant: ThemeDefaultVariant::SystemDefault,
+            },
             revert_confirm_dialog: true,
             restart_confirm_dialog: true,
             notification_level: LogLevelDefault {

@@ -275,6 +275,7 @@ margin-bottom: 10px;
   position: fixed;
   bottom: 30px;
   right: 50px;
+  z-index: 10;
 }
 
 #registeredDriversInst {

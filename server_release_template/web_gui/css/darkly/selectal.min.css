@@ -32,7 +32,8 @@
   background: rgb(60,60,60);
 	color: white;
 	border: 1px solid gray;
-  cursor: pointer;}
+  cursor: pointer;
+  z-index: 10;}
 
 .selectal-dropdown-option {
   margin: 0;
@@ -46,7 +47,7 @@
 	  background: initial; }
 
 .selectal-btn {
-  background: rgb(60,60,60);
+  /* background: rgb(60,60,60); */
 	color: white;
 	border: 1px solid gray;
   cursor: pointer;

@@ -275,6 +275,7 @@ margin-bottom: 10px;
   position: fixed;
   bottom: 30px;
   right: 50px;
+  z-index: 10;
 }
 
 #registeredDriversInst {
@@ -298,7 +299,10 @@ input[type=number]::-webkit-outer-spin-button {
 }
 
 a {
-  color: #007bff;
+  color: #60adff;
+}
+a:hover {
+  color: #a5d1ff;
 }
 
 .nav-link {

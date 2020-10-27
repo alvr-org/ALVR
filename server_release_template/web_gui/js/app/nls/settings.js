@@ -1,7 +1,5 @@
 define({
     "root": {
-        "customVideoScale": "custom resolution",
-        "steamVRRestartSuccess": "SteamVR successfully restarted",
         "_root_video_tab.name": "Video",
         "_root_audio_tab.name": "Audio",
         "_root_headset_tab.name": "Headset",
@@ -11,10 +9,10 @@ define({
         "_root_video_encodeBitrateMbs.description": "Bitrate of video streaming. 30Mbps is recommended. \nHigher bitrates result in better image but also higher latency and network traffic ",
         "_root_video_force60hz.name": "Force 60hz Mode",
         "_root_video_resolutionDropdown.name": "Video resolution",
-        "_root_video_resolutionDropdown.description": `100% results in the native 2880x1600 resolution of the Oculus Quest.
+        "_root_video_resolutionDropdown.description": `100% results in the native resolution of the Oculus Quest.
         Setting the resolution can bring some improvement in visual quality, but is not recommended. 
         A resolution lower than 100% can reduce latency and increase network performance`,
-        "_root_video_renderResolution-choice-.name": "Encoding resolution base",
+        "_root_video_renderResolution-choice-.name": "Video encoding resolution base",
         "_root_video_recommendedTargetResolution-choice-.name": "Preferred game rendering resolution",
         "_root_video_eyeFov.name": "Field of view",
         "_root_video_eyeFov_0_eyeFov_0.name": "Left eye",
@@ -24,7 +22,7 @@ define({
         "_root_video_foveatedRendering_enabled.description": `Technique where the center of the image is rendered in high resolution while the outskirts are rendered in lower resolution.
         Results in a much lower video resolution that needs to be transmitted over the network.
         The smaller video at the same bitrate can preserve more details and lowers the latency at the same time.
-        "FFR causes some visual artifacts at the edges of the view that are more or less visible depending on the settings and the game`,
+        FFR causes some visual artifacts at the edges of the view that are more or less visible depending on the settings and the game`,
         "_root_video_foveatedRendering_content_strength.name": "Strength",
         "_root_video_foveatedRendering_content_strength.description": "Higher value means less detail toward the edges of the frame and more artifacts",
         "_root_video_foveatedRendering_content_shape.description": "The shape of the foveated rendering",
@@ -88,18 +86,18 @@ define({
         "_root_connection_suppressFrameDrop.name": "Suppress frame drops",
         "_root_connection_bufferOffset.name": "Buffer offset",
         "_root_connection_bufferOffset.description": "Offset to increase or decrease the calculated client buffer size. The client buffer can not be negative",
-        "_root_extra_tab.name": "Extra",    
+        "_root_extra_tab.name": "Extra",
         "_root_extra_revertConfirmDialog.name": "Confirm revert",
         "_root_extra_revertConfirmDialog.description": "Ask for confirmation before reverting settings to default value",
-        "_root_extra_restartConfirmDialog.name": "Confirm restart",
-        "_root_extra_restartConfirmDialog.description": "Ask for confirmation before restarting SteamVR",
+        "_root_extra_restartConfirmDialog.name": "Confirm SteamVR restart",
         "_root_extra_theme-choice-.name": "Theme",
         "_root_extra_theme-choice-.description": "Come to the Dark Side.\n We have cookies.",
         "_root_extra_theme_systemDefault-choice-.name": "System",
         "_root_extra_theme_classic-choice-.name": "Classic",
         "_root_extra_theme_darkly-choice-.name": "Darkly",
+        "customVideoScale": "custom resolution",
+        "steamVRRestartSuccess": "SteamVR successfully restarted",
         "audioDeviceError": "No audio devices found. Cannot stream audio or microphone",
-        
     },
     "it": true,
     "es": true,

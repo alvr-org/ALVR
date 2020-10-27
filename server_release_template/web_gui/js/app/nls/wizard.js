@@ -33,10 +33,6 @@ define({
         "GPUSupported": "Great! This GPU is probably supported!",
         "GPUUnsupported": "We are sorry, but this card may be unsupported. You can try ALVR anyway and see if it works",
         "GPUUnknown": "Oops. Looks like your GPU is disconnected or you have potato instead",
-        "titleTheme": "Theme",
-        "textTheme": "Choose you side; Light or Dark",
-        "darklyTheme": "Darkly",
-        "classicTheme": "Classic"
     },
     "it": true,
     "es": true,

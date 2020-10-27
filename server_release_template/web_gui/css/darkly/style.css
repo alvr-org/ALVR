@@ -299,10 +299,10 @@ input[type=number]::-webkit-outer-spin-button {
 }
 
 a {
-  color: #007bff;
+  color: #60adff;
 }
 a:hover {
-  color: #007bff;
+  color: #a5d1ff;
 }
 
 .nav-link {

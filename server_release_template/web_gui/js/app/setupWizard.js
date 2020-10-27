@@ -122,6 +122,7 @@ define([
                             ffrStrengthTarget.val(2);
                             
                             var h264CodecTarget = $("#_root_video_codec_H264-choice-");
+                            h264CodecTarget.parent().parent().children().filter(".active").removeClass("active")
                             h264CodecTarget.prop("checked", true);
                             alvrSettings.storeParam(h264CodecTarget);
                             break;
@@ -131,6 +132,7 @@ define([
                             enableFfrTarget.prop("checked", false);
 
                             var hevcCodecTarget = $("#_root_video_codec_HEVC-choice-");
+                            hevcCodecTarget.parent().parent().children().filter(".active").removeClass("active")
                             hevcCodecTarget.prop("checked", true);
                             alvrSettings.storeParam(hevcCodecTarget);
                             break;

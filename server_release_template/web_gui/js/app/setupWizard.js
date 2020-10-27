@@ -7,7 +7,7 @@ define([
 ], function (_, driverList, wizardTemplate, i18n) {
     return function (alvrSettings) {
 
-        class GPU {
+        class GPUObj {
             constructor() {
                 let graphicsDeviceName = "";
                 $.ajax({
@@ -70,7 +70,7 @@ define([
                     keyboard: false
                 });
 
-                GPU = new GPU();
+                GPU = new GPUObj();
                 $("#GPU").text(GPU.fullName);
                 $("#GPUSupportText").text((CheckGPUSupport(GPU)));
 

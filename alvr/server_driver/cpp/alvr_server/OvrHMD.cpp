@@ -313,7 +313,9 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 				updateController(info);
 			}
 
-			if (std::fabs(info.ipd - Settings::Instance().m_flIPD) > 0.0001f) {
+			if (std::fabs(info.ipd - Settings::Instance().m_flIPD) > 0.0001f
+				|| std::fabs(info.eyeFov[0].left - Settings::Instance().m_eyeFov[0].left) > 0.1f
+				|| std::fabs(info.eyeFov[0].right - Settings::Instance().m_eyeFov[0].right) > 0.1f) {
 				updateIPDandFoV(info);
 			}
 

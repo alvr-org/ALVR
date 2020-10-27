@@ -511,8 +511,9 @@ void OvrContext::setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTr
     packet->predictedDisplayTime = displayTime;
 
     packet->ipd = getIPD();
-    packet->eyeFov[0] = mFov.first;
-    packet->eyeFov[1] = mFov.second;
+    auto fovPair = getFov();
+    packet->eyeFov[0] = fovPair.first;
+    packet->eyeFov[1] = fovPair.second;
 
     memcpy(&packet->HeadPose_Pose_Orientation, &tracking->HeadPose.Pose.Orientation,
            sizeof(ovrQuatf));
@@ -708,9 +709,6 @@ void OvrContext::render(uint64_t renderedFrameIndex) {
         }
     }
 
-    frame->tracking.Eye[0].ProjectionMatrix = mProjectionMatrices[0];
-    frame->tracking.Eye[1].ProjectionMatrix = mProjectionMatrices[1];
-
     FrameLog(renderedFrameIndex, "Frame latency is %lu us.",
              getTimestampUs() - frame->fetchTime);
 
@@ -800,7 +798,7 @@ void OvrContext::setFrameGeometry(int width, int height) {
                        SurfaceTextureID, loadingTexture, webViewSurfaceTexture,
                        mWebViewInteractionCallback,
                        {usedFoveationEnabled, (uint32_t)FrameBufferWidth, (uint32_t)FrameBufferHeight,
-                        mFov.first, usedFoveationStrength, usedFoveationShape, usedFoveationVerticalOffset});
+                        EyeFov(), usedFoveationStrength, usedFoveationShape, usedFoveationVerticalOffset});
     ovrRenderer_CreateScene(&Renderer);
 }
 
@@ -994,8 +992,8 @@ void OvrContext::getDeviceDescriptor(JNIEnv *env, jobject deviceDescriptor) {
     jfloatArray fovField = reinterpret_cast<jfloatArray>(
             env->GetObjectField(deviceDescriptor, fieldID));
     jfloat *fovArray = env->GetFloatArrayElements(fovField, nullptr);
-    mFov = getFov();
-    memcpy(fovArray, &mFov, sizeof(mFov));
+    auto fov = getFov();
+    memcpy(fovArray, &fov, sizeof(fov));
     env->ReleaseFloatArrayElements(fovField, fovArray, 0);
     env->SetObjectField(deviceDescriptor, fieldID, fovField);
     env->DeleteLocalRef(fovField);
@@ -1033,7 +1031,6 @@ std::pair<EyeFov, EyeFov> OvrContext::getFov() {
 
     for (int eye = 0; eye < 2; eye++) {
         auto projection = tracking.Eye[eye].ProjectionMatrix;
-        mProjectionMatrices[eye] = projection;
         double a = projection.M[0][0];
         double b = projection.M[1][1];
         double c = projection.M[0][2];

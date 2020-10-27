@@ -179,12 +179,12 @@ typedef enum ALVR_HAND_INPUT
 #define ALVR_BUTTON_FLAG(input) (1ULL << input)
 
 #pragma pack(push, 1)
-// Represent FOV for each eye in degree.
+// Represent FOV for each eye in degree. Default is left eye for Quest 2
 struct EyeFov {
-	float left;
-	float right;
-	float top;
-	float bottom;
+	float left = 49.;
+	float right = 45.;
+	float top = 50.;
+	float bottom = 48.;
 };
 struct RecoverConnection {
 	uint32_t type; // ALVR_PACKET_TYPE_RECOVER_CONNECTION

@@ -9,12 +9,29 @@ define([
 
         class GPU {
             constructor() {
-                const gl = document.createElement('canvas').getContext('webgl');
-                const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-                var rawGPUInfo = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                let graphicsDeviceName = "";
+                $.ajax({
+                    type: "GET",
+                    url: `graphics-devices`,
+                    contentType: "application/json;charset=UTF-8",
+                    processData: false,
+                    async: false,
+                    success: function(res) {
+                        if (res.length > 0) {
+                            graphicsDeviceName = res[0]
+                        }
+                    },
+                });
 
-                this.fullName = rawGPUInfo.match(/((NVIDIA|AMD|Intel)[^\d]*[^\s]+)/)[0];
-                [this.dev, this.name] = this.fullName.split(/(?<=^\S+)\s/);
+                const match = graphicsDeviceName.match(/((NVIDIA|AMD|Intel)[^\d]*[^\s]+)/);
+
+                if (match) {
+                    this.fullName = match[0];
+                    [this.vendor, this.name] = this.fullName.split(/(?<=^\S+)\s/);
+                } else {
+                    this.fullName = this.name = graphicsDeviceName;
+                    this.vendor = "unknown"
+                }
             }
         }
 
@@ -22,7 +39,7 @@ define([
             var unsupportedGPURegex = new RegExp("(Radeon (((VIVO|[2-9][0-9][0-9][0-9]) ?\S*)|VE|LE|X(1?[0-9][0-5]0))"+
                            "|GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450)))")
 
-            switch (GPU.dev) {
+            switch (GPU.vendor) {
                 case "NVIDIA":
                 case "AMD":
                     if (unsupportedGPURegex.test(GPU.name)) {

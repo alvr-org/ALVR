@@ -1,0 +1,80 @@
+/* Contains the default styles for the selectal box */
+.selectal-group {
+  font-family: arial;
+  font-size: 16px;
+  line-height: 1.2;
+  -webkit-user-select: none;
+  /* Safari */
+  -moz-user-select: none;
+  /* Firefox */
+  -ms-user-select: none;
+  /* IE10+/Edge */
+  user-select: none;
+  /* Standard */
+  display: inline-block; }
+
+.arrow-down::after {
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+  content: "\f107"; }
+
+.arrow-up::after {
+  content: "\f106";
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+}
+
+.selectal-hidden {
+  visibility: hidden; }
+
+.selectal-dropdown {
+  position: absolute;
+  background: rgb(60,60,60);
+	color: white;
+	border: 1px solid gray;
+  cursor: pointer;
+  z-index: 10;}
+
+.selectal-dropdown-option {
+  margin: 0;
+  padding: 5px; }
+  .selectal-dropdown-option:first-child {
+    border-top: 0; }
+  .selectal-dropdown-option:last-child {
+    border-bottom: 0; }
+  .selectal-dropdown-option:hover {
+    color: rgb(0, 150, 250);
+	  background: initial; }
+
+.selectal-btn {
+  /* background: rgb(60,60,60); */
+	color: white;
+	border: 1px solid gray;
+  cursor: pointer;
+  border-radius: 5px;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: space-between; }
+  .selectal-btn p {
+    padding: 5px;
+    margin: 0; }
+  .selectal-btn span {
+    padding: 5px;
+    outline: 0.5px solid rgba(0, 0, 0, 0);
+    border: 0.5px solid rgba(0, 0, 0, 0); }
+  .selectal-btn:hover {
+    border-color: #0096fa; }
+    .selectal-btn:hover span {
+      color: #0096fa; }
+    .selectal-btn:hover p {
+      color: #0096fa; }
+
+.selectal-selected-item {
+  display: flex;
+  align-items: center; }
+
+[class^=arrow-] {
+  display: flex;
+  align-items: center; }
+
+/*# sourceMappingURL=selectal.css.map */

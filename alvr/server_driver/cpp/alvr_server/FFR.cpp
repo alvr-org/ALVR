@@ -62,7 +62,7 @@ namespace {
 		float targetEyeWidth = (float)Settings::Instance().m_renderWidth / 2;
 		float targetEyeHeight = (float)Settings::Instance().m_renderHeight;
 
-		auto leftEye = Settings::Instance().m_eyeFov[0];
+		auto leftEye = EyeFov();
 
 		// left and right side screen plane width with unit focal
 		float leftHalfWidth = tan(leftEye.left * DEG_TO_RAD);

@@ -17,7 +17,7 @@ static const char *ALVR_HELLO_PACKET_SIGNATURE = "ALVR";
 static const int ALVR_GUARDIAN_SEGMENT_SIZE = 100;
 static const double ALVR_GUARDIAN_RESEND_CD_SEC = 1.0;
 
-static const char *ALVR_VERSION = "12.0.0";
+static const char *ALVR_VERSION = ALVR_CLIENT_VERSION; // defined through app build.gradle
 
 enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_HELLO_MESSAGE = 1,
@@ -165,12 +165,12 @@ enum ALVR_HAND_CONFIDENCE {
 #define ALVR_BUTTON_FLAG(input) (1ULL << input)
 
 #pragma pack(push, 1)
-// Represent FOV for each eye in degree.
+// Represent FOV for each eye in degree. Default is left eye for Quest 2
 struct EyeFov {
-	float left;
-	float right;
-	float top;
-	float bottom;
+	float left = 49.;
+	float right = 45.;
+	float top = 50.;
+	float bottom = 48.;
 };
 // hello message
 struct HelloMessage {
@@ -184,9 +184,6 @@ struct HelloMessage {
 
 	uint32_t renderWidth;
 	uint32_t renderHeight;
-
-	// FOV of left and right eyes.
-	struct EyeFov eyeFov[2];
 };
 struct ConnectionMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_CONNECTION_MESSAGE
@@ -242,9 +239,11 @@ struct TrackingInfo {
 	TrackingVector3 Other_Tracking_Source_Position;
 	TrackingQuat Other_Tracking_Source_Orientation;
 
+	// FOV of left and right eyes.
+	struct EyeFov eyeFov[2];
+	float ipd;
+
 	static const uint32_t MAX_CONTROLLERS = 2;
-
-
 	struct Controller {
 		static const uint32_t FLAG_CONTROLLER_ENABLE         = (1 << 0);
 		static const uint32_t FLAG_CONTROLLER_LEFTHAND       = (1 << 1); // 0: Left hand, 1: Right hand

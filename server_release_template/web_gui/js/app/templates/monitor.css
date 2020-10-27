@@ -29,7 +29,6 @@
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    background-color: lightgray;
 }
 
 .client button {
@@ -55,10 +54,6 @@
 
 #loggingTable td {
     vertical-align: top;
-}
-
-#loggingTable tr:nth-child(even) {
-    background-color: #f2f2f2;
 }
 
 #loggingTable tr td:first-child {

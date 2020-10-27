@@ -47,7 +47,6 @@ pub struct ClientHandshakePacket {
     pub client_refresh_rate: u16,
     pub render_width: u32,
     pub render_height: u32,
-    pub client_fov: [Fov; 2],
 }
 
 #[derive(Serialize, Deserialize)]

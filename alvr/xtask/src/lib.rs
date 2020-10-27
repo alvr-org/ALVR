@@ -22,7 +22,7 @@ pub fn server_version() -> String {
 }
 
 pub fn client_version() -> String {
-    let re = Regex::new(r#"versionName\s+"(?P<name>[\d.]+)""#).unwrap();
+    let re = Regex::new(r#"versionName\s+"(?P<name>[\d.]+[0-9A-Za-z-.]*)""#).unwrap();
     re.captures(
         &fs::read_to_string(packages_dir().join("client_hmd/app").join("build.gradle")).unwrap(),
     )

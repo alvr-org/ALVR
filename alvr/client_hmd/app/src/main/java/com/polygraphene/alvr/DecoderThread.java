@@ -172,7 +172,7 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
         format.setString("KEY_MIME", mFormat);
 
         format.setInteger(MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE);
-        //format.setInteger(MediaFormat.KEY_PRIORITY, 0);
+        format.setInteger(MediaFormat.KEY_PRIORITY, 0);
 
         if (mCodec == CODEC_H264) {
             format.setByteBuffer("csd-0", ByteBuffer.wrap(DummySPS, 0, DummySPS.length));

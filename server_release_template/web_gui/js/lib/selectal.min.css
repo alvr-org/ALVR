@@ -31,7 +31,8 @@
   position: absolute;
   background-color: white;
   cursor: pointer;
-  border: 0.5px solid lightgrey; }
+  border: 0.5px solid lightgrey; 
+  z-index: 10;}
 
 .selectal-dropdown-option {
   margin: 0;

@@ -237,5 +237,10 @@ Sólo se utiliza cuando se detecta una pérdida de paquetes. Mejora la experienc
     "_root_headset_controllers_content_controllerMode.description": "Elija el modo de emulación del controlador para mejorar la compatibilidad con ciertos juegos, y elija si desea activar la emulación del disparador con el seguimiento de la mano.",
     "_root_connection_bufferOffset.name": "Offset de buffer",
     "_root_connection_bufferOffset.description": "Offset utilizado para aumentar o disminuir el tamaño del buffer calculado para el cliente. El tamaño del buffer resultante nunca será negativo.",
+    "_root_extra_theme-choice-.name": "Estilo",
+    "_root_extra_theme-choice-.description": "Ven al Lado Oscuro.\n Tenemos galletas.",
+    "_root_extra_theme_systemDefault-choice-.name": "Sistema",
+    "_root_extra_theme_classic-choice-.name": "Clasico",
+    "_root_extra_theme_darkly-choice-.name": "Oscuro",
     "audioDeviceError": "No se encontraron dispositivos de audio. No se puede transmitir audio o micrófono."
 });

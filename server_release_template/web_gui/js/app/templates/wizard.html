@@ -55,15 +55,15 @@
                     <div class="wizzardSettings">
                         <div class="btn-group" data-toggle="buttons">
                             <label class="btn btn-primary">
-                                <input type="radio" class="poseOffsetButton" autocomplete="off" value="normal">
+                                <input type="radio" name="tracking" class="poseOffsetButton" autocomplete="off" value="normal">
                                 <%= normalTracking %>
                             </label>
                             <label class="btn btn-primary">
-                                <input type="radio" class="poseOffsetButton" autocomplete="off" value="medium">
+                                <input type="radio" name="tracking" class="poseOffsetButton" autocomplete="off" value="medium">
                                 <%= mediumTracking %>
                             </label>
                             <label class="btn btn-primary">
-                                <input type="radio" class="poseOffsetButton" autocomplete="off" value="fast">
+                                <input type="radio" name="tracking" class="poseOffsetButton" autocomplete="off" value="fast">
                                 <%= fastTracking %>
                             </label>
                         </div>
@@ -78,13 +78,33 @@
                     <div class="wizzardSettings">
                         <div class="btn-group" data-toggle="buttons">
                             <label class="btn btn-primary">
-                                <input type="radio" class="performanceOptions" autocomplete="off" value="compatibility">
+                                <input type="radio" name="performance" class="performanceOptions" autocomplete="off" value="compatibility">
                                 <%= compatPerformance %>
                             </label>
                             <label class="btn btn-primary">
-                                <input type="radio" class="performanceOptions" autocomplete="off"
+                                <input type="radio" name="performance" class="performanceOptions" autocomplete="off"
                                     value="visual_quality">
                                 <%= qualityPerformance %>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wizardContent" style="display: none;">
+                    <div>
+                        <h6><%= titleTheme %></h6>
+                        <%= textTheme %>
+                    </div>
+                    <div class="wizzardSettings">
+                        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                            <label class="btn btn-primary">
+                                <input type="radio" name="theme" class="themeOptions" autocomplete="off" value="classic">
+                                <%= classicTheme %>
+                            </label>
+                            <label class="btn btn-primary">
+                                <input type="radio" name="theme" class="themeOptions" autocomplete="off"
+                                    value="darkly">
+                                <%= darklyTheme %>
                             </label>
                         </div>
                     </div>

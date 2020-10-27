@@ -144,6 +144,31 @@ define([
 
                     console.log(target.attr("value"))
                 })
+                $(".themeOptions").change((ev) => {
+                    console.log("theme change")
+                    var target = $(ev.target)
+                    var classic = $("#_root_extra_theme_classic-choice-")
+                    var darkly = $("#_root_extra_theme_darkly-choice-")
+                    switch (target.attr("value")) {
+                        case "darkly":
+                            $("#_root_extra_theme_systemDefault-choice-").prop("checked", false)
+                            darkly.prop("checked", true)
+                            classic.prop("checked", false)
+                            break
+                        case "classic":
+                            $("#_root_extra_theme_systemDefault-choice-").prop("checked", false)
+                            darkly.prop("checked", false)
+                            classic.prop("checked", true)
+                            break
+                        default:
+                            break
+                    }
+
+                    console.log(target.attr("value"))
+                    
+                    alvrSettings.storeParam(classic);
+                    alvrSettings.storeParam(darkly);
+                })
 
                 $("#wizardNextButton").click(() => {
 

@@ -52,7 +52,7 @@ To make the Oculus Quest microphone work you need to install the [VB-CABLE Virtu
 ## Troubleshooting
 
 - To reset ALVR, delete the file `session.json` from the installation folder.
-- Please check the [Troubleshooting](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) page on the original repository.
+- Please check the [Troubleshooting](https://github.com/JackD83/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)) page. The original repository [wiki](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) can also help.
 - You can find some setup advice [here](https://github.com/JackD83/ALVR/wiki/Setup-advice).
 
 ## Uninstall

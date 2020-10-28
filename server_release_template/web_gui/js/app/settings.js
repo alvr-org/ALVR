@@ -244,6 +244,7 @@ define([
                             el.prop("checked", object[item])
                         } else if (el.prop("type") == "radio") {
                             el.prop("checked", object[item])
+                            el.parent().parent().children().filter(".active").removeClass("active")
                             el.parent().addClass("active")
                             $(`#${el.parent().parent().parent().attr('id')}radioContent .radioContent`).hide()
                             $(`div.radioContent[for="${el.attr('id')}"]`).show()

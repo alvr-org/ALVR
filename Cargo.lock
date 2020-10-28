@@ -1078,9 +1078,9 @@ dependencies = [
 
 [[package]]
 name = "gfx-backend-dx11"
-version = "0.6.10"
+version = "0.6.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07b780dcc12970c787d14c0e8b1cfc79c40c36a63b7ab3300a354a353a3b059c"
+checksum = "b0105746c65b502f6629b7e1acc3610a7726a2f8b37229119fb774d48af174dd"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -2070,9 +2070,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-hack"
-version = "0.5.18"
+version = "0.5.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99c605b9a0adc77b7211c6b1f722dcb613d68d66859a44f3d485a6da332b0598"
+checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
 
 [[package]]
 name = "proc-macro-nested"

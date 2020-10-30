@@ -23,14 +23,15 @@ define([
             });
 
             var unsupportedGPURegex = new RegExp("(Radeon (((VIVO|[2-9][0-9][0-9][0-9]) ?\S*)|VE|LE|X(1?[0-9][0-5]0))"+
-                           "|GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450)))")
+                           "|GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450)))"+
+                           "|Intel")
 
-                if (/Intel/.test(gpu) || unsupportedGPURegex.test(gpu)) {
-                    return '🔴 '+ gpu +i18n.GPUUnsupported;
-                } else {
-                    return '🟢 '+ gpu +i18n.GPUSupported;
-                }
+            if (unsupportedGPURegex.test(gpu)) {
+                return '🔴 '+ gpu +i18n.GPUUnsupported;
+            } else {
+                return '🟢 '+ gpu +i18n.GPUSupported;
             }
+        }
         
         this.showWizard = function () {
             var currentPage = 0;

@@ -31,8 +31,7 @@ define({
         "firewallSuccess": "Firewall rules successfully set",
         "YourGPUIs": "Your GPU:",
         "GPUSupported": "\nGreat! This GPU is probably supported!", //Yes, '\n' must be in translation
-        "GPUUnsupported": "We are sorry, but this card may be unsupported. You can try ALVR anyway and see if it works",
-        "GPUUnknown": "Oops. Looks like your GPU is disconnected or you have potato instead",
+        "GPUUnsupported": "We are sorry, but this card may be unsupported. You can try ALVR anyway and see if it works"
     },
     "it": true,
     "es": true,

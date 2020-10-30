@@ -47,4 +47,7 @@ release-files/
 # dependencies installed by xtask
 /deps/
 
+/alvr/client_hmd/
+
+
 # The .gitignore for android is project folder.

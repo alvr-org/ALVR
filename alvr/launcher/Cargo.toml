@@ -1,6 +1,6 @@
 [package]
 name = 'alvr_launcher'
-version = '13.0.0-alpha.0'
+version = '13.0.0-alpha.1'
 authors = ['Riccardo Zaglia <riccardo.zaglia5@gmail.com>']
 license = 'MIT'
 edition = '2018'
@@ -10,6 +10,9 @@ alvr_common = { path = '../common' }
 single-instance = '^0.1.2'
 alcro = '^0.2.0'
 serde_json = '^1.0.57'
+self_update = { version = "0.20.0", features = ["archive-zip"] }
+tempfile = "3.1.0"
+reqwest = "0.10.8"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = '^0.1.11'

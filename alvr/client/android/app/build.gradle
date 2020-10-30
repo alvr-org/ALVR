@@ -8,7 +8,7 @@ android {
         minSdkVersion 24
         targetSdkVersion 30
         versionCode 32
-        versionName "13.0.0-alpha.0"
+        versionName "13.0.0-alpha.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         // cmake used only for IDE support while prototyping. todo: remove
         externalNativeBuild {

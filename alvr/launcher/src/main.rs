@@ -1,12 +1,17 @@
 // #![windows_subsystem = "windows"]
 
-use alvr_common::{*, data::ALVR_SERVER_VERSION, commands::*};
+use alvr_common::{commands::*, data::ALVR_SERVER_VERSION, *};
 use logging::{show_e, show_err};
 use serde_json as json;
-use std::{env, fs::File, path::PathBuf, sync::Arc, process::Command, thread, time::{Duration, Instant}};
-#[macro_use]
-extern crate self_update;
-use self_update::cargo_crate_version;
+use std::{
+    env,
+    fs::File,
+    path::PathBuf,
+    process::Command,
+    sync::{Arc, Mutex},
+    thread,
+    time::{Duration, Instant},
+};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -65,8 +70,13 @@ fn restart_steamvr() {
 }
 
 fn window_mode() -> StrResult {
-    let mutex = trace_err!(single_instance::SingleInstance::new("alvr_launcher_mutex"))?;
-    if mutex.is_single() {
+    let instance_mutex = trace_err!(single_instance::SingleInstance::new("alvr_launcher_mutex"))?;
+    if instance_mutex.is_single() {
+        struct InstanceMutex(single_instance::SingleInstance);
+        unsafe impl Send for InstanceMutex {}
+
+        let instance_mutex = Arc::new(Mutex::new(Some(InstanceMutex(instance_mutex))));
+
         maybe_delete_alvr_dir_storage();
 
         let html_content = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/html/index1.html"));
@@ -101,30 +111,32 @@ fn window_mode() -> StrResult {
             Ok(json::Value::Null)
         }))?;
 
-        
-        trace_err!(window.bind("update", { let window = window.clone();  move |_| {
-            println!("{}", ALVR_SERVER_VERSION.to_string());
-            update();
-            println!("updated!");
-            // drop(mutex);
-            window.close();
-            println!("restarting!");
+        trace_err!(window.bind("update", {
+            let window = window.clone();
+            move |_| {
+                println!("{}", ALVR_SERVER_VERSION.to_string());
+                update();
+                println!("updated!");
+                instance_mutex.lock().unwrap().take();
+                window.close();
+                println!("restarting!");
 
-            // reopen alvr
-            let mut command = Command::new(::std::env::current_dir().unwrap().join("ALVR launcher"));
-            command.spawn().ok();
-            
-            Ok(json::Value::Null)
-        }}))?;
+                // reopen alvr
+                let mut command =
+                    Command::new(::std::env::current_dir().unwrap().join("ALVR launcher"));
+                command.spawn().ok();
+
+                Ok(json::Value::Null)
+            }
+        }))?;
 
         // trace_err!(window.eval("init()"))?;
 
         window.wait_finish();
-        
+
         // This is needed in case the launcher window is closed before the driver is loaded,
         // otherwise this does nothing
         // apply_driver_paths_backup(current_alvr_dir()?)?;
-        
     }
     Ok(())
 }
@@ -150,13 +162,12 @@ fn update() -> Result<(), Box<::std::error::Error>> {
     println!("{:#?}\n", releases);
 
     // get the first available release
-    let asset = releases[0]
-        .asset_for("autoupdater").unwrap();
+    let asset = releases[0].asset_for("autoupdater").unwrap();
     println!("{:#?}\n", asset);
     println!("test1");
     let tmp_dir = tempfile::Builder::new()
-            .prefix("self_update")
-            .tempdir_in(::std::env::temp_dir())?;
+        .prefix("self_update")
+        .tempdir_in(::std::env::temp_dir())?;
     println!("test2");
     let tmp_tarball_path = tmp_dir.path().join(&asset.name);
     println!("test3");

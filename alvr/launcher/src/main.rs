@@ -3,15 +3,9 @@
 use alvr_common::{commands::*, data::ALVR_SERVER_VERSION, *};
 use logging::{show_e, show_err};
 use serde_json as json;
-use std::{
-    env,
-    fs::File,
-    path::PathBuf,
-    process::Command,
-    sync::{Arc, Mutex},
-    thread,
-    time::{Duration, Instant},
-};
+use std::{env, fs::File, fs, path::PathBuf, process::Command, io, sync::{Arc, Mutex}, thread, time::{Duration, Instant}};
+use fs_extra::dir::{CopyOptions, copy};
+
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -69,6 +63,12 @@ fn restart_steamvr() {
     }
 }
 
+// fn get_latest_version() -> Result<version_compare::Version<'static>, StrResult> {
+//     let latest_url = "https://api.github.com/repos/Nexite/ALVR/releases/latest";
+//     let resp = reqwest::blocking::get(latest_url).unwrap().json().unwrap();
+//     Ok(Version::from(resp["tag_name"]).unwrap())
+// }
+
 fn window_mode() -> StrResult {
     let instance_mutex = trace_err!(single_instance::SingleInstance::new("alvr_launcher_mutex"))?;
     if instance_mutex.is_single() {
@@ -79,7 +79,7 @@ fn window_mode() -> StrResult {
 
         maybe_delete_alvr_dir_storage();
 
-        let html_content = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/html/index1.html"));
+        let html_content = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/html/index.html"));
         let window = Arc::new(trace_err!(alcro::UIBuilder::new()
             .content(alcro::Content::Html(html_content))
             .size(200, 200)
@@ -114,12 +114,9 @@ fn window_mode() -> StrResult {
         trace_err!(window.bind("update", {
             let window = window.clone();
             move |_| {
-                println!("{}", ALVR_SERVER_VERSION.to_string());
-                update();
-                println!("updated!");
+                show_err(update()).ok();
                 instance_mutex.lock().unwrap().take();
                 window.close();
-                println!("restarting!");
 
                 // reopen alvr
                 let mut command =
@@ -136,13 +133,12 @@ fn window_mode() -> StrResult {
 
         // This is needed in case the launcher window is closed before the driver is loaded,
         // otherwise this does nothing
-        // apply_driver_paths_backup(current_alvr_dir()?)?;
+        apply_driver_paths_backup(current_alvr_dir()?)?;
     }
     Ok(())
 }
 
 fn main() {
-    println!("launching ALVR");
     let args = env::args().collect::<Vec<_>>();
     match args.get(1) {
         Some(flag) if flag == "--restart-steamvr" => restart_steamvr(),
@@ -152,44 +148,75 @@ fn main() {
     }
 }
 
-fn update() -> Result<(), Box<::std::error::Error>> {
+fn update() -> StrResult {
     let releases = self_update::backends::github::ReleaseList::configure()
         .repo_owner("Nexite")
         .repo_name("ALVR")
-        .build()?
-        .fetch()?;
-    println!("found releases:");
-    println!("{:#?}\n", releases);
+        .build().unwrap()
+        .fetch().unwrap();
+    // println!("found releases:");
+    // println!("{:#?}\n", releases);
 
     // get the first available release
     let asset = releases[0].asset_for("autoupdater").unwrap();
     println!("{:#?}\n", asset);
-    println!("test1");
     let tmp_dir = tempfile::Builder::new()
         .prefix("self_update")
-        .tempdir_in(::std::env::temp_dir())?;
-    println!("test2");
-    let tmp_tarball_path = tmp_dir.path().join(&asset.name);
-    println!("test3");
-    println!("{}", tmp_tarball_path.to_str().unwrap());
-    let tmp_tarball = File::create(&tmp_tarball_path)?;
-    println!("test4");
+        .tempdir_in(::std::env::temp_dir()).unwrap();
+
+    let tmp_tarball_path = &tmp_dir.path().join(&asset.name);
+    let tmp_tarball = File::create(&tmp_tarball_path).unwrap();
+    let extract_dir = &tmp_dir.path().join("data");
+    fs::create_dir_all(extract_dir).ok();
 
     self_update::Download::from_url(&asset.download_url)
         .show_progress(true)
-        .set_header(reqwest::header::ACCEPT, "application/octet-stream".parse()?)
-        .download_to(&tmp_tarball)?;
+        .set_header(reqwest::header::ACCEPT, "application/octet-stream".parse().unwrap())
+        .download_to(&tmp_tarball).ok();
+    let file = fs::File::open(&tmp_tarball_path).unwrap();
+    let mut archive = zip::ZipArchive::new(file).unwrap();
 
-    let bin_name = std::path::PathBuf::from("ALVR launcher.exe");
-    self_update::Extract::from_source(&tmp_tarball_path)
-        .archive(self_update::ArchiveKind::Zip)
-        .extract_file(&tmp_dir.path(), &bin_name)?;
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).unwrap();
+        #[allow(deprecated)]
+        let outpath = tmp_dir.path().join("data").join(file.sanitized_name());
+
+        if (&*file.name()).ends_with('/') {
+            fs::create_dir_all(&outpath).unwrap();
+        } else {
+            if let Some(p) = outpath.parent() {
+                if !p.exists() {
+                    fs::create_dir_all(&p).unwrap();
+                }
+            }
+            let mut outfile = fs::File::create(&outpath).unwrap();
+            io::copy(&mut file, &mut outfile).unwrap();
+        }
+    }
 
     let tmp_file = tmp_dir.path().join("replacement_tmp");
-    let bin_path = tmp_dir.path().join(bin_name);
+    let bin_path = extract_dir.join("ALVR launcher.exe");
+    let driver_manifest_path = extract_dir.join("driver.vrdrivermanifest");
+
     self_update::Move::from_source(&bin_path)
         .replace_using_temp(&tmp_file)
-        .to_dest(&::std::env::current_exe()?)?;
-    println!("{}", ALVR_SERVER_VERSION.to_string());
+        .to_dest(&::std::env::current_exe().unwrap()).ok();
+
+    let tmp_file = tmp_dir.path().join("replacement_tmp");
+    self_update::Move::from_source(&driver_manifest_path)
+        .replace_using_temp(&tmp_file)
+        .to_dest(current_alvr_dir()?.as_path()).ok();
+
+    create_replace(extract_dir, "web_gui")?;
+    create_replace(extract_dir, "bin")?;
+    create_replace(extract_dir, "resources")?;
+    Ok(())
+}
+
+fn create_replace(from: &PathBuf, path: &str) -> StrResult {
+    fs::remove_dir_all(path);
+    fs::create_dir_all(path).unwrap();
+    let options = CopyOptions::new();
+    copy(from.join(path), &::std::env::current_dir().unwrap(), &options).ok();
     Ok(())
 }

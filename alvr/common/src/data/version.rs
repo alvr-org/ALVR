@@ -5,7 +5,7 @@ pub const ALVR_NAME: &str = "ALVR";
 
 lazy_static! {
     pub static ref ALVR_SERVER_VERSION: Version = Version::parse(env!("SERVER_VERSION")).unwrap();
-    pub static ref ALVR_CLIENT_VERSION: Version = Version::parse("13.0.0-alpha.1").unwrap();
+    pub static ref ALVR_CLIENT_VERSION: Version = Version::parse("13.0.0-alpha.0").unwrap();
 }
 
 // accept semver-compatible versions

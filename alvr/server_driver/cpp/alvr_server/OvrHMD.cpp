@@ -332,6 +332,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		m_eyeToHeadLeft.m[0][3]  = -info.ipd / 2.0f;
 		m_eyeToHeadRight.m[0][3] =  info.ipd / 2.0f;
 		vr::VRServerDriverHost()->SetDisplayEyeToHead(m_unObjectId, m_eyeToHeadLeft, m_eyeToHeadRight);
+		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, info.ipd);
 
 		Settings::Instance().m_eyeFov[0] = info.eyeFov[0];
 		Settings::Instance().m_eyeFov[1] = info.eyeFov[1];

@@ -7,50 +7,29 @@ define([
 ], function (_, driverList, wizardTemplate, i18n) {
     return function (alvrSettings) {
 
-        class GPU {
-            constructor() {
-                let graphicsDeviceName = "";
-                $.ajax({
-                    type: "GET",
-                    url: `graphics-devices`,
-                    contentType: "application/json;charset=UTF-8",
-                    processData: false,
-                    async: false,
-                    success: function(res) {
-                        if (res.length > 0) {
-                            graphicsDeviceName = res[0]
-                        }
-                    },
-                });
-
-                const match = graphicsDeviceName.match(/((NVIDIA|AMD|Intel)[^\d]*[^\s]+)/);
-
-                if (match) {
-                    this.fullName = match[0];
-                    [this.vendor, this.name] = this.fullName.split(/(?<=^\S+)\s/);
-                } else {
-                    this.fullName = this.name = graphicsDeviceName;
-                    this.vendor = "unknown"
-                }
-            }
-        }
-
-        function CheckGPUSupport(gpu) {
-            var unsupportedGPURegex = new RegExp("(Radeon (((VIVO|[2-9][0-9][0-9][0-9]) ?\S*)|VE|LE|X(1?[0-9][0-5]0))"+
-                           "|GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450)))")
-
-            switch (gpu.vendor) {
-                case "NVIDIA":
-                case "AMD":
-                    if (unsupportedGPURegex.test(gpu.name)) {
-                        return '🔴 '+i18n.GPUUnsupported;
-                    } else {
-                        return '🟢 '+i18n.GPUSupported;
+        function GetAndCheckGPUSupport() {
+            let gpu = "";
+            $.ajax({
+                type: "GET",
+                url: `graphics-devices`,
+                contentType: "application/json;charset=UTF-8",
+                processData: false,
+                async: false,
+                success: function(res) {
+                    if (res.length > 0) {
+                        gpu = res[0]
                     }
-                case "Intel(R)":
-                    return '🔴 '+i18n.GPUUnsupported;
-                default:
-                    return '🟣 '+i18n.GPUUnknown;
+                },
+            });
+
+            var unsupportedGPURegex = new RegExp("(Radeon (((VIVO|[2-9][0-9][0-9][0-9]) ?\S*)|VE|LE|X(1?[0-9][0-5]0))"+
+                           "|GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450)))"+
+                           "|Intel")
+
+            if (unsupportedGPURegex.test(gpu)) {
+                return '🔴 '+ gpu +i18n.GPUUnsupported;
+            } else {
+                return '🟢 '+ gpu +i18n.GPUSupported;
             }
         }
         
@@ -70,9 +49,7 @@ define([
                     keyboard: false
                 });
 
-                const gpu = new GPU();
-                $("#GPU").text(gpu.fullName);
-                $("#GPUSupportText").text((CheckGPUSupport(gpu)));
+                $("#GPUSupportText").text(GetAndCheckGPUSupport());
 
                 $("#addFirewall").click(() => {
                     $.get("firewall-rules/add", undefined, (res) => {

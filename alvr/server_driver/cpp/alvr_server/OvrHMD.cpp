@@ -350,6 +350,8 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 		vr::VRServerDriverHost()->SetDisplayProjectionRaw(m_unObjectId, m_eyeFoVLeft, m_eyeFoVRight);
 		Settings::Instance().m_flIPD = info.ipd;
+
+		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_LensDistortionChanged, {0, 0}, 0);
 	}
 
 	void OvrHmd::updateController(const TrackingInfo& info) {

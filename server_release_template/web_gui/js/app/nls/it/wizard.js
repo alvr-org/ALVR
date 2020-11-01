@@ -28,8 +28,7 @@ define({
     "driverSuccess": "Driver registrato con successo",
     "firewallFailed": "Errore durante l'aggiunta dell'eccezione del firewall",
     "firewallSuccess": "Eccezione del firewall impostata con successo",
-    "YourGPUIs": "La tua GPU è",
-    "GPUSupported": "Questa GPU è probabilmente supportata",
-    "GPUUnsupported": "Questa GPU potrebbe non essere supportata. Puoi comunque provare ALVR per vedere se funziona",
-    "GPUUnknown": "Sembra che la GPU sia disconnessa o sia assente",
+    "YourGPUIs": "La tua GPU:",
+    "GPUSupported": "\nQuesta GPU è probabilmente supportata",
+    "GPUUnsupported": "\nQuesta GPU potrebbe non essere supportata. Puoi comunque provare ALVR per vedere se funziona",
 });

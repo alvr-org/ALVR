@@ -234,21 +234,19 @@ define([
             dropdown.unbind();
 
 
-            const targetWidth = $("#_root_video_renderResolution_absolute_width");
-            const targetHeight = $("#_root_video_renderResolution_absolute_height");
+            const renderWidth = $("#_root_video_renderResolution_absolute_width");
+            const renderHeight = $("#_root_video_renderResolution_absolute_height");
+            const targetWidth = $("#_root_video_recommendedTargetResolution_absolute_width");
+            const targetHeight = $("#_root_video_recommendedTargetResolution_absolute_height");
 
-            const scale = $("#_root_video_renderResolution_scale");
-
-            var useScale = $("#_root_video_renderResolution_scale-choice-").prop("checked");
+            const renderScale = $("#_root_video_renderResolution_scale");
+            const targetScale = $("#_root_video_recommendedTargetResolution_scale");
+            const renderScaleVariant = $("#_root_video_renderResolution_scale-choice-");
+            const targetScaleVariant = $("#_root_video_recommendedTargetResolution_scale-choice-");
 
             video_scales.forEach(scale => {
                 dropdown.append(`<option value="${scale}"> ${scale}% </option>`);
             });
-
-            //dropdown.append(`<option value="custom"> ${i18n.customVideoScale}</option>`);
-
-            var absWidth;
-            var absHeight;
 
             const select = new Selectal('#_root_video_resolutionDropdown');
             dropdown = $("#_root_video_resolutionDropdown");
@@ -261,34 +259,17 @@ define([
             var update = false;
 
             var updateDropdown = function () {
-                useScale = $("#_root_video_renderResolution_scale-choice-").prop("checked");
-                if (useScale) {
-                    if (video_scales.indexOf(scale.val() * 100) != -1) {
-                        dropdown.val(scale.val() * 100);
+                useScale = renderScaleVariant.prop("checked") && targetScaleVariant.prop("checked");
+                sameScale = renderScale.val() == targetScale.val();
+                if (useScale && sameScale) {
+                    if (video_scales.indexOf(renderScale.val() * 100) != -1) {
+                        dropdown.val(renderScale.val() * 100);
                         $("#_root_video_resolutionDropdown-selectal").show();
                         customRes.hide();
                     } else {
                         $("#_root_video_resolutionDropdown-selectal").hide()
                         customRes.show();
                     }
-                } else if (alvrSettings.getSession().lastClients.length > 0) {
-
-                    //TODO: always custom or try to determine scale?
-
-                    absWidth = alvrSettings.getSession().lastClients[0].handshakePacket.renderWidth;
-                    absHeight = alvrSettings.getSession().lastClients[0].handshakePacket.renderHeight;
-
-                    var factor = targetWidth.val() / absWidth;
-
-                    if (video_scales.indexOf(factor * 100) != -1) {
-                        dropdown.val(factor * 100);
-                        $("#_root_video_resolutionDropdown-selectal").show()
-                        customRes.hide();
-                    } else {
-                        $("#_root_video_resolutionDropdown-selectal").hide()
-                        customRes.show();
-                    }
-
                 } else {
                     $("#_root_video_resolutionDropdown-selectal").hide()
                     //always custom
@@ -300,7 +281,7 @@ define([
             updateDropdown();
 
 
-            $("#_root_video_renderResolution_absolute_width,#_root_video_renderResolution_absolute_height,#_root_video_renderResolution_scale").change((ev) => {
+            $("#_root_video_renderResolution_scale-choice-,#_root_video_recommendedTargetResolution_scale-choice-,#_root_video_renderResolution_scale,#_root_video_recommendedTargetResolution_scale").change((ev) => {
                 if (update) {
                     return;
                 }
@@ -319,22 +300,19 @@ define([
                 update = true;
 
                 const val = dropdown.val();
-                scale.val(val / 100);
+                renderScale.val(val / 100);
+                targetScale.val(val / 100);
 
-                alvrSettings.storeParam(scale, true);
-
-                //TODO: set custom res?
-                if (absWidth !== undefined && absHeight !== undefined) {
-                    targetWidth.val(scale * absWidth);
-                    targetHeight.val(scale * absHeight);
-
-                    alvrSettings.storeParam(targetWidth, true);
-                    alvrSettings.storeParam(targetHeight, true);
-                }
+                alvrSettings.storeParam(renderScale, true);
+                alvrSettings.storeParam(targetScale, true);
 
                 //force scale mode
-                $("#_root_video_renderResolution_scale-choice-").prop("checked", true);
-                alvrSettings.storeParam($("#_root_video_renderResolution_scale-choice-"), true);
+                renderScaleVariant.prop("checked", true);
+                renderScaleVariant.parent().parent().children().filter(".active").removeClass("active")
+                alvrSettings.storeParam(renderScaleVariant, true);
+                targetScaleVariant.prop("checked", true);
+                targetScaleVariant.parent().parent().children().filter(".active").removeClass("active")
+                alvrSettings.storeParam(targetScaleVariant, true);
                 alvrSettings.storeSession("settings");
 
                 update = false;

@@ -11,7 +11,6 @@ define([
 ], function (schema, session, CustomSettings, _, i18n, revertRestartI18n, revertConfirm, restartConfirm) {
     return function () {
         var self = this;
-       
         var advanced = false;
         var updating = false;
         var customSettings = new CustomSettings(self);
@@ -402,6 +401,9 @@ define([
                     case "bufferOffset":
                         addNumericType(element, path, name, advanced, { content: { default: 0, gui: "slider" } })
                         break;
+                    case "trackingSpeed":
+                        addHidden(element, path, name, advanced);
+                        break;
 
                     default:
                         console.log("Unhandled node without content. Should be implemented as special case:", name);
@@ -623,12 +625,12 @@ define([
             return element;
         }
 
-        function addRadioContainer(element, path, name, advanced, node) {           
+        function addRadioContainer(element, path, name, advanced, node) {
             var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
-                    ${getI18n(path + "_" + name + "-choice-").name}  ${self.getHelpReset(name , path, true ,
-                         "_" + node.content.default + "-choice-", name + "-choice-", 
-                         getI18n(path + "_" + name + "_" + node.content.default + "-choice-").name  )}
+                    ${getI18n(path + "_" + name + "-choice-").name}  ${self.getHelpReset(name, path, true,
+                "_" + node.content.default + "-choice-", name + "-choice-",
+                getI18n(path + "_" + name + "_" + node.content.default + "-choice-").name)}
                 </div>   
                 <div>
                 <form id="${path + '_' + name + '-choice-'}" class="card-body">
@@ -656,6 +658,24 @@ define([
 
         }
 
+        /**
+         * Used as a genetic type to be replaced/filled by custom settings
+         * 
+         * @param {*} element the html element where the created div will be added
+         * @param {string} path patth to the setting 
+         * @param {string} name the name of the parameter represented by the created div
+         * @param {boolean} advanced  flag if the settig is an adanced one
+         */
+        function addHidden(element, path, name, advanced) {
+            element.append(`<div class="parameter ${getAdvancedClass(advanced)}" >     
+            <label for="${path}_${name}">${getI18n(path + "_" + name).name} </label> 
+           
+            <input type="hidden" id="${path}_${name}" >           
+            </input>
+        </div>`);
+
+        }
+
         function addRadioVariant(element, path, name, advanced, radioName, node, isDefault) {
             let checked = "";
             let active = ""
@@ -671,7 +691,7 @@ define([
             var content = `<div class="radioContent" for="${path}_${name}-choice-"></div>`;
             element.next().append(content)
             element.append(el);
-            
+
             element = element.next().find(".radioContent").last();
             if (!isDefault) {
                 element.hide();
@@ -747,7 +767,7 @@ define([
                 case "updown":
                     var el = `<input numericType="${node.type}" id="${path}_${name}" type="number" min="${node.content.min}" 
                     max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}">`;
-                    
+
                     var grp = `<div class="upDownGrp" ><div class="input-group">
                     <div class="input-group-prepend">
                         <button class="btn btn-primary btn-sm" id="minus-btn"><i class="fa fa-minus"></i></button>
@@ -758,9 +778,9 @@ define([
                     </div>
                     
                     </div></div>${self.getHelpReset(name, path, node.content.default)}`;
-                    
-                    
-                    base += grp;  
+
+
+                    base += grp;
                     break;
 
                 case "textbox":
@@ -782,34 +802,34 @@ define([
 
 
             //add spinner functions
-            $("#" + path + "_" + name + "[type=number]" ).prev().on("click", (el) => {
+            $("#" + path + "_" + name + "[type=number]").prev().on("click", (el) => {
                 var val = new Number($("#" + path + "_" + name).val());
                 var step = 1;
-                if(node.content.step !== null) {
+                if (node.content.step !== null) {
                     step = node.content.step;
                 }
 
                 val = val - step;
 
-                if(node.content.min != null && val < node.content.min) {
+                if (node.content.min != null && val < node.content.min) {
                     val = node.content.min;
                 }
-                $("#" + path + "_" + name).val(val);          
-                $("#" + path + "_" + name).change();   
+                $("#" + path + "_" + name).val(val);
+                $("#" + path + "_" + name).change();
 
             });
 
-            $("#" + path + "_" + name + "[type=number]" ).next().on("click", (el) => {
+            $("#" + path + "_" + name + "[type=number]").next().on("click", (el) => {
                 var val = new Number($("#" + path + "_" + name).val());
 
                 var step = 1;
-                if(node.content.step !== null) {
+                if (node.content.step !== null) {
                     step = node.content.step;
                 }
 
-                val = val + step;    
+                val = val + step;
 
-                if(node.content.max != null && val > node.content.max) {
+                if (node.content.max != null && val > node.content.max) {
                     val = node.content.max;
                 }
                 $("#" + path + "_" + name).val(val);
@@ -818,17 +838,17 @@ define([
         }
 
         //helper
-        self.getHelpReset = function (name, path, defaultVal, postFix = "", helpName, defaultText ) {
-            if(helpName == undefined) {
+        self.getHelpReset = function (name, path, defaultVal, postFix = "", helpName, defaultText) {
+            if (helpName == undefined) {
                 helpName = name;
             }
 
-            if(defaultText == undefined) {
+            if (defaultText == undefined) {
                 defaultText = defaultVal;
             }
 
-            var getVisibility = function() {
-                if(getHelp(helpName, path) === undefined) {
+            var getVisibility = function () {
+                if (getHelp(helpName, path) === undefined) {
                     return `style="display:none"`;
                 }
             }
@@ -921,7 +941,7 @@ define([
             return new Promise((resolve, reject) => {
                 var compiledTemplate = _.template(revertConfirm);
 
-               
+
                 revertRestartI18n.settingDefault = defaultText;
 
 

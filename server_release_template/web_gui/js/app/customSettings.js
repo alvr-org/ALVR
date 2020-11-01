@@ -1,5 +1,6 @@
 define([
     "i18n!app/nls/settings",
+    "i18n!app/nls/wizard",
     "lib/selectal",
     "json!../../audio_devices",
     "json!app/resources/HTCVive.json",
@@ -9,7 +10,7 @@ define([
     "json!app/resources/HTCViveWand.json"
 
 
-], function (i18n, select, audio_devices, vive, rifts, touch, index, vivewand) {
+], function (i18n,i18nWizard, select, audio_devices, vive, rifts, touch, index, vivewand) {
     return function (alvrSettings) {
         var self = this;
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
@@ -24,12 +25,13 @@ define([
                 setDisableThrottling();
                 setHeadsetEmulation();
                 setControllerEmulation();
+                setTrackingSpeed();
                 setBufferOffset();
                 setTheme();
             } catch (error) {
                 Lobibox.notify("error", {
                     rounded: true,
-                    delay : -1,
+                    delay: -1,
                     delayIndicator: false,
                     sound: false,
                     position: "bottom left",
@@ -39,7 +41,7 @@ define([
                     messageHeight: 250,
                 });
             }
-            
+
         }
 
         function setBufferOffset() {
@@ -91,7 +93,7 @@ define([
             controller.append(`<option value="3">Valve Index (no handtracking pinch)</option>`);
             controller.append(`<option value="4">HTC Vive</option>`);
             controller.append(`<option value="5">HTC Vive (no handtracking pinch)</option>`);
-            
+
             const select = new Selectal('#_root_headset_controllers_content_controllerMode');
             controller = $("#_root_headset_controllers_content_controllerMode");
 
@@ -391,7 +393,7 @@ define([
 
         function setDeviceList() {
 
-            if (audio_devices == null|| audio_devices.length == 0) {
+            if (audio_devices == null || audio_devices.length == 0) {
                 $("#_root_audio_gameAudio_content_deviceDropdown").hide();
                 $("#_root_audio_microphone_content_deviceDropdown").hide();
 
@@ -560,17 +562,120 @@ define([
             }
         }
 
+        function setTrackingSpeed() {
+            const el = $("#_root_headset_controllers_content_trackingSpeed");
+
+            const poseTimeOffset = $("#_root_headset_controllers_content_poseTimeOffset");
+
+            const normal = i18nWizard.normalTracking;
+            const medium = i18nWizard.mediumTracking;
+            const fast = i18nWizard.fastTracking;
+            const custom = i18n.customTracking
+
+            const customButton = `<label id="trackingSpeedCustomButton" class="btn btn-primary active">
+            <input  type="radio" name="trackingSpeed"  autocomplete="off" value="custom" checked>
+                ${custom}
+            </label> `;
+
+            function setTrackingRadio() {             
+
+                $("#trackingSpeedCustomButton").remove();
+                $("input:radio[name='trackingSpeed']").parent().removeClass("active");          
+
+                switch ( poseTimeOffset.val()) {
+                    case "-1":
+                        $("input:radio[name='trackingSpeed'][value='fast']").prop("checked", "true");
+                        $("input:radio[name='trackingSpeed'][value='fast']").parent().addClass("active");
+                        break;
+                    case "-0.03":
+                        $("input:radio[name='trackingSpeed'][value='medium']").prop("checked", "true");
+                        $("input:radio[name='trackingSpeed'][value='medium']").parent().addClass("active");
+                        break;
+                    case "0.01":
+                        $("input:radio[name='trackingSpeed'][value='normal']").prop("checked", "true");
+                        $("input:radio[name='trackingSpeed'][value='normal']").parent().addClass("active");
+                        break;
+
+                    default:
+                        console.log("custom tracking speed")
+                        $("#trackingSpeedButtons").append(customButton);
+
+                        break;
+                }
+            }
+
+            function setTrackingValue(val) {
+                switch (val) {
+                    case "normal":
+                        poseTimeOffset.val("0.01");
+                        break;
+                    case "medium":
+                        poseTimeOffset.val("-0.03");
+                        break;
+                    case "fast":
+                        poseTimeOffset.val("-1");
+                        break;
+                    default:
+                        break;
+                }
+                alvrSettings.storeParam(poseTimeOffset);
+                setTrackingRadio();
+            }
+
+            //move elements into better layout
+            const  text = el.parent().text().trim();
+            el.parent().find("label").remove();
+
+            const grp = `<div class="card-title"> ${text}
+                    ${alvrSettings.getHelpReset("trackingSpeed", "_root_headset_controllers_content", "normal",  postFix = "", "trackingSpeed", i18nWizard.normalTracking)}
+                        </div>
+            <div class="btn-group" data-toggle="buttons" id="trackingSpeedButtons">
+                            <label style="min-width:10%" class="btn btn-primary">
+                                <input  type="radio" name="trackingSpeed"  autocomplete="off" value="normal">
+                                ${normal}
+                            </label>
+                            <label class="btn btn-primary">
+                                <input type="radio" name="trackingSpeed"  autocomplete="off" value="medium">
+                                ${medium}
+                            </label>
+                            <label class="btn btn-primary">
+                                <input type="radio" name="trackingSpeed" autocomplete="off" value="fast">
+                               ${fast}
+                            </label>
+                                                  
+                    </div> `
+
+            el.after(grp);
+
+
+            $(document).ready(() => {
+                $("input:radio[name='trackingSpeed']").on("change", () => {
+                    setTrackingValue($("input:radio:checked[name='trackingSpeed']").val());   
+                });
+                poseTimeOffset.on("change", () => {                   
+                    setTrackingRadio();
+                });   
+                
+                $("#_root_headset_controllers_content_trackingSpeed").on("change", (ev) => {
+                    setTrackingValue( $("#_root_headset_controllers_content_trackingSpeed").val());  
+                });
+
+                setTrackingRadio();
+            });
+
+
+        }
 
 
         function setTheme() {
             const themes = {
-                "classic": {"bootstrap": "css/bootstrap.min.css", "selectal": "js/lib/selectal.min.css", "style": "css/style.css"},
-                "darkly" : {"bootstrap": "css/darkly/bootstrap.min.css", "selectal": "css/darkly/selectal.min.css", "style": "css/darkly/style.css"}
+                "classic": { "bootstrap": "css/bootstrap.min.css", "selectal": "js/lib/selectal.min.css", "style": "css/style.css" },
+                "darkly": { "bootstrap": "css/darkly/bootstrap.min.css", "selectal": "css/darkly/selectal.min.css", "style": "css/darkly/style.css" }
             }
             var bootstrap = $("#bootstrap");
             var selectal = $("#selectal");
             var style = $("#style");
-            
+
             var themeSelector = $("form#_root_extra_theme-choice-").first();
             var themeColor = $("input[name='theme']:checked").val();
 
@@ -593,7 +698,7 @@ define([
             selectal.attr("href", themes[themeColor]["selectal"]);
             style.attr("href", themes[themeColor]["style"]);
 
-            themeSelector.on("change", function() {
+            themeSelector.on("change", function () {
                 themeColor = $("input[name='theme']:checked", "#_root_extra_theme-choice-").val();
                 if (themeColor == "systemDefault") {
                     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -606,7 +711,7 @@ define([
                 if (bootstrap.attr("href") == themes[themeColor]["bootstrap"]) {
                     return;
                 } else {
-                    $("body").fadeOut('fast', function() {
+                    $("body").fadeOut('fast', function () {
                         console.log("changing theme to " + themeColor)
                         bootstrap.attr("href", themes[themeColor]["bootstrap"]);
                         selectal.attr("href", themes[themeColor]["selectal"]);
@@ -617,7 +722,7 @@ define([
                 }
 
             });
-            
+
         }
 
     }

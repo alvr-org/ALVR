@@ -180,6 +180,8 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub recenter_button: u32,
 
+    #[schema(placeholder = "tracking_speed")]
+    #[schema(advanced)]
     pub pose_time_offset: f32,
 
     #[schema(advanced)]

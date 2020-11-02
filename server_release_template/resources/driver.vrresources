@@ -9,7 +9,7 @@
 			"Prop_NamedIconPathDeviceReadyAlert_String" : "{alvr_server}/icons/quest_headset_ready_alert.png",
 			"Prop_NamedIconPathDeviceNotReady_String" : "{alvr_server}/icons/quest_headset_error.png",
 			"Prop_NamedIconPathDeviceStandby_String" : "{alvr_server}/icons/quest_headset_standby.png",
-			"Prop_NamedIconPathDeviceAlertLow_String" : "{alvr_server}/icons/headset_sample_status_ready_low.png"
+			"Prop_NamedIconPathDeviceAlertLow_String" : "{alvr_server}/icons/quest_headset_status_ready_low.png"
 		},
 
 		"Model-v Defaults" : {

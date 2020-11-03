@@ -21,7 +21,7 @@ lazy_static_include_bytes!(COMPRESS_SLICES_CSO => "cpp/alvr_server/CompressSlice
 lazy_static_include_bytes!(COLOR_CORRECTION_CSO => "cpp/alvr_server/ColorCorrectionPixelShader.cso");
 
 extern "C" fn maybe_kill_web_server() {
-    process::maybe_kill_web_server();
+    commands::maybe_kill_web_server();
 }
 
 unsafe fn log(level: log::Level, string_ptr: *const c_char) {
@@ -51,10 +51,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
 ) -> *mut c_void {
     logging_backend::init_logging();
 
-    match process::get_alvr_dir() {
+    match commands::get_alvr_dir() {
         Ok(alvr_dir) => {
             // launch web server
-            process::maybe_launch_web_server(&alvr_dir);
+            commands::maybe_launch_web_server(&alvr_dir);
 
             let alvr_dir_c_string = CString::new(alvr_dir.to_string_lossy().to_string()).unwrap();
             g_alvrDir = alvr_dir_c_string.into_raw();

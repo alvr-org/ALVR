@@ -1,3 +1,4 @@
+use std::{fmt::Display, future::Future};
 use serde::{Deserialize, Serialize};
 
 pub type StrResult<T = ()> = Result<T, String>;
@@ -9,34 +10,54 @@ pub fn driver_log_path() -> std::path::PathBuf {
     std::env::temp_dir().join("alvr_driver_log.txt")
 }
 
-fn default_show_error_fn(_: &str) {}
-
-// todo: consider using atomics or lazy_static
-static mut SHOW_ERROR_CB: fn(&str) = default_show_error_fn;
-
-pub fn set_show_error_fn_and_panic_hook(cb: fn(&str)) {
-    unsafe { SHOW_ERROR_CB = cb };
+pub fn set_panic_hook() {
     std::panic::set_hook(Box::new(|panic_info| {
         let message = panic_info
             .payload()
             .downcast_ref::<&str>()
             .unwrap_or(&"Unavailable");
-
         let err_str = format!(
-            "ALVR panicked.\nMessage: {:?}\nBacktrace:\n{:?}",
+            "Message: {:?}\nBacktrace:\n{:?}",
             message,
             backtrace::Backtrace::new()
         );
+
         log::error!("{}", err_str);
-        unsafe { SHOW_ERROR_CB(&err_str) };
+
+        #[cfg(not(target_os = "android"))]
+        std::thread::spawn(move || {
+            msgbox::create("ALVR panicked", &err_str, msgbox::IconType::Error).ok();
+        });
     }))
 }
 
-pub fn show_err<T, E: std::fmt::Display>(res: Result<T, E>) -> Result<T, ()> {
+// log error and show it in a messagebox (if applicable)
+pub fn show_err<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
     res.map_err(|e| {
         log::error!("{}", e);
-        unsafe { SHOW_ERROR_CB(&format!("{}", e)) };
+
+        #[cfg(not(target_os = "android"))]
+        std::thread::spawn({
+            let err_string = e.to_string();
+            move || {
+                msgbox::create(
+                    "ALVR encountered an error",
+                    &err_string,
+                    msgbox::IconType::Error,
+                ).ok();
+            }
+        });
     })
+}
+
+pub fn show_e<E: Display>(e: E) {
+    show_err::<(), _>(Err(e)).ok();
+}
+
+pub async fn show_err_async<T, E: Display>(
+    future_res: impl Future<Output = Result<T, E>>,
+) -> Result<T, ()> {
+    show_err(future_res.await)
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
@@ -52,11 +73,12 @@ pub enum SessionUpdateType {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "id", content = "data")]
 pub enum LogId {
+    #[serde(rename_all = "camelCase")]
     SessionUpdated {
-        web_client_id: String,
+        web_client_id: Option<String>,
         update_type: SessionUpdateType,
     },
-    SettingsCacheExtrapolationFailed,
+    SessionSettingsExtrapolationFailed,
     ClientFoundOk,
     ClientFoundInvalid,
     ClientFoundWrongIp,

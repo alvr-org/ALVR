@@ -1,16 +1,20 @@
-use crate::*;
-use semver::{Version, VersionReq};
+use lazy_static::lazy_static;
+use semver::Version;
 
 pub const ALVR_NAME: &str = "ALVR";
 
-pub const ALVR_SERVER_VERSION: &str = env!("SERVER_VERSION");
-pub const ALVR_CLIENT_VERSION: &str = env!("CLIENT_VERSION");
+lazy_static! {
+    pub static ref ALVR_SERVER_VERSION: Version = Version::parse(env!("SERVER_VERSION")).unwrap();
+    pub static ref ALVR_CLIENT_VERSION: Version = Version::parse("12.5.0").unwrap();
+}
 
-pub const ALVR_SERVER_VERSION_REQ: &str = ">=12.5.0";
-pub const ALVR_CLIENT_VERSION_REQ: &str = ">=12.5.0";
-
-pub fn is_version_compatible(version: &str, requirement: &str) -> StrResult<bool> {
-    let version = trace_err!(Version::parse(version))?;
-    let requirement = trace_err!(VersionReq::parse(requirement))?;
-    Ok(requirement.matches(&version))
+// accept semver-compatible versions
+// Note: by not having to set the requirement manually, the major version of server and client is
+// constrained to be bumped when the packet layouts or some critical behaviour has changed.
+pub fn is_version_compatible(test_version: &Version, base_version: &Version) -> bool {
+    if test_version.is_prerelease() || base_version.is_prerelease() {
+        test_version == base_version
+    } else {
+        test_version.major == base_version.major
+    }
 }

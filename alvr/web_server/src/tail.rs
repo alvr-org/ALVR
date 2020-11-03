@@ -13,7 +13,7 @@ fn tail_command(file_path: &Path) -> Command {
     let mut command = Command::new("PowerShell.exe");
     command
         .args(&["Get-Content", &file_path.to_string_lossy(), "-Wait"])
-        .creation_flags(process::CREATE_NO_WINDOW);
+        .creation_flags(commands::CREATE_NO_WINDOW);
     command
 }
 

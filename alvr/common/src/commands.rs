@@ -150,7 +150,7 @@ pub fn driver_registration(root_server_dir: &Path, register: bool) -> StrResult 
     if exit_status.success() {
         Ok(())
     } else {
-        Err(format!("Error registering driver: {}", exit_status).into())
+        Err(format!("Error registering driver: {}", exit_status))
     }
 }
 

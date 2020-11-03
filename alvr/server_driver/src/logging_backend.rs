@@ -39,5 +39,5 @@ pub fn init_logging() {
         .unwrap();
     });
 
-    set_show_error_fn_and_panic_hook(|_| ());
+    set_panic_hook();
 }

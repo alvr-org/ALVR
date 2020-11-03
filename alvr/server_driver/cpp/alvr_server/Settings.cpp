@@ -76,13 +76,13 @@ void Settings::Load()
 
 		auto clientHandshakePacket = connectedClient.get("handshakePacket");
 
-		auto settingsCache = v.get("settingsCache");
+		auto sessionSettings = v.get("sessionSettings");
 
-		auto video = settingsCache.get("video");
-		auto audio = settingsCache.get("audio");
-		auto headset = settingsCache.get("headset");
+		auto video = sessionSettings.get("video");
+		auto audio = sessionSettings.get("audio");
+		auto headset = sessionSettings.get("headset");
 		auto controllers = headset.get("controllers").get("content");
-		auto connection = settingsCache.get("connection");
+		auto connection = sessionSettings.get("connection");
 
 		mSerialNumber = headset.get("serialNumber").get<std::string>();
 		mTrackingSystemName = headset.get("trackingSystemName").get<std::string>();

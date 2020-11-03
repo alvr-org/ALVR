@@ -1,7 +1,5 @@
 use alvr_common::{data::*, logging::*, *};
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::*;
 
 const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
@@ -68,24 +66,15 @@ pub async fn search_client(
             String::from_utf8_lossy(&client_handshake_packet.version[0..nul_range_end])
         };
 
-        match is_version_compatible(&version, ALVR_CLIENT_VERSION_REQ) {
-            Ok(compatible) => {
-                if !compatible {
-                    warn!(id: LogId::ClientFoundWrongVersion(version.into()));
-                    continue;
-                }
-            }
-            Err(e) => {
-                warn!(
-                    id: LogId::ClientFoundInvalid,
-                    "Received handshake packet: {}", e
-                );
-                continue;
-            }
+        if !is_version_compatible(
+            &semver::Version::parse(&version).unwrap(),
+            &ALVR_CLIENT_VERSION,
+        ) {
+            warn!(id: LogId::ClientFoundWrongVersion(version.into()));
+            continue;
         }
 
-        let maybe_server_handshake_packet =
-            client_found_cb(address.ip(), client_handshake_packet);
+        let maybe_server_handshake_packet = client_found_cb(address.ip(), client_handshake_packet);
 
         if let Some(server_handshake_packet) = maybe_server_handshake_packet {
             let packet = trace_err!(bincode::serialize(&server_handshake_packet))?;

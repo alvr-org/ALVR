@@ -401,7 +401,7 @@ define([
 
                 let current = "";
                 try {
-                    current = alvrSettings.getSession().settingsCache.audio.gameAudio.content.device;
+                    current = alvrSettings.getSession().sessionSettings.audio.gameAudio.content.device;
                 } catch (err) {
                     console.error("Layout of settings changed, audio devices can not be added. Please report this bug!");
                 }
@@ -475,7 +475,7 @@ define([
 
                 let current = "";
                 try {
-                    current = alvrSettings.getSession().settingsCache.audio.microphone.content.device;
+                    current = alvrSettings.getSession().sessionSettings.audio.microphone.content.device;
                 } catch (err) {
                     console.error("Layout of settings changed, audio devices can not be added. Please report this bug!");
                 }

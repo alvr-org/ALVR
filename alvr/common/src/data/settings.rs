@@ -308,7 +308,7 @@ pub struct Settings {
     pub extra: ExtraDesc,
 }
 
-pub fn settings_cache_default() -> SettingsDefault {
+pub fn session_settings_default() -> SettingsDefault {
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,

@@ -2,7 +2,7 @@ mod logging_backend;
 mod sockets;
 mod tail;
 
-use alvr_common::{data::*, logging::*, process::*, *};
+use alvr_common::{commands::*, data::*, logging::*, *};
 use bytes::buf::BufExt;
 use futures::{stream::StreamExt, SinkExt};
 use headers::{self, HeaderMapExt};
@@ -52,8 +52,8 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
 
         {
             let session_manager_ref = &mut session_manager.lock().unwrap();
-            let session_desc_ref = &mut session_manager_ref
-                .get_mut(SERVER_SESSION_UPDATE_ID, SessionUpdateType::ClientList);
+            let session_desc_ref =
+                &mut session_manager_ref.get_mut(None, SessionUpdateType::ClientList);
 
             let maybe_known_client_ref =
                 session_desc_ref
@@ -93,10 +93,10 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
         // patch for Oculus Quest 2
         {
             let session_manager_ref = &mut session_manager.lock().unwrap();
-            let session_desc_ref = &mut session_manager_ref
-                .get_mut(SERVER_SESSION_UPDATE_ID, SessionUpdateType::Settings);
+            let session_desc_ref =
+                &mut session_manager_ref.get_mut(None, SessionUpdateType::Settings);
 
-            session_desc_ref.settings_cache.video.refresh_rate =
+            session_desc_ref.session_settings.video.refresh_rate =
                 client_handshake_packet.client_refresh_rate as _;
         }
 
@@ -231,7 +231,7 @@ async fn http_api(
     let uri = uri.path();
 
     let mut response = match uri {
-        "/settings-schema" => reply_json(&settings_schema(settings_cache_default()))?,
+        "/settings-schema" => reply_json(&settings_schema(session_settings_default()))?,
         "/session" => {
             if matches!(method, Method::GET) {
                 reply_json(session_manager.lock().unwrap().get())?
@@ -249,7 +249,7 @@ async fn http_api(
                         let res = session_manager
                             .lock()
                             .unwrap()
-                            .get_mut(&update_author_id, update_type)
+                            .get_mut(Some(update_author_id), update_type)
                             .merge_from_json(value);
                         if let Err(e) = res {
                             warn!("{}", e);
@@ -344,7 +344,7 @@ async fn http_api(
             maybe_launch_steamvr();
             reply(StatusCode::OK)?
         }
-        "/version" => Response::new(ALVR_SERVER_VERSION.into()),
+        "/version" => Response::new(ALVR_SERVER_VERSION.to_string().into()),
         "/open" => {
             if let Ok(url) = from_body::<String>(body).await {
                 webbrowser::open(&url).ok();

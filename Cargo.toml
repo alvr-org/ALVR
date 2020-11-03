@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    'alvr/xtask',
-    'alvr/common',
-    'alvr/server_driver',
-    'alvr/web_server',
-    'alvr/server_bootstrap',
+    "alvr/xtask",
+    "alvr/common",
+    "alvr/server_driver",
+    "alvr/web_server",
+    "alvr/server_bootstrap",
 ]

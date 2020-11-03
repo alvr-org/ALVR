@@ -1,22 +1,22 @@
 [package]
-name = 'alvr_server_driver'
+name = "alvr_server_driver"
 version = "12.5.1"
-authors = ['Riccardo Zaglia <riccardo.zaglia5@gmail.com>']
-license = 'MIT'
-edition = '2018'
+authors = ["Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
+license = "MIT"
+edition = "2018"
 
 [lib]
-crate-type = ['cdylib']
+crate-type = ["cdylib"]
 
 [dependencies]
-log = '^0.4.8'
-serde_json = '^1.0.53'
-fern = '^0.6.0'
-alvr_common = { path = '../common' }
-lazy_static = '1.4'
-lazy-static-include = '^2.3'
+log = "0.4"
+serde_json = "1"
+fern = "0.6"
+alvr_common = { path = "../common" }
+lazy_static = "1"
+lazy-static-include = "3"
 
 [build-dependencies]
-walkdir = '^2.3'
-cc = {version = '^1.0', features = ["parallel"] }
-bindgen = '^0.54.0'
+walkdir = "2"
+cc = {version = "1", features = ["parallel"] }
+bindgen = "0.55"

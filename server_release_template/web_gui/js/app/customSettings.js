@@ -233,12 +233,6 @@ define([
             dropdown.parent().addClass("special");
             dropdown.unbind();
 
-
-            const renderWidth = $("#_root_video_renderResolution_absolute_width");
-            const renderHeight = $("#_root_video_renderResolution_absolute_height");
-            const targetWidth = $("#_root_video_recommendedTargetResolution_absolute_width");
-            const targetHeight = $("#_root_video_recommendedTargetResolution_absolute_height");
-
             const renderScale = $("#_root_video_renderResolution_scale");
             const targetScale = $("#_root_video_recommendedTargetResolution_scale");
             const renderScaleVariant = $("#_root_video_renderResolution_scale-choice-");

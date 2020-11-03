@@ -99,18 +99,26 @@ define([
                 $(".performanceOptions").change((ev) => {
                     var target = $(ev.target);
 
-                    var resolutionTarget = $("#_root_video_renderResolution_scale-choice-");
-                    resolutionTarget.prop("checked", true);
-                    alvrSettings.storeParam(resolutionTarget);
+                    var renderResolution = $("#_root_video_renderResolution_scale-choice-");
+                    renderResolution.parent().parent().children().filter(".active").removeClass("active")
+                    renderResolution.prop("checked", true);
+                    alvrSettings.storeParam(renderResolution);
 
-                    var resolutionScaleTarget = $("#_root_video_renderResolution_scale");
+                    var targetResolution = $("#_root_video_recommendedTargetResolution_scale-choice-");
+                    targetResolution.parent().parent().children().filter(".active").removeClass("active")
+                    targetResolution.prop("checked", true);
+                    alvrSettings.storeParam(targetResolution);
+
+                    var renderResolutionScale = $("#_root_video_renderResolution_scale");
+                    var targetResolutionScale = $("#_root_video_recommendedTargetResolution_scale");
                     var enableFfrTarget = $("#_root_video_foveatedRendering_enabled");
                     var ffrStrengthTarget = $("#_root_video_foveatedRendering_content_strength");
                     var bitrateTarget = $("#_root_video_encodeBitrateMbs");
 
                     switch (target.attr("value")) {
                         case "compatibility":
-                            resolutionScaleTarget.val(0.75);
+                            renderResolutionScale.val(0.75);
+                            targetResolutionScale.val(0.75);
                             bitrateTarget.val(15);
                             enableFfrTarget.prop("checked", true);
                             ffrStrengthTarget.val(2);
@@ -121,7 +129,8 @@ define([
                             alvrSettings.storeParam(h264CodecTarget);
                             break;
                         case "visual_quality":
-                            resolutionScaleTarget.val(1);
+                            renderResolutionScale.val(1);
+                            targetResolutionScale.val(1);
                             bitrateTarget.val(40);
                             enableFfrTarget.prop("checked", false);
 
@@ -133,7 +142,8 @@ define([
                         default:
                             break;
                     }
-                    alvrSettings.storeParam(resolutionScaleTarget);
+                    alvrSettings.storeParam(renderResolutionScale);
+                    alvrSettings.storeParam(targetResolutionScale);
                     alvrSettings.storeParam(enableFfrTarget);
                     alvrSettings.storeParam(ffrStrengthTarget);
                     alvrSettings.storeParam(bitrateTarget);

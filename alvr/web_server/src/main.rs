@@ -2,9 +2,21 @@ mod logging_backend;
 mod sockets;
 mod tail;
 
-use alvr_common::{data::*, graphics, logging::*, process::*, *};
-use futures::SinkExt;
+use alvr_common::{data::*, logging::*, process::*, *};
+use bytes::buf::BufExt;
+use futures::{stream::StreamExt, SinkExt};
+use headers::{self, HeaderMapExt};
+use hyper::{
+    header,
+    header::HeaderValue,
+    header::CACHE_CONTROL,
+    http::request::Parts,
+    service::{make_service_fn, service_fn},
+    Body, Method, Request, Response, StatusCode,
+};
 use logging_backend::*;
+use serde::{de::DeserializeOwned, Serialize};
+use serde_json as json;
 use settings_schema::Switch;
 use std::{
     path::PathBuf,
@@ -12,17 +24,9 @@ use std::{
     time::SystemTime,
 };
 use tail::tail_stream;
-use tokio::{
-    stream::StreamExt,
-    sync::mpsc::{self, *},
-};
-use warp::{
-    body, fs as wfs,
-    http::StatusCode,
-    reply,
-    ws::{Message, WebSocket, Ws},
-    Filter,
-};
+use tokio::sync::mpsc::{self, *};
+use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
+use tokio_util::codec::{BytesCodec, FramedRead};
 
 const WEB_GUI_DIR_STR: &str = "web_gui";
 const WEB_SERVER_PORT: u16 = 8082;
@@ -37,31 +41,6 @@ fn alvr_server_dir() -> PathBuf {
         .parent()
         .unwrap()
         .to_owned()
-}
-
-fn try_log_redirect(line: &str, level: log::Level) -> bool {
-    let level_label = &format!("[{}]", level);
-    if line.starts_with(level_label) {
-        let untagged_line = &line[level_label.len() + 1..];
-        if level == log::Level::Error {
-            show_err::<(), _>(Err(untagged_line)).ok();
-        } else {
-            log::log!(level, "{}", untagged_line);
-        }
-
-        true
-    } else {
-        false
-    }
-}
-
-async fn subscribed_to_log(mut socket: WebSocket, mut log_receiver: UnboundedReceiver<String>) {
-    while let Some(line) = log_receiver.next().await {
-        if let Err(e) = socket.send(Message::text(line)).await {
-            info!("Failed to send log with websocket: {}", e);
-            break;
-        }
-    }
 }
 
 async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
@@ -168,8 +147,6 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             web_gui_url: [0; 32],
         };
 
-        // show_err::<(), _>(trace_str!("{:#?}", server_handshake_packet));
-
         let mut maybe_host_address = None;
 
         // todo: get the host address using another handshake round instead
@@ -205,6 +182,206 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
     }
 }
 
+fn try_log_redirect(line: &str, level: log::Level) -> bool {
+    let level_label = &format!("[{}]", level);
+    if line.starts_with(level_label) {
+        let untagged_line = &line[level_label.len() + 1..];
+        if level == log::Level::Error {
+            show_err::<(), _>(Err(untagged_line)).ok();
+        } else {
+            log::log!(level, "{}", untagged_line);
+        }
+
+        true
+    } else {
+        false
+    }
+}
+
+fn reply(code: StatusCode) -> StrResult<Response<Body>> {
+    trace_err!(Response::builder().status(code).body(Body::empty()))
+}
+
+fn reply_json<T: Serialize>(obj: &T) -> StrResult<Response<Body>> {
+    trace_err!(Response::builder()
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(trace_err!(json::to_string(obj))?.into()))
+}
+
+async fn from_body<T: DeserializeOwned>(body: Body) -> StrResult<T> {
+    trace_err!(json::from_reader(
+        trace_err!(hyper::body::aggregate(body).await)?.reader()
+    ))
+}
+
+async fn http_api(
+    request: Request<Body>,
+    session_manager: Arc<Mutex<SessionManager>>,
+    log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>,
+) -> StrResult<Response<Body>> {
+    let (
+        Parts {
+            uri,
+            method,
+            headers,
+            ..
+        },
+        body,
+    ) = request.into_parts();
+    let uri = uri.path();
+
+    let mut response = match uri {
+        "/settings-schema" => reply_json(&settings_schema(settings_cache_default()))?,
+        "/session" => {
+            if matches!(method, Method::GET) {
+                reply_json(session_manager.lock().unwrap().get())?
+            } else if let Ok(data) = from_body::<json::Value>(body).await {
+                // POST
+                if let (Some(update_type), Some(update_author_id), Some(value)) = (
+                    data.get("updateType"),
+                    data.get("webClientId"),
+                    data.get("session"),
+                ) {
+                    if let (Ok(update_type), Ok(update_author_id)) = (
+                        json::from_value(update_type.clone()),
+                        json::from_value::<String>(update_author_id.clone()),
+                    ) {
+                        let res = session_manager
+                            .lock()
+                            .unwrap()
+                            .get_mut(&update_author_id, update_type)
+                            .merge_from_json(value);
+                        if let Err(e) = res {
+                            warn!("{}", e);
+                            // HTTP Code: WARNING
+                            reply(trace_err!(StatusCode::from_u16(199))?)?
+                        } else {
+                            reply(StatusCode::OK)?
+                        }
+                    } else {
+                        reply(StatusCode::BAD_REQUEST)?
+                    }
+                } else {
+                    reply(StatusCode::BAD_REQUEST)?
+                }
+            } else {
+                reply(StatusCode::BAD_REQUEST)?
+            }
+        }
+        "/log" => {
+            if let Some(key) = headers.typed_get::<headers::SecWebsocketKey>() {
+                tokio::spawn(async move {
+                    match body.on_upgrade().await {
+                        Ok(upgraded) => {
+                            let (log_sender, mut log_receiver) = mpsc::unbounded_channel();
+                            log_senders.lock().unwrap().push(log_sender);
+
+                            let mut ws = WebSocketStream::from_raw_socket(
+                                upgraded,
+                                protocol::Role::Server,
+                                None,
+                            )
+                            .await;
+
+                            while let Some(line) = log_receiver.next().await {
+                                if let Err(e) = ws.send(protocol::Message::text(line)).await {
+                                    info!("Failed to send log with websocket: {}", e);
+                                    break;
+                                }
+                            }
+
+                            ws.close(None).await.ok();
+                        }
+                        Err(e) => error!("{}", e),
+                    }
+                });
+
+                let mut response = trace_err!(Response::builder()
+                    .status(StatusCode::SWITCHING_PROTOCOLS)
+                    .body(Body::empty()))?;
+
+                let h = response.headers_mut();
+                h.typed_insert(headers::Upgrade::websocket());
+                h.typed_insert(headers::SecWebsocketAccept::from(key));
+                h.typed_insert(headers::Connection::upgrade());
+
+                response
+            } else {
+                reply(StatusCode::BAD_REQUEST)?
+            }
+        }
+        "/driver/register" => {
+            if driver_registration(&alvr_server_dir(), true).is_ok() {
+                reply(StatusCode::OK)?
+            } else {
+                reply(StatusCode::INTERNAL_SERVER_ERROR)?
+            }
+        }
+        "/driver/unregister" => {
+            if let Ok(path) = from_body::<PathBuf>(body).await {
+                if driver_registration(&path, false).is_ok() {
+                    reply(StatusCode::OK)?
+                } else {
+                    reply(StatusCode::INTERNAL_SERVER_ERROR)?
+                }
+            } else {
+                reply(StatusCode::BAD_REQUEST)?
+            }
+        }
+        "/driver/list" => reply_json(&get_registered_drivers().unwrap_or_default())?,
+        uri @ "/firewall-rules/add" | uri @ "/firewall-rules/remove" => {
+            let add = uri.ends_with("add");
+            let maybe_err = firewall_rules(&alvr_server_dir(), add).err();
+            if let Some(e) = &maybe_err {
+                error!("Setting firewall rules failed: code {}", e);
+            }
+            reply_json(&maybe_err.unwrap_or(0))?
+        }
+        "/graphics-devices" => reply_json(&graphics::get_gpu_names())?,
+        "/audio-devices" => reply_json(&audio::output_audio_devices().ok())?,
+        "/restart-steamvr" => {
+            kill_steamvr();
+            maybe_launch_steamvr();
+            reply(StatusCode::OK)?
+        }
+        "/version" => Response::new(ALVR_SERVER_VERSION.into()),
+        "/open" => {
+            if let Ok(url) = from_body::<String>(body).await {
+                webbrowser::open(&url).ok();
+                reply(StatusCode::OK)?
+            } else {
+                reply(StatusCode::BAD_REQUEST)?
+            }
+        }
+        other_uri => {
+            if other_uri.contains("..") {
+                // Attempted tree traversal
+                reply(StatusCode::FORBIDDEN)?
+            } else {
+                let path_branch = match other_uri {
+                    "/" => "/index.html",
+                    other_path => other_path,
+                };
+
+                if let Ok(file) =
+                    tokio::fs::File::open(format!("{}{}", WEB_GUI_DIR_STR, path_branch)).await
+                {
+                    Response::new(Body::wrap_stream(FramedRead::new(file, BytesCodec::new())))
+                } else {
+                    reply(StatusCode::NOT_FOUND)?
+                }
+            }
+        }
+    };
+
+    response.headers_mut().insert(
+        CACHE_CONTROL,
+        trace_err!(HeaderValue::from_str("no-cache, no-store, must-revalidate"))?,
+    );
+
+    Ok(response)
+}
+
 async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult {
     // The lock on this mutex does not need to be held across await points, so I don't need a tokio
     // Mutex
@@ -229,125 +406,18 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             .collect(),
     );
 
-    let web_gui_dir = PathBuf::from(WEB_GUI_DIR_STR);
-    let index_request = warp::path::end().and(wfs::file(web_gui_dir.join("index.html")));
-    let files_requests = wfs::dir(web_gui_dir);
+    let addr = "0.0.0.0:8082".parse().unwrap();
 
-    let settings_schema_request = warp::path("settings-schema").map(|| env!("SETTINGS_SCHEMA"));
-
-    let session_requests = warp::path("session").and(
-        warp::get()
-            .map({
-                let session_manager = session_manager.clone();
-                move || reply::json(session_manager.lock().unwrap().get())
-            })
-            .or(warp::path!(String / String).and(body::json()).map({
-                let session_manager = session_manager.clone();
-                move |update_type: String, update_author_id: String, value: serde_json::Value| {
-                    if let Ok(update_type) = serde_json::from_str(&format!("\"{}\"", update_type)) {
-                        let res = session_manager
-                            .lock()
-                            .unwrap()
-                            .get_mut(&update_author_id, update_type)
-                            .merge_from_json(value);
-                        if let Err(e) = res {
-                            warn!("{}", e);
-                            // HTTP Code: WARNING
-                            reply::with_status(reply(), StatusCode::from_u16(199).unwrap())
-                        } else {
-                            reply::with_status(reply(), StatusCode::OK)
-                        }
-                    } else {
-                        reply::with_status(reply(), StatusCode::BAD_REQUEST)
-                    }
-                }
-            })),
-    );
-
-    let log_subscription = warp::path("log").and(warp::ws()).map(move |ws: Ws| {
-        let (log_sender, log_receiver) = mpsc::unbounded_channel();
-        log_senders.lock().unwrap().push(log_sender);
-        ws.on_upgrade(|socket| subscribed_to_log(socket, log_receiver))
+    let service = make_service_fn(|_| {
+        let session_manager = session_manager.clone();
+        let log_senders = log_senders.clone();
+        async move {
+            StrResult::Ok(service_fn(move |request| {
+                http_api(request, session_manager.clone(), log_senders.clone())
+            }))
+        }
     });
-
-    let driver_registration_requests = warp::path("driver").and(
-        warp::path("register")
-            .map(|| {
-                if driver_registration(&alvr_server_dir(), true).is_ok() {
-                    reply::with_status(reply(), StatusCode::OK)
-                } else {
-                    reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
-                }
-            })
-            .or(warp::path("unregister")
-                .and(body::json())
-                .map(|path: PathBuf| {
-                    if driver_registration(&path, false).is_ok() {
-                        reply::with_status(reply(), StatusCode::OK)
-                    } else {
-                        reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
-                    }
-                }))
-            .or(warp::path("list").map(|| reply::json(&get_registered_drivers().unwrap_or(vec![]))))
-            // old API. todo: remove
-            .or(warp::path("unregister-all").map(|| {
-                if unregister_all_drivers().is_ok() {
-                    reply::with_status(reply(), StatusCode::OK)
-                } else {
-                    reply::with_status(reply(), StatusCode::INTERNAL_SERVER_ERROR)
-                }
-            })),
-    );
-
-    let firewall_rules_requests =
-        warp::path!("firewall-rules" / String).map(|action_str: String| {
-            let add = action_str == "add";
-            let maybe_err = firewall_rules(&alvr_server_dir(), add).err();
-            if let Some(e) = &maybe_err {
-                error!("Setting firewall rules failed: code {}", e);
-            }
-            reply::json(&maybe_err.unwrap_or(0))
-        });
-
-    let graphics_devices_request =
-        warp::path("graphics-devices").map(|| reply::json(&graphics::get_gpu_names()));
-
-    let audio_devices_request =
-        warp::path("audio_devices").map(|| reply::json(&audio::output_audio_devices().ok()));
-
-    let restart_steamvr_request = warp::path("restart_steamvr").map(move || {
-        kill_steamvr();
-        maybe_launch_steamvr();
-        warp::reply()
-    });
-
-    let version_request = warp::path("version").map(|| ALVR_SERVER_VERSION);
-
-    let open_link_request = warp::path("open").and(body::json()).map(|url: String| {
-        webbrowser::open(&url).ok();
-        warp::reply()
-    });
-
-    warp::serve(
-        index_request
-            .or(settings_schema_request)
-            .or(session_requests)
-            .or(log_subscription)
-            .or(driver_registration_requests)
-            .or(firewall_rules_requests)
-            .or(graphics_devices_request)
-            .or(audio_devices_request)
-            .or(files_requests)
-            .or(restart_steamvr_request)
-            .or(version_request)
-            .or(open_link_request)
-            .with(reply::with::header(
-                "Cache-Control",
-                "no-cache, no-store, must-revalidate",
-            )),
-    )
-    .run(([0, 0, 0, 0], WEB_SERVER_PORT))
-    .await;
+    trace_err!(hyper::Server::bind(&addr).serve(service).await)?;
 
     trace_err!(driver_log_redirect.await)?;
 

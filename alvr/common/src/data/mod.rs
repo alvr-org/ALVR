@@ -103,7 +103,7 @@ impl SessionDesc {
     // deserialization will fail if the type of values does not match. Because of this,
     // `settings_cache` must be handled separately to do a better job of retrieving data using the
     // settings schema.
-    pub fn merge_from_json(&mut self, json_value: json::Value) -> StrResult {
+    pub fn merge_from_json(&mut self, json_value: &json::Value) -> StrResult {
         const SETTINGS_CACHE_STR: &str = "settingsCache";
 
         if let Ok(session_desc) = json::from_value(json_value.clone()) {
@@ -503,7 +503,7 @@ impl SessionManager {
                     Err(_) => {
                         fs::write(dir.join("session_old.json"), &session_string).ok();
                         let mut session_desc = SessionDesc::default();
-                        match session_desc.merge_from_json(json_value) {
+                        match session_desc.merge_from_json(&json_value) {
                             Ok(_) => info!(
                                 "{} {}",
                                 "Session extrapolated successfully.",
@@ -563,7 +563,7 @@ mod tests {
     #[test]
     fn test_session_extrapolation_trivial() {
         SessionDesc::default()
-            .merge_from_json(json::to_value(SessionDesc::default()).unwrap())
+            .merge_from_json(&json::to_value(SessionDesc::default()).unwrap())
             .unwrap();
     }
 }

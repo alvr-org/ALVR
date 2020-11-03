@@ -180,9 +180,13 @@ define([
 
             $.ajax({
                 type: "POST",
-                url: `../../session/${updateType}/${webClientId}`,
+                url: "/session",
                 contentType: "application/json;charset=UTF-8",
-                data: JSON.stringify(session),
+                data: JSON.stringify({
+                    updateType: updateType,
+                    webClientId: webClientId,
+                    session: session,
+                }),
                 processData: false,
                 success: function (res) {
                     if (res === "") {
@@ -324,7 +328,7 @@ define([
 
         function restartSteamVR() {
             const triggerRestart = () => {
-                $.get("restart_steamvr", undefined, (res) => {
+                $.get("restart-steamvr", undefined, (res) => {
                     if (res == 0) {
                         Lobibox.notify("success", {
                             size: "mini",

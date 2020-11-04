@@ -164,9 +164,6 @@ void Settings::Load()
 		m_Host = connection.get("listenHost").get<std::string>();
 		m_Port = (int)connection.get("listenPort").get<int64_t>();
 
-		m_SendingTimeslotUs = (uint64_t)connection.get("sendingTimeslotUs").get<int64_t>();
-		m_LimitTimeslotPackets = (uint64_t)connection.get("limitTimeslotPackets").get<int64_t>();
-
 		m_ConnectedClient = connectedClient.get("address").get<std::string>();
 
 		m_controllerTrackingSystemName = controllers.get("trackingSystemName").get<std::string>();
@@ -180,11 +177,6 @@ void Settings::Load()
 		m_controllerInputProfilePath = controllers.get("inputProfilePath").get<std::string>();
 
 		m_disableController = !headset.get("controllers").get("enabled").get<bool>();
-		m_controllerTriggerMode = (int32_t)controllers.get("triggerMode").get<int64_t>();
-		m_controllerTrackpadClickMode = (int32_t)controllers.get("trackpadClickMode").get<int64_t>();
-		m_controllerTrackpadTouchMode = (int32_t)controllers.get("trackpadTouchMode").get<int64_t>();
-		m_controllerBackMode = (int32_t)controllers.get("backMode").get<int64_t>();
-		m_controllerRecenterButton = (int32_t)controllers.get("recenterButton").get<int64_t>();
 
 		m_useTrackingReference = headset.get("useTrackingReference").get<bool>();
 

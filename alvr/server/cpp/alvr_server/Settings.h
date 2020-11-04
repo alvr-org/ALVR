@@ -75,9 +75,6 @@ public:
 	Bitrate mThrottlingBitrate;
 
 
-	uint64_t m_SendingTimeslotUs;
-	uint64_t m_LimitTimeslotPackets;
-
 	uint32_t m_clientRecvBufferSize;
 
 	uint32_t m_frameQueueSize;
@@ -97,11 +94,6 @@ public:
 	std::string mControllerRegisteredDeviceType;
 	std::string m_controllerInputProfilePath;
 	bool m_disableController;
-	int32_t m_controllerTriggerMode;
-	int32_t m_controllerTrackpadClickMode;
-	int32_t m_controllerTrackpadTouchMode;
-	int32_t m_controllerBackMode;
-	int32_t m_controllerRecenterButton;
 
 	double m_controllerPoseOffset = 0;
 

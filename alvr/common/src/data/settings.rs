@@ -83,6 +83,7 @@ pub struct VideoDesc {
     // custom.
     // Warping compensation is already applied by the web server and driver
     #[schema(placeholder = "resolution_dropdown")]
+    //
     #[schema(advanced)]
     pub render_resolution: FrameSize,
 
@@ -114,6 +115,7 @@ pub struct VideoDesc {
 pub struct AudioDesc {
     // deviceDropdown should poll the available audio devices and set "device"
     #[schema(placeholder = "device_dropdown")]
+    //
     #[schema(advanced)]
     pub device: String,
 }
@@ -135,6 +137,7 @@ pub struct ControllersDesc {
     // Valve Index (no handtracking pinch)
     // modeIdx and the following strings must be set accordingly
     #[schema(placeholder = "controller_mode")]
+    //
     #[schema(advanced)]
     pub mode_idx: i32,
 
@@ -165,22 +168,8 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub input_profile_path: String,
 
-    #[schema(advanced)]
-    pub trigger_mode: u32,
-
-    #[schema(advanced)]
-    pub trackpad_click_mode: u32,
-
-    #[schema(advanced)]
-    pub trackpad_touch_mode: u32,
-
-    #[schema(advanced)]
-    pub back_mode: u32,
-
-    #[schema(advanced)]
-    pub recenter_button: u32,
-
     #[schema(placeholder = "tracking_speed")]
+    //
     #[schema(advanced)]
     pub pose_time_offset: f32,
 
@@ -199,6 +188,7 @@ pub struct ControllersDesc {
 pub struct HeadsetDesc {
     // Oculus Rift S or HTC Vive. Should all the following strings accordingly
     #[schema(placeholder = "headset_emulation_mode")]
+    //
     #[schema(advanced)]
     pub serial_number: String,
 
@@ -236,6 +226,9 @@ pub struct HeadsetDesc {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDesc {
+    #[schema(advanced, min = 1024, max = 65535)]
+    pub web_server_port: u16,
+
     #[schema(advanced)]
     pub listen_host: String,
 
@@ -246,23 +239,20 @@ pub struct ConnectionDesc {
     // Given audioBitrate=2000'000:
     // If false, set throttlingBitrateBits=encodeBitrateMbs * 1000'000 * 3 / 2 + audioBitrate
     #[schema(placeholder = "disable_throttling")]
+    //
     #[schema(advanced)]
     pub throttling_bitrate_bits: u64,
 
-    #[schema(advanced)]
-    pub sending_timeslot_us: u64,
-
-    #[schema(advanced)]
-    pub limit_timeslot_packets: u64,
-
     // clientRecvBufferSize=max(encodeBitrateMbs * 2 + bufferOffset, 0)
     #[schema(placeholder = "buffer_offset")]
+    //
     #[schema(advanced)]
     pub client_recv_buffer_size: u64,
 
     // If suppressframeDrop=true, set frameQueueSize=5
     // If suppressframeDrop=false, set frameQueueSize=1
     #[schema(placeholder = "suppress_frame_drop")]
+    //
     #[schema(advanced)]
     pub frame_queue_size: u64,
 
@@ -404,11 +394,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     ctrl_type: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
-                    trigger_mode: 24,
-                    trackpad_click_mode: 28,
-                    trackpad_touch_mode: 29,
-                    back_mode: 0,
-                    recenter_button: 0,
                     pose_time_offset: 0.,
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
@@ -417,11 +402,10 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         connection: ConnectionDescDefault {
+            web_server_port: 8082,
             listen_host: "0.0.0.0".into(),
             listen_port: 9944,
             throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,
-            sending_timeslot_us: 500,
-            limit_timeslot_packets: 0,
             client_recv_buffer_size: 60_000,
             frame_queue_size: 1,
             aggressive_keyframe_resend: false,

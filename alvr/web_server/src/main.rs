@@ -19,6 +19,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use serde_json as json;
 use settings_schema::Switch;
 use std::{
+    net::SocketAddr,
     path::PathBuf,
     sync::{Arc, Mutex},
     time::SystemTime,
@@ -29,7 +30,6 @@ use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
 
 const WEB_GUI_DIR_STR: &str = "web_gui";
-const WEB_SERVER_PORT: u16 = 8082;
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -163,7 +163,7 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
         }
         if let Some(host_address) = maybe_host_address {
             server_handshake_packet.web_gui_url = [0; 32];
-            let url_string = format!("http://{}:{}/", host_address, WEB_SERVER_PORT);
+            let url_string = format!("http://{}:{}/", host_address, 8082);
             let url_c_string = std::ffi::CString::new(url_string).unwrap();
             let url_bytes = url_c_string.as_bytes_with_nul();
             server_handshake_packet.web_gui_url[0..url_bytes.len()].copy_from_slice(url_bytes);
@@ -406,7 +406,13 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             .collect(),
     );
 
-    let addr = "0.0.0.0:8082".parse().unwrap();
+    let web_server_port = session_manager
+        .lock()
+        .unwrap()
+        .get()
+        .to_settings()
+        .connection
+        .web_server_port;
 
     let service = make_service_fn(|_| {
         let session_manager = session_manager.clone();
@@ -417,7 +423,14 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
             }))
         }
     });
-    trace_err!(hyper::Server::bind(&addr).serve(service).await)?;
+    trace_err!(
+        hyper::Server::bind(&SocketAddr::new(
+            "0.0.0.0".parse().unwrap(),
+            web_server_port
+        ))
+        .serve(service)
+        .await
+    )?;
 
     trace_err!(driver_log_redirect.await)?;
 

@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "12.5.1"
+version = "12.6.0"
 dependencies = [
  "alvr_common",
  "bindgen",

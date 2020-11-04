@@ -1,5 +1,5 @@
-use std::{fmt::Display, future::Future};
 use serde::{Deserialize, Serialize};
+use std::{fmt::Display, future::Future};
 
 pub type StrResult<T = ()> = Result<T, String>;
 
@@ -44,7 +44,27 @@ pub fn show_err<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
                     "ALVR encountered an error",
                     &err_string,
                     msgbox::IconType::Error,
-                ).ok();
+                )
+                .ok();
+            }
+        });
+    })
+}
+
+pub fn show_warn<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
+    res.map_err(|e| {
+        log::warn!("{}", e);
+
+        #[cfg(not(target_os = "android"))]
+        std::thread::spawn({
+            let err_string = e.to_string();
+            move || {
+                msgbox::create(
+                    "ALVR encountered a non-fatal error",
+                    &err_string,
+                    msgbox::IconType::Info,
+                )
+                .ok();
             }
         });
     })
@@ -52,6 +72,10 @@ pub fn show_err<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
 
 pub fn show_e<E: Display>(e: E) {
     show_err::<(), _>(Err(e)).ok();
+}
+
+pub fn show_w<E: Display>(e: E) {
+    show_warn::<(), _>(Err(e)).ok();
 }
 
 pub async fn show_err_async<T, E: Display>(

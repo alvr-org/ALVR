@@ -389,22 +389,32 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
 
     tokio::spawn(client_discovery(session_manager.clone()));
 
-    let driver_log_redirect = tokio::spawn(
-        tail_stream(&driver_log_path())?
-            .map(|maybe_line: std::io::Result<String>| {
-                if let Ok(line) = maybe_line {
-                    if !(try_log_redirect(&line, log::Level::Error)
-                        || try_log_redirect(&line, log::Level::Warn)
-                        || try_log_redirect(&line, log::Level::Info)
-                        || try_log_redirect(&line, log::Level::Debug)
-                        || try_log_redirect(&line, log::Level::Trace))
-                    {
-                        try_log_redirect(&format!("[INFO] {}", line), log::Level::Info);
+    let driver_log_tail = tail_stream(&driver_log_path());
+    let maybe_driver_log_redirect = match driver_log_tail {
+        Ok(stream) => Some(tokio::spawn(
+            stream
+                .map(|maybe_line: std::io::Result<String>| {
+                    if let Ok(line) = maybe_line {
+                        if !(try_log_redirect(&line, log::Level::Error)
+                            || try_log_redirect(&line, log::Level::Warn)
+                            || try_log_redirect(&line, log::Level::Info)
+                            || try_log_redirect(&line, log::Level::Debug)
+                            || try_log_redirect(&line, log::Level::Trace))
+                        {
+                            try_log_redirect(&format!("[INFO] {}", line), log::Level::Info);
+                        }
                     }
-                }
-            })
-            .collect(),
-    );
+                })
+                .collect(),
+        )),
+        Err(e) => {
+            show_w(format!(
+                "Failed to gather driver log, only web server messages will be logged. Error: {}",
+                e
+            ));
+            None
+        }
+    };
 
     let web_server_port = session_manager
         .lock()
@@ -432,7 +442,9 @@ async fn run(log_senders: Arc<Mutex<Vec<UnboundedSender<String>>>>) -> StrResult
         .await
     )?;
 
-    trace_err!(driver_log_redirect.await)?;
+    if let Some(driver_log_redirect) = maybe_driver_log_redirect {
+        trace_err!(driver_log_redirect.await)?;
+    }
 
     Ok(())
 }

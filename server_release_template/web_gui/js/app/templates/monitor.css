@@ -47,6 +47,11 @@
     width: 100%;
 }
 
+#troubleShootingDiv {
+    position: absolute;
+    bottom: 20px;
+}
+
 #loggingTable {  
     width: 100%;
     font-size: 12px;

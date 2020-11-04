@@ -215,9 +215,6 @@ pub struct HeadsetDesc {
     #[schema(advanced)]
     pub position_offset: [f32; 3],
 
-    #[schema(advanced)]
-    pub use_tracking_reference: bool,
-
     pub force_3dof: bool,
 
     pub controllers: Switch<ControllersDesc>,
@@ -379,7 +376,6 @@ pub fn session_settings_default() -> SettingsDefault {
             registered_device_type: "oculus/1WMGH000XX0000".into(),
             tracking_frame_offset: 0,
             position_offset: [0., 0., 0.],
-            use_tracking_reference: false,
             force_3dof: false,
             controllers: SwitchDefault {
                 enabled: true,

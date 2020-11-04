@@ -107,8 +107,6 @@ public:
 
 	int32_t m_causePacketLoss;
 
-	bool m_useTrackingReference;
-
 	int32_t m_trackingFrameOffset;
 
 	bool m_force3DOF;

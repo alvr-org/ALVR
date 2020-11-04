@@ -178,8 +178,6 @@ void Settings::Load()
 
 		m_disableController = !headset.get("controllers").get("enabled").get<bool>();
 
-		m_useTrackingReference = headset.get("useTrackingReference").get<bool>();
-
 		m_EnableOffsetPos = true;
 		auto headsetPositionOffset = headset.get("positionOffset").get<picojson::array>();
 		m_OffsetPos[0] = (float)headsetPositionOffset[0].get<double>();

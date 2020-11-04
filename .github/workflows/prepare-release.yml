@@ -33,7 +33,7 @@ jobs:
           $clientarg = If ($clientarg.Length -gt 0) { "--client $clientarg" } else { "" }
           $out = cargo xtask bump-versions $serverarg.split() $clientarg.split()
           echo $out
-          cargo update -p alvr_server_driver
+          cargo update -p alvr_server
           echo "::set-output name=version_tag::$(echo $out | sls -CaseSensitive -Pattern '^v.*$')"
       
       - name: Push changes
@@ -100,8 +100,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ./build/alvr_server_driver.pdb
-          asset_name: alvr_server_driver.pdb
+          asset_path: ./build/alvr_server.pdb
+          asset_name: alvr_server.pdb
           asset_content_type: application/octet-stream
       - name: Upload ALVR Client .apk
         uses: actions/upload-release-asset@v1

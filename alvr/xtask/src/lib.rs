@@ -18,13 +18,13 @@ fn get_version(dir_name: &str) -> String {
 }
 
 pub fn server_version() -> String {
-    get_version("server_driver")
+    get_version("server")
 }
 
 pub fn client_version() -> String {
     let re = Regex::new(r#"versionName\s+"(?P<name>[\d.]+[0-9A-Za-z-.]*)""#).unwrap();
     re.captures(
-        &fs::read_to_string(packages_dir().join("client_hmd/app").join("build.gradle")).unwrap(),
+        &fs::read_to_string(packages_dir().join("client/android/app").join("build.gradle")).unwrap(),
     )
     .unwrap()["name"]
         .into()

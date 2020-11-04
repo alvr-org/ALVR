@@ -3,7 +3,7 @@
 use alvr_common::*;
 
 fn main() {
-    let mutex = single_instance::SingleInstance::new("alvr_server_bootstrap_mutex").unwrap();
+    let mutex = single_instance::SingleInstance::new("alvr_launcher_mutex").unwrap();
     if mutex.is_single() {
         commands::maybe_launch_web_server(&std::env::current_dir().unwrap());
 

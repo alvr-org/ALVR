@@ -74,7 +74,7 @@ pub fn maybe_kill_web_server() {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
 
-    let bootstrap_or_driver_count = system.get_process_by_name(&exec_fname("ALVR")).len()
+    let bootstrap_or_driver_count = system.get_process_by_name(&exec_fname("ALVR launcher")).len()
         + system.get_process_by_name(&exec_fname("vrserver")).len();
 
     if bootstrap_or_driver_count <= 1 {
@@ -235,7 +235,7 @@ pub fn get_registered_drivers() -> StrResult<Vec<PathBuf>> {
 
 pub fn get_alvr_dir() -> StrResult<PathBuf> {
     for dir in get_registered_drivers()? {
-        if dir.join(exec_fname("ALVR")).exists() && dir.join("web_gui").exists() {
+        if dir.join(exec_fname("ALVR launcher")).exists() && dir.join("web_gui").exists() {
             return Ok(dir);
         }
     }

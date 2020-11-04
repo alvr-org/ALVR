@@ -1,5 +1,5 @@
 [package]
-name = "alvr_server_driver"
+name = "alvr_server"
 version = "12.5.1"
 authors = ["Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"

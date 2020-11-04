@@ -51,7 +51,7 @@ fn bump_client_gradle_version(new_version: &Version) -> BResult {
     );
 
     let gradle_file_path = workspace_dir()
-        .join("alvr/client_hmd/app")
+        .join("alvr/client/android/app")
         .join("build.gradle");
     let mut gradle_file = File::open(&gradle_file_path)?;
     let mut data = String::new();
@@ -84,7 +84,7 @@ fn bump_server_cargo_version(new_version: &Version) -> BResult {
         new_version
     );
     let manifest_path = workspace_dir()
-        .join("alvr/server_driver")
+        .join("alvr/server")
         .join("Cargo.toml");
 
     let mut manifest = Document::from_str(&fs::read_to_string(&manifest_path)?)?;

@@ -2,7 +2,7 @@
 members = [
     "alvr/xtask",
     "alvr/common",
-    "alvr/server_driver",
+    "alvr/server",
     "alvr/web_server",
-    "alvr/server_bootstrap",
+    "alvr/launcher",
 ]

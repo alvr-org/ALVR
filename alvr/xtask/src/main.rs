@@ -77,7 +77,7 @@ fn dynlib_fname(name: &str) -> String {
     format!("{}.dll", name)
 }
 
-fn run_with_args(cmd: &str, args: &[&str]) -> BResult {
+fn run_with_args_in(workdir: &Path, cmd: &str, args: &[&str]) -> BResult {
     println!(
         "\n{}",
         args.iter().fold(String::from(cmd), |s, arg| s + " " + arg)
@@ -85,6 +85,7 @@ fn run_with_args(cmd: &str, args: &[&str]) -> BResult {
     let output = Command::new(cmd)
         .args(args)
         .stdout(Stdio::inherit())
+        .current_dir(workdir)
         .spawn()?
         .wait_with_output()?;
 
@@ -97,6 +98,10 @@ fn run_with_args(cmd: &str, args: &[&str]) -> BResult {
         )
         .into())
     }
+}
+
+fn run_with_args(cmd: &str, args: &[&str]) -> BResult {
+    run_with_args_in(&env::current_dir().unwrap(), cmd, args)
 }
 
 fn run(cmd: &str) -> BResult {
@@ -168,7 +173,7 @@ fn zip_dir(dir: &Path) -> BResult {
         // Some unzip tools unzip files with directory paths correctly, some do not!
         if path.is_file() {
             println!("adding file {:?} as {:?} ...", path, name);
-            zip.start_file_from_path(name, <_>::default())?;
+            zip.start_file(name.to_string_lossy(), <_>::default())?;
             let mut f = fs::File::open(path)?;
 
             f.read_to_end(&mut buffer)?;
@@ -178,7 +183,7 @@ fn zip_dir(dir: &Path) -> BResult {
             // Only if not root! Avoids path spec / warning
             // and mapname conversion failed error on unzip
             println!("adding dir {:?} as {:?} ...", path, name);
-            zip.add_directory_from_path(name, <_>::default())?;
+            zip.add_directory(name.to_string_lossy(), <_>::default())?;
         }
     }
 
@@ -192,8 +197,8 @@ pub fn build_server(is_release: bool, fetch_crates: bool) -> BResult {
     let target_dir = target_dir();
     let artifacts_dir = target_dir.join(build_type);
     let driver_dst_dir = server_build_dir().join("bin").join(STEAMVR_OS_DIR_NAME);
-    let swresample_dir = workspace_dir().join("alvr/server_driver/cpp/libswresample/lib");
-    let openvr_api_dir = workspace_dir().join("alvr/server_driver/cpp/openvr/lib");
+    let swresample_dir = workspace_dir().join("alvr/server/cpp/libswresample/lib");
+    let openvr_api_dir = workspace_dir().join("alvr/server/cpp/openvr/lib");
 
     reset_server_build_folder()?;
     fs::create_dir_all(&driver_dst_dir)?;
@@ -203,11 +208,11 @@ pub fn build_server(is_release: bool, fetch_crates: bool) -> BResult {
     }
 
     run(&format!(
-        "cargo build -p alvr_server_driver -p alvr_web_server -p alvr_server_bootstrap {}",
+        "cargo build -p alvr_server -p alvr_launcher -p alvr_web_server {}",
         build_flag
     ))?;
     fs::copy(
-        artifacts_dir.join(dynlib_fname("alvr_server_driver")),
+        artifacts_dir.join(dynlib_fname("alvr_server")),
         driver_dst_dir.join(DRIVER_FNAME),
     )?;
     fs::copy(
@@ -227,8 +232,8 @@ pub fn build_server(is_release: bool, fetch_crates: bool) -> BResult {
         server_build_dir().join(exec_fname("alvr_web_server")),
     )?;
     fs::copy(
-        artifacts_dir.join(exec_fname("alvr_server_bootstrap")),
-        server_build_dir().join(exec_fname("ALVR")),
+        artifacts_dir.join(exec_fname("alvr_launcher")),
+        server_build_dir().join(exec_fname("ALVR launcher")),
     )?;
 
     // if cfg!(target_os = "linux") {
@@ -257,7 +262,7 @@ pub fn build_client(is_release: bool) -> BResult {
         "assembleDebug"
     };
 
-    let client_hmd_dir = workspace_dir().join("alvr/client_hmd");
+    let client_dir = workspace_dir().join("alvr/client/android");
     let command_name = if cfg!(not(windows)) {
         "gradlew"
     } else {
@@ -266,12 +271,12 @@ pub fn build_client(is_release: bool) -> BResult {
 
     fs::create_dir_all(&build_dir())?;
 
-    env::set_current_dir(&client_hmd_dir)?;
+    env::set_current_dir(&client_dir)?;
     run(&format!("{} {}", command_name, build_task))?;
     env::set_current_dir(workspace_dir())?;
 
     fs::copy(
-        client_hmd_dir
+        client_dir
             .join("app/build/outputs/apk")
             .join(build_type)
             .join(format!("app-{}.apk", build_type)),
@@ -288,8 +293,8 @@ pub fn build_publish() -> BResult {
 
     if cfg!(windows) {
         fs::copy(
-            target_dir().join("release").join("alvr_server_driver.pdb"),
-            build_dir().join("alvr_server_driver.pdb"),
+            target_dir().join("release").join("alvr_server.pdb"),
+            build_dir().join("alvr_server.pdb"),
         )?;
     }
 

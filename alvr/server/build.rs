@@ -21,6 +21,7 @@ fn main() {
 
     let mut build = cc::Build::new();
     build
+        .debug(false) // This is because we cannot link to msvcrtd (see below)
         .cpp(true)
         .files(source_files_paths)
         .include("cpp/alvr_server")
@@ -28,24 +29,20 @@ fn main() {
         .include("cpp/openvr/headers")
         .include("cpp/alvr_server/include")
         .include("cpp/libswresample/include")
-        .include("cpp/ALVR-common");
-    if cfg!(windows) {
-        build
-            .define("_WINDLL", None)
-            .define("NOMINMAX", None)
-            .define("_WINSOCKAPI_", None)
-            .define("_MBCS", None)
-            .define("_MT", None)
-            .define("_DLL", None);
-    }
-    if cfg!(debug_assertions) {
-        build.define("_DEBUG", None);
-    }
+        .include("cpp/ALVR-common")
+        .define("_WINDLL", None)
+        .define("NOMINMAX", None)
+        .define("_WINSOCKAPI_", None)
+        .define("_MBCS", None)
+        .define("_MT", None)
+        .define("_DLL", None);
+
     build.compile("bindings");
 
     bindgen::builder()
         .clang_arg("-xc++")
         .header("cpp/alvr_server/bindings.h")
+        .derive_default(true)
         .generate()
         .expect("bindings")
         .write_to_file(out_dir.join("bindings.rs"))
@@ -66,33 +63,30 @@ fn main() {
         // println!("cargo:rustc-link-lib=uuid");
         // println!("cargo:rustc-link-lib=odbc32");
         // println!("cargo:rustc-link-lib=odbccp32");
-
-        println!("cargo:rustc-link-lib=avrt");
-
         // println!("cargo:rustc-link-lib=winmm");
         // println!("cargo:rustc-link-lib=ws2_32");
         // println!("cargo:rustc-link-lib=userenv");
+        println!("cargo:rustc-link-lib=avrt");
 
-        if cfg!(debug_assertions) {
-            // /MDd
-            println!("cargo:rustc-link-lib=msvcrtd");
-        } else {
-            // /MD
-            println!("cargo:rustc-link-lib=msvcrt");
-        }
+        // This is the library that is linked when using the /MD flag.
+        // For debug builds, /MDd should be used (that links msvcrtd), but msvcrtd clashes with
+        // spirv_cross, that always use msvcrt (release version). So here the C++ code is always
+        // built as release and only msvcrt is linked
+        println!("cargo:rustc-link-lib=msvcrt");
+
+        println!(
+            "cargo:rustc-link-search=native={}/libswresample/lib",
+            cpp_dir.to_string_lossy()
+        );
+        println!(
+            "cargo:rustc-link-search=native={}/openvr/lib",
+            cpp_dir.to_string_lossy()
+        );
+        println!("cargo:rustc-link-lib=swresample");
+        println!("cargo:rustc-link-lib=avutil");
+        println!("cargo:rustc-link-lib=openvr_api");
     }
 
-    println!(
-        "cargo:rustc-link-search=native={}/libswresample/lib",
-        cpp_dir.to_string_lossy()
-    );
-    println!(
-        "cargo:rustc-link-search=native={}/openvr/lib",
-        cpp_dir.to_string_lossy()
-    );
-    println!("cargo:rustc-link-lib=swresample");
-    println!("cargo:rustc-link-lib=avutil");
-    println!("cargo:rustc-link-lib=openvr_api");
     for path in cpp_paths {
         println!("cargo:rerun-if-changed={}", path.to_string_lossy());
     }

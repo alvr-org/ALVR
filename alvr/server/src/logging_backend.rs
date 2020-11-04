@@ -28,12 +28,17 @@ pub fn init_logging() {
                 .level(LevelFilter::Info)
         }
         .chain(
-            OpenOptions::new()
+            match OpenOptions::new()
                 .write(true)
                 .create(true)
                 .truncate(true)
                 .open(driver_log_path())
-                .unwrap(),
+            {
+                Ok(file) => fern::Output::from(file),
+                // This doubles output in debug builds when we fail to open the log file
+                // but at least messages go somewhere on release builds
+                Err(_) => fern::Output::from(std::io::stdout()),
+            },
         )
         .apply()
         .unwrap();

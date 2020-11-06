@@ -320,7 +320,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_onGuardianSe
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn fhdsjkfhsdlfsjdkhfsdf(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_initializeSocket(
     env: JNIEnv,
     instance: JObject,
     hello_port: i32,

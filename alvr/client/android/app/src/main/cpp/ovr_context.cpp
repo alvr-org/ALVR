@@ -23,6 +23,7 @@
 #include "asset.h"
 #include <inttypes.h>
 #include <glm/gtx/euler_angles.hpp>
+#include "bindings.h"
 
 using namespace std;
 

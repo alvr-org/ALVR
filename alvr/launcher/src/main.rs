@@ -74,9 +74,9 @@ fn window_mode() -> StrResult {
 
         maybe_delete_alvr_dir_storage();
 
-        let html_content = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/html/index.html"));
+        let html_content = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/client_gui/html/index.html"));
         let window = Arc::new(trace_err!(alcro::UIBuilder::new()
-            .content(alcro::Content::Html(html_content))
+            .content(alcro::Content::Html(&html_content))
             .size(0, 0)
             .custom_args(&["--disk-cache-size=1", "--window-position=-1000,-1000"])
             .run())?);
@@ -113,7 +113,6 @@ fn window_mode() -> StrResult {
                 instance_mutex.lock().unwrap().take();
                 window.close();
 
-                // reopen alvr
                 let mut command =
                     Command::new(::std::env::current_dir().unwrap().join("ALVR launcher"));
                 command.spawn().ok();

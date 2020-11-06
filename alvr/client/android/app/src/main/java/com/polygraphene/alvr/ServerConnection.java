@@ -16,7 +16,7 @@ class ServerConnection extends ThreadBase
     private static final String TAG = "ServerConnection";
 
     static {
-        System.loadLibrary("native-lib");
+        System.loadLibrary("alvr_client");
     }
 
     private static final String BROADCAST_ADDRESS = "255.255.255.255";

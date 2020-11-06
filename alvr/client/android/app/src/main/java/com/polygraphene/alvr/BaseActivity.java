@@ -6,7 +6,7 @@ import android.support.annotation.NonNull;
 
 abstract class BaseActivity extends Activity {
     static {
-        System.loadLibrary("native-lib");
+        System.loadLibrary("alvr_client");
     }
 
     @Override

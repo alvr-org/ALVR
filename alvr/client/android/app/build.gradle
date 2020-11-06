@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
 android {
     compileSdkVersion 30
@@ -67,3 +68,17 @@ dependencies {
 }
 
 build.dependsOn(':extractNdk')
+
+cargo {
+    module  = "../.."
+    libname = "alvr_client"
+    targets = ["arm64"]
+    targetDirectory = "../../../../target"
+    verbose = true
+}
+
+tasks.whenTaskAdded { task ->
+    if ((task.name == 'javaPreCompileDebug' || task.name == 'javaPreCompileRelease')) {
+        task.dependsOn 'cargoBuild'
+    }
+}

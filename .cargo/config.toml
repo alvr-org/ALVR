@@ -1,0 +1,7 @@
+[alias]
+xtask = "run -p alvr_xtask --"
+
+[build]
+# This is just for the android build. This isn't actually needed unless the default target dir has
+# been changed system-wise
+target-dir = "target"

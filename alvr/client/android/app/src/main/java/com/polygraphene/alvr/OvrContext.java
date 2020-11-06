@@ -12,7 +12,7 @@ import android.webkit.WebView;
 public class OvrContext {
 
     static {
-        System.loadLibrary("native-lib");
+        System.loadLibrary("alvr_client");
     }
 
     private Handler mMainHandler;
@@ -90,7 +90,7 @@ public class OvrContext {
     }
 
     public int getCameraTexture() {
-        return getCameraTextureNative(handle);
+        return 0;
     }
 
     public boolean isVrMode() {
@@ -153,7 +153,6 @@ public class OvrContext {
     private native int getLoadingTextureNative(long handle);
     private native int getSurfaceTextureIDNative(long handle);
     private native int getWebViewSurfaceTextureNative(long handle);
-    public native int getCameraTextureNative(long handle);
 
     private native boolean isVrModeNative(long handle);
     private native void getDeviceDescriptorNative(long handle, DeviceDescriptor deviceDescriptor);

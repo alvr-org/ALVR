@@ -14,6 +14,7 @@
 #include "latency_collector.h"
 #include "ServerConnectionNative.h"
 #include "exception.h"
+#include "bindings.h"
 
 
 ServerConnectionNative::ServerConnectionNative() {
@@ -549,17 +550,36 @@ void ServerConnectionNative::initializeJNICallbacks(JNIEnv *env, jobject instanc
     env->DeleteLocalRef(clazz);
 }
 
-extern "C"
-JNIEXPORT jlong JNICALL
-Java_com_polygraphene_alvr_ServerConnection_initializeSocket(
-        JNIEnv *env, jobject instance,
-        jint helloPort, jint port, jstring deviceName_, jobjectArray broadcastAddrList_,
-        jintArray refreshRates_, jint renderWidth, jint renderHeight, jfloatArray fov,
-        jint deviceType, jint deviceSubType, jint deviceCapabilityFlags, jint controllerCapabilityFlags, jfloat ipd) {
+//extern "C"
+//JNIEXPORT jlong JNICALL
+//Java_com_polygraphene_alvr_ServerConnection_initializeSocket(
+//        JNIEnv *env, jobject instance,
+//        jint helloPort, jint port, jstring deviceName_, jobjectArray broadcastAddrList_,
+//        jintArray refreshRates_, jint renderWidth, jint renderHeight, jfloatArray fov,
+//        jint deviceType, jint deviceSubType, jint deviceCapabilityFlags, jint controllerCapabilityFlags, jfloat ipd) {
+//    auto udpManager = new ServerConnectionNative();
+//    try {
+//        udpManager->initialize(env, instance, helloPort, port, deviceName_,
+//                               broadcastAddrList_, refreshRates_, renderWidth, renderHeight, fov,
+//                               deviceType, deviceSubType, deviceCapabilityFlags,
+//                               controllerCapabilityFlags, ipd);
+//    } catch (Exception &e) {
+//        LOGE("Exception on initializing ServerConnectionNative. e=%ls", e.what());
+//        delete udpManager;
+//        return 0;
+//    }
+//    return reinterpret_cast<jlong>(udpManager);
+//}
+
+long long initializeSocket(void *env, void *instance,
+                           int helloPort, int port, void *deviceName_, void *broadcastAddrList_,
+                           void *refreshRates_, int renderWidth, int renderHeight, void *fov,
+                           int deviceType, int deviceSubType, int deviceCapabilityFlags,
+                           int controllerCapabilityFlags, float ipd) {
     auto udpManager = new ServerConnectionNative();
     try {
-        udpManager->initialize(env, instance, helloPort, port, deviceName_,
-                               broadcastAddrList_, refreshRates_, renderWidth, renderHeight, fov,
+        udpManager->initialize((JNIEnv *)env, (jobject)instance, helloPort, port, (jstring)deviceName_,
+                               (jobjectArray)broadcastAddrList_, (jintArray)refreshRates_, renderWidth, renderHeight, (jfloatArray)fov,
                                deviceType, deviceSubType, deviceCapabilityFlags,
                                controllerCapabilityFlags, ipd);
     } catch (Exception &e) {
@@ -570,53 +590,93 @@ Java_com_polygraphene_alvr_ServerConnection_initializeSocket(
     return reinterpret_cast<jlong>(udpManager);
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_ServerConnection_closeSocket(JNIEnv *env, jobject instance, jlong nativeHandle) {
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_ServerConnection_closeSocket(JNIEnv *env, jobject instance, jlong nativeHandle) {
+//    delete reinterpret_cast<ServerConnectionNative *>(nativeHandle);
+//}
+
+void closeSocket(long long nativeHandle) {
     delete reinterpret_cast<ServerConnectionNative *>(nativeHandle);
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_ServerConnection_runLoop(JNIEnv *env, jobject instance, jlong nativeHandle,
-                                                     jstring serverAddress, jint serverPort) {
-    reinterpret_cast<ServerConnectionNative *>(nativeHandle)->runLoop(env, instance, serverAddress, serverPort);
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_ServerConnection_runLoop(JNIEnv *env, jobject instance, jlong nativeHandle,
+//                                                     jstring serverAddress, jint serverPort) {
+//    reinterpret_cast<ServerConnectionNative *>(nativeHandle)->runLoop(env, instance, serverAddress, serverPort);
+//}
+
+void runLoop(void *env, void *instance, long long nativeHandle, void *serverAddress, int serverPort) {
+    reinterpret_cast<ServerConnectionNative *>(nativeHandle)->runLoop((JNIEnv *)env, (jobject)instance, (jstring)serverAddress, serverPort);
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_ServerConnection_interruptNative(JNIEnv *env, jobject instance, jlong nativeHandle) {
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_ServerConnection_interruptNative(JNIEnv *env, jobject instance, jlong nativeHandle) {
+//    reinterpret_cast<ServerConnectionNative *>(nativeHandle)->interrupt();
+//}
+
+void interruptNative(long long nativeHandle) {
     reinterpret_cast<ServerConnectionNative *>(nativeHandle)->interrupt();
 }
 
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_com_polygraphene_alvr_ServerConnection_isConnectedNative(JNIEnv *env, jobject instance, jlong nativeHandle) {
+//
+//extern "C"
+//JNIEXPORT jboolean JNICALL
+//Java_com_polygraphene_alvr_ServerConnection_isConnectedNative(JNIEnv *env, jobject instance, jlong nativeHandle) {
+//    return nativeHandle != 0 && reinterpret_cast<ServerConnectionNative *>(nativeHandle)->isConnected();
+//}
+
+unsigned char isConnectedNative(long long nativeHandle) {
     return nativeHandle != 0 && reinterpret_cast<ServerConnectionNative *>(nativeHandle)->isConnected();
 }
 
-extern "C"
-JNIEXPORT jstring JNICALL
-Java_com_polygraphene_alvr_ServerConnection_getServerAddress(JNIEnv *env, jobject instance, jlong nativeHandle) {
-    return reinterpret_cast<ServerConnectionNative *>(nativeHandle)->getServerAddress(env);
+//
+//extern "C"
+//JNIEXPORT jstring JNICALL
+//Java_com_polygraphene_alvr_ServerConnection_getServerAddress(JNIEnv *env, jobject instance, jlong nativeHandle) {
+//    return reinterpret_cast<ServerConnectionNative *>(nativeHandle)->getServerAddress(env);
+//}
+
+void *getServerAddress(void *env, long long nativeHandle) {
+    return reinterpret_cast<ServerConnectionNative *>(nativeHandle)->getServerAddress((JNIEnv *)env);
 }
 
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_polygraphene_alvr_ServerConnection_getServerPort(JNIEnv *env, jobject instance, jlong nativeHandle) {
+//
+//extern "C"
+//JNIEXPORT jint JNICALL
+//Java_com_polygraphene_alvr_ServerConnection_getServerPort(JNIEnv *env, jobject instance, jlong nativeHandle) {
+//    return reinterpret_cast<ServerConnectionNative *>(nativeHandle)->getServerPort();
+//}
+
+int getServerPort(long long nativeHandle) {
     return reinterpret_cast<ServerConnectionNative *>(nativeHandle)->getServerPort();
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_ServerConnection_sendNative(JNIEnv *env, jobject instance,
-                                                        jlong nativeHandle, jlong nativeBuffer,
-                                                        jint bufferLength) {
-    return reinterpret_cast<ServerConnectionNative *>(nativeHandle)->send(reinterpret_cast<char*>(nativeBuffer), bufferLength);
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_ServerConnection_sendNative(JNIEnv *env, jobject instance,
+//                                                        jlong nativeHandle, jlong nativeBuffer,
+//                                                        jint bufferLength) {
+//    return reinterpret_cast<ServerConnectionNative *>(nativeHandle)->send(reinterpret_cast<char*>(nativeBuffer), bufferLength);
+//}
+
+void sendNative(long long nativeHandle, long long nativeBuffer, int bufferLength) {
+    reinterpret_cast<ServerConnectionNative *>(nativeHandle)->send(reinterpret_cast<char*>(nativeBuffer), bufferLength);
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_ServerConnection_setSinkPreparedNative(JNIEnv *env, jobject instance, jlong nativeHandle, jboolean prepared) {
+//
+//extern "C"
+//JNIEXPORT void JNICALL
+//Java_com_polygraphene_alvr_ServerConnection_setSinkPreparedNative(JNIEnv *env, jobject instance, jlong nativeHandle, jboolean prepared) {
+//    reinterpret_cast<ServerConnectionNative *>(nativeHandle)->setSinkPrepared(static_cast<bool>(prepared));
+//}
+
+void setSinkPreparedNative(long long nativeHandle, unsigned char prepared) {
     reinterpret_cast<ServerConnectionNative *>(nativeHandle)->setSinkPrepared(static_cast<bool>(prepared));
 }

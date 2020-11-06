@@ -2,6 +2,7 @@
 members = [
     "alvr/xtask",
     "alvr/common",
+    "alvr/client",
     "alvr/server",
     "alvr/web_server",
     "alvr/launcher",

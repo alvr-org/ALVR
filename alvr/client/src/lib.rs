@@ -36,7 +36,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_initializeNa
     vr_thread: JObject,
     ar_mode: u8,
     initial_refresh_rate: i32,
-) -> i64 {
+) {
     initializeNative(
         env.get_native_interface() as _,
         *instance as _,
@@ -52,222 +52,184 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_initializeNa
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_destroyNative(
     env: JNIEnv,
     _: JObject,
-    handle: i64,
 ) {
-    destroyNative(env.get_native_interface() as _, handle)
+    destroyNative(env.get_native_interface() as _)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_getLoadingTextureNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
 ) -> i32 {
-    getLoadingTextureNative(handle)
+    getLoadingTextureNative()
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_getSurfaceTextureIDNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
 ) -> i32 {
-    getSurfaceTextureIDNative(handle)
+    getSurfaceTextureIDNative()
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_getWebViewSurfaceTextureNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
 ) -> i32 {
-    getWebViewSurfaceTextureNative(handle)
+    getWebViewSurfaceTextureNative()
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_renderNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
     rendered_frame_index: i64,
 ) {
-    renderNative(handle, rendered_frame_index)
+    renderNative(rendered_frame_index)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_renderLoadingNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
 ) {
-    renderLoadingNative(handle)
+    renderLoadingNative()
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_sendTrackingInfoNative(
     env: JNIEnv,
     _: JObject,
-    handle: i64,
     udp_receiver_thread: JObject,
 ) {
-    sendTrackingInfoNative(
-        env.get_native_interface() as _,
-        handle,
-        *udp_receiver_thread as _,
-    )
+    sendTrackingInfoNative(env.get_native_interface() as _, *udp_receiver_thread as _)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_sendGuardianInfoNative(
     env: JNIEnv,
     _: JObject,
-    handle: i64,
     udp_receiver_thread: JObject,
 ) {
-    sendGuardianInfoNative(
-        env.get_native_interface() as _,
-        handle,
-        *udp_receiver_thread as _,
-    )
+    sendGuardianInfoNative(env.get_native_interface() as _, *udp_receiver_thread as _)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_sendMicDataNative(
     env: JNIEnv,
     _: JObject,
-    handle: i64,
     udp_receiver_thread: JObject,
 ) {
-    sendMicDataNative(
-        env.get_native_interface() as _,
-        handle,
-        *udp_receiver_thread as _,
-    )
+    sendMicDataNative(env.get_native_interface() as _, *udp_receiver_thread as _)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_onChangeSettingsNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
     suspend: i32,
 ) {
-    onChangeSettingsNative(handle, suspend)
+    onChangeSettingsNative(suspend)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_onSurfaceCreatedNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
     surface: JObject,
 ) {
-    onSurfaceCreatedNative(handle, *surface as _)
+    onSurfaceCreatedNative(*surface as _)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_onSurfaceDestroyedNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
 ) {
-    onSurfaceDestroyedNative(handle)
+    onSurfaceDestroyedNative()
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_onSurfaceChangedNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
     surface: JObject,
 ) {
-    onSurfaceChangedNative(handle, *surface as _)
+    onSurfaceChangedNative(*surface as _)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_onResumeNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
 ) {
-    onResumeNative(handle)
+    onResumeNative()
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_onPauseNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
 ) {
-    onPauseNative(handle)
+    onPauseNative()
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_isVrModeNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
 ) -> u8 {
-    isVrModeNative(handle)
+    isVrModeNative()
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_getDeviceDescriptorNative(
     env: JNIEnv,
     _: JObject,
-    handle: i64,
     device_descriptor: JObject,
 ) {
-    getDeviceDescriptorNative(
-        env.get_native_interface() as _,
-        handle,
-        *device_descriptor as _,
-    )
+    getDeviceDescriptorNative(env.get_native_interface() as _, *device_descriptor as _)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_setFrameGeometryNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
     width: i32,
     height: i32,
 ) {
-    setFrameGeometryNative(handle, width, height)
+    setFrameGeometryNative(width, height)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_setRefreshRateNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
     refresh_rate: i32,
 ) {
-    setRefreshRateNative(handle, refresh_rate)
+    setRefreshRateNative(refresh_rate)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_setStreamMicNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
     stream_mic: u8,
 ) {
-    setStreamMicNative(handle, stream_mic)
+    setStreamMicNative(stream_mic)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_setFFRParamsNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
     foveation_mode: i32,
     foveation_strength: f32,
     foveation_shape: f32,
     foveation_vertical_offset: f32,
 ) {
     setFFRParamsNative(
-        handle,
         foveation_mode,
         foveation_strength,
         foveation_shape,
@@ -279,44 +241,32 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_setFFRParams
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_onHapticsFeedbackNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
     start_time: i64,
     amplitude: f32,
     duration: f32,
     frequency: f32,
     hand: u8,
 ) {
-    onHapticsFeedbackNative(handle, start_time, amplitude, duration, frequency, hand)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_getButtonDownNative(
-    _: JNIEnv,
-    _: JObject,
-    handle: i64,
-) -> u8 {
-    getButtonDownNative(handle)
+    onHapticsFeedbackNative(start_time, amplitude, duration, frequency, hand)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_onGuardianSyncAckNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
     timestamp: i64,
 ) {
-    onGuardianSyncAckNative(handle, timestamp)
+    onGuardianSyncAckNative(timestamp)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrContext_onGuardianSegmentAckNative(
     _: JNIEnv,
     _: JObject,
-    handle: i64,
     timestamp: i64,
     segment_index: i32,
 ) {
-    onGuardianSegmentAckNative(handle, timestamp, segment_index)
+    onGuardianSegmentAckNative(timestamp, segment_index)
 }
 
 #[no_mangle]

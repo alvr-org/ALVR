@@ -19,10 +19,8 @@ public class OvrContext {
 
     public OvrThread.WebViewWrapper mWebViewWrapper = null;
 
-    private long handle;
-
     public void initialize(Activity activity, AssetManager assetManager, OvrThread ovrThread, boolean ARMode, int initialRefreshRate) {
-        handle = initializeNative(activity, assetManager, ovrThread, ARMode, initialRefreshRate);
+        initializeNative(activity, assetManager, ovrThread, ARMode, initialRefreshRate);
 
         // Grab the activity's looper into a handler so that we can post() to the main thread to
         // interact with our WebView.
@@ -30,63 +28,63 @@ public class OvrContext {
     }
 
     public void destroy() {
-        destroyNative(handle);
+        destroyNative();
     }
 
     public void onResume() {
-        onResumeNative(handle);
+        onResumeNative();
     }
 
     public void onPause() {
-        onPauseNative(handle);
+        onPauseNative();
     }
 
     public void onSurfaceCreated(Surface surface) {
-        onSurfaceCreatedNative(handle, surface);
+        onSurfaceCreatedNative(surface);
     }
 
     public void onSurfaceChanged(Surface surface) {
-        onSurfaceChangedNative(handle, surface);
+        onSurfaceChangedNative(surface);
     }
 
     public void onSurfaceDestroyed() {
-        onSurfaceDestroyedNative(handle);
+        onSurfaceDestroyedNative();
     }
 
     public void render(long renderedFrameIndex) {
-        renderNative(handle, renderedFrameIndex);
+        renderNative(renderedFrameIndex);
     }
 
     public void renderLoading() {
-        renderLoadingNative(handle);
+        renderLoadingNative();
     }
 
     public void sendTrackingInfo(ServerConnection serverConnection) {
-        sendTrackingInfoNative(handle, serverConnection);
+        sendTrackingInfoNative(serverConnection);
     }
 
     public void sendMicData(ServerConnection serverConnection) {
-        sendMicDataNative(handle, serverConnection);
+        sendMicDataNative(serverConnection);
     }
 
     public void onChangeSettings(int suspend) {
-        onChangeSettingsNative(handle, suspend);
+        onChangeSettingsNative(suspend);
     }
 
     public void sendGuardianInfo(ServerConnection serverConnection) {
-        sendGuardianInfoNative(handle, serverConnection);
+        sendGuardianInfoNative(serverConnection);
     }
 
     public int getLoadingTexture() {
-        return getLoadingTextureNative(handle);
+        return getLoadingTextureNative();
     }
 
     public int getSurfaceTextureID() {
-        return getSurfaceTextureIDNative(handle);
+        return getSurfaceTextureIDNative();
     }
 
     public int getWebViewSurfaceTexture() {
-        return getWebViewSurfaceTextureNative(handle);
+        return getWebViewSurfaceTextureNative();
     }
 
     public int getCameraTexture() {
@@ -94,78 +92,72 @@ public class OvrContext {
     }
 
     public boolean isVrMode() {
-        return isVrModeNative(handle);
+        return isVrModeNative();
     }
 
     public void getDeviceDescriptor(DeviceDescriptor deviceDescriptor) {
-        getDeviceDescriptorNative(handle, deviceDescriptor);
+        getDeviceDescriptorNative(deviceDescriptor);
     }
 
     public void setFrameGeometry(int width, int height) {
-        setFrameGeometryNative(handle, width, height);
+        setFrameGeometryNative(width, height);
     }
 
     public void setRefreshRate(int refreshRate) {
-        setRefreshRateNative(handle, refreshRate);
+        setRefreshRateNative(refreshRate);
     }
 
     public void setStreamMic(boolean streamMic) {
-        setStreamMicNative(handle, streamMic);
+        setStreamMicNative(streamMic);
     }
 
     public void setFFRParams(int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset) {
-        setFFRParamsNative(handle, foveationMode, foveationStrength, foveationShape,  foveationVerticalOffset);
+        setFFRParamsNative(foveationMode, foveationStrength, foveationShape,  foveationVerticalOffset);
     }
 
     public void onHapticsFeedback(long startTime, float amplitude, float duration, float frequency, boolean hand) {
-        onHapticsFeedbackNative(handle, startTime, amplitude, duration, frequency, hand);
+        onHapticsFeedbackNative(startTime, amplitude, duration, frequency, hand);
     }
 
     public void onGuardianSyncAck(long timestamp) {
-        onGuardianSyncAckNative(handle, timestamp);
+        onGuardianSyncAckNative(timestamp);
     }
 
     public void onGuardianSegmentAck(long timestamp, int segmentIndex) {
-        onGuardianSegmentAckNative(handle, timestamp, segmentIndex);
+        onGuardianSegmentAckNative(timestamp, segmentIndex);
     }
 
-    public boolean getButtonDown() {
-        return getButtonDownNative(handle);
-    }
+    private native void initializeNative(Activity activity, AssetManager assetManager, OvrThread ovrThread, boolean ARMode, int initialRefreshRate);
+    private native void destroyNative();
 
-    private native long initializeNative(Activity activity, AssetManager assetManager, OvrThread ovrThread, boolean ARMode, int initialRefreshRate);
-    private native void destroyNative(long handle);
+    private native void onResumeNative();
+    private native void onPauseNative();
 
-    private native void onResumeNative(long handle);
-    private native void onPauseNative(long handle);
+    private native void onSurfaceCreatedNative(Surface surface);
+    private native void onSurfaceChangedNative(Surface surface);
+    private native void onSurfaceDestroyedNative();
+    private native void renderNative(long renderedFrameIndex);
+    private native void renderLoadingNative();
+    private native void sendTrackingInfoNative(ServerConnection serverConnection);
+    private native void sendMicDataNative(ServerConnection serverConnection);
+    private native void sendGuardianInfoNative(ServerConnection serverConnection);
 
-    private native void onSurfaceCreatedNative(long handle, Surface surface);
-    private native void onSurfaceChangedNative(long handle, Surface surface);
-    private native void onSurfaceDestroyedNative(long handle);
-    private native void renderNative(long handle, long renderedFrameIndex);
-    private native void renderLoadingNative(long handle);
-    private native void sendTrackingInfoNative(long handle, ServerConnection serverConnection);
-    private native void sendMicDataNative(long handle, ServerConnection serverConnection);
-    private native void sendGuardianInfoNative(long handle, ServerConnection serverConnection);
+    private native void onChangeSettingsNative(int suspend);
 
-    private native void onChangeSettingsNative(long handle, int suspend);
+    private native int getLoadingTextureNative();
+    private native int getSurfaceTextureIDNative();
+    private native int getWebViewSurfaceTextureNative();
 
-    private native int getLoadingTextureNative(long handle);
-    private native int getSurfaceTextureIDNative(long handle);
-    private native int getWebViewSurfaceTextureNative(long handle);
+    private native boolean isVrModeNative();
+    private native void getDeviceDescriptorNative(DeviceDescriptor deviceDescriptor);
 
-    private native boolean isVrModeNative(long handle);
-    private native void getDeviceDescriptorNative(long handle, DeviceDescriptor deviceDescriptor);
-
-    private native void setFrameGeometryNative(long handle, int width, int height);
-    private native void setRefreshRateNative(long handle, int refreshRate);
-    private native void setStreamMicNative(long handle, boolean streamMic);
-    private native void setFFRParamsNative(long handle, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
-    private native void onHapticsFeedbackNative(long handle, long startTime, float amplitude, float duration, float frequency, boolean hand);
-    private native void onGuardianSyncAckNative(long handle, long timestamp);
-    private native void onGuardianSegmentAckNative(long handle, long timestamp, int segmentIndex);
-
-    private native boolean getButtonDownNative(long handle);
+    private native void setFrameGeometryNative(int width, int height);
+    private native void setRefreshRateNative(int refreshRate);
+    private native void setStreamMicNative(boolean streamMic);
+    private native void setFFRParamsNative(int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
+    private native void onHapticsFeedbackNative(long startTime, float amplitude, float duration, float frequency, boolean hand);
+    private native void onGuardianSyncAckNative(long timestamp);
+    private native void onGuardianSegmentAckNative(long timestamp, int segmentIndex);
 
     @SuppressWarnings("unused")
     public void applyWebViewInteractionEvent(int type, float x, float y) {

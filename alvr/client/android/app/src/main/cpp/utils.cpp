@@ -20,21 +20,6 @@ enum DEBUG_FLAGS {
 
 bool gEnableFrameLog = false;
 
-//extern "C"
-//JNIEXPORT void JNICALL
-//Java_com_polygraphene_alvr_Utils_setFrameLogEnabled(JNIEnv *env, jclass type, jlong debugFlags) {
-//    gEnableFrameLog = static_cast<bool>(debugFlags & DEBUG_FLAGS_ENABLE_FRAME_LOG);
-//
-//    gGeneralLogLevel = (debugFlags & DEBUG_FLAGS_ENABLE_GENERAL_LOG) ?
-//                       ANDROID_LOG_VERBOSE : ANDROID_LOG_INFO ;
-//    gSoundLogLevel = (debugFlags & DEBUG_FLAGS_ENABLE_SOUND_LOG) ?
-//                       ANDROID_LOG_VERBOSE : ANDROID_LOG_INFO ;
-//    gSocketLogLevel = (debugFlags & DEBUG_FLAGS_ENABLE_SOCKET_LOG) ?
-//                       ANDROID_LOG_VERBOSE : ANDROID_LOG_INFO ;
-//    gDisableExtraLatencyMode = (debugFlags & DEBUG_FLAGS_DISABLE_EXTRA_LATENCY_MODE) != 0;
-//    gDebugFlags = debugFlags;
-//}
-
 void setFrameLogEnabled(long long debugFlags) {
     gEnableFrameLog = static_cast<bool>(debugFlags & DEBUG_FLAGS_ENABLE_FRAME_LOG);
 

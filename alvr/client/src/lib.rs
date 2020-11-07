@@ -286,7 +286,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_initia
     device_capability_flags: i32,
     controller_capability_flags: i32,
     ipd: f32,
-) -> i64 {
+) {
     initializeSocket(
         env.get_native_interface() as _,
         *instance as _,
@@ -310,23 +310,20 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_initia
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_closeSocket(
     _: JNIEnv,
     _: JObject,
-    native_handle: i64,
 ) {
-    closeSocket(native_handle)
+    closeSocket()
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_runLoop(
     env: JNIEnv,
     instance: JObject,
-    native_handle: i64,
     server_address: JString,
     server_port: i32,
 ) {
     runLoop(
         env.get_native_interface() as _,
         *instance as _,
-        native_handle,
         **server_address as _,
         server_port,
     )
@@ -336,57 +333,51 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_runLoo
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_interruptNative(
     _: JNIEnv,
     _: JObject,
-    native_handle: i64,
 ) {
-    interruptNative(native_handle)
+    interruptNative()
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_isConnectedNative(
     _: JNIEnv,
     _: JObject,
-    native_handle: i64,
 ) -> u8 {
-    isConnectedNative(native_handle)
+    isConnectedNative()
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_getServerAddress(
     env: JNIEnv,
     _: JObject,
-    native_handle: i64,
 ) -> jstring {
-    getServerAddress(env.get_native_interface() as _, native_handle) as _
+    getServerAddress(env.get_native_interface() as _, ) as _
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_getServerPort(
     _: JNIEnv,
     _: JObject,
-    native_handle: i64,
 ) -> i32 {
-    getServerPort(native_handle)
+    getServerPort()
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_sendNative(
     _: JNIEnv,
     _: JObject,
-    native_handle: i64,
     native_buffer: i64,
     buffer_length: i32,
 ) {
-    sendNative(native_handle, native_buffer, buffer_length)
+    sendNative(native_buffer, buffer_length)
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_setSinkPreparedNative(
     _: JNIEnv,
     _: JObject,
-    native_handle: i64,
     prepared: u8,
 ) {
-    setSinkPreparedNative(native_handle, prepared)
+    setSinkPreparedNative(prepared)
 }
 
 #[no_mangle]

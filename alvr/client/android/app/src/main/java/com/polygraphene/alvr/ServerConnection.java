@@ -62,7 +62,6 @@ class ServerConnection extends ThreadBase
 
     private NALCallback mNALCallback;
 
-    private long mNativeHandle = 0;
     private final Object mWaiter = new Object();
 
     ServerConnection(ConnectionListener connectionListener, OvrThread parent)
@@ -91,10 +90,7 @@ class ServerConnection extends ThreadBase
     public void setSinkPrepared(boolean prepared)
     {
         synchronized (mWaiter) {
-            if (mNativeHandle == 0) {
-                return;
-            }
-            setSinkPreparedNative(mNativeHandle, prepared);
+            setSinkPreparedNative(prepared);
         }
     }
 
@@ -102,7 +98,7 @@ class ServerConnection extends ThreadBase
     {
         mTrackingThread = new TrackingThread();
         mTrackingThread.setCallback(() -> {
-            if (isConnectedNative(mNativeHandle)) {
+            if (isConnectedNative()) {
                 mConnectionListener.onTracking();
             }
         });
@@ -136,7 +132,7 @@ class ServerConnection extends ThreadBase
     public void stopAndWait() {
         mTrackingThread.stopAndWait();
         synchronized (mWaiter) {
-            interruptNative(mNativeHandle);
+            interruptNative();
         }
         super.stopAndWait();
     }
@@ -151,30 +147,21 @@ class ServerConnection extends ThreadBase
                 Utils.logi(TAG, () -> "Target IP address for hello datagrams: " + target);
             }
 
-            mNativeHandle = initializeSocket(HELLO_PORT, PORT, getDeviceName(), targetList,
+            initializeSocket(HELLO_PORT, PORT, getDeviceName(), targetList,
                     mDeviceDescriptor.mRefreshRates, mDeviceDescriptor.mRenderWidth, mDeviceDescriptor.mRenderHeight, mDeviceDescriptor.mFov,
                     mDeviceDescriptor.mDeviceType, mDeviceDescriptor.mDeviceSubType, mDeviceDescriptor.mDeviceCapabilityFlags,
                     mDeviceDescriptor.mControllerCapabilityFlags, mDeviceDescriptor.mIpd
             );
-            if (mNativeHandle == 0) {
-                Utils.loge(TAG, () -> "Error on initializing socket.");
-                synchronized (this) {
-                    mInitializeFailed = true;
-                    notifyAll();
-                }
-                return;
-            }
             synchronized (this) {
                 mInitialized = true;
                 notifyAll();
             }
             Utils.logi(TAG, () -> "ServerConnection initialized.");
 
-            runLoop(mNativeHandle, mPreviousServerAddress, mPreviousServerPort);
+            runLoop(mPreviousServerAddress, mPreviousServerPort);
         } finally {
-            mConnectionListener.onShutdown(getServerAddress(mNativeHandle), getServerPort(mNativeHandle));
-            closeSocket(mNativeHandle);
-            mNativeHandle = 0;
+            mConnectionListener.onShutdown(getServerAddress(), getServerPort());
+            closeSocket();
         }
 
         Utils.logi(TAG, () -> "ServerConnection stopped.");
@@ -237,7 +224,7 @@ class ServerConnection extends ThreadBase
 //    }
 
     public boolean isConnected() {
-        return isConnectedNative(mNativeHandle);
+        return isConnectedNative();
     }
 
     // called from native
@@ -280,10 +267,7 @@ class ServerConnection extends ThreadBase
     @SuppressWarnings("unused")
     public void send(long nativeBuffer, int bufferLength) {
         synchronized (mWaiter) {
-            if (mNativeHandle == 0) {
-                return;
-            }
-            sendNative(mNativeHandle, nativeBuffer, bufferLength);
+            sendNative(nativeBuffer, bufferLength);
         }
     }
 
@@ -303,18 +287,18 @@ class ServerConnection extends ThreadBase
     }
 
 
-    private native long initializeSocket(int helloPort, int port, String deviceName, String[] broadcastAddrList,
+    private native void initializeSocket(int helloPort, int port, String deviceName, String[] broadcastAddrList,
                                          int[] refreshRates, int renderWidth, int renderHeight, float[] fov,
                                          int deviceType, int deviceSubType, int deviceCapabilityFlags, int controllerCapabilityFlags, float ipd);
-    private native void closeSocket(long nativeHandle);
-    private native void runLoop(long nativeHandle, String serverAddress, int serverPort);
-    private native void interruptNative(long nativeHandle);
+    private native void closeSocket();
+    private native void runLoop(String serverAddress, int serverPort);
+    private native void interruptNative();
 
-    private native void sendNative(long nativeHandle, long nativeBuffer, int bufferLength);
+    private native void sendNative(long nativeBuffer, int bufferLength);
 
-    public native boolean isConnectedNative(long nativeHandle);
+    public native boolean isConnectedNative();
 
-    private native String getServerAddress(long nativeHandle);
-    private native int getServerPort(long nativeHandle);
-    private native void setSinkPreparedNative(long nativeHandle, boolean prepared);
+    private native String getServerAddress();
+    private native int getServerPort();
+    private native void setSinkPreparedNative(boolean prepared);
 }

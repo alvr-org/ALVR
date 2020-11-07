@@ -25,10 +25,10 @@
 #include "render.h"
 #include "latency_collector.h"
 #include "packet_types.h"
-#include "ServerConnectionNative.h"
 #include "asset.h"
 #include <inttypes.h>
 #include <glm/gtx/euler_angles.hpp>
+#include <mutex>
 
 using namespace std;
 
@@ -46,56 +46,6 @@ struct TrackingFrame {
 
 class OvrContext {
 public:
-//    void initialize(JNIEnv *env, jobject activity, jobject jOvrContext, jobject assetManager, jobject vrThread, bool ARMode, int initialRefreshRate);
-//    void destroy(JNIEnv *env);
-//
-//
-//    void onChangeSettings(int Suspend);
-//    void onSurfaceCreated(jobject surface);
-//    void onSurfaceDestroyed();
-//    void onSurfaceChanged(jobject surface);
-//    void onResume();
-//    void onPause();
-//
-//    void render(uint64_t renderedFrameIndex);
-//    void renderLoading();
-//
-//    void sendTrackingInfo(JNIEnv *env_, jobject udpReceiverThread);
-//    void sendMicData(JNIEnv *env_, jobject udpReceiverThread);
-//
-//    void setFrameGeometry(int width, int height);
-//
-//    bool isVrMode() { return Ovr != NULL; }
-//
-//    int getLoadingTexture(){
-//        return loadingTexture;
-//    }
-//    int getSurfaceTextureID(){
-//        return SurfaceTextureID;
-//    }
-//    int getWebViewSurfaceTexture(){
-//        return webViewSurfaceTexture;
-//    }
-//
-//    void setRefreshRate(int refreshRate, bool forceChange = true);
-//
-//    void getDeviceDescriptor(JNIEnv *env, jobject deviceDescriptor);
-//
-//    void onHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, int hand);
-//
-//    void onGuardianSyncAck(uint64_t timestamp);
-//
-//    void onGuardianSegmentAck(uint64_t timestamp, uint32_t segmentIndex);
-//
-//    bool getButtonDown();
-//
-//    void setStreamMic(bool streamMic);
-//
-//    void setFFRParams(int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
-//
-//    void sendGuardianInfo(JNIEnv *env_, jobject udpReceiverThread);
-
-//private:
     ANativeWindow *window = NULL;
     ovrMobile *Ovr;
     ovrJava java;
@@ -176,31 +126,6 @@ public:
 
     // Previous trigger button state.
     bool mButtonPressed;
-
-//    uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities, ovrInputStateTrackedRemote *remoteInputState);
-//
-//    void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiInput);
-//
-//    void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tracking  );
-//
-//    void setInitialRefreshRate(int initialRefreshRate);
-//
-//
-//    void onVrModeChange();
-//    void enterVrMode();
-//    void leaveVrMode();
-//
-//    void getRefreshRates(JNIEnv *env_, jintArray refreshRates);
-//    std::pair<EyeFov, EyeFov> getFov();
-//    float getIPD();
-//
-//    void updateHapticsState();
-//    void finishHapticsBuffer(ovrDeviceID DeviceID);
-//
-//    void reflectExtraLatencyMode(bool always);
-//
-//    void checkShouldSyncGuardian();
-//    bool prepareGuardianData();
 };
 
 namespace {

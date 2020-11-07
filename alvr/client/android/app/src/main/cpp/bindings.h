@@ -34,19 +34,19 @@ onHapticsFeedbackNative(long long startTime, float amplitude, float duration,
 extern "C" void onGuardianSyncAckNative(long long timestamp);
 extern "C" void onGuardianSegmentAckNative(long long timestamp, int segmentIndex);
 
-extern "C" long long
+extern "C" void
 initializeSocket(void *env, void *instance, int helloPort, int port, void *deviceName,
                  void *broadcastAddrList, void *refreshRates, int renderWidth, int renderHeight,
                  void *fov, int deviceType, int deviceSubType, int deviceCapabilityFlags,
                  int controllerCapabilityFlags, float ipd);
-extern "C" void closeSocket(long long nativeHandle);
+extern "C" void closeSocket();
 extern "C" void
-runLoop(void *env, void *instance, long long nativeHandle, void *serverAddress, int serverPort);
-extern "C" void interruptNative(long long nativeHandle);
-extern "C" unsigned char isConnectedNative(long long nativeHandle);
-extern "C" void *getServerAddress(void *env, long long nativeHandle);
-extern "C" int getServerPort(long long nativeHandle);
-extern "C" void sendNative(long long nativeHandle, long long nativeBuffer, int bufferLength);
-extern "C" void setSinkPreparedNative(long long nativeHandle, unsigned char prepared);
+runLoop(void *env, void *instance, void *serverAddress, int serverPort);
+extern "C" void interruptNative();
+extern "C" unsigned char isConnectedNative();
+extern "C" void *getServerAddress(void *env);
+extern "C" int getServerPort();
+extern "C" void sendNative(long long nativeBuffer, int bufferLength);
+extern "C" void setSinkPreparedNative(unsigned char prepared);
 
 extern "C" void setFrameLogEnabled(long long debugFlags);

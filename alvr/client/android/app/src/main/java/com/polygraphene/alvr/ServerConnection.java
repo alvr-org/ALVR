@@ -33,7 +33,7 @@ class ServerConnection extends ThreadBase
     private String mPreviousServerAddress;
     private int mPreviousServerPort;
 
-    private OvrThread mParent;
+    private OvrActivity mParent;
 
     interface ConnectionListener {
         void onConnected(int width, int height, int codec, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
@@ -64,7 +64,7 @@ class ServerConnection extends ThreadBase
 
     private final Object mWaiter = new Object();
 
-    ServerConnection(ConnectionListener connectionListener, OvrThread parent)
+    ServerConnection(ConnectionListener connectionListener, OvrActivity parent)
     {
         mConnectionListener = connectionListener;
         mParent = parent;

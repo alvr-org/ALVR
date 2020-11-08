@@ -172,7 +172,7 @@ void initializeNative(void *v_env, void *v_jOvrContext, void *v_activity, void *
     g_ctx.mVrThread = env->NewGlobalRef(vrThread);
     g_ctx.mjOvrContext = env->NewGlobalRef(jOvrContext);
 
-    jclass clazz = env->FindClass("com/polygraphene/alvr/OvrContext");
+    jclass clazz = env->FindClass("com/polygraphene/alvr/OvrActivity");
     auto jWebViewInteractionCallback = env->GetMethodID(clazz, "applyWebViewInteractionEvent",
                                                         "(IFF)V");
     env->DeleteLocalRef(clazz);

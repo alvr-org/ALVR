@@ -50,7 +50,6 @@ public:
     ovrMobile *Ovr;
     ovrJava java;
     JNIEnv *env;
-    JNIEnv *jOvrContextEnv;
 
 
     int16_t *micBuffer;
@@ -58,9 +57,6 @@ public:
     size_t mMicMaxElements;
 
     ovrMicrophoneHandle mMicHandle;
-
-    ovrVector3f lastControllerPos[2];
-    double lastStateTime = 0;
 
     jobject mVrThread = nullptr;
     jobject mServerConnection = nullptr;
@@ -123,9 +119,6 @@ public:
 
     std::chrono::system_clock::time_point mMenuNotPressedLastInstant;
     bool mMenuLongPressActivated = false;
-
-    // Previous trigger button state.
-    bool mButtonPressed;
 };
 
 namespace {
@@ -843,11 +836,6 @@ void reflectExtraLatencyMode(bool always) {
                                                      : VRAPI_EXTRA_LATENCY_MODE_OFF);
         LOGI("vrapi_SetExtraLatencyMode. Result=%d", result);
     }
-}
-
-void onChangeSettingsNative(int suspend) {
-    g_ctx.suspend = suspend;
-    reflectExtraLatencyMode(false);
 }
 
 void enterVrMode() {

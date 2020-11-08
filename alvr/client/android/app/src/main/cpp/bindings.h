@@ -15,7 +15,6 @@ extern "C" void renderLoadingNative();
 extern "C" void sendTrackingInfoNative(void *env, void *udpReceiverThread);
 extern "C" void sendGuardianInfoNative(void *env, void *udpReceiverThread);
 extern "C" void sendMicDataNative(void *env, void *udpReceiverThread);
-extern "C" void onChangeSettingsNative(int suspend);
 extern "C" void onSurfaceCreatedNative(void *surface);
 extern "C" void onSurfaceDestroyedNative();
 extern "C" void onSurfaceChangedNative(void *surface);
@@ -41,7 +40,7 @@ initializeSocket(void *env, void *instance, int helloPort, int port, void *devic
                  int controllerCapabilityFlags, float ipd);
 extern "C" void closeSocket();
 extern "C" void
-runLoop(void *env, void *instance, void *serverAddress, int serverPort);
+runLoop(void *env, void *instance);
 extern "C" void interruptNative();
 extern "C" unsigned char isConnectedNative();
 extern "C" void *getServerAddress(void *env);

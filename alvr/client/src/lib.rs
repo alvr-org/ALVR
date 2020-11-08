@@ -125,15 +125,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_sendMicData
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onChangeSettingsNative(
-    _: JNIEnv,
-    _: JObject,
-    suspend: i32,
-) {
-    onChangeSettingsNative(suspend)
-}
-
-#[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onSurfaceCreatedNative(
     _: JNIEnv,
     _: JObject,
@@ -318,14 +309,10 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_closeS
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_runLoop(
     env: JNIEnv,
     instance: JObject,
-    server_address: JString,
-    server_port: i32,
 ) {
     runLoop(
         env.get_native_interface() as _,
         *instance as _,
-        **server_address as _,
-        server_port,
     )
 }
 

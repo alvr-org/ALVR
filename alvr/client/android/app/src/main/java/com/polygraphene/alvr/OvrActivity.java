@@ -134,14 +134,6 @@ public class OvrActivity extends Activity {
 
             mReceiverThread = new ServerConnection(mUdpReceiverConnectionListener, this);
 
-            PersistentConfig.ConnectionState connectionState = new PersistentConfig.ConnectionState();
-            PersistentConfig.loadConnectionState(this, connectionState);
-
-            if (connectionState.serverAddr != null && connectionState.serverPort != 0) {
-                Utils.logi(TAG, () -> "Load connection state: " + connectionState.serverAddr + " " + connectionState.serverPort);
-                mReceiverThread.recoverConnectionState(connectionState.serverAddr, connectionState.serverPort);
-            }
-
             // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
             // and onFrameAvailable won't be called after next output.
             // To avoid deadlock caused by it, we need to flush last output.
@@ -402,14 +394,7 @@ public class OvrActivity extends Activity {
         }
 
         @Override
-        public void onChangeSettings(int suspend, int frameQueueSize) {
-            onChangeSettingsNative(suspend);
-        }
-
-        @Override
         public void onShutdown(String serverAddr, int serverPort) {
-            Log.v(TAG, "save connection state: " + serverAddr + " " + serverPort);
-//            PersistentConfig.saveConnectionState(, serverAddr, serverPort);
         }
 
         @Override
@@ -490,8 +475,6 @@ public class OvrActivity extends Activity {
     private native void sendTrackingInfoNative(ServerConnection serverConnection);
     private native void sendMicDataNative(ServerConnection serverConnection);
     private native void sendGuardianInfoNative(ServerConnection serverConnection);
-
-    private native void onChangeSettingsNative(int suspend);
 
     private native int getLoadingTextureNative();
     private native int getSurfaceTextureIDNative();

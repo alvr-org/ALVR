@@ -37,11 +37,6 @@
             </intent-filter>
         </activity>
 
-        <service
-            android:name="ChangeSettings"
-            android:exported="true"
-            android:permission="android.permission.WRITE_SETTINGS" />
-
     </application>
 
 </manifest>

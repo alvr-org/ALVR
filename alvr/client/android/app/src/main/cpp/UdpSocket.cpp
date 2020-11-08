@@ -213,20 +213,6 @@ void UdpSocket::parse(char *packet, int packetSize, const sockaddr_in &addr)
     }
 }
 
-void UdpSocket::recoverConnection(std::string serverAddress, int serverPort)
-{
-    LOGI("Sending recover connection request. server=%s:%d", serverAddress.c_str(), serverPort);
-    sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(serverPort);
-    inet_pton(AF_INET, serverAddress.c_str(), &addr.sin_addr);
-
-    RecoverConnection message = {};
-    message.type = ALVR_PACKET_TYPE_RECOVER_CONNECTION;
-
-    sendto(m_sock, &message, sizeof(message), 0, (sockaddr *) &addr, sizeof(addr));
-}
-
 void UdpSocket::setOnConnect(std::function<void(const ConnectionMessage &connectionMessage)> onConnect)
 {
     m_onConnect = onConnect;

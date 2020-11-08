@@ -30,15 +30,10 @@ class ServerConnection extends ThreadBase
     private boolean mInitialized = false;
     private boolean mInitializeFailed = false;
 
-    private String mPreviousServerAddress;
-    private int mPreviousServerPort;
-
     private OvrActivity mParent;
 
     interface ConnectionListener {
         void onConnected(int width, int height, int codec, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
-
-        void onChangeSettings(int suspend, int frameQueueSize);
 
         void onShutdown(String serverAddr, int serverPort);
 
@@ -79,12 +74,6 @@ class ServerConnection extends ThreadBase
         } else {
             return manufacturer + " " + model;
         }
-    }
-
-    public void recoverConnectionState(String serverAddress, int serverPort)
-    {
-        mPreviousServerAddress = serverAddress;
-        mPreviousServerPort = serverPort;
     }
 
     public void setSinkPrepared(boolean prepared)
@@ -158,7 +147,7 @@ class ServerConnection extends ThreadBase
             }
             Utils.logi(TAG, () -> "ServerConnection initialized.");
 
-            runLoop(mPreviousServerAddress, mPreviousServerPort);
+            runLoop();
         } finally {
             mConnectionListener.onShutdown(getServerAddress(), getServerPort());
             closeSocket();
@@ -170,13 +159,6 @@ class ServerConnection extends ThreadBase
     // List addresses where discovery datagrams will be sent to reach ALVR server.
     private String[] getTargetAddressList()
     {
-        // List addresses from targetServers setting (if present).
-        if (PersistentConfig.sTargetServers != null && PersistentConfig.sTargetServers.length() > 6) {
-            String[] addrs = PersistentConfig.sTargetServers.split("[^0-9.]+");
-            Utils.logi(TAG, () -> addrs.length + " target server IP addresses were found in config setting " + PersistentConfig.KEY_TARGET_SERVERS + " value: " + PersistentConfig.sTargetServers);
-            return addrs;
-        }
-
         // List broadcast address from all interfaces except for mobile network.
         // We should send all broadcast address to use USB tethering or VPN.
         List<String> ret = new ArrayList<>();
@@ -243,13 +225,6 @@ class ServerConnection extends ThreadBase
     }
 
     @SuppressWarnings("unused")
-    public void onChangeSettings(long debugFlags, int suspend, int frameQueueSize) {
-        PersistentConfig.sDebugFlags = debugFlags;
-        PersistentConfig.saveCurrentConfig(true);
-        mConnectionListener.onChangeSettings(suspend, frameQueueSize);
-    }
-
-    @SuppressWarnings("unused")
     public void onHapticsFeedback(long startTime, float amplitude, float duration, float frequency, boolean hand) {
         mConnectionListener.onHapticsFeedback(startTime, amplitude, duration, frequency, hand);
     }
@@ -291,7 +266,7 @@ class ServerConnection extends ThreadBase
                                          int[] refreshRates, int renderWidth, int renderHeight, float[] fov,
                                          int deviceType, int deviceSubType, int deviceCapabilityFlags, int controllerCapabilityFlags, float ipd);
     private native void closeSocket();
-    private native void runLoop(String serverAddress, int serverPort);
+    private native void runLoop();
     private native void interruptNative();
 
     private native void sendNative(long nativeBuffer, int bufferLength);

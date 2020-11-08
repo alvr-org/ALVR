@@ -21,7 +21,6 @@ public:
     void sendBroadcast(const void *buf, size_t len);
     int send(const void *buf, size_t len);
     void recv();
-    void recoverConnection(std::string serverAddress, int serverPort);
     void disconnect();
 
     //

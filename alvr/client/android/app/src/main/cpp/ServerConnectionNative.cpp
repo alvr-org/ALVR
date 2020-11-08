@@ -65,7 +65,6 @@ public:
     JNIEnv *m_env;
     jobject m_instance;
     jmethodID mOnConnectMethodID;
-    jmethodID mOnChangeSettingsMethodID;
     jmethodID mOnDisconnectedMethodID;
     jmethodID mOnHapticsFeedbackID;
     jmethodID mSetWebGuiUrlID;
@@ -96,7 +95,6 @@ void initializeJNICallbacks(JNIEnv *env, jobject instance) {
     jclass clazz = env->GetObjectClass(instance);
 
     g_socket.mOnConnectMethodID = env->GetMethodID(clazz, "onConnected", "(IIIIIZIFFF)V");
-    g_socket.mOnChangeSettingsMethodID = env->GetMethodID(clazz, "onChangeSettings", "(JII)V");
     g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
     g_socket.mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
     g_socket.mSetWebGuiUrlID = env->GetMethodID(clazz, "setWebViewURL", "(Ljava/lang/String;)V");
@@ -251,15 +249,6 @@ void onPacketRecv(const char *packet, size_t packetSize) {
             sendBuf.clientTime = Current;
             g_socket.m_socket.send(&sendBuf, sizeof(sendBuf));
         }
-    } else if (type == ALVR_PACKET_TYPE_CHANGE_SETTINGS) {
-        // Change settings
-        if (packetSize < sizeof(ChangeSettings)) {
-            return;
-        }
-        ChangeSettings *settings = (ChangeSettings *) packet;
-
-        g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mOnChangeSettingsMethodID, settings->debugFlags,
-                              settings->suspend, settings->frameQueueSize);
     } else if (type == ALVR_PACKET_TYPE_AUDIO_FRAME_START) {
         // Change settings
         if (packetSize < sizeof(AudioFrameStart)) {
@@ -509,10 +498,6 @@ void doPeriodicWork() {
     checkConnection();
 }
 
-void recoverConnection(std::string serverAddress, int serverPort) {
-    g_socket.m_socket.recoverConnection(serverAddress, serverPort);
-}
-
 void sendNative(long long nativeBuffer, int length) {
     auto *packet = reinterpret_cast<char *>(nativeBuffer);
 
@@ -532,10 +517,9 @@ void sendNative(long long nativeBuffer, int length) {
     write(g_socket.m_notifyPipe[1], "", 1);
 }
 
-void runLoop(void *v_env, void *v_instance, void *v_serverAddress, int serverPort) {
+void runLoop(void *v_env, void *v_instance) {
     auto *env = (JNIEnv *) v_env;
     auto *instance = (jobject) v_instance;
-    auto *serverAddress = (jstring) v_serverAddress;
 
     fd_set fds, fds_org;
 
@@ -546,10 +530,6 @@ void runLoop(void *v_env, void *v_instance, void *v_serverAddress, int serverPor
 
     g_socket.m_env = env;
     g_socket.m_instance = instance;
-
-    if (serverAddress != NULL) {
-        recoverConnection(GetStringFromJNIString(env, serverAddress), serverPort);
-    }
 
     while (!g_socket.m_stopped) {
         timeval timeout;

@@ -200,9 +200,6 @@ struct ConnectionMessage {
     float foveationVerticalOffset;
 	char webGuiUrl[32];
 };
-struct RecoverConnection {
-	uint32_t type; // ALVR_PACKET_TYPE_RECOVER_CONNECTION
-};
 struct BroadcastRequestMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_BROADCAST_REQUEST_MESSAGE
 };
@@ -315,12 +312,6 @@ struct TimeSync {
 	uint64_t fecFailureTotal;
 
 	uint32_t fps;
-};
-struct ChangeSettings {
-	uint32_t type; // 8
-	uint64_t debugFlags;
-	uint32_t suspend;
-	uint32_t frameQueueSize;
 };
 struct VideoFrame {
 	uint32_t type; // ALVR_PACKET_TYPE_VIDEO_FRAME

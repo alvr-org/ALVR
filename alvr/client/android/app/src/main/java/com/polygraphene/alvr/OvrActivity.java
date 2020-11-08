@@ -13,12 +13,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.os.SystemClock;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.util.Log;
 import android.view.KeyEvent;
-import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -29,43 +27,42 @@ import android.widget.Toast;
 
 import java.util.concurrent.TimeUnit;
 
+import static com.polygraphene.alvr.OffscreenWebView.WEBVIEW_HEIGHT;
+import static com.polygraphene.alvr.OffscreenWebView.WEBVIEW_WIDTH;
+
 public class OvrActivity extends Activity {
     static {
         System.loadLibrary("alvr_client");
     }
 
     private final static String TAG = "OvrActivity";
-    public static final int WEBVIEW_WIDTH = 800;
-    public static final int WEBVIEW_HEIGHT = 600;
 
 
     class RenderingCallbacks implements SurfaceHolder.Callback {
         @Override
-        public void surfaceCreated(final SurfaceHolder holder) {
-            mHandler.post(() -> onSurfaceCreatedNative(holder.getSurface()));
+        public void surfaceCreated(@NonNull final SurfaceHolder holder) {
+            mRenderingHandler.post(() -> onSurfaceCreatedNative(holder.getSurface()));
         }
 
         @Override
-        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-            mHandler.post(() -> onSurfaceChangedNative(holder.getSurface()));
+        public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
+            mRenderingHandler.post(() -> onSurfaceChangedNative(holder.getSurface()));
         }
 
         @Override
-        public void surfaceDestroyed(SurfaceHolder holder) {
-            mHandler.post(() -> onSurfaceDestroyedNative());
+        public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
+            mRenderingHandler.post(OvrActivity.this::onSurfaceDestroyedNative);
         }
     }
 
-    private SurfaceWebView mWebView = null;
+    private OffscreenWebView mWebView = null;
 
-    private Handler mHandler;
+    private Handler mRenderingHandler;
     private HandlerThread mHandlerThread;
 
-    private Handler mMainHandler;
-
     // Wrapper used to emulate pointer/pass by reference
-    public class WebViewWrapper {
-        public SurfaceWebView webView = null;
+    public static class WebViewWrapper {
+        public OffscreenWebView webView = null;
     }
 
     private WebViewWrapper mWebViewWrapper = null;
@@ -73,9 +70,8 @@ public class OvrActivity extends Activity {
     private SurfaceTexture mSurfaceTexture;
     private Surface mSurface;
     private SurfaceTexture mWebViewSurfaceTexture;
-    private Surface mWebViewSurface;
 
-    private LoadingTexture mLoadingTexture = new LoadingTexture();
+    private final LoadingTexture mLoadingTexture = new LoadingTexture();
 
     // Worker threads
     private DecoderThread mDecoderThread;
@@ -89,8 +85,8 @@ public class OvrActivity extends Activity {
 
     private long mPreviousRender = 0;
 
-    private Runnable mRenderRunnable = () -> render();
-    private Runnable mIdleRenderRunnable = () -> render();
+    private final Runnable mRenderRunnable = this::render;
+    private final Runnable mIdleRenderRunnable = this::render;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,15 +99,14 @@ public class OvrActivity extends Activity {
         setContentView(R.layout.activity_main);
         SurfaceView surfaceView = findViewById(R.id.surfaceview);
 
-        mWebView = new SurfaceWebView(this);
+        Handler webViewHandler = new Handler(this.getMainLooper());
+        mWebView = new OffscreenWebView(this, webViewHandler);
         addContentView(mWebView, new ViewGroup.LayoutParams(WEBVIEW_WIDTH, WEBVIEW_HEIGHT));
 
         mHandlerThread = new HandlerThread("Rendering thread");
         mHandlerThread.start();
-        mHandler = new Handler(mHandlerThread.getLooper());
-        mHandler.post(() -> startup());
-
-        mMainHandler = new Handler(this.getMainLooper());
+        mRenderingHandler = new Handler(mHandlerThread.getLooper());
+        mRenderingHandler.post(this::startup);
 
         mWebViewWrapper = new WebViewWrapper();
         mWebViewWrapper.webView = mWebView;
@@ -130,7 +125,7 @@ public class OvrActivity extends Activity {
         // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
         // and onFrameAvailable won't be called after next output.
         // To avoid deadlock caused by it, we need to flush last output.
-        mHandler.post(() -> {
+        mRenderingHandler.post(() -> {
 
             mReceiverThread = new ServerConnection(mUdpReceiverConnectionListener, this);
 
@@ -152,7 +147,7 @@ public class OvrActivity extends Activity {
                     return;
                 }
             } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-                Utils.loge(TAG, () -> e.toString());
+                Utils.loge(TAG, e::toString);
             }
 
             onResumeNative();
@@ -164,7 +159,7 @@ public class OvrActivity extends Activity {
         super.onPause();
 
         // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
-        mHandler.post(() -> {
+        mRenderingHandler.post(() -> {
             // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
             if (mDecoderThread != null) {
                 mDecoderThread.stopAndWait();
@@ -181,7 +176,7 @@ public class OvrActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
 
-        mHandler.post(() -> {
+        mRenderingHandler.post(() -> {
             mLoadingTexture.destroyTexture();
             Utils.logi(TAG, () -> "Destroying vrapi state.");
             destroyNative();
@@ -192,26 +187,23 @@ public class OvrActivity extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         //Utils.log(TAG, () ->  "dispatchKeyEvent: " + event.getKeyCode());
-        if(event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP) {
-            if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP)
-            {
+        if (event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP) {
+            if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP) {
                 adjustVolume(1);
                 return true;
             }
-            if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN)
-            {
+            if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
                 adjustVolume(-1);
                 return true;
             }
 
             return true;
-        }else{
+        } else {
             return super.dispatchKeyEvent(event);
         }
     }
 
-    private void adjustVolume(int direction)
-    {
+    private void adjustVolume(int direction) {
         AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0);
     }
@@ -229,78 +221,48 @@ public class OvrActivity extends Activity {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                     Manifest.permission.RECORD_AUDIO)) {
                 Toast.makeText(this, "Please grant permissions to use microphone", Toast.LENGTH_LONG).show();
-
-                //Give user option to still opt-in the permissions
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.RECORD_AUDIO},
-                        MY_PERMISSIONS_RECORD_AUDIO);
-
-            } else {
-                // Show user dialog to grant permission to record audio
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.RECORD_AUDIO},
-                        MY_PERMISSIONS_RECORD_AUDIO);
             }
+
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.RECORD_AUDIO},
+                    MY_PERMISSIONS_RECORD_AUDIO);
         }
         //If permission is granted, then go ahead recording audio
-        else if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.RECORD_AUDIO)
-                == PackageManager.PERMISSION_GRANTED) {
-
-            //Go ahead with recording audio now
-           // recordAudio();
+        else {
+            ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.RECORD_AUDIO);//Go ahead with recording audio now
         }
     }
 
     //Handling callback
     @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case MY_PERMISSIONS_RECORD_AUDIO: {
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission was granted, yay!
-                    //recordAudio();
-                } else {
-                    // permission denied, boo! Disable the
-                    // functionality that depends on this permission.
-                    Toast.makeText(this, "Permissions Denied to record audio", Toast.LENGTH_LONG).show();
-                }
-                return;
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == MY_PERMISSIONS_RECORD_AUDIO) {
+            if (grantResults.length <= 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Permissions Denied to record audio", Toast.LENGTH_LONG).show();
             }
         }
     }
 
     public void setupWebView(String url) {
-        // We now have dashboard url, so we can post() to the main thread to set up our WebView.
-        mMainHandler.post(() -> {
-            SurfaceWebView webView = mWebViewWrapper.webView;
-            webView.getSettings().setJavaScriptEnabled(true);
-            webView.getSettings().setDomStorageEnabled(true);
-            webView.setInitialScale(100);
-            webView.loadUrl(url);
-        });
+        mWebView.setURL(url);
     }
-
-
 
     //called from constructor
     public void startup() {
-
         initializeNative(this, this.getAssets(), this, false, 72);
 
         mSurfaceTexture = new SurfaceTexture(getSurfaceTextureIDNative());
         mSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
             mDecoderThread.onFrameAvailable();
-            mHandler.removeCallbacks(mIdleRenderRunnable);
-            mHandler.post(mRenderRunnable);
+            mRenderingHandler.removeCallbacks(mIdleRenderRunnable);
+            mRenderingHandler.post(mRenderRunnable);
         }, new Handler(Looper.getMainLooper()));
         mSurface = new Surface(mSurfaceTexture);
 
         mWebViewSurfaceTexture = new SurfaceTexture(getWebViewSurfaceTextureNative());
         mWebViewSurfaceTexture.setDefaultBufferSize(WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
-        mWebViewSurface = new Surface(mWebViewSurfaceTexture);
+        Surface mWebViewSurface = new Surface(mWebViewSurfaceTexture);
 
         // Doesn't need to be posted to the main thread since it's our method.
         mWebViewWrapper.webView.setSurface(mWebViewSurface);
@@ -312,70 +274,62 @@ public class OvrActivity extends Activity {
     }
 
     private void render() {
-        if (mReceiverThread.isConnected())
-        {
+        if (mReceiverThread.isConnected()) {
             long next = checkRenderTiming();
-            if(next > 0) {
-                mHandler.postDelayed(mRenderRunnable, next);
+            if (next > 0) {
+                mRenderingHandler.postDelayed(mRenderRunnable, next);
                 return;
             }
             long renderedFrameIndex = mDecoderThread.clearAvailable(mSurfaceTexture);
 
-            if (mWebViewSurfaceTexture != null){
+            if (mWebViewSurfaceTexture != null) {
                 mWebViewSurfaceTexture.updateTexImage();
             }
 
-            if (renderedFrameIndex != -1)
-            {
+            if (renderedFrameIndex != -1) {
                 renderNative(renderedFrameIndex);
                 mPreviousRender = System.nanoTime();
 
-                mHandler.postDelayed(mRenderRunnable, 5);
+                mRenderingHandler.postDelayed(mRenderRunnable, 5);
+            } else {
+                mRenderingHandler.removeCallbacks(mIdleRenderRunnable);
+                mRenderingHandler.postDelayed(mIdleRenderRunnable, 50);
             }
-            else
-            {
-                mHandler.removeCallbacks(mIdleRenderRunnable);
-                mHandler.postDelayed(mIdleRenderRunnable, 50);
-            }
-        }
-        else
-        {
+        } else {
             if (!isVrModeNative())
                 return;
 
-            if (mReceiverThread.isConnected())
-            {
+            if (mReceiverThread.isConnected()) {
                 mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\n \nConnected!\nStreaming will begin soon!");
-            }
-            else
-            {
+            } else {
                 mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\n \nOpen ALVR on PC and\nclick on \"Trust\" next to\nthe client entry");
             }
 
             renderLoadingNative();
-            mHandler.removeCallbacks(mIdleRenderRunnable);
-            mHandler.postDelayed(mIdleRenderRunnable, 13); // 72Hz = 13.8888ms
+            mRenderingHandler.removeCallbacks(mIdleRenderRunnable);
+            mRenderingHandler.postDelayed(mIdleRenderRunnable, 13); // 72Hz = 13.8888ms
         }
     }
 
     private long checkRenderTiming() {
         long current = System.nanoTime();
-        long threashold = TimeUnit.SECONDS.toNanos(1) / mRefreshRate -
+        long threshold = TimeUnit.SECONDS.toNanos(1) / mRefreshRate -
                 TimeUnit.MILLISECONDS.toNanos(5);
-        return TimeUnit.NANOSECONDS.toMillis(threashold - (current - mPreviousRender));
+        return TimeUnit.NANOSECONDS.toMillis(threshold - (current - mPreviousRender));
     }
 
     // Called on OvrThread.
+    @SuppressWarnings("unused")
     public void onVrModeChanged(boolean enter) {
         mVrMode = enter;
         Utils.logi(TAG, () -> "onVrModeChanged. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
         mReceiverThread.setSinkPrepared(mVrMode && mDecoderPrepared);
         if (mVrMode) {
-            mHandler.post(mRenderRunnable);
+            mRenderingHandler.post(mRenderRunnable);
         }
     }
 
-    private ServerConnection.ConnectionListener mUdpReceiverConnectionListener = new ServerConnection.ConnectionListener() {
+    private final ServerConnection.ConnectionListener mUdpReceiverConnectionListener = new ServerConnection.ConnectionListener() {
         @Override
         public void onConnected(final int width, final int height, final int codec, final int frameQueueSize,
                                 final int refreshRate, final boolean streamMic, final int foveationMode,
@@ -384,7 +338,7 @@ public class OvrActivity extends Activity {
 
             // We must wait completion of notifyGeometryChange
             // to ensure the first video frame arrives after notifyGeometryChange.
-            mHandler.post(() -> {
+            mRenderingHandler.post(() -> {
                 setRefreshRateNative(refreshRate);
                 setFFRParamsNative(foveationMode, foveationStrength, foveationShape, foveationVerticalOffset);
                 setFrameGeometryNative(width, height);
@@ -417,7 +371,7 @@ public class OvrActivity extends Activity {
 
         @Override
         public void onHapticsFeedback(long startTime, float amplitude, float duration, float frequency, boolean hand) {
-            mHandler.post(() -> {
+            mRenderingHandler.post(() -> {
                 if (isVrModeNative()) {
                     onHapticsFeedbackNative(startTime, amplitude, duration, frequency, hand);
                 }
@@ -426,20 +380,16 @@ public class OvrActivity extends Activity {
 
         @Override
         public void onGuardianSyncAck(long timestamp) {
-            mHandler.post(() -> {
-                onGuardianSyncAckNative(timestamp);
-            });
+            mRenderingHandler.post(() -> onGuardianSyncAckNative(timestamp));
         }
 
         @Override
         public void onGuardianSegmentAck(long timestamp, int segmentIndex) {
-            mHandler.post(() -> {
-                onGuardianSegmentAckNative(timestamp, segmentIndex);
-            });
+            mRenderingHandler.post(() -> onGuardianSegmentAckNative(timestamp, segmentIndex));
         }
     };
 
-    private DecoderThread.DecoderCallback mDecoderCallback = new DecoderThread.DecoderCallback() {
+    private final DecoderThread.DecoderCallback mDecoderCallback = new DecoderThread.DecoderCallback() {
         @Override
         public void onPrepared() {
             mDecoderPrepared = true;
@@ -462,82 +412,56 @@ public class OvrActivity extends Activity {
 
 
     private native void initializeNative(Activity activity, AssetManager assetManager, Activity ovrThread, boolean ARMode, int initialRefreshRate);
+
     private native void destroyNative();
 
     private native void onResumeNative();
+
     private native void onPauseNative();
 
     private native void onSurfaceCreatedNative(Surface surface);
+
     private native void onSurfaceChangedNative(Surface surface);
+
     private native void onSurfaceDestroyedNative();
+
     private native void renderNative(long renderedFrameIndex);
+
     private native void renderLoadingNative();
+
     private native void sendTrackingInfoNative(ServerConnection serverConnection);
+
     private native void sendMicDataNative(ServerConnection serverConnection);
+
     private native void sendGuardianInfoNative(ServerConnection serverConnection);
 
     private native int getLoadingTextureNative();
+
     private native int getSurfaceTextureIDNative();
+
     private native int getWebViewSurfaceTextureNative();
 
     private native boolean isVrModeNative();
+
     private native void getDeviceDescriptorNative(DeviceDescriptor deviceDescriptor);
 
     private native void setFrameGeometryNative(int width, int height);
+
     private native void setRefreshRateNative(int refreshRate);
+
     private native void setStreamMicNative(boolean streamMic);
+
     private native void setFFRParamsNative(int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
+
     private native void onHapticsFeedbackNative(long startTime, float amplitude, float duration, float frequency, boolean hand);
+
     private native void onGuardianSyncAckNative(long timestamp);
+
     private native void onGuardianSegmentAckNative(long timestamp, int segmentIndex);
 
     @SuppressWarnings("unused")
     public void applyWebViewInteractionEvent(int type, float x, float y) {
-        mMainHandler.post(() -> {
-            if (mWebViewWrapper != null && mWebViewWrapper.webView != null) {
-                long time = SystemClock.uptimeMillis();
-
-                int action = 0;
-                boolean touchEvent = false;
-                switch (type) {
-                    case 0:
-                        action = MotionEvent.ACTION_HOVER_ENTER;
-                        touchEvent = false;
-                        break;
-                    case 1:
-                        action = MotionEvent.ACTION_HOVER_EXIT;
-                        touchEvent = false;
-                        break;
-                    case 2:
-                        action = MotionEvent.ACTION_HOVER_MOVE;
-                        touchEvent = false;
-                        break;
-                    case 3:
-                        action = MotionEvent.ACTION_MOVE;
-                        touchEvent = true;
-                        break;
-                    case 4:
-                        action = MotionEvent.ACTION_DOWN;
-                        touchEvent = true;
-                        break;
-                    case 5:
-                        action = MotionEvent.ACTION_UP;
-                        touchEvent = true;
-                        break;
-                }
-
-                float mx = x * WEBVIEW_WIDTH;
-                float my = y * WEBVIEW_HEIGHT;
-
-                MotionEvent ev = MotionEvent.obtain(time, time, action, mx, my, 0);
-                if (touchEvent) {
-                    mWebViewWrapper.webView.dispatchTouchEvent(ev);
-                } else {
-                    mWebViewWrapper.webView.dispatchGenericMotionEvent(ev);
-                }
-            }
-        });
+        mWebView.applyWebViewInteractionEvent(type, x, y);
     }
-
 }
 

@@ -134,6 +134,31 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
 }
 
 #[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(
+    _: JNIEnv,
+    _: JObject,
+    width: i32,
+    height: i32,
+    refresh_rate: i32,
+    stream_mic: u8,
+    foveation_mode: i32,
+    foveation_strength: f32,
+    foveation_shape: f32,
+    foveation_vertical_offset: f32,
+) {
+    onStreamStartNative(
+        width,
+        height,
+        refresh_rate,
+        stream_mic,
+        foveation_mode,
+        foveation_strength,
+        foveation_shape,
+        foveation_vertical_offset,
+    )
+}
+
+#[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onPauseNative(
     _: JNIEnv,
     _: JObject,
@@ -156,51 +181,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_getDeviceDe
     device_descriptor: JObject,
 ) {
     getDeviceDescriptorNative(env.get_native_interface() as _, *device_descriptor as _)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_setFrameGeometryNative(
-    _: JNIEnv,
-    _: JObject,
-    width: i32,
-    height: i32,
-) {
-    setFrameGeometryNative(width, height)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_setRefreshRateNative(
-    _: JNIEnv,
-    _: JObject,
-    refresh_rate: i32,
-) {
-    setRefreshRateNative(refresh_rate)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_setStreamMicNative(
-    _: JNIEnv,
-    _: JObject,
-    stream_mic: u8,
-) {
-    setStreamMicNative(stream_mic)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_setFFRParamsNative(
-    _: JNIEnv,
-    _: JObject,
-    foveation_mode: i32,
-    foveation_strength: f32,
-    foveation_shape: f32,
-    foveation_vertical_offset: f32,
-) {
-    setFFRParamsNative(
-        foveation_mode,
-        foveation_strength,
-        foveation_shape,
-        foveation_vertical_offset,
-    )
 }
 
 #[no_mangle]
@@ -285,10 +265,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_runLoo
     env: JNIEnv,
     instance: JObject,
 ) {
-    runLoop(
-        env.get_native_interface() as _,
-        *instance as _,
-    )
+    runLoop(env.get_native_interface() as _, *instance as _)
 }
 
 #[no_mangle]
@@ -312,7 +289,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_getSer
     env: JNIEnv,
     _: JObject,
 ) -> jstring {
-    getServerAddress(env.get_native_interface() as _, ) as _
+    getServerAddress(env.get_native_interface() as _) as _
 }
 
 #[no_mangle]

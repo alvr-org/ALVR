@@ -57,7 +57,6 @@ public class OvrActivity extends Activity {
 
         @Override
         public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
-//            mRenderingHandler.post(OvrActivity.this::onSurfaceDestroyedNative);
             maybePause();
             mScreenSurface = null;
         }
@@ -72,7 +71,7 @@ public class OvrActivity extends Activity {
     SurfaceTexture mWebViewSurfaceTexture;
     OffscreenWebView mWebView = null;
     final LoadingTexture mLoadingTexture = new LoadingTexture();
-    DecoderThread mDecoderThread;
+    DecoderThread mDecoderThread = null;
     ServerConnection mReceiverThread;
     EGLContext mEGLContext;
     boolean mVrMode = false;
@@ -112,7 +111,9 @@ public class OvrActivity extends Activity {
 
         mStreamSurfaceTexture = new SurfaceTexture(getSurfaceTextureIDNative());
         mStreamSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
-            mDecoderThread.onFrameAvailable();
+            if (mDecoderThread != null) {
+                mDecoderThread.onFrameAvailable();
+            }
             mRenderingHandler.removeCallbacks(this::render);
             mRenderingHandler.post(this::render);
         }, new Handler(Looper.getMainLooper()));
@@ -150,7 +151,7 @@ public class OvrActivity extends Activity {
                 // To avoid deadlock caused by it, we need to flush last output.
                 mStreamSurfaceTexture.updateTexImage();
 
-                mDecoderThread = new DecoderThread(mStreamSurface, this, mDecoderCallback);
+                mDecoderThread = new DecoderThread(mStreamSurface, mDecoderCallback);
 
                 try {
                     mDecoderThread.start();
@@ -158,7 +159,7 @@ public class OvrActivity extends Activity {
                     DeviceDescriptor deviceDescriptor = new DeviceDescriptor();
                     getDeviceDescriptorNative(deviceDescriptor);
                     mRefreshRate = deviceDescriptor.mRefreshRates[0];
-                    if (!mReceiverThread.start(mEGLContext, this, deviceDescriptor, 0, mDecoderThread)) {
+                    if (!mReceiverThread.start(mEGLContext, this, deviceDescriptor, 0)) {
                         Utils.loge(TAG, () -> "FATAL: Initialization of ReceiverThread failed.");
                         return;
                     }
@@ -249,7 +250,6 @@ public class OvrActivity extends Activity {
                     new String[]{Manifest.permission.RECORD_AUDIO},
                     MY_PERMISSIONS_RECORD_AUDIO);
         }
-        //If permission is granted, then go ahead recording audio
         else {
             ContextCompat.checkSelfPermission(this,
                     Manifest.permission.RECORD_AUDIO);//Go ahead with recording audio now
@@ -271,40 +271,39 @@ public class OvrActivity extends Activity {
     }
 
     private void render() {
-        if (mReceiverThread.isConnected()) {
-            long next = checkRenderTiming();
-            if (next > 0) {
-                mRenderingHandler.postDelayed(this::render, next);
-                return;
-            }
-            long renderedFrameIndex = mDecoderThread.clearAvailable(mStreamSurfaceTexture);
-
-            if (mWebViewSurfaceTexture != null) {
-                mWebViewSurfaceTexture.updateTexImage();
-            }
-
-            if (renderedFrameIndex != -1) {
-                renderNative(renderedFrameIndex);
-                mPreviousRender = System.nanoTime();
-
-                mRenderingHandler.postDelayed(this::render, 5);
-            } else {
-                mRenderingHandler.removeCallbacks(this::render);
-                mRenderingHandler.postDelayed(this::render, 50);
-            }
-        } else {
-            if (!isVrModeNative())
-                return;
-
+        if (mResumed && mScreenSurface != null) {
             if (mReceiverThread.isConnected()) {
-                mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\n \nConnected!\nStreaming will begin soon!");
-            } else {
-                mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\n \nOpen ALVR on PC and\nclick on \"Trust\" next to\nthe client entry");
-            }
+                long next = checkRenderTiming();
+                if (next > 0) {
+                    mRenderingHandler.postDelayed(this::render, next);
+                    return;
+                }
+                long renderedFrameIndex = mDecoderThread.clearAvailable(mStreamSurfaceTexture);
 
-            renderLoadingNative();
-            mRenderingHandler.removeCallbacks(this::render);
-            mRenderingHandler.postDelayed(this::render, 13); // 72Hz = 13.8888ms
+                if (mWebViewSurfaceTexture != null) {
+                    mWebViewSurfaceTexture.updateTexImage();
+                }
+
+                if (renderedFrameIndex != -1) {
+                    renderNative(renderedFrameIndex);
+                    mPreviousRender = System.nanoTime();
+
+                    mRenderingHandler.postDelayed(this::render, 5);
+                } else {
+                    mRenderingHandler.removeCallbacks(this::render);
+                    mRenderingHandler.postDelayed(this::render, 50);
+                }
+            } else {
+                if (mReceiverThread.isConnected()) {
+                    mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\n \nConnected!\nStreaming will begin soon!");
+                } else {
+                    mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\n \nOpen ALVR on PC and\nclick on \"Trust\" next to\nthe client entry");
+                }
+
+                renderLoadingNative();
+                mRenderingHandler.removeCallbacks(this::render);
+                mRenderingHandler.postDelayed(this::render, 13); // 72Hz = 13.8888ms
+            }
         }
     }
 
@@ -315,14 +314,33 @@ public class OvrActivity extends Activity {
         return TimeUnit.NANOSECONDS.toMillis(threshold - (current - mPreviousRender));
     }
 
+    public NAL obtainNAL(int length) {
+        if (mDecoderThread != null) {
+            return mDecoderThread.obtainNAL(length);
+        } else {
+            NAL nal = new NAL();
+            nal.length = length;
+            nal.buf = new byte[length];
+            return nal;
+        }
+    }
+
+    public void pushNAL(NAL nal) {
+        if (mDecoderThread != null) {
+            mDecoderThread.pushNAL(nal);
+        }
+    }
+
     // Called on OvrThread.
     @SuppressWarnings("unused")
     public void onVrModeChanged(boolean enter) {
         mVrMode = enter;
         Utils.logi(TAG, () -> "onVrModeChanged. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
-        mReceiverThread.setSinkPrepared(mVrMode && mDecoderPrepared);
-        if (mVrMode) {
-            mRenderingHandler.post(this::render);
+        if (mReceiverThread != null) {
+            mReceiverThread.setSinkPrepared(mVrMode && mDecoderPrepared);
+            if (mVrMode) {
+                mRenderingHandler.post(this::render);
+            }
         }
     }
 
@@ -336,10 +354,7 @@ public class OvrActivity extends Activity {
             // We must wait completion of notifyGeometryChange
             // to ensure the first video frame arrives after notifyGeometryChange.
             mRenderingHandler.post(() -> {
-                setRefreshRateNative(refreshRate);
-                setFFRParamsNative(foveationMode, foveationStrength, foveationShape, foveationVerticalOffset);
-                setFrameGeometryNative(width, height);
-                setStreamMicNative(streamMic);
+                onStreamStartNative(width, height, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset);
                 mDecoderThread.onConnect(codec, frameQueueSize);
             });
         }
@@ -350,7 +365,9 @@ public class OvrActivity extends Activity {
 
         @Override
         public void onDisconnect() {
-            mDecoderThread.onDisconnect();
+            if (mDecoderThread != null) {
+                mDecoderThread.onDisconnect();
+            }
         }
 
         @Override
@@ -403,7 +420,9 @@ public class OvrActivity extends Activity {
 
         @Override
         public void onFrameDecoded() {
-            mDecoderThread.releaseBuffer();
+            if (mDecoderThread != null) {
+                mDecoderThread.releaseBuffer();
+            }
         }
     };
 
@@ -436,13 +455,7 @@ public class OvrActivity extends Activity {
 
     private native void getDeviceDescriptorNative(DeviceDescriptor deviceDescriptor);
 
-    private native void setFrameGeometryNative(int width, int height);
-
-    private native void setRefreshRateNative(int refreshRate);
-
-    private native void setStreamMicNative(boolean streamMic);
-
-    private native void setFFRParamsNative(int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
+    private native void onStreamStartNative(int width, int height, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
 
     private native void onHapticsFeedbackNative(long startTime, float amplitude, float duration, float frequency, boolean hand);
 

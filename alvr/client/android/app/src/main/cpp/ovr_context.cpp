@@ -59,25 +59,13 @@ public:
     ovrMicrophoneHandle mMicHandle;
 
     jobject mVrThread = nullptr;
-    jobject mServerConnection = nullptr;
     jobject mjOvrContext = nullptr;
 
     GLuint SurfaceTextureID = 0;
     GLuint webViewSurfaceTexture = 0;
     GLuint loadingTexture = 0;
     int suspend = 0;
-    bool Resumed = false;
     bool mShowDashboard = false;
-    int FrameBufferWidth = 0;
-    int FrameBufferHeight = 0;
-    bool mFoveationEnabled = false;
-    float mFoveationStrength = 0;
-    float mFoveationShape = 1.5;
-    float mFoveationVerticalOffset = 0;
-    bool usedFoveationEnabled = false;
-    float usedFoveationStrength = 0;
-    float usedFoveationShape = 0;
-    float usedFoveationVerticalOffset = 0;
     std::function<void(InteractionType, glm::vec2)> mWebViewInteractionCallback;
 
     bool mExtraLatencyMode = false;
@@ -123,26 +111,6 @@ public:
 
 namespace {
     OvrContext g_ctx;
-}
-
-void setRefreshRate(int refreshRate, bool forceChange) {
-
-    if (g_ctx.m_currentRefreshRate == refreshRate) {
-        LOGI("Refresh rate not changed. %d Hz", refreshRate);
-        return;
-    }
-    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, refreshRate);
-    if (result == ovrSuccess) {
-        LOGI("Changed refresh rate. %d Hz", refreshRate);
-        g_ctx.m_currentRefreshRate = refreshRate;
-    } else {
-        LOGE("Failed to change refresh rate. %d Hz Force=%d Result=%d", refreshRate, forceChange,
-             result);
-    }
-}
-
-void setRefreshRateNative(int refreshRate) {
-    setRefreshRate(refreshRate, false);
 }
 
 void initializeNative(void *v_env, void *v_jOvrContext, void *v_activity, void *v_assetManager,
@@ -202,9 +170,6 @@ void initializeNative(void *v_env, void *v_jOvrContext, void *v_activity, void *
     LOGI("GL_VERSION=%s", glGetString(GL_VERSION));
     LOGI("GL_MAX_TEXTURE_IMAGE_UNITS=%d", textureUnits);
 
-    g_ctx.m_currentRefreshRate = DEFAULT_REFRESH_RATE;
-    setRefreshRateNative(initialRefreshRate);
-
     //
     // Generate texture for SurfaceTexture which is output of MediaCodec.
     //
@@ -249,13 +214,12 @@ void initializeNative(void *v_env, void *v_jOvrContext, void *v_activity, void *
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
                     GL_CLAMP_TO_EDGE);
 
-    g_ctx.FrameBufferWidth =
-            vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
-    g_ctx.FrameBufferHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
-                                                         VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
+    auto eyeWidth = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
+    auto eyeHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
+                                                VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
 
-    ovrRenderer_Create(&g_ctx.Renderer, g_ctx.FrameBufferWidth, g_ctx.FrameBufferHeight,
-                       g_ctx.SurfaceTextureID, g_ctx.loadingTexture, g_ctx.webViewSurfaceTexture,
+    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.SurfaceTextureID,
+                       g_ctx.loadingTexture, g_ctx.webViewSurfaceTexture,
                        g_ctx.mWebViewInteractionCallback, {false});
     ovrRenderer_CreateScene(&g_ctx.Renderer);
 
@@ -307,7 +271,6 @@ void destroyNative(void *v_env) {
 
     env->DeleteGlobalRef(g_ctx.mVrThread);
     env->DeleteGlobalRef(g_ctx.java.ActivityObject);
-    env->DeleteGlobalRef(g_ctx.mServerConnection);
     env->DeleteGlobalRef(g_ctx.mjOvrContext);
     g_ctx.mjOvrContext = nullptr;
 
@@ -647,17 +610,10 @@ void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiIn
 float getIPD() {
     ovrTracking2 tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, 0.0);
     float ipd = vrapi_GetInterpupillaryDistance(&tracking);
-    LOGI("OvrContext::getIpd: %f", ipd);
     return ipd;
 }
 
 std::pair<EyeFov, EyeFov> getFov() {
-    float fovX = vrapi_GetSystemPropertyFloat(&g_ctx.java,
-                                              VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X);
-    float fovY = vrapi_GetSystemPropertyFloat(&g_ctx.java,
-                                              VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y);
-    LOGI("OvrContext::getFov: X=%f Y=%f", fovX, fovY);
-
     ovrTracking2 tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, 0.0);
 
     EyeFov fov[2];
@@ -680,16 +636,11 @@ std::pair<EyeFov, EyeFov> getFov() {
         double minY = h2 - maxY;
 
         double rr = 180 / M_PI;
-        LOGI("getFov maxX=%f minX=%f maxY=%f minY=%f a=%f b=%f c=%f d=%f n=%f", maxX, minX, maxY,
-             minY, a, b, c, d, n);
 
         fov[eye].left = (float) (atan(minX / -n) * rr);
         fov[eye].right = (float) (-atan(maxX / -n) * rr);
         fov[eye].top = (float) (atan(minY / -n) * rr);
         fov[eye].bottom = (float) (-atan(maxY / -n) * rr);
-
-        LOGI("getFov[%d](D) r=%f l=%f t=%f b=%f", eye, fov[eye].left, fov[eye].right,
-             fov[eye].top, fov[eye].bottom);
     }
     return {fov[0], fov[1]};
 }
@@ -756,13 +707,6 @@ void sendTrackingInfoNative(void *v_env, void *v_udpReceiverThread) {
 
     frame->displayTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.FrameIndex);
     frame->tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, frame->displayTime);
-
-    /*LOGI("MVP %llu: \nL-V:\n%s\nL-P:\n%s\nR-V:\n%s\nR-P:\n%s", FrameIndex,
-         DumpMatrix(&frame->tracking.Eye[0].ViewMatrix).c_str(),
-         DumpMatrix(&frame->tracking.Eye[0].ProjectionMatrix).c_str(),
-         DumpMatrix(&frame->tracking.Eye[1].ViewMatrix).c_str(),
-         DumpMatrix(&frame->tracking.Eye[1].ProjectionMatrix).c_str()
-         );*/
 
     {
         std::lock_guard<decltype(g_ctx.trackingFrameMutex)> lock(g_ctx.trackingFrameMutex);
@@ -891,6 +835,33 @@ void onResumeNative(void *v_env, void *v_surface) {
     }
 
     checkShouldSyncGuardian();
+}
+
+void onStreamStartNative(int width, int height, int refreshRate, unsigned char streamMic,
+                         int foveationMode, float foveationStrength, float foveationShape,
+                         float foveationVerticalOffset) {
+    int eyeWidth = width / 2;
+
+    ovrRenderer_Destroy(&g_ctx.Renderer);
+    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, height,
+                       g_ctx.SurfaceTextureID, g_ctx.loadingTexture, g_ctx.webViewSurfaceTexture,
+                       g_ctx.mWebViewInteractionCallback,
+                       {(bool) foveationMode, (uint32_t) eyeWidth, (uint32_t) height,
+                        EyeFov(), foveationStrength, foveationShape, foveationVerticalOffset});
+    ovrRenderer_CreateScene(&g_ctx.Renderer);
+
+    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, refreshRate);
+
+    LOGI("Setting mic streaming %d", streamMic);
+    g_ctx.mStreamMic = streamMic;
+    if (g_ctx.mMicHandle) {
+        if (g_ctx.mStreamMic) {
+            LOG("Starting mic");
+            ovr_Microphone_Start(g_ctx.mMicHandle);
+        } else {
+            ovr_Microphone_Stop(g_ctx.mMicHandle);
+        }
+    }
 }
 
 void onPauseNative() {
@@ -1107,8 +1078,8 @@ void renderLoadingNative() {
     double displayTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.FrameIndex);
     ovrTracking2 headTracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, displayTime);
 
-    const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(&g_ctx.Renderer, &headTracking, true,
-                                                                   false);
+    const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(&g_ctx.Renderer, &headTracking,
+                                                                   true, false);
 
     const ovrLayerHeader2 *layers[] =
             {
@@ -1125,30 +1096,6 @@ void renderLoadingNative() {
     frameDesc.Layers = layers;
 
     vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
-}
-
-void setFrameGeometryNative(int width, int height) {
-    int eye_width = width / 2;
-
-    LOG("Changing FrameBuffer geometry. Old=%dx%d New=%dx%d", g_ctx.FrameBufferWidth,
-        g_ctx.FrameBufferHeight, eye_width, height);
-    g_ctx.FrameBufferWidth = eye_width;
-    g_ctx.FrameBufferHeight = height;
-
-    g_ctx.usedFoveationEnabled = g_ctx.mFoveationEnabled;
-    g_ctx.usedFoveationStrength = g_ctx.mFoveationStrength;
-    g_ctx.usedFoveationShape = g_ctx.mFoveationShape;
-    g_ctx.usedFoveationVerticalOffset = g_ctx.mFoveationVerticalOffset;
-
-    ovrRenderer_Destroy(&g_ctx.Renderer);
-    ovrRenderer_Create(&g_ctx.Renderer, g_ctx.FrameBufferWidth, g_ctx.FrameBufferHeight,
-                       g_ctx.SurfaceTextureID, g_ctx.loadingTexture, g_ctx.webViewSurfaceTexture,
-                       g_ctx.mWebViewInteractionCallback,
-                       {g_ctx.usedFoveationEnabled, (uint32_t) g_ctx.FrameBufferWidth,
-                        (uint32_t) g_ctx.FrameBufferHeight,
-                        EyeFov(), g_ctx.usedFoveationStrength, g_ctx.usedFoveationShape,
-                        g_ctx.usedFoveationVerticalOffset});
-    ovrRenderer_CreateScene(&g_ctx.Renderer);
 }
 
 void getRefreshRates(JNIEnv *env_, jintArray refreshRates) {
@@ -1179,30 +1126,6 @@ void getRefreshRates(JNIEnv *env_, jintArray refreshRates) {
     std::sort(refreshRates_, refreshRates_ + ALVR_REFRESH_RATE_LIST_SIZE, std::greater<jint>());
 
     env_->ReleaseIntArrayElements(refreshRates, refreshRates_, 0);
-}
-
-void setStreamMicNative(unsigned char streamMic) {
-    LOGI("Setting mic streaming %d", streamMic);
-    g_ctx.mStreamMic = streamMic;
-    if (g_ctx.mMicHandle) {
-        if (g_ctx.mStreamMic) {
-            LOG("Starting mic");
-            ovr_Microphone_Start(g_ctx.mMicHandle);
-        } else {
-            ovr_Microphone_Stop(g_ctx.mMicHandle);
-        }
-    }
-}
-
-void setFFRParamsNative(int foveationMode, float foveationStrength,
-                        float foveationShape, float foveationVerticalOffset) {
-    LOGI("SSetting FFR params %d %f %f %f", foveationMode, foveationStrength, foveationShape,
-         foveationVerticalOffset);
-
-    g_ctx.mFoveationEnabled = (bool) foveationMode;
-    g_ctx.mFoveationStrength = foveationStrength;
-    g_ctx.mFoveationShape = foveationShape;
-    g_ctx.mFoveationVerticalOffset = foveationVerticalOffset;
 }
 
 void getDeviceDescriptorNative(void *v_env, void *v_deviceDescriptor) {
@@ -1298,7 +1221,8 @@ bool prepareGuardianData() {
     }
 
     g_ctx.m_GuardianPoints = new ovrVector3f[g_ctx.m_GuardianPointCount];
-    vrapi_GetBoundaryGeometry(g_ctx.Ovr, g_ctx.m_GuardianPointCount, &g_ctx.m_GuardianPointCount, g_ctx.m_GuardianPoints);
+    vrapi_GetBoundaryGeometry(g_ctx.Ovr, g_ctx.m_GuardianPointCount, &g_ctx.m_GuardianPointCount,
+                              g_ctx.m_GuardianPoints);
 
     return true;
 }
@@ -1327,7 +1251,8 @@ void sendGuardianInfoNative(void *v_env, void *v_udpReceiverThread) {
         memcpy(&packet.standingPosPosition, &spacePose.Position, sizeof(TrackingVector3));
 
         ovrVector3f bboxScale;
-        vrapi_GetBoundaryOrientedBoundingBox(g_ctx.Ovr, &spacePose /* dummy variable */, &bboxScale);
+        vrapi_GetBoundaryOrientedBoundingBox(g_ctx.Ovr, &spacePose /* dummy variable */,
+                                             &bboxScale);
         packet.playAreaSize.x = 2.0f * bboxScale.x;
         packet.playAreaSize.y = 2.0f * bboxScale.z;
 
@@ -1340,7 +1265,8 @@ void sendGuardianInfoNative(void *v_env, void *v_udpReceiverThread) {
 
         uint32_t segmentIndex = g_ctx.m_AckedGuardianSegment + 1;
         packet.segmentIndex = segmentIndex;
-        uint32_t remainingPoints = g_ctx.m_GuardianPointCount - segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE;
+        uint32_t remainingPoints =
+                g_ctx.m_GuardianPointCount - segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE;
         size_t countToSend =
                 remainingPoints > ALVR_GUARDIAN_SEGMENT_SIZE ? ALVR_GUARDIAN_SEGMENT_SIZE
                                                              : remainingPoints;
@@ -1367,7 +1293,8 @@ void onGuardianSyncAckNative(long long timestamp) {
 }
 
 void onGuardianSegmentAckNative(long long timestamp, int segmentIndex) {
-    if (timestamp != g_ctx.m_GuardianTimestamp || segmentIndex != g_ctx.m_AckedGuardianSegment + 1) {
+    if (timestamp != g_ctx.m_GuardianTimestamp ||
+        segmentIndex != g_ctx.m_AckedGuardianSegment + 1) {
         return;
     }
 

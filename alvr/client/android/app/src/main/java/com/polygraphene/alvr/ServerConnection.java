@@ -19,19 +19,6 @@ class ServerConnection extends ThreadBase
         System.loadLibrary("alvr_client");
     }
 
-    private static final String BROADCAST_ADDRESS = "255.255.255.255";
-    private static final int HELLO_PORT = 9943;
-    private static final int PORT = 9944;
-
-    private TrackingThread mTrackingThread;
-
-    private DeviceDescriptor mDeviceDescriptor;
-
-    private boolean mInitialized = false;
-    private boolean mInitializeFailed = false;
-
-    private OvrActivity mParent;
-
     interface ConnectionListener {
         void onConnected(int width, int height, int codec, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
 
@@ -48,14 +35,25 @@ class ServerConnection extends ThreadBase
         void onGuardianSegmentAck(long timestamp, int segmentIndex);
     }
 
-    private ConnectionListener mConnectionListener;
-
     public interface NALCallback {
         NAL obtainNAL(int length);
         void pushNAL(NAL nal);
     }
 
-    private NALCallback mNALCallback;
+    private static final String BROADCAST_ADDRESS = "255.255.255.255";
+    private static final int HELLO_PORT = 9943;
+    private static final int PORT = 9944;
+
+    private TrackingThread mTrackingThread;
+
+    private DeviceDescriptor mDeviceDescriptor;
+
+    private boolean mInitialized = false;
+    private boolean mInitializeFailed = false;
+
+    private final OvrActivity mParent;
+
+    private final ConnectionListener mConnectionListener;
 
     private final Object mWaiter = new Object();
 
@@ -83,7 +81,7 @@ class ServerConnection extends ThreadBase
         }
     }
 
-    public boolean start(EGLContext mEGLContext, Activity activity, DeviceDescriptor deviceDescriptor, int cameraTexture, NALCallback nalCallback)
+    public boolean start(EGLContext mEGLContext, Activity activity, DeviceDescriptor deviceDescriptor, int cameraTexture)
     {
         mTrackingThread = new TrackingThread();
         mTrackingThread.setCallback(() -> {
@@ -93,8 +91,6 @@ class ServerConnection extends ThreadBase
         });
 
         mDeviceDescriptor = deviceDescriptor;
-
-        mNALCallback = nalCallback;
 
         super.startBase();
 
@@ -200,11 +196,6 @@ class ServerConnection extends ThreadBase
         return ret.toArray(new String[]{});
     }
 
-
-//    public String getErrorMessage() {
-//        return mTrackingThread.getErrorMessage();
-//    }
-
     public boolean isConnected() {
         return isConnectedNative();
     }
@@ -248,12 +239,12 @@ class ServerConnection extends ThreadBase
 
     @SuppressWarnings("unused")
     public NAL obtainNAL(int length) {
-        return mNALCallback.obtainNAL(length);
+        return mParent.obtainNAL(length);
     }
 
     @SuppressWarnings("unused")
     public void pushNAL(NAL nal) {
-        mNALCallback.pushNAL(nal);
+        mParent.pushNAL(nal);
     }
 
     @SuppressWarnings("unused")

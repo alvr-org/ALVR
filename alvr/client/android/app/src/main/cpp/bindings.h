@@ -16,14 +16,12 @@ extern "C" void sendTrackingInfoNative(void *env, void *udpReceiverThread);
 extern "C" void sendGuardianInfoNative(void *env, void *udpReceiverThread);
 extern "C" void sendMicDataNative(void *env, void *udpReceiverThread);
 extern "C" void onResumeNative(void *env, void *surface);
+extern "C" void onStreamStartNative(int width, int height, int refreshRate, unsigned char streamMic,
+                                    int foveationMode, float foveationStrength,
+                                    float foveationShape, float foveationVerticalOffset);
 extern "C" void onPauseNative();
 extern "C" unsigned char isVrModeNative();
 extern "C" void getDeviceDescriptorNative(void *env, void *deviceDescriptor);
-extern "C" void setFrameGeometryNative(int width, int height);
-extern "C" void setRefreshRateNative(int refreshRate);
-extern "C" void setStreamMicNative(unsigned char streamMic);
-extern "C" void setFFRParamsNative(int foveationMode, float foveationStrength,
-                                   float foveationShape, float foveationVerticalOffset);
 extern "C" void
 onHapticsFeedbackNative(long long startTime, float amplitude, float duration,
                         float frequency, unsigned char hand);

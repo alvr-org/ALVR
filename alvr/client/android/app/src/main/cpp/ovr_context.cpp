@@ -838,7 +838,12 @@ void reflectExtraLatencyMode(bool always) {
     }
 }
 
-void enterVrMode() {
+void onResumeNative(void *v_env, void *v_surface) {
+    auto *env = (JNIEnv *) v_env;
+    auto surface = (jobject) v_surface;
+
+    g_ctx.window = ANativeWindow_fromSurface(g_ctx.env, surface);
+
     LOGI("Entering VR mode.");
 
     ovrModeParms parms = vrapi_DefaultModeParms(&g_ctx.java);
@@ -880,9 +885,16 @@ void enterVrMode() {
     jmethodID id = g_ctx.env->GetMethodID(clazz, "onVrModeChanged", "(Z)V");
     g_ctx.env->CallVoidMethod(g_ctx.mVrThread, id, static_cast<jboolean>(true));
     g_ctx.env->DeleteLocalRef(clazz);
+
+    if (g_ctx.mMicHandle && g_ctx.mStreamMic) {
+        ovr_Microphone_Start(g_ctx.mMicHandle);
+    }
+
+    checkShouldSyncGuardian();
 }
 
-void leaveVrMode() {
+void onPauseNative() {
+
     LOGI("Leaving VR mode.");
 
     vrapi_LeaveVrMode(g_ctx.Ovr);
@@ -895,83 +907,15 @@ void leaveVrMode() {
     jmethodID id = g_ctx.env->GetMethodID(clazz, "onVrModeChanged", "(Z)V");
     g_ctx.env->CallVoidMethod(g_ctx.mVrThread, id, static_cast<jboolean>(false));
     g_ctx.env->DeleteLocalRef(clazz);
-}
-
-void onVrModeChange() {
-    if (g_ctx.Resumed && g_ctx.window != nullptr) {
-        if (g_ctx.Ovr == nullptr) {
-            enterVrMode();
-        }
-    } else {
-        if (g_ctx.Ovr != nullptr) {
-            leaveVrMode();
-        }
-    }
-}
-
-void onSurfaceCreatedNative(void *v_surface) {
-    auto surface = (jobject) v_surface;
-
-    LOG("onSurfaceCreated called. Resumed=%d Window=%p Ovr=%p", g_ctx.Resumed, g_ctx.window,
-        g_ctx.Ovr);
-    g_ctx.window = ANativeWindow_fromSurface(g_ctx.env, surface);
-
-    onVrModeChange();
-}
-
-void onSurfaceDestroyedNative() {
-    LOG("onSurfaceDestroyed called. Resumed=%d Window=%p Ovr=%p", g_ctx.Resumed, g_ctx.window,
-        g_ctx.Ovr);
-    if (g_ctx.window != nullptr) {
-        ANativeWindow_release(g_ctx.window);
-    }
-    g_ctx.window = nullptr;
-
-    onVrModeChange();
-}
-
-void onSurfaceChangedNative(void *v_surface) {
-    auto surface = (jobject) v_surface;
-
-    LOG("onSurfaceChanged called. Resumed=%d Window=%p Ovr=%p", g_ctx.Resumed, g_ctx.window,
-        g_ctx.Ovr);
-    ANativeWindow *newWindow = ANativeWindow_fromSurface(g_ctx.env, surface);
-    if (newWindow != g_ctx.window) {
-        LOG("Replacing ANativeWindow. %p != %p", newWindow, g_ctx.window);
-        ANativeWindow_release(g_ctx.window);
-        g_ctx.window = nullptr;
-        onVrModeChange();
-
-        g_ctx.window = newWindow;
-        if (g_ctx.window != nullptr) {
-            onVrModeChange();
-        }
-    } else if (newWindow != nullptr) {
-        LOG("Got same ANativeWindow. %p == %p", newWindow, g_ctx.window);
-        ANativeWindow_release(newWindow);
-    }
-}
-
-void onResumeNative() {
-    LOG("onResume called. Resumed=%d Window=%p Ovr=%p", g_ctx.Resumed, g_ctx.window, g_ctx.Ovr);
-    g_ctx.Resumed = true;
-    onVrModeChange();
-
-    if (g_ctx.mMicHandle && g_ctx.mStreamMic) {
-        ovr_Microphone_Start(g_ctx.mMicHandle);
-    }
-
-    checkShouldSyncGuardian();
-}
-
-void onPauseNative() {
-    LOG("onPause called. Resumed=%d Window=%p Ovr=%p", g_ctx.Resumed, g_ctx.window, g_ctx.Ovr);
-    g_ctx.Resumed = false;
-    onVrModeChange();
 
     if (g_ctx.mMicHandle && g_ctx.mStreamMic) {
         ovr_Microphone_Stop(g_ctx.mMicHandle);
     }
+
+    if (g_ctx.window != nullptr) {
+        ANativeWindow_release(g_ctx.window);
+    }
+    g_ctx.window = nullptr;
 }
 
 void finishHapticsBuffer(ovrDeviceID DeviceID) {

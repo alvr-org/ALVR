@@ -125,37 +125,12 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_sendMicData
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onSurfaceCreatedNative(
-    _: JNIEnv,
-    _: JObject,
-    surface: JObject,
-) {
-    onSurfaceCreatedNative(*surface as _)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onSurfaceDestroyedNative(
-    _: JNIEnv,
-    _: JObject,
-) {
-    onSurfaceDestroyedNative()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onSurfaceChangedNative(
-    _: JNIEnv,
-    _: JObject,
-    surface: JObject,
-) {
-    onSurfaceChangedNative(*surface as _)
-}
-
-#[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
-    _: JNIEnv,
+    env: JNIEnv,
     _: JObject,
+    surface: JObject,
 ) {
-    onResumeNative()
+    onResumeNative(env.get_native_interface() as _, *surface as _)
 }
 
 #[no_mangle]

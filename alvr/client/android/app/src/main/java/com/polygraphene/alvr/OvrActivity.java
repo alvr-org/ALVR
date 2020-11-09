@@ -37,56 +37,48 @@ public class OvrActivity extends Activity {
 
     private final static String TAG = "OvrActivity";
 
+    //Create placeholder for user's consent to record_audio permission.
+    //This will be used in handling callback
+    private final int MY_PERMISSIONS_RECORD_AUDIO = 1;
 
     class RenderingCallbacks implements SurfaceHolder.Callback {
         @Override
         public void surfaceCreated(@NonNull final SurfaceHolder holder) {
-            mRenderingHandler.post(() -> onSurfaceCreatedNative(holder.getSurface()));
+            mScreenSurface = holder.getSurface();
+            maybeResume();
         }
 
         @Override
-        public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
-            mRenderingHandler.post(() -> onSurfaceChangedNative(holder.getSurface()));
+        public void surfaceChanged(@NonNull SurfaceHolder holder, int _fmt, int _w, int _h) {
+            maybePause();
+            mScreenSurface = holder.getSurface();
+            maybeResume();
         }
 
         @Override
         public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
-            mRenderingHandler.post(OvrActivity.this::onSurfaceDestroyedNative);
+//            mRenderingHandler.post(OvrActivity.this::onSurfaceDestroyedNative);
+            maybePause();
+            mScreenSurface = null;
         }
     }
 
-    private OffscreenWebView mWebView = null;
-
-    private Handler mRenderingHandler;
-    private HandlerThread mHandlerThread;
-
-    // Wrapper used to emulate pointer/pass by reference
-    public static class WebViewWrapper {
-        public OffscreenWebView webView = null;
-    }
-
-    private WebViewWrapper mWebViewWrapper = null;
-
-    private SurfaceTexture mSurfaceTexture;
-    private Surface mSurface;
-    private SurfaceTexture mWebViewSurfaceTexture;
-
-    private final LoadingTexture mLoadingTexture = new LoadingTexture();
-
-    // Worker threads
-    private DecoderThread mDecoderThread;
-    private ServerConnection mReceiverThread;
-
-    private EGLContext mEGLContext;
-
-    private boolean mVrMode = false;
-    private boolean mDecoderPrepared = false;
-    private int mRefreshRate = 72;
-
-    private long mPreviousRender = 0;
-
-    private final Runnable mRenderRunnable = this::render;
-    private final Runnable mIdleRenderRunnable = this::render;
+    boolean mResumed = false;
+    Handler mRenderingHandler;
+    HandlerThread mRenderingHandlerThread;
+    Surface mScreenSurface;
+    SurfaceTexture mStreamSurfaceTexture;
+    Surface mStreamSurface;
+    SurfaceTexture mWebViewSurfaceTexture;
+    OffscreenWebView mWebView = null;
+    final LoadingTexture mLoadingTexture = new LoadingTexture();
+    DecoderThread mDecoderThread;
+    ServerConnection mReceiverThread;
+    EGLContext mEGLContext;
+    boolean mVrMode = false;
+    boolean mDecoderPrepared = false;
+    int mRefreshRate = 72;
+    long mPreviousRender = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,73 +95,107 @@ public class OvrActivity extends Activity {
         mWebView = new OffscreenWebView(this, webViewHandler);
         addContentView(mWebView, new ViewGroup.LayoutParams(WEBVIEW_WIDTH, WEBVIEW_HEIGHT));
 
-        mHandlerThread = new HandlerThread("Rendering thread");
-        mHandlerThread.start();
-        mRenderingHandler = new Handler(mHandlerThread.getLooper());
+        mRenderingHandlerThread = new HandlerThread("Rendering thread");
+        mRenderingHandlerThread.start();
+        mRenderingHandler = new Handler(mRenderingHandlerThread.getLooper());
         mRenderingHandler.post(this::startup);
-
-        mWebViewWrapper = new WebViewWrapper();
-        mWebViewWrapper.webView = mWebView;
 
         SurfaceHolder holder = surfaceView.getHolder();
         holder.addCallback(new RenderingCallbacks());
 
-
         requestAudioPermissions();
+    }
+
+    //called from constructor
+    public void startup() {
+        initializeNative(this, this.getAssets(), this, false, 72);
+
+        mStreamSurfaceTexture = new SurfaceTexture(getSurfaceTextureIDNative());
+        mStreamSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
+            mDecoderThread.onFrameAvailable();
+            mRenderingHandler.removeCallbacks(this::render);
+            mRenderingHandler.post(this::render);
+        }, new Handler(Looper.getMainLooper()));
+        mStreamSurface = new Surface(mStreamSurfaceTexture);
+
+        mWebViewSurfaceTexture = new SurfaceTexture(getWebViewSurfaceTextureNative());
+        mWebViewSurfaceTexture.setDefaultBufferSize(WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
+        Surface mWebViewSurface = new Surface(mWebViewSurfaceTexture);
+
+        // Doesn't need to be posted to the main thread since it's our method.
+        mWebView.setSurface(mWebViewSurface);
+
+        mLoadingTexture.initializeMessageCanvas(getLoadingTextureNative());
+        mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\nLoading...");
+
+        mEGLContext = EGL14.eglGetCurrentContext();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
-        // and onFrameAvailable won't be called after next output.
-        // To avoid deadlock caused by it, we need to flush last output.
-        mRenderingHandler.post(() -> {
+        mResumed = true;
+        maybeResume();
+    }
 
-            mReceiverThread = new ServerConnection(mUdpReceiverConnectionListener, this);
+    void maybeResume() {
+        if (mResumed && mScreenSurface != null) {
+            mRenderingHandler.post(() -> {
 
-            // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
-            // and onFrameAvailable won't be called after next output.
-            // To avoid deadlock caused by it, we need to flush last output.
-            mSurfaceTexture.updateTexImage();
+                mReceiverThread = new ServerConnection(mUdpReceiverConnectionListener, this);
 
-            mDecoderThread = new DecoderThread(mSurface, this, mDecoderCallback);
+                // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
+                // and onFrameAvailable won't be called after next output.
+                // To avoid deadlock caused by it, we need to flush last output.
+                mStreamSurfaceTexture.updateTexImage();
 
-            try {
-                mDecoderThread.start();
+                mDecoderThread = new DecoderThread(mStreamSurface, this, mDecoderCallback);
 
-                DeviceDescriptor deviceDescriptor = new DeviceDescriptor();
-                getDeviceDescriptorNative(deviceDescriptor);
-                mRefreshRate = deviceDescriptor.mRefreshRates[0];
-                if (!mReceiverThread.start(mEGLContext, this, deviceDescriptor, 0, mDecoderThread)) {
-                    Utils.loge(TAG, () -> "FATAL: Initialization of ReceiverThread failed.");
-                    return;
+                try {
+                    mDecoderThread.start();
+
+                    DeviceDescriptor deviceDescriptor = new DeviceDescriptor();
+                    getDeviceDescriptorNative(deviceDescriptor);
+                    mRefreshRate = deviceDescriptor.mRefreshRates[0];
+                    if (!mReceiverThread.start(mEGLContext, this, deviceDescriptor, 0, mDecoderThread)) {
+                        Utils.loge(TAG, () -> "FATAL: Initialization of ReceiverThread failed.");
+                        return;
+                    }
+                } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+                    Utils.loge(TAG, e::toString);
                 }
-            } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-                Utils.loge(TAG, e::toString);
-            }
 
-            onResumeNative();
-        });
+                onResumeNative(mScreenSurface);
+            });
+        }
     }
 
     @Override
     protected void onPause() {
+        maybePause();
+        mResumed = false;
+
         super.onPause();
+    }
 
-        // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
-        mRenderingHandler.post(() -> {
+    void maybePause() {
+        // the check (mResumed && mScreenSurface != null) is intended: either mResumed or
+        // mScreenSurface != null will be false after this method returns.
+        if (mResumed && mScreenSurface != null) {
             // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
-            if (mDecoderThread != null) {
-                mDecoderThread.stopAndWait();
-            }
-            if (mReceiverThread != null) {
-                mReceiverThread.stopAndWait();
-            }
+            mRenderingHandler.post(() -> {
+                // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
+                if (mDecoderThread != null) {
+                    mDecoderThread.stopAndWait();
+                }
+                if (mReceiverThread != null) {
+                    mReceiverThread.stopAndWait();
+                }
 
-            onPauseNative();
-        });
+                onPauseNative();
+            });
+        }
     }
 
     @Override
@@ -181,7 +207,7 @@ public class OvrActivity extends Activity {
             Utils.logi(TAG, () -> "Destroying vrapi state.");
             destroyNative();
         });
-        mHandlerThread.quitSafely();
+        mRenderingHandlerThread.quitSafely();
     }
 
     @Override
@@ -207,10 +233,6 @@ public class OvrActivity extends Activity {
         AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0);
     }
-
-    //Create placeholder for user's consent to record_audio permission.
-    //This will be used in handling callback
-    private final int MY_PERMISSIONS_RECORD_AUDIO = 1;
 
     private void requestAudioPermissions() {
         if (ContextCompat.checkSelfPermission(this,
@@ -248,39 +270,14 @@ public class OvrActivity extends Activity {
         mWebView.setURL(url);
     }
 
-    //called from constructor
-    public void startup() {
-        initializeNative(this, this.getAssets(), this, false, 72);
-
-        mSurfaceTexture = new SurfaceTexture(getSurfaceTextureIDNative());
-        mSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
-            mDecoderThread.onFrameAvailable();
-            mRenderingHandler.removeCallbacks(mIdleRenderRunnable);
-            mRenderingHandler.post(mRenderRunnable);
-        }, new Handler(Looper.getMainLooper()));
-        mSurface = new Surface(mSurfaceTexture);
-
-        mWebViewSurfaceTexture = new SurfaceTexture(getWebViewSurfaceTextureNative());
-        mWebViewSurfaceTexture.setDefaultBufferSize(WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
-        Surface mWebViewSurface = new Surface(mWebViewSurfaceTexture);
-
-        // Doesn't need to be posted to the main thread since it's our method.
-        mWebViewWrapper.webView.setSurface(mWebViewSurface);
-
-        mLoadingTexture.initializeMessageCanvas(getLoadingTextureNative());
-        mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\nLoading...");
-
-        mEGLContext = EGL14.eglGetCurrentContext();
-    }
-
     private void render() {
         if (mReceiverThread.isConnected()) {
             long next = checkRenderTiming();
             if (next > 0) {
-                mRenderingHandler.postDelayed(mRenderRunnable, next);
+                mRenderingHandler.postDelayed(this::render, next);
                 return;
             }
-            long renderedFrameIndex = mDecoderThread.clearAvailable(mSurfaceTexture);
+            long renderedFrameIndex = mDecoderThread.clearAvailable(mStreamSurfaceTexture);
 
             if (mWebViewSurfaceTexture != null) {
                 mWebViewSurfaceTexture.updateTexImage();
@@ -290,10 +287,10 @@ public class OvrActivity extends Activity {
                 renderNative(renderedFrameIndex);
                 mPreviousRender = System.nanoTime();
 
-                mRenderingHandler.postDelayed(mRenderRunnable, 5);
+                mRenderingHandler.postDelayed(this::render, 5);
             } else {
-                mRenderingHandler.removeCallbacks(mIdleRenderRunnable);
-                mRenderingHandler.postDelayed(mIdleRenderRunnable, 50);
+                mRenderingHandler.removeCallbacks(this::render);
+                mRenderingHandler.postDelayed(this::render, 50);
             }
         } else {
             if (!isVrModeNative())
@@ -306,8 +303,8 @@ public class OvrActivity extends Activity {
             }
 
             renderLoadingNative();
-            mRenderingHandler.removeCallbacks(mIdleRenderRunnable);
-            mRenderingHandler.postDelayed(mIdleRenderRunnable, 13); // 72Hz = 13.8888ms
+            mRenderingHandler.removeCallbacks(this::render);
+            mRenderingHandler.postDelayed(this::render, 13); // 72Hz = 13.8888ms
         }
     }
 
@@ -325,7 +322,7 @@ public class OvrActivity extends Activity {
         Utils.logi(TAG, () -> "onVrModeChanged. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
         mReceiverThread.setSinkPrepared(mVrMode && mDecoderPrepared);
         if (mVrMode) {
-            mRenderingHandler.post(mRenderRunnable);
+            mRenderingHandler.post(this::render);
         }
     }
 
@@ -415,15 +412,9 @@ public class OvrActivity extends Activity {
 
     private native void destroyNative();
 
-    private native void onResumeNative();
+    private native void onResumeNative(Surface screenSurface);
 
     private native void onPauseNative();
-
-    private native void onSurfaceCreatedNative(Surface surface);
-
-    private native void onSurfaceChangedNative(Surface surface);
-
-    private native void onSurfaceDestroyedNative();
 
     private native void renderNative(long renderedFrameIndex);
 

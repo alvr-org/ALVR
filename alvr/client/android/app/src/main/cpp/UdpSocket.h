@@ -39,9 +39,9 @@ public:
 
     jstring getServerAddress(JNIEnv *env);
 
-    int getServerPort();
+    int getServerPort() const;
 
-    int getSocket();
+    int getSocket() const;
 
 private:
     void parse(char *packet, int packetSize, const sockaddr_in &addr);

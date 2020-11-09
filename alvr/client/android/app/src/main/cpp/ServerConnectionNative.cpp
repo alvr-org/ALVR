@@ -20,11 +20,11 @@
 #include "nal.h"
 #include "sound.h"
 #include "UdpSocket.h"
-#include <stdlib.h>
+#include <cstdlib>
 #include <pthread.h>
 #include <endian.h>
 #include <algorithm>
-#include <errno.h>
+#include <cerrno>
 #include <sys/ioctl.h>
 #include "utils.h"
 #include "latency_collector.h"
@@ -173,7 +173,7 @@ void processVideoSequence(uint32_t sequence) {
 void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
                           uint32_t fromPacketCounter,
                           uint32_t toPacketCounter) {
-    PacketErrorReport report;
+    PacketErrorReport report{};
     report.type = ALVR_PACKET_TYPE_PACKET_ERROR_REPORT;
     report.lostFrameType = frameType;
     report.fromPacketCounter = fromPacketCounter;
@@ -205,7 +205,7 @@ void onPacketRecv(const char *packet, size_t packetSize) {
 
     uint32_t type = *(uint32_t *) packet;
     if (type == ALVR_PACKET_TYPE_VIDEO_FRAME) {
-        VideoFrame *header = (VideoFrame *) packet;
+        auto *header = (VideoFrame *) packet;
 
         if (g_socket.m_lastFrameIndex != header->trackingFrameIndex) {
             LatencyCollector::Instance().receivedFirst(header->trackingFrameIndex);
@@ -236,7 +236,7 @@ void onPacketRecv(const char *packet, size_t packetSize) {
         if (packetSize < sizeof(TimeSync)) {
             return;
         }
-        TimeSync *timeSync = (TimeSync *) packet;
+        auto *timeSync = (TimeSync *) packet;
         uint64_t Current = getTimestampUs();
         if (timeSync->mode == 1) {
             uint64_t RTT = Current - timeSync->clientTime;
@@ -314,15 +314,12 @@ void onPacketRecv(const char *packet, size_t packetSize) {
 
 void initializeSocket(void *v_env, void *v_instance,
                 int helloPort, int port, void *v_deviceName, void *v_broadcastAddrList,
-                void *v_refreshRates, int renderWidth, int renderHeight, void *v_fov,
-                int deviceType, int deviceSubType, int deviceCapabilityFlags,
-                int controllerCapabilityFlags, float ipd) {
+                void *v_refreshRates, int renderWidth, int renderHeight) {
     auto *env = (JNIEnv *) v_env;
     auto *instance = (jobject) v_instance;
     auto *deviceName_ = (jstring) v_deviceName;
     auto *broadcastAddrList_ = (jobjectArray) v_broadcastAddrList;
     auto *refreshRates_ = (jintArray) v_refreshRates;
-    auto *fov = (jfloatArray) v_fov;
 
     //
     // Initialize variables
@@ -403,8 +400,8 @@ void processReadPipe(int pipefd) {
         return;
     }
 
-    SendBuffer sendBuffer;
-    while (1) {
+    SendBuffer sendBuffer{};
+    while (true) {
         {
             std::lock_guard<std::mutex> lock(g_socket.pipeMutex);
 
@@ -422,8 +419,6 @@ void processReadPipe(int pipefd) {
         //LOG("Sending tracking packet %d", sendBuffer.len);
         g_socket.m_socket.send(sendBuffer.buf, sendBuffer.len);
     }
-
-    return;
 }
 
 void sendTimeSyncLocked() {
@@ -504,7 +499,7 @@ void sendNative(long long nativeBuffer, int length) {
     if (g_socket.m_stopped) {
         return;
     }
-    SendBuffer sendBuffer;
+    SendBuffer sendBuffer{};
 
     memcpy(sendBuffer.buf, packet, length);
     sendBuffer.len = length;
@@ -532,11 +527,11 @@ void runLoop(void *v_env, void *v_instance) {
     g_socket.m_instance = instance;
 
     while (!g_socket.m_stopped) {
-        timeval timeout;
+        timeval timeout{};
         timeout.tv_sec = 0;
         timeout.tv_usec = 10 * 1000;
         memcpy(&fds, &fds_org, sizeof(fds));
-        int ret = select(nfds, &fds, NULL, NULL, &timeout);
+        int ret = select(nfds, &fds, nullptr, nullptr, &timeout);
 
         if (ret == 0) {
             doPeriodicWork();
@@ -569,8 +564,6 @@ void runLoop(void *v_env, void *v_instance) {
     g_socket.m_soundPlayer.reset();
 
     LOGI("Exiting UdpReceiverThread runLoop");
-
-    return;
 }
 
 void interruptNative() {

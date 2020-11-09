@@ -30,21 +30,13 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_LatencyCollector_Decode
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
     env: JNIEnv,
-    instance: JObject,
     activity: JObject,
     asset_manager: JObject,
-    vr_thread: JObject,
-    ar_mode: u8,
-    initial_refresh_rate: i32,
 ) {
     initializeNative(
         env.get_native_interface() as _,
-        *instance as _,
         *activity as _,
         *asset_manager as _,
-        *vr_thread as _,
-        ar_mode,
-        initial_refresh_rate,
     )
 }
 
@@ -226,12 +218,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_initia
     refresh_rates: jintArray,
     render_width: i32,
     render_height: i32,
-    fov: jfloatArray,
-    device_type: i32,
-    device_sub_type: i32,
-    device_capability_flags: i32,
-    controller_capability_flags: i32,
-    ipd: f32,
 ) {
     initializeSocket(
         env.get_native_interface() as _,
@@ -243,12 +229,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_initia
         refresh_rates as _,
         render_width,
         render_height,
-        fov as _,
-        device_type,
-        device_sub_type,
-        device_capability_flags,
-        controller_capability_flags,
-        ipd,
     )
 }
 

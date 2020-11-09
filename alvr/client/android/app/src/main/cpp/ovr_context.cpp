@@ -46,20 +46,17 @@ struct TrackingFrame {
 
 class OvrContext {
 public:
-    ANativeWindow *window = NULL;
-    ovrMobile *Ovr;
-    ovrJava java;
-    JNIEnv *env;
+    ANativeWindow *window = nullptr;
+    ovrMobile *Ovr{};
+    ovrJava java{};
+    JNIEnv *env{};
 
 
-    int16_t *micBuffer;
-    bool mStreamMic;
-    size_t mMicMaxElements;
+    int16_t *micBuffer{};
+    bool mStreamMic{};
+    size_t mMicMaxElements{};
 
-    ovrMicrophoneHandle mMicHandle;
-
-    jobject mVrThread = nullptr;
-    jobject mjOvrContext = nullptr;
+    ovrMicrophoneHandle mMicHandle{};
 
     GLuint SurfaceTextureID = 0;
     GLuint webViewSurfaceTexture = 0;
@@ -90,7 +87,7 @@ public:
 
     ovrRenderer Renderer;
 
-    jmethodID mServerConnection_send;
+    jmethodID mServerConnection_send{};
 
     struct HapticsState {
         uint64_t startUs;
@@ -102,7 +99,7 @@ public:
     };
     // mHapticsState[0]: right hand state
     // mHapticsState[1]: left hand state
-    HapticsState mHapticsState[2];
+    HapticsState mHapticsState[2]{};
 
 
     std::chrono::system_clock::time_point mMenuNotPressedLastInstant;
@@ -113,13 +110,10 @@ namespace {
     OvrContext g_ctx;
 }
 
-void initializeNative(void *v_env, void *v_jOvrContext, void *v_activity, void *v_assetManager,
-                      void *v_vrThread, unsigned char ARMode, int initialRefreshRate) {
+void initializeNative(void *v_env, void *v_activity, void *v_assetManager) {
     auto *env = (JNIEnv *) v_env;
-    auto jOvrContext = (jobject) v_jOvrContext;
     auto activity = (jobject) v_activity;
     auto assetManager = (jobject) v_assetManager;
-    auto vrThread = (jobject) v_vrThread;
 
     LOG("Initializing EGL.");
 
@@ -130,9 +124,6 @@ void initializeNative(void *v_env, void *v_jOvrContext, void *v_activity, void *
     env->GetJavaVM(&g_ctx.java.Vm);
     g_ctx.java.ActivityObject = env->NewGlobalRef(activity);
 
-    g_ctx.mVrThread = env->NewGlobalRef(vrThread);
-    g_ctx.mjOvrContext = env->NewGlobalRef(jOvrContext);
-
     jclass clazz = env->FindClass("com/polygraphene/alvr/OvrActivity");
     auto jWebViewInteractionCallback = env->GetMethodID(clazz, "applyWebViewInteractionEvent",
                                                         "(IFF)V");
@@ -140,11 +131,11 @@ void initializeNative(void *v_env, void *v_jOvrContext, void *v_activity, void *
 
     g_ctx.mWebViewInteractionCallback = [jWebViewInteractionCallback](InteractionType type,
                                                                       glm::vec2 coord) {
-        if (g_ctx.mjOvrContext != nullptr && g_ctx.mShowDashboard) {
+        if (g_ctx.mShowDashboard) {
             JNIEnv *env;
             jint res = g_ctx.java.Vm->GetEnv((void **) &env, JNI_VERSION_1_6);
             if (res == JNI_OK) {
-                env->CallVoidMethod(g_ctx.mjOvrContext, jWebViewInteractionCallback, (int) type,
+                env->CallVoidMethod(g_ctx.java.ActivityObject, jWebViewInteractionCallback, (int) type,
                                     coord.x,
                                     coord.y);
             } else {
@@ -269,10 +260,7 @@ void destroyNative(void *v_env) {
 
     vrapi_Shutdown();
 
-    env->DeleteGlobalRef(g_ctx.mVrThread);
     env->DeleteGlobalRef(g_ctx.java.ActivityObject);
-    env->DeleteGlobalRef(g_ctx.mjOvrContext);
-    g_ctx.mjOvrContext = nullptr;
 
     delete[] g_ctx.micBuffer;
     delete[] g_ctx.m_GuardianPoints;
@@ -424,9 +412,6 @@ void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiIn
                     memcpy(&c.bonePositionsBase[i], &handSkeleton.BonePoses[i].Position,
                            sizeof(handSkeleton.BonePoses[i].Position));
                 }
-                //for(int i=0;i<ovrHandBone_MaxSkinnable;i++) {
-                //    memcpy(&c.boneRotationsBase[i], &handSkeleton.BonePoses[i].Orientation, sizeof(handSkeleton.BonePoses[i].Orientation));
-                //}
             }
 
             ovrHandPose handPose;
@@ -745,7 +730,7 @@ void sendMicDataNative(void *v_env, void *v_udpReceiverThread) {
         for (int i = 0; i < outputBufferNumElements; i += 100) {
             int rest = outputBufferNumElements - count * 100;
 
-            MicAudioFrame audio;
+            MicAudioFrame audio{};
             memset(&audio, 0, sizeof(MicAudioFrame));
 
             audio.type = ALVR_PACKET_TYPE_MIC_AUDIO;
@@ -824,12 +809,6 @@ void onResumeNative(void *v_env, void *v_surface) {
     // We need to set ExtraLatencyMode On to workaround for this issue.
     reflectExtraLatencyMode(false);
 
-    // Calling back VrThread to notify Vr state change.
-    jclass clazz = g_ctx.env->GetObjectClass(g_ctx.mVrThread);
-    jmethodID id = g_ctx.env->GetMethodID(clazz, "onVrModeChanged", "(Z)V");
-    g_ctx.env->CallVoidMethod(g_ctx.mVrThread, id, static_cast<jboolean>(true));
-    g_ctx.env->DeleteLocalRef(clazz);
-
     if (g_ctx.mMicHandle && g_ctx.mStreamMic) {
         ovr_Microphone_Start(g_ctx.mMicHandle);
     }
@@ -872,12 +851,6 @@ void onPauseNative() {
 
     LOGI("Leaved VR mode.");
     g_ctx.Ovr = nullptr;
-
-    // Calling back VrThread to notify Vr state change.
-    jclass clazz = g_ctx.env->GetObjectClass(g_ctx.mVrThread);
-    jmethodID id = g_ctx.env->GetMethodID(clazz, "onVrModeChanged", "(Z)V");
-    g_ctx.env->CallVoidMethod(g_ctx.mVrThread, id, static_cast<jboolean>(false));
-    g_ctx.env->DeleteLocalRef(clazz);
 
     if (g_ctx.mMicHandle && g_ctx.mStreamMic) {
         ovr_Microphone_Stop(g_ctx.mMicHandle);
@@ -956,7 +929,7 @@ void updateHapticsState() {
             LOG("Send haptic buffer. HapticSamplesMax=%d HapticSampleDurationMS=%d",
                 remoteCapabilities.HapticSamplesMax, remoteCapabilities.HapticSampleDurationMS);
 
-            uint32_t requiredHapticsBuffer = static_cast<uint32_t >((s.endUs - currentUs) /
+            auto requiredHapticsBuffer = static_cast<uint32_t >((s.endUs - currentUs) /
                                                                     remoteCapabilities.HapticSampleDurationMS *
                                                                     1000);
 
@@ -1016,10 +989,6 @@ void renderNative(long long renderedFrameIndex) {
         if (it != g_ctx.trackingFrameMap.end()) {
             frame = it->second;
         } else {
-            // No matching tracking info. Too old frame.
-            LOG("Too old frame has arrived. Instead, we use most old tracking data in trackingFrameMap."
-                "FrameIndex=%lu trackingFrameMap=(%lu - %lu)",
-                renderedFrameIndex, oldestFrame, mostRecentFrame);
             if (!g_ctx.trackingFrameMap.empty())
                 frame = g_ctx.trackingFrameMap.cbegin()->second;
             else
@@ -1111,7 +1080,7 @@ void getRefreshRates(JNIEnv *env_, jintArray refreshRates) {
     vrapi_GetSystemPropertyFloatArray(&g_ctx.java, VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
                                       &refreshRatesArray[0], numberOfRefreshRates);
 
-    std::string refreshRateList = "";
+    std::string refreshRateList;
     char str[100];
     for (int i = 0; i < numberOfRefreshRates; i++) {
         snprintf(str, sizeof(str), "%f%s", refreshRatesArray[i],
@@ -1123,7 +1092,7 @@ void getRefreshRates(JNIEnv *env_, jintArray refreshRates) {
         }
     }
     LOGI("Supported refresh rates: %s", refreshRateList.c_str());
-    std::sort(refreshRates_, refreshRates_ + ALVR_REFRESH_RATE_LIST_SIZE, std::greater<jint>());
+    std::sort(refreshRates_, refreshRates_ + ALVR_REFRESH_RATE_LIST_SIZE, std::greater<>());
 
     env_->ReleaseIntArrayElements(refreshRates, refreshRates_, 0);
 }
@@ -1159,7 +1128,7 @@ void getDeviceDescriptorNative(void *v_env, void *v_deviceDescriptor) {
     fieldID = env->GetFieldID(clazz, "mRefreshRates", "[I");
 
     // Array instance is already set on deviceDescriptor.
-    jintArray refreshRates =
+    auto refreshRates =
             reinterpret_cast<jintArray>(env->GetObjectField(deviceDescriptor, fieldID));
     getRefreshRates(env, refreshRates);
     env->SetObjectField(deviceDescriptor, fieldID, refreshRates);
@@ -1171,7 +1140,7 @@ void getDeviceDescriptorNative(void *v_env, void *v_deviceDescriptor) {
     env->SetIntField(deviceDescriptor, fieldID, renderHeight);
 
     fieldID = env->GetFieldID(clazz, "mFov", "[F");
-    jfloatArray fovField = reinterpret_cast<jfloatArray>(
+    auto fovField = reinterpret_cast<jfloatArray>(
             env->GetObjectField(deviceDescriptor, fieldID));
     jfloat *fovArray = env->GetFloatArrayElements(fovField, nullptr);
     auto fov = getFov();
@@ -1196,9 +1165,6 @@ void getDeviceDescriptorNative(void *v_env, void *v_deviceDescriptor) {
 
 void onHapticsFeedbackNative(long long startTime, float amplitude, float duration,
                              float frequency, unsigned char hand) {
-    LOGI("OvrContext::onHapticsFeedback: processing haptics. %" PRIu64 " %f %f %f, %d", startTime,
-         amplitude, duration, frequency, hand);
-
     int curHandIndex = (hand == 0) ? 0 : 1;
     auto &s = g_ctx.mHapticsState[curHandIndex];
     s.startUs = startTime;
@@ -1241,7 +1207,7 @@ void sendGuardianInfoNative(void *v_env, void *v_udpReceiverThread) {
         g_ctx.m_LastGuardianSyncTry = currentTime;
         prepareGuardianData();
 
-        GuardianSyncStart packet;
+        GuardianSyncStart packet{};
         packet.type = ALVR_PACKET_TYPE_GUARDIAN_SYNC_START;
         packet.timestamp = g_ctx.m_GuardianTimestamp;
         packet.totalPointCount = g_ctx.m_GuardianPointCount;
@@ -1259,7 +1225,7 @@ void sendGuardianInfoNative(void *v_env, void *v_udpReceiverThread) {
         env_->CallVoidMethod(udpReceiverThread, g_ctx.mServerConnection_send,
                              reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
     } else if (g_ctx.m_GuardianSyncing) {
-        GuardianSegmentData packet;
+        GuardianSegmentData packet{};
         packet.type = ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA;
         packet.timestamp = g_ctx.m_GuardianTimestamp;
 
@@ -1322,5 +1288,5 @@ int getWebViewSurfaceTextureNative() {
 }
 
 unsigned char isVrModeNative() {
-    return g_ctx.Ovr != NULL;
+    return g_ctx.Ovr != nullptr;
 }

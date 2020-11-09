@@ -4,8 +4,7 @@ extern "C" void decoderInput(long long frameIndex);
 extern "C" void decoderOutput(long long frameIndex);
 
 extern "C" void
-initializeNative(void *env, void *instance, void *activity, void *assetManager, void *vrThread,
-                 unsigned char ARMode, int initialRefreshRate);
+initializeNative(void *env, void *activity, void *assetManager);
 extern "C" void destroyNative(void *env);
 extern "C" int getLoadingTextureNative();
 extern "C" int getSurfaceTextureIDNative();
@@ -30,9 +29,7 @@ extern "C" void onGuardianSegmentAckNative(long long timestamp, int segmentIndex
 
 extern "C" void
 initializeSocket(void *env, void *instance, int helloPort, int port, void *deviceName,
-                 void *broadcastAddrList, void *refreshRates, int renderWidth, int renderHeight,
-                 void *fov, int deviceType, int deviceSubType, int deviceCapabilityFlags,
-                 int controllerCapabilityFlags, float ipd);
+                 void *broadcastAddrList, void *refreshRates, int renderWidth, int renderHeight);
 extern "C" void closeSocket();
 extern "C" void
 runLoop(void *env, void *instance);

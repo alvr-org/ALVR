@@ -11,8 +11,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 
-class ServerConnection extends ThreadBase
-{
+class ServerConnection extends ThreadBase {
     private static final String TAG = "ServerConnection";
 
     static {
@@ -37,6 +36,7 @@ class ServerConnection extends ThreadBase
 
     public interface NALCallback {
         NAL obtainNAL(int length);
+
         void pushNAL(NAL nal);
     }
 
@@ -49,7 +49,6 @@ class ServerConnection extends ThreadBase
     private DeviceDescriptor mDeviceDescriptor;
 
     private boolean mInitialized = false;
-    private boolean mInitializeFailed = false;
 
     private final OvrActivity mParent;
 
@@ -57,14 +56,12 @@ class ServerConnection extends ThreadBase
 
     private final Object mWaiter = new Object();
 
-    ServerConnection(ConnectionListener connectionListener, OvrActivity parent)
-    {
+    ServerConnection(ConnectionListener connectionListener, OvrActivity parent) {
         mConnectionListener = connectionListener;
         mParent = parent;
     }
 
-    private String getDeviceName()
-    {
+    private String getDeviceName() {
         String manufacturer = android.os.Build.MANUFACTURER;
         String model = android.os.Build.MODEL;
         if (model.toLowerCase().startsWith(manufacturer.toLowerCase())) {
@@ -74,15 +71,13 @@ class ServerConnection extends ThreadBase
         }
     }
 
-    public void setSinkPrepared(boolean prepared)
-    {
+    public void setSinkPrepared(boolean prepared) {
         synchronized (mWaiter) {
             setSinkPreparedNative(prepared);
         }
     }
 
-    public boolean start(EGLContext mEGLContext, Activity activity, DeviceDescriptor deviceDescriptor, int cameraTexture)
-    {
+    public boolean start(EGLContext mEGLContext, Activity activity, DeviceDescriptor deviceDescriptor, int cameraTexture) {
         mTrackingThread = new TrackingThread();
         mTrackingThread.setCallback(() -> {
             if (isConnectedNative()) {
@@ -94,10 +89,9 @@ class ServerConnection extends ThreadBase
 
         super.startBase();
 
-        synchronized (this)
-        {
-            while (!mInitialized && !mInitializeFailed)
-            {
+        boolean initializeFailed = false;
+        synchronized (this) {
+            while (!mInitialized && !initializeFailed) {
                 try {
                     wait();
                 } catch (InterruptedException e) {
@@ -106,11 +100,10 @@ class ServerConnection extends ThreadBase
             }
         }
 
-        if(!mInitializeFailed)
-        {
+        if (!initializeFailed) {
             mTrackingThread.start(mEGLContext, activity, cameraTexture);
         }
-        return !mInitializeFailed;
+        return !initializeFailed;
     }
 
     @Override
@@ -123,20 +116,17 @@ class ServerConnection extends ThreadBase
     }
 
     @Override
-    public void run()
-    {
+    public void run() {
         try {
             String[] targetList = getTargetAddressList();
 
-            for (String target: targetList) {
+            for (String target : targetList) {
                 Utils.logi(TAG, () -> "Target IP address for hello datagrams: " + target);
             }
 
             initializeSocket(HELLO_PORT, PORT, getDeviceName(), targetList,
-                    mDeviceDescriptor.mRefreshRates, mDeviceDescriptor.mRenderWidth, mDeviceDescriptor.mRenderHeight, mDeviceDescriptor.mFov,
-                    mDeviceDescriptor.mDeviceType, mDeviceDescriptor.mDeviceSubType, mDeviceDescriptor.mDeviceCapabilityFlags,
-                    mDeviceDescriptor.mControllerCapabilityFlags, mDeviceDescriptor.mIpd
-            );
+                    mDeviceDescriptor.mRefreshRates, mDeviceDescriptor.mRenderWidth,
+                    mDeviceDescriptor.mRenderHeight);
             synchronized (this) {
                 mInitialized = true;
                 notifyAll();
@@ -153,8 +143,7 @@ class ServerConnection extends ThreadBase
     }
 
     // List addresses where discovery datagrams will be sent to reach ALVR server.
-    private String[] getTargetAddressList()
-    {
+    private String[] getTargetAddressList() {
         // List broadcast address from all interfaces except for mobile network.
         // We should send all broadcast address to use USB tethering or VPN.
         List<String> ret = new ArrayList<>();
@@ -172,15 +161,15 @@ class ServerConnection extends ThreadBase
 
                 List<InterfaceAddress> interfaceAddresses = networkInterface.getInterfaceAddresses();
 
-                String address = "";
+                StringBuilder address = new StringBuilder();
                 for (InterfaceAddress interfaceAddress : interfaceAddresses) {
-                    address += interfaceAddress.toString() + ", ";
+                    address.append(interfaceAddress.toString()).append(", ");
                     // getBroadcast() return non-null only when ipv4.
                     if (interfaceAddress.getBroadcast() != null) {
                         ret.add(interfaceAddress.getBroadcast().getHostAddress());
                     }
                 }
-                String finalAddress = address;
+                String finalAddress = address.toString();
                 Utils.logi(TAG, () -> "Interface: Name=" + networkInterface.getName() + " Address=" + finalAddress);
             }
             Utils.logi(TAG, () -> ret.size() + " broadcast addresses were found.");
@@ -254,10 +243,12 @@ class ServerConnection extends ThreadBase
 
 
     private native void initializeSocket(int helloPort, int port, String deviceName, String[] broadcastAddrList,
-                                         int[] refreshRates, int renderWidth, int renderHeight, float[] fov,
-                                         int deviceType, int deviceSubType, int deviceCapabilityFlags, int controllerCapabilityFlags, float ipd);
+                                         int[] refreshRates, int renderWidth, int renderHeight);
+
     private native void closeSocket();
+
     private native void runLoop();
+
     private native void interruptNative();
 
     private native void sendNative(long nativeBuffer, int bufferLength);
@@ -265,6 +256,8 @@ class ServerConnection extends ThreadBase
     public native boolean isConnectedNative();
 
     private native String getServerAddress();
+
     private native int getServerPort();
+
     private native void setSinkPreparedNative(boolean prepared);
 }

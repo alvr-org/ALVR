@@ -107,7 +107,7 @@ public class OvrActivity extends Activity {
 
     //called from constructor
     public void startup() {
-        initializeNative(this, this.getAssets(), this, false, 72);
+        initializeNative(this.getAssets());
 
         mStreamSurfaceTexture = new SurfaceTexture(getSurfaceTextureIDNative());
         mStreamSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
@@ -168,6 +168,8 @@ public class OvrActivity extends Activity {
                 }
 
                 onResumeNative(mScreenSurface);
+
+                onVrModeChanged(true);
             });
         }
     }
@@ -193,6 +195,8 @@ public class OvrActivity extends Activity {
                 if (mReceiverThread != null) {
                     mReceiverThread.stopAndWait();
                 }
+
+                onVrModeChanged(false);
 
                 onPauseNative();
             });
@@ -331,8 +335,6 @@ public class OvrActivity extends Activity {
         }
     }
 
-    // Called on OvrThread.
-    @SuppressWarnings("unused")
     public void onVrModeChanged(boolean enter) {
         mVrMode = enter;
         Utils.logi(TAG, () -> "onVrModeChanged. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
@@ -427,7 +429,7 @@ public class OvrActivity extends Activity {
     };
 
 
-    private native void initializeNative(Activity activity, AssetManager assetManager, Activity ovrThread, boolean ARMode, int initialRefreshRate);
+    private native void initializeNative(AssetManager assetManager);
 
     private native void destroyNative();
 

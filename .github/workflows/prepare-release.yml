@@ -19,6 +19,9 @@ jobs:
       version_tag: ${{ steps.bump_versions.outputs.version_tag }}
       release_ref: ${{ steps.output_ref.outputs.release_ref }}
     steps:
+      - name: Configure git
+        run: git config --global core.autocrlf false
+
       - name: Checkout code
         uses: actions/checkout@v2
         with:
@@ -81,8 +84,18 @@ jobs:
         with:
           ref: ${{ needs.bump_version.outputs.release_ref }}
 
+      - name: Set better Android SDK path (workaround for rust-android-gradle)
+        shell: cmd
+        run: |
+          mklink /J "%GITHUB_WORKSPACE%\android-sdk" "%ANDROID_SDK_ROOT%"
+
       - name: Build and package ALVR (.zip, .pdb, .apk)
-        run: cargo xtask publish
+        env:
+          ANDROID_HOME: '${{ github.workspace }}\android-sdk'
+          ANDROID_SDK_ROOT: '${{ github.workspace }}\android-sdk'
+        run: |
+          cargo xtask install-deps
+          cargo xtask publish
 
       # Three release asset upload actions for three assets - .zip, .pdb and .apk
       - name: Upload ALVR Windows Server .zip

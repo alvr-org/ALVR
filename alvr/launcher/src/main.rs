@@ -75,6 +75,9 @@ fn window_mode() -> StrResult {
         maybe_delete_alvr_dir_storage();
 
         let html_content = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/client_gui/html/index.html"));
+        let jquery = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/client_gui/js/jquery-3.5.1.min.js"));
+        let bootstrap_js = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/client_gui/js/bootstrap.min.js"));
+        let bootstrap_css = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/client_gui/css/bootstrap.min.css"));
         let window = Arc::new(trace_err!(alcro::UIBuilder::new()
             .content(alcro::Content::Html(&html_content))
             .size(0, 0)
@@ -105,24 +108,38 @@ fn window_mode() -> StrResult {
             restart_steamvr();
             Ok(json::Value::Null)
         }))?;
-
-        if check_for_update() {
-            let should_update = window.eval("promptUpdate()").unwrap().as_bool().unwrap(); 
-            if  should_update {
+        
+        trace_err!(window.bind("update", {
+            let window = window.clone();
+            move |_| {
                 show_err(update()).ok();
                 instance_mutex.lock().unwrap().take();
                 window.close();
 
+                // reopen alvr
                 let mut command =
                     Command::new(::std::env::current_dir().unwrap().join("ALVR launcher"));
-                command.spawn().ok();
-            } else {
-                trace_err!(window.eval("init()"))?;
+                command.creation_flags(CREATE_NO_WINDOW).spawn().ok();
+
+                Ok(json::Value::Null)
             }
+        }))?;
+        
+        trace_err!(window.bind("loadJQuery",  {
+            let window = window.clone();
+            move |_| {
+                trace_err!(window.eval(jquery))?;
+                trace_err!(window.eval(bootstrap_js))?;
+                trace_err!(window.load_css(bootstrap_css))?;
+                Ok(json::Value::Null)
+        }}))?;
+        trace_err!(window.load(alcro::Content::Html(&html_content)))?;
+
+        if check_for_update() {
+            trace_err!(window.eval("promptUpdate()"))?;
         } else {
             trace_err!(window.eval("init()"))?;
         }
-
 
         window.wait_finish();
 

@@ -236,7 +236,7 @@ pub fn build_server(is_release: bool, fetch_crates: bool) -> BResult {
     )?;
     fs::copy(
         artifacts_dir.join(exec_fname("alvr_launcher")),
-        server_build_dir().join(exec_fname("ALVR launcher")),
+        server_build_dir().join(exec_fname("ALVR Launcher")),
     )?;
 
     // if cfg!(target_os = "linux") {

@@ -47,7 +47,7 @@ fn main() -> StrResult {
     
                     // reopen alvr
                     let mut command =
-                        Command::new(::std::env::current_dir().unwrap().join("ALVR launcher"));
+                        Command::new(::std::env::current_dir().unwrap().join("ALVR Launcher"));
                     command.creation_flags(CREATE_NO_WINDOW).spawn().ok();
     
                     Ok(json::Value::Null)
@@ -134,7 +134,7 @@ fn update() -> StrResult {
     }
     let extract_dir = extract_dir.join("alvr_server_windows");
     let tmp_file = tmp_dir.path().join("replacement_tmp");
-    let bin_path = extract_dir.join("ALVR launcher.exe");
+    let bin_path = extract_dir.join("ALVR Launcher.exe");
     let driver_manifest_path = extract_dir.join("driver.vrdrivermanifest");
 
     self_update::Move::from_source(&bin_path)

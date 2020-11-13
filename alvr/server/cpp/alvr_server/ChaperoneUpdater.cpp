@@ -100,9 +100,9 @@ void ChaperoneUpdater::GenerateStandingChaperone(float scale)
 	delete[] m_ChaperonePoints;
 	m_ChaperonePoints = new vr::HmdVector2_t[m_TotalPointCount];
 
-	for (int i = 0; i < m_TotalPointCount; ++i) {
-		double x = i * 2.0 * M_PI / m_TotalPointCount;
-		m_ChaperonePoints[i] = { cosf(x) * scale, sinf(x) * scale };
+	for (uint32_t i = 0; i < m_TotalPointCount; ++i) {
+		float x = i * 2.0f * (float)M_PI / m_TotalPointCount;
+		m_ChaperonePoints[i] = { (cosf(x) * scale), (sinf(x) * scale) };
 	}
 
 	m_PlayArea = { scale, scale };

@@ -54,7 +54,7 @@ public:
 	void Initialize() {
 		int ret;
 
-		LogDriver("Initialize swresample. src_rate=%d dst_rate=%d", src_rate, dst_rate);
+		Debug("Initialize swresample. src_rate=%d dst_rate=%d\n", src_rate, dst_rate);
 
 		/* create resampler context */
 		swr_ctx = swr_alloc();
@@ -91,8 +91,8 @@ public:
 		if (ret < 0) {
 			throw MakeException("Could not allocate destination samples. %hs", GetErrorStr(ret).c_str());
 		}
-		LogDriver("swresample successfully initialized. src_rate=%d dst_rate=%d"
-			" src_nb_channels=%d dst_nb_channels=%d max_dst_nb_samples=%d"
+		Debug("swresample successfully initialized. src_rate=%d dst_rate=%d"
+			" src_nb_channels=%d dst_nb_channels=%d max_dst_nb_samples=%d\n"
 			, src_rate, dst_rate, src_nb_channels, dst_nb_channels, max_dst_nb_samples);
 	}
 
@@ -119,7 +119,7 @@ public:
 		dst_bufsize = av_samples_get_buffer_size(&dst_linesize, dst_nb_channels,
 			ret, dst_sample_fmt, 1);
 
-		LogDriver("Converted. src_sample_fmt=%d dst_sample_fmt=%d src_nb_samples=%d ret=%d dst_bufsize=%d"
+		Debug("Converted. src_sample_fmt=%d dst_sample_fmt=%d src_nb_samples=%d ret=%d dst_bufsize=%d\n"
 			, src_sample_fmt, dst_sample_fmt, src_nb_samples, ret, dst_bufsize);
 	}
 

@@ -61,7 +61,7 @@ namespace d3d_render_utils {
 			multithread->SetMultithreadProtected(true);
 		}
 		else {
-			LogDriver("Failed to get ID3D11Multithread interface. Ignore.");
+			Debug("Failed to get ID3D11Multithread interface. Ignore.\n");
 		}
 
 		return device;
@@ -157,15 +157,15 @@ namespace d3d_render_utils {
 
 		ComPtr<IDXGIKeyedMutex> keyedMutex;
 		OK_OR_THROW(QUERY(syncTexture, &keyedMutex), "Failed to query mutex");
-		LogDriver("[VDispDvr] Wait for SyncTexture Mutex.");
+		Debug("[VDispDvr] Wait for SyncTexture Mutex.\n");
 
 		// TODO: Reasonable timeout and timeout handling
 		OK_OR_THROW(keyedMutex->AcquireSync(0, (DWORD)timeout), "[VDispDvr] ACQUIRESYNC FAILED!!!");
-		LogDriver("[VDispDvr] Mutex Acquired.");
+		Debug("[VDispDvr] Mutex Acquired.\n");
 
 		callback();
 
 		keyedMutex->ReleaseSync(0);
-		LogDriver("[VDispDvr] Mutex Released.");
+		Debug("[VDispDvr] Mutex Released.\n");
 	}
 }

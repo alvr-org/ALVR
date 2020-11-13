@@ -18,19 +18,19 @@ int Poller::Do() {
 	timeout.tv_sec = 0;
 	timeout.tv_usec = CalculateNextWake();
 	if (timeout.tv_usec == 0) {
-		Log("Poller::Do(). Wake.");
+		Debug("Poller::Do(). Wake.\n");
 		ClearNextWake();
 		return 0;
 	}
-	Log("Poller::Do(). Select %ld us", timeout.tv_usec);
+	Debug("Poller::Do(). Select %ld us\n", timeout.tv_usec);
 	memcpy(&mReadFDs, &mOrgReadFDs, sizeof(fd_set));
 	memcpy(&mWriteFDs, &mOrgWriteFDs, sizeof(fd_set));
 	int ret = select(0, &mReadFDs, &mWriteFDs, NULL, &timeout);
 	if (ret == SOCKET_ERROR) {
-		LogDriver("select error : %d %ls", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		Error("select error : %d %ls\n", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return ret;
 	}
-	Log("Poller::Do(). Select done. %d", ret);
+	Debug("Poller::Do(). Select done. %d\n", ret);
 	ReadQueueSocket();
 	return ret;
 }
@@ -73,7 +73,7 @@ bool Poller::BindQueueSocket()
 {
 	mQueueSocket = socket(AF_INET, SOCK_DGRAM, 0);
 	if (mQueueSocket == INVALID_SOCKET) {
-		FatalLog("Poller::BindQueueSocket socket creation error: %d %ls", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		Error("Poller::BindQueueSocket socket creation error: %d %ls\n", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 
@@ -90,7 +90,7 @@ bool Poller::BindQueueSocket()
 
 	int ret = bind(mQueueSocket, (sockaddr *)&addr, sizeof(addr));
 	if (ret != 0) {
-		FatalLog("Poller::BindQueueSocket bind error : %d %ls", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		Error("Poller::BindQueueSocket bind error : %d %ls\n", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 
@@ -98,12 +98,12 @@ bool Poller::BindQueueSocket()
 	int len = sizeof(mQueueAddr);
 	ret = getsockname(mQueueSocket, (sockaddr *)&mQueueAddr, &len);
 	if (ret != 0) {
-		FatalLog("Poller::BindQueueSocket getsockname error : %d %ls", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		Error("Poller::BindQueueSocket getsockname error : %d %ls\n", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 	char buf[30];
 	inet_ntop(AF_INET, &mQueueAddr, buf, sizeof(buf));
-	LogDriver("Poller::BindQueueSocket bound queue socket. port=%d", htons(mQueueAddr.sin_port));
+	Debug("Poller::BindQueueSocket bound queue socket. port=%d\n", htons(mQueueAddr.sin_port));
 
 	AddSocket(mQueueSocket, PollerSocketType::READ);
 

@@ -17,7 +17,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
-		LogDriver("Startup: %hs %hs", APP_MODULE_NAME, APP_VERSION_STRING);
+		Debug("Startup: %hs %hs\n", APP_MODULE_NAME, APP_VERSION_STRING);
 
 		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
 		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
@@ -29,7 +29,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		m_Listener->SetPacketLossCallback(packetLossCallback);
 		m_Listener->SetShutdownCallback(shutdownCallback);
 
-		LogDriver("CRemoteHmd successfully initialized.");
+		Debug("CRemoteHmd successfully initialized.\n");
 	}
 
 	OvrHmd::~OvrHmd()
@@ -97,7 +97,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 	 vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	{
-		LogDriver("CRemoteHmd Activate %d", unObjectId);
+		Debug("CRemoteHmd Activate %d\n", unObjectId);
 
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
@@ -146,19 +146,19 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		// m_nAdapterIndex is set 0 on the launcher.
 		if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
 		{
-			FatalLog("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.", Settings::Instance().m_nAdapterIndex);
+			Error("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.\n", Settings::Instance().m_nAdapterIndex);
 			return vr::VRInitError_Driver_Failed;
 		}
 
 		int32_t nDisplayAdapterIndex;
 		if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, m_adapterName))
 		{
-			FatalLog("Failed to get primary adapter info!");
+			Error("Failed to get primary adapter info!\n");
 			return vr::VRInitError_Driver_Failed;
 		}
 
-		LogDriver("Using %ls as primary graphics adapter.", m_adapterName.c_str());
-		LogDriver("OSVer: %ls", GetWindowsOSVersion().c_str());
+		Debug("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
+		Debug("OSVer: %ls\n", GetWindowsOSVersion().c_str());
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
 		m_encoder = std::make_shared<CEncoder>();
@@ -166,7 +166,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			m_encoder->Initialize(m_D3DRender, m_Listener);
 		}
 		catch (Exception e) {
-			FatalLog("Failed to initialize CEncoder. %s", e.what());
+			Error("Failed to initialize CEncoder. %s\n", e.what());
 			return vr::VRInitError_Driver_Failed;
 		}
 		m_encoder->Start();
@@ -177,7 +177,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 				m_audioCapture->Start(Settings::Instance().m_soundDevice);
 			}
 			catch (Exception e) {
-				FatalLog("Failed to start audio capture. %s", e.what());
+				Error("Failed to start audio capture. %s\n", e.what());
 				return vr::VRInitError_Driver_Failed;
 			}
 		}
@@ -204,7 +204,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 	 void OvrHmd::Deactivate() 
 	{
-		LogDriver("CRemoteHmd Deactivate");
+		Debug("CRemoteHmd Deactivate\n");
 		mActivated = false;
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 	}
@@ -215,7 +215,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 
 	void* OvrHmd::GetComponent(const char *pchComponentNameAndVersion)
 	{
-		LogDriver("GetComponent %hs", pchComponentNameAndVersion);
+		Debug("GetComponent %hs\n", pchComponentNameAndVersion);
 		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
 		{
 			return m_displayComponent.get();
@@ -263,7 +263,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
 			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
 
-			Log("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)",
+			Debug("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)\n",
 				pose.qRotation.x,
 				pose.qRotation.y,
 				pose.qRotation.z,
@@ -327,7 +327,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 	}
 
 	void OvrHmd::updateIPDandFoV(const TrackingInfo& info) {
-		Info("Setting new IPD to: %f", info.ipd);
+		Info("Setting new IPD to: %f\n", info.ipd);
 
 		m_eyeToHeadLeft.m[0][3]  = -info.ipd / 2.0f;
 		m_eyeToHeadRight.m[0][3] =  info.ipd / 2.0f;
@@ -442,7 +442,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		if (!m_added || !mActivated) {
 			return;
 		}
-		LogDriver("OnStreamStart()");
+		Debug("OnStreamStart()\n");
 		// Insert IDR frame for faster startup of decoding.
 		m_encoder->OnStreamStart();
 
@@ -454,7 +454,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		if (!m_added || !mActivated) {
 			return;
 		}
-		LogDriver("OnPacketLoss()");
+		Debug("OnPacketLoss()\n");
 		m_encoder->OnPacketLoss();
 	}
 
@@ -462,7 +462,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		if (!m_added || !mActivated) {
 			return;
 		}
-		LogDriver("Sending shutdown signal to vrserver.");
+		Info("Sending shutdown signal to vrserver.\n");
 		vr::VREvent_Reserved_t data = { 0, 0 };
 		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_DriverRequestedQuit, (vr::VREvent_Data_t&)data, 0);
 	}

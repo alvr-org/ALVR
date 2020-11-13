@@ -42,11 +42,11 @@ static void load_debug_privilege(void)
 		tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
 		if (!AdjustTokenPrivileges(token, false, &tp, sizeof(tp), NULL, NULL)) {
-			LogDriver("[GPU PRIO FIX] Could not set privilege to increase GPU priority");
+			Warn("[GPU PRIO FIX] Could not set privilege to increase GPU priority\n");
 		}
 	}
 
-	LogDriver("[GPU PRIO FIX] Succeeded to set some sort of priority.");
+	Debug("[GPU PRIO FIX] Succeeded to set some sort of priority.\n");
 
 	CloseHandle(token);
 }
@@ -87,8 +87,8 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 	m_mutex = std::make_shared<IPCMutex>(APP_MUTEX_NAME, true);
 	if (m_mutex->AlreadyExist()) {
 		// Duplicate driver installation.
-		FatalLog("ALVR Server driver is installed on multiple locations. This causes some issues.\r\n"
-			"Please check the installed driver list on About tab and uninstall old drivers.");
+		Error("ALVR Server driver is installed on multiple locations. This causes some issues.\n"
+			"Please check the installed driver list on About tab and uninstall old drivers.\n");
 		return vr::VRInitError_Driver_Failed;
 	}
 
@@ -166,10 +166,10 @@ void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 
 	load_debug_privilege();
 
-	LogDriver("HmdDriverFactory %hs (%hs)", pInterfaceName, vr::IServerTrackedDeviceProvider_Version);
+	Debug("HmdDriverFactory %hs (%hs)\n", pInterfaceName, vr::IServerTrackedDeviceProvider_Version);
 	if (0 == strcmp(vr::IServerTrackedDeviceProvider_Version, pInterfaceName))
 	{
-		LogDriver("HmdDriverFactory server return");
+		Debug("HmdDriverFactory server return\n");
 		return &g_serverDriverDisplayRedirect;
 	}
 

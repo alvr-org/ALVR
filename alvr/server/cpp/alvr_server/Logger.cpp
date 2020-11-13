@@ -3,43 +3,14 @@
 void _log(const char *format, va_list args, void (*logFn)(const char *))
 {
 	char buf[1024];
-	vsnprintf(buf, sizeof(buf), format, args);
+	int count = vsnprintf(buf, sizeof(buf), format, args);
+	if (count > 0 && buf[count - 1] == '\n')
+		buf[count - 1] = '\0';
+
 	logFn(buf);
 
 	//TODO: driver logger should concider current log level
 	DriverLogVarArgs(format, args);
-}
-
-void Log(const char *format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	_log(format, args, LogDebug);
-	va_end(args);
-}
-
-void LogDriver(const char *format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	_log(format, args, LogDebug);
-	va_end(args);
-}
-
-void LogException(const char *format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	_log(format, args, LogError);
-	va_end(args);
-}
-
-void FatalLog(const char *format, ...)
-{
-	va_list args;
-	va_start(args, format);
-	_log(format, args, LogError);
-	va_end(args);
 }
 
 Exception MakeException(const char *format, ...)

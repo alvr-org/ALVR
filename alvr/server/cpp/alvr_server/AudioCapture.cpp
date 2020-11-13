@@ -49,7 +49,7 @@ public:
 	~AudioClientStopOnExit() {
 		HRESULT hr = m_p->Stop();
 		if (FAILED(hr)) {
-			LogDriver("IAudioClient::Stop failed: hr = 0x%08x", hr);
+			Error("IAudioClient::Stop failed: hr = 0x%08x\n", hr);
 		}
 	}
 
@@ -62,7 +62,7 @@ public:
 	AvRevertMmThreadCharacteristicsOnExit(HANDLE hTask) : m_hTask(hTask) {}
 	~AvRevertMmThreadCharacteristicsOnExit() {
 		if (!AvRevertMmThreadCharacteristics(m_hTask)) {
-			LogDriver("AvRevertMmThreadCharacteristics failed: last error is %d", GetLastError());
+			Error("AvRevertMmThreadCharacteristics failed: last error is %d\n", GetLastError());
 		}
 	}
 private:
@@ -74,7 +74,7 @@ public:
 	CancelWaitableTimerOnExit(HANDLE h) : m_h(h) {}
 	~CancelWaitableTimerOnExit() {
 		if (!CancelWaitableTimer(m_h)) {
-			LogDriver("CancelWaitableTimer failed: last error is %d", GetLastError());
+			Error("CancelWaitableTimer failed: last error is %d\n", GetLastError());
 		}
 	}
 private:
@@ -153,7 +153,7 @@ void AudioCapture::Shutdown() {
 	m_stopEvent.SetEvent();
 	DWORD waitResult = WaitForSingleObject(m_hThread.Get(), INFINITE);
 	if (WAIT_OBJECT_0 != waitResult) {
-		LogDriver("WaitForSingleObject returned unexpected result 0x%08x, last error is %d", waitResult, GetLastError());
+		Error("WaitForSingleObject returned unexpected result 0x%08x, last error is %d\n", waitResult, GetLastError());
 	}
 
 	// at this point the thread is definitely finished
@@ -174,7 +174,7 @@ DWORD WINAPI AudioCapture::LoopbackCaptureThreadFunction(LPVOID pContext) {
 
 	HRESULT hr = CoInitialize(NULL);
 	if (FAILED(hr)) {
-		LogDriver("CoInitialize failed: hr = 0x%08x", hr);
+		Error("CoInitialize failed: hr = 0x%08x\n", hr);
 		return 0;
 	}
 
@@ -194,11 +194,11 @@ void AudioCapture::CaptureRetry() {
 		}
 		catch (Exception e) {
 			if (m_canRetry) {
-				LogDriver("Exception on sound capture (Retry). message=%s", e.what());
+				Error("Exception on sound capture (Retry). message=%s\n", e.what());
 				continue;
 			}
 			m_errorMessage = e.what();
-			LogDriver("Exception on sound capture. message=%s", e.what());
+			Error("Exception on sound capture. message=%s\n", e.what());
 			break;
 		}
 	}
@@ -233,7 +233,7 @@ void AudioCapture::LoopbackCapture() {
 	}
 	TaskMem taskmem(pwfx);
 
-	LogDriver("MixFormat: nBlockAlign=%d wFormatTag=%d wBitsPerSample=%d nChannels=%d nSamplesPerSec=%d"
+	Debug("MixFormat: nBlockAlign=%d wFormatTag=%d wBitsPerSample=%d nChannels=%d nSamplesPerSec=%d\n"
 		, pwfx->nBlockAlign, pwfx->wFormatTag, pwfx->wBitsPerSample, pwfx->nChannels, pwfx->nSamplesPerSec);
 
 	// coerce int-16 wave format
@@ -251,7 +251,7 @@ void AudioCapture::LoopbackCapture() {
 	{
 		// naked scope for case-local variable
 		PWAVEFORMATEXTENSIBLE pEx = reinterpret_cast<PWAVEFORMATEXTENSIBLE>(pwfx);
-		LogDriver("PWAVEFORMATEXTENSIBLE: SubFormat=%d wValidBitsPerSample=%d"
+		Debug("PWAVEFORMATEXTENSIBLE: SubFormat=%d wValidBitsPerSample=%d\n"
 			, pEx->SubFormat, pEx->Samples.wValidBitsPerSample);
 		if (IsEqualGUID(KSDATAFORMAT_SUBTYPE_IEEE_FLOAT, pEx->SubFormat)) {
 			pEx->SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
@@ -372,10 +372,10 @@ void AudioCapture::LoopbackCapture() {
 			}
 
 			if (bFirstPacket && AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY == dwFlags) {
-				LogDriver("Probably spurious glitch reported on first packet");
+				Debug("Probably spurious glitch reported on first packet\n");
 			}
 			else if (0 != dwFlags) {
-				LogDriver("IAudioCaptureClient::GetBuffer set flags to 0x%08x on pass %u after %u frames", dwFlags, nPasses, m_frames);
+				Debug("IAudioCaptureClient::GetBuffer set flags to 0x%08x on pass %u after %u frames\n", dwFlags, nPasses, m_frames);
 			}
 
 			if (0 == nNumFramesToRead) {
@@ -393,7 +393,7 @@ void AudioCapture::LoopbackCapture() {
 #pragma prefast(suppress: __WARNING_INCORRECT_ANNOTATION, "IAudioCaptureClient::GetBuffer SAL annotation implies a 1-byte buffer")
 				LONG lBytesWritten = mmioWrite(hFile.Get(), reinterpret_cast<PCHAR>(pData), lBytesToWrite);
 				if (lBytesToWrite != lBytesWritten) {
-					LogDriver("mmioWrite wrote %u bytes on pass %u after %u frames: expected %u bytes", lBytesWritten, nPasses, m_frames, lBytesToWrite);
+					Debug("mmioWrite wrote %u bytes on pass %u after %u frames: expected %u bytes\n", lBytesWritten, nPasses, m_frames, lBytesToWrite);
 					hFile.Close();
 				}
 			}
@@ -421,7 +421,7 @@ void AudioCapture::LoopbackCapture() {
 		);
 
 		if (WAIT_OBJECT_0 == waitResult) {
-			LogDriver("Received stop event after %u passes and %u frames", nPasses, m_frames);
+			Debug("Received stop event after %u passes and %u frames\n", nPasses, m_frames);
 			bDone = true;
 			continue; // exits loop
 		}

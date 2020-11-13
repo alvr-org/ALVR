@@ -105,36 +105,36 @@ private:
 
 		ComQIPtr<IDXGIDevice> dxgiDevice(device);
 		if (!dxgiDevice) {
-			LogDriver("[GPU PRIO FIX] Failed to get IDXGIDevice");
+			Info("[GPU PRIO FIX] Failed to get IDXGIDevice\n");
 			return false;
 		}
 
 		HMODULE gdi32 = GetModuleHandleW(L"GDI32");
 		if (!gdi32) {
-			LogDriver("[GPU PRIO FIX] Failed to get GDI32");
+			Info("[GPU PRIO FIX] Failed to get GDI32\n");
 			return false;
 		}
 
 		NTSTATUS(WINAPI* d3dkmt_spspc)(HANDLE, D3DKMT_SCHEDULINGPRIORITYCLASS);
 		d3dkmt_spspc = (decltype(d3dkmt_spspc))GetProcAddress(gdi32, "D3DKMTSetProcessSchedulingPriorityClass");
 		if (!d3dkmt_spspc) {
-			LogDriver("[GPU PRIO FIX] Failed to get d3dkmt_spspc\n");
+			Info("[GPU PRIO FIX] Failed to get d3dkmt_spspc\n");
 			return false;
 		}
 		
 		NTSTATUS status = d3dkmt_spspc(GetCurrentProcess(), D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME);
 		if (status != 0) {
-			LogDriver("[GPU PRIO FIX] Failed to set process (%d) priority class: %u", GetCurrentProcess(), status);
+			Info("[GPU PRIO FIX] Failed to set process (%d) priority class: %u\n", GetCurrentProcess(), status);
 			return false;
 		}
 
 		HRESULT hr = dxgiDevice->SetGPUThreadPriority(GPU_PRIORITY_VAL);
 		if (FAILED(hr)) {
-			LogDriver("[GPU PRIO FIX] SetGPUThreadPriority failed");
+			Info("[GPU PRIO FIX] SetGPUThreadPriority failed\n");
 			return false;
 		}
 
-		LogDriver("[GPU PRIO FIX] D3D11 GPU priority setup success");
+		Debug("[GPU PRIO FIX] D3D11 GPU priority setup success\n");
 		return true;
 	}
 };

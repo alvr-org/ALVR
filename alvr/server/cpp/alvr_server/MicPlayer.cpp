@@ -40,42 +40,42 @@ UINT MicPlayer::getMicHWID() {
 
 	WCHAR *pwstrDeviceId = (WCHAR *)CoTaskMemAlloc(micDevIdSize);
 	if (NULL == pwstrDeviceId) {
-		Error("Failed to allocate space for Device ID string.");
-		return -1;
+		Error("Failed to allocate space for Device ID string.\n");
+		return (UINT)-1;
 	}
 	
 	// We get a Windows audio endpoint ID from settings. Find which device
 	// handle has the same id.
 	for (UINT dev = 0; dev < devs; dev++) {
 		size_t cbDeviceId = 0;
-		MMRESULT mmr = waveOutMessage((HWAVEOUT)dev, DRV_QUERYFUNCTIONINSTANCEIDSIZE, (DWORD_PTR)&cbDeviceId, NULL);
+		MMRESULT mmr = waveOutMessage((HWAVEOUT)dev, (UINT)DRV_QUERYFUNCTIONINSTANCEIDSIZE, (DWORD_PTR)&cbDeviceId, NULL);
 
 		if (MMSYSERR_NOERROR != mmr) {
-			Warn("waveOutMessage (DRV_QUERYFUNCTIONINSTANCEIDSIZE) failed. mmr = 0x%08x", mmr);
+			Warn("waveOutMessage (DRV_QUERYFUNCTIONINSTANCEIDSIZE) failed. mmr = 0x%08x\n", mmr);
 			continue;
 		}
 
 		if (cbDeviceId != micDevIdSize) {
-			Debug("Audio device ID has wrong length: %lld != %lld", cbDeviceId, micDevIdSize);
+			Debug("Audio device ID has wrong length: %lld != %lld\n", cbDeviceId, micDevIdSize);
 			continue;
 		}
 
 		mmr = waveOutMessage((HWAVEOUT)dev, DRV_QUERYFUNCTIONINSTANCEID, (DWORD_PTR)pwstrDeviceId, cbDeviceId);
 
 		if (MMSYSERR_NOERROR != mmr) {
-			Warn("waveOutMessage (DRV_QUERYFUNCTIONINSTANCEID) failed. mmr = 0x%08x", mmr);
+			Warn("waveOutMessage (DRV_QUERYFUNCTIONINSTANCEID) failed. mmr = 0x%08x\n", mmr);
 			continue;
 		}
 
 		if (lstrcmpiW(pwstrDeviceId, micDevId.c_str()) == 0) {
-			Debug("Microphone device found: %u", dev);
+			Debug("Microphone device found: %u\n", dev);
 			CoTaskMemFree(pwstrDeviceId);
 			return dev;
 		}
 	}	
 
 	CoTaskMemFree(pwstrDeviceId);
-	return -1;
+	return (UINT)-1;
 }
 
 
@@ -113,7 +113,7 @@ MicPlayer::MicPlayer()
 	deviceID = MicPlayer::getMicHWID();
 
 	if (deviceID == -1) {
-		Log("Microphone Audio device not found");
+		Warn("Microphone Audio device not found\n");
 		return;
 	}
 
@@ -125,10 +125,10 @@ MicPlayer::MicPlayer()
 		(DWORD_PTR)&waveFreeBlockCount,
 		CALLBACK_FUNCTION
 	) != MMSYSERR_NOERROR) {
-		Log("unable to open wave mapper device\n");
+		Error("unable to open wave mapper device\n");
 	}
 
-	Log("Mic Audio device opened");
+	Debug("Mic Audio device opened\n");
 }
 
 
@@ -168,7 +168,7 @@ WAVEHDR* MicPlayer::allocateBlocks(int size, int count)
 		HEAP_ZERO_MEMORY,
 		totalBufferSize
 	)) == NULL) {
-		Log("Memory allocation error\n");
+		Error("Memory allocation error\n");
 		ExitProcess(1);
 	}
 	/*
@@ -207,7 +207,7 @@ void MicPlayer::playAudio(LPSTR data, int size)
 
 	while (size > 0) {
 		if (!waveFreeBlockCount) {
-			Log("Skipped playing mic audio: No free blocks", waveCurrentBlock);
+			Debug("Skipped playing mic audio: No free blocks\n", waveCurrentBlock);
 			return;
 		}
 

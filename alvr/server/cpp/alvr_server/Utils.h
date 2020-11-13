@@ -21,7 +21,7 @@
 extern HINSTANCE g_hInstance;
 
 const uint64_t US_TO_MS = 1000;
-const float DEG_TO_RAD = M_PI / 180.;
+const float DEG_TO_RAD = (float)(M_PI / 180.);
 extern uint64_t gPerformanceCounterFrequency;
 
 // Get elapsed time in us from Unix Epoch
@@ -327,9 +327,9 @@ inline TrackingVector3 RotateVectorQuaternion(const TrackingVector3& v, double p
 inline vr::HmdVector4_t Lerp(vr::HmdVector4_t& v1, vr::HmdVector4_t& v2, double lambda)
 {
 	vr::HmdVector4_t res;
-	res.v[0] = (1 - lambda) * v1.v[0] + lambda * v2.v[0];
-	res.v[1] = (1 - lambda) * v1.v[1] + lambda * v2.v[1];
-	res.v[2] = (1 - lambda) * v1.v[2] + lambda * v2.v[2];
+	res.v[0] = (float)((1 - lambda) * v1.v[0] + lambda * v2.v[0]);
+	res.v[1] = (float)((1 - lambda) * v1.v[1] + lambda * v2.v[1]);
+	res.v[2] = (float)((1 - lambda) * v1.v[2] + lambda * v2.v[2]);
 	res.v[3] = 1;
 
 	return res;

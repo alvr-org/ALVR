@@ -28,7 +28,7 @@
 			Exception vceException;
 			Exception nvencException;
 			try {
-				LogDriver("Try to use VideoEncoderVCE.");
+				Debug("Try to use VideoEncoderVCE.\n");
 				m_videoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, listener, encoderWidth, encoderHeight);
 				m_videoEncoder->Initialize();
 				return;
@@ -37,7 +37,7 @@
 				vceException = e;
 			}
 			try {
-				LogDriver("Try to use VideoEncoderNVENC.");
+				Debug("Try to use VideoEncoderNVENC.\n");
 				m_videoEncoder = std::make_shared<VideoEncoderNVENC>(d3dRender, listener
 					, Settings::Instance().m_nv12 || ShouldUseNV12Texture(), encoderWidth, encoderHeight);
 				m_videoEncoder->Initialize();
@@ -66,12 +66,12 @@
 
 		void CEncoder::Run()
 		{
-			LogDriver("CEncoder: Start thread. Id=%d", GetCurrentThreadId());
+			Debug("CEncoder: Start thread. Id=%d\n", GetCurrentThreadId());
 			SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_MOST_URGENT);
 
 			while (!m_bExiting)
 			{
-				Log("CEncoder: Waiting for new frame...");
+				Debug("CEncoder: Waiting for new frame...\n");
 
 				m_newFrameReady.Wait();
 				if (m_bExiting)
@@ -98,7 +98,7 @@
 
 		void CEncoder::NewFrameReady()
 		{
-			Log("New Frame Ready");
+			Debug("New Frame Ready\n");
 			m_encodeFinished.Reset();
 			m_newFrameReady.Set();
 		}

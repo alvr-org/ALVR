@@ -45,7 +45,7 @@ void Settings::Load()
 		picojson::value v;
 		std::string err = picojson::parse(v, json);
 		if (!err.empty()) {
-			Error("Error on parsing json: %hs", err.c_str());
+			Error("Error on parsing json: %hs\n", err.c_str());
 			return;
 		}
 
@@ -70,7 +70,7 @@ void Settings::Load()
 		} else if (lastConnection != nullptr) {
 			connectedClient = *lastConnection;
 		} else {
-			Error("No client found");
+			Error("No client found\n");
 			return;
 		}
 
@@ -105,7 +105,7 @@ void Settings::Load()
 		}
 		else
 		{
-			Error("Invalid renderResolution");
+			Error("Invalid renderResolution\n");
 			return;
 		}
 
@@ -122,7 +122,7 @@ void Settings::Load()
 			m_recommendedTargetHeight = align32(video.get("recommendedTargetResolution").get("absolute").get("height").get<int64_t>());
 		}
 		else {
-			Error("Invalid recommendedTargetResolution");
+			Error("Invalid recommendedTargetResolution\n");
 			return;
 		}
 
@@ -213,19 +213,19 @@ void Settings::Load()
 
 		m_controllerMode = (int32_t)controllers.get("modeIdx").get<int64_t>();
 
-		LogDriver("Config JSON: %hs", json.c_str());
-		LogDriver("Serial Number: %hs", mSerialNumber.c_str());
-		LogDriver("Model Number: %hs", mModelNumber.c_str());
-		LogDriver("Render Target: %d %d", m_renderWidth, m_renderHeight);
-		LogDriver("Seconds from Vsync to Photons: %f", m_flSecondsFromVsyncToPhotons);
-		LogDriver("Refresh Rate: %d", m_refreshRate);
-		LogDriver("IPD: %f", m_flIPD);
+		Debug("Config JSON: %hs\n", json.c_str());
+		Info("Serial Number: %hs\n", mSerialNumber.c_str());
+		Info("Model Number: %hs\n", mModelNumber.c_str());
+		Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
+		Info("Seconds from Vsync to Photons: %f\n", m_flSecondsFromVsyncToPhotons);
+		Info("Refresh Rate: %d\n", m_refreshRate);
+		Info("IPD: %f\n", m_flIPD);
 
-		LogDriver("EncoderOptions: %hs", m_EncoderOptions.c_str());
+		Info("EncoderOptions: %hs\n", m_EncoderOptions.c_str());
 
 		m_loaded = true;
 	}
 	catch (std::exception &e) {
-		FatalLog("Exception on parsing json: %hs", e.what());
+		Error("Exception on parsing json: %hs\n", e.what());
 	}
 }

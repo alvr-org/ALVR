@@ -21,6 +21,8 @@
             android:name="com.samsung.android.vr.application.mode"
             android:value="vr_only" />
 
+        <meta-data android:name="com.oculus.supportedDevices" android:value="quest|delmar"/>
+
         <activity
             android:name="com.polygraphene.alvr.OvrActivity"
             android:configChanges="screenSize|screenLayout|orientation|keyboardHidden|keyboard|navigation|uiMode|density"

@@ -829,7 +829,10 @@ void onStreamStartNative(int width, int height, int refreshRate, unsigned char s
                         EyeFov(), foveationStrength, foveationShape, foveationVerticalOffset});
     ovrRenderer_CreateScene(&g_ctx.Renderer);
 
-    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, refreshRate);
+    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, (float)refreshRate);
+    if (result != ovrSuccess) {
+        LOGE("Failed to set refresh rate requested by the server: %d", result);
+    }
 
     LOGI("Setting mic streaming %d", streamMic);
     g_ctx.mStreamMic = streamMic;

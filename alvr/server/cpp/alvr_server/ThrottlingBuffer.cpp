@@ -10,7 +10,7 @@ ThrottlingBuffer::ThrottlingBuffer(const Bitrate &bitrate) : mBitrate(bitrate)
 		// Ensure single packet can be sent
 		mWindow = 2000;
 	}
-	LogDriver("ThrottlingBuffer::ThrottlingBuffer(). Limit=%llu Mbps %llu bytes/slot Current=%llu", mBitrate.toMiBits(), mWindow, GetCounterUs());
+	Debug("ThrottlingBuffer::ThrottlingBuffer(). Limit=%llu Mbps %llu bytes/slot Current=%llu\n", mBitrate.toMiBits(), mWindow, GetCounterUs());
 }
 
 ThrottlingBuffer::~ThrottlingBuffer()
@@ -70,7 +70,7 @@ bool ThrottlingBuffer::CanSend(uint64_t current)
 
 	mLastSent = current;
 
-	Log("ThrottlingBuffer::CanSend(). %03llu.%03llu Check %llu <= %llu: %d Buffered=%llu Fillup=%llu", (current / 1000) % 1000, current % 1000
+	Debug("ThrottlingBuffer::CanSend(). %03llu.%03llu Check %llu <= %llu: %d Buffered=%llu Fillup=%llu\n", (current / 1000) % 1000, current % 1000
 		, mByteCount, mWindow, mByteCount <= mWindow, mBuffered, fullup);
 	if (mByteCount <= mWindow) {
 		return true;

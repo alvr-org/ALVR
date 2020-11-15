@@ -31,7 +31,7 @@ bool UdpSocket::Startup() {
 
 	mPoller->AddSocket(mSocket, PollerSocketType::READ);
 
-	LogDriver("UdpSocket::Startup success");
+	Debug("UdpSocket::Startup success\n");
 
 	return true;
 }
@@ -73,7 +73,7 @@ bool UdpSocket::Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen) {
 
 void UdpSocket::Run()
 {
-	Log("Try to send.");
+	Debug("Try to send.\n");
 	while (mBuffer.Send([this](char *buf, int len) {return DoSend(buf, len); })) {}
 
 	if (!mBuffer.IsEmpty()) {
@@ -106,7 +106,7 @@ bool UdpSocket::BindSocket()
 {
 	mSocket = socket(AF_INET, SOCK_DGRAM, 0);
 	if (mSocket == INVALID_SOCKET) {
-		FatalLog("UdpSocket::BindSocket socket creation error: %d %ls", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		Error("UdpSocket::BindSocket socket creation error: %d %ls\n", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
 
@@ -123,10 +123,10 @@ bool UdpSocket::BindSocket()
 
 	int ret = bind(mSocket, (sockaddr *)&addr, sizeof(addr));
 	if (ret != 0) {
-		FatalLog("UdpSocket::BindSocket bind error : Address=%hs:%d %d %ls", mHost.c_str(), mPort, WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		Error("UdpSocket::BindSocket bind error : Address=%hs:%d %d %ls\n", mHost.c_str(), mPort, WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 		return false;
 	}
-	LogDriver("UdpSocket::BindSocket successfully bound to %hs:%d", mHost.c_str(), mPort);
+	Debug("UdpSocket::BindSocket successfully bound to %hs:%d\n", mHost.c_str(), mPort);
 	
 	return true;
 }
@@ -139,7 +139,7 @@ bool UdpSocket::DoSend(char * buf, int len)
 		return true;
 	}
 	if (WSAGetLastError() != WSAEWOULDBLOCK) {
-		LogDriver("UdpSocket::DoSend() Error on sendto. %d %ls", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		Error("UdpSocket::DoSend() Error on sendto. %d %ls\n", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
 	}
 	return false;
 }

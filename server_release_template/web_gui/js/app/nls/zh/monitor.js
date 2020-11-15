@@ -6,11 +6,11 @@ define({
     "trustedClients": "已信任的客户端",
     "manAddClient": "手动添加客户端",
     "statistics": "串流状态信息",
-    "addClient": "Add client",
-    "clientType": "Type",
+    "addClient": "添加客户端",
+    "clientType": "模式",
     "ipAddress": "IP地址",
-    "ipHelp": "Enter know IP-address of the HMD",
-    "addClientButton": "Add client",
+    "ipHelp": "添加已知的头显IP地址",
+    "addClientButton": "添加客户端",
     "totalPackets": "数据包总数",
     "packetRate": "封包速率",
     "packetsLostTotal": "丢包数",
@@ -28,5 +28,6 @@ define({
     "clientFPS": "客户端帧数",
     "serverFPS": "服务端帧数",
     "packets": "个数据包",
-    "packetss": "个数据包每秒"
+    "packetss": "个数据包每秒",
+	"troubleshooting": `你的头显没有显示在这里？访问我们的<a  target='_blank' href="https://github.com/JackD83/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">Github问题解决页面</a>以获得帮助。`
 });

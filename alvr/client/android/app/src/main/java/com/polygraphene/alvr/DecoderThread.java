@@ -32,11 +32,6 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
 
     private boolean mWaitNextIDR = false;
 
-    @SuppressWarnings("unused")
-    private Context mContext = null;
-
-    private boolean mDebugIDRFrame = false;
-
     private static final int NAL_QUEUE_MAX = 100;
 
     private NalQueue mNalQueue = new NalQueue();
@@ -88,9 +83,8 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
 
     private final Queue<Integer> mAvailableInputs = new LinkedList<>();
 
-    public DecoderThread(Surface surface, Context context, DecoderCallback callback) {
+    public DecoderThread(Surface surface, DecoderCallback callback) {
         mSurface = surface;
-        mContext = context;
         mQueue = new OutputFrameQueue();
         mDecoderCallback = callback;
     }
@@ -198,25 +192,6 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
         mWaitNextIDR = true;
 
         Looper.loop();
-    }
-
-    // Output IDR frame in external media dir for debugging. (/sdcard/Android/media/...)
-    private void debugIDRFrame(NAL buf, NAL spsBuffer, NAL ppsBuffer) {
-        if (spsBuffer == null || ppsBuffer == null) {
-            return;
-        }
-        if (mDebugIDRFrame) {
-            try {
-                String path = mContext.getExternalMediaDirs()[0].getAbsolutePath() + "/" + buf.frameIndex + ".h264";
-                FileOutputStream stream = new FileOutputStream(path);
-                stream.write(spsBuffer.buf, 0, spsBuffer.length);
-                stream.write(ppsBuffer.buf, 0, ppsBuffer.length);
-                stream.write(buf.buf, 0, buf.length);
-                stream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     private boolean pushInputBuffer(NAL nal, long presentationTimeUs, int flags) {

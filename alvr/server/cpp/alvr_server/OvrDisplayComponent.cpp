@@ -5,7 +5,7 @@ OvrDisplayComponent::~OvrDisplayComponent() {};
 
 void OvrDisplayComponent::GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
 {
-	LogDriver("GetWindowBounds %dx%d - %dx%d", 0, 0, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
+	Debug("GetWindowBounds %dx%d - %dx%d\n", 0, 0, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
 	*pnX = 0;
 	*pnY = 0;
 	*pnWidth = Settings::Instance().m_renderWidth;
@@ -26,7 +26,7 @@ void OvrDisplayComponent::GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *
 {
 	*pnWidth = Settings::Instance().m_recommendedTargetWidth / 2;
 	*pnHeight = Settings::Instance().m_recommendedTargetHeight;
-	LogDriver("GetRecommendedRenderTargetSize %dx%d", *pnWidth, *pnHeight);
+	Debug("GetRecommendedRenderTargetSize %dx%d\n", *pnWidth, *pnHeight);
 }
 
 void OvrDisplayComponent::GetEyeOutputViewport(vr::EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
@@ -43,7 +43,7 @@ void OvrDisplayComponent::GetEyeOutputViewport(vr::EVREye eEye, uint32_t *pnX, u
 	{
 		*pnX = Settings::Instance().m_renderWidth / 2;
 	}
-	LogDriver("GetEyeOutputViewport Eye=%d %dx%d %dx%d", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
+	Debug("GetEyeOutputViewport Eye=%d %dx%d %dx%d\n", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
 }
 
 void OvrDisplayComponent::GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom)
@@ -54,7 +54,7 @@ void OvrDisplayComponent::GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float
 	*pfTop = -tanf(static_cast<float>(eyeFov.top / 180.0 * M_PI));
 	*pfBottom = tanf(static_cast<float>(eyeFov.bottom / 180.0 * M_PI));
 
-	LogDriver("GetProjectionRaw Eye=%d (l,r,t,b)=(%f,%f,%f,%f)", eEye, eyeFov.left, eyeFov.right, eyeFov.top, eyeFov.bottom);
+	Debug("GetProjectionRaw Eye=%d (l,r,t,b)=(%f,%f,%f,%f)\n", eEye, eyeFov.left, eyeFov.right, eyeFov.top, eyeFov.bottom);
 }
 
 vr::DistortionCoordinates_t OvrDisplayComponent::ComputeDistortion(vr::EVREye eEye, float fU, float fV) 
@@ -66,6 +66,6 @@ vr::DistortionCoordinates_t OvrDisplayComponent::ComputeDistortion(vr::EVREye eE
 	coordinates.rfGreen[1] = fV;
 	coordinates.rfRed[0] = fU;
 	coordinates.rfRed[1] = fV;
-	Log("ComputeDistortion %f,%f", fU, fV);
+	Debug("ComputeDistortion %f,%f\n", fU, fV);
 	return coordinates;
 }

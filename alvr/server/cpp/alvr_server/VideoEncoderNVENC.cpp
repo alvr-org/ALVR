@@ -29,13 +29,13 @@ void VideoEncoderNVENC::Initialize()
 
 	NV_ENC_BUFFER_FORMAT format = NV_ENC_BUFFER_FORMAT_ABGR;
 
-	LogDriver("Initializing CNvEncoder. Width=%d Height=%d Format=%d", m_renderWidth, m_renderHeight, format);
+	Debug("Initializing CNvEncoder. Width=%d Height=%d Format=%d\n", m_renderWidth, m_renderHeight, format);
 
 	try {
 		m_NvNecoder = std::make_shared<NvEncoderD3D11>(m_pD3DRender->GetDevice(), m_renderWidth, m_renderHeight, format, 0);
 	}
 	catch (NVENCException e) {
-		throw MakeException("NvEnc NvEncoderD3D11 failed. Code=%d %hs", e.getErrorCode(), e.what());
+		throw MakeException("NvEnc NvEncoderD3D11 failed. Code=%d %hs\n", e.getErrorCode(), e.what());
 	}
 
 	NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
@@ -55,7 +55,7 @@ void VideoEncoderNVENC::Initialize()
 		throw MakeException("NvEnc CreateEncoder failed. Code=%d %hs", e.getErrorCode(), e.what());
 	}
 
-	LogDriver("CNvEncoder is successfully initialized.");
+	Debug("CNvEncoder is successfully initialized.\n");
 }
 
 void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits)
@@ -82,20 +82,20 @@ void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int render
 			ret = m_NvNecoder->Reconfigure(&reconfigureParams);
 		}
 		catch (NVENCException e) {
-			FatalLog("NvEnc Reconfigure failed with exception. Code=%d %hs. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)", e.getErrorCode(), e.what()
+			Error("NvEnc Reconfigure failed with exception. Code=%d %hs. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)\n", e.getErrorCode(), e.what()
 				, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
 				, refreshRate, renderWidth, renderHeight, bitrateInMBits
 			);
 			return;
 		}
 		if (!ret) {
-			FatalLog("NvEnc Reconfigure failed. Return code=%d. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)", ret
+			Error("NvEnc Reconfigure failed. Return code=%d. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)\n", ret
 				, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
 				, refreshRate, renderWidth, renderHeight, bitrateInMBits
 			);
 			return;
 		}
-		LogDriver("NvEnc Reconfigure succeeded. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)"
+		Debug("NvEnc Reconfigure succeeded. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)\n"
 			, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
 			, refreshRate, renderWidth, renderHeight, bitrateInMBits
 		);
@@ -132,7 +132,7 @@ void VideoEncoderNVENC::Shutdown()
 		m_NvNecoder.reset();
 	}
 
-	LogDriver("CNvEncoder::Shutdown");
+	Error("CNvEncoder::Shutdown\n");
 
 	if (fpOut) {
 		fpOut.close();
@@ -150,13 +150,13 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 
 	NV_ENC_PIC_PARAMS picParams = {};
 	if (insertIDR) {
-		LogDriver("Inserting IDR frame.");
+		Debug("Inserting IDR frame.\n");
 		picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
 	}
 	m_NvNecoder->EncodeFrame(vPacket, &picParams);
 
-	Log("Tracking info delay: %lld us FrameIndex=%llu", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
-	Log("Encoding delay: %lld us FrameIndex=%llu", GetTimestampUs() - presentationTime, frameIndex);
+	Debug("Tracking info delay: %lld us FrameIndex=%llu\n", GetTimestampUs() - m_Listener->clientToServerTime(clientTime), frameIndex);
+	Debug("Encoding delay: %lld us FrameIndex=%llu\n", GetTimestampUs() - presentationTime, frameIndex);
 
 	if (m_Listener) {
 		m_Listener->GetStatistics()->EncodeOutput(GetTimestampUs() - presentationTime);
@@ -200,8 +200,8 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	// Use reference frame invalidation to faster recovery from frame loss if supported.
 	mSupportsReferenceFrameInvalidation = m_NvNecoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_REF_PIC_INVALIDATION);
 	bool supportsIntraRefresh = m_NvNecoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_INTRA_REFRESH);
-	LogDriver("VideoEncoderNVENC: SupportsReferenceFrameInvalidation: %d", mSupportsReferenceFrameInvalidation);
-	LogDriver("VideoEncoderNVENC: SupportsIntraRefresh: %d", supportsIntraRefresh);
+	Debug("VideoEncoderNVENC: SupportsReferenceFrameInvalidation: %d\n", mSupportsReferenceFrameInvalidation);
+	Debug("VideoEncoderNVENC: SupportsIntraRefresh: %d\n", supportsIntraRefresh);
 
 	// 16 is recommended when using reference frame invalidation. But it has caused bad visual quality.
 	// Now, use 0 (use default).
@@ -249,7 +249,7 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	//encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;// NV_ENC_PARAMS_RC_CBR_HQ;
 	encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;
 	uint32_t maxFrameSize = static_cast<uint32_t>(bitrate.toBits() / refreshRate);
-	LogDriver("VideoEncoderNVENC: maxFrameSize=%d bits", maxFrameSize);
+	Debug("VideoEncoderNVENC: maxFrameSize=%d bits\n", maxFrameSize);
 	encodeConfig.rcParams.vbvBufferSize = maxFrameSize;
 	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize;
 	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrate.toBits());

@@ -44,4 +44,7 @@ release-files/
 .vscode/
 .DS_Store
 
+# dependencies installed by xtask
+/deps/
+
 # The .gitignore for android is project folder.

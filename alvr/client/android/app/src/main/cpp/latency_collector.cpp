@@ -1,6 +1,7 @@
 #include <jni.h>
 #include "latency_collector.h"
 #include "utils.h"
+#include "bindings.h"
 
 LatencyCollector LatencyCollector::m_Instance;
 
@@ -170,22 +171,10 @@ LatencyCollector &LatencyCollector::Instance() {
     return m_Instance;
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_LatencyCollector_DecoderInput(JNIEnv *env, jclass type,
-                                                         jlong frameIndex) {
+void decoderInput(long long frameIndex) {
     LatencyCollector::Instance().decoderInput((uint64_t)frameIndex);
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_LatencyCollector_DecoderOutput(JNIEnv *env, jclass type,
-                                                          jlong frameIndex) {
+void decoderOutput(long long frameIndex) {
     LatencyCollector::Instance().decoderOutput((uint64_t)frameIndex);
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_LatencyCollector_Submit(JNIEnv *env, jclass type, jlong frameIndex) {
-    LatencyCollector::Instance().submit((uint64_t)frameIndex);
 }

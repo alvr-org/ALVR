@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <cerrno>
+#include <utility>
 #include <bits/fcntl.h>
 #include <unistd.h>
 
@@ -56,7 +57,7 @@ void UdpSocket::initialize(JNIEnv *env, int helloPort, int port, jobjectArray br
     getsockopt(m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &len);
     LOGI("Current socket recv buffer is %d bytes", val);
 
-    sockaddr_in addr;
+    sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = INADDR_ANY;
@@ -79,11 +80,11 @@ UdpSocket::setBroadcastAddrList(JNIEnv *env, int helloPort, int port, jobjectArr
 
     for (int i = 0; i < broadcastCount; i++)
     {
-        jstring address = (jstring) env->GetObjectArrayElement(broadcastAddrList_, i);
+        auto address = (jstring) env->GetObjectArrayElement(broadcastAddrList_, i);
         auto addressStr = GetStringFromJNIString(env, address);
         env->DeleteLocalRef(address);
 
-        sockaddr_in addr;
+        sockaddr_in addr{};
         memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;
         addr.sin_port = htons(helloPort);
@@ -109,7 +110,7 @@ int UdpSocket::send(const void *buf, size_t len)
 void UdpSocket::recv()
 {
     char packet[MAX_PACKET_UDP_PACKET_SIZE];
-    sockaddr_in addr;
+    sockaddr_in addr{};
     socklen_t socklen = sizeof(addr);
 
     while (true)
@@ -143,17 +144,17 @@ jstring UdpSocket::getServerAddress(JNIEnv *env)
                   sizeof(serverAddress));
         return env->NewStringUTF(serverAddress);
     }
-    return NULL;
+    return nullptr;
 }
 
-int UdpSocket::getServerPort()
+int UdpSocket::getServerPort() const
 {
     if (m_hasServerAddress)
         return htons(m_serverAddr.sin_port);
     return 0;
 }
 
-int UdpSocket::getSocket()
+int UdpSocket::getSocket() const
 {
     return m_sock;
 }
@@ -197,7 +198,7 @@ void UdpSocket::parse(char *packet, int packetSize, const sockaddr_in &addr)
             m_connected = true;
             m_hasServerAddress = true;
 
-            ConnectionMessage *connectionMessage = (ConnectionMessage *) packet;
+            auto *connectionMessage = (ConnectionMessage *) packet;
 
             LOGI("Try setting recv buffer size = %d bytes", connectionMessage->bufferSize);
             int val = connectionMessage->bufferSize;
@@ -213,33 +214,19 @@ void UdpSocket::parse(char *packet, int packetSize, const sockaddr_in &addr)
     }
 }
 
-void UdpSocket::recoverConnection(std::string serverAddress, int serverPort)
-{
-    LOGI("Sending recover connection request. server=%s:%d", serverAddress.c_str(), serverPort);
-    sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(serverPort);
-    inet_pton(AF_INET, serverAddress.c_str(), &addr.sin_addr);
-
-    RecoverConnection message = {};
-    message.type = ALVR_PACKET_TYPE_RECOVER_CONNECTION;
-
-    sendto(m_sock, &message, sizeof(message), 0, (sockaddr *) &addr, sizeof(addr));
-}
-
 void UdpSocket::setOnConnect(std::function<void(const ConnectionMessage &connectionMessage)> onConnect)
 {
-    m_onConnect = onConnect;
+    m_onConnect = std::move(onConnect);
 }
 
 void UdpSocket::setOnBroadcastRequest(std::function<void()> onBroadcastRequest)
 {
-    m_onBroadcastRequest = onBroadcastRequest;
+    m_onBroadcastRequest = std::move(onBroadcastRequest);
 }
 
-void UdpSocket::setOnPacketRecv(std::function<void(const char *buf, size_t len)> onPacketRecv)
+void UdpSocket::setOnPacketRecv(std::function<void(const char *, size_t)> onPacketRecv)
 {
-    m_onPacketRecv = onPacketRecv;
+    m_onPacketRecv = std::move(onPacketRecv);
 }
 
 bool UdpSocket::isConnected() const

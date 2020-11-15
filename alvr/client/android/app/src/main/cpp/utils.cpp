@@ -1,5 +1,6 @@
 #include "utils.h"
 #include <jni.h>
+#include "bindings.h"
 
 int gGeneralLogLevel = ANDROID_LOG_INFO;
 int gSoundLogLevel = ANDROID_LOG_INFO;
@@ -19,9 +20,7 @@ enum DEBUG_FLAGS {
 
 bool gEnableFrameLog = false;
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_Utils_setFrameLogEnabled(JNIEnv *env, jclass type, jlong debugFlags) {
+void setFrameLogEnabled(long long debugFlags) {
     gEnableFrameLog = static_cast<bool>(debugFlags & DEBUG_FLAGS_ENABLE_FRAME_LOG);
 
     gGeneralLogLevel = (debugFlags & DEBUG_FLAGS_ENABLE_GENERAL_LOG) ?

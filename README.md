@@ -63,24 +63,42 @@ If you have a version prior to v12.0 you need to launch `remove_firewall_rules.b
 
 ## Build from source
 
-- Install Visual Studio Code and the extension rust-analyzer (optional)
+Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
+
+### Common requisites
+
 - Install [LLVM](https://releases.llvm.org/download.html)
-- Install the MSVC compiler (for example installing C++ build tools with [Visual Studio](https://visualstudio.microsoft.com/downloads))
-- Install Android Studio >=4.0, API Level 30. Requires LLDB and NDK.
-- Set the environment variable `JAVA_HOME` to `C:\Program Files\Android\androidStudio\jre`.
 - Install [rustup](https://rustup.rs/)
-- Download this repository and on the project root execute:
+- Download this repository
+
+### Build server
+
+- Install the MSVC compiler (for example installing C++ build tools with [Visual Studio](https://visualstudio.microsoft.com/downloads))
+- On the repository root execute:
 
     ```bash
     cargo xtask build-server --release
+    ```
+
+- ALVR server will be built into `/build/alvr_server_windows`.
+
+Note: The Visual Studio solution is left only for IDE support while coding. If compiled, the resulting binary will not be valid.
+
+### Build client
+
+- Install [Python](https://www.microsoft.com/store/productId/9MSSZTT1N39L)
+- Install Android Studio >=4.0, API Level 30. Requires latest LLDB and NDK packages.
+- Set the environment variable `JAVA_HOME` to `C:\Program Files\Android\androidStudio\jre`.
+- On the repository root execute:
+
+    ```bash
+    cargo xtask install-deps
     cargo xtask build-client --release
     ```
 
-- ALVR server and client will be in `/build`.
+- ALVR client will be built into `/build`.
 
-Notes:  
-To debug the client you can just open Android Studio, connect your Oculus Quest and press run, without the above cargo commands.  
-The Visual Studio solution is left only for IDE support while coding. If compiled, the resulting binary will not be valid.
+Note: After doing the above steps, you can debug the client normally by opening the Android Studio project at `alvr/client/android`.
 
 ## License
 

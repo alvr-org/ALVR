@@ -17,7 +17,7 @@ static const char *ALVR_HELLO_PACKET_SIGNATURE = "ALVR";
 static const int ALVR_GUARDIAN_SEGMENT_SIZE = 100;
 static const double ALVR_GUARDIAN_RESEND_CD_SEC = 1.0;
 
-static const char *ALVR_VERSION = ALVR_CLIENT_VERSION; // defined through app build.gradle
+static const char *ALVR_VERSION = "12.5.0";
 
 enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_HELLO_MESSAGE = 1,
@@ -200,9 +200,6 @@ struct ConnectionMessage {
     float foveationVerticalOffset;
 	char webGuiUrl[32];
 };
-struct RecoverConnection {
-	uint32_t type; // ALVR_PACKET_TYPE_RECOVER_CONNECTION
-};
 struct BroadcastRequestMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_BROADCAST_REQUEST_MESSAGE
 };
@@ -315,12 +312,6 @@ struct TimeSync {
 	uint64_t fecFailureTotal;
 
 	uint32_t fps;
-};
-struct ChangeSettings {
-	uint32_t type; // 8
-	uint64_t debugFlags;
-	uint32_t suspend;
-	uint32_t frameQueueSize;
 };
 struct VideoFrame {
 	uint32_t type; // ALVR_PACKET_TYPE_VIDEO_FRAME

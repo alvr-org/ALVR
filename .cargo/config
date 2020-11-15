@@ -1,2 +1,0 @@
-[alias]
-xtask = "run -p alvr_xtask --"

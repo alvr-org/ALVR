@@ -27,5 +27,8 @@ define({
     "driverFailed": "注册驱动程序失败",
     "driverSuccess": "驱动程序成功注册",
     "firewallFailed": "设置防火墙规则失败",
-    "firewallSuccess": "防火墙规则已成功设置"
+    "firewallSuccess": "防火墙规则已成功设置",
+	"YourGPUIs": "你的显卡型号:",
+    "GPUSupported": "\n\n恭喜，这个显卡应该支持无线串流！", //Yes, '\n' must be in translation
+    "GPUUnsupported": "\n\n抱歉，你的显卡或许不支持ALVR无线串流，但是你依旧可以试一下看看能不能使用。"
 });

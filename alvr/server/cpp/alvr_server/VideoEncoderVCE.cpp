@@ -63,7 +63,7 @@ AMFTextureEncoder::AMFTextureEncoder(const amf::AMFContextPtr &amfContext
 	}
 	AMF_THROW_IF(m_amfEncoder->Init(inputFormat, width, height));
 
-	LogDriver("Initialized AMFTextureEncoder.");
+	Debug("Initialized AMFTextureEncoder.\n");
 }
 
 AMFTextureEncoder::~AMFTextureEncoder()
@@ -77,11 +77,11 @@ void AMFTextureEncoder::Start()
 
 void AMFTextureEncoder::Shutdown()
 {
-	LogDriver("AMFTextureEncoder::Shutdown() m_amfEncoder->Drain");
+	Debug("AMFTextureEncoder::Shutdown() m_amfEncoder->Drain\n");
 	m_amfEncoder->Drain();
-	LogDriver("AMFTextureEncoder::Shutdown() m_thread->join");
+	Debug("AMFTextureEncoder::Shutdown() m_thread->join\n");
 	m_thread->join();
-	LogDriver("AMFTextureEncoder::Shutdown() joined.");
+	Debug("AMFTextureEncoder::Shutdown() joined.\n");
 	delete m_thread;
 	m_thread = NULL;
 }
@@ -90,7 +90,7 @@ void AMFTextureEncoder::Submit(amf::AMFData *data)
 {
 	while (true)
 	{
-		LogDriver("AMFTextureEncoder::Submit.");
+		Debug("AMFTextureEncoder::Submit.\n");
 		auto res = m_amfEncoder->SubmitInput(data);
 		if (res == AMF_INPUT_FULL)
 		{
@@ -105,14 +105,14 @@ void AMFTextureEncoder::Submit(amf::AMFData *data)
 
 void AMFTextureEncoder::Run()
 {
-	LogDriver("Start AMFTextureEncoder thread. Thread Id=%d", GetCurrentThreadId());
+	Debug("Start AMFTextureEncoder thread. Thread Id=%d\n", GetCurrentThreadId());
 	amf::AMFDataPtr data;
 	while (true)
 	{
 		auto res = m_amfEncoder->QueryOutput(&data);
 		if (res == AMF_EOF)
 		{
-			LogDriver("m_amfEncoder->QueryOutput returns AMF_EOF.");
+			Warn("m_amfEncoder->QueryOutput returns AMF_EOF.\n");
 			return;
 		}
 
@@ -144,7 +144,7 @@ AMFTextureConverter::AMFTextureConverter(const amf::AMFContextPtr &amfContext
 
 	AMF_THROW_IF(m_amfConverter->Init(inputFormat, width, height));
 
-	LogDriver("Initialized AMFTextureConverter.");
+	Debug("Initialized AMFTextureConverter.\n");
 }
 
 AMFTextureConverter::~AMFTextureConverter()
@@ -158,11 +158,11 @@ void AMFTextureConverter::Start()
 
 void AMFTextureConverter::Shutdown()
 {
-	LogDriver("AMFTextureConverter::Shutdown() m_amfConverter->Drain");
+	Debug("AMFTextureConverter::Shutdown() m_amfConverter->Drain\n");
 	m_amfConverter->Drain();
-	LogDriver("AMFTextureConverter::Shutdown() m_thread->join");
+	Debug("AMFTextureConverter::Shutdown() m_thread->join\n");
 	m_thread->join();
-	LogDriver("AMFTextureConverter::Shutdown() joined.");
+	Debug("AMFTextureConverter::Shutdown() joined.\n");
 	delete m_thread;
 	m_thread = NULL;
 }
@@ -171,7 +171,7 @@ void AMFTextureConverter::Submit(amf::AMFData *data)
 {
 	while (true)
 	{
-		LogDriver("AMFTextureConverter::Submit.");
+		Debug("AMFTextureConverter::Submit.\n");
 		auto res = m_amfConverter->SubmitInput(data);
 		if (res == AMF_INPUT_FULL)
 		{
@@ -186,14 +186,14 @@ void AMFTextureConverter::Submit(amf::AMFData *data)
 
 void AMFTextureConverter::Run()
 {
-	LogDriver("Start AMFTextureConverter thread. Thread Id=%d", GetCurrentThreadId());
+	Debug("Start AMFTextureConverter thread. Thread Id=%d\n", GetCurrentThreadId());
 	amf::AMFDataPtr data;
 	while (true)
 	{
 		auto res = m_amfConverter->QueryOutput(&data);
 		if (res == AMF_EOF)
 		{
-			LogDriver("m_amfConverter->QueryOutput returns AMF_EOF.");
+			Warn("m_amfConverter->QueryOutput returns AMF_EOF.\n");
 			return;
 		}
 
@@ -230,7 +230,7 @@ VideoEncoderVCE::~VideoEncoderVCE()
 
 void VideoEncoderVCE::Initialize()
 {
-	LogDriver("Initializing VideoEncoderVCE.");
+	Debug("Initializing VideoEncoderVCE.\n");
 	AMF_THROW_IF(g_AMFFactory.Init());
 
 	::amf_increase_timer_precision();
@@ -249,7 +249,7 @@ void VideoEncoderVCE::Initialize()
 	m_encoder->Start();
 	m_converter->Start();
 
-	LogDriver("Successfully initialized VideoEncoderVCE.");
+	Debug("Successfully initialized VideoEncoderVCE.\n");
 }
 
 void VideoEncoderVCE::Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits)
@@ -259,7 +259,7 @@ void VideoEncoderVCE::Reconfigure(int refreshRate, int renderWidth, int renderHe
 		(renderHeight != 0 && renderHeight != m_renderHeight) ||
 		(bitrateInMBits != 0 && bitrateInMBits != m_bitrateInMBits)) {
 
-		LogDriver("VideoEncoderVCE: Start to reconfigure. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)"
+		Debug("VideoEncoderVCE: Start to reconfigure. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)\n"
 			, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
 			, refreshRate, renderWidth, renderHeight, bitrateInMBits
 		);
@@ -283,7 +283,7 @@ void VideoEncoderVCE::Reconfigure(int refreshRate, int renderWidth, int renderHe
 			Initialize();
 		}
 		catch (Exception &e) {
-			FatalLog("VideoEncoderVCE: Failed to reconfigure. %hs"
+			Error("VideoEncoderVCE: Failed to reconfigure. %hs\n"
 				, e.what()
 			);
 			return;
@@ -293,7 +293,7 @@ void VideoEncoderVCE::Reconfigure(int refreshRate, int renderWidth, int renderHe
 
 void VideoEncoderVCE::Shutdown()
 {
-	LogDriver("Shutting down VideoEncoderVCE.");
+	Debug("Shutting down VideoEncoderVCE.\n");
 
 	m_encoder->Shutdown();
 	m_converter->Shutdown();
@@ -303,7 +303,7 @@ void VideoEncoderVCE::Shutdown()
 	if (fpOut) {
 		fpOut.close();
 	}
-	LogDriver("Successfully shutdown VideoEncoderVCE.");
+	Debug("Successfully shutdown VideoEncoderVCE.\n");
 }
 
 void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR)
@@ -320,7 +320,7 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 
 	ApplyFrameProperties(surface, insertIDR);
 
-	LogDriver("Submit surface. frameIndex=%llu", frameIndex);
+	Debug("Submit surface. frameIndex=%llu\n", frameIndex);
 	m_converter->Submit(surface);
 }
 
@@ -334,7 +334,7 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 
 	amf::AMFBufferPtr buffer(data); // query for buffer interface
 
-	LogDriver("VCE encode latency: %.4f ms. Size=%d bytes frameIndex=%llu", double(current_time - start_time) / (double)MILLISEC_TIME, (int)buffer->GetSize()
+	Debug("VCE encode latency: %.4f ms. Size=%d bytes frameIndex=%llu\n", double(current_time - start_time) / (double)MILLISEC_TIME, (int)buffer->GetSize()
 		, frameIndex);
 
 	if (m_Listener) {
@@ -360,7 +360,7 @@ void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bo
 		// Disable AUD (NAL Type 9) to produce the same stream format as VideoEncoderNVENC.
 		surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_AUD, false);
 		if (insertIDR) {
-			LogDriver("Inserting IDR frame for H.264.");
+			Debug("Inserting IDR frame for H.264.\n");
 			surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_SPS, true);
 			surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_PPS, true);
 			surface->SetProperty(AMF_VIDEO_ENCODER_FORCE_PICTURE_TYPE, AMF_VIDEO_ENCODER_PICTURE_TYPE_IDR);
@@ -370,7 +370,7 @@ void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bo
 		// This option is ignored. Maybe a bug on AMD driver.
 		surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_AUD, false);
 		if (insertIDR) {
-			LogDriver("Inserting IDR frame for H.265.");
+			Debug("Inserting IDR frame for H.265.\n");
 			// Insert VPS,SPS,PPS
 			// These options don't work properly on older AMD driver (Radeon Software 17.7, AMF Runtime 1.4.4)
 			// Fixed in 18.9.2 & 1.4.9

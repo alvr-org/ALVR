@@ -166,8 +166,7 @@ enum ALVR_HAND_CONFIDENCE {
 	alvrPinkyConfidence_High = (1 << 4),
 	alvrHandConfidence_High = (1 << 5),
 };
-typedef enum ALVR_HAND_INPUT
-{
+enum ALVR_HAND_INPUT {
 	alvrInputStateHandStatus_PointerValid = (1 << 1),	// if this is set the PointerPose and PinchStrength contain valid data, otherwise they should not be used.
 	alvrInputStateHandStatus_IndexPinching = (1 << 2),	// if this is set the pinch gesture for that finger is on
 	alvrInputStateHandStatus_MiddlePinching = (1 << 3),	// if this is set the pinch gesture for that finger is on

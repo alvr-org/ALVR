@@ -11,34 +11,15 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 
-class ServerConnection extends ThreadBase
-{
+class ServerConnection extends ThreadBase {
     private static final String TAG = "ServerConnection";
 
     static {
-        System.loadLibrary("native-lib");
+        System.loadLibrary("alvr_client");
     }
-
-    private static final String BROADCAST_ADDRESS = "255.255.255.255";
-    private static final int HELLO_PORT = 9943;
-    private static final int PORT = 9944;
-
-    private TrackingThread mTrackingThread;
-
-    private DeviceDescriptor mDeviceDescriptor;
-
-    private boolean mInitialized = false;
-    private boolean mInitializeFailed = false;
-
-    private String mPreviousServerAddress;
-    private int mPreviousServerPort;
-
-    private OvrThread mParent;
 
     interface ConnectionListener {
         void onConnected(int width, int height, int codec, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
-
-        void onChangeSettings(int suspend, int frameQueueSize);
 
         void onShutdown(String serverAddr, int serverPort);
 
@@ -53,26 +34,34 @@ class ServerConnection extends ThreadBase
         void onGuardianSegmentAck(long timestamp, int segmentIndex);
     }
 
-    private ConnectionListener mConnectionListener;
-
     public interface NALCallback {
         NAL obtainNAL(int length);
+
         void pushNAL(NAL nal);
     }
 
-    private NALCallback mNALCallback;
+    private static final String BROADCAST_ADDRESS = "255.255.255.255";
+    private static final int HELLO_PORT = 9943;
+    private static final int PORT = 9944;
 
-    private long mNativeHandle = 0;
+    private TrackingThread mTrackingThread;
+
+    private DeviceDescriptor mDeviceDescriptor;
+
+    private boolean mInitialized = false;
+
+    private final OvrActivity mParent;
+
+    private final ConnectionListener mConnectionListener;
+
     private final Object mWaiter = new Object();
 
-    ServerConnection(ConnectionListener connectionListener, OvrThread parent)
-    {
+    ServerConnection(ConnectionListener connectionListener, OvrActivity parent) {
         mConnectionListener = connectionListener;
         mParent = parent;
     }
 
-    private String getDeviceName()
-    {
+    private String getDeviceName() {
         String manufacturer = android.os.Build.MANUFACTURER;
         String model = android.os.Build.MODEL;
         if (model.toLowerCase().startsWith(manufacturer.toLowerCase())) {
@@ -82,41 +71,27 @@ class ServerConnection extends ThreadBase
         }
     }
 
-    public void recoverConnectionState(String serverAddress, int serverPort)
-    {
-        mPreviousServerAddress = serverAddress;
-        mPreviousServerPort = serverPort;
-    }
-
-    public void setSinkPrepared(boolean prepared)
-    {
+    public void setSinkPrepared(boolean prepared) {
         synchronized (mWaiter) {
-            if (mNativeHandle == 0) {
-                return;
-            }
-            setSinkPreparedNative(mNativeHandle, prepared);
+            setSinkPreparedNative(prepared);
         }
     }
 
-    public boolean start(EGLContext mEGLContext, Activity activity, DeviceDescriptor deviceDescriptor, int cameraTexture, NALCallback nalCallback)
-    {
+    public boolean start(EGLContext mEGLContext, Activity activity, DeviceDescriptor deviceDescriptor, int cameraTexture) {
         mTrackingThread = new TrackingThread();
         mTrackingThread.setCallback(() -> {
-            if (isConnectedNative(mNativeHandle)) {
+            if (isConnectedNative()) {
                 mConnectionListener.onTracking();
             }
         });
 
         mDeviceDescriptor = deviceDescriptor;
 
-        mNALCallback = nalCallback;
-
         super.startBase();
 
-        synchronized (this)
-        {
-            while (!mInitialized && !mInitializeFailed)
-            {
+        boolean initializeFailed = false;
+        synchronized (this) {
+            while (!mInitialized && !initializeFailed) {
                 try {
                     wait();
                 } catch (InterruptedException e) {
@@ -125,71 +100,50 @@ class ServerConnection extends ThreadBase
             }
         }
 
-        if(!mInitializeFailed)
-        {
+        if (!initializeFailed) {
             mTrackingThread.start(mEGLContext, activity, cameraTexture);
         }
-        return !mInitializeFailed;
+        return !initializeFailed;
     }
 
     @Override
     public void stopAndWait() {
         mTrackingThread.stopAndWait();
         synchronized (mWaiter) {
-            interruptNative(mNativeHandle);
+            interruptNative();
         }
         super.stopAndWait();
     }
 
     @Override
-    public void run()
-    {
+    public void run() {
         try {
             String[] targetList = getTargetAddressList();
 
-            for (String target: targetList) {
+            for (String target : targetList) {
                 Utils.logi(TAG, () -> "Target IP address for hello datagrams: " + target);
             }
 
-            mNativeHandle = initializeSocket(HELLO_PORT, PORT, getDeviceName(), targetList,
-                    mDeviceDescriptor.mRefreshRates, mDeviceDescriptor.mRenderWidth, mDeviceDescriptor.mRenderHeight, mDeviceDescriptor.mFov,
-                    mDeviceDescriptor.mDeviceType, mDeviceDescriptor.mDeviceSubType, mDeviceDescriptor.mDeviceCapabilityFlags,
-                    mDeviceDescriptor.mControllerCapabilityFlags, mDeviceDescriptor.mIpd
-            );
-            if (mNativeHandle == 0) {
-                Utils.loge(TAG, () -> "Error on initializing socket.");
-                synchronized (this) {
-                    mInitializeFailed = true;
-                    notifyAll();
-                }
-                return;
-            }
+            initializeSocket(HELLO_PORT, PORT, getDeviceName(), targetList,
+                    mDeviceDescriptor.mRefreshRates, mDeviceDescriptor.mRenderWidth,
+                    mDeviceDescriptor.mRenderHeight);
             synchronized (this) {
                 mInitialized = true;
                 notifyAll();
             }
             Utils.logi(TAG, () -> "ServerConnection initialized.");
 
-            runLoop(mNativeHandle, mPreviousServerAddress, mPreviousServerPort);
+            runLoop();
         } finally {
-            mConnectionListener.onShutdown(getServerAddress(mNativeHandle), getServerPort(mNativeHandle));
-            closeSocket(mNativeHandle);
-            mNativeHandle = 0;
+            mConnectionListener.onShutdown(getServerAddress(), getServerPort());
+            closeSocket();
         }
 
         Utils.logi(TAG, () -> "ServerConnection stopped.");
     }
 
     // List addresses where discovery datagrams will be sent to reach ALVR server.
-    private String[] getTargetAddressList()
-    {
-        // List addresses from targetServers setting (if present).
-        if (PersistentConfig.sTargetServers != null && PersistentConfig.sTargetServers.length() > 6) {
-            String[] addrs = PersistentConfig.sTargetServers.split("[^0-9.]+");
-            Utils.logi(TAG, () -> addrs.length + " target server IP addresses were found in config setting " + PersistentConfig.KEY_TARGET_SERVERS + " value: " + PersistentConfig.sTargetServers);
-            return addrs;
-        }
-
+    private String[] getTargetAddressList() {
         // List broadcast address from all interfaces except for mobile network.
         // We should send all broadcast address to use USB tethering or VPN.
         List<String> ret = new ArrayList<>();
@@ -207,15 +161,15 @@ class ServerConnection extends ThreadBase
 
                 List<InterfaceAddress> interfaceAddresses = networkInterface.getInterfaceAddresses();
 
-                String address = "";
+                StringBuilder address = new StringBuilder();
                 for (InterfaceAddress interfaceAddress : interfaceAddresses) {
-                    address += interfaceAddress.toString() + ", ";
+                    address.append(interfaceAddress.toString()).append(", ");
                     // getBroadcast() return non-null only when ipv4.
                     if (interfaceAddress.getBroadcast() != null) {
                         ret.add(interfaceAddress.getBroadcast().getHostAddress());
                     }
                 }
-                String finalAddress = address;
+                String finalAddress = address.toString();
                 Utils.logi(TAG, () -> "Interface: Name=" + networkInterface.getName() + " Address=" + finalAddress);
             }
             Utils.logi(TAG, () -> ret.size() + " broadcast addresses were found.");
@@ -231,13 +185,8 @@ class ServerConnection extends ThreadBase
         return ret.toArray(new String[]{});
     }
 
-
-//    public String getErrorMessage() {
-//        return mTrackingThread.getErrorMessage();
-//    }
-
     public boolean isConnected() {
-        return isConnectedNative(mNativeHandle);
+        return isConnectedNative();
     }
 
     // called from native
@@ -253,13 +202,6 @@ class ServerConnection extends ThreadBase
         Utils.logi(TAG, () -> "onDisconnected is called.");
         mConnectionListener.onDisconnect();
         mTrackingThread.onDisconnect();
-    }
-
-    @SuppressWarnings("unused")
-    public void onChangeSettings(long debugFlags, int suspend, int frameQueueSize) {
-        PersistentConfig.sDebugFlags = debugFlags;
-        PersistentConfig.saveCurrentConfig(true);
-        mConnectionListener.onChangeSettings(suspend, frameQueueSize);
     }
 
     @SuppressWarnings("unused")
@@ -280,21 +222,18 @@ class ServerConnection extends ThreadBase
     @SuppressWarnings("unused")
     public void send(long nativeBuffer, int bufferLength) {
         synchronized (mWaiter) {
-            if (mNativeHandle == 0) {
-                return;
-            }
-            sendNative(mNativeHandle, nativeBuffer, bufferLength);
+            sendNative(nativeBuffer, bufferLength);
         }
     }
 
     @SuppressWarnings("unused")
     public NAL obtainNAL(int length) {
-        return mNALCallback.obtainNAL(length);
+        return mParent.obtainNAL(length);
     }
 
     @SuppressWarnings("unused")
     public void pushNAL(NAL nal) {
-        mNALCallback.pushNAL(nal);
+        mParent.pushNAL(nal);
     }
 
     @SuppressWarnings("unused")
@@ -303,18 +242,22 @@ class ServerConnection extends ThreadBase
     }
 
 
-    private native long initializeSocket(int helloPort, int port, String deviceName, String[] broadcastAddrList,
-                                         int[] refreshRates, int renderWidth, int renderHeight, float[] fov,
-                                         int deviceType, int deviceSubType, int deviceCapabilityFlags, int controllerCapabilityFlags, float ipd);
-    private native void closeSocket(long nativeHandle);
-    private native void runLoop(long nativeHandle, String serverAddress, int serverPort);
-    private native void interruptNative(long nativeHandle);
+    private native void initializeSocket(int helloPort, int port, String deviceName, String[] broadcastAddrList,
+                                         int[] refreshRates, int renderWidth, int renderHeight);
 
-    private native void sendNative(long nativeHandle, long nativeBuffer, int bufferLength);
+    private native void closeSocket();
 
-    public native boolean isConnectedNative(long nativeHandle);
+    private native void runLoop();
 
-    private native String getServerAddress(long nativeHandle);
-    private native int getServerPort(long nativeHandle);
-    private native void setSinkPreparedNative(long nativeHandle, boolean prepared);
+    private native void interruptNative();
+
+    private native void sendNative(long nativeBuffer, int bufferLength);
+
+    public native boolean isConnectedNative();
+
+    private native String getServerAddress();
+
+    private native int getServerPort();
+
+    private native void setSinkPreparedNative(boolean prepared);
 }

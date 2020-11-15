@@ -48,7 +48,7 @@ private:
 	 */
 
 	WAVEHDR* waveBlocks;
-	UINT deviceID = -1;
+	UINT deviceID = (UINT)-1;
 
 	int waveCurrentBlock;
 

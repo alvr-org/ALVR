@@ -55,7 +55,7 @@ namespace {
 	}
 
 	float CalcOptimalDimensionForSlicing(float scale, float originalDim) {
-		return (1. + 3. * scale) / 4. * originalDim + 6;
+		return (1.f + 3.f * scale) / 4.f * originalDim + 6;
 	}
 
 	FoveationVars CalculateFoveationVars() {

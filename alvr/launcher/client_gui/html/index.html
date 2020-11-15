@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>ALVR Launcher</title>
+</head>
+
+<body>
+    <div id="loading" class="container-fluid">
+        <div class="row" id>
+            <div class="col-md-12">
+                <h3 id="title">
+                    ALVR is loading...
+                </h3>
+                <div id="ready" style="display:none">
+                    <p>Waiting for server to load...</p>
+                    <button id="restart-btn" class="btn btn-primary" style="display:none">Restart ALVR Server</button>
+                    <p id="timeout-message" style="display:none">ALVR doesn't seem to be starting... Try restarting ALVR or <a href="https://discord.com/invite/KbKk3UM">join the discord</a> for help! </p>
+                </div>
+                <div id="updating" style="display:none">
+                    Updating... 
+                    <div class="spinner-border text-primary spinner-border-sm" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>    
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Update Modal -->
+    <div class="modal fade updateModal" id="updateModal" tabindex="-1" role="dialog" aria-labelledby="updateModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="updateModalLabel">Update Found!</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    An update has been found, would you like to update?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Dismiss</button>
+                    <button type="button" class="btn btn-primary">Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Timeout Modal -->
+    <div class="modal fade timeoutModal" id="timeoutModal" tabindex="-1" role="dialog" aria-labelledby="timeoutModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="timeoutModalLabel">ALVR is not responding...</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    ALVR doesn't seem to be starting... Try restarting ALVR or <a href="https://discord.com/invite/KbKk3UM">join the discord</a> for help!
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Dismiss</button>
+                    <button type="button" class="btn btn-primary" onclick="restartServer()" data-dismiss="modal">Restart ALVR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', (event) => {
+            loadJQuery()
+            console.log("loading jQuery")
+        });
+
+        function waitForJQuery(method) {
+            if (window.jQuery) {
+                method();
+            } else {
+                setTimeout(function() {
+                    waitForJQuery(method)
+                }, 50);
+            }
+        }
+
+        function mainFunction() {
+            console.log("jQuery loaded")
+            window.resizeAndCenter = function resizeAndCenter(width, height) {
+                window.resizeTo(width, height);
+                var locationX = (screen.availWidth - window.outerWidth) / 2;
+                var locationY = (screen.availHeight - window.outerHeight) / 2;
+                window.moveTo(locationX, locationY);
+            }
+
+            window.pingWebServer = function pingWebServer() {
+                return new Promise(resolve => {
+                    xhttp = new XMLHttpRequest();
+                    xhttp.open("GET", "http://127.0.0.1:8082");
+                    xhttp.onreadystatechange = function() {
+                        if (xhttp.readyState == XMLHttpRequest.DONE) {
+                            if (xhttp.status == 200) {
+                                resolve(true);
+                            } else {
+                                resolve(false);
+                            }
+                        }
+                    }
+                    xhttp.send();
+                });
+            }
+
+            window.promptUpdate = function promptUpdate() {
+                init(true);
+            }
+
+            function startUpdate(result) {
+                if (result) {
+                    document.getElementById("ready").style.display = "none";
+                    document.getElementById("updating").style.display = "block";
+                    update()
+                } else {
+                    init()
+                }
+            };
+            
+            window.init = function init(update) {
+                if (update) {    
+                    resizeAndCenter(500, 300);
+                    $(".updateModal").modal('show')
+                    $(".updateModal").on('click', '.btn, .close', function() {
+                        $(this).addClass('modal-result');
+                        var result = $(".updateModal").find('.modal-result').filter('.btn-primary').length > 0;
+                        $(".updateModal").modal('hide');
+                        startUpdate(result);
+                    });
+                    
+                } else {
+                    document.getElementById("ready").style.display = "block";
+                    document.getElementById("restart-btn").onclick = function() {
+                        (async () => {
+                            await restartServer();
+                        })();
+                    };
+
+                    (async () => {
+                        resizeAndCenter(500, 300);
+                        (async () => {
+                            await new Promise(resolve => setTimeout(resolve, 5000));
+                            document.getElementById("restart-btn").style.display = "block";
+                        })();
+                        (async () => {
+                            await new Promise(resolve => setTimeout(resolve, 10000));
+                            $(".timeoutModal").modal('show')
+                        })();
+                        while (!await pingWebServer()) {
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            console.log("retry ping...");
+                        }
+                        $("body").fadeOut(function () {
+                            resizeAndCenter(800, 600);
+                            window.location.assign("http://127.0.0.1:8082");
+                        })
+                    })()
+                }
+            }
+        }
+        waitForJQuery(mainFunction);
+
+    </script>
+    <div></div>
+</body>
+
+</html>

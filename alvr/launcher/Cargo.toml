@@ -6,9 +6,17 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
-alcro = "0.3"
+alcro = { git = "https://github.com/Srinivasa314/alcro.git" }
 alvr_common = { path = "../common" }
 single-instance = "0.1"
+serde_json = '^1.0.57'
+self_update = { version = "0.20.0", features = ["archive-zip"] }
+tempfile = "3.1.0"
+zip = "0.5"
+fs_extra = "1.2.0"
+version-compare = "0.0.11"
+serde = "1.0.117"
+reqwest = "0.10.8"
 
-[target."cfg(windows)".build-dependencies]
-winres = "0.1"
+[target.'cfg(windows)'.build-dependencies]
+winres = '^0.1.11'

@@ -41,13 +41,13 @@ define([
                     closable: true,
                     messageHeight: 250,
                 });
-            }                     
-
-            $("#bodyContent").show();
-
-            if (session.setupWizard) {
-                wizard.showWizard();
             }
+                                 
+            $("#bodyContent").fadeIn(function() {    
+                if (session.setupWizard) {
+                    setTimeout(() => { wizard.showWizard(); }, 500);
+                }
+            });
 
             $("#runSetupWizard").click(() => {
                 wizard.showWizard();
@@ -118,6 +118,8 @@ define([
             $("#version").text("v" + version);
 
             driverList.fillDriverList("registeredDriversInst");
+
+            
 
 
         });

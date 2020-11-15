@@ -1,5 +1,7 @@
+mod dependencies;
 mod version;
 
+use dependencies::install_deps;
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
 use std::{
@@ -20,7 +22,8 @@ USAGE:
     cargo xtask <SUBCOMMAND> [FLAG] [ARGS]
 
 SUBCOMMANDS:
-    build-server        Build server driver and GUI, then copy binaries to build folder
+    install-deps        Download and compile/install external dependencies
+    build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
     publish             Build server and client in release mode, zip server and copy the pdb file.
     clean               Removes build folder
@@ -233,7 +236,7 @@ pub fn build_server(is_release: bool, fetch_crates: bool) -> BResult {
     )?;
     fs::copy(
         artifacts_dir.join(exec_fname("alvr_launcher")),
-        server_build_dir().join(exec_fname("ALVR launcher")),
+        server_build_dir().join(exec_fname("ALVR Launcher")),
     )?;
 
     // if cfg!(target_os = "linux") {
@@ -338,6 +341,7 @@ fn main() {
         };
         if args.finish().is_ok() {
             match subcommand.as_str() {
+                "install-deps" => ok_or_exit(install_deps()),
                 "build-server" => ok_or_exit(build_server(args_values.is_release, true)),
                 "build-client" => ok_or_exit(build_client(args_values.is_release)),
                 "publish" => ok_or_exit(build_publish()),

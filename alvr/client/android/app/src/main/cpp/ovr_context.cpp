@@ -679,7 +679,7 @@ void checkShouldSyncGuardian() {
 }
 
 // Called from TrackingThread
-void sendTrackingInfoNative(void *v_env, void *v_udpReceiverThread) {
+void sendTrackingInfo(void *v_env, void *v_udpReceiverThread) {
     auto *env_ = (JNIEnv *) v_env;
     auto udpReceiverThread = (jobject) v_udpReceiverThread;
 
@@ -714,7 +714,7 @@ void sendTrackingInfoNative(void *v_env, void *v_udpReceiverThread) {
 }
 
 // Called from TrackingThread
-void sendMicDataNative(void *v_env, void *v_udpReceiverThread) {
+void sendMicData(void *v_env, void *v_udpReceiverThread) {
     auto *env_ = (JNIEnv *) v_env;
     auto udpReceiverThread = (jobject) v_udpReceiverThread;
 
@@ -1194,7 +1194,7 @@ bool prepareGuardianData() {
 }
 
 // Called from TrackingThread
-void sendGuardianInfoNative(void *v_env, void *v_udpReceiverThread) {
+void sendGuardianInfo(void *v_env, void *v_udpReceiverThread) {
     auto *env_ = (JNIEnv *) v_env;
     auto udpReceiverThread = (jobject) v_udpReceiverThread;
 
@@ -1287,6 +1287,15 @@ int getWebViewSurfaceTextureNative() {
     return g_ctx.webViewSurfaceTexture;
 }
 
-unsigned char isVrModeNative() {
-    return g_ctx.Ovr != nullptr;
+void onTrackingNative(void *env, void *udpReceiverThread)
+{
+    if (g_ctx.Ovr != nullptr) {
+        sendTrackingInfo(env, udpReceiverThread);
+
+        //TODO: maybe use own thread, but works fine with tracking
+        sendMicData(env, udpReceiverThread);
+
+        //TODO: same as above
+        sendGuardianInfo(env, udpReceiverThread);
+    }
 }

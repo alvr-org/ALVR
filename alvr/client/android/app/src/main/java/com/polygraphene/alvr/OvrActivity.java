@@ -374,21 +374,15 @@ public class OvrActivity extends Activity {
 
         @Override
         public void onTracking() {
-            if (isVrModeNative()) {
-                sendTrackingInfoNative(mReceiverThread);
-
-                //TODO: maybe use own thread, but works fine with tracking
-                sendMicDataNative(mReceiverThread);
-
-                //TODO: same as above
-                sendGuardianInfoNative(mReceiverThread);
+            if (mReceiverThread != null) {
+                onTrackingNative(mReceiverThread);
             }
         }
 
         @Override
         public void onHapticsFeedback(long startTime, float amplitude, float duration, float frequency, boolean hand) {
             mRenderingHandler.post(() -> {
-                if (isVrModeNative()) {
+                if (mResumed && mScreenSurface != null) {
                     onHapticsFeedbackNative(startTime, amplitude, duration, frequency, hand);
                 }
             });
@@ -440,6 +434,8 @@ public class OvrActivity extends Activity {
     private native void renderNative(long renderedFrameIndex);
 
     private native void renderLoadingNative();
+
+    private native void onTrackingNative(ServerConnection serverConnection);
 
     private native void sendTrackingInfoNative(ServerConnection serverConnection);
 

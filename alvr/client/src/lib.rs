@@ -90,30 +90,12 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderLoadi
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_sendTrackingInfoNative(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onTrackingNative(
     env: JNIEnv,
     _: JObject,
     udp_receiver_thread: JObject,
 ) {
-    sendTrackingInfoNative(env.get_native_interface() as _, *udp_receiver_thread as _)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_sendGuardianInfoNative(
-    env: JNIEnv,
-    _: JObject,
-    udp_receiver_thread: JObject,
-) {
-    sendGuardianInfoNative(env.get_native_interface() as _, *udp_receiver_thread as _)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_sendMicDataNative(
-    env: JNIEnv,
-    _: JObject,
-    udp_receiver_thread: JObject,
-) {
-    sendMicDataNative(env.get_native_interface() as _, *udp_receiver_thread as _)
+    onTrackingNative(env.get_native_interface() as _, *udp_receiver_thread as _)
 }
 
 #[no_mangle]
@@ -156,14 +138,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onPauseNati
     _: JObject,
 ) {
     onPauseNative()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_isVrModeNative(
-    _: JNIEnv,
-    _: JObject,
-) -> u8 {
-    isVrModeNative()
 }
 
 #[no_mangle]

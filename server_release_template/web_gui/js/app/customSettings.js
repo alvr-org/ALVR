@@ -21,6 +21,7 @@ define([
                 setDeviceList();
                 setVideoOptions();
                 setBitrateOptions();
+                setRefreshRate();
                 setSuppressFrameDrop();
                 setDisableThrottling();
                 setHeadsetEmulation();
@@ -361,6 +362,89 @@ define([
 
             def = throttleBitrate.parent().find("i[default]");
             def.attr("default", bitrate.val() * 1000000 * 3 / 2 + 2000000);    //2mbit for audio
+        }
+
+        function setRefreshRate() {
+            const el = $("#_root_video_displayRefreshRate");
+
+            const refreshRate = $("#_root_video_refreshRate");
+
+            const custom = i18n.customRefreshRate
+
+            const customButton = `<label id="displayRefreshRateCustomButton" class="btn btn-primary active">
+            <input  type="radio" name="displayRefreshRate"  autocomplete="off" value="custom" checked>
+                ${custom}
+            </label> `;
+
+            function setRefreshRateRadio() {             
+
+                $("#displayRefreshRateCustomButton").remove();
+                $("input:radio[name='displayRefreshRate']").parent().removeClass("active");          
+
+                switch ( refreshRate.val()) {
+                    case "90":
+                    case "80":
+                    case "72":
+                        $("input:radio[name='displayRefreshRate'][value='" + refreshRate.val() + "']").prop("checked", "true");
+                        $("input:radio[name='displayRefreshRate'][value='" + refreshRate.val() + "']").parent().addClass("active");
+                        break;
+
+                    default:
+                        console.log("custom refresh rate")
+                        $("#displayRefreshRateButtons").append(customButton);
+
+                        break;
+                }
+            }
+
+            function setRefreshRateValue(val) {
+                if (val !== "custom") {
+                    refreshRate.val(val);
+                }
+                alvrSettings.storeParam(refreshRate);
+                setRefreshRateRadio();
+            }
+
+            //move elements into better layout
+            const  text = el.parent().text().trim();
+            el.parent().find("label").remove();
+
+            const grp = `<div class="card-title"> ${text}
+                    ${alvrSettings.getHelpReset("displayRefreshRate", "_root_video", 72,  postFix = "", "displayRefreshRate", "72 Hz")}
+                        </div>
+            <div class="btn-group" data-toggle="buttons" id="displayRefreshRateButtons">
+                            <label style="min-width:10%" class="btn btn-primary">
+                                <input  type="radio" name="displayRefreshRate"  autocomplete="off" value="72">
+                                72 Hz
+                            </label>
+                            <label class="btn btn-primary">
+                                <input type="radio" name="displayRefreshRate"  autocomplete="off" value="80">
+                                80 Hz
+                            </label>
+                            <label class="btn btn-primary">
+                                <input type="radio" name="displayRefreshRate" autocomplete="off" value="90">
+                                90 Hz
+                            </label>
+                                                  
+                    </div> `
+
+            el.after(grp);
+
+
+            $(document).ready(() => {
+                $("input:radio[name='displayRefreshRate']").on("change", () => {
+                    setRefreshRateValue($("input:radio:checked[name='displayRefreshRate']").val());   
+                });
+                refreshRate.on("change", () => {                   
+                    setRefreshRateRadio();
+                });   
+                
+                $("#_root_video_displayRefreshRate").on("change", (ev) => {
+                    setRefreshRateValue( $("#_root_video_displayRefreshRate").val());  
+                });
+
+                setRefreshRateRadio();
+            });
         }
 
         function setDeviceList() {

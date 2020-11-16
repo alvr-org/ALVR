@@ -83,16 +83,6 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             }
         }
 
-        // patch for Oculus Quest 2
-        {
-            let session_manager_ref = &mut session_manager.lock().unwrap();
-            let session_desc_ref =
-                &mut session_manager_ref.get_mut(None, SessionUpdateType::Settings);
-
-            session_desc_ref.session_settings.video.refresh_rate =
-                client_handshake_packet.client_refresh_rate as _;
-        }
-
         let settings = session_manager.lock().unwrap().get().to_settings();
 
         let video_width;

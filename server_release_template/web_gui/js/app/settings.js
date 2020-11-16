@@ -408,6 +408,8 @@ define([
                     case "trackingSpeed":
                         addHidden(element, path, name, advanced);
                         break;
+                    case "displayRefreshRate":
+                        addHidden(element, path, name, advanced);
 
                     default:
                         console.log("Unhandled node without content. Should be implemented as special case:", name);

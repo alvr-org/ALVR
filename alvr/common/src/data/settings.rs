@@ -74,6 +74,8 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub adapter_index: u32,
 
+    #[schema(placeholder = "display_refresh_rate")]
+    //
     #[schema(advanced)]
     pub refresh_rate: u32,
 

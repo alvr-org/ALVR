@@ -102,12 +102,12 @@ pub fn bump_versions(server_arg: Option<String>, client_arg: Option<String>) -> 
 
             let tag = match (server_arg, client_arg) {
                 (Some(_), Some(_)) | (None, None) => match client_version.cmp(&server_version) {
-                    Ordering::Less => format!("v{}-server", server_version),
-                    Ordering::Greater => format!("v{}-client", client_version),
+                    Ordering::Less => format!("v{}+server", server_version),
+                    Ordering::Greater => format!("v{}+client", client_version),
                     Ordering::Equal => format!("v{}", client_version),
                 },
-                (Some(_), None) => format!("v{}-server", server_version),
-                (None, Some(_)) => format!("v{}-client", client_version),
+                (Some(_), None) => format!("v{}+server", server_version),
+                (None, Some(_)) => format!("v{}+client", client_version),
             };
 
             println!("Git tag:\n{}", tag);

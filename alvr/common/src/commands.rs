@@ -74,7 +74,9 @@ pub fn maybe_kill_web_server() {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
 
-    let bootstrap_or_driver_count = system.get_process_by_name(&exec_fname("ALVR Launcher")).len()
+    let bootstrap_or_driver_count = system
+        .get_process_by_name(&exec_fname("ALVR Launcher"))
+        .len()
         + system.get_process_by_name(&exec_fname("vrserver")).len();
 
     if bootstrap_or_driver_count <= 1 {
@@ -249,4 +251,30 @@ pub fn unregister_all_drivers() -> StrResult {
     }
 
     Ok(())
+}
+
+pub fn maybe_open_launcher(alvr_dir: &Path) {
+    let mut command = Command::new(alvr_dir.join("ALVR Launcher"));
+    command.creation_flags(CREATE_NO_WINDOW).spawn().ok();
+}
+
+fn openvr_source_file_path() -> StrResult<PathBuf> {
+    Ok(trace_none!(dirs::cache_dir())?.join("openvr/openvrpaths.vrpath"))
+}
+
+pub fn check_steamvr_installation() -> bool {
+    openvr_source_file_path()
+        .map(|p| p.exists())
+        .unwrap_or(false)
+}
+
+#[cfg(windows)]
+pub fn check_msvcp_installation() -> StrResult<bool> {
+    let output = trace_err!(Command::new("where")
+        .arg("msvcp140_2.dll")
+        .creation_flags(CREATE_NO_WINDOW)
+        .output())?;
+    let output = String::from_utf8_lossy(&output.stdout);
+
+    Ok(output.contains("msvcp140_2.dll"))
 }

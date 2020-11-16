@@ -114,6 +114,7 @@ define([
                     var enableFfrTarget = $("#_root_video_foveatedRendering_enabled");
                     var ffrStrengthTarget = $("#_root_video_foveatedRendering_content_strength");
                     var bitrateTarget = $("#_root_video_encodeBitrateMbs");
+                    var refreshRate = $("#_root_video_refreshRate");
 
                     switch (target.attr("value")) {
                         case "compatibility":
@@ -122,6 +123,7 @@ define([
                             bitrateTarget.val(15);
                             enableFfrTarget.prop("checked", true);
                             ffrStrengthTarget.val(2);
+                            refreshRate.val(72);
                             
                             var h264CodecTarget = $("#_root_video_codec_H264-choice-");
                             h264CodecTarget.parent().parent().children().filter(".active").removeClass("active")
@@ -133,6 +135,7 @@ define([
                             targetResolutionScale.val(1);
                             bitrateTarget.val(40);
                             enableFfrTarget.prop("checked", false);
+                            refreshRate.val(90);
 
                             var hevcCodecTarget = $("#_root_video_codec_HEVC-choice-");
                             hevcCodecTarget.parent().parent().children().filter(".active").removeClass("active")
@@ -147,6 +150,7 @@ define([
                     alvrSettings.storeParam(enableFfrTarget);
                     alvrSettings.storeParam(ffrStrengthTarget);
                     alvrSettings.storeParam(bitrateTarget);
+                    alvrSettings.storeParam(refreshRate);
 
                     console.log(target.attr("value"))
                 })

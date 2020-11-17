@@ -70,7 +70,6 @@ public:
     jmethodID mSetWebGuiUrlID;
     jmethodID mOnGuardianSyncAckID;
     jmethodID mOnGuardianSegmentAckID;
-    jmethodID mGetBatteryLevel;
 
     int m_notifyPipe[2] = {-1, -1};
     std::mutex pipeMutex;
@@ -101,7 +100,6 @@ void initializeJNICallbacks(JNIEnv *env, jobject instance) {
     g_socket.mSetWebGuiUrlID = env->GetMethodID(clazz, "setWebViewURL", "(Ljava/lang/String;)V");
     g_socket.mOnGuardianSyncAckID = env->GetMethodID(clazz, "onGuardianSyncAck", "(J)V");
     g_socket.mOnGuardianSegmentAckID = env->GetMethodID(clazz, "onGuardianSegmentAck", "(JI)V");
-    g_socket.mGetBatteryLevel = env->GetMethodID(clazz, "getBatteryLevel", "()I");
 
     env->DeleteLocalRef(clazz);
 }

@@ -310,7 +310,7 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			m_TrackingInfo.HeadPose_Pose_Position.y = 0;
 			m_TrackingInfo.HeadPose_Pose_Position.z = 0;
 		}
-
+		Debug("got battery level: %d\n", (int)m_TrackingInfo.battery);
 		Debug("got tracking info %d %f %f %f %f\n", (int)m_TrackingInfo.FrameIndex,
 			m_TrackingInfo.HeadPose_Pose_Orientation.x,
 			m_TrackingInfo.HeadPose_Pose_Orientation.y,

@@ -79,6 +79,9 @@ public class OvrActivity extends Activity {
     int mRefreshRate = 72;
     long mPreviousRender = 0;
 
+    // Cache method references for performance reasons
+    final Runnable mRenderRunnable = this::render;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -114,8 +117,8 @@ public class OvrActivity extends Activity {
             if (mDecoderThread != null) {
                 mDecoderThread.onFrameAvailable();
             }
-            mRenderingHandler.removeCallbacks(this::render);
-            mRenderingHandler.post(this::render);
+            mRenderingHandler.removeCallbacks(mRenderRunnable);
+            mRenderingHandler.post(mRenderRunnable);
         }, new Handler(Looper.getMainLooper()));
         mStreamSurface = new Surface(mStreamSurfaceTexture);
 
@@ -279,7 +282,7 @@ public class OvrActivity extends Activity {
             if (mReceiverThread.isConnected()) {
                 long next = checkRenderTiming();
                 if (next > 0) {
-                    mRenderingHandler.postDelayed(this::render, next);
+                    mRenderingHandler.postDelayed(mRenderRunnable, next);
                     return;
                 }
                 long renderedFrameIndex = mDecoderThread.clearAvailable(mStreamSurfaceTexture);
@@ -292,10 +295,10 @@ public class OvrActivity extends Activity {
                     renderNative(renderedFrameIndex);
                     mPreviousRender = System.nanoTime();
 
-                    mRenderingHandler.postDelayed(this::render, 5);
+                    mRenderingHandler.postDelayed(mRenderRunnable, 5);
                 } else {
-                    mRenderingHandler.removeCallbacks(this::render);
-                    mRenderingHandler.postDelayed(this::render, 50);
+                    mRenderingHandler.removeCallbacks(mRenderRunnable);
+                    mRenderingHandler.postDelayed(mRenderRunnable, 50);
                 }
             } else {
                 if (mReceiverThread.isConnected()) {
@@ -305,8 +308,8 @@ public class OvrActivity extends Activity {
                 }
 
                 renderLoadingNative();
-                mRenderingHandler.removeCallbacks(this::render);
-                mRenderingHandler.postDelayed(this::render, 13); // 72Hz = 13.8888ms
+                mRenderingHandler.removeCallbacks(mRenderRunnable);
+                mRenderingHandler.postDelayed(mRenderRunnable, 13); // 72Hz = 13.8888ms
             }
         }
     }
@@ -341,7 +344,7 @@ public class OvrActivity extends Activity {
         if (mReceiverThread != null) {
             mReceiverThread.setSinkPrepared(mVrMode && mDecoderPrepared);
             if (mVrMode) {
-                mRenderingHandler.post(this::render);
+                mRenderingHandler.post(mRenderRunnable);
             }
         }
     }

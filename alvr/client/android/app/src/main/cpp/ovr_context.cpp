@@ -135,7 +135,7 @@ void initializeNative(void *v_env, void *v_activity, void *v_assetManager) {
             JNIEnv *env;
             jint res = g_ctx.java.Vm->GetEnv((void **) &env, JNI_VERSION_1_6);
             if (res == JNI_OK) {
-                env->CallVoidMethod(g_ctx.java.ActivityObject, jWebViewInteractionCallback, (int) type,
+                env->CallVoidMethod(c, jWebViewInteractionCallback, (int) type,
                                     coord.x,
                                     coord.y);
             } else {
@@ -631,7 +631,12 @@ std::pair<EyeFov, EyeFov> getFov() {
 }
 
 // Called TrackingThread. So, we can't use this->env.
-void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tracking) {
+void setTrackingInfo(void *v_env, TrackingInfo *packet, double displayTime, ovrTracking2 *tracking) {
+    auto *env = (JNIEnv *) v_env;
+    jclass clazz = env->FindClass("com/polygraphene/alvr/OvrActivity");
+    auto jGetBatteryLevel = env->GetMethodID(clazz, "getBatteryLevel", "()I");
+    jint batteryLevel = env->CallIntMethod(g_ctx.java.ActivityObject, jGetBatteryLevel);
+
     memset(packet, 0, sizeof(TrackingInfo));
 
     uint64_t clientTime = getTimestampUs();
@@ -646,6 +651,8 @@ void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tra
     auto fovPair = getFov();
     packet->eyeFov[0] = fovPair.first;
     packet->eyeFov[1] = fovPair.second;
+
+    packet->battery = (int)batteryLevel;
 
     memcpy(&packet->HeadPose_Pose_Orientation, &tracking->HeadPose.Pose.Orientation,
            sizeof(ovrQuatf));
@@ -703,7 +710,7 @@ void sendTrackingInfo(void *v_env, void *v_udpReceiverThread) {
     }
 
     TrackingInfo info;
-    setTrackingInfo(&info, frame->displayTime, &frame->tracking);
+    setTrackingInfo(v_env, &info, frame->displayTime, &frame->tracking);
 
     LatencyCollector::Instance().tracking(frame->frameIndex);
 

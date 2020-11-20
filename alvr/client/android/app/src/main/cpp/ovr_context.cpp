@@ -89,6 +89,9 @@ public:
 
     jmethodID mServerConnection_send{};
 
+    // headset battery level
+    int batteryLevel;
+
     struct HapticsState {
         uint64_t startUs;
         uint64_t endUs;
@@ -646,6 +649,8 @@ void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tra
     auto fovPair = getFov();
     packet->eyeFov[0] = fovPair.first;
     packet->eyeFov[1] = fovPair.second;
+    packet->battery = g_ctx.batteryLevel;
+
 
     memcpy(&packet->HeadPose_Pose_Orientation, &tracking->HeadPose.Pose.Orientation,
            sizeof(ovrQuatf));
@@ -705,6 +710,7 @@ void sendTrackingInfo(void *v_env, void *v_udpReceiverThread) {
     TrackingInfo info;
     setTrackingInfo(&info, frame->displayTime, &frame->tracking);
 
+
     LatencyCollector::Instance().tracking(frame->frameIndex);
 
     env_->CallVoidMethod(udpReceiverThread, g_ctx.mServerConnection_send,
@@ -734,7 +740,7 @@ void sendMicData(void *v_env, void *v_udpReceiverThread) {
             memset(&audio, 0, sizeof(MicAudioFrame));
 
             audio.type = ALVR_PACKET_TYPE_MIC_AUDIO;
-            audio.packetIndex = count;
+        audio.packetIndex = count;
             audio.completeSize = outputBufferNumElements;
 
             if (rest >= 100) {
@@ -1276,6 +1282,10 @@ void onGuardianSegmentAckNative(long long timestamp, int segmentIndex) {
     if (g_ctx.m_AckedGuardianSegment >= segments - 1) {
         g_ctx.m_GuardianSyncing = false;
     }
+}
+
+void onBatteryChangedNative(int battery) {
+    g_ctx.batteryLevel = battery;
 }
 
 int getLoadingTextureNative() {

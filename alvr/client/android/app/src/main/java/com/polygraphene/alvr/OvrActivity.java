@@ -2,13 +2,17 @@ package com.polygraphene.alvr;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
 import android.opengl.EGL14;
 import android.opengl.EGLContext;
+import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -25,6 +29,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
+import java.text.BreakIterator;
 import java.util.concurrent.TimeUnit;
 
 import static com.polygraphene.alvr.OffscreenWebView.WEBVIEW_HEIGHT;
@@ -78,6 +83,15 @@ public class OvrActivity extends Activity {
     boolean mDecoderPrepared = false;
     int mRefreshRate = 72;
     long mPreviousRender = 0;
+    int mBatteryLevel;
+
+    private BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver(){
+        @Override
+        public void onReceive(Context ctxt, Intent intent) {
+            onBatteryChangedNative(intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0));
+        }
+    };
+
 
     // Cache method references for performance reasons
     final Runnable mRenderRunnable = this::render;
@@ -106,6 +120,7 @@ public class OvrActivity extends Activity {
         holder.addCallback(new RenderingCallbacks());
 
         requestAudioPermissions();
+        this.registerReceiver(this.mBatInfoReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
     }
 
     //called from constructor
@@ -463,6 +478,8 @@ public class OvrActivity extends Activity {
     private native void onGuardianSyncAckNative(long timestamp);
 
     private native void onGuardianSegmentAckNative(long timestamp, int segmentIndex);
+
+    private native void onBatteryChangedNative(int battery);
 
     @SuppressWarnings("unused")
     public void applyWebViewInteractionEvent(int type, float x, float y) {

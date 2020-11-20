@@ -54,7 +54,6 @@ android {
         targetCompatibility = '1.8'
     }
     buildToolsVersion = '30.0.0'
-    ndkVersion '21.1.6352462'
 }
 
 dependencies {

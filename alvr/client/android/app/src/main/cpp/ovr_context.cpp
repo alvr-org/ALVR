@@ -89,6 +89,9 @@ public:
 
     jmethodID mServerConnection_send{};
 
+    // headset battery level
+    int batteryLevel;
+
     struct HapticsState {
         uint64_t startUs;
         uint64_t endUs;
@@ -646,7 +649,8 @@ void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tra
     auto fovPair = getFov();
     packet->eyeFov[0] = fovPair.first;
     packet->eyeFov[1] = fovPair.second;
-    packet->battery = 0;
+    packet->battery = g_ctx.batteryLevel;
+
 
     memcpy(&packet->HeadPose_Pose_Orientation, &tracking->HeadPose.Pose.Orientation,
            sizeof(ovrQuatf));
@@ -706,19 +710,6 @@ void sendTrackingInfo(void *v_env, void *v_udpReceiverThread) {
     TrackingInfo info;
     setTrackingInfo(&info, frame->displayTime, &frame->tracking);
 
-    auto clazz = env_->FindClass("com/polygraphene/alvr/OvrActivity");
-    auto jGetBatteryLevel = env_->GetMethodID(clazz, "getBatteryLevel", "()I");
-    env_->DeleteLocalRef(clazz);
-
-    JNIEnv *env;
-    auto res = g_ctx.java.Vm->GetEnv((void **) &env, JNI_VERSION_1_6);
-    if (res == JNI_OK) {
-        auto batteryLevel = env->CallIntMethod(g_ctx.java.ActivityObject, jGetBatteryLevel);
-        info.battery = (int)batteryLevel;
-    } else {
-        info.battery = 0;
-        LOGE("Failed to get JNI environment battery level");
-    }
 
     LatencyCollector::Instance().tracking(frame->frameIndex);
 
@@ -1291,6 +1282,10 @@ void onGuardianSegmentAckNative(long long timestamp, int segmentIndex) {
     if (g_ctx.m_AckedGuardianSegment >= segments - 1) {
         g_ctx.m_GuardianSyncing = false;
     }
+}
+
+void onBatteryChangedNative(int battery) {
+    g_ctx.batteryLevel = battery;
 }
 
 int getLoadingTextureNative() {

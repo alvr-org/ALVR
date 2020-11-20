@@ -88,7 +88,7 @@ public class OvrActivity extends Activity {
     private BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver(){
         @Override
         public void onReceive(Context ctxt, Intent intent) {
-            mBatteryLevel = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0);
+            onBatteryChangedNative(intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0));
         }
     };
 
@@ -476,13 +476,11 @@ public class OvrActivity extends Activity {
 
     private native void onGuardianSegmentAckNative(long timestamp, int segmentIndex);
 
+    private native void onBatteryChangedNative(int battery);
+
     @SuppressWarnings("unused")
     public void applyWebViewInteractionEvent(int type, float x, float y) {
         mWebView.applyWebViewInteractionEvent(type, x, y);
-    }
-    @SuppressWarnings("unused")
-    public int getBatteryLevel() {
-        return mBatteryLevel;
     }
 }
 

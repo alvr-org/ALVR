@@ -23,6 +23,7 @@ onHapticsFeedbackNative(long long startTime, float amplitude, float duration,
                         float frequency, unsigned char hand);
 extern "C" void onGuardianSyncAckNative(long long timestamp);
 extern "C" void onGuardianSegmentAckNative(long long timestamp, int segmentIndex);
+extern "C" void onBatteryChangedNative(int battery);
 
 extern "C" void
 initializeSocket(void *env, void *instance, int helloPort, int port, void *deviceName,

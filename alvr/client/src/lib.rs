@@ -182,6 +182,15 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onGuardianS
 }
 
 #[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onBatteryChangedNative(
+    _: JNIEnv,
+    _: JObject,
+    battery: i32,
+) {
+    onBatteryChangedNative(battery)
+}
+
+#[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_initializeSocket(
     env: JNIEnv,
     instance: JObject,

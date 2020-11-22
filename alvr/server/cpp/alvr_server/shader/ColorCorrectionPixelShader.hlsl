@@ -39,10 +39,12 @@ float4 main(float2 uv : TEXCOORD0) : SV_Target{
 	pixel += GetSharpenNeighborComponent(uv, -DX, +DY);
 	pixel += GetSharpenNeighborComponent(uv, -DX, 0);
 
-	pixel = pow(pixel, 1. / gamma);                                            // gamma
 	pixel += brightness;                                                       // brightness
 	pixel = (pixel - 0.5) * contrast + 0.5f;                                   // contast
 	pixel = lerp(dot(pixel, float3(0.299, 0.587, 0.114)), pixel, saturation);  // saturation
+
+	pixel = clamp(pixel, 0, 1);
+	pixel = pow(pixel, 1. / gamma);                                            // gamma
 
 	return float4(pixel, 1);
 }

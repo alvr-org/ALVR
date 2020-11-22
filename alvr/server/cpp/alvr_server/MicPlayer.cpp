@@ -128,7 +128,7 @@ MicPlayer::MicPlayer()
 		Error("unable to open wave mapper device\n");
 	}
 
-	Debug("Mic Audio device opened\n");
+	Info("Mic Audio device opened\n");
 }
 
 

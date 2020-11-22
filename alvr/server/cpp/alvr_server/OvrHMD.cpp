@@ -160,8 +160,8 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			return vr::VRInitError_Driver_Failed;
 		}
 
-		Debug("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
-		Debug("OSVer: %ls\n", GetWindowsOSVersion().c_str());
+		Info("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
+		Info("OSVer: %ls\n", GetWindowsOSVersion().c_str());
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
 		m_encoder = std::make_shared<CEncoder>();

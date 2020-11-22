@@ -94,7 +94,7 @@ void closeSocket() {
 void initializeJNICallbacks(JNIEnv *env, jobject instance) {
     jclass clazz = env->GetObjectClass(instance);
 
-    g_socket.mOnConnectMethodID = env->GetMethodID(clazz, "onConnected", "(IIIIIZIFFF)V");
+    g_socket.mOnConnectMethodID = env->GetMethodID(clazz, "onConnected", "(IIIZIIZIFFF)V");
     g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
     g_socket.mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
     g_socket.mSetWebGuiUrlID = env->GetMethodID(clazz, "setWebViewURL", "(Ljava/lang/String;)V");
@@ -132,6 +132,7 @@ void onConnect(const ConnectionMessage &connectionMessage) {
                                    g_socket.m_connectionMessage.videoWidth,
                                    g_socket.m_connectionMessage.videoHeight,
                                    g_socket.m_connectionMessage.codec,
+                                   g_socket.m_connectionMessage.realtimeDecoder,
                                    g_socket.m_connectionMessage.frameQueueSize,
                                    g_socket.m_connectionMessage.refreshRate,
                                    g_socket.m_connectionMessage.streamMic,

@@ -117,6 +117,7 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
         let mut server_handshake_packet = ServerHandshakePacket {
             packet_type: 2,
             codec: settings.video.codec as _,
+            realtime_decoder: settings.video.client_request_realtime_decoder,
             video_width,
             video_height,
             buffer_size_bytes: settings.connection.client_recv_buffer_size as _,

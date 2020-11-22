@@ -41,6 +41,7 @@ define({
         "_root_video_codec-choice-.description": "HEVC is preferred to achieve better visual quality on lower bitrates. AMD video cards work best with HEVC.",
         "_root_video_codec_H264-choice-.name": "h264",
         "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
+        "_root_video_clientRequestRealtimeDecoder.name": "Request realtime decoder priority (client)",
         "_root_audio_gameAudio.name": "Stream game audio",
         "_root_audio_gameAudio_content_deviceDropdown.name": "Select audio device",
         "_root_audio_gameAudio_content_deviceDropdown.description": "Audio device used to capture audio",

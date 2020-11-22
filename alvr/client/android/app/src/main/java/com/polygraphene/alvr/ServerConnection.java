@@ -19,7 +19,7 @@ class ServerConnection extends ThreadBase {
     }
 
     interface ConnectionListener {
-        void onConnected(int width, int height, int codec, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
+        void onConnected(int width, int height, int codec, boolean realtimeDecoder, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
 
         void onShutdown(String serverAddr, int serverPort);
 
@@ -191,9 +191,9 @@ class ServerConnection extends ThreadBase {
 
     // called from native
     @SuppressWarnings("unused")
-    public void onConnected(int width, int height, int codec, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset) {
+    public void onConnected(int width, int height, int codec, boolean realtimeDecoder, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset) {
         Utils.logi(TAG, () -> "onConnected is called.");
-        mConnectionListener.onConnected(width, height, codec, frameQueueSize, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset);
+        mConnectionListener.onConnected(width, height, codec, realtimeDecoder, frameQueueSize, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset);
         mTrackingThread.onConnect();
     }
 

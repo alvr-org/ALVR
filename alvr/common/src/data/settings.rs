@@ -106,6 +106,9 @@ pub struct VideoDesc {
 
     pub codec: CodecType,
 
+    #[schema(advanced)]
+    pub client_request_realtime_decoder: bool,
+
     #[schema(min = 1, max = 250)]
     pub encode_bitrate_mbs: u64,
 
@@ -355,6 +358,7 @@ pub fn session_settings_default() -> SettingsDefault {
             codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,
             },
+            client_request_realtime_decoder: true,
             encode_bitrate_mbs: 30,
             force_60hz: false,
         },

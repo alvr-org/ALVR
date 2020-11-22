@@ -366,16 +366,16 @@ public class OvrActivity extends Activity {
 
     private final ServerConnection.ConnectionListener mUdpReceiverConnectionListener = new ServerConnection.ConnectionListener() {
         @Override
-        public void onConnected(final int width, final int height, final int codec, final int frameQueueSize,
-                                final int refreshRate, final boolean streamMic, final int foveationMode,
-                                final float foveationStrength, final float foveationShape,
+        public void onConnected(final int width, final int height, final int codec, final boolean realtimeDecoder,
+                                final int frameQueueSize, final int refreshRate, final boolean streamMic,
+                                final int foveationMode, final float foveationStrength, final float foveationShape,
                                 final float foveationVerticalOffset) {
 
             // We must wait completion of notifyGeometryChange
             // to ensure the first video frame arrives after notifyGeometryChange.
             mRenderingHandler.post(() -> {
                 onStreamStartNative(width, height, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset);
-                mDecoderThread.onConnect(codec, frameQueueSize);
+                mDecoderThread.onConnect(codec, frameQueueSize, realtimeDecoder);
             });
         }
 

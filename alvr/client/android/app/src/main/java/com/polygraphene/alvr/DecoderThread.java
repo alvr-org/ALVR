@@ -22,6 +22,7 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
     private static final int CODEC_H264 = 0;
     private static final int CODEC_H265 = 1;
     private int mCodec = CODEC_H265;
+    private int mPriority = 0;
 
     private static final String VIDEO_FORMAT_H264 = "video/avc";
     private static final String VIDEO_FORMAT_H265 = "video/hevc";
@@ -166,7 +167,7 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
         format.setString("KEY_MIME", mFormat);
 
         format.setInteger(MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE);
-        format.setInteger(MediaFormat.KEY_PRIORITY, 0);
+        format.setInteger(MediaFormat.KEY_PRIORITY, mPriority);
 
         if (mCodec == CODEC_H264) {
             format.setByteBuffer("csd-0", ByteBuffer.wrap(DummySPS, 0, DummySPS.length));
@@ -252,23 +253,25 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
         }
     }
 
-    public void onConnect(int codec, int frameQueueSize) {
+    public void onConnect(int codec, int frameQueueSize, boolean realtime) {
         Utils.logi(TAG, () -> "onConnect()");
         if (mQueue != null) {
             mQueue.reset();
         }
-        notifyCodecChange(codec);
+        notifyCodecChange(codec, realtime);
     }
 
     public void onDisconnect() {
         mQueue.stop();
     }
 
-    private void notifyCodecChange(int codec) {
-        if (codec != mCodec) {
+    private void notifyCodecChange(int codec, boolean realtime) {
+        final int priority = realtime ? 0 : 1;
+        if (codec != mCodec || priority != mPriority) {
             Utils.logi(TAG, () -> "notifyCodecChange: Codec was changed. New Codec=" + codec);
             stopAndWait();
             mCodec = codec;
+            mPriority = priority;
             if (mCodec == CODEC_H264) {
                 mFormat = VIDEO_FORMAT_H264;
             } else {

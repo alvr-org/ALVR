@@ -188,6 +188,7 @@ struct HelloMessage {
 struct ConnectionMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_CONNECTION_MESSAGE
 	uint32_t codec; // enum ALVR_CODEC
+	bool realtimeDecoder;
 	uint32_t videoWidth; // in pixels
 	uint32_t videoHeight; // in pixels
 	uint32_t bufferSize; // in bytes

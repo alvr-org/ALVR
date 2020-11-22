@@ -33,6 +33,7 @@ pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
 pub struct ServerHandshakePacket {
     pub packet_type: u32,
     pub codec: u32,
+    pub realtime_decoder: bool,
     pub video_width: u32,
     pub video_height: u32,
     pub buffer_size_bytes: u32,

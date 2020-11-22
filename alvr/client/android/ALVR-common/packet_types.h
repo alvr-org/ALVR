@@ -162,6 +162,10 @@ enum ALVR_HAND_CONFIDENCE {
     alvrPinkyConfidence_High                  = (1 << 4),
     alvrHandConfidence_High                 = (1 << 5),
 };
+enum ALVR_TRACKING_SPACE {
+	ALVR_TRACKING_SPACE_LOCAL					= 0,
+	ALVR_TRACKING_SPACE_STAGE					= 1,
+};
 #define ALVR_BUTTON_FLAG(input) (1ULL << input)
 
 #pragma pack(push, 1)
@@ -199,6 +203,7 @@ struct ConnectionMessage {
     float foveationStrength;
     float foveationShape;
     float foveationVerticalOffset;
+    uint32_t trackingSpace; // ALVR_TRACKING_SPACE
 	char webGuiUrl[32];
 };
 struct BroadcastRequestMessage {

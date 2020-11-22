@@ -15,7 +15,8 @@ extern "C" void onTrackingNative(void *env, void *udpReceiverThread);
 extern "C" void onResumeNative(void *env, void *surface);
 extern "C" void onStreamStartNative(int width, int height, int refreshRate, unsigned char streamMic,
                                     int foveationMode, float foveationStrength,
-                                    float foveationShape, float foveationVerticalOffset);
+                                    float foveationShape, float foveationVerticalOffset,
+                                    int trackingSpaceType);
 extern "C" void onPauseNative();
 extern "C" void getDeviceDescriptorNative(void *env, void *deviceDescriptor);
 extern "C" void

@@ -94,7 +94,7 @@ void closeSocket() {
 void initializeJNICallbacks(JNIEnv *env, jobject instance) {
     jclass clazz = env->GetObjectClass(instance);
 
-    g_socket.mOnConnectMethodID = env->GetMethodID(clazz, "onConnected", "(IIIZIIZIFFF)V");
+    g_socket.mOnConnectMethodID = env->GetMethodID(clazz, "onConnected", "(IIIZIIZIFFFI)V");
     g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
     g_socket.mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
     g_socket.mSetWebGuiUrlID = env->GetMethodID(clazz, "setWebViewURL", "(Ljava/lang/String;)V");
@@ -139,7 +139,8 @@ void onConnect(const ConnectionMessage &connectionMessage) {
                                    g_socket.m_connectionMessage.foveationMode,
                                    g_socket.m_connectionMessage.foveationStrength,
                                    g_socket.m_connectionMessage.foveationShape,
-                                   g_socket.m_connectionMessage.foveationVerticalOffset);
+                                   g_socket.m_connectionMessage.foveationVerticalOffset,
+                                   g_socket.m_connectionMessage.trackingSpace);
 
     jstring jstr = g_socket.m_env->NewStringUTF(g_socket.m_connectionMessage.webGuiUrl);
     g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mSetWebGuiUrlID, jstr);

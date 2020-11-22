@@ -44,6 +44,7 @@ pub struct ServerHandshakePacket {
     pub foveation_strength: f32,
     pub foveation_shape: f32,
     pub foveation_vertical_offset: f32,
+    pub tracking_space: u32,
     pub web_gui_url: [u8; 32], // serde do not support arrays larger than 32. Slices can be of any
                                // size, but are not c compatible
 }

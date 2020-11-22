@@ -128,6 +128,7 @@ async fn client_discovery(session_manager: Arc<Mutex<SessionManager>>) {
             foveation_strength,
             foveation_shape,
             foveation_vertical_offset,
+            tracking_space: settings.headset.tracking_space as _,
             web_gui_url: [0; 32],
         };
 

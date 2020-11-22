@@ -119,6 +119,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamSta
     foveation_strength: f32,
     foveation_shape: f32,
     foveation_vertical_offset: f32,
+    tracking_space: i32,
 ) {
     onStreamStartNative(
         width,
@@ -129,6 +130,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamSta
         foveation_strength,
         foveation_shape,
         foveation_vertical_offset,
+        tracking_space,
     )
 }
 

@@ -79,6 +79,7 @@ public:
     uint32_t m_GuardianPointCount = 0;
     ovrVector3f *m_GuardianPoints = nullptr;
     double m_LastGuardianSyncTry = 0.0;
+    ovrTrackingSpace m_UsedTrackingSpace = VRAPI_TRACKING_SPACE_LOCAL_FLOOR;
 
     typedef std::map<uint64_t, std::shared_ptr<TrackingFrame> > TRACKING_FRAME_MAP;
 
@@ -824,7 +825,7 @@ void onResumeNative(void *v_env, void *v_surface) {
 
 void onStreamStartNative(int width, int height, int refreshRate, unsigned char streamMic,
                          int foveationMode, float foveationStrength, float foveationShape,
-                         float foveationVerticalOffset) {
+                         float foveationVerticalOffset, int trackingSpaceType) {
     int eyeWidth = width / 2;
 
     ovrRenderer_Destroy(&g_ctx.Renderer);
@@ -839,6 +840,23 @@ void onStreamStartNative(int width, int height, int refreshRate, unsigned char s
     if (result != ovrSuccess) {
         LOGE("Failed to set refresh rate requested by the server: %d", result);
     }
+
+    switch (trackingSpaceType) {
+        case ALVR_TRACKING_SPACE_LOCAL:
+            g_ctx.m_UsedTrackingSpace = VRAPI_TRACKING_SPACE_LOCAL_FLOOR;
+            break;
+        case ALVR_TRACKING_SPACE_STAGE:
+            g_ctx.m_UsedTrackingSpace = VRAPI_TRACKING_SPACE_STAGE;
+            break;
+        default:
+            g_ctx.m_UsedTrackingSpace = VRAPI_TRACKING_SPACE_LOCAL_FLOOR;
+    }
+
+    result = vrapi_SetTrackingSpace(g_ctx.Ovr, g_ctx.m_UsedTrackingSpace);
+    if (result != ovrSuccess) {
+        LOGE("Failed to set tracking space: %d", result);
+    }
+    g_ctx.m_LastHMDRecenterCount = -1; // make sure we send guardian data
 
     LOGI("Setting mic streaming %d", streamMic);
     g_ctx.mStreamMic = streamMic;
@@ -1221,7 +1239,7 @@ void sendGuardianInfo(void *v_env, void *v_udpReceiverThread) {
         packet.timestamp = g_ctx.m_GuardianTimestamp;
         packet.totalPointCount = g_ctx.m_GuardianPointCount;
 
-        ovrPosef spacePose = vrapi_LocateTrackingSpace(g_ctx.Ovr, VRAPI_TRACKING_SPACE_LOCAL_FLOOR);
+        ovrPosef spacePose = vrapi_LocateTrackingSpace(g_ctx.Ovr, g_ctx.m_UsedTrackingSpace);
         memcpy(&packet.standingPosRotation, &spacePose.Orientation, sizeof(TrackingQuat));
         memcpy(&packet.standingPosPosition, &spacePose.Position, sizeof(TrackingVector3));
 

@@ -369,12 +369,12 @@ public class OvrActivity extends Activity {
         public void onConnected(final int width, final int height, final int codec, final boolean realtimeDecoder,
                                 final int frameQueueSize, final int refreshRate, final boolean streamMic,
                                 final int foveationMode, final float foveationStrength, final float foveationShape,
-                                final float foveationVerticalOffset) {
+                                final float foveationVerticalOffset, final int trackingSpaceType) {
 
             // We must wait completion of notifyGeometryChange
             // to ensure the first video frame arrives after notifyGeometryChange.
             mRenderingHandler.post(() -> {
-                onStreamStartNative(width, height, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset);
+                onStreamStartNative(width, height, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset, trackingSpaceType);
                 mDecoderThread.onConnect(codec, frameQueueSize, realtimeDecoder);
             });
         }
@@ -471,7 +471,7 @@ public class OvrActivity extends Activity {
 
     private native void getDeviceDescriptorNative(DeviceDescriptor deviceDescriptor);
 
-    private native void onStreamStartNative(int width, int height, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset);
+    private native void onStreamStartNative(int width, int height, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset, int trackingSpaceType);
 
     private native void onHapticsFeedbackNative(long startTime, float amplitude, float duration, float frequency, boolean hand);
 

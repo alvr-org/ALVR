@@ -68,6 +68,13 @@ pub enum CodecType {
     HEVC,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Debug)]
+#[repr(u8)]
+pub enum TrackingSpace {
+    Local,
+    Stage,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VideoDesc {
@@ -223,6 +230,8 @@ pub struct HeadsetDesc {
     pub force_3dof: bool,
 
     pub controllers: Switch<ControllersDesc>,
+
+    pub tracking_space: TrackingSpace, 
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -401,6 +410,9 @@ pub fn session_settings_default() -> SettingsDefault {
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,
                 },
+            },
+            tracking_space: TrackingSpaceDefault {
+                variant: TrackingSpaceDefaultVariant::Local,
             },
         },
         connection: ConnectionDescDefault {

@@ -49,7 +49,8 @@ void Info(const char *format, ...)
 
 void Debug(const char *format, ...)
 {
-#ifdef _DEBUG
+// Use our define instead of _DEBUG - see build.rs for details.
+#ifdef ALVR_DEBUG_LOG
 	va_list args;
 	va_start(args, format);
 	_log(format, args, LogDebug);

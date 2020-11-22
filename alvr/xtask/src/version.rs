@@ -40,7 +40,7 @@ fn bump_client_gradle_version(new_version: &Version) -> BResult {
     let old_client_version = alvr_xtask::client_version();
 
     println!(
-        "Bumping HMD client version: {} -> {}",
+        "Bumping client version (gradle): {} -> {}",
         old_client_version, new_version
     );
 
@@ -71,14 +71,9 @@ fn bump_client_gradle_version(new_version: &Version) -> BResult {
     Ok(())
 }
 
-fn bump_server_cargo_version(new_version: &Version) -> BResult {
-    println!(
-        "Bumping server version: {} -> {}",
-        alvr_xtask::server_version(),
-        new_version
-    );
+fn bump_cargo_version<P: AsRef<Path>>(path: P, new_version: &Version) -> BResult {
     let manifest_path = workspace_dir()
-        .join("alvr/server")
+        .join(path)
         .join("Cargo.toml");
 
     let mut manifest = Document::from_str(&fs::read_to_string(&manifest_path)?)?;
@@ -93,11 +88,30 @@ fn bump_server_cargo_version(new_version: &Version) -> BResult {
     Ok(())
 }
 
+fn bump_server_cargo_version(new_version: &Version) -> BResult {
+    println!(
+        "Bumping server version: {} -> {}",
+        alvr_xtask::server_version(),
+        new_version
+    );
+    bump_cargo_version("alvr/server", new_version)
+}
+
+fn bump_client_cargo_version(new_version: &Version) -> BResult {
+    println!(
+        "Bumping client version (cargo): {} -> {}",
+        alvr_xtask::client_version(),
+        new_version
+    );
+    bump_cargo_version("alvr/client", new_version)
+}
+
 pub fn bump_versions(server_arg: Option<String>, client_arg: Option<String>) -> BResult {
     let versions = bumped_versions(server_arg.as_deref(), client_arg.as_deref());
     match versions {
         Ok((client_version, server_version)) => {
             ok_or_exit(bump_client_gradle_version(&client_version));
+            ok_or_exit(bump_client_cargo_version(&client_version));
             ok_or_exit(bump_server_cargo_version(&server_version));
 
             let tag = match (server_arg, client_arg) {

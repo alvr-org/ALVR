@@ -22,6 +22,7 @@ fn main() {
             .filter(|ext| ext.to_string_lossy() == "cpp")
             .is_some()
     });
+    let alvr_client_version = format!(r#""{}""#, env!("CARGO_PKG_VERSION"));
 
     cc::Build::new()
         .cpp(true)
@@ -34,6 +35,7 @@ fn main() {
         .include(&source_cpp_dir)
         .include(source_cpp_dir.join("gl_render_utils"))
         .define("OVR_SDK", None)
+        .define("ALVR_CLIENT_VERSION", alvr_client_version.as_ref())
         .cpp_link_stdlib("c++_static")
         .compile("bindings");
 

@@ -17,7 +17,7 @@ static const char *ALVR_HELLO_PACKET_SIGNATURE = "ALVR";
 static const int ALVR_GUARDIAN_SEGMENT_SIZE = 100;
 static const double ALVR_GUARDIAN_RESEND_CD_SEC = 1.0;
 
-static const char *ALVR_VERSION = "12.5.0";
+static const char *ALVR_VERSION = ALVR_CLIENT_VERSION; // defined through client's build.rs
 
 enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_HELLO_MESSAGE = 1,

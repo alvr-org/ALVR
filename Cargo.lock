@@ -58,7 +58,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client"
-version = "12.5.0"
+version = "13.0.0"
 dependencies = [
  "bindgen",
  "cc",
@@ -110,7 +110,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "12.6.1"
+version = "13.0.0"
 dependencies = [
  "alvr_common",
  "bindgen",

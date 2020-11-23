@@ -4,7 +4,7 @@ define({
     "titleHardwareReq": "Requisitos de hardware",
     "textHardwareReq": "ALVR requiere una tarjeta gráfica dedicada reciente (los gráficos Intel HD no son compatibles). Aquí puedes ver una <a target='_blank' href='https://github.com/polygraphene/ALVR/wiki/Supported-GPU'>lista de GPUs soportadas</a>. <br/> <br/> Asegúrate de tener al menos un dispositivo de salida de audio.",
     "titleSoftwareReq": "Requisitos de software",
-    "textSoftwareReq": "Compruebe que ha instalado previamente SteamVR, que lo ha encendido al menos una vez y luego lo ha cerrado. <br/> <br/> Si aún no lo ha hecho, instale el último paquete <a  target='_blank' href='https://support.microsoft.com/it-it/help/2977003/the-latest-supported-visual-c-downloads'>Visual C++ Redistrubutable x64</a>. <br/> <br/> Para transmitir el audio desde el micrófono del visor necesitas instalar el <a  target='_blank' href='https://www.vb-audio.com/Cable/'>Virtual Audio Cable</a>.",
+    "textSoftwareReq": "Para transmitir el audio desde el micrófono del visor necesitas instalar <a  target='_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
     "titleFirewall": "Cortafuegos",
     "textFirewall": "Para comunicarse con el visor se deben establecer ciertas excepciones en el cortafuegos. Esto requiere privilegios de administrador.",
     "buttonFirewall": "Añadir excepción al cortafuegos",

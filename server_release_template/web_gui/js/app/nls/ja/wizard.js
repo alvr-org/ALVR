@@ -4,7 +4,7 @@ define({
     "titleHardwareReq": "ハードウェア要件",
     "textHardwareReq": "ALVRには高性能なグラフィックボードが必要です（CPU内蔵のIntel HD Graphicsには対応していません）. サポートされているGPUの一覧は<a target='_blank' href='https://github.com/polygraphene/ALVR/wiki/Supported-GPU'>こちら</a>に記載しています. <br/> <br/> また, 少なくとも1つのオーディオ出力機器があることを確認してください.",
     "titleSoftwareReq": "ソフトウェア要件",
-    "textSoftwareReq": "SteamVRをインストールし, 1度起動してから閉じてください. <br/> <br/> <a  target='_blank' href='https://support.microsoft.com/ja-jp/help/2977003/the-latest-supported-visual-c-downloads'>Visual C++ Redistrubutable x64</a>のインストールも必要です. <br/> <br/> Oculus Questのマイクをストリーミングするには<a  target='_blank' href='https://www.vb-audio.com/Cable/'>Virtual Audio Cable</a>もインストールしてください.",
+    "textSoftwareReq": "Oculus Questのマイクをストリーミングするには<a  target='_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>もインストールしてください.",
     "titleFirewall": "ファイアウォール",
     "textFirewall": "ヘッドセットと通信するためにはファイアウォールの設定が必要です. この操作には管理者権限を要します.",
     "buttonFirewall" : "ファイアウォール設定を追加",

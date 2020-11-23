@@ -5,7 +5,7 @@ define({
         "titleHardwareReq": "Hardware requirements",
         "textHardwareReq": "ALVR requires a dedicated and recent graphics card. <br/> <br/> Make sure you have at least one output audio device. <br/> <br/> ",
         "titleSoftwareReq": "Software requirements",
-        "textSoftwareReq": "Make sure you installed SteamVR, launched it at least once and then closed it. <br/> <br/> If you didn't already, please install the latest <a  target='_blank' href='https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads'>Visual C++ Redistrubutable x64</a> package. <br/> <br/> To stream the Quest microphone you need to install the <a  target='_blank' href='https://www.vb-audio.com/Cable/'>Virtual Audio Cable</a>.",
+        "textSoftwareReq": "To stream the Quest microphone you need to install the <a  target='_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
         "titleFirewall": "Firewall",
         "textFirewall": "To communicate with the headset, some firewall rules need to be set. This requires administrator rights.",
         "buttonFirewall": "Add firewall rules",

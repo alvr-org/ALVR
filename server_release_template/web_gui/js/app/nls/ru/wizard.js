@@ -4,7 +4,7 @@ define({
     "titleHardwareReq": "Технические требования",
     "textHardwareReq": "ALVR требует дискретную и современную графическую карту. <br/> <br/> Убедитесь в наличии как минимум одного устройства вывода аудио. <br/> <br/>",
     "titleSoftwareReq": "Программные требования",
-    "textSoftwareReq": "Убедитесь, что установили SteamVR, хотя бы один раз его запустили и закрыли после. <br/> <br/> Если вы ещё этого не сделали, пожалуйста, установите последнюю версию пакета <a  target='_blank' href='https://support.microsoft.com/ru-ru/help/2977003/the-latest-supported-visual-c-downloads'>Visual C++ Redistrubutable x64</a>. <br/> <br/> Чтобы использовать микрофон шлема Quest, вам необходимо установить <a  target='_blank' href='https://www.vb-audio.com/Cable/'>Виртуальный Аудио Кабель (VB-Cable)</a>.",
+    "textSoftwareReq": "Чтобы использовать микрофон шлема Quest, вам необходимо установить <a  target='_blank' href='https://www.vb-audio.com/Cable/'>Виртуальный Аудио Кабель (VB-Audio Virtual Cable)</a>.",
     "titleFirewall": "Брандмауэр",
     "textFirewall": "Чтобы связываться со шлемом, должны быть установлены определенные правила брандмауэра. Это потребует наличие прав администратора.",
     "buttonFirewall": "Добавить правила брандмауэра",

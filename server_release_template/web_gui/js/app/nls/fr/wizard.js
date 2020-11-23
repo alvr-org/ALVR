@@ -4,7 +4,7 @@ define({
     "titleHardwareReq": "Matériel requis",
     "textHardwareReq": "ALVR nécésite une carte graphique dédié et recente (Intel HD graphics non supporté). Voici une <a target='_blank' href='https://github.com/polygraphene/ALVR/wiki/Supported-GPU'>liste de GPU supporté</a>. <br/> <br/> Assurez vous d'avoir au moins une sortie audio.",
     "titleSoftwareReq": "Logiciels requis",
-    "textSoftwareReq": "Assurez vous d'avoir installé SteamVR, et de l'avoir lancé au moins une fois. <br/> <br/> Si vous ne l'avez pas deja fait, veuillez installer la derniere version de <a  target='_blank' href='https://support.microsoft.com/fr-fr/help/2977003/the-latest-supported-visual-c-downloads'>Visual C++ Redistrubutable x64</a>. <br/> <br/> Pour transemettre l'audio du microphone veuillez installer <a  target='_blank' href='https://www.vb-audio.com/Cable/'>Cable audio virtuel</a>.",
+    "textSoftwareReq": "Pour transemettre l'audio du microphone veuillez installer <a  target='_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
     "titleFirewall": "Pare-feu",
     "textFirewall": "Pour communiquer avec le casque, quelques règles de pare-feu doivent etre ajoutés. Cela nécésite les droits administrateur.",
     "buttonFirewall" : "Ajouter règles de pare-feu",

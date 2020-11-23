@@ -4,7 +4,7 @@ define({
     "titleHardwareReq": "Хардуерни изисквания",
     "textHardwareReq": "ALVR изисква дискретна и съвременна графична карта. <br/> <br/> Убедете се в наличност като минимум едно устройство извежда аудио. <br/> <br/>",
     "titleSoftwareReq": "Софтуерни изисквания",
-    "textSoftwareReq": "Уверете се, че сте инсталирали SteamVR, стартирали сте го поне веднъж и след това сте го затворили. <br/> <br/> Ако още не сте го направили, моля, инсталирайте най-новия <a target = '_ blank' href='https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads'> Visual C ++ Redistributable x64 </a> пакет. <br/> <br/> За да предавате поточно микрофона Quest, трябва да инсталирате <a target='_blank' href='https://www.vb-audio.com/Cable/'> виртуалния аудио кабел </a >.",
+    "textSoftwareReq": "За да предавате поточно микрофона Quest, трябва да инсталирате <a target='_blank' href='https://www.vb-audio.com/Cable/'> виртуалния аудио кабел </a >.",
     "titleFirewall": "Защитна стена",
     "textFirewall": "За да комуникирате със слушалките, трябва да се зададат някои правила на защитната стена. Това изисква администраторски права.",
     "buttonFirewall": "Добавете правила за защитната стена",

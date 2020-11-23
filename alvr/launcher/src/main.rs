@@ -142,22 +142,19 @@ fn get_latest_server_release() -> StrResult<(Release, Version)> {
             .build
             .get(0)
             .map(|b| b.to_string() != "client")
-            .unwrap_or(false);
+            .unwrap_or(true);
         if is_server && (!version.is_prerelease() || wants_prereleases) {
             return Ok((release, version));
         }
     }
 
     Err("No server release found".into())
-
-    // let release = trace_err!(release_list.fetch())?.remove(0);
-    // let version = trace_err!(Version::parse(&release.version))?;
-    // Ok((release, version))
 }
 
 fn get_server_update() -> Option<(Release, Version)> {
-    get_latest_server_release().ok()
-    // .filter(|(_, version)| *version != *ALVR_SERVER_VERSION)
+    get_latest_server_release()
+        .ok()
+        .filter(|(_, version)| *version != *ALVR_SERVER_VERSION)
 }
 
 // change Nexite to JackD83 for actual release

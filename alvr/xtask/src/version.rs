@@ -94,7 +94,8 @@ fn bump_server_cargo_version(new_version: &Version) -> BResult {
         alvr_xtask::server_version(),
         new_version
     );
-    bump_cargo_version("alvr/server", new_version)
+    bump_cargo_version("alvr/server", new_version)?;
+    bump_cargo_version("alvr/launcher", new_version)
 }
 
 fn bump_client_cargo_version(new_version: &Version) -> BResult {

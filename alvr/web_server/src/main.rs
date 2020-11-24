@@ -296,7 +296,7 @@ async fn http_api(
             }
         }
         "/driver/register" => {
-            if driver_registration(&alvr_server_dir(), true).is_ok() {
+            if driver_registration(&[alvr_server_dir()], true).is_ok() {
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::INTERNAL_SERVER_ERROR)?
@@ -304,7 +304,7 @@ async fn http_api(
         }
         "/driver/unregister" => {
             if let Ok(path) = from_body::<PathBuf>(body).await {
-                if driver_registration(&path, false).is_ok() {
+                if driver_registration(&[path], false).is_ok() {
                     reply(StatusCode::OK)?
                 } else {
                     reply(StatusCode::INTERNAL_SERVER_ERROR)?

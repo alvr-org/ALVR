@@ -1,10 +1,7 @@
 use crate::*;
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
-    process::*,
-};
+use std::{collections::HashSet, env, fs, path::{Path, PathBuf}, process::*};
 use sysinfo::*;
+use serde_json as json;
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -21,32 +18,78 @@ pub fn exec_fname(name: &str) -> String {
     format!("{}.exe", name)
 }
 
-#[cfg(target_os = "linux")]
-fn steamvr_bin_dir() -> StrResult<PathBuf> {
-    Ok(dirs::home_dir()
-        .unwrap()
-        .join(".steam/steam/steamapps/common/SteamVR/bin/linux64"))
+fn openvr_source_file_path() -> StrResult<PathBuf> {
+    Ok(trace_none!(dirs::cache_dir())?.join("openvr/openvrpaths.vrpath"))
 }
-#[cfg(windows)]
-pub fn steamvr_bin_dir() -> StrResult<PathBuf> {
-    use winreg::*;
-    let key = trace_err!(
-        RegKey::predef(enums::HKEY_CLASSES_ROOT).open_subkey("vrmonitor\\Shell\\Open\\Command")
+
+fn load_openvr_paths_json() -> StrResult<json::Value> {
+    let file_content = trace_err!(
+        fs::read_to_string(openvr_source_file_path()?),
+        "SteamVR probably not installed"
     )?;
-    let command_string: String = trace_err!(key.get_value(""))?;
 
-    let path_string = trace_err!(regex::Regex::new(r#""(.+)\\vrmonitor.exe""#))?
-        .captures(&command_string)
-        .ok_or_else(|| "regex failed")?
-        .get(1)
-        .ok_or_else(|| "regex failed")?
-        .as_str();
-
-    Ok(PathBuf::from(path_string))
+    trace_err!(json::from_str(&file_content))
 }
 
-fn steamvr_dir() -> StrResult<PathBuf> {
-    Ok(trace_none!(trace_none!(steamvr_bin_dir()?.parent())?.parent())?.into())
+fn save_openvr_paths_json(openvr_paths: &json::Value) -> StrResult {
+    let file_content = trace_err!(json::to_string_pretty(openvr_paths))?;
+
+    trace_err!(fs::write(openvr_source_file_path()?, file_content))
+}
+
+fn from_openvr_paths(paths: &json::Value) -> StrResult<Vec<PathBuf>> {
+    let paths_vec = match paths.as_array() {
+        Some(vec) => vec,
+        None => return Ok(vec![]),
+    };
+
+    Ok(paths_vec
+        .iter()
+        .filter_map(json::Value::as_str)
+        .map(|s| PathBuf::from(s.replace(r"\\", r"\")))
+        .collect())
+}
+
+fn to_openvr_paths(paths: &[PathBuf]) -> json::Value {
+    let paths_vec = paths
+        .iter()
+        .map(|p| p.to_string_lossy().into())
+        .map(json::Value::String) // backslashes gets duplicated here
+        .collect::<Vec<_>>();
+
+    json::Value::Array(paths_vec)
+}
+
+fn steamvr_root_dir() -> StrResult<PathBuf> {
+    let openvr_paths_json = load_openvr_paths_json()?;
+    let paths_json = trace_none!(openvr_paths_json.get("runtime"))?;
+    trace_none!(from_openvr_paths(paths_json)?.get(0).cloned())
+}
+
+pub fn get_registered_drivers() -> StrResult<Vec<PathBuf>> {
+    from_openvr_paths(trace_none!(
+        load_openvr_paths_json()?.get_mut("external_drivers")
+    )?)
+}
+
+pub fn driver_registration(driver_paths: &[PathBuf], register: bool) -> StrResult {
+    let mut openvr_paths_json = load_openvr_paths_json()?;
+    let paths_json_ref = trace_none!(openvr_paths_json.get_mut("external_drivers"))?;
+
+    let mut paths: HashSet<_> = from_openvr_paths(paths_json_ref)?.into_iter().collect();
+
+    if register {
+        paths.extend(driver_paths.iter().cloned());
+    } else {
+        for path in driver_paths {
+            paths.remove(path);
+        }
+    }
+
+    // write into openvr_paths_json, the other fields are preserved
+    *paths_json_ref = to_openvr_paths(paths.into_iter().collect::<Vec<_>>().as_slice());
+
+    save_openvr_paths_json(&openvr_paths_json)
 }
 
 #[cfg(windows)]
@@ -132,30 +175,6 @@ pub fn kill_steamvr() {
     }
 }
 
-pub fn driver_registration(root_server_dir: &Path, register: bool) -> StrResult {
-    let steamvr_bin_dir = steamvr_bin_dir()?;
-    if cfg!(target_os = "linux") {
-        env::set_var("LD_LIBRARY_PATH", &steamvr_bin_dir);
-    }
-
-    let exec = steamvr_bin_dir.join(exec_fname("vrpathreg"));
-    let subcommand = if register {
-        "adddriver"
-    } else {
-        "removedriver"
-    };
-
-    let exit_status = trace_err!(Command::new(exec)
-        .args(&[subcommand, &root_server_dir.to_string_lossy()])
-        .status())?;
-
-    if exit_status.success() {
-        Ok(())
-    } else {
-        Err(format!("Error registering driver: {}", exit_status))
-    }
-}
-
 fn netsh_add_rule_command_string(rule_name: &str, program_path: &Path) -> String {
     format!(
         "netsh advfirewall firewall add rule name=\"{}\" dir=in program=\"{}\" action=allow",
@@ -184,7 +203,7 @@ pub fn firewall_rules(root_server_dir: &Path, add: bool) -> Result<(), i32> {
             netsh_add_rule_command_string("ALVR Launcher", &web_server_path),
             netsh_add_rule_command_string(
                 "SteamVR ALVR vrserver",
-                &steamvr_dir()
+                &steamvr_root_dir()
                     .map_err(|_| -1)?
                     .join("bin")
                     .join("win64")
@@ -192,7 +211,7 @@ pub fn firewall_rules(root_server_dir: &Path, add: bool) -> Result<(), i32> {
             ),
             netsh_add_rule_command_string(
                 "SteamVR ALVR vrserver",
-                &steamvr_dir()
+                &steamvr_root_dir()
                     .map_err(|_| -1)?
                     .join("bin")
                     .join("win32")
@@ -222,19 +241,6 @@ pub fn firewall_rules(root_server_dir: &Path, add: bool) -> Result<(), i32> {
     }
 }
 
-pub fn get_registered_drivers() -> StrResult<Vec<PathBuf>> {
-    let output =
-        trace_err!(Command::new(steamvr_bin_dir()?.join(exec_fname("vrpathreg"))).output())?;
-    let output = String::from_utf8_lossy(&output.stdout);
-
-    let dirs = trace_err!(regex::Regex::new(r"\t([^\t\r\n]*)"))?
-        .captures_iter(&output)
-        .filter_map(|captures| captures.get(1))
-        .map(|cap_match| PathBuf::from(cap_match.as_str()))
-        .collect::<Vec<_>>();
-    Ok(dirs)
-}
-
 pub fn get_alvr_dir() -> StrResult<PathBuf> {
     for dir in get_registered_drivers()? {
         if dir.join(exec_fname("ALVR Launcher")).exists() && dir.join("web_gui").exists() {
@@ -247,7 +253,7 @@ pub fn get_alvr_dir() -> StrResult<PathBuf> {
 
 pub fn unregister_all_drivers() -> StrResult {
     for dir in get_registered_drivers()? {
-        driver_registration(&dir, false)?;
+        driver_registration(&[dir], false)?;
     }
 
     Ok(())
@@ -256,10 +262,6 @@ pub fn unregister_all_drivers() -> StrResult {
 pub fn maybe_open_launcher(alvr_dir: &Path) {
     let mut command = Command::new(alvr_dir.join("ALVR Launcher"));
     command.creation_flags(CREATE_NO_WINDOW).spawn().ok();
-}
-
-fn openvr_source_file_path() -> StrResult<PathBuf> {
-    Ok(trace_none!(dirs::cache_dir())?.join("openvr/openvrpaths.vrpath"))
 }
 
 pub fn check_steamvr_installation() -> bool {

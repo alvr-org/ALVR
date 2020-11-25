@@ -1,10 +1,10 @@
-use alvr_common::{data::*, logging::*, *};
+use crate::{*, logging::LogId, data::*};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::*;
 
 const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 4_000;
 const HANDSHAKE_PORT: u16 = 9943;
+const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 4_000;
 
 pub async fn search_client(
     client_ip: Option<String>,

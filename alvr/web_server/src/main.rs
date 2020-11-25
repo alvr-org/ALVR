@@ -1,12 +1,18 @@
 mod logging_backend;
-mod sockets;
 mod tail;
 
 use alvr_common::{commands::*, data::*, logging::*, *};
 use bytes::buf::BufExt;
 use futures::{stream::StreamExt, SinkExt};
 use headers::{self, HeaderMapExt};
-use hyper::{Body, Method, Request, Response, StatusCode, header, header::CACHE_CONTROL, header::{ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue}, http::request::Parts, service::{make_service_fn, service_fn}};
+use hyper::{
+    header,
+    header::CACHE_CONTROL,
+    header::{HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN},
+    http::request::Parts,
+    service::{make_service_fn, service_fn},
+    Body, Method, Request, Response, StatusCode,
+};
 use logging_backend::*;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json as json;
@@ -363,10 +369,9 @@ async fn http_api(
         CACHE_CONTROL,
         trace_err!(HeaderValue::from_str("no-cache, no-store, must-revalidate"))?,
     );
-    response.headers_mut().insert(
-        ACCESS_CONTROL_ALLOW_ORIGIN,
-        HeaderValue::from_static("*"),
-    );
+    response
+        .headers_mut()
+        .insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
 
     Ok(response)
 }

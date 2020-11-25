@@ -1,10 +1,12 @@
 #include "ClientConnection.h"
 #include "Bitrate.h"
 
-ClientConnection::ClientConnection()
+ClientConnection::ClientConnection(std::function<void()> streamStartCallback)
 	: m_bExiting(false)
 	, m_Streaming(false)
 	, m_LastStatisticsUpdate(0) {
+	m_StreamStartCallback = streamStartCallback;
+
 	memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
 	InitializeCriticalSection(&m_CS);
 
@@ -21,16 +23,10 @@ ClientConnection::~ClientConnection() {
 	DeleteCriticalSection(&m_CS);
 }
 void ClientConnection::SetPoseUpdatedCallback(std::function<void()> callback) {
-	m_PoseUpdatedCallback = callback;
-}
-void ClientConnection::SetStreamStartCallback(std::function<void()> callback) {
-	m_StreamStartCallback = callback;
+	m_PoseUpdatedCallback.reset(new std::function<void()>(callback));
 }
 void ClientConnection::SetPacketLossCallback(std::function<void()> callback) {
-	m_PacketLossCallback = callback;
-}
-void ClientConnection::SetShutdownCallback(std::function<void()> callback) {
-	m_ShutdownCallback = callback;
+	m_PacketLossCallback.reset(new std::function<void()>(callback));
 }
 
 bool ClientConnection::Startup() {
@@ -316,7 +312,9 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			m_TrackingInfo.HeadPose_Pose_Orientation.y,
 			m_TrackingInfo.HeadPose_Pose_Orientation.z,
 			m_TrackingInfo.HeadPose_Pose_Orientation.w);
-		m_PoseUpdatedCallback();
+		if (m_PoseUpdatedCallback) {
+			(*m_PoseUpdatedCallback)();
+		}
 	}
 	else if (type == ALVR_PACKET_TYPE_TIME_SYNC && len >= sizeof(TimeSync)) {
 		if (!m_Socket->IsLegitClient(addr)) {
@@ -493,7 +491,9 @@ void ClientConnection::OnFecFailure() {
 		}
 	}
 	m_lastFecFailure = GetTimestampUs();
-	m_PacketLossCallback();
+	if (m_PacketLossCallback) {
+		(*m_PacketLossCallback)();
+	}
 }
 
 std::shared_ptr<Statistics> ClientConnection::GetStatistics() {

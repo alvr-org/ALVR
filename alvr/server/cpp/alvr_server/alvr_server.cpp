@@ -72,9 +72,7 @@ public:
 	virtual void EnterStandby() override {}
 	virtual void LeaveStandby() override {}
 
-private:
-	std::shared_ptr<OvrHmd> m_pRemoteHmd; 
-	std::shared_ptr<ClientConnection> m_Listener; 
+	std::shared_ptr<OvrHmd> m_pRemoteHmd;
 	std::shared_ptr<IPCMutex> m_mutex; 
 };
 
@@ -92,17 +90,8 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 		return vr::VRInitError_Driver_Failed;
 	}
 
-	//create listener
-	m_Listener = std::make_shared<ClientConnection>();
-
-	//init listener
-	if (!m_Listener->Startup())
-	{
-		return vr::VRInitError_Driver_Failed;
-	}
-
 	//create new virtuall hmd
-	m_pRemoteHmd = std::make_shared<OvrHmd>(m_Listener);
+	m_pRemoteHmd = std::make_shared<OvrHmd>();
 
 	// Launcher is running. Enable driver.
 	m_pRemoteHmd->Enable();
@@ -112,7 +101,6 @@ vr::EVRInitError CServerDriver_DisplayRedirect::Init( vr::IVRDriverContext *pCon
 
 void CServerDriver_DisplayRedirect::Cleanup()
 {
-	m_Listener.reset();
 	m_pRemoteHmd.reset();
 	m_mutex.reset();
 
@@ -177,4 +165,12 @@ void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 		*pReturnCode = vr::VRInitError_Init_InterfaceNotFound;
 
 	return NULL;
+}
+
+void InitializeStreaming() {
+	g_serverDriverDisplayRedirect.m_pRemoteHmd->StartStreaming();
+}
+
+void DeinitializeStreaming() {
+	g_serverDriverDisplayRedirect.m_pRemoteHmd->StopStreaming();
 }

@@ -10,9 +10,9 @@
 class OvrDirectModeComponent : public vr::IVRDriverDirectModeComponent
 {
 public:
-	OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender,
-		std::shared_ptr<CEncoder> pEncoder,
-		std::shared_ptr<ClientConnection> Listener);
+	OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender);
+
+	void SetEncoder(std::shared_ptr<CEncoder> pEncoder);
 
 	void OnPoseUpdated(TrackingInfo &info);
 

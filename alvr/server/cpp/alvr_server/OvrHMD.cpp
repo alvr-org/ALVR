@@ -8,26 +8,15 @@ void fixInvalidHaptics(float hapticFeedback[3])
 	}
 }
 
-OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
+OvrHmd::OvrHmd()
 		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 		, m_added(false)
 		, mActivated(false)
-		, m_Listener(listener)
 	{
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
 		Debug("Startup: %hs %hs\n", APP_MODULE_NAME, APP_VERSION_STRING);
-
-		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
-		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
-		std::function<void()> packetLossCallback = [&]() { OnPacketLoss(); };
-		std::function<void()> shutdownCallback = [&]() { OnShutdown(); };
-
-		m_Listener->SetPoseUpdatedCallback(poseCallback);
-		m_Listener->SetStreamStartCallback(streamStartCallback);
-		m_Listener->SetPacketLossCallback(packetLossCallback);
-		m_Listener->SetShutdownCallback(shutdownCallback);
 
 		Debug("CRemoteHmd successfully initialized.\n");
 	}
@@ -36,23 +25,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 	{
 		MaybeKillWebServer();
 
-		if (m_encoder)
-		{
-			m_encoder->Stop();
-			m_encoder.reset();
-		}
-
-		if (m_audioCapture)
-		{
-			m_audioCapture->Shutdown();
-			m_audioCapture.reset();
-		}
-
-		if (m_Listener)
-		{
-			m_Listener->Stop();
-			m_Listener.reset();
-		}
+		DeinitializeStreaming();
 
 		if (m_VSyncThread)
 		{
@@ -163,44 +136,19 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		Info("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
 		Info("OSVer: %ls\n", GetWindowsOSVersion().c_str());
 
-		// Spin up a separate thread to handle the overlapped encoding/transmit step.
-		m_encoder = std::make_shared<CEncoder>();
-		try {
-			m_encoder->Initialize(m_D3DRender, m_Listener);
-		}
-		catch (Exception e) {
-			Error("Failed to initialize CEncoder. %s\n", e.what());
-			return vr::VRInitError_Driver_Failed;
-		}
-		m_encoder->Start();
-
-		if (Settings::Instance().m_enableSound) {
-			m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
-			try {
-				m_audioCapture->Start(Settings::Instance().m_soundDevice);
-			}
-			catch (Exception e) {
-				Error("Failed to start audio capture. %s\n", e.what());
-				return vr::VRInitError_Driver_Failed;
-			}
-		}
-
 		m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
 		m_VSyncThread->Start();
 
-	
-
 		m_displayComponent = std::make_shared<OvrDisplayComponent>();
-		m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_encoder, m_Listener);
+		m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender);
 
 		mActivated = true;
-
-		OnStreamStart();
-
 
 		vr::VREvent_Data_t eventData;
 		eventData.ipd = { Settings::Instance().m_flIPD };
 		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_IpdChanged, eventData, 0);
+
+		InitializeStreaming(); // to be removed
 
 		return vr::VRInitError_None;
 	}
@@ -250,7 +198,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 		pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-		if (m_Listener->HasValidTrackingInfo()) {
+		if (m_Listener && m_Listener->HasValidTrackingInfo()) {
 
 			TrackingInfo info;
 			m_Listener->GetTrackingInfo(info);
@@ -303,7 +251,7 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 	void OvrHmd::OnPoseUpdated() {
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
 		{
-			if (!m_Listener->HasValidTrackingInfo()) {
+			if (!m_Listener || !m_Listener->HasValidTrackingInfo()) {
 				return;
 			}
 			if (!m_added || !mActivated) {
@@ -329,6 +277,68 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 		
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
+		}
+	}
+
+	void OvrHmd::StartStreaming() {
+		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
+
+		//create listener
+		m_Listener.reset(new ClientConnection(streamStartCallback));
+
+		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
+		std::function<void()> packetLossCallback = [&]() { OnPacketLoss(); };
+		m_Listener->SetPoseUpdatedCallback(poseCallback);
+		m_Listener->SetPacketLossCallback(packetLossCallback);
+
+		//init listener
+		if (!m_Listener->Startup())
+		{
+			Error("Failed to startup listener");
+		}
+
+		// Spin up a separate thread to handle the overlapped encoding/transmit step.
+		m_encoder = std::make_shared<CEncoder>();
+		try {
+			m_encoder->Initialize(m_D3DRender, m_Listener);
+		}
+		catch (Exception e) {
+			Error("Failed to initialize CEncoder. %s\n", e.what());
+		}
+		m_encoder->Start();
+
+		if (Settings::Instance().m_enableSound) {
+			m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
+			try {
+				m_audioCapture->Start(Settings::Instance().m_soundDevice);
+			}
+			catch (Exception e) {
+				Error("Failed to start audio capture. %s\n", e.what());
+			}
+		}
+
+		m_directModeComponent->SetEncoder(m_encoder);
+
+		m_encoder->OnStreamStart();
+	}
+
+	void OvrHmd::StopStreaming() {
+		if (m_encoder)
+		{
+			m_encoder->Stop();
+			m_encoder.reset();
+		}
+
+		if (m_audioCapture)
+		{
+			m_audioCapture->Shutdown();
+			m_audioCapture.reset();
+		}
+
+		if (m_Listener)
+		{
+			m_Listener->Stop();
+			m_Listener.reset();
 		}
 	}
 
@@ -396,36 +406,32 @@ OvrHmd::OvrHmd(std::shared_ptr<ClientConnection> listener)
 			}
 		}
 
-		
+		if (m_Listener) {
+			//send feedback if changed
+			if (hapticFeedbackLeft[0] != 0 ||
+				hapticFeedbackLeft[1] != 0 ||
+				hapticFeedbackLeft[2] != 0 ) {
 
+				m_Listener->SendHapticsFeedback(0,
+					hapticFeedbackLeft[0],
+					hapticFeedbackLeft[1],
+					hapticFeedbackLeft[2],
+					m_leftController->GetHand() ? 1 : 0);
 
-		//send feedback if changed
-		if (hapticFeedbackLeft[0] != 0 ||
-			hapticFeedbackLeft[1] != 0 ||
-			hapticFeedbackLeft[2] != 0 ) {
-	
-			m_Listener->SendHapticsFeedback(0,
-				hapticFeedbackLeft[0],
-				hapticFeedbackLeft[1],
-				hapticFeedbackLeft[2],
-				m_leftController->GetHand() ? 1 : 0);
+			}
 
+			if (hapticFeedbackRight[0] != 0 ||
+				hapticFeedbackRight[1] != 0 ||
+				hapticFeedbackRight[2] != 0) {
+
+				m_Listener->SendHapticsFeedback(0,
+					hapticFeedbackRight[0],
+					hapticFeedbackRight[1],
+					hapticFeedbackRight[2],
+					m_rightController->GetHand() ? 1 : 0);
+
+			}
 		}
-		
-		
-		if (hapticFeedbackRight[0] != 0 ||
-			hapticFeedbackRight[1] != 0 ||
-			hapticFeedbackRight[2] != 0) {
-
-	
-			m_Listener->SendHapticsFeedback(0,
-				hapticFeedbackRight[0],
-				hapticFeedbackRight[1],
-				hapticFeedbackRight[2],
-				m_rightController->GetHand() ? 1 : 0);
-
-		}
-		
 		
 		//Update controller
 

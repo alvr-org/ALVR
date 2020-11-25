@@ -1,7 +1,12 @@
 use crate::*;
-use std::{collections::HashSet, env, fs, path::{Path, PathBuf}, process::*};
-use sysinfo::*;
 use serde_json as json;
+use std::{
+    collections::HashSet,
+    env, fs,
+    path::{Path, PathBuf},
+    process::*,
+};
+use sysinfo::*;
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;

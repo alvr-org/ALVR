@@ -1,15 +1,15 @@
 #include "OvrDirectModeComponent.h"
 
-OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender,
-	std::shared_ptr<CEncoder> pEncoder,
-	std::shared_ptr<ClientConnection> Listener)
+OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender)
 	: m_pD3DRender(pD3DRender)
-	, m_pEncoder(pEncoder)
-	, m_Listener(Listener)
 	, m_poseMutex(NULL)
 	, m_submitLayer(0)
 	, m_LastReferencedFrameIndex(0)
 	, m_LastReferencedClientTime(0) {
+}
+
+void OvrDirectModeComponent::SetEncoder(std::shared_ptr<CEncoder> pEncoder) {
+	m_pEncoder = pEncoder;
 }
 
 void OvrDirectModeComponent::OnPoseUpdated(TrackingInfo &info) {
@@ -247,11 +247,6 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 		//return;
 	}
 
-	if (!m_Listener->IsStreaming()) {
-		Debug("Discard frame because isStreaming=false. FrameIndex=%llu\n", m_submitFrameIndex);
-		return;
-	}
-
 	ID3D11Texture2D *pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
 	if (!pSyncTexture)
 	{
@@ -290,7 +285,9 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 		Debug("[VDispDvr] Mutex Released.\n");
 	}
 
-	m_pEncoder->NewFrameReady();
+	if (m_pEncoder) {
+		m_pEncoder->NewFrameReady();
+	}
 }
 
 void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
@@ -338,20 +335,22 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 	// This can go away, but is useful to see it as a separate packet on the gpu in traces.
 	m_pD3DRender->GetContext()->Flush();
 
-	Debug("Waiting for finish of previous encode.\n");
+	if (m_pEncoder) {
+		Debug("Waiting for finish of previous encode.\n");
 
-	// Wait for the encoder to be ready.  This is important because the encoder thread
-	// blocks on transmit which uses our shared d3d context (which is not thread safe).
-	m_pEncoder->WaitForEncode();
+		// Wait for the encoder to be ready.  This is important because the encoder thread
+		// blocks on transmit which uses our shared d3d context (which is not thread safe).
+		m_pEncoder->WaitForEncode();
 
-	std::string debugText;
+		std::string debugText;
 
-	uint64_t submitFrameIndex = m_submitFrameIndex + Settings::Instance().m_trackingFrameOffset;
-	Debug("Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu\n"
-		, m_submitFrameIndex, Settings::Instance().m_trackingFrameOffset, submitFrameIndex);
+		uint64_t submitFrameIndex = m_submitFrameIndex + Settings::Instance().m_trackingFrameOffset;
+		Debug("Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu\n"
+			, m_submitFrameIndex, Settings::Instance().m_trackingFrameOffset, submitFrameIndex);
 
-	// Copy entire texture to staging so we can read the pixels to send to remote device.
-	m_pEncoder->CopyToStaging(pTexture, bounds, layerCount,false, presentationTime, submitFrameIndex, m_submitClientTime,"", debugText);
+		// Copy entire texture to staging so we can read the pixels to send to remote device.
+		m_pEncoder->CopyToStaging(pTexture, bounds, layerCount,false, presentationTime, submitFrameIndex, m_submitClientTime,"", debugText);
 
-	m_pD3DRender->GetContext()->Flush();
+		m_pD3DRender->GetContext()->Flush();
+	}
 }

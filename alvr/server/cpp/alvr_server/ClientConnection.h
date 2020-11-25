@@ -23,12 +23,10 @@ extern "C" {
 class ClientConnection : public CThread {
 public:
 
-	ClientConnection();
+	ClientConnection(std::function<void()> streamStartCallback);
 	~ClientConnection();
 	void SetPoseUpdatedCallback(std::function<void()> callback);
-	void SetStreamStartCallback(std::function<void()> callback);
 	void SetPacketLossCallback(std::function<void()> callback);
-	void SetShutdownCallback(std::function<void()> callback);
 
 	bool Startup();
 	void Run() override;
@@ -65,10 +63,10 @@ private:
 	uint32_t videoPacketCounter = 0;
 	uint32_t soundPacketCounter = 0;
 
-	std::function<void()> m_PoseUpdatedCallback;
 	std::function<void()> m_StreamStartCallback;
-	std::function<void()> m_PacketLossCallback;
-	std::function<void()> m_ShutdownCallback;
+	std::unique_ptr<std::function<void()>> m_PoseUpdatedCallback;
+	std::unique_ptr<std::function<void()>> m_PacketLossCallback;
+	std::unique_ptr<std::function<void()>> m_ShutdownCallback;
 	TrackingInfo m_TrackingInfo;
 
 	uint64_t m_TimeDiff = 0;

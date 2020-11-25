@@ -30,8 +30,7 @@
 class OvrHmd : public vr::ITrackedDeviceServerDriver
 {
 public:
-	OvrHmd(std::shared_ptr<ClientConnection> listener);
-
+	OvrHmd();
 
 	virtual ~OvrHmd();
 
@@ -55,6 +54,10 @@ public:
 	void RunFrame();
 
 	void OnPoseUpdated();
+
+	void StartStreaming();
+
+	void StopStreaming();
 
 	void OnStreamStart();
 

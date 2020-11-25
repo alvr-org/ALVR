@@ -24,3 +24,5 @@ extern "C" void (*LogDebug)(const char *stringPtr);
 extern "C" void (*MaybeKillWebServer)();
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
+extern "C" void InitializeStreaming();
+extern "C" void DeinitializeStreaming();

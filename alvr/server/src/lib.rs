@@ -14,36 +14,6 @@ use std::{
     thread,
 };
 
-lazy_static_include_bytes!(FRAME_RENDER_VS_CSO => "cpp/alvr_server/FrameRenderVS.cso");
-lazy_static_include_bytes!(FRAME_RENDER_PS_CSO => "cpp/alvr_server/FrameRenderPS.cso");
-lazy_static_include_bytes!(QUAD_SHADER_CSO => "cpp/alvr_server/QuadVertexShader.cso");
-lazy_static_include_bytes!(COMPRESS_SLICES_CSO => "cpp/alvr_server/CompressSlicesPixelShader.cso");
-lazy_static_include_bytes!(COLOR_CORRECTION_CSO => "cpp/alvr_server/ColorCorrectionPixelShader.cso");
-
-extern "C" fn maybe_kill_web_server() {
-    commands::maybe_kill_web_server();
-}
-
-unsafe fn log(level: log::Level, string_ptr: *const c_char) {
-    _log!(level, "{}", CStr::from_ptr(string_ptr).to_string_lossy());
-}
-
-unsafe extern "C" fn log_error(string_ptr: *const c_char) {
-    log(log::Level::Error, string_ptr);
-}
-
-unsafe extern "C" fn log_warn(string_ptr: *const c_char) {
-    log(log::Level::Warn, string_ptr);
-}
-
-unsafe extern "C" fn log_info(string_ptr: *const c_char) {
-    log(log::Level::Info, string_ptr);
-}
-
-unsafe extern "C" fn log_debug(string_ptr: *const c_char) {
-    log(log::Level::Debug, string_ptr);
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,
@@ -62,6 +32,14 @@ pub unsafe extern "C" fn HmdDriverFactory(
         Err(e) => log::error!("{}", e),
     }
 
+    lazy_static_include_bytes!(FRAME_RENDER_VS_CSO => "cpp/alvr_server/FrameRenderVS.cso");
+    lazy_static_include_bytes!(FRAME_RENDER_PS_CSO => "cpp/alvr_server/FrameRenderPS.cso");
+    lazy_static_include_bytes!(QUAD_SHADER_CSO => "cpp/alvr_server/QuadVertexShader.cso");
+    lazy_static_include_bytes!(COMPRESS_SLICES_CSO => 
+        "cpp/alvr_server/CompressSlicesPixelShader.cso");
+    lazy_static_include_bytes!(COLOR_CORRECTION_CSO => 
+        "cpp/alvr_server/ColorCorrectionPixelShader.cso");
+
     FRAME_RENDER_VS_CSO_PTR = FRAME_RENDER_VS_CSO.as_ptr();
     FRAME_RENDER_VS_CSO_LEN = FRAME_RENDER_VS_CSO.len() as _;
     FRAME_RENDER_PS_CSO_PTR = FRAME_RENDER_PS_CSO.as_ptr();
@@ -73,11 +51,41 @@ pub unsafe extern "C" fn HmdDriverFactory(
     COLOR_CORRECTION_CSO_PTR = COLOR_CORRECTION_CSO.as_ptr();
     COLOR_CORRECTION_CSO_LEN = COLOR_CORRECTION_CSO.len() as _;
 
+    unsafe fn log(level: log::Level, string_ptr: *const c_char) {
+        _log!(level, "{}", CStr::from_ptr(string_ptr).to_string_lossy());
+    }
+
+    unsafe extern "C" fn log_error(string_ptr: *const c_char) {
+        log(log::Level::Error, string_ptr);
+    }
+
+    unsafe extern "C" fn log_warn(string_ptr: *const c_char) {
+        log(log::Level::Warn, string_ptr);
+    }
+
+    unsafe extern "C" fn log_info(string_ptr: *const c_char) {
+        log(log::Level::Info, string_ptr);
+    }
+
+    unsafe extern "C" fn log_debug(string_ptr: *const c_char) {
+        log(log::Level::Debug, string_ptr);
+    }
+
+    extern "C" fn maybe_kill_web_server() {
+        commands::maybe_kill_web_server();
+    }
+
+    unsafe extern "C" fn driver_ready_idle() {
+        InitializeStreaming();
+    }
+
     LogError = Some(log_error);
     LogWarn = Some(log_warn);
     LogInfo = Some(log_info);
     LogDebug = Some(log_debug);
     MaybeKillWebServer = Some(maybe_kill_web_server);
+    DriverReadyIdle = Some(driver_ready_idle);
+
 
     // cast to usize to allow the variables to cross thread boundaries
     let interface_name_usize = interface_name as usize;

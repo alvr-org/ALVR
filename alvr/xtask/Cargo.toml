@@ -16,7 +16,7 @@ toml_edit = "0.2"
 semver = "0.11"
 regex = "1"
 lazy_static = "1"
-cached-path = "0.4.5"
+cached-path = "0.4"
 
 [target."cfg(not(windows))".dependencies]
-termion = "1.5"
+termion = "1"

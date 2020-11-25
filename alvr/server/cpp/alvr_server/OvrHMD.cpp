@@ -148,7 +148,7 @@ OvrHmd::OvrHmd()
 		eventData.ipd = { Settings::Instance().m_flIPD };
 		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_IpdChanged, eventData, 0);
 
-		InitializeStreaming(); // to be removed
+		DriverReadyIdle();
 
 		return vr::VRInitError_None;
 	}

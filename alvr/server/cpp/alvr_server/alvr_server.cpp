@@ -147,6 +147,7 @@ void (*LogInfo)(const char *stringPtr);
 void (*LogDebug)(const char *stringPtr);
 void (*MaybeLaunchWebServer)();
 void (*MaybeKillWebServer)();
+void (*DriverReadyIdle)();
 
 void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 {

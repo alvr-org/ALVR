@@ -79,7 +79,6 @@ dependencies = [
  "lazy_static",
  "log",
  "msgbox",
- "regex",
  "runas",
  "semver 0.11.0",
  "serde",

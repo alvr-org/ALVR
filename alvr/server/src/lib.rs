@@ -6,38 +6,44 @@ mod logging_backend;
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_common::*;
+use lazy_static::lazy_static;
 use lazy_static_include::*;
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
+    path::PathBuf,
+    sync::Once,
     sync::{atomic::AtomicUsize, atomic::Ordering, Arc},
     thread,
 };
+
+lazy_static! {
+    // Since ALVR_DIR is needed to initialize logging, if error then just panic
+    static ref ALVR_DIR: PathBuf = commands::get_alvr_dir().unwrap();
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,
     return_code: *mut i32,
 ) -> *mut c_void {
-    logging_backend::init_logging();
+    static INIT_ONCE: Once = Once::new();
+    INIT_ONCE.call_once(|| {
+        logging_backend::init_logging();
 
-    match commands::get_alvr_dir() {
-        Ok(alvr_dir) => {
-            // launch web server
-            commands::maybe_launch_web_server(&alvr_dir);
+        // launch web server
+        commands::maybe_launch_web_server(&ALVR_DIR);
 
-            let alvr_dir_c_string = CString::new(alvr_dir.to_string_lossy().to_string()).unwrap();
-            g_alvrDir = alvr_dir_c_string.into_raw();
-        }
-        Err(e) => log::error!("{}", e),
-    }
+        let alvr_dir_c_string = CString::new(ALVR_DIR.to_string_lossy().to_string()).unwrap();
+        g_alvrDir = alvr_dir_c_string.into_raw();
+    });
 
     lazy_static_include_bytes!(FRAME_RENDER_VS_CSO => "cpp/alvr_server/FrameRenderVS.cso");
     lazy_static_include_bytes!(FRAME_RENDER_PS_CSO => "cpp/alvr_server/FrameRenderPS.cso");
     lazy_static_include_bytes!(QUAD_SHADER_CSO => "cpp/alvr_server/QuadVertexShader.cso");
-    lazy_static_include_bytes!(COMPRESS_SLICES_CSO => 
+    lazy_static_include_bytes!(COMPRESS_SLICES_CSO =>
         "cpp/alvr_server/CompressSlicesPixelShader.cso");
-    lazy_static_include_bytes!(COLOR_CORRECTION_CSO => 
+    lazy_static_include_bytes!(COLOR_CORRECTION_CSO =>
         "cpp/alvr_server/ColorCorrectionPixelShader.cso");
 
     FRAME_RENDER_VS_CSO_PTR = FRAME_RENDER_VS_CSO.as_ptr();
@@ -85,7 +91,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogDebug = Some(log_debug);
     MaybeKillWebServer = Some(maybe_kill_web_server);
     DriverReadyIdle = Some(driver_ready_idle);
-
 
     // cast to usize to allow the variables to cross thread boundaries
     let interface_name_usize = interface_name as usize;

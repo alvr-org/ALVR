@@ -132,7 +132,7 @@ void VideoEncoderNVENC::Shutdown()
 		m_NvNecoder.reset();
 	}
 
-	Error("CNvEncoder::Shutdown\n");
+	Debug("CNvEncoder::Shutdown\n");
 
 	if (fpOut) {
 		fpOut.close();

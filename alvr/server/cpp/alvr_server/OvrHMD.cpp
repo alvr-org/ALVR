@@ -25,7 +25,7 @@ OvrHmd::OvrHmd()
 	{
 		ShutdownRuntime();
 
-		DeinitializeStreaming();
+		StopStreaming();
 
 		if (m_VSyncThread)
 		{
@@ -296,7 +296,7 @@ OvrHmd::OvrHmd()
 		//init listener
 		if (!m_Listener->Startup())
 		{
-			Error("Failed to startup listener");
+			Error("Failed to startup listener\n");
 		}
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
@@ -327,18 +327,21 @@ OvrHmd::OvrHmd()
 	void OvrHmd::StopStreaming() {
 		if (m_encoder)
 		{
+			Debug("OvrHmd::StopStreaming(): Stopping encoder...\n");
 			m_encoder->Stop();
 			m_encoder.reset();
 		}
 
 		if (m_audioCapture)
 		{
+			Debug("OvrHmd::StopStreaming(): Stopping audio capture...\n");
 			m_audioCapture->Shutdown();
 			m_audioCapture.reset();
 		}
 
 		if (m_Listener)
 		{
+			Debug("OvrHmd::StopStreaming(): Stopping network...\n");
 			m_Listener->Stop();
 			m_Listener.reset();
 		}

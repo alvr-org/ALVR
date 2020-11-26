@@ -171,9 +171,11 @@ void InitializeStreaming() {
 	// set correct client ip
 	Settings::Instance().Load();
 
-	g_serverDriverDisplayRedirect.m_pRemoteHmd->StartStreaming();
+	if (g_serverDriverDisplayRedirect.m_pRemoteHmd)
+		g_serverDriverDisplayRedirect.m_pRemoteHmd->StartStreaming();
 }
 
 void DeinitializeStreaming() {
-	g_serverDriverDisplayRedirect.m_pRemoteHmd->StopStreaming();
+	if (g_serverDriverDisplayRedirect.m_pRemoteHmd)
+		g_serverDriverDisplayRedirect.m_pRemoteHmd->StopStreaming();
 }

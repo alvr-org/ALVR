@@ -79,7 +79,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-danger" data-dismiss="modal">Dismiss</button>
-                    <button type="button" class="btn btn-primary" onclick="restartServer()" data-dismiss="modal">Restart
+                    <button type="button" class="btn btn-primary" onclick="restartSteamvr()" data-dismiss="modal">Restart
                         ALVR</button>
                 </div>
             </div>
@@ -197,7 +197,7 @@
         async function checkServerReady() {
             setView("ready");
 
-            await startWebServer();
+            await startDriver();
 
             (async () => {
                 await new Promise(resolve => setTimeout(resolve, 10000));

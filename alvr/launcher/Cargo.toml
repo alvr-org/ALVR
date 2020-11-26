@@ -10,7 +10,7 @@ semver = "0.11"
 serde_json = "1"
 fs_extra = "1"
 tempfile = "3"
-alcro = { git = "https://github.com/Srinivasa314/alcro.git" }
+alcro = "0.4"
 alvr_common = { path = "../common" }
 single-instance = "0.1"
 self_update = { version = "0.21", features = ["archive-zip"] }

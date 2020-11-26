@@ -64,17 +64,15 @@ void Settings::Load()
 			}
 		}
 
+		bool hasClient = false;
 		picojson::value connectedClient;
 		if (activeConnection != nullptr) {
 			connectedClient = *activeConnection;
+			hasClient = true;
 		} else if (lastConnection != nullptr) {
 			connectedClient = *lastConnection;
-		} else {
-			Error("No client found\n");
-			return;
+			hasClient = true;
 		}
-
-		auto clientHandshakePacket = connectedClient.get("handshakePacket");
 
 		auto sessionSettings = v.get("sessionSettings");
 
@@ -93,37 +91,31 @@ void Settings::Load()
 		mRegisteredDeviceType = headset.get("registeredDeviceType").get<std::string>();
 
 		auto renderResolutionMode = video.get("renderResolution").get("variant").get<std::string>();
-		if (renderResolutionMode == "scale") {
+		if (hasClient && renderResolutionMode == "scale")
+		{
+			auto clientHandshakePacket = connectedClient.get("handshakePacket");
 			auto scale = video.get("renderResolution").get("scale").get<double>();
 			m_renderWidth = align32((double)clientHandshakePacket.get("renderWidth").get<int64_t>() * scale);
 			m_renderHeight = align32((double)clientHandshakePacket.get("renderHeight").get<int64_t>() * scale);
 		}
-		else if (renderResolutionMode == "absolute")
+		else
 		{
 			m_renderWidth = align32(video.get("renderResolution").get("absolute").get("width").get<int64_t>());
 			m_renderHeight = align32(video.get("renderResolution").get("absolute").get("height").get<int64_t>());
 		}
-		else
-		{
-			Error("Invalid renderResolution\n");
-			return;
-		}
 
 		auto targetResolutionMode = video.get("recommendedTargetResolution").get("variant").get<std::string>();
-		if (targetResolutionMode == "scale")
+		if (hasClient && targetResolutionMode == "scale")
 		{
+			auto clientHandshakePacket = connectedClient.get("handshakePacket");
 			auto scale = video.get("recommendedTargetResolution").get("scale").get<double>();
 			m_recommendedTargetWidth = align32((double)clientHandshakePacket.get("renderWidth").get<int64_t>() * scale);
 			m_recommendedTargetHeight = align32((double)clientHandshakePacket.get("renderHeight").get<int64_t>() * scale);
 		}
-		else if (renderResolutionMode == "absolute")
+		else
 		{
 			m_recommendedTargetWidth = align32(video.get("recommendedTargetResolution").get("absolute").get("width").get<int64_t>());
 			m_recommendedTargetHeight = align32(video.get("recommendedTargetResolution").get("absolute").get("height").get<int64_t>());
-		}
-		else {
-			Error("Invalid recommendedTargetResolution\n");
-			return;
 		}
 
 		picojson::array &eyeFov = video.get("eyeFov").get<picojson::array>();
@@ -164,7 +156,9 @@ void Settings::Load()
 		m_Host = connection.get("listenHost").get<std::string>();
 		m_Port = (int)connection.get("listenPort").get<int64_t>();
 
-		m_ConnectedClient = connectedClient.get("address").get<std::string>();
+		if (hasClient) {
+			m_ConnectedClient = connectedClient.get("address").get<std::string>();
+		}
 
 		m_controllerTrackingSystemName = controllers.get("trackingSystemName").get<std::string>();
 		m_controllerManufacturerName = controllers.get("trackingSystemName").get<std::string>();

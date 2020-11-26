@@ -41,8 +41,9 @@ dependencies = [
 
 [[package]]
 name = "alcro"
-version = "0.3.3"
-source = "git+https://github.com/Srinivasa314/alcro.git#7cac4d5d8abe61de1b6cc085b2dfa8ef3c228b51"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99b88c7a18efbff333e7574159975d99a2479bae13fa0f92cd3926c573a30bd0"
 dependencies = [
  "crossbeam-channel",
  "dashmap",
@@ -115,13 +116,26 @@ version = "13.0.0"
 dependencies = [
  "alvr_common",
  "bindgen",
+ "bytes 0.5.6",
  "cc",
+ "chrono",
  "fern",
+ "futures",
+ "headers",
+ "hyper",
+ "ipconfig",
  "lazy-static-include",
  "lazy_static",
  "log",
+ "parking_lot",
+ "serde",
  "serde_json",
+ "settings-schema",
+ "tokio",
+ "tokio-tungstenite",
+ "tokio-util",
  "walkdir",
+ "webbrowser",
 ]
 
 [[package]]
@@ -755,9 +769,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-epoch"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec0f606a85340376eef0d6d8fec399e6d4a544d648386c6645eb6d0653b27d9f"
+checksum = "a1aaa739f95311c2c7887a76863f500026092fb1dce0161dab577e559ef3569d"
 dependencies = [
  "cfg-if 1.0.0",
  "const_fn",
@@ -769,13 +783,12 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-utils"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec91540d98355f690a86367e566ecad2e9e579f230230eb7c21398372be73ea5"
+checksum = "02d96d1e189ef58269ebe5b97953da3274d83a93af647c2ddd6f9dab28cedb8d"
 dependencies = [
  "autocfg",
  "cfg-if 1.0.0",
- "const_fn",
  "lazy_static",
 ]
 
@@ -1815,9 +1828,9 @@ checksum = "0ee1c47aaa256ecabcaea351eae4a9b01ef39ed810004e298d2511ed284b1525"
 
 [[package]]
 name = "memoffset"
-version = "0.5.6"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "043175f069eda7b85febe4a74abbaeff828d9f8b448515d3151a14a3542811aa"
+checksum = "157b4208e3059a8f9e78d559edc658e13df41410cb3ae03979c83130067fdd87"
 dependencies = [
  "autocfg",
 ]

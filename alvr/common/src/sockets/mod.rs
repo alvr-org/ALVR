@@ -1,4 +1,4 @@
-use crate::{*, logging::LogId, data::*};
+use crate::{data::*, logging::LogId, *};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::*;
 
@@ -8,7 +8,7 @@ const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 4_000;
 
 pub async fn search_client(
     client_ip: Option<String>,
-    client_found_cb: impl Fn(IpAddr, ClientHandshakePacket) -> Option<ServerHandshakePacket>,
+    mut client_found_cb: impl FnMut(IpAddr, ClientHandshakePacket) -> Option<ServerHandshakePacket>,
 ) -> StrResult {
     let mut handshake_socket =
         trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, HANDSHAKE_PORT)).await)?;

@@ -251,14 +251,15 @@ fn window_mode() -> StrResult {
             ))
         }))?;
 
-        trace_err!(window.bind("startWebServer", |_| {
-            maybe_launch_web_server(&current_alvr_dir().unwrap());
+        trace_err!(window.bind("startDriver", |_| {
+            if !is_steamvr_running() && show_err(maybe_register_alvr_driver()).is_ok() {
+                maybe_launch_steamvr();
+            }
             Ok(json::Value::Null)
         }))?;
 
-        trace_err!(window.bind("restartServer", |_| {
-            maybe_kill_web_server();
-            maybe_launch_web_server(&current_alvr_dir().unwrap());
+        trace_err!(window.bind("restartSteamvr", |_| {
+            restart_steamvr();
             Ok(json::Value::Null)
         }))?;
 
@@ -267,7 +268,9 @@ fn window_mode() -> StrResult {
 
         window.wait_finish();
 
-        maybe_kill_web_server();
+        // This is needed in case the launcher window is closed before the driver is loaded,
+        // otherwise this does nothing
+        apply_driver_paths_backup(current_alvr_dir()?)?;
     }
     Ok(())
 }

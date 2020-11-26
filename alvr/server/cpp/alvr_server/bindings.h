@@ -21,8 +21,8 @@ extern "C" void (*LogError)(const char *stringPtr);
 extern "C" void (*LogWarn)(const char *stringPtr);
 extern "C" void (*LogInfo)(const char *stringPtr);
 extern "C" void (*LogDebug)(const char *stringPtr);
-extern "C" void (*MaybeKillWebServer)();
 extern "C" void (*DriverReadyIdle)();
+extern "C" void (*ShutdownRuntime)();
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();

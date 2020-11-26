@@ -1,0 +1,246 @@
+use crate::{ALVR_DIR, SESSION_MANAGER};
+use alvr_common::{commands::*, data::*, logging::*, *};
+use bytes::buf::BufExt;
+use futures::{stream::StreamExt, SinkExt};
+use headers::{self, HeaderMapExt};
+use hyper::{
+    header,
+    header::CACHE_CONTROL,
+    header::{HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN},
+    http::request::Parts,
+    service::{make_service_fn, service_fn},
+    upgrade::Upgraded,
+    Body, Method, Request, Response, StatusCode,
+};
+use serde::{de::DeserializeOwned, Serialize};
+use serde_json as json;
+use std::{net::SocketAddr, path::PathBuf};
+use tokio::sync::broadcast::{self, RecvError};
+use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
+use tokio_util::codec::{BytesCodec, FramedRead};
+
+pub const LOG_BROADCAST_CAPACITY: usize = 256;
+const WEB_GUI_DIR_STR: &str = "web_gui";
+
+fn reply(code: StatusCode) -> StrResult<Response<Body>> {
+    trace_err!(Response::builder().status(code).body(Body::empty()))
+}
+
+fn reply_json<T: Serialize>(obj: &T) -> StrResult<Response<Body>> {
+    trace_err!(Response::builder()
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(trace_err!(json::to_string(obj))?.into()))
+}
+
+async fn from_body<T: DeserializeOwned>(body: Body) -> StrResult<T> {
+    trace_err!(json::from_reader(
+        trace_err!(hyper::body::aggregate(body).await)?.reader()
+    ))
+}
+
+async fn log_websocket(upgraded: Upgraded, log_sender: broadcast::Sender<String>) {
+    let mut log_receiver = log_sender.subscribe();
+
+    let mut ws = WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, None).await;
+
+    while let Some(maybe_line) = log_receiver.next().await {
+        match maybe_line {
+            Ok(line) => {
+                if let Err(e) = ws.send(protocol::Message::text(line)).await {
+                    info!("Failed to send log with websocket: {}", e);
+                    break;
+                }
+            }
+            Err(RecvError::Lagged(_)) => {
+                warn!("Some log lines have been lost because the buffer is full");
+            }
+            Err(RecvError::Closed) => break,
+        }
+    }
+
+    ws.close(None).await.ok();
+}
+
+async fn http_api(
+    request: Request<Body>,
+    log_sender: broadcast::Sender<String>,
+) -> StrResult<Response<Body>> {
+    let (
+        Parts {
+            uri,
+            method,
+            headers,
+            ..
+        },
+        body,
+    ) = request.into_parts();
+    let uri = uri.path();
+
+    let mut response = match uri {
+        "/settings-schema" => reply_json(&settings_schema(session_settings_default()))?,
+        "/session" => {
+            if matches!(method, Method::GET) {
+                reply_json(SESSION_MANAGER.lock().get())?
+            } else if let Ok(data) = from_body::<json::Value>(body).await {
+                // POST
+                if let (Some(update_type), Some(update_author_id), Some(value)) = (
+                    data.get("updateType"),
+                    data.get("webClientId"),
+                    data.get("session"),
+                ) {
+                    if let (Ok(update_type), Ok(update_author_id)) = (
+                        json::from_value(update_type.clone()),
+                        json::from_value::<String>(update_author_id.clone()),
+                    ) {
+                        let res = SESSION_MANAGER
+                            .lock()
+                            .get_mut(Some(update_author_id), update_type)
+                            .merge_from_json(value);
+                        if let Err(e) = res {
+                            warn!("{}", e);
+                            // HTTP Code: WARNING
+                            reply(trace_err!(StatusCode::from_u16(199))?)?
+                        } else {
+                            reply(StatusCode::OK)?
+                        }
+                    } else {
+                        reply(StatusCode::BAD_REQUEST)?
+                    }
+                } else {
+                    reply(StatusCode::BAD_REQUEST)?
+                }
+            } else {
+                reply(StatusCode::BAD_REQUEST)?
+            }
+        }
+        "/log" => {
+            if let Some(key) = headers.typed_get::<headers::SecWebsocketKey>() {
+                tokio::spawn(async move {
+                    match body.on_upgrade().await {
+                        Ok(upgraded) => {
+                            log_websocket(upgraded, log_sender).await;
+                        }
+                        Err(e) => error!("{}", e),
+                    }
+                });
+
+                let mut response = trace_err!(Response::builder()
+                    .status(StatusCode::SWITCHING_PROTOCOLS)
+                    .body(Body::empty()))?;
+
+                let h = response.headers_mut();
+                h.typed_insert(headers::Upgrade::websocket());
+                h.typed_insert(headers::SecWebsocketAccept::from(key));
+                h.typed_insert(headers::Connection::upgrade());
+
+                response
+            } else {
+                reply(StatusCode::BAD_REQUEST)?
+            }
+        }
+        "/driver/register" => {
+            if driver_registration(&[ALVR_DIR.clone()], true).is_ok() {
+                reply(StatusCode::OK)?
+            } else {
+                reply(StatusCode::INTERNAL_SERVER_ERROR)?
+            }
+        }
+        "/driver/unregister" => {
+            if let Ok(path) = from_body::<PathBuf>(body).await {
+                if driver_registration(&[path], false).is_ok() {
+                    reply(StatusCode::OK)?
+                } else {
+                    reply(StatusCode::INTERNAL_SERVER_ERROR)?
+                }
+            } else {
+                reply(StatusCode::BAD_REQUEST)?
+            }
+        }
+        "/driver/list" => reply_json(&get_registered_drivers().unwrap_or_default())?,
+        uri @ "/firewall-rules/add" | uri @ "/firewall-rules/remove" => {
+            let add = uri.ends_with("add");
+            let maybe_err = firewall_rules(&ALVR_DIR, add).err();
+            if let Some(e) = &maybe_err {
+                error!("Setting firewall rules failed: code {}", e);
+            }
+            reply_json(&maybe_err.unwrap_or(0))?
+        }
+        "/graphics-devices" => reply_json(&graphics::get_gpu_names())?,
+        "/audio-devices" => reply_json(&audio::output_audio_devices().ok())?,
+        "/restart-steamvr" => {
+            kill_steamvr();
+            maybe_launch_steamvr();
+            reply(StatusCode::OK)?
+        }
+        "/version" => Response::new(ALVR_SERVER_VERSION.to_string().into()),
+        "/open" => {
+            if let Ok(url) = from_body::<String>(body).await {
+                webbrowser::open(&url).ok();
+                reply(StatusCode::OK)?
+            } else {
+                reply(StatusCode::BAD_REQUEST)?
+            }
+        }
+        other_uri => {
+            if other_uri.contains("..") {
+                // Attempted tree traversal
+                reply(StatusCode::FORBIDDEN)?
+            } else {
+                let path_branch = match other_uri {
+                    "/" => "/index.html",
+                    other_path => other_path,
+                };
+
+                let maybe_file = tokio::fs::File::open(format!(
+                    "{}{}",
+                    ALVR_DIR.join(WEB_GUI_DIR_STR).to_string_lossy(),
+                    path_branch
+                ))
+                .await;
+
+                if let Ok(file) = maybe_file {
+                    Response::new(Body::wrap_stream(FramedRead::new(file, BytesCodec::new())))
+                } else {
+                    reply(StatusCode::NOT_FOUND)?
+                }
+            }
+        }
+    };
+
+    response.headers_mut().insert(
+        CACHE_CONTROL,
+        trace_err!(HeaderValue::from_str("no-cache, no-store, must-revalidate"))?,
+    );
+    response
+        .headers_mut()
+        .insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
+
+    Ok(response)
+}
+
+pub async fn web_server(log_sender: broadcast::Sender<String>) -> StrResult {
+    let web_server_port = SESSION_MANAGER
+        .lock()
+        .get()
+        .to_settings()
+        .connection
+        .web_server_port;
+
+    let service = make_service_fn(|_| {
+        let log_sender = log_sender.clone();
+        async move {
+            StrResult::Ok(service_fn(move |request| {
+                http_api(request, log_sender.clone())
+            }))
+        }
+    });
+
+    trace_err!(
+        hyper::Server::bind(&SocketAddr::new(
+            "0.0.0.0".parse().unwrap(),
+            web_server_port
+        ))
+        .serve(service)
+        .await
+    )
+}

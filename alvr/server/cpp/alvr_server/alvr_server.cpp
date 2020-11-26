@@ -145,9 +145,8 @@ void (*LogError)(const char *stringPtr);
 void (*LogWarn)(const char *stringPtr);
 void (*LogInfo)(const char *stringPtr);
 void (*LogDebug)(const char *stringPtr);
-void (*MaybeLaunchWebServer)();
-void (*MaybeKillWebServer)();
 void (*DriverReadyIdle)();
+void (*ShutdownRuntime)();
 
 void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 {
@@ -169,6 +168,9 @@ void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 }
 
 void InitializeStreaming() {
+	// set correct client ip
+	Settings::Instance().Load();
+
 	g_serverDriverDisplayRedirect.m_pRemoteHmd->StartStreaming();
 }
 

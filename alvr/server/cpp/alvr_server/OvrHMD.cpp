@@ -23,7 +23,7 @@ OvrHmd::OvrHmd()
 
 	OvrHmd::~OvrHmd()
 	{
-		MaybeKillWebServer();
+		ShutdownRuntime();
 
 		DeinitializeStreaming();
 
@@ -281,6 +281,8 @@ OvrHmd::OvrHmd()
 	}
 
 	void OvrHmd::StartStreaming() {
+		StopStreaming();
+
 		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
 
 		//create listener

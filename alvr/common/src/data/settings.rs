@@ -15,7 +15,7 @@ pub enum FrameSize {
     },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, PartialEq)]
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Default)]
 pub struct Fov {
     #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub left: f32,
@@ -61,7 +61,7 @@ pub struct ColorCorrectionDesc {
     pub sharpening: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Debug)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
 #[repr(u8)]
 pub enum CodecType {
     H264,

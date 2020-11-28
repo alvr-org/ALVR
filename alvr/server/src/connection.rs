@@ -1,5 +1,5 @@
 use crate::SESSION_MANAGER;
-use alvr_common::{data::*, logging::*, *};
+use alvr_common::{*, sockets::*, data::*, logging::*};
 use settings_schema::Switch;
 use std::time::SystemTime;
 
@@ -8,7 +8,7 @@ fn align32(value: f32) -> u32 {
 }
 
 pub async fn client_discovery() {
-    let res = sockets::search_client(None, |address, client_handshake_packet| {
+    let res = search_client(None, |address, client_handshake_packet| {
         let now_ms = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
@@ -38,7 +38,7 @@ pub async fn client_discovery() {
                     known_client_ref.state,
                     ClientConnectionState::AvailableUntrusted
                 ) {
-                    return None;
+                    return SearchResult::Wait;
                 } else {
                     known_client_ref.state = ClientConnectionState::AvailableTrusted;
                 }
@@ -50,7 +50,7 @@ pub async fn client_discovery() {
                     handshake_packet: client_handshake_packet,
                 });
 
-                return None;
+                return SearchResult::Wait;
             }
         }
 
@@ -64,8 +64,21 @@ pub async fn client_discovery() {
                 video_height = align32(client_handshake_packet.render_height as f32 * scale);
             }
             FrameSize::Absolute { width, height } => {
-                video_width = width;
-                video_height = height;
+                video_width = align32(width as f32);
+                video_height = align32(height as f32);
+            }
+        }
+
+        let target_width;
+        let target_height;
+        match settings.video.render_resolution {
+            FrameSize::Scale(scale) => {
+                target_width = align32(client_handshake_packet.render_width as f32 * scale);
+                target_height = align32(client_handshake_packet.render_height as f32 * scale);
+            }
+            FrameSize::Absolute { width, height } => {
+                target_width = align32(width as f32);
+                target_height = align32(height as f32);
             }
         }
 
@@ -118,17 +131,158 @@ pub async fn client_discovery() {
             }
         }
         if let Some(host_address) = maybe_host_address {
-            server_handshake_packet.web_gui_url = [0; 32];
-            let url_string = format!("http://{}:{}/", host_address, 8082);
-            let url_c_string = std::ffi::CString::new(url_string).unwrap();
-            let url_bytes = url_c_string.as_bytes_with_nul();
-            server_handshake_packet.web_gui_url[0..url_bytes.len()].copy_from_slice(url_bytes);
+            let session_manager_ref = &mut *SESSION_MANAGER.lock();
+            let session_ref = &mut *session_manager_ref.get_mut(None, SessionUpdateType::Other);
+            let session_settings = &session_ref.session_settings;
 
-            unsafe { crate::InitializeStreaming() };
+            let openvr_config = OpenvrConfig {
+                headset_serial_number: settings.headset.serial_number,
+                headset_tracking_system_name: settings.headset.tracking_system_name,
+                headset_model_number: settings.headset.model_number,
+                headset_driver_version: settings.headset.driver_version,
+                headset_manufacturer_name: settings.headset.manufacturer_name,
+                headset_render_model_name: settings.headset.render_model_name,
+                headset_registered_device_type: settings.headset.registered_device_type,
+                eye_resolution_width: video_width / 2,
+                eye_resolution_height: video_height,
+                target_eye_resolution_width: target_width / 2,
+                target_eye_resolution_height: target_height,
+                eye_fov: settings.video.eye_fov,
+                enable_game_audio: session_settings.audio.game_audio.enabled,
+                game_audio_device: session_settings.audio.game_audio.content.device.clone(),
+                enable_microphone: session_settings.audio.microphone.enabled,
+                microphone_device: session_settings.audio.microphone.content.device.clone(),
+                seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
+                ipd: settings.video.ipd,
+                client_buffer_size: settings.connection.client_recv_buffer_size,
+                frame_queue_size: settings.connection.frame_queue_size,
+                force_60hz: settings.video.force_60hz,
+                force_3dof: settings.headset.force_3dof,
+                aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
+                adapter_index: settings.video.adapter_index,
+                codec: matches!(settings.video.codec, CodecType::HEVC) as _,
+                refresh_rate: settings.video.refresh_rate,
+                encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
+                throttling_bitrate_bits: settings.connection.throttling_bitrate_bits,
+                listen_host: settings.connection.listen_host,
+                listen_port: settings.connection.listen_port,
+                client_address: address.to_string(),
+                controllers_tracking_system_name: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .tracking_system_name
+                    .clone(),
+                controllers_manufacturer_name: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .manufacturer_name
+                    .clone(),
+                controllers_model_number: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .model_number
+                    .clone(),
+                render_model_name_left_controller: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .render_model_name_left
+                    .clone(),
+                render_model_name_right_controller: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .render_model_name_right
+                    .clone(),
+                controllers_serial_number: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .serial_number
+                    .clone(),
+                controllers_type: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .ctrl_type
+                    .clone(),
+                controllers_registered_device_type: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .registered_device_type
+                    .clone(),
+                controllers_input_profile_path: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .input_profile_path
+                    .clone(),
+                controllers_mode_idx: session_settings.headset.controllers.content.mode_idx,
+                controllers_enabled: session_settings.headset.controllers.enabled,
+                position_offset: settings.headset.position_offset,
+                tracking_frame_offset: settings.headset.tracking_frame_offset,
+                controller_pose_offset: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .pose_time_offset,
+                position_offset_left: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .position_offset_left,
+                rotation_offset_left: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .rotation_offset_left,
+                haptics_intensity: session_settings
+                    .headset
+                    .controllers
+                    .content
+                    .haptics_intensity,
+                enable_foveated_rendering: session_settings.video.foveated_rendering.enabled,
+                foveation_strength: session_settings.video.foveated_rendering.content.strength,
+                foveation_shape: session_settings.video.foveated_rendering.content.shape,
+                foveation_vertical_offset: session_settings
+                    .video
+                    .foveated_rendering
+                    .content
+                    .vertical_offset,
+                enable_color_correction: session_settings.video.color_correction.enabled,
+                brightness: session_settings.video.color_correction.content.brightness,
+                contrast: session_settings.video.color_correction.content.contrast,
+                saturation: session_settings.video.color_correction.content.saturation,
+                gamma: session_settings.video.color_correction.content.gamma,
+                sharpening: session_settings.video.color_correction.content.sharpening,
+            };
 
-            Some(server_handshake_packet)
+            error!("{}", session_ref.openvr_config == openvr_config);
+
+            if session_ref.openvr_config == openvr_config {
+                server_handshake_packet.web_gui_url = [0; 32];
+                let url_string = format!("http://{}:{}/", host_address, 8082);
+                let url_c_string = std::ffi::CString::new(url_string).unwrap();
+                let url_bytes = url_c_string.as_bytes_with_nul();
+                server_handshake_packet.web_gui_url[0..url_bytes.len()].copy_from_slice(url_bytes);
+
+                unsafe { crate::InitializeStreaming() };
+
+                SearchResult::ClientReady(server_handshake_packet)
+            } else {
+                session_ref.openvr_config = openvr_config;
+
+                error!("restarting steamvr");
+                crate::restart_steamvr();
+
+                SearchResult::Exit
+            }
         } else {
-            None
+            SearchResult::Wait
         }
     })
     .await;

@@ -29,6 +29,76 @@ pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
     ))
 }
 
+// This structure is used to store the minimum configuration data that ALVR driver needs to
+// initialize OpenVR before having the chance to communicate with a client. When a client is
+// connected, a new OpenvrConfig instance is generated, then the connection is accepted only if that
+// instance is equivalent to the one stored in the session, otherwise SteamVR is restarted.
+// Other components (like the encoder, audio recorder) don't need this treatment and are initialized
+// dynamically.
+// todo: properties that can be set after the OpenVR initialization should be removed and set with
+// UpdateForStream.
+#[derive(Serialize, Deserialize, PartialEq, Default)]
+pub struct OpenvrConfig {
+    pub headset_serial_number: String,
+    pub headset_tracking_system_name: String,
+    pub headset_model_number: String,
+    pub headset_driver_version: String,
+    pub headset_manufacturer_name: String,
+    pub headset_render_model_name: String,
+    pub headset_registered_device_type: String,
+    pub eye_resolution_width: u32,
+    pub eye_resolution_height: u32,
+    pub target_eye_resolution_width: u32,
+    pub target_eye_resolution_height: u32,
+    pub eye_fov: [Fov; 2],
+    pub enable_game_audio: bool,
+    pub game_audio_device: String,
+    pub enable_microphone: bool,
+    pub microphone_device: String,
+    pub seconds_from_vsync_to_photons: f32,
+    pub ipd: f32,
+    pub client_buffer_size: u64,
+    pub frame_queue_size: u64,
+    pub force_60hz: bool,
+    pub force_3dof: bool,
+    pub aggressive_keyframe_resend: bool,
+    pub adapter_index: u32,
+    pub codec: u32,
+    pub refresh_rate: u32,
+    pub encode_bitrate_mbs: u64,
+    pub throttling_bitrate_bits: u64,
+    pub listen_host: String,
+    pub listen_port: u16,
+    pub client_address: String,
+    pub controllers_tracking_system_name: String,
+    pub controllers_manufacturer_name: String,
+    pub controllers_model_number: String,
+    pub render_model_name_left_controller: String,
+    pub render_model_name_right_controller: String,
+    pub controllers_serial_number: String,
+    pub controllers_type: String,
+    pub controllers_registered_device_type: String,
+    pub controllers_input_profile_path: String,
+    pub controllers_mode_idx: i32,
+    pub controllers_enabled: bool,
+    pub position_offset: [f32; 3],
+    pub tracking_frame_offset: i32,
+    pub controller_pose_offset: f32,
+    pub position_offset_left: [f32; 3],
+    pub rotation_offset_left: [f32; 3],
+    pub haptics_intensity: f32,
+    pub enable_foveated_rendering: bool,
+    pub foveation_strength: f32,
+    pub foveation_shape: f32,
+    pub foveation_vertical_offset: f32,
+    pub enable_color_correction: bool,
+    pub brightness: f32,
+    pub contrast: f32,
+    pub saturation: f32,
+    pub gamma: f32,
+    pub sharpening: f32,
+}
+
 #[derive(Serialize, Debug)]
 pub struct ServerHandshakePacket {
     pub packet_type: u32,
@@ -82,6 +152,7 @@ pub struct ClientConnectionDesc {
 #[serde(rename_all = "camelCase")]
 pub struct SessionDesc {
     pub setup_wizard: bool,
+    pub openvr_config: OpenvrConfig,
     pub last_clients: Vec<ClientConnectionDesc>,
     pub session_settings: SessionSettings,
 }
@@ -90,6 +161,41 @@ impl Default for SessionDesc {
     fn default() -> Self {
         Self {
             setup_wizard: true,
+            openvr_config: OpenvrConfig {
+                headset_serial_number: "1WMGH000XX0000".into(),
+                headset_tracking_system_name: "oculus".into(),
+                headset_model_number: "Oculus Rift S".into(),
+                headset_driver_version: "1.42.0".into(),
+                headset_manufacturer_name: "Oculus".into(),
+                headset_render_model_name: "generic_hmd".into(),
+                headset_registered_device_type: "oculus/1WMGH000XX0000".into(),
+                eye_resolution_width: 960,
+                eye_resolution_height: 1080,
+                target_eye_resolution_width: 960,
+                target_eye_resolution_height: 1080,
+                eye_fov: [
+                    Fov {
+                        left: 45_f32,
+                        right: 45_f32,
+                        top: 45_f32,
+                        bottom: 45_f32,
+                    },
+                    Fov {
+                        left: 45_f32,
+                        right: 45_f32,
+                        top: 45_f32,
+                        bottom: 45_f32,
+                    },
+                ],
+                seconds_from_vsync_to_photons: 0.005,
+                ipd: 0.063,
+                adapter_index: 0,
+                refresh_rate: 60,
+                controllers_enabled: false,
+                enable_foveated_rendering: false,
+                enable_color_correction: false,
+                ..<_>::default()
+            },
             last_clients: vec![],
             session_settings: session_settings_default(),
         }
@@ -396,7 +502,10 @@ fn extrapolate_session_settings(
     }
 }
 
-fn json_session_settings_to_settings(session_settings: &json::Value, schema: &SchemaNode) -> json::Value {
+fn json_session_settings_to_settings(
+    session_settings: &json::Value,
+    schema: &SchemaNode,
+) -> json::Value {
     match schema {
         SchemaNode::Section { entries } => json::Value::Object(
             entries
@@ -405,7 +514,10 @@ fn json_session_settings_to_settings(session_settings: &json::Value, schema: &Sc
                     maybe_data.as_ref().map(|data_schema| {
                         (
                             field_name.clone(),
-                            json_session_settings_to_settings(&session_settings[field_name], &data_schema.content),
+                            json_session_settings_to_settings(
+                                &session_settings[field_name],
+                                &data_schema.content,
+                            ),
                         )
                     })
                 })
@@ -427,7 +539,10 @@ fn json_session_settings_to_settings(session_settings: &json::Value, schema: &Sc
                     .map(|(_, maybe_data)| maybe_data.as_ref())
                     .unwrap()
                     .map(|data_schema| {
-                        json_session_settings_to_settings(&session_settings[variant], &data_schema.content)
+                        json_session_settings_to_settings(
+                            &session_settings[variant],
+                            &data_schema.content,
+                        )
                     });
                 json::json!({
                     "type": variant,
@@ -449,7 +564,10 @@ fn json_session_settings_to_settings(session_settings: &json::Value, schema: &Sc
             let maybe_content;
             if session_settings["enabled"].as_bool().unwrap() {
                 state = "enabled";
-                maybe_content = Some(json_session_settings_to_settings(&session_settings["content"], content))
+                maybe_content = Some(json_session_settings_to_settings(
+                    &session_settings["content"],
+                    content,
+                ))
             } else {
                 state = "disabled";
                 maybe_content = None;
@@ -470,11 +588,15 @@ fn json_session_settings_to_settings(session_settings: &json::Value, schema: &Sc
             array_schema
                 .iter()
                 .enumerate()
-                .map(|(idx, element_schema)| json_session_settings_to_settings(&session_settings[idx], element_schema))
+                .map(|(idx, element_schema)| {
+                    json_session_settings_to_settings(&session_settings[idx], element_schema)
+                })
                 .collect(),
         ),
 
-        SchemaNode::Vector { .. } | SchemaNode::Dictionary { .. } => session_settings["default"].clone(),
+        SchemaNode::Vector { .. } | SchemaNode::Dictionary { .. } => {
+            session_settings["default"].clone()
+        }
     }
 }
 

@@ -6,9 +6,15 @@ const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
 const HANDSHAKE_PORT: u16 = 9943;
 const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 4_000;
 
+pub enum SearchResult {
+    ClientReady(ServerHandshakePacket),
+    Wait,
+    Exit,
+}
+
 pub async fn search_client(
     client_ip: Option<String>,
-    mut client_found_cb: impl FnMut(IpAddr, ClientHandshakePacket) -> Option<ServerHandshakePacket>,
+    mut client_found_cb: impl FnMut(IpAddr, ClientHandshakePacket) -> SearchResult,
 ) -> StrResult {
     let mut handshake_socket =
         trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, HANDSHAKE_PORT)).await)?;
@@ -74,14 +80,18 @@ pub async fn search_client(
             continue;
         }
 
-        let maybe_server_handshake_packet = client_found_cb(address.ip(), client_handshake_packet);
+        let result = client_found_cb(address.ip(), client_handshake_packet);
 
-        if let Some(server_handshake_packet) = maybe_server_handshake_packet {
-            let packet = trace_err!(bincode::serialize(&server_handshake_packet))?;
-            handshake_socket
-                .send_to(&packet, SocketAddr::new(address.ip(), 9944))
-                .await
-                .ok();
+        match result {
+            SearchResult::ClientReady(server_handshake_packet) => {
+                let packet = trace_err!(bincode::serialize(&server_handshake_packet))?;
+                handshake_socket
+                    .send_to(&packet, SocketAddr::new(address.ip(), 9944))
+                    .await
+                    .ok();
+            }
+            SearchResult::Wait => (),
+            SearchResult::Exit => break Ok(()),
         }
     }
 }

@@ -8,8 +8,6 @@ define({
     "titleFirewall": "Firewall",
     "textFirewall": "Per comunicare con il visore, devono essere impostate alcune eccezioni del firewall. Questo richiede privilegi di amministratore.",
     "buttonFirewall": "Aggiungi eccezione firewall",
-    "titleDriver": "Driver",
-    "textDriver": "Il driver di ALVR deve essere registrato su SteamVR. Se presenti, rimuovi gli altri driver che interferiscono. (Se non sai cosa fare, rimuovi tutti i driver e poi registra il driver di ALVR)",
     "buttonDriver": "Registra driver di ALVR",
     "titleTracking": "Tracking",
     "textTracking": `Scegli la modalità di tracking dei controller. Giochi frenetici come BeatSaber richiedono la modalità "veloce". Per giochi più tranquilli come Skyrim, scegli "medio" o "lento".`,

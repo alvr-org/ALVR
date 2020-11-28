@@ -8,8 +8,6 @@ define({
     "titleFirewall": "Firewall",
     "textFirewall": "Um sich mit dem Headset verbinden zu können, müssen Firewall-Regeln hinzugefügt werden. Das benötigt Administratoren-Rechte.",
     "buttonFirewall": "Firewall-Regeln hinzufügen",
-    "titleDriver": "Treiber",
-    "textDriver": "Der ALVR Treiber muss mit SteamVR verbunden sein. Wenn existent, entferne jegliche störende Treiber. (Wenn du nicht weißt, was du zu tun hast, entferne alle Treiber, und füge dann den ALVR Treiber hinzu)",
     "buttonDriver": "ALVR-Treiber hinzufügen",
     "titleTracking": "Tracking",
     "textTracking": "Wie soll das Tracking der Controller gehandhabt werden.Wenn du planst schnelle Spiele wie Beatsaber zu spielen, wähle Mittel oder Schnell aus. Für langsamere Spiele wie Skyrim reicht die Einstellung Normal.",

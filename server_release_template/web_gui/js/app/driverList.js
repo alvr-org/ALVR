@@ -20,7 +20,6 @@ define([
                     })
                 }
             })
-            self.fillDriverList("driverListPlaceholder");
             self.fillDriverList("registeredDriversInst");
         })
 
@@ -69,7 +68,6 @@ define([
                                         if (res === "") {
 
                                             //not very good to have the ids here
-                                            self.fillDriverList("driverListPlaceholder");
                                             self.fillDriverList("registeredDriversInst");
 
                                             Lobibox.notify("success", {

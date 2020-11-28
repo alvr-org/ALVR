@@ -29,9 +29,3 @@
 .driverList * .card-body{
     overflow: auto;
 }
-
-
-#driverListPlaceholder {
-    overflow: hidden;
-    margin-top: 20px;
-}

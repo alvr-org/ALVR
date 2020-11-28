@@ -42,8 +42,6 @@ define([
             $("body").append(template);
             $(document).ready(() => {
 
-                driverList.fillDriverList("driverListPlaceholder");
-
                 $('#setupWizard').modal({
                     backdrop: 'static',
                     keyboard: false

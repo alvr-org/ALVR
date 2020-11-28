@@ -12,6 +12,7 @@ OvrHmd::OvrHmd()
 		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 		, m_added(false)
 		, mActivated(false)
+		, m_streamStarted(false)
 	{
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
@@ -281,7 +282,11 @@ OvrHmd::OvrHmd()
 	}
 
 	void OvrHmd::StartStreaming() {
-		StopStreaming();
+		if (m_streamStarted) {
+			return;
+		}
+
+		m_streamStarted = true;
 
 		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
 

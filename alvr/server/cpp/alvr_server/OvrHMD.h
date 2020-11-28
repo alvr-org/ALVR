@@ -73,6 +73,7 @@ public:
 private:
 	bool m_added;
 	bool mActivated;
+	bool m_streamStarted;
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 	

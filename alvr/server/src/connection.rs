@@ -1,17 +1,13 @@
 use crate::SESSION_MANAGER;
 use alvr_common::{data::*, logging::*, *};
 use settings_schema::Switch;
-use std::time::{Duration, Instant, SystemTime};
+use std::time::SystemTime;
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
 }
 
-const STREAM_RETRY_COOLDOWN: Duration = Duration::from_secs(5);
-
 pub async fn client_discovery() {
-    let mut stream_init_timestamp = Instant::now() - Duration::from_secs(10);
-
     let res = sockets::search_client(None, |address, client_handshake_packet| {
         let now_ms = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -128,10 +124,7 @@ pub async fn client_discovery() {
             let url_bytes = url_c_string.as_bytes_with_nul();
             server_handshake_packet.web_gui_url[0..url_bytes.len()].copy_from_slice(url_bytes);
 
-            if Instant::now() - stream_init_timestamp > STREAM_RETRY_COOLDOWN {
-                unsafe { crate::InitializeStreaming() };
-                stream_init_timestamp = Instant::now();
-            }
+            unsafe { crate::InitializeStreaming() };
 
             Some(server_handshake_packet)
         } else {

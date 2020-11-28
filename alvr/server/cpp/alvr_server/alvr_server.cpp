@@ -174,8 +174,3 @@ void InitializeStreaming() {
 	if (g_serverDriverDisplayRedirect.m_pRemoteHmd)
 		g_serverDriverDisplayRedirect.m_pRemoteHmd->StartStreaming();
 }
-
-void DeinitializeStreaming() {
-	if (g_serverDriverDisplayRedirect.m_pRemoteHmd)
-		g_serverDriverDisplayRedirect.m_pRemoteHmd->StopStreaming();
-}

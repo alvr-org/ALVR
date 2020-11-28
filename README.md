@@ -30,8 +30,8 @@ If you didn't already, install SteamVR, launch it and then close it (this is to 
 
 Install the latest [Visual C++ Redistrubutable x64 package](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads). Do this every time you install a new ALVR version!
 
-To install ALVR download `alvr_server_windows.zip` from the [releases page](https://github.com/JackD83/ALVR/releases), unzip it and launch `ALVR.exe` (the folder path must contain only UTF-8 characters and must be editable with user privileges). The first time you open ALVR.exe you may have to allow it in the SmartScreen prompt and allow the network access to alvr_web_server in another popup window (it could be behind the actual ALVR window).  
-It's important not to move the folder after the first launch. To keep settings from a previous installation of ALVR (>=v12.0) you can unzip over the old installation folder.
+To install ALVR download `alvr_server_windows.zip` from the [releases page](https://github.com/JackD83/ALVR/releases), unzip it and open `ALVR Launcher.exe` (the folder path must contain only UTF-8 characters and must be editable with user privileges). The first time you open ALVR.exe you may have to allow it in the SmartScreen prompt.  
+It's important not to move the folder after the first launch. To keep settings from a previous installation of ALVR (>=v12.0) you can unzip over the old installation folder, or just update .
 
 Install the client on your headset through [SideQuest](https://sidequestvr.com/).
 
@@ -39,11 +39,11 @@ To make the Oculus Quest microphone work you need to install the [VB-CABLE Virtu
 
 ## Usage
 
-- Launch `ALVR.exe` (ALVR dashboard). The first time a setup wizard will guide you through the installation.
+- Open `ALVR Launcher.exe` (ALVR dashboard). The first time a setup wizard will guide you through the installation.
 - Launch ALVR on your headset. While the headset screen is on, click `Trust` next to the client entry (on the PC) to start streaming.
-- If you trusted a client, you can start streaming by just launching ALVR on your headset, then SteamVR or the ALVR dashboard on PC.
 - To change settings, open the dashboard on the headset with a long press of the menu button (on the left controller), change what you want and then press `Restart SteamVR`. The current playing game could shutdown so any unsaved progress could be lost.
 - To shutdown ALVR you need to close both the ALVR dashboard on PC and SteamVR.
+- If you want play games without launching the ALVR dashboard first, you need to register the driver. Go to Installation tab, then click on `Register ALVR driver`. This is normally discouraged because it can cause problems with other SteamVR drivers (for example the Oculus Link).
 
 ### Notes
 
@@ -57,7 +57,7 @@ To make the Oculus Quest microphone work you need to install the [VB-CABLE Virtu
 
 ## Uninstall
 
-Launch `ALVR.exe`, go to `Installation` tab, press `Remove` next to the current ALVR installation path, then `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
+Open `ALVR Launcher.exe`, go to `Installation` tab then press `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
 
 If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder.
 

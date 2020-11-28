@@ -159,7 +159,7 @@ async fn http_api(
         "/driver/list" => reply_json(&get_registered_drivers().unwrap_or_default())?,
         uri @ "/firewall-rules/add" | uri @ "/firewall-rules/remove" => {
             let add = uri.ends_with("add");
-            let maybe_err = firewall_rules(&ALVR_DIR, add).err();
+            let maybe_err = firewall_rules(add).err();
             if let Some(e) = &maybe_err {
                 error!("Setting firewall rules failed: code {}", e);
             }

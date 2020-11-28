@@ -144,10 +144,6 @@ fn update(release: &Release) -> StrResult {
     create_replace_dir(&extract_dir, "resources")?;
 
     trace_err!(fs::copy(
-        &extract_dir.join(exec_fname("alvr_web_server")),
-        current_alvr_dir()?.join(exec_fname("alvr_web_server")),
-    ))?;
-    trace_err!(fs::copy(
         &extract_dir.join("driver.vrdrivermanifest"),
         current_alvr_dir()?.join("driver.vrdrivermanifest"),
     ))?;

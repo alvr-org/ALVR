@@ -211,7 +211,7 @@ pub fn build_server(is_release: bool, fetch_crates: bool) -> BResult {
     }
 
     run(&format!(
-        "cargo build -p alvr_server -p alvr_launcher -p alvr_web_server {}",
+        "cargo build -p alvr_server -p alvr_launcher {}",
         build_flag
     ))?;
     fs::copy(
@@ -229,10 +229,6 @@ pub fn build_server(is_release: bool, fetch_crates: bool) -> BResult {
     fs::copy(
         openvr_api_dir.join("openvr_api.dll"),
         driver_dst_dir.join("openvr_api.dll"),
-    )?;
-    fs::copy(
-        artifacts_dir.join(exec_fname("alvr_web_server")),
-        server_build_dir().join(exec_fname("alvr_web_server")),
     )?;
     fs::copy(
         artifacts_dir.join(exec_fname("alvr_launcher")),

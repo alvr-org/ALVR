@@ -31,7 +31,7 @@ define({
         "serverFPS": "Server fps",
         "packets": "Packets",
         "packetss": "Packets/s",
-        "troubleshooting": `Is your headset not showing up? Visit our troubleshooting page <a  target='_blank' href="https://github.com/JackD83/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">here</a>`
+        "troubleshooting": `Is your headset not showing up? Visit our troubleshooting page <a  href="https://github.com/JackD83/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">here</a>`
     },
     "it": true,
     "es": true,

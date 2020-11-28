@@ -4,7 +4,7 @@ define({
     "titleHardwareReq": "Requisiti hardware",
     "textHardwareReq": "ALVR richiede una scheda grafica dedicata e recente. <br/> <br/> Controlla di avere almeno un dispositivo audio di output. <br/> <br/>",
     "titleSoftwareReq": "Requisiti software",
-    "textSoftwareReq": "Per trasmettere l'audio del microfono del visore devi installare <a  target='_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
+    "textSoftwareReq": "Per trasmettere l'audio del microfono del visore devi installare <a  href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
     "titleFirewall": "Firewall",
     "textFirewall": "Per comunicare con il visore, devono essere impostate alcune eccezioni del firewall. Questo richiede privilegi di amministratore.",
     "buttonFirewall": "Aggiungi eccezione firewall",

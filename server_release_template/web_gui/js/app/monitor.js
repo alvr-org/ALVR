@@ -27,10 +27,12 @@ define([
 
             log_listener.onerror = (ev) => {
                 console.log("Log error", ev)
+                logInit();
             }
 
             log_listener.onclose = (ev) => {
                 console.log("Log closed", ev)
+                logInit();
             }
 
             log_listener.addEventListener('message', function(e) { addLogLine(e.data) });

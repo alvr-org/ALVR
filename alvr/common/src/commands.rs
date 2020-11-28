@@ -127,24 +127,23 @@ pub fn maybe_launch_steamvr() {
         .is_empty()
     {
         Command::new("cmd")
-            .args(&["/C", "start", "steam://run/250820"])
+            .args(&["/C", "start", "steam://rungameid/250820"])
+            .creation_flags(CREATE_NO_WINDOW)
             .spawn()
             .ok();
     }
 }
 
-// this does not kill any child processes, including possibly the web server
+// this will not kill the child process "ALVR launcher"
 pub fn kill_steamvr() {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
 
-    for process_name in ["vrserver", "vrcompositor", "vrdashboard", "vrmonitor"].iter() {
-        for process in system.get_process_by_name(&exec_fname(process_name)) {
-            #[cfg(not(windows))]
-            process.kill(Signal::Term);
-            #[cfg(windows)]
-            kill_process(process.pid());
-        }
+    for process in system.get_process_by_name(&exec_fname("vrcompositor")) {
+        #[cfg(not(windows))]
+        process.kill(Signal::Term);
+        #[cfg(windows)]
+        kill_process(process.pid());
     }
 }
 

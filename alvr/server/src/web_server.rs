@@ -168,8 +168,7 @@ async fn http_api(
         "/graphics-devices" => reply_json(&graphics::get_gpu_names())?,
         "/audio-devices" => reply_json(&audio::output_audio_devices().ok())?,
         "/restart-steamvr" => {
-            kill_steamvr();
-            maybe_launch_steamvr();
+            crate::restart_steamvr();
             reply(StatusCode::OK)?
         }
         "/version" => Response::new(ALVR_SERVER_VERSION.to_string().into()),

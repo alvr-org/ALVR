@@ -43,6 +43,16 @@ pub fn shutdown_runtime() {
     }
 }
 
+pub fn restart_steamvr() {
+    thread::spawn(|| {
+        shutdown_runtime();
+
+        unsafe { ShutdownSteamvr() };
+
+        commands::restart_steamvr_with_timeout(&ALVR_DIR).ok();
+    });
+}
+
 fn init(log_sender: broadcast::Sender<String>) -> StrResult {
     if let Some(runtime) = MAYBE_RUNTIME.lock().as_mut() {
         // Acquire and drop the session_manager lock to create session.json if not present

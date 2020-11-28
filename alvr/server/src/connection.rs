@@ -261,8 +261,6 @@ pub async fn client_discovery() {
                 sharpening: session_settings.video.color_correction.content.sharpening,
             };
 
-            error!("{}", session_ref.openvr_config == openvr_config);
-
             if session_ref.openvr_config == openvr_config {
                 server_handshake_packet.web_gui_url = [0; 32];
                 let url_string = format!("http://{}:{}/", host_address, 8082);
@@ -276,7 +274,6 @@ pub async fn client_discovery() {
             } else {
                 session_ref.openvr_config = openvr_config;
 
-                error!("restarting steamvr");
                 crate::restart_steamvr();
 
                 SearchResult::Exit

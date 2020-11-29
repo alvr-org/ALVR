@@ -12,7 +12,9 @@ use lazy_static::lazy_static;
 use lazy_static_include::*;
 use parking_lot::Mutex;
 use std::{
+    collections::{hash_map::Entry, HashSet},
     ffi::{c_void, CStr, CString},
+    net::IpAddr,
     os::raw::c_char,
     path::PathBuf,
     sync::Once,
@@ -51,6 +53,78 @@ pub fn restart_steamvr() {
 
         commands::restart_steamvr_with_timeout(&ALVR_DIR).ok();
     });
+}
+
+pub enum ClientListAction {
+    AddIfMissing { display_name: String, ip: IpAddr, certificate_pem: String },
+    TrustAndMaybeAddIp(Option<IpAddr>),
+    RemoveIpOrEntry(Option<IpAddr>),
+}
+
+pub async fn update_client_list(hostname: String, action: ClientListAction) {
+    let session_manager_ref = &mut SESSION_MANAGER.lock();
+    let session_desc_ref = &mut session_manager_ref.get_mut(None, SessionUpdateType::ClientList);
+
+    let maybe_client_entry = session_desc_ref.client_connections.entry(hostname);
+
+    let mut should_notify = false;
+    match action {
+        ClientListAction::AddIfMissing {
+            display_name,
+            ip,
+            certificate_pem,
+        } => match maybe_client_entry {
+            Entry::Occupied(mut existing_entry) => {
+                let client_connection_ref = existing_entry.get_mut();
+                client_connection_ref.last_local_ip = ip;
+
+                // don't notify
+            }
+            Entry::Vacant(new_entry) => {
+                let client_connection_desc = ClientConnectionDesc {
+                    trusted: false,
+                    last_local_ip: ip,
+                    manual_ips: HashSet::new(),
+                    display_name,
+                    certificate_pem,
+                };
+                new_entry.insert(client_connection_desc);
+
+                should_notify = true;
+            }
+        },
+        ClientListAction::TrustAndMaybeAddIp(maybe_ip) => {
+            if let Entry::Occupied(mut entry) = maybe_client_entry {
+                let client_connection_ref = entry.get_mut();
+                client_connection_ref.trusted = true;
+                if let Some(ip) = maybe_ip {
+                    client_connection_ref.manual_ips.insert(ip);
+                }
+
+                should_notify = true;
+            }
+            // else: never happens. The UI cannot request a new entry creation because in that case
+            // it wouldn't have the certificate
+        }
+        ClientListAction::RemoveIpOrEntry(maybe_ip) => {
+            if let Entry::Occupied(mut entry) = maybe_client_entry {
+                if let Some(ip) = maybe_ip {
+                    entry.get_mut().manual_ips.remove(&ip);
+                } else {
+                    entry.remove_entry();
+                }
+
+                should_notify = true;
+            }
+        }
+    }
+
+    if should_notify {
+        info!(id: LogId::SessionUpdated {
+            web_client_id: None,
+            update_type: SessionUpdateType::ClientList
+        });
+    }
 }
 
 fn init(log_sender: broadcast::Sender<String>) -> StrResult {

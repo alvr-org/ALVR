@@ -34,21 +34,6 @@ define([
             self.storeSession("other");
         }
 
-        self.updateClientTrustState = function (sessionListIndex, state) {
-            session.lastClients[sessionListIndex].state = state;
-            self.storeSession("clientList");
-        }
-
-        self.pushManualClient = function (descriptor) {
-            session.lastClients.push(descriptor);
-            self.storeSession("clientList");
-        }
-
-        self.removeClient = function (sessionListIndex) {
-            session.lastClients.splice(sessionListIndex, 1);
-            self.storeSession("clientList");
-        }
-
         function init() {
 
             fillNode(schema, "root", 0, $("#configContent"), "", undefined);

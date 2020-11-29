@@ -1,5 +1,8 @@
 use crate::{data::*, logging::LogId, *};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::{
+    future::Future,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+};
 use tokio::net::*;
 
 const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
@@ -12,9 +15,9 @@ pub enum SearchResult {
     Exit,
 }
 
-pub async fn search_client(
+pub async fn search_client<F: Future<Output = SearchResult>>(
     client_ip: Option<String>,
-    mut client_found_cb: impl FnMut(IpAddr, ClientHandshakePacket) -> SearchResult,
+    mut client_found_cb: impl FnMut(IpAddr, ClientHandshakePacket) -> F,
 ) -> StrResult {
     let mut handshake_socket =
         trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, HANDSHAKE_PORT)).await)?;
@@ -80,7 +83,7 @@ pub async fn search_client(
             continue;
         }
 
-        let result = client_found_cb(address.ip(), client_handshake_packet);
+        let result = client_found_cb(address.ip(), client_handshake_packet).await;
 
         match result {
             SearchResult::ClientReady(server_handshake_packet) => {

@@ -7,7 +7,9 @@ use serde::*;
 use serde_json as json;
 use settings_schema::SchemaNode;
 use std::{
+    collections::{HashMap, HashSet},
     fs,
+    net::IpAddr,
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
 };
@@ -133,19 +135,12 @@ pub struct ClientHandshakePacket {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum ClientConnectionState {
-    AvailableUntrusted,
-    AvailableTrusted,
-    UnavailableTrusted,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ClientConnectionDesc {
-    pub state: ClientConnectionState,
-    pub last_update_ms_since_epoch: u64,
-    pub address: String,
-    pub handshake_packet: ClientHandshakePacket,
+    pub display_name: String,
+    pub last_local_ip: IpAddr,
+    pub manual_ips: HashSet<IpAddr>,
+    pub trusted: bool,
+    pub certificate_pem: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -153,7 +148,8 @@ pub struct ClientConnectionDesc {
 pub struct SessionDesc {
     pub setup_wizard: bool,
     pub openvr_config: OpenvrConfig,
-    pub last_clients: Vec<ClientConnectionDesc>,
+    // The hashmap key is the hostname
+    pub client_connections: HashMap<String, ClientConnectionDesc>,
     pub session_settings: SessionSettings,
 }
 
@@ -196,7 +192,7 @@ impl Default for SessionDesc {
                 enable_color_correction: false,
                 ..<_>::default()
             },
-            last_clients: vec![],
+            client_connections: HashMap::new(),
             session_settings: session_settings_default(),
         }
     }

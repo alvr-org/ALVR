@@ -5,10 +5,8 @@ define([
     "lib/lodash",
     "i18n!app/nls/monitor",
     "i18n!app/nls/notifications",
-    "json!app/resources/descriptors/OculusQuest.json",
     "css!app/templates/monitor.css"
-
-], function(addClientModalTemplate, monitorTemplate, session, _, i18n, i18nNotifications, descriptorQuest) {
+], function(addClientModalTemplate, monitorTemplate, session, _, i18n, i18nNotifications) {
     return function(alvrSettings) {
 
         var notificationLevels = [];
@@ -70,7 +68,7 @@ define([
                             //TODO: input validation
                             const type = $("#clientTypeSelect").val();
                             const ip = $("#clientIP").val();
-                            manualAddClient(type, ip)
+                            //manualAddClient(type, ip)
                             $('#addClientModal').modal('hide');
                             $('#addClientModal').remove();
                         })
@@ -80,29 +78,21 @@ define([
             });
         }
 
-        function manualAddClient(type, ip) {
-            //TODO: input validation
-            var desc;
-            if (type == "Oculus Quest") {
-                desc = descriptorQuest;
-            }
-
-            desc.address = ip;
-            alvrSettings.pushManualClient(desc);
-        }
-
         function updateClients() {
             $("#newClientsDiv").empty();
             $("#trustedClientsDiv").empty();
 
 
-            session.lastClients.forEach((client, sessionListIndex) => {
-                var type = pack(client.handshakePacket.deviceName);
+            Object.entries(session.clientConnections).forEach(pair => {
+                var hostname = pair[0];
+                var connection = pair[1];
+                var address = connection.lastLocalIp;
+                var type = connection.displayName;
 
-                if (client.state == "availableUntrusted") {
-                    addNewClient(type, client.address, sessionListIndex);
-                } else if (client.state == "availableTrusted") {
-                    addTrustedClient(type, client.address, sessionListIndex);
+                if (connection.trusted) {
+                    addTrustedClient(type, address, hostname);
+                } else {
+                    addNewClient(type, address, hostname);
                 }
             });
         }
@@ -134,7 +124,7 @@ define([
 
         }
 
-        function addNewClient(type, ip, sessionListIndex) {
+        function addNewClient(type, ip, hostname) {
             const id = ip.replace(/\./g, '');
 
             if ($("#newClient_" + id).length > 0) {
@@ -154,12 +144,17 @@ define([
             $("#newClientsDiv").append(client);
             $(document).ready(() => {
                 $("#newClient_" + id + " button").click(() => {
-                    alvrSettings.updateClientTrustState(sessionListIndex, "availableTrusted");
+                    $.ajax({
+                        type: "POST",
+                        url: `client/trust`,
+                        contentType: "application/json;charset=UTF-8",
+                        data: JSON.stringify([hostname, null]),
+                    });
                 })
             });
         }
 
-        function addTrustedClient(type, ip, sessionListIndex) {
+        function addTrustedClient(type, ip, hostname) {
             const id = ip.replace(/\./g, '');
 
             if ($("#newClient_" + id).length > 0) {
@@ -179,7 +174,12 @@ define([
             $("#trustedClientsDiv").append(client);
             $(document).ready(() => {
                 $("#trustedClient_" + id + " button").click(() => {
-                    alvrSettings.removeClient(sessionListIndex);
+                    $.ajax({
+                        type: "POST",
+                        url: `client/remove`,
+                        contentType: "application/json;charset=UTF-8",
+                        data: JSON.stringify([hostname, null]),
+                    });
                 })
             });
         }

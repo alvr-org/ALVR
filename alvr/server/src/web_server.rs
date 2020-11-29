@@ -1,4 +1,4 @@
-use crate::{ALVR_DIR, SESSION_MANAGER};
+use crate::{restart_steamvr, update_client_list, ClientListAction, ALVR_DIR, SESSION_MANAGER};
 use alvr_common::{commands::*, data::*, logging::*, *};
 use bytes::buf::BufExt;
 use futures::{stream::StreamExt, SinkExt};
@@ -14,7 +14,10 @@ use hyper::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json as json;
-use std::{net::SocketAddr, path::PathBuf};
+use std::{
+    net::{IpAddr, SocketAddr},
+    path::PathBuf,
+};
 use tokio::sync::broadcast::{self, RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
@@ -168,8 +171,24 @@ async fn http_api(
         "/graphics-devices" => reply_json(&graphics::get_gpu_names())?,
         "/audio-devices" => reply_json(&audio::output_audio_devices().ok())?,
         "/restart-steamvr" => {
-            crate::restart_steamvr();
+            restart_steamvr();
             reply(StatusCode::OK)?
+        }
+        "/client/trust" => {
+            if let Ok((hostname, maybe_ip)) = from_body::<(String, Option<IpAddr>)>(body).await {
+                update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(maybe_ip)).await;
+                reply(StatusCode::OK)?
+            } else {
+                reply(StatusCode::BAD_REQUEST)?
+            }
+        }
+        "/client/remove" => {
+            if let Ok((hostname, maybe_ip)) = from_body::<(String, Option<IpAddr>)>(body).await {
+                update_client_list(hostname, ClientListAction::RemoveIpOrEntry(maybe_ip)).await;
+                reply(StatusCode::OK)?
+            } else {
+                reply(StatusCode::BAD_REQUEST)?
+            }
         }
         "/version" => Response::new(ALVR_SERVER_VERSION.to_string().into()),
         "/open" => {

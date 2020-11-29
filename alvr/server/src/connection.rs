@@ -1,57 +1,38 @@
-use crate::SESSION_MANAGER;
-use alvr_common::{*, sockets::*, data::*, logging::*};
+use crate::{update_client_list, ClientListAction, SESSION_MANAGER};
+use alvr_common::{data::*, logging::*, sockets::*, *};
 use settings_schema::Switch;
-use std::time::SystemTime;
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
 }
 
 pub async fn client_discovery() {
-    let res = search_client(None, |address, client_handshake_packet| {
-        let now_ms = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
+    let res = search_client(None, |address, client_handshake_packet| async move {
+        // for now use the address as hostname
+        // todo: get hostaname, display_name and certificate from the client
+        update_client_list(
+            address.to_string(),
+            ClientListAction::AddIfMissing {
+                display_name: "Oculus Quest".into(),
+                ip: address,
+                certificate_pem: "".into(),
+            },
+        )
+        .await;
 
+        if let Some(connection) = SESSION_MANAGER
+            .lock()
+            .get()
+            .client_connections
+            .get(&address.to_string())
         {
-            let session_manager_ref = &mut SESSION_MANAGER.lock();
-            let session_desc_ref =
-                &mut session_manager_ref.get_mut(None, SessionUpdateType::ClientList);
-
-            let maybe_known_client_ref =
-                session_desc_ref
-                    .last_clients
-                    .iter_mut()
-                    .find(|connection_desc| {
-                        connection_desc.address == address.to_string()
-                            && connection_desc.handshake_packet.device_name
-                                == client_handshake_packet.device_name
-                            && connection_desc.handshake_packet.version
-                                == client_handshake_packet.version
-                    });
-
-            if let Some(known_client_ref) = maybe_known_client_ref {
-                known_client_ref.last_update_ms_since_epoch = now_ms as _;
-
-                if matches!(
-                    known_client_ref.state,
-                    ClientConnectionState::AvailableUntrusted
-                ) {
-                    return SearchResult::Wait;
-                } else {
-                    known_client_ref.state = ClientConnectionState::AvailableTrusted;
-                }
+            if connection.trusted {
+                // continue
             } else {
-                session_desc_ref.last_clients.push(ClientConnectionDesc {
-                    state: ClientConnectionState::AvailableUntrusted,
-                    last_update_ms_since_epoch: now_ms as _,
-                    address: address.to_string(),
-                    handshake_packet: client_handshake_packet,
-                });
-
                 return SearchResult::Wait;
             }
+        } else {
+            return SearchResult::Wait;
         }
 
         let settings = SESSION_MANAGER.lock().get().to_settings();

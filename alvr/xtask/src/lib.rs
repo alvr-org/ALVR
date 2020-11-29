@@ -2,9 +2,9 @@ use std::{fs, path::Path, path::PathBuf};
 
 fn packages_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-    .parent()
-    .unwrap()
-    .into()
+        .parent()
+        .unwrap()
+        .into()
 }
 
 fn get_version(dir_name: &str) -> String {

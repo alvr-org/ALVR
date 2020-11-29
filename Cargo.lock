@@ -143,6 +143,7 @@ name = "alvr_xtask"
 version = "1.0.0"
 dependencies = [
  "cached-path",
+ "chrono",
  "dirs",
  "fs_extra",
  "lazy_static",

@@ -1,15 +1,17 @@
 use crate::*;
 
+use chrono::Utc;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
-use semver::Version;
+use semver::{AlphaNumeric, Version};
 use std::cmp::Ordering;
 use std::fs::File;
 use std::str::FromStr;
 use toml_edit::Document;
 
 lazy_static! {
-    static ref GRADLE_VERSIONNAME_REGEX: Regex = Regex::new(r#"versionName\s+"[\d.]+[0-9A-Za-z-.]*""#).unwrap();
+    static ref GRADLE_VERSIONNAME_REGEX: Regex =
+        Regex::new(r#"versionName\s+"[\d.]+[0-9A-Za-z-.]*""#).unwrap();
     static ref GRADLE_VERSIONCODE_REGEX: Regex =
         Regex::new(r#"versionCode\s+(?P<code>\d+)"#).unwrap();
 }
@@ -72,9 +74,7 @@ fn bump_client_gradle_version(new_version: &Version) -> BResult {
 }
 
 fn bump_cargo_version<P: AsRef<Path>>(path: P, new_version: &Version) -> BResult {
-    let manifest_path = workspace_dir()
-        .join(path)
-        .join("Cargo.toml");
+    let manifest_path = workspace_dir().join(path).join("Cargo.toml");
 
     let mut manifest = Document::from_str(&fs::read_to_string(&manifest_path)?)?;
 
@@ -130,4 +130,24 @@ pub fn bump_versions(server_arg: Option<String>, client_arg: Option<String>) -> 
         }
         Err(msg) => Err(format!("Version bump failed: {}", msg).into()),
     }
+}
+
+pub fn bump_versions_nightly() -> BResult {
+    let today = Utc::now().format("%Y%m%d");
+    let mut client_version = Version::parse(&alvr_xtask::client_version())?;
+    let mut server_version = Version::parse(&alvr_xtask::server_version())?;
+
+    let tag = match client_version.cmp(&server_version) {
+        Ordering::Less | Ordering::Equal => format!("v{}-nightly.{}", server_version, today),
+        Ordering::Greater => format!("v{}-nightly.{}", client_version, today),
+    };
+    client_version.pre = vec![AlphaNumeric(format!("nightly.{}", today))];
+    server_version.pre = vec![AlphaNumeric(format!("nightly.{}", today))];
+
+    ok_or_exit(bump_client_cargo_version(&client_version));
+    ok_or_exit(bump_client_gradle_version(&client_version));
+    ok_or_exit(bump_server_cargo_version(&server_version));
+
+    println!("Git tag:\n{}", tag);
+    Ok(())
 }

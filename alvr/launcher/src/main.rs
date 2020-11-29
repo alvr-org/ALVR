@@ -10,7 +10,17 @@ use fs_extra::dir as dirx;
 use self_update::{backends::github::ReleaseList, update::Release};
 use semver::Version;
 use serde_json as json;
-use std::{time::Duration, env, fs, fs::File, io, path::Path, path::PathBuf, sync::{Arc, Mutex}, thread, time::Instant};
+use std::{
+    env, fs,
+    fs::File,
+    io,
+    path::Path,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+    time::Instant,
+};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -143,6 +153,7 @@ fn update(release: &Release) -> StrResult {
     create_replace_dir(&extract_dir, "bin")?;
     create_replace_dir(&extract_dir, "resources")?;
 
+    fs::remove_file(current_alvr_dir()?.join("crash_log.txt")).ok();
     trace_err!(fs::copy(
         &extract_dir.join("driver.vrdrivermanifest"),
         current_alvr_dir()?.join("driver.vrdrivermanifest"),

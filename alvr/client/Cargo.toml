@@ -28,4 +28,4 @@ jni = "0.18"
 [build-dependencies]
 walkdir = "2"
 cc = { version = "1", features = ["parallel"] }
-bindgen = "0.55"
+bindgen = "0.56"

@@ -95,7 +95,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "12.0.0"
+version = "13.1.0"
 dependencies = [
  "alcro",
  "alvr_common",
@@ -112,7 +112,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "13.0.0"
+version = "13.1.0"
 dependencies = [
  "alvr_common",
  "bindgen",

@@ -12,7 +12,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
-use version::bump_versions;
+use version::{bump_versions, bump_versions_nightly};
 
 const HELP_STR: &str = r#"
 cargo xtask
@@ -45,6 +45,7 @@ struct Args {
     is_release: bool,
     server_version: Option<String>,
     client_version: Option<String>,
+    nightly_version: bool,
 }
 
 #[cfg(target_os = "linux")]
@@ -334,6 +335,7 @@ fn main() {
             is_release: args.contains("--release"),
             server_version: args.opt_value_from_str("--server").unwrap(),
             client_version: args.opt_value_from_str("--client").unwrap(),
+            nightly_version: args.contains("--nightly"),
         };
         if args.finish().is_ok() {
             match subcommand.as_str() {
@@ -343,10 +345,16 @@ fn main() {
                 "publish" => ok_or_exit(build_publish()),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
-                "bump-versions" => ok_or_exit(bump_versions(
-                    args_values.server_version,
-                    args_values.client_version,
-                )),
+                "bump-versions" => {
+                    if args_values.nightly_version {
+                        ok_or_exit(bump_versions_nightly())
+                    } else {
+                        ok_or_exit(bump_versions(
+                            args_values.server_version,
+                            args_values.client_version,
+                        ))
+                    }
+                }
                 _ => {
                     println!("\nUnrecognized subcommand.");
                     println!("{}", HELP_STR);

@@ -38,5 +38,3 @@ extern "C" void *getServerAddress(void *env);
 extern "C" int getServerPort();
 extern "C" void sendNative(long long nativeBuffer, int bufferLength);
 extern "C" void setSinkPreparedNative(unsigned char prepared);
-
-extern "C" void setFrameLogEnabled(long long debugFlags);

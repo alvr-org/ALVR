@@ -4,8 +4,10 @@ pub mod audio;
 #[cfg(windows)]
 pub mod commands;
 
-pub mod data;
+#[cfg(windows)]
 pub mod graphics;
+
+pub mod data;
 pub mod logging;
 pub mod sockets;
 

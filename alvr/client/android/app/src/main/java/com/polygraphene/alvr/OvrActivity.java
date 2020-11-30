@@ -67,6 +67,13 @@ public class OvrActivity extends Activity {
         }
     }
 
+    private BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context ctxt, Intent intent) {
+            onBatteryChangedNative(intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0));
+        }
+    };
+
     boolean mResumed = false;
     Handler mRenderingHandler;
     HandlerThread mRenderingHandlerThread;
@@ -83,15 +90,6 @@ public class OvrActivity extends Activity {
     boolean mDecoderPrepared = false;
     int mRefreshRate = 72;
     long mPreviousRender = 0;
-    int mBatteryLevel;
-
-    private BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver(){
-        @Override
-        public void onReceive(Context ctxt, Intent intent) {
-            onBatteryChangedNative(intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0));
-        }
-    };
-
 
     // Cache method references for performance reasons
     final Runnable mRenderRunnable = this::render;
@@ -99,6 +97,8 @@ public class OvrActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        initNativeLogging();
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -271,8 +271,7 @@ public class OvrActivity extends Activity {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.RECORD_AUDIO},
                     MY_PERMISSIONS_RECORD_AUDIO);
-        }
-        else {
+        } else {
             ContextCompat.checkSelfPermission(this,
                     Manifest.permission.RECORD_AUDIO);//Go ahead with recording audio now
         }
@@ -439,6 +438,8 @@ public class OvrActivity extends Activity {
             }
         }
     };
+
+    static native void initNativeLogging();
 
 
     private native void initializeNative(AssetManager assetManager);

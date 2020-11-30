@@ -1,13 +1,23 @@
-#![allow(non_upper_case_globals, non_snake_case)]
+#![allow(non_upper_case_globals, non_snake_case, clippy::missing_safety_doc)]
+
+mod logging_backend;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use jni::{
     objects::*,
     sys::jintArray,
-    sys::{jfloatArray, jobjectArray, jstring},
+    sys::{jobjectArray, jstring},
     *,
 };
+
+#[no_mangle]
+pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initNativeLogging(
+    _: JNIEnv,
+    _: JClass,
+) {
+    logging_backend::init_logging();
+}
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_LatencyCollector_DecoderInput(
@@ -282,13 +292,4 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_setSin
     prepared: u8,
 ) {
     setSinkPreparedNative(prepared)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_Utils_setFrameLogEnabled(
-    _: JNIEnv,
-    _: JObject,
-    debug_flags: i64,
-) {
-    setFrameLogEnabled(debug_flags)
 }

@@ -32,14 +32,15 @@ extern bool gDisableExtraLatencyMode;
 
 static const int64_t USECS_IN_SEC = 1000 * 1000;
 
-extern bool gEnableFrameLog;
+const bool gEnableFrameLog = false;
 
 inline void FrameLog(uint64_t frameIndex, const char *format, ...)
 {
-    char buf[10000];
     if (!gEnableFrameLog) {
         return;
     }
+
+    char buf[10000];
 
     va_list args;
     va_start(args, format);

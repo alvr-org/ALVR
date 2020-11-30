@@ -75,6 +75,9 @@ cargo {
     targets = ["arm64"]
     targetDirectory = "../../../../target"
     verbose = true
+    features {
+        defaultAnd("build-cpp")
+    }
 }
 
 tasks.whenTaskAdded { task ->

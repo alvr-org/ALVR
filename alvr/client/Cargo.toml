@@ -8,6 +8,10 @@ edition = "2018"
 [lib]
 crate_type = ["staticlib", "cdylib"]
 
+[features]
+default = []
+build-cpp = []
+
 [dependencies]
 # parking_lot = "0.11"
 # lazy_static = "1"

@@ -4,6 +4,7 @@ mod logging_backend;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+use alvr_common::{data::*, logging::show_err, *};
 use jni::{
     objects::*,
     sys::jintArray,
@@ -17,6 +18,27 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initNativeLogging(
     _: JClass,
 ) {
     logging_backend::init_logging();
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_createIdentity(
+    env: JNIEnv,
+    _: JClass,
+    jidentity: JObject,
+) {
+    show_err(|| -> StrResult {
+        let identity = create_identity(None)?;
+
+        let jhostname = trace_err!(env.new_string(identity.hostname))?.into();
+        trace_err!(env.set_field(jidentity, "hostname", "Ljava/lang/String;", jhostname))?;
+
+        let jcert_pem = trace_err!(env.new_string(identity.certificate_pem))?.into();
+        trace_err!(env.set_field(jidentity, "certificatePEM", "Ljava/lang/String;", jcert_pem))?;
+
+        let jkey_pem = trace_err!(env.new_string(identity.key_pem))?.into();
+        trace_err!(env.set_field(jidentity, "privateKey", "Ljava/lang/String;", jkey_pem))
+    }())
+    .ok();
 }
 
 #[no_mangle]
@@ -112,9 +134,12 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onTrackingN
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
     env: JNIEnv,
     _: JObject,
-    surface: JObject,
+    jhostname: JString,
+    jcertificate_pem: JString,
+    jprivate_key: JString,
+    jscreen_surface: JObject,
 ) {
-    onResumeNative(env.get_native_interface() as _, *surface as _)
+    onResumeNative(env.get_native_interface() as _, *jscreen_surface as _)
 }
 
 #[no_mangle]

@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.SurfaceTexture;
@@ -30,6 +31,7 @@ import android.view.WindowManager;
 import android.widget.Toast;
 
 import java.text.BreakIterator;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static com.polygraphene.alvr.OffscreenWebView.WEBVIEW_HEIGHT;
@@ -45,6 +47,12 @@ public class OvrActivity extends Activity {
     //Create placeholder for user's consent to record_audio permission.
     //This will be used in handling callback
     private final int MY_PERMISSIONS_RECORD_AUDIO = 1;
+
+    static class PrivateIdentity {
+        String hostname;
+        String certificatePEM;
+        String privateKey;
+    }
 
     class RenderingCallbacks implements SurfaceHolder.Callback {
         @Override
@@ -150,6 +158,29 @@ public class OvrActivity extends Activity {
         mEGLContext = EGL14.eglGetCurrentContext();
     }
 
+    PrivateIdentity getPrivateIdentity() {
+        PrivateIdentity id = new PrivateIdentity();
+
+        SharedPreferences prefs = this.getSharedPreferences("pref", Context.MODE_PRIVATE);
+
+        id.hostname = prefs.getString("hostname", "");
+        id.certificatePEM = prefs.getString("certificate", "");
+        id.privateKey = prefs.getString("private-key", "");
+
+        if (Objects.equals(id.hostname, "") || Objects.equals(id.certificatePEM, "") || Objects.equals(id.privateKey, "")) {
+            createIdentity(id);
+
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putString("hostname", id.hostname);
+            editor.putString("certificate", id.certificatePEM);
+            editor.putString("private-key", id.privateKey);
+
+            editor.apply();
+        }
+
+        return id;
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -185,7 +216,9 @@ public class OvrActivity extends Activity {
                     Utils.loge(TAG, e::toString);
                 }
 
-                onResumeNative(mScreenSurface);
+                PrivateIdentity id = this.getPrivateIdentity();
+
+                onResumeNative(id.hostname, id.certificatePEM, id.privateKey, mScreenSurface);
 
                 onVrModeChanged(true);
             });
@@ -441,46 +474,41 @@ public class OvrActivity extends Activity {
 
     static native void initNativeLogging();
 
+    static native void createIdentity(PrivateIdentity id); // id fields are reset
 
-    private native void initializeNative(AssetManager assetManager);
+    native void initializeNative(AssetManager assetManager);
 
-    private native void destroyNative();
+    native void destroyNative();
 
-    private native void onResumeNative(Surface screenSurface);
+    native void onResumeNative(String hostname, String certificatePEM, String privateKey, Surface screenSurface);
 
-    private native void onPauseNative();
+    native void onPauseNative();
 
-    private native void renderNative(long renderedFrameIndex);
+    native void renderNative(long renderedFrameIndex);
 
-    private native void renderLoadingNative();
+    native void renderLoadingNative();
 
-    private native void onTrackingNative(ServerConnection serverConnection);
+    native void onTrackingNative(ServerConnection serverConnection);
 
-    private native void sendTrackingInfoNative(ServerConnection serverConnection);
+    native int getLoadingTextureNative();
 
-    private native void sendMicDataNative(ServerConnection serverConnection);
+    native int getSurfaceTextureIDNative();
 
-    private native void sendGuardianInfoNative(ServerConnection serverConnection);
+    native int getWebViewSurfaceTextureNative();
 
-    private native int getLoadingTextureNative();
+    native boolean isVrModeNative();
 
-    private native int getSurfaceTextureIDNative();
+    native void getDeviceDescriptorNative(DeviceDescriptor deviceDescriptor);
 
-    private native int getWebViewSurfaceTextureNative();
+    native void onStreamStartNative(int width, int height, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset, int trackingSpaceType);
 
-    private native boolean isVrModeNative();
+    native void onHapticsFeedbackNative(long startTime, float amplitude, float duration, float frequency, boolean hand);
 
-    private native void getDeviceDescriptorNative(DeviceDescriptor deviceDescriptor);
+    native void onGuardianSyncAckNative(long timestamp);
 
-    private native void onStreamStartNative(int width, int height, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset, int trackingSpaceType);
+    native void onGuardianSegmentAckNative(long timestamp, int segmentIndex);
 
-    private native void onHapticsFeedbackNative(long startTime, float amplitude, float duration, float frequency, boolean hand);
-
-    private native void onGuardianSyncAckNative(long timestamp);
-
-    private native void onGuardianSegmentAckNative(long timestamp, int segmentIndex);
-
-    private native void onBatteryChangedNative(int battery);
+    native void onBatteryChangedNative(int battery);
 
     @SuppressWarnings("unused")
     public void applyWebViewInteractionEvent(int type, float x, float y) {

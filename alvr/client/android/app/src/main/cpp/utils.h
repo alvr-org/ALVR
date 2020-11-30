@@ -76,7 +76,7 @@ static const char *GlErrorString(GLenum error) {
     }
 }
 
-static void GLCheckErrors(const char* file, int line) {
+[[maybe_unused]] static void GLCheckErrors(const char* file, int line) {
     const GLenum error = glGetError();
     if (error == GL_NO_ERROR) {
         return;

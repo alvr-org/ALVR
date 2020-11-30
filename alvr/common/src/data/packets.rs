@@ -1,4 +1,4 @@
-use super::{settings::*, *};
+use super::settings::*;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +7,12 @@ pub struct HandshakePacket {
     pub alvr_name: String,
     pub version: Version,
     pub device_name: String,
-    pub identity: Option<PublicIdentity>,
+    pub hostname: String,
+    pub certificate_pem: String,
+
+    // reserved field is used to add features between major releases: the packets schema should
+    // never change anymore.
+    pub reserved: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

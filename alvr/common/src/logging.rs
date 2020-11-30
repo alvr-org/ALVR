@@ -107,6 +107,7 @@ pub enum LogId {
     ClientFoundInvalid,
     ClientFoundWrongIp,
     ClientFoundWrongVersion(String),
+    IncompatibleServer,
 }
 
 #[macro_export]

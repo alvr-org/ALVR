@@ -1,3 +1,7 @@
+mod control_socket;
+
+pub use control_socket::*;
+
 use crate::{data::*, logging::LogId, *};
 use std::{
     future::Future,
@@ -5,8 +9,10 @@ use std::{
 };
 use tokio::net::*;
 
+type LDC = tokio_util::codec::LengthDelimitedCodec;
+
 const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-const HANDSHAKE_PORT: u16 = 9943;
+const CONTROL_PORT: u16 = 9943;
 const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 4_000;
 
 pub enum SearchResult {
@@ -20,7 +26,7 @@ pub async fn search_client<F: Future<Output = SearchResult>>(
     mut client_found_cb: impl FnMut(IpAddr, ClientHandshakePacket) -> F,
 ) -> StrResult {
     let mut handshake_socket =
-        trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, HANDSHAKE_PORT)).await)?;
+        trace_err!(UdpSocket::bind(SocketAddr::new(LOCAL_IP, CONTROL_PORT)).await)?;
 
     let maybe_target_client_ip = match client_ip {
         Some(ip_str) => Some(trace_err!(ip_str.parse::<IpAddr>(), "Client IP")?),

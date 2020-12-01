@@ -1,7 +1,7 @@
 [package]
 name = "alvr_server"
 version = "13.1.0"
-authors = ["Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
+authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"
 
@@ -9,7 +9,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-parking_lot = "0.11"
+parking_lot = "0.11" 
 lazy_static = "1" 
 lazy-static-include = "3" 
 chrono = "0.4" 

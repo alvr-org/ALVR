@@ -11,7 +11,7 @@ use toml_edit::Document;
 
 lazy_static! {
     static ref GRADLE_VERSIONNAME_REGEX: Regex =
-        Regex::new(r#"versionName\s+"[\d.]+[0-9A-Za-z-.]*""#).unwrap();
+        Regex::new(r#"versionName\s+"[\d.]+[0-9A-Za-z-.]*(?:\+[0-9A-Za-z-.]+){0,1}""#).unwrap();
     static ref GRADLE_VERSIONCODE_REGEX: Regex =
         Regex::new(r#"versionCode\s+(?P<code>\d+)"#).unwrap();
 }

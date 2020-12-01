@@ -30,11 +30,12 @@ jobs:
       - name: Bump versions
         id: bump_versions
         run: |
+          $env:RUST_BACKTRACE = 1
           $serverarg = "${{ github.event.inputs.server_version }}"
           $serverarg = If ($serverarg.Length -gt 0) { "--server $serverarg" } else { "" }
           $clientarg = "${{ github.event.inputs.client_version }}"
           $clientarg = If ($clientarg.Length -gt 0) { "--client $clientarg" } else { "" }
-          $out = RUST_BACKTRACE=1 cargo xtask bump-versions $serverarg.split() $clientarg.split()
+          $out = cargo xtask bump-versions $serverarg.split() $clientarg.split()
           echo $out
           cargo update -p alvr_server
           echo "::set-output name=version_tag::$(echo $out | sls -CaseSensitive -Pattern '^v.*$')"
@@ -94,8 +95,9 @@ jobs:
           ANDROID_HOME: '${{ github.workspace }}\android-sdk'
           ANDROID_SDK_ROOT: '${{ github.workspace }}\android-sdk'
         run: |
-          RUST_BACKTRACE=1 cargo xtask install-deps
-          RUST_BACKTRACE=1 cargo xtask publish
+          $env:RUST_BACKTRACE = 1
+          cargo xtask install-deps
+          cargo xtask publish
 
       # Three release asset upload actions for three assets - .zip, .pdb and .apk
       - name: Upload ALVR Windows Server .zip

@@ -1,11 +1,6 @@
 #![windows_subsystem = "windows"]
 
-use alvr_common::{
-    commands::*,
-    data::{ALVR_NAME, ALVR_SERVER_VERSION},
-    logging::{show_e, show_err},
-    *,
-};
+use alvr_common::{commands::*, data::*, logging::*, *};
 use fs_extra::dir as dirx;
 use self_update::{backends::github::ReleaseList, update::Release};
 use semver::Version;
@@ -72,13 +67,20 @@ fn restart_steamvr() {
     }
 }
 
-fn get_latest_server_release() -> StrResult<(Release, Version)> {
-    let release_list = trace_err!(ReleaseList::configure()
-        .repo_owner("JackD83")
-        .repo_name(ALVR_NAME)
-        .build())?;
+fn get_latest_server_release(update_channel: UpdateChannel) -> StrResult<(Release, Version)> {
+    let release_list = if matches!(update_channel, UpdateChannel::Nightly) {
+        trace_err!(ReleaseList::configure()
+            .repo_owner("alvr-org")
+            .repo_name("ALVR-nightly")
+            .build())?
+    } else {
+        trace_err!(ReleaseList::configure()
+            .repo_owner("JackD83")
+            .repo_name(ALVR_NAME)
+            .build())?
+    };
 
-    let wants_prereleases = ALVR_SERVER_VERSION.is_prerelease();
+    let wants_prereleases = !matches!(update_channel, UpdateChannel::Stable);
 
     for release in trace_err!(release_list.fetch())? {
         let version = trace_err!(Version::parse(&release.version))?;
@@ -95,14 +97,26 @@ fn get_latest_server_release() -> StrResult<(Release, Version)> {
     Err("No server release found".into())
 }
 
-fn get_server_update() -> Option<(Release, Version)> {
-    get_latest_server_release()
-        .ok()
-        .filter(|(_, version)| *version != *ALVR_SERVER_VERSION)
+fn get_server_update(update_channel: UpdateChannel) -> Option<(Release, Version)> {
+    if matches!(update_channel, UpdateChannel::NoUpdates) {
+        None
+    } else {
+        let current_is_nightly = ALVR_SERVER_VERSION.to_string().contains("nightly");
+
+        get_latest_server_release(update_channel)
+            .ok()
+            .filter(|(_, version)| {
+                let new_is_nightly = version.to_string().contains("nightly");
+                // != operator ignores build metadata (such as nightly)
+                *version != *ALVR_SERVER_VERSION || new_is_nightly != current_is_nightly
+            })
+    }
 }
 
 // change Nexite to JackD83 for actual release
 fn update(release: &Release) -> StrResult {
+    kill_steamvr();
+
     // get the first available release
     let asset = trace_none!(release.asset_for("alvr_server_windows"))?;
     println!("{:#?}\n", asset);
@@ -182,6 +196,9 @@ fn window_mode() -> StrResult {
 
         let instance_mutex = Arc::new(Mutex::new(Some(InstanceMutex(instance_mutex))));
 
+        let session_manager = SessionManager::new(&current_alvr_dir()?);
+        let settings = session_manager.get().to_settings();
+
         let html_content =
             include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/gui/html/index.html"));
         let jquery = include_str!(concat!(
@@ -224,7 +241,7 @@ fn window_mode() -> StrResult {
             }
         }))?;
 
-        if let Some((release, version)) = get_server_update() {
+        if let Some((release, version)) = get_server_update(settings.extra.update_channel) {
             trace_err!(window.bind("getUpdateVersion", {
                 move |_| Ok(json::Value::String(format!("v{}", version.to_string())))
             }))?;

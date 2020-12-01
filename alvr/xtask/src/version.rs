@@ -3,8 +3,8 @@ use crate::*;
 use chrono::Utc;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
-use semver::{AlphaNumeric, Version};
-use std::cmp::Ordering;
+use semver::{Identifier, Version};
+use std::cmp::{self, Ordering};
 use std::fs::File;
 use std::str::FromStr;
 use toml_edit::Document;
@@ -133,21 +133,19 @@ pub fn bump_versions(server_arg: Option<String>, client_arg: Option<String>) -> 
 }
 
 pub fn bump_versions_nightly() -> BResult {
-    let today = Utc::now().format("%Y%m%d");
     let mut client_version = Version::parse(&alvr_xtask::client_version())?;
     let mut server_version = Version::parse(&alvr_xtask::server_version())?;
 
-    let tag = match client_version.cmp(&server_version) {
-        Ordering::Less | Ordering::Equal => format!("v{}-nightly.{}", server_version, today),
-        Ordering::Greater => format!("v{}-nightly.{}", client_version, today),
-    };
-    client_version.pre = vec![AlphaNumeric(format!("nightly.{}", today))];
-    server_version.pre = vec![AlphaNumeric(format!("nightly.{}", today))];
+    let today = Utc::now().format("%Y%m%d");
+    let nightly_identifier = Identifier::AlphaNumeric(format!("nightly.{}", today));
+
+    client_version.build = vec![nightly_identifier.clone()];
+    server_version.build = vec![nightly_identifier];
 
     ok_or_exit(bump_client_cargo_version(&client_version));
     ok_or_exit(bump_client_gradle_version(&client_version));
     ok_or_exit(bump_server_cargo_version(&server_version));
 
-    println!("Git tag:\n{}", tag);
+    println!("Git tag:\nv{}", cmp::max(client_version, server_version));
     Ok(())
 }

@@ -231,7 +231,7 @@ pub struct HeadsetDesc {
 
     pub controllers: Switch<ControllersDesc>,
 
-    pub tracking_space: TrackingSpace, 
+    pub tracking_space: TrackingSpace,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -280,6 +280,15 @@ pub enum Theme {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub enum UpdateChannel {
+    NoUpdates,
+    Stable,
+    Beta,
+    Nightly,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum LogLevel {
     Error,
     Warning,
@@ -293,6 +302,8 @@ pub struct ExtraDesc {
     pub theme: Theme,
     pub revert_confirm_dialog: bool,
     pub restart_confirm_dialog: bool,
+    pub prompt_before_update: bool,
+    pub update_channel: UpdateChannel,
 
     #[schema(advanced)]
     pub notification_level: LogLevel,
@@ -430,6 +441,14 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             revert_confirm_dialog: true,
             restart_confirm_dialog: true,
+            prompt_before_update: !cfg!(feature = "nightly"),
+            update_channel: UpdateChannelDefault {
+                variant: if cfg!(feature = "nightly") {
+                    UpdateChannelDefaultVariant::Nightly
+                } else {
+                    UpdateChannelDefaultVariant::Stable
+                },
+            },
             notification_level: LogLevelDefault {
                 variant: if cfg!(debug_assertions) {
                     LogLevelDefaultVariant::Info

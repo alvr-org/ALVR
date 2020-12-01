@@ -194,9 +194,10 @@ fn zip_dir(dir: &Path) -> BResult {
     Ok(())
 }
 
-pub fn build_server(is_release: bool, fetch_crates: bool) -> BResult {
+pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool) -> BResult {
     let build_type = if is_release { "release" } else { "debug" };
     let build_flag = if is_release { "--release" } else { "" };
+    let nightly_flag = if is_nightly { "--features nightly" } else { "" };
 
     let target_dir = target_dir();
     let artifacts_dir = target_dir.join(build_type);
@@ -212,8 +213,8 @@ pub fn build_server(is_release: bool, fetch_crates: bool) -> BResult {
     }
 
     run(&format!(
-        "cargo build -p alvr_server -p alvr_launcher {}",
-        build_flag
+        "cargo build -p alvr_server -p alvr_launcher {} {}",
+        build_flag, nightly_flag
     ))?;
     fs::copy(
         artifacts_dir.join(dynlib_fname("alvr_server")),
@@ -286,8 +287,8 @@ pub fn build_client(is_release: bool) -> BResult {
     Ok(())
 }
 
-pub fn build_publish() -> BResult {
-    build_server(true, false)?;
+pub fn build_publish(is_nightly: bool) -> BResult {
+    build_server(true, is_nightly, false)?;
     build_client(true)?;
     zip_dir(&server_build_dir())?;
 
@@ -340,9 +341,9 @@ fn main() {
         if args.finish().is_ok() {
             match subcommand.as_str() {
                 "install-deps" => ok_or_exit(install_deps()),
-                "build-server" => ok_or_exit(build_server(args_values.is_release, true)),
+                "build-server" => ok_or_exit(build_server(args_values.is_release, false, true)),
                 "build-client" => ok_or_exit(build_client(args_values.is_release)),
-                "publish" => ok_or_exit(build_publish()),
+                "publish" => ok_or_exit(build_publish(args_values.nightly_version)),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
                 "bump-versions" => {

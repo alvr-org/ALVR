@@ -5,6 +5,10 @@ authors = ["Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"
 
+[features]
+default = []
+nightly = []
+
 [dependencies]
 lazy_static = "1"
 semver = { version = "0.11", features = ['serde'] }

@@ -22,7 +22,7 @@ bincode = "1"
 futures = "0.3"
 tokio = { version = "0.2", features = ["net"] }
 tokio-util = { version = "0.3", features = ["codec"] }
-rcgen = "0.8"
+rcgen = "=0.8.5"
 gfx-hal = "0.6"
 # cpal = { git = "https://github.com/RustAudio/cpal" }
 

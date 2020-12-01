@@ -201,9 +201,20 @@ fn window_mode() -> StrResult {
         struct InstanceMutex(single_instance::SingleInstance);
         unsafe impl Send for InstanceMutex {}
 
+        let current_alvr_dir = current_alvr_dir()?;
+        #[cfg(windows)]
+        if !current_alvr_dir.starts_with("C:\\") {
+            let folder_name = trace_none!(current_alvr_dir.file_name())?.to_string_lossy();
+            show_e_blocking(&format!(
+                "Please move this folder ({}) somewhere in the C: drive.",
+                folder_name
+            ));
+            return Ok(());
+        }
+
         let instance_mutex = Arc::new(Mutex::new(Some(InstanceMutex(instance_mutex))));
 
-        let session_manager = SessionManager::new(&current_alvr_dir()?);
+        let session_manager = SessionManager::new(&current_alvr_dir);
         let settings = session_manager.get().to_settings();
 
         let html_content =
@@ -257,12 +268,13 @@ fn window_mode() -> StrResult {
 
             trace_err!(window.bind("update", {
                 let window = window.clone();
+                let current_alvr_dir = current_alvr_dir.clone();
                 move |_| {
                     show_err(update(&release)).ok();
                     instance_mutex.lock().unwrap().take();
                     window.close();
 
-                    maybe_open_launcher(&current_alvr_dir().unwrap());
+                    maybe_open_launcher(&current_alvr_dir);
 
                     Ok(json::Value::Null)
                 }
@@ -306,7 +318,7 @@ fn window_mode() -> StrResult {
 
         // This is needed in case the launcher window is closed before the driver is loaded,
         // otherwise this does nothing
-        apply_driver_paths_backup(current_alvr_dir()?)?;
+        apply_driver_paths_backup(current_alvr_dir)?;
     }
     Ok(())
 }
@@ -316,7 +328,7 @@ fn main() {
     match args.get(1) {
         Some(flag) if flag == "--restart-steamvr" => restart_steamvr(),
         _ => {
-            show_err(window_mode()).ok();
+            show_err_blocking(window_mode()).ok();
         }
     }
 }

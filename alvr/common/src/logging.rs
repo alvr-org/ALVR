@@ -31,13 +31,33 @@ pub fn set_panic_hook() {
     }))
 }
 
-// log error and show it in a messagebox (if applicable)
-pub fn show_err<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
-    res.map_err(|e| {
-        log::error!("{}", e);
+pub fn show_w<W: Display>(w: W) {
+    log::warn!("{}", w);
 
-        #[cfg(not(target_os = "android"))]
-        std::thread::spawn({
+    #[cfg(not(target_os = "android"))]
+    std::thread::spawn({
+        let warn_string = w.to_string();
+        move || {
+            msgbox::create(
+                "ALVR encountered a non-fatal error",
+                &warn_string,
+                msgbox::IconType::Info,
+            )
+            .ok();
+        }
+    });
+}
+
+pub fn show_warn<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
+    res.map_err(show_w)
+}
+
+fn show_e_block<E: Display>(e: E, blocking: bool) {
+    log::error!("{}", e);
+
+    #[cfg(not(target_os = "android"))]
+    {
+        let show_msgbox = {
             let err_string = e.to_string();
             move || {
                 msgbox::create(
@@ -47,35 +67,30 @@ pub fn show_err<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
                 )
                 .ok();
             }
-        });
-    })
-}
+        };
 
-pub fn show_warn<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
-    res.map_err(|e| {
-        log::warn!("{}", e);
-
-        #[cfg(not(target_os = "android"))]
-        std::thread::spawn({
-            let err_string = e.to_string();
-            move || {
-                msgbox::create(
-                    "ALVR encountered a non-fatal error",
-                    &err_string,
-                    msgbox::IconType::Info,
-                )
-                .ok();
-            }
-        });
-    })
+        if blocking {
+            show_msgbox();
+        } else {
+            std::thread::spawn(show_msgbox);
+        }
+    }
 }
 
 pub fn show_e<E: Display>(e: E) {
-    show_err::<(), _>(Err(e)).ok();
+    show_e_block(e, false);
 }
 
-pub fn show_w<E: Display>(e: E) {
-    show_warn::<(), _>(Err(e)).ok();
+pub fn show_e_blocking<E: Display>(e: E) {
+    show_e_block(e, true);
+}
+
+pub fn show_err<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
+    res.map_err(|e| show_e_block(e, false))
+}
+
+pub fn show_err_blocking<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
+    res.map_err(|e| show_e_block(e, true))
 }
 
 pub async fn show_err_async<T, E: Display>(

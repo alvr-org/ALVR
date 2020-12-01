@@ -202,6 +202,7 @@ fn window_mode() -> StrResult {
         unsafe impl Send for InstanceMutex {}
 
         let current_alvr_dir = current_alvr_dir()?;
+        // patch for self_update replace_using_temp
         #[cfg(windows)]
         if !current_alvr_dir.starts_with("C:\\") {
             let folder_name = trace_none!(current_alvr_dir.file_name())?.to_string_lossy();

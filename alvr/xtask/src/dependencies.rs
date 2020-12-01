@@ -7,7 +7,7 @@ fn dependencies_dir() -> PathBuf {
     workspace_dir().join("deps")
 }
 
-fn install_rust_android_gradle() -> BResult {
+fn install_rust_android_gradle() {
     static PLUGIN_COMMIT: &str = "6e553c13ef2d9bb40b58a7675b96e0757d1b0443";
     static PLUGIN_VERSION: &str = "0.8.3";
 
@@ -17,7 +17,7 @@ fn install_rust_android_gradle() -> BResult {
     );
 
     let download_path =
-        cached_path_with_options(&rust_android_archive_url, &Options::default().extract())?;
+        cached_path_with_options(&rust_android_archive_url, &Options::default().extract()).unwrap();
     let download_path = download_path.join(format!("rust-android-gradle-{}", PLUGIN_COMMIT));
 
     #[cfg(windows)]
@@ -29,20 +29,21 @@ fn install_rust_android_gradle() -> BResult {
         &download_path,
         &gradlew_path.to_string_lossy(),
         &["publish"],
-    )?;
+    )
+    .unwrap();
 
     let dep_dir = dependencies_dir().join("rust-android-gradle");
     match fs::create_dir_all(&dep_dir) {
         Ok(_) => {}
         Err(e) => {
             if e.kind() != ErrorKind::AlreadyExists {
-                return Err(Box::new(e));
+                panic!(e);
             }
         }
     }
 
     // Workaround for long path issue on Windows - canonicalize
-    let plugin_path = download_path.canonicalize()?;
+    let plugin_path = download_path.canonicalize().unwrap();
     let plugin_path = plugin_path
         .join("samples")
         .join("maven-repo")
@@ -55,14 +56,11 @@ fn install_rust_android_gradle() -> BResult {
     fs::copy(
         plugin_path,
         dep_dir.join(format!("rust-android-{}.jar", PLUGIN_VERSION)),
-    )?;
-
-    Ok(())
+    )
+    .unwrap();
 }
 
-pub fn install_deps() -> BResult {
-    run("rustup target add aarch64-linux-android")?;
-    install_rust_android_gradle()?;
-
-    Ok(())
+pub fn install_deps() {
+    run("rustup target add aarch64-linux-android").unwrap();
+    install_rust_android_gradle();
 }

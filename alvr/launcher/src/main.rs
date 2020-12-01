@@ -308,9 +308,21 @@ fn window_mode() -> StrResult {
             Ok(json::Value::Null)
         }))?;
 
-        trace_err!(window.bind("restartSteamvr", |_| {
-            restart_steamvr();
-            Ok(json::Value::Null)
+        trace_err!(window.bind("restartSteamvr", {
+            let current_alvr_dir = current_alvr_dir.clone();
+            move |_| {
+                kill_steamvr();
+
+                // If ALVR driver does not start use a more destructive approach: remove all drivers
+                apply_driver_paths_backup(current_alvr_dir.clone())?;
+                if let Ok(paths) = get_registered_drivers() {
+                    driver_registration(&paths, false)?;
+                }
+
+                // register ALVR driver and start SteamVR again
+                restart_steamvr();
+                Ok(json::Value::Null)
+            }
         }))?;
 
         // reload the page again, the first time the callbacks were not ready

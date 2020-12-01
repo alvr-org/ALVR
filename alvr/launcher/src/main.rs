@@ -124,6 +124,17 @@ fn get_server_update(update_channel: UpdateChannel) -> Option<(Release, Version)
 fn update(release: &Release) -> StrResult {
     kill_steamvr();
 
+    let current_alvr_dir = current_alvr_dir()?;
+    // patch for self_update replace_using_temp
+    #[cfg(windows)]
+    if !current_alvr_dir.starts_with("C:\\") {
+        let folder_name = trace_none!(current_alvr_dir.file_name())?.to_string_lossy();
+        return Err(format!(
+            "ALVR cannot self update. Please close ALVR and move this folder ({}) somewhere in the C: drive.",
+            folder_name
+        ));
+    }
+
     // get the first available release
     let asset = trace_none!(release.asset_for("alvr_server_windows"))?;
     println!("{:#?}\n", asset);
@@ -174,10 +185,10 @@ fn update(release: &Release) -> StrResult {
     create_replace_dir(&extract_dir, "bin")?;
     create_replace_dir(&extract_dir, "resources")?;
 
-    fs::remove_file(current_alvr_dir()?.join("crash_log.txt")).ok();
+    fs::remove_file(current_alvr_dir.join("crash_log.txt")).ok();
     trace_err!(fs::copy(
         &extract_dir.join("driver.vrdrivermanifest"),
-        current_alvr_dir()?.join("driver.vrdrivermanifest"),
+        current_alvr_dir.join("driver.vrdrivermanifest"),
     ))?;
 
     Ok(())
@@ -202,16 +213,6 @@ fn window_mode() -> StrResult {
         unsafe impl Send for InstanceMutex {}
 
         let current_alvr_dir = current_alvr_dir()?;
-        // patch for self_update replace_using_temp
-        #[cfg(windows)]
-        if !current_alvr_dir.starts_with("C:\\") {
-            let folder_name = trace_none!(current_alvr_dir.file_name())?.to_string_lossy();
-            show_e_blocking(&format!(
-                "Please move this folder ({}) somewhere in the C: drive.",
-                folder_name
-            ));
-            return Ok(());
-        }
 
         let instance_mutex = Arc::new(Mutex::new(Some(InstanceMutex(instance_mutex))));
 
@@ -271,7 +272,7 @@ fn window_mode() -> StrResult {
                 let window = window.clone();
                 let current_alvr_dir = current_alvr_dir.clone();
                 move |_| {
-                    show_err(update(&release)).ok();
+                    show_err_blocking(update(&release)).ok();
                     instance_mutex.lock().unwrap().take();
                     window.close();
 

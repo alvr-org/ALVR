@@ -9,8 +9,8 @@ assignees: ''
 
 # Please follow the general troubleshooting steps first:
 
-- [ ] I carefully followed the instructions in the [README](https://github.com/JackD83/ALVR/blob/master/README.md) and completed successfully the setup wizard.
-- [ ] I read the ALVR Wikis [here](https://github.com/polygraphene/ALVR/wiki) and [here](https://github.com/JackD83/ALVR/wiki)
+- [ ] I carefully followed the instructions in the [README](https://github.com/alvr-org/ALVR/blob/master/README.md) and completed successfully the setup wizard.
+- [ ] I read the ALVR Wikis [here](https://github.com/polygraphene/ALVR/wiki) and [here](https://github.com/alvr-org/ALVR/wiki)
 
 If your issue is about games not working, please open an issue for every game and list the game in the title.
 

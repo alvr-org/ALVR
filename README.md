@@ -1,4 +1,4 @@
-<img align="left" width="120" height="120" src="https://github.com/JackD83/ALVR/blob/master/server_release_template/web_gui/web_hi_res_512.png">
+<img align="left" width="120" height="120" src="https://github.com/alvr-org/ALVR/blob/master/server_release_template/web_gui/web_hi_res_512.png">
 
 # ALVR - Air Light VR
 
@@ -20,7 +20,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only w
   - Laptops with an onboard (Intel HD, AMD iGPU) and an additional dedicated GPU (NVidia GTX/RTX, AMD HD/R5/R7): you should assign the dedicated GPU or "high performance graphics adapter" to the applications ALVR, SteamVR for best performance and compatibility. (NVidia: Nvidia control panel->3d settings->application settings; AMD: similiar way)
 - 802.11ac wireless or ethernet wired connection
   - It is recommended to use 802.11ac for the headset and ethernet for PC
-  - You need to connect both the PC and the headset to same router (or use a routed connection as described [here](https://github.com/JackD83/ALVR/wiki/ALVR-client-and-server-on-separate-networks))
+  - You need to connect both the PC and the headset to same router (or use a routed connection as described [here](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-server-on-separate-networks))
 
 ## Install
 
@@ -30,7 +30,7 @@ If you didn't already, install SteamVR, launch it and then close it (this is to 
 
 Install the latest [Visual C++ Redistrubutable x64 package](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads). Do this every time you install a new ALVR version!
 
-To install ALVR download `alvr_server_windows.zip` from the [releases page](https://github.com/JackD83/ALVR/releases), unzip it and open `ALVR Launcher.exe` (the folder path must contain only UTF-8 characters and must be editable with user privileges, do not unzip in C:\\). The first time you open ALVR Launcher.exe you may have to allow it in the SmartScreen prompt.  
+To install ALVR download `alvr_server_windows.zip` from the [releases page](https://github.com/alvr-org/ALVR/releases), unzip it and open `ALVR Launcher.exe` (the folder path must contain only UTF-8 characters and must be editable with user privileges, do not unzip in C:\\). The first time you open ALVR Launcher.exe you may have to allow it in the SmartScreen prompt.  
 It's important not to move the folder after the first launch. To keep settings from a previous installation of ALVR (>=v12.0) you can unzip over the old installation folder, but it is preferable to use the built-in autoupdater.
 
 Install the client on your headset through [SideQuest](https://sidequestvr.com/).
@@ -54,8 +54,8 @@ IMPORTANT: SteamVR must be always running, otherwise the dashboard will not save
 ## Troubleshooting
 
 - To reset ALVR, delete the file `session.json` from the installation folder.
-- Please check the [Troubleshooting](https://github.com/JackD83/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)) page. The original repository [wiki](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) can also help.
-- You can find some setup advice [here](https://github.com/JackD83/ALVR/wiki/Setup-advice).
+- Please check the [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)) page. The original repository [wiki](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) can also help.
+- You can find some setup advice [here](https://github.com/alvr-org/ALVR/wiki/Setup-advice).
 
 ## Uninstall
 

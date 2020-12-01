@@ -29,5 +29,5 @@ define({
     "serverFPS": "服务端帧数",
     "packets": "个数据包",
     "packetss": "个数据包每秒",
-	"troubleshooting": `你的头显没有显示在这里？访问我们的<a  href="https://github.com/JackD83/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">Github问题解决页面</a>以获得帮助。`
+	"troubleshooting": `你的头显没有显示在这里？访问我们的<a  href="https://github.com/alvr-org/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">Github问题解决页面</a>以获得帮助。`
 });

@@ -68,17 +68,14 @@ fn restart_steamvr() {
 }
 
 fn get_latest_server_release(update_channel: UpdateChannel) -> StrResult<(Release, Version)> {
-    let release_list = if matches!(update_channel, UpdateChannel::Nightly) {
-        trace_err!(ReleaseList::configure()
-            .repo_owner("alvr-org")
-            .repo_name("ALVR-nightly")
-            .build())?
-    } else {
-        trace_err!(ReleaseList::configure()
-            .repo_owner("JackD83")
-            .repo_name(ALVR_NAME)
-            .build())?
-    };
+    let release_list = trace_err!(ReleaseList::configure()
+        .repo_owner("alvr-org")
+        .repo_name(if matches!(update_channel, UpdateChannel::Nightly) {
+            "ALVR-nightly"
+        } else {
+            ALVR_NAME
+        })
+        .build())?;
 
     let wants_prereleases = !matches!(update_channel, UpdateChannel::Stable);
 
@@ -124,7 +121,6 @@ fn get_server_update(update_channel: UpdateChannel) -> Option<(Release, Version)
     }
 }
 
-// change Nexite to JackD83 for actual release
 fn update(release: &Release) -> StrResult {
     kill_steamvr();
 

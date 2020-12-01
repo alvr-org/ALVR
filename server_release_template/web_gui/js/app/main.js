@@ -82,7 +82,7 @@ define([
             })
 
             $("#checkForUpdates").click(() => {
-                $.get("https://api.github.com/repos/JackD83/ALVR/releases/latest", (data) => {
+                $.get("https://api.github.com/repos/alvr-org/ALVR/releases/latest", (data) => {
                     if(version == data.tag_name.match(/\d+.\d+.\d+/)[0]) {
                         Lobibox.notify("success", {
                             size: "mini",
@@ -106,7 +106,7 @@ define([
                                     },
                                     'type': 'POST',
                                     'url': "/open",
-                                    'data': JSON.stringify("https://github.com/JackD83/ALVR/releases/latest"),
+                                    'data': JSON.stringify("https://github.com/alvr-org/ALVR/releases/latest"),
                                     'dataType': 'JSON'
                                 })
                             }

@@ -197,7 +197,6 @@ fn zip_dir(dir: &Path) -> BResult {
 pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool) -> BResult {
     let build_type = if is_release { "release" } else { "debug" };
     let build_flag = if is_release { "--release" } else { "" };
-    let nightly_flag = if is_nightly { "--features nightly" } else { "" };
 
     let target_dir = target_dir();
     let artifacts_dir = target_dir.join(build_type);
@@ -212,10 +211,24 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool) -> B
         run("cargo update")?;
     }
 
-    run(&format!(
-        "cargo build -p alvr_server -p alvr_launcher {} {}",
-        build_flag, nightly_flag
-    ))?;
+    if is_nightly {
+        env::set_current_dir(&workspace_dir().join("alvr/server"))?;
+        run(&format!(
+            "cargo build {} --features alvr_common/nightly",
+            build_flag
+        ))?;
+        env::set_current_dir(&workspace_dir().join("alvr/launcher"))?;
+        run(&format!(
+            "cargo build {} --features alvr_common/nightly",
+            build_flag
+        ))?;
+        env::set_current_dir(&workspace_dir())?;
+    } else {
+        run(&format!(
+            "cargo build -p alvr_server -p alvr_launcher {}",
+            build_flag
+        ))?;
+    }
     fs::copy(
         artifacts_dir.join(dynlib_fname("alvr_server")),
         driver_dst_dir.join(DRIVER_FNAME),

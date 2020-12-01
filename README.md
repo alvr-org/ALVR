@@ -54,7 +54,7 @@ IMPORTANT: SteamVR must be always running, otherwise the dashboard will not save
 ## Troubleshooting
 
 - To reset ALVR, delete the file `session.json` from the installation folder.
-- Please check the [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)) page. The original repository [wiki](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) can also help.
+- Please check the [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting) page. The original repository [wiki](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) can also help.
 - You can find some setup advice [here](https://github.com/alvr-org/ALVR/wiki/Setup-advice).
 
 ## Uninstall

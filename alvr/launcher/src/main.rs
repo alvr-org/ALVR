@@ -101,14 +101,25 @@ fn get_server_update(update_channel: UpdateChannel) -> Option<(Release, Version)
     if matches!(update_channel, UpdateChannel::NoUpdates) {
         None
     } else {
-        let current_is_nightly = ALVR_SERVER_VERSION.to_string().contains("nightly");
+        let current_version_string = ALVR_SERVER_VERSION.to_string();
+        let current_nightly_tag = if let Some(index) = current_version_string.find("nightly") {
+            &current_version_string[index..]
+        } else {
+            ""
+        };
 
         get_latest_server_release(update_channel)
             .ok()
             .filter(|(_, version)| {
-                let new_is_nightly = version.to_string().contains("nightly");
+                let new_version_string = version.to_string();
+                let new_nightly_tag = if let Some(index) = new_version_string.find("nightly") {
+                    &new_version_string[index..]
+                } else {
+                    ""
+                };
+
                 // != operator ignores build metadata (such as nightly)
-                *version != *ALVR_SERVER_VERSION || new_is_nightly != current_is_nightly
+                *version != *ALVR_SERVER_VERSION || new_nightly_tag != current_nightly_tag
             })
     }
 }
@@ -242,9 +253,11 @@ fn window_mode() -> StrResult {
         }))?;
 
         if let Some((release, version)) = get_server_update(settings.extra.update_channel) {
-            trace_err!(window.bind("getUpdateVersion", {
-                move |_| Ok(json::Value::String(format!("v{}", version.to_string())))
-            }))?;
+            let prompt_before_update = settings.extra.prompt_before_update;
+            trace_err!(window.bind("getUpdateInfo", move |_| Ok(json::json!({
+                "version": version.to_string(),
+                "prompt": prompt_before_update,
+            }))))?;
 
             trace_err!(window.bind("update", {
                 let window = window.clone();
@@ -259,7 +272,10 @@ fn window_mode() -> StrResult {
                 }
             }))?;
         } else {
-            trace_err!(window.bind("getUpdateVersion", |_| Ok(json::Value::Null)))?;
+            trace_err!(window.bind("getUpdateInfo", |_| Ok(json::json!({
+                "version": null,
+                "prompt": false,
+            }))))?;
         }
 
         trace_err!(window.bind("checkSteamvrInstallation", |_| {

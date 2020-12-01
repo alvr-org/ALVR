@@ -17,6 +17,7 @@
                     <div class="spinner-border text-primary spinner-border-sm" role="status">
                         <span class="sr-only">Loading...</span>
                     </div>
+                    <p>This can take a while</p>
                 </div>
                 <div id="req-check" style="display:none">
                     <div>
@@ -36,7 +37,10 @@
                     </div>
                 </div>
                 <div id="ready" style="display:block">
-                    <p>Waiting for server to load...</p>
+                    Waiting for server to load...
+                    <div class="spinner-border text-primary spinner-border-sm" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -79,7 +83,8 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-danger" data-dismiss="modal">Dismiss</button>
-                    <button type="button" class="btn btn-primary" onclick="restartSteamvr()" data-dismiss="modal">Restart
+                    <button type="button" class="btn btn-primary" onclick="restartSteamvr()"
+                        data-dismiss="modal">Restart
                         ALVR</button>
                 </div>
             </div>
@@ -107,9 +112,6 @@
 
             await checkUpdate();
 
-            // while (!await checkInstallation()) {
-            //     await new Promise(resolve => setTimeout(resolve, 500));
-            // }
             await checkInstallation();
 
             await checkServerReady();
@@ -129,24 +131,28 @@
         }
 
         async function checkUpdate() {
-            let maybeNewVersion = await getUpdateVersion();
+            let updateInfo = await getUpdateInfo();
 
-            if (maybeNewVersion != null) {
-                document.getElementById("version").innerHTML = maybeNewVersion;
-                $(".updateModal").modal('show')
+            if (updateInfo.version != null) {
+                let shouldUpdate = null;
 
-                let result = null;
-                $(".updateModal").on('click', '.btn, .close', function () {
-                    $(this).addClass('modal-result');
-                    result = $(".updateModal").find('.modal-result').filter('.btn-primary').length > 0;
-                    $(".updateModal").modal('hide');
-                });
+                if (updateInfo.prompt) {
+                    document.getElementById("version").innerHTML = "v" + updateInfo.version;
+                    $(".updateModal").modal('show')
+                    $(".updateModal").on('click', '.btn, .close', function () {
+                        $(this).addClass('modal-result');
+                        shouldUpdate = $(".updateModal").find('.modal-result').filter('.btn-primary').length > 0;
+                        $(".updateModal").modal('hide');
+                    });
 
-                while (result == null) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    while (shouldUpdate == null) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                } else {
+                    shouldUpdate = true;
                 }
 
-                if (result) {
+                if (shouldUpdate) {
                     setView("updating");
                     await update();
                 }

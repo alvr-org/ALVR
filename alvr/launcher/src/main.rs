@@ -319,8 +319,10 @@ fn window_mode() -> StrResult {
                     driver_registration(&paths, false)?;
                 }
 
-                // register ALVR driver and start SteamVR again
+                unblock_alvr_addon().ok();
+
                 restart_steamvr();
+
                 Ok(json::Value::Null)
             }
         }))?;

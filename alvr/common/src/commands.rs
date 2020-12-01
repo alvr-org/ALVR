@@ -68,10 +68,18 @@ fn to_openvr_paths(paths: &[PathBuf]) -> json::Value {
     json::Value::Array(paths_vec)
 }
 
-fn steamvr_root_dir() -> StrResult<PathBuf> {
+fn get_single_openvr_path(path_type: &str) -> StrResult<PathBuf> {
     let openvr_paths_json = load_openvr_paths_json()?;
-    let paths_json = trace_none!(openvr_paths_json.get("runtime"))?;
+    let paths_json = trace_none!(openvr_paths_json.get(path_type))?;
     trace_none!(from_openvr_paths(paths_json)?.get(0).cloned())
+}
+
+fn steamvr_root_dir() -> StrResult<PathBuf> {
+    get_single_openvr_path("runtime")
+}
+
+fn steam_config_dir() -> StrResult<PathBuf> {
+    get_single_openvr_path("config")
 }
 
 pub fn get_registered_drivers() -> StrResult<Vec<PathBuf>> {
@@ -305,6 +313,23 @@ pub fn apply_driver_paths_backup(alvr_dir: PathBuf) -> StrResult {
 
         driver_registration(&driver_paths, true).ok();
     }
+
+    Ok(())
+}
+
+pub fn unblock_alvr_addon() -> StrResult {
+    let config_path = steam_config_dir()?.join("steamvr.vrsettings");
+
+    let mut fields_ref: json::Map<String, json::Value> = trace_err!(json::from_str(&trace_err!(
+        fs::read_to_string(&config_path)
+    )?))?;
+
+    fields_ref.remove("driver_alvr_server");
+
+    trace_err!(fs::write(
+        config_path,
+        trace_err!(json::to_string_pretty(&fields_ref))?
+    ))?;
 
     Ok(())
 }

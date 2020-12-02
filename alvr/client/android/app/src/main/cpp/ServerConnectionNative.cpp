@@ -88,81 +88,6 @@ namespace {
     ServerConnectionNative g_socket;
 }
 
-void
-setBroadcastAddrList(JNIEnv *env, int helloPort, int port, jobjectArray broadcastAddrList_) {
-    int broadcastCount = env->GetArrayLength(broadcastAddrList_);
-
-    for (int i = 0; i < broadcastCount; i++) {
-        auto address = (jstring) env->GetObjectArrayElement(broadcastAddrList_, i);
-        auto addressStr = GetStringFromJNIString(env, address);
-        env->DeleteLocalRef(address);
-
-        sockaddr_in addr{};
-        memset(&addr, 0, sizeof(addr));
-        addr.sin_family = AF_INET;
-        addr.sin_port = htons(helloPort);
-        inet_pton(addr.sin_family, addressStr.c_str(), &addr.sin_addr);
-
-        g_socket.m_broadcastAddrList.push_back(addr);
-
-        memset(&addr, 0, sizeof(addr));
-        addr.sin_family = AF_INET;
-        addr.sin_port = htons(port);
-        inet_pton(addr.sin_family, addressStr.c_str(), &addr.sin_addr);
-
-        g_socket.m_broadcastAddrList.push_back(addr);
-    }
-}
-
-void initialize(JNIEnv *env, int helloPort, int port, jobjectArray broadcastAddrList_) {
-    int val;
-    socklen_t len;
-
-    g_socket.m_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (g_socket.m_sock < 0) {
-        throw FormatException("socket error : %d %s", errno, strerror(errno));
-    }
-    val = 1;
-    int flags = fcntl(g_socket.m_sock, F_GETFL, 0);
-    fcntl(g_socket.m_sock, F_SETFL, flags | O_NONBLOCK);
-
-    val = 1;
-    setsockopt(g_socket.m_sock, SOL_SOCKET, SO_BROADCAST, (char *) &val, sizeof(val));
-
-    // To avoid EADDRINUSE when previous process (or thread) remains live.
-    val = 1;
-    setsockopt(g_socket.m_sock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
-
-    //
-    // UdpSocket recv buffer
-    //
-
-    //setMaxSocketBuffer();
-    // 30Mbps 50ms buffer
-    getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &len);
-    LOGI("Default socket recv buffer is %d bytes", val);
-
-    val = 30 * 1000 * 500 / 8;
-    setsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, sizeof(val));
-    len = sizeof(val);
-    getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &len);
-    LOGI("Current socket recv buffer is %d bytes", val);
-
-    sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = INADDR_ANY;
-    if (bind(g_socket.m_sock, (sockaddr *) &addr, sizeof(addr)) < 0) {
-        throw FormatException("bind error : %d %s", errno, strerror(errno));
-    }
-
-    //
-    // Parse broadcast address list.
-    //
-
-    setBroadcastAddrList(env, helloPort, port, broadcastAddrList_);
-}
-
 int send(const void *buf, size_t len) {
     LOGSOCKET("Sending %zu bytes", len);
     return (int) sendto(g_socket.m_sock, buf, len, 0, (sockaddr *) &g_socket.m_serverAddr,
@@ -214,11 +139,6 @@ void onConnect(const ConnectionMessage &connectionMessage) {
         LOGSOCKETI("onConnect: Send stream start packet.");
         sendStreamStartPacket();
     }
-}
-
-void onBroadcastRequest() {
-    // Respond with hello message.
-    send(&g_socket.mHelloMessage, sizeof(g_socket.mHelloMessage));
 }
 
 void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
@@ -396,7 +316,7 @@ void parse(char *packet, int packetSize, const sockaddr_in &addr) {
     } else {
         uint32_t type = *(uint32_t *) packet;
         if (type == ALVR_PACKET_TYPE_BROADCAST_REQUEST_MESSAGE) {
-            onBroadcastRequest();
+            send(&g_socket.mHelloMessage, sizeof(g_socket.mHelloMessage));
         } else if (type == ALVR_PACKET_TYPE_CONNECTION_MESSAGE) {
             if (packetSize < sizeof(ConnectionMessage))
                 return;
@@ -458,19 +378,6 @@ void closeSocket() {
     g_socket.m_sendQueue.clear();
 }
 
-void initializeJNICallbacks(JNIEnv *env, jobject instance) {
-    jclass clazz = env->GetObjectClass(instance);
-
-    g_socket.mOnConnectMethodID = env->GetMethodID(clazz, "onConnected", "(IIIZIIZIFFFI)V");
-    g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
-    g_socket.mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
-    g_socket.mSetWebGuiUrlID = env->GetMethodID(clazz, "setWebViewURL", "(Ljava/lang/String;)V");
-    g_socket.mOnGuardianSyncAckID = env->GetMethodID(clazz, "onGuardianSyncAck", "(J)V");
-    g_socket.mOnGuardianSegmentAckID = env->GetMethodID(clazz, "onGuardianSegmentAck", "(JI)V");
-
-    env->DeleteLocalRef(clazz);
-}
-
 void initializeSocket(void *v_env, void *v_instance,
                       int helloPort, int port, void *v_deviceName, void *v_broadcastAddrList,
                       void *v_refreshRates, int renderWidth, int renderHeight) {
@@ -492,7 +399,14 @@ void initializeSocket(void *v_env, void *v_instance,
     g_socket.m_prevSoundSequence = 0;
     g_socket.m_timeDiff = 0;
 
-    initializeJNICallbacks(env, instance);
+    jclass clazz = env->GetObjectClass(instance);
+    g_socket.mOnConnectMethodID = env->GetMethodID(clazz, "onConnected", "(IIIZIIZIFFFI)V");
+    g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
+    g_socket.mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
+    g_socket.mSetWebGuiUrlID = env->GetMethodID(clazz, "setWebViewURL", "(Ljava/lang/String;)V");
+    g_socket.mOnGuardianSyncAckID = env->GetMethodID(clazz, "onGuardianSyncAck", "(J)V");
+    g_socket.mOnGuardianSegmentAckID = env->GetMethodID(clazz, "onGuardianSegmentAck", "(JI)V");
+    env->DeleteLocalRef(clazz);
 
     g_socket.m_nalParser = std::make_shared<NALParser>(env, instance);
 
@@ -522,8 +436,77 @@ void initializeSocket(void *v_env, void *v_instance,
     //
     // UdpSocket
     //
+    {
+        int val;
+        socklen_t len;
 
-    initialize(env, helloPort, port, broadcastAddrList_);
+        g_socket.m_sock = socket(AF_INET, SOCK_DGRAM, 0);
+        if (g_socket.m_sock < 0) {
+            throw FormatException("socket error : %d %s", errno, strerror(errno));
+        }
+        val = 1;
+        int flags = fcntl(g_socket.m_sock, F_GETFL, 0);
+        fcntl(g_socket.m_sock, F_SETFL, flags | O_NONBLOCK);
+
+        val = 1;
+        setsockopt(g_socket.m_sock, SOL_SOCKET, SO_BROADCAST, (char *) &val, sizeof(val));
+
+        // To avoid EADDRINUSE when previous process (or thread) remains live.
+        val = 1;
+        setsockopt(g_socket.m_sock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+
+        //
+        // UdpSocket recv buffer
+        //
+
+        //setMaxSocketBuffer();
+        // 30Mbps 50ms buffer
+        getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &len);
+        LOGI("Default socket recv buffer is %d bytes", val);
+
+        val = 30 * 1000 * 500 / 8;
+        setsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, sizeof(val));
+        len = sizeof(val);
+        getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &len);
+        LOGI("Current socket recv buffer is %d bytes", val);
+
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(port);
+        addr.sin_addr.s_addr = INADDR_ANY;
+        if (bind(g_socket.m_sock, (sockaddr *) &addr, sizeof(addr)) < 0) {
+            throw FormatException("bind error : %d %s", errno, strerror(errno));
+        }
+
+        //
+        // Parse broadcast address list.
+        //
+        {
+            int broadcastCount = env->GetArrayLength(broadcastAddrList_);
+
+            for (int i = 0; i < broadcastCount; i++) {
+                auto address = (jstring) env->GetObjectArrayElement(broadcastAddrList_, i);
+                auto addressStr = GetStringFromJNIString(env, address);
+                env->DeleteLocalRef(address);
+
+                sockaddr_in addr{};
+                memset(&addr, 0, sizeof(addr));
+                addr.sin_family = AF_INET;
+                addr.sin_port = htons(helloPort);
+                inet_pton(addr.sin_family, addressStr.c_str(), &addr.sin_addr);
+
+                g_socket.m_broadcastAddrList.push_back(addr);
+
+                memset(&addr, 0, sizeof(addr));
+                addr.sin_family = AF_INET;
+                addr.sin_port = htons(port);
+                inet_pton(addr.sin_family, addressStr.c_str(), &addr.sin_addr);
+
+                g_socket.m_broadcastAddrList.push_back(addr);
+            }
+        }
+    }
+
 
     //
     // Sound

@@ -89,12 +89,10 @@ namespace {
 }
 
 void
-setBroadcastAddrList(JNIEnv *env, int helloPort, int port, jobjectArray broadcastAddrList_)
-{
+setBroadcastAddrList(JNIEnv *env, int helloPort, int port, jobjectArray broadcastAddrList_) {
     int broadcastCount = env->GetArrayLength(broadcastAddrList_);
 
-    for (int i = 0; i < broadcastCount; i++)
-    {
+    for (int i = 0; i < broadcastCount; i++) {
         auto address = (jstring) env->GetObjectArrayElement(broadcastAddrList_, i);
         auto addressStr = GetStringFromJNIString(env, address);
         env->DeleteLocalRef(address);
@@ -116,14 +114,12 @@ setBroadcastAddrList(JNIEnv *env, int helloPort, int port, jobjectArray broadcas
     }
 }
 
-void initialize(JNIEnv *env, int helloPort, int port, jobjectArray broadcastAddrList_)
-{
+void initialize(JNIEnv *env, int helloPort, int port, jobjectArray broadcastAddrList_) {
     int val;
     socklen_t len;
 
     g_socket.m_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (g_socket.m_sock < 0)
-    {
+    if (g_socket.m_sock < 0) {
         throw FormatException("socket error : %d %s", errno, strerror(errno));
     }
     val = 1;
@@ -156,8 +152,7 @@ void initialize(JNIEnv *env, int helloPort, int port, jobjectArray broadcastAddr
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = INADDR_ANY;
-    if (bind(g_socket.m_sock, (sockaddr *) &addr, sizeof(addr)) < 0)
-    {
+    if (bind(g_socket.m_sock, (sockaddr *) &addr, sizeof(addr)) < 0) {
         throw FormatException("bind error : %d %s", errno, strerror(errno));
     }
 
@@ -168,10 +163,10 @@ void initialize(JNIEnv *env, int helloPort, int port, jobjectArray broadcastAddr
     setBroadcastAddrList(env, helloPort, port, broadcastAddrList_);
 }
 
-int send(const void *buf, size_t len)
-{
+int send(const void *buf, size_t len) {
     LOGSOCKET("Sending %zu bytes", len);
-    return (int) sendto(g_socket.m_sock, buf, len, 0, (sockaddr *) &g_socket.m_serverAddr, sizeof(g_socket.m_serverAddr));
+    return (int) sendto(g_socket.m_sock, buf, len, 0, (sockaddr *) &g_socket.m_serverAddr,
+                        sizeof(g_socket.m_serverAddr));
 }
 
 void updateTimeout() {
@@ -248,7 +243,8 @@ void processSoundSequence(uint32_t sequence) {
         }
         LatencyCollector::Instance().packetLoss(lost);
 
-        sendPacketLossReport(ALVR_LOST_FRAME_TYPE_AUDIO, g_socket.m_prevSoundSequence + 1, sequence - 1);
+        sendPacketLossReport(ALVR_LOST_FRAME_TYPE_AUDIO, g_socket.m_prevSoundSequence + 1,
+                             sequence - 1);
 
         LOGE("SoundPacket loss %d (%d -> %d)", lost, g_socket.m_prevSoundSequence + 1,
              sequence - 1);
@@ -370,7 +366,8 @@ void onPacketRecv(const char *packet, size_t packetSize) {
 
         auto ack = (GuardianSyncStartAck *) packet;
 
-        g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mOnGuardianSyncAckID, static_cast<jlong>(ack->timestamp));
+        g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mOnGuardianSyncAckID,
+                                       static_cast<jlong>(ack->timestamp));
     } else if (type == ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_ACK) {
         if (packetSize < sizeof(GuardianSegmentAck)) {
             return;
@@ -384,13 +381,10 @@ void onPacketRecv(const char *packet, size_t packetSize) {
     }
 }
 
-void parse(char *packet, int packetSize, const sockaddr_in &addr)
-{
-    if (g_socket.m_connected)
-    {
+void parse(char *packet, int packetSize, const sockaddr_in &addr) {
+    if (g_socket.m_connected) {
         if (addr.sin_port != g_socket.m_serverAddr.sin_port ||
-            addr.sin_addr.s_addr != g_socket.m_serverAddr.sin_addr.s_addr)
-        {
+            addr.sin_addr.s_addr != g_socket.m_serverAddr.sin_addr.s_addr) {
             char str[1000];
             // Invalid source address. Ignore.
             inet_ntop(addr.sin_family, &addr.sin_addr, str, sizeof(str));
@@ -399,14 +393,11 @@ void parse(char *packet, int packetSize, const sockaddr_in &addr)
             return;
         }
         onPacketRecv(packet, packetSize);
-    } else
-    {
+    } else {
         uint32_t type = *(uint32_t *) packet;
-        if (type == ALVR_PACKET_TYPE_BROADCAST_REQUEST_MESSAGE)
-        {
+        if (type == ALVR_PACKET_TYPE_BROADCAST_REQUEST_MESSAGE) {
             onBroadcastRequest();
-        } else if (type == ALVR_PACKET_TYPE_CONNECTION_MESSAGE)
-        {
+        } else if (type == ALVR_PACKET_TYPE_CONNECTION_MESSAGE) {
             if (packetSize < sizeof(ConnectionMessage))
                 return;
 
@@ -431,19 +422,17 @@ void parse(char *packet, int packetSize, const sockaddr_in &addr)
     }
 }
 
-void recv()
-{
+void recv() {
     char packet[MAX_PACKET_UDP_PACKET_SIZE];
     sockaddr_in addr{};
     socklen_t socklen = sizeof(addr);
 
-    while (true)
-    {
-        int packetSize = static_cast<int>(recvfrom(g_socket.m_sock, packet, MAX_PACKET_UDP_PACKET_SIZE, 0,
+    while (true) {
+        int packetSize = static_cast<int>(recvfrom(g_socket.m_sock, packet,
+                                                   MAX_PACKET_UDP_PACKET_SIZE, 0,
                                                    (sockaddr *) &addr,
                                                    &socklen));
-        if (packetSize <= 0)
-        {
+        if (packetSize <= 0) {
             LOGSOCKET("Error on recvfrom. ret=%d", packetSize);
             return;
         }
@@ -453,28 +442,10 @@ void recv()
     }
 }
 
-void disconnect()
-{
-    g_socket.m_connected = false;
-    memset(&g_socket.m_serverAddr, 0, sizeof(g_socket.m_serverAddr));
-}
-
-int getSocket()
-{
-    return g_socket.m_sock;
-}
-
-void sendBroadcast(const void *buf, size_t len)
-{
-    for (const sockaddr_in &address : g_socket.m_broadcastAddrList)
-    {
+void sendBroadcast(const void *buf, size_t len) {
+    for (const sockaddr_in &address : g_socket.m_broadcastAddrList) {
         sendto(g_socket.m_sock, buf, len, 0, (sockaddr *) &address, sizeof(address));
     }
-}
-
-bool isConnected()
-{
-    return g_socket.m_connected;
 }
 
 void closeSocket() {
@@ -501,8 +472,8 @@ void initializeJNICallbacks(JNIEnv *env, jobject instance) {
 }
 
 void initializeSocket(void *v_env, void *v_instance,
-                int helloPort, int port, void *v_deviceName, void *v_broadcastAddrList,
-                void *v_refreshRates, int renderWidth, int renderHeight) {
+                      int helloPort, int port, void *v_deviceName, void *v_broadcastAddrList,
+                      void *v_refreshRates, int renderWidth, int renderHeight) {
     auto *env = (JNIEnv *) v_env;
     auto *instance = (jobject) v_instance;
     auto *deviceName_ = (jstring) v_deviceName;
@@ -608,7 +579,7 @@ void processReadPipe(int pipefd) {
 
 void sendTimeSyncLocked() {
     time_t current = time(nullptr);
-    if (g_socket.m_prevSentSync != current && isConnected()) {
+    if (g_socket.m_prevSentSync != current && g_socket.m_connected) {
         LOGI("Sending timesync.");
 
         TimeSync timeSync = {};
@@ -644,7 +615,7 @@ void sendTimeSyncLocked() {
 }
 
 void sendBroadcastLocked() {
-    if (isConnected()) {
+    if (g_socket.m_connected) {
         return;
     }
 
@@ -657,11 +628,12 @@ void sendBroadcastLocked() {
 }
 
 void checkConnection() {
-    if (isConnected()) {
+    if (g_socket.m_connected) {
         if (g_socket.m_lastReceived + CONNECTION_TIMEOUT < getTimestampUs()) {
             // Timeout
             LOGE("Connection timeout.");
-            disconnect();
+            g_socket.m_connected = false;
+            memset(&g_socket.m_serverAddr, 0, sizeof(g_socket.m_serverAddr));
 
             g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mOnDisconnectedMethodID);
 
@@ -704,9 +676,9 @@ void runLoop(void *v_env, void *v_instance) {
     fd_set fds, fds_org;
 
     FD_ZERO(&fds_org);
-    FD_SET(getSocket(), &fds_org);
+    FD_SET(g_socket.m_sock, &fds_org);
     FD_SET(g_socket.m_notifyPipe[0], &fds_org);
-    int nfds = std::max(getSocket(), g_socket.m_notifyPipe[0]) + 1;
+    int nfds = std::max(g_socket.m_sock, g_socket.m_notifyPipe[0]) + 1;
 
     g_socket.m_env = env;
     g_socket.m_instance = instance;
@@ -730,7 +702,7 @@ void runLoop(void *v_env, void *v_instance) {
             processReadPipe(g_socket.m_notifyPipe[0]);
         }
 
-        if (FD_ISSET(getSocket(), &fds)) {
+        if (FD_ISSET(g_socket.m_sock, &fds)) {
             recv();
         }
         doPeriodicWork();
@@ -738,7 +710,7 @@ void runLoop(void *v_env, void *v_instance) {
 
     LOGI("Exited select loop.");
 
-    if (isConnected()) {
+    if (g_socket.m_connected) {
         // Stop stream.
         StreamControlMessage message = {};
         message.type = ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE;
@@ -759,7 +731,7 @@ void interruptNative() {
 }
 
 unsigned char isConnectedNative() {
-    return isConnected();
+    return g_socket.m_connected;
 }
 
 
@@ -769,17 +741,16 @@ void setSinkPreparedNative(unsigned char prepared) {
     }
     g_socket.mSinkPrepared = prepared;
     LOGSOCKETI("setSinkPrepared: Decoder prepared=%d", g_socket.mSinkPrepared);
-    if (prepared && isConnectedNative()) {
+    if (prepared && g_socket.m_connected) {
         LOGSOCKETI("setSinkPrepared: Send stream start packet.");
         sendStreamStartPacket();
     }
 }
 
 void *getServerAddress(void *v_env) {
-    auto *env = (JNIEnv *)v_env;
+    auto *env = (JNIEnv *) v_env;
 
-    if (g_socket.m_hasServerAddress)
-    {
+    if (g_socket.m_hasServerAddress) {
         char serverAddress[100];
         inet_ntop(g_socket.m_serverAddr.sin_family, &g_socket.m_serverAddr.sin_addr, serverAddress,
                   sizeof(serverAddress));

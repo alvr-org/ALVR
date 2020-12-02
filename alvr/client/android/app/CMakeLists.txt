@@ -33,7 +33,6 @@ add_library( # Sets the name of the library.
              src/main/cpp/animation_curve.cpp
              src/main/cpp/vr_gui.cpp
              src/main/cpp/ServerConnectionNative.cpp
-             src/main/cpp/UdpSocket.cpp
              src/main/cpp/nal.cpp
              src/main/cpp/render.cpp
              src/main/cpp/latency_collector.cpp

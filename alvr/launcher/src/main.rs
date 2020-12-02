@@ -214,6 +214,14 @@ fn window_mode() -> StrResult {
 
         let current_alvr_dir = current_alvr_dir()?;
 
+        if current_alvr_dir.to_str().filter(|s| s.is_ascii()).is_none() {
+            show_e_blocking(format!(
+                "The path of this folder ({}) contains non ASCII characters. Please move it somewhere else (for example in C:\\Users\\Public\\Documents).",
+                current_alvr_dir.to_string_lossy(),
+            ));
+            return Ok(());
+        }
+
         let instance_mutex = Arc::new(Mutex::new(Some(InstanceMutex(instance_mutex))));
 
         let session_manager = SessionManager::new(&current_alvr_dir);

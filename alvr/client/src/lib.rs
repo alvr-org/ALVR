@@ -11,6 +11,16 @@ use jni::{
     sys::{jobjectArray, jstring},
     *,
 };
+use lazy_static::lazy_static;
+use parking_lot::Mutex;
+
+struct OnCreateResultWrapper(OnCreateResult);
+unsafe impl Send for OnCreateResultWrapper {}
+
+lazy_static! {
+    static ref ON_CREATE_RESULT: Mutex<OnCreateResultWrapper> =
+        Mutex::new(OnCreateResultWrapper(<_>::default()));
+}
 
 #[no_mangle]
 pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initNativeLogging(
@@ -60,16 +70,19 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_LatencyCollector_Decode
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNative(
     env: JNIEnv,
     activity: JObject,
     asset_manager: JObject,
+    out_result: JObject,
 ) {
-    initializeNative(
+    let result = onCreate(
         env.get_native_interface() as _,
         *activity as _,
         *asset_manager as _,
-    )
+    );
+
+    *ON_CREATE_RESULT.lock() = OnCreateResultWrapper(result);
 }
 
 #[no_mangle]
@@ -139,7 +152,11 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
     jprivate_key: JString,
     jscreen_surface: JObject,
 ) {
-    onResumeNative(env.get_native_interface() as _, *jscreen_surface as _)
+    show_err(|| -> StrResult {
+        onResumeNative(env.get_native_interface() as _, *jscreen_surface as _);
+        Ok(())
+    }())
+    .ok();
 }
 
 #[no_mangle]

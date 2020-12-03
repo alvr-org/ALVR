@@ -1,10 +1,26 @@
 #pragma once
 
+enum class DeviceType {
+    OCULUS_QUEST,
+    OCULUS_QUEST_2,
+    UNKNOWN,
+};
+
+struct OnCreateResult {
+    DeviceType deviceType;
+    int recommendedEyeWidth;
+    int recommendedEyeHeight;
+    float *refreshRates;
+    int refreshRatesCount;
+    int surfaceTextureHandle;
+    int webViewSurfaceHandle;
+};
+
+
 extern "C" void decoderInput(long long frameIndex);
 extern "C" void decoderOutput(long long frameIndex);
 
-extern "C" void
-initializeNative(void *env, void *activity, void *assetManager);
+extern "C" OnCreateResult onCreate(void *env, void *activity, void *assetManager);
 extern "C" void destroyNative(void *env);
 extern "C" int getLoadingTextureNative();
 extern "C" int getSurfaceTextureIDNative();
@@ -30,8 +46,7 @@ extern "C" void
 initializeSocket(void *env, void *instance, int helloPort, int port, void *deviceName,
                  void *broadcastAddrList, void *refreshRates, int renderWidth, int renderHeight);
 extern "C" void closeSocket();
-extern "C" void
-runLoop(void *env, void *instance);
+extern "C" void runLoop(void *env, void *instance);
 extern "C" void interruptNative();
 extern "C" unsigned char isConnectedNative();
 extern "C" void *getServerAddress(void *env);

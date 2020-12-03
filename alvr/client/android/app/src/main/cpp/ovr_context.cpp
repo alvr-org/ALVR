@@ -114,7 +114,7 @@ namespace {
     OvrContext g_ctx;
 }
 
-void initializeNative(void *v_env, void *v_activity, void *v_assetManager) {
+OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     auto *env = (JNIEnv *) v_env;
     auto activity = (jobject) v_activity;
     auto assetManager = (jobject) v_assetManager;
@@ -155,7 +155,6 @@ void initializeNative(void *v_env, void *v_activity, void *v_assetManager) {
     if (initResult != VRAPI_INITIALIZE_SUCCESS) {
         // If initialization failed, vrapi_* function calls will not be available.
         LOGE("vrapi_Initialize failed");
-        return;
     }
 
     GLint textureUnits;
@@ -243,6 +242,7 @@ void initializeNative(void *v_env, void *v_activity, void *v_assetManager) {
     LOGI("Mic_maxElements %zu", g_ctx.mMicMaxElements);
     g_ctx.micBuffer = new int16_t[g_ctx.mMicMaxElements];
 
+    return OnCreateResult();
 }
 
 void destroyNative(void *v_env) {

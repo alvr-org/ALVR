@@ -30,7 +30,6 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
-import java.text.BreakIterator;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -52,6 +51,14 @@ public class OvrActivity extends Activity {
         String hostname;
         String certificatePEM;
         String privateKey;
+    }
+
+    static class OnCreateResult {
+        public int streamSurfaceHandle;
+        public int webviewSurfaceHandle;
+        public int refreshRate;
+        public int mRenderWidth;
+        public int mRenderHeight;
     }
 
     class RenderingCallbacks implements SurfaceHolder.Callback {
@@ -131,9 +138,11 @@ public class OvrActivity extends Activity {
         this.registerReceiver(this.mBatInfoReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
     }
 
-    //called from constructor
+    // This method initializes a GL context, and must be called within the scope of the rendering
+    // handler, so successive rendering calls don't fail.
     public void startup() {
-        initializeNative(this.getAssets());
+        OnCreateResult result = new OnCreateResult();
+        onCreateNative(this.getAssets(), result);
 
         mStreamSurfaceTexture = new SurfaceTexture(getSurfaceTextureIDNative());
         mStreamSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
@@ -476,7 +485,7 @@ public class OvrActivity extends Activity {
 
     static native void createIdentity(PrivateIdentity id); // id fields are reset
 
-    native void initializeNative(AssetManager assetManager);
+    native void onCreateNative(AssetManager assetManager, OnCreateResult outResult);
 
     native void destroyNative();
 
@@ -515,4 +524,3 @@ public class OvrActivity extends Activity {
         mWebView.applyWebViewInteractionEvent(type, x, y);
     }
 }
-

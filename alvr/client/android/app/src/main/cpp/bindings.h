@@ -12,8 +12,9 @@ struct OnCreateResult {
     int recommendedEyeHeight;
     float *refreshRates;
     int refreshRatesCount;
-    int surfaceTextureHandle;
+    int streamSurfaceHandle;
     int webViewSurfaceHandle;
+    int loadingSurfaceHandle;
 };
 
 
@@ -22,9 +23,6 @@ extern "C" void decoderOutput(long long frameIndex);
 
 extern "C" OnCreateResult onCreate(void *env, void *activity, void *assetManager);
 extern "C" void destroyNative(void *env);
-extern "C" int getLoadingTextureNative();
-extern "C" int getSurfaceTextureIDNative();
-extern "C" int getWebViewSurfaceTextureNative();
 extern "C" void renderNative(long long renderedFrameIndex);
 extern "C" void renderLoadingNative();
 extern "C" void onTrackingNative(void *env, void *udpReceiverThread);

@@ -7,6 +7,8 @@
 #include "gltf_model.h"
 #include <glm/gtc/type_ptr.hpp>
 
+using namespace gl_render_utils;
+
 Render_EGL egl;
 
 /*
@@ -663,16 +665,16 @@ void ovrProgram_Destroy(ovrProgram *program) {
 // ovrRenderer
 //
 
-void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, int SurfaceTextureID,
-                        int LoadingTexture, int webViewSurfaceTexture,
+void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *streamTexture,
+                        int LoadingTexture, Texture *webViewTexture,
                         std::function<void(InteractionType, glm::vec2)> webViewInteractionCallback,
                         FFRData ffrData) {
     renderer->NumBuffers = VRAPI_FRAME_LAYER_EYE_MAX;
 
     renderer->enableFFR = ffrData.enabled;
     if (renderer->enableFFR) {
-        renderer->ffrSourceTexture = std::make_unique<gl_render_utils::Texture>(SurfaceTextureID, true);
-        renderer->ffr = std::make_unique<FFR>(renderer->ffrSourceTexture.get());
+        renderer->ffrSourceTexture = streamTexture;
+        renderer->ffr = std::make_unique<FFR>(renderer->ffrSourceTexture);
         renderer->ffr->Initialize(ffrData);
     }
 
@@ -683,15 +685,15 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, int Surfac
     }
 #endif
 
-    renderer->SurfaceTextureID = SurfaceTextureID;
+    renderer->streamTexture = streamTexture;
     renderer->LoadingTexture = LoadingTexture;
     renderer->SceneCreated = false;
     renderer->loadingScene = new GltfModel();
     renderer->loadingScene->load();
     renderer->gui = std::make_unique<VRGUI>();
-    renderer->webViewTexture = std::make_unique<gl_render_utils::Texture>(webViewSurfaceTexture, true);
+    renderer->webViewTexture = webViewTexture;
     renderer->webViewPanel = std::make_unique<InteractivePanel>(
-            renderer->webViewTexture.get(), 2, 1.5, glm::vec3(0, -WORLD_VERTICAL_OFFSET, -1.5),
+            renderer->webViewTexture, 2, 1.5, glm::vec3(0, -WORLD_VERTICAL_OFFSET, -1.5),
             0, 0, webViewInteractionCallback);
     renderer->gui->AddPanel(renderer->webViewPanel.get());
 }
@@ -869,7 +871,7 @@ void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *
             GL(glBindTexture(GL_TEXTURE_2D,
                              renderer->ffr->GetOutputTexture()->GetGLTexture()));
         } else {
-            GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, renderer->SurfaceTextureID));
+            GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, renderer->streamTexture->GetGLTexture()));
         }
 
         GL(glDrawElements(GL_TRIANGLES, renderer->Panel.IndexCount, GL_UNSIGNED_SHORT, NULL));

@@ -31,6 +31,7 @@
 #include <mutex>
 
 using namespace std;
+using namespace gl_render_utils;
 
 const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 1s;
 const int DEFAULT_REFRESH_RATE = 72;
@@ -58,8 +59,8 @@ public:
 
     ovrMicrophoneHandle mMicHandle{};
 
-    GLuint SurfaceTextureID = 0;
-    GLuint webViewSurfaceTexture = 0;
+    unique_ptr<Texture> streamTexture;
+    unique_ptr<Texture> webViewTexture;
     GLuint loadingTexture = 0;
     int suspend = 0;
     bool mShowDashboard = false;
@@ -139,7 +140,8 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
             JNIEnv *env;
             jint res = g_ctx.java.Vm->GetEnv((void **) &env, JNI_VERSION_1_6);
             if (res == JNI_OK) {
-                env->CallVoidMethod(g_ctx.java.ActivityObject, jWebViewInteractionCallback, (int) type,
+                env->CallVoidMethod(g_ctx.java.ActivityObject, jWebViewInteractionCallback,
+                                    (int) type,
                                     coord.x,
                                     coord.y);
             } else {
@@ -157,45 +159,14 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
         LOGE("vrapi_Initialize failed");
     }
 
-    GLint textureUnits;
-    glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &textureUnits);
-    LOGI("GL_VENDOR=%s", glGetString(GL_VENDOR));
-    LOGI("GL_RENDERER=%s", glGetString(GL_RENDERER));
-    LOGI("GL_VERSION=%s", glGetString(GL_VERSION));
-    LOGI("GL_MAX_TEXTURE_IMAGE_UNITS=%d", textureUnits);
-
     //
     // Generate texture for SurfaceTexture which is output of MediaCodec.
     //
 
-    GLuint textures[3];
-    glGenTextures(3, textures);
+    g_ctx.streamTexture = make_unique<Texture>(true);
+    g_ctx.webViewTexture = make_unique<Texture>(true);
 
-    g_ctx.SurfaceTextureID = textures[0];
-    g_ctx.webViewSurfaceTexture = textures[1];
-    g_ctx.loadingTexture = textures[2];
-
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.SurfaceTextureID);
-
-    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER,
-                    GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER,
-                    GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S,
-                    GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T,
-                    GL_CLAMP_TO_EDGE);
-
-    glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.webViewSurfaceTexture);
-
-    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER,
-                    GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER,
-                    GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S,
-                    GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T,
-                    GL_CLAMP_TO_EDGE);
+    glGenTextures(1, &g_ctx.loadingTexture);
 
     glBindTexture(GL_TEXTURE_2D, g_ctx.loadingTexture);
 
@@ -212,8 +183,8 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     auto eyeHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
                                                 VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
 
-    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.SurfaceTextureID,
-                       g_ctx.loadingTexture, g_ctx.webViewSurfaceTexture,
+    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.streamTexture.get(),
+                       g_ctx.loadingTexture, g_ctx.webViewTexture.get(),
                        g_ctx.mWebViewInteractionCallback, {false});
     ovrRenderer_CreateScene(&g_ctx.Renderer);
 
@@ -242,7 +213,14 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     LOGI("Mic_maxElements %zu", g_ctx.mMicMaxElements);
     g_ctx.micBuffer = new int16_t[g_ctx.mMicMaxElements];
 
-    return OnCreateResult();
+
+    auto result = OnCreateResult();
+
+    result.streamSurfaceHandle = g_ctx.streamTexture.get()->GetGLTexture();
+    result.webViewSurfaceHandle = g_ctx.webViewTexture.get()->GetGLTexture();
+    result.loadingSurfaceHandle = g_ctx.loadingTexture;
+
+    return result;
 }
 
 void destroyNative(void *v_env) {
@@ -252,9 +230,7 @@ void destroyNative(void *v_env) {
 
     ovrRenderer_Destroy(&g_ctx.Renderer);
 
-    GLuint textures[3] = {g_ctx.SurfaceTextureID, g_ctx.webViewSurfaceTexture,
-                          g_ctx.loadingTexture};
-    glDeleteTextures(3, textures);
+    glDeleteTextures(1, &g_ctx.loadingTexture);
 
     if (g_ctx.mMicHandle) {
         ovr_Microphone_Destroy(g_ctx.mMicHandle);
@@ -741,7 +717,7 @@ void sendMicData(void *v_env, void *v_udpReceiverThread) {
             memset(&audio, 0, sizeof(MicAudioFrame));
 
             audio.type = ALVR_PACKET_TYPE_MIC_AUDIO;
-        audio.packetIndex = count;
+            audio.packetIndex = count;
             audio.completeSize = outputBufferNumElements;
 
             if (rest >= 100) {
@@ -829,14 +805,14 @@ void onStreamStartNative(int width, int height, int refreshRate, unsigned char s
     int eyeWidth = width / 2;
 
     ovrRenderer_Destroy(&g_ctx.Renderer);
-    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, height,
-                       g_ctx.SurfaceTextureID, g_ctx.loadingTexture, g_ctx.webViewSurfaceTexture,
+    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, height, g_ctx.streamTexture.get(),
+                       g_ctx.loadingTexture, g_ctx.webViewTexture.get(),
                        g_ctx.mWebViewInteractionCallback,
                        {(bool) foveationMode, (uint32_t) eyeWidth, (uint32_t) height,
                         EyeFov(), foveationStrength, foveationShape, foveationVerticalOffset});
     ovrRenderer_CreateScene(&g_ctx.Renderer);
 
-    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, (float)refreshRate);
+    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, (float) refreshRate);
     if (result != ovrSuccess) {
         LOGE("Failed to set refresh rate requested by the server: %d", result);
     }
@@ -957,8 +933,8 @@ void updateHapticsState() {
                 remoteCapabilities.HapticSamplesMax, remoteCapabilities.HapticSampleDurationMS);
 
             auto requiredHapticsBuffer = static_cast<uint32_t >((s.endUs - currentUs) /
-                                                                    remoteCapabilities.HapticSampleDurationMS *
-                                                                    1000);
+                                                                remoteCapabilities.HapticSampleDurationMS *
+                                                                1000);
 
             std::vector<uint8_t> hapticBuffer(remoteCapabilities.HapticSamplesMax);
             ovrHapticBuffer buffer;
@@ -1306,20 +1282,7 @@ void onBatteryChangedNative(int battery) {
     g_ctx.batteryLevel = battery;
 }
 
-int getLoadingTextureNative() {
-    return g_ctx.loadingTexture;
-}
-
-int getSurfaceTextureIDNative() {
-    return g_ctx.SurfaceTextureID;
-}
-
-int getWebViewSurfaceTextureNative() {
-    return g_ctx.webViewSurfaceTexture;
-}
-
-void onTrackingNative(void *env, void *udpReceiverThread)
-{
+void onTrackingNative(void *env, void *udpReceiverThread) {
     if (g_ctx.Ovr != nullptr) {
         sendTrackingInfo(env, udpReceiverThread);
 

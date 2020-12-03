@@ -29,6 +29,7 @@ struct Render_EGL {
 extern Render_EGL egl;
 
 void eglInit();
+
 void eglDestroy();
 
 //
@@ -44,11 +45,16 @@ typedef struct {
 } ovrFramebuffer;
 
 bool ovrFramebuffer_Create(ovrFramebuffer *frameBuffer, const GLenum colorFormat, const int width,
-                            const int height);
+                           const int height);
+
 void ovrFramebuffer_Destroy(ovrFramebuffer *frameBuffer);
+
 void ovrFramebuffer_SetCurrent(ovrFramebuffer *frameBuffer);
+
 void ovrFramebuffer_SetNone();
+
 void ovrFramebuffer_Resolve(ovrFramebuffer *frameBuffer);
+
 void ovrFramebuffer_Advance(ovrFramebuffer *frameBuffer);
 
 //
@@ -85,9 +91,13 @@ enum VertexAttributeLocation {
 };
 
 void ovrGeometry_Clear(ovrGeometry *geometry);
+
 void ovrGeometry_CreatePanel(ovrGeometry *geometry);
+
 void ovrGeometry_Destroy(ovrGeometry *geometry);
+
 void ovrGeometry_CreateVAO(ovrGeometry *geometry);
+
 void ovrGeometry_DestroyVAO(ovrGeometry *geometry);
 
 //
@@ -110,6 +120,7 @@ typedef struct {
 
 bool
 ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource);
+
 void ovrProgram_Destroy(ovrProgram *program);
 
 //
@@ -124,23 +135,27 @@ typedef struct {
     ovrProgram Program;
     ovrProgram ProgramLoading;
     ovrGeometry Panel;
-    GLuint SurfaceTextureID;
+    gl_render_utils::Texture *streamTexture;
     GLuint LoadingTexture;
     GltfModel *loadingScene;
     std::unique_ptr<FFR> ffr;
-    std::unique_ptr<gl_render_utils::Texture> ffrSourceTexture;
+    gl_render_utils::Texture *ffrSourceTexture;
     bool enableFFR;
-    std::unique_ptr<gl_render_utils::Texture> webViewTexture;
+    gl_render_utils::Texture *webViewTexture;
     std::unique_ptr<InteractivePanel> webViewPanel;
     std::unique_ptr<VRGUI> gui;
 } ovrRenderer;
 
-void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, int SurfaceTextureID,
-                        int LoadingTexture, int webViewSurfaceTexture,
+void ovrRenderer_Create(ovrRenderer *renderer, int width, int height,
+                        gl_render_utils::Texture *streamTexture, int LoadingTexture,
+                        gl_render_utils::Texture *webViewSurfaceTexture,
                         std::function<void(InteractionType, glm::vec2)> webViewInteractionCallback,
                         FFRData ffrData);
+
 void ovrRenderer_Destroy(ovrRenderer *renderer);
+
 void ovrRenderer_CreateScene(ovrRenderer *renderer);
+
 // Set up an OVR frame, render it, and submit it.
 ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,
                                             bool loading, bool showDashboard);

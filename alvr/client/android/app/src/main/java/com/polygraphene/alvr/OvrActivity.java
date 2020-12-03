@@ -56,6 +56,7 @@ public class OvrActivity extends Activity {
     static class OnCreateResult {
         public int streamSurfaceHandle;
         public int webviewSurfaceHandle;
+        public int loadingSurfaceHandle;
         public int refreshRate;
         public int mRenderWidth;
         public int mRenderHeight;
@@ -89,6 +90,7 @@ public class OvrActivity extends Activity {
         }
     };
 
+    OnCreateResult deviceDescriptor = null;
     boolean mResumed = false;
     Handler mRenderingHandler;
     HandlerThread mRenderingHandlerThread;
@@ -141,10 +143,10 @@ public class OvrActivity extends Activity {
     // This method initializes a GL context, and must be called within the scope of the rendering
     // handler, so successive rendering calls don't fail.
     public void startup() {
-        OnCreateResult result = new OnCreateResult();
-        onCreateNative(this.getAssets(), result);
+        deviceDescriptor = new OnCreateResult();
+        onCreateNative(this.getAssets(), deviceDescriptor);
 
-        mStreamSurfaceTexture = new SurfaceTexture(getSurfaceTextureIDNative());
+        mStreamSurfaceTexture = new SurfaceTexture(deviceDescriptor.streamSurfaceHandle);
         mStreamSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
             if (mDecoderThread != null) {
                 mDecoderThread.onFrameAvailable();
@@ -154,14 +156,14 @@ public class OvrActivity extends Activity {
         }, new Handler(Looper.getMainLooper()));
         mStreamSurface = new Surface(mStreamSurfaceTexture);
 
-        mWebViewSurfaceTexture = new SurfaceTexture(getWebViewSurfaceTextureNative());
+        mWebViewSurfaceTexture = new SurfaceTexture(deviceDescriptor.webviewSurfaceHandle);
         mWebViewSurfaceTexture.setDefaultBufferSize(WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
         Surface mWebViewSurface = new Surface(mWebViewSurfaceTexture);
 
         // Doesn't need to be posted to the main thread since it's our method.
         mWebView.setSurface(mWebViewSurface);
 
-        mLoadingTexture.initializeMessageCanvas(getLoadingTextureNative());
+        mLoadingTexture.initializeMessageCanvas(deviceDescriptor.loadingSurfaceHandle);
         mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\nLoading...");
 
         mEGLContext = EGL14.eglGetCurrentContext();
@@ -498,12 +500,6 @@ public class OvrActivity extends Activity {
     native void renderLoadingNative();
 
     native void onTrackingNative(ServerConnection serverConnection);
-
-    native int getLoadingTextureNative();
-
-    native int getSurfaceTextureIDNative();
-
-    native int getWebViewSurfaceTextureNative();
 
     native boolean isVrModeNative();
 

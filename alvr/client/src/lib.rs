@@ -74,15 +74,39 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
     env: JNIEnv,
     activity: JObject,
     asset_manager: JObject,
-    out_result: JObject,
+    jout_result: JObject,
 ) {
-    let result = onCreate(
-        env.get_native_interface() as _,
-        *activity as _,
-        *asset_manager as _,
-    );
+    show_err(|| -> StrResult {
+        let result = onCreate(
+            env.get_native_interface() as _,
+            *activity as _,
+            *asset_manager as _,
+        );
 
-    *ON_CREATE_RESULT.lock() = OnCreateResultWrapper(result);
+        trace_err!(env.set_field(
+            jout_result,
+            "streamSurfaceHandle",
+            "I",
+            result.streamSurfaceHandle.into()
+        ))?;
+        trace_err!(env.set_field(
+            jout_result,
+            "webviewSurfaceHandle",
+            "I",
+            result.webViewSurfaceHandle.into()
+        ))?;
+        trace_err!(env.set_field(
+            jout_result,
+            "loadingSurfaceHandle",
+            "I",
+            result.loadingSurfaceHandle.into()
+        ))?;
+
+        *ON_CREATE_RESULT.lock() = OnCreateResultWrapper(result);
+
+        Ok(())
+    }())
+    .ok();
 }
 
 #[no_mangle]
@@ -91,30 +115,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_destroyNati
     _: JObject,
 ) {
     destroyNative(env.get_native_interface() as _)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_getLoadingTextureNative(
-    _: JNIEnv,
-    _: JObject,
-) -> i32 {
-    getLoadingTextureNative()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_getSurfaceTextureIDNative(
-    _: JNIEnv,
-    _: JObject,
-) -> i32 {
-    getSurfaceTextureIDNative()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_getWebViewSurfaceTextureNative(
-    _: JNIEnv,
-    _: JObject,
-) -> i32 {
-    getWebViewSurfaceTextureNative()
 }
 
 #[no_mangle]

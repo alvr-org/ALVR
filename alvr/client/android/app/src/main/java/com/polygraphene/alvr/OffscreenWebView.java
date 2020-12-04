@@ -3,20 +3,36 @@ package com.polygraphene.alvr;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.net.http.SslError;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.view.MotionEvent;
 import android.view.Surface;
+import android.webkit.SslErrorHandler;
+import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 public class OffscreenWebView extends WebView {
     private static final String TAG = "OffscreenWebView";
+    private static final String MSG_TEMPLATE = "" +
+            "<!doctype html>" +
+            "<html>" +
+            "<head>" +
+            "   <link href=\"message.css\" type=\"text/css\" rel=\"stylesheet\"/>" +
+            "</head>" +
+            "<body>" +
+            "   <h1> %s </h1>" +
+            "   <p> %s </p>" +
+            "</body>" +
+            "</html>";
 
     public static final int WEBVIEW_WIDTH = 800;
     public static final int WEBVIEW_HEIGHT = 600;
 
     Surface mSurface;
+    String mMsgTitle;
     Handler mHandler;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -27,15 +43,36 @@ public class OffscreenWebView extends WebView {
             this.getSettings().setJavaScriptEnabled(true);
             this.getSettings().setDomStorageEnabled(true);
             this.setInitialScale(100);
+
+//            this.getSettings().setDomStorageEnabled(true);
+//            this.getSettings().setJavaScriptEnabled(true);
+//            this.getSettings().setLoadWithOverviewMode(true);
+//            this.getSettings().setUseWideViewPort(true);
+//            this.setWebChromeClient(new WebChromeClient());
+//            this.setWebViewClient(new WebViewClient(){
+//                @Override
+//                public void onReceivedSslError(WebView view, SslErrorHandler handler,SslError error) {
+//                    handler.proceed();
+//                }
+//            });
         });
+
+        mMsgTitle = Utils.getVersionName(context);
     }
 
     public void setSurface(Surface surface) {
         mSurface = surface;
     }
 
+    public void setMessage(String msg) {
+        mHandler.post(() -> this.loadDataWithBaseURL("file:///android_asset/", String.format(MSG_TEMPLATE, mMsgTitle, msg), "text/html; charset=utf-8", "UTF-8", null));
+    }
+
     public void setURL(String url) {
         mHandler.post(() -> this.loadUrl(url));
+
+//         // debug:
+//         setMessage(url);
     }
 
     public void applyWebViewInteractionEvent(int type, float x, float y) {

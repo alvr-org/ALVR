@@ -32,7 +32,6 @@ extern "C" void onStreamStartNative(int width, int height, int refreshRate, unsi
                                     float foveationShape, float foveationVerticalOffset,
                                     int trackingSpaceType);
 extern "C" void onPauseNative();
-extern "C" void getDeviceDescriptorNative(void *env, void *deviceDescriptor);
 extern "C" void
 onHapticsFeedbackNative(long long startTime, float amplitude, float duration,
                         float frequency, unsigned char hand);
@@ -42,7 +41,7 @@ extern "C" void onBatteryChangedNative(int battery);
 
 extern "C" void
 initializeSocket(void *env, void *instance, int helloPort, int port, void *deviceName,
-                 void *broadcastAddrList, void *refreshRates, int renderWidth, int renderHeight);
+                 void *broadcastAddrList, int refreshRate, int renderWidth, int renderHeight);
 extern "C" void closeSocket();
 extern "C" void runLoop(void *env, void *instance);
 extern "C" void interruptNative();

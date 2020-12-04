@@ -7,12 +7,12 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 use alvr_common::{data::*, logging::show_err, *};
 use jni::{
     objects::*,
-    sys::jintArray,
     sys::{jobjectArray, jstring},
     *,
 };
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
+use std::slice;
 
 struct OnCreateResultWrapper(OnCreateResult);
 unsafe impl Send for OnCreateResultWrapper {}
@@ -20,6 +20,7 @@ unsafe impl Send for OnCreateResultWrapper {}
 lazy_static! {
     static ref ON_CREATE_RESULT: Mutex<OnCreateResultWrapper> =
         Mutex::new(OnCreateResultWrapper(<_>::default()));
+    static ref REFRESH_RATES: Mutex<Vec<f32>> = Mutex::new(vec![]);
 }
 
 #[no_mangle]
@@ -102,7 +103,31 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
             result.loadingSurfaceHandle.into()
         ))?;
 
+        let refresh_rates =
+            slice::from_raw_parts(result.refreshRates, result.refreshRatesCount as _).to_vec();
+        let default_refresh_rate = refresh_rates.last().cloned().unwrap_or(60_f32);
+        trace_err!(env.set_field(
+            jout_result,
+            "refreshRate",
+            "I",
+            (default_refresh_rate as i32).into()
+        ))?;
+
+        trace_err!(env.set_field(
+            jout_result,
+            "renderWidth",
+            "I",
+            (result.recommendedEyeWidth * 2).into()
+        ))?;
+        trace_err!(env.set_field(
+            jout_result,
+            "renderHeight",
+            "I",
+            result.recommendedEyeHeight.into()
+        ))?;
+
         *ON_CREATE_RESULT.lock() = OnCreateResultWrapper(result);
+        *REFRESH_RATES.lock() = refresh_rates;
 
         Ok(())
     }())
@@ -195,15 +220,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onPauseNati
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_getDeviceDescriptorNative(
-    env: JNIEnv,
-    _: JObject,
-    device_descriptor: JObject,
-) {
-    getDeviceDescriptorNative(env.get_native_interface() as _, *device_descriptor as _)
-}
-
-#[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onHapticsFeedbackNative(
     _: JNIEnv,
     _: JObject,
@@ -252,7 +268,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_initia
     port: i32,
     device_name: JString,
     broadcast_addr_list: jobjectArray,
-    refresh_rates: jintArray,
+    refresh_rate: i32,
     render_width: i32,
     render_height: i32,
 ) {
@@ -263,7 +279,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_initia
         port,
         **device_name as _,
         broadcast_addr_list as _,
-        refresh_rates as _,
+        refresh_rate,
         render_width,
         render_height,
     )

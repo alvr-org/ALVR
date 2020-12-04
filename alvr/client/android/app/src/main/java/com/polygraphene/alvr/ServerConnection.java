@@ -46,7 +46,7 @@ class ServerConnection extends ThreadBase {
 
     private TrackingThread mTrackingThread;
 
-    private DeviceDescriptor mDeviceDescriptor;
+    private OvrActivity.OnCreateResult mDeviceDescriptor;
 
     private boolean mInitialized = false;
 
@@ -77,7 +77,7 @@ class ServerConnection extends ThreadBase {
         }
     }
 
-    public boolean start(EGLContext mEGLContext, Activity activity, DeviceDescriptor deviceDescriptor, int cameraTexture) {
+    public boolean start(EGLContext mEGLContext, Activity activity, OvrActivity.OnCreateResult deviceDescriptor, int cameraTexture) {
         mTrackingThread = new TrackingThread();
         mTrackingThread.setCallback(() -> {
             if (isConnectedNative()) {
@@ -125,8 +125,8 @@ class ServerConnection extends ThreadBase {
             }
 
             initializeSocket(HELLO_PORT, PORT, getDeviceName(), targetList,
-                    mDeviceDescriptor.mRefreshRates, mDeviceDescriptor.mRenderWidth,
-                    mDeviceDescriptor.mRenderHeight);
+                    mDeviceDescriptor.refreshRate, mDeviceDescriptor.renderWidth,
+                    mDeviceDescriptor.renderHeight);
             synchronized (this) {
                 mInitialized = true;
                 notifyAll();
@@ -243,7 +243,7 @@ class ServerConnection extends ThreadBase {
 
 
     private native void initializeSocket(int helloPort, int port, String deviceName, String[] broadcastAddrList,
-                                         int[] refreshRates, int renderWidth, int renderHeight);
+                                         int refreshRate, int renderWidth, int renderHeight);
 
     private native void closeSocket();
 

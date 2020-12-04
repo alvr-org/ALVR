@@ -380,12 +380,11 @@ void closeSocket() {
 
 void initializeSocket(void *v_env, void *v_instance,
                       int helloPort, int port, void *v_deviceName, void *v_broadcastAddrList,
-                      void *v_refreshRates, int renderWidth, int renderHeight) {
+                      int refreshRate, int renderWidth, int renderHeight) {
     auto *env = (JNIEnv *) v_env;
     auto *instance = (jobject) v_instance;
     auto *deviceName_ = (jstring) v_deviceName;
     auto *broadcastAddrList_ = (jobjectArray) v_broadcastAddrList;
-    auto *refreshRates_ = (jintArray) v_refreshRates;
 
     //
     // Initialize variables
@@ -426,9 +425,7 @@ void initializeSocket(void *v_env, void *v_instance,
     memcpy(g_socket.mHelloMessage.deviceName, deviceName.c_str(),
            std::min(deviceName.length(), sizeof(g_socket.mHelloMessage.deviceName)));
 
-    jint *refreshRates = env->GetIntArrayElements(refreshRates_, nullptr);
-    g_socket.mHelloMessage.refreshRate = refreshRates[0];
-    env->ReleaseIntArrayElements(refreshRates_, refreshRates, 0);
+    g_socket.mHelloMessage.refreshRate = refreshRate;
 
     g_socket.mHelloMessage.renderWidth = static_cast<uint32_t>(renderWidth);
     g_socket.mHelloMessage.renderHeight = static_cast<uint32_t>(renderHeight);

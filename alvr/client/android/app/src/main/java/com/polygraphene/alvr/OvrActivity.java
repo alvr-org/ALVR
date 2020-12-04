@@ -53,13 +53,13 @@ public class OvrActivity extends Activity {
         String privateKey;
     }
 
-    static class OnCreateResult {
+    public static class OnCreateResult {
         public int streamSurfaceHandle;
         public int webviewSurfaceHandle;
         public int loadingSurfaceHandle;
         public int refreshRate;
-        public int mRenderWidth;
-        public int mRenderHeight;
+        public int renderWidth;
+        public int renderHeight;
     }
 
     class RenderingCallbacks implements SurfaceHolder.Callback {
@@ -216,9 +216,6 @@ public class OvrActivity extends Activity {
                 try {
                     mDecoderThread.start();
 
-                    DeviceDescriptor deviceDescriptor = new DeviceDescriptor();
-                    getDeviceDescriptorNative(deviceDescriptor);
-                    mRefreshRate = deviceDescriptor.mRefreshRates[0];
                     if (!mReceiverThread.start(mEGLContext, this, deviceDescriptor, 0)) {
                         Utils.loge(TAG, () -> "FATAL: Initialization of ReceiverThread failed.");
                         return;
@@ -502,8 +499,6 @@ public class OvrActivity extends Activity {
     native void onTrackingNative(ServerConnection serverConnection);
 
     native boolean isVrModeNative();
-
-    native void getDeviceDescriptorNative(DeviceDescriptor deviceDescriptor);
 
     native void onStreamStartNative(int width, int height, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset, int trackingSpaceType);
 

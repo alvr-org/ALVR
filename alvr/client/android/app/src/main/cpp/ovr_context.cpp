@@ -34,7 +34,6 @@ using namespace std;
 using namespace gl_render_utils;
 
 const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 1s;
-const int DEFAULT_REFRESH_RATE = 72;
 const uint32_t ovrButton_Unknown1 = 0x01000000;
 const int MAXIMUM_TRACKING_FRAMES = 180;
 
@@ -67,7 +66,8 @@ public:
     std::function<void(InteractionType, glm::vec2)> mWebViewInteractionCallback;
 
     bool mExtraLatencyMode = false;
-    int m_currentRefreshRate = DEFAULT_REFRESH_RATE;
+
+    vector<float> refreshRatesBuffer;
 
     uint64_t FrameIndex = 0;
 
@@ -215,6 +215,26 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
 
 
     auto result = OnCreateResult();
+
+    auto ovrDeviceType = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DEVICE_TYPE);
+    if (VRAPI_DEVICE_TYPE_OCULUSQUEST_START <= ovrDeviceType &&
+        ovrDeviceType <= VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
+        result.deviceType = DeviceType::OCULUS_QUEST;
+    } else if (ovrDeviceType > VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
+        result.deviceType = DeviceType::OCULUS_QUEST_2;
+    } else {
+        result.deviceType = DeviceType::UNKNOWN;
+    }
+
+    result.recommendedEyeWidth = eyeWidth;
+    result.recommendedEyeHeight = eyeHeight;
+
+    result.refreshRatesCount = vrapi_GetSystemPropertyInt(&g_ctx.java,
+                                                          VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
+    g_ctx.refreshRatesBuffer = vector<float>(result.refreshRatesCount);
+    vrapi_GetSystemPropertyFloatArray(&g_ctx.java, VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
+                                      &g_ctx.refreshRatesBuffer[0], result.refreshRatesCount);
+    result.refreshRates = &g_ctx.refreshRatesBuffer[0];
 
     result.streamSurfaceHandle = g_ctx.streamTexture.get()->GetGLTexture();
     result.webViewSurfaceHandle = g_ctx.webViewTexture.get()->GetGLTexture();
@@ -774,10 +794,6 @@ void onResumeNative(void *v_env, void *v_surface) {
         return;
     }
 
-    LOGI("Setting refresh rate. %d Hz", g_ctx.m_currentRefreshRate);
-    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, g_ctx.m_currentRefreshRate);
-    LOGI("vrapi_SetDisplayRefreshRate: Result=%d", result);
-
     int CpuLevel = 3;
     int GpuLevel = 3;
     vrapi_SetClockLevels(g_ctx.Ovr, CpuLevel, GpuLevel);
@@ -1068,102 +1084,6 @@ void renderLoadingNative() {
     frameDesc.Layers = layers;
 
     vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
-}
-
-void getRefreshRates(JNIEnv *env_, jintArray refreshRates) {
-    jint *refreshRates_ = env_->GetIntArrayElements(refreshRates, nullptr);
-
-    // Fill empty entry with 0.
-    memset(refreshRates_, 0, sizeof(jint) * ALVR_REFRESH_RATE_LIST_SIZE);
-
-    // Get list.
-    int numberOfRefreshRates = vrapi_GetSystemPropertyInt(&g_ctx.java,
-                                                          VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
-    std::vector<float> refreshRatesArray(numberOfRefreshRates);
-    vrapi_GetSystemPropertyFloatArray(&g_ctx.java, VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
-                                      &refreshRatesArray[0], numberOfRefreshRates);
-
-    std::string refreshRateList;
-    char str[100];
-    for (int i = 0; i < numberOfRefreshRates; i++) {
-        snprintf(str, sizeof(str), "%f%s", refreshRatesArray[i],
-                 (i != numberOfRefreshRates - 1) ? ", " : "");
-        refreshRateList += str;
-
-        if (i < ALVR_REFRESH_RATE_LIST_SIZE) {
-            refreshRates_[i] = (int) refreshRatesArray[i];
-        }
-    }
-    LOGI("Supported refresh rates: %s", refreshRateList.c_str());
-    std::sort(refreshRates_, refreshRates_ + ALVR_REFRESH_RATE_LIST_SIZE, std::greater<>());
-
-    env_->ReleaseIntArrayElements(refreshRates, refreshRates_, 0);
-}
-
-void getDeviceDescriptorNative(void *v_env, void *v_deviceDescriptor) {
-    auto *env = (JNIEnv *) v_env;
-    auto deviceDescriptor = (jobject) v_deviceDescriptor;
-
-    int renderWidth = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE);
-    int renderHeight = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
-
-    int deviceType = ALVR_DEVICE_TYPE_OCULUS_MOBILE;
-    int deviceSubType = 0;
-    int deviceCapabilityFlags = 0;
-    int controllerCapabilityFlags = ALVR_CONTROLLER_CAPABILITY_FLAG_ONE_CONTROLLER;
-
-    int ovrDeviceType = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DEVICE_TYPE);
-    //if (VRAPI_DEVICE_TYPE_GEARVR_START <= ovrDeviceType &&
-    //    ovrDeviceType <= VRAPI_DEVICE_TYPE_GEARVR_END) {
-    if (VRAPI_DEVICE_TYPE_OCULUSQUEST_START <= ovrDeviceType &&
-        ovrDeviceType <= VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
-        deviceSubType = ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_QUEST;
-    } else {
-        // Unknown
-        deviceSubType = 0;
-    }
-    LOGI("getDeviceDescriptor: ovrDeviceType: %d deviceType:%d deviceSubType:%d cap:%08X",
-         ovrDeviceType, deviceType, deviceSubType, deviceCapabilityFlags);
-
-    jfieldID fieldID;
-    jclass clazz = env->GetObjectClass(deviceDescriptor);
-
-    fieldID = env->GetFieldID(clazz, "mRefreshRates", "[I");
-
-    // Array instance is already set on deviceDescriptor.
-    auto refreshRates =
-            reinterpret_cast<jintArray>(env->GetObjectField(deviceDescriptor, fieldID));
-    getRefreshRates(env, refreshRates);
-    env->SetObjectField(deviceDescriptor, fieldID, refreshRates);
-    env->DeleteLocalRef(refreshRates);
-
-    fieldID = env->GetFieldID(clazz, "mRenderWidth", "I");
-    env->SetIntField(deviceDescriptor, fieldID, renderWidth);
-    fieldID = env->GetFieldID(clazz, "mRenderHeight", "I");
-    env->SetIntField(deviceDescriptor, fieldID, renderHeight);
-
-    fieldID = env->GetFieldID(clazz, "mFov", "[F");
-    auto fovField = reinterpret_cast<jfloatArray>(
-            env->GetObjectField(deviceDescriptor, fieldID));
-    jfloat *fovArray = env->GetFloatArrayElements(fovField, nullptr);
-    auto fov = getFov();
-    memcpy(fovArray, &fov, sizeof(fov));
-    env->ReleaseFloatArrayElements(fovField, fovArray, 0);
-    env->SetObjectField(deviceDescriptor, fieldID, fovField);
-    env->DeleteLocalRef(fovField);
-
-    fieldID = env->GetFieldID(clazz, "mDeviceType", "I");
-    env->SetIntField(deviceDescriptor, fieldID, deviceType);
-    fieldID = env->GetFieldID(clazz, "mDeviceSubType", "I");
-    env->SetIntField(deviceDescriptor, fieldID, deviceSubType);
-    fieldID = env->GetFieldID(clazz, "mDeviceCapabilityFlags", "I");
-    env->SetIntField(deviceDescriptor, fieldID, deviceCapabilityFlags);
-    fieldID = env->GetFieldID(clazz, "mControllerCapabilityFlags", "I");
-    env->SetIntField(deviceDescriptor, fieldID, controllerCapabilityFlags);
-    fieldID = env->GetFieldID(clazz, "mIpd", "F");
-    env->SetFloatField(deviceDescriptor, fieldID, getIPD());
-
-    env->DeleteLocalRef(clazz);
 }
 
 void onHapticsFeedbackNative(long long startTime, float amplitude, float duration,

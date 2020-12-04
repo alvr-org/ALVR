@@ -65,10 +65,14 @@ dependencies = [
  "android_logger",
  "bindgen",
  "cc",
+ "futures",
  "jni",
  "lazy_static",
  "log",
  "parking_lot",
+ "serde_json",
+ "settings-schema",
+ "tokio",
  "walkdir",
 ]
 

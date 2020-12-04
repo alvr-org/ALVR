@@ -1,4 +1,3 @@
-use super::settings::*;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
@@ -10,8 +9,8 @@ pub struct HandshakePacket {
     pub hostname: String,
     pub certificate_pem: String,
 
-    // reserved field is used to add features between major releases: the packets schema should
-    // never change anymore.
+    // reserved field is used to add features between major releases: the schema of the packet
+    // should never change anymore (required only for this packet).
     pub reserved: String,
 }
 
@@ -19,8 +18,8 @@ pub struct HandshakePacket {
 pub struct HeadsetInfoPacket {
     pub recommended_eye_width: u32,
     pub recommended_eye_height: u32,
-    pub recommended_left_eye_fov: Fov,
     pub available_refresh_rates: Vec<f32>,
+    pub preferred_refresh_rate: f32,
 
     // reserved field is used to add features in a minor release that otherwise would break the
     // packets schema
@@ -32,7 +31,6 @@ pub struct ClientConfigPacket {
     pub settings: String,
     pub eye_resolution_width: u32,
     pub eye_resolution_height: u32,
-    pub left_eye_fov: Fov,
     pub fps: u32,
     pub web_gui_url: String,
     pub reserved: String,
@@ -43,10 +41,12 @@ pub enum ServerControlPacket {
     Restarting,
     Shutdown,
     Reserved(String),
+    ReservedBuffer(Vec<u8>),
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
     Disconnect,
     Reserved(String),
+    ReservedBuffer(Vec<u8>),
 }

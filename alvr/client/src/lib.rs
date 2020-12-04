@@ -1,5 +1,6 @@
 #![allow(non_upper_case_globals, non_snake_case, clippy::missing_safety_doc)]
 
+mod connection;
 mod logging_backend;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -12,7 +13,8 @@ use jni::{
 };
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
-use std::slice;
+use std::{slice, sync::Arc};
+use tokio::{runtime::Runtime, sync::broadcast};
 
 struct OnCreateResultWrapper(OnCreateResult);
 unsafe impl Send for OnCreateResultWrapper {}
@@ -21,6 +23,10 @@ lazy_static! {
     static ref ON_CREATE_RESULT: Mutex<OnCreateResultWrapper> =
         Mutex::new(OnCreateResultWrapper(<_>::default()));
     static ref REFRESH_RATES: Mutex<Vec<f32>> = Mutex::new(vec![]);
+    static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(None);
+    static ref MAYBE_ON_STREAM_STOP_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> =
+        Mutex::new(None);
+    static ref MAYBE_ON_PAUSE_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
 }
 
 #[no_mangle]
@@ -171,14 +177,72 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onTrackingN
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
     env: JNIEnv,
-    _: JObject,
+    jactivity: JObject,
     jhostname: JString,
     jcertificate_pem: JString,
     jprivate_key: JString,
     jscreen_surface: JObject,
 ) {
     show_err(|| -> StrResult {
+        let java_vm = trace_err!(env.get_java_vm())?;
+        let activity_ref = trace_err!(env.new_global_ref(jactivity))?;
+
         onResumeNative(env.get_native_interface() as _, *jscreen_surface as _);
+
+        let result = ON_CREATE_RESULT.lock();
+
+        let device_name = if result.0.deviceType == DeviceType_OCULUS_QUEST {
+            "Oculus Quest"
+        } else if result.0.deviceType == DeviceType_OCULUS_QUEST_2 {
+            "Oculus Quest 2"
+        } else {
+            "Unknown device"
+        };
+
+        let refresh_rates = REFRESH_RATES.lock();
+        let preferred_refresh_rate = refresh_rates.last().cloned().unwrap_or(60_f32);
+
+        let headset_info = HeadsetInfoPacket {
+            recommended_eye_width: result.0.recommendedEyeWidth as _,
+            recommended_eye_height: result.0.recommendedEyeHeight as _,
+            available_refresh_rates: refresh_rates.clone(),
+            preferred_refresh_rate,
+            reserved: "".into(),
+        };
+
+        let private_identity = PrivateIdentity {
+            hostname: trace_err!(env.get_string(jhostname))?.into(),
+            certificate_pem: trace_err!(env.get_string(jcertificate_pem))?.into(),
+            key_pem: trace_err!(env.get_string(jprivate_key))?.into(),
+        };
+
+        let runtime = trace_err!(Runtime::new())?;
+        let (on_pause_notifier, mut on_pause_receiver) = broadcast::channel(1);
+        let (on_stream_stop_notifier, _) = broadcast::channel(1);
+
+        // runtime.spawn({
+        //     let on_stream_stop_notifier = on_stream_stop_notifier.clone();
+        //     async move {
+        //         let connection_loop = connection::connection_loop(
+        //             headset_info,
+        //             device_name,
+        //             private_identity,
+        //             on_stream_stop_notifier,
+        //             Arc::new(java_vm),
+        //             Arc::new(activity_ref),
+        //         );
+
+        //         tokio::select! {
+        //             _ = connection_loop => (),
+        //             _ = on_pause_receiver.recv() => ()
+        //         };
+        //     }
+        // });
+
+        *MAYBE_ON_STREAM_STOP_NOTIFIER.lock() = Some(on_stream_stop_notifier);
+        *MAYBE_ON_PAUSE_NOTIFIER.lock() = Some(on_pause_notifier);
+        *MAYBE_RUNTIME.lock() = Some(runtime);
+
         Ok(())
     }())
     .ok();
@@ -216,7 +280,14 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onPauseNati
     _: JNIEnv,
     _: JObject,
 ) {
-    onPauseNative()
+    if let Some(notifier) = MAYBE_ON_PAUSE_NOTIFIER.lock().take() {
+        notifier.send(()).ok();
+    }
+
+    // shutdown and wait for tasks to finish
+    drop(MAYBE_RUNTIME.lock().take());
+
+    onPauseNative();
 }
 
 #[no_mangle]

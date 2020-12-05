@@ -33,7 +33,7 @@
 using namespace std;
 using namespace gl_render_utils;
 
-const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 1s;
+const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 5s;
 const uint32_t ovrButton_Unknown1 = 0x01000000;
 const int MAXIMUM_TRACKING_FRAMES = 180;
 
@@ -59,11 +59,9 @@ public:
     ovrMicrophoneHandle mMicHandle{};
 
     unique_ptr<Texture> streamTexture;
-    unique_ptr<Texture> webViewTexture;
     GLuint loadingTexture = 0;
     int suspend = 0;
-    bool mShowDashboard = false;
-    std::function<void(InteractionType, glm::vec2)> mWebViewInteractionCallback;
+    std::function<void()> openDashboard;
 
     bool mExtraLatencyMode = false;
 
@@ -130,23 +128,17 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     g_ctx.java.ActivityObject = env->NewGlobalRef(activity);
 
     jclass clazz = env->FindClass("com/polygraphene/alvr/OvrActivity");
-    auto jWebViewInteractionCallback = env->GetMethodID(clazz, "applyWebViewInteractionEvent",
-                                                        "(IFF)V");
+    auto jDashboardCallback = env->GetMethodID(clazz, "openDashboard",
+                                               "()V");
     env->DeleteLocalRef(clazz);
 
-    g_ctx.mWebViewInteractionCallback = [jWebViewInteractionCallback](InteractionType type,
-                                                                      glm::vec2 coord) {
-        if (g_ctx.mShowDashboard) {
-            JNIEnv *env;
-            jint res = g_ctx.java.Vm->GetEnv((void **) &env, JNI_VERSION_1_6);
-            if (res == JNI_OK) {
-                env->CallVoidMethod(g_ctx.java.ActivityObject, jWebViewInteractionCallback,
-                                    (int) type,
-                                    coord.x,
-                                    coord.y);
-            } else {
-                LOGE("Failed to get JNI environment for dashboard interaction");
-            }
+    g_ctx.openDashboard = [jDashboardCallback]() {
+        JNIEnv *env;
+        jint res = g_ctx.java.Vm->GetEnv((void **) &env, JNI_VERSION_1_6);
+        if (res == JNI_OK) {
+            env->CallVoidMethod(g_ctx.java.ActivityObject, jDashboardCallback);
+        } else {
+            LOGE("Failed to get JNI environment for dashboard");
         }
     };
 
@@ -164,7 +156,6 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     //
 
     g_ctx.streamTexture = make_unique<Texture>(true);
-    g_ctx.webViewTexture = make_unique<Texture>(true);
 
     glGenTextures(1, &g_ctx.loadingTexture);
 
@@ -184,8 +175,7 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
                                                 VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
 
     ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.streamTexture.get(),
-                       g_ctx.loadingTexture, g_ctx.webViewTexture.get(),
-                       g_ctx.mWebViewInteractionCallback, {false});
+                       g_ctx.loadingTexture, {false});
     ovrRenderer_CreateScene(&g_ctx.Renderer);
 
     clazz = env->FindClass("com/polygraphene/alvr/ServerConnection");
@@ -237,7 +227,6 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     result.refreshRates = &g_ctx.refreshRatesBuffer[0];
 
     result.streamSurfaceHandle = g_ctx.streamTexture.get()->GetGLTexture();
-    result.webViewSurfaceHandle = g_ctx.webViewTexture.get()->GetGLTexture();
     result.loadingSurfaceHandle = g_ctx.loadingTexture;
 
     return result;
@@ -347,7 +336,7 @@ uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
 }
 
 
-void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiInput) {
+void setControllerInfo(TrackingInfo *packet, double displayTime) {
     ovrInputCapabilityHeader curCaps;
     ovrResult result;
     int controller = 0;
@@ -356,8 +345,6 @@ void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiIn
          vrapi_EnumerateInputDevices(g_ctx.Ovr, deviceIndex, &curCaps) >= 0; deviceIndex++) {
         LOG("Device %d: Type=%d ID=%d", deviceIndex, curCaps.Type, curCaps.DeviceID);
         if (curCaps.Type == ovrControllerType_Hand) {  //A3
-            g_ctx.mShowDashboard = false;
-
             // Oculus Quest Hand Tracking
             if (controller >= 2) {
                 LOG("Device %d: Ignore.", deviceIndex);
@@ -485,24 +472,8 @@ void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiIn
                     if (!g_ctx.mMenuLongPressActivated && std::chrono::system_clock::now()
                                                           - g_ctx.mMenuNotPressedLastInstant >
                                                           MENU_BUTTON_LONG_PRESS_DURATION) {
-                        g_ctx.mShowDashboard = !g_ctx.mShowDashboard;
                         g_ctx.mMenuLongPressActivated = true;
-
-                        if (g_ctx.mShowDashboard) {
-                            auto q = packet->HeadPose_Pose_Orientation;
-                            auto glQuat = glm::quat(q.w, q.x, q.y, q.z);
-                            auto rotEuler = glm::eulerAngles(glQuat);
-                            float yaw;
-                            if (abs(rotEuler.x) < M_PI_2) {
-                                yaw = rotEuler.y;
-                            } else {
-                                yaw = M_PI - rotEuler.y;
-                            }
-                            auto rotation = glm::eulerAngleY(yaw);
-                            auto pos = glm::vec4(0, 0, -1.5, 1);
-                            glm::vec3 position = glm::vec3(rotation * pos) + guiInput->headPosition;
-                            g_ctx.Renderer.webViewPanel->SetPoseTransform(position, yaw, 0);
-                        }
+                        g_ctx.openDashboard();
                     }
                 } else {
                     g_ctx.mMenuNotPressedLastInstant = std::chrono::system_clock::now();
@@ -523,32 +494,28 @@ void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiIn
                 c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_QUEST;
             }
 
-            if (g_ctx.mShowDashboard) {
-                guiInput->actionButtonsDown[controller] =
-                        remoteInputState.Buttons & (ovrButton_A | ovrButton_X | ovrButton_Trigger);
+            c.buttons = mapButtons(&remoteCapabilities, &remoteInputState);
+
+            if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_HasJoystick) !=
+                0) {
+                c.trackpadPosition.x = remoteInputState.JoystickNoDeadZone.x;
+                c.trackpadPosition.y = remoteInputState.JoystickNoDeadZone.y;
             } else {
-                c.buttons = mapButtons(&remoteCapabilities, &remoteInputState);
-
-                if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_HasJoystick) !=
-                    0) {
-                    c.trackpadPosition.x = remoteInputState.JoystickNoDeadZone.x;
-                    c.trackpadPosition.y = remoteInputState.JoystickNoDeadZone.y;
-                } else {
-                    // Normalize to -1.0 - +1.0 for OpenVR Input. y-asix should be reversed.
-                    c.trackpadPosition.x =
-                            remoteInputState.TrackpadPosition.x / remoteCapabilities.TrackpadMaxX *
-                            2.0f - 1.0f;
-                    c.trackpadPosition.y =
-                            remoteInputState.TrackpadPosition.y / remoteCapabilities.TrackpadMaxY *
-                            2.0f - 1.0f;
-                    c.trackpadPosition.y = -c.trackpadPosition.y;
-                }
-                c.triggerValue = remoteInputState.IndexTrigger;
-                c.gripValue = remoteInputState.GripTrigger;
-
-                c.batteryPercentRemaining = remoteInputState.BatteryPercentRemaining;
-                c.recenterCount = remoteInputState.RecenterCount;
+                // Normalize to -1.0 - +1.0 for OpenVR Input. y-asix should be reversed.
+                c.trackpadPosition.x =
+                        remoteInputState.TrackpadPosition.x / remoteCapabilities.TrackpadMaxX *
+                        2.0f - 1.0f;
+                c.trackpadPosition.y =
+                        remoteInputState.TrackpadPosition.y / remoteCapabilities.TrackpadMaxY *
+                        2.0f - 1.0f;
+                c.trackpadPosition.y = -c.trackpadPosition.y;
             }
+            c.triggerValue = remoteInputState.IndexTrigger;
+            c.gripValue = remoteInputState.GripTrigger;
+
+            c.batteryPercentRemaining = remoteInputState.BatteryPercentRemaining;
+            c.recenterCount = remoteInputState.RecenterCount;
+
 
             ovrTracking tracking;
             if (vrapi_GetInputTrackingState(g_ctx.Ovr, remoteCapabilities.Header.DeviceID,
@@ -579,13 +546,6 @@ void setControllerInfo(TrackingInfo *packet, double displayTime, GUIInput *guiIn
                 memcpy(&c.linearAcceleration,
                        &tracking.HeadPose.LinearAcceleration,
                        sizeof(tracking.HeadPose.LinearAcceleration));
-
-                auto pos = tracking.HeadPose.Pose.Position;
-                guiInput->controllersPosition[controller] = glm::vec3(pos.x,
-                                                                      pos.y - WORLD_VERTICAL_OFFSET,
-                                                                      pos.z);
-                auto rot = tracking.HeadPose.Pose.Orientation;
-                guiInput->controllersRotation[controller] = glm::quat(rot.w, rot.x, rot.y, rot.z);
             }
             controller++;
         }
@@ -653,13 +613,7 @@ void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tra
            sizeof(ovrQuatf));
     memcpy(&packet->HeadPose_Pose_Position, &tracking->HeadPose.Pose.Position, sizeof(ovrVector3f));
 
-    GUIInput guiInput = {};
-    auto pos = tracking->HeadPose.Pose.Position;
-    guiInput.headPosition = glm::vec3(pos.x, pos.y - WORLD_VERTICAL_OFFSET, pos.z);
-
-    setControllerInfo(packet, displayTime, &guiInput);
-
-    g_ctx.Renderer.gui->Update(guiInput);
+    setControllerInfo(packet, displayTime);
 
     FrameLog(g_ctx.FrameIndex, "Sending tracking info.");
 }
@@ -822,8 +776,7 @@ void onStreamStartNative(int width, int height, int refreshRate, unsigned char s
 
     ovrRenderer_Destroy(&g_ctx.Renderer);
     ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, height, g_ctx.streamTexture.get(),
-                       g_ctx.loadingTexture, g_ctx.webViewTexture.get(),
-                       g_ctx.mWebViewInteractionCallback,
+                       g_ctx.loadingTexture,
                        {(bool) foveationMode, (uint32_t) eyeWidth, (uint32_t) height,
                         EyeFov(), foveationStrength, foveationShape, foveationVerticalOffset});
     ovrRenderer_CreateScene(&g_ctx.Renderer);
@@ -1020,7 +973,7 @@ void renderNative(long long renderedFrameIndex) {
 
 // Render eye images and setup the primary layer using ovrTracking2.
     const ovrLayerProjection2 worldLayer =
-            ovrRenderer_RenderFrame(&g_ctx.Renderer, &frame->tracking, false, g_ctx.mShowDashboard);
+            ovrRenderer_RenderFrame(&g_ctx.Renderer, &frame->tracking, false);
 
     LatencyCollector::Instance().rendered2(renderedFrameIndex);
 
@@ -1067,7 +1020,7 @@ void renderLoadingNative() {
     ovrTracking2 headTracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, displayTime);
 
     const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(&g_ctx.Renderer, &headTracking,
-                                                                   true, false);
+                                                                   true);
 
     const ovrLayerHeader2 *layers[] =
             {

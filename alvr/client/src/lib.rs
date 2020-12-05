@@ -98,12 +98,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
         ))?;
         trace_err!(env.set_field(
             jout_result,
-            "webviewSurfaceHandle",
-            "I",
-            result.webViewSurfaceHandle.into()
-        ))?;
-        trace_err!(env.set_field(
-            jout_result,
             "loadingSurfaceHandle",
             "I",
             result.loadingSurfaceHandle.into()

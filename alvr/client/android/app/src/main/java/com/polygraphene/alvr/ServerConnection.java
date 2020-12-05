@@ -238,7 +238,7 @@ class ServerConnection extends ThreadBase {
 
     @SuppressWarnings("unused")
     public void setWebViewURL(String url) {
-        mParent.setupWebView(url);
+        mParent.setDashboardURL(url);
     }
 
 

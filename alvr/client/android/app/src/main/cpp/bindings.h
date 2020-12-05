@@ -13,7 +13,6 @@ struct OnCreateResult {
     float *refreshRates;
     int refreshRatesCount;
     int streamSurfaceHandle;
-    int webViewSurfaceHandle;
     int loadingSurfaceHandle;
 };
 

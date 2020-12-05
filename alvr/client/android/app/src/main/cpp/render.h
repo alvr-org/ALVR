@@ -141,15 +141,10 @@ typedef struct {
     std::unique_ptr<FFR> ffr;
     gl_render_utils::Texture *ffrSourceTexture;
     bool enableFFR;
-    gl_render_utils::Texture *webViewTexture;
-    std::unique_ptr<InteractivePanel> webViewPanel;
-    std::unique_ptr<VRGUI> gui;
 } ovrRenderer;
 
 void ovrRenderer_Create(ovrRenderer *renderer, int width, int height,
                         gl_render_utils::Texture *streamTexture, int LoadingTexture,
-                        gl_render_utils::Texture *webViewSurfaceTexture,
-                        std::function<void(InteractionType, glm::vec2)> webViewInteractionCallback,
                         FFRData ffrData);
 
 void ovrRenderer_Destroy(ovrRenderer *renderer);
@@ -158,7 +153,7 @@ void ovrRenderer_CreateScene(ovrRenderer *renderer);
 
 // Set up an OVR frame, render it, and submit it.
 ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,
-                                            bool loading, bool showDashboard);
+                                            bool loading);
 
 // Render the contents of the frame in an SDK-neutral manner.
 void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *renderer,

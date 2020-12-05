@@ -303,40 +303,32 @@ void eglInit() {
     }
 }
 
-void eglDestroy()
-{
-    if ( egl.Display != 0 )
-    {
-        LOGE( "        eglMakeCurrent( Display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT )" );
-        if ( eglMakeCurrent( egl.Display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT ) == EGL_FALSE )
-        {
-            LOGE( "        eglMakeCurrent() failed: %s", EglErrorString( eglGetError() ) );
+void eglDestroy() {
+    if (egl.Display != 0) {
+        LOGE("        eglMakeCurrent( Display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT )");
+        if (eglMakeCurrent(egl.Display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) ==
+            EGL_FALSE) {
+            LOGE("        eglMakeCurrent() failed: %s", EglErrorString(eglGetError()));
         }
     }
-    if ( egl.Context != EGL_NO_CONTEXT )
-    {
-        LOGE( "        eglDestroyContext( Display, Context )" );
-        if ( eglDestroyContext( egl.Display, egl.Context ) == EGL_FALSE )
-        {
-            LOGE( "        eglDestroyContext() failed: %s", EglErrorString( eglGetError() ) );
+    if (egl.Context != EGL_NO_CONTEXT) {
+        LOGE("        eglDestroyContext( Display, Context )");
+        if (eglDestroyContext(egl.Display, egl.Context) == EGL_FALSE) {
+            LOGE("        eglDestroyContext() failed: %s", EglErrorString(eglGetError()));
         }
         egl.Context = EGL_NO_CONTEXT;
     }
-    if ( egl.TinySurface != EGL_NO_SURFACE )
-    {
-        LOGE( "        eglDestroySurface( Display, TinySurface )" );
-        if ( eglDestroySurface( egl.Display, egl.TinySurface ) == EGL_FALSE )
-        {
-            LOGE( "        eglDestroySurface() failed: %s", EglErrorString( eglGetError() ) );
+    if (egl.TinySurface != EGL_NO_SURFACE) {
+        LOGE("        eglDestroySurface( Display, TinySurface )");
+        if (eglDestroySurface(egl.Display, egl.TinySurface) == EGL_FALSE) {
+            LOGE("        eglDestroySurface() failed: %s", EglErrorString(eglGetError()));
         }
         egl.TinySurface = EGL_NO_SURFACE;
     }
-    if ( egl.Display != 0 )
-    {
-        LOGE( "        eglTerminate( Display )" );
-        if ( eglTerminate( egl.Display ) == EGL_FALSE )
-        {
-            LOGE( "        eglTerminate() failed: %s", EglErrorString( eglGetError() ) );
+    if (egl.Display != 0) {
+        LOGE("        eglTerminate( Display )");
+        if (eglTerminate(egl.Display) == EGL_FALSE) {
+            LOGE("        eglTerminate() failed: %s", EglErrorString(eglGetError()));
         }
         egl.Display = 0;
     }
@@ -345,7 +337,7 @@ void eglDestroy()
 #ifdef OVR_SDK
 
 bool ovrFramebuffer_Create(ovrFramebuffer *frameBuffer, const GLenum colorFormat, const int width,
-                            const int height) {
+                           const int height) {
     const int PREFERRED_SWAPCHAIN_SIZE = 3;
     frameBuffer->ColorTextureSwapChain = vrapi_CreateTextureSwapChain3(
             VRAPI_TEXTURE_TYPE_2D, colorFormat, width, height, 1, PREFERRED_SWAPCHAIN_SIZE);
@@ -375,7 +367,7 @@ void ovrFramebuffer_Destroy(ovrFramebuffer *frameBuffer) {
 
 void ovrFramebuffer_SetCurrent(ovrFramebuffer *frameBuffer) {
     GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-            frameBuffer->renderStates[frameBuffer->TextureSwapChainIndex]->GetFrameBuffer()));
+                         frameBuffer->renderStates[frameBuffer->TextureSwapChainIndex]->GetFrameBuffer()));
 }
 
 void ovrFramebuffer_SetNone() {
@@ -544,12 +536,12 @@ typedef struct {
 
 static ovrUniform ProgramUniforms[] =
         {
-                {UNIFORM_VIEW_ID,          UNIFORM_TYPE_INT,       "ViewID"},
-                {UNIFORM_MVP_MATRIX,       UNIFORM_TYPE_MATRIX4X4, "mvpMatrix"},
-                {UNIFORM_ALPHA, UNIFORM_TYPE_FLOAT,       "alpha"},
-                {UNIFORM_COLOR, UNIFORM_TYPE_VECTOR4,       "Color"},
-                {UNIFORM_M_MATRIX, UNIFORM_TYPE_MATRIX4X4,       "mMatrix"},
-                {UNIFORM_MODE, UNIFORM_TYPE_INT,       "Mode"},
+                {UNIFORM_VIEW_ID,    UNIFORM_TYPE_INT,       "ViewID"},
+                {UNIFORM_MVP_MATRIX, UNIFORM_TYPE_MATRIX4X4, "mvpMatrix"},
+                {UNIFORM_ALPHA,      UNIFORM_TYPE_FLOAT,     "alpha"},
+                {UNIFORM_COLOR,      UNIFORM_TYPE_VECTOR4,   "Color"},
+                {UNIFORM_M_MATRIX,   UNIFORM_TYPE_MATRIX4X4, "mMatrix"},
+                {UNIFORM_MODE,       UNIFORM_TYPE_INT,       "Mode"},
         };
 
 static const char *programVersion = "#version 300 es\n";
@@ -666,9 +658,7 @@ void ovrProgram_Destroy(ovrProgram *program) {
 //
 
 void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *streamTexture,
-                        int LoadingTexture, Texture *webViewTexture,
-                        std::function<void(InteractionType, glm::vec2)> webViewInteractionCallback,
-                        FFRData ffrData) {
+                        int LoadingTexture, FFRData ffrData) {
     renderer->NumBuffers = VRAPI_FRAME_LAYER_EYE_MAX;
 
     renderer->enableFFR = ffrData.enabled;
@@ -690,24 +680,18 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *s
     renderer->SceneCreated = false;
     renderer->loadingScene = new GltfModel();
     renderer->loadingScene->load();
-    renderer->gui = std::make_unique<VRGUI>();
-    renderer->webViewTexture = webViewTexture;
-    renderer->webViewPanel = std::make_unique<InteractivePanel>(
-            renderer->webViewTexture, 2, 1.5, glm::vec3(0, -WORLD_VERTICAL_OFFSET, -1.5),
-            0, 0, webViewInteractionCallback);
-    renderer->gui->AddPanel(renderer->webViewPanel.get());
 }
 
 
 void ovrRenderer_CreateScene(ovrRenderer *renderer) {
-    if(renderer->SceneCreated) {
+    if (renderer->SceneCreated) {
         return;
     }
     const char *fragment_shader_fmt = FRAGMENT_SHADER;
 
     std::string fragment_shader;
     fragment_shader = string_format(fragment_shader_fmt,
-            renderer->enableFFR ? "sampler2D" : "samplerExternalOES");
+                                    renderer->enableFFR ? "sampler2D" : "samplerExternalOES");
 
     ovrProgram_Create(&renderer->Program, VERTEX_SHADER, fragment_shader.c_str());
     ovrProgram_Create(&renderer->ProgramLoading, VERTEX_SHADER_LOADING, FRAGMENT_SHADER_LOADING);
@@ -719,7 +703,7 @@ void ovrRenderer_CreateScene(ovrRenderer *renderer) {
 void ovrRenderer_Destroy(ovrRenderer *renderer) {
     // On Gvr, ovrFence_Destroy produces error because we cannot call it on GL render thread.
 #if !defined(GVR_SDK)
-    if(renderer->SceneCreated) {
+    if (renderer->SceneCreated) {
         ovrProgram_Destroy(&renderer->Program);
         ovrProgram_Destroy(&renderer->ProgramLoading);
         ovrGeometry_DestroyVAO(&renderer->Panel);
@@ -737,12 +721,12 @@ void ovrRenderer_Destroy(ovrRenderer *renderer) {
 #ifdef OVR_SDK
 
 ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,
-                                                   bool loading, bool showDashboard) {
+                                            bool loading) {
     if (renderer->enableFFR) {
         renderer->ffr->Render();
     }
 
-    const ovrTracking2& updatedTracking = *tracking;
+    const ovrTracking2 &updatedTracking = *tracking;
 
     ovrLayerProjection2 layer = vrapi_DefaultLayerProjection2();
     layer.HeadPose = updatedTracking.HeadPose;
@@ -778,20 +762,10 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
         mvpMatrix[1] = ovrMatrix4f_Multiply(&tracking->Eye[1].ProjectionMatrix,
                                             &mvpMatrix[1]);
 
-        Recti viewport = {0, 0, (int)frameBuffer->renderTargets[0]->GetWidth(),
-                          (int)frameBuffer->renderTargets[0]->GetHeight()};
+        Recti viewport = {0, 0, (int) frameBuffer->renderTargets[0]->GetWidth(),
+                          (int) frameBuffer->renderTargets[0]->GetHeight()};
 
         renderEye(eye, mvpMatrix, &viewport, renderer, loading);
-
-        if (showDashboard) {
-            frameBuffer->renderStates[frameBuffer->TextureSwapChainIndex]->ClearDepth();
-
-            glm::mat4 glCameraMatrix;
-            memcpy(glm::value_ptr(glCameraMatrix), mvpMatrix[eye].M, 16 * 4);
-            glCameraMatrix = glm::transpose(glCameraMatrix);
-            renderer->gui->Render(*frameBuffer->renderStates[frameBuffer->TextureSwapChainIndex],
-                                  glCameraMatrix);
-        }
 
         ovrFramebuffer_Resolve(frameBuffer);
         ovrFramebuffer_Advance(frameBuffer);

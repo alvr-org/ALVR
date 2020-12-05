@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
+import android.net.Uri;
 import android.opengl.EGL14;
 import android.opengl.EGLContext;
 import android.os.BatteryManager;
@@ -33,9 +34,6 @@ import android.widget.Toast;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import static com.polygraphene.alvr.OffscreenWebView.WEBVIEW_HEIGHT;
-import static com.polygraphene.alvr.OffscreenWebView.WEBVIEW_WIDTH;
-
 public class OvrActivity extends Activity {
     static {
         System.loadLibrary("alvr_client");
@@ -55,7 +53,6 @@ public class OvrActivity extends Activity {
 
     public static class OnCreateResult {
         public int streamSurfaceHandle;
-        public int webviewSurfaceHandle;
         public int loadingSurfaceHandle;
         public int refreshRate;
         public int renderWidth;
@@ -97,8 +94,6 @@ public class OvrActivity extends Activity {
     Surface mScreenSurface;
     SurfaceTexture mStreamSurfaceTexture;
     Surface mStreamSurface;
-    SurfaceTexture mWebViewSurfaceTexture;
-    OffscreenWebView mWebView = null;
     final LoadingTexture mLoadingTexture = new LoadingTexture();
     DecoderThread mDecoderThread = null;
     ServerConnection mReceiverThread;
@@ -107,6 +102,7 @@ public class OvrActivity extends Activity {
     boolean mDecoderPrepared = false;
     int mRefreshRate = 72;
     long mPreviousRender = 0;
+    String mDashboardURL = null;
 
     // Cache method references for performance reasons
     final Runnable mRenderRunnable = this::render;
@@ -123,10 +119,6 @@ public class OvrActivity extends Activity {
 
         setContentView(R.layout.activity_main);
         SurfaceView surfaceView = findViewById(R.id.surfaceview);
-
-        Handler webViewHandler = new Handler(this.getMainLooper());
-        mWebView = new OffscreenWebView(this, webViewHandler);
-        addContentView(mWebView, new ViewGroup.LayoutParams(WEBVIEW_WIDTH, WEBVIEW_HEIGHT));
 
         mRenderingHandlerThread = new HandlerThread("Rendering thread");
         mRenderingHandlerThread.start();
@@ -155,13 +147,6 @@ public class OvrActivity extends Activity {
             mRenderingHandler.post(mRenderRunnable);
         }, new Handler(Looper.getMainLooper()));
         mStreamSurface = new Surface(mStreamSurfaceTexture);
-
-        mWebViewSurfaceTexture = new SurfaceTexture(deviceDescriptor.webviewSurfaceHandle);
-        mWebViewSurfaceTexture.setDefaultBufferSize(WEBVIEW_WIDTH, WEBVIEW_HEIGHT);
-        Surface mWebViewSurface = new Surface(mWebViewSurfaceTexture);
-
-        // Doesn't need to be posted to the main thread since it's our method.
-        mWebView.setSurface(mWebViewSurface);
 
         mLoadingTexture.initializeMessageCanvas(deviceDescriptor.loadingSurfaceHandle);
         mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\nLoading...");
@@ -328,8 +313,8 @@ public class OvrActivity extends Activity {
         }
     }
 
-    public void setupWebView(String url) {
-        mWebView.setURL(url);
+    public void setDashboardURL(String url) {
+        mDashboardURL = url;
     }
 
     private void render() {
@@ -341,10 +326,6 @@ public class OvrActivity extends Activity {
                     return;
                 }
                 long renderedFrameIndex = mDecoderThread.clearAvailable(mStreamSurfaceTexture);
-
-                if (mWebViewSurfaceTexture != null) {
-                    mWebViewSurfaceTexture.updateTexImage();
-                }
 
                 if (renderedFrameIndex != -1) {
                     renderNative(renderedFrameIndex);
@@ -511,7 +492,10 @@ public class OvrActivity extends Activity {
     native void onBatteryChangedNative(int battery);
 
     @SuppressWarnings("unused")
-    public void applyWebViewInteractionEvent(int type, float x, float y) {
-        mWebView.applyWebViewInteractionEvent(type, x, y);
+    public void openDashboard() {
+        if (mDashboardURL != null) {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(mDashboardURL));
+            startActivity(browserIntent);
+        }
     }
 }

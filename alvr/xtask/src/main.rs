@@ -303,6 +303,43 @@ pub fn build_client(is_release: bool) {
     .unwrap();
 }
 
+fn build_installer(wix_path: &str) {
+    let wix_path = PathBuf::from(wix_path).join("bin");
+    let heat_cmd = wix_path.join("heat.exe");
+    let candle_cmd = wix_path.join("candle.exe");
+    let light_cmd = wix_path.join("light.exe");
+
+    run_with_args(&heat_cmd.to_string_lossy(), &vec![
+        "dir",
+        "build\\alvr_server_windows",
+        "-ag",
+        "-sreg",
+        "-srd",
+        "-dr", "APPLICATIONFOLDER",
+        "-cg", "BuildFiles",
+        "-var", "var.BuildRoot",
+        "-o", "wix\\harvested.wxs",
+    ]).unwrap();
+
+    run_with_args(&candle_cmd.to_string_lossy(), &vec![
+        "-arch", "x64",
+        "-dBuildRoot=build\\alvr_server_windows",
+        "-ext", "WixUtilExtension",
+        &format!("-dVersion={}", alvr_xtask::server_version()),
+        "wix\\main.wxs",
+        "wix\\harvested.wxs",
+        "-o", "target\\wix\\",
+    ]).unwrap();
+
+    run_with_args(&light_cmd.to_string_lossy(), &vec![
+        "target\\wix\\main.wixobj",
+        "target\\wix\\harvested.wixobj",
+        "-ext", "WixUIExtension",
+        "-ext", "WixUtilExtension",
+        "-o", &format!("build\\ALVR-{}.msi", alvr_xtask::server_version()),
+    ]).unwrap();
+}
+
 pub fn build_publish(is_nightly: bool) {
     build_server(true, is_nightly, false);
     build_client(true);
@@ -314,6 +351,14 @@ pub fn build_publish(is_nightly: bool) {
             build_dir().join("alvr_server.pdb"),
         )
         .unwrap();
+
+        if let Some(wix_evar) = env::vars().find(|v| {v.0 == "WIX"}) {
+            println!("Found WiX, will build installer.");
+
+            build_installer(&wix_evar.1);
+        } else {
+            println!("No WiX toolset installation found, skipping installer.");
+        }
     }
 }
 

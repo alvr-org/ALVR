@@ -91,7 +91,7 @@ pub async fn client_discovery() {
             video_height,
             buffer_size_bytes: settings.connection.client_recv_buffer_size as _,
             frame_queue_size: settings.connection.frame_queue_size as _,
-            refresh_rate: settings.video.refresh_rate as _,
+            refresh_rate: settings.video.preferred_fps as _,
             stream_mic: matches!(settings.audio.microphone, Switch::Enabled(_)),
             foveation_mode,
             foveation_strength,
@@ -145,7 +145,7 @@ pub async fn client_discovery() {
                 aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
                 adapter_index: settings.video.adapter_index,
                 codec: matches!(settings.video.codec, CodecType::HEVC) as _,
-                refresh_rate: settings.video.refresh_rate,
+                refresh_rate: settings.video.preferred_fps as _,
                 encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
                 throttling_bitrate_bits: settings.connection.throttling_bitrate_bits,
                 listen_host: settings.connection.listen_host,
@@ -321,13 +321,10 @@ async fn connect_to_any_client(
         let target_eye_height = align32(eye_height);
 
         let fps = {
-            // if let Some(refresh_rate) = settings.video.refresh_rate {
-            let refresh_rate = settings.video.refresh_rate as f32;
-
             let mut best_match = 0_f32;
             let mut min_diff = f32::MAX;
             for rr in &headset_info.available_refresh_rates {
-                let diff = (*rr - refresh_rate).abs();
+                let diff = (*rr - settings.video.preferred_fps).abs();
                 if diff < min_diff {
                     best_match = *rr;
                     min_diff = diff;
@@ -335,14 +332,10 @@ async fn connect_to_any_client(
             }
             best_match
         };
-        // else {
-        //     headset_info
-        //         .available_refresh_rates
-        //         .iter()
-        //         .map(|&f| f as u32)
-        //         .max()
-        //         .unwrap()
-        // };
+
+        if !headset_info.available_refresh_rates.contains(&settings.video.preferred_fps) {
+            warn!("Chosen refresh rate not supported. Using {}Hz", fps);
+        }
 
         let web_gui_url = format!(
             "http://{}:{}/",
@@ -396,7 +389,7 @@ async fn connect_to_any_client(
             aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
             adapter_index: settings.video.adapter_index,
             codec: matches!(settings.video.codec, CodecType::HEVC) as _,
-            refresh_rate: settings.video.refresh_rate,
+            refresh_rate: fps as _,
             encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
             throttling_bitrate_bits: settings.connection.throttling_bitrate_bits,
             listen_host: settings.connection.listen_host,

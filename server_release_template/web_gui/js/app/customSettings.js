@@ -367,7 +367,7 @@ define([
         function setRefreshRate() {
             const el = $("#_root_video_displayRefreshRate");
 
-            const refreshRate = $("#_root_video_refreshRate");
+            const preferredFps = $("#_root_video_preferredFps");
 
             const custom = i18n.customRefreshRate
 
@@ -381,13 +381,13 @@ define([
                 $("#displayRefreshRateCustomButton").remove();
                 $("input:radio[name='displayRefreshRate']").parent().removeClass("active");          
 
-                switch ( refreshRate.val()) {
+                switch ( preferredFps.val()) {
                     case "90":
                     case "80":
                     case "72":
                     case "60":
-                        $("input:radio[name='displayRefreshRate'][value='" + refreshRate.val() + "']").prop("checked", "true");
-                        $("input:radio[name='displayRefreshRate'][value='" + refreshRate.val() + "']").parent().addClass("active");
+                        $("input:radio[name='displayRefreshRate'][value='" + preferredFps.val() + "']").prop("checked", "true");
+                        $("input:radio[name='displayRefreshRate'][value='" + preferredFps.val() + "']").parent().addClass("active");
                         break;
 
                     default:
@@ -400,9 +400,9 @@ define([
 
             function setRefreshRateValue(val) {
                 if (val !== "custom") {
-                    refreshRate.val(val);
+                    preferredFps.val(val);
                 }
-                alvrSettings.storeParam(refreshRate);
+                alvrSettings.storeParam(preferredFps);
                 setRefreshRateRadio();
             }
 
@@ -441,7 +441,7 @@ define([
                 $("input:radio[name='displayRefreshRate']").on("change", () => {
                     setRefreshRateValue($("input:radio:checked[name='displayRefreshRate']").val());   
                 });
-                refreshRate.on("change", () => {                   
+                preferredFps.on("change", () => {                   
                     setRefreshRateRadio();
                 });   
                 

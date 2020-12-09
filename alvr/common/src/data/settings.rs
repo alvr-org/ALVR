@@ -83,8 +83,8 @@ pub struct VideoDesc {
 
     #[schema(placeholder = "display_refresh_rate")]
     //
-    #[schema(advanced)]
-    pub refresh_rate: u32,
+    #[schema(advanced, min = 60.0, max = 90.0)]
+    pub preferred_fps: f32,
 
     // Dropdown with 25%, 50%, 75%, 100%, 125%, 150% etc or custom
     // Should set renderResolution (always in scale mode).
@@ -322,7 +322,7 @@ pub fn session_settings_default() -> SettingsDefault {
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
-            refresh_rate: 72,
+            preferred_fps: 72_f32,
             render_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
                 Scale: 1.,

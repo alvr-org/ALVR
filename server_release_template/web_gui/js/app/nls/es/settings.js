@@ -9,8 +9,8 @@ define({
     "_root_connection_tab.name": "Conexión",
     "_root_video_adapterIndex.name": "Índice de GPU",
     "_root_video_adapterIndex.description": "El índice que identifica la GPU",
-    "_root_video_refreshRate.name": "FPS",
-    "_root_video_refreshRate.description": "FPS del visor",
+    "_root_video_preferredFps.name": "FPS",
+    "_root_video_preferredFps.description": "FPS del visor",
     "_root_video_encodeBitrateMbs.name": "Bitrate de video",
     "_root_video_encodeBitrateMbs.description": `Transmisión de video a velocidad de bits. Se recomiendan 30Mbps.
 Una mayor tasa de bits resulta en una mejor calidad de imagen pero a costa de una mayor latencia y tráfico de red.`,

@@ -14,6 +14,8 @@ lazy_static! {
         Regex::new(r#"versionName\s+"[\d.]+[0-9A-Za-z-.]*(?:\+[0-9A-Za-z-.]+){0,1}""#).unwrap();
     static ref GRADLE_VERSIONCODE_REGEX: Regex =
         Regex::new(r#"versionCode\s+(?P<code>\d+)"#).unwrap();
+    static ref GRADLE_APPLICATIONID_REGEX: Regex =
+        Regex::new(r#"applicationId\s+"[A-Za-z.]*""#).unwrap();
 }
 
 fn bumped_versions(
@@ -38,7 +40,7 @@ fn bumped_versions(
     Ok((client_version, server_version))
 }
 
-fn bump_client_gradle_version(new_version: &Version) {
+fn bump_client_gradle_version(new_version: &Version, new_package_name: Option<&str>) {
     let old_client_version = alvr_xtask::client_version();
 
     println!(
@@ -53,6 +55,12 @@ fn bump_client_gradle_version(new_version: &Version) {
     let mut data = String::new();
     gradle_file.read_to_string(&mut data).unwrap();
     drop(gradle_file);
+
+    if let Some(package_name) = new_package_name {
+        data = GRADLE_APPLICATIONID_REGEX.replace(&data, |_: &Captures| {
+            format!(r#"applicationId "{}""#, package_name)
+        }).into();
+    }
 
     let data = GRADLE_VERSIONNAME_REGEX.replace(&data, |_: &Captures| {
         format!(r#"versionName "{}""#, new_version)
@@ -109,7 +117,7 @@ pub fn bump_versions(server_arg: Option<String>, client_arg: Option<String>) {
     let versions = bumped_versions(server_arg.as_deref(), client_arg.as_deref());
     match versions {
         Ok((client_version, server_version)) => {
-            bump_client_gradle_version(&client_version);
+            bump_client_gradle_version(&client_version, None);
             bump_client_cargo_version(&client_version);
             bump_server_cargo_version(&server_version);
 
@@ -140,7 +148,7 @@ pub fn bump_versions_nightly() {
     server_version.build = vec![nightly_identifier];
 
     bump_client_cargo_version(&client_version);
-    bump_client_gradle_version(&client_version);
+    bump_client_gradle_version(&client_version, Some("com.alvr.client.nightly"));
     bump_server_cargo_version(&server_version);
 
     println!("Git tag:\nv{}", cmp::max(client_version, server_version));

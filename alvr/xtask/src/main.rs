@@ -4,6 +4,7 @@ mod version;
 use dependencies::install_deps;
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
+use semver::Version;
 use std::{
     env,
     error::Error,
@@ -309,6 +310,11 @@ fn build_installer(wix_path: &str) {
     let candle_cmd = wix_path.join("candle.exe");
     let light_cmd = wix_path.join("light.exe");
 
+    let mut version = Version::parse(&alvr_xtask::server_version()).unwrap();
+    // Clear away build and prerelease version specifiers, MSI can have only dot-separated numbers.
+    version.pre.clear();
+    version.build.clear();
+
     run_with_args(
         &heat_cmd.to_string_lossy(),
         &[
@@ -324,7 +330,7 @@ fn build_installer(wix_path: &str) {
             "-var",
             "var.BuildRoot",
             "-o",
-            "wix\\harvested.wxs",
+            "target\\wix\\harvested.wxs",
         ],
     )
     .unwrap();
@@ -337,9 +343,9 @@ fn build_installer(wix_path: &str) {
             "-dBuildRoot=build\\alvr_server_windows",
             "-ext",
             "WixUtilExtension",
-            &format!("-dVersion={}", alvr_xtask::server_version()),
+            &format!("-dVersion={}", version),
             "wix\\main.wxs",
-            "wix\\harvested.wxs",
+            "target\\wix\\harvested.wxs",
             "-o",
             "target\\wix\\",
         ],
@@ -356,7 +362,7 @@ fn build_installer(wix_path: &str) {
             "-ext",
             "WixUtilExtension",
             "-o",
-            &format!("build\\ALVR-{}.msi", alvr_xtask::server_version()),
+            &format!("build\\ALVR-{}.msi", version),
         ],
     )
     .unwrap();

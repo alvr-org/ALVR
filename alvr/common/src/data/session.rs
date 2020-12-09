@@ -136,7 +136,7 @@ pub struct ClientHandshakePacket {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClientConnectionDesc {
-    pub display_name: String,
+    pub device_name: String,
     pub last_local_ip: IpAddr,
     pub manual_ips: HashSet<IpAddr>,
     pub trusted: bool,

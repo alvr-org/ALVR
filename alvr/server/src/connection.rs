@@ -1,6 +1,10 @@
-use crate::{update_client_list, ClientListAction, SESSION_MANAGER};
+use crate::{
+    restart_steamvr, update_client_list, ClientListAction, CLIENTS_UPDATED_NOTIFIER,
+    SESSION_MANAGER,
+};
 use alvr_common::{data::*, logging::*, sockets::*, *};
 use settings_schema::Switch;
+use std::{collections::HashMap, future, net::IpAddr};
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -13,7 +17,7 @@ pub async fn client_discovery() {
         update_client_list(
             address.to_string(),
             ClientListAction::AddIfMissing {
-                display_name: "Oculus Quest".into(),
+                device_name: "Oculus Quest".into(),
                 ip: address,
                 certificate_pem: "".into(),
             },
@@ -52,7 +56,7 @@ pub async fn client_discovery() {
 
         let target_width;
         let target_height;
-        match settings.video.render_resolution {
+        match settings.video.recommended_target_resolution {
             FrameSize::Scale(scale) => {
                 target_width = align32(client_handshake_packet.render_width as f32 * scale);
                 target_height = align32(client_handshake_packet.render_height as f32 * scale);
@@ -267,5 +271,317 @@ pub async fn client_discovery() {
 
     if let Err(e) = res {
         show_err::<(), _>(trace_str!("Error while listening for client: {}", e)).ok();
+    }
+}
+
+async fn connect_to_any_client(
+    clients_info: HashMap<IpAddr, PublicIdentity>,
+) -> ControlSocket<ClientControlPacket, ServerControlPacket> {
+    loop {
+        if clients_info.is_empty() {
+            // nothing to do, wait for the next client list update
+            future::pending::<()>().await;
+        }
+
+        let maybe_pending_connection = ControlSocket::begin_connecting_to_client(
+            &clients_info.keys().cloned().collect::<Vec<_>>(),
+        )
+        .await;
+        let PendingClientConnection {
+            pending_socket,
+            server_ip,
+            headset_info,
+        } = match maybe_pending_connection {
+            Ok(pending_connection) => pending_connection,
+            Err(e) => {
+                warn!("{}", e);
+                continue;
+            }
+        };
+
+        let settings = SESSION_MANAGER.lock().get().to_settings();
+
+        let (eye_width, eye_height) = match settings.video.render_resolution {
+            FrameSize::Scale(scale) => (
+                headset_info.recommended_eye_width as f32 * scale,
+                headset_info.recommended_eye_height as f32 * scale,
+            ),
+            FrameSize::Absolute { width, height } => (width as f32 / 2_f32, height as f32),
+        };
+        let video_eye_width = align32(eye_width);
+        let video_eye_height = align32(eye_height);
+
+        let (eye_width, eye_height) = match settings.video.recommended_target_resolution {
+            FrameSize::Scale(scale) => (
+                headset_info.recommended_eye_width as f32 * scale,
+                headset_info.recommended_eye_height as f32 * scale,
+            ),
+            FrameSize::Absolute { width, height } => (width as f32 / 2_f32, height as f32),
+        };
+        let target_eye_width = align32(eye_width);
+        let target_eye_height = align32(eye_height);
+
+        let fps = {
+            // if let Some(refresh_rate) = settings.video.refresh_rate {
+            let refresh_rate = settings.video.refresh_rate as f32;
+
+            let mut best_match = 0_f32;
+            let mut min_diff = f32::MAX;
+            for rr in &headset_info.available_refresh_rates {
+                let diff = (*rr - refresh_rate).abs();
+                if diff < min_diff {
+                    best_match = *rr;
+                    min_diff = diff;
+                }
+            }
+            best_match
+        };
+        // else {
+        //     headset_info
+        //         .available_refresh_rates
+        //         .iter()
+        //         .map(|&f| f as u32)
+        //         .max()
+        //         .unwrap()
+        // };
+
+        let web_gui_url = format!(
+            "http://{}:{}/",
+            server_ip, settings.connection.web_server_port
+        );
+
+        let client_config = ClientConfigPacket {
+            settings: serde_json::to_string(&settings).unwrap(),
+            eye_resolution_width: video_eye_width,
+            eye_resolution_height: video_eye_height,
+            fps,
+            web_gui_url,
+            reserved: "".into(),
+        };
+
+        let control_socket =
+            match ControlSocket::finish_connecting_to_client(pending_socket, client_config).await {
+                Ok(control_socket) => control_socket,
+                Err(e) => {
+                    warn!("{}", e);
+                    continue;
+                }
+            };
+
+        let session_manager_ref = &mut *SESSION_MANAGER.lock();
+        let session_ref = &mut *session_manager_ref.get_mut(None, SessionUpdateType::Other);
+        let session_settings = &session_ref.session_settings;
+
+        let new_openvr_config = OpenvrConfig {
+            headset_serial_number: settings.headset.serial_number,
+            headset_tracking_system_name: settings.headset.tracking_system_name,
+            headset_model_number: settings.headset.model_number,
+            headset_driver_version: settings.headset.driver_version,
+            headset_manufacturer_name: settings.headset.manufacturer_name,
+            headset_render_model_name: settings.headset.render_model_name,
+            headset_registered_device_type: settings.headset.registered_device_type,
+            eye_resolution_width: video_eye_width,
+            eye_resolution_height: video_eye_height,
+            target_eye_resolution_width: target_eye_width,
+            target_eye_resolution_height: target_eye_height,
+            eye_fov: settings.video.eye_fov,
+            enable_game_audio: session_settings.audio.game_audio.enabled,
+            game_audio_device: session_settings.audio.game_audio.content.device.clone(),
+            enable_microphone: session_settings.audio.microphone.enabled,
+            microphone_device: session_settings.audio.microphone.content.device.clone(),
+            seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
+            ipd: settings.video.ipd,
+            client_buffer_size: settings.connection.client_recv_buffer_size,
+            frame_queue_size: settings.connection.frame_queue_size,
+            force_60hz: settings.video.force_60hz,
+            force_3dof: settings.headset.force_3dof,
+            aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
+            adapter_index: settings.video.adapter_index,
+            codec: matches!(settings.video.codec, CodecType::HEVC) as _,
+            refresh_rate: settings.video.refresh_rate,
+            encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
+            throttling_bitrate_bits: settings.connection.throttling_bitrate_bits,
+            listen_host: settings.connection.listen_host,
+            listen_port: settings.connection.listen_port,
+            client_address: control_socket.peer_ip().to_string(),
+            controllers_tracking_system_name: session_settings
+                .headset
+                .controllers
+                .content
+                .tracking_system_name
+                .clone(),
+            controllers_manufacturer_name: session_settings
+                .headset
+                .controllers
+                .content
+                .manufacturer_name
+                .clone(),
+            controllers_model_number: session_settings
+                .headset
+                .controllers
+                .content
+                .model_number
+                .clone(),
+            render_model_name_left_controller: session_settings
+                .headset
+                .controllers
+                .content
+                .render_model_name_left
+                .clone(),
+            render_model_name_right_controller: session_settings
+                .headset
+                .controllers
+                .content
+                .render_model_name_right
+                .clone(),
+            controllers_serial_number: session_settings
+                .headset
+                .controllers
+                .content
+                .serial_number
+                .clone(),
+            controllers_type: session_settings
+                .headset
+                .controllers
+                .content
+                .ctrl_type
+                .clone(),
+            controllers_registered_device_type: session_settings
+                .headset
+                .controllers
+                .content
+                .registered_device_type
+                .clone(),
+            controllers_input_profile_path: session_settings
+                .headset
+                .controllers
+                .content
+                .input_profile_path
+                .clone(),
+            controllers_mode_idx: session_settings.headset.controllers.content.mode_idx,
+            controllers_enabled: session_settings.headset.controllers.enabled,
+            position_offset: settings.headset.position_offset,
+            tracking_frame_offset: settings.headset.tracking_frame_offset,
+            controller_pose_offset: session_settings
+                .headset
+                .controllers
+                .content
+                .pose_time_offset,
+            position_offset_left: session_settings
+                .headset
+                .controllers
+                .content
+                .position_offset_left,
+            rotation_offset_left: session_settings
+                .headset
+                .controllers
+                .content
+                .rotation_offset_left,
+            haptics_intensity: session_settings
+                .headset
+                .controllers
+                .content
+                .haptics_intensity,
+            enable_foveated_rendering: session_settings.video.foveated_rendering.enabled,
+            foveation_strength: session_settings.video.foveated_rendering.content.strength,
+            foveation_shape: session_settings.video.foveated_rendering.content.shape,
+            foveation_vertical_offset: session_settings
+                .video
+                .foveated_rendering
+                .content
+                .vertical_offset,
+            enable_color_correction: session_settings.video.color_correction.enabled,
+            brightness: session_settings.video.color_correction.content.brightness,
+            contrast: session_settings.video.color_correction.content.contrast,
+            saturation: session_settings.video.color_correction.content.saturation,
+            gamma: session_settings.video.color_correction.content.gamma,
+            sharpening: session_settings.video.color_correction.content.sharpening,
+        };
+
+        if SESSION_MANAGER.lock().get().openvr_config != new_openvr_config {
+            SESSION_MANAGER
+                .lock()
+                .get_mut(None, SessionUpdateType::Other)
+                .openvr_config = new_openvr_config;
+
+            restart_steamvr();
+
+            // waiting for execution canceling
+            std::future::pending::<()>().await;
+        }
+
+        // let identity = clients_info.get(&control_socket.peer_ip()).unwrap().clone();
+
+        break control_socket;
+    }
+}
+
+pub async fn connection_loop() -> StrResult {
+    let client_discovery = {
+        async move {
+            let res = search_client_loop(|client_ip, handshake_packet| {
+                update_client_list(
+                    handshake_packet.hostname,
+                    ClientListAction::AddIfMissing {
+                        device_name: handshake_packet.device_name,
+                        ip: client_ip,
+                        certificate_pem: handshake_packet.certificate_pem,
+                    },
+                )
+            })
+            .await;
+
+            Err::<(), _>(res.err().unwrap_or_else(|| "".into()))
+        }
+    };
+
+    tokio::pin!(client_discovery);
+
+    loop {
+        let mut client_updated_receiver =
+            trace_none!(CLIENTS_UPDATED_NOTIFIER.lock().as_ref())?.subscribe();
+
+        let clients_info = SESSION_MANAGER
+            .lock()
+            .get()
+            .client_connections
+            .iter()
+            .filter(|(_, client)| client.trusted)
+            .fold(HashMap::new(), |mut clients_info, (hostname, client)| {
+                let id = PublicIdentity {
+                    hostname: hostname.clone(),
+                    certificate_pem: client.certificate_pem.clone(),
+                };
+                clients_info.extend(client.manual_ips.iter().map(|&ip| (ip, id.clone())));
+                clients_info.insert(client.last_local_ip, id);
+                clients_info
+            });
+
+        let mut control_socket = tokio::select! {
+            Err(e) = &mut client_discovery => break trace_str!("Client discovery failed: {}", e),
+            control_socket = connect_to_any_client(clients_info) => control_socket,
+            _ = client_updated_receiver.recv() => continue,
+        };
+
+        loop {
+            tokio::select! {
+                maybe_packet = control_socket.recv() => match maybe_packet {
+                    Ok(ClientControlPacket::Disconnect) => {
+                        info!(id: LogId::ClientDisconnected, "Client disconnected gracefully");
+                        break;
+                    }
+                    Ok(ClientControlPacket::Reserved(_))
+                        | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
+                    Err(e) => {
+                        warn!(
+                            id: LogId::ClientDisconnected,
+                            "Error while listening for control packet: {}",
+                            e
+                        );
+                        break;
+                    }
+                }
+            };
+        }
     }
 }

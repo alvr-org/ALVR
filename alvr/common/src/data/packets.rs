@@ -31,7 +31,7 @@ pub struct ClientConfigPacket {
     pub settings: String,
     pub eye_resolution_width: u32,
     pub eye_resolution_height: u32,
-    pub fps: u32,
+    pub fps: f32,
     pub web_gui_url: String,
     pub reserved: String,
 }

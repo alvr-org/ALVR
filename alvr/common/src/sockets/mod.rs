@@ -104,3 +104,58 @@ pub async fn search_client<F: Future<Output = SearchResult>>(
         }
     }
 }
+
+async fn try_connect_to_client(
+    handshake_socket: &mut UdpSocket,
+    packet_buffer: &mut [u8],
+) -> StrResult<Option<(IpAddr, HandshakePacket)>> {
+    let (handshake_packet_size, address) = match handshake_socket.recv_from(packet_buffer).await {
+        Ok(pair) => pair,
+        Err(e) => {
+            debug!("Error receiving handshake packet: {}", e);
+            return Ok(None);
+        }
+    };
+
+    let handshake_packet: HandshakePacket = if let Ok(handshake_packet) =
+        bincode::deserialize(&packet_buffer[..handshake_packet_size])
+    {
+        handshake_packet
+    } else if &packet_buffer[..5] == b"\x01ALVR" {
+        return trace_str!(id: LogId::ClientFoundWrongVersion("11 or previous".into()));
+    } else if &packet_buffer[..4] == b"ALVR" {
+        return trace_str!(id: LogId::ClientFoundWrongVersion("12.x.x - 13.x.x".into()));
+    } else {
+        debug!("Found unrelated packet during client discovery");
+        return Ok(None);
+    };
+
+    if handshake_packet.alvr_name != ALVR_NAME {
+        return trace_str!(id: LogId::ClientFoundInvalid);
+    }
+
+    if !is_version_compatible(&handshake_packet.version, &ALVR_CLIENT_VERSION) {
+        return trace_str!(id: LogId::ClientFoundWrongVersion(handshake_packet.version.to_string()));
+    }
+
+    Ok(Some((address.ip(), handshake_packet)))
+}
+
+pub async fn search_client_loop<F: Future>(
+    client_found_cb: impl Fn(IpAddr, HandshakePacket) -> F,
+) -> StrResult {
+    // use naked UdpSocket + [u8] packet buffer to have more control over datagram data
+    let mut handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;
+
+    let mut packet_buffer = [0u8; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
+
+    loop {
+        match try_connect_to_client(&mut handshake_socket, &mut packet_buffer).await {
+            Ok(Some((client_ip, handshake_packet))) => {
+                client_found_cb(client_ip, handshake_packet).await;
+            }
+            Err(e) => warn!("Error while connecting to client: {}", e),
+            Ok(None) => (),
+        }
+    }
+}

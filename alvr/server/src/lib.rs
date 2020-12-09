@@ -28,6 +28,7 @@ lazy_static! {
     static ref ALVR_DIR: PathBuf = commands::get_alvr_dir().unwrap();
     static ref SESSION_MANAGER: Mutex<SessionManager> = Mutex::new(SessionManager::new(&ALVR_DIR));
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
+    static ref CLIENTS_UPDATED_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
     static ref MAYBE_SHUTDOWN_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
 }
 
@@ -56,7 +57,11 @@ pub fn restart_steamvr() {
 }
 
 pub enum ClientListAction {
-    AddIfMissing { display_name: String, ip: IpAddr, certificate_pem: String },
+    AddIfMissing {
+        device_name: String,
+        ip: IpAddr,
+        certificate_pem: String,
+    },
     TrustAndMaybeAddIp(Option<IpAddr>),
     RemoveIpOrEntry(Option<IpAddr>),
 }
@@ -70,22 +75,25 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
     let mut should_notify = false;
     match action {
         ClientListAction::AddIfMissing {
-            display_name,
+            device_name,
             ip,
             certificate_pem,
         } => match maybe_client_entry {
             Entry::Occupied(mut existing_entry) => {
                 let client_connection_ref = existing_entry.get_mut();
-                client_connection_ref.last_local_ip = ip;
 
-                // don't notify
+                if client_connection_ref.last_local_ip != ip {
+                    client_connection_ref.last_local_ip = ip;
+
+                    should_notify = true;
+                }
             }
             Entry::Vacant(new_entry) => {
                 let client_connection_desc = ClientConnectionDesc {
                     trusted: false,
                     last_local_ip: ip,
                     manual_ips: HashSet::new(),
-                    display_name,
+                    device_name,
                     certificate_pem,
                 };
                 new_entry.insert(client_connection_desc);
@@ -124,6 +132,10 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
             web_client_id: None,
             update_type: SessionUpdateType::ClientList
         });
+
+        if let Some(notifier) = &*CLIENTS_UPDATED_NOTIFIER.lock() {
+            notifier.send(()).ok();
+        }
     }
 }
 

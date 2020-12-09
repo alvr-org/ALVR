@@ -87,7 +87,7 @@ define([
                 var hostname = pair[0];
                 var connection = pair[1];
                 var address = connection.lastLocalIp;
-                var type = connection.displayName;
+                var type = connection.deviceName;
 
                 if (connection.trusted) {
                     addTrustedClient(type, address, hostname);

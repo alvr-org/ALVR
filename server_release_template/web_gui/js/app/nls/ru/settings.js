@@ -10,7 +10,6 @@ define({
     "_root_video_adapterIndex.name": "Индекс GPU",
     "_root_video_encodeBitrateMbs.name": "Битрейт видео",
     "_root_video_encodeBitrateMbs.description": "Битрейт трансляции видео. 30Мб/с - рекомендуемый. \nБолее высокий битрейт обеспечивает более качественное изображение, но при этом повышается задержка и кол-во сетевого трафика.",
-    "_root_video_force60hz.name": "Принудительный режим 60Гц",
     "_root_video_resolutionDropdown.name": "Разрешение видео",
     "_root_video_resolutionDropdown.description": `100% обеспечивает нативное разрешение Oculus Quest 2880x1600.
     Изменение разрешения не рекомендовано, однако оно может улучшить визуальные впечатления. 

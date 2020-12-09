@@ -81,8 +81,6 @@ void Settings::Load()
 		m_clientRecvBufferSize = (uint32_t)config.get("client_buffer_size").get<int64_t>();
 		m_frameQueueSize = (uint32_t)config.get("frame_queue_size").get<int64_t>();
 
-		m_force60HZ = config.get("force_60hz").get<bool>();
-
 		m_force3DOF = config.get("force_3dof").get<bool>();
 
 		m_aggressiveKeyframeResend = config.get("aggressive_keyframe_resend").get<bool>();

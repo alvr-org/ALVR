@@ -13,8 +13,6 @@ define({
     "_root_video_refreshRate.description": "在头显上使用的刷新率",
     "_root_video_encodeBitrateMbs.name": "视频比特率",
     "_root_video_encodeBitrateMbs.description": "视频流的比特率。建议30Mbps",
-    "_root_video_force60hz.name": "强制60hz模式",
-    "_root_video_force60hz.description": "将刷新率强制为60Hz",
     "_root_video_resolutionDropdown.name": "视频分辨率",
     "_root_video_resolutionDropdown.description": `100％则是Oculus Quest的原始2880x1600分辨率。\n设置分辨率可以改善视觉质量,但不建议这样做。\n低于100％的分辨率可以减少延迟并提高网络性能。`,
     "_root_video_renderResolution-choice-.name": "视频分辨率",

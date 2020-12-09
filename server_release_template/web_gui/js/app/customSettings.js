@@ -385,6 +385,7 @@ define([
                     case "90":
                     case "80":
                     case "72":
+                    case "60":
                         $("input:radio[name='displayRefreshRate'][value='" + refreshRate.val() + "']").prop("checked", "true");
                         $("input:radio[name='displayRefreshRate'][value='" + refreshRate.val() + "']").parent().addClass("active");
                         break;
@@ -409,22 +410,27 @@ define([
             const  text = el.parent().text().trim();
             el.parent().find("label").remove();
 
-            const grp = `<div class="card-title"> ${text}
+            const grp = `
+                    <div class="card-title"> ${text}
                     ${alvrSettings.getHelpReset("displayRefreshRate", "_root_video", 72,  postFix = "", "displayRefreshRate", "72 Hz")}
-                        </div>
-            <div class="btn-group" data-toggle="buttons" id="displayRefreshRateButtons">
-                            <label style="min-width:10%" class="btn btn-primary">
-                                <input  type="radio" name="displayRefreshRate"  autocomplete="off" value="72">
-                                72 Hz
-                            </label>
-                            <label class="btn btn-primary">
-                                <input type="radio" name="displayRefreshRate"  autocomplete="off" value="80">
-                                80 Hz
-                            </label>
-                            <label class="btn btn-primary">
-                                <input type="radio" name="displayRefreshRate" autocomplete="off" value="90">
-                                90 Hz
-                            </label>
+                    </div>
+                    <div class="btn-group" data-toggle="buttons" id="displayRefreshRateButtons">
+                        <label style="min-width:10%" class="btn btn-primary">
+                            <input  type="radio" name="displayRefreshRate"  autocomplete="off" value="60">
+                            60 Hz
+                        </label>
+                        <label class="btn btn-primary">
+                            <input  type="radio" name="displayRefreshRate"  autocomplete="off" value="72">
+                            72 Hz
+                        </label>
+                        <label class="btn btn-primary">
+                            <input type="radio" name="displayRefreshRate"  autocomplete="off" value="80">
+                            80 Hz
+                        </label>
+                        <label class="btn btn-primary">
+                            <input type="radio" name="displayRefreshRate" autocomplete="off" value="90">
+                            90 Hz
+                        </label>
                                                   
                     </div> `
 

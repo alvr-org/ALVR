@@ -118,8 +118,6 @@ pub struct VideoDesc {
 
     #[schema(min = 1, max = 250)]
     pub encode_bitrate_mbs: u64,
-
-    pub force_60hz: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -380,7 +378,6 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             client_request_realtime_decoder: true,
             encode_bitrate_mbs: 30,
-            force_60hz: false,
         },
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {

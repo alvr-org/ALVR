@@ -9,7 +9,6 @@ define({
     "_root_video_adapterIndex.name": "Индекс на GPU",
     "_root_video_encodeBitrateMbs.name": "Битрейт на видео",
     "_root_video_encodeBitrateMbs.description": "Битрейт на видео излъчване. Препоръчва се 30Mb/сек. \nПо-високата скорост на предаване осигурява по-добро качество на изображението, но увеличава латентността и мрежовия трафик.",
-    "_root_video_force60hz.name": "Принудителен 60hz режим",
     "_root_video_resolutionDropdown.name": "Разрешение на видео",
     "_root_video_resolutionDropdown.description": `100% води до естествената резолюция на Oculus Quest.
     Задаването на разделителната способност може да донесе известно подобрение в качеството на зрението, но не се препоръчва.

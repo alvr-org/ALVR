@@ -6,7 +6,6 @@ define({
     "_root_video_adapterIndex.name": "Indice GPU",
     "_root_video_encodeBitrateMbs.name": "Bitrate per il video",
     "_root_video_encodeBitrateMbs.description": "Bitrate della trasmissione video. È consigliato 30Mbps. \nUn bitrate più alto comporta una qualità migliore dell'immagine ma al costo di una maggiore latenza e traffico di rete.",
-    "_root_video_force60hz.name": "Forza 60Hz",
     "_root_video_resolutionDropdown.name": "Risoluzione video",
     "_root_video_resolutionDropdown.description": `100% corrisponde alla risoluzione nativa dell'Oculus Quest.
     Impostare la risoluzione può migliorare marginalmente la qualità dell'immagine ma non è consigliato.

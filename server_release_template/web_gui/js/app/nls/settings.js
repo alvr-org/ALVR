@@ -9,7 +9,6 @@ define({
         "_root_video_displayRefreshRate.description": "Refresh rate to set for both SteamVR and the headset. SteamVR will use the set value even if the headset doesn't support it. Higher values require faster PC. 72 Hz is the maximum for Quest 1.",
         "_root_video_encodeBitrateMbs.name": "Video Bitrate",
         "_root_video_encodeBitrateMbs.description": "Bitrate of video streaming. 30Mbps is recommended. \nHigher bitrates result in better image but also higher latency and network traffic ",
-        "_root_video_force60hz.name": "Force 60hz Mode",
         "_root_video_resolutionDropdown.name": "Video resolution",
         "_root_video_resolutionDropdown.description": `100% results in the native resolution of the Oculus Quest.
         Setting the resolution can bring some improvement in visual quality, but is not recommended. 

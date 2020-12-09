@@ -10,8 +10,6 @@ define({
 	
     "_root_video_encodeBitrateMbs.name": "映像ビットレート",
     "_root_video_encodeBitrateMbs.description": "映像ストリーミングのビットレート. 30Mbpsを推奨. \nビットレートを高くすると画質が良くなるが, レイテンシと通信量が多くなる",
-    "_root_video_force60hz.name": "60Hzに強制",
-    "_root_video_force60hz.description": "リフレッシュレートを60Hzに強制する",
     "_root_video_resolutionDropdown.name": "解像度",
     "_root_video_resolutionDropdown.description": `100%に設定するとOculus Questのネイティブ解像度である2880x1600になる.
     解像度を設定すると, 見た目の品質が多少向上する可能性があるが非推奨.

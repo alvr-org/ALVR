@@ -79,8 +79,6 @@ public:
 
 	uint32_t m_frameQueueSize;
 
-	bool m_force60HZ;
-
 	bool m_nv12;
 
 	// Controller configs

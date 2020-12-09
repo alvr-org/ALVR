@@ -10,8 +10,6 @@ define({
 	
     "_root_video_encodeBitrateMbs.name": "Bitrate video",
     "_root_video_encodeBitrateMbs.description": "Bitrate du streaming video.30Mbps est recommandé. \nUn bitrate plus élevé donne une meilleure image mais rajoute de la latence ainsi que du traffic réseau.",
-    "_root_video_force60hz.name": "Forcer le 60Hz",
-    "_root_video_force60hz.description": "Foce la video a 60 FPS",
     "_root_video_resolutionDropdown.name": "Résolution video",
     "_root_video_resolutionDropdown.description": `100% correspond a la résolution native de 2880x1600 de l'Oculus Quest.
     Augmenter la résolution peut améliorer la qualité visuelle, mais ce n'est pas recommandé.

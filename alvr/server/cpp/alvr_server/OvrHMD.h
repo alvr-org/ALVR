@@ -36,8 +36,6 @@ public:
 
 	std::string GetSerialNumber() const { return Settings::Instance().mSerialNumber; }
 
-	void Enable();
-
 	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId);
 
 	virtual void Deactivate();
@@ -71,9 +69,7 @@ public:
 	void updateIPDandFoV(const TrackingInfo& info);
 
 private:
-	bool m_added;
-	bool mActivated;
-	bool m_streamStarted;
+	bool m_componentsInitialized;
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 	

@@ -10,14 +10,31 @@ void fixInvalidHaptics(float hapticFeedback[3])
 
 OvrHmd::OvrHmd()
 		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
-		, m_added(false)
-		, mActivated(false)
-		, m_streamStarted(false)
+		, m_componentsInitialized(false)
 	{
-		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
 		Debug("Startup: %hs %hs\n", APP_MODULE_NAME, APP_VERSION_STRING);
+
+		bool ret;
+		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+			GetSerialNumber().c_str(),
+			vr::TrackedDeviceClass_HMD,
+			this);
+
+		if (!Settings::Instance().m_disableController) {
+			m_leftController = std::make_shared<OvrController>(true, 0);
+			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+				m_leftController->GetSerialNumber().c_str(),
+				vr::TrackedDeviceClass_Controller,
+				m_leftController.get());
+
+			m_rightController = std::make_shared<OvrController>(false, 1);
+			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+				m_rightController->GetSerialNumber().c_str(),
+				vr::TrackedDeviceClass_Controller,
+				m_rightController.get());
+		}
 
 		Debug("CRemoteHmd successfully initialized.\n");
 	}
@@ -39,34 +56,6 @@ OvrHmd::OvrHmd()
 			m_D3DRender->Shutdown();
 			m_D3DRender.reset();
 		}
-	}
-
-	void OvrHmd::Enable()
-	{
-		if (m_added) {
-			return;
-		}
-		m_added = true;
-		bool ret;
-		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-			GetSerialNumber().c_str(),
-			vr::TrackedDeviceClass_HMD,
-			this);
-
-		if (!Settings::Instance().m_disableController) {
-			m_leftController = std::make_shared<OvrController>(true, 0);
-			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-				m_leftController->GetSerialNumber().c_str(),
-				vr::TrackedDeviceClass_Controller,
-				m_leftController.get());
-
-			m_rightController = std::make_shared<OvrController>(false, 1);
-			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-				m_rightController->GetSerialNumber().c_str(),
-				vr::TrackedDeviceClass_Controller,
-				m_rightController.get());
-		}
-
 	}
 
 	 vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
@@ -143,8 +132,6 @@ OvrHmd::OvrHmd()
 		m_displayComponent = std::make_shared<OvrDisplayComponent>();
 		m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender);
 
-		mActivated = true;
-
 		vr::VREvent_Data_t eventData;
 		eventData.ipd = { Settings::Instance().m_flIPD };
 		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_IpdChanged, eventData, 0);
@@ -157,7 +144,6 @@ OvrHmd::OvrHmd()
 	 void OvrHmd::Deactivate() 
 	{
 		Debug("CRemoteHmd Deactivate\n");
-		mActivated = false;
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 	}
 
@@ -255,9 +241,6 @@ OvrHmd::OvrHmd()
 			if (!m_Listener || !m_Listener->HasValidTrackingInfo()) {
 				return;
 			}
-			if (!m_added || !mActivated) {
-				return;
-			}
 			
 			TrackingInfo info;
 			m_Listener->GetTrackingInfo(info);
@@ -282,11 +265,9 @@ OvrHmd::OvrHmd()
 	}
 
 	void OvrHmd::StartStreaming() {
-		if (m_streamStarted) {
+		if (m_componentsInitialized) {
 			return;
 		}
-
-		m_streamStarted = true;
 
 		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
 
@@ -327,6 +308,8 @@ OvrHmd::OvrHmd()
 		m_directModeComponent->SetEncoder(m_encoder);
 
 		m_encoder->OnStreamStart();
+
+		m_componentsInitialized = true;
 	}
 
 	void OvrHmd::StopStreaming() {
@@ -381,8 +364,6 @@ OvrHmd::OvrHmd()
 	}
 
 	void OvrHmd::updateController(const TrackingInfo& info) {
-		
-		
 		//haptic feedback
 		float  hapticFeedbackLeft[3]{0,0,0};
 		float  hapticFeedbackRight[3]{ 0,0,0 };
@@ -454,26 +435,20 @@ OvrHmd::OvrHmd()
 			} else {
 				m_rightController->onPoseUpdate(i, info);
 			}
-
 		}
-		
-		
 	}
 
 	void OvrHmd::OnStreamStart() {
-		if (!m_added || !mActivated) {
+		if (!m_componentsInitialized) {
 			return;
 		}
 		Debug("OnStreamStart()\n");
 		// Insert IDR frame for faster startup of decoding.
 		m_encoder->OnStreamStart();
-
-
-
 	}
 
 	void OvrHmd::OnPacketLoss() {
-		if (!m_added || !mActivated) {
+		if (!m_componentsInitialized) {
 			return;
 		}
 		Debug("OnPacketLoss()\n");
@@ -481,9 +456,6 @@ OvrHmd::OvrHmd()
 	}
 
 	void OvrHmd::OnShutdown() {
-		if (!m_added || !mActivated) {
-			return;
-		}
 		Info("Sending shutdown signal to vrserver.\n");
 		vr::VREvent_Reserved_t data = { 0, 0 };
 		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_DriverRequestedQuit, (vr::VREvent_Data_t&)data, 0);

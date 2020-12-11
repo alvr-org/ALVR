@@ -23,12 +23,10 @@ extern "C" {
 class ClientConnection : public CThread {
 public:
 
-	ClientConnection(std::function<void()> streamStartCallback);
+	ClientConnection(std::function<void()> streamStartCallback,
+		std::function<void()> poseUpdatedCallback, std::function<void()> packetLossCallback);
 	~ClientConnection();
-	void SetPoseUpdatedCallback(std::function<void()> callback);
-	void SetPacketLossCallback(std::function<void()> callback);
 
-	bool Startup();
 	void Run() override;
 	void FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex);
 	void SendVideo(uint8_t *buf, int len, uint64_t frameIndex);
@@ -64,9 +62,8 @@ private:
 	uint32_t soundPacketCounter = 0;
 
 	std::function<void()> m_StreamStartCallback;
-	std::unique_ptr<std::function<void()>> m_PoseUpdatedCallback;
-	std::unique_ptr<std::function<void()>> m_PacketLossCallback;
-	std::unique_ptr<std::function<void()>> m_ShutdownCallback;
+	std::function<void()> m_PoseUpdatedCallback;
+	std::function<void()> m_PacketLossCallback;
 	TrackingInfo m_TrackingInfo;
 
 	uint64_t m_TimeDiff = 0;

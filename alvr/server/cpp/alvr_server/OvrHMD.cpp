@@ -269,21 +269,9 @@ OvrHmd::OvrHmd()
 			return;
 		}
 
-		std::function<void()> streamStartCallback = [&]() { OnStreamStart(); };
-
 		//create listener
-		m_Listener.reset(new ClientConnection(streamStartCallback));
-
-		std::function<void()> poseCallback = [&]() { OnPoseUpdated(); };
-		std::function<void()> packetLossCallback = [&]() { OnPacketLoss(); };
-		m_Listener->SetPoseUpdatedCallback(poseCallback);
-		m_Listener->SetPacketLossCallback(packetLossCallback);
-
-		//init listener
-		if (!m_Listener->Startup())
-		{
-			Error("Failed to startup listener\n");
-		}
+		m_Listener.reset(new ClientConnection(
+			[&]() { OnStreamStart(); }, [&]() { OnPoseUpdated(); }, [&]() { OnPacketLoss(); }));
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
 		m_encoder = std::make_shared<CEncoder>();

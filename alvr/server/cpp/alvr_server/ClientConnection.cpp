@@ -1,11 +1,14 @@
 #include "ClientConnection.h"
 #include "Bitrate.h"
 
-ClientConnection::ClientConnection(std::function<void()> streamStartCallback)
+ClientConnection::ClientConnection(std::function<void()> streamStartCallback,
+	std::function<void()> poseUpdatedCallback, std::function<void()> packetLossCallback)
 	: m_bExiting(false)
 	, m_Streaming(false)
 	, m_LastStatisticsUpdate(0) {
 	m_StreamStartCallback = streamStartCallback;
+	m_PoseUpdatedCallback = poseUpdatedCallback;
+	m_PacketLossCallback = packetLossCallback;
 
 	memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
 	InitializeCriticalSection(&m_CS);
@@ -17,24 +20,10 @@ ClientConnection::ClientConnection(std::function<void()> streamStartCallback)
 	m_Poller.reset(new Poller());
 
 	reed_solomon_init();
-}
-
-ClientConnection::~ClientConnection() {
-	DeleteCriticalSection(&m_CS);
-}
-void ClientConnection::SetPoseUpdatedCallback(std::function<void()> callback) {
-	m_PoseUpdatedCallback.reset(new std::function<void()>(callback));
-}
-void ClientConnection::SetPacketLossCallback(std::function<void()> callback) {
-	m_PacketLossCallback.reset(new std::function<void()>(callback));
-}
-
-bool ClientConnection::Startup() {
+	
 	m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port
 		, m_Poller, m_Statistics, Settings::Instance().mThrottlingBitrate);
-	if (!m_Socket->Startup()) {
-		return false;
-	}
+	m_Socket->Startup();
 
 	sockaddr_in addr;
 	addr.sin_family = AF_INET;
@@ -46,7 +35,10 @@ bool ClientConnection::Startup() {
 	Start();
 
 	m_Streaming = true;
-	return true;
+}
+
+ClientConnection::~ClientConnection() {
+	DeleteCriticalSection(&m_CS);
 }
 
 void ClientConnection::Run() {
@@ -312,9 +304,7 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			m_TrackingInfo.HeadPose_Pose_Orientation.y,
 			m_TrackingInfo.HeadPose_Pose_Orientation.z,
 			m_TrackingInfo.HeadPose_Pose_Orientation.w);
-		if (m_PoseUpdatedCallback) {
-			(*m_PoseUpdatedCallback)();
-		}
+		m_PoseUpdatedCallback();
 	}
 	else if (type == ALVR_PACKET_TYPE_TIME_SYNC && len >= sizeof(TimeSync)) {
 		if (!m_Socket->IsLegitClient(addr)) {
@@ -491,9 +481,7 @@ void ClientConnection::OnFecFailure() {
 		}
 	}
 	m_lastFecFailure = GetTimestampUs();
-	if (m_PacketLossCallback) {
-		(*m_PacketLossCallback)();
-	}
+	m_PacketLossCallback();
 }
 
 std::shared_ptr<Statistics> ClientConnection::GetStatistics() {

@@ -345,7 +345,7 @@ async fn connect_to_any_client(
         );
 
         let client_config = ClientConfigPacket {
-            settings: serde_json::to_string(&settings).unwrap(),
+            session_desc: serde_json::to_string(SESSION_MANAGER.lock().get()).unwrap(),
             eye_resolution_width: video_eye_width,
             eye_resolution_height: video_eye_height,
             fps,
@@ -362,9 +362,7 @@ async fn connect_to_any_client(
                 }
             };
 
-        let session_manager_ref = &mut *SESSION_MANAGER.lock();
-        let session_ref = &mut *session_manager_ref.get_mut(None, SessionUpdateType::Other);
-        let session_settings = &session_ref.session_settings;
+        let session_settings = SESSION_MANAGER.lock().get().session_settings.clone();
 
         let new_openvr_config = OpenvrConfig {
             universe_id: settings.headset.universe_id,

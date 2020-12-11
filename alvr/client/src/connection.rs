@@ -1,5 +1,6 @@
-use alvr_common::{data::*, logging::show_err_async, sockets::ControlSocket, *};
+use alvr_common::{data::*, logging::*, sockets::ControlSocket, *};
 use jni::{objects::GlobalRef, JavaVM};
+use serde_json as json;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
@@ -11,7 +12,7 @@ async fn try_connect(
     java_vm: Arc<JavaVM>,
     activity_ref: Arc<GlobalRef>,
 ) -> StrResult {
-    let (mut control_socket, _) = trace_err!(
+    let (mut control_socket, config_packet) = trace_err!(
         ControlSocket::connect_to_server(
             &headset_info,
             device_name,
@@ -20,6 +21,12 @@ async fn try_connect(
         )
         .await
     )?;
+
+    let baseline_settings = {
+        let mut session_desc = SessionDesc::default();
+        session_desc.merge_from_json(&trace_err!(json::from_str(&config_packet.session_desc))?)?;
+        session_desc.to_settings()
+    };
 
     loop {
         match trace_err!(control_socket.recv().await)? {

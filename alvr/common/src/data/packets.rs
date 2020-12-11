@@ -28,7 +28,7 @@ pub struct HeadsetInfoPacket {
 
 #[derive(Serialize, Deserialize)]
 pub struct ClientConfigPacket {
-    pub settings: String,
+    pub session_desc: String, // transfer session as string to allow for extrapolation
     pub eye_resolution_width: u32,
     pub eye_resolution_height: u32,
     pub fps: f32,

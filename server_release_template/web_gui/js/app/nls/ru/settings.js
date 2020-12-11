@@ -16,9 +16,6 @@ define({
     Разрешение меньше 100% может уменьшить задержку и увеличить производительность сети.`,
     "_root_video_renderResolution-choice-.name": "Изменение разрешения видео",
     "_root_video_recommendedTargetResolution-choice-.name": "Предпочитаемое разрешение рендеринга игр",
-  "_root_video_eyeFov.name": "Поле зрения",
-    "_root_video_eyeFov_0_eyeFov_0.name": "Левый глаз",
-    "_root_video_eyeFov_1_eyeFov_1.name": "Правый глаз",
    "_root_video_ipd.name": "Межзрачковое расстояние",
     "_root_video_foveatedRendering.name": "Реновированный рендеринг",
     "_root_video_foveatedRendering_enabled.description": `Реновированный рендеринг (Foveated rendering) - техника рендеринга, при которой центр изображения обрабатывается в высоком разрешении, а периферийные участки - в значительно пониженном.
@@ -75,8 +72,6 @@ define({
     "_root_headset_headsetEmulationMode.description": "Эмулирует разные гарнитуры для лучшей совместимости.",
     "_root_headset_controllers_content_controllerMode.name": "Режим эмуляции контроллеров",
     "_root_headset_controllers_content_controllerMode.description": "Эмулирует разные контроллеры для лучшей совместимости или использования отслеживания рук.",
-    
-    "_root_connection_listenHost.name": "IP сервера трансляции",
     "_root_connection_listenPort.name": "Порт сервера трансляции",
     "_root_connection_throttlingBitrateBits.name": "Макс. битрейт трансляции",
     "_root_connection_clientRecvBufferSize.name": "Размер буфера клиента",

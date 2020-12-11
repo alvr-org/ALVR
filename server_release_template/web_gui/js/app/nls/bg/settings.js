@@ -15,9 +15,6 @@ define({
     Разделителна способност, по-ниска от 100%, може да намали латентността и да увеличи производителността на мрежата`,
     "_root_video_renderResolution-choice-.name": "Основа за резолюция на видео кодиране",
     "_root_video_recommendedTargetResolution-choice-.name": "Предпочитана резолюция за изобразяване на играта",
-  "_root_video_eyeFov.name": "Полезрение",
-    "_root_video_eyeFov_0_eyeFov_0.name": "Ляво око",
-    "_root_video_eyeFov_1_eyeFov_1.name": "Дясно око",
    "_root_video_ipd.name": "Междузъбично разстояние",
     "_root_video_foveatedRendering.name": "Фовеатично изобразяване",
     "_root_video_foveatedRendering_enabled.description": `Техника, при която центърът на изображението се изобразява с висока разделителна способност, докато покрайнините се изобразяват с по-ниска разделителна способност.
@@ -73,7 +70,6 @@ define({
     "_root_headset_headsetEmulationMode.description": "Емулира различни слушалки за по-добра съвместимост.",
     "_root_headset_controllers_content_controllerMode.name": "Режим на емулация на контролер",
     "_root_headset_controllers_content_controllerMode.description": "Емулира различни контролери за по-добра съвместимост или ръчно проследяване.",
-    "_root_connection_listenHost.name": "IP сървър за излъчване",
     "_root_connection_listenPort.name": "Порт за излъчен сървър",
     "_root_connection_throttlingBitrateBits.name": "Макс. битрейт на излъчване",
     "_root_connection_clientRecvBufferSize.name": "Размер на клиентския буфер",

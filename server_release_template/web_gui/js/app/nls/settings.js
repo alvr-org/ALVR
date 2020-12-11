@@ -15,9 +15,6 @@ define({
         A resolution lower than 100% can reduce latency and increase network performance`,
         "_root_video_renderResolution-choice-.name": "Video encoding resolution base",
         "_root_video_recommendedTargetResolution-choice-.name": "Preferred game rendering resolution",
-        "_root_video_eyeFov.name": "Field of view",
-        "_root_video_eyeFov_0_eyeFov_0.name": "Left eye",
-        "_root_video_eyeFov_1_eyeFov_1.name": "Right eye",
         "_root_video_ipd.name": "Interpupillary distance",
         "_root_video_foveatedRendering.name": "Foveated rendering",
         "_root_video_foveatedRendering_enabled.description": `Technique where the center of the image is rendered in high resolution while the outskirts are rendered in lower resolution.
@@ -80,7 +77,6 @@ define({
         "_root_headset_trackingSpace-choice-.description": "Sets what the headset uses as its reference for tracking and how the center of the space is defined. Stage tracking space behaves like a wired headset: the center of the space stays in one place after recentering the headset.",
         "_root_headset_trackingSpace_Local-choice-.name": "Local (Headset centered)",
         "_root_headset_trackingSpace_Stage-choice-.name": "Stage (Room centered)",
-        "_root_connection_listenHost.name": "Server streaming IP",
         "_root_connection_listenPort.name": "Server streaming port",
         "_root_connection_throttlingBitrateBits.name": "Maximum streaming bitrate",
         "_root_connection_clientRecvBufferSize.name": "Client buffer size",

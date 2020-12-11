@@ -302,6 +302,7 @@ pub struct ExtraDesc {
     pub restart_confirm_dialog: bool,
     pub prompt_before_update: bool,
     pub update_channel: UpdateChannel,
+    pub log_to_disk: bool,
 
     #[schema(advanced)]
     pub notification_level: LogLevel,
@@ -446,6 +447,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     UpdateChannelDefaultVariant::Stable
                 },
             },
+            log_to_disk: cfg!(debug_assertions),
             notification_level: LogLevelDefault {
                 variant: if cfg!(debug_assertions) {
                     LogLevelDefaultVariant::Info

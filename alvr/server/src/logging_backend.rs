@@ -1,4 +1,4 @@
-use crate::ALVR_DIR;
+use crate::{ALVR_DIR, SESSION_MANAGER};
 use alvr_common::{logging::*, *};
 use fern::Dispatch;
 use log::LevelFilter;
@@ -18,22 +18,26 @@ pub fn init_logging(log_sender: Sender<String>) {
     });
 
     if cfg!(debug_assertions) {
-        log_dispatch = log_dispatch
-            .level(LevelFilter::Debug)
-            .chain(std::io::stdout());
+        log_dispatch = log_dispatch.level(LevelFilter::Debug)
     } else {
         log_dispatch = log_dispatch.level(LevelFilter::Info);
     }
 
-    log_dispatch
-        .chain(
+    if SESSION_MANAGER.lock().get().to_settings().extra.log_to_disk {
+        log_dispatch = log_dispatch.chain(
             fs::OpenOptions::new()
                 .write(true)
                 .create(true)
                 .truncate(true)
                 .open(ALVR_DIR.join(SESSION_LOG_FNAME))
                 .unwrap(),
-        )
+        );
+    } else {
+        // this sink is required to make sure all log gets processed and forwarded to the websocket
+        log_dispatch = log_dispatch.chain(std::io::stdout());
+    }
+
+    log_dispatch
         .chain(
             Dispatch::new()
                 .level(LevelFilter::Error)

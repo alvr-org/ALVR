@@ -109,6 +109,7 @@ define({
         "_root_extra_updateChannel_stable-choice-.name": "Stable",
         "_root_extra_updateChannel_beta-choice-.name": "Beta",
         "_root_extra_updateChannel_nightly-choice-.name": "Nightly",
+        "_root_extra_logToDisk.name": "Log to disk (session_log.txt)",
         "customVideoScale": "custom resolution",
         "customTracking": "custom ",
         "customRefreshRate": "custom ",

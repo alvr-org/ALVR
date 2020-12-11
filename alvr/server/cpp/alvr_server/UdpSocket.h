@@ -21,13 +21,10 @@ public:
 	void Run();
 	virtual bool Send(char *buf, int len, uint64_t frameIndex = 0);
 	virtual void Shutdown();
-	void SetClientAddr(const sockaddr_in *addr);
-	virtual bool IsClientValid()const;
 	bool IsLegitClient(const sockaddr_in *addr);
-	void InvalidateClient();
 
 private:
-	SOCKET mSocket;
+	SOCKET mSock;
 	sockaddr_in mClientAddr;
 	
 	std::shared_ptr<Poller> mPoller;

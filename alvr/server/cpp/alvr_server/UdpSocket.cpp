@@ -4,7 +4,7 @@
 #include "Settings.h"
 
 UdpSocket::UdpSocket(std::shared_ptr<Poller> poller, std::shared_ptr<Statistics> statistics, const Bitrate &bitrate)
-	: mSocket(INVALID_SOCKET)
+	: mSock(INVALID_SOCKET)
 	, mPoller(poller)
 	, mStatistics(statistics)
 	, mBuffer(bitrate)
@@ -25,24 +25,24 @@ UdpSocket::UdpSocket(std::shared_ptr<Poller> poller, std::shared_ptr<Statistics>
 	{
 		std::string host = "0.0.0.0";
 
-		mSocket = socket(AF_INET, SOCK_DGRAM, 0);
+		mSock = socket(AF_INET, SOCK_DGRAM, 0);
 
 		int val = 1;
-		setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, (const char *)&val, sizeof(val));
+		setsockopt(mSock, SOL_SOCKET, SO_REUSEADDR, (const char *)&val, sizeof(val));
 
 		val = 1;
-		ioctlsocket(mSocket, FIONBIO, (u_long *)&val);
+		ioctlsocket(mSock, FIONBIO, (u_long *)&val);
 
 		sockaddr_in hostAddr;
 		hostAddr.sin_family = AF_INET;
 		hostAddr.sin_port = htons(port);
 		inet_pton(AF_INET, host.c_str(), &hostAddr.sin_addr);
 
-		int ret = bind(mSocket, (sockaddr *)&hostAddr, sizeof(hostAddr));
+		int ret = bind(mSock, (sockaddr *)&hostAddr, sizeof(hostAddr));
 		Debug("UdpSocket::BindSocket successfully bound to %hs:%d\n", host.c_str(), port);
 	}
 
-	mPoller->AddSocket(mSocket, PollerSocketType::READ);
+	mPoller->AddSocket(mSock, PollerSocketType::READ);
 
 	Debug("UdpSocket::Startup success\n");
 }
@@ -50,10 +50,6 @@ UdpSocket::UdpSocket(std::shared_ptr<Poller> poller, std::shared_ptr<Statistics>
 
 UdpSocket::~UdpSocket()
 {
-}
-
-bool UdpSocket::IsClientValid()const {
-	return mClientAddr.sin_family != 0;
 }
 
 bool UdpSocket::IsLegitClient(const sockaddr_in * addr)
@@ -66,17 +62,12 @@ bool UdpSocket::IsLegitClient(const sockaddr_in * addr)
 	}
 }
 
-void UdpSocket::InvalidateClient()
-{
-	mClientAddr.sin_family = 0;
-}
-
 bool UdpSocket::Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen) {
 	bool ret = false;
-	if (mPoller->IsPending(mSocket, PollerSocketType::READ)){
+	if (mPoller->IsPending(mSock, PollerSocketType::READ)){
 		ret = true;
 
-		recvfrom(mSocket, buf, *buflen, 0, (sockaddr *)addr, &addrlen);
+		recvfrom(mSock, buf, *buflen, 0, (sockaddr *)addr, &addrlen);
 	}
 
 	return ret;
@@ -93,24 +84,21 @@ void UdpSocket::Run()
 }
 
 bool UdpSocket::Send(char *buf, int len, uint64_t frameIndex) {
-	if (!IsClientValid()) {
-		return false;
-	}
 	mBuffer.Push(buf, len, frameIndex);
 
 	return true;
 }
 
 void UdpSocket::Shutdown() {
-	if (mSocket != INVALID_SOCKET) {
-		closesocket(mSocket);
+	if (mSock != INVALID_SOCKET) {
+		closesocket(mSock);
 	}
-	mSocket = INVALID_SOCKET;
+	mSock = INVALID_SOCKET;
 }
 
 bool UdpSocket::DoSend(char * buf, int len)
 {
-	int ret2 = sendto(mSocket, buf, len, 0, (sockaddr *)&mClientAddr, sizeof(mClientAddr));
+	int ret2 = sendto(mSock, buf, len, 0, (sockaddr *)&mClientAddr, sizeof(mClientAddr));
 	if (ret2 >= 0) {
 		mStatistics->CountPacket(len);
 		return true;

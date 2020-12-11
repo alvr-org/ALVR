@@ -188,10 +188,6 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint6
 }
 
 void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
-	if (!m_Socket->IsClientValid()) {
-		Debug("Skip sending packet because client is not connected. Packet Length=%d FrameIndex=%llu\n", len, frameIndex);
-		return;
-	}
 	if (!m_Streaming) {
 		Debug("Skip sending packet because streaming is off.\n");
 		return;
@@ -203,10 +199,6 @@ void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 void ClientConnection::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
 	uint8_t packetBuffer[2000];
 
-	if (!m_Socket->IsClientValid()) {
-		Debug("Skip sending audio packet because client is not connected. Packet Length=%d\n", len);
-		return;
-	}
 	if (!m_Streaming) {
 		Debug("Skip sending audio packet because streaming is off.\n");
 		return;
@@ -253,10 +245,6 @@ void ClientConnection::SendAudio(uint8_t *buf, int len, uint64_t presentationTim
 
 void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand)
 {
-	if (!m_Socket->IsClientValid()) {
-		Debug("Skip sending haptics packet because client is not connected.\n");
-		return;
-	}
 	if (!m_Streaming) {
 		Debug("Skip sending haptics packet because streaming is off.\n");
 		return;
@@ -280,12 +268,13 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 	uint32_t type = *(uint32_t*)buf;
 
 	Debug("Received packet. Type=%d\n", type);
-	if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
-		if (!m_Socket->IsLegitClient(addr)) {
-			Debug("Recieved message from invalid address: %hs\n", AddrPortToStr(addr).c_str());
-			return;
-		}
 
+	if (!m_Socket->IsLegitClient(addr)) {
+		Debug("Received message from invalid address: %hs\n", AddrPortToStr(addr).c_str());
+		return;
+	}
+
+	if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
 		EnterCriticalSection(&m_CS);
 		m_TrackingInfo = *(TrackingInfo *)buf;
 		LeaveCriticalSection(&m_CS);
@@ -305,11 +294,6 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		m_PoseUpdatedCallback();
 	}
 	else if (type == ALVR_PACKET_TYPE_TIME_SYNC && len >= sizeof(TimeSync)) {
-		if (!m_Socket->IsLegitClient(addr)) {
-			Debug("Recieved message from invalid address: %hs\n", AddrPortToStr(addr).c_str());
-			return;
-		}
-
 		TimeSync *timeSync = (TimeSync*)buf;
 		uint64_t Current = GetTimestampUs();
 
@@ -334,11 +318,6 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE && len >= sizeof(StreamControlMessage)) {
-		if (!m_Socket->IsLegitClient(addr)) {
-			auto saddr = AddrPortToStr(addr);
-			Debug("Recieved message from invalid address: %s:%d\n", saddr);
-			return;
-		}
 		StreamControlMessage *streamControl = (StreamControlMessage*)buf;
 
 		if (streamControl->mode == 1) {
@@ -352,10 +331,6 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_PACKET_ERROR_REPORT && len >= sizeof(PacketErrorReport)) {
-		if (!m_Socket->IsLegitClient(addr)) {
-			Debug("Recieved message from invalid address: %hs\n", AddrPortToStr(addr).c_str());
-			return;
-		}
 		auto *packetErrorReport = (PacketErrorReport *)buf;
 		Debug("Packet loss was reported. Type=%d %lu - %lu\n", packetErrorReport->lostFrameType, packetErrorReport->fromPacketCounter, packetErrorReport->toPacketCounter);
 		if (packetErrorReport->lostFrameType == ALVR_LOST_FRAME_TYPE_VIDEO) {
@@ -364,10 +339,6 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_MIC_AUDIO && len >= sizeof(MicAudioFrame)) {
-		if (!m_Socket->IsLegitClient(addr)) {
-			Debug("Recieved message from invalid address: %hs\n", AddrPortToStr(addr).c_str());
-			return;
-		}
 		auto *frame = (MicAudioFrame *)buf;
 		Debug("Got MicAudio Frame with length - %zu  %zu index: %i\n", frame->outputBufferNumElements, frame->completeSize, frame->packetIndex);
 
@@ -375,11 +346,6 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 	
 	}
 	else if (type == ALVR_PACKET_TYPE_GUARDIAN_SYNC_START && len >= sizeof(GuardianSyncStart)) {
-		if (!m_Socket->IsLegitClient(addr)) {
-			Debug("Recieved message from invalid address: %hs\n", AddrPortToStr(addr).c_str());
-			return;
-		}
-
 		auto* gsync = (GuardianSyncStart*)buf;
 
 		if (gsync->timestamp <= m_ChaperoneUpdater->GetDataTimestamp()) {
@@ -402,11 +368,6 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA && len >= sizeof(GuardianSegmentData)) {
-		if (!m_Socket->IsLegitClient(addr)) {
-			Debug("Recieved message from invalid address: %hs\n", AddrPortToStr(addr).c_str());
-			return;
-		}
-
 		auto* gsegment = (GuardianSegmentData*)buf;
 
 		if (gsegment->timestamp != m_ChaperoneUpdater->GetDataTimestamp()) {

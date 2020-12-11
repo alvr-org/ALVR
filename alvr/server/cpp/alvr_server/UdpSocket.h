@@ -31,7 +31,5 @@ private:
 	std::shared_ptr<Statistics> mStatistics;
 
 	ThrottlingBuffer mBuffer;
-
-	bool DoSend(char *buf, int len);
 };
 

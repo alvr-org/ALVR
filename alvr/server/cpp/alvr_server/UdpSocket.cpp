@@ -76,7 +76,17 @@ bool UdpSocket::Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen) {
 void UdpSocket::Run()
 {
 	Debug("Try to send.\n");
-	while (mBuffer.Send([this](char *buf, int len) {return DoSend(buf, len); })) {}
+	while (mBuffer.Send([this](char *buf, int len) {
+		int ret2 = sendto(mSock, buf, len, 0, (sockaddr *)&mClientAddr, sizeof(mClientAddr));
+		if (ret2 >= 0) {
+			mStatistics->CountPacket(len);
+			return true;
+		}
+		if (WSAGetLastError() != WSAEWOULDBLOCK) {
+			Error("UdpSocket::DoSend() Error on sendto. %d %ls\n", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+		}
+		return false;
+	})) {}
 
 	if (!mBuffer.IsEmpty()) {
 		mPoller->WakeLater(1);
@@ -94,17 +104,4 @@ void UdpSocket::Shutdown() {
 		closesocket(mSock);
 	}
 	mSock = INVALID_SOCKET;
-}
-
-bool UdpSocket::DoSend(char * buf, int len)
-{
-	int ret2 = sendto(mSock, buf, len, 0, (sockaddr *)&mClientAddr, sizeof(mClientAddr));
-	if (ret2 >= 0) {
-		mStatistics->CountPacket(len);
-		return true;
-	}
-	if (WSAGetLastError() != WSAEWOULDBLOCK) {
-		Error("UdpSocket::DoSend() Error on sendto. %d %ls\n", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
-	}
-	return false;
 }

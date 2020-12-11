@@ -53,7 +53,6 @@ pub struct OpenvrConfig {
     pub eye_resolution_height: u32,
     pub target_eye_resolution_width: u32,
     pub target_eye_resolution_height: u32,
-    pub eye_fov: [Fov; 2],
     pub enable_game_audio: bool,
     pub game_audio_device: String,
     pub enable_microphone: bool,
@@ -170,20 +169,6 @@ impl Default for SessionDesc {
                 eye_resolution_height: 1080,
                 target_eye_resolution_width: 960,
                 target_eye_resolution_height: 1080,
-                eye_fov: [
-                    Fov {
-                        left: 45_f32,
-                        right: 45_f32,
-                        top: 45_f32,
-                        bottom: 45_f32,
-                    },
-                    Fov {
-                        left: 45_f32,
-                        right: 45_f32,
-                        top: 45_f32,
-                        bottom: 45_f32,
-                    },
-                ],
                 seconds_from_vsync_to_photons: 0.005,
                 ipd: 0.063,
                 adapter_index: 0,

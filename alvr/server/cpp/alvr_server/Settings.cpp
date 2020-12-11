@@ -62,13 +62,12 @@ void Settings::Load()
 		m_recommendedTargetWidth = config.get("target_eye_resolution_width").get<int64_t>() * 2;
 		m_recommendedTargetHeight = config.get("target_eye_resolution_height").get<int64_t>();
 
-		picojson::array &eyeFov = config.get("eye_fov").get<picojson::array>();
 		for (int eye = 0; eye < 2; eye++)
 		{
-			m_eyeFov[eye].left = static_cast<float>(eyeFov[eye].get("left").get<double>());
-			m_eyeFov[eye].right = static_cast<float>(eyeFov[eye].get("right").get<double>());
-			m_eyeFov[eye].top = static_cast<float>(eyeFov[eye].get("top").get<double>());
-			m_eyeFov[eye].bottom = static_cast<float>(eyeFov[eye].get("bottom").get<double>());
+			m_eyeFov[eye].left = 45;
+			m_eyeFov[eye].right = 45;
+			m_eyeFov[eye].top = 45;
+			m_eyeFov[eye].bottom = 45;
 		}
 
 		m_enableSound = config.get("enable_game_audio").get<bool>();

@@ -100,9 +100,6 @@ pub struct VideoDesc {
     pub recommended_target_resolution: FrameSize,
 
     #[schema(advanced)]
-    pub eye_fov: [Fov; 2],
-
-    #[schema(advanced)]
     pub seconds_from_vsync_to_photons: f32,
 
     #[schema(advanced)]
@@ -307,6 +304,8 @@ pub struct ExtraDesc {
     pub update_channel: UpdateChannel,
     pub log_to_disk: bool,
 
+    pub asdf: Vec<(String, u32)>,
+
     #[schema(advanced)]
     pub notification_level: LogLevel,
     #[schema(advanced)]
@@ -343,20 +342,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     height: 1600,
                 },
             },
-            eye_fov: [
-                FovDefault {
-                    left: 52.,
-                    right: 42.,
-                    top: 53.,
-                    bottom: 47.,
-                },
-                FovDefault {
-                    left: 42.,
-                    right: 52.,
-                    top: 53.,
-                    bottom: 47.,
-                },
-            ],
             seconds_from_vsync_to_photons: 0.005,
             ipd: 0.063,
             foveated_rendering: SwitchDefault {
@@ -460,6 +445,11 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             exclude_notifications_without_id: false,
+            asdf: DictionaryDefault {
+                key: "dfsaf".into(),
+                value: 0,
+                default: vec![],
+            }
         },
     }
 }

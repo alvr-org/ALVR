@@ -20,16 +20,23 @@ ClientConnection::ClientConnection(std::function<void()> streamStartCallback,
 	m_Poller.reset(new Poller());
 
 	reed_solomon_init();
-	
-	m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port
-		, m_Poller, m_Statistics, Settings::Instance().mThrottlingBitrate);
-	m_Socket->Startup();
 
 	sockaddr_in addr;
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons((u_short)Settings::Instance().m_Port);
 	inet_pton(addr.sin_family, Settings::Instance().m_ConnectedClient.c_str(), &(addr.sin_addr));
-	Connect(&addr);
+	
+	m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port
+		, m_Poller, m_Statistics, Settings::Instance().mThrottlingBitrate);
+	
+	Debug("Connected to %hs\n", AddrPortToStr(&addr).c_str());
+
+	m_Socket->SetClientAddr(&addr);
+	videoPacketCounter = 0;
+	soundPacketCounter = 0;
+	m_fecPercentage = INITIAL_FEC_PERCENTAGE;
+	memset(&m_reportedStatistics, 0, sizeof(m_reportedStatistics));
+	m_Statistics->ResetAll();
 
 	// Start thread.
 	Start();
@@ -463,14 +470,6 @@ uint64_t ClientConnection::serverToClientTime(uint64_t serverTime) const {
 }
 
 void ClientConnection::Connect(const sockaddr_in *addr) {
-	Debug("Connected to %hs\n", AddrPortToStr(addr).c_str());
-
-	m_Socket->SetClientAddr(addr);
-	videoPacketCounter = 0;
-	soundPacketCounter = 0;
-	m_fecPercentage = INITIAL_FEC_PERCENTAGE;
-	memset(&m_reportedStatistics, 0, sizeof(m_reportedStatistics));
-	m_Statistics->ResetAll();
 }
 
 void ClientConnection::OnFecFailure() {

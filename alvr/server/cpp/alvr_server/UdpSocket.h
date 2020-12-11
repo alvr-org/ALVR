@@ -17,18 +17,14 @@ public:
 	UdpSocket(std::string host, int port, std::shared_ptr<Poller> poller, std::shared_ptr<Statistics> statistics, const Bitrate &bitrate);
 	virtual ~UdpSocket();
 
-	virtual bool Startup();
 	virtual bool Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen);
 	void Run();
 	virtual bool Send(char *buf, int len, uint64_t frameIndex = 0);
 	virtual void Shutdown();
 	void SetClientAddr(const sockaddr_in *addr);
-	virtual sockaddr_in GetClientAddr()const;
 	virtual bool IsClientValid()const;
 	bool IsLegitClient(const sockaddr_in *addr);
 	void InvalidateClient();
-
-	bool BindSocket();
 
 private:
 	std::string mHost;

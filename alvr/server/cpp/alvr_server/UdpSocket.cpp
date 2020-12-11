@@ -13,33 +13,40 @@ UdpSocket::UdpSocket(std::string host, int port, std::shared_ptr<Poller> poller,
 	
 {
 	mClientAddr.sin_family = 0;
+
+	WSADATA wsaData;
+
+	WSAStartup(MAKEWORD(2, 0), &wsaData);
+
+	{
+		std::string host = "0.0.0.0";
+
+		mSocket = socket(AF_INET, SOCK_DGRAM, 0);
+
+		int val = 1;
+		setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, (const char *)&val, sizeof(val));
+
+		val = 1;
+		ioctlsocket(mSocket, FIONBIO, (u_long *)&val);
+
+		sockaddr_in addr;
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(mPort);
+		inet_pton(AF_INET, host.c_str(), &addr.sin_addr);
+
+		int ret = bind(mSocket, (sockaddr *)&addr, sizeof(addr));
+		Debug("UdpSocket::BindSocket successfully bound to %hs:%d\n", host.c_str(), mPort);
+	}
+
+	mPoller->AddSocket(mSocket, PollerSocketType::READ);
+
+	Debug("UdpSocket::Startup success\n");
 }
 
 
 UdpSocket::~UdpSocket()
 {
 }
-
-bool UdpSocket::Startup() {
-	WSADATA wsaData;
-
-	WSAStartup(MAKEWORD(2, 0), &wsaData);
-
-	if (!BindSocket()) {
-		return false;
-	}
-
-	mPoller->AddSocket(mSocket, PollerSocketType::READ);
-
-	Debug("UdpSocket::Startup success\n");
-
-	return true;
-}
-
-sockaddr_in UdpSocket::GetClientAddr()const {
-	return mClientAddr;
-}
-
 
 bool UdpSocket::IsClientValid()const {
 	return mClientAddr.sin_family != 0;
@@ -100,35 +107,6 @@ void UdpSocket::Shutdown() {
 void UdpSocket::SetClientAddr(const sockaddr_in * addr)
 {
 	mClientAddr = *addr;
-}
-
-bool UdpSocket::BindSocket()
-{
-	mSocket = socket(AF_INET, SOCK_DGRAM, 0);
-	if (mSocket == INVALID_SOCKET) {
-		Error("UdpSocket::BindSocket socket creation error: %d %ls\n", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
-		return false;
-	}
-
-	int val = 1;
-	setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, (const char *)&val, sizeof(val));
-
-	val = 1;
-	ioctlsocket(mSocket, FIONBIO, (u_long *)&val);
-
-	sockaddr_in addr;
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(mPort);
-	inet_pton(AF_INET, mHost.c_str(), &addr.sin_addr);
-
-	int ret = bind(mSocket, (sockaddr *)&addr, sizeof(addr));
-	if (ret != 0) {
-		Error("UdpSocket::BindSocket bind error : Address=%hs:%d %d %ls\n", mHost.c_str(), mPort, WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
-		return false;
-	}
-	Debug("UdpSocket::BindSocket successfully bound to %hs:%d\n", mHost.c_str(), mPort);
-	
-	return true;
 }
 
 bool UdpSocket::DoSend(char * buf, int len)

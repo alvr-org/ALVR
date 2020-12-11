@@ -121,6 +121,7 @@ pub async fn client_discovery() {
             let session_settings = &session_ref.session_settings;
 
             let openvr_config = OpenvrConfig {
+                universe_id: settings.headset.universe_id,
                 headset_serial_number: settings.headset.serial_number,
                 headset_tracking_system_name: settings.headset.tracking_system_name,
                 headset_model_number: settings.headset.model_number,
@@ -333,7 +334,10 @@ async fn connect_to_any_client(
             best_match
         };
 
-        if !headset_info.available_refresh_rates.contains(&settings.video.preferred_fps) {
+        if !headset_info
+            .available_refresh_rates
+            .contains(&settings.video.preferred_fps)
+        {
             warn!("Chosen refresh rate not supported. Using {}Hz", fps);
         }
 
@@ -365,6 +369,7 @@ async fn connect_to_any_client(
         let session_settings = &session_ref.session_settings;
 
         let new_openvr_config = OpenvrConfig {
+            universe_id: settings.headset.universe_id,
             headset_serial_number: settings.headset.serial_number,
             headset_tracking_system_name: settings.headset.tracking_system_name,
             headset_model_number: settings.headset.model_number,

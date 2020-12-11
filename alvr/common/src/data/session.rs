@@ -41,6 +41,7 @@ pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
 // UpdateForStream.
 #[derive(Serialize, Deserialize, PartialEq, Default)]
 pub struct OpenvrConfig {
+    pub universe_id: u64,
     pub headset_serial_number: String,
     pub headset_tracking_system_name: String,
     pub headset_model_number: String,
@@ -157,6 +158,7 @@ impl Default for SessionDesc {
         Self {
             setup_wizard: true,
             openvr_config: OpenvrConfig {
+                universe_id: 2,
                 headset_serial_number: "1WMGH000XX0000".into(),
                 headset_tracking_system_name: "oculus".into(),
                 headset_model_number: "Oculus Rift S".into(),

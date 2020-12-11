@@ -24,6 +24,8 @@ public:
 		return m_loaded;
 	}
 
+	uint64_t m_universeId;
+
 	std::string mSerialNumber;
 	std::string mTrackingSystemName;
 	std::string mModelNumber;

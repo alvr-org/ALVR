@@ -46,6 +46,8 @@ void Settings::Load()
 
 		auto config = v.get("openvrConfig");
 
+		m_universeId = config.get("universe_id").get<int64_t>();
+
 		mSerialNumber = config.get("headset_serial_number").get<std::string>();
 		mTrackingSystemName = config.get("headset_tracking_system_name").get<std::string>();
 		mModelNumber = config.get("headset_model_number").get<std::string>();

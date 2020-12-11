@@ -68,7 +68,6 @@ pub struct OpenvrConfig {
     pub refresh_rate: u32,
     pub encode_bitrate_mbs: u64,
     pub throttling_bitrate_bits: u64,
-    pub listen_host: String,
     pub listen_port: u16,
     pub client_address: String,
     pub controllers_tracking_system_name: String,

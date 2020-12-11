@@ -239,9 +239,6 @@ pub struct ConnectionDesc {
     pub web_server_port: u16,
 
     #[schema(advanced)]
-    pub listen_host: String,
-
-    #[schema(advanced)]
     pub listen_port: u16,
 
     // If disableThrottling=true, set throttlingBitrateBits to 0,
@@ -303,8 +300,6 @@ pub struct ExtraDesc {
     pub prompt_before_update: bool,
     pub update_channel: UpdateChannel,
     pub log_to_disk: bool,
-
-    pub asdf: Vec<(String, u32)>,
 
     #[schema(advanced)]
     pub notification_level: LogLevel,
@@ -415,7 +410,6 @@ pub fn session_settings_default() -> SettingsDefault {
         },
         connection: ConnectionDescDefault {
             web_server_port: 8082,
-            listen_host: "0.0.0.0".into(),
             listen_port: 9944,
             throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,
             client_recv_buffer_size: 60_000,
@@ -445,11 +439,6 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             exclude_notifications_without_id: false,
-            asdf: DictionaryDefault {
-                key: "dfsaf".into(),
-                value: 0,
-                default: vec![],
-            }
         },
     }
 }

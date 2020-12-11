@@ -71,7 +71,6 @@ public:
 	std::string m_EncoderOptions;
 	Bitrate mEncodeBitrate;
 
-	std::string m_Host;
 	int m_Port;
 	std::string m_ConnectedClient;
 	Bitrate mThrottlingBitrate;

@@ -95,7 +95,6 @@ void Settings::Load()
 		mThrottlingBitrate = Bitrate::fromBits((int)config.get("throttling_bitrate_bits").get<int64_t>());
 
 		// Listener Parameters
-		m_Host = config.get("listen_host").get<std::string>();
 		m_Port = (int)config.get("listen_port").get<int64_t>();
 
 		m_ConnectedClient = config.get("client_address").get<std::string>();

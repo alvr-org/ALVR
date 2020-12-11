@@ -21,17 +21,8 @@ ClientConnection::ClientConnection(std::function<void()> streamStartCallback,
 
 	reed_solomon_init();
 
-	sockaddr_in addr;
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons((u_short)Settings::Instance().m_Port);
-	inet_pton(addr.sin_family, Settings::Instance().m_ConnectedClient.c_str(), &(addr.sin_addr));
+	m_Socket = std::make_shared<UdpSocket>(m_Poller, m_Statistics, Settings::Instance().mThrottlingBitrate);
 	
-	m_Socket = std::make_shared<UdpSocket>(Settings::Instance().m_Host, Settings::Instance().m_Port
-		, m_Poller, m_Statistics, Settings::Instance().mThrottlingBitrate);
-	
-	Debug("Connected to %hs\n", AddrPortToStr(&addr).c_str());
-
-	m_Socket->SetClientAddr(&addr);
 	videoPacketCounter = 0;
 	soundPacketCounter = 0;
 	m_fecPercentage = INITIAL_FEC_PERCENTAGE;

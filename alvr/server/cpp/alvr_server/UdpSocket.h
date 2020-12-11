@@ -14,7 +14,7 @@
 class UdpSocket
 {
 public:
-	UdpSocket(std::string host, int port, std::shared_ptr<Poller> poller, std::shared_ptr<Statistics> statistics, const Bitrate &bitrate);
+	UdpSocket(std::shared_ptr<Poller> poller, std::shared_ptr<Statistics> statistics, const Bitrate &bitrate);
 	virtual ~UdpSocket();
 
 	virtual bool Recv(char *buf, int *buflen, sockaddr_in *addr, int addrlen);
@@ -27,9 +27,6 @@ public:
 	void InvalidateClient();
 
 private:
-	std::string mHost;
-	int mPort;
-
 	SOCKET mSocket;
 	sockaddr_in mClientAddr;
 	

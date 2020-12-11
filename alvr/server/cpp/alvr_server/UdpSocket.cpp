@@ -3,20 +3,24 @@
 #include "Utils.h"
 #include "Settings.h"
 
-UdpSocket::UdpSocket(std::string host, int port, std::shared_ptr<Poller> poller, std::shared_ptr<Statistics> statistics, const Bitrate &bitrate)
-	: mHost(host)
-	, mPort(port)
-	, mSocket(INVALID_SOCKET)
+UdpSocket::UdpSocket(std::shared_ptr<Poller> poller, std::shared_ptr<Statistics> statistics, const Bitrate &bitrate)
+	: mSocket(INVALID_SOCKET)
 	, mPoller(poller)
 	, mStatistics(statistics)
 	, mBuffer(bitrate)
-	
 {
 	mClientAddr.sin_family = 0;
 
 	WSADATA wsaData;
 
 	WSAStartup(MAKEWORD(2, 0), &wsaData);
+
+	int port = Settings::Instance().m_Port;
+
+	mClientAddr.sin_family = AF_INET;
+	mClientAddr.sin_port = htons(port);
+	inet_pton(mClientAddr.sin_family, Settings::Instance().m_ConnectedClient.c_str(), &(mClientAddr.sin_addr));
+	Debug("Connected to %hs\n", AddrPortToStr(&mClientAddr).c_str());
 
 	{
 		std::string host = "0.0.0.0";
@@ -29,13 +33,13 @@ UdpSocket::UdpSocket(std::string host, int port, std::shared_ptr<Poller> poller,
 		val = 1;
 		ioctlsocket(mSocket, FIONBIO, (u_long *)&val);
 
-		sockaddr_in addr;
-		addr.sin_family = AF_INET;
-		addr.sin_port = htons(mPort);
-		inet_pton(AF_INET, host.c_str(), &addr.sin_addr);
+		sockaddr_in hostAddr;
+		hostAddr.sin_family = AF_INET;
+		hostAddr.sin_port = htons(port);
+		inet_pton(AF_INET, host.c_str(), &hostAddr.sin_addr);
 
-		int ret = bind(mSocket, (sockaddr *)&addr, sizeof(addr));
-		Debug("UdpSocket::BindSocket successfully bound to %hs:%d\n", host.c_str(), mPort);
+		int ret = bind(mSocket, (sockaddr *)&hostAddr, sizeof(hostAddr));
+		Debug("UdpSocket::BindSocket successfully bound to %hs:%d\n", host.c_str(), port);
 	}
 
 	mPoller->AddSocket(mSocket, PollerSocketType::READ);
@@ -102,11 +106,6 @@ void UdpSocket::Shutdown() {
 		closesocket(mSocket);
 	}
 	mSocket = INVALID_SOCKET;
-}
-
-void UdpSocket::SetClientAddr(const sockaddr_in * addr)
-{
-	mClientAddr = *addr;
 }
 
 bool UdpSocket::DoSend(char * buf, int len)

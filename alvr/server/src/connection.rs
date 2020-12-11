@@ -148,7 +148,6 @@ pub async fn client_discovery() {
                 refresh_rate: settings.video.preferred_fps as _,
                 encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
                 throttling_bitrate_bits: settings.connection.throttling_bitrate_bits,
-                listen_host: settings.connection.listen_host,
                 listen_port: settings.connection.listen_port,
                 client_address: address.to_string(),
                 controllers_tracking_system_name: session_settings
@@ -395,7 +394,6 @@ async fn connect_to_any_client(
             refresh_rate: fps as _,
             encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
             throttling_bitrate_bits: settings.connection.throttling_bitrate_bits,
-            listen_host: settings.connection.listen_host,
             listen_port: settings.connection.listen_port,
             client_address: control_socket.peer_ip().to_string(),
             controllers_tracking_system_name: session_settings

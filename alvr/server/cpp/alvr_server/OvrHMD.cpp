@@ -136,6 +136,11 @@ OvrHmd::OvrHmd()
 		eventData.ipd = { Settings::Instance().m_flIPD };
 		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_IpdChanged, eventData, 0);
 
+		m_ChaperoneUpdater = std::make_shared<ChaperoneUpdater>();
+		m_ChaperoneUpdater->ResetData(0, 0);
+		m_ChaperoneUpdater->GenerateStandingChaperone();
+		m_ChaperoneUpdater->MaybeCommitData();
+
 		DriverReadyIdle();
 
 		return vr::VRInitError_None;
@@ -270,7 +275,7 @@ OvrHmd::OvrHmd()
 		}
 
 		//create listener
-		m_Listener.reset(new ClientConnection(
+		m_Listener.reset(new ClientConnection( m_ChaperoneUpdater,
 			[&]() { OnStreamStart(); }, [&]() { OnPoseUpdated(); }, [&]() { OnPacketLoss(); }));
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.

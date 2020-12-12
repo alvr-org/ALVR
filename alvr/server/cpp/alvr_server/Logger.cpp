@@ -1,5 +1,8 @@
 #include "Logger.h"
 
+#include "Utils.h"
+#include "driverlog.h"
+
 void _log(const char *format, va_list args, void (*logFn)(const char *))
 {
 	char buf[1024];

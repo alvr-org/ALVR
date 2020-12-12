@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 #include <mutex>
 #include <stdint.h>
 #include "threadtools.h"
@@ -44,7 +45,7 @@ public:
 	uint32_t GetTotalPointCount();
 	uint32_t GetSegmentCount();
 private:
-	vr::HmdVector2_t *m_ChaperonePoints = nullptr;
+	std::vector<vr::HmdVector2_t> m_ChaperonePoints;
 	std::shared_ptr<vr::HmdMatrix34_t> m_Transform;
 	TrackingVector2 m_PlayArea;
 

@@ -1,9 +1,13 @@
 #include "ClientConnection.h"
 #include "Bitrate.h"
 
-ClientConnection::ClientConnection(std::function<void()> streamStartCallback,
-	std::function<void()> poseUpdatedCallback, std::function<void()> packetLossCallback)
-	: m_bExiting(false)
+ClientConnection::ClientConnection(
+	std::shared_ptr<ChaperoneUpdater> chaperoneUpdater,
+	std::function<void()> streamStartCallback,
+	std::function<void()> poseUpdatedCallback,
+	std::function<void()> packetLossCallback)
+	: m_ChaperoneUpdater(chaperoneUpdater)
+	, m_bExiting(false)
 	, m_Streaming(false)
 	, m_LastStatisticsUpdate(0) {
 	m_StreamStartCallback = streamStartCallback;
@@ -15,7 +19,6 @@ ClientConnection::ClientConnection(std::function<void()> streamStartCallback,
 
 	m_Statistics       = std::make_shared<Statistics>();
 	m_MicPlayer	       = std::make_shared<MicPlayer>();
-	m_ChaperoneUpdater = std::make_shared<ChaperoneUpdater>();
 
 	m_Poller.reset(new Poller());
 

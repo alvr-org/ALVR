@@ -1,5 +1,5 @@
 #include "ChaperoneUpdater.h"
-//#include "Logger.h"
+#include "Logger.h"
 #include <openvr.h>
 
 #define _USE_MATH_DEFINES
@@ -35,6 +35,30 @@ inline void MakeTransformFromVecQuat(const TrackingVector3 &p, const TrackingQua
 	result->m[2][3] = p.z;
 }
 
+void commit(std::vector<vr::HmdVector2_t> &points, const vr::HmdMatrix34_t &transform, const TrackingVector2 &playArea)
+{
+	vr::EVRInitError error;
+	vr::VR_Init(&error, vr::VRApplication_Utility);
+
+	if (error != vr::VRInitError_None) {
+		Warn("Failed to init OpenVR client to update Chaperone boundary! Error: %d", error);
+		return;
+	}
+
+	vr::VRChaperoneSetup()->RoomSetupStarting();
+
+	vr::VRChaperoneSetup()->SetWorkingPerimeter(&points[0], points.size());
+	vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(&transform);
+	vr::VRChaperoneSetup()->SetWorkingSeatedZeroPoseToRawTrackingPose(&transform);
+	vr::VRChaperoneSetup()->SetWorkingPlayAreaSize(playArea.x, playArea.y);
+	vr::VRChaperoneSetup()->CommitWorkingCopy(vr::EChaperoneConfigFile_Live);
+
+	// Hide SteamVR Chaperone
+	vr::VRSettings()->SetFloat(vr::k_pch_CollisionBounds_Section, vr::k_pch_CollisionBounds_FadeDistance_Float, 0.0f);
+
+	vr::VR_Shutdown();
+}
+
 ChaperoneUpdater::ChaperoneUpdater()
 {
 	m_Transform = std::make_shared<vr::HmdMatrix34_t>();
@@ -44,19 +68,19 @@ ChaperoneUpdater::ChaperoneUpdater()
 
 ChaperoneUpdater::~ChaperoneUpdater()
 {
-	delete[] m_ChaperonePoints;
 	m_Exiting = true;
 	m_ChaperoneDataReady.Set();
 }
 
 void ChaperoneUpdater::ResetData(uint64_t timestamp, uint32_t pointCount)
 {
+	m_ChaperoneDataReady.Reset();
 	m_Timestamp = timestamp;
 	m_TotalPointCount = pointCount;
 
 	std::unique_lock<std::mutex> chapDataLock(m_ChaperoneDataMtx);
-	delete[] m_ChaperonePoints;
-	m_ChaperonePoints = new vr::HmdVector2_t[pointCount];
+	m_ChaperonePoints.clear();
+	m_ChaperonePoints.resize(pointCount);
 	chapDataLock.unlock();
 
 	m_SegmentCount = pointCount / ALVR_GUARDIAN_SEGMENT_SIZE;
@@ -95,10 +119,13 @@ void ChaperoneUpdater::SetSegment(uint32_t segmentIndex, const TrackingVector3* 
 
 void ChaperoneUpdater::GenerateStandingChaperone(float scale)
 {
+	m_ChaperoneDataReady.Reset();
 	m_TotalPointCount = ALVR_STANDING_CHAPERONE_POINT_COUNT;
 
-	delete[] m_ChaperonePoints;
-	m_ChaperonePoints = new vr::HmdVector2_t[m_TotalPointCount];
+	std::unique_lock<std::mutex> chapDataLock(m_ChaperoneDataMtx);
+	m_ChaperonePoints.clear();
+	m_ChaperonePoints.resize(m_TotalPointCount);
+	chapDataLock.unlock();
 
 	for (uint32_t i = 0; i < m_TotalPointCount; ++i) {
 		float x = i * 2.0f * (float)M_PI / m_TotalPointCount;
@@ -130,30 +157,14 @@ void ChaperoneUpdater::Run()
 			break;
 		}
 
-		vr::EVRInitError error;
-		vr::VR_Init(&error, vr::VRApplication_Utility);
-
-		if (error != vr::VRInitError_None) {
-			//Error("Failed to init OpenVR client to update Chaperone boundary! Error: %d", error);
-			// TODO: logging
-			continue;
-		}
-
-		vr::VRChaperoneSetup()->RoomSetupStarting();
-
+		// Make a copy so the main thread can start filling new data if needed.
 		std::unique_lock<std::mutex> chapDataLock(m_ChaperoneDataMtx);
-		vr::VRChaperoneSetup()->SetWorkingPerimeter(m_ChaperonePoints, m_TotalPointCount);
+		std::vector<vr::HmdVector2_t> points(m_ChaperonePoints);
+		vr::HmdMatrix34_t transform(*m_Transform);
+		TrackingVector2 playArea(m_PlayArea);
 		chapDataLock.unlock();
 
-		vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(m_Transform.get());
-		vr::VRChaperoneSetup()->SetWorkingSeatedZeroPoseToRawTrackingPose(m_Transform.get());
-		vr::VRChaperoneSetup()->SetWorkingPlayAreaSize(m_PlayArea.x, m_PlayArea.y);
-		vr::VRChaperoneSetup()->CommitWorkingCopy(vr::EChaperoneConfigFile_Live);
-
-		// Hide SteamVR Chaperone
-		vr::VRSettings()->SetFloat(vr::k_pch_CollisionBounds_Section, vr::k_pch_CollisionBounds_FadeDistance_Float, 0.0f);
-
-		vr::VR_Shutdown();
+		commit(points, transform, playArea);
 	}
 }
 

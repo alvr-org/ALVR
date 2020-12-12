@@ -13,6 +13,7 @@
 #include <wrl.h>
 
 #include "../Logger.h"
+#include "../Utils.h"
 
 #define OK_OR_THROW(dxcall, msg) { HRESULT hr = dxcall; if (FAILED(hr)) throw MakeException("%ls HR=%p %ls", msg, hr, GetErrorStr(hr).c_str()); }
 #define QUERY(from, ppd3d) from->QueryInterface(__uuidof(*(ppd3d)), (void**)(ppd3d))

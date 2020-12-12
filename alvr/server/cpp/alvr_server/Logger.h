@@ -5,8 +5,6 @@
 #include "exception.h"
 #include <wrl.h>
 
-#include "Utils.h"
-#include "driverlog.h"
 #include "bindings.h"
 
 Exception MakeException(const char *format, ...);

@@ -23,7 +23,7 @@ extern "C" {
 class ClientConnection : public CThread {
 public:
 
-	ClientConnection(std::function<void()> streamStartCallback,
+	ClientConnection(std::shared_ptr<ChaperoneUpdater> chaperoneUpdater, std::function<void()> streamStartCallback,
 		std::function<void()> poseUpdatedCallback, std::function<void()> packetLossCallback);
 	~ClientConnection();
 

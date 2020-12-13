@@ -1,6 +1,6 @@
 [package]
 name = "alvr_server"
-version = "13.2.1"
+version = "13.5.0"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"

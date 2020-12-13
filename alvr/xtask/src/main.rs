@@ -304,6 +304,16 @@ pub fn build_client(is_release: bool) {
     .unwrap();
 }
 
+fn download_vc_redist() {
+    if ! Path::new("target/wix/VC_redist.x64.exe").is_file() {
+        println!("Downloading Microsoft Visual C++ redistributable for bundling...");
+        let mut vcredist = fs::File::create("target/wix/VC_redist.x64.exe").unwrap();
+        reqwest::blocking::get("https://aka.ms/vs/16/release/vc_redist.x64.exe").unwrap().copy_to(&mut vcredist).unwrap();
+    } else {
+        println!("Found existing VC_redist.x64.exe - will use that.");
+    }
+}
+
 fn build_installer(wix_path: &str) {
     let wix_path = PathBuf::from(wix_path).join("bin");
     let heat_cmd = wix_path.join("heat.exe");
@@ -362,7 +372,41 @@ fn build_installer(wix_path: &str) {
             "-ext",
             "WixUtilExtension",
             "-o",
-            &format!("build\\ALVR-{}.msi", version),
+            "target\\wix\\alvr.msi",
+        ],
+    )
+    .unwrap();
+
+    download_vc_redist();
+
+    // Build the bundle including ALVR and vc_redist.
+    run_with_args(
+        &candle_cmd.to_string_lossy(),
+        &[
+            "-arch",
+            "x64",
+            "-dBuildRoot=build\\alvr_server_windows",
+            "-ext",
+            "WixUtilExtension",
+            "-ext",
+            "WixBalExtension",
+            "wix\\bundle.wxs",
+            "-o",
+            "target\\wix\\",
+        ],
+    )
+    .unwrap();
+
+    run_with_args(
+        &light_cmd.to_string_lossy(),
+        &[
+            "target\\wix\\bundle.wixobj",
+            "-ext",
+            "WixUtilExtension",
+            "-ext",
+            "WixBalExtension",
+            "-o",
+            &format!("build\\ALVR-{}.exe", version),
         ],
     )
     .unwrap();

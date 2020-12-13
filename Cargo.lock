@@ -162,6 +162,7 @@ dependencies = [
  "lazy_static",
  "pico-args",
  "regex",
+ "reqwest",
  "runas",
  "semver",
  "toml_edit",

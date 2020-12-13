@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+    xmlns:util="http://schemas.microsoft.com/wix/UtilExtension"
+    xmlns:bal="http://schemas.microsoft.com/wix/BalExtension">
+    <Bundle 
+        AboutUrl="https://alvr-org.github.io"
+        DisableModify="yes"
+        Name="ALVR"
+        UpgradeCode="12B1A95C-FC71-4E53-AC1C-A695D891F1EB"
+        Version="!(bind.packageVersion.alvrInstaller)">
+        <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.HyperlinkSidebarLicense">
+            <bal:WixStandardBootstrapperApplication
+                LicenseUrl="https://github.com/alvr-org/ALVR/blob/master/LICENSE"
+                ShowVersion="yes"
+                SuppressOptionsUI="yes"/>
+        </BootstrapperApplicationRef>
+
+        <util:RegistrySearch
+            Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64"
+            Root="HKLM"
+            Value="Installed"
+            Variable="VCRedistInstalled"/>
+
+        <Chain>
+            <ExePackage
+                SourceFile="target\wix\VC_redist.x64.exe"
+                Permanent="yes"
+                Compressed="yes"
+                InstallCommand="/install /quiet /norestart"
+                RepairCommand="/repair /quiet /norestart"
+                UninstallCommand="/uninstall /quiet /norestart"
+                DetectCondition="VCRedistInstalled = 1"/>
+            <MsiPackage
+                SourceFile="target\wix\alvr.msi"
+                Id="alvrInstaller"
+                Compressed="yes"
+                DisplayInternalUI="yes"
+                ForcePerMachine="yes"/>
+        </Chain>
+    </Bundle>
+</Wix>

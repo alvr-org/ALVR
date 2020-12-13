@@ -24,19 +24,11 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only w
 
 ## Install
 
-It is recommended (but not mandatory) to uninstall any other VR streaming software on your PC, including older versions of ALVR.
+It is recommended (but not mandatory) to uninstall any other VR streaming software on your PC, including older versions of ALVR. If you didn't already, install SteamVR, launch it and then close it (this is to make sure SteamVR executes its first time setup).
 
-If you didn't already, install SteamVR, launch it and then close it (this is to make sure SteamVR executes its first time setup).
+To install ALVR download and execute `ALVR-vX.X.X.exe` from the [releases page](https://github.com/alvr-org/ALVR/releases). An entry will appear in the Start menu. The first time you open ALVR Launcher.exe you may have to allow it in the SmartScreen prompt. In the release page you can also find the portable version `alvr_server_windows.zip`. If you already have ALVR v13.1.0 or greater you can upgrade with the autoupdater.
 
-Install the latest [Visual C++ Redistrubutable x64 package](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads). Do this every time you install a new ALVR version!
-
-To install ALVR download `alvr_server_windows.zip` from the [releases page](https://github.com/alvr-org/ALVR/releases), unzip it and open `ALVR Launcher.exe` (the folder path must contain only UTF-8 characters and must be editable with user privileges, do not unzip in C:\\). The first time you open ALVR Launcher.exe you may have to allow it in the SmartScreen prompt.
-
-If you already have ALVR v13.1.0 or greater you can upgrade with the autoupdater.
-
-Install the client on your headset through [SideQuest](https://sidequestvr.com/).
-
-To make the Oculus Quest microphone work you need to install the [VB-CABLE Virtual Audio Device](https://www.vb-audio.com/Cable/).
+Install the client on your headset through [SideQuest](https://sidequestvr.com/). To make the Oculus Quest microphone work you need to install the [VB-CABLE Virtual Audio Device](https://www.vb-audio.com/Cable/).
 
 ### Nightly versions
 

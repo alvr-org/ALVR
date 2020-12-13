@@ -1,4 +1,4 @@
-<img align="left" width="120" height="120" src="https://github.com/alvr-org/ALVR/blob/master/server_release_template/web_gui/web_hi_res_512.png">
+<div style="text-align:center"> <img width="500" src="resources/alvr_combined_logo_hq.png"/> </div>
 
 # ALVR - Air Light VR
 

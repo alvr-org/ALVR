@@ -1,7 +1,7 @@
 #[cfg(windows)]
 fn main() {
     let mut res = winres::WindowsResource::new();
-    res.set_icon("res/alvr.ico");
+    res.set_icon("res/launcher.ico");
     res.compile().unwrap();
 }
 

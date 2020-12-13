@@ -5,7 +5,7 @@ android {
     compileSdkVersion 30
     defaultConfig {
         applicationId "com.polygraphene.alvr"
-        minSdkVersion 24
+        minSdkVersion 21
         targetSdkVersion 30
         versionCode 35
         versionName "13.1.0"

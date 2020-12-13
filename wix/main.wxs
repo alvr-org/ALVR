@@ -83,7 +83,7 @@
 
         <SetProperty Id="ARPINSTALLLOCATION" Value="[APPLICATIONFOLDER]" After="CostFinalize"/>
 
-        <Icon Id="ProductICO" SourceFile="alvr\launcher\res\alvr.ico"/>
+        <Icon Id="ProductICO" SourceFile="alvr\launcher\res\launcher.ico"/>
         <Property Id="ARPPRODUCTICON" Value="ProductICO"/>
 
         <Property Id="ARPHELPLINK" Value="https://alvr-org.github.io"/>

@@ -105,6 +105,7 @@ jobs:
           mklink /J "%GITHUB_WORKSPACE%\android-sdk" "%ANDROID_SDK_ROOT%"
 
       - name: Build and package ALVR (.zip, .pdb, .apk, .exe)
+        id: build
         env:
           ANDROID_HOME: '${{ github.workspace }}\android-sdk'
           ANDROID_SDK_ROOT: '${{ github.workspace }}\android-sdk'

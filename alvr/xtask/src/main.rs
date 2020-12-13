@@ -406,7 +406,7 @@ fn build_installer(wix_path: &str) {
             "-ext",
             "WixBalExtension",
             "-o",
-            &format!("build\\ALVR-{}.exe", version),
+            &format!("build\\ALVR Installer v{}.exe", version),
         ],
     )
     .unwrap();

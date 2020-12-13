@@ -83,9 +83,8 @@
 
         <SetProperty Id="ARPINSTALLLOCATION" Value="[APPLICATIONFOLDER]" After="CostFinalize"/>
 
-        <!-- TODO: include our icon here -->
-        <!--<Icon Id="ProductICO" SourceFile="wix\Product.ico"/>-->
-        <!--<Property Id="ARPPRODUCTICON" Value="ProductICO" />-->
+        <Icon Id="ProductICO" SourceFile="alvr\launcher\res\alvr.ico"/>
+        <Property Id="ARPPRODUCTICON" Value="ProductICO"/>
 
         <Property Id="ARPHELPLINK" Value="https://alvr-org.github.io"/>
 
@@ -96,14 +95,8 @@
             <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="CustomizeDlg" Order="99">1</Publish>
             <Publish Dialog="CustomizeDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="99">1</Publish>
         </UI>
-
-        <!-- TODO: add a RTF license file -->
-        <!-- <WixVariable Id="WixUILicenseRtf" Value="wix\License.rtf"/> -->
         
-        <!-- TODO: include our banner here (493x58 px) -->
-        <!--<WixVariable Id="WixUIBannerBmp" Value="wix\Banner.bmp"/>-->
-
-        <!-- TODO: include our first page dialog image here (493x58 px) -->
-        <!--<WixVariable Id="WixUIDialogBmp" Value="wix\Dialog.bmp"/>-->
+        <WixVariable Id="WixUIBannerBmp" Value="wix\installer_banner.bmp"/>
+        <WixVariable Id="WixUIDialogBmp" Value="wix\installer_dialog.bmp"/>
     </Product>
 </Wix>

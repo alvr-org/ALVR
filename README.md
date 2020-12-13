@@ -26,7 +26,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only w
 
 It is recommended (but not mandatory) to uninstall any other VR streaming software on your PC, including older versions of ALVR. If you didn't already, install SteamVR, launch it and then close it (this is to make sure SteamVR executes its first time setup).
 
-To install ALVR download and execute `ALVR Installer vX.X.X.exe` from the [releases page](https://github.com/alvr-org/ALVR/releases). An entry will appear in the Start menu. The first time you open ALVR Launcher.exe you may have to allow it in the SmartScreen prompt. In the release page you can also find the portable version `alvr_server_windows.zip`. If you already have ALVR v13.1.0 or greater you can upgrade with the autoupdater.
+To install ALVR download and execute `ALVR_Installer_vX.X.X.exe` from the [releases page](https://github.com/alvr-org/ALVR/releases). An entry will appear in the Start menu. The first time you open ALVR Launcher.exe you may have to allow it in the SmartScreen prompt. In the release page you can also find the portable version `alvr_server_windows.zip`. If you already have ALVR v13.1.0 or greater you can upgrade with the autoupdater.
 
 Install the client on your headset through [SideQuest](https://sidequestvr.com/app/9/alvr-air-light-vr). To make the Oculus Quest microphone work you need to install the [VB-CABLE Virtual Audio Device](https://www.vb-audio.com/Cable/).
 

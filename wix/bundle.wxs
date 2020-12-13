@@ -17,9 +17,9 @@
         </BootstrapperApplicationRef>
 
         <util:RegistrySearch
-            Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64"
+            Key="SOFTWARE\Microsoft\DevDiv\VC\Servicing\14.0\RuntimeMinimum"
             Root="HKLM"
-            Value="Installed"
+            Value="Install"
             Variable="VCRedistInstalled"/>
 
         <Chain>

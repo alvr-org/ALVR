@@ -85,21 +85,38 @@ jobs:
         with:
           ref: ${{ needs.bump_version.outputs.release_ref }}
 
+      - uses: actions/cache@v2
+        name: Cache Wix 3.14
+        id: cache_wix
+        with:
+          path: |
+            wix314-binaries
+          key: ${{ runner.os }}-wix314-4118
+      
+      - name: Download WiX 3.14 binaries
+        if: steps.cache_wix.outputs.cache-hit != 'true'
+        run: |
+          Invoke-WebRequest http://static.wixtoolset.org/releases/v3.14.0.4118/wix314-binaries.zip -OutFile wix314-binaries.zip
+          Expand-Archive -Path wix314-binaries.zip -DestinationPath wix314-binaries/bin
+
       - name: Set better Android SDK path (workaround for rust-android-gradle)
         shell: cmd
         run: |
           mklink /J "%GITHUB_WORKSPACE%\android-sdk" "%ANDROID_SDK_ROOT%"
 
-      - name: Build and package ALVR (.zip, .pdb, .apk)
+      - name: Build and package ALVR (.zip, .pdb, .apk, .exe)
         env:
           ANDROID_HOME: '${{ github.workspace }}\android-sdk'
           ANDROID_SDK_ROOT: '${{ github.workspace }}\android-sdk'
+          WIX: 'wix314-binaries'
         run: |
           $env:RUST_BACKTRACE = 1
           cargo xtask install-deps
           cargo xtask publish
+          $file = Get-ChildItem -Name .\build\*.exe | Select-Object -f 1
+          echo "::set-output name=exe_filename::$file"
 
-      # Three release asset upload actions for three assets - .zip, .pdb and .apk
+      # Three release asset upload actions for four assets - .zip, .pdb, .apk and .exe
       - name: Upload ALVR Windows Server .zip
         uses: actions/upload-release-asset@v1
         env:
@@ -127,6 +144,15 @@ jobs:
           asset_path: ./build/alvr_client.apk
           asset_name: alvr_client.apk
           asset_content_type: application/vnd.android.package-archive
+      - name: Upload Windows Installer
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+          asset_path: ./build/${{ steps.build.outputs.exe_filename }}
+          asset_name: ${{ steps.build.outputs.exe_filename }}
+          asset_content_type: application/octet-stream
           
 #  publish_release:
 #    runs-on: ubuntu-latest

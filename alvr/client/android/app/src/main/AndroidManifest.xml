@@ -4,6 +4,9 @@
     android:installLocation="auto">
 
     <uses-feature
+        android:name="android.hardware.vr.headtracking"
+        android:required="true" />
+    <uses-feature
         android:name="android.hardware.microphone"
         android:required="true" />
     <uses-feature

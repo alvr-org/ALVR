@@ -30,7 +30,7 @@ gfx-hal = "0.6"
 dirs = "3"
 sysinfo = "0.15"
 runas = "0.2"
-msgbox = { git = 'https://github.com/bekker/msgbox-rs' }
+msgbox = "0.6"
 
 [target."cfg(windows)".dependencies]
 winapi = { version = "0.3", features = [
@@ -44,7 +44,6 @@ winapi = { version = "0.3", features = [
 ] }
 wio = "0.2"
 widestring = "0.4"
-winreg = "0.7"
 gfx-backend-dx11 = "0.6"
 
 [build-dependencies]

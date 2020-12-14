@@ -102,7 +102,6 @@ dependencies = [
  "tokio-util",
  "widestring 0.4.3",
  "winapi 0.3.9",
- "winreg 0.7.0",
  "wio",
 ]
 
@@ -1928,7 +1927,8 @@ dependencies = [
 [[package]]
 name = "msgbox"
 version = "0.6.0"
-source = "git+https://github.com/bekker/msgbox-rs#4dc1348db7d43c77dca0b6c43e63529513ddbd9b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "997d7ddd958df6f965b5f7e28acfffb0c8ee5eac8e73e29f14b33c18ca461baa"
 dependencies = [
  "cocoa",
  "glib",
@@ -2740,7 +2740,7 @@ dependencies = [
 [[package]]
 name = "settings-schema"
 version = "0.3.1"
-source = "git+https://github.com/zarik5/settings-schema-rs#a7e450ba1d48d00324a6ec1b8cf7a3213f320e81"
+source = "git+https://github.com/zarik5/settings-schema-rs#3f23daeb6f30ddfbea6f78fb5c6352eba3fa0866"
 dependencies = [
  "serde",
  "serde_json",
@@ -2750,7 +2750,7 @@ dependencies = [
 [[package]]
 name = "settings-schema-derive"
 version = "0.3.0"
-source = "git+https://github.com/zarik5/settings-schema-rs#a7e450ba1d48d00324a6ec1b8cf7a3213f320e81"
+source = "git+https://github.com/zarik5/settings-schema-rs#3f23daeb6f30ddfbea6f78fb5c6352eba3fa0866"
 dependencies = [
  "heck",
  "proc-macro2",

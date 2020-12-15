@@ -59,7 +59,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client"
-version = "13.5.0"
+version = "13.5.1"
 dependencies = [
  "alvr_common",
  "android_logger",

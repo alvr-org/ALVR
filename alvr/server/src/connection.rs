@@ -24,6 +24,20 @@ pub async fn client_discovery() {
         )
         .await;
 
+        if SESSION_MANAGER
+            .lock()
+            .get()
+            .to_settings()
+            .connection
+            .auto_trust_clients
+        {
+            update_client_list(
+                address.to_string(),
+                ClientListAction::TrustAndMaybeAddIp(None),
+            )
+            .await;
+        }
+
         if let Some(connection) = SESSION_MANAGER
             .lock()
             .get()

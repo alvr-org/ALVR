@@ -131,7 +131,7 @@ pub struct ClientHandshakePacket {
     pub render_height: u32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ClientConnectionDesc {
     pub device_name: String,

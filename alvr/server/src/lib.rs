@@ -150,6 +150,13 @@ fn init(log_sender: broadcast::Sender<String>) -> StrResult {
         let (shutdown_notifier, mut shutdown_receiver) = broadcast::channel(1);
 
         runtime.spawn(async move {
+            let connections = SESSION_MANAGER.lock().get().client_connections.clone();
+            for (hostname, connection) in connections {
+                if !connection.trusted {
+                    update_client_list(hostname, ClientListAction::RemoveIpOrEntry(None)).await;
+                }
+            }
+
             let web_server = show_err_async(web_server::web_server(log_sender));
 
             tokio::select! {

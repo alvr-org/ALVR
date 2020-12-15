@@ -77,6 +77,7 @@ define({
         "_root_headset_trackingSpace-choice-.description": "Sets what the headset uses as its reference for tracking and how the center of the space is defined. Stage tracking space behaves like a wired headset: the center of the space stays in one place after recentering the headset.",
         "_root_headset_trackingSpace_Local-choice-.name": "Local (Headset centered)",
         "_root_headset_trackingSpace_Stage-choice-.name": "Stage (Room centered)",
+        "_root_connection_autoTrustClients.name": "Trust clients automatically (not recommended)",
         "_root_connection_listenPort.name": "Server streaming port",
         "_root_connection_throttlingBitrateBits.name": "Maximum streaming bitrate",
         "_root_connection_clientRecvBufferSize.name": "Client buffer size",

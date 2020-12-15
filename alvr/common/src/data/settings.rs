@@ -235,6 +235,9 @@ pub struct HeadsetDesc {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDesc {
+    #[schema(advanced)]
+    pub auto_trust_clients: bool,
+
     #[schema(advanced, min = 1024, max = 65535)]
     pub web_server_port: u16,
 
@@ -409,6 +412,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         connection: ConnectionDescDefault {
+            auto_trust_clients: cfg!(debug_assertions),
             web_server_port: 8082,
             listen_port: 9944,
             throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,

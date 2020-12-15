@@ -15,7 +15,7 @@ lazy-static-include = "3"
 chrono = "0.4" 
 log = "0.4" 
 fern = "0.6" 
-settings-schema = { git = "https://github.com/zarik5/settings-schema-rs" } 
+settings-schema = { path = "../settings-schema" } 
 serde = "1" 
 serde_json = "1" 
 alvr_common = { path = "../common" } 

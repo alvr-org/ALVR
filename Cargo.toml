@@ -1,5 +1,7 @@
 [workspace]
 members = [
+    "alvr/settings-schema-derive",
+    "alvr/settings-schema",
     "alvr/xtask",
     "alvr/common",
     "alvr/client",

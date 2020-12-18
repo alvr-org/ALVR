@@ -206,7 +206,7 @@ impl SessionDesc {
             json_value
                 .get(SESSION_SETTINGS_STR)
                 .map(|new_session_settings_json| {
-                    extrapolate_session_settings(
+                    extrapolate_session_settings_from_session_settings(
                         &old_session_json[SESSION_SETTINGS_STR],
                         new_session_settings_json,
                         &settings_schema(session_settings_default()),
@@ -263,7 +263,7 @@ impl SessionDesc {
 // all data is lost.
 // Future strategies: check if value respects schema constraints, fuzzy field name matching, accept
 // integer to float and float to integer, tree traversal.
-fn extrapolate_session_settings(
+fn extrapolate_session_settings_from_session_settings(
     old_session_settings: &json::Value,
     new_session_settings: &json::Value,
     schema: &SchemaNode,
@@ -276,7 +276,7 @@ fn extrapolate_session_settings(
                     maybe_data.as_ref().map(|data_schema| {
                         let value_json =
                             if let Some(new_value_json) = new_session_settings.get(field_name) {
-                                extrapolate_session_settings(
+                                extrapolate_session_settings_from_session_settings(
                                     &old_session_settings[field_name],
                                     new_value_json,
                                     &data_schema.content,
@@ -312,7 +312,7 @@ fn extrapolate_session_settings(
                     maybe_data.as_ref().map(|data_schema| {
                         let value_json =
                             if let Some(new_value_json) = new_session_settings.get(variant_name) {
-                                extrapolate_session_settings(
+                                extrapolate_session_settings_from_session_settings(
                                     &old_session_settings[variant_name],
                                     new_value_json,
                                     &data_schema.content,
@@ -339,7 +339,7 @@ fn extrapolate_session_settings(
             let content_json = new_session_settings
                 .get("content")
                 .map(|new_content_json| {
-                    extrapolate_session_settings(
+                    extrapolate_session_settings_from_session_settings(
                         &old_session_settings["content"],
                         new_content_json,
                         content,
@@ -363,7 +363,7 @@ fn extrapolate_session_settings(
             let content_json = new_session_settings
                 .get("content")
                 .map(|new_content_json| {
-                    extrapolate_session_settings(
+                    extrapolate_session_settings_from_session_settings(
                         &old_session_settings["content"],
                         new_content_json,
                         content,
@@ -427,26 +427,26 @@ fn extrapolate_session_settings(
             let element_json = new_session_settings
                 .get("element")
                 .map(|new_element_json| {
-                    extrapolate_session_settings(
-                        &old_session_settings["content"],
+                    extrapolate_session_settings_from_session_settings(
+                        &old_session_settings["element"],
                         new_element_json,
                         default_element,
                     )
                 })
-                .unwrap_or_else(|| old_session_settings["content"].clone());
+                .unwrap_or_else(|| old_session_settings["element"].clone());
 
-            // todo: default field cannot be properly validated until I implement plain settings
+            // todo: content field cannot be properly validated until I implement plain settings
             // validation (not to be confused with session/session_settings validation). Any
-            // problem inside this new_session_settings default will result in the loss all data in the new
+            // problem inside this new_session_settings content will result in the loss all data in the new
             // session_settings.
-            let default = new_session_settings
-                .get("default")
+            let content_json = new_session_settings
+                .get("content")
                 .cloned()
-                .unwrap_or_else(|| old_session_settings["default"].clone());
+                .unwrap_or_else(|| old_session_settings["content"].clone());
 
             json::json!({
                 "element": element_json,
-                "default": default
+                "content": content_json
             })
         }
 
@@ -460,29 +460,30 @@ fn extrapolate_session_settings(
             let value_json = new_session_settings
                 .get("value")
                 .map(|new_value_json| {
-                    extrapolate_session_settings(
+                    extrapolate_session_settings_from_session_settings(
                         &old_session_settings["value"],
                         new_value_json,
                         default_value,
                     )
                 })
-                .unwrap_or_else(|| old_session_settings["content"].clone());
+                .unwrap_or_else(|| old_session_settings["value"].clone());
 
-            // todo: validate default using settings validation
-            let default = new_session_settings
-                .get("default")
+            // todo: validate content using settings validation
+            let content_json = new_session_settings
+                .get("content")
                 .cloned()
-                .unwrap_or_else(|| old_session_settings["default"].clone());
+                .unwrap_or_else(|| old_session_settings["content"].clone());
 
             json::json!({
                 "key": key_json,
                 "value": value_json,
-                "default": default
+                "content": content_json
             })
         }
     }
 }
 
+// session_settings does not get validated here, it must be already valid
 fn json_session_settings_to_settings(
     session_settings: &json::Value,
     schema: &SchemaNode,
@@ -506,30 +507,21 @@ fn json_session_settings_to_settings(
         ),
 
         SchemaNode::Choice { variants, .. } => {
-            let variant = session_settings["variant"].clone();
-            let only_tag = variants
+            let variant = session_settings["variant"].as_str().unwrap();
+            let maybe_content = variants
                 .iter()
-                .all(|(_, maybe_data)| matches!(maybe_data, None));
-            if only_tag {
-                variant
-            } else {
-                let variant = variant.as_str().unwrap();
-                let maybe_content = variants
-                    .iter()
-                    .find(|(variant_name, _)| variant_name == variant)
-                    .map(|(_, maybe_data)| maybe_data.as_ref())
-                    .unwrap()
-                    .map(|data_schema| {
-                        json_session_settings_to_settings(
-                            &session_settings[variant],
-                            &data_schema.content,
-                        )
-                    });
-                json::json!({
-                    "type": variant,
-                    "content": maybe_content
-                })
-            }
+                .find(|(variant_name, _)| variant_name == variant)
+                .and_then(|(_, maybe_data)| maybe_data.as_ref())
+                .map(|data_schema| {
+                    json_session_settings_to_settings(
+                        &session_settings[variant],
+                        &data_schema.content,
+                    )
+                });
+            json::json!({
+                "type": variant,
+                "content": maybe_content
+            })
         }
 
         SchemaNode::Optional { content, .. } => {
@@ -555,7 +547,7 @@ fn json_session_settings_to_settings(
             }
 
             json::json!({
-                "type": state,
+                "state": state,
                 "content": maybe_content
             })
         }
@@ -576,7 +568,7 @@ fn json_session_settings_to_settings(
         ),
 
         SchemaNode::Vector { .. } | SchemaNode::Dictionary { .. } => {
-            session_settings["default"].clone()
+            session_settings["content"].clone()
         }
     }
 }

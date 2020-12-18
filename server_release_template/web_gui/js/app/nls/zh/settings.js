@@ -203,8 +203,8 @@ define({
 	"_root_video_displayRefreshRate.description": "为SteamVR和头显设置刷新率。 即使头显不支持，SteamVR也会使用该刷新率。 较高的刷新率需要性能更高的电脑。 Quest初代的最大刷新率为72 Hz。",
 	"_root_headset_trackingSpace-choice-.name": "安全区中心",
     "_root_headset_trackingSpace-choice-.description": "设置头显使用什么作为跟踪的参考，以及如何定义空间中心。",
-    "_root_headset_trackingSpace_Local-choice-.name": "头显所在的位置",
-    "_root_headset_trackingSpace_Stage-choice-.name": "安全区中心点所在的位置",
+    "_root_headset_trackingSpace_local-choice-.name": "头显所在的位置",
+    "_root_headset_trackingSpace_stage-choice-.name": "安全区中心点所在的位置",
         "customTracking": "自定义",
 	"_root_video_clientRequestRealtimeDecoder.name": "请求实时解码器优先级（客户端）"
 });

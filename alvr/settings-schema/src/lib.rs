@@ -8,7 +8,7 @@ pub use settings_schema_derive::SettingsSchema;
 #[cfg_attr(feature = "rename_camel_case", serde(rename_all = "camelCase"))]
 #[cfg_attr(feature = "rename_snake_case", serde(rename_all = "snake_case"))]
 // todo: cfg-gate tag and content
-#[serde(tag = "type", content = "content")]
+#[serde(tag = "state", content = "content")]
 pub enum Switch<T> {
     Enabled(T),
     Disabled,

@@ -61,7 +61,12 @@ pub struct ColorCorrectionDesc {
     pub sharpening: f32,
 }
 
+// Note: This enum cannot be converted to camelCase due to a inconsistency between generation and
+// validation: "hevc" vs "hEVC".
+// This is caused by serde and settings-schema using different libraries for casing conversion
+// todo: don't use casing conversion also for all other structs and enums
 #[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
+#[serde(tag = "type", content = "content")]
 #[repr(u8)]
 pub enum CodecType {
     H264,
@@ -69,6 +74,7 @@ pub enum CodecType {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 #[repr(u8)]
 pub enum TrackingSpace {
     Local,
@@ -269,7 +275,7 @@ pub struct ConnectionDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum Theme {
     SystemDefault,
     Classic,
@@ -277,7 +283,7 @@ pub enum Theme {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum UpdateChannel {
     NoUpdates,
     Stable,
@@ -286,7 +292,7 @@ pub enum UpdateChannel {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum LogLevel {
     Error,
     Warning,

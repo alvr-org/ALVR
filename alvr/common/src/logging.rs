@@ -122,6 +122,7 @@ pub enum LogId {
     ClientFoundInvalid,
     ClientFoundWrongIp,
     ClientFoundWrongVersion(String),
+    ClientConnected,
     ClientDisconnected,
 }
 

@@ -239,7 +239,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
             let mut shutdown_receiver = shutdown_notifier.subscribe();
             runtime.spawn(async move {
                 tokio::select! {
-                    _ = connection::client_discovery() => (),
+                    _ = connection::connection_loop() => (),
                     _ = shutdown_receiver.recv() => (),
                 }
             });

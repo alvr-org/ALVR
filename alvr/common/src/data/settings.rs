@@ -349,7 +349,7 @@ pub fn session_settings_default() -> SettingsDefault {
             seconds_from_vsync_to_photons: 0.005,
             ipd: 0.063,
             foveated_rendering: SwitchDefault {
-                enabled: false,
+                enabled: true,
                 content: FoveatedRenderingDescDefault {
                     strength: 2.,
                     shape: 1.5,

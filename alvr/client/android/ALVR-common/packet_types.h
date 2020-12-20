@@ -189,23 +189,7 @@ struct HelloMessage {
 	uint32_t renderWidth;
 	uint32_t renderHeight;
 };
-struct ConnectionMessage {
-	uint32_t type; // ALVR_PACKET_TYPE_CONNECTION_MESSAGE
-	uint32_t codec; // enum ALVR_CODEC
-	bool realtimeDecoder;
-	uint32_t videoWidth; // in pixels
-	uint32_t videoHeight; // in pixels
-	uint32_t bufferSize; // in bytes
-	uint32_t frameQueueSize;
-	uint8_t refreshRate;
-	bool streamMic;
-	uint8_t foveationMode;
-    float foveationStrength;
-    float foveationShape;
-    float foveationVerticalOffset;
-    uint32_t trackingSpace; // ALVR_TRACKING_SPACE
-	char webGuiUrl[32];
-};
+
 struct BroadcastRequestMessage {
 	uint32_t type; // ALVR_PACKET_TYPE_BROADCAST_REQUEST_MESSAGE
 };

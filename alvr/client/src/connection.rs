@@ -28,13 +28,18 @@ async fn try_connect(
         session_desc.to_settings()
     };
 
+    // let message = ConnectionMessage {
+    // };
+
+    // unsafe { connectSocket() };
+
     loop {
         match trace_err!(control_socket.recv().await)? {
             ServerControlPacket::Restarting => {
-                // stopStream(&*java_vm, &*activity_ref, &mut control_socket, true).await?;
+                // unsafe { disconnectSocket() };
             }
             ServerControlPacket::Shutdown => {
-                // stopStream(&*java_vm, &*activity_ref, &mut control_socket, false).await?;
+                // unsafe { disconnectSocket() };
             }
             ServerControlPacket::Reserved(_) => (),
             ServerControlPacket::ReservedBuffer(_) => (),

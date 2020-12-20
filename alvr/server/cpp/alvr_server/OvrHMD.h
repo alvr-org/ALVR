@@ -70,7 +70,8 @@ public:
 	void updateIPDandFoV(const TrackingInfo& info);
 
 private:
-	bool m_componentsInitialized;
+	bool m_baseComponentsInitialized;
+	bool m_streamComponentsInitialized;
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 	

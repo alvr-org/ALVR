@@ -104,7 +104,7 @@ void connectSocket(void *v_env, ConnectionMessage connectionMessage) {
     // Save video width and height
     g_socket.m_connectionMessage = connectionMessage;
 
-    inet_pton(AF_INET, connectionMessage.ip, &g_socket.m_serverAddr);
+    inet_pton(AF_INET, connectionMessage.ip, &g_socket.m_serverAddr.sin_addr);
     g_socket.m_serverAddr.sin_port = htons(9944);
     g_socket.m_connected = true;
     g_socket.m_hasServerAddress = true;

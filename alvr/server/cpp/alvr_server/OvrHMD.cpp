@@ -279,8 +279,8 @@ OvrHmd::OvrHmd()
 		}
 
 		//create listener
-		m_Listener.reset(new ClientConnection( m_ChaperoneUpdater,
-			[&]() { OnStreamStart(); }, [&]() { OnPoseUpdated(); }, [&]() { OnPacketLoss(); }));
+		m_Listener.reset(new ClientConnection(
+			m_ChaperoneUpdater, [&]() { OnPoseUpdated(); }, [&]() { OnPacketLoss(); }));
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
 		m_encoder = std::make_shared<CEncoder>();
@@ -433,15 +433,6 @@ OvrHmd::OvrHmd()
 				m_rightController->onPoseUpdate(i, info);
 			}
 		}
-	}
-
-	void OvrHmd::OnStreamStart() {
-		if (!m_streamComponentsInitialized) {
-			return;
-		}
-		Debug("OnStreamStart()\n");
-		// Insert IDR frame for faster startup of decoding.
-		m_encoder->OnStreamStart();
 	}
 
 	void OvrHmd::OnPacketLoss() {

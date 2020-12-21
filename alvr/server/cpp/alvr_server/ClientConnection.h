@@ -23,7 +23,7 @@ extern "C" {
 class ClientConnection : public CThread {
 public:
 
-	ClientConnection(std::shared_ptr<ChaperoneUpdater> chaperoneUpdater, std::function<void()> streamStartCallback,
+	ClientConnection(std::shared_ptr<ChaperoneUpdater> chaperoneUpdater,
 		std::function<void()> poseUpdatedCallback, std::function<void()> packetLossCallback);
 	~ClientConnection();
 
@@ -41,7 +41,6 @@ public:
 	void Connect(const sockaddr_in *addr);
 	void OnFecFailure();
 	std::shared_ptr<Statistics> GetStatistics();
-	bool IsStreaming();
 private:
 	bool m_bExiting;
 	std::shared_ptr<Poller> m_Poller;
@@ -61,15 +60,12 @@ private:
 	uint32_t videoPacketCounter = 0;
 	uint32_t soundPacketCounter = 0;
 
-	std::function<void()> m_StreamStartCallback;
 	std::function<void()> m_PoseUpdatedCallback;
 	std::function<void()> m_PacketLossCallback;
 	TrackingInfo m_TrackingInfo;
 
 	uint64_t m_TimeDiff = 0;
 	CRITICAL_SECTION m_CS;
-
-	bool m_Streaming;
 
 	TimeSync m_reportedStatistics;
 	uint64_t m_lastFecFailure = 0;

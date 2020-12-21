@@ -530,8 +530,6 @@ async fn connect_to_any_client(
             std::future::pending::<()>().await;
         }
 
-        // let identity = clients_info.get(&control_socket.peer_ip()).unwrap().clone();
-
         break control_socket;
     }
 }
@@ -567,6 +565,7 @@ async fn pairing_loop(
 
 pub async fn connection_lifecycle_loop() -> StrResult {
     loop {
+        info!("connection_lifecycle_loop");
         let clients_updated_notifier =
             trace_none!(CLIENTS_UPDATED_NOTIFIER.lock().as_ref())?.clone();
 
@@ -578,25 +577,27 @@ pub async fn connection_lifecycle_loop() -> StrResult {
 
         info!(id: LogId::ClientConnected);
 
+        unsafe { crate::InitializeStreaming() };
+
         loop {
-            tokio::select! {
-                maybe_packet = control_socket.recv() => match maybe_packet {
-                    Ok(ClientControlPacket::Disconnect) => {
-                        info!(id: LogId::ClientDisconnected, "Client disconnected gracefully");
-                        break;
-                    }
-                    Ok(ClientControlPacket::Reserved(_))
-                        | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
-                    Err(e) => {
-                        warn!(
-                            id: LogId::ClientDisconnected,
-                            "Error while listening for control packet: {}",
-                            e
-                        );
-                        break;
-                    }
+            match control_socket.recv().await {
+                Ok(ClientControlPacket::Disconnect) => {
+                    info!(
+                        id: LogId::ClientDisconnected,
+                        "Client disconnected gracefully"
+                    );
+                    break;
                 }
-            };
+                Ok(ClientControlPacket::Reserved(_))
+                | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
+                Err(e) => {
+                    warn!(
+                        id: LogId::ClientDisconnected,
+                        "Error while listening for control packet: {}", e
+                    );
+                    break;
+                }
+            }
         }
     }
 }

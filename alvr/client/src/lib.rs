@@ -217,7 +217,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
         runtime.spawn({
             let on_stream_stop_notifier = on_stream_stop_notifier.clone();
             async move {
-                let connection_loop = connection::connection_loop(
+                let connection_loop = connection::connection_lifecycle_loop(
                     headset_info,
                     device_name,
                     private_identity,

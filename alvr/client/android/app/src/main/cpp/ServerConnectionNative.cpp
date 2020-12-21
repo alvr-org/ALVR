@@ -98,7 +98,9 @@ void updateTimeout() {
     g_socket.m_lastReceived = getTimestampUs();
 }
 
-void connectSocket(ConnectionMessage connectionMessage) {
+void connectSocket(void *v_env, ConnectionMessage connectionMessage) {
+    auto *env = (JNIEnv *) v_env;
+
     // Save video width and height
     g_socket.m_connectionMessage = connectionMessage;
 
@@ -121,7 +123,7 @@ void connectSocket(ConnectionMessage connectionMessage) {
     LatencyCollector::Instance().resetAll();
     g_socket.m_nalParser->setCodec(g_socket.m_connectionMessage.codec);
 
-    g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mOnConnectMethodID,
+    env->CallVoidMethod(g_socket.m_instance, g_socket.mOnConnectMethodID,
                                    g_socket.m_connectionMessage.videoWidth,
                                    g_socket.m_connectionMessage.videoHeight,
                                    g_socket.m_connectionMessage.codec,
@@ -135,8 +137,8 @@ void connectSocket(ConnectionMessage connectionMessage) {
                                    g_socket.m_connectionMessage.foveationVerticalOffset,
                                    g_socket.m_connectionMessage.trackingSpace);
 
-    jstring jstr = g_socket.m_env->NewStringUTF(g_socket.m_connectionMessage.webGuiUrl);
-    g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mSetWebGuiUrlID, jstr);
+    jstring jstr = env->NewStringUTF(g_socket.m_connectionMessage.webGuiUrl);
+    env->CallVoidMethod(g_socket.m_instance, g_socket.mSetWebGuiUrlID, jstr);
 }
 
 void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
@@ -566,7 +568,7 @@ void runLoop(void *v_env, void *v_instance) {
     int nfds = std::max(g_socket.m_sock, g_socket.m_notifyPipe[0]) + 1;
 
     g_socket.m_env = env;
-    g_socket.m_instance = instance;
+    g_socket.m_instance = env->NewGlobalRef(instance);
 
     while (!g_socket.m_stopped) {
         timeval timeout{};
@@ -596,6 +598,8 @@ void runLoop(void *v_env, void *v_instance) {
     LOGI("Exited select loop.");
 
     g_socket.m_soundPlayer.reset();
+
+//    env->DeleteGlobalRef(g_socket.m_instance);
 
     LOGI("Exiting UdpReceiverThread runLoop");
 }
@@ -638,11 +642,13 @@ int getServerPort() {
     return 0;
 }
 
-void disconnectSocket() {
+void disconnectSocket(void *v_env) {
+    auto *env = (JNIEnv *) v_env;
+
     g_socket.m_connected = false;
     memset(&g_socket.m_serverAddr, 0, sizeof(g_socket.m_serverAddr));
 
-    g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mOnDisconnectedMethodID);
+    env->CallVoidMethod(g_socket.m_instance, g_socket.mOnDisconnectedMethodID);
 
     if (g_socket.m_soundPlayer) {
         g_socket.m_soundPlayer->Stop();

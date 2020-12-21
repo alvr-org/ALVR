@@ -148,6 +148,8 @@ fn init(log_sender: broadcast::Sender<String>) -> StrResult {
             .get_mut(None, SessionUpdateType::Other);
 
         let (shutdown_notifier, mut shutdown_receiver) = broadcast::channel(1);
+        let (clients_updated_notifier, _) = broadcast::channel(1);
+        *CLIENTS_UPDATED_NOTIFIER.lock() = Some(clients_updated_notifier);
 
         runtime.spawn(async move {
             let connections = SESSION_MANAGER.lock().get().client_connections.clone();
@@ -239,8 +241,9 @@ pub unsafe extern "C" fn HmdDriverFactory(
             let mut shutdown_receiver = shutdown_notifier.subscribe();
             runtime.spawn(async move {
                 tokio::select! {
-                    _ = connection::client_discovery() => (),
+                    Err(e) = connection::connection_lifecycle_loop() => error!("{}", e),
                     _ = shutdown_receiver.recv() => (),
+                    else => (),
                 }
             });
         }

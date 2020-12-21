@@ -16,6 +16,23 @@ struct OnCreateResult {
     int loadingSurfaceHandle;
 };
 
+struct ConnectionMessage {
+    const char *ip;
+    unsigned int codec; // enum ALVR_CODEC
+    bool realtimeDecoder;
+    unsigned int videoWidth; // in pixels
+    unsigned int videoHeight; // in pixels
+    unsigned int bufferSize; // in bytes
+    unsigned int frameQueueSize;
+    unsigned char refreshRate;
+    bool streamMic;
+    unsigned char foveationMode;
+    float foveationStrength;
+    float foveationShape;
+    float foveationVerticalOffset;
+    unsigned int trackingSpace; // ALVR_TRACKING_SPACE
+    const char *webGuiUrl;
+};
 
 extern "C" void decoderInput(long long frameIndex);
 extern "C" void decoderOutput(long long frameIndex);
@@ -38,6 +55,7 @@ extern "C" void onGuardianSyncAckNative(long long timestamp);
 extern "C" void onGuardianSegmentAckNative(long long timestamp, int segmentIndex);
 extern "C" void onBatteryChangedNative(int battery);
 
+extern "C" void connectSocket(void *env, ConnectionMessage message);
 extern "C" void
 initializeSocket(void *env, void *instance, int helloPort, int port, void *deviceName,
                  void *broadcastAddrList, int refreshRate, int renderWidth, int renderHeight);
@@ -49,3 +67,4 @@ extern "C" void *getServerAddress(void *env);
 extern "C" int getServerPort();
 extern "C" void sendNative(long long nativeBuffer, int bufferLength);
 extern "C" void setSinkPreparedNative(unsigned char prepared);
+extern "C" void disconnectSocket(void *env);

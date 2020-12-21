@@ -3,14 +3,11 @@
 
 ClientConnection::ClientConnection(
 	std::shared_ptr<ChaperoneUpdater> chaperoneUpdater,
-	std::function<void()> streamStartCallback,
 	std::function<void()> poseUpdatedCallback,
 	std::function<void()> packetLossCallback)
 	: m_ChaperoneUpdater(chaperoneUpdater)
 	, m_bExiting(false)
-	, m_Streaming(false)
 	, m_LastStatisticsUpdate(0) {
-	m_StreamStartCallback = streamStartCallback;
 	m_PoseUpdatedCallback = poseUpdatedCallback;
 	m_PacketLossCallback = packetLossCallback;
 
@@ -34,8 +31,6 @@ ClientConnection::ClientConnection(
 
 	// Start thread.
 	Start();
-
-	m_Streaming = true;
 }
 
 ClientConnection::~ClientConnection() {
@@ -191,10 +186,6 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint6
 }
 
 void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
-	if (!m_Streaming) {
-		Debug("Skip sending packet because streaming is off.\n");
-		return;
-	}
 	FECSend(buf, len, frameIndex, mVideoFrameIndex);
 	mVideoFrameIndex++;
 }
@@ -202,10 +193,6 @@ void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 void ClientConnection::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
 	uint8_t packetBuffer[2000];
 
-	if (!m_Streaming) {
-		Debug("Skip sending audio packet because streaming is off.\n");
-		return;
-	}
 	Debug("Sending audio frame. Size=%d bytes\n", len);
 
 	int remainBuffer = len;
@@ -248,10 +235,6 @@ void ClientConnection::SendAudio(uint8_t *buf, int len, uint64_t presentationTim
 
 void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand)
 {
-	if (!m_Streaming) {
-		Debug("Skip sending haptics packet because streaming is off.\n");
-		return;
-	}
 	Debug("Sending haptics feedback. startTime=%llu amplitude=%f duration=%f frequency=%f\n", startTime, amplitude, duration, frequency);
 
 	HapticsFeedback packetBuffer;
@@ -318,19 +301,6 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			uint64_t TimeDiff = Current - (timeSync->clientTime + RTT / 2);
 			m_TimeDiff = TimeDiff;
 			Debug("TimeSync: server - client = %lld us RTT = %lld us\n", TimeDiff, RTT);
-		}
-	}
-	else if (type == ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE && len >= sizeof(StreamControlMessage)) {
-		StreamControlMessage *streamControl = (StreamControlMessage*)buf;
-
-		if (streamControl->mode == 1) {
-			Debug("Stream control message: Start stream.\n");
-			m_Streaming = true;
-			m_StreamStartCallback();
-		}
-		else if (streamControl->mode == 2) {
-			Debug("Stream control message: Stop stream.\n");
-			m_Streaming = false;
 		}
 	}
 	else if (type == ALVR_PACKET_TYPE_PACKET_ERROR_REPORT && len >= sizeof(PacketErrorReport)) {
@@ -440,8 +410,4 @@ void ClientConnection::OnFecFailure() {
 
 std::shared_ptr<Statistics> ClientConnection::GetStatistics() {
 	return m_Statistics;
-}
-
-bool ClientConnection::IsStreaming() {
-	return m_Streaming;
 }

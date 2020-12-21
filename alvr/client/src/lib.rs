@@ -214,24 +214,24 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
         let (on_pause_notifier, mut on_pause_receiver) = broadcast::channel(1);
         let (on_stream_stop_notifier, _) = broadcast::channel(1);
 
-        // runtime.spawn({
-        //     let on_stream_stop_notifier = on_stream_stop_notifier.clone();
-        //     async move {
-        //         let connection_loop = connection::connection_loop(
-        //             headset_info,
-        //             device_name,
-        //             private_identity,
-        //             on_stream_stop_notifier,
-        //             Arc::new(java_vm),
-        //             Arc::new(activity_ref),
-        //         );
+        runtime.spawn({
+            let on_stream_stop_notifier = on_stream_stop_notifier.clone();
+            async move {
+                let connection_loop = connection::connection_lifecycle_loop(
+                    headset_info,
+                    device_name,
+                    private_identity,
+                    on_stream_stop_notifier,
+                    Arc::new(java_vm),
+                    Arc::new(activity_ref),
+                );
 
-        //         tokio::select! {
-        //             _ = connection_loop => (),
-        //             _ = on_pause_receiver.recv() => ()
-        //         };
-        //     }
-        // });
+                tokio::select! {
+                    _ = connection_loop => (),
+                    _ = on_pause_receiver.recv() => ()
+                };
+            }
+        });
 
         *MAYBE_ON_STREAM_STOP_NOTIFIER.lock() = Some(on_stream_stop_notifier);
         *MAYBE_ON_PAUSE_NOTIFIER.lock() = Some(on_pause_notifier);

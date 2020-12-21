@@ -10,7 +10,8 @@ void fixInvalidHaptics(float hapticFeedback[3])
 
 OvrHmd::OvrHmd()
 		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
-		, m_componentsInitialized(false)
+		, m_baseComponentsInitialized(false)
+		, m_streamComponentsInitialized(false)
 	{
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
@@ -103,45 +104,48 @@ OvrHmd::OvrHmd()
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String, "{oculus}/icons/quest_headset_standby.png");
 			   		 	  	  
 		
+		if (!m_baseComponentsInitialized) {
+			m_baseComponentsInitialized = true;
 
-		m_D3DRender = std::make_shared<CD3DRender>();
+			m_D3DRender = std::make_shared<CD3DRender>();
 
-		// Use the same adapter as vrcompositor uses. If another adapter is used, vrcompositor says "failed to open shared texture" and then crashes.
-		// It seems vrcompositor selects always(?) first adapter. vrcompositor may use Intel iGPU when user sets it as primary adapter. I don't know what happens on laptop which support optimus.
-		// Prop_GraphicsAdapterLuid_Uint64 is only for redirect display and is ignored on direct mode driver. So we can't specify an adapter for vrcompositor.
-		// m_nAdapterIndex is set 0 on the launcher.
-		if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
-		{
-			Error("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.\n", Settings::Instance().m_nAdapterIndex);
-			return vr::VRInitError_Driver_Failed;
+			// Use the same adapter as vrcompositor uses. If another adapter is used, vrcompositor says "failed to open shared texture" and then crashes.
+			// It seems vrcompositor selects always(?) first adapter. vrcompositor may use Intel iGPU when user sets it as primary adapter. I don't know what happens on laptop which support optimus.
+			// Prop_GraphicsAdapterLuid_Uint64 is only for redirect display and is ignored on direct mode driver. So we can't specify an adapter for vrcompositor.
+			// m_nAdapterIndex is set 0 on the launcher.
+			if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
+			{
+				Error("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.\n", Settings::Instance().m_nAdapterIndex);
+				return vr::VRInitError_Driver_Failed;
+			}
+
+			int32_t nDisplayAdapterIndex;
+			if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, m_adapterName))
+			{
+				Error("Failed to get primary adapter info!\n");
+				return vr::VRInitError_Driver_Failed;
+			}
+
+			Info("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
+			Info("OSVer: %ls\n", GetWindowsOSVersion().c_str());
+
+			m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
+			m_VSyncThread->Start();
+
+			m_displayComponent = std::make_shared<OvrDisplayComponent>();
+			m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender);
+
+			m_ChaperoneUpdater = std::make_shared<ChaperoneUpdater>();
+			m_ChaperoneUpdater->ResetData(0, 0);
+			m_ChaperoneUpdater->GenerateStandingChaperone();
+			m_ChaperoneUpdater->MaybeCommitData();
+
+			DriverReadyIdle();
 		}
-
-		int32_t nDisplayAdapterIndex;
-		if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, m_adapterName))
-		{
-			Error("Failed to get primary adapter info!\n");
-			return vr::VRInitError_Driver_Failed;
-		}
-
-		Info("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
-		Info("OSVer: %ls\n", GetWindowsOSVersion().c_str());
-
-		m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
-		m_VSyncThread->Start();
-
-		m_displayComponent = std::make_shared<OvrDisplayComponent>();
-		m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender);
 
 		vr::VREvent_Data_t eventData;
 		eventData.ipd = { Settings::Instance().m_flIPD };
 		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_IpdChanged, eventData, 0);
-
-		m_ChaperoneUpdater = std::make_shared<ChaperoneUpdater>();
-		m_ChaperoneUpdater->ResetData(0, 0);
-		m_ChaperoneUpdater->GenerateStandingChaperone();
-		m_ChaperoneUpdater->MaybeCommitData();
-
-		DriverReadyIdle();
 
 		return vr::VRInitError_None;
 	}
@@ -270,13 +274,13 @@ OvrHmd::OvrHmd()
 	}
 
 	void OvrHmd::StartStreaming() {
-		if (m_componentsInitialized) {
+		if (m_streamComponentsInitialized) {
 			return;
 		}
 
 		//create listener
-		m_Listener.reset(new ClientConnection( m_ChaperoneUpdater,
-			[&]() { OnStreamStart(); }, [&]() { OnPoseUpdated(); }, [&]() { OnPacketLoss(); }));
+		m_Listener.reset(new ClientConnection(
+			m_ChaperoneUpdater, [&]() { OnPoseUpdated(); }, [&]() { OnPacketLoss(); }));
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
 		m_encoder = std::make_shared<CEncoder>();
@@ -302,7 +306,7 @@ OvrHmd::OvrHmd()
 
 		m_encoder->OnStreamStart();
 
-		m_componentsInitialized = true;
+		m_streamComponentsInitialized = true;
 	}
 
 	void OvrHmd::StopStreaming() {
@@ -431,17 +435,8 @@ OvrHmd::OvrHmd()
 		}
 	}
 
-	void OvrHmd::OnStreamStart() {
-		if (!m_componentsInitialized) {
-			return;
-		}
-		Debug("OnStreamStart()\n");
-		// Insert IDR frame for faster startup of decoding.
-		m_encoder->OnStreamStart();
-	}
-
 	void OvrHmd::OnPacketLoss() {
-		if (!m_componentsInitialized) {
+		if (!m_streamComponentsInitialized) {
 			return;
 		}
 		Debug("OnPacketLoss()\n");

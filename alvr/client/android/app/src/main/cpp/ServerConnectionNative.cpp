@@ -98,18 +98,23 @@ void updateTimeout() {
     g_socket.m_lastReceived = getTimestampUs();
 }
 
-void sendStreamStartPacket() {
-    LOGSOCKETI("Sending stream start packet.");
-    // Start stream.
-    StreamControlMessage message = {};
-    message.type = ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE;
-    message.mode = 1;
-    send(&message, sizeof(message));
-}
+void connectSocket(void *v_env, ConnectionMessage connectionMessage) {
+    auto *env = (JNIEnv *) v_env;
 
-void onConnect(const ConnectionMessage &connectionMessage) {
     // Save video width and height
     g_socket.m_connectionMessage = connectionMessage;
+
+    inet_pton(AF_INET, connectionMessage.ip, &g_socket.m_serverAddr.sin_addr);
+    g_socket.m_serverAddr.sin_port = htons(9944);
+    g_socket.m_connected = true;
+    g_socket.m_hasServerAddress = true;
+
+    LOGI("Try setting recv buffer size = %d bytes", g_socket.m_connectionMessage.bufferSize);
+    int val = g_socket.m_connectionMessage.bufferSize;
+    setsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, sizeof(val));
+    socklen_t socklen = sizeof(val);
+    getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &socklen);
+    LOGI("Current socket recv buffer is %d bytes", val);
 
     updateTimeout();
     g_socket.m_prevVideoSequence = 0;
@@ -118,7 +123,7 @@ void onConnect(const ConnectionMessage &connectionMessage) {
     LatencyCollector::Instance().resetAll();
     g_socket.m_nalParser->setCodec(g_socket.m_connectionMessage.codec);
 
-    g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mOnConnectMethodID,
+    env->CallVoidMethod(g_socket.m_instance, g_socket.mOnConnectMethodID,
                                    g_socket.m_connectionMessage.videoWidth,
                                    g_socket.m_connectionMessage.videoHeight,
                                    g_socket.m_connectionMessage.codec,
@@ -132,13 +137,8 @@ void onConnect(const ConnectionMessage &connectionMessage) {
                                    g_socket.m_connectionMessage.foveationVerticalOffset,
                                    g_socket.m_connectionMessage.trackingSpace);
 
-    jstring jstr = g_socket.m_env->NewStringUTF(g_socket.m_connectionMessage.webGuiUrl);
-    g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mSetWebGuiUrlID, jstr);
-
-    if (g_socket.mSinkPrepared) {
-        LOGSOCKETI("onConnect: Send stream start packet.");
-        sendStreamStartPacket();
-    }
+    jstring jstr = env->NewStringUTF(g_socket.m_connectionMessage.webGuiUrl);
+    env->CallVoidMethod(g_socket.m_instance, g_socket.mSetWebGuiUrlID, jstr);
 }
 
 void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
@@ -313,32 +313,6 @@ void parse(char *packet, int packetSize, const sockaddr_in &addr) {
             return;
         }
         onPacketRecv(packet, packetSize);
-    } else {
-        uint32_t type = *(uint32_t *) packet;
-        if (type == ALVR_PACKET_TYPE_BROADCAST_REQUEST_MESSAGE) {
-            send(&g_socket.mHelloMessage, sizeof(g_socket.mHelloMessage));
-        } else if (type == ALVR_PACKET_TYPE_CONNECTION_MESSAGE) {
-            if (packetSize < sizeof(ConnectionMessage))
-                return;
-
-            g_socket.m_serverAddr = addr;
-            g_socket.m_serverAddr.sin_port = htons(9944);
-            g_socket.m_connected = true;
-            g_socket.m_hasServerAddress = true;
-
-            auto *connectionMessage = (ConnectionMessage *) packet;
-
-            LOGI("Try setting recv buffer size = %d bytes", connectionMessage->bufferSize);
-            int val = connectionMessage->bufferSize;
-            setsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, sizeof(val));
-            socklen_t socklen = sizeof(val);
-            getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &socklen);
-            LOGI("Current socket recv buffer is %d bytes", val);
-
-            onConnect(*connectionMessage);
-
-            return;
-        }
     }
 }
 
@@ -362,12 +336,6 @@ void recv() {
     }
 }
 
-void sendBroadcast(const void *buf, size_t len) {
-    for (const sockaddr_in &address : g_socket.m_broadcastAddrList) {
-        sendto(g_socket.m_sock, buf, len, 0, (sockaddr *) &address, sizeof(address));
-    }
-}
-
 void closeSocket() {
     if (g_socket.m_notifyPipe[0] >= 0) {
         close(g_socket.m_notifyPipe[0]);
@@ -384,7 +352,6 @@ void initializeSocket(void *v_env, void *v_instance,
     auto *env = (JNIEnv *) v_env;
     auto *instance = (jobject) v_instance;
     auto *deviceName_ = (jstring) v_deviceName;
-    auto *broadcastAddrList_ = (jobjectArray) v_broadcastAddrList;
 
     //
     // Initialize variables
@@ -445,8 +412,8 @@ void initializeSocket(void *v_env, void *v_instance,
         int flags = fcntl(g_socket.m_sock, F_GETFL, 0);
         fcntl(g_socket.m_sock, F_SETFL, flags | O_NONBLOCK);
 
-        val = 1;
-        setsockopt(g_socket.m_sock, SOL_SOCKET, SO_BROADCAST, (char *) &val, sizeof(val));
+//        val = 1;
+//        setsockopt(g_socket.m_sock, SOL_SOCKET, SO_BROADCAST, (char *) &val, sizeof(val));
 
         // To avoid EADDRINUSE when previous process (or thread) remains live.
         val = 1;
@@ -473,34 +440,6 @@ void initializeSocket(void *v_env, void *v_instance,
         addr.sin_addr.s_addr = INADDR_ANY;
         if (bind(g_socket.m_sock, (sockaddr *) &addr, sizeof(addr)) < 0) {
             throw FormatException("bind error : %d %s", errno, strerror(errno));
-        }
-
-        //
-        // Parse broadcast address list.
-        //
-        {
-            int broadcastCount = env->GetArrayLength(broadcastAddrList_);
-
-            for (int i = 0; i < broadcastCount; i++) {
-                auto address = (jstring) env->GetObjectArrayElement(broadcastAddrList_, i);
-                auto addressStr = GetStringFromJNIString(env, address);
-                env->DeleteLocalRef(address);
-
-                sockaddr_in addr{};
-                memset(&addr, 0, sizeof(addr));
-                addr.sin_family = AF_INET;
-                addr.sin_port = htons(helloPort);
-                inet_pton(addr.sin_family, addressStr.c_str(), &addr.sin_addr);
-
-                g_socket.m_broadcastAddrList.push_back(addr);
-
-                memset(&addr, 0, sizeof(addr));
-                addr.sin_family = AF_INET;
-                addr.sin_port = htons(port);
-                inet_pton(addr.sin_family, addressStr.c_str(), &addr.sin_addr);
-
-                g_socket.m_broadcastAddrList.push_back(addr);
-            }
         }
     }
 
@@ -594,40 +533,8 @@ void sendTimeSyncLocked() {
     g_socket.m_prevSentSync = current;
 }
 
-void sendBroadcastLocked() {
-    if (g_socket.m_connected) {
-        return;
-    }
-
-    time_t current = time(nullptr);
-    if (g_socket.m_prevSentBroadcast != current) {
-        LOGI("Sending broadcast hello.");
-        sendBroadcast(&g_socket.mHelloMessage, sizeof(g_socket.mHelloMessage));
-    }
-    g_socket.m_prevSentBroadcast = current;
-}
-
-void checkConnection() {
-    if (g_socket.m_connected) {
-        if (g_socket.m_lastReceived + CONNECTION_TIMEOUT < getTimestampUs()) {
-            // Timeout
-            LOGE("Connection timeout.");
-            g_socket.m_connected = false;
-            memset(&g_socket.m_serverAddr, 0, sizeof(g_socket.m_serverAddr));
-
-            g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mOnDisconnectedMethodID);
-
-            if (g_socket.m_soundPlayer) {
-                g_socket.m_soundPlayer->Stop();
-            }
-        }
-    }
-}
-
 void doPeriodicWork() {
     sendTimeSyncLocked();
-    sendBroadcastLocked();
-    checkConnection();
 }
 
 void sendNative(long long nativeBuffer, int length) {
@@ -661,7 +568,7 @@ void runLoop(void *v_env, void *v_instance) {
     int nfds = std::max(g_socket.m_sock, g_socket.m_notifyPipe[0]) + 1;
 
     g_socket.m_env = env;
-    g_socket.m_instance = instance;
+    g_socket.m_instance = env->NewGlobalRef(instance);
 
     while (!g_socket.m_stopped) {
         timeval timeout{};
@@ -690,15 +597,9 @@ void runLoop(void *v_env, void *v_instance) {
 
     LOGI("Exited select loop.");
 
-    if (g_socket.m_connected) {
-        // Stop stream.
-        StreamControlMessage message = {};
-        message.type = ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE;
-        message.mode = 2;
-        send(&message, sizeof(message));
-    }
-
     g_socket.m_soundPlayer.reset();
+
+//    env->DeleteGlobalRef(g_socket.m_instance);
 
     LOGI("Exiting UdpReceiverThread runLoop");
 }
@@ -721,10 +622,6 @@ void setSinkPreparedNative(unsigned char prepared) {
     }
     g_socket.mSinkPrepared = prepared;
     LOGSOCKETI("setSinkPrepared: Decoder prepared=%d", g_socket.mSinkPrepared);
-    if (prepared && g_socket.m_connected) {
-        LOGSOCKETI("setSinkPrepared: Send stream start packet.");
-        sendStreamStartPacket();
-    }
 }
 
 void *getServerAddress(void *v_env) {
@@ -743,4 +640,17 @@ int getServerPort() {
     if (g_socket.m_hasServerAddress)
         return htons(g_socket.m_serverAddr.sin_port);
     return 0;
+}
+
+void disconnectSocket(void *v_env) {
+    auto *env = (JNIEnv *) v_env;
+
+    g_socket.m_connected = false;
+    memset(&g_socket.m_serverAddr, 0, sizeof(g_socket.m_serverAddr));
+
+    env->CallVoidMethod(g_socket.m_instance, g_socket.mOnDisconnectedMethodID);
+
+    if (g_socket.m_soundPlayer) {
+        g_socket.m_soundPlayer->Stop();
+    }
 }

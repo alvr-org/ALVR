@@ -1,11 +1,6 @@
 use crate::*;
 use serde_json as json;
-use std::{
-    collections::HashSet,
-    env, fs,
-    path::{Path, PathBuf},
-    process::*,
-};
+use std::{collections::HashSet, env, fs, path::{Path, PathBuf}, process::*, thread, time::Duration};
 use sysinfo::*;
 
 #[cfg(windows)]
@@ -147,7 +142,18 @@ pub fn kill_steamvr() {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
 
+    // first kill vrmonitor, then kill vrserver if it is hung.
+
     for process in system.get_process_by_name(&exec_fname("vrmonitor")) {
+        #[cfg(not(windows))]
+        process.kill(Signal::Term);
+        #[cfg(windows)]
+        kill_process(process.pid());
+    }
+
+    thread::sleep(Duration::from_secs(1));
+
+    for process in system.get_process_by_name(&exec_fname("vrserver")) {
         #[cfg(not(windows))]
         process.kill(Signal::Term);
         #[cfg(windows)]

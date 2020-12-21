@@ -11,6 +11,7 @@ use tokio::{net::*, time::timeout};
 use tokio_util::codec::*;
 
 const CLIENT_HANDSHAKE_RESEND_INTERVAL: Duration = Duration::from_secs(1);
+const CONTROL_SOCKET_CONNECT_RETRY_INTERVAL: Duration = Duration::from_millis(500);
 
 async fn send<T: Serialize>(socket: &mut Framed<TcpStream, LDC>, packet: &T) -> StrResult {
     let packet_bytes = trace_err!(bincode::serialize(packet))?;
@@ -118,7 +119,15 @@ impl ControlSocket<ClientControlPacket, ServerControlPacket> {
             .map(|&ip| (ip, CONTROL_PORT).into())
             .collect::<Vec<_>>();
 
-        let socket = trace_err!(TcpStream::connect(client_addresses.as_slice()).await)?;
+        let socket = loop {
+            match TcpStream::connect(client_addresses.as_slice()).await {
+                Ok(socket) => break socket,
+                Err(e) => {
+                    debug!("Timeout while connecting to clients: {}", e);
+                    tokio::time::delay_for(CONTROL_SOCKET_CONNECT_RETRY_INTERVAL).await;
+                }
+            }
+        };
         let peer_ip = trace_err!(socket.peer_addr())?.ip();
         let mut socket = Framed::new(socket, LDC::new());
 

@@ -102,7 +102,7 @@ async fn connect_to_any_client(
             reserved: "".into(),
         };
 
-        let control_socket =
+        let mut control_socket =
             match ControlSocket::finish_connecting_to_client(pending_socket, client_config).await {
                 Ok(control_socket) => control_socket,
                 Err(e) => {
@@ -243,6 +243,11 @@ async fn connect_to_any_client(
                 .get_mut(None, SessionUpdateType::Other)
                 .openvr_config = new_openvr_config;
 
+            control_socket
+                .send(&ServerControlPacket::Restarting)
+                .await
+                .ok();
+
             restart_steamvr();
 
             // waiting for execution canceling
@@ -300,20 +305,10 @@ pub async fn connection_lifecycle_loop() -> StrResult {
 
         loop {
             match control_socket.recv().await {
-                Ok(ClientControlPacket::Disconnect) => {
-                    info!(
-                        id: LogId::ClientDisconnected,
-                        "Client disconnected gracefully"
-                    );
-                    break;
-                }
                 Ok(ClientControlPacket::Reserved(_))
                 | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
                 Err(e) => {
-                    warn!(
-                        id: LogId::ClientDisconnected,
-                        "Error while listening for control packet: {}", e
-                    );
+                    info!(id: LogId::ClientDisconnected, "Cause: {}", e);
                     break;
                 }
             }

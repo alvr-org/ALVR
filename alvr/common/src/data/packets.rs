@@ -39,14 +39,12 @@ pub struct ClientConfigPacket {
 #[derive(Serialize, Deserialize)]
 pub enum ServerControlPacket {
     Restarting,
-    Shutdown,
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
-    Disconnect,
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

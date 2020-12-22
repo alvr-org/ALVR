@@ -39,11 +39,12 @@ public class OvrActivity extends Activity {
         System.loadLibrary("alvr_client");
     }
 
-    private final static String TAG = "OvrActivity";
+    final static String TAG = "OvrActivity";
+    final static String TRUST_MESSAGE = "Open ALVR on PC and\nclick on \"Trust\" next to\nthe client entry";
 
     //Create placeholder for user's consent to record_audio permission.
     //This will be used in handling callback
-    private final int MY_PERMISSIONS_RECORD_AUDIO = 1;
+    final int MY_PERMISSIONS_RECORD_AUDIO = 1;
 
     static class PrivateIdentity {
         String hostname;
@@ -80,7 +81,7 @@ public class OvrActivity extends Activity {
         }
     }
 
-    private BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver() {
+    final BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context ctxt, Intent intent) {
             onBatteryChangedNative(intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0));
@@ -103,6 +104,7 @@ public class OvrActivity extends Activity {
     int mRefreshRate = 72;
     long mPreviousRender = 0;
     String mDashboardURL = null;
+    String mLoadingMessage = TRUST_MESSAGE;
 
     // Cache method references for performance reasons
     final Runnable mRenderRunnable = this::render;
@@ -337,11 +339,7 @@ public class OvrActivity extends Activity {
                     mRenderingHandler.postDelayed(mRenderRunnable, 50);
                 }
             } else {
-                if (mReceiverThread.isConnected()) {
-                    mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\n \nConnected!\nStreaming will begin soon!");
-                } else {
-                    mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\n \nOpen ALVR on PC and\nclick on \"Trust\" next to\nthe client entry");
-                }
+                mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\n\n" + mLoadingMessage);
 
                 renderLoadingNative();
                 mRenderingHandler.removeCallbacks(mRenderRunnable);
@@ -497,5 +495,10 @@ public class OvrActivity extends Activity {
             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(mDashboardURL));
             startActivity(browserIntent);
         }
+    }
+
+    @SuppressWarnings("unused")
+    public void setLoadingMessage(String message) {
+        mLoadingMessage = message;
     }
 }

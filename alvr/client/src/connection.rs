@@ -6,6 +6,9 @@ use settings_schema::Switch;
 use std::{ffi::CString, sync::Arc};
 use tokio::sync::broadcast;
 
+const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
+const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
+
 // close stream on Drop (manual disconnection or execution canceling)
 struct StreamCloseGuard(Arc<JavaVM>);
 impl Drop for StreamCloseGuard {
@@ -16,11 +19,26 @@ impl Drop for StreamCloseGuard {
     }
 }
 
+async fn setLoadingMessage(java_vm: &JavaVM, activity_ref: &GlobalRef, message: &str) -> StrResult {
+    // Note: env = java_vm.attach_current_thread() cannot be saved into a variable because it is
+    // not Send (compile error). This makes sense since tokio could move the execution of this
+    // task to another thread at any time, and env is valid only within a specific thread. For
+    // the same reason, other jni objects cannot be made into variables and the arguments must
+    // be created inline within the call_method() call
+    trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
+        activity_ref,
+        "setLoadingMessage",
+        "(Ljava/lang/String;)V",
+        &[trace_err!(trace_err!(java_vm.attach_current_thread())?.new_string(message))?.into()],
+    ))?;
+
+    Ok(())
+}
+
 async fn try_connect(
     headset_info: &HeadsetInfoPacket,
     device_name: String,
     private_identity: &PrivateIdentity,
-    on_stream_stop_notifier: broadcast::Sender<()>,
     java_vm: Arc<JavaVM>,
     activity_ref: Arc<GlobalRef>,
 ) -> StrResult {
@@ -97,16 +115,14 @@ async fn try_connect(
     loop {
         match control_socket.recv().await {
             Ok(ServerControlPacket::Restarting) => {
-                info!("Server is restarting ...");
-                break Ok(());
-            }
-            Ok(ServerControlPacket::Shutdown) => {
-                info!("Server disconnected");
+                info!("Server restarting");
+                setLoadingMessage(&*java_vm, &*activity_ref, SERVER_RESTART_MESSAGE).await?;
                 break Ok(());
             }
             Ok(ServerControlPacket::Reserved(_)) | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
             Err(e) => {
-                warn!("Error while listening for packet: {}", e);
+                info!("Server disconnected. Cause: {}", e);
+                setLoadingMessage(&*java_vm, &*activity_ref, SERVER_DISCONNECTED_MESSAGE).await?;
                 break Ok(());
             }
         }
@@ -129,7 +145,6 @@ pub async fn connection_lifecycle_loop(
             &headset_info,
             device_name.to_owned(),
             &private_identity,
-            on_stream_stop_notifier.clone(),
             java_vm.clone(),
             activity_ref.clone(),
         ));

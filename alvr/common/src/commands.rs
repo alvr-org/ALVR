@@ -1,6 +1,13 @@
 use crate::*;
 use serde_json as json;
-use std::{collections::HashSet, env, fs, path::{Path, PathBuf}, process::*, thread, time::Duration};
+use std::{
+    collections::HashSet,
+    env, fs,
+    path::{Path, PathBuf},
+    process::*,
+    thread,
+    time::Duration,
+};
 use sysinfo::*;
 
 #[cfg(windows)]

@@ -1,4 +1,4 @@
-use crate::{connectSocket, disconnectSocket, ConnectionMessage};
+use crate::{connectSocket, disconnectSocket};
 use alvr_common::{data::*, logging::*, sockets::ControlSocket, *};
 use jni::{objects::GlobalRef, JavaVM};
 use serde_json as json;
@@ -59,54 +59,63 @@ async fn try_connect(
     };
 
     let ip_cstring = CString::new(control_socket.peer_ip().to_string()).unwrap();
-    let web_gui_url_cstring = CString::new(config_packet.web_gui_url).unwrap();
 
     unsafe {
         connectSocket(
-            trace_err!(java_vm.attach_current_thread())?.get_native_interface() as _,
-            ConnectionMessage {
-                ip: ip_cstring.as_ptr(),
-                codec: matches!(baseline_settings.video.codec, CodecType::HEVC) as _,
-                realtimeDecoder: baseline_settings.video.client_request_realtime_decoder,
-                videoWidth: config_packet.eye_resolution_width * 2,
-                videoHeight: config_packet.eye_resolution_height,
-                bufferSize: baseline_settings.connection.client_recv_buffer_size as _,
-                frameQueueSize: baseline_settings.connection.frame_queue_size as _,
-                refreshRate: config_packet.fps as _,
-                streamMic: matches!(baseline_settings.audio.microphone, Switch::Enabled(_)),
-                foveationMode: matches!(
-                    baseline_settings.video.foveated_rendering,
-                    Switch::Enabled(_)
-                ) as _,
-                foveationStrength: if let Switch::Enabled(foveation_vars) =
-                    &baseline_settings.video.foveated_rendering
-                {
-                    foveation_vars.strength
-                } else {
-                    0_f32
-                },
-                foveationShape: if let Switch::Enabled(foveation_vars) =
-                    &baseline_settings.video.foveated_rendering
-                {
-                    foveation_vars.shape
-                } else {
-                    1_f32
-                },
-                foveationVerticalOffset: if let Switch::Enabled(foveation_vars) =
-                    baseline_settings.video.foveated_rendering
-                {
-                    foveation_vars.vertical_offset
-                } else {
-                    0_f32
-                },
-                trackingSpace: matches!(
-                    baseline_settings.headset.tracking_space,
-                    TrackingSpace::Stage
-                ) as _,
-                webGuiUrl: web_gui_url_cstring.as_ptr(),
-            },
+            ip_cstring.as_ptr(),
+            matches!(baseline_settings.video.codec, CodecType::HEVC) as _,
+            baseline_settings.connection.client_recv_buffer_size as _,
         )
     };
+
+    trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
+        &*activity_ref,
+        "onServerConnected",
+        "(IIIZIZIFFFILjava/lang/String;)V",
+        &[
+            (config_packet.eye_resolution_width as i32 * 2).into(),
+            (config_packet.eye_resolution_height as i32).into(),
+            (matches!(baseline_settings.video.codec, CodecType::HEVC) as i32).into(),
+            baseline_settings
+                .video
+                .client_request_realtime_decoder
+                .into(),
+            (config_packet.fps as i32).into(),
+            matches!(baseline_settings.audio.microphone, Switch::Enabled(_)).into(),
+            (matches!(
+                baseline_settings.video.foveated_rendering,
+                Switch::Enabled(_)
+            ) as i32)
+                .into(),
+            (if let Switch::Enabled(foveation_vars) = &baseline_settings.video.foveated_rendering {
+                foveation_vars.strength
+            } else {
+                0_f32
+            })
+            .into(),
+            (if let Switch::Enabled(foveation_vars) = &baseline_settings.video.foveated_rendering {
+                foveation_vars.shape
+            } else {
+                1_f32
+            })
+            .into(),
+            (if let Switch::Enabled(foveation_vars) = baseline_settings.video.foveated_rendering {
+                foveation_vars.vertical_offset
+            } else {
+                0_f32
+            })
+            .into(),
+            (matches!(
+                baseline_settings.headset.tracking_space,
+                TrackingSpace::Stage
+            ) as i32)
+                .into(),
+            trace_err!(
+                trace_err!(java_vm.attach_current_thread())?.new_string(config_packet.web_gui_url)
+            )?
+            .into()
+        ],
+    ))?;
 
     let _stream_guard = StreamCloseGuard(java_vm.clone());
 

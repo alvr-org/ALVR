@@ -16,24 +16,6 @@ struct OnCreateResult {
     int loadingSurfaceHandle;
 };
 
-struct ConnectionMessage {
-    const char *ip;
-    unsigned int codec; // enum ALVR_CODEC
-    bool realtimeDecoder;
-    unsigned int videoWidth; // in pixels
-    unsigned int videoHeight; // in pixels
-    unsigned int bufferSize; // in bytes
-    unsigned int frameQueueSize;
-    unsigned char refreshRate;
-    bool streamMic;
-    unsigned char foveationMode;
-    float foveationStrength;
-    float foveationShape;
-    float foveationVerticalOffset;
-    unsigned int trackingSpace; // ALVR_TRACKING_SPACE
-    const char *webGuiUrl;
-};
-
 extern "C" void decoderInput(long long frameIndex);
 extern "C" void decoderOutput(long long frameIndex);
 
@@ -55,7 +37,7 @@ extern "C" void onGuardianSyncAckNative(long long timestamp);
 extern "C" void onGuardianSegmentAckNative(long long timestamp, int segmentIndex);
 extern "C" void onBatteryChangedNative(int battery);
 
-extern "C" void connectSocket(void *env, ConnectionMessage message);
+extern "C" void connectSocket(const char *ip, unsigned int codec, unsigned int bufferSize);
 extern "C" void initializeSocket(void *env, void *instance);
 extern "C" void closeSocket();
 extern "C" void runLoop(void *env, void *instance);

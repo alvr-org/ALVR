@@ -315,10 +315,6 @@ public class OvrActivity extends Activity {
         }
     }
 
-    public void setDashboardURL(String url) {
-        mDashboardURL = url;
-    }
-
     private void render() {
         if (mResumed && mScreenSurface != null) {
             if (mReceiverThread.isConnected()) {
@@ -384,20 +380,6 @@ public class OvrActivity extends Activity {
     }
 
     private final ServerConnection.ConnectionListener mUdpReceiverConnectionListener = new ServerConnection.ConnectionListener() {
-        @Override
-        public void onConnected(final int width, final int height, final int codec, final boolean realtimeDecoder,
-                                final int frameQueueSize, final int refreshRate, final boolean streamMic,
-                                final int foveationMode, final float foveationStrength, final float foveationShape,
-                                final float foveationVerticalOffset, final int trackingSpaceType) {
-
-            // We must wait completion of notifyGeometryChange
-            // to ensure the first video frame arrives after notifyGeometryChange.
-            mRenderingHandler.post(() -> {
-                onStreamStartNative(width, height, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset, trackingSpaceType);
-                mDecoderThread.onConnect(codec, frameQueueSize, realtimeDecoder);
-            });
-        }
-
         @Override
         public void onDisconnect() {
             if (mDecoderThread != null) {
@@ -496,5 +478,18 @@ public class OvrActivity extends Activity {
     @SuppressWarnings("unused")
     public void setLoadingMessage(String message) {
         mLoadingMessage = message;
+    }
+
+    @SuppressWarnings("unused")
+    public void onServerConnected(int width, int height, int codec, boolean realtimeDecoder,
+                                  int refreshRate, boolean streamMic, int foveationMode,
+                                  float foveationStrength, float foveationShape,
+                                  float foveationVerticalOffset, int trackingSpaceType,
+                                  String dashboardURL) {
+        mDashboardURL = dashboardURL;
+        mRenderingHandler.post(() -> {
+            onStreamStartNative(width, height, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset, trackingSpaceType);
+            mDecoderThread.onConnect(codec, realtimeDecoder);
+        });
     }
 }

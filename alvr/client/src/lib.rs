@@ -6,11 +6,7 @@ mod logging_backend;
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_common::{data::*, logging::show_err, *};
-use jni::{
-    objects::*,
-    sys::{jobjectArray, jstring},
-    *,
-};
+use jni::{objects::*, *};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::{slice, sync::Arc};

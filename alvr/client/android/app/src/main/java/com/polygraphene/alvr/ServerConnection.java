@@ -19,8 +19,6 @@ class ServerConnection extends ThreadBase {
     }
 
     interface ConnectionListener {
-        void onConnected(int width, int height, int codec, boolean realtimeDecoder, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset, int trackingSpaceType);
-
         void onDisconnect();
 
         void onTracking();
@@ -126,13 +124,6 @@ class ServerConnection extends ThreadBase {
         return isConnectedNative();
     }
 
-    // called from native
-    @SuppressWarnings("unused")
-    public void onConnected(int width, int height, int codec, boolean realtimeDecoder, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset, int trackingSpaceType) {
-        Utils.logi(TAG, () -> "onConnected is called.");
-        mConnectionListener.onConnected(width, height, codec, realtimeDecoder, frameQueueSize, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset, trackingSpaceType);
-    }
-
     @SuppressWarnings("unused")
     public void onDisconnected() {
         Utils.logi(TAG, () -> "onDisconnected is called.");
@@ -169,11 +160,6 @@ class ServerConnection extends ThreadBase {
     @SuppressWarnings("unused")
     public void pushNAL(NAL nal) {
         mParent.pushNAL(nal);
-    }
-
-    @SuppressWarnings("unused")
-    public void setWebViewURL(String url) {
-        mParent.setDashboardURL(url);
     }
 
 

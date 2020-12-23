@@ -59,7 +59,6 @@ public:
     int64_t m_timeDiff = 0;
     uint64_t timeSyncSequence = (uint64_t) -1;
     uint64_t m_lastFrameIndex = 0;
-    ConnectionMessage m_connectionMessage = {};
 
     uint32_t m_prevVideoSequence = 0;
     uint32_t m_prevSoundSequence = 0;
@@ -68,10 +67,8 @@ public:
 
     JNIEnv *m_env;
     jobject m_instance;
-    jmethodID mOnConnectMethodID;
     jmethodID mOnDisconnectedMethodID;
     jmethodID mOnHapticsFeedbackID;
-    jmethodID mSetWebGuiUrlID;
     jmethodID mOnGuardianSyncAckID;
     jmethodID mOnGuardianSegmentAckID;
 
@@ -90,19 +87,14 @@ int send(const void *buf, size_t len) {
                         sizeof(g_socket.m_serverAddr));
 }
 
-void connectSocket(void *v_env, ConnectionMessage connectionMessage) {
-    auto *env = (JNIEnv *) v_env;
-
-    // Save video width and height
-    g_socket.m_connectionMessage = connectionMessage;
-
-    inet_pton(AF_INET, connectionMessage.ip, &g_socket.m_serverAddr.sin_addr);
+void connectSocket(const char *ip, unsigned int codec, unsigned int bufferSize) {
+    inet_pton(AF_INET, ip, &g_socket.m_serverAddr.sin_addr);
     g_socket.m_serverAddr.sin_port = htons(9944);
     g_socket.m_connected = true;
     g_socket.m_hasServerAddress = true;
 
-    LOGI("Try setting recv buffer size = %d bytes", g_socket.m_connectionMessage.bufferSize);
-    int val = g_socket.m_connectionMessage.bufferSize;
+    LOGI("Try setting recv buffer size = %d bytes", bufferSize);
+    int val = bufferSize;
     setsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, sizeof(val));
     socklen_t socklen = sizeof(val);
     getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &socklen);
@@ -112,24 +104,7 @@ void connectSocket(void *v_env, ConnectionMessage connectionMessage) {
     g_socket.m_prevSoundSequence = 0;
     g_socket.m_timeDiff = 0;
     LatencyCollector::Instance().resetAll();
-    g_socket.m_nalParser->setCodec(g_socket.m_connectionMessage.codec);
-
-    env->CallVoidMethod(g_socket.m_instance, g_socket.mOnConnectMethodID,
-                                   g_socket.m_connectionMessage.videoWidth,
-                                   g_socket.m_connectionMessage.videoHeight,
-                                   g_socket.m_connectionMessage.codec,
-                                   g_socket.m_connectionMessage.realtimeDecoder,
-                                   g_socket.m_connectionMessage.frameQueueSize,
-                                   g_socket.m_connectionMessage.refreshRate,
-                                   g_socket.m_connectionMessage.streamMic,
-                                   g_socket.m_connectionMessage.foveationMode,
-                                   g_socket.m_connectionMessage.foveationStrength,
-                                   g_socket.m_connectionMessage.foveationShape,
-                                   g_socket.m_connectionMessage.foveationVerticalOffset,
-                                   g_socket.m_connectionMessage.trackingSpace);
-
-    jstring jstr = env->NewStringUTF(g_socket.m_connectionMessage.webGuiUrl);
-    env->CallVoidMethod(g_socket.m_instance, g_socket.mSetWebGuiUrlID, jstr);
+    g_socket.m_nalParser->setCodec(codec);
 }
 
 void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
@@ -351,10 +326,8 @@ void initializeSocket(void *v_env, void *v_instance) {
     g_socket.m_timeDiff = 0;
 
     jclass clazz = env->GetObjectClass(instance);
-    g_socket.mOnConnectMethodID = env->GetMethodID(clazz, "onConnected", "(IIIZIIZIFFFI)V");
     g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
     g_socket.mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
-    g_socket.mSetWebGuiUrlID = env->GetMethodID(clazz, "setWebViewURL", "(Ljava/lang/String;)V");
     g_socket.mOnGuardianSyncAckID = env->GetMethodID(clazz, "onGuardianSyncAck", "(J)V");
     g_socket.mOnGuardianSegmentAckID = env->GetMethodID(clazz, "onGuardianSegmentAck", "(JI)V");
     env->DeleteLocalRef(clazz);

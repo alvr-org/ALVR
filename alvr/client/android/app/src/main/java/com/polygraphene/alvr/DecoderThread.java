@@ -253,7 +253,7 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
         }
     }
 
-    public void onConnect(int codec, int frameQueueSize, boolean realtime) {
+    public void onConnect(int codec, boolean realtime) {
         Utils.logi(TAG, () -> "onConnect()");
         if (mQueue != null) {
             mQueue.reset();

@@ -635,9 +635,8 @@ void checkShouldSyncGuardian() {
 }
 
 // Called from TrackingThread
-void sendTrackingInfo(void *v_env, void *v_udpReceiverThread) {
+void sendTrackingInfo(void *v_env) {
     auto *env_ = (JNIEnv *) v_env;
-    auto udpReceiverThread = (jobject) v_udpReceiverThread;
 
     std::shared_ptr<TrackingFrame> frame(new TrackingFrame());
 
@@ -664,16 +663,15 @@ void sendTrackingInfo(void *v_env, void *v_udpReceiverThread) {
 
     LatencyCollector::Instance().tracking(frame->frameIndex);
 
-    env_->CallVoidMethod(udpReceiverThread, g_ctx.mSocketSend,
+    env_->CallVoidMethod(g_ctx.java.ActivityObject, g_ctx.mSocketSend,
                          reinterpret_cast<jlong>(&info),
                          static_cast<jint>(sizeof(info)));
     checkShouldSyncGuardian();
 }
 
 // Called from TrackingThread
-void sendMicData(void *v_env, void *v_udpReceiverThread) {
+void sendMicData(void *v_env) {
     auto *env_ = (JNIEnv *) v_env;
-    auto udpReceiverThread = (jobject) v_udpReceiverThread;
 
     if (!g_ctx.mStreamMic) {
         return;
@@ -704,7 +702,7 @@ void sendMicData(void *v_env, void *v_udpReceiverThread) {
                    g_ctx.micBuffer + count * 100,
                    sizeof(int16_t) * audio.outputBufferNumElements);
 
-            env_->CallVoidMethod(udpReceiverThread, g_ctx.mSocketSend,
+            env_->CallVoidMethod(g_ctx.java.ActivityObject, g_ctx.mSocketSend,
                                  reinterpret_cast<jlong>(&audio),
                                  static_cast<jint>(sizeof(audio)));
             count++;
@@ -1070,9 +1068,8 @@ bool prepareGuardianData() {
 }
 
 // Called from TrackingThread
-void sendGuardianInfo(void *v_env, void *v_udpReceiverThread) {
+void sendGuardianInfo(void *v_env) {
     auto *env_ = (JNIEnv *) v_env;
-    auto udpReceiverThread = (jobject) v_udpReceiverThread;
 
     if (g_ctx.m_ShouldSyncGuardian) {
         double currentTime = GetTimeInSeconds();
@@ -1098,7 +1095,7 @@ void sendGuardianInfo(void *v_env, void *v_udpReceiverThread) {
         packet.playAreaSize.x = 2.0f * bboxScale.x;
         packet.playAreaSize.y = 2.0f * bboxScale.z;
 
-        env_->CallVoidMethod(udpReceiverThread, g_ctx.mSocketSend,
+        env_->CallVoidMethod(g_ctx.java.ActivityObject, g_ctx.mSocketSend,
                              reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
     } else if (g_ctx.m_GuardianSyncing) {
         GuardianSegmentData packet{};
@@ -1116,7 +1113,7 @@ void sendGuardianInfo(void *v_env, void *v_udpReceiverThread) {
         memcpy(&packet.points, g_ctx.m_GuardianPoints + segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE,
                sizeof(TrackingVector3) * countToSend);
 
-        env_->CallVoidMethod(udpReceiverThread, g_ctx.mSocketSend,
+        env_->CallVoidMethod(g_ctx.java.ActivityObject, g_ctx.mSocketSend,
                              reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
     }
 }
@@ -1155,14 +1152,14 @@ void onBatteryChangedNative(int battery) {
     g_ctx.batteryLevel = battery;
 }
 
-void onTrackingNative(void *env, void *udpReceiverThread) {
+void onTrackingNative(void *env) {
     if (g_ctx.Ovr != nullptr) {
-        sendTrackingInfo(env, udpReceiverThread);
+        sendTrackingInfo(env);
 
         //TODO: maybe use own thread, but works fine with tracking
-        sendMicData(env, udpReceiverThread);
+        sendMicData(env);
 
         //TODO: same as above
-        sendGuardianInfo(env, udpReceiverThread);
+        sendGuardianInfo(env);
     }
 }

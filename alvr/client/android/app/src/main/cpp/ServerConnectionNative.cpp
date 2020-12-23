@@ -476,22 +476,24 @@ void doPeriodicWork() {
 }
 
 void sendNative(long long nativeBuffer, int length) {
-    auto *packet = reinterpret_cast<char *>(nativeBuffer);
+    if (g_socket.m_connected) {
+        auto *packet = reinterpret_cast<char *>(nativeBuffer);
 
-    if (g_socket.m_stopped) {
-        return;
+        if (g_socket.m_stopped) {
+            return;
+        }
+        SendBuffer sendBuffer{};
+
+        memcpy(sendBuffer.buf, packet, length);
+        sendBuffer.len = length;
+
+        {
+            std::lock_guard<decltype(g_socket.pipeMutex)> lock(g_socket.pipeMutex);
+            g_socket.m_sendQueue.push_back(sendBuffer);
+        }
+        // Notify enqueue to loop thread
+        write(g_socket.m_notifyPipe[1], "", 1);
     }
-    SendBuffer sendBuffer{};
-
-    memcpy(sendBuffer.buf, packet, length);
-    sendBuffer.len = length;
-
-    {
-        std::lock_guard<decltype(g_socket.pipeMutex)> lock(g_socket.pipeMutex);
-        g_socket.m_sendQueue.push_back(sendBuffer);
-    }
-    // Notify enqueue to loop thread
-    write(g_socket.m_notifyPipe[1], "", 1);
 }
 
 void runLoop(void *v_env, void *v_instance) {
@@ -551,15 +553,6 @@ void interruptNative() {
 
 unsigned char isConnectedNative() {
     return g_socket.m_connected;
-}
-
-
-void setSinkPreparedNative(unsigned char prepared) {
-    if (g_socket.m_stopped) {
-        return;
-    }
-    g_socket.mSinkPrepared = prepared;
-    LOGSOCKETI("setSinkPrepared: Decoder prepared=%d", g_socket.mSinkPrepared);
 }
 
 void disconnectSocket(void *v_env) {

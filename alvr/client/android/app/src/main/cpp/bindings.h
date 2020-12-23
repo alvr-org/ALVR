@@ -23,7 +23,7 @@ extern "C" OnCreateResult onCreate(void *env, void *activity, void *assetManager
 extern "C" void destroyNative(void *env);
 extern "C" void renderNative(long long renderedFrameIndex);
 extern "C" void renderLoadingNative();
-extern "C" void onTrackingNative(void *env, void *udpReceiverThread);
+extern "C" void onTrackingNative(void *env);
 extern "C" void onResumeNative(void *env, void *surface);
 extern "C" void onStreamStartNative(int width, int height, int refreshRate, unsigned char streamMic,
                                     int foveationMode, float foveationStrength,
@@ -44,5 +44,4 @@ extern "C" void runLoop(void *env, void *instance);
 extern "C" void interruptNative();
 extern "C" unsigned char isConnectedNative();
 extern "C" void sendNative(long long nativeBuffer, int bufferLength);
-extern "C" void setSinkPreparedNative(unsigned char prepared);
 extern "C" void disconnectSocket(void *env);

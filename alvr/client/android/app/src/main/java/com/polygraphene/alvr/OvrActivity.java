@@ -204,11 +204,7 @@ public class OvrActivity extends Activity {
 
                 try {
                     mDecoderThread.start();
-
-                    if (!mReceiverThread.start()) {
-                        Utils.loge(TAG, () -> "FATAL: Initialization of ReceiverThread failed.");
-                        return;
-                    }
+                    mReceiverThread.start();
                 } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
                     Utils.loge(TAG, e::toString);
                 }
@@ -353,17 +349,10 @@ public class OvrActivity extends Activity {
         return TimeUnit.NANOSECONDS.toMillis(threshold - (current - mPreviousRender));
     }
 
-    public void setSinkPrepared(boolean prepared) {
-        synchronized (mWaiter) {
-            setSinkPreparedNative(prepared);
-        }
-    }
-
     public void onVrModeChanged(boolean enter) {
         mVrMode = enter;
         Utils.logi(TAG, () -> "onVrModeChanged. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
         if (mReceiverThread != null) {
-            setSinkPrepared(mVrMode && mDecoderPrepared);
             if (mVrMode) {
                 mRenderingHandler.post(mRenderRunnable);
             }
@@ -375,14 +364,12 @@ public class OvrActivity extends Activity {
         public void onPrepared() {
             mDecoderPrepared = true;
             Utils.logi(TAG, () -> "DecoderCallback.onPrepared. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
-            setSinkPrepared(mVrMode && mDecoderPrepared);
         }
 
         @Override
         public void onDestroy() {
             mDecoderPrepared = false;
             Utils.logi(TAG, () -> "DecoderCallback.onDestroy. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
-            setSinkPrepared(mVrMode && mDecoderPrepared);
         }
 
         @Override
@@ -409,7 +396,7 @@ public class OvrActivity extends Activity {
 
     native void renderLoadingNative();
 
-    native void onTrackingNative(OvrActivity serverConnection);
+    native void onTrackingNative();
 
     native boolean isVrModeNative();
 
@@ -434,8 +421,6 @@ public class OvrActivity extends Activity {
     native void sendNative(long nativeBuffer, int bufferLength);
 
     native boolean isConnectedNative();
-
-    native void setSinkPreparedNative(boolean prepared);
 
     @SuppressWarnings("unused")
     public void openDashboard() {

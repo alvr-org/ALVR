@@ -14,16 +14,6 @@ import java.util.List;
 class ServerConnection extends ThreadBase {
     private static final String TAG = "ServerConnection";
 
-    static {
-        System.loadLibrary("alvr_client");
-    }
-
-    public interface NALCallback {
-        NAL obtainNAL(int length);
-
-        void pushNAL(NAL nal);
-    }
-
     private TrackingThread mTrackingThread;
 
     private boolean mInitialized = false;
@@ -34,14 +24,13 @@ class ServerConnection extends ThreadBase {
         mParent = parent;
     }
 
-    public boolean start() {
+    public void start() {
         mTrackingThread = new TrackingThread();
 
         super.startBase();
 
-        boolean initializeFailed = false;
         synchronized (this) {
-            while (!mInitialized && !initializeFailed) {
+            while (!mInitialized) {
                 try {
                     wait();
                 } catch (InterruptedException e) {
@@ -50,14 +39,11 @@ class ServerConnection extends ThreadBase {
             }
         }
 
-        if (!initializeFailed) {
-            mTrackingThread.start(() -> {
-                if (mParent.isConnectedNative()) {
-                    mParent.onTrackingNative(mParent);
-                }
-            });
-        }
-        return !initializeFailed;
+        mTrackingThread.start(() -> {
+            if (mParent.isConnectedNative()) {
+                mParent.onTrackingNative();
+            }
+        });
     }
 
     @Override
@@ -71,18 +57,16 @@ class ServerConnection extends ThreadBase {
 
     @Override
     public void run() {
-        try {
-            mParent.initializeSocket();
-            synchronized (this) {
-                mInitialized = true;
-                notifyAll();
-            }
-            Utils.logi(TAG, () -> "ServerConnection initialized.");
-
-            mParent.runLoop();
-        } finally {
-            mParent.closeSocket();
+        mParent.initializeSocket();
+        synchronized (this) {
+            mInitialized = true;
+            notifyAll();
         }
+        Utils.logi(TAG, () -> "ServerConnection initialized.");
+
+        mParent.runLoop();
+
+        mParent.closeSocket();
 
         Utils.logi(TAG, () -> "ServerConnection stopped.");
     }

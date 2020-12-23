@@ -159,9 +159,8 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderLoadi
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onTrackingNative(
     env: JNIEnv,
     _: JObject,
-    udp_receiver_thread: JObject,
 ) {
-    onTrackingNative(env.get_native_interface() as _, *udp_receiver_thread as _)
+    onTrackingNative(env.get_native_interface() as _)
 }
 
 #[no_mangle]
@@ -369,13 +368,4 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_sendNative(
     buffer_length: i32,
 ) {
     sendNative(native_buffer, buffer_length)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_setSinkPreparedNative(
-    _: JNIEnv,
-    _: JObject,
-    prepared: u8,
-) {
-    setSinkPreparedNative(prepared)
 }

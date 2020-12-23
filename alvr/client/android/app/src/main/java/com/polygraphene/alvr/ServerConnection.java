@@ -18,18 +18,6 @@ class ServerConnection extends ThreadBase {
         System.loadLibrary("alvr_client");
     }
 
-    interface ConnectionListener {
-        void onDisconnect();
-
-        void onTracking();
-
-        void onHapticsFeedback(long startTime, float amplitude, float duration, float frequency, boolean hand);
-
-        void onGuardianSyncAck(long timestamp);
-
-        void onGuardianSegmentAck(long timestamp, int segmentIndex);
-    }
-
     public interface NALCallback {
         NAL obtainNAL(int length);
 
@@ -42,29 +30,8 @@ class ServerConnection extends ThreadBase {
 
     private final OvrActivity mParent;
 
-    private final ConnectionListener mConnectionListener;
-
-    private final Object mWaiter = new Object();
-
-    ServerConnection(ConnectionListener connectionListener, OvrActivity parent) {
-        mConnectionListener = connectionListener;
+    ServerConnection(OvrActivity parent) {
         mParent = parent;
-    }
-
-    private String getDeviceName() {
-        String manufacturer = android.os.Build.MANUFACTURER;
-        String model = android.os.Build.MODEL;
-        if (model.toLowerCase().startsWith(manufacturer.toLowerCase())) {
-            return model;
-        } else {
-            return manufacturer + " " + model;
-        }
-    }
-
-    public void setSinkPrepared(boolean prepared) {
-        synchronized (mWaiter) {
-            setSinkPreparedNative(prepared);
-        }
     }
 
     public boolean start() {
@@ -85,8 +52,8 @@ class ServerConnection extends ThreadBase {
 
         if (!initializeFailed) {
             mTrackingThread.start(() -> {
-                if (isConnectedNative()) {
-                    mConnectionListener.onTracking();
+                if (mParent.isConnectedNative()) {
+                    mParent.onTrackingNative(mParent);
                 }
             });
         }
@@ -96,8 +63,8 @@ class ServerConnection extends ThreadBase {
     @Override
     public void stopAndWait() {
         mTrackingThread.stopAndWait();
-        synchronized (mWaiter) {
-            interruptNative();
+        synchronized (mParent.mWaiter) {
+            mParent.interruptNative();
         }
         super.stopAndWait();
     }
@@ -105,75 +72,18 @@ class ServerConnection extends ThreadBase {
     @Override
     public void run() {
         try {
-            initializeSocket();
+            mParent.initializeSocket();
             synchronized (this) {
                 mInitialized = true;
                 notifyAll();
             }
             Utils.logi(TAG, () -> "ServerConnection initialized.");
 
-            runLoop();
+            mParent.runLoop();
         } finally {
-            closeSocket();
+            mParent.closeSocket();
         }
 
         Utils.logi(TAG, () -> "ServerConnection stopped.");
     }
-
-    public boolean isConnected() {
-        return isConnectedNative();
-    }
-
-    @SuppressWarnings("unused")
-    public void onDisconnected() {
-        Utils.logi(TAG, () -> "onDisconnected is called.");
-        mConnectionListener.onDisconnect();
-    }
-
-    @SuppressWarnings("unused")
-    public void onHapticsFeedback(long startTime, float amplitude, float duration, float frequency, boolean hand) {
-        mConnectionListener.onHapticsFeedback(startTime, amplitude, duration, frequency, hand);
-    }
-
-    @SuppressWarnings("unused")
-    public void onGuardianSyncAck(long timestamp) {
-        mConnectionListener.onGuardianSyncAck(timestamp);
-    }
-
-    @SuppressWarnings("unused")
-    public void onGuardianSegmentAck(long timestamp, int segmentIndex) {
-        mConnectionListener.onGuardianSegmentAck(timestamp, segmentIndex);
-    }
-
-    @SuppressWarnings("unused")
-    public void send(long nativeBuffer, int bufferLength) {
-        synchronized (mWaiter) {
-            sendNative(nativeBuffer, bufferLength);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    public NAL obtainNAL(int length) {
-        return mParent.obtainNAL(length);
-    }
-
-    @SuppressWarnings("unused")
-    public void pushNAL(NAL nal) {
-        mParent.pushNAL(nal);
-    }
-
-
-    private native void initializeSocket();
-
-    private native void closeSocket();
-
-    private native void runLoop();
-
-    private native void interruptNative();
-
-    private native void sendNative(long nativeBuffer, int bufferLength);
-
-    public native boolean isConnectedNative();
-
-    private native void setSinkPreparedNative(boolean prepared);
 }

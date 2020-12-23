@@ -87,7 +87,7 @@ public:
 
     ovrRenderer Renderer;
 
-    jmethodID mServerConnection_send{};
+    jmethodID mSocketSend{};
 
     // headset battery level
     int batteryLevel;
@@ -178,8 +178,8 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
                        g_ctx.loadingTexture, {false});
     ovrRenderer_CreateScene(&g_ctx.Renderer);
 
-    clazz = env->FindClass("com/polygraphene/alvr/ServerConnection");
-    g_ctx.mServerConnection_send = env->GetMethodID(clazz, "send", "(JI)V");
+    clazz = env->FindClass("com/polygraphene/alvr/OvrActivity");
+    g_ctx.mSocketSend = env->GetMethodID(clazz, "send", "(JI)V");
     env->DeleteLocalRef(clazz);
 
     memset(g_ctx.mHapticsState, 0, sizeof(g_ctx.mHapticsState));
@@ -664,7 +664,7 @@ void sendTrackingInfo(void *v_env, void *v_udpReceiverThread) {
 
     LatencyCollector::Instance().tracking(frame->frameIndex);
 
-    env_->CallVoidMethod(udpReceiverThread, g_ctx.mServerConnection_send,
+    env_->CallVoidMethod(udpReceiverThread, g_ctx.mSocketSend,
                          reinterpret_cast<jlong>(&info),
                          static_cast<jint>(sizeof(info)));
     checkShouldSyncGuardian();
@@ -704,7 +704,7 @@ void sendMicData(void *v_env, void *v_udpReceiverThread) {
                    g_ctx.micBuffer + count * 100,
                    sizeof(int16_t) * audio.outputBufferNumElements);
 
-            env_->CallVoidMethod(udpReceiverThread, g_ctx.mServerConnection_send,
+            env_->CallVoidMethod(udpReceiverThread, g_ctx.mSocketSend,
                                  reinterpret_cast<jlong>(&audio),
                                  static_cast<jint>(sizeof(audio)));
             count++;
@@ -1098,7 +1098,7 @@ void sendGuardianInfo(void *v_env, void *v_udpReceiverThread) {
         packet.playAreaSize.x = 2.0f * bboxScale.x;
         packet.playAreaSize.y = 2.0f * bboxScale.z;
 
-        env_->CallVoidMethod(udpReceiverThread, g_ctx.mServerConnection_send,
+        env_->CallVoidMethod(udpReceiverThread, g_ctx.mSocketSend,
                              reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
     } else if (g_ctx.m_GuardianSyncing) {
         GuardianSegmentData packet{};
@@ -1116,7 +1116,7 @@ void sendGuardianInfo(void *v_env, void *v_udpReceiverThread) {
         memcpy(&packet.points, g_ctx.m_GuardianPoints + segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE,
                sizeof(TrackingVector3) * countToSend);
 
-        env_->CallVoidMethod(udpReceiverThread, g_ctx.mServerConnection_send,
+        env_->CallVoidMethod(udpReceiverThread, g_ctx.mSocketSend,
                              reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
     }
 }

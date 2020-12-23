@@ -322,7 +322,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onBatteryCh
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_initializeSocket(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeSocket(
     env: JNIEnv,
     instance: JObject,
 ) {
@@ -330,7 +330,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_initia
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_closeSocket(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_closeSocket(
     _: JNIEnv,
     _: JObject,
 ) {
@@ -338,7 +338,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_closeS
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_runLoop(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_runLoop(
     env: JNIEnv,
     instance: JObject,
 ) {
@@ -346,7 +346,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_runLoo
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_interruptNative(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_interruptNative(
     _: JNIEnv,
     _: JObject,
 ) {
@@ -354,7 +354,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_interr
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_isConnectedNative(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_isConnectedNative(
     _: JNIEnv,
     _: JObject,
 ) -> u8 {
@@ -362,7 +362,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_isConn
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_sendNative(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_sendNative(
     _: JNIEnv,
     _: JObject,
     native_buffer: i64,
@@ -372,7 +372,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_sendNa
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_setSinkPreparedNative(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_setSinkPreparedNative(
     _: JNIEnv,
     _: JObject,
     prepared: u8,

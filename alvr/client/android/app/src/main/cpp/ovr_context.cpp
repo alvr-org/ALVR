@@ -753,6 +753,8 @@ void onResumeNative(void *v_env, void *v_surface) {
     vrapi_SetClockLevels(g_ctx.Ovr, CpuLevel, GpuLevel);
     vrapi_SetPerfThread(g_ctx.Ovr, VRAPI_PERF_THREAD_TYPE_MAIN, gettid());
 
+    vrapi_SetTrackingSpace(g_ctx.Ovr, g_ctx.m_UsedTrackingSpace);
+
     // On Oculus Quest, without ExtraLatencyMode frames passed to vrapi_SubmitFrame2 are sometimes discarded from VrAPI(?).
     // Which introduces stutter animation.
     // I think the number of discarded frames is shown as Stale in Logcat like following:

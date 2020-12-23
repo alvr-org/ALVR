@@ -14,7 +14,6 @@
 #include "ffr.h"
 #include "vr_gui.h"
 
-const float WORLD_VERTICAL_OFFSET = -1.5;
 
 // Must use EGLSyncKHR because the VrApi still supports OpenGL ES 2.0
 #define EGL_SYNC

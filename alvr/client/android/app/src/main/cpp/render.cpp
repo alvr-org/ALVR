@@ -751,7 +751,7 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
         ovrFramebuffer_SetCurrent(frameBuffer);
 
         ovrMatrix4f mvpMatrix[2];
-        mvpMatrix[1] = mvpMatrix[0] = ovrMatrix4f_CreateTranslation(0, WORLD_VERTICAL_OFFSET, 0);
+        mvpMatrix[1] = mvpMatrix[0] = ovrMatrix4f_CreateTranslation(0, 0, 0);
 
         mvpMatrix[0] = ovrMatrix4f_Multiply(&tracking->Eye[0].ViewMatrix,
                                             &mvpMatrix[0]);

@@ -56,15 +56,11 @@ extern "C" void onGuardianSegmentAckNative(long long timestamp, int segmentIndex
 extern "C" void onBatteryChangedNative(int battery);
 
 extern "C" void connectSocket(void *env, ConnectionMessage message);
-extern "C" void
-initializeSocket(void *env, void *instance, int helloPort, int port, void *deviceName,
-                 void *broadcastAddrList, int refreshRate, int renderWidth, int renderHeight);
+extern "C" void initializeSocket(void *env, void *instance);
 extern "C" void closeSocket();
 extern "C" void runLoop(void *env, void *instance);
 extern "C" void interruptNative();
 extern "C" unsigned char isConnectedNative();
-extern "C" void *getServerAddress(void *env);
-extern "C" int getServerPort();
 extern "C" void sendNative(long long nativeBuffer, int bufferLength);
 extern "C" void setSinkPreparedNative(unsigned char prepared);
 extern "C" void disconnectSocket(void *env);

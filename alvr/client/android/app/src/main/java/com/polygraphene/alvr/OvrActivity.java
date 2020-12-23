@@ -203,7 +203,7 @@ public class OvrActivity extends Activity {
                 try {
                     mDecoderThread.start();
 
-                    if (!mReceiverThread.start(mEGLContext, this, deviceDescriptor, 0)) {
+                    if (!mReceiverThread.start()) {
                         Utils.loge(TAG, () -> "FATAL: Initialization of ReceiverThread failed.");
                         return;
                     }
@@ -396,10 +396,6 @@ public class OvrActivity extends Activity {
                 onStreamStartNative(width, height, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset, trackingSpaceType);
                 mDecoderThread.onConnect(codec, frameQueueSize, realtimeDecoder);
             });
-        }
-
-        @Override
-        public void onShutdown(String serverAddr, int serverPort) {
         }
 
         @Override

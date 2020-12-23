@@ -329,25 +329,8 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onBatteryCh
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_initializeSocket(
     env: JNIEnv,
     instance: JObject,
-    hello_port: i32,
-    port: i32,
-    device_name: JString,
-    broadcast_addr_list: jobjectArray,
-    refresh_rate: i32,
-    render_width: i32,
-    render_height: i32,
 ) {
-    initializeSocket(
-        env.get_native_interface() as _,
-        *instance as _,
-        hello_port,
-        port,
-        **device_name as _,
-        broadcast_addr_list as _,
-        refresh_rate,
-        render_width,
-        render_height,
-    )
+    initializeSocket(env.get_native_interface() as _, *instance as _)
 }
 
 #[no_mangle]
@@ -380,22 +363,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_isConn
     _: JObject,
 ) -> u8 {
     isConnectedNative()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_getServerAddress(
-    env: JNIEnv,
-    _: JObject,
-) -> jstring {
-    getServerAddress(env.get_native_interface() as _) as _
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_getServerPort(
-    _: JNIEnv,
-    _: JObject,
-) -> i32 {
-    getServerPort()
 }
 
 #[no_mangle]

@@ -9,46 +9,16 @@ import java.util.concurrent.TimeUnit;
 class TrackingThread extends ThreadBase
 {
     private static final String TAG = "TrackingThread";
-    private int mRefreshRate = 72*3;
+
     interface TrackingCallback {
         void onTracking();
     }
 
     private TrackingCallback mCallback;
-    //private ArThread mArThread;
 
-    public TrackingThread() {
-    }
-
-    public void setCallback(TrackingCallback callback) {
+    public void start(TrackingCallback callback) {
         mCallback = callback;
-    }
-
-    void changeRefreshRate(int refreshRate) {
-        mRefreshRate = refreshRate * 3;
-    }
-
-    public void start(EGLContext mEGLContext, Activity activity, int cameraTexture) {
-//        mArThread = new ArThread(mEGLContext);
-//        mArThread.initialize((BaseActivity) activity);
-//        mArThread.setCameraTexture(cameraTexture);
-
         super.startBase();
-        //mArThread.start();
-    }
-
-    public void onConnect() {
-        //mArThread.onConnect();
-    }
-
-    public void onDisconnect() {
-        //mArThread.onDisconnect();
-    }
-
-    @Override
-    public void stopAndWait() {
-        //mArThread.stopAndWait();
-        super.stopAndWait();
     }
 
     @Override
@@ -60,7 +30,7 @@ class TrackingThread extends ThreadBase
                 mCallback.onTracking();
 
             try {
-                previousFetchTime += 1000 * 1000 * 1000 / mRefreshRate;
+                previousFetchTime += 1000 * 1000 * 1000 / 72 * 3;
                 long next = previousFetchTime - System.nanoTime();
                 if (next < 0) {
                     // Exceed time!
@@ -68,17 +38,9 @@ class TrackingThread extends ThreadBase
                 } else {
                     TimeUnit.NANOSECONDS.sleep(next);
                 }
-            } catch (InterruptedException e) {
+            } catch (InterruptedException ignored) {
             }
         }
         Utils.logi(TAG, () -> "TrackingThread has stopped.");
     }
-
-//    public boolean onRequestPermissionsResult(BaseActivity activity) {
-//        return mArThread.onRequestPermissionsResult(activity);
-//    }
-
-//    public String getErrorMessage() {
-//        return mArThread.getErrorMessage();
-//    }
 }

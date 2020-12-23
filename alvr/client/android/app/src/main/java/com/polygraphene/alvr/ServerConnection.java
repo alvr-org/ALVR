@@ -21,8 +21,6 @@ class ServerConnection extends ThreadBase {
     interface ConnectionListener {
         void onConnected(int width, int height, int codec, boolean realtimeDecoder, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset, int trackingSpaceType);
 
-        void onShutdown(String serverAddr, int serverPort);
-
         void onDisconnect();
 
         void onTracking();
@@ -40,13 +38,7 @@ class ServerConnection extends ThreadBase {
         void pushNAL(NAL nal);
     }
 
-    private static final String BROADCAST_ADDRESS = "255.255.255.255";
-    private static final int HELLO_PORT = 9943;
-    private static final int PORT = 9944;
-
     private TrackingThread mTrackingThread;
-
-    private OvrActivity.OnCreateResult mDeviceDescriptor;
 
     private boolean mInitialized = false;
 
@@ -77,15 +69,8 @@ class ServerConnection extends ThreadBase {
         }
     }
 
-    public boolean start(EGLContext mEGLContext, Activity activity, OvrActivity.OnCreateResult deviceDescriptor, int cameraTexture) {
+    public boolean start() {
         mTrackingThread = new TrackingThread();
-        mTrackingThread.setCallback(() -> {
-            if (isConnectedNative()) {
-                mConnectionListener.onTracking();
-            }
-        });
-
-        mDeviceDescriptor = deviceDescriptor;
 
         super.startBase();
 
@@ -101,7 +86,11 @@ class ServerConnection extends ThreadBase {
         }
 
         if (!initializeFailed) {
-            mTrackingThread.start(mEGLContext, activity, cameraTexture);
+            mTrackingThread.start(() -> {
+                if (isConnectedNative()) {
+                    mConnectionListener.onTracking();
+                }
+            });
         }
         return !initializeFailed;
     }
@@ -118,15 +107,7 @@ class ServerConnection extends ThreadBase {
     @Override
     public void run() {
         try {
-            String[] targetList = getTargetAddressList();
-
-            for (String target : targetList) {
-                Utils.logi(TAG, () -> "Target IP address for hello datagrams: " + target);
-            }
-
-            initializeSocket(HELLO_PORT, PORT, getDeviceName(), targetList,
-                    mDeviceDescriptor.refreshRate, mDeviceDescriptor.renderWidth,
-                    mDeviceDescriptor.renderHeight);
+            initializeSocket();
             synchronized (this) {
                 mInitialized = true;
                 notifyAll();
@@ -135,54 +116,10 @@ class ServerConnection extends ThreadBase {
 
             runLoop();
         } finally {
-            mConnectionListener.onShutdown(getServerAddress(), getServerPort());
             closeSocket();
         }
 
         Utils.logi(TAG, () -> "ServerConnection stopped.");
-    }
-
-    // List addresses where discovery datagrams will be sent to reach ALVR server.
-    private String[] getTargetAddressList() {
-        // List broadcast address from all interfaces except for mobile network.
-        // We should send all broadcast address to use USB tethering or VPN.
-        List<String> ret = new ArrayList<>();
-        try {
-            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
-
-            while (networkInterfaces.hasMoreElements()) {
-                NetworkInterface networkInterface = networkInterfaces.nextElement();
-
-                if (networkInterface.getName().startsWith("rmnet")) {
-                    // Ignore mobile network interfaces.
-                    Utils.log(TAG, () -> "Ignore interface. Name=" + networkInterface.getName());
-                    continue;
-                }
-
-                List<InterfaceAddress> interfaceAddresses = networkInterface.getInterfaceAddresses();
-
-                StringBuilder address = new StringBuilder();
-                for (InterfaceAddress interfaceAddress : interfaceAddresses) {
-                    address.append(interfaceAddress.toString()).append(", ");
-                    // getBroadcast() return non-null only when ipv4.
-                    if (interfaceAddress.getBroadcast() != null) {
-                        ret.add(interfaceAddress.getBroadcast().getHostAddress());
-                    }
-                }
-                String finalAddress = address.toString();
-                Utils.logi(TAG, () -> "Interface: Name=" + networkInterface.getName() + " Address=" + finalAddress);
-            }
-            Utils.logi(TAG, () -> ret.size() + " broadcast addresses were found.");
-            for (String address : ret) {
-                Log.v(TAG, address);
-            }
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }
-        if (ret.size() == 0) {
-            ret.add(BROADCAST_ADDRESS);
-        }
-        return ret.toArray(new String[]{});
     }
 
     public boolean isConnected() {
@@ -194,14 +131,12 @@ class ServerConnection extends ThreadBase {
     public void onConnected(int width, int height, int codec, boolean realtimeDecoder, int frameQueueSize, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset, int trackingSpaceType) {
         Utils.logi(TAG, () -> "onConnected is called.");
         mConnectionListener.onConnected(width, height, codec, realtimeDecoder, frameQueueSize, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset, trackingSpaceType);
-        mTrackingThread.onConnect();
     }
 
     @SuppressWarnings("unused")
     public void onDisconnected() {
         Utils.logi(TAG, () -> "onDisconnected is called.");
         mConnectionListener.onDisconnect();
-        mTrackingThread.onDisconnect();
     }
 
     @SuppressWarnings("unused")
@@ -242,8 +177,7 @@ class ServerConnection extends ThreadBase {
     }
 
 
-    private native void initializeSocket(int helloPort, int port, String deviceName, String[] broadcastAddrList,
-                                         int refreshRate, int renderWidth, int renderHeight);
+    private native void initializeSocket();
 
     private native void closeSocket();
 
@@ -254,10 +188,6 @@ class ServerConnection extends ThreadBase {
     private native void sendNative(long nativeBuffer, int bufferLength);
 
     public native boolean isConnectedNative();
-
-    private native String getServerAddress();
-
-    private native int getServerPort();
 
     private native void setSinkPreparedNative(boolean prepared);
 }

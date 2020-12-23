@@ -54,12 +54,10 @@ public:
     // Turned true when decoder thread is prepared.
     bool mSinkPrepared = false;
 
-//    UdpSocket m_socket;
     time_t m_prevSentSync = 0;
     time_t m_prevSentBroadcast = 0;
     int64_t m_timeDiff = 0;
     uint64_t timeSyncSequence = (uint64_t) -1;
-    uint64_t m_lastReceived = 0;
     uint64_t m_lastFrameIndex = 0;
     ConnectionMessage m_connectionMessage = {};
 
@@ -67,8 +65,6 @@ public:
     uint32_t m_prevSoundSequence = 0;
     std::shared_ptr<SoundPlayer> m_soundPlayer;
     std::shared_ptr<NALParser> m_nalParser;
-
-    HelloMessage mHelloMessage;
 
     JNIEnv *m_env;
     jobject m_instance;
@@ -94,10 +90,6 @@ int send(const void *buf, size_t len) {
                         sizeof(g_socket.m_serverAddr));
 }
 
-void updateTimeout() {
-    g_socket.m_lastReceived = getTimestampUs();
-}
-
 void connectSocket(void *v_env, ConnectionMessage connectionMessage) {
     auto *env = (JNIEnv *) v_env;
 
@@ -116,7 +108,6 @@ void connectSocket(void *v_env, ConnectionMessage connectionMessage) {
     getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &socklen);
     LOGI("Current socket recv buffer is %d bytes", val);
 
-    updateTimeout();
     g_socket.m_prevVideoSequence = 0;
     g_socket.m_prevSoundSequence = 0;
     g_socket.m_timeDiff = 0;
@@ -189,8 +180,6 @@ void processVideoSequence(uint32_t sequence) {
 }
 
 void onPacketRecv(const char *packet, size_t packetSize) {
-    updateTimeout();
-
     uint32_t type = *(uint32_t *) packet;
     if (type == ALVR_PACKET_TYPE_VIDEO_FRAME) {
         auto *header = (VideoFrame *) packet;
@@ -346,19 +335,15 @@ void closeSocket() {
     g_socket.m_sendQueue.clear();
 }
 
-void initializeSocket(void *v_env, void *v_instance,
-                      int helloPort, int port, void *v_deviceName, void *v_broadcastAddrList,
-                      int refreshRate, int renderWidth, int renderHeight) {
+void initializeSocket(void *v_env, void *v_instance) {
     auto *env = (JNIEnv *) v_env;
     auto *instance = (jobject) v_instance;
-    auto *deviceName_ = (jstring) v_deviceName;
 
     //
     // Initialize variables
     //
 
     g_socket.m_stopped = false;
-    g_socket.m_lastReceived = 0;
     g_socket.m_prevSentSync = 0;
     g_socket.m_prevSentBroadcast = 0;
     g_socket.m_prevVideoSequence = 0;
@@ -376,26 +361,6 @@ void initializeSocket(void *v_env, void *v_instance,
 
     g_socket.m_nalParser = std::make_shared<NALParser>(env, instance);
 
-    //
-    // Fill hello message
-    //
-
-    memset(&g_socket.mHelloMessage, 0, sizeof(g_socket.mHelloMessage));
-
-    g_socket.mHelloMessage.type = ALVR_PACKET_TYPE_HELLO_MESSAGE;
-    memcpy(g_socket.mHelloMessage.signature, ALVR_HELLO_PACKET_SIGNATURE,
-           sizeof(g_socket.mHelloMessage.signature));
-    strcpy(g_socket.mHelloMessage.version, ALVR_VERSION);
-
-    auto deviceName = GetStringFromJNIString(env, deviceName_);
-
-    memcpy(g_socket.mHelloMessage.deviceName, deviceName.c_str(),
-           std::min(deviceName.length(), sizeof(g_socket.mHelloMessage.deviceName)));
-
-    g_socket.mHelloMessage.refreshRate = refreshRate;
-
-    g_socket.mHelloMessage.renderWidth = static_cast<uint32_t>(renderWidth);
-    g_socket.mHelloMessage.renderHeight = static_cast<uint32_t>(renderHeight);
 
     //
     // UdpSocket
@@ -436,7 +401,7 @@ void initializeSocket(void *v_env, void *v_instance,
 
         sockaddr_in addr{};
         addr.sin_family = AF_INET;
-        addr.sin_port = htons(port);
+        addr.sin_port = htons(9944);
         addr.sin_addr.s_addr = INADDR_ANY;
         if (bind(g_socket.m_sock, (sockaddr *) &addr, sizeof(addr)) < 0) {
             throw FormatException("bind error : %d %s", errno, strerror(errno));
@@ -622,24 +587,6 @@ void setSinkPreparedNative(unsigned char prepared) {
     }
     g_socket.mSinkPrepared = prepared;
     LOGSOCKETI("setSinkPrepared: Decoder prepared=%d", g_socket.mSinkPrepared);
-}
-
-void *getServerAddress(void *v_env) {
-    auto *env = (JNIEnv *) v_env;
-
-    if (g_socket.m_hasServerAddress) {
-        char serverAddress[100];
-        inet_ntop(g_socket.m_serverAddr.sin_family, &g_socket.m_serverAddr.sin_addr, serverAddress,
-                  sizeof(serverAddress));
-        return env->NewStringUTF(serverAddress);
-    }
-    return nullptr;
-}
-
-int getServerPort() {
-    if (g_socket.m_hasServerAddress)
-        return htons(g_socket.m_serverAddr.sin_port);
-    return 0;
 }
 
 void disconnectSocket(void *v_env) {

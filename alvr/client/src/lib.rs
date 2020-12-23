@@ -14,7 +14,7 @@ use jni::{
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::{slice, sync::Arc};
-use tokio::{runtime::Runtime, sync::broadcast};
+use tokio::{runtime::Runtime, sync::{Notify, broadcast}};
 
 struct OnCreateResultWrapper(OnCreateResult);
 unsafe impl Send for OnCreateResultWrapper {}
@@ -27,6 +27,7 @@ lazy_static! {
     static ref MAYBE_ON_STREAM_STOP_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> =
         Mutex::new(None);
     static ref MAYBE_ON_PAUSE_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
+    static ref CLIENT_READY_NOTIFIER: Arc<Notify> = Arc::new(Notify::new());
 }
 
 #[no_mangle]
@@ -129,6 +130,11 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
         *ON_CREATE_RESULT.lock() = OnCreateResultWrapper(result);
         *REFRESH_RATES.lock() = refresh_rates;
 
+        unsafe extern "C" fn ready_callback() {
+            CLIENT_READY_NOTIFIER.notify();
+        }
+        setClientReadyCallback(Some(ready_callback));
+
         Ok(())
     }())
     .ok();
@@ -224,6 +230,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
                     on_stream_stop_notifier,
                     Arc::new(java_vm),
                     Arc::new(activity_ref),
+                    CLIENT_READY_NOTIFIER.clone(),
                 );
 
                 tokio::select! {

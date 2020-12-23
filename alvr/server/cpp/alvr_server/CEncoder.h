@@ -48,6 +48,8 @@
 
 		void OnPacketLoss();
 
+		void InsertIDR();
+
 		void Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits);
 
 	private:

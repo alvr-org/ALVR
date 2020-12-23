@@ -305,6 +305,7 @@ pub async fn connection_lifecycle_loop() -> StrResult {
 
         loop {
             match control_socket.recv().await {
+                Ok(ClientControlPacket::RequestIDR) => unsafe { crate::RequestIDR() },
                 Ok(ClientControlPacket::Reserved(_))
                 | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
                 Err(e) => {

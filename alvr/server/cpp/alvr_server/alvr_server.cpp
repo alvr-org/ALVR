@@ -172,6 +172,11 @@ void InitializeStreaming() {
 		g_serverDriverDisplayRedirect.m_pRemoteHmd->StartStreaming();
 }
 
+void RequestIDR() {
+	if (g_serverDriverDisplayRedirect.m_pRemoteHmd)
+		g_serverDriverDisplayRedirect.m_pRemoteHmd->RequestIDR();
+}
+
 extern "C" void ShutdownSteamvr() {
 	if (g_serverDriverDisplayRedirect.m_pRemoteHmd)
 		g_serverDriverDisplayRedirect.m_pRemoteHmd->OnShutdown();

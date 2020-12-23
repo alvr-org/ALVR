@@ -26,4 +26,5 @@ extern "C" void (*ShutdownRuntime)();
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();
+extern "C" void RequestIDR();
 extern "C" void ShutdownSteamvr();

@@ -45,6 +45,7 @@ pub enum ServerControlPacket {
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
+    RequestIDR,
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

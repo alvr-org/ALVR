@@ -64,6 +64,8 @@ public:
 
 	void OnShutdown();
 
+	void RequestIDR();
+
 
 	void updateController(const TrackingInfo& info);
 

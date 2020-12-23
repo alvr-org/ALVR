@@ -82,6 +82,8 @@ public:
     int m_notifyPipe[2] = {-1, -1};
     std::mutex pipeMutex;
     std::list<SendBuffer> m_sendQueue;
+
+    void (*clientReadyCallback)() = nullptr;
 };
 
 namespace {
@@ -622,6 +624,8 @@ void setSinkPreparedNative(unsigned char prepared) {
     }
     g_socket.mSinkPrepared = prepared;
     LOGSOCKETI("setSinkPrepared: Decoder prepared=%d", g_socket.mSinkPrepared);
+    if (prepared && g_socket.clientReadyCallback != nullptr)
+        g_socket.clientReadyCallback();
 }
 
 void *getServerAddress(void *v_env) {
@@ -653,4 +657,8 @@ void disconnectSocket(void *v_env) {
     if (g_socket.m_soundPlayer) {
         g_socket.m_soundPlayer->Stop();
     }
+}
+
+void setClientReadyCallback(void (*cb)()) {
+    g_socket.clientReadyCallback = cb;
 }

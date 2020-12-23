@@ -13,6 +13,7 @@ public:
 	void OnPacketLoss();
 
 	void OnStreamStart();
+	void InsertIDR();
 
 	bool CheckIDRInsertion();
 private:

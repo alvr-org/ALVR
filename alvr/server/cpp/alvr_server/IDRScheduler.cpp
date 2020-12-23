@@ -37,8 +37,12 @@ void IDRScheduler::OnStreamStart()
 	} else {
 		m_minIDRFrameInterval = MIN_IDR_FRAME_INTERVAL;
 	}
+	InsertIDR();
+}
+
+void IDRScheduler::InsertIDR()
+{
 	IPCCriticalSectionLock lock(m_IDRCS);
-	// Force insert IDR-frame
 	m_insertIDRTime = GetTimestampUs() - MIN_IDR_FRAME_INTERVAL * 2;
 	m_scheduled = true;
 }

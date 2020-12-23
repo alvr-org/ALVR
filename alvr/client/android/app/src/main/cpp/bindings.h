@@ -34,6 +34,8 @@ struct ConnectionMessage {
     const char *webGuiUrl;
 };
 
+extern "C" void setClientReadyCallback(void (*callback)());
+
 extern "C" void decoderInput(long long frameIndex);
 extern "C" void decoderOutput(long long frameIndex);
 

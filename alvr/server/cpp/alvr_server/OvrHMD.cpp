@@ -448,3 +448,11 @@ OvrHmd::OvrHmd()
 		vr::VREvent_Reserved_t data = { 0, 0 };
 		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_DriverRequestedQuit, (vr::VREvent_Data_t&)data, 0);
 	}
+
+	void OvrHmd::RequestIDR() {
+		if (!m_streamComponentsInitialized) {
+			return;
+		}
+		Debug("RequestIDR()\n");
+		m_encoder->InsertIDR();
+	}

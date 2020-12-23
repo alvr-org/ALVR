@@ -4,7 +4,7 @@ use jni::{objects::GlobalRef, JavaVM};
 use serde_json as json;
 use settings_schema::Switch;
 use std::{ffi::CString, sync::Arc};
-use tokio::sync::broadcast;
+use tokio::sync::{Notify, broadcast};
 
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
@@ -41,6 +41,7 @@ async fn try_connect(
     private_identity: &PrivateIdentity,
     java_vm: Arc<JavaVM>,
     activity_ref: Arc<GlobalRef>,
+    client_ready_notifier: Arc<Notify>,
 ) -> StrResult {
     let (mut control_socket, config_packet) = trace_err!(
         ControlSocket::connect_to_server(
@@ -113,18 +114,22 @@ async fn try_connect(
     info!("Connected to server");
 
     loop {
-        match control_socket.recv().await {
-            Ok(ServerControlPacket::Restarting) => {
-                info!("Server restarting");
-                setLoadingMessage(&*java_vm, &*activity_ref, SERVER_RESTART_MESSAGE).await?;
-                break Ok(());
-            }
-            Ok(ServerControlPacket::Reserved(_)) | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
-            Err(e) => {
-                info!("Server disconnected. Cause: {}", e);
-                setLoadingMessage(&*java_vm, &*activity_ref, SERVER_DISCONNECTED_MESSAGE).await?;
-                break Ok(());
-            }
+        tokio::select! {
+            _ = client_ready_notifier.notified() => { control_socket.send(&ClientControlPacket::RequestIDR).await.ok(); }
+            control_packet = control_socket.recv() =>
+                match control_packet {
+                    Ok(ServerControlPacket::Restarting) => {
+                        info!("Server restarting");
+                        setLoadingMessage(&*java_vm, &*activity_ref, SERVER_RESTART_MESSAGE).await?;
+                        break Ok(());
+                    }
+                    Ok(ServerControlPacket::Reserved(_)) | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
+                    Err(e) => {
+                        info!("Server disconnected. Cause: {}", e);
+                        setLoadingMessage(&*java_vm, &*activity_ref, SERVER_DISCONNECTED_MESSAGE).await?;
+                        break Ok(());
+                    }
+                }
         }
     }
 }
@@ -136,6 +141,7 @@ pub async fn connection_lifecycle_loop(
     on_stream_stop_notifier: broadcast::Sender<()>,
     java_vm: Arc<JavaVM>,
     activity_ref: Arc<GlobalRef>,
+    client_ready_notifier: Arc<Notify>,
 ) {
     let mut on_stream_stop_receiver = on_stream_stop_notifier.subscribe();
 
@@ -147,6 +153,7 @@ pub async fn connection_lifecycle_loop(
             &private_identity,
             java_vm.clone(),
             activity_ref.clone(),
+            client_ready_notifier.clone(),
         ));
 
         tokio::select! {

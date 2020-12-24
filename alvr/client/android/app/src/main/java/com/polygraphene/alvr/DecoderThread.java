@@ -89,8 +89,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
 
         mHandler.getLooper().quitSafely();
 
-        if (mQueue != null)
-            mQueue.stop();
+        mQueue.stop();
     }
 
     @Override
@@ -247,9 +246,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
 
     public void onConnect(int codec, boolean realtime) {
         Utils.logi(TAG, () -> "onConnect()");
-        if (mQueue != null) {
-            mQueue.reset();
-        }
+        mQueue.reset();
         notifyCodecChange(codec, realtime);
     }
 

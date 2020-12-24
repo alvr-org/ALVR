@@ -106,7 +106,6 @@ public class OvrActivity extends Activity {
     String mDashboardURL = null;
     String mLoadingMessage = TRUST_MESSAGE;
     public final Object mWaiter = new Object();
-    public OvrActivity self = this;
 
     // Cache method references for performance reasons
     final Runnable mRenderRunnable = this::render;
@@ -396,11 +395,11 @@ public class OvrActivity extends Activity {
 
     native void renderLoadingNative();
 
-    native void onTrackingNative();
-
     native boolean isVrModeNative();
 
-    native void onStreamStartNative(int width, int height, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset, int trackingSpaceType);
+    native void onStreamStartNative(int width, int height, int refreshRate, boolean streamMic,
+                                    int foveationMode, float foveationStrength, float foveationShape,
+                                    float foveationVerticalOffset, int trackingSpaceType);
 
     native void onHapticsFeedbackNative(long startTime, float amplitude, float duration, float frequency, boolean hand);
 
@@ -473,13 +472,6 @@ public class OvrActivity extends Activity {
     @SuppressWarnings("unused")
     public void onGuardianSegmentAck(long timestamp, int segmentIndex) {
         mRenderingHandler.post(() -> onGuardianSegmentAckNative(timestamp, segmentIndex));
-    }
-
-    @SuppressWarnings("unused")
-    public void send(long nativeBuffer, int bufferLength) {
-        synchronized (mWaiter) {
-            sendNative(nativeBuffer, bufferLength);
-        }
     }
 
     @SuppressWarnings("unused")

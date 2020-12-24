@@ -43,7 +43,6 @@ public:
     int m_sock = -1;
     bool m_connected = false;
 
-    bool m_hasServerAddress = false;
     sockaddr_in m_serverAddr = {};
 
     std::list<sockaddr_in> m_broadcastAddrList;
@@ -51,11 +50,7 @@ public:
 
     bool m_stopped = false;
 
-    // Turned true when decoder thread is prepared.
-    bool mSinkPrepared = false;
-
     time_t m_prevSentSync = 0;
-    time_t m_prevSentBroadcast = 0;
     int64_t m_timeDiff = 0;
     uint64_t timeSyncSequence = (uint64_t) -1;
     uint64_t m_lastFrameIndex = 0;
@@ -90,8 +85,6 @@ int send(const void *buf, size_t len) {
 void connectSocket(const char *ip, unsigned int codec, unsigned int bufferSize) {
     inet_pton(AF_INET, ip, &g_socket.m_serverAddr.sin_addr);
     g_socket.m_serverAddr.sin_port = htons(9944);
-    g_socket.m_connected = true;
-    g_socket.m_hasServerAddress = true;
 
     LOGI("Try setting recv buffer size = %d bytes", bufferSize);
     int val = bufferSize;
@@ -105,6 +98,8 @@ void connectSocket(const char *ip, unsigned int codec, unsigned int bufferSize) 
     g_socket.m_timeDiff = 0;
     LatencyCollector::Instance().resetAll();
     g_socket.m_nalParser->setCodec(codec);
+
+    g_socket.m_connected = true;
 }
 
 void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
@@ -320,7 +315,6 @@ void initializeSocket(void *v_env, void *v_instance) {
 
     g_socket.m_stopped = false;
     g_socket.m_prevSentSync = 0;
-    g_socket.m_prevSentBroadcast = 0;
     g_socket.m_prevVideoSequence = 0;
     g_socket.m_prevSoundSequence = 0;
     g_socket.m_timeDiff = 0;

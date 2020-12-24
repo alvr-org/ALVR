@@ -14,8 +14,6 @@ import java.util.List;
 class ServerConnection extends ThreadBase {
     private static final String TAG = "ServerConnection";
 
-    private TrackingThread mTrackingThread;
-
     private boolean mInitialized = false;
 
     private final OvrActivity mParent;
@@ -25,8 +23,6 @@ class ServerConnection extends ThreadBase {
     }
 
     public void start() {
-        mTrackingThread = new TrackingThread();
-
         super.startBase();
 
         synchronized (this) {
@@ -38,17 +34,10 @@ class ServerConnection extends ThreadBase {
                 }
             }
         }
-
-        mTrackingThread.start(() -> {
-            if (mParent.isConnectedNative()) {
-                mParent.onTrackingNative();
-            }
-        });
     }
 
     @Override
     public void stopAndWait() {
-        mTrackingThread.stopAndWait();
         synchronized (mParent.mWaiter) {
             mParent.interruptNative();
         }

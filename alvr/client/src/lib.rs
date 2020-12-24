@@ -156,14 +156,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderLoadi
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onTrackingNative(
-    env: JNIEnv,
-    _: JObject,
-) {
-    onTrackingNative(env.get_native_interface() as _)
-}
-
-#[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
     env: JNIEnv,
     jactivity: JObject,

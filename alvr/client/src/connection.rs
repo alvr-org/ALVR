@@ -1,20 +1,26 @@
-use crate::{connectSocket, disconnectSocket};
 use alvr_common::{data::*, logging::*, sockets::ControlSocket, *};
 use jni::{objects::GlobalRef, JavaVM};
 use serde_json as json;
 use settings_schema::Switch;
-use std::{ffi::CString, sync::Arc};
-use tokio::sync::broadcast;
+use std::{ffi::CString, sync::Arc, time::Duration};
+use tokio::{
+    sync::broadcast,
+    time::{self, Instant},
+};
 
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
 
 // close stream on Drop (manual disconnection or execution canceling)
-struct StreamCloseGuard(Arc<JavaVM>);
+struct StreamCloseGuard {
+    java_vm: Arc<JavaVM>,
+    activity_ref: Arc<GlobalRef>,
+}
+
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
-        if let Ok(env) = self.0.attach_current_thread() {
-            unsafe { disconnectSocket(env.get_native_interface() as _) };
+        if let Ok(env) = self.java_vm.attach_current_thread() {
+            unsafe { crate::disconnectSocket(env.get_native_interface() as _) };
         }
     }
 }
@@ -61,11 +67,16 @@ async fn try_connect(
     let ip_cstring = CString::new(control_socket.peer_ip().to_string()).unwrap();
 
     unsafe {
-        connectSocket(
+        crate::connectSocket(
             ip_cstring.as_ptr(),
             matches!(baseline_settings.video.codec, CodecType::HEVC) as _,
             baseline_settings.connection.client_recv_buffer_size as _,
         )
+    };
+
+    let _stream_guard = StreamCloseGuard {
+        java_vm: java_vm.clone(),
+        activity_ref: activity_ref.clone(),
     };
 
     trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
@@ -117,24 +128,43 @@ async fn try_connect(
         ],
     ))?;
 
-    let _stream_guard = StreamCloseGuard(java_vm.clone());
-
     info!("Connected to server");
 
-    loop {
-        match control_socket.recv().await {
-            Ok(ServerControlPacket::Restarting) => {
-                info!("Server restarting");
-                setLoadingMessage(&*java_vm, &*activity_ref, SERVER_RESTART_MESSAGE).await?;
-                break Ok(());
-            }
-            Ok(ServerControlPacket::Reserved(_)) | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
-            Err(e) => {
-                info!("Server disconnected. Cause: {}", e);
-                setLoadingMessage(&*java_vm, &*activity_ref, SERVER_DISCONNECTED_MESSAGE).await?;
-                break Ok(());
+    // setup stream loops
+
+    let tracking_interval = Duration::from_secs_f32(1_f32 / (config_packet.fps * 3_f32));
+    let tracking_loop = async move {
+        let mut deadline = Instant::now();
+        loop {
+            unsafe { crate::onTrackingNative() };
+            deadline += tracking_interval;
+            time::delay_until(deadline).await;
+        }
+    };
+
+    let control_loop = async move {
+        loop {
+            match control_socket.recv().await {
+                Ok(ServerControlPacket::Restarting) => {
+                    info!("Server restarting");
+                    setLoadingMessage(&*java_vm, &*activity_ref, SERVER_RESTART_MESSAGE).await?;
+                    break Ok(());
+                }
+                Ok(ServerControlPacket::Reserved(_))
+                | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
+                Err(e) => {
+                    info!("Server disconnected. Cause: {}", e);
+                    setLoadingMessage(&*java_vm, &*activity_ref, SERVER_DISCONNECTED_MESSAGE)
+                        .await?;
+                    break Ok(());
+                }
             }
         }
+    };
+
+    tokio::select! {
+        res = tracking_loop => res,
+        res = control_loop => res,
     }
 }
 

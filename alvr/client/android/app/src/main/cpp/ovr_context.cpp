@@ -87,8 +87,6 @@ public:
 
     ovrRenderer Renderer;
 
-    jmethodID mSocketSend{};
-
     // headset battery level
     int batteryLevel;
 
@@ -177,10 +175,6 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.streamTexture.get(),
                        g_ctx.loadingTexture, {false});
     ovrRenderer_CreateScene(&g_ctx.Renderer);
-
-    clazz = env->FindClass("com/polygraphene/alvr/OvrActivity");
-    g_ctx.mSocketSend = env->GetMethodID(clazz, "send", "(JI)V");
-    env->DeleteLocalRef(clazz);
 
     memset(g_ctx.mHapticsState, 0, sizeof(g_ctx.mHapticsState));
 
@@ -635,9 +629,7 @@ void checkShouldSyncGuardian() {
 }
 
 // Called from TrackingThread
-void sendTrackingInfo(void *v_env) {
-    auto *env_ = (JNIEnv *) v_env;
-
+void sendTrackingInfo() {
     std::shared_ptr<TrackingFrame> frame(new TrackingFrame());
 
     g_ctx.FrameIndex++;
@@ -663,16 +655,12 @@ void sendTrackingInfo(void *v_env) {
 
     LatencyCollector::Instance().tracking(frame->frameIndex);
 
-    env_->CallVoidMethod(g_ctx.java.ActivityObject, g_ctx.mSocketSend,
-                         reinterpret_cast<jlong>(&info),
-                         static_cast<jint>(sizeof(info)));
+    sendNative(reinterpret_cast<long long int>(&info), static_cast<int>(sizeof(info)));
     checkShouldSyncGuardian();
 }
 
 // Called from TrackingThread
-void sendMicData(void *v_env) {
-    auto *env_ = (JNIEnv *) v_env;
-
+void sendMicData() {
     if (!g_ctx.mStreamMic) {
         return;
     }
@@ -702,9 +690,7 @@ void sendMicData(void *v_env) {
                    g_ctx.micBuffer + count * 100,
                    sizeof(int16_t) * audio.outputBufferNumElements);
 
-            env_->CallVoidMethod(g_ctx.java.ActivityObject, g_ctx.mSocketSend,
-                                 reinterpret_cast<jlong>(&audio),
-                                 static_cast<jint>(sizeof(audio)));
+            sendNative(reinterpret_cast<long long int>(&audio), static_cast<int>(sizeof(audio)));
             count++;
         }
     }
@@ -1068,9 +1054,7 @@ bool prepareGuardianData() {
 }
 
 // Called from TrackingThread
-void sendGuardianInfo(void *v_env) {
-    auto *env_ = (JNIEnv *) v_env;
-
+void sendGuardianInfo() {
     if (g_ctx.m_ShouldSyncGuardian) {
         double currentTime = GetTimeInSeconds();
         if (currentTime - g_ctx.m_LastGuardianSyncTry < ALVR_GUARDIAN_RESEND_CD_SEC) {
@@ -1095,8 +1079,7 @@ void sendGuardianInfo(void *v_env) {
         packet.playAreaSize.x = 2.0f * bboxScale.x;
         packet.playAreaSize.y = 2.0f * bboxScale.z;
 
-        env_->CallVoidMethod(g_ctx.java.ActivityObject, g_ctx.mSocketSend,
-                             reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
+        sendNative(reinterpret_cast<long long int>(&packet), static_cast<int>(sizeof(packet)));
     } else if (g_ctx.m_GuardianSyncing) {
         GuardianSegmentData packet{};
         packet.type = ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA;
@@ -1113,8 +1096,7 @@ void sendGuardianInfo(void *v_env) {
         memcpy(&packet.points, g_ctx.m_GuardianPoints + segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE,
                sizeof(TrackingVector3) * countToSend);
 
-        env_->CallVoidMethod(g_ctx.java.ActivityObject, g_ctx.mSocketSend,
-                             reinterpret_cast<jlong>(&packet), static_cast<jint>(sizeof(packet)));
+        sendNative(reinterpret_cast<long long int>(&packet), static_cast<int>(sizeof(packet)));
     }
 }
 
@@ -1152,14 +1134,14 @@ void onBatteryChangedNative(int battery) {
     g_ctx.batteryLevel = battery;
 }
 
-void onTrackingNative(void *env) {
+void onTrackingNative() {
     if (g_ctx.Ovr != nullptr) {
-        sendTrackingInfo(env);
+        sendTrackingInfo();
 
         //TODO: maybe use own thread, but works fine with tracking
-        sendMicData(env);
+        sendMicData();
 
         //TODO: same as above
-        sendGuardianInfo(env);
+        sendGuardianInfo();
     }
 }

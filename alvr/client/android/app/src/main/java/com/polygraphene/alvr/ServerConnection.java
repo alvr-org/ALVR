@@ -1,16 +1,5 @@
 package com.polygraphene.alvr;
 
-import android.app.Activity;
-import android.opengl.EGLContext;
-import android.util.Log;
-
-import java.net.InterfaceAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
-
 class ServerConnection extends ThreadBase {
     private static final String TAG = "ServerConnection";
 

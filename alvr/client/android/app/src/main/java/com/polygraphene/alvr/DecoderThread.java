@@ -302,12 +302,12 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
             // IDR-Frame
             Utils.frameLog(nal.frameIndex, () -> "Feed IDR-Frame. Size=" + nal.length + " PresentationTime=" + presentationTime);
 
-            LatencyCollector.DecoderInput(nal.frameIndex);
+            DecoderInput(nal.frameIndex);
 
             consumed = pushInputBuffer(nal, presentationTime, 0);
         } else {
             // PFrame
-            LatencyCollector.DecoderInput(nal.frameIndex);
+            DecoderInput(nal.frameIndex);
 
             if (mWaitNextIDR) {
                 // Ignore P-Frame until next I-Frame
@@ -370,4 +370,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
     public long clearAvailable(SurfaceTexture surfaceTexture) {
         return mQueue.clearAvailable(surfaceTexture);
     }
+
+    public static native void DecoderInput(long frameIndex);
+    public static native void DecoderOutput(long frameIndex);
 }

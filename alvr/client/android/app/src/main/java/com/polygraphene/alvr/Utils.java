@@ -7,7 +7,6 @@ import android.util.Log;
 
 public class Utils {
     public static boolean sEnableLog = false;
-    public static long gDebugFlags = 0;
 
     public interface LogProvider
     {

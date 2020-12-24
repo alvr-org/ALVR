@@ -1,7 +1,5 @@
 package com.polygraphene.alvr;
 
-import android.util.Log;
-
 public class ThreadBase {
     private Thread mThread;
     private boolean mStopped = false;
@@ -17,7 +15,7 @@ public class ThreadBase {
         while (mThread.isAlive()) {
             try {
                 mThread.join();
-            } catch (InterruptedException e) {
+            } catch (InterruptedException ignored) {
             }
         }
     }

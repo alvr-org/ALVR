@@ -10,7 +10,10 @@ use jni::{objects::*, *};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::{slice, sync::Arc};
-use tokio::{runtime::Runtime, sync::broadcast};
+use tokio::{
+    runtime::Runtime,
+    sync::{broadcast, Notify},
+};
 
 struct OnCreateResultWrapper(OnCreateResult);
 unsafe impl Send for OnCreateResultWrapper {}
@@ -23,6 +26,7 @@ lazy_static! {
     static ref MAYBE_ON_STREAM_STOP_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> =
         Mutex::new(None);
     static ref MAYBE_ON_PAUSE_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
+    static ref IDR_REQUEST_NOTIFIER: Notify = Notify::new();
 }
 
 #[no_mangle]
@@ -321,4 +325,12 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_isConnected
     _: JObject,
 ) -> u8 {
     isConnectedNative()
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_requestIDR(
+    _: JNIEnv,
+    _: JObject,
+) {
+    IDR_REQUEST_NOTIFIER.notify();
 }

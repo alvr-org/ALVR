@@ -354,6 +354,7 @@ public class OvrActivity extends Activity {
         public void onPrepared() {
             mDecoderPrepared = true;
             Utils.logi(TAG, () -> "DecoderCallback.onPrepared. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
+            requestIDR();
         }
 
         @Override
@@ -402,6 +403,8 @@ public class OvrActivity extends Activity {
     native void onBatteryChangedNative(int battery);
 
     native boolean isConnectedNative();
+
+    native void requestIDR();
 
     @SuppressWarnings("unused")
     public void openDashboard() {

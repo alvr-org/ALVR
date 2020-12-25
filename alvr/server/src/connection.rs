@@ -28,14 +28,17 @@ async fn client_discovery() -> StrResult {
 
 async fn connect_to_any_client(
     clients_info: HashMap<IpAddr, PublicIdentity>,
-) -> ControlSocket<ClientControlPacket, ServerControlPacket> {
+) -> (
+    ControlSocketSender<ServerControlPacket>,
+    ControlSocketReceiver<ClientControlPacket>,
+) {
     loop {
-        let maybe_pending_connection = ControlSocket::begin_connecting_to_client(
-            &clients_info.keys().cloned().collect::<Vec<_>>(),
-        )
-        .await;
+        let maybe_pending_connection =
+            sockets::begin_connecting_to_client(&clients_info.keys().cloned().collect::<Vec<_>>())
+                .await;
         let PendingClientConnection {
             pending_socket,
+            client_ip,
             server_ip,
             headset_info,
         } = match maybe_pending_connection {
@@ -102,8 +105,8 @@ async fn connect_to_any_client(
             reserved: "".into(),
         };
 
-        let mut control_socket =
-            match ControlSocket::finish_connecting_to_client(pending_socket, client_config).await {
+        let (mut sender, receiver) =
+            match sockets::finish_connecting_to_client(pending_socket, client_config).await {
                 Ok(control_socket) => control_socket,
                 Err(e) => {
                     warn!("{}", e);
@@ -142,7 +145,7 @@ async fn connect_to_any_client(
             encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
             throttling_bitrate_bits: settings.connection.throttling_bitrate_bits,
             listen_port: settings.connection.listen_port,
-            client_address: control_socket.peer_ip().to_string(),
+            client_address: client_ip.to_string(),
             controllers_tracking_system_name: session_settings
                 .headset
                 .controllers
@@ -243,10 +246,7 @@ async fn connect_to_any_client(
                 .get_mut(None, SessionUpdateType::Other)
                 .openvr_config = new_openvr_config;
 
-            control_socket
-                .send(&ServerControlPacket::Restarting)
-                .await
-                .ok();
+            sender.send(&ServerControlPacket::Restarting).await.ok();
 
             restart_steamvr();
 
@@ -254,13 +254,16 @@ async fn connect_to_any_client(
             std::future::pending::<()>().await;
         }
 
-        break control_socket;
+        break (sender, receiver);
     }
 }
 
 async fn pairing_loop(
     clients_list_notifier: broadcast::Sender<()>,
-) -> ControlSocket<ClientControlPacket, ServerControlPacket> {
+) -> (
+    ControlSocketSender<ServerControlPacket>,
+    ControlSocketReceiver<ClientControlPacket>,
+) {
     loop {
         let clients_info = SESSION_MANAGER
             .lock()
@@ -293,7 +296,7 @@ pub async fn connection_lifecycle_loop() -> StrResult {
         let clients_updated_notifier =
             trace_none!(CLIENTS_UPDATED_NOTIFIER.lock().as_ref())?.clone();
 
-        let mut control_socket = tokio::select! {
+        let (_, mut control_receiver) = tokio::select! {
             Err(e) = client_discovery() => break trace_str!("Client discovery failed: {}", e),
             control_socket = pairing_loop(clients_updated_notifier) => control_socket,
             else => unreachable!(),
@@ -304,7 +307,7 @@ pub async fn connection_lifecycle_loop() -> StrResult {
         unsafe { crate::InitializeStreaming() };
 
         loop {
-            match control_socket.recv().await {
+            match control_receiver.recv().await {
                 Ok(ClientControlPacket::RequestIDR) => unsafe { crate::RequestIDR() },
                 Ok(ClientControlPacket::Reserved(_))
                 | Ok(ClientControlPacket::ReservedBuffer(_)) => (),

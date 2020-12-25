@@ -1,4 +1,4 @@
-use alvr_common::{data::*, logging::*, sockets::ControlSocket, *};
+use alvr_common::{data::*, logging::*, *};
 use jni::{
     objects::{GlobalRef, JClass},
     JavaVM,
@@ -24,15 +24,10 @@ const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
 // close stream on Drop (manual disconnection or execution canceling)
 struct StreamCloseGuard {
     is_connected: Arc<AtomicBool>,
-    java_vm: Arc<JavaVM>,
-    activity_ref: Arc<GlobalRef>,
 }
 
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
-        // if let Ok(env) = self.java_vm.attach_current_thread() {
-        //     unsafe { crate::disconnectSocket(env.get_native_interface() as _) };
-        // }
         self.is_connected.store(false, Ordering::Relaxed)
     }
 }
@@ -61,8 +56,8 @@ async fn try_connect(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) -> StrResult {
-    let (mut control_socket, config_packet) = trace_err!(
-        ControlSocket::connect_to_server(
+    let (server_ip, mut control_sender, mut control_receiver, config_packet) = trace_err!(
+        sockets::connect_to_server(
             &headset_info,
             device_name,
             private_identity.hostname.clone(),
@@ -80,8 +75,6 @@ async fn try_connect(
     let is_connected = Arc::new(AtomicBool::new(true));
     let _stream_guard = StreamCloseGuard {
         is_connected: is_connected.clone(),
-        java_vm: java_vm.clone(),
-        activity_ref: activity_ref.clone(),
     };
 
     trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
@@ -140,21 +133,21 @@ async fn try_connect(
     // The main stream loop must be run in a normal thread, because it needs to access the JNI env
     // many times per second. If using a future I'm forced to attach and detach the env continuously.
     // When the parent function gets canceled, this loop will run to finish.
-    let ip_cstring = CString::new(control_socket.peer_ip().to_string()).unwrap();
+    let server_ip_cstring = CString::new(server_ip.to_string()).unwrap();
     let stream_socket_loop = tokio::task::spawn_blocking({
         let java_vm = java_vm.clone();
         let activity_ref = activity_ref.clone();
         let nal_class_ref = nal_class_ref.clone();
         move || -> StrResult {
             let env = trace_err!(java_vm.attach_current_thread())?;
-            // let env_ptr = env.get_native_interface() as _;
+            let env_ptr = env.get_native_interface() as _;
             let activity_obj = activity_ref.as_obj();
             let nal_class: JClass = nal_class_ref.as_obj().into();
 
             unsafe {
-                crate::initializeSocket(env.get_native_interface() as _, *activity_obj as _, **nal_class as _);
+                crate::initializeSocket(env_ptr, *activity_obj as _, **nal_class as _);
                 crate::connectSocket(
-                    ip_cstring.as_ptr(),
+                    server_ip_cstring.as_ptr(),
                     matches!(baseline_settings.video.codec, CodecType::HEVC) as _,
                     baseline_settings.connection.client_recv_buffer_size as _,
                 );
@@ -163,8 +156,8 @@ async fn try_connect(
                     crate::runSocketLoopIter();
                 }
 
-                crate::disconnectSocket(env.get_native_interface() as _);
-                crate::closeSocket(env.get_native_interface() as _);
+                crate::disconnectSocket(env_ptr);
+                crate::closeSocket(env_ptr);
             }
 
             Ok(())
@@ -183,20 +176,35 @@ async fn try_connect(
 
     let control_loop = async move {
         loop {
-            match control_socket.recv().await {
-                Ok(ServerControlPacket::Restarting) => {
-                    info!("Server restarting");
-                    setLoadingMessage(&*java_vm, &*activity_ref, SERVER_RESTART_MESSAGE).await?;
-                    break Ok(());
+            tokio::select! {
+                _ = crate::IDR_REQUEST_NOTIFIER.notified() => {
+                    control_sender.send(&ClientControlPacket::RequestIDR).await.ok();
                 }
-                Ok(ServerControlPacket::Reserved(_))
-                | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
-                Err(e) => {
-                    info!("Server disconnected. Cause: {}", e);
-                    setLoadingMessage(&*java_vm, &*activity_ref, SERVER_DISCONNECTED_MESSAGE)
-                        .await?;
-                    break Ok(());
-                }
+                control_packet = control_receiver.recv() =>
+                    match control_packet {
+                        Ok(ServerControlPacket::Restarting) => {
+                            info!("Server restarting");
+                            setLoadingMessage(
+                                &*java_vm,
+                                &*activity_ref,
+                                SERVER_RESTART_MESSAGE
+                            )
+                            .await?;
+                            break Ok(());
+                        }
+                        Ok(ServerControlPacket::Reserved(_))
+                        | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
+                        Err(e) => {
+                            info!("Server disconnected. Cause: {}", e);
+                            setLoadingMessage(
+                                &*java_vm,
+                                &*activity_ref,
+                                SERVER_DISCONNECTED_MESSAGE
+                            )
+                            .await?;
+                            break Ok(());
+                        }
+                    }
             }
         }
     };

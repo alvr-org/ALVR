@@ -3,8 +3,8 @@ package com.polygraphene.alvr;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class NalQueue {
-    private ConcurrentLinkedQueue<NAL> mUnusedList = new ConcurrentLinkedQueue<>();
-    private ConcurrentLinkedQueue<NAL> mNalQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<NAL> mUnusedList = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<NAL> mNalQueue = new ConcurrentLinkedQueue<>();
     private static final int SIZE = 100;
     private static final int DEFAULT_BUFFER_SIZE = 100 * 1000;
 

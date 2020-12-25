@@ -14,25 +14,22 @@ static const std::byte NAL_TYPE_SPS = static_cast<const std::byte>(7);
 static const std::byte H265_NAL_TYPE_VPS = static_cast<const std::byte>(32);
 
 
-NALParser::NALParser(JNIEnv *env, jobject udpManager)
+NALParser::NALParser(JNIEnv *env, jobject udpManager, jclass nalClass)
 {
     LOGE("NALParser initialized %p", this);
 
     m_env = env;
     mUdpManager = env->NewGlobalRef(udpManager);
 
-    jclass NAL_clazz = env->FindClass("com/polygraphene/alvr/NAL");
-    NAL_length = env->GetFieldID(NAL_clazz, "length", "I");
-    NAL_frameIndex = env->GetFieldID(NAL_clazz, "frameIndex", "J");
-    NAL_buf = env->GetFieldID(NAL_clazz, "buf", "[B");
-    env->DeleteLocalRef(NAL_clazz);
+    NAL_length = env->GetFieldID(nalClass, "length", "I");
+    NAL_frameIndex = env->GetFieldID(nalClass, "frameIndex", "J");
+    NAL_buf = env->GetFieldID(nalClass, "buf", "[B");
 
-    jclass udpManagerClazz = env->FindClass("com/polygraphene/alvr/ServerConnection");
-    mObtainNALMethodID = env->GetMethodID(udpManagerClazz, "obtainNAL",
+    jclass activityClass = env->GetObjectClass(udpManager);
+    mObtainNALMethodID = env->GetMethodID(activityClass, "obtainNAL",
                                           "(I)Lcom/polygraphene/alvr/NAL;");
-    mPushNALMethodID = env->GetMethodID(udpManagerClazz, "pushNAL",
+    mPushNALMethodID = env->GetMethodID(activityClass, "pushNAL",
                                         "(Lcom/polygraphene/alvr/NAL;)V");
-    env->DeleteLocalRef(udpManagerClazz);
 }
 
 NALParser::~NALParser()

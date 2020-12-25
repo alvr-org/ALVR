@@ -9,7 +9,7 @@
 
 class NALParser {
 public:
-    NALParser(JNIEnv *env, jobject udpManager);
+    NALParser(JNIEnv *env, jobject udpManager, jclass nalClass);
     ~NALParser();
 
     void setCodec(int codec);

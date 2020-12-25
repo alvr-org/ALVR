@@ -1,21 +1,39 @@
-use crate::{connectSocket, disconnectSocket, ConnectionMessage};
 use alvr_common::{data::*, logging::*, sockets::ControlSocket, *};
-use jni::{objects::GlobalRef, JavaVM};
+use jni::{
+    objects::{GlobalRef, JClass},
+    JavaVM,
+};
 use serde_json as json;
 use settings_schema::Switch;
-use std::{ffi::CString, sync::Arc};
-use tokio::sync::{Notify, broadcast};
+use std::{
+    ffi::CString,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
+use tokio::{
+    sync::broadcast,
+    time::{self, Instant},
+};
 
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
 
 // close stream on Drop (manual disconnection or execution canceling)
-struct StreamCloseGuard(Arc<JavaVM>);
+struct StreamCloseGuard {
+    is_connected: Arc<AtomicBool>,
+    java_vm: Arc<JavaVM>,
+    activity_ref: Arc<GlobalRef>,
+}
+
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
-        if let Ok(env) = self.0.attach_current_thread() {
-            unsafe { disconnectSocket(env.get_native_interface() as _) };
-        }
+        // if let Ok(env) = self.java_vm.attach_current_thread() {
+        //     unsafe { crate::disconnectSocket(env.get_native_interface() as _) };
+        // }
+        self.is_connected.store(false, Ordering::Relaxed)
     }
 }
 
@@ -41,7 +59,7 @@ async fn try_connect(
     private_identity: &PrivateIdentity,
     java_vm: Arc<JavaVM>,
     activity_ref: Arc<GlobalRef>,
-    client_ready_notifier: Arc<Notify>,
+    nal_class_ref: Arc<GlobalRef>,
 ) -> StrResult {
     let (mut control_socket, config_packet) = trace_err!(
         ControlSocket::connect_to_server(
@@ -59,78 +77,136 @@ async fn try_connect(
         session_desc.to_settings()
     };
 
-    let ip_cstring = CString::new(control_socket.peer_ip().to_string()).unwrap();
-    let web_gui_url_cstring = CString::new(config_packet.web_gui_url).unwrap();
-
-    unsafe {
-        connectSocket(
-            trace_err!(java_vm.attach_current_thread())?.get_native_interface() as _,
-            ConnectionMessage {
-                ip: ip_cstring.as_ptr(),
-                codec: matches!(baseline_settings.video.codec, CodecType::HEVC) as _,
-                realtimeDecoder: baseline_settings.video.client_request_realtime_decoder,
-                videoWidth: config_packet.eye_resolution_width * 2,
-                videoHeight: config_packet.eye_resolution_height,
-                bufferSize: baseline_settings.connection.client_recv_buffer_size as _,
-                frameQueueSize: baseline_settings.connection.frame_queue_size as _,
-                refreshRate: config_packet.fps as _,
-                streamMic: matches!(baseline_settings.audio.microphone, Switch::Enabled(_)),
-                foveationMode: matches!(
-                    baseline_settings.video.foveated_rendering,
-                    Switch::Enabled(_)
-                ) as _,
-                foveationStrength: if let Switch::Enabled(foveation_vars) =
-                    &baseline_settings.video.foveated_rendering
-                {
-                    foveation_vars.strength
-                } else {
-                    0_f32
-                },
-                foveationShape: if let Switch::Enabled(foveation_vars) =
-                    &baseline_settings.video.foveated_rendering
-                {
-                    foveation_vars.shape
-                } else {
-                    1_f32
-                },
-                foveationVerticalOffset: if let Switch::Enabled(foveation_vars) =
-                    baseline_settings.video.foveated_rendering
-                {
-                    foveation_vars.vertical_offset
-                } else {
-                    0_f32
-                },
-                trackingSpace: matches!(
-                    baseline_settings.headset.tracking_space,
-                    TrackingSpace::Stage
-                ) as _,
-                webGuiUrl: web_gui_url_cstring.as_ptr(),
-            },
-        )
+    let is_connected = Arc::new(AtomicBool::new(true));
+    let _stream_guard = StreamCloseGuard {
+        is_connected: is_connected.clone(),
+        java_vm: java_vm.clone(),
+        activity_ref: activity_ref.clone(),
     };
 
-    let _stream_guard = StreamCloseGuard(java_vm.clone());
+    trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
+        &*activity_ref,
+        "onServerConnected",
+        "(IIIZIZIFFFILjava/lang/String;)V",
+        &[
+            (config_packet.eye_resolution_width as i32 * 2).into(),
+            (config_packet.eye_resolution_height as i32).into(),
+            (matches!(baseline_settings.video.codec, CodecType::HEVC) as i32).into(),
+            baseline_settings
+                .video
+                .client_request_realtime_decoder
+                .into(),
+            (config_packet.fps as i32).into(),
+            matches!(baseline_settings.audio.microphone, Switch::Enabled(_)).into(),
+            (matches!(
+                baseline_settings.video.foveated_rendering,
+                Switch::Enabled(_)
+            ) as i32)
+                .into(),
+            (if let Switch::Enabled(foveation_vars) = &baseline_settings.video.foveated_rendering {
+                foveation_vars.strength
+            } else {
+                0_f32
+            })
+            .into(),
+            (if let Switch::Enabled(foveation_vars) = &baseline_settings.video.foveated_rendering {
+                foveation_vars.shape
+            } else {
+                1_f32
+            })
+            .into(),
+            (if let Switch::Enabled(foveation_vars) = &baseline_settings.video.foveated_rendering {
+                foveation_vars.vertical_offset
+            } else {
+                0_f32
+            })
+            .into(),
+            (matches!(
+                baseline_settings.headset.tracking_space,
+                TrackingSpace::Stage
+            ) as i32)
+                .into(),
+            trace_err!(
+                trace_err!(java_vm.attach_current_thread())?.new_string(config_packet.web_gui_url)
+            )?
+            .into()
+        ],
+    ))?;
 
     info!("Connected to server");
 
-    loop {
-        tokio::select! {
-            _ = client_ready_notifier.notified() => { control_socket.send(&ClientControlPacket::RequestIDR).await.ok(); }
-            control_packet = control_socket.recv() =>
-                match control_packet {
-                    Ok(ServerControlPacket::Restarting) => {
-                        info!("Server restarting");
-                        setLoadingMessage(&*java_vm, &*activity_ref, SERVER_RESTART_MESSAGE).await?;
-                        break Ok(());
-                    }
-                    Ok(ServerControlPacket::Reserved(_)) | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
-                    Err(e) => {
-                        info!("Server disconnected. Cause: {}", e);
-                        setLoadingMessage(&*java_vm, &*activity_ref, SERVER_DISCONNECTED_MESSAGE).await?;
-                        break Ok(());
-                    }
+    // setup stream loops
+
+    // The main stream loop must be run in a normal thread, because it needs to access the JNI env
+    // many times per second. If using a future I'm forced to attach and detach the env continuously.
+    // When the parent function gets canceled, this loop will run to finish.
+    let ip_cstring = CString::new(control_socket.peer_ip().to_string()).unwrap();
+    let stream_socket_loop = tokio::task::spawn_blocking({
+        let java_vm = java_vm.clone();
+        let activity_ref = activity_ref.clone();
+        let nal_class_ref = nal_class_ref.clone();
+        move || -> StrResult {
+            let env = trace_err!(java_vm.attach_current_thread())?;
+            // let env_ptr = env.get_native_interface() as _;
+            let activity_obj = activity_ref.as_obj();
+            let nal_class: JClass = nal_class_ref.as_obj().into();
+
+            unsafe {
+                crate::initializeSocket(env.get_native_interface() as _, *activity_obj as _, **nal_class as _);
+                crate::connectSocket(
+                    ip_cstring.as_ptr(),
+                    matches!(baseline_settings.video.codec, CodecType::HEVC) as _,
+                    baseline_settings.connection.client_recv_buffer_size as _,
+                );
+
+                while is_connected.load(Ordering::Relaxed) {
+                    crate::runSocketLoopIter();
                 }
+
+                crate::disconnectSocket(env.get_native_interface() as _);
+                crate::closeSocket(env.get_native_interface() as _);
+            }
+
+            Ok(())
         }
+    });
+
+    let tracking_interval = Duration::from_secs_f32(1_f32 / (config_packet.fps * 3_f32));
+    let tracking_loop = async move {
+        let mut deadline = Instant::now();
+        loop {
+            unsafe { crate::onTrackingNative() };
+            deadline += tracking_interval;
+            time::delay_until(deadline).await;
+        }
+    };
+
+    let control_loop = async move {
+        loop {
+            match control_socket.recv().await {
+                Ok(ServerControlPacket::Restarting) => {
+                    info!("Server restarting");
+                    setLoadingMessage(&*java_vm, &*activity_ref, SERVER_RESTART_MESSAGE).await?;
+                    break Ok(());
+                }
+                Ok(ServerControlPacket::Reserved(_))
+                | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
+                Err(e) => {
+                    info!("Server disconnected. Cause: {}", e);
+                    setLoadingMessage(&*java_vm, &*activity_ref, SERVER_DISCONNECTED_MESSAGE)
+                        .await?;
+                    break Ok(());
+                }
+            }
+        }
+    };
+
+    error!("starting loops");
+
+    tokio::select! {
+        res = stream_socket_loop => trace_err!(res)?,
+        res = tracking_loop => res,
+        res = control_loop => res,
     }
 }
 
@@ -141,7 +217,7 @@ pub async fn connection_lifecycle_loop(
     on_stream_stop_notifier: broadcast::Sender<()>,
     java_vm: Arc<JavaVM>,
     activity_ref: Arc<GlobalRef>,
-    client_ready_notifier: Arc<Notify>,
+    nal_class_ref: Arc<GlobalRef>,
 ) {
     let mut on_stream_stop_receiver = on_stream_stop_notifier.subscribe();
 
@@ -153,7 +229,7 @@ pub async fn connection_lifecycle_loop(
             &private_identity,
             java_vm.clone(),
             activity_ref.clone(),
-            client_ready_notifier.clone(),
+            nal_class_ref.clone(),
         ));
 
         tokio::select! {

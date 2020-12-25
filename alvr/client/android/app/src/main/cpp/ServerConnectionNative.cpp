@@ -43,7 +43,6 @@ public:
     int m_sock = -1;
     bool m_connected = false;
 
-    bool m_hasServerAddress = false;
     sockaddr_in m_serverAddr = {};
 
     std::list<sockaddr_in> m_broadcastAddrList;
@@ -51,31 +50,20 @@ public:
 
     bool m_stopped = false;
 
-    // Turned true when decoder thread is prepared.
-    bool mSinkPrepared = false;
-
-//    UdpSocket m_socket;
     time_t m_prevSentSync = 0;
-    time_t m_prevSentBroadcast = 0;
     int64_t m_timeDiff = 0;
     uint64_t timeSyncSequence = (uint64_t) -1;
-    uint64_t m_lastReceived = 0;
     uint64_t m_lastFrameIndex = 0;
-    ConnectionMessage m_connectionMessage = {};
 
     uint32_t m_prevVideoSequence = 0;
     uint32_t m_prevSoundSequence = 0;
     std::shared_ptr<SoundPlayer> m_soundPlayer;
     std::shared_ptr<NALParser> m_nalParser;
 
-    HelloMessage mHelloMessage;
-
     JNIEnv *m_env;
     jobject m_instance;
-    jmethodID mOnConnectMethodID;
     jmethodID mOnDisconnectedMethodID;
     jmethodID mOnHapticsFeedbackID;
-    jmethodID mSetWebGuiUrlID;
     jmethodID mOnGuardianSyncAckID;
     jmethodID mOnGuardianSegmentAckID;
 
@@ -83,7 +71,8 @@ public:
     std::mutex pipeMutex;
     std::list<SendBuffer> m_sendQueue;
 
-    void (*clientReadyCallback)() = nullptr;
+    fd_set fds{}, fds_org{};
+    int nfds = 0;
 };
 
 namespace {
@@ -96,51 +85,24 @@ int send(const void *buf, size_t len) {
                         sizeof(g_socket.m_serverAddr));
 }
 
-void updateTimeout() {
-    g_socket.m_lastReceived = getTimestampUs();
-}
-
-void connectSocket(void *v_env, ConnectionMessage connectionMessage) {
-    auto *env = (JNIEnv *) v_env;
-
-    // Save video width and height
-    g_socket.m_connectionMessage = connectionMessage;
-
-    inet_pton(AF_INET, connectionMessage.ip, &g_socket.m_serverAddr.sin_addr);
+void connectSocket(const char *ip, unsigned int codec, unsigned int bufferSize) {
+    inet_pton(AF_INET, ip, &g_socket.m_serverAddr.sin_addr);
     g_socket.m_serverAddr.sin_port = htons(9944);
-    g_socket.m_connected = true;
-    g_socket.m_hasServerAddress = true;
 
-    LOGI("Try setting recv buffer size = %d bytes", g_socket.m_connectionMessage.bufferSize);
-    int val = g_socket.m_connectionMessage.bufferSize;
+    LOGI("Try setting recv buffer size = %d bytes", bufferSize);
+    int val = bufferSize;
     setsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, sizeof(val));
     socklen_t socklen = sizeof(val);
     getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &socklen);
     LOGI("Current socket recv buffer is %d bytes", val);
 
-    updateTimeout();
     g_socket.m_prevVideoSequence = 0;
     g_socket.m_prevSoundSequence = 0;
     g_socket.m_timeDiff = 0;
     LatencyCollector::Instance().resetAll();
-    g_socket.m_nalParser->setCodec(g_socket.m_connectionMessage.codec);
+    g_socket.m_nalParser->setCodec(codec);
 
-    env->CallVoidMethod(g_socket.m_instance, g_socket.mOnConnectMethodID,
-                                   g_socket.m_connectionMessage.videoWidth,
-                                   g_socket.m_connectionMessage.videoHeight,
-                                   g_socket.m_connectionMessage.codec,
-                                   g_socket.m_connectionMessage.realtimeDecoder,
-                                   g_socket.m_connectionMessage.frameQueueSize,
-                                   g_socket.m_connectionMessage.refreshRate,
-                                   g_socket.m_connectionMessage.streamMic,
-                                   g_socket.m_connectionMessage.foveationMode,
-                                   g_socket.m_connectionMessage.foveationStrength,
-                                   g_socket.m_connectionMessage.foveationShape,
-                                   g_socket.m_connectionMessage.foveationVerticalOffset,
-                                   g_socket.m_connectionMessage.trackingSpace);
-
-    jstring jstr = env->NewStringUTF(g_socket.m_connectionMessage.webGuiUrl);
-    env->CallVoidMethod(g_socket.m_instance, g_socket.mSetWebGuiUrlID, jstr);
+    g_socket.m_connected = true;
 }
 
 void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
@@ -191,8 +153,6 @@ void processVideoSequence(uint32_t sequence) {
 }
 
 void onPacketRecv(const char *packet, size_t packetSize) {
-    updateTimeout();
-
     uint32_t type = *(uint32_t *) packet;
     if (type == ALVR_PACKET_TYPE_VIDEO_FRAME) {
         auto *header = (VideoFrame *) packet;
@@ -338,7 +298,9 @@ void recv() {
     }
 }
 
-void closeSocket() {
+void closeSocket(void *v_env) {
+    auto *env = (JNIEnv *) v_env;
+
     if (g_socket.m_notifyPipe[0] >= 0) {
         close(g_socket.m_notifyPipe[0]);
         close(g_socket.m_notifyPipe[1]);
@@ -346,58 +308,35 @@ void closeSocket() {
 
     g_socket.m_nalParser.reset();
     g_socket.m_sendQueue.clear();
+    g_socket.m_soundPlayer.reset();
+
+    env->DeleteGlobalRef(g_socket.m_instance);
 }
 
-void initializeSocket(void *v_env, void *v_instance,
-                      int helloPort, int port, void *v_deviceName, void *v_broadcastAddrList,
-                      int refreshRate, int renderWidth, int renderHeight) {
+void initializeSocket(void *v_env, void *v_instance, void *v_nalClass) {
     auto *env = (JNIEnv *) v_env;
     auto *instance = (jobject) v_instance;
-    auto *deviceName_ = (jstring) v_deviceName;
+    auto *nalClass = (jclass) v_nalClass;
 
     //
     // Initialize variables
     //
 
     g_socket.m_stopped = false;
-    g_socket.m_lastReceived = 0;
     g_socket.m_prevSentSync = 0;
-    g_socket.m_prevSentBroadcast = 0;
     g_socket.m_prevVideoSequence = 0;
     g_socket.m_prevSoundSequence = 0;
     g_socket.m_timeDiff = 0;
 
     jclass clazz = env->GetObjectClass(instance);
-    g_socket.mOnConnectMethodID = env->GetMethodID(clazz, "onConnected", "(IIIZIIZIFFFI)V");
     g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
     g_socket.mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
-    g_socket.mSetWebGuiUrlID = env->GetMethodID(clazz, "setWebViewURL", "(Ljava/lang/String;)V");
     g_socket.mOnGuardianSyncAckID = env->GetMethodID(clazz, "onGuardianSyncAck", "(J)V");
     g_socket.mOnGuardianSegmentAckID = env->GetMethodID(clazz, "onGuardianSegmentAck", "(JI)V");
     env->DeleteLocalRef(clazz);
 
-    g_socket.m_nalParser = std::make_shared<NALParser>(env, instance);
+    g_socket.m_nalParser = std::make_shared<NALParser>(env, instance, nalClass);
 
-    //
-    // Fill hello message
-    //
-
-    memset(&g_socket.mHelloMessage, 0, sizeof(g_socket.mHelloMessage));
-
-    g_socket.mHelloMessage.type = ALVR_PACKET_TYPE_HELLO_MESSAGE;
-    memcpy(g_socket.mHelloMessage.signature, ALVR_HELLO_PACKET_SIGNATURE,
-           sizeof(g_socket.mHelloMessage.signature));
-    strcpy(g_socket.mHelloMessage.version, ALVR_VERSION);
-
-    auto deviceName = GetStringFromJNIString(env, deviceName_);
-
-    memcpy(g_socket.mHelloMessage.deviceName, deviceName.c_str(),
-           std::min(deviceName.length(), sizeof(g_socket.mHelloMessage.deviceName)));
-
-    g_socket.mHelloMessage.refreshRate = refreshRate;
-
-    g_socket.mHelloMessage.renderWidth = static_cast<uint32_t>(renderWidth);
-    g_socket.mHelloMessage.renderHeight = static_cast<uint32_t>(renderHeight);
 
     //
     // UdpSocket
@@ -438,7 +377,7 @@ void initializeSocket(void *v_env, void *v_instance,
 
         sockaddr_in addr{};
         addr.sin_family = AF_INET;
-        addr.sin_port = htons(port);
+        addr.sin_port = htons(9944);
         addr.sin_addr.s_addr = INADDR_ANY;
         if (bind(g_socket.m_sock, (sockaddr *) &addr, sizeof(addr)) < 0) {
             throw FormatException("bind error : %d %s", errno, strerror(errno));
@@ -466,6 +405,19 @@ void initializeSocket(void *v_env, void *v_instance,
     }
 
     LOGI("ServerConnectionNative initialized.");
+
+
+    // setup loop
+
+    FD_ZERO(&g_socket.fds);
+    FD_ZERO(&g_socket.fds_org);
+
+    FD_SET(g_socket.m_sock, &g_socket.fds_org);
+    FD_SET(g_socket.m_notifyPipe[0], &g_socket.fds_org);
+    g_socket.nfds = std::max(g_socket.m_sock, g_socket.m_notifyPipe[0]) + 1;
+
+    g_socket.m_env = env;
+    g_socket.m_instance = env->NewGlobalRef(instance);
 }
 
 void processReadPipe(int pipefd) {
@@ -540,110 +492,53 @@ void doPeriodicWork() {
 }
 
 void sendNative(long long nativeBuffer, int length) {
-    auto *packet = reinterpret_cast<char *>(nativeBuffer);
+    if (g_socket.m_connected) {
+        auto *packet = reinterpret_cast<char *>(nativeBuffer);
 
-    if (g_socket.m_stopped) {
+        if (g_socket.m_stopped) {
+            return;
+        }
+        SendBuffer sendBuffer{};
+
+        memcpy(sendBuffer.buf, packet, length);
+        sendBuffer.len = length;
+
+        {
+            std::lock_guard<decltype(g_socket.pipeMutex)> lock(g_socket.pipeMutex);
+            g_socket.m_sendQueue.push_back(sendBuffer);
+        }
+        // Notify enqueue to loop thread
+        write(g_socket.m_notifyPipe[1], "", 1);
+    }
+}
+
+void runSocketLoopIter() {
+    timeval timeout{};
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 10 * 1000;
+    memcpy(&g_socket.fds, &g_socket.fds_org, sizeof(g_socket.fds));
+    int ret = select(g_socket.nfds, &g_socket.fds, nullptr, nullptr, &timeout);
+
+    if (ret == 0) {
+        doPeriodicWork();
+
+        // timeout
         return;
     }
-    SendBuffer sendBuffer{};
 
-    memcpy(sendBuffer.buf, packet, length);
-    sendBuffer.len = length;
-
-    {
-        std::lock_guard<decltype(g_socket.pipeMutex)> lock(g_socket.pipeMutex);
-        g_socket.m_sendQueue.push_back(sendBuffer);
-    }
-    // Notify enqueue to loop thread
-    write(g_socket.m_notifyPipe[1], "", 1);
-}
-
-void runLoop(void *v_env, void *v_instance) {
-    auto *env = (JNIEnv *) v_env;
-    auto *instance = (jobject) v_instance;
-
-    fd_set fds, fds_org;
-
-    FD_ZERO(&fds_org);
-    FD_SET(g_socket.m_sock, &fds_org);
-    FD_SET(g_socket.m_notifyPipe[0], &fds_org);
-    int nfds = std::max(g_socket.m_sock, g_socket.m_notifyPipe[0]) + 1;
-
-    g_socket.m_env = env;
-    g_socket.m_instance = env->NewGlobalRef(instance);
-
-    while (!g_socket.m_stopped) {
-        timeval timeout{};
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 10 * 1000;
-        memcpy(&fds, &fds_org, sizeof(fds));
-        int ret = select(nfds, &fds, nullptr, nullptr, &timeout);
-
-        if (ret == 0) {
-            doPeriodicWork();
-
-            // timeout
-            continue;
-        }
-
-        if (FD_ISSET(g_socket.m_notifyPipe[0], &fds)) {
-            //LOG("select pipe");
-            processReadPipe(g_socket.m_notifyPipe[0]);
-        }
-
-        if (FD_ISSET(g_socket.m_sock, &fds)) {
-            recv();
-        }
-        doPeriodicWork();
+    if (FD_ISSET(g_socket.m_notifyPipe[0], &g_socket.fds)) {
+        //LOG("select pipe");
+        processReadPipe(g_socket.m_notifyPipe[0]);
     }
 
-    LOGI("Exited select loop.");
-
-    g_socket.m_soundPlayer.reset();
-
-//    env->DeleteGlobalRef(g_socket.m_instance);
-
-    LOGI("Exiting UdpReceiverThread runLoop");
-}
-
-void interruptNative() {
-    g_socket.m_stopped = true;
-
-    // Notify stop to loop thread.
-    write(g_socket.m_notifyPipe[1], "", 1);
+    if (FD_ISSET(g_socket.m_sock, &g_socket.fds)) {
+        recv();
+    }
+    doPeriodicWork();
 }
 
 unsigned char isConnectedNative() {
     return g_socket.m_connected;
-}
-
-
-void setSinkPreparedNative(unsigned char prepared) {
-    if (g_socket.m_stopped) {
-        return;
-    }
-    g_socket.mSinkPrepared = prepared;
-    LOGSOCKETI("setSinkPrepared: Decoder prepared=%d", g_socket.mSinkPrepared);
-    if (prepared && g_socket.clientReadyCallback != nullptr)
-        g_socket.clientReadyCallback();
-}
-
-void *getServerAddress(void *v_env) {
-    auto *env = (JNIEnv *) v_env;
-
-    if (g_socket.m_hasServerAddress) {
-        char serverAddress[100];
-        inet_ntop(g_socket.m_serverAddr.sin_family, &g_socket.m_serverAddr.sin_addr, serverAddress,
-                  sizeof(serverAddress));
-        return env->NewStringUTF(serverAddress);
-    }
-    return nullptr;
-}
-
-int getServerPort() {
-    if (g_socket.m_hasServerAddress)
-        return htons(g_socket.m_serverAddr.sin_port);
-    return 0;
 }
 
 void disconnectSocket(void *v_env) {
@@ -657,8 +552,4 @@ void disconnectSocket(void *v_env) {
     if (g_socket.m_soundPlayer) {
         g_socket.m_soundPlayer->Stop();
     }
-}
-
-void setClientReadyCallback(void (*cb)()) {
-    g_socket.clientReadyCallback = cb;
 }

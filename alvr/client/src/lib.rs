@@ -6,15 +6,11 @@ mod logging_backend;
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_common::{data::*, logging::show_err, *};
-use jni::{
-    objects::*,
-    sys::{jobjectArray, jstring},
-    *,
-};
+use jni::{objects::*, *};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::{slice, sync::Arc};
-use tokio::{runtime::Runtime, sync::{Notify, broadcast}};
+use tokio::{runtime::Runtime, sync::broadcast};
 
 struct OnCreateResultWrapper(OnCreateResult);
 unsafe impl Send for OnCreateResultWrapper {}
@@ -27,7 +23,6 @@ lazy_static! {
     static ref MAYBE_ON_STREAM_STOP_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> =
         Mutex::new(None);
     static ref MAYBE_ON_PAUSE_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
-    static ref CLIENT_READY_NOTIFIER: Arc<Notify> = Arc::new(Notify::new());
 }
 
 #[no_mangle]
@@ -60,7 +55,7 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_createIdentity(
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_LatencyCollector_DecoderInput(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_DecoderInput(
     _: JNIEnv,
     _: JObject,
     frame_index: i64,
@@ -69,7 +64,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_LatencyCollector_Decode
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_LatencyCollector_DecoderOutput(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_DecoderOutput(
     _: JNIEnv,
     _: JObject,
     frame_index: i64,
@@ -130,11 +125,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
         *ON_CREATE_RESULT.lock() = OnCreateResultWrapper(result);
         *REFRESH_RATES.lock() = refresh_rates;
 
-        unsafe extern "C" fn ready_callback() {
-            CLIENT_READY_NOTIFIER.notify();
-        }
-        setClientReadyCallback(Some(ready_callback));
-
         Ok(())
     }())
     .ok();
@@ -166,18 +156,10 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderLoadi
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onTrackingNative(
-    env: JNIEnv,
-    _: JObject,
-    udp_receiver_thread: JObject,
-) {
-    onTrackingNative(env.get_native_interface() as _, *udp_receiver_thread as _)
-}
-
-#[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
     env: JNIEnv,
     jactivity: JObject,
+    nal_class: JClass,
     jhostname: JString,
     jcertificate_pem: JString,
     jprivate_key: JString,
@@ -186,6 +168,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
     show_err(|| -> StrResult {
         let java_vm = trace_err!(env.get_java_vm())?;
         let activity_ref = trace_err!(env.new_global_ref(jactivity))?;
+        let nal_class_ref = trace_err!(env.new_global_ref(nal_class))?;
 
         onResumeNative(env.get_native_interface() as _, *jscreen_surface as _);
 
@@ -230,7 +213,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
                     on_stream_stop_notifier,
                     Arc::new(java_vm),
                     Arc::new(activity_ref),
-                    CLIENT_READY_NOTIFIER.clone(),
+                    Arc::new(nal_class_ref),
                 );
 
                 tokio::select! {
@@ -333,93 +316,9 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onBatteryCh
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_initializeSocket(
-    env: JNIEnv,
-    instance: JObject,
-    hello_port: i32,
-    port: i32,
-    device_name: JString,
-    broadcast_addr_list: jobjectArray,
-    refresh_rate: i32,
-    render_width: i32,
-    render_height: i32,
-) {
-    initializeSocket(
-        env.get_native_interface() as _,
-        *instance as _,
-        hello_port,
-        port,
-        **device_name as _,
-        broadcast_addr_list as _,
-        refresh_rate,
-        render_width,
-        render_height,
-    )
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_closeSocket(
-    _: JNIEnv,
-    _: JObject,
-) {
-    closeSocket()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_runLoop(
-    env: JNIEnv,
-    instance: JObject,
-) {
-    runLoop(env.get_native_interface() as _, *instance as _)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_interruptNative(
-    _: JNIEnv,
-    _: JObject,
-) {
-    interruptNative()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_isConnectedNative(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_isConnectedNative(
     _: JNIEnv,
     _: JObject,
 ) -> u8 {
     isConnectedNative()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_getServerAddress(
-    env: JNIEnv,
-    _: JObject,
-) -> jstring {
-    getServerAddress(env.get_native_interface() as _) as _
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_getServerPort(
-    _: JNIEnv,
-    _: JObject,
-) -> i32 {
-    getServerPort()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_sendNative(
-    _: JNIEnv,
-    _: JObject,
-    native_buffer: i64,
-    buffer_length: i32,
-) {
-    sendNative(native_buffer, buffer_length)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_ServerConnection_setSinkPreparedNative(
-    _: JNIEnv,
-    _: JObject,
-    prepared: u8,
-) {
-    setSinkPreparedNative(prepared)
 }

@@ -97,7 +97,6 @@ public class OvrActivity extends Activity {
     Surface mStreamSurface;
     final LoadingTexture mLoadingTexture = new LoadingTexture();
     DecoderThread mDecoderThread = null;
-    ServerConnection mReceiverThread;
     EGLContext mEGLContext;
     boolean mVrMode = false;
     boolean mDecoderPrepared = false;
@@ -105,6 +104,7 @@ public class OvrActivity extends Activity {
     long mPreviousRender = 0;
     String mDashboardURL = null;
     String mLoadingMessage = TRUST_MESSAGE;
+    public final Object mWaiter = new Object();
 
     // Cache method references for performance reasons
     final Runnable mRenderRunnable = this::render;
@@ -191,8 +191,6 @@ public class OvrActivity extends Activity {
         if (mResumed && mScreenSurface != null) {
             mRenderingHandler.post(() -> {
 
-                mReceiverThread = new ServerConnection(mUdpReceiverConnectionListener, this);
-
                 // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
                 // and onFrameAvailable won't be called after next output.
                 // To avoid deadlock caused by it, we need to flush last output.
@@ -202,18 +200,13 @@ public class OvrActivity extends Activity {
 
                 try {
                     mDecoderThread.start();
-
-                    if (!mReceiverThread.start(mEGLContext, this, deviceDescriptor, 0)) {
-                        Utils.loge(TAG, () -> "FATAL: Initialization of ReceiverThread failed.");
-                        return;
-                    }
                 } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
                     Utils.loge(TAG, e::toString);
                 }
 
                 PrivateIdentity id = this.getPrivateIdentity();
 
-                onResumeNative(id.hostname, id.certificatePEM, id.privateKey, mScreenSurface);
+                onResumeNative(NAL.class, id.hostname, id.certificatePEM, id.privateKey, mScreenSurface);
 
                 onVrModeChanged(true);
             });
@@ -237,9 +230,6 @@ public class OvrActivity extends Activity {
                 // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
                 if (mDecoderThread != null) {
                     mDecoderThread.stopAndWait();
-                }
-                if (mReceiverThread != null) {
-                    mReceiverThread.stopAndWait();
                 }
 
                 onVrModeChanged(false);
@@ -315,13 +305,9 @@ public class OvrActivity extends Activity {
         }
     }
 
-    public void setDashboardURL(String url) {
-        mDashboardURL = url;
-    }
-
     private void render() {
         if (mResumed && mScreenSurface != null) {
-            if (mReceiverThread.isConnected()) {
+            if (isConnectedNative()) {
                 long next = checkRenderTiming();
                 if (next > 0) {
                     mRenderingHandler.postDelayed(mRenderRunnable, next);
@@ -355,100 +341,25 @@ public class OvrActivity extends Activity {
         return TimeUnit.NANOSECONDS.toMillis(threshold - (current - mPreviousRender));
     }
 
-    public NAL obtainNAL(int length) {
-        if (mDecoderThread != null) {
-            return mDecoderThread.obtainNAL(length);
-        } else {
-            NAL nal = new NAL();
-            nal.length = length;
-            nal.buf = new byte[length];
-            return nal;
-        }
-    }
-
-    public void pushNAL(NAL nal) {
-        if (mDecoderThread != null) {
-            mDecoderThread.pushNAL(nal);
-        }
-    }
-
     public void onVrModeChanged(boolean enter) {
         mVrMode = enter;
         Utils.logi(TAG, () -> "onVrModeChanged. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
-        if (mReceiverThread != null) {
-            mReceiverThread.setSinkPrepared(mVrMode && mDecoderPrepared);
-            if (mVrMode) {
-                mRenderingHandler.post(mRenderRunnable);
-            }
+        if (mVrMode) {
+            mRenderingHandler.post(mRenderRunnable);
         }
     }
-
-    private final ServerConnection.ConnectionListener mUdpReceiverConnectionListener = new ServerConnection.ConnectionListener() {
-        @Override
-        public void onConnected(final int width, final int height, final int codec, final boolean realtimeDecoder,
-                                final int frameQueueSize, final int refreshRate, final boolean streamMic,
-                                final int foveationMode, final float foveationStrength, final float foveationShape,
-                                final float foveationVerticalOffset, final int trackingSpaceType) {
-
-            // We must wait completion of notifyGeometryChange
-            // to ensure the first video frame arrives after notifyGeometryChange.
-            mRenderingHandler.post(() -> {
-                onStreamStartNative(width, height, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset, trackingSpaceType);
-                mDecoderThread.onConnect(codec, frameQueueSize, realtimeDecoder);
-            });
-        }
-
-        @Override
-        public void onShutdown(String serverAddr, int serverPort) {
-        }
-
-        @Override
-        public void onDisconnect() {
-            if (mDecoderThread != null) {
-                mDecoderThread.onDisconnect();
-            }
-        }
-
-        @Override
-        public void onTracking() {
-            if (mReceiverThread != null) {
-                onTrackingNative(mReceiverThread);
-            }
-        }
-
-        @Override
-        public void onHapticsFeedback(long startTime, float amplitude, float duration, float frequency, boolean hand) {
-            mRenderingHandler.post(() -> {
-                if (mResumed && mScreenSurface != null) {
-                    onHapticsFeedbackNative(startTime, amplitude, duration, frequency, hand);
-                }
-            });
-        }
-
-        @Override
-        public void onGuardianSyncAck(long timestamp) {
-            mRenderingHandler.post(() -> onGuardianSyncAckNative(timestamp));
-        }
-
-        @Override
-        public void onGuardianSegmentAck(long timestamp, int segmentIndex) {
-            mRenderingHandler.post(() -> onGuardianSegmentAckNative(timestamp, segmentIndex));
-        }
-    };
 
     private final DecoderThread.DecoderCallback mDecoderCallback = new DecoderThread.DecoderCallback() {
         @Override
         public void onPrepared() {
             mDecoderPrepared = true;
             Utils.logi(TAG, () -> "DecoderCallback.onPrepared. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
-            mReceiverThread.setSinkPrepared(mVrMode && mDecoderPrepared);
         }
 
         @Override
         public void onDestroy() {
             mDecoderPrepared = false;
             Utils.logi(TAG, () -> "DecoderCallback.onDestroy. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
-            mReceiverThread.setSinkPrepared(mVrMode && mDecoderPrepared);
         }
 
         @Override
@@ -467,7 +378,8 @@ public class OvrActivity extends Activity {
 
     native void destroyNative();
 
-    native void onResumeNative(String hostname, String certificatePEM, String privateKey, Surface screenSurface);
+    // nal_class is needed to access NAL objects fields in native code without access to a Java thread
+    native void onResumeNative(Class<?> nal_class, String hostname, String certificatePEM, String privateKey, Surface screenSurface);
 
     native void onPauseNative();
 
@@ -475,11 +387,11 @@ public class OvrActivity extends Activity {
 
     native void renderLoadingNative();
 
-    native void onTrackingNative(ServerConnection serverConnection);
-
     native boolean isVrModeNative();
 
-    native void onStreamStartNative(int width, int height, int refreshRate, boolean streamMic, int foveationMode, float foveationStrength, float foveationShape, float foveationVerticalOffset, int trackingSpaceType);
+    native void onStreamStartNative(int width, int height, int refreshRate, boolean streamMic,
+                                    int foveationMode, float foveationStrength, float foveationShape,
+                                    float foveationVerticalOffset, int trackingSpaceType);
 
     native void onHapticsFeedbackNative(long startTime, float amplitude, float duration, float frequency, boolean hand);
 
@@ -488,6 +400,8 @@ public class OvrActivity extends Activity {
     native void onGuardianSegmentAckNative(long timestamp, int segmentIndex);
 
     native void onBatteryChangedNative(int battery);
+
+    native boolean isConnectedNative();
 
     @SuppressWarnings("unused")
     public void openDashboard() {
@@ -500,5 +414,64 @@ public class OvrActivity extends Activity {
     @SuppressWarnings("unused")
     public void setLoadingMessage(String message) {
         mLoadingMessage = message;
+    }
+
+    @SuppressWarnings("unused")
+    public void onServerConnected(int width, int height, int codec, boolean realtimeDecoder,
+                                  int refreshRate, boolean streamMic, int foveationMode,
+                                  float foveationStrength, float foveationShape,
+                                  float foveationVerticalOffset, int trackingSpaceType,
+                                  String dashboardURL) {
+        mDashboardURL = dashboardURL;
+        mRenderingHandler.post(() -> {
+            onStreamStartNative(width, height, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset, trackingSpaceType);
+            mDecoderThread.onConnect(codec, realtimeDecoder);
+        });
+    }
+
+    @SuppressWarnings("unused")
+    public void onDisconnected() {
+        Utils.logi(TAG, () -> "onDisconnected is called.");
+        if (mDecoderThread != null) {
+            mDecoderThread.onDisconnect();
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public void onHapticsFeedback(long startTime, float amplitude, float duration, float frequency, boolean hand) {
+        mRenderingHandler.post(() -> {
+            if (mResumed && mScreenSurface != null) {
+                onHapticsFeedbackNative(startTime, amplitude, duration, frequency, hand);
+            }
+        });
+    }
+
+    @SuppressWarnings("unused")
+    public void onGuardianSyncAck(long timestamp) {
+        mRenderingHandler.post(() -> onGuardianSyncAckNative(timestamp));
+    }
+
+    @SuppressWarnings("unused")
+    public void onGuardianSegmentAck(long timestamp, int segmentIndex) {
+        mRenderingHandler.post(() -> onGuardianSegmentAckNative(timestamp, segmentIndex));
+    }
+
+    @SuppressWarnings("unused")
+    public NAL obtainNAL(int length) {
+        if (mDecoderThread != null) {
+            return mDecoderThread.obtainNAL(length);
+        } else {
+            NAL nal = new NAL();
+            nal.length = length;
+            nal.buf = new byte[length];
+            return nal;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public void pushNAL(NAL nal) {
+        if (mDecoderThread != null) {
+            mDecoderThread.pushNAL(nal);
+        }
     }
 }

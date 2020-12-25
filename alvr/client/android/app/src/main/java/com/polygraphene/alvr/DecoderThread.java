@@ -1,6 +1,5 @@
 package com.polygraphene.alvr;
 
-import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
@@ -10,13 +9,12 @@ import android.os.Message;
 import android.support.annotation.NonNull;
 import android.view.Surface;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.Queue;
 
-public class DecoderThread extends ThreadBase implements ServerConnection.NALCallback, Handler.Callback {
+public class DecoderThread extends ThreadBase implements Handler.Callback {
     private static final String TAG = "DecoderThread";
 
     private static final int CODEC_H264 = 0;
@@ -29,14 +27,12 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
     private String mFormat = VIDEO_FORMAT_H265;
 
     private MediaCodec mDecoder = null;
-    private Surface mSurface;
+    private final Surface mSurface;
 
     private boolean mWaitNextIDR = false;
 
-    private static final int NAL_QUEUE_MAX = 100;
-
-    private NalQueue mNalQueue = new NalQueue();
-    private OutputFrameQueue mQueue;
+    private final NalQueue mNalQueue = new NalQueue();
+    private final OutputFrameQueue mQueue;
 
     private static final int MESSAGE_PUSH_NAL = 1;
     private static final int MESSAGE_INPUT_BUFFER_AVAILABLE = 2;
@@ -53,25 +49,19 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
     private final DecoderCallback mDecoderCallback;
 
     private static final int NAL_TYPE_SPS = 7;
-    private static final int NAL_TYPE_PPS = 8;
     private static final int NAL_TYPE_IDR = 5;
     private static final int NAL_TYPE_P = 1;
 
-    private static final int H265_NAL_TYPE_TRAIL_R = 1;
     private static final int H265_NAL_TYPE_IDR_W_RADL = 19;
     private static final int H265_NAL_TYPE_VPS = 32;
-    private static final int H265_NAL_TYPE_SPS = 33;
-    private static final int H265_NAL_TYPE_PPS = 34;
 
     // Dummy SPS/PPS for some decoders which crashes on not set csd-0/csd-1. (e.g. Galaxy S6 Exynos decoder)
-    private byte[] DummySPS = new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x67, (byte) 0x64, (byte) 0x00, (byte) 0x20, (byte) 0xac, (byte) 0x2b, (byte) 0x40, (byte) 0x20,
+    private final byte[] DummySPS = new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x67, (byte) 0x64, (byte) 0x00, (byte) 0x20, (byte) 0xac, (byte) 0x2b, (byte) 0x40, (byte) 0x20,
             0x02, (byte) 0x0d, (byte) 0x80, (byte) 0x88, (byte) 0x00, (byte) 0x00, (byte) 0x1f, (byte) 0x40, (byte) 0x00, (byte) 0x0e, (byte) 0xa6, (byte) 0x04,
             0x7a, (byte) 0x55};
-    private byte[] DummyPPS = new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x68, (byte) 0xee, (byte) 0x3c, (byte) 0xb0};
-    private int DummyWidth = 1024;
-    private int DummyHeight = 512;
+    private final byte[] DummyPPS = new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x68, (byte) 0xee, (byte) 0x3c, (byte) 0xb0};
 
-    private byte[] DummyCSD_H265 = new byte[]{
+    private final byte[] DummyCSD_H265 = new byte[]{
             (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x40, (byte) 0x01, (byte) 0x0c, (byte) 0x01, (byte) 0xff, (byte) 0xff, (byte) 0x21, (byte) 0x40,
             (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x00, (byte) 0x00, (byte) 0x03,
             (byte) 0x00, (byte) 0x78, (byte) 0xac, (byte) 0x09, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x42, (byte) 0x01, (byte) 0x01, (byte) 0x21,
@@ -99,8 +89,7 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
 
         mHandler.getLooper().quitSafely();
 
-        if (mQueue != null)
-            mQueue.stop();
+        mQueue.stop();
     }
 
     @Override
@@ -163,7 +152,9 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
         Looper.prepare();
         mHandler = new Handler(this);
 
-        MediaFormat format = MediaFormat.createVideoFormat(mFormat, DummyWidth, DummyHeight);
+        int dummyHeight = 512;
+        int dummyWidth = 1024;
+        MediaFormat format = MediaFormat.createVideoFormat(mFormat, dummyWidth, dummyHeight);
         format.setString("KEY_MIME", mFormat);
 
         format.setInteger(MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE);
@@ -253,11 +244,9 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
         }
     }
 
-    public void onConnect(int codec, int frameQueueSize, boolean realtime) {
+    public void onConnect(int codec, boolean realtime) {
         Utils.logi(TAG, () -> "onConnect()");
-        if (mQueue != null) {
-            mQueue.reset();
-        }
+        mQueue.reset();
         notifyCodecChange(codec, realtime);
     }
 
@@ -300,7 +289,7 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
 
         long presentationTime = System.nanoTime() / 1000;
 
-        boolean consumed = false;
+        boolean consumed;
 
         if (nal.type == NAL_TYPE_SPS) {
             // (VPS + )SPS + PPS
@@ -313,12 +302,12 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
             // IDR-Frame
             Utils.frameLog(nal.frameIndex, () -> "Feed IDR-Frame. Size=" + nal.length + " PresentationTime=" + presentationTime);
 
-            LatencyCollector.DecoderInput(nal.frameIndex);
+            DecoderInput(nal.frameIndex);
 
             consumed = pushInputBuffer(nal, presentationTime, 0);
         } else {
             // PFrame
-            LatencyCollector.DecoderInput(nal.frameIndex);
+            DecoderInput(nal.frameIndex);
 
             if (mWaitNextIDR) {
                 // Ignore P-Frame until next I-Frame
@@ -361,12 +350,10 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
         }
     }
 
-    @Override
     public NAL obtainNAL(int length) {
         return mNalQueue.obtain(length);
     }
 
-    @Override
     public void pushNAL(NAL nal) {
         Message message = mHandler.obtainMessage(MESSAGE_PUSH_NAL, nal);
         mHandler.sendMessage(message);
@@ -384,7 +371,6 @@ public class DecoderThread extends ThreadBase implements ServerConnection.NALCal
         return mQueue.clearAvailable(surfaceTexture);
     }
 
-    public boolean discartStaleFrames(SurfaceTexture surfaceTexture) {
-        return mQueue.discardStaleFrames(surfaceTexture);
-    }
+    public static native void DecoderInput(long frameIndex);
+    public static native void DecoderOutput(long frameIndex);
 }

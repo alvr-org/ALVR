@@ -55,7 +55,7 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_createIdentity(
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_LatencyCollector_DecoderInput(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_DecoderInput(
     _: JNIEnv,
     _: JObject,
     frame_index: i64,
@@ -64,7 +64,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_LatencyCollector_Decode
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_LatencyCollector_DecoderOutput(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_DecoderOutput(
     _: JNIEnv,
     _: JObject,
     frame_index: i64,
@@ -159,6 +159,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderLoadi
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
     env: JNIEnv,
     jactivity: JObject,
+    nal_class: JClass,
     jhostname: JString,
     jcertificate_pem: JString,
     jprivate_key: JString,
@@ -167,6 +168,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
     show_err(|| -> StrResult {
         let java_vm = trace_err!(env.get_java_vm())?;
         let activity_ref = trace_err!(env.new_global_ref(jactivity))?;
+        let nal_class_ref = trace_err!(env.new_global_ref(nal_class))?;
 
         onResumeNative(env.get_native_interface() as _, *jscreen_surface as _);
 
@@ -211,6 +213,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
                     on_stream_stop_notifier,
                     Arc::new(java_vm),
                     Arc::new(activity_ref),
+                    Arc::new(nal_class_ref),
                 );
 
                 tokio::select! {
@@ -313,51 +316,9 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onBatteryCh
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeSocket(
-    env: JNIEnv,
-    instance: JObject,
-) {
-    initializeSocket(env.get_native_interface() as _, *instance as _)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_closeSocket(
-    _: JNIEnv,
-    _: JObject,
-) {
-    closeSocket()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_runLoop(
-    env: JNIEnv,
-    instance: JObject,
-) {
-    runLoop(env.get_native_interface() as _, *instance as _)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_interruptNative(
-    _: JNIEnv,
-    _: JObject,
-) {
-    interruptNative()
-}
-
-#[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_isConnectedNative(
     _: JNIEnv,
     _: JObject,
 ) -> u8 {
     isConnectedNative()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_sendNative(
-    _: JNIEnv,
-    _: JObject,
-    native_buffer: i64,
-    buffer_length: i32,
-) {
-    sendNative(native_buffer, buffer_length)
 }

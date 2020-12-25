@@ -70,6 +70,9 @@ public:
     int m_notifyPipe[2] = {-1, -1};
     std::mutex pipeMutex;
     std::list<SendBuffer> m_sendQueue;
+
+    fd_set fds{}, fds_org{};
+    int nfds = 0;
 };
 
 namespace {
@@ -295,7 +298,9 @@ void recv() {
     }
 }
 
-void closeSocket() {
+void closeSocket(void *v_env) {
+    auto *env = (JNIEnv *) v_env;
+
     if (g_socket.m_notifyPipe[0] >= 0) {
         close(g_socket.m_notifyPipe[0]);
         close(g_socket.m_notifyPipe[1]);
@@ -303,11 +308,15 @@ void closeSocket() {
 
     g_socket.m_nalParser.reset();
     g_socket.m_sendQueue.clear();
+    g_socket.m_soundPlayer.reset();
+
+    env->DeleteGlobalRef(g_socket.m_instance);
 }
 
-void initializeSocket(void *v_env, void *v_instance) {
+void initializeSocket(void *v_env, void *v_instance, void *v_nalClass) {
     auto *env = (JNIEnv *) v_env;
     auto *instance = (jobject) v_instance;
+    auto *nalClass = (jclass) v_nalClass;
 
     //
     // Initialize variables
@@ -326,7 +335,7 @@ void initializeSocket(void *v_env, void *v_instance) {
     g_socket.mOnGuardianSegmentAckID = env->GetMethodID(clazz, "onGuardianSegmentAck", "(JI)V");
     env->DeleteLocalRef(clazz);
 
-    g_socket.m_nalParser = std::make_shared<NALParser>(env, instance);
+    g_socket.m_nalParser = std::make_shared<NALParser>(env, instance, nalClass);
 
 
     //
@@ -396,6 +405,19 @@ void initializeSocket(void *v_env, void *v_instance) {
     }
 
     LOGI("ServerConnectionNative initialized.");
+
+
+    // setup loop
+
+    FD_ZERO(&g_socket.fds);
+    FD_ZERO(&g_socket.fds_org);
+
+    FD_SET(g_socket.m_sock, &g_socket.fds_org);
+    FD_SET(g_socket.m_notifyPipe[0], &g_socket.fds_org);
+    g_socket.nfds = std::max(g_socket.m_sock, g_socket.m_notifyPipe[0]) + 1;
+
+    g_socket.m_env = env;
+    g_socket.m_instance = env->NewGlobalRef(instance);
 }
 
 void processReadPipe(int pipefd) {
@@ -490,59 +512,29 @@ void sendNative(long long nativeBuffer, int length) {
     }
 }
 
-void runLoop(void *v_env, void *v_instance) {
-    auto *env = (JNIEnv *) v_env;
-    auto *instance = (jobject) v_instance;
+void runSocketLoopIter() {
+    timeval timeout{};
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 10 * 1000;
+    memcpy(&g_socket.fds, &g_socket.fds_org, sizeof(g_socket.fds));
+    int ret = select(g_socket.nfds, &g_socket.fds, nullptr, nullptr, &timeout);
 
-    fd_set fds, fds_org;
-
-    FD_ZERO(&fds_org);
-    FD_SET(g_socket.m_sock, &fds_org);
-    FD_SET(g_socket.m_notifyPipe[0], &fds_org);
-    int nfds = std::max(g_socket.m_sock, g_socket.m_notifyPipe[0]) + 1;
-
-    g_socket.m_env = env;
-    g_socket.m_instance = env->NewGlobalRef(instance);
-
-    while (!g_socket.m_stopped) {
-        timeval timeout{};
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 10 * 1000;
-        memcpy(&fds, &fds_org, sizeof(fds));
-        int ret = select(nfds, &fds, nullptr, nullptr, &timeout);
-
-        if (ret == 0) {
-            doPeriodicWork();
-
-            // timeout
-            continue;
-        }
-
-        if (FD_ISSET(g_socket.m_notifyPipe[0], &fds)) {
-            //LOG("select pipe");
-            processReadPipe(g_socket.m_notifyPipe[0]);
-        }
-
-        if (FD_ISSET(g_socket.m_sock, &fds)) {
-            recv();
-        }
+    if (ret == 0) {
         doPeriodicWork();
+
+        // timeout
+        return;
     }
 
-    LOGI("Exited select loop.");
+    if (FD_ISSET(g_socket.m_notifyPipe[0], &g_socket.fds)) {
+        //LOG("select pipe");
+        processReadPipe(g_socket.m_notifyPipe[0]);
+    }
 
-    g_socket.m_soundPlayer.reset();
-
-//    env->DeleteGlobalRef(g_socket.m_instance);
-
-    LOGI("Exiting UdpReceiverThread runLoop");
-}
-
-void interruptNative() {
-    g_socket.m_stopped = true;
-
-    // Notify stop to loop thread.
-    write(g_socket.m_notifyPipe[1], "", 1);
+    if (FD_ISSET(g_socket.m_sock, &g_socket.fds)) {
+        recv();
+    }
+    doPeriodicWork();
 }
 
 unsigned char isConnectedNative() {

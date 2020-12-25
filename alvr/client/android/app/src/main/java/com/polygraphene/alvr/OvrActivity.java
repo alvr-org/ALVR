@@ -97,7 +97,6 @@ public class OvrActivity extends Activity {
     Surface mStreamSurface;
     final LoadingTexture mLoadingTexture = new LoadingTexture();
     DecoderThread mDecoderThread = null;
-    ServerConnection mReceiverThread;
     EGLContext mEGLContext;
     boolean mVrMode = false;
     boolean mDecoderPrepared = false;
@@ -192,8 +191,6 @@ public class OvrActivity extends Activity {
         if (mResumed && mScreenSurface != null) {
             mRenderingHandler.post(() -> {
 
-                mReceiverThread = new ServerConnection(this);
-
                 // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
                 // and onFrameAvailable won't be called after next output.
                 // To avoid deadlock caused by it, we need to flush last output.
@@ -203,14 +200,13 @@ public class OvrActivity extends Activity {
 
                 try {
                     mDecoderThread.start();
-                    mReceiverThread.start();
                 } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
                     Utils.loge(TAG, e::toString);
                 }
 
                 PrivateIdentity id = this.getPrivateIdentity();
 
-                onResumeNative(id.hostname, id.certificatePEM, id.privateKey, mScreenSurface);
+                onResumeNative(NAL.class, id.hostname, id.certificatePEM, id.privateKey, mScreenSurface);
 
                 onVrModeChanged(true);
             });
@@ -234,9 +230,6 @@ public class OvrActivity extends Activity {
                 // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
                 if (mDecoderThread != null) {
                     mDecoderThread.stopAndWait();
-                }
-                if (mReceiverThread != null) {
-                    mReceiverThread.stopAndWait();
                 }
 
                 onVrModeChanged(false);
@@ -351,10 +344,8 @@ public class OvrActivity extends Activity {
     public void onVrModeChanged(boolean enter) {
         mVrMode = enter;
         Utils.logi(TAG, () -> "onVrModeChanged. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
-        if (mReceiverThread != null) {
-            if (mVrMode) {
-                mRenderingHandler.post(mRenderRunnable);
-            }
+        if (mVrMode) {
+            mRenderingHandler.post(mRenderRunnable);
         }
     }
 
@@ -387,7 +378,8 @@ public class OvrActivity extends Activity {
 
     native void destroyNative();
 
-    native void onResumeNative(String hostname, String certificatePEM, String privateKey, Surface screenSurface);
+    // nal_class is needed to access NAL objects fields in native code without access to a Java thread
+    native void onResumeNative(Class<?> nal_class, String hostname, String certificatePEM, String privateKey, Surface screenSurface);
 
     native void onPauseNative();
 
@@ -408,16 +400,6 @@ public class OvrActivity extends Activity {
     native void onGuardianSegmentAckNative(long timestamp, int segmentIndex);
 
     native void onBatteryChangedNative(int battery);
-
-    native void initializeSocket();
-
-    native void closeSocket();
-
-    native void runLoop();
-
-    native void interruptNative();
-
-    native void sendNative(long nativeBuffer, int bufferLength);
 
     native boolean isConnectedNative();
 

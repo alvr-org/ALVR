@@ -1,13 +1,10 @@
 use crate::{restart_steamvr, update_client_list, ClientListAction, ALVR_DIR, SESSION_MANAGER};
 use alvr_common::{commands::*, data::*, logging::*, *};
-use bytes::buf::BufExt;
-use futures::{stream::StreamExt, SinkExt};
+use bytes::Buf;
+use futures::SinkExt;
 use headers::{self, HeaderMapExt};
 use hyper::{
-    header,
-    header::CACHE_CONTROL,
-    header::{HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN},
-    http::request::Parts,
+    header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL},
     service::{make_service_fn, service_fn},
     upgrade::Upgraded,
     Body, Method, Request, Response, StatusCode,
@@ -18,7 +15,7 @@ use std::{
     net::{IpAddr, SocketAddr},
     path::PathBuf,
 };
-use tokio::sync::broadcast::{self, RecvError};
+use tokio::sync::broadcast::{self, error::RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
 
@@ -35,9 +32,9 @@ fn reply_json<T: Serialize>(obj: &T) -> StrResult<Response<Body>> {
         .body(trace_err!(json::to_string(obj))?.into()))
 }
 
-async fn from_body<T: DeserializeOwned>(body: Body) -> StrResult<T> {
+async fn from_request_body<T: DeserializeOwned>(request: Request<Body>) -> StrResult<T> {
     trace_err!(json::from_reader(
-        trace_err!(hyper::body::aggregate(body).await)?.reader()
+        trace_err!(hyper::body::aggregate(request).await)?.reader()
     ))
 }
 
@@ -46,8 +43,8 @@ async fn log_websocket(upgraded: Upgraded, log_sender: broadcast::Sender<String>
 
     let mut ws = WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, None).await;
 
-    while let Some(maybe_line) = log_receiver.next().await {
-        match maybe_line {
+    loop {
+        match log_receiver.recv().await {
             Ok(line) => {
                 if let Err(e) = ws.send(protocol::Message::text(line)).await {
                     info!("Failed to send log with websocket: {}", e);
@@ -68,23 +65,12 @@ async fn http_api(
     request: Request<Body>,
     log_sender: broadcast::Sender<String>,
 ) -> StrResult<Response<Body>> {
-    let (
-        Parts {
-            uri,
-            method,
-            headers,
-            ..
-        },
-        body,
-    ) = request.into_parts();
-    let uri = uri.path();
-
-    let mut response = match uri {
+    let mut response = match request.uri().path() {
         "/settings-schema" => reply_json(&settings_schema(session_settings_default()))?,
         "/session" => {
-            if matches!(method, Method::GET) {
+            if matches!(request.method(), &Method::GET) {
                 reply_json(SESSION_MANAGER.lock().get())?
-            } else if let Ok(data) = from_body::<json::Value>(body).await {
+            } else if let Ok(data) = from_request_body::<json::Value>(request).await {
                 // POST
                 if let (Some(update_type), Some(update_author_id), Some(value)) = (
                     data.get("updateType"),
@@ -117,9 +103,9 @@ async fn http_api(
             }
         }
         "/log" => {
-            if let Some(key) = headers.typed_get::<headers::SecWebsocketKey>() {
+            if let Some(key) = request.headers().typed_get::<headers::SecWebsocketKey>() {
                 tokio::spawn(async move {
-                    match body.on_upgrade().await {
+                    match hyper::upgrade::on(request).await {
                         Ok(upgraded) => {
                             log_websocket(upgraded, log_sender).await;
                         }
@@ -149,7 +135,7 @@ async fn http_api(
             }
         }
         "/driver/unregister" => {
-            if let Ok(path) = from_body::<PathBuf>(body).await {
+            if let Ok(path) = from_request_body::<PathBuf>(request).await {
                 if driver_registration(&[path], false).is_ok() {
                     reply(StatusCode::OK)?
                 } else {
@@ -175,7 +161,9 @@ async fn http_api(
             reply(StatusCode::OK)?
         }
         "/client/trust" => {
-            if let Ok((hostname, maybe_ip)) = from_body::<(String, Option<IpAddr>)>(body).await {
+            if let Ok((hostname, maybe_ip)) =
+                from_request_body::<(String, Option<IpAddr>)>(request).await
+            {
                 update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(maybe_ip)).await;
                 reply(StatusCode::OK)?
             } else {
@@ -183,7 +171,9 @@ async fn http_api(
             }
         }
         "/client/remove" => {
-            if let Ok((hostname, maybe_ip)) = from_body::<(String, Option<IpAddr>)>(body).await {
+            if let Ok((hostname, maybe_ip)) =
+                from_request_body::<(String, Option<IpAddr>)>(request).await
+            {
                 update_client_list(hostname, ClientListAction::RemoveIpOrEntry(maybe_ip)).await;
                 reply(StatusCode::OK)?
             } else {
@@ -192,7 +182,7 @@ async fn http_api(
         }
         "/version" => Response::new(ALVR_SERVER_VERSION.to_string().into()),
         "/open" => {
-            if let Ok(url) = from_body::<String>(body).await {
+            if let Ok(url) = from_request_body::<String>(request).await {
                 webbrowser::open(&url).ok();
                 reply(StatusCode::OK)?
             } else {

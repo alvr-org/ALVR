@@ -10,10 +10,7 @@ use jni::{objects::*, *};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::{slice, sync::Arc};
-use tokio::{
-    runtime::Runtime,
-    sync::{broadcast, Notify},
-};
+use tokio::{runtime::Runtime, sync::Notify};
 
 struct OnCreateResultWrapper(OnCreateResult);
 unsafe impl Send for OnCreateResultWrapper {}
@@ -23,10 +20,8 @@ lazy_static! {
         Mutex::new(OnCreateResultWrapper(<_>::default()));
     static ref REFRESH_RATES: Mutex<Vec<f32>> = Mutex::new(vec![]);
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(None);
-    static ref MAYBE_ON_STREAM_STOP_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> =
-        Mutex::new(None);
-    static ref MAYBE_ON_PAUSE_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
     static ref IDR_REQUEST_NOTIFIER: Notify = Notify::new();
+    static ref ON_PAUSE_NOTIFIER: Notify = Notify::new();
 }
 
 #[no_mangle]
@@ -204,31 +199,23 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
         };
 
         let runtime = trace_err!(Runtime::new())?;
-        let (on_pause_notifier, mut on_pause_receiver) = broadcast::channel(1);
-        let (on_stream_stop_notifier, _) = broadcast::channel(1);
 
-        runtime.spawn({
-            let on_stream_stop_notifier = on_stream_stop_notifier.clone();
-            async move {
-                let connection_loop = connection::connection_lifecycle_loop(
-                    headset_info,
-                    device_name,
-                    private_identity,
-                    on_stream_stop_notifier,
-                    Arc::new(java_vm),
-                    Arc::new(activity_ref),
-                    Arc::new(nal_class_ref),
-                );
+        runtime.spawn(async move {
+            let connection_loop = connection::connection_lifecycle_loop(
+                headset_info,
+                device_name,
+                private_identity,
+                Arc::new(java_vm),
+                Arc::new(activity_ref),
+                Arc::new(nal_class_ref),
+            );
 
-                tokio::select! {
-                    _ = connection_loop => (),
-                    _ = on_pause_receiver.recv() => ()
-                };
-            }
+            tokio::select! {
+                _ = connection_loop => (),
+                _ = ON_PAUSE_NOTIFIER.notified() => ()
+            };
         });
 
-        *MAYBE_ON_STREAM_STOP_NOTIFIER.lock() = Some(on_stream_stop_notifier);
-        *MAYBE_ON_PAUSE_NOTIFIER.lock() = Some(on_pause_notifier);
         *MAYBE_RUNTIME.lock() = Some(runtime);
 
         Ok(())
@@ -268,9 +255,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onPauseNati
     _: JNIEnv,
     _: JObject,
 ) {
-    if let Some(notifier) = MAYBE_ON_PAUSE_NOTIFIER.lock().take() {
-        notifier.send(()).ok();
-    }
+    ON_PAUSE_NOTIFIER.notify_waiters();
 
     // shutdown and wait for tasks to finish
     drop(MAYBE_RUNTIME.lock().take());
@@ -332,5 +317,5 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_requestIDR(
     _: JNIEnv,
     _: JObject,
 ) {
-    IDR_REQUEST_NOTIFIER.notify();
+    IDR_REQUEST_NOTIFIER.notify_waiters();
 }

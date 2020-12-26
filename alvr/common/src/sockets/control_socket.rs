@@ -165,7 +165,7 @@ pub async fn begin_connecting_to_client(
             Ok(socket) => break socket,
             Err(e) => {
                 debug!("Timeout while connecting to clients: {}", e);
-                tokio::time::delay_for(CONTROL_SOCKET_CONNECT_RETRY_INTERVAL).await;
+                tokio::time::sleep(CONTROL_SOCKET_CONNECT_RETRY_INTERVAL).await;
             }
         }
     };

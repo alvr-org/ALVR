@@ -13,10 +13,7 @@ use std::{
     },
     time::Duration,
 };
-use tokio::{
-    sync::broadcast,
-    time::{self, Instant},
-};
+use tokio::time::{self, Instant};
 
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
@@ -170,7 +167,7 @@ async fn try_connect(
         loop {
             unsafe { crate::onTrackingNative() };
             deadline += tracking_interval;
-            time::delay_until(deadline).await;
+            time::sleep_until(deadline).await;
         }
     };
 
@@ -222,27 +219,23 @@ pub async fn connection_lifecycle_loop(
     headset_info: HeadsetInfoPacket,
     device_name: &str,
     private_identity: PrivateIdentity,
-    on_stream_stop_notifier: broadcast::Sender<()>,
     java_vm: Arc<JavaVM>,
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) {
-    let mut on_stream_stop_receiver = on_stream_stop_notifier.subscribe();
-
     // this loop has no exit, but the execution can be halted by the caller with tokio::select!{}
     loop {
-        let try_connect_future = show_err_async(try_connect(
-            &headset_info,
-            device_name.to_owned(),
-            &private_identity,
-            java_vm.clone(),
-            activity_ref.clone(),
-            nal_class_ref.clone(),
-        ));
-
-        tokio::select! {
-            _ = try_connect_future => (),
-            _ = on_stream_stop_receiver.recv() => (),
-        }
+        show_err(
+            try_connect(
+                &headset_info,
+                device_name.to_owned(),
+                &private_identity,
+                java_vm.clone(),
+                activity_ref.clone(),
+                nal_class_ref.clone(),
+            )
+            .await,
+        )
+        .ok();
     }
 }

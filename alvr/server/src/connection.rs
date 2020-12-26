@@ -4,7 +4,6 @@ use crate::{
 };
 use alvr_common::{data::*, logging::*, sockets::*, *};
 use std::{collections::HashMap, net::IpAddr};
-use tokio::sync::broadcast;
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -258,9 +257,7 @@ async fn connect_to_any_client(
     }
 }
 
-async fn pairing_loop(
-    clients_list_notifier: broadcast::Sender<()>,
-) -> (
+async fn pairing_loop() -> (
     ControlSocketSender<ServerControlPacket>,
     ControlSocketReceiver<ClientControlPacket>,
 ) {
@@ -281,24 +278,18 @@ async fn pairing_loop(
                 clients_info
             });
 
-        let mut clients_updated_receiver = clients_list_notifier.subscribe();
-
         tokio::select! {
             control_socket = connect_to_any_client(clients_info) => break control_socket,
-            _ = clients_updated_receiver.recv() => continue,
+            _ = CLIENTS_UPDATED_NOTIFIER.notified() => continue,
         }
     }
 }
 
 pub async fn connection_lifecycle_loop() -> StrResult {
     loop {
-        info!("connection_lifecycle_loop");
-        let clients_updated_notifier =
-            trace_none!(CLIENTS_UPDATED_NOTIFIER.lock().as_ref())?.clone();
-
         let (_, mut control_receiver) = tokio::select! {
             Err(e) = client_discovery() => break trace_str!("Client discovery failed: {}", e),
-            control_socket = pairing_loop(clients_updated_notifier) => control_socket,
+            control_socket = pairing_loop() => control_socket,
             else => unreachable!(),
         };
 

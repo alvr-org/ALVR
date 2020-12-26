@@ -17,25 +17,25 @@ use std::{
     net::IpAddr,
     os::raw::c_char,
     path::PathBuf,
-    sync::Once,
-    sync::{atomic::AtomicUsize, atomic::Ordering, Arc},
+    sync::{atomic::AtomicUsize, atomic::Ordering, Arc, Once},
     thread,
 };
-use tokio::{runtime::Runtime, sync::broadcast};
+use tokio::{
+    runtime::Runtime,
+    sync::{broadcast, Notify},
+};
 
 lazy_static! {
     // Since ALVR_DIR is needed to initialize logging, if error then just panic
     static ref ALVR_DIR: PathBuf = commands::get_alvr_dir().unwrap();
     static ref SESSION_MANAGER: Mutex<SessionManager> = Mutex::new(SessionManager::new(&ALVR_DIR));
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
-    static ref CLIENTS_UPDATED_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
-    static ref MAYBE_SHUTDOWN_NOTIFIER: Mutex<Option<broadcast::Sender<()>>> = Mutex::new(None);
+    static ref CLIENTS_UPDATED_NOTIFIER: Notify = Notify::new();
+    static ref SHUTDOWN_NOTIFIER: Notify = Notify::new();
 }
 
 pub fn shutdown_runtime() {
-    if let Some(notifier) = &*MAYBE_SHUTDOWN_NOTIFIER.lock() {
-        notifier.send(()).ok();
-    }
+    SHUTDOWN_NOTIFIER.notify_waiters();
 
     if let Some(runtime) = MAYBE_RUNTIME.lock().take() {
         runtime.shutdown_background();
@@ -133,9 +133,7 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
             update_type: SessionUpdateType::ClientList
         });
 
-        if let Some(notifier) = &*CLIENTS_UPDATED_NOTIFIER.lock() {
-            notifier.send(()).ok();
-        }
+        CLIENTS_UPDATED_NOTIFIER.notify_waiters();
     }
 }
 
@@ -146,10 +144,6 @@ fn init(log_sender: broadcast::Sender<String>) -> StrResult {
         SESSION_MANAGER
             .lock()
             .get_mut(None, SessionUpdateType::Other);
-
-        let (shutdown_notifier, mut shutdown_receiver) = broadcast::channel(1);
-        let (clients_updated_notifier, _) = broadcast::channel(1);
-        *CLIENTS_UPDATED_NOTIFIER.lock() = Some(clients_updated_notifier);
 
         runtime.spawn(async move {
             let connections = SESSION_MANAGER.lock().get().client_connections.clone();
@@ -163,11 +157,9 @@ fn init(log_sender: broadcast::Sender<String>) -> StrResult {
 
             tokio::select! {
                 _ = web_server => (),
-                _ = shutdown_receiver.recv() => (),
+                _ = SHUTDOWN_NOTIFIER.notified() => (),
             }
         });
-
-        *MAYBE_SHUTDOWN_NOTIFIER.lock() = Some(shutdown_notifier);
     }
 
     let alvr_dir_c_string = CString::new(ALVR_DIR.to_string_lossy().to_string()).unwrap();
@@ -234,15 +226,11 @@ pub unsafe extern "C" fn HmdDriverFactory(
     unsafe extern "C" fn driver_ready_idle() {
         show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone())).ok();
 
-        if let (Some(runtime), Some(shutdown_notifier)) = (
-            MAYBE_RUNTIME.lock().as_mut(),
-            MAYBE_SHUTDOWN_NOTIFIER.lock().as_mut(),
-        ) {
-            let mut shutdown_receiver = shutdown_notifier.subscribe();
+        if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
             runtime.spawn(async move {
                 tokio::select! {
                     Err(e) = connection::connection_lifecycle_loop() => error!("{}", e),
-                    _ = shutdown_receiver.recv() => (),
+                    _ = SHUTDOWN_NOTIFIER.notified() => (),
                     else => (),
                 }
             });

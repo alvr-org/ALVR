@@ -37,10 +37,10 @@ extern "C" void onGuardianSyncAckNative(long long timestamp);
 extern "C" void onGuardianSegmentAckNative(long long timestamp, int segmentIndex);
 extern "C" void onBatteryChangedNative(int battery);
 
-extern "C" void connectSocket(const char *ip, unsigned int codec, unsigned int bufferSize);
-extern "C" void initializeSocket(void *env, void *instance, void *nalClass);
-extern "C" void closeSocket(void *env);
-extern "C" void runSocketLoopIter();
+extern "C" void
+initializeSocket(void *env, void *instance, void *nalClass, const char *ip, unsigned int codec,
+                 unsigned int bufferSize);
 extern "C" unsigned char isConnectedNative();
+extern "C" void runSocketLoopIter();
 extern "C" void sendNative(long long nativeBuffer, int bufferLength);
-extern "C" void disconnectSocket(void *env);
+extern "C" void closeSocket(void *env);

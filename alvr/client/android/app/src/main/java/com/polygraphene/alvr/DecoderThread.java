@@ -42,7 +42,6 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
 
     public interface DecoderCallback {
         void onPrepared();
-        void onDestroy();
         void onFrameDecoded();
     }
 
@@ -131,7 +130,6 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
             Utils.logi(TAG, () -> "Stopping decoder.");
             mQueue.stop();
 
-            mDecoderCallback.onDestroy();
             if (mDecoder != null) {
                 try {
                     mDecoder.stop();

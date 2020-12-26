@@ -79,18 +79,116 @@ namespace {
     ServerConnectionNative g_socket;
 }
 
-int send(const void *buf, size_t len) {
-    LOGSOCKET("Sending %zu bytes", len);
-    return (int) sendto(g_socket.m_sock, buf, len, 0, (sockaddr *) &g_socket.m_serverAddr,
-                        sizeof(g_socket.m_serverAddr));
-}
+void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, const char *ip,
+                      unsigned int codec, unsigned int bufferSize) {
+    auto *env = (JNIEnv *) v_env;
+    auto *instance = (jobject) v_instance;
+    auto *nalClass = (jclass) v_nalClass;
 
-void connectSocket(const char *ip, unsigned int codec, unsigned int bufferSize) {
+    //
+    // Initialize variables
+    //
+
+    g_socket.m_stopped = false;
+    g_socket.m_prevSentSync = 0;
+    g_socket.m_prevVideoSequence = 0;
+    g_socket.m_prevSoundSequence = 0;
+    g_socket.m_timeDiff = 0;
+
+    jclass clazz = env->GetObjectClass(instance);
+    g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
+    g_socket.mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
+    g_socket.mOnGuardianSyncAckID = env->GetMethodID(clazz, "onGuardianSyncAck", "(J)V");
+    g_socket.mOnGuardianSegmentAckID = env->GetMethodID(clazz, "onGuardianSegmentAck", "(JI)V");
+    env->DeleteLocalRef(clazz);
+
+    g_socket.m_nalParser = std::make_shared<NALParser>(env, instance, nalClass);
+
+
+    //
+    // UdpSocket
+    //
+    int val;
+    socklen_t len;
+
+    g_socket.m_sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (g_socket.m_sock < 0) {
+        throw FormatException("socket error : %d %s", errno, strerror(errno));
+    }
+    val = 1;
+    int flags = fcntl(g_socket.m_sock, F_GETFL, 0);
+    fcntl(g_socket.m_sock, F_SETFL, flags | O_NONBLOCK);
+
+    // To avoid EADDRINUSE when previous process (or thread) remains live.
+    val = 1;
+    setsockopt(g_socket.m_sock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+
+    //
+    // UdpSocket recv buffer
+    //
+
+    //setMaxSocketBuffer();
+    // 30Mbps 50ms buffer
+    getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &len);
+    LOGI("Default socket recv buffer is %d bytes", val);
+
+    val = 30 * 1000 * 500 / 8;
+    setsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, sizeof(val));
+    len = sizeof(val);
+    getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &len);
+    LOGI("Current socket recv buffer is %d bytes", val);
+
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(9944);
+    addr.sin_addr.s_addr = INADDR_ANY;
+    if (bind(g_socket.m_sock, (sockaddr *) &addr, sizeof(addr)) < 0) {
+        throw FormatException("bind error : %d %s", errno, strerror(errno));
+    }
+
+
+    //
+    // Sound
+    //
+
+    g_socket.m_soundPlayer = std::make_shared<SoundPlayer>();
+    if (g_socket.m_soundPlayer->initialize() != 0) {
+        LOGE("Failed on SoundPlayer initialize.");
+        g_socket.m_soundPlayer.reset();
+    }
+    LOGI("SoundPlayer successfully initialize.");
+
+    //
+    // Pipe used for send buffer notification.
+    //
+
+    if (pipe2(g_socket.m_notifyPipe, O_NONBLOCK) < 0) {
+        throw FormatException("pipe2 error : %d %s", errno, strerror(errno));
+    }
+
+    LOGI("ServerConnectionNative initialized.");
+
+
+    // setup loop
+
+    FD_ZERO(&g_socket.fds);
+    FD_ZERO(&g_socket.fds_org);
+
+    FD_SET(g_socket.m_sock, &g_socket.fds_org);
+    FD_SET(g_socket.m_notifyPipe[0], &g_socket.fds_org);
+    g_socket.nfds = std::max(g_socket.m_sock, g_socket.m_notifyPipe[0]) + 1;
+
+    g_socket.m_env = env;
+    g_socket.m_instance = env->NewGlobalRef(instance);
+
+
+    // connect
+
     inet_pton(AF_INET, ip, &g_socket.m_serverAddr.sin_addr);
     g_socket.m_serverAddr.sin_port = htons(9944);
 
     LOGI("Try setting recv buffer size = %d bytes", bufferSize);
-    int val = bufferSize;
+    val = bufferSize;
     setsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, sizeof(val));
     socklen_t socklen = sizeof(val);
     getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &socklen);
@@ -103,6 +201,12 @@ void connectSocket(const char *ip, unsigned int codec, unsigned int bufferSize) 
     g_socket.m_nalParser->setCodec(codec);
 
     g_socket.m_connected = true;
+}
+
+int send(const void *buf, size_t len) {
+    LOGSOCKET("Sending %zu bytes", len);
+    return (int) sendto(g_socket.m_sock, buf, len, 0, (sockaddr *) &g_socket.m_serverAddr,
+                        sizeof(g_socket.m_serverAddr));
 }
 
 void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
@@ -298,128 +402,6 @@ void recv() {
     }
 }
 
-void closeSocket(void *v_env) {
-    auto *env = (JNIEnv *) v_env;
-
-    if (g_socket.m_notifyPipe[0] >= 0) {
-        close(g_socket.m_notifyPipe[0]);
-        close(g_socket.m_notifyPipe[1]);
-    }
-
-    g_socket.m_nalParser.reset();
-    g_socket.m_sendQueue.clear();
-    g_socket.m_soundPlayer.reset();
-
-    env->DeleteGlobalRef(g_socket.m_instance);
-}
-
-void initializeSocket(void *v_env, void *v_instance, void *v_nalClass) {
-    auto *env = (JNIEnv *) v_env;
-    auto *instance = (jobject) v_instance;
-    auto *nalClass = (jclass) v_nalClass;
-
-    //
-    // Initialize variables
-    //
-
-    g_socket.m_stopped = false;
-    g_socket.m_prevSentSync = 0;
-    g_socket.m_prevVideoSequence = 0;
-    g_socket.m_prevSoundSequence = 0;
-    g_socket.m_timeDiff = 0;
-
-    jclass clazz = env->GetObjectClass(instance);
-    g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
-    g_socket.mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
-    g_socket.mOnGuardianSyncAckID = env->GetMethodID(clazz, "onGuardianSyncAck", "(J)V");
-    g_socket.mOnGuardianSegmentAckID = env->GetMethodID(clazz, "onGuardianSegmentAck", "(JI)V");
-    env->DeleteLocalRef(clazz);
-
-    g_socket.m_nalParser = std::make_shared<NALParser>(env, instance, nalClass);
-
-
-    //
-    // UdpSocket
-    //
-    {
-        int val;
-        socklen_t len;
-
-        g_socket.m_sock = socket(AF_INET, SOCK_DGRAM, 0);
-        if (g_socket.m_sock < 0) {
-            throw FormatException("socket error : %d %s", errno, strerror(errno));
-        }
-        val = 1;
-        int flags = fcntl(g_socket.m_sock, F_GETFL, 0);
-        fcntl(g_socket.m_sock, F_SETFL, flags | O_NONBLOCK);
-
-//        val = 1;
-//        setsockopt(g_socket.m_sock, SOL_SOCKET, SO_BROADCAST, (char *) &val, sizeof(val));
-
-        // To avoid EADDRINUSE when previous process (or thread) remains live.
-        val = 1;
-        setsockopt(g_socket.m_sock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
-
-        //
-        // UdpSocket recv buffer
-        //
-
-        //setMaxSocketBuffer();
-        // 30Mbps 50ms buffer
-        getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &len);
-        LOGI("Default socket recv buffer is %d bytes", val);
-
-        val = 30 * 1000 * 500 / 8;
-        setsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, sizeof(val));
-        len = sizeof(val);
-        getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &len);
-        LOGI("Current socket recv buffer is %d bytes", val);
-
-        sockaddr_in addr{};
-        addr.sin_family = AF_INET;
-        addr.sin_port = htons(9944);
-        addr.sin_addr.s_addr = INADDR_ANY;
-        if (bind(g_socket.m_sock, (sockaddr *) &addr, sizeof(addr)) < 0) {
-            throw FormatException("bind error : %d %s", errno, strerror(errno));
-        }
-    }
-
-
-    //
-    // Sound
-    //
-
-    g_socket.m_soundPlayer = std::make_shared<SoundPlayer>();
-    if (g_socket.m_soundPlayer->initialize() != 0) {
-        LOGE("Failed on SoundPlayer initialize.");
-        g_socket.m_soundPlayer.reset();
-    }
-    LOGI("SoundPlayer successfully initialize.");
-
-    //
-    // Pipe used for send buffer notification.
-    //
-
-    if (pipe2(g_socket.m_notifyPipe, O_NONBLOCK) < 0) {
-        throw FormatException("pipe2 error : %d %s", errno, strerror(errno));
-    }
-
-    LOGI("ServerConnectionNative initialized.");
-
-
-    // setup loop
-
-    FD_ZERO(&g_socket.fds);
-    FD_ZERO(&g_socket.fds_org);
-
-    FD_SET(g_socket.m_sock, &g_socket.fds_org);
-    FD_SET(g_socket.m_notifyPipe[0], &g_socket.fds_org);
-    g_socket.nfds = std::max(g_socket.m_sock, g_socket.m_notifyPipe[0]) + 1;
-
-    g_socket.m_env = env;
-    g_socket.m_instance = env->NewGlobalRef(instance);
-}
-
 void processReadPipe(int pipefd) {
     char buf[2000];
     int len = 1;
@@ -541,7 +523,7 @@ unsigned char isConnectedNative() {
     return g_socket.m_connected;
 }
 
-void disconnectSocket(void *v_env) {
+void closeSocket(void *v_env) {
     auto *env = (JNIEnv *) v_env;
 
     g_socket.m_connected = false;
@@ -552,4 +534,16 @@ void disconnectSocket(void *v_env) {
     if (g_socket.m_soundPlayer) {
         g_socket.m_soundPlayer->Stop();
     }
+
+
+    if (g_socket.m_notifyPipe[0] >= 0) {
+        close(g_socket.m_notifyPipe[0]);
+        close(g_socket.m_notifyPipe[1]);
+    }
+
+    g_socket.m_nalParser.reset();
+    g_socket.m_sendQueue.clear();
+    g_socket.m_soundPlayer.reset();
+
+    env->DeleteGlobalRef(g_socket.m_instance);
 }

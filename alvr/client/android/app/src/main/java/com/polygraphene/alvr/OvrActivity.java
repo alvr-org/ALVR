@@ -55,9 +55,6 @@ public class OvrActivity extends Activity {
     public static class OnCreateResult {
         public int streamSurfaceHandle;
         public int loadingSurfaceHandle;
-        public int refreshRate;
-        public int renderWidth;
-        public int renderHeight;
     }
 
     class RenderingCallbacks implements SurfaceHolder.Callback {
@@ -99,7 +96,6 @@ public class OvrActivity extends Activity {
     DecoderThread mDecoderThread = null;
     EGLContext mEGLContext;
     boolean mVrMode = false;
-    boolean mDecoderPrepared = false;
     int mRefreshRate = 72;
     long mPreviousRender = 0;
     String mDashboardURL = null;
@@ -343,7 +339,6 @@ public class OvrActivity extends Activity {
 
     public void onVrModeChanged(boolean enter) {
         mVrMode = enter;
-        Utils.logi(TAG, () -> "onVrModeChanged. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
         if (mVrMode) {
             mRenderingHandler.post(mRenderRunnable);
         }
@@ -352,15 +347,7 @@ public class OvrActivity extends Activity {
     private final DecoderThread.DecoderCallback mDecoderCallback = new DecoderThread.DecoderCallback() {
         @Override
         public void onPrepared() {
-            mDecoderPrepared = true;
-            Utils.logi(TAG, () -> "DecoderCallback.onPrepared. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
             requestIDR();
-        }
-
-        @Override
-        public void onDestroy() {
-            mDecoderPrepared = false;
-            Utils.logi(TAG, () -> "DecoderCallback.onDestroy. mVrMode=" + mVrMode + " mDecoderPrepared=" + mDecoderPrepared);
         }
 
         @Override

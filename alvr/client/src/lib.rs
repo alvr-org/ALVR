@@ -100,29 +100,8 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
 
         let refresh_rates =
             slice::from_raw_parts(result.refreshRates, result.refreshRatesCount as _).to_vec();
-        let default_refresh_rate = refresh_rates.last().cloned().unwrap_or(60_f32);
-        trace_err!(env.set_field(
-            jout_result,
-            "refreshRate",
-            "I",
-            (default_refresh_rate as i32).into()
-        ))?;
-
-        trace_err!(env.set_field(
-            jout_result,
-            "renderWidth",
-            "I",
-            (result.recommendedEyeWidth * 2).into()
-        ))?;
-        trace_err!(env.set_field(
-            jout_result,
-            "renderHeight",
-            "I",
-            result.recommendedEyeHeight.into()
-        ))?;
-
-        *ON_CREATE_RESULT.lock() = OnCreateResultWrapper(result);
         *REFRESH_RATES.lock() = refresh_rates;
+        *ON_CREATE_RESULT.lock() = OnCreateResultWrapper(result);
 
         Ok(())
     }())

@@ -142,8 +142,10 @@ async fn try_connect(
             let nal_class: JClass = nal_class_ref.as_obj().into();
 
             unsafe {
-                crate::initializeSocket(env_ptr, *activity_obj as _, **nal_class as _);
-                crate::connectSocket(
+                crate::initializeSocket(
+                    env_ptr,
+                    *activity_obj as _,
+                    **nal_class as _,
                     server_ip_cstring.as_ptr(),
                     matches!(baseline_settings.video.codec, CodecType::HEVC) as _,
                     baseline_settings.connection.client_recv_buffer_size as _,
@@ -153,7 +155,6 @@ async fn try_connect(
                     crate::runSocketLoopIter();
                 }
 
-                crate::disconnectSocket(env_ptr);
                 crate::closeSocket(env_ptr);
             }
 

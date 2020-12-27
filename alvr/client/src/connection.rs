@@ -37,7 +37,19 @@ impl Drop for StreamCloseGuard {
     }
 }
 
-async fn setLoadingMessage(java_vm: &JavaVM, activity_ref: &GlobalRef, message: &str) -> StrResult {
+async fn setLoadingMessage(
+    java_vm: &JavaVM,
+    activity_ref: &GlobalRef,
+    hostname: &str,
+    message: &str,
+) -> StrResult {
+    let message = format!(
+        "ALVR v{}\nhostname: {}\n \n{}",
+        ALVR_CLIENT_VERSION.to_string(),
+        hostname,
+        message
+    );
+
     // Note: env = java_vm.attach_current_thread() cannot be saved into a variable because it is
     // not Send (compile error). This makes sense since tokio could move the execution of this
     // task to another thread at any time, and env is valid only within a specific thread. For
@@ -61,11 +73,13 @@ async fn try_connect(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) -> StrResult {
+    let hostname = &private_identity.hostname;
+
     let connection_result = trace_err!(
         sockets::connect_to_server(
             &headset_info,
             device_name,
-            private_identity.hostname.clone(),
+            hostname.clone(),
             private_identity.certificate_pem.clone(),
         )
         .await
@@ -84,7 +98,7 @@ async fn try_connect(
                     ServerHandshakePacket::ClientUntrusted => CLIENT_UNTRUSTED_MESSAGE,
                     ServerHandshakePacket::IncompatibleVersions => INCOMPATIBLE_VERSIONS_MESSAGE,
                 };
-                setLoadingMessage(&*java_vm, &*activity_ref, message_str).await?;
+                setLoadingMessage(&*java_vm, &*activity_ref, hostname, message_str).await?;
                 return Ok(());
             }
         };
@@ -211,6 +225,7 @@ async fn try_connect(
                             setLoadingMessage(
                                 &*java_vm,
                                 &*activity_ref,
+                                hostname,
                                 SERVER_RESTART_MESSAGE
                             )
                             .await?;
@@ -223,6 +238,7 @@ async fn try_connect(
                             setLoadingMessage(
                                 &*java_vm,
                                 &*activity_ref,
+                                hostname,
                                 SERVER_DISCONNECTED_MESSAGE
                             )
                             .await?;
@@ -248,9 +264,14 @@ pub async fn connection_lifecycle_loop(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) {
-    setLoadingMessage(&*java_vm, &*activity_ref, INITIAL_MESSAGE)
-        .await
-        .ok();
+    setLoadingMessage(
+        &*java_vm,
+        &*activity_ref,
+        &private_identity.hostname,
+        INITIAL_MESSAGE,
+    )
+    .await
+    .ok();
 
     // this loop has no exit, but the execution can be halted by the caller with tokio::select!{}
     loop {

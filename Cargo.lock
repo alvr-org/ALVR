@@ -638,9 +638,9 @@ dependencies = [
 
 [[package]]
 name = "combine"
-version = "4.5.0"
+version = "4.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "385a3f4b0910409ff56ff221bd2a6f7591f7f537bba447c5010c47e898040d98"
+checksum = "01199925a18b00193570e3d70cfe57dcb647eb167c29851983e76fc39e2fee39"
 dependencies = [
  "bytes 1.0.0",
  "memchr",
@@ -1733,7 +1733,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24967112a1e4301ca5342ea339763613a37592b8a6ce6cf2e4494537c7a42faf"
 dependencies = [
  "cesu8",
- "combine 4.5.0",
+ "combine 4.5.1",
  "jni-sys",
  "log",
  "thiserror",

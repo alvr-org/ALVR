@@ -26,7 +26,6 @@ import android.view.KeyEvent;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
@@ -145,7 +144,6 @@ public class OvrActivity extends Activity {
         mStreamSurface = new Surface(mStreamSurfaceTexture);
 
         mLoadingTexture.initializeMessageCanvas(deviceDescriptor.loadingSurfaceHandle);
-        mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\nLoading...");
 
         mEGLContext = EGL14.eglGetCurrentContext();
     }
@@ -318,7 +316,7 @@ public class OvrActivity extends Activity {
                     mRenderingHandler.postDelayed(mRenderRunnable, 50);
                 }
             } else {
-                mLoadingTexture.drawMessage(Utils.getVersionName(this) + "\n\n" + mLoadingMessage);
+                mLoadingTexture.drawMessage(mLoadingMessage);
 
                 renderLoadingNative();
                 mRenderingHandler.removeCallbacks(mRenderRunnable);

@@ -44,17 +44,4 @@ public class Utils {
     {
         Log.e(tag, s.obtain());
     }
-
-
-    public static String getVersionName(Context context)
-    {
-        try {
-            PackageInfo pInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
-            String version = pInfo.versionName;
-            return context.getString(R.string.app_name) + " v" + version;
-        } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
-            return context.getString(R.string.app_name) + " Unknown version";
-        }
-    }
 }

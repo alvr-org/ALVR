@@ -90,9 +90,9 @@ define([
                 var type = connection.deviceName;
 
                 if (connection.trusted) {
-                    addTrustedClient(type, address, hostname);
+                    addTrustedClient(type, hostname);
                 } else {
-                    addNewClient(type, address, hostname);
+                    addNewClient(type, hostname);
                 }
             });
         }
@@ -124,21 +124,21 @@ define([
 
         }
 
-        function addNewClient(type, ip, hostname) {
-            const id = ip.replace(/\./g, '');
+        function addNewClient(type, hostname) {
+            const id = hostname.replace(/\./g, '');
 
             if ($("#newClient_" + id).length > 0) {
-                console.warn("Client already in new list:", type, ip);
+                console.warn("Client already in new list:", type, hostname);
                 return;
             }
 
             if ($("#trustedClient_" + id).length > 0) {
-                console.warn("Client already in trusted list:", type, ip);
+                console.warn("Client already in trusted list:", type, hostname);
                 return;
             }
 
-            var client = `<div class="card client" type="${type}" ip="${ip}" id="newClient_${id}">
-                        ${type} ${ip} <button type="button" class="btn btn-primary">trust</button>
+            var client = `<div class="card client" type="${type}" hostname="${hostname}" id="newClient_${id}">
+                        ${type} (${hostname}) <button type="button" class="btn btn-primary">trust</button>
                         </div>`
 
             $("#newClientsDiv").append(client);
@@ -154,21 +154,21 @@ define([
             });
         }
 
-        function addTrustedClient(type, ip, hostname) {
-            const id = ip.replace(/\./g, '');
+        function addTrustedClient(type, hostname) {
+            const id = hostname.replace(/\./g, '');
 
             if ($("#newClient_" + id).length > 0) {
-                console.warn("Client already in new list:", type, ip);
+                console.warn("Client already in new list:", type, hostname);
                 return;
             }
 
             if ($("#trustedClient_" + id).length > 0) {
-                console.warn("Client already in trusted list:", type, ip);
+                console.warn("Client already in trusted list:", type, hostname);
                 return;
             }
 
-            var client = `<div class="card client" type="${type}" ip="${ip}" id="trustedClient_${id}">
-                        ${type} ${ip} <button type="button" class="btn btn-primary">${i18n["removeTrustedClient"]}</button>
+            var client = `<div class="card client" type="${type}" hostname="${hostname}" id="trustedClient_${id}">
+                        ${type} (${hostname}) <button type="button" class="btn btn-primary">${i18n["removeTrustedClient"]}</button>
                         </div>`
 
             $("#trustedClientsDiv").append(client);

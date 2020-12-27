@@ -16,7 +16,7 @@ public class LoadingTexture {
     private String mCurrentText = "";
 
     void initializeMessageCanvas(int texture){
-        mBitmap = Bitmap.createBitmap(1024, 1024, Bitmap.Config.ARGB_8888);
+        mBitmap = Bitmap.createBitmap(2048, 1536, Bitmap.Config.ARGB_8888);
 
         mCanvas = new Canvas(mBitmap);
 

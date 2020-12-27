@@ -6,12 +6,9 @@
 
 // Maximum UDP packet size (payload size in bytes)
 static const int ALVR_MAX_PACKET_SIZE = 1400;
-static const int ALVR_REFRESH_RATE_LIST_SIZE = 4;
 
 // Maximum UDP packet size
 static const int MAX_PACKET_UDP_PACKET_SIZE = 2000;
-
-static const char *ALVR_HELLO_PACKET_SIGNATURE = "ALVR";
 
 // Guardian syncing constants
 static const int ALVR_GUARDIAN_SEGMENT_SIZE = 100;
@@ -45,34 +42,6 @@ enum ALVR_CODEC {
 enum ALVR_LOST_FRAME_TYPE {
 	ALVR_LOST_FRAME_TYPE_VIDEO = 0,
 	ALVR_LOST_FRAME_TYPE_AUDIO = 1,
-};
-
-enum ALVR_DEVICE_TYPE {
-	ALVR_DEVICE_TYPE_UNKNOWN = 0,
-	ALVR_DEVICE_TYPE_OCULUS_MOBILE = 1,
-	ALVR_DEVICE_TYPE_DAYDREAM = 2,
-	ALVR_DEVICE_TYPE_CARDBOARD = 3,
-};
-
-enum ALVR_DEVICE_SUB_TYPE {
-	ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_GEARVR = 1,
-	ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_GO = 2,
-	ALVR_DEVICE_SUBTYPE_OCULUS_MOBILE_QUEST = 3,
-
-	ALVR_DEVICE_SUBTYPE_DAYDREAM_GENERIC = 1,
-	ALVR_DEVICE_SUBTYPE_DAYDREAM_MIRAGE_SOLO = 2,
-
-	ALVR_DEVICE_SUBTYPE_CARDBOARD_GENERIC = 1,
-};
-
-enum ALVR_DEVICE_CAPABILITY_FLAG {
-	ALVR_DEVICE_CAPABILITY_FLAG_HMD_6DOF = 1 << 0,
-};
-
-enum ALVR_CONTROLLER_CAPABILITY_FLAG {
-	ALVR_CONTROLLER_CAPABILITY_FLAG_ONE_CONTROLLER = 1 << 0,
-	ALVR_CONTROLLER_CAPABILITY_FLAG_TWO_CONTROLLERS = 1 << 1,
-	ALVR_CONTROLLER_CAPABILITY_FLAG_6DOF = 1 << 2,
 };
 
 enum ALVR_INPUT {
@@ -185,16 +154,7 @@ struct EyeFov {
 	float top = 50.;
 	float bottom = 48.;
 };
-struct RecoverConnection {
-	uint32_t type; // ALVR_PACKET_TYPE_RECOVER_CONNECTION
-};
-struct BroadcastRequestMessage {
-	uint32_t type; // ALVR_PACKET_TYPE_BROADCAST_REQUEST_MESSAGE
-};
-struct StreamControlMessage {
-	uint32_t type; // ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE
-	uint32_t mode; // 1=Start stream, 2=Stop stream
-};
+
 struct TrackingQuat {
 	float x;
 	float y;
@@ -301,12 +261,6 @@ struct TimeSync {
 	uint64_t fecFailureTotal;
 
 	uint32_t fps;
-};
-struct ChangeSettings {
-	uint32_t type; // 8
-	uint64_t debugFlags;
-	uint32_t suspend;
-	uint32_t frameQueueSize;
 };
 struct VideoFrame {
 	uint32_t type; // ALVR_PACKET_TYPE_VIDEO_FRAME

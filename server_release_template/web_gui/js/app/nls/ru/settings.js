@@ -76,13 +76,11 @@ define({
     "_root_connection_throttlingBitrateBits.name": "Макс. битрейт трансляции",
     "_root_connection_clientRecvBufferSize.name": "Размер буфера клиента",
     "_root_connection_clientRecvBufferSize.description": "Размер буфера на клиентской стороне, зависит от битрейта.\n Рекомендуется рассчитанный размер . Если вы испытываете потерю пакетов - увеличьте буфер.",
-    "_root_connection_frameQueueSize.description": "Максимум кадров в очереди.",
     "_root_connection_aggressiveKeyframeResend.name": "Интенсивный повтор отправки пакетов",
     "_root_connection_aggressiveKeyframeResend.description": `Уменьшает минимальный интервал между ключевыми кадрами со 100мс до 5мс.
     Используется только когда наблюдается потеря пакетов. Улучшает работу в сетях с большой потерей пакетов.`,
     "_root_connection_disableThrottling.name": "Отключить пропуск тактов",
     "_root_connection_disableThrottling.description": "Отключение пропуска (дросселирования) тактов. Отсылает данные настолько быстро, насколько это возможно.",
-    "_root_connection_suppressFrameDrop.name": "Подавить потерю кадров",
     "_root_connection_bufferOffset.name": "Смещение буфера",
     "_root_connection_bufferOffset.description": "Смещение для увеличения или уменьшения рассчитанного размера буфера. Размер буфера клиента не может быть отрицательным.",
     

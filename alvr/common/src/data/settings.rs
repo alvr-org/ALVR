@@ -264,13 +264,6 @@ pub struct ConnectionDesc {
     #[schema(advanced)]
     pub client_recv_buffer_size: u64,
 
-    // If suppressframeDrop=true, set frameQueueSize=5
-    // If suppressframeDrop=false, set frameQueueSize=1
-    #[schema(placeholder = "suppress_frame_drop")]
-    //
-    #[schema(advanced)]
-    pub frame_queue_size: u64,
-
     pub aggressive_keyframe_resend: bool,
 }
 
@@ -423,7 +416,6 @@ pub fn session_settings_default() -> SettingsDefault {
             listen_port: 9944,
             throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,
             client_recv_buffer_size: 60_000,
-            frame_queue_size: 1,
             aggressive_keyframe_resend: false,
         },
         extra: ExtraDescDefault {

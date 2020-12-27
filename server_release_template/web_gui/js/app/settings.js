@@ -383,7 +383,6 @@ define([
                     case "controllerMode":
                         addDropdown(element, path, name, advanced)
                         break;
-                    case "suppressFrameDrop":
                     case "disableThrottling":
                         addBooleanType(element, path, name, advanced, { content: { default: false } });
                         break;

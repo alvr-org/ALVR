@@ -70,8 +70,6 @@ define({
     "_root_headset_controllers_content_controllerMode.description": "Scegli la modalità di emulazione dei controller per migliorare la compatibilità con alcuni giochi, e scegli se attivare l'emulazione del grilletto con il tracking delle mani",
     "_root_connection_disableThrottling.name": "Disabilita limiti per l'invio",
     "_root_connection_disableThrottling.description": "Disabilita limiti temporali per l'invio dei pacchetti.",
-    "_root_connection_suppressFrameDrop.name": "Evita perdita di pacchetti",
-    "_root_connection_suppressFrameDrop.description": "Prova ad evitare di perdere pacchetti",
     "_root_connection_bufferOffset.name": "Offset del buffer",
     "_root_connection_bufferOffset.description": "Offset usato per aumentare o diminuire la dimensione del buffer calcolata per il client. La dimensione del buffer risulatante non sarà mai negativa.",
     "_root_extra_tab.name": "Extra",

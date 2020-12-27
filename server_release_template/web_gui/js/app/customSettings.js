@@ -22,7 +22,6 @@ define([
                 setVideoOptions();
                 setBitrateOptions();
                 setRefreshRate();
-                setSuppressFrameDrop();
                 setDisableThrottling();
                 setHeadsetEmulation();
                 setControllerEmulation();
@@ -145,45 +144,6 @@ define([
                     alvrSettings.storeParam(target, true);
                 }
                 alvrSettings.storeSession("settings");
-            });
-        }
-
-        function setSuppressFrameDrop() {
-            const suppress = $("#_root_connection_suppressFrameDrop");
-            const queue = $("#_root_connection_frameQueueSize");
-            suppress.parent().addClass("special");
-            suppress.unbind();
-
-            suppress.parent().find(".helpReset").remove();
-            suppress.after(alvrSettings.getHelpReset("suppressFrameDrop", "_root_connection", false));
-
-
-            var updating = false;
-            var updateCheckbox = function () {
-                updating = true;
-                if (queue.val() >= 5) {
-                    suppress.prop("checked", true);
-                } else {
-                    suppress.prop("checked", false);
-                }
-                updating = false;
-            }
-            updateCheckbox();
-
-            queue.change((ev) => {
-                updateCheckbox();
-            });
-
-            suppress.change((ev) => {
-                if (alvrSettings.isUpdating() || updating) {
-                    return;
-                }
-                if (suppress.prop("checked")) {
-                    queue.val(5);
-                } else {
-                    queue.val(1);
-                }
-                alvrSettings.storeParam(queue);
             });
         }
 

@@ -76,8 +76,6 @@ define({
     "_root_connection_aggressiveKeyframeResend.description": `キーフレーム間の最小間隔を100msから5msに減少させる. パケットロスが検出された場合にのみ使用され, パケットロスのあるネットワークでの使用感を改善する`,
     "_root_connection_disableThrottling.name": "スロットリングの無効化",
     "_root_connection_disableThrottling.description": "スロットリングを無効化し, データを出来る限り早く送信する",
-    "_root_connection_suppressFrameDrop.name": "ドロップフレームの抑制",
-    "_root_connection_suppressFrameDrop.description": "フレームのコマ落ちを抑制する",
 
     "_root_extra_revertConfirmDialog.name": "初期化の確認ダイアログ",
     "_root_extra_revertConfirmDialog.description": "設定値をデフォルトの値に戻す前に確認を求める",

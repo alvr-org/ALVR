@@ -169,8 +169,6 @@ Una resolución inferior al 100% puede reducir la latencia y mejorar la calidad 
     "_root_connection_limitTimeslotPackets.description": "sin usar",
     "_root_connection_clientRecvBufferSize.name": "Tamaño del buffer para el cliente",
     "_root_connection_clientRecvBufferSize.description": "Tamaño del buffer para el cliente.\nDepende de la tasa de bits.\nSe recomienda dejar el valor calculado. Si tiene problemas de pérdida de paquetes, aumente el valor.",
-    "_root_connection_frameQueueSize.name": "Tamaño de la cola de cuadros",
-    "_root_connection_frameQueueSize.description": "Tamaño máximo de la cola de fotogramas utilizado por el cliente.",
     "_root_connection_aggressiveKeyframeResend.name": "Reenvía los fotogramas clave de forma agresiva",
     "_root_connection_aggressiveKeyframeResend.description": `Reducir el intervalo de reenvío de cuadros de tipo "I" (key frames) de 100ms a 5ms.
 Sólo se utiliza cuando se detecta una pérdida de paquetes. Mejora la experiencia visual en caso de pérdida de paquetes.`,
@@ -189,8 +187,6 @@ Sólo se utiliza cuando se detecta una pérdida de paquetes. Mejora la experienc
     "_root_extra_excludeNotificationsWithoutId.description": "No mostrar notificaciones que no contengan la estructura de identificación.",
     "_root_connection_disableThrottling.name": "Deshabilitar los límites de envío",
     "_root_connection_disableThrottling.description": "Deshabilitar los límites de tiempo para el envío de paquetes.",
-    "_root_connection_suppressFrameDrop.name": "Evitar la pérdida de paquetes",
-    "_root_connection_suppressFrameDrop.description": "Trata de evitar la pérdida de paquetes.",
     "_root_headset_headsetEmulationMode.name": "Modo de emulación del visor",
     "_root_headset_headsetEmulationMode.description": "Elija el modo de emulación del visor para mejorar la compatibilidad con algunos juegos.",
     "_root_headset_controllers_content_controllerMode.name": "Modo de emulación del controlador",

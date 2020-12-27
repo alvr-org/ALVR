@@ -74,13 +74,11 @@ define({
     "_root_connection_throttlingBitrateBits.name": "Макс. битрейт на излъчване",
     "_root_connection_clientRecvBufferSize.name": "Размер на клиентския буфер",
     "_root_connection_clientRecvBufferSize.description": "Размерът на буфера от страна на клиента зависи от битрейта. \nПрепоръчва се изчислен размер. Ако изпитвате загуба на пакети, увеличете буфера.",
-    "_root_connection_frameQueueSize.description": "Максимум кадри в опашката.",
     "_root_connection_aggressiveKeyframeResend.name": "Интензивен опит за повторен пакет",
     "_root_connection_aggressiveKeyframeResend.description": `Намалява минималния интервал между ключовите кадри от 100ms на 5ms.
     Използва се само когато се наблюдава загуба на пакети. Подобрява производителността в мрежи с висока загуба на пакети.`,
     "_root_connection_disableThrottling.name": "Деактивирайте пропускането на ленти",
     "_root_connection_disableThrottling.description": "Деактивирайте пропускането (регулирането) на цикъла на часовника. Изпраща данни възможно най-бързо.",
-    "_root_connection_suppressFrameDrop.name": "Потискане на загубата на кадър",
     "_root_connection_bufferOffset.name": "Буферно отместване",
     "_root_connection_bufferOffset.description": "Офсет за увеличаване или намаляване на изчисления размер на клиентския буфер. Клиентският буфер не може да бъде отрицателен",
     "_root_extra_revertConfirmDialog.name": "Потвърдете възстановяването",

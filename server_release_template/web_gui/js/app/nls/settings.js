@@ -82,13 +82,11 @@ define({
         "_root_connection_throttlingBitrateBits.name": "Maximum streaming bitrate",
         "_root_connection_clientRecvBufferSize.name": "Client buffer size",
         "_root_connection_clientRecvBufferSize.description": "Buffer size on client side.\n Depends on the bitrate.\n Calculated size is recommended. If you experience packet loss, enlarge buffer.",
-        "_root_connection_frameQueueSize.description": "Maximum queued frames on the client",
         "_root_connection_aggressiveKeyframeResend.name": "Aggressive keyframe resend",
         "_root_connection_aggressiveKeyframeResend.description": `Decrease minimum interval between keyframes from 100 ms to 5 ms.
         Used only when packet loss is detected. Improves experience on networks with packet loss.`,
         "_root_connection_disableThrottling.name": "Disable throttling",
         "_root_connection_disableThrottling.description": "Disables the throttling. Send data as fast as possible",
-        "_root_connection_suppressFrameDrop.name": "Suppress frame drops",
         "_root_connection_bufferOffset.name": "Buffer offset",
         "_root_connection_bufferOffset.description": "Offset to increase or decrease the calculated client buffer size. The client buffer can not be negative",
         "_root_extra_tab.name": "Extra",

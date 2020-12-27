@@ -166,8 +166,6 @@ define({
     "_root_connection_throttlingBitrateBits.description": "最大流比特率",
     "_root_connection_clientRecvBufferSize.name": "客户端缓冲区大小",
     "_root_connection_clientRecvBufferSize.description": "客户端上的缓冲区大小。\ n取决于比特率。\ n建议计算大小。如果遇到数据包丢失,请扩大缓冲区。",
-    "_root_connection_frameQueueSize.name": "帧队列大小",
-    "_root_connection_frameQueueSize.description": "客户端上的最大排队帧",
     "_root_connection_aggressiveKeyframeResend.name": "重发关键帧",
     "_root_connection_aggressiveKeyframeResend.description": `将关键帧之间的最小间隔从100毫秒减小到5毫秒。
         "仅在检测到数据包丢失时使用。可改善数据包丢失的网络体验。`,
@@ -191,8 +189,6 @@ define({
     "_root_extra_theme_darkly-choice-.name": "暗黑",
     "_root_connection_disableThrottling.name": "禁用限制",
     "_root_connection_disableThrottling.description": "禁用限制。尽快发送数据",
-    "_root_connection_suppressFrameDrop.name": "禁止丢帧",
-    "_root_connection_suppressFrameDrop.description": "尝试抑制丢帧",
     "_root_headset_headsetEmulationMode.name": "头戴显示器模拟模式",
     "_root_headset_headsetEmulationMode.description": "使用不同的头戴显示器以获得更好的兼容性",
     "_root_headset_controllers_content_controllerMode.name": "控制器仿真模式",

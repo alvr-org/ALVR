@@ -76,8 +76,6 @@ define({
     "_root_connection_aggressiveKeyframeResend.description": `Réduit l'intervale minimum entre les keyframes de 100ms a 5ms, utilisé seulment quand des pertes de paquets sont détéctés. améliore l'experience sur des réseaux avec pertes de paquets`,
     "_root_connection_disableThrottling.name": "Désactive le throttling",
     "_root_connection_disableThrottling.description": "Désactive le throttling, envoie les données le plus vite possible.",
-    "_root_connection_suppressFrameDrop.name": "Eviter la perte de paquets",
-    "_root_connection_suppressFrameDrop.description": "Essaye d'éviter la perte de paquets",
 
     "_root_extra_revertConfirmDialog.name": "Confirmer remise a zéro",
     "_root_extra_revertConfirmDialog.description": "Demande une confirmations avant de remettre une valeur a zéro",

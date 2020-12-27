@@ -12,7 +12,7 @@ class VideoEncoderNVENC : public VideoEncoder
 {
 public:
 	VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
-		, std::shared_ptr<ClientConnection> listener, bool useNV12
+		, std::shared_ptr<ClientConnection> listener
 		, int width, int height);
 	~VideoEncoderNVENC();
 

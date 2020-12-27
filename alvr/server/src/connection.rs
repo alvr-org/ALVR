@@ -147,7 +147,6 @@ async fn connect_to_any_client(
             seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
             ipd: settings.video.ipd,
             client_buffer_size: settings.connection.client_recv_buffer_size,
-            frame_queue_size: settings.connection.frame_queue_size,
             force_3dof: settings.headset.force_3dof,
             aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
             adapter_index: settings.video.adapter_index,

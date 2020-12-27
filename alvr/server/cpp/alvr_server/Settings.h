@@ -78,10 +78,6 @@ public:
 
 	uint32_t m_clientRecvBufferSize;
 
-	uint32_t m_frameQueueSize;
-
-	bool m_nv12;
-
 	// Controller configs
 	std::string m_controllerTrackingSystemName;
 	std::string m_controllerManufacturerName;

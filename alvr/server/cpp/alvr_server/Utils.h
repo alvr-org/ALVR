@@ -371,11 +371,6 @@ inline vr::HmdQuaternionf_t Slerp(vr::HmdQuaternionf_t &q1, vr::HmdQuaternionf_t
 	}
 }
 
-// Use NV12 texture on Windows 7
-inline bool ShouldUseNV12Texture() {
-	return IsWindows8OrGreater() == FALSE;
-}
-
 // Delay loading for Cuda driver API to correctly work on non-NVIDIA GPU.
 inline bool LoadCudaDLL() {
 	__try {

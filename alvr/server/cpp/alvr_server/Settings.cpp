@@ -80,7 +80,6 @@ void Settings::Load()
 		m_flIPD = (float)config.get("ipd").get<double>();
 
 		m_clientRecvBufferSize = (uint32_t)config.get("client_buffer_size").get<int64_t>();
-		m_frameQueueSize = (uint32_t)config.get("frame_queue_size").get<int64_t>();
 
 		m_force3DOF = config.get("force_3dof").get<bool>();
 

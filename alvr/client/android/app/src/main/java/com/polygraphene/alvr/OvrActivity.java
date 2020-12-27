@@ -40,7 +40,6 @@ public class OvrActivity extends Activity {
     }
 
     final static String TAG = "OvrActivity";
-    final static String TRUST_MESSAGE = "Open ALVR on PC and\nclick on \"Trust\" next to\nthe client entry";
 
     //Create placeholder for user's consent to record_audio permission.
     //This will be used in handling callback
@@ -99,8 +98,7 @@ public class OvrActivity extends Activity {
     int mRefreshRate = 72;
     long mPreviousRender = 0;
     String mDashboardURL = null;
-    String mLoadingMessage = TRUST_MESSAGE;
-    public final Object mWaiter = new Object();
+    String mLoadingMessage = "";
 
     // Cache method references for performance reasons
     final Runnable mRenderRunnable = this::render;
@@ -186,7 +184,6 @@ public class OvrActivity extends Activity {
     void maybeResume() {
         if (mResumed && mScreenSurface != null) {
             mRenderingHandler.post(() -> {
-
                 // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
                 // and onFrameAvailable won't be called after next output.
                 // To avoid deadlock caused by it, we need to flush last output.

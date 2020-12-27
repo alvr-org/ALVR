@@ -99,38 +99,6 @@ pub struct OpenvrConfig {
     pub sharpening: f32,
 }
 
-#[derive(Serialize, Debug)]
-pub struct ServerHandshakePacket {
-    pub packet_type: u32,
-    pub codec: u32,
-    pub realtime_decoder: bool,
-    pub video_width: u32,
-    pub video_height: u32,
-    pub buffer_size_bytes: u32,
-    pub frame_queue_size: u32,
-    pub refresh_rate: u8,
-    pub stream_mic: bool,
-    pub foveation_mode: u8,
-    pub foveation_strength: f32,
-    pub foveation_shape: f32,
-    pub foveation_vertical_offset: f32,
-    pub tracking_space: u32,
-    pub web_gui_url: [u8; 32], // serde do not support arrays larger than 32. Slices can be of any
-                               // size, but are not c compatible
-}
-
-#[derive(Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ClientHandshakePacket {
-    pub packet_type: u32,
-    pub alvr_name: [u8; 4],
-    pub version: [u8; 32],
-    pub device_name: [u8; 32],
-    pub client_refresh_rate: u16,
-    pub render_width: u32,
-    pub render_height: u32,
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ClientConnectionDesc {

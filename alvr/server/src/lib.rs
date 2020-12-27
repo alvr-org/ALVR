@@ -19,6 +19,7 @@ use std::{
     path::PathBuf,
     sync::{atomic::AtomicUsize, atomic::Ordering, Arc, Once},
     thread,
+    time::Duration,
 };
 use tokio::{
     runtime::Runtime,
@@ -31,6 +32,7 @@ lazy_static! {
     static ref SESSION_MANAGER: Mutex<SessionManager> = Mutex::new(SessionManager::new(&ALVR_DIR));
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
     static ref CLIENTS_UPDATED_NOTIFIER: Notify = Notify::new();
+    static ref RESTART_NOTIFIER: Notify = Notify::new();
     static ref SHUTDOWN_NOTIFIER: Notify = Notify::new();
 }
 
@@ -48,6 +50,11 @@ pub fn shutdown_runtime() {
 
 pub fn restart_steamvr() {
     thread::spawn(|| {
+        RESTART_NOTIFIER.notify_waiters();
+
+        // give time to the control loop to send the restart packet (not crucial)
+        thread::sleep(Duration::from_millis(100));
+
         shutdown_runtime();
 
         unsafe { ShutdownSteamvr() };
@@ -67,12 +74,11 @@ pub enum ClientListAction {
 }
 
 pub async fn update_client_list(hostname: String, action: ClientListAction) {
-    let session_manager_ref = &mut SESSION_MANAGER.lock();
-    let session_desc_ref = &mut session_manager_ref.get_mut(None, SessionUpdateType::ClientList);
+    let mut client_connections = SESSION_MANAGER.lock().get().client_connections.clone();
 
-    let maybe_client_entry = session_desc_ref.client_connections.entry(hostname);
+    let maybe_client_entry = client_connections.entry(hostname);
 
-    let mut should_notify = false;
+    let mut updated = false;
     match action {
         ClientListAction::AddIfMissing {
             device_name,
@@ -85,7 +91,7 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
                 if client_connection_ref.last_local_ip != ip {
                     client_connection_ref.last_local_ip = ip;
 
-                    should_notify = true;
+                    updated = true;
                 }
             }
             Entry::Vacant(new_entry) => {
@@ -98,7 +104,7 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
                 };
                 new_entry.insert(client_connection_desc);
 
-                should_notify = true;
+                updated = true;
             }
         },
         ClientListAction::TrustAndMaybeAddIp(maybe_ip) => {
@@ -109,7 +115,7 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
                     client_connection_ref.manual_ips.insert(ip);
                 }
 
-                should_notify = true;
+                updated = true;
             }
             // else: never happens. The UI cannot request a new entry creation because in that case
             // it wouldn't have the certificate
@@ -122,16 +128,16 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
                     entry.remove_entry();
                 }
 
-                should_notify = true;
+                updated = true;
             }
         }
     }
 
-    if should_notify {
-        info!(id: LogId::SessionUpdated {
-            web_client_id: None,
-            update_type: SessionUpdateType::ClientList
-        });
+    if updated {
+        SESSION_MANAGER
+            .lock()
+            .get_mut(None, SessionUpdateType::ClientList)
+            .client_connections = client_connections;
 
         CLIENTS_UPDATED_NOTIFIER.notify_waiters();
     }
@@ -229,7 +235,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
         if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
             runtime.spawn(async move {
                 tokio::select! {
-                    Err(e) = connection::connection_lifecycle_loop() => error!("{}", e),
+                    Err(e) = connection::connection_lifecycle_loop() => show_e(e),
                     _ = SHUTDOWN_NOTIFIER.notified() => (),
                     else => (),
                 }

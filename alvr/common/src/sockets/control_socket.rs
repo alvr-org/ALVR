@@ -11,8 +11,8 @@ use std::{
     net::{IpAddr, Ipv4Addr},
     time::Duration,
 };
-use tokio::{net::*, time::timeout};
-use tokio_util::codec::*;
+use tokio::{net::*, time};
+use tokio_util::{codec::*, either::Either};
 
 const CLIENT_HANDSHAKE_RESEND_INTERVAL: Duration = Duration::from_secs(1);
 const CONTROL_SOCKET_CONNECT_RETRY_INTERVAL: Duration = Duration::from_millis(500);
@@ -66,17 +66,50 @@ impl<R: DeserializeOwned> ControlSocketReceiver<R> {
     }
 }
 
+pub enum ConnectionResult<S, R> {
+    Connected {
+        server_ip: IpAddr,
+        control_sender: ControlSocketSender<S>,
+        control_receiver: ControlSocketReceiver<R>,
+        config_packet: ClientConfigPacket,
+    },
+    ServerMessage(ServerHandshakePacket),
+}
+
 async fn try_connect_to_server(
     handshake_socket: &mut UdpSocket,
     listener: &mut TcpListener,
     client_handshake_packet: &[u8],
+    server_response_buffer: &mut [u8],
     headset_info: HeadsetInfoPacket,
-) -> StrResult<(IpAddr, SenderPart, ReceiverPart, ClientConfigPacket)> {
-    trace_err!(handshake_socket.send(client_handshake_packet).await)?;
+) -> StrResult<Either<(IpAddr, SenderPart, ReceiverPart, ClientConfigPacket), ServerHandshakePacket>>
+{
+    trace_err!(
+        handshake_socket
+            .send_to(client_handshake_packet, (Ipv4Addr::BROADCAST, CONTROL_PORT))
+            .await
+    )?;
 
-    let (socket, server_address) = trace_err!(trace_err!(
-        timeout(CLIENT_HANDSHAKE_RESEND_INTERVAL, listener.accept()).await
-    )?)?;
+    let receive_response_loop = async move {
+        loop {
+            // this call will receive also the broadcasted client packet that must be ignored
+            let (packet_size, _) =
+                trace_err!(handshake_socket.recv_from(server_response_buffer).await)?;
+
+            if let Ok(HandshakePacket::Server(handshake_packet)) =
+                bincode::deserialize(&server_response_buffer[..packet_size])
+            {
+                break Ok(Either::Right(handshake_packet));
+            }
+        }
+    };
+
+    let (socket, server_address) = tokio::select! {
+        maybe_pair = listener.accept() => trace_err!(maybe_pair)?,
+        maybe_response = receive_response_loop => return maybe_response,
+        _ = time::sleep(CLIENT_HANDSHAKE_RESEND_INTERVAL) => return trace_str!("timeout"),
+    };
+
     let socket = Framed::new(socket, LDC::new());
     let (mut sender, mut receiver) = socket.split();
 
@@ -84,7 +117,12 @@ async fn try_connect_to_server(
 
     let client_config = recv(&mut receiver).await?;
 
-    Ok((server_address.ip(), sender, receiver, client_config))
+    Ok(Either::Left((
+        server_address.ip(),
+        sender,
+        receiver,
+        client_config,
+    )))
 }
 
 // Return Some if server is compatible, otherwise return None
@@ -93,48 +131,47 @@ pub async fn connect_to_server<S: Serialize, R: DeserializeOwned>(
     device_name: String,
     hostname: String,
     certificate_pem: String,
-) -> StrResult<(
-    IpAddr,
-    ControlSocketSender<S>,
-    ControlSocketReceiver<R>,
-    ClientConfigPacket,
-)> {
+) -> StrResult<ConnectionResult<S, R>> {
     let mut handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;
     trace_err!(handshake_socket.set_broadcast(true))?;
-    trace_err!(
-        handshake_socket
-            .connect((Ipv4Addr::BROADCAST, CONTROL_PORT))
-            .await
-    )?;
 
     let mut listener = trace_err!(TcpListener::bind((LOCAL_IP, CONTROL_PORT)).await)?;
 
-    let client_handshake_packet = trace_err!(bincode::serialize(&HandshakePacket {
-        alvr_name: ALVR_NAME.into(),
-        version: ALVR_CLIENT_VERSION.clone(),
-        device_name,
-        hostname,
-        certificate_pem,
-        reserved: "".into(),
-    }))?;
+    let client_handshake_packet = trace_err!(bincode::serialize(&HandshakePacket::Client(
+        ClientHandshakePacket {
+            alvr_name: ALVR_NAME.into(),
+            version: ALVR_CLIENT_VERSION.clone(),
+            device_name,
+            hostname,
+            certificate_pem,
+            reserved: "".into(),
+        }
+    )))?;
 
+    let mut server_response_buffer = [0; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
     loop {
         match try_connect_to_server(
             &mut handshake_socket,
             &mut listener,
             &client_handshake_packet,
+            &mut server_response_buffer,
             headset_info.clone(),
         )
         .await
         {
-            Ok((server_ip, sender, receiver, config_packet)) => {
-                break Ok((
-                    server_ip,
-                    ControlSocketSender::new(sender),
-                    ControlSocketReceiver::new(receiver),
-                    config_packet,
-                ));
-            }
+            Ok(either) => match either {
+                Either::Left((server_ip, sender, receiver, config_packet)) => {
+                    break Ok(ConnectionResult::Connected {
+                        server_ip,
+                        control_sender: ControlSocketSender::new(sender),
+                        control_receiver: ControlSocketReceiver::new(receiver),
+                        config_packet,
+                    })
+                }
+                Either::Right(server_packet) => {
+                    break Ok(ConnectionResult::ServerMessage(server_packet))
+                }
+            },
             Err(e) => warn!("Error while connecting to server: {}", e),
         }
     }

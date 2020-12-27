@@ -10,15 +10,27 @@ fn align32(value: f32) -> u32 {
 }
 
 async fn client_discovery() -> StrResult {
-    let res = search_client_loop(|client_ip, handshake_packet| {
+    let res = search_client_loop(|client_ip, handshake_packet| async move {
         update_client_list(
-            handshake_packet.hostname,
+            handshake_packet.hostname.clone(),
             ClientListAction::AddIfMissing {
                 device_name: handshake_packet.device_name,
                 ip: client_ip,
                 certificate_pem: handshake_packet.certificate_pem,
             },
         )
+        .await;
+
+        if let Some(connection_desc) = SESSION_MANAGER
+            .lock()
+            .get()
+            .client_connections
+            .get(&handshake_packet.hostname)
+        {
+            connection_desc.trusted
+        } else {
+            false
+        }
     })
     .await;
 
@@ -287,7 +299,7 @@ async fn pairing_loop() -> (
 
 pub async fn connection_lifecycle_loop() -> StrResult {
     loop {
-        let (_, mut control_receiver) = tokio::select! {
+        let (mut control_sender, mut control_receiver) = tokio::select! {
             Err(e) = client_discovery() => break trace_str!("Client discovery failed: {}", e),
             control_socket = pairing_loop() => control_socket,
             else => unreachable!(),
@@ -298,13 +310,19 @@ pub async fn connection_lifecycle_loop() -> StrResult {
         unsafe { crate::InitializeStreaming() };
 
         loop {
-            match control_receiver.recv().await {
-                Ok(ClientControlPacket::RequestIDR) => unsafe { crate::RequestIDR() },
-                Ok(ClientControlPacket::Reserved(_))
-                | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
-                Err(e) => {
-                    info!(id: LogId::ClientDisconnected, "Cause: {}", e);
-                    break;
+            tokio::select! {
+                _ = crate::RESTART_NOTIFIER.notified() => {
+                    control_sender.send(&ServerControlPacket::Restarting).await.ok();
+                    return Ok(());
+                }
+                maybe_packet = control_receiver.recv() => match maybe_packet {
+                    Ok(ClientControlPacket::RequestIDR) => unsafe { crate::RequestIDR() },
+                    Ok(ClientControlPacket::Reserved(_))
+                    | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
+                    Err(e) => {
+                        info!(id: LogId::ClientDisconnected, "Cause: {}", e);
+                        break;
+                    }
                 }
             }
         }

@@ -1,4 +1,4 @@
-use alvr_common::{data::*, logging::*, *};
+use alvr_common::{data::*, logging::*, sockets::ConnectionResult, *};
 use jni::{
     objects::{GlobalRef, JClass},
     JavaVM,
@@ -15,6 +15,14 @@ use std::{
 };
 use tokio::time::{self, Instant};
 
+const INITIAL_MESSAGE: &str = "Searching for server...\n(open ALVR on your PC)";
+const CLIENT_UNTRUSTED_MESSAGE: &str = "On the PC, click \"trust\"\nnext to the client entry";
+const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
+    "Server and client have\n",
+    "incompatible types.\n",
+    "Please update either the app\n",
+    "on the PC or on the headset"
+);
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
 
@@ -53,7 +61,7 @@ async fn try_connect(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) -> StrResult {
-    let (server_ip, mut control_sender, mut control_receiver, config_packet) = trace_err!(
+    let connection_result = trace_err!(
         sockets::connect_to_server(
             &headset_info,
             device_name,
@@ -62,6 +70,26 @@ async fn try_connect(
         )
         .await
     )?;
+    let (server_ip, mut control_sender, mut control_receiver, config_packet) =
+        match connection_result {
+            ConnectionResult::Connected {
+                server_ip,
+                control_sender,
+                control_receiver,
+                config_packet,
+            } => (server_ip, control_sender, control_receiver, config_packet),
+            ConnectionResult::ServerMessage(message) => {
+                info!("Server response: {:?}", message);
+                let message_str = match message {
+                    ServerHandshakePacket::ClientUntrusted => CLIENT_UNTRUSTED_MESSAGE,
+                    ServerHandshakePacket::IncompatibleVersions => INCOMPATIBLE_VERSIONS_MESSAGE,
+                };
+                setLoadingMessage(&*java_vm, &*activity_ref, message_str).await?;
+                return Ok(());
+            }
+        };
+
+    info!("Connected to server");
 
     let baseline_settings = {
         let mut session_desc = SessionDesc::default();
@@ -122,8 +150,6 @@ async fn try_connect(
             .into()
         ],
     ))?;
-
-    info!("Connected to server");
 
     // setup stream loops
 
@@ -207,8 +233,6 @@ async fn try_connect(
         }
     };
 
-    error!("starting loops");
-
     tokio::select! {
         res = stream_socket_loop => trace_err!(res)?,
         res = tracking_loop => res,
@@ -224,6 +248,10 @@ pub async fn connection_lifecycle_loop(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) {
+    setLoadingMessage(&*java_vm, &*activity_ref, INITIAL_MESSAGE)
+        .await
+        .ok();
+
     // this loop has no exit, but the execution can be halted by the caller with tokio::select!{}
     loop {
         show_err(

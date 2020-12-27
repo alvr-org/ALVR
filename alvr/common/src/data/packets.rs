@@ -2,7 +2,7 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-pub struct HandshakePacket {
+pub struct ClientHandshakePacket {
     pub alvr_name: String,
     pub version: Version,
     pub device_name: String,
@@ -12,6 +12,19 @@ pub struct HandshakePacket {
     // reserved field is used to add features between major releases: the schema of the packet
     // should never change anymore (required only for this packet).
     pub reserved: String,
+}
+
+// Since this packet is not essential, any change to it will not be a braking change
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ServerHandshakePacket {
+    ClientUntrusted,
+    IncompatibleVersions,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum HandshakePacket {
+    Client(ClientHandshakePacket),
+    Server(ServerHandshakePacket),
 }
 
 #[derive(Serialize, Deserialize, Clone)]

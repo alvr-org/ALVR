@@ -4,6 +4,7 @@
 #include <mmsystem.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
+#include <endpointvolume.h>
 #include <avrt.h>
 #include <functiondiscoverykeys_devpkey.h>
 #include <wrl.h>
@@ -49,6 +50,7 @@ public:
 
 	void OpenDevice(const std::string &id);
 	void Start(const std::string &id);
+	void ToggleMuteCurrentDevice(bool m);
 
 	void Shutdown();
 

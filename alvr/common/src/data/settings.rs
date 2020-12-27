@@ -125,7 +125,19 @@ pub struct VideoDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AudioDesc {
+pub struct OutputAudioDesc {
+    // deviceDropdown should poll the available audio devices and set "device"
+    #[schema(placeholder = "device_dropdown")]
+    //
+    #[schema(advanced)]
+    pub device: String,
+    
+    pub mute_when_streaming: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InputAudioDesc {
     // deviceDropdown should poll the available audio devices and set "device"
     #[schema(placeholder = "device_dropdown")]
     //
@@ -136,8 +148,8 @@ pub struct AudioDesc {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioSection {
-    pub game_audio: Switch<AudioDesc>,
-    pub microphone: Switch<AudioDesc>,
+    pub game_audio: Switch<OutputAudioDesc>,
+    pub microphone: Switch<InputAudioDesc>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -368,11 +380,11 @@ pub fn session_settings_default() -> SettingsDefault {
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {
                 enabled: true,
-                content: AudioDescDefault { device: "".into() },
+                content: OutputAudioDescDefault { device: "".into(), mute_when_streaming: true },
             },
             microphone: SwitchDefault {
                 enabled: false,
-                content: AudioDescDefault { device: "".into() },
+                content: InputAudioDescDefault { device: "".into() },
             },
         },
         headset: HeadsetDescDefault {

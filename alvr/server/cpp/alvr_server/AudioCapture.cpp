@@ -449,3 +449,26 @@ void AudioCapture::FinishWaveFile(HMMIO hFile, MMCKINFO *pckRIFF, MMCKINFO *pckD
 		throw MakeException("mmioAscend(\"RIFF/WAVE\" failed: MMRESULT = 0x%08x", result);
 	}
 }
+
+void AudioCapture::ToggleMuteCurrentDevice(bool mute) {
+	if (m_pMMDevice == nullptr) {
+		Debug("Tried to mute before AudioCapture::OpenDevice(). Doing nothing...");
+		return;
+	}
+	
+	ComPtr<IAudioEndpointVolume> pEndpointVolume;
+	HRESULT hr = m_pMMDevice->Activate(
+		__uuidof(IAudioEndpointVolume),
+		CLSCTX_ALL, NULL,
+		(void**)&pEndpointVolume
+	);
+	if (FAILED(hr)) {
+		Warn("IMMDevice::Activate() for IAudioEndpointVolume failed: hr = 0x%08x", hr);
+	}
+
+	hr = pEndpointVolume->SetMute(mute, NULL);
+
+	if (FAILED(hr)) {
+		Warn("Failed to mute audio device: hr = 0x%08x", hr);
+	}
+}

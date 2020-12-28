@@ -7,8 +7,8 @@ android {
         applicationId "com.polygraphene.alvr"
         minSdkVersion 21
         targetSdkVersion 30
-        versionCode 39
-        versionName "14.0.0-beta.2"
+        versionCode 40
+        versionName "14.0.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {

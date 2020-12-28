@@ -165,6 +165,13 @@ async fn try_connect(
         ],
     ))?;
 
+    let tracking_clientside_prediction = match baseline_settings.headset.controllers {
+        Switch::Enabled(ref controllers) => {
+            controllers.clientside_prediction
+        }
+        Switch::Disabled => false,
+    };
+
     // setup stream loops
 
     // The main stream loop must be run in a normal thread, because it needs to access the JNI env
@@ -206,7 +213,7 @@ async fn try_connect(
     let tracking_loop = async move {
         let mut deadline = Instant::now();
         loop {
-            unsafe { crate::onTrackingNative() };
+            unsafe { crate::onTrackingNative(tracking_clientside_prediction) };
             deadline += tracking_interval;
             time::sleep_until(deadline).await;
         }

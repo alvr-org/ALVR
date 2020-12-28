@@ -23,7 +23,7 @@ extern "C" OnCreateResult onCreate(void *env, void *activity, void *assetManager
 extern "C" void destroyNative(void *env);
 extern "C" void renderNative(long long renderedFrameIndex);
 extern "C" void renderLoadingNative();
-extern "C" void onTrackingNative();
+extern "C" void onTrackingNative(bool clientsidePrediction);
 extern "C" void onResumeNative(void *env, void *surface);
 extern "C" void onStreamStartNative(int width, int height, int refreshRate, unsigned char streamMic,
                                     int foveationMode, float foveationStrength,

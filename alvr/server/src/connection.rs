@@ -1,5 +1,6 @@
 use crate::{ClientListAction, CLIENTS_UPDATED_NOTIFIER, SESSION_MANAGER};
 use alvr_common::{data::*, logging::*, sockets::*, *};
+use settings_schema::Switch;
 use std::{collections::HashMap, net::IpAddr};
 
 fn align32(value: f32) -> u32 {
@@ -90,6 +91,17 @@ async fn connect_to_any_client(
                 }
             }
             best_match
+        };
+
+        let controller_pose_offset = match settings.headset.controllers {
+            Switch::Enabled(content) => {
+                if content.clientside_prediction {
+                    0.
+                } else {
+                    content.pose_time_offset
+                }
+            }
+            Switch::Disabled => 0.,
         };
 
         if !headset_info
@@ -216,11 +228,7 @@ async fn connect_to_any_client(
             controllers_enabled: session_settings.headset.controllers.enabled,
             position_offset: settings.headset.position_offset,
             tracking_frame_offset: settings.headset.tracking_frame_offset,
-            controller_pose_offset: session_settings
-                .headset
-                .controllers
-                .content
-                .pose_time_offset,
+            controller_pose_offset: controller_pose_offset,
             position_offset_left: session_settings
                 .headset
                 .controllers

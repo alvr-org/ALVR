@@ -397,7 +397,7 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
 
             ovrHandPose handPose;
             handPose.Header.Version = ovrHandVersion_1;
-            if (vrapi_GetHandPose(g_ctx.Ovr, handCapabilities.Header.DeviceID, 0,
+            if (vrapi_GetHandPose(g_ctx.Ovr, handCapabilities.Header.DeviceID, displayTime,
                                   &handPose.Header) !=
                 ovrSuccess) {
                 LOG("VrHands - failed to get hand pose");
@@ -513,7 +513,7 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
 
             ovrTracking tracking;
             if (vrapi_GetInputTrackingState(g_ctx.Ovr, remoteCapabilities.Header.DeviceID,
-                                            0, &tracking) != ovrSuccess) {
+                                            displayTime, &tracking) != ovrSuccess) {
                 LOG("vrapi_GetInputTrackingState failed. Device was disconnected?");
             } else {
 
@@ -584,8 +584,7 @@ std::pair<EyeFov, EyeFov> getFov() {
     return {fov[0], fov[1]};
 }
 
-// Called TrackingThread. So, we can't use this->env.
-void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tracking) {
+void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tracking, bool clientsidePrediction) {
     memset(packet, 0, sizeof(TrackingInfo));
 
     uint64_t clientTime = getTimestampUs();
@@ -607,7 +606,7 @@ void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tra
            sizeof(ovrQuatf));
     memcpy(&packet->HeadPose_Pose_Position, &tracking->HeadPose.Pose.Position, sizeof(ovrVector3f));
 
-    setControllerInfo(packet, displayTime);
+    setControllerInfo(packet, clientsidePrediction ? displayTime : 0.);
 
     FrameLog(g_ctx.FrameIndex, "Sending tracking info.");
 }
@@ -629,7 +628,7 @@ void checkShouldSyncGuardian() {
 }
 
 // Called from TrackingThread
-void sendTrackingInfo() {
+void sendTrackingInfo(bool clientsidePrediction) {
     std::shared_ptr<TrackingFrame> frame(new TrackingFrame());
 
     g_ctx.FrameIndex++;
@@ -650,7 +649,7 @@ void sendTrackingInfo() {
     }
 
     TrackingInfo info;
-    setTrackingInfo(&info, frame->displayTime, &frame->tracking);
+    setTrackingInfo(&info, frame->displayTime, &frame->tracking, clientsidePrediction);
 
 
     LatencyCollector::Instance().tracking(frame->frameIndex);
@@ -1136,9 +1135,9 @@ void onBatteryChangedNative(int battery) {
     g_ctx.batteryLevel = battery;
 }
 
-void onTrackingNative() {
+void onTrackingNative(bool clientsidePrediction) {
     if (g_ctx.Ovr != nullptr) {
-        sendTrackingInfo();
+        sendTrackingInfo(clientsidePrediction);
 
         //TODO: maybe use own thread, but works fine with tracking
         sendMicData();

@@ -588,7 +588,9 @@ define([
             const el = $("#_root_headset_controllers_content_trackingSpeed");
 
             const poseTimeOffset = $("#_root_headset_controllers_content_poseTimeOffset");
+            const clientsidePrediction = $("#_root_headset_controllers_content_clientsidePrediction");
 
+            const oculus = i18nWizard.oculusTracking;
             const normal = i18nWizard.normalTracking;
             const medium = i18nWizard.mediumTracking;
             const fast = i18nWizard.fastTracking;
@@ -599,59 +601,74 @@ define([
                 ${custom}
             </label> `;
 
-            function setTrackingRadio() {             
+            function setTrackingRadio() {
 
                 $("#trackingSpeedCustomButton").remove();
-                $("input:radio[name='trackingSpeed']").parent().removeClass("active");          
+                $("input:radio[name='trackingSpeed']").parent().removeClass("active");
 
-                switch ( poseTimeOffset.val()) {
-                    case "-1":
-                        $("input:radio[name='trackingSpeed'][value='fast']").prop("checked", "true");
-                        $("input:radio[name='trackingSpeed'][value='fast']").parent().addClass("active");
-                        break;
-                    case "-0.03":
-                        $("input:radio[name='trackingSpeed'][value='medium']").prop("checked", "true");
-                        $("input:radio[name='trackingSpeed'][value='medium']").parent().addClass("active");
-                        break;
-                    case "0.01":
-                        $("input:radio[name='trackingSpeed'][value='normal']").prop("checked", "true");
-                        $("input:radio[name='trackingSpeed'][value='normal']").parent().addClass("active");
-                        break;
-
-                    default:
-                        console.log("custom tracking speed")
-                        $("#trackingSpeedButtons").append(customButton);
-
-                        break;
+                if (clientsidePrediction.is(":checked")) {
+                    $("input:radio[name='trackingSpeed'][value='oculus']").prop("checked", "true");
+                    $("input:radio[name='trackingSpeed'][value='oculus']").parent().addClass("active");
+                }
+                else {
+                    switch (poseTimeOffset.val()) {
+                        case "-1":
+                            $("input:radio[name='trackingSpeed'][value='fast']").prop("checked", "true");
+                            $("input:radio[name='trackingSpeed'][value='fast']").parent().addClass("active");
+                            break;
+                        case "-0.03":
+                            $("input:radio[name='trackingSpeed'][value='medium']").prop("checked", "true");
+                            $("input:radio[name='trackingSpeed'][value='medium']").parent().addClass("active");
+                            break;
+                        case "0.01":
+                            $("input:radio[name='trackingSpeed'][value='normal']").prop("checked", "true");
+                            $("input:radio[name='trackingSpeed'][value='normal']").parent().addClass("active");
+                            break;
+                        default:
+                            console.log("custom tracking speed")
+                            $("#trackingSpeedButtons").append(customButton);
+                            break;
+                    }
                 }
             }
 
             function setTrackingValue(val) {
                 switch (val) {
+                    case "oculus":
+                        clientsidePrediction.prop("checked", true);
+                        break;
                     case "normal":
+                        clientsidePrediction.prop("checked", false);
                         poseTimeOffset.val("0.01");
                         break;
                     case "medium":
+                        clientsidePrediction.prop("checked", false);
                         poseTimeOffset.val("-0.03");
                         break;
                     case "fast":
+                        clientsidePrediction.prop("checked", false);
                         poseTimeOffset.val("-1");
                         break;
                     default:
                         break;
                 }
                 alvrSettings.storeParam(poseTimeOffset);
+                alvrSettings.storeParam(clientsidePrediction);
                 setTrackingRadio();
             }
 
             //move elements into better layout
-            const  text = el.parent().text().trim();
+            const text = el.parent().text().trim();
             el.parent().find("label").remove();
 
             const grp = `<div class="card-title"> ${text}
-                    ${alvrSettings.getHelpReset("trackingSpeed", "_root_headset_controllers_content", "normal",  postFix = "", "trackingSpeed", i18nWizard.normalTracking)}
+                    ${alvrSettings.getHelpReset("trackingSpeed", "_root_headset_controllers_content", "normal", postFix = "", "trackingSpeed", i18nWizard.normalTracking)}
                         </div>
             <div class="btn-group" data-toggle="buttons" id="trackingSpeedButtons">
+                            <label style="min-width:10%" class="btn btn-primary">
+                                <input  type="radio" name="trackingSpeed"  autocomplete="off" value="oculus">
+                                ${oculus}
+                            </label>
                             <label style="min-width:10%" class="btn btn-primary">
                                 <input  type="radio" name="trackingSpeed"  autocomplete="off" value="normal">
                                 ${normal}
@@ -672,14 +689,17 @@ define([
 
             $(document).ready(() => {
                 $("input:radio[name='trackingSpeed']").on("change", () => {
-                    setTrackingValue($("input:radio:checked[name='trackingSpeed']").val());   
+                    setTrackingValue($("input:radio:checked[name='trackingSpeed']").val());
                 });
-                poseTimeOffset.on("change", () => {                   
+                poseTimeOffset.on("change", () => {
                     setTrackingRadio();
-                });   
-                
+                });
+                clientsidePrediction.on("change", () => {
+                    setTrackingRadio();
+                });
+
                 $("#_root_headset_controllers_content_trackingSpeed").on("change", (ev) => {
-                    setTrackingValue( $("#_root_headset_controllers_content_trackingSpeed").val());  
+                    setTrackingValue($("#_root_headset_controllers_content_trackingSpeed").val());
                 });
 
                 setTrackingRadio();

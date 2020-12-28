@@ -75,21 +75,29 @@ define([
                     var target = $(ev.target);
 
                     var poseTimeOffsetTarget = $("#_root_headset_controllers_content_poseTimeOffset");
+                    var clientsidePrediction = $("#_root_headset_controllers_content_clientsidePrediction");
 
                     switch (target.attr("value")) {
+                        case "oculus":
+                            clientsidePrediction.prop("checked", true);
+                            break;
                         case "normal":
+                            clientsidePrediction.prop("checked", false);
                             poseTimeOffsetTarget.val("0.01");
                             break;
                         case "medium":
+                            clientsidePrediction.prop("checked", false);
                             poseTimeOffsetTarget.val("-0.03");
                             break;
                         case "fast":
+                            clientsidePrediction.prop("checked", false);
                             poseTimeOffsetTarget.val("-1");
                             break;
                         default:
                             break;
                     }
                     alvrSettings.storeParam(poseTimeOffsetTarget);
+                    alvrSettings.storeParam(clientsidePrediction);
 
                     console.log(target.attr("value"))
                 })

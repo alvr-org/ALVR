@@ -37,7 +37,7 @@ impl Drop for StreamCloseGuard {
     }
 }
 
-async fn setLoadingMessage(
+async fn set_loading_message(
     java_vm: &JavaVM,
     activity_ref: &GlobalRef,
     hostname: &str,
@@ -98,7 +98,7 @@ async fn try_connect(
                     ServerHandshakePacket::ClientUntrusted => CLIENT_UNTRUSTED_MESSAGE,
                     ServerHandshakePacket::IncompatibleVersions => INCOMPATIBLE_VERSIONS_MESSAGE,
                 };
-                setLoadingMessage(&*java_vm, &*activity_ref, hostname, message_str).await?;
+                set_loading_message(&*java_vm, &*activity_ref, hostname, message_str).await?;
                 return Ok(());
             }
         };
@@ -222,7 +222,7 @@ async fn try_connect(
                     match control_packet {
                         Ok(ServerControlPacket::Restarting) => {
                             info!("Server restarting");
-                            setLoadingMessage(
+                            set_loading_message(
                                 &*java_vm,
                                 &*activity_ref,
                                 hostname,
@@ -235,7 +235,7 @@ async fn try_connect(
                         | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
                         Err(e) => {
                             info!("Server disconnected. Cause: {}", e);
-                            setLoadingMessage(
+                            set_loading_message(
                                 &*java_vm,
                                 &*activity_ref,
                                 hostname,
@@ -264,7 +264,7 @@ pub async fn connection_lifecycle_loop(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) {
-    setLoadingMessage(
+    set_loading_message(
         &*java_vm,
         &*activity_ref,
         &private_identity.hostname,

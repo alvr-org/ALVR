@@ -15,6 +15,7 @@ semver = { version = "0.11", features = ['serde'] }
 log = "0.4"
 backtrace = "0.3"
 rand = "0.8"
+nalgebra = { version = "0.23", features = ["serde-serialize"] }
 settings-schema = { path = "../settings-schema", features = ["rename_camel_case"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

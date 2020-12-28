@@ -1,3 +1,4 @@
+use nalgebra::{Point3, UnitQuaternion};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
@@ -57,7 +58,17 @@ pub enum ServerControlPacket {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct PlayspaceSyncPacket {
+    pub position: Point3<f32>,
+    pub rotation: UnitQuaternion<f32>,
+    pub area_width: f32,
+    pub area_height: f32,
+    pub perimeter_points: Option<Vec<Point3<f32>>>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
+    PlayspaceSync(PlayspaceSyncPacket),
     RequestIDR,
     Reserved(String),
     ReservedBuffer(Vec<u8>),

@@ -1,7 +1,4 @@
-use crate::{
-    restart_steamvr, update_client_list, ClientListAction, CLIENTS_UPDATED_NOTIFIER,
-    SESSION_MANAGER,
-};
+use crate::{ClientListAction, CLIENTS_UPDATED_NOTIFIER, SESSION_MANAGER};
 use alvr_common::{data::*, logging::*, sockets::*, *};
 use std::{collections::HashMap, net::IpAddr};
 
@@ -11,7 +8,7 @@ fn align32(value: f32) -> u32 {
 
 async fn client_discovery() -> StrResult {
     let res = search_client_loop(|client_ip, handshake_packet| async move {
-        update_client_list(
+        crate::update_client_list(
             handshake_packet.hostname.clone(),
             ClientListAction::AddIfMissing {
                 device_name: handshake_packet.device_name,
@@ -263,7 +260,7 @@ async fn connect_to_any_client(
 
             sender.send(&ServerControlPacket::Restarting).await.ok();
 
-            restart_steamvr();
+            crate::restart_steamvr();
 
             // waiting for execution canceling
             std::future::pending::<()>().await;
@@ -330,6 +327,7 @@ pub async fn connection_lifecycle_loop() -> StrResult {
                     return Ok(());
                 }
                 maybe_packet = control_receiver.recv() => match maybe_packet {
+                    Ok(ClientControlPacket::PlayspaceSync(_)) => (),
                     Ok(ClientControlPacket::RequestIDR) => unsafe { crate::RequestIDR() },
                     Ok(ClientControlPacket::Reserved(_))
                     | Ok(ClientControlPacket::ReservedBuffer(_)) => (),

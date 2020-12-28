@@ -39,6 +39,8 @@ define({
         "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
         "_root_video_clientRequestRealtimeDecoder.name": "Request realtime decoder priority (client)",
         "_root_audio_gameAudio.name": "Stream game audio",
+        "_root_audio_gameAudio_content_muteWhenStreaming.name": "Mute output when streaming",
+        "_root_audio_gameAudio_content_muteWhenStreaming.description": "Mutes the audio output (speakers/headphones) when streaming to the headset. Only the physical output is muted (to avoid double audio), stream to the headset and other capturing software will not be affected.",
         "_root_audio_gameAudio_content_deviceDropdown.name": "Select audio device",
         "_root_audio_gameAudio_content_deviceDropdown.description": "Audio device used to capture audio",
         "_root_audio_microphone.name": "Stream microphone",

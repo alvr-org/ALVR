@@ -158,6 +158,9 @@ OvrHmd::OvrHmd()
 
 	 void OvrHmd::EnterStandby()
 	{
+		bool shouldUnmute = Settings::Instance().m_enableSound && Settings::Instance().m_muteHostAudioOutput;
+		if (m_audioCapture && shouldUnmute)
+			m_audioCapture->ToggleMuteCurrentDevice(false);
 	}
 
 	void* OvrHmd::GetComponent(const char *pchComponentNameAndVersion)
@@ -275,6 +278,10 @@ OvrHmd::OvrHmd()
 
 	void OvrHmd::StartStreaming() {
 		if (m_streamComponentsInitialized) {
+			bool shouldMute = Settings::Instance().m_enableSound && Settings::Instance().m_muteHostAudioOutput;
+			if (m_audioCapture && shouldMute)
+				m_audioCapture->ToggleMuteCurrentDevice(true);
+
 			return;
 		}
 
@@ -300,6 +307,11 @@ OvrHmd::OvrHmd()
 			catch (Exception e) {
 				Error("Failed to start audio capture. %s\n", e.what());
 			}
+
+			if (Settings::Instance().m_muteHostAudioOutput)
+			{
+				m_audioCapture->ToggleMuteCurrentDevice(true);
+			}
 		}
 
 		m_directModeComponent->SetEncoder(m_encoder);
@@ -319,6 +331,10 @@ OvrHmd::OvrHmd()
 
 		if (m_audioCapture)
 		{
+			bool shouldUnmute = Settings::Instance().m_enableSound && Settings::Instance().m_muteHostAudioOutput;
+			if (m_audioCapture && shouldUnmute)
+				m_audioCapture->ToggleMuteCurrentDevice(false);
+
 			Debug("OvrHmd::StopStreaming(): Stopping audio capture...\n");
 			m_audioCapture->Shutdown();
 			m_audioCapture.reset();

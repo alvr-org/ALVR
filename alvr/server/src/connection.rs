@@ -142,6 +142,7 @@ async fn connect_to_any_client(
             target_eye_resolution_height: target_eye_height,
             enable_game_audio: session_settings.audio.game_audio.enabled,
             game_audio_device: session_settings.audio.game_audio.content.device.clone(),
+            mute_host_audio_output: session_settings.audio.game_audio.content.mute_when_streaming,
             enable_microphone: session_settings.audio.microphone.enabled,
             microphone_device: session_settings.audio.microphone.content.device.clone(),
             seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,

@@ -16,7 +16,7 @@ async fn client_discovery() -> StrResult {
             ClientListAction::AddIfMissing {
                 device_name: handshake_packet.device_name,
                 ip: client_ip,
-                certificate_pem: handshake_packet.certificate_pem,
+                certificate_pem: Some(handshake_packet.certificate_pem),
             },
         )
         .await;

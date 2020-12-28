@@ -14,7 +14,7 @@ pub use version::*;
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PublicIdentity {
     pub hostname: String,
-    pub certificate_pem: String,
+    pub certificate_pem: Option<String>,
 }
 
 pub struct PrivateIdentity {

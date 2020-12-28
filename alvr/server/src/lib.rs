@@ -67,7 +67,7 @@ pub enum ClientListAction {
     AddIfMissing {
         device_name: String,
         ip: IpAddr,
-        certificate_pem: String,
+        certificate_pem: Option<String>,
     },
     TrustAndMaybeAddIp(Option<IpAddr>),
     RemoveIpOrEntry(Option<IpAddr>),
@@ -117,8 +117,7 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
 
                 updated = true;
             }
-            // else: never happens. The UI cannot request a new entry creation because in that case
-            // it wouldn't have the certificate
+            // else: never happens. The function must be called with AddIfMissing{} first
         }
         ClientListAction::RemoveIpOrEntry(maybe_ip) => {
             if let Entry::Occupied(mut entry) = maybe_client_entry {

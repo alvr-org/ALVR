@@ -11,10 +11,7 @@ use hyper::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json as json;
-use std::{
-    net::{IpAddr, SocketAddr},
-    path::PathBuf,
-};
+use std::{net::SocketAddr, path::PathBuf};
 use tokio::sync::broadcast::{self, error::RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
@@ -160,10 +157,28 @@ async fn http_api(
             restart_steamvr();
             reply(StatusCode::OK)?
         }
-        "/client/trust" => {
-            if let Ok((hostname, maybe_ip)) =
-                from_request_body::<(String, Option<IpAddr>)>(request).await
+        "/client/add" => {
+            if let Ok((device_name, hostname, ip)) =
+                from_request_body::<(_, String, _)>(request).await
             {
+                update_client_list(
+                    hostname.clone(),
+                    ClientListAction::AddIfMissing {
+                        device_name,
+                        ip,
+                        certificate_pem: None,
+                    },
+                )
+                .await;
+                update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(Some(ip))).await;
+
+                reply(StatusCode::OK)?
+            } else {
+                reply(StatusCode::BAD_REQUEST)?
+            }
+        }
+        "/client/trust" => {
+            if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
                 update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(maybe_ip)).await;
                 reply(StatusCode::OK)?
             } else {
@@ -171,9 +186,7 @@ async fn http_api(
             }
         }
         "/client/remove" => {
-            if let Ok((hostname, maybe_ip)) =
-                from_request_body::<(String, Option<IpAddr>)>(request).await
-            {
+            if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
                 update_client_list(hostname, ClientListAction::RemoveIpOrEntry(maybe_ip)).await;
                 reply(StatusCode::OK)?
             } else {

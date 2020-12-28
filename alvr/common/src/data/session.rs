@@ -105,7 +105,7 @@ pub struct ClientConnectionDesc {
     pub last_local_ip: IpAddr,
     pub manual_ips: HashSet<IpAddr>,
     pub trusted: bool,
-    pub certificate_pem: String,
+    pub certificate_pem: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]

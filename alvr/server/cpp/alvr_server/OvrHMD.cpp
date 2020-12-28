@@ -42,9 +42,30 @@ OvrHmd::OvrHmd()
 
 	OvrHmd::~OvrHmd()
 	{
+		StopStreaming();
+
 		ShutdownRuntime();
 
-		StopStreaming();
+		if (m_encoder)
+		{
+			Debug("OvrHmd::~OvrHmd(): Stopping encoder...\n");
+			m_encoder->Stop();
+			m_encoder.reset();
+		}
+
+		if (m_audioCapture)
+		{
+			Debug("OvrHmd::~OvrHmd(): Stopping audio capture...\n");
+			m_audioCapture->Shutdown();
+			m_audioCapture.reset();
+		}
+
+		if (m_Listener)
+		{
+			Debug("OvrHmd::~OvrHmd(): Stopping network...\n");
+			m_Listener->Stop();
+			m_Listener.reset();
+		}
 
 		if (m_VSyncThread)
 		{
@@ -158,9 +179,6 @@ OvrHmd::OvrHmd()
 
 	 void OvrHmd::EnterStandby()
 	{
-		bool shouldUnmute = Settings::Instance().m_enableSound && Settings::Instance().m_muteHostAudioOutput;
-		if (m_audioCapture && shouldUnmute)
-			m_audioCapture->ToggleMuteCurrentDevice(false);
 	}
 
 	void* OvrHmd::GetComponent(const char *pchComponentNameAndVersion)
@@ -322,30 +340,9 @@ OvrHmd::OvrHmd()
 	}
 
 	void OvrHmd::StopStreaming() {
-		if (m_encoder)
-		{
-			Debug("OvrHmd::StopStreaming(): Stopping encoder...\n");
-			m_encoder->Stop();
-			m_encoder.reset();
-		}
-
-		if (m_audioCapture)
-		{
-			bool shouldUnmute = Settings::Instance().m_enableSound && Settings::Instance().m_muteHostAudioOutput;
-			if (m_audioCapture && shouldUnmute)
-				m_audioCapture->ToggleMuteCurrentDevice(false);
-
-			Debug("OvrHmd::StopStreaming(): Stopping audio capture...\n");
-			m_audioCapture->Shutdown();
-			m_audioCapture.reset();
-		}
-
-		if (m_Listener)
-		{
-			Debug("OvrHmd::StopStreaming(): Stopping network...\n");
-			m_Listener->Stop();
-			m_Listener.reset();
-		}
+		bool shouldUnmute = Settings::Instance().m_enableSound && Settings::Instance().m_muteHostAudioOutput;
+		if (m_audioCapture && shouldUnmute)
+			m_audioCapture->ToggleMuteCurrentDevice(false);
 	}
 
 	void OvrHmd::updateIPDandFoV(const TrackingInfo& info) {

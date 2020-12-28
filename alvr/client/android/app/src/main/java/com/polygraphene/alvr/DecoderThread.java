@@ -268,6 +268,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
             start();
         } else {
             Utils.logi(TAG, () -> "notifyCodecChange: Codec was not changed. Codec=" + codec);
+            mDecoderCallback.onPrepared();
             //mWaitNextIDR = true;
         }
     }

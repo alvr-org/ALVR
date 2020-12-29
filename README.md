@@ -2,7 +2,7 @@
 
 # ALVR - Air Light VR
 
-[![Badge-Discord]][Link-Discord]
+[![Badge-Discord]][Link-Discord] [![Badge-OpenCollective]][Link-OpenCollective]
 
 Stream VR games from your PC to your Oculus Quest via Wi-FI.  
 ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience.  
@@ -105,24 +105,13 @@ Note: After doing the above steps, you can debug the client normally by opening 
 
 ALVR is licensed under the [MIT License](LICENSE).
 
-## Donate to the original author
+## Donate
 
-If you like this project, please donate to the original author!
+If you want to support this project you can make a donation to our [Open Source Collective account](https://opencollective.com/alvr).
 
-### Donate with PayPal
-
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=polygraphene@gmail.com&lc=US&item_name=Donate+for+ALVR+developer&no_note=0&cn=&curency_code=USD&bn=PP-DonationsBF:btn_donateCC_LG.gif:NonHosted)
-
-If you cannot use this link, please try the following.
-
-1. Login with your PayPal account
-2. Open "Send and request" tab
-3. Click "Pay for goods or services"
-4. Put "polygraphene@gmail.com" (it's the PayPal account of the original author) and click next
-
-### Donate with bitcoin
-
-bitcoin:1FCbmFVSjsmpnAj6oLx2EhnzQzzhyxTLEv
+You can also donate to the original author of ALVR using Paypal (polygraphene@gmail.com) or with bitcoin (1FCbmFVSjsmpnAj6oLx2EhnzQzzhyxTLEv).
 
 [Badge-Discord]: https://img.shields.io/discord/720612397580025886?style=for-the-badge&logo=discord "Join us on Discord"
 [Link-Discord]: https://discord.gg/KbKk3UM
+[Badge-OpenCollective]: https://img.shields.io/opencollective/all/alvr?style=for-the-badge "Donate"
+[Link-OpenCollective]: https://opencollective.com/alvr

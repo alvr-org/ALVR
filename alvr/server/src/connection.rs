@@ -159,7 +159,6 @@ async fn connect_to_any_client(
             enable_microphone: session_settings.audio.microphone.enabled,
             microphone_device: session_settings.audio.microphone.content.device.clone(),
             seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
-            ipd: settings.video.ipd,
             client_buffer_size: settings.connection.client_recv_buffer_size,
             force_3dof: settings.headset.force_3dof,
             aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
@@ -228,7 +227,7 @@ async fn connect_to_any_client(
             controllers_enabled: session_settings.headset.controllers.enabled,
             position_offset: settings.headset.position_offset,
             tracking_frame_offset: settings.headset.tracking_frame_offset,
-            controller_pose_offset: controller_pose_offset,
+            controller_pose_offset,
             position_offset_left: session_settings
                 .headset
                 .controllers
@@ -288,7 +287,15 @@ async fn pairing_loop() -> (
             .get()
             .client_connections
             .iter()
-            .filter(|(_, client)| client.trusted)
+            .filter(|(_, client)| {
+                client.trusted
+                    || SESSION_MANAGER
+                        .lock()
+                        .get()
+                        .to_settings()
+                        .connection
+                        .auto_trust_clients
+            })
             .fold(HashMap::new(), |mut clients_info, (hostname, client)| {
                 let id = PublicIdentity {
                     hostname: hostname.clone(),

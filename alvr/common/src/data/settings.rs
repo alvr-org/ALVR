@@ -108,9 +108,6 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub seconds_from_vsync_to_photons: f32,
 
-    #[schema(advanced)]
-    pub ipd: f32,
-
     pub foveated_rendering: Switch<FoveatedRenderingDesc>,
     pub color_correction: Switch<ColorCorrectionDesc>,
 
@@ -355,7 +352,6 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             seconds_from_vsync_to_photons: 0.005,
-            ipd: 0.063,
             foveated_rendering: SwitchDefault {
                 enabled: true,
                 content: FoveatedRenderingDescDefault {

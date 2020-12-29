@@ -78,7 +78,7 @@ void Settings::Load()
 
 		m_flSecondsFromVsyncToPhotons = (float)config.get("seconds_from_vsync_to_photons").get<double>();
 
-		m_flIPD = (float)config.get("ipd").get<double>();
+		m_flIPD = 0.063;
 
 		m_clientRecvBufferSize = (uint32_t)config.get("client_buffer_size").get<int64_t>();
 

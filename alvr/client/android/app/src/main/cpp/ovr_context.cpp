@@ -578,34 +578,6 @@ std::pair<EyeFov, EyeFov> getFov() {
     return {fov[0], fov[1]};
 }
 
-void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tracking,
-                     bool clientsidePrediction) {
-    memset(packet, 0, sizeof(TrackingInfo));
-
-    uint64_t clientTime = getTimestampUs();
-
-    packet->type = ALVR_PACKET_TYPE_TRACKING_INFO;
-    packet->flags = 0;
-    packet->clientTime = clientTime;
-    packet->FrameIndex = g_ctx.FrameIndex;
-    packet->predictedDisplayTime = displayTime;
-
-    packet->ipd = getIPD();
-    auto fovPair = getFov();
-    packet->eyeFov[0] = fovPair.first;
-    packet->eyeFov[1] = fovPair.second;
-    packet->battery = g_ctx.batteryLevel;
-
-
-    memcpy(&packet->HeadPose_Pose_Orientation, &tracking->HeadPose.Pose.Orientation,
-           sizeof(ovrQuatf));
-    memcpy(&packet->HeadPose_Pose_Position, &tracking->HeadPose.Pose.Position, sizeof(ovrVector3f));
-
-    setControllerInfo(packet, clientsidePrediction ? displayTime : 0.);
-
-    FrameLog(g_ctx.FrameIndex, "Sending tracking info.");
-}
-
 // Called from TrackingThread
 void sendTrackingInfo(bool clientsidePrediction) {
     std::shared_ptr<TrackingFrame> frame(new TrackingFrame());
@@ -627,9 +599,24 @@ void sendTrackingInfo(bool clientsidePrediction) {
         }
     }
 
-    TrackingInfo info;
-    setTrackingInfo(&info, frame->displayTime, &frame->tracking, clientsidePrediction);
+    TrackingInfo info = {};
+    info.type = ALVR_PACKET_TYPE_TRACKING_INFO;
+    info.flags = 0;
+    info.clientTime = getTimestampUs();
+    info.FrameIndex = g_ctx.FrameIndex;
+    info.predictedDisplayTime = frame->displayTime;
 
+    info.ipd = getIPD();
+    auto fovPair = getFov();
+    info.eyeFov[0] = fovPair.first;
+    info.eyeFov[1] = fovPair.second;
+    info.battery = g_ctx.batteryLevel;
+
+    memcpy(&info.HeadPose_Pose_Orientation, &frame->tracking.HeadPose.Pose.Orientation, sizeof(ovrQuatf));
+    memcpy(&info.HeadPose_Pose_Position, &frame->tracking.HeadPose.Pose.Position, sizeof(ovrVector3f));
+
+    setControllerInfo(&info, clientsidePrediction ? frame->displayTime : 0.);
+    FrameLog(g_ctx.FrameIndex, "Sending tracking info.");
 
     LatencyCollector::Instance().tracking(frame->frameIndex);
 
@@ -673,18 +660,6 @@ void sendMicData() {
     }
 }
 
-void reflectExtraLatencyMode(bool always) {
-    if (always || (!gDisableExtraLatencyMode) != g_ctx.mExtraLatencyMode) {
-        g_ctx.mExtraLatencyMode = !gDisableExtraLatencyMode;
-        LOGI("Setting ExtraLatencyMode %s", g_ctx.mExtraLatencyMode ? "On" : "Off");
-        ovrResult result = vrapi_SetExtraLatencyMode(g_ctx.Ovr,
-                                                     g_ctx.mExtraLatencyMode
-                                                     ? VRAPI_EXTRA_LATENCY_MODE_ON
-                                                     : VRAPI_EXTRA_LATENCY_MODE_OFF);
-        LOGI("vrapi_SetExtraLatencyMode. Result=%d", result);
-    }
-}
-
 void onResumeNative(void *v_env, void *v_surface) {
     auto *env = (JNIEnv *) v_env;
     auto surface = (jobject) v_surface;
@@ -723,7 +698,15 @@ void onResumeNative(void *v_env, void *v_surface) {
     // After enabling ExtraLatencyMode:
     //    I/VrApi: FPS=71,Prd=76ms,Tear=0,Early=66,Stale=0,VSnc=1,Lat=1,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/N/N,Mem=1804MHz,Free=906MB,PSM=0,PLS=0,Temp=38.0C/0.0C,TW=1.93ms,App=1.46ms,GD=0.00ms
     // We need to set ExtraLatencyMode On to workaround for this issue.
-    reflectExtraLatencyMode(false);
+    if ((!gDisableExtraLatencyMode) != g_ctx.mExtraLatencyMode) {
+        g_ctx.mExtraLatencyMode = !gDisableExtraLatencyMode;
+        LOGI("Setting ExtraLatencyMode %s", g_ctx.mExtraLatencyMode ? "On" : "Off");
+        ovrResult result = vrapi_SetExtraLatencyMode(g_ctx.Ovr,
+                                                     g_ctx.mExtraLatencyMode
+                                                     ? VRAPI_EXTRA_LATENCY_MODE_ON
+                                                     : VRAPI_EXTRA_LATENCY_MODE_OFF);
+        LOGI("vrapi_SetExtraLatencyMode. Result=%d", result);
+    }
 
     if (g_ctx.mMicHandle && g_ctx.mStreamMic) {
         ovr_Microphone_Start(g_ctx.mMicHandle);

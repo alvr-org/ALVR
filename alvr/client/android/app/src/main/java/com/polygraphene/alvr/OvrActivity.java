@@ -378,10 +378,6 @@ public class OvrActivity extends Activity {
 
     native void onHapticsFeedbackNative(long startTime, float amplitude, float duration, float frequency, boolean hand);
 
-    native void onGuardianSyncAckNative(long timestamp);
-
-    native void onGuardianSegmentAckNative(long timestamp, int segmentIndex);
-
     native void onBatteryChangedNative(int battery);
 
     native boolean isConnectedNative();
@@ -429,16 +425,6 @@ public class OvrActivity extends Activity {
                 onHapticsFeedbackNative(startTime, amplitude, duration, frequency, hand);
             }
         });
-    }
-
-    @SuppressWarnings("unused")
-    public void onGuardianSyncAck(long timestamp) {
-        mRenderingHandler.post(() -> onGuardianSyncAckNative(timestamp));
-    }
-
-    @SuppressWarnings("unused")
-    public void onGuardianSegmentAck(long timestamp, int segmentIndex) {
-        mRenderingHandler.post(() -> onGuardianSegmentAckNative(timestamp, segmentIndex));
     }
 
     @SuppressWarnings("unused")

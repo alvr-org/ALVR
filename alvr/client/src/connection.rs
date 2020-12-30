@@ -3,17 +3,22 @@ use jni::{
     objects::{GlobalRef, JClass},
     JavaVM,
 };
+use nalgebra::{Point3, Quaternion, UnitQuaternion};
 use serde_json as json;
 use settings_schema::Switch;
 use std::{
     ffi::CString,
+    slice,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
     time::Duration,
 };
-use tokio::time::{self, Instant};
+use tokio::{
+    sync::Mutex,
+    time::{self, Instant},
+};
 
 const INITIAL_MESSAGE: &str = "Searching for server...\n(open ALVR on your PC)";
 const CLIENT_UNTRUSTED_MESSAGE: &str = "On the PC, click \"trust\"\nnext to the client entry";
@@ -25,6 +30,7 @@ const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
 );
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
+const PLAYSPACE_SYNC_INTERVAL: Duration = Duration::from_millis(500);
 
 // close stream on Drop (manual disconnection or execution canceling)
 struct StreamCloseGuard {
@@ -84,24 +90,24 @@ async fn try_connect(
         )
         .await
     )?;
-    let (server_ip, mut control_sender, mut control_receiver, config_packet) =
-        match connection_result {
-            ConnectionResult::Connected {
-                server_ip,
-                control_sender,
-                control_receiver,
-                config_packet,
-            } => (server_ip, control_sender, control_receiver, config_packet),
-            ConnectionResult::ServerMessage(message) => {
-                info!("Server response: {:?}", message);
-                let message_str = match message {
-                    ServerHandshakePacket::ClientUntrusted => CLIENT_UNTRUSTED_MESSAGE,
-                    ServerHandshakePacket::IncompatibleVersions => INCOMPATIBLE_VERSIONS_MESSAGE,
-                };
-                set_loading_message(&*java_vm, &*activity_ref, hostname, message_str).await?;
-                return Ok(());
-            }
-        };
+    let (server_ip, control_sender, mut control_receiver, config_packet) = match connection_result {
+        ConnectionResult::Connected {
+            server_ip,
+            control_sender,
+            control_receiver,
+            config_packet,
+        } => (server_ip, control_sender, control_receiver, config_packet),
+        ConnectionResult::ServerMessage(message) => {
+            info!("Server response: {:?}", message);
+            let message_str = match message {
+                ServerHandshakePacket::ClientUntrusted => CLIENT_UNTRUSTED_MESSAGE,
+                ServerHandshakePacket::IncompatibleVersions => INCOMPATIBLE_VERSIONS_MESSAGE,
+            };
+            set_loading_message(&*java_vm, &*activity_ref, hostname, message_str).await?;
+            return Ok(());
+        }
+    };
+    let control_sender = Arc::new(Mutex::new(control_sender));
 
     info!("Connected to server");
 
@@ -166,9 +172,7 @@ async fn try_connect(
     ))?;
 
     let tracking_clientside_prediction = match baseline_settings.headset.controllers {
-        Switch::Enabled(ref controllers) => {
-            controllers.clientside_prediction
-        }
+        Switch::Enabled(ref controllers) => controllers.clientside_prediction,
         Switch::Disabled => false,
     };
 
@@ -219,11 +223,61 @@ async fn try_connect(
         }
     };
 
+    unsafe impl Send for crate::GuardianData {}
+    let playspace_sync_loop = {
+        let control_sender = control_sender.clone();
+        async move {
+            loop {
+                let guardian_data = unsafe { crate::getGuardianData() };
+
+                if guardian_data.shouldSync {
+                    let perimeter_points = if guardian_data.perimeterPointsCount == 0 {
+                        None
+                    } else {
+                        let perimeter_slice = unsafe {
+                            slice::from_raw_parts(
+                                guardian_data.perimeterPoints,
+                                guardian_data.perimeterPointsCount as _,
+                            )
+                        };
+
+                        let perimeter_points = perimeter_slice
+                            .iter()
+                            .map(|p| Point3::from_slice(p))
+                            .collect::<Vec<_>>();
+
+                        Some(perimeter_points)
+                    };
+                    let packet = PlayspaceSyncPacket {
+                        position: Point3::from_slice(&guardian_data.position),
+                        rotation: UnitQuaternion::from_quaternion(Quaternion::new(
+                            guardian_data.rotation[3],
+                            guardian_data.rotation[0],
+                            guardian_data.rotation[1],
+                            guardian_data.rotation[2],
+                        )),
+                        area_width: guardian_data.areaWidth,
+                        area_height: guardian_data.areaHeight,
+                        perimeter_points,
+                    };
+
+                    control_sender
+                        .lock()
+                        .await
+                        .send(&ClientControlPacket::PlayspaceSync(packet))
+                        .await?;
+                }
+
+                time::sleep(PLAYSPACE_SYNC_INTERVAL).await;
+            }
+        }
+    };
+
     let control_loop = async move {
         loop {
             tokio::select! {
                 _ = crate::IDR_REQUEST_NOTIFIER.notified() => {
-                    control_sender.send(&ClientControlPacket::RequestIDR).await.ok();
+                    control_sender.lock().await.send(&ClientControlPacket::RequestIDR).await?;
                 }
                 control_packet = control_receiver.recv() =>
                     match control_packet {
@@ -259,6 +313,7 @@ async fn try_connect(
     tokio::select! {
         res = stream_socket_loop => trace_err!(res)?,
         res = tracking_loop => res,
+        res = playspace_sync_loop => res,
         res = control_loop => res,
     }
 }

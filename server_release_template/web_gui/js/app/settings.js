@@ -394,7 +394,7 @@ define([
                         break;
                     case "displayRefreshRate":
                         addHidden(element, path, name, advanced);
-
+                        break;
                     default:
                         console.log("Unhandled node without content. Should be implemented as special case:", name);
                         break;
@@ -554,6 +554,7 @@ define([
             var el = `<div class="parameter ${getAdvancedClass(advanced)}">
                 <div class="card-title">
                     <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">${getI18n(path + "_" + name).name}</a>
+                    ${self.getHelpReset(name, path, true)}
                 </div>   
                 <div id="collapse_${index}" class="collapse show">
                     <div class="card-body">

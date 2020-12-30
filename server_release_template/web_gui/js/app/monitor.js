@@ -86,7 +86,7 @@ define([
             Object.entries(session.clientConnections).forEach(pair => {
                 var hostname = pair[0];
                 var connection = pair[1];
-                var address = connection.lastLocalIp;
+                //var address = connection.lastLocalIp;
                 var type = connection.deviceName;
 
                 if (connection.trusted) {

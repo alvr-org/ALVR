@@ -282,20 +282,18 @@ async fn pairing_loop() -> (
     ControlSocketReceiver<ClientControlPacket>,
 ) {
     loop {
+        let auto_trust_clients = SESSION_MANAGER
+            .lock()
+            .get()
+            .to_settings()
+            .connection
+            .auto_trust_clients;
         let clients_info = SESSION_MANAGER
             .lock()
             .get()
             .client_connections
             .iter()
-            .filter(|(_, client)| {
-                client.trusted
-                    || SESSION_MANAGER
-                        .lock()
-                        .get()
-                        .to_settings()
-                        .connection
-                        .auto_trust_clients
-            })
+            .filter(|(_, client)| client.trusted || auto_trust_clients)
             .fold(HashMap::new(), |mut clients_info, (hostname, client)| {
                 let id = PublicIdentity {
                     hostname: hostname.clone(),

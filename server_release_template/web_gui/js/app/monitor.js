@@ -138,7 +138,7 @@ define([
             }
 
             var client = `<div class="card client" type="${type}" hostname="${hostname}" id="newClient_${id}">
-                        ${type} (${hostname}) <button type="button" class="btn btn-primary">trust</button>
+                        ${type} (${hostname}) <button type="button" class="btn btn-primary">${i18n["addTrustedClient"]}</button>
                         </div>`
 
             $("#newClientsDiv").append(client);

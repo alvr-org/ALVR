@@ -1,9 +1,11 @@
 define({
     "root": {
+        // Revert Popup
         "confirmRevertTitle": "Revert setting?",
         "okRevertButton": "OK",
         "cancelRevertButton": "Cancel",
         "revertText": "Revert the property to the default value of",
+        // Restart Popup
         "confirmRestartTitle": "Restart SteamVR?",
         "restartText": "Restart SteamVR? This will close your current running VR-Application",
         "dontAskRestart": "Don't ask again",

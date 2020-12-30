@@ -1,22 +1,27 @@
 define({
     "root": {
+        // Connection tab
         "connection": "Connection",
-        "logging": "Logging",
+        // Clients container
         "clients": "Clients",
         "newClients": "New Clients",
+        "addTrustedClient": "Trust",
         "trustedClients": "Trusted Clients",
+        "removeTrustedClient": "Remove",
+       // Manually add client page
         "manAddClient": "Manually add client",
-        "removeTrustedClient": "remove",
-        "statistics": "Streaming Statistics",
         "addClient": "Add client",
         "clientType": "Type",
         "ipAddress": "IP-Address",
         "ipHelp": "Enter know IP-address of the HMD",
         "addClientButton": "Add client",
+        "troubleshooting": `Is your headset not showing up? Visit our troubleshooting page <a href="https://github.com/alvr-org/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">here</a>`,
+        // Statistics container
+        "statistics": "Streaming Statistics",
         "totalPackets": "Total Packets",
         "packetRate": "PacketRate",
         "packetsLostTotal": "Total packets lost",
-        "packetsLostPerSecond": "Packets lost/s",
+        "packetsLostPerSecond": "Packets lost / s",
         "totalSent": "Total sent",
         "sentRate": "Sent rate",
         "totalLatency": "Total latency",
@@ -30,8 +35,9 @@ define({
         "clientFPS": "Client fps",
         "serverFPS": "Server fps",
         "packets": "Packets",
-        "packetss": "Packets/s",
-        "troubleshooting": `Is your headset not showing up? Visit our troubleshooting page <a  href="https://github.com/alvr-org/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">here</a>`
+        "packetss": "Packets / s",
+        // Logging tab
+        "logging": "Logging",
     },
     "it": true,
     "es": true,

@@ -21,7 +21,7 @@ serde_json = "1"
 alvr_common = { path = "../common" } 
 futures = "0.3" 
 bytes = "1" 
-tokio = { version = "1.0.0", features = [
+tokio = { version = "1", features = [
     "rt-multi-thread",
     "macros",
     "process",
@@ -30,7 +30,7 @@ tokio = { version = "1.0.0", features = [
     "fs",
 ] } 
 tokio-util = { version = "0.6", features = ["codec"] } 
-tokio-tungstenite = { git = "https://github.com/dnaka91/tokio-tungstenite.git", rev = "0f0665b" } 
+tokio-tungstenite = { git = "https://github.com/zarik5/tokio-tungstenite.git", rev = "5783bd2" } 
 headers = "0.3" 
 hyper = { version = "0.14", features = ["http1", "server", "stream", "runtime", "tcp"] }# http2 feature does not work: todo recheck    
 ipconfig = "0.2" # todo: remove crate and get ip during handshake

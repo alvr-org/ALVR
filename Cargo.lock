@@ -137,7 +137,7 @@ dependencies = [
  "fern",
  "futures",
  "headers",
- "hyper 0.14.1",
+ "hyper 0.14.2",
  "ipconfig",
  "lazy-static-include",
  "lazy_static",
@@ -1594,9 +1594,9 @@ dependencies = [
 
 [[package]]
 name = "hyper"
-version = "0.14.1"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7b980c7bc75203b968f06374cbde00bf1818e02e156b8e5b6ccf440fb53b6d0"
+checksum = "12219dc884514cb4a6a03737f4413c0e01c23a1b059b0156004b23f1e19dccbe"
 dependencies = [
  "bytes 1.0.0",
  "futures-channel",
@@ -1680,8 +1680,8 @@ dependencies = [
 
 [[package]]
 name = "input_buffer"
-version = "0.3.1"
-source = "git+https://github.com/nickelc/input_buffer.git?branch=bytes#05d7a2090dea7a172e5a59fd421d7d2cec724efd"
+version = "0.4.0"
+source = "git+https://github.com/snapview/input_buffer.git#e04d16751485f14c024b332658a1ce683af2c384"
 dependencies = [
  "bytes 1.0.0",
 ]
@@ -1955,9 +1955,9 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "0.7.6"
+version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f33bc887064ef1fd66020c9adfc45bb9f33d75a42096c81e7c56c65b75dd1a8b"
+checksum = "e50ae3f04d169fcc9bde0b547d1c205219b7157e07ded9c5aff03e0637cb3ed7"
 dependencies = [
  "libc",
  "log",
@@ -2023,9 +2023,9 @@ dependencies = [
 
 [[package]]
 name = "native-tls"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fcc7939b5edc4e4f86b1b4a04bb1498afaaf871b1a6691838ed06fcb48d3a3f"
+checksum = "b8d96b2e1c8da3957d58100b09f102c6d9cfdfced01b7ec5a8974044bb09dbd4"
 dependencies = [
  "lazy_static",
  "libc",
@@ -3291,7 +3291,7 @@ dependencies = [
  "bytes 1.0.0",
  "libc",
  "memchr",
- "mio 0.7.6",
+ "mio 0.7.7",
  "num_cpus",
  "once_cell",
  "pin-project-lite 0.2.0",
@@ -3336,7 +3336,7 @@ dependencies = [
 [[package]]
 name = "tokio-tungstenite"
 version = "0.12.0"
-source = "git+https://github.com/dnaka91/tokio-tungstenite.git?rev=0f0665b#0f0665b4106c36dd3945616e96089bab14c1d7aa"
+source = "git+https://github.com/zarik5/tokio-tungstenite.git?rev=5783bd2#5783bd2bb0bf6d6a513d8ebf60bf64d535afe8f1"
 dependencies = [
  "futures-util",
  "log",
@@ -3440,7 +3440,7 @@ checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
 [[package]]
 name = "tungstenite"
 version = "0.11.1"
-source = "git+https://github.com/nickelc/tungstenite-rs.git?branch=bytes#8417078ef30557e542fe1109a842c8856e232e44"
+source = "git+https://github.com/snapview/tungstenite-rs.git#208061ba284eaf95a54c1b9b6968f570004c90de"
 dependencies = [
  "base64 0.13.0",
  "byteorder",
@@ -3449,7 +3449,7 @@ dependencies = [
  "httparse",
  "input_buffer",
  "log",
- "rand 0.7.3",
+ "rand 0.8.0",
  "sha-1 0.9.2",
  "url",
  "utf-8",

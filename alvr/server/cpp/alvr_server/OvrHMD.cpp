@@ -156,10 +156,6 @@ OvrHmd::OvrHmd()
 			m_displayComponent = std::make_shared<OvrDisplayComponent>();
 			m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender);
 
-			m_ChaperoneUpdater = std::make_shared<ChaperoneUpdater>();
-			m_ChaperoneUpdater->ResetData(0, 0);
-			m_ChaperoneUpdater->GenerateStandingChaperone();
-			m_ChaperoneUpdater->MaybeCommitData();
 
 			DriverReadyIdle();
 		}
@@ -304,8 +300,7 @@ OvrHmd::OvrHmd()
 		}
 
 		//create listener
-		m_Listener.reset(new ClientConnection(
-			m_ChaperoneUpdater, [&]() { OnPoseUpdated(); }, [&]() { OnPacketLoss(); }));
+		m_Listener.reset(new ClientConnection([&]() { OnPoseUpdated(); }, [&]() { OnPacketLoss(); }));
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
 		m_encoder = std::make_shared<CEncoder>();

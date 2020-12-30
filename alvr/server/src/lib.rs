@@ -233,6 +233,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
 
         if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
             runtime.spawn(async move {
+                // call this when inside a new tokio thread. Calling this on the parent thread will
+                // crash SteamVR
+                SetChaperoneStanding(1_f32);
+
                 tokio::select! {
                     Err(e) = connection::connection_lifecycle_loop() => show_e(e),
                     _ = SHUTDOWN_NOTIFIER.notified() => (),

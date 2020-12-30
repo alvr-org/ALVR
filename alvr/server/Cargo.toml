@@ -9,18 +9,19 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-parking_lot = "0.11" 
-lazy_static = "1" 
-lazy-static-include = "3" 
-chrono = "0.4" 
-log = "0.4" 
-fern = "0.6" 
-settings-schema = { path = "../settings-schema" } 
-serde = "1" 
-serde_json = "1" 
-alvr_common = { path = "../common" } 
-futures = "0.3" 
-bytes = "1" 
+parking_lot = "0.11"
+lazy_static = "1"
+lazy-static-include = "3"
+chrono = "0.4"
+log = "0.4"
+fern = "0.6"
+settings-schema = { path = "../settings-schema" }
+serde = "1"
+serde_json = "1"
+alvr_common = { path = "../common" }
+nalgebra = "0.24"
+futures = "0.3"
+bytes = "1"
 tokio = { version = "1", features = [
     "rt-multi-thread",
     "macros",
@@ -28,13 +29,13 @@ tokio = { version = "1", features = [
     "io-util",
     "net",
     "fs",
-] } 
-tokio-util = { version = "0.6", features = ["codec"] } 
-tokio-tungstenite = { git = "https://github.com/zarik5/tokio-tungstenite.git", rev = "5783bd2" } 
-headers = "0.3" 
+] }
+tokio-util = { version = "0.6", features = ["codec"] }
+tokio-tungstenite = { git = "https://github.com/zarik5/tokio-tungstenite.git", rev = "5783bd2" }
+headers = "0.3"
 hyper = { version = "0.14", features = ["http1", "server", "stream", "runtime", "tcp"] }# http2 feature does not work: todo recheck    
 ipconfig = "0.2" # todo: remove crate and get ip during handshake
-webbrowser = "0.5" 
+webbrowser = "0.5"
 
 [build-dependencies]
 walkdir = "2"

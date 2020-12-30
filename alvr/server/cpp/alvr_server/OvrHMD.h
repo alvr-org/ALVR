@@ -10,7 +10,6 @@
 #include "Utils.h"
 #include "FrameRender.h"
 #include "Settings.h"
-#include "ChaperoneUpdater.h"
 
 #include "packet_types.h"
 #include "resource.h"
@@ -89,7 +88,6 @@ private:
 	std::shared_ptr<AudioCapture> m_audioCapture;
 	std::shared_ptr<ClientConnection> m_Listener;
 	std::shared_ptr<VSyncThread> m_VSyncThread;
-	std::shared_ptr<ChaperoneUpdater> m_ChaperoneUpdater;
 
 	std::shared_ptr<OvrController> m_leftController;
 	std::shared_ptr<OvrController> m_rightController;

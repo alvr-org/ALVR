@@ -1017,7 +1017,9 @@ GuardianData getGuardianData() {
             g_ctx.m_GuardianPoints.clear();
             g_ctx.m_GuardianPoints.resize(g_ctx.m_guardianData.perimeterPointsCount);
 
-            vrapi_GetBoundaryGeometry(g_ctx.Ovr, g_ctx.m_guardianData.perimeterPointsCount, nullptr,
+            // We already have the point count, but passing nullptr here makes the function not
+            // actually give us any point data, so we provide it anyway.
+            vrapi_GetBoundaryGeometry(g_ctx.Ovr, g_ctx.m_guardianData.perimeterPointsCount, &g_ctx.m_guardianData.perimeterPointsCount,
                                       &g_ctx.m_GuardianPoints[0]);
             g_ctx.m_guardianData.perimeterPoints = reinterpret_cast<float (*)[3]>(&g_ctx.m_GuardianPoints[0]);
         }
@@ -1027,7 +1029,9 @@ GuardianData getGuardianData() {
         memcpy(&g_ctx.m_guardianData.rotation, &spacePose.Orientation, 4 * sizeof(float));
 
         ovrVector3f bboxScale;
-        vrapi_GetBoundaryOrientedBoundingBox(g_ctx.Ovr, nullptr, &bboxScale);
+        // Theoretically pose (the 2nd parameter) could be nullptr, since we already have that, but
+        // then this function gives us 0-size bounding box, so it has to be provided.
+        vrapi_GetBoundaryOrientedBoundingBox(g_ctx.Ovr, &spacePose, &bboxScale);
         g_ctx.m_guardianData.areaWidth = 2.0f * bboxScale.x;
         g_ctx.m_guardianData.areaHeight = 2.0f * bboxScale.z;
     }

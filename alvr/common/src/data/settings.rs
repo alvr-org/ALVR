@@ -309,6 +309,7 @@ pub enum LogLevel {
 #[serde(rename_all = "camelCase")]
 pub struct ExtraDesc {
     pub theme: Theme,
+    pub client_dark_mode: bool,
     pub revert_confirm_dialog: bool,
     pub restart_confirm_dialog: bool,
     pub prompt_before_update: bool,
@@ -434,6 +435,7 @@ pub fn session_settings_default() -> SettingsDefault {
             theme: ThemeDefault {
                 variant: ThemeDefaultVariant::SystemDefault,
             },
+            client_dark_mode: false,
             revert_confirm_dialog: true,
             restart_confirm_dialog: true,
             prompt_before_update: !cfg!(feature = "nightly"),

@@ -21,7 +21,7 @@ use tokio::{
 };
 
 const INITIAL_MESSAGE: &str = "Searching for server...\n(open ALVR on your PC)";
-const CLIENT_UNTRUSTED_MESSAGE: &str = "On the PC, click \"trust\"\nnext to the client entry";
+const CLIENT_UNTRUSTED_MESSAGE: &str = "On the PC, click \"Trust\"\nnext to the client entry";
 const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
     "Server and client have\n",
     "incompatible types.\n",
@@ -121,6 +121,13 @@ async fn try_connect(
     let _stream_guard = StreamCloseGuard {
         is_connected: is_connected.clone(),
     };
+
+    trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
+        &*activity_ref,
+        "setDarkMode",
+        "(Z)V",
+        &[baseline_settings.extra.client_dark_mode.into()],
+    ))?;
 
     trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
         &*activity_ref,

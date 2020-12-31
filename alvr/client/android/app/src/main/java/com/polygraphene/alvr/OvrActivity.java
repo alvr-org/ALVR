@@ -44,10 +44,11 @@ public class OvrActivity extends Activity {
     //This will be used in handling callback
     final int MY_PERMISSIONS_RECORD_AUDIO = 1;
 
-    static class PrivateIdentity {
+    static class Preferences {
         String hostname;
         String certificatePEM;
         String privateKey;
+        boolean darkMode;
     }
 
     public static class OnCreateResult {
@@ -148,27 +149,28 @@ public class OvrActivity extends Activity {
         mEGLContext = EGL14.eglGetCurrentContext();
     }
 
-    PrivateIdentity getPrivateIdentity() {
-        PrivateIdentity id = new PrivateIdentity();
+    Preferences getPreferences() {
+        Preferences p = new Preferences();
 
         SharedPreferences prefs = this.getSharedPreferences("pref", Context.MODE_PRIVATE);
 
-        id.hostname = prefs.getString("hostname", "");
-        id.certificatePEM = prefs.getString("certificate", "");
-        id.privateKey = prefs.getString("private-key", "");
+        p.hostname = prefs.getString("hostname", "");
+        p.certificatePEM = prefs.getString("certificate", "");
+        p.privateKey = prefs.getString("private-key", "");
+        p.darkMode = prefs.getBoolean("dark-mode", false);
 
-        if (Objects.equals(id.hostname, "") || Objects.equals(id.certificatePEM, "") || Objects.equals(id.privateKey, "")) {
-            createIdentity(id);
+        if (Objects.equals(p.hostname, "") || Objects.equals(p.certificatePEM, "") || Objects.equals(p.privateKey, "")) {
+            createIdentity(p);
 
             SharedPreferences.Editor editor = prefs.edit();
-            editor.putString("hostname", id.hostname);
-            editor.putString("certificate", id.certificatePEM);
-            editor.putString("private-key", id.privateKey);
+            editor.putString("hostname", p.hostname);
+            editor.putString("certificate", p.certificatePEM);
+            editor.putString("private-key", p.privateKey);
 
             editor.apply();
         }
 
-        return id;
+        return p;
     }
 
     @Override
@@ -195,9 +197,8 @@ public class OvrActivity extends Activity {
                     Utils.loge(TAG, e::toString);
                 }
 
-                PrivateIdentity id = this.getPrivateIdentity();
-
-                onResumeNative(NAL.class, id.hostname, id.certificatePEM, id.privateKey, mScreenSurface);
+                Preferences p = this.getPreferences();
+                onResumeNative(NAL.class, p.hostname, p.certificatePEM, p.privateKey, mScreenSurface, p.darkMode);
 
                 onVrModeChanged(true);
             });
@@ -355,14 +356,14 @@ public class OvrActivity extends Activity {
 
     static native void initNativeLogging();
 
-    static native void createIdentity(PrivateIdentity id); // id fields are reset
+    static native void createIdentity(Preferences p); // id fields are reset
 
     native void onCreateNative(AssetManager assetManager, OnCreateResult outResult);
 
     native void destroyNative();
 
     // nal_class is needed to access NAL objects fields in native code without access to a Java thread
-    native void onResumeNative(Class<?> nal_class, String hostname, String certificatePEM, String privateKey, Surface screenSurface);
+    native void onResumeNative(Class<?> nal_class, String hostname, String certificatePEM, String privateKey, Surface screenSurface, boolean darkMode);
 
     native void onPauseNative();
 
@@ -444,5 +445,12 @@ public class OvrActivity extends Activity {
         if (mDecoderThread != null) {
             mDecoderThread.pushNAL(nal);
         }
+    }
+
+    @SuppressWarnings("unused")
+    void setDarkMode(boolean mode) {
+        SharedPreferences.Editor editor = this.getSharedPreferences("pref", Context.MODE_PRIVATE).edit();
+        editor.putBoolean("dark-mode", mode);
+        editor.apply();
     }
 }

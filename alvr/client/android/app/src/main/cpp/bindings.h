@@ -1,19 +1,22 @@
 #pragma once
 
+struct OnCreateResult {
+    int streamSurfaceHandle;
+    int loadingSurfaceHandle;
+};
+
 enum class DeviceType {
     OCULUS_QUEST,
     OCULUS_QUEST_2,
     UNKNOWN,
 };
 
-struct OnCreateResult {
+struct OnResumeResult {
     DeviceType deviceType;
     int recommendedEyeWidth;
     int recommendedEyeHeight;
     float *refreshRates;
     int refreshRatesCount;
-    int streamSurfaceHandle;
-    int loadingSurfaceHandle;
 };
 
 struct GuardianData {
@@ -34,7 +37,7 @@ extern "C" void destroyNative(void *env);
 extern "C" void renderNative(long long renderedFrameIndex);
 extern "C" void renderLoadingNative();
 extern "C" void onTrackingNative(bool clientsidePrediction);
-extern "C" void onResumeNative(void *env, void *surface);
+extern "C" OnResumeResult onResumeNative(void *surface, bool darkMode);
 extern "C" void onStreamStartNative(int width, int height, int refreshRate, unsigned char streamMic,
                                     int foveationMode, float foveationStrength,
                                     float foveationShape, float foveationVerticalOffset,

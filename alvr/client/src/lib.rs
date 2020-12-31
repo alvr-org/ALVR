@@ -12,13 +12,7 @@ use parking_lot::Mutex;
 use std::{slice, sync::Arc};
 use tokio::{runtime::Runtime, sync::Notify};
 
-struct OnCreateResultWrapper(OnCreateResult);
-unsafe impl Send for OnCreateResultWrapper {}
-
 lazy_static! {
-    static ref ON_CREATE_RESULT: Mutex<OnCreateResultWrapper> =
-        Mutex::new(OnCreateResultWrapper(<_>::default()));
-    static ref REFRESH_RATES: Mutex<Vec<f32>> = Mutex::new(vec![]);
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(None);
     static ref IDR_REQUEST_NOTIFIER: Notify = Notify::new();
     static ref ON_PAUSE_NOTIFIER: Notify = Notify::new();
@@ -98,11 +92,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
             result.loadingSurfaceHandle.into()
         ))?;
 
-        let refresh_rates =
-            slice::from_raw_parts(result.refreshRates, result.refreshRatesCount as _).to_vec();
-        *REFRESH_RATES.lock() = refresh_rates;
-        *ON_CREATE_RESULT.lock() = OnCreateResultWrapper(result);
-
         Ok(())
     }())
     .ok();
@@ -142,31 +131,31 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
     jcertificate_pem: JString,
     jprivate_key: JString,
     jscreen_surface: JObject,
+    dark_mode: u8,
 ) {
     show_err(|| -> StrResult {
         let java_vm = trace_err!(env.get_java_vm())?;
         let activity_ref = trace_err!(env.new_global_ref(jactivity))?;
         let nal_class_ref = trace_err!(env.new_global_ref(nal_class))?;
 
-        onResumeNative(env.get_native_interface() as _, *jscreen_surface as _);
+        let result = onResumeNative(*jscreen_surface as _, dark_mode == 1);
 
-        let result = ON_CREATE_RESULT.lock();
-
-        let device_name = if result.0.deviceType == DeviceType_OCULUS_QUEST {
+        let device_name = if result.deviceType == DeviceType_OCULUS_QUEST {
             "Oculus Quest"
-        } else if result.0.deviceType == DeviceType_OCULUS_QUEST_2 {
+        } else if result.deviceType == DeviceType_OCULUS_QUEST_2 {
             "Oculus Quest 2"
         } else {
             "Unknown device"
         };
 
-        let refresh_rates = REFRESH_RATES.lock();
-        let preferred_refresh_rate = refresh_rates.last().cloned().unwrap_or(60_f32);
+        let available_refresh_rates =
+            slice::from_raw_parts(result.refreshRates, result.refreshRatesCount as _).to_vec();
+        let preferred_refresh_rate = available_refresh_rates.last().cloned().unwrap_or(60_f32);
 
         let headset_info = HeadsetInfoPacket {
-            recommended_eye_width: result.0.recommendedEyeWidth as _,
-            recommended_eye_height: result.0.recommendedEyeHeight as _,
-            available_refresh_rates: refresh_rates.clone(),
+            recommended_eye_width: result.recommendedEyeWidth as _,
+            recommended_eye_height: result.recommendedEyeHeight as _,
+            available_refresh_rates,
             preferred_refresh_rate,
             reserved: "".into(),
         };

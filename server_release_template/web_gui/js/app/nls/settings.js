@@ -6,6 +6,8 @@ define({
         "_root_video_displayRefreshRate.name": "Refresh rate",
         "_root_video_displayRefreshRate.description": "Refresh rate to set for both SteamVR and the headset. SteamVR will use the set value even if the headset doesn't support it. Higher values require faster PC. 72 Hz is the maximum for Quest 1.",
         "_root_video_preferredFps.name": "Custom refresh rate", // adv
+        "_root_video_resolutionDropdown.name": "Video resolution",
+        "_root_video_resolutionDropdown.description": "100% results in the native resolution of the Oculus Quest. \nSetting the resolution can bring some improvement in visual quality, but is not recommended. \nA resolution lower than 100% can reduce latency and increase network performance",
         "_root_video_renderResolution-choice-.name": "Video encoding resolution base", // adv
         "_root_video_renderResolution_scale-choice-.name": "Scale", // adv
         "_root_video_renderResolution_absolute-choice-.name": "Absolute", // adv
@@ -16,13 +18,9 @@ define({
         "_root_video_recommendedTargetResolution_scale.name": "Scale", // adv
         "_root_video_secondsFromVsyncToPhotons.name": "Seconds from VSync to image", // adv
         "_root_video_secondsFromVsyncToPhotons.description": "The time elapsed from the virtual VSync until the image is visible on the viewer screen", // adv
-        "_root_video_ipd.name": "Interpupillary distance", // adv
-        "_root_video_ipd.description": "The distance between the eyes measured from the center of the pupils.", // adv
-        "_root_video_resolutionDropdown.name": "Video resolution",
-        "_root_video_resolutionDropdown.description": "100% results in the native resolution of the Oculus Quest. \nSetting the resolution can bring some improvement in visual quality, but is not recommended. \nA resolution lower than 100% can reduce latency and increase network performance",
         "_root_video_foveatedRendering.name": "Foveated rendering",
-        "_root_video_foveatedRendering.description": "Rendering technique that reduces the resolution of the image at the periphery of the vision to reduce the computational load on the GPU. Results in a much lower video resolution that needs to be transmitted over the network.", // must be the same as "_root_video_foveatedRendering_enabled.description"
-        "_root_video_foveatedRendering_enabled.description": "Rendering technique that reduces the resolution of the image at the periphery of the vision to reduce the computational load on the GPU. Results in a much lower video resolution that needs to be transmitted over the network.", // must be the same as "_root_video_foveatedRendering.description"
+        // "_root_video_foveatedRendering.description": use "_root_video_foveatedRendering_enabled.description"
+        "_root_video_foveatedRendering_enabled.description": "Rendering technique that reduces the resolution of the image at the periphery of the vision to reduce the computational load on the GPU. Results in a much lower video resolution that needs to be transmitted over the network.",
         "_root_video_foveatedRendering_content_strength.name": "Strength",
         "_root_video_foveatedRendering_content_strength.description": "Higher value means less detail toward the edges of the frame and more artifacts",
         "_root_video_foveatedRendering_content_shape.name": "Shape", // adv
@@ -30,8 +28,8 @@ define({
         "_root_video_foveatedRendering_content_verticalOffset.name": "Vertical offset",
         "_root_video_foveatedRendering_content_verticalOffset.description": "Higher value means the high quality frame region is moved further down",
         "_root_video_colorCorrection.name": "Color correction",
-        "_root_video_colorCorrection.description": "Color correction are applied in the following order: Sharpening, Gamma, Brightness, Contrast, and Saturation.", // must be the same as "_root_video_colorCorrection_enabled.description"
-        "_root_video_colorCorrection_enabled.description": "Color correction are applied in the following order: Sharpening, Gamma, Brightness, Contrast, and Saturation.", // must be the same as "_root_video_colorCorrection.description"
+        // "_root_video_colorCorrection.description": use "_root_video_colorCorrection_enabled.description"
+        "_root_video_colorCorrection_enabled.description": "Color correction are applied in the following order: Sharpening, Gamma, Brightness, Contrast, and Saturation.",
         "_root_video_colorCorrection_content_brightness.name": "Brightness",
         "_root_video_colorCorrection_content_brightness.description": "Brightness: -1 means completely black and 1 means completely white.",
         "_root_video_colorCorrection_content_contrast.name": "Contrast",
@@ -52,8 +50,8 @@ define({
         // Audio tab
         "_root_audio_tab.name": "Audio",
         "_root_audio_gameAudio.name": "Stream game audio",
-        "_root_audio_gameAudio.description": "Stream the game audio to the headset", // must be the same as "_root_audio_gameAudio_enabled.description"
-        "_root_audio_gameAudio_enabled.description": "Stream the game audio to the headset", // must be the same as "_root_audio_gameAudio.description"
+        // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
+        "_root_audio_gameAudio_enabled.description": "Stream the game audio to the headset",
         "_root_audio_gameAudio_content_deviceDropdown.name": "Audio device",
         "_root_audio_gameAudio_content_deviceDropdown.description": "Select the audio device used to capture audio",
         "_root_audio_gameAudio_content_device.name": "Audio device code", // adv
@@ -61,8 +59,8 @@ define({
         "_root_audio_gameAudio_content_muteWhenStreaming.name": "Mute output when streaming",
         "_root_audio_gameAudio_content_muteWhenStreaming.description": "Mutes the audio output (speakers/headphones) when streaming to the headset. Only the physical output is muted (to avoid double audio), stream to the headset and other capturing software will not be affected.",
         "_root_audio_microphone.name": "Stream headset microphone",
-        "_root_audio_microphone.description": "Streams the headset microphone to SteamVR. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software", // must be the same as "_root_audio_microphone_enabled.description"
-        "_root_audio_microphone_enabled.description": "Streams the headset microphone to SteamVR. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software", // must be the same as "_root_audio_microphone.description"
+        // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
+        "_root_audio_microphone_enabled.description": "Streams the headset microphone to SteamVR. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software",
         "_root_audio_microphone_content_deviceDropdown.name": "Virtual microphone input",
         "_root_audio_microphone_content_deviceDropdown.description": "Select the virtual microphone input used to capture audio. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software",
         "_root_audio_microphone_content_device.name": "Virtual microphone input code", // adv
@@ -96,8 +94,8 @@ define({
         "_root_headset_force3dof.name": "Force 3Dof",
         "_root_headset_force3dof.description": "Forces the 3 degrees of freedom mode (like Oculus Go)",
         "_root_headset_controllers.name": "Controllers",
-        "_root_headset_controllers.description": "Allow the use of the controllers", // must be the same as "_root_headset_controllers_enabled.description"
-        "_root_headset_controllers_enabled.description": "Allow the use of the controllers", // must be the same as "_root_headset_controllers.description"
+        // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
+        "_root_headset_controllers_enabled.description": "Allow the use of the controllers",
         "_root_headset_controllers_content_controllerMode.name": "Controller emulation mode",
         "_root_headset_controllers_content_controllerMode.description": "Emulates different controller for better compatibility or enables hand tracking",
         "_root_headset_controllers_content_modeIdx.name": "Mode Index", // adv
@@ -163,6 +161,7 @@ define({
         "_root_extra_theme_systemDefault-choice-.name": "System",
         "_root_extra_theme_classic-choice-.name": "Classic",
         "_root_extra_theme_darkly-choice-.name": "Darkly",
+        "_root_extra_clientDarkMode.name": "Client dark mode",
         "_root_extra_revertConfirmDialog.name": "Confirm revert",
         "_root_extra_revertConfirmDialog.description": "Ask for confirmation before reverting settings to default value",
         "_root_extra_restartConfirmDialog.name": "Confirm SteamVR restart",

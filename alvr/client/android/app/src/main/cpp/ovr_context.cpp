@@ -80,6 +80,7 @@ public:
     TRACKING_FRAME_MAP trackingFrameMap;
     std::mutex trackingFrameMutex;
 
+    bool darkMode;
     ovrRenderer Renderer;
 
     // headset battery level
@@ -163,13 +164,6 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
                     GL_CLAMP_TO_EDGE);
 
-    auto eyeWidth = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
-    auto eyeHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
-                                                VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
-
-    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.streamTexture.get(),
-                       g_ctx.loadingTexture, {false});
-    ovrRenderer_CreateScene(&g_ctx.Renderer, false);
 
     memset(g_ctx.mHapticsState, 0, sizeof(g_ctx.mHapticsState));
 
@@ -192,41 +186,13 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     LOGI("Mic_maxElements %zu", g_ctx.mMicMaxElements);
     g_ctx.micBuffer = new int16_t[g_ctx.mMicMaxElements];
 
-
-    auto result = OnCreateResult();
-
-    auto ovrDeviceType = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DEVICE_TYPE);
-    if (VRAPI_DEVICE_TYPE_OCULUSQUEST_START <= ovrDeviceType &&
-        ovrDeviceType <= VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
-        result.deviceType = DeviceType::OCULUS_QUEST;
-    } else if (ovrDeviceType > VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
-        result.deviceType = DeviceType::OCULUS_QUEST_2;
-    } else {
-        result.deviceType = DeviceType::UNKNOWN;
-    }
-
-    result.recommendedEyeWidth = eyeWidth;
-    result.recommendedEyeHeight = eyeHeight;
-
-    result.refreshRatesCount = vrapi_GetSystemPropertyInt(&g_ctx.java,
-                                                          VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
-    g_ctx.refreshRatesBuffer = vector<float>(result.refreshRatesCount);
-    vrapi_GetSystemPropertyFloatArray(&g_ctx.java, VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
-                                      &g_ctx.refreshRatesBuffer[0], result.refreshRatesCount);
-    result.refreshRates = &g_ctx.refreshRatesBuffer[0];
-
-    result.streamSurfaceHandle = g_ctx.streamTexture.get()->GetGLTexture();
-    result.loadingSurfaceHandle = g_ctx.loadingTexture;
-
-    return result;
+    return {(int) g_ctx.streamTexture.get()->GetGLTexture(), (int) g_ctx.loadingTexture};
 }
 
 void destroyNative(void *v_env) {
     auto *env = (JNIEnv *) v_env;
 
     LOG("Destroying EGL.");
-
-    ovrRenderer_Destroy(&g_ctx.Renderer);
 
     glDeleteTextures(1, &g_ctx.loadingTexture);
 
@@ -612,8 +578,10 @@ void sendTrackingInfo(bool clientsidePrediction) {
     info.eyeFov[1] = fovPair.second;
     info.battery = g_ctx.batteryLevel;
 
-    memcpy(&info.HeadPose_Pose_Orientation, &frame->tracking.HeadPose.Pose.Orientation, sizeof(ovrQuatf));
-    memcpy(&info.HeadPose_Pose_Position, &frame->tracking.HeadPose.Pose.Position, sizeof(ovrVector3f));
+    memcpy(&info.HeadPose_Pose_Orientation, &frame->tracking.HeadPose.Pose.Orientation,
+           sizeof(ovrQuatf));
+    memcpy(&info.HeadPose_Pose_Position, &frame->tracking.HeadPose.Pose.Position,
+           sizeof(ovrVector3f));
 
     setControllerInfo(&info, clientsidePrediction ? frame->displayTime : 0.);
     FrameLog(g_ctx.FrameIndex, "Sending tracking info.");
@@ -660,7 +628,7 @@ void sendMicData() {
     }
 }
 
-void onResumeNative(void *v_env, void *v_surface) {
+OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
     auto surface = (jobject) v_surface;
 
     g_ctx.window = ANativeWindow_fromSurface(g_ctx.env, surface);
@@ -680,7 +648,6 @@ void onResumeNative(void *v_env, void *v_surface) {
 
     if (g_ctx.Ovr == nullptr) {
         LOGE("Invalid ANativeWindow");
-        return;
     }
 
     int CpuLevel = 3;
@@ -710,6 +677,40 @@ void onResumeNative(void *v_env, void *v_surface) {
     if (g_ctx.mMicHandle && g_ctx.mStreamMic) {
         ovr_Microphone_Start(g_ctx.mMicHandle);
     }
+
+    auto eyeWidth = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
+    auto eyeHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
+                                                VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
+
+    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.streamTexture.get(),
+                       g_ctx.loadingTexture, {false});
+    ovrRenderer_CreateScene(&g_ctx.Renderer, darkMode);
+
+    g_ctx.darkMode = darkMode;
+
+    auto result = OnResumeResult();
+
+    auto ovrDeviceType = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DEVICE_TYPE);
+    if (VRAPI_DEVICE_TYPE_OCULUSQUEST_START <= ovrDeviceType &&
+        ovrDeviceType <= VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
+        result.deviceType = DeviceType::OCULUS_QUEST;
+    } else if (ovrDeviceType > VRAPI_DEVICE_TYPE_OCULUSQUEST_END) {
+        result.deviceType = DeviceType::OCULUS_QUEST_2;
+    } else {
+        result.deviceType = DeviceType::UNKNOWN;
+    }
+
+    result.recommendedEyeWidth = eyeWidth;
+    result.recommendedEyeHeight = eyeHeight;
+
+    result.refreshRatesCount = vrapi_GetSystemPropertyInt(&g_ctx.java,
+                                                          VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
+    g_ctx.refreshRatesBuffer = vector<float>(result.refreshRatesCount);
+    vrapi_GetSystemPropertyFloatArray(&g_ctx.java, VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
+                                      &g_ctx.refreshRatesBuffer[0], result.refreshRatesCount);
+    result.refreshRates = &g_ctx.refreshRatesBuffer[0];
+
+    return result;
 }
 
 void onStreamStartNative(int width, int height, int refreshRate, unsigned char streamMic,
@@ -722,7 +723,7 @@ void onStreamStartNative(int width, int height, int refreshRate, unsigned char s
                        g_ctx.loadingTexture,
                        {(bool) foveationMode, (uint32_t) eyeWidth, (uint32_t) height,
                         EyeFov(), foveationStrength, foveationShape, foveationVerticalOffset});
-    ovrRenderer_CreateScene(&g_ctx.Renderer, false);
+    ovrRenderer_CreateScene(&g_ctx.Renderer, g_ctx.darkMode);
 
     ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, (float) refreshRate);
     if (result != ovrSuccess) {
@@ -759,6 +760,7 @@ void onStreamStartNative(int width, int height, int refreshRate, unsigned char s
 }
 
 void onPauseNative() {
+    ovrRenderer_Destroy(&g_ctx.Renderer);
 
     LOGI("Leaving VR mode.");
 
@@ -1018,7 +1020,8 @@ GuardianData getGuardianData() {
 
             // We already have the point count, but passing nullptr here makes the function not
             // actually give us any point data, so we provide it anyway.
-            vrapi_GetBoundaryGeometry(g_ctx.Ovr, g_ctx.m_guardianData.perimeterPointsCount, &g_ctx.m_guardianData.perimeterPointsCount,
+            vrapi_GetBoundaryGeometry(g_ctx.Ovr, g_ctx.m_guardianData.perimeterPointsCount,
+                                      &g_ctx.m_guardianData.perimeterPointsCount,
                                       &g_ctx.m_GuardianPoints[0]);
             g_ctx.m_guardianData.perimeterPoints = reinterpret_cast<float (*)[3]>(&g_ctx.m_GuardianPoints[0]);
         }

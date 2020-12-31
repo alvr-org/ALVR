@@ -18,12 +18,6 @@ define({
         "buttonFirewall": "Add firewall rules",
         "firewallFailed": "Setting firewall rules failed",
         "firewallSuccess": "Firewall rules successfully set",
-        // Driver page removed 
-        // "titleDriver": "Driver",
-        // "textDriver": "The ALVR driver needs to be registered with SteamVR. If present, remove any other interfering driver. (If you don't know what to do, remove all drivers, then register ALVR driver)",
-        // "buttonDriver": "Register ALVR driver",
-        // "driverFailed": "Registering driver failed",
-        // "driverSuccess": "Driver successfully registered",
         // Tracking page
         "titleTracking": "Tracking",
         "textTracking": "How should the tracking of the controller be handled. If you plan on playing fast paced games like Beatsaber, choose medium or fast. For slower games like Skyrim leave it on normal.\n\nOculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",

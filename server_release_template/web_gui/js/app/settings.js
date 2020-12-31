@@ -518,12 +518,12 @@ define([
 
                 default:
                     element.append(`<div ">
-            <h6 class="card-title">
-                 ${name}  ${node.type}
-            </h6>
-            </div>`);
+                    <h6 class="card-title">
+                        ${name}  ${node.type}
+                    </h6>
+                    </div>`);
                     console.log("got other type:", name, node.type, path)
-
+                    break;
             }
 
         }
@@ -750,8 +750,8 @@ define([
             switch (type) {
                 case "slider":
                     base += `<div class="rangeValue" id="${path}_${name}_label">[${node.content.default}]</div>${self.getHelpReset(name, path, node.content.default)}
-            <input numericType="${node.type}" id="${path}_${name}" type="range" min="${node.content.min}" 
-            max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"  >`;
+                    <input numericType="${node.type}" id="${path}_${name}" type="range" min="${node.content.min}" 
+                    max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}"  >`;
                     break;
 
                 case "upDown":
@@ -770,17 +770,17 @@ define([
                     
                     </div></div>${self.getHelpReset(name, path, node.content.default)}`;
 
-
                     base += grp;
                     break;
 
                 case "textbox":
                     base += ` <input numericType="${node.type}" id="${path}_${name}"  type="text" min="${node.content.min}" guiType="numeric" 
-            max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}" > ${self.getHelpReset(name, path, node.content.default)}`;
+                    max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}" > ${self.getHelpReset(name, path, node.content.default)}`;
                     break;
 
                 default:
                     console.log("numeric type was: ", type)
+                    break;
 
             }
 

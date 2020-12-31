@@ -107,17 +107,15 @@ define([
                 case "warning":
                     notificationLevels = ["[ERROR]", "[WARN]"];
                     break;
-
                 case "info":
                     notificationLevels = ["[ERROR]", "[WARN]", "[INFO]"];
                     break;
-
                 case "debug":
                     notificationLevels = ["[ERROR]", "[WARN]", "[INFO]", "[DEBUG]"];
                     break;
-
                 default:
                     notificationLevels = [];
+                    break;
             }
 
             //console.log("Notification levels are now: ", notificationLevels);
@@ -254,7 +252,6 @@ define([
                     return "info";
                 case "[DEBUG]":
                     return "default";
-
                 default:
                     return "default";
             }
@@ -267,9 +264,9 @@ define([
                     break;
                 case "sessionUpdated":
                     updateSession();
+                    break;
                 default:
                     break;
-
             }
         }
 

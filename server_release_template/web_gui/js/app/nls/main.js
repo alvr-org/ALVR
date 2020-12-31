@@ -1,7 +1,7 @@
 define({
     "root": {
         "title": "ALVR",
-        // left menu
+        // Side bar
         "monitor": "Monitor",
         "settings": "Settings",
         "installation": "Installation",

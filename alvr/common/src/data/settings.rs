@@ -116,7 +116,7 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub client_request_realtime_decoder: bool,
 
-    #[schema(min = 1, max = 250)]
+    #[schema(min = 1, max = 500)]
     pub encode_bitrate_mbs: u64,
 }
 

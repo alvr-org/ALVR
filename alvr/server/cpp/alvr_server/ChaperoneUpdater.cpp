@@ -22,6 +22,7 @@ void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
 		standingPerimeterPointsBuffer[3][1] = -areaHeight / 2.0f;
 
 		perimeterPoints = standingPerimeterPointsBuffer;
+		perimeterPointsCount = 4;
 	}
 
 	vr::EVRInitError error;

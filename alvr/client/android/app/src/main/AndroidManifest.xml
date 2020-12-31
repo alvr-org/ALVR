@@ -5,7 +5,7 @@
 
     <uses-feature
         android:name="android.hardware.vr.headtracking"
-        android:required="true" />
+        android:required="false" />
     <uses-feature
         android:name="android.hardware.microphone"
         android:required="true" />
@@ -17,7 +17,7 @@
         android:required="true" />
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="oculus.permission.handtracking" />
+    <uses-permission android:name="oculus.permission.HAND_TRACKING" />
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application

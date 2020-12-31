@@ -71,13 +71,8 @@ public:
 
     // Oculus guardian
     int m_LastHMDRecenterCount = -1;
-    bool m_ShouldSyncGuardian = false;
-    bool m_GuardianSyncing = false;
-    uint32_t m_AckedGuardianSegment = -1;
-    uint64_t m_GuardianTimestamp = 0;
-    uint32_t m_GuardianPointCount = 0;
-    ovrVector3f *m_GuardianPoints = nullptr;
-    double m_LastGuardianSyncTry = 0.0;
+    vector<ovrVector3f> m_GuardianPoints = {};
+    GuardianData m_guardianData = {};
     ovrTrackingSpace m_UsedTrackingSpace = VRAPI_TRACKING_SPACE_LOCAL_FLOOR;
 
     typedef std::map<uint64_t, std::shared_ptr<TrackingFrame> > TRACKING_FRAME_MAP;
@@ -246,7 +241,6 @@ void destroyNative(void *v_env) {
     env->DeleteGlobalRef(g_ctx.java.ActivityObject);
 
     delete[] g_ctx.micBuffer;
-    delete[] g_ctx.m_GuardianPoints;
 }
 
 uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
@@ -584,49 +578,6 @@ std::pair<EyeFov, EyeFov> getFov() {
     return {fov[0], fov[1]};
 }
 
-void setTrackingInfo(TrackingInfo *packet, double displayTime, ovrTracking2 *tracking, bool clientsidePrediction) {
-    memset(packet, 0, sizeof(TrackingInfo));
-
-    uint64_t clientTime = getTimestampUs();
-
-    packet->type = ALVR_PACKET_TYPE_TRACKING_INFO;
-    packet->flags = 0;
-    packet->clientTime = clientTime;
-    packet->FrameIndex = g_ctx.FrameIndex;
-    packet->predictedDisplayTime = displayTime;
-
-    packet->ipd = getIPD();
-    auto fovPair = getFov();
-    packet->eyeFov[0] = fovPair.first;
-    packet->eyeFov[1] = fovPair.second;
-    packet->battery = g_ctx.batteryLevel;
-
-
-    memcpy(&packet->HeadPose_Pose_Orientation, &tracking->HeadPose.Pose.Orientation,
-           sizeof(ovrQuatf));
-    memcpy(&packet->HeadPose_Pose_Position, &tracking->HeadPose.Pose.Position, sizeof(ovrVector3f));
-
-    setControllerInfo(packet, clientsidePrediction ? displayTime : 0.);
-
-    FrameLog(g_ctx.FrameIndex, "Sending tracking info.");
-}
-
-void checkShouldSyncGuardian() {
-    int recenterCount = vrapi_GetSystemStatusInt(&g_ctx.java, VRAPI_SYS_STATUS_RECENTER_COUNT);
-    if (recenterCount <= g_ctx.m_LastHMDRecenterCount) {
-        return;
-    }
-
-    g_ctx.m_ShouldSyncGuardian = true;
-    g_ctx.m_GuardianSyncing = false;
-    g_ctx.m_GuardianTimestamp = getTimestampUs();
-    delete[] g_ctx.m_GuardianPoints;
-    g_ctx.m_GuardianPoints = nullptr;
-    g_ctx.m_AckedGuardianSegment = -1;
-
-    g_ctx.m_LastHMDRecenterCount = recenterCount;
-}
-
 // Called from TrackingThread
 void sendTrackingInfo(bool clientsidePrediction) {
     std::shared_ptr<TrackingFrame> frame(new TrackingFrame());
@@ -648,14 +599,28 @@ void sendTrackingInfo(bool clientsidePrediction) {
         }
     }
 
-    TrackingInfo info;
-    setTrackingInfo(&info, frame->displayTime, &frame->tracking, clientsidePrediction);
+    TrackingInfo info = {};
+    info.type = ALVR_PACKET_TYPE_TRACKING_INFO;
+    info.flags = 0;
+    info.clientTime = getTimestampUs();
+    info.FrameIndex = g_ctx.FrameIndex;
+    info.predictedDisplayTime = frame->displayTime;
 
+    info.ipd = getIPD();
+    auto fovPair = getFov();
+    info.eyeFov[0] = fovPair.first;
+    info.eyeFov[1] = fovPair.second;
+    info.battery = g_ctx.batteryLevel;
+
+    memcpy(&info.HeadPose_Pose_Orientation, &frame->tracking.HeadPose.Pose.Orientation, sizeof(ovrQuatf));
+    memcpy(&info.HeadPose_Pose_Position, &frame->tracking.HeadPose.Pose.Position, sizeof(ovrVector3f));
+
+    setControllerInfo(&info, clientsidePrediction ? frame->displayTime : 0.);
+    FrameLog(g_ctx.FrameIndex, "Sending tracking info.");
 
     LatencyCollector::Instance().tracking(frame->frameIndex);
 
     sendNative(reinterpret_cast<long long int>(&info), static_cast<int>(sizeof(info)));
-    checkShouldSyncGuardian();
 }
 
 // Called from TrackingThread
@@ -692,18 +657,6 @@ void sendMicData() {
             sendNative(reinterpret_cast<long long int>(&audio), static_cast<int>(sizeof(audio)));
             count++;
         }
-    }
-}
-
-void reflectExtraLatencyMode(bool always) {
-    if (always || (!gDisableExtraLatencyMode) != g_ctx.mExtraLatencyMode) {
-        g_ctx.mExtraLatencyMode = !gDisableExtraLatencyMode;
-        LOGI("Setting ExtraLatencyMode %s", g_ctx.mExtraLatencyMode ? "On" : "Off");
-        ovrResult result = vrapi_SetExtraLatencyMode(g_ctx.Ovr,
-                                                     g_ctx.mExtraLatencyMode
-                                                     ? VRAPI_EXTRA_LATENCY_MODE_ON
-                                                     : VRAPI_EXTRA_LATENCY_MODE_OFF);
-        LOGI("vrapi_SetExtraLatencyMode. Result=%d", result);
     }
 }
 
@@ -745,13 +698,19 @@ void onResumeNative(void *v_env, void *v_surface) {
     // After enabling ExtraLatencyMode:
     //    I/VrApi: FPS=71,Prd=76ms,Tear=0,Early=66,Stale=0,VSnc=1,Lat=1,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/N/N,Mem=1804MHz,Free=906MB,PSM=0,PLS=0,Temp=38.0C/0.0C,TW=1.93ms,App=1.46ms,GD=0.00ms
     // We need to set ExtraLatencyMode On to workaround for this issue.
-    reflectExtraLatencyMode(false);
+    if ((!gDisableExtraLatencyMode) != g_ctx.mExtraLatencyMode) {
+        g_ctx.mExtraLatencyMode = !gDisableExtraLatencyMode;
+        LOGI("Setting ExtraLatencyMode %s", g_ctx.mExtraLatencyMode ? "On" : "Off");
+        ovrResult result = vrapi_SetExtraLatencyMode(g_ctx.Ovr,
+                                                     g_ctx.mExtraLatencyMode
+                                                     ? VRAPI_EXTRA_LATENCY_MODE_ON
+                                                     : VRAPI_EXTRA_LATENCY_MODE_OFF);
+        LOGI("vrapi_SetExtraLatencyMode. Result=%d", result);
+    }
 
     if (g_ctx.mMicHandle && g_ctx.mStreamMic) {
         ovr_Microphone_Start(g_ctx.mMicHandle);
     }
-
-    checkShouldSyncGuardian();
 }
 
 void onStreamStartNative(int width, int height, int refreshRate, unsigned char streamMic,
@@ -1036,103 +995,44 @@ void onHapticsFeedbackNative(long long startTime, float amplitude, float duratio
     s.buffered = false;
 }
 
-bool prepareGuardianData() {
-    if (g_ctx.m_GuardianPoints != nullptr) {
-        return false;
-    }
-
-    vrapi_GetBoundaryGeometry(g_ctx.Ovr, 0, &g_ctx.m_GuardianPointCount, nullptr);
-
-    if (g_ctx.m_GuardianPointCount <= 0) {
-        return true;
-    }
-
-    g_ctx.m_GuardianPoints = new ovrVector3f[g_ctx.m_GuardianPointCount];
-    vrapi_GetBoundaryGeometry(g_ctx.Ovr, g_ctx.m_GuardianPointCount, &g_ctx.m_GuardianPointCount,
-                              g_ctx.m_GuardianPoints);
-
-    return true;
-}
-
-// Called from TrackingThread
-void sendGuardianInfo() {
-    if (g_ctx.m_ShouldSyncGuardian) {
-        double currentTime = GetTimeInSeconds();
-        if (currentTime - g_ctx.m_LastGuardianSyncTry < ALVR_GUARDIAN_RESEND_CD_SEC) {
-            return; // Don't spam the sync start packet
-        }
-        LOGI("Sending Guardian");
-        g_ctx.m_LastGuardianSyncTry = currentTime;
-        prepareGuardianData();
-
-        GuardianSyncStart packet{};
-        packet.type = ALVR_PACKET_TYPE_GUARDIAN_SYNC_START;
-        packet.timestamp = g_ctx.m_GuardianTimestamp;
-        packet.totalPointCount = g_ctx.m_GuardianPointCount;
-
-        ovrPosef spacePose = vrapi_LocateTrackingSpace(g_ctx.Ovr, g_ctx.m_UsedTrackingSpace);
-        memcpy(&packet.standingPosRotation, &spacePose.Orientation, sizeof(TrackingQuat));
-        memcpy(&packet.standingPosPosition, &spacePose.Position, sizeof(TrackingVector3));
-
-        ovrVector3f bboxScale;
-        vrapi_GetBoundaryOrientedBoundingBox(g_ctx.Ovr, &spacePose /* dummy variable */,
-                                             &bboxScale);
-        packet.playAreaSize.x = 2.0f * bboxScale.x;
-        packet.playAreaSize.y = 2.0f * bboxScale.z;
-
-        sendNative(reinterpret_cast<long long int>(&packet), static_cast<int>(sizeof(packet)));
-    } else if (g_ctx.m_GuardianSyncing) {
-        GuardianSegmentData packet{};
-        packet.type = ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA;
-        packet.timestamp = g_ctx.m_GuardianTimestamp;
-
-        uint32_t segmentIndex = g_ctx.m_AckedGuardianSegment + 1;
-        packet.segmentIndex = segmentIndex;
-        uint32_t remainingPoints =
-                g_ctx.m_GuardianPointCount - segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE;
-        size_t countToSend =
-                remainingPoints > ALVR_GUARDIAN_SEGMENT_SIZE ? ALVR_GUARDIAN_SEGMENT_SIZE
-                                                             : remainingPoints;
-
-        memcpy(&packet.points, g_ctx.m_GuardianPoints + segmentIndex * ALVR_GUARDIAN_SEGMENT_SIZE,
-               sizeof(TrackingVector3) * countToSend);
-
-        sendNative(reinterpret_cast<long long int>(&packet), static_cast<int>(sizeof(packet)));
-    }
-}
-
-void onGuardianSyncAckNative(long long timestamp) {
-    if (timestamp != g_ctx.m_GuardianTimestamp) {
-        return;
-    }
-
-    if (g_ctx.m_ShouldSyncGuardian) {
-        g_ctx.m_ShouldSyncGuardian = false;
-        if (g_ctx.m_GuardianPointCount > 0) {
-            g_ctx.m_GuardianSyncing = true;
-        }
-    }
-}
-
-void onGuardianSegmentAckNative(long long timestamp, int segmentIndex) {
-    if (timestamp != g_ctx.m_GuardianTimestamp ||
-        segmentIndex != g_ctx.m_AckedGuardianSegment + 1) {
-        return;
-    }
-
-    g_ctx.m_AckedGuardianSegment = segmentIndex;
-    uint32_t segments = g_ctx.m_GuardianPointCount / ALVR_GUARDIAN_SEGMENT_SIZE;
-    if (g_ctx.m_GuardianPointCount % ALVR_GUARDIAN_SEGMENT_SIZE > 0) {
-        segments++;
-    }
-
-    if (g_ctx.m_AckedGuardianSegment >= segments - 1) {
-        g_ctx.m_GuardianSyncing = false;
-    }
-}
-
 void onBatteryChangedNative(int battery) {
     g_ctx.batteryLevel = battery;
+}
+
+GuardianData getGuardianData() {
+    int recenterCount = vrapi_GetSystemStatusInt(&g_ctx.java, VRAPI_SYS_STATUS_RECENTER_COUNT);
+    if (recenterCount != g_ctx.m_LastHMDRecenterCount) {
+        g_ctx.m_guardianData.shouldSync = true;
+        g_ctx.m_LastHMDRecenterCount = recenterCount;
+    } else {
+        g_ctx.m_guardianData.shouldSync = false;
+    }
+
+    if (g_ctx.m_guardianData.shouldSync) {
+        vrapi_GetBoundaryGeometry(g_ctx.Ovr, 0, &g_ctx.m_guardianData.perimeterPointsCount,
+                                  nullptr);
+
+        if (g_ctx.m_guardianData.perimeterPointsCount != 0) {
+            // do not reallocate memory if not necessary
+            g_ctx.m_GuardianPoints.clear();
+            g_ctx.m_GuardianPoints.resize(g_ctx.m_guardianData.perimeterPointsCount);
+
+            vrapi_GetBoundaryGeometry(g_ctx.Ovr, g_ctx.m_guardianData.perimeterPointsCount, nullptr,
+                                      &g_ctx.m_GuardianPoints[0]);
+            g_ctx.m_guardianData.perimeterPoints = reinterpret_cast<float (*)[3]>(&g_ctx.m_GuardianPoints[0]);
+        }
+
+        ovrPosef spacePose = vrapi_LocateTrackingSpace(g_ctx.Ovr, g_ctx.m_UsedTrackingSpace);
+        memcpy(&g_ctx.m_guardianData.position, &spacePose.Position, 3 * sizeof(float));
+        memcpy(&g_ctx.m_guardianData.rotation, &spacePose.Orientation, 4 * sizeof(float));
+
+        ovrVector3f bboxScale;
+        vrapi_GetBoundaryOrientedBoundingBox(g_ctx.Ovr, nullptr, &bboxScale);
+        g_ctx.m_guardianData.areaWidth = 2.0f * bboxScale.x;
+        g_ctx.m_guardianData.areaHeight = 2.0f * bboxScale.z;
+    }
+
+    return g_ctx.m_guardianData;
 }
 
 void onTrackingNative(bool clientsidePrediction) {
@@ -1141,8 +1041,5 @@ void onTrackingNative(bool clientsidePrediction) {
 
         //TODO: maybe use own thread, but works fine with tracking
         sendMicData();
-
-        //TODO: same as above
-        sendGuardianInfo();
     }
 }

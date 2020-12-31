@@ -64,8 +64,6 @@ public:
     jobject m_instance;
     jmethodID mOnDisconnectedMethodID;
     jmethodID mOnHapticsFeedbackID;
-    jmethodID mOnGuardianSyncAckID;
-    jmethodID mOnGuardianSegmentAckID;
 
     int m_notifyPipe[2] = {-1, -1};
     std::mutex pipeMutex;
@@ -98,8 +96,6 @@ void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, const cha
     jclass clazz = env->GetObjectClass(instance);
     g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
     g_socket.mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
-    g_socket.mOnGuardianSyncAckID = env->GetMethodID(clazz, "onGuardianSyncAck", "(J)V");
-    g_socket.mOnGuardianSegmentAckID = env->GetMethodID(clazz, "onGuardianSegmentAck", "(JI)V");
     env->DeleteLocalRef(clazz);
 
     g_socket.m_nalParser = std::make_shared<NALParser>(env, instance, nalClass);
@@ -345,25 +341,6 @@ void onPacketRecv(const char *packet, size_t packetSize) {
                                        header->amplitude, header->duration, header->frequency,
                                        static_cast<jboolean>(header->hand));
 
-    } else if (type == ALVR_PACKET_TYPE_GUARDIAN_SYNC_ACK) {
-        if (packetSize < sizeof(GuardianSyncStartAck)) {
-            return;
-        }
-
-        auto ack = (GuardianSyncStartAck *) packet;
-
-        g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mOnGuardianSyncAckID,
-                                       static_cast<jlong>(ack->timestamp));
-    } else if (type == ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_ACK) {
-        if (packetSize < sizeof(GuardianSegmentAck)) {
-            return;
-        }
-
-        auto ack = (GuardianSegmentAck *) packet;
-
-        g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mOnGuardianSegmentAckID,
-                                       static_cast<jlong>(ack->timestamp),
-                                       static_cast<jint>(ack->segmentIndex));
     }
 }
 

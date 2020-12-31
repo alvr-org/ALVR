@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-// bindings for Rust:
-
 extern "C" const uint8_t *FRAME_RENDER_VS_CSO_PTR;
 extern "C" uint32_t FRAME_RENDER_VS_CSO_LEN;
 extern "C" const uint8_t *FRAME_RENDER_PS_CSO_PTR;
@@ -28,4 +26,7 @@ extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();
 extern "C" void DeinitializeStreaming();
 extern "C" void RequestIDR();
+extern "C" void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
+                             float (*perimeterPoints)[2], unsigned int perimeterPointsCount);
+extern "C" void SetChaperoneStanding(float scale);
 extern "C" void ShutdownSteamvr();

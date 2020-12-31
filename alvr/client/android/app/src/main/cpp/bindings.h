@@ -16,6 +16,16 @@ struct OnCreateResult {
     int loadingSurfaceHandle;
 };
 
+struct GuardianData {
+    bool shouldSync;
+    float position[3];
+    float rotation[4]; // convention: x, y, z, w
+    float areaWidth;
+    float areaHeight;
+    float (*perimeterPoints)[3];
+    unsigned int perimeterPointsCount;
+};
+
 extern "C" void decoderInput(long long frameIndex);
 extern "C" void decoderOutput(long long frameIndex);
 
@@ -33,9 +43,8 @@ extern "C" void onPauseNative();
 extern "C" void
 onHapticsFeedbackNative(long long startTime, float amplitude, float duration,
                         float frequency, unsigned char hand);
-extern "C" void onGuardianSyncAckNative(long long timestamp);
-extern "C" void onGuardianSegmentAckNative(long long timestamp, int segmentIndex);
 extern "C" void onBatteryChangedNative(int battery);
+extern "C" GuardianData getGuardianData();
 
 extern "C" void
 initializeSocket(void *env, void *instance, void *nalClass, const char *ip, unsigned int codec,

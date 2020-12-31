@@ -14,7 +14,6 @@
 #include "Settings.h"
 #include "Statistics.h"
 #include "MicPlayer.h"
-#include "ChaperoneUpdater.h"
 
 extern "C" {
 #include "reedsolomon/rs.h"
@@ -23,8 +22,7 @@ extern "C" {
 class ClientConnection : public CThread {
 public:
 
-	ClientConnection(std::shared_ptr<ChaperoneUpdater> chaperoneUpdater,
-		std::function<void()> poseUpdatedCallback, std::function<void()> packetLossCallback);
+	ClientConnection(std::function<void()> poseUpdatedCallback, std::function<void()> packetLossCallback);
 	~ClientConnection();
 
 	void Run() override;
@@ -47,7 +45,6 @@ private:
 	std::shared_ptr<UdpSocket> m_Socket;
 	std::shared_ptr<Statistics> m_Statistics;
 	std::shared_ptr<MicPlayer> m_MicPlayer;
-	std::shared_ptr<ChaperoneUpdater> m_ChaperoneUpdater;
 
 	std::ofstream outfile;
 

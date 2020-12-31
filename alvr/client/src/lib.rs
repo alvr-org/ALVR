@@ -256,25 +256,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onHapticsFe
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onGuardianSyncAckNative(
-    _: JNIEnv,
-    _: JObject,
-    timestamp: i64,
-) {
-    onGuardianSyncAckNative(timestamp)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onGuardianSegmentAckNative(
-    _: JNIEnv,
-    _: JObject,
-    timestamp: i64,
-    segment_index: i32,
-) {
-    onGuardianSegmentAckNative(timestamp, segment_index)
-}
-
-#[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onBatteryChangedNative(
     _: JNIEnv,
     _: JObject,

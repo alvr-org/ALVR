@@ -1,5 +1,6 @@
 use crate::{ClientListAction, CLIENTS_UPDATED_NOTIFIER, SESSION_MANAGER};
 use alvr_common::{data::*, logging::*, sockets::*, *};
+use nalgebra::Translation3;
 use settings_schema::Switch;
 use std::{collections::HashMap, net::IpAddr};
 
@@ -282,20 +283,18 @@ async fn pairing_loop() -> (
     ControlSocketReceiver<ClientControlPacket>,
 ) {
     loop {
+        let auto_trust_clients = SESSION_MANAGER
+            .lock()
+            .get()
+            .to_settings()
+            .connection
+            .auto_trust_clients;
         let clients_info = SESSION_MANAGER
             .lock()
             .get()
             .client_connections
             .iter()
-            .filter(|(_, client)| {
-                client.trusted
-                    || SESSION_MANAGER
-                        .lock()
-                        .get()
-                        .to_settings()
-                        .connection
-                        .auto_trust_clients
-            })
+            .filter(|(_, client)| client.trusted || auto_trust_clients)
             .fold(HashMap::new(), |mut clients_info, (hostname, client)| {
                 let id = PublicIdentity {
                     hostname: hostname.clone(),
@@ -335,14 +334,32 @@ pub async fn connection_lifecycle_loop() -> StrResult {
         unsafe { crate::InitializeStreaming() };
         let _guard = StreamCloseGuard;
 
-        loop {
-            tokio::select! {
-                _ = crate::RESTART_NOTIFIER.notified() => {
-                    control_sender.send(&ServerControlPacket::Restarting).await.ok();
-                    return Ok(());
-                }
-                maybe_packet = control_receiver.recv() => match maybe_packet {
-                    Ok(ClientControlPacket::PlayspaceSync(_)) => (),
+        let control_loop = async move {
+            loop {
+                match control_receiver.recv().await {
+                    Ok(ClientControlPacket::PlayspaceSync(packet)) => {
+                        let transform =
+                            packet.rotation * Translation3::from(packet.position.coords);
+                        // transposition is done to switch from column major to row major
+                        let matrix_transp = transform.to_matrix().transpose();
+
+                        let perimeter_points =
+                            if let Some(perimeter_points) = packet.perimeter_points {
+                                perimeter_points.iter().map(|p| [p[0], p[2]]).collect()
+                            } else {
+                                vec![]
+                            };
+
+                        unsafe {
+                            crate::SetChaperone(
+                                matrix_transp.as_ptr(),
+                                packet.area_width,
+                                packet.area_height,
+                                perimeter_points.as_ptr() as _,
+                                perimeter_points.len() as _,
+                            )
+                        };
+                    }
                     Ok(ClientControlPacket::RequestIDR) => unsafe { crate::RequestIDR() },
                     Ok(ClientControlPacket::Reserved(_))
                     | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
@@ -352,6 +369,14 @@ pub async fn connection_lifecycle_loop() -> StrResult {
                     }
                 }
             }
+        };
+
+        tokio::select! {
+            _ = crate::RESTART_NOTIFIER.notified() => {
+                control_sender.send(&ServerControlPacket::Restarting).await.ok();
+                return Ok(());
+            }
+            _ = control_loop => (),
         }
     }
 }

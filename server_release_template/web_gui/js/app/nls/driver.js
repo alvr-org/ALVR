@@ -1,8 +1,8 @@
 define({
     "root": {
+        "noDrivers": "No Drivers registered",
         "registeredDrivers": "Registered Drivers",
-        "noDrivers": "No Drives registered",
-        "removeDriver": "remove",
+        "removeDriver": "Remove",
         "driverUnregisterSuccessful": "Driver successfully unregistred",
         "driverUnregisterFailed": "Unregistering driver failed",
         "registerAlvrDriver": "Register ALVR driver",

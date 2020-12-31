@@ -86,7 +86,7 @@ define([
             Object.entries(session.clientConnections).forEach(pair => {
                 var hostname = pair[0];
                 var connection = pair[1];
-                var address = connection.lastLocalIp;
+                //var address = connection.lastLocalIp;
                 var type = connection.deviceName;
 
                 if (connection.trusted) {
@@ -107,17 +107,15 @@ define([
                 case "warning":
                     notificationLevels = ["[ERROR]", "[WARN]"];
                     break;
-
                 case "info":
                     notificationLevels = ["[ERROR]", "[WARN]", "[INFO]"];
                     break;
-
                 case "debug":
                     notificationLevels = ["[ERROR]", "[WARN]", "[INFO]", "[DEBUG]"];
                     break;
-
                 default:
                     notificationLevels = [];
+                    break;
             }
 
             //console.log("Notification levels are now: ", notificationLevels);
@@ -138,7 +136,7 @@ define([
             }
 
             var client = `<div class="card client" type="${type}" hostname="${hostname}" id="newClient_${id}">
-                        ${type} (${hostname}) <button type="button" class="btn btn-primary">trust</button>
+                        ${type} (${hostname}) <button type="button" class="btn btn-primary">${i18n["addTrustedClient"]}</button>
                         </div>`
 
             $("#newClientsDiv").append(client);
@@ -254,7 +252,6 @@ define([
                     return "info";
                 case "[DEBUG]":
                     return "default";
-
                 default:
                     return "default";
             }
@@ -267,9 +264,9 @@ define([
                     break;
                 case "sessionUpdated":
                     updateSession();
+                    break;
                 default:
                     break;
-
             }
         }
 

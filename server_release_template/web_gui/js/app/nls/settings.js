@@ -1,98 +1,162 @@
 define({
     "root": {
+        // Video tab
         "_root_video_tab.name": "Video",
-        "_root_audio_tab.name": "Audio",
-        "_root_headset_tab.name": "Headset",
-        "_root_connection_tab.name": "Connection",
-        "_root_video_adapterIndex.name": "GPU index",
+        "_root_video_adapterIndex.name": "GPU index", // adv
         "_root_video_displayRefreshRate.name": "Refresh rate",
         "_root_video_displayRefreshRate.description": "Refresh rate to set for both SteamVR and the headset. SteamVR will use the set value even if the headset doesn't support it. Higher values require faster PC. 72 Hz is the maximum for Quest 1.",
-        "_root_video_encodeBitrateMbs.name": "Video Bitrate",
-        "_root_video_encodeBitrateMbs.description": "Bitrate of video streaming. 30Mbps is recommended. \nHigher bitrates result in better image but also higher latency and network traffic ",
+        "_root_video_preferredFps.name": "Custom refresh rate", // adv
+        "_root_video_renderResolution-choice-.name": "Video encoding resolution base", // adv
+        "_root_video_renderResolution_scale-choice-.name": "Scale", // adv
+        "_root_video_renderResolution_absolute-choice-.name": "Absolute", // adv
+        "_root_video_renderResolution_scale.name": "Scale", // adv
+        "_root_video_recommendedTargetResolution-choice-.name": "Preferred game rendering resolution", // adv
+        "_root_video_recommendedTargetResolution_scale-choice-.name": "Scale", // adv
+        "_root_video_recommendedTargetResolution_absolute-choice-.name": "Absolute", // adv
+        "_root_video_recommendedTargetResolution_scale.name": "Scale", // adv
+        "_root_video_secondsFromVsyncToPhotons.name": "Seconds from VSync to image", // adv
+        "_root_video_secondsFromVsyncToPhotons.description": "The time elapsed from the virtual VSync until the image is visible on the viewer screen", // adv
+        "_root_video_ipd.name": "Interpupillary distance", // adv
+        "_root_video_ipd.description": "The distance between the eyes measured from the center of the pupils.", // adv
         "_root_video_resolutionDropdown.name": "Video resolution",
-        "_root_video_resolutionDropdown.description": `100% results in the native resolution of the Oculus Quest.
-        Setting the resolution can bring some improvement in visual quality, but is not recommended. 
-        A resolution lower than 100% can reduce latency and increase network performance`,
-        "_root_video_renderResolution-choice-.name": "Video encoding resolution base",
-        "_root_video_recommendedTargetResolution-choice-.name": "Preferred game rendering resolution",
-        "_root_video_ipd.name": "Interpupillary distance",
+        "_root_video_resolutionDropdown.description": "100% results in the native resolution of the Oculus Quest. \nSetting the resolution can bring some improvement in visual quality, but is not recommended. \nA resolution lower than 100% can reduce latency and increase network performance",
         "_root_video_foveatedRendering.name": "Foveated rendering",
-        "_root_video_foveatedRendering_enabled.description": `Technique where the center of the image is rendered in high resolution while the outskirts are rendered in lower resolution.
-        Results in a much lower video resolution that needs to be transmitted over the network.
-        The smaller video at the same bitrate can preserve more details and lowers the latency at the same time.
-        FFR causes some visual artifacts at the edges of the view that are more or less visible depending on the settings and the game`,
+        "_root_video_foveatedRendering.description": "Rendering technique that reduces the resolution of the image at the periphery of the vision to reduce the computational load on the GPU. Results in a much lower video resolution that needs to be transmitted over the network.", // must be the same as "_root_video_foveatedRendering_enabled.description"
+        "_root_video_foveatedRendering_enabled.description": "Rendering technique that reduces the resolution of the image at the periphery of the vision to reduce the computational load on the GPU. Results in a much lower video resolution that needs to be transmitted over the network.", // must be the same as "_root_video_foveatedRendering.description"
         "_root_video_foveatedRendering_content_strength.name": "Strength",
         "_root_video_foveatedRendering_content_strength.description": "Higher value means less detail toward the edges of the frame and more artifacts",
-        "_root_video_foveatedRendering_content_shape.description": "The shape of the foveated rendering",
+        "_root_video_foveatedRendering_content_shape.name": "Shape", // adv
+        "_root_video_foveatedRendering_content_shape.description": "The shape of the foveated rendering", // adv
         "_root_video_foveatedRendering_content_verticalOffset.name": "Vertical offset",
         "_root_video_foveatedRendering_content_verticalOffset.description": "Higher value means the high quality frame region is moved further down",
         "_root_video_colorCorrection.name": "Color correction",
+        "_root_video_colorCorrection.description": "Color correction are applied in the following order: Sharpening, Gamma, Brightness, Contrast, and Saturation.", // must be the same as "_root_video_colorCorrection_enabled.description"
+        "_root_video_colorCorrection_enabled.description": "Color correction are applied in the following order: Sharpening, Gamma, Brightness, Contrast, and Saturation.", // must be the same as "_root_video_colorCorrection.description"
         "_root_video_colorCorrection_content_brightness.name": "Brightness",
+        "_root_video_colorCorrection_content_brightness.description": "Brightness: -1 means completely black and 1 means completely white.",
         "_root_video_colorCorrection_content_contrast.name": "Contrast",
+        "_root_video_colorCorrection_content_contrast.description": "Contrast: -1 means completely gray.",
         "_root_video_colorCorrection_content_saturation.name": "Saturation",
+        "_root_video_colorCorrection_content_saturation.description": "Saturation: -1 means the image is black and white.",
         "_root_video_colorCorrection_content_gamma.name": "Gamma",
-        "_root_video_colorCorrection_content_gamma.description": "This controls the brightness but keeps blacks to black and whites to white",
+        "_root_video_colorCorrection_content_gamma.description": "Gamut: Use a value of 2.2 to correct the color from sRGB to RGB. This controls the brightness but keeps blacks to black and whites to white",
         "_root_video_colorCorrection_content_sharpening.name": "Sharpening",
+        "_root_video_colorCorrection_content_sharpening.description": "Sharpness: emphasizes the edges of the image.",
         "_root_video_codec-choice-.name": "Video codec",
         "_root_video_codec-choice-.description": "HEVC is preferred to achieve better visual quality on lower bitrates. AMD video cards work best with HEVC.",
         "_root_video_codec_H264-choice-.name": "h264",
         "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
-        "_root_video_clientRequestRealtimeDecoder.name": "Request realtime decoder priority (client)",
+        "_root_video_clientRequestRealtimeDecoder.name": "Request realtime decoder priority (client)", // adv
+        "_root_video_encodeBitrateMbs.name": "Video Bitrate",
+        "_root_video_encodeBitrateMbs.description": "Bitrate of video streaming. 30Mbps is recommended. \nHigher bitrates result in better image but also higher latency and network traffic ",
+        // Audio tab
+        "_root_audio_tab.name": "Audio",
         "_root_audio_gameAudio.name": "Stream game audio",
+        "_root_audio_gameAudio.description": "Stream the game audio to the headset", // must be the same as "_root_audio_gameAudio_enabled.description"
+        "_root_audio_gameAudio_enabled.description": "Stream the game audio to the headset", // must be the same as "_root_audio_gameAudio.description"
+        "_root_audio_gameAudio_content_deviceDropdown.name": "Audio device",
+        "_root_audio_gameAudio_content_deviceDropdown.description": "Select the audio device used to capture audio",
+        "_root_audio_gameAudio_content_device.name": "Audio device code", // adv
+        "_root_audio_gameAudio_content_device.description": "Enter the audio device code used to capture audio", // adv
         "_root_audio_gameAudio_content_muteWhenStreaming.name": "Mute output when streaming",
         "_root_audio_gameAudio_content_muteWhenStreaming.description": "Mutes the audio output (speakers/headphones) when streaming to the headset. Only the physical output is muted (to avoid double audio), stream to the headset and other capturing software will not be affected.",
-        "_root_audio_gameAudio_content_deviceDropdown.name": "Select audio device",
-        "_root_audio_gameAudio_content_deviceDropdown.description": "Audio device used to capture audio",
-        "_root_audio_microphone.name": "Stream microphone",
-        "_root_audio_microphone.description": "Streams the HMD microphone",
-        "_root_audio_microphone_content_deviceDropdown.name": "Select virtual microphone input",
-        "_root_audio_microphone_content_deviceDropdown.description": "To make the microphone work you need to install VB-Audio Virtual device or another equivalent software",
+        "_root_audio_microphone.name": "Stream headset microphone",
+        "_root_audio_microphone.description": "Streams the headset microphone to SteamVR. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software", // must be the same as "_root_audio_microphone_enabled.description"
+        "_root_audio_microphone_enabled.description": "Streams the headset microphone to SteamVR. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software", // must be the same as "_root_audio_microphone.description"
+        "_root_audio_microphone_content_deviceDropdown.name": "Virtual microphone input",
+        "_root_audio_microphone_content_deviceDropdown.description": "Select the virtual microphone input used to capture audio. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software",
+        "_root_audio_microphone_content_device.name": "Virtual microphone input code", // adv
+        "_root_audio_microphone_content_device.description": "Enter the virtual microphone input code used to capture audio. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software", // adv
+        // Headset tab
+        "_root_headset_tab.name": "Headset",
+        "_root_headset_headsetEmulationMode.name": "Headset emulation mode",
+        "_root_headset_headsetEmulationMode.description": "Emulates different headsets for better compatibility",
+        "_root_headset_universeId.name": "Universe ID", // adv
+        "_root_headset_serialNumber.name": "Serial number", // adv
+        "_root_headset_serialNumber.description": "Serial number of the emulated headset", // adv
+        "_root_headset_trackingSystemName.name": "Tracking system name", // adv
+        "_root_headset_trackingSystemName.description": "Name of the emulated headset tracking system", // adv
+        "_root_headset_modelNumber.name": "Model number", // adv
+        "_root_headset_modelNumber.description": "Model number of the emulated headset", // adv
+        "_root_headset_driverVersion.name": "Driver version", // adv
+        "_root_headset_driverVersion.description": "Driver version of the emulated headset", // adv
+        "_root_headset_manufacturerName.name": "Manufacturer name", // adv
+        "_root_headset_manufacturerName.description": "Manufacturer name of the emulated headset", // adv
+        "_root_headset_renderModelName.name": "Render model name", // adv
+        "_root_headset_renderModelName.description": "Render model name of the emulated headset", // adv
+        "_root_headset_registeredDeviceType.name": "Registered device type", // adv
+        "_root_headset_registeredDeviceType.description": "Registered device type of the emulated headset", // adv
         "_root_headset_trackingFrameOffset.name": "Tracking frame offset",
         "_root_headset_trackingFrameOffset.description": "Offset for the pose prediction algorithm",
-        "_root_headset_positionOffset.name": "HMD position offset",
-        "_root_headset_positionOffset_0.name": "x",
-        "_root_headset_positionOffset_1.name": "y",
-        "_root_headset_positionOffset_2.name": "z",
+        "_root_headset_positionOffset.name": "Headset position offset", // adv
+        "_root_headset_positionOffset.description": "Headset position offset used by the position prediction algorithm.", // adv
+        "_root_headset_positionOffset_0.name": "X", // adv
+        "_root_headset_positionOffset_1.name": "Y", // adv
+        "_root_headset_positionOffset_2.name": "Z", // adv
         "_root_headset_force3dof.name": "Force 3Dof",
         "_root_headset_force3dof.description": "Forces the 3 degrees of freedom mode (like Oculus Go)",
         "_root_headset_controllers.name": "Controllers",
-        "_root_headset_controllers_content_poseTimeOffset.name": "Pose time offset",
-        "_root_headset_controllers_content_poseTimeOffset.description": "Offset for the pose prediction algorithm",
-        "_root_headset_controllers_content_clientsidePrediction.name": "Client-side prediction",
-        "_root_headset_controllers_content_clientsidePrediction.description": "Whether controller position prediction is done on the headset (using Oculus API). Disabled means prediction is done on PC through SteamVR.",
-        "_root_headset_controllers_content_trackingSpeed.name" : "Tracking speed",
-        "_root_headset_controllers_content_trackingSpeed.description" : "For fast paced games like Beatsaber, choose medium or fast. For slower games like Skyrim leave it on normal.\nOculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
-        "_root_headset_controllers_content_positionOffsetLeft.name": "Position offset",
-        "_root_headset_controllers_content_positionOffsetLeft.description": "Position offset in meters for the left controller. \n For the right controller, x value is mirrored",
-        "_root_headset_controllers_content_positionOffsetLeft_0.name": "x",
-        "_root_headset_controllers_content_positionOffsetLeft_1.name": "y",
-        "_root_headset_controllers_content_positionOffsetLeft_2.name": "z",
-        "_root_headset_controllers_content_rotationOffsetLeft.name": "Rotation offset",
-        "_root_headset_controllers_content_rotationOffsetLeft.description": "Rotation offset in degrees for the left controller.\nFor the right controller, rotations along the Y and Z axes are mirrored",
-        "_root_headset_controllers_content_rotationOffsetLeft_0.name": "x",
-        "_root_headset_controllers_content_rotationOffsetLeft_1.name": "y",
-        "_root_headset_controllers_content_rotationOffsetLeft_2.name": "z",
-        "_root_headset_controllers_content_hapticsIntensity.name": "Haptics intensity",
-        "_root_headset_headsetEmulationMode.name": "Headset emulation mode",
-        "_root_headset_headsetEmulationMode.description": "Emulates different headsets for better compatibility",
+        "_root_headset_controllers.description": "Allow the use of the controllers", // must be the same as "_root_headset_controllers_enabled.description"
+        "_root_headset_controllers_enabled.description": "Allow the use of the controllers", // must be the same as "_root_headset_controllers.description"
         "_root_headset_controllers_content_controllerMode.name": "Controller emulation mode",
         "_root_headset_controllers_content_controllerMode.description": "Emulates different controller for better compatibility or enables hand tracking",
+        "_root_headset_controllers_content_modeIdx.name": "Mode Index", // adv
+        "_root_headset_controllers_content_modeIdx.description": "Mode index of the emulated controller", // adv
+        "_root_headset_controllers_content_trackingSystemName.name": "Tracking system name", // adv
+        "_root_headset_controllers_content_trackingSystemName.description": "Name of the emulated controller tracking system", // adv
+        "_root_headset_controllers_content_manufacturerName.name": "Manufacturer name", // adv
+        "_root_headset_controllers_content_manufacturerName.description": "Manufacturer name of the emulated controller", // adv
+        "_root_headset_controllers_content_modelNumber.name": "Model number", // adv
+        "_root_headset_controllers_content_modelNumber.description": "Model number of the emulated controller", // adv
+        "_root_headset_controllers_content_renderModelNameLeft.name": "Model number (Left hand)", // adv
+        "_root_headset_controllers_content_renderModelNameLeft.description": "Model number of the emulated left hand controller", // adv
+        "_root_headset_controllers_content_renderModelNameRight.name": "Model number (Right hand)", // adv
+        "_root_headset_controllers_content_renderModelNameRight.description": "Model number of the emulated right hand controller", // adv
+        "_root_headset_controllers_content_serialNumber.name": "Serial number", // adv
+        "_root_headset_controllers_content_serialNumber.description": "Serial number of the emulated controller", // adv
+        "_root_headset_controllers_content_ctrlType.name": "Controler type", // adv
+        "_root_headset_controllers_content_ctrlType.description": "Type of the emulated controller", // adv
+        "_root_headset_controllers_content_registeredDeviceType.name": "Registered device type", // adv
+        "_root_headset_controllers_content_registeredDeviceType.description": "Registered device type of the emulated controller", // adv
+        "_root_headset_controllers_content_inputProfilePath.name": "Input profile path", // adv
+        "_root_headset_controllers_content_inputProfilePath.description": "Input profile path of the emulated controller", // adv
+        "_root_headset_controllers_content_trackingSpeed.name": "Tracking speed",
+        "_root_headset_controllers_content_trackingSpeed.description": "For fast paced games like Beatsaber, choose medium or fast. For slower games like Skyrim leave it on normal.\nOculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
+        "_root_headset_controllers_content_poseTimeOffset.name": "Pose time offset", // adv
+        "_root_headset_controllers_content_poseTimeOffset.description": "Offset for the pose prediction algorithm", // adv
+        "_root_headset_controllers_content_positionOffsetLeft.name": "Position offset", // adv
+        "_root_headset_controllers_content_positionOffsetLeft.description": "Position offset in meters for the left controller. \n For the right controller, x value is mirrored", // adv
+        "_root_headset_controllers_content_positionOffsetLeft_0.name": "X", // adv
+        "_root_headset_controllers_content_positionOffsetLeft_1.name": "Y", // adv
+        "_root_headset_controllers_content_positionOffsetLeft_2.name": "Z", // adv
+        "_root_headset_controllers_content_rotationOffsetLeft.name": "Rotation offset", // adv
+        "_root_headset_controllers_content_rotationOffsetLeft.description": "Rotation offset in degrees for the left controller.\nFor the right controller, rotations along the Y and Z axes are mirrored", // adv
+        "_root_headset_controllers_content_rotationOffsetLeft_0.name": "X", // adv
+        "_root_headset_controllers_content_rotationOffsetLeft_1.name": "Y", // adv
+        "_root_headset_controllers_content_rotationOffsetLeft_2.name": "Z", // adv
+        "_root_headset_controllers_content_hapticsIntensity.name": "Haptics intensity",
+        "_root_headset_controllers_content_hapticsIntensity.description": "Factor to reduce or increase the intensity of the vibration of the controls.",
         "_root_headset_trackingSpace-choice-.name": "Tracking Space",
         "_root_headset_trackingSpace-choice-.description": "Sets what the headset uses as its reference for tracking and how the center of the space is defined. Stage tracking space behaves like a wired headset: the center of the space stays in one place after recentering the headset.",
         "_root_headset_trackingSpace_local-choice-.name": "Local (Headset centered)",
         "_root_headset_trackingSpace_stage-choice-.name": "Stage (Room centered)",
-        "_root_connection_autoTrustClients.name": "Trust clients automatically (not recommended)",
-        "_root_connection_listenPort.name": "Server streaming port",
-        "_root_connection_throttlingBitrateBits.name": "Maximum streaming bitrate",
-        "_root_connection_clientRecvBufferSize.name": "Client buffer size",
-        "_root_connection_clientRecvBufferSize.description": "Buffer size on client side.\n Depends on the bitrate.\n Calculated size is recommended. If you experience packet loss, enlarge buffer.",
-        "_root_connection_aggressiveKeyframeResend.name": "Aggressive keyframe resend",
-        "_root_connection_aggressiveKeyframeResend.description": `Decrease minimum interval between keyframes from 100 ms to 5 ms.
-        Used only when packet loss is detected. Improves experience on networks with packet loss.`,
+        // Connection tab
+        "_root_connection_tab.name": "Connection",
         "_root_connection_disableThrottling.name": "Disable throttling",
         "_root_connection_disableThrottling.description": "Disables the throttling. Send data as fast as possible",
         "_root_connection_bufferOffset.name": "Buffer offset",
         "_root_connection_bufferOffset.description": "Offset to increase or decrease the calculated client buffer size. The client buffer can not be negative",
+        "_root_connection_autoTrustClients.name": "Trust clients automatically (not recommended)", // adv
+        "_root_connection_webServerPort.name": "Web server port",
+        "_root_connection_listenPort.name": "Server streaming port", // adv
+        "_root_connection_listenPort.description": "Port used by the server to receive packets.", // adv
+        "_root_connection_throttlingBitrateBits.name": "Maximum streaming bitrate", // adv
+        "_root_connection_throttlingBitrateBits.description": "Maximum allowed bitrate in bit/s.", // adv
+        "_root_connection_clientRecvBufferSize.name": "Client buffer size", // adv
+        "_root_connection_clientRecvBufferSize.description": "Buffer size on client side.\n Depends on the bitrate.\n Calculated size is recommended. If you experience packet loss, enlarge buffer.", // adv
+        "_root_connection_aggressiveKeyframeResend.name": "Aggressive keyframe resend",
+        "_root_connection_aggressiveKeyframeResend.description": "Decrease minimum interval between keyframes from 100 ms to 5 ms. \nUsed only when packet loss is detected. \nImproves experience on networks with packet loss.",
+        // Extra tab
         "_root_extra_tab.name": "Extra",
         "_root_extra_theme-choice-.name": "Theme",
         "_root_extra_theme-choice-.description": "Come to the Dark Side.\n We have cookies.",
@@ -109,9 +173,15 @@ define({
         "_root_extra_updateChannel_beta-choice-.name": "Beta",
         "_root_extra_updateChannel_nightly-choice-.name": "Nightly",
         "_root_extra_logToDisk.name": "Log to disk (session_log.txt)",
-        "customVideoScale": "custom resolution",
-        "customTracking": "custom ",
-        "customRefreshRate": "custom ",
+        "_root_extra_notificationLevel-choice-.name": "Notification level", // adv
+        "_root_extra_notificationLevel-choice-.description": "At which level notification will be generated. From less details to all details: \n - Error \n - Warning \n - Informations \n - Debug", // adv
+        "_root_extra_notificationLevel_error-choice-.name": "Error", // adv
+        "_root_extra_notificationLevel_warning-choice-.name": "Warning", // adv
+        "_root_extra_notificationLevel_info-choice-.name": "Information", // adv
+        "_root_extra_notificationLevel_debug-choice-.name": "Debug", // adv
+        "_root_extra_excludeNotificationsWithoutId.name": "Exclude notifications without identification", // adv
+        "_root_extra_excludeNotificationsWithoutId.description": "Do not show notifications that do not contain the identification structure.", // adv
+        // Others
         "steamVRRestartSuccess": "SteamVR successfully restarted",
         "audioDeviceError": "No audio devices found. Cannot stream audio or microphone",
     },

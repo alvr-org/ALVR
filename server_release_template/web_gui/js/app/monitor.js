@@ -25,7 +25,6 @@ define([
 
             log_listener.onerror = (ev) => {
                 console.log("Log error", ev)
-                logInit();
             }
 
             log_listener.onclose = (ev) => {

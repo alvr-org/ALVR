@@ -206,6 +206,7 @@ void main()
         }
         outColor = vec4(0.8, 0.8, 1.0, 1.0) * coef + vec4(1.0, 1.0, 1.0, 1.0) * (1.0 - coef);
     }
+    %s
 }
 )glsl";
 
@@ -683,18 +684,20 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *s
 }
 
 
-void ovrRenderer_CreateScene(ovrRenderer *renderer) {
+void ovrRenderer_CreateScene(ovrRenderer *renderer, bool darkMode) {
     if (renderer->SceneCreated) {
         return;
     }
-    const char *fragment_shader_fmt = FRAGMENT_SHADER;
 
     std::string fragment_shader;
-    fragment_shader = string_format(fragment_shader_fmt,
+    fragment_shader = string_format(FRAGMENT_SHADER,
                                     renderer->enableFFR ? "sampler2D" : "samplerExternalOES");
-
     ovrProgram_Create(&renderer->Program, VERTEX_SHADER, fragment_shader.c_str());
-    ovrProgram_Create(&renderer->ProgramLoading, VERTEX_SHADER_LOADING, FRAGMENT_SHADER_LOADING);
+
+    fragment_shader = string_format(FRAGMENT_SHADER_LOADING,
+                                    darkMode ? "outColor.rgb = 1.0 - outColor.rgb;" : "");
+    ovrProgram_Create(&renderer->ProgramLoading, VERTEX_SHADER_LOADING, fragment_shader.c_str());
+
     ovrGeometry_CreatePanel(&renderer->Panel);
     ovrGeometry_CreateVAO(&renderer->Panel);
     renderer->SceneCreated = true;

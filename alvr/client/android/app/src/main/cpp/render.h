@@ -148,7 +148,7 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height,
 
 void ovrRenderer_Destroy(ovrRenderer *renderer);
 
-void ovrRenderer_CreateScene(ovrRenderer *renderer);
+void ovrRenderer_CreateScene(ovrRenderer *renderer, bool darkMode);
 
 // Set up an OVR frame, render it, and submit it.
 ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,

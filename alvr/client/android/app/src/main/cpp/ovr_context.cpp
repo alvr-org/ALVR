@@ -169,7 +169,7 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
 
     ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.streamTexture.get(),
                        g_ctx.loadingTexture, {false});
-    ovrRenderer_CreateScene(&g_ctx.Renderer);
+    ovrRenderer_CreateScene(&g_ctx.Renderer, false);
 
     memset(g_ctx.mHapticsState, 0, sizeof(g_ctx.mHapticsState));
 
@@ -661,7 +661,6 @@ void sendMicData() {
 }
 
 void onResumeNative(void *v_env, void *v_surface) {
-    auto *env = (JNIEnv *) v_env;
     auto surface = (jobject) v_surface;
 
     g_ctx.window = ANativeWindow_fromSurface(g_ctx.env, surface);
@@ -723,7 +722,7 @@ void onStreamStartNative(int width, int height, int refreshRate, unsigned char s
                        g_ctx.loadingTexture,
                        {(bool) foveationMode, (uint32_t) eyeWidth, (uint32_t) height,
                         EyeFov(), foveationStrength, foveationShape, foveationVerticalOffset});
-    ovrRenderer_CreateScene(&g_ctx.Renderer);
+    ovrRenderer_CreateScene(&g_ctx.Renderer, false);
 
     ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, (float) refreshRate);
     if (result != ovrSuccess) {

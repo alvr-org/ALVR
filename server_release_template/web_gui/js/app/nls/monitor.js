@@ -12,8 +12,12 @@ define({
         "manAddClient": "Manually add client",
         "addClient": "Add client",
         "clientType": "Type",
+        "deviceName": "Device name",
+        "deviceNameHelp": "Give your HMD a name",
+        "clientHostname": "Hostname",
+        "clientHostnameHelp": "As displayed when opening the ALVR client on your device",
         "ipAddress": "IP-Address",
-        "ipHelp": "Enter know IP-address of the HMD",
+        "ipHelp": "Enter IP-address of the HMD",
         "addClientButton": "Add client",
         "troubleshooting": `Is your headset not showing up? Visit our troubleshooting page <a href="https://github.com/alvr-org/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">here</a>`,
         // Statistics container

@@ -53,28 +53,9 @@ define([
             $(document).ready(() => {
                 logInit();
                 initNotificationLevel();
+                initAddClientModal(template2);
 
                 updateClients();
-
-                $("#showAddClientModal").click(() => {
-                    $("#addClientModal").remove();
-                    $("body").append(template2);
-                    $(document).ready(() => {
-                        $('#addClientModal').modal({
-                            backdrop: 'static',
-                            keyboard: false
-                        });
-                        $("#clientAddButton").click(() => {
-                            //TODO: input validation
-                            const type = $("#clientTypeSelect").val();
-                            const ip = $("#clientIP").val();
-                            //manualAddClient(type, ip)
-                            $('#addClientModal').modal('hide');
-                            $('#addClientModal').remove();
-                        })
-                    });
-                })
-
             });
         }
 
@@ -122,18 +103,44 @@ define([
 
         }
 
+        function initAddClientModal(template){
+            $("#showAddClientModal").click(() => {
+                $("#addClientModal").remove();
+                $("body").append(template);
+
+                $(document).ready(() => {
+                    $('#addClientModal').modal({
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                    $("#clientAddButton").click(() => {
+                        const deviceName = $("#deviceName").val();
+                        const clientHostname = $("#clientHostname").val();                            
+                        const ip = $("#clientIP").val();
+                        
+                        if (!validateHostname(clientHostname))
+                            return;
+
+                        if (!validateIPv4address(ip))
+                            return;
+
+                        $.ajax({
+                            type: "POST",
+                            url: `client/add`,
+                            contentType: "application/json;charset=UTF-8",
+                            data: JSON.stringify([deviceName, clientHostname, ip]),
+                        });
+
+                        $('#addClientModal').modal('hide');
+                        $('#addClientModal').remove();
+                    })
+                });
+            })
+        }
+
         function addNewClient(type, hostname) {
-            const id = hostname.replace(/\./g, '');
-
-            if ($("#newClient_" + id).length > 0) {
-                console.warn("Client already in new list:", type, hostname);
+            if (!validateHostname(hostname))
                 return;
-            }
-
-            if ($("#trustedClient_" + id).length > 0) {
-                console.warn("Client already in trusted list:", type, hostname);
-                return;
-            }
 
             var client = `<div class="card client" type="${type}" hostname="${hostname}" id="newClient_${id}">
                         ${type} (${hostname}) <button type="button" class="btn btn-primary">${i18n["addTrustedClient"]}</button>
@@ -153,17 +160,8 @@ define([
         }
 
         function addTrustedClient(type, hostname) {
-            const id = hostname.replace(/\./g, '');
-
-            if ($("#newClient_" + id).length > 0) {
-                console.warn("Client already in new list:", type, hostname);
+            if (!validateHostname(hostname))
                 return;
-            }
-
-            if ($("#trustedClient_" + id).length > 0) {
-                console.warn("Client already in trusted list:", type, hostname);
-                return;
-            }
 
             var client = `<div class="card client" type="${type}" hostname="${hostname}" id="trustedClient_${id}">
                         ${type} (${hostname}) <button type="button" class="btn btn-primary">${i18n["removeTrustedClient"]}</button>
@@ -181,6 +179,29 @@ define([
                 })
             });
         }
+
+        function validateHostname(hostname){
+            const id = hostname.replace(/\./g, '');
+
+            if ($("#newClient_" + id).length > 0) {
+                console.warn("Client already in new list:", type, hostname);
+                return false;
+            }
+
+            if ($("#trustedClient_" + id).length > 0) {
+                console.warn("Client already in trusted list:", type, hostname);
+                return false;
+            }
+            return true;
+        }
+
+        function validateIPv4address(ipaddress) {  
+            if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ipaddress)) {  
+              return true;
+            }  
+            console.warn("The IP address is invalid.");
+            return false;
+          }  
 
         function addLogLine(line) {
             var idObject = undefined;

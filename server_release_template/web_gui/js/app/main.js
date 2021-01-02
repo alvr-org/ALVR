@@ -23,10 +23,21 @@ define([
 
         $("#bodyContent").append(template);
         $(document).ready(() => {
-            $('#loading').remove();
+            $("#loading").remove();
 
             try {
                 var settings = new Settings();
+                
+                // update the current language on startup
+                let storedLocale = localStorage.getItem("locale");
+                let sessionLocale = session.locale;
+                $("#localeChange").val(storedLocale);
+                if (sessionLocale !== storedLocale) {
+                    storedLocale = sessionLocale;
+                    localStorage.setItem("locale", storedLocale);
+                    window.location.reload();
+                }
+
                 var wizard = new SetupWizard(settings);
                 var monitor = new Monitor(settings);
             } catch (error) {
@@ -36,7 +47,7 @@ define([
                     delayIndicator: false,
                     sound: false,
                     position: "bottom left",
-                    iconSource: 'fontAwesome',
+                    iconSource: "fontAwesome",
                     msg: error.stack,
                     closable: true,
                     messageHeight: 250,
@@ -101,13 +112,13 @@ define([
                             onClick: function(){
                                 $.ajax({
                                     headers: { 
-                                        'Accept': 'application/json',
-                                        'Content-Type': 'application/json' 
+                                        "Accept": "application/json",
+                                        "Content-Type": "application/json" 
                                     },
-                                    'type': 'POST',
-                                    'url': "/open",
-                                    'data': JSON.stringify("https://github.com/alvr-org/ALVR/releases/latest"),
-                                    'dataType': 'JSON'
+                                    "type": "POST",
+                                    "url": "/open",
+                                    "data": JSON.stringify("https://github.com/alvr-org/ALVR/releases/latest"),
+                                    "dataType": "JSON"
                                 })
                             }
                         })
@@ -115,12 +126,17 @@ define([
                 })
             })
 
+            $("#localeChange").change(() => {
+                storedLocale = $("#localeChange").val();
+                localStorage.setItem("locale", storedLocale);
+                session.locale = storedLocale;
+                settings.storeSession("other");
+                window.location.reload();
+            })
+
             $("#version").text("v" + version);
 
             driverList.fillDriverList("registeredDriversInst");
-
-            
-
 
         });
     });

@@ -101,7 +101,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "1.0.0"
+version = "14.0.0"
 dependencies = [
  "alvr_xtask",
  "backtrace",

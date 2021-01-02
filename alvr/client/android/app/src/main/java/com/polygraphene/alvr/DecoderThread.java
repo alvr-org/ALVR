@@ -6,7 +6,7 @@ import android.media.MediaFormat;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.view.Surface;
 
 import java.io.IOException;

@@ -14,8 +14,6 @@ static const int MAX_PACKET_UDP_PACKET_SIZE = 2000;
 static const int ALVR_GUARDIAN_SEGMENT_SIZE = 100;
 static const double ALVR_GUARDIAN_RESEND_CD_SEC = 1.0;
 
-static const char *ALVR_VERSION = ALVR_CLIENT_VERSION; // defined through client's build.rs
-
 enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_HELLO_MESSAGE = 1,
 	ALVR_PACKET_TYPE_CONNECTION_MESSAGE = 2,

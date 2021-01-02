@@ -121,6 +121,14 @@ pub struct VideoDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+pub struct AudioConfig {
+    pub preferred_channels_count: u16,
+    pub preferred_sample_rate: u32,
+    pub preferred_buffer_size: u32,
+    // sample_format: support only unsigned 16 bit for now
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputAudioDesc {
     // deviceDropdown should poll the available audio devices and set "device"

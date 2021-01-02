@@ -2,6 +2,7 @@ apply plugin: 'com.android.application'
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
 android {
+    buildToolsVersion = '30.0.1'
     compileSdkVersion 30
     defaultConfig {
         applicationId "com.polygraphene.alvr"
@@ -40,20 +41,28 @@ android {
             jniLibs.srcDirs = ["src/main/jniLibs"]
         }
     }
-    // Remove osig file from release apk
-    applicationVariants.all { variant ->
-        if (variant.buildType.name == 'release') {
-            variant.mergeAssetsProvider.get().doLast {
-                delete(fileTree(dir: variant.mergeAssets.outputDir, includes: ['oculussig_*']))
-            }
-        }
-    }
-
     compileOptions {
         sourceCompatibility = '1.8'
         targetCompatibility = '1.8'
     }
-    buildToolsVersion = '30.0.1'
+
+    flavorDimensions "headset", "package"
+    productFlavors {
+        OculusQuest {
+            dimension "headset"
+        }
+        OculusGo {
+            dimension "headset"
+        }
+        Stable {
+            dimension "package"
+            applicationId "com.polygraphene.alvr"
+        }
+        Nightly {
+            dimension "package"
+            applicationId "com.alvr.client.nightly"
+        }
+    }
 }
 
 dependencies {
@@ -81,7 +90,7 @@ cargo {
 }
 
 tasks.whenTaskAdded { task ->
-    if ((task.name == 'javaPreCompileDebug' || task.name == 'javaPreCompileRelease')) {
+    if (task.name.startsWith('javaPreCompile')) {
         task.dependsOn 'cargoBuild'
     }
 }

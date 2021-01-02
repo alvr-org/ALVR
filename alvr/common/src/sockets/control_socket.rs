@@ -140,7 +140,7 @@ pub async fn connect_to_server<S: Serialize, R: DeserializeOwned>(
     let client_handshake_packet = trace_err!(bincode::serialize(&HandshakePacket::Client(
         ClientHandshakePacket {
             alvr_name: ALVR_NAME.into(),
-            version: ALVR_CLIENT_VERSION.clone(),
+            version: ALVR_VERSION.clone(),
             device_name,
             hostname,
             certificate_pem,

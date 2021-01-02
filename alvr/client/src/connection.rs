@@ -51,7 +51,7 @@ async fn set_loading_message(
 ) -> StrResult {
     let message = format!(
         "ALVR v{}\nhostname: {}\n \n{}",
-        ALVR_CLIENT_VERSION.to_string(),
+        ALVR_VERSION.to_string(), 
         hostname,
         message
     );

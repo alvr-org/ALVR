@@ -193,7 +193,7 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/version" => Response::new(ALVR_SERVER_VERSION.to_string().into()),
+        "/version" => Response::new(ALVR_VERSION.to_string().into()),
         "/open" => {
             if let Ok(url) = from_request_body::<String>(request).await {
                 webbrowser::open(&url).ok();

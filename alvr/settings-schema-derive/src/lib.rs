@@ -440,7 +440,7 @@ fn get_case(attrs: Vec<Attribute>) -> Result<Option<String>, TokenStream> {
     Ok(None)
 }
 
-fn case_transform<'a>(input: &'a str, format: Option<&str>) -> String {
+fn case_transform(input: &str, format: Option<&str>) -> String {
     match format {
         Some("camelCase") => input.to_mixed_case(),
         Some("snake_case") => input.to_snake_case(),

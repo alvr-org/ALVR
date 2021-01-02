@@ -6,6 +6,7 @@ struct OnCreateResult {
 };
 
 enum class DeviceType {
+    OCULUS_GO,
     OCULUS_QUEST,
     OCULUS_QUEST_2,
     UNKNOWN,

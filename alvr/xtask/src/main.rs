@@ -13,7 +13,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
-use version::{bump_versions, bump_versions_nightly};
+use version::bump_version;
 
 const HELP_STR: &str = r#"
 cargo xtask
@@ -33,6 +33,10 @@ SUBCOMMANDS:
 
 FLAGS:
     --release           Optimized build without debug info. Used only for build subcommands
+    --nightly           Bump versions to nightly and build. Used only for publish subcommand
+    --oculus-quest      Oculus Quest build. Used only for build-client subcommand
+    --oculus-go         Oculus Go build. Used only for build-client subcommand
+    --version <version> Specify version for bump-versions subcommand
     --help              Print this text
 
 ARGS:
@@ -44,9 +48,10 @@ type BResult<T = ()> = Result<T, Box<dyn Error>>;
 
 struct Args {
     is_release: bool,
-    server_version: Option<String>,
-    client_version: Option<String>,
-    nightly_version: bool,
+    version: Option<String>,
+    is_nightly: bool,
+    for_oculus_quest: bool,
+    for_oculus_go: bool,
 }
 
 #[cfg(target_os = "linux")]
@@ -273,13 +278,22 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool) {
     // }
 }
 
-pub fn build_client(is_release: bool) {
-    let build_type = if is_release { "release" } else { "debug" };
-    let build_task = if is_release {
-        "assembleRelease"
+pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
+    let headset_name = if for_oculus_go {
+        "oculus_go"
     } else {
-        "assembleDebug"
+        "oculus_quest"
     };
+
+    let headset_type = if for_oculus_go {
+        "OculusGo"
+    } else {
+        "OculusQuest"
+    };
+    let package_type = if is_nightly { "Nightly" } else { "Stable" };
+    let build_type = if is_release { "release" } else { "debug" };
+
+    let build_task = format!("assemble{}{}{}", headset_type, package_type, build_type);
 
     let client_dir = workspace_dir().join("alvr/client/android");
     let command_name = if cfg!(not(windows)) {
@@ -297,18 +311,25 @@ pub fn build_client(is_release: bool) {
     fs::copy(
         client_dir
             .join("app/build/outputs/apk")
+            .join(format!("{}{}", headset_type, package_type))
             .join(build_type)
-            .join(format!("app-{}.apk", build_type)),
-        build_dir().join("alvr_client.apk"),
+            .join(format!(
+                "app-{}-{}-{}.apk",
+                headset_type, package_type, build_type
+            )),
+        build_dir().join(format!("alvr_client_{}.apk", headset_name)),
     )
     .unwrap();
 }
 
 fn download_vc_redist() {
-    if ! Path::new("target/wix/VC_redist.x64.exe").is_file() {
+    if !Path::new("target/wix/VC_redist.x64.exe").is_file() {
         println!("Downloading Microsoft Visual C++ redistributable for bundling...");
         let mut vcredist = fs::File::create("target/wix/VC_redist.x64.exe").unwrap();
-        reqwest::blocking::get("https://aka.ms/vs/16/release/vc_redist.x64.exe").unwrap().copy_to(&mut vcredist).unwrap();
+        reqwest::blocking::get("https://aka.ms/vs/16/release/vc_redist.x64.exe")
+            .unwrap()
+            .copy_to(&mut vcredist)
+            .unwrap();
     } else {
         println!("Found existing VC_redist.x64.exe - will use that.");
     }
@@ -320,7 +341,7 @@ fn build_installer(wix_path: &str) {
     let candle_cmd = wix_path.join("candle.exe");
     let light_cmd = wix_path.join("light.exe");
 
-    let mut version = Version::parse(&alvr_xtask::server_version()).unwrap();
+    let mut version = Version::parse(&alvr_xtask::version()).unwrap();
     // Clear away build and prerelease version specifiers, MSI can have only dot-separated numbers.
     version.pre.clear();
     version.build.clear();
@@ -414,7 +435,8 @@ fn build_installer(wix_path: &str) {
 
 pub fn build_publish(is_nightly: bool) {
     build_server(true, is_nightly, false);
-    build_client(true);
+    build_client(!is_nightly, is_nightly, false);
+    build_client(!is_nightly, is_nightly, true);
     zip_dir(&server_build_dir()).unwrap();
 
     if cfg!(windows) {
@@ -450,24 +472,30 @@ fn main() {
     } else if let Ok(Some(subcommand)) = args.subcommand() {
         let args_values = Args {
             is_release: args.contains("--release"),
-            server_version: args.opt_value_from_str("--server").unwrap(),
-            client_version: args.opt_value_from_str("--client").unwrap(),
-            nightly_version: args.contains("--nightly"),
+            version: args.opt_value_from_str("--version").unwrap(),
+            is_nightly: args.contains("--nightly"),
+            for_oculus_quest: args.contains("--oculus-quest"),
+            for_oculus_go: args.contains("--oculus-go"),
         };
         if args.finish().is_ok() {
             match subcommand.as_str() {
                 "install-deps" => install_deps(),
                 "build-server" => build_server(args_values.is_release, false, true),
-                "build-client" => build_client(args_values.is_release),
-                "publish" => build_publish(args_values.nightly_version),
+                "build-client" => {
+                    if (args_values.for_oculus_quest && args_values.for_oculus_go)
+                        || (!args_values.for_oculus_quest && !args_values.for_oculus_go)
+                    {
+                        build_client(args_values.is_release, false, false);
+                        build_client(args_values.is_release, false, true);
+                    } else {
+                        build_client(args_values.is_release, false, args_values.for_oculus_go);
+                    }
+                }
+                "publish" => build_publish(args_values.is_nightly),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
                 "bump-versions" => {
-                    if args_values.nightly_version {
-                        bump_versions_nightly()
-                    } else {
-                        bump_versions(args_values.server_version, args_values.client_version)
-                    }
+                    bump_version(args_values.version.as_deref(), args_values.is_nightly)
                 }
                 _ => {
                     println!("\nUnrecognized subcommand.");

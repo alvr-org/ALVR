@@ -140,7 +140,9 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
 
         let result = onResumeNative(*jscreen_surface as _, dark_mode == 1);
 
-        let device_name = if result.deviceType == DeviceType_OCULUS_QUEST {
+        let device_name = if result.deviceType == DeviceType_OCULUS_GO {
+            "Oculus Go"
+        } else if result.deviceType == DeviceType_OCULUS_QUEST {
             "Oculus Quest"
         } else if result.deviceType == DeviceType_OCULUS_QUEST_2 {
             "Oculus Quest 2"

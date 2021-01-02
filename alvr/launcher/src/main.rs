@@ -73,20 +73,14 @@ fn get_latest_server_release(update_channel: UpdateChannel) -> StrResult<(Releas
         .repo_name(if matches!(update_channel, UpdateChannel::Nightly) {
             "ALVR-nightly"
         } else {
-            ALVR_NAME
+            "ALVR"
         })
         .build())?;
 
     let wants_prereleases = !matches!(update_channel, UpdateChannel::Stable);
-
     for release in trace_err!(release_list.fetch())? {
         let version = trace_err!(Version::parse(&release.version))?;
-        let is_server = version
-            .build
-            .get(0)
-            .map(|b| b.to_string() != "client")
-            .unwrap_or(true);
-        if is_server && (!version.is_prerelease() || wants_prereleases) {
+        if !version.is_prerelease() || wants_prereleases {
             return Ok((release, version));
         }
     }
@@ -98,7 +92,7 @@ fn get_server_update(update_channel: UpdateChannel) -> Option<(Release, Version)
     if matches!(update_channel, UpdateChannel::NoUpdates) {
         None
     } else {
-        let current_version_string = ALVR_SERVER_VERSION.to_string();
+        let current_version_string = ALVR_VERSION.to_string();
         let current_nightly_tag = if let Some(index) = current_version_string.find("nightly") {
             &current_version_string[index..]
         } else {
@@ -116,7 +110,7 @@ fn get_server_update(update_channel: UpdateChannel) -> Option<(Release, Version)
                 };
 
                 // != operator ignores build metadata (such as nightly)
-                *version != *ALVR_SERVER_VERSION || new_nightly_tag != current_nightly_tag
+                *version != *ALVR_VERSION || new_nightly_tag != current_nightly_tag
             })
     }
 }

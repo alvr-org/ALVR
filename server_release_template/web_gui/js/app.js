@@ -1,4 +1,4 @@
-var storedLocale = localStorage.getItem('i18nLocale');
+var storedLocale = localStorage.getItem('locale');
 console.log('storedLocale', storedLocale);
 
 requirejs.config({

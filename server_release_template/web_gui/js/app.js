@@ -18,6 +18,13 @@ requirejs.config({
     shim: {
         'js/lib/lobibox.min.js': {
             deps: ['jquery']
+        },
+        'js/lib/d3.js': {
+            exports: 'd3'
+        },
+        'js/lib/epoch.js': {
+            deps: ['js/lib/d3.js'],
+            exports: 'jQuery.fn.epoch'
         }
     }
 });

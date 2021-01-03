@@ -1,12 +1,13 @@
 define([
     "text!app/templates/addClientModal.html",
+    "text!app/templates/configureClientModal.html",
     "text!app/templates/monitor.html",
     "json!../../session",
     "lib/lodash",
     "i18n!app/nls/monitor",
     "i18n!app/nls/notifications",
     "css!app/templates/monitor.css"
-], function(addClientModalTemplate, monitorTemplate, session, _, i18n, i18nNotifications) {
+], function(addClientModalTemplate, configureClientModalTemplate, monitorTemplate, session, _, i18n, i18nNotifications) {
     return function(alvrSettings) {
 
         var notificationLevels = [];
@@ -46,14 +47,14 @@ define([
             var template = compiledTemplate(i18n);
 
             compiledTemplate = _.template(addClientModalTemplate);
-            var template2 = compiledTemplate(i18n);
+            var templateAddClient = compiledTemplate(i18n);
 
             $("#monitor").append(template);
 
             $(document).ready(() => {
                 logInit();
                 initNotificationLevel();
-                initAddClientModal(template2);
+                initAddClientModal(templateAddClient);
 
                 updateClients();
             });
@@ -118,11 +119,15 @@ define([
                         const clientHostname = $("#clientHostname").val();                            
                         const ip = $("#clientIP").val();
                         
-                        if (!validateHostname(clientHostname))
+                        if (!validateHostname(clientHostname)){
+                            Lobibox.notify("error", { msg: i18n["error_DuplicateHostname"] });
                             return;
-
-                        if (!validateIPv4address(ip))
+                        }
+                        
+                        if (!validateIPv4address(ip)){
+                            Lobibox.notify("errror", { msg: i18n["error_InvalidIp"] });
                             return;
+                        }
 
                         $.ajax({
                             type: "POST",
@@ -133,14 +138,68 @@ define([
 
                         $('#addClientModal').modal('hide');
                         $('#addClientModal').remove();
-                    })
+                    });
                 });
             })
+        }
+
+        function initConfigureClientModal(hostname) {   
+            const id = hostname.replace(/\./g, '');  
+            $("#btnConfigureClient_" + id).click(() => {      
+
+                var knownIps = session.clientConnections[hostname].manualIps;
+                compiledTemplate = _.template(configureClientModalTemplate);
+                templateConfigureClient = compiledTemplate({ 'i18n': i18n, 'knownIps': knownIps });
+            
+                $("#addClientModal").remove();
+                $("body").append(templateConfigureClient);
+
+                $(document).ready(() => {
+                    $('#configureClientModal').modal({
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+
+                    $("#addNewIpAddressButton").click(() => {
+                        const ip = $("#newIpAddress").val();
+
+                        if (!validateIPv4address(ip)) {
+                            Lobibox.notify("error", { msg: i18n["error_InvalidIp"] });
+                            return;
+                        }
+
+                        $.ajax({
+                            type: "POST",
+                            url: `/client/add`,
+                            contentType: "application/json;charset=UTF-8",
+                            data: JSON.stringify([hostname, ip]),
+                        });
+
+                        $('#configureClientModal').modal('hide');
+                        $('#configureClientModal').remove();
+                    });
+
+                    $(".removeIpAddressButton").click((evt) => {
+                        var ip = $(evt.target).attr("data-ip");
+
+                        $.ajax({
+                            type: "POST",
+                            url: `/client/remove`,
+                            contentType: "application/json;charset=UTF-8",
+                            data: JSON.stringify([hostname, ip]),
+                        });
+
+                        $(evt.target).parent().remove();
+                    });
+                })
+            });
         }
 
         function addNewClient(type, hostname) {
             if (!validateHostname(hostname))
                 return;
+
+            const id = hostname.replace(/\./g, '');
 
             var client = `<div class="card client" type="${type}" hostname="${hostname}" id="newClient_${id}">
                         ${type} (${hostname}) <button type="button" class="btn btn-primary">${i18n["addTrustedClient"]}</button>
@@ -162,14 +221,19 @@ define([
         function addTrustedClient(type, hostname) {
             if (!validateHostname(hostname))
                 return;
+                
+            const id = hostname.replace(/\./g, '');
 
             var client = `<div class="card client" type="${type}" hostname="${hostname}" id="trustedClient_${id}">
-                        ${type} (${hostname}) <button type="button" class="btn btn-primary">${i18n["removeTrustedClient"]}</button>
+                        ${type} (${hostname})
+                        <button type="button" id="btnRemoveTrustedClient_${id}" class="btn btn-primary">${i18n["removeTrustedClient"]}</button>
+                        <button type="button" id="btnConfigureClient_${id}" class="btn btn-primary">${i18n["configureClient"]}</button>
                         </div>`
 
             $("#trustedClientsDiv").append(client);
+
             $(document).ready(() => {
-                $("#trustedClient_" + id + " button").click(() => {
+                $("#btnRemoveTrustedClient_" + id).click(() => {
                     $.ajax({
                         type: "POST",
                         url: `client/remove`,
@@ -178,6 +242,8 @@ define([
                     });
                 })
             });
+
+            initConfigureClientModal(hostname);
         }
 
         function validateHostname(hostname){

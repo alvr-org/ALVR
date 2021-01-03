@@ -20,6 +20,9 @@ define({
         "ipHelp": "Enter IP-address of the HMD",
         "addClientButton": "Add client",
         "troubleshooting": `Is your headset not showing up? Visit our troubleshooting page <a href="https://github.com/alvr-org/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">here</a>`,
+        //Configure client page
+        "configureClient": "Configure client",
+        "configureClientAddIp": "Add new IP",
         // Statistics container
         "statistics": "Streaming Statistics",
         "totalPackets": "Total Packets",
@@ -42,6 +45,9 @@ define({
         "packetss": "Packets / s",
         // Logging tab
         "logging": "Logging",
+        //validation errors        
+        "error_DuplicateHostname": "A device with this hostname is already connected",
+        "error_InvalidIp": "Not a valid IP v4 formatted address",
     },
     "it": true,
     "es": true,

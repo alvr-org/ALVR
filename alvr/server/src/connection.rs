@@ -338,6 +338,7 @@ pub async fn connection_lifecycle_loop() -> StrResult {
             loop {
                 match control_receiver.recv().await {
                     Ok(ClientControlPacket::PlayspaceSync(packet)) => {
+                        error!("{}", packet.area_width);
                         let transform =
                             packet.rotation * Translation3::from(packet.position.coords);
                         // transposition is done to switch from column major to row major

@@ -11,15 +11,18 @@ void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
 {
 	if (perimeterPointsCount == 0)
 	{
+		areaWidth = 2.0f;
+		areaHeight = 2.0f;
+
 		static float standingPerimeterPointsBuffer[4][2];
-		standingPerimeterPointsBuffer[0][0] = -areaWidth / 2.0f;
-		standingPerimeterPointsBuffer[0][1] = -areaHeight / 2.0f;
-		standingPerimeterPointsBuffer[1][0] = -areaWidth / 2.0f;
-		standingPerimeterPointsBuffer[1][1] = areaHeight / 2.0f;
-		standingPerimeterPointsBuffer[2][0] = areaWidth / 2.0f;
-		standingPerimeterPointsBuffer[2][1] = areaHeight / 2.0f;
-		standingPerimeterPointsBuffer[3][0] = areaWidth / 2.0f;
-		standingPerimeterPointsBuffer[3][1] = -areaHeight / 2.0f;
+		standingPerimeterPointsBuffer[0][0] = -1.0f;
+		standingPerimeterPointsBuffer[0][1] = -1.0f;
+		standingPerimeterPointsBuffer[1][0] = -1.0f;
+		standingPerimeterPointsBuffer[1][1] = 1.0f;
+		standingPerimeterPointsBuffer[2][0] = 1.0f;
+		standingPerimeterPointsBuffer[2][1] = 1.0f;
+		standingPerimeterPointsBuffer[3][0] = 1.0f;
+		standingPerimeterPointsBuffer[3][1] = -1.0f;
 
 		perimeterPoints = standingPerimeterPointsBuffer;
 		perimeterPointsCount = 4;
@@ -48,11 +51,11 @@ void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
 	vr::VR_Shutdown();
 }
 
-void SetChaperoneStanding(float boxSide)
+void SetDefaultChaperone()
 {
 	float transform[12] = {1, 0, 0, 0,
 						   0, 1, 0, 1.5,
 						   0, 0, 1, 0};
 
-	SetChaperone(transform, boxSide, boxSide, nullptr, 0);
+	SetChaperone(transform, 0, 0, nullptr, 0);
 }

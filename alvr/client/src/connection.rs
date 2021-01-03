@@ -51,7 +51,7 @@ async fn set_loading_message(
 ) -> StrResult {
     let message = format!(
         "ALVR v{}\nhostname: {}\n \n{}",
-        ALVR_VERSION.to_string(), 
+        ALVR_VERSION.to_string(),
         hostname,
         message
     );
@@ -207,6 +207,7 @@ async fn try_connect(
                     server_ip_cstring.as_ptr(),
                     matches!(baseline_settings.video.codec, CodecType::HEVC) as _,
                     baseline_settings.connection.client_recv_buffer_size as _,
+                    baseline_settings.connection.enable_fec,
                 );
 
                 while is_connected.load(Ordering::Relaxed) {

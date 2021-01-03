@@ -52,7 +52,7 @@ extern "C" GuardianData getGuardianData();
 
 extern "C" void
 initializeSocket(void *env, void *instance, void *nalClass, const char *ip, unsigned int codec,
-                 unsigned int bufferSize);
+                 unsigned int bufferSize, bool enableFEC);
 extern "C" unsigned char isConnectedNative();
 extern "C" void runSocketLoopIter();
 extern "C" void sendNative(long long nativeBuffer, int bufferLength);

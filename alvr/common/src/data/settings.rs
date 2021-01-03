@@ -285,6 +285,9 @@ pub struct ConnectionDesc {
     pub client_recv_buffer_size: u64,
 
     pub aggressive_keyframe_resend: bool,
+
+    #[schema(advanced)]
+    pub enable_fec: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -438,6 +441,7 @@ pub fn session_settings_default() -> SettingsDefault {
             throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,
             client_recv_buffer_size: 60_000,
             aggressive_keyframe_resend: false,
+            enable_fec: true,
         },
         extra: ExtraDescDefault {
             theme: ThemeDefault {

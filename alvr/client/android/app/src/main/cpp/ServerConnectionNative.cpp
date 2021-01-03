@@ -78,7 +78,7 @@ namespace {
 }
 
 void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, const char *ip,
-                      unsigned int codec, unsigned int bufferSize) {
+                      unsigned int codec, unsigned int bufferSize, bool enableFEC) {
     auto *env = (JNIEnv *) v_env;
     auto *instance = (jobject) v_instance;
     auto *nalClass = (jclass) v_nalClass;
@@ -98,7 +98,7 @@ void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, const cha
     g_socket.mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
     env->DeleteLocalRef(clazz);
 
-    g_socket.m_nalParser = std::make_shared<NALParser>(env, instance, nalClass);
+    g_socket.m_nalParser = std::make_shared<NALParser>(env, instance, nalClass, enableFEC);
 
 
     //

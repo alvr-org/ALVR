@@ -39,8 +39,8 @@ define({
         "fecPercentage": "Fec percentage",
         "fecFailureTotal": "Fec failure total",
         "fecFailureInSecond": "Fec failure / s",
-        "clientFPS": "Client fps",
-        "serverFPS": "Server fps",
+        "clientFPS": "Client FPS",
+        "serverFPS": "Server FPS",
         "packets": "Packets",
         "packetss": "Packets / s",
         // Logging tab
@@ -48,6 +48,15 @@ define({
         //validation errors        
         "error_DuplicateHostname": "A device with this hostname is already connected",
         "error_InvalidIp": "Not a valid IP v4 formatted address",
+        //Performance graphs tab
+        "performanceGraphs": "Performance graphs",
+        "performanceEncode": "Encode",
+        "performanceDecode": "Decode",
+        "performanceTransport": "Transport",
+        "performanceOther": "Other",
+        "performanceLatency": "Latency",
+        "performanceFramerate": "Framerate",
+        "performanceNoDateCaptured": "No data captured yet",
     },
     "it": true,
     "es": true,

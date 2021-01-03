@@ -112,6 +112,7 @@ pub struct ClientConnectionDesc {
 #[serde(rename_all = "camelCase")]
 pub struct SessionDesc {
     pub setup_wizard: bool,
+    pub locale: String,
     pub openvr_config: OpenvrConfig,
     // The hashmap key is the hostname
     pub client_connections: HashMap<String, ClientConnectionDesc>,
@@ -122,6 +123,7 @@ impl Default for SessionDesc {
     fn default() -> Self {
         Self {
             setup_wizard: true,
+            locale: "en".into(),
             openvr_config: OpenvrConfig {
                 universe_id: 2,
                 headset_serial_number: "1WMGH000XX0000".into(),

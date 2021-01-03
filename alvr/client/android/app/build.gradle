@@ -2,6 +2,7 @@ apply plugin: 'com.android.application'
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
 android {
+    buildToolsVersion = '30.0.1'
     compileSdkVersion 30
     defaultConfig {
         applicationId "com.polygraphene.alvr"
@@ -9,10 +10,9 @@ android {
         targetSdkVersion 30
         versionCode 40
         versionName "14.0.0"
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
-                cppFlags String.format("-std=c++17 -fexceptions -frtti -DALVR_CLIENT_VERSION=\\\"%s\\\"", versionName)
+                cppFlags "-std=c++17 -fexceptions -frtti"
             }
         }
     }
@@ -40,37 +40,40 @@ android {
             jniLibs.srcDirs = ["src/main/jniLibs"]
         }
     }
-    // Remove osig file from release apk
-    applicationVariants.all { variant ->
-        if (variant.buildType.name == 'release') {
-            variant.mergeAssetsProvider.get().doLast {
-                delete(fileTree(dir: variant.mergeAssets.outputDir, includes: ['oculussig_*']))
-            }
-        }
-    }
-
     compileOptions {
         sourceCompatibility = '1.8'
         targetCompatibility = '1.8'
     }
-    buildToolsVersion = '30.0.1'
+
+    flavorDimensions "headset", "package"
+    productFlavors {
+        OculusQuest {
+            dimension "headset"
+        }
+        OculusGo {
+            dimension "headset"
+        }
+        Stable {
+            dimension "package"
+            applicationId "com.polygraphene.alvr"
+        }
+        Nightly {
+            dimension "package"
+            applicationId "com.alvr.client.nightly"
+        }
+    }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.so'])
-   // api 'androidx.appcompat:appcompat:1.0.0'
-    implementation 'com.android.support:appcompat-v7:26.1.0'
-    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
-    implementation 'com.android.support:design:26.1.0'
-    implementation 'com.koushikdutta.async:androidasync:2.2.1'
-    implementation 'com.google.code.gson:gson:2.8.5'
-    testImplementation 'junit:junit:4.12'
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
 }
 
 build.dependsOn(':extractNdk')
 
 cargo {
-    module  = "../.."
+    module = "../.."
     libname = "alvr_client"
     targets = ["arm64"]
     targetDirectory = "../../../../target"
@@ -79,9 +82,8 @@ cargo {
         defaultAnd("build-cpp")
     }
 }
-
 tasks.whenTaskAdded { task ->
-    if ((task.name == 'javaPreCompileDebug' || task.name == 'javaPreCompileRelease')) {
+    if (task.name.startsWith('javaPreCompile')) {
         task.dependsOn 'cargoBuild'
     }
 }

@@ -4,17 +4,16 @@ use semver::Version;
 pub const ALVR_NAME: &str = "ALVR";
 
 lazy_static! {
-    pub static ref ALVR_SERVER_VERSION: Version = Version::parse(env!("SERVER_VERSION")).unwrap();
-    pub static ref ALVR_CLIENT_VERSION: Version = Version::parse(env!("CLIENT_VERSION")).unwrap();
+    pub static ref ALVR_VERSION: Version = Version::parse(env!("VERSION")).unwrap();
 }
 
 // accept semver-compatible versions
-// Note: by not having to set the requirement manually, the major version of server and client is
-// constrained to be bumped when the packet layouts or some critical behaviour has changed.
-pub fn is_version_compatible(test_version: &Version, base_version: &Version) -> bool {
-    if test_version.is_prerelease() || base_version.is_prerelease() {
-        test_version == base_version
+// Note: by not having to set the requirement manually, the major version is constrained to be
+// bumped when the packet layouts or some critical behaviour has changed.
+pub fn is_version_compatible(other_version: &Version) -> bool {
+    if other_version.is_prerelease() || ALVR_VERSION.is_prerelease() {
+        *other_version == *ALVR_VERSION
     } else {
-        test_version.major == base_version.major
+        other_version.major == ALVR_VERSION.major
     }
 }

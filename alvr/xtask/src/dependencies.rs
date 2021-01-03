@@ -3,13 +3,9 @@ use crate::*;
 use cached_path::*;
 use std::{fs, io::ErrorKind};
 
-fn dependencies_dir() -> PathBuf {
-    workspace_dir().join("deps")
-}
-
 fn install_rust_android_gradle() {
-    static PLUGIN_COMMIT: &str = "6e553c13ef2d9bb40b58a7675b96e0757d1b0443";
-    static PLUGIN_VERSION: &str = "0.8.3";
+    const PLUGIN_COMMIT: &str = "6e553c13ef2d9bb40b58a7675b96e0757d1b0443";
+    const PLUGIN_VERSION: &str = "0.8.3";
 
     let rust_android_archive_url = format!(
         "https://github.com/mozilla/rust-android-gradle/archive/{}.zip",
@@ -32,13 +28,10 @@ fn install_rust_android_gradle() {
     )
     .unwrap();
 
-    let dep_dir = dependencies_dir().join("rust-android-gradle");
-    match fs::create_dir_all(&dep_dir) {
-        Ok(_) => {}
-        Err(e) => {
-            if e.kind() != ErrorKind::AlreadyExists {
-                panic!(e);
-            }
+    let dep_dir = workspace_dir().join("deps").join("rust-android-gradle");
+    if let Err(e) = fs::create_dir_all(&dep_dir) {
+        if e.kind() != ErrorKind::AlreadyExists {
+            panic!(e);
         }
     }
 

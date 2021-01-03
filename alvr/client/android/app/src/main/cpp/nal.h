@@ -9,7 +9,7 @@
 
 class NALParser {
 public:
-    NALParser(JNIEnv *env, jobject udpManager, jclass nalClass);
+    NALParser(JNIEnv *env, jobject udpManager, jclass nalClass, bool enableFEC);
     ~NALParser();
 
     void setCodec(int codec);
@@ -19,6 +19,8 @@ public:
 private:
     void push(const std::byte *buffer, int length, uint64_t frameIndex);
     int findVPSSPS(const std::byte *frameBuffer, int frameByteSize);
+
+    bool m_enableFEC;
 
     FECQueue m_queue;
 

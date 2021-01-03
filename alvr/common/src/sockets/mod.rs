@@ -46,7 +46,7 @@ async fn try_connect_to_client(
         return trace_str!(id: LogId::ClientFoundInvalid);
     }
 
-    if !is_version_compatible(&handshake_packet.version, &ALVR_CLIENT_VERSION) {
+    if !is_version_compatible(&handshake_packet.version) {
         let response_bytes = trace_err!(bincode::serialize(&HandshakePacket::Server(
             ServerHandshakePacket::IncompatibleVersions
         )))?;

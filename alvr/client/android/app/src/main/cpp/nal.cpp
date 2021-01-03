@@ -14,7 +14,8 @@ static const std::byte NAL_TYPE_SPS = static_cast<const std::byte>(7);
 static const std::byte H265_NAL_TYPE_VPS = static_cast<const std::byte>(32);
 
 
-NALParser::NALParser(JNIEnv *env, jobject udpManager, jclass nalClass)
+NALParser::NALParser(JNIEnv *env, jobject udpManager, jclass nalClass, bool enableFEC)
+    : m_enableFEC(enableFEC)
 {
     LOGE("NALParser initialized %p", this);
 
@@ -44,14 +45,23 @@ void NALParser::setCodec(int codec)
 
 bool NALParser::processPacket(VideoFrame *packet, int packetSize, bool &fecFailure)
 {
-    m_queue.addVideoPacket(packet, packetSize, fecFailure);
+    if (m_enableFEC) {
+        m_queue.addVideoPacket(packet, packetSize, fecFailure);
+    }
 
     bool result = m_queue.reconstruct();
     if (result)
     {
-        // Reconstructed
-        const std::byte *frameBuffer = m_queue.getFrameBuffer();
-        int frameByteSize = m_queue.getFrameByteSize();
+        const std::byte *frameBuffer;
+        int frameByteSize;
+        if (m_enableFEC) {
+            // Reconstructed
+            frameBuffer = m_queue.getFrameBuffer();
+            frameByteSize = m_queue.getFrameByteSize();
+        } else {
+            frameBuffer = reinterpret_cast<const std::byte *>(packet) + sizeof(VideoFrame);
+            frameByteSize = packetSize - sizeof(VideoFrame);
+        }
 
         std::byte NALType;
         if (m_codec == ALVR_CODEC_H264)

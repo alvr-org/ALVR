@@ -235,7 +235,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
             runtime.spawn(async move {
                 // call this when inside a new tokio thread. Calling this on the parent thread will
                 // crash SteamVR
-                SetChaperoneStanding(1_f32);
+                SetDefaultChaperone();
 
                 tokio::select! {
                     Err(e) = connection::connection_lifecycle_loop() => show_e(e),

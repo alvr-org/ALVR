@@ -121,6 +121,14 @@ pub struct VideoDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+pub struct AudioConfig {
+    pub preferred_channels_count: u16,
+    pub preferred_sample_rate: u32,
+    pub preferred_buffer_size: u32,
+    // sample_format: support only unsigned 16 bit for now
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputAudioDesc {
     // deviceDropdown should poll the available audio devices and set "device"
@@ -277,6 +285,9 @@ pub struct ConnectionDesc {
     pub client_recv_buffer_size: u64,
 
     pub aggressive_keyframe_resend: bool,
+
+    #[schema(advanced)]
+    pub enable_fec: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -430,6 +441,7 @@ pub fn session_settings_default() -> SettingsDefault {
             throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,
             client_recv_buffer_size: 60_000,
             aggressive_keyframe_resend: false,
+            enable_fec: true,
         },
         extra: ExtraDescDefault {
             theme: ThemeDefault {

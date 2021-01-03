@@ -6,12 +6,16 @@ define([
     "lib/lodash",
     "i18n!app/nls/monitor",
     "i18n!app/nls/notifications",
-    "css!app/templates/monitor.css"
+    "css!app/templates/monitor.css",
+    "js/lib/epoch.js",
+    "css!js/lib/epoch.css",
 ], function(addClientModalTemplate, configureClientModalTemplate, monitorTemplate, session, _, i18n, i18nNotifications) {
     return function(alvrSettings) {
 
-        var notificationLevels = [];
+        var notificationLevels = [];   
         var timeoutHandler;
+        var latencyGraph;        
+        var framerateGraph;     
 
         function logInit() {
             var url = window.location.href
@@ -26,7 +30,6 @@ define([
 
             log_listener.onerror = (ev) => {
                 console.log("Log error", ev)
-                logInit();
             }
 
             log_listener.onclose = (ev) => {
@@ -55,6 +58,7 @@ define([
                 logInit();
                 initNotificationLevel();
                 initAddClientModal(templateAddClient);
+                initPerformanceGraphs();
 
                 updateClients();
             });
@@ -104,11 +108,67 @@ define([
 
         }
 
+         function initPerformanceGraphs(){
+             var now = parseInt(new Date().getTime() / 1000);
+            latencyGraph = $("#latencyGraphArea").epoch({
+                type: "time.area",
+                axes: ["left", "bottom"],
+                data: [                    
+                    {
+                        label: "Encode",
+                        values: [{ time: now, y: 0 }]
+                    },
+                    {
+                        label: "Decode",
+                        values: [{ time: now, y: 0 }]
+                    },
+                    {
+                        label: "Transport",
+                        values: [{ time: now, y: 0 }]
+                    },
+                    {
+                        label: "Other",
+                        values: [{ time: now, y: 0 }]
+                    }]
+              });         
+
+               framerateGraph = $("#framerateGraphArea").epoch({
+                type: "time.line",
+                axes: ["left", "bottom"],
+                data: [
+                    {
+                        label: "Server FPS",
+                        values: [{ time: now, y: 0 }]
+                    },
+                    {
+                        label: "Client FPS",
+                        values: [{ time: now, y: 0 }]
+                    }]
+              });
+        }
+        
+        function updatePerformanceGraphs(statistics) {  
+            $("#divPerformanceGraphsContent").show();
+            $("#divPerformanceGraphsEmptyMsg").hide();
+            
+            var now = parseInt(new Date().getTime() / 1000);
+            var otherLatency = statistics["totalLatency"] - statistics["encodeLatency"] - statistics["decodeLatency"] - statistics["transportLatency"];
+
+            latencyGraph.push([
+                { time: now, y: statistics["encodeLatency"] },
+                { time: now, y: statistics["decodeLatency"] },
+                { time: now, y: statistics["transportLatency"] },
+                { time: now, y: otherLatency}]);
+
+            framerateGraph.push([
+                { time: now, y: statistics["serverFPS"] },
+                { time: now,  y: statistics["clientFPS"] }]);
+        }
+
         function initAddClientModal(template){
             $("#showAddClientModal").click(() => {
                 $("#addClientModal").remove();
                 $("body").append(template);
-
                 $(document).ready(() => {
                     $('#addClientModal').modal({
                         backdrop: 'static',
@@ -369,6 +429,8 @@ define([
                 $("#connectionCard").show();
                 $("#statisticsCard").hide();
             }, 2000);
+
+            updatePerformanceGraphs(statistics);
         }
 
         var isUpdating = false;

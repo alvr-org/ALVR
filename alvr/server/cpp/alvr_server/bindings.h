@@ -28,5 +28,5 @@ extern "C" void DeinitializeStreaming();
 extern "C" void RequestIDR();
 extern "C" void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
                              float (*perimeterPoints)[2], unsigned int perimeterPointsCount);
-extern "C" void SetChaperoneStanding(float scale);
+extern "C" void SetDefaultChaperone();
 extern "C" void ShutdownSteamvr();

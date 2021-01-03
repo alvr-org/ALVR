@@ -1,4 +1,7 @@
-use std::{fs, path::Path, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 fn packages_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -7,19 +10,11 @@ fn packages_dir() -> PathBuf {
         .into()
 }
 
-fn get_version(dir_name: &str) -> String {
-    let cargo_path = packages_dir().join(dir_name).join("Cargo.toml");
-    println!("cargo:rerun-if-changed={}", cargo_path.to_string_lossy());
+pub fn version() -> String {
+    let manifest_path = packages_dir().join("common").join("Cargo.toml");
+    println!("cargo:rerun-if-changed={}", manifest_path.to_string_lossy());
 
-    let cargo_data: toml_edit::Document = fs::read_to_string(cargo_path).unwrap().parse().unwrap();
+    let manifest: toml_edit::Document = fs::read_to_string(manifest_path).unwrap().parse().unwrap();
 
-    cargo_data["package"]["version"].as_str().unwrap().into()
-}
-
-pub fn server_version() -> String {
-    get_version("server")
-}
-
-pub fn client_version() -> String {
-    get_version("client")
+    manifest["package"]["version"].as_str().unwrap().into()
 }

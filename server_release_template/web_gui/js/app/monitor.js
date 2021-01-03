@@ -230,7 +230,7 @@ define([
 
                         $.ajax({
                             type: "POST",
-                            url: `/client/add`,
+                            url: `client/trust`,
                             contentType: "application/json;charset=UTF-8",
                             data: JSON.stringify([hostname, ip]),
                         });
@@ -244,7 +244,7 @@ define([
 
                         $.ajax({
                             type: "POST",
-                            url: `/client/remove`,
+                            url: `client/remove`,
                             contentType: "application/json;charset=UTF-8",
                             data: JSON.stringify([hostname, ip]),
                         });

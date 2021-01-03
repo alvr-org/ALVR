@@ -130,6 +130,7 @@ define([
                 storedLocale = $("#localeChange").val();
                 localStorage.setItem("locale", storedLocale);
                 session.locale = storedLocale;
+                settings.updateSession(session);
                 settings.storeSession("other");
                 window.location.reload();
             })

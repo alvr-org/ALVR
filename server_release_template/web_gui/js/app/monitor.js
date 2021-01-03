@@ -287,7 +287,7 @@ define([
             var client = `<div class="card client" type="${type}" hostname="${hostname}" id="trustedClient_${id}">
                         ${type} (${hostname})
                         <button type="button" id="btnRemoveTrustedClient_${id}" class="btn btn-primary">${i18n["removeTrustedClient"]}</button>
-                        <button type="button" id="btnConfigureClient_${id}" class="btn btn-primary">${i18n["configureClient"]}</button>
+                        <button type="button" id="btnConfigureClient_${id}" class="btn btn-primary">${i18n["configureClientButton"]}</button>
                         </div>`
 
             $("#trustedClientsDiv").append(client);

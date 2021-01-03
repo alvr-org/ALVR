@@ -22,6 +22,7 @@ define({
         "troubleshooting": `Is your headset not showing up? Visit our troubleshooting page <a href="https://github.com/alvr-org/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">here</a>`,
         //Configure client page
         "configureClient": "Configure client",
+        "configureClientButton": "Configure",
         "configureClientAddIp": "Add new IP",
         // Statistics container
         "statistics": "Streaming Statistics",

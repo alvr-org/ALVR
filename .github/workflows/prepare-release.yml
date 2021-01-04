@@ -22,6 +22,11 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: ${{ github.head_ref }}
+      
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
         
       - name: Bump versions
         id: bump_versions
@@ -77,6 +82,18 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: ${{ needs.bump_version.outputs.release_ref }}
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      
+      - uses: maxim-lobanov/setup-android-tools@v1
+        with:
+          packages: |
+            platforms;android-30
+            ndk;22.0.7026061
+          cache: true
 
       - uses: actions/cache@v2
         name: Cache Wix 3.14

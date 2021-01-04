@@ -272,8 +272,6 @@ define([
             })
         }
 
-
-
         function addListeners() {
             $("#toggleAdvanced").click(() => {
                 advanced = !advanced;
@@ -926,7 +924,6 @@ define([
                 });
             });
         }
-
 
         function showResetConfirmDialog(defaultVal, defaultText) {
             return new Promise((resolve, reject) => {

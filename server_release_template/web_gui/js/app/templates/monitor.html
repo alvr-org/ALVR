@@ -2,13 +2,16 @@
     <div class="cm-md-1 contentHeight" id="monitorContainer">
         <ul class="nav nav-tabs">
             <li class="nav-item">
-                <a class="nav-link active" data-toggle="tab" href="#connection"><%= connection%></a>
+                <a class="nav-link active" data-toggle="tab" href="#connection" id="connectionTab"><%= connection%></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#performanceGraphs"><%= performanceGraphs%></a>
+                <a class="nav-link" data-toggle="tab" href="#statistics" id="statisticsTab"><%= statistics%></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#logging"><%= logging%></a>
+                <a class="nav-link" data-toggle="tab" href="#performanceGraphs" id="performanceGraphsTab"><%= performanceGraphs%></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-toggle="tab" href="#logging" id="loggingTab"><%= logging%></a>
             </li>
         </ul>
 
@@ -27,80 +30,83 @@
                         </div>
 
                         <button type="button" class="btn btn-primary" id="showAddClientModal" style="display:none;"><%= manAddClient%></button>
-                    
+                        
                     </div>
                 </div>
                 <div id="troubleShootingDiv"><%= troubleshooting%></div>
-
-                <div class="card" id="statisticsCard">
-                    <div class="card-header"><%= statistics%></div>
-                    <div class="card-body">
-                        <table id="statisticsTable">
-                            <tr>
-                                <td><%= totalPackets%>:</td>
-                                <td><div id="statistic_totalPackets" >0</div> <%= packets%></td>
-                            </tr>
-                            <tr>
-                                <td><%= packetRate%>:</td>
-                                <td><div id="statistic_packetRate" >0</div> <%= packetss%></td>
-                            </tr>
-                            <tr>
-                                <td><%= packetsLostTotal%>:</td>
-                                <td><div id="statistic_packetsLostTotal" >0</div> <%= packets%></td>
-                            </tr>
-                            <tr>
-                                <td><%= packetsLostPerSecond%>:</td>
-                                <td><div id="statistic_packetsLostPerSecond">0</div> <%= packetss%></td>
-                            </tr>
-                            <tr>
-                                <td><%= totalSent%>:</td>
-                                <td><div id="statistic_totalSent">0</div>Mb</td>
-                            </tr>
-                            <tr>
-                                <td><%= sentRate%>:</td>
-                                <td><div id="statistic_sentRate">0</div> Mbps</td>
-                            </tr>
-                            <tr>
-                                <td><%= totalLatency%>:</td>
-                                <td><div id="statistic_totalLatency">0</div> ms</td>
-                            </tr>
-                            <tr>
-                                <td><%= encodeLatency%>:</td>
-                                <td><div id="statistic_encodeLatency">0</div> ms</td>
-                            </tr>
-                            <tr>
-                                <td><%= encodeLatencyMax%>:</td>
-                                <td><div id="statistic_encodeLatencyMax">0</div> ms</td>
-                            </tr>
-                            <tr>
-                                <td><%= transportLatency%>:</td>
-                                <td><div id="statistic_transportLatency">0</div> ms</td>
-                            </tr>
-                            <tr>
-                                <td><%= decodeLatency%>:</td>
-                                <td><div id="statistic_decodeLatency">0</div> ms</td>
-                            </tr>
-                            <tr>
-                                <td><%= fecPercentage%>:</td>
-                                <td><div id="statistic_fecPercentage">0</div> %</td>
-                            </tr>
-                            <tr>
-                                <td><%= fecFailureTotal%>:</td>
-                                <td><div id="statistic_fecFailureTotal">0</div> <%= packets%></td>
-                            </tr>
-                            <tr>
-                                <td><%= fecFailureInSecond%>:</td>
-                                <td><div id="statistic_fecFailureInSecond">0</div> <%= packetss%></td>
-                            </tr>
-                            <tr>
-                                <td><%= clientFPS%>:</td>
-                                <td><div id="statistic_clientFPS">0</div> fps</td>
-                            </tr>
-                            <tr>
-                                <td><%= serverFPS%>:</td>
-                                <td><div id="statistic_serverFPS">0</div> fps</td>
-                            </tr>
-                        </table>
+            </div>
+            <div class="tab-pane container fade" id="statistics">
+                <div id="divStatisticsContent">
+                    <div class="card" id="statisticsCard">
+                        <div class="card-header"><%= streamingStatistics%></div>
+                        <div class="card-body">
+                            <table id="statisticsTable">
+                                <tr>
+                                    <td><%= totalPackets%>:</td>
+                                    <td><div id="statistic_totalPackets" >0</div> <%= packets%></td>
+                                </tr>
+                                <tr>
+                                    <td><%= packetRate%>:</td>
+                                    <td><div id="statistic_packetRate" >0</div> <%= packetss%></td>
+                                </tr>
+                                <tr>
+                                    <td><%= packetsLostTotal%>:</td>
+                                    <td><div id="statistic_packetsLostTotal" >0</div> <%= packets%></td>
+                                </tr>
+                                <tr>
+                                    <td><%= packetsLostPerSecond%>:</td>
+                                    <td><div id="statistic_packetsLostPerSecond">0</div> <%= packetss%></td>
+                                </tr>
+                                <tr>
+                                    <td><%= totalSent%>:</td>
+                                    <td><div id="statistic_totalSent">0</div>Mb</td>
+                                </tr>
+                                <tr>
+                                    <td><%= sentRate%>:</td>
+                                    <td><div id="statistic_sentRate">0</div> Mbps</td>
+                                </tr>
+                                <tr>
+                                    <td><%= totalLatency%>:</td>
+                                    <td><div id="statistic_totalLatency">0</div> ms</td>
+                                </tr>
+                                <tr>
+                                    <td><%= encodeLatency%>:</td>
+                                    <td><div id="statistic_encodeLatency">0</div> ms</td>
+                                </tr>
+                                <tr>
+                                    <td><%= encodeLatencyMax%>:</td>
+                                    <td><div id="statistic_encodeLatencyMax">0</div> ms</td>
+                                </tr>
+                                <tr>
+                                    <td><%= transportLatency%>:</td>
+                                    <td><div id="statistic_transportLatency">0</div> ms</td>
+                                </tr>
+                                <tr>
+                                    <td><%= decodeLatency%>:</td>
+                                    <td><div id="statistic_decodeLatency">0</div> ms</td>
+                                </tr>
+                                <tr>
+                                    <td><%= fecPercentage%>:</td>
+                                    <td><div id="statistic_fecPercentage">0</div> %</td>
+                                </tr>
+                                <tr>
+                                    <td><%= fecFailureTotal%>:</td>
+                                    <td><div id="statistic_fecFailureTotal">0</div> <%= packets%></td>
+                                </tr>
+                                <tr>
+                                    <td><%= fecFailureInSecond%>:</td>
+                                    <td><div id="statistic_fecFailureInSecond">0</div> <%= packetss%></td>
+                                </tr>
+                                <tr>
+                                    <td><%= clientFPS%>:</td>
+                                    <td><div id="statistic_clientFPS">0</div> fps</td>
+                                </tr>
+                                <tr>
+                                    <td><%= serverFPS%>:</td>
+                                    <td><div id="statistic_serverFPS">0</div> fps</td>
+                                </tr>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -112,7 +118,7 @@
                     <span class="badge badge-primary" style="background-color: #2ca02c; "><%= performanceDecode%></span>
                     <span class="badge badge-primary" style="background-color: #d62728; "><%= performanceOther%></span>
                     <div id="latencyGraphArea" class="epoch category10" style="width: 520px; height: 220px"></div>
-                    <div class="mt-3"/>
+                    <div class="mt-3"></div>
                     <h5 class="float-left mr-3"><%= performanceFramerate%></h5>
                     <span class="badge badge-primary" style="background-color: #1f77b4; "><%= serverFPS%></span>
                     <span class="badge badge-primary" style="background-color: #ff7f0e; "><%= clientFPS%></span>

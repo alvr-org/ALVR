@@ -17,7 +17,8 @@ define({
         "addClientButton": "Add client",
         "troubleshooting": `Is your headset not showing up? Visit our troubleshooting page <a href="https://github.com/alvr-org/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">here</a>`,
         // Statistics container
-        "statistics": "Streaming Statistics",
+        "statistics": "Statistics",
+        "streamingStatistics": "Streaming Statistics",
         "totalPackets": "Total Packets",
         "packetRate": "PacketRate",
         "packetsLostTotal": "Total packets lost",

@@ -154,6 +154,10 @@ define({
         "_root_connection_clientRecvBufferSize.description": "Buffer size on client side. \nDepends on the bitrate. \nCalculated size is recommended. If you experience packet loss, enlarge buffer.", // adv
         "_root_connection_aggressiveKeyframeResend.name": "Aggressive keyframe resend",
         "_root_connection_aggressiveKeyframeResend.description": "Decrease minimum interval between keyframes from 100 ms to 5 ms. \nUsed only when packet loss is detected. \nImproves experience on networks with packet loss.",
+        "_root_connection_onConnectScript.name": "On connect script/executable",
+        "_root_connection_onConnectScript.description": "This script/executable will be run asynchronously when headset connects",
+        "_root_connection_onDisconnectScript.name": "On disconnect script/executable",
+        "_root_connection_onDisconnectScript.description": "This script/executable will be run asynchronously when headset disconnects",
         // Extra tab
         "_root_extra_tab.name": "Extra",
         "_root_extra_theme-choice-.name": "Theme",

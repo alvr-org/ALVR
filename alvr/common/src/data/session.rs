@@ -59,6 +59,8 @@ pub struct OpenvrConfig {
     pub client_buffer_size: u64,
     pub force_3dof: bool,
     pub aggressive_keyframe_resend: bool,
+    pub on_connect_script: String,
+    pub on_disconnect_script: String,
     pub adapter_index: u32,
     pub codec: u32,
     pub refresh_rate: u32,

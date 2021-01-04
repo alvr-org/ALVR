@@ -2,7 +2,7 @@ use crate::{ClientListAction, CLIENTS_UPDATED_NOTIFIER, SESSION_MANAGER};
 use alvr_common::{data::*, logging::*, sockets::*, *};
 use nalgebra::Translation3;
 use settings_schema::Switch;
-use std::{collections::HashMap, net::IpAddr};
+use std::{collections::HashMap, net::IpAddr, process::Command};
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -163,6 +163,8 @@ async fn connect_to_any_client(
             client_buffer_size: settings.connection.client_recv_buffer_size,
             force_3dof: settings.headset.force_3dof,
             aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
+            on_connect_script: settings.connection.on_connect_script,
+            on_disconnect_script: settings.connection.on_disconnect_script,
             adapter_index: settings.video.adapter_index,
             codec: matches!(settings.video.codec, CodecType::HEVC) as _,
             refresh_rate: fps as _,
@@ -322,6 +324,14 @@ impl Drop for StreamCloseGuard {
 }
 
 pub async fn connection_lifecycle_loop() -> StrResult {
+    let on_connect_script = SESSION_MANAGER
+        .lock()
+        .get()
+        .to_settings()
+        .connection
+        .on_connect_script
+        .clone();
+
     loop {
         let (mut control_sender, mut control_receiver) = tokio::select! {
             Err(e) = client_discovery() => break fmt_e!("Client discovery failed: {}", e),
@@ -330,6 +340,12 @@ pub async fn connection_lifecycle_loop() -> StrResult {
         };
 
         log_id(LogId::ClientConnected);
+        if !on_connect_script.is_empty() {
+            info!("Running on connect script: {}", on_connect_script);
+            if let Err(e) = Command::new(&on_connect_script).spawn() {
+                warn!("Failed to run connect script: {}", e);
+            }
+        }
 
         unsafe { crate::InitializeStreaming() };
         let _guard = StreamCloseGuard;
@@ -366,6 +382,19 @@ pub async fn connection_lifecycle_loop() -> StrResult {
                     Err(e) => {
                         log_id(LogId::ClientDisconnected);
                         info!("Client disconnected. Cause: {}", e);
+                        let on_disconnect_script = SESSION_MANAGER
+                            .lock()
+                            .get()
+                            .to_settings()
+                            .connection
+                            .on_disconnect_script
+                            .clone();
+                        if !on_disconnect_script.is_empty() {
+                            info!("Running on disconnect script: {}", on_disconnect_script);
+                            if let Err(e) = Command::new(&on_disconnect_script).spawn() {
+                                warn!("Failed to run disconnect script: {}", e);
+                            }
+                        }
                         break;
                     }
                 }

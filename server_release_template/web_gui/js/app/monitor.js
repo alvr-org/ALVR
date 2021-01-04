@@ -86,7 +86,6 @@ define([
             $("#newClientsDiv").empty();
             $("#trustedClientsDiv").empty();
 
-
             Object.entries(session.clientConnections).forEach(pair => {
                 var hostname = pair[0];
                 var connection = pair[1];
@@ -124,63 +123,6 @@ define([
 
             //console.log("Notification levels are now: ", notificationLevels);
 
-        }
-
-         function initPerformanceGraphs(){
-             var now = parseInt(new Date().getTime() / 1000);
-            latencyGraph = $("#latencyGraphArea").epoch({
-                type: "time.area",
-                axes: ["left", "bottom"],
-                data: [                    
-                    {
-                        label: "Encode",
-                        values: [{ time: now, y: 0 }]
-                    },
-                    {
-                        label: "Decode",
-                        values: [{ time: now, y: 0 }]
-                    },
-                    {
-                        label: "Transport",
-                        values: [{ time: now, y: 0 }]
-                    },
-                    {
-                        label: "Other",
-                        values: [{ time: now, y: 0 }]
-                    }]
-              });         
-
-               framerateGraph = $("#framerateGraphArea").epoch({
-                type: "time.line",
-                axes: ["left", "bottom"],
-                data: [
-                    {
-                        label: "Server FPS",
-                        values: [{ time: now, y: 0 }]
-                    },
-                    {
-                        label: "Client FPS",
-                        values: [{ time: now, y: 0 }]
-                    }]
-              });
-        }
-        
-        function updatePerformanceGraphs(statistics) {  
-            $("#divPerformanceGraphsContent").show();
-            $("#divPerformanceGraphsEmptyMsg").hide();
-            
-            var now = parseInt(new Date().getTime() / 1000);
-            var otherLatency = statistics["totalLatency"] - statistics["encodeLatency"] - statistics["decodeLatency"] - statistics["transportLatency"];
-
-            latencyGraph.push([
-                { time: now, y: statistics["encodeLatency"] },
-                { time: now, y: statistics["decodeLatency"] },
-                { time: now, y: statistics["transportLatency"] },
-                { time: now, y: otherLatency}]);
-
-            framerateGraph.push([
-                { time: now, y: statistics["serverFPS"] },
-                { time: now,  y: statistics["clientFPS"] }]);
         }
 
         function addNewClient(type, hostname) {
@@ -297,9 +239,6 @@ define([
                     console.log("Notification with additional info: ", idObject.id)
                     return { "title": level, "msg": idObject.id + ": " + line };
                 }
-
-
-
             }
         }
 
@@ -329,6 +268,63 @@ define([
                 default:
                     break;
             }
+        }
+
+        function initPerformanceGraphs(){
+            var now = parseInt(new Date().getTime() / 1000);
+            latencyGraph = $("#latencyGraphArea").epoch({
+                type: "time.area",
+                axes: ["left", "bottom"],
+                data: [                    
+                    {
+                        label: "Encode",
+                        values: [{ time: now, y: 0 }]
+                    },
+                    {
+                        label: "Decode",
+                        values: [{ time: now, y: 0 }]
+                    },
+                    {
+                        label: "Transport",
+                        values: [{ time: now, y: 0 }]
+                    },
+                    {
+                        label: "Other",
+                        values: [{ time: now, y: 0 }]
+                    }]
+            });         
+
+            framerateGraph = $("#framerateGraphArea").epoch({
+                type: "time.line",
+                axes: ["left", "bottom"],
+                data: [
+                    {
+                        label: "Server FPS",
+                        values: [{ time: now, y: 0 }]
+                    },
+                    {
+                        label: "Client FPS",
+                        values: [{ time: now, y: 0 }]
+                    }]
+            });
+        }
+       
+        function updatePerformanceGraphs(statistics) {
+            $("#divPerformanceGraphsContent").show();
+            $("#divPerformanceGraphsEmptyMsg").hide();
+            
+            var now = parseInt(new Date().getTime() / 1000);
+            var otherLatency = statistics["totalLatency"] - statistics["encodeLatency"] - statistics["decodeLatency"] - statistics["transportLatency"];
+
+            latencyGraph.push([
+                { time: now, y: statistics["encodeLatency"] },
+                { time: now, y: statistics["decodeLatency"] },
+                { time: now, y: statistics["transportLatency"] },
+                { time: now, y: otherLatency}]);
+
+            framerateGraph.push([
+                { time: now, y: statistics["serverFPS"] },
+                { time: now,  y: statistics["clientFPS"] }]);
         }
 
         function updateStatistics(statistics) {

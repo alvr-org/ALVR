@@ -1,0 +1,12 @@
+{
+  "sessionSettings": {
+    "video": {
+      "preferredFps": 60.0
+    },
+    "headset": {
+      "controllers": {
+        "enabled": false
+      }
+    }
+  }
+}

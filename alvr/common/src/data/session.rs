@@ -123,7 +123,7 @@ impl Default for SessionDesc {
     fn default() -> Self {
         Self {
             setup_wizard: true,
-            locale: "en".into(),
+            locale: "system".into(),
             openvr_config: OpenvrConfig {
                 universe_id: 2,
                 headset_serial_number: "1WMGH000XX0000".into(),

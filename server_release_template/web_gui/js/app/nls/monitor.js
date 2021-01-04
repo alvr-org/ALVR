@@ -38,7 +38,7 @@ define({
         "packetss": "Packets / s",
         // Logging tab
         "logging": "Logging",
-        //Performance graphs tab
+        // Performance graphs tab
         "performanceGraphs": "Performance graphs",
         "performanceEncode": "Encode",
         "performanceDecode": "Decode",

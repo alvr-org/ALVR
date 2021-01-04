@@ -204,6 +204,7 @@ margin-bottom: 10px;
 
 .card-body {
   padding-top: 2px !important;
+  padding-bottom: 2px;
 }
 
 .card-title .accordion-toggle:after {

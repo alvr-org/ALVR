@@ -15,7 +15,7 @@ use tokio::{net::*, time};
 use tokio_util::{codec::*, either::Either};
 
 const CLIENT_HANDSHAKE_RESEND_INTERVAL: Duration = Duration::from_secs(1);
-const CONTROL_SOCKET_CONNECT_RETRY_INTERVAL: Duration = Duration::from_millis(500);
+const CONTROL_SOCKET_CONNECT_ERROR_RETRY_INTERVAL: Duration = Duration::from_millis(500);
 
 type ReceiverPart = SplitStream<Framed<TcpStream, LDC>>;
 type SenderPart = SplitSink<Framed<TcpStream, LDC>, Bytes>;
@@ -74,27 +74,22 @@ pub enum ConnectionResult<S, R> {
         config_packet: ClientConfigPacket,
     },
     ServerMessage(ServerHandshakePacket),
+    NetworkUnreachable,
 }
 
 async fn try_connect_to_server(
     handshake_socket: &mut UdpSocket,
     listener: &mut TcpListener,
-    client_handshake_packet: &[u8],
-    server_response_buffer: &mut [u8],
-    headset_info: HeadsetInfoPacket,
-) -> StrResult<Either<(IpAddr, SenderPart, ReceiverPart, ClientConfigPacket), ServerHandshakePacket>>
-{
-    trace_err!(
-        handshake_socket
-            .send_to(client_handshake_packet, (Ipv4Addr::BROADCAST, CONTROL_PORT))
-            .await
-    )?;
-
+) -> StrResult<Either<(TcpStream, SocketAddr), ServerHandshakePacket>> {
     let receive_response_loop = async move {
+        let mut server_response_buffer = [0; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
         loop {
             // this call will receive also the broadcasted client packet that must be ignored
-            let (packet_size, _) =
-                trace_err!(handshake_socket.recv_from(server_response_buffer).await)?;
+            let (packet_size, _) = trace_err!(
+                handshake_socket
+                    .recv_from(&mut server_response_buffer)
+                    .await
+            )?;
 
             if let Ok(HandshakePacket::Server(handshake_packet)) =
                 bincode::deserialize(&server_response_buffer[..packet_size])
@@ -104,25 +99,10 @@ async fn try_connect_to_server(
         }
     };
 
-    let (socket, server_address) = tokio::select! {
-        maybe_pair = listener.accept() => trace_err!(maybe_pair)?,
-        maybe_response = receive_response_loop => return maybe_response,
-        _ = time::sleep(CLIENT_HANDSHAKE_RESEND_INTERVAL) => return trace_str!("timeout"),
-    };
-
-    let socket = Framed::new(socket, LDC::new());
-    let (mut sender, mut receiver) = socket.split();
-
-    send(&mut sender, &(headset_info, server_address.ip())).await?;
-
-    let client_config = recv(&mut receiver).await?;
-
-    Ok(Either::Left((
-        server_address.ip(),
-        sender,
-        receiver,
-        client_config,
-    )))
+    tokio::select! {
+        maybe_pair = listener.accept() => Ok(Either::Left(trace_err!(maybe_pair)?)),
+        maybe_response = receive_response_loop => maybe_response,
+    }
 }
 
 // Return Some if server is compatible, otherwise return None
@@ -148,33 +128,52 @@ pub async fn connect_to_server<S: Serialize, R: DeserializeOwned>(
         }
     )))?;
 
-    let mut server_response_buffer = [0; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
-    loop {
-        match try_connect_to_server(
-            &mut handshake_socket,
-            &mut listener,
-            &client_handshake_packet,
-            &mut server_response_buffer,
-            headset_info.clone(),
-        )
-        .await
-        {
-            Ok(either) => match either {
-                Either::Left((server_ip, sender, receiver, config_packet)) => {
-                    break Ok(ConnectionResult::Connected {
-                        server_ip,
-                        control_sender: ControlSocketSender::new(sender),
-                        control_receiver: ControlSocketReceiver::new(receiver),
-                        config_packet,
-                    })
-                }
-                Either::Right(server_packet) => {
-                    break Ok(ConnectionResult::ServerMessage(server_packet))
-                }
-            },
-            Err(e) => warn!("Error while connecting to server: {}", e),
+    // Enclose the initial part of the connection in a local loop, since it's the most probable
+    // thing to fail
+    let (socket, server_address) = loop {
+        let broadcast_result = handshake_socket
+            .send_to(
+                &client_handshake_packet,
+                (Ipv4Addr::BROADCAST, CONTROL_PORT),
+            )
+            .await;
+        if broadcast_result.is_err() {
+            return Ok(ConnectionResult::NetworkUnreachable);
         }
-    }
+
+        let connection_result = tokio::select! {
+            res = try_connect_to_server(&mut handshake_socket, &mut listener) => res,
+            _ = time::sleep(CLIENT_HANDSHAKE_RESEND_INTERVAL) => {
+                warn!("Connection timeout, resending handhake packet");
+                continue;
+            }
+        };
+
+        match connection_result {
+            Ok(Either::Left(pair)) => break pair,
+            Ok(Either::Right(message_packet)) => {
+                return Ok(ConnectionResult::ServerMessage(message_packet));
+            }
+            Err(e) => {
+                warn!("Error while connecting to server: {}", e);
+                time::sleep(CONTROL_SOCKET_CONNECT_ERROR_RETRY_INTERVAL).await;
+            }
+        }
+    };
+
+    let socket = Framed::new(socket, LDC::new());
+    let (mut sender, mut receiver) = socket.split();
+
+    send(&mut sender, &(headset_info, server_address.ip())).await?;
+
+    let config_packet = recv(&mut receiver).await?;
+
+    Ok(ConnectionResult::Connected {
+        server_ip: server_address.ip(),
+        control_sender: ControlSocketSender::new(sender),
+        control_receiver: ControlSocketReceiver::new(receiver),
+        config_packet,
+    })
 }
 
 pub struct PendingSocket {
@@ -202,7 +201,7 @@ pub async fn begin_connecting_to_client(
             Ok(socket) => break socket,
             Err(e) => {
                 debug!("Timeout while connecting to clients: {}", e);
-                tokio::time::sleep(CONTROL_SOCKET_CONNECT_RETRY_INTERVAL).await;
+                time::sleep(CONTROL_SOCKET_CONNECT_ERROR_RETRY_INTERVAL).await;
             }
         }
     };

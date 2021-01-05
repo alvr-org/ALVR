@@ -1,3 +1,5 @@
+#![allow(clippy::result_unit_err)]
+
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, future::Future};
 

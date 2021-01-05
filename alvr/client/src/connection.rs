@@ -21,6 +21,7 @@ use tokio::{
 };
 
 const INITIAL_MESSAGE: &str = "Searching for server...\n(open ALVR on your PC)";
+const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the internet";
 const CLIENT_UNTRUSTED_MESSAGE: &str = "On the PC, click \"Trust\"\nnext to the client entry";
 const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
     "Server and client have\n",
@@ -30,6 +31,7 @@ const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
 );
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
+const RETRY_CONNECT_INTERVAL: Duration = Duration::from_millis(500);
 const PLAYSPACE_SYNC_INTERVAL: Duration = Duration::from_millis(500);
 
 // close stream on Drop (manual disconnection or execution canceling)
@@ -79,6 +81,15 @@ async fn try_connect(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) -> StrResult {
+    set_loading_message(
+        &*java_vm,
+        &*activity_ref,
+        &private_identity.hostname,
+        INITIAL_MESSAGE,
+    )
+    .await
+    .ok();
+
     let hostname = &private_identity.hostname;
 
     let connection_result = trace_err!(
@@ -104,6 +115,17 @@ async fn try_connect(
                 ServerHandshakePacket::IncompatibleVersions => INCOMPATIBLE_VERSIONS_MESSAGE,
             };
             set_loading_message(&*java_vm, &*activity_ref, hostname, message_str).await?;
+            return Ok(());
+        }
+        ConnectionResult::NetworkUnreachable => {
+            info!("Network unreachable");
+            set_loading_message(
+                &*java_vm,
+                &*activity_ref,
+                hostname,
+                NETWORK_UNREACHABLE_MESSAGE,
+            )
+            .await?;
             return Ok(());
         }
     };
@@ -334,28 +356,26 @@ pub async fn connection_lifecycle_loop(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) {
-    set_loading_message(
-        &*java_vm,
-        &*activity_ref,
-        &private_identity.hostname,
-        INITIAL_MESSAGE,
-    )
-    .await
-    .ok();
-
     // this loop has no exit, but the execution can be halted by the caller with tokio::select!{}
     loop {
-        show_err(
-            try_connect(
-                &headset_info,
-                device_name.to_owned(),
-                &private_identity,
-                java_vm.clone(),
-                activity_ref.clone(),
-                nal_class_ref.clone(),
-            )
-            .await,
-        )
-        .ok();
+        tokio::join!(
+            async {
+                let maybe_error = try_connect(
+                    &headset_info,
+                    device_name.to_owned(),
+                    &private_identity,
+                    java_vm.clone(),
+                    activity_ref.clone(),
+                    nal_class_ref.clone(),
+                )
+                .await;
+                if let Err(e) = maybe_error {
+                    set_loading_message(&*java_vm, &*activity_ref, &private_identity.hostname, &e)
+                        .await
+                        .ok();
+                }
+            },
+            time::sleep(RETRY_CONNECT_INTERVAL),
+        );
     }
 }

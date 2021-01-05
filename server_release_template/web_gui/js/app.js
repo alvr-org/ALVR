@@ -12,11 +12,6 @@ requirejs.config({
         style: "../../css",
         app: "../../js/app"
     },
-    // config: {
-    //     i18n: {
-    //         locale: 'it'
-    //     }
-    // },
     config: {
         i18n: {
             locale: storedLocale

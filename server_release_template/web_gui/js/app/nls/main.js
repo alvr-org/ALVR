@@ -7,6 +7,7 @@ define({
         "installation": "Installation",
         "about": "About",
         "languages": "Languages",
+        "system": "System",
         // Settings page
         "toggleAdvanced": "Show advanced options",
         "restartSteamVR": "Restart SteamVR",

@@ -38,7 +38,7 @@ fn maybe_register_alvr_driver() -> StrResult {
     if !driver_registered {
         let paths_backup = match get_registered_drivers() {
             Ok(paths) => paths,
-            Err(_) => return trace_str!("Please install SteamVR, run it once, then close it."),
+            Err(e) => return Err(format!("Failed to load registered drivers: {}", e)),
         };
 
         maybe_save_driver_paths_backup(&paths_backup)?;

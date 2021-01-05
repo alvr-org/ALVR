@@ -12,10 +12,11 @@ define([
 ], function(addClientModalTemplate, configureClientModalTemplate, monitorTemplate, session, _, i18n, i18nNotifications) {
     return function(alvrSettings) {
 
-        var notificationLevels = [];   
+        var notificationLevels = [];
         var timeoutHandler;
-        var latencyGraph;        
-        var framerateGraph;     
+        var latencyGraph;
+        var framerateGraph;
+        let clientConnected = false;
 
         function logInit() {
             var url = window.location.href
@@ -68,7 +69,6 @@ define([
             $("#newClientsDiv").empty();
             $("#trustedClientsDiv").empty();
 
-
             Object.entries(session.clientConnections).forEach(pair => {
                 var hostname = pair[0];
                 var connection = pair[1];
@@ -106,63 +106,6 @@ define([
 
             //console.log("Notification levels are now: ", notificationLevels);
 
-        }
-
-         function initPerformanceGraphs(){
-             var now = parseInt(new Date().getTime() / 1000);
-            latencyGraph = $("#latencyGraphArea").epoch({
-                type: "time.area",
-                axes: ["left", "bottom"],
-                data: [                    
-                    {
-                        label: "Encode",
-                        values: [{ time: now, y: 0 }]
-                    },
-                    {
-                        label: "Decode",
-                        values: [{ time: now, y: 0 }]
-                    },
-                    {
-                        label: "Transport",
-                        values: [{ time: now, y: 0 }]
-                    },
-                    {
-                        label: "Other",
-                        values: [{ time: now, y: 0 }]
-                    }]
-              });         
-
-               framerateGraph = $("#framerateGraphArea").epoch({
-                type: "time.line",
-                axes: ["left", "bottom"],
-                data: [
-                    {
-                        label: "Server FPS",
-                        values: [{ time: now, y: 0 }]
-                    },
-                    {
-                        label: "Client FPS",
-                        values: [{ time: now, y: 0 }]
-                    }]
-              });
-        }
-        
-        function updatePerformanceGraphs(statistics) {  
-            $("#divPerformanceGraphsContent").show();
-            $("#divPerformanceGraphsEmptyMsg").hide();
-            
-            var now = parseInt(new Date().getTime() / 1000);
-            var otherLatency = statistics["totalLatency"] - statistics["encodeLatency"] - statistics["decodeLatency"] - statistics["transportLatency"];
-
-            latencyGraph.push([
-                { time: now, y: statistics["encodeLatency"] },
-                { time: now, y: statistics["decodeLatency"] },
-                { time: now, y: statistics["transportLatency"] },
-                { time: now, y: otherLatency}]);
-
-            framerateGraph.push([
-                { time: now, y: statistics["serverFPS"] },
-                { time: now,  y: statistics["clientFPS"] }]);
         }
 
         function initAddClientModal(template){
@@ -383,9 +326,6 @@ define([
                     console.log("Notification with additional info: ", idObject.id)
                     return { "title": level, "msg": idObject.id + ": " + line };
                 }
-
-
-
             }
         }
 
@@ -417,17 +357,108 @@ define([
             }
         }
 
+        function initPerformanceGraphs(){
+            var now = parseInt(new Date().getTime() / 1000);
+            latencyGraph = $("#latencyGraphArea").epoch({
+                type: "time.area",
+                axes: ["left", "bottom"],
+                data: [                    
+                    {
+                        label: "Encode",
+                        values: [{ time: now, y: 0 }]
+                    },
+                    {
+                        label: "Decode",
+                        values: [{ time: now, y: 0 }]
+                    },
+                    {
+                        label: "Transport",
+                        values: [{ time: now, y: 0 }]
+                    },
+                    {
+                        label: "Other",
+                        values: [{ time: now, y: 0 }]
+                    }]
+            });         
+
+            framerateGraph = $("#framerateGraphArea").epoch({
+                type: "time.line",
+                axes: ["left", "bottom"],
+                data: [
+                    {
+                        label: "Server FPS",
+                        values: [{ time: now, y: 0 }]
+                    },
+                    {
+                        label: "Client FPS",
+                        values: [{ time: now, y: 0 }]
+                    }]
+            });
+        }
+       
+        function updatePerformanceGraphs(statistics) {
+            $("#divPerformanceGraphsContent").show();
+            $("#divPerformanceGraphsEmptyMsg").hide();
+            
+            var now = parseInt(new Date().getTime() / 1000);
+            var otherLatency = statistics["totalLatency"] - statistics["encodeLatency"] - statistics["decodeLatency"] - statistics["transportLatency"];
+
+            latencyGraph.push([
+                { time: now, y: statistics["encodeLatency"] },
+                { time: now, y: statistics["decodeLatency"] },
+                { time: now, y: statistics["transportLatency"] },
+                { time: now, y: otherLatency}]);
+
+            framerateGraph.push([
+                { time: now, y: statistics["serverFPS"] },
+                { time: now,  y: statistics["clientFPS"] }]);
+        }
+
         function updateStatistics(statistics) {
             clearTimeout(timeoutHandler);
-            $("#connectionCard").hide();
-            $("#statisticsCard").show();
-
+            // $("#connectionCard").hide();
+            // $("#statisticsCard").show();
+            if (!clientConnected) {
+                clientConnected = true;
+                // hide connection
+                if ($("#connectionTab").hasClass("active")) $("#connectionTab").removeClass("active");
+                if ($("#connection").hasClass("active")) $("#connection").removeClass("active");
+                // show statistics
+                if (!$("#statisticsTab").hasClass("active")) $("#statisticsTab").addClass("active");
+                if (!$("#statistics").hasClass("active")) $("#statistics").addClass("active");
+                if (!$("#statistics").hasClass("show")) $("#statistics").addClass("show");
+                // hide performanceGraphs
+                if ($("#performanceGraphsTab").hasClass("active")) $("#performanceGraphsTab").removeClass("active");
+                if ($("#performanceGraphs").hasClass("active")) $("#performanceGraphs").removeClass("active");
+                if ($("#performanceGraphs").hasClass("show")) $("#performanceGraphs").removeClass("show");
+                // hide logging
+                if ($("#loggingTab").hasClass("active")) $("#loggingTab").removeClass("active");
+                if ($("#logging").hasClass("active")) $("#logging").removeClass("active");
+                if ($("#logging").hasClass("show")) $("#logging").removeClass("show");
+            }
+            
             for (var stat in statistics) {
                 $("#statistic_" + stat).text(statistics[stat]);
             }
             timeoutHandler = setTimeout(() => {
-                $("#connectionCard").show();
-                $("#statisticsCard").hide();
+                // $("#connectionCard").show();
+                // $("#statisticsCard").hide();
+                clientConnected = false;
+                // show connection
+                if (!$("#connectionTab").hasClass("active")) $("#connectionTab").addClass("active");
+                if (!$("#connection").hasClass("active")) $("#connection").addClass("active");
+                // hide statistics
+                if ($("#statisticsTab").hasClass("active")) $("#statisticsTab").removeClass("active");
+                if ($("#statistics").hasClass("active")) $("#statistics").removeClass("active");
+                if ($("#statistics").hasClass("show")) $("#statistics").removeClass("show");
+                // hide performanceGraphs
+                if ($("#performanceGraphsTab").hasClass("active")) $("#performanceGraphsTab").removeClass("active");
+                if ($("#performanceGraphs").hasClass("active")) $("#performanceGraphs").removeClass("active");
+                if ($("#performanceGraphs").hasClass("show")) $("#performanceGraphs").removeClass("show");
+                // hide logging
+                if ($("#loggingTab").hasClass("active")) $("#loggingTab").removeClass("active");
+                if ($("#logging").hasClass("active")) $("#logging").removeClass("active");
+                if ($("#logging").hasClass("show")) $("#logging").removeClass("show");
             }, 2000);
 
             updatePerformanceGraphs(statistics);

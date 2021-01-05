@@ -2,10 +2,10 @@ apply plugin: 'com.android.application'
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
 android {
-    buildToolsVersion = '30.0.1'
+    buildToolsVersion = '30.0.3'
     compileSdkVersion 30
     defaultConfig {
-        applicationId "com.polygraphene.alvr"
+        applicationId "alvr.client"
         minSdkVersion 21
         targetSdkVersion 30
         versionCode 40
@@ -49,17 +49,18 @@ android {
     productFlavors {
         OculusQuest {
             dimension "headset"
+            applicationIdSuffix ".quest"
         }
         OculusGo {
             dimension "headset"
+            applicationIdSuffix ".go"
         }
         Stable {
             dimension "package"
-            applicationId "com.polygraphene.alvr"
         }
         Nightly {
             dimension "package"
-            applicationId "com.alvr.client.nightly"
+            applicationIdSuffix ".nightly"
         }
     }
 }

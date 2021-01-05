@@ -1,3 +1,4 @@
+use super::SampleFormat;
 use nalgebra::{Point3, UnitQuaternion};
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -46,6 +47,7 @@ pub struct AudioConfigRange {
     pub channels: u16,
     pub sample_rates: RangeInclusive<u32>,
     pub buffer_sizes: Option<RangeInclusive<u32>>,
+    pub sample_format: SampleFormat,
 }
 
 #[derive(Serialize, Deserialize)]

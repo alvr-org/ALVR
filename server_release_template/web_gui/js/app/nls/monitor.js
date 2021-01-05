@@ -25,7 +25,8 @@ define({
         "configureClientButton": "Configure",
         "configureClientAddIp": "Add new IP",
         // Statistics container
-        "statistics": "Streaming Statistics",
+        "statistics": "Statistics",
+        "streamingStatistics": "Streaming Statistics",
         "totalPackets": "Total Packets",
         "packetRate": "PacketRate",
         "packetsLostTotal": "Total packets lost",

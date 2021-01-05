@@ -33,10 +33,7 @@ fn openvr_source_file_path() -> StrResult<PathBuf> {
 }
 
 fn load_openvr_paths_json() -> StrResult<json::Value> {
-    let file_content = trace_err!(
-        fs::read_to_string(openvr_source_file_path()?),
-        "SteamVR probably not installed"
-    )?;
+    let file_content = trace_err!(fs::read_to_string(openvr_source_file_path()?))?;
 
     trace_err!(json::from_str(&file_content))
 }

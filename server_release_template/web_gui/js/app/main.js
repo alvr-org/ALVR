@@ -29,10 +29,10 @@ define([
                 var settings = new Settings();
                 
                 // update the current language on startup
-                let storedLocale = localStorage.getItem("locale");
                 let sessionLocale = session.locale;
-                $("#localeChange").val(storedLocale);
-                if (sessionLocale !== storedLocale) {
+                $("#localeChange").val(sessionLocale);
+                let storedLocale = localStorage.getItem("locale");
+                if ((sessionLocale !== storedLocale) && (storedLocale !== null) && (sessionLocale !== "system")) {
                     storedLocale = sessionLocale;
                     localStorage.setItem("locale", storedLocale);
                     window.location.reload();
@@ -128,10 +128,16 @@ define([
 
             $("#localeChange").change(() => {
                 storedLocale = $("#localeChange").val();
-                localStorage.setItem("locale", storedLocale);
                 session.locale = storedLocale;
                 settings.updateSession(session);
                 settings.storeSession("other");
+                if (storedLocale === "system") {
+                    if (localStorage.getItem("locale") !== null) {
+                        localStorage.removeItem("locale");
+                    }
+                } else {
+                    localStorage.setItem("locale", storedLocale);
+                }
                 window.location.reload();
             })
 

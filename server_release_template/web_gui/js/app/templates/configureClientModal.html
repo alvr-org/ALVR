@@ -1,0 +1,32 @@
+<div class="modal" id="configureClientModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <div>
+                    <h4 class="modal-title"><%- i18n.configureClient %></h4>
+                </div>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+
+            <div id="configureClientMain" class="modal-body">
+
+                <form class="form-inline">
+                <div class="form-group mb-2">
+                    <label for="newIpAddress" class="sr-only"><%- i18n.ipAddress %></label>
+                    <input class="form-control" type="text" id="newIpAddress" value="192.168.1.222"></input>
+                </div>
+                <button type="button" id="addNewIpAddressButton" class="btn btn-primary mb-2"><%- i18n.configureClientAddIp %></button>
+                </form>
+
+                <% _.forEach(knownIps, function(ip) { %>
+                    <div>
+                        <span><%- ip %></span><a href="#" class="float-right removeIpAddressButton" data-ip="<%- ip %>" title="Remove">X</a>
+                    </div>
+                <% });%>
+
+            </div>
+
+        </div>
+    </div>
+</div>

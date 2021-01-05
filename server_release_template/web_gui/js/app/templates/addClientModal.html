@@ -12,10 +12,14 @@
             <div id="addClientMain" class="modal-body">
                 <form>
                     <div class="form-group">
-                        <label for="clientTypeSelect"><%= clientType%>:</label>
-                        <select class="form-control" id="clientTypeSelect">
-                            <option>Oculus Quest</option>
-                        </select>
+                        <label for="deviceName"><%= deviceName%>:</label>
+                        <input class="form-control" type="text" id="deviceName" value="Oculus Quest 2"></input>
+                        <small id="deviceNameHelp" class="form-text text-muted"><%= deviceNameHelp%></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="clientHostname"><%= clientHostname%>:</label>
+                        <input class="form-control" type="text" id="clientHostname" value="x.client.alvr"></input>
+                        <small id="clientHostnameHelp" class="form-text text-muted"><%= clientHostnameHelp%></small>
                     </div>
                     <div class="form-group">
                         <label for="clientIP"><%= ipAddress%>:</label>

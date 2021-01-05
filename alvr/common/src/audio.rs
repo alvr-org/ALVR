@@ -1,12 +1,15 @@
 use crate::{data::*, *};
 use cpal::{
-    traits::{DeviceTrait, HostTrait},
-    SampleFormat, SupportedBufferSize, SupportedStreamConfigRange,
+    traits::{DeviceTrait, HostTrait, StreamTrait},
+    BufferSize, SampleRate, Stream, StreamConfig, SupportedBufferSize, SupportedStreamConfigRange,
 };
 use std::{
     cmp::{max, min, Ordering},
+    collections::VecDeque,
     ptr,
+    sync::mpsc as smpsc,
 };
+use tokio::sync::mpsc as tmpsc;
 use widestring::*;
 use winapi::{
     shared::{winerror::*, wtypes::VT_LPWSTR},
@@ -211,21 +214,18 @@ pub fn virtual_mic_devices() -> StrResult<VirtualMicDevicesDesc> {
 fn get_audio_config_ranges(configs: Vec<SupportedStreamConfigRange>) -> Vec<AudioConfigRange> {
     configs
         .iter()
-        .filter_map(|c| {
-            if c.sample_format() == SampleFormat::U16 {
-                let buffer_sizes = if let SupportedBufferSize::Range { min, max } = c.buffer_size()
-                {
-                    Some(*min..=*max)
-                } else {
-                    None
-                };
-                Some(AudioConfigRange {
-                    channels: c.channels(),
-                    sample_rates: c.min_sample_rate().0..=c.max_sample_rate().0,
-                    buffer_sizes,
-                })
+        .map(|c| {
+            let buffer_sizes = if let SupportedBufferSize::Range { min, max } = c.buffer_size() {
+                Some(*min..=*max)
             } else {
                 None
+            };
+
+            AudioConfigRange {
+                channels: c.channels(),
+                sample_rates: c.min_sample_rate().0..=c.max_sample_rate().0,
+                buffer_sizes,
+                sample_format: SampleFormat::from_cpal(c.sample_format()),
             }
         })
         .collect()
@@ -276,39 +276,41 @@ pub fn supported_audio_output_configs(
 }
 
 pub fn select_audio_config(
-    configs1: Vec<AudioConfigRange>,
-    configs2: Vec<AudioConfigRange>,
+    source_configs: Vec<AudioConfigRange>,
+    sink_configs: Vec<AudioConfigRange>,
     preferred_config: AudioConfig,
 ) -> StrResult<AudioConfig> {
     let mut valid_configs = vec![];
-    for config_range1 in configs1 {
-        for config_range2 in &configs2 {
-            if config_range1.channels == config_range2.channels {
-                let channels = config_range1.channels;
-                let buffer_sizes = if let Some(sizes1) = &config_range1.buffer_sizes {
-                    if let Some(sizes2) = &config_range2.buffer_sizes {
-                        let min_size = max(sizes1.start(), sizes2.start());
-                        let max_size = min(sizes1.end(), sizes2.end());
+    for source_config_range in source_configs {
+        for sink_config_range in &sink_configs {
+            if source_config_range.channels == sink_config_range.channels
+                && source_config_range.sample_format == sink_config_range.sample_format
+            {
+                let channels = source_config_range.channels;
+                let buffer_sizes = if let Some(source_sizes) = &source_config_range.buffer_sizes {
+                    if let Some(sink_sizes) = &sink_config_range.buffer_sizes {
+                        let min_size = max(source_sizes.start(), sink_sizes.start());
+                        let max_size = min(source_sizes.end(), sink_sizes.end());
                         if min_size <= max_size {
                             Some(*min_size..=*max_size)
                         } else {
                             continue;
                         }
                     } else {
-                        Some(sizes1.clone())
+                        Some(source_sizes.clone())
                     }
-                } else if let Some(sizes2) = &config_range2.buffer_sizes {
-                    Some(sizes2.clone())
                 } else {
+                    // if the buffer size of the source is unknown, then let always the source
+                    // decide the buffer size.
                     None
                 };
                 let min_sample_rate = max(
-                    config_range1.sample_rates.start(),
-                    config_range2.sample_rates.start(),
+                    source_config_range.sample_rates.start(),
+                    sink_config_range.sample_rates.start(),
                 );
                 let max_sample_rate = min(
-                    config_range1.sample_rates.end(),
-                    config_range2.sample_rates.end(),
+                    source_config_range.sample_rates.end(),
+                    sink_config_range.sample_rates.end(),
                 );
 
                 if min_sample_rate <= max_sample_rate {
@@ -316,6 +318,7 @@ pub fn select_audio_config(
                         channels,
                         sample_rates: *min_sample_rate..=*min_sample_rate,
                         buffer_sizes,
+                        sample_format: source_config_range.sample_format,
                     })
                 }
             }
@@ -324,10 +327,20 @@ pub fn select_audio_config(
 
     let mut candidates = vec![];
     for config_range in valid_configs {
-        // scores: lower is better. Precedece: channels, sample_rate, buffer_size
+        // Scores: lower is better. Precedece: channels, sample_format, sample_rate, buffer_size
 
         let channels_score =
             (config_range.channels as i32 - preferred_config.preferred_channels_count as i32).abs();
+
+        let candidate_sample_format;
+        let sample_format_score;
+        if config_range.sample_format == preferred_config.preferred_sample_format {
+            candidate_sample_format = preferred_config.preferred_sample_format;
+            sample_format_score = 0;
+        } else {
+            candidate_sample_format = config_range.sample_format;
+            sample_format_score = u32::MAX;
+        }
 
         let candidate_sample_rate;
         let sample_rate_score;
@@ -350,24 +363,30 @@ pub fn select_audio_config(
             }
         };
 
-        let candidate_buffer_size;
+        let candidate_buffer_size; // can be None
         let buffer_size_score;
         if let Some(buffer_sizes) = config_range.buffer_sizes {
-            if preferred_config.preferred_buffer_size >= *buffer_sizes.start()
-                && preferred_config.preferred_buffer_size <= *buffer_sizes.end()
-            {
-                candidate_buffer_size = preferred_config.preferred_buffer_size;
-                buffer_size_score = 0;
-            } else {
-                let min_dist_score = buffer_sizes.start() - preferred_config.preferred_buffer_size;
-                let max_dist_score = preferred_config.preferred_buffer_size - buffer_sizes.end();
-                if min_dist_score > max_dist_score {
-                    candidate_buffer_size = *buffer_sizes.start();
-                    buffer_size_score = min_dist_score;
+            if let Some(preferred_buffer_size) = preferred_config.preferred_buffer_size {
+                if preferred_buffer_size >= *buffer_sizes.start()
+                    && preferred_buffer_size <= *buffer_sizes.end()
+                {
+                    candidate_buffer_size = Some(preferred_buffer_size);
+                    buffer_size_score = 0;
                 } else {
-                    candidate_buffer_size = *buffer_sizes.end();
-                    buffer_size_score = max_dist_score;
+                    let min_dist_score = buffer_sizes.start() - preferred_buffer_size;
+                    let max_dist_score = preferred_buffer_size - buffer_sizes.end();
+                    if min_dist_score > max_dist_score {
+                        candidate_buffer_size = Some(*buffer_sizes.start());
+                        buffer_size_score = min_dist_score;
+                    } else {
+                        candidate_buffer_size = Some(*buffer_sizes.end());
+                        buffer_size_score = max_dist_score;
+                    }
                 }
+            } else {
+                // if no preference, choose the smallest supported buffer size
+                candidate_buffer_size = Some(*buffer_sizes.start());
+                buffer_size_score = 0;
             }
         } else {
             candidate_buffer_size = preferred_config.preferred_buffer_size;
@@ -379,19 +398,27 @@ pub fn select_audio_config(
                 preferred_channels_count: config_range.channels,
                 preferred_sample_rate: candidate_sample_rate,
                 preferred_buffer_size: candidate_buffer_size,
+                preferred_sample_format: candidate_sample_format,
+                max_buffer_count_extra: preferred_config.max_buffer_count_extra,
             },
             channels_score,
+            sample_format_score,
             sample_rate_score,
             buffer_size_score,
         ));
     }
 
-    candidates.sort_by(|(_, c1, sr1, bs1), (_, c2, sr2, bs2)| {
+    candidates.sort_by(|(_, c1, sf1, sr1, bs1), (_, c2, sf2, sr2, bs2)| {
         let res = c1.cmp(c2);
         if res == Ordering::Equal {
-            let res = sr1.cmp(sr2);
+            let res = sf1.cmp(sf2);
             if res == Ordering::Equal {
-                bs1.cmp(bs2)
+                let res = sr1.cmp(sr2);
+                if res == Ordering::Equal {
+                    bs1.cmp(bs2)
+                } else {
+                    res
+                }
             } else {
                 res
             }
@@ -401,16 +428,116 @@ pub fn select_audio_config(
     });
 
     if let Some((audio_config, ..)) = candidates.into_iter().next() {
+        if audio_config != preferred_config {
+            warn!(
+                "Specified audio settings cannot be satisfied. Using the following settings: {:?}",
+                audio_config
+            );
+        }
+
         Ok(audio_config)
     } else {
         Err("No matching configuration found".into())
     }
 }
 
-async fn start_recording(config: AudioConfig, loopback: bool) -> StrResult {
-    todo!();
+fn audio_config_to_cpal(config: &AudioConfig) -> StreamConfig {
+    StreamConfig {
+        channels: config.preferred_channels_count,
+        sample_rate: SampleRate(config.preferred_sample_rate),
+        buffer_size: if let Some(buffer_size) = config.preferred_buffer_size {
+            BufferSize::Fixed(buffer_size)
+        } else {
+            BufferSize::Default
+        },
+    }
 }
 
-async fn start_playing(config: AudioConfig) -> StrResult {
-    todo!();
+pub struct AudioSession {
+    _stream: Stream,
+}
+
+impl AudioSession {
+    pub fn start_recording(
+        device_name: Option<String>,
+        config: AudioConfig,
+        loopback: bool,
+        sender: tmpsc::UnboundedSender<Vec<u8>>,
+    ) -> StrResult<Self> {
+        let host = cpal::default_host();
+        let device = if let Some(device_name) = device_name {
+            let devices = trace_err!(if loopback {
+                host.output_devices()
+            } else {
+                host.input_devices()
+            })?;
+            let maybe_device = devices
+                .filter_map(|d| Some((d.name().ok()?, d)))
+                .find_map(|(d_name, d)| if d_name == device_name { Some(d) } else { None });
+
+            if let Some(device) = maybe_device {
+                device
+            } else {
+                return Err(format!("Cannot find device with name \"{}\"", device_name));
+            }
+        } else if loopback {
+            trace_none!(host.default_output_device())?
+        } else {
+            trace_none!(host.default_input_device())?
+        };
+
+        let stream = trace_err!(device.build_input_stream_raw(
+            &audio_config_to_cpal(&config),
+            config.preferred_sample_format.to_cpal(),
+            move |data, _| {
+                sender.send(data.bytes().to_vec()).ok();
+            },
+            |e| warn!("Error while recording audio: {}", e),
+        ))?;
+
+        trace_err!(stream.play())?;
+
+        Ok(Self { _stream: stream })
+    }
+
+    pub fn start_audio_playing(
+        config: AudioConfig,
+        receiver: smpsc::Receiver<Vec<u8>>,
+    ) -> StrResult<Self> {
+        let host = cpal::default_host();
+        let device = trace_none!(host.default_output_device())?;
+
+        let mut sample_buffer = VecDeque::new();
+        let frame_size = config.preferred_channels_count as usize
+            * config.preferred_sample_format.to_cpal().sample_size();
+        let stream = trace_err!(device.build_output_stream_raw(
+            &audio_config_to_cpal(&config),
+            config.preferred_sample_format.to_cpal(),
+            move |data, _| {
+                while let Ok(packet) = receiver.try_recv() {
+                    sample_buffer.extend(packet);
+                }
+
+                let data_ref = data.bytes_mut();
+
+                if sample_buffer.len() >= data_ref.len() {
+                    data_ref.copy_from_slice(
+                        &sample_buffer.drain(0..data_ref.len()).collect::<Vec<_>>(),
+                    )
+                }
+
+                // trickle drain overgrown buffer. todo: use smarter policy with EventTiming
+                if sample_buffer.len()
+                    >= data_ref.len() * config.max_buffer_count_extra as usize + frame_size
+                {
+                    sample_buffer.drain(0..frame_size);
+                }
+            },
+            |e| warn!("Error while recording audio: {}", e),
+        ))?;
+
+        trace_err!(stream.play())?;
+
+        Ok(Self { _stream: stream })
+    }
 }

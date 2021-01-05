@@ -120,12 +120,38 @@ pub struct VideoDesc {
     pub encode_bitrate_mbs: u64,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
+pub enum SampleFormat {
+    Signed16Bit,
+    Unsigned16Bit,
+    Signed32Bit,
+}
+
+impl SampleFormat {
+    pub fn to_cpal(self) -> cpal::SampleFormat {
+        match self {
+            Self::Signed16Bit => cpal::SampleFormat::I16,
+            Self::Unsigned16Bit => cpal::SampleFormat::U16,
+            Self::Signed32Bit => cpal::SampleFormat::F32,
+        }
+    }
+
+    pub fn from_cpal(format: cpal::SampleFormat) -> Self {
+        match format {
+            cpal::SampleFormat::I16 => Self::Signed16Bit,
+            cpal::SampleFormat::U16 => Self::Unsigned16Bit,
+            cpal::SampleFormat::F32 => Self::Signed32Bit,
+        }
+    }
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug)]
 pub struct AudioConfig {
     pub preferred_channels_count: u16,
     pub preferred_sample_rate: u32,
-    pub preferred_buffer_size: u32,
-    // sample_format: support only unsigned 16 bit for now
+    pub preferred_buffer_size: Option<u32>,
+    pub preferred_sample_format: SampleFormat,
+    pub max_buffer_count_extra: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -136,7 +162,7 @@ pub struct OutputAudioDesc {
     //
     #[schema(advanced)]
     pub device: String,
-    
+
     pub mute_when_streaming: bool,
 }
 
@@ -391,7 +417,10 @@ pub fn session_settings_default() -> SettingsDefault {
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {
                 enabled: true,
-                content: OutputAudioDescDefault { device: "".into(), mute_when_streaming: true },
+                content: OutputAudioDescDefault {
+                    device: "".into(),
+                    mute_when_streaming: true,
+                },
             },
             microphone: SwitchDefault {
                 enabled: false,

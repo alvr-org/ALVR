@@ -131,6 +131,10 @@
         }
 
         async function checkUpdate() {
+            while (typeof getUpdateInfo === "undefined") {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
             let updateInfo = await getUpdateInfo();
 
             if (updateInfo.version != null) {

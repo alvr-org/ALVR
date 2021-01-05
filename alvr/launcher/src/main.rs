@@ -216,11 +216,6 @@ fn window_mode() -> StrResult {
             return Ok(());
         }
 
-        let instance_mutex = Arc::new(Mutex::new(Some(InstanceMutex(instance_mutex))));
-
-        let session_manager = SessionManager::new(&current_alvr_dir);
-        let settings = session_manager.get().to_settings();
-
         let html_content =
             include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/gui/html/index.html"));
         let jquery = include_str!(concat!(
@@ -263,33 +258,6 @@ fn window_mode() -> StrResult {
             }
         }))?;
 
-        if let Some((release, version)) = get_server_update(settings.extra.update_channel) {
-            let prompt_before_update = settings.extra.prompt_before_update;
-            trace_err!(window.bind("getUpdateInfo", move |_| Ok(json::json!({
-                "version": version.to_string(),
-                "prompt": prompt_before_update,
-            }))))?;
-
-            trace_err!(window.bind("update", {
-                let window = window.clone();
-                let current_alvr_dir = current_alvr_dir.clone();
-                move |_| {
-                    show_err_blocking(update(&release)).ok();
-                    instance_mutex.lock().unwrap().take();
-                    window.close();
-
-                    maybe_open_launcher(&current_alvr_dir);
-
-                    Ok(json::Value::Null)
-                }
-            }))?;
-        } else {
-            trace_err!(window.bind("getUpdateInfo", |_| Ok(json::json!({
-                "version": null,
-                "prompt": false,
-            }))))?;
-        }
-
         trace_err!(window.bind("checkSteamvrInstallation", |_| {
             Ok(json::Value::Bool(check_steamvr_installation()))
         }))?;
@@ -331,6 +299,37 @@ fn window_mode() -> StrResult {
 
         // reload the page again, the first time the callbacks were not ready
         trace_err!(window.load(alcro::Content::Html(&html_content)))?;
+
+        let instance_mutex = Arc::new(Mutex::new(Some(InstanceMutex(instance_mutex))));
+        let session_manager = SessionManager::new(&current_alvr_dir);
+        let settings = session_manager.get().to_settings();
+
+        if let Some((release, version)) = get_server_update(settings.extra.update_channel) {
+            let prompt_before_update = settings.extra.prompt_before_update;
+            trace_err!(window.bind("getUpdateInfo", move |_| Ok(json::json!({
+                "version": version.to_string(),
+                "prompt": prompt_before_update,
+            }))))?;
+
+            trace_err!(window.bind("update", {
+                let window = window.clone();
+                let current_alvr_dir = current_alvr_dir.clone();
+                move |_| {
+                    show_err_blocking(update(&release)).ok();
+                    instance_mutex.lock().unwrap().take();
+                    window.close();
+
+                    maybe_open_launcher(&current_alvr_dir);
+
+                    Ok(json::Value::Null)
+                }
+            }))?;
+        } else {
+            trace_err!(window.bind("getUpdateInfo", |_| Ok(json::json!({
+                "version": null,
+                "prompt": false,
+            }))))?;
+        }
 
         window.wait_finish();
 

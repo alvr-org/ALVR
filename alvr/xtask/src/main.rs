@@ -477,7 +477,7 @@ fn main() {
             for_oculus_quest: args.contains("--oculus-quest"),
             for_oculus_go: args.contains("--oculus-go"),
         };
-        if args.finish().is_ok() {
+        if args.finish().is_empty() {
             match subcommand.as_str() {
                 "install-deps" => install_deps(),
                 "build-server" => build_server(args_values.is_release, false, true),

@@ -144,7 +144,7 @@ fn update(release: &Release) -> StrResult {
     trace_err!(self_update::Download::from_url(&asset.download_url)
         .show_progress(true)
         .set_header(
-            reqwest::header::ACCEPT,
+            http::header::ACCEPT,
             trace_err!("application/octet-stream".parse())?,
         )
         .download_to(&tmp_tarball))?;

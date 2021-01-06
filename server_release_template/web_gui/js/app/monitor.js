@@ -73,12 +73,12 @@ define([
                 var hostname = pair[0];
                 var connection = pair[1];
                 //var address = connection.lastLocalIp;
-                var type = connection.deviceName;
+                var displayName = connection.deviceName;
 
                 if (connection.trusted) {
-                    addTrustedClient(type, hostname);
+                    addTrustedClient(displayName, hostname);
                 } else {
-                    addNewClient(type, hostname);
+                    addNewClient(displayName, hostname);
                 }
             });
         }
@@ -198,14 +198,14 @@ define([
             });
         }
 
-        function addNewClient(type, hostname) {
+        function addNewClient(displayName, hostname) {
             if (!validateHostname(hostname))
                 return;
 
             const id = hostname.replace(/\./g, '');
 
-            var client = `<div class="card client" type="${type}" hostname="${hostname}" id="newClient_${id}">
-                        ${type} (${hostname}) <button type="button" class="btn btn-primary">${i18n["addTrustedClient"]}</button>
+            var client = `<div class="card client" type="${displayName}" hostname="${hostname}" id="newClient_${id}">
+                        ${displayName} (${hostname}) <button type="button" class="btn btn-primary">${i18n["addTrustedClient"]}</button>
                         </div>`
 
             $("#newClientsDiv").append(client);
@@ -221,16 +221,16 @@ define([
             });
         }
 
-        function addTrustedClient(type, hostname) {
+        function addTrustedClient(displayName, hostname) {
             if (!validateHostname(hostname))
                 return;
                 
             const id = hostname.replace(/\./g, '');
 
-            var client = `<div class="card client" type="${type}" hostname="${hostname}" id="trustedClient_${id}">
-                        ${type} (${hostname})
+            var client = `<div class="card client" type="${displayName}" hostname="${hostname}" id="trustedClient_${id}">
+                        ${displayName} (${hostname})
+                        <button type="button" id="btnConfigureClient_${id}" class="btn btn-primary ml-auto">${i18n["configureClientButton"]}</button>
                         <button type="button" id="btnRemoveTrustedClient_${id}" class="btn btn-primary">${i18n["removeTrustedClient"]}</button>
-                        <button type="button" id="btnConfigureClient_${id}" class="btn btn-primary">${i18n["configureClientButton"]}</button>
                         </div>`
 
             $("#trustedClientsDiv").append(client);

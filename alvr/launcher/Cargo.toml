@@ -14,7 +14,7 @@ alcro = "0.4"
 alvr_common = { path = "../common" }
 single-instance = "0.1"
 self_update = { version = "0.22", features = ["archive-zip"] }
-reqwest = "0.10"
+http = "0.2"
 zip = "0.5"
 
 [target.'cfg(windows)'.build-dependencies]

@@ -37,8 +37,8 @@ fn main() {
         .define("_MT", None)
         .define("_DLL", None);
 
-    #[cfg(debug_assertions)]
-    build.define("ALVR_DEBUG_LOG", None);
+    // #[cfg(debug_assertions)]
+    // build.define("ALVR_DEBUG_LOG", None);
 
     build.compile("bindings");
 

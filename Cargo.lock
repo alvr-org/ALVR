@@ -138,7 +138,7 @@ dependencies = [
  "alcro",
  "alvr_common",
  "fs_extra",
- "reqwest",
+ "reqwest 0.11.0",
  "self_update",
  "semver 0.11.0",
  "serde_json",
@@ -188,7 +188,7 @@ dependencies = [
  "lazy_static",
  "pico-args",
  "regex",
- "reqwest",
+ "reqwest 0.11.0",
  "runas",
  "semver 0.11.0",
  "toml_edit",
@@ -500,7 +500,7 @@ dependencies = [
  "indicatif",
  "log",
  "rand 0.7.3",
- "reqwest",
+ "reqwest 0.10.10",
  "serde",
  "serde_json",
  "sha2",
@@ -1636,6 +1636,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "h2"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b67e66362108efccd8ac053abafc8b7a8d86a37e6e48fc4f6f7485eb5e9e6a5"
+dependencies = [
+ "bytes 1.0.0",
+ "fnv",
+ "futures-core",
+ "futures-sink",
+ "futures-util",
+ "http",
+ "indexmap",
+ "slab",
+ "tokio 1.0.1",
+ "tokio-util 0.6.0",
+ "tracing",
+ "tracing-futures",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1743,7 +1763,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "futures-util",
- "h2",
+ "h2 0.2.7",
  "http",
  "http-body 0.3.1",
  "httparse",
@@ -1767,6 +1787,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "futures-util",
+ "h2 0.3.0",
  "http",
  "http-body 0.4.0",
  "httparse",
@@ -1808,6 +1829,19 @@ dependencies = [
  "native-tls",
  "tokio 0.2.24",
  "tokio-tls",
+]
+
+[[package]]
+name = "hyper-tls"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6183ddfa99b85da61a140bea0efc93fdf56ceaa041b37d553518030827f9905"
+dependencies = [
+ "bytes 1.0.0",
+ "hyper 0.14.2",
+ "native-tls",
+ "tokio 1.0.1",
+ "tokio-native-tls",
 ]
 
 [[package]]
@@ -3048,7 +3082,7 @@ dependencies = [
  "http",
  "http-body 0.3.1",
  "hyper 0.13.9",
- "hyper-tls",
+ "hyper-tls 0.4.3",
  "ipnet",
  "js-sys",
  "lazy_static",
@@ -3063,6 +3097,40 @@ dependencies = [
  "serde_urlencoded",
  "tokio 0.2.24",
  "tokio-tls",
+ "url",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "winreg 0.7.0",
+]
+
+[[package]]
+name = "reqwest"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd281b1030aa675fb90aa994d07187645bb3c8fc756ca766e7c3070b439de9de"
+dependencies = [
+ "base64 0.13.0",
+ "bytes 1.0.0",
+ "encoding_rs",
+ "futures-core",
+ "futures-util",
+ "http",
+ "http-body 0.4.0",
+ "hyper 0.14.2",
+ "hyper-tls 0.5.0",
+ "ipnet",
+ "js-sys",
+ "lazy_static",
+ "log",
+ "mime",
+ "native-tls",
+ "percent-encoding 2.1.0",
+ "pin-project-lite 0.2.1",
+ "serde",
+ "serde_urlencoded",
+ "tokio 1.0.1",
+ "tokio-native-tls",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -3228,7 +3296,7 @@ dependencies = [
  "log",
  "quick-xml",
  "regex",
- "reqwest",
+ "reqwest 0.10.10",
  "semver 0.11.0",
  "serde_json",
  "tempfile",
@@ -3840,6 +3908,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tokio-native-tls"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7d995660bd2b7f8c1568414c1126076c13fbb725c40112dc0120b78eb9b717b"
+dependencies = [
+ "native-tls",
+ "tokio 1.0.1",
 ]
 
 [[package]]

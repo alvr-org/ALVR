@@ -8,7 +8,7 @@ edition = "2018"
 [dependencies]
 dirs = "3"
 fs_extra = "1"
-pico-args = "0.3"
+pico-args = "0.4"
 runas = "0.2"
 walkdir = "2"
 zip = "0.5"

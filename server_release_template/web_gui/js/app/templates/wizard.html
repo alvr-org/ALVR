@@ -17,7 +17,6 @@
                     <div>
                         <h6><%= titleHardwareReq %></h6>
                         <%= textHardwareReq %>
-                        
                         <p><%= YourGPUIs %> <span id="GPU"></span></p>
                         <p id="GPUSupportText" style="white-space: pre-wrap"></p>
                     </div>
@@ -41,7 +40,6 @@
                     <div>
                         <h6><%= titleTracking %></h6>
                         <%= textTracking %>
-
                     </div>
                     <div class="wizzardSettings">
                         <div class="btn-group" data-toggle="buttons">
@@ -87,11 +85,20 @@
 
                 <div class="wizardContent" style="display: none;">
                     <div>
+                        <h6><%= titleImport %></h6>
+                        <%= textImport %>
+                    </div>
+                    <div id="importPlaceholder" class="wizzardSettings">
+   
+                    </div>
+                </div>
+
+                <div class="wizardContent" style="display: none;">
+                    <div>
                         <h6><%= titleFinished %></h6>
                         <%= textFinished %>
                     </div>
                 </div>
-
 
             </div>
 

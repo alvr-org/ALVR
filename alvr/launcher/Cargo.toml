@@ -13,7 +13,7 @@ tempfile = "3"
 alcro = "0.4"
 alvr_common = { path = "../common" }
 single-instance = "0.1"
-self_update = { version = "0.22", features = ["archive-zip"] }
+self_update = { version = "0.23", features = ["archive-zip"] }
 http = "0.2"
 zip = "0.5"
 

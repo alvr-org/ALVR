@@ -87,11 +87,6 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub adapter_index: u32,
 
-    #[schema(placeholder = "display_refresh_rate")]
-    //
-    #[schema(advanced, min = 60.0, max = 90.0)]
-    pub preferred_fps: f32,
-
     // Dropdown with 25%, 50%, 75%, 100%, 125%, 150% etc or custom
     // Should set renderResolution (always in scale mode).
     // When the user sets a resolution not obtainable with the preset scales, set the dropdown to
@@ -104,6 +99,11 @@ pub struct VideoDesc {
 
     #[schema(advanced)]
     pub recommended_target_resolution: FrameSize,
+
+    #[schema(placeholder = "display_refresh_rate")]
+    //
+    #[schema(advanced, min = 60.0, max = 90.0)]
+    pub preferred_fps: f32,
 
     #[schema(advanced)]
     pub seconds_from_vsync_to_photons: f32,
@@ -282,6 +282,9 @@ pub struct HeadsetDesc {
     pub controllers: Switch<ControllersDesc>,
 
     pub tracking_space: TrackingSpace,
+
+    #[schema(advanced)]
+    pub extra_latency_mode: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -462,6 +465,7 @@ pub fn session_settings_default() -> SettingsDefault {
             tracking_space: TrackingSpaceDefault {
                 variant: TrackingSpaceDefaultVariant::Local,
             },
+            extra_latency_mode: true,
         },
         connection: ConnectionDescDefault {
             auto_trust_clients: cfg!(debug_assertions),

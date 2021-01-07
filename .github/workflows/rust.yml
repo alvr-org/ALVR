@@ -15,7 +15,6 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
-        target: aarch64-linux-android
         override: true
     - uses: Swatinem/rust-cache@v1
 
@@ -24,14 +23,8 @@ jobs:
       with:
         command: build
         args: -p alvr_xtask -p alvr_server -p alvr_launcher --verbose
-
-    - name: Build client crate
-      uses: actions-rs/cargo@v1
-      with:
-        use-cross: true
-        command: build
-        args: -p alvr_client --target aarch64-linux-android --verbose
-
+    # todo: add client build when compatible with Windows and/or cargo-apk
+    
     - name: Run tests
       uses: actions-rs/cargo@v1
       with:

@@ -8,6 +8,8 @@ env:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
     - uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1
@@ -15,6 +17,7 @@ jobs:
         toolchain: stable
         target: aarch64-linux-android
         override: true
+    - uses: Swatinem/rust-cache@v1
 
     - name: Build server crates
       uses: actions-rs/cargo@v1
@@ -52,6 +55,8 @@ jobs:
   
   clippy:
     runs-on: windows-latest
+    env:
+      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -60,6 +65,7 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
+      - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

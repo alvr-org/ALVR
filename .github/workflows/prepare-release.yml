@@ -1,5 +1,8 @@
 name: Create release
 
+env:
+  CARGO_TERM_COLOR: always
+
 on:
   workflow_dispatch:
     inputs:

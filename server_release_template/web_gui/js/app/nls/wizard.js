@@ -30,6 +30,9 @@ define({
         "textPerformance": "Please choose preset that fits your setup. This will adjust some settings for you.",
         "compatPerformance": "Compatibility",
         "qualityPerformance": "Visual quality",
+        // Import page
+        "titleImport": "Import ALVR preset",
+        "textImport": "If you have one please choose a preset file. <br/> Preset files can be used for: <br/> &emsp;- Preset option for a specific headset (eg: Oculus GO) <br/> &emsp;- Reinstall previously backup ALVR settings.",
         // End page
         "titleFinished": "Finished",
         "textFinished": "You can always restart this wizard from the \"Installation\" tab on the left",

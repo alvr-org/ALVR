@@ -1,10 +1,10 @@
 define([
     "lib/lodash",
-    "app/driverList",
+    "app/uploadPreset",
     "text!app/templates/wizard.html",
     "i18n!app/nls/wizard",
     "css!app/templates/wizard.css"
-], function (_, driverList, wizardTemplate, i18n) {
+], function (_, uploadPreset, wizardTemplate, i18n) {
     return function (alvrSettings) {
 
         function GetAndCheckGPUSupport() {
@@ -41,6 +41,8 @@ define([
             $("#setupWizard").remove();
             $("body").append(template);
             $(document).ready(() => {
+
+                uploadPreset.addUploadPreset("importPlaceholder");
 
                 $('#setupWizard').modal({
                     backdrop: 'static',
@@ -173,7 +175,6 @@ define([
                         $("#wizardNextButton").text(i18n.buttonClose)
                     }
 
-
                     $($("#wizardMain").children().get(currentPage)).hide();
                     $($("#wizardMain").children().get(currentPage + 1)).show();
 
@@ -181,12 +182,7 @@ define([
 
                     currentPage += 1;
                 })
-
             });
-
         }
-
-
-
     };
 });

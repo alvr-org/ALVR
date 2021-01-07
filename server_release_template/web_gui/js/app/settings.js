@@ -278,7 +278,7 @@ define([
                 toggleAdvanced();
             })
 
-            $("#restartSteamVR").click(() => {
+            $("#restartSteamVRButton").click(() => {
                 restartSteamVR();
             })
 

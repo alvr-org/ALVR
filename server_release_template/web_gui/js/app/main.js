@@ -8,6 +8,7 @@ define([
     "app/setupWizard",
     "app/monitor",
     "app/driverList",
+    "app/uploadPreset",
     "json!../../session",
     "text!../../version",
     "app/monitor",
@@ -15,7 +16,7 @@ define([
     "css!js/lib/lobibox.min.css"
 
 
-], function ($, bootstrap, _, mainTemplate, i18n, Settings, SetupWizard, Monitor, driverList, session, version) {
+], function ($, bootstrap, _, mainTemplate, i18n, Settings, SetupWizard, Monitor, driverList, uploadPreset, session, version) {
     $(function () {
 
         var compiledTemplate = _.template(mainTemplate);
@@ -27,17 +28,6 @@ define([
 
             try {
                 var settings = new Settings();
-                
-                // update the current language on startup
-                let sessionLocale = session.locale;
-                $("#localeChange").val(sessionLocale);
-                let storedLocale = localStorage.getItem("locale");
-                if ((sessionLocale !== storedLocale) && (storedLocale !== null) && (sessionLocale !== "system")) {
-                    storedLocale = sessionLocale;
-                    localStorage.setItem("locale", storedLocale);
-                    window.location.reload();
-                }
-
                 var wizard = new SetupWizard(settings);
                 var monitor = new Monitor(settings);
             } catch (error) {
@@ -53,7 +43,17 @@ define([
                     messageHeight: 250,
                 });
             }
-                                 
+
+            // update the current language on startup
+            let sessionLocale = session.locale;
+            $("#localeChange").val(sessionLocale);
+            let storedLocale = localStorage.getItem("locale");
+            if ((sessionLocale !== storedLocale) && (storedLocale !== null) && (sessionLocale !== "system")) {
+                storedLocale = sessionLocale;
+                localStorage.setItem("locale", storedLocale);
+                window.location.reload();
+            }
+
             $("#bodyContent").fadeIn(function() {    
                 if (session.setupWizard) {
                     setTimeout(() => { wizard.showWizard(); }, 500);
@@ -144,6 +144,8 @@ define([
             $("#version").text("v" + version);
 
             driverList.fillDriverList("registeredDriversInst");
+
+            uploadPreset.addUploadPreset("restartSteamVR");
 
         });
     });

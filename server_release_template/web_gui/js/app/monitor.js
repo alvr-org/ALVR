@@ -123,12 +123,26 @@ define([
                         const ip = $("#clientIP").val();
                         
                         if (!validateHostname(clientHostname)){
-                            Lobibox.notify("error", { msg: i18n["error_DuplicateHostname"] });
+                            Lobibox.notify("error", {
+                                size: "mini",
+                                rounded: true,
+                                delayIndicator: false,
+                                sound: false,
+                                position: "bottom right",
+                                msg: i18n["error_DuplicateHostname"]
+                            });
                             return;
                         }
                         
                         if (!validateIPv4address(ip)){
-                            Lobibox.notify("errror", { msg: i18n["error_InvalidIp"] });
+                            Lobibox.notify("error", {
+                                size: "mini",
+                                rounded: true,
+                                delayIndicator: false,
+                                sound: false,
+                                position: "bottom right",
+                                msg: i18n["error_InvalidIp"]
+                            })
                             return;
                         }
 
@@ -167,7 +181,14 @@ define([
                         const ip = $("#newIpAddress").val();
 
                         if (!validateIPv4address(ip)) {
-                            Lobibox.notify("error", { msg: i18n["error_InvalidIp"] });
+                            Lobibox.notify("error", {
+                                size: "mini",
+                                rounded: true,
+                                delayIndicator: false,
+                                sound: false,
+                                position: "bottom right",
+                                msg: i18n["error_InvalidIp"]
+                            });
                             return;
                         }
 
@@ -253,12 +274,12 @@ define([
             const id = hostname.replace(/\./g, '');
 
             if ($("#newClient_" + id).length > 0) {
-                console.warn("Client already in new list:", type, hostname);
+                console.warn("Client already in new list:", hostname);
                 return false;
             }
 
             if ($("#trustedClient_" + id).length > 0) {
-                console.warn("Client already in trusted list:", type, hostname);
+                console.warn("Client already in trusted list:", hostname);
                 return false;
             }
             return true;
@@ -295,7 +316,7 @@ define([
 
             if (notificationLevels.includes(split[1].trim())) {
                 if (!(skipWithoutId && idObject === undefined) && Lobibox.notify.list.length < 2) {
-                    var box = Lobibox.notify(getNotificationType(split[1]), {
+                    Lobibox.notify(getNotificationType(split[1]), {
                         size: "mini",
                         rounded: true,
                         delayIndicator: false,

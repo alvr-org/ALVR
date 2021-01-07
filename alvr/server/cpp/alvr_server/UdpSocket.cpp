@@ -84,6 +84,9 @@ void UdpSocket::Run()
 		}
 		if (WSAGetLastError() != WSAEWOULDBLOCK) {
 			Error("UdpSocket::DoSend() Error on sendto. %d %ls\n", WSAGetLastError(), GetErrorStr(WSAGetLastError()).c_str());
+			
+			// slow down error spamming
+			Sleep(500);
 		}
 		return false;
 	})) {}

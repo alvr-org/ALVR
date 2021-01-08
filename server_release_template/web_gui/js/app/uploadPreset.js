@@ -4,6 +4,8 @@ define([
 ], function(_, uploadTemplate, i18n) {
     return new function() {
 
+        var _webClientId = "";
+
         // uploadButton trigger the input file
         $(document).on("click", "#settingUploadButton", () => {
             document.getElementById("settingUpload").click();
@@ -23,33 +25,83 @@ define([
             } else {
                 const reader = new FileReader();
 
-                reader.addEventListener('load', function() {
+                reader.addEventListener("load", function() {
 
                     // filereader result (file content)
-                    console.log(this.result);
-                    const uploadedSession = JSON.parse(this.result);
-
-                    // json parsed file
-                    console.log(uploadedSession);
+                    const uploadedSession = this.result;
+                    
+                    try {
+                        const jsonSession = JSON.parse(uploadedSession);
+                        $.ajax({
+                            type: "POST",
+                            url: "/session",
+                            contentType: "application/json;charset=UTF-8",
+                            data: JSON.stringify({
+                                updateType: "settings",
+                                webClientId: _webClientId,
+                                session: jsonSession,
+                            }),
+                            processData: false,
+                            success: function (res) {
+                                if (res === "") {
+                                    Lobibox.notify("success", {
+                                        size: "mini",
+                                        rounded: true,
+                                        delayIndicator: false,
+                                        sound: false,
+                                        msg: "Success"
+                                    });
+                                } else {
+                                    Lobibox.notify("error", {
+                                        size: "mini",
+                                        rounded: true,
+                                        delayIndicator: false,
+                                        sound: false,
+                                        title: 'Error while storing the settings',
+                                        msg: res
+                                    });
+                                    console.log("FAILED", res);
+                                }
+                            },
+                            error: function (res) {
+                                Lobibox.notify("error", {
+                                    size: "mini",
+                                    rounded: true,
+                                    delayIndicator: false,
+                                    sound: false,
+                                    title: 'Error while storing the settings',
+                                    msg: res
+                                });
+                                console.log("FAILED", res);
+                            }
+                        });
+                    } catch (error) {
+                        Lobibox.notify("error", {
+                            rounded: true,
+                            delay : -1,
+                            delayIndicator: false,
+                            sound: false,
+                            position: "bottom left",
+                            iconSource: "fontAwesome",
+                            msg: error.stack,
+                            closable: true,
+                            messageHeight: 250,
+                        });
+                        console.log("JSON error", error);
+                    }
 
                     // reset the value of the input so the user can reload the same file.
                     document.getElementById("settingUpload").value = "";
 
-                    Lobibox.notify("success", {
-                        size: "mini",
-                        rounded: true,
-                        delayIndicator: false,
-                        sound: false,
-                        msg: "Success"
-                    });
                 });
 
                 reader.readAsText(file);
             }
         });
 
-        this.addUploadPreset = function(elementId) {
+        this.addUploadPreset = function(elementId, webClientId) {
 
+            _webClientId = webClientId;
             var compiledTemplate = _.template(uploadTemplate);
             var template = compiledTemplate({ id: elementId, ...i18n });
 

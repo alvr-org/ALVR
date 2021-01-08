@@ -35,7 +35,7 @@ define([
                     delayIndicator: false,
                     sound: false,
                     position: "bottom left",
-                    iconSource: 'fontAwesome',
+                    iconSource: "fontAwesome",
                     msg: error.stack,
                     closable: true,
                     messageHeight: 250,
@@ -94,7 +94,7 @@ define([
             controller.append(`<option value="4">HTC Vive</option>`);
             controller.append(`<option value="5">HTC Vive (no handtracking pinch)</option>`);
 
-            const select = new Selectal('#_root_headset_controllers_content_controllerMode');
+            const select = new Selectal("#_root_headset_controllers_content_controllerMode");
             controller = $("#_root_headset_controllers_content_controllerMode");
 
             controller.val(controllerMode.val());
@@ -125,7 +125,7 @@ define([
             headset.append(`<option value="0">Oculus Rift S</option>`);
             headset.append(`<option value="1">HTC Vive</option>`);
 
-            const select = new Selectal('#_root_headset_headsetEmulationMode');
+            const select = new Selectal("#_root_headset_headsetEmulationMode");
             headset = $("#_root_headset_headsetEmulationMode");
 
 
@@ -203,7 +203,7 @@ define([
                 dropdown.append(`<option value="${scale}"> ${scale}% </option>`);
             });
 
-            const select = new Selectal('#_root_video_resolutionDropdown');
+            const select = new Selectal("#_root_video_resolutionDropdown");
             dropdown = $("#_root_video_resolutionDropdown");
 
             var customRes = `<div style="display:inline;" id="customVideoScale"><b>${i18n.customVideoScale} </b></div>`;
@@ -425,7 +425,7 @@ define([
                     delayIndicator: false,
                     sound: false,
                     position: "bottom left",
-                    iconSource: 'fontAwesome',
+                    iconSource: "fontAwesome",
                     msg: i18n.audioDeviceError,
                     closable: true,
                     messageHeight: 250,
@@ -481,7 +481,7 @@ define([
                 let $el = $("#_root_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
                 $("#_root_audio_gameAudio_content_deviceDropdown").prepend($el);
 
-                let select = new Selectal('#_root_audio_gameAudio_content_deviceDropdown');
+                let select = new Selectal("#_root_audio_gameAudio_content_deviceDropdown");
                 el = $("#_root_audio_gameAudio_content_deviceDropdown");
 
                 //select the current option in dropdown
@@ -555,7 +555,7 @@ define([
                 let $el = $("#_root_audio_microphone_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
                 $("#_root_audio_microphone_content_deviceDropdown").prepend($el);
 
-                let select = new Selectal('#_root_audio_microphone_content_deviceDropdown');
+                let select = new Selectal("#_root_audio_microphone_content_deviceDropdown");
                 el = $("#_root_audio_microphone_content_deviceDropdown");
 
                 //select the current option in dropdown
@@ -722,14 +722,14 @@ define([
             var themeColor = $("input[name='theme']:checked").val();
 
             if (themeColor == "systemDefault") {
-                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
                     themeColor = "darkly";
                 } else {
                     themeColor = "classic";
                 }
             }
 
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => {
                 themeColor = e.matches ? "darkly" : "classic";
                 bootstrap.attr("href", themes[themeColor]["bootstrap"]);
                 selectal.attr("href", themes[themeColor]["selectal"]);
@@ -743,7 +743,7 @@ define([
             themeSelector.on("change", function () {
                 themeColor = $("input[name='theme']:checked", "#_root_extra_theme-choice-").val();
                 if (themeColor == "systemDefault") {
-                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
                         themeColor = "darkly";
                     } else {
                         themeColor = "classic";
@@ -753,7 +753,7 @@ define([
                 if (bootstrap.attr("href") == themes[themeColor]["bootstrap"]) {
                     return;
                 } else {
-                    $("body").fadeOut('fast', function () {
+                    $("body").fadeOut("fast", function () {
                         console.log("changing theme to " + themeColor)
                         bootstrap.attr("href", themes[themeColor]["bootstrap"]);
                         selectal.attr("href", themes[themeColor]["selectal"]);

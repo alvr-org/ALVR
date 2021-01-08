@@ -7,7 +7,7 @@ define([
 ], function (_, uploadPreset, wizardTemplate, i18n) {
     return function (alvrSettings) {
 
-        function GetAndCheckGPUSupport() {
+        function getAndCheckGPUSupport() {
             let gpu = "";
             $.ajax({
                 type: "GET",
@@ -27,9 +27,9 @@ define([
                            "|Intel")
 
             if (unsupportedGPURegex.test(gpu)) {
-                return '🔴 '+ gpu +i18n.GPUUnsupported;
+                return "🔴 "+ gpu +i18n.GPUUnsupported;
             } else {
-                return '🟢 '+ gpu +i18n.GPUSupported;
+                return "🟢 "+ gpu +i18n.GPUSupported;
             }
         }
         
@@ -42,14 +42,14 @@ define([
             $("body").append(template);
             $(document).ready(() => {
 
-                uploadPreset.addUploadPreset("importPlaceholder");
+                uploadPreset.addUploadPreset("importPlaceholder", alvrSettings.getWebClientId());
 
-                $('#setupWizard').modal({
-                    backdrop: 'static',
+                $("#setupWizard").modal({
+                    backdrop: "static",
                     keyboard: false
                 });
 
-                $("#GPUSupportText").text(GetAndCheckGPUSupport());
+                $("#GPUSupportText").text(getAndCheckGPUSupport());
 
                 $("#addFirewall").click(() => {
                     $.get("firewall-rules/add", undefined, (res) => {
@@ -166,7 +166,7 @@ define([
                 $("#wizardNextButton").click(() => {
 
                     if (currentPage >= $("#wizardMain").children().length - 1) {
-                        $('#setupWizard').modal('hide');
+                        $("#setupWizard").modal("hide");
                         alvrSettings.disableWizard();
                         return;
                     }

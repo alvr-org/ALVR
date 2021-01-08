@@ -11,7 +11,6 @@ define([
     "app/uploadPreset",
     "json!../../session",
     "text!../../version",
-    "app/monitor",
     "js/lib/lobibox.min.js",
     "css!js/lib/lobibox.min.css"
 
@@ -145,7 +144,7 @@ define([
 
             driverList.fillDriverList("registeredDriversInst");
 
-            uploadPreset.addUploadPreset("restartSteamVR");
+            uploadPreset.addUploadPreset("restartSteamVR", settings.getWebClientId());
 
         });
     });

@@ -210,7 +210,11 @@ define([
                             data: JSON.stringify([hostname, ip]),
                         });
 
-                        $("#knowIpsListDiv").append(`<div><span>${ip}</span><a href="#" class="float-right removeIpAddressButton" data-ip="${ip}" title="Remove">X</a></div>`);
+                        $("#knowIpsListDiv").append(`
+                            <div class="row"><div class="col">
+                                <span>${ip}</span>
+                                <button type="button" class="btn btn-sm btn-primary float-right removeIpAddressButton" data-ip="${ip}">${i18n["configureClientRemoveIp"]}</button>
+                            </div></div>`);
                         configureClientModal_BindRemoveIpButtons(hostname);
                     });
 

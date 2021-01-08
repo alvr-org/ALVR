@@ -24,6 +24,7 @@ define({
         "configureClient": "Configure client",
         "configureClientButton": "Configure",
         "configureClientAddIp": "Add new IP",
+        "configureClientRemoveIp": "Remove",        
         // Statistics container
         "statistics": "Statistics",
         "streamingStatistics": "Streaming Statistics",

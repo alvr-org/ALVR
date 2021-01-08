@@ -7,6 +7,11 @@
     padding-bottom: 5px;
 }
 
+#connection .card .card-body {
+    padding-top: 12px !important;
+    padding-bottom: 12px;
+}
+
 .clientList {
     min-height: 50px;
     margin-bottom: 20px;
@@ -52,6 +57,16 @@
 #troubleShootingDiv {
     position: absolute;
     bottom: 20px;
+}
+
+#statistics .card .card-header {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+#statistics .card .card-body {
+    padding-top: 12px !important;
+    padding-bottom: 12px;
 }
 
 #statisticsTable {

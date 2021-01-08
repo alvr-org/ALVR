@@ -197,27 +197,8 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(
     _: JNIEnv,
     _: JObject,
-    width: i32,
-    height: i32,
-    refresh_rate: i32,
-    stream_mic: u8,
-    foveation_mode: i32,
-    foveation_strength: f32,
-    foveation_shape: f32,
-    foveation_vertical_offset: f32,
-    tracking_space: i32,
 ) {
-    onStreamStartNative(
-        width,
-        height,
-        refresh_rate,
-        stream_mic,
-        foveation_mode,
-        foveation_strength,
-        foveation_shape,
-        foveation_vertical_offset,
-        tracking_space,
-    )
+    onStreamStartNative()
 }
 
 #[no_mangle]

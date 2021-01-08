@@ -30,6 +30,19 @@ struct GuardianData {
     unsigned int perimeterPointsCount;
 };
 
+struct StreamConfig {
+    unsigned int eyeWidth;
+    unsigned int eyeHeight;
+    float refreshRate;
+    bool streamMic;
+    bool enableFoveation;
+    float foveationStrength;
+    float foveationShape;
+    float foveationVerticalOffset;
+    int trackingSpaceType;
+    bool extraLatencyMode;
+};
+
 extern "C" void decoderInput(long long frameIndex);
 extern "C" void decoderOutput(long long frameIndex);
 
@@ -39,10 +52,8 @@ extern "C" void renderNative(long long renderedFrameIndex);
 extern "C" void renderLoadingNative();
 extern "C" void onTrackingNative(bool clientsidePrediction);
 extern "C" OnResumeResult onResumeNative(void *surface, bool darkMode);
-extern "C" void onStreamStartNative(int width, int height, int refreshRate, unsigned char streamMic,
-                                    int foveationMode, float foveationStrength,
-                                    float foveationShape, float foveationVerticalOffset,
-                                    int trackingSpaceType);
+extern "C" void setStreamConfig(StreamConfig config);
+extern "C" void onStreamStartNative();
 extern "C" void onPauseNative();
 extern "C" void
 onHapticsFeedbackNative(long long startTime, float amplitude, float duration,

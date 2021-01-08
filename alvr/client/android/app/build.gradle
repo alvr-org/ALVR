@@ -78,7 +78,6 @@ cargo {
     libname = "alvr_client"
     targets = ["arm64"]
     targetDirectory = "../../../../target"
-    verbose = true
     features {
         defaultAnd("build-cpp")
     }

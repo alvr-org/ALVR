@@ -31,7 +31,7 @@ tokio = { version = "1", features = [
     "fs",
 ] }
 tokio-util = { version = "0.6", features = ["codec"] }
-tokio-tungstenite = { git = "https://github.com/zarik5/tokio-tungstenite.git", rev = "5783bd2" }
+tokio-tungstenite = { git = "https://github.com/dnaka91/tokio-tungstenite.git", rev = "c0e49797b0c7ccd40dcb2cce3e30ab458c521635" }
 headers = "0.3"
 hyper = { version = "0.14", features = ["http1", "server", "stream", "runtime", "tcp"] }# http2 feature does not work: todo recheck    
 ipconfig = "0.2" # todo: remove crate and get ip during handshake

@@ -12,10 +12,10 @@ use std::{
     time::Duration,
 };
 use tokio::{net::*, time};
-use tokio_util::{codec::*, either::Either};
+use tokio_util::codec::*;
 
 const CLIENT_HANDSHAKE_RESEND_INTERVAL: Duration = Duration::from_secs(1);
-const CONTROL_SOCKET_CONNECT_ERROR_RETRY_INTERVAL: Duration = Duration::from_millis(500);
+const CONNECT_ERROR_RETRY_INTERVAL: Duration = Duration::from_millis(100);
 
 type ReceiverPart = SplitStream<Framed<TcpStream, LDC>>;
 type SenderPart = SplitSink<Framed<TcpStream, LDC>, Bytes>;
@@ -77,34 +77,6 @@ pub enum ConnectionResult<S, R> {
     NetworkUnreachable,
 }
 
-async fn try_connect_to_server(
-    handshake_socket: &mut UdpSocket,
-    listener: &mut TcpListener,
-) -> StrResult<Either<(TcpStream, SocketAddr), ServerHandshakePacket>> {
-    let receive_response_loop = async move {
-        let mut server_response_buffer = [0; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
-        loop {
-            // this call will receive also the broadcasted client packet that must be ignored
-            let (packet_size, _) = trace_err!(
-                handshake_socket
-                    .recv_from(&mut server_response_buffer)
-                    .await
-            )?;
-
-            if let Ok(HandshakePacket::Server(handshake_packet)) =
-                bincode::deserialize(&server_response_buffer[..packet_size])
-            {
-                break Ok(Either::Right(handshake_packet));
-            }
-        }
-    };
-
-    tokio::select! {
-        maybe_pair = listener.accept() => Ok(Either::Left(trace_err!(maybe_pair)?)),
-        maybe_response = receive_response_loop => maybe_response,
-    }
-}
-
 // Return Some if server is compatible, otherwise return None
 pub async fn connect_to_server<S: Serialize, R: DeserializeOwned>(
     headset_info: &HeadsetInfoPacket,
@@ -115,7 +87,7 @@ pub async fn connect_to_server<S: Serialize, R: DeserializeOwned>(
     let mut handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;
     trace_err!(handshake_socket.set_broadcast(true))?;
 
-    let mut listener = trace_err!(TcpListener::bind((LOCAL_IP, CONTROL_PORT)).await)?;
+    let listener = trace_err!(TcpListener::bind((LOCAL_IP, CONTROL_PORT)).await)?;
 
     let client_handshake_packet = trace_err!(bincode::serialize(&HandshakePacket::Client(
         ClientHandshakePacket {
@@ -128,37 +100,61 @@ pub async fn connect_to_server<S: Serialize, R: DeserializeOwned>(
         }
     )))?;
 
-    // Enclose the initial part of the connection in a local loop, since it's the most probable
-    // thing to fail
-    let (socket, server_address) = loop {
-        let broadcast_result = handshake_socket
-            .send_to(
-                &client_handshake_packet,
-                (Ipv4Addr::BROADCAST, CONTROL_PORT),
-            )
-            .await;
-        if broadcast_result.is_err() {
-            return Ok(ConnectionResult::NetworkUnreachable);
-        }
+    let handshake_loop = async {
+        loop {
+            let broadcast_result = handshake_socket
+                .send_to(
+                    &client_handshake_packet,
+                    (Ipv4Addr::BROADCAST, CONTROL_PORT),
+                )
+                .await;
+            if broadcast_result.is_err() {
+                return Ok(ConnectionResult::NetworkUnreachable);
+            }
 
-        let connection_result = tokio::select! {
-            res = try_connect_to_server(&mut handshake_socket, &mut listener) => res,
-            _ = time::sleep(CLIENT_HANDSHAKE_RESEND_INTERVAL) => {
-                warn!("Connection timeout, resending handhake packet");
-                continue;
-            }
-        };
+            let receive_response_loop = {
+                let handshake_socket = &mut handshake_socket;
+                async move {
+                    let mut server_response_buffer = [0; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
+                    loop {
+                        // this call will receive also the broadcasted client packet that must be ignored
+                        let (packet_size, _) = trace_err!(
+                            handshake_socket
+                                .recv_from(&mut server_response_buffer)
+                                .await
+                        )?;
 
-        match connection_result {
-            Ok(Either::Left(pair)) => break pair,
-            Ok(Either::Right(message_packet)) => {
-                return Ok(ConnectionResult::ServerMessage(message_packet));
-            }
-            Err(e) => {
-                warn!("Error while connecting to server: {}", e);
-                time::sleep(CONTROL_SOCKET_CONNECT_ERROR_RETRY_INTERVAL).await;
+                        if let Ok(HandshakePacket::Server(handshake_packet)) =
+                            bincode::deserialize(&server_response_buffer[..packet_size])
+                        {
+                            error!("received packet {:?}", &handshake_packet);
+                            break Ok(ConnectionResult::ServerMessage(handshake_packet));
+                        }
+                    }
+                }
+            };
+
+            tokio::select! {
+                res = receive_response_loop => break res,
+                _ = time::sleep(CLIENT_HANDSHAKE_RESEND_INTERVAL) => {
+                    warn!("Connection timeout, resending handhake packet");
+                }
             }
         }
+    };
+
+    let try_connect_loop = async {
+        loop {
+            let res = tokio::join!(listener.accept(), time::sleep(CONNECT_ERROR_RETRY_INTERVAL)).0;
+            if let Ok(pair) = res {
+                break pair;
+            }
+        }
+    };
+
+    let (socket, server_address) = tokio::select! {
+        res = handshake_loop => return res,
+        pair = try_connect_loop => pair,
     };
 
     let socket = Framed::new(socket, LDC::new());
@@ -201,7 +197,7 @@ pub async fn begin_connecting_to_client(
             Ok(socket) => break socket,
             Err(e) => {
                 debug!("Timeout while connecting to clients: {}", e);
-                time::sleep(CONTROL_SOCKET_CONNECT_ERROR_RETRY_INTERVAL).await;
+                time::sleep(CONNECT_ERROR_RETRY_INTERVAL).await;
             }
         }
     };

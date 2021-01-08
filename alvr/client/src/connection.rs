@@ -81,15 +81,6 @@ async fn try_connect(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) -> StrResult {
-    set_loading_message(
-        &*java_vm,
-        &*activity_ref,
-        &private_identity.hostname,
-        INITIAL_MESSAGE,
-    )
-    .await
-    .ok();
-
     let hostname = &private_identity.hostname;
 
     let connection_result = trace_err!(
@@ -126,6 +117,18 @@ async fn try_connect(
                 NETWORK_UNREACHABLE_MESSAGE,
             )
             .await?;
+
+            time::sleep(RETRY_CONNECT_INTERVAL).await;
+
+            set_loading_message(
+                &*java_vm,
+                &*activity_ref,
+                &private_identity.hostname,
+                INITIAL_MESSAGE,
+            )
+            .await
+            .ok();
+
             return Ok(());
         }
     };
@@ -363,6 +366,15 @@ pub async fn connection_lifecycle_loop(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) {
+    set_loading_message(
+        &*java_vm,
+        &*activity_ref,
+        &private_identity.hostname,
+        INITIAL_MESSAGE,
+    )
+    .await
+    .ok();
+
     // this loop has no exit, but the execution can be halted by the caller with tokio::select!{}
     loop {
         tokio::join!(

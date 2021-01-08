@@ -145,8 +145,9 @@ pub async fn connect_to_server<S: Serialize, R: DeserializeOwned>(
 
     let try_connect_loop = async {
         loop {
-            let res = tokio::join!(listener.accept(), time::sleep(CONNECT_ERROR_RETRY_INTERVAL)).0;
-            if let Ok(pair) = res {
+            if let (Ok(pair), _) =
+                tokio::join!(listener.accept(), time::sleep(CONNECT_ERROR_RETRY_INTERVAL))
+            {
                 break pair;
             }
         }
@@ -193,11 +194,14 @@ pub async fn begin_connecting_to_client(
         .collect::<Vec<_>>();
 
     let socket = loop {
-        match TcpStream::connect(client_addresses.as_slice()).await {
-            Ok(socket) => break socket,
-            Err(e) => {
+        let res = tokio::join!(
+            TcpStream::connect(client_addresses.as_slice()),
+            time::sleep(CONNECT_ERROR_RETRY_INTERVAL)
+        );
+        match res {
+            (Ok(socket), _) => break socket,
+            (Err(e), _) => {
                 debug!("Timeout while connecting to clients: {}", e);
-                time::sleep(CONNECT_ERROR_RETRY_INTERVAL).await;
             }
         }
     };

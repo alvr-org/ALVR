@@ -167,10 +167,10 @@ impl SessionDesc {
             return Ok(());
         }
 
-        let old_session_json = trace_err!(json::to_value(SessionDesc::default()))?;
+        let old_session_json = trace_err!(json::to_value(&self))?;
         let old_session_fields = trace_none!(old_session_json.as_object())?;
 
-        let session_settings_json =
+        let maybe_session_settings_json =
             json_value
                 .get(SESSION_SETTINGS_STR)
                 .map(|new_session_settings_json| {
@@ -196,7 +196,7 @@ impl SessionDesc {
         let mut session_desc_mut =
             json::from_value::<SessionDesc>(json::Value::Object(new_fields)).unwrap_or_default();
 
-        match json::from_value::<SessionSettings>(trace_none!(session_settings_json)?) {
+        match json::from_value::<SessionSettings>(trace_none!(maybe_session_settings_json)?) {
             Ok(session_settings) => {
                 session_desc_mut.session_settings = session_settings;
                 *self = session_desc_mut;
@@ -362,7 +362,7 @@ fn extrapolate_session_settings_from_session_settings(
         }
 
         SchemaNode::Float { .. } => {
-            if new_session_settings.is_f64() {
+            if new_session_settings.is_number() {
                 new_session_settings.clone()
             } else {
                 old_session_settings.clone()
@@ -644,11 +644,31 @@ mod tests {
         let _settings = SessionDesc::default().to_settings();
     }
 
-    // todo: add more tests
     #[test]
     fn test_session_extrapolation_trivial() {
         SessionDesc::default()
             .merge_from_json(&json::to_value(SessionDesc::default()).unwrap())
+            .unwrap();
+    }
+
+    #[test]
+    fn test_session_extrapolation_oculus_go() {
+        let input_json_string = r#"{
+            "sessionSettings": {
+              "fjdshfks":false,
+              "video": {
+                "preferredFps": 60.0
+              },
+              "headset": {
+                "controllers": {
+                  "enabled": false
+                }
+              }
+            }
+          }"#;
+
+        SessionDesc::default()
+            .merge_from_json(&json::from_str(input_json_string).unwrap())
             .unwrap();
     }
 }

@@ -19,11 +19,13 @@
                 <button type="button" id="addNewIpAddressButton" class="btn btn-primary mb-2"><%- i18n.configureClientAddIp %></button>
                 </form>
 
+                <div id="knowIpsListDiv">
                 <% _.forEach(knownIps, function(ip) { %>
                     <div>
                         <span><%- ip %></span><a href="#" class="float-right removeIpAddressButton" data-ip="<%- ip %>" title="Remove">X</a>
                     </div>
                 <% });%>
+                </div>
 
             </div>
 

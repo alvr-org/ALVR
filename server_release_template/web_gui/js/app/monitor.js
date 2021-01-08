@@ -168,7 +168,7 @@ define([
                 compiledTemplate = _.template(configureClientModalTemplate);
                 templateConfigureClient = compiledTemplate({ "i18n": i18n, "knownIps": knownIps });
             
-                $("#addClientModal").remove();
+                $("#configureClientModal").remove();
                 $("body").append(templateConfigureClient);
 
                 $(document).ready(() => {
@@ -199,23 +199,29 @@ define([
                             data: JSON.stringify([hostname, ip]),
                         });
 
-                        $("#configureClientModal").modal("hide");
-                        $("#configureClientModal").remove();
+                        $("#knowIpsListDiv").append(`<div><span>${ip}</span><a href="#" class="float-right removeIpAddressButton" data-ip="${ip}" title="Remove">X</a></div>`);
+                        configureClientModal_BindRemoveIpButtons(hostname);
                     });
 
-                    $(".removeIpAddressButton").click((evt) => {
-                        var ip = $(evt.target).attr("data-ip");
-
-                        $.ajax({
-                            type: "POST",
-                            url: `client/remove`,
-                            contentType: "application/json;charset=UTF-8",
-                            data: JSON.stringify([hostname, ip]),
-                        });
-
-                        $(evt.target).parent().remove();
-                    });
+                    configureClientModal_BindRemoveIpButtons(hostname);
+                    
                 })
+            });
+        }
+
+        function configureClientModal_BindRemoveIpButtons(hostname){
+            $(".removeIpAddressButton").off('click');
+            $(".removeIpAddressButton").click((evt) => {
+                var ip = $(evt.target).attr("data-ip");
+
+                $.ajax({
+                    type: "POST",
+                    url: `client/remove`,
+                    contentType: "application/json;charset=UTF-8",
+                    data: JSON.stringify([hostname, ip]),
+                });
+
+                $(evt.target).parent().remove();
             });
         }
 

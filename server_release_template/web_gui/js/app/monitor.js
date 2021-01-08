@@ -38,7 +38,7 @@ define([
                 logInit();
             }
 
-            log_listener.addEventListener('message', function(e) { addLogLine(e.data) });
+            log_listener.addEventListener("message", function(e) { addLogLine(e.data) });
 
             $("#_root_extra_notificationLevel-choice-").change((ev) => {
                 initNotificationLevel();
@@ -113,8 +113,8 @@ define([
                 $("#addClientModal").remove();
                 $("body").append(template);
                 $(document).ready(() => {
-                    $('#addClientModal').modal({
-                        backdrop: 'static',
+                    $("#addClientModal").modal({
+                        backdrop: "static",
                         keyboard: false
                     });
                     $("#clientAddButton").click(() => {
@@ -153,27 +153,27 @@ define([
                             data: JSON.stringify([deviceName, clientHostname, ip]),
                         });
 
-                        $('#addClientModal').modal('hide');
-                        $('#addClientModal').remove();
+                        $("#addClientModal").modal("hide");
+                        $("#addClientModal").remove();
                     });
                 });
             })
         }
 
         function initConfigureClientModal(hostname) {   
-            const id = hostname.replace(/\./g, '');  
+            const id = hostname.replace(/\./g, "");  
             $("#btnConfigureClient_" + id).click(() => {      
 
                 var knownIps = session.clientConnections[hostname].manualIps;
                 compiledTemplate = _.template(configureClientModalTemplate);
-                templateConfigureClient = compiledTemplate({ 'i18n': i18n, 'knownIps': knownIps });
+                templateConfigureClient = compiledTemplate({ "i18n": i18n, "knownIps": knownIps });
             
                 $("#addClientModal").remove();
                 $("body").append(templateConfigureClient);
 
                 $(document).ready(() => {
-                    $('#configureClientModal').modal({
-                        backdrop: 'static',
+                    $("#configureClientModal").modal({
+                        backdrop: "static",
                         keyboard: false
                     });
 
@@ -199,8 +199,8 @@ define([
                             data: JSON.stringify([hostname, ip]),
                         });
 
-                        $('#configureClientModal').modal('hide');
-                        $('#configureClientModal').remove();
+                        $("#configureClientModal").modal("hide");
+                        $("#configureClientModal").remove();
                     });
 
                     $(".removeIpAddressButton").click((evt) => {
@@ -223,7 +223,7 @@ define([
             if (!validateHostname(hostname))
                 return;
 
-            const id = hostname.replace(/\./g, '');
+            const id = hostname.replace(/\./g, "");
 
             var client = `<div class="card client" type="${displayName}" hostname="${hostname}" id="newClient_${id}">
                         ${displayName} (${hostname}) <button type="button" class="btn btn-primary">${i18n["addTrustedClient"]}</button>
@@ -246,7 +246,7 @@ define([
             if (!validateHostname(hostname))
                 return;
                 
-            const id = hostname.replace(/\./g, '');
+            const id = hostname.replace(/\./g, "");
 
             var client = `<div class="card client" type="${displayName}" hostname="${hostname}" id="trustedClient_${id}">
                         ${displayName} (${hostname})
@@ -271,7 +271,7 @@ define([
         }
 
         function validateHostname(hostname){
-            const id = hostname.replace(/\./g, '');
+            const id = hostname.replace(/\./g, "");
 
             if ($("#newClient_" + id).length > 0) {
                 console.warn("Client already in new list:", hostname);

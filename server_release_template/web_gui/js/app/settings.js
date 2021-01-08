@@ -20,7 +20,7 @@ define([
         function randomAlphanumericID() {
             const len = 10;
             const arr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghilmnopqrstuvwxyz0123456789";
-            var ans = '';
+            var ans = "";
             for (var i = len; i > 0; i--) {
                 ans += arr[Math.floor(Math.random() * arr.length)];
             }
@@ -69,6 +69,10 @@ define([
             return session;
         }
 
+        self.getWebClientId = function () {
+            return webClientId;
+        }
+
         function printUnusedi18n() {
             for (var key in i18n) {
                 if (usedi18n[key] === undefined)
@@ -94,7 +98,7 @@ define([
         }
 
         function addChangeListener() {
-            $('.parameter input:not(.skipInput)').change((evt) => {
+            $(".parameter input:not(.skipInput)").change((evt) => {
                 if (!updating) {
                     var el = $(evt.target);
                     self.storeParam(el);
@@ -211,7 +215,7 @@ define([
                     object[item].forEach((element, index) => {
                         setProperties(element, path + "_" + item + "_" + index)
                     });
-                } else if (Object.prototype.toString.call(object[item]) === '[object Object]') {
+                } else if (Object.prototype.toString.call(object[item]) === "[object Object]") {
                     setProperties(object[item], path + "_" + item);
                 } else {
 
@@ -234,8 +238,8 @@ define([
                             el.prop("checked", object[item])
                             el.parent().parent().children().filter(".active").removeClass("active")
                             el.parent().addClass("active")
-                            $(`#${el.parent().parent().parent().attr('id')}radioContent .radioContent`).hide()
-                            $(`div.radioContent[for="${el.attr('id')}"]`).show()
+                            $(`#${el.parent().parent().parent().attr("id")}radioContent .radioContent`).hide()
+                            $(`div.radioContent[for="${el.attr("id")}"]`).show()
                         } else {
                             el.val(object[item]);
                         }
@@ -306,7 +310,7 @@ define([
         }
 
         function addHelpTooltips() {
-            $('[data-toggle="tooltip"]').tooltip()
+            $("[data-toggle='tooltip']").tooltip()
         }
 
         function restartSteamVR() {
@@ -622,10 +626,10 @@ define([
                 getI18n(path + "_" + name + "_" + node.content.default + "-choice-").name)}
                 </div>   
                 <div>
-                <form id="${path + '_' + name + '-choice-'}" class="card-body">
+                <form id="${path + "_" + name + "-choice-"}" class="card-body">
                     <div class="btn-group btn-group-toggle" data-toggle="buttons">
                     </div>
-                    <div id="${path + '_' + name + '-choice-' + 'radioContent'}"></div>
+                    <div id="${path + "_" + name + "-choice-" + "radioContent"}"></div>
                 </form>
                 </div> 
             </div>`;
@@ -869,9 +873,9 @@ define([
                     if ($("#" + path + "_" + name).prop("type") == "radio") {
                         $("#" + path + "_" + name).parent().parent().children().filter(".active").removeClass("active")
                     }
-                    $("#" + path + "_" + name).prop('checked', true);
+                    $("#" + path + "_" + name).prop("checked", true);
                 } else {
-                    $("#" + path + "_" + name).prop('checked', false);
+                    $("#" + path + "_" + name).prop("checked", false);
                 }
             } else {
                 $("#" + path + "_" + name).val(defaultVal).trigger("input");
@@ -897,11 +901,11 @@ define([
                 $("body").append(template);
                 $(document).ready(() => {
 
-                    $('#confirmModal').modal({
-                        backdrop: 'static',
+                    $("#confirmModal").modal({
+                        backdrop: "static",
                         keyboard: false
                     });
-                    $('#confirmModal').on('hidden.bs.modal', (e) => {
+                    $("#confirmModal").on("hidden.bs.modal", (e) => {
                         resolve(false)
                     })
                     $("#okRestartButton").click(() => {
@@ -913,13 +917,13 @@ define([
                             confirm.change();
                         }
 
-                        $('#confirmModal').modal('hide');
-                        $('#confirmModal').remove();
+                        $("#confirmModal").modal("hide");
+                        $("#confirmModal").remove();
                     })
                     $("#cancelRestartButton").click(() => {
                         resolve(false)
-                        $('#confirmModal').modal('hide');
-                        $('#confirmModal').remove();
+                        $("#confirmModal").modal("hide");
+                        $("#confirmModal").remove();
                     })
                 });
             });
@@ -938,22 +942,22 @@ define([
                 $("body").append(template);
                 $(document).ready(() => {
 
-                    $('#confirmModal').modal({
-                        backdrop: 'static',
+                    $("#confirmModal").modal({
+                        backdrop: "static",
                         keyboard: false
                     });
-                    $('#confirmModal').on('hidden.bs.modal', (e) => {
+                    $("#confirmModal").on("hidden.bs.modal", (e) => {
                         resolve(false)
                     })
                     $("#okRevertButton").click(() => {
                         resolve(true)
-                        $('#confirmModal').modal('hide');
-                        $('#confirmModal').remove();
+                        $("#confirmModal").modal("hide");
+                        $("#confirmModal").remove();
                     })
                     $("#cancelRevertButton").click(() => {
                         resolve(false)
-                        $('#confirmModal').modal('hide');
-                        $('#confirmModal').remove();
+                        $("#confirmModal").modal("hide");
+                        $("#confirmModal").remove();
                     })
                 });
             });
@@ -972,12 +976,12 @@ define([
             if (guiType == null) {
                 if (nodeContent.min != null && nodeContent.max != null) {
                     if (nodeContent.step != null) {
-                        guiType = 'slider'
+                        guiType = "slider"
                     } else {
-                        guiType = 'updown'
+                        guiType = "updown"
                     }
                 } else {
-                    guiType = 'textbox'
+                    guiType = "textbox"
                 }
             }
             return guiType

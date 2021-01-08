@@ -4,15 +4,13 @@
     flex-direction: column;
     max-height: 55vh;
     overflow: hidden;
-    
 }
 
 .btn-group label input {
     display: none;
 }
 
-.wizzardSettings {   
- 
+.wizzardSettings {
     flex: 1;
     justify-content: center;
     display: flex;
@@ -25,7 +23,6 @@
     display: flex;
 }
 
-
-.driverList * .card-body{
+.driverList * .card-body {
     overflow: auto;
 }

@@ -2,7 +2,7 @@
     margin-bottom: 5px;
 }
 
-#connection .card .card-header{
+#connection .card .card-header {
     padding-top: 5px;
     padding-bottom: 5px;
 }
@@ -59,14 +59,14 @@
 }
 
 #statisticsTable tr td:first-child {
-   width: 200px;
+    width: 200px;
 }
 
-#statisticsTable tr td div  {
-  display: inline;
+#statisticsTable tr td div {
+    display: inline;
 }
 
-#loggingTable {  
+#loggingTable {
     width: 100%;
     font-size: 12px;
 }
@@ -76,16 +76,13 @@
 }
 
 #loggingTable tr td:first-child {
-   width: 120px;
+    width: 120px;
 }
 
-#loggingTable tr td:nth-child(2) {  
+#loggingTable tr td:nth-child(2) {
     width: 50px;
 }
 
 .lobibox-notify.notify-mini {
     margin-left: 10px;
 }
-
-
-

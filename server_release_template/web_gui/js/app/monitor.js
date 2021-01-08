@@ -164,9 +164,8 @@ define([
             const id = hostname.replace(/\./g, "");  
             $("#btnConfigureClient_" + id).click(() => {      
 
-                var knownIps = session.clientConnections[hostname].manualIps;
                 compiledTemplate = _.template(configureClientModalTemplate);
-                templateConfigureClient = compiledTemplate({ "i18n": i18n, "knownIps": knownIps });
+                templateConfigureClient = compiledTemplate({ "i18n": i18n, "knownIps": session.clientConnections[hostname].manualIps });
             
                 $("#configureClientModal").remove();
                 $("body").append(templateConfigureClient);
@@ -179,6 +178,18 @@ define([
 
                     $("#addNewIpAddressButton").click(() => {
                         const ip = $("#newIpAddress").val();
+
+                        if(session.clientConnections[hostname].manualIps.includes(ip)){
+                            Lobibox.notify("error", {
+                                size: "mini",
+                                rounded: true,
+                                delayIndicator: false,
+                                sound: false,
+                                position: "bottom right",
+                                msg: i18n["error_DuplicateIp"]
+                            });
+                            return;
+                        }
 
                         if (!validateIPv4address(ip)) {
                             Lobibox.notify("error", {

@@ -48,8 +48,9 @@ define({
         // Logging tab
         "logging": "Logging",
         //validation errors        
-        "error_DuplicateHostname": "A device with this hostname is already registered",
-        "error_InvalidIp": "Not a valid IP v4 formatted address",
+        "error_ExistingIp": "A device with this hostname is already registered",
+        "error_DuplicateIp": "This IP address is already registed on this device",
+        "error_InvalidIp": "Not a valid IP v4 formatted address",        
         //Performance graphs tab
         "performanceGraphs": "Performance graphs",
         "performanceEncode": "Encode",

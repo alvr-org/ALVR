@@ -1,5 +1,5 @@
 #connection .card {
-    margin-bottom: 5px;
+    margin-bottom: 20px;
 }
 
 #connection .card .card-header {
@@ -12,15 +12,75 @@
     padding-bottom: 12px;
 }
 
-.clientList {
-    min-height: 50px;
-    margin-bottom: 20px;
+.newClientsList div div table tr td button {
+    max-width: 100px;
+    width: 100px;
+    height: 23px;
+    line-height: 20px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-right: 0px;
+    margin-top: auto;
+    margin-bottom: auto;
 }
 
-.clientList .card {
-    height: 30px;
-    line-height: 30px;
-    padding-left: 10px;
+.newClientsList div div table tr td {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.newClientsList div div table tr td:first-child {
+    width: 100%;
+}
+
+.newClientsList div div table tr td:last-child {
+    width: 105px;
+    text-align: right;
+}
+
+.newClientsList div div table {
+    max-width: 100%;
+    overflow: hidden;
+    table-layout: fixed;
+}
+
+.trustedClientsList div div table tr td button {
+    max-width: 100px;
+    width: 100px;
+    height: 23px;
+    line-height: 20px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-right: 0px;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+.trustedClientsList div div table tr td {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.trustedClientsList div div table tr td:first-child {
+    width: 100%;
+}
+
+.trustedClientsList div div table tr td:last-child {
+    width: 210px;
+    text-align: right;
+}
+
+.trustedClientsList div div table {
+    max-width: 100%;
+    overflow: hidden;
+    table-layout: fixed;
+}
+
+.addClientButtonDiv {
+    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
 #monitorContainer {
@@ -34,24 +94,6 @@
     overflow: auto;
     padding-bottom: 20px;
     padding-top: 20px;
-}
-
-.client {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-}
-
-.client button {
-    max-width: 100px;
-    width: 100px;
-    height: 23px;
-    line-height: 20px;
-    padding-top: 0px;
-    padding-bottom: 0px;
-    margin-right: 10px;
-    margin-top: auto;
-    margin-bottom: auto;
 }
 
 #troubleShootingDiv {

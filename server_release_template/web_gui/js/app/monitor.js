@@ -161,11 +161,10 @@ define([
             const id = hostname.replace(/\./g, "");  
             $("#btnConfigureClient_" + id).click(() => {      
 
-                var knownIps = session.clientConnections[hostname].manualIps;
                 compiledTemplate = _.template(configureClientModalTemplate);
-                templateConfigureClient = compiledTemplate({ "i18n": i18n, "knownIps": knownIps });
+                templateConfigureClient = compiledTemplate({ "i18n": i18n, "knownIps": session.clientConnections[hostname].manualIps });
             
-                $("#addClientModal").remove();
+                $("#configureClientModal").remove();
                 $("body").append(templateConfigureClient);
 
                 $(document).ready(() => {
@@ -176,6 +175,18 @@ define([
 
                     $("#addNewIpAddressButton").click(() => {
                         const ip = $("#newIpAddress").val();
+
+                        if(session.clientConnections[hostname].manualIps.includes(ip)){
+                            Lobibox.notify("error", {
+                                size: "mini",
+                                rounded: true,
+                                delayIndicator: false,
+                                sound: false,
+                                position: "bottom right",
+                                msg: i18n["error_DuplicateIp"]
+                            });
+                            return;
+                        }
 
                         if (!validateIPv4address(ip)) {
                             Lobibox.notify("error", {
@@ -196,23 +207,33 @@ define([
                             data: JSON.stringify([hostname, ip]),
                         });
 
-                        $("#configureClientModal").modal("hide");
-                        $("#configureClientModal").remove();
+                        $("#knowIpsListDiv").append(`
+                            <div class="row"><div class="col">
+                                <span>${ip}</span>
+                                <button type="button" class="btn btn-sm btn-primary float-right removeIpAddressButton" data-ip="${ip}">${i18n["configureClientRemoveIp"]}</button>
+                            </div></div>`);
+                        configureClientModal_BindRemoveIpButtons(hostname);
                     });
 
-                    $(".removeIpAddressButton").click((evt) => {
-                        var ip = $(evt.target).attr("data-ip");
-
-                        $.ajax({
-                            type: "POST",
-                            url: `client/remove`,
-                            contentType: "application/json;charset=UTF-8",
-                            data: JSON.stringify([hostname, ip]),
-                        });
-
-                        $(evt.target).parent().remove();
-                    });
+                    configureClientModal_BindRemoveIpButtons(hostname);
+                    
                 })
+            });
+        }
+
+        function configureClientModal_BindRemoveIpButtons(hostname){
+            $(".removeIpAddressButton").off('click');
+            $(".removeIpAddressButton").click((evt) => {
+                var ip = $(evt.target).attr("data-ip");
+
+                $.ajax({
+                    type: "POST",
+                    url: `client/remove`,
+                    contentType: "application/json;charset=UTF-8",
+                    data: JSON.stringify([hostname, ip]),
+                });
+
+                $(evt.target).parent().remove();
             });
         }
 

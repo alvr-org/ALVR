@@ -12,7 +12,8 @@
     padding-bottom: 12px;
 }
 
-.newClientsList div div table tr td button {
+.newClientsList div div table tr td button,
+#knowIpsListDiv button {
     max-width: 100px;
     width: 100px;
     height: 23px;

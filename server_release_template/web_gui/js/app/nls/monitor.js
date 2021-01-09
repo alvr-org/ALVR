@@ -23,6 +23,7 @@ define({
         "configureClient": "Configure client",
         "configureClientButton": "Configure",
         "configureClientAddIp": "Add new IP",
+        "configureClientRemoveIp": "Remove",        
         // Statistics container
         "statistics": "Statistics",
         "streamingStatistics": "Streaming Statistics",
@@ -48,6 +49,7 @@ define({
         "logging": "Logging",
         //validation errors
         "error_DuplicateHostname": "A device with this hostname is already registered",
+        "error_DuplicateIp": "This IP address is already registed on this device",
         "error_InvalidIp": "Not a valid IPv4 formatted address",
         //Performance graphs tab
         "performanceGraphs": "Performance graphs",

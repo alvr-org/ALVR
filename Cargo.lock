@@ -1686,11 +1686,11 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84129d298a6d57d246960ff8eb831ca4af3f96d29e2e28848dae275408658e26"
+checksum = "7245cd7449cc792608c3c8a9eaf69bd4eabbabf802713748fd739c98b82f0747"
 dependencies = [
- "bytes 0.5.6",
+ "bytes 1.0.0",
  "fnv",
  "itoa",
 ]
@@ -2047,9 +2047,9 @@ checksum = "c7d73b3f436185384286bd8098d17ec07c9a7d2388a6599f824d8502b529702a"
 
 [[package]]
 name = "linked-hash-map"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8dd5a6d5999d9907cda8ed67bbd137d3af8085216c2ac62de5be860bd41f304a"
+checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
 
 [[package]]
 name = "lock_api"

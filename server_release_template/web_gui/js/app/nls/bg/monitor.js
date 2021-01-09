@@ -8,7 +8,6 @@ define({
     "removeTrustedClient": "Премахване",
     "statistics": "Потокова статистика",
     "addClient": "Добавете клиент",
-    "clientType": "Тип",
     "ipAddress": "IP-Адрес",
     "ipHelp": "Въведете известния IP-Адрес на слушалките",
     "addClientButton": "Добавете клиент",

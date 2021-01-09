@@ -8,7 +8,6 @@ define({
     "removeTrustedClient": "Quitar",
     "statistics": "Estadísticas de transmisión",
     "addClient": "Añadir cliente",
-    "clientType": "Tipo",
     "ipAddress": "Dirección IP",
     "ipHelp": "Añade la dirección IP remota del vidor",
     "addClientButton": "Añadir cliente",

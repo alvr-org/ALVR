@@ -8,7 +8,6 @@ define({
     "removeTrustedClient": "削除",
     "statistics": "ストリーミング統計情報",
     "addClient": "クライアントを追加",
-    "clientType": "タイプ",
     "ipAddress": "IPアドレス",
     "ipHelp": "HMDのIPアドレスを入力してください",
     "addClientButton": "クライアントを追加",

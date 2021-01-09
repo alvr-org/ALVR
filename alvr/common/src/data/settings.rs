@@ -105,12 +105,6 @@ pub struct VideoDesc {
     #[schema(advanced, min = 60.0, max = 90.0)]
     pub preferred_fps: f32,
 
-    #[schema(advanced)]
-    pub seconds_from_vsync_to_photons: f32,
-
-    pub foveated_rendering: Switch<FoveatedRenderingDesc>,
-    pub color_correction: Switch<ColorCorrectionDesc>,
-
     pub codec: CodecType,
 
     #[schema(advanced)]
@@ -118,6 +112,12 @@ pub struct VideoDesc {
 
     #[schema(min = 1, max = 500)]
     pub encode_bitrate_mbs: u64,
+
+    #[schema(advanced)]
+    pub seconds_from_vsync_to_photons: f32,
+
+    pub foveated_rendering: Switch<FoveatedRenderingDesc>,
+    pub color_correction: Switch<ColorCorrectionDesc>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]

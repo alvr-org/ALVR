@@ -8,7 +8,6 @@ define({
     "removeTrustedClient": "удалить",
     "statistics": "Статистика Трансляции",
     "addClient": "Добавить клиента",
-    "clientType": "Тип",
     "ipAddress": "IP-Адрес",
     "ipHelp": "Введите известный адрес гарнитуры",
     "addClientButton": "Добавить клиента",

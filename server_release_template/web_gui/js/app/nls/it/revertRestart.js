@@ -1,4 +1,5 @@
 define({
+    // Revert Popup
     "confirmRevertTitle" : "Reimpostare valore?",
     "okRevertButton":"OK",
     "cancelRevertButton" : "Annulla",

@@ -103,9 +103,6 @@ define([
                     notificationLevels = [];
                     break;
             }
-
-            //console.log("Notification levels are now: ", notificationLevels);
-
         }
 
         function initAddClientModal(template){
@@ -225,13 +222,6 @@ define([
 
             const id = hostname.replace(/\./g, "");
 
-            /*
-            var client = `<div class="card client" type="${displayName}" hostname="${hostname}" id="newClient_${id}">
-                        ${displayName} (${hostname}) <button type="button" class="btn btn-primary">${i18n["addTrustedClient"]}</button>
-                        </div>`
-            $("#newClientsDiv").append(client);
-            */
-
             $("#newClientsDiv" + " table").append(`<tr><td type="${displayName}" hostname="${hostname}" id="newClient_${id}">${displayName} (${hostname}) </td>
             <td><button type="button" id="btnAddTrustedClient_${id}" class="btn btn-primary">${i18n["addTrustedClient"]}</button>
             </td></tr>`);
@@ -253,15 +243,6 @@ define([
                 return;
                 
             const id = hostname.replace(/\./g, "");
-
-            /*
-            var client = `<div class="card client" type="${displayName}" hostname="${hostname}" id="trustedClient_${id}">
-                        ${displayName} (${hostname})
-                        <button type="button" id="btnConfigureClient_${id}" class="btn btn-primary ml-auto">${i18n["configureClientButton"]}</button>
-                        <button type="button" id="btnRemoveTrustedClient_${id}" class="btn btn-primary">${i18n["removeTrustedClient"]}</button>
-                        </div>`
-            $("#trustedClientsDiv").append(client);
-            */
 
            $("#trustedClientsDiv" + " table").append(`<tr><td type="${displayName}" hostname="${hostname}" id="trustedClient_${id}">${displayName} (${hostname}) </td>
            <td><button type="button" id="btnConfigureClient_${id}" class="btn btn-primary ml-auto">${i18n["configureClientButton"]}</button>

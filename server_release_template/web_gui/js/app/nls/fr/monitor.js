@@ -8,7 +8,6 @@ define({
     "removeTrustedClient": "Retirer",
     "statistics": "Statistiques de streaming",
     "addClient": "Ajouter client",
-    "clientType": "type",
     "ipAddress": "Adresse IP",
     "ipHelp": "Entrez l'adresse IP connue du casque",
     "addClientButton": "Ajouter client",

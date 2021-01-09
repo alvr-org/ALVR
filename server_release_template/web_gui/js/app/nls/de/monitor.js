@@ -8,7 +8,6 @@ define({
     "removeTrustedClient": "Entfernen",
     "statistics": "Streaming Statistiken",
     "addClient": "Client hinzufügen",
-    "clientType": "Typ",
     "ipAddress": "IP-Address",
     "ipHelp": "Bekannte IP-Addresse des HMD eingeben",
     "addClientButton": "Client hinzufügen",

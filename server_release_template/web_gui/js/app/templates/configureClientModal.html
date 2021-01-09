@@ -21,7 +21,7 @@
 
                 <div id="knowIpsListDiv">
                 <% _.forEach(knownIps, function(ip) { %>
-                    <div class="row">
+                    <div class="row mt-2">
                         <div class="col">
                             <span><%- ip %></span>
                             <button type="button" class="btn btn-primary btn-sm float-right removeIpAddressButton" data-ip="<%- ip %>"><%- i18n.configureClientRemoveIp %></button>

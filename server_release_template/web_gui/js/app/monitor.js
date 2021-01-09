@@ -208,7 +208,7 @@ define([
                         });
 
                         $("#knowIpsListDiv").append(`
-                            <div class="row"><div class="col">
+                            <div class="row mt-2"><div class="col">
                                 <span>${ip}</span>
                                 <button type="button" class="btn btn-sm btn-primary float-right removeIpAddressButton" data-ip="${ip}">${i18n["configureClientRemoveIp"]}</button>
                             </div></div>`);
@@ -233,7 +233,7 @@ define([
                     data: JSON.stringify([hostname, ip]),
                 });
 
-                $(evt.target).parent().remove();
+                $(evt.target).parent().parent().remove();
             });
         }
 

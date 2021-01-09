@@ -117,7 +117,7 @@
 }
 
 #statisticsTable tr td:first-child {
-    width: 200px;
+    width: 50%;
 }
 
 #statisticsTable tr td div {

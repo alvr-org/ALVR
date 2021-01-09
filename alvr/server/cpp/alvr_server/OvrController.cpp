@@ -83,8 +83,10 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_InputProfilePath_String, Settings::Instance().m_controllerInputProfilePath.c_str());
 
 	switch (Settings::Instance().m_controllerMode) {
-	case 0:	//Oculus
-	case 1:	//Oculus no pinch
+	case 0:	//Oculus Rift
+	case 1:	//Oculus Rift no pinch
+	case 6:	//Oculus Quest
+	case 7:	//Oculus Quest no pinch
 
 	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/system/click", &m_handles[ALVR_INPUT_SYSTEM_CLICK]);
 	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/application_menu/click", &m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK]);
@@ -429,7 +431,8 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 		bool registerPinkyPinch = (c.handFingerConfidences & alvrPinkyConfidence_High) && (c.handFingerConfidences & alvrThumbConfidence_High);
 
 		switch(Settings::Instance().m_controllerMode){
-		case 0:
+		case 0: //Oculus Rift
+		case 6: //Oculus Quest
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_SYSTEM_CLICK], registerPinkyPinch && (c.inputStateStatus & alvrInputStateHandStatus_PinkyPinching) != 0, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK], false, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GRIP_CLICK], grip > 0.9f, 0.0);
@@ -458,7 +461,8 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRIGGER_VALUE], registerIndexPinch ? c.fingerPinchStrengths[alvrFingerPinch_Index] : 0.0, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRIGGER_TOUCH], registerIndexPinch && (c.fingerPinchStrengths[alvrFingerPinch_Index] > 0.7f), 0.0);
 			break;
-		case 1:
+		case 1: //Oculus Rift no pinch
+		case 7: //Oculus Quest no pinch
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_SYSTEM_CLICK], false, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK], false, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GRIP_CLICK], grip > 0.9f, 0.0);
@@ -769,8 +773,10 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 			}
 			break;
 
-		case 0:
-		case 1:
+		case 0: //Oculus Rift
+		case 1: //Oculus Rift no pinch
+		case 6:	//Oculus Quest
+		case 7:	//Oculus Quest no pinch
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_SYSTEM_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_SYSTEM_CLICK)) != 0, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_APPLICATION_MENU_CLICK)) != 0, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GRIP_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_CLICK)) != 0, 0.0);

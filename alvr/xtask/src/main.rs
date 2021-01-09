@@ -26,7 +26,8 @@ SUBCOMMANDS:
     install-deps        Download and compile/install external dependencies
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
-    publish             Build server and client in release mode, zip server and copy the pdb file.
+    publish-server      Build server in release mode, make portable version, installer and copy the pdb file
+    publish-client      Build client for all headsets
     clean               Removes build folder
     kill-oculus         Kill all Oculus processes
     bump-versions       Bump server and/or client package versions
@@ -433,18 +434,18 @@ fn build_installer(wix_path: &str) {
     .unwrap();
 }
 
-pub fn build_publish(is_nightly: bool) {
+pub fn publish_server(is_nightly: bool) {
     build_server(true, is_nightly, false);
-    build_client(!is_nightly, is_nightly, false);
-    build_client(!is_nightly, is_nightly, true);
     zip_dir(&server_build_dir()).unwrap();
 
     if cfg!(windows) {
-        fs::copy(
-            target_dir().join("release").join("alvr_server.pdb"),
-            build_dir().join("alvr_server.pdb"),
-        )
-        .unwrap();
+        if is_nightly {
+            fs::copy(
+                target_dir().join("release").join("alvr_server.pdb"),
+                build_dir().join("alvr_server.pdb"),
+            )
+            .unwrap();
+        }
 
         if let Some(wix_evar) = env::vars().find(|v| v.0 == "WIX") {
             println!("Found WiX, will build installer.");
@@ -454,6 +455,11 @@ pub fn build_publish(is_nightly: bool) {
             println!("No WiX toolset installation found, skipping installer.");
         }
     }
+}
+
+pub fn publish_client(is_nightly: bool) {
+    build_client(!is_nightly, is_nightly, false);
+    build_client(!is_nightly, is_nightly, true);
 }
 
 // Avoid Oculus link popups when debugging the client
@@ -491,7 +497,8 @@ fn main() {
                         build_client(args_values.is_release, false, args_values.for_oculus_go);
                     }
                 }
-                "publish" => build_publish(args_values.is_nightly),
+                "publish-server" => publish_server(args_values.is_nightly),
+                "publish-client" => publish_client(args_values.is_nightly),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
                 "bump-versions" => {

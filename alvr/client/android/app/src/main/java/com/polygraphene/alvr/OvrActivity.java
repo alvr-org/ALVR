@@ -235,13 +235,21 @@ public class OvrActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
+        final Object sync = new Object();
         mRenderingHandler.post(() -> {
             mLoadingTexture.destroyTexture();
             Utils.logi(TAG, () -> "Destroying vrapi state.");
             destroyNative();
+            sync.notify();
         });
         mRenderingHandlerThread.quitSafely();
+        try {
+            // Wait until destroyNative() is finished. Can't use Thread.join here, because
+            // the posted lambda might not run, so wait on an object instead.
+            sync.wait();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

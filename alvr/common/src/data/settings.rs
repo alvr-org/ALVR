@@ -246,6 +246,9 @@ pub struct ControllersDesc {
 #[serde(rename_all = "camelCase")]
 pub struct HeadsetDesc {
     #[schema(advanced)]
+    pub mode_idx: u64,
+
+    #[schema(advanced)]
     pub universe_id: u64,
 
     // Oculus Rift S or HTC Vive. Should all the following strings accordingly
@@ -431,6 +434,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         headset: HeadsetDescDefault {
+            mode_idx: 2,
             universe_id: 2,
             serial_number: "1WMGH000XX0000".into(),
             tracking_system_name: "oculus".into(),

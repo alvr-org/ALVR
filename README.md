@@ -4,22 +4,29 @@
 
 [![Badge-Discord]][Link-Discord] [![Badge-OpenCollective]][Link-OpenCollective]
 
-Stream VR games from your PC to your Oculus Quest via Wi-FI.  
-ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience.  
+Stream VR games from your PC to your headset via Wi-Fi.  
+ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com/documentation/native/android/mobile-timewarp-overview) and [Fixed Foveated Rendering](https://developer.oculus.com/documentation/native/android/mobile-ffr) for a smoother experience.  
 All games that work with an Oculus Rift (s) should work with ALVR.  
-This is a fork of [ALVR](https://github.com/polygraphene/ALVR) that works only with Oculus Quest.
+This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
+
+|    Headset     |                       Support                        |
+| :------------: | :--------------------------------------------------: |
+|  Oculus Quest  |                          ✅                           |
+| Oculus Quest 2 |                          ✅                           |
+|   Oculus Go    |                  ✅ (no controllers)                  |
+|     GearVR     | ❌ (use [this](https://github.com/polygraphene/ALVR)) |
 
 ## Requirements
 
-- Oculus Quest (Headset-Version 358570.6090.0 or later)
+- Oculus Quest, Oculus Quest 2 or Oculus Go on the latest firmware
 - SteamVR
 - High-end gaming PC
   - Windows 10 May 2020 update is recommended. If you are on an older version, you need to install Chrome or another Chromium based browser.
   - Minimum supported OS version is Windows 8.
   - NVIDIA GPU that supports NVENC ([Supported GPUs](https://github.com/polygraphene/ALVR/wiki/Supported-GPU)) (or with an AMD GPU that supports AMF VCE) with the latest driver.
   - Laptops with an onboard (Intel HD, AMD iGPU) and an additional dedicated GPU (NVidia GTX/RTX, AMD HD/R5/R7): you should assign the dedicated GPU or "high performance graphics adapter" to the applications ALVR, SteamVR for best performance and compatibility. (NVidia: Nvidia control panel->3d settings->application settings; AMD: similiar way)
-- 802.11ac wireless or ethernet wired connection
-  - It is recommended to use 802.11ac for the headset and ethernet for PC
+- 802.11ac 5Ghz wireless or ethernet wired connection
+  - It is recommended to use 802.11ac 5Ghz for the headset and ethernet for PC
   - You need to connect both the PC and the headset to same router (or use a routed connection as described [here](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-server-on-separate-networks))
 
 ## Install
@@ -38,7 +45,7 @@ The nightly client app can be installed from its [page on Sidequest](https://sid
 
 ## Usage
 
-- Open `ALVR Launcher.exe` (ALVR dashboard). The first time a setup wizard will guide you through the installation.
+- Open `ALVR Launcher.exe` (ALVR dashboard). The first time a setup wizard will guide you through the installation. Oculus Go users should import the `oculus_go_preset.json` found the in the installation folder.
 - Launch ALVR on your headset. While the headset screen is on, click `Trust` next to the client entry (on the PC) to start streaming.
 - To change settings, open the dashboard on the headset with a long press of the menu button (on the left controller), change what you want and then press `Restart SteamVR`. The current playing game could shutdown so any unsaved progress could be lost.
 - To shutdown ALVR you need to close both the ALVR dashboard on PC and SteamVR.
@@ -82,8 +89,6 @@ Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
     ```
 
 - ALVR server will be built into `/build/alvr_server_windows`.
-
-Note: The Visual Studio solution is left only for IDE support while coding. If compiled, the resulting binary will not be valid.
 
 ### Build client
 

@@ -26,7 +26,7 @@ SUBCOMMANDS:
     install-deps        Download and compile/install external dependencies
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
-    publish-server      Build server in release mode, make portable version, installer and copy the pdb file
+    publish-server      Build server in release mode, make portable version and installer
     publish-client      Build client for all headsets
     clean               Removes build folder
     kill-oculus         Kill all Oculus processes
@@ -37,12 +37,10 @@ FLAGS:
     --nightly           Bump versions to nightly and build. Used only for publish subcommand
     --oculus-quest      Oculus Quest build. Used only for build-client subcommand
     --oculus-go         Oculus Go build. Used only for build-client subcommand
-    --version <version> Specify version for bump-versions subcommand
     --help              Print this text
 
 ARGS:
-    --client <VERSION>  Specify client version to set with the bump-versions subcommand
-    --server <VERSION>  Specify server version to set with the bump-versions subcommand
+    --version <VERSION>     Specify version to set with the bump-versions subcommand
 "#;
 
 type BResult<T = ()> = Result<T, Box<dyn Error>>;

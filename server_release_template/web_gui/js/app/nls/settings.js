@@ -8,7 +8,6 @@ define({
         "_root_video_preferredFps.name": "Custom refresh rate", // adv
         "_root_video_resolutionDropdown.name": "Video resolution",
         "_root_video_resolutionDropdown.description": "100% results in the native resolution of the Oculus Quest. \nSetting the resolution can bring some improvement in visual quality, but is not recommended. \nA resolution lower than 100% can reduce latency and increase network performance",
-        "customVideoScale": "Custom",
         "_root_video_renderResolution-choice-.name": "Video encoding resolution base", // adv
         "_root_video_renderResolution_scale-choice-.name": "Scale", // adv
         "_root_video_renderResolution_absolute-choice-.name": "Absolute", // adv
@@ -120,16 +119,16 @@ define({
         "_root_headset_controllers_content_inputProfilePath.name": "Input profile path", // adv
         "_root_headset_controllers_content_inputProfilePath.description": "Input profile path of the emulated controller", // adv
         "_root_headset_controllers_content_trackingSpeed.name": "Tracking speed",
-        "_root_headset_controllers_content_trackingSpeed.description": "For fast paced games like Beatsaber, choose medium or fast. For slower games like Skyrim leave it on normal.\nOculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
+        "_root_headset_controllers_content_trackingSpeed.description": "For fast paced games like Beatsaber, choose medium or fast. For slower games like Skyrim leave it on normal. \nOculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
         "_root_headset_controllers_content_poseTimeOffset.name": "Pose time offset", // adv
         "_root_headset_controllers_content_poseTimeOffset.description": "Offset for the pose prediction algorithm", // adv
         "_root_headset_controllers_content_positionOffsetLeft.name": "Position offset", // adv
-        "_root_headset_controllers_content_positionOffsetLeft.description": "Position offset in meters for the left controller. \n For the right controller, x value is mirrored", // adv
+        "_root_headset_controllers_content_positionOffsetLeft.description": "Position offset in meters for the left controller. \nFor the right controller, x value is mirrored", // adv
         "_root_headset_controllers_content_positionOffsetLeft_0.name": "X", // adv
         "_root_headset_controllers_content_positionOffsetLeft_1.name": "Y", // adv
         "_root_headset_controllers_content_positionOffsetLeft_2.name": "Z", // adv
         "_root_headset_controllers_content_rotationOffsetLeft.name": "Rotation offset", // adv
-        "_root_headset_controllers_content_rotationOffsetLeft.description": "Rotation offset in degrees for the left controller.\nFor the right controller, rotations along the Y and Z axes are mirrored", // adv
+        "_root_headset_controllers_content_rotationOffsetLeft.description": "Rotation offset in degrees for the left controller. \nFor the right controller, rotations along the Y and Z axes are mirrored", // adv
         "_root_headset_controllers_content_rotationOffsetLeft_0.name": "X", // adv
         "_root_headset_controllers_content_rotationOffsetLeft_1.name": "Y", // adv
         "_root_headset_controllers_content_rotationOffsetLeft_2.name": "Z", // adv
@@ -152,13 +151,13 @@ define({
         "_root_connection_throttlingBitrateBits.name": "Maximum streaming bitrate", // adv
         "_root_connection_throttlingBitrateBits.description": "Maximum allowed bitrate in bit/s.", // adv
         "_root_connection_clientRecvBufferSize.name": "Client buffer size", // adv
-        "_root_connection_clientRecvBufferSize.description": "Buffer size on client side.\n Depends on the bitrate.\n Calculated size is recommended. If you experience packet loss, enlarge buffer.", // adv
+        "_root_connection_clientRecvBufferSize.description": "Buffer size on client side. \nDepends on the bitrate. \nCalculated size is recommended. If you experience packet loss, enlarge buffer.", // adv
         "_root_connection_aggressiveKeyframeResend.name": "Aggressive keyframe resend",
         "_root_connection_aggressiveKeyframeResend.description": "Decrease minimum interval between keyframes from 100 ms to 5 ms. \nUsed only when packet loss is detected. \nImproves experience on networks with packet loss.",
         // Extra tab
         "_root_extra_tab.name": "Extra",
         "_root_extra_theme-choice-.name": "Theme",
-        "_root_extra_theme-choice-.description": "Come to the Dark Side.\n We have cookies.",
+        "_root_extra_theme-choice-.description": "Come to the Dark Side. \nWe have cookies.",
         "_root_extra_theme_systemDefault-choice-.name": "System",
         "_root_extra_theme_classic-choice-.name": "Classic",
         "_root_extra_theme_darkly-choice-.name": "Darkly",
@@ -175,7 +174,7 @@ define({
         "_root_extra_updateChannel_nightly-choice-.name": "Nightly",
         "_root_extra_logToDisk.name": "Log to disk (session_log.txt)",
         "_root_extra_notificationLevel-choice-.name": "Notification level", // adv
-        "_root_extra_notificationLevel-choice-.description": "At which level notification will be generated. From less details to all details: \n - Error \n - Warning \n - Informations \n - Debug", // adv
+        "_root_extra_notificationLevel-choice-.description": "At which level notification will be generated. From less details to all details: \n- Error \n- Warning \n- Informations \n- Debug", // adv
         "_root_extra_notificationLevel_error-choice-.name": "Error", // adv
         "_root_extra_notificationLevel_warning-choice-.name": "Warning", // adv
         "_root_extra_notificationLevel_info-choice-.name": "Information", // adv

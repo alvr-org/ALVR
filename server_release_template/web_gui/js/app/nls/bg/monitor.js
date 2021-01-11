@@ -1,16 +1,31 @@
 define({
+    // Connection tab
     "connection": "Връзка",
-    "logging": "логване",
+    // Clients container
     "clients": "Клиенти",
     "newClients": "Нови клиенти",
+    // "addTrustedClient": "",
     "trustedClients": "Одобрени клиенти",
-    "manAddClient": "Добавете клиента ръчно",
     "removeTrustedClient": "Премахване",
-    "statistics": "Потокова статистика",
+    // "troubleshooting": "",
+    // Manually add client page
+    "manAddClient": "Добавете клиента ръчно",
     "addClient": "Добавете клиент",
+    // "deviceName": "",
+    // "deviceNameHelp": "",
+    // "clientHostname": "",
+    // "clientHostnameHelp": "",
     "ipAddress": "IP-Адрес",
     "ipHelp": "Въведете известния IP-Адрес на слушалките",
     "addClientButton": "Добавете клиент",
+    // Configure client page
+    // "configureClient": "",
+    // "configureClientButton": "",
+    // "configureClientAddIp": "",
+    // "configureClientRemoveIp": "",
+    // Statistics container
+    "statistics": "Cтатистика",
+    "streamingStatistics": "Потокова статистика",
     "totalPackets": "Общo пакети",
     "packetRate": "Скорост на трансфер на пакети",
     "packetsLostTotal": "Общо загубени пакети",
@@ -28,5 +43,20 @@ define({
     "clientFPS": "FPS на клиента",
     "serverFPS": "FPS на сървъра",
     "packets": "пакети",
-    "packetss": "пакети/сек"
+    "packetss": "пакети/сек",
+    // Logging tab
+    "logging": "логване",
+    // validation errors
+    // "error_DuplicateHostname": "",
+    // "error_DuplicateIp": "",
+    // "error_InvalidIp": "",
+    // Performance graphs tab
+    // "performanceGraphs": "",
+    // "performanceEncode": "",
+    // "performanceDecode": "",
+    // "performanceTransport": "",
+    // "performanceOther": "",
+    // "performanceLatency": "",
+    // "performanceFramerate": "",
+    // "performanceNoDateCaptured": "",
 });

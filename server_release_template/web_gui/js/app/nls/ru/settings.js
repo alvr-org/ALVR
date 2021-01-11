@@ -53,7 +53,7 @@ define({
     // "_root_audio_gameAudio_enabled.description": "",
     "_root_audio_gameAudio_content_deviceDropdown.name": "Выберите устройство воспроизведения",
     "_root_audio_gameAudio_content_deviceDropdown.description": "Устройство воспроизведения используется для захвата звука.",
-    "_root_audio_gameAudio_content_device.name": "Auiode", // adv
+    // "_root_audio_gameAudio_content_device.name": "", // adv
     // "_root_audio_gameAudio_content_device.description": "", // adv
     // "_root_audio_gameAudio_content_muteWhenStreaming.name": "",
     // "_root_audio_gameAudio_content_muteWhenStreaming.description": "",

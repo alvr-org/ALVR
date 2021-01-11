@@ -53,7 +53,7 @@ define({
     // "_root_audio_gameAudio_enabled.description": "",
     "_root_audio_gameAudio_content_deviceDropdown.name": "Scegli il dispositivo audio",
     "_root_audio_gameAudio_content_deviceDropdown.description": "Dispositivo usato per catturare l'audio del gioco",
-    "_root_audio_gameAudio_content_device.name": "Auiode", // adv
+    // "_root_audio_gameAudio_content_device.name": "", // adv
     // "_root_audio_gameAudio_content_device.description": "", // adv
     "_root_audio_gameAudio_content_muteWhenStreaming.name": "Silenzia PC durante la trasmissione",
     "_root_audio_gameAudio_content_muteWhenStreaming.description": "Azzera il volume del dispositivo audio dal PC durante la trasmissione al visore. L'audio viene comunque transmesso al visore. Questo fa si di evitare l'eco dal PC",

@@ -55,7 +55,7 @@ define({
     "_root_audio_gameAudio_enabled.description": "Permet de streamer l'audio du jeu sur le casque",
     "_root_audio_gameAudio_content_deviceDropdown.name": "Choisisez la source audio",
     "_root_audio_gameAudio_content_deviceDropdown.description": "Source audio utilisé pour la capture",
-    "_root_audio_gameAudio_content_device.name": "Auiode", // adv
+    // "_root_audio_gameAudio_content_device.name": "", // adv
     // "_root_audio_gameAudio_content_device.description": "", // adv
     // "_root_audio_gameAudio_content_muteWhenStreaming.name": "",
     // "_root_audio_gameAudio_content_muteWhenStreaming.description": "",

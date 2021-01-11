@@ -57,7 +57,7 @@ define({
     "_root_audio_gameAudio_enabled.description": "ヘッドセットへのゲーム音声のストリーミングを有効化する",
     "_root_audio_gameAudio_content_deviceDropdown.name": "オーディオ機器の選択",
     "_root_audio_gameAudio_content_deviceDropdown.description": "音声キャプチャのために使用されるオーディオ機器",
-    "_root_audio_gameAudio_content_device.name": "Auiode", // adv
+    // "_root_audio_gameAudio_content_device.name": "", // adv
     // "_root_audio_gameAudio_content_device.description": "", // adv
     // "_root_audio_gameAudio_content_muteWhenStreaming.name": "",
     // "_root_audio_gameAudio_content_muteWhenStreaming.description": "",

@@ -1,16 +1,31 @@
 define({
+    // Connection tab
     "connection": "Подключение",
-    "logging": "Журнал",
+    // Clients container
     "clients": "Клиенты",
     "newClients": "Новые клиенты",
+    // "addTrustedClient": "",
     "trustedClients": "Одобренные клиенты",
-    "manAddClient": "Добавить клиента вручную",
     "removeTrustedClient": "удалить",
-    "statistics": "Статистика Трансляции",
+    // "troubleshooting": "",
+    // Manually add client page
+    "manAddClient": "Добавить клиента вручную",
     "addClient": "Добавить клиента",
+    // "deviceName": "",
+    // "deviceNameHelp": "",
+    // "clientHostname": "",
+    // "clientHostnameHelp": "",
     "ipAddress": "IP-Адрес",
     "ipHelp": "Введите известный адрес гарнитуры",
     "addClientButton": "Добавить клиента",
+    // Configure client page
+    // "configureClient": "",
+    // "configureClientButton": "",
+    // "configureClientAddIp": "",
+    // "configureClientRemoveIp": "",
+    // Statistics container
+    "statistics": "Статистика",
+    "streamingStatistics": "Статистика Трансляции",
     "totalPackets": "Всего пакетов",
     "packetRate": "Скорость передачи пакетов",
     "packetsLostTotal": "Всего пакетов потеряно",
@@ -28,5 +43,20 @@ define({
     "clientFPS": "FPS клиента",
     "serverFPS": "FPS сервера",
     "packets": "пакетов",
-    "packetss": "пакетов/с"
+    "packetss": "пакетов/с",
+    // Logging tab
+    "logging": "Журнал",
+    // validation errors
+    // "error_DuplicateHostname": "",
+    // "error_DuplicateIp": "",
+    // "error_InvalidIp": "",
+    // Performance graphs tab
+    // "performanceGraphs": "",
+    // "performanceEncode": "",
+    // "performanceDecode": "",
+    // "performanceTransport": "",
+    // "performanceOther": "",
+    // "performanceLatency": "",
+    // "performanceFramerate": "",
+    // "performanceNoDateCaptured": "",
 });

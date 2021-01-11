@@ -94,7 +94,8 @@ Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
 
 - Install [Python](https://www.microsoft.com/store/productId/9MSSZTT1N39L)
 - Install Android Studio >=4.0, API Level 30. Requires latest LLDB and NDK packages.
-- Set the environment variable `JAVA_HOME` to `C:\Program Files\Android\androidStudio\jre`.
+- Set the environment variable `JAVA_HOME` to `C:\Program Files\Android\Android Studio\jre`.
+- Set the environment variable `ANDROID_SDK_ROOT` to `%LOCALAPPDATA%\Android\Sdk`.
 - On the repository root execute:
 
     ```bash

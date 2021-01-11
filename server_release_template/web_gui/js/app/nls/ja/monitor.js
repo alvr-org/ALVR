@@ -1,16 +1,31 @@
 define({
+    // Connection tab
     "connection": "接続",
-    "logging": "ログ",
+    // Clients container
     "clients": "クライアント",
     "newClients": "新しいクライアント",
+    // "addTrustedClient": "",
     "trustedClients": "信用済みクライアント",
-    "manAddClient": "クライアントを手動で追加",
     "removeTrustedClient": "削除",
-    "statistics": "ストリーミング統計情報",
+    // "troubleshooting": "",
+    // Manually add client page
+    "manAddClient": "クライアントを手動で追加",
     "addClient": "クライアントを追加",
+    // "deviceName": "",
+    // "deviceNameHelp": "",
+    // "clientHostname": "",
+    // "clientHostnameHelp": "",
     "ipAddress": "IPアドレス",
-    "ipHelp": "HMDのIPアドレスを入力してください",
+    "ipHelp": "ヘッドセットのIPアドレスを入力してください",
     "addClientButton": "クライアントを追加",
+    // Configure client page
+    // "configureClient": "",
+    // "configureClientButton": "",
+    // "configureClientAddIp": "",
+    // "configureClientRemoveIp": "",
+    // Statistics container
+    "statistics": "統計情報",
+    "streamingStatistics": "ストリーミング統計情報",
     "totalPackets": "総パケット数",
     "packetRate": "パケット速度",
     "packetsLostTotal": "総損失パケット数",
@@ -27,6 +42,21 @@ define({
     "fecFailureInSecond": "損失FEC/s",
     "clientFPS": "クライアントFPS",
     "serverFPS": "サーバFPS",
-    "packets" : "パケット",
-    "packetss" : "パケット/s"
+    "packets": "パケット",
+    "packetss": "パケット/s",
+    // Logging tab
+    "logging": "ログ",
+    // validation errors
+    // "error_DuplicateHostname": "",
+    // "error_DuplicateIp": "",
+    // "error_InvalidIp": "",
+    // Performance graphs tab
+    // "performanceGraphs": "",
+    // "performanceEncode": "",
+    // "performanceDecode": "",
+    // "performanceTransport": "",
+    // "performanceOther": "",
+    // "performanceLatency": "",
+    // "performanceFramerate": "",
+    // "performanceNoDateCaptured": "",
 });

@@ -2,7 +2,7 @@
 
 # ALVR - Air Light VR
 
-[![Badge-Discord]][Link-Discord] [![Badge-OpenCollective]][Link-OpenCollective]
+[![badge-ciscord]][link-discord] [![cadge-opencollective]][link-opencollective]
 
 Stream VR games from your PC to your headset via Wi-Fi.  
 ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com/documentation/native/android/mobile-timewarp-overview) and [Fixed Foveated Rendering](https://developer.oculus.com/documentation/native/android/mobile-ffr) for a smoother experience.  
@@ -21,13 +21,13 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 -   Oculus Quest, Oculus Quest 2 or Oculus Go on the latest firmware  
 -   SteamVR  
 -   High-end gaming PC
-  -   Windows 10 May 2020 update is recommended. If you are on an older version, you need to install Chrome or another Chromium based browser.  
-  -   Minimum supported OS version is Windows 8.  
-  -   NVIDIA GPU that supports NVENC ([Supported GPUs](https://github.com/polygraphene/ALVR/wiki/Supported-GPU)) (or with an AMD GPU that supports AMF VCE) with the latest driver.  
-  -   Laptops with an onboard (Intel HD, AMD iGPU) and an additional dedicated GPU (NVidia GTX/RTX, AMD HD/R5/R7): you should assign the dedicated GPU or "high performance graphics adapter" to the applications ALVR, SteamVR for best performance and compatibility. (NVidia: Nvidia control panel->3d settings->application settings; AMD: similiar way)  
+    -   Windows 10 May 2020 update is recommended. If you are on an older version, you need to install Chrome or another Chromium based browser.  
+    -   Minimum supported OS version is Windows 8.  
+    -   NVIDIA GPU that supports NVENC ([Supported GPUs](https://github.com/polygraphene/ALVR/wiki/Supported-GPU)) (or with an AMD GPU that supports AMF VCE) with the latest driver.  
+    -   Laptops with an onboard (Intel HD, AMD iGPU) and an additional dedicated GPU (NVidia GTX/RTX, AMD HD/R5/R7): you should assign the dedicated GPU or "high performance graphics adapter" to the applications ALVR, SteamVR for best performance and compatibility. (NVidia: Nvidia control panel->3d settings->application settings; AMD: similiar way)  
 -   802.11ac 5Ghz wireless or ethernet wired connection
-  -   It is recommended to use 802.11ac 5Ghz for the headset and ethernet for PC  
-  -   You need to connect both the PC and the headset to same router (or use a routed connection as described [here](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-server-on-separate-networks))
+    -   It is recommended to use 802.11ac 5Ghz for the headset and ethernet for PC  
+    -   You need to connect both the PC and the headset to same router (or use a routed connection as described [here](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-server-on-separate-networks))
 
 ## Install
 
@@ -117,7 +117,7 @@ If you want to support this project you can make a donation to our [Open Source 
 
 You can also donate to the original author of ALVR using Paypal (polygraphene@gmail.com) or with bitcoin (1FCbmFVSjsmpnAj6oLx2EhnzQzzhyxTLEv).
 
-[Badge-Discord]: https://img.shields.io/discord/720612397580025886?style=for-the-badge&logo=discord "Join us on Discord"
-[Link-Discord]: https://discord.gg/KbKk3UM
-[Badge-OpenCollective]: https://img.shields.io/opencollective/all/alvr?style=for-the-badge "Donate"
-[Link-OpenCollective]: https://opencollective.com/alvr
+[badge-discord]: https://img.shields.io/discord/720612397580025886?style=for-the-badge&logo=discord "Join us on Discord"
+[link-discord]: https://discord.gg/KbKk3UM
+[badge-opencollective]: https://img.shields.io/opencollective/all/alvr?style=for-the-badge "Donate"
+[link-opencollective]: https://opencollective.com/alvr

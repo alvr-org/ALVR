@@ -1,6 +1,6 @@
 define([
     "jquery",
-    "lib/bootstrap.bundle.min",  
+    "lib/bootstrap.bundle.min",
     "lib/lodash",
     "text!app/templates/main.html",
     "i18n!app/nls/main",
@@ -12,12 +12,22 @@ define([
     "json!../../session",
     "text!../../version",
     "js/lib/lobibox.min.js",
-    "css!js/lib/lobibox.min.css"
-
-
-], function ($, bootstrap, _, mainTemplate, i18n, Settings, SetupWizard, Monitor, driverList, uploadPreset, session, version) {
+    "css!js/lib/lobibox.min.css",
+], function (
+    $,
+    bootstrap,
+    _,
+    mainTemplate,
+    i18n,
+    Settings,
+    SetupWizard,
+    Monitor,
+    driverList,
+    uploadPreset,
+    session,
+    version,
+) {
     $(function () {
-
         var compiledTemplate = _.template(mainTemplate);
         var template = compiledTemplate(i18n);
 
@@ -32,7 +42,7 @@ define([
             } catch (error) {
                 Lobibox.notify("error", {
                     rounded: true,
-                    delay : -1,
+                    delay: -1,
                     delayIndicator: false,
                     sound: false,
                     position: "bottom left",
@@ -47,21 +57,27 @@ define([
             let sessionLocale = session.locale;
             $("#localeChange").val(sessionLocale);
             let storedLocale = localStorage.getItem("locale");
-            if ((sessionLocale !== storedLocale) && (storedLocale !== null) && (sessionLocale !== "system")) {
+            if (
+                sessionLocale !== storedLocale &&
+                storedLocale !== null &&
+                sessionLocale !== "system"
+            ) {
                 storedLocale = sessionLocale;
                 localStorage.setItem("locale", storedLocale);
                 window.location.reload();
             }
 
-            $("#bodyContent").fadeIn(function() {    
+            $("#bodyContent").fadeIn(function () {
                 if (session.setupWizard) {
-                    setTimeout(() => { wizard.showWizard(); }, 500);
+                    setTimeout(() => {
+                        wizard.showWizard();
+                    }, 500);
                 }
             });
 
             $("#runSetupWizard").click(() => {
                 wizard.showWizard();
-            })
+            });
 
             $("#addFirewallRules").click(() => {
                 $.get("firewall-rules/add", undefined, (res) => {
@@ -71,11 +87,11 @@ define([
                             rounded: true,
                             delayIndicator: false,
                             sound: false,
-                            msg: i18n.firewallSuccess
-                        })
+                            msg: i18n.firewallSuccess,
+                        });
                     }
-                })
-            })
+                });
+            });
 
             $("#removeFirewallRules").click(() => {
                 $.get("firewall-rules/remove", undefined, (res) => {
@@ -85,45 +101,50 @@ define([
                             rounded: true,
                             delayIndicator: false,
                             sound: false,
-                            msg: i18n.firewallSuccess
-                        })
+                            msg: i18n.firewallSuccess,
+                        });
                     }
-                })
-            })
+                });
+            });
 
             $("#checkForUpdates").click(() => {
-                $.get("https://api.github.com/repos/alvr-org/ALVR/releases/latest", (data) => {
-                    if(version == data.tag_name.match(/\d+.\d+.\d+/)[0]) {
-                        Lobibox.notify("success", {
-                            size: "mini",
-                            rounded: true,
-                            delayIndicator: false,
-                            sound: false,
-                            msg: i18n.noNeedForUpdate
-                        })
-                    } else {
-                        Lobibox.notify("warning", {
-                            size: "mini",
-                            rounded: true,
-                            delayIndicator: false,
-                            sound: false,
-                            msg: i18n.needUpdateClickForMore,
-                            onClick: function(){
-                                $.ajax({
-                                    headers: { 
-                                        "Accept": "application/json",
-                                        "Content-Type": "application/json" 
-                                    },
-                                    "type": "POST",
-                                    "url": "/open",
-                                    "data": JSON.stringify("https://github.com/alvr-org/ALVR/releases/latest"),
-                                    "dataType": "JSON"
-                                })
-                            }
-                        })
-                    }
-                })
-            })
+                $.get(
+                    "https://api.github.com/repos/alvr-org/ALVR/releases/latest",
+                    (data) => {
+                        if (version == data.tag_name.match(/\d+.\d+.\d+/)[0]) {
+                            Lobibox.notify("success", {
+                                size: "mini",
+                                rounded: true,
+                                delayIndicator: false,
+                                sound: false,
+                                msg: i18n.noNeedForUpdate,
+                            });
+                        } else {
+                            Lobibox.notify("warning", {
+                                size: "mini",
+                                rounded: true,
+                                delayIndicator: false,
+                                sound: false,
+                                msg: i18n.needUpdateClickForMore,
+                                onClick: function () {
+                                    $.ajax({
+                                        headers: {
+                                            Accept: "application/json",
+                                            "Content-Type": "application/json",
+                                        },
+                                        type: "POST",
+                                        url: "/open",
+                                        data: JSON.stringify(
+                                            "https://github.com/alvr-org/ALVR/releases/latest",
+                                        ),
+                                        dataType: "JSON",
+                                    });
+                                },
+                            });
+                        }
+                    },
+                );
+            });
 
             $("#localeChange").change(() => {
                 storedLocale = $("#localeChange").val();
@@ -138,14 +159,16 @@ define([
                     localStorage.setItem("locale", storedLocale);
                 }
                 window.location.reload();
-            })
+            });
 
             $("#version").text("v" + version);
 
             driverList.fillDriverList("registeredDriversInst");
 
-            uploadPreset.addUploadPreset("restartSteamVR", settings.getWebClientId());
-
+            uploadPreset.addUploadPreset(
+                "restartSteamVR",
+                settings.getWebClientId(),
+            );
         });
     });
 });

@@ -7,7 +7,6 @@ mod web_server;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use alcro::JSResult;
 use alvr_common::{data::*, logging::*, *};
 use lazy_static::lazy_static;
 use lazy_static_include::*;
@@ -151,10 +150,26 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
 // this thread gets interrupted when SteamVR closes
 // todo: handle this in a better way
 fn ui_thread() -> StrResult {
+    const WINDOW_WIDTH: u32 = 800;
+    const WINDOW_HEIGHT: u32 = 600;
+
+    let (pos_left, pos_top) = if let Ok((screen_width, screen_height)) = graphics::get_screen_size()
+    {
+        (
+            (screen_width - WINDOW_WIDTH) / 2,
+            (screen_height - WINDOW_HEIGHT) / 2,
+        )
+    } else {
+        (0, 0)
+    };
+
     let window = Arc::new(trace_err!(alcro::UIBuilder::new()
         .content(alcro::Content::Url("http://127.0.0.1:8082"))
-        .size(800, 600)
-        .custom_args(&["--disk-cache-size=1"])
+        .size(WINDOW_WIDTH as _, WINDOW_HEIGHT as _)
+        .custom_args(&[
+            "--disk-cache-size=1",
+            &format!("--window-position={},{}", pos_left, pos_top)
+        ])
         .run())?);
 
     *MAYBE_WINDOW.lock() = Some(window.clone());

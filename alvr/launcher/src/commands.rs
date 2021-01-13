@@ -2,7 +2,7 @@ use alvr_common::{commands::*, logging::*, *};
 use serde_json as json;
 use std::{
     env, fs,
-    path::{ PathBuf},
+    path::PathBuf,
     process::Command,
     thread,
     time::{Duration, Instant},

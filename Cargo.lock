@@ -133,6 +133,7 @@ dependencies = [
  "tokio-util 0.6.1",
  "widestring 0.4.3",
  "winapi 0.3.9",
+ "winit",
  "wio",
 ]
 
@@ -147,7 +148,6 @@ dependencies = [
  "single-instance",
  "sysinfo",
  "ureq 2.0.1",
- "winit",
  "winres",
 ]
 

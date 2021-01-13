@@ -26,6 +26,7 @@ tokio = { version = "1", features = ["net", "macros"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 rcgen = "0.8"
 gfx-hal = "0.6"
+winit = "0.24" # needed to get the screen size
 cpal = "0.13"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]

@@ -166,16 +166,6 @@ fn gui() -> impl Widget<View> {
     )
 }
 
-fn get_screen_size() -> StrResult<(f64, f64)> {
-    let event_loop = winit::event_loop::EventLoop::new();
-    let size = trace_none!(trace_err!(winit::window::WindowBuilder::new()
-        .with_visible(false)
-        .build(&event_loop))?
-    .primary_monitor())?
-    .size();
-    Ok((size.width as _, size.height as _))
-}
-
 struct Delegate;
 
 impl AppDelegate<View> for Delegate {
@@ -199,16 +189,26 @@ impl AppDelegate<View> for Delegate {
 fn make_window() -> StrResult {
     let instance_mutex = trace_err!(single_instance::SingleInstance::new("alvr_launcher_mutex"))?;
     if instance_mutex.is_single() {
+        let current_alvr_dir = current_alvr_dir()?;
+
+        if current_alvr_dir.to_str().filter(|s| s.is_ascii()).is_none() {
+            show_e_blocking(format!(
+                "The path of this folder ({}) contains non ASCII characters. Please move it somewhere else (for example in C:\\Users\\Public\\Documents).",
+                current_alvr_dir.to_string_lossy(),
+            ));
+            return Ok(());
+        }
+
         let mut window = WindowDesc::new(gui)
             .title("ALVR Launcher")
             .window_size((WINDOW_WIDTH, WINDOW_HEIGHT))
             .with_min_size((WINDOW_WIDTH, WINDOW_HEIGHT))
             .resizable(false);
 
-        if let Ok((screen_width, screen_height)) = get_screen_size() {
+        if let Ok((screen_width, screen_height)) = graphics::get_screen_size() {
             window = window.set_position((
-                (screen_width - WINDOW_WIDTH) / 2_f64,
-                (screen_height - WINDOW_HEIGHT) / 2_f64,
+                (screen_width as f64 - WINDOW_WIDTH) / 2_f64,
+                (screen_height as f64 - WINDOW_HEIGHT) / 2_f64,
             ));
         }
 

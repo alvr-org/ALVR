@@ -65,6 +65,7 @@ pub enum ServerControlPacket {
     Restarting,
     Reserved(String),
     ReservedBuffer(Vec<u8>),
+    NetworkKeepAlive,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -82,4 +83,5 @@ pub enum ClientControlPacket {
     RequestIDR,
     Reserved(String),
     ReservedBuffer(Vec<u8>),
+    NetworkKeepAlive,
 }

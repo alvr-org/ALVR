@@ -2,7 +2,13 @@ use crate::{ClientListAction, CLIENTS_UPDATED_NOTIFIER, SESSION_MANAGER};
 use alvr_common::{data::*, logging::*, sockets::*, *};
 use nalgebra::Translation3;
 use settings_schema::Switch;
-use std::{collections::HashMap, net::IpAddr, process::Command};
+use std::{collections::HashMap, net::IpAddr, process::Command, sync::Arc, time::Duration};
+use tokio::{
+    sync::Mutex,
+    time,
+};
+
+const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(5);
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -333,7 +339,7 @@ pub async fn connection_lifecycle_loop() -> StrResult {
         .clone();
 
     loop {
-        let (mut control_sender, mut control_receiver) = tokio::select! {
+        let (control_sender, mut control_receiver) = tokio::select! {
             Err(e) = client_discovery() => break fmt_e!("Client discovery failed: {}", e),
             control_socket = pairing_loop() => control_socket,
             else => unreachable!(),
@@ -349,6 +355,18 @@ pub async fn connection_lifecycle_loop() -> StrResult {
 
         unsafe { crate::InitializeStreaming() };
         let _guard = StreamCloseGuard;
+
+        let control_sender = Arc::new(Mutex::new(control_sender));
+
+        let keepalive_sender_loop = {
+            let control_sender = control_sender.clone();
+            async move {
+                loop {
+                    control_sender.lock().await.send(&ServerControlPacket::NetworkKeepAlive).await.ok();
+                    time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
+                }
+            }
+        };
 
         let control_loop = async move {
             loop {
@@ -377,7 +395,8 @@ pub async fn connection_lifecycle_loop() -> StrResult {
                         };
                     }
                     Ok(ClientControlPacket::RequestIDR) => unsafe { crate::RequestIDR() },
-                    Ok(ClientControlPacket::Reserved(_))
+                    Ok(ClientControlPacket::NetworkKeepAlive)
+                    | Ok(ClientControlPacket::Reserved(_))
                     | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
                     Err(e) => {
                         log_id(LogId::ClientDisconnected);
@@ -403,10 +422,11 @@ pub async fn connection_lifecycle_loop() -> StrResult {
 
         tokio::select! {
             _ = crate::RESTART_NOTIFIER.notified() => {
-                control_sender.send(&ServerControlPacket::Restarting).await.ok();
+                control_sender.lock().await.send(&ServerControlPacket::Restarting).await.ok();
                 return Ok(());
             }
             _ = control_loop => (),
+            _ = keepalive_sender_loop => (),
         }
     }
 }

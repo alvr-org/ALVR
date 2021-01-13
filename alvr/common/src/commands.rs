@@ -1,8 +1,11 @@
 use crate::*;
+use encoding_rs_io::*;
 use serde_json as json;
 use std::{
     collections::HashSet,
-    env, fs,
+    env,
+    fs::{self, File},
+    io::Read,
     path::{Path, PathBuf},
     process::*,
 };
@@ -35,9 +38,12 @@ pub fn openvr_source_file_path() -> StrResult<PathBuf> {
 }
 
 fn load_openvr_paths_json() -> StrResult<json::Value> {
-    let file_content = trace_err!(fs::read_to_string(openvr_source_file_path()?))?;
+    let file = trace_err!(File::open(openvr_source_file_path()?))?;
 
-    trace_err!(json::from_str(&file_content))
+    let mut file_content_decoded = String::new();
+    trace_err!(DecodeReaderBytes::new(&file).read_to_string(&mut file_content_decoded))?;
+
+    trace_err!(json::from_str(&file_content_decoded))
 }
 
 fn save_openvr_paths_json(openvr_paths: &json::Value) -> StrResult {

@@ -123,7 +123,7 @@ pub fn maybe_register_alvr_driver() -> StrResult {
     if !driver_registered {
         let paths_backup = match get_registered_drivers() {
             Ok(paths) => paths,
-            Err(e) => return Err(format!("Failed to load registered drivers: {}", e)),
+            Err(e) => return Err(format!("Failed to load registered drivers.\nPlease reset the drivers installation with the apposite button on the launcher.\n\n({})", e)),
         };
 
         maybe_save_driver_paths_backup(&paths_backup)?;
@@ -136,13 +136,17 @@ pub fn maybe_register_alvr_driver() -> StrResult {
     Ok(())
 }
 
-pub fn fix_steamvr() -> StrResult {
-    // If ALVR driver does not start use a more destructive approach: remove all drivers
-    apply_driver_paths_backup(current_alvr_dir()?)?;
-    let paths = get_registered_drivers()?;
-    driver_registration(&paths, false)?;
+pub fn fix_steamvr() {
+    // If ALVR driver does not start use a more destructive approach: delete openvrpaths.vrpath then recreate it
+    if let Ok(path) = openvr_source_file_path() {
+        fs::remove_file(path).ok();
 
-    unblock_alvr_addon()
+        maybe_launch_steamvr();
+        thread::sleep(Duration::from_secs(5));
+        kill_steamvr();
+    }
+
+    unblock_alvr_addon().ok();
 }
 
 pub fn restart_steamvr() {

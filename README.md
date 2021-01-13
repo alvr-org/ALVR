@@ -2,7 +2,7 @@
 
 # ALVR - Air Light VR
 
-[![badge-ciscord]][link-discord] [![cadge-opencollective]][link-opencollective]
+[![badge-discord]][link-discord] [![badge-opencollective]][link-opencollective]
 
 Stream VR games from your PC to your headset via Wi-Fi.  
 ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com/documentation/native/android/mobile-timewarp-overview) and [Fixed Foveated Rendering](https://developer.oculus.com/documentation/native/android/mobile-ffr) for a smoother experience.  
@@ -19,13 +19,16 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 ## Requirements
 
 -   Oculus Quest, Oculus Quest 2 or Oculus Go on the latest firmware  
+
 -   SteamVR  
+
 -   High-end gaming PC
     -   Windows 10 May 2020 update is recommended. If you are on an older version, you need to install Chrome or another Chromium based browser.  
     -   Minimum supported OS version is Windows 8.  
     -   NVIDIA GPU that supports NVENC ([Supported GPUs](https://github.com/polygraphene/ALVR/wiki/Supported-GPU)) (or with an AMD GPU that supports AMF VCE) with the latest driver.  
-    -   Laptops with an onboard (Intel HD, AMD iGPU) and an additional dedicated GPU (NVidia GTX/RTX, AMD HD/R5/R7): you should assign the dedicated GPU or "high performance graphics adapter" to the applications ALVR, SteamVR for best performance and compatibility. (NVidia: Nvidia control panel->3d settings->application settings; AMD: similiar way)  
--   802.11ac 5Ghz wireless or ethernet wired connection
+    -   Laptops with an onboard (Intel HD, AMD iGPU) and an additional dedicated GPU (NVidia GTX/RTX, AMD HD/R5/R7): you should assign the dedicated GPU or "high performance graphics adapter" to the applications ALVR, SteamVR for best performance and compatibility. (NVidia: Nvidia control panel->3d settings->application settings; AMD: similiar way) 
+
+-   802.11ac 5Ghz wireless or ethernet wired connection  
     -   It is recommended to use 802.11ac 5Ghz for the headset and ethernet for PC  
     -   You need to connect both the PC and the headset to same router (or use a routed connection as described [here](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-server-on-separate-networks))
 
@@ -82,6 +85,7 @@ Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
 ### Build server
 
 -   Install the MSVC compiler (for example installing C++ build tools with [Visual Studio](https://visualstudio.microsoft.com/downloads))  
+
 -   On the repository root execute:
 
     ```bash
@@ -93,9 +97,13 @@ Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
 ### Build client
 
 -   Install [Python](https://www.microsoft.com/store/productId/9MSSZTT1N39L)  
+
 -   Install Android Studio >=4.0, API Level 30. Requires latest LLDB and NDK packages.  
+
 -   Set the environment variable `JAVA_HOME` to `C:\Program Files\Android\Android Studio\jre`.  
+
 -   Set the environment variable `ANDROID_SDK_ROOT` to `%LOCALAPPDATA%\Android\Sdk`.  
+
 -   On the repository root execute:
 
     ```bash

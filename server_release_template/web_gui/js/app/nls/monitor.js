@@ -8,7 +8,7 @@ define({
         "addTrustedClient": "Trust",
         "trustedClients": "Trusted Clients",
         "removeTrustedClient": "Remove",
-        "troubleshooting": `Is your headset not showing up? Visit our troubleshooting page <a href="https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset">here</a>`,
+        "troubleshooting": "Is your headset not showing up? Visit our troubleshooting page <a href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'>here</a>",
         // Manually add client page
         "manAddClient": "Add client manually",
         "addClient": "Add client",
@@ -19,11 +19,11 @@ define({
         "ipAddress": "IP address",
         "ipHelp": "Enter the remote IP address of the headset",
         "addClientButton": "Add client",
-        //Configure client page
+        // Configure client page
         "configureClient": "Configure client",
         "configureClientButton": "Configure",
         "configureClientAddIp": "Add new IP",
-        "configureClientRemoveIp": "Remove",        
+        "configureClientRemoveIp": "Remove",
         // Statistics container
         "statistics": "Statistics",
         "streamingStatistics": "Streaming Statistics",
@@ -47,11 +47,11 @@ define({
         "packetss": "Packets / s",
         // Logging tab
         "logging": "Logging",
-        //validation errors
+        // validation errors
         "error_DuplicateHostname": "A device with this hostname is already registered",
         "error_DuplicateIp": "This IP address is already registed on this device",
         "error_InvalidIp": "Not a valid IPv4 formatted address",
-        //Performance graphs tab
+        // Performance graphs tab
         "performanceGraphs": "Performance graphs",
         "performanceEncode": "Encode",
         "performanceDecode": "Decode",

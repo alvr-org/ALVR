@@ -1,16 +1,31 @@
 define({
+    // Connection tab
     "connection": "Conexión",
-    "logging": "Registros",
+    // Clients container
     "clients": "Clientes",
     "newClients": "Nuevos clientes",
+    // "addTrustedClient": "",
     "trustedClients": "Clientes de confianza",
-    "manAddClient": "Añadir un cliente manualmente",
     "removeTrustedClient": "Quitar",
-    "statistics": "Estadísticas de transmisión",
+    // "troubleshooting": "",
+    // Manually add client page
+    "manAddClient": "Añadir un cliente manualmente",
     "addClient": "Añadir cliente",
+    // "deviceName": "",
+    // "deviceNameHelp": "",
+    // "clientHostname": "",
+    // "clientHostnameHelp": "",
     "ipAddress": "Dirección IP",
     "ipHelp": "Añade la dirección IP remota del vidor",
     "addClientButton": "Añadir cliente",
+    // Configure client page
+    // "configureClient": "",
+    // "configureClientButton": "",
+    // "configureClientAddIp": "",
+    // "configureClientRemoveIp": "",
+    // Statistics container
+    "statistics": "Estadísticas",
+    "streamingStatistics": "Estadísticas de transmisión",
     "totalPackets": "Paquetes totales",
     "packetRate": "Velocidad de envío de paquetes (total)",
     "packetsLostTotal": "Total de paquetes perdidos",
@@ -28,5 +43,20 @@ define({
     "clientFPS": "FPS del cliente",
     "serverFPS": "FPS del servidor",
     "packets": "Paquetes",
-    "packetss": "Paquetes/s"
+    "packetss": "Paquetes/s",
+    // Logging tab
+    "logging": "Registros",
+    // validation errors
+    // "error_DuplicateHostname": "",
+    // "error_DuplicateIp": "",
+    // "error_InvalidIp": "",
+    // Performance graphs tab
+    // "performanceGraphs": "",
+    // "performanceEncode": "",
+    // "performanceDecode": "",
+    // "performanceTransport": "",
+    // "performanceOther": "",
+    // "performanceLatency": "",
+    // "performanceFramerate": "",
+    // "performanceNoDateCaptured": "",
 });

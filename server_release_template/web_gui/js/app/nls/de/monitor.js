@@ -1,16 +1,31 @@
 define({
+    // Connection tab
     "connection": "Verbindung",
-    "logging": "Protokollierung",
+    // Clients container
     "clients": "Clients",
     "newClients": "Neue Clients",
+    // "addTrustedClient": "",
     "trustedClients": "Vertraute Clients",
-    "manAddClient": "Manuelles hinzufügen eines Clients",
     "removeTrustedClient": "Entfernen",
-    "statistics": "Streaming Statistiken",
+    // "troubleshooting": "",
+    // Manually add client page
+    "manAddClient": "Manuelles hinzufügen eines Clients",
     "addClient": "Client hinzufügen",
+    // "deviceName": "",
+    // "deviceNameHelp": "",
+    // "clientHostname": "",
+    // "clientHostnameHelp": "",
     "ipAddress": "IP-Address",
     "ipHelp": "Bekannte IP-Addresse des HMD eingeben",
     "addClientButton": "Client hinzufügen",
+    // Configure client page
+    // "configureClient": "",
+    // "configureClientButton": "",
+    // "configureClientAddIp": "",
+    // "configureClientRemoveIp": "",
+    // Statistics container
+    "statistics": "Statistiken",
+    "streamingStatistics": "Streaming Statistiken",
     "totalPackets": "Alle Packets",
     "packetRate": "PacketRate",
     "packetsLostTotal": "Gesamter Packets-Verlust",
@@ -28,5 +43,20 @@ define({
     "clientFPS": "Client fps",
     "serverFPS": "Server fps",
     "packets": "Packets",
-    "packetss": "Packets/s"
+    "packetss": "Packets/s",
+    // Logging tab
+    "logging": "Protokollierung",
+    // validation errors
+    // "error_DuplicateHostname": "",
+    // "error_DuplicateIp": "",
+    // "error_InvalidIp": "",
+    // Performance graphs tab
+    // "performanceGraphs": "",
+    // "performanceEncode": "",
+    // "performanceDecode": "",
+    // "performanceTransport": "",
+    // "performanceOther": "",
+    // "performanceLatency": "",
+    // "performanceFramerate": "",
+    // "performanceNoDateCaptured": "",
 });

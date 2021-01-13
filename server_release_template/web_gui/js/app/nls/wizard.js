@@ -7,8 +7,8 @@ define({
         "titleHardwareReq": "Hardware requirements",
         "textHardwareReq": "ALVR requires a dedicated and recent graphics card. <br/> <br/> Make sure you have at least one output audio device. <br/> <br/> ",
         "YourGPUIs": "Your GPU:",
-        "GPUSupported": "\nGreat! This GPU is probably supported!", //Yes, '\n' must be in translation
-        "GPUUnsupported": "\nWe are sorry, but this card may be unsupported. You can try ALVR anyway and see if it works", //Yes, '\n' must be in translation
+        "GPUSupported": " \nGreat! This GPU is probably supported!",
+        "GPUUnsupported": " \nWe are sorry, but this card may be unsupported. You can try ALVR anyway and see if it works",
         // Software page
         "titleSoftwareReq": "Software requirements",
         "textSoftwareReq": "To stream the Quest microphone you need to install the <a href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
@@ -20,7 +20,7 @@ define({
         "firewallSuccess": "Firewall rules successfully set",
         // Tracking page
         "titleTracking": "Tracking",
-        "textTracking": "How should the tracking of the controller be handled. If you plan on playing fast paced games like Beatsaber, choose medium or fast. For slower games like Skyrim leave it on normal.\n\nOculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
+        "textTracking": "How should the tracking of the controller be handled. If you plan on playing fast paced games like Beatsaber, choose medium or fast. For slower games like Skyrim leave it on normal. <br/> <br/> Oculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
         "oculusTracking": "Oculus prediction",
         "normalTracking": "Normal",
         "mediumTracking": "Medium",
@@ -32,11 +32,7 @@ define({
         "qualityPerformance": "Visual quality",
         // Import page
         "titleImport": "Import ALVR preset",
-        "textImport": `You can import settings or preset files (.json):
-        <ul>
-            <li> Presets for a specific headset. This is recommended for the <b>Oculus Go</b> (search for <code>oculus_go_preset.json</code> in the installation folder).
-            <li> Settings from a previous ALVR installation (<code>session.json</code>).
-        <ul>`,
+        "textImport": "You can import settings or preset files (.json): <ul><li> Presets for a specific headset. This is recommended for the <b>Oculus Go</b> (search for <code>oculus_go_preset.json</code> in the installation folder).<li> Settings from a previous ALVR installation (<code>session.json</code>).<ul>",
         // End page
         "titleFinished": "Finished",
         "textFinished": "You can always restart this setup wizard from the \"Installation\" tab on the left",

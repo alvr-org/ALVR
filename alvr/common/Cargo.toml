@@ -30,7 +30,6 @@ cpal = "0.13"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 dirs = "3"
-sysinfo = "0.15"
 runas = "0.2"
 msgbox = "0.6"
 

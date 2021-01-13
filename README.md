@@ -2,7 +2,7 @@
 
 # ALVR - Air Light VR
 
-[![badge-discord]][link-discord] [![badge-opencollective]][link-opencollective]
+[![badge-discord][]][link-discord] [![badge-opencollective][]][link-opencollective]
 
 Stream VR games from your PC to your headset via Wi-Fi.  
 ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com/documentation/native/android/mobile-timewarp-overview) and [Fixed Foveated Rendering](https://developer.oculus.com/documentation/native/android/mobile-ffr) for a smoother experience.  
@@ -11,10 +11,10 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
 |    Headset     |                       Support                        |
 | :------------: | :--------------------------------------------------: |
-|  Oculus Quest  |                          ✅                           |
-| Oculus Quest 2 |                          ✅                           |
-|   Oculus Go    |                  ✅ (no controllers)                  |
-|     GearVR     | ❌ (use [this](https://github.com/polygraphene/ALVR)) |
+|  Oculus Quest  |                          :heavy_check_mark:                           |
+| Oculus Quest 2 |                          :heavy_check_mark:                           |
+|   Oculus Go    |                  :heavy_check_mark: (no controllers)                  |
+|     GearVR     | :x: (use [this](https://github.com/polygraphene/ALVR)) |
 
 ## Requirements
 

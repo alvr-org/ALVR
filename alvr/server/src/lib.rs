@@ -53,7 +53,7 @@ pub fn shutdown_runtime() {
     }
 }
 
-pub fn restart_steamvr() {
+pub fn notify_shutdown_driver() {
     thread::spawn(|| {
         RESTART_NOTIFIER.notify_waiters();
 
@@ -63,9 +63,19 @@ pub fn restart_steamvr() {
         shutdown_runtime();
 
         unsafe { ShutdownSteamvr() };
-
-        commands::restart_steamvr_with_timeout(&ALVR_DIR).ok();
     });
+}
+
+pub fn notify_restart_driver() {
+    notify_shutdown_driver();
+
+    commands::restart_steamvr(&ALVR_DIR).ok();
+}
+
+pub fn notify_application_update() {
+    notify_shutdown_driver();
+
+    commands::restart_steamvr(&ALVR_DIR).ok();
 }
 
 pub enum ClientListAction {

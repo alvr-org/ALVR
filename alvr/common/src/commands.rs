@@ -12,6 +12,7 @@ use std::{
 
 const ALVR_DIR_STORAGE_FNAME: &str = "alvr_dir.txt";
 const DRIVER_PATHS_BACKUP_FNAME: &str = "alvr_drivers_paths_backup.txt";
+const INSTALLER_FNAME: &str = "alvr_installer";
 
 #[cfg(windows)]
 pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -23,6 +24,10 @@ pub fn exec_fname(name: &str) -> String {
 #[cfg(windows)]
 pub fn exec_fname(name: &str) -> String {
     format!("{}.exe", name)
+}
+
+pub fn installer_path() -> PathBuf {
+    env::temp_dir().join(exec_fname(INSTALLER_FNAME))
 }
 
 ///////////// openvrpaths.vrpath interop ///////////////
@@ -253,10 +258,18 @@ pub fn firewall_rules(add: bool) -> Result<(), i32> {
 
 /////////////////// launcher invocation ///////////////////////
 
-pub fn restart_steamvr_with_timeout(alvr_dir: &Path) -> StrResult {
+fn invoke_launcher(alvr_dir: &Path, flag: &str) -> StrResult {
     trace_err!(Command::new(alvr_dir.join(exec_fname("ALVR launcher")))
-        .arg("--restart-steamvr")
+        .arg(flag)
         .status())?;
 
     Ok(())
+}
+
+pub fn restart_steamvr(alvr_dir: &Path) -> StrResult {
+    invoke_launcher(alvr_dir, "--restart-steamvr")
+}
+
+pub fn invoke_application_update(alvr_dir: &Path) -> StrResult {
+    invoke_launcher(alvr_dir, "--update")
 }

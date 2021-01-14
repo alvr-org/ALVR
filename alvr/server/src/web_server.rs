@@ -1,7 +1,7 @@
-use crate::{restart_steamvr, update_client_list, ClientListAction, ALVR_DIR, SESSION_MANAGER};
+use crate::{ClientListAction, ALVR_DIR, SESSION_MANAGER};
 use alvr_common::{commands::*, data::*, logging::*, *};
 use bytes::Buf;
-use futures::SinkExt;
+use futures::{SinkExt, StreamExt};
 use headers::{self, HeaderMapExt};
 use hyper::{
     header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL},
@@ -11,7 +11,7 @@ use hyper::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json as json;
-use std::{net::SocketAddr, path::PathBuf};
+use std::{fs, io::Write, net::SocketAddr, path::PathBuf};
 use tokio::sync::broadcast::{self, error::RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
@@ -154,14 +154,14 @@ async fn http_api(
         "/graphics-devices" => reply_json(&graphics::get_gpu_names())?,
         "/audio-devices" => reply_json(&audio::output_audio_devices().ok())?,
         "/restart-steamvr" => {
-            restart_steamvr();
+            crate::notify_restart_driver();
             reply(StatusCode::OK)?
         }
         "/client/add" => {
             if let Ok((device_name, hostname, ip)) =
                 from_request_body::<(_, String, _)>(request).await
             {
-                update_client_list(
+                crate::update_client_list(
                     hostname.clone(),
                     ClientListAction::AddIfMissing {
                         device_name,
@@ -170,7 +170,8 @@ async fn http_api(
                     },
                 )
                 .await;
-                update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(Some(ip))).await;
+                crate::update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(Some(ip)))
+                    .await;
 
                 reply(StatusCode::OK)?
             } else {
@@ -179,7 +180,8 @@ async fn http_api(
         }
         "/client/trust" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
-                update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(maybe_ip)).await;
+                crate::update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(maybe_ip))
+                    .await;
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::BAD_REQUEST)?
@@ -187,7 +189,8 @@ async fn http_api(
         }
         "/client/remove" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
-                update_client_list(hostname, ClientListAction::RemoveIpOrEntry(maybe_ip)).await;
+                crate::update_client_list(hostname, ClientListAction::RemoveIpOrEntry(maybe_ip))
+                    .await;
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::BAD_REQUEST)?
@@ -201,6 +204,47 @@ async fn http_api(
             } else {
                 reply(StatusCode::BAD_REQUEST)?
             }
+        }
+        "/update" => {
+            if let Ok(url) = from_request_body::<String>(request).await {
+                if let Ok(uri) = url.parse() {
+                    if let Ok(response) = hyper::Client::new().get(uri).await {
+                        let status = response.status();
+                        if status.is_success() {
+                            let mut file =
+                                trace_err!(fs::File::create(commands::installer_path()))?;
+
+                            let mut body = response.into_body();
+
+                            let mut downloaded_bytes_count = 0;
+                            while let Some(maybe_chunk) = body.next().await {
+                                match maybe_chunk {
+                                    Ok(chunk) => {
+                                        downloaded_bytes_count += chunk.len();
+                                        trace_err!(file.write_all(&chunk))?;
+                                        info!(
+                                            id: LogId::UpdateDownloadedBytesCount(
+                                                downloaded_bytes_count,
+                                            )
+                                        );
+                                    }
+                                    Err(e) => {
+                                        error!(id: LogId::UpdateDownloadError, "{}", e);
+                                        return reply(StatusCode::BAD_GATEWAY);
+                                    }
+                                }
+                            }
+
+                            crate::notify_application_update();
+                        }
+
+                        return reply(status);
+                    } else {
+                        return reply(StatusCode::BAD_GATEWAY);
+                    }
+                }
+            }
+            reply(StatusCode::BAD_REQUEST)?
         }
         other_uri => {
             if other_uri.contains("..") {

@@ -123,7 +123,14 @@ pub fn maybe_register_alvr_driver() -> StrResult {
     if !driver_registered {
         let paths_backup = match get_registered_drivers() {
             Ok(paths) => paths,
-            Err(e) => return Err(format!("Failed to load registered drivers.\nPlease reset the drivers installation with the apposite button on the launcher.\n\n({})", e)),
+            Err(e) => {
+                return Err(format!(
+                "{}\n{}\n\n({})",
+                "Failed to load registered drivers.",
+                "Please reset the drivers installation with the apposite button on the launcher.",
+                e
+            ))
+            }
         };
 
         maybe_save_driver_paths_backup(&paths_backup)?;
@@ -150,7 +157,7 @@ pub fn fix_steamvr() {
     unblock_alvr_addon().ok();
 }
 
-pub fn restart_steamvr() {
+fn try_close_steamvr_gracefully() {
     let start_time = Instant::now();
     while start_time.elapsed() < SHUTDOWN_TIMEOUT && is_steamvr_running() {
         thread::sleep(Duration::from_millis(500));
@@ -160,8 +167,21 @@ pub fn restart_steamvr() {
     kill_steamvr();
 
     thread::sleep(Duration::from_secs(2));
+}
+
+pub fn restart_steamvr() {
+    try_close_steamvr_gracefully();
 
     if show_err(maybe_register_alvr_driver()).is_ok() {
         maybe_launch_steamvr();
     }
+}
+
+pub fn invoke_installer() {
+    try_close_steamvr_gracefully();
+
+    Command::new(commands::installer_path())
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn()
+        .ok();
 }

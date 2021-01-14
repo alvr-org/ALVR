@@ -7,20 +7,14 @@ use commands::*;
 use druid::{commands::CLOSE_WINDOW, widget::*, Data, *};
 use std::{env, thread, time::Duration};
 
-const WINDOW_WIDTH: f64 = 500_f64;
-const WINDOW_HEIGHT: f64 = 300_f64;
+const WINDOW_WIDTH: f64 = 500.0;
+const WINDOW_HEIGHT: f64 = 300.0;
 
 const CHANGE_VIEW_CMD: Selector<View> = Selector::new("change_view");
 
-#[derive(Clone, PartialEq, Data, Lens)]
-struct RequirementsCheck {
-    steamvr: String,
-    msvcp: String,
-}
-
 #[derive(Clone, PartialEq, Data)]
 enum View {
-    RequirementsCheck(RequirementsCheck),
+    RequirementsCheck { steamvr: String, msvcp: String },
     Launching { resetting: bool },
 }
 
@@ -49,7 +43,7 @@ fn launcher_lifecycle(handle: ExtEventSink, window_id: WindowId) {
             handle
                 .submit_command(
                     CHANGE_VIEW_CMD,
-                    View::RequirementsCheck(RequirementsCheck { steamvr, msvcp }),
+                    View::RequirementsCheck { steamvr, msvcp },
                     Target::Auto,
                 )
                 .ok();
@@ -131,7 +125,7 @@ fn gui() -> impl Widget<View> {
     ViewSwitcher::new(
         |view: &View, _| view.clone(),
         |view, _, _| match view {
-            View::RequirementsCheck(checks) => Box::new(
+            View::RequirementsCheck { steamvr, msvcp } => Box::new(
                 Flex::row()
                     .with_default_spacer()
                     .with_flex_child(
@@ -139,12 +133,12 @@ fn gui() -> impl Widget<View> {
                             .cross_axis_alignment(CrossAxisAlignment::Start)
                             .with_flex_spacer(1.0)
                             .with_child(
-                                Label::new(checks.steamvr.clone())
+                                Label::new(steamvr.clone())
                                     .with_line_break_mode(LineBreaking::WordWrap),
                             )
                             .with_default_spacer()
                             .with_child(
-                                Label::new(checks.msvcp.clone())
+                                Label::new(msvcp.clone())
                                     .with_line_break_mode(LineBreaking::WordWrap),
                             )
                             .with_flex_spacer(1.5),
@@ -213,15 +207,15 @@ fn make_window() -> StrResult {
 
         if let Ok((screen_width, screen_height)) = graphics::get_screen_size() {
             window = window.set_position((
-                (screen_width as f64 - WINDOW_WIDTH) / 2_f64,
-                (screen_height as f64 - WINDOW_HEIGHT) / 2_f64,
+                (screen_width as f64 - WINDOW_WIDTH) / 2.0,
+                (screen_height as f64 - WINDOW_HEIGHT) / 2.0,
             ));
         }
 
-        let state = View::RequirementsCheck(RequirementsCheck {
+        let state = View::RequirementsCheck {
             steamvr: "".into(),
             msvcp: "".into(),
-        });
+        };
 
         let window_id = window.id;
 
@@ -255,6 +249,7 @@ fn main() {
     let args = env::args().collect::<Vec<_>>();
     match args.get(1) {
         Some(flag) if flag == "--restart-steamvr" => restart_steamvr(),
+        Some(flag) if flag == "--update" => invoke_installer(),
         _ => {
             show_err_blocking(make_window()).ok();
         }

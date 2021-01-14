@@ -126,6 +126,8 @@ pub enum LogId {
     ClientFoundWrongVersion(String),
     ClientConnected,
     ClientDisconnected,
+    UpdateDownloadedBytesCount(usize),
+    UpdateDownloadError,
 }
 
 #[macro_export]

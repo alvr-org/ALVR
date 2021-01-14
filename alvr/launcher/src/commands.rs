@@ -23,7 +23,7 @@ fn kill_process(pid: usize) {
         .ok();
 }
 
-fn is_steamvr_running() -> bool {
+pub fn is_steamvr_running() -> bool {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
 
@@ -144,6 +144,7 @@ pub fn fix_steamvr() {
         maybe_launch_steamvr();
         thread::sleep(Duration::from_secs(5));
         kill_steamvr();
+        thread::sleep(Duration::from_secs(5));
     }
 
     unblock_alvr_addon().ok();

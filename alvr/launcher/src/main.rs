@@ -86,7 +86,10 @@ fn launcher_lifecycle(handle: ExtEventSink, window_id: WindowId) {
         // try to launch SteamVR only one time automatically
         if !tried_steamvr_launch {
             if show_err(maybe_register_alvr_driver()).is_ok() {
-                kill_steamvr();
+                if is_steamvr_running() {
+                    kill_steamvr();
+                    thread::sleep(Duration::from_secs(2))
+                }
                 maybe_launch_steamvr();
             }
             tried_steamvr_launch = true;
@@ -159,6 +162,8 @@ fn gui() -> impl Widget<View> {
                         Button::new("Reset drivers and retry")
                             .on_click(move |ctx, _, _| reset_and_retry(ctx.get_external_handle())),
                     )
+                } else {
+                    flex = flex.with_child(Label::new("Please wait for multiple restarts"))
                 }
 
                 Box::new(flex.with_flex_spacer(1.0))

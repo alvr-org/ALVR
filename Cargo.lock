@@ -28,15 +28,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aae1277d39aeec15cb388266ecc24b11c80469deae6067e17a1a7aa9e5c1f234"
 
 [[package]]
-name = "ahash"
-version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8fd72866655d1904d6b0997d0b07ba561047d070fbe29de039031c641b61217"
-dependencies = [
- "const-random",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -47,9 +38,9 @@ dependencies = [
 
 [[package]]
 name = "alcro"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99b88c7a18efbff333e7574159975d99a2479bae13fa0f92cd3926c573a30bd0"
+checksum = "f757ffb48983eea7fb83042823fb0dd79d835fada2a4d1cdfe6fd3ddb208248f"
 dependencies = [
  "crossbeam-channel",
  "dashmap",
@@ -59,6 +50,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "tempdir",
+ "thiserror",
  "tinyfiledialogs",
  "winapi 0.3.9",
 ]
@@ -101,7 +93,7 @@ dependencies = [
  "parking_lot",
  "serde_json",
  "settings-schema",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "walkdir",
 ]
 
@@ -130,7 +122,7 @@ dependencies = [
  "serde",
  "serde_json",
  "settings-schema",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tokio-util 0.6.1",
  "widestring 0.4.3",
  "winapi 0.3.9",
@@ -174,7 +166,7 @@ dependencies = [
  "serde",
  "serde_json",
  "settings-schema",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tokio-tungstenite",
  "tokio-util 0.6.1",
  "walkdir",
@@ -711,28 +703,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "const-random"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f590d95d011aa80b063ffe3253422ed5aa462af4e9867d43ce8337562bac77c4"
-dependencies = [
- "const-random-macro",
- "proc-macro-hack",
-]
-
-[[package]]
-name = "const-random-macro"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "615f6e27d000a2bffbc7f2f6a8669179378fa27ee4d0a509e985dfc0a7defb40"
-dependencies = [
- "getrandom 0.2.1",
- "lazy_static",
- "proc-macro-hack",
- "tiny-keccak",
-]
-
-[[package]]
 name = "const_fn"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -977,12 +947,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crunchy"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
-
-[[package]]
 name = "darling"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1019,12 +983,11 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "3.11.10"
+version = "4.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f260e2fc850179ef410018660006951c1b55b79e8087e87111a2c388994b9b5"
+checksum = "e77a43b28d0668df09411cb0bc9a8c2adc40f9a048afe863e05fd43251e8e39c"
 dependencies = [
- "ahash",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "num_cpus",
 ]
 
@@ -1428,9 +1391,9 @@ checksum = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 
 [[package]]
 name = "futures"
-version = "0.3.10"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "309f13e3f4be6d5917178c84db67c0b9a09177ac16d4f9a7313a767a68adaa77"
+checksum = "da9052a1a50244d8d5aa9bf55cbc2fb6f357c86cc52e46c62ed390a7180cf150"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -1443,9 +1406,9 @@ dependencies = [
 
 [[package]]
 name = "futures-channel"
-version = "0.3.10"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a3b03bd32f6ec7885edeb99acd1e47e20e34fd4dfd3c6deed6fcac8a9d28f6a"
+checksum = "f2d31b7ec7efab6eefc7c57233bb10b847986139d88cc2f5a02a1ae6871a1846"
 dependencies = [
  "futures-core",
  "futures-sink",
@@ -1453,15 +1416,15 @@ dependencies = [
 
 [[package]]
 name = "futures-core"
-version = "0.3.10"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed8aeae2b6ab243ebabe6f54cd4cf53054d98883d5d326128af7d57a9ca5cd3d"
+checksum = "79e5145dde8da7d1b3892dad07a9c98fc04bc39892b1ecc9692cf53e2b780a65"
 
 [[package]]
 name = "futures-executor"
-version = "0.3.10"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f7836b36b7533d16fd5937311d98ba8965ab81030de8b0024c299dd5d51fb9b"
+checksum = "e9e59fdc009a4b3096bf94f740a0f2424c082521f20a9b08c5c07c48d90fd9b9"
 dependencies = [
  "futures-core",
  "futures-task",
@@ -1470,15 +1433,15 @@ dependencies = [
 
 [[package]]
 name = "futures-io"
-version = "0.3.10"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d41234e71d5e8ca73d01563974ef6f50e516d71e18f1a2f1184742e31f5d469f"
+checksum = "28be053525281ad8259d47e4de5de657b25e7bac113458555bb4b70bc6870500"
 
 [[package]]
 name = "futures-macro"
-version = "0.3.10"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3520e0eb4e704e88d771b92d51273ee212997f0d8282f17f5d8ff1cb39104e42"
+checksum = "c287d25add322d9f9abdcdc5927ca398917996600182178774032e9f8258fedd"
 dependencies = [
  "proc-macro-hack",
  "proc-macro2",
@@ -1488,24 +1451,24 @@ dependencies = [
 
 [[package]]
 name = "futures-sink"
-version = "0.3.10"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c72d188479368953c6c8c7140e40d7a4401674ab3b98a41e60e515d6cbdbe5de"
+checksum = "caf5c69029bda2e743fddd0582d1083951d65cc9539aebf8812f36c3491342d6"
 
 [[package]]
 name = "futures-task"
-version = "0.3.10"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08944cea9021170d383287169859c0ca8147d9ec285978393109954448f33cc7"
+checksum = "13de07eb8ea81ae445aca7b69f5f7bf15d7bf4912d8ca37d6645c77ae8a58d86"
 dependencies = [
  "once_cell",
 ]
 
 [[package]]
 name = "futures-util"
-version = "0.3.10"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3dd206efbe2ca683b2ce138ccdf61e1b0a63f5816dcedc9d8654c500ba0cea6"
+checksum = "632a8cd0f2a4b3fdea1657f08bde063848c3bd00f9bbf6e256b8be78802e624b"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -1861,7 +1824,7 @@ dependencies = [
  "http",
  "indexmap",
  "slab",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tokio-util 0.6.1",
  "tracing",
  "tracing-futures",
@@ -2007,7 +1970,7 @@ dependencies = [
  "itoa",
  "pin-project 1.0.4",
  "socket2",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tower-service",
  "tracing",
  "want",
@@ -2035,7 +1998,7 @@ dependencies = [
  "bytes 1.0.1",
  "hyper 0.14.2",
  "native-tls",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tokio-native-tls",
 ]
 
@@ -3503,7 +3466,7 @@ dependencies = [
  "pin-project-lite 0.2.4",
  "serde",
  "serde_urlencoded",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tokio-native-tls",
  "url",
  "wasm-bindgen",
@@ -4230,15 +4193,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tiny-keccak"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
-dependencies = [
- "crunchy",
-]
-
-[[package]]
 name = "tinyfiledialogs"
 version = "3.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4289,9 +4243,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d258221f566b6c803c7b4714abadc080172b272090cdc5e244a6d4dd13c3a6bd"
+checksum = "0ca04cec6ff2474c638057b65798f60ac183e5e79d3448bb7163d36a39cff6ec"
 dependencies = [
  "autocfg",
  "bytes 1.0.1",
@@ -4324,7 +4278,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7d995660bd2b7f8c1568414c1126076c13fbb725c40112dc0120b78eb9b717b"
 dependencies = [
  "native-tls",
- "tokio 1.0.1",
+ "tokio 1.0.2",
 ]
 
 [[package]]
@@ -4335,7 +4289,7 @@ checksum = "76066865172052eb8796c686f0b441a93df8b08d40a950b062ffb9a426f00edd"
 dependencies = [
  "futures-core",
  "pin-project-lite 0.2.4",
- "tokio 1.0.1",
+ "tokio 1.0.2",
 ]
 
 [[package]]
@@ -4357,7 +4311,7 @@ dependencies = [
  "futures-util",
  "log",
  "pin-project 1.0.4",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tungstenite",
 ]
 
@@ -4386,7 +4340,7 @@ dependencies = [
  "futures-sink",
  "log",
  "pin-project-lite 0.2.4",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tokio-stream",
 ]
 

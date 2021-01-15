@@ -222,14 +222,13 @@ async fn http_api(
                                     Ok(chunk) => {
                                         downloaded_bytes_count += chunk.len();
                                         trace_err!(file.write_all(&chunk))?;
-                                        info!(
-                                            id: LogId::UpdateDownloadedBytesCount(
-                                                downloaded_bytes_count,
-                                            )
-                                        );
+                                        log_id(LogId::UpdateDownloadedBytesCount(
+                                            downloaded_bytes_count,
+                                        ));
                                     }
                                     Err(e) => {
-                                        error!(id: LogId::UpdateDownloadError, "{}", e);
+                                        log_id(LogId::UpdateDownloadError);
+                                        error!("Download update failed: {}", e);
                                         return reply(StatusCode::BAD_GATEWAY);
                                     }
                                 }
@@ -295,7 +294,15 @@ pub async fn web_server(log_sender: broadcast::Sender<String>) -> StrResult {
         let log_sender = log_sender.clone();
         async move {
             StrResult::Ok(service_fn(move |request| {
-                http_api(request, log_sender.clone())
+                let log_sender = log_sender.clone();
+                async move {
+                    let res = http_api(request, log_sender.clone()).await;
+                    if let Err(e) = &res {
+                        show_e(e);
+                    }
+
+                    res
+                }
             }))
         }
     });

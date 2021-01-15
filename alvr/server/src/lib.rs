@@ -240,7 +240,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
         let (log_sender, _) = broadcast::channel(web_server::LOG_BROADCAST_CAPACITY);
         logging_backend::init_logging(log_sender.clone());
 
-        show_err(init(log_sender)).ok();
+        show_err(init(log_sender));
     });
 
     lazy_static_include_bytes!(FRAME_RENDER_VS_CSO => "cpp/alvr_server/FrameRenderVS.cso");
@@ -267,7 +267,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     unsafe fn log(level: log::Level, string_ptr: *const c_char) {
-        _log!(level, "{}", CStr::from_ptr(string_ptr).to_string_lossy());
+        log::log!(level, "{}", CStr::from_ptr(string_ptr).to_string_lossy());
     }
 
     unsafe extern "C" fn log_warn(string_ptr: *const c_char) {
@@ -283,7 +283,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     unsafe extern "C" fn driver_ready_idle() {
-        show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone())).ok();
+        show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone()));
 
         if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
             runtime.spawn(async move {

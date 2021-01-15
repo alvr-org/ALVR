@@ -101,7 +101,7 @@ dependencies = [
  "parking_lot",
  "serde_json",
  "settings-schema",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "walkdir",
 ]
 
@@ -130,7 +130,7 @@ dependencies = [
  "serde",
  "serde_json",
  "settings-schema",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tokio-util 0.6.1",
  "widestring 0.4.3",
  "winapi 0.3.9",
@@ -174,7 +174,7 @@ dependencies = [
  "serde",
  "serde_json",
  "settings-schema",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tokio-tungstenite",
  "tokio-util 0.6.1",
  "walkdir",
@@ -1861,7 +1861,7 @@ dependencies = [
  "http",
  "indexmap",
  "slab",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tokio-util 0.6.1",
  "tracing",
  "tracing-futures",
@@ -2007,7 +2007,7 @@ dependencies = [
  "itoa",
  "pin-project 1.0.4",
  "socket2",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tower-service",
  "tracing",
  "want",
@@ -2035,7 +2035,7 @@ dependencies = [
  "bytes 1.0.1",
  "hyper 0.14.2",
  "native-tls",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tokio-native-tls",
 ]
 
@@ -3503,7 +3503,7 @@ dependencies = [
  "pin-project-lite 0.2.4",
  "serde",
  "serde_urlencoded",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tokio-native-tls",
  "url",
  "wasm-bindgen",
@@ -4289,9 +4289,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d258221f566b6c803c7b4714abadc080172b272090cdc5e244a6d4dd13c3a6bd"
+checksum = "0ca04cec6ff2474c638057b65798f60ac183e5e79d3448bb7163d36a39cff6ec"
 dependencies = [
  "autocfg",
  "bytes 1.0.1",
@@ -4324,7 +4324,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7d995660bd2b7f8c1568414c1126076c13fbb725c40112dc0120b78eb9b717b"
 dependencies = [
  "native-tls",
- "tokio 1.0.1",
+ "tokio 1.0.2",
 ]
 
 [[package]]
@@ -4335,7 +4335,7 @@ checksum = "76066865172052eb8796c686f0b441a93df8b08d40a950b062ffb9a426f00edd"
 dependencies = [
  "futures-core",
  "pin-project-lite 0.2.4",
- "tokio 1.0.1",
+ "tokio 1.0.2",
 ]
 
 [[package]]
@@ -4357,7 +4357,7 @@ dependencies = [
  "futures-util",
  "log",
  "pin-project 1.0.4",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tungstenite",
 ]
 
@@ -4386,7 +4386,7 @@ dependencies = [
  "futures-sink",
  "log",
  "pin-project-lite 0.2.4",
- "tokio 1.0.1",
+ "tokio 1.0.2",
  "tokio-stream",
 ]
 

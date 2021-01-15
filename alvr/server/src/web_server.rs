@@ -6,7 +6,6 @@ use headers::{self, HeaderMapExt};
 use hyper::{
     header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL},
     service::{make_service_fn, service_fn},
-    upgrade::Upgraded,
     Body, Method, Request, Response, StatusCode,
 };
 use serde::{de::DeserializeOwned, Serialize};
@@ -16,7 +15,7 @@ use tokio::sync::broadcast::{self, error::RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
 
-pub const LOG_BROADCAST_CAPACITY: usize = 256;
+pub const WS_BROADCAST_CAPACITY: usize = 256;
 const WEB_GUI_DIR_STR: &str = "web_gui";
 
 fn reply(code: StatusCode) -> StrResult<Response<Body>> {
@@ -35,32 +34,60 @@ async fn from_request_body<T: DeserializeOwned>(request: Request<Body>) -> StrRe
     ))
 }
 
-async fn log_websocket(upgraded: Upgraded, log_sender: broadcast::Sender<String>) {
-    let mut log_receiver = log_sender.subscribe();
+async fn text_websocket(
+    request: Request<Body>,
+    sender: broadcast::Sender<String>,
+) -> StrResult<Response<Body>> {
+    if let Some(key) = request.headers().typed_get::<headers::SecWebsocketKey>() {
+        tokio::spawn(async move {
+            match hyper::upgrade::on(request).await {
+                Ok(upgraded) => {
+                    let mut log_receiver = sender.subscribe();
 
-    let mut ws = WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, None).await;
+                    let mut ws =
+                        WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, None)
+                            .await;
 
-    loop {
-        match log_receiver.recv().await {
-            Ok(line) => {
-                if let Err(e) = ws.send(protocol::Message::text(line)).await {
-                    info!("Failed to send log with websocket: {}", e);
-                    break;
+                    loop {
+                        match log_receiver.recv().await {
+                            Ok(line) => {
+                                if let Err(e) = ws.send(protocol::Message::text(line)).await {
+                                    info!("Failed to send log with websocket: {}", e);
+                                    break;
+                                }
+                            }
+                            Err(RecvError::Lagged(_)) => {
+                                warn!("Some log lines have been lost because the buffer is full");
+                            }
+                            Err(RecvError::Closed) => break,
+                        }
+                    }
+
+                    ws.close(None).await.ok();
                 }
+                Err(e) => error!("{}", e),
             }
-            Err(RecvError::Lagged(_)) => {
-                warn!("Some log lines have been lost because the buffer is full");
-            }
-            Err(RecvError::Closed) => break,
-        }
-    }
+        });
 
-    ws.close(None).await.ok();
+        let mut response = trace_err!(Response::builder()
+            .status(StatusCode::SWITCHING_PROTOCOLS)
+            .body(Body::empty()))?;
+
+        let h = response.headers_mut();
+        h.typed_insert(headers::Upgrade::websocket());
+        h.typed_insert(headers::SecWebsocketAccept::from(key));
+        h.typed_insert(headers::Connection::upgrade());
+
+        Ok(response)
+    } else {
+        reply(StatusCode::BAD_REQUEST)
+    }
 }
 
 async fn http_api(
     request: Request<Body>,
     log_sender: broadcast::Sender<String>,
+    events_sender: broadcast::Sender<String>,
 ) -> StrResult<Response<Body>> {
     let mut response = match request.uri().path() {
         "/settings-schema" => reply_json(&settings_schema(session_settings_default()))?,
@@ -99,31 +126,8 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/log" => {
-            if let Some(key) = request.headers().typed_get::<headers::SecWebsocketKey>() {
-                tokio::spawn(async move {
-                    match hyper::upgrade::on(request).await {
-                        Ok(upgraded) => {
-                            log_websocket(upgraded, log_sender).await;
-                        }
-                        Err(e) => error!("{}", e),
-                    }
-                });
-
-                let mut response = trace_err!(Response::builder()
-                    .status(StatusCode::SWITCHING_PROTOCOLS)
-                    .body(Body::empty()))?;
-
-                let h = response.headers_mut();
-                h.typed_insert(headers::Upgrade::websocket());
-                h.typed_insert(headers::SecWebsocketAccept::from(key));
-                h.typed_insert(headers::Connection::upgrade());
-
-                response
-            } else {
-                reply(StatusCode::BAD_REQUEST)?
-            }
-        }
+        "/log" => text_websocket(request, log_sender).await?,
+        "/events" => text_websocket(request, events_sender).await?,
         "/driver/register" => {
             if driver_registration(&[ALVR_DIR.clone()], true).is_ok() {
                 reply(StatusCode::OK)?
@@ -282,7 +286,10 @@ async fn http_api(
     Ok(response)
 }
 
-pub async fn web_server(log_sender: broadcast::Sender<String>) -> StrResult {
+pub async fn web_server(
+    log_sender: broadcast::Sender<String>,
+    events_sender: broadcast::Sender<String>,
+) -> StrResult {
     let web_server_port = SESSION_MANAGER
         .lock()
         .get()
@@ -292,11 +299,13 @@ pub async fn web_server(log_sender: broadcast::Sender<String>) -> StrResult {
 
     let service = make_service_fn(|_| {
         let log_sender = log_sender.clone();
+        let events_sender = events_sender.clone();
         async move {
             StrResult::Ok(service_fn(move |request| {
                 let log_sender = log_sender.clone();
+                let events_sender = events_sender.clone();
                 async move {
-                    let res = http_api(request, log_sender.clone()).await;
+                    let res = http_api(request, log_sender, events_sender).await;
                     if let Err(e) = &res {
                         show_e(e);
                     }

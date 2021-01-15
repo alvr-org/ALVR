@@ -5,8 +5,13 @@ use log::LevelFilter;
 use std::fs;
 use tokio::sync::broadcast::Sender;
 
-pub fn init_logging(log_sender: Sender<String>) {
+pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
     let mut log_dispatch = Dispatch::new().format(move |out, message, record| {
+        let maybe_event = format!("{}", message);
+        if maybe_event.contains("#{") {
+            let event_data = maybe_event.replace("#{", "{").replace("}#", "}");
+            events_sender.send(event_data).ok();
+        }
         let log_line = format!(
             "{} [{}] {}",
             chrono::Local::now().format("%H:%M:%S.%f"),

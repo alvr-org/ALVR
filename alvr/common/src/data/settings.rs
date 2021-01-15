@@ -459,7 +459,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     ctrl_type: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
-                    pose_time_offset: 0.,
+                    pose_time_offset: 0.01,
                     clientside_prediction: false,
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],

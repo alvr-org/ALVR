@@ -35,6 +35,7 @@ define({
     // End page
     "titleFinished": "完了",
     "textFinished": "このウィザードは, 左側の\"インストール\"タブからいつでもやり直すことができます.",
+    // "buttonBack": "",
     "buttonNext": "次へ",
     "buttonClose": "閉じる",
 });

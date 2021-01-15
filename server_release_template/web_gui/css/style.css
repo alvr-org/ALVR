@@ -116,9 +116,34 @@ margin-bottom: 10px;
 
 
   }
+
   @media (min-width: 767px) {
     .nav-side-menu .menu-list {
       display: block;
+    }
+
+    .nav-side-menu .menu-list-bottom {
+      max-height: fit-content;
+      min-height: fit-content;
+      position: absolute; 
+      bottom: 0; 
+      left: 0; 
+      max-width: 180px; 
+      min-width: 180px;
+    }
+    
+    .nav-side-menu .menu-list-language {
+      display: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .nav-side-menu .menu-list-bottom {
+      display: none;
+    }
+    
+    .nav-side-menu .menu-list-language {
+      display: inherit;
     }
   }
 

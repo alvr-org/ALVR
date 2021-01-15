@@ -35,6 +35,7 @@ define({
     // End page
     "titleFinished": "Завершение",
     "textFinished": "Вы всегда можете перезапустить мастера установки через вкладку \"Установка\" на левой панели",
+    // "buttonBack": "",
     "buttonNext": "Далее",
     "buttonClose": "Закрыть",
     });

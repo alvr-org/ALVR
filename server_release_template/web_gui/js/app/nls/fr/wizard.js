@@ -35,6 +35,7 @@ define({
     // End page
     "titleFinished": "Fini",
     "textFinished":`Vous pouvez toujours recommencer cet assistant depuis la catégorie "Installation" a gauche`,
+    // "buttonBack": "",
     "buttonNext": "Suivant",
     "buttonClose": "Fermer",
 });

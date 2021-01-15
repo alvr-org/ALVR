@@ -35,6 +35,7 @@ define({
     // End page
     "titleFinished": "Finito",
     "textFinished": `Potrai riavviare questa guida dalla sezione "Installazione" a sinistra`,
+    // "buttonBack": "",
     "buttonNext": "Avanti",
     "buttonClose": "Chiudi",
 });

@@ -9,11 +9,11 @@ ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com
 All games that work with an Oculus Rift (s) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
-|    Headset     |                       Support                        |
-| :------------: | :--------------------------------------------------: |
-|  Oculus Quest  |                          :heavy_check_mark:                           |
-| Oculus Quest 2 |                          :heavy_check_mark:                           |
-|   Oculus Go    |                  :heavy_check_mark: (no controllers)                  |
+|    Headset     |                        Support                         |
+| :------------: | :----------------------------------------------------: |
+|  Oculus Quest  |                   :heavy_check_mark:                   |
+| Oculus Quest 2 |                   :heavy_check_mark:                   |
+|   Oculus Go    |           :heavy_check_mark: (no controller)           |
 |     GearVR     | :x: (use [this](https://github.com/polygraphene/ALVR)) |
 
 ## Requirements
@@ -38,13 +38,13 @@ It is recommended (but not mandatory) to uninstall any other VR streaming softwa
 
 To install ALVR download and execute `ALVR_Installer_vX.X.X.exe` from the [releases page](https://github.com/alvr-org/ALVR/releases). An entry will appear in the Start menu. The first time you open ALVR Launcher.exe you may have to allow it in the SmartScreen prompt. In the release page you can also find the portable version `alvr_server_windows.zip`. If you already have ALVR v13.1.0 or greater you can upgrade with the autoupdater.
 
-Install the client on your headset through [SideQuest](https://sidequestvr.com/app/9/alvr-air-light-vr). To make the Oculus Quest microphone work you need to install the [VB-CABLE Virtual Audio Device](https://www.vb-audio.com/Cable/).
+Install the client on your headset through Sidequest ([Quest version](https://sidequestvr.com/app/9), [Go version](https://sidequestvr.com/app/2658)). To make the Oculus Quest microphone work you need to install the [VB-CABLE Virtual Audio Device](https://www.vb-audio.com/Cable/).
 
 ### Nightly versions
 
 You can install the latest untested server version from the [nightly releases page](https://github.com/alvr-org/ALVR-nightly/releases).
 
-The nightly client app can be installed from its [page on Sidequest](https://sidequestvr.com/app/2281/alvr-nightly) (it needs to be updated for each server update).
+The nightly client app can be installed from Sidequest ([Quest version](https://sidequestvr.com/app/2281), [Go version](https://sidequestvr.com/app/2580)) (it needs to be updated for each server update).
 
 ## Usage
 

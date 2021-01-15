@@ -28,15 +28,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aae1277d39aeec15cb388266ecc24b11c80469deae6067e17a1a7aa9e5c1f234"
 
 [[package]]
-name = "ahash"
-version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8fd72866655d1904d6b0997d0b07ba561047d070fbe29de039031c641b61217"
-dependencies = [
- "const-random",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -47,9 +38,9 @@ dependencies = [
 
 [[package]]
 name = "alcro"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99b88c7a18efbff333e7574159975d99a2479bae13fa0f92cd3926c573a30bd0"
+checksum = "f757ffb48983eea7fb83042823fb0dd79d835fada2a4d1cdfe6fd3ddb208248f"
 dependencies = [
  "crossbeam-channel",
  "dashmap",
@@ -59,6 +50,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "tempdir",
+ "thiserror",
  "tinyfiledialogs",
  "winapi 0.3.9",
 ]
@@ -711,28 +703,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "const-random"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f590d95d011aa80b063ffe3253422ed5aa462af4e9867d43ce8337562bac77c4"
-dependencies = [
- "const-random-macro",
- "proc-macro-hack",
-]
-
-[[package]]
-name = "const-random-macro"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "615f6e27d000a2bffbc7f2f6a8669179378fa27ee4d0a509e985dfc0a7defb40"
-dependencies = [
- "getrandom 0.2.1",
- "lazy_static",
- "proc-macro-hack",
- "tiny-keccak",
-]
-
-[[package]]
 name = "const_fn"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -977,12 +947,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crunchy"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
-
-[[package]]
 name = "darling"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1019,12 +983,11 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "3.11.10"
+version = "4.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f260e2fc850179ef410018660006951c1b55b79e8087e87111a2c388994b9b5"
+checksum = "e77a43b28d0668df09411cb0bc9a8c2adc40f9a048afe863e05fd43251e8e39c"
 dependencies = [
- "ahash",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "num_cpus",
 ]
 
@@ -4227,15 +4190,6 @@ dependencies = [
  "quote",
  "standback",
  "syn",
-]
-
-[[package]]
-name = "tiny-keccak"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
-dependencies = [
- "crunchy",
 ]
 
 [[package]]

@@ -36,6 +36,7 @@ define({
         // End page
         "titleFinished": "Finished",
         "textFinished": "You can always restart this setup wizard from the \"Installation\" tab on the left",
+        "buttonBack": "Back",
         "buttonNext": "Next",
         "buttonClose": "Close",
     },

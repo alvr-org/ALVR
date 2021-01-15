@@ -35,6 +35,7 @@ define({
     // End page
     "titleFinished": "Fertiggestellt",
     "textFinished": "Du kannst dieses Setup immer wieder von dem \"Installation\" Tab auf der linken Seite ausführen",
+    // "buttonBack": "",
     "buttonNext": "Weiter",
     "buttonClose": "Schließen",
 });

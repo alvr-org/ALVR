@@ -48,6 +48,8 @@ define([
                     backdrop: "static",
                     keyboard: false
                 });
+                
+                $("#wizardBackButton").hide();
 
                 $("#GPUSupportText").text(getAndCheckGPUSupport());
 
@@ -165,6 +167,8 @@ define([
 
                 $("#wizardNextButton").click(() => {
 
+                    $("#wizardBackButton").show();
+
                     if (currentPage >= $("#wizardMain").children().length - 1) {
                         $("#setupWizard").modal("hide");
                         alvrSettings.disableWizard();
@@ -181,6 +185,24 @@ define([
                     $("#wizardNextButton").blur();
 
                     currentPage += 1;
+                })
+
+                $("#wizardBackButton").click(() => {
+
+                    if (currentPage <= 1) {
+                        $("#wizardBackButton").hide();
+                    }
+
+                    if (currentPage >= $("#wizardMain").children().length - 1) {
+                        $("#wizardNextButton").text(i18n.buttonNext)
+                    }
+
+                    $($("#wizardMain").children().get(currentPage)).hide();
+                    $($("#wizardMain").children().get(currentPage - 1)).show();
+
+                    $("#wizardBackButton").blur();
+
+                    currentPage -= 1;
                 })
             });
         }

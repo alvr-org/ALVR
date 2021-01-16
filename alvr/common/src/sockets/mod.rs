@@ -13,7 +13,7 @@ use tokio::{net::*, time};
 type LDC = tokio_util::codec::LengthDelimitedCodec;
 
 const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-const CONTROL_PORT: u16 = 9943;
+const CONTROL_PORT: u16 = 80;
 const MAX_HANDSHAKE_PACKET_SIZE_BYTES: usize = 4_000;
 const DISCOVERY_PAUSE_INTERVAL: Duration = Duration::from_millis(500);
 

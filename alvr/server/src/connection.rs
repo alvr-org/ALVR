@@ -324,12 +324,12 @@ impl Drop for StreamCloseGuard {
 pub async fn connection_lifecycle_loop() -> StrResult {
     loop {
         let (mut control_sender, mut control_receiver) = tokio::select! {
-            Err(e) = client_discovery() => break trace_str!("Client discovery failed: {}", e),
+            Err(e) = client_discovery() => break fmt_e!("Client discovery failed: {}", e),
             control_socket = pairing_loop() => control_socket,
             else => unreachable!(),
         };
 
-        info!(id: LogId::ClientConnected);
+        log_id(LogId::ClientConnected);
 
         unsafe { crate::InitializeStreaming() };
         let _guard = StreamCloseGuard;
@@ -364,7 +364,8 @@ pub async fn connection_lifecycle_loop() -> StrResult {
                     Ok(ClientControlPacket::Reserved(_))
                     | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
                     Err(e) => {
-                        info!(id: LogId::ClientDisconnected, "Cause: {}", e);
+                        log_id(LogId::ClientDisconnected);
+                        info!("Client disconnected. Cause: {}", e);
                         break;
                     }
                 }

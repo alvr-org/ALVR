@@ -38,7 +38,7 @@ pub fn openvr_source_file_path() -> StrResult<PathBuf> {
     if path.exists() {
         Ok(path)
     } else {
-        Err(format!("{} does not exist", path.to_string_lossy()))
+        fmt_e!("{} does not exist", path.to_string_lossy())
     }
 }
 
@@ -127,7 +127,7 @@ fn get_alvr_dir_from_storage() -> StrResult<PathBuf> {
     if let Ok(path) = fs::read_to_string(alvr_dir_store_path) {
         Ok(PathBuf::from(path))
     } else {
-        Err("ALVR driver path not stored".into())
+        fmt_e!("ALVR driver path not stored")
     }
 }
 
@@ -137,7 +137,7 @@ pub fn get_alvr_dir_from_registered_drivers() -> StrResult<PathBuf> {
             return Ok(dir);
         }
     }
-    Err("ALVR driver path not registered".into())
+    fmt_e!("ALVR driver path not registered")
 }
 
 pub fn get_alvr_dir() -> StrResult<PathBuf> {

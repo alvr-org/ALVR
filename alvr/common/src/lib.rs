@@ -11,4 +11,5 @@ pub mod data;
 pub mod logging;
 pub mod sockets;
 
+pub use log::{debug, error, info, warn};
 pub use logging::StrResult;

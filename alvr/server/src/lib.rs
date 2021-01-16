@@ -194,7 +194,11 @@ fn ui_thread() -> StrResult {
     Ok(())
 }
 
-fn init(log_sender: broadcast::Sender<String>) -> StrResult {
+fn init() -> StrResult {
+    let (log_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
+    let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
+    logging_backend::init_logging(log_sender.clone(), events_sender.clone());
+
     if let Some(runtime) = MAYBE_RUNTIME.lock().as_mut() {
         // Acquire and drop the session_manager lock to create session.json if not present
         // this is needed until Settings.cpp is replaced with Rust. todo: remove
@@ -210,7 +214,7 @@ fn init(log_sender: broadcast::Sender<String>) -> StrResult {
                 }
             }
 
-            let web_server = show_err_async(web_server::web_server(log_sender));
+            let web_server = show_err_async(web_server::web_server(log_sender, events_sender));
 
             tokio::select! {
                 _ = web_server => (),
@@ -237,10 +241,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
 ) -> *mut c_void {
     static INIT_ONCE: Once = Once::new();
     INIT_ONCE.call_once(|| {
-        let (log_sender, _) = broadcast::channel(web_server::LOG_BROADCAST_CAPACITY);
-        logging_backend::init_logging(log_sender.clone());
-
-        show_err(init(log_sender)).ok();
+        show_err(init());
     });
 
     lazy_static_include_bytes!(FRAME_RENDER_VS_CSO => "cpp/alvr_server/FrameRenderVS.cso");
@@ -267,7 +268,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     unsafe fn log(level: log::Level, string_ptr: *const c_char) {
-        _log!(level, "{}", CStr::from_ptr(string_ptr).to_string_lossy());
+        log::log!(level, "{}", CStr::from_ptr(string_ptr).to_string_lossy());
     }
 
     unsafe extern "C" fn log_warn(string_ptr: *const c_char) {
@@ -283,7 +284,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     unsafe extern "C" fn driver_ready_idle() {
-        show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone())).ok();
+        show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone()));
 
         if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
             runtime.spawn(async move {

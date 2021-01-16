@@ -35,6 +35,7 @@ define({
     // End page
     "titleFinished": "Готово",
     "textFinished": "Винаги можете да рестартирате този съветник от раздела \"Инсталиране\" вляво",
+    // "buttonBack": "",
     "buttonNext": "Следващ",
     "buttonClose": "Затвори",
 });

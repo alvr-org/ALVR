@@ -124,12 +124,12 @@ pub fn maybe_register_alvr_driver() -> StrResult {
         let paths_backup = match get_registered_drivers() {
             Ok(paths) => paths,
             Err(e) => {
-                return Err(format!(
+                return fmt_e!(
                 "{}\n{}\n\n({})",
                 "Failed to load registered drivers.",
                 "Please reset the drivers installation with the apposite button on the launcher.",
                 e
-            ))
+            )
             }
         };
 
@@ -172,7 +172,7 @@ fn try_close_steamvr_gracefully() {
 pub fn restart_steamvr() {
     try_close_steamvr_gracefully();
 
-    if show_err(maybe_register_alvr_driver()).is_ok() {
+    if show_err(maybe_register_alvr_driver()).is_some() {
         maybe_launch_steamvr();
     }
 }

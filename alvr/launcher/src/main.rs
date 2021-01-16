@@ -79,7 +79,7 @@ fn launcher_lifecycle(handle: ExtEventSink, window_id: WindowId) {
 
         // try to launch SteamVR only one time automatically
         if !tried_steamvr_launch {
-            if show_err(maybe_register_alvr_driver()).is_ok() {
+            if show_err(maybe_register_alvr_driver()).is_some() {
                 if is_steamvr_running() {
                     kill_steamvr();
                     thread::sleep(Duration::from_secs(2))
@@ -251,7 +251,7 @@ fn main() {
         Some(flag) if flag == "--restart-steamvr" => restart_steamvr(),
         Some(flag) if flag == "--update" => invoke_installer(),
         _ => {
-            show_err_blocking(make_window()).ok();
+            show_err_blocking(make_window());
         }
     }
 }

@@ -35,6 +35,7 @@ define({
     // End page
     "titleFinished": "完成",
     "textFinished": "您始终可以从左侧的”安装“标签重新启动此向导",
+    // "buttonBack": "",
     "buttonNext": "下一步",
     "buttonClose": "关闭",
 });

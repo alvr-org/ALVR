@@ -35,6 +35,7 @@ define({
     // End page
     "titleFinished": "Listo!",
     "textFinished": `Puedes reiniciar esta guía desde la sección "Instalación" en el menu la izquierda.`,
+    // "buttonBack": "",
     "buttonNext": "Siguiente",
     "buttonClose": "Cerrar",
 });

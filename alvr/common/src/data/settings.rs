@@ -105,12 +105,6 @@ pub struct VideoDesc {
     #[schema(advanced, min = 60.0, max = 90.0)]
     pub preferred_fps: f32,
 
-    #[schema(advanced)]
-    pub seconds_from_vsync_to_photons: f32,
-
-    pub foveated_rendering: Switch<FoveatedRenderingDesc>,
-    pub color_correction: Switch<ColorCorrectionDesc>,
-
     pub codec: CodecType,
 
     #[schema(advanced)]
@@ -118,6 +112,12 @@ pub struct VideoDesc {
 
     #[schema(min = 1, max = 500)]
     pub encode_bitrate_mbs: u64,
+
+    #[schema(advanced)]
+    pub seconds_from_vsync_to_photons: f32,
+
+    pub foveated_rendering: Switch<FoveatedRenderingDesc>,
+    pub color_correction: Switch<ColorCorrectionDesc>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
@@ -245,6 +245,9 @@ pub struct ControllersDesc {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HeadsetDesc {
+    #[schema(advanced)]
+    pub mode_idx: u64,
+
     #[schema(advanced)]
     pub universe_id: u64,
 
@@ -431,11 +434,12 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         headset: HeadsetDescDefault {
+            mode_idx: 2,
             universe_id: 2,
             serial_number: "1WMGH000XX0000".into(),
             tracking_system_name: "oculus".into(),
-            model_number: "Oculus Rift S".into(),
-            driver_version: "1.42.0".into(),
+            model_number: "Miramar".into(),
+            driver_version: "1.55.0".into(),
             manufacturer_name: "Oculus".into(),
             render_model_name: "generic_hmd".into(),
             registered_device_type: "oculus/1WMGH000XX0000".into(),
@@ -445,12 +449,12 @@ pub fn session_settings_default() -> SettingsDefault {
             controllers: SwitchDefault {
                 enabled: true,
                 content: ControllersDescDefault {
-                    mode_idx: 1,
+                    mode_idx: 7,
                     tracking_system_name: "oculus".into(),
                     manufacturer_name: "Oculus".into(),
-                    model_number: "Oculus Rift S".into(),
-                    render_model_name_left: "oculus_rifts_controller_left".into(),
-                    render_model_name_right: "oculus_rifts_controller_right".into(),
+                    model_number: "Miramar".into(),
+                    render_model_name_left: "oculus_quest2_controller_left".into(),
+                    render_model_name_right: "oculus_quest2_controller_right".into(),
                     serial_number: "1WMGH000XX0000_Controller".into(),
                     ctrl_type: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),

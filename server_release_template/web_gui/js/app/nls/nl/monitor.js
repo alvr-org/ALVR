@@ -51,7 +51,7 @@ define({
     "error_DuplicateIp": "Dit IP adres is al geregistreerd op dit toestel",
     "error_InvalidIp": "Geen geldig IPv4-adres",
     //Performance graphs tab
-    "performanceGraphs": "Performance grafieken",
+    "performanceGraphs": "Performantie grafieken",
     "performanceEncode": "Coderen",
     "performanceDecode": "Decoderen",
     "performanceTransport": "Transport",

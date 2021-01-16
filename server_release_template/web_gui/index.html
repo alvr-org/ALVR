@@ -16,14 +16,15 @@
     <style>
         #loading {
             width: 100vw;
-            height: 100vh;             
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             opacity: 0.7;
             background-color: #fff;
-            z-index: 99;        
+            z-index: 99;
         }
+
         #loading-image {
             flex: 0;
             z-index: 100;
@@ -32,27 +33,14 @@
 </head>
 
 <body>
-    <script>
-        // This script should be executed as soon as possible
-        var locationX = (screen.availWidth - window.innerWidth) / 2;
-        var locationY = (screen.availHeight - window.innerHeight) / 2;
-        if (locationX > 0) {
-            window.moveTo(locationX, locationY);
-        }
-    </script>
-
     <div id="loading">
         <img id="loading-image" src="images/ajax-loader.gif" alt="Loading..." />
     </div>
 
-
     <div id="bodyContent" style="display: none;">
     </div>
 
-
-
     <script data-main="js/app" src="js/lib/require.js"></script>
-
 </body>
 
 </html>

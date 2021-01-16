@@ -34,9 +34,14 @@ lazy_static! {
     static ref CLIENTS_UPDATED_NOTIFIER: Notify = Notify::new();
     static ref RESTART_NOTIFIER: Notify = Notify::new();
     static ref SHUTDOWN_NOTIFIER: Notify = Notify::new();
+    static ref MAYBE_WINDOW: Mutex<Option<Arc<alcro::UI>>> = Mutex::new(None);
 }
 
 pub fn shutdown_runtime() {
+    if let Some(window) = MAYBE_WINDOW.lock().take() {
+        window.close();
+    }
+
     SHUTDOWN_NOTIFIER.notify_waiters();
 
     if let Some(runtime) = MAYBE_RUNTIME.lock().take() {
@@ -48,7 +53,7 @@ pub fn shutdown_runtime() {
     }
 }
 
-pub fn restart_steamvr() {
+pub fn notify_shutdown_driver() {
     thread::spawn(|| {
         RESTART_NOTIFIER.notify_waiters();
 
@@ -58,9 +63,19 @@ pub fn restart_steamvr() {
         shutdown_runtime();
 
         unsafe { ShutdownSteamvr() };
-
-        commands::restart_steamvr_with_timeout(&ALVR_DIR).ok();
     });
+}
+
+pub fn notify_restart_driver() {
+    notify_shutdown_driver();
+
+    commands::restart_steamvr(&ALVR_DIR).ok();
+}
+
+pub fn notify_application_update() {
+    notify_shutdown_driver();
+
+    commands::restart_steamvr(&ALVR_DIR).ok();
 }
 
 pub enum ClientListAction {
@@ -142,6 +157,43 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
     }
 }
 
+// this thread gets interrupted when SteamVR closes
+// todo: handle this in a better way
+fn ui_thread() -> StrResult {
+    const WINDOW_WIDTH: u32 = 800;
+    const WINDOW_HEIGHT: u32 = 600;
+
+    let (pos_left, pos_top) = if let Ok((screen_width, screen_height)) = graphics::get_screen_size()
+    {
+        (
+            (screen_width - WINDOW_WIDTH) / 2,
+            (screen_height - WINDOW_HEIGHT) / 2,
+        )
+    } else {
+        (0, 0)
+    };
+
+    let window = Arc::new(trace_err!(alcro::UIBuilder::new()
+        .content(alcro::Content::Url("http://127.0.0.1:8082"))
+        .size(WINDOW_WIDTH as _, WINDOW_HEIGHT as _)
+        .custom_args(&[
+            "--disk-cache-size=1",
+            &format!("--window-position={},{}", pos_left, pos_top)
+        ])
+        .run())?);
+
+    *MAYBE_WINDOW.lock() = Some(window.clone());
+
+    window.wait_finish();
+
+    // prevent panic on window.close()
+    *MAYBE_WINDOW.lock() = None;
+    shutdown_runtime();
+    unsafe { ShutdownSteamvr() };
+
+    Ok(())
+}
+
 fn init(log_sender: broadcast::Sender<String>) -> StrResult {
     if let Some(runtime) = MAYBE_RUNTIME.lock().as_mut() {
         // Acquire and drop the session_manager lock to create session.json if not present
@@ -165,6 +217,8 @@ fn init(log_sender: broadcast::Sender<String>) -> StrResult {
                 _ = SHUTDOWN_NOTIFIER.notified() => (),
             }
         });
+
+        thread::spawn(|| show_err(ui_thread()));
     }
 
     let alvr_dir_c_string = CString::new(ALVR_DIR.to_string_lossy().to_string()).unwrap();

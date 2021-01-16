@@ -268,7 +268,7 @@ async fn connect_to_any_client(
 
             sender.send(&ServerControlPacket::Restarting).await.ok();
 
-            crate::restart_steamvr();
+            crate::notify_restart_driver();
 
             // waiting for execution canceling
             std::future::pending::<()>().await;

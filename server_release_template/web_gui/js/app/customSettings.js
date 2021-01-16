@@ -5,12 +5,13 @@ define([
     "json!../../audio-devices",
     "json!app/resources/HTCVive.json",
     "json!app/resources/OculusRift.json",
+    "json!app/resources/Quest2.json",
     "json!app/resources/OculusTouch.json",
     "json!app/resources/ValveIndex.json",
-    "json!app/resources/HTCViveWand.json"
+    "json!app/resources/HTCViveWand.json",
+    "json!app/resources/Quest2Touch.json",
 
-
-], function (i18n,i18nWizard, select, audio_devices, vive, rifts, touch, index, vivewand) {
+], function (i18n,i18nWizard, select, audio_devices, vive, rifts, quest2, touch, index, vivewand, q2touch) {
     return function (alvrSettings) {
         var self = this;
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
@@ -85,7 +86,7 @@ define([
 
             const controllerBase = "#_root_headset_controllers_content_";
             const controllerMode = $(controllerBase + "modeIdx")
-            const controllerOptions = [touch, touch, index, index, vivewand, vivewand];
+            const controllerOptions = [touch, touch, index, index, vivewand, vivewand, q2touch, q2touch];
 
             controller.append(`<option value="0">Oculus Rift S</option>`);
             controller.append(`<option value="1">Oculus Rift S (no handtracking pinch)</option>`);
@@ -93,6 +94,8 @@ define([
             controller.append(`<option value="3">Valve Index (no handtracking pinch)</option>`);
             controller.append(`<option value="4">HTC Vive</option>`);
             controller.append(`<option value="5">HTC Vive (no handtracking pinch)</option>`);
+            controller.append(`<option value="6">Oculus Quest 2</option>`);
+            controller.append(`<option value="7">Oculus Quest 2 (no handtracking pinch)</option>`);
 
             const select = new Selectal("#_root_headset_controllers_content_controllerMode");
             controller = $("#_root_headset_controllers_content_controllerMode");
@@ -120,21 +123,18 @@ define([
             headset.parent().addClass("special");
 
             const headsetBase = "#_root_headset_";
-            const headsetOptions = [rifts, vive];
+            const headsetMode = $(headsetBase + "modeIdx")
+            const headsetOptions = [rifts, vive, quest2];
 
             headset.append(`<option value="0">Oculus Rift S</option>`);
             headset.append(`<option value="1">HTC Vive</option>`);
+            headset.append(`<option value="2">Oculus Quest 2</option>`);
 
             const select = new Selectal("#_root_headset_headsetEmulationMode");
             headset = $("#_root_headset_headsetEmulationMode");
 
 
-            if ($(headsetBase + "modelNumber").val() == "Oculus Rift S") {
-                headset.val(0);
-            } else {
-                headset.val(1);
-            }
-
+            headset.val(headsetMode.val());
             headset.change();
 
             headset.change((ev) => {

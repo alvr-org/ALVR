@@ -51,7 +51,7 @@ define({
         "error_DuplicateHostname": "A device with this hostname is already registered",
         "error_InvalidIp": "Not a valid IP v4 formatted address",
         //Performance graphs tab
-        "performanceGraphs": "Performance graphs",
+        "performanceGraphs": "Performantie graphs",
         "performanceEncode": "Encode",
         "performanceDecode": "Decode",
         "performanceTransport": "Transport",
@@ -68,4 +68,5 @@ define({
     "ru": true,
     "bg": true,
     "de": true,
+    "nl": true,
 });

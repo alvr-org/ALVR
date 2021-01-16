@@ -191,4 +191,5 @@ define({
     "zh": true,
     "ru": true,
     "bg": true,
+    "nl": true,
 });

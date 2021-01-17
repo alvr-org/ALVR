@@ -347,8 +347,8 @@ pub async fn connection_lifecycle_loop() -> StrResult {
 
         log_id(LogId::ClientConnected);
         if !on_connect_script.is_empty() {
-            info!("Running on connect script: {}", on_connect_script);
-            if let Err(e) = Command::new(&on_connect_script).spawn() {
+            info!("Running on connect script (connect): {}", on_connect_script);
+            if let Err(e) = Command::new(&on_connect_script).env("ACTION", "connect").spawn() {
                 warn!("Failed to run connect script: {}", e);
             }
         }
@@ -409,8 +409,8 @@ pub async fn connection_lifecycle_loop() -> StrResult {
                             .on_disconnect_script
                             .clone();
                         if !on_disconnect_script.is_empty() {
-                            info!("Running on disconnect script: {}", on_disconnect_script);
-                            if let Err(e) = Command::new(&on_disconnect_script).spawn() {
+                            info!("Running on disconnect script (disconnect): {}", on_disconnect_script);
+                            if let Err(e) = Command::new(&on_disconnect_script).env("ACTION", "disconnect").spawn() {
                                 warn!("Failed to run disconnect script: {}", e);
                             }
                         }

@@ -3,36 +3,37 @@ define([
     "app/uploadPreset",
     "text!app/templates/wizard.html",
     "i18n!app/nls/wizard",
-    "css!app/templates/wizard.css"
+    "css!app/templates/wizard.css",
 ], function (_, uploadPreset, wizardTemplate, i18n) {
     return function (alvrSettings) {
-
         function getAndCheckGPUSupport() {
             let gpu = "";
             $.ajax({
                 type: "GET",
-                url: `graphics-devices`,
+                url: "graphics-devices",
                 contentType: "application/json;charset=UTF-8",
                 processData: false,
                 async: false,
-                success: function(res) {
+                success: function (res) {
                     if (res.length > 0) {
-                        gpu = res[0]
+                        gpu = res[0];
                     }
                 },
             });
 
-            var unsupportedGPURegex = new RegExp("(Radeon (((VIVO|[2-9][0-9][0-9][0-9]) ?\S*)|VE|LE|X(1?[0-9][0-5]0))"+
-                           "|GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450)))"+
-                           "|Intel")
+            var unsupportedGPURegex = new RegExp(
+                "(Radeon (((VIVO|[2-9][0-9][0-9][0-9]) ?S*)|VE|LE|X(1?[0-9][0-5]0))" +
+                    "|GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450)))" +
+                    "|Intel",
+            );
 
             if (unsupportedGPURegex.test(gpu)) {
-                return "🔴 "+ gpu +i18n.GPUUnsupported;
+                return "🔴 " + gpu + i18n.GPUUnsupported;
             } else {
-                return "🟢 "+ gpu +i18n.GPUSupported;
+                return "🟢 " + gpu + i18n.GPUSupported;
             }
         }
-        
+
         this.showWizard = function () {
             var currentPage = 0;
             var compiledTemplate = _.template(wizardTemplate);
@@ -41,14 +42,16 @@ define([
             $("#setupWizard").remove();
             $("body").append(template);
             $(document).ready(() => {
-
-                uploadPreset.addUploadPreset("importPlaceholder", alvrSettings.getWebClientId());
+                uploadPreset.addUploadPreset(
+                    "importPlaceholder",
+                    alvrSettings.getWebClientId(),
+                );
 
                 $("#setupWizard").modal({
                     backdrop: "static",
-                    keyboard: false
+                    keyboard: false,
                 });
-                
+
                 $("#wizardBackButton").hide();
 
                 $("#GPUSupportText").text(getAndCheckGPUSupport());
@@ -61,25 +64,29 @@ define([
                                 rounded: true,
                                 delayIndicator: false,
                                 sound: false,
-                                msg: i18n.firewallFailed
-                            })
+                                msg: i18n.firewallFailed,
+                            });
                         } else {
                             Lobibox.notify("success", {
                                 size: "mini",
                                 rounded: true,
                                 delayIndicator: false,
                                 sound: false,
-                                msg: i18n.firewallSuccess
-                            })
+                                msg: i18n.firewallSuccess,
+                            });
                         }
-                    })
-                })
+                    });
+                });
 
                 $(".poseOffsetButton").change((ev) => {
                     var target = $(ev.target);
 
-                    var poseTimeOffsetTarget = $("#_root_headset_controllers_content_poseTimeOffset");
-                    var clientsidePrediction = $("#_root_headset_controllers_content_clientsidePrediction");
+                    var poseTimeOffsetTarget = $(
+                        "#_root_headset_controllers_content_poseTimeOffset",
+                    );
+                    var clientsidePrediction = $(
+                        "#_root_headset_controllers_content_clientsidePrediction",
+                    );
 
                     switch (target.attr("value")) {
                         case "oculus":
@@ -103,26 +110,48 @@ define([
                     alvrSettings.storeParam(poseTimeOffsetTarget);
                     alvrSettings.storeParam(clientsidePrediction);
 
-                    console.log(target.attr("value"))
-                })
+                    console.log(target.attr("value"));
+                });
 
                 $(".performanceOptions").change((ev) => {
                     var target = $(ev.target);
 
-                    var renderResolution = $("#_root_video_renderResolution_scale-choice-");
-                    renderResolution.parent().parent().children().filter(".active").removeClass("active")
+                    var renderResolution = $(
+                        "#_root_video_renderResolution_scale-choice-",
+                    );
+                    renderResolution
+                        .parent()
+                        .parent()
+                        .children()
+                        .filter(".active")
+                        .removeClass("active");
                     renderResolution.prop("checked", true);
                     alvrSettings.storeParam(renderResolution);
 
-                    var targetResolution = $("#_root_video_recommendedTargetResolution_scale-choice-");
-                    targetResolution.parent().parent().children().filter(".active").removeClass("active")
+                    var targetResolution = $(
+                        "#_root_video_recommendedTargetResolution_scale-choice-",
+                    );
+                    targetResolution
+                        .parent()
+                        .parent()
+                        .children()
+                        .filter(".active")
+                        .removeClass("active");
                     targetResolution.prop("checked", true);
                     alvrSettings.storeParam(targetResolution);
 
-                    var renderResolutionScale = $("#_root_video_renderResolution_scale");
-                    var targetResolutionScale = $("#_root_video_recommendedTargetResolution_scale");
-                    var enableFfrTarget = $("#_root_video_foveatedRendering_enabled");
-                    var ffrStrengthTarget = $("#_root_video_foveatedRendering_content_strength");
+                    var renderResolutionScale = $(
+                        "#_root_video_renderResolution_scale",
+                    );
+                    var targetResolutionScale = $(
+                        "#_root_video_recommendedTargetResolution_scale",
+                    );
+                    var enableFfrTarget = $(
+                        "#_root_video_foveatedRendering_enabled",
+                    );
+                    var ffrStrengthTarget = $(
+                        "#_root_video_foveatedRendering_content_strength",
+                    );
                     var bitrateTarget = $("#_root_video_encodeBitrateMbs");
                     var preferredFps = $("#_root_video_preferredFps");
 
@@ -134,9 +163,16 @@ define([
                             enableFfrTarget.prop("checked", true);
                             ffrStrengthTarget.val(2);
                             preferredFps.val(72);
-                            
-                            var h264CodecTarget = $("#_root_video_codec_H264-choice-");
-                            h264CodecTarget.parent().parent().children().filter(".active").removeClass("active")
+
+                            var h264CodecTarget = $(
+                                "#_root_video_codec_H264-choice-",
+                            );
+                            h264CodecTarget
+                                .parent()
+                                .parent()
+                                .children()
+                                .filter(".active")
+                                .removeClass("active");
                             h264CodecTarget.prop("checked", true);
                             alvrSettings.storeParam(h264CodecTarget);
                             break;
@@ -147,8 +183,15 @@ define([
                             enableFfrTarget.prop("checked", false);
                             preferredFps.val(90);
 
-                            var hevcCodecTarget = $("#_root_video_codec_HEVC-choice-");
-                            hevcCodecTarget.parent().parent().children().filter(".active").removeClass("active")
+                            var hevcCodecTarget = $(
+                                "#_root_video_codec_HEVC-choice-",
+                            );
+                            hevcCodecTarget
+                                .parent()
+                                .parent()
+                                .children()
+                                .filter(".active")
+                                .removeClass("active");
                             hevcCodecTarget.prop("checked", true);
                             alvrSettings.storeParam(hevcCodecTarget);
                             break;
@@ -162,11 +205,10 @@ define([
                     alvrSettings.storeParam(bitrateTarget);
                     alvrSettings.storeParam(preferredFps);
 
-                    console.log(target.attr("value"))
-                })
+                    console.log(target.attr("value"));
+                });
 
                 $("#wizardNextButton").click(() => {
-
                     $("#wizardBackButton").show();
 
                     if (currentPage >= $("#wizardMain").children().length - 1) {
@@ -176,35 +218,42 @@ define([
                     }
 
                     if (currentPage >= $("#wizardMain").children().length - 2) {
-                        $("#wizardNextButton").text(i18n.buttonClose)
+                        $("#wizardNextButton").text(i18n.buttonClose);
                     }
 
                     $($("#wizardMain").children().get(currentPage)).hide();
-                    $($("#wizardMain").children().get(currentPage + 1)).show();
+                    $(
+                        $("#wizardMain")
+                            .children()
+                            .get(currentPage + 1),
+                    ).show();
 
                     $("#wizardNextButton").blur();
 
                     currentPage += 1;
-                })
+                });
 
                 $("#wizardBackButton").click(() => {
-
                     if (currentPage <= 1) {
                         $("#wizardBackButton").hide();
                     }
 
                     if (currentPage >= $("#wizardMain").children().length - 1) {
-                        $("#wizardNextButton").text(i18n.buttonNext)
+                        $("#wizardNextButton").text(i18n.buttonNext);
                     }
 
                     $($("#wizardMain").children().get(currentPage)).hide();
-                    $($("#wizardMain").children().get(currentPage - 1)).show();
+                    $(
+                        $("#wizardMain")
+                            .children()
+                            .get(currentPage - 1),
+                    ).show();
 
                     $("#wizardBackButton").blur();
 
                     currentPage -= 1;
-                })
+                });
             });
-        }
+        };
     };
 });

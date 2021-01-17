@@ -1,9 +1,9 @@
-define([
-    "lib/lodash",
-    "text!app/templates/uploadPreset.html"
-], function(_, uploadTemplate, i18n) {
-    return new function() {
-
+define(["lib/lodash", "text!app/templates/uploadPreset.html"], function (
+    _,
+    uploadTemplate,
+    i18n,
+) {
+    return new (function () {
         var _webClientId = "";
 
         // uploadButton trigger the input file
@@ -20,16 +20,15 @@ define([
                     rounded: true,
                     delayIndicator: false,
                     sound: false,
-                    msg: "type error"
-                })
+                    msg: "type error",
+                });
             } else {
                 const reader = new FileReader();
 
-                reader.addEventListener("load", function() {
-
+                reader.addEventListener("load", function () {
                     // filereader result (file content)
                     const uploadedSession = this.result;
-                    
+
                     try {
                         const jsonSession = JSON.parse(uploadedSession);
                         $.ajax({
@@ -49,7 +48,7 @@ define([
                                         rounded: true,
                                         delayIndicator: false,
                                         sound: false,
-                                        msg: "Success"
+                                        msg: "Success",
                                     });
                                 } else {
                                     Lobibox.notify("error", {
@@ -57,8 +56,9 @@ define([
                                         rounded: true,
                                         delayIndicator: false,
                                         sound: false,
-                                        title: 'Error while storing the settings',
-                                        msg: res
+                                        title:
+                                            "Error while storing the settings",
+                                        msg: res,
                                     });
                                     console.log("FAILED", res);
                                 }
@@ -69,16 +69,16 @@ define([
                                     rounded: true,
                                     delayIndicator: false,
                                     sound: false,
-                                    title: 'Error while storing the settings',
-                                    msg: res
+                                    title: "Error while storing the settings",
+                                    msg: res,
                                 });
                                 console.log("FAILED", res);
-                            }
+                            },
                         });
                     } catch (error) {
                         Lobibox.notify("error", {
                             rounded: true,
-                            delay : -1,
+                            delay: -1,
                             delayIndicator: false,
                             sound: false,
                             position: "bottom left",
@@ -92,20 +92,18 @@ define([
 
                     // reset the value of the input so the user can reload the same file.
                     document.getElementById("settingUpload").value = "";
-
                 });
 
                 reader.readAsText(file);
             }
         });
 
-        this.addUploadPreset = function(elementId, webClientId) {
-
+        this.addUploadPreset = function (elementId, webClientId) {
             _webClientId = webClientId;
             var compiledTemplate = _.template(uploadTemplate);
             var template = compiledTemplate({ id: elementId, ...i18n });
 
             $("#" + elementId).prepend(template);
-        }
-    };
+        };
+    })();
 });

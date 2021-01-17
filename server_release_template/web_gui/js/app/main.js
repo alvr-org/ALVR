@@ -50,10 +50,10 @@ define([
                     if (updateType === "beta") {
                         data = data[0];
                     }
-                    const releaseVersion = data.tag_name.match(
-                        /\d+.\d+.\d+/,
-                    )[0];
-                    if (version === releaseVersion) {
+                    const currentVersion = "v" + version;
+                    // const releaseVersion = data.tag_name.match(/\d+.\d+.\d+/,)[0];
+                    const releaseVersion = data.tag_name;
+                    if (currentVersion === releaseVersion) {
                         Lobibox.notify("success", {
                             size: "mini",
                             rounded: true,
@@ -82,13 +82,13 @@ define([
                                 ).then((res) => {
                                     if (res) {
                                         let url = "";
+                                        let size = 0;
                                         data.assets.forEach((asset) => {
-                                            if (
-                                                asset.content_type ===
-                                                "application/octet-stream"
-                                            ) {
+                                            const found = asset.name.match(".*\.exe$");
+                                            if (found) {
                                                 url =
                                                     asset.browser_download_url;
+                                                size = asset.size;
                                             }
                                         });
                                         if (url !== "") {
@@ -147,8 +147,7 @@ define([
         }
 
         function triggerUpdate(url) {
-            url =
-                "http://github.com/alvr-org/ALVR/releases/download/v14.1.0/ALVR_Installer_v14.1.0.exe";
+            url = url.replace("https", "http");
             $.ajax({
                 type: "POST",
                 url: "/update",

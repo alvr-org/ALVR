@@ -110,7 +110,7 @@ define([
                 $("#confirmModal").remove();
                 $("body").append(template);
                 $(document).ready(() => {
-                    $("#releaseVersion").text("v" + releaseVersion);
+                    $("#releaseVersion").text(releaseVersion);
                     $("#releaseNote").text(releaseNote);
 
                     $("#confirmModal").modal({

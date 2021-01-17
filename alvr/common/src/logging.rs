@@ -6,10 +6,6 @@ pub type StrResult<T = ()> = Result<T, String>;
 pub const SESSION_LOG_FNAME: &str = "session_log.txt";
 pub const CRASH_LOG_FNAME: &str = "crash_log.txt";
 
-pub fn driver_log_path() -> std::path::PathBuf {
-    std::env::temp_dir().join("alvr_driver_log.txt")
-}
-
 pub fn set_panic_hook() {
     std::panic::set_hook(Box::new(|panic_info| {
         let message = panic_info
@@ -124,7 +120,7 @@ pub enum LogId {
     ClientFoundWrongVersion(String),
     ClientConnected,
     ClientDisconnected,
-    UpdateDownloadedBytesCount(usize),
+    UpdateDownloadProgress(f32),
     UpdateDownloadError,
 }
 

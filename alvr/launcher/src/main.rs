@@ -186,6 +186,19 @@ impl AppDelegate<View> for Delegate {
     }
 }
 
+fn get_window_location() -> (f64, f64) {
+    let screen_size = Screen::get_monitors()
+        .into_iter()
+        .find(|m| m.is_primary())
+        .map(|m| m.virtual_work_rect().size())
+        .unwrap_or_default();
+
+    (
+        (screen_size.width - WINDOW_WIDTH) / 2.0,
+        (screen_size.height - WINDOW_HEIGHT) / 2.0,
+    )
+}
+
 fn make_window() -> StrResult {
     let instance_mutex = trace_err!(single_instance::SingleInstance::new("alvr_launcher_mutex"))?;
     if instance_mutex.is_single() {
@@ -199,18 +212,12 @@ fn make_window() -> StrResult {
             return Ok(());
         }
 
-        let mut window = WindowDesc::new(gui)
+        let window = WindowDesc::new(gui)
             .title("ALVR Launcher")
             .window_size((WINDOW_WIDTH, WINDOW_HEIGHT))
             .with_min_size((WINDOW_WIDTH, WINDOW_HEIGHT))
-            .resizable(false);
-
-        if let Ok((screen_width, screen_height)) = graphics::get_screen_size() {
-            window = window.set_position((
-                (screen_width as f64 - WINDOW_WIDTH) / 2.0,
-                (screen_height as f64 - WINDOW_HEIGHT) / 2.0,
-            ));
-        }
+            .resizable(false)
+            .set_position(get_window_location());
 
         let state = View::RequirementsCheck {
             steamvr: "".into(),

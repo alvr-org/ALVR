@@ -147,7 +147,6 @@ define([
         }
 
         function triggerUpdate(url) {
-            url = url.replace("https", "http");
             $.ajax({
                 type: "POST",
                 url: "/update",

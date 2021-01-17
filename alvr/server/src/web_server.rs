@@ -1,7 +1,7 @@
 use crate::{ClientListAction, ALVR_DIR, SESSION_MANAGER};
 use alvr_common::{commands::*, data::*, logging::*, *};
 use bytes::Buf;
-use futures::{SinkExt, StreamExt};
+use futures::SinkExt;
 use headers::{self, HeaderMapExt};
 use hyper::{
     header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL},
@@ -211,41 +211,33 @@ async fn http_api(
         }
         "/update" => {
             if let Ok(url) = from_request_body::<String>(request).await {
-                if let Ok(uri) = url.parse() {
-                    if let Ok(response) = hyper::Client::new().get(uri).await {
-                        let status = response.status();
-                        if status.is_success() {
-                            let mut file =
-                                trace_err!(fs::File::create(commands::installer_path()))?;
+                let redirection_response = trace_err!(reqwest::get(&url).await)?;
+                let mut resource_response =
+                    trace_err!(reqwest::get(redirection_response.url().clone()).await)?;
 
-                            let mut body = response.into_body();
+                let mut file = trace_err!(fs::File::create(commands::installer_path()))?;
 
-                            let mut downloaded_bytes_count = 0;
-                            while let Some(maybe_chunk) = body.next().await {
-                                match maybe_chunk {
-                                    Ok(chunk) => {
-                                        downloaded_bytes_count += chunk.len();
-                                        trace_err!(file.write_all(&chunk))?;
-                                        log_id(LogId::UpdateDownloadedBytesCount(
-                                            downloaded_bytes_count,
-                                        ));
-                                    }
-                                    Err(e) => {
-                                        log_id(LogId::UpdateDownloadError);
-                                        error!("Download update failed: {}", e);
-                                        return reply(StatusCode::BAD_GATEWAY);
-                                    }
-                                }
-                            }
-
-                            crate::notify_application_update();
+                let total_bytes_count = trace_none!(resource_response.content_length())?;
+                let mut downloaded_bytes_count = 0;
+                loop {
+                    match resource_response.chunk().await {
+                        Ok(Some(chunk)) => {
+                            downloaded_bytes_count += chunk.len();
+                            trace_err!(file.write_all(&chunk))?;
+                            log_id(LogId::UpdateDownloadProgress(
+                                downloaded_bytes_count as f32 / total_bytes_count as f32,
+                            ));
                         }
-
-                        return reply(status);
-                    } else {
-                        return reply(StatusCode::BAD_GATEWAY);
+                        Ok(None) => break,
+                        Err(e) => {
+                            log_id(LogId::UpdateDownloadError);
+                            error!("Download update failed: {}", e);
+                            return reply(StatusCode::BAD_GATEWAY);
+                        }
                     }
                 }
+
+                crate::notify_application_update();
             }
             reply(StatusCode::BAD_REQUEST)?
         }

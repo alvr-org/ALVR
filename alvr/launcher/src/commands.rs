@@ -181,7 +181,11 @@ pub fn invoke_installer() {
     try_close_steamvr_gracefully();
 
     Command::new(commands::installer_path())
+        .arg("-q")
         .creation_flags(CREATE_NO_WINDOW)
         .spawn()
         .ok();
+
+    // delete crash_log.txt (take advantage of the occasion to do some routine cleaning)
+    fs::remove_file(current_alvr_dir().unwrap().join(CRASH_LOG_FNAME)).ok();
 }

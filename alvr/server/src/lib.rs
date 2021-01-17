@@ -75,7 +75,7 @@ pub fn notify_restart_driver() {
 pub fn notify_application_update() {
     notify_shutdown_driver();
 
-    commands::restart_steamvr(&ALVR_DIR).ok();
+    commands::invoke_application_update(&ALVR_DIR).ok();
 }
 
 pub enum ClientListAction {

@@ -381,7 +381,7 @@ pub fn session_settings_default() -> SettingsDefault {
             preferred_fps: 72_f32,
             render_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
-                Scale: 1.,
+                Scale: 0.75,
                 Absolute: FrameSizeAbsoluteDefault {
                     width: 2880,
                     height: 1600,
@@ -389,7 +389,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             recommended_target_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
-                Scale: 1.,
+                Scale: 0.75,
                 Absolute: FrameSizeAbsoluteDefault {
                     width: 2880,
                     height: 1600,

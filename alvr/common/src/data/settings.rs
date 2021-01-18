@@ -15,7 +15,7 @@ pub enum FrameSize {
     },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, PartialEq)]
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Default, Clone)]
 pub struct Fov {
     #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub left: f32,
@@ -61,11 +61,24 @@ pub struct ColorCorrectionDesc {
     pub sharpening: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Debug)]
+// Note: This enum cannot be converted to camelCase due to a inconsistency between generation and
+// validation: "hevc" vs "hEVC".
+// This is caused by serde and settings-schema using different libraries for casing conversion
+// todo: don't use casing conversion also for all other structs and enums
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
+#[serde(tag = "type", content = "content")]
 #[repr(u8)]
 pub enum CodecType {
     H264,
     HEVC,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+#[repr(u8)]
+pub enum TrackingSpace {
+    Local,
+    Stage,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -74,46 +87,91 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub adapter_index: u32,
 
-    #[schema(advanced)]
-    pub refresh_rate: u32,
-
     // Dropdown with 25%, 50%, 75%, 100%, 125%, 150% etc or custom
     // Should set renderResolution (always in scale mode).
     // When the user sets a resolution not obtainable with the preset scales, set the dropdown to
     // custom.
     // Warping compensation is already applied by the web server and driver
     #[schema(placeholder = "resolution_dropdown")]
+    //
     #[schema(advanced)]
     pub render_resolution: FrameSize,
 
     #[schema(advanced)]
     pub recommended_target_resolution: FrameSize,
 
+    #[schema(placeholder = "display_refresh_rate")]
+    //
+    #[schema(advanced, min = 60.0, max = 90.0)]
+    pub preferred_fps: f32,
+
+    pub codec: CodecType,
+
     #[schema(advanced)]
-    pub eye_fov: [Fov; 2],
+    pub client_request_realtime_decoder: bool,
+
+    #[schema(min = 1, max = 500)]
+    pub encode_bitrate_mbs: u64,
 
     #[schema(advanced)]
     pub seconds_from_vsync_to_photons: f32,
 
-    #[schema(advanced)]
-    pub ipd: f32,
-
     pub foveated_rendering: Switch<FoveatedRenderingDesc>,
     pub color_correction: Switch<ColorCorrectionDesc>,
+}
 
-    pub codec: CodecType,
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
+pub enum SampleFormat {
+    Signed16Bit,
+    Unsigned16Bit,
+    Signed32Bit,
+}
 
-    #[schema(min = 1, max = 250)]
-    pub encode_bitrate_mbs: u64,
+impl SampleFormat {
+    pub fn to_cpal(self) -> cpal::SampleFormat {
+        match self {
+            Self::Signed16Bit => cpal::SampleFormat::I16,
+            Self::Unsigned16Bit => cpal::SampleFormat::U16,
+            Self::Signed32Bit => cpal::SampleFormat::F32,
+        }
+    }
 
-    pub force_60hz: bool,
+    pub fn from_cpal(format: cpal::SampleFormat) -> Self {
+        match format {
+            cpal::SampleFormat::I16 => Self::Signed16Bit,
+            cpal::SampleFormat::U16 => Self::Unsigned16Bit,
+            cpal::SampleFormat::F32 => Self::Signed32Bit,
+        }
+    }
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug)]
+pub struct AudioConfig {
+    pub preferred_channels_count: u16,
+    pub preferred_sample_rate: u32,
+    pub preferred_buffer_size: Option<u32>,
+    pub preferred_sample_format: SampleFormat,
+    pub max_buffer_count_extra: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AudioDesc {
+pub struct OutputAudioDesc {
     // deviceDropdown should poll the available audio devices and set "device"
     #[schema(placeholder = "device_dropdown")]
+    //
+    #[schema(advanced)]
+    pub device: String,
+
+    pub mute_when_streaming: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InputAudioDesc {
+    // deviceDropdown should poll the available audio devices and set "device"
+    #[schema(placeholder = "device_dropdown")]
+    //
     #[schema(advanced)]
     pub device: String,
 }
@@ -121,8 +179,8 @@ pub struct AudioDesc {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioSection {
-    pub game_audio: Switch<AudioDesc>,
-    pub microphone: Switch<AudioDesc>,
+    pub game_audio: Switch<OutputAudioDesc>,
+    pub microphone: Switch<InputAudioDesc>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -135,6 +193,7 @@ pub struct ControllersDesc {
     // Valve Index (no handtracking pinch)
     // modeIdx and the following strings must be set accordingly
     #[schema(placeholder = "controller_mode")]
+    //
     #[schema(advanced)]
     pub mode_idx: i32,
 
@@ -165,22 +224,13 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub input_profile_path: String,
 
+    #[schema(placeholder = "tracking_speed")]
+    //
     #[schema(advanced)]
-    pub trigger_mode: u32,
-
-    #[schema(advanced)]
-    pub trackpad_click_mode: u32,
-
-    #[schema(advanced)]
-    pub trackpad_touch_mode: u32,
-
-    #[schema(advanced)]
-    pub back_mode: u32,
-
-    #[schema(advanced)]
-    pub recenter_button: u32,
-
     pub pose_time_offset: f32,
+
+    #[schema(advanced)]
+    pub clientside_prediction: bool,
 
     #[schema(advanced)]
     pub position_offset_left: [f32; 3],
@@ -195,8 +245,15 @@ pub struct ControllersDesc {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HeadsetDesc {
+    #[schema(advanced)]
+    pub mode_idx: u64,
+
+    #[schema(advanced)]
+    pub universe_id: u64,
+
     // Oculus Rift S or HTC Vive. Should all the following strings accordingly
     #[schema(placeholder = "headset_emulation_mode")]
+    //
     #[schema(advanced)]
     pub serial_number: String,
 
@@ -223,19 +280,24 @@ pub struct HeadsetDesc {
     #[schema(advanced)]
     pub position_offset: [f32; 3],
 
-    #[schema(advanced)]
-    pub use_tracking_reference: bool,
-
     pub force_3dof: bool,
 
     pub controllers: Switch<ControllersDesc>,
+
+    pub tracking_space: TrackingSpace,
+
+    #[schema(advanced)]
+    pub extra_latency_mode: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDesc {
     #[schema(advanced)]
-    pub listen_host: String,
+    pub auto_trust_clients: bool,
+
+    #[schema(advanced, min = 1024, max = 65535)]
+    pub web_server_port: u16,
 
     #[schema(advanced)]
     pub listen_port: u16,
@@ -244,31 +306,24 @@ pub struct ConnectionDesc {
     // Given audioBitrate=2000'000:
     // If false, set throttlingBitrateBits=encodeBitrateMbs * 1000'000 * 3 / 2 + audioBitrate
     #[schema(placeholder = "disable_throttling")]
+    //
     #[schema(advanced)]
     pub throttling_bitrate_bits: u64,
 
-    #[schema(advanced)]
-    pub sending_timeslot_us: u64,
-
-    #[schema(advanced)]
-    pub limit_timeslot_packets: u64,
-
     // clientRecvBufferSize=max(encodeBitrateMbs * 2 + bufferOffset, 0)
     #[schema(placeholder = "buffer_offset")]
+    //
     #[schema(advanced)]
     pub client_recv_buffer_size: u64,
 
-    // If suppressframeDrop=true, set frameQueueSize=5
-    // If suppressframeDrop=false, set frameQueueSize=1
-    #[schema(placeholder = "suppress_frame_drop")]
-    #[schema(advanced)]
-    pub frame_queue_size: u64,
-
     pub aggressive_keyframe_resend: bool,
+
+    #[schema(advanced)]
+    pub enable_fec: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum Theme {
     SystemDefault,
     Classic,
@@ -276,7 +331,16 @@ pub enum Theme {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum UpdateChannel {
+    NoUpdates,
+    Stable,
+    Beta,
+    Nightly,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum LogLevel {
     Error,
     Warning,
@@ -288,8 +352,12 @@ pub enum LogLevel {
 #[serde(rename_all = "camelCase")]
 pub struct ExtraDesc {
     pub theme: Theme,
+    pub client_dark_mode: bool,
     pub revert_confirm_dialog: bool,
     pub restart_confirm_dialog: bool,
+    pub prompt_before_update: bool,
+    pub update_channel: UpdateChannel,
+    pub log_to_disk: bool,
 
     #[schema(advanced)]
     pub notification_level: LogLevel,
@@ -306,14 +374,14 @@ pub struct Settings {
     pub extra: ExtraDesc,
 }
 
-pub fn settings_cache_default() -> SettingsDefault {
+pub fn session_settings_default() -> SettingsDefault {
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
-            refresh_rate: 72,
+            preferred_fps: 72_f32,
             render_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
-                Scale: 1.,
+                Scale: 0.75,
                 Absolute: FrameSizeAbsoluteDefault {
                     width: 2880,
                     height: 1600,
@@ -321,30 +389,15 @@ pub fn settings_cache_default() -> SettingsDefault {
             },
             recommended_target_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
-                Scale: 1.,
+                Scale: 0.75,
                 Absolute: FrameSizeAbsoluteDefault {
                     width: 2880,
                     height: 1600,
                 },
             },
-            eye_fov: [
-                FovDefault {
-                    left: 52.,
-                    right: 42.,
-                    top: 53.,
-                    bottom: 47.,
-                },
-                FovDefault {
-                    left: 42.,
-                    right: 52.,
-                    top: 53.,
-                    bottom: 47.,
-                },
-            ],
             seconds_from_vsync_to_photons: 0.005,
-            ipd: 0.063,
             foveated_rendering: SwitchDefault {
-                enabled: false,
+                enabled: true,
                 content: FoveatedRenderingDescDefault {
                     strength: 2.,
                     shape: 1.5,
@@ -364,72 +417,85 @@ pub fn settings_cache_default() -> SettingsDefault {
             codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,
             },
+            client_request_realtime_decoder: true,
             encode_bitrate_mbs: 30,
-            force_60hz: false,
         },
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {
                 enabled: true,
-                content: AudioDescDefault { device: "".into() },
+                content: OutputAudioDescDefault {
+                    device: "".into(),
+                    mute_when_streaming: true,
+                },
             },
             microphone: SwitchDefault {
                 enabled: false,
-                content: AudioDescDefault { device: "".into() },
+                content: InputAudioDescDefault { device: "".into() },
             },
         },
         headset: HeadsetDescDefault {
+            mode_idx: 2,
+            universe_id: 2,
             serial_number: "1WMGH000XX0000".into(),
             tracking_system_name: "oculus".into(),
-            model_number: "Oculus Rift S".into(),
-            driver_version: "1.42.0".into(),
+            model_number: "Miramar".into(),
+            driver_version: "1.55.0".into(),
             manufacturer_name: "Oculus".into(),
             render_model_name: "generic_hmd".into(),
             registered_device_type: "oculus/1WMGH000XX0000".into(),
             tracking_frame_offset: 0,
             position_offset: [0., 0., 0.],
-            use_tracking_reference: false,
             force_3dof: false,
             controllers: SwitchDefault {
                 enabled: true,
                 content: ControllersDescDefault {
-                    mode_idx: 1,
+                    mode_idx: 7,
                     tracking_system_name: "oculus".into(),
                     manufacturer_name: "Oculus".into(),
-                    model_number: "Oculus Rift S".into(),
-                    render_model_name_left: "oculus_rifts_controller_left".into(),
-                    render_model_name_right: "oculus_rifts_controller_right".into(),
+                    model_number: "Miramar".into(),
+                    render_model_name_left: "oculus_quest2_controller_left".into(),
+                    render_model_name_right: "oculus_quest2_controller_right".into(),
                     serial_number: "1WMGH000XX0000_Controller".into(),
                     ctrl_type: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
-                    trigger_mode: 24,
-                    trackpad_click_mode: 28,
-                    trackpad_touch_mode: 29,
-                    back_mode: 0,
-                    recenter_button: 0,
-                    pose_time_offset: 0.,
+                    pose_time_offset: 0.01,
+                    clientside_prediction: false,
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,
                 },
             },
+            tracking_space: TrackingSpaceDefault {
+                variant: TrackingSpaceDefaultVariant::Local,
+            },
+            extra_latency_mode: true,
         },
         connection: ConnectionDescDefault {
-            listen_host: "0.0.0.0".into(),
+            auto_trust_clients: cfg!(debug_assertions),
+            web_server_port: 8082,
             listen_port: 9944,
             throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,
-            sending_timeslot_us: 500,
-            limit_timeslot_packets: 0,
             client_recv_buffer_size: 60_000,
-            frame_queue_size: 1,
             aggressive_keyframe_resend: false,
+            enable_fec: true,
         },
         extra: ExtraDescDefault {
             theme: ThemeDefault {
                 variant: ThemeDefaultVariant::SystemDefault,
             },
+            client_dark_mode: false,
             revert_confirm_dialog: true,
             restart_confirm_dialog: true,
+            prompt_before_update: !cfg!(feature = "nightly"),
+            update_channel: UpdateChannelDefault {
+                variant: if cfg!(feature = "nightly") {
+                    UpdateChannelDefaultVariant::Nightly
+                } else {
+                    UpdateChannelDefaultVariant::Stable
+                },
+            },
+            log_to_disk: cfg!(debug_assertions),
             notification_level: LogLevelDefault {
                 variant: if cfg!(debug_assertions) {
                     LogLevelDefaultVariant::Info

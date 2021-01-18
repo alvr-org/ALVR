@@ -1,46 +1,58 @@
 define([
     "i18n!app/nls/settings",
+    "i18n!app/nls/wizard",
     "lib/selectal",
-    "json!../../audio_devices",
+    "json!../../audio-devices",
     "json!app/resources/HTCVive.json",
     "json!app/resources/OculusRift.json",
+    "json!app/resources/Quest2.json",
     "json!app/resources/OculusTouch.json",
     "json!app/resources/ValveIndex.json",
-    "json!app/resources/HTCViveWand.json"
-
-
-], function (i18n, select, audio_devices, vive, rifts, touch, index, vivewand) {
+    "json!app/resources/HTCViveWand.json",
+    "json!app/resources/Quest2Touch.json",
+], function (
+    i18n,
+    i18nWizard,
+    select,
+    audio_devices,
+    vive,
+    rifts,
+    quest2,
+    touch,
+    index,
+    vivewand,
+    q2touch,
+) {
     return function (alvrSettings) {
         var self = this;
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
 
         self.setCustomSettings = function () {
-
             try {
                 setDeviceList();
                 setVideoOptions();
                 setBitrateOptions();
-                setSuppressFrameDrop();
+                setRefreshRate();
                 setDisableThrottling();
                 setHeadsetEmulation();
                 setControllerEmulation();
+                setTrackingSpeed();
                 setBufferOffset();
                 setTheme();
             } catch (error) {
                 Lobibox.notify("error", {
                     rounded: true,
-                    delay : -1,
+                    delay: -1,
                     delayIndicator: false,
                     sound: false,
                     position: "bottom left",
-                    iconSource: 'fontAwesome',
+                    iconSource: "fontAwesome",
                     msg: error.stack,
                     closable: true,
                     messageHeight: 250,
                 });
             }
-            
-        }
+        };
 
         function setBufferOffset() {
             const bufferOffset = $("#_root_connection_bufferOffset");
@@ -49,7 +61,9 @@ define([
 
             //readd the slider input listener to update the current value
             bufferOffset.on("input", (el) => {
-                $("#_root_connection_bufferOffset_label").text("[" + el.target.value + "]")
+                $("#_root_connection_bufferOffset_label").text(
+                    "[" + el.target.value + "]",
+                );
             });
 
             bufferOffset.prop("min", "-100");
@@ -59,40 +73,75 @@ define([
             const bitrate = $("#_root_video_encodeBitrateMbs");
             const bufferSize = $("#_root_connection_clientRecvBufferSize");
 
-            bufferOffset.val((bufferSize.val() / 1000) - bitrate.val() * 2);
-            $("#_root_connection_bufferOffset_label").text("[" + bufferOffset.val() + "]")
+            bufferOffset.val(bufferSize.val() / 1000 - bitrate.val() * 2);
+            $("#_root_connection_bufferOffset_label").text(
+                "[" + bufferOffset.val() + "]",
+            );
 
             bufferOffset.change((ev) => {
-                bufferSize.val(Math.max(bitrate.val() * 2 * 1000 + bufferOffset.val() * 1000, 0));
+                bufferSize.val(
+                    Math.max(
+                        bitrate.val() * 2 * 1000 + bufferOffset.val() * 1000,
+                        0,
+                    ),
+                );
 
-                console.log("buffer size now", bufferSize.val())
+                console.log("buffer size now", bufferSize.val());
                 alvrSettings.storeParam(bufferSize);
 
                 //set default reset value to value defined by bitrate
                 var def = bufferSize.parent().find("i[default]");
                 def.attr("default", bufferSize.val());
             });
-
         }
 
         function setControllerEmulation() {
-            var controller = $("#_root_headset_controllers_content_controllerMode");
+            var controller = $(
+                "#_root_headset_controllers_content_controllerMode",
+            );
             controller.unbind();
-            controller.after(alvrSettings.getHelpReset("controllerMode", "_root_headset_controllers_content", 0));
+            controller.after(
+                alvrSettings.getHelpReset(
+                    "controllerMode",
+                    "_root_headset_controllers_content",
+                    0,
+                ),
+            );
             controller.parent().addClass("special");
 
             const controllerBase = "#_root_headset_controllers_content_";
-            const controllerMode = $(controllerBase + "modeIdx")
-            const controllerOptions = [touch, touch, index, index, vivewand, vivewand];
+            const controllerMode = $(controllerBase + "modeIdx");
+            const controllerOptions = [
+                touch,
+                touch,
+                index,
+                index,
+                vivewand,
+                vivewand,
+                q2touch,
+                q2touch,
+            ];
 
             controller.append(`<option value="0">Oculus Rift S</option>`);
-            controller.append(`<option value="1">Oculus Rift S (no handtracking pinch)</option>`);
+            controller.append(
+                `<option value="1">Oculus Rift S (no handtracking pinch)</option>`,
+            );
             controller.append(`<option value="2">Valve Index</option>`);
-            controller.append(`<option value="3">Valve Index (no handtracking pinch)</option>`);
+            controller.append(
+                `<option value="3">Valve Index (no handtracking pinch)</option>`,
+            );
             controller.append(`<option value="4">HTC Vive</option>`);
-            controller.append(`<option value="5">HTC Vive (no handtracking pinch)</option>`);
-            
-            const select = new Selectal('#_root_headset_controllers_content_controllerMode');
+            controller.append(
+                `<option value="5">HTC Vive (no handtracking pinch)</option>`,
+            );
+            controller.append(`<option value="6">Oculus Quest 2</option>`);
+            controller.append(
+                `<option value="7">Oculus Quest 2 (no handtracking pinch)</option>`,
+            );
+
+            const select = new Selectal(
+                "#_root_headset_controllers_content_controllerMode",
+            );
             controller = $("#_root_headset_controllers_content_controllerMode");
 
             controller.val(controllerMode.val());
@@ -114,25 +163,27 @@ define([
         function setHeadsetEmulation() {
             var headset = $("#_root_headset_headsetEmulationMode");
             headset.unbind();
-            headset.after(alvrSettings.getHelpReset("headsetEmulationMode", "_root_headset", 0));
+            headset.after(
+                alvrSettings.getHelpReset(
+                    "headsetEmulationMode",
+                    "_root_headset",
+                    0,
+                ),
+            );
             headset.parent().addClass("special");
 
             const headsetBase = "#_root_headset_";
-            const headsetOptions = [rifts, vive];
+            const headsetMode = $(headsetBase + "modeIdx");
+            const headsetOptions = [rifts, vive, quest2];
 
             headset.append(`<option value="0">Oculus Rift S</option>`);
             headset.append(`<option value="1">HTC Vive</option>`);
+            headset.append(`<option value="2">Oculus Quest 2</option>`);
 
-            const select = new Selectal('#_root_headset_headsetEmulationMode');
+            const select = new Selectal("#_root_headset_headsetEmulationMode");
             headset = $("#_root_headset_headsetEmulationMode");
 
-
-            if ($(headsetBase + "modelNumber").val() == "Oculus Rift S") {
-                headset.val(0);
-            } else {
-                headset.val(1);
-            }
-
+            headset.val(headsetMode.val());
             headset.change();
 
             headset.change((ev) => {
@@ -145,55 +196,24 @@ define([
             });
         }
 
-        function setSuppressFrameDrop() {
-            const suppress = $("#_root_connection_suppressFrameDrop");
-            const queue = $("#_root_connection_frameQueueSize");
-            suppress.parent().addClass("special");
-            suppress.unbind();
-
-            suppress.parent().find(".helpReset").remove();
-            suppress.after(alvrSettings.getHelpReset("suppressFrameDrop", "_root_connection", false));
-
-
-            var updating = false;
-            var updateCheckbox = function () {
-                updating = true;
-                if (queue.val() >= 5) {
-                    suppress.prop("checked", true);
-                } else {
-                    suppress.prop("checked", false);
-                }
-                updating = false;
-            }
-            updateCheckbox();
-
-            queue.change((ev) => {
-                updateCheckbox();
-            });
-
-            suppress.change((ev) => {
-                if (alvrSettings.isUpdating() || updating) {
-                    return;
-                }
-                if (suppress.prop("checked")) {
-                    queue.val(5);
-                } else {
-                    queue.val(1);
-                }
-                alvrSettings.storeParam(queue);
-            });
-        }
-
         function setDisableThrottling() {
             const disableThrottling = $("#_root_connection_disableThrottling");
-            const throttleBitrate = $("#_root_connection_throttlingBitrateBits");
+            const throttleBitrate = $(
+                "#_root_connection_throttlingBitrateBits",
+            );
             const bitrate = $("#_root_video_encodeBitrateMbs");
 
             disableThrottling.parent().addClass("special");
             disableThrottling.unbind();
 
             disableThrottling.parent().find(".helpReset").remove();
-            disableThrottling.after(alvrSettings.getHelpReset("disableThrottling", "_root_connection", false));
+            disableThrottling.after(
+                alvrSettings.getHelpReset(
+                    "disableThrottling",
+                    "_root_connection",
+                    false,
+                ),
+            );
 
             var updating = false;
             var updateCheckbox = function () {
@@ -204,13 +224,12 @@ define([
                     disableThrottling.prop("checked", false);
                 }
                 updating = false;
-            }
+            };
             updateCheckbox();
 
             throttleBitrate.change((ev) => {
                 updateCheckbox();
             });
-
 
             disableThrottling.change((ev) => {
                 if (alvrSettings.isUpdating() || updating) {
@@ -219,7 +238,9 @@ define([
                 if (disableThrottling.prop("checked")) {
                     throttleBitrate.val(0);
                 } else {
-                    throttleBitrate.val(bitrate.val() * 1000000 * 3 / 2 + 2000000); //2mbit for audio
+                    throttleBitrate.val(
+                        (bitrate.val() * 1000000 * 3) / 2 + 2000000,
+                    ); //2mbit for audio
                 }
                 alvrSettings.storeParam(throttleBitrate);
             });
@@ -227,28 +248,34 @@ define([
 
         function setVideoOptions() {
             var dropdown = $("#_root_video_resolutionDropdown");
-            dropdown.after(alvrSettings.getHelpReset("resolutionDropdown", "_root_video", "100"));
+            dropdown.after(
+                alvrSettings.getHelpReset(
+                    "resolutionDropdown",
+                    "_root_video",
+                    "100",
+                ),
+            );
             dropdown.parent().addClass("special");
             dropdown.unbind();
 
+            const renderScale = $("#_root_video_renderResolution_scale");
+            const targetScale = $(
+                "#_root_video_recommendedTargetResolution_scale",
+            );
+            const renderScaleVariant = $(
+                "#_root_video_renderResolution_scale-choice-",
+            );
+            const targetScaleVariant = $(
+                "#_root_video_recommendedTargetResolution_scale-choice-",
+            );
 
-            const targetWidth = $("#_root_video_renderResolution_absolute_width");
-            const targetHeight = $("#_root_video_renderResolution_absolute_height");
-
-            const scale = $("#_root_video_renderResolution_scale");
-
-            var useScale = $("#_root_video_renderResolution_scale-choice-").prop("checked");
-
-            video_scales.forEach(scale => {
-                dropdown.append(`<option value="${scale}"> ${scale}% </option>`);
+            video_scales.forEach((scale) => {
+                dropdown.append(
+                    `<option value="${scale}"> ${scale}% </option>`,
+                );
             });
 
-            //dropdown.append(`<option value="custom"> ${i18n.customVideoScale}</option>`);
-
-            var absWidth;
-            var absHeight;
-
-            const select = new Selectal('#_root_video_resolutionDropdown');
+            const select = new Selectal("#_root_video_resolutionDropdown");
             dropdown = $("#_root_video_resolutionDropdown");
 
             var customRes = `<div style="display:inline;" id="customVideoScale"><b>${i18n.customVideoScale} </b></div>`;
@@ -259,46 +286,32 @@ define([
             var update = false;
 
             var updateDropdown = function () {
-                useScale = $("#_root_video_renderResolution_scale-choice-").prop("checked");
-                if (useScale) {
-                    if (video_scales.indexOf(scale.val() * 100) != -1) {
-                        dropdown.val(scale.val() * 100);
+                useScale =
+                    renderScaleVariant.prop("checked") &&
+                    targetScaleVariant.prop("checked");
+                sameScale = renderScale.val() == targetScale.val();
+                if (useScale && sameScale) {
+                    if (video_scales.indexOf(renderScale.val() * 100) != -1) {
+                        dropdown.val(renderScale.val() * 100);
                         $("#_root_video_resolutionDropdown-selectal").show();
                         customRes.hide();
                     } else {
-                        $("#_root_video_resolutionDropdown-selectal").hide()
+                        $("#_root_video_resolutionDropdown-selectal").hide();
                         customRes.show();
                     }
-                } else if (alvrSettings.getSession().lastClients.length > 0) {
-
-                    //TODO: always custom or try to determine scale?
-
-                    absWidth = alvrSettings.getSession().lastClients[0].handshakePacket.renderWidth;
-                    absHeight = alvrSettings.getSession().lastClients[0].handshakePacket.renderHeight;
-
-                    var factor = targetWidth.val() / absWidth;
-
-                    if (video_scales.indexOf(factor * 100) != -1) {
-                        dropdown.val(factor * 100);
-                        $("#_root_video_resolutionDropdown-selectal").show()
-                        customRes.hide();
-                    } else {
-                        $("#_root_video_resolutionDropdown-selectal").hide()
-                        customRes.show();
-                    }
-
                 } else {
-                    $("#_root_video_resolutionDropdown-selectal").hide()
+                    $("#_root_video_resolutionDropdown-selectal").hide();
                     //always custom
                     customRes.show();
                 }
                 dropdown.change();
-            }
+            };
 
             updateDropdown();
 
-
-            $("#_root_video_renderResolution_absolute_width,#_root_video_renderResolution_absolute_height,#_root_video_renderResolution_scale").change((ev) => {
+            $(
+                "#_root_video_renderResolution_scale-choice-,#_root_video_recommendedTargetResolution_scale-choice-,#_root_video_renderResolution_scale,#_root_video_recommendedTargetResolution_scale",
+            ).change((ev) => {
                 if (update) {
                     return;
                 }
@@ -306,8 +319,7 @@ define([
                 update = true;
                 updateDropdown();
                 update = false;
-            })
-
+            });
 
             dropdown.change((ev) => {
                 if (update) {
@@ -317,34 +329,42 @@ define([
                 update = true;
 
                 const val = dropdown.val();
-                scale.val(val / 100);
+                renderScale.val(val / 100);
+                targetScale.val(val / 100);
 
-                alvrSettings.storeParam(scale, true);
-
-                //TODO: set custom res?
-                if (absWidth !== undefined && absHeight !== undefined) {
-                    targetWidth.val(scale * absWidth);
-                    targetHeight.val(scale * absHeight);
-
-                    alvrSettings.storeParam(targetWidth, true);
-                    alvrSettings.storeParam(targetHeight, true);
-                }
+                alvrSettings.storeParam(renderScale, true);
+                alvrSettings.storeParam(targetScale, true);
 
                 //force scale mode
-                $("#_root_video_renderResolution_scale-choice-").prop("checked", true);
-                alvrSettings.storeParam($("#_root_video_renderResolution_scale-choice-"), true);
+                renderScaleVariant.prop("checked", true);
+                renderScaleVariant
+                    .parent()
+                    .parent()
+                    .children()
+                    .filter(".active")
+                    .removeClass("active");
+                alvrSettings.storeParam(renderScaleVariant, true);
+                targetScaleVariant.prop("checked", true);
+                targetScaleVariant
+                    .parent()
+                    .parent()
+                    .children()
+                    .filter(".active")
+                    .removeClass("active");
+                alvrSettings.storeParam(targetScaleVariant, true);
                 alvrSettings.storeSession("settings");
 
                 update = false;
             });
-
         }
 
         function setBitrateOptions() {
             const bitrate = $("#_root_video_encodeBitrateMbs");
             const bufferOffset = $("#_root_connection_bufferOffset");
             const bufferSize = $("#_root_connection_clientRecvBufferSize");
-            const throttleBitrate = $("#_root_connection_throttlingBitrateBits");
+            const throttleBitrate = $(
+                "#_root_connection_throttlingBitrateBits",
+            );
             const disableThrottling = $("#_root_connection_disableThrottling");
 
             bitrate.unbind();
@@ -356,7 +376,12 @@ define([
 
                 alvrSettings.storeParam(bitrate, true);
 
-                bufferSize.val(Math.max(bitrate.val() * 2 * 1000 + bufferOffset.val() * 1000, 0));
+                bufferSize.val(
+                    Math.max(
+                        bitrate.val() * 2 * 1000 + bufferOffset.val() * 1000,
+                        0,
+                    ),
+                );
                 alvrSettings.storeParam(bufferSize, true);
 
                 //set default reset value to value defined by bitrate
@@ -367,7 +392,9 @@ define([
                 if (disableThrottling.prop("checked")) {
                     throttleBitrate.val(0);
                 } else {
-                    throttleBitrate.val(bitrate.val() * 1000000 * 3 / 2 + 2000000); //2mbit for audio
+                    throttleBitrate.val(
+                        (bitrate.val() * 1000000 * 3) / 2 + 2000000,
+                    ); //2mbit for audio
                 }
 
                 alvrSettings.storeParam(throttleBitrate, true);
@@ -375,10 +402,7 @@ define([
                 def = throttleBitrate.parent().find("i[default]");
                 def.attr("default", throttleBitrate.val());
 
-
-
                 alvrSettings.storeSession("settings");
-
             });
 
             //set default reset buffer size according to bitrate
@@ -386,12 +410,123 @@ define([
             def.attr("default", bitrate.val() * 2 * 1000);
 
             def = throttleBitrate.parent().find("i[default]");
-            def.attr("default", bitrate.val() * 1000000 * 3 / 2 + 2000000);    //2mbit for audio
+            def.attr("default", (bitrate.val() * 1000000 * 3) / 2 + 2000000); //2mbit for audio
+        }
+
+        function setRefreshRate() {
+            const el = $("#_root_video_displayRefreshRate");
+
+            const preferredFps = $("#_root_video_preferredFps");
+
+            const custom = i18n.customRefreshRate;
+
+            const customButton = `<label id="displayRefreshRateCustomButton" class="btn btn-primary active">
+            <input  type="radio" name="displayRefreshRate"  autocomplete="off" value="custom" checked>
+                ${custom}
+            </label> `;
+
+            function setRefreshRateRadio() {
+                $("#displayRefreshRateCustomButton").remove();
+                $("input:radio[name='displayRefreshRate']")
+                    .parent()
+                    .removeClass("active");
+
+                switch (preferredFps.val()) {
+                    case "90":
+                    case "80":
+                    case "72":
+                    case "60":
+                        $(
+                            "input:radio[name='displayRefreshRate'][value='" +
+                                preferredFps.val() +
+                                "']",
+                        ).prop("checked", "true");
+                        $(
+                            "input:radio[name='displayRefreshRate'][value='" +
+                                preferredFps.val() +
+                                "']",
+                        )
+                            .parent()
+                            .addClass("active");
+                        break;
+
+                    default:
+                        console.log("custom refresh rate");
+                        $("#displayRefreshRateButtons").append(customButton);
+
+                        break;
+                }
+            }
+
+            function setRefreshRateValue(val) {
+                if (val !== "custom") {
+                    preferredFps.val(val);
+                }
+                alvrSettings.storeParam(preferredFps);
+                setRefreshRateRadio();
+            }
+
+            //move elements into better layout
+            const text = el.parent().text().trim();
+            el.parent().find("label").remove();
+
+            const grp = `
+                    <div class="card-title"> ${text}
+                    ${alvrSettings.getHelpReset(
+                        "displayRefreshRate",
+                        "_root_video",
+                        72,
+                        (postFix = ""),
+                        "displayRefreshRate",
+                        "72 Hz",
+                    )}
+                    </div>
+                    <div class="btn-group" data-toggle="buttons" id="displayRefreshRateButtons">
+                        <label style="min-width:10%" class="btn btn-primary">
+                            <input  type="radio" name="displayRefreshRate"  autocomplete="off" value="60">
+                            60 Hz
+                        </label>
+                        <label class="btn btn-primary">
+                            <input  type="radio" name="displayRefreshRate"  autocomplete="off" value="72">
+                            72 Hz
+                        </label>
+                        <label class="btn btn-primary">
+                            <input type="radio" name="displayRefreshRate"  autocomplete="off" value="80">
+                            80 Hz
+                        </label>
+                        <label class="btn btn-primary">
+                            <input type="radio" name="displayRefreshRate" autocomplete="off" value="90">
+                            90 Hz
+                        </label>
+                                                  
+                    </div> `;
+
+            el.after(grp);
+
+            $(document).ready(() => {
+                $("input:radio[name='displayRefreshRate']").on("change", () => {
+                    setRefreshRateValue(
+                        $(
+                            "input:radio:checked[name='displayRefreshRate']",
+                        ).val(),
+                    );
+                });
+                preferredFps.on("change", () => {
+                    setRefreshRateRadio();
+                });
+
+                $("#_root_video_displayRefreshRate").on("change", (ev) => {
+                    setRefreshRateValue(
+                        $("#_root_video_displayRefreshRate").val(),
+                    );
+                });
+
+                setRefreshRateRadio();
+            });
         }
 
         function setDeviceList() {
-
-            if (audio_devices == null|| audio_devices.length == 0) {
+            if (audio_devices == null || audio_devices.length == 0) {
                 $("#_root_audio_gameAudio_content_deviceDropdown").hide();
                 $("#_root_audio_microphone_content_deviceDropdown").hide();
 
@@ -401,12 +536,11 @@ define([
                     delayIndicator: false,
                     sound: false,
                     position: "bottom left",
-                    iconSource: 'fontAwesome',
+                    iconSource: "fontAwesome",
                     msg: i18n.audioDeviceError,
                     closable: true,
                     messageHeight: 250,
                 });
-
 
                 return;
             }
@@ -414,35 +548,63 @@ define([
             // Game audio
             {
                 let el = $("#_root_audio_gameAudio_content_deviceDropdown");
-                el.parent().addClass("special")
+                el.parent().addClass("special");
                 el.unbind();
 
                 let target = $("#_root_audio_gameAudio_content_device");
 
                 let current = "";
                 try {
-                    current = alvrSettings.getSession().settingsCache.audio.gameAudio.content.device;
+                    current = alvrSettings.getSession().sessionSettings.audio
+                        .gameAudio.content.device;
                 } catch (err) {
-                    console.error("Layout of settings changed, audio devices can not be added. Please report this bug!");
+                    console.error(
+                        "Layout of settings changed, audio devices can not be added. Please report this bug!",
+                    );
                 }
 
-                audio_devices.list.forEach(device => {
+                audio_devices.list.forEach((device) => {
                     let name = device[1];
                     if (device[0] === audio_devices.default_game_audio) {
                         name = "(default) " + device[1];
-                        el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_gameAudio_content", device[0]));
+                        el.after(
+                            alvrSettings.getHelpReset(
+                                "deviceDropdown",
+                                "_root_audio_gameAudio_content",
+                                device[0],
+                            ),
+                        );
 
-                        const deviceReset = $("#_root_audio_gameAudio_content_device").parent().find(".helpReset .paramReset");
-                        deviceReset.attr("default", device[0])
+                        const deviceReset = $(
+                            "#_root_audio_gameAudio_content_device",
+                        )
+                            .parent()
+                            .find(".helpReset .paramReset");
+                        deviceReset.attr("default", device[0]);
                     }
-                    el.append(`<option value="${device[0]}"> ${name}  </option>`)
+                    el.append(
+                        `<option value="${device[0]}"> ${name}  </option>`,
+                    );
                 });
 
-                if (audio_devices.default_game_audio === null && audio_devices.list.length != 0) {
-                    el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_gameAudio_content", audio_devices.list[0][0]));
+                if (
+                    audio_devices.default_game_audio === null &&
+                    audio_devices.list.length != 0
+                ) {
+                    el.after(
+                        alvrSettings.getHelpReset(
+                            "deviceDropdown",
+                            "_root_audio_gameAudio_content",
+                            audio_devices.list[0][0],
+                        ),
+                    );
 
-                    const deviceReset = $("#_root_audio_gameAudio_content_device").parent().find(".helpReset .paramReset");
-                    deviceReset.attr("default", audio_devices.list[0][0])
+                    const deviceReset = $(
+                        "#_root_audio_gameAudio_content_device",
+                    )
+                        .parent()
+                        .find(".helpReset .paramReset");
+                    deviceReset.attr("default", audio_devices.list[0][0]);
                 }
 
                 //set default as current audio device if empty
@@ -452,17 +614,19 @@ define([
                     alvrSettings.storeParam(target);
                 }
 
-
                 //move selected audio device to top of list
-                let $el = $("#_root_audio_gameAudio_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
+                let $el = $("#_root_audio_gameAudio_content_deviceDropdown")
+                    .find("option[value='" + target.val() + "']")
+                    .remove();
                 $("#_root_audio_gameAudio_content_deviceDropdown").prepend($el);
 
-                let select = new Selectal('#_root_audio_gameAudio_content_deviceDropdown');
+                let select = new Selectal(
+                    "#_root_audio_gameAudio_content_deviceDropdown",
+                );
                 el = $("#_root_audio_gameAudio_content_deviceDropdown");
 
                 //select the current option in dropdown
                 el.val(target.val());
-
 
                 let updating = false;
                 //add listener to change
@@ -473,7 +637,7 @@ define([
                         target.change();
                         updating = false;
                     }
-                })
+                });
 
                 target.change(() => {
                     if (!updating) {
@@ -482,41 +646,69 @@ define([
                         el.change();
                         updating = false;
                     }
-                })
+                });
             }
 
             // Microphone
             {
                 let el = $("#_root_audio_microphone_content_deviceDropdown");
-                el.parent().addClass("special")
+                el.parent().addClass("special");
                 el.unbind();
 
                 let target = $("#_root_audio_microphone_content_device");
 
                 let current = "";
                 try {
-                    current = alvrSettings.getSession().settingsCache.audio.microphone.content.device;
+                    current = alvrSettings.getSession().sessionSettings.audio
+                        .microphone.content.device;
                 } catch (err) {
-                    console.error("Layout of settings changed, audio devices can not be added. Please report this bug!");
+                    console.error(
+                        "Layout of settings changed, audio devices can not be added. Please report this bug!",
+                    );
                 }
 
-                audio_devices.list.forEach(device => {
+                audio_devices.list.forEach((device) => {
                     let label = device[1];
                     if (device[0] === audio_devices.default_microphone) {
                         label = "(default) " + device[1];
-                        el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_microphone_content", device[0]));
+                        el.after(
+                            alvrSettings.getHelpReset(
+                                "deviceDropdown",
+                                "_root_audio_microphone_content",
+                                device[0],
+                            ),
+                        );
 
-                        const deviceReset = $("#_root_audio_microphone_content_device").parent().find(".helpReset .paramReset");
-                        deviceReset.attr("default", device[0])
+                        const deviceReset = $(
+                            "#_root_audio_microphone_content_device",
+                        )
+                            .parent()
+                            .find(".helpReset .paramReset");
+                        deviceReset.attr("default", device[0]);
                     }
-                    el.append(`<option value="${device[0]}"> ${label}  </option>`)
+                    el.append(
+                        `<option value="${device[0]}"> ${label}  </option>`,
+                    );
                 });
 
-                if (audio_devices.default_microphone === null && audio_devices.list.length != 0) {
-                    el.after(alvrSettings.getHelpReset("deviceDropdown", "_root_audio_microphone_content", audio_devices.list[0][0]));
+                if (
+                    audio_devices.default_microphone === null &&
+                    audio_devices.list.length != 0
+                ) {
+                    el.after(
+                        alvrSettings.getHelpReset(
+                            "deviceDropdown",
+                            "_root_audio_microphone_content",
+                            audio_devices.list[0][0],
+                        ),
+                    );
 
-                    const deviceReset = $("#_root_audio_microphone_content_device").parent().find(".helpReset .paramReset");
-                    deviceReset.attr("default", audio_devices.list[0][0])
+                    const deviceReset = $(
+                        "#_root_audio_microphone_content_device",
+                    )
+                        .parent()
+                        .find(".helpReset .paramReset");
+                    deviceReset.attr("default", audio_devices.list[0][0]);
                 }
 
                 //set default as current audio device if empty
@@ -526,17 +718,21 @@ define([
                     alvrSettings.storeParam(target);
                 }
 
-
                 //move selected audio device to top of list
-                let $el = $("#_root_audio_microphone_content_deviceDropdown").find("option[value='" + target.val() + "']").remove();
-                $("#_root_audio_microphone_content_deviceDropdown").prepend($el);
+                let $el = $("#_root_audio_microphone_content_deviceDropdown")
+                    .find("option[value='" + target.val() + "']")
+                    .remove();
+                $("#_root_audio_microphone_content_deviceDropdown").prepend(
+                    $el,
+                );
 
-                let select = new Selectal('#_root_audio_microphone_content_deviceDropdown');
+                let select = new Selectal(
+                    "#_root_audio_microphone_content_deviceDropdown",
+                );
                 el = $("#_root_audio_microphone_content_deviceDropdown");
 
                 //select the current option in dropdown
                 el.val(target.val());
-
 
                 let updating = false;
                 //add listener to change
@@ -547,7 +743,7 @@ define([
                         target.change();
                         updating = false;
                     }
-                })
+                });
 
                 target.change(() => {
                     if (!updating) {
@@ -556,47 +752,227 @@ define([
                         el.change();
                         updating = false;
                     }
-                })
+                });
             }
         }
 
+        function setTrackingSpeed() {
+            const el = $("#_root_headset_controllers_content_trackingSpeed");
 
+            const poseTimeOffset = $(
+                "#_root_headset_controllers_content_poseTimeOffset",
+            );
+            const clientsidePrediction = $(
+                "#_root_headset_controllers_content_clientsidePrediction",
+            );
+
+            const oculus = i18nWizard.oculusTracking;
+            const normal = i18nWizard.normalTracking;
+            const medium = i18nWizard.mediumTracking;
+            const fast = i18nWizard.fastTracking;
+            const custom = i18n.customTracking;
+
+            const customButton = `<label id="trackingSpeedCustomButton" class="btn btn-primary active">
+            <input  type="radio" name="trackingSpeed"  autocomplete="off" value="custom" checked>
+                ${custom}
+            </label> `;
+
+            function setTrackingRadio() {
+                $("#trackingSpeedCustomButton").remove();
+                $("input:radio[name='trackingSpeed']")
+                    .parent()
+                    .removeClass("active");
+
+                if (clientsidePrediction.is(":checked")) {
+                    $("input:radio[name='trackingSpeed'][value='oculus']").prop(
+                        "checked",
+                        "true",
+                    );
+                    $("input:radio[name='trackingSpeed'][value='oculus']")
+                        .parent()
+                        .addClass("active");
+                } else {
+                    switch (poseTimeOffset.val()) {
+                        case "-1":
+                            $(
+                                "input:radio[name='trackingSpeed'][value='fast']",
+                            ).prop("checked", "true");
+                            $("input:radio[name='trackingSpeed'][value='fast']")
+                                .parent()
+                                .addClass("active");
+                            break;
+                        case "-0.03":
+                            $(
+                                "input:radio[name='trackingSpeed'][value='medium']",
+                            ).prop("checked", "true");
+                            $(
+                                "input:radio[name='trackingSpeed'][value='medium']",
+                            )
+                                .parent()
+                                .addClass("active");
+                            break;
+                        case "0.01":
+                            $(
+                                "input:radio[name='trackingSpeed'][value='normal']",
+                            ).prop("checked", "true");
+                            $(
+                                "input:radio[name='trackingSpeed'][value='normal']",
+                            )
+                                .parent()
+                                .addClass("active");
+                            break;
+                        default:
+                            console.log("custom tracking speed");
+                            $("#trackingSpeedButtons").append(customButton);
+                            break;
+                    }
+                }
+            }
+
+            function setTrackingValue(val) {
+                switch (val) {
+                    case "oculus":
+                        clientsidePrediction.prop("checked", true);
+                        break;
+                    case "normal":
+                        clientsidePrediction.prop("checked", false);
+                        poseTimeOffset.val("0.01");
+                        break;
+                    case "medium":
+                        clientsidePrediction.prop("checked", false);
+                        poseTimeOffset.val("-0.03");
+                        break;
+                    case "fast":
+                        clientsidePrediction.prop("checked", false);
+                        poseTimeOffset.val("-1");
+                        break;
+                    default:
+                        break;
+                }
+                alvrSettings.storeParam(poseTimeOffset);
+                alvrSettings.storeParam(clientsidePrediction);
+                setTrackingRadio();
+            }
+
+            //move elements into better layout
+            const text = el.parent().text().trim();
+            el.parent().find("label").remove();
+
+            const grp = `<div class="card-title"> ${text}
+                    ${alvrSettings.getHelpReset(
+                        "trackingSpeed",
+                        "_root_headset_controllers_content",
+                        "normal",
+                        (postFix = ""),
+                        "trackingSpeed",
+                        i18nWizard.normalTracking,
+                    )}
+                        </div>
+            <div class="btn-group" data-toggle="buttons" id="trackingSpeedButtons">
+                            <label style="min-width:10%" class="btn btn-primary">
+                                <input  type="radio" name="trackingSpeed"  autocomplete="off" value="oculus">
+                                ${oculus}
+                            </label>
+                            <label style="min-width:10%" class="btn btn-primary">
+                                <input  type="radio" name="trackingSpeed"  autocomplete="off" value="normal">
+                                ${normal}
+                            </label>
+                            <label class="btn btn-primary">
+                                <input type="radio" name="trackingSpeed"  autocomplete="off" value="medium">
+                                ${medium}
+                            </label>
+                            <label class="btn btn-primary">
+                                <input type="radio" name="trackingSpeed" autocomplete="off" value="fast">
+                               ${fast}
+                            </label>
+                                                  
+                    </div> `;
+
+            el.after(grp);
+
+            $(document).ready(() => {
+                $("input:radio[name='trackingSpeed']").on("change", () => {
+                    setTrackingValue(
+                        $("input:radio:checked[name='trackingSpeed']").val(),
+                    );
+                });
+                poseTimeOffset.on("change", () => {
+                    setTrackingRadio();
+                });
+                clientsidePrediction.on("change", () => {
+                    setTrackingRadio();
+                });
+
+                $("#_root_headset_controllers_content_trackingSpeed").on(
+                    "change",
+                    (ev) => {
+                        setTrackingValue(
+                            $(
+                                "#_root_headset_controllers_content_trackingSpeed",
+                            ).val(),
+                        );
+                    },
+                );
+
+                setTrackingRadio();
+            });
+        }
 
         function setTheme() {
             const themes = {
-                "classic": {"bootstrap": "css/bootstrap.min.css", "selectal": "js/lib/selectal.min.css", "style": "css/style.css"},
-                "darkly" : {"bootstrap": "css/darkly/bootstrap.min.css", "selectal": "css/darkly/selectal.min.css", "style": "css/darkly/style.css"}
-            }
+                classic: {
+                    bootstrap: "css/bootstrap.min.css",
+                    selectal: "js/lib/selectal.min.css",
+                    style: "css/style.css",
+                },
+                darkly: {
+                    bootstrap: "css/darkly/bootstrap.min.css",
+                    selectal: "css/darkly/selectal.min.css",
+                    style: "css/darkly/style.css",
+                },
+            };
             var bootstrap = $("#bootstrap");
             var selectal = $("#selectal");
             var style = $("#style");
-            
+
             var themeSelector = $("form#_root_extra_theme-choice-").first();
             var themeColor = $("input[name='theme']:checked").val();
 
             if (themeColor == "systemDefault") {
-                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                if (
+                    window.matchMedia &&
+                    window.matchMedia("(prefers-color-scheme: dark)").matches
+                ) {
                     themeColor = "darkly";
                 } else {
                     themeColor = "classic";
                 }
             }
 
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-                themeColor = e.matches ? "darkly" : "classic";
-                bootstrap.attr("href", themes[themeColor]["bootstrap"]);
-                selectal.attr("href", themes[themeColor]["selectal"]);
-                style.attr("href", themes[themeColor]["style"]);
-            });
+            window
+                .matchMedia("(prefers-color-scheme: dark)")
+                .addEventListener("change", (e) => {
+                    themeColor = e.matches ? "darkly" : "classic";
+                    bootstrap.attr("href", themes[themeColor]["bootstrap"]);
+                    selectal.attr("href", themes[themeColor]["selectal"]);
+                    style.attr("href", themes[themeColor]["style"]);
+                });
 
             bootstrap.attr("href", themes[themeColor]["bootstrap"]);
             selectal.attr("href", themes[themeColor]["selectal"]);
             style.attr("href", themes[themeColor]["style"]);
 
-            themeSelector.on("change", function() {
-                themeColor = $("input[name='theme']:checked", "#_root_extra_theme-choice-").val();
+            themeSelector.on("change", function () {
+                themeColor = $(
+                    "input[name='theme']:checked",
+                    "#_root_extra_theme-choice-",
+                ).val();
                 if (themeColor == "systemDefault") {
-                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    if (
+                        window.matchMedia &&
+                        window.matchMedia("(prefers-color-scheme: dark)")
+                            .matches
+                    ) {
                         themeColor = "darkly";
                     } else {
                         themeColor = "classic";
@@ -606,20 +982,15 @@ define([
                 if (bootstrap.attr("href") == themes[themeColor]["bootstrap"]) {
                     return;
                 } else {
-                    $("body").fadeOut('fast', function() {
-                        console.log("changing theme to " + themeColor)
+                    $("body").fadeOut("fast", function () {
+                        console.log("changing theme to " + themeColor);
                         bootstrap.attr("href", themes[themeColor]["bootstrap"]);
                         selectal.attr("href", themes[themeColor]["selectal"]);
                         style.attr("href", themes[themeColor]["style"]);
                         $(this).fadeIn();
                     });
-
                 }
-
             });
-            
         }
-
-    }
-
+    };
 });

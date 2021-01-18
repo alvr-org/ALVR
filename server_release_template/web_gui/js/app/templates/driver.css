@@ -21,11 +21,11 @@
     overflow: hidden;
 }
 
-.driverCard div div table tr td:first-child { 
+.driverCard div div table tr td:first-child {
     width: 100%;
 }
 
-.driverCard div div table tr td:last-child { 
+.driverCard div div table tr td:last-child {
     width: 90px;
 }
 

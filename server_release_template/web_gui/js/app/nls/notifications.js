@@ -1,7 +1,7 @@
 define({
     "root": {
         "statistics.title": "Statistics",
-        "statistics.msg": "Got statistics information",
+        "statistics.msg": "Statistics information available",
     },
     "it": true,
     "es": true,
@@ -9,5 +9,7 @@ define({
     "ja": true,
     "zh": true,
     "ru": true,
-    "de": true
+    "bg": true,
+    "de": true,
+    "nl": true,
 });

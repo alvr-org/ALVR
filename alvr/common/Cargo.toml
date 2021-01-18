@@ -1,37 +1,53 @@
 [package]
-name = 'alvr_common'
-version = '12.0.0'
-authors = ['Riccardo Zaglia <riccardo.zaglia5@gmail.com>']
-license = 'MIT'
-edition = '2018'
+name = "alvr_common"
+version = "14.1.0"
+authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
+license = "MIT"
+edition = "2018"
+
+[features]
+default = []
+nightly = []
 
 [dependencies]
-regex = '^1.3.9'
-semver = '^0.10.0'
-serde = { version = '^1.0', features = ['derive'] }
-serde_json = '^1.0'
-log = '^0.4.8'
-backtrace = '^0.3.46'
-settings-schema = { git = 'https://github.com/zarik5/settings-schema-rs', features = ['rename_camel_case'] }
-sysinfo = '^0.15.0'
-runas = '^0.2.1'
-gfx-hal = '^0.6.0'
-# cpal = { git = 'https://github.com/RustAudio/cpal' }
+lazy_static = "1"
+semver = { version = "0.11", features = ['serde'] }
+log = "0.4"
+backtrace = "0.3"
+rand = "0.8"
+nalgebra = { version = "0.24", features = ["serde-serialize"] }
+settings-schema = { path = "../settings-schema", features = ["rename_camel_case"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bincode = "1"
+encoding_rs_io = "0.1"
+futures = "0.3"
+bytes = "1"
+tokio = { version = "1", features = ["net", "macros"] }
+tokio-util = { version = "0.6", features = ["codec"] }
+rcgen = "0.8"
+gfx-hal = "0.6"
+winit = "0.24" # needed to get the screen size
+cpal = "0.13"
 
-[target.'cfg(windows)'.dependencies]
-winapi = { version = '^0.3.8', features = [
-    'mmdeviceapi',
-    'propsys',
-    'coml2api',
-    'propidl',
-    'functiondiscoverykeys_devpkey',
-    'wtypes',
-    'objbase',
+[target.'cfg(not(target_os = "android"))'.dependencies]
+dirs = "3"
+runas = "0.2"
+msgbox = "0.6"
+
+[target."cfg(windows)".dependencies]
+winapi = { version = "0.3", features = [
+    "mmdeviceapi",
+    "propsys",
+    "coml2api",
+    "propidl",
+    "functiondiscoverykeys_devpkey",
+    "wtypes",
+    "objbase",
 ] }
-wio = '^0.2.2'
-widestring = '^0.4.2'
-winreg = '^0.7.0'
-gfx-backend-dx11 = '^0.6.8'
+wio = "0.2"
+widestring = "0.4"
+gfx-backend-dx11 = "0.6"
 
 [build-dependencies]
-alvr_xtask = { path = '../xtask' }
+alvr_xtask = { path = "../xtask" }

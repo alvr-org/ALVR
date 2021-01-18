@@ -1,42 +1,44 @@
 define({
     "root": {
+        // Banner
         "title": "Welcome to ALVR",
-        "subtitle": "This wizard will guide you to the basic setup of ALVR",
+        "subtitle": "This setup wizard will guide you to the basic setup of ALVR",
+        // Hardware page
         "titleHardwareReq": "Hardware requirements",
         "textHardwareReq": "ALVR requires a dedicated and recent graphics card. <br/> <br/> Make sure you have at least one output audio device. <br/> <br/> ",
+        "YourGPUIs": "Your GPU:",
+        "GPUSupported": " \nGreat! This GPU is probably supported!",
+        "GPUUnsupported": " \nWe are sorry, but this card may be unsupported. You can try ALVR anyway and see if it works",
+        // Software page
         "titleSoftwareReq": "Software requirements",
-        "textSoftwareReq": "Make sure you installed SteamVR, launched it at least once and then closed it. <br/> <br/> If you didn't already, please install the latest <a  target='_blank' href='https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads'>Visual C++ Redistrubutable x64</a> package. <br/> <br/> To stream the Quest microphone you need to install the <a  target='_blank' href='https://www.vb-audio.com/Cable/'>Virtual Audio Cable</a>.",
+        "textSoftwareReq": "To stream the Quest microphone you need to install the <a href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
+        // Firewall page
         "titleFirewall": "Firewall",
-        "textFirewall": "To communicate with the headset, some firewall rules need to be set. This requires administrator rights.",
+        "textFirewall": "To communicate with the headset, some firewall rules need to be set. <br/> <b>This requires administrator rights!</b>",
         "buttonFirewall": "Add firewall rules",
-        "titleDriver": "Driver",
-        "textDriver": "The ALVR driver needs to be registered with SteamVR. If present, remove any other interfering driver. (If you don't know what to do, remove all drivers, then register ALVR driver)",
-        "buttonDriver": "Register ALVR driver",
+        "firewallFailed": "Setting firewall rules failed",
+        "firewallSuccess": "Firewall rules successfully set",
+        // Tracking page
         "titleTracking": "Tracking",
-        "textTracking": "How should the tracking of the controller be handled.If you plan on playing fast paced games like Beatsaber, choose medium or fast. For slower games like Skyrim leave it on normal.",
+        "textTracking": "How should the tracking of the controller be handled. If you plan on playing fast paced games like Beatsaber, choose medium or fast. For slower games like Skyrim leave it on normal. <br/> <br/> Oculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
+        "oculusTracking": "Oculus prediction",
         "normalTracking": "Normal",
         "mediumTracking": "Medium",
         "fastTracking": "Fast",
+        // Performance page
         "titlePerformance": "Performance preset",
         "textPerformance": "Please choose preset that fits your setup. This will adjust some settings for you.",
         "compatPerformance": "Compatibility",
         "qualityPerformance": "Visual quality",
+        // Import page
+        "titleImport": "Import ALVR preset",
+        "textImport": "You can import settings or preset files (.json): <ul><li> Presets for a specific headset. This is recommended for the <b>Oculus Go</b> (search for <code>oculus_go_preset.json</code> in the installation folder).<li> Settings from a previous ALVR installation (<code>session.json</code>).<ul>",
+        // End page
         "titleFinished": "Finished",
-        "textFinished": "You can always restart this wizard from the \"Installation\" tab on the left",
+        "textFinished": "You can always restart this setup wizard from the \"Installation\" tab on the left",
+        "buttonBack": "Back",
         "buttonNext": "Next",
         "buttonClose": "Close",
-        "driverFailed": "Registering driver failed",
-        "driverSuccess": "Driver successfully registered",
-        "firewallFailed": "Setting firewall rules failed",
-        "firewallSuccess": "Firewall rules successfully set",
-        "YourGPUIs": "Your GPU is",
-        "GPUSupported": "Great! This GPU is probably supported!",
-        "GPUUnsupported": "We are sorry, but this card may be unsupported. You can try ALVR anyway and see if it works",
-        "GPUUnknown": "Oops. Looks like your GPU is disconnected or you have potato instead",
-        "titleTheme": "Theme",
-        "textTheme": "Choose you side; Light or Dark",
-        "darklyTheme": "Darkly",
-        "classicTheme": "Classic"
     },
     "it": true,
     "es": true,
@@ -44,5 +46,7 @@ define({
     "ja": true,
     "zh": true,
     "ru": true,
+    "bg": true,
     "de": true,
+    "nl": true,
 });

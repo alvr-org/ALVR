@@ -1,0 +1,14 @@
+body {
+    font-family: Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+div {
+    padding: 140px 0;
+}
+h1 {
+    font-size: 70px;
+    text-align: center;
+}
+p {
+    font-size: 70px;
+    text-align: center;
+}

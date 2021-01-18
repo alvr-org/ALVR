@@ -1,4 +1,4 @@
 define({
-    "statistics.title": "Statistics",
-    "statistics.msg": "Got statistics information",
+    "statistics.title": "状态信息",
+    "statistics.msg": "已获得状态信息",
 });

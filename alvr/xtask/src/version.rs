@@ -1,127 +1,80 @@
 use crate::*;
 
+use chrono::Utc;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
-use semver::Version;
-use std::cmp::Ordering;
-use std::fs::File;
-use std::str::FromStr;
-use toml_edit::Document;
+use semver::{Identifier, Version};
 
 lazy_static! {
-    static ref GRADLE_VERSIONNAME_REGEX: Regex = Regex::new(r#"versionName\s+"[\d.]+[0-9A-Za-z-.]*""#).unwrap();
+    static ref GRADLE_VERSIONNAME_REGEX: Regex =
+        Regex::new(r#"versionName\s+"[\d.]+[0-9A-Za-z-.]*(?:\+[0-9A-Za-z-.]+){0,1}""#).unwrap();
     static ref GRADLE_VERSIONCODE_REGEX: Regex =
         Regex::new(r#"versionCode\s+(?P<code>\d+)"#).unwrap();
 }
 
-fn bumped_versions(
-    server_version: Option<&str>,
-    client_version: Option<&str>,
-) -> BResult<(Version, Version)> {
-    let old_server_version = alvr_xtask::server_version();
-    let old_client_version = alvr_xtask::client_version();
-
-    let server_version = server_version.unwrap_or(&old_server_version);
-    let client_version = client_version.unwrap_or(&old_client_version);
-
-    let server_version = Version::parse(server_version)?;
-    let client_version = Version::parse(client_version)?;
-
-    if client_version.major != server_version.major {
-        return Err("Bumped versions need to have the same major version!"
-            .to_owned()
-            .into());
-    }
-
-    if client_version == old_client_version.parse()?
-        && server_version == old_server_version.parse()?
-    {
-        Err("Didn't bump any version!".to_owned().into())
-    } else {
-        Ok((client_version, server_version))
-    }
-}
-
-fn bump_client_gradle_version(new_version: &Version) -> BResult {
-    let old_client_version = alvr_xtask::client_version();
+fn bump_client_gradle_version(new_version: &Version, is_nightly: bool) {
+    let old_version = alvr_xtask::version();
 
     println!(
-        "Bumping HMD client version: {} -> {}",
-        old_client_version, new_version
+        "Bumping client version (gradle): {} -> {}",
+        old_version, new_version
     );
 
     let gradle_file_path = workspace_dir()
-        .join("alvr/client_hmd/app")
+        .join("alvr/client/android/app")
         .join("build.gradle");
-    let mut gradle_file = File::open(&gradle_file_path)?;
-    let mut data = String::new();
-    gradle_file.read_to_string(&mut data)?;
-    drop(gradle_file);
+    let file_content = fs::read_to_string(&gradle_file_path).unwrap();
 
-    let data = GRADLE_VERSIONNAME_REGEX.replace(&data, |_: &Captures| {
+    let file_content = GRADLE_VERSIONNAME_REGEX.replace(&file_content, |_: &Captures| {
         format!(r#"versionName "{}""#, new_version)
     });
-    let client_version = Version::parse(&old_client_version)?;
-    let data = GRADLE_VERSIONCODE_REGEX.replace(&data, |caps: &Captures| {
-        if new_version > &client_version {
+    let file_content = if !is_nightly {
+        GRADLE_VERSIONCODE_REGEX.replace(&file_content, |caps: &Captures| {
             let code: u32 = (&caps["code"]).parse().unwrap();
             format!("versionCode {}", code + 1)
-        } else {
-            format!("versionCode {}", &caps["code"])
-        }
-    });
+        })
+    } else {
+        file_content
+    };
 
-    let mut gradle_file = File::create(&gradle_file_path)?;
-    gradle_file.write_all(data.as_bytes())?;
-
-    Ok(())
+    fs::write(gradle_file_path, file_content.as_ref()).unwrap();
 }
 
-fn bump_server_cargo_version(new_version: &Version) -> BResult {
-    println!(
-        "Bumping server version: {} -> {}",
-        alvr_xtask::server_version(),
-        new_version
-    );
+fn bump_cargo_version(crate_dir_name: &str, new_version: &Version) {
     let manifest_path = workspace_dir()
-        .join("alvr/server_driver")
+        .join("alvr")
+        .join(crate_dir_name)
         .join("Cargo.toml");
 
-    let mut manifest = Document::from_str(&fs::read_to_string(&manifest_path)?)?;
+    let mut manifest: toml_edit::Document =
+        fs::read_to_string(&manifest_path).unwrap().parse().unwrap();
 
     manifest["package"]["version"] = toml_edit::value(new_version.to_string());
-    let s = manifest.to_string_in_original_order();
-    let new_contents_bytes = s.as_bytes();
 
-    let mut file = File::create(&manifest_path)?;
-    file.write_all(new_contents_bytes)?;
-
-    Ok(())
+    fs::write(manifest_path, manifest.to_string_in_original_order()).unwrap();
 }
 
-pub fn bump_versions(server_arg: Option<String>, client_arg: Option<String>) -> BResult {
-    let versions = bumped_versions(server_arg.as_deref(), client_arg.as_deref());
-    match versions {
-        Ok((client_version, server_version)) => {
-            ok_or_exit(bump_client_gradle_version(&client_version));
-            ok_or_exit(bump_server_cargo_version(&server_version));
-
-            let tag = match (server_arg, client_arg) {
-                (Some(_), Some(_)) => match client_version.cmp(&server_version) {
-                    Ordering::Less => format!("v{}", server_version),
-                    Ordering::Greater => format!("v{}", client_version),
-                    Ordering::Equal => format!("v{}", client_version),
-                },
-                (Some(_), None) => format!("v{}-server", server_version),
-                (None, Some(_)) => format!("v{}-client", client_version),
-                (None, None) => {
-                    unreachable!();
-                } // handled in bumped_versions
-            };
-
-            println!("Git tag:\n{}", tag);
-            Ok(())
+pub fn bump_version(version_arg: Option<&str>, is_nightly: bool) {
+    let mut version = if let Some(version_arg) = version_arg {
+        Version::parse(version_arg).unwrap()
+    } else {
+        let mut version = Version::parse(&alvr_xtask::version()).unwrap();
+        if !is_nightly {
+            version.increment_patch();
         }
-        Err(msg) => Err(format!("Version bump failed: {}", msg).into()),
+        version
+    };
+
+    if is_nightly {
+        let today = Utc::now().format("%Y%m%d");
+        version.build = vec![Identifier::AlphaNumeric(format!("nightly.{}", today))];
     }
+
+    bump_client_gradle_version(&version, is_nightly);
+    bump_cargo_version("common", &version);
+    bump_cargo_version("server", &version);
+    bump_cargo_version("launcher", &version);
+    bump_cargo_version("client", &version);
+
+    println!("Git tag:\nv{}", version);
 }

@@ -2,22 +2,19 @@
     min-height: 250px;
     display: flex;
     flex-direction: column;
-    max-height: 50vh;
+    max-height: 55vh;
     overflow: hidden;
-    
 }
 
 .btn-group label input {
     display: none;
 }
 
-.wizzardSettings {   
- 
+.wizzardSettings {
     flex: 1;
     justify-content: center;
     display: flex;
     align-items: center;
-
 }
 
 .driverList {
@@ -25,13 +22,6 @@
     display: flex;
 }
 
-
-.driverList * .card-body{
+.driverList * .card-body {
     overflow: auto;
-}
-
-
-#driverListPlaceholder {
-    overflow: hidden;
-    margin-top: 20px;
 }

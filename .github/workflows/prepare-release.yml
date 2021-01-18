@@ -1,14 +1,13 @@
 name: Create release
 
+env:
+  CARGO_TERM_COLOR: always
+
 on:
   workflow_dispatch:
     inputs:
-      client_version:
-        description: 'Client version'
-        required: false
-        default: ''
-      server_version:
-        description: 'Server version'
+      version:
+        description: 'Version'
         required: false
         default: ''
 
@@ -19,21 +18,28 @@ jobs:
       version_tag: ${{ steps.bump_versions.outputs.version_tag }}
       release_ref: ${{ steps.output_ref.outputs.release_ref }}
     steps:
+      - name: Configure git
+        run: git config --global core.autocrlf false
+
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           ref: ${{ github.head_ref }}
+      
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
         
       - name: Bump versions
         id: bump_versions
         run: |
-          $serverarg = "${{ github.event.inputs.server_version }}"
-          $serverarg = If ($serverarg.Length -gt 0) { "--server $serverarg" } else { "" }
-          $clientarg = "${{ github.event.inputs.client_version }}"
-          $clientarg = If ($clientarg.Length -gt 0) { "--client $clientarg" } else { "" }
-          $out = cargo xtask bump-versions $serverarg.split() $clientarg.split()
+          $env:RUST_BACKTRACE = 1
+          $versionarg = "${{ github.event.inputs.version }}"
+          $versionarg = If ($versionarg.Length -gt 0) { "--version $versionarg" } else { "" }
+          $out = cargo xtask bump-versions $versionarg.split()
           echo $out
-          cargo update -p alvr_server_driver
+          cargo update -p alvr_common
           echo "::set-output name=version_tag::$(echo $out | sls -CaseSensitive -Pattern '^v.*$')"
       
       - name: Push changes
@@ -59,14 +65,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # Release tag is taken from the bump_version job.
-          # If both client and server were bumped, format is v12.0.0, otherwise v12.0.0-server or v12.0.0-client
           tag_name: ${{ needs.bump_version.outputs.version_tag }}
           release_name: ALVR ${{ needs.bump_version.outputs.version_tag }}
           draft: true
           prerelease: false
           commitish: ${{ needs.bump_version.outputs.release_ref }}
 
-  build_windows:
+  build_windows_server:
     # Windows latest has Rust, Android NDK and LLVM already installed.
     # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
     runs-on: windows-latest
@@ -81,11 +86,47 @@ jobs:
         with:
           ref: ${{ needs.bump_version.outputs.release_ref }}
 
-      - name: Build and package ALVR (.zip, .pdb, .apk)
-        run: cargo xtask publish
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - uses: Swatinem/rust-cache@v1
 
-      # Three release asset upload actions for three assets - .zip, .pdb and .apk
-      - name: Upload ALVR Windows Server .zip
+      - uses: actions/cache@v2
+        name: Cache Wix 3.14
+        id: cache_wix
+        with:
+          path: |
+            wix314-binaries
+          key: ${{ runner.os }}-wix314-4118
+      
+      - name: Download WiX 3.14 binaries
+        if: steps.cache_wix.outputs.cache-hit != 'true'
+        run: |
+          Invoke-WebRequest http://static.wixtoolset.org/releases/v3.14.0.4118/wix314-binaries.zip -OutFile wix314-binaries.zip
+          Expand-Archive -Path wix314-binaries.zip -DestinationPath wix314-binaries/bin
+
+      - name: Build and package ALVR (.zip, .exe)
+        id: build
+        env:
+          WIX: 'wix314-binaries'
+        run: |
+          $env:RUST_BACKTRACE = 1
+          cargo xtask publish-server
+          $file = Get-ChildItem -Name .\build\*.exe | Select-Object -f 1
+          echo "::set-output name=exe_filename::$file"
+
+      # Assets upload: .exe, .zip
+      - name: Upload Windows installer
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+          asset_path: ./build/${{ steps.build.outputs.exe_filename }}
+          asset_name: ${{ steps.build.outputs.exe_filename }}
+          asset_content_type: application/octet-stream
+      - name: Upload portable server for Windows
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -94,31 +135,67 @@ jobs:
           asset_path: ./build/alvr_server_windows.zip
           asset_name: alvr_server_windows.zip
           asset_content_type: application/zip
-      - name: Upload ALVR Windows Server .pdb
+
+  build_android_client:
+    # Windows latest has Rust, Android NDK and LLVM already installed.
+    # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
+    runs-on: windows-latest
+    needs: [bump_version, prepare_release]
+    env:
+      # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
+      # This is specific to the GitHub windows-latest runner.
+      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ needs.bump_version.outputs.release_ref }}
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: aarch64-linux-android
+          override: true
+      - uses: Swatinem/rust-cache@v1
+      
+      - uses: maxim-lobanov/setup-android-tools@v1
+        with:
+          packages: |
+            platforms;android-30
+            ndk;22.0.7026061
+          cache: true
+
+      - name: Set better Android SDK path (workaround for rust-android-gradle)
+        shell: cmd
+        run: |
+          mklink /J "%GITHUB_WORKSPACE%\android-sdk" "%ANDROID_SDK_ROOT%"
+
+      - name: Build and package ALVR (.apk)
+        id: build
+        env:
+          ANDROID_HOME: '${{ github.workspace }}\android-sdk'
+          ANDROID_SDK_ROOT: '${{ github.workspace }}\android-sdk'
+        run: |
+          $env:RUST_BACKTRACE = 1
+          cargo xtask install-deps
+          cargo xtask publish-client
+
+      # Assets upload: 2 * .apk
+      - name: Upload client for Oculus Quest
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ./build/alvr_server_driver.pdb
-          asset_name: alvr_server_driver.pdb
-          asset_content_type: application/octet-stream
-      - name: Upload ALVR Client .apk
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ./build/alvr_client.apk
-          asset_name: alvr_client.apk
+          asset_path: ./build/alvr_client_oculus_quest.apk
+          asset_name: alvr_client_oculus_quest.apk
           asset_content_type: application/vnd.android.package-archive
-          
-#  publish_release:
-#    runs-on: ubuntu-latest
-#    needs: [prepare_release, build_windows]
-#    steps:
-#      - uses: eregon/publish-release@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          release_id: ${{ needs.prepare_release.outputs.release_id }}
+      - name: Upload client for Oculus Go
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+          asset_path: ./build/alvr_client_oculus_go.apk
+          asset_name: alvr_client_oculus_go.apk
+          asset_content_type: application/vnd.android.package-archive

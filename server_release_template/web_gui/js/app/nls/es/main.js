@@ -4,9 +4,9 @@ define({
     "monitor": "Monitor",
     "settings": "Ajustes",
     "installation": "Instalación",
-    "about": "Información",
-    // "languages": "",
-    // "systemLanguage": "",
+    "about": "Sobre ALVR",
+    "languages": "Idiomas",
+    "systemLanguage": "Sistema",
     // Settings page
     "toggleAdvanced": "Configuración avanzada",
     "restartSteamVR": "Reiniciar SteamVR",
@@ -16,8 +16,14 @@ define({
     "removeFirewallRules": "Eliminar excepción del cortafuegos",
     "firewallSuccess": "Se ha modificado el cortafuegos con éxito",
     // About page
-    "aboutText": "Transmite los juegos de RV desde tu PC a tu Oculus Quest a través de Wi-Fi. <br/> ALVR utiliza tecnologías como el Asynchronous Timewarp y Fixed Foveated Rendering para una experiencia más confortable. <br/> Todos los juegos diseñados para Oculus Rift(S) deberían funcionar con ALVR. <br/> Este es un fork de ALVR que sólo funciona con el Oculus Quest. <br/> <br/> Visítenos en GitHub: <a href='https://github.com/alvr-org/ALVR/'>https://github.com/alvr-org/ALVR/</a> <br/> Únete a nosotros en Discord: <a href='https://discord.com/invite/KbKk3UM'>https://discord.com/invite/KbKk3UM</a>",
+    "aboutText": "Transmite juegos de Realidad Virtual desde tu PC a tu visor a través de Wi-Fi. <br/> ALVR utiliza tecnologías como el <a href='https://developer.oculus.com/documentation/native/android/mobile-timewarp-overview/'>Asynchronous Timewarp</a> y <a href='https://developer.oculus.com/documentation/native/android/mobile-ffr/'>Fixed Foveated Rendering (FFR)</a> para una experiencia más confortable. <br/> Todos los juegos diseñados para Oculus Rift(S) deberían funcionar con ALVR. <br/> Este es un fork de ALVR que funciona con el Oculus Quest y Go. <br/> <br/> Visítenos en GitHub: <a href='https://github.com/alvr-org/ALVR/'>https://github.com/alvr-org/ALVR/</a> <br/> Únete a nosotros en Discord: <a href='https://discord.com/invite/KbKk3UM'>https://discord.com/invite/KbKk3UM</a>",
     "checkForUpdates": "Buscar actualizaciones",
-    "noNeedForUpdate": "No es necesario actualizar, ya tienes la última versión",
-    "needUpdateClickForMore": "Hay una nueva actualización, haga clic para obtener más información"
+    "noNeedForUpdate": "No hay nuevas actualizaciones",
+    "needUpdateClickForMore": "Hay una nueva actualización, haga clic para obtener más información",
+    "updatePopupTitle": "Actualización encontrada!",
+    "textUpdateStart": "La actualización",
+    "textUpdateEnd": "ha sido encontrada, ¿le gustaría actualizarla ahora?",
+    "cancelUpdateButton": "Ignorar",
+    "moreUpdateButton": "Ir al sitio web",
+    "okUpdateButton": "Actualizar",
 });

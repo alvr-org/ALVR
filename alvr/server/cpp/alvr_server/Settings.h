@@ -61,10 +61,6 @@ public:
 	float m_gamma;
 	float m_sharpening;
 
-	bool m_enableSound;
-	std::string m_soundDevice;
-	bool m_muteHostAudioOutput;
-
 	bool m_streamMic;
 	std::string m_microphoneDevice;
 

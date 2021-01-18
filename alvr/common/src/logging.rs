@@ -77,6 +77,10 @@ pub fn show_e<E: Display>(e: E) {
     show_e_block(e, false);
 }
 
+pub fn show_e_dbg<E: std::fmt::Debug>(e: E) {
+    show_e_block(format!("{:?}", e), false);
+}
+
 pub fn show_e_blocking<E: Display>(e: E) {
     show_e_block(e, true);
 }

@@ -121,10 +121,11 @@ pub struct VideoDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum SampleFormat {
     Signed16Bit,
     Unsigned16Bit,
-    Signed32Bit,
+    Float32Bit,
 }
 
 impl SampleFormat {
@@ -132,7 +133,7 @@ impl SampleFormat {
         match self {
             Self::Signed16Bit => cpal::SampleFormat::I16,
             Self::Unsigned16Bit => cpal::SampleFormat::U16,
-            Self::Signed32Bit => cpal::SampleFormat::F32,
+            Self::Float32Bit => cpal::SampleFormat::F32,
         }
     }
 
@@ -140,12 +141,13 @@ impl SampleFormat {
         match format {
             cpal::SampleFormat::I16 => Self::Signed16Bit,
             cpal::SampleFormat::U16 => Self::Unsigned16Bit,
-            cpal::SampleFormat::F32 => Self::Signed32Bit,
+            cpal::SampleFormat::F32 => Self::Float32Bit,
         }
     }
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct AudioConfig {
     pub preferred_channels_count: u16,
     pub preferred_sample_rate: u32,
@@ -157,13 +159,13 @@ pub struct AudioConfig {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputAudioDesc {
-    // deviceDropdown should poll the available audio devices and set "device"
-    #[schema(placeholder = "device_dropdown")]
-    //
-    #[schema(advanced)]
-    pub device: String,
+    #[schema(gui = "UpDown")]
+    pub device_index: Option<u32>,
 
     pub mute_when_streaming: bool,
+
+    #[schema(advanced)]
+    pub config: AudioConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -378,7 +380,7 @@ pub fn session_settings_default() -> SettingsDefault {
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
-            preferred_fps: 72_f32,
+            preferred_fps: 72.,
             render_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
                 Scale: 0.75,
@@ -424,8 +426,23 @@ pub fn session_settings_default() -> SettingsDefault {
             game_audio: SwitchDefault {
                 enabled: true,
                 content: OutputAudioDescDefault {
-                    device: "".into(),
+                    device_index: OptionalDefault {
+                        set: false,
+                        content: 0,
+                    },
                     mute_when_streaming: true,
+                    config: AudioConfigDefault {
+                        preferred_channels_count: 2,
+                        preferred_sample_rate: 44100,
+                        preferred_buffer_size: OptionalDefault {
+                            set: true,
+                            content: 0, // todo: find optimal value
+                        },
+                        preferred_sample_format: SampleFormatDefault {
+                            variant: SampleFormatDefaultVariant::Signed16Bit,
+                        },
+                        max_buffer_count_extra: 1,
+                    },
                 },
             },
             microphone: SwitchDefault {

@@ -70,9 +70,6 @@ void Settings::Load()
 			m_eyeFov[eye].bottom = 45;
 		}
 
-		m_enableSound = config.get("enable_game_audio").get<bool>();
-		m_soundDevice = config.get("game_audio_device").get<std::string>();
-		m_muteHostAudioOutput = config.get("mute_host_audio_output").get<bool>();
 		m_streamMic = config.get("enable_microphone").get<bool>();
 		m_microphoneDevice = config.get("microphone_device").get<std::string>();
 

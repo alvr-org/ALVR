@@ -150,13 +150,6 @@ async fn connect_to_any_client(
             eye_resolution_height: video_eye_height,
             target_eye_resolution_width: target_eye_width,
             target_eye_resolution_height: target_eye_height,
-            enable_game_audio: session_settings.audio.game_audio.enabled,
-            game_audio_device: session_settings.audio.game_audio.content.device.clone(),
-            mute_host_audio_output: session_settings
-                .audio
-                .game_audio
-                .content
-                .mute_when_streaming,
             enable_microphone: session_settings.audio.microphone.enabled,
             microphone_device: session_settings.audio.microphone.content.device.clone(),
             seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
@@ -322,6 +315,9 @@ impl Drop for StreamCloseGuard {
 }
 
 pub async fn connection_lifecycle_loop() -> StrResult {
+    let configs = audio::supported_audio_output_configs(None)?;
+    // show_e_dbg(configs);
+
     loop {
         let (mut control_sender, mut control_receiver) = tokio::select! {
             Err(e) = client_discovery() => break fmt_e!("Client discovery failed: {}", e),

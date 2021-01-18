@@ -14,15 +14,6 @@ use std::os::windows::process::CommandExt;
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
-#[cfg(windows)]
-fn kill_process(pid: usize) {
-    Command::new("taskkill.exe")
-        .args(&["/PID", &pid.to_string(), "/F"])
-        .creation_flags(CREATE_NO_WINDOW)
-        .output()
-        .ok();
-}
-
 pub fn is_steamvr_running() -> bool {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
@@ -46,6 +37,15 @@ pub fn maybe_launch_steamvr() {
             .spawn()
             .ok();
     }
+}
+
+#[cfg(windows)]
+fn kill_process(pid: usize) {
+    Command::new("taskkill.exe")
+        .args(&["/PID", &pid.to_string(), "/F"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .ok();
 }
 
 // this will not kill the child process "ALVR launcher"

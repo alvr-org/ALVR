@@ -1,4 +1,4 @@
-use crate::{data::*, *};
+use crate::{*, data::*, logging::{show_e, show_e_dbg}};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, SampleRate, Stream, StreamConfig, SupportedBufferSize, SupportedStreamConfigRange,
@@ -212,6 +212,7 @@ pub fn virtual_mic_devices() -> StrResult<VirtualMicDevicesDesc> {
 }
 
 fn get_audio_config_ranges(configs: Vec<SupportedStreamConfigRange>) -> Vec<AudioConfigRange> {
+    show_e_dbg(&configs);
     configs
         .iter()
         .map(|c| {
@@ -265,18 +266,13 @@ pub fn supported_audio_output_configs(
         }
     }
     let device = if let Some(device) = maybe_device.or_else(|| host.default_output_device()) {
+        show_e(device.name().unwrap());
         device
     } else {
         return fmt_e!("No output audio device found");
     };
 
-    let configs = get_audio_config_ranges(trace_err!(device.supported_output_configs())?.collect());
-
-    if !configs.is_empty() {
-        Ok(configs)
-    } else {
-        fmt_e!("No output audio configuration found")
-    }
+    Ok(get_audio_config_ranges(trace_err!(device.supported_output_configs())?.collect()))
 }
 
 pub fn select_audio_config(

@@ -527,7 +527,6 @@ define([
 
         function setDeviceList() {
             if (audio_devices == null || audio_devices.length == 0) {
-                $("#_root_audio_gameAudio_content_deviceDropdown").hide();
                 $("#_root_audio_microphone_content_deviceDropdown").hide();
 
                 Lobibox.notify("warning", {
@@ -543,110 +542,6 @@ define([
                 });
 
                 return;
-            }
-
-            // Game audio
-            {
-                let el = $("#_root_audio_gameAudio_content_deviceDropdown");
-                el.parent().addClass("special");
-                el.unbind();
-
-                let target = $("#_root_audio_gameAudio_content_device");
-
-                let current = "";
-                try {
-                    current = alvrSettings.getSession().sessionSettings.audio
-                        .gameAudio.content.device;
-                } catch (err) {
-                    console.error(
-                        "Layout of settings changed, audio devices can not be added. Please report this bug!",
-                    );
-                }
-
-                audio_devices.list.forEach((device) => {
-                    let name = device[1];
-                    if (device[0] === audio_devices.default_game_audio) {
-                        name = "(default) " + device[1];
-                        el.after(
-                            alvrSettings.getHelpReset(
-                                "deviceDropdown",
-                                "_root_audio_gameAudio_content",
-                                device[0],
-                            ),
-                        );
-
-                        const deviceReset = $(
-                            "#_root_audio_gameAudio_content_device",
-                        )
-                            .parent()
-                            .find(".helpReset .paramReset");
-                        deviceReset.attr("default", device[0]);
-                    }
-                    el.append(
-                        `<option value="${device[0]}"> ${name}  </option>`,
-                    );
-                });
-
-                if (
-                    audio_devices.default_game_audio === null &&
-                    audio_devices.list.length != 0
-                ) {
-                    el.after(
-                        alvrSettings.getHelpReset(
-                            "deviceDropdown",
-                            "_root_audio_gameAudio_content",
-                            audio_devices.list[0][0],
-                        ),
-                    );
-
-                    const deviceReset = $(
-                        "#_root_audio_gameAudio_content_device",
-                    )
-                        .parent()
-                        .find(".helpReset .paramReset");
-                    deviceReset.attr("default", audio_devices.list[0][0]);
-                }
-
-                //set default as current audio device if empty
-                if (current.trim() === "") {
-                    target.val(audio_devices.default_game_audio);
-                    target.change();
-                    alvrSettings.storeParam(target);
-                }
-
-                //move selected audio device to top of list
-                let $el = $("#_root_audio_gameAudio_content_deviceDropdown")
-                    .find("option[value='" + target.val() + "']")
-                    .remove();
-                $("#_root_audio_gameAudio_content_deviceDropdown").prepend($el);
-
-                let select = new Selectal(
-                    "#_root_audio_gameAudio_content_deviceDropdown",
-                );
-                el = $("#_root_audio_gameAudio_content_deviceDropdown");
-
-                //select the current option in dropdown
-                el.val(target.val());
-
-                let updating = false;
-                //add listener to change
-                el.change((ev) => {
-                    if (!updating) {
-                        updating = true;
-                        target.val($(ev.target).val());
-                        target.change();
-                        updating = false;
-                    }
-                });
-
-                target.change(() => {
-                    if (!updating) {
-                        updating = true;
-                        el.val(target.val());
-                        el.change();
-                        updating = false;
-                    }
-                });
             }
 
             // Microphone

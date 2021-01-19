@@ -318,7 +318,12 @@ async fn try_connect(
         let control_sender = control_sender.clone();
         async move {
             loop {
-                control_sender.lock().await.send(&ClientControlPacket::NetworkKeepAlive).await.ok();
+                control_sender
+                    .lock()
+                    .await
+                    .send(&ClientControlPacket::NetworkKeepAlive)
+                    .await
+                    .ok();
                 time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
             }
         }

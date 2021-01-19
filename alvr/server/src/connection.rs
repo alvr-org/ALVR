@@ -3,10 +3,7 @@ use alvr_common::{data::*, logging::*, sockets::*, *};
 use nalgebra::Translation3;
 use settings_schema::Switch;
 use std::{collections::HashMap, net::IpAddr, process::Command, sync::Arc, time::Duration};
-use tokio::{
-    sync::Mutex,
-    time,
-};
+use tokio::{sync::Mutex, time};
 
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(5);
 
@@ -348,7 +345,10 @@ pub async fn connection_lifecycle_loop() -> StrResult {
         log_id(LogId::ClientConnected);
         if !on_connect_script.is_empty() {
             info!("Running on connect script (connect): {}", on_connect_script);
-            if let Err(e) = Command::new(&on_connect_script).env("ACTION", "connect").spawn() {
+            if let Err(e) = Command::new(&on_connect_script)
+                .env("ACTION", "connect")
+                .spawn()
+            {
                 warn!("Failed to run connect script: {}", e);
             }
         }
@@ -362,7 +362,12 @@ pub async fn connection_lifecycle_loop() -> StrResult {
             let control_sender = control_sender.clone();
             async move {
                 loop {
-                    control_sender.lock().await.send(&ServerControlPacket::NetworkKeepAlive).await.ok();
+                    control_sender
+                        .lock()
+                        .await
+                        .send(&ServerControlPacket::NetworkKeepAlive)
+                        .await
+                        .ok();
                     time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
                 }
             }
@@ -409,8 +414,14 @@ pub async fn connection_lifecycle_loop() -> StrResult {
                             .on_disconnect_script
                             .clone();
                         if !on_disconnect_script.is_empty() {
-                            info!("Running on disconnect script (disconnect): {}", on_disconnect_script);
-                            if let Err(e) = Command::new(&on_disconnect_script).env("ACTION", "disconnect").spawn() {
+                            info!(
+                                "Running on disconnect script (disconnect): {}",
+                                on_disconnect_script
+                            );
+                            if let Err(e) = Command::new(&on_disconnect_script)
+                                .env("ACTION", "disconnect")
+                                .spawn()
+                            {
                                 warn!("Failed to run disconnect script: {}", e);
                             }
                         }

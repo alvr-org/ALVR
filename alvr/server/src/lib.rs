@@ -53,8 +53,14 @@ pub fn shutdown_runtime() {
         .on_disconnect_script
         .clone();
     if !on_disconnect_script.is_empty() {
-        info!("Running on disconnect script (shutdown): {}", on_disconnect_script);
-        if let Err(e) = Command::new(&on_disconnect_script).env("ACTION", "shutdown").spawn() {
+        info!(
+            "Running on disconnect script (shutdown): {}",
+            on_disconnect_script
+        );
+        if let Err(e) = Command::new(&on_disconnect_script)
+            .env("ACTION", "shutdown")
+            .spawn()
+        {
             warn!("Failed to run disconnect script: {}", e);
         }
     }

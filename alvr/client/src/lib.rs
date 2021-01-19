@@ -2,6 +2,7 @@
 
 mod connection;
 mod logging_backend;
+mod audio;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 

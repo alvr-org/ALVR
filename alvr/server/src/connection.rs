@@ -315,9 +315,6 @@ impl Drop for StreamCloseGuard {
 }
 
 pub async fn connection_lifecycle_loop() -> StrResult {
-    let configs = audio::supported_audio_output_configs(None)?;
-    // show_e_dbg(configs);
-
     loop {
         let (mut control_sender, mut control_receiver) = tokio::select! {
             Err(e) = client_discovery() => break fmt_e!("Client discovery failed: {}", e),

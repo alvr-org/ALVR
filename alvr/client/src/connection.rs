@@ -1,4 +1,6 @@
+use crate::audio;
 use alvr_common::{data::*, logging::*, sockets::ConnectionResult, *};
+use futures::channel::mpsc;
 use jni::{
     objects::{GlobalRef, JClass},
     JavaVM,
@@ -349,6 +351,18 @@ async fn try_connect(
             }
         }
     };
+
+    let audio_config = AudioConfig {
+        channels_count: 2,
+        sample_rate: 48000,
+        buffer_size: None,
+        sample_format: SampleFormat::Int16,
+        max_buffer_count_extra: 1,
+    };
+
+    let (sender, receiver) = std::sync::mpsc::channel();
+
+    let _audio_stream_guard = trace_err!(audio::AudioPlayer::start(audio_config, receiver));
 
     tokio::select! {
         res = stream_socket_loop => trace_err!(res)?,

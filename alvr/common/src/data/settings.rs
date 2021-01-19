@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use settings_schema::*;
 
+use crate::StrResult;
+
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum FrameSize {
@@ -123,25 +125,23 @@ pub struct VideoDesc {
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum SampleFormat {
-    Signed16Bit,
-    Unsigned16Bit,
-    Float32Bit,
+    Int16,
+    Float32,
 }
 
 impl SampleFormat {
     pub fn to_cpal(self) -> cpal::SampleFormat {
         match self {
-            Self::Signed16Bit => cpal::SampleFormat::I16,
-            Self::Unsigned16Bit => cpal::SampleFormat::U16,
-            Self::Float32Bit => cpal::SampleFormat::F32,
+            Self::Int16 => cpal::SampleFormat::I16,
+            Self::Float32 => cpal::SampleFormat::F32,
         }
     }
 
-    pub fn from_cpal(format: cpal::SampleFormat) -> Self {
+    pub fn from_cpal(format: cpal::SampleFormat) -> StrResult<Self> {
         match format {
-            cpal::SampleFormat::I16 => Self::Signed16Bit,
-            cpal::SampleFormat::U16 => Self::Unsigned16Bit,
-            cpal::SampleFormat::F32 => Self::Float32Bit,
+            cpal::SampleFormat::I16 => Ok(Self::Int16),
+            cpal::SampleFormat::F32 => Ok(Self::Float32),
+            _ => Err("Unsupported".into()),
         }
     }
 }
@@ -149,10 +149,10 @@ impl SampleFormat {
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioConfig {
-    pub preferred_channels_count: u16,
-    pub preferred_sample_rate: u32,
-    pub preferred_buffer_size: Option<u32>,
-    pub preferred_sample_format: SampleFormat,
+    pub channels_count: u16,
+    pub sample_rate: u32,
+    pub buffer_size: Option<u32>,
+    pub sample_format: SampleFormat,
     pub max_buffer_count_extra: u64,
 }
 
@@ -165,7 +165,7 @@ pub struct OutputAudioDesc {
     pub mute_when_streaming: bool,
 
     #[schema(advanced)]
-    pub config: AudioConfig,
+    pub preferred_config: AudioConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -431,15 +431,15 @@ pub fn session_settings_default() -> SettingsDefault {
                         content: 0,
                     },
                     mute_when_streaming: true,
-                    config: AudioConfigDefault {
-                        preferred_channels_count: 2,
-                        preferred_sample_rate: 44100,
-                        preferred_buffer_size: OptionalDefault {
-                            set: true,
-                            content: 0, // todo: find optimal value
+                    preferred_config: AudioConfigDefault {
+                        channels_count: 2,
+                        sample_rate: 44100,
+                        buffer_size: OptionalDefault {
+                            set: false,
+                            content: 0,
                         },
-                        preferred_sample_format: SampleFormatDefault {
-                            variant: SampleFormatDefaultVariant::Signed16Bit,
+                        sample_format: SampleFormatDefault {
+                            variant: SampleFormatDefaultVariant::Int16,
                         },
                         max_buffer_count_extra: 1,
                     },

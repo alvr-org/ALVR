@@ -10,6 +10,7 @@ define({
         "driverNotice": "IMPORTANT: Registering the driver is generally discouraged. Now the driver registration is needed only when you want to launch SteamVR by itself or when you want to use ALVR together with other SteamVR drivers, like <a href='https://www.driver4vr.com/'>Driver4VR</a> for full body tracking.",
     },
     "it": true,
+    "si": true,
     "es": true,
     "fr": true,
     "ja": true,

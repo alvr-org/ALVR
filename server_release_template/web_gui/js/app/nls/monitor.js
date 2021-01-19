@@ -62,6 +62,7 @@ define({
         "performanceNoDateCaptured": "No data captured yet",
     },
     "it": true,
+    "si": true,
     "es": true,
     "fr": true,
     "ja": true,

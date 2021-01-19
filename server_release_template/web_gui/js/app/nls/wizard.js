@@ -41,6 +41,7 @@ define({
         "buttonClose": "Close",
     },
     "it": true,
+    "si": true,
     "es": true,
     "fr": true,
     "ja": true,

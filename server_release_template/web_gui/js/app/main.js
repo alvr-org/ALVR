@@ -86,13 +86,16 @@ define([
                                         data.assets.forEach((asset) => {
                                             const found = asset.name.match(".*\.exe$");
                                             if (found) {
-                                                url =
-                                                    asset.browser_download_url;
-                                                size = asset.size;
+                                                const urlValid = asset.browser_download_url.match("^(http|https)://");
+                                                if (urlValid) {
+                                                    url =
+                                                        asset.browser_download_url;
+                                                    size = asset.size;
+                                                }
                                             }
                                         });
                                         if (url !== "") {
-                                            triggerUpdate(url);
+                                            triggerUpdate(url, size);
                                         }
                                     }
                                 });
@@ -146,21 +149,67 @@ define([
             });
         }
 
-        function triggerUpdate(url) {
+        function triggerUpdate(url, size) {
+            $("#setupWizard").modal("hide");
+            $("#bodyContent").hide();
+            $("#updating").show();
+
+            const elem = document.getElementById("progressBar");
+            
+            // Create WebSocket connection.
+            const webSocket = new WebSocket("ws://"+ window.location.host + "/events");
+            
             $.ajax({
                 type: "POST",
                 url: "/update",
                 contentType: "application/json;charset=UTF-8",
                 data: JSON.stringify(url),
+                success: function (res) {
+                    if (res === "") {
+                        console.log("Success");
+                    } else {
+                        console.log("Info: ", res);
+                        webSocket.close();
+                        $("#bodyContent").show();
+                        $("#updating").hide();
+                    }
+                },
+                error: function (res) {
+                    console.log("Error: ", res);
+                    webSocket.close();
+                    $("#bodyContent").show();
+                    $("#updating").hide();
+                },
             });
-            Lobibox.notify("success", {
-                size: "mini",
-                rounded: true,
-                delayIndicator: false,
-                sound: false,
-                iconSource: "fontAwesome",
-                msg: i18n.noNeedForUpdate,
-            });
+
+            if (webSocket !== null && typeof webSocket !== undefined) {
+                webSocket.onmessage = function(event) {
+                    try {
+                        const dataJSON = JSON.parse(event.data);
+                        if (dataJSON.id === "updateDownloadProgress") {
+                            const sizeMb = size / (1024 * 1024);
+                            const downloadProgress = (dataJSON.data * sizeMb).toFixed(2);
+                            document.getElementById("downloadProgress").innerHTML = downloadProgress + "Mb" + " / " + sizeMb.toFixed(2) + "Mb";
+                            const progress = (dataJSON.data * 100).toFixed(2);
+                            elem.style.width = progress + "%";
+                            elem.innerHTML = progress  + "%";
+                        }
+                    } catch (error) {
+                        console.log("Error with message: ", event);
+                        Lobibox.notify("error", {
+                            rounded: true,
+                            delay: -1,
+                            delayIndicator: false,
+                            sound: false,
+                            position: "bottom left",
+                            iconSource: "fontAwesome",
+                            msg: error.stack,
+                            closable: true,
+                            messageHeight: 250,
+                        });
+                    }
+                };
+            }
         }
 
         $("#bodyContent").append(template);

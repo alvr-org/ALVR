@@ -29,6 +29,17 @@
             flex: 0;
             z-index: 100;
         }
+
+        #updating {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 1;
+            background-color: #fff;
+        }
     </style>
 </head>
 
@@ -38,6 +49,18 @@
     </div>
 
     <div id="bodyContent" style="display: none;">
+    </div>
+
+    <div id="updating" style="display: none;">
+        <div>Please wait</div>
+        <br />
+        <img id="loading-image" src="images/ajax-loader.gif" alt="Updating..." />
+        <br />
+        <div>Downloading update ...</div>
+        <div id="downloadProgress"></div>
+        <div style="width: 50vw" class="progress">
+            <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+        </div>
     </div>
 
     <script data-main="js/app" src="js/lib/require.js"></script>

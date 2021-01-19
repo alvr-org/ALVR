@@ -1591,9 +1591,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4060f4657be78b8e766215b02b18a2e862d83745545de804638e2b545e81aee6"
+checksum = "c9495705279e7140bf035dde1f6e750c162df8b625267cd52cc44e0b156732c8"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -3235,7 +3235,7 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c026d7df8b298d90ccbbc5190bd04d85e159eaf5576caeacf8741da93ccbd2e5"
 dependencies = [
- "getrandom 0.2.1",
+ "getrandom 0.2.2",
 ]
 
 [[package]]
@@ -3669,18 +3669,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.119"
+version = "1.0.120"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bdd36f49e35b61d49efd8aa7fc068fd295961fd2286d0b2ee9a4c7a14e99cc3"
+checksum = "166b2349061381baf54a58e4b13c89369feb0ef2eaa57198899e2312aac30aab"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.119"
+version = "1.0.120"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "552954ce79a059ddd5fd68c271592374bd15cab2274970380c000118aeffe1cd"
+checksum = "0ca2a8cb5805ce9e3b95435e3765b7b553cecc762d938d409434338386cb5775"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4093,9 +4093,9 @@ dependencies = [
 
 [[package]]
 name = "terminal_size"
-version = "0.1.15"
+version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bd2d183bd3fac5f5fe38ddbeb4dc9aec4a39a9d7d59e7491d900302da01cbe1"
+checksum = "86ca8ced750734db02076f44132d802af0b33b09942331f4459dde8636fd2406"
 dependencies = [
  "libc",
  "winapi 0.3.9",

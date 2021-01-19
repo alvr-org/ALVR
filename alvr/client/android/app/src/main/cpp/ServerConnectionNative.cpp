@@ -31,8 +31,6 @@
 #include <utility>
 #include <bits/fcntl.h>
 
-const uint64_t CONNECTION_TIMEOUT = 3 * 1000 * 1000;
-
 struct SendBuffer {
     char buf[MAX_PACKET_UDP_PACKET_SIZE];
     int len;
@@ -259,7 +257,7 @@ void onPacketRecv(const char *packet, size_t packetSize) {
 
         if (g_socket.m_lastFrameIndex != header->trackingFrameIndex) {
             LatencyCollector::Instance().receivedFirst(header->trackingFrameIndex);
-            if ((int64_t) header->sentTime - g_socket.m_timeDiff > getTimestampUs()) {
+            if ((int64_t) header->sentTime - g_socket.m_timeDiff > (int64_t) getTimestampUs()) {
                 LatencyCollector::Instance().estimatedSent(header->trackingFrameIndex, 0);
             } else {
                 LatencyCollector::Instance().estimatedSent(header->trackingFrameIndex,

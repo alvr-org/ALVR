@@ -48,6 +48,7 @@ pub fn show_warn<T, E: Display>(res: Result<T, E>) -> Option<T> {
     res.map_err(show_w).ok()
 }
 
+#[allow(unused_variables)]
 fn show_e_block<E: Display>(e: E, blocking: bool) {
     log::error!("{}", e);
 

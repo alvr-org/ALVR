@@ -93,6 +93,7 @@ dependencies = [
  "oboe 0.4.0",
  "parking_lot",
  "rand 0.8.2",
+ "serde",
  "serde_json",
  "settings-schema",
  "tokio 1.0.2",

@@ -590,7 +590,7 @@ void sendMicData() {
     if (outputBufferNumElements > 0) {
         int count = 0;
 
-        for (int i = 0; i < outputBufferNumElements; i += 100) {
+        for (size_t i = 0; i < outputBufferNumElements; i += 100) {
             int rest = outputBufferNumElements - count * 100;
 
             MicAudioFrame audio{};
@@ -837,7 +837,7 @@ void updateHapticsState() {
                                          requiredHapticsBuffer);
             buffer.Terminated = false;
 
-            for (int i = 0; i < remoteCapabilities.HapticSamplesMax; i++) {
+            for (uint32_t i = 0; i < remoteCapabilities.HapticSamplesMax; i++) {
                 float current = ((currentUs - s.startUs) / 1000000.0f) +
                                 (remoteCapabilities.HapticSampleDurationMS * i) / 1000.0f;
                 float intensity =
@@ -914,7 +914,7 @@ void renderNative(long long renderedFrameIndex) {
     frameDesc.LayerCount = 1;
     frameDesc.Layers = layers2;
 
-    ovrResult res = vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
+    vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
 
     LatencyCollector::Instance().submit(renderedFrameIndex);
 

@@ -16,6 +16,7 @@ build-cpp = []
 parking_lot = "0.11"
 lazy_static = "1"
 log = "0.4"
+serde = "1"
 serde_json = "1"
 settings-schema = { path = "../settings-schema" }
 alvr_common = { path = "../common" }

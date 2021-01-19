@@ -36,12 +36,13 @@ async fn client_discovery() -> StrResult {
     Err(res.err().unwrap_or_else(|| "".into()))
 }
 
-async fn connect_to_any_client(
-    clients_info: HashMap<IpAddr, PublicIdentity>,
-) -> (
-    ControlSocketSender<ServerControlPacket>,
-    ControlSocketReceiver<ClientControlPacket>,
-) {
+struct ClientInfo {
+    control_sender: ControlSocketSender<ServerControlPacket>,
+    control_receiver: ControlSocketReceiver<ClientControlPacket>,
+    game_audio_config: AudioConfig,
+}
+
+async fn connect_to_any_client(clients_info: HashMap<IpAddr, PublicIdentity>) -> ClientInfo {
     loop {
         let maybe_pending_connection =
             sockets::begin_connecting_to_client(&clients_info.keys().cloned().collect::<Vec<_>>())
@@ -117,16 +118,23 @@ async fn connect_to_any_client(
             server_ip, settings.connection.web_server_port
         );
 
+        headset_info.reserved
+
+        #[derive(serde::Serialize)]
+        struct ReservedData {
+            game_audio_config: AudioConfig,
+        }
+
         let client_config = ClientConfigPacket {
             session_desc: serde_json::to_string(SESSION_MANAGER.lock().get()).unwrap(),
             eye_resolution_width: video_eye_width,
             eye_resolution_height: video_eye_height,
             fps,
             web_gui_url,
-            reserved: "".into(),
+            reserved: serde_json::to_string(&ReservedData {}).unwrap(),
         };
 
-        let (mut sender, receiver) =
+        let (mut control_sender, control_receiver) =
             match sockets::finish_connecting_to_client(pending_socket, client_config).await {
                 Ok(control_socket) => control_socket,
                 Err(e) => {
@@ -259,7 +267,7 @@ async fn connect_to_any_client(
                 .get_mut(None, SessionUpdateType::Other)
                 .openvr_config = new_openvr_config;
 
-            sender.send(&ServerControlPacket::Restarting).await.ok();
+                control_sender.send(&ServerControlPacket::Restarting).await.ok();
 
             crate::notify_restart_driver();
 
@@ -267,7 +275,10 @@ async fn connect_to_any_client(
             std::future::pending::<()>().await;
         }
 
-        break (sender, receiver);
+        break ClientInfo {
+            control_sender,
+            control_receiver,
+        };
     }
 }
 

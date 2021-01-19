@@ -21,7 +21,7 @@ std::string AssetExpandFilePath(const std::string &path, void *) {
 }
 
 bool AssetReadWholeFile(std::vector<unsigned char> *out,
-                               std::string *err, const std::string &path,
+                               std::string *, const std::string &path,
                                void *) {
     AAsset *asset = AAssetManager_open(g_assetManager, path.c_str(), AASSET_MODE_STREAMING);
     if (asset == NULL) {
@@ -41,8 +41,8 @@ bool AssetReadWholeFile(std::vector<unsigned char> *out,
     return true;
 }
 
-bool AssetWriteWholeFile(std::string *err, const std::string &filepath,
-                        const std::vector<unsigned char> &contents, void *) {
+bool AssetWriteWholeFile(std::string *, const std::string &,
+                        const std::vector<unsigned char> &, void *) {
     return false;
 }
 

@@ -127,7 +127,7 @@ pub async fn connect_to_server<S: Serialize, R: DeserializeOwned>(
                         if let Ok(HandshakePacket::Server(handshake_packet)) =
                             bincode::deserialize(&server_response_buffer[..packet_size])
                         {
-                            error!("received packet {:?}", &handshake_packet);
+                            warn!("received packet {:?}", &handshake_packet);
                             break Ok(ConnectionResult::ServerMessage(handshake_packet));
                         }
                     }

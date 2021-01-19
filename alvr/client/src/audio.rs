@@ -1,11 +1,10 @@
 use alvr_common::{data::AudioConfig, *};
 use oboe::*;
-use std::{collections::VecDeque, sync::mpsc::Receiver, thread, time::Duration};
+use std::{collections::VecDeque, mem::size_of, sync::mpsc::Receiver};
 use tokio::sync::mpsc::UnboundedSender;
 
 struct RecorderCallback {
     sender: UnboundedSender<Vec<u8>>,
-    sample_buffer: Vec<u8>,
 }
 
 impl AudioInputCallback for RecorderCallback {
@@ -14,24 +13,22 @@ impl AudioInputCallback for RecorderCallback {
     fn on_audio_ready(
         &mut self,
         _: &mut dyn AudioInputStreamSafe,
-        audio_data: &[i16],
+        frames: &[i16],
     ) -> DataCallbackResult {
-        self.sample_buffer.clear();
+        let mut sample_buffer = Vec::with_capacity(frames.len() * size_of::<i16>());
 
-        // this code is inefficient but Oboe will be replaced by CPAL at one point
-        for frame in audio_data {
-            let pair = frame.to_ne_bytes();
-            self.sample_buffer.extend(&pair);
+        for frame in frames {
+            sample_buffer.extend(&frame.to_ne_bytes());
         }
 
-        self.sender.send(self.sample_buffer.clone());
+        self.sender.send(sample_buffer.clone()).ok();
 
         DataCallbackResult::Continue
     }
 }
 
 pub struct AudioRecorder {
-    stream: AudioStreamAsync<Input, RecorderCallback>,
+    _stream: AudioStreamAsync<Input, RecorderCallback>,
 }
 
 unsafe impl Send for AudioRecorder {}
@@ -49,23 +46,21 @@ impl AudioRecorder {
             .set_input()
             .set_usage(Usage::VoiceCommunication)
             .set_input_preset(InputPreset::VoiceCommunication)
-            .set_callback(RecorderCallback {
-                sender,
-                sample_buffer: vec![],
-            })
+            .set_callback(RecorderCallback { sender })
             .open_stream())?;
 
         trace_err!(stream.start())?;
 
-        Ok(Self { stream })
+        Ok(Self { _stream: stream })
     }
 }
 
-const OUTPUT_FRAME_SIZE: usize = 2 * 2;
+const OUTPUT_FRAME_SIZE: usize = 2 * size_of::<i16>();
 
 struct PlayerCallback {
     receiver: Receiver<Vec<u8>>,
     sample_buffer: VecDeque<u8>,
+    max_buffer_count_extra: usize,
 }
 
 impl AudioOutputCallback for PlayerCallback {
@@ -73,38 +68,45 @@ impl AudioOutputCallback for PlayerCallback {
 
     fn on_audio_ready(
         &mut self,
-        audio_stream: &mut dyn AudioOutputStreamSafe,
+        _: &mut dyn AudioOutputStreamSafe,
         frames: &mut [(i16, i16)],
     ) -> DataCallbackResult {
-        for frame in frames {
-            frame.0 = rand::random::<i16>();
-            frame.1 = rand::random::<i16>();
+        while let Ok(packet) = self.receiver.try_recv() {
+            self.sample_buffer.extend(packet);
         }
 
-        // while let Ok(packet) = self.receiver.try_recv() {
-        //     self.sample_buffer.extend(packet);
-        // }
+        let frames_bytes_count = frames.len() * OUTPUT_FRAME_SIZE;
+        if self.sample_buffer.len() >= frames_bytes_count {
+            let buffer = self
+                .sample_buffer
+                .drain(0..frames_bytes_count)
+                .collect::<Vec<_>>();
 
-        // thread::sleep(Duration::from_millis(1));
-        // let data_ref = data.bytes_mut();
+            for (idx, (left, right)) in frames.iter_mut().enumerate() {
+                *left = i16::from_ne_bytes([
+                    buffer[idx * OUTPUT_FRAME_SIZE],
+                    buffer[idx * OUTPUT_FRAME_SIZE + 1],
+                ]);
+                *right = i16::from_ne_bytes([
+                    buffer[idx * OUTPUT_FRAME_SIZE + 2],
+                    buffer[idx * OUTPUT_FRAME_SIZE + 3],
+                ]);
+            }
+        }
 
-        // if sample_buffer.len() >= data_ref.len() {
-        //     data_ref.copy_from_slice(&sample_buffer.drain(0..data_ref.len()).collect::<Vec<_>>())
-        // }
-
-        // // trickle drain overgrown buffer. todo: use smarter policy with EventTiming
-        // if sample_buffer.len()
-        //     >= data_ref.len() * config.max_buffer_count_extra as usize + frame_size
-        // {
-        //     sample_buffer.drain(0..frame_size);
-        // }
+        // trickle drain overgrown buffer. todo: use smarter policy with EventTiming
+        if self.sample_buffer.len()
+            >= frames_bytes_count * self.max_buffer_count_extra + OUTPUT_FRAME_SIZE
+        {
+            self.sample_buffer.drain(0..OUTPUT_FRAME_SIZE);
+        }
 
         DataCallbackResult::Continue
     }
 }
 
 pub struct AudioPlayer {
-    stream: AudioStreamAsync<Output, PlayerCallback>,
+    _stream: AudioStreamAsync<Output, PlayerCallback>,
 }
 
 unsafe impl Send for AudioPlayer {}
@@ -123,11 +125,12 @@ impl AudioPlayer {
             .set_callback(PlayerCallback {
                 receiver,
                 sample_buffer: VecDeque::new(),
+                max_buffer_count_extra: config.max_buffer_count_extra as _,
             })
             .open_stream())?;
 
         trace_err!(stream.start())?;
 
-        Ok(Self { stream })
+        Ok(Self { _stream: stream })
     }
 }

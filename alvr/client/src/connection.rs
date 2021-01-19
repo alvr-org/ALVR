@@ -1,6 +1,5 @@
 use crate::audio;
 use alvr_common::{data::*, logging::*, sockets::ConnectionResult, *};
-use futures::channel::mpsc;
 use jni::{
     objects::{GlobalRef, JClass},
     JavaVM,
@@ -227,6 +226,9 @@ async fn try_connect(
         let java_vm = java_vm.clone();
         let activity_ref = activity_ref.clone();
         let nal_class_ref = nal_class_ref.clone();
+        let codec = baseline_settings.video.codec;
+        let client_recv_buffer_size = baseline_settings.connection.client_recv_buffer_size;
+        let enable_fec = baseline_settings.connection.enable_fec;
         move || -> StrResult {
             let env = trace_err!(java_vm.attach_current_thread())?;
             let env_ptr = env.get_native_interface() as _;
@@ -239,9 +241,9 @@ async fn try_connect(
                     *activity_obj as _,
                     **nal_class as _,
                     server_ip_cstring.as_ptr(),
-                    matches!(baseline_settings.video.codec, CodecType::HEVC) as _,
-                    baseline_settings.connection.client_recv_buffer_size as _,
-                    baseline_settings.connection.enable_fec,
+                    matches!(codec, CodecType::HEVC) as _,
+                    client_recv_buffer_size as _,
+                    enable_fec,
                 );
 
                 while is_connected.load(Ordering::Relaxed) {
@@ -315,6 +317,20 @@ async fn try_connect(
         }
     };
 
+    let (sender, receiver) = std::sync::mpsc::channel();
+
+    let mut _game_audio_stream_guard = None;
+    if matches!(baseline_settings.audio.game_audio, Switch::Enabled(_)) {
+        if let Ok(reserved_config) = json::from_str::<json::Value>(&config_packet.reserved) {
+            if let Some(config_json) = reserved_config.get("game_audio_config") {
+                if let Ok(config) = json::from_value::<AudioConfig>(config_json.clone()) {
+                    _game_audio_stream_guard =
+                        Some(trace_err!(audio::AudioPlayer::start(config, receiver))?);
+                }
+            }
+        }
+    }
+
     let control_loop = async move {
         loop {
             tokio::select! {
@@ -334,8 +350,10 @@ async fn try_connect(
                             .await?;
                             break Ok(());
                         }
-                        Ok(ServerControlPacket::Reserved(_))
-                        | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
+                        Ok(ServerControlPacket::ReservedBuffer(buffer)) => {
+                            trace_err!(sender.send(buffer))?;
+                        },
+                        Ok(ServerControlPacket::Reserved(_)) => (),
                         Err(e) => {
                             info!("Server disconnected. Cause: {}", e);
                             set_loading_message(
@@ -351,18 +369,6 @@ async fn try_connect(
             }
         }
     };
-
-    let audio_config = AudioConfig {
-        channels_count: 2,
-        sample_rate: 48000,
-        buffer_size: None,
-        sample_format: SampleFormat::Int16,
-        max_buffer_count_extra: 1,
-    };
-
-    let (sender, receiver) = std::sync::mpsc::channel();
-
-    let _audio_stream_guard = trace_err!(audio::AudioPlayer::start(audio_config, receiver));
 
     tokio::select! {
         res = stream_socket_loop => trace_err!(res)?,
@@ -403,6 +409,7 @@ pub async fn connection_lifecycle_loop(
                 )
                 .await;
                 if let Err(e) = maybe_error {
+                    error!("{}", e);
                     set_loading_message(&*java_vm, &*activity_ref, &private_identity.hostname, &e)
                         .await
                         .ok();

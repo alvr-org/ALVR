@@ -47,7 +47,7 @@ define({
         "packetss": "Packets / s",
         // Logging tab
         "logging": "Logging",
-        //validation errors        
+        //validation errors
         "error_DuplicateHostname": "A device with this hostname is already registered",
         "error_InvalidIp": "Not a valid IP v4 formatted address",
         //Performance graphs tab
@@ -61,6 +61,7 @@ define({
         "performanceNoDateCaptured": "No data captured yet",
     },
     "it": true,
+    "si": true,
     "es": true,
     "fr": true,
     "ja": true,

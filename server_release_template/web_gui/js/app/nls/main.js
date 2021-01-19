@@ -23,6 +23,7 @@ define({
         "needUpdateClickForMore": "Update available, click for more information",
     },
     "it": true,
+    "si": true,
     "es": true,
     "fr": true,
     "ja": true,

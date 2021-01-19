@@ -35,9 +35,10 @@ define({
         "textFinished": "You can always restart this wizard from the \"Installation\" tab on the left",
         "buttonNext": "Next",
         "buttonClose": "Close",
-        
+
     },
     "it": true,
+    "si": true,
     "es": true,
     "fr": true,
     "ja": true,

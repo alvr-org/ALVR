@@ -13,6 +13,7 @@ define({
         "cancelRestartButton": "Cancel",
     },
     "it": true,
+    "si": true,
     "es": true,
     "fr": true,
     "ja": true,

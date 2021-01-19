@@ -2,7 +2,7 @@ mod control_socket;
 
 pub use control_socket::*;
 
-use crate::{data::*, logging::LogId, *};
+use crate::{data::*, logging::*, *};
 use std::{
     future::Future,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -34,16 +34,19 @@ async fn try_connect_to_client(
     {
         packet
     } else if &packet_buffer[..5] == b"\x01ALVR" {
-        return trace_str!(id: LogId::ClientFoundWrongVersion("v11 or previous".into()));
+        log_id(LogId::ClientFoundWrongVersion("v11 or previous".into()));
+        return fmt_e!("ALVR client version is too old!");
     } else if &packet_buffer[..4] == b"ALVR" {
-        return trace_str!(id: LogId::ClientFoundWrongVersion("v12.x.x - v13.x.x".into()));
+        log_id(LogId::ClientFoundWrongVersion("v12.x.x - v13.x.x".into()));
+        return fmt_e!("ALVR client version is too old!");
     } else {
         debug!("Found unrelated packet during client discovery");
         return Ok(None);
     };
 
     if handshake_packet.alvr_name != ALVR_NAME {
-        return trace_str!(id: LogId::ClientFoundInvalid);
+        log_id(LogId::ClientFoundInvalid);
+        return fmt_e!("Error while identifying client");
     }
 
     if !is_version_compatible(&handshake_packet.version) {
@@ -55,7 +58,10 @@ async fn try_connect_to_client(
             .await
             .ok();
 
-        return trace_str!(id: LogId::ClientFoundWrongVersion(handshake_packet.version.to_string()));
+        log_id(LogId::ClientFoundWrongVersion(
+            handshake_packet.version.to_string(),
+        ));
+        return fmt_e!("Found ALVR client with incompatible version");
     }
 
     Ok(Some((address, handshake_packet)))

@@ -1,6 +1,6 @@
 [package]
 name = "alvr_server"
-version = "14.0.0"
+version = "14.1.0"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"
@@ -31,11 +31,12 @@ tokio = { version = "1", features = [
     "fs",
 ] }
 tokio-util = { version = "0.6", features = ["codec"] }
-tokio-tungstenite = { git = "https://github.com/zarik5/tokio-tungstenite.git", rev = "5783bd2" }
+tokio-tungstenite = "0.13"
 headers = "0.3"
-hyper = { version = "0.14", features = ["http1", "server", "stream", "runtime", "tcp"] }# http2 feature does not work: todo recheck    
-ipconfig = "0.2" # todo: remove crate and get ip during handshake
-webbrowser = "0.5"
+hyper = { version = "0.14", features = ["http2", "server", "stream", "runtime", "tcp"] }
+reqwest = "0.11"
+alcro = "0.5"
+webbrowser = "0.5" # this is just for opening links in the default browser
 
 [build-dependencies]
 walkdir = "2"

@@ -87,11 +87,6 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub adapter_index: u32,
 
-    #[schema(placeholder = "display_refresh_rate")]
-    //
-    #[schema(advanced, min = 60.0, max = 90.0)]
-    pub preferred_fps: f32,
-
     // Dropdown with 25%, 50%, 75%, 100%, 125%, 150% etc or custom
     // Should set renderResolution (always in scale mode).
     // When the user sets a resolution not obtainable with the preset scales, set the dropdown to
@@ -105,11 +100,10 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub recommended_target_resolution: FrameSize,
 
-    #[schema(advanced)]
-    pub seconds_from_vsync_to_photons: f32,
-
-    pub foveated_rendering: Switch<FoveatedRenderingDesc>,
-    pub color_correction: Switch<ColorCorrectionDesc>,
+    #[schema(placeholder = "display_refresh_rate")]
+    //
+    #[schema(advanced, min = 60.0, max = 90.0)]
+    pub preferred_fps: f32,
 
     pub codec: CodecType,
 
@@ -118,6 +112,12 @@ pub struct VideoDesc {
 
     #[schema(min = 1, max = 500)]
     pub encode_bitrate_mbs: u64,
+
+    #[schema(advanced)]
+    pub seconds_from_vsync_to_photons: f32,
+
+    pub foveated_rendering: Switch<FoveatedRenderingDesc>,
+    pub color_correction: Switch<ColorCorrectionDesc>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
@@ -246,6 +246,9 @@ pub struct ControllersDesc {
 #[serde(rename_all = "camelCase")]
 pub struct HeadsetDesc {
     #[schema(advanced)]
+    pub mode_idx: u64,
+
+    #[schema(advanced)]
     pub universe_id: u64,
 
     // Oculus Rift S or HTC Vive. Should all the following strings accordingly
@@ -282,6 +285,9 @@ pub struct HeadsetDesc {
     pub controllers: Switch<ControllersDesc>,
 
     pub tracking_space: TrackingSpace,
+
+    #[schema(advanced)]
+    pub extra_latency_mode: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -375,7 +381,7 @@ pub fn session_settings_default() -> SettingsDefault {
             preferred_fps: 72_f32,
             render_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
-                Scale: 1.,
+                Scale: 0.75,
                 Absolute: FrameSizeAbsoluteDefault {
                     width: 2880,
                     height: 1600,
@@ -383,7 +389,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             recommended_target_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
-                Scale: 1.,
+                Scale: 0.75,
                 Absolute: FrameSizeAbsoluteDefault {
                     width: 2880,
                     height: 1600,
@@ -428,11 +434,12 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         headset: HeadsetDescDefault {
+            mode_idx: 2,
             universe_id: 2,
             serial_number: "1WMGH000XX0000".into(),
             tracking_system_name: "oculus".into(),
-            model_number: "Oculus Rift S".into(),
-            driver_version: "1.42.0".into(),
+            model_number: "Miramar".into(),
+            driver_version: "1.55.0".into(),
             manufacturer_name: "Oculus".into(),
             render_model_name: "generic_hmd".into(),
             registered_device_type: "oculus/1WMGH000XX0000".into(),
@@ -442,17 +449,17 @@ pub fn session_settings_default() -> SettingsDefault {
             controllers: SwitchDefault {
                 enabled: true,
                 content: ControllersDescDefault {
-                    mode_idx: 1,
+                    mode_idx: 7,
                     tracking_system_name: "oculus".into(),
                     manufacturer_name: "Oculus".into(),
-                    model_number: "Oculus Rift S".into(),
-                    render_model_name_left: "oculus_rifts_controller_left".into(),
-                    render_model_name_right: "oculus_rifts_controller_right".into(),
+                    model_number: "Miramar".into(),
+                    render_model_name_left: "oculus_quest2_controller_left".into(),
+                    render_model_name_right: "oculus_quest2_controller_right".into(),
                     serial_number: "1WMGH000XX0000_Controller".into(),
                     ctrl_type: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
-                    pose_time_offset: 0.,
+                    pose_time_offset: 0.01,
                     clientside_prediction: false,
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
@@ -462,6 +469,7 @@ pub fn session_settings_default() -> SettingsDefault {
             tracking_space: TrackingSpaceDefault {
                 variant: TrackingSpaceDefaultVariant::Local,
             },
+            extra_latency_mode: true,
         },
         connection: ConnectionDescDefault {
             auto_trust_clients: cfg!(debug_assertions),

@@ -8,7 +8,7 @@
         android:name="oculus.software.handtracking"
         android:required="false" />
 
-    <uses-permission android:name="oculus.permission.HAND_TRACKING" />
+    <uses-permission android:name="oculus.permission.handtracking" />
 
     <application>
         <meta-data

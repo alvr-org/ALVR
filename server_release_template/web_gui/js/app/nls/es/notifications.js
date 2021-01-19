@@ -1,4 +1,4 @@
 define({
-	"statistics.title" : "Estadísticas",
-    "statistics.msg" : "Obtener información estadística",
+	"statistics.title": "Estadísticas",
+    "statistics.msg": "Obtener información estadística",
 });

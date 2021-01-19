@@ -1,21 +1,87 @@
 #connection .card {
-    margin-bottom: 5px;
+    margin-bottom: 20px;
 }
 
-#connection .card .card-header{
+#connection .card .card-header {
     padding-top: 5px;
     padding-bottom: 5px;
 }
 
-.clientList {
-    min-height: 50px;
-    margin-bottom: 20px;
+#connection .card .card-body {
+    padding-top: 12px !important;
+    padding-bottom: 12px;
 }
 
-.clientList .card {
-    height: 30px;
-    line-height: 30px;
-    padding-left: 10px;
+.newClientsList div div table tr td button,
+#knowIpsListDiv button {
+    max-width: 100px;
+    width: 100px;
+    height: 23px;
+    line-height: 20px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-right: 0px;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+.newClientsList div div table tr td {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.newClientsList div div table tr td:first-child {
+    width: 100%;
+}
+
+.newClientsList div div table tr td:last-child {
+    width: 105px;
+    text-align: right;
+}
+
+.newClientsList div div table {
+    max-width: 100%;
+    overflow: hidden;
+    table-layout: fixed;
+}
+
+.trustedClientsList div div table tr td button {
+    max-width: 100px;
+    width: 100px;
+    height: 23px;
+    line-height: 20px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-right: 0px;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+.trustedClientsList div div table tr td {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.trustedClientsList div div table tr td:first-child {
+    width: 100%;
+}
+
+.trustedClientsList div div table tr td:last-child {
+    width: 210px;
+    text-align: right;
+}
+
+.trustedClientsList div div table {
+    max-width: 100%;
+    overflow: hidden;
+    table-layout: fixed;
+}
+
+.addClientButtonDiv {
+    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
 #monitorContainer {
@@ -31,27 +97,19 @@
     padding-top: 20px;
 }
 
-.client {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-}
-
-.client button {
-    max-width: 100px;
-    width: 100px;
-    height: 23px;
-    line-height: 20px;
-    padding-top: 0px;
-    padding-bottom: 0px;
-    margin-right: 10px;
-    margin-top: auto;
-    margin-bottom: auto;
-}
-
 #troubleShootingDiv {
     position: absolute;
     bottom: 20px;
+}
+
+#statistics .card .card-header {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+#statistics .card .card-body {
+    padding-top: 12px !important;
+    padding-bottom: 12px;
 }
 
 #statisticsTable {
@@ -59,14 +117,14 @@
 }
 
 #statisticsTable tr td:first-child {
-   width: 200px;
+    width: 50%;
 }
 
-#statisticsTable tr td div  {
-  display: inline;
+#statisticsTable tr td div {
+    display: inline;
 }
 
-#loggingTable {  
+#loggingTable {
     width: 100%;
     font-size: 12px;
 }
@@ -76,16 +134,13 @@
 }
 
 #loggingTable tr td:first-child {
-   width: 120px;
+    width: 120px;
 }
 
-#loggingTable tr td:nth-child(2) {  
+#loggingTable tr td:nth-child(2) {
     width: 50px;
 }
 
 .lobibox-notify.notify-mini {
     margin-left: 10px;
 }
-
-
-

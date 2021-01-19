@@ -1,8 +1,5 @@
 use super::settings::*;
-use crate::{
-    logging::{LogId, SessionUpdateType},
-    *,
-};
+use crate::{logging::*, *};
 use serde::*;
 use serde_json as json;
 use settings_schema::SchemaNode;
@@ -167,10 +164,10 @@ impl SessionDesc {
             return Ok(());
         }
 
-        let old_session_json = trace_err!(json::to_value(SessionDesc::default()))?;
+        let old_session_json = trace_err!(json::to_value(&self))?;
         let old_session_fields = trace_none!(old_session_json.as_object())?;
 
-        let session_settings_json =
+        let maybe_session_settings_json =
             json_value
                 .get(SESSION_SETTINGS_STR)
                 .map(|new_session_settings_json| {
@@ -196,7 +193,7 @@ impl SessionDesc {
         let mut session_desc_mut =
             json::from_value::<SessionDesc>(json::Value::Object(new_fields)).unwrap_or_default();
 
-        match json::from_value::<SessionSettings>(trace_none!(session_settings_json)?) {
+        match json::from_value::<SessionSettings>(trace_none!(maybe_session_settings_json)?) {
             Ok(session_settings) => {
                 session_desc_mut.session_settings = session_settings;
                 *self = session_desc_mut;
@@ -204,8 +201,9 @@ impl SessionDesc {
             }
             Err(e) => {
                 *self = session_desc_mut;
-                trace_str!(
-                    id: LogId::SessionSettingsExtrapolationFailed,
+
+                log_id(LogId::SessionSettingsExtrapolationFailed);
+                fmt_e!(
                     "Error while deserializing extrapolated session settings: {}",
                     e
                 )
@@ -362,7 +360,7 @@ fn extrapolate_session_settings_from_session_settings(
         }
 
         SchemaNode::Float { .. } => {
-            if new_session_settings.is_f64() {
+            if new_session_settings.is_number() {
                 new_session_settings.clone()
             } else {
                 old_session_settings.clone()
@@ -565,9 +563,9 @@ impl DerefMut for SessionLock<'_> {
 impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
         save_session(self.session_desc, &self.dir.join(SESSION_FNAME)).ok();
-        info!(id: LogId::SessionUpdated {
+        log_id(LogId::SessionUpdated {
             web_client_id: self.update_author_id.to_owned(),
-            update_type: self.update_type
+            update_type: self.update_type,
         });
     }
 }
@@ -644,11 +642,31 @@ mod tests {
         let _settings = SessionDesc::default().to_settings();
     }
 
-    // todo: add more tests
     #[test]
     fn test_session_extrapolation_trivial() {
         SessionDesc::default()
             .merge_from_json(&json::to_value(SessionDesc::default()).unwrap())
+            .unwrap();
+    }
+
+    #[test]
+    fn test_session_extrapolation_oculus_go() {
+        let input_json_string = r#"{
+            "sessionSettings": {
+              "fjdshfks":false,
+              "video": {
+                "preferredFps": 60.0
+              },
+              "headset": {
+                "controllers": {
+                  "enabled": false
+                }
+              }
+            }
+          }"#;
+
+        SessionDesc::default()
+            .merge_from_json(&json::from_str(input_json_string).unwrap())
             .unwrap();
     }
 }

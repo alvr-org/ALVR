@@ -53,7 +53,6 @@ public:
 
 
     int16_t *micBuffer{};
-    bool mStreamMic{};
     size_t mMicMaxElements{};
 
     ovrMicrophoneHandle mMicHandle{};
@@ -63,7 +62,7 @@ public:
     int suspend = 0;
     std::function<void()> openDashboard;
 
-    bool mExtraLatencyMode = false;
+    StreamConfig streamConfig{};
 
     vector<float> refreshRatesBuffer;
 
@@ -179,13 +178,6 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
 
     LOGI("Logged in user is %" PRIu64 "\n", req);
 
-    //init mic
-    g_ctx.mMicHandle = ovr_Microphone_Create();
-
-    g_ctx.mMicMaxElements = ovr_Microphone_GetOutputBufferMaxSize(g_ctx.mMicHandle);
-    LOGI("Mic_maxElements %zu", g_ctx.mMicMaxElements);
-    g_ctx.micBuffer = new int16_t[g_ctx.mMicMaxElements];
-
     return {(int) g_ctx.streamTexture.get()->GetGLTexture(), (int) g_ctx.loadingTexture};
 }
 
@@ -195,10 +187,6 @@ void destroyNative(void *v_env) {
     LOG("Destroying EGL.");
 
     glDeleteTextures(1, &g_ctx.loadingTexture);
-
-    if (g_ctx.mMicHandle) {
-        ovr_Microphone_Destroy(g_ctx.mMicHandle);
-    }
 
     eglDestroy();
 
@@ -593,7 +581,7 @@ void sendTrackingInfo(bool clientsidePrediction) {
 
 // Called from TrackingThread
 void sendMicData() {
-    if (!g_ctx.mStreamMic) {
+    if (!g_ctx.mMicHandle) {
         return;
     }
 
@@ -657,27 +645,6 @@ OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
 
     vrapi_SetTrackingSpace(g_ctx.Ovr, g_ctx.m_UsedTrackingSpace);
 
-    // On Oculus Quest, without ExtraLatencyMode frames passed to vrapi_SubmitFrame2 are sometimes discarded from VrAPI(?).
-    // Which introduces stutter animation.
-    // I think the number of discarded frames is shown as Stale in Logcat like following:
-    //    I/VrApi: FPS=72,Prd=63ms,Tear=0,Early=0,Stale=8,VSnc=1,Lat=0,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/F/N,Mem=1804MHz,Free=989MB,PSM=0,PLS=0,Temp=36.0C/0.0C,TW=1.90ms,App=2.74ms,GD=0.00ms
-    // After enabling ExtraLatencyMode:
-    //    I/VrApi: FPS=71,Prd=76ms,Tear=0,Early=66,Stale=0,VSnc=1,Lat=1,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/N/N,Mem=1804MHz,Free=906MB,PSM=0,PLS=0,Temp=38.0C/0.0C,TW=1.93ms,App=1.46ms,GD=0.00ms
-    // We need to set ExtraLatencyMode On to workaround for this issue.
-    if ((!gDisableExtraLatencyMode) != g_ctx.mExtraLatencyMode) {
-        g_ctx.mExtraLatencyMode = !gDisableExtraLatencyMode;
-        LOGI("Setting ExtraLatencyMode %s", g_ctx.mExtraLatencyMode ? "On" : "Off");
-        ovrResult result = vrapi_SetExtraLatencyMode(g_ctx.Ovr,
-                                                     g_ctx.mExtraLatencyMode
-                                                     ? VRAPI_EXTRA_LATENCY_MODE_ON
-                                                     : VRAPI_EXTRA_LATENCY_MODE_OFF);
-        LOGI("vrapi_SetExtraLatencyMode. Result=%d", result);
-    }
-
-    if (g_ctx.mMicHandle && g_ctx.mStreamMic) {
-        ovr_Microphone_Start(g_ctx.mMicHandle);
-    }
-
     auto eyeWidth = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
     auto eyeHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
                                                 VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
@@ -714,24 +681,36 @@ OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
     return result;
 }
 
-void onStreamStartNative(int width, int height, int refreshRate, unsigned char streamMic,
-                         int foveationMode, float foveationStrength, float foveationShape,
-                         float foveationVerticalOffset, int trackingSpaceType) {
-    int eyeWidth = width / 2;
+void setStreamConfig(StreamConfig config) {
+    g_ctx.streamConfig = config;
+}
 
+void onStreamStartNative() {
     ovrRenderer_Destroy(&g_ctx.Renderer);
-    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, height, g_ctx.streamTexture.get(),
-                       g_ctx.loadingTexture,
-                       {(bool) foveationMode, (uint32_t) eyeWidth, (uint32_t) height,
-                        EyeFov(), foveationStrength, foveationShape, foveationVerticalOffset});
+    ovrRenderer_Create(&g_ctx.Renderer, g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
+                       g_ctx.streamTexture.get(), g_ctx.loadingTexture,
+                       {g_ctx.streamConfig.enableFoveation, g_ctx.streamConfig.eyeWidth,
+                        g_ctx.streamConfig.eyeHeight, EyeFov(),
+                        g_ctx.streamConfig.foveationStrength, g_ctx.streamConfig.foveationShape,
+                        g_ctx.streamConfig.foveationVerticalOffset});
     ovrRenderer_CreateScene(&g_ctx.Renderer, g_ctx.darkMode);
 
-    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, (float) refreshRate);
+    // On Oculus Quest, without ExtraLatencyMode frames passed to vrapi_SubmitFrame2 are sometimes discarded from VrAPI(?).
+    // Which introduces stutter animation.
+    // I think the number of discarded frames is shown as Stale in Logcat like following:
+    //    I/VrApi: FPS=72,Prd=63ms,Tear=0,Early=0,Stale=8,VSnc=1,Lat=0,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/F/N,Mem=1804MHz,Free=989MB,PSM=0,PLS=0,Temp=36.0C/0.0C,TW=1.90ms,App=2.74ms,GD=0.00ms
+    // After enabling ExtraLatencyMode:
+    //    I/VrApi: FPS=71,Prd=76ms,Tear=0,Early=66,Stale=0,VSnc=1,Lat=1,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/N/N,Mem=1804MHz,Free=906MB,PSM=0,PLS=0,Temp=38.0C/0.0C,TW=1.93ms,App=1.46ms,GD=0.00ms
+    // We need to set ExtraLatencyMode On to workaround for this issue.
+    vrapi_SetExtraLatencyMode(g_ctx.Ovr,
+                              (ovrExtraLatencyMode) g_ctx.streamConfig.extraLatencyMode);
+
+    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, g_ctx.streamConfig.refreshRate);
     if (result != ovrSuccess) {
         LOGE("Failed to set refresh rate requested by the server: %d", result);
     }
 
-    switch (trackingSpaceType) {
+    switch (g_ctx.streamConfig.trackingSpaceType) {
         case ALVR_TRACKING_SPACE_LOCAL:
             g_ctx.m_UsedTrackingSpace = VRAPI_TRACKING_SPACE_LOCAL_FLOOR;
             break;
@@ -748,15 +727,13 @@ void onStreamStartNative(int width, int height, int refreshRate, unsigned char s
     }
     g_ctx.m_LastHMDRecenterCount = -1; // make sure we send guardian data
 
-    LOGI("Setting mic streaming %d", streamMic);
-    g_ctx.mStreamMic = streamMic;
-    if (g_ctx.mMicHandle) {
-        if (g_ctx.mStreamMic) {
-            LOG("Starting mic");
-            ovr_Microphone_Start(g_ctx.mMicHandle);
-        } else {
-            ovr_Microphone_Stop(g_ctx.mMicHandle);
-        }
+    if (g_ctx.streamConfig.streamMic) {
+        g_ctx.mMicHandle = ovr_Microphone_Create();
+        g_ctx.mMicMaxElements = ovr_Microphone_GetOutputBufferMaxSize(g_ctx.mMicHandle);
+        LOGI("Mic_maxElements %zu", g_ctx.mMicMaxElements);
+        g_ctx.micBuffer = new int16_t[g_ctx.mMicMaxElements];
+
+        ovr_Microphone_Start(g_ctx.mMicHandle);
     }
 }
 
@@ -767,12 +744,13 @@ void onPauseNative() {
 
     vrapi_LeaveVrMode(g_ctx.Ovr);
 
-    LOGI("Leaved VR mode.");
-    g_ctx.Ovr = nullptr;
-
-    if (g_ctx.mMicHandle && g_ctx.mStreamMic) {
+    if (g_ctx.mMicHandle) {
         ovr_Microphone_Stop(g_ctx.mMicHandle);
+        ovr_Microphone_Destroy(g_ctx.mMicHandle);
+        g_ctx.mMicHandle = nullptr;
     }
+
+    g_ctx.Ovr = nullptr;
 
     if (g_ctx.window != nullptr) {
         ANativeWindow_release(g_ctx.window);

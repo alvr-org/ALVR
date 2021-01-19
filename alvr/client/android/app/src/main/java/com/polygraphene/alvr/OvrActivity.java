@@ -19,9 +19,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
-import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import android.view.KeyEvent;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -29,6 +26,10 @@ import android.view.SurfaceView;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -234,13 +235,21 @@ public class OvrActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
+        final Object sync = new Object();
         mRenderingHandler.post(() -> {
             mLoadingTexture.destroyTexture();
             Utils.logi(TAG, () -> "Destroying vrapi state.");
             destroyNative();
+            sync.notify();
         });
         mRenderingHandlerThread.quitSafely();
+        try {
+            // Wait until destroyNative() is finished. Can't use Thread.join here, because
+            // the posted lambda might not run, so wait on an object instead.
+            sync.wait();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -373,9 +382,7 @@ public class OvrActivity extends Activity {
 
     native boolean isVrModeNative();
 
-    native void onStreamStartNative(int width, int height, int refreshRate, boolean streamMic,
-                                    int foveationMode, float foveationStrength, float foveationShape,
-                                    float foveationVerticalOffset, int trackingSpaceType);
+    native void onStreamStartNative();
 
     native void onHapticsFeedbackNative(long startTime, float amplitude, float duration, float frequency, boolean hand);
 
@@ -399,14 +406,10 @@ public class OvrActivity extends Activity {
     }
 
     @SuppressWarnings("unused")
-    public void onServerConnected(int width, int height, int codec, boolean realtimeDecoder,
-                                  int refreshRate, boolean streamMic, int foveationMode,
-                                  float foveationStrength, float foveationShape,
-                                  float foveationVerticalOffset, int trackingSpaceType,
-                                  String dashboardURL) {
+    public void onServerConnected(int codec, boolean realtimeDecoder, String dashboardURL) {
         mDashboardURL = dashboardURL;
         mRenderingHandler.post(() -> {
-            onStreamStartNative(width, height, refreshRate, streamMic, foveationMode, foveationStrength, foveationShape, foveationVerticalOffset, trackingSpaceType);
+            onStreamStartNative();
             mDecoderThread.onConnect(codec, realtimeDecoder);
         });
     }

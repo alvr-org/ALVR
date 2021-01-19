@@ -81,15 +81,6 @@ async fn try_connect(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) -> StrResult {
-    set_loading_message(
-        &*java_vm,
-        &*activity_ref,
-        &private_identity.hostname,
-        INITIAL_MESSAGE,
-    )
-    .await
-    .ok();
-
     let hostname = &private_identity.hostname;
 
     let connection_result = trace_err!(
@@ -126,6 +117,18 @@ async fn try_connect(
                 NETWORK_UNREACHABLE_MESSAGE,
             )
             .await?;
+
+            time::sleep(RETRY_CONNECT_INTERVAL).await;
+
+            set_loading_message(
+                &*java_vm,
+                &*activity_ref,
+                &private_identity.hostname,
+                INITIAL_MESSAGE,
+            )
+            .await
+            .ok();
+
             return Ok(());
         }
     };
@@ -151,47 +154,54 @@ async fn try_connect(
         &[baseline_settings.extra.client_dark_mode.into()],
     ))?;
 
+    unsafe {
+        crate::setStreamConfig(crate::StreamConfig {
+            eyeWidth: config_packet.eye_resolution_width,
+            eyeHeight: config_packet.eye_resolution_height,
+            refreshRate: config_packet.fps,
+            streamMic: matches!(baseline_settings.audio.microphone, Switch::Enabled(_)),
+            enableFoveation: matches!(
+                baseline_settings.video.foveated_rendering,
+                Switch::Enabled(_)
+            ),
+            foveationStrength: if let Switch::Enabled(foveation_vars) =
+                &baseline_settings.video.foveated_rendering
+            {
+                foveation_vars.strength
+            } else {
+                0_f32
+            },
+            foveationShape: if let Switch::Enabled(foveation_vars) =
+                &baseline_settings.video.foveated_rendering
+            {
+                foveation_vars.shape
+            } else {
+                1_f32
+            },
+            foveationVerticalOffset: if let Switch::Enabled(foveation_vars) =
+                &baseline_settings.video.foveated_rendering
+            {
+                foveation_vars.vertical_offset
+            } else {
+                0_f32
+            },
+            trackingSpaceType: matches!(
+                baseline_settings.headset.tracking_space,
+                TrackingSpace::Stage
+            ) as _,
+            extraLatencyMode: baseline_settings.headset.extra_latency_mode,
+        });
+    }
+
     trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
         &*activity_ref,
         "onServerConnected",
-        "(IIIZIZIFFFILjava/lang/String;)V",
+        "(IZLjava/lang/String;)V",
         &[
-            (config_packet.eye_resolution_width as i32 * 2).into(),
-            (config_packet.eye_resolution_height as i32).into(),
             (matches!(baseline_settings.video.codec, CodecType::HEVC) as i32).into(),
             baseline_settings
                 .video
                 .client_request_realtime_decoder
-                .into(),
-            (config_packet.fps as i32).into(),
-            matches!(baseline_settings.audio.microphone, Switch::Enabled(_)).into(),
-            (matches!(
-                baseline_settings.video.foveated_rendering,
-                Switch::Enabled(_)
-            ) as i32)
-                .into(),
-            (if let Switch::Enabled(foveation_vars) = &baseline_settings.video.foveated_rendering {
-                foveation_vars.strength
-            } else {
-                0_f32
-            })
-            .into(),
-            (if let Switch::Enabled(foveation_vars) = &baseline_settings.video.foveated_rendering {
-                foveation_vars.shape
-            } else {
-                1_f32
-            })
-            .into(),
-            (if let Switch::Enabled(foveation_vars) = &baseline_settings.video.foveated_rendering {
-                foveation_vars.vertical_offset
-            } else {
-                0_f32
-            })
-            .into(),
-            (matches!(
-                baseline_settings.headset.tracking_space,
-                TrackingSpace::Stage
-            ) as i32)
                 .into(),
             trace_err!(
                 trace_err!(java_vm.attach_current_thread())?.new_string(config_packet.web_gui_url)
@@ -356,6 +366,15 @@ pub async fn connection_lifecycle_loop(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) {
+    set_loading_message(
+        &*java_vm,
+        &*activity_ref,
+        &private_identity.hostname,
+        INITIAL_MESSAGE,
+    )
+    .await
+    .ok();
+
     // this loop has no exit, but the execution can be halted by the caller with tokio::select!{}
     loop {
         tokio::join!(

@@ -43,8 +43,7 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_createIdentity(
 
         let jkey_pem = trace_err!(env.new_string(identity.key_pem))?.into();
         trace_err!(env.set_field(jidentity, "privateKey", "Ljava/lang/String;", jkey_pem))
-    }())
-    .ok();
+    }());
 }
 
 #[no_mangle]
@@ -93,8 +92,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
         ))?;
 
         Ok(())
-    }())
-    .ok();
+    }());
 }
 
 #[no_mangle]
@@ -189,35 +187,15 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
         *MAYBE_RUNTIME.lock() = Some(runtime);
 
         Ok(())
-    }())
-    .ok();
+    }());
 }
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(
     _: JNIEnv,
     _: JObject,
-    width: i32,
-    height: i32,
-    refresh_rate: i32,
-    stream_mic: u8,
-    foveation_mode: i32,
-    foveation_strength: f32,
-    foveation_shape: f32,
-    foveation_vertical_offset: f32,
-    tracking_space: i32,
 ) {
-    onStreamStartNative(
-        width,
-        height,
-        refresh_rate,
-        stream_mic,
-        foveation_mode,
-        foveation_strength,
-        foveation_shape,
-        foveation_vertical_offset,
-        tracking_space,
-    )
+    onStreamStartNative()
 }
 
 #[no_mangle]

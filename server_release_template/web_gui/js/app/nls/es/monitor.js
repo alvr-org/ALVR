@@ -1,17 +1,31 @@
 define({
+    // Connection tab
     "connection": "Conexión",
-    "logging": "Registros",
+    // Clients container
     "clients": "Clientes",
     "newClients": "Nuevos clientes",
+    "addTrustedClient": "Confiar",
     "trustedClients": "Clientes de confianza",
-    "manAddClient": "Añadir un cliente manualmente",
     "removeTrustedClient": "Quitar",
-    "statistics": "Estadísticas de transmisión",
+    "troubleshooting": "¿Su visor no aparece? Visite nuestra página de resolución de problemas <a href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'>aquí</a>",
+    // Manually add client page
+    "manAddClient": "Añadir un cliente manualmente",
     "addClient": "Añadir cliente",
-    "clientType": "Tipo",
+    "deviceName": "Nombre del dispositivo",
+    "deviceNameHelp": "Escribe un nombre para tu dispositivo",
+    "clientHostname": "Nombre de host",
+    "clientHostnameHelp": "Como se muestra al abrir el cliente de ALVR en su dispositivo",
     "ipAddress": "Dirección IP",
-    "ipHelp": "Añade la dirección IP remota del vidor",
+    "ipHelp": "Añade la dirección IP remota del dispositivo",
     "addClientButton": "Añadir cliente",
+    // Configure client page
+    "configureClient": "Configurar cliente",
+    "configureClientButton": "Configurar",
+    "configureClientAddIp": "Añadir una nueva dirección IP",
+    "configureClientRemoveIp": "Remover",
+    // Statistics container
+    "statistics": "Estadísticas",
+    "streamingStatistics": "Estadísticas de transmisión",
     "totalPackets": "Paquetes totales",
     "packetRate": "Velocidad de envío de paquetes (total)",
     "packetsLostTotal": "Total de paquetes perdidos",
@@ -29,5 +43,20 @@ define({
     "clientFPS": "FPS del cliente",
     "serverFPS": "FPS del servidor",
     "packets": "Paquetes",
-    "packetss": "Paquetes/s"
+    "packetss": "Paquetes/s",
+    // Logging tab
+    "logging": "Registros",
+    // validation errors
+    "error_DuplicateHostname": "Un dispositivo con este nombre de host ya está registrado",
+    "error_DuplicateIp": "Esta dirección IP ya está registrada en un dispositivo",
+    "error_InvalidIp": "No es una dirección con formato IPv4 válido",
+    // Performance graphs tab
+    "performanceGraphs": "Gráficos de rendimiento",
+    "performanceEncode": "Codificación",
+    "performanceDecode": "Decodificación",
+    "performanceTransport": "Transporte",
+    "performanceOther": "Otros",
+    "performanceLatency": "Latencia",
+    "performanceFramerate": "Velocidad de cuadro",
+    "performanceNoDateCaptured": "Aún no se han capturado datos",
 });

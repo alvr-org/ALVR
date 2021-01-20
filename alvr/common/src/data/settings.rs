@@ -146,7 +146,7 @@ impl SampleFormat {
     }
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioConfig {
     pub channels_count: u16,

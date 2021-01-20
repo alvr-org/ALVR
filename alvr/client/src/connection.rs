@@ -16,10 +16,7 @@ use std::{
     },
     time::Duration,
 };
-use tokio::{
-    sync::Mutex,
-    time::{self, Instant},
-};
+use tokio::{sync::Mutex, task, time::{self, Instant}};
 
 const INITIAL_MESSAGE: &str = "Searching for server...\n(open ALVR on your PC)";
 const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the internet";
@@ -74,7 +71,7 @@ async fn set_loading_message(
     Ok(())
 }
 
-async fn try_connect(
+async fn connection_pipeline(
     headset_info: &HeadsetInfoPacket,
     device_name: String,
     private_identity: &PrivateIdentity,
@@ -84,15 +81,13 @@ async fn try_connect(
 ) -> StrResult {
     let hostname = &private_identity.hostname;
 
-    let connection_result = trace_err!(
-        sockets::connect_to_server(
-            &headset_info,
-            device_name,
-            hostname.clone(),
-            private_identity.certificate_pem.clone(),
-        )
-        .await
-    )?;
+    let connection_result = sockets::connect_to_server(
+        &headset_info,
+        device_name,
+        hostname.clone(),
+        private_identity.certificate_pem.clone(),
+    )
+    .await?;
     let (server_ip, control_sender, mut control_receiver, config_packet) = match connection_result {
         ConnectionResult::Connected {
             server_ip,
@@ -222,7 +217,7 @@ async fn try_connect(
     // many times per second. If using a future I'm forced to attach and detach the env continuously.
     // When the parent function gets canceled, this loop will run to finish.
     let server_ip_cstring = CString::new(server_ip.to_string()).unwrap();
-    let stream_socket_loop = tokio::task::spawn_blocking({
+    let stream_socket_loop = task::spawn_blocking({
         let java_vm = java_vm.clone();
         let activity_ref = activity_ref.clone();
         let nal_class_ref = nal_class_ref.clone();
@@ -320,12 +315,11 @@ async fn try_connect(
     let (sender, receiver) = std::sync::mpsc::channel();
 
     let mut _game_audio_stream_guard = None;
-    if matches!(baseline_settings.audio.game_audio, Switch::Enabled(_)) {
-        if let Ok(reserved_config) = json::from_str::<json::Value>(&config_packet.reserved) {
-            if let Some(config_json) = reserved_config.get("game_audio_config") {
-                if let Ok(config) = json::from_value::<AudioConfig>(config_json.clone()) {
-                    _game_audio_stream_guard =
-                        Some(trace_err!(audio::AudioPlayer::start(config, receiver))?);
+    if let Ok(reserved_config) = json::from_str::<json::Value>(&config_packet.reserved) {
+        if let Some(config_json) = reserved_config.get("game_audio_config") {
+            if let Ok(maybe_config) = json::from_value::<Option<AudioConfig>>(config_json.clone()) {
+                if let Some(config) = maybe_config {
+                    _game_audio_stream_guard = Some(audio::AudioPlayer::start(config, receiver)?);
                 }
             }
         }
@@ -399,7 +393,7 @@ pub async fn connection_lifecycle_loop(
     loop {
         tokio::join!(
             async {
-                let maybe_error = try_connect(
+                let maybe_error = connection_pipeline(
                     &headset_info,
                     device_name.to_owned(),
                     &private_identity,
@@ -408,6 +402,7 @@ pub async fn connection_lifecycle_loop(
                     nal_class_ref.clone(),
                 )
                 .await;
+
                 if let Err(e) = maybe_error {
                     error!("{}", e);
                     set_loading_message(&*java_vm, &*activity_ref, &private_identity.hostname, &e)

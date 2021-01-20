@@ -293,9 +293,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 SetDefaultChaperone();
 
                 tokio::select! {
-                    Err(e) = connection::connection_lifecycle_loop() => show_e(e),
+                    _ = connection::connection_lifecycle_loop() => (),
                     _ = SHUTDOWN_NOTIFIER.notified() => (),
-                    else => (),
                 }
             });
         }

@@ -40,15 +40,21 @@ define([
             let updateType = session.sessionSettings.extra.updateChannel.variant;
 
             let url = "";
-            if (updateType === "noUpdates") {
-                return;
+            if (updateType === "stable") {
+                url = "https://api.github.com/repos/alvr-org/ALVR/releases/latest";
+            } else if (updateType === "beta") {
+                url = "https://api.github.com/repos/alvr-org/ALVR/releases?per_page=1";
             } else if (updateType === "nightly") {
                 url = "https://api.github.com/repos/alvr-org/ALVR-nightly/releases/latest";
-            } else { // stable and beta
-                url = "https://api.github.com/repos/alvr-org/ALVR/releases/latest";
+            } else {
+                return;
             }
 
             $.get(url, (data) => {
+                if (updateType === "beta") {
+                    data = data[0];
+                }
+
                 if (data.tag_name === "v" + version) {
                     Lobibox.notify("success", {
                         size: "mini",

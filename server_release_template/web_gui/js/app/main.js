@@ -10,6 +10,7 @@ define([
     "app/monitor",
     "app/driverList",
     "app/uploadPreset",
+    "app/languageSelector",
     "json!../../session",
     "text!../../version",
     "js/lib/lobibox.min.js",
@@ -26,6 +27,7 @@ define([
     Monitor,
     driverList,
     uploadPreset,
+    languageSelector,
     session,
     version,
 ) {
@@ -198,6 +200,7 @@ define([
                 checkForUpdate(settings, -1);
                 var wizard = new SetupWizard(settings);
                 var monitor = new Monitor(settings);
+                var language = new languageSelector(settings);
             } catch (error) {
                 Lobibox.notify("error", {
                     rounded: true,
@@ -213,12 +216,21 @@ define([
             }
 
             // update the current language on startup
-            let sessionLocale = session.locale;
-            $("#localeChange").val(sessionLocale);
+            const sessionLocale = session.locale;
+
+            language.addLanguageSelector(
+                "localeSelector",
+                sessionLocale,
+            );
+
+            language.addLanguageSelector(
+                "localeSelectorV",
+                sessionLocale,
+            );
+
             let storedLocale = localStorage.getItem("locale");
             if (
                 sessionLocale !== storedLocale &&
-                storedLocale !== null &&
                 sessionLocale !== "system"
             ) {
                 storedLocale = sessionLocale;
@@ -268,21 +280,6 @@ define([
 
             $("#checkForUpdates").click(() => {
                 checkForUpdate(settings, 5000);
-            });
-
-            $("#localeChange").change(() => {
-                storedLocale = $("#localeChange").val();
-                session.locale = storedLocale;
-                settings.updateSession(session);
-                settings.storeSession("other");
-                if (storedLocale === "system") {
-                    if (localStorage.getItem("locale") !== null) {
-                        localStorage.removeItem("locale");
-                    }
-                } else {
-                    localStorage.setItem("locale", storedLocale);
-                }
-                window.location.reload();
             });
 
             $("#version").text("v" + version);

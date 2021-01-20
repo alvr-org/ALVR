@@ -365,7 +365,9 @@ pub async fn connection_lifecycle_loop() -> StrResult {
                     control_sender
                         .lock()
                         .await
-                        .send(&ServerControlPacket::Reserved("{ \"keepalive\": true }".into()))
+                        .send(&ServerControlPacket::Reserved(
+                            "{ \"keepalive\": true }".into(),
+                        ))
                         .await
                         .ok();
                     time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;

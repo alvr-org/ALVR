@@ -321,7 +321,9 @@ async fn try_connect(
                 control_sender
                     .lock()
                     .await
-                    .send(&ClientControlPacket::Reserved("{ \"keepalive\": true }".into()))
+                    .send(&ClientControlPacket::Reserved(
+                        "{ \"keepalive\": true }".into(),
+                    ))
                     .await
                     .ok();
                 time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;

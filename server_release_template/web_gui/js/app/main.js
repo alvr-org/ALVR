@@ -163,11 +163,12 @@ define([
                 webSocket.onmessage = function (event) {
                     try {
                         const dataJSON = JSON.parse(event.data);
-                        if (dataJSON.id === "updateDownloadProgress") {
-                            const sizeMb = size / (1024 * 1024);
-                            const downloadProgress = (dataJSON.data * sizeMb).toFixed(2);
-                            document.getElementById("downloadProgress").innerHTML = downloadProgress + "Mb" + " / " + sizeMb.toFixed(2) + "Mb";
-                            const progress = (dataJSON.data * 100).toFixed(2);
+                        if (dataJSON.id === "updateDownloadedBytesCount") {
+                            const BtoMB = 1.0 / (1024 * 1024);
+                            const sizeMb = size * BtoMB;
+                            const downloadProgress = (dataJSON.data * BtoMB).toFixed(2);
+                            document.getElementById("downloadProgress").innerHTML = downloadProgress + "MB" + " / " + sizeMb.toFixed(2) + "MB";
+                            const progress = (100.0 * dataJSON.data / size).toFixed(2);
                             elem.style.width = progress + "%";
                             elem.innerHTML = progress + "%";
                         }

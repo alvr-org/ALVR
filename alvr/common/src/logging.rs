@@ -125,7 +125,7 @@ pub enum LogId {
     ClientFoundWrongVersion(String),
     ClientConnected,
     ClientDisconnected,
-    UpdateDownloadProgress(f32),
+    UpdateDownloadedBytesCount(usize),
     UpdateDownloadError,
 }
 

@@ -217,16 +217,13 @@ async fn http_api(
 
                 let mut file = trace_err!(fs::File::create(commands::installer_path()))?;
 
-                let total_bytes_count = trace_none!(resource_response.content_length())?;
                 let mut downloaded_bytes_count = 0;
                 loop {
                     match resource_response.chunk().await {
                         Ok(Some(chunk)) => {
                             downloaded_bytes_count += chunk.len();
                             trace_err!(file.write_all(&chunk))?;
-                            log_id(LogId::UpdateDownloadProgress(
-                                downloaded_bytes_count as f32 / total_bytes_count as f32,
-                            ));
+                            log_id(LogId::UpdateDownloadedBytesCount(downloaded_bytes_count));
                         }
                         Ok(None) => break,
                         Err(e) => {

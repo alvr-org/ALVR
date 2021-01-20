@@ -186,6 +186,7 @@ define({
         "audioDeviceError": "No audio devices found. Cannot stream audio or microphone",
     },
     "it": true,
+    "sl": true,
     "es": true,
     "fr": true,
     "ja": true,

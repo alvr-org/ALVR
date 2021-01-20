@@ -321,7 +321,7 @@ async fn try_connect(
                 control_sender
                     .lock()
                     .await
-                    .send(&ClientControlPacket::NetworkKeepAlive)
+                    .send(&ClientControlPacket::Reserved("{ \"keepalive\": true }".into()))
                     .await
                     .ok();
                 time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
@@ -348,8 +348,7 @@ async fn try_connect(
                             .await?;
                             break Ok(());
                         }
-                        Ok(ServerControlPacket::NetworkKeepAlive)
-                        | Ok(ServerControlPacket::Reserved(_))
+                        Ok(ServerControlPacket::Reserved(_))
                         | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
                         Err(e) => {
                             info!("Server disconnected. Cause: {}", e);

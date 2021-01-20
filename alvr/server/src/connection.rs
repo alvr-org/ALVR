@@ -365,7 +365,7 @@ pub async fn connection_lifecycle_loop() -> StrResult {
                     control_sender
                         .lock()
                         .await
-                        .send(&ServerControlPacket::NetworkKeepAlive)
+                        .send(&ServerControlPacket::Reserved("{ \"keepalive\": true }".into()))
                         .await
                         .ok();
                     time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
@@ -400,8 +400,7 @@ pub async fn connection_lifecycle_loop() -> StrResult {
                         };
                     }
                     Ok(ClientControlPacket::RequestIDR) => unsafe { crate::RequestIDR() },
-                    Ok(ClientControlPacket::NetworkKeepAlive)
-                    | Ok(ClientControlPacket::Reserved(_))
+                    Ok(ClientControlPacket::Reserved(_))
                     | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
                     Err(e) => {
                         log_id(LogId::ClientDisconnected);

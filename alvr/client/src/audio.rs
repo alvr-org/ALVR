@@ -31,8 +31,6 @@ pub struct AudioRecorder {
     _stream: AudioStreamAsync<Input, RecorderCallback>,
 }
 
-unsafe impl Send for AudioRecorder {}
-
 impl AudioRecorder {
     pub fn start(config: AudioConfig, sender: UnboundedSender<Vec<u8>>) -> StrResult<Self> {
         // Oboe doesn't support untyped callbacks. For convenience, not all configs are respected
@@ -108,8 +106,6 @@ impl AudioOutputCallback for PlayerCallback {
 pub struct AudioPlayer {
     _stream: AudioStreamAsync<Output, PlayerCallback>,
 }
-
-unsafe impl Send for AudioPlayer {}
 
 impl AudioPlayer {
     pub fn start(config: AudioConfig, receiver: Receiver<Vec<u8>>) -> StrResult<Self> {

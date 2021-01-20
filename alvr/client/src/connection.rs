@@ -9,14 +9,18 @@ use serde_json as json;
 use settings_schema::Switch;
 use std::{
     ffi::CString,
-    slice,
+    future, slice,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        mpsc as smpsc, Arc,
     },
     time::Duration,
 };
-use tokio::{sync::Mutex, task, time::{self, Instant}};
+use tokio::{
+    sync::Mutex,
+    task,
+    time::{self, Instant},
+};
 
 const INITIAL_MESSAGE: &str = "Searching for server...\n(open ALVR on your PC)";
 const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the internet";
@@ -312,18 +316,27 @@ async fn connection_pipeline(
         }
     };
 
-    let (sender, receiver) = std::sync::mpsc::channel();
-
-    let mut _game_audio_stream_guard = None;
+    let mut maybe_game_audio_config = None;
     if let Ok(reserved_config) = json::from_str::<json::Value>(&config_packet.reserved) {
         if let Some(config_json) = reserved_config.get("game_audio_config") {
             if let Ok(maybe_config) = json::from_value::<Option<AudioConfig>>(config_json.clone()) {
-                if let Some(config) = maybe_config {
-                    _game_audio_stream_guard = Some(audio::AudioPlayer::start(config, receiver)?);
-                }
+                maybe_game_audio_config = maybe_config;
             }
         }
     }
+
+    let (game_audio_sender, game_audio_receiver) = smpsc::channel();
+
+    // Use a local thread as a container. It's still a future so it can be canceled
+    let game_audio_park = task::spawn_local(async move {
+        let mut _game_audio_stream_guard = None;
+        if let Some(config) = maybe_game_audio_config {
+            _game_audio_stream_guard =
+                Some(audio::AudioPlayer::start(config, game_audio_receiver)?);
+        }
+
+        future::pending().await
+    });
 
     let control_loop = async move {
         loop {
@@ -345,7 +358,7 @@ async fn connection_pipeline(
                             break Ok(());
                         }
                         Ok(ServerControlPacket::ReservedBuffer(buffer)) => {
-                            trace_err!(sender.send(buffer))?;
+                            trace_err!(game_audio_sender.send(buffer))?;
                         },
                         Ok(ServerControlPacket::Reserved(_)) => (),
                         Err(e) => {
@@ -366,6 +379,7 @@ async fn connection_pipeline(
 
     tokio::select! {
         res = stream_socket_loop => trace_err!(res)?,
+        res = game_audio_park => trace_err!(res)?,
         res = tracking_loop => res,
         res = playspace_sync_loop => res,
         res = control_loop => res,

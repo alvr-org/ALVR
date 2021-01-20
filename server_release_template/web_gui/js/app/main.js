@@ -35,130 +35,107 @@ define([
 
         function checkForUpdate(settings, delay) {
             session = settings.getSession();
-            let updateType =
-                session.sessionSettings.extra.updateChannel.variant;
-            if (updateType !== "noUpdates") {
-                let url =
-                    "https://api.github.com/repos/alvr-org/ALVR/releases/latest";
-                if (updateType === "beta") {
-                    url = "https://api.github.com/repos/alvr-org/ALVR/releases";
-                } else if (updateType === "nightly") {
-                    url =
-                        "https://api.github.com/repos/alvr-org/ALVR-nightly/releases/latest";
-                }
-                $.get(url, (data) => {
-                    if (updateType === "beta") {
-                        data = data[0];
-                    }
-                    const currentVersion = "v" + version;
-                    // const releaseVersion = data.tag_name.match(/\d+.\d+.\d+/,)[0];
-                    const releaseVersion = data.tag_name;
-                    if (currentVersion === releaseVersion) {
-                        Lobibox.notify("success", {
-                            size: "mini",
-                            rounded: true,
-                            delayIndicator: false,
-                            sound: false,
-                            iconSource: "fontAwesome",
-                            msg: i18n.noNeedForUpdate,
-                        });
-                    } else {
-                        Lobibox.notify("warning", {
-                            size: "mini",
-                            rounded: true,
-                            delay: delay,
-                            delayIndicator: delay !== -1,
-                            sound: false,
-                            iconSource: "fontAwesome",
-                            msg: i18n.needUpdateClickForMore,
-                            closable: true,
-                            onClick: function () {
-                                const releaseNote = data.body;
-                                const infoURL = data.html_url;
-                                showUpdatePopupDialog(
-                                    releaseVersion,
-                                    releaseNote,
-                                    infoURL,
-                                ).then((res) => {
-                                    if (res) {
-                                        let url = "";
-                                        let size = 0;
-                                        data.assets.forEach((asset) => {
-                                            const found = asset.name.match(".*\.exe$");
-                                            if (found) {
-                                                const urlValid = asset.browser_download_url.match("^(http|https)://");
-                                                if (urlValid) {
-                                                    url =
-                                                        asset.browser_download_url;
-                                                    size = asset.size;
-                                                }
-                                            }
-                                        });
-                                        if (url !== "") {
-                                            triggerUpdate(url, size);
-                                        }
-                                    }
-                                });
-                            },
-                        });
-                    }
-                });
+            let updateType = session.sessionSettings.extra.updateChannel.variant;
+
+            let url = "";
+            if (updateType === "noUpdates") {
+                return;
+            } else if (updateType === "nightly") {
+                url = "https://api.github.com/repos/alvr-org/ALVR-nightly/releases/latest";
+            } else { // stable and beta
+                url = "https://api.github.com/repos/alvr-org/ALVR/releases/latest";
             }
+
+            $.get(url, (data) => {
+                if (data.tag_name === "v" + version) {
+                    Lobibox.notify("success", {
+                        size: "mini",
+                        rounded: true,
+                        delayIndicator: false,
+                        sound: false,
+                        iconSource: "fontAwesome",
+                        msg: i18n.noNeedForUpdate,
+                    });
+                    return;
+                }
+
+                if (session.sessionSettings.extra.promptBeforeUpdate) {
+                    Lobibox.notify("warning", {
+                        size: "mini",
+                        rounded: true,
+                        delay: delay,
+                        delayIndicator: delay !== -1,
+                        sound: false,
+                        iconSource: "fontAwesome",
+                        msg: i18n.needUpdateClickForMore,
+                        closable: true,
+                        onClick: () => showUpdatePopupDialog(data)
+                    });
+                } else {
+                    triggerUpdate(data);
+                }
+            });
         }
 
-        function showUpdatePopupDialog(releaseVersion, releaseNote, infoURL) {
-            return new Promise((resolve) => {
-                var compiledTemplate = _.template(updatePopup);
-                var template = compiledTemplate(i18n);
-                $("#confirmModal").remove();
-                $("body").append(template);
-                $(document).ready(() => {
-                    $("#releaseVersion").text(releaseVersion);
-                    $("#releaseNote").text(releaseNote);
+        function showUpdatePopupDialog(data) {
+            var compiledTemplate = _.template(updatePopup);
+            var template = compiledTemplate(i18n);
+            $("#confirmModal").remove();
+            $("body").append(template);
+            $(document).ready(() => {
+                $("#releaseTitle").text(data.name);
+                $("#releaseNote").text(data.body);
 
-                    $("#confirmModal").modal({
-                        backdrop: "static",
-                        keyboard: false,
-                    });
-                    $("#confirmModal").on("hidden.bs.modal", (e) => {
-                        resolve(false);
-                    });
-                    $("#cancelUpdateButton").click(() => {
-                        resolve(false);
-                        $("#confirmModal").modal("hide");
-                        $("#confirmModal").remove();
-                    });
-                    $("#okUpdateButton").click(() => {
-                        resolve(true);
-                        $("#confirmModal").modal("hide");
-                        $("#confirmModal").remove();
-                    });
-                    $("#moreUpdateButton").click(() => {
-                        $.ajax({
-                            headers: {
-                                Accept: "application/json",
-                                "Content-Type": "application/json",
-                            },
-                            type: "POST",
-                            url: "/open",
-                            data: JSON.stringify(infoURL),
-                            dataType: "JSON",
-                        });
+                $("#confirmModal").modal({
+                    backdrop: "static",
+                    keyboard: false,
+                });
+                $("#cancelUpdateButton").click(() => {
+                    $("#confirmModal").modal("hide");
+                    $("#confirmModal").remove();
+                });
+                $("#okUpdateButton").click(() => {
+                    $("#confirmModal").modal("hide");
+                    $("#confirmModal").remove();
+                    triggerUpdate(data);
+                });
+                $("#moreUpdateButton").click(() => {
+                    $.ajax({
+                        headers: {
+                            Accept: "application/json",
+                            "Content-Type": "application/json",
+                        },
+                        type: "POST",
+                        url: "/open",
+                        data: JSON.stringify(data.html_url),
+                        dataType: "JSON",
                     });
                 });
             });
         }
 
-        function triggerUpdate(url, size) {
+        function triggerUpdate(data) {
+            let url = "";
+            let size = 0;
+            data.assets.forEach((asset) => {
+                if (asset.name.startsWith("ALVR_Installer")) {
+                    url = asset.browser_download_url;
+                    size = asset.size;
+                }
+            });
+            if (url === "") {
+                return
+            }
+
             $("#setupWizard").modal("hide");
             $("#bodyContent").hide();
             $("#updating").show();
 
             const elem = document.getElementById("progressBar");
-            
+
             // Create WebSocket connection.
-            const webSocket = new WebSocket("ws://"+ window.location.host + "/events");
-            
+            const webSocket = new WebSocket("ws://" + window.location.host + "/events");
+
             $.ajax({
                 type: "POST",
                 url: "/update",
@@ -183,7 +160,7 @@ define([
             });
 
             if (webSocket !== null && typeof webSocket !== undefined) {
-                webSocket.onmessage = function(event) {
+                webSocket.onmessage = function (event) {
                     try {
                         const dataJSON = JSON.parse(event.data);
                         if (dataJSON.id === "updateDownloadProgress") {
@@ -192,7 +169,7 @@ define([
                             document.getElementById("downloadProgress").innerHTML = downloadProgress + "Mb" + " / " + sizeMb.toFixed(2) + "Mb";
                             const progress = (dataJSON.data * 100).toFixed(2);
                             elem.style.width = progress + "%";
-                            elem.innerHTML = progress  + "%";
+                            elem.innerHTML = progress + "%";
                         }
                     } catch (error) {
                         console.log("Error with message: ", event);

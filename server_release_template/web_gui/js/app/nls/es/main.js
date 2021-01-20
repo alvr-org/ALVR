@@ -21,8 +21,6 @@ define({
     "noNeedForUpdate": "No hay nuevas actualizaciones",
     "needUpdateClickForMore": "Hay una nueva actualización, haga clic para obtener más información",
     "updatePopupTitle": "Actualización encontrada!",
-    "textUpdateStart": "La actualización",
-    "textUpdateEnd": "ha sido encontrada, ¿le gustaría actualizarla ahora?",
     "cancelUpdateButton": "Ignorar",
     "moreUpdateButton": "Ir al sitio web",
     "okUpdateButton": "Actualizar",

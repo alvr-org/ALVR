@@ -22,8 +22,6 @@ define({
         "noNeedForUpdate": "No update available",
         "needUpdateClickForMore": "Update available, click for more information",
         "updatePopupTitle": "Update Found!",
-        "textUpdateStart": "The release",
-        "textUpdateEnd": "has been found, would you like to update?",
         "cancelUpdateButton": "Dismiss",
         "moreUpdateButton": "Website",
         "okUpdateButton": "Update",

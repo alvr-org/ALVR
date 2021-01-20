@@ -20,14 +20,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            opacity: 0.7;
-            background-color: #fff;
+            opacity: 0;
             z-index: 99;
-        }
-
-        #loading-image {
-            flex: 0;
-            z-index: 100;
         }
 
         #updating {
@@ -38,14 +32,15 @@
             justify-content: center;
             align-items: center;
             opacity: 1;
-            background-color: #fff;
         }
     </style>
 </head>
 
 <body>
     <div id="loading">
-        <img id="loading-image" src="images/ajax-loader.gif" alt="Loading..." />
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
     </div>
 
     <div id="bodyContent" style="display: none;">
@@ -54,7 +49,9 @@
     <div id="updating" style="display: none;">
         <div>Please wait</div>
         <br />
-        <img id="loading-image" src="images/ajax-loader.gif" alt="Updating..." />
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
         <br />
         <div>Downloading update ...</div>
         <div id="downloadProgress"></div>

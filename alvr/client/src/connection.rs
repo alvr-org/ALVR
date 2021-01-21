@@ -17,6 +17,7 @@ use std::{
     time::Duration,
 };
 use tokio::{
+    runtime,
     sync::Mutex,
     task,
     time::{self, Instant},
@@ -327,15 +328,20 @@ async fn connection_pipeline(
 
     let (game_audio_sender, game_audio_receiver) = smpsc::channel();
 
-    // let game_audio_park = task::spawn_local(async move {
-    //     let mut _game_audio_stream_guard = None;
-    //     if let Some(config) = maybe_game_audio_config {
-    //         _game_audio_stream_guard =
-    //             Some(audio::AudioPlayer::start(config, game_audio_receiver)?);
-    //     }
+    // Container to keep the game audio stream object on the same thread (since it is !Send).
+    // It can be canceled and the destruction code runs on the original thread
+    let game_audio_park = task::spawn_blocking(move || {
+        let _runtime_guard = runtime::Handle::current().enter();
+        futures::executor::block_on(async move {
+            let mut _game_audio_stream_guard = None;
+            if let Some(config) = maybe_game_audio_config {
+                _game_audio_stream_guard =
+                    Some(audio::AudioPlayer::start(config, game_audio_receiver)?);
+            }
 
-    //     future::pending().await
-    // });
+            future::pending().await
+        })
+    });
 
     let control_loop = async move {
         loop {
@@ -377,8 +383,8 @@ async fn connection_pipeline(
     };
 
     tokio::select! {
+        res = game_audio_park => trace_err!(res)?,
         res = stream_socket_loop => trace_err!(res)?,
-        // res = game_audio_park => trace_err!(res)?,
         res = tracking_loop => res,
         res = playspace_sync_loop => res,
         res = control_loop => res,

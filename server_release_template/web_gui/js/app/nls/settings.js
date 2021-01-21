@@ -154,6 +154,10 @@ define({
         "_root_connection_clientRecvBufferSize.description": "Buffer size on client side. \nDepends on the bitrate. \nCalculated size is recommended. If you experience packet loss, enlarge buffer.", // adv
         "_root_connection_aggressiveKeyframeResend.name": "Aggressive keyframe resend",
         "_root_connection_aggressiveKeyframeResend.description": "Decrease minimum interval between keyframes from 100 ms to 5 ms. \nUsed only when packet loss is detected. \nImproves experience on networks with packet loss.",
+        "_root_connection_onConnectScript.name": "On connect script",
+        "_root_connection_onConnectScript.description": "This script/executable will be run asynchronously when headset connects.\nEnvironment variable ACTION will be set to &#34;connect&#34; (without quotes).",
+        "_root_connection_onDisconnectScript.name": "On disconnect script",
+        "_root_connection_onDisconnectScript.description": "This script/executable will be run asynchronously when headset disconnects and on SteamVR shutdown.\nEnvironment variable ACTION will be set to &#34;disconnect&#34; or &#34;shutdown&#34; (both without quotes).",
         // Extra tab
         "_root_extra_tab.name": "Extra",
         "_root_extra_theme-choice-.name": "Theme",

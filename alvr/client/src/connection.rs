@@ -33,6 +33,7 @@ const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
 const RETRY_CONNECT_INTERVAL: Duration = Duration::from_millis(500);
 const PLAYSPACE_SYNC_INTERVAL: Duration = Duration::from_millis(500);
+const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(5);
 
 // close stream on Drop (manual disconnection or execution canceling)
 struct StreamCloseGuard {
@@ -313,6 +314,23 @@ async fn try_connect(
         }
     };
 
+    let keepalive_sender_loop = {
+        let control_sender = control_sender.clone();
+        async move {
+            loop {
+                control_sender
+                    .lock()
+                    .await
+                    .send(&ClientControlPacket::Reserved(
+                        "{ \"keepalive\": true }".into(),
+                    ))
+                    .await
+                    .ok();
+                time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
+            }
+        }
+    };
+
     let control_loop = async move {
         loop {
             tokio::select! {
@@ -355,6 +373,7 @@ async fn try_connect(
         res = tracking_loop => res,
         res = playspace_sync_loop => res,
         res = control_loop => res,
+        res = keepalive_sender_loop => res,
     }
 }
 

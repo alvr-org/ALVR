@@ -21,10 +21,8 @@ enum View {
 fn launcher_lifecycle(handle: ExtEventSink, window_id: WindowId) {
     loop {
         let steamvr_ok = check_steamvr_installation();
-        let msvcp_ok = check_msvcp_installation().unwrap_or_else(|e| {
-            show_e(e);
-            false
-        });
+        let msvcp_ok = check_msvcp_installation();
+
         if steamvr_ok && msvcp_ok {
             break;
         } else {

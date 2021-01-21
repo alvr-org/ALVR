@@ -76,15 +76,20 @@ pub fn check_steamvr_installation() -> bool {
     openvr_source_file_path().is_ok()
 }
 
+// https://github.com/bitbeans/RedistributableChecker/blob/master/RedistributableChecker/RedistributablePackage.cs#L56
 #[cfg(windows)]
-pub fn check_msvcp_installation() -> StrResult<bool> {
-    let output = trace_err!(Command::new("where")
-        .arg("msvcp140_2.dll")
-        .creation_flags(CREATE_NO_WINDOW)
-        .output())?;
-    let output = String::from_utf8_lossy(&output.stdout);
+pub fn check_msvcp_installation() -> bool {
+    use winreg::*;
 
-    Ok(output.contains(r"C:\Windows\System32\msvcp140_2.dll"))
+    let maybe_key = RegKey::predef(enums::HKEY_LOCAL_MACHINE)
+        .open_subkey(r"SOFTWARE\Microsoft\DevDiv\VC\Servicing\14.0\RuntimeMinimum");
+    if let Ok(key) = maybe_key {
+        if let Ok(value) = key.get_value::<String, _>("Version") {
+            return value.starts_with("14");
+        }
+    }
+
+    false
 }
 
 pub fn unblock_alvr_addon() -> StrResult {

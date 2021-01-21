@@ -148,7 +148,15 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
                 if let Ok(sink_configs) =
                     json::from_value::<Vec<AudioConfigRange>>(configs_json.clone())
                 {
-                    let source_configs = audio::supported_audio_output_configs(None)?;
+                    // CPAL sometimes crashes if supported_audio_output_configs() (non async) is not
+                    // called within a separate thread. This might be a bug of Tokio (non async
+                    // functions do not have await points and cannot be sent between threads).
+
+                    // let source_configs = audio::supported_audio_output_configs(None)?;
+                    let source_configs = trace_err!(
+                        task::spawn_blocking(|| { audio::supported_audio_output_configs(None) })
+                            .await
+                    )??;
                     game_audio_config = Some(audio::select_audio_config(
                         source_configs,
                         sink_configs,

@@ -126,7 +126,7 @@ dependencies = [
  "serde_json",
  "settings-schema",
  "tokio 1.0.2",
- "tokio-util 0.6.1",
+ "tokio-util 0.6.2",
  "widestring 0.4.3",
  "winapi 0.3.9",
  "winit",
@@ -172,7 +172,7 @@ dependencies = [
  "settings-schema",
  "tokio 1.0.2",
  "tokio-tungstenite",
- "tokio-util 0.6.1",
+ "tokio-util 0.6.2",
  "walkdir",
  "webbrowser",
 ]
@@ -276,6 +276,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "46016233fc1bb55c23b856fe556b7db6ccd05119a0a392e04f0b3b7c79058f16"
 
 [[package]]
+name = "async-stream"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3670df70cbc01729f901f94c887814b3c68db038aad1329a418bae178bc5295c"
+dependencies = [
+ "async-stream-impl",
+ "futures-core",
+]
+
+[[package]]
+name = "async-stream-impl"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3548b8efc9f8e8a5a0a2808c5bd8451a9031b9e5b879a79590304ae928b0a70"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "atk"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -320,9 +341,9 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "backtrace"
-version = "0.3.55"
+version = "0.3.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef5140344c85b01f9bbb4d4b7288a8aa4b3287ccef913a14bcc78a1063623598"
+checksum = "9d117600f438b1707d4e4ae15d3595657288f8235a0eb593e80ecc98ab34e1bc"
 dependencies = [
  "addr2line",
  "cfg-if 1.0.0",
@@ -1272,13 +1293,13 @@ dependencies = [
 
 [[package]]
 name = "filetime"
-version = "0.2.13"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c122a393ea57648015bf06fbd3d372378992e86b9ff5a7a497b076a28c79efe"
+checksum = "1d34cfa13a63ae058bfa601fe9e313bbdb3746427c1459185464ce0fcf62e1e8"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
- "redox_syscall 0.1.57",
+ "redox_syscall 0.2.4",
  "winapi 0.3.9",
 ]
 
@@ -1829,7 +1850,7 @@ dependencies = [
  "indexmap",
  "slab",
  "tokio 1.0.2",
- "tokio-util 0.6.1",
+ "tokio-util 0.6.2",
  "tracing",
  "tracing-futures",
 ]
@@ -2723,9 +2744,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d3b63360ec3cb337817c2dbd47ab4a0f170d285d8e5a2064600f3def1402397"
+checksum = "a9a7ab5d64814df0fe4a4b5ead45ed6c5f181ee3ff04ba344313a6c80446c5d4"
 
 [[package]]
 name = "oboe"
@@ -4355,10 +4376,11 @@ dependencies = [
 
 [[package]]
 name = "tokio-util"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12ae4751faa60b9f96dd8344d74592e5a17c0c9a220413dbc6942d14139bbfcc"
+checksum = "feb971a26599ffd28066d387f109746df178eff14d5ea1e235015c5601967a4b"
 dependencies = [
+ "async-stream",
  "bytes 1.0.1",
  "futures-core",
  "futures-sink",

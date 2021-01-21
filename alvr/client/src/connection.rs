@@ -327,16 +327,15 @@ async fn connection_pipeline(
 
     let (game_audio_sender, game_audio_receiver) = smpsc::channel();
 
-    // Use a local thread as a container. It's still a future so it can be canceled
-    let game_audio_park = task::spawn_local(async move {
-        let mut _game_audio_stream_guard = None;
-        if let Some(config) = maybe_game_audio_config {
-            _game_audio_stream_guard =
-                Some(audio::AudioPlayer::start(config, game_audio_receiver)?);
-        }
+    // let game_audio_park = task::spawn_local(async move {
+    //     let mut _game_audio_stream_guard = None;
+    //     if let Some(config) = maybe_game_audio_config {
+    //         _game_audio_stream_guard =
+    //             Some(audio::AudioPlayer::start(config, game_audio_receiver)?);
+    //     }
 
-        future::pending().await
-    });
+    //     future::pending().await
+    // });
 
     let control_loop = async move {
         loop {
@@ -379,7 +378,7 @@ async fn connection_pipeline(
 
     tokio::select! {
         res = stream_socket_loop => trace_err!(res)?,
-        res = game_audio_park => trace_err!(res)?,
+        // res = game_audio_park => trace_err!(res)?,
         res = tracking_loop => res,
         res = playspace_sync_loop => res,
         res = control_loop => res,

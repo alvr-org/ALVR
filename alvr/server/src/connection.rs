@@ -3,16 +3,12 @@ use alvr_common::{data::*, logging::*, sockets::*, *};
 use nalgebra::Translation3;
 use serde_json as json;
 use settings_schema::Switch;
-use std::{
-    collections::HashMap,
-    future,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-    time::Duration,
+use std::{collections::HashMap, future, sync::Arc, time::Duration};
+use tokio::{
+    runtime,
+    sync::{mpsc as tmpsc, Mutex},
+    task, time,
 };
-use tokio::{sync::{mpsc as tmpsc, Mutex}, task, time};
 
 const RETRY_CONNECT_INTERVAL: Duration = Duration::from_millis(500);
 
@@ -325,13 +321,10 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
 }
 
 // close stream on Drop (manual disconnection or execution canceling)
-struct StreamCloseGuard {
-    streaming: Arc<AtomicBool>,
-}
+struct StreamCloseGuard;
 
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
-        self.streaming.store(false, Ordering::Relaxed);
         unsafe { crate::DeinitializeStreaming() };
     }
 }
@@ -364,34 +357,35 @@ async fn connection_pipeline() -> StrResult {
     let control_sender = Arc::new(Mutex::new(control_sender));
 
     unsafe { crate::InitializeStreaming() };
+    let _stream_guard = StreamCloseGuard;
 
-    let streaming = Arc::new(AtomicBool::new(true));
-    let _stream_guard = StreamCloseGuard {
-        streaming: streaming.clone(),
-    };
-
-    // AudioSession is !Send, I cannot move it between threads
-    let game_audio_loop = task::spawn_local({
+    // AudioSession is !Send, I cannot move it between threads. task::LocalSet allows to run !Send
+    // futures, but cannot be used because its handle is also !Send, and task::spawn_local() in not
+    // valid outside of a local set. So I need to spawn a future inside a blocking thread
+    let game_audio_loop = task::spawn_blocking({
         let control_sender = control_sender.clone();
-        async move {
-            if let Some(config) = game_audio_config {
-                let (sender, mut receiver) = tmpsc::unbounded_channel();
-                let _audio_stream_guard = Some(audio::AudioSession::start_recording(
-                    None, config, true, sender,
-                )?);
+        move || {
+            let _runtime_guard = runtime::Handle::current().enter();
+            futures::executor::block_on(async move {
+                if let Some(config) = game_audio_config {
+                    let (sender, mut receiver) = tmpsc::unbounded_channel();
+                    let _audio_stream_guard = Some(audio::AudioSession::start_recording(
+                        None, config, true, sender,
+                    )?);
 
-                while let Some(data) = receiver.recv().await {
-                    control_sender
-                        .lock()
-                        .await
-                        .send(&ServerControlPacket::ReservedBuffer(data))
-                        .await?;
+                    while let Some(data) = receiver.recv().await {
+                        control_sender
+                            .lock()
+                            .await
+                            .send(&ServerControlPacket::ReservedBuffer(data))
+                            .await?;
+                    }
+
+                    StrResult::Ok(())
+                } else {
+                    future::pending().await
                 }
-
-                StrResult::Ok(())
-            } else {
-                future::pending().await
-            }
+            })
         }
     });
 
@@ -429,6 +423,8 @@ async fn connection_pipeline() -> StrResult {
                 }
             }
         }
+
+        Ok(())
     };
 
     tokio::select! {
@@ -439,12 +435,12 @@ async fn connection_pipeline() -> StrResult {
                 .send(&ServerControlPacket::Restarting)
                 .await
                 .ok();
-        }
-        _ = control_loop => (),
-        _ = game_audio_loop => (),
-    }
 
-    Ok(())
+            Ok(())
+        }
+        res = game_audio_loop => trace_err!(res)?,
+        res = control_loop => res,
+    }
 }
 
 pub async fn connection_lifecycle_loop() {

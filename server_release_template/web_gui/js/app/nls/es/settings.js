@@ -156,6 +156,10 @@ define({
     "_root_connection_clientRecvBufferSize.description": "Tamaño del buffer para el cliente. \nDepende de la tasa de bits. \nSe recomienda dejar el valor calculado. Si tiene problemas de pérdida de paquetes, aumente el valor.", // adv
     "_root_connection_aggressiveKeyframeResend.name": "Reenvía los fotogramas clave de forma agresiva",
     "_root_connection_aggressiveKeyframeResend.description": "Reducir el intervalo de reenvío de cuadros de tipo \"I\" (key frames) de 100ms a 5ms.\nSólo se utiliza cuando se detecta una pérdida de paquetes. Mejora la experiencia visual en caso de pérdida de paquetes.",
+    "_root_connection_onConnectScript.name": "Script al conectar",
+    "_root_connection_onConnectScript.description": "Este script/ejecutable se ejecutará de forma asíncrona cuando el visor se conecte.\nLa variable de entorno ACTION se ajustará a &#34;connect&#34; (sin comillas).",
+    "_root_connection_onDisconnectScript.name": "Script al desconectar",
+    "_root_connection_onDisconnectScript.description": "Este script/ejecutable se ejecutará de forma asíncrona cuando el visor se desconecte y al apagar SteamVR.\nLa variable de entorno ACTION se ajustará a &#34;disconnect&#34; o &#34;shutdown&#34; (ambos sin comillas).",
     // Extra tab
     "_root_extra_tab.name": "Extra",
     "_root_extra_theme-choice-.name": "Estilo",

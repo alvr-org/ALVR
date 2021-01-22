@@ -14,5 +14,8 @@ druid = "0.7"
 ureq = "2"
 sysinfo = "0.15"
 
+[target.'cfg(windows)'.dependencies]
+winreg = "0.8"
+
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

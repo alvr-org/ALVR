@@ -10,6 +10,7 @@ define([
     "app/monitor",
     "app/driverList",
     "app/uploadPreset",
+    "app/languageSelector",
     "json!../../session",
     "text!../../version",
     "js/lib/lobibox.min.js",
@@ -26,6 +27,7 @@ define([
     Monitor,
     driverList,
     uploadPreset,
+    languageSelector,
     session,
     version,
 ) {
@@ -35,132 +37,165 @@ define([
 
         function checkForUpdate(settings, delay) {
             session = settings.getSession();
-            let updateType =
-                session.sessionSettings.extra.updateChannel.variant;
-            if (updateType !== "noUpdates") {
-                let url =
-                    "https://api.github.com/repos/alvr-org/ALVR/releases/latest";
-                if (updateType === "beta") {
-                    url = "https://api.github.com/repos/alvr-org/ALVR/releases";
-                } else if (updateType === "nightly") {
-                    url =
-                        "https://api.github.com/repos/alvr-org/ALVR-nightly/releases/latest";
-                }
-                $.get(url, (data) => {
-                    if (updateType === "beta") {
-                        data = data[0];
-                    }
-                    const currentVersion = "v" + version;
-                    // const releaseVersion = data.tag_name.match(/\d+.\d+.\d+/,)[0];
-                    const releaseVersion = data.tag_name;
-                    if (currentVersion === releaseVersion) {
-                        Lobibox.notify("success", {
-                            size: "mini",
-                            rounded: true,
-                            delayIndicator: false,
-                            sound: false,
-                            iconSource: "fontAwesome",
-                            msg: i18n.noNeedForUpdate,
-                        });
-                    } else {
-                        Lobibox.notify("warning", {
-                            size: "mini",
-                            rounded: true,
-                            delay: delay,
-                            delayIndicator: delay !== -1,
-                            sound: false,
-                            iconSource: "fontAwesome",
-                            msg: i18n.needUpdateClickForMore,
-                            closable: true,
-                            onClick: function () {
-                                const releaseNote = data.body;
-                                const infoURL = data.html_url;
-                                showUpdatePopupDialog(
-                                    releaseVersion,
-                                    releaseNote,
-                                    infoURL,
-                                ).then((res) => {
-                                    if (res) {
-                                        let url = "";
-                                        let size = 0;
-                                        data.assets.forEach((asset) => {
-                                            const found = asset.name.match(".*\.exe$");
-                                            if (found) {
-                                                url =
-                                                    asset.browser_download_url;
-                                                size = asset.size;
-                                            }
-                                        });
-                                        if (url !== "") {
-                                            triggerUpdate(url);
-                                        }
-                                    }
-                                });
-                            },
-                        });
-                    }
-                });
+            let updateType = session.sessionSettings.extra.updateChannel.variant;
+
+            let url = "";
+            if (updateType === "stable") {
+                url = "https://api.github.com/repos/alvr-org/ALVR/releases/latest";
+            } else if (updateType === "beta") {
+                url = "https://api.github.com/repos/alvr-org/ALVR/releases?per_page=1";
+            } else if (updateType === "nightly") {
+                url = "https://api.github.com/repos/alvr-org/ALVR-nightly/releases/latest";
+            } else {
+                return;
             }
+
+            $.get(url, (data) => {
+                if (updateType === "beta") {
+                    data = data[0];
+                }
+
+                if (data.tag_name === "v" + version) {
+                    Lobibox.notify("success", {
+                        size: "mini",
+                        rounded: true,
+                        delayIndicator: false,
+                        sound: false,
+                        iconSource: "fontAwesome",
+                        msg: i18n.noNeedForUpdate,
+                    });
+                    return;
+                }
+
+                if (session.sessionSettings.extra.promptBeforeUpdate) {
+                    Lobibox.notify("warning", {
+                        size: "mini",
+                        rounded: true,
+                        delay: delay,
+                        delayIndicator: delay !== -1,
+                        sound: false,
+                        iconSource: "fontAwesome",
+                        msg: i18n.needUpdateClickForMore,
+                        closable: true,
+                        onClick: () => showUpdatePopupDialog(data)
+                    });
+                } else {
+                    triggerUpdate(data);
+                }
+            });
         }
 
-        function showUpdatePopupDialog(releaseVersion, releaseNote, infoURL) {
-            return new Promise((resolve) => {
-                var compiledTemplate = _.template(updatePopup);
-                var template = compiledTemplate(i18n);
-                $("#confirmModal").remove();
-                $("body").append(template);
-                $(document).ready(() => {
-                    $("#releaseVersion").text(releaseVersion);
-                    $("#releaseNote").text(releaseNote);
+        function showUpdatePopupDialog(data) {
+            var compiledTemplate = _.template(updatePopup);
+            var template = compiledTemplate(i18n);
+            $("#confirmModal").remove();
+            $("body").append(template);
+            $(document).ready(() => {
+                $("#releaseTitle").text(data.name);
+                $("#releaseNote").text(data.body);
 
-                    $("#confirmModal").modal({
-                        backdrop: "static",
-                        keyboard: false,
-                    });
-                    $("#confirmModal").on("hidden.bs.modal", (e) => {
-                        resolve(false);
-                    });
-                    $("#cancelUpdateButton").click(() => {
-                        resolve(false);
-                        $("#confirmModal").modal("hide");
-                        $("#confirmModal").remove();
-                    });
-                    $("#okUpdateButton").click(() => {
-                        resolve(true);
-                        $("#confirmModal").modal("hide");
-                        $("#confirmModal").remove();
-                    });
-                    $("#moreUpdateButton").click(() => {
-                        $.ajax({
-                            headers: {
-                                Accept: "application/json",
-                                "Content-Type": "application/json",
-                            },
-                            type: "POST",
-                            url: "/open",
-                            data: JSON.stringify(infoURL),
-                            dataType: "JSON",
-                        });
+                $("#confirmModal").modal({
+                    backdrop: "static",
+                    keyboard: false,
+                });
+                $("#cancelUpdateButton").click(() => {
+                    $("#confirmModal").modal("hide");
+                    $("#confirmModal").remove();
+                });
+                $("#okUpdateButton").click(() => {
+                    $("#confirmModal").modal("hide");
+                    $("#confirmModal").remove();
+                    triggerUpdate(data);
+                });
+                $("#moreUpdateButton").click(() => {
+                    $.ajax({
+                        headers: {
+                            Accept: "application/json",
+                            "Content-Type": "application/json",
+                        },
+                        type: "POST",
+                        url: "/open",
+                        data: JSON.stringify(data.html_url),
+                        dataType: "JSON",
                     });
                 });
             });
         }
 
-        function triggerUpdate(url) {
+        function triggerUpdate(data) {
+            let url = "";
+            let size = 0;
+            data.assets.forEach((asset) => {
+                if (asset.name.startsWith("ALVR_Installer")) {
+                    url = asset.browser_download_url;
+                    size = asset.size;
+                }
+            });
+            if (url === "") {
+                return
+            }
+
+            $("#setupWizard").modal("hide");
+            $("#bodyContent").hide();
+            $("#updating").show();
+
+            const elem = document.getElementById("progressBar");
+
+            // Create WebSocket connection.
+            const webSocket = new WebSocket("ws://" + window.location.host + "/events");
+
             $.ajax({
                 type: "POST",
                 url: "/update",
                 contentType: "application/json;charset=UTF-8",
                 data: JSON.stringify(url),
+                success: function (res) {
+                    if (res === "") {
+                        console.log("Success");
+                    } else {
+                        console.log("Info: ", res);
+                        webSocket.close();
+                        $("#bodyContent").show();
+                        $("#updating").hide();
+                    }
+                },
+                error: function (res) {
+                    console.log("Error: ", res);
+                    webSocket.close();
+                    $("#bodyContent").show();
+                    $("#updating").hide();
+                },
             });
-            Lobibox.notify("success", {
-                size: "mini",
-                rounded: true,
-                delayIndicator: false,
-                sound: false,
-                iconSource: "fontAwesome",
-                msg: i18n.noNeedForUpdate,
-            });
+
+            if (webSocket !== null && typeof webSocket !== undefined) {
+                webSocket.onmessage = function (event) {
+                    try {
+                        const dataJSON = JSON.parse(event.data);
+                        if (dataJSON.id === "updateDownloadedBytesCount") {
+                            const BtoMB = 1.0 / (1024 * 1024);
+                            const sizeMb = size * BtoMB;
+                            const downloadProgress = (dataJSON.data * BtoMB).toFixed(2);
+                            document.getElementById("downloadProgress").innerHTML = downloadProgress + "MB" + " / " + sizeMb.toFixed(2) + "MB";
+                            const progress = (100.0 * dataJSON.data / size).toFixed(2);
+                            elem.style.width = progress + "%";
+                            elem.innerHTML = progress + "%";
+                        }
+                    } catch (error) {
+                        console.log("Error with message: ", event);
+                        Lobibox.notify("error", {
+                            rounded: true,
+                            delay: -1,
+                            delayIndicator: false,
+                            sound: false,
+                            position: "bottom left",
+                            iconSource: "fontAwesome",
+                            msg: error.stack,
+                            closable: true,
+                            messageHeight: 250,
+                        });
+                    }
+                };
+            }
         }
 
         $("#bodyContent").append(template);
@@ -171,6 +206,7 @@ define([
                 checkForUpdate(settings, -1);
                 var wizard = new SetupWizard(settings);
                 var monitor = new Monitor(settings);
+                var language = new languageSelector(settings);
             } catch (error) {
                 Lobibox.notify("error", {
                     rounded: true,
@@ -186,12 +222,21 @@ define([
             }
 
             // update the current language on startup
-            let sessionLocale = session.locale;
-            $("#localeChange").val(sessionLocale);
+            const sessionLocale = session.locale;
+
+            language.addLanguageSelector(
+                "localeSelector",
+                sessionLocale,
+            );
+
+            language.addLanguageSelector(
+                "localeSelectorV",
+                sessionLocale,
+            );
+
             let storedLocale = localStorage.getItem("locale");
             if (
                 sessionLocale !== storedLocale &&
-                storedLocale !== null &&
                 sessionLocale !== "system"
             ) {
                 storedLocale = sessionLocale;
@@ -241,21 +286,6 @@ define([
 
             $("#checkForUpdates").click(() => {
                 checkForUpdate(settings, 5000);
-            });
-
-            $("#localeChange").change(() => {
-                storedLocale = $("#localeChange").val();
-                session.locale = storedLocale;
-                settings.updateSession(session);
-                settings.storeSession("other");
-                if (storedLocale === "system") {
-                    if (localStorage.getItem("locale") !== null) {
-                        localStorage.removeItem("locale");
-                    }
-                } else {
-                    localStorage.setItem("locale", storedLocale);
-                }
-                window.location.reload();
             });
 
             $("#version").text("v" + version);

@@ -2,7 +2,10 @@ use crate::{ClientListAction, CLIENTS_UPDATED_NOTIFIER, SESSION_MANAGER};
 use alvr_common::{data::*, logging::*, sockets::*, *};
 use nalgebra::Translation3;
 use settings_schema::Switch;
-use std::{collections::HashMap, net::IpAddr};
+use std::{collections::HashMap, net::IpAddr, process::Command, sync::Arc, time::Duration};
+use tokio::{sync::Mutex, time};
+
+const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(5);
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -163,6 +166,8 @@ async fn connect_to_any_client(
             client_buffer_size: settings.connection.client_recv_buffer_size,
             force_3dof: settings.headset.force_3dof,
             aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
+            on_connect_script: settings.connection.on_connect_script,
+            on_disconnect_script: settings.connection.on_disconnect_script,
             adapter_index: settings.video.adapter_index,
             codec: matches!(settings.video.codec, CodecType::HEVC) as _,
             refresh_rate: fps as _,
@@ -322,17 +327,53 @@ impl Drop for StreamCloseGuard {
 }
 
 pub async fn connection_lifecycle_loop() -> StrResult {
+    let on_connect_script = SESSION_MANAGER
+        .lock()
+        .get()
+        .to_settings()
+        .connection
+        .on_connect_script
+        .clone();
+
     loop {
-        let (mut control_sender, mut control_receiver) = tokio::select! {
+        let (control_sender, mut control_receiver) = tokio::select! {
             Err(e) = client_discovery() => break fmt_e!("Client discovery failed: {}", e),
             control_socket = pairing_loop() => control_socket,
             else => unreachable!(),
         };
 
         log_id(LogId::ClientConnected);
+        if !on_connect_script.is_empty() {
+            info!("Running on connect script (connect): {}", on_connect_script);
+            if let Err(e) = Command::new(&on_connect_script)
+                .env("ACTION", "connect")
+                .spawn()
+            {
+                warn!("Failed to run connect script: {}", e);
+            }
+        }
 
         unsafe { crate::InitializeStreaming() };
         let _guard = StreamCloseGuard;
+
+        let control_sender = Arc::new(Mutex::new(control_sender));
+
+        let keepalive_sender_loop = {
+            let control_sender = control_sender.clone();
+            async move {
+                loop {
+                    control_sender
+                        .lock()
+                        .await
+                        .send(&ServerControlPacket::Reserved(
+                            "{ \"keepalive\": true }".into(),
+                        ))
+                        .await
+                        .ok();
+                    time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
+                }
+            }
+        };
 
         let control_loop = async move {
             loop {
@@ -366,6 +407,25 @@ pub async fn connection_lifecycle_loop() -> StrResult {
                     Err(e) => {
                         log_id(LogId::ClientDisconnected);
                         info!("Client disconnected. Cause: {}", e);
+                        let on_disconnect_script = SESSION_MANAGER
+                            .lock()
+                            .get()
+                            .to_settings()
+                            .connection
+                            .on_disconnect_script
+                            .clone();
+                        if !on_disconnect_script.is_empty() {
+                            info!(
+                                "Running on disconnect script (disconnect): {}",
+                                on_disconnect_script
+                            );
+                            if let Err(e) = Command::new(&on_disconnect_script)
+                                .env("ACTION", "disconnect")
+                                .spawn()
+                            {
+                                warn!("Failed to run disconnect script: {}", e);
+                            }
+                        }
                         break;
                     }
                 }
@@ -374,10 +434,11 @@ pub async fn connection_lifecycle_loop() -> StrResult {
 
         tokio::select! {
             _ = crate::RESTART_NOTIFIER.notified() => {
-                control_sender.send(&ServerControlPacket::Restarting).await.ok();
+                control_sender.lock().await.send(&ServerControlPacket::Restarting).await.ok();
                 return Ok(());
             }
             _ = control_loop => (),
+            _ = keepalive_sender_loop => (),
         }
     }
 }

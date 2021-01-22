@@ -4,6 +4,7 @@ define({
         "statistics.msg": "Statistics information available",
     },
     "it": true,
+    "sl": true,
     "es": true,
     "fr": true,
     "ja": true,

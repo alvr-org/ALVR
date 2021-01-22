@@ -66,3 +66,4 @@ jobs:
       - uses: ErichDonGubler/clippy-check@fix-windows-lf-breaking-reports
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          args: -p alvr_xtask -p alvr_common -p alvr_server -p alvr_launcher

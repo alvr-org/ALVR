@@ -157,13 +157,17 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
                 {
                     // CPAL sometimes crashes if supported_audio_output_configs() (non async) is not
                     // called within a separate thread. This might be a bug of Tokio (non async
-                    // functions do not have await points and cannot be sent between threads).
+                    // functions do not have await points and should not be sent between threads).
 
                     // let source_configs = audio::supported_audio_output_configs(None)?;
                     let source_configs = trace_err!(
-                        task::spawn_blocking(|| { audio::supported_audio_output_configs(None) })
-                            .await
+                        task::spawn_blocking({
+                            let index = audio_desc.device_index;
+                            move || audio::supported_audio_output_configs(index)
+                        })
+                        .await
                     )??;
+
                     game_audio_config = Some(audio::select_audio_config(
                         source_configs,
                         sink_configs,
@@ -180,7 +184,7 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
     }
 
     let client_config = ClientConfigPacket {
-        session_desc: serde_json::to_string(SESSION_MANAGER.lock().get()).unwrap(),
+        session_desc: trace_err!(serde_json::to_string(SESSION_MANAGER.lock().get()))?,
         eye_resolution_width: video_eye_width,
         eye_resolution_height: video_eye_height,
         fps,
@@ -412,38 +416,44 @@ async fn connection_pipeline() -> StrResult {
     unsafe { crate::InitializeStreaming() };
     let _stream_guard = StreamCloseGuard;
 
+    let game_audio_desc = SESSION_MANAGER.lock().get().to_settings().audio.game_audio;
     let (_destroy_game_audio_stream_notifier, destroy_game_audio_stream_receiver) =
         smpsc::channel::<()>();
 
-    let game_audio_loop: BoxFuture<_> = if let Some(config) = game_audio_config {
-        let (sender, mut receiver) = tmpsc::unbounded_channel();
-        let control_sender = control_sender.clone();
+    let game_audio_loop: BoxFuture<_> =
+        if let (Switch::Enabled(desc), Some(config)) = (game_audio_desc, game_audio_config) {
+            let (sender, mut receiver) = tmpsc::unbounded_channel();
+            let control_sender = control_sender.clone();
 
-        // AudioSession is !Send, so keep it in a separate thread.
-        Box::pin(futures::future::join(
-            task::spawn_blocking(move || {
-                let _audio_stream_guard =
-                    Some(AudioSession::start_recording(None, config, true, sender)?);
+            // AudioSession is !Send, so keep it in a separate thread.
+            Box::pin(futures::future::join(
+                task::spawn_blocking(move || {
+                    let _audio_stream_guard = Some(AudioSession::start_recording(
+                        desc.device_index,
+                        config,
+                        true,
+                        sender,
+                    )?);
 
-                // notified when _destroy_game_audio_stream_notifier goes out of scope
-                destroy_game_audio_stream_receiver.recv().ok();
-                StrResult::Ok(())
-            }),
-            async move {
-                while let Some(data) = receiver.recv().await {
-                    control_sender
-                        .lock()
-                        .await
-                        .send(&ServerControlPacket::ReservedBuffer(data))
-                        .await?;
-                }
+                    // notified when _destroy_game_audio_stream_notifier goes out of scope
+                    destroy_game_audio_stream_receiver.recv().ok();
+                    StrResult::Ok(())
+                }),
+                async move {
+                    while let Some(data) = receiver.recv().await {
+                        control_sender
+                            .lock()
+                            .await
+                            .send(&ServerControlPacket::ReservedBuffer(data))
+                            .await?;
+                    }
 
-                StrResult::Ok(())
-            },
-        ))
-    } else {
-        Box::pin(future::pending())
-    };
+                    StrResult::Ok(())
+                },
+            ))
+        } else {
+            Box::pin(future::pending())
+        };
 
     let keepalive_sender_loop = {
         let control_sender = control_sender.clone();

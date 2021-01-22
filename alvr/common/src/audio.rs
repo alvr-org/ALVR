@@ -181,26 +181,6 @@ mod winaudio {
 #[cfg(windows)]
 pub use winaudio::*;
 
-#[derive(serde::Serialize)]
-pub struct VirtualMicDevicesDesc {
-    devices: Vec<String>,
-    default: Option<String>,
-}
-
-pub fn virtual_mic_devices() -> StrResult<VirtualMicDevicesDesc> {
-    let host = cpal::default_host();
-
-    let devices = trace_err!(host.output_devices())?
-        .filter_map(|d| d.name().ok())
-        .collect::<Vec<_>>();
-    let default = devices
-        .iter()
-        .find(|d| d.to_uppercase().contains("CABLE"))
-        .cloned();
-
-    Ok(VirtualMicDevicesDesc { devices, default })
-}
-
 // The following code is used to do a handhake between server and client to determine a common set
 // of capabilities supported by both. Due to limitations of Windows WASAPI, most of this
 // code is useless right now, but could still be useful for a Linux server.
@@ -255,21 +235,16 @@ pub fn supported_audio_input_configs() -> StrResult<Vec<AudioConfigRange>> {
 }
 
 pub fn supported_audio_output_configs(
-    device_name: Option<String>,
+    device_index: Option<u64>,
 ) -> StrResult<Vec<AudioConfigRange>> {
     let host = cpal::default_host();
 
-    let mut maybe_device = None;
-    if let (Some(name), Ok(devices)) = (device_name, host.output_devices()) {
-        for device in devices {
-            if let Ok(cur_name) = device.name() {
-                if cur_name == name {
-                    maybe_device = Some(device);
-                    break;
-                }
-            }
-        }
-    }
+    let maybe_device = if let (Some(index), Ok(mut devices)) = (device_index, host.output_devices())
+    {
+        devices.nth(index as _)
+    } else {
+        None
+    };
     let device = if let Some(device) = maybe_device.or_else(|| host.default_output_device()) {
         device
     } else {
@@ -463,26 +438,23 @@ pub struct AudioSession {
 
 impl AudioSession {
     pub fn start_recording(
-        device_name: Option<String>,
+        device_index: Option<u64>,
         config: AudioConfig,
         loopback: bool,
         sender: tmpsc::UnboundedSender<Vec<u8>>,
     ) -> StrResult<Self> {
         let host = cpal::default_host();
-        let device = if let Some(device_name) = device_name {
-            let devices = trace_err!(if loopback {
+        let device = if let Some(device_index) = device_index {
+            let mut devices = trace_err!(if loopback {
                 host.output_devices()
             } else {
                 host.input_devices()
             })?;
-            let maybe_device = devices
-                .filter_map(|d| Some((d.name().ok()?, d)))
-                .find_map(|(d_name, d)| if d_name == device_name { Some(d) } else { None });
 
-            if let Some(device) = maybe_device {
+            if let Some(device) = devices.nth(device_index as _) {
                 device
             } else {
-                return fmt_e!("Cannot find device with name \"{}\"", device_name);
+                return fmt_e!("Cannot find audio device at index {}", device_index);
             }
         } else if loopback {
             trace_none!(host.default_output_device())?

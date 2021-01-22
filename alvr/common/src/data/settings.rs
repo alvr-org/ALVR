@@ -160,7 +160,7 @@ pub struct AudioConfig {
 #[serde(rename_all = "camelCase")]
 pub struct OutputAudioDesc {
     #[schema(gui = "UpDown")]
-    pub device_index: Option<u32>,
+    pub device_index: Option<u64>,
 
     pub mute_when_streaming: bool,
 

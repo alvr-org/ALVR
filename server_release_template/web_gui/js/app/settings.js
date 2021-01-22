@@ -712,7 +712,7 @@ define([
                 <div class="card-title">
                     <div class="btn-group btn-group-sm" data-toggle="buttons">
                         <label class="btn btn-primary optionalSet"><input class="skipInput" type="radio" name="${path}_${name}" id="${path}_${name}_setRadio" >Set</label>
-                        <label class="btn btn-primary optionalUnset"><input class="skipInput" type="radio" name="${path}_${name}" id="${path}_${name}_unsetRadio" >Unset</label>               
+                        <label class="btn btn-primary optionalUnset"><input class="skipInput" type="radio" name="${path}_${name}" id="${path}_${name}_defaultRadio" >Default</label>               
                     </div>
                     <input  id="${path}_${name}_set" type="checkbox" ${checked}  style="visibility:hidden" />
                     <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">
@@ -741,7 +741,7 @@ define([
                         );
                         $("#" + path + "_" + name + "_set").change();
                     });
-                $("#" + path + "_" + name + "_unsetRadio")
+                $("#" + path + "_" + name + "_defaultRadio")
                     .parent()
                     .click(() => {
                         $("#" + path + "_" + name + "_set").prop(

@@ -1,11 +1,16 @@
 use crate::{ClientListAction, CLIENTS_UPDATED_NOTIFIER, SESSION_MANAGER};
-use alvr_common::{data::*, logging::*, sockets::*, *};
+use alvr_common::{audio::AudioSession, data::*, logging::*, sockets::*, *};
+use futures::future::BoxFuture;
 use nalgebra::Translation3;
 use serde_json as json;
 use settings_schema::Switch;
-use std::{collections::HashMap, future, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    future,
+    sync::{mpsc as smpsc, Arc},
+    time::Duration,
+};
 use tokio::{
-    runtime,
     sync::{mpsc as tmpsc, Mutex},
     task, time,
 };
@@ -318,7 +323,7 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         crate::notify_restart_driver();
 
         // waiting for execution canceling
-        std::future::pending::<()>().await;
+        future::pending::<()>().await;
     }
 
     Ok(ConnectionInfo {
@@ -369,33 +374,39 @@ async fn connection_pipeline() -> StrResult {
 
     // AudioSession is !Send, I cannot move it between threads. task::LocalSet allows to run !Send
     // futures, but cannot be used because its handle is also !Send, and task::spawn_local() in not
-    // valid outside of a local set. So I need to spawn a future inside a blocking thread
-    let game_audio_loop = task::spawn_blocking({
+    // valid outside of a local set. So I need to spawn a future inside a blocking thread.
+    // Note: the future is not cancelable (because its a normal thread) but when the client
+    // disconnects send() will fail.
+
+    let (_destroy_game_audio_stream_notifier, destroy_game_audio_stream_receiver) =
+        smpsc::channel::<()>();
+
+    let game_audio_loop: BoxFuture<_> = if let Some(config) = game_audio_config {
+        let (sender, mut receiver) = tmpsc::unbounded_channel();
         let control_sender = control_sender.clone();
-        move || {
-            let _runtime_guard = runtime::Handle::current().enter();
-            futures::executor::block_on(async move {
-                if let Some(config) = game_audio_config {
-                    let (sender, mut receiver) = tmpsc::unbounded_channel();
-                    let _audio_stream_guard = Some(audio::AudioSession::start_recording(
-                        None, config, true, sender,
-                    )?);
+        Box::pin(futures::future::join(
+            task::spawn_blocking(move || {
+                let _audio_stream_guard =
+                    Some(AudioSession::start_recording(None, config, true, sender)?);
 
-                    while let Some(data) = receiver.recv().await {
-                        control_sender
-                            .lock()
-                            .await
-                            .send(&ServerControlPacket::ReservedBuffer(data))
-                            .await?;
-                    }
-
-                    StrResult::Ok(())
-                } else {
-                    future::pending().await
+                destroy_game_audio_stream_receiver.recv().ok();
+                StrResult::Ok(())
+            }),
+            async move {
+                while let Some(data) = receiver.recv().await {
+                    control_sender
+                        .lock()
+                        .await
+                        .send(&ServerControlPacket::ReservedBuffer(data))
+                        .await?;
                 }
-            })
-        }
-    });
+
+                StrResult::Ok(())
+            },
+        ))
+    } else {
+        Box::pin(future::pending())
+    };
 
     let control_loop = async move {
         loop {
@@ -446,7 +457,7 @@ async fn connection_pipeline() -> StrResult {
 
             Ok(())
         }
-        res = game_audio_loop => trace_err!(res)?,
+        _ = game_audio_loop => Ok(()),
         res = control_loop => res,
     }
 }

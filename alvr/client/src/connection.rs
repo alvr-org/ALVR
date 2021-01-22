@@ -1,5 +1,6 @@
 use crate::audio;
 use alvr_common::{data::*, logging::*, sockets::ConnectionResult, *};
+use futures::future::BoxFuture;
 use jni::{
     objects::{GlobalRef, JClass},
     JavaVM,
@@ -17,7 +18,6 @@ use std::{
     time::Duration,
 };
 use tokio::{
-    runtime,
     sync::Mutex,
     task,
     time::{self, Instant},
@@ -44,7 +44,7 @@ struct StreamCloseGuard {
 
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
-        self.is_connected.store(false, Ordering::Relaxed)
+        self.is_connected.store(false, Ordering::Relaxed);
     }
 }
 
@@ -327,21 +327,22 @@ async fn connection_pipeline(
     }
 
     let (game_audio_sender, game_audio_receiver) = smpsc::channel();
+    let (_destroy_game_audio_stream_notifier, destroy_game_audio_stream_receiver) =
+        smpsc::channel::<()>();
 
-    // Container to keep the game audio stream object on the same thread (since it is !Send).
-    // It can be canceled and the destruction code runs on the original thread
-    let game_audio_park = task::spawn_blocking(move || {
-        let _runtime_guard = runtime::Handle::current().enter();
-        futures::executor::block_on(async move {
-            let mut _game_audio_stream_guard = None;
-            if let Some(config) = maybe_game_audio_config {
-                _game_audio_stream_guard =
-                    Some(audio::AudioPlayer::start(config, game_audio_receiver)?);
-            }
+    // AudioPlayer is !Send, so put it in a separate thread
+    let game_audio_stream: BoxFuture<_> = if let Some(config) = maybe_game_audio_config {
+        Box::pin(task::spawn_blocking(move || {
+            let mut _stream = audio::AudioPlayer::start(config, game_audio_receiver)?;
 
-            future::pending().await
-        })
-    });
+            // notified when the notifier counterpart gets dropped
+            destroy_game_audio_stream_receiver.recv().ok();
+
+            Ok(())
+        }))
+    } else {
+        Box::pin(future::pending())
+    };
 
     let control_loop = async move {
         loop {
@@ -383,7 +384,7 @@ async fn connection_pipeline(
     };
 
     tokio::select! {
-        res = game_audio_park => trace_err!(res)?,
+        res = game_audio_stream => trace_err!(res)?,
         res = stream_socket_loop => trace_err!(res)?,
         res = tracking_loop => res,
         res = playspace_sync_loop => res,

@@ -28,7 +28,7 @@ impl AudioInputCallback for RecorderCallback {
 }
 
 pub struct AudioRecorder {
-    _stream: AudioStreamAsync<Input, RecorderCallback>,
+    stream: AudioStreamAsync<Input, RecorderCallback>,
 }
 
 impl AudioRecorder {
@@ -49,7 +49,13 @@ impl AudioRecorder {
 
         trace_err!(stream.start())?;
 
-        Ok(Self { _stream: stream })
+        Ok(Self { stream })
+    }
+}
+
+impl Drop for AudioRecorder {
+    fn drop(&mut self) {
+        self.stream.stop().ok();
     }
 }
 
@@ -91,11 +97,13 @@ impl AudioOutputCallback for PlayerCallback {
                 ]);
             }
         }
+        error!("buffer size: {}", self.sample_buffer.len());
 
         // trickle drain overgrown buffer. todo: use smarter policy with EventTiming
         if self.sample_buffer.len()
             >= frames_bytes_count * self.max_buffer_count_extra + OUTPUT_FRAME_SIZE
         {
+            error!("draining audio frame");
             self.sample_buffer.drain(0..OUTPUT_FRAME_SIZE);
         }
 
@@ -104,7 +112,7 @@ impl AudioOutputCallback for PlayerCallback {
 }
 
 pub struct AudioPlayer {
-    _stream: AudioStreamAsync<Output, PlayerCallback>,
+    stream: AudioStreamAsync<Output, PlayerCallback>,
 }
 
 impl AudioPlayer {
@@ -127,6 +135,12 @@ impl AudioPlayer {
 
         trace_err!(stream.start())?;
 
-        Ok(Self { _stream: stream })
+        Ok(Self { stream })
+    }
+}
+
+impl Drop for AudioPlayer {
+    fn drop(&mut self) {
+        self.stream.stop().ok();
     }
 }

@@ -403,7 +403,7 @@ pub fn select_audio_config(
                 sample_rate: candidate_sample_rate,
                 buffer_size: candidate_buffer_size,
                 sample_format: candidate_sample_format,
-                max_buffer_count_extra: preferred_config.max_buffer_count_extra,
+                buffer_range_multiplier: preferred_config.buffer_range_multiplier,
             },
             channels_score,
             sample_format_score,
@@ -511,30 +511,36 @@ impl AudioSession {
         let host = cpal::default_host();
         let device = trace_none!(host.default_output_device())?;
 
-        let mut sample_buffer = VecDeque::new();
-        let frame_size =
-            config.channels_count as usize * config.sample_format.to_cpal().sample_size();
+        let mut sample_buffer_bytes = VecDeque::new();
+        let mut last_input_buffer_size = 0;
         let stream = trace_err!(device.build_output_stream_raw(
             &audio_config_to_cpal(&config),
             config.sample_format.to_cpal(),
             move |data, _| {
                 while let Ok(packet) = receiver.try_recv() {
-                    sample_buffer.extend(packet);
+                    last_input_buffer_size = packet.len();
+
+                    sample_buffer_bytes.extend(packet);
                 }
 
                 let data_ref = data.bytes_mut();
 
-                if sample_buffer.len() >= data_ref.len() {
+                if sample_buffer_bytes.len() >= data_ref.len() {
                     data_ref.copy_from_slice(
-                        &sample_buffer.drain(0..data_ref.len()).collect::<Vec<_>>(),
+                        &sample_buffer_bytes
+                            .drain(0..data_ref.len())
+                            .collect::<Vec<_>>(),
                     )
                 }
 
-                // trickle drain overgrown buffer. todo: use smarter policy with EventTiming
-                if sample_buffer.len()
-                    >= data_ref.len() * config.max_buffer_count_extra as usize + frame_size
+                // todo: use smarter policy with EventTiming
+                if sample_buffer_bytes.len()
+                    > 2 * config.buffer_range_multiplier as usize * last_input_buffer_size
                 {
-                    sample_buffer.drain(0..frame_size);
+                    sample_buffer_bytes.drain(
+                        0..(sample_buffer_bytes.len()
+                            - config.buffer_range_multiplier as usize * last_input_buffer_size),
+                    );
                 }
             },
             |e| warn!("Error while recording audio: {}", e),

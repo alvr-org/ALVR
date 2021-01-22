@@ -153,7 +153,7 @@ pub struct AudioConfig {
     pub sample_rate: u32,
     pub buffer_size: Option<u32>,
     pub sample_format: SampleFormat,
-    pub max_buffer_count_extra: u64,
+    pub buffer_range_multiplier: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -441,7 +441,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         sample_format: SampleFormatDefault {
                             variant: SampleFormatDefaultVariant::Int16,
                         },
-                        max_buffer_count_extra: 1,
+                        buffer_range_multiplier: 1,
                     },
                 },
             },

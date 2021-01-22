@@ -64,7 +64,8 @@ const OUTPUT_FRAME_SIZE: usize = 2 * size_of::<i16>();
 struct PlayerCallback {
     receiver: Receiver<Vec<u8>>,
     sample_buffer: VecDeque<u8>,
-    max_buffer_count_extra: usize,
+    buffer_range_multiplier: usize,
+    last_input_buffer_size: usize,
 }
 
 impl AudioOutputCallback for PlayerCallback {
@@ -76,6 +77,7 @@ impl AudioOutputCallback for PlayerCallback {
         frames: &mut [(i16, i16)],
     ) -> DataCallbackResult {
         while let Ok(packet) = self.receiver.try_recv() {
+            self.last_input_buffer_size = packet.len();
             self.sample_buffer.extend(packet);
         }
 
@@ -96,15 +98,19 @@ impl AudioOutputCallback for PlayerCallback {
                     buffer[idx * OUTPUT_FRAME_SIZE + 3],
                 ]);
             }
+        } else {
+            error!("audio buffer too small! size: {}", self.sample_buffer.len());
         }
-        error!("buffer size: {}", self.sample_buffer.len());
 
-        // trickle drain overgrown buffer. todo: use smarter policy with EventTiming
-        if self.sample_buffer.len()
-            >= frames_bytes_count * self.max_buffer_count_extra + OUTPUT_FRAME_SIZE
+        // todo: use smarter policy with EventTiming
+        if self.sample_buffer.len() > 2 * self.buffer_range_multiplier * self.last_input_buffer_size
         {
-            error!("draining audio frame");
-            self.sample_buffer.drain(0..OUTPUT_FRAME_SIZE);
+            error!("draining audio buffer. size: {}", self.sample_buffer.len());
+
+            self.sample_buffer.drain(
+                0..(self.sample_buffer.len()
+                    - self.buffer_range_multiplier * self.last_input_buffer_size),
+            );
         }
 
         DataCallbackResult::Continue
@@ -129,7 +135,8 @@ impl AudioPlayer {
             .set_callback(PlayerCallback {
                 receiver,
                 sample_buffer: VecDeque::new(),
-                max_buffer_count_extra: config.max_buffer_count_extra as _,
+                buffer_range_multiplier: config.buffer_range_multiplier as _,
+                last_input_buffer_size: 0,
             })
             .open_stream())?;
 

@@ -16,7 +16,6 @@ const float POINTER_BAR_LENGTH = 0.3;
 const float CURSOR_SCALE_BASE = 0.01;
 const float CURSOR_SCALE_FACTOR = 0.015; // -> m at 1 meter of distance
 const float CURSOR_OFFSET = 0.001;
-const float CURSOR_PRESSED_SCALE_FACTOR = 0.7;
 
 // outCoord: x, y normalized coordinates to be used as input for the interactive panel
 // outPosition: position of the visual representation of the cursor

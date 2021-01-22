@@ -14,24 +14,12 @@ static const int MAX_PACKET_UDP_PACKET_SIZE = 2000;
 static const int ALVR_GUARDIAN_SEGMENT_SIZE = 100;
 
 enum ALVR_PACKET_TYPE {
-	ALVR_PACKET_TYPE_HELLO_MESSAGE = 1,
-	ALVR_PACKET_TYPE_CONNECTION_MESSAGE = 2,
-	ALVR_PACKET_TYPE_RECOVER_CONNECTION = 3,
-	ALVR_PACKET_TYPE_BROADCAST_REQUEST_MESSAGE = 4,
-	ALVR_PACKET_TYPE_STREAM_CONTROL_MESSAGE = 5,
 	ALVR_PACKET_TYPE_TRACKING_INFO = 6,
 	ALVR_PACKET_TYPE_TIME_SYNC = 7,
-	ALVR_PACKET_TYPE_CHANGE_SETTINGS = 8,
 	ALVR_PACKET_TYPE_VIDEO_FRAME = 9,
-	ALVR_PACKET_TYPE_AUDIO_FRAME_START = 10,
-	ALVR_PACKET_TYPE_AUDIO_FRAME = 11,
 	ALVR_PACKET_TYPE_PACKET_ERROR_REPORT = 12,
 	ALVR_PACKET_TYPE_HAPTICS = 13,
 	ALVR_PACKET_TYPE_MIC_AUDIO = 14,
-	ALVR_PACKET_TYPE_GUARDIAN_SYNC_START = 15,
-	ALVR_PACKET_TYPE_GUARDIAN_SYNC_ACK = 16,
-	ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA = 17,
-	ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_ACK = 18,
 };
 
 enum ALVR_CODEC {
@@ -41,7 +29,6 @@ enum ALVR_CODEC {
 
 enum ALVR_LOST_FRAME_TYPE {
 	ALVR_LOST_FRAME_TYPE_VIDEO = 0,
-	ALVR_LOST_FRAME_TYPE_AUDIO = 1,
 };
 
 enum ALVR_INPUT {
@@ -275,18 +262,6 @@ struct VideoFrame {
 	uint16_t fecPercentage;
 	// char frameBuffer[];
 };
-struct AudioFrameStart {
-	uint32_t type; // ALVR_PACKET_TYPE_AUDIO_FRAME_START
-	uint32_t packetCounter;
-	uint64_t presentationTime;
-	uint32_t frameByteSize;
-	// char frameBuffer[];
-};
-struct AudioFrame {
-	uint32_t type; // ALVR_PACKET_TYPE_AUDIO_FRAME
-	uint32_t packetCounter;
-	// char frameBuffer[];
-};
 struct MicAudioFrame {
 	uint32_t type; // ALVR_PACKET_TYPE_MIC_AUDIO_FRAME
 	size_t outputBufferNumElements;
@@ -310,30 +285,6 @@ struct HapticsFeedback {
 	float duration;
 	float frequency;
 	uint8_t hand; // 0:Right, 1:Left
-};
-// For sending Oculus guardian data
-struct GuardianSyncStart {
-	uint32_t type; // ALVR_PACKET_TYPE_GUARDIAN_SYNC_START
-	uint64_t timestamp;
-	TrackingQuat standingPosRotation;
-	TrackingVector3 standingPosPosition;
-	TrackingVector2 playAreaSize;
-	uint32_t totalPointCount;
-};
-struct GuardianSyncStartAck {
-	uint32_t type; // ALVR_PACKET_TYPE_GUARDIAN_SYNC_ACK
-	uint64_t timestamp;
-};
-struct GuardianSegmentData {
-	uint32_t type; // ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_DATA
-	uint64_t timestamp;
-	uint32_t segmentIndex;
-	TrackingVector3 points[ALVR_GUARDIAN_SEGMENT_SIZE];
-};
-struct GuardianSegmentAck {
-	uint32_t type; // ALVR_PACKET_TYPE_GUARDIAN_SEGMENT_ACK
-	uint64_t timestamp;
-	uint32_t segmentIndex;
 };
 #pragma pack(pop)
 

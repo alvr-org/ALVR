@@ -78,15 +78,9 @@ fn main() {
         println!("cargo:rustc-link-lib=msvcrt");
 
         println!(
-            "cargo:rustc-link-search=native={}/libswresample/lib",
-            cpp_dir.to_string_lossy()
-        );
-        println!(
             "cargo:rustc-link-search=native={}/openvr/lib",
             cpp_dir.to_string_lossy()
         );
-        println!("cargo:rustc-link-lib=swresample");
-        println!("cargo:rustc-link-lib=avutil");
         println!("cargo:rustc-link-lib=openvr_api");
     }
 

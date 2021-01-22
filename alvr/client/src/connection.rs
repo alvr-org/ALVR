@@ -1,4 +1,6 @@
+use crate::audio;
 use alvr_common::{data::*, logging::*, sockets::ConnectionResult, *};
+use futures::future::BoxFuture;
 use jni::{
     objects::{GlobalRef, JClass},
     JavaVM,
@@ -8,15 +10,16 @@ use serde_json as json;
 use settings_schema::Switch;
 use std::{
     ffi::CString,
-    slice,
+    future, slice,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        mpsc as smpsc, Arc,
     },
     time::Duration,
 };
 use tokio::{
     sync::Mutex,
+    task,
     time::{self, Instant},
 };
 
@@ -42,7 +45,7 @@ struct StreamCloseGuard {
 
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
-        self.is_connected.store(false, Ordering::Relaxed)
+        self.is_connected.store(false, Ordering::Relaxed);
     }
 }
 
@@ -74,7 +77,7 @@ async fn set_loading_message(
     Ok(())
 }
 
-async fn try_connect(
+async fn connection_pipeline(
     headset_info: &HeadsetInfoPacket,
     device_name: String,
     private_identity: &PrivateIdentity,
@@ -84,15 +87,13 @@ async fn try_connect(
 ) -> StrResult {
     let hostname = &private_identity.hostname;
 
-    let connection_result = trace_err!(
-        sockets::connect_to_server(
-            &headset_info,
-            device_name,
-            hostname.clone(),
-            private_identity.certificate_pem.clone(),
-        )
-        .await
-    )?;
+    let connection_result = sockets::connect_to_server(
+        &headset_info,
+        device_name,
+        hostname.clone(),
+        private_identity.certificate_pem.clone(),
+    )
+    .await?;
     let (server_ip, control_sender, mut control_receiver, config_packet) = match connection_result {
         ConnectionResult::Connected {
             server_ip,
@@ -222,10 +223,13 @@ async fn try_connect(
     // many times per second. If using a future I'm forced to attach and detach the env continuously.
     // When the parent function gets canceled, this loop will run to finish.
     let server_ip_cstring = CString::new(server_ip.to_string()).unwrap();
-    let stream_socket_loop = tokio::task::spawn_blocking({
+    let stream_socket_loop = task::spawn_blocking({
         let java_vm = java_vm.clone();
         let activity_ref = activity_ref.clone();
         let nal_class_ref = nal_class_ref.clone();
+        let codec = baseline_settings.video.codec;
+        let client_recv_buffer_size = baseline_settings.connection.client_recv_buffer_size;
+        let enable_fec = baseline_settings.connection.enable_fec;
         move || -> StrResult {
             let env = trace_err!(java_vm.attach_current_thread())?;
             let env_ptr = env.get_native_interface() as _;
@@ -238,9 +242,9 @@ async fn try_connect(
                     *activity_obj as _,
                     **nal_class as _,
                     server_ip_cstring.as_ptr(),
-                    matches!(baseline_settings.video.codec, CodecType::HEVC) as _,
-                    baseline_settings.connection.client_recv_buffer_size as _,
-                    baseline_settings.connection.enable_fec,
+                    matches!(codec, CodecType::HEVC) as _,
+                    client_recv_buffer_size as _,
+                    enable_fec,
                 );
 
                 while is_connected.load(Ordering::Relaxed) {
@@ -314,6 +318,33 @@ async fn try_connect(
         }
     };
 
+    let mut maybe_game_audio_config = None;
+    if let Ok(reserved_config) = json::from_str::<json::Value>(&config_packet.reserved) {
+        if let Some(config_json) = reserved_config.get("game_audio_config") {
+            if let Ok(maybe_config) = json::from_value::<Option<AudioConfig>>(config_json.clone()) {
+                maybe_game_audio_config = maybe_config;
+            }
+        }
+    }
+
+    let (game_audio_sender, game_audio_receiver) = smpsc::channel();
+    let (_destroy_game_audio_stream_notifier, destroy_game_audio_stream_receiver) =
+        smpsc::channel::<()>();
+
+    // AudioPlayer is !Send, so put it in a separate thread
+    let game_audio_stream: BoxFuture<_> = if let Some(config) = maybe_game_audio_config {
+        Box::pin(task::spawn_blocking(move || {
+            let mut _stream_guard = audio::AudioPlayer::start(config, game_audio_receiver)?;
+
+            // notified when the notifier counterpart gets dropped
+            destroy_game_audio_stream_receiver.recv().ok();
+
+            Ok(())
+        }))
+    } else {
+        Box::pin(future::pending())
+    };
+
     let keepalive_sender_loop = {
         let control_sender = control_sender.clone();
         async move {
@@ -350,8 +381,10 @@ async fn try_connect(
                             .await?;
                             break Ok(());
                         }
-                        Ok(ServerControlPacket::Reserved(_))
-                        | Ok(ServerControlPacket::ReservedBuffer(_)) => (),
+                        Ok(ServerControlPacket::ReservedBuffer(buffer)) => {
+                            trace_err!(game_audio_sender.send(buffer))?;
+                        },
+                        Ok(ServerControlPacket::Reserved(_)) => (),
                         Err(e) => {
                             info!("Server disconnected. Cause: {}", e);
                             set_loading_message(
@@ -369,6 +402,7 @@ async fn try_connect(
     };
 
     tokio::select! {
+        res = game_audio_stream => trace_err!(res)?,
         res = stream_socket_loop => trace_err!(res)?,
         res = tracking_loop => res,
         res = playspace_sync_loop => res,
@@ -398,7 +432,7 @@ pub async fn connection_lifecycle_loop(
     loop {
         tokio::join!(
             async {
-                let maybe_error = try_connect(
+                let maybe_error = connection_pipeline(
                     &headset_info,
                     device_name.to_owned(),
                     &private_identity,
@@ -407,7 +441,9 @@ pub async fn connection_lifecycle_loop(
                     nal_class_ref.clone(),
                 )
                 .await;
+
                 if let Err(e) = maybe_error {
+                    error!("{}", e);
                     set_loading_message(&*java_vm, &*activity_ref, &private_identity.hostname, &e)
                         .await
                         .ok();

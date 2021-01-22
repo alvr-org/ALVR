@@ -9,15 +9,6 @@ public:
 	}
 	Exception() {
 	}
-
-	virtual const wchar_t *what() {
-		return m_what.c_str();
-	}
-
-	Exception& operator=(const Exception &src) {
-		m_what = src.m_what;
-		return *this;
-	}
 private:
 	std::wstring m_what;
 };

@@ -17,8 +17,10 @@ use std::{
     net::IpAddr,
     os::raw::c_char,
     path::PathBuf,
-    process::Command,
-    sync::{atomic::AtomicUsize, atomic::Ordering, Arc, Once},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Once,
+    },
     thread,
     time::Duration,
 };
@@ -44,26 +46,6 @@ pub fn shutdown_runtime() {
     }
 
     SHUTDOWN_NOTIFIER.notify_waiters();
-
-    let on_disconnect_script = SESSION_MANAGER
-        .lock()
-        .get()
-        .to_settings()
-        .connection
-        .on_disconnect_script
-        .clone();
-    if !on_disconnect_script.is_empty() {
-        info!(
-            "Running on disconnect script (shutdown): {}",
-            on_disconnect_script
-        );
-        if let Err(e) = Command::new(&on_disconnect_script)
-            .env("ACTION", "shutdown")
-            .spawn()
-        {
-            warn!("Failed to run disconnect script: {}", e);
-        }
-    }
 
     if let Some(runtime) = MAYBE_RUNTIME.lock().take() {
         runtime.shutdown_background();
@@ -314,9 +296,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 SetDefaultChaperone();
 
                 tokio::select! {
-                    Err(e) = connection::connection_lifecycle_loop() => show_e(e),
+                    _ = connection::connection_lifecycle_loop() => (),
                     _ = SHUTDOWN_NOTIFIER.notified() => (),
-                    else => (),
                 }
             });
         }

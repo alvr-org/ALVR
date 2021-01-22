@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use settings_schema::*;
 
+use crate::StrResult;
+
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum FrameSize {
@@ -121,49 +123,49 @@ pub struct VideoDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum SampleFormat {
-    Signed16Bit,
-    Unsigned16Bit,
-    Signed32Bit,
+    Int16,
+    Float32,
 }
 
 impl SampleFormat {
     pub fn to_cpal(self) -> cpal::SampleFormat {
         match self {
-            Self::Signed16Bit => cpal::SampleFormat::I16,
-            Self::Unsigned16Bit => cpal::SampleFormat::U16,
-            Self::Signed32Bit => cpal::SampleFormat::F32,
+            Self::Int16 => cpal::SampleFormat::I16,
+            Self::Float32 => cpal::SampleFormat::F32,
         }
     }
 
-    pub fn from_cpal(format: cpal::SampleFormat) -> Self {
+    pub fn from_cpal(format: cpal::SampleFormat) -> StrResult<Self> {
         match format {
-            cpal::SampleFormat::I16 => Self::Signed16Bit,
-            cpal::SampleFormat::U16 => Self::Unsigned16Bit,
-            cpal::SampleFormat::F32 => Self::Signed32Bit,
+            cpal::SampleFormat::I16 => Ok(Self::Int16),
+            cpal::SampleFormat::F32 => Ok(Self::Float32),
+            _ => Err("Unsupported".into()),
         }
     }
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct AudioConfig {
-    pub preferred_channels_count: u16,
-    pub preferred_sample_rate: u32,
-    pub preferred_buffer_size: Option<u32>,
-    pub preferred_sample_format: SampleFormat,
-    pub max_buffer_count_extra: u64,
+    pub channels_count: u16,
+    pub sample_rate: u32,
+    pub buffer_size: Option<u32>,
+    pub sample_format: SampleFormat,
+    pub buffer_range_multiplier: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputAudioDesc {
-    // deviceDropdown should poll the available audio devices and set "device"
-    #[schema(placeholder = "device_dropdown")]
-    //
-    #[schema(advanced)]
-    pub device: String,
+    #[schema(gui = "UpDown")]
+    pub device_index: Option<u32>,
 
     pub mute_when_streaming: bool,
+
+    #[schema(advanced)]
+    pub preferred_config: AudioConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -318,10 +320,8 @@ pub struct ConnectionDesc {
 
     pub aggressive_keyframe_resend: bool,
 
-    #[schema(advanced)]
     pub on_connect_script: String,
 
-    #[schema(advanced)]
     pub on_disconnect_script: String,
 
     #[schema(advanced)]
@@ -384,7 +384,7 @@ pub fn session_settings_default() -> SettingsDefault {
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
-            preferred_fps: 72_f32,
+            preferred_fps: 72.,
             render_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
                 Scale: 0.75,
@@ -430,8 +430,23 @@ pub fn session_settings_default() -> SettingsDefault {
             game_audio: SwitchDefault {
                 enabled: true,
                 content: OutputAudioDescDefault {
-                    device: "".into(),
+                    device_index: OptionalDefault {
+                        set: false,
+                        content: 0,
+                    },
                     mute_when_streaming: true,
+                    preferred_config: AudioConfigDefault {
+                        channels_count: 2,
+                        sample_rate: 44100,
+                        buffer_size: OptionalDefault {
+                            set: false,
+                            content: 0,
+                        },
+                        sample_format: SampleFormatDefault {
+                            variant: SampleFormatDefaultVariant::Int16,
+                        },
+                        buffer_range_multiplier: 1,
+                    },
                 },
             },
             microphone: SwitchDefault {

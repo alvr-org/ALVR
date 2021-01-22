@@ -188,49 +188,6 @@ void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 	mVideoFrameIndex++;
 }
 
-void ClientConnection::SendAudio(uint8_t *buf, int len, uint64_t presentationTime) {
-	uint8_t packetBuffer[2000];
-
-	Debug("Sending audio frame. Size=%d bytes\n", len);
-
-	int remainBuffer = len;
-	for (int i = 0; remainBuffer != 0; i++) {
-		int pos = 0;
-
-		if (i == 0) {
-			// First fragment
-			auto header = (AudioFrameStart *)packetBuffer;
-
-			header->type = ALVR_PACKET_TYPE_AUDIO_FRAME_START;
-			header->packetCounter = soundPacketCounter;
-			header->presentationTime = presentationTime;
-			header->frameByteSize = len;
-
-			pos = sizeof(*header);
-		}
-		else {
-			// Following fragments
-			auto header = (AudioFrame *)packetBuffer;
-
-			header->type = ALVR_PACKET_TYPE_AUDIO_FRAME;
-			header->packetCounter = soundPacketCounter;
-
-			pos = sizeof(*header);
-		}
-
-		int size = std::min(PACKET_SIZE - pos, remainBuffer);
-
-		memcpy(packetBuffer + pos, buf + (len - remainBuffer), size);
-		pos += size;
-		remainBuffer -= size;
-
-		soundPacketCounter++;
-
-		m_Socket->Send((char *)packetBuffer, pos);
-
-	}
-}
-
 void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand)
 {
 	Debug("Sending haptics feedback. startTime=%llu amplitude=%f duration=%f frequency=%f\n", startTime, amplitude, duration, frequency);

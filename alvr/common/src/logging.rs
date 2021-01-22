@@ -48,6 +48,7 @@ pub fn show_warn<T, E: Display>(res: Result<T, E>) -> Option<T> {
     res.map_err(show_w).ok()
 }
 
+#[allow(unused_variables)]
 fn show_e_block<E: Display>(e: E, blocking: bool) {
     log::error!("{}", e);
 
@@ -75,6 +76,10 @@ fn show_e_block<E: Display>(e: E, blocking: bool) {
 
 pub fn show_e<E: Display>(e: E) {
     show_e_block(e, false);
+}
+
+pub fn show_e_dbg<E: std::fmt::Debug>(e: E) {
+    show_e_block(format!("{:?}", e), false);
 }
 
 pub fn show_e_blocking<E: Display>(e: E) {

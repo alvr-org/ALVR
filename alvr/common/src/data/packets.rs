@@ -42,7 +42,7 @@ pub struct HeadsetInfoPacket {
     pub reserved: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AudioConfigRange {
     pub channels: u16,
     pub sample_rates: RangeInclusive<u32>,

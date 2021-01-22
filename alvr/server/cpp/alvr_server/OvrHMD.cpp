@@ -53,13 +53,6 @@ OvrHmd::OvrHmd()
 			m_encoder.reset();
 		}
 
-		if (m_audioCapture)
-		{
-			Debug("OvrHmd::~OvrHmd(): Stopping audio capture...\n");
-			m_audioCapture->Shutdown();
-			m_audioCapture.reset();
-		}
-
 		if (m_Listener)
 		{
 			Debug("OvrHmd::~OvrHmd(): Stopping network...\n");
@@ -292,10 +285,6 @@ OvrHmd::OvrHmd()
 
 	void OvrHmd::StartStreaming() {
 		if (m_streamComponentsInitialized) {
-			bool shouldMute = Settings::Instance().m_enableSound && Settings::Instance().m_muteHostAudioOutput;
-			if (m_audioCapture && shouldMute)
-				m_audioCapture->ToggleMuteCurrentDevice(true);
-
 			return;
 		}
 
@@ -312,21 +301,6 @@ OvrHmd::OvrHmd()
 		}
 		m_encoder->Start();
 
-		if (Settings::Instance().m_enableSound) {
-			m_audioCapture = std::make_shared<AudioCapture>(m_Listener);
-			try {
-				m_audioCapture->Start(Settings::Instance().m_soundDevice);
-			}
-			catch (Exception e) {
-				Error("Failed to start audio capture. %s\n", e.what());
-			}
-
-			if (Settings::Instance().m_muteHostAudioOutput)
-			{
-				m_audioCapture->ToggleMuteCurrentDevice(true);
-			}
-		}
-
 		m_directModeComponent->SetEncoder(m_encoder);
 
 		m_encoder->OnStreamStart();
@@ -335,9 +309,6 @@ OvrHmd::OvrHmd()
 	}
 
 	void OvrHmd::StopStreaming() {
-		bool shouldUnmute = Settings::Instance().m_enableSound && Settings::Instance().m_muteHostAudioOutput;
-		if (m_audioCapture && shouldUnmute)
-			m_audioCapture->ToggleMuteCurrentDevice(false);
 	}
 
 	void OvrHmd::updateIPDandFoV(const TrackingInfo& info) {

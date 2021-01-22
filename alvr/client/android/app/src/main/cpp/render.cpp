@@ -63,23 +63,6 @@ static const char *EglErrorString(const EGLint error) {
     }
 }
 
-static const char *GlFrameBufferStatusString(GLenum status) {
-    switch (status) {
-        case GL_FRAMEBUFFER_UNDEFINED:
-            return "GL_FRAMEBUFFER_UNDEFINED";
-        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-            return "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
-        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-            return "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
-        case GL_FRAMEBUFFER_UNSUPPORTED:
-            return "GL_FRAMEBUFFER_UNSUPPORTED";
-        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-            return "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
-        default:
-            return "unknown";
-    }
-}
-
 static const char VERTEX_SHADER[] = R"glsl(
 #ifndef DISABLE_MULTIVIEW
     #define DISABLE_MULTIVIEW 0
@@ -375,7 +358,7 @@ void ovrFramebuffer_SetNone() {
     GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
 }
 
-void ovrFramebuffer_Resolve(ovrFramebuffer *frameBuffer) {
+void ovrFramebuffer_Resolve() {
     // Discard the depth buffer, so the tiler won't need to write it back out to memory.
     const GLenum depthAttachment[1] = {GL_DEPTH_ATTACHMENT};
     glInvalidateFramebuffer(GL_DRAW_FRAMEBUFFER, 1, depthAttachment);
@@ -490,7 +473,7 @@ void ovrGeometry_CreateVAO(ovrGeometry *geometry) {
     GL(glBindBuffer(GL_ARRAY_BUFFER, geometry->VertexBuffer));
 
     for (int i = 0; i < MAX_VERTEX_ATTRIB_POINTERS; i++) {
-        if (geometry->VertexAttribs[i].Index != -1) {
+        if ((int)geometry->VertexAttribs[i].Index != -1) {
             GL(glEnableVertexAttribArray(geometry->VertexAttribs[i].Index));
             GL(glVertexAttribPointer(geometry->VertexAttribs[i].Index,
                                      geometry->VertexAttribs[i].Size,
@@ -588,7 +571,7 @@ ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fra
     GL(glAttachShader(program->Program, program->FragmentShader));
 
     // Bind the vertex attribute locations.
-    for (int i = 0; i < sizeof(ProgramVertexAttributes) / sizeof(ProgramVertexAttributes[0]); i++) {
+    for (size_t i = 0; i < sizeof(ProgramVertexAttributes) / sizeof(ProgramVertexAttributes[0]); i++) {
         GL(glBindAttribLocation(program->Program, ProgramVertexAttributes[i].location,
                                 ProgramVertexAttributes[i].name));
     }
@@ -606,7 +589,7 @@ ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fra
 
     // Get the uniform locations.
     memset(program->UniformLocation, -1, sizeof(program->UniformLocation));
-    for (int i = 0; i < sizeof(ProgramUniforms) / sizeof(ProgramUniforms[0]); i++) {
+    for (unsigned long i = 0; i < sizeof(ProgramUniforms) / sizeof(ProgramUniforms[0]); i++) {
         const int uniformIndex = ProgramUniforms[i].index;
         if (ProgramUniforms[i].type == UNIFORM_TYPE_BUFFER) {
             GL(program->UniformLocation[uniformIndex] = glGetUniformBlockIndex(program->Program,
@@ -770,7 +753,7 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
 
         renderEye(eye, mvpMatrix, &viewport, renderer, loading);
 
-        ovrFramebuffer_Resolve(frameBuffer);
+        ovrFramebuffer_Resolve();
         ovrFramebuffer_Advance(frameBuffer);
     }
 

@@ -338,7 +338,7 @@ static int invert_mat(gf *src, int k) {
 /*
  * Not check for input params
  * */
-static gf* sub_matrix(gf* matrix, int rmin, int cmin, int rmax, int cmax,  int nrows, int ncols) {
+static gf* sub_matrix(gf* matrix, int rmin, int cmin, int rmax, int cmax, int ncols) {
     int i, j, ptr = 0;
     gf* new_m = (gf*) malloc((rmax-rmin) * (cmax-cmin));
     if (NULL != new_m) {
@@ -409,7 +409,7 @@ reed_solomon* reed_solomon_new(int data_shards, int parity_shards) {
                 vm[ptr++] = row == col ? 1 : 0;
         }
 
-        top = sub_matrix(vm, 0, 0, data_shards, data_shards, rs->shards, data_shards);
+        top = sub_matrix(vm, 0, 0, data_shards, data_shards, data_shards);
         if (NULL == top) {
             err = 3;
             break;
@@ -429,7 +429,7 @@ reed_solomon* reed_solomon_new(int data_shards, int parity_shards) {
                 rs->m[(data_shards + j)*data_shards + i] = inverse[(parity_shards + i) ^ j];
         }
 
-        rs->parity = sub_matrix(rs->m, data_shards, 0, rs->shards, data_shards, rs->shards, data_shards);
+        rs->parity = sub_matrix(rs->m, data_shards, 0, rs->shards, data_shards, data_shards);
         if (NULL == rs->parity) {
             err = 5;
             break;
@@ -519,7 +519,7 @@ static int reed_solomon_decode(reed_solomon* rs, unsigned char **data_blocks, in
     nshards = 0;
     dataShards = rs->data_shards;
     for (i = 0; i < dataShards; i++) {
-        if (j < nr_fec_blocks && i == erased_blocks[j])
+        if (j < nr_fec_blocks && i == (int) erased_blocks[j])
             j++;
         else {
             /* this row is ok */

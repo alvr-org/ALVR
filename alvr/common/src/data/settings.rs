@@ -445,7 +445,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         sample_format: SampleFormatDefault {
                             variant: SampleFormatDefaultVariant::Int16,
                         },
-                        buffer_range_multiplier: 1,
+                        buffer_range_multiplier: 2,
                     },
                 },
             },

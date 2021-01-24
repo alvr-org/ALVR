@@ -4,7 +4,7 @@ define(["lib/lodash", "text!app/templates/uploadPreset.html"], function (
     i18n,
 ) {
     return new (function () {
-        var _webClientId = "";
+        let _webClientId = "";
 
         // uploadButton trigger the input file
         $(document).on("click", "#settingUploadButton", () => {
@@ -100,8 +100,8 @@ define(["lib/lodash", "text!app/templates/uploadPreset.html"], function (
 
         this.addUploadPreset = function (elementId, webClientId) {
             _webClientId = webClientId;
-            var compiledTemplate = _.template(uploadTemplate);
-            var template = compiledTemplate({ id: elementId, ...i18n });
+            const compiledTemplate = _.template(uploadTemplate);
+            const template = compiledTemplate({ id: elementId, ...i18n });
 
             $("#" + elementId).prepend(template);
         };

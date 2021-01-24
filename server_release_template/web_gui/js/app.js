@@ -1,4 +1,4 @@
-var storedLocale = localStorage.getItem("locale");
+const storedLocale = localStorage.getItem("locale");
 
 requirejs.config({
     baseUrl: "./",

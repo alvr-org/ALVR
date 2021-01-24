@@ -7,6 +7,7 @@ define([
     "i18n!app/nls/monitor",
     "i18n!app/nls/notifications",
     "css!app/templates/monitor.css",
+    // eslint-disable-next-line requirejs/no-js-extension
     "js/lib/epoch.js",
     "css!js/lib/epoch.css",
 ], function (
@@ -19,15 +20,15 @@ define([
     i18nNotifications,
 ) {
     return function (alvrSettings) {
-        var notificationLevels = [];
-        var timeoutHandler;
-        var latencyGraph;
-        var framerateGraph;
+        let notificationLevels = [];
+        let timeoutHandler;
+        let latencyGraph;
+        let framerateGraph;
         let clientConnected = false;
 
         function logInit() {
-            var url = window.location.href;
-            var arr = url.split("/");
+            const url = window.location.href;
+            const arr = url.split("/");
 
             const log_listener = new WebSocket("ws://" + arr[2] + "/log");
 
@@ -54,11 +55,11 @@ define([
         }
 
         function init() {
-            var compiledTemplate = _.template(monitorTemplate);
-            var template = compiledTemplate(i18n);
+            let compiledTemplate = _.template(monitorTemplate);
+            const template = compiledTemplate(i18n);
 
             compiledTemplate = _.template(addClientModalTemplate);
-            var templateAddClient = compiledTemplate(i18n);
+            const templateAddClient = compiledTemplate(i18n);
 
             $("#monitor").append(template);
 
@@ -77,10 +78,10 @@ define([
             $("#trustedClientsDiv" + " table").empty();
 
             Object.entries(session.clientConnections).forEach((pair) => {
-                var hostname = pair[0];
-                var connection = pair[1];
+                const hostname = pair[0];
+                const connection = pair[1];
                 //var address = connection.lastLocalIp;
-                var displayName = connection.deviceName;
+                const displayName = connection.deviceName;
 
                 if (connection.trusted) {
                     addTrustedClient(displayName, hostname);
@@ -91,7 +92,7 @@ define([
         }
 
         function initNotificationLevel() {
-            var level = $("input[name='notificationLevel']:checked").val();
+            const level = $("input[name='notificationLevel']:checked").val();
 
             switch (level) {
                 case "error":
@@ -185,6 +186,8 @@ define([
                 $("#configureClientModal").remove();
                 $("body").append(templateConfigureClient);
 
+                const _hostmane = hostname;
+                // this call need const variable unless you want them overwriten by the next call.
                 $(document).ready(() => {
                     $("#configureClientModal").modal({
                         backdrop: "static",
@@ -196,7 +199,7 @@ define([
 
                         if (
                             session.clientConnections[
-                                hostname
+                                _hostmane
                             ].manualIps.includes(ip)
                         ) {
                             Lobibox.notify("error", {
@@ -226,7 +229,7 @@ define([
                             type: "POST",
                             url: "client/trust",
                             contentType: "application/json;charset=UTF-8",
-                            data: JSON.stringify([hostname, ip]),
+                            data: JSON.stringify([_hostmane, ip]),
                         });
 
                         $("#knowIpsListDiv").append(`
@@ -234,10 +237,10 @@ define([
                                 <span>${ip}</span>
                                 <button type="button" class="btn btn-sm btn-primary float-right removeIpAddressButton" data-ip="${ip}">${i18n["configureClientRemoveIp"]}</button>
                             </div></div>`);
-                        configureClientModal_BindRemoveIpButtons(hostname);
+                        configureClientModal_BindRemoveIpButtons(_hostmane);
                     });
 
-                    configureClientModal_BindRemoveIpButtons(hostname);
+                    configureClientModal_BindRemoveIpButtons(_hostmane);
                 });
             });
         }
@@ -245,7 +248,7 @@ define([
         function configureClientModal_BindRemoveIpButtons(hostname) {
             $(".removeIpAddressButton").off("click");
             $(".removeIpAddressButton").click((evt) => {
-                var ip = $(evt.target).attr("data-ip");
+                const ip = $(evt.target).attr("data-ip");
 
                 $.ajax({
                     type: "POST",
@@ -268,13 +271,15 @@ define([
             <td><button type="button" id="btnAddTrustedClient_${id}" class="btn btn-primary">${i18n["addTrustedClient"]}</button>
             </td></tr>`);
 
+            const _hostmane = hostname;
+            // this call need const variable unless you want them overwriten by the next call.
             $(document).ready(() => {
                 $("#btnAddTrustedClient_" + id).click(() => {
                     $.ajax({
                         type: "POST",
                         url: "client/trust",
                         contentType: "application/json;charset=UTF-8",
-                        data: JSON.stringify([hostname, null]),
+                        data: JSON.stringify([_hostmane, null]),
                     });
                 });
             });
@@ -287,17 +292,19 @@ define([
 
             $("#trustedClientsDiv" + " table")
                 .append(`<tr><td type="${displayName}" hostname="${hostname}" id="trustedClient_${id}">${displayName} (${hostname}) </td>
-           <td><button type="button" id="btnConfigureClient_${id}" class="btn btn-primary ml-auto">${i18n["configureClientButton"]}</button>
-           <button type="button" id="btnRemoveTrustedClient_${id}" class="btn btn-primary">${i18n["removeTrustedClient"]}</button>
-           </td></tr>`);
+            <td><button type="button" id="btnConfigureClient_${id}" class="btn btn-primary ml-auto">${i18n["configureClientButton"]}</button>
+            <button type="button" id="btnRemoveTrustedClient_${id}" class="btn btn-primary">${i18n["removeTrustedClient"]}</button>
+            </td></tr>`);
 
+            const _hostmane = hostname;
+            // this call need const variable unless you want them overwriten by the next call.
             $(document).ready(() => {
                 $("#btnRemoveTrustedClient_" + id).click(() => {
                     $.ajax({
                         type: "POST",
                         url: "client/remove",
                         contentType: "application/json;charset=UTF-8",
-                        data: JSON.stringify([hostname, null]),
+                        data: JSON.stringify([_hostmane, null]),
                     });
                 });
             });
@@ -333,17 +340,17 @@ define([
         }
 
         function addLogLine(line) {
-            var idObject = undefined;
+            let idObject = undefined;
 
             console.log(line);
 
-            var json_start_idx = line.indexOf("#{");
-            var json_end_idx = line.indexOf("}#");
+            const json_start_idx = line.indexOf("#{");
+            const json_end_idx = line.indexOf("}#");
             if (json_start_idx != -1 && json_end_idx != -1) {
                 idObject = line.substring(json_start_idx + 1, json_end_idx + 1);
             }
 
-            var split = line.split(" ");
+            const split = line.split(" ");
             line = line.replace(split[0] + " " + split[1], "");
 
             const skipWithoutId = $(
@@ -373,7 +380,7 @@ define([
                 }
             }
 
-            var row = `<tr><td>${split[0]}</td><td>${
+            const row = `<tr><td>${split[0]}</td><td>${
                 split[1]
             }</td><td>${line.trim()}</td></tr>`;
             $("#loggingTable").append(row);
@@ -432,7 +439,7 @@ define([
         }
 
         function initPerformanceGraphs() {
-            var now = parseInt(new Date().getTime() / 1000);
+            const now = parseInt(new Date().getTime() / 1000);
             latencyGraph = $("#latencyGraphArea").epoch({
                 type: "time.area",
                 axes: ["left", "bottom"],
@@ -476,8 +483,8 @@ define([
             $("#divPerformanceGraphsContent").show();
             $("#divPerformanceGraphsEmptyMsg").hide();
 
-            var now = parseInt(new Date().getTime() / 1000);
-            var otherLatency =
+            const now = parseInt(new Date().getTime() / 1000);
+            const otherLatency =
                 statistics["totalLatency"] -
                 statistics["encodeLatency"] -
                 statistics["decodeLatency"] -
@@ -530,7 +537,7 @@ define([
                     $("#logging").removeClass("show");
             }
 
-            for (var stat in statistics) {
+            for (const stat in statistics) {
                 $("#statistic_" + stat).text(statistics[stat]);
             }
             timeoutHandler = setTimeout(() => {
@@ -568,7 +575,7 @@ define([
             updatePerformanceGraphs(statistics);
         }
 
-        var isUpdating = false;
+        let isUpdating = false;
 
         function updateSession() {
             //ugly hack to avoid loop
@@ -586,19 +593,19 @@ define([
 
         function pack(data) {
             const extraByteMap = [1, 1, 1, 1, 2, 2, 3, 0];
-            var count = data.length;
-            var str = "";
+            const count = data.length;
+            let str = "";
 
-            for (var index = 0; index < count; ) {
-                var ch = data[index++];
+            for (let index = 0; index < count; ) {
+                let ch = data[index++];
                 if (ch & 0x80) {
-                    var extra = extraByteMap[(ch >> 3) & 0x07];
+                    let extra = extraByteMap[(ch >> 3) & 0x07];
                     if (!(ch & 0x40) || !extra || index + extra > count)
                         return null;
 
                     ch = ch & (0x3f >> extra);
                     for (; extra > 0; extra -= 1) {
-                        var chx = data[index++];
+                        const chx = data[index++];
                         if ((chx & 0xc0) != 0x80) return null;
 
                         ch = (ch << 6) | (chx & 0x3f);

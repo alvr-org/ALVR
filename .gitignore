@@ -55,4 +55,7 @@ wix/harvested.wxs
 # dependencies installed by xtask
 # /deps/
 
+# dependencies installed by node
+node_modules
+
 # The .gitignore for android is project folder.

@@ -24,7 +24,7 @@ define([
     q2touch,
 ) {
     return function (alvrSettings) {
-        var self = this;
+        const self = this;
         const video_scales = [25, 50, 66, 75, 100, 125, 150, 200];
 
         self.setCustomSettings = function () {
@@ -90,13 +90,13 @@ define([
                 alvrSettings.storeParam(bufferSize);
 
                 //set default reset value to value defined by bitrate
-                var def = bufferSize.parent().find("i[default]");
+                const def = bufferSize.parent().find("i[default]");
                 def.attr("default", bufferSize.val());
             });
         }
 
         function setControllerEmulation() {
-            var controller = $(
+            let controller = $(
                 "#_root_headset_controllers_content_controllerMode",
             );
             controller.unbind();
@@ -148,7 +148,7 @@ define([
             controller.change();
 
             controller.change((ev) => {
-                for (var key in controllerOptions[controller.val()]) {
+                for (const key in controllerOptions[controller.val()]) {
                     const target = $(controllerBase + key);
                     target.val(controllerOptions[controller.val()][key]);
                     alvrSettings.storeParam(target, true);
@@ -161,7 +161,7 @@ define([
         }
 
         function setHeadsetEmulation() {
-            var headset = $("#_root_headset_headsetEmulationMode");
+            let headset = $("#_root_headset_headsetEmulationMode");
             headset.unbind();
             headset.after(
                 alvrSettings.getHelpReset(
@@ -187,7 +187,7 @@ define([
             headset.change();
 
             headset.change((ev) => {
-                for (var key in headsetOptions[headset.val()]) {
+                for (const key in headsetOptions[headset.val()]) {
                     const target = $(headsetBase + key);
                     target.val(headsetOptions[headset.val()][key]);
                     alvrSettings.storeParam(target, true);
@@ -215,8 +215,8 @@ define([
                 ),
             );
 
-            var updating = false;
-            var updateCheckbox = function () {
+            let updating = false;
+            const updateCheckbox = function () {
                 updating = true;
                 if (throttleBitrate.val() == 0) {
                     disableThrottling.prop("checked", true);
@@ -247,7 +247,7 @@ define([
         }
 
         function setVideoOptions() {
-            var dropdown = $("#_root_video_resolutionDropdown");
+            let dropdown = $("#_root_video_resolutionDropdown");
             dropdown.after(
                 alvrSettings.getHelpReset(
                     "resolutionDropdown",
@@ -278,14 +278,14 @@ define([
             const select = new Selectal("#_root_video_resolutionDropdown");
             dropdown = $("#_root_video_resolutionDropdown");
 
-            var customRes = `<div style="display:inline;" id="customVideoScale"><b>${i18n.customVideoScale} </b></div>`;
+            let customRes = `<div style="display:inline;" id="customVideoScale"><b>${i18n.customVideoScale} </b></div>`;
             $("#_root_video_resolutionDropdown-selectal").after(customRes);
             customRes = $("#customVideoScale");
             customRes.hide();
 
-            var update = false;
+            let update = false;
 
-            var updateDropdown = function () {
+            const updateDropdown = function () {
                 useScale =
                     renderScaleVariant.prop("checked") &&
                     targetScaleVariant.prop("checked");
@@ -385,7 +385,7 @@ define([
                 alvrSettings.storeParam(bufferSize, true);
 
                 //set default reset value to value defined by bitrate
-                var def = bufferSize.parent().find("i[default]");
+                let def = bufferSize.parent().find("i[default]");
                 def.attr("default", bufferSize.val());
 
                 //50% margin
@@ -406,7 +406,7 @@ define([
             });
 
             //set default reset buffer size according to bitrate
-            var def = bufferSize.parent().find("i[default]");
+            let def = bufferSize.parent().find("i[default]");
             def.attr("default", bitrate.val() * 2 * 1000);
 
             def = throttleBitrate.parent().find("i[default]");
@@ -421,7 +421,7 @@ define([
             const custom = i18n.customRefreshRate;
 
             const customButton = `<label id="displayRefreshRateCustomButton" class="btn btn-primary active">
-            <input  type="radio" name="displayRefreshRate"  autocomplete="off" value="custom" checked>
+            <input type="radio" name="displayRefreshRate"  autocomplete="off" value="custom" checked>
                 ${custom}
             </label> `;
 
@@ -483,11 +483,11 @@ define([
                     </div>
                     <div class="btn-group" data-toggle="buttons" id="displayRefreshRateButtons">
                         <label style="min-width:10%" class="btn btn-primary">
-                            <input  type="radio" name="displayRefreshRate"  autocomplete="off" value="60">
+                            <input type="radio" name="displayRefreshRate"  autocomplete="off" value="60">
                             60 Hz
                         </label>
                         <label class="btn btn-primary">
-                            <input  type="radio" name="displayRefreshRate"  autocomplete="off" value="72">
+                            <input type="radio" name="displayRefreshRate"  autocomplete="off" value="72">
                             72 Hz
                         </label>
                         <label class="btn btn-primary">
@@ -540,7 +540,6 @@ define([
                     closable: true,
                     messageHeight: 250,
                 });
-
                 return;
             }
 
@@ -550,7 +549,7 @@ define([
                 el.parent().addClass("special");
                 el.unbind();
 
-                let target = $("#_root_audio_microphone_content_device");
+                const target = $("#_root_audio_microphone_content_device");
 
                 let current = "";
                 try {
@@ -614,14 +613,14 @@ define([
                 }
 
                 //move selected audio device to top of list
-                let $el = $("#_root_audio_microphone_content_deviceDropdown")
+                const $el = $("#_root_audio_microphone_content_deviceDropdown")
                     .find("option[value='" + target.val() + "']")
                     .remove();
                 $("#_root_audio_microphone_content_deviceDropdown").prepend(
                     $el,
                 );
 
-                let select = new Selectal(
+                const select = new Selectal(
                     "#_root_audio_microphone_content_deviceDropdown",
                 );
                 el = $("#_root_audio_microphone_content_deviceDropdown");
@@ -668,7 +667,7 @@ define([
             const custom = i18n.customTracking;
 
             const customButton = `<label id="trackingSpeedCustomButton" class="btn btn-primary active">
-            <input  type="radio" name="trackingSpeed"  autocomplete="off" value="custom" checked>
+            <input type="radio" name="trackingSpeed"  autocomplete="off" value="custom" checked>
                 ${custom}
             </label> `;
 
@@ -763,13 +762,13 @@ define([
                         i18nWizard.normalTracking,
                     )}
                         </div>
-            <div class="btn-group" data-toggle="buttons" id="trackingSpeedButtons">
+                        <div class="btn-group" data-toggle="buttons" id="trackingSpeedButtons">
                             <label style="min-width:10%" class="btn btn-primary">
-                                <input  type="radio" name="trackingSpeed"  autocomplete="off" value="oculus">
+                                <input type="radio" name="trackingSpeed"  autocomplete="off" value="oculus">
                                 ${oculus}
                             </label>
                             <label style="min-width:10%" class="btn btn-primary">
-                                <input  type="radio" name="trackingSpeed"  autocomplete="off" value="normal">
+                                <input type="radio" name="trackingSpeed"  autocomplete="off" value="normal">
                                 ${normal}
                             </label>
                             <label class="btn btn-primary">
@@ -780,8 +779,7 @@ define([
                                 <input type="radio" name="trackingSpeed" autocomplete="off" value="fast">
                                ${fast}
                             </label>
-                                                  
-                    </div> `;
+                        </div> `;
 
             el.after(grp);
 
@@ -826,12 +824,12 @@ define([
                     style: "css/darkly/style.css",
                 },
             };
-            var bootstrap = $("#bootstrap");
-            var selectal = $("#selectal");
-            var style = $("#style");
+            const bootstrap = $("#bootstrap");
+            const selectal = $("#selectal");
+            const style = $("#style");
 
-            var themeSelector = $("form#_root_extra_theme-choice-").first();
-            var themeColor = $("input[name='theme']:checked").val();
+            const themeSelector = $("form#_root_extra_theme-choice-").first();
+            let themeColor = $("input[name='theme']:checked").val();
 
             if (themeColor == "systemDefault") {
                 if (

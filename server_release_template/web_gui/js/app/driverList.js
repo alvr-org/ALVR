@@ -5,7 +5,7 @@ define([
     "css!app/templates/driver.css",
 ], function (_, driverTemplate, i18n) {
     return new (function () {
-        var self = this;
+        const self = this;
 
         $(document).on("click", ".registerAlvrDriver", () => {
             $.get("driver/register", undefined, (res) => {
@@ -23,11 +23,13 @@ define([
         });
 
         this.fillDriverList = function (elementId) {
-            var compiledTemplate = _.template(driverTemplate);
-            var template = compiledTemplate({ id: elementId, ...i18n });
+            const compiledTemplate = _.template(driverTemplate);
+            const template = compiledTemplate({ id: elementId, ...i18n });
 
             $("#" + elementId).empty();
             $("#" + elementId).append(template);
+            const _elementId = elementId;
+            // this call need const variable unless you want them overwriten by the next call.
             $(document).ready(() => {
                 $.get("driver/list", undefined, (res) => {
                     if (res == -1) {
@@ -39,11 +41,11 @@ define([
                             msg: i18n.driverFailed,
                         });
                     } else {
-                        updateHeader(res.length, elementId);
+                        updateHeader(res.length, _elementId);
 
-                        $("#driverList_" + elementId + " table").empty(); //clears table, helps with race condition
+                        $("#driverList_" + _elementId + " table").empty(); //clears table, helps with race condition
                         res.forEach((driver) => {
-                            $("#driverList_" + elementId + " table")
+                            $("#driverList_" + _elementId + " table")
                                 .append(`<tr>
                             <td>${driver}</td>
                             <td>
@@ -54,7 +56,7 @@ define([
                         $(document).ready(() => {
                             $(
                                 "#driverList_" +
-                                    elementId +
+                                    _elementId +
                                     " * > .removeDriverButton",
                             ).click((evt) => {
                                 const path = $(evt.target).attr("path");

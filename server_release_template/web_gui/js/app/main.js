@@ -13,6 +13,7 @@ define([
     "app/languageSelector",
     "json!../../session",
     "text!../../version",
+    // eslint-disable-next-line requirejs/no-js-extension
     "js/lib/lobibox.min.js",
     "css!js/lib/lobibox.min.css",
 ], function (
@@ -32,20 +33,24 @@ define([
     version,
 ) {
     $(function () {
-        var compiledTemplate = _.template(mainTemplate);
-        var template = compiledTemplate(i18n);
+        const compiledTemplate = _.template(mainTemplate);
+        const template = compiledTemplate(i18n);
 
         function checkForUpdate(settings, delay) {
             session = settings.getSession();
-            let updateType = session.sessionSettings.extra.updateChannel.variant;
+            const updateType =
+                session.sessionSettings.extra.updateChannel.variant;
 
             let url = "";
             if (updateType === "stable") {
-                url = "https://api.github.com/repos/alvr-org/ALVR/releases/latest";
+                url =
+                    "https://api.github.com/repos/alvr-org/ALVR/releases/latest";
             } else if (updateType === "beta") {
-                url = "https://api.github.com/repos/alvr-org/ALVR/releases?per_page=1";
+                url =
+                    "https://api.github.com/repos/alvr-org/ALVR/releases?per_page=1";
             } else if (updateType === "nightly") {
-                url = "https://api.github.com/repos/alvr-org/ALVR-nightly/releases/latest";
+                url =
+                    "https://api.github.com/repos/alvr-org/ALVR-nightly/releases/latest";
             } else {
                 return;
             }
@@ -77,7 +82,7 @@ define([
                         iconSource: "fontAwesome",
                         msg: i18n.needUpdateClickForMore,
                         closable: true,
-                        onClick: () => showUpdatePopupDialog(data)
+                        onClick: () => showUpdatePopupDialog(data),
                     });
                 } else {
                     triggerUpdate(data);
@@ -86,13 +91,16 @@ define([
         }
 
         function showUpdatePopupDialog(data) {
-            var compiledTemplate = _.template(updatePopup);
-            var template = compiledTemplate(i18n);
+            const compiledTemplate = _.template(updatePopup);
+            const template = compiledTemplate(i18n);
             $("#confirmModal").remove();
             $("body").append(template);
+
+            const _data = data;
+            // this call need const variable unless you want them overwriten by the next call.
             $(document).ready(() => {
-                $("#releaseTitle").text(data.name);
-                $("#releaseNote").text(data.body);
+                $("#releaseTitle").text(_data.name);
+                $("#releaseNote").text(_data.body);
 
                 $("#confirmModal").modal({
                     backdrop: "static",
@@ -105,7 +113,7 @@ define([
                 $("#okUpdateButton").click(() => {
                     $("#confirmModal").modal("hide");
                     $("#confirmModal").remove();
-                    triggerUpdate(data);
+                    triggerUpdate(_data);
                 });
                 $("#moreUpdateButton").click(() => {
                     $.ajax({
@@ -115,7 +123,8 @@ define([
                         },
                         type: "POST",
                         url: "/open",
-                        data: JSON.stringify(data.html_url),
+                        // eslint-disable-next-line xss/no-mixed-html
+                        data: JSON.stringify(_data.html_url),
                         dataType: "JSON",
                     });
                 });
@@ -132,7 +141,7 @@ define([
                 }
             });
             if (url === "") {
-                return
+                return;
             }
 
             $("#setupWizard").modal("hide");
@@ -142,7 +151,9 @@ define([
             const elem = document.getElementById("progressBar");
 
             // Create WebSocket connection.
-            const webSocket = new WebSocket("ws://" + window.location.host + "/events");
+            const webSocket = new WebSocket(
+                "ws://" + window.location.host + "/events",
+            );
 
             $.ajax({
                 type: "POST",
@@ -174,11 +185,23 @@ define([
                         if (dataJSON.id === "updateDownloadedBytesCount") {
                             const BtoMB = 1.0 / (1024 * 1024);
                             const sizeMb = size * BtoMB;
-                            const downloadProgress = (dataJSON.data * BtoMB).toFixed(2);
-                            document.getElementById("downloadProgress").innerHTML = downloadProgress + "MB" + " / " + sizeMb.toFixed(2) + "MB";
-                            const progress = (100.0 * dataJSON.data / size).toFixed(2);
+                            const downloadProgress = (
+                                dataJSON.data * BtoMB
+                            ).toFixed(2);
+                            document.getElementById(
+                                "downloadProgress",
+                            ).innerText =
+                                downloadProgress +
+                                "MB" +
+                                " / " +
+                                sizeMb.toFixed(2) +
+                                "MB";
+                            const progress = (
+                                (100.0 * dataJSON.data) /
+                                size
+                            ).toFixed(2);
                             elem.style.width = progress + "%";
-                            elem.innerHTML = progress + "%";
+                            elem.innerText = progress + "%";
                         }
                     } catch (error) {
                         console.log("Error with message: ", event);
@@ -201,12 +224,16 @@ define([
         $("#bodyContent").append(template);
         $(document).ready(() => {
             $("#loading").remove();
+            let settings = null;
+            let wizard = null;
+            let monitor = null;
+            let language = null;
             try {
-                var settings = new Settings();
+                settings = new Settings();
                 checkForUpdate(settings, -1);
-                var wizard = new SetupWizard(settings);
-                var monitor = new Monitor(settings);
-                var language = new languageSelector(settings);
+                wizard = new SetupWizard(settings);
+                monitor = new Monitor(settings);
+                language = new languageSelector(settings);
             } catch (error) {
                 Lobibox.notify("error", {
                     rounded: true,
@@ -224,21 +251,12 @@ define([
             // update the current language on startup
             const sessionLocale = session.locale;
 
-            language.addLanguageSelector(
-                "localeSelector",
-                sessionLocale,
-            );
+            language.addLanguageSelector("localeSelector", sessionLocale);
 
-            language.addLanguageSelector(
-                "localeSelectorV",
-                sessionLocale,
-            );
+            language.addLanguageSelector("localeSelectorV", sessionLocale);
 
             let storedLocale = localStorage.getItem("locale");
-            if (
-                sessionLocale !== storedLocale &&
-                sessionLocale !== "system"
-            ) {
+            if (sessionLocale !== storedLocale && sessionLocale !== "system") {
                 storedLocale = sessionLocale;
                 localStorage.setItem("locale", storedLocale);
                 window.location.reload();

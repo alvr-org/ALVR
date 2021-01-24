@@ -18,25 +18,25 @@ define([
     restartConfirm,
 ) {
     return function () {
-        var self = this;
-        var advanced = false;
-        var updating = false;
-        var customSettings = new CustomSettings(self);
-        var index = 0;
+        const self = this;
+        let advanced = false;
+        let updating = false;
+        const customSettings = new CustomSettings(self);
+        let index = 0;
         const usedi18n = {};
 
         function randomAlphanumericID() {
             const len = 10;
             const arr =
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghilmnopqrstuvwxyz0123456789";
-            var ans = "";
-            for (var i = len; i > 0; i--) {
+            let ans = "";
+            for (let i = len; i > 0; i--) {
                 ans += arr[Math.floor(Math.random() * arr.length)];
             }
             return ans;
         }
 
-        var webClientId = randomAlphanumericID();
+        const webClientId = randomAlphanumericID();
 
         self.disableWizard = function () {
             session.setupWizard = false;
@@ -82,7 +82,7 @@ define([
         };
 
         function printUnusedi18n() {
-            for (var key in i18n) {
+            for (const key in i18n) {
                 if (usedi18n[key] === undefined)
                     console.log("Unused i18n key:", key);
             }
@@ -110,15 +110,15 @@ define([
         function addChangeListener() {
             $(".parameter input:not(.skipInput)").change((evt) => {
                 if (!updating) {
-                    var el = $(evt.target);
+                    const el = $(evt.target);
                     self.storeParam(el);
                 }
             });
         }
 
         self.storeParam = function (el, skipstoreSession = false) {
-            var id = el.prop("id");
-            var val;
+            let id = el.prop("id");
+            let val;
 
             if (el.prop("type") == "checkbox" || el.prop("type") == "radio") {
                 val = el.prop("checked");
@@ -145,18 +145,18 @@ define([
             }
             id = id.replace("_root_", "");
             id = id.replace("-choice-", "");
-            var path = id.split("_");
+            const path = id.split("_");
 
             //choice handling
             if (el.prop("type") == "radio") {
-                var name = path[path.length - 1];
+                const name = path[path.length - 1];
                 path[path.length - 1] = "variant";
                 if (val) {
                     val = name;
                 }
             }
 
-            var finalPath = "";
+            let finalPath = "";
             path.forEach((element, index) => {
                 if (Number.isInteger(Number.parseInt(element))) {
                     finalPath += "[" + element + "]";
@@ -219,7 +219,7 @@ define([
         };
 
         function setProperties(object, path) {
-            for (var item in object) {
+            for (const item in object) {
                 if (Array.isArray(object[item])) {
                     object[item].forEach((element, index) => {
                         setProperties(element, path + "_" + item + "_" + index);
@@ -230,7 +230,7 @@ define([
                 ) {
                     setProperties(object[item], path + "_" + item);
                 } else {
-                    var pathItem = item;
+                    let pathItem = item;
                     //choice
                     if (item == "variant") {
                         pathItem = object[item] + "-choice-";
@@ -276,9 +276,19 @@ define([
             }
         }
 
+        function getProperties(object, path, separator = "_") {
+            const properties = Array.isArray(path)
+                ? path
+                : path.split(separator);
+            return properties.reduce(
+                (prev, curr) => prev && prev[curr],
+                object,
+            );
+        }
+
         function updateSwitchContent() {
             $(".switch").each((index, el) => {
-                var checked = $(el).find("input").first().prop("checked");
+                const checked = $(el).find("input").first().prop("checked");
                 if (checked) {
                     $(el).find(".card-body").show();
                 } else {
@@ -289,7 +299,7 @@ define([
 
         function updateOptionalContent() {
             $(".optional").each((index, el) => {
-                var checked = $(el)
+                const checked = $(el)
                     .find("input[type='checkbox']")
                     .first()
                     .prop("checked");
@@ -315,12 +325,12 @@ define([
             });
 
             $(".paramReset").click((evt) => {
-                var el = $(evt.target);
+                const el = $(evt.target);
 
-                var name = el.attr("name");
-                var path = el.attr("path");
-                var def = el.attr("default");
-                var defText = el.attr("defaultText");
+                const name = el.attr("name");
+                const path = el.attr("path");
+                const def = el.attr("default");
+                const defText = el.attr("defaultText");
 
                 if (!$("#" + path + "_" + name).prop("disabled")) {
                     const confirm = $("#_root_extra_revertConfirmDialog").prop(
@@ -471,7 +481,7 @@ define([
                         }
                     }
 
-                    var newPath = path + "_" + name;
+                    let newPath = path + "_" + name;
                     if (parentType == "array") {
                         newPath = path;
                     } else if (parentType == "choice") {
@@ -541,7 +551,7 @@ define([
                 case "array":
                     element = addContainer(element, path, name, advanced);
                     node.content.forEach((el, index) => {
-                        var arrayName = name + "_" + index;
+                        const arrayName = name + "_" + index;
 
                         fillNode(
                             el,
@@ -565,7 +575,7 @@ define([
                         node,
                     );
                     node.content.variants.forEach((el, index) => {
-                        var variantElement = addRadioVariant(
+                        const variantElement = addRadioVariant(
                             element,
                             path + "_" + name,
                             el[0],
@@ -681,7 +691,7 @@ define([
         }
 
         function addContainer(element, path, name, advanced) {
-            var el = `<div class="parameter ${getAdvancedClass(advanced)}">
+            const el = `<div class="parameter ${getAdvancedClass(advanced)}">
                 <div class="card-title">
                     <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">${
                 getI18n(path + "_" + name).name
@@ -701,29 +711,36 @@ define([
         }
 
         function addOptionalContainer(element, path, name, advanced, node) {
+            const defaultSet = !getProperties(
+                session,
+                path.replace("_root", "sessionSettings") + "_" + name + "_set",
+            );
             let checked = "";
-            if (node.content.defaultSet) {
+            let expanded = true;
+            let collapse = "show";
+            let collapsed = "";
+
+            if (defaultSet) {
                 checked = "checked";
+                expanded = false;
+                collapse = "";
+                collapsed = "collapsed";
             }
 
-            var el = `<div class="parameter optional ${getAdvancedClass(
+            const el = `<div class="parameter optional ${getAdvancedClass(
                 advanced,
             )}" >   
                 <div class="card-title">
                     <div class="btn-group btn-group-sm" data-toggle="buttons">
                         <label class="btn btn-primary optionalSet"><input class="skipInput" type="radio" name="${path}_${name}" id="${path}_${name}_setRadio" >Set</label>
-                        <label class="btn btn-primary optionalUnset"><input class="skipInput" type="radio" name="${path}_${name}" id="${path}_${name}_defaultRadio" >Default</label>               
+                        <label class="btn btn-primary optionalUnset"><input class="skipInput" type="radio" name="${path}_${name}" id="${path}_${name}_defaultRadio" >Default</label>
                     </div>
-                    <input  id="${path}_${name}_set" type="checkbox" ${checked}  style="visibility:hidden" />
-                    <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">
+                    <input id="${path}_${name}_set" type="checkbox" ${checked}  style="visibility:hidden" />
+                    <a class="accordion-toggle ${collapsed}" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded=${expanded}>
                     ${getI18n(path + "_" + name).name}</a> 
-                    ${self.getHelpReset(
-                        name + "_set",
-                        path,
-                        node.content.defaultSet,
-                    )}
+                    ${self.getHelpReset(name + "_set", path, defaultSet)}
                 </div>   
-                <div id="collapse_${index}" class="collapse show">
+                <div id="collapse_${index}" class="collapse ${collapse}">
                     <div class="card-body">
                     </div>      
                 </div> 
@@ -731,24 +748,30 @@ define([
 
             element.append(el);
 
+            const _path = path;
+            const _name = name;
+            const _index = index;
+            // this call need const variable unless you want them overwriten by the next call.
             $(document).ready(() => {
-                $("#" + path + "_" + name + "_setRadio")
+                $("#" + _path + "_" + _name + "_setRadio")
                     .parent()
                     .click(() => {
-                        $("#" + path + "_" + name + "_set").prop(
+                        $("#" + _path + "_" + _name + "_set").prop(
                             "checked",
                             true,
                         );
-                        $("#" + path + "_" + name + "_set").change();
+                        $("#" + _path + "_" + _name + "_set").change();
+                        $("#collapse_" + _index).collapse("show");
                     });
-                $("#" + path + "_" + name + "_defaultRadio")
+                $("#" + _path + "_" + _name + "_defaultRadio")
                     .parent()
                     .click(() => {
-                        $("#" + path + "_" + name + "_set").prop(
+                        $("#" + _path + "_" + _name + "_set").prop(
                             "checked",
                             false,
                         );
-                        $("#" + path + "_" + name + "_set").change();
+                        $("#" + _path + "_" + _name + "_set").change();
+                        $("#collapse_" + _index).collapse("hide");
                     });
             });
 
@@ -763,7 +786,7 @@ define([
         }
 
         function addRadioContainer(element, path, name, advanced, node) {
-            var el = `<div class="parameter ${getAdvancedClass(advanced)}" >
+            const el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
                     ${
                         getI18n(path + "_" + name + "-choice-").name
@@ -845,7 +868,7 @@ define([
                 active = "active";
             }
 
-            var el = `<div class="btn btn-primary" ${getAdvancedClass(
+            const el = `<div class="btn btn-primary" ${getAdvancedClass(
                 advanced,
             )}" >
                 <input type="radio" id="${path}_${name}-choice-" name="${radioName}"  value="${name}"> 
@@ -853,7 +876,7 @@ define([
                 getI18n(path + "_" + name + "-choice-").name
             }</label>
                 </div>`;
-            var content = `<div class="radioContent" for="${path}_${name}-choice-"></div>`;
+            const content = `<div class="radioContent" for="${path}_${name}-choice-"></div>`;
             element.next().append(content);
             element.append(el);
 
@@ -870,7 +893,7 @@ define([
                 checked = "checked";
             }
 
-            var el = `<div class="parameter switch ${getAdvancedClass(
+            const el = `<div class="parameter switch ${getAdvancedClass(
                 advanced,
             )}" >   
                 <div class="card-title">
@@ -938,7 +961,7 @@ define([
         }
 
         function addNumericType(element, path, name, advanced, node) {
-            let type = getNumericGuiType(node.content);
+            const type = getNumericGuiType(node.content);
 
             let base = `<div class="parameter ${getAdvancedClass(advanced)}" >
                     <label for="${path}_${name}">${
@@ -967,10 +990,10 @@ define([
 
                 case "upDown":
                 case "updown":
-                    var el = `<input numericType="${node.type}" id="${path}_${name}" type="number" min="${node.content.min}" 
+                    const el = `<input numericType="${node.type}" id="${path}_${name}" type="number" min="${node.content.min}" 
                     max="${node.content.max}" value="${node.content.default}"  step="${node.content.step}">`;
 
-                    var grp = `<div class="upDownGrp" ><div class="input-group">
+                    const grp = `<div class="upDownGrp" ><div class="input-group">
                     <div class="input-group-prepend">
                         <button class="btn btn-primary btn-sm" id="minus-btn"><i class="fa fa-minus"></i></button>
                     </div>
@@ -1020,8 +1043,8 @@ define([
             $("#" + path + "_" + name + "[type=number]")
                 .prev()
                 .on("click", (el) => {
-                    var val = new Number($("#" + path + "_" + name).val());
-                    var step = 1;
+                    let val = new Number($("#" + path + "_" + name).val());
+                    let step = 1;
                     if (node.content.step !== null) {
                         step = node.content.step;
                     }
@@ -1038,9 +1061,9 @@ define([
             $("#" + path + "_" + name + "[type=number]")
                 .next()
                 .on("click", (el) => {
-                    var val = new Number($("#" + path + "_" + name).val());
+                    let val = new Number($("#" + path + "_" + name).val());
 
-                    var step = 1;
+                    let step = 1;
                     if (node.content.step !== null) {
                         step = node.content.step;
                     }
@@ -1072,7 +1095,7 @@ define([
                 defaultText = defaultVal;
             }
 
-            var getVisibility = function () {
+            const getVisibility = function () {
                 if (getHelp(helpName, path) === undefined) {
                     return `style="display:none"`;
                 }
@@ -1091,7 +1114,7 @@ define([
         }
 
         function getAdvancedClass(advanced) {
-            var advancedClass = "";
+            let advancedClass = "";
             if (advanced) {
                 advancedClass = "advanced";
             }
@@ -1144,9 +1167,9 @@ define([
 
         function showRestartConfirmDialog() {
             return new Promise((resolve, reject) => {
-                var compiledTemplate = _.template(restartConfirm);
+                const compiledTemplate = _.template(restartConfirm);
 
-                var template = compiledTemplate(revertRestartI18n);
+                const template = compiledTemplate(revertRestartI18n);
                 $("#confirmModal").remove();
                 $("body").append(template);
                 $(document).ready(() => {
@@ -1182,11 +1205,11 @@ define([
 
         function showResetConfirmDialog(defaultVal, defaultText) {
             return new Promise((resolve, reject) => {
-                var compiledTemplate = _.template(revertConfirm);
+                const compiledTemplate = _.template(revertConfirm);
 
                 revertRestartI18n.settingDefault = defaultText;
 
-                var template = compiledTemplate(revertRestartI18n);
+                const template = compiledTemplate(revertRestartI18n);
                 $("#confirmModal").remove();
                 $("body").append(template);
                 $(document).ready(() => {

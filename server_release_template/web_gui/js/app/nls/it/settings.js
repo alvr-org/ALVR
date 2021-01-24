@@ -17,7 +17,7 @@ define({
     // "_root_video_recommendedTargetResolution_scale.name": "", // adv
     // "_root_video_secondsFromVsyncToPhotons.name": "", // adv
     // "_root_video_secondsFromVsyncToPhotons.description": "", // adv
-    "_root_video_foveatedRendering.name": "Foveated rendering",
+    "_root_video_foveatedRendering.name": "Foveated encoding",
     // "_root_video_foveatedRendering.description": use "_root_video_foveatedRendering_enabled.description"
     "_root_video_foveatedRendering_enabled.description": `Tecnica di rendering che riduce la risoluzione dell'immagine nella periferia della visione per ridurre il carico computazionale della GPU, la quantità di dati da trasmettere, e la latenza. Questa impostazione può provocare una distorsione dell'immagine ai bordi.`,
     "_root_video_foveatedRendering_content_strength.name": "Intensità",

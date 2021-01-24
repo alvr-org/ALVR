@@ -6,7 +6,7 @@ define({
     "_root_video_resolutionDropdown.name": "Video resolutie",
     "_root_video_resolutionDropdown.description": "100% resulteert in de oorspronkelijke resolutie van de Oculus Quest. \nDe resolutie instellen kan een betere visuele kwaliteit geven, maar het is niet aanbevolen. \nEen resolutie lager dan 100% kan latency verminderen en netwerkprestaties verhogen",
     "customVideoScale": "Custom",
-    "_root_video_foveatedRendering.name": "Foveated rendering",
+    "_root_video_foveatedRendering.name": "Foveated encoding",
     // "_root_video_foveatedRendering.description": use "_root_video_foveatedRendering_enabled.description"
     "_root_video_foveatedRendering_enabled.description": "Rendering techniek dat de resolutie van het beeld vermindert aan de periferie van het zicht om de rekenbelasting van de GPU te verminderen. Dit resulteert in een veel lagere videoresolutie die via het netwerk moet worden verzonden.",
     "_root_video_foveatedRendering_content_strength.name": "Sterkte",

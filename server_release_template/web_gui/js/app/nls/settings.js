@@ -18,7 +18,7 @@ define({
         "_root_video_recommendedTargetResolution_scale.name": "Scale", // adv
         "_root_video_secondsFromVsyncToPhotons.name": "Seconds from VSync to image", // adv
         "_root_video_secondsFromVsyncToPhotons.description": "The time elapsed from the virtual VSync until the image is visible on the viewer screen", // adv
-        "_root_video_foveatedRendering.name": "Foveated rendering",
+        "_root_video_foveatedRendering.name": "Foveated encoding",
         // "_root_video_foveatedRendering.description": use "_root_video_foveatedRendering_enabled.description"
         "_root_video_foveatedRendering_enabled.description": "Rendering technique that reduces the resolution of the image at the periphery of the vision to reduce the computational load on the GPU. Results in a much lower video resolution that needs to be transmitted over the network.",
         "_root_video_foveatedRendering_content_strength.name": "Strength",

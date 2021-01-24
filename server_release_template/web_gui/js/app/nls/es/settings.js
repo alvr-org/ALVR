@@ -17,7 +17,7 @@ define({
     "_root_video_recommendedTargetResolution_scale.name": "Escala", // adv
     "_root_video_secondsFromVsyncToPhotons.name": "Segundos desde el VSync a la imagen del visor", // adv
     "_root_video_secondsFromVsyncToPhotons.description": "El tiempo transcurrido desde el VSync virtual hasta que la imagen es visible en la pantalla del visor", // adv
-    "_root_video_foveatedRendering.name": "Foveated rendering",
+    "_root_video_foveatedRendering.name": "Foveated encoding",
     // "_root_video_foveatedRendering.description": use "_root_video_foveatedRendering_enabled.description"
     "_root_video_foveatedRendering_enabled.description": "Técnica de renderizado que reduce la resolución de la\nimagen en la periferia de la visión para reducir la carga computacional\nde la tarjeta gráfica, la cantidad de datos a transmitir y la latencia.\nEste ajuste puede causar distorsión de la imagen en los bordes.",
     "_root_video_foveatedRendering_content_strength.name": "Intensidad",

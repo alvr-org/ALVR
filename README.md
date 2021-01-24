@@ -107,7 +107,7 @@ Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
 -   On the repository root execute:
 
     ```bash
-    cargo xtask install-deps
+    rustup target add aarch64-linux-android
     cargo xtask build-client --release
     ```
 

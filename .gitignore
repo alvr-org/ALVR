@@ -53,6 +53,6 @@ wix/harvested.wxs
 .DS_Store
 
 # dependencies installed by xtask
-/deps/
+# /deps/
 
 # The .gitignore for android is project folder.

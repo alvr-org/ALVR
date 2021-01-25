@@ -19,7 +19,6 @@ pub fn get_gpu_names() -> Vec<String> {
     vec![]
 }
 
-
 pub fn get_screen_size() -> StrResult<(u32, u32)> {
     #[cfg(not(windows))]
     use winit::platform::unix::EventLoopExtUnix;

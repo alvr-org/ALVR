@@ -11,6 +11,13 @@ use std::{
 };
 use tokio::sync::mpsc as tmpsc;
 
+#[derive(serde::Serialize)]
+pub struct AudioDevicesDesc {
+    pub list: Vec<(String, String)>,
+    pub default_game_audio: Option<String>,
+    pub default_microphone: Option<String>,
+}
+
 #[cfg(windows)]
 mod winaudio {
     use super::*;
@@ -26,13 +33,6 @@ mod winaudio {
         Class, Interface,
     };
     use wio::com::ComPtr;
-
-    #[derive(serde::Serialize)]
-    pub struct AudioDevicesDesc {
-        pub list: Vec<(String, String)>,
-        pub default_game_audio: Option<String>,
-        pub default_microphone: Option<String>,
-    }
 
     // from AudioEndPointDescriptor::GetDeviceName
     fn get_device_name(mm_device: ComPtr<IMMDevice>) -> StrResult<String> {
@@ -180,6 +180,15 @@ mod winaudio {
 }
 #[cfg(windows)]
 pub use winaudio::*;
+
+#[cfg(not(windows))]
+pub fn output_audio_devices() -> StrResult<AudioDevicesDesc> {
+    Ok(AudioDevicesDesc {
+        list: vec![],
+        default_game_audio: None,
+        default_microphone: None,
+    })
+}
 
 // The following code is used to do a handhake between server and client to determine a common set
 // of capabilities supported by both. Due to limitations of Windows WASAPI, most of this

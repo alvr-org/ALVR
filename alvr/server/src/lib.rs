@@ -1,11 +1,16 @@
 #![allow(clippy::missing_safety_doc)]
-#![allow(non_camel_case_types, non_upper_case_globals)]
 
 mod connection;
 mod logging_backend;
 mod web_server;
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+#[cfg(windows)]
+#[allow(non_camel_case_types, non_upper_case_globals, dead_code)]
+mod bindings {
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
+#[cfg(windows)]
+use bindings::*;
 
 use alvr_common::{data::*, logging::*, *};
 use lazy_static::lazy_static;
@@ -31,7 +36,23 @@ use tokio::{
 
 lazy_static! {
     // Since ALVR_DIR is needed to initialize logging, if error then just panic
-    static ref ALVR_DIR: PathBuf = commands::get_alvr_dir().unwrap();
+    static ref ALVR_DIR: PathBuf = {
+        #[cfg(not(target_os = "linux"))]
+        let path = commands::get_alvr_dir().unwrap();
+        #[cfg(target_os = "linux")]
+        // patch for executing alvr_server directly on linux
+        let path = std::env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .into();
+
+        path
+    };
     static ref SESSION_MANAGER: Mutex<SessionManager> = Mutex::new(SessionManager::new(&ALVR_DIR));
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
     static ref CLIENTS_UPDATED_NOTIFIER: Notify = Notify::new();
@@ -65,7 +86,10 @@ pub fn notify_shutdown_driver() {
 
         shutdown_runtime();
 
-        unsafe { ShutdownSteamvr() };
+        #[cfg(windows)]
+        unsafe {
+            ShutdownSteamvr()
+        };
     });
 }
 
@@ -192,12 +216,16 @@ fn ui_thread() -> StrResult {
     // prevent panic on window.close()
     *MAYBE_WINDOW.lock() = None;
     shutdown_runtime();
-    unsafe { ShutdownSteamvr() };
+
+    #[cfg(windows)]
+    unsafe {
+        ShutdownSteamvr()
+    };
 
     Ok(())
 }
 
-fn init() -> StrResult {
+pub fn init() -> StrResult {
     let (log_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     logging_backend::init_logging(log_sender.clone(), events_sender.clone());
@@ -229,7 +257,10 @@ fn init() -> StrResult {
     }
 
     let alvr_dir_c_string = CString::new(ALVR_DIR.to_string_lossy().to_string()).unwrap();
-    unsafe { g_alvrDir = alvr_dir_c_string.into_raw() };
+    #[cfg(windows)]
+    unsafe {
+        g_alvrDir = alvr_dir_c_string.into_raw()
+    };
 
     // ALVR_DIR has been used (and so initialized). I don't need alvr_dir storage on disk anymore
     commands::maybe_delete_alvr_dir_storage();
@@ -237,6 +268,27 @@ fn init() -> StrResult {
     Ok(())
 }
 
+pub extern "C" fn driver_ready_idle() {
+    show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone()));
+
+    if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
+        runtime.spawn(async move {
+            // call this when inside a new tokio thread. Calling this on the parent thread will
+            // crash SteamVR
+            #[cfg(windows)]
+            unsafe {
+                SetDefaultChaperone()
+            };
+
+            tokio::select! {
+                _ = connection::connection_lifecycle_loop() => (),
+                _ = SHUTDOWN_NOTIFIER.notified() => (),
+            }
+        });
+    }
+}
+
+#[cfg(windows)]
 #[no_mangle]
 pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,
@@ -286,23 +338,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
         log(log::Level::Debug, string_ptr);
     }
 
-    unsafe extern "C" fn driver_ready_idle() {
-        show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone()));
-
-        if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
-            runtime.spawn(async move {
-                // call this when inside a new tokio thread. Calling this on the parent thread will
-                // crash SteamVR
-                SetDefaultChaperone();
-
-                tokio::select! {
-                    _ = connection::connection_lifecycle_loop() => (),
-                    _ = SHUTDOWN_NOTIFIER.notified() => (),
-                }
-            });
-        }
-    }
-
     extern "C" fn _shutdown_runtime() {
         shutdown_runtime();
     }
@@ -319,14 +354,14 @@ pub unsafe extern "C" fn HmdDriverFactory(
     let return_code_usize = return_code as usize;
 
     lazy_static::lazy_static! {
-        static ref maybe_ptr_usize: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
-        static ref num_trials: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
+        static ref MAYBE_PTR_USIZE: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
+        static ref NUM_TRIALS: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
     }
 
     thread::spawn(move || {
-        num_trials.fetch_add(1, Ordering::Relaxed);
-        if num_trials.load(Ordering::Relaxed) <= 1 {
-            maybe_ptr_usize.store(
+        NUM_TRIALS.fetch_add(1, Ordering::Relaxed);
+        if NUM_TRIALS.load(Ordering::Relaxed) <= 1 {
+            MAYBE_PTR_USIZE.store(
                 CppEntryPoint(interface_name_usize as _, return_code_usize as _) as _,
                 Ordering::Relaxed,
             );
@@ -335,5 +370,5 @@ pub unsafe extern "C" fn HmdDriverFactory(
     .join()
     .ok();
 
-    maybe_ptr_usize.load(Ordering::Relaxed) as _
+    MAYBE_PTR_USIZE.load(Ordering::Relaxed) as _
 }

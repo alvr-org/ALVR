@@ -344,7 +344,10 @@ struct StreamCloseGuard;
 
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
-        unsafe { crate::DeinitializeStreaming() };
+        #[cfg(windows)]
+        unsafe {
+            crate::DeinitializeStreaming()
+        };
 
         let on_disconnect_script = SESSION_MANAGER
             .lock()
@@ -413,7 +416,11 @@ async fn connection_pipeline() -> StrResult {
 
     let control_sender = Arc::new(Mutex::new(control_sender));
 
-    unsafe { crate::InitializeStreaming() };
+    #[cfg(windows)]
+    unsafe {
+        crate::InitializeStreaming()
+    };
+
     let _stream_guard = StreamCloseGuard;
 
     let game_audio_desc = SESSION_MANAGER.lock().get().to_settings().audio.game_audio;
@@ -486,6 +493,7 @@ async fn connection_pipeline() -> StrResult {
                         vec![]
                     };
 
+                    #[cfg(windows)]
                     unsafe {
                         crate::SetChaperone(
                             matrix_transp.as_ptr(),
@@ -496,7 +504,10 @@ async fn connection_pipeline() -> StrResult {
                         )
                     };
                 }
-                Ok(ClientControlPacket::RequestIDR) => unsafe { crate::RequestIDR() },
+                Ok(ClientControlPacket::RequestIDR) => unsafe {
+                    #[cfg(windows)]
+                    crate::RequestIDR()
+                },
                 Ok(ClientControlPacket::Reserved(_))
                 | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
                 Err(e) => {

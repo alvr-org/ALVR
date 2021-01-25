@@ -21,7 +21,10 @@ enum View {
 fn launcher_lifecycle(handle: ExtEventSink, window_id: WindowId) {
     loop {
         let steamvr_ok = check_steamvr_installation();
+        #[cfg(windows)]
         let msvcp_ok = check_msvcp_installation();
+        #[cfg(not(windows))]
+        let msvcp_ok = true;
 
         if steamvr_ok && msvcp_ok {
             break;
@@ -127,19 +130,23 @@ fn gui() -> impl Widget<View> {
                 Flex::row()
                     .with_default_spacer()
                     .with_flex_child(
-                        Flex::column()
-                            .cross_axis_alignment(CrossAxisAlignment::Start)
-                            .with_flex_spacer(1.0)
-                            .with_child(
-                                Label::new(steamvr.clone())
-                                    .with_line_break_mode(LineBreaking::WordWrap),
-                            )
-                            .with_default_spacer()
-                            .with_child(
-                                Label::new(msvcp.clone())
-                                    .with_line_break_mode(LineBreaking::WordWrap),
-                            )
-                            .with_flex_spacer(1.5),
+                        {
+                            let mut flex = Flex::column()
+                                .cross_axis_alignment(CrossAxisAlignment::Start)
+                                .with_flex_spacer(1.0)
+                                .with_child(
+                                    Label::new(steamvr.clone())
+                                        .with_line_break_mode(LineBreaking::WordWrap),
+                                )
+                                .with_default_spacer();
+                            if cfg!(windows) {
+                                flex = flex.with_child(
+                                    Label::new(msvcp.clone())
+                                        .with_line_break_mode(LineBreaking::WordWrap),
+                                );
+                            }
+                            flex.with_flex_spacer(1.5)
+                        },
                         FlexParams::new(1.0, None),
                     )
                     .with_default_spacer(),
@@ -209,6 +216,9 @@ fn make_window() -> StrResult {
             ));
             return Ok(());
         }
+
+        #[cfg(target_os = "linux")]
+        trace_err!(gtk::init())?;
 
         let window = WindowDesc::new(gui)
             .title("ALVR Launcher")

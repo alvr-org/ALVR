@@ -234,11 +234,21 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool) {
         ))
         .unwrap();
     }
-    fs::copy(
-        artifacts_dir.join(dynlib_fname("alvr_server")),
-        driver_dst_dir.join(DRIVER_FNAME),
-    )
-    .unwrap();
+    if cfg!(not(target_os = "linux")) {
+        fs::copy(
+            artifacts_dir.join(dynlib_fname("alvr_server")),
+            driver_dst_dir.join(DRIVER_FNAME),
+        )
+        .unwrap();
+    } else {
+        // patch for executing the webserver without steamvr
+        fs::copy(
+            artifacts_dir.join(exec_fname("alvr_server")),
+            driver_dst_dir.join(exec_fname("alvr_server")),
+        )
+        .unwrap();
+    }
+
     fs::copy(
         openvr_api_dir.join("openvr_api.dll"),
         driver_dst_dir.join("openvr_api.dll"),

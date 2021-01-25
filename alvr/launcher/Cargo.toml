@@ -17,5 +17,8 @@ sysinfo = "0.15"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.8"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.9"
+
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

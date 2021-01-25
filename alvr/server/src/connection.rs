@@ -345,7 +345,9 @@ struct StreamCloseGuard;
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
         #[cfg(windows)]
-        unsafe { crate::DeinitializeStreaming() };
+        unsafe {
+            crate::DeinitializeStreaming()
+        };
 
         let on_disconnect_script = SESSION_MANAGER
             .lock()
@@ -415,7 +417,9 @@ async fn connection_pipeline() -> StrResult {
     let control_sender = Arc::new(Mutex::new(control_sender));
 
     #[cfg(windows)]
-    unsafe { crate::InitializeStreaming() };
+    unsafe {
+        crate::InitializeStreaming()
+    };
 
     let _stream_guard = StreamCloseGuard;
 

@@ -16,7 +16,7 @@ use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
 
 pub const WS_BROADCAST_CAPACITY: usize = 256;
-const WEB_GUI_DIR_STR: &str = "web_gui";
+const DASHBOARD_DIR_NAME_STR: &str = "dashboard";
 
 fn reply(code: StatusCode) -> StrResult<Response<Body>> {
     trace_err!(Response::builder().status(code).body(Body::empty()))
@@ -250,7 +250,7 @@ async fn http_api(
 
                 let maybe_file = tokio::fs::File::open(format!(
                     "{}{}",
-                    ALVR_DIR.join(WEB_GUI_DIR_STR).to_string_lossy(),
+                    ALVR_DIR.join(DASHBOARD_DIR_NAME_STR).to_string_lossy(),
                     path_branch
                 ))
                 .await;

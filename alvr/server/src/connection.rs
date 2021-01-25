@@ -143,7 +143,7 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         warn!("Chosen refresh rate not supported. Using {}Hz", fps);
     }
 
-    let web_gui_url = format!(
+    let dashboard_url = format!(
         "http://{}:{}/",
         server_ip, settings.connection.web_server_port
     );
@@ -188,7 +188,7 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         eye_resolution_width: video_eye_width,
         eye_resolution_height: video_eye_height,
         fps,
-        web_gui_url,
+        dashboard_url: dashboard_url,
         reserved: trace_err!(json::to_string(&ReservedData {
             game_audio_config: game_audio_config.clone()
         }))?,

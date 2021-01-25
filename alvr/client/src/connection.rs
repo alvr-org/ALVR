@@ -206,7 +206,7 @@ async fn connection_pipeline(
                 .client_request_realtime_decoder
                 .into(),
             trace_err!(
-                trace_err!(java_vm.attach_current_thread())?.new_string(config_packet.web_gui_url)
+                trace_err!(java_vm.attach_current_thread())?.new_string(config_packet.dashboard_url)
             )?
             .into()
         ],

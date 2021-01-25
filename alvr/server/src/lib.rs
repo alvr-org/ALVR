@@ -5,7 +5,7 @@ mod logging_backend;
 mod web_server;
 
 #[cfg(windows)]
-#[allow(non_camel_case_types, non_upper_case_globals)]
+#[allow(non_camel_case_types, non_upper_case_globals, dead_code)]
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
@@ -40,6 +40,7 @@ lazy_static! {
         #[cfg(not(target_os = "linux"))]
         let path = commands::get_alvr_dir().unwrap();
         #[cfg(target_os = "linux")]
+        // patch for executing alvr_server directly on linux
         let path = std::env::current_exe()
             .unwrap()
             .parent()
@@ -353,14 +354,14 @@ pub unsafe extern "C" fn HmdDriverFactory(
     let return_code_usize = return_code as usize;
 
     lazy_static::lazy_static! {
-        static ref maybe_ptr_usize: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
-        static ref num_trials: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
+        static ref MAYBE_PTR_USIZE: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
+        static ref NUM_TRIALS: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
     }
 
     thread::spawn(move || {
-        num_trials.fetch_add(1, Ordering::Relaxed);
-        if num_trials.load(Ordering::Relaxed) <= 1 {
-            maybe_ptr_usize.store(
+        NUM_TRIALS.fetch_add(1, Ordering::Relaxed);
+        if NUM_TRIALS.load(Ordering::Relaxed) <= 1 {
+            MAYBE_PTR_USIZE.store(
                 CppEntryPoint(interface_name_usize as _, return_code_usize as _) as _,
                 Ordering::Relaxed,
             );
@@ -369,5 +370,5 @@ pub unsafe extern "C" fn HmdDriverFactory(
     .join()
     .ok();
 
-    maybe_ptr_usize.load(Ordering::Relaxed) as _
+    MAYBE_PTR_USIZE.load(Ordering::Relaxed) as _
 }

@@ -12,13 +12,16 @@ use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[cfg(windows)]
-pub fn spawn_no_window(command: &mut Command) {
+pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+#[cfg(windows)]
+fn spawn_no_window(command: &mut Command) {
     use std::os::windows::process::CommandExt;
     command.creation_flags(CREATE_NO_WINDOW).spawn().ok();
 }
 
 #[cfg(not(windows))]
-pub fn spawn_no_window(command: &mut Command) {
+fn spawn_no_window(command: &mut Command) {
     command.spawn().ok();
 }
 
@@ -45,6 +48,7 @@ pub fn maybe_launch_steamvr() {
 
 #[cfg(windows)]
 fn kill_process(pid: usize) {
+    use std::os::windows::process::CommandExt;
     Command::new("taskkill.exe")
         .args(&["/PID", &pid.to_string(), "/F"])
         .creation_flags(CREATE_NO_WINDOW)

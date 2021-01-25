@@ -9,10 +9,18 @@ use std::{
 };
 use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
 
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
-
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
+
+#[cfg(windows)]
+pub fn spawn_no_window(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    command.creation_flags(CREATE_NO_WINDOW).spawn().ok();
+}
+
+#[cfg(not(windows))]
+pub fn spawn_no_window(command: &mut Command) {
+    command.spawn().ok();
+}
 
 pub fn is_steamvr_running() -> bool {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
@@ -31,11 +39,7 @@ pub fn maybe_launch_steamvr() {
         .get_process_by_name(&exec_fname("vrserver"))
         .is_empty()
     {
-        Command::new("cmd")
-            .args(&["/C", "start", "steam://rungameid/250820"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-            .ok();
+        spawn_no_window(Command::new("cmd").args(&["/C", "start", "steam://rungameid/250820"]));
     }
 }
 
@@ -57,7 +61,7 @@ pub fn kill_steamvr() {
 
     for process in system.get_process_by_name(&exec_fname("vrmonitor")) {
         #[cfg(not(windows))]
-        process.kill(Signal::Term);
+        process.kill(sysinfo::Signal::Term);
         #[cfg(windows)]
         kill_process(process.pid());
     }
@@ -66,7 +70,7 @@ pub fn kill_steamvr() {
 
     for process in system.get_process_by_name(&exec_fname("vrserver")) {
         #[cfg(not(windows))]
-        process.kill(Signal::Term);
+        process.kill(sysinfo::Signal::Term);
         #[cfg(windows)]
         kill_process(process.pid());
     }
@@ -185,11 +189,7 @@ pub fn restart_steamvr() {
 pub fn invoke_installer() {
     try_close_steamvr_gracefully();
 
-    Command::new(commands::installer_path())
-        .arg("-q")
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn()
-        .ok();
+    spawn_no_window(Command::new(commands::installer_path()).arg("-q"));
 
     // delete crash_log.txt (take advantage of the occasion to do some routine cleaning)
     fs::remove_file(current_alvr_dir().unwrap().join(CRASH_LOG_FNAME)).ok();

@@ -6,7 +6,7 @@ license = "MIT"
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 parking_lot = "0.11"

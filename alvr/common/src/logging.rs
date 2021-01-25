@@ -30,7 +30,8 @@ pub fn set_panic_hook() {
 pub fn show_w<W: Display>(w: W) {
     log::warn!("{}", w);
 
-    #[cfg(not(target_os = "android"))]
+    // GDK crashes because of initialization in multiple thread
+    #[cfg(not(any(target_os = "android", target_os = "linux")))]
     std::thread::spawn({
         let warn_string = w.to_string();
         move || {
@@ -52,7 +53,8 @@ pub fn show_warn<T, E: Display>(res: Result<T, E>) -> Option<T> {
 fn show_e_block<E: Display>(e: E, blocking: bool) {
     log::error!("{}", e);
 
-    #[cfg(not(target_os = "android"))]
+    // GDK crashes because of initialization in multiple thread
+    #[cfg(not(any(target_os = "android", target_os = "linux")))]
     {
         let show_msgbox = {
             let err_string = e.to_string();

@@ -1,9 +1,12 @@
 use crate::*;
 use gfx_hal::Instance;
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "linux"))]
 pub fn get_gpu_names() -> Vec<String> {
+    #[cfg(windows)]
     let instance = gfx_backend_dx11::Instance::create("ALVR", 0).unwrap();
+    #[cfg(target_os = "linux")]
+    let instance = gfx_backend_vulkan::Instance::create("ALVR", 0).unwrap();
     let adapters = instance.enumerate_adapters();
 
     adapters
@@ -11,6 +14,11 @@ pub fn get_gpu_names() -> Vec<String> {
         .map(|a| a.info.name)
         .collect::<Vec<_>>()
 }
+#[cfg(not(any(windows, target_os = "linux")))]
+pub fn get_gpu_names() -> Vec<String> {
+    vec![]
+}
+
 
 pub fn get_screen_size() -> StrResult<(u32, u32)> {
     #[cfg(not(windows))]

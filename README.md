@@ -115,6 +115,19 @@ Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
 
 Note: After doing the above steps, you can debug the client normally by opening the Android Studio project at `alvr/client/android`.
 
+### Linux experimental build
+
+Instructions to build ALVR on Linux. Only the webserver works, there is no SteamVR integration. Tested on Ubuntu 18.04
+
+-   Install OpenSSL (`libssl-dev`), ALSA (`libasound2-dev`), GTK (`libgtk-3-dev`).
+-   On the repository root execute:
+
+    ```bash
+    cargo xtask build-server --release
+    ```
+
+-   ALVR server will be built into `/build/alvr_server_linux`.
+
 ## License
 
 ALVR is licensed under the [MIT License](LICENSE).

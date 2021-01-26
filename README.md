@@ -34,35 +34,14 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
 ## Install
 
-It is recommended (but not mandatory) to uninstall any other VR streaming software on your PC, including older versions of ALVR. If you didn't already, install SteamVR, launch it and then close it (this is to make sure SteamVR executes its first time setup).
-
-To install ALVR download and execute `ALVR_Installer_vX.X.X.exe` from the [releases page](https://github.com/alvr-org/ALVR/releases). An entry will appear in the Start menu. The first time you open ALVR Launcher.exe you may have to allow it in the SmartScreen prompt. In the release page you can also find the portable version `alvr_server_windows.zip`. If you already have ALVR v13.1.0 or greater you can upgrade with the autoupdater.
-
-Install the client on your headset through Sidequest ([Quest version](https://sidequestvr.com/app/9), [Go version](https://sidequestvr.com/app/2658)). To make the Oculus Quest microphone work you need to install the [VB-CABLE Virtual Audio Device](https://www.vb-audio.com/Cable/).
-
-### Nightly versions
-
-You can install the latest untested server version from the [nightly releases page](https://github.com/alvr-org/ALVR-nightly/releases).
-
-The nightly client app can be installed from Sidequest ([Quest version](https://sidequestvr.com/app/2281), [Go version](https://sidequestvr.com/app/2580)) (it needs to be updated for each server update).
+Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Installation).
 
 ## Usage
 
--   Open `ALVR Launcher.exe` (ALVR dashboard). The first time a setup wizard will guide you through the installation. Oculus Go users should import the `oculus_go_preset.json` found the in the installation folder.  
--   Launch ALVR on your headset. While the headset screen is on, click `Trust` next to the client entry (on the PC) to start streaming.  
--   To change settings, open the dashboard on the headset with a long press of the menu button (on the left controller), change what you want and then press `Restart SteamVR`. The current playing game could shutdown so any unsaved progress could be lost.  
--   To shutdown ALVR you need to close both the ALVR dashboard on PC and SteamVR.  
--   If you want play games without launching the ALVR dashboard first, you need to register the driver. Go to Installation tab, then click on `Register ALVR driver`. This is normally discouraged because it can cause problems with other SteamVR drivers (for example the Oculus Link).
-
-IMPORTANT: SteamVR must be always running, otherwise the dashboard will not save settings and the client will not connect.
-
-### Notes
-
--   You can access ALVR dashboard from your smartphone. On the browser you need to type the local IP of your PC followed by `:8082` (for example: `192.168.0.3:8082` ).
+Follow the guide [here](https://github.com/alvr-org/ALVR/wiki/Usage).
 
 ## Troubleshooting
 
--   To reset ALVR, delete the file `session.json` from the installation folder.  
 -   Please check the [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting) page. The original repository [wiki](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) can also help.  
 -   You can find some setup advice [here](https://github.com/alvr-org/ALVR/wiki/Setup-advice).
 
@@ -74,59 +53,7 @@ If you have a version prior to v12.0 you need to launch `remove_firewall_rules.b
 
 ## Build from source
 
-Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
-
-### Common requisites
-
--   Install [LLVM](https://releases.llvm.org/download.html)  
--   Install [rustup](https://rustup.rs/)  
--   Download this repository
-
-### Build server
-
--   Install the MSVC compiler (for example installing C++ build tools with [Visual Studio](https://visualstudio.microsoft.com/downloads))  
-
--   On the repository root execute:
-
-    ```bash
-    cargo xtask build-server --release
-    ```
-
--   ALVR server will be built into `/build/alvr_server_windows`.
-
-### Build client
-
--   Install [Python](https://www.microsoft.com/store/productId/9MSSZTT1N39L)  
-
--   Install Android Studio >=4.0, API Level 30. Requires latest LLDB and NDK packages.  
-
--   Set the environment variable `JAVA_HOME` to `C:\Program Files\Android\Android Studio\jre`.  
-
--   Set the environment variable `ANDROID_SDK_ROOT` to `%LOCALAPPDATA%\Android\Sdk`.  
-
--   On the repository root execute:
-
-    ```bash
-    rustup target add aarch64-linux-android
-    cargo xtask build-client --release
-    ```
-
--   ALVR client will be built into `/build`.
-
-Note: After doing the above steps, you can debug the client normally by opening the Android Studio project at `alvr/client/android`.
-
-### Linux experimental build
-
-Instructions to build ALVR on Linux. Only the webserver works, there is no SteamVR integration. Tested on Ubuntu 18.04
-
--   Install OpenSSL (`libssl-dev`), ALSA (`libasound2-dev`), GTK (`libgtk-3-dev`).
--   On the repository root execute:
-
-    ```bash
-    cargo xtask build-server --release
-    ```
-
--   ALVR server will be built into `/build/alvr_server_linux`.
+You can follow the guide [here](https://github.com/alvr-org/ALVR/wiki/Build-from-source)
 
 ## License
 

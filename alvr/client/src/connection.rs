@@ -205,9 +205,8 @@ async fn connection_pipeline(
                 .video
                 .client_request_realtime_decoder
                 .into(),
-            trace_err!(
-                trace_err!(java_vm.attach_current_thread())?.new_string(config_packet.dashboard_url)
-            )?
+            trace_err!(trace_err!(java_vm.attach_current_thread())?
+                .new_string(config_packet.dashboard_url))?
             .into()
         ],
     ))?;

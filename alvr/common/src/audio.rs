@@ -1,7 +1,8 @@
 use crate::{data::*, *};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
-    BufferSize, SampleRate, Stream, StreamConfig, SupportedBufferSize, SupportedStreamConfigRange,
+    BufferSize, Sample, SampleRate, Stream, StreamConfig, SupportedBufferSize,
+    SupportedStreamConfigRange,
 };
 use std::{
     cmp::{max, min, Ordering},
@@ -204,17 +205,12 @@ fn get_audio_config_ranges(configs: Vec<SupportedStreamConfigRange>) -> Vec<Audi
                 None
             };
 
-            // The 16 bit format is ubiquitously supported on Windows, but it gets misreported as
-            // float 32 bit with CPAL
-            #[cfg(not(windows))]
             let sample_format = if let Ok(format) = SampleFormat::from_cpal(c.sample_format()) {
                 format
             } else {
                 logging::show_e("Unsupported audio format");
                 SampleFormat::Int16
             };
-            #[cfg(windows)]
-            let sample_format = SampleFormat::Int16;
 
             AudioConfigRange {
                 channels: c.channels(),
@@ -273,9 +269,9 @@ pub fn select_audio_config(
     let mut valid_configs = vec![];
     for source_config_range in source_configs {
         for sink_config_range in &sink_configs {
-            if source_config_range.channels == sink_config_range.channels
-                && source_config_range.sample_format == sink_config_range.sample_format
-            {
+            // Note: sample format check is skipped. Currently only Int16 is supported by ALVR
+            // protocol, other formats are converted to Int16
+            if source_config_range.channels == sink_config_range.channels {
                 let channels = source_config_range.channels;
                 let buffer_sizes = if let Some(source_sizes) = &source_config_range.buffer_sizes {
                     if let Some(sink_sizes) = &sink_config_range.buffer_sizes {
@@ -471,14 +467,30 @@ impl AudioSession {
             trace_none!(host.default_input_device())?
         };
 
-        let stream = trace_err!(device.build_input_stream_raw(
-            &audio_config_to_cpal(&config),
-            config.sample_format.to_cpal(),
-            move |data, _| {
-                sender.send(data.bytes().to_vec()).ok();
-            },
-            |e| warn!("Error while recording audio: {}", e),
-        ))?;
+        let stream = trace_err!(match config.sample_format {
+            SampleFormat::Int16 => device.build_input_stream_raw(
+                &audio_config_to_cpal(&config),
+                config.sample_format.to_cpal(),
+                move |data, _| {
+                    sender.send(data.bytes().to_vec()).ok();
+                },
+                |e| warn!("Error while recording audio: {}", e),
+            ),
+            SampleFormat::Float32 => device.build_input_stream(
+                &audio_config_to_cpal(&config),
+                {
+                    let mut buffer = vec![];
+                    move |samples: &[f32], _| {
+                        buffer.clear();
+                        for sample in samples {
+                            buffer.extend_from_slice(&sample.to_i16().to_ne_bytes());
+                        }
+                        sender.send(buffer.clone()).ok();
+                    }
+                },
+                |e| warn!("Error while recording audio: {}", e),
+            ),
+        })?;
 
         trace_err!(stream.play())?;
 

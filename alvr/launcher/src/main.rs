@@ -14,19 +14,15 @@ const CHANGE_VIEW_CMD: Selector<View> = Selector::new("change_view");
 
 #[derive(Clone, PartialEq, Data)]
 enum View {
-    RequirementsCheck { steamvr: String, msvcp: String },
+    RequirementsCheck { steamvr: String },
     Launching { resetting: bool },
 }
 
 fn launcher_lifecycle(handle: ExtEventSink, window_id: WindowId) {
     loop {
         let steamvr_ok = check_steamvr_installation();
-        #[cfg(windows)]
-        let msvcp_ok = check_msvcp_installation();
-        #[cfg(not(windows))]
-        let msvcp_ok = true;
 
-        if steamvr_ok && msvcp_ok {
+        if steamvr_ok {
             break;
         } else {
             let steamvr = format!(
@@ -37,14 +33,10 @@ fn launcher_lifecycle(handle: ExtEventSink, window_id: WindowId) {
                     "❌ Make sure you launched it at least once, then close it."
                 }
             );
-            let msvcp = format!(
-                "Visual C++ Redistributable package x64 installed: {}",
-                if msvcp_ok { "✅" } else { "❌" }
-            );
             handle
                 .submit_command(
                     CHANGE_VIEW_CMD,
-                    View::RequirementsCheck { steamvr, msvcp },
+                    View::RequirementsCheck { steamvr },
                     Target::Auto,
                 )
                 .ok();
@@ -126,27 +118,19 @@ fn gui() -> impl Widget<View> {
     ViewSwitcher::new(
         |view: &View, _| view.clone(),
         |view, _, _| match view {
-            View::RequirementsCheck { steamvr, msvcp } => Box::new(
+            View::RequirementsCheck { steamvr } => Box::new(
                 Flex::row()
                     .with_default_spacer()
                     .with_flex_child(
-                        {
-                            let mut flex = Flex::column()
-                                .cross_axis_alignment(CrossAxisAlignment::Start)
-                                .with_flex_spacer(1.0)
-                                .with_child(
-                                    Label::new(steamvr.clone())
-                                        .with_line_break_mode(LineBreaking::WordWrap),
-                                )
-                                .with_default_spacer();
-                            if cfg!(windows) {
-                                flex = flex.with_child(
-                                    Label::new(msvcp.clone())
-                                        .with_line_break_mode(LineBreaking::WordWrap),
-                                );
-                            }
-                            flex.with_flex_spacer(1.5)
-                        },
+                        Flex::column()
+                            .cross_axis_alignment(CrossAxisAlignment::Start)
+                            .with_flex_spacer(1.0)
+                            .with_child(
+                                Label::new(steamvr.clone())
+                                    .with_line_break_mode(LineBreaking::WordWrap),
+                            )
+                            .with_default_spacer()
+                            .with_flex_spacer(1.5),
                         FlexParams::new(1.0, None),
                     )
                     .with_default_spacer(),
@@ -227,10 +211,7 @@ fn make_window() -> StrResult {
             .resizable(false)
             .set_position(get_window_location());
 
-        let state = View::RequirementsCheck {
-            steamvr: "".into(),
-            msvcp: "".into(),
-        };
+        let state = View::RequirementsCheck { steamvr: "".into() };
 
         let window_id = window.id;
 

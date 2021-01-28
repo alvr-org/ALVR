@@ -31,12 +31,10 @@ fn main() {
         .include("cpp/alvr_server/include")
         .include("cpp/libswresample/include")
         .include("cpp/ALVR-common")
-        .define("_WINDLL", None)
         .define("NOMINMAX", None)
         .define("_WINSOCKAPI_", None)
         .define("_MBCS", None)
-        .define("_MT", None)
-        .define("_DLL", None);
+        .define("_MT", None);
 
     // #[cfg(debug_assertions)]
     // build.define("ALVR_DEBUG_LOG", None);
@@ -52,32 +50,7 @@ fn main() {
         .write_to_file(out_dir.join("bindings.rs"))
         .expect("bindings.rs");
 
-    // Many lib dependencies of alvr_server code are already included by rust libraries
-    // Reenable some linkage in case of linking errors
     if cfg!(windows) {
-        // println!("cargo:rustc-link-lib=kernel32");
-        // println!("cargo:rustc-link-lib=user32");
-        // println!("cargo:rustc-link-lib=gdi32");
-        // println!("cargo:rustc-link-lib=winspool");
-        // println!("cargo:rustc-link-lib=comdlg32");
-        // println!("cargo:rustc-link-lib=advapi32");
-        // println!("cargo:rustc-link-lib=shell32");
-        // println!("cargo:rustc-link-lib=ole32");
-        // println!("cargo:rustc-link-lib=oleaut32");
-        // println!("cargo:rustc-link-lib=uuid");
-        // println!("cargo:rustc-link-lib=odbc32");
-        // println!("cargo:rustc-link-lib=odbccp32");
-        // println!("cargo:rustc-link-lib=winmm");
-        // println!("cargo:rustc-link-lib=ws2_32");
-        // println!("cargo:rustc-link-lib=userenv");
-        println!("cargo:rustc-link-lib=avrt");
-
-        // This is the library that is linked when using the /MD flag.
-        // For debug builds, /MDd should be used (that links msvcrtd), but msvcrtd clashes with
-        // spirv_cross, that always use msvcrt (release version). So here the C++ code is always
-        // built as release and only msvcrt is linked
-        println!("cargo:rustc-link-lib=msvcrt");
-
         println!(
             "cargo:rustc-link-search=native={}/openvr/lib",
             cpp_dir.to_string_lossy()

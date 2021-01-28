@@ -84,22 +84,6 @@ pub fn check_steamvr_installation() -> bool {
     openvr_source_file_path().is_ok()
 }
 
-// https://github.com/bitbeans/RedistributableChecker/blob/master/RedistributableChecker/RedistributablePackage.cs#L56
-#[cfg(windows)]
-pub fn check_msvcp_installation() -> bool {
-    use winreg::*;
-
-    let maybe_key = RegKey::predef(enums::HKEY_LOCAL_MACHINE)
-        .open_subkey(r"SOFTWARE\Microsoft\DevDiv\VC\Servicing\14.0\RuntimeMinimum");
-    if let Ok(key) = maybe_key {
-        if let Ok(value) = key.get_value::<String, _>("Version") {
-            return value.starts_with("14");
-        }
-    }
-
-    false
-}
-
 pub fn unblock_alvr_addon() -> StrResult {
     let config_path = steam_config_dir()?.join("steamvr.vrsettings");
 

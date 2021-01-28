@@ -6,6 +6,104 @@ use cpal::{
 use std::{collections::VecDeque, sync::mpsc as smpsc};
 use tokio::sync::mpsc as tmpsc;
 
+#[cfg(windows)]
+use std::ptr;
+#[cfg(windows)]
+use winapi::{
+    shared::winerror::*,
+    um::{combaseapi::*, endpointvolume::IAudioEndpointVolume, mmdeviceapi::*, objbase::*},
+    Class, Interface,
+};
+#[cfg(windows)]
+use wio::com::ComPtr;
+
+#[cfg(windows)]
+pub fn set_mute_audio_device(device_index: Option<u64>, mute: bool) -> StrResult {
+    unsafe {
+        CoInitializeEx(ptr::null_mut(), COINIT_MULTITHREADED);
+
+        let mut mm_device_enumerator_ptr: *mut IMMDeviceEnumerator = ptr::null_mut();
+        let hr = CoCreateInstance(
+            &MMDeviceEnumerator::uuidof(),
+            ptr::null_mut(),
+            CLSCTX_ALL,
+            &IMMDeviceEnumerator::uuidof(),
+            &mut mm_device_enumerator_ptr as *mut _ as _,
+        );
+        if FAILED(hr) {
+            return fmt_e!(
+                "CoCreateInstance(IMMDeviceEnumerator) failed: hr = 0x{:08x}",
+                hr
+            );
+        }
+        let mm_device_enumerator = ComPtr::from_raw(mm_device_enumerator_ptr);
+
+        let mm_device = if let Some(index) = device_index {
+            let mut mm_device_collection_ptr: *mut IMMDeviceCollection = ptr::null_mut();
+            let hr = mm_device_enumerator.EnumAudioEndpoints(
+                eRender,
+                DEVICE_STATE_ACTIVE,
+                &mut mm_device_collection_ptr as _,
+            );
+            if FAILED(hr) {
+                return fmt_e!(
+                    "IMMDeviceEnumerator::EnumAudioEndpoints failed: hr = 0x{:08x}",
+                    hr
+                );
+            }
+            let mm_device_collection = ComPtr::from_raw(mm_device_collection_ptr);
+
+            let mut mm_device_ptr: *mut IMMDevice = ptr::null_mut();
+            let hr = mm_device_collection.Item(index as _, &mut mm_device_ptr as _);
+            if FAILED(hr) {
+                return fmt_e!("IMMDeviceCollection::Item failed: hr = 0x{:08x}", hr);
+            }
+
+            ComPtr::from_raw(mm_device_ptr)
+        } else {
+            let mut mm_device_ptr: *mut IMMDevice = ptr::null_mut();
+            let hr = mm_device_enumerator.GetDefaultAudioEndpoint(
+                eRender,
+                eConsole,
+                &mut mm_device_ptr as *mut _,
+            );
+            if hr == HRESULT_FROM_WIN32(ERROR_NOT_FOUND) {
+                return fmt_e!("No default audio endpoint found. No audio device?");
+            }
+            if FAILED(hr) {
+                return fmt_e!(
+                    "IMMDeviceEnumerator::GetDefaultAudioEndpoint failed: hr = 0x{:08x}",
+                    hr
+                );
+            }
+
+            ComPtr::from_raw(mm_device_ptr)
+        };
+
+        let mut endpoint_volume_ptr: *mut IAudioEndpointVolume = ptr::null_mut();
+        let hr = mm_device.Activate(
+            &IAudioEndpointVolume::uuidof(),
+            CLSCTX_ALL,
+            ptr::null_mut(),
+            &mut endpoint_volume_ptr as *mut _ as _,
+        );
+        if FAILED(hr) {
+            return fmt_e!(
+                "IMMDevice::Activate() for IAudioEndpointVolume failed: hr = 0x{:08x}",
+                hr,
+            );
+        }
+        let endpoint_volume = ComPtr::from_raw(endpoint_volume_ptr);
+
+        let hr = endpoint_volume.SetMute(mute as _, ptr::null_mut());
+        if FAILED(hr) {
+            return fmt_e!("Failed to mute audio device: hr = 0x{:08x}", hr,);
+        }
+    }
+
+    Ok(())
+}
+
 pub fn get_vb_cable_audio_device_index() -> StrResult<Option<u64>> {
     let host = cpal::default_host();
 

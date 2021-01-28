@@ -345,7 +345,7 @@ async fn connection_pipeline(
     let (_destroy_stream_park_notifier, destroy_stream_park_receiver) = smpsc::channel::<()>();
 
     // blocking streams park
-    std::thread::spawn(move || -> StrResult {
+    std::thread::spawn(move || {
         let mut _game_audio_stream_guard = if let Switch::Enabled(desc) = settings.audio.game_audio
         {
             Some(audio::AudioPlayer::start(
@@ -369,13 +369,11 @@ async fn connection_pipeline(
         // notified when the notifier counterpart gets dropped
         destroy_stream_park_receiver.recv().ok();
 
-        error!("drop streams park");
-
         // the microphone gets stuck on stop(), drop the game audio stream first
         drop(_game_audio_stream_guard);
         drop(_microphone_stream_guard);
 
-        Ok(())
+        StrResult::Ok(())
     });
 
     let keepalive_sender_loop = {

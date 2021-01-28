@@ -61,9 +61,6 @@ public:
 	float m_gamma;
 	float m_sharpening;
 
-	bool m_streamMic;
-	std::string m_microphoneDevice;
-
 	int m_codec;
 	std::string m_EncoderOptions;
 	Bitrate mEncodeBitrate;

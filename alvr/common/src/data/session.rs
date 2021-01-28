@@ -50,8 +50,6 @@ pub struct OpenvrConfig {
     pub eye_resolution_height: u32,
     pub target_eye_resolution_width: u32,
     pub target_eye_resolution_height: u32,
-    pub enable_microphone: bool,
-    pub microphone_device: String,
     pub seconds_from_vsync_to_photons: f32,
     pub client_buffer_size: u64,
     pub force_3dof: bool,

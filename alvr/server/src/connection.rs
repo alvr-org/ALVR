@@ -54,7 +54,6 @@ async fn client_discovery() -> StrResult {
 struct ConnectionInfo {
     control_sender: ControlSocketSender<ServerControlPacket>,
     control_receiver: ControlSocketReceiver<ClientControlPacket>,
-    game_audio_config: Option<AudioConfig>,
 }
 
 async fn client_handshake() -> StrResult<ConnectionInfo> {
@@ -125,17 +124,6 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         best_match
     };
 
-    let controller_pose_offset = match settings.headset.controllers {
-        Switch::Enabled(content) => {
-            if content.clientside_prediction {
-                0.
-            } else {
-                content.pose_time_offset
-            }
-        }
-        Switch::Disabled => 0.,
-    };
-
     if !headset_info
         .available_refresh_rates
         .contains(&settings.video.preferred_fps)
@@ -148,39 +136,25 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         server_ip, settings.connection.web_server_port
     );
 
-    let mut game_audio_config = None;
-    if let Ok(reserved_data) = json::from_str::<json::Value>(&headset_info.reserved) {
-        if let Switch::Enabled(audio_desc) = settings.audio.game_audio {
-            if let Some(configs_json) = reserved_data.get("game_audio_configs") {
-                if let Ok(sink_configs) =
-                    json::from_value::<Vec<AudioConfigRange>>(configs_json.clone())
-                {
-                    // CPAL sometimes crashes if supported_audio_output_configs() (non async) is not
-                    // called within a separate thread. This might be a bug of Tokio (non async
-                    // functions do not have await points and should not be sent between threads).
+    let game_audio_sample_rate = if let Switch::Enabled(desc) = settings.audio.game_audio {
+        trace_err!(audio::get_output_sample_rate(desc.device_index))?
+    } else {
+        0
+    };
 
-                    // let source_configs = audio::supported_audio_output_configs(None)?;
-                    let source_configs = trace_err!(
-                        task::spawn_blocking({
-                            let index = audio_desc.device_index;
-                            move || audio::supported_audio_output_configs(index)
-                        })
-                        .await
-                    )??;
-
-                    game_audio_config = Some(audio::select_audio_config(
-                        source_configs,
-                        sink_configs,
-                        audio_desc.preferred_config,
-                    )?);
-                }
-            }
-        }
-    }
+    let microphone_sample_rate = if let Switch::Enabled(desc) = settings.audio.microphone {
+        trace_err!(audio::get_output_sample_rate(
+            desc.device_index
+                .or(trace_err!(audio::get_vb_cable_audio_device_index())?)
+        ))?
+    } else {
+        0
+    };
 
     #[derive(serde::Serialize)]
     struct ReservedData {
-        game_audio_config: Option<AudioConfig>,
+        game_audio_sample_rate: u32,
+        microphone_sample_rate: u32,
     }
 
     let client_config = ClientConfigPacket {
@@ -188,9 +162,10 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         eye_resolution_width: video_eye_width,
         eye_resolution_height: video_eye_height,
         fps,
-        dashboard_url: dashboard_url,
+        dashboard_url,
         reserved: trace_err!(json::to_string(&ReservedData {
-            game_audio_config: game_audio_config.clone()
+            game_audio_sample_rate,
+            microphone_sample_rate,
         }))?,
     };
 
@@ -198,6 +173,17 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         sockets::finish_connecting_to_client(pending_socket, client_config).await?;
 
     let session_settings = SESSION_MANAGER.lock().get().session_settings.clone();
+
+    let controller_pose_offset = match settings.headset.controllers {
+        Switch::Enabled(content) => {
+            if content.clientside_prediction {
+                0.
+            } else {
+                content.pose_time_offset
+            }
+        }
+        Switch::Disabled => 0.,
+    };
 
     let new_openvr_config = OpenvrConfig {
         universe_id: settings.headset.universe_id,
@@ -212,8 +198,6 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         eye_resolution_height: video_eye_height,
         target_eye_resolution_width: target_eye_width,
         target_eye_resolution_height: target_eye_height,
-        enable_microphone: session_settings.audio.microphone.enabled,
-        microphone_device: session_settings.audio.microphone.content.device.clone(),
         seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
         client_buffer_size: settings.connection.client_recv_buffer_size,
         force_3dof: settings.headset.force_3dof,
@@ -335,7 +319,6 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
     Ok(ConnectionInfo {
         control_sender,
         control_receiver,
-        game_audio_config,
     })
 }
 
@@ -389,13 +372,10 @@ async fn connection_pipeline() -> StrResult {
 
     log_id(LogId::ClientConnected);
 
+    let settings = SESSION_MANAGER.lock().get().to_settings();
+
     {
-        let on_connect_script = SESSION_MANAGER
-            .lock()
-            .get()
-            .to_settings()
-            .connection
-            .on_connect_script;
+        let on_connect_script = settings.connection.on_connect_script;
 
         if !on_connect_script.is_empty() {
             info!("Running on connect script (connect): {}", on_connect_script);
@@ -411,7 +391,6 @@ async fn connection_pipeline() -> StrResult {
     let ConnectionInfo {
         control_sender,
         mut control_receiver,
-        game_audio_config,
     } = connection_info;
 
     let control_sender = Arc::new(Mutex::new(control_sender));
@@ -423,44 +402,67 @@ async fn connection_pipeline() -> StrResult {
 
     let _stream_guard = StreamCloseGuard;
 
-    let game_audio_desc = SESSION_MANAGER.lock().get().to_settings().audio.game_audio;
     let (_destroy_game_audio_stream_notifier, destroy_game_audio_stream_receiver) =
         smpsc::channel::<()>();
 
-    let game_audio_loop: BoxFuture<_> =
-        if let (Switch::Enabled(desc), Some(config)) = (game_audio_desc, game_audio_config) {
-            let (sender, mut receiver) = tmpsc::unbounded_channel();
-            let control_sender = control_sender.clone();
+    let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
+        let (sender, mut receiver) = tmpsc::unbounded_channel();
+        let control_sender = control_sender.clone();
 
-            // AudioSession is !Send, so keep it in a separate thread.
-            Box::pin(futures::future::join(
-                task::spawn_blocking(move || {
-                    let _audio_stream_guard = Some(AudioSession::start_recording(
-                        desc.device_index,
-                        config,
-                        true,
-                        sender,
-                    )?);
+        // AudioSession is !Send, so keep it in a separate thread.
+        Box::pin(futures::future::join(
+            task::spawn_blocking(move || {
+                let _audio_stream_guard = Some(AudioSession::start_recording(
+                    desc.device_index,
+                    true,
+                    2,
+                    trace_err!(audio::get_output_sample_rate(desc.device_index))?,
+                    sender,
+                )?);
 
-                    // notified when _destroy_game_audio_stream_notifier goes out of scope
-                    destroy_game_audio_stream_receiver.recv().ok();
-                    StrResult::Ok(())
-                }),
-                async move {
-                    while let Some(data) = receiver.recv().await {
-                        control_sender
-                            .lock()
-                            .await
-                            .send(&ServerControlPacket::ReservedBuffer(data))
-                            .await?;
-                    }
+                // notified when _destroy_game_audio_stream_notifier goes out of scope
+                destroy_game_audio_stream_receiver.recv().ok();
+                StrResult::Ok(())
+            }),
+            async move {
+                while let Some(data) = receiver.recv().await {
+                    control_sender
+                        .lock()
+                        .await
+                        .send(&ServerControlPacket::ReservedBuffer(data))
+                        .await?;
+                }
 
-                    StrResult::Ok(())
-                },
-            ))
-        } else {
-            Box::pin(future::pending())
-        };
+                StrResult::Ok(())
+            },
+        ))
+    } else {
+        Box::pin(future::pending())
+    };
+
+    let (_destroy_microphone_stream_notifier, destroy_microphone_stream_receiver) =
+        smpsc::channel::<()>();
+    let (microphone_sender, microphone_receiver) = smpsc::channel();
+
+    let microphone_stream: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.microphone {
+        Box::pin(task::spawn_blocking(move || {
+            let device_index = desc
+                .device_index
+                .or(trace_err!(audio::get_vb_cable_audio_device_index())?);
+            let _audio_stream_guard = Some(AudioSession::start_playing(
+                device_index,
+                1,
+                trace_err!(audio::get_output_sample_rate(device_index))?,
+                desc.buffer_range_multiplier,
+                microphone_receiver,
+            )?);
+
+            destroy_microphone_stream_receiver.recv().ok();
+            StrResult::Ok(())
+        }))
+    } else {
+        Box::pin(future::pending())
+    };
 
     let keepalive_sender_loop = {
         let control_sender = control_sender.clone();
@@ -508,8 +510,10 @@ async fn connection_pipeline() -> StrResult {
                     #[cfg(windows)]
                     crate::RequestIDR()
                 },
-                Ok(ClientControlPacket::Reserved(_))
-                | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
+                Ok(ClientControlPacket::Reserved(_)) => (),
+                Ok(ClientControlPacket::ReservedBuffer(data)) => {
+                    microphone_sender.send(data).ok();
+                }
                 Err(e) => {
                     log_id(LogId::ClientDisconnected);
                     info!("Client disconnected. Cause: {}", e);
@@ -532,8 +536,13 @@ async fn connection_pipeline() -> StrResult {
 
             Ok(())
         }
-        _ = game_audio_loop => Ok(()),
-        _ = keepalive_sender_loop => Ok(()),
+        res = microphone_stream => trace_err!(res)?,
+        (res1, res2) = game_audio_loop => {
+            trace_err!(res1)??;
+            res2?;
+            Ok(())
+        }
+        res = keepalive_sender_loop => res,
         res = control_loop => res,
     }
 }

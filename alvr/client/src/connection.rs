@@ -18,7 +18,7 @@ use std::{
     time::Duration,
 };
 use tokio::{
-    sync::Mutex,
+    sync::{mpsc as tmpsc, Mutex},
     task,
     time::{self, Instant},
 };
@@ -138,7 +138,7 @@ async fn connection_pipeline(
 
     info!("Connected to server");
 
-    let baseline_settings = {
+    let settings = {
         let mut session_desc = SessionDesc::default();
         session_desc.merge_from_json(&trace_err!(json::from_str(&config_packet.session_desc))?)?;
         session_desc.to_settings()
@@ -153,7 +153,7 @@ async fn connection_pipeline(
         &*activity_ref,
         "setDarkMode",
         "(Z)V",
-        &[baseline_settings.extra.client_dark_mode.into()],
+        &[settings.extra.client_dark_mode.into()],
     ))?;
 
     unsafe {
@@ -161,37 +161,30 @@ async fn connection_pipeline(
             eyeWidth: config_packet.eye_resolution_width,
             eyeHeight: config_packet.eye_resolution_height,
             refreshRate: config_packet.fps,
-            streamMic: matches!(baseline_settings.audio.microphone, Switch::Enabled(_)),
-            enableFoveation: matches!(
-                baseline_settings.video.foveated_rendering,
-                Switch::Enabled(_)
-            ),
+            enableFoveation: matches!(settings.video.foveated_rendering, Switch::Enabled(_)),
             foveationStrength: if let Switch::Enabled(foveation_vars) =
-                &baseline_settings.video.foveated_rendering
+                &settings.video.foveated_rendering
             {
                 foveation_vars.strength
             } else {
                 0_f32
             },
             foveationShape: if let Switch::Enabled(foveation_vars) =
-                &baseline_settings.video.foveated_rendering
+                &settings.video.foveated_rendering
             {
                 foveation_vars.shape
             } else {
                 1_f32
             },
             foveationVerticalOffset: if let Switch::Enabled(foveation_vars) =
-                &baseline_settings.video.foveated_rendering
+                &settings.video.foveated_rendering
             {
                 foveation_vars.vertical_offset
             } else {
                 0_f32
             },
-            trackingSpaceType: matches!(
-                baseline_settings.headset.tracking_space,
-                TrackingSpace::Stage
-            ) as _,
-            extraLatencyMode: baseline_settings.headset.extra_latency_mode,
+            trackingSpaceType: matches!(settings.headset.tracking_space, TrackingSpace::Stage) as _,
+            extraLatencyMode: settings.headset.extra_latency_mode,
         });
     }
 
@@ -200,18 +193,15 @@ async fn connection_pipeline(
         "onServerConnected",
         "(IZLjava/lang/String;)V",
         &[
-            (matches!(baseline_settings.video.codec, CodecType::HEVC) as i32).into(),
-            baseline_settings
-                .video
-                .client_request_realtime_decoder
-                .into(),
+            (matches!(settings.video.codec, CodecType::HEVC) as i32).into(),
+            settings.video.client_request_realtime_decoder.into(),
             trace_err!(trace_err!(java_vm.attach_current_thread())?
                 .new_string(config_packet.dashboard_url))?
             .into()
         ],
     ))?;
 
-    let tracking_clientside_prediction = match baseline_settings.headset.controllers {
+    let tracking_clientside_prediction = match settings.headset.controllers {
         Switch::Enabled(ref controllers) => controllers.clientside_prediction,
         Switch::Disabled => false,
     };
@@ -226,9 +216,9 @@ async fn connection_pipeline(
         let java_vm = java_vm.clone();
         let activity_ref = activity_ref.clone();
         let nal_class_ref = nal_class_ref.clone();
-        let codec = baseline_settings.video.codec;
-        let client_recv_buffer_size = baseline_settings.connection.client_recv_buffer_size;
-        let enable_fec = baseline_settings.connection.enable_fec;
+        let codec = settings.video.codec;
+        let client_recv_buffer_size = settings.connection.client_recv_buffer_size;
+        let enable_fec = settings.connection.enable_fec;
         move || -> StrResult {
             let env = trace_err!(java_vm.attach_current_thread())?;
             let env_ptr = env.get_native_interface() as _;
@@ -317,32 +307,76 @@ async fn connection_pipeline(
         }
     };
 
-    let mut maybe_game_audio_config = None;
+    let mut game_audio_sample_rate = 0;
+    let mut microphone_sample_rate = 0;
     if let Ok(reserved_config) = json::from_str::<json::Value>(&config_packet.reserved) {
-        if let Some(config_json) = reserved_config.get("game_audio_config") {
-            if let Ok(maybe_config) = json::from_value::<Option<AudioConfig>>(config_json.clone()) {
-                maybe_game_audio_config = maybe_config;
+        if let Some(config_json) = reserved_config.get("game_audio_sample_rate") {
+            if let Ok(sample_rate) = json::from_value::<u32>(config_json.clone()) {
+                game_audio_sample_rate = sample_rate;
+            }
+        }
+
+        if let Some(config_json) = reserved_config.get("microphone_sample_rate") {
+            if let Ok(sample_rate) = json::from_value::<u32>(config_json.clone()) {
+                microphone_sample_rate = sample_rate;
             }
         }
     }
 
-    let (game_audio_sender, game_audio_receiver) = smpsc::channel();
-    let (_destroy_game_audio_stream_notifier, destroy_game_audio_stream_receiver) =
-        smpsc::channel::<()>();
+    let (microphone_sender, mut microphone_receiver) = tmpsc::unbounded_channel();
+    let microphone_loop: BoxFuture<_> = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
+        let control_sender = control_sender.clone();
+        Box::pin(async move {
+            while let Some(data) = microphone_receiver.recv().await {
+                control_sender
+                    .lock()
+                    .await
+                    .send(&ClientControlPacket::ReservedBuffer(data))
+                    .await?;
+            }
 
-    // AudioPlayer is !Send, so put it in a separate thread
-    let game_audio_stream: BoxFuture<_> = if let Some(config) = maybe_game_audio_config {
-        Box::pin(task::spawn_blocking(move || {
-            let mut _stream_guard = audio::AudioPlayer::start(config, game_audio_receiver)?;
-
-            // notified when the notifier counterpart gets dropped
-            destroy_game_audio_stream_receiver.recv().ok();
-
-            Ok(())
-        }))
+            StrResult::Ok(())
+        })
     } else {
         Box::pin(future::pending())
     };
+
+    let (game_audio_sender, game_audio_receiver) = smpsc::channel();
+    let (_destroy_stream_park_notifier, destroy_stream_park_receiver) = smpsc::channel::<()>();
+
+    // blocking streams park
+    std::thread::spawn(move || -> StrResult {
+        let mut _game_audio_stream_guard = if let Switch::Enabled(desc) = settings.audio.game_audio
+        {
+            Some(audio::AudioPlayer::start(
+                game_audio_sample_rate,
+                desc.buffer_range_multiplier,
+                game_audio_receiver,
+            )?)
+        } else {
+            None
+        };
+
+        let mut _microphone_stream_guard = if let Switch::Enabled(_) = settings.audio.microphone {
+            Some(audio::AudioRecorder::start(
+                microphone_sample_rate,
+                microphone_sender,
+            )?)
+        } else {
+            None
+        };
+
+        // notified when the notifier counterpart gets dropped
+        destroy_stream_park_receiver.recv().ok();
+
+        error!("drop streams park");
+
+        // the microphone gets stuck on stop(), drop the game audio stream first
+        drop(_game_audio_stream_guard);
+        drop(_microphone_stream_guard);
+
+        Ok(())
+    });
 
     let keepalive_sender_loop = {
         let control_sender = control_sender.clone();
@@ -401,8 +435,8 @@ async fn connection_pipeline(
     };
 
     tokio::select! {
-        res = game_audio_stream => trace_err!(res)?,
         res = stream_socket_loop => trace_err!(res)?,
+        res = microphone_loop => res,
         res = tracking_loop => res,
         res = playspace_sync_loop => res,
         res = control_loop => res,

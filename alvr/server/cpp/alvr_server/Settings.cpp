@@ -70,9 +70,6 @@ void Settings::Load()
 			m_eyeFov[eye].bottom = 45;
 		}
 
-		m_streamMic = config.get("enable_microphone").get<bool>();
-		m_microphoneDevice = config.get("microphone_device").get<std::string>();
-
 		m_flSecondsFromVsyncToPhotons = (float)config.get("seconds_from_vsync_to_photons").get<double>();
 
 		m_flIPD = 0.063;

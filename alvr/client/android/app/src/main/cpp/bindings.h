@@ -34,7 +34,6 @@ struct StreamConfig {
     unsigned int eyeWidth;
     unsigned int eyeHeight;
     float refreshRate;
-    bool streamMic;
     bool enableFoveation;
     float foveationStrength;
     float foveationShape;

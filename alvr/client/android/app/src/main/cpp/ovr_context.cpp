@@ -51,12 +51,6 @@ public:
     ovrJava java{};
     JNIEnv *env{};
 
-
-    int16_t *micBuffer{};
-    size_t mMicMaxElements{};
-
-    ovrMicrophoneHandle mMicHandle{};
-
     unique_ptr<Texture> streamTexture;
     GLuint loadingTexture = 0;
     int suspend = 0;
@@ -193,8 +187,6 @@ void destroyNative(void *v_env) {
     vrapi_Shutdown();
 
     env->DeleteGlobalRef(g_ctx.java.ActivityObject);
-
-    delete[] g_ctx.micBuffer;
 }
 
 uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
@@ -579,43 +571,6 @@ void sendTrackingInfo(bool clientsidePrediction) {
     sendNative(reinterpret_cast<long long int>(&info), static_cast<int>(sizeof(info)));
 }
 
-// Called from TrackingThread
-void sendMicData() {
-    if (!g_ctx.mMicHandle) {
-        return;
-    }
-
-    size_t outputBufferNumElements = ovr_Microphone_GetPCM(g_ctx.mMicHandle, g_ctx.micBuffer,
-                                                           g_ctx.mMicMaxElements);
-    if (outputBufferNumElements > 0) {
-        int count = 0;
-
-        for (size_t i = 0; i < outputBufferNumElements; i += 100) {
-            int rest = outputBufferNumElements - count * 100;
-
-            MicAudioFrame audio{};
-            memset(&audio, 0, sizeof(MicAudioFrame));
-
-            audio.type = ALVR_PACKET_TYPE_MIC_AUDIO;
-            audio.packetIndex = count;
-            audio.completeSize = outputBufferNumElements;
-
-            if (rest >= 100) {
-                audio.outputBufferNumElements = 100;
-            } else {
-                audio.outputBufferNumElements = rest;
-            }
-
-            memcpy(&audio.micBuffer,
-                   g_ctx.micBuffer + count * 100,
-                   sizeof(int16_t) * audio.outputBufferNumElements);
-
-            sendNative(reinterpret_cast<long long int>(&audio), static_cast<int>(sizeof(audio)));
-            count++;
-        }
-    }
-}
-
 OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
     auto surface = (jobject) v_surface;
 
@@ -726,15 +681,6 @@ void onStreamStartNative() {
         LOGE("Failed to set tracking space: %d", result);
     }
     g_ctx.m_LastHMDRecenterCount = -1; // make sure we send guardian data
-
-    if (g_ctx.streamConfig.streamMic) {
-        g_ctx.mMicHandle = ovr_Microphone_Create();
-        g_ctx.mMicMaxElements = ovr_Microphone_GetOutputBufferMaxSize(g_ctx.mMicHandle);
-        LOGI("Mic_maxElements %zu", g_ctx.mMicMaxElements);
-        g_ctx.micBuffer = new int16_t[g_ctx.mMicMaxElements];
-
-        ovr_Microphone_Start(g_ctx.mMicHandle);
-    }
 }
 
 void onPauseNative() {
@@ -743,12 +689,6 @@ void onPauseNative() {
     LOGI("Leaving VR mode.");
 
     vrapi_LeaveVrMode(g_ctx.Ovr);
-
-    if (g_ctx.mMicHandle) {
-        ovr_Microphone_Stop(g_ctx.mMicHandle);
-        ovr_Microphone_Destroy(g_ctx.mMicHandle);
-        g_ctx.mMicHandle = nullptr;
-    }
 
     g_ctx.Ovr = nullptr;
 
@@ -1023,8 +963,5 @@ GuardianData getGuardianData() {
 void onTrackingNative(bool clientsidePrediction) {
     if (g_ctx.Ovr != nullptr) {
         sendTrackingInfo(clientsidePrediction);
-
-        //TODO: maybe use own thread, but works fine with tracking
-        sendMicData();
     }
 }

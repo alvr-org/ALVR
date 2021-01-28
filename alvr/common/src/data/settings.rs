@@ -153,7 +153,6 @@ pub struct AudioConfig {
     pub sample_rate: u32,
     pub buffer_size: Option<u32>,
     pub sample_format: SampleFormat,
-    pub buffer_range_multiplier: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -164,18 +163,18 @@ pub struct OutputAudioDesc {
 
     pub mute_when_streaming: bool,
 
-    #[schema(advanced)]
-    pub preferred_config: AudioConfig,
+    #[schema(min = 1, max = 10)]
+    pub buffer_range_multiplier: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InputAudioDesc {
-    // deviceDropdown should poll the available audio devices and set "device"
-    #[schema(placeholder = "device_dropdown")]
-    //
-    #[schema(advanced)]
-    pub device: String,
+    #[schema(gui = "UpDown")]
+    pub device_index: Option<u64>,
+
+    #[schema(min = 1, max = 10)]
+    pub buffer_range_multiplier: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -435,23 +434,18 @@ pub fn session_settings_default() -> SettingsDefault {
                         content: 0,
                     },
                     mute_when_streaming: true,
-                    preferred_config: AudioConfigDefault {
-                        channels_count: 2,
-                        sample_rate: 44100,
-                        buffer_size: OptionalDefault {
-                            set: false,
-                            content: 0,
-                        },
-                        sample_format: SampleFormatDefault {
-                            variant: SampleFormatDefaultVariant::Int16,
-                        },
-                        buffer_range_multiplier: 2,
-                    },
+                    buffer_range_multiplier: 2,
                 },
             },
             microphone: SwitchDefault {
                 enabled: false,
-                content: InputAudioDescDefault { device: "".into() },
+                content: InputAudioDescDefault {
+                    device_index: OptionalDefault {
+                        set: false,
+                        content: 0,
+                    },
+                    buffer_range_multiplier: 3,
+                },
             },
         },
         headset: HeadsetDescDefault {

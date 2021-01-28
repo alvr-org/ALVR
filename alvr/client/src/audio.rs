@@ -1,10 +1,19 @@
-use alvr_common::{data::AudioConfig, *};
+use alvr_common::*;
 use oboe::*;
-use std::{collections::VecDeque, mem::size_of, sync::mpsc::Receiver};
+use std::{
+    collections::VecDeque,
+    mem::size_of,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc::Receiver,
+        Arc,
+    },
+};
 use tokio::sync::mpsc::UnboundedSender;
 
 struct RecorderCallback {
     sender: UnboundedSender<Vec<u8>>,
+    running: Arc<AtomicBool>,
 }
 
 impl AudioInputCallback for RecorderCallback {
@@ -23,39 +32,50 @@ impl AudioInputCallback for RecorderCallback {
 
         self.sender.send(sample_buffer.clone()).ok();
 
-        DataCallbackResult::Continue
+        if self.running.load(Ordering::Relaxed) {
+            DataCallbackResult::Continue
+        } else {
+            DataCallbackResult::Stop
+        }
     }
 }
 
 pub struct AudioRecorder {
     stream: AudioStreamAsync<Input, RecorderCallback>,
+    running: Arc<AtomicBool>,
 }
 
 impl AudioRecorder {
-    pub fn start(config: AudioConfig, sender: UnboundedSender<Vec<u8>>) -> StrResult<Self> {
-        // Oboe doesn't support untyped callbacks. For convenience, not all configs are respected
+    pub fn start(sample_rate: u32, sender: UnboundedSender<Vec<u8>>) -> StrResult<Self> {
+        let running = Arc::new(AtomicBool::new(true));
+
         let mut stream = trace_err!(AudioStreamBuilder::default()
             .set_shared()
             .set_performance_mode(PerformanceMode::LowLatency)
-            .set_sample_rate(config.sample_rate as _)
+            .set_sample_rate(sample_rate as _)
             .set_sample_rate_conversion_quality(SampleRateConversionQuality::Fastest)
             .set_mono()
             .set_i16()
             .set_input()
             .set_usage(Usage::VoiceCommunication)
             .set_input_preset(InputPreset::VoiceCommunication)
-            .set_callback(RecorderCallback { sender })
+            .set_callback(RecorderCallback {
+                sender,
+                running: Arc::new(AtomicBool::new(true)),
+            })
             .open_stream())?;
 
         trace_err!(stream.start())?;
 
-        Ok(Self { stream })
+        Ok(Self { stream, running })
     }
 }
-
 impl Drop for AudioRecorder {
     fn drop(&mut self) {
-        self.stream.stop().ok();
+        self.running.store(false, Ordering::Relaxed);
+
+        // This call gets stuck if the headset goes to sleep, but finishes when the headset wakes up
+        self.stream.stop_with_timeout(0).ok();
     }
 }
 
@@ -122,11 +142,15 @@ pub struct AudioPlayer {
 }
 
 impl AudioPlayer {
-    pub fn start(config: AudioConfig, receiver: Receiver<Vec<u8>>) -> StrResult<Self> {
+    pub fn start(
+        sample_rate: u32,
+        buffer_range_multiplier: u64,
+        receiver: Receiver<Vec<u8>>,
+    ) -> StrResult<Self> {
         let mut stream = trace_err!(AudioStreamBuilder::default()
             .set_shared()
             .set_performance_mode(PerformanceMode::LowLatency)
-            .set_sample_rate(config.sample_rate as _)
+            .set_sample_rate(sample_rate as _)
             .set_sample_rate_conversion_quality(SampleRateConversionQuality::Fastest)
             .set_stereo()
             .set_i16()
@@ -135,7 +159,7 @@ impl AudioPlayer {
             .set_callback(PlayerCallback {
                 receiver,
                 sample_buffer: VecDeque::new(),
-                buffer_range_multiplier: config.buffer_range_multiplier as _,
+                buffer_range_multiplier: buffer_range_multiplier as _,
                 last_input_buffer_size: 0,
             })
             .open_stream())?;
@@ -148,6 +172,7 @@ impl AudioPlayer {
 
 impl Drop for AudioPlayer {
     fn drop(&mut self) {
-        self.stream.stop().ok();
+        // Note: Oboe crahes if stream.stop() is NOT called on AudioPlayer
+        self.stream.stop_with_timeout(0).ok();
     }
 }

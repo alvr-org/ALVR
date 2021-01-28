@@ -12,8 +12,7 @@ ClientConnection::ClientConnection(
 	memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
 	InitializeCriticalSection(&m_CS);
 
-	m_Statistics       = std::make_shared<Statistics>();
-	m_MicPlayer	       = std::make_shared<MicPlayer>();
+	m_Statistics = std::make_shared<Statistics>();
 
 	m_Poller.reset(new Poller());
 
@@ -265,13 +264,6 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			// Recover video frame.
 			OnFecFailure();
 		}
-	}
-	else if (type == ALVR_PACKET_TYPE_MIC_AUDIO && len >= sizeof(MicAudioFrame)) {
-		auto *frame = (MicAudioFrame *)buf;
-		Debug("Got MicAudio Frame with length - %zu  %zu index: %i\n", frame->outputBufferNumElements, frame->completeSize, frame->packetIndex);
-
-		m_MicPlayer->playAudio( (char*)frame->micBuffer , (int)(sizeof(int16_t)  *  frame->outputBufferNumElements));
-	
 	}
 }
 

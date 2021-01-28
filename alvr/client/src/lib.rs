@@ -153,32 +153,12 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
             slice::from_raw_parts(result.refreshRates, result.refreshRatesCount as _).to_vec();
         let preferred_refresh_rate = available_refresh_rates.last().cloned().unwrap_or(60_f32);
 
-        #[derive(serde::Serialize)]
-        struct ReservedData {
-            game_audio_configs: Vec<AudioConfigRange>,
-        }
-
         let headset_info = HeadsetInfoPacket {
             recommended_eye_width: result.recommendedEyeWidth as _,
             recommended_eye_height: result.recommendedEyeHeight as _,
             available_refresh_rates,
             preferred_refresh_rate,
-            reserved: trace_err!(serde_json::to_string(&ReservedData {
-                game_audio_configs: vec![
-                    AudioConfigRange {
-                        channels: 2,
-                        sample_rates: 44100..=44100,
-                        buffer_sizes: None,
-                        sample_format: SampleFormat::Int16
-                    },
-                    AudioConfigRange {
-                        channels: 2,
-                        sample_rates: 48000..=48000,
-                        buffer_sizes: None,
-                        sample_format: SampleFormat::Int16
-                    }
-                ]
-            }))?,
+            reserved: "".into(),
         };
 
         let private_identity = PrivateIdentity {

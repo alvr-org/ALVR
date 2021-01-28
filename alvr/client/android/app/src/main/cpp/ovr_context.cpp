@@ -12,7 +12,6 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <android/input.h>
-#include "OVR_Platform.h"
 #include "ffr.h"
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -160,17 +159,11 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
 
     memset(g_ctx.mHapticsState, 0, sizeof(g_ctx.mHapticsState));
 
-
-    ovrPlatformInitializeResult res = ovr_PlatformInitializeAndroid("", activity, env);
-
-    LOGI("ovrPlatformInitializeResult %s", ovrPlatformInitializeResult_ToString(res));
-
-
-    ovrRequest req;
-    req = ovr_User_GetLoggedInUser();
-
-
-    LOGI("Logged in user is %" PRIu64 "\n", req);
+    //ovrPlatformInitializeResult res = ovr_PlatformInitializeAndroid("", activity, env);
+    //LOGI("ovrPlatformInitializeResult %s", ovrPlatformInitializeResult_ToString(res));
+    //ovrRequest req;
+    //req = ovr_User_GetLoggedInUser();
+    //LOGI("Logged in user is %" PRIu64 "\n", req);
 
     return {(int) g_ctx.streamTexture.get()->GetGLTexture(), (int) g_ctx.loadingTexture};
 }

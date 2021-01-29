@@ -37,15 +37,11 @@ define({
     "_root_audio_gameAudio.name": "Stream game audio",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
     "_root_audio_gameAudio_enabled.description": "Stream de game audio naar de headset",
-    "_root_audio_gameAudio_content_deviceDropdown.name": "Audio apparaat",
-    "_root_audio_gameAudio_content_deviceDropdown.description": "Selecteer het audio apparaat gebruikt om audio vast te leggen",
     "_root_audio_gameAudio_content_muteWhenStreaming.name": "Demp output tijdens het streamen",
     "_root_audio_gameAudio_content_muteWhenStreaming.description": "Dempt het audio apparaat (speakers/headphones) wanneer je streamt naar de headset. Alleen de fysieke output is gedempt (om dubbele audio te voorkomen), streamen naar de headset en andere opnamesoftware worden niet beïnvloed.",
     "_root_audio_microphone.name": "Stream de microfoon van de headset",
     // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
     "_root_audio_microphone_enabled.description": "Streamt de microfoon van de headset naar SteamVR. \nOm de microfoon te laten werken moet je VB-Audio Virtual device of een gelijksoortige software instaleren",
-    "_root_audio_microphone_content_deviceDropdown.name": "Virtuele microfoon input",
-    "_root_audio_microphone_content_deviceDropdown.description": "Selecteer de virtuele microfoon input gebruikt om audio vast te leggen. \nOm de microfoon te laten werken moet je VB-Audio Virtual device of een gelijksoortige software instaleren",
     // Headset tab
     "_root_headset_tab.name": "Headset",
     "_root_headset_headsetEmulationMode.name": "Headset emulatie modus",

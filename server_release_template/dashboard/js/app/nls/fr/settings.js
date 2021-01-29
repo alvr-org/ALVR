@@ -53,19 +53,11 @@ define({
     "_root_audio_gameAudio.name": "Transmettre l'audio au casque",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
     "_root_audio_gameAudio_enabled.description": "Permet de streamer l'audio du jeu sur le casque",
-    "_root_audio_gameAudio_content_deviceDropdown.name": "Choisisez la source audio",
-    "_root_audio_gameAudio_content_deviceDropdown.description": "Source audio utilisé pour la capture",
-    // "_root_audio_gameAudio_content_device.name": "", // adv
-    // "_root_audio_gameAudio_content_device.description": "", // adv
     // "_root_audio_gameAudio_content_muteWhenStreaming.name": "",
     // "_root_audio_gameAudio_content_muteWhenStreaming.description": "",
     "_root_audio_microphone.name": "Transmettre le microphone",
     // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
     "_root_audio_microphone_enabled.description": "Permet d'utiliser le microphone du casque sur l'ordinateur",
-    // "_root_audio_microphone_content_deviceDropdown.name": "",
-    // "_root_audio_microphone_content_deviceDropdown.description": "",
-    // "_root_audio_microphone_content_device.name": "", // adv
-    // "_root_audio_microphone_content_device.description": "", // adv
     // Headset tab
     "_root_headset_tab.name": "Casque",
     "_root_headset_headsetEmulationMode.name": "Mode d'émulation du casque",

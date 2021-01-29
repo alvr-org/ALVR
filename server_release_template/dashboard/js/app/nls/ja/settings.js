@@ -55,19 +55,11 @@ define({
     "_root_audio_gameAudio.name": "ゲーム音声のストリーミング",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
     "_root_audio_gameAudio_enabled.description": "ヘッドセットへのゲーム音声のストリーミングを有効化する",
-    "_root_audio_gameAudio_content_deviceDropdown.name": "オーディオ機器の選択",
-    "_root_audio_gameAudio_content_deviceDropdown.description": "音声キャプチャのために使用されるオーディオ機器",
-    // "_root_audio_gameAudio_content_device.name": "", // adv
-    // "_root_audio_gameAudio_content_device.description": "", // adv
     // "_root_audio_gameAudio_content_muteWhenStreaming.name": "",
     // "_root_audio_gameAudio_content_muteWhenStreaming.description": "",
     "_root_audio_microphone.name": "マイクのストリーミング",
     // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
     "_root_audio_microphone_enabled.description": "ヘッドセットのマイクをストリーミングする",
-    // "_root_audio_microphone_content_deviceDropdown.name": "",
-    // "_root_audio_microphone_content_deviceDropdown.description": "",
-    // "_root_audio_microphone_content_device.name": "", // adv
-    // "_root_audio_microphone_content_device.description": "", // adv
     // Headset tab
     "_root_headset_tab.name": "ヘッドセット",
     "_root_headset_headsetEmulationMode.name": "ヘッドセットエミュレーション",

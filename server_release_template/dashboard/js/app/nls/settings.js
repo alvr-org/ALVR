@@ -52,19 +52,19 @@ define({
         "_root_audio_gameAudio.name": "Stream game audio",
         // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
         "_root_audio_gameAudio_enabled.description": "Stream the game audio to the headset",
-        "_root_audio_gameAudio_content_deviceDropdown.name": "Audio device",
-        "_root_audio_gameAudio_content_deviceDropdown.description": "Select the audio device used to capture audio",
-        "_root_audio_gameAudio_content_device.name": "Audio device code", // adv
-        "_root_audio_gameAudio_content_device.description": "Enter the audio device code used to capture audio", // adv
+        "_root_audio_gameAudio_content_deviceIndex.name": "Audio device index",
+        "_root_audio_gameAudio_content_deviceIndex_set.description": "Index of the audio device. It starts with zero and corresponds to the position of the entry in the Sound window in the Control panel. You should keep this to Default and change the default device from the taskbar tray",
         "_root_audio_gameAudio_content_muteWhenStreaming.name": "Mute output when streaming",
         "_root_audio_gameAudio_content_muteWhenStreaming.description": "Mutes the audio output (speakers/headphones) when streaming to the headset. Only the physical output is muted (to avoid double audio), stream to the headset and other capturing software will not be affected.",
+        "_root_audio_gameAudio_content_bufferRangeMultiplier.name": "Latency offset",
+        "_root_audio_gameAudio_content_bufferRangeMultiplier.description": "Use 1 for lowest latency, at the cost of more audio crackling.",
         "_root_audio_microphone.name": "Stream headset microphone",
         // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
         "_root_audio_microphone_enabled.description": "Streams the headset microphone to SteamVR. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software",
-        "_root_audio_microphone_content_deviceDropdown.name": "Virtual microphone input",
-        "_root_audio_microphone_content_deviceDropdown.description": "Select the virtual microphone input used to capture audio. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software",
-        "_root_audio_microphone_content_device.name": "Virtual microphone input code", // adv
-        "_root_audio_microphone_content_device.description": "Enter the virtual microphone input code used to capture audio. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software", // adv
+        "_root_audio_microphone_content_deviceIndex.name": "Virtual microphone input index",
+        "_root_audio_microphone_content_deviceIndex_set.description": "Index of the audio device. You should leave this to Default",
+        "_root_audio_microphone_content_bufferRangeMultiplier.name": "Latency offset",
+        "_root_audio_microphone_content_bufferRangeMultiplier.description": "Use 1 for lowest latency, at the cost of more audio crackling.",
         // Headset tab
         "_root_headset_tab.name": "Headset",
         "_root_headset_headsetEmulationMode.name": "Headset emulation mode",

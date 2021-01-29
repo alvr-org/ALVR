@@ -51,19 +51,11 @@ define({
     "_root_audio_gameAudio.name": "Передача звука игры",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
     // "_root_audio_gameAudio_enabled.description": "",
-    "_root_audio_gameAudio_content_deviceDropdown.name": "Выберите устройство воспроизведения",
-    "_root_audio_gameAudio_content_deviceDropdown.description": "Устройство воспроизведения используется для захвата звука.",
-    // "_root_audio_gameAudio_content_device.name": "", // adv
-    // "_root_audio_gameAudio_content_device.description": "", // adv
     // "_root_audio_gameAudio_content_muteWhenStreaming.name": "",
     // "_root_audio_gameAudio_content_muteWhenStreaming.description": "",
     "_root_audio_microphone.name": "Трансляция микрофона",
     // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
     "_root_audio_microphone.description": "Передает сигнал микрофона гарнитуры.",
-    "_root_audio_microphone_content_deviceDropdown.name": "Выберите виртуальное устройство ввода",
-    "_root_audio_microphone_content_deviceDropdown.description": "Чтобы ваш микрофон заработал, необходимо установить VB-CABLE Virtual Audio Device или другое аналогичное ПО.",
-    // "_root_audio_microphone_content_device.name": "", // adv
-    // "_root_audio_microphone_content_device.description": "", // adv
     // Headset tab
     "_root_headset_tab.name": "Гарнитура",
     "_root_headset_headsetEmulationMode.name": "Режим эмуляции гарнитуры",

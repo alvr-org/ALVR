@@ -60,19 +60,11 @@ define({
     "_root_audio_gameAudio.name": "串流电脑声音",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
     "_root_audio_gameAudio_enabled.description": "启用则会将游戏音频流传输到头戴显示器",
-    "_root_audio_gameAudio_content_deviceDropdown.name": "选择音频设备",
-    "_root_audio_gameAudio_content_deviceDropdown.description": "用于捕获音频的音频设备",
-    "_root_audio_gameAudio_content_device.name": "使用的音频设备", // adv
-    "_root_audio_gameAudio_content_device.description": "用于流式传输的音频设备", // adv
     // "_root_audio_gameAudio_content_muteWhenStreaming.name": "",
     // "_root_audio_gameAudio_content_muteWhenStreaming.description": "",
     "_root_audio_microphone.name": "麦克风串流",
     // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
     "_root_audio_microphone_enabled.description": "用于流式传输的麦克风",
-	"_root_audio_microphone_content_deviceDropdown.name": "选择虚拟麦克风设备",
-    "_root_audio_microphone_content_deviceDropdown.description": "为确保麦克风可以正常使用，你需要安装VB-Audio Virtual device或者其他相似的软件。",
-    // "_root_audio_microphone_content_device.name": "", // adv
-    // "_root_audio_microphone_content_device.description": "", // adv
     // Headset tab
     "_root_headset_tab.name": "头部显示器",
     "_root_headset_headsetEmulationMode.name": "头戴显示器模拟模式",

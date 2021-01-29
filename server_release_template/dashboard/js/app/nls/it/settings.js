@@ -51,19 +51,11 @@ define({
     "_root_audio_gameAudio.name": "Trasmetti l'audio del gioco",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
     // "_root_audio_gameAudio_enabled.description": "",
-    "_root_audio_gameAudio_content_deviceDropdown.name": "Scegli il dispositivo audio",
-    "_root_audio_gameAudio_content_deviceDropdown.description": "Dispositivo usato per catturare l'audio del gioco",
-    // "_root_audio_gameAudio_content_device.name": "", // adv
-    // "_root_audio_gameAudio_content_device.description": "", // adv
     "_root_audio_gameAudio_content_muteWhenStreaming.name": "Silenzia PC durante la trasmissione",
     "_root_audio_gameAudio_content_muteWhenStreaming.description": "Azzera il volume del dispositivo audio dal PC durante la trasmissione al visore. L'audio viene comunque transmesso al visore. Questo fa si di evitare l'eco dal PC",
     "_root_audio_microphone.name": "Trasmetti microfono",
     // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
     "_root_audio_microphone_enabled.description": "Trasmetti l'audio del microfono dal visore al PC",
-    "_root_audio_microphone_content_deviceDropdown.name": "Seleziona un microfono virtuale",
-    "_root_audio_microphone_content_deviceDropdown.description": "Per far funzionare il microfono, devi installare VB-Audio Virtual device o un altro software equivalente",
-    // "_root_audio_microphone_content_device.name": "", // adv
-    // "_root_audio_microphone_content_device.description": "", // adv
     // Headset tab
     "_root_headset_tab.name": "Visore",
     "_root_headset_headsetEmulationMode.name": "Modalità emulazione del visore",

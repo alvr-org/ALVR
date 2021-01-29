@@ -286,7 +286,10 @@ impl AudioSession {
                             .collect::<Vec<_>>(),
                     )
                 } else {
-                    warn!("audio buffer too small! size: {}", sample_buffer_bytes.len());
+                    warn!(
+                        "audio buffer too small! size: {}",
+                        sample_buffer_bytes.len()
+                    );
                 }
 
                 // todo: use smarter policy with EventTiming

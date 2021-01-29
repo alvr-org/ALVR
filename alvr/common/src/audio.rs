@@ -261,6 +261,7 @@ impl AudioSession {
             &stream_config,
             config.sample_format(),
             move |data, _| {
+                error!("output size: {}", data.bytes().len());
                 while let Ok(packet) = receiver.try_recv() {
                     let mut data =
                         convert_channels_count(&packet, channels_count, config.channels());
@@ -275,6 +276,7 @@ impl AudioSession {
                             })
                             .collect()
                     };
+                    error!("input size: {}", data.len());
                     sample_buffer_bytes.extend(data);
                 }
 
@@ -285,11 +287,15 @@ impl AudioSession {
                             .drain(0..data_bytes_len)
                             .collect::<Vec<_>>(),
                     )
+                } else {
+                    error!("audio buffer too small! size: {}", sample_buffer_bytes.len());
                 }
 
                 // todo: use smarter policy with EventTiming
                 if sample_buffer_bytes.len() > 2 * buffer_range_multiplier as usize * data_bytes_len
                 {
+                    error!("draining audio buffer. size: {}", sample_buffer_bytes.len());
+
                     sample_buffer_bytes.drain(
                         0..(sample_buffer_bytes.len()
                             - buffer_range_multiplier as usize * data_bytes_len),

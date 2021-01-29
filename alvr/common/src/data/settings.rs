@@ -444,7 +444,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         set: false,
                         content: 0,
                     },
-                    buffer_range_multiplier: 3,
+                    buffer_range_multiplier: 4,
                 },
             },
         },

@@ -362,7 +362,10 @@ async fn connection_pipeline() -> StrResult {
                 }
             }
         }
-        Err(e) = client_discovery() => return fmt_e!("Client discovery failed: {}", e),
+        Err(e) = client_discovery() => {
+            error!("Client discovery failed: {}", e);
+            return Ok(());
+        }
         _ = CLIENTS_UPDATED_NOTIFIER.notified() => return Ok(()),
         else => unreachable!(),
     };

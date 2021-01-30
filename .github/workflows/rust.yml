@@ -21,9 +21,6 @@ jobs:
         toolchain: stable
         override: true
     - uses: Swatinem/rust-cache@v1
-    
-    - name: Install apt dependencies
-      run: sudo install libasound2-dev
 
     - name: Build server crates
       uses: actions-rs/cargo@v1
@@ -47,6 +44,9 @@ jobs:
         toolchain: stable
         override: true
     - uses: Swatinem/rust-cache@v1
+    
+    - name: Install apt dependencies
+      run: sudo install libasound2-dev
 
     - name: Build server crates
       uses: actions-rs/cargo@v1

@@ -27,13 +27,6 @@ jobs:
       with:
         command: build
         args: -p alvr_xtask -p alvr_server -p alvr_launcher --verbose
-    # todo: add client build when compatible with Windows and/or cargo-apk
-    
-    - name: Run tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: -p alvr_common --verbose
   
   build-linux:
     runs-on: ubuntu-latest
@@ -53,6 +46,16 @@ jobs:
       with:
         command: build
         args: -p alvr_xtask -p alvr_server -p alvr_launcher --verbose
+
+  tests:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - uses: Swatinem/rust-cache@v1
     
     - name: Run tests
       uses: actions-rs/cargo@v1

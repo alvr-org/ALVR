@@ -51,11 +51,15 @@ define({
     "_root_audio_gameAudio.name": "Аудио предаване на игра",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
     // "_root_audio_gameAudio_enabled.description": "",
+    "_root_audio_gameAudio_content_deviceId-choice-.name": "Изберете аудио устройство",
+    "_root_audio_gameAudio_content_deviceId-choice-.description": "Аудио устройство използвано за улавяне на звук",
     // "_root_audio_gameAudio_content_muteWhenStreaming.name": "",
     // "_root_audio_gameAudio_content_muteWhenStreaming.description": "",
     "_root_audio_microphone.name": "Излъчен микрофон",
     // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
     "_root_audio_microphone_enabled.description": "Предава сигнала на микрофона на слушалките.",
+    "_root_audio_microphone_content_deviceId-choice-.name": "Изберете виртуално устройство за въвеждане",
+    "_root_audio_microphone_content_deviceId-choice-.description": "За да работи микрофонът ви, трябва да инсталирате VB-CABLE Virtual Audio Device или подобен или подобен или подобен или подобен.",
     // Headset tab
     "_root_headset_tab.name": "Слушалки",
     "_root_headset_headsetEmulationMode.name": "Режим на емулация на слушалки",

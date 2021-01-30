@@ -1,7 +1,6 @@
 define({
     // Video tab
     "_root_video_tab.name": "Video Optionen",
-    "_root_video_tab.description": "Video Optionen",
     "_root_video_adapterIndex.name": "Adapter Index", // adv
     "_root_video_adapterIndex.description": "Index des GPUs", // adv
     "_root_video_displayRefreshRate.name": "Display Refreshrate",
@@ -52,15 +51,18 @@ define({
     "_root_video_encodeBitrateMbs.description": "Bitrate des Videos",
     // Audio tab
     "_root_audio_tab.name": "Audio",
-    "_root_audio_tab.description": "Audio Optionen",
     // "_root_audio_gameAudio.name": "",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
     // "_root_audio_gameAudio_enabled.description": "",
+    // "_root_audio_gameAudio_content_deviceId-choice-.name": "",
+    // "_root_audio_gameAudio_content_deviceId-choice-.description": "",
     // "_root_audio_gameAudio_content_muteWhenStreaming.name": "",
-    "_root_audio_gameAudio_content_muteWhenStreaming.description": "",
+    // "_root_audio_gameAudio_content_muteWhenStreaming.description": "",
     // "_root_audio_microphone.name": "",
     // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
     // "_root_audio_microphone_enabled.description": "",
+    // "_root_audio_microphone_content_deviceId-choice-.name": "",
+    // "_root_audio_microphone_content_deviceId-choice-.description": "",
     // Headset tab
     // "_root_headset_tab.name": "",
     // "_root_headset_headsetEmulationMode.name": "",

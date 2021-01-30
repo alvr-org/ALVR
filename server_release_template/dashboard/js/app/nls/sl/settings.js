@@ -50,11 +50,15 @@ define({
     "_root_audio_gameAudio.name": "Prenašaj zvok na napravo",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
     "_root_audio_gameAudio_enabled.description": "Prenašaj zvok izbrane zvočne naprave.",
+    "_root_audio_gameAudio_content_deviceId-choice-.name": "Zvočna naprava",
+    "_root_audio_gameAudio_content_deviceId-choice-.description": "Izberi od katere naprave bo zvok zajet.",
     "_root_audio_gameAudio_content_muteWhenStreaming.name": "Izključi zvok strežnika med prenašanjem",
     "_root_audio_gameAudio_content_muteWhenStreaming.description": "Izključi zvok od izbrane zvočne naprave (zvočniki/slušalke) med prenašanjem na napravo. To nima vpliva na snemanje z ostalimi programi.",
     "_root_audio_microphone.name": "Prenesi mikrofon iz naprave",
     // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
     "_root_audio_microphone_enabled.description": "Prenese zvok iz mikrofona od naprave v SteamVR. \nDa bo ta nastavitev delovala je predlagano namestiti VB-Audio Virtual device ali podobno, če imaš proste vhode in izhode za zvok, lahko pa tudi uporabiš AUX žico, in povežeš izbran izhod na željen vhod.",
+    "_root_audio_microphone_content_deviceId-choice-.name": "Izberi napravo za mikrofon",
+    "_root_audio_microphone_content_deviceId-choice-.description": "Izberi zvočno napravo preko katere bo zvok mikrofona predvajan.",
     // Headset tab
     "_root_headset_tab.name": "NAPRAVA",
     "_root_headset_headsetEmulationMode.name": "Izberi kater HMD naj bo posneman",

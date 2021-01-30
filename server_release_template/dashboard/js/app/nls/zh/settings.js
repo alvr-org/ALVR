@@ -5,7 +5,7 @@ define({
     "_root_video_adapterIndex.name": "显卡序号", // adv
     "_root_video_adapterIndex.description": "显卡序号", // adv
     "_root_video_displayRefreshRate.name": "刷新率",
-	"_root_video_displayRefreshRate.description": "为SteamVR和头显设置刷新率。 即使头显不支持，SteamVR也会使用该刷新率。 较高的刷新率需要性能更高的电脑。 Quest初代的最大刷新率为72 Hz。",
+    "_root_video_displayRefreshRate.description": "为SteamVR和头显设置刷新率。 即使头显不支持，SteamVR也会使用该刷新率。 较高的刷新率需要性能更高的电脑。 Quest初代的最大刷新率为72 Hz。",
     "_root_video_preferredFps.name": "刷新率", // adv
     "_root_video_preferredFps.description": "在头显上使用的刷新率", // adv
     "_root_video_resolutionDropdown.name": "视频分辨率",
@@ -51,7 +51,7 @@ define({
     "_root_video_codec-choice-.description": "使用的视频编解码器 \n如果可能,请选择HEVC以在较低比特率下获得更好的视觉质量",
     "_root_video_codec_H264-choice-.name": "H.264（性能优先）",
     "_root_video_codec_HEVC-choice-.name": "HEVC（画质优先）",
-	"_root_video_clientRequestRealtimeDecoder.name": "请求实时解码器优先级（客户端）", // adv
+    "_root_video_clientRequestRealtimeDecoder.name": "请求实时解码器优先级（客户端）", // adv
     "_root_video_encodeBitrateMbs.name": "视频比特率",
     "_root_video_encodeBitrateMbs.description": "视频流的比特率。建议30Mbps",
     // Audio tab
@@ -60,11 +60,15 @@ define({
     "_root_audio_gameAudio.name": "串流电脑声音",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
     "_root_audio_gameAudio_enabled.description": "启用则会将游戏音频流传输到头戴显示器",
+    "_root_audio_gameAudio_content_deviceId-choice-.name": "选择 音频 设备",
+    "_root_audio_gameAudio_content_deviceId-choice-.description": "用于 捕获 音频 的 音频 设备",
     // "_root_audio_gameAudio_content_muteWhenStreaming.name": "",
     // "_root_audio_gameAudio_content_muteWhenStreaming.description": "",
     "_root_audio_microphone.name": "麦克风串流",
     // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
     "_root_audio_microphone_enabled.description": "用于流式传输的麦克风",
+    "_root_audio_microphone_content_deviceId-choice-.name": "选择 虚拟 麦克风 设备",
+    "_root_audio_microphone_content_deviceId-choice-.description": "为 确保 麦克风 可以 正常 使用 ， 你 需要 安装 VB-Audio Virtual device 或者 其他 相似 的 软件。",
     // Headset tab
     "_root_headset_tab.name": "头部显示器",
     "_root_headset_headsetEmulationMode.name": "头戴显示器模拟模式",

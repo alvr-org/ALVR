@@ -54,11 +54,15 @@ define({
     "_root_audio_gameAudio.name": "Transmitir el audio del juego",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
     "_root_audio_gameAudio_enabled.description": "Permite la transmisión del audio del juego al visor",
+    "_root_audio_gameAudio_content_deviceId-choice-.name": "Elija su dispositivo de audio",
+    "_root_audio_gameAudio_content_deviceId-choice-.description": "Dispositivo utilizado para capturar el audio del juego",
     "_root_audio_gameAudio_content_muteWhenStreaming.name": "Silenciar la salida cuando se transmite",
     "_root_audio_gameAudio_content_muteWhenStreaming.description": "Silencia la salida de audio (altavoces/auriculares) cuando se transmite al visor. Sólo se silencia la salida física (para evitar el doble audio), la transmisión al visor y otros programas de captura no se verán afectados.",
     "_root_audio_microphone.name": "Micrófono de transmisión",
     // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
     "_root_audio_microphone_enabled.description": "Seleccionar la entrada del micrófono virtual. Para que el micrófono funcione necesitas instalar VB-Audio Virtual u otro software equivalente.",
+    "_root_audio_microphone_content_deviceId-choice-.name": "Seleccionar la entrada del micrófono virtual",
+    "_root_audio_microphone_content_deviceId-choice-.description": "Para que el micrófono funcione correctamente, debe instalar VB-Audio Virtual u otro software equivalente.",
     // Headset tab
     "_root_headset_tab.name": "Visor",
     "_root_headset_headsetEmulationMode.name": "Modo de emulación del visor",

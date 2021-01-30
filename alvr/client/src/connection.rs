@@ -474,7 +474,8 @@ pub async fn connection_lifecycle_loop(
                 .await;
 
                 if let Err(e) = maybe_error {
-                    let message = format!("Connection error:\n{}\nCheck the PC for more details", e);
+                    let message =
+                        format!("Connection error:\n{}\nCheck the PC for more details", e);
                     error!("{}", message);
                     set_loading_message(
                         &*java_vm,

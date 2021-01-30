@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
     env:
       LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
@@ -28,6 +28,28 @@ jobs:
         command: build
         args: -p alvr_xtask -p alvr_server -p alvr_launcher --verbose
     # todo: add client build when compatible with Windows and/or cargo-apk
+    
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: -p alvr_common --verbose
+  
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - uses: Swatinem/rust-cache@v1
+
+    - name: Build server crates
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: -p alvr_xtask -p alvr_server -p alvr_launcher --verbose
     
     - name: Run tests
       uses: actions-rs/cargo@v1

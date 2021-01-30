@@ -1,5 +1,12 @@
 use crate::{ClientListAction, CLIENTS_UPDATED_NOTIFIER, SESSION_MANAGER};
-use alvr_common::{audio::AudioSession, data::*, logging::*, sockets::*, *};
+use alvr_common::{
+    audio::{AudioDevice, AudioSession},
+    data::*,
+    logging::*,
+    sockets::*,
+    *,
+};
+use audio::AudioDeviceType;
 use futures::future::BoxFuture;
 use nalgebra::Translation3;
 use serde_json as json;
@@ -137,16 +144,19 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
     );
 
     let game_audio_sample_rate = if let Switch::Enabled(desc) = settings.audio.game_audio {
-        trace_err!(audio::get_output_sample_rate(desc.device_index))?
+        trace_err!(audio::get_sample_rate(&AudioDevice::new(
+            desc.device_id,
+            AudioDeviceType::Output
+        )?))?
     } else {
         0
     };
 
     let microphone_sample_rate = if let Switch::Enabled(desc) = settings.audio.microphone {
-        trace_err!(audio::get_output_sample_rate(
-            desc.device_index
-                .or(trace_err!(audio::get_vb_cable_audio_device_index())?)
-        ))?
+        trace_err!(audio::get_sample_rate(&AudioDevice::new(
+            desc.device_id,
+            AudioDeviceType::VirtualMicrophone
+        )?))?
     } else {
         0
     };
@@ -426,19 +436,21 @@ async fn connection_pipeline() -> StrResult {
         let game_audio_desc = settings.audio.game_audio;
         let microphone_desc = settings.audio.microphone;
         move || {
-            let mut maybe_muted_device_index = None;
+            #[cfg(windows)]
+            let mut device_to_unmute = None;
+
             let _audio_stream_guard = if let Switch::Enabled(desc) = game_audio_desc {
                 #[cfg(windows)]
                 if desc.mute_when_streaming {
-                    audio::set_mute_audio_device(desc.device_index, true)?;
-                    maybe_muted_device_index = Some(desc.device_index);
+                    audio::set_mute_audio_device(desc.device_id.clone(), true)?;
+                    device_to_unmute = Some(desc.device_id.clone());
                 }
 
+                let device = AudioDevice::new(desc.device_id, AudioDeviceType::Output)?;
                 Some(AudioSession::start_recording(
-                    desc.device_index,
-                    true,
+                    &device,
                     2,
-                    trace_err!(audio::get_output_sample_rate(desc.device_index))?,
+                    audio::get_sample_rate(&device)?,
                     game_audio_sender,
                 )?)
             } else {
@@ -446,13 +458,11 @@ async fn connection_pipeline() -> StrResult {
             };
 
             let _microphone_stream_guard = if let Switch::Enabled(desc) = microphone_desc {
-                let device_index = desc
-                    .device_index
-                    .or(trace_err!(audio::get_vb_cable_audio_device_index())?);
+                let device = AudioDevice::new(desc.device_id, AudioDeviceType::VirtualMicrophone)?;
                 Some(AudioSession::start_playing(
-                    device_index,
+                    &device,
                     1,
-                    trace_err!(audio::get_output_sample_rate(device_index))?,
+                    audio::get_sample_rate(&device)?,
                     desc.buffer_range_multiplier,
                     microphone_receiver,
                 )?)
@@ -463,8 +473,8 @@ async fn connection_pipeline() -> StrResult {
             destroy_stream_park_receiver.recv().ok();
 
             #[cfg(windows)]
-            if let Some(index) = maybe_muted_device_index {
-                audio::set_mute_audio_device(index, false)?;
+            if let Some(id) = device_to_unmute {
+                audio::set_mute_audio_device(id, false)?;
             }
 
             StrResult::Ok(())

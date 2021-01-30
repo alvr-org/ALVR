@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{data::AudioDeviceId, *};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, Device, Sample, SampleFormat, Stream, StreamConfig,
@@ -18,7 +18,21 @@ use winapi::{
 use wio::com::ComPtr;
 
 #[cfg(windows)]
-pub fn set_mute_audio_device(device_index: Option<u64>, mute: bool) -> StrResult {
+pub fn set_mute_audio_device(device_id: AudioDeviceId, mute: bool) -> StrResult {
+    let device_index = match device_id {
+        AudioDeviceId::Default => None,
+        AudioDeviceId::Name(name_substring) => trace_err!(cpal::default_host().output_devices())?
+            .enumerate()
+            .find_map(|(i, d)| {
+                if d.name().ok()?.contains(&name_substring) {
+                    Some(i)
+                } else {
+                    None
+                }
+            }),
+        AudioDeviceId::Index(index) => Some(index as _),
+    };
+
     unsafe {
         CoInitializeEx(ptr::null_mut(), COINIT_MULTITHREADED);
 
@@ -104,40 +118,91 @@ pub fn set_mute_audio_device(device_index: Option<u64>, mute: bool) -> StrResult
     Ok(())
 }
 
-pub fn get_vb_cable_audio_device_index() -> StrResult<Option<u64>> {
-    let host = cpal::default_host();
-
-    Ok(trace_err!(host.output_devices())?
-        .enumerate()
-        .filter_map(|(i, d)| Some((i as _, d.name().ok()?)))
-        .filter(|(_, name)| name.contains("CABLE Input"))
-        .map(|(i, _)| i)
-        .next())
+pub enum AudioDeviceType {
+    Output,
+    Input,
+    VirtualMicrophone,
 }
 
-fn get_output_audio_device(device_index: Option<u64>) -> StrResult<Device> {
-    let host = cpal::default_host();
+pub struct AudioDevice {
+    inner: Device,
+    is_input: bool,
+}
 
-    if let Some(index) = device_index {
-        if let Some(device) = trace_err!(host.output_devices())?.nth(index as _) {
-            Ok(device)
-        } else {
-            fmt_e!("Cannot find audio device at index {}", index)
-        }
-    } else if let Some(device) = host.default_output_device() {
-        Ok(device)
-    } else {
-        fmt_e!("No output audio device found")
+impl AudioDevice {
+    pub fn new(id: AudioDeviceId, device_type: AudioDeviceType) -> StrResult<Self> {
+        let host = cpal::default_host();
+
+        let device = match id {
+            AudioDeviceId::Default => match device_type {
+                AudioDeviceType::Output => host
+                    .default_output_device()
+                    .ok_or_else(|| "No output audio device found".to_owned())?,
+                AudioDeviceType::Input => host
+                    .default_input_device()
+                    .ok_or_else(|| "No input audio device found".to_owned())?,
+                AudioDeviceType::VirtualMicrophone => trace_err!(host.output_devices())?
+                    .find(|d| {
+                        if let Ok(name) = d.name() {
+                            name.contains("CABLE Input")
+                        } else {
+                            false
+                        }
+                    })
+                    .ok_or_else(|| {
+                        format!(
+                            "CABLE Input device not found. {}",
+                            "Did you install VB-CABLE Virtual Audio Device?"
+                        )
+                    })?,
+            },
+            AudioDeviceId::Name(name_substring) => {
+                let mut devices = trace_err!(if matches!(device_type, AudioDeviceType::Input) {
+                    host.input_devices()
+                } else {
+                    host.output_devices()
+                })?;
+
+                devices
+                    .find(|d| {
+                        if let Ok(name) = d.name() {
+                            name.to_lowercase().contains(&name_substring.to_lowercase())
+                        } else {
+                            false
+                        }
+                    })
+                    .ok_or_else(|| {
+                        format!(
+                            "Cannot find audio device which name contains \"{}\"",
+                            name_substring
+                        )
+                    })?
+            }
+            AudioDeviceId::Index(index) => {
+                let mut devices = trace_err!(if matches!(device_type, AudioDeviceType::Input) {
+                    host.input_devices()
+                } else {
+                    host.output_devices()
+                })?;
+
+                devices
+                    .nth(index as usize - 1)
+                    .ok_or_else(|| format!("Cannot find audio device at index {}", index))?
+            }
+        };
+
+        Ok(Self {
+            inner: device,
+            is_input: matches!(device_type, AudioDeviceType::Input),
+        })
     }
 }
 
-pub fn get_output_sample_rate(device_index: Option<u64>) -> StrResult<u32> {
-    let device = trace_err!(get_output_audio_device(device_index))?;
+pub fn get_sample_rate(device: &AudioDevice) -> StrResult<u32> {
+    let mut configs = trace_err!(device.inner.supported_output_configs())?;
 
-    let mut configs = trace_err!(device.supported_output_configs())?;
-
-    // Assumption: device is in shared mode: this means that sample rate, format and channel count
-    // is fixed
+    // Assumption: device is in shared mode: this means that there is one and fixed sample rate,
+    // format and channel count
     Ok(trace_none!(configs.next())?.min_sample_rate().0)
 }
 
@@ -170,32 +235,12 @@ pub struct AudioSession {
 
 impl AudioSession {
     pub fn start_recording(
-        device_index: Option<u64>,
-        loopback: bool,
+        device: &AudioDevice,
         channels_count: u16,
         sample_rate: u32,
         sender: tmpsc::UnboundedSender<Vec<u8>>,
     ) -> StrResult<Self> {
-        let host = cpal::default_host();
-        let device = if let Some(index) = device_index {
-            let mut devices = trace_err!(if loopback {
-                host.output_devices()
-            } else {
-                host.input_devices()
-            })?;
-
-            if let Some(device) = devices.nth(index as _) {
-                device
-            } else {
-                return fmt_e!("Cannot find audio device at index {}", index);
-            }
-        } else if loopback {
-            trace_none!(host.default_output_device())?
-        } else {
-            trace_none!(host.default_input_device())?
-        };
-
-        let config = trace_none!(trace_err!(device.supported_output_configs())?.next())?;
+        let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
 
         if sample_rate != config.min_sample_rate().0 {
             return fmt_e!("Sample rate not supported");
@@ -207,7 +252,7 @@ impl AudioSession {
             buffer_size: BufferSize::Default,
         };
 
-        let stream = trace_err!(device.build_input_stream_raw(
+        let stream = trace_err!(device.inner.build_input_stream_raw(
             &stream_config,
             config.sample_format(),
             move |data, _| {
@@ -236,15 +281,15 @@ impl AudioSession {
     }
 
     pub fn start_playing(
-        device_index: Option<u64>,
+        device: &AudioDevice,
         channels_count: u16,
         sample_rate: u32,
         buffer_range_multiplier: u64,
         receiver: smpsc::Receiver<Vec<u8>>,
     ) -> StrResult<Self> {
-        let device = trace_err!(get_output_audio_device(device_index))?;
+        assert!(!device.is_input);
 
-        let config = trace_none!(trace_err!(device.supported_output_configs())?.next())?;
+        let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
 
         if sample_rate != config.min_sample_rate().0 {
             return fmt_e!("Sample rate not supported");
@@ -257,7 +302,7 @@ impl AudioSession {
         };
 
         let mut sample_buffer_bytes = VecDeque::new();
-        let stream = trace_err!(device.build_output_stream_raw(
+        let stream = trace_err!(device.inner.build_output_stream_raw(
             &stream_config,
             config.sample_format(),
             move |data, _| {

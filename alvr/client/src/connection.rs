@@ -474,10 +474,16 @@ pub async fn connection_lifecycle_loop(
                 .await;
 
                 if let Err(e) = maybe_error {
-                    error!("{}", e);
-                    set_loading_message(&*java_vm, &*activity_ref, &private_identity.hostname, &e)
-                        .await
-                        .ok();
+                    let message = format!("Connection error:\n{}\nCheck the PC for more details", e);
+                    error!("{}", message);
+                    set_loading_message(
+                        &*java_vm,
+                        &*activity_ref,
+                        &private_identity.hostname,
+                        &message,
+                    )
+                    .await
+                    .ok();
                 }
             },
             time::sleep(RETRY_CONNECT_INTERVAL),

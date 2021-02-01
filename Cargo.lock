@@ -114,7 +114,7 @@ dependencies = [
  "futures",
  "gfx-backend-dx11",
  "gfx-backend-vulkan",
- "gfx-hal",
+ "gfx-hal 0.7.0",
  "lazy_static",
  "log",
  "msgbox",
@@ -407,6 +407,21 @@ dependencies = [
  "shlex",
  "which",
 ]
+
+[[package]]
+name = "bit-set"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e11e16035ea35e4e5997b393eacbf6f63983188f7a2ad25bfb13465f5ad59de"
+dependencies = [
+ "bit-vec",
+]
+
+[[package]]
+name = "bit-vec"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
 
 [[package]]
 name = "bitflags"
@@ -1641,7 +1656,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07cd956b592970f08545b9325b87580eb95a51843b6f39da27b8667fec1a1216"
 dependencies = [
  "fxhash",
- "gfx-hal",
+ "gfx-hal 0.6.0",
  "spirv_cross",
 ]
 
@@ -1654,7 +1669,7 @@ dependencies = [
  "arrayvec",
  "bitflags",
  "gfx-auxil",
- "gfx-hal",
+ "gfx-hal 0.6.0",
  "libloading",
  "log",
  "parking_lot",
@@ -1677,7 +1692,7 @@ dependencies = [
  "ash",
  "byteorder",
  "core-graphics-types",
- "gfx-hal",
+ "gfx-hal 0.6.0",
  "inplace_it",
  "lazy_static",
  "log",
@@ -1695,6 +1710,18 @@ checksum = "18d0754f5b7a43915fd7466883b2d1bb0800d7cc4609178d0b27bf143b9e5123"
 dependencies = [
  "bitflags",
  "raw-window-handle",
+]
+
+[[package]]
+name = "gfx-hal"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1d9cc8d3b573dda62d0baca4f02e0209786e22c562caff001d77c389008781d"
+dependencies = [
+ "bitflags",
+ "naga",
+ "raw-window-handle",
+ "thiserror",
 ]
 
 [[package]]
@@ -2530,6 +2557,20 @@ dependencies = [
  "objc",
  "thiserror",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "naga"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8f30d7036f137a2f64fd7d53b70a91545d3f09e030b77b3816ff7bd4cf3f789"
+dependencies = [
+ "bit-set",
+ "bitflags",
+ "fxhash",
+ "log",
+ "num-traits",
+ "thiserror",
 ]
 
 [[package]]

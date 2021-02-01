@@ -127,7 +127,7 @@ dependencies = [
  "serde_json",
  "settings-schema",
  "tokio 1.1.1",
- "tokio-util 0.6.2",
+ "tokio-util 0.6.3",
  "winapi 0.3.9",
  "winit",
  "wio",
@@ -174,7 +174,7 @@ dependencies = [
  "settings-schema",
  "tokio 1.1.1",
  "tokio-tungstenite",
- "tokio-util 0.6.2",
+ "tokio-util 0.6.3",
  "walkdir",
  "webbrowser",
 ]
@@ -284,27 +284,6 @@ name = "associative-cache"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "46016233fc1bb55c23b856fe556b7db6ccd05119a0a392e04f0b3b7c79058f16"
-
-[[package]]
-name = "async-stream"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3670df70cbc01729f901f94c887814b3c68db038aad1329a418bae178bc5295c"
-dependencies = [
- "async-stream-impl",
- "futures-core",
-]
-
-[[package]]
-name = "async-stream-impl"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3548b8efc9f8e8a5a0a2808c5bd8451a9031b9e5b879a79590304ae928b0a70"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
 
 [[package]]
 name = "atk"
@@ -1880,7 +1859,7 @@ dependencies = [
  "indexmap",
  "slab",
  "tokio 1.1.1",
- "tokio-util 0.6.2",
+ "tokio-util 0.6.3",
  "tracing",
  "tracing-futures",
 ]
@@ -4362,17 +4341,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-stream"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76066865172052eb8796c686f0b441a93df8b08d40a950b062ffb9a426f00edd"
-dependencies = [
- "futures-core",
- "pin-project-lite 0.2.4",
- "tokio 1.1.1",
-]
-
-[[package]]
 name = "tokio-tls"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4411,18 +4379,16 @@ dependencies = [
 
 [[package]]
 name = "tokio-util"
-version = "0.6.2"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "feb971a26599ffd28066d387f109746df178eff14d5ea1e235015c5601967a4b"
+checksum = "ebb7cb2f00c5ae8df755b252306272cd1790d39728363936e01827e11f0b017b"
 dependencies = [
- "async-stream",
  "bytes 1.0.1",
  "futures-core",
  "futures-sink",
  "log",
  "pin-project-lite 0.2.4",
  "tokio 1.1.1",
- "tokio-stream",
 ]
 
 [[package]]

@@ -12,7 +12,7 @@ alvr_common = { path = "../common" }
 single-instance = "0.1"
 druid = "0.7"
 ureq = "2"
-sysinfo = "0.15"
+sysinfo = "0.16"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.8"

@@ -204,4 +204,5 @@ define({
     "ru": true,
     "bg": true,
     "nl": true,
+    "de": true,
 });

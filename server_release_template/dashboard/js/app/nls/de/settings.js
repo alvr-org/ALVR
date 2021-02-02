@@ -1,5 +1,4 @@
 define({
-	// "Man this program has so many features" ~NoelSa, 2020
     // Video tab
     "_root_video_tab.name": "Video",
     "_root_video_adapterIndex.name": "GPU index", // adv

@@ -7,7 +7,7 @@ android {
     ndkVersion "22.0.7026061"
     defaultConfig {
         applicationId "alvr.client"
-        minSdkVersion 21
+        minSdkVersion 24
         targetSdkVersion 30
         versionCode 47
         versionName "14.2.1"
@@ -55,6 +55,7 @@ android {
         OculusGo {
             dimension "headset"
             applicationIdSuffix ".go"
+            minSdkVersion 21
         }
         Stable {
             dimension "package"

@@ -3,12 +3,18 @@
 
     <uses-feature
         android:name="android.hardware.vr.headtracking"
-        android:required="false" />
+        android:required="true"
+        android:version="1" />
     <uses-feature
         android:name="oculus.software.handtracking"
         android:required="false" />
 
     <uses-permission android:name="oculus.permission.handtracking" />
+    <uses-permission android:name="com.oculus.permission.HAND_TRACKING" />
+
+    <meta-data
+        android:name="com.oculus.vr.focusaware"
+        android:value="false" />
 
     <application>
         <meta-data

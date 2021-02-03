@@ -59,6 +59,10 @@ You can follow the guide [here](https://github.com/alvr-org/ALVR/wiki/Build-from
 
 ALVR is licensed under the [MIT License](LICENSE).
 
+## Privacy policy
+
+ALVR apps do not directly collect any kind of data.
+
 ## Donate
 
 If you want to support this project you can make a donation to our [Open Source Collective account](https://opencollective.com/alvr).

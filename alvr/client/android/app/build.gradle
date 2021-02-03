@@ -9,7 +9,7 @@ android {
         applicationId "alvr.client"
         minSdkVersion 24
         targetSdkVersion 30
-        versionCode 44
+        versionCode 45
         versionName "14.1.1"
         externalNativeBuild {
             cmake {

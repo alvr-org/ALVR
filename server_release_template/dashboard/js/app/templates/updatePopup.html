@@ -1,0 +1,26 @@
+<div class="modal" id="confirmModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <div>
+                    <h4 class="modal-title"><%= updatePopupTitle%></h4>
+                </div>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+
+            <div id="updatePopupBody" class="modal-body">
+                <h5 class="modal-title"><span id="releaseTitle"></span></h5>
+                <br />
+                <div>
+                    <p id="releaseNote" style="white-space: pre-wrap; height: 250px; overflow: auto;"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelUpdateButton" type="button" class="btn btn-danger"><%= cancelUpdateButton%></button>
+                <button id="moreUpdateButton" type="button" class="btn btn-info"><%= moreUpdateButton%></button>
+                <button id="okUpdateButton" type="button" class="btn btn-primary"><%= okUpdateButton%></button>
+            </div>
+        </div>
+    </div>
+</div>

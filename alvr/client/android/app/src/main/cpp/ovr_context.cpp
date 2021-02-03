@@ -12,7 +12,6 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <android/input.h>
-#include "OVR_Platform.h"
 #include "ffr.h"
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -50,12 +49,6 @@ public:
     ovrMobile *Ovr{};
     ovrJava java{};
     JNIEnv *env{};
-
-
-    int16_t *micBuffer{};
-    size_t mMicMaxElements{};
-
-    ovrMicrophoneHandle mMicHandle{};
 
     unique_ptr<Texture> streamTexture;
     GLuint loadingTexture = 0;
@@ -166,17 +159,11 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
 
     memset(g_ctx.mHapticsState, 0, sizeof(g_ctx.mHapticsState));
 
-
-    ovrPlatformInitializeResult res = ovr_PlatformInitializeAndroid("", activity, env);
-
-    LOGI("ovrPlatformInitializeResult %s", ovrPlatformInitializeResult_ToString(res));
-
-
-    ovrRequest req;
-    req = ovr_User_GetLoggedInUser();
-
-
-    LOGI("Logged in user is %" PRIu64 "\n", req);
+    //ovrPlatformInitializeResult res = ovr_PlatformInitializeAndroid("", activity, env);
+    //LOGI("ovrPlatformInitializeResult %s", ovrPlatformInitializeResult_ToString(res));
+    //ovrRequest req;
+    //req = ovr_User_GetLoggedInUser();
+    //LOGI("Logged in user is %" PRIu64 "\n", req);
 
     return {(int) g_ctx.streamTexture.get()->GetGLTexture(), (int) g_ctx.loadingTexture};
 }
@@ -193,8 +180,6 @@ void destroyNative(void *v_env) {
     vrapi_Shutdown();
 
     env->DeleteGlobalRef(g_ctx.java.ActivityObject);
-
-    delete[] g_ctx.micBuffer;
 }
 
 uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
@@ -579,43 +564,6 @@ void sendTrackingInfo(bool clientsidePrediction) {
     sendNative(reinterpret_cast<long long int>(&info), static_cast<int>(sizeof(info)));
 }
 
-// Called from TrackingThread
-void sendMicData() {
-    if (!g_ctx.mMicHandle) {
-        return;
-    }
-
-    size_t outputBufferNumElements = ovr_Microphone_GetPCM(g_ctx.mMicHandle, g_ctx.micBuffer,
-                                                           g_ctx.mMicMaxElements);
-    if (outputBufferNumElements > 0) {
-        int count = 0;
-
-        for (int i = 0; i < outputBufferNumElements; i += 100) {
-            int rest = outputBufferNumElements - count * 100;
-
-            MicAudioFrame audio{};
-            memset(&audio, 0, sizeof(MicAudioFrame));
-
-            audio.type = ALVR_PACKET_TYPE_MIC_AUDIO;
-            audio.packetIndex = count;
-            audio.completeSize = outputBufferNumElements;
-
-            if (rest >= 100) {
-                audio.outputBufferNumElements = 100;
-            } else {
-                audio.outputBufferNumElements = rest;
-            }
-
-            memcpy(&audio.micBuffer,
-                   g_ctx.micBuffer + count * 100,
-                   sizeof(int16_t) * audio.outputBufferNumElements);
-
-            sendNative(reinterpret_cast<long long int>(&audio), static_cast<int>(sizeof(audio)));
-            count++;
-        }
-    }
-}
-
 OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
     auto surface = (jobject) v_surface;
 
@@ -726,15 +674,6 @@ void onStreamStartNative() {
         LOGE("Failed to set tracking space: %d", result);
     }
     g_ctx.m_LastHMDRecenterCount = -1; // make sure we send guardian data
-
-    if (g_ctx.streamConfig.streamMic) {
-        g_ctx.mMicHandle = ovr_Microphone_Create();
-        g_ctx.mMicMaxElements = ovr_Microphone_GetOutputBufferMaxSize(g_ctx.mMicHandle);
-        LOGI("Mic_maxElements %zu", g_ctx.mMicMaxElements);
-        g_ctx.micBuffer = new int16_t[g_ctx.mMicMaxElements];
-
-        ovr_Microphone_Start(g_ctx.mMicHandle);
-    }
 }
 
 void onPauseNative() {
@@ -743,12 +682,6 @@ void onPauseNative() {
     LOGI("Leaving VR mode.");
 
     vrapi_LeaveVrMode(g_ctx.Ovr);
-
-    if (g_ctx.mMicHandle) {
-        ovr_Microphone_Stop(g_ctx.mMicHandle);
-        ovr_Microphone_Destroy(g_ctx.mMicHandle);
-        g_ctx.mMicHandle = nullptr;
-    }
 
     g_ctx.Ovr = nullptr;
 
@@ -837,7 +770,7 @@ void updateHapticsState() {
                                          requiredHapticsBuffer);
             buffer.Terminated = false;
 
-            for (int i = 0; i < remoteCapabilities.HapticSamplesMax; i++) {
+            for (uint32_t i = 0; i < remoteCapabilities.HapticSamplesMax; i++) {
                 float current = ((currentUs - s.startUs) / 1000000.0f) +
                                 (remoteCapabilities.HapticSampleDurationMS * i) / 1000.0f;
                 float intensity =
@@ -914,7 +847,7 @@ void renderNative(long long renderedFrameIndex) {
     frameDesc.LayerCount = 1;
     frameDesc.Layers = layers2;
 
-    ovrResult res = vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
+    vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
 
     LatencyCollector::Instance().submit(renderedFrameIndex);
 
@@ -1023,8 +956,5 @@ GuardianData getGuardianData() {
 void onTrackingNative(bool clientsidePrediction) {
     if (g_ctx.Ovr != nullptr) {
         sendTrackingInfo(clientsidePrediction);
-
-        //TODO: maybe use own thread, but works fine with tracking
-        sendMicData();
     }
 }

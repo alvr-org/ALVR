@@ -1,6 +1,6 @@
 [package]
 name = "alvr_common"
-version = "14.1.1"
+version = "14.2.1"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"
@@ -20,33 +20,28 @@ settings-schema = { path = "../settings-schema", features = ["rename_camel_case"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 bincode = "1"
+encoding_rs_io = "0.1"
 futures = "0.3"
 bytes = "1"
 tokio = { version = "1", features = ["net", "macros"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 rcgen = "0.8"
 gfx-hal = "0.6"
+winit = "0.24" # needed to get the screen size
 cpal = "0.13"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 dirs = "3"
-sysinfo = "0.15"
 runas = "0.2"
 msgbox = "0.6"
 
-[target."cfg(windows)".dependencies]
-winapi = { version = "0.3", features = [
-    "mmdeviceapi",
-    "propsys",
-    "coml2api",
-    "propidl",
-    "functiondiscoverykeys_devpkey",
-    "wtypes",
-    "objbase",
-] }
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["mmdeviceapi", "objbase", "endpointvolume"] }
 wio = "0.2"
-widestring = "0.4"
 gfx-backend-dx11 = "0.6"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gfx-backend-vulkan = "0.6"
 
 [build-dependencies]
 alvr_xtask = { path = "../xtask" }

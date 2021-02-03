@@ -1,4 +1,4 @@
-use crate::{restart_steamvr, update_client_list, ClientListAction, ALVR_DIR, SESSION_MANAGER};
+use crate::{ClientListAction, ALVR_DIR, SESSION_MANAGER};
 use alvr_common::{commands::*, data::*, logging::*, *};
 use bytes::Buf;
 use futures::SinkExt;
@@ -6,18 +6,17 @@ use headers::{self, HeaderMapExt};
 use hyper::{
     header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL},
     service::{make_service_fn, service_fn},
-    upgrade::Upgraded,
     Body, Method, Request, Response, StatusCode,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json as json;
-use std::{net::SocketAddr, path::PathBuf};
+use std::{fs, io::Write, net::SocketAddr, path::PathBuf};
 use tokio::sync::broadcast::{self, error::RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
 
-pub const LOG_BROADCAST_CAPACITY: usize = 256;
-const WEB_GUI_DIR_STR: &str = "web_gui";
+pub const WS_BROADCAST_CAPACITY: usize = 256;
+const DASHBOARD_DIR_NAME_STR: &str = "dashboard";
 
 fn reply(code: StatusCode) -> StrResult<Response<Body>> {
     trace_err!(Response::builder().status(code).body(Body::empty()))
@@ -35,32 +34,60 @@ async fn from_request_body<T: DeserializeOwned>(request: Request<Body>) -> StrRe
     ))
 }
 
-async fn log_websocket(upgraded: Upgraded, log_sender: broadcast::Sender<String>) {
-    let mut log_receiver = log_sender.subscribe();
+async fn text_websocket(
+    request: Request<Body>,
+    sender: broadcast::Sender<String>,
+) -> StrResult<Response<Body>> {
+    if let Some(key) = request.headers().typed_get::<headers::SecWebsocketKey>() {
+        tokio::spawn(async move {
+            match hyper::upgrade::on(request).await {
+                Ok(upgraded) => {
+                    let mut log_receiver = sender.subscribe();
 
-    let mut ws = WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, None).await;
+                    let mut ws =
+                        WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, None)
+                            .await;
 
-    loop {
-        match log_receiver.recv().await {
-            Ok(line) => {
-                if let Err(e) = ws.send(protocol::Message::text(line)).await {
-                    info!("Failed to send log with websocket: {}", e);
-                    break;
+                    loop {
+                        match log_receiver.recv().await {
+                            Ok(line) => {
+                                if let Err(e) = ws.send(protocol::Message::text(line)).await {
+                                    info!("Failed to send log with websocket: {}", e);
+                                    break;
+                                }
+                            }
+                            Err(RecvError::Lagged(_)) => {
+                                warn!("Some log lines have been lost because the buffer is full");
+                            }
+                            Err(RecvError::Closed) => break,
+                        }
+                    }
+
+                    ws.close(None).await.ok();
                 }
+                Err(e) => error!("{}", e),
             }
-            Err(RecvError::Lagged(_)) => {
-                warn!("Some log lines have been lost because the buffer is full");
-            }
-            Err(RecvError::Closed) => break,
-        }
-    }
+        });
 
-    ws.close(None).await.ok();
+        let mut response = trace_err!(Response::builder()
+            .status(StatusCode::SWITCHING_PROTOCOLS)
+            .body(Body::empty()))?;
+
+        let h = response.headers_mut();
+        h.typed_insert(headers::Upgrade::websocket());
+        h.typed_insert(headers::SecWebsocketAccept::from(key));
+        h.typed_insert(headers::Connection::upgrade());
+
+        Ok(response)
+    } else {
+        reply(StatusCode::BAD_REQUEST)
+    }
 }
 
 async fn http_api(
     request: Request<Body>,
     log_sender: broadcast::Sender<String>,
+    events_sender: broadcast::Sender<String>,
 ) -> StrResult<Response<Body>> {
     let mut response = match request.uri().path() {
         "/settings-schema" => reply_json(&settings_schema(session_settings_default()))?,
@@ -99,31 +126,8 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/log" => {
-            if let Some(key) = request.headers().typed_get::<headers::SecWebsocketKey>() {
-                tokio::spawn(async move {
-                    match hyper::upgrade::on(request).await {
-                        Ok(upgraded) => {
-                            log_websocket(upgraded, log_sender).await;
-                        }
-                        Err(e) => error!("{}", e),
-                    }
-                });
-
-                let mut response = trace_err!(Response::builder()
-                    .status(StatusCode::SWITCHING_PROTOCOLS)
-                    .body(Body::empty()))?;
-
-                let h = response.headers_mut();
-                h.typed_insert(headers::Upgrade::websocket());
-                h.typed_insert(headers::SecWebsocketAccept::from(key));
-                h.typed_insert(headers::Connection::upgrade());
-
-                response
-            } else {
-                reply(StatusCode::BAD_REQUEST)?
-            }
-        }
+        "/log" => text_websocket(request, log_sender).await?,
+        "/events" => text_websocket(request, events_sender).await?,
         "/driver/register" => {
             if driver_registration(&[ALVR_DIR.clone()], true).is_ok() {
                 reply(StatusCode::OK)?
@@ -152,16 +156,15 @@ async fn http_api(
             reply_json(&maybe_err.unwrap_or(0))?
         }
         "/graphics-devices" => reply_json(&graphics::get_gpu_names())?,
-        "/audio-devices" => reply_json(&audio::output_audio_devices().ok())?,
         "/restart-steamvr" => {
-            restart_steamvr();
+            crate::notify_restart_driver();
             reply(StatusCode::OK)?
         }
         "/client/add" => {
             if let Ok((device_name, hostname, ip)) =
                 from_request_body::<(_, String, _)>(request).await
             {
-                update_client_list(
+                crate::update_client_list(
                     hostname.clone(),
                     ClientListAction::AddIfMissing {
                         device_name,
@@ -170,7 +173,8 @@ async fn http_api(
                     },
                 )
                 .await;
-                update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(Some(ip))).await;
+                crate::update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(Some(ip)))
+                    .await;
 
                 reply(StatusCode::OK)?
             } else {
@@ -179,7 +183,8 @@ async fn http_api(
         }
         "/client/trust" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
-                update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(maybe_ip)).await;
+                crate::update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(maybe_ip))
+                    .await;
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::BAD_REQUEST)?
@@ -187,7 +192,8 @@ async fn http_api(
         }
         "/client/remove" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
-                update_client_list(hostname, ClientListAction::RemoveIpOrEntry(maybe_ip)).await;
+                crate::update_client_list(hostname, ClientListAction::RemoveIpOrEntry(maybe_ip))
+                    .await;
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::BAD_REQUEST)?
@@ -202,6 +208,35 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
+        "/update" => {
+            if let Ok(url) = from_request_body::<String>(request).await {
+                let redirection_response = trace_err!(reqwest::get(&url).await)?;
+                let mut resource_response =
+                    trace_err!(reqwest::get(redirection_response.url().clone()).await)?;
+
+                let mut file = trace_err!(fs::File::create(commands::installer_path()))?;
+
+                let mut downloaded_bytes_count = 0;
+                loop {
+                    match resource_response.chunk().await {
+                        Ok(Some(chunk)) => {
+                            downloaded_bytes_count += chunk.len();
+                            trace_err!(file.write_all(&chunk))?;
+                            log_id(LogId::UpdateDownloadedBytesCount(downloaded_bytes_count));
+                        }
+                        Ok(None) => break,
+                        Err(e) => {
+                            log_id(LogId::UpdateDownloadError);
+                            error!("Download update failed: {}", e);
+                            return reply(StatusCode::BAD_GATEWAY);
+                        }
+                    }
+                }
+
+                crate::notify_application_update();
+            }
+            reply(StatusCode::BAD_REQUEST)?
+        }
         other_uri => {
             if other_uri.contains("..") {
                 // Attempted tree traversal
@@ -214,7 +249,7 @@ async fn http_api(
 
                 let maybe_file = tokio::fs::File::open(format!(
                     "{}{}",
-                    ALVR_DIR.join(WEB_GUI_DIR_STR).to_string_lossy(),
+                    ALVR_DIR.join(DASHBOARD_DIR_NAME_STR).to_string_lossy(),
                     path_branch
                 ))
                 .await;
@@ -239,7 +274,10 @@ async fn http_api(
     Ok(response)
 }
 
-pub async fn web_server(log_sender: broadcast::Sender<String>) -> StrResult {
+pub async fn web_server(
+    log_sender: broadcast::Sender<String>,
+    events_sender: broadcast::Sender<String>,
+) -> StrResult {
     let web_server_port = SESSION_MANAGER
         .lock()
         .get()
@@ -249,9 +287,19 @@ pub async fn web_server(log_sender: broadcast::Sender<String>) -> StrResult {
 
     let service = make_service_fn(|_| {
         let log_sender = log_sender.clone();
+        let events_sender = events_sender.clone();
         async move {
             StrResult::Ok(service_fn(move |request| {
-                http_api(request, log_sender.clone())
+                let log_sender = log_sender.clone();
+                let events_sender = events_sender.clone();
+                async move {
+                    let res = http_api(request, log_sender, events_sender).await;
+                    if let Err(e) = &res {
+                        show_e(e);
+                    }
+
+                    res
+                }
             }))
         }
     });

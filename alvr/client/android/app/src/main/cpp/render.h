@@ -52,7 +52,7 @@ void ovrFramebuffer_SetCurrent(ovrFramebuffer *frameBuffer);
 
 void ovrFramebuffer_SetNone();
 
-void ovrFramebuffer_Resolve(ovrFramebuffer *frameBuffer);
+void ovrFramebuffer_Resolve();
 
 void ovrFramebuffer_Advance(ovrFramebuffer *frameBuffer);
 

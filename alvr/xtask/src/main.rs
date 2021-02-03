@@ -204,8 +204,6 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool) {
     let target_dir = target_dir();
     let artifacts_dir = target_dir.join(build_type);
     let driver_dst_dir = server_build_dir().join("bin").join(STEAMVR_OS_DIR_NAME);
-    let swresample_dir = workspace_dir().join("alvr/server/cpp/libswresample/lib");
-    let openvr_api_dir = workspace_dir().join("alvr/server/cpp/openvr/lib");
 
     reset_server_build_folder();
     fs::create_dir_all(&driver_dst_dir).unwrap();
@@ -235,26 +233,31 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool) {
         ))
         .unwrap();
     }
-    fs::copy(
-        artifacts_dir.join(dynlib_fname("alvr_server")),
-        driver_dst_dir.join(DRIVER_FNAME),
-    )
-    .unwrap();
-    fs::copy(
-        swresample_dir.join("avutil-56.dll"),
-        driver_dst_dir.join("avutil-56.dll"),
-    )
-    .unwrap();
-    fs::copy(
-        swresample_dir.join("swresample-3.dll"),
-        driver_dst_dir.join("swresample-3.dll"),
-    )
-    .unwrap();
-    fs::copy(
-        openvr_api_dir.join("openvr_api.dll"),
-        driver_dst_dir.join("openvr_api.dll"),
-    )
-    .unwrap();
+    if cfg!(not(target_os = "linux")) {
+        fs::copy(
+            artifacts_dir.join(dynlib_fname("alvr_server")),
+            driver_dst_dir.join(DRIVER_FNAME),
+        )
+        .unwrap();
+    } else {
+        // patch for executing the webserver without steamvr
+        fs::copy(
+            artifacts_dir.join(exec_fname("alvr_server")),
+            driver_dst_dir.join(exec_fname("alvr_server")),
+        )
+        .unwrap();
+    }
+
+    if cfg!(windows) {
+        let dir_content = dirx::get_dir_content("alvr/server/cpp/bin/windows").unwrap();
+        fsx::copy_items(
+            &dir_content.files,
+            driver_dst_dir,
+            &dirx::CopyOptions::new(),
+        )
+        .unwrap();
+    }
+
     fs::copy(
         artifacts_dir.join(exec_fname("alvr_launcher")),
         server_build_dir().join(exec_fname("ALVR Launcher")),
@@ -324,19 +327,6 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
     .unwrap();
 }
 
-fn download_vc_redist() {
-    if !Path::new("target/wix/VC_redist.x64.exe").is_file() {
-        println!("Downloading Microsoft Visual C++ redistributable for bundling...");
-        let mut vcredist = fs::File::create("target/wix/VC_redist.x64.exe").unwrap();
-        reqwest::blocking::get("https://aka.ms/vs/16/release/vc_redist.x64.exe")
-            .unwrap()
-            .copy_to(&mut vcredist)
-            .unwrap();
-    } else {
-        println!("Found existing VC_redist.x64.exe - will use that.");
-    }
-}
-
 fn build_installer(wix_path: &str) {
     let wix_path = PathBuf::from(wix_path).join("bin");
     let heat_cmd = wix_path.join("heat.exe");
@@ -399,8 +389,6 @@ fn build_installer(wix_path: &str) {
         ],
     )
     .unwrap();
-
-    download_vc_redist();
 
     // Build the bundle including ALVR and vc_redist.
     run_with_args(

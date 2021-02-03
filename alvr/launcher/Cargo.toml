@@ -1,6 +1,6 @@
 [package]
 name = "alvr_launcher"
-version = "14.1.1"
+version = "14.2.1"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"
@@ -8,14 +8,17 @@ edition = "2018"
 [dependencies]
 semver = "0.11"
 serde_json = "1"
-fs_extra = "1"
-tempfile = "3"
-alcro = "0.4"
 alvr_common = { path = "../common" }
 single-instance = "0.1"
-self_update = { version = "0.23", features = ["archive-zip"] }
-http = "0.2"
-zip = "0.5"
+druid = "0.7"
+ureq = "2"
+sysinfo = "0.15"
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.8"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.9"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

@@ -1,8 +1,6 @@
-use super::SampleFormat;
 use nalgebra::{Point3, UnitQuaternion};
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::ops::RangeInclusive;
 
 #[derive(Serialize, Deserialize)]
 pub struct ClientHandshakePacket {
@@ -43,20 +41,12 @@ pub struct HeadsetInfoPacket {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct AudioConfigRange {
-    pub channels: u16,
-    pub sample_rates: RangeInclusive<u32>,
-    pub buffer_sizes: Option<RangeInclusive<u32>>,
-    pub sample_format: SampleFormat,
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct ClientConfigPacket {
     pub session_desc: String, // transfer session as string to allow for extrapolation
     pub eye_resolution_width: u32,
     pub eye_resolution_height: u32,
     pub fps: f32,
-    pub web_gui_url: String,
+    pub dashboard_url: String,
     pub reserved: String,
 }
 

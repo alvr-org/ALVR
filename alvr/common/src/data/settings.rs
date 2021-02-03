@@ -120,60 +120,33 @@ pub struct VideoDesc {
     pub color_correction: Switch<ColorCorrectionDesc>,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
-pub enum SampleFormat {
-    Signed16Bit,
-    Unsigned16Bit,
-    Signed32Bit,
-}
-
-impl SampleFormat {
-    pub fn to_cpal(self) -> cpal::SampleFormat {
-        match self {
-            Self::Signed16Bit => cpal::SampleFormat::I16,
-            Self::Unsigned16Bit => cpal::SampleFormat::U16,
-            Self::Signed32Bit => cpal::SampleFormat::F32,
-        }
-    }
-
-    pub fn from_cpal(format: cpal::SampleFormat) -> Self {
-        match format {
-            cpal::SampleFormat::I16 => Self::Signed16Bit,
-            cpal::SampleFormat::U16 => Self::Unsigned16Bit,
-            cpal::SampleFormat::F32 => Self::Signed32Bit,
-        }
-    }
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Debug)]
-pub struct AudioConfig {
-    pub preferred_channels_count: u16,
-    pub preferred_sample_rate: u32,
-    pub preferred_buffer_size: Option<u32>,
-    pub preferred_sample_format: SampleFormat,
-    pub max_buffer_count_extra: u64,
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum AudioDeviceId {
+    Default,
+    Name(String),
+    #[schema(min = 1, gui = "UpDown")]
+    Index(u64),
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputAudioDesc {
-    // deviceDropdown should poll the available audio devices and set "device"
-    #[schema(placeholder = "device_dropdown")]
-    //
-    #[schema(advanced)]
-    pub device: String,
+    pub device_id: AudioDeviceId,
 
     pub mute_when_streaming: bool,
+
+    #[schema(min = 1, max = 10)]
+    pub buffer_range_multiplier: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InputAudioDesc {
-    // deviceDropdown should poll the available audio devices and set "device"
-    #[schema(placeholder = "device_dropdown")]
-    //
-    #[schema(advanced)]
-    pub device: String,
+    pub device_id: AudioDeviceId,
+
+    #[schema(min = 1, max = 10)]
+    pub buffer_range_multiplier: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -318,6 +291,10 @@ pub struct ConnectionDesc {
 
     pub aggressive_keyframe_resend: bool,
 
+    pub on_connect_script: String,
+
+    pub on_disconnect_script: String,
+
     #[schema(advanced)]
     pub enable_fec: bool,
 }
@@ -378,10 +355,10 @@ pub fn session_settings_default() -> SettingsDefault {
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
-            preferred_fps: 72_f32,
+            preferred_fps: 72.,
             render_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
-                Scale: 1.,
+                Scale: 0.75,
                 Absolute: FrameSizeAbsoluteDefault {
                     width: 2880,
                     height: 1600,
@@ -389,7 +366,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             recommended_target_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
-                Scale: 1.,
+                Scale: 0.75,
                 Absolute: FrameSizeAbsoluteDefault {
                     width: 2880,
                     height: 1600,
@@ -424,13 +401,25 @@ pub fn session_settings_default() -> SettingsDefault {
             game_audio: SwitchDefault {
                 enabled: true,
                 content: OutputAudioDescDefault {
-                    device: "".into(),
+                    device_id: AudioDeviceIdDefault {
+                        variant: AudioDeviceIdDefaultVariant::Default,
+                        Name: "".into(),
+                        Index: 1,
+                    },
                     mute_when_streaming: true,
+                    buffer_range_multiplier: 2,
                 },
             },
             microphone: SwitchDefault {
                 enabled: false,
-                content: InputAudioDescDefault { device: "".into() },
+                content: InputAudioDescDefault {
+                    device_id: AudioDeviceIdDefault {
+                        variant: AudioDeviceIdDefaultVariant::Default,
+                        Name: "".into(),
+                        Index: 1,
+                    },
+                    buffer_range_multiplier: 4,
+                },
             },
         },
         headset: HeadsetDescDefault {
@@ -459,7 +448,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     ctrl_type: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
-                    pose_time_offset: 0.,
+                    pose_time_offset: 0.01,
                     clientside_prediction: false,
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
@@ -478,6 +467,8 @@ pub fn session_settings_default() -> SettingsDefault {
             throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,
             client_recv_buffer_size: 60_000,
             aggressive_keyframe_resend: false,
+            on_connect_script: "".into(),
+            on_disconnect_script: "".into(),
             enable_fec: true,
         },
         extra: ExtraDescDefault {

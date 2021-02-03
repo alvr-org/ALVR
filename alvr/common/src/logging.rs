@@ -1,5 +1,3 @@
-#![allow(clippy::result_unit_err)]
-
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, future::Future};
 
@@ -7,10 +5,6 @@ pub type StrResult<T = ()> = Result<T, String>;
 
 pub const SESSION_LOG_FNAME: &str = "session_log.txt";
 pub const CRASH_LOG_FNAME: &str = "crash_log.txt";
-
-pub fn driver_log_path() -> std::path::PathBuf {
-    std::env::temp_dir().join("alvr_driver_log.txt")
-}
 
 pub fn set_panic_hook() {
     std::panic::set_hook(Box::new(|panic_info| {
@@ -36,7 +30,8 @@ pub fn set_panic_hook() {
 pub fn show_w<W: Display>(w: W) {
     log::warn!("{}", w);
 
-    #[cfg(not(target_os = "android"))]
+    // GDK crashes because of initialization in multiple thread
+    #[cfg(not(any(target_os = "android", target_os = "linux")))]
     std::thread::spawn({
         let warn_string = w.to_string();
         move || {
@@ -50,14 +45,16 @@ pub fn show_w<W: Display>(w: W) {
     });
 }
 
-pub fn show_warn<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
-    res.map_err(show_w)
+pub fn show_warn<T, E: Display>(res: Result<T, E>) -> Option<T> {
+    res.map_err(show_w).ok()
 }
 
+#[allow(unused_variables)]
 fn show_e_block<E: Display>(e: E, blocking: bool) {
     log::error!("{}", e);
 
-    #[cfg(not(target_os = "android"))]
+    // GDK crashes because of initialization in multiple thread
+    #[cfg(not(any(target_os = "android", target_os = "linux")))]
     {
         let show_msgbox = {
             let err_string = e.to_string();
@@ -83,21 +80,25 @@ pub fn show_e<E: Display>(e: E) {
     show_e_block(e, false);
 }
 
+pub fn show_e_dbg<E: std::fmt::Debug>(e: E) {
+    show_e_block(format!("{:?}", e), false);
+}
+
 pub fn show_e_blocking<E: Display>(e: E) {
     show_e_block(e, true);
 }
 
-pub fn show_err<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
-    res.map_err(|e| show_e_block(e, false))
+pub fn show_err<T, E: Display>(res: Result<T, E>) -> Option<T> {
+    res.map_err(|e| show_e_block(e, false)).ok()
 }
 
-pub fn show_err_blocking<T, E: Display>(res: Result<T, E>) -> Result<T, ()> {
-    res.map_err(|e| show_e_block(e, true))
+pub fn show_err_blocking<T, E: Display>(res: Result<T, E>) -> Option<T> {
+    res.map_err(|e| show_e_block(e, true)).ok()
 }
 
 pub async fn show_err_async<T, E: Display>(
     future_res: impl Future<Output = Result<T, E>>,
-) -> Result<T, ()> {
+) -> Option<T> {
     show_err(future_res.await)
 }
 
@@ -126,94 +127,46 @@ pub enum LogId {
     ClientFoundWrongVersion(String),
     ClientConnected,
     ClientDisconnected,
+    UpdateDownloadedBytesCount(usize),
+    UpdateDownloadError,
+}
+
+pub fn log_id(id: LogId) {
+    log::info!("#{}#", serde_json::to_string(&id).unwrap());
 }
 
 #[macro_export]
-macro_rules! format_id {
-    ($id:expr) => {
-        format!("#{}#", serde_json::to_string(&$id).unwrap())
-    };
-}
-
-#[macro_export]
-macro_rules! _format_err {
-    (@ $($($args:tt)+)?) => {
-        format!("At {}:{}", file!(), line!()) $(+ ", " + &format!($($args)+))?
-    };
-    (id: $id:expr $(, $($args_rest:tt)+)?) => {
-        format_id!($id) + " " + &_format_err!(@ $($($args_rest)+)?)
-    };
-    ($($args:tt)*) => {
-        _format_err!(@ $($args)*)
+macro_rules! fmt_e {
+    ($($args:tt)+) => {
+        Err(format!($($args)+))
     };
 }
 
 #[macro_export]
 macro_rules! trace_str {
-    ($($args:tt)*) => {
-        Err(_format_err!($($args)*))
+    () => {
+        format!("At {}:{}", file!(), line!())
     };
 }
 
 #[macro_export]
 macro_rules! trace_err {
-    ($res:expr $(, $($args_rest:tt)+)?) => {
-        $res.map_err(|e| _format_err!($($($args_rest)+)?) + &format!(": {}", e))
+    ($res:expr) => {
+        $res.map_err(|e| format!("{}: {}", trace_str!(), e))
     };
 }
 
 // trace_err variant for errors that do not implement fmt::Display
 #[macro_export]
 macro_rules! trace_err_dbg {
-    ($res:expr $(, $($args_rest:tt)+)?) => {
-        $res.map_err(|e| _format_err!($($($args_rest)+)?) + &format!(": {:?}", e))
+    ($res:expr) => {
+        $res.map_err(|e| format!("{}: {:?}", trace_str!(), e))
     };
 }
 
 #[macro_export]
 macro_rules! trace_none {
-    ($res:expr $(, $($args_rest:tt)+)?) => {
-        $res.ok_or_else(|| _format_err!($($($args_rest)+)?))
-    };
-}
-
-#[macro_export]
-macro_rules! _log {
-    (@ $level:expr, $($args:tt)+) => {
-        log::log!($level, $($args)+)
-    };
-    ($level:expr, id: $id:expr $(, $($args_rest:tt)+)?) => {
-        _log!(@ $level, "{}", format_id!($id) $(+ " " + &format!($($args_rest)+))?)
-    };
-    ($level:expr, $($args:tt)+) => {
-        _log!(@ $level, $($args)+)
-    };
-}
-
-#[macro_export]
-macro_rules! error {
-    ($($args:tt)*) => {
-        _log!(log::Level::Error, $($args)*)
-    };
-}
-
-#[macro_export]
-macro_rules! warn {
-    ($($args:tt)*) => {
-        _log!(log::Level::Warn, $($args)*)
-    };
-}
-
-#[macro_export]
-macro_rules! info {
-    ($($args:tt)*) => {
-        _log!(log::Level::Info, $($args)*)
-    };
-}
-
-#[macro_export]
-macro_rules! debug {
-    ($($args:tt)*) => {
-        _log!(log::Level::Debug, $($args)*)
+    ($res:expr) => {
+        $res.ok_or_else(|| trace_str!())
     };
 }

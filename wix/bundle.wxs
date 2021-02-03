@@ -19,21 +19,7 @@
                 />
         </BootstrapperApplicationRef>
 
-        <util:RegistrySearch
-            Key="SOFTWARE\Microsoft\DevDiv\VC\Servicing\14.0\RuntimeMinimum"
-            Root="HKLM"
-            Value="Install"
-            Variable="VCRedistInstalled"/>
-
         <Chain>
-            <ExePackage
-                SourceFile="target\wix\VC_redist.x64.exe"
-                Permanent="yes"
-                Compressed="yes"
-                InstallCommand="/install /quiet /norestart"
-                RepairCommand="/repair /quiet /norestart"
-                UninstallCommand="/uninstall /quiet /norestart"
-                DetectCondition="VCRedistInstalled = 1"/>
             <MsiPackage
                 SourceFile="target\wix\alvr.msi"
                 Id="alvrInstaller"

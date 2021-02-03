@@ -1,5 +1,6 @@
 #![allow(non_upper_case_globals, non_snake_case, clippy::missing_safety_doc)]
 
+mod audio;
 mod connection;
 mod logging_backend;
 
@@ -43,8 +44,7 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_createIdentity(
 
         let jkey_pem = trace_err!(env.new_string(identity.key_pem))?.into();
         trace_err!(env.set_field(jidentity, "privateKey", "Ljava/lang/String;", jkey_pem))
-    }())
-    .ok();
+    }());
 }
 
 #[no_mangle]
@@ -93,8 +93,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
         ))?;
 
         Ok(())
-    }())
-    .ok();
+    }());
 }
 
 #[no_mangle]
@@ -189,8 +188,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
         *MAYBE_RUNTIME.lock() = Some(runtime);
 
         Ok(())
-    }())
-    .ok();
+    }());
 }
 
 #[no_mangle]

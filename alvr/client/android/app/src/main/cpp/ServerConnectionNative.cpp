@@ -18,7 +18,6 @@
 #include <mutex>
 #include "packet_types.h"
 #include "nal.h"
-#include "sound.h"
 #include <cstdlib>
 #include <pthread.h>
 #include <endian.h>
@@ -30,8 +29,6 @@
 #include "exception.h"
 #include <utility>
 #include <bits/fcntl.h>
-
-const uint64_t CONNECTION_TIMEOUT = 3 * 1000 * 1000;
 
 struct SendBuffer {
     char buf[MAX_PACKET_UDP_PACKET_SIZE];
@@ -56,8 +53,6 @@ public:
     uint64_t m_lastFrameIndex = 0;
 
     uint32_t m_prevVideoSequence = 0;
-    uint32_t m_prevSoundSequence = 0;
-    std::shared_ptr<SoundPlayer> m_soundPlayer;
     std::shared_ptr<NALParser> m_nalParser;
 
     JNIEnv *m_env;
@@ -90,7 +85,6 @@ void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, const cha
     g_socket.m_stopped = false;
     g_socket.m_prevSentSync = 0;
     g_socket.m_prevVideoSequence = 0;
-    g_socket.m_prevSoundSequence = 0;
     g_socket.m_timeDiff = 0;
 
     jclass clazz = env->GetObjectClass(instance);
@@ -142,18 +136,6 @@ void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, const cha
         throw FormatException("bind error : %d %s", errno, strerror(errno));
     }
 
-
-    //
-    // Sound
-    //
-
-    g_socket.m_soundPlayer = std::make_shared<SoundPlayer>();
-    if (g_socket.m_soundPlayer->initialize() != 0) {
-        LOGE("Failed on SoundPlayer initialize.");
-        g_socket.m_soundPlayer.reset();
-    }
-    LOGI("SoundPlayer successfully initialize.");
-
     //
     // Pipe used for send buffer notification.
     //
@@ -191,7 +173,6 @@ void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, const cha
     LOGI("Current socket recv buffer is %d bytes", val);
 
     g_socket.m_prevVideoSequence = 0;
-    g_socket.m_prevSoundSequence = 0;
     g_socket.m_timeDiff = 0;
     LatencyCollector::Instance().resetAll();
     g_socket.m_nalParser->setCodec(codec);
@@ -217,25 +198,6 @@ void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
     LOGI("Sent packet loss report. ret=%d", ret);
 }
 
-void processSoundSequence(uint32_t sequence) {
-    if (g_socket.m_prevSoundSequence != 0 && g_socket.m_prevSoundSequence + 1 != sequence) {
-        int32_t lost = sequence - (g_socket.m_prevSoundSequence + 1);
-        if (lost < 0) {
-            // lost become negative on out-of-order packet.
-            // TODO: This is not accurate statistics.
-            lost = -lost;
-        }
-        LatencyCollector::Instance().packetLoss(lost);
-
-        sendPacketLossReport(ALVR_LOST_FRAME_TYPE_AUDIO, g_socket.m_prevSoundSequence + 1,
-                             sequence - 1);
-
-        LOGE("SoundPacket loss %d (%d -> %d)", lost, g_socket.m_prevSoundSequence + 1,
-             sequence - 1);
-    }
-    g_socket.m_prevSoundSequence = sequence;
-}
-
 void processVideoSequence(uint32_t sequence) {
     if (g_socket.m_prevVideoSequence != 0 && g_socket.m_prevVideoSequence + 1 != sequence) {
         int32_t lost = sequence - (g_socket.m_prevVideoSequence + 1);
@@ -259,7 +221,7 @@ void onPacketRecv(const char *packet, size_t packetSize) {
 
         if (g_socket.m_lastFrameIndex != header->trackingFrameIndex) {
             LatencyCollector::Instance().receivedFirst(header->trackingFrameIndex);
-            if ((int64_t) header->sentTime - g_socket.m_timeDiff > getTimestampUs()) {
+            if ((int64_t) header->sentTime - g_socket.m_timeDiff > (int64_t) getTimestampUs()) {
                 LatencyCollector::Instance().estimatedSent(header->trackingFrameIndex, 0);
             } else {
                 LatencyCollector::Instance().estimatedSent(header->trackingFrameIndex,
@@ -299,37 +261,6 @@ void onPacketRecv(const char *packet, size_t packetSize) {
             sendBuf.clientTime = Current;
             send(&sendBuf, sizeof(sendBuf));
         }
-    } else if (type == ALVR_PACKET_TYPE_AUDIO_FRAME_START) {
-        // Change settings
-        if (packetSize < sizeof(AudioFrameStart)) {
-            return;
-        }
-        auto header = (AudioFrameStart *) packet;
-
-        processSoundSequence(header->packetCounter);
-
-        if (g_socket.m_soundPlayer) {
-            g_socket.m_soundPlayer->putData((uint8_t *) packet + sizeof(*header),
-                                            packetSize - sizeof(*header));
-        }
-
-        //LOG("Received audio frame start: Counter=%d Size=%d PresentationTime=%lu",
-        //    header->packetCounter, header->frameByteSize, header->presentationTime);
-    } else if (type == ALVR_PACKET_TYPE_AUDIO_FRAME) {
-        // Change settings
-        if (packetSize < sizeof(AudioFrame)) {
-            return;
-        }
-        auto header = (AudioFrame *) packet;
-
-        processSoundSequence(header->packetCounter);
-
-        if (g_socket.m_soundPlayer) {
-            g_socket.m_soundPlayer->putData((uint8_t *) packet + sizeof(*header),
-                                            packetSize - sizeof(*header));
-        }
-
-        //LOG("Received audio frame: Counter=%d", header->packetCounter);
     } else if (type == ALVR_PACKET_TYPE_HAPTICS) {
         if (packetSize < sizeof(HapticsFeedback)) {
             return;
@@ -508,11 +439,6 @@ void closeSocket(void *v_env) {
 
     env->CallVoidMethod(g_socket.m_instance, g_socket.mOnDisconnectedMethodID);
 
-    if (g_socket.m_soundPlayer) {
-        g_socket.m_soundPlayer->Stop();
-    }
-
-
     if (g_socket.m_notifyPipe[0] >= 0) {
         close(g_socket.m_notifyPipe[0]);
         close(g_socket.m_notifyPipe[1]);
@@ -520,7 +446,6 @@ void closeSocket(void *v_env) {
 
     g_socket.m_nalParser.reset();
     g_socket.m_sendQueue.clear();
-    g_socket.m_soundPlayer.reset();
 
     env->DeleteGlobalRef(g_socket.m_instance);
 }

@@ -20,6 +20,13 @@
         <MajorUpgrade
             Schedule="afterInstallInitialize"
             DowngradeErrorMessage="A newer version of [ProductName] is already installed. Setup will now exit."/>
+        <!-- Used for detecting InstallDir of previous installation. -->
+        <Upgrade Id="DBB5E47A-11A3-4A11-AF7E-4711EEBD2AF5">
+            <UpgradeVersion
+                Minimum="13.5.0"
+                Maximum="$(var.Version)"
+                Property="OLDERVERSIONBEINGUPGRADED"/>
+        </Upgrade>
 
         <MediaTemplate EmbedCab="yes"/>
 
@@ -87,6 +94,25 @@
         <Property Id="ARPPRODUCTICON" Value="ProductICO"/>
 
         <Property Id="ARPHELPLINK" Value="https://alvr-org.github.io"/>
+        
+        <Property Id="APPLICATIONFOLDER">
+          <RegistrySearch Id="InstallDir" Root="HKLM"
+            Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[OLDERVERSIONBEINGUPGRADED]"
+            Name="InstallLocation" Type="raw"/>
+        </Property>
+        
+        <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch ALVR"/>
+        <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1"/>
+        <Property Id="WixShellExecTarget" Value="[#fil962077914FC1B9B593E440F4A22CAF0C]"/>
+        <CustomAction Id="LaunchApplication"
+            BinaryKey="WixCA"
+            DllEntry="WixShellExec"
+            Impersonate="yes"/>
+
+        <InstallExecuteSequence>
+            <!-- This action will only run during silent install. UI install depends on the checkbox being set below. -->
+            <Custom Action="LaunchApplication" After="InstallFinalize"><![CDATA[UILevel <= 3 and NOT Installed]]></Custom>
+        </InstallExecuteSequence>
 
         <UI>
             <UIRef Id="WixUI_FeatureTree"/>
@@ -94,6 +120,11 @@
             <!-- Skip license screen for now -->
             <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="CustomizeDlg" Order="99">1</Publish>
             <Publish Dialog="CustomizeDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="99">1</Publish>
+            <Publish Dialog="ExitDialog" 
+                Control="Finish"
+                Event="DoAction" 
+                Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed
+            </Publish>
         </UI>
         
         <WixVariable Id="WixUIBannerBmp" Value="wix\installer_banner.bmp"/>

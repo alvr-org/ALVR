@@ -13,7 +13,6 @@
 
 #include "packet_types.h"
 #include "resource.h"
-#include "AudioCapture.h"
 #include "VideoEncoder.h"
 #include "VideoEncoderNVENC.h"
 #include "VideoEncoderVCE.h"
@@ -85,7 +84,6 @@ private:
 
 	std::shared_ptr<CD3DRender> m_D3DRender;
 	std::shared_ptr<CEncoder> m_encoder;
-	std::shared_ptr<AudioCapture> m_audioCapture;
 	std::shared_ptr<ClientConnection> m_Listener;
 	std::shared_ptr<VSyncThread> m_VSyncThread;
 

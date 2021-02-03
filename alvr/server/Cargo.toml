@@ -1,12 +1,12 @@
 [package]
 name = "alvr_server"
-version = "14.1.1"
+version = "14.2.1"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 parking_lot = "0.11"
@@ -34,6 +34,8 @@ tokio-util = { version = "0.6", features = ["codec"] }
 tokio-tungstenite = "0.13"
 headers = "0.3"
 hyper = { version = "0.14", features = ["http2", "server", "stream", "runtime", "tcp"] }
+reqwest = "0.11"
+alcro = "0.5"
 webbrowser = "0.5" # this is just for opening links in the default browser
 
 [build-dependencies]

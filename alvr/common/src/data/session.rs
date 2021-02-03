@@ -1,8 +1,5 @@
 use super::settings::*;
-use crate::{
-    logging::{LogId, SessionUpdateType},
-    *,
-};
+use crate::{logging::*, *};
 use serde::*;
 use serde_json as json;
 use settings_schema::SchemaNode;
@@ -53,11 +50,6 @@ pub struct OpenvrConfig {
     pub eye_resolution_height: u32,
     pub target_eye_resolution_width: u32,
     pub target_eye_resolution_height: u32,
-    pub enable_game_audio: bool,
-    pub game_audio_device: String,
-    pub mute_host_audio_output: bool,
-    pub enable_microphone: bool,
-    pub microphone_device: String,
     pub seconds_from_vsync_to_photons: f32,
     pub client_buffer_size: u64,
     pub force_3dof: bool,
@@ -204,8 +196,9 @@ impl SessionDesc {
             }
             Err(e) => {
                 *self = session_desc_mut;
-                trace_str!(
-                    id: LogId::SessionSettingsExtrapolationFailed,
+
+                log_id(LogId::SessionSettingsExtrapolationFailed);
+                fmt_e!(
                     "Error while deserializing extrapolated session settings: {}",
                     e
                 )
@@ -565,9 +558,9 @@ impl DerefMut for SessionLock<'_> {
 impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
         save_session(self.session_desc, &self.dir.join(SESSION_FNAME)).ok();
-        info!(id: LogId::SessionUpdated {
+        log_id(LogId::SessionUpdated {
             web_client_id: self.update_author_id.to_owned(),
-            update_type: self.update_type
+            update_type: self.update_type,
         });
     }
 }

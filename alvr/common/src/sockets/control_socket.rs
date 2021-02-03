@@ -127,7 +127,7 @@ pub async fn connect_to_server<S: Serialize, R: DeserializeOwned>(
                         if let Ok(HandshakePacket::Server(handshake_packet)) =
                             bincode::deserialize(&server_response_buffer[..packet_size])
                         {
-                            error!("received packet {:?}", &handshake_packet);
+                            warn!("received packet {:?}", &handshake_packet);
                             break Ok(ConnectionResult::ServerMessage(handshake_packet));
                         }
                     }
@@ -157,6 +157,8 @@ pub async fn connect_to_server<S: Serialize, R: DeserializeOwned>(
         res = handshake_loop => return res,
         pair = try_connect_loop => pair,
     };
+
+    trace_err!(socket.set_nodelay(true))?;
 
     let socket = Framed::new(socket, LDC::new());
     let (mut sender, mut receiver) = socket.split();
@@ -205,6 +207,9 @@ pub async fn begin_connecting_to_client(
             }
         }
     };
+
+    trace_err!(socket.set_nodelay(true))?;
+
     let client_ip = trace_err!(socket.peer_addr())?.ip();
     let socket = Framed::new(socket, LDC::new());
     let (sender, mut receiver) = socket.split();

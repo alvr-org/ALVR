@@ -37,4 +37,4 @@ android_logger = "0.9"
 [build-dependencies]
 walkdir = "2"
 cc = { version = "1", features = ["parallel"] }
-bindgen = "0.56"
+bindgen = "0.57"

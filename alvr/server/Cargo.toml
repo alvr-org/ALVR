@@ -41,4 +41,4 @@ webbrowser = "0.5" # this is just for opening links in the default browser
 [build-dependencies]
 walkdir = "2"
 cc = { version = "1", features = ["parallel"] }
-bindgen = "0.56"
+bindgen = "0.57"

@@ -301,7 +301,8 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
         "gradlew.bat"
     };
 
-    fs::create_dir_all(&build_dir()).unwrap();
+    let artifact_name = format!("alvr_client_{}", headset_name);
+    fs::create_dir_all(&build_dir().join(&artifact_name)).unwrap();
 
     env::set_current_dir(&client_dir).unwrap();
     run(&format!("{} {}", command_name, build_task)).unwrap();
@@ -316,7 +317,9 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
                 "app-{}-{}-{}.apk",
                 headset_type, package_type, build_type
             )),
-        build_dir().join(format!("alvr_client_{}.apk", headset_name)),
+        build_dir()
+            .join(&artifact_name)
+            .join(format!("{}.apk", artifact_name)),
     )
     .unwrap();
 }

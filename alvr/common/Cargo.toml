@@ -24,7 +24,7 @@ encoding_rs_io = "0.1"
 futures = "0.3"
 bytes = "1"
 tokio = { version = "1", features = ["net", "macros"] }
-tokio-util = { version = "0.6", features = ["codec"] }
+tokio-util = { version = "0.6", features = ["codec", "net"] }
 rcgen = "0.8"
 gfx-hal = "0.7"
 winit = "0.24" # needed to get the screen size

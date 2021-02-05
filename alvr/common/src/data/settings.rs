@@ -265,6 +265,13 @@ pub struct HeadsetDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub enum SocketConfig {
+    Udp,
+    Tcp,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ConnectionDesc {
     #[schema(advanced)]
     pub auto_trust_clients: bool,

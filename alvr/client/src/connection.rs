@@ -8,6 +8,7 @@ use jni::{
 use nalgebra::{Point3, Quaternion, UnitQuaternion};
 use serde_json as json;
 use settings_schema::Switch;
+use sockets::StreamSocket;
 use std::{
     ffi::CString,
     future, slice,
@@ -136,13 +137,50 @@ async fn connection_pipeline(
     };
     let control_sender = Arc::new(Mutex::new(control_sender));
 
-    info!("Connected to server");
+    match control_receiver.recv().await {
+        Ok(ServerControlPacket::StartStream) => (),
+        Ok(ServerControlPacket::Restarting) => {
+            info!("Server restarting");
+            set_loading_message(&*java_vm, &*activity_ref, hostname, SERVER_RESTART_MESSAGE)
+                .await?;
+            return Ok(());
+        }
+        Err(e) => {
+            info!("Server disconnected. Cause: {}", e);
+            set_loading_message(
+                &*java_vm,
+                &*activity_ref,
+                hostname,
+                SERVER_DISCONNECTED_MESSAGE,
+            )
+            .await?;
+            return Ok(());
+        }
+        _ => {
+            info!("Unexpected packet");
+            set_loading_message(&*java_vm, &*activity_ref, hostname, "Unexpected packet").await?;
+            return Ok(());
+        }
+    }
 
     let settings = {
         let mut session_desc = SessionDesc::default();
         session_desc.merge_from_json(&trace_err!(json::from_str(&config_packet.session_desc))?)?;
         session_desc.to_settings()
     };
+
+    let stream_socket = tokio::select! {
+        res = StreamSocket::connect_to_server(
+            server_ip,
+            settings.connection.stream_port,
+            settings.connection.stream_config,
+        ) => res?,
+        _ = time::sleep(Duration::from_secs(1)) => {
+            return fmt_e!("Timeout while setting up streams");
+        }
+    };
+
+    info!("Connected to server");
 
     let is_connected = Arc::new(AtomicBool::new(true));
     let _stream_guard = StreamCloseGuard {
@@ -201,8 +239,8 @@ async fn connection_pipeline(
         ],
     ))?;
 
-    let tracking_clientside_prediction = match settings.headset.controllers {
-        Switch::Enabled(ref controllers) => controllers.clientside_prediction,
+    let tracking_clientside_prediction = match &settings.headset.controllers {
+        Switch::Enabled(controllers) => controllers.clientside_prediction,
         Switch::Disabled => false,
     };
 
@@ -345,35 +383,38 @@ async fn connection_pipeline(
     let (_destroy_stream_park_notifier, destroy_stream_park_receiver) = smpsc::channel::<()>();
 
     // blocking streams park
-    std::thread::spawn(move || {
-        let mut _game_audio_stream_guard = if let Switch::Enabled(desc) = settings.audio.game_audio
-        {
-            Some(audio::AudioPlayer::start(
-                game_audio_sample_rate,
-                desc.buffer_range_multiplier,
-                game_audio_receiver,
-            )?)
-        } else {
-            None
-        };
+    std::thread::spawn({
+        let game_audio = settings.audio.game_audio;
+        let microphone = settings.audio.microphone;
+        move || {
+            let mut _game_audio_stream_guard = if let Switch::Enabled(desc) = game_audio {
+                Some(audio::AudioPlayer::start(
+                    game_audio_sample_rate,
+                    desc.buffer_range_multiplier,
+                    game_audio_receiver,
+                )?)
+            } else {
+                None
+            };
 
-        let mut _microphone_stream_guard = if let Switch::Enabled(_) = settings.audio.microphone {
-            Some(audio::AudioRecorder::start(
-                microphone_sample_rate,
-                microphone_sender,
-            )?)
-        } else {
-            None
-        };
+            let mut _microphone_stream_guard = if let Switch::Enabled(_) = microphone {
+                Some(audio::AudioRecorder::start(
+                    microphone_sample_rate,
+                    microphone_sender,
+                )?)
+            } else {
+                None
+            };
 
-        // notified when the notifier counterpart gets dropped
-        destroy_stream_park_receiver.recv().ok();
+            // notified when the notifier counterpart gets dropped
+            destroy_stream_park_receiver.recv().ok();
 
-        // the microphone gets stuck on stop(), drop the game audio stream first
-        drop(_game_audio_stream_guard);
-        drop(_microphone_stream_guard);
+            // the microphone gets stuck on stop(), drop the game audio stream first
+            drop(_game_audio_stream_guard);
+            drop(_microphone_stream_guard);
 
-        StrResult::Ok(())
+            StrResult::Ok(())
+        }
     });
 
     let keepalive_sender_loop = {
@@ -414,8 +455,11 @@ async fn connection_pipeline(
                         }
                         Ok(ServerControlPacket::ReservedBuffer(buffer)) => {
                             trace_err!(game_audio_sender.send(buffer))?;
-                        },
+                        }
                         Ok(ServerControlPacket::Reserved(_)) => (),
+                        Ok(_) => {
+                            warn!("Unrecognized packet");
+                        }
                         Err(e) => {
                             info!("Server disconnected. Cause: {}", e);
                             set_loading_message(
@@ -433,6 +477,7 @@ async fn connection_pipeline(
     };
 
     tokio::select! {
+        res = stream_socket.receive_loop() => res,
         res = stream_socket_loop => trace_err!(res)?,
         res = microphone_loop => res,
         res = tracking_loop => res,

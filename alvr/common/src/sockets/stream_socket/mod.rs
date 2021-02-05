@@ -141,7 +141,7 @@ impl<T: Serialize> StreamSender<T> {
 
 enum StreamReceiverType {
     Queue(mpsc::UnboundedReceiver<BytesMut>),
-    // QuickReliable(...)
+    // QuicReliable(...)
 }
 
 pub struct StreamReceiver<T> {
@@ -190,17 +190,11 @@ impl StreamSocket {
         &mut self,
         stream_id: StreamId,
     ) -> StrResult<StreamReceiver<T>> {
-        let receiver_type = match &mut self.send_socket {
-            StreamSendSocket::Udp { .. } | StreamSendSocket::Tcp(_) => {
-                let (enqueuer, dequeuer) = mpsc::unbounded_channel();
-                self.packet_queues.lock().await.insert(stream_id, enqueuer);
-
-                StreamReceiverType::Queue(dequeuer)
-            }
-        };
+        let (enqueuer, dequeuer) = mpsc::unbounded_channel();
+        self.packet_queues.lock().await.insert(stream_id, enqueuer);
 
         Ok(StreamReceiver {
-            receiver: receiver_type,
+            receiver: StreamReceiverType::Queue(dequeuer),
             _phantom: PhantomData,
         })
     }
@@ -237,9 +231,9 @@ impl StreamSocket {
     pub async fn connect_to_client(
         client_ip: IpAddr,
         port: u16,
-        stream_socket_config: SocketConfig,
+        config: SocketConfig,
     ) -> StrResult<Self> {
-        let (send_socket, receive_socket) = match stream_socket_config {
+        let (send_socket, receive_socket) = match config {
             SocketConfig::Udp => {
                 let (send_socket, receive_socket) = udp::connect(client_ip, port).await?;
                 (

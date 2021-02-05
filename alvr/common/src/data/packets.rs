@@ -52,6 +52,7 @@ pub struct ClientConfigPacket {
 
 #[derive(Serialize, Deserialize)]
 pub enum ServerControlPacket {
+    StartStream,
     Restarting,
     Reserved(String),
     ReservedBuffer(Vec<u8>),

@@ -264,7 +264,7 @@ pub struct HeadsetDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum SocketConfig {
     Udp,
     Tcp,
@@ -279,8 +279,10 @@ pub struct ConnectionDesc {
     #[schema(advanced, min = 1024, max = 65535)]
     pub web_server_port: u16,
 
+    pub stream_config: SocketConfig,
+
     #[schema(advanced)]
-    pub listen_port: u16,
+    pub stream_port: u16,
 
     // If disableThrottling=true, set throttlingBitrateBits to 0,
     // Given audioBitrate=2000'000:
@@ -470,7 +472,10 @@ pub fn session_settings_default() -> SettingsDefault {
         connection: ConnectionDescDefault {
             auto_trust_clients: cfg!(debug_assertions),
             web_server_port: 8082,
-            listen_port: 9944,
+            stream_config: SocketConfigDefault {
+                variant: SocketConfigDefaultVariant::Tcp,
+            },
+            stream_port: 9944,
             throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,
             client_recv_buffer_size: 60_000,
             aggressive_keyframe_resend: false,

@@ -14,6 +14,7 @@ use settings_schema::Switch;
 use std::{
     collections::HashMap,
     future,
+    net::IpAddr,
     process::Command,
     sync::{mpsc as smpsc, Arc},
     time::Duration,
@@ -59,6 +60,7 @@ async fn client_discovery() -> StrResult {
 }
 
 struct ConnectionInfo {
+    client_ip: IpAddr,
     control_sender: ControlSocketSender<ServerControlPacket>,
     control_receiver: ControlSocketReceiver<ClientControlPacket>,
 }
@@ -217,7 +219,7 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         refresh_rate: fps as _,
         encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
         throttling_bitrate_bits: settings.connection.throttling_bitrate_bits,
-        listen_port: settings.connection.listen_port,
+        listen_port: settings.connection.stream_port,
         client_address: client_ip.to_string(),
         controllers_tracking_system_name: session_settings
             .headset
@@ -327,6 +329,7 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
     }
 
     Ok(ConnectionInfo {
+        client_ip,
         control_sender,
         control_receiver,
     })
@@ -380,9 +383,33 @@ async fn connection_pipeline() -> StrResult {
         else => unreachable!(),
     };
 
-    log_id(LogId::ClientConnected);
+    let ConnectionInfo {
+        client_ip,
+        control_sender,
+        mut control_receiver,
+    } = connection_info;
+    let control_sender = Arc::new(Mutex::new(control_sender));
+
+    control_sender
+        .lock()
+        .await
+        .send(&ServerControlPacket::StartStream)
+        .await?;
 
     let settings = SESSION_MANAGER.lock().get().to_settings();
+
+    let stream_socket = tokio::select! {
+        res = StreamSocket::connect_to_client(
+            client_ip,
+            settings.connection.stream_port,
+            settings.connection.stream_config,
+        ) => res?,
+        _ = time::sleep(Duration::from_secs(1)) => {
+            return fmt_e!("Timeout while setting up streams");
+        }
+    };
+
+    log_id(LogId::ClientConnected);
 
     {
         let on_connect_script = settings.connection.on_connect_script;
@@ -398,18 +425,10 @@ async fn connection_pipeline() -> StrResult {
         }
     }
 
-    let ConnectionInfo {
-        control_sender,
-        mut control_receiver,
-    } = connection_info;
-
-    let control_sender = Arc::new(Mutex::new(control_sender));
-
     #[cfg(windows)]
     unsafe {
         crate::InitializeStreaming()
     };
-
     let _stream_guard = StreamCloseGuard;
 
     let (game_audio_sender, mut game_audio_receiver) = tmpsc::unbounded_channel();
@@ -553,6 +572,7 @@ async fn connection_pipeline() -> StrResult {
 
             Ok(())
         }
+        res = stream_socket.receive_loop() => res,
         res = game_audio_loop => res,
         res = keepalive_sender_loop => res,
         res = control_loop => res,

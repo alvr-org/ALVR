@@ -163,22 +163,15 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         0
     };
 
-    #[derive(serde::Serialize)]
-    struct ReservedData {
-        game_audio_sample_rate: u32,
-        microphone_sample_rate: u32,
-    }
-
     let client_config = ClientConfigPacket {
         session_desc: trace_err!(serde_json::to_string(SESSION_MANAGER.lock().get()))?,
+        dashboard_url,
         eye_resolution_width: video_eye_width,
         eye_resolution_height: video_eye_height,
         fps,
-        dashboard_url,
-        reserved: trace_err!(json::to_string(&ReservedData {
-            game_audio_sample_rate,
-            microphone_sample_rate,
-        }))?,
+        game_audio_sample_rate,
+        microphone_sample_rate,
+        reserved: "".into(),
     };
 
     let (mut control_sender, control_receiver) =
@@ -507,9 +500,7 @@ async fn connection_pipeline() -> StrResult {
                 control_sender
                     .lock()
                     .await
-                    .send(&ServerControlPacket::Reserved(
-                        "{ \"keepalive\": true }".into(),
-                    ))
+                    .send(&ServerControlPacket::KeepAlive)
                     .await
                     .ok();
                 time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
@@ -546,10 +537,10 @@ async fn connection_pipeline() -> StrResult {
                     #[cfg(windows)]
                     crate::RequestIDR()
                 },
-                Ok(ClientControlPacket::Reserved(_)) => (),
                 Ok(ClientControlPacket::ReservedBuffer(data)) => {
                     microphone_sender.send(data).ok();
                 }
+                Ok(_) => (),
                 Err(e) => {
                     log_id(LogId::ClientDisconnected);
                     info!("Client disconnected. Cause: {}", e);

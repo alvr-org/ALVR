@@ -1,5 +1,10 @@
 use crate::audio;
-use alvr_common::{data::*, logging::*, sockets::ConnectionResult, *};
+use alvr_common::{
+    data::*,
+    logging::*,
+    sockets::{ConnectionResult, AUDIO},
+    *,
+};
 use futures::future::BoxFuture;
 use jni::{
     objects::{GlobalRef, JClass},
@@ -180,6 +185,9 @@ async fn connection_pipeline(
         }
     };
 
+    // let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO);
+    // let microphone_sender = stream_socket.request_stream(AUDIO);
+
     info!("Connected to server");
 
     let is_connected = Arc::new(AtomicBool::new(true));
@@ -345,22 +353,6 @@ async fn connection_pipeline(
         }
     };
 
-    let mut game_audio_sample_rate = 0;
-    let mut microphone_sample_rate = 0;
-    if let Ok(reserved_config) = json::from_str::<json::Value>(&config_packet.reserved) {
-        if let Some(config_json) = reserved_config.get("game_audio_sample_rate") {
-            if let Ok(sample_rate) = json::from_value::<u32>(config_json.clone()) {
-                game_audio_sample_rate = sample_rate;
-            }
-        }
-
-        if let Some(config_json) = reserved_config.get("microphone_sample_rate") {
-            if let Ok(sample_rate) = json::from_value::<u32>(config_json.clone()) {
-                microphone_sample_rate = sample_rate;
-            }
-        }
-    }
-
     let (microphone_sender, mut microphone_receiver) = tmpsc::unbounded_channel();
     let microphone_loop: BoxFuture<_> = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
         let control_sender = control_sender.clone();
@@ -386,6 +378,8 @@ async fn connection_pipeline(
     std::thread::spawn({
         let game_audio = settings.audio.game_audio;
         let microphone = settings.audio.microphone;
+        let game_audio_sample_rate = config_packet.game_audio_sample_rate;
+        let microphone_sample_rate = config_packet.microphone_sample_rate;
         move || {
             let mut _game_audio_stream_guard = if let Switch::Enabled(desc) = game_audio {
                 Some(audio::AudioPlayer::start(
@@ -424,9 +418,7 @@ async fn connection_pipeline(
                 control_sender
                     .lock()
                     .await
-                    .send(&ClientControlPacket::Reserved(
-                        "{ \"keepalive\": true }".into(),
-                    ))
+                    .send(&ClientControlPacket::KeepAlive)
                     .await
                     .ok();
                 time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
@@ -456,10 +448,7 @@ async fn connection_pipeline(
                         Ok(ServerControlPacket::ReservedBuffer(buffer)) => {
                             trace_err!(game_audio_sender.send(buffer))?;
                         }
-                        Ok(ServerControlPacket::Reserved(_)) => (),
-                        Ok(_) => {
-                            warn!("Unrecognized packet");
-                        }
+                        Ok(_) => (),
                         Err(e) => {
                             info!("Server disconnected. Cause: {}", e);
                             set_loading_message(

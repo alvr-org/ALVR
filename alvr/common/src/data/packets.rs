@@ -43,10 +43,12 @@ pub struct HeadsetInfoPacket {
 #[derive(Serialize, Deserialize)]
 pub struct ClientConfigPacket {
     pub session_desc: String, // transfer session as string to allow for extrapolation
+    pub dashboard_url: String,
     pub eye_resolution_width: u32,
     pub eye_resolution_height: u32,
     pub fps: f32,
-    pub dashboard_url: String,
+    pub game_audio_sample_rate: u32,
+    pub microphone_sample_rate: u32,
     pub reserved: String,
 }
 
@@ -54,6 +56,7 @@ pub struct ClientConfigPacket {
 pub enum ServerControlPacket {
     StartStream,
     Restarting,
+    KeepAlive,
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }
@@ -71,6 +74,7 @@ pub struct PlayspaceSyncPacket {
 pub enum ClientControlPacket {
     PlayspaceSync(PlayspaceSyncPacket),
     RequestIDR,
+    KeepAlive,
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

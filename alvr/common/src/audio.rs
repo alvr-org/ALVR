@@ -1,10 +1,18 @@
-use crate::{data::AudioDeviceId, *};
+use crate::{
+    data::{AudioDeviceId, ServerControlPacket},
+    sockets::ControlSocketSender,
+    *,
+};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
-    BufferSize, Device, Sample, SampleFormat, Stream, StreamConfig,
+    BufferSize, Device, Sample, SampleFormat, StreamConfig,
 };
-use std::{collections::VecDeque, sync::mpsc as smpsc};
-use tokio::sync::mpsc as tmpsc;
+use std::{
+    collections::VecDeque,
+    sync::{mpsc as smpsc, Arc},
+    thread,
+};
+use tokio::sync::{mpsc as tmpsc, Mutex};
 
 #[cfg(windows)]
 use std::ptr;
@@ -18,7 +26,7 @@ use winapi::{
 use wio::com::ComPtr;
 
 #[cfg(windows)]
-pub fn set_mute_audio_device(device_id: AudioDeviceId, mute: bool) -> StrResult {
+fn set_mute_audio_device(device_id: AudioDeviceId, mute: bool) -> StrResult {
     let device_index = match device_id {
         AudioDeviceId::Default => None,
         AudioDeviceId::Name(name_substring) => trace_err!(cpal::default_host().output_devices())?
@@ -126,14 +134,15 @@ pub enum AudioDeviceType {
 
 pub struct AudioDevice {
     inner: Device,
-    is_input: bool,
+    id: AudioDeviceId,
+    device_type: AudioDeviceType,
 }
 
 impl AudioDevice {
     pub fn new(id: AudioDeviceId, device_type: AudioDeviceType) -> StrResult<Self> {
         let host = cpal::default_host();
 
-        let device = match id {
+        let device = match &id {
             AudioDeviceId::Default => match device_type {
                 AudioDeviceType::Output => host
                     .default_output_device()
@@ -186,14 +195,15 @@ impl AudioDevice {
                 })?;
 
                 devices
-                    .nth(index as usize - 1)
+                    .nth(*index as usize - 1)
                     .ok_or_else(|| format!("Cannot find audio device at index {}", index))?
             }
         };
 
         Ok(Self {
             inner: device,
-            is_input: matches!(device_type, AudioDeviceType::Input),
+            id,
+            device_type,
         })
     }
 }
@@ -229,28 +239,36 @@ fn convert_channels_count(
     }
 }
 
-pub struct AudioSession {
-    _stream: Stream,
-}
+pub async fn record_audio_loop(
+    device: AudioDevice,
+    channels_count: u16,
+    sample_rate: u32,
+    mute: bool,
+    sender: Arc<Mutex<ControlSocketSender<ServerControlPacket>>>,
+) -> StrResult {
+    let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
 
-impl AudioSession {
-    pub fn start_recording(
-        device: &AudioDevice,
-        channels_count: u16,
-        sample_rate: u32,
-        sender: tmpsc::UnboundedSender<Vec<u8>>,
-    ) -> StrResult<Self> {
-        let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
+    if sample_rate != config.min_sample_rate().0 {
+        return fmt_e!("Sample rate not supported");
+    }
 
-        if sample_rate != config.min_sample_rate().0 {
-            return fmt_e!("Sample rate not supported");
+    let stream_config = StreamConfig {
+        channels: config.channels(),
+        sample_rate: config.min_sample_rate(),
+        buffer_size: BufferSize::Default,
+    };
+
+    // data_sender/receiver is the bridge between tokio and std thread
+    let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+    let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
+
+    // use a std thread to store the stream object. The stream object must be destroyed on the same
+    // thread of creation.
+    thread::spawn(move || -> StrResult {
+        #[cfg(windows)]
+        if mute && matches!(device.device_type, AudioDeviceType::Output) {
+            set_mute_audio_device(device.id.clone(), true).ok();
         }
-
-        let stream_config = StreamConfig {
-            channels: config.channels(),
-            sample_rate: config.min_sample_rate(),
-            buffer_size: BufferSize::Default,
-        };
 
         let stream = trace_err!(device.inner.build_input_stream_raw(
             &stream_config,
@@ -270,43 +288,65 @@ impl AudioSession {
                     data.bytes().to_vec()
                 };
                 let data = convert_channels_count(&data, config.channels(), channels_count);
-                sender.send(data).ok();
+                data_sender.send(data).ok();
             },
             |e| warn!("Error while recording audio: {}", e),
         ))?;
 
         trace_err!(stream.play())?;
 
-        Ok(Self { _stream: stream })
-    }
+        shutdown_receiver.recv().ok();
 
-    pub fn start_playing(
-        device: &AudioDevice,
-        channels_count: u16,
-        sample_rate: u32,
-        buffer_range_multiplier: u64,
-        receiver: smpsc::Receiver<Vec<u8>>,
-    ) -> StrResult<Self> {
-        assert!(!device.is_input);
-
-        let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
-
-        if sample_rate != config.min_sample_rate().0 {
-            return fmt_e!("Sample rate not supported");
+        #[cfg(windows)]
+        if mute && matches!(device.device_type, AudioDeviceType::Output) {
+            set_mute_audio_device(device.id, false).ok();
         }
 
-        let stream_config = StreamConfig {
-            channels: config.channels(),
-            sample_rate: config.min_sample_rate(),
-            buffer_size: BufferSize::Default,
-        };
+        Ok(())
+    });
 
+    while let Some(data) = data_receiver.recv().await {
+        sender
+            .lock()
+            .await
+            .send(&ServerControlPacket::ReservedBuffer(data))
+            .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn play_audio_loop(
+    device: AudioDevice,
+    channels_count: u16,
+    sample_rate: u32,
+    buffer_range_multiplier: u64,
+    mut receiver: tmpsc::UnboundedReceiver<Vec<u8>>,
+) -> StrResult {
+    assert!(!matches!(device.device_type, AudioDeviceType::Input));
+
+    let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
+
+    if sample_rate != config.min_sample_rate().0 {
+        return fmt_e!("Sample rate not supported");
+    }
+
+    let stream_config = StreamConfig {
+        channels: config.channels(),
+        sample_rate: config.min_sample_rate(),
+        buffer_size: BufferSize::Default,
+    };
+
+    let (data_sender, data_receiver) = smpsc::channel::<Vec<_>>();
+    let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
+
+    thread::spawn(move || -> StrResult {
         let mut sample_buffer_bytes = VecDeque::new();
         let stream = trace_err!(device.inner.build_output_stream_raw(
             &stream_config,
             config.sample_format(),
             move |data, _| {
-                while let Ok(packet) = receiver.try_recv() {
+                while let Ok(packet) = data_receiver.try_recv() {
                     let mut data =
                         convert_channels_count(&packet, channels_count, config.channels());
                     if config.sample_format() == SampleFormat::F32 {
@@ -353,6 +393,14 @@ impl AudioSession {
 
         trace_err!(stream.play())?;
 
-        Ok(Self { _stream: stream })
+        shutdown_receiver.recv().ok();
+
+        Ok(())
+    });
+
+    while let Some(data) = receiver.recv().await {
+        trace_err!(data_sender.send(data))?;
     }
+
+    Ok(())
 }

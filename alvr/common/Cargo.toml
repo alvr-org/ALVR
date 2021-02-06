@@ -26,7 +26,7 @@ bytes = "1"
 tokio = { version = "1", features = ["net", "macros"] }
 tokio-util = { version = "0.6", features = ["codec", "net"] }
 rcgen = "0.8"
-gfx-hal = "0.7"
+gfx-hal = "=0.6.0"
 winit = "0.24" # needed to get the screen size
 cpal = "0.13"
 
@@ -38,10 +38,10 @@ msgbox = "0.6"
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["mmdeviceapi", "objbase", "endpointvolume"] }
 wio = "0.2"
-gfx-backend-dx11 = "0.7"
+gfx-backend-dx11 = "=0.6.17"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-gfx-backend-vulkan = "0.7"
+gfx-backend-vulkan = "=0.6.5"
 
 [build-dependencies]
 alvr_xtask = { path = "../xtask" }

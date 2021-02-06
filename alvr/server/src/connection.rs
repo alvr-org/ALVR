@@ -1,27 +1,13 @@
-use crate::{ClientListAction, CLIENTS_UPDATED_NOTIFIER, SESSION_MANAGER};
-use alvr_common::{
-    audio::{AudioDevice, AudioSession},
-    data::*,
-    logging::*,
-    sockets::*,
-    *,
-};
+use crate::{ClientListAction, CLIENTS_UPDATED_NOTIFIER, RESTART_NOTIFIER, SESSION_MANAGER};
+use alvr_common::{audio::AudioDevice, data::*, logging::*, sockets::*, *};
 use audio::AudioDeviceType;
 use futures::future::BoxFuture;
 use nalgebra::Translation3;
-use serde_json as json;
 use settings_schema::Switch;
-use std::{
-    collections::HashMap,
-    future,
-    net::IpAddr,
-    process::Command,
-    sync::{mpsc as smpsc, Arc},
-    time::Duration,
-};
+use std::{collections::HashMap, future, net::IpAddr, process::Command, sync::Arc, time::Duration};
 use tokio::{
     sync::{mpsc as tmpsc, Mutex},
-    time,
+    task, time,
 };
 
 const RETRY_CONNECT_INTERVAL: Duration = Duration::from_millis(500);
@@ -402,6 +388,9 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
+    // let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
+    // let microphone_sender = stream_socket.request_stream(AUDIO).await?;
+
     log_id(LogId::ClientConnected);
 
     {
@@ -424,74 +413,38 @@ async fn connection_pipeline() -> StrResult {
     };
     let _stream_guard = StreamCloseGuard;
 
-    let (game_audio_sender, mut game_audio_receiver) = tmpsc::unbounded_channel();
-    let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(_) = settings.audio.game_audio {
+    let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         let control_sender = control_sender.clone();
-        Box::pin(async move {
-            while let Some(data) = game_audio_receiver.recv().await {
-                control_sender
-                    .lock()
-                    .await
-                    .send(&ServerControlPacket::ReservedBuffer(data))
-                    .await?;
-            }
-
-            StrResult::Ok(())
-        })
+        let device = trace_err!({
+            let id = desc.device_id;
+            task::spawn_blocking(|| AudioDevice::new(id, AudioDeviceType::Output)).await
+        })??;
+        let sample_rate = audio::get_sample_rate(&device)?;
+        Box::pin(audio::record_audio_loop(
+            device,
+            2,
+            sample_rate,
+            desc.mute_when_streaming,
+            control_sender,
+        ))
     } else {
         Box::pin(future::pending())
     };
 
-    let (_destroy_stream_park_notifier, destroy_stream_park_receiver) = smpsc::channel::<()>();
-    let (microphone_sender, microphone_receiver) = smpsc::channel();
-    std::thread::spawn({
-        let game_audio_desc = settings.audio.game_audio;
-        let microphone_desc = settings.audio.microphone;
-        move || {
-            #[cfg(windows)]
-            let mut device_to_unmute = None;
-
-            let _audio_stream_guard = if let Switch::Enabled(desc) = game_audio_desc {
-                #[cfg(windows)]
-                if desc.mute_when_streaming {
-                    audio::set_mute_audio_device(desc.device_id.clone(), true)?;
-                    device_to_unmute = Some(desc.device_id.clone());
-                }
-
-                let device = AudioDevice::new(desc.device_id, AudioDeviceType::Output)?;
-                Some(AudioSession::start_recording(
-                    &device,
-                    2,
-                    audio::get_sample_rate(&device)?,
-                    game_audio_sender,
-                )?)
-            } else {
-                None
-            };
-
-            let _microphone_stream_guard = if let Switch::Enabled(desc) = microphone_desc {
-                let device = AudioDevice::new(desc.device_id, AudioDeviceType::VirtualMicrophone)?;
-                Some(AudioSession::start_playing(
-                    &device,
-                    1,
-                    audio::get_sample_rate(&device)?,
-                    desc.buffer_range_multiplier,
-                    microphone_receiver,
-                )?)
-            } else {
-                None
-            };
-
-            destroy_stream_park_receiver.recv().ok();
-
-            #[cfg(windows)]
-            if let Some(id) = device_to_unmute {
-                audio::set_mute_audio_device(id, false)?;
-            }
-
-            StrResult::Ok(())
-        }
-    });
+    let (microphone_sender, microphone_receiver) = tmpsc::unbounded_channel();
+    let microphone_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.microphone {
+        let device = AudioDevice::new(desc.device_id, AudioDeviceType::VirtualMicrophone)?;
+        let sample_rate = audio::get_sample_rate(&device)?;
+        Box::pin(audio::play_audio_loop(
+            device,
+            1,
+            sample_rate,
+            desc.buffer_range_multiplier,
+            microphone_receiver,
+        ))
+    } else {
+        Box::pin(future::pending())
+    };
 
     let keepalive_sender_loop = {
         let control_sender = control_sender.clone();
@@ -553,7 +506,7 @@ async fn connection_pipeline() -> StrResult {
     };
 
     tokio::select! {
-        _ = crate::RESTART_NOTIFIER.notified() => {
+        _ = RESTART_NOTIFIER.notified() => {
             control_sender
                 .lock()
                 .await
@@ -565,6 +518,7 @@ async fn connection_pipeline() -> StrResult {
         }
         res = stream_socket.receive_loop() => res,
         res = game_audio_loop => res,
+        res = microphone_loop => res,
         res = keepalive_sender_loop => res,
         res = control_loop => res,
     }

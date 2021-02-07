@@ -24,7 +24,7 @@ use std::{
     time::Duration,
 };
 use tokio::{
-    sync::{mpsc as tmpsc, Mutex},
+    sync::Mutex,
     task,
     time::{self, Instant},
 };
@@ -40,7 +40,7 @@ const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
 );
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
-const RETRY_CONNECT_INTERVAL: Duration = Duration::from_millis(500);
+const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_millis(500);
 const PLAYSPACE_SYNC_INTERVAL: Duration = Duration::from_millis(500);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(5);
 
@@ -126,7 +126,7 @@ async fn connection_pipeline(
             )
             .await?;
 
-            time::sleep(RETRY_CONNECT_INTERVAL).await;
+            time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
 
             set_loading_message(
                 &*java_vm,
@@ -174,7 +174,7 @@ async fn connection_pipeline(
         session_desc.to_settings()
     };
 
-    let stream_socket = tokio::select! {
+    let mut stream_socket = tokio::select! {
         res = StreamSocket::connect_to_server(
             server_ip,
             settings.connection.stream_port,
@@ -184,9 +184,6 @@ async fn connection_pipeline(
             return fmt_e!("Timeout while setting up streams");
         }
     };
-
-    // let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO);
-    // let microphone_sender = stream_socket.request_stream(AUDIO);
 
     info!("Connected to server");
 
@@ -258,7 +255,7 @@ async fn connection_pipeline(
     // many times per second. If using a future I'm forced to attach and detach the env continuously.
     // When the parent function gets canceled, this loop will run to finish.
     let server_ip_cstring = CString::new(server_ip.to_string()).unwrap();
-    let stream_socket_loop = task::spawn_blocking({
+    let legacy_stream_socket_loop = task::spawn_blocking({
         let java_vm = java_vm.clone();
         let activity_ref = activity_ref.clone();
         let nal_class_ref = nal_class_ref.clone();
@@ -353,8 +350,8 @@ async fn connection_pipeline(
         }
     };
 
-    let (game_audio_sender, game_audio_receiver) = tmpsc::unbounded_channel();
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
+        let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
         Box::pin(audio::play_audio_loop(
             config_packet.game_audio_sample_rate,
             desc.buffer_range_multiplier,
@@ -365,10 +362,10 @@ async fn connection_pipeline(
     };
 
     let microphone_loop: BoxFuture<_> = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
-        let control_sender = control_sender.clone();
+        let microphone_sender = stream_socket.request_stream(AUDIO).await?;
         Box::pin(audio::record_audio_loop(
             config_packet.microphone_sample_rate,
-            control_sender,
+            microphone_sender,
         ))
     } else {
         Box::pin(future::pending())
@@ -408,9 +405,6 @@ async fn connection_pipeline(
                             .await?;
                             break Ok(());
                         }
-                        Ok(ServerControlPacket::ReservedBuffer(buffer)) => {
-                            trace_err!(game_audio_sender.send(buffer))?;
-                        }
                         Ok(_) => (),
                         Err(e) => {
                             info!("Server disconnected. Cause: {}", e);
@@ -429,7 +423,7 @@ async fn connection_pipeline(
     };
 
     tokio::select! {
-        res = stream_socket_loop => trace_err!(res)?,
+        res = legacy_stream_socket_loop => trace_err!(res)?,
         res = stream_socket.receive_loop() => res,
         res = game_audio_loop => res,
         res = microphone_loop => res,
@@ -485,7 +479,7 @@ pub async fn connection_lifecycle_loop(
                     .ok();
                 }
             },
-            time::sleep(RETRY_CONNECT_INTERVAL),
+            time::sleep(RETRY_CONNECT_MIN_INTERVAL),
         );
     }
 }

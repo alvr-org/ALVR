@@ -1,18 +1,15 @@
 use crate::{
-    data::{AudioDeviceId, ServerControlPacket},
-    sockets::ControlSocketSender,
+    data::AudioDeviceId,
+    sockets::{StreamReceiver, StreamSender},
     *,
 };
+use bytes::BytesMut;
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, Device, Sample, SampleFormat, StreamConfig,
 };
-use std::{
-    collections::VecDeque,
-    sync::{mpsc as smpsc, Arc},
-    thread,
-};
-use tokio::sync::{mpsc as tmpsc, Mutex};
+use std::{collections::VecDeque, sync::mpsc as smpsc, thread};
+use tokio::sync::mpsc as tmpsc;
 
 #[cfg(windows)]
 use std::ptr;
@@ -244,7 +241,7 @@ pub async fn record_audio_loop(
     channels_count: u16,
     sample_rate: u32,
     mute: bool,
-    sender: Arc<Mutex<ControlSocketSender<ServerControlPacket>>>,
+    sender: StreamSender<()>,
 ) -> StrResult {
     let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
 
@@ -306,11 +303,9 @@ pub async fn record_audio_loop(
     });
 
     while let Some(data) = data_receiver.recv().await {
-        sender
-            .lock()
-            .await
-            .send(&ServerControlPacket::ReservedBuffer(data))
-            .await?;
+        let mut buffer = sender.new_buffer(&(), data.len())?;
+        buffer.get_mut().extend(data);
+        sender.send_buffer(buffer).await?;
     }
 
     Ok(())
@@ -321,7 +316,7 @@ pub async fn play_audio_loop(
     channels_count: u16,
     sample_rate: u32,
     buffer_range_multiplier: u64,
-    mut receiver: tmpsc::UnboundedReceiver<Vec<u8>>,
+    mut receiver: StreamReceiver<()>,
 ) -> StrResult {
     assert!(!matches!(device.device_type, AudioDeviceType::Input));
 
@@ -337,7 +332,7 @@ pub async fn play_audio_loop(
         buffer_size: BufferSize::Default,
     };
 
-    let (data_sender, data_receiver) = smpsc::channel::<Vec<_>>();
+    let (data_sender, data_receiver) = smpsc::channel::<BytesMut>();
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
 
     thread::spawn(move || -> StrResult {
@@ -398,9 +393,8 @@ pub async fn play_audio_loop(
         Ok(())
     });
 
-    while let Some(data) = receiver.recv().await {
+    loop {
+        let (_, data) = receiver.recv_buffer().await?;
         trace_err!(data_sender.send(data))?;
     }
-
-    Ok(())
 }

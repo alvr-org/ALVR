@@ -5,12 +5,9 @@ use futures::future::BoxFuture;
 use nalgebra::Translation3;
 use settings_schema::Switch;
 use std::{collections::HashMap, future, net::IpAddr, process::Command, sync::Arc, time::Duration};
-use tokio::{
-    sync::{mpsc as tmpsc, Mutex},
-    task, time,
-};
+use tokio::{sync::Mutex, time};
 
-const RETRY_CONNECT_INTERVAL: Duration = Duration::from_millis(500);
+const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_millis(500);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(5);
 
 fn align32(value: f32) -> u32 {
@@ -377,7 +374,7 @@ async fn connection_pipeline() -> StrResult {
 
     let settings = SESSION_MANAGER.lock().get().to_settings();
 
-    let stream_socket = tokio::select! {
+    let mut stream_socket = tokio::select! {
         res = StreamSocket::connect_to_client(
             client_ip,
             settings.connection.stream_port,
@@ -387,9 +384,6 @@ async fn connection_pipeline() -> StrResult {
             return fmt_e!("Timeout while setting up streams");
         }
     };
-
-    // let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
-    // let microphone_sender = stream_socket.request_stream(AUDIO).await?;
 
     log_id(LogId::ClientConnected);
 
@@ -414,27 +408,26 @@ async fn connection_pipeline() -> StrResult {
     let _stream_guard = StreamCloseGuard;
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
-        let control_sender = control_sender.clone();
-        let device = trace_err!({
-            let id = desc.device_id;
-            task::spawn_blocking(|| AudioDevice::new(id, AudioDeviceType::Output)).await
-        })??;
+        let device = AudioDevice::new(desc.device_id, AudioDeviceType::Output)?;
         let sample_rate = audio::get_sample_rate(&device)?;
+        let game_audio_sender = stream_socket.request_stream(AUDIO).await?;
+
         Box::pin(audio::record_audio_loop(
             device,
             2,
             sample_rate,
             desc.mute_when_streaming,
-            control_sender,
+            game_audio_sender,
         ))
     } else {
         Box::pin(future::pending())
     };
 
-    let (microphone_sender, microphone_receiver) = tmpsc::unbounded_channel();
     let microphone_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.microphone {
         let device = AudioDevice::new(desc.device_id, AudioDeviceType::VirtualMicrophone)?;
         let sample_rate = audio::get_sample_rate(&device)?;
+        let microphone_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
+
         Box::pin(audio::play_audio_loop(
             device,
             1,
@@ -490,9 +483,6 @@ async fn connection_pipeline() -> StrResult {
                     #[cfg(windows)]
                     crate::RequestIDR()
                 },
-                Ok(ClientControlPacket::ReservedBuffer(data)) => {
-                    microphone_sender.send(data).ok();
-                }
                 Ok(_) => (),
                 Err(e) => {
                     log_id(LogId::ClientDisconnected);
@@ -530,7 +520,7 @@ pub async fn connection_lifecycle_loop() {
             async {
                 show_err(connection_pipeline().await);
             },
-            time::sleep(RETRY_CONNECT_INTERVAL),
+            time::sleep(RETRY_CONNECT_MIN_INTERVAL),
         );
     }
 }

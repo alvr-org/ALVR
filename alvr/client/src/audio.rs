@@ -1,12 +1,11 @@
-use alvr_common::{data::ClientControlPacket, sockets::ControlSocketSender, *};
-use oboe::*;
-use std::{
-    collections::VecDeque,
-    mem,
-    sync::{mpsc as smpsc, Arc},
-    thread,
+use alvr_common::{
+    sockets::{StreamReceiver, StreamSender},
+    *,
 };
-use tokio::sync::{mpsc as tmpsc, Mutex};
+use bytes::BytesMut;
+use oboe::*;
+use std::{collections::VecDeque, mem, sync::mpsc as smpsc, thread};
+use tokio::sync::mpsc as tmpsc;
 
 struct RecorderCallback {
     sender: tmpsc::UnboundedSender<Vec<u8>>,
@@ -32,10 +31,7 @@ impl AudioInputCallback for RecorderCallback {
     }
 }
 
-pub async fn record_audio_loop(
-    sample_rate: u32,
-    sender: Arc<Mutex<ControlSocketSender<ClientControlPacket>>>,
-) -> StrResult {
+pub async fn record_audio_loop(sample_rate: u32, sender: StreamSender<()>) -> StrResult {
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
     let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
 
@@ -66,11 +62,9 @@ pub async fn record_audio_loop(
     });
 
     while let Some(data) = data_receiver.recv().await {
-        sender
-            .lock()
-            .await
-            .send(&ClientControlPacket::ReservedBuffer(data))
-            .await?;
+        let mut buffer = sender.new_buffer(&(), data.len())?;
+        buffer.get_mut().extend(data);
+        sender.send_buffer(buffer).await?;
     }
 
     Ok(())
@@ -79,7 +73,7 @@ pub async fn record_audio_loop(
 const OUTPUT_FRAME_SIZE: usize = 2 * mem::size_of::<i16>();
 
 struct PlayerCallback {
-    receiver: smpsc::Receiver<Vec<u8>>,
+    receiver: smpsc::Receiver<BytesMut>,
     sample_buffer: VecDeque<u8>,
     buffer_range_multiplier: usize,
     last_input_buffer_size: usize,
@@ -136,9 +130,9 @@ impl AudioOutputCallback for PlayerCallback {
 pub async fn play_audio_loop(
     sample_rate: u32,
     buffer_range_multiplier: u64,
-    mut receiver: tmpsc::UnboundedReceiver<Vec<u8>>,
+    mut receiver: StreamReceiver<()>,
 ) -> StrResult {
-    let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
+    let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<BytesMut>();
     let (data_sender, data_receiver) = smpsc::channel();
 
     thread::spawn(move || -> StrResult {
@@ -169,9 +163,8 @@ pub async fn play_audio_loop(
         Ok(())
     });
 
-    while let Some(data) = receiver.recv().await {
+    loop {
+        let (_, data) = receiver.recv_buffer().await?;
         trace_err!(data_sender.send(data))?;
     }
-
-    Ok(())
 }

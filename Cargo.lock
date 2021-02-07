@@ -84,6 +84,7 @@ dependencies = [
  "alvr_common",
  "android_logger",
  "bindgen 0.57.0",
+ "bytes",
  "cc",
  "futures",
  "jni 0.18.0",

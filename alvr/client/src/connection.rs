@@ -19,7 +19,7 @@ use std::{
     future, slice,
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc as smpsc, Arc,
+        Arc,
     },
     time::Duration,
 };
@@ -180,7 +180,7 @@ async fn connection_pipeline(
             settings.connection.stream_port,
             settings.connection.stream_config,
         ) => res?,
-        _ = time::sleep(Duration::from_secs(1)) => {
+        _ = time::sleep(Duration::from_secs(2)) => {
             return fmt_e!("Timeout while setting up streams");
         }
     };
@@ -353,63 +353,26 @@ async fn connection_pipeline(
         }
     };
 
-    let (microphone_sender, mut microphone_receiver) = tmpsc::unbounded_channel();
-    let microphone_loop: BoxFuture<_> = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
-        let control_sender = control_sender.clone();
-        Box::pin(async move {
-            while let Some(data) = microphone_receiver.recv().await {
-                control_sender
-                    .lock()
-                    .await
-                    .send(&ClientControlPacket::ReservedBuffer(data))
-                    .await?;
-            }
-
-            StrResult::Ok(())
-        })
+    let (game_audio_sender, game_audio_receiver) = tmpsc::unbounded_channel();
+    let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
+        Box::pin(audio::play_audio_loop(
+            config_packet.game_audio_sample_rate,
+            desc.buffer_range_multiplier,
+            game_audio_receiver,
+        ))
     } else {
         Box::pin(future::pending())
     };
 
-    let (game_audio_sender, game_audio_receiver) = smpsc::channel();
-    let (_destroy_stream_park_notifier, destroy_stream_park_receiver) = smpsc::channel::<()>();
-
-    // blocking streams park
-    std::thread::spawn({
-        let game_audio = settings.audio.game_audio;
-        let microphone = settings.audio.microphone;
-        let game_audio_sample_rate = config_packet.game_audio_sample_rate;
-        let microphone_sample_rate = config_packet.microphone_sample_rate;
-        move || {
-            let mut _game_audio_stream_guard = if let Switch::Enabled(desc) = game_audio {
-                Some(audio::AudioPlayer::start(
-                    game_audio_sample_rate,
-                    desc.buffer_range_multiplier,
-                    game_audio_receiver,
-                )?)
-            } else {
-                None
-            };
-
-            let mut _microphone_stream_guard = if let Switch::Enabled(_) = microphone {
-                Some(audio::AudioRecorder::start(
-                    microphone_sample_rate,
-                    microphone_sender,
-                )?)
-            } else {
-                None
-            };
-
-            // notified when the notifier counterpart gets dropped
-            destroy_stream_park_receiver.recv().ok();
-
-            // the microphone gets stuck on stop(), drop the game audio stream first
-            drop(_game_audio_stream_guard);
-            drop(_microphone_stream_guard);
-
-            StrResult::Ok(())
-        }
-    });
+    let microphone_loop: BoxFuture<_> = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
+        let control_sender = control_sender.clone();
+        Box::pin(audio::record_audio_loop(
+            config_packet.microphone_sample_rate,
+            control_sender,
+        ))
+    } else {
+        Box::pin(future::pending())
+    };
 
     let keepalive_sender_loop = {
         let control_sender = control_sender.clone();
@@ -466,13 +429,14 @@ async fn connection_pipeline(
     };
 
     tokio::select! {
-        res = stream_socket.receive_loop() => res,
         res = stream_socket_loop => trace_err!(res)?,
+        res = stream_socket.receive_loop() => res,
+        res = game_audio_loop => res,
         res = microphone_loop => res,
         res = tracking_loop => res,
         res = playspace_sync_loop => res,
-        res = control_loop => res,
         res = keepalive_sender_loop => res,
+        res = control_loop => res,
     }
 }
 

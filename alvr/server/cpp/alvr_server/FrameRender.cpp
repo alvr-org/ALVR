@@ -1,7 +1,6 @@
 #include "FrameRender.h"
 #include "Utils.h"
 #include "Logger.h"
-#include "resource.h"
 #include "Settings.h"
 
 extern uint64_t g_DriverTestMode;

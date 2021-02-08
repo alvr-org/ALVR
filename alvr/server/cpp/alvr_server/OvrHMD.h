@@ -12,7 +12,6 @@
 #include "Settings.h"
 
 #include "packet_types.h"
-#include "resource.h"
 #include "VideoEncoder.h"
 #include "VideoEncoderNVENC.h"
 #include "VideoEncoderVCE.h"

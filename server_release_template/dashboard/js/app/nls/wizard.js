@@ -32,7 +32,7 @@ define({
         "qualityPerformance": "Visual quality",
         // Import page
         "titleImport": "Import ALVR preset",
-        "textImport": "You can import settings or preset files (.json): <ul><li> Presets for a specific headset. This is recommended for the <b>Oculus Go</b> (search for <code>oculus_go_preset.json</code> in the installation folder).<li> Settings from a previous ALVR installation (<code>session.json</code>).<ul>",
+        "textImport": "You can import settings or preset files (.json): <ul><li> Presets for a specific headset. This is recommended for the <b>Oculus Go</b> (search for <code>oculus_go.json</code> in the installation folder).<li> Settings from a previous ALVR installation (<code>session.json</code>).<ul>",
         // End page
         "titleFinished": "Finished",
         "textFinished": "You can always restart this setup wizard from the \"Installation\" tab on the left",

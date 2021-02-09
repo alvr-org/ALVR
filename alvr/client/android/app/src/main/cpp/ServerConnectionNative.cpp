@@ -30,24 +30,10 @@
 #include <utility>
 #include <bits/fcntl.h>
 
-struct SendBuffer {
-    char buf[MAX_PACKET_UDP_PACKET_SIZE];
-    int len;
-};
-
 class ServerConnectionNative {
 public:
-    int m_sock = -1;
     bool m_connected = false;
 
-    sockaddr_in m_serverAddr = {};
-
-    std::list<sockaddr_in> m_broadcastAddrList;
-// Connection has lost when elapsed 3 seconds from last packet.
-
-    bool m_stopped = false;
-
-    time_t m_prevSentSync = 0;
     int64_t m_timeDiff = 0;
     uint64_t timeSyncSequence = (uint64_t) -1;
     uint64_t m_lastFrameIndex = 0;
@@ -59,31 +45,21 @@ public:
     jobject m_instance;
     jmethodID mOnDisconnectedMethodID;
     jmethodID mOnHapticsFeedbackID;
-
-    int m_notifyPipe[2] = {-1, -1};
-    std::mutex pipeMutex;
-    std::list<SendBuffer> m_sendQueue;
-
-    fd_set fds{}, fds_org{};
-    int nfds = 0;
 };
 
 namespace {
     ServerConnectionNative g_socket;
 }
 
-void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, const char *ip,
-                      unsigned int codec, unsigned int bufferSize, bool enableFEC) {
+void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, unsigned int codec,
+                      bool enableFEC) {
     auto *env = (JNIEnv *) v_env;
     auto *instance = (jobject) v_instance;
     auto *nalClass = (jclass) v_nalClass;
 
-    //
-    // Initialize variables
-    //
+    g_socket.m_env = env;
+    g_socket.m_instance = env->NewGlobalRef(instance);
 
-    g_socket.m_stopped = false;
-    g_socket.m_prevSentSync = 0;
     g_socket.m_prevVideoSequence = 0;
     g_socket.m_timeDiff = 0;
 
@@ -93,98 +69,14 @@ void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, const cha
     env->DeleteLocalRef(clazz);
 
     g_socket.m_nalParser = std::make_shared<NALParser>(env, instance, nalClass, enableFEC);
-
-
-    //
-    // UdpSocket
-    //
-    int val;
-    socklen_t len;
-
-    g_socket.m_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (g_socket.m_sock < 0) {
-        throw FormatException("socket error : %d %s", errno, strerror(errno));
-    }
-    val = 1;
-    int flags = fcntl(g_socket.m_sock, F_GETFL, 0);
-    fcntl(g_socket.m_sock, F_SETFL, flags | O_NONBLOCK);
-
-    // To avoid EADDRINUSE when previous process (or thread) remains live.
-    val = 1;
-    setsockopt(g_socket.m_sock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
-
-    //
-    // UdpSocket recv buffer
-    //
-
-    //setMaxSocketBuffer();
-    // 30Mbps 50ms buffer
-    getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &len);
-    LOGI("Default socket recv buffer is %d bytes", val);
-
-    val = 30 * 1000 * 500 / 8;
-    setsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, sizeof(val));
-    len = sizeof(val);
-    getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &len);
-    LOGI("Current socket recv buffer is %d bytes", val);
-
-    sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(9944);
-    addr.sin_addr.s_addr = INADDR_ANY;
-    if (bind(g_socket.m_sock, (sockaddr *) &addr, sizeof(addr)) < 0) {
-        throw FormatException("bind error : %d %s", errno, strerror(errno));
-    }
-
-    //
-    // Pipe used for send buffer notification.
-    //
-
-    if (pipe2(g_socket.m_notifyPipe, O_NONBLOCK) < 0) {
-        throw FormatException("pipe2 error : %d %s", errno, strerror(errno));
-    }
-
-    LOGI("ServerConnectionNative initialized.");
-
-
-    // setup loop
-
-    FD_ZERO(&g_socket.fds);
-    FD_ZERO(&g_socket.fds_org);
-
-    FD_SET(g_socket.m_sock, &g_socket.fds_org);
-    FD_SET(g_socket.m_notifyPipe[0], &g_socket.fds_org);
-    g_socket.nfds = std::max(g_socket.m_sock, g_socket.m_notifyPipe[0]) + 1;
-
-    g_socket.m_env = env;
-    g_socket.m_instance = env->NewGlobalRef(instance);
-
-
-    // connect
-
-    inet_pton(AF_INET, ip, &g_socket.m_serverAddr.sin_addr);
-    g_socket.m_serverAddr.sin_port = htons(9944);
-
-    LOGI("Try setting recv buffer size = %d bytes", bufferSize);
-    val = bufferSize;
-    setsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, sizeof(val));
-    socklen_t socklen = sizeof(val);
-    getsockopt(g_socket.m_sock, SOL_SOCKET, SO_RCVBUF, (char *) &val, &socklen);
-    LOGI("Current socket recv buffer is %d bytes", val);
-
-    g_socket.m_prevVideoSequence = 0;
-    g_socket.m_timeDiff = 0;
-    LatencyCollector::Instance().resetAll();
     g_socket.m_nalParser->setCodec(codec);
+
+    LatencyCollector::Instance().resetAll();
 
     g_socket.m_connected = true;
 }
 
-int send(const void *buf, size_t len) {
-    LOGSOCKET("Sending %zu bytes", len);
-    return (int) sendto(g_socket.m_sock, buf, len, 0, (sockaddr *) &g_socket.m_serverAddr,
-                        sizeof(g_socket.m_serverAddr));
-}
+void (*legacySend)(const unsigned char *buffer, unsigned int size);
 
 void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
                           uint32_t fromPacketCounter,
@@ -194,8 +86,7 @@ void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
     report.lostFrameType = frameType;
     report.fromPacketCounter = fromPacketCounter;
     report.toPacketCounter = toPacketCounter;
-    int ret = send(&report, sizeof(report));
-    LOGI("Sent packet loss report. ret=%d", ret);
+    legacySend((const unsigned char *) &report, sizeof(report));
 }
 
 void processVideoSequence(uint32_t sequence) {
@@ -214,7 +105,7 @@ void processVideoSequence(uint32_t sequence) {
     g_socket.m_prevVideoSequence = sequence;
 }
 
-void onPacketRecv(const char *packet, size_t packetSize) {
+void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
     uint32_t type = *(uint32_t *) packet;
     if (type == ALVR_PACKET_TYPE_VIDEO_FRAME) {
         auto *header = (VideoFrame *) packet;
@@ -259,7 +150,7 @@ void onPacketRecv(const char *packet, size_t packetSize) {
             TimeSync sendBuf = *timeSync;
             sendBuf.mode = 2;
             sendBuf.clientTime = Current;
-            send(&sendBuf, sizeof(sendBuf));
+            legacySend((const unsigned char *) &sendBuf, sizeof(sendBuf));
         }
     } else if (type == ALVR_PACKET_TYPE_HAPTICS) {
         if (packetSize < sizeof(HapticsFeedback)) {
@@ -271,160 +162,40 @@ void onPacketRecv(const char *packet, size_t packetSize) {
                                        static_cast<jlong>(header->startTime),
                                        header->amplitude, header->duration, header->frequency,
                                        static_cast<jboolean>(header->hand));
-
     }
 }
 
-void parse(char *packet, int packetSize, const sockaddr_in &addr) {
-    if (g_socket.m_connected) {
-        if (addr.sin_port != g_socket.m_serverAddr.sin_port ||
-            addr.sin_addr.s_addr != g_socket.m_serverAddr.sin_addr.s_addr) {
-            char str[1000];
-            // Invalid source address. Ignore.
-            inet_ntop(addr.sin_family, &addr.sin_addr, str, sizeof(str));
-            LOGE("Received packet from invalid source address. Address=%s:%d", str,
-                 htons(addr.sin_port));
-            return;
-        }
-        onPacketRecv(packet, packetSize);
-    }
-}
+void sendTimeSync() {
+    LOGI("Sending timesync.");
 
-void recv() {
-    char packet[MAX_PACKET_UDP_PACKET_SIZE];
-    sockaddr_in addr{};
-    socklen_t socklen = sizeof(addr);
+    TimeSync timeSync = {};
+    timeSync.type = ALVR_PACKET_TYPE_TIME_SYNC;
+    timeSync.mode = 0;
+    timeSync.clientTime = getTimestampUs();
+    timeSync.sequence = ++g_socket.timeSyncSequence;
 
-    while (true) {
-        int packetSize = static_cast<int>(recvfrom(g_socket.m_sock, packet,
-                                                   MAX_PACKET_UDP_PACKET_SIZE, 0,
-                                                   (sockaddr *) &addr,
-                                                   &socklen));
-        if (packetSize <= 0) {
-            LOGSOCKET("Error on recvfrom. ret=%d", packetSize);
-            return;
-        }
-        LOGSOCKET("recvfrom Ok. calling parse(). ret=%d", packetSize);
-        parse(packet, packetSize, addr);
-        LOGSOCKET("parse() end. ret=%d", packetSize);
-    }
-}
+    timeSync.packetsLostTotal = LatencyCollector::Instance().getPacketsLostTotal();
+    timeSync.packetsLostInSecond = LatencyCollector::Instance().getPacketsLostInSecond();
 
-void processReadPipe(int pipefd) {
-    char buf[2000];
-    int len = 1;
+    timeSync.averageTotalLatency = (uint32_t) LatencyCollector::Instance().getLatency(0, 0);
+    timeSync.maxTotalLatency = (uint32_t) LatencyCollector::Instance().getLatency(0, 1);
+    timeSync.minTotalLatency = (uint32_t) LatencyCollector::Instance().getLatency(0, 2);
 
-    int ret = static_cast<int>(read(pipefd, buf, len));
-    if (ret <= 0) {
-        return;
-    }
+    timeSync.averageTransportLatency = (uint32_t) LatencyCollector::Instance().getLatency(1, 0);
+    timeSync.maxTransportLatency = (uint32_t) LatencyCollector::Instance().getLatency(1, 1);
+    timeSync.minTransportLatency = (uint32_t) LatencyCollector::Instance().getLatency(1, 2);
 
-    SendBuffer sendBuffer{};
-    while (true) {
-        {
-            std::lock_guard<std::mutex> lock(g_socket.pipeMutex);
+    timeSync.averageDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2, 0);
+    timeSync.maxDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2, 1);
+    timeSync.minDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2, 2);
 
-            if (g_socket.m_sendQueue.empty()) {
-                break;
-            } else {
-                sendBuffer = g_socket.m_sendQueue.front();
-                g_socket.m_sendQueue.pop_front();
-            }
-        }
-        if (g_socket.m_stopped) {
-            return;
-        }
+    timeSync.fecFailure = g_socket.m_nalParser->fecFailure() ? 1 : 0;
+    timeSync.fecFailureTotal = LatencyCollector::Instance().getFecFailureTotal();
+    timeSync.fecFailureInSecond = LatencyCollector::Instance().getFecFailureInSecond();
 
-        //LOG("Sending tracking packet %d", sendBuffer.len);
-        send(sendBuffer.buf, sendBuffer.len);
-    }
-}
+    timeSync.fps = LatencyCollector::Instance().getFramesInSecond();
 
-void sendTimeSyncLocked() {
-    time_t current = time(nullptr);
-    if (g_socket.m_prevSentSync != current && g_socket.m_connected) {
-        LOGI("Sending timesync.");
-
-        TimeSync timeSync = {};
-        timeSync.type = ALVR_PACKET_TYPE_TIME_SYNC;
-        timeSync.mode = 0;
-        timeSync.clientTime = getTimestampUs();
-        timeSync.sequence = ++g_socket.timeSyncSequence;
-
-        timeSync.packetsLostTotal = LatencyCollector::Instance().getPacketsLostTotal();
-        timeSync.packetsLostInSecond = LatencyCollector::Instance().getPacketsLostInSecond();
-
-        timeSync.averageTotalLatency = (uint32_t) LatencyCollector::Instance().getLatency(0, 0);
-        timeSync.maxTotalLatency = (uint32_t) LatencyCollector::Instance().getLatency(0, 1);
-        timeSync.minTotalLatency = (uint32_t) LatencyCollector::Instance().getLatency(0, 2);
-
-        timeSync.averageTransportLatency = (uint32_t) LatencyCollector::Instance().getLatency(1, 0);
-        timeSync.maxTransportLatency = (uint32_t) LatencyCollector::Instance().getLatency(1, 1);
-        timeSync.minTransportLatency = (uint32_t) LatencyCollector::Instance().getLatency(1, 2);
-
-        timeSync.averageDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2, 0);
-        timeSync.maxDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2, 1);
-        timeSync.minDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2, 2);
-
-        timeSync.fecFailure = g_socket.m_nalParser->fecFailure() ? 1 : 0;
-        timeSync.fecFailureTotal = LatencyCollector::Instance().getFecFailureTotal();
-        timeSync.fecFailureInSecond = LatencyCollector::Instance().getFecFailureInSecond();
-
-        timeSync.fps = LatencyCollector::Instance().getFramesInSecond();
-
-        send(&timeSync, sizeof(timeSync));
-    }
-    g_socket.m_prevSentSync = current;
-}
-
-void doPeriodicWork() {
-    sendTimeSyncLocked();
-}
-
-void sendNative(long long nativeBuffer, int length) {
-    if (g_socket.m_connected) {
-        auto *packet = reinterpret_cast<char *>(nativeBuffer);
-
-        if (g_socket.m_stopped) {
-            return;
-        }
-        SendBuffer sendBuffer{};
-
-        memcpy(sendBuffer.buf, packet, length);
-        sendBuffer.len = length;
-
-        {
-            std::lock_guard<decltype(g_socket.pipeMutex)> lock(g_socket.pipeMutex);
-            g_socket.m_sendQueue.push_back(sendBuffer);
-        }
-        // Notify enqueue to loop thread
-        write(g_socket.m_notifyPipe[1], "", 1);
-    }
-}
-
-void runSocketLoopIter() {
-    timeval timeout{};
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 10 * 1000;
-    memcpy(&g_socket.fds, &g_socket.fds_org, sizeof(g_socket.fds));
-    int ret = select(g_socket.nfds, &g_socket.fds, nullptr, nullptr, &timeout);
-
-    if (ret == 0) {
-        doPeriodicWork();
-
-        // timeout
-        return;
-    }
-
-    if (FD_ISSET(g_socket.m_notifyPipe[0], &g_socket.fds)) {
-        //LOG("select pipe");
-        processReadPipe(g_socket.m_notifyPipe[0]);
-    }
-
-    if (FD_ISSET(g_socket.m_sock, &g_socket.fds)) {
-        recv();
-    }
-    doPeriodicWork();
+    legacySend((const unsigned char *) &timeSync, sizeof(timeSync));
 }
 
 unsigned char isConnectedNative() {
@@ -435,17 +206,9 @@ void closeSocket(void *v_env) {
     auto *env = (JNIEnv *) v_env;
 
     g_socket.m_connected = false;
-    memset(&g_socket.m_serverAddr, 0, sizeof(g_socket.m_serverAddr));
 
     env->CallVoidMethod(g_socket.m_instance, g_socket.mOnDisconnectedMethodID);
-
-    if (g_socket.m_notifyPipe[0] >= 0) {
-        close(g_socket.m_notifyPipe[0]);
-        close(g_socket.m_notifyPipe[1]);
-    }
+    env->DeleteGlobalRef(g_socket.m_instance);
 
     g_socket.m_nalParser.reset();
-    g_socket.m_sendQueue.clear();
-
-    env->DeleteGlobalRef(g_socket.m_instance);
 }

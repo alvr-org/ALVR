@@ -50,8 +50,6 @@
 
 		void InsertIDR();
 
-		void Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits);
-
 	private:
 		CThreadEvent m_newFrameReady, m_encodeFinished;
 		std::shared_ptr<VideoEncoder> m_videoEncoder;

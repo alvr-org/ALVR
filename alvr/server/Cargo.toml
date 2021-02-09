@@ -11,7 +11,6 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 parking_lot = "0.11"
 lazy_static = "1"
-lazy-static-include = "3"
 chrono = "0.4"
 log = "0.4"
 fern = "0.6"

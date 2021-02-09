@@ -1,11 +1,17 @@
-use crate::{ClientListAction, CLIENTS_UPDATED_NOTIFIER, RESTART_NOTIFIER, SESSION_MANAGER};
+use crate::{
+    ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER, RESTART_NOTIFIER,
+    SESSION_MANAGER,
+};
 use alvr_common::{audio::AudioDevice, data::*, logging::*, sockets::*, *};
 use audio::AudioDeviceType;
 use futures::future::BoxFuture;
 use nalgebra::Translation3;
 use settings_schema::Switch;
 use std::{collections::HashMap, future, net::IpAddr, process::Command, sync::Arc, time::Duration};
-use tokio::{sync::Mutex, time};
+use tokio::{
+    sync::{mpsc, Mutex},
+    time,
+};
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_millis(500);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(5);
@@ -194,9 +200,6 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         codec: matches!(settings.video.codec, CodecType::HEVC) as _,
         refresh_rate: fps as _,
         encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
-        throttling_bitrate_bits: settings.connection.throttling_bitrate_bits,
-        listen_port: settings.connection.stream_port,
-        client_address: client_ip.to_string(),
         controllers_tracking_system_name: session_settings
             .headset
             .controllers
@@ -410,14 +413,14 @@ async fn connection_pipeline() -> StrResult {
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         let device = AudioDevice::new(desc.device_id, AudioDeviceType::Output)?;
         let sample_rate = audio::get_sample_rate(&device)?;
-        let game_audio_sender = stream_socket.request_stream(AUDIO).await?;
+        let sender = stream_socket.request_stream(AUDIO).await?;
 
         Box::pin(audio::record_audio_loop(
             device,
             2,
             sample_rate,
             desc.mute_when_streaming,
-            game_audio_sender,
+            sender,
         ))
     } else {
         Box::pin(future::pending())
@@ -426,20 +429,46 @@ async fn connection_pipeline() -> StrResult {
     let microphone_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.microphone {
         let device = AudioDevice::new(desc.device_id, AudioDeviceType::VirtualMicrophone)?;
         let sample_rate = audio::get_sample_rate(&device)?;
-        let microphone_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
+        let receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
 
         Box::pin(audio::play_audio_loop(
             device,
             1,
             sample_rate,
             desc.buffer_range_multiplier,
-            microphone_receiver,
+            receiver,
         ))
     } else {
         Box::pin(future::pending())
     };
 
-    let keepalive_sender_loop = {
+    let legacy_send_loop = {
+        let socket_sender = stream_socket.request_stream(LEGACY).await?;
+        async move {
+            let (data_sender, mut data_receiver) = mpsc::unbounded_channel();
+            *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
+
+            while let Some(data) = data_receiver.recv().await {
+                let mut buffer = socket_sender.new_buffer(&(), data.len())?;
+                buffer.get_mut().extend(data);
+                socket_sender.send_buffer(buffer).await?;
+            }
+
+            Ok(())
+        }
+    };
+
+    let legacy_receive_loop = {
+        let mut receiver = stream_socket.subscribe_to_stream(LEGACY).await?;
+        async move {
+            loop {
+                let ((), mut data) = receiver.recv_buffer().await?;
+                unsafe { crate::LegacyReceive(data.as_mut_ptr(), data.len() as _) };
+            }
+        }
+    };
+
+    let keepalive_loop = {
         let control_sender = control_sender.clone();
         async move {
             loop {
@@ -496,6 +525,13 @@ async fn connection_pipeline() -> StrResult {
     };
 
     tokio::select! {
+        res = stream_socket.receive_loop() => res,
+        res = game_audio_loop => res,
+        res = microphone_loop => res,
+        res = legacy_send_loop => res,
+        res = legacy_receive_loop => res,
+        res = keepalive_loop => res,
+        res = control_loop => res,
         _ = RESTART_NOTIFIER.notified() => {
             control_sender
                 .lock()
@@ -506,11 +542,6 @@ async fn connection_pipeline() -> StrResult {
 
             Ok(())
         }
-        res = stream_socket.receive_loop() => res,
-        res = game_audio_loop => res,
-        res = microphone_loop => res,
-        res = keepalive_sender_loop => res,
-        res = control_loop => res,
     }
 }
 

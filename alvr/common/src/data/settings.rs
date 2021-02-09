@@ -284,14 +284,6 @@ pub struct ConnectionDesc {
     #[schema(advanced)]
     pub stream_port: u16,
 
-    // If disableThrottling=true, set throttlingBitrateBits to 0,
-    // Given audioBitrate=2000'000:
-    // If false, set throttlingBitrateBits=encodeBitrateMbs * 1000'000 * 3 / 2 + audioBitrate
-    #[schema(placeholder = "disable_throttling")]
-    //
-    #[schema(advanced)]
-    pub throttling_bitrate_bits: u64,
-
     // clientRecvBufferSize=max(encodeBitrateMbs * 2 + bufferOffset, 0)
     #[schema(placeholder = "buffer_offset")]
     //
@@ -476,7 +468,6 @@ pub fn session_settings_default() -> SettingsDefault {
                 variant: SocketConfigDefaultVariant::Tcp,
             },
             stream_port: 9944,
-            throttling_bitrate_bits: 30_000_000 * 3 / 2 + 2_000_000,
             client_recv_buffer_size: 60_000,
             aggressive_keyframe_resend: false,
             on_connect_script: "".into(),

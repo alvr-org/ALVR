@@ -1,8 +1,7 @@
-use crate::audio;
+use crate::{audio, MAYBE_LEGACY_SENDER};
 use alvr_common::{
     data::*,
-    logging::*,
-    sockets::{ConnectionResult, AUDIO},
+    sockets::{ConnectionResult, AUDIO, LEGACY},
     *,
 };
 use futures::future::BoxFuture;
@@ -15,16 +14,15 @@ use serde_json as json;
 use settings_schema::Switch;
 use sockets::StreamSocket;
 use std::{
-    ffi::CString,
     future, slice,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        mpsc as smpsc, Arc,
     },
     time::Duration,
 };
 use tokio::{
-    sync::Mutex,
+    sync::{mpsc as tmpsc, Mutex},
     task,
     time::{self, Instant},
 };
@@ -251,16 +249,41 @@ async fn connection_pipeline(
 
     // setup stream loops
 
+    let legacy_send_loop = {
+        let socket_sender = stream_socket.request_stream(LEGACY).await?;
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
+
+            while let Some(data) = data_receiver.recv().await {
+                let mut buffer = socket_sender.new_buffer(&(), data.len())?;
+                buffer.get_mut().extend(data);
+                socket_sender.send_buffer(buffer).await?;
+            }
+
+            Ok(())
+        }
+    };
+
+    let (legacy_receive_data_sender, legacy_receive_data_receiver) = smpsc::channel();
+    let legacy_receive_loop = {
+        let mut receiver = stream_socket.subscribe_to_stream(LEGACY).await?;
+        async move {
+            loop {
+                let ((), data) = receiver.recv_buffer().await?;
+                legacy_receive_data_sender.send(data).ok();
+            }
+        }
+    };
+
     // The main stream loop must be run in a normal thread, because it needs to access the JNI env
     // many times per second. If using a future I'm forced to attach and detach the env continuously.
-    // When the parent function gets canceled, this loop will run to finish.
-    let server_ip_cstring = CString::new(server_ip.to_string()).unwrap();
+    // When the parent function exits or gets canceled, this loop will run to finish.
     let legacy_stream_socket_loop = task::spawn_blocking({
         let java_vm = java_vm.clone();
         let activity_ref = activity_ref.clone();
         let nal_class_ref = nal_class_ref.clone();
         let codec = settings.video.codec;
-        let client_recv_buffer_size = settings.connection.client_recv_buffer_size;
         let enable_fec = settings.connection.enable_fec;
         move || -> StrResult {
             let env = trace_err!(java_vm.attach_current_thread())?;
@@ -273,14 +296,12 @@ async fn connection_pipeline(
                     env_ptr,
                     *activity_obj as _,
                     **nal_class as _,
-                    server_ip_cstring.as_ptr(),
                     matches!(codec, CodecType::HEVC) as _,
-                    client_recv_buffer_size as _,
                     enable_fec,
                 );
 
-                while is_connected.load(Ordering::Relaxed) {
-                    crate::runSocketLoopIter();
+                while let Ok(mut data) = legacy_receive_data_receiver.recv() {
+                    crate::legacyReceive(data.as_mut_ptr(), data.len() as _)
                 }
 
                 crate::closeSocket(env_ptr);
@@ -423,12 +444,14 @@ async fn connection_pipeline(
     };
 
     tokio::select! {
-        res = legacy_stream_socket_loop => trace_err!(res)?,
         res = stream_socket.receive_loop() => res,
         res = game_audio_loop => res,
         res = microphone_loop => res,
         res = tracking_loop => res,
         res = playspace_sync_loop => res,
+        res = legacy_send_loop => res,
+        res = legacy_receive_loop => res,
+        res = legacy_stream_socket_loop => trace_err!(res)?,
         res = keepalive_sender_loop => res,
         res = control_loop => res,
     }

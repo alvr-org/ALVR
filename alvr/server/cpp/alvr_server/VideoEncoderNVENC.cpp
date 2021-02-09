@@ -13,7 +13,7 @@ VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)
 	, m_renderHeight(height)
-	, m_bitrateInMBits(Settings::Instance().mEncodeBitrate.toMiBits())
+	, m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs)
 {
 	
 }
@@ -42,7 +42,7 @@ void VideoEncoderNVENC::Initialize()
 	NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
 	initializeParams.encodeConfig = &encodeConfig;
 
-	FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, Bitrate::fromMiBits(m_bitrateInMBits));
+	FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000);
 	   
 
 	try {
@@ -56,63 +56,6 @@ void VideoEncoderNVENC::Initialize()
 	}
 
 	Debug("CNvEncoder is successfully initialized.\n");
-}
-
-void VideoEncoderNVENC::Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits)
-{
-	if ((refreshRate != 0 && refreshRate != m_refreshRate) ||
-		(renderWidth != 0 && renderWidth != m_renderWidth) ||
-		(renderHeight != 0 && renderHeight != m_renderHeight) ||
-		(bitrateInMBits != 0 && bitrateInMBits != m_bitrateInMBits)) {
-		NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
-		NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
-
-		reconfigureParams.resetEncoder = 1; // Needed?
-		reconfigureParams.forceIDR = 1;
-		reconfigureParams.reInitEncodeParams.version = NV_ENC_INITIALIZE_PARAMS_VER;
-		reconfigureParams.reInitEncodeParams.encodeConfig = &encodeConfig;
-
-		FillEncodeConfig(reconfigureParams.reInitEncodeParams, refreshRate, renderWidth, renderHeight, Bitrate::fromMiBits(bitrateInMBits));
-
-		reconfigureParams.reInitEncodeParams.maxEncodeWidth = renderWidth;
-		reconfigureParams.reInitEncodeParams.maxEncodeHeight = renderHeight;
-
-		bool ret = false;
-		try {
-			ret = m_NvNecoder->Reconfigure(&reconfigureParams);
-		}
-		catch (NVENCException e) {
-			Error("NvEnc Reconfigure failed with exception. Code=%d %hs. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)\n", e.getErrorCode(), e.what()
-				, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
-				, refreshRate, renderWidth, renderHeight, bitrateInMBits
-			);
-			return;
-		}
-		if (!ret) {
-			Error("NvEnc Reconfigure failed. Return code=%d. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)\n", ret
-				, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
-				, refreshRate, renderWidth, renderHeight, bitrateInMBits
-			);
-			return;
-		}
-		Debug("NvEnc Reconfigure succeeded. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)\n"
-			, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
-			, refreshRate, renderWidth, renderHeight, bitrateInMBits
-		);
-
-		if (refreshRate != 0) {
-			m_refreshRate = refreshRate;
-		}
-		if (renderWidth != 0) {
-			m_renderWidth = renderWidth;
-		}
-		if (renderHeight != 0) {
-			m_renderHeight = renderHeight;
-		}
-		if (bitrateInMBits != 0) {
-			m_bitrateInMBits = bitrateInMBits;
-		}
-	}
 }
 
 void VideoEncoderNVENC::Shutdown()
@@ -174,7 +117,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	}
 }
 
-void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, Bitrate bitrate)
+void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, uint64_t bitrateBits)
 {
 	auto &encodeConfig = *initializeParams.encodeConfig;
 	GUID EncoderGUID = m_codec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
@@ -248,10 +191,10 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	// NV_ENC_PARAMS_RC_CBR_HQ is equivalent to NV_ENC_PARAMS_RC_2_PASS_FRAMESIZE_CAP.
 	//encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;// NV_ENC_PARAMS_RC_CBR_HQ;
 	encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;
-	uint32_t maxFrameSize = static_cast<uint32_t>(bitrate.toBits() / refreshRate);
+	uint32_t maxFrameSize = static_cast<uint32_t>(bitrateBits / refreshRate);
 	Debug("VideoEncoderNVENC: maxFrameSize=%d bits\n", maxFrameSize);
 	encodeConfig.rcParams.vbvBufferSize = maxFrameSize;
 	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize;
-	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrate.toBits());
-	encodeConfig.rcParams.averageBitRate = static_cast<uint32_t>(bitrate.toBits());
+	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrateBits);
+	encodeConfig.rcParams.averageBitRate = static_cast<uint32_t>(bitrateBits);
 }

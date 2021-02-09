@@ -1,5 +1,4 @@
 #include "ClientConnection.h"
-#include "Bitrate.h"
 
 ClientConnection::ClientConnection(
 	std::function<void()> poseUpdatedCallback,
@@ -14,86 +13,17 @@ ClientConnection::ClientConnection(
 
 	m_Statistics = std::make_shared<Statistics>();
 
-	m_Poller.reset(new Poller());
-
 	reed_solomon_init();
-
-	m_Socket = std::make_shared<UdpSocket>(m_Poller, m_Statistics, Settings::Instance().mThrottlingBitrate);
 	
 	videoPacketCounter = 0;
 	soundPacketCounter = 0;
 	m_fecPercentage = INITIAL_FEC_PERCENTAGE;
 	memset(&m_reportedStatistics, 0, sizeof(m_reportedStatistics));
 	m_Statistics->ResetAll();
-
-	// Start thread.
-	Start();
 }
 
 ClientConnection::~ClientConnection() {
 	DeleteCriticalSection(&m_CS);
-}
-
-void ClientConnection::Run() {
-	while (!m_bExiting) {
-		if (m_Poller->Do() == 0) {
-			if (m_Socket) {
-				m_Socket->Run();
-			}
-			continue;
-		}
-
-		if (m_Socket) {
-			sockaddr_in addr;
-			int addrlen = sizeof(addr);
-			char buf[2000];
-			int len = sizeof(buf);
-			if (m_Socket->Recv(buf, &len, &addr, addrlen)) {
-				ProcessRecv(buf, len, &addr);
-			}
-			m_Socket->Run();
-		}
-
-		uint64_t now = GetTimestampUs();
-		if (now - m_LastStatisticsUpdate > STATISTICS_TIMEOUT_US)
-		{
-			Info("#{ \"id\": \"statistics\", \"content\": {"
-				 "\"totalPackets\": %llu, "
-				 "\"packetRate\": %llu, "
-				 "\"packetsLostTotal\": %llu, "
-				 "\"packetsLostPerSecond\": %llu, "
-				 "\"totalSent\": %llu, "
-				 "\"sentRate\": %f, "
-				 "\"totalLatency\": %f, "
-				 "\"encodeLatency\": %f, "
-				 "\"encodeLatencyMax\": %f, "
-				 "\"transportLatency\": %f, "
-				 "\"decodeLatency\": %f, "
-				 "\"fecPercentage\": %d, "
-				 "\"fecFailureTotal\": %llu, "
-				 "\"fecFailureInSecond\": %llu, "
-				 "\"clientFPS\": %d, "
-				 "\"serverFPS\": %d"
-				 "} }#\n",
-				 m_Statistics->GetPacketsSentTotal(),
-				 m_Statistics->GetPacketsSentInSecond(),
-				 m_reportedStatistics.packetsLostTotal,
-				 m_reportedStatistics.packetsLostInSecond,
-				 m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000,
-				 m_Statistics->GetBitsSentInSecond() / 1000 / 1000.0,
-				 m_reportedStatistics.averageTotalLatency / 1000.0,
-				 (double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS,
-				 (double)(m_Statistics->GetEncodeLatencyMax()) / US_TO_MS,
-				 m_reportedStatistics.averageTransportLatency / 1000.0,
-				 m_reportedStatistics.averageDecodeLatency / 1000.0, m_fecPercentage,
-				 m_reportedStatistics.fecFailureTotal,
-				 m_reportedStatistics.fecFailureInSecond,
-				 m_reportedStatistics.fps,
-				 m_Statistics->GetFPS());
-			
-			m_LastStatisticsUpdate = now;
-		};
-	}
 }
 
 void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex) {
@@ -157,7 +87,7 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint6
 
 			header->packetCounter = videoPacketCounter;
 			videoPacketCounter++;
-			m_Socket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, frameIndex);
+			LegacySend((unsigned char *)packetBuffer, sizeof(VideoFrame) + copyLength);
 			header->fecIndex++;
 		}
 	}
@@ -169,7 +99,8 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint6
 
 			header->packetCounter = videoPacketCounter;
 			videoPacketCounter++;
-			m_Socket->Send((char *)packetBuffer, sizeof(VideoFrame) + copyLength, frameIndex);
+			
+			LegacySend((unsigned char *)packetBuffer, sizeof(VideoFrame) + copyLength);
 			header->fecIndex++;
 		}
 	}
@@ -198,21 +129,11 @@ void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, 
 	packetBuffer.duration = duration;
 	packetBuffer.frequency = frequency;
 	packetBuffer.hand = hand;
-	m_Socket->Send((char *)&packetBuffer, sizeof(HapticsFeedback));
+	LegacySend((unsigned char *)&packetBuffer, sizeof(HapticsFeedback));
 }
 
-void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
-	if (len < 4) {
-		return;
-	}
+void ClientConnection::ProcessRecv(unsigned char *buf, int len) {
 	uint32_t type = *(uint32_t*)buf;
-
-	Debug("Received packet. Type=%d\n", type);
-
-	if (!m_Socket->IsLegitClient(addr)) {
-		Debug("Received message from invalid address: %hs\n", AddrPortToStr(addr).c_str());
-		return;
-	}
 
 	if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
 		EnterCriticalSection(&m_CS);
@@ -242,7 +163,7 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			TimeSync sendBuf = *timeSync;
 			sendBuf.mode = 1;
 			sendBuf.serverTime = Current;
-			m_Socket->Send((char *)&sendBuf, sizeof(sendBuf), 0);
+			LegacySend((unsigned char *)&sendBuf, sizeof(sendBuf));
 
 			if (timeSync->fecFailure) {
 				OnFecFailure();
@@ -265,17 +186,46 @@ void ClientConnection::ProcessRecv(char *buf, int len, sockaddr_in *addr) {
 			OnFecFailure();
 		}
 	}
-}
 
-void ClientConnection::Stop()
-{
-	Debug("Listener::Stop()\n");
-	m_bExiting = true;
-
-	if (m_Socket) {
-		m_Socket->Shutdown();
-	}
-	Join();
+	uint64_t now = GetTimestampUs();
+	if (now - m_LastStatisticsUpdate > STATISTICS_TIMEOUT_US)
+	{
+		Info("#{ \"id\": \"statistics\", \"content\": {"
+			"\"totalPackets\": %llu, "
+			"\"packetRate\": %llu, "
+			"\"packetsLostTotal\": %llu, "
+			"\"packetsLostPerSecond\": %llu, "
+			"\"totalSent\": %llu, "
+			"\"sentRate\": %f, "
+			"\"totalLatency\": %f, "
+			"\"encodeLatency\": %f, "
+			"\"encodeLatencyMax\": %f, "
+			"\"transportLatency\": %f, "
+			"\"decodeLatency\": %f, "
+			"\"fecPercentage\": %d, "
+			"\"fecFailureTotal\": %llu, "
+			"\"fecFailureInSecond\": %llu, "
+			"\"clientFPS\": %d, "
+			"\"serverFPS\": %d"
+			"} }#\n",
+			m_Statistics->GetPacketsSentTotal(),
+			m_Statistics->GetPacketsSentInSecond(),
+			m_reportedStatistics.packetsLostTotal,
+			m_reportedStatistics.packetsLostInSecond,
+			m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000,
+			m_Statistics->GetBitsSentInSecond() / 1000 / 1000.0,
+			m_reportedStatistics.averageTotalLatency / 1000.0,
+			(double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS,
+			(double)(m_Statistics->GetEncodeLatencyMax()) / US_TO_MS,
+			m_reportedStatistics.averageTransportLatency / 1000.0,
+			m_reportedStatistics.averageDecodeLatency / 1000.0, m_fecPercentage,
+			m_reportedStatistics.fecFailureTotal,
+			m_reportedStatistics.fecFailureInSecond,
+			m_reportedStatistics.fps,
+			m_Statistics->GetFPS());
+		
+		m_LastStatisticsUpdate = now;
+	};
 }
 
 bool ClientConnection::HasValidTrackingInfo() const {
@@ -294,9 +244,6 @@ uint64_t ClientConnection::clientToServerTime(uint64_t clientTime) const {
 
 uint64_t ClientConnection::serverToClientTime(uint64_t serverTime) const {
 	return serverTime - m_TimeDiff;
-}
-
-void ClientConnection::Connect(const sockaddr_in *addr) {
 }
 
 void ClientConnection::OnFecFailure() {

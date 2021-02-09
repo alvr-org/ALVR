@@ -561,7 +561,7 @@ void sendTrackingInfo(bool clientsidePrediction) {
 
     LatencyCollector::Instance().tracking(frame->frameIndex);
 
-    sendNative(reinterpret_cast<long long int>(&info), static_cast<int>(sizeof(info)));
+    legacySend(reinterpret_cast<const unsigned char *>(&info), static_cast<int>(sizeof(info)));
 }
 
 OnResumeResult onResumeNative(void *v_surface, bool darkMode) {

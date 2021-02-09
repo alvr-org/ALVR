@@ -7,9 +7,7 @@
 #include <algorithm>
 #include "threadtools.h"
 #include "Logger.h"
-#include "UdpSocket.h"
 #include "Utils.h"
-#include "Poller.h"
 #include "packet_types.h"
 #include "Settings.h"
 #include "Statistics.h"
@@ -18,30 +16,25 @@ extern "C" {
 #include "reedsolomon/rs.h"
 };
 
-class ClientConnection : public CThread {
+class ClientConnection {
 public:
 
 	ClientConnection(std::function<void()> poseUpdatedCallback, std::function<void()> packetLossCallback);
 	~ClientConnection();
 
-	void Run() override;
 	void FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex);
 	void SendVideo(uint8_t *buf, int len, uint64_t frameIndex);
 	void SendAudio(uint8_t *buf, int len, uint64_t presentationTime);
 	void SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand);
-	void ProcessRecv(char *buf, int len, sockaddr_in *addr);
-	void Stop();
+	void ProcessRecv(unsigned char *buf, int len);
 	bool HasValidTrackingInfo() const;
 	void GetTrackingInfo(TrackingInfo &info);
 	uint64_t clientToServerTime(uint64_t clientTime) const;
 	uint64_t serverToClientTime(uint64_t serverTime) const;
-	void Connect(const sockaddr_in *addr);
 	void OnFecFailure();
 	std::shared_ptr<Statistics> GetStatistics();
 private:
 	bool m_bExiting;
-	std::shared_ptr<Poller> m_Poller;
-	std::shared_ptr<UdpSocket> m_Socket;
 	std::shared_ptr<Statistics> m_Statistics;
 
 	std::ofstream outfile;

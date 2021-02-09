@@ -54,7 +54,6 @@ OvrHmd::OvrHmd()
 		if (m_Listener)
 		{
 			Debug("OvrHmd::~OvrHmd(): Stopping network...\n");
-			m_Listener->Stop();
 			m_Listener.reset();
 		}
 

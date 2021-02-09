@@ -2,7 +2,6 @@
 
 #include <openvr_driver.h>
 #include "common-utils.h"
-#include "Bitrate.h"
 #include "Utils.h"
 #include "FFR.h"
 
@@ -62,15 +61,7 @@ public:
 	float m_sharpening;
 
 	int m_codec;
-	std::string m_EncoderOptions;
-	Bitrate mEncodeBitrate;
-
-	int m_Port;
-	std::string m_ConnectedClient;
-	Bitrate mThrottlingBitrate;
-
-
-	uint32_t m_clientRecvBufferSize;
+	uint64_t mEncodeBitrateMBs;
 
 	// Controller configs
 	std::string m_controllerTrackingSystemName;

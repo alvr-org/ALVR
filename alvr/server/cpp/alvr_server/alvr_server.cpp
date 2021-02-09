@@ -114,16 +114,16 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
 
 // bindigs for Rust
 
-const uint8_t *FRAME_RENDER_VS_CSO_PTR;
-uint32_t FRAME_RENDER_VS_CSO_LEN;
-const uint8_t *FRAME_RENDER_PS_CSO_PTR;
-uint32_t FRAME_RENDER_PS_CSO_LEN;
-const uint8_t *QUAD_SHADER_CSO_PTR;
-uint32_t QUAD_SHADER_CSO_LEN;
-const uint8_t *COMPRESS_SLICES_CSO_PTR;
-uint32_t COMPRESS_SLICES_CSO_LEN;
-const uint8_t *COLOR_CORRECTION_CSO_PTR;
-uint32_t COLOR_CORRECTION_CSO_LEN;
+const unsigned char *FRAME_RENDER_VS_CSO_PTR;
+unsigned int FRAME_RENDER_VS_CSO_LEN;
+const unsigned char *FRAME_RENDER_PS_CSO_PTR;
+unsigned int FRAME_RENDER_PS_CSO_LEN;
+const unsigned char *QUAD_SHADER_CSO_PTR;
+unsigned int QUAD_SHADER_CSO_LEN;
+const unsigned char *COMPRESS_SLICES_CSO_PTR;
+unsigned int COMPRESS_SLICES_CSO_LEN;
+const unsigned char *COLOR_CORRECTION_CSO_PTR;
+unsigned int COLOR_CORRECTION_CSO_LEN;
 
 const char *g_alvrDir;
 
@@ -132,6 +132,7 @@ void (*LogWarn)(const char *stringPtr);
 void (*LogInfo)(const char *stringPtr);
 void (*LogDebug)(const char *stringPtr);
 void (*DriverReadyIdle)();
+void (*LegacySend)(unsigned char *buf, int len);
 void (*ShutdownRuntime)();
 
 void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
@@ -169,6 +170,14 @@ void DeinitializeStreaming() {
 void RequestIDR() {
 	if (g_serverDriverDisplayRedirect.m_pRemoteHmd)
 		g_serverDriverDisplayRedirect.m_pRemoteHmd->RequestIDR();
+}
+
+void LegacyReceive(unsigned char *buf, int len) {
+	if (g_serverDriverDisplayRedirect.m_pRemoteHmd
+		&& g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener)
+	{
+		g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessRecv(buf, len);
+	}
 }
 
 extern "C" void ShutdownSteamvr() {

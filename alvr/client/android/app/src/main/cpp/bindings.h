@@ -61,9 +61,8 @@ extern "C" void onBatteryChangedNative(int battery);
 extern "C" GuardianData getGuardianData();
 
 extern "C" void
-initializeSocket(void *env, void *instance, void *nalClass, const char *ip, unsigned int codec,
-                 unsigned int bufferSize, bool enableFEC);
+initializeSocket(void *env, void *instance, void *nalClass, unsigned int codec, bool enableFEC);
+extern "C" void (*legacySend)(const unsigned char *buffer, unsigned int size);
+extern "C" void legacyReceive(const unsigned char *packet, unsigned int packetSize);
 extern "C" unsigned char isConnectedNative();
-extern "C" void runSocketLoopIter();
-extern "C" void sendNative(long long nativeBuffer, int bufferLength);
 extern "C" void closeSocket(void *env);

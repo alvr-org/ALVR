@@ -14,7 +14,6 @@ use bindings::*;
 
 use alvr_common::{data::*, logging::*, *};
 use lazy_static::lazy_static;
-use lazy_static_include::*;
 use parking_lot::Mutex;
 use std::{
     collections::{hash_map::Entry, HashSet},
@@ -22,6 +21,7 @@ use std::{
     net::IpAddr,
     os::raw::c_char,
     path::PathBuf,
+    ptr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, Once,
@@ -31,7 +31,7 @@ use std::{
 };
 use tokio::{
     runtime::Runtime,
-    sync::{broadcast, Notify},
+    sync::{broadcast, mpsc, Notify},
 };
 
 lazy_static! {
@@ -56,9 +56,22 @@ lazy_static! {
     static ref SESSION_MANAGER: Mutex<SessionManager> = Mutex::new(SessionManager::new(&ALVR_DIR));
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
     static ref CLIENTS_UPDATED_NOTIFIER: Notify = Notify::new();
+    static ref MAYBE_WINDOW: Mutex<Option<Arc<alcro::UI>>> = Mutex::new(None);
+    static ref MAYBE_LEGACY_SENDER: Mutex<Option<mpsc::UnboundedSender<Vec<u8>>>> = 
+        Mutex::new(None);
     static ref RESTART_NOTIFIER: Notify = Notify::new();
     static ref SHUTDOWN_NOTIFIER: Notify = Notify::new();
-    static ref MAYBE_WINDOW: Mutex<Option<Arc<alcro::UI>>> = Mutex::new(None);
+
+    static ref FRAME_RENDER_VS_CSO: Vec<u8> =
+        include_bytes!("../cpp/alvr_server/FrameRenderVS.cso").to_vec();
+    static ref FRAME_RENDER_PS_CSO: Vec<u8> =
+        include_bytes!("../cpp/alvr_server/FrameRenderPS.cso").to_vec();
+    static ref QUAD_SHADER_CSO: Vec<u8> =
+        include_bytes!("../cpp/alvr_server/QuadVertexShader.cso").to_vec();
+    static ref COMPRESS_SLICES_CSO: Vec<u8> =
+        include_bytes!("../cpp/alvr_server/CompressSlicesPixelShader.cso").to_vec();
+    static ref COLOR_CORRECTION_CSO: Vec<u8> =
+        include_bytes!("../cpp/alvr_server/ColorCorrectionPixelShader.cso").to_vec();
 }
 
 pub fn shutdown_runtime() {
@@ -299,14 +312,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
         show_err(init());
     });
 
-    lazy_static_include_bytes!(FRAME_RENDER_VS_CSO => "cpp/alvr_server/FrameRenderVS.cso");
-    lazy_static_include_bytes!(FRAME_RENDER_PS_CSO => "cpp/alvr_server/FrameRenderPS.cso");
-    lazy_static_include_bytes!(QUAD_SHADER_CSO => "cpp/alvr_server/QuadVertexShader.cso");
-    lazy_static_include_bytes!(COMPRESS_SLICES_CSO =>
-        "cpp/alvr_server/CompressSlicesPixelShader.cso");
-    lazy_static_include_bytes!(COLOR_CORRECTION_CSO =>
-        "cpp/alvr_server/ColorCorrectionPixelShader.cso");
-
     FRAME_RENDER_VS_CSO_PTR = FRAME_RENDER_VS_CSO.as_ptr();
     FRAME_RENDER_VS_CSO_LEN = FRAME_RENDER_VS_CSO.len() as _;
     FRAME_RENDER_PS_CSO_PTR = FRAME_RENDER_PS_CSO.as_ptr();
@@ -338,6 +343,19 @@ pub unsafe extern "C" fn HmdDriverFactory(
         log(log::Level::Debug, string_ptr);
     }
 
+    extern "C" fn legacy_send(buffer_ptr: *mut u8, len: i32) {
+        if let Some(sender) = &*MAYBE_LEGACY_SENDER.lock() {
+            let mut vec_buffer = vec![0; len as _];
+
+            // use copy_nonoverlapping (aka memcpy) to avoid freeing memory allocated by C++
+            unsafe {
+                ptr::copy_nonoverlapping(buffer_ptr, vec_buffer.as_mut_ptr(), len as _);
+            }
+
+            sender.send(vec_buffer).ok();
+        }
+    }
+
     extern "C" fn _shutdown_runtime() {
         shutdown_runtime();
     }
@@ -347,6 +365,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogInfo = Some(log_info);
     LogDebug = Some(log_debug);
     DriverReadyIdle = Some(driver_ready_idle);
+    LegacySend = Some(legacy_send);
     ShutdownRuntime = Some(_shutdown_runtime);
 
     // cast to usize to allow the variables to cross thread boundaries

@@ -68,6 +68,7 @@ public:
 
 	void updateIPDandFoV(const TrackingInfo& info);
 
+	std::shared_ptr<ClientConnection> m_Listener;
 private:
 	bool m_baseComponentsInitialized;
 	bool m_streamComponentsInitialized;
@@ -83,7 +84,6 @@ private:
 
 	std::shared_ptr<CD3DRender> m_D3DRender;
 	std::shared_ptr<CEncoder> m_encoder;
-	std::shared_ptr<ClientConnection> m_Listener;
 	std::shared_ptr<VSyncThread> m_VSyncThread;
 
 	std::shared_ptr<OvrController> m_leftController;

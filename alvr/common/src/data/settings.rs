@@ -265,7 +265,7 @@ pub struct HeadsetDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
-pub enum SocketConfig {
+pub enum SocketProtocol {
     Udp,
     Tcp,
 }
@@ -279,16 +279,10 @@ pub struct ConnectionDesc {
     #[schema(advanced, min = 1024, max = 65535)]
     pub web_server_port: u16,
 
-    pub stream_config: SocketConfig,
+    pub stream_protocol: SocketProtocol,
 
     #[schema(advanced)]
     pub stream_port: u16,
-
-    // clientRecvBufferSize=max(encodeBitrateMbs * 2 + bufferOffset, 0)
-    #[schema(placeholder = "buffer_offset")]
-    //
-    #[schema(advanced)]
-    pub client_recv_buffer_size: u64,
 
     pub aggressive_keyframe_resend: bool,
 
@@ -464,11 +458,10 @@ pub fn session_settings_default() -> SettingsDefault {
         connection: ConnectionDescDefault {
             auto_trust_clients: cfg!(debug_assertions),
             web_server_port: 8082,
-            stream_config: SocketConfigDefault {
-                variant: SocketConfigDefaultVariant::Udp,
+            stream_protocol: SocketProtocolDefault {
+                variant: SocketProtocolDefaultVariant::Udp,
             },
             stream_port: 9944,
-            client_recv_buffer_size: 60_000,
             aggressive_keyframe_resend: false,
             on_connect_script: "".into(),
             on_disconnect_script: "".into(),

@@ -202,17 +202,17 @@ impl StreamSocket {
     pub async fn connect_to_server(
         server_ip: IpAddr,
         port: u16,
-        stream_socket_config: SocketConfig,
+        stream_socket_config: SocketProtocol,
     ) -> StrResult<Self> {
         let (send_socket, receive_socket) = match stream_socket_config {
-            SocketConfig::Udp => {
+            SocketProtocol::Udp => {
                 let (send_socket, receive_socket) = udp::connect(server_ip, port).await?;
                 (
                     StreamSendSocket::Udp(send_socket),
                     StreamReceiveSocket::Udp(receive_socket),
                 )
             }
-            SocketConfig::Tcp => {
+            SocketProtocol::Tcp => {
                 let (send_socket, receive_socket) = tcp::connect_to_server(server_ip, port).await?;
                 (
                     StreamSendSocket::Tcp(send_socket),
@@ -231,17 +231,17 @@ impl StreamSocket {
     pub async fn connect_to_client(
         client_ip: IpAddr,
         port: u16,
-        config: SocketConfig,
+        protocol: SocketProtocol,
     ) -> StrResult<Self> {
-        let (send_socket, receive_socket) = match config {
-            SocketConfig::Udp => {
+        let (send_socket, receive_socket) = match protocol {
+            SocketProtocol::Udp => {
                 let (send_socket, receive_socket) = udp::connect(client_ip, port).await?;
                 (
                     StreamSendSocket::Udp(send_socket),
                     StreamReceiveSocket::Udp(receive_socket),
                 )
             }
-            SocketConfig::Tcp => {
+            SocketProtocol::Tcp => {
                 let (send_socket, receive_socket) = tcp::connect_to_client(client_ip, port).await?;
                 (
                     StreamSendSocket::Tcp(send_socket),

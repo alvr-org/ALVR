@@ -181,7 +181,7 @@ async fn connection_pipeline(
         res = StreamSocket::connect_to_server(
             server_ip,
             settings.connection.stream_port,
-            settings.connection.stream_config,
+            settings.connection.stream_protocol,
         ) => res?,
         _ = time::sleep(Duration::from_secs(2)) => {
             return fmt_e!("Timeout while setting up streams");

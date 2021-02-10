@@ -193,7 +193,6 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         target_eye_resolution_width: target_eye_width,
         target_eye_resolution_height: target_eye_height,
         seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
-        client_buffer_size: settings.connection.client_recv_buffer_size,
         force_3dof: settings.headset.force_3dof,
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
         adapter_index: settings.video.adapter_index,
@@ -381,7 +380,7 @@ async fn connection_pipeline() -> StrResult {
         res = StreamSocket::connect_to_client(
             client_ip,
             settings.connection.stream_port,
-            settings.connection.stream_config,
+            settings.connection.stream_protocol,
         ) => res?,
         _ = time::sleep(Duration::from_secs(2)) => {
             return fmt_e!("Timeout while setting up streams");

@@ -51,7 +51,6 @@ pub struct OpenvrConfig {
     pub target_eye_resolution_width: u32,
     pub target_eye_resolution_height: u32,
     pub seconds_from_vsync_to_photons: f32,
-    pub client_buffer_size: u64,
     pub force_3dof: bool,
     pub aggressive_keyframe_resend: bool,
     pub adapter_index: u32,

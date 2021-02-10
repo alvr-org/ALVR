@@ -36,6 +36,7 @@ const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
     "Please update either the app\n",
     "on the PC or on the headset"
 );
+const STREAM_STARTING_MESSAGE: &str = "The stream will begin soon\nPlease wait...";
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_millis(500);
@@ -53,7 +54,7 @@ impl Drop for StreamCloseGuard {
     }
 }
 
-async fn set_loading_message(
+fn set_loading_message(
     java_vm: &JavaVM,
     activity_ref: &GlobalRef,
     hostname: &str,
@@ -111,7 +112,7 @@ async fn connection_pipeline(
                 ServerHandshakePacket::ClientUntrusted => CLIENT_UNTRUSTED_MESSAGE,
                 ServerHandshakePacket::IncompatibleVersions => INCOMPATIBLE_VERSIONS_MESSAGE,
             };
-            set_loading_message(&*java_vm, &*activity_ref, hostname, message_str).await?;
+            set_loading_message(&*java_vm, &*activity_ref, hostname, message_str)?;
             return Ok(());
         }
         ConnectionResult::NetworkUnreachable => {
@@ -121,8 +122,7 @@ async fn connection_pipeline(
                 &*activity_ref,
                 hostname,
                 NETWORK_UNREACHABLE_MESSAGE,
-            )
-            .await?;
+            )?;
 
             time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
 
@@ -132,7 +132,6 @@ async fn connection_pipeline(
                 &private_identity.hostname,
                 INITIAL_MESSAGE,
             )
-            .await
             .ok();
 
             return Ok(());
@@ -141,11 +140,18 @@ async fn connection_pipeline(
     let control_sender = Arc::new(Mutex::new(control_sender));
 
     match control_receiver.recv().await {
-        Ok(ServerControlPacket::StartStream) => (),
+        Ok(ServerControlPacket::StartStream) => {
+            info!("Stream starting");
+            set_loading_message(
+                &*java_vm,
+                &*activity_ref,
+                &hostname,
+                STREAM_STARTING_MESSAGE,
+            )?;
+        }
         Ok(ServerControlPacket::Restarting) => {
             info!("Server restarting");
-            set_loading_message(&*java_vm, &*activity_ref, hostname, SERVER_RESTART_MESSAGE)
-                .await?;
+            set_loading_message(&*java_vm, &*activity_ref, hostname, SERVER_RESTART_MESSAGE)?;
             return Ok(());
         }
         Err(e) => {
@@ -155,13 +161,12 @@ async fn connection_pipeline(
                 &*activity_ref,
                 hostname,
                 SERVER_DISCONNECTED_MESSAGE,
-            )
-            .await?;
+            )?;
             return Ok(());
         }
         _ => {
             info!("Unexpected packet");
-            set_loading_message(&*java_vm, &*activity_ref, hostname, "Unexpected packet").await?;
+            set_loading_message(&*java_vm, &*activity_ref, hostname, "Unexpected packet")?;
             return Ok(());
         }
     }
@@ -300,8 +305,15 @@ async fn connection_pipeline(
                     enable_fec,
                 );
 
+                let mut idr_requested = false;
+
                 let mut statistics_deadline = Instant::now();
                 while let Ok(mut data) = legacy_receive_data_receiver.recv() {
+                    if !idr_requested {
+                        crate::IDR_REQUEST_NOTIFIER.notify_waiters();
+                        idr_requested = true;
+                    }
+
                     crate::legacyReceive(data.as_mut_ptr(), data.len() as _);
 
                     let now = Instant::now();
@@ -419,8 +431,7 @@ async fn connection_pipeline(
                         &*activity_ref,
                         hostname,
                         SERVER_DISCONNECTED_MESSAGE,
-                    )
-                    .await?;
+                    )?;
                     break Ok(());
                 }
 
@@ -447,8 +458,7 @@ async fn connection_pipeline(
                                     &*activity_ref,
                                     hostname,
                                     SERVER_RESTART_MESSAGE
-                                )
-                                .await?;
+                                )?;
                                 break Ok(());
                             }
                             Ok(_) => (),
@@ -459,8 +469,7 @@ async fn connection_pipeline(
                                     &*activity_ref,
                                     hostname,
                                     SERVER_DISCONNECTED_MESSAGE
-                                )
-                                .await?;
+                                )?;
                                 break Ok(());
                             }
                         }
@@ -480,8 +489,7 @@ async fn connection_pipeline(
                 &*activity_ref,
                 hostname,
                 SERVER_DISCONNECTED_MESSAGE
-            )
-            .await?;
+            )?;
 
             Ok(())
         },
@@ -511,7 +519,6 @@ pub async fn connection_lifecycle_loop(
         &private_identity.hostname,
         INITIAL_MESSAGE,
     )
-    .await
     .ok();
 
     // this loop has no exit, but the execution can be halted by the caller with tokio::select!{}
@@ -538,7 +545,6 @@ pub async fn connection_lifecycle_loop(
                         &private_identity.hostname,
                         &message,
                     )
-                    .await
                     .ok();
                 }
             },

@@ -4,31 +4,10 @@
 ////////////////////////////////////////////////////////////////////
 
 #include "bindings.h"
-
-#include <functional>
-#include <list>
-#include <string>
-#include <memory>
 #include <jni.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <new>
-#include <stack>
-#include <mutex>
 #include "packet_types.h"
 #include "nal.h"
-#include <cstdlib>
-#include <pthread.h>
-#include <endian.h>
-#include <algorithm>
-#include <cerrno>
-#include <sys/ioctl.h>
-#include "utils.h"
 #include "latency_collector.h"
-#include "exception.h"
-#include <utility>
-#include <bits/fcntl.h>
 
 class ServerConnectionNative {
 public:
@@ -72,8 +51,6 @@ void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, unsigned 
     g_socket.m_nalParser->setCodec(codec);
 
     LatencyCollector::Instance().resetAll();
-
-    g_socket.m_connected = true;
 }
 
 void (*legacySend)(const unsigned char *buffer, unsigned int size);
@@ -106,6 +83,8 @@ void processVideoSequence(uint32_t sequence) {
 }
 
 void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
+    g_socket.m_connected = true;
+
     uint32_t type = *(uint32_t *) packet;
     if (type == ALVR_PACKET_TYPE_VIDEO_FRAME) {
         auto *header = (VideoFrame *) packet;

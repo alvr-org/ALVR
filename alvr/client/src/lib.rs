@@ -11,12 +11,12 @@ use jni::{objects::*, *};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::{ptr, slice, sync::Arc};
-use tokio::{runtime::Runtime, sync::Notify, sync::mpsc};
+use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 
 lazy_static! {
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(None);
     static ref IDR_REQUEST_NOTIFIER: Notify = Notify::new();
-    static ref MAYBE_LEGACY_SENDER: Mutex<Option<mpsc::UnboundedSender<Vec<u8>>>> = 
+    static ref MAYBE_LEGACY_SENDER: Mutex<Option<mpsc::UnboundedSender<Vec<u8>>>> =
         Mutex::new(None);
     static ref ON_PAUSE_NOTIFIER: Notify = Notify::new();
 }

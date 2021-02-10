@@ -300,8 +300,16 @@ async fn connection_pipeline(
                     enable_fec,
                 );
 
+                let mut statistics_deadline = Instant::now();
                 while let Ok(mut data) = legacy_receive_data_receiver.recv() {
-                    crate::legacyReceive(data.as_mut_ptr(), data.len() as _)
+                    crate::legacyReceive(data.as_mut_ptr(), data.len() as _);
+
+                    let now = Instant::now();
+                    if now > statistics_deadline {
+                        // sendTimeSync() must be called on the same thread of initializeSocket()
+                        crate::sendTimeSync();
+                        statistics_deadline += Duration::from_secs(1);
+                    }
                 }
 
                 crate::closeSocket(env_ptr);
@@ -443,6 +451,7 @@ async fn connection_pipeline(
         }
     };
 
+    // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
         res = stream_socket.receive_loop() => res,
         res = game_audio_loop => res,

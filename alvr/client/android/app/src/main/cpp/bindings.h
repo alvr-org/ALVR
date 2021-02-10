@@ -64,5 +64,6 @@ extern "C" void
 initializeSocket(void *env, void *instance, void *nalClass, unsigned int codec, bool enableFEC);
 extern "C" void (*legacySend)(const unsigned char *buffer, unsigned int size);
 extern "C" void legacyReceive(const unsigned char *packet, unsigned int packetSize);
+extern "C" void sendTimeSync();
 extern "C" unsigned char isConnectedNative();
 extern "C" void closeSocket(void *env);

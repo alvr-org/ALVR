@@ -463,7 +463,11 @@ async fn connection_pipeline() -> StrResult {
         async move {
             loop {
                 let ((), mut data) = receiver.recv_buffer().await?;
-                unsafe { crate::LegacyReceive(data.as_mut_ptr(), data.len() as _) };
+
+                #[cfg(windows)]
+                unsafe {
+                    crate::LegacyReceive(data.as_mut_ptr(), data.len() as _)
+                };
             }
         }
     };
@@ -524,6 +528,7 @@ async fn connection_pipeline() -> StrResult {
         Ok(())
     };
 
+    // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
         res = stream_socket.receive_loop() => res,
         res = game_audio_loop => res,

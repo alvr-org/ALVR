@@ -465,7 +465,7 @@ pub fn session_settings_default() -> SettingsDefault {
             auto_trust_clients: cfg!(debug_assertions),
             web_server_port: 8082,
             stream_config: SocketConfigDefault {
-                variant: SocketConfigDefaultVariant::Tcp,
+                variant: SocketConfigDefaultVariant::Udp,
             },
             stream_port: 9944,
             client_recv_buffer_size: 60_000,

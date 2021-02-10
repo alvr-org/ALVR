@@ -306,12 +306,22 @@ async fn connection_pipeline(
                 );
 
                 let mut idr_requested = false;
+                let mut idr_request_deadline = None;
 
                 let mut statistics_deadline = Instant::now();
                 while let Ok(mut data) = legacy_receive_data_receiver.recv() {
+                    // Ugly patch to compensate for dropped packets at the start of the stream.
+                    // Send again IDR packet after 2s to wait for accumulated packets to be flushed.
+                    // todo: investigate why there is a delay at the start of the stream
                     if !idr_requested {
-                        crate::IDR_REQUEST_NOTIFIER.notify_waiters();
-                        idr_requested = true;
+                        if let Some(deadline) = idr_request_deadline {
+                            if deadline < Instant::now() {
+                                crate::IDR_REQUEST_NOTIFIER.notify_waiters();
+                                idr_requested = true;
+                            }
+                        } else {
+                            idr_request_deadline = Some(Instant::now() + Duration::from_secs(2));
+                        }
                     }
 
                     crate::legacyReceive(data.as_mut_ptr(), data.len() as _);

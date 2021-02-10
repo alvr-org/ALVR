@@ -133,6 +133,8 @@ void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, 
 }
 
 void ClientConnection::ProcessRecv(unsigned char *buf, int len) {
+	m_Statistics->CountPacket(len);
+
 	uint32_t type = *(uint32_t*)buf;
 
 	if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {

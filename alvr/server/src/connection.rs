@@ -14,7 +14,7 @@ use tokio::{
 };
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_millis(500);
-const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(5);
+const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -451,7 +451,7 @@ async fn connection_pipeline() -> StrResult {
             while let Some(data) = data_receiver.recv().await {
                 let mut buffer = socket_sender.new_buffer(&(), data.len())?;
                 buffer.get_mut().extend(data);
-                socket_sender.send_buffer(buffer).await?;
+                socket_sender.send_buffer(buffer).await.ok();
             }
 
             Ok(())
@@ -476,12 +476,16 @@ async fn connection_pipeline() -> StrResult {
         let control_sender = control_sender.clone();
         async move {
             loop {
-                control_sender
+                let res = control_sender
                     .lock()
                     .await
                     .send(&ServerControlPacket::KeepAlive)
-                    .await
-                    .ok();
+                    .await;
+                if let Err(e) = res {
+                    log_id(LogId::ClientDisconnected);
+                    info!("Client disconnected. Cause: {}", e);
+                    break Ok(());
+                }
                 time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
             }
         }
@@ -530,7 +534,14 @@ async fn connection_pipeline() -> StrResult {
 
     // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
-        res = stream_socket.receive_loop() => res,
+        res = stream_socket.receive_loop() => {
+            log_id(LogId::ClientDisconnected);
+            if let Err(e) = res {
+                info!("Client disconnected. Cause: {}", e);
+            }
+
+            Ok(())
+        },
         res = game_audio_loop => res,
         res = microphone_loop => res,
         res = legacy_send_loop => res,

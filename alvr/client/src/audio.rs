@@ -64,7 +64,7 @@ pub async fn record_audio_loop(sample_rate: u32, sender: StreamSender<()>) -> St
     while let Some(data) = data_receiver.recv().await {
         let mut buffer = sender.new_buffer(&(), data.len())?;
         buffer.get_mut().extend(data);
-        sender.send_buffer(buffer).await?;
+        sender.send_buffer(buffer).await.ok();
     }
 
     Ok(())

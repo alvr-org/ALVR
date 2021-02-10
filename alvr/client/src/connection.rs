@@ -40,7 +40,7 @@ const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_millis(500);
 const PLAYSPACE_SYNC_INTERVAL: Duration = Duration::from_millis(500);
-const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(5);
+const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 
 // close stream on Drop (manual disconnection or execution canceling)
 struct StreamCloseGuard {
@@ -258,7 +258,7 @@ async fn connection_pipeline(
             while let Some(data) = data_receiver.recv().await {
                 let mut buffer = socket_sender.new_buffer(&(), data.len())?;
                 buffer.get_mut().extend(data);
-                socket_sender.send_buffer(buffer).await?;
+                socket_sender.send_buffer(buffer).await.ok();
             }
 
             Ok(())
@@ -371,7 +371,8 @@ async fn connection_pipeline(
                         .lock()
                         .await
                         .send(&ClientControlPacket::PlayspaceSync(packet))
-                        .await?;
+                        .await
+                        .ok();
                 }
 
                 time::sleep(PLAYSPACE_SYNC_INTERVAL).await;
@@ -402,58 +403,88 @@ async fn connection_pipeline(
 
     let keepalive_sender_loop = {
         let control_sender = control_sender.clone();
+        let java_vm = java_vm.clone();
+        let activity_ref = activity_ref.clone();
         async move {
             loop {
-                control_sender
+                let res = control_sender
                     .lock()
                     .await
                     .send(&ClientControlPacket::KeepAlive)
-                    .await
-                    .ok();
+                    .await;
+                if let Err(e) = res {
+                    info!("Server disconnected. Cause: {}", e);
+                    set_loading_message(
+                        &*java_vm,
+                        &*activity_ref,
+                        hostname,
+                        SERVER_DISCONNECTED_MESSAGE,
+                    )
+                    .await?;
+                    break Ok(());
+                }
+
                 time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
             }
         }
     };
 
-    let control_loop = async move {
-        loop {
-            tokio::select! {
-                _ = crate::IDR_REQUEST_NOTIFIER.notified() => {
-                    control_sender.lock().await.send(&ClientControlPacket::RequestIDR).await?;
-                }
-                control_packet = control_receiver.recv() =>
-                    match control_packet {
-                        Ok(ServerControlPacket::Restarting) => {
-                            info!("Server restarting");
-                            set_loading_message(
-                                &*java_vm,
-                                &*activity_ref,
-                                hostname,
-                                SERVER_RESTART_MESSAGE
-                            )
-                            .await?;
-                            break Ok(());
-                        }
-                        Ok(_) => (),
-                        Err(e) => {
-                            info!("Server disconnected. Cause: {}", e);
-                            set_loading_message(
-                                &*java_vm,
-                                &*activity_ref,
-                                hostname,
-                                SERVER_DISCONNECTED_MESSAGE
-                            )
-                            .await?;
-                            break Ok(());
-                        }
+    let control_loop = {
+        let java_vm = java_vm.clone();
+        let activity_ref = activity_ref.clone();
+        async move {
+            loop {
+                tokio::select! {
+                    _ = crate::IDR_REQUEST_NOTIFIER.notified() => {
+                        control_sender.lock().await.send(&ClientControlPacket::RequestIDR).await?;
                     }
+                    control_packet = control_receiver.recv() =>
+                        match control_packet {
+                            Ok(ServerControlPacket::Restarting) => {
+                                info!("Server restarting");
+                                set_loading_message(
+                                    &*java_vm,
+                                    &*activity_ref,
+                                    hostname,
+                                    SERVER_RESTART_MESSAGE
+                                )
+                                .await?;
+                                break Ok(());
+                            }
+                            Ok(_) => (),
+                            Err(e) => {
+                                info!("Server disconnected. Cause: {}", e);
+                                set_loading_message(
+                                    &*java_vm,
+                                    &*activity_ref,
+                                    hostname,
+                                    SERVER_DISCONNECTED_MESSAGE
+                                )
+                                .await?;
+                                break Ok(());
+                            }
+                        }
+                }
             }
         }
     };
 
     // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
-        res = stream_socket.receive_loop() => res,
+        res = stream_socket.receive_loop() => {
+            if let Err(e) = res {
+                info!("Server disconnected. Cause: {}", e);
+            }
+            set_loading_message(
+                &*java_vm,
+                &*activity_ref,
+                hostname,
+                SERVER_DISCONNECTED_MESSAGE
+            )
+            .await?;
+
+            Ok(())
+        },
         res = game_audio_loop => res,
         res = microphone_loop => res,
         res = tracking_loop => res,

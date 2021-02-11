@@ -86,8 +86,9 @@ dependencies = [
  "bindgen 0.57.0",
  "bytes",
  "cc",
+ "cpal",
  "futures",
- "jni 0.18.0",
+ "jni 0.19.0",
  "lazy_static",
  "log",
  "nalgebra",
@@ -2122,9 +2123,9 @@ dependencies = [
 
 [[package]]
 name = "jni"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24967112a1e4301ca5342ea339763613a37592b8a6ce6cf2e4494537c7a42faf"
+checksum = "c6df18c2e3db7e453d3c6ac5b3e9d5182664d28788126d39b91f2d1e22b017ec"
 dependencies = [
  "cesu8",
  "combine 4.5.2",

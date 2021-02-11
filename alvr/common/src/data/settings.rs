@@ -402,7 +402,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         Index: 1,
                     },
                     mute_when_streaming: true,
-                    buffer_range_multiplier: 2,
+                    buffer_range_multiplier: 1,
                 },
             },
             microphone: SwitchDefault {

@@ -25,9 +25,10 @@ futures = "0.3"
 bytes = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 rand = "0.8"
+cpal = "0.13"
 
 # todo: move to target_os = "android"
-jni = "0.18"
+jni = "0.19"
 
 # todo: use CPAL when moving the entry point to Rust
 oboe = "0.4" # Note: cannot use feature "java-interface" to query audio info

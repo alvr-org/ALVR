@@ -406,7 +406,7 @@ async fn connection_pipeline(
         let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
         Box::pin(audio::play_audio_loop(
             config_packet.game_audio_sample_rate,
-            desc.buffer_range_multiplier,
+            desc.config,
             game_audio_receiver,
         ))
     } else {

@@ -1,4 +1,5 @@
 use alvr_common::{
+    data::AudioConfig,
     sockets::{StreamReceiver, StreamSender},
     *,
 };
@@ -9,6 +10,7 @@ use parking_lot::Mutex;
 use std::{
     cmp,
     collections::VecDeque,
+    f32::consts::PI,
     mem,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -81,18 +83,50 @@ pub async fn record_audio_loop(sample_rate: u32, sender: StreamSender<()>) -> St
     Ok(())
 }
 
+// Render a fade-out. It is aware of a in-progress fade-in
+// frame_buffer must have enough frames
+fn add_fade_out(
+    fade_outs: &mut VecDeque<(f32, f32)>,
+    frame_buffer: &VecDeque<(f32, f32)>,
+    fade_in_progress: &mut Option<usize>,
+    fade_frames_count: usize,
+) {
+    // fade_in_progress is set to None regardless
+    let progress_start = if let Some(progress) = fade_in_progress.take() {
+        fade_frames_count - progress
+    } else {
+        0
+    };
+
+    for idx in 0..fade_frames_count - progress_start {
+        let volume =
+            (PI * (idx + progress_start) as f32 / fade_frames_count as f32).cos() / 2. + 0.5;
+
+        if idx < fade_outs.len() {
+            fade_outs[idx].0 += frame_buffer[idx].0 * volume;
+            fade_outs[idx].1 += frame_buffer[idx].1 * volume;
+        } else {
+            fade_outs.push_back((frame_buffer[idx].0 * volume, frame_buffer[idx].1 * volume));
+        }
+    }
+}
+
 struct PlayerCallback {
-    // bucket where frames are normally read from
     frame_buffer: Arc<Mutex<VecDeque<(f32, f32)>>>,
 
-    // frames read in case frame_buffer has drained
-    last_packet: Arc<Mutex<Option<Vec<(f32, f32)>>>>,
+    // length of fade-in/out in frames
+    fade_frames_count: usize,
 
-    // last played sample, used to restart the exponential if needed
-    last_frame: (f32, f32),
+    // Prerendered fade-outs. In case of intermittent packet loss, multiple fade-outs could overlap.
+    // A separate buffer is used because the samples we need in frame_buffer could get removed
+    // due to buffer overgrowth.
+    fade_outs: Arc<Mutex<VecDeque<(f32, f32)>>>,
 
-    // no audio samples to play or recovering
-    disrupted: Arc<AtomicBool>,
+    // Fade-in progress
+    fade_in_progress: Arc<Mutex<Option<usize>>>,
+
+    // Interrupted state starts from the beginning of a fade-out and ends at the start of a fade-in
+    interrupted: Arc<AtomicBool>,
 }
 
 impl AudioOutputCallback for PlayerCallback {
@@ -104,13 +138,36 @@ impl AudioOutputCallback for PlayerCallback {
         out_frames: &mut [(f32, f32)],
     ) -> DataCallbackResult {
         let mut frame_buffer_ref = self.frame_buffer.lock();
+        let mut fade_outs_ref = self.fade_outs.lock();
+        let mut fade_in_progress_ref = self.fade_in_progress.lock();
 
-        let got_samples = frame_buffer_ref.len() >= out_frames.len();
-        if got_samples {
+        if frame_buffer_ref.len() >= out_frames.len() + self.fade_frames_count {
+            if self.interrupted.load(Ordering::SeqCst) {
+                self.interrupted.store(false, Ordering::SeqCst);
+
+                *fade_in_progress_ref = Some(0);
+            }
+
             let frames = frame_buffer_ref
                 .drain(0..out_frames.len())
                 .collect::<Vec<_>>();
             out_frames.copy_from_slice(&frames);
+
+            if let Some(progress) = &mut *fade_in_progress_ref {
+                for out_frame in out_frames.iter_mut() {
+                    let volume =
+                        (PI * *progress as f32 / self.fade_frames_count as f32).cos() / -2. + 0.5;
+                    out_frame.0 *= volume;
+                    out_frame.1 *= volume;
+
+                    if *progress < self.fade_frames_count {
+                        *progress += 1;
+                    } else {
+                        *fade_in_progress_ref = None;
+                        break;
+                    }
+                }
+            }
         } else {
             error!("audio buffer too small! size: {}", frame_buffer_ref.len());
 
@@ -118,106 +175,53 @@ impl AudioOutputCallback for PlayerCallback {
             // buzzing
             out_frames.fill((0., 0.));
 
-            self.disrupted.store(true, Ordering::Relaxed);
-        }
+            if !self.interrupted.load(Ordering::SeqCst) {
+                self.interrupted.store(true, Ordering::SeqCst);
 
-        if self.disrupted.load(Ordering::Relaxed) {
-            error!(
-                "distupted! got_samples {}, last_frame {:?}",
-                got_samples, self.last_frame
-            );
-
-            // steadily increasing volume
-            if got_samples {
-                error!("fade in");
-                let frames_count = out_frames.len() as f32;
-                for (i, (left, right)) in out_frames.iter_mut().enumerate() {
-                    let multiplier = i as f32 / frames_count;
-                    *left *= multiplier;
-                    *right *= multiplier;
-                }
-
-                self.disrupted.store(false, Ordering::Relaxed);
-            }
-
-            if !got_samples || self.last_frame != (0., 0.) {
-                if let Some(packet) = &*self.last_packet.lock() {
-                    if packet.len() > out_frames.len() {
-                        // find sample in the old packet that most closely matches the last played
-                        // sample, making sure there will be enough samples to play after that
-                        let maybe_index = packet[0..packet.len() - out_frames.len()]
-                            .iter()
-                            .enumerate()
-                            .map(|(i, (l, r))| {
-                                (
-                                    i,
-                                    (self.last_frame.0 - l).abs() + (self.last_frame.1 - r).abs(),
-                                )
-                            })
-                            .min_by(|(_, dist1), (_, dist2)| {
-                                // f32 does not implement Ord, so no cmp method
-                                if dist1 < dist2 {
-                                    cmp::Ordering::Less
-                                } else {
-                                    cmp::Ordering::Greater
-                                }
-                            })
-                            .map(|(i, _)| i);
-
-                        if let Some(idx) = maybe_index {
-                            // Calculate volume scaling to perfectly match the choosen frame. Very
-                            // often the resulting values will be close to 1.
-                            // Note: volume scaling is preferred to a bias. DC bias is removed by
-                            // the audio controller and will still cause a pop. This is why a
-                            // decreasing exponential bias will not work.
-                            let mut starting_frame = packet[idx];
-                            if starting_frame.0.abs() < f32::EPSILON {
-                                starting_frame.0 = f32::EPSILON;
-                            }
-                            if starting_frame.1.abs() < f32::EPSILON {
-                                starting_frame.1 = f32::EPSILON;
-                            }
-                            let left_scale =
-                                (self.last_frame.0 / starting_frame.0).clamp(-1.2, 1.2);
-                            let right_scale = self.last_frame.1 / starting_frame.1.clamp(-1.2, 1.2);
-                            // error!("starting_frame {:?}", starting_frame);
-                            // error!("last_frame {:?}", self.last_frame);
-                            error!("scale {} {}", left_scale, right_scale);
-
-                            let frames_count = out_frames.len() as f32;
-                            for (idx, (left, right)) in out_frames.iter_mut().enumerate() {
-                                let multiplier = 1. - (idx + 1) as f32 / frames_count;
-                                *left += packet[idx + 1].0 * left_scale * multiplier;
-                                *right += packet[idx + 1].1 * right_scale * multiplier;
-
-                                // The last iteration will leave "left" and "right" immutated. So
-                                // the last frame will be (0., 0.) if !got_samples.
-                            }
-                        }
-                    }
-                }
+                add_fade_out(
+                    &mut *fade_outs_ref,
+                    &*frame_buffer_ref,
+                    &mut fade_in_progress_ref,
+                    self.fade_frames_count,
+                );
             }
         }
 
-        self.last_frame = *out_frames.last().unwrap();
+        // drain fade-outs into the output frame buffer
+        let drained_frames_count = cmp::min(out_frames.len(), fade_outs_ref.len());
+        let mut drained_frames = fade_outs_ref.drain(0..drained_frames_count);
+        for out_frame in out_frames.iter_mut() {
+            if let Some(frame) = drained_frames.next() {
+                out_frame.0 += frame.0;
+                out_frame.1 += frame.1;
+            }
+        }
 
         DataCallbackResult::Continue
     }
 }
 pub async fn play_audio_loop(
     sample_rate: u32,
-    buffer_range_multiplier: u64,
+    config: AudioConfig,
     mut receiver: StreamReceiver<()>,
 ) -> StrResult {
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<BytesMut>();
 
-    let frame_buffer = Arc::new(Mutex::new(VecDeque::new()));
-    let last_packet = Arc::new(Mutex::new(None));
-    let disrupted = Arc::new(AtomicBool::new(false));
+    let fade_frames_count = sample_rate as usize * config.fade_ms as usize / 1000;
+    let min_buffer_frames_count = sample_rate as usize * config.min_buffering_ms as usize / 1000;
+
+    let frame_buffer = Arc::new(Mutex::new(VecDeque::from(vec![
+        (0., 0.);
+        fade_frames_count
+    ])));
+    let fade_outs = Arc::new(Mutex::new(VecDeque::new()));
+    let fade_in_progress = Arc::new(Mutex::new(None));
+    let interrupted = Arc::new(AtomicBool::new(false));
     thread::spawn({
         let frame_buffer = frame_buffer.clone();
-        let last_packet = last_packet.clone();
-        let disrupted = disrupted.clone();
+        let fade_outs = fade_outs.clone();
+        let fade_in_progress = fade_in_progress.clone();
+        let interrupted = interrupted.clone();
         move || -> StrResult {
             let mut stream = trace_err!(AudioStreamBuilder::default()
                 .set_shared()
@@ -230,9 +234,10 @@ pub async fn play_audio_loop(
                 .set_usage(Usage::Game)
                 .set_callback(PlayerCallback {
                     frame_buffer,
-                    last_packet,
-                    last_frame: (0., 0.),
-                    disrupted,
+                    fade_frames_count,
+                    fade_outs,
+                    fade_in_progress,
+                    interrupted,
                 })
                 .open_stream())?;
 
@@ -260,19 +265,26 @@ pub async fn play_audio_loop(
             .collect::<Vec<_>>();
 
         let mut frame_buffer_ref = frame_buffer.lock();
-
         frame_buffer_ref.extend(&frames);
-        *last_packet.lock() = Some(frames);
 
         // todo: use smarter policy with EventTiming
-        if frame_buffer_ref.len() > 2 * buffer_range_multiplier as usize * data.len() {
-            error!("draining audio buffer. size: {}", frame_buffer_ref.len());
+        let buffer_size = frame_buffer_ref.len();
+        if buffer_size > 2 * min_buffer_frames_count + fade_frames_count {
+            error!("draining audio buffer. size: {}", buffer_size);
 
-            let buffer_size = frame_buffer_ref.len();
-            frame_buffer_ref
-                .drain(0..(buffer_size - buffer_range_multiplier as usize * data.len()));
+            // Add a fade-out before draining frame_buffer
+            add_fade_out(
+                &mut *fade_outs.lock(),
+                &*frame_buffer_ref,
+                &mut *fade_in_progress.lock(),
+                fade_frames_count,
+            );
 
-            disrupted.store(true, Ordering::Relaxed);
+            // Trigger a fade-in
+            interrupted.store(true, Ordering::SeqCst);
+
+            // Drain frame_buffer
+            frame_buffer_ref.drain(0..(buffer_size - min_buffer_frames_count - fade_frames_count));
         }
     }
 }

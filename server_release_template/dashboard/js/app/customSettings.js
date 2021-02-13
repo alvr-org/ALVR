@@ -28,13 +28,10 @@ define([
         self.setCustomSettings = function () {
             try {
                 setVideoOptions();
-                setBitrateOptions();
                 setRefreshRate();
-                setDisableThrottling();
                 setHeadsetEmulation();
                 setControllerEmulation();
                 setTrackingSpeed();
-                setBufferOffset();
                 setTheme();
             } catch (error) {
                 Lobibox.notify("error", {
@@ -50,47 +47,6 @@ define([
                 });
             }
         };
-
-        function setBufferOffset() {
-            const bufferOffset = $("#_root_connection_bufferOffset");
-            bufferOffset.unbind();
-            bufferOffset.parent().addClass("special");
-
-            //readd the slider input listener to update the current value
-            bufferOffset.on("input", (el) => {
-                $("#_root_connection_bufferOffset_label").text(
-                    "[" + el.target.value + "]",
-                );
-            });
-
-            bufferOffset.prop("min", "-100");
-            bufferOffset.prop("max", "100");
-            bufferOffset.prop("step", "1");
-
-            const bitrate = $("#_root_video_encodeBitrateMbs");
-            const bufferSize = $("#_root_connection_clientRecvBufferSize");
-
-            bufferOffset.val(bufferSize.val() / 1000 - bitrate.val() * 2);
-            $("#_root_connection_bufferOffset_label").text(
-                "[" + bufferOffset.val() + "]",
-            );
-
-            bufferOffset.change((ev) => {
-                bufferSize.val(
-                    Math.max(
-                        bitrate.val() * 2 * 1000 + bufferOffset.val() * 1000,
-                        0,
-                    ),
-                );
-
-                console.log("buffer size now", bufferSize.val());
-                alvrSettings.storeParam(bufferSize);
-
-                //set default reset value to value defined by bitrate
-                const def = bufferSize.parent().find("i[default]");
-                def.attr("default", bufferSize.val());
-            });
-        }
 
         function setControllerEmulation() {
             let controller = $(
@@ -190,56 +146,6 @@ define([
                     alvrSettings.storeParam(target, true);
                 }
                 alvrSettings.storeSession("settings");
-            });
-        }
-
-        function setDisableThrottling() {
-            const disableThrottling = $("#_root_connection_disableThrottling");
-            const throttleBitrate = $(
-                "#_root_connection_throttlingBitrateBits",
-            );
-            const bitrate = $("#_root_video_encodeBitrateMbs");
-
-            disableThrottling.parent().addClass("special");
-            disableThrottling.unbind();
-
-            disableThrottling.parent().find(".helpReset").remove();
-            disableThrottling.after(
-                alvrSettings.getHelpReset(
-                    "disableThrottling",
-                    "_root_connection",
-                    false,
-                ),
-            );
-
-            let updating = false;
-            const updateCheckbox = function () {
-                updating = true;
-                if (throttleBitrate.val() == 0) {
-                    disableThrottling.prop("checked", true);
-                } else {
-                    disableThrottling.prop("checked", false);
-                }
-                updating = false;
-            };
-            updateCheckbox();
-
-            throttleBitrate.change((ev) => {
-                updateCheckbox();
-            });
-
-            disableThrottling.change((ev) => {
-                if (alvrSettings.isUpdating() || updating) {
-                    return;
-                }
-                if (disableThrottling.prop("checked")) {
-                    throttleBitrate.val(0);
-                } else {
-                    throttleBitrate.val(
-                        (bitrate.val() * 1000000 * 3) / 2 + 2000000,
-                    ); //2mbit for audio
-                }
-                alvrSettings.storeParam(throttleBitrate);
             });
         }
 
@@ -353,61 +259,6 @@ define([
 
                 update = false;
             });
-        }
-
-        function setBitrateOptions() {
-            const bitrate = $("#_root_video_encodeBitrateMbs");
-            const bufferOffset = $("#_root_connection_bufferOffset");
-            const bufferSize = $("#_root_connection_clientRecvBufferSize");
-            const throttleBitrate = $(
-                "#_root_connection_throttlingBitrateBits",
-            );
-            const disableThrottling = $("#_root_connection_disableThrottling");
-
-            bitrate.unbind();
-
-            bitrate.change((ev) => {
-                if (alvrSettings.isUpdating()) {
-                    return;
-                }
-
-                alvrSettings.storeParam(bitrate, true);
-
-                bufferSize.val(
-                    Math.max(
-                        bitrate.val() * 2 * 1000 + bufferOffset.val() * 1000,
-                        0,
-                    ),
-                );
-                alvrSettings.storeParam(bufferSize, true);
-
-                //set default reset value to value defined by bitrate
-                let def = bufferSize.parent().find("i[default]");
-                def.attr("default", bufferSize.val());
-
-                //50% margin
-                if (disableThrottling.prop("checked")) {
-                    throttleBitrate.val(0);
-                } else {
-                    throttleBitrate.val(
-                        (bitrate.val() * 1000000 * 3) / 2 + 2000000,
-                    ); //2mbit for audio
-                }
-
-                alvrSettings.storeParam(throttleBitrate, true);
-
-                def = throttleBitrate.parent().find("i[default]");
-                def.attr("default", throttleBitrate.val());
-
-                alvrSettings.storeSession("settings");
-            });
-
-            //set default reset buffer size according to bitrate
-            let def = bufferSize.parent().find("i[default]");
-            def.attr("default", bitrate.val() * 2 * 1000);
-
-            def = throttleBitrate.parent().find("i[default]");
-            def.attr("default", (bitrate.val() * 1000000 * 3) / 2 + 2000000); //2mbit for audio
         }
 
         function setRefreshRate() {

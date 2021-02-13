@@ -423,13 +423,11 @@ fn get_case(attrs: Vec<Attribute>) -> Result<Option<String>, TokenStream> {
             .map_err(|e| e.to_compile_error().into_token_stream())?;
         if let Meta::List(args_list) = parsed_attr {
             for arg in args_list.nested {
-                if let NestedMeta::Meta(meta_arg) = arg {
-                    if let Meta::NameValue(name_value_arg) = meta_arg {
-                        if let Some(arg_ident) = name_value_arg.path.get_ident() {
-                            if arg_ident == "rename_all" {
-                                if let Lit::Str(lit_str) = name_value_arg.lit {
-                                    return Ok(Some(lit_str.value()));
-                                }
+                if let NestedMeta::Meta(Meta::NameValue(name_value_arg)) = arg {
+                    if let Some(arg_ident) = name_value_arg.path.get_ident() {
+                        if arg_ident == "rename_all" {
+                            if let Lit::Str(lit_str) = name_value_arg.lit {
+                                return Ok(Some(lit_str.value()));
                             }
                         }
                     }

@@ -131,22 +131,24 @@ pub enum AudioDeviceId {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AudioConfig {
+    pub fade_ms: u64,
+    pub min_buffering_ms: u64,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OutputAudioDesc {
     pub device_id: AudioDeviceId,
-
     pub mute_when_streaming: bool,
-
-    #[schema(min = 1, max = 10)]
-    pub buffer_range_multiplier: u64,
+    pub config: AudioConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InputAudioDesc {
     pub device_id: AudioDeviceId,
-
-    #[schema(min = 1, max = 10)]
-    pub buffer_range_multiplier: u64,
+    pub config: AudioConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -402,7 +404,10 @@ pub fn session_settings_default() -> SettingsDefault {
                         Index: 1,
                     },
                     mute_when_streaming: true,
-                    buffer_range_multiplier: 1,
+                    config: AudioConfigDefault {
+                        fade_ms: 10,
+                        min_buffering_ms: 20,
+                    },
                 },
             },
             microphone: SwitchDefault {
@@ -413,7 +418,10 @@ pub fn session_settings_default() -> SettingsDefault {
                         Name: "".into(),
                         Index: 1,
                     },
-                    buffer_range_multiplier: 4,
+                    config: AudioConfigDefault {
+                        fade_ms: 20,
+                        min_buffering_ms: 50,
+                    },
                 },
             },
         },

@@ -434,7 +434,7 @@ async fn connection_pipeline() -> StrResult {
             device,
             1,
             sample_rate,
-            desc.buffer_range_multiplier,
+            4,
             receiver,
         ))
     } else {

@@ -254,8 +254,25 @@ async fn connection_pipeline(
 
     // setup stream loops
 
+    // let (debug_sender, mut debug_receiver) = tmpsc::unbounded_channel();
+    // let debug_loop = {
+    //     let control_sender = control_sender.clone();
+    //     async move {
+    //         while let Some(data) = debug_receiver.recv().await {
+    //             control_sender
+    //                 .lock()
+    //                 .await
+    //                 .send(&ClientControlPacket::Reserved(data))
+    //                 .await
+    //                 .ok();
+    //         }
+
+    //         Ok(())
+    //     }
+    // };
+
     let legacy_send_loop = {
-        let socket_sender = stream_socket.request_stream(LEGACY).await?;
+        let mut socket_sender = stream_socket.request_stream(LEGACY).await?;
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
@@ -272,11 +289,11 @@ async fn connection_pipeline(
 
     let (legacy_receive_data_sender, legacy_receive_data_receiver) = smpsc::channel();
     let legacy_receive_loop = {
-        let mut receiver = stream_socket.subscribe_to_stream(LEGACY).await?;
+        let mut receiver = stream_socket.subscribe_to_stream::<()>(LEGACY).await?;
         async move {
             loop {
-                let ((), data) = receiver.recv_buffer().await?;
-                legacy_receive_data_sender.send(data).ok();
+                let packet = receiver.recv().await?;
+                legacy_receive_data_sender.send(packet.buffer).ok();
             }
         }
     };
@@ -512,6 +529,7 @@ async fn connection_pipeline(
         res = legacy_stream_socket_loop => trace_err!(res)?,
         res = keepalive_sender_loop => res,
         res = control_loop => res,
+        // res = debug_loop => res,
     }
 }
 

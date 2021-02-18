@@ -405,8 +405,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                     mute_when_streaming: true,
                     config: AudioConfigDefault {
-                        fade_ms: 10,
-                        min_buffering_ms: 20,
+                        fade_ms: 15,
+                        min_buffering_ms: 30,
                     },
                 },
             },

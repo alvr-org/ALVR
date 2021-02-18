@@ -430,19 +430,13 @@ async fn connection_pipeline() -> StrResult {
         let sample_rate = audio::get_sample_rate(&device)?;
         let receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
 
-        Box::pin(audio::play_audio_loop(
-            device,
-            1,
-            sample_rate,
-            4,
-            receiver,
-        ))
+        Box::pin(audio::play_audio_loop(device, 1, sample_rate, 4, receiver))
     } else {
         Box::pin(future::pending())
     };
 
     let legacy_send_loop = {
-        let socket_sender = stream_socket.request_stream(LEGACY).await?;
+        let mut socket_sender = stream_socket.request_stream(LEGACY).await?;
         async move {
             let (data_sender, mut data_receiver) = mpsc::unbounded_channel();
             *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
@@ -458,10 +452,10 @@ async fn connection_pipeline() -> StrResult {
     };
 
     let legacy_receive_loop = {
-        let mut receiver = stream_socket.subscribe_to_stream(LEGACY).await?;
+        let mut receiver = stream_socket.subscribe_to_stream::<()>(LEGACY).await?;
         async move {
             loop {
-                let ((), mut data) = receiver.recv_buffer().await?;
+                let mut data = receiver.recv().await?.buffer;
 
                 #[cfg(windows)]
                 unsafe {

@@ -12,10 +12,7 @@ use std::{
     collections::VecDeque,
     f32::consts::PI,
     mem,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc as smpsc, Arc,
-    },
+    sync::{mpsc as smpsc, Arc},
     thread,
 };
 use tokio::sync::mpsc as tmpsc;
@@ -44,7 +41,7 @@ impl AudioInputCallback for RecorderCallback {
     }
 }
 
-pub async fn record_audio_loop(sample_rate: u32, sender: StreamSender<()>) -> StrResult {
+pub async fn record_audio_loop(sample_rate: u32, mut sender: StreamSender<()>) -> StrResult {
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
     let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
 
@@ -83,32 +80,40 @@ pub async fn record_audio_loop(sample_rate: u32, sender: StreamSender<()>) -> St
     Ok(())
 }
 
-// Render a fade-out. It is aware of a in-progress fade-in
-// frame_buffer must have enough frames
-fn add_fade_out(
+// Render a fade-out. It is aware of a in-progress fade-in. This is done only if play_state is not
+// already in FadeOutOrPaused and if frame_buffer has enough frames.
+fn maybe_add_fade_out(
     fade_outs: &mut VecDeque<(f32, f32)>,
     frame_buffer: &VecDeque<(f32, f32)>,
-    fade_in_progress: &mut Option<usize>,
+    play_state: &mut PlayState,
     fade_frames_count: usize,
 ) {
-    // fade_in_progress is set to None regardless
-    let progress_start = if let Some(progress) = fade_in_progress.take() {
-        fade_frames_count - progress
-    } else {
-        0
-    };
+    if frame_buffer.len() >= fade_frames_count {
+        if let PlayState::FadeInOrResumed { fade_in_progress } = *play_state {
+            let fade_out_start = fade_frames_count - fade_in_progress;
 
-    for idx in 0..fade_frames_count - progress_start {
-        let volume =
-            (PI * (idx + progress_start) as f32 / fade_frames_count as f32).cos() / 2. + 0.5;
+            for idx in 0..fade_frames_count - fade_out_start {
+                let volume = (PI * (idx + fade_out_start) as f32 / fade_frames_count as f32).cos()
+                    / 2.
+                    + 0.5;
 
-        if idx < fade_outs.len() {
-            fade_outs[idx].0 += frame_buffer[idx].0 * volume;
-            fade_outs[idx].1 += frame_buffer[idx].1 * volume;
-        } else {
-            fade_outs.push_back((frame_buffer[idx].0 * volume, frame_buffer[idx].1 * volume));
+                if idx < fade_outs.len() {
+                    fade_outs[idx].0 += frame_buffer[idx].0 * volume;
+                    fade_outs[idx].1 += frame_buffer[idx].1 * volume;
+                } else {
+                    fade_outs
+                        .push_back((frame_buffer[idx].0 * volume, frame_buffer[idx].1 * volume));
+                }
+            }
         }
+
+        *play_state = PlayState::FadeOutOrPaused;
     }
+}
+
+enum PlayState {
+    FadeOutOrPaused,
+    FadeInOrResumed { fade_in_progress: usize },
 }
 
 struct PlayerCallback {
@@ -122,11 +127,7 @@ struct PlayerCallback {
     // due to buffer overgrowth.
     fade_outs: Arc<Mutex<VecDeque<(f32, f32)>>>,
 
-    // Fade-in progress
-    fade_in_progress: Arc<Mutex<Option<usize>>>,
-
-    // Interrupted state starts from the beginning of a fade-out and ends at the start of a fade-in
-    interrupted: Arc<AtomicBool>,
+    play_state: Arc<Mutex<PlayState>>,
 }
 
 impl AudioOutputCallback for PlayerCallback {
@@ -139,52 +140,48 @@ impl AudioOutputCallback for PlayerCallback {
     ) -> DataCallbackResult {
         let mut frame_buffer_ref = self.frame_buffer.lock();
         let mut fade_outs_ref = self.fade_outs.lock();
-        let mut fade_in_progress_ref = self.fade_in_progress.lock();
+        let mut play_state_ref = self.play_state.lock();
 
         if frame_buffer_ref.len() >= out_frames.len() + self.fade_frames_count {
-            if self.interrupted.load(Ordering::SeqCst) {
-                self.interrupted.store(false, Ordering::SeqCst);
-
-                *fade_in_progress_ref = Some(0);
-            }
+            let mut fade_in_progress = match *play_state_ref {
+                PlayState::FadeInOrResumed { fade_in_progress } => fade_in_progress,
+                PlayState::FadeOutOrPaused => 0,
+            };
 
             let frames = frame_buffer_ref
                 .drain(0..out_frames.len())
                 .collect::<Vec<_>>();
             out_frames.copy_from_slice(&frames);
 
-            if let Some(progress) = &mut *fade_in_progress_ref {
+            if fade_in_progress < self.fade_frames_count {
                 for out_frame in out_frames.iter_mut() {
                     let volume =
-                        (PI * *progress as f32 / self.fade_frames_count as f32).cos() / -2. + 0.5;
+                        (PI * fade_in_progress as f32 / self.fade_frames_count as f32).cos() / -2.
+                            + 0.5;
                     out_frame.0 *= volume;
                     out_frame.1 *= volume;
 
-                    if *progress < self.fade_frames_count {
-                        *progress += 1;
-                    } else {
-                        *fade_in_progress_ref = None;
+                    fade_in_progress += 1;
+                    if fade_in_progress == self.fade_frames_count {
                         break;
                     }
                 }
+
+                *play_state_ref = PlayState::FadeInOrResumed { fade_in_progress };
             }
         } else {
-            error!("audio buffer too small! size: {}", frame_buffer_ref.len());
+            error!("Audio buffer underflow! size: {}", frame_buffer_ref.len());
 
             // Clear buffer. Previous audio samples don't get cleared automatically and they cause
             // buzzing
             out_frames.fill((0., 0.));
 
-            if !self.interrupted.load(Ordering::SeqCst) {
-                self.interrupted.store(true, Ordering::SeqCst);
-
-                add_fade_out(
-                    &mut *fade_outs_ref,
-                    &*frame_buffer_ref,
-                    &mut fade_in_progress_ref,
-                    self.fade_frames_count,
-                );
-            }
+            maybe_add_fade_out(
+                &mut *fade_outs_ref,
+                &*frame_buffer_ref,
+                &mut play_state_ref,
+                self.fade_frames_count,
+            );
         }
 
         // drain fade-outs into the output frame buffer
@@ -210,18 +207,13 @@ pub async fn play_audio_loop(
     let fade_frames_count = sample_rate as usize * config.fade_ms as usize / 1000;
     let min_buffer_frames_count = sample_rate as usize * config.min_buffering_ms as usize / 1000;
 
-    let frame_buffer = Arc::new(Mutex::new(VecDeque::from(vec![
-        (0., 0.);
-        fade_frames_count
-    ])));
+    let frame_buffer = Arc::new(Mutex::new(VecDeque::new()));
     let fade_outs = Arc::new(Mutex::new(VecDeque::new()));
-    let fade_in_progress = Arc::new(Mutex::new(None));
-    let interrupted = Arc::new(AtomicBool::new(false));
+    let play_state = Arc::new(Mutex::new(PlayState::FadeOutOrPaused));
     thread::spawn({
         let frame_buffer = frame_buffer.clone();
         let fade_outs = fade_outs.clone();
-        let fade_in_progress = fade_in_progress.clone();
-        let interrupted = interrupted.clone();
+        let play_state = play_state.clone();
         move || -> StrResult {
             let mut stream = trace_err!(AudioStreamBuilder::default()
                 .set_shared()
@@ -236,8 +228,7 @@ pub async fn play_audio_loop(
                     frame_buffer,
                     fade_frames_count,
                     fade_outs,
-                    fade_in_progress,
-                    interrupted,
+                    play_state,
                 })
                 .open_stream())?;
 
@@ -253,8 +244,9 @@ pub async fn play_audio_loop(
     });
 
     loop {
-        let (_, data) = receiver.recv_buffer().await?;
-        let frames = data
+        let packet = receiver.recv().await?;
+        let frames = packet
+            .buffer
             .chunks_exact(4)
             .map(|c| {
                 (
@@ -264,26 +256,43 @@ pub async fn play_audio_loop(
             })
             .collect::<Vec<_>>();
 
+        // This is the first object that should be locked. The same is done on the audio callback.
+        // This ensures there are no deadlocks between multiple mutexes.
         let mut frame_buffer_ref = frame_buffer.lock();
+
+        if packet.had_packet_loss {
+            error!("Audio packet loss detected! Clearing audio buffer");
+
+            // Add a fade-out *before* draining frame_buffer
+            maybe_add_fade_out(
+                &mut *fade_outs.lock(),
+                &*frame_buffer_ref,
+                &mut *play_state.lock(),
+                fade_frames_count,
+            );
+
+            // frame_buffer must be drained completely. There is no way of reusing the old frames
+            // without discontinuity.
+            frame_buffer_ref.clear();
+        }
+
         frame_buffer_ref.extend(&frames);
 
         // todo: use smarter policy with EventTiming
         let buffer_size = frame_buffer_ref.len();
         if buffer_size > 2 * min_buffer_frames_count + fade_frames_count {
-            error!("draining audio buffer. size: {}", buffer_size);
+            error!("Audio buffer overflow! size: {}", buffer_size);
 
-            // Add a fade-out before draining frame_buffer
-            add_fade_out(
+            // Add a fade-out *before* draining frame_buffer
+            maybe_add_fade_out(
                 &mut *fade_outs.lock(),
                 &*frame_buffer_ref,
-                &mut *fade_in_progress.lock(),
+                &mut *play_state.lock(),
                 fade_frames_count,
             );
 
-            // Trigger a fade-in
-            interrupted.store(true, Ordering::SeqCst);
-
-            // Drain frame_buffer
+            // Drain frame_buffer partially. A discontinuity is formed but the playback can resume
+            // immediately with a fade-in
             frame_buffer_ref.drain(0..(buffer_size - min_buffer_frames_count - fade_frames_count));
         }
     }

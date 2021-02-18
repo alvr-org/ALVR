@@ -54,17 +54,17 @@ fn save_openvr_paths_json(openvr_paths: &json::Value) -> StrResult {
     trace_err!(fs::write(openvr_source_file_path()?, file_content))
 }
 
-fn from_openvr_paths(paths: &json::Value) -> StrResult<Vec<PathBuf>> {
+fn from_openvr_paths(paths: &json::Value) -> Vec<std::path::PathBuf> {
     let paths_vec = match paths.as_array() {
         Some(vec) => vec,
-        None => return Ok(vec![]),
+        None => return vec![],
     };
 
-    Ok(paths_vec
+    paths_vec
         .iter()
         .filter_map(json::Value::as_str)
         .map(|s| PathBuf::from(s.replace(r"\\", r"\")))
-        .collect())
+        .collect()
 }
 
 fn to_openvr_paths(paths: &[PathBuf]) -> json::Value {
@@ -80,7 +80,7 @@ fn to_openvr_paths(paths: &[PathBuf]) -> json::Value {
 fn get_single_openvr_path(path_type: &str) -> StrResult<PathBuf> {
     let openvr_paths_json = load_openvr_paths_json()?;
     let paths_json = trace_none!(openvr_paths_json.get(path_type))?;
-    trace_none!(from_openvr_paths(paths_json)?.get(0).cloned())
+    trace_none!(from_openvr_paths(paths_json).get(0).cloned())
 }
 
 fn steamvr_root_dir() -> StrResult<PathBuf> {
@@ -94,16 +94,16 @@ pub fn steam_config_dir() -> StrResult<PathBuf> {
 ///////////////// driver paths management ///////////////////
 
 pub fn get_registered_drivers() -> StrResult<Vec<PathBuf>> {
-    from_openvr_paths(trace_none!(
+    Ok(from_openvr_paths(trace_none!(
         load_openvr_paths_json()?.get_mut("external_drivers")
-    )?)
+    )?))
 }
 
 pub fn driver_registration(driver_paths: &[PathBuf], register: bool) -> StrResult {
     let mut openvr_paths_json = load_openvr_paths_json()?;
     let paths_json_ref = trace_none!(openvr_paths_json.get_mut("external_drivers"))?;
 
-    let mut paths: HashSet<_> = from_openvr_paths(paths_json_ref)?.into_iter().collect();
+    let mut paths: HashSet<_> = from_openvr_paths(paths_json_ref).into_iter().collect();
 
     if register {
         paths.extend(driver_paths.iter().cloned());

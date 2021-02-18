@@ -241,7 +241,7 @@ pub async fn record_audio_loop(
     channels_count: u16,
     sample_rate: u32,
     mute: bool,
-    sender: StreamSender<()>,
+    mut sender: StreamSender<()>,
 ) -> StrResult {
     let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
 
@@ -394,7 +394,7 @@ pub async fn play_audio_loop(
     });
 
     loop {
-        let (_, data) = receiver.recv_buffer().await?;
-        trace_err!(data_sender.send(data)).ok();
+        let packet = receiver.recv().await?;
+        trace_err!(data_sender.send(packet.buffer)).ok();
     }
 }

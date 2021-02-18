@@ -87,13 +87,17 @@ impl<T> SenderBuffer<T> {
 pub struct StreamSender<T> {
     socket: StreamSendSocket,
     stream_id: StreamId,
+    next_packet_index: u64,
     _phantom: PhantomData<T>,
 }
 
 impl<T> StreamSender<T> {
     // The buffer is moved into the method. There is no way of reusing the same buffer twice without
     // extra copies/allocations
-    pub async fn send_buffer(&self, buffer: SenderBuffer<T>) -> StrResult {
+    pub async fn send_buffer(&mut self, mut buffer: SenderBuffer<T>) -> StrResult {
+        buffer.inner[1..9].copy_from_slice(&self.next_packet_index.to_le_bytes());
+        self.next_packet_index += 1;
+
         match &self.socket {
             StreamSendSocket::Udp(socket) => trace_err!(
                 socket
@@ -123,6 +127,10 @@ impl<T: Serialize> StreamSender<T> {
         let mut buffer = BytesMut::with_capacity(offset + preferred_max_buffer_size);
 
         buffer.put_u8(self.stream_id);
+
+        // make space for the packet index
+        buffer.put_u64(0);
+
         let mut buffer_writer = buffer.writer();
         trace_err!(bincode::serialize_into(&mut buffer_writer, header))?;
         let buffer = buffer_writer.into_inner();
@@ -134,7 +142,7 @@ impl<T: Serialize> StreamSender<T> {
         })
     }
 
-    pub async fn send(&self, packet: &T) -> StrResult {
+    pub async fn send(&mut self, packet: &T) -> StrResult {
         self.send_buffer(self.new_buffer(packet, 0)?).await
     }
 }
@@ -144,13 +152,20 @@ enum StreamReceiverType {
     // QuicReliable(...)
 }
 
+pub struct ReceivedPacket<T> {
+    pub header: T,
+    pub buffer: BytesMut,
+    pub had_packet_loss: bool,
+}
+
 pub struct StreamReceiver<T> {
     receiver: StreamReceiverType,
+    next_packet_index: u64,
     _phantom: PhantomData<T>,
 }
 
 impl<T: DeserializeOwned> StreamReceiver<T> {
-    pub async fn recv_buffer(&mut self) -> StrResult<(T, BytesMut)> {
+    pub async fn recv(&mut self) -> StrResult<ReceivedPacket<T>> {
         let mut bytes = match &mut self.receiver {
             StreamReceiverType::Queue(receiver) => trace_none!(receiver.recv().await)?,
         };
@@ -158,16 +173,20 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         // pop the stream ID
         bytes.get_u8();
 
+        let packet_index = bytes.get_u64_le();
+        let had_packet_loss = packet_index != self.next_packet_index;
+        self.next_packet_index = packet_index + 1;
+
         let mut bytes_reader = bytes.reader();
         let header = trace_err!(bincode::deserialize_from(&mut bytes_reader))?;
-        let bytes = bytes_reader.into_inner();
+        let buffer = bytes_reader.into_inner();
 
-        // At this point, bytes does not include the header anymore
-        Ok((header, bytes))
-    }
-
-    pub async fn recv(&mut self) -> StrResult<T> {
-        Ok(self.recv_buffer().await?.0)
+        // At this point, "buffer" does not include the header anymore
+        Ok(ReceivedPacket {
+            header,
+            buffer,
+            had_packet_loss,
+        })
     }
 }
 
@@ -182,6 +201,7 @@ impl StreamSocket {
         Ok(StreamSender {
             socket: self.send_socket.clone(),
             stream_id,
+            next_packet_index: 0,
             _phantom: PhantomData,
         })
     }
@@ -195,6 +215,7 @@ impl StreamSocket {
 
         Ok(StreamReceiver {
             receiver: StreamReceiverType::Queue(dequeuer),
+            next_packet_index: 0,
             _phantom: PhantomData,
         })
     }

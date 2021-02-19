@@ -7,9 +7,17 @@ use audio::AudioDeviceType;
 use futures::future::BoxFuture;
 use nalgebra::Translation3;
 use settings_schema::Switch;
-use std::{collections::HashMap, future, net::IpAddr, process::Command, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    future,
+    net::IpAddr,
+    process::Command,
+    sync::{mpsc as smpsc, Arc},
+    thread,
+    time::Duration,
+};
 use tokio::{
-    sync::{mpsc, Mutex},
+    sync::{mpsc as tmpsc, Mutex},
     time,
 };
 
@@ -438,7 +446,7 @@ async fn connection_pipeline() -> StrResult {
     let legacy_send_loop = {
         let mut socket_sender = stream_socket.request_stream(LEGACY).await?;
         async move {
-            let (data_sender, mut data_receiver) = mpsc::unbounded_channel();
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
 
             while let Some(data) = data_receiver.recv().await {
@@ -465,6 +473,33 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
+    let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<PlayspaceSyncPacket>();
+    // use a separate thread because SetChaperone() is blocking
+    thread::spawn(move || {
+        while let Ok(packet) = playspace_sync_receiver.recv() {
+            let transform = packet.rotation * Translation3::from(packet.position.coords);
+            // transposition is done to switch from column major to row major
+            let matrix_transp = transform.to_matrix().transpose();
+
+            let perimeter_points = if let Some(perimeter_points) = packet.perimeter_points {
+                perimeter_points.iter().map(|p| [p[0], p[2]]).collect()
+            } else {
+                vec![]
+            };
+
+            #[cfg(windows)]
+            unsafe {
+                crate::SetChaperone(
+                    matrix_transp.as_ptr(),
+                    packet.area_width,
+                    packet.area_height,
+                    perimeter_points.as_ptr() as _,
+                    perimeter_points.len() as _,
+                )
+            };
+        }
+    });
+
     let keepalive_loop = {
         let control_sender = control_sender.clone();
         async move {
@@ -488,26 +523,7 @@ async fn connection_pipeline() -> StrResult {
         loop {
             match control_receiver.recv().await {
                 Ok(ClientControlPacket::PlayspaceSync(packet)) => {
-                    let transform = packet.rotation * Translation3::from(packet.position.coords);
-                    // transposition is done to switch from column major to row major
-                    let matrix_transp = transform.to_matrix().transpose();
-
-                    let perimeter_points = if let Some(perimeter_points) = packet.perimeter_points {
-                        perimeter_points.iter().map(|p| [p[0], p[2]]).collect()
-                    } else {
-                        vec![]
-                    };
-
-                    #[cfg(windows)]
-                    unsafe {
-                        crate::SetChaperone(
-                            matrix_transp.as_ptr(),
-                            packet.area_width,
-                            packet.area_height,
-                            perimeter_points.as_ptr() as _,
-                            perimeter_points.len() as _,
-                        )
-                    };
+                    playspace_sync_sender.send(packet).ok();
                 }
                 Ok(ClientControlPacket::RequestIDR) => unsafe {
                     #[cfg(windows)]

@@ -19,6 +19,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         mpsc as smpsc, Arc,
     },
+    thread,
     time::Duration,
 };
 use tokio::{
@@ -507,7 +508,7 @@ async fn connection_pipeline(
 
     // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
-        res = stream_socket.receive_loop() => {
+        res = spawn_cancelable(stream_socket.receive_loop()) => {
             if let Err(e) = res {
                 info!("Server disconnected. Cause: {}", e);
             }
@@ -520,16 +521,18 @@ async fn connection_pipeline(
 
             Ok(())
         },
-        res = game_audio_loop => res,
-        res = microphone_loop => res,
-        res = tracking_loop => res,
-        res = playspace_sync_loop => res,
-        res = legacy_send_loop => res,
-        res = legacy_receive_loop => res,
+        res = spawn_cancelable(game_audio_loop) => res,
+        res = spawn_cancelable(microphone_loop) => res,
+        res = spawn_cancelable(tracking_loop) => res,
+        res = spawn_cancelable(playspace_sync_loop) => res,
+        res = spawn_cancelable(legacy_send_loop) => res,
+        res = spawn_cancelable(legacy_receive_loop) => res,
         res = legacy_stream_socket_loop => trace_err!(res)?,
+
+        // keep these loops on the current task
         res = keepalive_sender_loop => res,
         res = control_loop => res,
-        // res = debug_loop => res,
+        // res = spawn_cancelable(debug_loop) => res,
     }
 }
 

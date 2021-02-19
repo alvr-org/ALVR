@@ -527,7 +527,7 @@ async fn connection_pipeline() -> StrResult {
 
     // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
-        res = stream_socket.receive_loop() => {
+        res = spawn_cancelable(stream_socket.receive_loop()) => {
             log_id(LogId::ClientDisconnected);
             if let Err(e) = res {
                 info!("Client disconnected. Cause: {}", e);
@@ -535,12 +535,15 @@ async fn connection_pipeline() -> StrResult {
 
             Ok(())
         },
-        res = game_audio_loop => res,
-        res = microphone_loop => res,
-        res = legacy_send_loop => res,
-        res = legacy_receive_loop => res,
+        res = spawn_cancelable(game_audio_loop) => res,
+        res = spawn_cancelable(microphone_loop) => res,
+        res = spawn_cancelable(legacy_send_loop) => res,
+        res = spawn_cancelable(legacy_receive_loop) => res,
+
+        // leave these loops on the current task
         res = keepalive_loop => res,
         res = control_loop => res,
+
         _ = RESTART_NOTIFIER.notified() => {
             control_sender
                 .lock()

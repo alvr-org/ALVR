@@ -87,7 +87,8 @@ impl<T> SenderBuffer<T> {
 pub struct StreamSender<T> {
     socket: StreamSendSocket,
     stream_id: StreamId,
-    next_packet_index: u64,
+    // if the packet index overflows the worst that happens is a false positive packet loss
+    next_packet_index: u32,
     _phantom: PhantomData<T>,
 }
 
@@ -95,7 +96,7 @@ impl<T> StreamSender<T> {
     // The buffer is moved into the method. There is no way of reusing the same buffer twice without
     // extra copies/allocations
     pub async fn send_buffer(&mut self, mut buffer: SenderBuffer<T>) -> StrResult {
-        buffer.inner[1..9].copy_from_slice(&self.next_packet_index.to_le_bytes());
+        buffer.inner[1..5].copy_from_slice(&self.next_packet_index.to_be_bytes());
         self.next_packet_index += 1;
 
         match &self.socket {
@@ -129,7 +130,7 @@ impl<T: Serialize> StreamSender<T> {
         buffer.put_u8(self.stream_id);
 
         // make space for the packet index
-        buffer.put_u64(0);
+        buffer.put_u32(0);
 
         let mut buffer_writer = buffer.writer();
         trace_err!(bincode::serialize_into(&mut buffer_writer, header))?;
@@ -160,7 +161,7 @@ pub struct ReceivedPacket<T> {
 
 pub struct StreamReceiver<T> {
     receiver: StreamReceiverType,
-    next_packet_index: u64,
+    next_packet_index: u32,
     _phantom: PhantomData<T>,
 }
 
@@ -173,7 +174,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         // pop the stream ID
         bytes.get_u8();
 
-        let packet_index = bytes.get_u64_le();
+        let packet_index = bytes.get_u32();
         let had_packet_loss = packet_index != self.next_packet_index;
         self.next_packet_index = packet_index + 1;
 

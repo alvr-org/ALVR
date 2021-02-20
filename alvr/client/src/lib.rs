@@ -10,7 +10,13 @@ use alvr_common::{data::*, logging::show_err, *};
 use jni::{objects::*, *};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
-use std::{ptr, slice, sync::{Arc, atomic::{AtomicBool, Ordering}}};
+use std::{
+    ptr, slice,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 
 lazy_static! {

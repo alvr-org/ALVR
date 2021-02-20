@@ -57,10 +57,10 @@ define([
                 alvrSettings.getHelpReset(
                     "controllerMode",
                     "_root_headset_controllers_content",
-                    0,
+                    6,
                     (postFix = ""),
                     "controllerMode",
-                    "Oculus Rift S"
+                    "Oculus Quest 2"
                 ),
             );
             controller.parent().addClass("special");
@@ -123,10 +123,10 @@ define([
                 alvrSettings.getHelpReset(
                     "headsetEmulationMode",
                     "_root_headset",
-                    0,
+                    2,
                     (postFix = ""),
                     "headsetEmulationMode",
-                    "Oculus Rift S"
+                    "Oculus Quest 2"
                 ),
             );
             headset.parent().addClass("special");

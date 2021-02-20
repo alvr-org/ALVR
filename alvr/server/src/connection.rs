@@ -477,7 +477,7 @@ async fn connection_pipeline() -> StrResult {
     // use a separate thread because SetChaperone() is blocking
     thread::spawn(move || {
         while let Ok(packet) = playspace_sync_receiver.recv() {
-            let transform = packet.rotation * Translation3::from(packet.position.coords);
+            let transform = Translation3::from(packet.position.coords) * packet.rotation;
             // transposition is done to switch from column major to row major
             let matrix_transp = transform.to_matrix().transpose();
 

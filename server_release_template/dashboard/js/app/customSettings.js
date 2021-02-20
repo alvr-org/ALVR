@@ -58,6 +58,9 @@ define([
                     "controllerMode",
                     "_root_headset_controllers_content",
                     0,
+                    (postFix = ""),
+                    "controllerMode",
+                    "Oculus Rift S"
                 ),
             );
             controller.parent().addClass("special");
@@ -121,6 +124,9 @@ define([
                     "headsetEmulationMode",
                     "_root_headset",
                     0,
+                    (postFix = ""),
+                    "headsetEmulationMode",
+                    "Oculus Rift S"
                 ),
             );
             headset.parent().addClass("special");
@@ -346,7 +352,7 @@ define([
                             <input type="radio" name="displayRefreshRate" autocomplete="off" value="90">
                             90 Hz
                         </label>
-                                                  
+
                     </div> `;
 
             el.after(grp);

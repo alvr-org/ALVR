@@ -27,7 +27,11 @@ use tokio::{
 };
 
 const INITIAL_RD_CAPACITY: usize = 64 * 1024;
-const MINIMUM_BYTERATE: u32 = 1000;
+
+// Don't go below this rate, limiting then is unneeded anyway.
+const MINIMUM_BYTERATE: u32 = 30 * 1024 * 1024 * 3 / 2 / 8;
+// Reserve includes audio along with other small fluctuations.
+const RESERVE_BYTERATE: u32 = 5_000_000 / 8;
 
 pub struct ThrottlingSettings {
     pub byterate: u32,
@@ -55,8 +59,6 @@ impl ThrottledUdpStreamSendSocket {
     }
 }
 
-// peer_addr is needed to check that the packet comes from the desired device. Connecting directly
-// to the peer is not supported by UdpFramed.
 pub struct ThrottledUdpStreamReceiveSocket {
     pub inner: Arc<UdpSocket>,
     buffer: BytesMut,
@@ -105,7 +107,10 @@ pub async fn connect(
 
     let limiter = match throttling_settings {
         Some(settings) => {
-            let byterate = (settings.byterate as f32 * settings.multiplier) as u32;
+            // The byterate and burst amount computation here is based
+            // on the previous C++ implementation.
+            let byterate =
+                (settings.byterate as f32 * settings.multiplier) as u32 + RESERVE_BYTERATE;
             let byterate = std::cmp::max(MINIMUM_BYTERATE, byterate);
             let burst = byterate / 1000;
             let quota = Quota::per_second(NonZero::new(byterate).unwrap())

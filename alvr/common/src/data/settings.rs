@@ -470,7 +470,7 @@ pub fn session_settings_default() -> SettingsDefault {
             web_server_port: 8082,
             stream_protocol: SocketProtocolDefault {
                 variant: SocketProtocolDefaultVariant::Udp,
-                ThrottledUdp: 2.0,
+                ThrottledUdp: 1.5,
             },
             stream_port: 9944,
             aggressive_keyframe_resend: false,

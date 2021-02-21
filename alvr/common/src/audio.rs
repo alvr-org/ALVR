@@ -1,14 +1,22 @@
 use crate::{
-    data::AudioDeviceId,
+    data::{AudioConfig, AudioDeviceId},
     sockets::{StreamReceiver, StreamSender},
     *,
 };
-use bytes::BytesMut;
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, Device, Sample, SampleFormat, StreamConfig,
 };
-use std::{collections::VecDeque, sync::mpsc as smpsc, thread};
+use parking_lot::Mutex;
+use rodio::{source::SineWave, OutputStream, Sink, Source};
+use std::{
+    collections::VecDeque,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc as smpsc, Arc,
+    },
+    thread,
+};
 use tokio::sync::mpsc as tmpsc;
 
 #[cfg(windows)]
@@ -311,90 +319,148 @@ pub async fn record_audio_loop(
     Ok(())
 }
 
+enum PlayState {
+    Playing,
+    Underflow,
+    Overflow,
+    PacketLoss,
+    Recovering,
+}
+
+struct StreamingSource {
+    sample_buffer: Arc<Mutex<VecDeque<f32>>>,
+    channels: u16,
+    sample_rate: u32,
+    play_state: Arc<Mutex<PlayState>>,
+}
+
+impl Source for StreamingSource {
+    fn current_frame_len(&self) -> Option<usize> {
+        None
+    }
+
+    fn channels(&self) -> u16 {
+        self.channels
+    }
+
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+
+    fn total_duration(&self) -> Option<std::time::Duration> {
+        None
+    }
+}
+
+impl Iterator for StreamingSource {
+    type Item = f32;
+
+    fn next(&mut self) -> Option<f32> {
+        let mut play_state_ref = self.play_state.lock();
+
+        let maybe_sample = self.sample_buffer.lock().pop_front();
+        if maybe_sample.is_none() {
+            *play_state_ref = PlayState::Underflow;
+        }
+
+        maybe_sample
+    }
+}
+
 pub async fn play_audio_loop(
     device: AudioDevice,
     channels_count: u16,
     sample_rate: u32,
-    buffer_range_multiplier: u64,
+    config: AudioConfig,
     mut receiver: StreamReceiver<()>,
 ) -> StrResult {
     assert!(!matches!(device.device_type, AudioDeviceType::Input));
 
-    let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
+    // let fade_frames_count = sample_rate as usize * config.fade_ms as usize / 1000;
+    let min_buffer_samples_count =
+        sample_rate as usize * channels_count as usize * config.min_buffering_ms as usize / 1000;
 
-    if sample_rate != config.min_sample_rate().0 {
-        return fmt_e!("Sample rate not supported");
-    }
-
-    let stream_config = StreamConfig {
-        channels: config.channels(),
-        sample_rate: config.min_sample_rate(),
-        buffer_size: BufferSize::Default,
-    };
-
-    let (data_sender, data_receiver) = smpsc::channel::<BytesMut>();
+    // store the stream in a thread (because !Send) and extract the playback handle
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
-
+    let (stream_handle_sender, stream_handler_retriever) = oneshot::channel();
     thread::spawn(move || -> StrResult {
-        let mut sample_buffer_bytes = VecDeque::new();
-        let stream = trace_err!(device.inner.build_output_stream_raw(
-            &stream_config,
-            config.sample_format(),
-            move |data, _| {
-                while let Ok(packet) = data_receiver.try_recv() {
-                    let mut data =
-                        convert_channels_count(&packet, channels_count, config.channels());
-                    if config.sample_format() == SampleFormat::F32 {
-                        data = data
-                            .chunks_exact(2)
-                            .flat_map(|c| {
-                                i16::from_ne_bytes([c[0], c[1]])
-                                    .to_f32()
-                                    .to_ne_bytes()
-                                    .to_vec()
-                            })
-                            .collect()
-                    };
-                    sample_buffer_bytes.extend(data);
-                }
-
-                let data_bytes_len = data.bytes().len();
-                if sample_buffer_bytes.len() >= data_bytes_len {
-                    data.bytes_mut().copy_from_slice(
-                        &sample_buffer_bytes
-                            .drain(0..data_bytes_len)
-                            .collect::<Vec<_>>(),
-                    )
-                } else {
-                    warn!(
-                        "audio buffer too small! size: {}",
-                        sample_buffer_bytes.len()
-                    );
-                }
-
-                // todo: use smarter policy with EventTiming
-                if sample_buffer_bytes.len() > 2 * buffer_range_multiplier as usize * data_bytes_len
-                {
-                    warn!("draining audio buffer. size: {}", sample_buffer_bytes.len());
-
-                    sample_buffer_bytes.drain(
-                        0..(sample_buffer_bytes.len()
-                            - buffer_range_multiplier as usize * data_bytes_len),
-                    );
-                }
-            },
-            |e| warn!("Error while playing audio: {}", e),
-        ))?;
-
-        trace_err!(stream.play())?;
+        let (_stream, handle) = trace_err!(OutputStream::try_from_device(&device.inner))?;
+        stream_handle_sender.send(handle).ok();
 
         shutdown_receiver.recv().ok();
-
         Ok(())
     });
 
+    let stream_handle = trace_err!(stream_handler_retriever.await)?;
+    let playback_sink = trace_err!(Sink::try_new(&stream_handle))?;
+
+    let mut old_sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
+    let mut sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
+
+    let mut play_state = Arc::new(Mutex::new(PlayState::Underflow));
+
+    playback_sink.play();
+
     loop {
         let packet = receiver.recv().await?;
-        trace_err!(data_sender.send(packet.buffer)).ok();
+
+        error!(
+            "mic received. playing: {}, queue len:{}",
+            !playback_sink.is_paused(),
+            playback_sink.len()
+        );
+
+        let frames = packet
+            .buffer
+            .chunks_exact(2)
+            .map(|c| i16::from_ne_bytes([c[0], c[1]]).to_f32())
+            .collect::<VecDeque<_>>();
+
+        // assign a new object to play_state to avoid the previous source to report underflow
+        if packet.had_packet_loss {
+            error!("packet loss");
+            play_state = Arc::new(Mutex::new(PlayState::PacketLoss));
+        } else if sample_buffer.lock().len() + frames.len() > 2 * min_buffer_samples_count {
+            error!("overflow");
+            play_state = Arc::new(Mutex::new(PlayState::Overflow));
+        }
+
+        if matches!(*play_state.lock(), PlayState::Underflow) {
+            error!("underflow");
+        }
+
+        let mut play_state_ref = play_state.lock();
+
+        if matches!(
+            *play_state_ref,
+            PlayState::Underflow | PlayState::Overflow | PlayState::PacketLoss
+        ) {
+            error!("swap buffers");
+            old_sample_buffer.lock().clear();
+            old_sample_buffer = sample_buffer;
+            sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
+            *play_state_ref = PlayState::Recovering;
+        }
+
+        let mut sample_buffer_ref = sample_buffer.lock();
+        sample_buffer_ref.extend(frames);
+
+        if matches!(*play_state_ref, PlayState::Recovering)
+            && sample_buffer_ref.len() > min_buffer_samples_count
+        {
+            error!("recovering");
+            old_sample_buffer.lock().clear();
+
+            let streaming_source = StreamingSource {
+                sample_buffer: sample_buffer.clone(),
+                channels: channels_count,
+                sample_rate,
+                play_state: play_state.clone(),
+            };
+            playback_sink.append(streaming_source);
+
+            *play_state_ref = PlayState::Playing;
+            error!("recovered!");
+        }
     }
 }

@@ -438,7 +438,13 @@ async fn connection_pipeline() -> StrResult {
         let sample_rate = audio::get_sample_rate(&device)?;
         let receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
 
-        Box::pin(audio::play_audio_loop(device, 1, sample_rate, 4, receiver))
+        Box::pin(audio::play_audio_loop(
+            device,
+            1,
+            sample_rate,
+            desc.config,
+            receiver,
+        ))
     } else {
         Box::pin(future::pending())
     };

@@ -17,7 +17,7 @@ pub use logging::StrResult;
 use std::future::Future;
 use tokio::{sync::oneshot, task};
 
-// Tokio tasks are not cancelable. This function awaits a cancelable handle.
+// Tokio tasks are not cancelable. This function awaits a cancelable task.
 pub async fn spawn_cancelable(
     future: impl Future<Output = StrResult> + Send + 'static,
 ) -> StrResult {
@@ -25,12 +25,13 @@ pub async fn spawn_cancelable(
     // dropped
     let (_cancel_sender, cancel_receiver) = oneshot::channel::<()>();
 
-    let handle = task::spawn(async {
-        tokio::select! {
-            res = future => res,
-            _ = cancel_receiver => Ok(()),
-        }
-    });
-
-    trace_err!(handle.await)?
+    trace_err!(
+        task::spawn(async {
+            tokio::select! {
+                res = future => res,
+                _ = cancel_receiver => Ok(()),
+            }
+        })
+        .await
+    )?
 }

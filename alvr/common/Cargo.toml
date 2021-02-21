@@ -11,6 +11,7 @@ nightly = []
 
 [dependencies]
 lazy_static = "1"
+parking_lot = "0.11"
 semver = { version = "0.11", features = ['serde'] }
 log = "0.4"
 backtrace = "0.3"
@@ -29,6 +30,7 @@ rcgen = "0.8"
 gfx-hal = "=0.6.0"
 winit = "0.24" # needed to get the screen size
 cpal = "0.13"
+rodio = "0.13"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 dirs = "3"

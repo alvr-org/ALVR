@@ -532,7 +532,7 @@ async fn connection_pipeline(
         // keep these loops on the current task
         res = keepalive_sender_loop => res,
         res = control_loop => res,
-        // res = spawn_cancelable(debug_loop) => res,
+        // res = debug_loop => res,
     }
 }
 

@@ -28,6 +28,10 @@ fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
 }
 
+fn mbits_to_bytes(value: u64) -> u32 {
+    (value * 1024 * 1024 / 8) as u32
+}
+
 async fn client_discovery() -> StrResult {
     let res = search_client_loop(|client_ip, handshake_packet| async move {
         crate::update_client_list(
@@ -389,6 +393,7 @@ async fn connection_pipeline() -> StrResult {
             client_ip,
             settings.connection.stream_port,
             settings.connection.stream_protocol,
+            mbits_to_bytes(settings.video.encode_bitrate_mbs)
         ) => res?,
         _ = time::sleep(Duration::from_secs(2)) => {
             return fmt_e!("Timeout while setting up streams");

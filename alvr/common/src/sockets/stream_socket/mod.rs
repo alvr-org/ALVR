@@ -5,6 +5,7 @@
 // bytes while still handling the additional byte buffer with zero copies and extra allocations.
 
 mod tcp;
+mod throttled_udp;
 mod udp;
 
 use crate::{data::*, *};
@@ -19,6 +20,7 @@ use std::{
     sync::Arc,
 };
 use tcp::{TcpStreamReceiveSocket, TcpStreamSendSocket};
+use throttled_udp::{ThrottledUdpStreamReceiveSocket, ThrottledUdpStreamSendSocket};
 use tokio::sync::{mpsc, Mutex};
 use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 
@@ -32,11 +34,13 @@ pub const RESERVED: StreamId = 2;
 #[derive(Clone)]
 enum StreamSendSocket {
     Udp(UdpStreamSendSocket),
+    ThrottledUdp(ThrottledUdpStreamSendSocket),
     Tcp(TcpStreamSendSocket),
 }
 
 enum StreamReceiveSocket {
     Udp(UdpStreamReceiveSocket),
+    ThrottledUdp(ThrottledUdpStreamReceiveSocket),
     Tcp(TcpStreamReceiveSocket),
 }
 
@@ -110,6 +114,9 @@ impl<T> StreamSender<T> {
             ),
             StreamSendSocket::Tcp(socket) => {
                 trace_err!(socket.lock().await.send(buffer.inner.freeze()).await)
+            }
+            StreamSendSocket::ThrottledUdp(socket) => {
+                trace_err!(socket.send(buffer.inner.freeze()).await)
             }
         }
     }
@@ -241,6 +248,14 @@ impl StreamSocket {
                     StreamReceiveSocket::Tcp(receive_socket),
                 )
             }
+            SocketProtocol::ThrottledUdp(_) => {
+                let (send_socket, receive_socket) =
+                    throttled_udp::connect_to_server(server_ip, port).await?;
+                (
+                    StreamSendSocket::ThrottledUdp(send_socket),
+                    StreamReceiveSocket::ThrottledUdp(receive_socket),
+                )
+            }
         };
 
         Ok(Self {
@@ -254,6 +269,7 @@ impl StreamSocket {
         client_ip: IpAddr,
         port: u16,
         protocol: SocketProtocol,
+        video_byterate: u32,
     ) -> StrResult<Self> {
         let (send_socket, receive_socket) = match protocol {
             SocketProtocol::Udp => {
@@ -270,6 +286,21 @@ impl StreamSocket {
                     StreamReceiveSocket::Tcp(receive_socket),
                 )
             }
+            SocketProtocol::ThrottledUdp(config) => {
+                let (send_socket, receive_socket) = throttled_udp::connect_to_client(
+                    client_ip,
+                    port,
+                    throttled_udp::ThrottlingSettings {
+                        video_byterate,
+                        multiplier: config.byterate_multiplier,
+                    },
+                )
+                .await?;
+                (
+                    StreamSendSocket::ThrottledUdp(send_socket),
+                    StreamReceiveSocket::ThrottledUdp(receive_socket),
+                )
+            }
         };
 
         Ok(Self {
@@ -283,6 +314,9 @@ impl StreamSocket {
         match self.receive_socket {
             StreamReceiveSocket::Udp(socket) => udp::receive_loop(socket, self.packet_queues).await,
             StreamReceiveSocket::Tcp(socket) => tcp::receive_loop(socket, self.packet_queues).await,
+            StreamReceiveSocket::ThrottledUdp(socket) => {
+                throttled_udp::receive_loop(socket, self.packet_queues).await
+            }
         }
     }
 }

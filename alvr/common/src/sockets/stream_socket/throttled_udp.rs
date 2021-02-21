@@ -64,6 +64,7 @@ pub struct ThrottledUdpStreamReceiveSocket {
     buffer: BytesMut,
 }
 
+// Code taken from https://github.com/tokio-rs/tokio/blob/master/tokio-util/src/udp/frame.rs
 impl Stream for ThrottledUdpStreamReceiveSocket {
     type Item = io::Result<(BytesMut, SocketAddr)>;
 

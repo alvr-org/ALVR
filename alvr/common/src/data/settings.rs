@@ -270,6 +270,8 @@ pub struct HeadsetDesc {
 pub enum SocketProtocol {
     Udp,
     Tcp,
+    #[schema(advanced, min = 1.0, step = 0.1, gui = "UpDown")]
+    ThrottledUdp(f32),
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -468,6 +470,7 @@ pub fn session_settings_default() -> SettingsDefault {
             web_server_port: 8082,
             stream_protocol: SocketProtocolDefault {
                 variant: SocketProtocolDefaultVariant::Udp,
+                ThrottledUdp: 2.0,
             },
             stream_port: 9944,
             aggressive_keyframe_resend: false,

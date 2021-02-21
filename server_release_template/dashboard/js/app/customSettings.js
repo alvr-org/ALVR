@@ -57,7 +57,10 @@ define([
                 alvrSettings.getHelpReset(
                     "controllerMode",
                     "_root_headset_controllers_content",
-                    0,
+                    6,
+                    (postFix = ""),
+                    "controllerMode",
+                    "Oculus Quest 2"
                 ),
             );
             controller.parent().addClass("special");
@@ -120,7 +123,10 @@ define([
                 alvrSettings.getHelpReset(
                     "headsetEmulationMode",
                     "_root_headset",
-                    0,
+                    2,
+                    (postFix = ""),
+                    "headsetEmulationMode",
+                    "Oculus Quest 2"
                 ),
             );
             headset.parent().addClass("special");
@@ -346,7 +352,7 @@ define([
                             <input type="radio" name="displayRefreshRate" autocomplete="off" value="90">
                             90 Hz
                         </label>
-                                                  
+
                     </div> `;
 
             el.after(grp);

@@ -34,7 +34,7 @@ const MINIMUM_BYTERATE: u32 = 30 * 1024 * 1024 * 3 / 2 / 8;
 const RESERVE_BYTERATE: u32 = 5_000_000 / 8;
 
 pub struct ThrottlingSettings {
-    pub byterate: u32,
+    pub video_byterate: u32,
     pub multiplier: f32,
 }
 
@@ -90,10 +90,10 @@ impl Stream for ThrottledUdpStreamReceiveSocket {
     }
 }
 
-pub async fn connect(
+pub async fn connect_to_client(
     peer_ip: IpAddr,
     port: u16,
-    throttling_settings: Option<ThrottlingSettings>,
+    throttling_settings: ThrottlingSettings,
 ) -> StrResult<(
     ThrottledUdpStreamSendSocket,
     ThrottledUdpStreamReceiveSocket,
@@ -105,25 +105,49 @@ pub async fn connect(
     let rx = Arc::new(socket);
     let tx = rx.clone();
 
-    let limiter = match throttling_settings {
-        Some(settings) => {
-            // The byterate and burst amount computation here is based
-            // on the previous C++ implementation.
-            let byterate =
-                (settings.byterate as f32 * settings.multiplier) as u32 + RESERVE_BYTERATE;
-            let byterate = std::cmp::max(MINIMUM_BYTERATE, byterate);
-            let burst = byterate / 1000;
-            let quota = Quota::per_second(NonZero::new(byterate).unwrap())
-                .allow_burst(NonZero::new(burst).unwrap());
-            Some(RateLimiter::direct(quota))
-        }
-        None => None,
+    let limiter = {
+        // The byterate and burst amount computation here is based
+        // on the previous C++ implementation.
+        let byterate = (throttling_settings.video_byterate as f32 * throttling_settings.multiplier)
+            as u32
+            + RESERVE_BYTERATE;
+        let byterate = std::cmp::max(MINIMUM_BYTERATE, byterate);
+        let burst = byterate / 1000;
+        let quota = Quota::per_second(NonZero::new(byterate).unwrap())
+            .allow_burst(NonZero::new(burst).unwrap());
+        Some(RateLimiter::direct(quota))
     };
 
     Ok((
         ThrottledUdpStreamSendSocket {
             inner: tx,
             limiter: Arc::new(limiter),
+        },
+        ThrottledUdpStreamReceiveSocket {
+            inner: rx,
+            buffer: BytesMut::new(),
+        },
+    ))
+}
+
+pub async fn connect_to_server(
+    peer_ip: IpAddr,
+    port: u16,
+) -> StrResult<(
+    ThrottledUdpStreamSendSocket,
+    ThrottledUdpStreamReceiveSocket,
+)> {
+    let peer_addr: SocketAddr = (peer_ip, port).into();
+    let socket = trace_err!(UdpSocket::bind((LOCAL_IP, port)).await)?;
+    trace_err!(socket.connect(peer_addr).await)?;
+
+    let rx = Arc::new(socket);
+    let tx = rx.clone();
+
+    Ok((
+        ThrottledUdpStreamSendSocket {
+            inner: tx,
+            limiter: Arc::new(None),
         },
         ThrottledUdpStreamReceiveSocket {
             inner: rx,

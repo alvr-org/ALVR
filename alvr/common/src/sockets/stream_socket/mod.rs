@@ -250,7 +250,7 @@ impl StreamSocket {
             }
             SocketProtocol::ThrottledUdp(_) => {
                 let (send_socket, receive_socket) =
-                    throttled_udp::connect(server_ip, port, None).await?;
+                    throttled_udp::connect_to_server(server_ip, port).await?;
                 (
                     StreamSendSocket::ThrottledUdp(send_socket),
                     StreamReceiveSocket::ThrottledUdp(receive_socket),
@@ -269,7 +269,7 @@ impl StreamSocket {
         client_ip: IpAddr,
         port: u16,
         protocol: SocketProtocol,
-        byterate: u32,
+        video_byterate: u32,
     ) -> StrResult<Self> {
         let (send_socket, receive_socket) = match protocol {
             SocketProtocol::Udp => {
@@ -286,14 +286,14 @@ impl StreamSocket {
                     StreamReceiveSocket::Tcp(receive_socket),
                 )
             }
-            SocketProtocol::ThrottledUdp(multiplier) => {
-                let (send_socket, receive_socket) = throttled_udp::connect(
+            SocketProtocol::ThrottledUdp(config) => {
+                let (send_socket, receive_socket) = throttled_udp::connect_to_client(
                     client_ip,
                     port,
-                    Some(throttled_udp::ThrottlingSettings {
-                        byterate,
-                        multiplier,
-                    }),
+                    throttled_udp::ThrottlingSettings {
+                        video_byterate,
+                        multiplier: config.byterate_multiplier,
+                    },
                 )
                 .await?;
                 (

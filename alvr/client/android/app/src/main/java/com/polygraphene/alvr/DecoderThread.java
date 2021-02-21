@@ -180,6 +180,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
         mDecoderCallback.onPrepared();
 
         mWaitNextIDR = true;
+        setWaitingNextIDR(true);
 
         Looper.loop();
     }
@@ -300,6 +301,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
         } else if (nal.type == NAL_TYPE_IDR) {
             // IDR-Frame
             Utils.frameLog(nal.frameIndex, () -> "Feed IDR-Frame. Size=" + nal.length + " PresentationTime=" + presentationTime);
+            setWaitingNextIDR(false);
 
             DecoderInput(nal.frameIndex);
 
@@ -372,4 +374,5 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
 
     public static native void DecoderInput(long frameIndex);
     public static native void DecoderOutput(long frameIndex);
+    public static native void setWaitingNextIDR(boolean waiting);
 }

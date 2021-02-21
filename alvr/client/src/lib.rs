@@ -10,12 +10,19 @@ use alvr_common::{data::*, logging::show_err, *};
 use jni::{objects::*, *};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
-use std::{ptr, slice, sync::Arc};
+use std::{
+    ptr, slice,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 
 lazy_static! {
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(None);
     static ref IDR_REQUEST_NOTIFIER: Notify = Notify::new();
+    static ref IDR_PARSED: AtomicBool = AtomicBool::new(false);
     static ref MAYBE_LEGACY_SENDER: Mutex<Option<mpsc::UnboundedSender<Vec<u8>>>> =
         Mutex::new(None);
     static ref ON_PAUSE_NOTIFIER: Notify = Notify::new();
@@ -65,6 +72,15 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_DecoderOu
     frame_index: i64,
 ) {
     decoderOutput(frame_index);
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_setWaitingNextIDR(
+    _: JNIEnv,
+    _: JObject,
+    waiting: bool,
+) {
+    IDR_PARSED.store(waiting, Ordering::Relaxed);
 }
 
 #[no_mangle]

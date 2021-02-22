@@ -272,19 +272,16 @@ pub struct HeadsetDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ThrottledUdpConfig {
-    #[schema(min = 1.0, step = 0.1, gui = "UpDown")]
-    pub bitrate_multiplier: f32,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum SocketProtocol {
     Udp,
     Tcp,
     #[schema(advanced)]
-    ThrottledUdp(ThrottledUdpConfig),
+    #[serde(rename_all = "camelCase")]
+    ThrottledUdp {
+        #[schema(min = 1.0, step = 0.1, gui = "UpDown")]
+        bitrate_multiplier: f32,
+    },
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -484,7 +481,7 @@ pub fn session_settings_default() -> SettingsDefault {
             web_server_port: 8082,
             stream_protocol: SocketProtocolDefault {
                 variant: SocketProtocolDefaultVariant::ThrottledUdp,
-                ThrottledUdp: ThrottledUdpConfigDefault {
+                ThrottledUdp: SocketProtocolThrottledUdpDefault {
                     bitrate_multiplier: 1.5,
                 },
             },

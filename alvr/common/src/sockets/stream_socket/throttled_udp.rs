@@ -87,7 +87,7 @@ impl Stream for ThrottledUdpStreamReceiveSocket {
 }
 
 pub async fn connect_to_client(
-    peer_ip: IpAddr,
+    client_ip: IpAddr,
     port: u16,
     video_byterate: u32,
     bitrate_multiplier: f32,
@@ -95,9 +95,9 @@ pub async fn connect_to_client(
     ThrottledUdpStreamSendSocket,
     ThrottledUdpStreamReceiveSocket,
 )> {
-    let peer_addr: SocketAddr = (peer_ip, port).into();
+    let client_addr: SocketAddr = (client_ip, port).into();
     let socket = trace_err!(UdpSocket::bind((LOCAL_IP, port)).await)?;
-    trace_err!(socket.connect(peer_addr).await)?;
+    trace_err!(socket.connect(client_addr).await)?;
 
     let rx = Arc::new(socket);
     let tx = rx.clone();
@@ -126,15 +126,15 @@ pub async fn connect_to_client(
 }
 
 pub async fn connect_to_server(
-    peer_ip: IpAddr,
+    server_ip: IpAddr,
     port: u16,
 ) -> StrResult<(
     ThrottledUdpStreamSendSocket,
     ThrottledUdpStreamReceiveSocket,
 )> {
-    let peer_addr: SocketAddr = (peer_ip, port).into();
+    let server_addr: SocketAddr = (server_ip, port).into();
     let socket = trace_err!(UdpSocket::bind((LOCAL_IP, port)).await)?;
-    trace_err!(socket.connect(peer_addr).await)?;
+    trace_err!(socket.connect(server_addr).await)?;
 
     let rx = Arc::new(socket);
     let tx = rx.clone();

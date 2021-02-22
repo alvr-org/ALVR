@@ -2,6 +2,7 @@
 
 mod connection;
 mod logging_backend;
+mod openvr;
 mod web_server;
 
 #[cfg(windows)]

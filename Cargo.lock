@@ -178,6 +178,7 @@ dependencies = [
  "lazy_static",
  "log",
  "nalgebra",
+ "openvr-driver-sys",
  "parking_lot",
  "reqwest",
  "serde",
@@ -2931,6 +2932,15 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "openvr-driver-sys"
+version = "0.1.0+1.14.15"
+dependencies = [
+ "bindgen 0.57.0",
+ "cc",
+ "regex",
 ]
 
 [[package]]

@@ -36,6 +36,7 @@ hyper = { version = "0.14", features = ["http2", "server", "stream", "runtime", 
 reqwest = "0.11"
 alcro = "0.5"
 webbrowser = "0.5" # this is just for opening links in the default browser
+openvr-driver-sys = { path = "../openvr-driver-sys" }
 
 [build-dependencies]
 walkdir = "2"

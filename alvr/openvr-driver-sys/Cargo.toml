@@ -1,0 +1,11 @@
+[package]
+name = "openvr-driver-sys"
+version = "0.1.0+1.14.15"
+authors = ["Riccardo Zaglia <github.com/Riccardo Zaglia>"]
+license = "MIT"
+edition = "2018"
+
+[build-dependencies]
+bindgen = "0.57"
+cc = "1.0"
+regex = "1.3"

@@ -430,13 +430,12 @@ async fn connection_pipeline() -> StrResult {
 
     let microphone_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.microphone {
         let device = AudioDevice::new(desc.device_id, AudioDeviceType::VirtualMicrophone)?;
-        let sample_rate = audio::get_sample_rate(&device)?;
         let receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
 
         Box::pin(audio::play_audio_loop(
             device,
             1,
-            sample_rate,
+            desc.sample_rate,
             desc.config,
             receiver,
         ))

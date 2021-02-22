@@ -410,10 +410,15 @@ pub fn get_next_frame(
 
         frame
     } else {
-        info!(
-            "Audio buffer underflow! size: {}",
-            audio_state_ref.sample_buffer.len()
-        );
+        if matches!(
+            audio_state_ref.play_state,
+            PlayState::FadeInOrResumed { .. }
+        ) {
+            info!(
+                "Audio buffer underflow! size: {}",
+                audio_state_ref.sample_buffer.len()
+            );
+        }
 
         maybe_add_fade_out(&mut *audio_state_ref, channels_count, fade_frames_count);
 

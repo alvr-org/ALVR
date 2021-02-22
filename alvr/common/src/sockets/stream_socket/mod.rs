@@ -286,12 +286,12 @@ impl StreamSocket {
                     StreamReceiveSocket::Tcp(receive_socket),
                 )
             }
-            SocketProtocol::ThrottledUdp { bitrate_multiplier } => {
+            SocketProtocol::ThrottledUdp(config) => {
                 let (send_socket, receive_socket) = throttled_udp::connect_to_client(
                     client_ip,
                     port,
                     video_byterate,
-                    bitrate_multiplier,
+                    config.bitrate_multiplier,
                 )
                 .await?;
                 (

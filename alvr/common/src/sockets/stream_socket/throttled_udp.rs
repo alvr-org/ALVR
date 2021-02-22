@@ -33,11 +33,6 @@ const MINIMUM_BYTERATE: u32 = 30 * 1024 * 1024 * 3 / 2 / 8;
 // Reserve includes audio along with other small fluctuations.
 const RESERVE_BYTERATE: u32 = 5_000_000 / 8;
 
-pub struct ThrottlingSettings {
-    pub video_byterate: u32,
-    pub multiplier: f32,
-}
-
 #[allow(clippy::type_complexity)]
 #[derive(Clone)]
 pub struct ThrottledUdpStreamSendSocket {
@@ -94,7 +89,8 @@ impl Stream for ThrottledUdpStreamReceiveSocket {
 pub async fn connect_to_client(
     peer_ip: IpAddr,
     port: u16,
-    throttling_settings: ThrottlingSettings,
+    video_byterate: u32,
+    bitrate_multiplier: f32,
 ) -> StrResult<(
     ThrottledUdpStreamSendSocket,
     ThrottledUdpStreamReceiveSocket,
@@ -109,9 +105,7 @@ pub async fn connect_to_client(
     let limiter = {
         // The byterate and burst amount computation here is based
         // on the previous C++ implementation.
-        let byterate = (throttling_settings.video_byterate as f32 * throttling_settings.multiplier)
-            as u32
-            + RESERVE_BYTERATE;
+        let byterate = (video_byterate as f32 * bitrate_multiplier) as u32 + RESERVE_BYTERATE;
         let byterate = std::cmp::max(MINIMUM_BYTERATE, byterate);
         let burst = byterate / 1000;
         let quota = Quota::per_second(NonZero::new(byterate).unwrap())

@@ -120,13 +120,6 @@ pub struct VideoDesc {
     pub color_correction: Switch<ColorCorrectionDesc>,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ThrottlingConfig {
-    #[schema(min = 1.0, step = 0.1, gui = "UpDown")]
-    pub byterate_multiplier: f32,
-}
-
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum AudioDeviceId {
@@ -284,7 +277,10 @@ pub enum SocketProtocol {
     Udp,
     Tcp,
     #[schema(advanced)]
-    ThrottledUdp(ThrottlingConfig),
+    ThrottledUdp {
+        #[schema(min = 1.0, step = 0.1, gui = "UpDown")]
+        bitrate_multiplier: f32,
+    },
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -484,8 +480,8 @@ pub fn session_settings_default() -> SettingsDefault {
             web_server_port: 8082,
             stream_protocol: SocketProtocolDefault {
                 variant: SocketProtocolDefaultVariant::Udp,
-                ThrottledUdp: ThrottlingConfigDefault {
-                    byterate_multiplier: 1.5,
+                ThrottledUdp: SocketProtocolThrottledUdpDefault {
+                    bitrate_multiplier: 1.5,
                 },
             },
             stream_port: 9944,

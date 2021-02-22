@@ -48,7 +48,6 @@ pub struct ClientConfigPacket {
     pub eye_resolution_height: u32,
     pub fps: f32,
     pub game_audio_sample_rate: u32,
-    pub microphone_sample_rate: u32,
     pub reserved: String,
 }
 

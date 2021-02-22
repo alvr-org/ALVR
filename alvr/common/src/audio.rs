@@ -410,7 +410,7 @@ pub fn get_next_frame(
 
         frame
     } else {
-        error!(
+        info!(
             "Audio buffer underflow! size: {}",
             audio_state_ref.sample_buffer.len()
         );
@@ -451,7 +451,7 @@ pub async fn receive_samples_loop(
         let mut audio_state_ref = audio_state.lock();
 
         if packet.had_packet_loss {
-            error!("Audio packet loss!");
+            info!("Audio packet loss!");
 
             // Add a fade-out *before* draining sample_buffer
             maybe_add_fade_out(&mut *audio_state_ref, channels_count, fade_frames_count);
@@ -466,7 +466,7 @@ pub async fn receive_samples_loop(
         // todo: use smarter policy with EventTiming
         let buffer_size = audio_state_ref.sample_buffer.len();
         if buffer_size > 2 * min_buffer_frames_count + fade_frames_count {
-            error!("Audio buffer overflow! size: {}", buffer_size);
+            info!("Audio buffer overflow! size: {}", buffer_size);
 
             // Add a fade-out *before* draining sample_buffer
             maybe_add_fade_out(&mut *audio_state_ref, channels_count, fade_frames_count);

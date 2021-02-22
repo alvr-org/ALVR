@@ -151,10 +151,16 @@ pub struct OutputAudioDesc {
     pub config: AudioConfig,
 }
 
+// Note: sample rate is a free parameter for microphone, because both server and client supports
+// resampling. In contrary, for game audio, the server does not support resampling.
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InputAudioDesc {
     pub device_id: AudioDeviceId,
+
+    #[schema(advanced)]
+    pub sample_rate: u32,
+
     pub config: AudioConfig,
 }
 
@@ -427,6 +433,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         Name: "".into(),
                         Index: 1,
                     },
+                    sample_rate: 44100,
                     config: AudioConfigDefault {
                         fade_ms: 20,
                         average_buffering_ms: 50,

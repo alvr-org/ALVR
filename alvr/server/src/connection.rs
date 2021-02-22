@@ -155,15 +155,6 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         0
     };
 
-    let microphone_sample_rate = if let Switch::Enabled(desc) = settings.audio.microphone {
-        trace_err!(audio::get_sample_rate(&AudioDevice::new(
-            desc.device_id,
-            AudioDeviceType::VirtualMicrophone
-        )?))?
-    } else {
-        0
-    };
-
     let client_config = ClientConfigPacket {
         session_desc: trace_err!(serde_json::to_string(SESSION_MANAGER.lock().get()))?,
         dashboard_url,
@@ -171,7 +162,6 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         eye_resolution_height: video_eye_height,
         fps,
         game_audio_sample_rate,
-        microphone_sample_rate,
         reserved: "".into(),
     };
 

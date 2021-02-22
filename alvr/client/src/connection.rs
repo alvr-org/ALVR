@@ -428,10 +428,10 @@ async fn connection_pipeline(
         Box::pin(future::pending())
     };
 
-    let microphone_loop: BoxFuture<_> = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
+    let microphone_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.microphone {
         let microphone_sender = stream_socket.request_stream(AUDIO).await?;
         Box::pin(audio::record_audio_loop(
-            config_packet.microphone_sample_rate,
+            config.sample_rate,
             microphone_sender,
         ))
     } else {

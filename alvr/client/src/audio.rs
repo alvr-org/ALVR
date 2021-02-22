@@ -105,7 +105,8 @@ pub async fn play_audio_loop(
     receiver: StreamReceiver<()>,
 ) -> StrResult {
     let fade_frames_count = sample_rate as usize * config.fade_ms as usize / 1000;
-    let min_buffer_frames_count = sample_rate as usize * config.average_buffering_ms as usize / 1000;
+    let min_buffer_frames_count =
+        sample_rate as usize * config.average_buffering_ms as usize / 1000;
 
     let audio_state = Arc::new(Mutex::new(AudioState::default()));
 

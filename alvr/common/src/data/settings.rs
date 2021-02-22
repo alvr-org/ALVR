@@ -133,7 +133,7 @@ pub enum AudioDeviceId {
 #[serde(rename_all = "camelCase")]
 pub struct AudioConfig {
     pub fade_ms: u64,
-    pub min_buffering_ms: u64,
+    pub average_buffering_ms: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -406,7 +406,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     mute_when_streaming: true,
                     config: AudioConfigDefault {
                         fade_ms: 15,
-                        min_buffering_ms: 30,
+                        average_buffering_ms: 30,
                     },
                 },
             },
@@ -420,7 +420,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                     config: AudioConfigDefault {
                         fade_ms: 20,
-                        min_buffering_ms: 50,
+                        average_buffering_ms: 50,
                     },
                 },
             },

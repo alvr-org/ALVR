@@ -8,13 +8,11 @@ use cpal::{
     BufferSize, Device, Sample, SampleFormat, StreamConfig,
 };
 use parking_lot::Mutex;
-use rodio::{source::SineWave, OutputStream, Sink, Source};
+use rodio::{OutputStream, Source};
 use std::{
     collections::VecDeque,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc as smpsc, Arc,
-    },
+    f32::consts::PI,
+    sync::{mpsc as smpsc, Arc},
     thread,
 };
 use tokio::sync::mpsc as tmpsc;
@@ -139,7 +137,10 @@ pub enum AudioDeviceType {
 
 pub struct AudioDevice {
     inner: Device,
+
+    #[allow(dead_code)]
     id: AudioDeviceId,
+
     device_type: AudioDeviceType,
 }
 
@@ -221,34 +222,11 @@ pub fn get_sample_rate(device: &AudioDevice) -> StrResult<u32> {
     Ok(trace_none!(configs.next())?.min_sample_rate().0)
 }
 
-// samples_bytes must be of format I16
-fn convert_channels_count(
-    samples_bytes: &[u8],
-    source_channels_count: u16,
-    dest_channel_count: u16,
-) -> Vec<u8> {
-    if source_channels_count == 1 && dest_channel_count == 2 {
-        samples_bytes
-            .chunks_exact(2)
-            .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
-            .collect()
-    } else if source_channels_count == 2 && dest_channel_count == 1 {
-        samples_bytes
-            .chunks_exact(4)
-            .flat_map(|c| vec![c[0], c[1]])
-            .collect()
-    } else {
-        // I assume the other case is source_channels_count == dest_channel_count. Otherwise the
-        // buffer will be mishandled but no error will occur.
-        samples_bytes.to_vec()
-    }
-}
-
 pub async fn record_audio_loop(
     device: AudioDevice,
     channels_count: u16,
     sample_rate: u32,
-    mute: bool,
+    #[allow(unused_variables)] mute: bool,
     mut sender: StreamSender<()>,
 ) -> StrResult {
     let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
@@ -292,7 +270,21 @@ pub async fn record_audio_loop(
                 } else {
                     data.bytes().to_vec()
                 };
-                let data = convert_channels_count(&data, config.channels(), channels_count);
+
+                let data = if config.channels() == 1 && channels_count == 2 {
+                    data.chunks_exact(2)
+                        .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
+                        .collect()
+                } else if config.channels() == 2 && channels_count == 1 {
+                    data.chunks_exact(4)
+                        .flat_map(|c| vec![c[0], c[1]])
+                        .collect()
+                } else {
+                    // I assume the other case is config.channels() == channels_count. Otherwise the
+                    // buffer will be mishandled but no error will occur.
+                    data.to_vec()
+                };
+
                 data_sender.send(data).ok();
             },
             |e| warn!("Error while recording audio: {}", e),
@@ -320,18 +312,182 @@ pub async fn record_audio_loop(
 }
 
 enum PlayState {
-    Playing,
-    Underflow,
-    Overflow,
-    PacketLoss,
-    Recovering,
+    FadeOutOrPaused,
+    FadeInOrResumed { fade_in_progress_frames: usize },
+}
+
+impl Default for PlayState {
+    fn default() -> Self {
+        Self::FadeOutOrPaused
+    }
+}
+
+// Between locks, sample_buffer and fade_outs must contain an integer number of frames and the first
+// sample must correspond to channel 0.
+#[derive(Default)]
+pub struct AudioState {
+    sample_buffer: VecDeque<f32>,
+
+    // Prerendered fade-outs. In case of intermittent packet loss, multiple fade-outs could overlap.
+    // A separate buffer is used because the samples we need in sample_buffer could get removed
+    // due to buffer overgrowth.
+    fade_outs: VecDeque<f32>,
+
+    play_state: PlayState,
+}
+
+// Render a fade-out. It is aware of a in-progress fade-in. This is done only if play_state is not
+// already in FadeOutOrPaused and if sample_buffer has enough samples.
+#[inline]
+fn maybe_add_fade_out(
+    audio_state: &mut AudioState,
+    channels_count: usize,
+    fade_frames_count: usize,
+) {
+    if audio_state.sample_buffer.len() / channels_count >= fade_frames_count {
+        if let PlayState::FadeInOrResumed {
+            fade_in_progress_frames,
+        } = audio_state.play_state
+        {
+            let fade_out_start = fade_frames_count - fade_in_progress_frames;
+
+            for f in 0..fade_frames_count - fade_out_start {
+                let volume =
+                    (PI * (f + fade_out_start) as f32 / fade_frames_count as f32).cos() / 2. + 0.5;
+
+                let sample_index_base = f * channels_count;
+                if f < audio_state.fade_outs.len() / channels_count {
+                    for c in 0..channels_count {
+                        audio_state.fade_outs[sample_index_base + c] +=
+                            audio_state.sample_buffer[sample_index_base + c] * volume;
+                    }
+                } else {
+                    for c in 0..channels_count {
+                        audio_state
+                            .fade_outs
+                            .push_back(audio_state.sample_buffer[sample_index_base + c] * volume);
+                    }
+                }
+            }
+        }
+
+        audio_state.play_state = PlayState::FadeOutOrPaused;
+    }
+}
+
+#[inline]
+pub fn get_next_frame(
+    audio_state_ref: &mut AudioState,
+    channels_count: usize,
+    fade_frames_count: usize,
+) -> Vec<f32> {
+    let mut frame = if audio_state_ref.sample_buffer.len() / channels_count > fade_frames_count {
+        let mut fade_in_progress_frames = match audio_state_ref.play_state {
+            PlayState::FadeInOrResumed {
+                fade_in_progress_frames,
+            } => fade_in_progress_frames,
+            PlayState::FadeOutOrPaused => 0,
+        };
+
+        let mut frame = audio_state_ref
+            .sample_buffer
+            .drain(0..channels_count)
+            .collect::<Vec<_>>();
+
+        if fade_in_progress_frames < fade_frames_count {
+            let volume =
+                (PI * fade_in_progress_frames as f32 / fade_frames_count as f32).cos() / -2. + 0.5;
+
+            for sample in &mut frame {
+                *sample *= volume;
+            }
+
+            fade_in_progress_frames += 1;
+            audio_state_ref.play_state = PlayState::FadeInOrResumed {
+                fade_in_progress_frames,
+            };
+        }
+
+        frame
+    } else {
+        error!(
+            "Audio buffer underflow! size: {}",
+            audio_state_ref.sample_buffer.len()
+        );
+
+        maybe_add_fade_out(&mut *audio_state_ref, channels_count, fade_frames_count);
+
+        vec![0.; channels_count]
+    };
+
+    if audio_state_ref.fade_outs.len() >= channels_count {
+        for (idx, sample) in audio_state_ref
+            .fade_outs
+            .drain(0..channels_count)
+            .enumerate()
+        {
+            frame[idx] += sample;
+        }
+    }
+
+    frame
+}
+
+pub async fn receive_samples_loop(
+    mut receiver: StreamReceiver<()>,
+    audio_state: Arc<Mutex<AudioState>>,
+    channels_count: usize,
+    fade_frames_count: usize,
+    min_buffer_frames_count: usize,
+) -> StrResult {
+    loop {
+        let packet = receiver.recv().await?;
+        let samples = packet
+            .buffer
+            .chunks_exact(2)
+            .map(|c| i16::from_ne_bytes([c[0], c[1]]).to_f32())
+            .collect::<Vec<_>>();
+
+        let mut audio_state_ref = audio_state.lock();
+
+        if packet.had_packet_loss {
+            error!("Audio packet loss!");
+
+            // Add a fade-out *before* draining sample_buffer
+            maybe_add_fade_out(&mut *audio_state_ref, channels_count, fade_frames_count);
+
+            // sample_buffer must be drained completely. There is no way of reusing the old frames
+            // without discontinuity.
+            audio_state_ref.sample_buffer.clear();
+        }
+
+        audio_state_ref.sample_buffer.extend(&samples);
+
+        // todo: use smarter policy with EventTiming
+        let buffer_size = audio_state_ref.sample_buffer.len();
+        if buffer_size > 2 * min_buffer_frames_count + fade_frames_count {
+            error!("Audio buffer overflow! size: {}", buffer_size);
+
+            // Add a fade-out *before* draining sample_buffer
+            maybe_add_fade_out(&mut *audio_state_ref, channels_count, fade_frames_count);
+
+            // Drain sample_buffer partially. A discontinuity is formed but the playback can resume
+            // immediately with a fade-in
+            audio_state_ref.sample_buffer.drain(
+                0..(buffer_size - min_buffer_frames_count - fade_frames_count) * channels_count,
+            );
+        }
+    }
 }
 
 struct StreamingSource {
-    sample_buffer: Arc<Mutex<VecDeque<f32>>>,
-    channels: u16,
+    audio_state: Arc<Mutex<AudioState>>,
+    current_frame: Vec<f32>,
+    channel_index: usize,
+    channels_count: usize,
     sample_rate: u32,
-    play_state: Arc<Mutex<PlayState>>,
+
+    fade_frames_count: usize,
 }
 
 impl Source for StreamingSource {
@@ -340,7 +496,7 @@ impl Source for StreamingSource {
     }
 
     fn channels(&self) -> u16 {
-        self.channels
+        self.channels_count as _
     }
 
     fn sample_rate(&self) -> u32 {
@@ -355,15 +511,23 @@ impl Source for StreamingSource {
 impl Iterator for StreamingSource {
     type Item = f32;
 
+    #[inline]
     fn next(&mut self) -> Option<f32> {
-        let mut play_state_ref = self.play_state.lock();
+        let mut audio_state_ref = self.audio_state.lock();
 
-        let maybe_sample = self.sample_buffer.lock().pop_front();
-        if maybe_sample.is_none() {
-            *play_state_ref = PlayState::Underflow;
+        if self.channel_index == 0 {
+            self.current_frame = get_next_frame(
+                &mut audio_state_ref,
+                self.channels_count,
+                self.fade_frames_count,
+            );
         }
 
-        maybe_sample
+        let sample = self.current_frame[self.channel_index];
+
+        self.channel_index = (self.channel_index + 1) % self.channels_count;
+
+        Some(sample)
     }
 }
 
@@ -372,95 +536,47 @@ pub async fn play_audio_loop(
     channels_count: u16,
     sample_rate: u32,
     config: AudioConfig,
-    mut receiver: StreamReceiver<()>,
+    receiver: StreamReceiver<()>,
 ) -> StrResult {
     assert!(!matches!(device.device_type, AudioDeviceType::Input));
 
-    // let fade_frames_count = sample_rate as usize * config.fade_ms as usize / 1000;
-    let min_buffer_samples_count =
-        sample_rate as usize * channels_count as usize * config.min_buffering_ms as usize / 1000;
+    // length of fade-in/out in frames
+    let fade_frames_count = sample_rate as usize * config.fade_ms as usize / 1000;
+
+    // average buffer size in frames
+    let min_buffer_frames_count =
+        sample_rate as usize * config.average_buffering_ms as usize / 1000;
+
+    let audio_state = Arc::new(Mutex::new(AudioState::default()));
 
     // store the stream in a thread (because !Send) and extract the playback handle
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
-    let (stream_handle_sender, stream_handler_retriever) = oneshot::channel();
-    thread::spawn(move || -> StrResult {
-        let (_stream, handle) = trace_err!(OutputStream::try_from_device(&device.inner))?;
-        stream_handle_sender.send(handle).ok();
+    thread::spawn({
+        let audio_state = audio_state.clone();
+        move || -> StrResult {
+            let (_stream, handle) = trace_err!(OutputStream::try_from_device(&device.inner))?;
 
-        shutdown_receiver.recv().ok();
-        Ok(())
+            let source = StreamingSource {
+                audio_state,
+                current_frame: vec![],
+                channel_index: 0,
+                channels_count: channels_count as _,
+                sample_rate,
+                fade_frames_count,
+            };
+            trace_err!(handle.play_raw(source))?;
+
+            shutdown_receiver.recv().ok();
+            Ok(())
+        }
     });
 
-    let stream_handle = trace_err!(stream_handler_retriever.await)?;
-    let playback_sink = trace_err!(Sink::try_new(&stream_handle))?;
-
-    let mut old_sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
-    let mut sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
-
-    let mut play_state = Arc::new(Mutex::new(PlayState::Underflow));
-
-    playback_sink.play();
-
-    loop {
-        let packet = receiver.recv().await?;
-
-        error!(
-            "mic received. playing: {}, queue len:{}",
-            !playback_sink.is_paused(),
-            playback_sink.len()
-        );
-
-        let frames = packet
-            .buffer
-            .chunks_exact(2)
-            .map(|c| i16::from_ne_bytes([c[0], c[1]]).to_f32())
-            .collect::<VecDeque<_>>();
-
-        // assign a new object to play_state to avoid the previous source to report underflow
-        if packet.had_packet_loss {
-            error!("packet loss");
-            play_state = Arc::new(Mutex::new(PlayState::PacketLoss));
-        } else if sample_buffer.lock().len() + frames.len() > 2 * min_buffer_samples_count {
-            error!("overflow");
-            play_state = Arc::new(Mutex::new(PlayState::Overflow));
-        }
-
-        if matches!(*play_state.lock(), PlayState::Underflow) {
-            error!("underflow");
-        }
-
-        let mut play_state_ref = play_state.lock();
-
-        if matches!(
-            *play_state_ref,
-            PlayState::Underflow | PlayState::Overflow | PlayState::PacketLoss
-        ) {
-            error!("swap buffers");
-            old_sample_buffer.lock().clear();
-            old_sample_buffer = sample_buffer;
-            sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
-            *play_state_ref = PlayState::Recovering;
-        }
-
-        let mut sample_buffer_ref = sample_buffer.lock();
-        sample_buffer_ref.extend(frames);
-
-        if matches!(*play_state_ref, PlayState::Recovering)
-            && sample_buffer_ref.len() > min_buffer_samples_count
-        {
-            error!("recovering");
-            old_sample_buffer.lock().clear();
-
-            let streaming_source = StreamingSource {
-                sample_buffer: sample_buffer.clone(),
-                channels: channels_count,
-                sample_rate,
-                play_state: play_state.clone(),
-            };
-            playback_sink.append(streaming_source);
-
-            *play_state_ref = PlayState::Playing;
-            error!("recovered!");
-        }
-    }
+    receive_samples_loop(
+        receiver,
+        audio_state,
+        channels_count as _,
+        fade_frames_count,
+        min_buffer_frames_count,
+    )
+    .await
 }

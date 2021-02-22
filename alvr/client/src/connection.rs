@@ -19,7 +19,6 @@ use std::{
         atomic::{AtomicBool, Ordering},
         mpsc as smpsc, Arc,
     },
-    thread,
     time::Duration,
 };
 use tokio::{
@@ -550,7 +549,6 @@ pub async fn connection_lifecycle_loop(
     )
     .ok();
 
-    // this loop has no exit, but the execution can be halted by the caller with tokio::select!{}
     loop {
         tokio::join!(
             async {

@@ -596,9 +596,12 @@ OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
     auto eyeWidth = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
     auto eyeHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
                                                 VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
-
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
     ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.streamTexture.get(),
                        g_ctx.loadingTexture, {false});
+#pragma clang diagnostic pop
+
     ovrRenderer_CreateScene(&g_ctx.Renderer, darkMode);
 
     g_ctx.darkMode = darkMode;

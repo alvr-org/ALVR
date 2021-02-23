@@ -132,8 +132,10 @@ pub enum AudioDeviceId {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioConfig {
-    pub fade_ms: u64,
     pub average_buffering_ms: u64,
+
+    #[schema(advanced)]
+    pub fade_ms: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -298,10 +300,13 @@ pub struct ConnectionDesc {
     #[schema(advanced)]
     pub stream_port: u16,
 
+    #[schema(advanced)]
     pub aggressive_keyframe_resend: bool,
 
+    #[schema(advanced)]
     pub on_connect_script: String,
 
+    #[schema(advanced)]
     pub on_disconnect_script: String,
 
     #[schema(advanced)]
@@ -417,8 +422,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                     mute_when_streaming: true,
                     config: AudioConfigDefault {
+                        average_buffering_ms: 50,
                         fade_ms: 15,
-                        average_buffering_ms: 30,
                     },
                 },
             },
@@ -432,8 +437,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                     sample_rate: 44100,
                     config: AudioConfigDefault {
-                        fade_ms: 20,
                         average_buffering_ms: 50,
+                        fade_ms: 20,
                     },
                 },
             },
@@ -480,7 +485,7 @@ pub fn session_settings_default() -> SettingsDefault {
             auto_trust_clients: cfg!(debug_assertions),
             web_server_port: 8082,
             stream_protocol: SocketProtocolDefault {
-                variant: SocketProtocolDefaultVariant::ThrottledUdp,
+                variant: SocketProtocolDefaultVariant::Tcp,
                 ThrottledUdp: SocketProtocolThrottledUdpDefault {
                     bitrate_multiplier: 1.5,
                 },

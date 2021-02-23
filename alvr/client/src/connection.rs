@@ -183,7 +183,7 @@ async fn connection_pipeline(
             settings.connection.stream_port,
             settings.connection.stream_protocol,
         ) => res?,
-        _ = time::sleep(Duration::from_secs(2)) => {
+        _ = time::sleep(Duration::from_secs(5)) => {
             return fmt_e!("Timeout while setting up streams");
         }
     };

@@ -385,7 +385,7 @@ async fn connection_pipeline() -> StrResult {
             settings.connection.stream_protocol,
             mbits_to_bytes(settings.video.encode_bitrate_mbs)
         ) => res?,
-        _ = time::sleep(Duration::from_secs(2)) => {
+        _ = time::sleep(Duration::from_secs(5)) => {
             return fmt_e!("Timeout while setting up streams");
         }
     };

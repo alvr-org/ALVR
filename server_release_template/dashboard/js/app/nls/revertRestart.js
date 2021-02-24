@@ -22,4 +22,5 @@ define({
     "bg": true,
     "de": true,
     "nl": true,
+    "ko": true,
 });

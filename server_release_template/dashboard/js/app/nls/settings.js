@@ -205,4 +205,5 @@ define({
     "bg": true,
     "nl": true,
     "de": true,
+    "ko": true,
 });

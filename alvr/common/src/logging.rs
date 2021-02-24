@@ -1,3 +1,4 @@
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, future::Future};
 
@@ -56,22 +57,34 @@ fn show_e_block<E: Display>(e: E, blocking: bool) {
     // GDK crashes because of initialization in multiple thread
     #[cfg(not(any(target_os = "android", target_os = "linux")))]
     {
-        let show_msgbox = {
-            let err_string = e.to_string();
-            move || {
-                msgbox::create(
-                    "ALVR encountered an error",
-                    &err_string,
-                    msgbox::IconType::Error,
-                )
-                .ok();
-            }
-        };
+        // Store the last error shown in a message box. Do not open a new message box if the content
+        // of the error has not changed
+        lazy_static::lazy_static! {
+            static ref LAST_MESSAGEBOX_ERROR: Mutex<String> = Mutex::new("".into());
+        }
 
-        if blocking {
-            show_msgbox();
-        } else {
-            std::thread::spawn(show_msgbox);
+        let err_string = e.to_string();
+        let last_messagebox_error_ref = &mut *LAST_MESSAGEBOX_ERROR.lock();
+        if *last_messagebox_error_ref != err_string {
+            let show_msgbox = {
+                let err_string = err_string.clone();
+                move || {
+                    msgbox::create(
+                        "ALVR encountered an error",
+                        &err_string,
+                        msgbox::IconType::Error,
+                    )
+                    .ok();
+                }
+            };
+
+            if blocking {
+                show_msgbox();
+            } else {
+                std::thread::spawn(show_msgbox);
+            }
+
+            *last_messagebox_error_ref = err_string;
         }
     }
 }

@@ -39,7 +39,7 @@ fn set_property(
         vr::vrServerDriverHostVendorSpecificEvent(
             device_index,
             vr::VREvent_PropertyChanged,
-            &event_data as _,
+            &event_data,
             0.,
         );
 

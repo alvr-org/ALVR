@@ -70,6 +70,6 @@ If you want to support this project you can make a donation to our [Open Source 
 You can also donate to the original author of ALVR using Paypal (polygraphene@gmail.com) or with bitcoin (1FCbmFVSjsmpnAj6oLx2EhnzQzzhyxTLEv).
 
 [badge-discord]: https://img.shields.io/discord/720612397580025886?style=for-the-badge&logo=discord "Join us on Discord"
-[link-discord]: https://discord.gg/KbKk3UM
+[link-discord]: https://discord.gg/ALVR
 [badge-opencollective]: https://img.shields.io/opencollective/all/alvr?style=for-the-badge "Donate"
 [link-opencollective]: https://opencollective.com/alvr

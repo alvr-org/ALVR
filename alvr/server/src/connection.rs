@@ -1,5 +1,5 @@
 use crate::{
-    ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER, RESTART_NOTIFIER,
+    openvr, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER, RESTART_NOTIFIER,
     SESSION_MANAGER,
 };
 use alvr_common::{audio::AudioDevice, data::*, logging::*, sockets::*, *};
@@ -146,11 +146,22 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         server_ip, settings.connection.web_server_port
     );
 
-    let game_audio_sample_rate = if let Switch::Enabled(desc) = settings.audio.game_audio {
-        trace_err!(audio::get_sample_rate(&AudioDevice::new(
-            desc.device_id,
-            AudioDeviceType::Output
-        )?))?
+    let game_audio_sample_rate = if let Switch::Enabled(game_audio_desc) = settings.audio.game_audio
+    {
+        let game_audio_device =
+            AudioDevice::new(game_audio_desc.device_id, AudioDeviceType::Output)?;
+
+        if let Switch::Enabled(microphone_desc) = settings.audio.microphone {
+            let microphone_device = AudioDevice::new(
+                microphone_desc.input_device_id,
+                AudioDeviceType::VirtualMicrophoneInput,
+            )?;
+            if audio::is_same_device(&game_audio_device, &microphone_device) {
+                return fmt_e!("Game audio and microphone cannot point to the same device!");
+            }
+        }
+
+        trace_err!(audio::get_sample_rate(&game_audio_device))?
     } else {
         0
     };
@@ -417,6 +428,12 @@ async fn connection_pipeline() -> StrResult {
         let sample_rate = audio::get_sample_rate(&device)?;
         let sender = stream_socket.request_stream(AUDIO).await?;
 
+        #[cfg(windows)]
+        {
+            let device_id = audio::get_windows_device_id(&device)?;
+            openvr::set_game_output_audio_device_id(device_id);
+        }
+
         Box::pin(audio::record_audio_loop(
             device,
             2,
@@ -429,11 +446,24 @@ async fn connection_pipeline() -> StrResult {
     };
 
     let microphone_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.microphone {
-        let device = AudioDevice::new(desc.device_id, AudioDeviceType::VirtualMicrophone)?;
+        let input_device = AudioDevice::new(
+            desc.input_device_id,
+            AudioDeviceType::VirtualMicrophoneInput,
+        )?;
         let receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
 
+        #[cfg(windows)]
+        {
+            let microphone_device = AudioDevice::new(
+                desc.output_device_id,
+                AudioDeviceType::VirtualMicrophoneOutput,
+            )?;
+            let microphone_device_id = audio::get_windows_device_id(&microphone_device)?;
+            openvr::set_headset_microphone_audio_device_id(microphone_device_id);
+        }
+
         Box::pin(audio::play_audio_loop(
-            device,
+            input_device,
             1,
             desc.sample_rate,
             desc.config,

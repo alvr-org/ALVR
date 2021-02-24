@@ -79,7 +79,7 @@ fn main() {
 
     let mut mappings_fn_string: String = String::from(
         r"
-        pub fn tracked_device_property_name_to_u32(prop_name: &str) -> Result<u32, String> {
+        pub fn tracked_device_property_name_to_key(prop_name: &str) -> Result<ETrackedDeviceProperty, String> {
             match prop_name {
         ",
     );

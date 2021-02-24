@@ -20,119 +20,33 @@ use tokio::sync::mpsc as tmpsc;
 #[cfg(windows)]
 use std::ptr;
 #[cfg(windows)]
+use widestring::U16CStr;
+#[cfg(windows)]
 use winapi::{
-    shared::winerror::*,
-    um::{combaseapi::*, endpointvolume::IAudioEndpointVolume, mmdeviceapi::*, objbase::*},
+    shared::{winerror::*, wtypes::VT_LPWSTR},
+    um::{
+        combaseapi::*, coml2api::STGM_READ, endpointvolume::IAudioEndpointVolume,
+        functiondiscoverykeys_devpkey::PKEY_Device_FriendlyName, mmdeviceapi::*, objbase::*,
+        propidl::PROPVARIANT, propsys::IPropertyStore,
+    },
     Class, Interface,
 };
 #[cfg(windows)]
 use wio::com::ComPtr;
 
-#[cfg(windows)]
-fn set_mute_audio_device(device_id: AudioDeviceId, mute: bool) -> StrResult {
-    let device_index = match device_id {
-        AudioDeviceId::Default => None,
-        AudioDeviceId::Name(name_substring) => trace_err!(cpal::default_host().output_devices())?
-            .enumerate()
-            .find_map(|(i, d)| {
-                if d.name().ok()?.contains(&name_substring) {
-                    Some(i)
-                } else {
-                    None
-                }
-            }),
-        AudioDeviceId::Index(index) => Some(index as _),
-    };
-
-    unsafe {
-        CoInitializeEx(ptr::null_mut(), COINIT_MULTITHREADED);
-
-        let mut mm_device_enumerator_ptr: *mut IMMDeviceEnumerator = ptr::null_mut();
-        let hr = CoCreateInstance(
-            &MMDeviceEnumerator::uuidof(),
-            ptr::null_mut(),
-            CLSCTX_ALL,
-            &IMMDeviceEnumerator::uuidof(),
-            &mut mm_device_enumerator_ptr as *mut _ as _,
-        );
-        if FAILED(hr) {
-            return fmt_e!(
-                "CoCreateInstance(IMMDeviceEnumerator) failed: hr = 0x{:08x}",
-                hr
-            );
-        }
-        let mm_device_enumerator = ComPtr::from_raw(mm_device_enumerator_ptr);
-
-        let mm_device = if let Some(index) = device_index {
-            let mut mm_device_collection_ptr: *mut IMMDeviceCollection = ptr::null_mut();
-            let hr = mm_device_enumerator.EnumAudioEndpoints(
-                eRender,
-                DEVICE_STATE_ACTIVE,
-                &mut mm_device_collection_ptr as _,
-            );
-            if FAILED(hr) {
-                return fmt_e!(
-                    "IMMDeviceEnumerator::EnumAudioEndpoints failed: hr = 0x{:08x}",
-                    hr
-                );
-            }
-            let mm_device_collection = ComPtr::from_raw(mm_device_collection_ptr);
-
-            let mut mm_device_ptr: *mut IMMDevice = ptr::null_mut();
-            let hr = mm_device_collection.Item(index as _, &mut mm_device_ptr as _);
-            if FAILED(hr) {
-                return fmt_e!("IMMDeviceCollection::Item failed: hr = 0x{:08x}", hr);
-            }
-
-            ComPtr::from_raw(mm_device_ptr)
-        } else {
-            let mut mm_device_ptr: *mut IMMDevice = ptr::null_mut();
-            let hr = mm_device_enumerator.GetDefaultAudioEndpoint(
-                eRender,
-                eConsole,
-                &mut mm_device_ptr as *mut _,
-            );
-            if hr == HRESULT_FROM_WIN32(ERROR_NOT_FOUND) {
-                return fmt_e!("No default audio endpoint found. No audio device?");
-            }
-            if FAILED(hr) {
-                return fmt_e!(
-                    "IMMDeviceEnumerator::GetDefaultAudioEndpoint failed: hr = 0x{:08x}",
-                    hr
-                );
-            }
-
-            ComPtr::from_raw(mm_device_ptr)
-        };
-
-        let mut endpoint_volume_ptr: *mut IAudioEndpointVolume = ptr::null_mut();
-        let hr = mm_device.Activate(
-            &IAudioEndpointVolume::uuidof(),
-            CLSCTX_ALL,
-            ptr::null_mut(),
-            &mut endpoint_volume_ptr as *mut _ as _,
-        );
-        if FAILED(hr) {
-            return fmt_e!(
-                "IMMDevice::Activate() for IAudioEndpointVolume failed: hr = 0x{:08x}",
-                hr,
-            );
-        }
-        let endpoint_volume = ComPtr::from_raw(endpoint_volume_ptr);
-
-        let hr = endpoint_volume.SetMute(mute as _, ptr::null_mut());
-        if FAILED(hr) {
-            return fmt_e!("Failed to mute audio device: hr = 0x{:08x}", hr,);
-        }
-    }
-
-    Ok(())
-}
-
 pub enum AudioDeviceType {
     Output,
     Input,
-    VirtualMicrophone,
+
+    // for the virtual microphone devices, input and output labels are swapped
+    VirtualMicrophoneInput,
+    VirtualMicrophoneOutput,
+}
+
+impl AudioDeviceType {
+    fn is_output(&self) -> bool {
+        matches!(self, Self::Output | Self::VirtualMicrophoneInput)
+    }
 }
 
 pub struct AudioDevice {
@@ -156,7 +70,7 @@ impl AudioDevice {
                 AudioDeviceType::Input => host
                     .default_input_device()
                     .ok_or_else(|| "No input audio device found".to_owned())?,
-                AudioDeviceType::VirtualMicrophone => trace_err!(host.output_devices())?
+                AudioDeviceType::VirtualMicrophoneInput => trace_err!(host.output_devices())?
                     .find(|d| {
                         if let Ok(name) = d.name() {
                             name.contains("CABLE Input")
@@ -170,12 +84,26 @@ impl AudioDevice {
                             "Did you install VB-CABLE Virtual Audio Device?"
                         )
                     })?,
+                AudioDeviceType::VirtualMicrophoneOutput => trace_err!(host.input_devices())?
+                    .find(|d| {
+                        if let Ok(name) = d.name() {
+                            name.contains("CABLE Output")
+                        } else {
+                            false
+                        }
+                    })
+                    .ok_or_else(|| {
+                        format!(
+                            "CABLE Output device not found. {}",
+                            "Did you install VB-CABLE Virtual Audio Device?"
+                        )
+                    })?,
             },
             AudioDeviceId::Name(name_substring) => {
-                let mut devices = trace_err!(if matches!(device_type, AudioDeviceType::Input) {
-                    host.input_devices()
-                } else {
+                let mut devices = trace_err!(if device_type.is_output() {
                     host.output_devices()
+                } else {
+                    host.input_devices()
                 })?;
 
                 devices
@@ -194,10 +122,10 @@ impl AudioDevice {
                     })?
             }
             AudioDeviceId::Index(index) => {
-                let mut devices = trace_err!(if matches!(device_type, AudioDeviceType::Input) {
-                    host.input_devices()
-                } else {
+                let mut devices = trace_err!(if device_type.is_output() {
                     host.output_devices()
+                } else {
+                    host.input_devices()
                 })?;
 
                 devices
@@ -212,6 +140,146 @@ impl AudioDevice {
             device_type,
         })
     }
+}
+
+pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
+    if let (Ok(name1), Ok(name2)) = (device1.inner.name(), device2.inner.name()) {
+        name1 == name2
+    } else {
+        false
+    }
+}
+
+#[cfg(windows)]
+fn get_windows_device(device: &AudioDevice) -> StrResult<ComPtr<IMMDevice>> {
+    let device_name = trace_err!(device.inner.name())?;
+
+    unsafe {
+        CoInitializeEx(ptr::null_mut(), COINIT_MULTITHREADED);
+
+        let mut mm_device_enumerator_ptr: *mut IMMDeviceEnumerator = ptr::null_mut();
+        let hr = CoCreateInstance(
+            &MMDeviceEnumerator::uuidof(),
+            ptr::null_mut(),
+            CLSCTX_ALL,
+            &IMMDeviceEnumerator::uuidof(),
+            &mut mm_device_enumerator_ptr as *mut _ as _,
+        );
+        if FAILED(hr) {
+            return fmt_e!(
+                "CoCreateInstance(IMMDeviceEnumerator) failed: hr = 0x{:08x}",
+                hr
+            );
+        }
+        let mm_device_enumerator = ComPtr::from_raw(mm_device_enumerator_ptr);
+
+        let mut mm_device_collection_ptr: *mut IMMDeviceCollection = ptr::null_mut();
+        let hr = mm_device_enumerator.EnumAudioEndpoints(
+            eAll,
+            DEVICE_STATE_ACTIVE,
+            &mut mm_device_collection_ptr as _,
+        );
+        if FAILED(hr) {
+            return fmt_e!(
+                "IMMDeviceEnumerator::EnumAudioEndpoints failed: hr = 0x{:08x}",
+                hr
+            );
+        }
+        let mm_device_collection = ComPtr::from_raw(mm_device_collection_ptr);
+
+        // GetCount has a wrong signature (*const parameter instead of *mut). Count needs to be a
+        // mutable variable even if not enforced.
+        #[allow(unused_mut)]
+        let mut count = 0;
+        let hr = mm_device_collection.GetCount(&count);
+        if FAILED(hr) {
+            return fmt_e!("IMMDeviceCollection::GetCount failed: hr = 0x{:08x}", hr);
+        }
+
+        for i in 0..count {
+            let mut mm_device_ptr: *mut IMMDevice = ptr::null_mut();
+            let hr = mm_device_collection.Item(i as _, &mut mm_device_ptr as _);
+            if FAILED(hr) {
+                return fmt_e!("IMMDeviceCollection::Item failed: hr = 0x{:08x}", hr);
+            }
+            let mm_device = ComPtr::from_raw(mm_device_ptr);
+
+            let mut property_store_ptr: *mut IPropertyStore = ptr::null_mut();
+            let hr = mm_device.OpenPropertyStore(STGM_READ, &mut property_store_ptr as _);
+            if FAILED(hr) {
+                return fmt_e!("IMMDevice::OpenPropertyStore failed: hr = 0x{:08x}", hr);
+            }
+            let property_store = ComPtr::from_raw(property_store_ptr);
+
+            let mut prop_variant = PROPVARIANT::default();
+            let hr = property_store.GetValue(&PKEY_Device_FriendlyName, &mut prop_variant);
+            if FAILED(hr) {
+                return fmt_e!("IPropertyStore::GetValue failed: hr = 0x{:08x}", hr);
+            }
+            if prop_variant.vt as u32 != VT_LPWSTR {
+                return fmt_e!(
+                    "PKEY_Device_FriendlyName variant type is {} - expected VT_LPWSTR",
+                    prop_variant.vt
+                );
+            }
+            let utf16_name = U16CStr::from_ptr_str(*prop_variant.data.pwszVal());
+            let hr = PropVariantClear(&mut prop_variant);
+            if FAILED(hr) {
+                return fmt_e!("PropVariantClear failed: hr = 0x{:08x}", hr);
+            }
+
+            let mm_device_name = trace_err!(utf16_name.to_string())?;
+            if mm_device_name == device_name {
+                return Ok(mm_device);
+            }
+        }
+
+        fmt_e!("No device found with specified name")
+    }
+}
+
+#[cfg(windows)]
+pub fn get_windows_device_id(device: &AudioDevice) -> StrResult<String> {
+    unsafe {
+        let mm_device = get_windows_device(device)?;
+
+        let mut id_str_ptr = ptr::null_mut();
+        mm_device.GetId(&mut id_str_ptr);
+        let id_str = trace_err!(U16CStr::from_ptr_str(id_str_ptr).to_string())?;
+        CoTaskMemFree(id_str_ptr as _);
+
+        Ok(id_str)
+    }
+}
+
+// device must be an output device
+#[cfg(windows)]
+fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> StrResult {
+    unsafe {
+        let mm_device = get_windows_device(device)?;
+
+        let mut endpoint_volume_ptr: *mut IAudioEndpointVolume = ptr::null_mut();
+        let hr = mm_device.Activate(
+            &IAudioEndpointVolume::uuidof(),
+            CLSCTX_ALL,
+            ptr::null_mut(),
+            &mut endpoint_volume_ptr as *mut _ as _,
+        );
+        if FAILED(hr) {
+            return fmt_e!(
+                "IMMDevice::Activate() for IAudioEndpointVolume failed: hr = 0x{:08x}",
+                hr,
+            );
+        }
+        let endpoint_volume = ComPtr::from_raw(endpoint_volume_ptr);
+
+        let hr = endpoint_volume.SetMute(mute as _, ptr::null_mut());
+        if FAILED(hr) {
+            return fmt_e!("Failed to mute audio device: hr = 0x{:08x}", hr,);
+        }
+    }
+
+    Ok(())
 }
 
 pub fn get_sample_rate(device: &AudioDevice) -> StrResult<u32> {
@@ -249,8 +317,8 @@ pub async fn record_audio_loop(
     // thread of creation.
     thread::spawn(move || -> StrResult {
         #[cfg(windows)]
-        if mute && matches!(device.device_type, AudioDeviceType::Output) {
-            set_mute_audio_device(device.id.clone(), true).ok();
+        if mute && device.device_type.is_output() {
+            set_mute_windows_device(&device, true).ok();
         }
 
         let stream = trace_err!(device.inner.build_input_stream_raw(
@@ -295,8 +363,8 @@ pub async fn record_audio_loop(
         shutdown_receiver.recv().ok();
 
         #[cfg(windows)]
-        if mute && matches!(device.device_type, AudioDeviceType::Output) {
-            set_mute_audio_device(device.id, false).ok();
+        if mute && device.device_type.is_output() {
+            set_mute_windows_device(&device, false).ok();
         }
 
         Ok(())
@@ -543,7 +611,7 @@ pub async fn play_audio_loop(
     config: AudioConfig,
     receiver: StreamReceiver<()>,
 ) -> StrResult {
-    assert!(!matches!(device.device_type, AudioDeviceType::Input));
+    assert!(device.device_type.is_output());
 
     // length of fade-in/out in frames
     let fade_frames_count = sample_rate as usize * config.fade_ms as usize / 1000;

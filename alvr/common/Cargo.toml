@@ -40,8 +40,18 @@ runas = "0.2"
 msgbox = "0.6"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["mmdeviceapi", "objbase", "endpointvolume"] }
+winapi = { version = "0.3", features = [
+    "combaseapi",
+    "coml2api",
+    "endpointvolume",
+    "functiondiscoverykeys_devpkey",
+    "mmdeviceapi",
+    "objbase",
+    "propidl",
+    "propsys",
+] }
 wio = "0.2"
+widestring = "0.4"
 gfx-backend-dx11 = "=0.6.17"
 
 [target.'cfg(target_os = "linux")'.dependencies]

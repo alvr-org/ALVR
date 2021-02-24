@@ -140,7 +140,7 @@ pub struct AudioConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OutputAudioDesc {
+pub struct GameAudioDesc {
     pub device_id: AudioDeviceId,
     pub mute_when_streaming: bool,
     pub config: AudioConfig,
@@ -150,8 +150,10 @@ pub struct OutputAudioDesc {
 // resampling. In contrary, for game audio, the server does not support resampling.
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InputAudioDesc {
-    pub device_id: AudioDeviceId,
+pub struct MicrophoneDesc {
+    pub input_device_id: AudioDeviceId,
+
+    pub output_device_id: AudioDeviceId,
 
     #[schema(advanced)]
     pub sample_rate: u32,
@@ -162,8 +164,19 @@ pub struct InputAudioDesc {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioSection {
-    pub game_audio: Switch<OutputAudioDesc>,
-    pub microphone: Switch<InputAudioDesc>,
+    pub game_audio: Switch<GameAudioDesc>,
+    pub microphone: Switch<MicrophoneDesc>,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum OpenvrPropValue {
+    Bool(bool),
+    Float(f32),
+    Int32(i32),
+    Uint64(u64),
+    Vector3([f32; 3]),
+    Double(f64),
+    String(String),
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -414,7 +427,7 @@ pub fn session_settings_default() -> SettingsDefault {
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {
                 enabled: true,
-                content: OutputAudioDescDefault {
+                content: GameAudioDescDefault {
                     device_id: AudioDeviceIdDefault {
                         variant: AudioDeviceIdDefaultVariant::Default,
                         Name: "".into(),
@@ -429,8 +442,13 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             microphone: SwitchDefault {
                 enabled: false,
-                content: InputAudioDescDefault {
-                    device_id: AudioDeviceIdDefault {
+                content: MicrophoneDescDefault {
+                    input_device_id: AudioDeviceIdDefault {
+                        variant: AudioDeviceIdDefaultVariant::Default,
+                        Name: "".into(),
+                        Index: 1,
+                    },
+                    output_device_id: AudioDeviceIdDefault {
                         variant: AudioDeviceIdDefaultVariant::Default,
                         Name: "".into(),
                         Index: 1,

@@ -39,7 +39,7 @@ const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
 const STREAM_STARTING_MESSAGE: &str = "The stream will begin soon\nPlease wait...";
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
-const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
+const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(2);
 const PLAYSPACE_SYNC_INTERVAL: Duration = Duration::from_millis(500);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 

@@ -1,4 +1,3 @@
-use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, future::Future};
 
@@ -59,6 +58,8 @@ fn show_e_block<E: Display>(e: E, blocking: bool) {
     {
         // Store the last error shown in a message box. Do not open a new message box if the content
         // of the error has not changed
+        use parking_lot::Mutex;
+
         lazy_static::lazy_static! {
             static ref LAST_MESSAGEBOX_ERROR: Mutex<String> = Mutex::new("".into());
         }

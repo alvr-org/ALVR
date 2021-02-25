@@ -1,5 +1,4 @@
 use alvr_common::{
-    audio::AudioState,
     data::AudioConfig,
     sockets::{StreamReceiver, StreamSender},
     *,
@@ -7,6 +6,7 @@ use alvr_common::{
 use oboe::*;
 use parking_lot::Mutex;
 use std::{
+    collections::VecDeque,
     mem,
     sync::{mpsc as smpsc, Arc},
     thread,
@@ -77,8 +77,8 @@ pub async fn record_audio_loop(sample_rate: u32, mut sender: StreamSender<()>) -
 }
 
 struct PlayerCallback {
-    audio_state: Arc<Mutex<AudioState>>,
-    fade_frames_count: usize,
+    sample_buffer: Arc<Mutex<VecDeque<f32>>>,
+    batch_frames_count: usize,
 }
 
 impl AudioOutputCallback for PlayerCallback {
@@ -89,11 +89,14 @@ impl AudioOutputCallback for PlayerCallback {
         _: &mut dyn AudioOutputStreamSafe,
         out_frames: &mut [(f32, f32)],
     ) -> DataCallbackResult {
-        let mut audio_state_ref = self.audio_state.lock();
+        let samples = audio::get_next_frame_batch(
+            &mut *self.sample_buffer.lock(),
+            2,
+            self.batch_frames_count,
+        );
 
-        for out_frame in out_frames {
-            let in_frame = audio::get_next_frame(&mut *audio_state_ref, 2, self.fade_frames_count);
-            *out_frame = (in_frame[0], in_frame[1]);
+        for f in 0..out_frames.len() {
+            out_frames[f] = (samples[f * 2], samples[f * 2 + 1]);
         }
 
         DataCallbackResult::Continue
@@ -104,16 +107,16 @@ pub async fn play_audio_loop(
     config: AudioConfig,
     receiver: StreamReceiver<()>,
 ) -> StrResult {
-    let fade_frames_count = sample_rate as usize * config.fade_ms as usize / 1000;
-    let min_buffer_frames_count =
+    let batch_frames_count = sample_rate as usize * config.batch_ms as usize / 1000;
+    let average_buffer_frames_count =
         sample_rate as usize * config.average_buffering_ms as usize / 1000;
 
-    let audio_state = Arc::new(Mutex::new(AudioState::default()));
+    let sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
 
     // store the stream in a thread (because !Send) and extract the playback handle
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
     thread::spawn({
-        let audio_state = audio_state.clone();
+        let sample_buffer = sample_buffer.clone();
         move || -> StrResult {
             let mut stream = trace_err!(AudioStreamBuilder::default()
                 .set_shared()
@@ -122,11 +125,12 @@ pub async fn play_audio_loop(
                 .set_sample_rate_conversion_quality(SampleRateConversionQuality::Fastest)
                 .set_stereo()
                 .set_f32()
+                .set_frames_per_callback(batch_frames_count as _)
                 .set_output()
                 .set_usage(Usage::Game)
                 .set_callback(PlayerCallback {
-                    audio_state,
-                    fade_frames_count,
+                    sample_buffer,
+                    batch_frames_count,
                 })
                 .open_stream())?;
 
@@ -143,10 +147,10 @@ pub async fn play_audio_loop(
 
     audio::receive_samples_loop(
         receiver,
-        audio_state,
+        sample_buffer,
         2,
-        fade_frames_count,
-        min_buffer_frames_count,
+        batch_frames_count,
+        average_buffer_frames_count,
     )
     .await
 }

@@ -135,7 +135,7 @@ pub struct AudioConfig {
     pub average_buffering_ms: u64,
 
     #[schema(advanced)]
-    pub fade_ms: u64,
+    pub batch_ms: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -436,7 +436,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     mute_when_streaming: true,
                     config: AudioConfigDefault {
                         average_buffering_ms: 50,
-                        fade_ms: 15,
+                        batch_ms: 10,
                     },
                 },
             },
@@ -456,7 +456,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     sample_rate: 44100,
                     config: AudioConfigDefault {
                         average_buffering_ms: 50,
-                        fade_ms: 20,
+                        batch_ms: 10,
                     },
                 },
             },

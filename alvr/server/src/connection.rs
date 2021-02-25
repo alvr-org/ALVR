@@ -21,7 +21,7 @@ use tokio::{
     time,
 };
 
-const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
+const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(2);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 
 fn align32(value: f32) -> u32 {

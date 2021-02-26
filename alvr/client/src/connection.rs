@@ -9,7 +9,7 @@ use jni::{
     objects::{GlobalRef, JClass},
     JavaVM,
 };
-use nalgebra::{Point3, Quaternion, UnitQuaternion};
+use nalgebra::{Point2, Point3, Quaternion, UnitQuaternion};
 use serde_json as json;
 use settings_schema::Switch;
 use sockets::StreamSocket;
@@ -386,7 +386,7 @@ async fn connection_pipeline(
 
                         let perimeter_points = perimeter_slice
                             .iter()
-                            .map(|p| Point3::from_slice(p))
+                            .map(|p| Point2::from_slice(&[p[0], p[2]]))
                             .collect::<Vec<_>>();
 
                         Some(perimeter_points)

@@ -512,7 +512,7 @@ async fn connection_pipeline() -> StrResult {
             let matrix_transp = transform.to_matrix().transpose();
 
             let perimeter_points = if let Some(perimeter_points) = packet.perimeter_points {
-                perimeter_points.iter().map(|p| [p[0], p[2]]).collect()
+                perimeter_points.iter().map(|p| [p[0], p[1]]).collect()
             } else {
                 vec![]
             };

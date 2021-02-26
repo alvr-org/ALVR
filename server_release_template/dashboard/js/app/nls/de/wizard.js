@@ -4,7 +4,7 @@ define({
     "subtitle": "Hier wirst du durchs Standard-Setup von ALVR geleitet",
     // Hardware page
     "titleHardwareReq": "Benötigte Hardware",
-    "textHardwareReq": "ALVR benötigt eine dedicated und aktuelle Grafikkarte (Intel HD Graphics ist nicht unterstützt). Hier ist die <a href='https://github.com/polygraphene/ALVR/wiki/Supported-GPU'>Liste von Unterstützen GPUs</a>. <br/> <br/> Stelle sicher, dass du mindestens ein Audio-Output-Gerät hast.",
+    "textHardwareReq": "ALVR benötigt eine dedicated und aktuelle Grafikkarte (Intel HD Graphics ist nicht unterstützt). Hier ist die <a target= '_blank' href='https://github.com/polygraphene/ALVR/wiki/Supported-GPU'>Liste von Unterstützen GPUs</a>. <br/> <br/> Stelle sicher, dass du mindestens ein Audio-Output-Gerät hast.",
     // "YourGPUIs": "",
     // "GPUSupported": "",
     // "GPUUnsupported": "",

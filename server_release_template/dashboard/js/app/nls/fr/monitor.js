@@ -7,7 +7,7 @@ define({
     "addTrustedClient": "Ajouter",
     "trustedClients": "Client approuvés",
     "removeTrustedClient": "Retirer",
-    "troubleshooting": "Votre casque n'apparait pas dans la liste ? Visitez note page de support <a href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'>ici</a>",
+    "troubleshooting": "Votre casque n'apparait pas dans la liste ? Visitez note page de support <a target= '_blank' href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'>ici</a>",
     // Manually add client page
     "manAddClient": "Ajouter un client manuellement",
     "addClient": "Ajouter client",

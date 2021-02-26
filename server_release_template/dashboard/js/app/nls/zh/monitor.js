@@ -7,7 +7,7 @@ define({
     // "addTrustedClient": "",
     "trustedClients": "已信任的客户端",
     // "removeTrustedClient": "",
-    "troubleshooting": "你的头显没有显示在这里？访问我们的<a href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'>Github问题解决页面</a>以获得帮助。",
+    "troubleshooting": "你的头显没有显示在这里？访问我们的<a target= '_blank' href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'>Github问题解决页面</a>以获得帮助。",
     // Manually add client page
     "manAddClient": "手动添加客户端",
     "addClient": "添加客户端",

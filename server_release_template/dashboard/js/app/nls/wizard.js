@@ -11,7 +11,7 @@ define({
         "GPUUnsupported": " \nWe are sorry, but this card may be unsupported. You can try ALVR anyway and see if it works",
         // Software page
         "titleSoftwareReq": "Software requirements",
-        "textSoftwareReq": "To stream the Quest microphone you need to install the <a href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
+        "textSoftwareReq": "To stream the Quest microphone you need to install the <a target= '_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
         // Firewall page
         "titleFirewall": "Firewall",
         "textFirewall": "To communicate with the headset, some firewall rules need to be set. <br/> <b>This requires administrator rights!</b>",

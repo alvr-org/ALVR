@@ -18,7 +18,7 @@ define({
     "ipAddress": "IP-Naslov",
     "ipHelp": "Vnesi IP-Naslov svoje naprave",
     "addClientButton": "DODAJ NAPRAVO",
-    "troubleshooting": `Se vaša naprava ne prikaže? Obiščite našo spletno stran za reševanje težav <a href="https://github.com/alvr-org/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">tukaj</a>`,
+    "troubleshooting": `Se vaša naprava ne prikaže? Obiščite našo spletno stran za reševanje težav <a target= '_blank' href="https://github.com/alvr-org/ALVR/wiki/Troubleshooting-(for-ALVR-12.0.0-and-later)#alvr-cant-see-my-headset">tukaj</a>`,
     //Configure client page
     "configureClient": "Nastavi napravo",
     "configureClientButton": "IZBERI",

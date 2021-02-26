@@ -10,7 +10,7 @@ define({
     "GPUUnsupported": "\nHet spijt ons, deze GPU is niet ondersteund. Je kan nog steeds ALVR proberen om te kijken ofdat het toch werkt", //Yes, '\n' must be in translation
     // Software page
     "titleSoftwareReq": "Softwarevereisten",
-    "textSoftwareReq": "Om de microfoon van de Quest te streamen moet je <a href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a> installeren.",
+    "textSoftwareReq": "Om de microfoon van de Quest te streamen moet je <a target= '_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a> installeren.",
     // Firewall page
     "titleFirewall": "Firewall",
     "textFirewall": "Om te communiceren met de headset, zullen er een aantal Firewall regels toegevoegd worden. <br/> <b>Dit vereist administrator rechten!</b>",

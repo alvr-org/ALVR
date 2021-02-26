@@ -7,7 +7,7 @@ define({
     "addTrustedClient": "Trust", // todo: translate when client messages can be translated
     "trustedClients": "Client attendibili",
     "removeTrustedClient": "Rimuovi",
-    "troubleshooting": "Il visore non compare nella lista? Visita la pagina di <a href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'> risoluzione dei problemi</a>",
+    "troubleshooting": "Il visore non compare nella lista? Visita la pagina di <a target= '_blank' href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'> risoluzione dei problemi</a>",
     // Manually add client page
     "manAddClient": "Aggiungi client manualmente",
     "addClient": "Aggiungi client",

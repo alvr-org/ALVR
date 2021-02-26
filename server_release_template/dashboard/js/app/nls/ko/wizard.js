@@ -10,7 +10,7 @@ define({
         "GPUUnsupported": " \n이 그래픽카드는 지원되지 않습니다. 직접 ALVR이 작동하는지 확인하세요.",
         // Software page
         "titleSoftwareReq": "소프트웨어 요구사항",
-        "textSoftwareReq": "퀘스트 마이크를 연결을 위해 <a href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a> 설치가 필요합니다.",
+        "textSoftwareReq": "퀘스트 마이크를 연결을 위해 <a target= '_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a> 설치가 필요합니다.",
         // Firewall page
         "titleFirewall": "방화벽",
         "textFirewall": "헤드셋 연결을 위해 방화벽 설정이 필요합니다.. <br/> <b>관리자 권한을 요구합니다!</b>",

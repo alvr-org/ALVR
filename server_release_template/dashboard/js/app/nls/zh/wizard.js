@@ -4,13 +4,13 @@ define({
     "subtitle": "此向导将指导您进行ALVR的基本设置",
     // Hardware page
     "titleHardwareReq": "硬件需求",
-    "textHardwareReq": "ALVR要求独立显卡支持，这里可以查看 <a href='https://github.com/polygraphene/ALVR/wiki/Supported-GPU'>所有支持的显卡</a>。 <br/> <br/> 确保你至少有一个音频输出设备。 <br/> <br/> ",
+    "textHardwareReq": "ALVR要求独立显卡支持，这里可以查看 <a target= '_blank' href='https://github.com/polygraphene/ALVR/wiki/Supported-GPU'>所有支持的显卡</a>。 <br/> <br/> 确保你至少有一个音频输出设备。 <br/> <br/> ",
 	"YourGPUIs": "你的显卡型号:",
     "GPUSupported": "\n\n恭喜，这个显卡应该支持无线串流！",
     "GPUUnsupported": "\n\n抱歉，你的显卡或许不支持ALVR无线串流，但是你依旧可以试一下看看能不能使用。",
     // Software page
     "titleSoftwareReq": "软件要求",
-    "textSoftwareReq": "串流Quest的麦克风至电脑需要安装 <a href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
+    "textSoftwareReq": "串流Quest的麦克风至电脑需要安装 <a target= '_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
     // Firewall page
     "titleFirewall": "防火墙",
     "textFirewall": "要和头戴显示器进行通讯，需要设置一些防火墙规则。这将要求以管理员模式运行。",

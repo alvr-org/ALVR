@@ -7,7 +7,7 @@ define({
     "addTrustedClient": "Vertrouwen",
     "trustedClients": "Vertrouwde clienten",
     "removeTrustedClient": "Verwijder",
-    "troubleshooting": `Is er geen headset beschikbaar? Bezoek onze pagina voor probleemoplossing <a href="https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset">hier</a>`,
+    "troubleshooting": `Is er geen headset beschikbaar? Bezoek onze pagina voor probleemoplossing <a target= '_blank' href="https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset">hier</a>`,
     // Manually add client page
     "manAddClient": "Client handmatig toevoegen",
     "addClient": "Client toevoegen",

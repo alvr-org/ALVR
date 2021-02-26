@@ -10,7 +10,7 @@ define({
       "GPUUnsupported": "\nŽal nam je, a ta kartica mogoče ni podprta. Še zmeraj lahko poizkusiš če ALVR deluje (za začetek poizkusi najmanjšo ločljivost in h264)", //Yes, '\n' must be in translation
       // Software page
       "titleSoftwareReq": "Zahteve programske opreme",
-      "textSoftwareReq": "Za prnašanje zvoka iz mikrofona naprave, si moraš namestiti <a href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a> ali podobno. (lahko se uporabi tudi prosta zvočna naprava in AUX žica, a ni predlagano).",
+      "textSoftwareReq": "Za prnašanje zvoka iz mikrofona naprave, si moraš namestiti <a target= '_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a> ali podobno. (lahko se uporabi tudi prosta zvočna naprava in AUX žica, a ni predlagano).",
       // Firewall page
       "titleFirewall": "Požarni zid",
       "textFirewall": "Da je mogoč stik z napravo, je potreben prehod požarnega zidu. <br/> <b>To zahteva pravice nadzornika!</b>",

@@ -8,7 +8,7 @@ define({
         "addTrustedClient": "Trust",
         "trustedClients": "Trusted Clients",
         "removeTrustedClient": "Remove",
-        "troubleshooting": "Is your headset not showing up? Visit our troubleshooting page <a href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'>here</a>",
+        "troubleshooting": "Is your headset not showing up? Visit our troubleshooting page <a target= '_blank' href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'>here</a>",
         // Manually add client page
         "manAddClient": "Add client manually",
         "addClient": "Add client",

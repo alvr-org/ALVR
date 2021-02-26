@@ -4,13 +4,13 @@ define({
     "subtitle": "このウィザードではALVRの基本的な設定方法を説明します",
     // Hardware page
     "titleHardwareReq": "ハードウェア要件",
-    "textHardwareReq": "ALVRには高性能なグラフィックボードが必要です（CPU内蔵のIntel HD Graphicsには対応していません）. サポートされているGPUの一覧は<a href='https://github.com/polygraphene/ALVR/wiki/Supported-GPU'>こちら</a>に記載しています. <br/> <br/> また, 少なくとも1つのオーディオ出力機器があることを確認してください. <br/> <br/> ",
+    "textHardwareReq": "ALVRには高性能なグラフィックボードが必要です（CPU内蔵のIntel HD Graphicsには対応していません）. サポートされているGPUの一覧は<a target= '_blank' href='https://github.com/polygraphene/ALVR/wiki/Supported-GPU'>こちら</a>に記載しています. <br/> <br/> また, 少なくとも1つのオーディオ出力機器があることを確認してください. <br/> <br/> ",
     // "YourGPUIs": "",
     // "GPUSupported": "",
     // "GPUUnsupported": "",
     // Software page
     "titleSoftwareReq": "ソフトウェア要件",
-    "textSoftwareReq": "Oculus Questのマイクをストリーミングするには<a href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>もインストールしてください.",
+    "textSoftwareReq": "Oculus Questのマイクをストリーミングするには<a target= '_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>もインストールしてください.",
     // Firewall page
     "titleFirewall": "ファイアウォール",
     "textFirewall": "ヘッドセットと通信するためにはファイアウォールの設定が必要です. この操作には管理者権限を要します.",

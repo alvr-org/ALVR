@@ -10,7 +10,7 @@ define({
     "GPUUnsupported": " \nQuesta GPU potrebbe non essere supportata. Puoi comunque provare ALVR per vedere se funziona",
     // Software page
     "titleSoftwareReq": "Requisiti software",
-    "textSoftwareReq": "Per trasmettere l'audio del microfono del visore devi installare <a href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
+    "textSoftwareReq": "Per trasmettere l'audio del microfono del visore devi installare <a target= '_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
     // Firewall page
     "titleFirewall": "Firewall",
     "textFirewall": "Per comunicare con il visore, devono essere impostate alcune eccezioni del firewall. Questo richiede privilegi di amministratore.",

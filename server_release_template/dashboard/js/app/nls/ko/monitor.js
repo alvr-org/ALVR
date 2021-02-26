@@ -7,7 +7,7 @@ define({
     "addTrustedClient": "신뢰하기",
     "trustedClients": "신뢰 클라이언트",
     "removeTrustedClient": "제거하기",
-    "troubleshooting": "당신의 헤드셋이 보이지 않나요? 문제해결 페이지에 방문하세요 <a href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'>이곳</a>",
+    "troubleshooting": "당신의 헤드셋이 보이지 않나요? 문제해결 페이지에 방문하세요 <a target= '_blank' href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'>이곳</a>",
     // Manually add client page
     "manAddClient": "수동으로 클라이언트 추가하기",
     "addClient": "클라이언트 추가",

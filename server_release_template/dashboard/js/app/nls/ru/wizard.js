@@ -10,7 +10,7 @@ define({
     "GPUUnsupported": " \nСожалеем, данный видеопроцессор вероятнее всего не поддерживается. Но вы всё еще можете попробовать ALVR и выяснить, сработает ли",
     // Software page
     "titleSoftwareReq": "Программные требования",
-    "textSoftwareReq": "Чтобы использовать микрофон шлема Quest, вам необходимо установить <a href='https://www.vb-audio.com/Cable/'>Виртуальный Аудио Кабель (VB-Audio Virtual Cable)</a>.",
+    "textSoftwareReq": "Чтобы использовать микрофон шлема Quest, вам необходимо установить <a target= '_blank' href='https://www.vb-audio.com/Cable/'>Виртуальный Аудио Кабель (VB-Audio Virtual Cable)</a>.",
     // Firewall page
     "titleFirewall": "Брандмауэр",
     "textFirewall": "Чтобы связываться со шлемом, должны быть установлены определенные правила брандмауэра. Это потребует наличие прав администратора.",

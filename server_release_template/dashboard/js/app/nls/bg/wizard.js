@@ -10,7 +10,7 @@ define({
     "GPUUnsupported": " \nСъжаляваме, но тази карта може да не се поддържа. Можете да опитате ALVR така или иначе и да видите дали работи",
     // Software page
     "titleSoftwareReq": "Софтуерни изисквания",
-    "textSoftwareReq": "За да предавате поточно микрофона Quest, трябва да инсталирате <a href='https://www.vb-audio.com/Cable/'> виртуалния аудио кабел </a >.",
+    "textSoftwareReq": "За да предавате поточно микрофона Quest, трябва да инсталирате <a target= '_blank' href='https://www.vb-audio.com/Cable/'> виртуалния аудио кабел </a >.",
     // Firewall page
     "titleFirewall": "Защитна стена",
     "textFirewall": "За да комуникирате със слушалките, трябва да се зададат някои правила на защитната стена. Това изисква администраторски права.",

@@ -16,7 +16,7 @@ define({
     "removeFirewallRules": "방화벽 설정 제거하기",
     "firewallSuccess": "방화벽 설정 완료",
     // About page
-    "aboutText": "Wi-Fi를 통해 PC에서 헤드셋으로 VR게임을 스트리밍하세요. <br/> ALVR은 <a href='https://developer.oculus.com/documentation/native/android/mobile-timewarp-overview/'>Asynchronous TimeWarp (ATW)</a> 과 <a href='https://developer.oculus.com/documentation/native/android/mobile-ffr/'>Fixed Foveated Rendering (FFR)</a>기술을 이용하여 부드러운 경험을 제공합니다. <br/> 오큘러스 리프트(S)와 호환되는 게임은 ALVR에서 작동됩니다. <br/> 오큘러스 퀘스트와 고에서 작동되는 ALVR의 fork입니다. <br/> <br/> GitHub 방문하기: <a href='https://github.com/alvr-org/ALVR/'>https://github.com/alvr-org/ALVR/</a> <br/> Discord 방문하기: <a href='https://discord.com/invite/KbKk3UM'>https://discord.com/invite/KbKk3UM</a>",
+    "aboutText": "Wi-Fi를 통해 PC에서 헤드셋으로 VR게임을 스트리밍하세요. <br/> ALVR은 <a target= '_blank' href='https://developer.oculus.com/documentation/native/android/mobile-timewarp-overview/'>Asynchronous TimeWarp (ATW)</a> 과 <a target= '_blank' href='https://developer.oculus.com/documentation/native/android/mobile-ffr/'>Fixed Foveated Rendering (FFR)</a>기술을 이용하여 부드러운 경험을 제공합니다. <br/> 오큘러스 리프트(S)와 호환되는 게임은 ALVR에서 작동됩니다. <br/> 오큘러스 퀘스트와 고에서 작동되는 ALVR의 fork입니다. <br/> <br/> GitHub 방문하기: <a target= '_blank' href='https://github.com/alvr-org/ALVR/'>https://github.com/alvr-org/ALVR/</a> <br/> Discord 방문하기: <a target= '_blank' href='https://discord.com/invite/KbKk3UM'>https://discord.com/invite/KbKk3UM</a>",
     "checkForUpdates": "업데이트 확인",
     "noNeedForUpdate": "최신버전 입니다.",
     "needUpdateClickForMore": "업데이트 가능합니다, 클릭하여 확인하세요.",

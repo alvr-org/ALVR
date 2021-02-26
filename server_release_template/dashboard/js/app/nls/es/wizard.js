@@ -10,7 +10,7 @@ define({
     "GPUUnsupported": "<br/>Lo sentimos, pero esta tarjeta gráfica podría no ser soportada. Puedes probar ALVR y ver si funciona.",
     // Software page
     "titleSoftwareReq": "Requisitos de software",
-    "textSoftwareReq": "Para transmitir el audio desde el micrófono del visor necesitas instalar <a href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
+    "textSoftwareReq": "Para transmitir el audio desde el micrófono del visor necesitas instalar <a target= '_blank' href='https://www.vb-audio.com/Cable/'>VB-Audio Virtual Cable</a>.",
     // Firewall page
     "titleFirewall": "Cortafuegos",
     "textFirewall": "Para comunicarse con el visor se deben establecer ciertas excepciones en el cortafuegos. <br/> <b>Esto requiere privilegios de administrador.</b>",

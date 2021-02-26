@@ -139,18 +139,10 @@ define({
     // "_root_headset_trackingSpace_stage-choice-.name": "",
     // Connection tab
     "_root_connection_tab.name": "接続",
-    "_root_connection_disableThrottling.name": "スロットリングの無効化",
-    "_root_connection_disableThrottling.description": "スロットリングを無効化し, データを出来る限り早く送信する",
-    "_root_connection_bufferOffset.name": "バッファオフセット",
-    "_root_connection_bufferOffset.description": "算出されたクライアントのバッファサイズを増減するオフセット. クライアントバッファを負の値にすることは不可",
     // "_root_connection_autoTrustClients.name": "", // adv
     // "_root_connection_webServerPort.name": "",
-    // "_root_connection_listenPort.name": "", // adv
-    // "_root_connection_listenPort.description": "", // adv
-    // "_root_connection_throttlingBitrateBits.name": "", // adv
-    // "_root_connection_throttlingBitrateBits.description": "", // adv
-    // "_root_connection_clientRecvBufferSize.name": "", // adv
-    // "_root_connection_clientRecvBufferSize.description": "", // adv
+    // "_root_connection_streamPort.name": "", // adv
+    // "_root_connection_streamPort.description": "", // adv
     "_root_connection_aggressiveKeyframeResend.name": "積極的キーフレーム再送",
     "_root_connection_aggressiveKeyframeResend.description": `キーフレーム間の最小間隔を100msから5msに減少させる. パケットロスが検出された場合にのみ使用され, パケットロスのあるネットワークでの使用感を改善する`,
     // Extra tab

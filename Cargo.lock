@@ -3218,9 +3218,9 @@ dependencies = [
 
 [[package]]
 name = "publicsuffix"
-version = "1.5.5"
+version = "1.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfe62f914117aacd6c015acc535085fc18c38efd6848cc23448f99808ec25edb"
+checksum = "95b4ce31ff0a27d93c8de1849cf58162283752f065a90d508f1105fa6c9a213f"
 dependencies = [
  "idna",
  "url",

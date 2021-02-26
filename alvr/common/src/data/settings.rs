@@ -132,9 +132,10 @@ pub enum AudioDeviceId {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioConfig {
+    #[schema(min = 0, max = 200)]
     pub average_buffering_ms: u64,
 
-    #[schema(advanced)]
+    #[schema(advanced, min = 1, max = 20)]
     pub batch_ms: u64,
 }
 
@@ -280,6 +281,7 @@ pub struct HeadsetDesc {
     #[schema(advanced)]
     pub registered_device_type: String,
 
+    #[schema(advanced)]
     pub tracking_frame_offset: i32,
 
     #[schema(advanced)]

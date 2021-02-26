@@ -137,18 +137,10 @@ define({
     // "_root_headset_trackingSpace_stage-choice-.name": "",
     // Connection tab
     "_root_connection_tab.name": "Connexion",
-    "_root_connection_disableThrottling.name": "Désactive le throttling",
-    "_root_connection_disableThrottling.description": "Désactive le throttling, envoie les données le plus vite possible.",
-    "_root_connection_bufferOffset.name": "Décalage du buffer",
-    "_root_connection_bufferOffset.description": "décalage pour augmenter ou réduire la taille du buffer client. Le décalage du buffer ne peut être négatif.",
     // "_root_connection_autoTrustClients.name": "", // adv
     // "_root_connection_webServerPort.name": "",
-    // "_root_connection_listenPort.name": "", // adv
-    // "_root_connection_listenPort.description": "", // adv
-    // "_root_connection_throttlingBitrateBits.name": "", // adv
-    // "_root_connection_throttlingBitrateBits.description": "", // adv
-    // "_root_connection_clientRecvBufferSize.name": "", // adv
-    // "_root_connection_clientRecvBufferSize.description": "", // adv
+    // "_root_connection_streamPort.name": "", // adv
+    // "_root_connection_streamPort.description": "", // adv
     "_root_connection_aggressiveKeyframeResend.name": "Renvoi de keyframes aggresif",
     "_root_connection_aggressiveKeyframeResend.description": `Réduit l'intervale minimum entre les keyframes de 100ms a 5ms, utilisé seulment quand des pertes de paquets sont détéctés. améliore l'experience sur des réseaux avec pertes de paquets`,
     // Extra tab

@@ -135,18 +135,10 @@ define({
     // "_root_headset_trackingSpace_stage-choice-.name": "",
     // Connection tab
     "_root_connection_tab.name": "Връзка",
-    "_root_connection_disableThrottling.name": "Деактивирайте пропускането на ленти",
-    "_root_connection_disableThrottling.description": "Деактивирайте пропускането (регулирането) на цикъла на часовника. Изпраща данни възможно най-бързо.",
-    "_root_connection_bufferOffset.name": "Буферно отместване",
-    "_root_connection_bufferOffset.description": "Офсет за увеличаване или намаляване на изчисления размер на клиентския буфер. Клиентският буфер не може да бъде отрицателен",
     // "_root_connection_autoTrustClients.name": "", // adv
     // "_root_connection_webServerPort.name": "",
-    "_root_connection_listenPort.name": "Порт за излъчен сървър", // adv
-    // "_root_connection_listenPort.description": "", // adv
-    "_root_connection_throttlingBitrateBits.name": "Макс. битрейт на излъчване", // adv
-    // "_root_connection_throttlingBitrateBits.description": "", // adv
-    "_root_connection_clientRecvBufferSize.name": "Размер на клиентския буфер", // adv
-    "_root_connection_clientRecvBufferSize.description": "Размерът на буфера от страна на клиента зависи от битрейта. \nПрепоръчва се изчислен размер. Ако изпитвате загуба на пакети, увеличете буфера.", // adv
+    "_root_connection_streamPort.name": "Порт за излъчен сървър", // adv
+    // "_root_connection_streamPort.description": "", // adv
     "_root_connection_aggressiveKeyframeResend.name": "Интензивен опит за повторен пакет",
     "_root_connection_aggressiveKeyframeResend.description": "Намалява минималния интервал между ключовите кадри от 100ms на 5ms.\nИзползва се само когато се наблюдава загуба на пакети. Подобрява производителността в мрежи с висока загуба на пакети.",
     // Extra tab

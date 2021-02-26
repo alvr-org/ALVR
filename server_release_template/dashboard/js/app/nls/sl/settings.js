@@ -134,18 +134,10 @@ define({
     "_root_headset_trackingSpace_stage-choice-.name": "Podest (Osredotočeno na sobo/prostor)",
     // Connection tab
     "_root_connection_tab.name": "POVEZAVA",
-    "_root_connection_disableThrottling.name": "Onemogoči pojemanje",
-    "_root_connection_disableThrottling.description": "Onemogoči samodejno pojemanje podatkovnega toka, kadar je omrežna povezava slaba/zasedena. Lahko povzroči videzne napake, ki so pa sicer zelo manj opazne kot od množične izgube zabojčkov.",
-    "_root_connection_bufferOffset.name": "Odmik predpomnilnika",
-    "_root_connection_bufferOffset.description": "Zvišaj ali zamnjšaj velikost odmika preračunanega predpomnilnika za napravo. Ne more bit manjše od 0.",
     "_root_connection_autoTrustClients.name": "Samodejno zaupaj napravam (ni priporočeno)", // adv
     "_root_connection_webServerPort.name": "Pristanišče spletnega strežnika",
-    "_root_connection_listenPort.name": "Pretočno pristanišče strežnika", // adv
-    "_root_connection_listenPort.description": "Pristanišče, ki go bo strežnik uporabljal za prejemanje zabojčkov.", // adv
-    "_root_connection_throttlingBitrateBits.name": "Maximum streaming bitrate", // adv
-    "_root_connection_throttlingBitrateBits.description": "Maximum allowed bitrate in bit/s.", // adv
-    "_root_connection_clientRecvBufferSize.name": "Client buffer size", // adv
-    "_root_connection_clientRecvBufferSize.description": "Buffer size on client side.\n Depends on the bitrate.\n Calculated size is recommended. If you experience packet loss, enlarge buffer.", // adv
+    "_root_connection_streamPort.name": "Pretočno pristanišče strežnika", // adv
+    "_root_connection_streamPort.description": "Pristanišče, ki go bo strežnik uporabljal za prejemanje zabojčkov.", // adv
     "_root_connection_aggressiveKeyframeResend.name": "Vsiljeno pošiljanje celotnih sličic",
     "_root_connection_aggressiveKeyframeResend.description": "Zamnjšaj najmanjši čas med celotnimi slikicami iz 100 ms na 5 ms. \nUporabljeno samo ko je zaznana izguba zabojčkov. \nIzboljša izkušnjo na omrežjih, ki izgubljajo zabojčke, sicer pa poveča zamik in je podatkovno bolj potratno.",
     // Extra tab

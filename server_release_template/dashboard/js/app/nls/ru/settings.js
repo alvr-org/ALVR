@@ -135,18 +135,10 @@ define({
     // "_root_headset_trackingSpace_stage-choice-.name": "",
     // Connection tab
     "_root_connection_tab.name": "Подключение",
-    "_root_connection_disableThrottling.name": "Отключить пропуск тактов",
-    "_root_connection_disableThrottling.description": "Отключение пропуска (дросселирования) тактов. Отсылает данные настолько быстро, насколько это возможно.",
-    "_root_connection_bufferOffset.name": "Смещение буфера",
-    "_root_connection_bufferOffset.description": "Смещение для увеличения или уменьшения рассчитанного размера буфера. Размер буфера клиента не может быть отрицательным.",
     // "_root_connection_autoTrustClients.name": "", // adv
     // "_root_connection_webServerPort.name": "",
-    "_root_connection_listenPort.name": "Порт сервера трансляции", // adv
-    // "_root_connection_listenPort.description": "", // adv
-    "_root_connection_throttlingBitrateBits.name": "Макс. битрейт трансляции", // adv
-    // "_root_connection_throttlingBitrateBits.description": "", // adv
-    "_root_connection_clientRecvBufferSize.name": "Размер буфера клиента", // adv
-    "_root_connection_clientRecvBufferSize.description": "Размер буфера на клиентской стороне, зависит от битрейта. \nРекомендуется рассчитанный размер . Если вы испытываете потерю пакетов - увеличьте буфер.", // adv
+    "_root_connection_streamPort.name": "Порт сервера трансляции", // adv
+    // "_root_connection_streamPort.description": "", // adv
     "_root_connection_aggressiveKeyframeResend.name": "Интенсивный повтор отправки пакетов",
     "_root_connection_aggressiveKeyframeResend.description": "Уменьшает минимальный интервал между ключевыми кадрами со 100мс до 5мс.\nИспользуется только когда наблюдается потеря пакетов. Улучшает работу в сетях с большой потерей пакетов.",
     // Extra tab

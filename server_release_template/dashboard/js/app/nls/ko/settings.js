@@ -145,18 +145,10 @@ define({
     "_root_headset_trackingSpace_stage-choice-.name": "Stage (방 중심)",
     // Connection tab
     "_root_connection_tab.name": "연결",
-    "_root_connection_disableThrottling.name": "쓰로틀링 해제",
-    "_root_connection_disableThrottling.description": "쓰로틀링을 해제합니다. 가능한 빨리 데이터를 전송합니다.",
-    "_root_connection_bufferOffset.name": "버퍼 오프셋",
-    "_root_connection_bufferOffset.description": "클라이언트 버퍼 크기를 늘리거나 줄이는 오프셋입니다. 클라이언트 버퍼는 음수일 수 없습니다.",
     "_root_connection_autoTrustClients.name": "자동으로 클라이언트 신뢰(권장하지 않음)", // adv
     "_root_connection_webServerPort.name": "웹 서버 포트",
-    "_root_connection_listenPort.name": "서버 전송 포트", // adv
-    "_root_connection_listenPort.description": "서버가 패킷을 수신하는 데 사용하는 포트입니다.", // adv
-    "_root_connection_throttlingBitrateBits.name": "최대 전송 비트레이트", // adv
-    "_root_connection_throttlingBitrateBits.description": "허용되는 최대 비트레이트(bit/s)입니다.", // adv
-    "_root_connection_clientRecvBufferSize.name": "클라이언트 버퍼 사이즈", // adv
-    "_root_connection_clientRecvBufferSize.description": "클라이언트 버퍼 사이즈입니다. \n비트레이트에 의존합니다. \n계산된 크기를 권장합니다. 패킷 손실이 일어나면 버퍼를 늘리세요.", // adv
+    "_root_connection_streamPort.name": "서버 전송 포트", // adv
+    "_root_connection_streamPort.description": "서버가 패킷을 수신하는 데 사용하는 포트입니다.", // adv
     "_root_connection_aggressiveKeyframeResend.name": "적극적인 키 프레임 재전송",
     "_root_connection_aggressiveKeyframeResend.description": "키 프레임 사이의 최소 간격을 100ms에서 5ms로 감소. \n패킷 손실이 감지될 때만 사용됩니다. \n패킷 손실이 있는 네트워크에 효과가 있습니다.",
     "_root_connection_onConnectScript.name": "연결 스크립트 사용",

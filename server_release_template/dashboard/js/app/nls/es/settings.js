@@ -138,18 +138,10 @@ define({
     "_root_headset_trackingSpace_stage-choice-.name": "Escenario (Cnetrado en la habitación)",
     // Connection tab
     "_root_connection_tab.name": "Conexión",
-    "_root_connection_disableThrottling.name": "Deshabilitar los límites de envío",
-    "_root_connection_disableThrottling.description": "Deshabilitar los límites de tiempo para el envío de paquetes.",
-    "_root_connection_bufferOffset.name": "Offset de buffer",
-    "_root_connection_bufferOffset.description": "Offset utilizado para aumentar o disminuir el tamaño del buffer calculado para el cliente. El tamaño del buffer resultante nunca será negativo.",
     "_root_connection_autoTrustClients.name": "Confiar en los clientes automáticamente (No recomendado)", // adv
     "_root_connection_webServerPort.name": "Puerto del servidor web",
-    "_root_connection_listenPort.name": "Puerto del servidor", // adv
-    "_root_connection_listenPort.description": "Puerto utilizado por el servidor para recibir paquetes.", // adv
-    "_root_connection_throttlingBitrateBits.name": "Limitación de la tasa de bits", // adv
-    "_root_connection_throttlingBitrateBits.description": "Velocidad de bitrate máxima permitida en bits.", // adv
-    "_root_connection_clientRecvBufferSize.name": "Tamaño del buffer para el cliente", // adv
-    "_root_connection_clientRecvBufferSize.description": "Tamaño del buffer para el cliente. \nDepende de la tasa de bits. \nSe recomienda dejar el valor calculado. Si tiene problemas de pérdida de paquetes, aumente el valor.", // adv
+    "_root_connection_streamPort.name": "Puerto del servidor", // adv
+    "_root_connection_streamPort.description": "Puerto utilizado por el servidor para recibir paquetes.", // adv
     "_root_connection_aggressiveKeyframeResend.name": "Reenvía los fotogramas clave de forma agresiva",
     "_root_connection_aggressiveKeyframeResend.description": "Reducir el intervalo de reenvío de cuadros de tipo \"I\" (key frames) de 100ms a 5ms.\nSólo se utiliza cuando se detecta una pérdida de paquetes. Mejora la experiencia visual en caso de pérdida de paquetes.",
     "_root_connection_onConnectScript.name": "Script al conectar",

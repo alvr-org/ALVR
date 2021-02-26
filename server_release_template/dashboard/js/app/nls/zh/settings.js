@@ -153,18 +153,10 @@ define({
     "_root_headset_trackingSpace_stage-choice-.name": "安全区中心点所在的位置",
     // Connection tab
     "_root_connection_tab.name": "连接",
-    "_root_connection_disableThrottling.name": "禁用限制",
-    "_root_connection_disableThrottling.description": "禁用限制。尽快发送数据",
-    "_root_connection_bufferOffset.name": "缓冲区偏移量",
-    "_root_connection_bufferOffset.description": "增加或减少计算的客户端缓冲区大小的偏移。客户端缓冲区不能为负数",
     // "_root_connection_autoTrustClients.name": "", // adv
     // "_root_connection_webServerPort.name": "",
-    "_root_connection_listenPort.name": "服务器端口", // adv
-    "_root_connection_listenPort.description": "服务器监听端口", // adv
-    "_root_connection_throttlingBitrateBits.name": "限制比特率", // adv
-    "_root_connection_throttlingBitrateBits.description": "最大流比特率", // adv
-    "_root_connection_clientRecvBufferSize.name": "客户端缓冲区大小", // adv
-    "_root_connection_clientRecvBufferSize.description": "客户端上的缓冲区大小。\n取决于比特率。\n建议计算大小。如果遇到数据包丢失,请扩大缓冲区。", // adv
+    "_root_connection_streamPort.name": "服务器端口", // adv
+    "_root_connection_streamPort.description": "服务器监听端口", // adv
     "_root_connection_aggressiveKeyframeResend.name": "重发关键帧",
     "_root_connection_aggressiveKeyframeResend.description": "将关键帧之间的最小间隔从100毫秒减小到5毫秒。\n仅在检测到数据包丢失时使用。可改善数据包丢失的网络体验。",
     // Extra tab

@@ -140,18 +140,10 @@ define({
     "_root_headset_trackingSpace_stage-choice-.name": "Bühne (Zentriert am Raum)",
     // Connection tab
     "_root_connection_tab.name": "Verbindung",
-    "_root_connection_disableThrottling.name": "Throttleing deaktivieren",
-    "_root_connection_disableThrottling.description": "Deaktiviert das Trottleing. Sendet Daten so schnell wie möglich.", //FIXME: Throttleing
-    "_root_connection_bufferOffset.name": "Puffer Offset",
-    "_root_connection_bufferOffset.description": "Zur Erhöhung/Erniedrigung der Clienten-Puffer-Größe. Kann nicht negativ sein",
     "_root_connection_autoTrustClients.name": "Neuen Clients automatisch Vertrauen (nicht empfohlen)", // adv
     "_root_connection_webServerPort.name": "Webserver Port",
-    "_root_connection_listenPort.name": "Server streaming port", // adv
-    "_root_connection_listenPort.description": "Port, der vom Server zum Streamen verwendet wird", // adv
-    "_root_connection_throttlingBitrateBits.name": "Maximale Streaming-Bitrate", // adv
-    "_root_connection_throttlingBitrateBits.description": "Maximal erlaubte Bitrate in Bit/s", // adv
-    "_root_connection_clientRecvBufferSize.name": "Client Puffergröße", // adv
-    "_root_connection_clientRecvBufferSize.description": "Puffergröße auf der Clienten-Seite.\n Hängt von der Bitrate ab.\n Die berechnete Größe ist empfohlen. Falls Packetverlust auftritt, vergrößere den Puffer.", // adv
+    "_root_connection_streamPort.name": "Server streaming port", // adv
+    "_root_connection_streamPort.description": "Port, der vom Server zum Streamen verwendet wird", // adv
     "_root_connection_aggressiveKeyframeResend.name": "Aggressiver 'keyframe resend'", //FIXME: "keyframe resend"
     "_root_connection_aggressiveKeyframeResend.description": "Senkt das minimale Intervall zwischen Keyframes von 100ms zu 5ms. \nWird nur verwendet, falls Packetverlust erkannt wird. \nVerbessert die Leistung in Netzwerken mit Packetverlust.",
     // Extra tab

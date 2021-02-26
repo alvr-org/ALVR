@@ -135,18 +135,10 @@ define({
     "_root_headset_trackingSpace_stage-choice-.name": "Room scale",
     // Connection tab
     "_root_connection_tab.name": "Connessione",
-    "_root_connection_disableThrottling.name": "Disabilita limiti per l'invio",
-    "_root_connection_disableThrottling.description": "Disabilita limiti temporali per l'invio dei pacchetti.",
-    "_root_connection_bufferOffset.name": "Offset del buffer",
-    "_root_connection_bufferOffset.description": "Offset usato per aumentare o diminuire la dimensione del buffer calcolata per il client. La dimensione del buffer risulatante non sarà mai negativa.",
     // "_root_connection_autoTrustClients.name": "", // adv
     // "_root_connection_webServerPort.name": "",
-    // "_root_connection_listenPort.name": "", // adv
-    // "_root_connection_listenPort.description": "", // adv
-    // "_root_connection_throttlingBitrateBits.name": "", // adv
-    // "_root_connection_throttlingBitrateBits.description": "", // adv
-    // "_root_connection_clientRecvBufferSize.name": "", // adv
-    // "_root_connection_clientRecvBufferSize.description": "", // adv
+    // "_root_connection_streamPort.name": "", // adv
+    // "_root_connection_streamPort.description": "", // adv
     // "_root_connection_aggressiveKeyframeResend.name": "",
     // "_root_connection_aggressiveKeyframeResend.description": "",
     // Extra tab

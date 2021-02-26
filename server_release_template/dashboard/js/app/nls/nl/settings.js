@@ -69,10 +69,6 @@ define({
     "_root_headset_trackingSpace_stage-choice-.name": "Stationair (Kamer gecentreerd)",
     // Connection tab
     "_root_connection_tab.name": "Connectie",
-    "_root_connection_disableThrottling.name": "Shakel throttling uit",
-    "_root_connection_disableThrottling.description": "Shackelt de throttling uit. Verzend gegevens zo snel mogelijk",
-    "_root_connection_bufferOffset.name": "Buffer-compensatie",
-    "_root_connection_bufferOffset.description": "Compensatie om de berekende grootte van de clientbuffer te vergroten of te verkleinen. De client buffer kan niet negatief zijn",
     "_root_connection_webServerPort.name": "Web server poort",
     "_root_connection_aggressiveKeyframeResend.name": "Aggressief keyframe opnieuw verzenden",
     "_root_connection_aggressiveKeyframeResend.description": "Verlaagt het minimuminterval tussen keyframes van 100 ms naar 5 ms. \nAlleen gebruikt wanneer er pakketten verloren worden. \nVerbetert de ervaring op netwerken met pakketverlies.",

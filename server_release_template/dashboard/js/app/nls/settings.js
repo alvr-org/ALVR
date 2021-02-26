@@ -51,26 +51,35 @@ define({
         "_root_audio_tab.name": "Audio",
         "_root_audio_gameAudio.name": "Stream game audio",
         // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
-        "_root_audio_gameAudio_enabled.description": "Stream the game audio to the headset",
+        "_root_audio_gameAudio_enabled.description": "Audio device used to capture game audio. This is used to configure SteamVR audio output.",
+        "_root_audio_gameAudio_content_deviceDropdown.name": "Select audio device",
         "_root_audio_gameAudio_content_deviceId-choice-.name": "Audio device",
-        "_root_audio_gameAudio_content_deviceId-choice-.description": "Select the audio device used to capture audio",
         "_root_audio_gameAudio_content_deviceId_default-choice-.name": "Default",
         "_root_audio_gameAudio_content_deviceId_name-choice-.name": "By name",
         "_root_audio_gameAudio_content_deviceId_index-choice-.name": "By index",
         "_root_audio_gameAudio_content_muteWhenStreaming.name": "Mute output when streaming",
         "_root_audio_gameAudio_content_muteWhenStreaming.description": "Mutes the audio output (speakers/headphones) when streaming to the headset. Only the physical output is muted (to avoid double audio), stream to the headset and other capturing software will not be affected.",
-        "_root_audio_gameAudio_content_bufferRangeMultiplier.name": "Latency offset",
-        "_root_audio_gameAudio_content_bufferRangeMultiplier.description": "Use 1 for lowest latency, at the cost of more audio crackling.",
+        "_root_audio_gameAudio_content_config.name": "Configuration",
+        "_root_audio_gameAudio_content_config_averageBufferingMs.name": "Buffering (ms)",
+        "_root_audio_gameAudio_content_config_averageBufferingMs.description": "Increasing this value may reduce audio stuttering.",
         "_root_audio_microphone.name": "Stream headset microphone",
         // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
-        "_root_audio_microphone_enabled.description": "Streams the headset microphone to SteamVR. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software",
-        "_root_audio_microphone_content_deviceId-choice-.name": "Virtual microphone input",
-        "_root_audio_microphone_content_deviceId-choice-.description": "Select the virtual microphone input used to capture audio. \nTo make the microphone work you need to install VB-Audio Virtual device or another equivalent software",
-        "_root_audio_microphone_content_deviceId_default-choice-.name": "Default",
-        "_root_audio_microphone_content_deviceId_name-choice-.name": "By name",
-        "_root_audio_microphone_content_deviceId_index-choice-.name": "By index",
-        "_root_audio_microphone_content_bufferRangeMultiplier.name": "Latency offset",
-        "_root_audio_microphone_content_bufferRangeMultiplier.description": "Use 1 for lowest latency, at the cost of more audio crackling.",
+        "_root_audio_microphone_enabled.description": "Streams the headset microphone to SteamVR. \nTo make the microphone work you need to install VB-CABLE Virtual Audio Device or another equivalent software.\nThe virtual microphone input is the recording device, the virtual microphone output is the audio rendering device, which is used to configure SteamVR microphone.",
+        "_root_audio_microphone_content_inputDeviceDropdown.name": "Select virtual microphone input",
+        "_root_audio_microphone_content_inputDeviceDropdown.description": "Output device used to render the microphone audio.",
+        "_root_audio_microphone_content_inputDeviceId-choice-.name": "Virtual microphone input",
+        "_root_audio_microphone_content_inputDeviceId_default-choice-.name": "Default",
+        "_root_audio_microphone_content_inputDeviceId_name-choice-.name": "By name",
+        "_root_audio_microphone_content_inputDeviceId_index-choice-.name": "By index",
+        "_root_audio_microphone_content_outputDeviceDropdown.name": "Select virtual microphone output",
+        "_root_audio_microphone_content_outputDeviceDropdown.description": "Input device used as microphone. This is used to configure SteamVR microphone.",
+        "_root_audio_microphone_content_outputDeviceId-choice-.name": "Virtual microphone output",
+        "_root_audio_microphone_content_outputDeviceId_default-choice-.name": "Default",
+        "_root_audio_microphone_content_outputDeviceId_name-choice-.name": "By name",
+        "_root_audio_microphone_content_outputDeviceId_index-choice-.name": "By index",
+        "_root_audio_microphone_content_config.name": "Configuration",
+        "_root_audio_microphone_content_config_averageBufferingMs.name": "Buffering (ms)",
+        "_root_audio_microphone_content_config_averageBufferingMs.description": "Increasing this value may reduce audio stuttering.",
         // Headset tab
         "_root_headset_tab.name": "Headset",
         "_root_headset_headsetEmulationMode.name": "Headset emulation mode",
@@ -146,18 +155,15 @@ define({
         "_root_headset_trackingSpace_stage-choice-.name": "Stage (Room centered)",
         // Connection tab
         "_root_connection_tab.name": "Connection",
-        "_root_connection_disableThrottling.name": "Disable throttling",
-        "_root_connection_disableThrottling.description": "Disables the throttling. Send data as fast as possible",
-        "_root_connection_bufferOffset.name": "Buffer offset",
-        "_root_connection_bufferOffset.description": "Offset to increase or decrease the calculated client buffer size. The client buffer can not be negative",
         "_root_connection_autoTrustClients.name": "Trust clients automatically (not recommended)", // adv
         "_root_connection_webServerPort.name": "Web server port",
-        "_root_connection_listenPort.name": "Server streaming port", // adv
-        "_root_connection_listenPort.description": "Port used by the server to receive packets.", // adv
-        "_root_connection_throttlingBitrateBits.name": "Maximum streaming bitrate", // adv
-        "_root_connection_throttlingBitrateBits.description": "Maximum allowed bitrate in bit/s.", // adv
-        "_root_connection_clientRecvBufferSize.name": "Client buffer size", // adv
-        "_root_connection_clientRecvBufferSize.description": "Buffer size on client side. \nDepends on the bitrate. \nCalculated size is recommended. If you experience packet loss, enlarge buffer.", // adv
+        "_root_connection_streamProtocol-choice-.name": "Streaming protocol",
+        "_root_connection_streamProtocol-choice-.description": "Network protocol used to stream data between client and server. UDP works best at low bitrates (<30), Throttled UDP works best at medium bitrates (~100), TCP works at any bitrate.",
+        "_root_connection_streamProtocol_udp-choice-.name": "UDP",
+        "_root_connection_streamProtocol_throttledUdp-choice-.name": "Throttled UDP",
+        "_root_connection_streamProtocol_tcp-choice-.name": "TCP",
+        "_root_connection_streamPort.name": "Server streaming port", // adv
+        "_root_connection_streamPort.description": "Port used by the server to receive packets.", // adv
         "_root_connection_aggressiveKeyframeResend.name": "Aggressive keyframe resend",
         "_root_connection_aggressiveKeyframeResend.description": "Decrease minimum interval between keyframes from 100 ms to 5 ms. \nUsed only when packet loss is detected. \nImproves experience on networks with packet loss.",
         "_root_connection_onConnectScript.name": "On connect script",

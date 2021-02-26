@@ -9,6 +9,7 @@ use cpal::{
 };
 use parking_lot::Mutex;
 use rodio::{OutputStream, Source};
+use serde::Serialize;
 use std::{
     collections::VecDeque,
     sync::{mpsc as smpsc, Arc},
@@ -32,6 +33,25 @@ use winapi::{
 };
 #[cfg(windows)]
 use wio::com::ComPtr;
+
+#[derive(Serialize)]
+pub struct AudioDevicesList {
+    output: Vec<String>,
+    input: Vec<String>,
+}
+
+pub fn get_devices_list() -> StrResult<AudioDevicesList> {
+    let host = cpal::default_host();
+
+    let output = trace_err!(host.output_devices())?
+        .filter_map(|d| d.name().ok())
+        .collect::<Vec<_>>();
+    let input = trace_err!(host.input_devices())?
+        .filter_map(|d| d.name().ok())
+        .collect::<Vec<_>>();
+
+    Ok(AudioDevicesList { output, input })
+}
 
 pub enum AudioDeviceType {
     Output,
@@ -386,7 +406,6 @@ pub fn get_next_frame_batch(
     channels_count: usize,
     batch_frames_count: usize,
 ) -> Vec<f32> {
-    // error!("output batch: {}", batch_frames_count);
     if sample_buffer.len() / channels_count >= batch_frames_count {
         let mut batch = sample_buffer
             .drain(0..batch_frames_count * channels_count)
@@ -432,7 +451,7 @@ pub async fn receive_samples_loop(
         let mut sample_buffer_ref = sample_buffer.lock();
 
         if packet.had_packet_loss {
-            error!("Audio packet loss!");
+            info!("Audio packet loss!");
 
             if sample_buffer_ref.len() / channels_count < batch_frames_count {
                 sample_buffer_ref.clear();
@@ -478,7 +497,7 @@ pub async fn receive_samples_loop(
                 }
 
                 sample_buffer_ref.extend(recovery_sample_buffer.drain(..));
-                error!("Audio recovered");
+                info!("Audio recovered");
             }
         } else {
             sample_buffer_ref.extend(&new_samples);
@@ -487,7 +506,7 @@ pub async fn receive_samples_loop(
         // todo: use smarter policy with EventTiming
         let buffer_frames_size = sample_buffer_ref.len() / channels_count;
         if buffer_frames_size > 2 * average_buffer_frames_count + batch_frames_count {
-            error!("Audio buffer overflow! size: {}", buffer_frames_size);
+            info!("Audio buffer overflow! size: {}", buffer_frames_size);
 
             let drained_samples = sample_buffer_ref
                 .drain(0..(buffer_frames_size - average_buffer_frames_count) * channels_count)

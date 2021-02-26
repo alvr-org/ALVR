@@ -141,6 +141,9 @@ pub struct AudioConfig {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameAudioDesc {
+    #[schema(placeholder = "device_dropdown")]
+    //
+    #[schema(advanced)]
     pub device_id: AudioDeviceId,
     pub mute_when_streaming: bool,
     pub config: AudioConfig,
@@ -151,8 +154,14 @@ pub struct GameAudioDesc {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MicrophoneDesc {
+    #[schema(placeholder = "input_device_dropdown")]
+    //
+    #[schema(advanced)]
     pub input_device_id: AudioDeviceId,
 
+    #[schema(placeholder = "output_device_dropdown")]
+    //
+    #[schema(advanced)]
     pub output_device_id: AudioDeviceId,
 
     #[schema(advanced)]
@@ -290,13 +299,15 @@ pub struct HeadsetDesc {
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum SocketProtocol {
     Udp,
-    Tcp,
+
     #[schema(advanced)]
     #[serde(rename_all = "camelCase")]
     ThrottledUdp {
         #[schema(min = 1.0, step = 0.1, gui = "UpDown")]
         bitrate_multiplier: f32,
     },
+
+    Tcp,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]

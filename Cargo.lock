@@ -17,9 +17,9 @@ dependencies = [
 
 [[package]]
 name = "adler"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bedc89c5c7b5550ffb9372eb5c5ffc7f9f705cc3f4a128bd4669b9745f555093"
+checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
 name = "adler32"
@@ -1098,6 +1098,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b11f15d1e3268f140f68d390637d5e76d849782d971ae7063e0da69fe9709a76"
 dependencies = [
  "libloading 0.6.7",
+]
+
+[[package]]
+name = "dlib"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac1b7517328c04c2aa68422fc60a41b92208182142ed04a25879c26c8f878794"
+dependencies = [
+ "libloading 0.7.0",
 ]
 
 [[package]]
@@ -2908,7 +2917,7 @@ dependencies = [
 
 [[package]]
 name = "openvr-driver-sys"
-version = "0.1.0+1.14.15"
+version = "0.1.0+1.16.8"
 dependencies = [
  "bindgen 0.57.0",
  "cc",
@@ -3932,7 +3941,7 @@ dependencies = [
  "andrew",
  "bitflags",
  "calloop",
- "dlib",
+ "dlib 0.4.2",
  "lazy_static",
  "log",
  "memmap2",
@@ -4776,9 +4785,9 @@ checksum = "dd4945e4943ae02d15c13962b38a5b1e81eadd4b71214eee75af64a4d6a4fd64"
 
 [[package]]
 name = "wayland-client"
-version = "0.28.4"
+version = "0.28.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08a77fffb1b00e092274ecb3319217d63f9b886af3ec0d9d4fc8ad70be565816"
+checksum = "06ca44d86554b85cf449f1557edc6cc7da935cc748c8e4bf1c507cbd43bae02c"
 dependencies = [
  "bitflags",
  "downcast-rs",
@@ -4792,9 +4801,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-commons"
-version = "0.28.4"
+version = "0.28.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ffbfeb84b9125a5ba01d1ac65ee326681e5586241b433dc47f7970963b7f1d8"
+checksum = "8bd75ae380325dbcff2707f0cd9869827ea1d2d6d534cff076858d3f0460fd5a"
 dependencies = [
  "nix 0.20.0",
  "once_cell",
@@ -4804,9 +4813,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-cursor"
-version = "0.28.4"
+version = "0.28.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee1caa137e948346eae0c4c306382dd680d421b7113166c43d51f32b31d12c19"
+checksum = "b37e5455ec72f5de555ec39b5c3704036ac07c2ecd50d0bffe02d5fe2d4e65ab"
 dependencies = [
  "nix 0.20.0",
  "wayland-client",
@@ -4815,9 +4824,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-protocols"
-version = "0.28.4"
+version = "0.28.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f800517a39484545a92be714715a40c526ff789659ea80e38d72e37a9d07a2c"
+checksum = "95df3317872bcf9eec096c864b69aa4769a1d5d6291a5b513f8ba0af0efbd52c"
 dependencies = [
  "bitflags",
  "wayland-client",
@@ -4827,9 +4836,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-scanner"
-version = "0.28.4"
+version = "0.28.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d16f991e1b85cf57c1703c2725a65e2c58b2f86e987559ae17f7d36b9b757eb"
+checksum = "389d680d7bd67512dc9c37f39560224327038deb0f0e8d33f870900441b68720"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4838,11 +4847,11 @@ dependencies = [
 
 [[package]]
 name = "wayland-sys"
-version = "0.28.4"
+version = "0.28.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21b0ff7a7d7f0a540cb62e9e5ecb70dac2c8ce7e6e37d3d456817443aaee6ef3"
+checksum = "2907bd297eef464a95ba9349ea771611771aa285b932526c633dc94d5400a8e2"
 dependencies = [
- "dlib",
+ "dlib 0.5.0",
  "lazy_static",
  "pkg-config",
 ]

@@ -425,6 +425,8 @@ define([
             if (node == null) {
                 switch (name) {
                     case "deviceDropdown":
+                    case "inputDeviceDropdown":
+                    case "outputDeviceDropdown":
                     case "resolutionDropdown":
                     case "headsetEmulationMode":
                     case "controllerMode":

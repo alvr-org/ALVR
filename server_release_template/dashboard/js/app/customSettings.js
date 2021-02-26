@@ -2,6 +2,7 @@ define([
     "i18n!app/nls/settings",
     "i18n!app/nls/wizard",
     "lib/selectal",
+    "json!../../audio-devices",
     "json!app/resources/HTCVive.json",
     "json!app/resources/OculusRift.json",
     "json!app/resources/Quest2.json",
@@ -13,6 +14,7 @@ define([
     i18n,
     i18nWizard,
     select,
+    audio_devices,
     vive,
     rifts,
     quest2,
@@ -27,6 +29,7 @@ define([
 
         self.setCustomSettings = function () {
             try {
+                setAudioDeviceList();
                 setVideoOptions();
                 setRefreshRate();
                 setHeadsetEmulation();
@@ -377,6 +380,91 @@ define([
 
                 setRefreshRateRadio();
             });
+        }
+
+        function setupAudioDropdown(section, dropdownDevice, targetDevice, direction) {
+            let el = $("#_root_audio_" + section + "_content_" + dropdownDevice);
+            el.parent().addClass("special");
+            el.unbind();
+
+            el.append(`<option value="default"> Default </option>`);
+            audio_devices[direction].forEach((deviceName) => {
+                el.append(`<option value="${deviceName}"> ${deviceName} </option>`);
+            });
+
+            let currentSetting = alvrSettings
+                .getSession()
+                .sessionSettings
+                .audio[section]
+                .content[targetDevice];
+
+            //select the current option in dropdown
+            if (currentSetting.variant == "default") {
+                el.val("default");
+            } else if (currentSetting.variant == "name") {
+                el.val(currentSetting.name);
+            }
+
+            const target = $("#_root_audio_" + section + "_content_" + targetDevice + "-choice-");
+
+            let updating = false;
+            //add listener to change
+            el.change((ev) => {
+                if (!updating) {
+                    updating = true;
+
+                    target
+                        .children()
+                        .first()
+                        .children()
+                        .filter(".active")
+                        .removeClass("active");
+
+                    let selection = $(ev.target).val();
+                    if (selection == "default") {
+                        let targetVariant = $("#_root_audio_" + section + "_content_" + targetDevice + "_default-choice-");
+                        targetVariant.prop("checked", true);
+                        alvrSettings.storeParam(targetVariant);
+                    } else {
+                        let targetVariant = $("#_root_audio_" + section + "_content_" + targetDevice + "_name-choice-");
+                        targetVariant.prop("checked", true);
+                        alvrSettings.storeParam(targetVariant);
+
+                        let targetName = $("#_root_audio_" + section + "_content_" + targetDevice + "_name");
+                        targetName.val(selection);
+                        alvrSettings.storeParam(targetName);
+                    }
+
+                    updating = false;
+                }
+            });
+
+            target.change(() => {
+                if (!updating) {
+                    updating = true;
+
+                    let currentSetting = alvrSettings
+                        .getSession()
+                        .sessionSettings
+                        .audio[section]
+                        .content[targetDevice];
+
+                    if (currentSetting.variant == "default") {
+                        el.val("default");
+                    } else if (currentSetting.variant == "name") {
+                        el.val(currentSetting.name);
+                    }
+                    el.change();
+
+                    updating = false;
+                }
+            });
+        }
+
+        function setAudioDeviceList() {
+            setupAudioDropdown("gameAudio", "deviceDropdown", "deviceId", "output");
+            setupAudioDropdown("microphone", "inputDeviceDropdown", "inputDeviceId", "output");
+            setupAudioDropdown("microphone", "outputDeviceDropdown", "outputDeviceId", "input");
         }
 
         function setTrackingSpeed() {

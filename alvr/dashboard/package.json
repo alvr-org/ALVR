@@ -1,0 +1,9 @@
+{
+  "name": "alvr_dashboard",
+  "version": "1.0.0",
+  "author": "alvr-org",
+  "license": "MIT",
+  "devDependencies": {
+    "snowpack": "3"
+  }
+}

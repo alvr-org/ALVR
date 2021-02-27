@@ -427,20 +427,24 @@ async fn connection_pipeline() -> StrResult {
         let device = AudioDevice::new(desc.device_id, AudioDeviceType::Output)?;
         let sample_rate = audio::get_sample_rate(&device)?;
         let sender = stream_socket.request_stream(AUDIO).await?;
+        let mute_when_streaming = desc.mute_when_streaming;
 
-        #[cfg(windows)]
-        {
-            let device_id = audio::get_windows_device_id(&device)?;
-            openvr::set_game_output_audio_device_id(device_id);
-        }
+        Box::pin(async move {
+            #[cfg(windows)]
+            openvr::set_game_output_audio_device_id(audio::get_windows_device_id(&device)?);
 
-        Box::pin(audio::record_audio_loop(
-            device,
-            2,
-            sample_rate,
-            desc.mute_when_streaming,
-            sender,
-        ))
+            audio::record_audio_loop(device, 2, sample_rate, mute_when_streaming, sender).await?;
+
+            #[cfg(windows)]
+            {
+                let default_device =
+                    AudioDevice::new(AudioDeviceId::Default, AudioDeviceType::Output)?;
+                let default_device_id = audio::get_windows_device_id(&default_device)?;
+                openvr::set_game_output_audio_device_id(default_device_id);
+            }
+
+            Ok(())
+        })
     } else {
         Box::pin(future::pending())
     };

@@ -27,7 +27,8 @@ void VideoEncoderNVENC::Initialize()
 	// Initialize Encoder
 	//
 
-	NV_ENC_BUFFER_FORMAT format = NV_ENC_BUFFER_FORMAT_ABGR;
+	//NV_ENC_BUFFER_FORMAT format = NV_ENC_BUFFER_FORMAT_ABGR; -- TODO MAKE CONDITIONAL BASED ON SETTING
+	NV_ENC_BUFFER_FORMAT format = NV_ENC_BUFFER_FORMAT_ABGR10;
 
 	Debug("Initializing CNvEncoder. Width=%d Height=%d Format=%d\n", m_renderWidth, m_renderHeight, format);
 
@@ -197,4 +198,8 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize;
 	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrateBits);
 	encodeConfig.rcParams.averageBitRate = static_cast<uint32_t>(bitrateBits);
+
+	// -- TODO MAKE CONDITIONAL BASED ON SETTING
+	encodeConfig.rcParams.enableAQ = 1;
+	encodeConfig.encodeCodecConfig.hevcConfig.pixelBitDepthMinus8 = 2;
 }

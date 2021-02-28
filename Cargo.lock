@@ -85,7 +85,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client"
-version = "15.0.0-beta.2"
+version = "15.0.0"
 dependencies = [
  "alvr_common",
  "android_logger",
@@ -110,7 +110,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "15.0.0-beta.2"
+version = "15.0.0"
 dependencies = [
  "alvr_xtask",
  "backtrace",
@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "15.0.0-beta.2"
+version = "15.0.0"
 dependencies = [
  "alvr_common",
  "druid",
@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "15.0.0-beta.2"
+version = "15.0.0"
 dependencies = [
  "alcro",
  "alvr_common",

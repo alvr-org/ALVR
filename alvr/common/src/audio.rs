@@ -314,13 +314,16 @@ pub async fn record_audio_loop(
     channels_count: u16,
     sample_rate: u32,
     #[allow(unused_variables)] mute: bool,
-    force_i16_input: bool,
     mut sender: StreamSender<()>,
 ) -> StrResult {
     let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
 
     if sample_rate != config.min_sample_rate().0 {
         return fmt_e!("Sample rate not supported");
+    }
+
+    if config.channels() > 2 {
+        return fmt_e!("Audio devices with more than 2 channels are not supported. Please use some external downmixing software.");
     }
 
     let stream_config = StreamConfig {
@@ -330,68 +333,86 @@ pub async fn record_audio_loop(
     };
 
     // data_sender/receiver is the bridge between tokio and std thread
-    let (data_sender, mut data_receiver) = tmpsc::unbounded_channel::<Vec<_>>();
+    let (data_sender, mut data_receiver) = tmpsc::unbounded_channel::<StrResult<Vec<_>>>();
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
+
+    let thread_callback = {
+        let data_sender = data_sender.clone();
+        move || {
+            #[cfg(windows)]
+            if mute && device.device_type.is_output() {
+                set_mute_windows_device(&device, true).ok();
+            }
+
+            let stream = trace_err!(device.inner.build_input_stream_raw(
+                &stream_config,
+                config.sample_format(),
+                {
+                    let data_sender = data_sender.clone();
+                    move |data, _| {
+                        let mut data = if config.sample_format() == SampleFormat::F32 {
+                            data.bytes()
+                                .chunks_exact(4)
+                                .flat_map(|b| {
+                                    f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
+                                        .to_i16()
+                                        .to_ne_bytes()
+                                        .to_vec()
+                                })
+                                .collect()
+                        } else {
+                            data.bytes().to_vec()
+                        };
+
+                        if config.channels() == 1 && channels_count == 2 {
+                            data = data
+                                .chunks_exact(2)
+                                .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
+                                .collect()
+                        } else if config.channels() == 2 && channels_count == 1 {
+                            data = data
+                                .chunks_exact(4)
+                                .flat_map(|c| vec![c[0], c[1]])
+                                .collect()
+                        }
+
+                        data_sender.send(Ok(data)).ok();
+                    }
+                },
+                {
+                    let data_sender = data_sender.clone();
+                    move |e| {
+                        data_sender
+                            .send(fmt_e!("Error while recording audio: {}", e))
+                            .ok();
+                    }
+                }
+            ))?;
+
+            trace_err!(stream.play())?;
+
+            shutdown_receiver.recv().ok();
+
+            #[cfg(windows)]
+            if mute && device.device_type.is_output() {
+                set_mute_windows_device(&device, false).ok();
+            }
+
+            Ok(vec![])
+        }
+    };
 
     // use a std thread to store the stream object. The stream object must be destroyed on the same
     // thread of creation.
-    thread::spawn(move || -> StrResult {
-        #[cfg(windows)]
-        if mute && device.device_type.is_output() {
-            set_mute_windows_device(&device, true).ok();
+    thread::spawn(move || {
+        let res = thread_callback();
+        if res.is_err() {
+            data_sender.send(res).ok();
         }
-
-        let stream = trace_err!(device.inner.build_input_stream_raw(
-            &stream_config,
-            config.sample_format(),
-            move |data, _| {
-                let mut data = if !force_i16_input && config.sample_format() == SampleFormat::F32 {
-                    data.bytes()
-                        .chunks_exact(4)
-                        .flat_map(|b| {
-                            f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
-                                .to_i16()
-                                .to_ne_bytes()
-                                .to_vec()
-                        })
-                        .collect()
-                } else {
-                    data.bytes().to_vec()
-                };
-
-                if config.channels() != channels_count {
-                    data = data
-                        .chunks_exact(2 * config.channels() as usize)
-                        .flat_map(|b| {
-                            b.repeat(
-                                (channels_count as f32 / config.channels() as f32).ceil() as usize
-                                    * 2,
-                            )
-                            .into_iter()
-                            .take(2 * channels_count as usize)
-                            .collect::<Vec<_>>()
-                        })
-                        .collect();
-                }
-
-                data_sender.send(data).ok();
-            },
-            |e| warn!("Error while recording audio: {}", e),
-        ))?;
-
-        trace_err!(stream.play())?;
-
-        shutdown_receiver.recv().ok();
-
-        #[cfg(windows)]
-        if mute && device.device_type.is_output() {
-            set_mute_windows_device(&device, false).ok();
-        }
-
-        Ok(())
     });
 
-    while let Some(data) = data_receiver.recv().await {
+    while let Some(maybe_data) = data_receiver.recv().await {
+        let data = maybe_data?;
         let mut buffer = sender.new_buffer(&(), data.len())?;
         buffer.get_mut().extend(data);
         sender.send_buffer(buffer).await.ok();

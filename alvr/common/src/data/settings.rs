@@ -148,9 +148,6 @@ pub struct GameAudioDesc {
     pub device_id: AudioDeviceId,
     pub mute_when_streaming: bool,
     pub config: AudioConfig,
-
-    #[schema(advanced)]
-    pub force_i16_input: bool,
 }
 
 // Note: sample rate is a free parameter for microphone, because both server and client supports
@@ -454,7 +451,6 @@ pub fn session_settings_default() -> SettingsDefault {
                         average_buffering_ms: 50,
                         batch_ms: 10,
                     },
-                    force_i16_input: false,
                 },
             },
             microphone: SwitchDefault {

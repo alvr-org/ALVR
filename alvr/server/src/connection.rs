@@ -211,6 +211,7 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         adapter_index: settings.video.adapter_index,
         codec: matches!(settings.video.codec, CodecType::HEVC) as _,
         refresh_rate: fps as _,
+        use_10bit_encoder: settings.video.use_10bit_encoder,
         encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
         controllers_tracking_system_name: session_settings
             .headset

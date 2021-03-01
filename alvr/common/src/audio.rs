@@ -286,11 +286,16 @@ fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> StrResult {
 }
 
 pub fn get_sample_rate(device: &AudioDevice) -> StrResult<u32> {
-    let mut configs = trace_err!(device.inner.supported_output_configs())?;
+    let maybe_config_range = trace_err!(device.inner.supported_output_configs())?.next();
+    let config = if let Some(config) = maybe_config_range {
+        config
+    } else {
+        trace_none!(trace_err!(device.inner.supported_input_configs())?.next())?
+    };
 
     // Assumption: device is in shared mode: this means that there is one and fixed sample rate,
     // format and channel count
-    Ok(trace_none!(configs.next())?.min_sample_rate().0)
+    Ok(config.min_sample_rate().0)
 }
 
 pub async fn record_audio_loop(
@@ -300,7 +305,12 @@ pub async fn record_audio_loop(
     #[allow(unused_variables)] mute: bool,
     mut sender: StreamSender<()>,
 ) -> StrResult {
-    let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
+    let maybe_config_range = trace_err!(device.inner.supported_output_configs())?.next();
+    let config = if let Some(config) = maybe_config_range {
+        config
+    } else {
+        trace_none!(trace_err!(device.inner.supported_input_configs())?.next())?
+    };
 
     if sample_rate != config.min_sample_rate().0 {
         return fmt_e!("Sample rate not supported");
@@ -588,8 +598,6 @@ pub async fn play_audio_loop(
     config: AudioConfig,
     receiver: StreamReceiver<()>,
 ) -> StrResult {
-    assert!(device.device_type.is_output());
-
     // Size of a chunk of frames. It corresponds to the duration if a fade-in/out in frames.
     let batch_frames_count = sample_rate as usize * config.batch_ms as usize / 1000;
 

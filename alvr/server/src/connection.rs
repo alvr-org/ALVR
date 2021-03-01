@@ -428,12 +428,21 @@ async fn connection_pipeline() -> StrResult {
         let sample_rate = audio::get_sample_rate(&device)?;
         let sender = stream_socket.request_stream(AUDIO).await?;
         let mute_when_streaming = desc.mute_when_streaming;
+        let force_i16_input = desc.force_i16_input;
 
         Box::pin(async move {
             #[cfg(windows)]
             openvr::set_game_output_audio_device_id(audio::get_windows_device_id(&device)?);
 
-            audio::record_audio_loop(device, 2, sample_rate, mute_when_streaming, sender).await?;
+            audio::record_audio_loop(
+                device,
+                2,
+                sample_rate,
+                mute_when_streaming,
+                force_i16_input,
+                sender,
+            )
+            .await?;
 
             #[cfg(windows)]
             {

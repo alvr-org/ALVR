@@ -314,6 +314,7 @@ pub async fn record_audio_loop(
     channels_count: u16,
     sample_rate: u32,
     #[allow(unused_variables)] mute: bool,
+    force_i16_input: bool,
     mut sender: StreamSender<()>,
 ) -> StrResult {
     let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
@@ -329,7 +330,7 @@ pub async fn record_audio_loop(
     };
 
     // data_sender/receiver is the bridge between tokio and std thread
-    let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+    let (data_sender, mut data_receiver) = tmpsc::unbounded_channel::<Vec<_>>();
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
 
     // use a std thread to store the stream object. The stream object must be destroyed on the same
@@ -344,11 +345,11 @@ pub async fn record_audio_loop(
             &stream_config,
             config.sample_format(),
             move |data, _| {
-                let data = if config.sample_format() == SampleFormat::F32 {
+                let mut data = if !force_i16_input && config.sample_format() == SampleFormat::F32 {
                     data.bytes()
                         .chunks_exact(4)
-                        .flat_map(|c| {
-                            f32::from_ne_bytes([c[0], c[1], c[2], c[3]])
+                        .flat_map(|b| {
+                            f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
                                 .to_i16()
                                 .to_ne_bytes()
                                 .to_vec()
@@ -358,19 +359,20 @@ pub async fn record_audio_loop(
                     data.bytes().to_vec()
                 };
 
-                let data = if config.channels() == 1 && channels_count == 2 {
-                    data.chunks_exact(2)
-                        .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
-                        .collect()
-                } else if config.channels() == 2 && channels_count == 1 {
-                    data.chunks_exact(4)
-                        .flat_map(|c| vec![c[0], c[1]])
-                        .collect()
-                } else {
-                    // I assume the other case is config.channels() == channels_count. Otherwise the
-                    // buffer will be mishandled but no error will occur.
-                    data.to_vec()
-                };
+                if config.channels() != channels_count {
+                    data = data
+                        .chunks_exact(2 * config.channels() as usize)
+                        .flat_map(|b| {
+                            b.repeat(
+                                (channels_count as f32 / config.channels() as f32).ceil() as usize
+                                    * 2,
+                            )
+                            .into_iter()
+                            .take(2 * channels_count as usize)
+                            .collect::<Vec<_>>()
+                        })
+                        .collect();
+                }
 
                 data_sender.send(data).ok();
             },

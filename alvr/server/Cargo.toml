@@ -18,7 +18,7 @@ settings-schema = { path = "../settings-schema" }
 serde = "1"
 serde_json = "1"
 alvr_common = { path = "../common" }
-nalgebra = "0.24"
+nalgebra = "0.25"
 futures = "0.3"
 bytes = "1"
 tokio = { version = "1", features = [
@@ -30,7 +30,7 @@ tokio = { version = "1", features = [
     "fs",
 ] }
 tokio-util = { version = "0.6", features = ["codec"] }
-tokio-tungstenite = "0.13"
+tokio-tungstenite = "0.14"
 headers = "0.3"
 hyper = { version = "0.14", features = ["http2", "server", "stream", "runtime", "tcp"] }
 reqwest = "0.11"

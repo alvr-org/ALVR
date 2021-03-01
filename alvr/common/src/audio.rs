@@ -118,39 +118,23 @@ impl AudioDevice {
                         )
                     })?,
             },
-            AudioDeviceId::Name(name_substring) => {
-                let mut devices = trace_err!(if device_type.is_output() {
-                    host.output_devices()
-                } else {
-                    host.input_devices()
-                })?;
-
-                devices
-                    .find(|d| {
-                        if let Ok(name) = d.name() {
-                            name.to_lowercase().contains(&name_substring.to_lowercase())
-                        } else {
-                            false
-                        }
-                    })
-                    .ok_or_else(|| {
-                        format!(
-                            "Cannot find audio device which name contains \"{}\"",
-                            name_substring
-                        )
-                    })?
-            }
-            AudioDeviceId::Index(index) => {
-                let mut devices = trace_err!(if device_type.is_output() {
-                    host.output_devices()
-                } else {
-                    host.input_devices()
-                })?;
-
-                devices
-                    .nth(*index as usize - 1)
-                    .ok_or_else(|| format!("Cannot find audio device at index {}", index))?
-            }
+            AudioDeviceId::Name(name_substring) => trace_err!(host.devices())?
+                .find(|d| {
+                    if let Ok(name) = d.name() {
+                        name.to_lowercase().contains(&name_substring.to_lowercase())
+                    } else {
+                        false
+                    }
+                })
+                .ok_or_else(|| {
+                    format!(
+                        "Cannot find audio device which name contains \"{}\"",
+                        name_substring
+                    )
+                })?,
+            AudioDeviceId::Index(index) => trace_err!(host.devices())?
+                .nth(*index as usize - 1)
+                .ok_or_else(|| format!("Cannot find audio device at index {}", index))?,
         };
 
         Ok(Self {

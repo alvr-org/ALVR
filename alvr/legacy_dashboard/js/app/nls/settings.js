@@ -45,6 +45,8 @@ define({
         "_root_video_codec_H264-choice-.name": "h264",
         "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
         "_root_video_clientRequestRealtimeDecoder.name": "Request realtime decoder priority (client)", // adv
+        "_root_video_use10bitEncoder.name": "Use 10-bit encoder (newer nVidia cards only)", // adv
+        "_root_video_use10bitEncoder.description": "This increases visual quality by reducing color banding",
         "_root_video_encodeBitrateMbs.name": "Video Bitrate",
         "_root_video_encodeBitrateMbs.description": "Bitrate of video streaming. 30Mbps is recommended. \nHigher bitrates result in better image but also higher latency and network traffic ",
         // Audio tab

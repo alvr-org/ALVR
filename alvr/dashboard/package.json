@@ -15,7 +15,10 @@
         "@typescript-eslint/eslint-plugin": "4",
         "@typescript-eslint/parser": "4",
         "eslint": "7",
+        "eslint-config-prettier": "8",
+        "eslint-plugin-prettier": "3",
         "eslint-plugin-react": "7",
+        "eslint-plugin-react-hooks": "4",
         "prettier": "2",
         "snowpack": "3",
         "typescript": "4"

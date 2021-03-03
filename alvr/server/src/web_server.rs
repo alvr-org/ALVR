@@ -4,7 +4,7 @@ use bytes::Buf;
 use futures::SinkExt;
 use headers::{self, HeaderMapExt};
 use hyper::{
-    header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL},
+    header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE},
     service::{make_service_fn, service_fn},
     Body, Method, Request, Response, StatusCode,
 };
@@ -256,7 +256,13 @@ async fn http_api(
                 .await;
 
                 if let Ok(file) = maybe_file {
-                    Response::new(Body::wrap_stream(FramedRead::new(file, BytesCodec::new())))
+                    let mut builder = Response::builder();
+                    if other_uri.ends_with(".js") {
+                        builder = builder.header(CONTENT_TYPE, "text/javascript");
+                    }
+                    trace_err!(
+                        builder.body(Body::wrap_stream(FramedRead::new(file, BytesCodec::new())))
+                    )?
                 } else {
                     reply(StatusCode::NOT_FOUND)?
                 }

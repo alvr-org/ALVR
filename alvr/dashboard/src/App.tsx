@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 
-function App() {
+function App(): JSX.Element {
     // Create the count state.
     const [count, setCount] = useState(0)
     // Update the count (+1 every second).

@@ -118,39 +118,23 @@ impl AudioDevice {
                         )
                     })?,
             },
-            AudioDeviceId::Name(name_substring) => {
-                let mut devices = trace_err!(if device_type.is_output() {
-                    host.output_devices()
-                } else {
-                    host.input_devices()
-                })?;
-
-                devices
-                    .find(|d| {
-                        if let Ok(name) = d.name() {
-                            name.to_lowercase().contains(&name_substring.to_lowercase())
-                        } else {
-                            false
-                        }
-                    })
-                    .ok_or_else(|| {
-                        format!(
-                            "Cannot find audio device which name contains \"{}\"",
-                            name_substring
-                        )
-                    })?
-            }
-            AudioDeviceId::Index(index) => {
-                let mut devices = trace_err!(if device_type.is_output() {
-                    host.output_devices()
-                } else {
-                    host.input_devices()
-                })?;
-
-                devices
-                    .nth(*index as usize - 1)
-                    .ok_or_else(|| format!("Cannot find audio device at index {}", index))?
-            }
+            AudioDeviceId::Name(name_substring) => trace_err!(host.devices())?
+                .find(|d| {
+                    if let Ok(name) = d.name() {
+                        name.to_lowercase().contains(&name_substring.to_lowercase())
+                    } else {
+                        false
+                    }
+                })
+                .ok_or_else(|| {
+                    format!(
+                        "Cannot find audio device which name contains \"{}\"",
+                        name_substring
+                    )
+                })?,
+            AudioDeviceId::Index(index) => trace_err!(host.devices())?
+                .nth(*index as usize - 1)
+                .ok_or_else(|| format!("Cannot find audio device at index {}", index))?,
         };
 
         Ok(Self {
@@ -302,11 +286,16 @@ fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> StrResult {
 }
 
 pub fn get_sample_rate(device: &AudioDevice) -> StrResult<u32> {
-    let mut configs = trace_err!(device.inner.supported_output_configs())?;
+    let maybe_config_range = trace_err!(device.inner.supported_output_configs())?.next();
+    let config = if let Some(config) = maybe_config_range {
+        config
+    } else {
+        trace_none!(trace_err!(device.inner.supported_input_configs())?.next())?
+    };
 
     // Assumption: device is in shared mode: this means that there is one and fixed sample rate,
     // format and channel count
-    Ok(trace_none!(configs.next())?.min_sample_rate().0)
+    Ok(config.min_sample_rate().0)
 }
 
 pub async fn record_audio_loop(
@@ -316,10 +305,19 @@ pub async fn record_audio_loop(
     #[allow(unused_variables)] mute: bool,
     mut sender: StreamSender<()>,
 ) -> StrResult {
-    let config = trace_none!(trace_err!(device.inner.supported_output_configs())?.next())?;
+    let maybe_config_range = trace_err!(device.inner.supported_output_configs())?.next();
+    let config = if let Some(config) = maybe_config_range {
+        config
+    } else {
+        trace_none!(trace_err!(device.inner.supported_input_configs())?.next())?
+    };
 
     if sample_rate != config.min_sample_rate().0 {
         return fmt_e!("Sample rate not supported");
+    }
+
+    if config.channels() > 2 {
+        return fmt_e!("Audio devices with more than 2 channels are not supported. Please use some external downmixing software.");
     }
 
     let stream_config = StreamConfig {
@@ -329,67 +327,86 @@ pub async fn record_audio_loop(
     };
 
     // data_sender/receiver is the bridge between tokio and std thread
-    let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+    let (data_sender, mut data_receiver) = tmpsc::unbounded_channel::<StrResult<Vec<_>>>();
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
+
+    let thread_callback = {
+        let data_sender = data_sender.clone();
+        move || {
+            #[cfg(windows)]
+            if mute && device.device_type.is_output() {
+                set_mute_windows_device(&device, true).ok();
+            }
+
+            let stream = trace_err!(device.inner.build_input_stream_raw(
+                &stream_config,
+                config.sample_format(),
+                {
+                    let data_sender = data_sender.clone();
+                    move |data, _| {
+                        let mut data = if config.sample_format() == SampleFormat::F32 {
+                            data.bytes()
+                                .chunks_exact(4)
+                                .flat_map(|b| {
+                                    f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
+                                        .to_i16()
+                                        .to_ne_bytes()
+                                        .to_vec()
+                                })
+                                .collect()
+                        } else {
+                            data.bytes().to_vec()
+                        };
+
+                        if config.channels() == 1 && channels_count == 2 {
+                            data = data
+                                .chunks_exact(2)
+                                .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
+                                .collect()
+                        } else if config.channels() == 2 && channels_count == 1 {
+                            data = data
+                                .chunks_exact(4)
+                                .flat_map(|c| vec![c[0], c[1]])
+                                .collect()
+                        }
+
+                        data_sender.send(Ok(data)).ok();
+                    }
+                },
+                {
+                    let data_sender = data_sender.clone();
+                    move |e| {
+                        data_sender
+                            .send(fmt_e!("Error while recording audio: {}", e))
+                            .ok();
+                    }
+                }
+            ))?;
+
+            trace_err!(stream.play())?;
+
+            shutdown_receiver.recv().ok();
+
+            #[cfg(windows)]
+            if mute && device.device_type.is_output() {
+                set_mute_windows_device(&device, false).ok();
+            }
+
+            Ok(vec![])
+        }
+    };
 
     // use a std thread to store the stream object. The stream object must be destroyed on the same
     // thread of creation.
-    thread::spawn(move || -> StrResult {
-        #[cfg(windows)]
-        if mute && device.device_type.is_output() {
-            set_mute_windows_device(&device, true).ok();
+    thread::spawn(move || {
+        let res = thread_callback();
+        if res.is_err() {
+            data_sender.send(res).ok();
         }
-
-        let stream = trace_err!(device.inner.build_input_stream_raw(
-            &stream_config,
-            config.sample_format(),
-            move |data, _| {
-                let data = if config.sample_format() == SampleFormat::F32 {
-                    data.bytes()
-                        .chunks_exact(4)
-                        .flat_map(|c| {
-                            f32::from_ne_bytes([c[0], c[1], c[2], c[3]])
-                                .to_i16()
-                                .to_ne_bytes()
-                                .to_vec()
-                        })
-                        .collect()
-                } else {
-                    data.bytes().to_vec()
-                };
-
-                let data = if config.channels() == 1 && channels_count == 2 {
-                    data.chunks_exact(2)
-                        .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
-                        .collect()
-                } else if config.channels() == 2 && channels_count == 1 {
-                    data.chunks_exact(4)
-                        .flat_map(|c| vec![c[0], c[1]])
-                        .collect()
-                } else {
-                    // I assume the other case is config.channels() == channels_count. Otherwise the
-                    // buffer will be mishandled but no error will occur.
-                    data.to_vec()
-                };
-
-                data_sender.send(data).ok();
-            },
-            |e| warn!("Error while recording audio: {}", e),
-        ))?;
-
-        trace_err!(stream.play())?;
-
-        shutdown_receiver.recv().ok();
-
-        #[cfg(windows)]
-        if mute && device.device_type.is_output() {
-            set_mute_windows_device(&device, false).ok();
-        }
-
-        Ok(())
     });
 
-    while let Some(data) = data_receiver.recv().await {
+    while let Some(maybe_data) = data_receiver.recv().await {
+        let data = maybe_data?;
         let mut buffer = sender.new_buffer(&(), data.len())?;
         buffer.get_mut().extend(data);
         sender.send_buffer(buffer).await.ok();
@@ -581,8 +598,6 @@ pub async fn play_audio_loop(
     config: AudioConfig,
     receiver: StreamReceiver<()>,
 ) -> StrResult {
-    assert!(device.device_type.is_output());
-
     // Size of a chunk of frames. It corresponds to the duration if a fade-in/out in frames.
     let batch_frames_count = sample_rate as usize * config.batch_ms as usize / 1000;
 

@@ -82,6 +82,7 @@ void Settings::Load()
 		m_codec = (int32_t)config.get("codec").get<int64_t>();
 		m_refreshRate = (int)config.get("refresh_rate").get<int64_t>();
 		mEncodeBitrateMBs = (int)config.get("encode_bitrate_mbs").get<int64_t>();
+		m_use10bitEncoder = config.get("use_10bit_encoder").get<bool>();
 
 		m_controllerTrackingSystemName = config.get("controllers_tracking_system_name").get<std::string>();
 		m_controllerManufacturerName = config.get("controllers_manufacturer_name").get<std::string>();

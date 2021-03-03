@@ -62,6 +62,7 @@ public:
 
 	int m_codec;
 	uint64_t mEncodeBitrateMBs;
+	bool m_use10bitEncoder;
 
 	// Controller configs
 	std::string m_controllerTrackingSystemName;

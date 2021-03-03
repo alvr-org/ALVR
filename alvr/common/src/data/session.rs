@@ -56,6 +56,7 @@ pub struct OpenvrConfig {
     pub adapter_index: u32,
     pub codec: u32,
     pub refresh_rate: u32,
+    pub use_10bit_encoder: bool,
     pub encode_bitrate_mbs: u64,
     pub controllers_tracking_system_name: String,
     pub controllers_manufacturer_name: String,

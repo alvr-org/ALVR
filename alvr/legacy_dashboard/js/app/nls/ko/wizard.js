@@ -34,7 +34,7 @@ define({
         "textImport": "설정 혹은 preset 파일을 불러올 수 있습니다. (.json): <ul><li> <b>오큘러스 고</b>에 권장되는 Presets은 설치 폴더에 있습니다(<code>oculus_go.json</code>).<li> 이전 AVLR 설정 불러오기 (<code>session.json</code>).<ul>",
         // End page
         "titleFinished": "마무리",
-        "textFinished": "왼쪽 \"설정\" 탭에서 언제든지 설치 마법사를 실행할 수 있습니다.",
+        "textFinished": "왼쪽 \"설치\" 탭에서 언제든지 설치 마법사를 실행할 수 있습니다.",
         "buttonBack": "뒤로",
         "buttonNext": "다음",
         "buttonClose": "닫기",

@@ -44,6 +44,8 @@ define({
     "_root_video_codec_H264-choice-.name": "h264",
     "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
     "_root_video_clientRequestRealtimeDecoder.name": "최우선 실시간 디코더 요청 (클라이언트)", // adv
+    "_root_video_use10bitEncoder.name": "10비트 인코더 사용하기 (최신 엔비디아 그래픽 카드만)", // adv
+    "_root_video_use10bitEncoder.description": "컬러 밴딩을 줄여 비디오 품질을 향상시킵니다",
     "_root_video_encodeBitrateMbs.name": "비디오 비트레이트",
     "_root_video_encodeBitrateMbs.description": "비디오 전송 비트레이트 입니다. 30Mbps를 권장합니다. \n높은 비트레이트는 품질향상에 좋지만 지연시간 증가와 네트워크 성능에 악영향을 줍니다. ",
     // Audio tab
@@ -51,25 +53,34 @@ define({
     "_root_audio_gameAudio.name": "게임 오디오 전송",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
     "_root_audio_gameAudio_enabled.description": "게임 오디오를 헤드셋으로 전송합니다.",
+    "_root_audio_gameAudio_content_deviceDropdown.name": "오디오 장치를 선택하세요",
     "_root_audio_gameAudio_content_deviceId-choice-.name": "오디오 장치",
-    "_root_audio_gameAudio_content_deviceId-choice-.description": "오디오를 캡쳐할 장치를 설정하세요",
     "_root_audio_gameAudio_content_deviceId_default-choice-.name": "기본",
     "_root_audio_gameAudio_content_deviceId_name-choice-.name": "이름으로",
     "_root_audio_gameAudio_content_deviceId_index-choice-.name": "번호로",
-    "_root_audio_gameAudio_content_muteWhenStreaming.name": "전송할 때 외부장치 음소거",
+    "_root_audio_gameAudio_content_muteWhenStreaming.name": "전송시 외부장치 음소거하기",
     "_root_audio_gameAudio_content_muteWhenStreaming.description": "헤드셋으로 전송할 때 오디오 출력(스피커/헤드폰)을 음소거합니다. 물리적 출력만 음소거되고(하울링 방지), 헤드셋 및 기타 캡처 소프트웨어는 영향을 받지 않습니다.",
-    "_root_audio_gameAudio_content_bufferRangeMultiplier.name": "지연시간 오프셋",
-    "_root_audio_gameAudio_content_bufferRangeMultiplier.description": "1은 지연시간이 가장 낮지만, 오디오 깨짐을 유발합니다.",
+    "_root_audio_gameAudio_content_config.name": "설정",
+    "_root_audio_gameAudio_content_config_averageBufferingMs.name": "지연시간 (ms)",
+    "_root_audio_gameAudio_content_config_averageBufferingMs.description": "지연시간이 길수록 오디오 깨짐이 줄어듭니다.",
     "_root_audio_microphone.name": "헤드셋 마이크 전송",
     // "_root_audio_microphone.description": use "_root_audio_microphone_enabled.description"
-    "_root_audio_microphone_enabled.description": "SteamVr에서 헤드셋 마이크를 사용합니다. \nVB-Audio Virtual 장치 혹은 유사한 소프트웨어가 필요합니다. ",
-    "_root_audio_microphone_content_deviceId-choice-.name": "가상 마이크 입력",
-    "_root_audio_microphone_content_deviceId-choice-.description": "가상 마이크 입력에 사용할 장치를 고르세요. \nVB-Audio Virtual 장치 혹은 유사한 소프트웨어가 필요합니다.",
-    "_root_audio_microphone_content_deviceId_default-choice-.name": "기본",
-    "_root_audio_microphone_content_deviceId_name-choice-.name": "이름으로",
-    "_root_audio_microphone_content_deviceId_index-choice-.name": "번호로",
-    "_root_audio_microphone_content_bufferRangeMultiplier.name": "지연시간 오프셋",
-    "_root_audio_microphone_content_bufferRangeMultiplier.description": "1은 지연시간이 가장 낮지만, 오디오 깨짐을 유발합니다.",
+    "_root_audio_microphone_enabled.description": "헤드셋 마이크를 SteamVr로 전송합니다. \nVB-CABLE Virtual Audio Device 혹은 유사한 가상 오디오 장치가 필요합니다.\nThe virtual microphone input is the recording device, the virtual microphone output is the audio rendering device, which is used to configure SteamVR microphone.",
+    "_root_audio_microphone_content_inputDeviceDropdown.name": "가상 마이크 입력 장치를 선택",
+    "_root_audio_microphone_content_inputDeviceDropdown.description": "Output device used to render the microphone audio.",
+    "_root_audio_microphone_content_inputDeviceId-choice-.name": "가상 마이크 입력",
+    "_root_audio_microphone_content_inputDeviceId_default-choice-.name": "기본",
+    "_root_audio_microphone_content_inputDeviceId_name-choice-.name": "이름으로",
+    "_root_audio_microphone_content_inputDeviceId_index-choice-.name": "번호로",
+    "_root_audio_microphone_content_outputDeviceDropdown.name": "가상 마이크 출력 장치를 선택",
+    "_root_audio_microphone_content_outputDeviceDropdown.description": "Input device used as microphone. This is used to configure SteamVR microphone.",
+    "_root_audio_microphone_content_outputDeviceId-choice-.name": "가상 마이크 출력",
+    "_root_audio_microphone_content_outputDeviceId_default-choice-.name": "기본",
+    "_root_audio_microphone_content_outputDeviceId_name-choice-.name": "이름으로",
+    "_root_audio_microphone_content_outputDeviceId_index-choice-.name": "번호로",
+    "_root_audio_microphone_content_config.name": "설정",
+    "_root_audio_microphone_content_config_averageBufferingMs.name": "지연시간 (ms)",
+    "_root_audio_microphone_content_config_averageBufferingMs.description": "지연시간이 길수록 오디오 깨짐이 줄어듭니다.",
     // Headset tab
     "_root_headset_tab.name": "헤드셋",
     "_root_headset_headsetEmulationMode.name": "헤드셋 에뮬레이션 방식",
@@ -97,12 +108,12 @@ define({
     "_root_headset_positionOffset_1.name": "Y", // adv
     "_root_headset_positionOffset_2.name": "Z", // adv
     "_root_headset_force3dof.name": "강제 3Dof(3축)",
-    "_root_headset_force3dof.description": "강제 3축모드(Oculus Go와 같이)",
+    "_root_headset_force3dof.description": "강제 3축모드를 사용합니다.(Oculus Go와 유사)",
     "_root_headset_controllers.name": "컨트롤러",
     // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
-    "_root_headset_controllers_enabled.description": "컨트롤러 사용 허용",
+    "_root_headset_controllers_enabled.description": "컨트롤러를 사용합니다.",
     "_root_headset_controllers_content_controllerMode.name": "컨트롤러 에뮬레이션 방식",
-    "_root_headset_controllers_content_controllerMode.description": "호환성을 위해 다른 컨트롤러를 에뮬레이션 하거나 핸드트래킹을 이용 할 수있다.",
+    "_root_headset_controllers_content_controllerMode.description": "호환성을 위해 다른 컨트롤러를 에뮬레이션 하거나 핸드트래킹을 이용할 수 있습니다.",
     "_root_headset_controllers_content_modeIdx.name": "Mode Index", // adv
     "_root_headset_controllers_content_modeIdx.description": "에뮬레이터 컨트롤러의 Mode index", // adv
     "_root_headset_controllers_content_trackingSystemName.name": "트래킹 시스템 이름", // adv
@@ -137,16 +148,21 @@ define({
     "_root_headset_controllers_content_rotationOffsetLeft_0.name": "X", // adv
     "_root_headset_controllers_content_rotationOffsetLeft_1.name": "Y", // adv
     "_root_headset_controllers_content_rotationOffsetLeft_2.name": "Z", // adv
-    "_root_headset_controllers_content_hapticsIntensity.name": "진동 강도",
-    "_root_headset_controllers_content_hapticsIntensity.description": "진동 강도 조절 값",
+    "_root_headset_controllers_content_hapticsIntensity.name": "진동 세기",
+    "_root_headset_controllers_content_hapticsIntensity.description": "진동 세기를 조절합니다.",
     "_root_headset_trackingSpace-choice-.name": "트래킹 공간",
-    "_root_headset_trackingSpace-choice-.description": "헤드셋이 추적을 위해 사용하는 항목과 공간 중심이 정의되는 방법을 설정합니다. Stage 추적은 유선 헤드셋과 같이 동작합니다. 헤드셋 recentering 후 공간의 중심이 일정하게 유지된다. Vive 추적기를 사용하려면 Stage 설정을 해야 합니다.",
+    "_root_headset_trackingSpace-choice-.description": "헤드셋이 추적을 위해 사용하는 항목과 공간 중심이 정의되는 방법을 설정합니다. Stage 추적은 유선 헤드셋과 같이 동작합니다. 헤드셋 recentering 후 공간의 중심이 일정하게 유지됩니다. Vive 추적기를 사용하려면 Stage 설정을 해야 합니다.",
     "_root_headset_trackingSpace_local-choice-.name": "Local (헤드셋 중심)",
     "_root_headset_trackingSpace_stage-choice-.name": "Stage (방 중심)",
     // Connection tab
     "_root_connection_tab.name": "연결",
     "_root_connection_autoTrustClients.name": "자동으로 클라이언트 신뢰(권장하지 않음)", // adv
     "_root_connection_webServerPort.name": "웹 서버 포트",
+    "_root_connection_streamProtocol-choice-.name": "전송 프로토콜",
+    "_root_connection_streamProtocol-choice-.description": "네트워크 프로토콜은 서버와 클라이언트 사이의 데이터 전송 방식입니다. UDP는 낮은 비트레이트에서 좋습니다. (<30), Throttled UDP 중간 비트레이트에서 좋습니다. (~100), TCP 어느 비트레이트에서나 작동합니다.",
+    "_root_connection_streamProtocol_udp-choice-.name": "UDP",
+    "_root_connection_streamProtocol_throttledUdp-choice-.name": "Throttled UDP",
+    "_root_connection_streamProtocol_tcp-choice-.name": "TCP",
     "_root_connection_streamPort.name": "서버 전송 포트", // adv
     "_root_connection_streamPort.description": "서버가 패킷을 수신하는 데 사용하는 포트입니다.", // adv
     "_root_connection_aggressiveKeyframeResend.name": "적극적인 키 프레임 재전송",

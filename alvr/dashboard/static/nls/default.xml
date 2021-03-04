@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <Monitor>
+        <!-- no name="" needed -->
+        <Connection>
+            <NewClients name="New Clients" />
+        </Connection>
+    </Monitor>
+    <Settings>
+        <video name="Video">
+            <adapter_index name="GPU index" />
+        </video>
+        <audio name="Audio">
+            <game_audio name="Game audio">
+                <device_dropdown name="Select audio device" help="Audio device used to capture game audio. This is used to configure SteamVR audio output." />
+                <config name="Configuration">
+                    <average_buffering_ms name="Buffering (ms)" />
+                </config>
+            </game_audio>
+            <microphone name="Microphone" content="notice">
+                To make the microphone work you need to install VB-CABLE Virtual Audio Device or another equivalent software.
+                <config same-as="../game_audio/config" />
+            </microphone>
+        </audio>
+    </Settings>
+</root>

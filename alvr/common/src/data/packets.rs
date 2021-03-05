@@ -1,8 +1,6 @@
-use super::SampleFormat;
-use nalgebra::{Point3, UnitQuaternion};
+use nalgebra::{Point2, Point3, UnitQuaternion};
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use std::ops::RangeInclusive;
 
 #[derive(Serialize, Deserialize)]
 pub struct ClientHandshakePacket {
@@ -42,27 +40,22 @@ pub struct HeadsetInfoPacket {
     pub reserved: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AudioConfigRange {
-    pub channels: u16,
-    pub sample_rates: RangeInclusive<u32>,
-    pub buffer_sizes: Option<RangeInclusive<u32>>,
-    pub sample_format: SampleFormat,
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct ClientConfigPacket {
     pub session_desc: String, // transfer session as string to allow for extrapolation
+    pub dashboard_url: String,
     pub eye_resolution_width: u32,
     pub eye_resolution_height: u32,
     pub fps: f32,
-    pub web_gui_url: String,
+    pub game_audio_sample_rate: u32,
     pub reserved: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum ServerControlPacket {
+    StartStream,
     Restarting,
+    KeepAlive,
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }
@@ -73,13 +66,14 @@ pub struct PlayspaceSyncPacket {
     pub rotation: UnitQuaternion<f32>,
     pub area_width: f32,
     pub area_height: f32,
-    pub perimeter_points: Option<Vec<Point3<f32>>>,
+    pub perimeter_points: Option<Vec<Point2<f32>>>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
     PlayspaceSync(PlayspaceSyncPacket),
     RequestIDR,
+    KeepAlive,
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

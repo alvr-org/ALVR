@@ -4,7 +4,7 @@ use bytes::Buf;
 use futures::SinkExt;
 use headers::{self, HeaderMapExt};
 use hyper::{
-    header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL},
+    header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE},
     service::{make_service_fn, service_fn},
     Body, Method, Request, Response, StatusCode,
 };
@@ -16,7 +16,7 @@ use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
 
 pub const WS_BROADCAST_CAPACITY: usize = 256;
-const WEB_GUI_DIR_STR: &str = "web_gui";
+const DASHBOARD_DIR_NAME_STR: &str = "dashboard";
 
 fn reply(code: StatusCode) -> StrResult<Response<Body>> {
     trace_err!(Response::builder().status(code).body(Body::empty()))
@@ -155,8 +155,8 @@ async fn http_api(
             }
             reply_json(&maybe_err.unwrap_or(0))?
         }
+        "/audio-devices" => reply_json(&audio::get_devices_list()?)?,
         "/graphics-devices" => reply_json(&graphics::get_gpu_names())?,
-        "/audio-devices" => reply_json(&audio::output_audio_devices().ok())?,
         "/restart-steamvr" => {
             crate::notify_restart_driver();
             reply(StatusCode::OK)?
@@ -250,13 +250,19 @@ async fn http_api(
 
                 let maybe_file = tokio::fs::File::open(format!(
                     "{}{}",
-                    ALVR_DIR.join(WEB_GUI_DIR_STR).to_string_lossy(),
+                    ALVR_DIR.join(DASHBOARD_DIR_NAME_STR).to_string_lossy(),
                     path_branch
                 ))
                 .await;
 
                 if let Ok(file) = maybe_file {
-                    Response::new(Body::wrap_stream(FramedRead::new(file, BytesCodec::new())))
+                    let mut builder = Response::builder();
+                    if other_uri.ends_with(".js") {
+                        builder = builder.header(CONTENT_TYPE, "text/javascript");
+                    }
+                    trace_err!(
+                        builder.body(Body::wrap_stream(FramedRead::new(file, BytesCodec::new())))
+                    )?
                 } else {
                     reply(StatusCode::NOT_FOUND)?
                 }

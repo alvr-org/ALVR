@@ -1,6 +1,8 @@
 mod control_socket;
+mod stream_socket;
 
 pub use control_socket::*;
+pub use stream_socket::*;
 
 use crate::{data::*, logging::*, *};
 use std::{

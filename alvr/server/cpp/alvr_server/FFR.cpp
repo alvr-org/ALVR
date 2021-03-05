@@ -1,7 +1,6 @@
 #include "FFR.h"
 
 #include "Settings.h"
-#include "resource.h"
 #include "Utils.h"
 
 using Microsoft::WRL::ComPtr;

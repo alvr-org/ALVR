@@ -51,6 +51,7 @@ struct Args {
     is_nightly: bool,
     for_oculus_quest: bool,
     for_oculus_go: bool,
+    new_dashboard: bool,
 }
 
 #[cfg(target_os = "linux")]
@@ -86,13 +87,14 @@ fn dynlib_fname(name: &str) -> String {
     format!("{}.dll", name)
 }
 
-fn run_with_args_in(workdir: &Path, cmd: &str, args: &[&str]) -> BResult {
-    println!(
-        "\n{}",
-        args.iter().fold(String::from(cmd), |s, arg| s + " " + arg)
-    );
-    let output = Command::new(cmd)
-        .args(args)
+fn run_in(workdir: &Path, cmd: &str) -> BResult {
+    println!("\n{}", cmd);
+
+    let shell = if cfg!(windows) { "cmd" } else { "bash" };
+    let shell_flag = if cfg!(windows) { "/C" } else { "-c" };
+
+    let output = Command::new(shell)
+        .args(&[shell_flag, cmd])
         .stdout(Stdio::inherit())
         .current_dir(workdir)
         .spawn()?
@@ -109,13 +111,30 @@ fn run_with_args_in(workdir: &Path, cmd: &str, args: &[&str]) -> BResult {
     }
 }
 
-fn run_with_args(cmd: &str, args: &[&str]) -> BResult {
-    run_with_args_in(&env::current_dir().unwrap(), cmd, args)
+fn run(cmd: &str) -> BResult {
+    run_in(&env::current_dir().unwrap(), cmd)
 }
 
-fn run(cmd: &str) -> BResult {
-    let cmd_args = cmd.split_whitespace().collect::<Vec<_>>();
-    run_with_args(cmd_args[0], &cmd_args[1..])
+fn run_without_shell(cmd: &str, args: &[&str]) -> BResult {
+    println!(
+        "\n{}",
+        args.iter().fold(String::from(cmd), |s, arg| s + " " + arg)
+    );
+    let output = Command::new(cmd)
+        .args(args)
+        .stdout(Stdio::inherit())
+        .spawn()?
+        .wait_with_output()?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "Command failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into())
+    }
 }
 
 pub fn target_dir() -> PathBuf {
@@ -197,14 +216,13 @@ fn zip_dir(dir: &Path) -> BResult {
     Ok(())
 }
 
-pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool) {
+pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_dashboard: bool) {
     let build_type = if is_release { "release" } else { "debug" };
     let build_flag = if is_release { "--release" } else { "" };
 
     let target_dir = target_dir();
     let artifacts_dir = target_dir.join(build_type);
     let driver_dst_dir = server_build_dir().join("bin").join(STEAMVR_OS_DIR_NAME);
-    let openvr_api_dir = workspace_dir().join("alvr/server/cpp/openvr/lib");
 
     reset_server_build_folder();
     fs::create_dir_all(&driver_dst_dir).unwrap();
@@ -214,19 +232,16 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool) {
     }
 
     if is_nightly {
-        env::set_current_dir(&workspace_dir().join("alvr/server")).unwrap();
-        run(&format!(
-            "cargo build {} --features alvr_common/nightly",
-            build_flag
-        ))
+        run_in(
+            &workspace_dir().join("alvr/server"),
+            &format!("cargo build {} --features alvr_common/nightly", build_flag),
+        )
         .unwrap();
-        env::set_current_dir(&workspace_dir().join("alvr/launcher")).unwrap();
-        run(&format!(
-            "cargo build {} --features alvr_common/nightly",
-            build_flag
-        ))
+        run_in(
+            &workspace_dir().join("alvr/launcher"),
+            &format!("cargo build {} --features alvr_common/nightly", build_flag),
+        )
         .unwrap();
-        env::set_current_dir(&workspace_dir()).unwrap();
     } else {
         run(&format!(
             "cargo build -p alvr_server -p alvr_launcher {}",
@@ -234,16 +249,54 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool) {
         ))
         .unwrap();
     }
-    fs::copy(
-        artifacts_dir.join(dynlib_fname("alvr_server")),
-        driver_dst_dir.join(DRIVER_FNAME),
-    )
-    .unwrap();
-    fs::copy(
-        openvr_api_dir.join("openvr_api.dll"),
-        driver_dst_dir.join("openvr_api.dll"),
-    )
-    .unwrap();
+    if cfg!(not(target_os = "linux")) {
+        fs::copy(
+            artifacts_dir.join(dynlib_fname("alvr_server")),
+            driver_dst_dir.join(DRIVER_FNAME),
+        )
+        .unwrap();
+    } else {
+        // patch for executing the webserver without steamvr
+        fs::copy(
+            artifacts_dir.join(exec_fname("alvr_server")),
+            driver_dst_dir.join(exec_fname("alvr_server")),
+        )
+        .unwrap();
+    }
+
+    if cfg!(windows) {
+        let dir_content = dirx::get_dir_content("alvr/server/cpp/bin/windows").unwrap();
+        fsx::copy_items(
+            &dir_content.files,
+            driver_dst_dir,
+            &dirx::CopyOptions::new(),
+        )
+        .unwrap();
+    }
+
+    if new_dashboard {
+        run_in(
+            &workspace_dir().join("alvr/dashboard"),
+            &format!(
+                "npm install && npx snowpack build --out=../../build/{}/dashboard",
+                SERVER_BUILD_DIR_NAME,
+            ),
+        )
+        .unwrap()
+    } else {
+        let dir_content =
+            dirx::get_dir_content2("alvr/legacy_dashboard", &dirx::DirOptions { depth: 1 })
+                .unwrap();
+        let items: Vec<&String> = dir_content.directories[1..]
+            .iter()
+            .chain(dir_content.files.iter())
+            .collect();
+
+        let destination = server_build_dir().join("dashboard");
+        fs::create_dir(&destination).unwrap();
+        fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
+    }
+
     fs::copy(
         artifacts_dir.join(exec_fname("alvr_launcher")),
         server_build_dir().join(exec_fname("ALVR Launcher")),
@@ -290,7 +343,8 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
         "gradlew.bat"
     };
 
-    fs::create_dir_all(&build_dir()).unwrap();
+    let artifact_name = format!("alvr_client_{}", headset_name);
+    fs::create_dir_all(&build_dir().join(&artifact_name)).unwrap();
 
     env::set_current_dir(&client_dir).unwrap();
     run(&format!("{} {}", command_name, build_task)).unwrap();
@@ -305,22 +359,11 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
                 "app-{}-{}-{}.apk",
                 headset_type, package_type, build_type
             )),
-        build_dir().join(format!("alvr_client_{}.apk", headset_name)),
+        build_dir()
+            .join(&artifact_name)
+            .join(format!("{}.apk", artifact_name)),
     )
     .unwrap();
-}
-
-fn download_vc_redist() {
-    if !Path::new("target/wix/VC_redist.x64.exe").is_file() {
-        println!("Downloading Microsoft Visual C++ redistributable for bundling...");
-        let mut vcredist = fs::File::create("target/wix/VC_redist.x64.exe").unwrap();
-        reqwest::blocking::get("https://aka.ms/vs/16/release/vc_redist.x64.exe")
-            .unwrap()
-            .copy_to(&mut vcredist)
-            .unwrap();
-    } else {
-        println!("Found existing VC_redist.x64.exe - will use that.");
-    }
 }
 
 fn build_installer(wix_path: &str) {
@@ -334,7 +377,7 @@ fn build_installer(wix_path: &str) {
     version.pre.clear();
     version.build.clear();
 
-    run_with_args(
+    run_without_shell(
         &heat_cmd.to_string_lossy(),
         &[
             "dir",
@@ -354,7 +397,7 @@ fn build_installer(wix_path: &str) {
     )
     .unwrap();
 
-    run_with_args(
+    run_without_shell(
         &candle_cmd.to_string_lossy(),
         &[
             "-arch",
@@ -371,7 +414,7 @@ fn build_installer(wix_path: &str) {
     )
     .unwrap();
 
-    run_with_args(
+    run_without_shell(
         &light_cmd.to_string_lossy(),
         &[
             "target\\wix\\main.wixobj",
@@ -386,10 +429,8 @@ fn build_installer(wix_path: &str) {
     )
     .unwrap();
 
-    download_vc_redist();
-
     // Build the bundle including ALVR and vc_redist.
-    run_with_args(
+    run_without_shell(
         &candle_cmd.to_string_lossy(),
         &[
             "-arch",
@@ -406,7 +447,7 @@ fn build_installer(wix_path: &str) {
     )
     .unwrap();
 
-    run_with_args(
+    run_without_shell(
         &light_cmd.to_string_lossy(),
         &[
             "target\\wix\\bundle.wixobj",
@@ -422,7 +463,7 @@ fn build_installer(wix_path: &str) {
 }
 
 pub fn publish_server(is_nightly: bool) {
-    build_server(true, is_nightly, false);
+    build_server(true, is_nightly, false, false);
     zip_dir(&server_build_dir()).unwrap();
 
     if cfg!(windows) {
@@ -469,11 +510,17 @@ fn main() {
             is_nightly: args.contains("--nightly"),
             for_oculus_quest: args.contains("--oculus-quest"),
             for_oculus_go: args.contains("--oculus-go"),
+            new_dashboard: args.contains("--new-dashboard"),
         };
         if args.finish().is_empty() {
             match subcommand.as_str() {
                 "install-deps" => install_deps(),
-                "build-server" => build_server(args_values.is_release, false, true),
+                "build-server" => build_server(
+                    args_values.is_release,
+                    false,
+                    true,
+                    args_values.new_dashboard,
+                ),
                 "build-client" => {
                     if (args_values.for_oculus_quest && args_values.for_oculus_go)
                         || (!args_values.for_oculus_quest && !args_values.for_oculus_go)

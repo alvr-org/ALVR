@@ -1,0 +1,11 @@
+// dummy vector
+
+#pragma once
+
+namespace std
+{
+    template <typename T>
+    class vector
+    {
+    };
+} // namespace std

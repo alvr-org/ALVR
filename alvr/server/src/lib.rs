@@ -1,15 +1,20 @@
 #![allow(clippy::missing_safety_doc)]
-#![allow(non_camel_case_types, non_upper_case_globals)]
 
 mod connection;
 mod logging_backend;
+mod openvr;
 mod web_server;
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+#[cfg(windows)]
+#[allow(non_camel_case_types, non_upper_case_globals, dead_code)]
+mod bindings {
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
+#[cfg(windows)]
+use bindings::*;
 
 use alvr_common::{data::*, logging::*, *};
 use lazy_static::lazy_static;
-use lazy_static_include::*;
 use parking_lot::Mutex;
 use std::{
     collections::{hash_map::Entry, HashSet},
@@ -17,6 +22,7 @@ use std::{
     net::IpAddr,
     os::raw::c_char,
     path::PathBuf,
+    ptr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, Once,
@@ -26,18 +32,47 @@ use std::{
 };
 use tokio::{
     runtime::Runtime,
-    sync::{broadcast, Notify},
+    sync::{broadcast, mpsc, Notify},
 };
 
 lazy_static! {
     // Since ALVR_DIR is needed to initialize logging, if error then just panic
-    static ref ALVR_DIR: PathBuf = commands::get_alvr_dir().unwrap();
+    static ref ALVR_DIR: PathBuf = {
+        #[cfg(not(target_os = "linux"))]
+        let path = commands::get_alvr_dir().unwrap();
+        #[cfg(target_os = "linux")]
+        // patch for executing alvr_server directly on linux
+        let path = std::env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .into();
+
+        path
+    };
     static ref SESSION_MANAGER: Mutex<SessionManager> = Mutex::new(SessionManager::new(&ALVR_DIR));
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
     static ref CLIENTS_UPDATED_NOTIFIER: Notify = Notify::new();
+    static ref MAYBE_WINDOW: Mutex<Option<Arc<alcro::UI>>> = Mutex::new(None);
+    static ref MAYBE_LEGACY_SENDER: Mutex<Option<mpsc::UnboundedSender<Vec<u8>>>> =
+        Mutex::new(None);
     static ref RESTART_NOTIFIER: Notify = Notify::new();
     static ref SHUTDOWN_NOTIFIER: Notify = Notify::new();
-    static ref MAYBE_WINDOW: Mutex<Option<Arc<alcro::UI>>> = Mutex::new(None);
+
+    static ref FRAME_RENDER_VS_CSO: Vec<u8> =
+        include_bytes!("../cpp/alvr_server/FrameRenderVS.cso").to_vec();
+    static ref FRAME_RENDER_PS_CSO: Vec<u8> =
+        include_bytes!("../cpp/alvr_server/FrameRenderPS.cso").to_vec();
+    static ref QUAD_SHADER_CSO: Vec<u8> =
+        include_bytes!("../cpp/alvr_server/QuadVertexShader.cso").to_vec();
+    static ref COMPRESS_SLICES_CSO: Vec<u8> =
+        include_bytes!("../cpp/alvr_server/CompressSlicesPixelShader.cso").to_vec();
+    static ref COLOR_CORRECTION_CSO: Vec<u8> =
+        include_bytes!("../cpp/alvr_server/ColorCorrectionPixelShader.cso").to_vec();
 }
 
 pub fn shutdown_runtime() {
@@ -65,7 +100,10 @@ pub fn notify_shutdown_driver() {
 
         shutdown_runtime();
 
-        unsafe { ShutdownSteamvr() };
+        #[cfg(windows)]
+        unsafe {
+            ShutdownSteamvr()
+        };
     });
 }
 
@@ -192,12 +230,16 @@ fn ui_thread() -> StrResult {
     // prevent panic on window.close()
     *MAYBE_WINDOW.lock() = None;
     shutdown_runtime();
-    unsafe { ShutdownSteamvr() };
+
+    #[cfg(windows)]
+    unsafe {
+        ShutdownSteamvr()
+    };
 
     Ok(())
 }
 
-fn init() -> StrResult {
+pub fn init() -> StrResult {
     let (log_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     logging_backend::init_logging(log_sender.clone(), events_sender.clone());
@@ -229,7 +271,10 @@ fn init() -> StrResult {
     }
 
     let alvr_dir_c_string = CString::new(ALVR_DIR.to_string_lossy().to_string()).unwrap();
-    unsafe { g_alvrDir = alvr_dir_c_string.into_raw() };
+    #[cfg(windows)]
+    unsafe {
+        g_alvrDir = alvr_dir_c_string.into_raw()
+    };
 
     // ALVR_DIR has been used (and so initialized). I don't need alvr_dir storage on disk anymore
     commands::maybe_delete_alvr_dir_storage();
@@ -237,6 +282,27 @@ fn init() -> StrResult {
     Ok(())
 }
 
+pub extern "C" fn driver_ready_idle() {
+    show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone()));
+
+    if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
+        runtime.spawn(async move {
+            // call this when inside a new tokio thread. Calling this on the parent thread will
+            // crash SteamVR
+            #[cfg(windows)]
+            unsafe {
+                SetDefaultChaperone()
+            };
+
+            tokio::select! {
+                _ = connection::connection_lifecycle_loop() => (),
+                _ = SHUTDOWN_NOTIFIER.notified() => (),
+            }
+        });
+    }
+}
+
+#[cfg(windows)]
 #[no_mangle]
 pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,
@@ -246,14 +312,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
     INIT_ONCE.call_once(|| {
         show_err(init());
     });
-
-    lazy_static_include_bytes!(FRAME_RENDER_VS_CSO => "cpp/alvr_server/FrameRenderVS.cso");
-    lazy_static_include_bytes!(FRAME_RENDER_PS_CSO => "cpp/alvr_server/FrameRenderPS.cso");
-    lazy_static_include_bytes!(QUAD_SHADER_CSO => "cpp/alvr_server/QuadVertexShader.cso");
-    lazy_static_include_bytes!(COMPRESS_SLICES_CSO =>
-        "cpp/alvr_server/CompressSlicesPixelShader.cso");
-    lazy_static_include_bytes!(COLOR_CORRECTION_CSO =>
-        "cpp/alvr_server/ColorCorrectionPixelShader.cso");
 
     FRAME_RENDER_VS_CSO_PTR = FRAME_RENDER_VS_CSO.as_ptr();
     FRAME_RENDER_VS_CSO_LEN = FRAME_RENDER_VS_CSO.len() as _;
@@ -286,20 +344,16 @@ pub unsafe extern "C" fn HmdDriverFactory(
         log(log::Level::Debug, string_ptr);
     }
 
-    unsafe extern "C" fn driver_ready_idle() {
-        show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone()));
+    extern "C" fn legacy_send(buffer_ptr: *mut u8, len: i32) {
+        if let Some(sender) = &*MAYBE_LEGACY_SENDER.lock() {
+            let mut vec_buffer = vec![0; len as _];
 
-        if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
-            runtime.spawn(async move {
-                // call this when inside a new tokio thread. Calling this on the parent thread will
-                // crash SteamVR
-                SetDefaultChaperone();
+            // use copy_nonoverlapping (aka memcpy) to avoid freeing memory allocated by C++
+            unsafe {
+                ptr::copy_nonoverlapping(buffer_ptr, vec_buffer.as_mut_ptr(), len as _);
+            }
 
-                tokio::select! {
-                    _ = connection::connection_lifecycle_loop() => (),
-                    _ = SHUTDOWN_NOTIFIER.notified() => (),
-                }
-            });
+            sender.send(vec_buffer).ok();
         }
     }
 
@@ -312,6 +366,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogInfo = Some(log_info);
     LogDebug = Some(log_debug);
     DriverReadyIdle = Some(driver_ready_idle);
+    LegacySend = Some(legacy_send);
     ShutdownRuntime = Some(_shutdown_runtime);
 
     // cast to usize to allow the variables to cross thread boundaries
@@ -319,14 +374,14 @@ pub unsafe extern "C" fn HmdDriverFactory(
     let return_code_usize = return_code as usize;
 
     lazy_static::lazy_static! {
-        static ref maybe_ptr_usize: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
-        static ref num_trials: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
+        static ref MAYBE_PTR_USIZE: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
+        static ref NUM_TRIALS: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
     }
 
     thread::spawn(move || {
-        num_trials.fetch_add(1, Ordering::Relaxed);
-        if num_trials.load(Ordering::Relaxed) <= 1 {
-            maybe_ptr_usize.store(
+        NUM_TRIALS.fetch_add(1, Ordering::Relaxed);
+        if NUM_TRIALS.load(Ordering::Relaxed) <= 1 {
+            MAYBE_PTR_USIZE.store(
                 CppEntryPoint(interface_name_usize as _, return_code_usize as _) as _,
                 Ordering::Relaxed,
             );
@@ -335,5 +390,5 @@ pub unsafe extern "C" fn HmdDriverFactory(
     .join()
     .ok();
 
-    maybe_ptr_usize.load(Ordering::Relaxed) as _
+    MAYBE_PTR_USIZE.load(Ordering::Relaxed) as _
 }

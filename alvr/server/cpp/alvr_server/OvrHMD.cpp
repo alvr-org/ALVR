@@ -15,8 +15,6 @@ OvrHmd::OvrHmd()
 	{
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
-		Debug("Startup: %hs %hs\n", APP_MODULE_NAME, APP_VERSION_STRING);
-
 		bool ret;
 		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 			GetSerialNumber().c_str(),
@@ -56,7 +54,6 @@ OvrHmd::OvrHmd()
 		if (m_Listener)
 		{
 			Debug("OvrHmd::~OvrHmd(): Stopping network...\n");
-			m_Listener->Stop();
 			m_Listener.reset();
 		}
 

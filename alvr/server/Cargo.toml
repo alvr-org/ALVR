@@ -1,17 +1,16 @@
 [package]
 name = "alvr_server"
-version = "14.2.0-beta.1"
+version = "15.0.0"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 parking_lot = "0.11"
 lazy_static = "1"
-lazy-static-include = "3"
 chrono = "0.4"
 log = "0.4"
 fern = "0.6"
@@ -19,7 +18,7 @@ settings-schema = { path = "../settings-schema" }
 serde = "1"
 serde_json = "1"
 alvr_common = { path = "../common" }
-nalgebra = "0.24"
+nalgebra = "0.25"
 futures = "0.3"
 bytes = "1"
 tokio = { version = "1", features = [
@@ -31,14 +30,15 @@ tokio = { version = "1", features = [
     "fs",
 ] }
 tokio-util = { version = "0.6", features = ["codec"] }
-tokio-tungstenite = "0.13"
+tokio-tungstenite = "0.14"
 headers = "0.3"
 hyper = { version = "0.14", features = ["http2", "server", "stream", "runtime", "tcp"] }
 reqwest = "0.11"
 alcro = "0.5"
 webbrowser = "0.5" # this is just for opening links in the default browser
+openvr-driver-sys = { path = "../openvr-driver-sys" }
 
 [build-dependencies]
 walkdir = "2"
 cc = { version = "1", features = ["parallel"] }
-bindgen = "0.56"
+bindgen = "0.57"

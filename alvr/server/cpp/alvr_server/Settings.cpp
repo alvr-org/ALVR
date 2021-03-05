@@ -1,7 +1,6 @@
 #include "Settings.h"
 #include "Logger.h"
 #include "ipctools.h"
-#include "resource.h"
 #define PICOJSON_USE_INT64
 #include <picojson.h>
 #include <string>
@@ -70,14 +69,9 @@ void Settings::Load()
 			m_eyeFov[eye].bottom = 45;
 		}
 
-		m_streamMic = config.get("enable_microphone").get<bool>();
-		m_microphoneDevice = config.get("microphone_device").get<std::string>();
-
 		m_flSecondsFromVsyncToPhotons = (float)config.get("seconds_from_vsync_to_photons").get<double>();
 
 		m_flIPD = 0.063;
-
-		m_clientRecvBufferSize = (uint32_t)config.get("client_buffer_size").get<int64_t>();
 
 		m_force3DOF = config.get("force_3dof").get<bool>();
 
@@ -87,14 +81,8 @@ void Settings::Load()
 
 		m_codec = (int32_t)config.get("codec").get<int64_t>();
 		m_refreshRate = (int)config.get("refresh_rate").get<int64_t>();
-		mEncodeBitrate = Bitrate::fromMiBits((int)config.get("encode_bitrate_mbs").get<int64_t>());
-
-		mThrottlingBitrate = Bitrate::fromBits((int)config.get("throttling_bitrate_bits").get<int64_t>());
-
-		// Listener Parameters
-		m_Port = (int)config.get("listen_port").get<int64_t>();
-
-		m_ConnectedClient = config.get("client_address").get<std::string>();
+		mEncodeBitrateMBs = (int)config.get("encode_bitrate_mbs").get<int64_t>();
+		m_use10bitEncoder = config.get("use_10bit_encoder").get<bool>();
 
 		m_controllerTrackingSystemName = config.get("controllers_tracking_system_name").get<std::string>();
 		m_controllerManufacturerName = config.get("controllers_manufacturer_name").get<std::string>();
@@ -149,9 +137,6 @@ void Settings::Load()
 		Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
 		Info("Seconds from Vsync to Photons: %f\n", m_flSecondsFromVsyncToPhotons);
 		Info("Refresh Rate: %d\n", m_refreshRate);
-		Info("IPD: %f\n", m_flIPD);
-
-		Info("EncoderOptions: %hs\n", m_EncoderOptions.c_str());
 
 		m_loaded = true;
 	}

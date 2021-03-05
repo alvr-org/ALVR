@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" class="notranslate" translate="no">
+
+<head>
+    <title>ALVR dashboard</title>
+    <link rel="icon" href="favicon.png">
+    <link id="selectal" rel="stylesheet" type="text/css" href="js/lib/selectal.min.css">
+    <link id="bootstrap" rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="css/all.css">
+    <link id="style" rel="stylesheet" type="text/css" href="css/style.css">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="google" content="notranslate" />
+
+    <style>
+        #loading {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            z-index: 99;
+        }
+
+        #updating {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+    </div>
+
+    <div id="bodyContent" style="display: none;">
+    </div>
+
+    <div id="updating" style="display: none;">
+        <div>Please wait</div>
+        <br />
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+        <br />
+        <div>Downloading update ...</div>
+        <div id="downloadProgress"></div>
+        <div style="width: 50vw" class="progress">
+            <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+        </div>
+    </div>
+
+    <script data-main="js/app" src="js/lib/require.js"></script>
+</body>
+
+</html>

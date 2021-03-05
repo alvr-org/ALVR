@@ -1,6 +1,6 @@
 [package]
 name = "alvr_common"
-version = "14.2.0-beta.1"
+version = "15.0.0"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"
@@ -11,11 +11,12 @@ nightly = []
 
 [dependencies]
 lazy_static = "1"
+parking_lot = "0.11"
 semver = { version = "0.11", features = ['serde'] }
 log = "0.4"
 backtrace = "0.3"
 rand = "0.8"
-nalgebra = { version = "0.24", features = ["serde-serialize"] }
+nalgebra = { version = "0.25", features = ["serde-serialize"] }
 settings-schema = { path = "../settings-schema", features = ["rename_camel_case"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -24,30 +25,37 @@ encoding_rs_io = "0.1"
 futures = "0.3"
 bytes = "1"
 tokio = { version = "1", features = ["net", "macros"] }
-tokio-util = { version = "0.6", features = ["codec"] }
+tokio-util = { version = "0.6", features = ["codec", "net"] }
 rcgen = "0.8"
-gfx-hal = "0.6"
+gfx-hal = "=0.6.0"
 winit = "0.24" # needed to get the screen size
 cpal = "0.13"
+rodio = "0.13"
+governor = "0.3.2"
+nonzero_ext = "0.2.0"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 dirs = "3"
 runas = "0.2"
 msgbox = "0.6"
 
-[target."cfg(windows)".dependencies]
+[target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = [
-    "mmdeviceapi",
-    "propsys",
+    "combaseapi",
     "coml2api",
-    "propidl",
+    "endpointvolume",
     "functiondiscoverykeys_devpkey",
-    "wtypes",
+    "mmdeviceapi",
     "objbase",
+    "propidl",
+    "propsys",
 ] }
 wio = "0.2"
 widestring = "0.4"
-gfx-backend-dx11 = "0.6"
+gfx-backend-dx11 = "=0.6.17"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gfx-backend-vulkan = "=0.6.5"
 
 [build-dependencies]
 alvr_xtask = { path = "../xtask" }

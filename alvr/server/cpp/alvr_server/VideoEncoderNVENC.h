@@ -17,12 +17,11 @@ public:
 	~VideoEncoderNVENC();
 
 	void Initialize();
-	void Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBit);
 	void Shutdown();
 
 	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR);
 private:
-	void FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, Bitrate bitrate);
+	void FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, uint64_t bitrateBits);
 
 
 	std::ofstream fpOut;

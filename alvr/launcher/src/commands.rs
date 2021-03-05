@@ -9,10 +9,21 @@ use std::{
 };
 use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
 
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
-
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
+
+#[cfg(windows)]
+pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+#[cfg(windows)]
+fn spawn_no_window(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    command.creation_flags(CREATE_NO_WINDOW).spawn().ok();
+}
+
+#[cfg(not(windows))]
+fn spawn_no_window(command: &mut Command) {
+    command.spawn().ok();
+}
 
 pub fn is_steamvr_running() -> bool {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
@@ -31,16 +42,13 @@ pub fn maybe_launch_steamvr() {
         .get_process_by_name(&exec_fname("vrserver"))
         .is_empty()
     {
-        Command::new("cmd")
-            .args(&["/C", "start", "steam://rungameid/250820"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-            .ok();
+        spawn_no_window(Command::new("cmd").args(&["/C", "start", "steam://rungameid/250820"]));
     }
 }
 
 #[cfg(windows)]
 fn kill_process(pid: usize) {
+    use std::os::windows::process::CommandExt;
     Command::new("taskkill.exe")
         .args(&["/PID", &pid.to_string(), "/F"])
         .creation_flags(CREATE_NO_WINDOW)
@@ -57,7 +65,7 @@ pub fn kill_steamvr() {
 
     for process in system.get_process_by_name(&exec_fname("vrmonitor")) {
         #[cfg(not(windows))]
-        process.kill(Signal::Term);
+        process.kill(sysinfo::Signal::Term);
         #[cfg(windows)]
         kill_process(process.pid());
     }
@@ -66,7 +74,7 @@ pub fn kill_steamvr() {
 
     for process in system.get_process_by_name(&exec_fname("vrserver")) {
         #[cfg(not(windows))]
-        process.kill(Signal::Term);
+        process.kill(sysinfo::Signal::Term);
         #[cfg(windows)]
         kill_process(process.pid());
     }
@@ -74,22 +82,6 @@ pub fn kill_steamvr() {
 
 pub fn check_steamvr_installation() -> bool {
     openvr_source_file_path().is_ok()
-}
-
-// https://github.com/bitbeans/RedistributableChecker/blob/master/RedistributableChecker/RedistributablePackage.cs#L56
-#[cfg(windows)]
-pub fn check_msvcp_installation() -> bool {
-    use winreg::*;
-
-    let maybe_key = RegKey::predef(enums::HKEY_LOCAL_MACHINE)
-        .open_subkey(r"SOFTWARE\Microsoft\DevDiv\VC\Servicing\14.0\RuntimeMinimum");
-    if let Ok(key) = maybe_key {
-        if let Ok(value) = key.get_value::<String, _>("Version") {
-            return value.starts_with("14");
-        }
-    }
-
-    false
 }
 
 pub fn unblock_alvr_addon() -> StrResult {
@@ -185,11 +177,7 @@ pub fn restart_steamvr() {
 pub fn invoke_installer() {
     try_close_steamvr_gracefully();
 
-    Command::new(commands::installer_path())
-        .arg("-q")
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn()
-        .ok();
+    spawn_no_window(Command::new(commands::installer_path()).arg("-q"));
 
     // delete crash_log.txt (take advantage of the occasion to do some routine cleaning)
     fs::remove_file(current_alvr_dir().unwrap().join(CRASH_LOG_FNAME)).ok();

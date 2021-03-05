@@ -10,12 +10,21 @@ use alvr_common::{data::*, logging::show_err, *};
 use jni::{objects::*, *};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
-use std::{slice, sync::Arc};
-use tokio::{runtime::Runtime, sync::Notify};
+use std::{
+    ptr, slice,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
+use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 
 lazy_static! {
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(None);
     static ref IDR_REQUEST_NOTIFIER: Notify = Notify::new();
+    static ref IDR_PARSED: AtomicBool = AtomicBool::new(false);
+    static ref MAYBE_LEGACY_SENDER: Mutex<Option<mpsc::UnboundedSender<Vec<u8>>>> =
+        Mutex::new(None);
     static ref ON_PAUSE_NOTIFIER: Notify = Notify::new();
 }
 
@@ -66,12 +75,36 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_DecoderOu
 }
 
 #[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_setWaitingNextIDR(
+    _: JNIEnv,
+    _: JObject,
+    waiting: bool,
+) {
+    IDR_PARSED.store(waiting, Ordering::Relaxed);
+}
+
+#[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNative(
     env: JNIEnv,
     activity: JObject,
     asset_manager: JObject,
     jout_result: JObject,
 ) {
+    extern "C" fn legacy_send(buffer_ptr: *const u8, len: u32) {
+        if let Some(sender) = &*MAYBE_LEGACY_SENDER.lock() {
+            let mut vec_buffer = vec![0; len as _];
+
+            // use copy_nonoverlapping (aka memcpy) to avoid freeing memory allocated by C++
+            unsafe {
+                ptr::copy_nonoverlapping(buffer_ptr, vec_buffer.as_mut_ptr(), len as _);
+            }
+
+            sender.send(vec_buffer).ok();
+        }
+    }
+
+    legacySend = Some(legacy_send);
+
     show_err(|| -> StrResult {
         let result = onCreate(
             env.get_native_interface() as _,
@@ -153,32 +186,12 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
             slice::from_raw_parts(result.refreshRates, result.refreshRatesCount as _).to_vec();
         let preferred_refresh_rate = available_refresh_rates.last().cloned().unwrap_or(60_f32);
 
-        #[derive(serde::Serialize)]
-        struct ReservedData {
-            game_audio_configs: Vec<AudioConfigRange>,
-        }
-
         let headset_info = HeadsetInfoPacket {
             recommended_eye_width: result.recommendedEyeWidth as _,
             recommended_eye_height: result.recommendedEyeHeight as _,
             available_refresh_rates,
             preferred_refresh_rate,
-            reserved: trace_err!(serde_json::to_string(&ReservedData {
-                game_audio_configs: vec![
-                    AudioConfigRange {
-                        channels: 2,
-                        sample_rates: 44100..=44100,
-                        buffer_sizes: None,
-                        sample_format: SampleFormat::Int16
-                    },
-                    AudioConfigRange {
-                        channels: 2,
-                        sample_rates: 48000..=48000,
-                        buffer_sizes: None,
-                        sample_format: SampleFormat::Int16
-                    }
-                ]
-            }))?,
+            reserved: "".into(),
         };
 
         let private_identity = PrivateIdentity {

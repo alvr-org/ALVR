@@ -1,0 +1,28 @@
+{
+  "sessionSettings": {
+    "headset": {
+    "modeIdx": 2,
+      "serialNumber": "HTCVive-001",
+      "trackingSystemName": "Vive Tracker",
+      "modelNumber": "ALVR driver server",
+      "driverVersion": "",
+      "manufacturerName": "HTC",
+      "renderModelName": "generic_hmd",
+      "registeredDeviceType": "vive",
+      "controllers": {
+        "content": {
+          "modeIdx": 5,
+          "trackingSystemName": "htc",
+          "manufacturerName": "HTC",
+          "modelNumber": "ALVR Remote Controller",
+          "renderModelNameLeft": "vr_controller_vive_1_5",
+          "renderModelNameRight": "vr_controller_vive_1_5",
+          "serialNumber": "ALVR Remote Controller",
+          "ctrlType": "vive_controller",
+          "registeredDeviceType": "vive_controller",
+          "inputProfilePath": "{htc}/input/vive_controller_profile.json"
+        }
+      }
+    }
+  }
+}

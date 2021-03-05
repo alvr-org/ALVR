@@ -1,26 +1,35 @@
-use crate::{ClientListAction, CLIENTS_UPDATED_NOTIFIER, SESSION_MANAGER};
-use alvr_common::{audio::AudioSession, data::*, logging::*, sockets::*, *};
+use crate::{
+    openvr, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER, RESTART_NOTIFIER,
+    SESSION_MANAGER,
+};
+use alvr_common::{audio::AudioDevice, data::*, logging::*, sockets::*, *};
+use audio::AudioDeviceType;
 use futures::future::BoxFuture;
 use nalgebra::Translation3;
-use serde_json as json;
 use settings_schema::Switch;
 use std::{
     collections::HashMap,
     future,
+    net::IpAddr,
     process::Command,
     sync::{mpsc as smpsc, Arc},
+    thread,
     time::Duration,
 };
 use tokio::{
     sync::{mpsc as tmpsc, Mutex},
-    task, time,
+    time,
 };
 
-const RETRY_CONNECT_INTERVAL: Duration = Duration::from_millis(500);
-const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(5);
+const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(2);
+const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
+}
+
+fn mbits_to_bytes(value: u64) -> u32 {
+    (value * 1024 * 1024 / 8) as u32
 }
 
 async fn client_discovery() -> StrResult {
@@ -52,9 +61,9 @@ async fn client_discovery() -> StrResult {
 }
 
 struct ConnectionInfo {
+    client_ip: IpAddr,
     control_sender: ControlSocketSender<ServerControlPacket>,
     control_receiver: ControlSocketReceiver<ClientControlPacket>,
-    game_audio_config: Option<AudioConfig>,
 }
 
 async fn client_handshake() -> StrResult<ConnectionInfo> {
@@ -125,6 +134,53 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         best_match
     };
 
+    if !headset_info
+        .available_refresh_rates
+        .contains(&settings.video.preferred_fps)
+    {
+        warn!("Chosen refresh rate not supported. Using {}Hz", fps);
+    }
+
+    let dashboard_url = format!(
+        "http://{}:{}/",
+        server_ip, settings.connection.web_server_port
+    );
+
+    let game_audio_sample_rate = if let Switch::Enabled(game_audio_desc) = settings.audio.game_audio
+    {
+        let game_audio_device =
+            AudioDevice::new(game_audio_desc.device_id, AudioDeviceType::Output)?;
+
+        if let Switch::Enabled(microphone_desc) = settings.audio.microphone {
+            let microphone_device = AudioDevice::new(
+                microphone_desc.input_device_id,
+                AudioDeviceType::VirtualMicrophoneInput,
+            )?;
+            if audio::is_same_device(&game_audio_device, &microphone_device) {
+                return fmt_e!("Game audio and microphone cannot point to the same device!");
+            }
+        }
+
+        trace_err!(audio::get_sample_rate(&game_audio_device))?
+    } else {
+        0
+    };
+
+    let client_config = ClientConfigPacket {
+        session_desc: trace_err!(serde_json::to_string(SESSION_MANAGER.lock().get()))?,
+        dashboard_url,
+        eye_resolution_width: video_eye_width,
+        eye_resolution_height: video_eye_height,
+        fps,
+        game_audio_sample_rate,
+        reserved: "".into(),
+    };
+
+    let (mut control_sender, control_receiver) =
+        sockets::finish_connecting_to_client(pending_socket, client_config).await?;
+
+    let session_settings = SESSION_MANAGER.lock().get().session_settings.clone();
+
     let controller_pose_offset = match settings.headset.controllers {
         Switch::Enabled(content) => {
             if content.clientside_prediction {
@@ -135,69 +191,6 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         }
         Switch::Disabled => 0.,
     };
-
-    if !headset_info
-        .available_refresh_rates
-        .contains(&settings.video.preferred_fps)
-    {
-        warn!("Chosen refresh rate not supported. Using {}Hz", fps);
-    }
-
-    let web_gui_url = format!(
-        "http://{}:{}/",
-        server_ip, settings.connection.web_server_port
-    );
-
-    let mut game_audio_config = None;
-    if let Ok(reserved_data) = json::from_str::<json::Value>(&headset_info.reserved) {
-        if let Switch::Enabled(audio_desc) = settings.audio.game_audio {
-            if let Some(configs_json) = reserved_data.get("game_audio_configs") {
-                if let Ok(sink_configs) =
-                    json::from_value::<Vec<AudioConfigRange>>(configs_json.clone())
-                {
-                    // CPAL sometimes crashes if supported_audio_output_configs() (non async) is not
-                    // called within a separate thread. This might be a bug of Tokio (non async
-                    // functions do not have await points and should not be sent between threads).
-
-                    // let source_configs = audio::supported_audio_output_configs(None)?;
-                    let source_configs = trace_err!(
-                        task::spawn_blocking({
-                            let index = audio_desc.device_index;
-                            move || audio::supported_audio_output_configs(index)
-                        })
-                        .await
-                    )??;
-
-                    game_audio_config = Some(audio::select_audio_config(
-                        source_configs,
-                        sink_configs,
-                        audio_desc.preferred_config,
-                    )?);
-                }
-            }
-        }
-    }
-
-    #[derive(serde::Serialize)]
-    struct ReservedData {
-        game_audio_config: Option<AudioConfig>,
-    }
-
-    let client_config = ClientConfigPacket {
-        session_desc: trace_err!(serde_json::to_string(SESSION_MANAGER.lock().get()))?,
-        eye_resolution_width: video_eye_width,
-        eye_resolution_height: video_eye_height,
-        fps,
-        web_gui_url,
-        reserved: trace_err!(json::to_string(&ReservedData {
-            game_audio_config: game_audio_config.clone()
-        }))?,
-    };
-
-    let (mut control_sender, control_receiver) =
-        sockets::finish_connecting_to_client(pending_socket, client_config).await?;
-
-    let session_settings = SESSION_MANAGER.lock().get().session_settings.clone();
 
     let new_openvr_config = OpenvrConfig {
         universe_id: settings.headset.universe_id,
@@ -212,19 +205,14 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         eye_resolution_height: video_eye_height,
         target_eye_resolution_width: target_eye_width,
         target_eye_resolution_height: target_eye_height,
-        enable_microphone: session_settings.audio.microphone.enabled,
-        microphone_device: session_settings.audio.microphone.content.device.clone(),
         seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
-        client_buffer_size: settings.connection.client_recv_buffer_size,
         force_3dof: settings.headset.force_3dof,
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
         adapter_index: settings.video.adapter_index,
         codec: matches!(settings.video.codec, CodecType::HEVC) as _,
         refresh_rate: fps as _,
+        use_10bit_encoder: settings.video.use_10bit_encoder,
         encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
-        throttling_bitrate_bits: settings.connection.throttling_bitrate_bits,
-        listen_port: settings.connection.listen_port,
-        client_address: client_ip.to_string(),
         controllers_tracking_system_name: session_settings
             .headset
             .controllers
@@ -333,9 +321,9 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
     }
 
     Ok(ConnectionInfo {
+        client_ip,
         control_sender,
         control_receiver,
-        game_audio_config,
     })
 }
 
@@ -344,14 +332,14 @@ struct StreamCloseGuard;
 
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
-        unsafe { crate::DeinitializeStreaming() };
+        #[cfg(windows)]
+        unsafe {
+            crate::DeinitializeStreaming()
+        };
 
-        let on_disconnect_script = SESSION_MANAGER
-            .lock()
-            .get()
-            .to_settings()
-            .connection
-            .on_disconnect_script;
+        let settings = SESSION_MANAGER.lock().get().to_settings();
+
+        let on_disconnect_script = settings.connection.on_disconnect_script;
         if !on_disconnect_script.is_empty() {
             info!(
                 "Running on disconnect script (disconnect): {}",
@@ -379,20 +367,45 @@ async fn connection_pipeline() -> StrResult {
                 }
             }
         }
-        Err(e) = client_discovery() => return fmt_e!("Client discovery failed: {}", e),
+        Err(e) = client_discovery() => {
+            error!("Client discovery failed: {}", e);
+            return Ok(());
+        }
         _ = CLIENTS_UPDATED_NOTIFIER.notified() => return Ok(()),
         else => unreachable!(),
+    };
+
+    let ConnectionInfo {
+        client_ip,
+        control_sender,
+        mut control_receiver,
+    } = connection_info;
+    let control_sender = Arc::new(Mutex::new(control_sender));
+
+    control_sender
+        .lock()
+        .await
+        .send(&ServerControlPacket::StartStream)
+        .await?;
+
+    let settings = SESSION_MANAGER.lock().get().to_settings();
+
+    let mut stream_socket = tokio::select! {
+        res = StreamSocket::connect_to_client(
+            client_ip,
+            settings.connection.stream_port,
+            settings.connection.stream_protocol,
+            mbits_to_bytes(settings.video.encode_bitrate_mbs)
+        ) => res?,
+        _ = time::sleep(Duration::from_secs(5)) => {
+            return fmt_e!("Timeout while setting up streams");
+        }
     };
 
     log_id(LogId::ClientConnected);
 
     {
-        let on_connect_script = SESSION_MANAGER
-            .lock()
-            .get()
-            .to_settings()
-            .connection
-            .on_connect_script;
+        let on_connect_script = settings.connection.on_connect_script;
 
         if !on_connect_script.is_empty() {
             info!("Running on connect script (connect): {}", on_connect_script);
@@ -405,68 +418,137 @@ async fn connection_pipeline() -> StrResult {
         }
     }
 
-    let ConnectionInfo {
-        control_sender,
-        mut control_receiver,
-        game_audio_config,
-    } = connection_info;
-
-    let control_sender = Arc::new(Mutex::new(control_sender));
-
-    unsafe { crate::InitializeStreaming() };
+    #[cfg(windows)]
+    unsafe {
+        crate::InitializeStreaming()
+    };
     let _stream_guard = StreamCloseGuard;
 
-    let game_audio_desc = SESSION_MANAGER.lock().get().to_settings().audio.game_audio;
-    let (_destroy_game_audio_stream_notifier, destroy_game_audio_stream_receiver) =
-        smpsc::channel::<()>();
+    let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
+        let device = AudioDevice::new(desc.device_id, AudioDeviceType::Output)?;
+        let sample_rate = audio::get_sample_rate(&device)?;
+        let sender = stream_socket.request_stream(AUDIO).await?;
+        let mute_when_streaming = desc.mute_when_streaming;
 
-    let game_audio_loop: BoxFuture<_> =
-        if let (Switch::Enabled(desc), Some(config)) = (game_audio_desc, game_audio_config) {
-            let (sender, mut receiver) = tmpsc::unbounded_channel();
-            let control_sender = control_sender.clone();
+        Box::pin(async move {
+            #[cfg(windows)]
+            openvr::set_game_output_audio_device_id(audio::get_windows_device_id(&device)?);
 
-            // AudioSession is !Send, so keep it in a separate thread.
-            Box::pin(futures::future::join(
-                task::spawn_blocking(move || {
-                    let _audio_stream_guard = Some(AudioSession::start_recording(
-                        desc.device_index,
-                        config,
-                        true,
-                        sender,
-                    )?);
+            audio::record_audio_loop(device, 2, sample_rate, mute_when_streaming, sender).await?;
 
-                    // notified when _destroy_game_audio_stream_notifier goes out of scope
-                    destroy_game_audio_stream_receiver.recv().ok();
-                    StrResult::Ok(())
-                }),
-                async move {
-                    while let Some(data) = receiver.recv().await {
-                        control_sender
-                            .lock()
-                            .await
-                            .send(&ServerControlPacket::ReservedBuffer(data))
-                            .await?;
-                    }
+            #[cfg(windows)]
+            {
+                let default_device =
+                    AudioDevice::new(AudioDeviceId::Default, AudioDeviceType::Output)?;
+                let default_device_id = audio::get_windows_device_id(&default_device)?;
+                openvr::set_game_output_audio_device_id(default_device_id);
+            }
 
-                    StrResult::Ok(())
-                },
-            ))
-        } else {
-            Box::pin(future::pending())
-        };
+            Ok(())
+        })
+    } else {
+        Box::pin(future::pending())
+    };
 
-    let keepalive_sender_loop = {
+    let microphone_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.microphone {
+        let input_device = AudioDevice::new(
+            desc.input_device_id,
+            AudioDeviceType::VirtualMicrophoneInput,
+        )?;
+        let receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
+
+        #[cfg(windows)]
+        {
+            let microphone_device = AudioDevice::new(
+                desc.output_device_id,
+                AudioDeviceType::VirtualMicrophoneOutput,
+            )?;
+            let microphone_device_id = audio::get_windows_device_id(&microphone_device)?;
+            openvr::set_headset_microphone_audio_device_id(microphone_device_id);
+        }
+
+        Box::pin(audio::play_audio_loop(
+            input_device,
+            1,
+            desc.sample_rate,
+            desc.config,
+            receiver,
+        ))
+    } else {
+        Box::pin(future::pending())
+    };
+
+    let legacy_send_loop = {
+        let mut socket_sender = stream_socket.request_stream(LEGACY).await?;
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
+
+            while let Some(data) = data_receiver.recv().await {
+                let mut buffer = socket_sender.new_buffer(&(), data.len())?;
+                buffer.get_mut().extend(data);
+                socket_sender.send_buffer(buffer).await.ok();
+            }
+
+            Ok(())
+        }
+    };
+
+    let legacy_receive_loop = {
+        let mut receiver = stream_socket.subscribe_to_stream::<()>(LEGACY).await?;
+        async move {
+            loop {
+                let mut data = receiver.recv().await?.buffer;
+
+                #[cfg(windows)]
+                unsafe {
+                    crate::LegacyReceive(data.as_mut_ptr(), data.len() as _)
+                };
+            }
+        }
+    };
+
+    let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<PlayspaceSyncPacket>();
+    // use a separate thread because SetChaperone() is blocking
+    thread::spawn(move || {
+        while let Ok(packet) = playspace_sync_receiver.recv() {
+            let transform = Translation3::from(packet.position.coords) * packet.rotation;
+            // transposition is done to switch from column major to row major
+            let matrix_transp = transform.to_matrix().transpose();
+
+            let perimeter_points = if let Some(perimeter_points) = packet.perimeter_points {
+                perimeter_points.iter().map(|p| [p[0], p[1]]).collect()
+            } else {
+                vec![]
+            };
+
+            #[cfg(windows)]
+            unsafe {
+                crate::SetChaperone(
+                    matrix_transp.as_ptr(),
+                    packet.area_width,
+                    packet.area_height,
+                    perimeter_points.as_ptr() as _,
+                    perimeter_points.len() as _,
+                )
+            };
+        }
+    });
+
+    let keepalive_loop = {
         let control_sender = control_sender.clone();
         async move {
             loop {
-                control_sender
+                let res = control_sender
                     .lock()
                     .await
-                    .send(&ServerControlPacket::Reserved(
-                        "{ \"keepalive\": true }".into(),
-                    ))
-                    .await
-                    .ok();
+                    .send(&ServerControlPacket::KeepAlive)
+                    .await;
+                if let Err(e) = res {
+                    log_id(LogId::ClientDisconnected);
+                    info!("Client disconnected. Cause: {}", e);
+                    break Ok(());
+                }
                 time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
             }
         }
@@ -476,29 +558,13 @@ async fn connection_pipeline() -> StrResult {
         loop {
             match control_receiver.recv().await {
                 Ok(ClientControlPacket::PlayspaceSync(packet)) => {
-                    let transform = packet.rotation * Translation3::from(packet.position.coords);
-                    // transposition is done to switch from column major to row major
-                    let matrix_transp = transform.to_matrix().transpose();
-
-                    let perimeter_points = if let Some(perimeter_points) = packet.perimeter_points {
-                        perimeter_points.iter().map(|p| [p[0], p[2]]).collect()
-                    } else {
-                        vec![]
-                    };
-
-                    unsafe {
-                        crate::SetChaperone(
-                            matrix_transp.as_ptr(),
-                            packet.area_width,
-                            packet.area_height,
-                            perimeter_points.as_ptr() as _,
-                            perimeter_points.len() as _,
-                        )
-                    };
+                    playspace_sync_sender.send(packet).ok();
                 }
-                Ok(ClientControlPacket::RequestIDR) => unsafe { crate::RequestIDR() },
-                Ok(ClientControlPacket::Reserved(_))
-                | Ok(ClientControlPacket::ReservedBuffer(_)) => (),
+                Ok(ClientControlPacket::RequestIDR) => unsafe {
+                    #[cfg(windows)]
+                    crate::RequestIDR()
+                },
+                Ok(_) => (),
                 Err(e) => {
                     log_id(LogId::ClientDisconnected);
                     info!("Client disconnected. Cause: {}", e);
@@ -510,8 +576,26 @@ async fn connection_pipeline() -> StrResult {
         Ok(())
     };
 
+    // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
-        _ = crate::RESTART_NOTIFIER.notified() => {
+        res = spawn_cancelable(stream_socket.receive_loop()) => {
+            log_id(LogId::ClientDisconnected);
+            if let Err(e) = res {
+                info!("Client disconnected. Cause: {}", e);
+            }
+
+            Ok(())
+        },
+        res = spawn_cancelable(game_audio_loop) => res,
+        res = spawn_cancelable(microphone_loop) => res,
+        res = spawn_cancelable(legacy_send_loop) => res,
+        res = spawn_cancelable(legacy_receive_loop) => res,
+
+        // leave these loops on the current task
+        res = keepalive_loop => res,
+        res = control_loop => res,
+
+        _ = RESTART_NOTIFIER.notified() => {
             control_sender
                 .lock()
                 .await
@@ -521,9 +605,6 @@ async fn connection_pipeline() -> StrResult {
 
             Ok(())
         }
-        _ = game_audio_loop => Ok(()),
-        _ = keepalive_sender_loop => Ok(()),
-        res = control_loop => res,
     }
 }
 
@@ -533,7 +614,7 @@ pub async fn connection_lifecycle_loop() {
             async {
                 show_err(connection_pipeline().await);
             },
-            time::sleep(RETRY_CONNECT_INTERVAL),
+            time::sleep(RETRY_CONNECT_MIN_INTERVAL),
         );
     }
 }

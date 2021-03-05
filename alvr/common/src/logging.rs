@@ -30,7 +30,8 @@ pub fn set_panic_hook() {
 pub fn show_w<W: Display>(w: W) {
     log::warn!("{}", w);
 
-    #[cfg(not(target_os = "android"))]
+    // GDK crashes because of initialization in multiple thread
+    #[cfg(not(any(target_os = "android", target_os = "linux")))]
     std::thread::spawn({
         let warn_string = w.to_string();
         move || {
@@ -52,24 +53,39 @@ pub fn show_warn<T, E: Display>(res: Result<T, E>) -> Option<T> {
 fn show_e_block<E: Display>(e: E, blocking: bool) {
     log::error!("{}", e);
 
-    #[cfg(not(target_os = "android"))]
+    // GDK crashes because of initialization in multiple thread
+    #[cfg(not(any(target_os = "android", target_os = "linux")))]
     {
-        let show_msgbox = {
-            let err_string = e.to_string();
-            move || {
-                msgbox::create(
-                    "ALVR encountered an error",
-                    &err_string,
-                    msgbox::IconType::Error,
-                )
-                .ok();
-            }
-        };
+        // Store the last error shown in a message box. Do not open a new message box if the content
+        // of the error has not changed
+        use parking_lot::Mutex;
 
-        if blocking {
-            show_msgbox();
-        } else {
-            std::thread::spawn(show_msgbox);
+        lazy_static::lazy_static! {
+            static ref LAST_MESSAGEBOX_ERROR: Mutex<String> = Mutex::new("".into());
+        }
+
+        let err_string = e.to_string();
+        let last_messagebox_error_ref = &mut *LAST_MESSAGEBOX_ERROR.lock();
+        if *last_messagebox_error_ref != err_string {
+            let show_msgbox = {
+                let err_string = err_string.clone();
+                move || {
+                    msgbox::create(
+                        "ALVR encountered an error",
+                        &err_string,
+                        msgbox::IconType::Error,
+                    )
+                    .ok();
+                }
+            };
+
+            if blocking {
+                show_msgbox();
+            } else {
+                std::thread::spawn(show_msgbox);
+            }
+
+            *last_messagebox_error_ref = err_string;
         }
     }
 }

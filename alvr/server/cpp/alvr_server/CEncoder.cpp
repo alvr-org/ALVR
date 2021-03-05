@@ -118,7 +118,3 @@
 		void CEncoder::InsertIDR() {
 			m_scheduler.InsertIDR();
 		}
-
-		void CEncoder::Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits) {
-			m_videoEncoder->Reconfigure(refreshRate, renderWidth, renderHeight, bitrateInMBits);
-		}

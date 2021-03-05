@@ -19,7 +19,6 @@ enum ALVR_PACKET_TYPE {
 	ALVR_PACKET_TYPE_VIDEO_FRAME = 9,
 	ALVR_PACKET_TYPE_PACKET_ERROR_REPORT = 12,
 	ALVR_PACKET_TYPE_HAPTICS = 13,
-	ALVR_PACKET_TYPE_MIC_AUDIO = 14,
 };
 
 enum ALVR_CODEC {
@@ -262,14 +261,6 @@ struct VideoFrame {
 	uint16_t fecPercentage;
 	// char frameBuffer[];
 };
-struct MicAudioFrame {
-	uint32_t type; // ALVR_PACKET_TYPE_MIC_AUDIO_FRAME
-	size_t outputBufferNumElements;
-	size_t completeSize;
-	int packetIndex;
-	int16_t micBuffer[100];
-};
-
 // Report packet loss/error from client to server.
 struct PacketErrorReport {
 	uint32_t type; // ALVR_PACKET_TYPE_PACKET_ERROR_REPORT

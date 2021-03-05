@@ -1,15 +1,19 @@
-use crate::audio;
-use alvr_common::{data::*, logging::*, sockets::ConnectionResult, *};
+use crate::{audio, MAYBE_LEGACY_SENDER};
+use alvr_common::{
+    data::*,
+    sockets::{ConnectionResult, AUDIO, LEGACY},
+    *,
+};
 use futures::future::BoxFuture;
 use jni::{
     objects::{GlobalRef, JClass},
     JavaVM,
 };
-use nalgebra::{Point3, Quaternion, UnitQuaternion};
+use nalgebra::{Point2, Point3, Quaternion, UnitQuaternion};
 use serde_json as json;
 use settings_schema::Switch;
+use sockets::StreamSocket;
 use std::{
-    ffi::CString,
     future, slice,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -18,7 +22,7 @@ use std::{
     time::Duration,
 };
 use tokio::{
-    sync::Mutex,
+    sync::{mpsc as tmpsc, Mutex},
     task,
     time::{self, Instant},
 };
@@ -32,11 +36,12 @@ const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
     "Please update either the app\n",
     "on the PC or on the headset"
 );
+const STREAM_STARTING_MESSAGE: &str = "The stream will begin soon\nPlease wait...";
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
-const RETRY_CONNECT_INTERVAL: Duration = Duration::from_millis(500);
+const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(2);
 const PLAYSPACE_SYNC_INTERVAL: Duration = Duration::from_millis(500);
-const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(5);
+const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 
 // close stream on Drop (manual disconnection or execution canceling)
 struct StreamCloseGuard {
@@ -49,7 +54,7 @@ impl Drop for StreamCloseGuard {
     }
 }
 
-async fn set_loading_message(
+fn set_loading_message(
     java_vm: &JavaVM,
     activity_ref: &GlobalRef,
     hostname: &str,
@@ -107,7 +112,7 @@ async fn connection_pipeline(
                 ServerHandshakePacket::ClientUntrusted => CLIENT_UNTRUSTED_MESSAGE,
                 ServerHandshakePacket::IncompatibleVersions => INCOMPATIBLE_VERSIONS_MESSAGE,
             };
-            set_loading_message(&*java_vm, &*activity_ref, hostname, message_str).await?;
+            set_loading_message(&*java_vm, &*activity_ref, hostname, message_str)?;
             return Ok(());
         }
         ConnectionResult::NetworkUnreachable => {
@@ -117,10 +122,9 @@ async fn connection_pipeline(
                 &*activity_ref,
                 hostname,
                 NETWORK_UNREACHABLE_MESSAGE,
-            )
-            .await?;
+            )?;
 
-            time::sleep(RETRY_CONNECT_INTERVAL).await;
+            time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
 
             set_loading_message(
                 &*java_vm,
@@ -128,7 +132,6 @@ async fn connection_pipeline(
                 &private_identity.hostname,
                 INITIAL_MESSAGE,
             )
-            .await
             .ok();
 
             return Ok(());
@@ -136,13 +139,56 @@ async fn connection_pipeline(
     };
     let control_sender = Arc::new(Mutex::new(control_sender));
 
-    info!("Connected to server");
+    match control_receiver.recv().await {
+        Ok(ServerControlPacket::StartStream) => {
+            info!("Stream starting");
+            set_loading_message(
+                &*java_vm,
+                &*activity_ref,
+                &hostname,
+                STREAM_STARTING_MESSAGE,
+            )?;
+        }
+        Ok(ServerControlPacket::Restarting) => {
+            info!("Server restarting");
+            set_loading_message(&*java_vm, &*activity_ref, hostname, SERVER_RESTART_MESSAGE)?;
+            return Ok(());
+        }
+        Err(e) => {
+            info!("Server disconnected. Cause: {}", e);
+            set_loading_message(
+                &*java_vm,
+                &*activity_ref,
+                hostname,
+                SERVER_DISCONNECTED_MESSAGE,
+            )?;
+            return Ok(());
+        }
+        _ => {
+            info!("Unexpected packet");
+            set_loading_message(&*java_vm, &*activity_ref, hostname, "Unexpected packet")?;
+            return Ok(());
+        }
+    }
 
-    let baseline_settings = {
+    let settings = {
         let mut session_desc = SessionDesc::default();
         session_desc.merge_from_json(&trace_err!(json::from_str(&config_packet.session_desc))?)?;
         session_desc.to_settings()
     };
+
+    let mut stream_socket = tokio::select! {
+        res = StreamSocket::connect_to_server(
+            server_ip,
+            settings.connection.stream_port,
+            settings.connection.stream_protocol,
+        ) => res?,
+        _ = time::sleep(Duration::from_secs(5)) => {
+            return fmt_e!("Timeout while setting up streams");
+        }
+    };
+
+    info!("Connected to server");
 
     let is_connected = Arc::new(AtomicBool::new(true));
     let _stream_guard = StreamCloseGuard {
@@ -153,7 +199,7 @@ async fn connection_pipeline(
         &*activity_ref,
         "setDarkMode",
         "(Z)V",
-        &[baseline_settings.extra.client_dark_mode.into()],
+        &[settings.extra.client_dark_mode.into()],
     ))?;
 
     unsafe {
@@ -161,37 +207,30 @@ async fn connection_pipeline(
             eyeWidth: config_packet.eye_resolution_width,
             eyeHeight: config_packet.eye_resolution_height,
             refreshRate: config_packet.fps,
-            streamMic: matches!(baseline_settings.audio.microphone, Switch::Enabled(_)),
-            enableFoveation: matches!(
-                baseline_settings.video.foveated_rendering,
-                Switch::Enabled(_)
-            ),
+            enableFoveation: matches!(settings.video.foveated_rendering, Switch::Enabled(_)),
             foveationStrength: if let Switch::Enabled(foveation_vars) =
-                &baseline_settings.video.foveated_rendering
+                &settings.video.foveated_rendering
             {
                 foveation_vars.strength
             } else {
                 0_f32
             },
             foveationShape: if let Switch::Enabled(foveation_vars) =
-                &baseline_settings.video.foveated_rendering
+                &settings.video.foveated_rendering
             {
                 foveation_vars.shape
             } else {
                 1_f32
             },
             foveationVerticalOffset: if let Switch::Enabled(foveation_vars) =
-                &baseline_settings.video.foveated_rendering
+                &settings.video.foveated_rendering
             {
                 foveation_vars.vertical_offset
             } else {
                 0_f32
             },
-            trackingSpaceType: matches!(
-                baseline_settings.headset.tracking_space,
-                TrackingSpace::Stage
-            ) as _,
-            extraLatencyMode: baseline_settings.headset.extra_latency_mode,
+            trackingSpaceType: matches!(settings.headset.tracking_space, TrackingSpace::Stage) as _,
+            extraLatencyMode: settings.headset.extra_latency_mode,
         });
     }
 
@@ -200,36 +239,74 @@ async fn connection_pipeline(
         "onServerConnected",
         "(IZLjava/lang/String;)V",
         &[
-            (matches!(baseline_settings.video.codec, CodecType::HEVC) as i32).into(),
-            baseline_settings
-                .video
-                .client_request_realtime_decoder
-                .into(),
-            trace_err!(
-                trace_err!(java_vm.attach_current_thread())?.new_string(config_packet.web_gui_url)
-            )?
+            (matches!(settings.video.codec, CodecType::HEVC) as i32).into(),
+            settings.video.client_request_realtime_decoder.into(),
+            trace_err!(trace_err!(java_vm.attach_current_thread())?
+                .new_string(config_packet.dashboard_url))?
             .into()
         ],
     ))?;
 
-    let tracking_clientside_prediction = match baseline_settings.headset.controllers {
-        Switch::Enabled(ref controllers) => controllers.clientside_prediction,
+    let tracking_clientside_prediction = match &settings.headset.controllers {
+        Switch::Enabled(controllers) => controllers.clientside_prediction,
         Switch::Disabled => false,
     };
 
     // setup stream loops
 
+    // let (debug_sender, mut debug_receiver) = tmpsc::unbounded_channel();
+    // let debug_loop = {
+    //     let control_sender = control_sender.clone();
+    //     async move {
+    //         while let Some(data) = debug_receiver.recv().await {
+    //             control_sender
+    //                 .lock()
+    //                 .await
+    //                 .send(&ClientControlPacket::Reserved(data))
+    //                 .await
+    //                 .ok();
+    //         }
+
+    //         Ok(())
+    //     }
+    // };
+
+    let legacy_send_loop = {
+        let mut socket_sender = stream_socket.request_stream(LEGACY).await?;
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
+
+            while let Some(data) = data_receiver.recv().await {
+                let mut buffer = socket_sender.new_buffer(&(), data.len())?;
+                buffer.get_mut().extend(data);
+                socket_sender.send_buffer(buffer).await.ok();
+            }
+
+            Ok(())
+        }
+    };
+
+    let (legacy_receive_data_sender, legacy_receive_data_receiver) = smpsc::channel();
+    let legacy_receive_loop = {
+        let mut receiver = stream_socket.subscribe_to_stream::<()>(LEGACY).await?;
+        async move {
+            loop {
+                let packet = receiver.recv().await?;
+                legacy_receive_data_sender.send(packet.buffer).ok();
+            }
+        }
+    };
+
     // The main stream loop must be run in a normal thread, because it needs to access the JNI env
     // many times per second. If using a future I'm forced to attach and detach the env continuously.
-    // When the parent function gets canceled, this loop will run to finish.
-    let server_ip_cstring = CString::new(server_ip.to_string()).unwrap();
-    let stream_socket_loop = task::spawn_blocking({
+    // When the parent function exits or gets canceled, this loop will run to finish.
+    let legacy_stream_socket_loop = task::spawn_blocking({
         let java_vm = java_vm.clone();
         let activity_ref = activity_ref.clone();
         let nal_class_ref = nal_class_ref.clone();
-        let codec = baseline_settings.video.codec;
-        let client_recv_buffer_size = baseline_settings.connection.client_recv_buffer_size;
-        let enable_fec = baseline_settings.connection.enable_fec;
+        let codec = settings.video.codec;
+        let enable_fec = settings.connection.enable_fec;
         move || -> StrResult {
             let env = trace_err!(java_vm.attach_current_thread())?;
             let env_ptr = env.get_native_interface() as _;
@@ -241,14 +318,35 @@ async fn connection_pipeline(
                     env_ptr,
                     *activity_obj as _,
                     **nal_class as _,
-                    server_ip_cstring.as_ptr(),
                     matches!(codec, CodecType::HEVC) as _,
-                    client_recv_buffer_size as _,
                     enable_fec,
                 );
 
-                while is_connected.load(Ordering::Relaxed) {
-                    crate::runSocketLoopIter();
+                let mut idr_request_deadline = None;
+
+                let mut statistics_deadline = Instant::now();
+                while let Ok(mut data) = legacy_receive_data_receiver.recv() {
+                    // Send again IDR packet every 2s in case it is missed
+                    // (due to dropped burst of packets at the start of the stream or otherwise).
+                    if !crate::IDR_PARSED.load(Ordering::Relaxed) {
+                        if let Some(deadline) = idr_request_deadline {
+                            if deadline < Instant::now() {
+                                crate::IDR_REQUEST_NOTIFIER.notify_waiters();
+                                idr_request_deadline = None;
+                            }
+                        } else {
+                            idr_request_deadline = Some(Instant::now() + Duration::from_secs(2));
+                        }
+                    }
+
+                    crate::legacyReceive(data.as_mut_ptr(), data.len() as _);
+
+                    let now = Instant::now();
+                    if now > statistics_deadline {
+                        // sendTimeSync() must be called on the same thread of initializeSocket()
+                        crate::sendTimeSync();
+                        statistics_deadline += Duration::from_secs(1);
+                    }
                 }
 
                 crate::closeSocket(env_ptr);
@@ -288,7 +386,7 @@ async fn connection_pipeline(
 
                         let perimeter_points = perimeter_slice
                             .iter()
-                            .map(|p| Point3::from_slice(p))
+                            .map(|p| Point2::from_slice(&[p[0], p[2]]))
                             .collect::<Vec<_>>();
 
                         Some(perimeter_points)
@@ -310,7 +408,8 @@ async fn connection_pipeline(
                         .lock()
                         .await
                         .send(&ClientControlPacket::PlayspaceSync(packet))
-                        .await?;
+                        .await
+                        .ok();
                 }
 
                 time::sleep(PLAYSPACE_SYNC_INTERVAL).await;
@@ -318,96 +417,119 @@ async fn connection_pipeline(
         }
     };
 
-    let mut maybe_game_audio_config = None;
-    if let Ok(reserved_config) = json::from_str::<json::Value>(&config_packet.reserved) {
-        if let Some(config_json) = reserved_config.get("game_audio_config") {
-            if let Ok(maybe_config) = json::from_value::<Option<AudioConfig>>(config_json.clone()) {
-                maybe_game_audio_config = maybe_config;
-            }
-        }
-    }
+    let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
+        let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
+        Box::pin(audio::play_audio_loop(
+            config_packet.game_audio_sample_rate,
+            desc.config,
+            game_audio_receiver,
+        ))
+    } else {
+        Box::pin(future::pending())
+    };
 
-    let (game_audio_sender, game_audio_receiver) = smpsc::channel();
-    let (_destroy_game_audio_stream_notifier, destroy_game_audio_stream_receiver) =
-        smpsc::channel::<()>();
-
-    // AudioPlayer is !Send, so put it in a separate thread
-    let game_audio_stream: BoxFuture<_> = if let Some(config) = maybe_game_audio_config {
-        Box::pin(task::spawn_blocking(move || {
-            let mut _stream_guard = audio::AudioPlayer::start(config, game_audio_receiver)?;
-
-            // notified when the notifier counterpart gets dropped
-            destroy_game_audio_stream_receiver.recv().ok();
-
-            Ok(())
-        }))
+    let microphone_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.microphone {
+        let microphone_sender = stream_socket.request_stream(AUDIO).await?;
+        Box::pin(audio::record_audio_loop(
+            config.sample_rate,
+            microphone_sender,
+        ))
     } else {
         Box::pin(future::pending())
     };
 
     let keepalive_sender_loop = {
         let control_sender = control_sender.clone();
+        let java_vm = java_vm.clone();
+        let activity_ref = activity_ref.clone();
         async move {
             loop {
-                control_sender
+                let res = control_sender
                     .lock()
                     .await
-                    .send(&ClientControlPacket::Reserved(
-                        "{ \"keepalive\": true }".into(),
-                    ))
-                    .await
-                    .ok();
+                    .send(&ClientControlPacket::KeepAlive)
+                    .await;
+                if let Err(e) = res {
+                    info!("Server disconnected. Cause: {}", e);
+                    set_loading_message(
+                        &*java_vm,
+                        &*activity_ref,
+                        hostname,
+                        SERVER_DISCONNECTED_MESSAGE,
+                    )?;
+                    break Ok(());
+                }
+
                 time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
             }
         }
     };
 
-    let control_loop = async move {
-        loop {
-            tokio::select! {
-                _ = crate::IDR_REQUEST_NOTIFIER.notified() => {
-                    control_sender.lock().await.send(&ClientControlPacket::RequestIDR).await?;
-                }
-                control_packet = control_receiver.recv() =>
-                    match control_packet {
-                        Ok(ServerControlPacket::Restarting) => {
-                            info!("Server restarting");
-                            set_loading_message(
-                                &*java_vm,
-                                &*activity_ref,
-                                hostname,
-                                SERVER_RESTART_MESSAGE
-                            )
-                            .await?;
-                            break Ok(());
-                        }
-                        Ok(ServerControlPacket::ReservedBuffer(buffer)) => {
-                            trace_err!(game_audio_sender.send(buffer))?;
-                        },
-                        Ok(ServerControlPacket::Reserved(_)) => (),
-                        Err(e) => {
-                            info!("Server disconnected. Cause: {}", e);
-                            set_loading_message(
-                                &*java_vm,
-                                &*activity_ref,
-                                hostname,
-                                SERVER_DISCONNECTED_MESSAGE
-                            )
-                            .await?;
-                            break Ok(());
-                        }
+    let control_loop = {
+        let java_vm = java_vm.clone();
+        let activity_ref = activity_ref.clone();
+        async move {
+            loop {
+                tokio::select! {
+                    _ = crate::IDR_REQUEST_NOTIFIER.notified() => {
+                        control_sender.lock().await.send(&ClientControlPacket::RequestIDR).await?;
                     }
+                    control_packet = control_receiver.recv() =>
+                        match control_packet {
+                            Ok(ServerControlPacket::Restarting) => {
+                                info!("Server restarting");
+                                set_loading_message(
+                                    &*java_vm,
+                                    &*activity_ref,
+                                    hostname,
+                                    SERVER_RESTART_MESSAGE
+                                )?;
+                                break Ok(());
+                            }
+                            Ok(_) => (),
+                            Err(e) => {
+                                info!("Server disconnected. Cause: {}", e);
+                                set_loading_message(
+                                    &*java_vm,
+                                    &*activity_ref,
+                                    hostname,
+                                    SERVER_DISCONNECTED_MESSAGE
+                                )?;
+                                break Ok(());
+                            }
+                        }
+                }
             }
         }
     };
 
+    // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
-        res = game_audio_stream => trace_err!(res)?,
-        res = stream_socket_loop => trace_err!(res)?,
-        res = tracking_loop => res,
-        res = playspace_sync_loop => res,
-        res = control_loop => res,
+        res = spawn_cancelable(stream_socket.receive_loop()) => {
+            if let Err(e) = res {
+                info!("Server disconnected. Cause: {}", e);
+            }
+            set_loading_message(
+                &*java_vm,
+                &*activity_ref,
+                hostname,
+                SERVER_DISCONNECTED_MESSAGE
+            )?;
+
+            Ok(())
+        },
+        res = spawn_cancelable(game_audio_loop) => res,
+        res = spawn_cancelable(microphone_loop) => res,
+        res = spawn_cancelable(tracking_loop) => res,
+        res = spawn_cancelable(playspace_sync_loop) => res,
+        res = spawn_cancelable(legacy_send_loop) => res,
+        res = spawn_cancelable(legacy_receive_loop) => res,
+        res = legacy_stream_socket_loop => trace_err!(res)?,
+
+        // keep these loops on the current task
         res = keepalive_sender_loop => res,
+        res = control_loop => res,
+        // res = debug_loop => res,
     }
 }
 
@@ -425,10 +547,8 @@ pub async fn connection_lifecycle_loop(
         &private_identity.hostname,
         INITIAL_MESSAGE,
     )
-    .await
     .ok();
 
-    // this loop has no exit, but the execution can be halted by the caller with tokio::select!{}
     loop {
         tokio::join!(
             async {
@@ -443,13 +563,19 @@ pub async fn connection_lifecycle_loop(
                 .await;
 
                 if let Err(e) = maybe_error {
-                    error!("{}", e);
-                    set_loading_message(&*java_vm, &*activity_ref, &private_identity.hostname, &e)
-                        .await
-                        .ok();
+                    let message =
+                        format!("Connection error:\n{}\nCheck the PC for more details", e);
+                    error!("{}", message);
+                    set_loading_message(
+                        &*java_vm,
+                        &*activity_ref,
+                        &private_identity.hostname,
+                        &message,
+                    )
+                    .ok();
                 }
             },
-            time::sleep(RETRY_CONNECT_INTERVAL),
+            time::sleep(RETRY_CONNECT_MIN_INTERVAL),
         );
     }
 }

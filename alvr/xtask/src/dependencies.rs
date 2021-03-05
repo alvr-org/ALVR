@@ -21,10 +21,9 @@ fn install_rust_android_gradle() {
     #[cfg(target_os = "linux")]
     let gradlew_path = download_path.join("gradlew");
 
-    run_with_args_in(
+    run_in(
         &download_path,
-        &gradlew_path.to_string_lossy(),
-        &["publish"],
+        &format!("{} publish", gradlew_path.to_string_lossy()),
     )
     .unwrap();
 

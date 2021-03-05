@@ -58,7 +58,6 @@ public:
 	~VideoEncoderVCE();
 
 	void Initialize();
-	void Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBit);
 	void Shutdown();
 
 	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR);

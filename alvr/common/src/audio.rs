@@ -1,42 +1,212 @@
-use crate::{data::*, *};
+use crate::{
+    data::{AudioConfig, AudioDeviceId},
+    sockets::{StreamReceiver, StreamSender},
+    *,
+};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
-    BufferSize, SampleRate, Stream, StreamConfig, SupportedBufferSize, SupportedStreamConfigRange,
+    BufferSize, Device, Sample, SampleFormat, StreamConfig,
 };
+use parking_lot::Mutex;
+use rodio::{OutputStream, Source};
+use serde::Serialize;
 use std::{
-    cmp::{max, min, Ordering},
     collections::VecDeque,
-    ptr,
-    sync::mpsc as smpsc,
+    sync::{mpsc as smpsc, Arc},
+    thread,
 };
 use tokio::sync::mpsc as tmpsc;
 
 #[cfg(windows)]
-mod winaudio {
-    use super::*;
+use std::ptr;
+#[cfg(windows)]
+use widestring::U16CStr;
+#[cfg(windows)]
+use winapi::{
+    shared::{winerror::*, wtypes::VT_LPWSTR},
+    um::{
+        combaseapi::*, coml2api::STGM_READ, endpointvolume::IAudioEndpointVolume,
+        functiondiscoverykeys_devpkey::PKEY_Device_FriendlyName, mmdeviceapi::*, objbase::*,
+        propidl::PROPVARIANT, propsys::IPropertyStore,
+    },
+    Class, Interface,
+};
+#[cfg(windows)]
+use wio::com::ComPtr;
 
-    use widestring::*;
-    use winapi::{
-        shared::{winerror::*, wtypes::VT_LPWSTR},
-        um::{
-            combaseapi::*, coml2api::STGM_READ,
-            functiondiscoverykeys_devpkey::PKEY_Device_FriendlyName, mmdeviceapi::*,
-            objbase::CoInitialize, propidl::PROPVARIANT, propsys::IPropertyStore,
-        },
-        Class, Interface,
-    };
-    use wio::com::ComPtr;
+#[derive(Serialize)]
+pub struct AudioDevicesList {
+    output: Vec<String>,
+    input: Vec<String>,
+}
 
-    #[derive(serde::Serialize)]
-    pub struct AudioDevicesDesc {
-        pub list: Vec<(String, String)>,
-        pub default_game_audio: Option<String>,
-        pub default_microphone: Option<String>,
+pub fn get_devices_list() -> StrResult<AudioDevicesList> {
+    let host = cpal::default_host();
+
+    let output = trace_err!(host.output_devices())?
+        .filter_map(|d| d.name().ok())
+        .collect::<Vec<_>>();
+    let input = trace_err!(host.input_devices())?
+        .filter_map(|d| d.name().ok())
+        .collect::<Vec<_>>();
+
+    Ok(AudioDevicesList { output, input })
+}
+
+pub enum AudioDeviceType {
+    Output,
+    Input,
+
+    // for the virtual microphone devices, input and output labels are swapped
+    VirtualMicrophoneInput,
+    VirtualMicrophoneOutput,
+}
+
+impl AudioDeviceType {
+    fn is_output(&self) -> bool {
+        matches!(self, Self::Output | Self::VirtualMicrophoneInput)
     }
+}
 
-    // from AudioEndPointDescriptor::GetDeviceName
-    fn get_device_name(mm_device: ComPtr<IMMDevice>) -> StrResult<String> {
-        unsafe {
+pub struct AudioDevice {
+    inner: Device,
+
+    #[allow(dead_code)]
+    id: AudioDeviceId,
+
+    device_type: AudioDeviceType,
+}
+
+impl AudioDevice {
+    pub fn new(id: AudioDeviceId, device_type: AudioDeviceType) -> StrResult<Self> {
+        let host = cpal::default_host();
+
+        let device = match &id {
+            AudioDeviceId::Default => match device_type {
+                AudioDeviceType::Output => host
+                    .default_output_device()
+                    .ok_or_else(|| "No output audio device found".to_owned())?,
+                AudioDeviceType::Input => host
+                    .default_input_device()
+                    .ok_or_else(|| "No input audio device found".to_owned())?,
+                AudioDeviceType::VirtualMicrophoneInput => trace_err!(host.output_devices())?
+                    .find(|d| {
+                        if let Ok(name) = d.name() {
+                            name.contains("CABLE Input")
+                        } else {
+                            false
+                        }
+                    })
+                    .ok_or_else(|| {
+                        format!(
+                            "CABLE Input device not found. {}",
+                            "Did you install VB-CABLE Virtual Audio Device?"
+                        )
+                    })?,
+                AudioDeviceType::VirtualMicrophoneOutput => trace_err!(host.input_devices())?
+                    .find(|d| {
+                        if let Ok(name) = d.name() {
+                            name.contains("CABLE Output")
+                        } else {
+                            false
+                        }
+                    })
+                    .ok_or_else(|| {
+                        format!(
+                            "CABLE Output device not found. {}",
+                            "Did you install VB-CABLE Virtual Audio Device?"
+                        )
+                    })?,
+            },
+            AudioDeviceId::Name(name_substring) => trace_err!(host.devices())?
+                .find(|d| {
+                    if let Ok(name) = d.name() {
+                        name.to_lowercase().contains(&name_substring.to_lowercase())
+                    } else {
+                        false
+                    }
+                })
+                .ok_or_else(|| {
+                    format!(
+                        "Cannot find audio device which name contains \"{}\"",
+                        name_substring
+                    )
+                })?,
+            AudioDeviceId::Index(index) => trace_err!(host.devices())?
+                .nth(*index as usize - 1)
+                .ok_or_else(|| format!("Cannot find audio device at index {}", index))?,
+        };
+
+        Ok(Self {
+            inner: device,
+            id,
+            device_type,
+        })
+    }
+}
+
+pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
+    if let (Ok(name1), Ok(name2)) = (device1.inner.name(), device2.inner.name()) {
+        name1 == name2
+    } else {
+        false
+    }
+}
+
+#[cfg(windows)]
+fn get_windows_device(device: &AudioDevice) -> StrResult<ComPtr<IMMDevice>> {
+    let device_name = trace_err!(device.inner.name())?;
+
+    unsafe {
+        CoInitializeEx(ptr::null_mut(), COINIT_MULTITHREADED);
+
+        let mut mm_device_enumerator_ptr: *mut IMMDeviceEnumerator = ptr::null_mut();
+        let hr = CoCreateInstance(
+            &MMDeviceEnumerator::uuidof(),
+            ptr::null_mut(),
+            CLSCTX_ALL,
+            &IMMDeviceEnumerator::uuidof(),
+            &mut mm_device_enumerator_ptr as *mut _ as _,
+        );
+        if FAILED(hr) {
+            return fmt_e!(
+                "CoCreateInstance(IMMDeviceEnumerator) failed: hr = 0x{:08x}",
+                hr
+            );
+        }
+        let mm_device_enumerator = ComPtr::from_raw(mm_device_enumerator_ptr);
+
+        let mut mm_device_collection_ptr: *mut IMMDeviceCollection = ptr::null_mut();
+        let hr = mm_device_enumerator.EnumAudioEndpoints(
+            eAll,
+            DEVICE_STATE_ACTIVE,
+            &mut mm_device_collection_ptr as _,
+        );
+        if FAILED(hr) {
+            return fmt_e!(
+                "IMMDeviceEnumerator::EnumAudioEndpoints failed: hr = 0x{:08x}",
+                hr
+            );
+        }
+        let mm_device_collection = ComPtr::from_raw(mm_device_collection_ptr);
+
+        // GetCount has a wrong signature (*const parameter instead of *mut). Count needs to be a
+        // mutable variable even if not enforced.
+        #[allow(unused_mut)]
+        let mut count = 0;
+        let hr = mm_device_collection.GetCount(&count);
+        if FAILED(hr) {
+            return fmt_e!("IMMDeviceCollection::GetCount failed: hr = 0x{:08x}", hr);
+        }
+
+        for i in 0..count {
+            let mut mm_device_ptr: *mut IMMDevice = ptr::null_mut();
+            let hr = mm_device_collection.Item(i as _, &mut mm_device_ptr as _);
+            if FAILED(hr) {
+                return fmt_e!("IMMDeviceCollection::Item failed: hr = 0x{:08x}", hr);
+            }
+            let mm_device = ComPtr::from_raw(mm_device_ptr);
+
             let mut property_store_ptr: *mut IPropertyStore = ptr::null_mut();
             let hr = mm_device.OpenPropertyStore(STGM_READ, &mut property_store_ptr as _);
             if FAILED(hr) {
@@ -49,477 +219,422 @@ mod winaudio {
             if FAILED(hr) {
                 return fmt_e!("IPropertyStore::GetValue failed: hr = 0x{:08x}", hr);
             }
-
             if prop_variant.vt as u32 != VT_LPWSTR {
                 return fmt_e!(
                     "PKEY_Device_FriendlyName variant type is {} - expected VT_LPWSTR",
                     prop_variant.vt
                 );
             }
-
-            let res = trace_err!(U16CStr::from_ptr_str(*prop_variant.data.pwszVal()).to_string());
-
+            let utf16_name = U16CStr::from_ptr_str(*prop_variant.data.pwszVal());
             let hr = PropVariantClear(&mut prop_variant);
             if FAILED(hr) {
                 return fmt_e!("PropVariantClear failed: hr = 0x{:08x}", hr);
             }
 
-            res
-        }
-    }
-
-    // from AudioEndPointDescriptor contructor
-    fn get_audio_device_id_and_name(device: ComPtr<IMMDevice>) -> StrResult<(String, String)> {
-        let id_str = unsafe {
-            let mut id_str_ptr = ptr::null_mut();
-            device.GetId(&mut id_str_ptr);
-            let id_str = trace_err!(U16CStr::from_ptr_str(id_str_ptr).to_string())?;
-            CoTaskMemFree(id_str_ptr as _);
-
-            id_str
-        };
-
-        Ok((id_str, get_device_name(device)?))
-    }
-
-    // from AudioCapture::list_devices
-    pub fn output_audio_devices() -> StrResult<AudioDevicesDesc> {
-        let mut device_list = vec![];
-        unsafe {
-            CoInitialize(ptr::null_mut());
-
-            let mut mm_device_enumerator_ptr: *mut IMMDeviceEnumerator = ptr::null_mut();
-            let hr = CoCreateInstance(
-                &MMDeviceEnumerator::uuidof(),
-                ptr::null_mut(),
-                CLSCTX_ALL,
-                &IMMDeviceEnumerator::uuidof(),
-                &mut mm_device_enumerator_ptr as *mut _ as _,
-            );
-            if FAILED(hr) {
-                return fmt_e!(
-                    "CoCreateInstance(IMMDeviceEnumerator) failed: hr = 0x{:08x}",
-                    hr
-                );
-            }
-            let mm_device_enumerator = ComPtr::from_raw(mm_device_enumerator_ptr);
-
-            let mut default_mm_device_ptr: *mut IMMDevice = ptr::null_mut();
-            let hr = mm_device_enumerator.GetDefaultAudioEndpoint(
-                eRender,
-                eConsole,
-                &mut default_mm_device_ptr as *mut _,
-            );
-            if hr == HRESULT_FROM_WIN32(ERROR_NOT_FOUND) {
-                return fmt_e!("No default audio endpoint found. No audio device?");
-            }
-            if FAILED(hr) {
-                return fmt_e!(
-                    "IMMDeviceEnumerator::GetDefaultAudioEndpoint failed: hr = 0x{:08x}",
-                    hr
-                );
-            }
-            let default_mm_device = ComPtr::from_raw(default_mm_device_ptr);
-            let (default_id, default_name) = get_audio_device_id_and_name(default_mm_device)?;
-            device_list.push((default_id.clone(), default_name.clone()));
-
-            let mut mm_device_collection_ptr: *mut IMMDeviceCollection = ptr::null_mut();
-            let hr = mm_device_enumerator.EnumAudioEndpoints(
-                eRender,
-                DEVICE_STATE_ACTIVE,
-                &mut mm_device_collection_ptr as _,
-            );
-            if FAILED(hr) {
-                return fmt_e!(
-                    "IMMDeviceEnumerator::EnumAudioEndpoints failed: hr = 0x{:08x}",
-                    hr
-                );
-            }
-            let mm_device_collection = ComPtr::from_raw(mm_device_collection_ptr);
-
-            #[allow(unused_mut)]
-            let mut count = 0; // without mut this is UB
-            let hr = mm_device_collection.GetCount(&count);
-            if FAILED(hr) {
-                return fmt_e!("IMMDeviceCollection::GetCount failed: hr = 0x{:08x}", hr);
-            }
-            debug!("Active render endpoints found: {}", count);
-
-            debug!("DefaultDevice:{} ID:{}", default_name, default_id);
-
-            for i in 0..count {
-                let mut mm_device_ptr: *mut IMMDevice = ptr::null_mut();
-                let hr = mm_device_collection.Item(i, &mut mm_device_ptr as _);
-                if FAILED(hr) {
-                    warn!("Crash!");
-                    return fmt_e!("IMMDeviceCollection::Item failed: hr = 0x{:08x}", hr);
-                }
-                let mm_device = ComPtr::from_raw(mm_device_ptr);
-                let (id, name) = get_audio_device_id_and_name(mm_device)?;
-                if id == default_id {
-                    continue;
-                }
-                debug!("Device{}:{} ID:{}", i, name, id);
-                device_list.push((id, name));
+            let mm_device_name = trace_err!(utf16_name.to_string())?;
+            if mm_device_name == device_name {
+                return Ok(mm_device);
             }
         }
 
-        let default_game_audio = device_list.get(0).map(|dev| dev.0.clone());
-        let default_microphone = device_list
-            .iter()
-            .find(|(_, name)| name.to_uppercase().contains("CABLE"))
-            .map(|dev| dev.0.clone());
-        let audio_devices_desc = AudioDevicesDesc {
-            list: device_list,
-            default_game_audio,
-            default_microphone,
-        };
-
-        Ok(audio_devices_desc)
+        fmt_e!("No device found with specified name")
     }
 }
+
 #[cfg(windows)]
-pub use winaudio::*;
+pub fn get_windows_device_id(device: &AudioDevice) -> StrResult<String> {
+    unsafe {
+        let mm_device = get_windows_device(device)?;
 
-// The following code is used to do a handhake between server and client to determine a common set
-// of capabilities supported by both. Due to limitations of Windows WASAPI, most of this
-// code is useless right now, but could still be useful for a Linux server.
+        let mut id_str_ptr = ptr::null_mut();
+        mm_device.GetId(&mut id_str_ptr);
+        let id_str = trace_err!(U16CStr::from_ptr_str(id_str_ptr).to_string())?;
+        CoTaskMemFree(id_str_ptr as _);
 
-fn get_audio_config_ranges(configs: Vec<SupportedStreamConfigRange>) -> Vec<AudioConfigRange> {
-    configs
-        .iter()
-        .map(|c| {
-            let buffer_sizes = if let SupportedBufferSize::Range { min, max } = c.buffer_size() {
-                Some(*min..=*max)
-            } else {
-                None
-            };
+        Ok(id_str)
+    }
+}
 
-            // The 16 bit format is ubiquitously supported on Windows, but it gets misreported as
-            // float 32 bit with CPAL
-            #[cfg(not(windows))]
-            let sample_format = if let Ok(format) = SampleFormat::from_cpal(c.sample_format()) {
-                format
-            } else {
-                logging::show_e("Unsupported audio format");
-                SampleFormat::Int16
-            };
+// device must be an output device
+#[cfg(windows)]
+fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> StrResult {
+    unsafe {
+        let mm_device = get_windows_device(device)?;
+
+        let mut endpoint_volume_ptr: *mut IAudioEndpointVolume = ptr::null_mut();
+        let hr = mm_device.Activate(
+            &IAudioEndpointVolume::uuidof(),
+            CLSCTX_ALL,
+            ptr::null_mut(),
+            &mut endpoint_volume_ptr as *mut _ as _,
+        );
+        if FAILED(hr) {
+            return fmt_e!(
+                "IMMDevice::Activate() for IAudioEndpointVolume failed: hr = 0x{:08x}",
+                hr,
+            );
+        }
+        let endpoint_volume = ComPtr::from_raw(endpoint_volume_ptr);
+
+        let hr = endpoint_volume.SetMute(mute as _, ptr::null_mut());
+        if FAILED(hr) {
+            return fmt_e!("Failed to mute audio device: hr = 0x{:08x}", hr,);
+        }
+    }
+
+    Ok(())
+}
+
+pub fn get_sample_rate(device: &AudioDevice) -> StrResult<u32> {
+    let maybe_config_range = trace_err!(device.inner.supported_output_configs())?.next();
+    let config = if let Some(config) = maybe_config_range {
+        config
+    } else {
+        trace_none!(trace_err!(device.inner.supported_input_configs())?.next())?
+    };
+
+    // Assumption: device is in shared mode: this means that there is one and fixed sample rate,
+    // format and channel count
+    Ok(config.min_sample_rate().0)
+}
+
+pub async fn record_audio_loop(
+    device: AudioDevice,
+    channels_count: u16,
+    sample_rate: u32,
+    #[allow(unused_variables)] mute: bool,
+    mut sender: StreamSender<()>,
+) -> StrResult {
+    let maybe_config_range = trace_err!(device.inner.supported_output_configs())?.next();
+    let config = if let Some(config) = maybe_config_range {
+        config
+    } else {
+        trace_none!(trace_err!(device.inner.supported_input_configs())?.next())?
+    };
+
+    if sample_rate != config.min_sample_rate().0 {
+        return fmt_e!("Sample rate not supported");
+    }
+
+    if config.channels() > 2 {
+        return fmt_e!("Audio devices with more than 2 channels are not supported. Please use some external downmixing software.");
+    }
+
+    let stream_config = StreamConfig {
+        channels: config.channels(),
+        sample_rate: config.min_sample_rate(),
+        buffer_size: BufferSize::Default,
+    };
+
+    // data_sender/receiver is the bridge between tokio and std thread
+    let (data_sender, mut data_receiver) = tmpsc::unbounded_channel::<StrResult<Vec<_>>>();
+    let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
+
+    let thread_callback = {
+        let data_sender = data_sender.clone();
+        move || {
             #[cfg(windows)]
-            let sample_format = SampleFormat::Int16;
-
-            AudioConfigRange {
-                channels: c.channels(),
-                sample_rates: c.min_sample_rate().0..=c.max_sample_rate().0,
-                buffer_sizes,
-                sample_format,
+            if mute && device.device_type.is_output() {
+                set_mute_windows_device(&device, true).ok();
             }
-        })
-        .collect()
-}
 
-pub fn supported_audio_input_configs() -> StrResult<Vec<AudioConfigRange>> {
-    let host = cpal::default_host();
-    let device = if let Some(device) = host.default_input_device() {
-        device
-    } else {
-        return fmt_e!("No input audio device found");
-    };
-
-    let configs = get_audio_config_ranges(trace_err!(device.supported_input_configs())?.collect());
-
-    if !configs.is_empty() {
-        Ok(configs)
-    } else {
-        fmt_e!("No input audio configuration found")
-    }
-}
-
-pub fn supported_audio_output_configs(
-    device_index: Option<u64>,
-) -> StrResult<Vec<AudioConfigRange>> {
-    let host = cpal::default_host();
-
-    let maybe_device = if let (Some(index), Ok(mut devices)) = (device_index, host.output_devices())
-    {
-        devices.nth(index as _)
-    } else {
-        None
-    };
-    let device = if let Some(device) = maybe_device.or_else(|| host.default_output_device()) {
-        device
-    } else {
-        return fmt_e!("No output audio device found");
-    };
-
-    Ok(get_audio_config_ranges(
-        trace_err!(device.supported_output_configs())?.collect(),
-    ))
-}
-
-pub fn select_audio_config(
-    source_configs: Vec<AudioConfigRange>,
-    sink_configs: Vec<AudioConfigRange>,
-    preferred_config: AudioConfig,
-) -> StrResult<AudioConfig> {
-    let mut valid_configs = vec![];
-    for source_config_range in source_configs {
-        for sink_config_range in &sink_configs {
-            if source_config_range.channels == sink_config_range.channels
-                && source_config_range.sample_format == sink_config_range.sample_format
-            {
-                let channels = source_config_range.channels;
-                let buffer_sizes = if let Some(source_sizes) = &source_config_range.buffer_sizes {
-                    if let Some(sink_sizes) = &sink_config_range.buffer_sizes {
-                        let min_size = max(source_sizes.start(), sink_sizes.start());
-                        let max_size = min(source_sizes.end(), sink_sizes.end());
-                        if min_size <= max_size {
-                            Some(*min_size..=*max_size)
-                        } else {
-                            continue;
-                        }
-                    } else {
-                        Some(source_sizes.clone())
-                    }
-                } else {
-                    // if the buffer size of the source is unknown, then let always the source
-                    // decide the buffer size.
-                    None
-                };
-                let min_sample_rate = max(
-                    source_config_range.sample_rates.start(),
-                    sink_config_range.sample_rates.start(),
-                );
-                let max_sample_rate = min(
-                    source_config_range.sample_rates.end(),
-                    sink_config_range.sample_rates.end(),
-                );
-
-                if min_sample_rate <= max_sample_rate {
-                    valid_configs.push(AudioConfigRange {
-                        channels,
-                        sample_rates: *min_sample_rate..=*min_sample_rate,
-                        buffer_sizes,
-                        sample_format: source_config_range.sample_format,
-                    })
-                }
-            }
-        }
-    }
-
-    let mut candidates = vec![];
-    for config_range in valid_configs {
-        // Scores: lower is better. Precedece: channels, sample_format, sample_rate, buffer_size
-
-        let channels_score =
-            (config_range.channels as i32 - preferred_config.channels_count as i32).abs();
-
-        let candidate_sample_format;
-        let sample_format_score;
-        if config_range.sample_format == preferred_config.sample_format {
-            candidate_sample_format = preferred_config.sample_format;
-            sample_format_score = 0;
-        } else {
-            candidate_sample_format = config_range.sample_format;
-            sample_format_score = u32::MAX;
-        }
-
-        let candidate_sample_rate;
-        let sample_rate_score;
-        if preferred_config.sample_rate >= *config_range.sample_rates.start()
-            && preferred_config.sample_rate <= *config_range.sample_rates.end()
-        {
-            candidate_sample_rate = preferred_config.sample_rate;
-            sample_rate_score = 0;
-        } else {
-            let min_dist_score = config_range.sample_rates.start() - preferred_config.sample_rate;
-            let max_dist_score = preferred_config.sample_rate - config_range.sample_rates.end();
-            if min_dist_score > max_dist_score {
-                candidate_sample_rate = *config_range.sample_rates.start();
-                sample_rate_score = min_dist_score;
-            } else {
-                candidate_sample_rate = *config_range.sample_rates.end();
-                sample_rate_score = max_dist_score;
-            }
-        };
-
-        let candidate_buffer_size; // can be None
-        let buffer_size_score;
-        if let Some(buffer_sizes) = config_range.buffer_sizes {
-            if let Some(preferred_buffer_size) = preferred_config.buffer_size {
-                if preferred_buffer_size >= *buffer_sizes.start()
-                    && preferred_buffer_size <= *buffer_sizes.end()
+            let stream = trace_err!(device.inner.build_input_stream_raw(
+                &stream_config,
+                config.sample_format(),
                 {
-                    candidate_buffer_size = Some(preferred_buffer_size);
-                    buffer_size_score = 0;
-                } else {
-                    let min_dist_score = buffer_sizes.start() - preferred_buffer_size;
-                    let max_dist_score = preferred_buffer_size - buffer_sizes.end();
-                    if min_dist_score > max_dist_score {
-                        candidate_buffer_size = Some(*buffer_sizes.start());
-                        buffer_size_score = min_dist_score;
-                    } else {
-                        candidate_buffer_size = Some(*buffer_sizes.end());
-                        buffer_size_score = max_dist_score;
+                    let data_sender = data_sender.clone();
+                    move |data, _| {
+                        let mut data = if config.sample_format() == SampleFormat::F32 {
+                            data.bytes()
+                                .chunks_exact(4)
+                                .flat_map(|b| {
+                                    f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
+                                        .to_i16()
+                                        .to_ne_bytes()
+                                        .to_vec()
+                                })
+                                .collect()
+                        } else {
+                            data.bytes().to_vec()
+                        };
+
+                        if config.channels() == 1 && channels_count == 2 {
+                            data = data
+                                .chunks_exact(2)
+                                .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
+                                .collect()
+                        } else if config.channels() == 2 && channels_count == 1 {
+                            data = data
+                                .chunks_exact(4)
+                                .flat_map(|c| vec![c[0], c[1]])
+                                .collect()
+                        }
+
+                        data_sender.send(Ok(data)).ok();
+                    }
+                },
+                {
+                    let data_sender = data_sender.clone();
+                    move |e| {
+                        data_sender
+                            .send(fmt_e!("Error while recording audio: {}", e))
+                            .ok();
                     }
                 }
-            } else {
-                // if no preference, choose the smallest supported buffer size
-                candidate_buffer_size = Some(*buffer_sizes.start());
-                buffer_size_score = 0;
-            }
-        } else {
-            candidate_buffer_size = preferred_config.buffer_size;
-            buffer_size_score = u32::MAX;
-        };
+            ))?;
 
-        candidates.push((
-            AudioConfig {
-                channels_count: config_range.channels,
-                sample_rate: candidate_sample_rate,
-                buffer_size: candidate_buffer_size,
-                sample_format: candidate_sample_format,
-                buffer_range_multiplier: preferred_config.buffer_range_multiplier,
-            },
-            channels_score,
-            sample_format_score,
-            sample_rate_score,
-            buffer_size_score,
-        ));
-    }
+            trace_err!(stream.play())?;
 
-    candidates.sort_by(|(_, c1, sf1, sr1, bs1), (_, c2, sf2, sr2, bs2)| {
-        let res = c1.cmp(c2);
-        if res == Ordering::Equal {
-            let res = sf1.cmp(sf2);
-            if res == Ordering::Equal {
-                let res = sr1.cmp(sr2);
-                if res == Ordering::Equal {
-                    bs1.cmp(bs2)
-                } else {
-                    res
-                }
-            } else {
-                res
+            shutdown_receiver.recv().ok();
+
+            #[cfg(windows)]
+            if mute && device.device_type.is_output() {
+                set_mute_windows_device(&device, false).ok();
             }
-        } else {
-            res
+
+            Ok(vec![])
+        }
+    };
+
+    // use a std thread to store the stream object. The stream object must be destroyed on the same
+    // thread of creation.
+    thread::spawn(move || {
+        let res = thread_callback();
+        if res.is_err() {
+            data_sender.send(res).ok();
         }
     });
 
-    if let Some((audio_config, ..)) = candidates.into_iter().next() {
-        if audio_config != preferred_config {
-            warn!(
-                "Specified audio settings cannot be satisfied. Using the following settings: {:?}",
-                audio_config
+    while let Some(maybe_data) = data_receiver.recv().await {
+        let data = maybe_data?;
+        let mut buffer = sender.new_buffer(&(), data.len())?;
+        buffer.get_mut().extend(data);
+        sender.send_buffer(buffer).await.ok();
+    }
+
+    Ok(())
+}
+
+// Audio callback. This is designed to be as less complex as possible. Still, when needed, this
+// callback can render a fade-out autonomously.
+#[inline]
+pub fn get_next_frame_batch(
+    sample_buffer: &mut VecDeque<f32>,
+    channels_count: usize,
+    batch_frames_count: usize,
+) -> Vec<f32> {
+    if sample_buffer.len() / channels_count >= batch_frames_count {
+        let mut batch = sample_buffer
+            .drain(0..batch_frames_count * channels_count)
+            .collect::<Vec<_>>();
+
+        if sample_buffer.len() / channels_count < batch_frames_count {
+            // Render fade-out. It is completely contained in the current batch
+            for f in 0..batch_frames_count {
+                let volume = 1. - f as f32 / batch_frames_count as f32;
+                for c in 0..channels_count {
+                    batch[f * channels_count + c] *= volume;
+                }
+            }
+        }
+        // fade-ins and cross-fades are rendered in the receive loop directly inside sample_buffer.
+
+        batch
+    } else {
+        vec![0.; batch_frames_count * channels_count]
+    }
+}
+
+// The receive loop is resposible for ensuring smooth transitions in case of disruptions (buffer
+// underflow, overflow, packet loss). In case the computation takes too much time, the audio
+// callback will gracefully handle an interruption, and the callback timing and sound wave
+// continuity will not be affected.
+pub async fn receive_samples_loop(
+    mut receiver: StreamReceiver<()>,
+    sample_buffer: Arc<Mutex<VecDeque<f32>>>,
+    channels_count: usize,
+    batch_frames_count: usize,
+    average_buffer_frames_count: usize,
+) -> StrResult {
+    let mut recovery_sample_buffer = vec![];
+    loop {
+        let packet = receiver.recv().await?;
+        let new_samples = packet
+            .buffer
+            .chunks_exact(2)
+            .map(|c| i16::from_ne_bytes([c[0], c[1]]).to_f32())
+            .collect::<Vec<_>>();
+
+        let mut sample_buffer_ref = sample_buffer.lock();
+
+        if packet.had_packet_loss {
+            info!("Audio packet loss!");
+
+            if sample_buffer_ref.len() / channels_count < batch_frames_count {
+                sample_buffer_ref.clear();
+            } else {
+                // clear remaining samples
+                sample_buffer_ref.drain(batch_frames_count * channels_count..);
+            }
+
+            recovery_sample_buffer.clear();
+        }
+
+        if sample_buffer_ref.len() / channels_count < batch_frames_count {
+            recovery_sample_buffer.extend(sample_buffer_ref.drain(..));
+        }
+
+        if sample_buffer_ref.len() == 0 || packet.had_packet_loss {
+            recovery_sample_buffer.extend(&new_samples);
+
+            if recovery_sample_buffer.len() / channels_count
+                > average_buffer_frames_count + batch_frames_count
+            {
+                // Fade-in
+                for f in 0..batch_frames_count {
+                    let volume = f as f32 / batch_frames_count as f32;
+                    for c in 0..channels_count {
+                        recovery_sample_buffer[f * channels_count + c] *= volume;
+                    }
+                }
+
+                if packet.had_packet_loss
+                    && sample_buffer_ref.len() / channels_count == batch_frames_count
+                {
+                    // Add a fade-out to make a cross-fade.
+                    for f in 0..batch_frames_count {
+                        let volume = 1. - f as f32 / batch_frames_count as f32;
+                        for c in 0..channels_count {
+                            recovery_sample_buffer[f * channels_count + c] +=
+                                sample_buffer_ref[f * channels_count + c] * volume;
+                        }
+                    }
+
+                    sample_buffer_ref.clear();
+                }
+
+                sample_buffer_ref.extend(recovery_sample_buffer.drain(..));
+                info!("Audio recovered");
+            }
+        } else {
+            sample_buffer_ref.extend(&new_samples);
+        }
+
+        // todo: use smarter policy with EventTiming
+        let buffer_frames_size = sample_buffer_ref.len() / channels_count;
+        if buffer_frames_size > 2 * average_buffer_frames_count + batch_frames_count {
+            info!("Audio buffer overflow! size: {}", buffer_frames_size);
+
+            let drained_samples = sample_buffer_ref
+                .drain(0..(buffer_frames_size - average_buffer_frames_count) * channels_count)
+                .collect::<Vec<_>>();
+
+            // Render a cross-fade.
+            for f in 0..batch_frames_count {
+                let volume = f as f32 / batch_frames_count as f32;
+                for c in 0..channels_count {
+                    let index = f * channels_count + c;
+                    sample_buffer_ref[index] =
+                        sample_buffer_ref[index] * volume + drained_samples[index] * (1. - volume);
+                }
+            }
+        }
+    }
+}
+
+struct StreamingSource {
+    sample_buffer: Arc<Mutex<VecDeque<f32>>>,
+    current_batch: Vec<f32>,
+    current_batch_cursor: usize,
+    channels_count: usize,
+    sample_rate: u32,
+    batch_frames_count: usize,
+}
+
+impl Source for StreamingSource {
+    fn current_frame_len(&self) -> Option<usize> {
+        None
+    }
+
+    fn channels(&self) -> u16 {
+        self.channels_count as _
+    }
+
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+
+    fn total_duration(&self) -> Option<std::time::Duration> {
+        None
+    }
+}
+
+impl Iterator for StreamingSource {
+    type Item = f32;
+
+    #[inline]
+    fn next(&mut self) -> Option<f32> {
+        if self.current_batch_cursor == 0 {
+            self.current_batch = get_next_frame_batch(
+                &mut *self.sample_buffer.lock(),
+                self.channels_count,
+                self.batch_frames_count,
             );
         }
 
-        Ok(audio_config)
-    } else {
-        fmt_e!("No matching configuration found")
+        let sample = self.current_batch[self.current_batch_cursor];
+
+        self.current_batch_cursor =
+            (self.current_batch_cursor + 1) % (self.batch_frames_count * self.channels_count);
+
+        Some(sample)
     }
 }
 
-fn audio_config_to_cpal(config: &AudioConfig) -> StreamConfig {
-    StreamConfig {
-        channels: config.channels_count,
-        sample_rate: SampleRate(config.sample_rate),
-        buffer_size: if let Some(buffer_size) = config.buffer_size {
-            BufferSize::Fixed(buffer_size)
-        } else {
-            BufferSize::Default
-        },
-    }
-}
+pub async fn play_audio_loop(
+    device: AudioDevice,
+    channels_count: u16,
+    sample_rate: u32,
+    config: AudioConfig,
+    receiver: StreamReceiver<()>,
+) -> StrResult {
+    // Size of a chunk of frames. It corresponds to the duration if a fade-in/out in frames.
+    let batch_frames_count = sample_rate as usize * config.batch_ms as usize / 1000;
 
-pub struct AudioSession {
-    _stream: Stream,
-}
+    // Average buffer size in frames
+    let average_buffer_frames_count =
+        sample_rate as usize * config.average_buffering_ms as usize / 1000;
 
-impl AudioSession {
-    pub fn start_recording(
-        device_index: Option<u64>,
-        config: AudioConfig,
-        loopback: bool,
-        sender: tmpsc::UnboundedSender<Vec<u8>>,
-    ) -> StrResult<Self> {
-        let host = cpal::default_host();
-        let device = if let Some(device_index) = device_index {
-            let mut devices = trace_err!(if loopback {
-                host.output_devices()
-            } else {
-                host.input_devices()
-            })?;
+    let sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
 
-            if let Some(device) = devices.nth(device_index as _) {
-                device
-            } else {
-                return fmt_e!("Cannot find audio device at index {}", device_index);
-            }
-        } else if loopback {
-            trace_none!(host.default_output_device())?
-        } else {
-            trace_none!(host.default_input_device())?
-        };
+    // Store the stream in a thread (because !Send)
+    let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
+    thread::spawn({
+        let sample_buffer = sample_buffer.clone();
+        move || -> StrResult {
+            let (_stream, handle) = trace_err!(OutputStream::try_from_device(&device.inner))?;
 
-        let stream = trace_err!(device.build_input_stream_raw(
-            &audio_config_to_cpal(&config),
-            config.sample_format.to_cpal(),
-            move |data, _| {
-                sender.send(data.bytes().to_vec()).ok();
-            },
-            |e| warn!("Error while recording audio: {}", e),
-        ))?;
+            let source = StreamingSource {
+                sample_buffer,
+                current_batch: vec![],
+                current_batch_cursor: 0,
+                channels_count: channels_count as _,
+                sample_rate,
+                batch_frames_count,
+            };
+            trace_err!(handle.play_raw(source))?;
 
-        trace_err!(stream.play())?;
+            shutdown_receiver.recv().ok();
+            Ok(())
+        }
+    });
 
-        Ok(Self { _stream: stream })
-    }
-
-    pub fn start_audio_playing(
-        config: AudioConfig,
-        receiver: smpsc::Receiver<Vec<u8>>,
-    ) -> StrResult<Self> {
-        let host = cpal::default_host();
-        let device = trace_none!(host.default_output_device())?;
-
-        let mut sample_buffer_bytes = VecDeque::new();
-        let mut last_input_buffer_size = 0;
-        let stream = trace_err!(device.build_output_stream_raw(
-            &audio_config_to_cpal(&config),
-            config.sample_format.to_cpal(),
-            move |data, _| {
-                while let Ok(packet) = receiver.try_recv() {
-                    last_input_buffer_size = packet.len();
-
-                    sample_buffer_bytes.extend(packet);
-                }
-
-                let data_ref = data.bytes_mut();
-
-                if sample_buffer_bytes.len() >= data_ref.len() {
-                    data_ref.copy_from_slice(
-                        &sample_buffer_bytes
-                            .drain(0..data_ref.len())
-                            .collect::<Vec<_>>(),
-                    )
-                }
-
-                // todo: use smarter policy with EventTiming
-                if sample_buffer_bytes.len()
-                    > 2 * config.buffer_range_multiplier as usize * last_input_buffer_size
-                {
-                    sample_buffer_bytes.drain(
-                        0..(sample_buffer_bytes.len()
-                            - config.buffer_range_multiplier as usize * last_input_buffer_size),
-                    );
-                }
-            },
-            |e| warn!("Error while recording audio: {}", e),
-        ))?;
-
-        trace_err!(stream.play())?;
-
-        Ok(Self { _stream: stream })
-    }
+    receive_samples_loop(
+        receiver,
+        sample_buffer,
+        channels_count as _,
+        batch_frames_count,
+        average_buffer_frames_count,
+    )
+    .await
 }

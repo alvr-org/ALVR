@@ -221,7 +221,7 @@ VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)
 	, m_renderHeight(height)
-	, m_bitrateInMBits(Settings::Instance().mEncodeBitrate.toMiBits())
+	, m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs)
 {
 }
 
@@ -250,45 +250,6 @@ void VideoEncoderVCE::Initialize()
 	m_converter->Start();
 
 	Debug("Successfully initialized VideoEncoderVCE.\n");
-}
-
-void VideoEncoderVCE::Reconfigure(int refreshRate, int renderWidth, int renderHeight, int bitrateInMBits)
-{
-	if ((refreshRate != 0 && refreshRate != m_refreshRate) ||
-		(renderWidth != 0 && renderWidth != m_renderWidth) ||
-		(renderHeight != 0 && renderHeight != m_renderHeight) ||
-		(bitrateInMBits != 0 && bitrateInMBits != m_bitrateInMBits)) {
-
-		Debug("VideoEncoderVCE: Start to reconfigure. (%dHz %dx%d %dMbits) -> (%dHz %dx%d %dMbits)\n"
-			, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits
-			, refreshRate, renderWidth, renderHeight, bitrateInMBits
-		);
-
-		try {
-			Shutdown();
-
-			if (refreshRate != 0) {
-				m_refreshRate = refreshRate;
-			}
-			if (renderWidth != 0) {
-				m_renderWidth = renderWidth;
-			}
-			if (renderHeight != 0) {
-				m_renderHeight = renderHeight;
-			}
-			if (bitrateInMBits != 0) {
-				m_bitrateInMBits = bitrateInMBits;
-			}
-
-			Initialize();
-		}
-		catch (Exception &e) {
-			Error("VideoEncoderVCE: Failed to reconfigure. %hs\n"
-				, e.what()
-			);
-			return;
-		}
- 	}
 }
 
 void VideoEncoderVCE::Shutdown()

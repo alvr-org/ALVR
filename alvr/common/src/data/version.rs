@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use semver::Version;
+pub use semver::Version;
 
 pub const ALVR_NAME: &str = "ALVR";
 

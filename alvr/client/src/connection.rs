@@ -14,6 +14,7 @@ use serde_json as json;
 use settings_schema::Switch;
 use std::{
     future, slice,
+    str::FromStr,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc as smpsc, Arc,
@@ -182,20 +183,26 @@ async fn connection_pipeline(
     )
     .await?;
 
-    if let Err(e) = control_sender
-        .lock()
-        .await
-        .send(&ClientControlPacket::StreamReady)
-        .await
+    let version = Version::from_str(&config_packet.reserved).ok();
+    if version
+        .map(|v| v >= Version::from((15, 1, 0)))
+        .unwrap_or(false)
     {
-        info!("Server disconnected. Cause: {}", e);
-        set_loading_message(
-            &*java_vm,
-            &*activity_ref,
-            hostname,
-            SERVER_DISCONNECTED_MESSAGE,
-        )?;
-        return Ok(());
+        if let Err(e) = control_sender
+            .lock()
+            .await
+            .send(&ClientControlPacket::StreamReady)
+            .await
+        {
+            info!("Server disconnected. Cause: {}", e);
+            set_loading_message(
+                &*java_vm,
+                &*activity_ref,
+                hostname,
+                SERVER_DISCONNECTED_MESSAGE,
+            )?;
+            return Ok(());
+        }
     }
 
     let mut stream_socket = tokio::select! {

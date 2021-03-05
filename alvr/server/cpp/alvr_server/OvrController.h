@@ -1,12 +1,8 @@
 #pragma once
 #pragma once
 #include <openvr_driver.h>
-#include <string>
-#include "Logger.h"
-#include "ClientConnection.h"
-#include "packet_types.h"
-//#include "FreePIE.h"
-#include <openvr_math.h>
+
+#include "ALVR-common/packet_types.h"
 
 class OvrController : public vr::ITrackedDeviceServerDriver
 {

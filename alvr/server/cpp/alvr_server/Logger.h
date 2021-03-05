@@ -1,11 +1,6 @@
 #pragma once
 
-#include <iostream>
-#include <fstream>
-#include "exception.h"
-#include <wrl.h>
-
-#include "bindings.h"
+#include "ALVR-common/exception.h"
 
 Exception MakeException(const char *format, ...);
 

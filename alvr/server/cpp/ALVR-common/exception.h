@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <stdexcept>
 
 class Exception : public std::exception {
 public:
@@ -10,7 +11,7 @@ public:
 	Exception() {
 	}
 
-	virtual const char *what() {
+	const char *what() const noexcept override {
 		return m_what.c_str();
 	}
 

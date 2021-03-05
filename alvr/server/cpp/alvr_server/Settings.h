@@ -1,9 +1,7 @@
 #pragma once
 
-#include <openvr_driver.h>
-#include "common-utils.h"
-#include "Utils.h"
-#include "FFR.h"
+#include <string>
+#include "ALVR-common/packet_types.h"
 
 class Settings
 {
@@ -100,4 +98,3 @@ public:
 	
 	int m_controllerMode = 0;
 };
-

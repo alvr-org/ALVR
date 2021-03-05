@@ -1,7 +1,9 @@
 #include "Logger.h"
 
-#include "Utils.h"
+#include <cstdarg>
+
 #include "driverlog.h"
+#include "bindings.h"
 
 void _log(const char *format, va_list args, void (*logFn)(const char *))
 {

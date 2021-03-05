@@ -1,8 +1,5 @@
 #pragma once
-#include "threadtools.h"
-#include "Logger.h"
-#include "openvr_driver.h"
-#include "Utils.h"
+#include "shared/threadtools.h"
 
 // VSync Event Thread
 

@@ -1,26 +1,22 @@
 #pragma once
-#include <d3d11_1.h>
-#include <wincodec.h>
-#include <wincodecsdk.h>
 
-#include "openvr_driver.h"
-#include "sharedstate.h"
-#include "Logger.h"
-#include "ClientConnection.h"
-#include "Utils.h"
-#include "FrameRender.h"
-#include "Settings.h"
+#include <openvr_driver.h>
+#include <memory>
 
-#include "packet_types.h"
-#include "VideoEncoder.h"
-#include "VideoEncoderNVENC.h"
-#include "VideoEncoderVCE.h"
-#include "IDRScheduler.h"
-#include "CEncoder.h"
-#include "VSyncThread.h"
-#include "OvrDisplayComponent.h"
-#include "OvrDirectModeComponent.h"
-#include "OvrController.h"
+#include "ALVR-common/packet_types.h"
+
+class ClientConnection;
+class VSyncThread;
+
+class OvrController;
+class OvrController;
+
+class OvrDisplayComponent;
+class CEncoder;
+#ifdef WIN32
+class CD3DRender;
+class OvrDirectModeComponent;
+#endif
 
 //-----------------------------------------------------------------------------
 // Purpose:
@@ -32,7 +28,7 @@ public:
 
 	virtual ~OvrHmd();
 
-	std::string GetSerialNumber() const { return Settings::Instance().mSerialNumber; }
+	std::string GetSerialNumber() const;
 
 	virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId);
 
@@ -82,7 +78,9 @@ private:
 
 	std::wstring m_adapterName;
 
+#ifdef WIN32
 	std::shared_ptr<CD3DRender> m_D3DRender;
+#endif
 	std::shared_ptr<CEncoder> m_encoder;
 	std::shared_ptr<VSyncThread> m_VSyncThread;
 
@@ -90,5 +88,7 @@ private:
 	std::shared_ptr<OvrController> m_rightController;
 
 	std::shared_ptr<OvrDisplayComponent> m_displayComponent;
+#ifdef WIN32
 	std::shared_ptr<OvrDirectModeComponent> m_directModeComponent;
+#endif
 };

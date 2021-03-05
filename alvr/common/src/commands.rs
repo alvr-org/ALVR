@@ -30,7 +30,10 @@ pub fn installer_path() -> PathBuf {
 ///////////// openvrpaths.vrpath interop ///////////////
 
 pub fn openvr_source_file_path() -> StrResult<PathBuf> {
+    #[cfg(windows)]
     let path = trace_none!(dirs::cache_dir())?.join("openvr/openvrpaths.vrpath");
+    #[cfg(target_os = "linux")]
+    let path = trace_none!(dirs::config_dir())?.join("openvr/openvrpaths.vrpath");
 
     if path.exists() {
         Ok(path)

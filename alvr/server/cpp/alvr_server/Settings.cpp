@@ -1,11 +1,11 @@
 #include "Settings.h"
 #include "Logger.h"
-#include "ipctools.h"
 #define PICOJSON_USE_INT64
-#include <picojson.h>
+#include "include/picojson.h"
 #include <string>
 #include <fstream>
 #include <streambuf>
+#include "bindings.h"
 
 using namespace std;
 
@@ -14,7 +14,7 @@ extern uint64_t g_DriverTestMode;
 Settings Settings::m_Instance;
 
 Settings::Settings()
-	: m_EnableOffsetPos(false), m_loaded(false)
+	: m_loaded(false), m_EnableOffsetPos(false)
 {
 	m_OffsetPos[0] = 0.0f;
 	m_OffsetPos[1] = 0.0f;

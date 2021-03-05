@@ -1,20 +1,13 @@
 #pragma once
 
-#include <iostream>
-#include <string>
-#include <sstream>
-#include <vector>
-#include <algorithm>
-#include "threadtools.h"
-#include "Logger.h"
-#include "Utils.h"
-#include "packet_types.h"
-#include "Settings.h"
-#include "Statistics.h"
+#include <functional>
+#include <memory>
+#include <fstream>
+#include <mutex>
 
-extern "C" {
-#include "reedsolomon/rs.h"
-};
+#include "ALVR-common/packet_types.h"
+
+class Statistics;
 
 class ClientConnection {
 public:
@@ -53,7 +46,7 @@ private:
 	TrackingInfo m_TrackingInfo;
 
 	uint64_t m_TimeDiff = 0;
-	CRITICAL_SECTION m_CS;
+	std::mutex m_CS;
 
 	TimeSync m_reportedStatistics;
 	uint64_t m_lastFecFailure = 0;

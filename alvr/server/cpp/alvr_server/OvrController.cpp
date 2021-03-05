@@ -1,9 +1,16 @@
 #include "OvrController.h"
 
+#include <algorithm>
+#include <cstring>
+
+#include "Settings.h"
+#include "Utils.h"
+#include "include/openvr_math.h"
+#include "Logger.h"
 
 OvrController::OvrController(bool isLeftHand, int index)
-	: m_isLeftHand(isLeftHand)
-	, m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
+	: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
+	, m_isLeftHand(isLeftHand)
 	, m_index(index)
 {
 	double rightHandSignFlip = isLeftHand ? 1. : -1.;

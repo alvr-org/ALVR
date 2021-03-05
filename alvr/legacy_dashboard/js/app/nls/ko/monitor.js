@@ -42,8 +42,8 @@ define({
     "fecFailureInSecond": "Fec 실패 / s",
     "clientFPS": "클라이언트 FPS",
     "serverFPS": "서버 FPS",
-    "packets": "패킷",
-    "packetss": "패킷 / s",
+    "packets": "Packets",
+    "packetss": "Packets / s",
     // Logging tab
     "logging": "로깅",
     // validation errors

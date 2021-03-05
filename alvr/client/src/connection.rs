@@ -182,6 +182,22 @@ async fn connection_pipeline(
     )
     .await?;
 
+    if let Err(e) = control_sender
+        .lock()
+        .await
+        .send(&ClientControlPacket::StreamReady)
+        .await
+    {
+        info!("Server disconnected. Cause: {}", e);
+        set_loading_message(
+            &*java_vm,
+            &*activity_ref,
+            hostname,
+            SERVER_DISCONNECTED_MESSAGE,
+        )?;
+        return Ok(());
+    }
+
     let mut stream_socket = tokio::select! {
         res = stream_socket_builder.accept_from_server(
             server_ip,

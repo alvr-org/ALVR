@@ -388,6 +388,16 @@ async fn connection_pipeline() -> StrResult {
         .send(&ServerControlPacket::StartStream)
         .await?;
 
+    match control_receiver.recv().await {
+        Ok(ClientControlPacket::StreamReady) => {}
+        Ok(_) => {
+            return fmt_e!("Got unexpected packet waiting for stream ack");
+        }
+        Err(e) => {
+            return fmt_e!("Error while waiting for stream ack: {}", e);
+        }
+    }
+
     let settings = SESSION_MANAGER.lock().get().to_settings();
 
     let mut stream_socket = tokio::select! {

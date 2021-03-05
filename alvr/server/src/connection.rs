@@ -391,7 +391,7 @@ async fn connection_pipeline() -> StrResult {
     let settings = SESSION_MANAGER.lock().get().to_settings();
 
     let mut stream_socket = tokio::select! {
-        res = StreamSocket::connect_to_client(
+        res = StreamSocketBuilder::connect_to_client(
             client_ip,
             settings.connection.stream_port,
             settings.connection.stream_protocol,

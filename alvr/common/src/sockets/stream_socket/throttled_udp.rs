@@ -125,7 +125,12 @@ pub async fn connect_to_client(
     ))
 }
 
-pub async fn connect_to_server(
+pub async fn listen_for_server(port: u16) -> StrResult<UdpSocket> {
+    trace_err!(UdpSocket::bind((LOCAL_IP, port)).await)
+}
+
+pub async fn accept_from_server(
+    socket: UdpSocket,
     server_ip: IpAddr,
     port: u16,
 ) -> StrResult<(
@@ -133,7 +138,6 @@ pub async fn connect_to_server(
     ThrottledUdpStreamReceiveSocket,
 )> {
     let server_addr: SocketAddr = (server_ip, port).into();
-    let socket = trace_err!(UdpSocket::bind((LOCAL_IP, port)).await)?;
     trace_err!(socket.connect(server_addr).await)?;
 
     let rx = Arc::new(socket);

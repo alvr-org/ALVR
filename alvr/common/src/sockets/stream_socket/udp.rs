@@ -32,12 +32,16 @@ pub struct UdpStreamReceiveSocket {
     pub inner: SplitStream<UdpFramed<LDC>>,
 }
 
+pub async fn bind(port: u16) -> StrResult<UdpSocket> {
+    trace_err!(UdpSocket::bind((LOCAL_IP, port)).await)
+}
+
 pub async fn connect(
+    socket: UdpSocket,
     peer_ip: IpAddr,
     port: u16,
 ) -> StrResult<(UdpStreamSendSocket, UdpStreamReceiveSocket)> {
     let peer_addr = (peer_ip, port).into();
-    let socket = trace_err!(UdpSocket::bind((LOCAL_IP, port)).await)?;
     let socket = UdpFramed::new(socket, LDC::new());
     let (send_socket, receive_socket) = socket.split();
 

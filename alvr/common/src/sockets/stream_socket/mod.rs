@@ -21,6 +21,7 @@ use std::{
 };
 use tcp::{TcpStreamReceiveSocket, TcpStreamSendSocket};
 use throttled_udp::{ThrottledUdpStreamReceiveSocket, ThrottledUdpStreamSendSocket};
+use tokio::net;
 use tokio::sync::{mpsc, Mutex};
 use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 
@@ -198,59 +199,46 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
     }
 }
 
-pub struct StreamSocket {
-    send_socket: StreamSendSocket,
-    receive_socket: StreamReceiveSocket,
-    packet_queues: Arc<Mutex<HashMap<StreamId, mpsc::UnboundedSender<BytesMut>>>>,
+pub enum StreamSocketBuilder {
+    Tcp(net::TcpListener),
+    Udp(net::UdpSocket),
+    ThrottledUdp(net::UdpSocket),
 }
 
-impl StreamSocket {
-    pub async fn request_stream<T>(&self, stream_id: StreamId) -> StrResult<StreamSender<T>> {
-        Ok(StreamSender {
-            socket: self.send_socket.clone(),
-            stream_id,
-            next_packet_index: 0,
-            _phantom: PhantomData,
-        })
-    }
-
-    pub async fn subscribe_to_stream<T>(
-        &mut self,
-        stream_id: StreamId,
-    ) -> StrResult<StreamReceiver<T>> {
-        let (enqueuer, dequeuer) = mpsc::unbounded_channel();
-        self.packet_queues.lock().await.insert(stream_id, enqueuer);
-
-        Ok(StreamReceiver {
-            receiver: StreamReceiverType::Queue(dequeuer),
-            next_packet_index: 0,
-            _phantom: PhantomData,
-        })
-    }
-
-    pub async fn connect_to_server(
-        server_ip: IpAddr,
+impl StreamSocketBuilder {
+    pub async fn listen_for_server(
         port: u16,
         stream_socket_config: SocketProtocol,
     ) -> StrResult<Self> {
-        let (send_socket, receive_socket) = match stream_socket_config {
-            SocketProtocol::Udp => {
-                let (send_socket, receive_socket) = udp::connect(server_ip, port).await?;
+        Ok(match stream_socket_config {
+            SocketProtocol::Udp => StreamSocketBuilder::Udp(udp::bind(port).await?),
+            SocketProtocol::Tcp => StreamSocketBuilder::Tcp(tcp::listen_for_server(port).await?),
+            SocketProtocol::ThrottledUdp { .. } => {
+                StreamSocketBuilder::ThrottledUdp(throttled_udp::listen_for_server(port).await?)
+            }
+        })
+    }
+
+    pub async fn accept_from_server(self, server_ip: IpAddr, port: u16) -> StrResult<StreamSocket> {
+        let (send_socket, receive_socket) = match self {
+            StreamSocketBuilder::Udp(socket) => {
+                let (send_socket, receive_socket) = udp::connect(socket, server_ip, port).await?;
                 (
                     StreamSendSocket::Udp(send_socket),
                     StreamReceiveSocket::Udp(receive_socket),
                 )
             }
-            SocketProtocol::Tcp => {
-                let (send_socket, receive_socket) = tcp::connect_to_server(server_ip, port).await?;
+            StreamSocketBuilder::Tcp(listener) => {
+                let (send_socket, receive_socket) =
+                    tcp::accept_from_server(listener, server_ip).await?;
                 (
                     StreamSendSocket::Tcp(send_socket),
                     StreamReceiveSocket::Tcp(receive_socket),
                 )
             }
-            SocketProtocol::ThrottledUdp { .. } => {
+            StreamSocketBuilder::ThrottledUdp(socket) => {
                 let (send_socket, receive_socket) =
-                    throttled_udp::connect_to_server(server_ip, port).await?;
+                    throttled_udp::accept_from_server(socket, server_ip, port).await?;
                 (
                     StreamSendSocket::ThrottledUdp(send_socket),
                     StreamReceiveSocket::ThrottledUdp(receive_socket),
@@ -258,7 +246,7 @@ impl StreamSocket {
             }
         };
 
-        Ok(Self {
+        Ok(StreamSocket {
             send_socket,
             receive_socket,
             packet_queues: Arc::new(Mutex::new(HashMap::new())),
@@ -270,10 +258,11 @@ impl StreamSocket {
         port: u16,
         protocol: SocketProtocol,
         video_byterate: u32,
-    ) -> StrResult<Self> {
+    ) -> StrResult<StreamSocket> {
         let (send_socket, receive_socket) = match protocol {
             SocketProtocol::Udp => {
-                let (send_socket, receive_socket) = udp::connect(client_ip, port).await?;
+                let sock = udp::bind(port).await?;
+                let (send_socket, receive_socket) = udp::connect(sock, client_ip, port).await?;
                 (
                     StreamSendSocket::Udp(send_socket),
                     StreamReceiveSocket::Udp(receive_socket),
@@ -301,10 +290,41 @@ impl StreamSocket {
             }
         };
 
-        Ok(Self {
+        Ok(StreamSocket {
             send_socket,
             receive_socket,
             packet_queues: Arc::new(Mutex::new(HashMap::new())),
+        })
+    }
+}
+
+pub struct StreamSocket {
+    send_socket: StreamSendSocket,
+    receive_socket: StreamReceiveSocket,
+    packet_queues: Arc<Mutex<HashMap<StreamId, mpsc::UnboundedSender<BytesMut>>>>,
+}
+
+impl StreamSocket {
+    pub async fn request_stream<T>(&self, stream_id: StreamId) -> StrResult<StreamSender<T>> {
+        Ok(StreamSender {
+            socket: self.send_socket.clone(),
+            stream_id,
+            next_packet_index: 0,
+            _phantom: PhantomData,
+        })
+    }
+
+    pub async fn subscribe_to_stream<T>(
+        &mut self,
+        stream_id: StreamId,
+    ) -> StrResult<StreamReceiver<T>> {
+        let (enqueuer, dequeuer) = mpsc::unbounded_channel();
+        self.packet_queues.lock().await.insert(stream_id, enqueuer);
+
+        Ok(StreamReceiver {
+            receiver: StreamReceiverType::Queue(dequeuer),
+            next_packet_index: 0,
+            _phantom: PhantomData,
         })
     }
 

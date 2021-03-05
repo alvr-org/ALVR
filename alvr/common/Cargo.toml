@@ -1,6 +1,6 @@
 [package]
 name = "alvr_common"
-version = "15.0.0"
+version = "15.1.0"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"

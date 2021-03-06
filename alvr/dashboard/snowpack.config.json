@@ -1,7 +1,11 @@
 {
     "mount": {
         "src": "/",
-        "static": "/"
+        "static": {
+            "url": "/",
+            "static": true,
+            "resolve": false
+        }
     },
     "plugins": ["@snowpack/plugin-react-refresh", "@snowpack/plugin-typescript"]
 }

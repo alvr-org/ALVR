@@ -4,6 +4,7 @@
     "author": "alvr-org",
     "license": "MIT",
     "dependencies": {
+        "fast-xml-parser": "3",
         "react": "17",
         "react-dom": "17"
     },

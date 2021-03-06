@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
-    <Monitor name="Pannello di controllo">
-        <Connection name="Connessione">
-            <NewClients name="Nuovi client" />
+    <Monitor val="Pannello di controllo">
+        <Connection val="Connessione">
+            <NewClients val="Nuovi client" />
         </Connection>
     </Monitor>
 </root>

@@ -399,7 +399,7 @@ async fn connection_pipeline() -> StrResult {
         .unwrap_or(false)
     {
         match control_receiver.recv().await {
-            Ok(ClientControlPacket::StreamReady) => {}
+            Ok(ClientControlPacket::Reserved(data)) if data == "StreamReady" => {}
             Ok(_) => {
                 return fmt_e!("Got unexpected packet waiting for stream ack");
             }

@@ -76,5 +76,4 @@ pub enum ClientControlPacket {
     KeepAlive,
     Reserved(String),
     ReservedBuffer(Vec<u8>),
-    StreamReady,
 }

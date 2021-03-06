@@ -191,7 +191,7 @@ async fn connection_pipeline(
         if let Err(e) = control_sender
             .lock()
             .await
-            .send(&ClientControlPacket::StreamReady)
+            .send(&ClientControlPacket::Reserved("StreamReady".into()))
             .await
         {
             info!("Server disconnected. Cause: {}", e);

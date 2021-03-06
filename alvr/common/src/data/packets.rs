@@ -71,6 +71,7 @@ pub struct PlayspaceSyncPacket {
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
+    StreamReady,
     PlayspaceSync(PlayspaceSyncPacket),
     RequestIDR,
     KeepAlive,

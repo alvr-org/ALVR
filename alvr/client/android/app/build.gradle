@@ -10,7 +10,7 @@ android {
         minSdkVersion 24
         targetSdkVersion 30
         versionCode 50
-        versionName "15.0.0"
+        versionName "15.1.0"
         externalNativeBuild {
             cmake {
                 cppFlags "-std=c++17 -fexceptions -frtti"

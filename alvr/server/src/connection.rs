@@ -12,6 +12,7 @@ use std::{
     future,
     net::IpAddr,
     process::Command,
+    str::FromStr,
     sync::{mpsc as smpsc, Arc},
     thread,
     time::Duration,
@@ -62,6 +63,7 @@ async fn client_discovery() -> StrResult {
 
 struct ConnectionInfo {
     client_ip: IpAddr,
+    version: Option<Version>,
     control_sender: ControlSocketSender<ServerControlPacket>,
     control_receiver: ControlSocketReceiver<ClientControlPacket>,
 }
@@ -166,6 +168,8 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         0
     };
 
+    let version = Version::from_str(&headset_info.reserved).ok();
+
     let client_config = ClientConfigPacket {
         session_desc: trace_err!(serde_json::to_string(SESSION_MANAGER.lock().get()))?,
         dashboard_url,
@@ -173,7 +177,7 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         eye_resolution_height: video_eye_height,
         fps,
         game_audio_sample_rate,
-        reserved: "".into(),
+        reserved: format!("{}", *ALVR_VERSION),
     };
 
     let (mut control_sender, control_receiver) =
@@ -322,6 +326,7 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
 
     Ok(ConnectionInfo {
         client_ip,
+        version,
         control_sender,
         control_receiver,
     })
@@ -377,6 +382,7 @@ async fn connection_pipeline() -> StrResult {
 
     let ConnectionInfo {
         client_ip,
+        version,
         control_sender,
         mut control_receiver,
     } = connection_info;
@@ -388,10 +394,25 @@ async fn connection_pipeline() -> StrResult {
         .send(&ServerControlPacket::StartStream)
         .await?;
 
+    if version
+        .map(|v| v >= Version::from((15, 1, 0)))
+        .unwrap_or(false)
+    {
+        match control_receiver.recv().await {
+            Ok(ClientControlPacket::StreamReady) => {}
+            Ok(_) => {
+                return fmt_e!("Got unexpected packet waiting for stream ack");
+            }
+            Err(e) => {
+                return fmt_e!("Error while waiting for stream ack: {}", e);
+            }
+        }
+    }
+
     let settings = SESSION_MANAGER.lock().get().to_settings();
 
     let mut stream_socket = tokio::select! {
-        res = StreamSocket::connect_to_client(
+        res = StreamSocketBuilder::connect_to_client(
             client_ip,
             settings.connection.stream_port,
             settings.connection.stream_protocol,

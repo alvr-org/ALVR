@@ -191,7 +191,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
             recommended_eye_height: result.recommendedEyeHeight as _,
             available_refresh_rates,
             preferred_refresh_rate,
-            reserved: "".into(),
+            reserved: format!("{}", *ALVR_VERSION),
         };
 
         let private_identity = PrivateIdentity {

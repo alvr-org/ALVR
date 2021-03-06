@@ -17,19 +17,21 @@ use tokio_util::codec::Framed;
 pub type TcpStreamSendSocket = Arc<Mutex<SplitSink<Framed<TcpStream, LDC>, Bytes>>>;
 pub type TcpStreamReceiveSocket = SplitStream<Framed<TcpStream, LDC>>;
 
-pub async fn connect_to_server(
+pub async fn listen_for_server(port: u16) -> StrResult<TcpListener> {
+    trace_err!(TcpListener::bind((LOCAL_IP, port)).await)
+}
+
+pub async fn accept_from_server(
+    listener: TcpListener,
     server_ip: IpAddr,
-    port: u16,
 ) -> StrResult<(TcpStreamSendSocket, TcpStreamReceiveSocket)> {
-    let listener = trace_err!(TcpListener::bind((LOCAL_IP, port)).await)?;
     let (socket, server_address) = trace_err!(listener.accept().await)?;
 
     if server_address.ip() != server_ip {
         return fmt_e!(
-            "Connected to wrong client: {} != {}:{}",
+            "Connected to wrong client: {} != {}",
             server_address,
             server_ip,
-            port,
         );
     }
 

@@ -1,7 +1,7 @@
 use crate::{audio, MAYBE_LEGACY_SENDER};
 use alvr_common::{
     data::*,
-    sockets::{ConnectionResult, AUDIO, LEGACY},
+    sockets::{ConnectionResult, StreamSocketBuilder, AUDIO, LEGACY},
     *,
 };
 use futures::future::BoxFuture;
@@ -12,9 +12,9 @@ use jni::{
 use nalgebra::{Point2, Point3, Quaternion, UnitQuaternion};
 use serde_json as json;
 use settings_schema::Switch;
-use sockets::StreamSocket;
 use std::{
     future, slice,
+    str::FromStr,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc as smpsc, Arc,
@@ -177,11 +177,38 @@ async fn connection_pipeline(
         session_desc.to_settings()
     };
 
+    let stream_socket_builder = StreamSocketBuilder::listen_for_server(
+        settings.connection.stream_port,
+        settings.connection.stream_protocol,
+    )
+    .await?;
+
+    let version = Version::from_str(&config_packet.reserved).ok();
+    if version
+        .map(|v| v >= Version::from((15, 1, 0)))
+        .unwrap_or(false)
+    {
+        if let Err(e) = control_sender
+            .lock()
+            .await
+            .send(&ClientControlPacket::StreamReady)
+            .await
+        {
+            info!("Server disconnected. Cause: {}", e);
+            set_loading_message(
+                &*java_vm,
+                &*activity_ref,
+                hostname,
+                SERVER_DISCONNECTED_MESSAGE,
+            )?;
+            return Ok(());
+        }
+    }
+
     let mut stream_socket = tokio::select! {
-        res = StreamSocket::connect_to_server(
+        res = stream_socket_builder.accept_from_server(
             server_ip,
             settings.connection.stream_port,
-            settings.connection.stream_protocol,
         ) => res?,
         _ = time::sleep(Duration::from_secs(5)) => {
             return fmt_e!("Timeout while setting up streams");

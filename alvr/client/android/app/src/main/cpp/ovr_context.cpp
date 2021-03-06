@@ -587,9 +587,6 @@ OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
         LOGE("Invalid ANativeWindow");
     }
 
-    int CpuLevel = 3;
-    int GpuLevel = 3;
-    vrapi_SetClockLevels(g_ctx.Ovr, CpuLevel, GpuLevel);
     vrapi_SetPerfThread(g_ctx.Ovr, VRAPI_PERF_THREAD_TYPE_MAIN, gettid());
 
     vrapi_SetTrackingSpace(g_ctx.Ovr, g_ctx.m_UsedTrackingSpace);

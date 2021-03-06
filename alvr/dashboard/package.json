@@ -3,6 +3,10 @@
     "version": "1.0.0",
     "author": "alvr-org",
     "license": "MIT",
+    "scripts": {
+        "dev": "snowpack dev",
+        "build": "snowpack build"
+    },
     "dependencies": {
         "fast-xml-parser": "3",
         "react": "17",

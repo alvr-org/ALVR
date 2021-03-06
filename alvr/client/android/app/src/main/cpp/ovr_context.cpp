@@ -120,9 +120,10 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
 
     g_ctx.openDashboard = [jDashboardCallback]() {
         JNIEnv *env;
-        jint res = g_ctx.java.Vm->GetEnv((void **) &env, JNI_VERSION_1_6);
+        jint res = g_ctx.java.Vm->AttachCurrentThread(&env, nullptr);
         if (res == JNI_OK) {
             env->CallVoidMethod(g_ctx.java.ActivityObject, jDashboardCallback);
+            g_ctx.java.Vm->DetachCurrentThread();
         } else {
             LOGE("Failed to get JNI environment for dashboard");
         }

@@ -9,7 +9,7 @@
 // 
 // MIT license 
 // 
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2018 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,8 +30,8 @@
 // THE SOFTWARE.
 //
 
-#ifndef __AMFThread_h__
-#define __AMFThread_h__
+#ifndef AMF_Thread_h
+#define AMF_Thread_h
 #pragma once
 
 #include <cassert>
@@ -39,6 +39,10 @@
 #include <vector>
 
 #include "../include/core/Platform.h"
+
+#ifndef _WIN32
+#include <pthread.h>
+#endif
 
 extern "C"
 {
@@ -53,6 +57,7 @@ extern "C"
     amf_handle  AMF_CDECL_CALL amf_create_critical_section();
     bool        AMF_CDECL_CALL amf_delete_critical_section(amf_handle cs);
     bool        AMF_CDECL_CALL amf_enter_critical_section(amf_handle cs);
+    bool        AMF_CDECL_CALL amf_wait_critical_section(amf_handle cs, amf_ulong ulTimeout);
     bool        AMF_CDECL_CALL amf_leave_critical_section(amf_handle cs);
     // threads: event
     amf_handle  AMF_CDECL_CALL amf_create_event(bool bInitiallyOwned, bool bManualReset, const wchar_t* pName);
@@ -87,6 +92,12 @@ extern "C"
     amf_handle  AMF_CDECL_CALL amf_load_library(const wchar_t* filename);
     void*       AMF_CDECL_CALL amf_get_proc_address(amf_handle module, const char* procName);
     int         AMF_CDECL_CALL amf_free_library(amf_handle module);
+
+#if defined(__APPLE__)
+    amf_uint64 AMF_STD_CALL get_current_thread_id();
+#else
+    amf_uint32 AMF_STD_CALL get_current_thread_id();
+#endif
 
 #if !defined(METRO_APP)
     // virtual memory
@@ -127,6 +138,7 @@ namespace amf
         virtual bool Unlock();
         bool SetEvent();
         bool ResetEvent();
+        amf_handle GetNative() { return m_hSyncObject; }
     };
     //----------------------------------------------------------------
     class AMFMutex : public AMFSyncBase
@@ -637,6 +649,10 @@ namespace amf
         {}
         amf_pts Wait(amf_pts waittime)
         {
+            if (waittime < 0)
+            {
+                return 0;
+            }
             m_bCancel = false;
             amf_pts start = amf_high_precision_clock();
             amf_pts waited = 0;
@@ -656,6 +672,34 @@ namespace amf
             }
             return waited;
         }
+        amf_pts WaitEx(amf_pts waittime)
+        {
+            m_bCancel = false;
+            amf_pts start = amf_high_precision_clock();
+            amf_pts waited = 0;
+            int count = 0;
+            while (!m_bCancel && waited < waittime)
+            {
+                if (waittime - waited < 2 * AMF_SECOND / 1000)// last 2 ms burn CPU for precision
+                {
+                    for (int i = 0; i < 1000; i++)
+                    {
+                        count++;
+#ifdef _WIN32
+                        YieldProcessor();
+#endif
+                    }
+
+                }
+                else if (!m_WaitEvent.LockTimeout(1))
+                {
+                    	break;
+                }
+
+                waited = amf_high_precision_clock() - start;
+            }
+            return waited;
+        }
         void Cancel()
         {
             m_bCancel = true;
@@ -666,4 +710,4 @@ namespace amf
     };
     //----------------------------------------------------------------
 } // namespace amf
-#endif // __AMFThread_h__
+#endif // AMF_Thread_h

@@ -9,7 +9,7 @@
 // 
 // MIT license 
 // 
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2018 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,8 +37,31 @@
 #include <stdarg.h>
 #include <locale>
 #include <locale.h>
+#include <fstream>
+#include <string>
+#include <wchar.h>
+#include <stdarg.h>
+#if defined(__ANDROID__)
+    #include <codecvt>
+#endif
 
 #pragma warning(disable: 4996)
+
+#if defined(__linux) || defined(__APPLE__)
+extern "C"
+{
+    extern int vscwprintf(const wchar_t* p_fmt, va_list p_args);
+    extern int vscprintf(const char* p_fmt, va_list p_args);
+}
+#endif
+
+#ifdef _MSC_VER
+    #define snprintf _snprintf
+    #define vscprintf _vscprintf
+    #define vscwprintf _vscwprintf  //  Count chars without writing to string
+    #define vswprintf _vsnwprintf
+#endif
+
 
 using namespace amf;
 
@@ -213,6 +236,9 @@ amf_string AMF_STD_CALL amf::amf_from_unicode_to_multibyte(const amf_wstring& st
     const wchar_t* pwBuff = str.c_str();
 
 #if defined(__ANDROID__)
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    result.assign(converter.to_bytes(pwBuff).c_str());
+/*
     int Utf8BuffSize = str.length();
     if(0 == Utf8BuffSize)
     {
@@ -234,9 +260,11 @@ amf_string AMF_STD_CALL amf::amf_from_unicode_to_multibyte(const amf_wstring& st
         // temp replacement
         Utf8BuffSize += written;
     }
+    result.resize(Utf8BuffSize);
+*/
 #else
     amf_size Utf8BuffSize = wcstombs(NULL, pwBuff, 0);
-    if(0 == Utf8BuffSize)
+    if(static_cast<std::size_t>(-1) == Utf8BuffSize)
     {
         return result;
     }
@@ -244,8 +272,8 @@ amf_string AMF_STD_CALL amf::amf_from_unicode_to_multibyte(const amf_wstring& st
     Utf8BuffSize += 8; // get some extra space
     result.resize(Utf8BuffSize);
     Utf8BuffSize = wcstombs(&result[0], pwBuff, Utf8BuffSize);
-#endif
     result.resize(Utf8BuffSize);
+#endif
     return result;
 }
 //----------------------------------------------------------------------------------------
@@ -439,7 +467,7 @@ amf_string AMF_STD_CALL amf::amf_from_unicode_to_url_utf8(const amf_wstring& dat
            (bQuery && ( AMF_FORBIDDEN_SYMBOLS.find(converted[i]) != amf_string::npos) ) ||
            (!bQuery && ( AMF_FORBIDDEN_SYMBOLS_QUERY.find(converted[i]) != amf_string::npos) ))
         {
-            _snprintf(buf, 20, "%%%02X", (unsigned int)(unsigned char)converted[i]);
+            snprintf(buf, sizeof(buf), "%%%02X", (unsigned int)(unsigned char)converted[i]);
         }
         else
         {
@@ -448,26 +476,6 @@ amf_string AMF_STD_CALL amf::amf_from_unicode_to_url_utf8(const amf_wstring& dat
         }
         Result += buf;
     }
-/*
-    amf_string::size_type pos=0;
-    while(true){
-        amf_string::size_type old_pos=pos;
-        if(bQuery)
-            pos=converted.find_first_of(MM_FORBIDDEN_SYMBOLS,pos);
-        else
-            pos=converted.find_first_of(MM_FORBIDDEN_SYMBOLS_QUERY,pos);
-        if(pos==amf_string::npos){
-            Result+=converted.substr(old_pos);
-            break;
-        }
-        if(pos-old_pos>0)
-            Result+=converted.substr(old_pos,pos-old_pos);
-        char buf[20];
-        _snprintf(buf,20,"%%%02X",(int)converted[pos]);
-        Result+=buf;
-        pos++;
-    }
- */
     return Result;
 }
 //------------------------------------------------------------------------------------------------------------
@@ -554,7 +562,7 @@ amf_string AMF_STD_CALL amf::amf_string_format(const char* format, ...)
 //----------------------------------------------------------------------------------------
 amf_wstring AMF_STD_CALL amf::amf_string_formatVA(const wchar_t* format, va_list args)
 {
-#if defined(__linux)
+#if defined(__linux) || defined(__APPLE__)
     //replace %s with %ls
     amf_wstring text(format);
     amf_wstring textReplaced;
@@ -582,14 +590,14 @@ amf_wstring AMF_STD_CALL amf::amf_string_formatVA(const wchar_t* format, va_list
 #else
     va_copy(argcopy, args);
 #endif
+    int size = vscwprintf(format, argcopy);
 
-    int size = _vscwprintf(format, argcopy);
     va_end(argcopy);
 
 
     std::vector<wchar_t> buf(size + 1);
     wchar_t* pBuf = &buf[0];
-    _vsnwprintf(pBuf, size + 1, format, args);
+    vswprintf(pBuf, size + 1, format, args);
     return pBuf;
 }
 //----------------------------------------------------------------------------------------
@@ -602,8 +610,8 @@ amf_string AMF_STD_CALL amf::amf_string_formatVA(const char* format, va_list arg
 #else
     va_copy(argcopy, args);
 #endif
+    int size = vscprintf(format, args);
 
-    int size = _vscprintf(format, args);
     va_end(argcopy);
 
     std::vector<char> buf(size + 1);
@@ -611,6 +619,44 @@ amf_string AMF_STD_CALL amf::amf_string_formatVA(const char* format, va_list arg
     vsnprintf(pBuf, size + 1, format, args);
     return pBuf;
 }
+#if (defined(__linux) || defined(__APPLE__)) && !defined(__ANDROID__)
+int vscprintf(const char* format, va_list argptr)
+{
+    char* p_tmp_buf;
+    size_t tmp_buf_size;
+    FILE* fd = open_memstream(&p_tmp_buf, &tmp_buf_size);
+    if(fd == 0)
+    {
+        return -1;
+    }
+    va_list arg_copy;
+    va_copy(arg_copy, argptr);
+    vfprintf(fd, format, arg_copy);
+    va_end(arg_copy);
+    fclose(fd);
+    free(p_tmp_buf);
+    return tmp_buf_size;
+}
+
+int vscwprintf(const wchar_t* format, va_list argptr)
+{
+    wchar_t* p_tmp_buf;
+    size_t tmp_buf_size;
+    FILE* fd = open_wmemstream(&p_tmp_buf, &tmp_buf_size);
+    if(fd == 0)
+    {
+        return -1;
+    }
+    va_list arg_copy;
+    va_copy(arg_copy, argptr);
+    vfwprintf(fd, format, argptr);
+    va_end(arg_copy);
+    fclose(fd);
+    free(p_tmp_buf);
+    return tmp_buf_size;
+}
+#endif
+
 //----------------------------------------------------------------------------------------
 void* AMF_STD_CALL amf_alloc(size_t count)
 {
@@ -621,3 +667,590 @@ void AMF_STD_CALL amf_free(void* ptr)
 {
     free(ptr);
 }
+//----------------------------------------------------------------------------------------
+#if defined (__ANDROID__)
+template <typename CHAR_T>
+static bool isOneOf(CHAR_T p_ch, const CHAR_T* p_set)
+{
+    for (const CHAR_T* current = p_set; *current != 0; ++current)
+    {
+        if (*current == p_ch)
+            return true;
+    }
+    return false;
+}
+
+static void processWidthAndPrecision(amf_string& p_fmt, va_list& p_args)
+{
+    for (size_t i = 0; i < p_fmt.length(); i++)
+    {
+        if (p_fmt[i] == '*')
+        {
+            int value = va_arg(p_args, int);
+            char valueString[64];
+            sprintf(valueString, "%d", value);
+            p_fmt.replace(i, 1, valueString);
+        }
+    }
+}
+
+typedef size_t(*outputStreamDelegateW)(void* p_context, size_t p_offset, const wchar_t* p_stringToAdd, size_t p_length);
+static size_t amf_wprintfCore(outputStreamDelegateW p_outDelegate, void* p_context, const wchar_t* p_fmt, va_list p_args)
+{
+    static const wchar_t formatSpecifiers[] = L"cCdiouxXeEfgGaAnpsSZ";
+    bool inFormat = false;
+    const wchar_t* beginCurrentFormat = NULL;
+    amf_wstring::size_type formatLength = 0;
+    amf_wstring currentFormat;
+    amf_wstring currentArgumentString;
+    size_t totalCount = 0;
+
+    for (const wchar_t* fmt = p_fmt; *fmt != L'\0'; ++fmt)
+    {
+        if (*fmt == L'%')
+        {
+            inFormat = !inFormat;
+            if (inFormat)    //    Beginning of a format substring - fmt points at the opening %
+            {
+                beginCurrentFormat = fmt;    //    Save the pointer to the current format substring
+                formatLength = 0;
+            }
+            else    //    This was a percent character %% - don't bother
+            {
+                beginCurrentFormat = NULL;
+            }
+            currentFormat.clear();
+        }
+        if (inFormat)
+        {
+            ++formatLength;
+
+            if (isOneOf<wchar_t>(*fmt, formatSpecifiers))
+            {    //    end of the format specifier
+                inFormat = false;
+                currentFormat.assign(beginCurrentFormat, formatLength);    //    currentFormat now contains a modified format string for the current parameter
+                amf_string currentFormatMB = amf_from_unicode_to_multibyte(currentFormat.c_str());
+                //processWidthAndPrecision(currentFormatMB, &p_args[0]);    //    This would extract additional arguments for width and precision and replace * with their values
+                for (size_t i = 0; i < currentFormatMB.length(); i++)
+                {
+                    if (currentFormatMB[i] == '*')
+                    {
+                        int value = va_arg(p_args, int);
+                        char valueString[64];
+                        sprintf(valueString, "%d", value);
+                        currentFormatMB.replace(i, 1, valueString);
+                    }
+                }
+
+                switch (*fmt)
+                {
+                case L'c':
+                {
+                    wchar_t ch;
+                    switch (*(fmt - 1))
+                    {
+                    case L'h':
+                        ch = static_cast<wchar_t>(va_arg(p_args, int));
+                        break;
+                    case L'l':
+                    case L'w':
+                        ch = va_arg(p_args, unsigned int);
+                        break;
+                    default:
+                        ch = va_arg(p_args, unsigned int);    //    In a wchar_t version of printf %c means wchar_t
+                    }
+                    currentArgumentString = ch;
+                }
+                break;
+                case L'C':
+                {
+                    wchar_t ch;
+                    switch (*(fmt - 1))
+                    {
+                    case L'h':
+                        ch = static_cast<wchar_t>(va_arg(p_args, int));
+                        break;
+                    case L'l':
+                    case L'w':
+                        ch = va_arg(p_args, unsigned int);
+                        break;
+                    default:
+                        ch = static_cast<wchar_t>(va_arg(p_args, int));    //    In a wchar_t version of printf %C means char
+                    }
+                    currentArgumentString = ch;
+                }
+                break;
+                case L's':
+                {
+                    const void* str = va_arg(p_args, const void*);
+                    if (str != NULL)
+                    {
+                        const wchar_t* str_wchar = nullptr;
+                        switch (*(fmt - 1))
+                        {
+                        case L'h':
+                            currentArgumentString = amf_from_utf8_to_unicode(reinterpret_cast<const char*>(str));
+                            str_wchar = currentArgumentString.c_str();
+                            break;
+                        case L'l':
+                        case L'w':
+                            currentArgumentString = str_wchar = reinterpret_cast<const wchar_t*>(str);
+                            break;
+                        default:
+                            currentArgumentString = str_wchar = reinterpret_cast<const wchar_t*>(str);
+                        }
+                    }
+                    else
+                    {
+                        currentArgumentString = L"(null)";
+                    }
+                }
+                break;
+                case L'S':
+                {
+                    const void* str = va_arg(p_args, const void*);
+                    if (str != NULL)
+                    {
+                        switch (*(fmt - 1))
+                        {
+                        case (wchar_t)'h':
+                            currentArgumentString = amf_from_utf8_to_unicode(reinterpret_cast<const char*>(str));
+                            break;
+                        case L'l':
+                        case L'w':
+                            currentArgumentString = reinterpret_cast<const wchar_t*>(str);
+                            break;
+                        default:
+                            currentArgumentString = amf_from_utf8_to_unicode(reinterpret_cast<const char*>(str));
+                        }
+                    }
+                    else
+                    {
+                        currentArgumentString = L"(null)";
+                    }
+                }
+                break;
+                //    All integer formats
+                case L'i':
+                case L'd':
+                case L'u':
+                case L'o':
+                case L'x':
+                case L'X':
+                {
+                    char tempBuffer[64];    //    64 bytes should be enough for any numeric format
+                    switch (*(fmt - 1))
+                    {
+                    case L'l':
+                        if (*(fmt - 2) == L'l')    //    long long
+                        {
+                            sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, long long));
+                        }
+                        else
+                        {
+                            sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, long));
+                        }
+                        break;
+                    case L'h':
+                        sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, int));
+                        break;
+#ifdef _WIN32
+                    case L'I':    //    I is Microsoft-specific
+#else
+                    case L'z':    //    z and t are C99-specific, but seem to be unsupported in VC
+                    case L't':
+#endif
+                        sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, size_t));
+                        break;
+                    default:
+                        sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, int));
+                        break;
+                    }
+                    currentArgumentString = amf_from_utf8_to_unicode(tempBuffer);
+                }
+                break;
+                //    All floating point formats
+                case L'e':
+                case L'E':
+                case L'f':
+                case L'g':
+                case L'G':
+                case L'a':
+                case L'A':
+                {
+                    char tempBuffer[64];    //    64 bytes should be enough for any numeric format
+                    switch (*(fmt - 1))
+                    {
+                    case L'l':
+                    case L'L':
+                        sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, long double));
+                        break;
+                    default:
+                        sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, double));
+                        break;
+                    }
+                    currentArgumentString = amf_from_utf8_to_unicode(tempBuffer);
+                }
+                break;
+                //    Pointer
+                case L'p':
+                {
+                    char tempBuffer[64];    //    64 bytes should be enough for any numeric format
+                    sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, const void*));
+                    currentArgumentString = amf_from_utf8_to_unicode(tempBuffer);
+                }
+                break;
+                case L'n':
+                {
+                    int* dest = va_arg(p_args, int*);
+                    *dest = static_cast<int>(totalCount);
+                    currentArgumentString.clear();
+                }
+                break;
+                }
+                size_t length = currentArgumentString.length();
+                if (p_outDelegate != NULL)    // If destination buffer is NULL, just count the characters
+                {
+                    p_outDelegate(p_context, totalCount, currentArgumentString.c_str(), length);
+                }
+                totalCount += length;
+            }    //    if (isOneOf(*fmt, formatSpecifiers))
+        }    // if (inFormat)
+        else
+        {    //    Just copy the character into the output buffer
+            if (p_outDelegate != NULL)    // If destination buffer is NULL, just count the characters
+            {
+                p_outDelegate(p_context, totalCount, fmt, 1);
+            }
+            ++totalCount;
+        }
+    }
+    return totalCount;
+}
+
+typedef size_t(*outputStreamDelegate)(void* p_context, size_t p_offset, const char* p_stringToAdd, size_t p_length);
+static size_t amf_printfCore(outputStreamDelegate p_outDelegate, void* p_context, const char* p_fmt, va_list p_args)
+{
+    static const char formatSpecifiers[] = "cCdiouxXeEfgGaAnpsSZ";
+    bool inFormat = false;
+    const char* beginCurrentFormat = NULL;
+    amf_string::size_type formatLength = 0;
+    amf_string currentFormat;
+    amf_string currentArgumentString;
+    size_t totalCount = 0;
+
+    for (const char* fmt = p_fmt; *fmt != '\0'; ++fmt)
+    {
+        if (*fmt == '%')
+        {
+            inFormat = !inFormat;
+            if (inFormat)    //    Beginning of a format substring - fmt points at the opening %
+            {
+                beginCurrentFormat = fmt;    //    Save the pointer to the current format substring
+                formatLength = 0;
+            }
+            else    //    This was a percent character %% - don't bother
+            {
+                beginCurrentFormat = NULL;
+            }
+            currentFormat.clear();
+        }
+        if (inFormat)
+        {
+            ++formatLength;
+
+            if (isOneOf<char>(*fmt, formatSpecifiers))
+            {    //    end of the format specifier
+                inFormat = false;
+                currentFormat.assign(beginCurrentFormat, formatLength);    //    currentFormat now contains a modified format string for the current parameter
+                amf_string currentFormatMB = currentFormat.c_str();
+                //processWidthAndPrecision(currentFormatMB, &p_args[0]);    //    This would extract additional arguments for width and precision and replace * with their values
+                for (size_t i = 0; i < currentFormatMB.length(); i++)
+                {
+                    if (currentFormatMB[i] == '*')
+                    {
+                        int value = va_arg(p_args, int);
+                        char valueString[64];
+                        sprintf(valueString, "%d", value);
+                        currentFormatMB.replace(i, 1, valueString);
+                    }
+                }
+
+                switch (*fmt)
+                {
+                    case 'c':
+                    {
+                        char ch;
+                        switch (*(fmt - 1))
+                        {
+                            case 'h':
+                                ch = static_cast<char>(va_arg(p_args, int));
+                                break;
+                            case 'l':
+                            case 'w':
+                                ch = va_arg(p_args, unsigned int);
+                                break;
+                            default:
+                                ch = va_arg(p_args, unsigned int);    //    In a wchar_t version of printf %c means wchar_t
+                        }
+                        currentArgumentString = ch;
+                    }
+                        break;
+                    case 'C':
+                    {
+                        char ch;
+                        switch (*(fmt - 1))
+                        {
+                            case 'h':
+                                ch = static_cast<char>(va_arg(p_args, int));
+                                break;
+                            case 'l':
+                            case 'w':
+                                ch = va_arg(p_args, unsigned int);
+                                break;
+                            default:
+                                ch = static_cast<char>(va_arg(p_args, int));    //    In a wchar_t version of printf %C means char
+                        }
+                        currentArgumentString = ch;
+                    }
+                        break;
+                    case 's':
+                    {
+                        const void* str = va_arg(p_args, const void*);
+                        if (str != NULL)
+                        {
+                            switch (*(fmt - 1))
+                            {
+                                case 'h':
+                                    currentArgumentString = reinterpret_cast<const char*>(str);
+                                    break;
+                                case 'l':
+                                case 'w':
+                                    currentArgumentString = amf_from_unicode_to_utf8(reinterpret_cast<const wchar_t*>(str));
+                                    break;
+                                default:
+                                    currentArgumentString = reinterpret_cast<const char*>(str);
+                            }
+                        }
+                        else
+                        {
+                            currentArgumentString = "(null)";
+                        }
+                    }
+                        break;
+                    case L'S':
+                    {
+                        const void* str = va_arg(p_args, const void*);
+                        if (str != NULL)
+                        {
+                            switch (*(fmt - 1))
+                            {
+                                case 'h':
+                                    currentArgumentString = reinterpret_cast<const char*>(str);
+                                    break;
+                                case 'l':
+                                case 'w':
+                                    currentArgumentString = amf_from_unicode_to_utf8(reinterpret_cast<const wchar_t*>(str));
+                                    break;
+                                default:
+                                    currentArgumentString = amf_from_unicode_to_utf8(reinterpret_cast<const wchar_t*>(str));
+                            }
+                        }
+                        else
+                        {
+                            currentArgumentString = "(null)";
+                        }
+                    }
+                        break;
+                        //    All integer formats
+                    case L'i':
+                    case L'd':
+                    case L'u':
+                    case L'o':
+                    case L'x':
+                    case L'X':
+                    {
+                        char tempBuffer[64];    //    64 bytes should be enough for any numeric format
+                        switch (*(fmt - 1))
+                        {
+                            case L'l':
+                                if (*(fmt - 1) == L'l')    //    long long
+                                {
+                                    sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, long long));
+                                }
+                                else
+                                {
+                                    sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, long));
+                                }
+                                break;
+                            case L'h':
+                                sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, int));
+                                break;
+#ifdef _WIN32
+                                case L'I':    //    I is Microsoft-specific
+#else
+                            case L'z':    //    z and t are C99-specific, but seem to be unsupported in VC
+                            case L't':
+#endif
+                                sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, size_t));
+                                break;
+                            default:
+                                sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, int));
+                                break;
+                        }
+                        currentArgumentString = tempBuffer;
+                    }
+                        break;
+                        //    All floating point formats
+                    case L'e':
+                    case L'E':
+                    case L'f':
+                    case L'g':
+                    case L'G':
+                    case L'a':
+                    case L'A':
+                    {
+                        char tempBuffer[64];    //    64 bytes should be enough for any numeric format
+                        switch (*(fmt - 1))
+                        {
+                            case L'l':
+                            case L'L':
+                                sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, long double));
+                                break;
+                            default:
+                                sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, double));
+                                break;
+                        }
+                        currentArgumentString = tempBuffer;
+                    }
+                        break;
+                        //    Pointer
+                    case L'p':
+                    {
+                        char tempBuffer[64];    //    64 bytes should be enough for any numeric format
+                        sprintf(tempBuffer, currentFormatMB.c_str(), va_arg(p_args, const void*));
+                        currentArgumentString = tempBuffer;
+                    }
+                        break;
+                    case L'n':
+                    {
+                        int* dest = va_arg(p_args, int*);
+                        *dest = static_cast<int>(totalCount);
+                        currentArgumentString.clear();
+                    }
+                        break;
+                }
+                size_t length = currentArgumentString.length();
+                if (p_outDelegate != NULL)    // If destination buffer is NULL, just count the characters
+                {
+                    p_outDelegate(p_context, totalCount, currentArgumentString.c_str(), length);
+                }
+                totalCount += length;
+            }    //    if (isOneOf(*fmt, formatSpecifiers))
+        }    // if (inFormat)
+        else
+        {    //    Just copy the character into the output buffer
+            if (p_outDelegate != NULL)    // If destination buffer is NULL, just count the characters
+            {
+                p_outDelegate(p_context, totalCount, fmt, 1);
+            }
+            ++totalCount;
+        }
+    }
+    return totalCount;
+}
+
+
+typedef struct {
+    wchar_t*    m_Buf;
+    size_t        m_Size;
+} MemBufferContextW;
+
+typedef struct {
+    char*    m_Buf;
+    size_t        m_Size;
+} MemBufferContext;
+
+static size_t writeToMem(void* p_context, size_t p_offset, const wchar_t* p_stringToAdd, size_t p_length)
+{
+    wchar_t* buf = &(reinterpret_cast<MemBufferContextW*>(p_context)->m_Buf[p_offset]);
+    size_t bufSize = reinterpret_cast<MemBufferContextW*>(p_context)->m_Size - 1;    //    -1 to accommodate a trailing '\0'
+    for (int i = 0; i < p_length && i < bufSize; i++)
+    {
+        *buf++ = p_stringToAdd[i];
+    }
+    return p_length;
+}
+
+static size_t writeToFile(void* p_context, size_t, const wchar_t* p_stringToAdd, size_t p_length)
+{
+    return fwrite(p_stringToAdd, sizeof(wchar_t), p_length, reinterpret_cast<FILE*>(p_context));
+}
+
+extern "C"
+{
+    int vswprintf(wchar_t* p_buf, size_t p_size, const wchar_t* p_fmt, va_list p_args)
+    {
+        MemBufferContextW context = { p_buf, p_size };
+        int bytesWritten = (int)amf_wprintfCore(writeToMem, &context, p_fmt, p_args);
+        p_buf[bytesWritten] = L'\0';
+        return bytesWritten;
+    }
+
+    int wsprintf(wchar_t* p_buf, const wchar_t* p_fmt, ...)
+    {
+        va_list argptr;
+        va_start(argptr, p_fmt);
+        return vswprintf(p_buf, static_cast<size_t>(-1), p_fmt, argptr);
+    }
+
+    int swprintf(wchar_t* p_buf, size_t p_size, const wchar_t* p_fmt, ...)
+    {
+        va_list argptr;
+        va_start(argptr, p_fmt);
+        return vswprintf(p_buf, p_size, p_fmt, argptr);
+    }
+
+    int vfwprintf(FILE* p_stream, const wchar_t* p_fmt, va_list p_args)
+    {
+        return (int)amf_wprintfCore(writeToFile, p_stream, p_fmt, p_args);
+    }
+
+    int fwprintf(FILE* p_stream, const wchar_t* p_fmt, ...)
+    {
+        va_list argptr;
+        va_start(argptr, p_fmt);
+        return vfwprintf(p_stream, p_fmt, argptr);
+    }
+
+#if !defined(__APPLE__)
+    int vscwprintf(const wchar_t* p_fmt, va_list p_args)
+    {
+        return (int)amf_wprintfCore(NULL, NULL, p_fmt, p_args);
+    }
+
+    int vscprintf(const char* p_fmt, va_list p_args)
+    {
+        return (int)amf_printfCore(NULL, NULL, p_fmt, p_args);
+    }
+#endif
+}
+#endif
+
+//--------------------------------------------------------------------------------
+// Mac doens't have _wcsicmp(0 - poor man implementation
+//--------------------------------------------------------------------------------
+#ifdef __APPLE__
+extern "C"
+{
+    int _wcsicmp(const wchar_t* s1, const wchar_t* s2)
+    {
+        amf_wstring low_s1 = s1;
+        amf_wstring low_s2 = s2;
+        std::transform(low_s1.begin(), low_s1.end(), low_s1.begin(), ::tolower);
+        std::transform(low_s2.begin(), low_s2.end(), low_s2.begin(), ::tolower);
+        
+        return wcscmp(low_s1.c_str(), low_s2.c_str());
+    }
+}
+#endif

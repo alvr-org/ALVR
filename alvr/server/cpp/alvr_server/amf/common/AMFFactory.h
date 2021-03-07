@@ -9,7 +9,7 @@
 // 
 // MIT license 
 // 
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2018 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
+#ifndef AMF_AMFFactory_h
+#define AMF_AMFFactory_h
 
 #pragma once
 
@@ -54,10 +56,12 @@ public:
     amf::AMFTrace* GetTrace();
 
     amf_uint64 AMFQueryVersion();
+
+    amf_handle    GetAMFDLLHandle() { return m_hDLLHandle; }
 protected:
     struct ComponentHolder
     {
-        HMODULE         m_hDLLHandle;
+        amf_handle      m_hDLLHandle;
         amf_long        m_iRefCount;
         std::wstring    m_DLL;
 
@@ -68,7 +72,7 @@ protected:
         }
     };
 
-    HMODULE             m_hDLLHandle;
+    amf_handle          m_hDLLHandle;
     amf::AMFFactory*    m_pFactory;
     amf::AMFDebug*      m_pDebug;
     amf::AMFTrace*      m_pTrace;
@@ -80,3 +84,4 @@ protected:
 };
 
 extern ::AMFFactoryHelper g_AMFFactory;
+#endif // AMF_AMFFactory_h

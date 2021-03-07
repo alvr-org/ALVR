@@ -9,7 +9,7 @@
 // 
 // MIT license 
 // 
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2018 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -89,15 +89,15 @@ namespace amf
                    #endif
                        ):m_hSyncObject()
     {
-#if defined(_WIN32)
+    #if defined(_WIN32)
         if(bOpenExistent)
         {
             m_hSyncObject = amf_open_mutex(pName);
         }
         else
-#else
+    #else
     //#pragma message AMF_TODO("Open mutex!!! missing functionality in Linux!!!")
-#endif
+    #endif
         {
             m_hSyncObject = amf_create_mutex(bInitiallyOwned, pName);
         }
@@ -153,8 +153,8 @@ namespace amf
     //----------------------------------------------------------------------------
     bool AMFCriticalSection::Lock(amf_ulong ulTimeout)
     {
-        (void)ulTimeout;
-        return amf_enter_critical_section(m_Sect);
+        return (ulTimeout != AMF_INFINITE) ? amf_wait_critical_section(m_Sect, ulTimeout)
+                                           : amf_enter_critical_section(m_Sect);
     }
     //----------------------------------------------------------------------------
     bool AMFCriticalSection::Unlock()
@@ -210,7 +210,10 @@ namespace amf
     //----------------------------------------------------------------------------
     AMFLock::~AMFLock()
     {
-        Unlock();
+        if (IsLocked() == true)
+        {
+            Unlock();
+        }
     }
     //----------------------------------------------------------------------------
     bool AMFLock::Lock(amf_ulong ulTimeout)
@@ -229,8 +232,9 @@ namespace amf
         {
             return false;
         }
-        m_bLocked = m_pBase->Unlock();
-        return m_bLocked;
+        const bool  unlockSucceeded = m_pBase->Unlock();
+        m_bLocked = m_bLocked && (unlockSucceeded == false);
+        return unlockSucceeded;
     }
     //----------------------------------------------------------------------------
     bool AMFLock::IsLocked()
@@ -239,7 +243,7 @@ namespace amf
     }
     //----------------------------------------------------------------------------
 
-    #if defined(METRO_APP)
+#if defined(METRO_APP)
     using namespace Platform;
     using namespace Windows::Foundation;
     using namespace Windows::UI::Xaml;
@@ -337,7 +341,7 @@ namespace amf
 
     //#endif//#if defined(METRO_APP)
     //#if defined(_WIN32)
-    #elif defined(_WIN32)   // _WIN32 and METRO_APP defines are not mutually exclusive
+#elif defined(_WIN32)   // _WIN32 and METRO_APP defines are not mutually exclusive
     class AMFThreadObj
     {
         AMFThread*      m_pOwner;
@@ -448,33 +452,36 @@ namespace amf
         _endthread();
     }
 
-    #endif //#if defined(_WIN32)
-    #if defined(__linux)
-        class AMFThreadObj
-        {
-        public:
-            AMFThreadObj(AMFThread* owner);
-            virtual ~AMFThreadObj();
+#endif //#if defined(_WIN32)
+#if defined(__linux) || defined(__APPLE__)
+    class AMFThreadObj
+    {
+    public:
+        AMFThreadObj(AMFThread* owner);
+        virtual ~AMFThreadObj();
 
-            virtual bool Start();
-            virtual bool RequestStop();
-            virtual bool WaitForStop();
-            virtual bool StopRequested();
+        virtual bool Start();
+        virtual bool RequestStop();
+        virtual bool WaitForStop();
+        virtual bool StopRequested();
+        virtual bool IsRunning();
 
-            // this is executed in the thread and overloaded by implementor
-            virtual void Run() { m_pOwner->Run(); }
-            virtual bool Init(){ return m_pOwner->Init(); }
-            virtual bool Terminate(){ return m_pOwner->Terminate();}
+        // this is executed in the thread and overloaded by implementor
+        virtual void Run() { m_pOwner->Run(); }
+        virtual bool Init(){ return m_pOwner->Init(); }
+        virtual bool Terminate(){ return m_pOwner->Terminate();}
 
-        private:
-            AMFThread*      m_pOwner;
-            pthread_t m_hThread;
-            bool m_bStopRequested;
-            pthread_mutex_t m_hMutex;
+    private:
+        AMFThread*      m_pOwner;
+        pthread_t m_hThread;
+        bool m_bStopRequested;
+        pthread_mutex_t m_hMutex;
 
-            AMFThreadObj(const AMFThreadObj&);
-            AMFThreadObj& operator=(const AMFThreadObj&);
-        };
+        AMFThreadObj(const AMFThreadObj&);
+        AMFThreadObj& operator=(const AMFThreadObj&);
+        static void* AMF_CDECL_CALL AMFThreadProc(void* pThis);
+
+    };
 
     AMFThreadObj::AMFThreadObj(AMFThread* owner)
         : m_pOwner(owner),
@@ -490,7 +497,7 @@ namespace amf
         pthread_mutex_destroy(&m_hMutex);
     }
 
-    void* AMF_CDECL_CALL AMFThreadProc(void* pThis)
+    void* AMF_CDECL_CALL AMFThreadObj::AMFThreadProc(void* pThis)
     {
         AMFThreadObj* pT = (AMFThreadObj*)pThis;
         if(!pT->Init())
@@ -499,16 +506,32 @@ namespace amf
         }
         pT->Run();
         pT->Terminate();
+        pT->m_hThread = 0;
+        pT->m_bStopRequested = false;
         return 0;
     }
 
     bool AMFThreadObj::Start()
     {
-        return 0 == pthread_create(&m_hThread, 0, AMFThreadProc, (void*)this);
+        bool result = true;
+        if (IsRunning() == false)
+        {
+            result = (0 == pthread_create(&m_hThread, 0, AMFThreadProc, (void*)this));
+        }
+        return result;
     }
 
     bool AMFThreadObj::RequestStop()
     {
+    #if defined(__APPLE__)
+        if(m_hThread == nullptr)
+    #else
+        if(m_hThread == (uintptr_t)0L)
+    #endif
+        {
+            return true;
+        }
+      
         pthread_mutex_lock(&m_hMutex);
         m_bStopRequested = true;
         pthread_mutex_unlock(&m_hMutex);
@@ -517,10 +540,18 @@ namespace amf
 
     bool AMFThreadObj::WaitForStop()
     {
-        if(m_hThread)
+    #if defined(__APPLE__)
+        if(m_hThread != nullptr)
+    #else
+        if(m_hThread != (uintptr_t)0L)
+    #endif
         {
             pthread_join(m_hThread, 0);
+            m_hThread = 0;
         }
+            
+        m_bStopRequested = false;
+
         return true;
     }
 
@@ -532,12 +563,21 @@ namespace amf
         return bRet;
     }
 
+    bool AMFThreadObj::IsRunning()
+    {
+    #if defined(__APPLE__)
+        return m_hThread != nullptr;
+    #else
+        return m_hThread != (uintptr_t)0L;
+    #endif
+    }
+
     void ExitThread()
     {
         pthread_exit(0);
     }
 
-    #endif //#if defined(__linux)
+#endif //#if defined(__linux)
 
     AMFThread::AMFThread() : m_thread()
     {

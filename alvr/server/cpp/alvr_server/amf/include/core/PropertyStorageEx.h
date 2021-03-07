@@ -9,7 +9,7 @@
 // 
 // MIT license 
 // 
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2018 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,25 +30,30 @@
 // THE SOFTWARE.
 //
 
-#ifndef __AMFPropertyStorageEx_h__
-#define __AMFPropertyStorageEx_h__
+#ifndef AMF_PropertyStorageEx_h
+#define AMF_PropertyStorageEx_h
 #pragma once
 
 #include "PropertyStorage.h"
 
+#if defined(__cplusplus)
 namespace amf
 {
+#endif
     //----------------------------------------------------------------------------------------------
-    enum AMF_PROPERTY_CONTENT_ENUM
+    typedef enum AMF_PROPERTY_CONTENT_ENUM
     {
         AMF_PROPERTY_CONTENT_DEFAULT = 0,
         AMF_PROPERTY_CONTENT_XML,               // m_eType is AMF_VARIANT_STRING
 
         AMF_PROPERTY_CONTENT_FILE_OPEN_PATH,    // m_eType AMF_VARIANT_WSTRING
-        AMF_PROPERTY_CONTENT_FILE_SAVE_PATH     // m_eType AMF_VARIANT_WSTRING
-    };
+        AMF_PROPERTY_CONTENT_FILE_SAVE_PATH,    // m_eType AMF_VARIANT_WSTRING
+
+        AMF_PROPERTY_CONTENT_INTEGER_ARRAY,     // m_eType AMF_VARIANT_INTERFACE
+        AMF_PROPERTY_CONTENT_FLOAT_ARRAY        // m_eType AMF_VARIANT_INTERFACE
+    } AMF_PROPERTY_CONTENT_ENUM;
     //----------------------------------------------------------------------------------------------
-    enum AMF_PROPERTY_ACCESS_TYPE
+    typedef enum AMF_PROPERTY_ACCESS_TYPE
     {
         AMF_PROPERTY_ACCESS_PRIVATE             = 0,
         AMF_PROPERTY_ACCESS_READ                = 0x1,
@@ -56,17 +61,23 @@ namespace amf
         AMF_PROPERTY_ACCESS_READ_WRITE          = (AMF_PROPERTY_ACCESS_READ | AMF_PROPERTY_ACCESS_WRITE),
         AMF_PROPERTY_ACCESS_WRITE_RUNTIME       = 0x4,
         AMF_PROPERTY_ACCESS_FULL                = 0xFF,
-    };
+		AMF_PROPERTY_ACCESS_NON_PERSISTANT		= 0x4000,
+		AMF_PROPERTY_ACCESS_NON_PERSISTANT_READ = (AMF_PROPERTY_ACCESS_NON_PERSISTANT | AMF_PROPERTY_ACCESS_READ),
+		AMF_PROPERTY_ACCESS_NON_PERSISTANT_READ_WRITE = (AMF_PROPERTY_ACCESS_NON_PERSISTANT | AMF_PROPERTY_ACCESS_READ_WRITE),
+		AMF_PROPERTY_ACCESS_NON_PERSISTANT_FULL = (AMF_PROPERTY_ACCESS_NON_PERSISTANT | AMF_PROPERTY_ACCESS_FULL),
+		AMF_PROPERTY_ACCESS_INVALID				= 0x8000
+    } AMF_PROPERTY_ACCESS_TYPE;
+
     //----------------------------------------------------------------------------------------------
-    struct AMFEnumDescriptionEntry
+    typedef struct AMFEnumDescriptionEntry
     {
         amf_int             value;
         const wchar_t*      name;
-    };
+    } AMFEnumDescriptionEntry;
     //----------------------------------------------------------------------------------------------
     typedef amf_uint32 AMF_PROPERTY_CONTENT_TYPE;
 
-    struct AMFPropertyInfo
+    typedef struct AMFPropertyInfo
     {
         const wchar_t*                  name;
         const wchar_t*                  desc;
@@ -79,6 +90,7 @@ namespace amf
         AMF_PROPERTY_ACCESS_TYPE        accessType;
         const AMFEnumDescriptionEntry*  pEnumDescription;
 
+#if defined(__cplusplus)
         AMFPropertyInfo() :
             name(NULL),
             desc(NULL),
@@ -102,15 +114,15 @@ namespace amf
         {}
         virtual ~AMFPropertyInfo(){}
 
-        bool AMF_STD_CALL AllowedRead() const
+        amf_bool AMF_STD_CALL AllowedRead() const
         {
             return (accessType & AMF_PROPERTY_ACCESS_READ) != 0;
         }
-        bool AMF_STD_CALL AllowedWrite() const
+        amf_bool AMF_STD_CALL AllowedWrite() const
         {
             return (accessType & AMF_PROPERTY_ACCESS_WRITE) != 0;
         }
-        bool AMF_STD_CALL AllowedChangeInRuntime() const
+        amf_bool AMF_STD_CALL AllowedChangeInRuntime() const
         {
             return (accessType & AMF_PROPERTY_ACCESS_WRITE_RUNTIME) != 0;
         }
@@ -128,10 +140,12 @@ namespace amf
 
             return *this;
         }
-    };
+#endif // #if defined(__cplusplus)
+    } AMFPropertyInfo;
     //----------------------------------------------------------------------------------------------
     // AMFPropertyStorageEx interface
     //----------------------------------------------------------------------------------------------
+#if defined(__cplusplus)
     class AMF_NO_VTABLE AMFPropertyStorageEx : public AMFPropertyStorage
     {
     public:
@@ -146,8 +160,47 @@ namespace amf
     // smart pointer
     //----------------------------------------------------------------------------------------------
     typedef AMFInterfacePtr_T<AMFPropertyStorageEx> AMFPropertyStorageExPtr;
+#else // #if defined(__cplusplus)
+    AMF_DECLARE_IID(AMFPropertyStorageEx, 0x16b8958d, 0xe943, 0x4a33, 0xa3, 0x5a, 0x88, 0x5a, 0xd8, 0x28, 0xf2, 0x67)
+    typedef struct AMFPropertyStorageEx AMFPropertyStorageEx;
+
+    typedef struct AMFPropertyStorageExVtbl
+    {
+        // AMFInterface interface
+        amf_long            (AMF_STD_CALL *Acquire)(AMFPropertyStorageEx* pThis);
+        amf_long            (AMF_STD_CALL *Release)(AMFPropertyStorageEx* pThis);
+        enum AMF_RESULT     (AMF_STD_CALL *QueryInterface)(AMFPropertyStorageEx* pThis, const struct AMFGuid *interfaceID, void** ppInterface);
+
+        // AMFPropertyStorage interface
+        AMF_RESULT          (AMF_STD_CALL *SetProperty)(AMFPropertyStorageEx* pThis, const wchar_t* name, AMFVariantStruct value);
+        AMF_RESULT          (AMF_STD_CALL *GetProperty)(AMFPropertyStorageEx* pThis, const wchar_t* name, AMFVariantStruct* pValue);
+        amf_bool            (AMF_STD_CALL *HasProperty)(AMFPropertyStorageEx* pThis, const wchar_t* name);
+        amf_size            (AMF_STD_CALL *GetPropertyCount)(AMFPropertyStorageEx* pThis);
+        AMF_RESULT          (AMF_STD_CALL *GetPropertyAt)(AMFPropertyStorageEx* pThis, amf_size index, wchar_t* name, amf_size nameSize, AMFVariantStruct* pValue);
+        AMF_RESULT          (AMF_STD_CALL *Clear)(AMFPropertyStorageEx* pThis);
+        AMF_RESULT          (AMF_STD_CALL *AddTo)(AMFPropertyStorageEx* pThis, AMFPropertyStorage* pDest, amf_bool overwrite, amf_bool deep);
+        AMF_RESULT          (AMF_STD_CALL *CopyTo)(AMFPropertyStorageEx* pThis, AMFPropertyStorage* pDest, amf_bool deep);
+        void                (AMF_STD_CALL *AddObserver)(AMFPropertyStorageEx* pThis, AMFPropertyStorageObserver* pObserver);
+        void                (AMF_STD_CALL *RemoveObserver)(AMFPropertyStorageEx* pThis, AMFPropertyStorageObserver* pObserver);
+
+        // AMFPropertyStorageEx interface
+
+        amf_size            (AMF_STD_CALL *GetPropertiesInfoCount)(AMFPropertyStorageEx* pThis);
+        AMF_RESULT          (AMF_STD_CALL *GetPropertyInfoAt)(AMFPropertyStorageEx* pThis, amf_size index, const AMFPropertyInfo** ppInfo);
+        AMF_RESULT          (AMF_STD_CALL *GetPropertyInfo)(AMFPropertyStorageEx* pThis, const wchar_t* name, const AMFPropertyInfo** ppInfo);
+        AMF_RESULT          (AMF_STD_CALL *ValidateProperty)(AMFPropertyStorageEx* pThis, const wchar_t* name, AMFVariantStruct value, AMFVariantStruct* pOutValidated);
+
+    } AMFPropertyStorageExVtbl;
+
+    struct AMFPropertyStorageEx
+    {
+        const AMFPropertyStorageExVtbl *pVtbl;
+    };
+#endif // #if defined(__cplusplus)
     //----------------------------------------------------------------------------------------------
+#if defined(__cplusplus)
 } //namespace amf
+#endif
 
 
-#endif //#ifndef __AMFPropertyStorageEx_h__
+#endif //#ifndef AMF_PropertyStorageEx_h

@@ -9,7 +9,7 @@
 // 
 // MIT license 
 // 
-// Copyright (c) 2016 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2018 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,8 +33,8 @@
 //-------------------------------------------------------------------------------------------------
 // AudioEncoderFFMPEG  interface declaration
 //-------------------------------------------------------------------------------------------------
-#ifndef __AMFAudioEncoderFFMPEG_h__
-#define __AMFAudioEncoderFFMPEG_h__
+#ifndef AMF_AudioEncoderFFMPEG_h
+#define AMF_AudioEncoderFFMPEG_h
 
 #pragma once
 
@@ -63,4 +63,4 @@
 
 
 
-#endif //#ifndef __AMFAudioEncoderFFMPEG_h__
+#endif //#ifndef AMF_AudioEncoderFFMPEG_h

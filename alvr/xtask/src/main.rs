@@ -1,7 +1,6 @@
 mod dependencies;
 mod version;
 
-use dependencies::install_deps;
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
 use semver::Version;
@@ -13,7 +12,6 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
-use version::bump_version;
 
 const HELP_STR: &str = r#"
 cargo xtask
@@ -514,7 +512,7 @@ fn main() {
         };
         if args.finish().is_empty() {
             match subcommand.as_str() {
-                "install-deps" => install_deps(),
+                "install-deps" => dependencies::install_deps(),
                 "build-server" => build_server(
                     args_values.is_release,
                     false,
@@ -536,7 +534,7 @@ fn main() {
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
                 "bump-versions" => {
-                    bump_version(args_values.version.as_deref(), args_values.is_nightly)
+                    version::bump_version(args_values.version.as_deref(), args_values.is_nightly)
                 }
                 _ => {
                     println!("\nUnrecognized subcommand.");

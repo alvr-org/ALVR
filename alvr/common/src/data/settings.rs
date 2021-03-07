@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use settings_schema::*;
+use settings_schema::{EntryData, SettingsSchema, Switch, SwitchDefault};
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]

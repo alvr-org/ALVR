@@ -9,9 +9,18 @@ pub mod commands;
 #[cfg(not(target_os = "android"))]
 pub mod graphics;
 
-pub use log::{debug, error, info, warn};
-pub use logging::StrResult;
+pub mod prelude {
+    pub use crate::{
+        fmt_e,
+        logging::{log_event, Event, StrResult},
+        trace_err, trace_none, trace_str,
+    };
+    pub use log::{debug, error, info, warn};
+}
 
+////////////////////////////////////////////////////////
+
+use prelude::*;
 use std::future::Future;
 use tokio::{sync::oneshot, task};
 

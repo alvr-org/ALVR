@@ -1,9 +1,15 @@
-use super::*;
-use crate::{data::*, logging::*, *};
+use super::{CONTROL_PORT, LDC, LOCAL_IP, MAX_HANDSHAKE_PACKET_SIZE_BYTES};
+use crate::{
+    data::{
+        ClientConfigPacket, ClientHandshakePacket, HandshakePacket, HeadsetInfoPacket,
+        ServerHandshakePacket, ALVR_NAME, ALVR_VERSION,
+    },
+    prelude::*,
+};
 use bytes::Bytes;
 use futures::{
-    prelude::*,
     stream::{SplitSink, SplitStream},
+    SinkExt, StreamExt,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -11,8 +17,11 @@ use std::{
     net::{IpAddr, Ipv4Addr},
     time::Duration,
 };
-use tokio::{net::*, time};
-use tokio_util::codec::*;
+use tokio::{
+    net::{TcpListener, TcpStream, UdpSocket},
+    time,
+};
+use tokio_util::codec::Framed;
 
 const CLIENT_HANDSHAKE_RESEND_INTERVAL: Duration = Duration::from_secs(1);
 const CONNECT_ERROR_RETRY_INTERVAL: Duration = Duration::from_millis(100);

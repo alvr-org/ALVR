@@ -49,6 +49,7 @@ winapi = { version = "0.3", features = [
     "objbase",
     "propidl",
     "propsys",
+    "wtypes",
 ] }
 wio = "0.2"
 widestring = "0.4"

@@ -1,9 +1,8 @@
-use crate::*;
-
 use chrono::Utc;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use semver::{Identifier, Version};
+use std::fs;
 
 lazy_static! {
     static ref GRADLE_VERSIONNAME_REGEX: Regex =
@@ -20,7 +19,7 @@ fn bump_client_gradle_version(new_version: &Version, is_nightly: bool) {
         old_version, new_version
     );
 
-    let gradle_file_path = workspace_dir()
+    let gradle_file_path = crate::workspace_dir()
         .join("alvr/client/android/app")
         .join("build.gradle");
     let file_content = fs::read_to_string(&gradle_file_path).unwrap();
@@ -41,7 +40,7 @@ fn bump_client_gradle_version(new_version: &Version, is_nightly: bool) {
 }
 
 fn bump_cargo_version(crate_dir_name: &str, new_version: &Version) {
-    let manifest_path = workspace_dir()
+    let manifest_path = crate::workspace_dir()
         .join("alvr")
         .join(crate_dir_name)
         .join("Cargo.toml");

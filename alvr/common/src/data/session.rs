@@ -1,6 +1,6 @@
-use super::settings::*;
-use crate::{logging::*, *};
-use serde::*;
+use super::{settings, Settings};
+use crate::{logging::SessionUpdateType, prelude::*};
+use serde::{Deserialize, Serialize};
 use serde_json as json;
 use settings_schema::SchemaNode;
 use std::{
@@ -15,7 +15,7 @@ pub const SESSION_FNAME: &str = "session.json";
 
 // SessionSettings is similar to Settings but it contains every branch, even unused ones. This is
 // the settings representation that the UI uses.
-type SessionSettings = SettingsDefault;
+type SessionSettings = settings::SettingsDefault;
 
 pub fn load_session(path: &Path) -> StrResult<SessionDesc> {
     trace_err!(json::from_str(&trace_err!(fs::read_to_string(path))?))
@@ -135,7 +135,7 @@ impl Default for SessionDesc {
                 ..<_>::default()
             },
             client_connections: HashMap::new(),
-            session_settings: session_settings_default(),
+            session_settings: settings::session_settings_default(),
         }
     }
 }
@@ -166,7 +166,7 @@ impl SessionDesc {
                     extrapolate_session_settings_from_session_settings(
                         &old_session_json[SESSION_SETTINGS_STR],
                         new_session_settings_json,
-                        &settings_schema(session_settings_default()),
+                        &settings::settings_schema(settings::session_settings_default()),
                     )
                 });
 
@@ -174,7 +174,7 @@ impl SessionDesc {
             .iter()
             .map(|(name, json_field_value)| {
                 let new_json_field_value = if name == SESSION_SETTINGS_STR {
-                    json::to_value(session_settings_default()).unwrap()
+                    json::to_value(settings::session_settings_default()).unwrap()
                 } else {
                     json_value.get(name).unwrap_or(json_field_value).clone()
                 };
@@ -194,7 +194,7 @@ impl SessionDesc {
             Err(e) => {
                 *self = session_desc_mut;
 
-                log_id(LogId::SessionSettingsExtrapolationFailed);
+                log_event(Event::SessionSettingsExtrapolationFailed);
                 fmt_e!(
                     "Error while deserializing extrapolated session settings: {}",
                     e
@@ -207,7 +207,7 @@ impl SessionDesc {
     // enums without data do not have tag and content set.
     pub fn to_settings(&self) -> Settings {
         let session_settings_json = json::to_value(&self.session_settings).unwrap();
-        let schema = settings_schema(session_settings_default());
+        let schema = settings::settings_schema(settings::session_settings_default());
         json::from_value(json_session_settings_to_settings(
             &session_settings_json,
             &schema,
@@ -555,7 +555,7 @@ impl DerefMut for SessionLock<'_> {
 impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
         save_session(self.session_desc, &self.dir.join(SESSION_FNAME)).ok();
-        log_id(LogId::SessionUpdated {
+        log_event(Event::SessionUpdated {
             web_client_id: self.update_author_id.to_owned(),
             update_type: self.update_type,
         });

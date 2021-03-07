@@ -124,11 +124,11 @@ pub enum SessionUpdateType {
     Other, // other top level flags, like "setup_wizard"
 }
 
-// Log id is serialized as #{ "id": "..." [, "data": ...] }#
+// Event is serialized as #{ "id": "..." [, "data": ...] }#
 // Pound signs are used to identify start and finish of json
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "id", content = "data")]
-pub enum LogId {
+pub enum Event {
     #[serde(rename_all = "camelCase")]
     SessionUpdated {
         web_client_id: Option<String>,
@@ -145,7 +145,7 @@ pub enum LogId {
     UpdateDownloadError,
 }
 
-pub fn log_id(id: LogId) {
+pub fn log_event(id: Event) {
     log::info!("#{}#", serde_json::to_string(&id).unwrap());
 }
 

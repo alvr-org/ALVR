@@ -2,8 +2,21 @@ use crate::{
     openvr, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER, RESTART_NOTIFIER,
     SESSION_MANAGER,
 };
-use alvr_common::{audio::AudioDevice, data::*, logging::*, sockets::*, *};
-use audio::AudioDeviceType;
+use alvr_common::{
+    audio::AudioDevice,
+    audio::{self, AudioDeviceType},
+    data::{
+        AudioDeviceId, ClientConfigPacket, ClientControlPacket, CodecType, FrameSize, OpenvrConfig,
+        PlayspaceSyncPacket, PublicIdentity, ServerControlPacket, Version, ALVR_VERSION,
+    },
+    logging::{show_err, SessionUpdateType},
+    prelude::*,
+    sockets::{
+        self, ControlSocketReceiver, ControlSocketSender, PendingClientConnection,
+        StreamSocketBuilder, AUDIO, LEGACY,
+    },
+    spawn_cancelable,
+};
 use futures::future::BoxFuture;
 use nalgebra::Translation3;
 use settings_schema::Switch;
@@ -34,7 +47,7 @@ fn mbits_to_bytes(value: u64) -> u32 {
 }
 
 async fn client_discovery() -> StrResult {
-    let res = search_client_loop(|client_ip, handshake_packet| async move {
+    let res = sockets::search_client_loop(|client_ip, handshake_packet| async move {
         crate::update_client_list(
             handshake_packet.hostname.clone(),
             ClientListAction::AddIfMissing {
@@ -423,7 +436,7 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
-    log_id(LogId::ClientConnected);
+    log_event(Event::ClientConnected);
 
     {
         let on_connect_script = settings.connection.on_connect_script;
@@ -566,7 +579,7 @@ async fn connection_pipeline() -> StrResult {
                     .send(&ServerControlPacket::KeepAlive)
                     .await;
                 if let Err(e) = res {
-                    log_id(LogId::ClientDisconnected);
+                    log_event(Event::ClientDisconnected);
                     info!("Client disconnected. Cause: {}", e);
                     break Ok(());
                 }
@@ -587,7 +600,7 @@ async fn connection_pipeline() -> StrResult {
                 },
                 Ok(_) => (),
                 Err(e) => {
-                    log_id(LogId::ClientDisconnected);
+                    log_event(Event::ClientDisconnected);
                     info!("Client disconnected. Cause: {}", e);
                     break;
                 }
@@ -600,7 +613,7 @@ async fn connection_pipeline() -> StrResult {
     // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
         res = spawn_cancelable(stream_socket.receive_loop()) => {
-            log_id(LogId::ClientDisconnected);
+            log_event(Event::ClientDisconnected);
             if let Err(e) = res {
                 info!("Client disconnected. Cause: {}", e);
             }

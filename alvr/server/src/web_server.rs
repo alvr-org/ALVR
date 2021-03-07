@@ -1,12 +1,16 @@
 use crate::{ClientListAction, ALVR_DIR, SESSION_MANAGER};
-use alvr_common::{commands::*, data::*, logging::*, *};
+use alvr_common::{
+    audio, commands,
+    data::{self, ALVR_VERSION},
+    graphics, logging,
+    prelude::*,
+};
 use bytes::Buf;
 use futures::SinkExt;
-use headers::{self, HeaderMapExt};
+use headers::HeaderMapExt;
 use hyper::{
     header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE},
-    service::{make_service_fn, service_fn},
-    Body, Method, Request, Response, StatusCode,
+    service, Body, Method, Request, Response, StatusCode,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json as json;
@@ -90,7 +94,7 @@ async fn http_api(
     events_sender: broadcast::Sender<String>,
 ) -> StrResult<Response<Body>> {
     let mut response = match request.uri().path() {
-        "/settings-schema" => reply_json(&settings_schema(session_settings_default()))?,
+        "/settings-schema" => reply_json(&data::settings_schema(data::session_settings_default()))?,
         "/session" => {
             if matches!(request.method(), &Method::GET) {
                 reply_json(SESSION_MANAGER.lock().get())?
@@ -129,7 +133,7 @@ async fn http_api(
         "/log" => text_websocket(request, log_sender).await?,
         "/events" => text_websocket(request, events_sender).await?,
         "/driver/register" => {
-            if driver_registration(&[ALVR_DIR.clone()], true).is_ok() {
+            if commands::driver_registration(&[ALVR_DIR.clone()], true).is_ok() {
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::INTERNAL_SERVER_ERROR)?
@@ -137,7 +141,7 @@ async fn http_api(
         }
         "/driver/unregister" => {
             if let Ok(path) = from_request_body::<PathBuf>(request).await {
-                if driver_registration(&[path], false).is_ok() {
+                if commands::driver_registration(&[path], false).is_ok() {
                     reply(StatusCode::OK)?
                 } else {
                     reply(StatusCode::INTERNAL_SERVER_ERROR)?
@@ -146,10 +150,10 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/driver/list" => reply_json(&get_registered_drivers().unwrap_or_default())?,
+        "/driver/list" => reply_json(&commands::get_registered_drivers().unwrap_or_default())?,
         uri @ "/firewall-rules/add" | uri @ "/firewall-rules/remove" => {
             let add = uri.ends_with("add");
-            let maybe_err = firewall_rules(add).err();
+            let maybe_err = commands::firewall_rules(add).err();
             if let Some(e) = &maybe_err {
                 error!("Setting firewall rules failed: code {}", e);
             }
@@ -223,11 +227,11 @@ async fn http_api(
                         Ok(Some(chunk)) => {
                             downloaded_bytes_count += chunk.len();
                             trace_err!(file.write_all(&chunk))?;
-                            log_id(LogId::UpdateDownloadedBytesCount(downloaded_bytes_count));
+                            log_event(Event::UpdateDownloadedBytesCount(downloaded_bytes_count));
                         }
                         Ok(None) => break,
                         Err(e) => {
-                            log_id(LogId::UpdateDownloadError);
+                            log_event(Event::UpdateDownloadError);
                             error!("Download update failed: {}", e);
                             return reply(StatusCode::BAD_GATEWAY);
                         }
@@ -292,17 +296,17 @@ pub async fn web_server(
         .connection
         .web_server_port;
 
-    let service = make_service_fn(|_| {
+    let service = service::make_service_fn(|_| {
         let log_sender = log_sender.clone();
         let events_sender = events_sender.clone();
         async move {
-            StrResult::Ok(service_fn(move |request| {
+            StrResult::Ok(service::service_fn(move |request| {
                 let log_sender = log_sender.clone();
                 let events_sender = events_sender.clone();
                 async move {
                     let res = http_api(request, log_sender, events_sender).await;
                     if let Err(e) = &res {
-                        show_e(e);
+                        logging::show_e(e);
                     }
 
                     res

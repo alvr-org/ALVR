@@ -1,4 +1,8 @@
-use alvr_common::{commands::*, logging::*, *};
+use alvr_common::{
+    commands,
+    logging::{self, CRASH_LOG_FNAME},
+    prelude::*,
+};
 use serde_json as json;
 use std::{
     env, fs,
@@ -30,7 +34,7 @@ pub fn is_steamvr_running() -> bool {
     system.refresh_processes();
 
     !system
-        .get_process_by_name(&exec_fname("vrserver"))
+        .get_process_by_name(&commands::exec_fname("vrserver"))
         .is_empty()
 }
 
@@ -39,7 +43,7 @@ pub fn maybe_launch_steamvr() {
     system.refresh_processes();
 
     if system
-        .get_process_by_name(&exec_fname("vrserver"))
+        .get_process_by_name(&commands::exec_fname("vrserver"))
         .is_empty()
     {
         spawn_no_window(Command::new("cmd").args(&["/C", "start", "steam://rungameid/250820"]));
@@ -63,7 +67,7 @@ pub fn kill_steamvr() {
 
     // first kill vrmonitor, then kill vrserver if it is hung.
 
-    for process in system.get_process_by_name(&exec_fname("vrmonitor")) {
+    for process in system.get_process_by_name(&commands::exec_fname("vrmonitor")) {
         #[cfg(not(windows))]
         process.kill(sysinfo::Signal::Term);
         #[cfg(windows)]
@@ -72,7 +76,7 @@ pub fn kill_steamvr() {
 
     thread::sleep(Duration::from_secs(1));
 
-    for process in system.get_process_by_name(&exec_fname("vrserver")) {
+    for process in system.get_process_by_name(&commands::exec_fname("vrserver")) {
         #[cfg(not(windows))]
         process.kill(sysinfo::Signal::Term);
         #[cfg(windows)]
@@ -81,11 +85,11 @@ pub fn kill_steamvr() {
 }
 
 pub fn check_steamvr_installation() -> bool {
-    openvr_source_file_path().is_ok()
+    commands::openvr_source_file_path().is_ok()
 }
 
 pub fn unblock_alvr_addon() -> StrResult {
-    let config_path = steam_config_dir()?.join("steamvr.vrsettings");
+    let config_path = commands::steam_config_dir()?.join("steamvr.vrsettings");
 
     let mut fields_ref: json::Map<String, json::Value> = trace_err!(json::from_str(&trace_err!(
         fs::read_to_string(&config_path)
@@ -110,15 +114,15 @@ pub fn current_alvr_dir() -> StrResult<PathBuf> {
 pub fn maybe_register_alvr_driver() -> StrResult {
     let current_alvr_dir = current_alvr_dir()?;
 
-    store_alvr_dir(&current_alvr_dir)?;
+    commands::store_alvr_dir(&current_alvr_dir)?;
 
-    let driver_registered = get_alvr_dir_from_registered_drivers()
+    let driver_registered = commands::get_alvr_dir_from_registered_drivers()
         .ok()
         .filter(|dir| *dir == current_alvr_dir.clone())
         .is_some();
 
     if !driver_registered {
-        let paths_backup = match get_registered_drivers() {
+        let paths_backup = match commands::get_registered_drivers() {
             Ok(paths) => paths,
             Err(e) => {
                 return fmt_e!(
@@ -130,11 +134,11 @@ pub fn maybe_register_alvr_driver() -> StrResult {
             }
         };
 
-        maybe_save_driver_paths_backup(&paths_backup)?;
+        commands::maybe_save_driver_paths_backup(&paths_backup)?;
 
-        driver_registration(&paths_backup, false)?;
+        commands::driver_registration(&paths_backup, false)?;
 
-        driver_registration(&[current_alvr_dir], true)?;
+        commands::driver_registration(&[current_alvr_dir], true)?;
     }
 
     Ok(())
@@ -142,7 +146,7 @@ pub fn maybe_register_alvr_driver() -> StrResult {
 
 pub fn fix_steamvr() {
     // If ALVR driver does not start use a more destructive approach: delete openvrpaths.vrpath then recreate it
-    if let Ok(path) = openvr_source_file_path() {
+    if let Ok(path) = commands::openvr_source_file_path() {
         fs::remove_file(path).ok();
 
         maybe_launch_steamvr();
@@ -169,7 +173,7 @@ fn try_close_steamvr_gracefully() {
 pub fn restart_steamvr() {
     try_close_steamvr_gracefully();
 
-    if show_err(maybe_register_alvr_driver()).is_some() {
+    if logging::show_err(maybe_register_alvr_driver()).is_some() {
         maybe_launch_steamvr();
     }
 }

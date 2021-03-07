@@ -1,5 +1,5 @@
-use crate::*;
-use encoding_rs_io::*;
+use crate::prelude::*;
+use encoding_rs_io::DecodeReaderBytes;
 use serde_json as json;
 use std::{
     collections::HashSet,
@@ -7,7 +7,7 @@ use std::{
     fs::{self, File},
     io::Read,
     path::{Path, PathBuf},
-    process::*,
+    process::Command,
 };
 
 const ALVR_DIR_STORAGE_FNAME: &str = "alvr_dir.txt";

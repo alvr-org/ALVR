@@ -1,6 +1,3 @@
-use crate::*;
-
-use cached_path::*;
 use std::{fs, io::ErrorKind};
 
 fn install_rust_android_gradle() {
@@ -12,8 +9,11 @@ fn install_rust_android_gradle() {
         PLUGIN_COMMIT
     );
 
-    let download_path =
-        cached_path_with_options(&rust_android_archive_url, &Options::default().extract()).unwrap();
+    let download_path = cached_path::cached_path_with_options(
+        &rust_android_archive_url,
+        &cached_path::Options::default().extract(),
+    )
+    .unwrap();
     let download_path = download_path.join(format!("rust-android-gradle-{}", PLUGIN_COMMIT));
 
     #[cfg(windows)]
@@ -21,13 +21,15 @@ fn install_rust_android_gradle() {
     #[cfg(target_os = "linux")]
     let gradlew_path = download_path.join("gradlew");
 
-    run_in(
+    crate::run_in(
         &download_path,
         &format!("{} publish", gradlew_path.to_string_lossy()),
     )
     .unwrap();
 
-    let dep_dir = workspace_dir().join("deps").join("rust-android-gradle");
+    let dep_dir = crate::workspace_dir()
+        .join("deps")
+        .join("rust-android-gradle");
     if let Err(e) = fs::create_dir_all(&dep_dir) {
         if e.kind() != ErrorKind::AlreadyExists {
             panic!(e);
@@ -53,6 +55,6 @@ fn install_rust_android_gradle() {
 }
 
 pub fn install_deps() {
-    run("rustup target add aarch64-linux-android").unwrap();
+    crate::run("rustup target add aarch64-linux-android").unwrap();
     install_rust_android_gradle();
 }

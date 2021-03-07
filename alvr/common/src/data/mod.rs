@@ -3,7 +3,7 @@ mod session;
 mod settings;
 mod version;
 
-use crate::*;
+use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub use packets::*;

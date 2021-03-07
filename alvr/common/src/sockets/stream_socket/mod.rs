@@ -8,7 +8,7 @@ mod tcp;
 mod throttled_udp;
 mod udp;
 
-use crate::{data::*, *};
+use crate::{data::SocketProtocol, prelude::*};
 use bytes::{Buf, BufMut, BytesMut};
 use futures::SinkExt;
 use serde::{de::DeserializeOwned, Serialize};

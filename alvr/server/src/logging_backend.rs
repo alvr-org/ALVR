@@ -1,5 +1,5 @@
 use crate::{ALVR_DIR, SESSION_MANAGER};
-use alvr_common::{logging::*, *};
+use alvr_common::logging;
 use fern::Dispatch;
 use log::LevelFilter;
 use std::fs;
@@ -34,7 +34,7 @@ pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
                 .write(true)
                 .create(true)
                 .truncate(true)
-                .open(ALVR_DIR.join(SESSION_LOG_FNAME))
+                .open(ALVR_DIR.join(logging::SESSION_LOG_FNAME))
                 .unwrap(),
         );
     } else {
@@ -46,7 +46,7 @@ pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
         .chain(
             Dispatch::new()
                 .level(LevelFilter::Error)
-                .chain(fern::log_file(ALVR_DIR.join(CRASH_LOG_FNAME)).unwrap()),
+                .chain(fern::log_file(ALVR_DIR.join(logging::CRASH_LOG_FNAME)).unwrap()),
         )
         .apply()
         .unwrap();

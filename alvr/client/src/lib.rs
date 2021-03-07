@@ -6,8 +6,15 @@ mod logging_backend;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use alvr_common::{data::*, logging::show_err, *};
-use jni::{objects::*, *};
+use alvr_common::{
+    data::{self, HeadsetInfoPacket, PrivateIdentity, ALVR_VERSION},
+    logging,
+    prelude::*,
+};
+use jni::{
+    objects::{JClass, JObject, JString},
+    JNIEnv,
+};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::{
@@ -42,8 +49,8 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_createIdentity(
     _: JClass,
     jidentity: JObject,
 ) {
-    show_err(|| -> StrResult {
-        let identity = create_identity(None)?;
+    logging::show_err(|| -> StrResult {
+        let identity = data::create_identity(None)?;
 
         let jhostname = trace_err!(env.new_string(identity.hostname))?.into();
         trace_err!(env.set_field(jidentity, "hostname", "Ljava/lang/String;", jhostname))?;
@@ -105,7 +112,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
 
     legacySend = Some(legacy_send);
 
-    show_err(|| -> StrResult {
+    logging::show_err(|| -> StrResult {
         let result = onCreate(
             env.get_native_interface() as _,
             *activity as _,
@@ -165,7 +172,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
     jscreen_surface: JObject,
     dark_mode: u8,
 ) {
-    show_err(|| -> StrResult {
+    logging::show_err(|| -> StrResult {
         let java_vm = trace_err!(env.get_java_vm())?;
         let activity_ref = trace_err!(env.new_global_ref(jactivity))?;
         let nal_class_ref = trace_err!(env.new_global_ref(nal_class))?;

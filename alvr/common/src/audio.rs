@@ -1,7 +1,7 @@
 use crate::{
     data::{AudioConfig, AudioDeviceId},
+    prelude::*,
     sockets::{StreamReceiver, StreamSender},
-    *,
 };
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
@@ -23,11 +23,19 @@ use std::ptr;
 use widestring::U16CStr;
 #[cfg(windows)]
 use winapi::{
-    shared::{winerror::*, wtypes::VT_LPWSTR},
+    shared::{winerror::FAILED, wtypes::VT_LPWSTR},
     um::{
-        combaseapi::*, coml2api::STGM_READ, endpointvolume::IAudioEndpointVolume,
-        functiondiscoverykeys_devpkey::PKEY_Device_FriendlyName, mmdeviceapi::*, objbase::*,
-        propidl::PROPVARIANT, propsys::IPropertyStore,
+        combaseapi::{CoCreateInstance, CoInitializeEx, CoTaskMemFree, CLSCTX_ALL},
+        coml2api::STGM_READ,
+        endpointvolume::IAudioEndpointVolume,
+        functiondiscoverykeys_devpkey::PKEY_Device_FriendlyName,
+        mmdeviceapi::{
+            eAll, IMMDevice, IMMDeviceCollection, IMMDeviceEnumerator, MMDeviceEnumerator,
+            DEVICE_STATE_ACTIVE,
+        },
+        objbase::COINIT_MULTITHREADED,
+        propidl::{PropVariantClear, PROPVARIANT},
+        propsys::IPropertyStore,
     },
     Class, Interface,
 };
@@ -63,6 +71,7 @@ pub enum AudioDeviceType {
 }
 
 impl AudioDeviceType {
+    #[cfg(windows)]
     fn is_output(&self) -> bool {
         matches!(self, Self::Output | Self::VirtualMicrophoneInput)
     }
@@ -71,9 +80,7 @@ impl AudioDeviceType {
 pub struct AudioDevice {
     inner: Device,
 
-    #[allow(dead_code)]
-    id: AudioDeviceId,
-
+    #[cfg(windows)]
     device_type: AudioDeviceType,
 }
 
@@ -139,7 +146,8 @@ impl AudioDevice {
 
         Ok(Self {
             inner: device,
-            id,
+
+            #[cfg(windows)]
             device_type,
         })
     }
@@ -302,7 +310,7 @@ pub async fn record_audio_loop(
     device: AudioDevice,
     channels_count: u16,
     sample_rate: u32,
-    #[allow(unused_variables)] mute: bool,
+    #[cfg_attr(not(windows), allow(unused_variables))] mute: bool,
     mut sender: StreamSender<()>,
 ) -> StrResult {
     let maybe_config_range = trace_err!(device.inner.supported_output_configs())?.next();

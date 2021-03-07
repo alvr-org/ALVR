@@ -1,8 +1,13 @@
 use crate::{audio, MAYBE_LEGACY_SENDER};
 use alvr_common::{
-    data::*,
-    sockets::{ConnectionResult, StreamSocketBuilder, AUDIO, LEGACY},
-    *,
+    data::{
+        ClientControlPacket, CodecType, HeadsetInfoPacket, PlayspaceSyncPacket, PrivateIdentity,
+        ServerControlPacket, ServerHandshakePacket, SessionDesc, TrackingSpace, Version,
+        ALVR_VERSION,
+    },
+    prelude::*,
+    sockets::{self, ConnectionResult, StreamSocketBuilder, AUDIO, LEGACY},
+    spawn_cancelable,
 };
 use futures::future::BoxFuture;
 use jni::{

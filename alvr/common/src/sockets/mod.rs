@@ -4,12 +4,15 @@ mod stream_socket;
 pub use control_socket::*;
 pub use stream_socket::*;
 
-use crate::{data::*, logging::*, *};
+use crate::{
+    data::{self, ClientHandshakePacket, HandshakePacket, ServerHandshakePacket, ALVR_NAME},
+    prelude::*,
+};
 use std::{
     future::Future,
     net::{IpAddr, Ipv4Addr},
 };
-use tokio::net::*;
+use tokio::net::UdpSocket;
 
 type LDC = tokio_util::codec::LengthDelimitedCodec;
 
@@ -40,10 +43,10 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
         {
             packet
         } else if &packet_buffer[..5] == b"\x01ALVR" {
-            log_id(LogId::ClientFoundWrongVersion("v11 or previous".into()));
+            log_event(Event::ClientFoundWrongVersion("v11 or previous".into()));
             return fmt_e!("ALVR client version is too old!");
         } else if &packet_buffer[..4] == b"ALVR" {
-            log_id(LogId::ClientFoundWrongVersion("v12.x.x - v13.x.x".into()));
+            log_event(Event::ClientFoundWrongVersion("v12.x.x - v13.x.x".into()));
             return fmt_e!("ALVR client version is too old!");
         } else {
             debug!("Found unrelated packet during client discovery");
@@ -51,11 +54,11 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
         };
 
         if handshake_packet.alvr_name != ALVR_NAME {
-            log_id(LogId::ClientFoundInvalid);
+            log_event(Event::ClientFoundInvalid);
             return fmt_e!("Error while identifying client");
         }
 
-        if !is_version_compatible(&handshake_packet.version) {
+        if !data::is_version_compatible(&handshake_packet.version) {
             let response_bytes = trace_err!(bincode::serialize(&HandshakePacket::Server(
                 ServerHandshakePacket::IncompatibleVersions
             )))?;
@@ -64,7 +67,7 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
                 .await
                 .ok();
 
-            log_id(LogId::ClientFoundWrongVersion(
+            log_event(Event::ClientFoundWrongVersion(
                 handshake_packet.version.to_string(),
             ));
             return fmt_e!("Found ALVR client with incompatible version");

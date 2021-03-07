@@ -13,7 +13,13 @@ mod bindings {
 #[cfg(windows)]
 use bindings::*;
 
-use alvr_common::{data::*, logging::*, *};
+use alvr_common::{
+    commands,
+    data::{ClientConnectionDesc, SessionManager},
+    graphics, logging,
+    logging::SessionUpdateType,
+    prelude::*,
+};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::{
@@ -259,7 +265,8 @@ pub fn init() -> StrResult {
                 }
             }
 
-            let web_server = show_err_async(web_server::web_server(log_sender, events_sender));
+            let web_server =
+                logging::show_err_async(web_server::web_server(log_sender, events_sender));
 
             tokio::select! {
                 _ = web_server => (),
@@ -267,7 +274,7 @@ pub fn init() -> StrResult {
             }
         });
 
-        thread::spawn(|| show_err(ui_thread()));
+        thread::spawn(|| logging::show_err(ui_thread()));
     }
 
     let alvr_dir_c_string = CString::new(ALVR_DIR.to_string_lossy().to_string()).unwrap();
@@ -283,7 +290,7 @@ pub fn init() -> StrResult {
 }
 
 pub extern "C" fn driver_ready_idle() {
-    show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone()));
+    logging::show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone()));
 
     if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
         runtime.spawn(async move {
@@ -310,7 +317,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
 ) -> *mut c_void {
     static INIT_ONCE: Once = Once::new();
     INIT_ONCE.call_once(|| {
-        show_err(init());
+        logging::show_err(init());
     });
 
     FRAME_RENDER_VS_CSO_PTR = FRAME_RENDER_VS_CSO.as_ptr();
@@ -325,7 +332,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     COLOR_CORRECTION_CSO_LEN = COLOR_CORRECTION_CSO.len() as _;
 
     unsafe extern "C" fn log_error(string_ptr: *const c_char) {
-        show_e(CStr::from_ptr(string_ptr).to_string_lossy());
+        logging::show_e(CStr::from_ptr(string_ptr).to_string_lossy());
     }
 
     unsafe fn log(level: log::Level, string_ptr: *const c_char) {

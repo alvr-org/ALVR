@@ -22,6 +22,8 @@ define([
                 );
                 // remove the "root": {}, from the main object
                 delete main.root;
+                // add english to the list
+                Object.assign(main, {"en" : true});
                 // keep only the key (languages codes) from the main object
                 const availableLanguage = Object.keys(main).sort();
                 // for each languages create the html element

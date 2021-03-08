@@ -36,7 +36,7 @@ impl AudioInputCallback for RecorderCallback {
             sample_buffer.extend(&frame.to_ne_bytes());
         }
 
-        self.sender.send(sample_buffer.clone()).ok();
+        self.sender.send(sample_buffer).ok();
 
         DataCallbackResult::Continue
     }

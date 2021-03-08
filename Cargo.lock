@@ -89,6 +89,7 @@ version = "15.1.0"
 dependencies = [
  "alvr_common",
  "android_logger",
+ "bincode",
  "bindgen 0.57.0",
  "bytes",
  "cc",
@@ -168,6 +169,7 @@ version = "15.1.0"
 dependencies = [
  "alcro",
  "alvr_common",
+ "bincode",
  "bindgen 0.57.0",
  "bytes",
  "cc",
@@ -3569,9 +3571,9 @@ dependencies = [
 
 [[package]]
 name = "security-framework"
-version = "2.1.1"
+version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dfd318104249865096c8da1dfabf09ddbb6d0330ea176812a62ec75e40c4166"
+checksum = "d493c5f39e02dfb062cd8f33301f90f9b13b650e8c1b1d0fd75c19dd64bff69d"
 dependencies = [
  "bitflags",
  "core-foundation 0.9.1",

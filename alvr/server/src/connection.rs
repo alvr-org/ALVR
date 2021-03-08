@@ -1,18 +1,19 @@
 use crate::{
-    openvr, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER, RESTART_NOTIFIER,
-    SESSION_MANAGER,
+    connection_utils, openvr, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
+    RESTART_NOTIFIER, SESSION_MANAGER,
 };
 use alvr_common::{
     audio::AudioDevice,
     audio::{self, AudioDeviceType},
     data::{
-        AudioDeviceId, ClientConfigPacket, ClientControlPacket, CodecType, FrameSize, OpenvrConfig,
-        PlayspaceSyncPacket, PublicIdentity, ServerControlPacket, Version, ALVR_VERSION,
+        AudioDeviceId, ClientConfigPacket, ClientControlPacket, CodecType, FrameSize,
+        HeadsetInfoPacket, OpenvrConfig, PlayspaceSyncPacket, PublicIdentity, ServerControlPacket,
+        Version, ALVR_VERSION,
     },
-    logging::{show_err, SessionUpdateType},
+    logging::{self, SessionUpdateType},
     prelude::*,
     sockets::{
-        self, ControlSocketReceiver, ControlSocketSender, PendingClientConnection,
+        ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
         StreamSocketBuilder, AUDIO, LEGACY,
     },
     spawn_cancelable,
@@ -35,8 +36,10 @@ use tokio::{
     time,
 };
 
-const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(2);
+const CONTROL_CONNECT_RETRY_PAUSE: Duration = Duration::from_millis(500);
+const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
+const CLEANUP_PAUSE: Duration = Duration::from_millis(500);
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -47,7 +50,7 @@ fn mbits_to_bytes(value: u64) -> u32 {
 }
 
 async fn client_discovery() -> StrResult {
-    let res = sockets::search_client_loop(|client_ip, handshake_packet| async move {
+    let res = connection_utils::search_client_loop(|client_ip, handshake_packet| async move {
         crate::update_client_list(
             handshake_packet.hostname.clone(),
             ClientListAction::AddIfMissing {
@@ -104,15 +107,21 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
             clients_info
         });
 
-    let maybe_pending_connection =
-        sockets::begin_connecting_to_client(&clients_info.keys().cloned().collect::<Vec<_>>())
-            .await;
-    let PendingClientConnection {
-        pending_socket,
-        client_ip,
-        server_ip,
-        headset_info,
-    } = maybe_pending_connection?;
+    let (mut proto_socket, client_ip) = loop {
+        if let Ok(pair) = ProtoControlSocket::connect_to(PeerType::AnyClient(
+            clients_info.keys().cloned().collect::<Vec<_>>(),
+        ))
+        .await
+        {
+            break pair;
+        }
+
+        debug!("Timeout while searching for client. Retrying");
+        time::sleep(CONTROL_CONNECT_RETRY_PAUSE).await;
+    };
+
+    let (headset_info, server_ip) =
+        trace_err!(proto_socket.recv::<(HeadsetInfoPacket, IpAddr)>().await)?;
 
     let settings = SESSION_MANAGER.lock().get().to_settings();
 
@@ -192,9 +201,9 @@ async fn client_handshake() -> StrResult<ConnectionInfo> {
         game_audio_sample_rate,
         reserved: format!("{}", *ALVR_VERSION),
     };
+    proto_socket.send(&client_config).await?;
 
-    let (mut control_sender, control_receiver) =
-        sockets::finish_connecting_to_client(pending_socket, client_config).await?;
+    let (mut control_sender, control_receiver) = proto_socket.split();
 
     let session_settings = SESSION_MANAGER.lock().get().session_settings.clone();
 
@@ -646,7 +655,10 @@ pub async fn connection_lifecycle_loop() {
     loop {
         tokio::join!(
             async {
-                show_err(connection_pipeline().await);
+                logging::show_err(connection_pipeline().await);
+
+                // let any running task or socket shutdown
+                time::sleep(CLEANUP_PAUSE).await;
             },
             time::sleep(RETRY_CONNECT_MIN_INTERVAL),
         );

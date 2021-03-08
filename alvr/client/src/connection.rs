@@ -1,12 +1,16 @@
-use crate::{audio, MAYBE_LEGACY_SENDER};
+use crate::{
+    audio,
+    connection_utils::{self, ConnectionError},
+    MAYBE_LEGACY_SENDER,
+};
 use alvr_common::{
     data::{
-        ClientControlPacket, CodecType, HeadsetInfoPacket, PlayspaceSyncPacket, PrivateIdentity,
-        ServerControlPacket, ServerHandshakePacket, SessionDesc, TrackingSpace, Version,
-        ALVR_VERSION,
+        ClientConfigPacket, ClientControlPacket, ClientHandshakePacket, CodecType,
+        HeadsetInfoPacket, PlayspaceSyncPacket, PrivateIdentity, ServerControlPacket,
+        ServerHandshakePacket, SessionDesc, TrackingSpace, Version, ALVR_NAME, ALVR_VERSION,
     },
     prelude::*,
-    sockets::{self, ConnectionResult, StreamSocketBuilder, AUDIO, LEGACY},
+    sockets::{PeerType, ProtoControlSocket, StreamSocketBuilder, AUDIO, LEGACY},
     spawn_cancelable,
 };
 use futures::future::BoxFuture;
@@ -44,9 +48,12 @@ const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
 const STREAM_STARTING_MESSAGE: &str = "The stream will begin soon\nPlease wait...";
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
-const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(2);
+
+const CONTROL_CONNECT_RETRY_PAUSE: Duration = Duration::from_millis(500);
+const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const PLAYSPACE_SYNC_INTERVAL: Duration = Duration::from_millis(500);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
+const CLEANUP_PAUSE: Duration = Duration::from_millis(500);
 
 // close stream on Drop (manual disconnection or execution canceling)
 struct StreamCloseGuard {
@@ -97,51 +104,66 @@ async fn connection_pipeline(
 ) -> StrResult {
     let hostname = &private_identity.hostname;
 
-    let connection_result = sockets::connect_to_server(
-        &headset_info,
+    let handshake_packet = ClientHandshakePacket {
+        alvr_name: ALVR_NAME.into(),
+        version: ALVR_VERSION.clone(),
         device_name,
-        hostname.clone(),
-        private_identity.certificate_pem.clone(),
-    )
-    .await?;
-    let (server_ip, control_sender, mut control_receiver, config_packet) = match connection_result {
-        ConnectionResult::Connected {
-            server_ip,
-            control_sender,
-            control_receiver,
-            config_packet,
-        } => (server_ip, control_sender, control_receiver, config_packet),
-        ConnectionResult::ServerMessage(message) => {
-            info!("Server response: {:?}", message);
-            let message_str = match message {
-                ServerHandshakePacket::ClientUntrusted => CLIENT_UNTRUSTED_MESSAGE,
-                ServerHandshakePacket::IncompatibleVersions => INCOMPATIBLE_VERSIONS_MESSAGE,
-            };
-            set_loading_message(&*java_vm, &*activity_ref, hostname, message_str)?;
-            return Ok(());
-        }
-        ConnectionResult::NetworkUnreachable => {
-            info!("Network unreachable");
-            set_loading_message(
-                &*java_vm,
-                &*activity_ref,
-                hostname,
-                NETWORK_UNREACHABLE_MESSAGE,
-            )?;
-
-            time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
-
-            set_loading_message(
-                &*java_vm,
-                &*activity_ref,
-                &private_identity.hostname,
-                INITIAL_MESSAGE,
-            )
-            .ok();
-
-            return Ok(());
-        }
+        hostname: hostname.clone(),
+        certificate_pem: private_identity.certificate_pem.clone(),
+        reserved: "".into(),
     };
+
+    let (mut proto_socket, server_ip) = tokio::select! {
+        res = connection_utils::announce_client_loop(handshake_packet) => {
+            match res? {
+                ConnectionError::ServerMessage(message) => {
+                    info!("Server response: {:?}", message);
+                    let message_str = match message {
+                        ServerHandshakePacket::ClientUntrusted => CLIENT_UNTRUSTED_MESSAGE,
+                        ServerHandshakePacket::IncompatibleVersions =>
+                            INCOMPATIBLE_VERSIONS_MESSAGE,
+                    };
+                    set_loading_message(&*java_vm, &*activity_ref, hostname, message_str)?;
+                    return Ok(());
+                }
+                ConnectionError::NetworkUnreachable => {
+                    info!("Network unreachable");
+                    set_loading_message(
+                        &*java_vm,
+                        &*activity_ref,
+                        hostname,
+                        NETWORK_UNREACHABLE_MESSAGE,
+                    )?;
+
+                    time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
+
+                    set_loading_message(
+                        &*java_vm,
+                        &*activity_ref,
+                        &private_identity.hostname,
+                        INITIAL_MESSAGE,
+                    )
+                    .ok();
+
+                    return Ok(());
+                }
+            }
+        },
+        pair = async {
+            loop {
+                if let Ok(pair) = ProtoControlSocket::connect_to(PeerType::Server).await {
+                    break pair;
+                }
+
+                time::sleep(CONTROL_CONNECT_RETRY_PAUSE).await;
+            }
+        } => pair
+    };
+
+    trace_err!(proto_socket.send(&(headset_info, server_ip)).await)?;
+    let config_packet = trace_err!(proto_socket.recv::<ClientConfigPacket>().await)?;
+
+    let (control_sender, mut control_receiver) = proto_socket.split();
     let control_sender = Arc::new(Mutex::new(control_sender));
 
     match control_receiver.recv().await {
@@ -606,6 +628,9 @@ pub async fn connection_lifecycle_loop(
                     )
                     .ok();
                 }
+
+                // let any running task or socket shutdown
+                time::sleep(CLEANUP_PAUSE).await;
             },
             time::sleep(RETRY_CONNECT_MIN_INTERVAL),
         );

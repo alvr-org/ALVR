@@ -1,6 +1,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 mod connection;
+mod connection_utils;
 mod logging_backend;
 mod openvr;
 mod web_server;

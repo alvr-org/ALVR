@@ -24,7 +24,4 @@ private:
 	std::shared_ptr<ClientConnection> m_listener;
 	std::atomic_bool m_exiting{false};
 	IDRScheduler m_scheduler;
-
-	AVBufferRef *hw_device_ctx;
-	AVCodec *codec;
 };

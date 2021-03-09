@@ -20,11 +20,6 @@ fn main() {
 
     if cfg!(not(windows)) {
         //FIXME: we should not have to declare libs both here and in meson
-        println!("cargo:rustc-link-lib=avcodec");
-        println!("cargo:rustc-link-lib=avdevice");
-        println!("cargo:rustc-link-lib=avutil");
-        println!("cargo:rustc-link-lib=avfilter");
-        println!("cargo:rustc-link-lib=avformat");
         println!("cargo:rustc-link-lib=stdc++");
     }
 

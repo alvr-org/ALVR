@@ -4,6 +4,8 @@ project('alvr', ['c', 'cpp'],
 
 compiler = meson.get_compiler('cpp')
 
+root = include_directories(['.'])
+
 openvr_dep = declare_dependency(
 	dependencies: [
 		compiler.find_library('openvr_api', dirs: meson.current_source_dir()/'openvr/lib'),

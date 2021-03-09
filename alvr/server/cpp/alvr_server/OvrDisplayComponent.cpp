@@ -22,7 +22,7 @@ void OvrDisplayComponent::GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *
 #ifdef WIN32
 	return false;
 #else
-	return false;
+	return true;
 #endif
 }
 

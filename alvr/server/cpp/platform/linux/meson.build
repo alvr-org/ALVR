@@ -1,9 +1,21 @@
 platform_sources = files([
-	'CEncoder.cpp',
-	'Edid.cpp'
+	'CEncoder.cpp'
 ])
 platform_dep = [
-		dependency('libavutil'),
-		dependency('libavfilter'),
-    dependency('libavcodec')
 ]
+
+executable('edid-gen',
+	['Edid.cpp', 'edid-gen.cpp']
+)
+
+executable('grabber',
+	['grabber.cpp'],
+	dependencies:[
+		dependency('libavcodec'),
+		dependency('libavutil'),
+		dependency('libavformat'),
+		dependency('libavdevice'),
+		dependency('libavfilter'),
+	],
+	include_directories: root
+)

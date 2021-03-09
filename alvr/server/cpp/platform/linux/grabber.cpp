@@ -173,12 +173,10 @@ int main(int argc, char ** argv)
 		switch (codec_id)
 		{
 			case ALVR_CODEC_H264:
-				av_opt_set_int(avctx.get(), "rc_mode", 2, 0); // constant bitrate
-				av_opt_set_int(avctx.get(), "quality", 7, 0); // low quality, fast encoding
-				av_opt_set_int(avctx.get(), "profile", 77, 0); // main
+				av_opt_set(avctx.get(), "profile", "high", 0);
 				break;
 			case ALVR_CODEC_H265:
-				av_opt_set(avctx.get(), "profile", "main", 0);
+				av_opt_set(avctx.get(), "profile", "high", 0);
 				break;
 		}
 
@@ -188,8 +186,9 @@ int main(int argc, char ** argv)
 		avctx->framerate = (AVRational){refresh, 1};
 		avctx->sample_aspect_ratio = (AVRational){1, 1};
 		avctx->pix_fmt = AV_PIX_FMT_VAAPI;
+		avctx->max_b_frames = 0;
 
-		avctx->bit_rate = bitrate * 8 * 1024 * 1024;
+		//avctx->bit_rate = bitrate * 8 * 1024 * 1024;
 
 		/* set hw_frames_ctx for encoder's AVCodecContext */
 		set_hwframe_ctx(avctx.get(), hw_device_ctx, avctx->width, avctx->height);

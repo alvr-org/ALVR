@@ -96,7 +96,7 @@ void logfn(void*, int level, const char* data, va_list va)
 	vfprintf(stderr, data, va);
 }
 
-void skipAUD_h265(char **buffer, int *length) {
+void skipAUD_h265(uint8_t **buffer, int *length) {
 	// H.265 encoder always produces AUD NAL even if AMF_VIDEO_ENCODER_HEVC_INSERT_AUD is set. But it is not needed.
 	static const int AUD_NAL_SIZE = 7;
 
@@ -273,7 +273,7 @@ int main(int argc, char ** argv)
 
 		auto frame_time = std::chrono::duration<double>(1. / refresh);
 		auto next_frame = std::chrono::steady_clock::now() + frame_time;
-		std::vector<char> frame_data;
+		std::vector<AVPacket> packets;
 		for(int frame_idx = 0; ; ++frame_idx) {
 			AVPacket packet;
 			av_read_frame(kmsgrabctx.get(), &packet);
@@ -285,42 +285,46 @@ int main(int argc, char ** argv)
 			av_buffersink_get_frame(filter_out_ctx, hw_frame);
 			av_packet_unref(&packet);
 
-			AVPacket enc_pkt;
-
-			av_init_packet(&enc_pkt);
-			enc_pkt.data = NULL;
-			enc_pkt.size = 0;
-
 			if ((err = avcodec_send_frame(avctx.get(), hw_frame)) < 0) {
 				throw AvException("avcodec_send_frame failed: ", err);
 			}
 			av_frame_unref(hw_frame);
 
-			frame_data.clear();
 			int video_len = 0;
 			while (1) {
+				AVPacket enc_pkt;
+				av_init_packet(&enc_pkt);
+				enc_pkt.data = NULL;
+				enc_pkt.size = 0;
+
 				err = avcodec_receive_packet(avctx.get(), &enc_pkt);
 				if (err == AVERROR(EAGAIN)) {
 					break;
 				} else if (err) {
 					throw std::runtime_error("failed to encode");
 				}
-				frame_data.resize(video_len + enc_pkt.size);
-				memcpy(&frame_data[video_len], enc_pkt.data, enc_pkt.size);
 				video_len += enc_pkt.size;
-
-				enc_pkt.stream_index = 0;
-				av_packet_unref(&enc_pkt);
+				packets.push_back(enc_pkt);
 			}
 
-			char * video = frame_data.data();
-			if (codec_id == ALVR_CODEC_H265)
+			for (int i = 0 ; i < packets.size(); ++i)
 			{
-				skipAUD_h265(&video, &video_len);
-			}
+				auto pkt_copy = packets[i];
+				if (i == 0)
+				{
+					if (codec_id == ALVR_CODEC_H265)
+					{
+						skipAUD_h265(&pkt_copy.data, &pkt_copy.size);
+						video_len -= (packets[i].size - pkt_copy.size);
+					}
+					std::cout.write((char*)&video_len, sizeof(video_len));
+				}
 
-			std::cout.write((char*)&video_len, sizeof(video_len));
-			std::cout.write(video, video_len);
+				std::cout.write((char*)pkt_copy.data, pkt_copy.size);
+				packets[i].stream_index = 0;
+				av_packet_unref(&packets[i]);
+			}
+			packets.clear();
 
 			std::this_thread::sleep_until(next_frame);
 			next_frame += frame_time;

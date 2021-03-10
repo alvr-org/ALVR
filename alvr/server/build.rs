@@ -15,7 +15,8 @@ fn main() {
 
     let platform_iter = walkdir::WalkDir::new(platform).into_iter();
 
-    let cpp_paths = common_iter.chain(platform_iter)
+    let cpp_paths = common_iter
+        .chain(platform_iter)
         .filter_map(|maybe_entry| maybe_entry.ok())
         .map(|entry| entry.into_path())
         .collect::<Vec<_>>();
@@ -63,7 +64,7 @@ fn main() {
     println!(
         "cargo:rustc-link-search=native={}/openvr/lib",
         cpp_dir.to_string_lossy()
-        );
+    );
     println!("cargo:rustc-link-lib=openvr_api");
 
     for path in cpp_paths {

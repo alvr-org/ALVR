@@ -19,7 +19,7 @@ void OvrDisplayComponent::GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *
 
  bool OvrDisplayComponent::IsDisplayOnDesktop()
 {
-#ifdef WIN32
+#ifdef _WIN32
 	return false;
 #else
 	return true;
@@ -28,7 +28,7 @@ void OvrDisplayComponent::GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *
 
  bool OvrDisplayComponent::IsDisplayRealDisplay()
 {
-#ifdef WIN32
+#ifdef _WIN32
 	return false;
 #else
 	return true;

@@ -13,7 +13,7 @@ class OvrController;
 
 class OvrDisplayComponent;
 class CEncoder;
-#ifdef WIN32
+#ifdef _WIN32
 class CD3DRender;
 class OvrDirectModeComponent;
 #endif
@@ -78,7 +78,7 @@ private:
 
 	std::wstring m_adapterName;
 
-#ifdef WIN32
+#ifdef _WIN32
 	std::shared_ptr<CD3DRender> m_D3DRender;
 #endif
 	std::shared_ptr<CEncoder> m_encoder;
@@ -88,7 +88,7 @@ private:
 	std::shared_ptr<OvrController> m_rightController;
 
 	std::shared_ptr<OvrDisplayComponent> m_displayComponent;
-#ifdef WIN32
+#ifdef _WIN32
 	std::shared_ptr<OvrDirectModeComponent> m_directModeComponent;
 #endif
 };

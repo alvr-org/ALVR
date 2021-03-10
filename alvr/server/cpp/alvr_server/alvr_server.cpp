@@ -8,7 +8,7 @@
 
 #include <cstring>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #endif
 #include "openvr_driver.h"
@@ -21,7 +21,7 @@
 
 static void load_debug_privilege(void)
 {
-#ifdef WIN32
+#ifdef _WIN32
 	const DWORD flags = TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY;
 	TOKEN_PRIVILEGES tp;
 	HANDLE token;
@@ -107,7 +107,7 @@ void CServerDriver_DisplayRedirect::RunFrame()
 CServerDriver_DisplayRedirect g_serverDriverDisplayRedirect;
 
 
-#ifdef WIN32
+#ifdef _WIN32
 HINSTANCE g_hInstance;
 
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)

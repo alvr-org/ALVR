@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef WIN32
+#ifdef _WIN32
 	#pragma warning(disable:4005)
 	#include <WinSock2.h>
 	#pragma warning(default:4005)
@@ -32,7 +32,7 @@ extern uint64_t gPerformanceCounterFrequency;
 
 // Get elapsed time in us from Unix Epoch
 inline uint64_t GetTimestampUs() {
-#ifdef WIN32
+#ifdef _WIN32
 	FILETIME ft;
 	GetSystemTimeAsFileTime(&ft);
 
@@ -50,7 +50,7 @@ inline uint64_t GetTimestampUs() {
 
 // Get performance counter in us
 inline uint64_t GetCounterUs() {
-#ifdef WIN32
+#ifdef _WIN32
 	if (gPerformanceCounterFrequency == 0) {
 		LARGE_INTEGER freq;
 		QueryPerformanceFrequency(&freq);
@@ -81,7 +81,7 @@ inline std::string DumpMatrix(const float *m) {
 	return std::string(buf);
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 inline std::wstring GetErrorStr(HRESULT hr) {
 	wchar_t *s = NULL;
 	std::wstring ret;
@@ -389,7 +389,7 @@ inline vr::HmdQuaternionf_t Slerp(vr::HmdQuaternionf_t &q1, vr::HmdQuaternionf_t
 	}
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 // Delay loading for Cuda driver API to correctly work on non-NVIDIA GPU.
 inline bool LoadCudaDLL() {
 	__try {

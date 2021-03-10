@@ -16,7 +16,7 @@ IDRScheduler::~IDRScheduler()
 
 void IDRScheduler::OnPacketLoss()
 {
-#ifdef WIN32
+#ifdef _WIN32
 	IPCCriticalSectionLock lock(m_IDRCS);
 #else
 	std::unique_lock lock(m_mutex);
@@ -49,7 +49,7 @@ void IDRScheduler::OnStreamStart()
 
 void IDRScheduler::InsertIDR()
 {
-#ifdef WIN32
+#ifdef _WIN32
 	IPCCriticalSectionLock lock(m_IDRCS);
 #else
 	std::unique_lock lock(m_mutex);
@@ -59,7 +59,7 @@ void IDRScheduler::InsertIDR()
 }
 
 bool IDRScheduler::CheckIDRInsertion() {
-#ifdef WIN32
+#ifdef _WIN32
 	IPCCriticalSectionLock lock(m_IDRCS);
 #else
 	std::unique_lock lock(m_mutex);

@@ -6,7 +6,7 @@
 #pragma once
 
 #include <thread>
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #endif
 
@@ -25,7 +25,7 @@ private:
 	std::thread *m_pThread;
 };
 
-#ifdef WIN32
+#ifdef _WIN32
 class CThreadEvent
 {
 public:

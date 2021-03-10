@@ -379,7 +379,7 @@ AMF_RESULT VulkanImportTable::LoadFunctionsTable()
 	GET_DLL_ENTRYPOINT(m_hVulkanDll, vkGetPhysicalDeviceSurfacePresentModesKHR);
     GET_DLL_ENTRYPOINT(m_hVulkanDll, vkDestroySurfaceKHR);
 
-#ifdef WIN32
+#ifdef _WIN32
     GET_DLL_ENTRYPOINT(m_hVulkanDll, vkCreateWin32SurfaceKHR);
 #else 
     GET_DLL_ENTRYPOINT(m_hVulkanDll, vkCreateXlibSurfaceKHR);

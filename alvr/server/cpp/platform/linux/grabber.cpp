@@ -7,8 +7,14 @@
 #include <memory>
 #include <stdexcept>
 #include <chrono>
+#include <string>
 #include <thread>
 #include <vector>
+#include <xf86drm.h>
+#include <xf86drmMode.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 extern "C" {
 #include <libavdevice/avdevice.h>
@@ -62,7 +68,70 @@ void set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx, int width,
 	av_buffer_unref(&hw_frames_ref);
 }
 
-auto crate_kmsgrab_ctx(const char * device_name, int framerate)
+class Defer
+{
+public:
+	Defer(std::function<void()> fn): fn(fn){}
+	~Defer() {fn();}
+private:
+	std::function<void()> fn;
+};
+
+std::tuple<std::string, int> find_crtc(int width, int height)
+{
+	drmDevicePtr devices[16];
+	int count = drmGetDevices(devices, 16);
+	Defer d([&](){drmFreeDevices(devices, count);});
+	for (int i = 0 ; i < count ; ++i)
+	{
+		for  (int node = 0 ; node < DRM_NODE_MAX ; ++node)
+		{
+			if (*devices[i]->nodes[node])
+			{
+				int fd = open(devices[i]->nodes[node], O_RDWR);
+				if (fd == -1)
+				{
+					perror("open drm failed");
+					continue;
+				}
+				Defer d([=](){close(fd);});
+				drmSetClientCap(fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
+				auto planes = drmModeGetPlaneResources(fd);
+				if (not planes)
+				{
+					perror("drmModeGetPlaneResources failed");
+					continue;
+				}
+				Defer dplane([&](){drmModeFreePlaneResources(planes);});
+				for (int plane = 0 ; plane < planes->count_planes ; ++plane)
+				{
+					auto planeptr = drmModeGetPlane(fd, planes->planes[plane]);
+					Defer d([&](){drmModeFreePlane(planeptr);});
+					if (planeptr->crtc_id)
+					{
+						auto crtc = drmModeGetCrtc(fd, planeptr->crtc_id);
+						Defer d([&](){drmModeFreeCrtc(crtc);});
+						if (crtc and crtc->width == width and crtc->height == height)
+						{
+							return std::make_tuple(std::string(devices[i]->nodes[node]), planeptr->crtc_id);
+						}
+					}
+
+				}
+			}
+		}
+	}
+	throw std::runtime_error("failed to find KMS device matching " + std::to_string(width) + "x" + std::to_string(height));
+}
+
+void fill_kmsgrab_properties(AVDictionary *& opt, int width, int height)
+{
+	auto [device_name, crtc] = find_crtc(width, height);
+	av_dict_set(&opt, "device", device_name.c_str(), 0);
+	av_dict_set_int(&opt, "crtc_id", crtc, 0);
+}
+
+auto crate_kmsgrab_ctx(int width, int height, int framerate)
 {
 	AVInputFormat * kmsgrab = NULL;
 	avdevice_register_all();
@@ -77,8 +146,7 @@ auto crate_kmsgrab_ctx(const char * device_name, int framerate)
 
 	AVFormatContext *kmsgrabctx = avformat_alloc_context();
 	AVDictionary * opt = NULL;
-	av_dict_set(&opt, "device", device_name, 0);
-	av_dict_set_int(&opt, "crtc_id", 57, 0); //FIXME: find the crtc automatically (maybe based on resolution ?)
+	fill_kmsgrab_properties(opt, width, height);
 	av_dict_set_int(&opt, "framerate", framerate, 0);
 
 	int err = avformat_open_input(&kmsgrabctx, "-", kmsgrab, &opt);
@@ -197,7 +265,7 @@ int main(int argc, char ** argv)
 			throw AvException("Cannot open video encoder codec: ", err);
 		}
 
-		auto kmsgrabctx = crate_kmsgrab_ctx("/dev/dri/card0", refresh); //FIXME: don't hardcode this
+		auto kmsgrabctx = crate_kmsgrab_ctx(width, height, refresh);
 
 		auto filter_in = avfilter_get_by_name("buffer");
 		auto filter_out = avfilter_get_by_name("buffersink");

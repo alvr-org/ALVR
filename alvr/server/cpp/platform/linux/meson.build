@@ -16,6 +16,7 @@ executable('grabber',
 		dependency('libavformat'),
 		dependency('libavdevice'),
 		dependency('libavfilter'),
+		dependency('libdrm'),
 	],
 	include_directories: root
 )

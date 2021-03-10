@@ -1,5 +1,5 @@
 #pragma once
-#include "d3drender.h"
+#include "shared/d3drender.h"
 
 #include "threadtools.h"
 

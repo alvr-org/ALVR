@@ -41,5 +41,5 @@ openvr-driver-sys = { path = "../openvr-driver-sys" }
 
 [build-dependencies]
 walkdir = "2"
-meson = "1.0.0"
+cc = { version = "1", features = ["parallel"] }
 bindgen = "0.57"

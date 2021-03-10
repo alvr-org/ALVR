@@ -15,16 +15,15 @@ Build instructions:
 #Build the main project
 cargo xtask build-server --release
 #Build the helper binaries
-cd alvr/server/cpp
-meson setup utilities --buildtype release
-meson build -C utilities
+meson setup tools alvr/server/cpp/tools/ --buildtype release
+meson compile -C tools
 ```
 
 **WARNING the following lines need to be customized for your setup**
 ```bash
 #generate display information (EDID) for your virtual headset
 #for a Quest 1 and default rendering settings, it will be 2112x1184 72 Hz
-utilities/platform/linux/edid-gen <width> <height> <refresh rate> > edid.data
+tools/edid-gen <width> <height> <refresh rate> > edid.data
 ```
 
 The following lines need to be ran as root, and 0/DP-1 must be replaced by the index of the GPU you want to use, and a display that is not currently in use
@@ -39,7 +38,7 @@ Install the grabber binary and add the `cap_sys_admin` capability.
 This assumes that /usr/local/bin is in your PATH, it is currently required that the grabber binary is found via PATH.
 **WARNING this gives the grabber binary root-like permissions, and it uses ffmpeg, which may have security vulnerabilities**
 ```bash
-cp utilities/platform/linux/grabber /usr/local/bin
+cp tools/grabber /usr/local/bin
 setcap cap_sys_admin+pe /usr/local/bin/grabber
 ```
 

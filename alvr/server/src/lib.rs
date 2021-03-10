@@ -55,15 +55,15 @@ lazy_static! {
     static ref SHUTDOWN_NOTIFIER: Notify = Notify::new();
 
     static ref FRAME_RENDER_VS_CSO: Vec<u8> =
-        include_bytes!("../cpp/alvr_server/FrameRenderVS.cso").to_vec();
+        include_bytes!("../cpp/platform/win32/FrameRenderVS.cso").to_vec();
     static ref FRAME_RENDER_PS_CSO: Vec<u8> =
-        include_bytes!("../cpp/alvr_server/FrameRenderPS.cso").to_vec();
+        include_bytes!("../cpp/platform/win32/FrameRenderPS.cso").to_vec();
     static ref QUAD_SHADER_CSO: Vec<u8> =
-        include_bytes!("../cpp/alvr_server/QuadVertexShader.cso").to_vec();
+        include_bytes!("../cpp/platform/win32/QuadVertexShader.cso").to_vec();
     static ref COMPRESS_SLICES_CSO: Vec<u8> =
-        include_bytes!("../cpp/alvr_server/CompressSlicesPixelShader.cso").to_vec();
+        include_bytes!("../cpp/platform/win32/CompressSlicesPixelShader.cso").to_vec();
     static ref COLOR_CORRECTION_CSO: Vec<u8> =
-        include_bytes!("../cpp/alvr_server/ColorCorrectionPixelShader.cso").to_vec();
+        include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso").to_vec();
 }
 
 pub fn shutdown_runtime() {

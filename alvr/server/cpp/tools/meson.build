@@ -1,11 +1,10 @@
-platform_sources = files([
-	'CEncoder.cpp'
-])
-platform_dep = [
-]
+project('tools', 'cpp',
+  version : '0.1',
+  default_options : ['warning_level=3', 'cpp_std=c++17'])
 
 executable('edid-gen',
-	['Edid.cpp', 'edid-gen.cpp']
+	['Edid.cpp', 'edid-gen.cpp'],
+	install: true
 )
 
 executable('grabber',
@@ -18,5 +17,6 @@ executable('grabber',
 		dependency('libavfilter'),
 		dependency('libdrm'),
 	],
-	include_directories: root
+	include_directories: '..',
+	install: true
 )

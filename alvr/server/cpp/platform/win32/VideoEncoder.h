@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include "d3drender.h"
+#include "shared/d3drender.h"
 #include "ClientConnection.h"
 #include "NvEncoderD3D11.h"
 

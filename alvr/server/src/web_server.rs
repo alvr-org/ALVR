@@ -166,16 +166,12 @@ async fn http_api(
             reply(StatusCode::OK)?
         }
         "/client/add" => {
-            if let Ok((device_name, hostname, ip)) =
+            if let Ok((display_name, hostname, ip)) =
                 from_request_body::<(_, String, _)>(request).await
             {
                 crate::update_client_list(
                     hostname.clone(),
-                    ClientListAction::AddIfMissing {
-                        device_name,
-                        ip,
-                        certificate_pem: None,
-                    },
+                    ClientListAction::AddIfMissing { display_name },
                 )
                 .await;
                 crate::update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(Some(ip)))

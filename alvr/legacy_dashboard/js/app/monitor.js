@@ -80,8 +80,7 @@ define([
             Object.entries(session.clientConnections).forEach((pair) => {
                 const hostname = pair[0];
                 const connection = pair[1];
-                //var address = connection.lastLocalIp;
-                const displayName = connection.deviceName;
+                const displayName = connection.displayName;
 
                 if (connection.trusted) {
                     addTrustedClient(displayName, hostname);

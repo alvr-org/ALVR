@@ -8,15 +8,15 @@ use tokio::net::UdpSocket;
 
 // client_found_cb: returns true if client is trusted, false otherwise
 pub async fn search_client_loop<F: Future<Output = bool>>(
-    client_found_cb: impl Fn(IpAddr, ClientHandshakePacket) -> F,
-) -> StrResult {
+    client_found_cb: impl Fn(ClientHandshakePacket) -> F,
+) -> StrResult<(IpAddr, ClientHandshakePacket)> {
     // use naked UdpSocket + [u8] packet buffer to have more control over datagram data
     let handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;
 
     let mut packet_buffer = [0u8; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
 
     loop {
-        let (handshake_packet_size, address) =
+        let (handshake_packet_size, client_address) =
             match handshake_socket.recv_from(&mut packet_buffer).await {
                 Ok(pair) => pair,
                 Err(e) => {
@@ -49,7 +49,7 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
                 ServerHandshakePacket::IncompatibleVersions
             )))?;
             handshake_socket
-                .send_to(&response_bytes, address)
+                .send_to(&response_bytes, client_address)
                 .await
                 .ok();
 
@@ -59,15 +59,17 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
             return fmt_e!("Found ALVR client with incompatible version");
         }
 
-        if !client_found_cb(address.ip(), handshake_packet).await {
+        if !client_found_cb(handshake_packet.clone()).await {
             let response_bytes = trace_err!(bincode::serialize(&HandshakePacket::Server(
                 ServerHandshakePacket::ClientUntrusted
             )))?;
 
             handshake_socket
-                .send_to(&response_bytes, address)
+                .send_to(&response_bytes, client_address)
                 .await
                 .ok();
+        } else {
+            break Ok((client_address.ip(), handshake_packet));
         }
     }
 }

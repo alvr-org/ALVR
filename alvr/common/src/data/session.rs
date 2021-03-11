@@ -90,11 +90,9 @@ pub struct OpenvrConfig {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ClientConnectionDesc {
-    pub device_name: String,
-    pub last_local_ip: IpAddr,
+    pub display_name: String,
     pub manual_ips: HashSet<IpAddr>,
     pub trusted: bool,
-    pub certificate_pem: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]

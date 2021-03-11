@@ -2,17 +2,17 @@ use nalgebra::{Point2, Point3, UnitQuaternion};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ClientHandshakePacket {
     pub alvr_name: String,
     pub version: Version,
     pub device_name: String,
     pub hostname: String,
-    pub certificate_pem: String,
 
     // reserved field is used to add features between major releases: the schema of the packet
     // should never change anymore (required only for this packet).
-    pub reserved: String,
+    pub reserved1: String,
+    pub reserved2: String,
 }
 
 // Since this packet is not essential, any change to it will not be a braking change

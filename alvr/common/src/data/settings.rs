@@ -107,11 +107,10 @@ pub struct VideoDesc {
 
     pub codec: CodecType,
 
-    #[schema(advanced)]
-    pub client_request_realtime_decoder: bool,
+    pub use_10bit_encoder: bool,
 
     #[schema(advanced)]
-    pub use_10bit_encoder: bool,
+    pub client_request_realtime_decoder: bool,
 
     #[schema(min = 1, max = 500)]
     pub encode_bitrate_mbs: u64,
@@ -317,9 +316,15 @@ pub enum SocketProtocol {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ConnectionDesc {
+pub struct DiscoveryConfig {
     #[schema(advanced)]
     pub auto_trust_clients: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionDesc {
+    pub enable_client_discovery: Switch<DiscoveryConfig>,
 
     #[schema(advanced, min = 1024, max = 65535)]
     pub web_server_port: u16,
@@ -437,8 +442,8 @@ pub fn session_settings_default() -> SettingsDefault {
             codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,
             },
-            client_request_realtime_decoder: true,
             use_10bit_encoder: false,
+            client_request_realtime_decoder: true,
             encode_bitrate_mbs: 30,
         },
         audio: AudioSectionDefault {
@@ -517,7 +522,12 @@ pub fn session_settings_default() -> SettingsDefault {
             extra_latency_mode: true,
         },
         connection: ConnectionDescDefault {
-            auto_trust_clients: cfg!(debug_assertions),
+            enable_client_discovery: SwitchDefault {
+                enabled: true,
+                content: DiscoveryConfigDefault {
+                    auto_trust_clients: cfg!(debug_assertions),
+                },
+            },
             web_server_port: 8082,
             stream_protocol: SocketProtocolDefault {
                 variant: SocketProtocolDefaultVariant::Tcp,

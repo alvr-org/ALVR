@@ -7,8 +7,8 @@ use alvr_common::{
     audio::{self, AudioDeviceType},
     data::{
         AudioDeviceId, ClientConfigPacket, ClientControlPacket, CodecType, FrameSize,
-        HeadsetInfoPacket, OpenvrConfig, PlayspaceSyncPacket, PublicIdentity, ServerControlPacket,
-        Version, ALVR_VERSION,
+        HeadsetInfoPacket, OpenvrConfig, PlayspaceSyncPacket, ServerControlPacket, Version,
+        ALVR_VERSION,
     },
     logging::{self, SessionUpdateType},
     prelude::*,
@@ -18,11 +18,10 @@ use alvr_common::{
     },
     spawn_cancelable,
 };
-use futures::future::BoxFuture;
+use futures::future::{BoxFuture, Either};
 use nalgebra::Translation3;
 use settings_schema::Switch;
 use std::{
-    collections::HashMap,
     future,
     net::IpAddr,
     process::Command,
@@ -49,32 +48,40 @@ fn mbits_to_bytes(value: u64) -> u32 {
     (value * 1024 * 1024 / 8) as u32
 }
 
-async fn client_discovery() -> StrResult {
-    let res = connection_utils::search_client_loop(|client_ip, handshake_packet| async move {
-        crate::update_client_list(
-            handshake_packet.hostname.clone(),
-            ClientListAction::AddIfMissing {
-                device_name: handshake_packet.device_name,
-                ip: client_ip,
-                certificate_pem: Some(handshake_packet.certificate_pem),
-            },
-        )
-        .await;
+#[derive(Clone)]
+struct ClientId {
+    hostname: String,
+    ip: IpAddr,
+}
 
-        if let Some(connection_desc) = SESSION_MANAGER
-            .lock()
-            .get()
-            .client_connections
-            .get(&handshake_packet.hostname)
-        {
-            connection_desc.trusted
-        } else {
-            false
-        }
+async fn client_discovery(auto_trust_clients: bool) -> StrResult<ClientId> {
+    let (ip, handshake_packet) =
+        connection_utils::search_client_loop(|handshake_packet| async move {
+            crate::update_client_list(
+                handshake_packet.hostname.clone(),
+                ClientListAction::AddIfMissing {
+                    display_name: handshake_packet.device_name,
+                },
+            )
+            .await;
+
+            if let Some(connection_desc) = SESSION_MANAGER
+                .lock()
+                .get()
+                .client_connections
+                .get(&handshake_packet.hostname)
+            {
+                connection_desc.trusted || auto_trust_clients
+            } else {
+                false
+            }
+        })
+        .await?;
+
+    Ok(ClientId {
+        hostname: handshake_packet.hostname,
+        ip,
     })
-    .await;
-
-    Err(res.err().unwrap_or_else(|| "".into()))
 }
 
 struct ConnectionInfo {
@@ -84,34 +91,24 @@ struct ConnectionInfo {
     control_receiver: ControlSocketReceiver<ClientControlPacket>,
 }
 
-async fn client_handshake() -> StrResult<ConnectionInfo> {
-    let auto_trust_clients = SESSION_MANAGER
-        .lock()
-        .get()
-        .to_settings()
-        .connection
-        .auto_trust_clients;
-    let clients_info = SESSION_MANAGER
-        .lock()
-        .get()
-        .client_connections
-        .iter()
-        .filter(|(_, client)| client.trusted || auto_trust_clients)
-        .fold(HashMap::new(), |mut clients_info, (hostname, client)| {
-            let id = PublicIdentity {
-                hostname: hostname.clone(),
-                certificate_pem: client.certificate_pem.clone(),
-            };
-            clients_info.extend(client.manual_ips.iter().map(|&ip| (ip, id.clone())));
-            clients_info.insert(client.last_local_ip, id);
-            clients_info
-        });
+async fn client_handshake(
+    trusted_discovered_client_id: Option<ClientId>,
+) -> StrResult<ConnectionInfo> {
+    let client_ips = if let Some(id) = trusted_discovered_client_id {
+        vec![id.ip]
+    } else {
+        SESSION_MANAGER.lock().get().client_connections.iter().fold(
+            Vec::new(),
+            |mut clients_info, (_, client)| {
+                clients_info.extend(client.manual_ips.clone());
+                clients_info
+            },
+        )
+    };
 
     let (mut proto_socket, client_ip) = loop {
-        if let Ok(pair) = ProtoControlSocket::connect_to(PeerType::AnyClient(
-            clients_info.keys().cloned().collect::<Vec<_>>(),
-        ))
-        .await
+        if let Ok(pair) =
+            ProtoControlSocket::connect_to(PeerType::AnyClient(client_ips.clone())).await
         {
             break pair;
         }
@@ -383,23 +380,61 @@ impl Drop for StreamCloseGuard {
 }
 
 async fn connection_pipeline() -> StrResult {
-    let connection_info = tokio::select! {
-        maybe_info = client_handshake() => {
-            match maybe_info {
-                Ok(info) => info,
-                Err(e) => {
-                    // treat handshake problems not as an hard error
-                    warn!("Handshake: {}", e);
-                    return Ok(());
+    let mut trusted_discovered_client_id = None;
+    let connection_info = loop {
+        let enable_client_discovery = SESSION_MANAGER
+            .lock()
+            .get()
+            .to_settings()
+            .connection
+            .enable_client_discovery;
+
+        let try_connection_future: BoxFuture<Either<StrResult<ClientId>, _>> =
+            if let (Switch::Enabled(config), None) =
+                (enable_client_discovery, &trusted_discovered_client_id)
+            {
+                Box::pin(async move {
+                    let either = futures::future::select(
+                        Box::pin(client_discovery(config.auto_trust_clients)),
+                        Box::pin(client_handshake(None)),
+                    )
+                    .await;
+
+                    match either {
+                        Either::Left((res, _)) => Either::Left(res),
+                        Either::Right((res, _)) => Either::Right(res),
+                    }
+                })
+            } else {
+                Box::pin(async {
+                    Either::Right(client_handshake(trusted_discovered_client_id.clone()).await)
+                })
+            };
+
+        tokio::select! {
+            res = try_connection_future => {
+                match res {
+                    Either::Left(Ok(client_ip)) => {
+                        trusted_discovered_client_id = Some(client_ip);
+                    }
+                    Either::Left(Err(e)) => {
+                        error!("Client discovery failed: {}", e);
+                        return Ok(())
+                    }
+                    Either::Right(Ok(connection_info)) => {
+                        break connection_info;
+                    }
+                    Either::Right(Err(e)) => {
+                        // do not treat handshake problems as an hard error
+                        warn!("Handshake: {}", e);
+                        return Ok(());
+                    }
                 }
             }
-        }
-        Err(e) = client_discovery() => {
-            error!("Client discovery failed: {}", e);
-            return Ok(());
-        }
-        _ = CLIENTS_UPDATED_NOTIFIER.notified() => return Ok(()),
-        else => unreachable!(),
+            _ = CLIENTS_UPDATED_NOTIFIER.notified() => return Ok(()),
+        };
+
+        time::sleep(CLEANUP_PAUSE).await;
     };
 
     let ConnectionInfo {

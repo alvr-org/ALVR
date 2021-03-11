@@ -127,11 +127,7 @@ pub fn notify_application_update() {
 }
 
 pub enum ClientListAction {
-    AddIfMissing {
-        device_name: String,
-        ip: IpAddr,
-        certificate_pem: Option<String>,
-    },
+    AddIfMissing { display_name: String },
     TrustAndMaybeAddIp(Option<IpAddr>),
     RemoveIpOrEntry(Option<IpAddr>),
 }
@@ -143,33 +139,18 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
 
     let mut updated = false;
     match action {
-        ClientListAction::AddIfMissing {
-            device_name,
-            ip,
-            certificate_pem,
-        } => match maybe_client_entry {
-            Entry::Occupied(mut existing_entry) => {
-                let client_connection_ref = existing_entry.get_mut();
-
-                if client_connection_ref.last_local_ip != ip {
-                    client_connection_ref.last_local_ip = ip;
-
-                    updated = true;
-                }
-            }
-            Entry::Vacant(new_entry) => {
+        ClientListAction::AddIfMissing { display_name } => {
+            if let Entry::Vacant(new_entry) = maybe_client_entry {
                 let client_connection_desc = ClientConnectionDesc {
                     trusted: false,
-                    last_local_ip: ip,
                     manual_ips: HashSet::new(),
-                    device_name,
-                    certificate_pem,
+                    display_name,
                 };
                 new_entry.insert(client_connection_desc);
 
                 updated = true;
             }
-        },
+        }
         ClientListAction::TrustAndMaybeAddIp(maybe_ip) => {
             if let Entry::Occupied(mut entry) = maybe_client_entry {
                 let client_connection_ref = entry.get_mut();

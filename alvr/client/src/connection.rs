@@ -109,8 +109,8 @@ async fn connection_pipeline(
         version: ALVR_VERSION.clone(),
         device_name,
         hostname: hostname.clone(),
-        certificate_pem: private_identity.certificate_pem.clone(),
-        reserved: "".into(),
+        reserved1: "".into(),
+        reserved2: "".into(),
     };
 
     let (mut proto_socket, server_ip) = tokio::select! {

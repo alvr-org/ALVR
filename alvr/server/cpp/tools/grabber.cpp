@@ -397,6 +397,7 @@ int main(int argc, char ** argv)
 				}
 
 				std::cout.write((char*)pkt_copy.data, pkt_copy.size);
+				std::cout.flush();
 				packets[i].stream_index = 0;
 				av_packet_unref(&packets[i]);
 			}

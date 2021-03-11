@@ -6,7 +6,6 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
-#include <chrono>
 #include <string>
 #include <thread>
 #include <vector>
@@ -15,6 +14,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 
 extern "C" {
 #include <libavdevice/avdevice.h>
@@ -28,6 +28,13 @@ extern "C" {
 }
 
 namespace {
+
+bool exiting = false;
+
+void handle_signal(int)
+{
+	exiting = true;
+}
 
 class AvException: public std::runtime_error
 {
@@ -207,6 +214,8 @@ int main(int argc, char ** argv)
 		return 1;
 	}
 
+	signal(SIGTERM, handle_signal);
+
 #if 0
 	av_log_set_level(AV_LOG_DEBUG);
 	av_log_set_callback(logfn);
@@ -220,6 +229,14 @@ int main(int argc, char ** argv)
 	const char * encoder_name = encoder(codec_id);
 
 	try {
+		auto kmsgrabctx = crate_kmsgrab_ctx(width, height, refresh);
+
+		AVPacket packet;
+		av_init_packet(&packet);
+		av_read_frame(kmsgrabctx.get(), &packet);
+		AVFrame * frame = (AVFrame*)packet.data;
+		auto kmsstream = kmsgrabctx->streams[0];
+
 		AVBufferRef *hw_device_ctx;
 		int err = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, NULL, NULL, 0);
 		if (err < 0) {
@@ -241,22 +258,24 @@ int main(int argc, char ** argv)
 		switch (codec_id)
 		{
 			case ALVR_CODEC_H264:
-				av_opt_set(avctx.get(), "profile", "high", 0);
+				av_opt_set(avctx.get(), "profile", "100", 0);//high
+				av_opt_set(avctx.get(), "rc_mode", "2", 0); //CBR
 				break;
 			case ALVR_CODEC_H265:
-				av_opt_set(avctx.get(), "profile", "high", 0);
+				av_opt_set(avctx.get(), "profile", "1", 0);//main
+				av_opt_set(avctx.get(), "rc_mode", "2", 0);
 				break;
 		}
 
 		avctx->width = width;
 		avctx->height = height;
-		avctx->time_base = (AVRational){1, refresh};
-		avctx->framerate = (AVRational){refresh, 1};
+		avctx->time_base = kmsstream->time_base;
+		avctx->framerate = AVRational{refresh, 1};
 		avctx->sample_aspect_ratio = (AVRational){1, 1};
 		avctx->pix_fmt = AV_PIX_FMT_VAAPI;
 		avctx->max_b_frames = 0;
 
-		//avctx->bit_rate = bitrate * 8 * 1024 * 1024;
+		avctx->bit_rate = bitrate * 1024 * 1024;
 
 		/* set hw_frames_ctx for encoder's AVCodecContext */
 		set_hwframe_ctx(avctx.get(), hw_device_ctx, avctx->width, avctx->height);
@@ -264,8 +283,6 @@ int main(int argc, char ** argv)
 		if ((err = avcodec_open2(avctx.get(), codec, NULL)) < 0) {
 			throw AvException("Cannot open video encoder codec: ", err);
 		}
-
-		auto kmsgrabctx = crate_kmsgrab_ctx(width, height, refresh);
 
 		auto filter_in = avfilter_get_by_name("buffer");
 		auto filter_out = avfilter_get_by_name("buffersink");
@@ -278,16 +295,10 @@ int main(int argc, char ** argv)
 		AVFilterInOut *outputs = avfilter_inout_alloc();
 		AVFilterInOut *inputs = avfilter_inout_alloc();
 
-		AVPacket packet;
-		av_init_packet(&packet);
-		av_read_frame(kmsgrabctx.get(), &packet);
-		AVFrame * frame = (AVFrame*)packet.data;
-
 		AVFilterContext *filter_in_ctx = avfilter_graph_alloc_filter(graph.get(), filter_in, "in");
 
 		AVBufferSrcParameters *par = av_buffersrc_parameters_alloc();
 		memset(par, 0, sizeof(*par));
-		auto kmsstream = kmsgrabctx->streams[0];
 		par->width = kmsstream->codecpar->width;
 		par->height = kmsstream->codecpar->height;
 		par->time_base = kmsstream->time_base;
@@ -338,10 +349,8 @@ int main(int argc, char ** argv)
 			throw std::runtime_error("failed to allocate hw frame");
 		}
 
-		auto frame_time = std::chrono::duration<double>(1. / refresh);
-		auto next_frame = std::chrono::steady_clock::now() + frame_time;
 		std::vector<AVPacket> packets;
-		for(int frame_idx = 0; ; ++frame_idx) {
+		for(int frame_idx = 0; not exiting; ++frame_idx) {
 			AVPacket packet;
 			av_read_frame(kmsgrabctx.get(), &packet);
 			err = av_buffersrc_add_frame_flags(filter_in_ctx, (AVFrame*)packet.data, AV_BUFFERSRC_FLAG_PUSH);
@@ -392,12 +401,9 @@ int main(int argc, char ** argv)
 				av_packet_unref(&packets[i]);
 			}
 			packets.clear();
-
-			std::this_thread::sleep_until(next_frame);
-			next_frame += frame_time;
 		}
-		av_frame_free(&hw_frame);
 		av_buffer_unref(&hw_device_ctx);
+		av_frame_free(&hw_frame);
 	}
 	catch (std::exception &e)
 	{

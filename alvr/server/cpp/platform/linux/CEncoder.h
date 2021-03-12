@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <sys/types.h>
 #include "alvr_server/IDRScheduler.h"
 #include "shared/threadtools.h"
 
@@ -26,4 +27,5 @@ private:
 	std::atomic_bool m_exiting{false};
 	IDRScheduler m_scheduler;
 	std::atomic<uint64_t> m_lastPoseFrame;
+	pid_t m_subprocess;
 };

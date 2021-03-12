@@ -26,17 +26,32 @@ CEncoder::~CEncoder()
 
 namespace
 {
-void read_exactly(FILE* stream, char* out, size_t size)
+void read_exactly(int fd, char* out, size_t size, std::atomic_bool& exiting)
 {
-	while (size)
+	while (not exiting and size != 0)
 	{
-		int read = subprocess::util::read_atmost_n(stream, out, size);
-		if (read == -1)
+		timeval timeout{
+			.tv_sec = 0,
+			.tv_usec = 15000
+		};
+		fd_set read_fd, write_fd, except_fd;
+		FD_ZERO(&read_fd);
+		FD_SET(fd, &read_fd);
+		FD_ZERO(&write_fd);
+		FD_ZERO(&except_fd);
+		int count = select(fd + 1, &read_fd, &write_fd, &except_fd, &timeout);
+		if (count < 0) {
+			throw MakeException("select failed: %s", strerror(errno));
+		} else if (count == 1)
 		{
-			throw std::runtime_error("read failed");
+			int s = read(fd, out, size);
+			if (s == -1)
+			{
+				throw MakeException("read failed: %s", strerror(errno));
+			}
+			out+= s;
+			size -= s;
 		}
-		out+= read;
-		size -= read;
 	}
 }
 
@@ -53,38 +68,38 @@ void CEncoder::Run()
 				std::to_string(Settings::Instance().m_refreshRate),
 				std::to_string(Settings::Instance().m_codec),
 				std::to_string(Settings::Instance().mEncodeBitrateMBs)},
-				subprocess::input{subprocess::PIPE},
 				subprocess::output{subprocess::PIPE}
 				);
 
-		auto pipe = p.output();
+		int pipe = fileno(p.output());
 		char size_raw[sizeof(int)];
 		std::vector<char> frame_data;
 		for(int frame = 0; not m_exiting; ++frame)
 		{
 			auto frame_start = std::chrono::steady_clock::now();
 
-			read_exactly(pipe, size_raw, sizeof(int));
+			read_exactly(pipe, size_raw, sizeof(int), m_exiting);
 			int size;
 			memcpy(&size, size_raw, sizeof(int));
 			frame_data.resize(size);
-			read_exactly(pipe, frame_data.data(), size);
+			read_exactly(pipe, frame_data.data(), size, m_exiting);
 
 			m_listener->GetStatistics()->EncodeOutput(
 					std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - frame_start).count());
 			m_listener->SendVideo((uint8_t*)frame_data.data(), size, m_lastPoseFrame);
 		}
-		p.kill(7);
 	}
 	catch (std::exception& e)
 	{
-		Error("encoder failed with error %s", e.what());
+		if (not m_exiting)
+			Error("encoder failed with error %s", e.what());
 	}
 }
 
 void CEncoder::Stop()
 {
 	m_exiting = true;
+	kill(m_subprocess, SIGTERM);
 	Join();
 }
 

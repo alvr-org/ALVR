@@ -382,16 +382,16 @@ impl Drop for StreamCloseGuard {
 async fn connection_pipeline() -> StrResult {
     let mut trusted_discovered_client_id = None;
     let connection_info = loop {
-        let enable_client_discovery = SESSION_MANAGER
+        let client_discovery_config = SESSION_MANAGER
             .lock()
             .get()
             .to_settings()
             .connection
-            .enable_client_discovery;
+            .client_discovery;
 
         let try_connection_future: BoxFuture<Either<StrResult<ClientId>, _>> =
             if let (Switch::Enabled(config), None) =
-                (enable_client_discovery, &trusted_discovered_client_id)
+                (client_discovery_config, &trusted_discovered_client_id)
             {
                 Box::pin(async move {
                     let either = futures::future::select(

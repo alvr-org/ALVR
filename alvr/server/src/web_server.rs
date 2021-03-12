@@ -10,7 +10,7 @@ use futures::SinkExt;
 use headers::HeaderMapExt;
 use hyper::{
     header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE},
-    service, Body, Method, Request, Response, StatusCode,
+    service, Body, Request, Response, StatusCode,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json as json;
@@ -95,11 +95,9 @@ async fn http_api(
 ) -> StrResult<Response<Body>> {
     let mut response = match request.uri().path() {
         "/settings-schema" => reply_json(&data::settings_schema(data::session_settings_default()))?,
-        "/session" => {
-            if matches!(request.method(), &Method::GET) {
-                reply_json(SESSION_MANAGER.lock().get())?
-            } else if let Ok(data) = from_request_body::<json::Value>(request).await {
-                // POST
+        "/session/load" => reply_json(SESSION_MANAGER.lock().get())?,
+        "/session/store" => {
+            if let Ok(data) = from_request_body::<json::Value>(request).await {
                 if let (Some(update_type), Some(update_author_id), Some(value)) = (
                     data.get("updateType"),
                     data.get("webClientId"),

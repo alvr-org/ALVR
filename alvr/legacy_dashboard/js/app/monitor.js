@@ -2,7 +2,7 @@ define([
     "text!app/templates/addClientModal.html",
     "text!app/templates/configureClientModal.html",
     "text!app/templates/monitor.html",
-    "json!../../session",
+    "json!../../session/load",
     "lib/lodash",
     "i18n!app/nls/monitor",
     "i18n!app/nls/notifications",
@@ -582,7 +582,7 @@ define([
                 return;
             }
             isUpdating = true;
-            $.getJSON("session", function (newSession) {
+            $.getJSON("session/load", function (newSession) {
                 session = newSession;
                 updateClients();
                 alvrSettings.updateSession(session);

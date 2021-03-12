@@ -43,3 +43,6 @@ openvr-driver-sys = { path = "../openvr-driver-sys" }
 walkdir = "2"
 cc = { version = "1", features = ["parallel"] }
 bindgen = "0.57"
+
+# patch for broken bindgen
+regex = "=1.4.3"

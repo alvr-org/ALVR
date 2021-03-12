@@ -24,10 +24,10 @@
                 </config>
             </game_audio>
             <microphone val="Microphone">
-                <Help>
+                <Notice>
                     To make the microphone work you need to install VB-CABLE Virtual Audio Device
                     or another equivalent software.
-                </Help>
+                </Notice>
                 <config ref="../game_audio/config" />
             </microphone>
         </audio>

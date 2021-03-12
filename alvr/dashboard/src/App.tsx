@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import Button from "@material-ui/core/Button"
 
 function App(): JSX.Element {
     // Create the count state.
@@ -14,6 +15,9 @@ function App(): JSX.Element {
             <header className="App-header">
                 <p>
                     Page has been open for <code>{count}</code> seconds.
+                    <Button variant="contained" color="primary">
+                        hello world
+                    </Button>
                 </p>
             </header>
         </div>

@@ -33,7 +33,7 @@ define(["lib/lodash", "text!app/templates/uploadPreset.html"], function (
                         const jsonSession = JSON.parse(uploadedSession);
                         $.ajax({
                             type: "POST",
-                            url: "/session",
+                            url: "/session/store",
                             contentType: "application/json;charset=UTF-8",
                             data: JSON.stringify({
                                 updateType: "settings",

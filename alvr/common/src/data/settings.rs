@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use settings_schema::{EntryData, SettingsSchema, Switch, SwitchDefault};
+use settings_schema::{EntryData, SettingsSchema, Switch, SwitchDefault, VectorDefault};
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
@@ -324,7 +324,7 @@ pub struct DiscoveryConfig {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDesc {
-    pub enable_client_discovery: Switch<DiscoveryConfig>,
+    pub client_discovery: Switch<DiscoveryConfig>,
 
     #[schema(advanced, min = 1024, max = 65535)]
     pub web_server_port: u16,
@@ -388,6 +388,10 @@ pub struct ExtraDesc {
     pub notification_level: LogLevel,
     #[schema(advanced)]
     pub exclude_notifications_without_id: bool,
+    #[schema(advanced)]
+    locale: String,
+    #[schema(advanced)]
+    show_setup_wizard: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -522,7 +526,7 @@ pub fn session_settings_default() -> SettingsDefault {
             extra_latency_mode: true,
         },
         connection: ConnectionDescDefault {
-            enable_client_discovery: SwitchDefault {
+            client_discovery: SwitchDefault {
                 enabled: true,
                 content: DiscoveryConfigDefault {
                     auto_trust_clients: cfg!(debug_assertions),
@@ -565,6 +569,8 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             exclude_notifications_without_id: false,
+            locale: "".into(),
+            show_setup_wizard: false,
         },
     }
 }

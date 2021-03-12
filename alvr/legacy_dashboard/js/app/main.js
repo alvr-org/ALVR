@@ -11,7 +11,7 @@ define([
     "app/driverList",
     "app/uploadPreset",
     "app/languageSelector",
-    "json!../../session",
+    "json!../../session/load",
     "text!../../version",
     // eslint-disable-next-line requirejs/no-js-extension
     "js/lib/lobibox.min.js",

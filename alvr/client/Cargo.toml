@@ -42,4 +42,4 @@ cc = { version = "1", features = ["parallel"] }
 bindgen = "0.57"
 
 # patch for broken bindgen
-regex = "=1.4.3"
+regex = "=1.4.4"

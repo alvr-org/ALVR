@@ -309,6 +309,9 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 #ifdef _WIN32
 			m_directModeComponent->OnPoseUpdated(info);
+#else
+			if (m_encoder)
+				m_encoder->OnPoseUpdated(info);
 #endif
 		
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));

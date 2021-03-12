@@ -75,7 +75,7 @@ void CEncoder::Run()
 
 			m_listener->GetStatistics()->EncodeOutput(
 					std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - frame_start).count());
-			m_listener->SendVideo((uint8_t*)frame_data.data(), size, frame);
+			m_listener->SendVideo((uint8_t*)frame_data.data(), size, m_lastPoseFrame);
 		}
 		p.kill(7);
 	}
@@ -98,4 +98,9 @@ void CEncoder::OnPacketLoss()
 
 void CEncoder::InsertIDR() {
 	m_scheduler.InsertIDR();
+}
+
+void CEncoder::OnPoseUpdated(const TrackingInfo& pose)
+{
+	m_lastPoseFrame = pose.FrameIndex;
 }

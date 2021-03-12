@@ -6,8 +6,6 @@
 
 class ClientConnection;
 
-struct AVBufferRef;
-struct AVCodec;
 struct TrakingInfo;
 
 class CEncoder : public CThread

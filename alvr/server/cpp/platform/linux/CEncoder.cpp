@@ -1,25 +1,18 @@
 #include "CEncoder.h"
 
-#include <algorithm>
-#include <asm-generic/errno-base.h>
 #include <chrono>
 #include <exception>
-#include <iterator>
 #include <memory>
-#include <drm/drm_fourcc.h>
+#include <stdexcept>
+#include <string>
 
 #include "ALVR-common/packet_types.h"
 #include "alvr_server/ClientConnection.h"
 #include "alvr_server/Logger.h"
 #include "alvr_server/Settings.h"
 #include "alvr_server/Statistics.h"
-
-#include "alvr_server/bindings.h"
 #include "subprocess.hpp"
-#include "alvr_server/driverlog.h"
 
-#include <string>
-#include <thread>
 
 CEncoder::CEncoder(std::shared_ptr<ClientConnection> listener):
 	m_listener(listener)
@@ -38,6 +31,10 @@ void read_exactly(FILE* stream, char* out, size_t size)
 	while (size)
 	{
 		int read = subprocess::util::read_atmost_n(stream, out, size);
+		if (read == -1)
+		{
+			throw std::runtime_error("read failed");
+		}
 		out+= read;
 		size -= read;
 	}

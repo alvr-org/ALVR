@@ -18,6 +18,8 @@
 #include <unistd.h>
 #include <signal.h>
 
+#include "drmdevice.h"
+
 extern "C" {
 #include <libavdevice/avdevice.h>
 #include <libavcodec/avcodec.h>
@@ -77,70 +79,7 @@ void set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx, int width,
 	av_buffer_unref(&hw_frames_ref);
 }
 
-class Defer
-{
-public:
-	Defer(std::function<void()> fn): fn(fn){}
-	~Defer() {fn();}
-private:
-	std::function<void()> fn;
-};
-
-std::tuple<std::string, int> find_crtc(int width, int height)
-{
-	drmDevicePtr devices[16];
-	int count = drmGetDevices(devices, 16);
-	Defer d([&](){drmFreeDevices(devices, count);});
-	for (int i = 0 ; i < count ; ++i)
-	{
-		for  (int node = 0 ; node < DRM_NODE_MAX ; ++node)
-		{
-			if (*devices[i]->nodes[node])
-			{
-				int fd = open(devices[i]->nodes[node], O_RDWR);
-				if (fd == -1)
-				{
-					perror("open drm failed");
-					continue;
-				}
-				Defer d([=](){close(fd);});
-				drmSetClientCap(fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
-				auto planes = drmModeGetPlaneResources(fd);
-				if (not planes)
-				{
-					perror("drmModeGetPlaneResources failed");
-					continue;
-				}
-				Defer dplane([&](){drmModeFreePlaneResources(planes);});
-				for (int plane = 0 ; plane < planes->count_planes ; ++plane)
-				{
-					auto planeptr = drmModeGetPlane(fd, planes->planes[plane]);
-					Defer d([&](){drmModeFreePlane(planeptr);});
-					if (planeptr->crtc_id)
-					{
-						auto crtc = drmModeGetCrtc(fd, planeptr->crtc_id);
-						Defer d([&](){drmModeFreeCrtc(crtc);});
-						if (crtc and crtc->width == width and crtc->height == height)
-						{
-							return std::make_tuple(std::string(devices[i]->nodes[node]), planeptr->crtc_id);
-						}
-					}
-
-				}
-			}
-		}
-	}
-	throw std::runtime_error("failed to find KMS device matching " + std::to_string(width) + "x" + std::to_string(height));
-}
-
-void fill_kmsgrab_properties(AVDictionary *& opt, int width, int height)
-{
-	auto [device_name, crtc] = find_crtc(width, height);
-	av_dict_set(&opt, "device", device_name.c_str(), 0);
-	av_dict_set_int(&opt, "crtc_id", crtc, 0);
-}
-
-auto crate_kmsgrab_ctx(int width, int height, int framerate)
+auto create_kmsgrab_ctx(const DRMDevice& device, int framerate)
 {
 	AVInputFormat * kmsgrab = NULL;
 	avdevice_register_all();
@@ -155,7 +94,8 @@ auto crate_kmsgrab_ctx(int width, int height, int framerate)
 
 	AVFormatContext *kmsgrabctx = avformat_alloc_context();
 	AVDictionary * opt = NULL;
-	fill_kmsgrab_properties(opt, width, height);
+	av_dict_set(&opt, "device", device.device.c_str(), 0);
+	av_dict_set_int(&opt, "crtc_id", device.crtc_id, 0);
 	av_dict_set_int(&opt, "framerate", framerate, 0);
 
 	int err = avformat_open_input(&kmsgrabctx, "-", kmsgrab, &opt);
@@ -168,10 +108,12 @@ auto crate_kmsgrab_ctx(int width, int height, int framerate)
 	};
 }
 
+#ifdef DEBUG
 void logfn(void*, int level, const char* data, va_list va)
 {
 	vfprintf(stderr, data, va);
 }
+#endif
 
 void skipAUD_h265(uint8_t **buffer, int *length) {
 	// H.265 encoder always produces AUD NAL even if AMF_VIDEO_ENCODER_HEVC_INSERT_AUD is set. But it is not needed.
@@ -218,7 +160,7 @@ int main(int argc, char ** argv)
 
 	signal(SIGTERM, handle_signal);
 
-#if 0
+#ifdef DEBUG
 	av_log_set_level(AV_LOG_DEBUG);
 	av_log_set_callback(logfn);
 #endif
@@ -231,7 +173,8 @@ int main(int argc, char ** argv)
 	const char * encoder_name = encoder(codec_id);
 
 	try {
-		auto kmsgrabctx = crate_kmsgrab_ctx(width, height, refresh);
+		DRMDevice drmDevice(width, height);
+		auto kmsgrabctx = create_kmsgrab_ctx(drmDevice, refresh);
 
 		AVPacket packet;
 		av_init_packet(&packet);
@@ -273,7 +216,7 @@ int main(int argc, char ** argv)
 		avctx->height = height;
 		avctx->time_base = kmsstream->time_base;
 		avctx->framerate = AVRational{refresh, 1};
-		avctx->sample_aspect_ratio = (AVRational){1, 1};
+		avctx->sample_aspect_ratio = AVRational{1, 1};
 		avctx->pix_fmt = AV_PIX_FMT_VAAPI;
 		avctx->max_b_frames = 0;
 
@@ -336,7 +279,7 @@ int main(int argc, char ** argv)
 		avfilter_inout_free(&outputs);
 		avfilter_inout_free(&inputs);
 
-		for (int i = 0 ; i < graph->nb_filters; ++i)
+		for (unsigned i = 0 ; i < graph->nb_filters; ++i)
 		{
 			graph->filters[i]->hw_device_ctx = av_buffer_ref(hw_device_ctx);
 		}
@@ -354,6 +297,7 @@ int main(int argc, char ** argv)
 		std::vector<AVPacket> packets;
 		for(int frame_idx = 0; not exiting; ++frame_idx) {
 			AVPacket packet;
+			drmDevice.waitVBlank();
 			av_read_frame(kmsgrabctx.get(), &packet);
 
 			auto grab_time = std::chrono::system_clock::now();
@@ -390,7 +334,7 @@ int main(int argc, char ** argv)
 				packets.push_back(enc_pkt);
 			}
 
-			for (int i = 0 ; i < packets.size(); ++i)
+			for (size_t i = 0 ; i < packets.size(); ++i)
 			{
 				auto pkt_copy = packets[i];
 				if (i == 0)

@@ -8,7 +8,7 @@ executable('edid-gen',
 )
 
 executable('grabber',
-	['grabber.cpp'],
+	['grabber.cpp', 'drmdevice.cpp'],
 	dependencies:[
 		dependency('libavcodec'),
 		dependency('libavutil'),

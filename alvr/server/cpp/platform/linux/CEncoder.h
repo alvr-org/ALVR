@@ -6,13 +6,12 @@
 #include "shared/threadtools.h"
 
 class ClientConnection;
-
-struct TrakingInfo;
+class PoseHistory;
 
 class CEncoder : public CThread
 {
 public:
-	CEncoder(std::shared_ptr<ClientConnection> listener);
+	CEncoder(std::shared_ptr<ClientConnection> listener, std::shared_ptr<PoseHistory> poseHistory);
 	~CEncoder();
 	bool Init() override { return true; }
 	void Run() override;
@@ -20,12 +19,11 @@ public:
 	void Stop();
 	void OnPacketLoss();
 	void InsertIDR();
-
-	void OnPoseUpdated(const TrackingInfo &info);
 private:
 	std::shared_ptr<ClientConnection> m_listener;
+	std::shared_ptr<PoseHistory> m_poseHistory;
+	uint64_t m_poseSubmitIndex = 0;
 	std::atomic_bool m_exiting{false};
 	IDRScheduler m_scheduler;
-	std::atomic<uint64_t> m_lastPoseFrame;
 	pid_t m_subprocess;
 };

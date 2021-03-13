@@ -1,4 +1,5 @@
 #include "ALVR-common/packet_types.h"
+#include <chrono>
 #include <cstdio>
 #include <exception>
 #include <fstream>
@@ -8,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <vector>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
@@ -353,6 +355,11 @@ int main(int argc, char ** argv)
 		for(int frame_idx = 0; not exiting; ++frame_idx) {
 			AVPacket packet;
 			av_read_frame(kmsgrabctx.get(), &packet);
+
+			auto grab_time = std::chrono::system_clock::now();
+			static_assert(std::is_trivially_copyable_v<decltype(grab_time)>);
+			std::cout.write((char*)&grab_time, sizeof(grab_time));
+
 			err = av_buffersrc_add_frame_flags(filter_in_ctx, (AVFrame*)packet.data, AV_BUFFERSRC_FLAG_PUSH);
 			if (err != 0)
 			{

@@ -8,7 +8,7 @@
 #include "Utils.h"
 #include "ClientConnection.h"
 #include "OvrDisplayComponent.h"
-#include <memory>
+#include "PoseHistory.h"
 
 #ifdef _WIN32
 	#include "CEncoder.h"
@@ -30,6 +30,7 @@ OvrHmd::OvrHmd()
 		,m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 	{
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
+		m_poseHistory = std::make_shared<PoseHistory>();
 
 		bool ret;
 		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
@@ -175,7 +176,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 			m_displayComponent = std::make_shared<OvrDisplayComponent>();
 #ifdef _WIN32
-			m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender);
+			m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_poseHistory);
 #endif
 
 
@@ -307,12 +308,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 				updateIPDandFoV(info);
 			}
 
-#ifdef _WIN32
-			m_directModeComponent->OnPoseUpdated(info);
-#else
-			if (m_encoder)
-				m_encoder->OnPoseUpdated(info);
-#endif
+			m_poseHistory->OnPoseUpdated(info);
 		
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
@@ -342,7 +338,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 		m_encoder->OnStreamStart();
 #else
-		m_encoder = std::make_shared<CEncoder>(m_Listener);
+		m_encoder = std::make_shared<CEncoder>(m_Listener, m_poseHistory);
 		m_encoder->Start();
 #endif
 

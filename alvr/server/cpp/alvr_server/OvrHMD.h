@@ -17,6 +17,7 @@ class CEncoder;
 class CD3DRender;
 class OvrDirectModeComponent;
 #endif
+class PoseHistory;
 
 //-----------------------------------------------------------------------------
 // Purpose:
@@ -91,4 +92,5 @@ private:
 #ifdef _WIN32
 	std::shared_ptr<OvrDirectModeComponent> m_directModeComponent;
 #endif
+	std::shared_ptr<PoseHistory> m_poseHistory;
 };

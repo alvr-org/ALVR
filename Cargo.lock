@@ -105,7 +105,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "settings-schema",
+ "settings-schema 0.3.1 (git+https://github.com/alvr-org/ALVR?rev=08708f19b2ec70264e2ba2b0adfaa64bd96489bd)",
  "tokio",
  "walkdir",
 ]
@@ -139,7 +139,8 @@ dependencies = [
  "semver 0.11.0",
  "serde",
  "serde_json",
- "settings-schema",
+ "settings-schema 0.3.1",
+ "settings-schema 0.3.1 (git+https://github.com/alvr-org/ALVR?rev=08708f19b2ec70264e2ba2b0adfaa64bd96489bd)",
  "tokio",
  "tokio-util",
  "widestring",
@@ -188,7 +189,8 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "settings-schema",
+ "settings-schema 0.3.1",
+ "settings-schema 0.3.1 (git+https://github.com/alvr-org/ALVR?rev=08708f19b2ec70264e2ba2b0adfaa64bd96489bd)",
  "tokio",
  "tokio-tungstenite",
  "tokio-util",
@@ -3677,12 +3679,33 @@ version = "0.3.1"
 dependencies = [
  "serde",
  "serde_json",
- "settings-schema-derive",
+ "settings-schema-derive 0.3.0",
+]
+
+[[package]]
+name = "settings-schema"
+version = "0.3.1"
+source = "git+https://github.com/alvr-org/ALVR?rev=08708f19b2ec70264e2ba2b0adfaa64bd96489bd#08708f19b2ec70264e2ba2b0adfaa64bd96489bd"
+dependencies = [
+ "serde",
+ "serde_json",
+ "settings-schema-derive 0.3.0 (git+https://github.com/alvr-org/ALVR?rev=08708f19b2ec70264e2ba2b0adfaa64bd96489bd)",
 ]
 
 [[package]]
 name = "settings-schema-derive"
 version = "0.3.0"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "settings-schema-derive"
+version = "0.3.0"
+source = "git+https://github.com/alvr-org/ALVR?rev=08708f19b2ec70264e2ba2b0adfaa64bd96489bd#08708f19b2ec70264e2ba2b0adfaa64bd96489bd"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -4318,9 +4341,9 @@ dependencies = [
 
 [[package]]
 name = "typenum"
-version = "1.12.0"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "373c8a200f9e67a0c95e62a4f52fbf80c23b4381c05a17845531982fa99e6b33"
+checksum = "879f6906492a7cd215bfa4cf595b600146ccfac0c79bcbd1f3000162af5e8b06"
 
 [[package]]
 name = "ucd-trie"

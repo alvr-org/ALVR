@@ -2,7 +2,7 @@ use super::{settings, Settings};
 use crate::{logging::SessionUpdateType, prelude::*};
 use serde::{Deserialize, Serialize};
 use serde_json as json;
-use settings_schema::SchemaNode;
+use settings_schema_legacy::SchemaNode;
 use std::{
     collections::{HashMap, HashSet},
     fs,
@@ -88,6 +88,7 @@ pub struct OpenvrConfig {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ClientConnectionDesc {
     pub display_name: String,
     pub manual_ips: HashSet<IpAddr>,
@@ -95,7 +96,12 @@ pub struct ClientConnectionDesc {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SessionDesc {
+    pub setup_wizard: bool,
+    pub locale: String,
+
+    #[serde(rename = "openvr_config")]
     pub openvr_config: OpenvrConfig,
     // The hashmap key is the hostname
     pub client_connections: HashMap<String, ClientConnectionDesc>,
@@ -105,6 +111,8 @@ pub struct SessionDesc {
 impl Default for SessionDesc {
     fn default() -> Self {
         Self {
+            setup_wizard: true,
+            locale: "system".into(),
             openvr_config: OpenvrConfig {
                 universe_id: 2,
                 headset_serial_number: "1WMGH000XX0000".into(),
@@ -141,6 +149,9 @@ impl SessionDesc {
     // `session_settings` must be handled separately to do a better job of retrieving data using the
     // settings schema.
     pub fn merge_from_json(&mut self, json_value: &json::Value) -> StrResult {
+        #[cfg(not(feature = "new_dashboard"))]
+        const SESSION_SETTINGS_STR: &str = "sessionSettings";
+        #[cfg(feature = "new_dashboard")]
         const SESSION_SETTINGS_STR: &str = "session_settings";
 
         if let Ok(session_desc) = json::from_value(json_value.clone()) {
@@ -200,6 +211,13 @@ impl SessionDesc {
     pub fn to_settings(&self) -> Settings {
         let session_settings_json = json::to_value(&self.session_settings).unwrap();
         let schema = settings::settings_schema(settings::session_settings_default());
+
+        if let Err(e) = json::from_value::<Settings>(json_session_settings_to_settings(
+            &session_settings_json,
+            &schema,
+        )) {
+            dbg!(e);
+        }
         json::from_value(json_session_settings_to_settings(
             &session_settings_json,
             &schema,
@@ -486,13 +504,13 @@ fn json_session_settings_to_settings(
             let state;
             let maybe_content;
             if session_settings["enabled"].as_bool().unwrap() {
-                state = "Enabled";
+                state = "enabled";
                 maybe_content = Some(json_session_settings_to_settings(
                     &session_settings["content"],
                     content,
                 ))
             } else {
-                state = "Disabled";
+                state = "disabled";
                 maybe_content = None;
             }
 
@@ -636,10 +654,10 @@ mod tests {
     #[test]
     fn test_session_extrapolation_oculus_go() {
         let input_json_string = r#"{
-            "session_settings": {
+            "sessionSettings": {
               "fjdshfks":false,
               "video": {
-                "preferred_fps": 60.0
+                "preferredFps": 60.0
               },
               "headset": {
                 "controllers": {

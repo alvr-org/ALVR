@@ -240,6 +240,23 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
             &format!("cargo build {} --features alvr_common/nightly", build_flag),
         )
         .unwrap();
+    } else if new_dashboard {
+        run_in(
+            &workspace_dir().join("alvr/server"),
+            &format!(
+                "cargo build --no-default-features {} {}",
+                " --features new_dashboard --features alvr_common/new_dashboard", build_flag
+            ),
+        )
+        .unwrap();
+        run_in(
+            &workspace_dir().join("alvr/launcher"),
+            &format!(
+                "cargo build --no-default-features {} {}",
+                "--features alvr_common/new_dashboard", build_flag
+            ),
+        )
+        .unwrap();
     } else {
         run(&format!(
             "cargo build -p alvr_server -p alvr_launcher {}",

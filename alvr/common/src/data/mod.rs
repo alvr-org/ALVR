@@ -1,15 +1,23 @@
 mod packets;
-mod session;
 mod settings;
 mod version;
+
+#[cfg(not(feature = "new_dashboard"))]
+mod legacy_session;
+#[cfg(feature = "new_dashboard")]
+mod session;
 
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub use packets::*;
-pub use session::*;
 pub use settings::*;
 pub use version::*;
+
+#[cfg(not(feature = "new_dashboard"))]
+pub use legacy_session::*;
+#[cfg(feature = "new_dashboard")]
+pub use session::*;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PublicIdentity {

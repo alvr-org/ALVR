@@ -8,13 +8,18 @@ edition = "2018"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = ["settings-schema_legacy"]
+new_dashboard = ["settings-schema"]
+
 [dependencies]
 parking_lot = "0.11"
 lazy_static = "1"
 chrono = "0.4"
 log = "0.4"
 fern = "0.6"
-settings-schema = { path = "../settings-schema" }
+settings-schema = { path = "../settings-schema", optional = true }
+settings-schema_legacy = { package = "settings-schema", git = "https://github.com/alvr-org/ALVR", rev = "08708f19b2ec70264e2ba2b0adfaa64bd96489bd", optional = true }
 serde = "1"
 serde_json = "1"
 bincode = "1"

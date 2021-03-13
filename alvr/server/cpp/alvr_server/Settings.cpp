@@ -43,7 +43,7 @@ void Settings::Load()
 			return;
 		}
 
-		auto config = v.get("openvrConfig");
+		auto config = v.get("openvr_config");
 
 		m_universeId = config.get("universe_id").get<int64_t>();
 

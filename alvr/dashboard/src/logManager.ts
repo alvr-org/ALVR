@@ -12,11 +12,12 @@ type LogListener = (buffer: ReadonlyLogBuffer) => void
 
 const buffer: { timestamp: string; level: LogLevel; message: string }[] = []
 let listener: (buffer: ReadonlyLogBuffer) => void = () => {}
+let websocket: WebSocket | null = null
 
 function storeLogLine(line: string) {
     const [timestamp, levelString, message] = line.split(/ (?! ) (.*)/)
 
-    let level
+    let level: LogLevel
     if (levelString === "[ERROR]") {
         level = LogLevel.Error
     } else if (levelString === "[WARN]") {
@@ -30,12 +31,12 @@ function storeLogLine(line: string) {
     buffer.push({ timestamp, level, message })
 
     if (buffer.length > MAX_LINES_COUNT) {
-        buffer.pop()
+        buffer.shift()
     }
 }
 
 function resetWebsocket(): void {
-    const websocket = new WebSocket(`ws://${window.location.host}/events`)
+    websocket = new WebSocket(`ws://${window.location.host}/events`)
 
     websocket.onmessage = ev => {
         storeLogLine(ev.data)

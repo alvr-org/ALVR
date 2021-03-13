@@ -1,13 +1,14 @@
-const listeners: Map<string, (data: unknown) => void> = new Map()
+const listeners: Record<string, (data: unknown) => void> = {}
+let websocket: WebSocket | null = null
 
 function resetWebsocket(): void {
-    const websocket = new WebSocket(`ws://${window.location.host}/events`)
+    websocket = new WebSocket(`ws://${window.location.host}/events`)
 
     websocket.onmessage = msgEv => {
         const event: { id: string; data: unknown } = JSON.parse(msgEv.data)
 
-        const maybeCallback = listeners.get(event.id)
-        maybeCallback && maybeCallback(event.data)
+        const maybeCallback = listeners[event.id]
+        maybeCallback?.(event.data)
     }
 
     websocket.onerror = ev => console.error("EventDispatcher error:", ev)
@@ -20,6 +21,6 @@ function resetWebsocket(): void {
 
 resetWebsocket()
 
-export default function subscribeToEvent(id: string, callback: (data: unknown) => void): void {
-    listeners.set(id, callback)
+export function subscribeToEvent(id: string, callback: (data: unknown) => void): void {
+    listeners[id] = callback
 }

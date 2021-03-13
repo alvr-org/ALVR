@@ -1,32 +1,4 @@
-import subscribeToEvent from "./event_dispatch"
-
 // Taken from settings-schema/src/lib.rs
-
-// Settings representation
-type SettingsNode =
-    | SettingsSection
-    | SettingsChoice
-    | null
-    | SettingsSwitch
-    | boolean
-    | number
-    | string
-    | SettingsNode[]
-    | SettingsDictionary
-
-type SettingsSection = {
-    [k: string]: SettingsNode
-}
-type SettingsChoice = {
-    type: string
-    content: SettingsNode
-}
-type SettingsOptional = SettingsNode | null
-type SettingsSwitch = {
-    state: "enabled" | "disabled"
-    content?: SettingsNode
-}
-type SettingsDictionary = [string, SettingsNode][]
 
 // Session settings representation
 type SessionSettingsNode =
@@ -37,47 +9,46 @@ type SessionSettingsNode =
     | boolean
     | number
     | string
-    | SessionSettingsArray
+    | SessionSettingsNode[]
     | SessionSettingsVector
     | SessionSettingsDictionary
 
-type SessionSettingsSection = {
+interface SessionSettingsSection {
     [k: string]: SessionSettingsNode
 }
-type SessionSettingsChoice = {
+interface SessionSettingsChoice {
     variant: string
-    [k: string]: SessionSettingsNode | string
+    [k: string]: SessionSettingsNode
 }
-type SessionSettingsOptional = {
+interface SessionSettingsOptional {
     set: boolean
     content: SessionSettingsNode
 }
-type SessionSettingsSwitch = {
+interface SessionSettingsSwitch {
     enabled: boolean
     content: SessionSettingsNode
 }
-type SessionSettingsArray = SessionSettingsNode[]
-type SessionSettingsVector = {
+interface SessionSettingsVector {
     element: SessionSettingsNode
-    content: SettingsNode[]
+    content: SessionSettingsNode[]
 }
-type SessionSettingsDictionary = {
+interface SessionSettingsDictionary {
     key: string
     value: SessionSettingsNode
-    content: [string, SettingsNode][]
+    content: [string, SessionSettingsNode][]
 }
 
 // Schema representation
 type SchemaNode =
     | {
           type: "section"
-          content: { entries: [string, { advanced: boolean; content: SchemaNode }?][] }
+          content: { entries: [string, { advanced: boolean; content: SchemaNode } | null][] }
       }
     | {
           type: "choice"
           content: {
               default: string
-              variants: [string, { advanced: boolean; content: SchemaNode }?][]
+              variants: [string, { advanced: boolean; content: SchemaNode } | null][]
           }
       }
     | {
@@ -93,10 +64,10 @@ type SchemaNode =
           type: "integer" | "float"
           content: {
               default: number
-              min?: number
-              max?: number
-              step?: number
-              gui?: "textBox" | "upDown" | "slider"
+              min: number | null
+              max: number | null
+              step: number | null
+              gui: "textBox" | "upDown" | "slider" | null
           }
       }
     | {
@@ -111,7 +82,7 @@ type SchemaNode =
           type: "vector"
           content: {
               defaultElement: SchemaNode
-              default: SettingsNode[]
+              default: SessionSettingsNode[]
           }
       }
     | {
@@ -119,6 +90,6 @@ type SchemaNode =
           content: {
               defaultKey: string
               defaultValue: SchemaNode
-              default: [string, SettingsNode][]
+              default: [string, SessionSettingsNode][]
           }
       }

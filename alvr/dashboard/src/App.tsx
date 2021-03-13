@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
-import Button from "@material-ui/core/Button"
+import { Button } from "@material-ui/core"
 
-function App(): JSX.Element {
+export function App(): JSX.Element {
     // Create the count state.
     const [count, setCount] = useState(0)
     // Update the count (+1 every second).
@@ -23,5 +23,3 @@ function App(): JSX.Element {
         </div>
     )
 }
-
-export default App

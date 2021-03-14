@@ -1,8 +1,9 @@
 #pragma once
 #include "openvr_driver.h"
-#include "ClientConnection.h"
-#include "Utils.h"
+#include "alvr_server/ClientConnection.h"
+#include "alvr_server/Utils.h"
 #include "CEncoder.h"
+#include "alvr_server/PoseHistory.h"
 
 #include "Settings.h"
 
@@ -10,11 +11,9 @@
 class OvrDirectModeComponent : public vr::IVRDriverDirectModeComponent
 {
 public:
-	OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender);
+	OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender, std::shared_ptr<PoseHistory> poseHistory);
 
 	void SetEncoder(std::shared_ptr<CEncoder> pEncoder);
-
-	void OnPoseUpdated(TrackingInfo &info);
 
 	/** Specific to Oculus compositor support, textures supplied must be created using this method. */
 	virtual void CreateSwapTextureSet( uint32_t unPid, const SwapTextureSetDesc_t *pSwapTextureSetDesc, SwapTextureSet_t *pOutSwapTextureSet );
@@ -41,7 +40,7 @@ private:
 	std::shared_ptr<CD3DRender> m_pD3DRender;
 	std::shared_ptr<CEncoder> m_pEncoder;
 	std::shared_ptr<ClientConnection> m_Listener;
-	
+	std::shared_ptr<PoseHistory> m_poseHistory;
 
 	// Resource for each process
 	struct ProcessResource {
@@ -60,16 +59,4 @@ private:
 	uint64_t m_submitClientTime;
 	uint64_t m_prevSubmitFrameIndex;
 	uint64_t m_prevSubmitClientTime;
-
-	uint64_t m_LastReferencedFrameIndex;
-	uint64_t m_LastReferencedClientTime;
-
-	
-
-	IPCMutex m_poseMutex;
-	struct TrackingHistoryFrame {
-		TrackingInfo info;
-		vr::HmdMatrix34_t rotationMatrix;
-	};
-	std::list<TrackingHistoryFrame> m_poseBuffer;
 };

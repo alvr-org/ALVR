@@ -1,4 +1,12 @@
 #include "ClientConnection.h"
+#include <mutex>
+#include <string.h>
+
+#include "Statistics.h"
+#include "Logger.h"
+#include "bindings.h"
+#include "Utils.h"
+#include "Settings.h"
 
 ClientConnection::ClientConnection(
 	std::function<void()> poseUpdatedCallback,
@@ -9,7 +17,6 @@ ClientConnection::ClientConnection(
 	m_PacketLossCallback = packetLossCallback;
 
 	memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
-	InitializeCriticalSection(&m_CS);
 
 	m_Statistics = std::make_shared<Statistics>();
 
@@ -23,7 +30,6 @@ ClientConnection::ClientConnection(
 }
 
 ClientConnection::~ClientConnection() {
-	DeleteCriticalSection(&m_CS);
 }
 
 void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex) {
@@ -140,9 +146,10 @@ void ClientConnection::ProcessRecv(unsigned char *buf, int len) {
 	uint32_t type = *(uint32_t*)buf;
 
 	if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
-		EnterCriticalSection(&m_CS);
-		m_TrackingInfo = *(TrackingInfo *)buf;
-		LeaveCriticalSection(&m_CS);
+		{
+			std::unique_lock lock(m_CS);
+			m_TrackingInfo = *(TrackingInfo *)buf;
+		}
 
 		// if 3DOF, zero the positional data!
 		if (Settings::Instance().m_force3DOF) {
@@ -217,7 +224,7 @@ void ClientConnection::ProcessRecv(unsigned char *buf, int len) {
 			m_reportedStatistics.packetsLostTotal,
 			m_reportedStatistics.packetsLostInSecond,
 			m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000,
-			m_Statistics->GetBitsSentInSecond() / 1000 / 1000.0,
+			m_Statistics->GetBitsSentInSecond() / 1000. / 1000.0,
 			m_reportedStatistics.averageTotalLatency / 1000.0,
 			(double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS,
 			(double)(m_Statistics->GetEncodeLatencyMax()) / US_TO_MS,
@@ -237,9 +244,8 @@ bool ClientConnection::HasValidTrackingInfo() const {
 }
 
 void ClientConnection::GetTrackingInfo(TrackingInfo &info) {
-	EnterCriticalSection(&m_CS);
+	std::unique_lock<std::mutex> lock(m_CS);
 	info = m_TrackingInfo;
-	LeaveCriticalSection(&m_CS);
 }
 
 uint64_t ClientConnection::clientToServerTime(uint64_t clientTime) const {

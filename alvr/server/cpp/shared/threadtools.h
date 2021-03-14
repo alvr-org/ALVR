@@ -6,7 +6,9 @@
 #pragma once
 
 #include <thread>
+#ifdef _WIN32
 #include <windows.h>
+#endif
 
 #define THREAD_PRIORITY_MOST_URGENT 15
 
@@ -23,6 +25,7 @@ private:
 	std::thread *m_pThread;
 };
 
+#ifdef _WIN32
 class CThreadEvent
 {
 public:
@@ -34,4 +37,4 @@ public:
 private:
 	HANDLE m_hSyncObject;
 };
-
+#endif

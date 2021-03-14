@@ -1,6 +1,6 @@
 #include "bindings.h"
 #include "Logger.h"
-#include "packet_types.h"
+#include "ALVR-common/packet_types.h"
 #include <vector>
 #include <openvr.h>
 

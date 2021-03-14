@@ -1,51 +1,15 @@
 #include "OvrDirectModeComponent.h"
 
-OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender)
+OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender, std::shared_ptr<PoseHistory> poseHistory)
 	: m_pD3DRender(pD3DRender)
+	, m_poseHistory(poseHistory)
 	, m_poseMutex(NULL)
 	, m_submitLayer(0)
-	, m_LastReferencedFrameIndex(0)
-	, m_LastReferencedClientTime(0) {
+{
 }
 
 void OvrDirectModeComponent::SetEncoder(std::shared_ptr<CEncoder> pEncoder) {
 	m_pEncoder = pEncoder;
-}
-
-void OvrDirectModeComponent::OnPoseUpdated(TrackingInfo &info) {
-	// Put pose history buffer
-	TrackingHistoryFrame history;
-	history.info = info;
-
-
-	HmdMatrix_QuatToMat(info.HeadPose_Pose_Orientation.w,
-		info.HeadPose_Pose_Orientation.x,
-		info.HeadPose_Pose_Orientation.y,
-		info.HeadPose_Pose_Orientation.z,
-		&history.rotationMatrix);
-
-	Debug("Rotation Matrix=(%f, %f, %f, %f) (%f, %f, %f, %f) (%f, %f, %f, %f)\n"
-		, history.rotationMatrix.m[0][0], history.rotationMatrix.m[0][1], history.rotationMatrix.m[0][2], history.rotationMatrix.m[0][3]
-		, history.rotationMatrix.m[1][0], history.rotationMatrix.m[1][1], history.rotationMatrix.m[1][2], history.rotationMatrix.m[1][3]
-		, history.rotationMatrix.m[2][0], history.rotationMatrix.m[2][1], history.rotationMatrix.m[2][2], history.rotationMatrix.m[2][3]);
-
-	m_poseMutex.Wait(INFINITE);
-	if (m_poseBuffer.size() == 0) {
-		m_poseBuffer.push_back(history);
-	}
-	else {
-		if (m_poseBuffer.back().info.FrameIndex != info.FrameIndex) {
-			// New track info
-			m_poseBuffer.push_back(history);
-		}
-	}
-	if (m_poseBuffer.size() > 10) {
-		m_poseBuffer.pop_front();
-	}
-	m_poseMutex.Release();
-
-	m_LastReferencedFrameIndex = info.FrameIndex;
-	m_LastReferencedClientTime = info.clientTime;
 }
 
 /** Specific to Oculus compositor support, textures supplied must be created using this method. */
@@ -170,40 +134,19 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 		// This is important part to achieve smooth headtracking.
 		// We search for history of TrackingInfo and find the TrackingInfo which have nearest matrix value.
 
-		m_poseMutex.Wait(INFINITE);
-		float minDiff = 100000;
-		int index = 0;
-		int minIndex = 0;
-		auto minIt = m_poseBuffer.begin();
-		for (auto it = m_poseBuffer.begin(); it != m_poseBuffer.end(); it++, index++) {
-			float distance = 0;
-			// Rotation matrix composes a part of ViewMatrix of TrackingInfo.
-			// Be carefull of transpose.
-			// And bottom side and right side of matrix should not be compared, because pPose does not contain that part of matrix.
-			for (int i = 0; i < 3; i++) {
-				for (int j = 0; j < 3; j++) {
-					distance += pow(it->rotationMatrix.m[j][i] - pPose->m[j][i], 2);
-				}
-			}
-			//LogDriver("diff %f %llu", distance, it->info.FrameIndex);
-			if (minDiff > distance) {
-				minIndex = index;
-				minIt = it;
-				minDiff = distance;
-			}
-		}
-		if (minIt != m_poseBuffer.end()) {
+		auto pose = m_poseHistory.GetBestPoseMatch(*pPose);
+		if (pose) {
 			// found the frameIndex
 			m_prevSubmitFrameIndex = m_submitFrameIndex;
 			m_prevSubmitClientTime = m_submitClientTime;
-			m_submitFrameIndex = minIt->info.FrameIndex;
-			m_submitClientTime = minIt->info.clientTime;
+			m_submitFrameIndex = pose.info.FrameIndex;
+			m_submitClientTime = pose.info.clientTime;
 
 			m_prevFramePoseRotation = m_framePoseRotation;
-			m_framePoseRotation.x = minIt->info.HeadPose_Pose_Orientation.x;
-			m_framePoseRotation.y = minIt->info.HeadPose_Pose_Orientation.y;
-			m_framePoseRotation.z = minIt->info.HeadPose_Pose_Orientation.z;
-			m_framePoseRotation.w = minIt->info.HeadPose_Pose_Orientation.w;
+			m_framePoseRotation.x = pose.info.HeadPose_Pose_Orientation.x;
+			m_framePoseRotation.y = pose.info.HeadPose_Pose_Orientation.y;
+			m_framePoseRotation.z = pose.info.HeadPose_Pose_Orientation.z;
+			m_framePoseRotation.w = pose.info.HeadPose_Pose_Orientation.w;
 
 			Debug("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu minDiff=%f\n", m_prevSubmitFrameIndex, m_submitFrameIndex, minDiff);
 		}

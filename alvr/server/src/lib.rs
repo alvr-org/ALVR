@@ -6,12 +6,10 @@ mod logging_backend;
 mod openvr;
 mod web_server;
 
-#[cfg(windows)]
 #[allow(non_camel_case_types, non_upper_case_globals, dead_code)]
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
-#[cfg(windows)]
 use bindings::*;
 
 use alvr_common::{
@@ -45,21 +43,7 @@ use tokio::{
 lazy_static! {
     // Since ALVR_DIR is needed to initialize logging, if error then just panic
     static ref ALVR_DIR: PathBuf = {
-        #[cfg(not(target_os = "linux"))]
-        let path = commands::get_alvr_dir().unwrap();
-        #[cfg(target_os = "linux")]
-        // patch for executing alvr_server directly on linux
-        let path = std::env::current_exe()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .into();
-
-        path
+        commands::get_alvr_dir().unwrap()
     };
     static ref SESSION_MANAGER: Mutex<SessionManager> = Mutex::new(SessionManager::new(&ALVR_DIR));
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
@@ -71,15 +55,15 @@ lazy_static! {
     static ref SHUTDOWN_NOTIFIER: Notify = Notify::new();
 
     static ref FRAME_RENDER_VS_CSO: Vec<u8> =
-        include_bytes!("../cpp/alvr_server/FrameRenderVS.cso").to_vec();
+        include_bytes!("../cpp/platform/win32/FrameRenderVS.cso").to_vec();
     static ref FRAME_RENDER_PS_CSO: Vec<u8> =
-        include_bytes!("../cpp/alvr_server/FrameRenderPS.cso").to_vec();
+        include_bytes!("../cpp/platform/win32/FrameRenderPS.cso").to_vec();
     static ref QUAD_SHADER_CSO: Vec<u8> =
-        include_bytes!("../cpp/alvr_server/QuadVertexShader.cso").to_vec();
+        include_bytes!("../cpp/platform/win32/QuadVertexShader.cso").to_vec();
     static ref COMPRESS_SLICES_CSO: Vec<u8> =
-        include_bytes!("../cpp/alvr_server/CompressSlicesPixelShader.cso").to_vec();
+        include_bytes!("../cpp/platform/win32/CompressSlicesPixelShader.cso").to_vec();
     static ref COLOR_CORRECTION_CSO: Vec<u8> =
-        include_bytes!("../cpp/alvr_server/ColorCorrectionPixelShader.cso").to_vec();
+        include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso").to_vec();
 }
 
 pub fn shutdown_runtime() {
@@ -107,10 +91,7 @@ pub fn notify_shutdown_driver() {
 
         shutdown_runtime();
 
-        #[cfg(windows)]
-        unsafe {
-            ShutdownSteamvr()
-        };
+        unsafe { ShutdownSteamvr() };
     });
 }
 
@@ -219,10 +200,7 @@ fn ui_thread() -> StrResult {
     *MAYBE_WINDOW.lock() = None;
     shutdown_runtime();
 
-    #[cfg(windows)]
-    unsafe {
-        ShutdownSteamvr()
-    };
+    unsafe { ShutdownSteamvr() };
 
     Ok(())
 }
@@ -260,10 +238,7 @@ pub fn init() -> StrResult {
     }
 
     let alvr_dir_c_string = CString::new(ALVR_DIR.to_string_lossy().to_string()).unwrap();
-    #[cfg(windows)]
-    unsafe {
-        g_alvrDir = alvr_dir_c_string.into_raw()
-    };
+    unsafe { g_alvrDir = alvr_dir_c_string.into_raw() };
 
     // ALVR_DIR has been used (and so initialized). I don't need alvr_dir storage on disk anymore
     commands::maybe_delete_alvr_dir_storage();
@@ -278,10 +253,7 @@ pub extern "C" fn driver_ready_idle() {
         runtime.spawn(async move {
             // call this when inside a new tokio thread. Calling this on the parent thread will
             // crash SteamVR
-            #[cfg(windows)]
-            unsafe {
-                SetDefaultChaperone()
-            };
+            unsafe { SetDefaultChaperone() };
 
             tokio::select! {
                 _ = connection::connection_lifecycle_loop() => (),
@@ -291,7 +263,6 @@ pub extern "C" fn driver_ready_idle() {
     }
 }
 
-#[cfg(windows)]
 #[no_mangle]
 pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,

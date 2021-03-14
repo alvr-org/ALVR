@@ -205,7 +205,7 @@ struct VulkanImportTable
 	PFN_vkAcquireNextImageKHR   vkAcquireNextImageKHR;
 	PFN_vkQueuePresentKHR       vkQueuePresentKHR;
 
-	#ifdef WIN32
+	#ifdef _WIN32
 	PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR;
     #else 
     PFN_vkCreateXlibSurfaceKHR  vkCreateXlibSurfaceKHR;

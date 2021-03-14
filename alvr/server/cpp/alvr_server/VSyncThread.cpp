@@ -1,5 +1,11 @@
 #include "VSyncThread.h"
 
+#include <chrono>
+#include <thread>
+
+#include "Utils.h"
+#include "Logger.h"
+
 VSyncThread::VSyncThread(int refreshRate)
 	: m_bExit(false)
 	, m_refreshRate(refreshRate) {}
@@ -17,7 +23,7 @@ void VSyncThread::Run() {
 
 			if (sleepTimeMs > 0) {
 				Debug("Sleep %llu ms for next VSync.\n", sleepTimeMs);
-				Sleep(static_cast<DWORD>(sleepTimeMs));
+				std::this_thread::sleep_for(std::chrono::milliseconds(sleepTimeMs));
 			}
 
 			m_PreviousVsync += interval;

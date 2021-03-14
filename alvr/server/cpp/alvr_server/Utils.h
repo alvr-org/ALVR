@@ -1,24 +1,30 @@
 #pragma once
 
-#pragma warning(disable:4005)
-#include <WinSock2.h>
-#pragma warning(default:4005)
-#include <WinInet.h>
-#include <WS2tcpip.h>
-#include <Windows.h>
-#include <delayimp.h>
-#include <stdint.h>
-#include <string>
-#include <vector>
-#include <d3d11.h>
-#define _USE_MATH_DEFINES
+#ifdef _WIN32
+	#pragma warning(disable:4005)
+	#include <WinSock2.h>
+	#pragma warning(default:4005)
+	#include <WinInet.h>
+	#include <WS2tcpip.h>
+	#include <Windows.h>
+	#include <delayimp.h>
+	#include <stdint.h>
+	#include <string>
+	#include <vector>
+	#include <d3d11.h>
+	#define _USE_MATH_DEFINES
+	#include <VersionHelpers.h>
+#else
+	#include <chrono>
+	#include <netinet/in.h>
+	#include <arpa/inet.h>
+	#include <string.h>
+#endif
+
 #include <math.h>
-#include <VersionHelpers.h>
 
 #include "openvr_driver.h"
-#include "packet_types.h"
-
-extern HINSTANCE g_hInstance;
+#include "ALVR-common/packet_types.h"
 
 const uint64_t US_TO_MS = 1000;
 const float DEG_TO_RAD = (float)(M_PI / 180.);
@@ -26,6 +32,7 @@ extern uint64_t gPerformanceCounterFrequency;
 
 // Get elapsed time in us from Unix Epoch
 inline uint64_t GetTimestampUs() {
+#ifdef _WIN32
 	FILETIME ft;
 	GetSystemTimeAsFileTime(&ft);
 
@@ -35,10 +42,15 @@ inline uint64_t GetTimestampUs() {
 	Current /= 10;
 
 	return Current;
+#else
+	auto duration = std::chrono::system_clock::now().time_since_epoch();
+	return std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+#endif
 }
 
 // Get performance counter in us
 inline uint64_t GetCounterUs() {
+#ifdef _WIN32
 	if (gPerformanceCounterFrequency == 0) {
 		LARGE_INTEGER freq;
 		QueryPerformanceFrequency(&freq);
@@ -49,6 +61,10 @@ inline uint64_t GetCounterUs() {
 	QueryPerformanceCounter(&counter);
 
 	return counter.QuadPart * 1000000LLU / gPerformanceCounterFrequency;
+#else
+	auto duration = std::chrono::steady_clock::now().time_since_epoch();
+	return std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+#endif
 }
 
 inline std::string DumpMatrix(const float *m) {
@@ -65,6 +81,7 @@ inline std::string DumpMatrix(const float *m) {
 	return std::string(buf);
 }
 
+#ifdef _WIN32
 inline std::wstring GetErrorStr(HRESULT hr) {
 	wchar_t *s = NULL;
 	std::wstring ret;
@@ -83,6 +100,7 @@ inline std::wstring GetErrorStr(HRESULT hr) {
 	}
 	return ret;
 }
+#endif
 
 inline std::string AddrToStr(const sockaddr_in *addr) {
 	char buf[1000];
@@ -371,6 +389,7 @@ inline vr::HmdQuaternionf_t Slerp(vr::HmdQuaternionf_t &q1, vr::HmdQuaternionf_t
 	}
 }
 
+#ifdef _WIN32
 // Delay loading for Cuda driver API to correctly work on non-NVIDIA GPU.
 inline bool LoadCudaDLL() {
 	__try {
@@ -406,3 +425,4 @@ inline std::wstring GetWindowsOSVersion() {
 		ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber);
 	return buf;
 }
+#endif

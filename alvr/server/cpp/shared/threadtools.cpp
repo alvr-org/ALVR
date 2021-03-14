@@ -36,6 +36,7 @@ void CThread::Join()
 	}
 }
 
+#ifdef _WIN32
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
 CThreadEvent::CThreadEvent( bool bManualReset )
@@ -74,3 +75,4 @@ bool CThreadEvent::Reset()
 	return ResetEvent( m_hSyncObject ) != 0;
 }
 
+#endif

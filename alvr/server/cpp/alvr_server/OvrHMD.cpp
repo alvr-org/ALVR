@@ -1,5 +1,21 @@
 #include "OvrHMD.h"
 
+#include "Settings.h"
+#include "OvrController.h"
+#include "Logger.h"
+#include "bindings.h"
+#include "VSyncThread.h"
+#include "Utils.h"
+#include "ClientConnection.h"
+#include "OvrDisplayComponent.h"
+#include "PoseHistory.h"
+
+#ifdef _WIN32
+	#include "CEncoder.h"
+#else
+	#include "platform/linux/CEncoder.h"
+#endif
+
 void fixInvalidHaptics(float hapticFeedback[3])
 {
 	// Assign a 5ms duration to legacy haptics pulses which otherwise have 0 duration and wouldn't play.
@@ -9,11 +25,12 @@ void fixInvalidHaptics(float hapticFeedback[3])
 }
 
 OvrHmd::OvrHmd()
-		: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
-		, m_baseComponentsInitialized(false)
+		: m_baseComponentsInitialized(false)
 		, m_streamComponentsInitialized(false)
+		,m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 	{
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
+		m_poseHistory = std::make_shared<PoseHistory>();
 
 		bool ret;
 		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
@@ -63,14 +80,20 @@ OvrHmd::OvrHmd()
 			m_VSyncThread.reset();
 		}
 
+#ifdef _WIN32
 		if (m_D3DRender)
 		{
 			m_D3DRender->Shutdown();
 			m_D3DRender.reset();
 		}
+#endif
 	}
 
-	 vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
+	std::string OvrHmd::GetSerialNumber() const {
+		return Settings::Instance().mSerialNumber;
+	}
+
+vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	{
 		Debug("CRemoteHmd Activate %d\n", unObjectId);
 
@@ -91,17 +114,21 @@ OvrHmd::OvrHmd()
 		// return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
 		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_CurrentUniverseId_Uint64, Settings::Instance().m_universeId);
 
+#ifdef _WIN32
 		// avoid "not fullscreen" warnings from vrmonitor
 		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_IsOnDesktop_Bool, false);
 
 		// Manually send VSync events on direct mode. ref:https://github.com/ValveSoftware/virtual_display/issues/1
 		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true);
+#endif
 
 		// Set battery as true
 		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceProvidesBatteryStatus_Bool, true);
 
+#ifdef _WIN32
 		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
 		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().m_flIPD);
+#endif
 
 		HmdMatrix_SetIdentity(&m_eyeToHeadLeft);
 		HmdMatrix_SetIdentity(&m_eyeToHeadRight);
@@ -118,6 +145,7 @@ OvrHmd::OvrHmd()
 		if (!m_baseComponentsInitialized) {
 			m_baseComponentsInitialized = true;
 
+#ifdef _WIN32
 			m_D3DRender = std::make_shared<CD3DRender>();
 
 			// Use the same adapter as vrcompositor uses. If another adapter is used, vrcompositor says "failed to open shared texture" and then crashes.
@@ -136,15 +164,20 @@ OvrHmd::OvrHmd()
 				Error("Failed to get primary adapter info!\n");
 				return vr::VRInitError_Driver_Failed;
 			}
+#endif
 
+#ifdef _WIN32
 			Info("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
 			Info("OSVer: %ls\n", GetWindowsOSVersion().c_str());
+#endif
 
 			m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
 			m_VSyncThread->Start();
 
 			m_displayComponent = std::make_shared<OvrDisplayComponent>();
-			m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender);
+#ifdef _WIN32
+			m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_poseHistory);
+#endif
 
 
 			DriverReadyIdle();
@@ -170,14 +203,16 @@ OvrHmd::OvrHmd()
 	void* OvrHmd::GetComponent(const char *pchComponentNameAndVersion)
 	{
 		Debug("GetComponent %hs\n", pchComponentNameAndVersion);
-		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
+		if (!strcmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
 		{
 			return m_displayComponent.get();
 		}
+#ifdef _WIN32
 		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDriverDirectModeComponent_Version))
 		{
 			return m_directModeComponent.get();
 		}
+#endif
 
 		// override this to add a component to a driver
 		return NULL;
@@ -273,7 +308,7 @@ OvrHmd::OvrHmd()
 				updateIPDandFoV(info);
 			}
 
-			m_directModeComponent->OnPoseUpdated(info);
+			m_poseHistory->OnPoseUpdated(info);
 		
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
 
@@ -289,6 +324,7 @@ OvrHmd::OvrHmd()
 		m_Listener.reset(new ClientConnection([&]() { OnPoseUpdated(); }, [&]() { OnPacketLoss(); }));
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
+#ifdef _WIN32
 		m_encoder = std::make_shared<CEncoder>();
 		try {
 			m_encoder->Initialize(m_D3DRender, m_Listener);
@@ -301,6 +337,10 @@ OvrHmd::OvrHmd()
 		m_directModeComponent->SetEncoder(m_encoder);
 
 		m_encoder->OnStreamStart();
+#else
+		m_encoder = std::make_shared<CEncoder>(m_Listener, m_poseHistory);
+		m_encoder->Start();
+#endif
 
 		m_streamComponentsInitialized = true;
 	}
@@ -314,7 +354,9 @@ OvrHmd::OvrHmd()
 		m_eyeToHeadLeft.m[0][3]  = -info.ipd / 2.0f;
 		m_eyeToHeadRight.m[0][3] =  info.ipd / 2.0f;
 		vr::VRServerDriverHost()->SetDisplayEyeToHead(m_unObjectId, m_eyeToHeadLeft, m_eyeToHeadRight);
+#ifdef _WIN32
 		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, info.ipd);
+#endif
 
 		Settings::Instance().m_eyeFov[0] = info.eyeFov[0];
 		Settings::Instance().m_eyeFov[1] = info.eyeFov[1];

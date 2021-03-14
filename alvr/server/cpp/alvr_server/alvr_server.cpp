@@ -6,18 +6,22 @@
 
 #include "bindings.h"
 
+#include <cstring>
+
+#ifdef _WIN32
 #include <windows.h>
+#endif
 #include "openvr_driver.h"
-#include "sharedstate.h"
 #include "ClientConnection.h"
 #include "OvrHMD.h"
 #include "driverlog.h"
-
-HINSTANCE g_hInstance;
+#include "Settings.h"
+#include "Logger.h"
 
 
 static void load_debug_privilege(void)
 {
+#ifdef _WIN32
 	const DWORD flags = TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY;
 	TOKEN_PRIVILEGES tp;
 	HANDLE token;
@@ -49,6 +53,7 @@ static void load_debug_privilege(void)
 	Debug("[GPU PRIO FIX] Succeeded to set some sort of priority.\n");
 
 	CloseHandle(token);
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -67,7 +72,7 @@ public:
 		{ return vr::k_InterfaceVersions;  }
 	virtual const char *GetTrackedDeviceDriverVersion()
 		{ return vr::ITrackedDeviceServerDriver_Version; }
-	virtual void RunFrame();
+	virtual void RunFrame() override;
 	virtual bool ShouldBlockStandbyMode() override { return false; }
 	virtual void EnterStandby() override {}
 	virtual void LeaveStandby() override {}
@@ -102,6 +107,9 @@ void CServerDriver_DisplayRedirect::RunFrame()
 CServerDriver_DisplayRedirect g_serverDriverDisplayRedirect;
 
 
+#ifdef _WIN32
+HINSTANCE g_hInstance;
+
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
 {
 	switch (dwReason) {
@@ -111,6 +119,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
 
 	return TRUE;
 }
+#endif
 
 // bindigs for Rust
 

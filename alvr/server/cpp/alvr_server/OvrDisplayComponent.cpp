@@ -1,5 +1,10 @@
 #include "OvrDisplayComponent.h"
 
+#include <cmath>
+
+#include "Settings.h"
+#include "Logger.h"
+
 OvrDisplayComponent::OvrDisplayComponent() {};
 OvrDisplayComponent::~OvrDisplayComponent() {};
 
@@ -14,12 +19,20 @@ void OvrDisplayComponent::GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *
 
  bool OvrDisplayComponent::IsDisplayOnDesktop()
 {
+#ifdef _WIN32
 	return false;
+#else
+	return false;
+#endif
 }
 
  bool OvrDisplayComponent::IsDisplayRealDisplay()
 {
+#ifdef _WIN32
 	return false;
+#else
+	return true;
+#endif
 }
 
  void OvrDisplayComponent::GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight)

@@ -225,10 +225,10 @@ static int invert_mat(gf *src, int k) {
     int irow, icol, row, col, i, ix;
 
     int error = 1;
-    int *indxc = alloca(k*sizeof(int));
-    int *indxr = alloca(k*sizeof(int));
-    int *ipiv = alloca(k*sizeof(int));
-    gf *id_row = alloca(k*sizeof(gf));
+    int *indxc = (int*)alloca(k*sizeof(int));
+    int *indxr = (int*)alloca(k*sizeof(int));
+    int *ipiv = (int*)alloca(k*sizeof(int));
+    gf *id_row = (gf*)alloca(k*sizeof(gf));
 
     memset(id_row, 0, k*sizeof(gf));
     /*
@@ -381,7 +381,7 @@ reed_solomon* reed_solomon_new(int data_shards, int parity_shards) {
     reed_solomon* rs = NULL;
 
     do {
-        rs = malloc(sizeof(reed_solomon));
+        rs = (reed_solomon *)malloc(sizeof(reed_solomon));
         if (NULL == rs)
             return NULL;
 

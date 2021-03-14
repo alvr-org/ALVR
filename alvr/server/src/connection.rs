@@ -359,10 +359,7 @@ struct StreamCloseGuard;
 
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
-        #[cfg(windows)]
-        unsafe {
-            crate::DeinitializeStreaming()
-        };
+        unsafe { crate::DeinitializeStreaming() };
 
         let settings = SESSION_MANAGER.lock().get().to_settings();
 
@@ -499,10 +496,7 @@ async fn connection_pipeline() -> StrResult {
         }
     }
 
-    #[cfg(windows)]
-    unsafe {
-        crate::InitializeStreaming()
-    };
+    unsafe { crate::InitializeStreaming() };
     let _stream_guard = StreamCloseGuard;
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
@@ -581,10 +575,7 @@ async fn connection_pipeline() -> StrResult {
             loop {
                 let mut data = receiver.recv().await?.buffer;
 
-                #[cfg(windows)]
-                unsafe {
-                    crate::LegacyReceive(data.as_mut_ptr(), data.len() as _)
-                };
+                unsafe { crate::LegacyReceive(data.as_mut_ptr(), data.len() as _) };
             }
         }
     };
@@ -603,7 +594,6 @@ async fn connection_pipeline() -> StrResult {
                 vec![]
             };
 
-            #[cfg(windows)]
             unsafe {
                 crate::SetChaperone(
                     matrix_transp.as_ptr(),
@@ -641,10 +631,7 @@ async fn connection_pipeline() -> StrResult {
                 Ok(ClientControlPacket::PlayspaceSync(packet)) => {
                     playspace_sync_sender.send(packet).ok();
                 }
-                Ok(ClientControlPacket::RequestIDR) => unsafe {
-                    #[cfg(windows)]
-                    crate::RequestIDR()
-                },
+                Ok(ClientControlPacket::RequestIDR) => unsafe { crate::RequestIDR() },
                 Ok(_) => (),
                 Err(e) => {
                     log_event(Event::ClientDisconnected);

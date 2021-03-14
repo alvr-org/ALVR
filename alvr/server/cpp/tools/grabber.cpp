@@ -33,7 +33,7 @@ extern "C" {
 
 namespace {
 
-bool exiting = false;
+volatile bool exiting = false;
 
 void handle_signal(int)
 {
@@ -158,6 +158,7 @@ int main(int argc, char ** argv)
 		return 1;
 	}
 
+	signal(SIGINT, handle_signal);
 	signal(SIGTERM, handle_signal);
 
 #ifdef DEBUG
@@ -215,7 +216,7 @@ int main(int argc, char ** argv)
 		avctx->width = width;
 		avctx->height = height;
 		avctx->time_base = kmsstream->time_base;
-		avctx->framerate = AVRational{refresh, 1};
+		avctx->framerate = AVRational{refresh * 2, 1}; // framerate will be forced by vsync
 		avctx->sample_aspect_ratio = AVRational{1, 1};
 		avctx->pix_fmt = AV_PIX_FMT_VAAPI;
 		avctx->max_b_frames = 0;
@@ -297,7 +298,7 @@ int main(int argc, char ** argv)
 		std::vector<AVPacket> packets;
 		for(int frame_idx = 0; not exiting; ++frame_idx) {
 			AVPacket packet;
-			drmDevice.waitVBlank();
+			drmDevice.waitVBlank(exiting);
 			av_read_frame(kmsgrabctx.get(), &packet);
 
 			auto grab_time = std::chrono::system_clock::now();

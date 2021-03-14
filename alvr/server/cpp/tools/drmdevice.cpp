@@ -1,6 +1,8 @@
 #include "drmdevice.h"
+#include "drm.h"
 
-#include <chrono>
+#include <cstdint>
+#include <string.h>
 #include <errno.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
@@ -9,7 +11,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdexcept>
-#include <iostream>
+#include <poll.h>
 
 class Defer
 {
@@ -72,18 +74,46 @@ DRMDevice::DRMDevice(int width, int height)
 	throw std::runtime_error("failed to find KMS device matching " + std::to_string(width) + "x" + std::to_string(height));
 }
 
-	void DRMDevice::waitVBlank()
-	{
-		drmVBlank blank;
-		blank.request.type = DRM_VBLANK_RELATIVE;
-		blank.request.sequence = 1;
-		drmWaitVBlank(fd, &blank);
-	}
+void DRMDevice::waitVBlank(volatile bool &exiting)
+{
+	uint64_t queued_seq;
+	uint64_t current_seq = 0;
+	drmCrtcQueueSequence(fd, crtc_id, DRM_CRTC_SEQUENCE_RELATIVE, 1, &queued_seq, uintptr_t(&current_seq));
 
-	DRMDevice::~DRMDevice()
+	drmEventContext handlers{
+		.version = 4,
+		.sequence_handler = DRMDevice::sequence_handler
+	};
+
+	while (current_seq < queued_seq and not exiting)
 	{
-		if(fd != -1)
+		pollfd pfd[1];
+		pfd[0] = pollfd{.fd = fd, .events = POLLIN, .revents = 0};
+		int c = poll(pfd, 1, 10);
+		if (c < 0)
 		{
-			close(fd);
+			throw std::runtime_error(std::string("poll failed: ") + strerror(errno));
+		}
+		if (c == 1)
+		{
+			drmHandleEvent(fd, &handlers);
 		}
 	}
+}
+
+void DRMDevice::sequence_handler(int /*fd*/,
+		uint64_t sequence,
+		uint64_t /*ns*/,
+		uint64_t user_data)
+{
+	uint64_t *seq = (uint64_t*)user_data;
+	*seq = sequence;
+}
+
+DRMDevice::~DRMDevice()
+{
+	if(fd != -1)
+	{
+		close(fd);
+	}
+}

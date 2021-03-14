@@ -17,6 +17,7 @@ public:
 	void OnPoseUpdated(const TrackingInfo &info);
 
 	std::optional<TrackingHistoryFrame> GetBestPoseMatch(const vr::HmdMatrix34_t &pose) const;
+	std::optional<TrackingHistoryFrame> GetPoseAt(uint64_t client_timestamp_us) const;
 
 private:
 	mutable std::mutex m_mutex;

@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <chrono>
 #include <exception>
-#include <fstream>
 #include <memory>
 #include <openvr_driver.h>
 #include <stdexcept>
@@ -60,20 +59,6 @@ void read_exactly(int fd, char* out, size_t size, std::atomic_bool& exiting)
 	}
 }
 
-auto get_hmd_pose_for_timing(std::chrono::system_clock::time_point /*frame_time*/)
-{
-	std::array<vr::Compositor_FrameTiming, 1> frame_timings;
-	frame_timings[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
-	int num_frame_timings = vr::VRServerDriverHost()->GetFrameTimings(frame_timings.data(), frame_timings.size());
-	//FIXME: actually find the correct pose based on absolute time
-	for (int i = 0 ; i < num_frame_timings ; ++i)
-	{
-		return frame_timings[i].m_HmdPose;
-	}
-	return vr::TrackedDevicePose_t{};
-}
-
-
 }
 
 void CEncoder::Run()
@@ -93,10 +78,7 @@ void CEncoder::Run()
 		std::vector<char> frame_data;
 		for(int frame = 0; not m_exiting; ++frame)
 		{
-			auto frame_start = std::chrono::steady_clock::now();
-
 			std::chrono::system_clock::time_point grab_time;
-			auto frame_pose = get_hmd_pose_for_timing(grab_time);
 			read_exactly(pipe, (char*)&grab_time, sizeof(grab_time), m_exiting);
 
 			int size;
@@ -104,12 +86,13 @@ void CEncoder::Run()
 			frame_data.resize(size);
 			read_exactly(pipe, frame_data.data(), size, m_exiting);
 
-			auto hmd_pose = m_poseHistory->GetBestPoseMatch(frame_pose.mDeviceToAbsoluteTracking);
+			uint64_t server_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(grab_time.time_since_epoch()).count();
+			auto hmd_pose = m_poseHistory->GetPoseAt(m_listener->serverToClientTime(server_timestamp) - 5000);
 			if (hmd_pose)
 				m_poseSubmitIndex = hmd_pose->info.FrameIndex;
 
 			m_listener->GetStatistics()->EncodeOutput(
-					std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - frame_start).count());
+					std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - grab_time).count());
 			m_listener->SendVideo((uint8_t*)frame_data.data(), size, m_poseSubmitIndex);
 		}
 	}
@@ -123,7 +106,7 @@ void CEncoder::Run()
 void CEncoder::Stop()
 {
 	m_exiting = true;
-	kill(m_subprocess, SIGTERM);
+	kill(m_subprocess, SIGINT);
 	Join();
 }
 

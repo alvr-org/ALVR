@@ -5,6 +5,10 @@
 
 #include "ALVR-common/packet_types.h"
 
+#ifdef _WIN32
+#include "platform/win32/OvrDirectModeComponent.h"
+#endif
+
 class ClientConnection;
 class VSyncThread;
 
@@ -15,7 +19,6 @@ class OvrDisplayComponent;
 class CEncoder;
 #ifdef _WIN32
 class CD3DRender;
-class OvrDirectModeComponent;
 #endif
 class PoseHistory;
 

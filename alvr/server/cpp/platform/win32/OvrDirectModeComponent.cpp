@@ -3,7 +3,6 @@
 OvrDirectModeComponent::OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender, std::shared_ptr<PoseHistory> poseHistory)
 	: m_pD3DRender(pD3DRender)
 	, m_poseHistory(poseHistory)
-	, m_poseMutex(NULL)
 	, m_submitLayer(0)
 {
 }
@@ -134,28 +133,27 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 		// This is important part to achieve smooth headtracking.
 		// We search for history of TrackingInfo and find the TrackingInfo which have nearest matrix value.
 
-		auto pose = m_poseHistory.GetBestPoseMatch(*pPose);
+		auto pose = m_poseHistory->GetBestPoseMatch(*pPose);
 		if (pose) {
 			// found the frameIndex
 			m_prevSubmitFrameIndex = m_submitFrameIndex;
 			m_prevSubmitClientTime = m_submitClientTime;
-			m_submitFrameIndex = pose.info.FrameIndex;
-			m_submitClientTime = pose.info.clientTime;
+			m_submitFrameIndex = pose->info.FrameIndex;
+			m_submitClientTime = pose->info.clientTime;
 
 			m_prevFramePoseRotation = m_framePoseRotation;
-			m_framePoseRotation.x = pose.info.HeadPose_Pose_Orientation.x;
-			m_framePoseRotation.y = pose.info.HeadPose_Pose_Orientation.y;
-			m_framePoseRotation.z = pose.info.HeadPose_Pose_Orientation.z;
-			m_framePoseRotation.w = pose.info.HeadPose_Pose_Orientation.w;
+			m_framePoseRotation.x = pose->info.HeadPose_Pose_Orientation.x;
+			m_framePoseRotation.y = pose->info.HeadPose_Pose_Orientation.y;
+			m_framePoseRotation.z = pose->info.HeadPose_Pose_Orientation.z;
+			m_framePoseRotation.w = pose->info.HeadPose_Pose_Orientation.w;
 
-			Debug("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu minDiff=%f\n", m_prevSubmitFrameIndex, m_submitFrameIndex, minDiff);
+			Debug("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu\n", m_prevSubmitFrameIndex, m_submitFrameIndex);
 		}
 		else {
 			m_submitFrameIndex = 0;
 			m_submitClientTime = 0;
 			m_framePoseRotation = HmdQuaternion_Init(0.0, 0.0, 0.0, 0.0);
 		}
-		m_poseMutex.Release();
 	}
 	if (m_submitLayer < MAX_LAYERS) {
 		m_submitLayers[m_submitLayer][0] = perEye[0];

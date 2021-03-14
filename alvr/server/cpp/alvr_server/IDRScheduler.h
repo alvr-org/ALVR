@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #ifdef _WIN32
-	#include "ipctools.h"
+	#include "platform/win32/shared/ipctools.h"
 #else
 	#include <mutex>
 #endif

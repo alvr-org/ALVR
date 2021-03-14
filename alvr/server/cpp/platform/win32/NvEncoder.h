@@ -12,7 +12,7 @@
 #pragma once
 
 #include <vector>
-#include "nvEncodeAPI.h"
+#include "alvr_server/nvEncodeAPI.h"
 #include <stdint.h>
 #include <mutex>
 #include <string>

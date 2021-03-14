@@ -1,7 +1,8 @@
 #include "FrameRender.h"
-#include "Utils.h"
-#include "Logger.h"
-#include "Settings.h"
+#include "alvr_server/Utils.h"
+#include "alvr_server/Logger.h"
+#include "alvr_server/Settings.h"
+#include "alvr_server/bindings.h"
 
 extern uint64_t g_DriverTestMode;
 

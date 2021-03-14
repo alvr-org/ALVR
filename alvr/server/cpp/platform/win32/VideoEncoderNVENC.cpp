@@ -1,7 +1,12 @@
 
 #include "VideoEncoderNVENC.h"
 #include "NvCodecUtils.h"
-#include "nvencoderclioptions.h"
+#include "alvr_server/nvencoderclioptions.h"
+
+#include "alvr_server/Statistics.h"
+#include "alvr_server/Logger.h"
+#include "alvr_server/Settings.h"
+#include "alvr_server/Utils.h"
 
 VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	, std::shared_ptr<ClientConnection> listener

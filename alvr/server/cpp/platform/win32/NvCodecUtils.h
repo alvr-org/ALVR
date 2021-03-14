@@ -16,7 +16,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
-#include "Logger.h"
+#include "alvr_server/Logger.h"
 #include <thread>
 
 #ifdef __cuda_cuda_h__

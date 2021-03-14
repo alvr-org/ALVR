@@ -1,7 +1,7 @@
 #pragma once
 #include "shared/d3drender.h"
 
-#include "threadtools.h"
+#include "shared/threadtools.h"
 
 #include <d3d11.h>
 #include <wrl.h>
@@ -9,13 +9,13 @@
 #include <d3d11_1.h>
 #include <wincodec.h>
 #include <wincodecsdk.h>
-#include "ClientConnection.h"
-#include "Utils.h"
+#include "alvr_server/ClientConnection.h"
+#include "alvr_server/Utils.h"
 #include "FrameRender.h"
 #include "VideoEncoder.h"
 #include "VideoEncoderNVENC.h"
 #include "VideoEncoderVCE.h"
-#include "IDRScheduler.h"
+#include "alvr_server/IDRScheduler.h"
 
 
 	using Microsoft::WRL::ComPtr;

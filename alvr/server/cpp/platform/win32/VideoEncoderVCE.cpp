@@ -1,5 +1,9 @@
 #include "VideoEncoderVCE.h"
 
+#include "alvr_server/Statistics.h"
+#include "alvr_server/Logger.h"
+#include "alvr_server/Settings.h"
+
 #define AMF_THROW_IF(expr) {AMF_RESULT res = expr;\
 if(res != AMF_OK){throw MakeException("AMF Error %d. %s", res, L#expr);}}
 

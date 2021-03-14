@@ -5,7 +5,7 @@
 #include "CEncoder.h"
 #include "alvr_server/PoseHistory.h"
 
-#include "Settings.h"
+#include "alvr_server/Settings.h"
 
 
 class OvrDirectModeComponent : public vr::IVRDriverDirectModeComponent

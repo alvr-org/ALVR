@@ -1,6 +1,9 @@
 #include "OvrDisplayComponent.h"
 
 #include <cmath>
+#ifndef M_PI //On Windows not defined by include
+    #define M_PI 3.14159265358979323846
+#endif
 
 #include "Settings.h"
 #include "Logger.h"

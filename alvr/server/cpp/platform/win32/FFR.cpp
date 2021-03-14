@@ -1,7 +1,8 @@
 #include "FFR.h"
 
-#include "Settings.h"
-#include "Utils.h"
+#include "alvr_server/Settings.h"
+#include "alvr_server/Utils.h"
+#include "alvr_server/bindings.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace d3d_render_utils;

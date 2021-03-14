@@ -11,7 +11,7 @@
 #include "PoseHistory.h"
 
 #ifdef _WIN32
-	#include "CEncoder.h"
+	#include "platform/win32/CEncoder.h"
 #else
 	#include "platform/linux/CEncoder.h"
 #endif

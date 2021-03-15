@@ -6,6 +6,6 @@ license = "MIT"
 edition = "2018"
 
 [build-dependencies]
-bindgen = "0.57"
-cc = "1.0"
-regex = "=1.4.3" # 1.4.4 produces a stack overflow inside bindgen
+bindgen = "0.57.0"
+cc = "1.0.67"
+regex = "1.4.5"

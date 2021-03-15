@@ -1,9 +1,7 @@
 #include "IDRScheduler.h"
 
 #include "Utils.h"
-#ifndef WIN32
 #include <mutex>
-#endif
 
 IDRScheduler::IDRScheduler()
 {
@@ -16,11 +14,8 @@ IDRScheduler::~IDRScheduler()
 
 void IDRScheduler::OnPacketLoss()
 {
-#ifdef _WIN32
-	IPCCriticalSectionLock lock(m_IDRCS);
-#else
 	std::unique_lock lock(m_mutex);
-#endif
+
 	if (m_scheduled) {
 		// Waiting next insertion.
 		return;
@@ -49,21 +44,15 @@ void IDRScheduler::OnStreamStart()
 
 void IDRScheduler::InsertIDR()
 {
-#ifdef _WIN32
-	IPCCriticalSectionLock lock(m_IDRCS);
-#else
 	std::unique_lock lock(m_mutex);
-#endif
+
 	m_insertIDRTime = GetTimestampUs() - MIN_IDR_FRAME_INTERVAL * 2;
 	m_scheduled = true;
 }
 
 bool IDRScheduler::CheckIDRInsertion() {
-#ifdef _WIN32
-	IPCCriticalSectionLock lock(m_IDRCS);
-#else
 	std::unique_lock lock(m_mutex);
-#endif
+
 	if (m_scheduled) {
 		if (m_insertIDRTime <= GetTimestampUs()) {
 			m_scheduled = false;

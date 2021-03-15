@@ -5,7 +5,6 @@
 #include "alvr_server/ClientConnection.h"
 #include "VideoEncoder.h"
 #include "NvEncoderD3D11.h"
-#include "shared/ipctools.h"
 
 // Video encoder for NVIDIA NvEnc.
 class VideoEncoderNVENC : public VideoEncoder

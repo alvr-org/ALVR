@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #ifdef _WIN32
 	#pragma warning(disable:4005)
 	#include <WinSock2.h>
@@ -15,7 +16,6 @@
 	#define _USE_MATH_DEFINES
 	#include <VersionHelpers.h>
 #else
-	#include <chrono>
 	#include <netinet/in.h>
 	#include <arpa/inet.h>
 	#include <string.h>
@@ -32,20 +32,8 @@ extern uint64_t gPerformanceCounterFrequency;
 
 // Get elapsed time in us from Unix Epoch
 inline uint64_t GetTimestampUs() {
-#ifdef _WIN32
-	FILETIME ft;
-	GetSystemTimeAsFileTime(&ft);
-
-	uint64_t Current = (((uint64_t)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
-	// Convert to Unix Epoch
-	Current -= 116444736000000000LL;
-	Current /= 10;
-
-	return Current;
-#else
 	auto duration = std::chrono::system_clock::now().time_since_epoch();
 	return std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
-#endif
 }
 
 // Get performance counter in us

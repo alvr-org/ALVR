@@ -2,7 +2,8 @@ use crate::{ClientListAction, ALVR_DIR, SESSION_MANAGER};
 use alvr_common::{
     audio, commands,
     data::{self, Settings, ALVR_VERSION},
-    graphics, logging,
+    graphics,
+    logging::{self, SessionUpdateType},
     prelude::*,
 };
 use bytes::Buf;
@@ -99,6 +100,36 @@ async fn http_api(
         #[cfg(not(feature = "new_dashboard"))]
         "/settings-schema" => reply_json(&data::settings_schema(data::session_settings_default()))?,
         "/session/load" => reply_json(SESSION_MANAGER.lock().get())?,
+        "/session/store-settings" => {
+            if let Ok(data) = from_request_body::<json::Value>(request).await {
+                if let (Some(update_author_id), Some(value)) =
+                    (data.get("webClientId"), data.get("sessionSettings"))
+                {
+                    if let Ok(update_author_id) =
+                        json::from_value::<String>(update_author_id.clone())
+                    {
+                        let res = SESSION_MANAGER
+                            .lock()
+                            .get_mut(Some(update_author_id), SessionUpdateType::Settings)
+                            .merge_from_json(&json::json!({ "session_settings": value }));
+                        if let Err(e) = res {
+                            warn!("{}", e);
+                            // HTTP Code: WARNING
+                            reply(trace_err!(StatusCode::from_u16(199))?)?
+                        } else {
+                            reply(StatusCode::OK)?
+                        }
+                    } else {
+                        reply(StatusCode::BAD_REQUEST)?
+                    }
+                } else {
+                    reply(StatusCode::BAD_REQUEST)?
+                }
+            } else {
+                reply(StatusCode::BAD_REQUEST)?
+            }
+        }
+        // todo: remove deprecated url
         "/session/store" => {
             if let Ok(data) = from_request_body::<json::Value>(request).await {
                 if let (Some(update_type), Some(update_author_id), Some(value)) = (

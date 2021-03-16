@@ -11,7 +11,7 @@ type ReadonlyLogBuffer = readonly { timestamp: string; level: LogLevel; message:
 type LogListener = (buffer: ReadonlyLogBuffer) => void
 
 const buffer: { timestamp: string; level: LogLevel; message: string }[] = []
-let listener: (buffer: ReadonlyLogBuffer) => void = () => {}
+let listener: LogListener = () => {}
 let websocket: WebSocket | null = null
 
 function storeLogLine(line: string) {

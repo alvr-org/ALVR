@@ -121,11 +121,11 @@ pub struct VideoDesc {
             variant = "80Hz",
             variant = "90Hz",
         )),
-        modifier = r#"
+        modifier = r"
             {video.preferred_fps} = ({input} == 0) * 60 
                 + ({input} == 1) * 72
                 + ({input} == 2) * 80
-                + ({input} == 3) * 90"#,
+                + ({input} == 3) * 90",
     ))]
     //
     #[schema(advanced, min = 60.0, max = 90.0)]
@@ -263,10 +263,10 @@ pub struct ControllersDesc {
             variant = "medium",
             variant = "fast",
         )),
-        modifier = r#"
+        modifier = r"
             {headset.controllers.content.pose_time_offset} = ({input} == 1) * 0.01 
                 + ({input} == 2) * -0.03
-                + ({input} == 3) * -1"#,
+                + ({input} == 3) * -1",
         modifier = "{headset.controllers.content.clientside_prediction} = ({input} == 0)"
     ))]
     //

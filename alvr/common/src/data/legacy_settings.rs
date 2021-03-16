@@ -1,10 +1,13 @@
 use serde::{Deserialize, Serialize};
-use settings_schema::{SettingsSchema, Switch, SwitchDefault};
+use settings_schema::{EntryData, SettingsSchema, Switch, SwitchDefault};
+use settings_schema_legacy as settings_schema;
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(tag = "type", content = "content")]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub enum FrameSize {
-    Scale(#[schema(min = 0.25, max = 2., step = 0.01)] f32),
+    #[schema(min = 0.25, max = 2., step = 0.01)]
+    Scale(f32),
 
     Absolute {
         #[schema(min = 32, step = 32)]
@@ -16,20 +19,21 @@ pub enum FrameSize {
 
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Default, Clone)]
 pub struct Fov {
-    #[schema(min = 0., max = 90., step = 0.1, gui = "up_down")]
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub left: f32,
 
-    #[schema(min = 0., max = 90., step = 0.1, gui = "up_down")]
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub right: f32,
 
-    #[schema(min = 0., max = 90., step = 0.1, gui = "up_down")]
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub top: f32,
 
-    #[schema(min = 0., max = 90., step = 0.1, gui = "up_down")]
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub bottom: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub struct FoveatedRenderingDesc {
     #[schema(min = 0.5, max = 10., step = 0.1)]
     pub strength: f32,
@@ -64,7 +68,7 @@ pub struct ColorCorrectionDesc {
 // This is caused by serde and settings-schema using different libraries for casing conversion
 // todo: don't use casing conversion also for all other structs and enums
 #[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
-#[serde(tag = "type")]
+#[serde(tag = "type", content = "content")]
 #[repr(u8)]
 pub enum CodecType {
     H264,
@@ -72,7 +76,8 @@ pub enum CodecType {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Debug)]
-#[serde(tag = "type")]
+#[serde(tag = "type", content = "content")]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 #[repr(u8)]
 pub enum TrackingSpace {
     Local,
@@ -80,6 +85,7 @@ pub enum TrackingSpace {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub struct VideoDesc {
     #[schema(advanced)]
     pub adapter_index: u32,
@@ -121,13 +127,16 @@ pub struct VideoDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(tag = "type", content = "content")]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub enum AudioDeviceId {
     Default,
     Name(String),
-    Index(#[schema(min = 1, gui = "up_down")] u64),
+    #[schema(min = 1, gui = "UpDown")]
+    Index(u64),
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub struct AudioConfig {
     #[schema(min = 0, max = 200)]
     pub average_buffering_ms: u64,
@@ -137,6 +146,7 @@ pub struct AudioConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub struct GameAudioDesc {
     #[schema(placeholder = "device_dropdown")]
     //
@@ -149,6 +159,7 @@ pub struct GameAudioDesc {
 // Note: sample rate is a free parameter for microphone, because both server and client supports
 // resampling. In contrary, for game audio, the server does not support resampling.
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub struct MicrophoneDesc {
     #[schema(placeholder = "input_device_dropdown")]
     //
@@ -167,13 +178,13 @@ pub struct MicrophoneDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub struct AudioSection {
     pub game_audio: Switch<GameAudioDesc>,
     pub microphone: Switch<MicrophoneDesc>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[serde(tag = "type", content = "content")]
 pub enum OpenvrPropValue {
     Bool(bool),
     Float(f32),
@@ -185,6 +196,7 @@ pub enum OpenvrPropValue {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub struct ControllersDesc {
     // Dropdown:
     // Oculus Rift S
@@ -243,6 +255,7 @@ pub struct ControllersDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub struct HeadsetDesc {
     #[schema(advanced)]
     pub mode_idx: u64,
@@ -292,11 +305,14 @@ pub struct HeadsetDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(tag = "type", content = "content")]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub enum SocketProtocol {
     Udp,
 
+    #[schema(advanced)]
+    #[serde(rename_all = "camelCase")]
     ThrottledUdp {
-        #[schema(advanced, min = 1.0, step = 0.1, gui = "up_down")]
+        #[schema(min = 1.0, step = 0.1, gui = "UpDown")]
         bitrate_multiplier: f32,
     },
 
@@ -304,12 +320,14 @@ pub enum SocketProtocol {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub struct DiscoveryConfig {
     #[schema(advanced)]
     pub auto_trust_clients: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub struct ConnectionDesc {
     pub client_discovery: Switch<DiscoveryConfig>,
 
@@ -335,7 +353,8 @@ pub struct ConnectionDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(tag = "type", content = "content")]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub enum Theme {
     SystemDefault,
     Classic,
@@ -343,7 +362,8 @@ pub enum Theme {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(tag = "type", content = "content")]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub enum UpdateChannel {
     NoUpdates,
     Stable,
@@ -352,7 +372,8 @@ pub enum UpdateChannel {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(tag = "type", content = "content")]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub enum LogLevel {
     Error,
     Warning,
@@ -361,6 +382,7 @@ pub enum LogLevel {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[cfg_attr(not(feature = "new_dashboard"), serde(rename_all = "camelCase"))]
 pub struct ExtraDesc {
     pub theme: Theme,
     pub client_dark_mode: bool,

@@ -2,7 +2,7 @@ use super::{settings, Settings};
 use crate::{logging::SessionUpdateType, prelude::*};
 use serde::{Deserialize, Serialize};
 use serde_json as json;
-use settings_schema::SchemaNode;
+use settings_schema::{EntryType, SchemaNode};
 use std::{
     collections::{HashMap, HashSet},
     fs,
@@ -158,7 +158,7 @@ impl SessionDesc {
                     extrapolate_session_settings_from_session_settings(
                         &old_session_json[SESSION_SETTINGS_STR],
                         new_session_settings_json,
-                        &settings::settings_schema(settings::session_settings_default()),
+                        &Settings::schema(settings::session_settings_default()),
                     )
                 });
 
@@ -199,7 +199,7 @@ impl SessionDesc {
     // enums without data do not have tag and content set.
     pub fn to_settings(&self) -> Settings {
         let session_settings_json = json::to_value(&self.session_settings).unwrap();
-        let schema = settings::settings_schema(settings::session_settings_default());
+        let schema = Settings::schema(settings::session_settings_default());
         json::from_value(json_session_settings_to_settings(
             &session_settings_json,
             &schema,
@@ -219,23 +219,28 @@ fn extrapolate_session_settings_from_session_settings(
     schema: &SchemaNode,
 ) -> json::Value {
     match schema {
-        SchemaNode::Section { entries } => json::Value::Object(
+        SchemaNode::Section(entries) => json::Value::Object(
             entries
                 .iter()
                 .filter_map(|(field_name, maybe_data)| {
-                    maybe_data.as_ref().map(|data_schema| {
-                        let value_json =
-                            if let Some(new_value_json) = new_session_settings.get(field_name) {
-                                extrapolate_session_settings_from_session_settings(
-                                    &old_session_settings[field_name],
-                                    new_value_json,
-                                    &data_schema.content,
-                                )
-                            } else {
-                                old_session_settings[field_name].clone()
-                            };
-                        (field_name.clone(), value_json)
-                    })
+                    if let EntryType::Data(data_schema) = maybe_data {
+                        Some((field_name, data_schema))
+                    } else {
+                        None
+                    }
+                })
+                .map(|(field_name, data_schema)| {
+                    let value_json =
+                        if let Some(new_value_json) = new_session_settings.get(field_name) {
+                            extrapolate_session_settings_from_session_settings(
+                                &old_session_settings[field_name],
+                                new_value_json,
+                                &data_schema.content,
+                            )
+                        } else {
+                            old_session_settings[field_name].clone()
+                        };
+                    (field_name.clone(), value_json)
                 })
                 .collect(),
         ),
@@ -439,19 +444,24 @@ fn json_session_settings_to_settings(
     schema: &SchemaNode,
 ) -> json::Value {
     match schema {
-        SchemaNode::Section { entries } => json::Value::Object(
+        SchemaNode::Section(entries) => json::Value::Object(
             entries
                 .iter()
                 .filter_map(|(field_name, maybe_data)| {
-                    maybe_data.as_ref().map(|data_schema| {
-                        (
-                            field_name.clone(),
-                            json_session_settings_to_settings(
-                                &session_settings[field_name],
-                                &data_schema.content,
-                            ),
-                        )
-                    })
+                    if let EntryType::Data(data_schema) = maybe_data {
+                        Some((field_name, data_schema))
+                    } else {
+                        None
+                    }
+                })
+                .map(|(field_name, data_schema)| {
+                    (
+                        field_name.clone(),
+                        json_session_settings_to_settings(
+                            &session_settings[field_name],
+                            &data_schema.content,
+                        ),
+                    )
                 })
                 .collect(),
         ),

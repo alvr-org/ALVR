@@ -1,7 +1,7 @@
 use crate::{ClientListAction, ALVR_DIR, SESSION_MANAGER};
 use alvr_common::{
     audio, commands,
-    data::{self, ALVR_VERSION},
+    data::{self, Settings, ALVR_VERSION},
     graphics, logging,
     prelude::*,
 };
@@ -94,6 +94,9 @@ async fn http_api(
     events_sender: broadcast::Sender<String>,
 ) -> StrResult<Response<Body>> {
     let mut response = match request.uri().path() {
+        #[cfg(feature = "new_dashboard")]
+        "/settings-schema" => reply_json(&Settings::schema(data::session_settings_default()))?,
+        #[cfg(not(feature = "new_dashboard"))]
         "/settings-schema" => reply_json(&data::settings_schema(data::session_settings_default()))?,
         "/session/load" => reply_json(SESSION_MANAGER.lock().get())?,
         "/session/store" => {

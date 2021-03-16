@@ -15,23 +15,26 @@ let listener: (buffer: ReadonlyLogBuffer) => void = () => {}
 let websocket: WebSocket | null = null
 
 function storeLogLine(line: string) {
-    const [timestamp, levelString, message] = line.split(/ (?! ) (.*)/)
+    const match = line.match(/([^ ]*) \[([^ ]{4,5})\] (.*)/)
+    if (match) {
+        const [, timestamp, levelString, message] = match.map(m => m[0])
 
-    let level: LogLevel
-    if (levelString === "[ERROR]") {
-        level = LogLevel.Error
-    } else if (levelString === "[WARN]") {
-        level = LogLevel.Warning
-    } else if (levelString === "[INFO]") {
-        level = LogLevel.Info
-    } else {
-        level = LogLevel.Debug
-    }
+        let level: LogLevel
+        if (levelString === "ERROR") {
+            level = LogLevel.Error
+        } else if (levelString === "WARN") {
+            level = LogLevel.Warning
+        } else if (levelString === "INFO") {
+            level = LogLevel.Info
+        } else {
+            level = LogLevel.Debug
+        }
 
-    buffer.push({ timestamp, level, message })
+        buffer.push({ timestamp, level, message })
 
-    if (buffer.length > MAX_LINES_COUNT) {
-        buffer.shift()
+        if (buffer.length > MAX_LINES_COUNT) {
+            buffer.shift()
+        }
     }
 }
 

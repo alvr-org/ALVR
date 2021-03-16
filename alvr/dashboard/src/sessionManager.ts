@@ -41,55 +41,100 @@ interface SessionSettingsDictionary {
 // Schema representation
 type SchemaNode =
     | {
-          type: "section"
-          content: { entries: [string, { advanced: boolean; content: SchemaNode } | null][] }
+          type: "Section"
+          content: [
+              string,
+              (
+                  | {
+                        type: "Data"
+                        content: { advanced: boolean; content: SchemaNode }
+                    }
+                  | {
+                        type: "HigherOrder"
+                        content: Preset
+                    }
+                  | {
+                        type: "Placeholder"
+                    }
+              ),
+          ][]
       }
     | {
-          type: "choice"
+          type: "Choice"
           content: {
               default: string
               variants: [string, { advanced: boolean; content: SchemaNode } | null][]
           }
+          gui: "Dropdown" | "ButtonGroup"
       }
     | {
-          type: "optional"
-          content: { defaultSet: boolean; content: SchemaNode }
+          type: "Optional"
+          content: { default_set: boolean; content: SchemaNode }
       }
     | {
-          type: "switch"
-          content: { defaultEnabled: boolean; contentAdvanced: boolean; content: SchemaNode }
+          type: "Switch"
+          content: { default_enabled: boolean; content_advanced: boolean; content: SchemaNode }
       }
-    | { type: "boolean"; content: { default: boolean } }
+    | { type: "Boolean"; content: { default: boolean } }
     | {
-          type: "integer" | "float"
+          type: "Integer" | "Float"
           content: {
               default: number
               min: number | null
               max: number | null
               step: number | null
-              gui: "textBox" | "upDown" | "slider" | null
+              gui: "TextBox" | "UpDown" | "Slider" | null
           }
       }
     | {
-          type: "text"
+          type: "Text"
           content: { default: string }
       }
     | {
-          type: "array"
+          type: "Array"
           content: SchemaNode[]
       }
     | {
-          type: "vector"
+          type: "Vector"
           content: {
-              defaultElement: SchemaNode
+              default_element: SchemaNode
               default: SessionSettingsNode[]
           }
       }
     | {
-          type: "dictionary"
+          type: "Dictionary"
           content: {
-              defaultKey: string
-              defaultValue: SchemaNode
+              default_key: string
+              default_value: SchemaNode
               default: [string, SessionSettingsNode][]
           }
       }
+
+interface Preset {
+    data_type:
+        | {
+              type: "Choice"
+              content: {
+                  default: string
+                  variants: string[]
+                  gui: "Dropdown" | "ButtonGroup"
+              }
+          }
+        | {
+              type: "Boolean"
+              content: {
+                  default: boolean
+              }
+          }
+        | {
+              type: "Action"
+          }
+    modifiers: {
+        target: string
+        update_operations: "Assign" | "Remove"
+        expression: string
+        variables: string
+    }
+}
+
+type PresetGroup = [string, Preset][]

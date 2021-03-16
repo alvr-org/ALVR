@@ -1,4 +1,4 @@
-use super::{settings, Settings};
+use super::{legacy_settings as settings, Settings};
 use crate::{logging::SessionUpdateType, prelude::*};
 use serde::{Deserialize, Serialize};
 use serde_json as json;

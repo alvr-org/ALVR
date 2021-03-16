@@ -65,7 +65,7 @@ type SchemaNode =
               default: string
               variants: [string, { advanced: boolean; content: SchemaNode } | null][]
           }
-          gui: "Dropdown" | "ButtonGroup"
+          gui: "Dropdown" | "ButtonGroup" | null
       }
     | {
           type: "Optional"
@@ -117,7 +117,7 @@ interface Preset {
               content: {
                   default: string
                   variants: string[]
-                  gui: "Dropdown" | "ButtonGroup"
+                  gui: "Dropdown" | "ButtonGroup" | null
               }
           }
         | {
@@ -129,12 +129,7 @@ interface Preset {
         | {
               type: "Action"
           }
-    modifiers: {
-        target: string
-        update_operations: "Assign" | "Remove"
-        expression: string
-        variables: string
-    }
+    modifiers: string[]
 }
 
 type PresetGroup = [string, Preset][]

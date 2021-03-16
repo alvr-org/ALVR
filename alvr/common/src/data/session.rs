@@ -632,6 +632,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_schema() {
+        println!(
+            "{:#?}",
+            Settings::schema(settings::session_settings_default())
+        );
+    }
+
+    #[test]
     fn test_session_to_settings() {
         let _settings = SessionDesc::default().to_settings();
     }

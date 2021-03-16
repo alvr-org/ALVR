@@ -65,6 +65,7 @@ pub struct ColorCorrectionDesc {
 // todo: don't use casing conversion also for all other structs and enums
 #[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
 #[serde(tag = "type")]
+#[schema(gui = "button_group")]
 #[repr(u8)]
 pub enum CodecType {
     H264,
@@ -73,6 +74,7 @@ pub enum CodecType {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
+#[schema(gui = "button_group")]
 #[repr(u8)]
 pub enum TrackingSpace {
     Local,
@@ -84,12 +86,24 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub adapter_index: u32,
 
-    // Dropdown with 25%, 50%, 75%, 100%, 125%, 150% etc or custom
-    // Should set renderResolution (always in scale mode).
-    // When the user sets a resolution not obtainable with the preset scales, set the dropdown to
-    // custom.
-    // Warping compensation is already applied by the web server and driver
-    #[schema(placeholder = "resolution_dropdown")]
+    #[schema(higher_order(
+        name = "resolution_dropdown",
+        data(choice(
+            default = "75%",
+            variant = "25%",
+            variant = "50%",
+            variant = "75%",
+            variant = "100%",
+            variant = "125%",
+            variant = "150%",
+            variant = "175%",
+            variant = "200%",
+        )),
+        modifier = r#"{video.render_resolution.variant} = "Scale""#,
+        modifier = "{video.render_resolution.content} = ({input} + 1) * 0.25",
+        modifier = r#"{video.recommended_target_resolution.variant} = "Scale""#,
+        modifier = "{video.recommended_target_resolution.content} = ({input} + 1) * 0.25",
+    ))]
     //
     #[schema(advanced)]
     pub render_resolution: FrameSize,
@@ -97,7 +111,22 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub recommended_target_resolution: FrameSize,
 
-    #[schema(placeholder = "display_refresh_rate")]
+    #[schema(higher_order(
+        name = "display_refresh_rate",
+        data(choice(
+            default = "72Hz",
+            gui = "button_group",
+            variant = "60Hz",
+            variant = "72Hz",
+            variant = "80Hz",
+            variant = "90Hz",
+        )),
+        modifier = r#"
+            {video.preferred_fps} = ({input} == 0) * 60 
+                + ({input} == 1) * 72
+                + ({input} == 2) * 80
+                + ({input} == 3) * 90"#,
+    ))]
     //
     #[schema(advanced, min = 60.0, max = 90.0)]
     pub preferred_fps: f32,
@@ -224,7 +253,22 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub input_profile_path: String,
 
-    #[schema(placeholder = "tracking_speed")]
+    #[schema(higher_order(
+        name = "tracking_speed",
+        data(choice(
+            default = "medium",
+            gui = "button_group",
+            variant = "oculus_prediction",
+            variant = "slow",
+            variant = "medium",
+            variant = "fast",
+        )),
+        modifier = r#"
+            {headset.controllers.content.pose_time_offset} = ({input} == 1) * 0.01 
+                + ({input} == 2) * -0.03
+                + ({input} == 3) * -1"#,
+        modifier = "{headset.controllers.content.clientside_prediction} = ({input} == 0)"
+    ))]
     //
     #[schema(advanced)]
     pub pose_time_offset: f32,
@@ -292,6 +336,7 @@ pub struct HeadsetDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(tag = "type", content = "content")]
+#[schema(gui = "button_group")]
 pub enum SocketProtocol {
     Udp,
 
@@ -336,6 +381,7 @@ pub struct ConnectionDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(tag = "type")]
+#[schema(gui = "button_group")]
 pub enum Theme {
     SystemDefault,
     Classic,
@@ -344,6 +390,7 @@ pub enum Theme {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(tag = "type")]
+#[schema(gui = "button_group")]
 pub enum UpdateChannel {
     NoUpdates,
     Stable,

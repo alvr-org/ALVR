@@ -7,13 +7,7 @@ struct Test1 {
     #[schema(higher_order(
         name = "hello",
         data(boolean(default = false)),
-        modifier(
-            target = r#"hello1["0"].hello2"#,
-            update_op = "assign",
-            expr = "{} * {}",
-            var = "input",
-            var = "hello3"
-        )
+        modifier = r#"{hello1.0.hello2} = {input} * {hello3}"#,
     ))]
     #[schema(advanced)]
     test: bool,
@@ -28,6 +22,7 @@ struct Test3 {
 }
 
 #[derive(SettingsSchema)]
+#[schema(gui = "button_group")]
 enum Test2 {
     Hello1(#[schema(advanced)] i32),
     Hello2,

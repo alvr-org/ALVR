@@ -88,7 +88,7 @@ pub enum HigherOrderType {
     Choice {
         default: String,
         variants: Vec<String>,
-        gui: ChoiceControlType,
+        gui: Option<ChoiceControlType>,
     },
     Boolean {
         default: bool,
@@ -97,43 +97,14 @@ pub enum HigherOrderType {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum UpdateType {
-    // The value to be assigned can be a JSON structure (in case of vector or dictionary)
-    Assign,
-
-    // Remove element from a vector or dictionary. The value is interpreted as the index (or key) of
-    // the element to remove
-    Remove,
-}
-
-/// Representation of an instruction owned by an higher order setting that modifies a concrete
-/// setting or another HOS.
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ModifierDesc {
-    // Receiver for the current intruction. It represents a path that identifies a setting. The
-    // content is not validated by the macro and instead should be interpreted by the UI code while
-    // generating the user interface
-    pub target: String,
-
-    // Type of operation to be applied to the setting pointed by `target`
-    pub update_operation: UpdateType,
-
-    // Code that contains an expression that generated a (numerical) value. This is interpreted by
-    // the user interface. It can contain placeholders for the variables.
-    pub expression: String,
-
-    // Inputs for the expression.They can be a path identifying some settings or it can be a
-    // wildcard `{input}` that identifies the value selected in the current higher order setting.
-    pub variables: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "type", content = "content")]
 pub enum EntryType {
     Data(EntryData),
     HigherOrder {
         data_type: HigherOrderType,
-        modifiers: Vec<ModifierDesc>,
+
+        // Pseudocode interpreted by the UI
+        modifiers: Vec<String>,
     },
     Placeholder,
 }

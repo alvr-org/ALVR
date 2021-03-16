@@ -6,7 +6,7 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, ToTokens};
 use std::string::ToString;
-use syn::{Attribute, DeriveInput, Error, Ident, Lit, Type, Visibility};
+use syn::{DeriveInput, Error, Ident, Lit, Type, Visibility};
 
 type TResult<T = TokenStream2> = Result<T, TokenStream>;
 
@@ -78,8 +78,8 @@ struct VariantMeta {
 struct DeriveInputMeta {
     data: darling::ast::Data<VariantMeta, FieldMeta>,
 
-    // list of attributes restricted to #[schema()] (as specified right above)
-    attrs: Vec<Attribute>,
+    #[darling(default)]
+    gui: Option<ChoiceControlType>,
 }
 
 struct SchemaData {
@@ -147,7 +147,7 @@ fn named_fields_schema(meta: Vec<FieldMeta>) -> TResult<SchemaData> {
 }
 
 fn variants_schema(
-    attrs: Vec<Attribute>,
+    gui_type: Option<ChoiceControlType>,
     vis: &Visibility,
     ident: &Ident,
     meta: Vec<VariantMeta>,
@@ -159,21 +159,15 @@ fn variants_schema(
     let mut entry_data_ts = vec![];
     let mut aux_variants_structs_ts = vec![];
 
-    // Obtain they gui type for the Choice control
-    let mut gui_ts = quote!(None);
-    for attr in attrs {
-        let meta_list =
-            darling::util::parse_attribute_to_meta_list(&attr).map_err(|e| e.write_errors())?;
-        for meta in meta_list.nested {
-            let gui_type =
-                ChoiceControlType::from_nested_meta(&meta).map_err(|e| e.write_errors())?;
-            let gui_type_ident = match gui_type {
-                ChoiceControlType::Dropdown => quote!(Dropdown),
-                ChoiceControlType::ButtonGroup => quote!(ButtonGroup),
-            };
-            gui_ts = quote!(Some(settings_schema::ChoiceControlType::#gui_type_ident))
+    let gui_ts = match gui_type {
+        None => quote!(None),
+        Some(ChoiceControlType::Dropdown) => {
+            quote!(Some(settings_schema::ChoiceControlType::Dropdown))
         }
-    }
+        Some(ChoiceControlType::ButtonGroup) => {
+            quote!(Some(settings_schema::ChoiceControlType::ButtonGroup))
+        }
+    };
 
     for meta in meta {
         let variant_ident = meta.ident;
@@ -301,7 +295,7 @@ fn schema(derive_input: DeriveInput) -> TResult {
     let meta: DeriveInputMeta =
         FromDeriveInput::from_derive_input(&derive_input).map_err(|e| e.write_errors())?;
 
-    let attrs = meta.attrs;
+    let gui_type = meta.gui;
     let vis = derive_input.vis;
     let derive_input_ident = derive_input.ident;
     let default_ty_ident = suffix_ident(&derive_input_ident, "Default");
@@ -312,7 +306,7 @@ fn schema(derive_input: DeriveInput) -> TResult {
         aux_objects_ts,
     } = match meta.data {
         darling::ast::Data::Enum(variants) => {
-            variants_schema(attrs, &vis, &derive_input_ident, variants)?
+            variants_schema(gui_type, &vis, &derive_input_ident, variants)?
         }
         darling::ast::Data::Struct(Fields { fields, .. }) => named_fields_schema(fields)?,
     };

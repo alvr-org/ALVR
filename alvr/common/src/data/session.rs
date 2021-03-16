@@ -390,13 +390,30 @@ fn extrapolate_session_settings_from_session_settings(
                 })
                 .unwrap_or_else(|| old_session_settings["element"].clone());
 
-            // todo: content field cannot be properly validated until I implement plain settings
-            // validation (not to be confused with session/session_settings validation). Any
-            // problem inside this new_session_settings content will result in the loss all data in the new
-            // session_settings.
+            // It's hard to recover data from a malformed dynamically sized array, if the order of
+            // elements matters. Currently the content of new_session_settings is kept only if
+            // it is well formed, otherwise it is completely replaced by old_session_settings.
             let content_json = new_session_settings
                 .get("content")
-                .cloned()
+                .map(|new_content_json| {
+                    if let json::Value::Array(new_content_vec) = new_content_json {
+                        let mut content_vec = vec![];
+                        for new_content in new_content_vec {
+                            let value = extrapolate_session_settings_from_session_settings(
+                                &old_session_settings["element"],
+                                new_content,
+                                default_element,
+                            );
+                            content_vec.push(value);
+                        }
+
+                        if *new_content_vec == content_vec {
+                            return json::Value::Array(content_vec);
+                        }
+                    }
+
+                    old_session_settings["content"].clone()
+                })
                 .unwrap_or_else(|| old_session_settings["content"].clone());
 
             json::json!({
@@ -423,10 +440,30 @@ fn extrapolate_session_settings_from_session_settings(
                 })
                 .unwrap_or_else(|| old_session_settings["value"].clone());
 
-            // todo: validate content using settings validation
             let content_json = new_session_settings
                 .get("content")
-                .cloned()
+                .map(|new_content_json| {
+                    let maybe_entries =
+                        json::from_value::<Vec<(String, json::Value)>>(new_content_json.clone());
+
+                    if let Ok(new_entries) = maybe_entries {
+                        let mut entries = vec![];
+                        for (key, new_value) in &new_entries {
+                            let value = extrapolate_session_settings_from_session_settings(
+                                &old_session_settings["value"],
+                                &new_value,
+                                default_value,
+                            );
+                            entries.push((key.clone(), value));
+                        }
+
+                        if new_entries == entries {
+                            return json::json!(new_entries);
+                        }
+                    }
+
+                    old_session_settings["content"].clone()
+                })
                 .unwrap_or_else(|| old_session_settings["content"].clone());
 
             json::json!({
@@ -527,8 +564,28 @@ fn json_session_settings_to_settings(
                 .collect(),
         ),
 
-        SchemaNode::Vector { .. } | SchemaNode::Dictionary { .. } => {
-            session_settings["content"].clone()
+        SchemaNode::Vector {
+            default_element, ..
+        } => json::Value::Array(
+            session_settings["content"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|element| json_session_settings_to_settings(element, default_element))
+                .collect(),
+        ),
+
+        SchemaNode::Dictionary { default_value, .. } => {
+            let entries =
+                json::from_value::<Vec<(String, json::Value)>>(session_settings["content"].clone())
+                    .unwrap();
+
+            let entries = entries
+                .iter()
+                .map(|(key, value)| (key, json_session_settings_to_settings(value, default_value)))
+                .collect::<Vec<_>>();
+
+            json::json!(entries)
         }
     }
 }

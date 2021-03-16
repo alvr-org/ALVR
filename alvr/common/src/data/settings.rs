@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use settings_schema::{SettingsSchema, Switch, SwitchDefault};
+use settings_schema::{DictionaryDefault, SettingsSchema, Switch, SwitchDefault, VectorDefault};
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(tag = "type", content = "content")]
@@ -425,6 +425,9 @@ pub struct ExtraDesc {
     locale: String,
     #[schema(advanced)]
     show_setup_wizard: bool,
+
+    test_vec: Vec<i32>,
+    test_dict: Vec<(String, i32)>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -604,6 +607,15 @@ pub fn session_settings_default() -> SettingsDefault {
             exclude_notifications_without_id: false,
             locale: "".into(),
             show_setup_wizard: true,
+            test_vec: VectorDefault {
+                element: 0,
+                content: vec![0],
+            },
+            test_dict: DictionaryDefault {
+                key: "".into(),
+                value: 0,
+                content: vec![("".into(), 0)],
+            },
         },
     }
 }

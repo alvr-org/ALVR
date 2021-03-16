@@ -1,7 +1,7 @@
 // Taken from settings-schema/src/lib.rs
 
 // Session settings representation
-type SessionSettingsNode =
+export type SessionSettingsNode =
     | SessionSettingsSection
     | SessionSettingsChoice
     | SessionSettingsOptional
@@ -13,33 +13,33 @@ type SessionSettingsNode =
     | SessionSettingsVector
     | SessionSettingsDictionary
 
-interface SessionSettingsSection {
+export interface SessionSettingsSection {
     [k: string]: SessionSettingsNode
 }
-interface SessionSettingsChoice {
+export interface SessionSettingsChoice {
     variant: string
     [k: string]: SessionSettingsNode
 }
-interface SessionSettingsOptional {
+export interface SessionSettingsOptional {
     set: boolean
     content: SessionSettingsNode
 }
-interface SessionSettingsSwitch {
+export interface SessionSettingsSwitch {
     enabled: boolean
     content: SessionSettingsNode
 }
-interface SessionSettingsVector {
+export interface SessionSettingsVector {
     element: SessionSettingsNode
     content: SessionSettingsNode[]
 }
-interface SessionSettingsDictionary {
+export interface SessionSettingsDictionary {
     key: string
     value: SessionSettingsNode
     content: [string, SessionSettingsNode][]
 }
 
 // Schema representation
-type SchemaNode =
+export type SchemaNode =
     | {
           type: "Section"
           content: [
@@ -64,8 +64,8 @@ type SchemaNode =
           content: {
               default: string
               variants: [string, { advanced: boolean; content: SchemaNode } | null][]
+              gui: "Dropdown" | "ButtonGroup" | null
           }
-          gui: "Dropdown" | "ButtonGroup" | null
       }
     | {
           type: "Optional"
@@ -110,7 +110,7 @@ type SchemaNode =
           }
       }
 
-interface Preset {
+export interface Preset {
     data_type:
         | {
               type: "Choice"
@@ -132,4 +132,4 @@ interface Preset {
     modifiers: string[]
 }
 
-type PresetGroup = [string, Preset][]
+export type PresetGroup = [string, Preset][]

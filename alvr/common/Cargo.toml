@@ -34,8 +34,9 @@ gfx-hal = "=0.6.0"
 winit = "0.24" # needed to get the screen size
 cpal = "0.13"
 rodio = "0.13"
-governor = "0.3.2"
-nonzero_ext = "0.2.0"
+governor = "0.3"
+nonzero_ext = "0.2"
+# ffmpeg-sys = { git = "https://github.com/meh/rust-ffmpeg-sys", features = ["build"] }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 dirs = "3"
@@ -60,6 +61,3 @@ gfx-backend-dx11 = "=0.6.17"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gfx-backend-vulkan = "=0.6.5"
-
-[build-dependencies]
-alvr_xtask = { path = "../xtask" }

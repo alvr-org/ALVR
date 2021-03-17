@@ -386,7 +386,7 @@ fn build_installer(wix_path: &str) {
     let candle_cmd = wix_path.join("candle.exe");
     let light_cmd = wix_path.join("light.exe");
 
-    let mut version = Version::parse(&alvr_xtask::version()).unwrap();
+    let mut version = Version::parse(&version::version()).unwrap();
     // Clear away build and prerelease version specifiers, MSI can have only dot-separated numbers.
     version.pre.clear();
     version.build.clear();

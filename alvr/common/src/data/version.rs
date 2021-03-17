@@ -4,7 +4,7 @@ pub use semver::Version;
 pub const ALVR_NAME: &str = "ALVR";
 
 lazy_static! {
-    pub static ref ALVR_VERSION: Version = Version::parse(env!("VERSION")).unwrap();
+    pub static ref ALVR_VERSION: Version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
 }
 
 // accept semver-compatible versions

@@ -1,7 +1,5 @@
 import { subscribeToEvent } from "./eventDispatch"
 
-// Type definitions translated from settings-schema/src/lib.rs
-
 export interface Session {
     client_connections: [string, { display_name: string; manual_ips: string[]; trusted: boolean }][]
     session_settings: SessionSettingsRoot
@@ -10,6 +8,8 @@ export interface Session {
 export interface SessionSettingsRoot {
     [k: string]: SessionSettingsSection
 }
+
+// Type definitions translated from settings-schema/src/lib.rs
 
 // Session settings representation
 export type SessionSettingsNode =
@@ -144,9 +144,12 @@ const CURRENT_WEB_CLIENT_ID = Math.floor(Math.random() * 2 ** 16).toString()
 let listener: SessionListener = () => {}
 let schema: SettingsSchema | null = null
 
-subscribeToEvent("sessionUpdated", dataUntyped => {
-    const data = dataUntyped as { webClientId: string | null }
-    if (data.webClientId != CURRENT_WEB_CLIENT_ID) {
+// Note: the schema never changes, so it gets stored after the first call of settingsSchema().
+// The session is never stored, to avoid de-syncs with the server.
+
+subscribeToEvent("sessionUpdated", data => {
+    const { webClientId } = data as { webClientId: string | null }
+    if (webClientId != CURRENT_WEB_CLIENT_ID) {
         getSession().then(listener)
     }
 })

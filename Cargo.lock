@@ -113,7 +113,6 @@ dependencies = [
 name = "alvr_common"
 version = "15.1.0"
 dependencies = [
- "alvr_xtask",
  "backtrace",
  "bincode",
  "bytes",

@@ -2,7 +2,10 @@ use chrono::Utc;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use semver::{Identifier, Version};
-use std::fs;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 lazy_static! {
     static ref GRADLE_VERSIONNAME_REGEX: Regex =
@@ -11,8 +14,24 @@ lazy_static! {
         Regex::new(r#"versionCode\s+(?P<code>\d+)"#).unwrap();
 }
 
+fn packages_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .into()
+}
+
+pub fn version() -> String {
+    let manifest_path = packages_dir().join("common").join("Cargo.toml");
+    println!("cargo:rerun-if-changed={}", manifest_path.to_string_lossy());
+
+    let manifest: toml_edit::Document = fs::read_to_string(manifest_path).unwrap().parse().unwrap();
+
+    manifest["package"]["version"].as_str().unwrap().into()
+}
+
 fn bump_client_gradle_version(new_version: &Version, is_nightly: bool) {
-    let old_version = alvr_xtask::version();
+    let old_version = version();
 
     println!(
         "Bumping client version (gradle): {} -> {}",
@@ -57,7 +76,7 @@ pub fn bump_version(version_arg: Option<&str>, is_nightly: bool) {
     let mut version = if let Some(version_arg) = version_arg {
         Version::parse(version_arg).unwrap()
     } else {
-        let mut version = Version::parse(&alvr_xtask::version()).unwrap();
+        let mut version = Version::parse(&version()).unwrap();
         if !is_nightly {
             version.increment_patch();
         }

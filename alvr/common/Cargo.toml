@@ -27,7 +27,7 @@ bincode = "1"
 encoding_rs_io = "0.1"
 futures = "0.3"
 bytes = "1"
-tokio = { version = "1", features = ["net", "macros"] }
+tokio = { version = "1", features = ["rt", "net", "macros"] }
 tokio-util = { version = "0.6", features = ["codec", "net"] }
 rcgen = "0.8"
 gfx-hal = "=0.6.0"
@@ -45,6 +45,7 @@ msgbox = "0.6"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = [
+    "impl-default",
     "combaseapi",
     "coml2api",
     "endpointvolume",

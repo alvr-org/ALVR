@@ -1,3 +1,4 @@
+use crate::command;
 use std::{fs, io::ErrorKind};
 
 fn install_rust_android_gradle() {
@@ -21,7 +22,7 @@ fn install_rust_android_gradle() {
     #[cfg(target_os = "linux")]
     let gradlew_path = download_path.join("gradlew");
 
-    crate::run_in(
+    command::run_in(
         &download_path,
         &format!("{} publish", gradlew_path.to_string_lossy()),
     )
@@ -54,7 +55,22 @@ fn install_rust_android_gradle() {
     .unwrap();
 }
 
+fn build_ffmpeg() {
+    let download_path = cached_path::cached_path_with_options(
+        &format!(
+            "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/{}.tar.gz",
+            "f719f869907764e6412a6af6e178c46e5f915d25"
+        ),
+        &cached_path::Options::default().extract(),
+    )
+    .unwrap();
+    let download_path = download_path.join("ffmpeg-f719f86");
+
+    command::run_as_bash("sudo apt update").unwrap();
+}
+
 pub fn install_deps() {
-    crate::run("rustup target add aarch64-linux-android").unwrap();
+    command::run("rustup target add aarch64-linux-android").unwrap();
     install_rust_android_gradle();
+    build_ffmpeg();
 }

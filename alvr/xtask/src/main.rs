@@ -1,3 +1,4 @@
+mod command;
 mod dependencies;
 mod version;
 
@@ -10,7 +11,6 @@ use std::{
     fs,
     io::{Read, Write},
     path::{Path, PathBuf},
-    process::{Command, Stdio},
 };
 
 const HELP_STR: &str = r#"
@@ -83,56 +83,6 @@ fn dynlib_fname(name: &str) -> String {
 #[cfg(windows)]
 fn dynlib_fname(name: &str) -> String {
     format!("{}.dll", name)
-}
-
-fn run_in(workdir: &Path, cmd: &str) -> BResult {
-    println!("\n{}", cmd);
-
-    let shell = if cfg!(windows) { "cmd" } else { "bash" };
-    let shell_flag = if cfg!(windows) { "/C" } else { "-c" };
-
-    let output = Command::new(shell)
-        .args(&[shell_flag, cmd])
-        .stdout(Stdio::inherit())
-        .current_dir(workdir)
-        .spawn()?
-        .wait_with_output()?;
-
-    if output.status.success() {
-        Ok(())
-    } else {
-        Err(format!(
-            "Command failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )
-        .into())
-    }
-}
-
-fn run(cmd: &str) -> BResult {
-    run_in(&env::current_dir().unwrap(), cmd)
-}
-
-fn run_without_shell(cmd: &str, args: &[&str]) -> BResult {
-    println!(
-        "\n{}",
-        args.iter().fold(String::from(cmd), |s, arg| s + " " + arg)
-    );
-    let output = Command::new(cmd)
-        .args(args)
-        .stdout(Stdio::inherit())
-        .spawn()?
-        .wait_with_output()?;
-
-    if output.status.success() {
-        Ok(())
-    } else {
-        Err(format!(
-            "Command failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )
-        .into())
-    }
 }
 
 pub fn target_dir() -> PathBuf {
@@ -226,22 +176,22 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
     fs::create_dir_all(&driver_dst_dir).unwrap();
 
     if fetch_crates {
-        run("cargo update").unwrap();
+        command::run("cargo update").unwrap();
     }
 
     if is_nightly {
-        run_in(
+        command::run_in(
             &workspace_dir().join("alvr/server"),
             &format!("cargo build {} --features alvr_common/nightly", build_flag),
         )
         .unwrap();
-        run_in(
+        command::run_in(
             &workspace_dir().join("alvr/launcher"),
             &format!("cargo build {} --features alvr_common/nightly", build_flag),
         )
         .unwrap();
     } else if new_dashboard {
-        run_in(
+        command::run_in(
             &workspace_dir().join("alvr/server"),
             &format!(
                 "cargo build --no-default-features {} {}",
@@ -249,7 +199,7 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
             ),
         )
         .unwrap();
-        run_in(
+        command::run_in(
             &workspace_dir().join("alvr/launcher"),
             &format!(
                 "cargo build --no-default-features {} {}",
@@ -258,7 +208,7 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
         )
         .unwrap();
     } else {
-        run(&format!(
+        command::run(&format!(
             "cargo build -p alvr_server -p alvr_launcher {}",
             build_flag
         ))
@@ -289,7 +239,7 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
     }
 
     if new_dashboard {
-        run_in(
+        command::run_in(
             &workspace_dir().join("alvr/dashboard"),
             &format!(
                 "npm install && npx snowpack build --out=../../build/{}/dashboard",
@@ -361,7 +311,7 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
     fs::create_dir_all(&build_dir().join(&artifact_name)).unwrap();
 
     env::set_current_dir(&client_dir).unwrap();
-    run(&format!("{} {}", command_name, build_task)).unwrap();
+    command::run(&format!("{} {}", command_name, build_task)).unwrap();
     env::set_current_dir(workspace_dir()).unwrap();
 
     fs::copy(
@@ -391,7 +341,7 @@ fn build_installer(wix_path: &str) {
     version.pre.clear();
     version.build.clear();
 
-    run_without_shell(
+    command::run_without_shell(
         &heat_cmd.to_string_lossy(),
         &[
             "dir",
@@ -411,7 +361,7 @@ fn build_installer(wix_path: &str) {
     )
     .unwrap();
 
-    run_without_shell(
+    command::run_without_shell(
         &candle_cmd.to_string_lossy(),
         &[
             "-arch",
@@ -428,7 +378,7 @@ fn build_installer(wix_path: &str) {
     )
     .unwrap();
 
-    run_without_shell(
+    command::run_without_shell(
         &light_cmd.to_string_lossy(),
         &[
             "target\\wix\\main.wixobj",
@@ -444,7 +394,7 @@ fn build_installer(wix_path: &str) {
     .unwrap();
 
     // Build the bundle including ALVR and vc_redist.
-    run_without_shell(
+    command::run_without_shell(
         &candle_cmd.to_string_lossy(),
         &[
             "-arch",
@@ -461,7 +411,7 @@ fn build_installer(wix_path: &str) {
     )
     .unwrap();
 
-    run_without_shell(
+    command::run_without_shell(
         &light_cmd.to_string_lossy(),
         &[
             "target\\wix\\bundle.wixobj",

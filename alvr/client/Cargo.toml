@@ -24,7 +24,7 @@ alvr_common = { path = "../common" }
 nalgebra = "0.25"
 futures = "0.3"
 bytes = "1"
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 rand = "0.8"
 cpal = "0.13"
 

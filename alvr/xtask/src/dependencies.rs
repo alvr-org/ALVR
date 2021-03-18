@@ -80,24 +80,22 @@ fn build_ffmpeg(target: FfmpegTarget) {
     ))
     .unwrap();
 
-    // Note: FFmpeg tag n4.3.2
+    println!("Fetching FFmpeg...");
     let ffmpeg_path = cached_path::cached_path_with_options(
-        &format!(
-            "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/{}.tar.gz",
-            "f719f869907764e6412a6af6e178c46e5f915d25"
-        ),
+        "https://github.com/FFmpeg/FFmpeg/archive/n4.3.2.zip",
         &cached_path::Options::default().extract(),
     )
     .unwrap();
-    let ffmpeg_path = ffmpeg_path.join("ffmpeg-f719f86");
+    let ffmpeg_path = ffmpeg_path.join("FFmpeg-n4.3.2");
 
     // todo: add more video encoders: libkvazaar, OpenH264, libvpx, libx265
     // AV1 encoders are excluded because of lack of hardware accelerated decoding support
-    let server_ffmpeg_flags = "--enable-libx264 --arch=x86_64";
+    let server_ffmpeg_flags = "--disable-decoders --enable-libx264 --arch=x86_64";
 
     let ffmpeg_platform_flags;
     match target {
         FfmpegTarget::Windows => {
+            println!("Fetching x264...");
             let x264_path = cached_path::cached_path_with_options(
                 "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.zip",
                 &cached_path::Options::default().extract(),
@@ -118,17 +116,14 @@ fn build_ffmpeg(target: FfmpegTarget) {
             let x264_wsl2_path = windows_to_wsl2_path(&x264_path.join("build"));
             ffmpeg_platform_flags = format!(
                 "{} {} {} {}",
-                format!(
-                    "--extra-cflags=\"-I{}/include -fno-use-linker-plugin -fno-lto\"",
-                    x264_wsl2_path
-                ),
-                format!("--extra-ldflags=-L{}/lib", x264_wsl2_path),
+                format!("--extra-cflags=\"-I{}/include\"", x264_wsl2_path),
+                format!("--extra-ldflags=\"-L{}/lib\"", x264_wsl2_path),
                 "--target-os=mingw32 --cross-prefix=x86_64-w64-mingw32-",
                 server_ffmpeg_flags
             )
         }
         FfmpegTarget::Linux => {
-            ffmpeg_platform_flags = format!("--enable-vulkan --enable-lto {}", server_ffmpeg_flags)
+            ffmpeg_platform_flags = format!("--enable-vulkan {}", server_ffmpeg_flags)
         }
         FfmpegTarget::Android => {
             ffmpeg_platform_flags = "--enable-jni --enable-mediacodec".to_string()
@@ -138,7 +133,7 @@ fn build_ffmpeg(target: FfmpegTarget) {
     bash_in(
         &ffmpeg_path,
         &format!(
-            "./configure {} {} {} {} {} {} {} {}",
+            "./configure {} {} {} {} {} {} {} {} {}",
             "--prefix=./ffmpeg",
             "--enable-gpl --enable-version3",
             "--disable-static --enable-shared",
@@ -149,6 +144,7 @@ fn build_ffmpeg(target: FfmpegTarget) {
                 "--disable-muxers --disable-demuxers --disable-parsers {}",
                 "--disable-bsfs --disable-protocols --disable-devices --disable-filters"
             ),
+            "--enable-lto",
             ffmpeg_platform_flags
         ),
     )

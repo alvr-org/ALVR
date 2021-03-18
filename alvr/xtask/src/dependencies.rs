@@ -150,8 +150,11 @@ fn build_ffmpeg() {
     .unwrap();
 }
 
-pub fn install_deps() {
+pub fn install_server_deps() {
+    build_ffmpeg();
+}
+
+pub fn install_client_deps() {
     command::run("rustup target add aarch64-linux-android").unwrap();
     install_rust_android_gradle();
-    build_ffmpeg();
 }

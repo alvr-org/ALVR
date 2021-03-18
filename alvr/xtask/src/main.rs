@@ -21,7 +21,8 @@ USAGE:
     cargo xtask <SUBCOMMAND> [FLAG] [ARGS]
 
 SUBCOMMANDS:
-    install-deps        Download and compile/install external dependencies
+    install-server-deps Download and compile/install external dependencies for the server
+    install-client-deps Download and compile/install external dependencies for the client
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
     publish-server      Build server in release mode, make portable version and installer
@@ -478,7 +479,8 @@ fn main() {
         };
         if args.finish().is_empty() {
             match subcommand.as_str() {
-                "install-deps" => dependencies::install_deps(),
+                "install-server-deps" => dependencies::install_server_deps(),
+                "install-client-deps" => dependencies::install_client_deps(),
                 "build-server" => build_server(
                     args_values.is_release,
                     false,

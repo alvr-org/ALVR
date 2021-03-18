@@ -112,6 +112,7 @@ jobs:
           WIX: 'wix314-binaries'
         run: |
           $env:RUST_BACKTRACE = 1
+          cargo xtask install-server-deps
           cargo xtask publish-server
           $file = Get-ChildItem -Name .\build\*.exe | Select-Object -f 1
           echo "::set-output name=exe_filename::$file"
@@ -177,7 +178,7 @@ jobs:
           ANDROID_SDK_ROOT: '${{ github.workspace }}\android-sdk'
         run: |
           $env:RUST_BACKTRACE = 1
-          cargo xtask install-deps
+          cargo xtask install-client-deps
           cargo xtask publish-client
       
       - name: Sign Oculus Quest APK

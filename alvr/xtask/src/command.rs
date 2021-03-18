@@ -6,7 +6,7 @@ use std::{
 };
 
 pub fn run_as_shell_in(workdir: &Path, shell: &str, shell_flag: &str, cmd: &str) -> BResult {
-    println!("\n{}", cmd);
+    println!("\n> {}", cmd);
 
     let output = Command::new(shell)
         .args(&[shell_flag, cmd])
@@ -48,7 +48,7 @@ pub fn run_as_bash(cmd: &str) -> BResult {
 
 pub fn run_without_shell(cmd: &str, args: &[&str]) -> BResult {
     println!(
-        "\n{}",
+        "\n> {}",
         args.iter().fold(String::from(cmd), |s, arg| s + " " + arg)
     );
     let output = Command::new(cmd)

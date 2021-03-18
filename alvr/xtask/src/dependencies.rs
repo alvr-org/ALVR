@@ -1,4 +1,4 @@
-use crate::command;
+use crate::command::{self, run_as_bash as bash, run_as_bash_in as bash_in};
 use std::{fs, io::ErrorKind};
 
 fn install_rust_android_gradle() {
@@ -56,7 +56,9 @@ fn install_rust_android_gradle() {
 }
 
 fn build_ffmpeg() {
-    let download_path = cached_path::cached_path_with_options(
+    bash("sudo apt update && sudo apt install -y build-essential mingw-w64 nasm").unwrap();
+
+    let ffmpeg_path = cached_path::cached_path_with_options(
         &format!(
             "https://git.ffmpeg.org/gitweb/ffmpeg.git/snapshot/{}.tar.gz",
             "f719f869907764e6412a6af6e178c46e5f915d25"
@@ -64,13 +66,31 @@ fn build_ffmpeg() {
         &cached_path::Options::default().extract(),
     )
     .unwrap();
-    let download_path = download_path.join("ffmpeg-f719f86");
+    let ffmpeg_path = ffmpeg_path.join("ffmpeg-f719f86");
 
-    command::run_as_bash("sudo apt update").unwrap();
+    let x264_path = cached_path::cached_path_with_options(
+        "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.zip",
+        &cached_path::Options::default().extract(),
+    )
+    .unwrap();
+    let x264_path = x264_path.join("x264-stable");
+
+    bash_in(
+        &x264_path,
+        &format!(
+            "./configure --prefix=./build --cross-prefix=x86_64-w64-mingw32- {}",
+            "--host=x86_64-w64-mingw32 --enable-static --disable-cli"
+        ),
+    )
+    .unwrap();
+
+    bash_in(&x264_path, "make -j$(nproc) && make install").unwrap();
 }
 
 pub fn install_deps() {
     command::run("rustup target add aarch64-linux-android").unwrap();
     install_rust_android_gradle();
+
+    #[cfg(windows)]
     build_ffmpeg();
 }

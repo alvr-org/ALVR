@@ -69,16 +69,18 @@ enum FfmpegTarget {
 }
 
 fn build_ffmpeg(target: FfmpegTarget) {
-    let registry_deps = match target {
-        FfmpegTarget::Windows => "mingw-w64 mingw-w64-tools nasm",
-        FfmpegTarget::Linux => "libx264-dev libvulkan-dev",
-        FfmpegTarget::Android => "",
-    };
-    bash(&format!(
-        "sudo apt update && sudo apt install -y build-essential {}",
-        registry_deps
-    ))
-    .unwrap();
+    if cfg!(windows) {
+        let registry_deps = match target {
+            FfmpegTarget::Windows => "mingw-w64 mingw-w64-tools nasm",
+            FfmpegTarget::Linux => "libx264-dev libvulkan-dev",
+            FfmpegTarget::Android => "",
+        };
+        bash(&format!(
+            "sudo apt update && sudo apt install -y build-essential {}",
+            registry_deps
+        ))
+        .unwrap();
+    }
 
     println!("Fetching FFmpeg...");
     let ffmpeg_path = cached_path::cached_path_with_options(

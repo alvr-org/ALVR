@@ -69,6 +69,10 @@ const DRIVER_FNAME: &str = "driver_alvr_server.so";
 #[cfg(windows)]
 const DRIVER_FNAME: &str = "driver_alvr_server.dll";
 
+const WINDOWS_NAME: &str = "windows";
+const LINUX_NAME: &str = "linux";
+const ANDROID_NAME: &str = "anddroid";
+
 #[cfg(target_os = "linux")]
 pub fn exec_fname(name: &str) -> String {
     name.to_owned()

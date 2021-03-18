@@ -1,4 +1,7 @@
-use crate::command::{self, run_as_bash as bash, run_as_bash_in as bash_in};
+use crate::{
+    command::{self, run_as_bash as bash, run_as_bash_in as bash_in},
+    ANDROID_NAME, LINUX_NAME, WINDOWS_NAME,
+};
 use fs_extra as fsx;
 use std::{fs, io::ErrorKind, path::Path};
 
@@ -153,9 +156,15 @@ fn build_ffmpeg(target: FfmpegTarget) {
     .unwrap();
     bash_in(&ffmpeg_path, "make -j$(nproc) && make install").unwrap();
 
+    let deps_dir_name = match target {
+        FfmpegTarget::Windows => WINDOWS_NAME,
+        FfmpegTarget::Linux => LINUX_NAME,
+        FfmpegTarget::Android => ANDROID_NAME,
+    };
+
     fsx::move_items(
         &[ffmpeg_path.join("ffmpeg")],
-        crate::workspace_dir().join("deps"),
+        crate::workspace_dir().join("deps").join(deps_dir_name),
         &fsx::dir::CopyOptions {
             overwrite: true,
             ..<_>::default()
@@ -182,5 +191,5 @@ pub fn install_server_deps(cross_compilation: bool) {
 pub fn install_client_deps() {
     command::run("rustup target add aarch64-linux-android").unwrap();
     install_rust_android_gradle();
-    build_ffmpeg(FfmpegTarget::Android);
+    // build_ffmpeg(FfmpegTarget::Android);
 }

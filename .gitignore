@@ -53,7 +53,7 @@ wix/harvested.wxs
 .DS_Store
 
 # dependencies installed by xtask
-/deps/
+deps
 
 # dependencies installed by node
 node_modules

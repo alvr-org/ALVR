@@ -102,11 +102,11 @@ fn build_ffmpeg() {
             ),
         )
         .unwrap();
-        bash_in(&x264_path, "make -j$(nproc) && sudo make install").unwrap();
+        bash_in(&x264_path, "make -j$(nproc) && make install").unwrap();
 
         let x264_wsl2_path = windows_to_wsl2_path(&x264_path.join("build"));
         ffmpeg_platform_flags = format!(
-            "--extra-cflags=-I{}/include --extra-ldflags=-L{}/lib {}",
+            "--extra-cflags=\"-I{}/include -fno-use-linker-plugin -fno-lto\" --extra-ldflags=-L{}/lib {}",
             x264_wsl2_path,
             x264_wsl2_path,
             "--target-os=mingw32 --cross-prefix=x86_64-w64-mingw32-"
@@ -153,6 +153,5 @@ fn build_ffmpeg() {
 pub fn install_deps() {
     command::run("rustup target add aarch64-linux-android").unwrap();
     install_rust_android_gradle();
-
     build_ffmpeg();
 }

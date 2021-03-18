@@ -51,6 +51,7 @@ struct Args {
     for_oculus_quest: bool,
     for_oculus_go: bool,
     new_dashboard: bool,
+    deps_cross_compilation: bool,
 }
 
 #[cfg(target_os = "linux")]
@@ -476,10 +477,13 @@ fn main() {
             for_oculus_quest: args.contains("--oculus-quest"),
             for_oculus_go: args.contains("--oculus-go"),
             new_dashboard: args.contains("--new-dashboard"),
+            deps_cross_compilation: args.contains("--cross"),
         };
         if args.finish().is_empty() {
             match subcommand.as_str() {
-                "install-server-deps" => dependencies::install_server_deps(),
+                "install-server-deps" => {
+                    dependencies::install_server_deps(args_values.deps_cross_compilation)
+                }
                 "install-client-deps" => dependencies::install_client_deps(),
                 "build-server" => build_server(
                     args_values.is_release,

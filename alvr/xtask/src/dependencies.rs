@@ -62,15 +62,21 @@ fn windows_to_wsl2_path(path: &Path) -> String {
         .replace("\\", "/")
 }
 
-fn build_ffmpeg() {
-    let deps = if cfg!(windows) {
-        "mingw-w64 mingw-w64-tools nasm"
-    } else {
-        "libx264-dev libvulkan-dev"
+enum FfmpegTarget {
+    Windows,
+    Linux,
+    Android,
+}
+
+fn build_ffmpeg(target: FfmpegTarget) {
+    let registry_deps = match target {
+        FfmpegTarget::Windows => "mingw-w64 mingw-w64-tools nasm",
+        FfmpegTarget::Linux => "libx264-dev libvulkan-dev",
+        FfmpegTarget::Android => "",
     };
     bash(&format!(
         "sudo apt update && sudo apt install -y build-essential {}",
-        deps
+        registry_deps
     ))
     .unwrap();
 
@@ -85,42 +91,54 @@ fn build_ffmpeg() {
     .unwrap();
     let ffmpeg_path = ffmpeg_path.join("ffmpeg-f719f86");
 
-    let ffmpeg_platform_flags;
-    if cfg!(windows) {
-        let x264_path = cached_path::cached_path_with_options(
-            "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.zip",
-            &cached_path::Options::default().extract(),
-        )
-        .unwrap();
-        let x264_path = x264_path.join("x264-stable");
-
-        bash_in(
-            &x264_path,
-            &format!(
-                "./configure --prefix=./build --disable-cli --enable-static {}",
-                "--host=x86_64-w64-mingw32 --cross-prefix=x86_64-w64-mingw32-"
-            ),
-        )
-        .unwrap();
-        bash_in(&x264_path, "make -j$(nproc) && make install").unwrap();
-
-        let x264_wsl2_path = windows_to_wsl2_path(&x264_path.join("build"));
-        ffmpeg_platform_flags = format!(
-            "--extra-cflags=\"-I{}/include -fno-use-linker-plugin -fno-lto\" --extra-ldflags=-L{}/lib {}",
-            x264_wsl2_path,
-            x264_wsl2_path,
-            "--target-os=mingw32 --cross-prefix=x86_64-w64-mingw32-"
-        )
-    } else {
-        ffmpeg_platform_flags = "--enable-vulkan --enable-lto".to_string()
-    }
-
     // todo: add more video encoders: libkvazaar, OpenH264, libvpx, libx265
     // AV1 encoders are excluded because of lack of hardware accelerated decoding support
+    let server_ffmpeg_flags = "--enable-libx264 --arch=x86_64";
+
+    let ffmpeg_platform_flags;
+    match target {
+        FfmpegTarget::Windows => {
+            let x264_path = cached_path::cached_path_with_options(
+                "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.zip",
+                &cached_path::Options::default().extract(),
+            )
+            .unwrap();
+            let x264_path = x264_path.join("x264-stable");
+
+            bash_in(
+                &x264_path,
+                &format!(
+                    "./configure --prefix=./build --disable-cli --enable-static {}",
+                    "--host=x86_64-w64-mingw32 --cross-prefix=x86_64-w64-mingw32-"
+                ),
+            )
+            .unwrap();
+            bash_in(&x264_path, "make -j$(nproc) && make install").unwrap();
+
+            let x264_wsl2_path = windows_to_wsl2_path(&x264_path.join("build"));
+            ffmpeg_platform_flags = format!(
+                "{} {} {} {}",
+                format!(
+                    "--extra-cflags=\"-I{}/include -fno-use-linker-plugin -fno-lto\"",
+                    x264_wsl2_path
+                ),
+                format!("--extra-ldflags=-L{}/lib", x264_wsl2_path),
+                "--target-os=mingw32 --cross-prefix=x86_64-w64-mingw32-",
+                server_ffmpeg_flags
+            )
+        }
+        FfmpegTarget::Linux => {
+            ffmpeg_platform_flags = format!("--enable-vulkan --enable-lto {}", server_ffmpeg_flags)
+        }
+        FfmpegTarget::Android => {
+            ffmpeg_platform_flags = "--enable-jni --enable-mediacodec".to_string()
+        }
+    }
+
     bash_in(
         &ffmpeg_path,
         &format!(
-            "./configure {} {} {} {} {} {} {} {} {} {}",
+            "./configure {} {} {} {} {} {} {} {}",
             "--prefix=./ffmpeg",
             "--enable-gpl --enable-version3",
             "--disable-static --enable-shared",
@@ -128,11 +146,9 @@ fn build_ffmpeg() {
             "--disable-doc",
             "--disable-network",
             format!(
-                "--disable-decoders --disable-muxers --disable-demuxers --disable-parsers {}",
+                "--disable-muxers --disable-demuxers --disable-parsers {}",
                 "--disable-bsfs --disable-protocols --disable-devices --disable-filters"
             ),
-            "--enable-libx264",
-            "--arch=x86_64",
             ffmpeg_platform_flags
         ),
     )
@@ -150,11 +166,23 @@ fn build_ffmpeg() {
     .unwrap();
 }
 
-pub fn install_server_deps() {
-    build_ffmpeg();
+pub fn install_server_deps(cross_compilation: bool) {
+    let target = if cfg!(windows) {
+        if cross_compilation {
+            FfmpegTarget::Linux
+        } else {
+            FfmpegTarget::Windows
+        }
+    } else if cross_compilation {
+        FfmpegTarget::Windows
+    } else {
+        FfmpegTarget::Linux
+    };
+    build_ffmpeg(target);
 }
 
 pub fn install_client_deps() {
     command::run("rustup target add aarch64-linux-android").unwrap();
     install_rust_android_gradle();
+    build_ffmpeg(FfmpegTarget::Android);
 }

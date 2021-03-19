@@ -102,23 +102,32 @@ fn windows_to_wsl2_path(path: &Path) -> String {
 
 enum FfmpegTarget {
     Windows,
-    Linux,
+    Linux {
+        install_transitive_dependencies: bool,
+    },
     Android,
 }
 
 fn build_ffmpeg(target: FfmpegTarget) {
-    if cfg!(windows) {
-        let apt_packages = match target {
-            FfmpegTarget::Windows => "make mingw-w64 mingw-w64-tools binutils-mingw-w64 nasm",
-            FfmpegTarget::Linux => "build-essential libx264-dev libvulkan-dev",
-            FfmpegTarget::Android => "",
-        };
-        bash(&format!(
-            "sudo apt update && sudo apt install -y {}",
-            apt_packages
-        ))
-        .unwrap();
-    }
+    match target {
+        FfmpegTarget::Windows => {
+            bash(&format!(
+                "sudo apt update && sudo apt remove --auto-remove -y gcc && sudo apt install -y {}",
+                "make mingw-w64 mingw-w64-tools binutils-mingw-w64 nasm"
+            ))
+            .unwrap();
+        }
+        FfmpegTarget::Linux {
+            install_transitive_dependencies,
+        } if install_transitive_dependencies => {
+            bash(&format!(
+                "sudo apt update && sudo apt install -y {}",
+                "build-essential libx264-dev libvulkan-dev"
+            ))
+            .unwrap();
+        }
+        _ => (),
+    };
 
     let mut temp_paths = vec![];
 
@@ -162,7 +171,7 @@ fn build_ffmpeg(target: FfmpegTarget) {
                 server_ffmpeg_flags
             )
         }
-        FfmpegTarget::Linux => {
+        FfmpegTarget::Linux { .. } => {
             ffmpeg_platform_flags = format!("--enable-vulkan {}", server_ffmpeg_flags)
         }
         FfmpegTarget::Android => {
@@ -193,7 +202,7 @@ fn build_ffmpeg(target: FfmpegTarget) {
 
     let deps_dir_name = match target {
         FfmpegTarget::Windows => WINDOWS_NAME,
-        FfmpegTarget::Linux => LINUX_NAME,
+        FfmpegTarget::Linux { .. } => LINUX_NAME,
         FfmpegTarget::Android => ANDROID_NAME,
     };
 
@@ -217,20 +226,21 @@ fn build_ffmpeg(target: FfmpegTarget) {
     }
 }
 
-pub fn install_server_deps(cross_compilation: bool) {
+pub fn install_server_deps(cross_compilation: bool, install_transitive_dependencies: bool) {
     let target = if cfg!(windows) {
         if cross_compilation {
-            FfmpegTarget::Linux
+            FfmpegTarget::Linux {
+                install_transitive_dependencies,
+            }
         } else {
             FfmpegTarget::Windows
         }
     } else if cross_compilation {
-        // patch for broken CI
-        bash("sudo apt remove --auto-remove gcc").unwrap();
-
         FfmpegTarget::Windows
     } else {
-        FfmpegTarget::Linux
+        FfmpegTarget::Linux {
+            install_transitive_dependencies,
+        }
     };
     build_ffmpeg(target);
 }

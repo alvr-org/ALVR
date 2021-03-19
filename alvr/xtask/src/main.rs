@@ -32,6 +32,8 @@ SUBCOMMANDS:
     bump-versions       Bump server and/or client package versions
 
 FLAGS:
+    --cross             Cross compilation for install-server-deps (Windows<->Linux)
+    --install-transitive    Install transitive dependencies (works only on Ubuntu)
     --release           Optimized build without debug info. Used only for build subcommands
     --nightly           Bump versions to nightly and build. Used only for publish subcommand
     --oculus-quest      Oculus Quest build. Used only for build-client subcommand
@@ -52,6 +54,7 @@ struct Args {
     for_oculus_go: bool,
     new_dashboard: bool,
     deps_cross_compilation: bool,
+    install_transitive: bool,
 }
 
 #[cfg(target_os = "linux")]
@@ -482,12 +485,14 @@ fn main() {
             for_oculus_go: args.contains("--oculus-go"),
             new_dashboard: args.contains("--new-dashboard"),
             deps_cross_compilation: args.contains("--cross"),
+            install_transitive: args.contains("--install-transitive"),
         };
         if args.finish().is_empty() {
             match subcommand.as_str() {
-                "install-server-deps" => {
-                    dependencies::install_server_deps(args_values.deps_cross_compilation)
-                }
+                "install-server-deps" => dependencies::install_server_deps(
+                    args_values.deps_cross_compilation,
+                    args_values.install_transitive,
+                ),
                 "install-client-deps" => dependencies::install_client_deps(),
                 "build-server" => build_server(
                     args_values.is_release,

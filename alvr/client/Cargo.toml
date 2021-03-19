@@ -13,20 +13,24 @@ default = []
 build-cpp = []
 
 [dependencies]
-parking_lot = "0.11"
+# Basic utilities
 lazy_static = "1"
-log = "0.4"
+parking_lot = "0.11"
+rand = "0.8"
+# Serialization
 serde = "1"
 serde_json = "1"
 bincode = "1"
 settings-schema = { git = "https://github.com/alvr-org/ALVR", rev = "08708f19b2ec70264e2ba2b0adfaa64bd96489bd" }
-alvr_common = { path = "../common" }
-nalgebra = "0.25"
-futures = "0.3"
+# Async and networking
 bytes = "1"
+futures = "0.3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
-rand = "0.8"
+# Miscellaneous
+alvr_common = { path = "../common" }
 cpal = "0.13"
+log = "0.4"
+nalgebra = "0.25"
 
 # todo: move to target_os = "android"
 jni = "0.19"
@@ -37,6 +41,6 @@ android_logger = "0.10"
 oboe = "0.4" # Note: cannot use feature "java-interface" to query audio info
 
 [build-dependencies]
-walkdir = "2"
-cc = { version = "1", features = ["parallel"] }
 bindgen = "0.57"
+cc = { version = "1", features = ["parallel"] }
+walkdir = "2"

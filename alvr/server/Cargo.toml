@@ -13,20 +13,21 @@ default = ["settings-schema_legacy"]
 new_dashboard = ["settings-schema"]
 
 [dependencies]
-parking_lot = "0.11"
-lazy_static = "1"
+# Basic utilities
 chrono = "0.4"
-log = "0.4"
+lazy_static = "1"
+parking_lot = "0.11"
+# Logging
 fern = "0.6"
-settings-schema = { path = "../settings-schema", optional = true }
-settings-schema_legacy = { package = "settings-schema", git = "https://github.com/alvr-org/ALVR", rev = "08708f19b2ec70264e2ba2b0adfaa64bd96489bd", optional = true }
+log = "0.4"
+# Serialization
+bincode = "1"
 serde = "1"
 serde_json = "1"
-bincode = "1"
-alvr_common = { path = "../common" }
-nalgebra = "0.25"
+settings-schema = { path = "../settings-schema", optional = true }
+settings-schema_legacy = { package = "settings-schema", git = "https://github.com/alvr-org/ALVR", rev = "08708f19b2ec70264e2ba2b0adfaa64bd96489bd", optional = true }
+# Async
 futures = "0.3"
-bytes = "1"
 tokio = { version = "1", features = [
     "rt-multi-thread",
     "macros",
@@ -35,16 +36,22 @@ tokio = { version = "1", features = [
     "net",
     "fs",
 ] }
-tokio-util = { version = "0.6", features = ["codec"] }
-tokio-tungstenite = "0.14"
+# Networking
+bytes = "1"
 headers = "0.3"
 hyper = { version = "0.14", features = ["http2", "server", "stream", "runtime", "tcp"] }
 reqwest = "0.11"
+tokio-tungstenite = "0.14"
+tokio-util = { version = "0.6", features = ["codec"] }
+# Browser interop
 alcro = "0.5"
 webbrowser = "0.5" # this is just for opening links in the default browser
+# Miscellaneous
+alvr_common = { path = "../common" }
+nalgebra = "0.25"
 openvr-driver-sys = { path = "../openvr-driver-sys" }
 
 [build-dependencies]
-walkdir = "2"
-cc = { version = "1", features = ["parallel"] }
 bindgen = "0.57"
+cc = { version = "1", features = ["parallel"] }
+walkdir = "2"

@@ -12,38 +12,46 @@ new_dashboard = ["settings-schema"]
 nightly = []
 
 [dependencies]
+# Basic utilities
 lazy_static = "1"
 parking_lot = "0.11"
-semver = { version = "0.11", features = ['serde'] }
-log = "0.4"
-backtrace = "0.3"
 rand = "0.8"
-nalgebra = { version = "0.25", features = ["serde-serialize"] }
-settings-schema = { path = "../settings-schema", optional = true }
-settings-schema_legacy = { package = "settings-schema", git = "https://github.com/alvr-org/ALVR", features = ["rename_camel_case"], rev = "08708f19b2ec70264e2ba2b0adfaa64bd96489bd", optional = true }
+# Logging
+backtrace = "0.3"
+log = "0.4"
+# Serialization
+bincode = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-bincode = "1"
-encoding_rs_io = "0.1"
-futures = "0.3"
+settings-schema = { path = "../settings-schema", optional = true }
+settings-schema_legacy = { package = "settings-schema", git = "https://github.com/alvr-org/ALVR", features = ["rename_camel_case"], rev = "08708f19b2ec70264e2ba2b0adfaa64bd96489bd", optional = true }
+# Async and networking
 bytes = "1"
-tokio = { version = "1", features = ["rt", "net", "macros"] }
-tokio-util = { version = "0.6", features = ["codec", "net"] }
-rcgen = "0.8"
-gfx-hal = "=0.6.0"
-winit = "0.24" # needed to get the screen size
-cpal = "0.13"
-rodio = "0.13"
+futures = "0.3"
 governor = "0.3"
 nonzero_ext = "0.2"
-# ffmpeg-sys = { git = "https://github.com/meh/rust-ffmpeg-sys", features = ["build"] }
+tokio = { version = "1", features = ["rt", "net", "macros"] }
+tokio-util = { version = "0.6", features = ["codec", "net"] }
+# Graphics
+gfx-hal = "=0.6.0"
+winit = "0.24" # needed to get the screen size
+# Audio
+cpal = "0.13"
+rodio = "0.13"
+# Miscellaneous
+encoding_rs_io = "0.1"
+nalgebra = { version = "0.25", features = ["serde-serialize"] }
+rcgen = "0.8"
+semver = { version = "0.11", features = ['serde'] }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 dirs = "3"
-runas = "0.2"
 msgbox = "0.6"
+runas = "0.2"
 
 [target.'cfg(windows)'.dependencies]
+gfx-backend-dx11 = "=0.6.17"
+widestring = "0.4"
 winapi = { version = "0.3", features = [
     "impl-default",
     "combaseapi",
@@ -57,8 +65,6 @@ winapi = { version = "0.3", features = [
     "wtypes",
 ] }
 wio = "0.2"
-widestring = "0.4"
-gfx-backend-dx11 = "=0.6.17"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gfx-backend-vulkan = "=0.6.5"

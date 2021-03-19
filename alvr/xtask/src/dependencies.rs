@@ -3,22 +3,57 @@ use crate::{
     ANDROID_NAME, LINUX_NAME, WINDOWS_NAME,
 };
 use fs_extra as fsx;
-use std::{fs, io::ErrorKind, path::Path};
+use rand::Rng;
+use std::{
+    fs,
+    io::{self, ErrorKind, Read},
+    iter,
+    path::{Path, PathBuf},
+};
+
+fn download_and_extract(url: &str, target_name: &str) -> PathBuf {
+    let random_dir_name = iter::repeat(())
+        .map(|_| rand::thread_rng().sample(rand::distributions::Alphanumeric))
+        .map(char::from)
+        .take(10)
+        .collect::<String>();
+    let download_dir = std::env::temp_dir().join(random_dir_name);
+
+    // Note: downloaded in-memory instead of on disk
+    // todo: display progress
+    println!("Downloading {}...", target_name);
+    let mut zip_data = vec![];
+    ureq::get(url)
+        .call()
+        .unwrap()
+        .into_reader()
+        .read_to_end(&mut zip_data)
+        .unwrap();
+
+    println!(
+        "Extracting {} into {}...",
+        target_name,
+        download_dir.to_string_lossy()
+    );
+    zip::read::ZipArchive::new(io::Cursor::new(zip_data))
+        .unwrap()
+        .extract(&download_dir)
+        .unwrap();
+
+    download_dir
+}
 
 fn install_rust_android_gradle() {
     const PLUGIN_COMMIT: &str = "6e553c13ef2d9bb40b58a7675b96e0757d1b0443";
     const PLUGIN_VERSION: &str = "0.8.3";
 
-    let rust_android_archive_url = format!(
-        "https://github.com/mozilla/rust-android-gradle/archive/{}.zip",
-        PLUGIN_COMMIT
+    let download_path = download_and_extract(
+        &format!(
+            "https://github.com/mozilla/rust-android-gradle/archive/{}.zip",
+            PLUGIN_COMMIT
+        ),
+        "Rust Android Gradle plugin",
     );
-
-    let download_path = cached_path::cached_path_with_options(
-        &rust_android_archive_url,
-        &cached_path::Options::default().extract(),
-    )
-    .unwrap();
     let download_path = download_path.join(format!("rust-android-gradle-{}", PLUGIN_COMMIT));
 
     #[cfg(windows)]
@@ -85,12 +120,13 @@ fn build_ffmpeg(target: FfmpegTarget) {
         .unwrap();
     }
 
-    println!("Fetching FFmpeg...");
-    let ffmpeg_path = cached_path::cached_path_with_options(
+    let mut temp_paths = vec![];
+
+    let ffmpeg_path = download_and_extract(
         "https://github.com/FFmpeg/FFmpeg/archive/n4.3.2.zip",
-        &cached_path::Options::default().extract(),
-    )
-    .unwrap();
+        "FFmpeg",
+    );
+    temp_paths.push(ffmpeg_path.clone());
     let ffmpeg_path = ffmpeg_path.join("FFmpeg-n4.3.2");
 
     // todo: add more video encoders: libkvazaar, OpenH264, libvpx, libx265
@@ -100,12 +136,11 @@ fn build_ffmpeg(target: FfmpegTarget) {
     let ffmpeg_platform_flags;
     match target {
         FfmpegTarget::Windows => {
-            println!("Fetching x264...");
-            let x264_path = cached_path::cached_path_with_options(
+            let x264_path = download_and_extract(
                 "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.zip",
-                &cached_path::Options::default().extract(),
-            )
-            .unwrap();
+                "x264",
+            );
+            temp_paths.push(x264_path.clone());
             let x264_path = x264_path.join("x264-stable");
 
             bash_in(
@@ -162,15 +197,24 @@ fn build_ffmpeg(target: FfmpegTarget) {
         FfmpegTarget::Android => ANDROID_NAME,
     };
 
+    let out_dir = crate::workspace_dir().join("deps").join(deps_dir_name);
+
+    fs::create_dir_all(&out_dir).unwrap();
+
     fsx::move_items(
         &[ffmpeg_path.join("ffmpeg")],
-        crate::workspace_dir().join("deps").join(deps_dir_name),
+        out_dir,
         &fsx::dir::CopyOptions {
             overwrite: true,
             ..<_>::default()
         },
     )
     .unwrap();
+
+    println!("Cleaning up...");
+    for path in temp_paths {
+        fs::remove_dir_all(path).ok();
+    }
 }
 
 pub fn install_server_deps(cross_compilation: bool) {

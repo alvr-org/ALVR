@@ -108,14 +108,14 @@ enum FfmpegTarget {
 
 fn build_ffmpeg(target: FfmpegTarget) {
     if cfg!(windows) {
-        let registry_deps = match target {
-            FfmpegTarget::Windows => "mingw-w64 mingw-w64-tools nasm",
-            FfmpegTarget::Linux => "libx264-dev libvulkan-dev",
+        let apt_packages = match target {
+            FfmpegTarget::Windows => "make mingw-w64 mingw-w64-tools binutils-mingw-w64 nasm",
+            FfmpegTarget::Linux => "build-essential libx264-dev libvulkan-dev",
             FfmpegTarget::Android => "",
         };
         bash(&format!(
-            "sudo apt update && sudo apt install -y build-essential {}",
-            registry_deps
+            "sudo apt update && sudo apt install -y {}",
+            apt_packages
         ))
         .unwrap();
     }
@@ -225,6 +225,9 @@ pub fn install_server_deps(cross_compilation: bool) {
             FfmpegTarget::Windows
         }
     } else if cross_compilation {
+        // patch for broken CI
+        bash("sudo apt remove --auto-remove gcc").unwrap();
+
         FfmpegTarget::Windows
     } else {
         FfmpegTarget::Linux

@@ -54,6 +54,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: windows-deps
+          path: deps
 
       - name: Build crates
         uses: actions-rs/cargo@v1
@@ -83,6 +84,8 @@ jobs:
   tests:
     runs-on: windows-latest
     needs: [build_windows_deps]
+    env:
+      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1

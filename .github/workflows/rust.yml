@@ -30,6 +30,12 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: cargo xtask build-windows-deps
+      
+      - name: Upload dependencies
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-deps
+          path: deps
 
   build_windows:
     runs-on: windows-latest
@@ -44,11 +50,10 @@ jobs:
           override: true
       - uses: Swatinem/rust-cache@v1
 
-      - name: Get dependencies
-        uses: actions/cache@v2
+      - name: Download dependencies
+        uses: actions/download-artifact@v2
         with:
-          path: deps
-          key: windows-deps
+          name: windows-deps
 
       - name: Build crates
         uses: actions-rs/cargo@v1

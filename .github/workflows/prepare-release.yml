@@ -166,14 +166,13 @@ jobs:
         if: steps.deps_cache.outputs.cache-hit != 'true'
         env:
           RUST_BACKTRACE: 1
-        run: |
-          cargo xtask build-android-deps
+        run: cargo xtask build-android-deps
 
   build_android_client:
     # Windows latest has Rust, Android NDK and LLVM already installed.
     # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
     runs-on: windows-latest
-    needs: [prepare_release]
+    needs: [prepare_release, build_android_deps]
     env:
       # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
       # This is specific to the GitHub windows-latest runner.
@@ -200,8 +199,7 @@ jobs:
 
       - name: Set better Android SDK path (workaround for rust-android-gradle)
         shell: cmd
-        run: |
-          mklink /J "%GITHUB_WORKSPACE%\android-sdk" "%ANDROID_SDK_ROOT%"
+        run: mklink /J "%GITHUB_WORKSPACE%\android-sdk" "%ANDROID_SDK_ROOT%"
 
       - name: Build and package ALVR (.apk)
         id: build
@@ -209,8 +207,7 @@ jobs:
           ANDROID_HOME: '${{ github.workspace }}\android-sdk'
           ANDROID_SDK_ROOT: '${{ github.workspace }}\android-sdk'
           RUST_BACKTRACE: 1
-        run: |
-          cargo xtask publish-client
+        run: cargo xtask publish-client
 
       - name: Sign Oculus Quest APK
         uses: r0adkll/sign-android-release@v1

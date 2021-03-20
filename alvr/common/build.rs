@@ -1,8 +1,8 @@
 use std::{env, path::PathBuf};
 
 fn main() {
-    let platform_name = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    if platform_name == "android" {
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+    if target_os == "android" {
         return;
     }
 
@@ -11,17 +11,14 @@ fn main() {
     let workspace_dir = project_dir.parent().unwrap().parent().unwrap();
     let ffmpeg_src_dir = project_dir.join("src").join("ffmpeg");
 
-    let ffmpeg_dir = workspace_dir
-        .join("deps")
-        .join(platform_name)
-        .join("ffmpeg");
+    let ffmpeg_dir = workspace_dir.join("deps").join(&target_os).join("ffmpeg");
 
-    println!(
-        "cargo:rustc-link-search=native={}",
-        ffmpeg_dir
-            .join(if cfg!(windows) { "bin" } else { "lib" })
-            .to_string_lossy()
-    );
+    if target_os == "windows" {
+        println!(
+            "cargo:rustc-link-search=native={}",
+            ffmpeg_dir.join("bin").to_string_lossy()
+        );
+    }
     println!("cargo:rustc-link-lib=avcodec");
     println!("cargo:rustc-link-lib=avdevice");
     println!("cargo:rustc-link-lib=avfilter");
@@ -31,11 +28,14 @@ fn main() {
     println!("cargo:rustc-link-lib=swresample");
     println!("cargo:rustc-link-lib=swscale");
 
-    cc::Build::new()
-        .include(ffmpeg_dir.join("include"))
+    let mut build = cc::Build::new();
+    let mut build = build
         .include(&ffmpeg_src_dir)
-        .file(ffmpeg_src_dir.join("ffmpeg.c"))
-        .compile("ffmpeg");
+        .file(ffmpeg_src_dir.join("ffmpeg.c"));
+    if target_os != "linux" {
+        build = build.include(ffmpeg_dir.join("include"));
+    }
+    build.compile("ffmpeg");
 
     bindgen::builder()
         .header(ffmpeg_src_dir.join("ffmpeg.h").to_string_lossy())

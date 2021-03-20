@@ -1,8 +1,4 @@
-use crate::{
-    command::{self, run_as_bash as bash, run_as_bash_in as bash_in},
-    ANDROID_NAME, LINUX_NAME, WINDOWS_NAME,
-};
-use fs_extra as fsx;
+use crate::command::{self, run_as_bash as bash, run_as_bash_in as bash_in};
 use rand::Rng;
 use std::{
     fs,
@@ -43,7 +39,7 @@ fn download_and_extract(url: &str, target_name: &str) -> PathBuf {
     download_dir
 }
 
-fn install_rust_android_gradle() {
+fn build_rust_android_gradle() {
     const PLUGIN_COMMIT: &str = "6e553c13ef2d9bb40b58a7675b96e0757d1b0443";
     const PLUGIN_VERSION: &str = "0.8.3";
 
@@ -95,38 +91,22 @@ fn install_rust_android_gradle() {
 }
 
 fn windows_to_wsl2_path(path: &Path) -> String {
-    path.to_string_lossy()
-        .replace("C:\\", "/mnt/c/")
-        .replace("\\", "/")
+    if cfg!(windows) {
+        path.to_string_lossy()
+            .replace("C:\\", "/mnt/c/")
+            .replace("\\", "/")
+    } else {
+        path.to_string_lossy().as_ref().to_owned()
+    }
 }
 
-enum FfmpegTarget {
-    Windows,
-    Linux {
-        install_transitive_dependencies: bool,
-    },
-    Android,
-}
-
-fn build_ffmpeg(target: FfmpegTarget) {
-    match target {
-        FfmpegTarget::Windows => {
-            bash(&format!(
-                "sudo apt update && sudo apt remove --auto-remove -y gcc && sudo apt install -y {}",
-                "make mingw-w64 mingw-w64-tools binutils-mingw-w64 nasm"
-            ))
-            .unwrap();
-        }
-        FfmpegTarget::Linux {
-            install_transitive_dependencies,
-        } if install_transitive_dependencies => {
-            bash(&format!(
-                "sudo apt update && sudo apt install -y {}",
-                "build-essential libx264-dev libvulkan-dev"
-            ))
-            .unwrap();
-        }
-        _ => (),
+fn build_ffmpeg(target_os: &str) {
+    if target_os == "windows" {
+        bash(&format!(
+            "sudo apt update && sudo apt remove --auto-remove -y gcc && sudo apt install -y {}",
+            "make mingw-w64 mingw-w64-tools binutils-mingw-w64 nasm"
+        ))
+        .unwrap();
     };
 
     let mut temp_paths = vec![];
@@ -140,50 +120,52 @@ fn build_ffmpeg(target: FfmpegTarget) {
 
     // todo: add more video encoders: libkvazaar, OpenH264, libvpx, libx265
     // AV1 encoders are excluded because of lack of hardware accelerated decoding support
-    let server_ffmpeg_flags = "--disable-decoders --enable-libx264 --arch=x86_64";
 
     let ffmpeg_platform_flags;
-    match target {
-        FfmpegTarget::Windows => {
-            let x264_path = download_and_extract(
-                "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.zip",
-                "x264",
-            );
-            temp_paths.push(x264_path.clone());
-            let x264_path = x264_path.join("x264-stable");
+    if target_os == "windows" {
+        let x264_path = download_and_extract(
+            "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.zip",
+            "x264",
+        );
+        temp_paths.push(x264_path.clone());
+        let x264_path = x264_path.join("x264-stable");
 
-            bash_in(
-                &x264_path,
-                &format!(
-                    "./configure --prefix=./build --disable-cli --enable-static {}",
-                    "--host=x86_64-w64-mingw32 --cross-prefix=x86_64-w64-mingw32-"
-                ),
-            )
-            .unwrap();
-            bash_in(&x264_path, "make -j$(nproc) && make install").unwrap();
+        bash_in(
+            &x264_path,
+            &format!(
+                "./configure --prefix=./build --disable-cli --enable-static {}",
+                "--host=x86_64-w64-mingw32 --cross-prefix=x86_64-w64-mingw32-"
+            ),
+        )
+        .unwrap();
+        bash_in(&x264_path, "make -j$(nproc) && make install").unwrap();
 
-            let x264_wsl2_path = windows_to_wsl2_path(&x264_path.join("build"));
-            ffmpeg_platform_flags = format!(
-                "{} {} {} {}",
-                format!("--extra-cflags=\"-I{}/include\"", x264_wsl2_path),
-                format!("--extra-ldflags=\"-L{}/lib\"", x264_wsl2_path),
-                "--target-os=mingw32 --cross-prefix=x86_64-w64-mingw32-",
-                server_ffmpeg_flags
-            )
-        }
-        FfmpegTarget::Linux { .. } => {
-            ffmpeg_platform_flags = format!("--enable-vulkan {}", server_ffmpeg_flags)
-        }
-        FfmpegTarget::Android => {
-            ffmpeg_platform_flags = "--enable-jni --enable-mediacodec".to_string()
-        }
-    }
+        let x264_wsl2_path = windows_to_wsl2_path(&x264_path.join("build"));
+        ffmpeg_platform_flags = format!(
+            "{} {} {} {}",
+            format!("--extra-cflags=\"-I{}/include\"", x264_wsl2_path),
+            format!("--extra-ldflags=\"-L{}/lib\"", x264_wsl2_path),
+            "--target-os=mingw32 --cross-prefix=x86_64-w64-mingw32-",
+            "--disable-decoders --enable-libx264 --arch=x86_64"
+        )
+    } else {
+        // target_os == "android"
+        ffmpeg_platform_flags = "--enable-jni --enable-mediacodec".to_string()
+    };
 
     bash_in(
         &ffmpeg_path,
         &format!(
             "./configure {} {} {} {} {} {} {} {} {}",
-            "--prefix=./ffmpeg",
+            format!(
+                "--prefix={}",
+                windows_to_wsl2_path(
+                    &crate::workspace_dir()
+                        .join("deps")
+                        .join(target_os)
+                        .join("ffmpeg")
+                )
+            ),
             "--enable-gpl --enable-version3",
             "--disable-static --enable-shared",
             "--disable-programs",
@@ -200,53 +182,17 @@ fn build_ffmpeg(target: FfmpegTarget) {
     .unwrap();
     bash_in(&ffmpeg_path, "make -j$(nproc) && make install").unwrap();
 
-    let deps_dir_name = match target {
-        FfmpegTarget::Windows => WINDOWS_NAME,
-        FfmpegTarget::Linux { .. } => LINUX_NAME,
-        FfmpegTarget::Android => ANDROID_NAME,
-    };
-
-    let out_dir = crate::workspace_dir().join("deps").join(deps_dir_name);
-
-    fs::create_dir_all(&out_dir).unwrap();
-
-    fsx::move_items(
-        &[ffmpeg_path.join("ffmpeg")],
-        out_dir,
-        &fsx::dir::CopyOptions {
-            overwrite: true,
-            ..<_>::default()
-        },
-    )
-    .unwrap();
-
     println!("Cleaning up...");
     for path in temp_paths {
         fs::remove_dir_all(path).ok();
     }
 }
 
-pub fn install_server_deps(cross_compilation: bool, install_transitive_dependencies: bool) {
-    let target = if cfg!(windows) {
-        if cross_compilation {
-            FfmpegTarget::Linux {
-                install_transitive_dependencies,
-            }
-        } else {
-            FfmpegTarget::Windows
-        }
-    } else if cross_compilation {
-        FfmpegTarget::Windows
-    } else {
-        FfmpegTarget::Linux {
-            install_transitive_dependencies,
-        }
-    };
-    build_ffmpeg(target);
-}
-
-pub fn install_client_deps() {
-    command::run("rustup target add aarch64-linux-android").unwrap();
-    install_rust_android_gradle();
-    // build_ffmpeg(FfmpegTarget::Android);
+pub fn build_deps(target_os: &str) {
+    if target_os == "windows" {
+        build_ffmpeg("windows");
+    } else if target_os == "android" {
+        command::run("rustup target add aarch64-linux-android").unwrap();
+        build_rust_android_gradle();
+    }
 }

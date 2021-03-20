@@ -10,58 +10,86 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-windows:
+  build_windows_deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Cache dependencies
+      - uses: actions/cache@v2
+        id: deps_cache
+        with:
+          path: deps
+          key: windows-deps
+      - uses: actions-rs/toolchain@v1
+        if: steps.deps_cache.outputs.cache-hit != 'true'
+        with:
+          toolchain: stable
+      - name: Build dependencies
+        if: steps.deps_cache.outputs.cache-hit != 'true'
+        env:
+          RUST_BACKTRACE: 1
+        run: cargo xtask build-windows-deps
+
+  build_windows:
     runs-on: windows-latest
+    needs: [build_windows_deps]
     env:
       LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-    - uses: Swatinem/rust-cache@v1
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - uses: Swatinem/rust-cache@v1
 
-    - name: Build server crates
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: -p alvr_xtask -p alvr_server -p alvr_launcher --verbose
-  
-  build-linux:
+      - name: Get dependencies
+        uses: actions/cache@v2
+        with:
+          path: deps
+          key: windows-deps
+
+      - name: Build crates
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: -p alvr_xtask -p alvr_server -p alvr_launcher --verbose
+
+  build_linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-    - uses: Swatinem/rust-cache@v1
-    
-    - name: Install apt dependencies
-      run: sudo apt install libasound2-dev libgtk-3-dev
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - uses: Swatinem/rust-cache@v1
 
-    - name: Build server crates
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: -p alvr_xtask -p alvr_server -p alvr_launcher --verbose
+      - name: Install dependencies
+        run: sudo apt install libasound2-dev libgtk-3-dev libavcodec-dev libavdevice-dev libavfilter-dev libavformat-dev libavutil-dev
+
+      - name: Build crates
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: -p alvr_xtask -p alvr_server -p alvr_launcher --verbose
 
   tests:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-    - uses: Swatinem/rust-cache@v1
-    
-    - name: Run tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: -p alvr_common --verbose
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: -p alvr_common --verbose
 
   rustfmt:
     runs-on: ubuntu-latest
@@ -77,9 +105,10 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-  
+
   clippy:
     runs-on: windows-latest
+    needs: [build_windows_deps]
     env:
       LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
@@ -91,6 +120,13 @@ jobs:
           override: true
           components: clippy
       - uses: Swatinem/rust-cache@v1
+
+      - name: Get dependencies
+        uses: actions/cache@v2
+        with:
+          path: deps
+          key: windows-deps
+
       - uses: ErichDonGubler/clippy-check@fix-windows-lf-breaking-reports
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

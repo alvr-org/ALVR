@@ -7,75 +7,85 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version'
+        description: "Version"
         required: false
-        default: ''
+        default: ""
 
 jobs:
-  bump_version:
+  prepare_release:
     runs-on: windows-latest
     outputs:
-      version_tag: ${{ steps.bump_versions.outputs.version_tag }}
       release_ref: ${{ steps.output_ref.outputs.release_ref }}
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
     steps:
       - name: Configure git
         run: git config --global core.autocrlf false
 
-      - name: Checkout code
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ github.head_ref }}
-      
+      - uses: actions/checkout@v2
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
-        
-      - name: Bump versions
-        id: bump_versions
+
+      - name: Bump version
+        id: bump_version
+        env:
+          RUST_BACKTRACE: 1
         run: |
-          $env:RUST_BACKTRACE = 1
           $versionarg = "${{ github.event.inputs.version }}"
           $versionarg = If ($versionarg.Length -gt 0) { "--version $versionarg" } else { "" }
           $out = cargo xtask bump-versions $versionarg.split()
           echo $out
           cargo update -p alvr_common
           echo "::set-output name=version_tag::$(echo $out | sls -CaseSensitive -Pattern '^v.*$')"
-      
+
       - name: Push changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: "[Auto] Bump version"
-      
+
       - name: Output ref for later checkouts
         id: output_ref
         run: echo "::set-output name=release_ref::$(git rev-parse HEAD)"
-          
-  prepare_release:
-    runs-on: windows-latest
-    needs: [bump_version]
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      release_id: ${{ steps.create_release.outputs.id }}
-    steps:
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # Release tag is taken from the bump_version job.
-          tag_name: ${{ needs.bump_version.outputs.version_tag }}
-          release_name: ALVR ${{ needs.bump_version.outputs.version_tag }}
+          tag_name: ${{ steps.bump_version.outputs.version_tag }}
+          release_name: ALVR ${{ steps.bump_version.outputs.version_tag }}
           draft: true
           prerelease: false
-          commitish: ${{ needs.bump_version.outputs.release_ref }}
+          commitish: ${{ steps.output_ref.outputs.release_ref }}
+
+  build_windows_deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        id: deps_cache
+        with:
+          path: deps
+          key: windows-deps
+      - uses: actions-rs/toolchain@v1
+        if: steps.deps_cache.outputs.cache-hit != 'true'
+        with:
+          toolchain: stable
+      - name: Build dependencies
+        if: steps.deps_cache.outputs.cache-hit != 'true'
+        env:
+          RUST_BACKTRACE: 1
+        run: cargo xtask build-windows-deps
 
   build_windows_server:
-    # Windows latest has Rust, Android NDK and LLVM already installed.
-    # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
     runs-on: windows-latest
-    needs: [bump_version, prepare_release]
+    needs: [prepare_release, build_windows_deps]
     env:
       # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
       # This is specific to the GitHub windows-latest runner.
@@ -84,7 +94,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          ref: ${{ needs.bump_version.outputs.release_ref }}
+          ref: ${{ needs.prepare_release.outputs.release_ref }}
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -92,16 +102,13 @@ jobs:
           override: true
       - uses: Swatinem/rust-cache@v1
 
-      - uses: actions/cache@v2
-        name: Cache Wix 3.14
-        id: cache_wix
+      - name: Get dependencies
+        uses: actions/cache@v2
         with:
-          path: |
-            wix314-binaries
-          key: ${{ runner.os }}-wix314-4118
-      
+          path: deps
+          key: windows-deps
+
       - name: Download WiX 3.14 binaries
-        if: steps.cache_wix.outputs.cache-hit != 'true'
         run: |
           Invoke-WebRequest http://static.wixtoolset.org/releases/v3.14.0.4118/wix314-binaries.zip -OutFile wix314-binaries.zip
           Expand-Archive -Path wix314-binaries.zip -DestinationPath wix314-binaries/bin
@@ -109,10 +116,9 @@ jobs:
       - name: Build and package ALVR (.zip, .exe)
         id: build
         env:
-          WIX: 'wix314-binaries'
+          WIX: "wix314-binaries"
+          RUST_BACKTRACE: 1
         run: |
-          $env:RUST_BACKTRACE = 1
-          cargo xtask install-server-deps
           cargo xtask publish-server
           $file = Get-ChildItem -Name .\build\*.exe | Select-Object -f 1
           echo "::set-output name=exe_filename::$file"
@@ -137,11 +143,37 @@ jobs:
           asset_name: alvr_server_windows.zip
           asset_content_type: application/zip
 
+  build_android_deps:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set better Android SDK path (workaround for rust-android-gradle)
+        shell: cmd
+        run: mklink /J "%GITHUB_WORKSPACE%\android-sdk" "%ANDROID_SDK_ROOT%"
+      
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        id: deps_cache
+        with:
+          path: deps
+          key: android-deps
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Build dependencies
+        if: steps.deps_cache.outputs.cache-hit != 'true'
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cargo xtask build-android-deps
+
   build_android_client:
     # Windows latest has Rust, Android NDK and LLVM already installed.
     # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
     runs-on: windows-latest
-    needs: [bump_version, prepare_release]
+    needs: [prepare_release]
     env:
       # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
       # This is specific to the GitHub windows-latest runner.
@@ -150,7 +182,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          ref: ${{ needs.bump_version.outputs.release_ref }}
+          ref: ${{ needs.prepare_release.outputs.release_ref }}
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -158,7 +190,7 @@ jobs:
           target: aarch64-linux-android
           override: true
       - uses: Swatinem/rust-cache@v1
-      
+
       - uses: maxim-lobanov/setup-android-tools@v1
         with:
           packages: |
@@ -176,11 +208,10 @@ jobs:
         env:
           ANDROID_HOME: '${{ github.workspace }}\android-sdk'
           ANDROID_SDK_ROOT: '${{ github.workspace }}\android-sdk'
+          RUST_BACKTRACE: 1
         run: |
-          $env:RUST_BACKTRACE = 1
-          cargo xtask install-client-deps
           cargo xtask publish-client
-      
+
       - name: Sign Oculus Quest APK
         uses: r0adkll/sign-android-release@v1
         id: sign_quest

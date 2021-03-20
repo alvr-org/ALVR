@@ -21,8 +21,8 @@ USAGE:
     cargo xtask <SUBCOMMAND> [FLAG] [ARGS]
 
 SUBCOMMANDS:
-    install-server-deps Download and compile/install external dependencies for the server
-    install-client-deps Download and compile/install external dependencies for the client
+    build-windows-deps  Download and compile external dependencies for Windows
+    build-android-deps  Download and compile external dependencies for Android
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
     publish-server      Build server in release mode, make portable version and installer
@@ -32,8 +32,6 @@ SUBCOMMANDS:
     bump-versions       Bump server and/or client package versions
 
 FLAGS:
-    --cross             Cross compilation for install-server-deps (Windows<->Linux)
-    --install-transitive    Install transitive dependencies (works only on Ubuntu)
     --release           Optimized build without debug info. Used only for build subcommands
     --nightly           Bump versions to nightly and build. Used only for publish subcommand
     --oculus-quest      Oculus Quest build. Used only for build-client subcommand
@@ -53,8 +51,6 @@ struct Args {
     for_oculus_quest: bool,
     for_oculus_go: bool,
     new_dashboard: bool,
-    deps_cross_compilation: bool,
-    install_transitive: bool,
 }
 
 #[cfg(target_os = "linux")]
@@ -71,10 +67,6 @@ const STEAMVR_OS_DIR_NAME: &str = "win64";
 const DRIVER_FNAME: &str = "driver_alvr_server.so";
 #[cfg(windows)]
 const DRIVER_FNAME: &str = "driver_alvr_server.dll";
-
-const WINDOWS_NAME: &str = "windows";
-const LINUX_NAME: &str = "linux";
-const ANDROID_NAME: &str = "anddroid";
 
 #[cfg(target_os = "linux")]
 pub fn exec_fname(name: &str) -> String {
@@ -484,16 +476,11 @@ fn main() {
             for_oculus_quest: args.contains("--oculus-quest"),
             for_oculus_go: args.contains("--oculus-go"),
             new_dashboard: args.contains("--new-dashboard"),
-            deps_cross_compilation: args.contains("--cross"),
-            install_transitive: args.contains("--install-transitive"),
         };
         if args.finish().is_empty() {
             match subcommand.as_str() {
-                "install-server-deps" => dependencies::install_server_deps(
-                    args_values.deps_cross_compilation,
-                    args_values.install_transitive,
-                ),
-                "install-client-deps" => dependencies::install_client_deps(),
+                "build-windows-deps" => dependencies::build_deps("windows"),
+                "build-android-deps" => dependencies::build_deps("android"),
                 "build-server" => build_server(
                     args_values.is_release,
                     false,

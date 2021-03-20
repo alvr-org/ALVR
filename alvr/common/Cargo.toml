@@ -68,3 +68,7 @@ wio = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gfx-backend-vulkan = "=0.6.5"
+
+[build-dependencies]
+bindgen = "0.57"
+cc = { version = "1", features = ["parallel"] }

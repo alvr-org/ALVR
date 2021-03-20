@@ -1,6 +1,11 @@
 use std::{env, path::PathBuf};
 
 fn main() {
+    let platform_name = env::var("CARGO_CFG_TARGET_OS").unwrap();
+    if platform_name != "android" {
+        return;
+    }
+
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let base_cpp_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("android");
 
@@ -24,27 +29,25 @@ fn main() {
     });
     let alvr_client_version = format!(r#""{}""#, env!("CARGO_PKG_VERSION"));
 
-    if cfg!(feature = "build-cpp") {
-        cc::Build::new()
-            .cpp(true)
-            .flag("-std=c++17")
-            .flag("-fexceptions")
-            .flag("-frtti")
-            .files(source_files_paths)
-            .include(&common_cpp_dir)
-            .include(include_cpp_dir)
-            .include(&source_cpp_dir)
-            .include(source_cpp_dir.join("gl_render_utils"))
-            .define("OVR_SDK", None)
-            .define("ALVR_CLIENT_VERSION", alvr_client_version.as_ref())
-            .cpp_link_stdlib("c++_static")
-            .compile("bindings");
+    cc::Build::new()
+        .cpp(true)
+        .flag("-std=c++17")
+        .flag("-fexceptions")
+        .flag("-frtti")
+        .files(source_files_paths)
+        .include(&common_cpp_dir)
+        .include(include_cpp_dir)
+        .include(&source_cpp_dir)
+        .include(source_cpp_dir.join("gl_render_utils"))
+        .define("OVR_SDK", None)
+        .define("ALVR_CLIENT_VERSION", alvr_client_version.as_ref())
+        .cpp_link_stdlib("c++_static")
+        .compile("bindings");
 
-        cc::Build::new()
-            .cpp(false)
-            .files(&[common_cpp_dir.join("reedsolomon").join("rs.c")])
-            .compile("bindings_rs_c");
-    }
+    cc::Build::new()
+        .cpp(false)
+        .files(&[common_cpp_dir.join("reedsolomon").join("rs.c")])
+        .compile("bindings_rs_c");
 
     println!(
         "cargo:rustc-link-search=native={}/app/src/main/jniLibs/arm64-v8a",

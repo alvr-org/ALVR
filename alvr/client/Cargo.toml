@@ -8,10 +8,6 @@ edition = "2018"
 [lib]
 crate_type = ["staticlib", "cdylib"]
 
-[features]
-default = []
-build-cpp = []
-
 [dependencies]
 # Basic utilities
 lazy_static = "1"

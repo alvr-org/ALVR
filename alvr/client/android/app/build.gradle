@@ -83,9 +83,6 @@ cargo {
     libname = "alvr_client"
     targets = ["arm64"]
     targetDirectory = "../../../../target"
-    features {
-        defaultAnd("build-cpp")
-    }
 }
 tasks.whenTaskAdded { task ->
     if (task.name.startsWith('javaPreCompile')) {

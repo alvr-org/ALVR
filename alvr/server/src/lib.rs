@@ -205,7 +205,7 @@ fn ui_thread() -> StrResult {
     Ok(())
 }
 
-pub fn init() -> StrResult {
+fn init() {
     let (log_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     logging_backend::init_logging(log_sender.clone(), events_sender.clone());
@@ -242,25 +242,6 @@ pub fn init() -> StrResult {
 
     // ALVR_DIR has been used (and so initialized). I don't need alvr_dir storage on disk anymore
     commands::maybe_delete_alvr_dir_storage();
-
-    Ok(())
-}
-
-pub extern "C" fn driver_ready_idle() {
-    logging::show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone()));
-
-    if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
-        runtime.spawn(async move {
-            // call this when inside a new tokio thread. Calling this on the parent thread will
-            // crash SteamVR
-            unsafe { SetDefaultChaperone() };
-
-            tokio::select! {
-                _ = connection::connection_lifecycle_loop() => (),
-                _ = SHUTDOWN_NOTIFIER.notified() => (),
-            }
-        });
-    }
 }
 
 #[no_mangle]
@@ -269,9 +250,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     return_code: *mut i32,
 ) -> *mut c_void {
     static INIT_ONCE: Once = Once::new();
-    INIT_ONCE.call_once(|| {
-        logging::show_err(init());
-    });
+    INIT_ONCE.call_once(init);
 
     FRAME_RENDER_VS_CSO_PTR = FRAME_RENDER_VS_CSO.as_ptr();
     FRAME_RENDER_VS_CSO_LEN = FRAME_RENDER_VS_CSO.len() as _;
@@ -314,6 +293,23 @@ pub unsafe extern "C" fn HmdDriverFactory(
             }
 
             sender.send(vec_buffer).ok();
+        }
+    }
+
+    pub extern "C" fn driver_ready_idle() {
+        logging::show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone()));
+
+        if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
+            runtime.spawn(async move {
+                // call this when inside a new tokio thread. Calling this on the parent thread will
+                // crash SteamVR
+                unsafe { SetDefaultChaperone() };
+
+                tokio::select! {
+                    _ = connection::connection_lifecycle_loop() => (),
+                    _ = SHUTDOWN_NOTIFIER.notified() => (),
+                }
+            });
         }
     }
 

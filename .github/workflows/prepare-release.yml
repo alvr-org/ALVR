@@ -108,6 +108,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: windows-deps
+          path: deps
 
       - name: Download WiX 3.14 binaries
         run: |
@@ -201,6 +202,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: android-deps
+          path: deps
 
       - name: Build and package ALVR (.apk)
         id: build

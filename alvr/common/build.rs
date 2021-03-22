@@ -30,18 +30,20 @@ fn main() {
 
     let mut build = cc::Build::new();
     let mut build = build
+        .cpp(false)
         .include(&ffmpeg_src_dir)
         .file(ffmpeg_src_dir.join("ffmpeg.c"));
     if target_os != "linux" {
         build = build.include(ffmpeg_dir.join("include"));
     }
-    build.compile("ffmpeg");
+    build.compile("ffmpeg_module");
 
     bindgen::builder()
         .header(ffmpeg_src_dir.join("ffmpeg.h").to_string_lossy())
+        .prepend_enum_name(false)
         .generate()
         .unwrap()
-        .write_to_file(out_dir.join("ffmpeg_bindings.rs"))
+        .write_to_file(out_dir.join("ffmpeg_module.rs"))
         .unwrap();
 
     println!(

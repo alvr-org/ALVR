@@ -3,7 +3,17 @@
 #include "libavcodec/avcodec.h"
 #include "libavutil/avutil.h"
 
-void setup_video_encoder() {
-    AVCodec *codec;
-    AVCodecContext *c = NULL;
+struct Encoder {
+    AVCodecContext *context;
+};
+
+struct Encoder *encoder_alloc(struct EncoderAllocData setup_data) {
+    struct Encoder *encoder = malloc(sizeof(struct Encoder));
+
+    return encoder;
+}
+
+void encoder_free(struct Encoder **encoder) {
+    free(*encoder);
+    *encoder = NULL;
 }

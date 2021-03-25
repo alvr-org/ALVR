@@ -8,7 +8,7 @@ define([
         const self = this;
 
         $(document).on("click", ".registerAlvrDriver", () => {
-            $.get("driver/register", undefined, (res) => {
+            $.get("api/driver/register", undefined, (res) => {
                 if (res != -1) {
                     Lobibox.notify("success", {
                         size: "mini",
@@ -31,7 +31,7 @@ define([
             const _elementId = elementId;
             // this call need const variable unless you want them overwriten by the next call.
             $(document).ready(() => {
-                $.get("driver/list", undefined, (res) => {
+                $.get("api/driver/list", undefined, (res) => {
                     if (res == -1) {
                         Lobibox.notify("error", {
                             size: "mini",
@@ -63,7 +63,7 @@ define([
 
                                 $.ajax({
                                     type: "POST",
-                                    url: "driver/unregister",
+                                    url: "api/driver/unregister",
                                     contentType:
                                         "application/json;charset=UTF-8",
                                     data: JSON.stringify(path),

@@ -1,3 +1,4 @@
+import React from "react"
 import { subscribeToEvent } from "./eventDispatch"
 
 export interface Session {
@@ -140,22 +141,14 @@ export type PresetGroup = [string, Preset][]
 
 type SessionListener = (session: Session) => void
 
-const CURRENT_WEB_CLIENT_ID = Math.floor(Math.random() * 2 ** 16).toString()
 let listener: SessionListener = () => {}
-let schema: SettingsSchema | null = null
 
-// Note: the schema never changes, so it gets stored after the first call of settingsSchema().
-// The session is never stored, to avoid de-syncs with the server.
-
-subscribeToEvent("sessionUpdated", data => {
-    const { webClientId } = data as { webClientId: string | null }
-    if (webClientId != CURRENT_WEB_CLIENT_ID) {
-        getSession().then(listener)
-    }
+subscribeToEvent("sessionUpdated", () => {
+    fetchSession().then(listener)
 })
 
-export async function getSession(): Promise<Session> {
-    return await (await fetch("/session/load")).json()
+async function fetchSession(): Promise<Session> {
+    return await (await fetch("/api/session/load")).json()
 }
 
 export function subscribeToSession(callback: SessionListener): void {
@@ -163,14 +156,19 @@ export function subscribeToSession(callback: SessionListener): void {
 }
 
 export function applySessionSettings(sessionSettings: SessionSettingsRoot): void {
-    fetch("/session/store-settings", {
-        body: JSON.stringify({ webClientId: CURRENT_WEB_CLIENT_ID, sessionSettings }),
+    fetch("/api/session/store-settings", {
+        body: JSON.stringify(sessionSettings),
     })
 }
 
-export async function settingsSchema(): Promise<SettingsSchema> {
-    if (!schema) {
-        schema = (await (await fetch("/settings-schema")).json()) as SettingsSchema
-    }
-    return schema
+export let settingsSchema: SettingsSchema
+export let SessionContext: React.Context<Session>
+
+export async function initializeSessionManager(): Promise<Session> {
+    settingsSchema = (await (await fetch("/api/settings-schema")).json()) as SettingsSchema
+
+    const session = await fetchSession()
+    SessionContext = React.createContext(session)
+
+    return session
 }

@@ -8,17 +8,16 @@
         "build": "snowpack build"
     },
     "dependencies": {
-        "@material-ui/core": "4",
-        "@material-ui/icons": "4",
+        "@ant-design/icons": "4",
+        "antd": "4",
         "fast-xml-parser": "3",
-        "fontsource-roboto": "4",
         "react": "17",
+        "react-async-hook": "3",
         "react-dom": "17"
     },
     "devDependencies": {
         "@snowpack/plugin-react-refresh": "2",
         "@snowpack/plugin-typescript": "1",
-        "@types/material-ui": "0.21",
         "@types/react": "17",
         "@types/react-dom": "17",
         "@typescript-eslint/eslint-plugin": "4",
@@ -28,6 +27,7 @@
         "eslint-plugin-prettier": "3",
         "eslint-plugin-react": "7",
         "eslint-plugin-react-hooks": "4",
+        "http-proxy": "1",
         "prettier": "2",
         "snowpack": "3",
         "typescript": "4"

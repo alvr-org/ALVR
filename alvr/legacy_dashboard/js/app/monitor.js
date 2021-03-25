@@ -2,7 +2,7 @@ define([
     "text!app/templates/addClientModal.html",
     "text!app/templates/configureClientModal.html",
     "text!app/templates/monitor.html",
-    "json!../../session/load",
+    "json!../../api/session/load",
     "lib/lodash",
     "i18n!app/nls/monitor",
     "i18n!app/nls/notifications",
@@ -30,7 +30,7 @@ define([
             const url = window.location.href;
             const arr = url.split("/");
 
-            const log_listener = new WebSocket("ws://" + arr[2] + "/log");
+            const log_listener = new WebSocket("ws://" + arr[2] + "/api/log");
 
             log_listener.onopen = (ev) => {
                 console.log("Log listener started");
@@ -157,7 +157,7 @@ define([
 
                         $.ajax({
                             type: "POST",
-                            url: "client/add",
+                            url: "api/client/add",
                             contentType: "application/json;charset=UTF-8",
                             data: JSON.stringify([
                                 deviceName,
@@ -226,7 +226,7 @@ define([
 
                         $.ajax({
                             type: "POST",
-                            url: "client/trust",
+                            url: "api/client/trust",
                             contentType: "application/json;charset=UTF-8",
                             data: JSON.stringify([_hostmane, ip]),
                         });
@@ -251,7 +251,7 @@ define([
 
                 $.ajax({
                     type: "POST",
-                    url: "client/remove",
+                    url: "api/client/remove",
                     contentType: "application/json;charset=UTF-8",
                     data: JSON.stringify([hostname, ip]),
                 });
@@ -276,7 +276,7 @@ define([
                 $("#btnAddTrustedClient_" + id).click(() => {
                     $.ajax({
                         type: "POST",
-                        url: "client/trust",
+                        url: "api/client/trust",
                         contentType: "application/json;charset=UTF-8",
                         data: JSON.stringify([_hostmane, null]),
                     });
@@ -301,7 +301,7 @@ define([
                 $("#btnRemoveTrustedClient_" + id).click(() => {
                     $.ajax({
                         type: "POST",
-                        url: "client/remove",
+                        url: "api/client/remove",
                         contentType: "application/json;charset=UTF-8",
                         data: JSON.stringify([_hostmane, null]),
                     });
@@ -582,7 +582,7 @@ define([
                 return;
             }
             isUpdating = true;
-            $.getJSON("session/load", function (newSession) {
+            $.getJSON("api/session/load", function (newSession) {
                 session = newSession;
                 updateClients();
                 alvrSettings.updateSession(session);

@@ -2,7 +2,7 @@ define([
     "i18n!app/nls/settings",
     "i18n!app/nls/wizard",
     "lib/selectal",
-    "json!../../audio-devices",
+    "json!../../api/audio-devices",
     "json!app/resources/HTCVive.json",
     "json!app/resources/OculusRift.json",
     "json!app/resources/Quest2.json",

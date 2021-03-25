@@ -536,7 +536,9 @@ async fn connection_pipeline() -> StrResult {
         {
             let microphone_device = AudioDevice::new(
                 desc.output_device_id,
-                AudioDeviceType::VirtualMicrophoneOutput,
+                AudioDeviceType::VirtualMicrophoneOutput {
+                    matching_input_device_name: input_device.name()?,
+                },
             )?;
             let microphone_device_id = audio::get_windows_device_id(&microphone_device)?;
             openvr::set_headset_microphone_audio_device_id(microphone_device_id);

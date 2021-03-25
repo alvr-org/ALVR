@@ -1,6 +1,6 @@
 define([
-    "json!../../settings-schema",
-    "json!../../session/load",
+    "json!../../api/settings-schema",
+    "json!../../api/session/load",
     "app/customSettings",
     "lib/lodash",
     "i18n!app/nls/settings",
@@ -180,7 +180,7 @@ define([
 
             $.ajax({
                 type: "POST",
-                url: "/session/store",
+                url: "/api/session/store",
                 contentType: "application/json;charset=UTF-8",
                 data: JSON.stringify({
                     updateType: updateType,

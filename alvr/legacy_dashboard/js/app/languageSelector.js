@@ -2,7 +2,7 @@ define([
     "lib/lodash",
     "text!app/templates/languageSelector.html",
     "i18n!app/nls/main",
-    "json!../../session/load",
+    "json!../../api/session/load",
     "app/nls/main",
     "app/languageList",
 ], function (_, languageSelector, i18n, session, main, languageList) {

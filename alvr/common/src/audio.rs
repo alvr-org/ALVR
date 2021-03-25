@@ -42,6 +42,15 @@ use winapi::{
 #[cfg(windows)]
 use wio::com::ComPtr;
 
+lazy_static::lazy_static! {
+    static ref VIRTUAL_MICROPHONE_PAIRS: Vec<(String, String)> = vec![
+        ("CABLE Input".into(), "CABLE Output".into()),
+        ("Voice Meeter Input".into(), "Voice Meeter Output".into()),
+        ("Voice Meeter Aux Input".into(), "Voice Meeter Aux Output".into()),
+        ("Voice Meeter VAIO3 Input".into(), "Voice Meeter VAIO3 Output".into()),
+    ];
+}
+
 #[derive(Serialize)]
 pub struct AudioDevicesList {
     output: Vec<String>,
@@ -67,7 +76,7 @@ pub enum AudioDeviceType {
 
     // for the virtual microphone devices, input and output labels are swapped
     VirtualMicrophoneInput,
-    VirtualMicrophoneOutput,
+    VirtualMicrophoneOutput { matching_input_device_name: String },
 }
 
 impl AudioDeviceType {
@@ -89,7 +98,7 @@ impl AudioDevice {
         let host = cpal::default_host();
 
         let device = match &id {
-            AudioDeviceId::Default => match device_type {
+            AudioDeviceId::Default => match &device_type {
                 AudioDeviceType::Output => host
                     .default_output_device()
                     .ok_or_else(|| "No output audio device found".to_owned())?,
@@ -99,31 +108,44 @@ impl AudioDevice {
                 AudioDeviceType::VirtualMicrophoneInput => trace_err!(host.output_devices())?
                     .find(|d| {
                         if let Ok(name) = d.name() {
-                            name.contains("CABLE Input")
+                            VIRTUAL_MICROPHONE_PAIRS
+                                .iter()
+                                .any(|(input_name, _)| name.contains(input_name))
                         } else {
                             false
                         }
                     })
                     .ok_or_else(|| {
-                        format!(
-                            "CABLE Input device not found. {}",
-                            "Did you install VB-CABLE Virtual Audio Device?"
-                        )
+                        "VB-CABLE or Voice Meeter not found. Please install or reinstall either one"
+                            .to_owned()
                     })?,
-                AudioDeviceType::VirtualMicrophoneOutput => trace_err!(host.input_devices())?
-                    .find(|d| {
-                        if let Ok(name) = d.name() {
-                            name.contains("CABLE Output")
-                        } else {
-                            false
-                        }
-                    })
-                    .ok_or_else(|| {
-                        format!(
-                            "CABLE Output device not found. {}",
-                            "Did you install VB-CABLE Virtual Audio Device?"
-                        )
-                    })?,
+                AudioDeviceType::VirtualMicrophoneOutput {
+                    matching_input_device_name,
+                } => {
+                    let maybe_output_name = VIRTUAL_MICROPHONE_PAIRS
+                        .iter()
+                        .find(|(input_name, _)| matching_input_device_name.contains(input_name))
+                        .map(|(_, output_name)| output_name);
+                    if let Some(output_name) = maybe_output_name {
+                        trace_err!(host.input_devices())?
+                            .find(|d| {
+                                if let Ok(name) = d.name() {
+                                    name.contains(output_name)
+                                } else {
+                                    false
+                                }
+                            })
+                            .ok_or_else(|| {
+                                "Matching output microphone not found. Did you rename it?"
+                                    .to_string()
+                            })?
+                    } else {
+                        return fmt_e!(
+                            "Selected input microphone device is unknown. {}",
+                            "Please manually select the matching output microphone device."
+                        );
+                    }
+                }
             },
             AudioDeviceId::Name(name_substring) => trace_err!(host.devices())?
                 .find(|d| {
@@ -150,6 +172,10 @@ impl AudioDevice {
             #[cfg(windows)]
             device_type,
         })
+    }
+
+    pub fn name(&self) -> StrResult<String> {
+        trace_err!(self.inner.name())
     }
 }
 

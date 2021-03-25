@@ -408,6 +408,21 @@ pub enum LogLevel {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum LayoutDirection {
+    LeftToRight,
+    RightToLeft,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum LayoutDensity {
+    Small,
+    Middle,
+    Large,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
 pub struct ExtraDesc {
     pub theme: Theme,
     pub client_dark_mode: bool,
@@ -425,6 +440,8 @@ pub struct ExtraDesc {
     locale: String,
     #[schema(advanced)]
     show_setup_wizard: bool,
+    layout_direction: LayoutDirection,
+    layout_density: LayoutDensity,
 
     test_vec: Vec<i32>,
     test_dict: Vec<(String, i32)>,
@@ -607,6 +624,13 @@ pub fn session_settings_default() -> SettingsDefault {
             exclude_notifications_without_id: false,
             locale: "".into(),
             show_setup_wizard: true,
+
+            layout_direction: LayoutDirectionDefault {
+                variant: LayoutDirectionDefaultVariant::LeftToRight,
+            },
+            layout_density: LayoutDensityDefault {
+                variant: LayoutDensityDefaultVariant::Middle,
+            },
             test_vec: VectorDefault {
                 element: 0,
                 content: vec![0],

@@ -10,7 +10,7 @@ define([
             let gpu = "";
             $.ajax({
                 type: "GET",
-                url: "graphics-devices",
+                url: "api/graphics-devices",
                 contentType: "application/json;charset=UTF-8",
                 processData: false,
                 async: false,

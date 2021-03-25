@@ -1,4 +1,5 @@
-define(["lib/lodash", "text!app/templates/uploadPreset.html"], function (
+define(["jquery", "lib/lodash", "text!app/templates/uploadPreset.html"], function (
+    $,
     _,
     uploadTemplate,
     i18n,
@@ -33,7 +34,7 @@ define(["lib/lodash", "text!app/templates/uploadPreset.html"], function (
                         const jsonSession = JSON.parse(uploadedSession);
                         $.ajax({
                             type: "POST",
-                            url: "/session/store",
+                            url: "/api/session/store",
                             contentType: "application/json;charset=UTF-8",
                             data: JSON.stringify({
                                 updateType: "settings",

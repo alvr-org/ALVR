@@ -39,7 +39,7 @@ function storeLogLine(line: string) {
 }
 
 function resetWebsocket(): void {
-    websocket = new WebSocket(`ws://${window.location.host}/events`)
+    websocket = new WebSocket(`ws://${window.location.host}/api/events`)
 
     websocket.onmessage = ev => {
         storeLogLine(ev.data)

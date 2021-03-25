@@ -11,8 +11,8 @@ define([
     "app/driverList",
     "app/uploadPreset",
     "app/languageSelector",
-    "json!../../session/load",
-    "text!../../version",
+    "json!../../api/session/load",
+    "text!../../api/version",
     // eslint-disable-next-line requirejs/no-js-extension
     "js/lib/lobibox.min.js",
     "css!js/lib/lobibox.min.css",
@@ -122,7 +122,7 @@ define([
                             "Content-Type": "application/json",
                         },
                         type: "POST",
-                        url: "/open",
+                        url: "/api/open",
                         // eslint-disable-next-line xss/no-mixed-html
                         data: JSON.stringify(_data.html_url),
                         dataType: "JSON",
@@ -152,12 +152,12 @@ define([
 
             // Create WebSocket connection.
             const webSocket = new WebSocket(
-                "ws://" + window.location.host + "/events",
+                "ws://" + window.location.host + "/api/events",
             );
 
             $.ajax({
                 type: "POST",
-                url: "/update",
+                url: "/api/update",
                 contentType: "application/json;charset=UTF-8",
                 data: JSON.stringify(url),
                 success: function (res) {

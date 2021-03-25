@@ -96,41 +96,31 @@ async fn http_api(
 ) -> StrResult<Response<Body>> {
     let mut response = match request.uri().path() {
         #[cfg(feature = "new_dashboard")]
-        "/settings-schema" => reply_json(&Settings::schema(data::session_settings_default()))?,
+        "/api/settings-schema" => reply_json(&Settings::schema(data::session_settings_default()))?,
         #[cfg(not(feature = "new_dashboard"))]
-        "/settings-schema" => reply_json(&data::settings_schema(data::session_settings_default()))?,
-        "/session/load" => reply_json(SESSION_MANAGER.lock().get())?,
-        "/session/store-settings" => {
-            if let Ok(data) = from_request_body::<json::Value>(request).await {
-                if let (Some(update_author_id), Some(value)) =
-                    (data.get("webClientId"), data.get("sessionSettings"))
-                {
-                    if let Ok(update_author_id) =
-                        json::from_value::<String>(update_author_id.clone())
-                    {
-                        let res = SESSION_MANAGER
-                            .lock()
-                            .get_mut(Some(update_author_id), SessionUpdateType::Settings)
-                            .merge_from_json(&json::json!({ "session_settings": value }));
-                        if let Err(e) = res {
-                            warn!("{}", e);
-                            // HTTP Code: WARNING
-                            reply(trace_err!(StatusCode::from_u16(199))?)?
-                        } else {
-                            reply(StatusCode::OK)?
-                        }
-                    } else {
-                        reply(StatusCode::BAD_REQUEST)?
-                    }
+        "/api/settings-schema" => {
+            reply_json(&data::settings_schema(data::session_settings_default()))?
+        }
+        "/api/session/load" => reply_json(SESSION_MANAGER.lock().get())?,
+        "/api/session/store-settings" => {
+            if let Ok(session_settings) = from_request_body::<json::Value>(request).await {
+                let res = SESSION_MANAGER
+                    .lock()
+                    .get_mut(None, SessionUpdateType::Settings)
+                    .merge_from_json(&json::json!({ "session_settings": session_settings }));
+                if let Err(e) = res {
+                    warn!("{}", e);
+                    // HTTP Code: WARNING
+                    reply(trace_err!(StatusCode::from_u16(199))?)?
                 } else {
-                    reply(StatusCode::BAD_REQUEST)?
+                    reply(StatusCode::OK)?
                 }
             } else {
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
         // todo: remove deprecated url
-        "/session/store" => {
+        "/api/session/store" => {
             if let Ok(data) = from_request_body::<json::Value>(request).await {
                 if let (Some(update_type), Some(update_author_id), Some(value)) = (
                     data.get("updateType"),
@@ -162,16 +152,16 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/log" => text_websocket(request, log_sender).await?,
-        "/events" => text_websocket(request, events_sender).await?,
-        "/driver/register" => {
+        "/api/log" => text_websocket(request, log_sender).await?,
+        "/api/events" => text_websocket(request, events_sender).await?,
+        "/api/driver/register" => {
             if commands::driver_registration(&[ALVR_DIR.clone()], true).is_ok() {
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::INTERNAL_SERVER_ERROR)?
             }
         }
-        "/driver/unregister" => {
+        "/api/driver/unregister" => {
             if let Ok(path) = from_request_body::<PathBuf>(request).await {
                 if commands::driver_registration(&[path], false).is_ok() {
                     reply(StatusCode::OK)?
@@ -182,7 +172,7 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/driver/list" => reply_json(&commands::get_registered_drivers().unwrap_or_default())?,
+        "/api/driver/list" => reply_json(&commands::get_registered_drivers().unwrap_or_default())?,
         uri @ "/firewall-rules/add" | uri @ "/firewall-rules/remove" => {
             let add = uri.ends_with("add");
             let maybe_err = commands::firewall_rules(add).err();
@@ -191,13 +181,13 @@ async fn http_api(
             }
             reply_json(&maybe_err.unwrap_or(0))?
         }
-        "/audio-devices" => reply_json(&audio::get_devices_list()?)?,
-        "/graphics-devices" => reply_json(&graphics::get_gpu_names())?,
+        "/api/audio-devices" => reply_json(&audio::get_devices_list()?)?,
+        "/api/graphics-devices" => reply_json(&graphics::get_gpu_names())?,
         "/restart-steamvr" => {
             crate::notify_restart_driver();
             reply(StatusCode::OK)?
         }
-        "/client/add" => {
+        "/api/client/add" => {
             if let Ok((display_name, hostname, ip)) =
                 from_request_body::<(_, String, _)>(request).await
             {
@@ -214,7 +204,7 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/client/trust" => {
+        "/api/client/trust" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
                 crate::update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(maybe_ip))
                     .await;
@@ -223,7 +213,7 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/client/remove" => {
+        "/api/client/remove" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
                 crate::update_client_list(hostname, ClientListAction::RemoveIpOrEntry(maybe_ip))
                     .await;
@@ -232,8 +222,8 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/version" => Response::new(ALVR_VERSION.to_string().into()),
-        "/open" => {
+        "/api/version" => Response::new(ALVR_VERSION.to_string().into()),
+        "/api/open" => {
             if let Ok(url) = from_request_body::<String>(request).await {
                 webbrowser::open(&url).ok();
                 reply(StatusCode::OK)?
@@ -241,7 +231,7 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/update" => {
+        "/api/update" => {
             if let Ok(url) = from_request_body::<String>(request).await {
                 let redirection_response = trace_err!(reqwest::get(&url).await)?;
                 let mut resource_response =

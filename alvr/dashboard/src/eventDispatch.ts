@@ -2,7 +2,7 @@ const listeners: Record<string, (data: unknown) => void> = {}
 let websocket: WebSocket | null = null
 
 function resetWebsocket(): void {
-    websocket = new WebSocket(`ws://${window.location.host}/events`)
+    websocket = new WebSocket(`ws://${window.location.host}/api/events`)
 
     websocket.onmessage = msgEv => {
         const event: { id: string; data: unknown } = JSON.parse(msgEv.data)
@@ -21,6 +21,6 @@ function resetWebsocket(): void {
 
 resetWebsocket()
 
-export function subscribeToEvent(id: string, callback: (data: unknown) => void): void {
-    listeners[id] = callback
+export function subscribeToEvent<T>(id: string, callback: (data: T) => void): void {
+    listeners[id] = callback as (data: unknown) => void
 }

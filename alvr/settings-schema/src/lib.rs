@@ -158,16 +158,24 @@ pub enum SchemaNode {
         default: String,
     },
 
+    // Instead of { schemaElement, length } a Vec is used. This is because each element can have a
+    // different settings default.
     Array(Vec<SchemaNode>),
 
     Vector {
         default_element: Box<SchemaNode>,
+
+        // This contains the settings default representation. It is untyped because the actual type
+        // will be generated at compile time
         default: serde_json::Value,
     },
 
     Dictionary {
         default_key: String,
         default_value: Box<SchemaNode>,
+
+        // This contains the settings default representation. It is untyped because the actual type
+        // will be generated at compile time
         default: serde_json::Value,
     },
 }

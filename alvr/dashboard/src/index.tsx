@@ -5,9 +5,9 @@ import { initializeSessionManager } from "./sessionManager"
 import { Dashboard } from "./Dashboard"
 
 function AsyncLoader(): JSX.Element {
-    const futureSession = useAsync(initializeSessionManager, [])
+    const future = useAsync(initializeSessionManager, [])
 
-    return <>{futureSession.result && <Dashboard initialSession={futureSession.result} />}</>
+    return <>{future.result && <Dashboard initialSession={future.result[1]} />}</>
 }
 
 ReactDOM.render(

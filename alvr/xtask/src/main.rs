@@ -464,6 +464,8 @@ pub fn kill_oculus_processes() {
 }
 
 fn main() {
+    env::set_var("RUST_BACKTRACE", "1");
+
     let mut args = Arguments::from_env();
 
     if args.contains(["-h", "--help"]) {

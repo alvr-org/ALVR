@@ -1,10 +1,4 @@
-import React, { useState } from "react"
-import {
-    Session,
-    SessionContext,
-    SessionSettingsChoice,
-    subscribeToSession,
-} from "./sessionManager"
+import React, { CSSProperties, useState } from "react"
 import { ConfigProvider, Drawer, Grid, Layout, Menu, Modal, Row, Select, Typography } from "antd"
 import {
     ApiOutlined,
@@ -17,9 +11,25 @@ import {
     SettingOutlined,
     TableOutlined,
 } from "@ant-design/icons"
+import {
+    Session,
+    SessionSettingsChoice,
+    SessionSettingsSection,
+    SettingsSchema,
+    subscribeToSession,
+} from "./sessionManager"
+import { Clients } from "./components/Clients"
+import { Statistics } from "./components/Statistics"
+import { Presets } from "./components/Presets"
+import { Settings } from "./components/Settings"
+import { Installation } from "./components/Installation"
+import { Logs } from "./components/Logs"
+import { About } from "./components/About"
 
 // Default theme. The default theme can be overridden with "dark" or "compact", but not vice versa
 import "antd/dist/antd.css"
+
+const INITIAL_SELECTED_TAB = "clients"
 
 interface SessionData {
     session: Session
@@ -38,8 +48,7 @@ function MenuEntries({
     onClick: (selected: string) => void
 }): JSX.Element {
     const theme = isMobile ? "light" : "dark"
-    const languagePosition = !isMobile ? "absolute" : undefined
-    const languagebottom = !isMobile ? 0 : undefined
+    const style: CSSProperties = !isMobile ? { position: "absolute", bottom: 0 } : {}
 
     function handleMenuEntryClick({ key }: { key: React.Key }) {
         onClick(key as string)
@@ -47,7 +56,11 @@ function MenuEntries({
 
     return (
         <>
-            <Menu theme={theme} defaultSelectedKeys={["clients"]} onClick={handleMenuEntryClick}>
+            <Menu
+                theme={theme}
+                defaultSelectedKeys={[INITIAL_SELECTED_TAB]}
+                onClick={handleMenuEntryClick}
+            >
                 <Menu.Item key="clients" icon={<ApiOutlined style={{ fontSize: "18px" }} />}>
                     Clients
                 </Menu.Item>
@@ -70,12 +83,7 @@ function MenuEntries({
                     About
                 </Menu.Item>
             </Menu>
-            <Menu
-                theme={theme}
-                selectable={false}
-                style={{ position: languagePosition, bottom: languagebottom }}
-                onClick={handleMenuEntryClick}
-            >
+            <Menu theme={theme} selectable={false} style={style} onClick={handleMenuEntryClick}>
                 <Menu.Item key="language" icon={<GlobalOutlined />}>
                     Language
                 </Menu.Item>
@@ -94,7 +102,7 @@ function DesktopMenu(props: { selectionHandler: (selection: string) => void }): 
 
 function MobileMenu(props: { selectionHandler: (selection: string) => void }): JSX.Element {
     const [drawerOpen, setDrawerOpen] = useState(false)
-    const [title, setTitle] = useState("Clients")
+    const [title, setTitle] = useState(INITIAL_SELECTED_TAB)
 
     function handleMenuEntryClick(selection: string) {
         props.selectionHandler(selection)
@@ -105,7 +113,7 @@ function MobileMenu(props: { selectionHandler: (selection: string) => void }): J
     }
 
     return (
-        <>
+        <Layout.Header style={{ padding: 0 }}>
             <Drawer
                 visible={drawerOpen}
                 closable={false}
@@ -114,22 +122,22 @@ function MobileMenu(props: { selectionHandler: (selection: string) => void }): J
             >
                 <MenuEntries isMobile onClick={handleMenuEntryClick} />
             </Drawer>
-            <Layout.Header style={{ padding: 0 }}>
-                <Menu selectable={false} onClick={() => setDrawerOpen(true)} mode="horizontal">
-                    <Menu.Item>
-                        <MenuOutlined style={{ fontSize: "18px" }} />
-                        <Typography.Text style={{ fontSize: "20px" }} strong>
-                            {title}
-                        </Typography.Text>
-                    </Menu.Item>
-                </Menu>
-            </Layout.Header>
-        </>
+            <Menu selectable={false} onClick={() => setDrawerOpen(true)} mode="horizontal">
+                <Menu.Item icon={<MenuOutlined style={{ fontSize: "18px" }} />}>
+                    <Typography.Text style={{ fontSize: "20px" }} strong>
+                        {title}
+                    </Typography.Text>
+                </Menu.Item>
+            </Menu>
+        </Layout.Header>
     )
 }
 
-export function Dashboard(props: { initialSession: Session }): JSX.Element {
-    let themeKey = (props.initialSession.session_settings["extra"][
+export function Dashboard(props: {
+    settingsSchema: SettingsSchema
+    initialSession: Session
+}): JSX.Element {
+    let themeKey = ((props.initialSession.session_settings["extra"] as SessionSettingsSection)[
         "theme"
     ] as SessionSettingsChoice).variant
 
@@ -151,14 +159,16 @@ export function Dashboard(props: { initialSession: Session }): JSX.Element {
     }
 
     function getSessionData(session: Session): SessionData {
-        const locale = session.session_settings["extra"]["locale"] as string
+        const locale = (session.session_settings["extra"] as SessionSettingsSection)[
+            "locale"
+        ] as string
 
-        const directionString = (session.session_settings["extra"][
+        const directionString = ((session.session_settings["extra"] as SessionSettingsSection)[
             "layout_direction"
         ] as SessionSettingsChoice).variant
         const direction = directionString === "LeftToRight" ? "ltr" : "rtl"
 
-        const componentSizeString = (session.session_settings["extra"][
+        const componentSizeString = ((session.session_settings["extra"] as SessionSettingsSection)[
             "layout_density"
         ] as SessionSettingsChoice).variant
         const componentSize = componentSizeString.toLowerCase() as "small" | "middle" | "large"
@@ -180,6 +190,8 @@ export function Dashboard(props: { initialSession: Session }): JSX.Element {
         modalCloseHandle()
     }
 
+    const [selectedTab, setSelectedTab] = useState(INITIAL_SELECTED_TAB)
+
     function selectionHandler(selection: string) {
         if (selection === "language") {
             Modal.confirm({
@@ -198,21 +210,46 @@ export function Dashboard(props: { initialSession: Session }): JSX.Element {
                     </Row>
                 ),
             })
+        } else {
+            setSelectedTab(selection)
         }
     }
 
     return (
-        <SessionContext.Provider value={sessionData.session}>
-            <ConfigProvider {...sessionData.layout}>
-                <Layout style={{ minHeight: "100vh" }}>
-                    {xs ? (
-                        <MobileMenu selectionHandler={selectionHandler} />
-                    ) : (
-                        <DesktopMenu selectionHandler={selectionHandler} />
-                    )}
-                    <>todo content</>
-                </Layout>
-            </ConfigProvider>
-        </SessionContext.Provider>
+        <ConfigProvider {...sessionData.layout}>
+            <Layout>
+                {xs ? (
+                    <MobileMenu selectionHandler={selectionHandler} />
+                ) : (
+                    <DesktopMenu selectionHandler={selectionHandler} />
+                )}
+                <Layout.Content style={{ height: "100vh" }}>
+                    <div hidden={selectedTab != "clients"}>
+                        <Clients />
+                    </div>
+                    <div hidden={selectedTab != "statistics"}>
+                        <Statistics />
+                    </div>
+                    <div hidden={selectedTab != "presets"}>
+                        <Presets />
+                    </div>
+                    <div hidden={selectedTab != "settings"}>
+                        <Settings
+                            schema={props.settingsSchema}
+                            session={sessionData.session.session_settings}
+                        />
+                    </div>
+                    <div hidden={selectedTab != "installation"}>
+                        <Installation />
+                    </div>
+                    <div hidden={selectedTab != "logs"}>
+                        <Logs />
+                    </div>
+                    <div hidden={selectedTab != "about"}>
+                        <About />
+                    </div>
+                </Layout.Content>
+            </Layout>
+        </ConfigProvider>
     )
 }

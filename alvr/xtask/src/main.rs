@@ -220,14 +220,6 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
         driver_dst_dir.join(DRIVER_FNAME),
     )
     .unwrap();
-    if cfg!(target_os = "linux") {
-        // patch for executing the webserver without steamvr
-        fs::copy(
-            artifacts_dir.join(exec_fname("alvr_server")),
-            driver_dst_dir.join(exec_fname("alvr_server")),
-        )
-        .unwrap();
-    }
 
     if cfg!(windows) {
         let dir_content = dirx::get_dir_content("alvr/server/cpp/bin/windows").unwrap();

@@ -326,7 +326,7 @@ async fn connection_pipeline(
     // };
 
     let legacy_send_loop = {
-        let mut socket_sender = stream_socket.request_stream(LEGACY).await?;
+        let mut socket_sender = stream_socket.request_stream::<_, LEGACY>().await?;
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
@@ -343,7 +343,7 @@ async fn connection_pipeline(
 
     let (legacy_receive_data_sender, legacy_receive_data_receiver) = smpsc::channel();
     let legacy_receive_loop = {
-        let mut receiver = stream_socket.subscribe_to_stream::<()>(LEGACY).await?;
+        let mut receiver = stream_socket.subscribe_to_stream::<(), LEGACY>().await?;
         async move {
             loop {
                 let packet = receiver.recv().await?;
@@ -472,7 +472,7 @@ async fn connection_pipeline(
     };
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
-        let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
+        let game_audio_receiver = stream_socket.subscribe_to_stream().await?;
         Box::pin(audio::play_audio_loop(
             config_packet.game_audio_sample_rate,
             desc.config,
@@ -483,7 +483,7 @@ async fn connection_pipeline(
     };
 
     let microphone_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.microphone {
-        let microphone_sender = stream_socket.request_stream(AUDIO).await?;
+        let microphone_sender = stream_socket.request_stream().await?;
         Box::pin(audio::record_audio_loop(
             config.sample_rate,
             microphone_sender,

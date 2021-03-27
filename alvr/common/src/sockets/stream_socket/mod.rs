@@ -25,7 +25,6 @@ use tokio::net;
 use tokio::sync::{mpsc, Mutex};
 use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 
-// todo: when min_const_generics reaches stable, use this as a const generic parameter
 // todo: when const_generics reaches stable, convert this to an enum
 pub type StreamId = u8;
 pub const AUDIO: StreamId = 0;
@@ -70,13 +69,13 @@ impl Drop for SendBufferLock<'_> {
     }
 }
 
-pub struct SenderBuffer<T> {
+pub struct SenderBuffer<T, const ID: StreamId> {
     inner: BytesMut,
     offset: usize,
     _phantom: PhantomData<T>,
 }
 
-impl<T> SenderBuffer<T> {
+impl<T, const ID: StreamId> SenderBuffer<T, ID> {
     // Get the editable part of the buffer (the header part is excluded). The returned buffer can
     // be grown at zero-cost until `preferred_max_buffer_size` (set with send_buffer()) is reached.
     // After that a reallocation will be needed but there will be no other side effects.
@@ -89,18 +88,17 @@ impl<T> SenderBuffer<T> {
     }
 }
 
-pub struct StreamSender<T> {
+pub struct StreamSender<T, const ID: StreamId> {
     socket: StreamSendSocket,
-    stream_id: StreamId,
     // if the packet index overflows the worst that happens is a false positive packet loss
     next_packet_index: u32,
     _phantom: PhantomData<T>,
 }
 
-impl<T> StreamSender<T> {
+impl<T, const ID: StreamId> StreamSender<T, ID> {
     // The buffer is moved into the method. There is no way of reusing the same buffer twice without
     // extra copies/allocations
-    pub async fn send_buffer(&mut self, mut buffer: SenderBuffer<T>) -> StrResult {
+    pub async fn send_buffer(&mut self, mut buffer: SenderBuffer<T, ID>) -> StrResult {
         buffer.inner[1..5].copy_from_slice(&self.next_packet_index.to_be_bytes());
         self.next_packet_index += 1;
 
@@ -123,19 +121,19 @@ impl<T> StreamSender<T> {
     }
 }
 
-impl<T: Serialize> StreamSender<T> {
+impl<T: Serialize, const ID: StreamId> StreamSender<T, ID> {
     pub fn new_buffer(
         &self,
         header: &T,
         preferred_max_buffer_size: usize,
-    ) -> StrResult<SenderBuffer<T>> {
+    ) -> StrResult<SenderBuffer<T, ID>> {
         let header_size = trace_err!(bincode::serialized_size(header))?;
         // the first byte is for the stream ID
         let offset = 1 + header_size as usize;
 
         let mut buffer = BytesMut::with_capacity(offset + preferred_max_buffer_size);
 
-        buffer.put_u8(self.stream_id);
+        buffer.put_u8(ID);
 
         // make space for the packet index
         buffer.put_u32(0);
@@ -167,13 +165,13 @@ pub struct ReceivedPacket<T> {
     pub had_packet_loss: bool,
 }
 
-pub struct StreamReceiver<T> {
+pub struct StreamReceiver<T, const ID: StreamId> {
     receiver: StreamReceiverType,
     next_packet_index: u32,
     _phantom: PhantomData<T>,
 }
 
-impl<T: DeserializeOwned> StreamReceiver<T> {
+impl<T: DeserializeOwned, const ID: StreamId> StreamReceiver<T, ID> {
     pub async fn recv(&mut self) -> StrResult<ReceivedPacket<T>> {
         let mut bytes = match &mut self.receiver {
             StreamReceiverType::Queue(receiver) => trace_none!(receiver.recv().await)?,
@@ -305,21 +303,19 @@ pub struct StreamSocket {
 }
 
 impl StreamSocket {
-    pub async fn request_stream<T>(&self, stream_id: StreamId) -> StrResult<StreamSender<T>> {
+    pub async fn request_stream<T, const ID: StreamId>(&self) -> StrResult<StreamSender<T, ID>> {
         Ok(StreamSender {
             socket: self.send_socket.clone(),
-            stream_id,
             next_packet_index: 0,
             _phantom: PhantomData,
         })
     }
 
-    pub async fn subscribe_to_stream<T>(
+    pub async fn subscribe_to_stream<T, const ID: StreamId>(
         &mut self,
-        stream_id: StreamId,
-    ) -> StrResult<StreamReceiver<T>> {
+    ) -> StrResult<StreamReceiver<T, ID>> {
         let (enqueuer, dequeuer) = mpsc::unbounded_channel();
-        self.packet_queues.lock().await.insert(stream_id, enqueuer);
+        self.packet_queues.lock().await.insert(ID, enqueuer);
 
         Ok(StreamReceiver {
             receiver: StreamReceiverType::Queue(dequeuer),

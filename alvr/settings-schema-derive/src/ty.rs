@@ -157,11 +157,7 @@ pub(crate) fn schema(ty: &Type, meta: &FieldMeta) -> Result<SchemaData, TokenStr
                 default_ty_ts: quote!([#default_ty_ts; #len]),
                 schema_code_ts: quote! {{
                     let length = #len;
-                    // Note: for arrays, into_iter() behaves like iter(), because of a
-                    // implementation complication in the std library. Blocked by const generics.
-                    // For now clone() is necessary.
-                    let content = default.iter().map(|default| {
-                        let default = default.clone();
+                    let content = std::array::IntoIter::new(default).map(|default| {
                         #schema_code_ts
                     }).collect::<Vec<_>>();
 

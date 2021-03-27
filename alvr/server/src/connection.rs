@@ -17,7 +17,7 @@ use alvr_common::{
     prelude::*,
     sockets::{
         ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
-        StreamSocketBuilder, AUDIO, LEGACY,
+        StreamSocketBuilder, LEGACY,
     },
     spawn_cancelable,
 };
@@ -502,7 +502,7 @@ async fn connection_pipeline() -> StrResult {
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         let device = AudioDevice::new(desc.device_id, AudioDeviceType::Output)?;
         let sample_rate = audio::get_sample_rate(&device)?;
-        let sender = stream_socket.request_stream(AUDIO).await?;
+        let sender = stream_socket.request_stream().await?;
         let mute_when_streaming = desc.mute_when_streaming;
 
         Box::pin(async move {
@@ -530,7 +530,7 @@ async fn connection_pipeline() -> StrResult {
             desc.input_device_id,
             AudioDeviceType::VirtualMicrophoneInput,
         )?;
-        let receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
+        let receiver = stream_socket.subscribe_to_stream().await?;
 
         #[cfg(windows)]
         {
@@ -556,7 +556,7 @@ async fn connection_pipeline() -> StrResult {
     };
 
     let legacy_send_loop = {
-        let mut socket_sender = stream_socket.request_stream(LEGACY).await?;
+        let mut socket_sender = stream_socket.request_stream::<_, LEGACY>().await?;
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
@@ -572,7 +572,7 @@ async fn connection_pipeline() -> StrResult {
     };
 
     let legacy_receive_loop = {
-        let mut receiver = stream_socket.subscribe_to_stream::<()>(LEGACY).await?;
+        let mut receiver = stream_socket.subscribe_to_stream::<(), LEGACY>().await?;
         async move {
             loop {
                 let mut data = receiver.recv().await?.buffer;

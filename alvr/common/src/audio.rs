@@ -1,7 +1,7 @@
 use crate::{
     data::{AudioConfig, AudioDeviceId},
     prelude::*,
-    sockets::{StreamReceiver, StreamSender},
+    sockets::{StreamReceiver, StreamSender, AUDIO},
 };
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
@@ -337,7 +337,7 @@ pub async fn record_audio_loop(
     channels_count: u16,
     sample_rate: u32,
     #[cfg_attr(not(windows), allow(unused_variables))] mute: bool,
-    mut sender: StreamSender<()>,
+    mut sender: StreamSender<(), AUDIO>,
 ) -> StrResult {
     let maybe_config_range = trace_err!(device.inner.supported_output_configs())?.next();
     let config = if let Some(config) = maybe_config_range {
@@ -484,7 +484,7 @@ pub fn get_next_frame_batch(
 // callback will gracefully handle an interruption, and the callback timing and sound wave
 // continuity will not be affected.
 pub async fn receive_samples_loop(
-    mut receiver: StreamReceiver<()>,
+    mut receiver: StreamReceiver<(), AUDIO>,
     sample_buffer: Arc<Mutex<VecDeque<f32>>>,
     channels_count: usize,
     batch_frames_count: usize,
@@ -630,7 +630,7 @@ pub async fn play_audio_loop(
     channels_count: u16,
     sample_rate: u32,
     config: AudioConfig,
-    receiver: StreamReceiver<()>,
+    receiver: StreamReceiver<(), AUDIO>,
 ) -> StrResult {
     // Size of a chunk of frames. It corresponds to the duration if a fade-in/out in frames.
     let batch_frames_count = sample_rate as usize * config.batch_ms as usize / 1000;

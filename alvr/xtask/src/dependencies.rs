@@ -3,7 +3,7 @@ use rand::Rng;
 use std::{
     fs,
     io::{self, ErrorKind, Read},
-    iter,
+    iter, panic,
     path::{Path, PathBuf},
 };
 
@@ -68,7 +68,7 @@ fn build_rust_android_gradle() {
         .join("rust-android-gradle");
     if let Err(e) = fs::create_dir_all(&dep_dir) {
         if e.kind() != ErrorKind::AlreadyExists {
-            panic!(e);
+            panic::panic_any(e);
         }
     }
 

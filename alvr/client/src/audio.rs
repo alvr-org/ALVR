@@ -2,7 +2,7 @@ use alvr_common::{
     audio,
     data::AudioConfig,
     prelude::*,
-    sockets::{StreamReceiver, StreamSender},
+    sockets::{StreamReceiver, StreamSender, AUDIO},
 };
 use oboe::{
     AudioInputCallback, AudioInputStreamSafe, AudioOutputCallback, AudioOutputStreamSafe,
@@ -42,7 +42,7 @@ impl AudioInputCallback for RecorderCallback {
     }
 }
 
-pub async fn record_audio_loop(sample_rate: u32, mut sender: StreamSender<()>) -> StrResult {
+pub async fn record_audio_loop(sample_rate: u32, mut sender: StreamSender<(), AUDIO>) -> StrResult {
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
     let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
 
@@ -110,7 +110,7 @@ impl AudioOutputCallback for PlayerCallback {
 pub async fn play_audio_loop(
     sample_rate: u32,
     config: AudioConfig,
-    receiver: StreamReceiver<()>,
+    receiver: StreamReceiver<(), AUDIO>,
 ) -> StrResult {
     let batch_frames_count = sample_rate as usize * config.batch_ms as usize / 1000;
     let average_buffer_frames_count =

@@ -1,6 +1,7 @@
 #include "device_api.hpp"
 #include "private_data.hpp"
 #include "wsi/display.hpp"
+#include "alvr_server/Settings.h"
 
 #include <vector>
 
@@ -32,7 +33,7 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkGetPhysicalDeviceDisplayPropertiesKHR
         properties.display = alvr_display_handle;
         properties.displayName = alvr_display_name;
         properties.physicalDimensions = VkExtent2D{20, 20};
-        properties.physicalResolution = VkExtent2D{2112, 1184};
+        properties.physicalResolution = VkExtent2D{Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight};
         properties.supportedTransforms = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
         properties.planeReorderPossible = VK_FALSE;
         properties.persistentContent = VK_TRUE;
@@ -51,8 +52,8 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkGetDisplayModePropertiesKHR(
             return VK_INCOMPLETE;
         if (pProperties) {
             pProperties[0].displayMode = alvr_display_mode_handle;
-            pProperties[0].parameters.visibleRegion = VkExtent2D{2112, 1184};
-            pProperties[0].parameters.refreshRate = 72000;
+            pProperties[0].parameters.visibleRegion = VkExtent2D{Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight};
+            pProperties[0].parameters.refreshRate = Settings::Instance().m_refreshRate * 1000;
         }
         *pPropertyCount = 1;
         return VK_SUCCESS;

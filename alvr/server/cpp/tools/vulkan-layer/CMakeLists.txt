@@ -44,6 +44,7 @@ else()
    message(FATAL_ERROR "Either vulkan.pc must be available or VULKAN_CXX_INCLUDE must be defined")
 endif()
 
+
 add_library(${PROJECT_NAME} SHARED
    layer/layer.cpp
    layer/private_data.cpp
@@ -58,10 +59,14 @@ add_library(${PROJECT_NAME} SHARED
    wsi/swapchain_base.cpp
    wsi/wsi_factory.cpp
    wsi/headless/surface_properties.cpp
-   wsi/headless/swapchain.cpp)
- target_compile_definitions(${PROJECT_NAME} PRIVATE -DVK_USE_PLATFORM_XLIB_XRANDR_EXT)
+   wsi/headless/swapchain.cpp
+   ../../alvr_server/Settings.cpp)
+   
+target_compile_definitions(${PROJECT_NAME} PRIVATE -DVK_USE_PLATFORM_XLIB_XRANDR_EXT)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 11)
 target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR} ${VULKAN_CXX_INCLUDE})
+target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR} ../../)
 
 add_library("vulkan" SHARED vulkan-wrap.cpp)
 target_link_libraries("vulkan" PUBLIC "dl")
+configure_file(layer/alvr_x86_64.json alvr_x86_64.json COPYONLY)

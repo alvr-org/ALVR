@@ -65,7 +65,7 @@ void CEncoder::Run()
 {
 	try {
 		auto p = subprocess::Popen(
-				{"grabber", //FIXME: get the installation path
+				{"true", //FIXME: get the installation path
 				std::to_string(Settings::Instance().m_renderWidth),
 				std::to_string(Settings::Instance().m_renderHeight),
 				std::to_string(Settings::Instance().m_refreshRate),

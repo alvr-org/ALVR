@@ -33,6 +33,7 @@
 #include <vulkan/vulkan.h>
 
 #include <layer/private_data.hpp>
+#include "alvr_server/Settings.h"
 
 #include "surface_properties.hpp"
 
@@ -56,14 +57,14 @@ surface_properties::get_surface_capabilities(VkPhysicalDevice physical_device, V
     surface_capabilities->maxImageCount = UINT32_MAX;
 
     /* Surface extents */
-    surface_capabilities->currentExtent = {2112, 1184};
-    surface_capabilities->minImageExtent = {2112, 1184};
+    surface_capabilities->currentExtent = surface_capabilities->maxImageExtent =
+        surface_capabilities->minImageExtent = {Settings::Instance().m_renderWidth,
+                                                Settings::Instance().m_renderHeight};
     /* Ask the device for max */
     VkPhysicalDeviceProperties dev_props;
     layer::instance_private_data::get(physical_device)
         .disp.GetPhysicalDeviceProperties(physical_device, &dev_props);
 
-    surface_capabilities->maxImageExtent = {2112, 1184};
     surface_capabilities->maxImageArrayLayers = 1;
 
     /* Surface transforms */

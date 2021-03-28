@@ -34,10 +34,8 @@
 #include <vulkan/vulkan.h>
 #include <wsi/swapchain_base.hpp>
 
-namespace wsi
-{
-namespace headless
-{
+namespace wsi {
+namespace headless {
 
 /**
  * @brief Headless swapchain class.
@@ -45,48 +43,47 @@ namespace headless
  * This class is mostly empty, because all the swapchain stuff is handled by the swapchain class,
  * which we inherit. This class only provides a way to create an image and page-flip ops.
  */
-class swapchain : public wsi::swapchain_base
-{
-public:
-   explicit swapchain(layer::device_private_data &dev_data, const VkAllocationCallbacks *pAllocator);
+class swapchain : public wsi::swapchain_base {
+  public:
+    explicit swapchain(layer::device_private_data &dev_data,
+                       const VkAllocationCallbacks *pAllocator);
 
-   ~swapchain();
+    ~swapchain();
 
-protected:
-   /**
-    * @brief Platform specific init
-    */
-   VkResult init_platform(VkDevice device, const VkSwapchainCreateInfoKHR *pSwapchainCreateInfo)
-   {
-      return VK_SUCCESS;
-   };
+  protected:
+    /**
+     * @brief Platform specific init
+     */
+    VkResult init_platform(VkDevice device, const VkSwapchainCreateInfoKHR *pSwapchainCreateInfo) {
+        return VK_SUCCESS;
+    };
 
-   /**
-    * @brief Creates a new swapchain image.
-    *
-    * @param image_create_info Data to be used to create the image.
-    *
-    * @param image Handle to the image.
-    *
-    * @return If image creation is successful returns VK_SUCCESS, otherwise
-    * will return VK_ERROR_OUT_OF_DEVICE_MEMORY or VK_ERROR_INITIALIZATION_FAILED
-    * depending on the error that occured.
-    */
-   VkResult create_image(const VkImageCreateInfo &image_create_info, wsi::swapchain_image &image);
+    /**
+     * @brief Creates a new swapchain image.
+     *
+     * @param image_create_info Data to be used to create the image.
+     *
+     * @param image Handle to the image.
+     *
+     * @return If image creation is successful returns VK_SUCCESS, otherwise
+     * will return VK_ERROR_OUT_OF_DEVICE_MEMORY or VK_ERROR_INITIALIZATION_FAILED
+     * depending on the error that occured.
+     */
+    VkResult create_image(const VkImageCreateInfo &image_create_info, wsi::swapchain_image &image);
 
-   /**
-    * @brief Method to perform a present - just calls unpresent_image on headless
-    *
-    * @param pendingIndex Index of the pending image to be presented.
-    *
-    */
-   void present_image(uint32_t pendingIndex);
+    /**
+     * @brief Method to perform a present - just calls unpresent_image on headless
+     *
+     * @param pendingIndex Index of the pending image to be presented.
+     *
+     */
+    void present_image(uint32_t pendingIndex);
 
-   /**
-    * @brief Method to release a swapchain image
-    *
-    * @param image Handle to the image about to be released.
-    */
+    /**
+     * @brief Method to release a swapchain image
+     *
+     * @param image Handle to the image about to be released.
+     */
     void destroy_image(wsi::swapchain_image &image);
 };
 

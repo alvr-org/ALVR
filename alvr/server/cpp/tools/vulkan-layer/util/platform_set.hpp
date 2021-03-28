@@ -29,38 +29,32 @@
 
 #include <vulkan/vk_icd.h>
 
-namespace util
-{
+namespace util {
 
 /**
  * @brief Set of WSI platforms.
- * @note This could be implemented via std::unordered_set, but would require handling allocation callbacks and would
- * therefore be less convenient to use. Instead, we can store all info in the bits of uint64_t.
+ * @note This could be implemented via std::unordered_set, but would require handling allocation
+ * callbacks and would therefore be less convenient to use. Instead, we can store all info in the
+ * bits of uint64_t.
  */
-class wsi_platform_set
-{
-public:
-   void add(VkIcdWsiPlatform p)
-   {
-      m_platforms |= (static_cast<uint64_t>(1) << to_int(p));
-   }
+class wsi_platform_set {
+  public:
+    void add(VkIcdWsiPlatform p) { m_platforms |= (static_cast<uint64_t>(1) << to_int(p)); }
 
-   bool contains(VkIcdWsiPlatform p) const
-   {
-      return (m_platforms & (static_cast<uint64_t>(1) << to_int(p))) != 0;
-   }
+    bool contains(VkIcdWsiPlatform p) const {
+        return (m_platforms & (static_cast<uint64_t>(1) << to_int(p))) != 0;
+    }
 
-private:
-   /**
-    * @brief Convert a VkIcdWsiPlatform to an integer between 0-63.
-    */
-   static int to_int(VkIcdWsiPlatform p)
-   {
-      assert(static_cast<int>(p) >= 0 && static_cast<int>(p) < 64);
-      return static_cast<int>(p);
-   }
+  private:
+    /**
+     * @brief Convert a VkIcdWsiPlatform to an integer between 0-63.
+     */
+    static int to_int(VkIcdWsiPlatform p) {
+        assert(static_cast<int>(p) >= 0 && static_cast<int>(p) < 64);
+        return static_cast<int>(p);
+    }
 
-   uint64_t m_platforms = 0;
+    uint64_t m_platforms = 0;
 };
 
 } /* namespace util */

@@ -34,31 +34,31 @@
 extern "C" {
 
 /**
-    * @brief Implements vkGetPhysicalDeviceSurfaceCapabilitiesKHR Vulkan entrypoint.
-    */
-VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VkPhysicalDevice physicalDevice,
-                                                                        VkSurfaceKHR surface,
-                                                                        VkSurfaceCapabilitiesKHR *pSurfaceCapabilities);
+ * @brief Implements vkGetPhysicalDeviceSurfaceCapabilitiesKHR Vulkan entrypoint.
+ */
+VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+    VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
+    VkSurfaceCapabilitiesKHR *pSurfaceCapabilities);
 
 /**
-    * @brief Implements vkGetPhysicalDeviceSurfaceFormatsKHR Vulkan entrypoint.
-    */
-VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfaceFormatsKHR(VkPhysicalDevice physicalDevice,
-                                                                   VkSurfaceKHR surface, uint32_t *pSurfaceFormatCount,
-                                                                   VkSurfaceFormatKHR *pSurfaceFormats);
+ * @brief Implements vkGetPhysicalDeviceSurfaceFormatsKHR Vulkan entrypoint.
+ */
+VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfaceFormatsKHR(
+    VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, uint32_t *pSurfaceFormatCount,
+    VkSurfaceFormatKHR *pSurfaceFormats);
 
 /**
-    * @brief Implements vkGetPhysicalDeviceSurfacePresentModesKHR Vulkan entrypoint.
-    */
-VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfacePresentModesKHR(VkPhysicalDevice physicalDevice,
-                                                                        VkSurfaceKHR surface,
-                                                                        uint32_t *pPresentModeCount,
-                                                                        VkPresentModeKHR *pPresentModes);
+ * @brief Implements vkGetPhysicalDeviceSurfacePresentModesKHR Vulkan entrypoint.
+ */
+VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfacePresentModesKHR(
+    VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, uint32_t *pPresentModeCount,
+    VkPresentModeKHR *pPresentModes);
 
 /**
-    * @brief Implements vkGetPhysicalDeviceSurfaceSupportKHR Vulkan entrypoint.
-    */
+ * @brief Implements vkGetPhysicalDeviceSurfaceSupportKHR Vulkan entrypoint.
+ */
 VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfaceSupportKHR(VkPhysicalDevice physicalDevice,
-                                                                   uint32_t queueFamilyIndex, VkSurfaceKHR surface,
+                                                                   uint32_t queueFamilyIndex,
+                                                                   VkSurfaceKHR surface,
                                                                    VkBool32 *pSupported);
 }

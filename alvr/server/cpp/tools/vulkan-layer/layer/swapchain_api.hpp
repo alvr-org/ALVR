@@ -32,27 +32,27 @@
 
 #include <vulkan/vulkan.h>
 
-extern "C"
-{
+extern "C" {
 
-   VKAPI_ATTR VkResult wsi_layer_vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateInfoKHR *pSwapchainCreateInfo,
-                                                      const VkAllocationCallbacks *pAllocator, VkSwapchainKHR *pSwapchain);
+VKAPI_ATTR VkResult wsi_layer_vkCreateSwapchainKHR(
+    VkDevice device, const VkSwapchainCreateInfoKHR *pSwapchainCreateInfo,
+    const VkAllocationCallbacks *pAllocator, VkSwapchainKHR *pSwapchain);
 
-   VKAPI_ATTR void wsi_layer_vkDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapc,
-                                                   const VkAllocationCallbacks *pAllocator);
+VKAPI_ATTR void wsi_layer_vkDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapc,
+                                                const VkAllocationCallbacks *pAllocator);
 
-   VKAPI_ATTR VkResult wsi_layer_vkGetSwapchainImagesKHR(VkDevice device, VkSwapchainKHR swapc,
-                                                         uint32_t *pSwapchainImageCount, VkImage *pSwapchainImages);
+VKAPI_ATTR VkResult wsi_layer_vkGetSwapchainImagesKHR(VkDevice device, VkSwapchainKHR swapc,
+                                                      uint32_t *pSwapchainImageCount,
+                                                      VkImage *pSwapchainImages);
 
-   VKAPI_ATTR VkResult wsi_layer_vkAcquireNextImageKHR(VkDevice device, VkSwapchainKHR swapc, uint64_t timeout,
-                                                       VkSemaphore semaphore, VkFence fence, uint32_t *pImageIndex);
+VKAPI_ATTR VkResult wsi_layer_vkAcquireNextImageKHR(VkDevice device, VkSwapchainKHR swapc,
+                                                    uint64_t timeout, VkSemaphore semaphore,
+                                                    VkFence fence, uint32_t *pImageIndex);
 
-   VKAPI_ATTR VkResult wsi_layer_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo);
+VKAPI_ATTR VkResult wsi_layer_vkQueuePresentKHR(VkQueue queue,
+                                                const VkPresentInfoKHR *pPresentInfo);
 
-   VKAPI_ATTR VkResult wsi_layer_vkGetSwapchainCounterEXT(
-    VkDevice                                    device,
-    VkSwapchainKHR                              swapchain,
-    VkSurfaceCounterFlagBitsEXT                 counter,
-    uint64_t*                                   pCounterValue);
-
+VKAPI_ATTR VkResult wsi_layer_vkGetSwapchainCounterEXT(VkDevice device, VkSwapchainKHR swapchain,
+                                                       VkSurfaceCounterFlagBitsEXT counter,
+                                                       uint64_t *pCounterValue);
 }

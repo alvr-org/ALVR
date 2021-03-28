@@ -22,89 +22,86 @@
  * SOFTWARE.
  */
 
+#include "surface_api.hpp"
+#include "private_data.hpp"
 #include <cassert>
 #include <wsi/wsi_factory.hpp>
-#include "private_data.hpp"
-#include "surface_api.hpp"
 
 extern "C" {
 
 /**
  * @brief Implements vkGetPhysicalDeviceSurfaceCapabilitiesKHR Vulkan entrypoint.
  */
-VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VkPhysicalDevice physicalDevice,
-                                                                        VkSurfaceKHR surface,
-                                                                        VkSurfaceCapabilitiesKHR *pSurfaceCapabilities)
-{
-   auto &instance = layer::instance_private_data::get(physicalDevice);
-   if (instance.should_layer_handle_surface(surface))
-   {
-      wsi::surface_properties *props = wsi::get_surface_properties(surface);
-      assert(props != nullptr);
-      return props->get_surface_capabilities(physicalDevice, surface, pSurfaceCapabilities);
-   }
+VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+    VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
+    VkSurfaceCapabilitiesKHR *pSurfaceCapabilities) {
+    auto &instance = layer::instance_private_data::get(physicalDevice);
+    if (instance.should_layer_handle_surface(surface)) {
+        wsi::surface_properties *props = wsi::get_surface_properties(surface);
+        assert(props != nullptr);
+        return props->get_surface_capabilities(physicalDevice, surface, pSurfaceCapabilities);
+    }
 
-   /* If the layer cannot handle this surface, then necessarily the surface must have been created by the ICDs (or a
-    * layer below us.) So it is safe to assume that the ICDs (or layers below us) support VK_KHR_surface and therefore
-    * it is safe to can call down. This holds for other entrypoints below.
-    */
-   return instance.disp.GetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, pSurfaceCapabilities);
+    /* If the layer cannot handle this surface, then necessarily the surface must have been created
+     * by the ICDs (or a layer below us.) So it is safe to assume that the ICDs (or layers below us)
+     * support VK_KHR_surface and therefore it is safe to can call down. This holds for other
+     * entrypoints below.
+     */
+    return instance.disp.GetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface,
+                                                                 pSurfaceCapabilities);
 }
 
 /**
  * @brief Implements vkGetPhysicalDeviceSurfaceFormatsKHR Vulkan entrypoint.
  */
-VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfaceFormatsKHR(VkPhysicalDevice physicalDevice,
-                                                                   VkSurfaceKHR surface, uint32_t *pSurfaceFormatCount,
-                                                                   VkSurfaceFormatKHR *pSurfaceFormats)
-{
-   auto &instance = layer::instance_private_data::get(physicalDevice);
-   if (instance.should_layer_handle_surface(surface))
-   {
-      wsi::surface_properties *props = wsi::get_surface_properties(surface);
-      assert(props != nullptr);
-      return props->get_surface_formats(physicalDevice, surface, pSurfaceFormatCount, pSurfaceFormats);
-   }
+VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfaceFormatsKHR(
+    VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, uint32_t *pSurfaceFormatCount,
+    VkSurfaceFormatKHR *pSurfaceFormats) {
+    auto &instance = layer::instance_private_data::get(physicalDevice);
+    if (instance.should_layer_handle_surface(surface)) {
+        wsi::surface_properties *props = wsi::get_surface_properties(surface);
+        assert(props != nullptr);
+        return props->get_surface_formats(physicalDevice, surface, pSurfaceFormatCount,
+                                          pSurfaceFormats);
+    }
 
-   return instance.disp.GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, pSurfaceFormatCount,
-                                                           pSurfaceFormats);
+    return instance.disp.GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface,
+                                                            pSurfaceFormatCount, pSurfaceFormats);
 }
 
 /**
  * @brief Implements vkGetPhysicalDeviceSurfacePresentModesKHR Vulkan entrypoint.
  */
-VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfacePresentModesKHR(VkPhysicalDevice physicalDevice,
-                                                                        VkSurfaceKHR surface,
-                                                                        uint32_t *pPresentModeCount,
-                                                                        VkPresentModeKHR *pPresentModes)
-{
-   auto &instance = layer::instance_private_data::get(physicalDevice);
-   if (instance.should_layer_handle_surface(surface))
-   {
-      wsi::surface_properties *props = wsi::get_surface_properties(surface);
-      assert(props != nullptr);
-      return props->get_surface_present_modes(physicalDevice, surface, pPresentModeCount, pPresentModes);
-   }
+VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfacePresentModesKHR(
+    VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, uint32_t *pPresentModeCount,
+    VkPresentModeKHR *pPresentModes) {
+    auto &instance = layer::instance_private_data::get(physicalDevice);
+    if (instance.should_layer_handle_surface(surface)) {
+        wsi::surface_properties *props = wsi::get_surface_properties(surface);
+        assert(props != nullptr);
+        return props->get_surface_present_modes(physicalDevice, surface, pPresentModeCount,
+                                                pPresentModes);
+    }
 
-   return instance.disp.GetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, pPresentModeCount,
-                                                                pPresentModes);
+    return instance.disp.GetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface,
+                                                                 pPresentModeCount, pPresentModes);
 }
 
 /**
  * @brief Implements vkGetPhysicalDeviceSurfaceSupportKHR Vulkan entrypoint.
  */
 VKAPI_ATTR VkResult wsi_layer_vkGetPhysicalDeviceSurfaceSupportKHR(VkPhysicalDevice physicalDevice,
-                                                                   uint32_t queueFamilyIndex, VkSurfaceKHR surface,
-                                                                   VkBool32 *pSupported)
-{
-   auto &instance = layer::instance_private_data::get(physicalDevice);
-   if (instance.should_layer_handle_surface(surface))
-   {
-      *pSupported = VK_TRUE;
-      return VK_SUCCESS;
-   }
+                                                                   uint32_t queueFamilyIndex,
+                                                                   VkSurfaceKHR surface,
+                                                                   VkBool32 *pSupported) {
+    auto &instance = layer::instance_private_data::get(physicalDevice);
+    if (instance.should_layer_handle_surface(surface)) {
+        *pSupported = VK_TRUE;
+        return VK_SUCCESS;
+    }
 
-   return instance.disp.GetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, surface, pSupported);
+    return instance.disp.GetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex,
+                                                            surface, pSupported);
 }
 
 } /* extern "C" */

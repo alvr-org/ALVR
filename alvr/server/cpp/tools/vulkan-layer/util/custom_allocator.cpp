@@ -26,57 +26,43 @@
 
 extern "C" {
 
-static void *default_allocation(void *, size_t size, size_t, VkSystemAllocationScope)
-{
-   return malloc(size);
+static void *default_allocation(void *, size_t size, size_t, VkSystemAllocationScope) {
+    return malloc(size);
 }
 
-static void *default_reallocation(void *, void *pOriginal, size_t size, size_t, VkSystemAllocationScope)
-{
-   return realloc(pOriginal, size);
+static void *default_reallocation(void *, void *pOriginal, size_t size, size_t,
+                                  VkSystemAllocationScope) {
+    return realloc(pOriginal, size);
 }
 
-static void default_free(void *, void *pMemory)
-{
-   free(pMemory);
-}
+static void default_free(void *, void *pMemory) { free(pMemory); }
 }
 
-namespace util
-{
+namespace util {
 
-const allocator& allocator::get_generic()
-{
-   static allocator generic{nullptr, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND};
-   return generic;
+const allocator &allocator::get_generic() {
+    static allocator generic{nullptr, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND};
+    return generic;
 }
 
-
-allocator::allocator(const allocator& other, VkSystemAllocationScope new_scope)
-   : allocator{other.get_original_callbacks(), new_scope}
-{
-}
+allocator::allocator(const allocator &other, VkSystemAllocationScope new_scope)
+    : allocator{other.get_original_callbacks(), new_scope} {}
 
 /* If callbacks is already populated by vulkan then use those specified as default. */
-allocator::allocator(const VkAllocationCallbacks *callbacks, VkSystemAllocationScope scope)
-{
-   m_scope = scope;
-   if (callbacks != nullptr)
-   {
-      m_callbacks = *callbacks;
-   }
-   else
-   {
-      m_callbacks = {};
-      m_callbacks.pfnAllocation = default_allocation;
-      m_callbacks.pfnReallocation = default_reallocation;
-      m_callbacks.pfnFree = default_free;
-   }
+allocator::allocator(const VkAllocationCallbacks *callbacks, VkSystemAllocationScope scope) {
+    m_scope = scope;
+    if (callbacks != nullptr) {
+        m_callbacks = *callbacks;
+    } else {
+        m_callbacks = {};
+        m_callbacks.pfnAllocation = default_allocation;
+        m_callbacks.pfnReallocation = default_reallocation;
+        m_callbacks.pfnFree = default_free;
+    }
 }
 
-const VkAllocationCallbacks *allocator::get_original_callbacks() const
-{
-   return m_callbacks.pfnAllocation == default_allocation ? nullptr : &m_callbacks;
+const VkAllocationCallbacks *allocator::get_original_callbacks() const {
+    return m_callbacks.pfnAllocation == default_allocation ? nullptr : &m_callbacks;
 }
 
 } /* namespace util */

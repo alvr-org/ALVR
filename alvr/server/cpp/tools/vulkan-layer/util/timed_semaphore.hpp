@@ -39,15 +39,13 @@
 
 #pragma once
 
-extern "C"
-{
+extern "C" {
 #include <pthread.h>
 }
 
 #include <vulkan/vulkan.h>
 
-namespace util
-{
+namespace util {
 
 /**
  * brief semaphore with a safe relative timed wait
@@ -61,55 +59,53 @@ namespace util
  *
  * This code does not use the C++ standard library to avoid exceptions.
  */
-class timed_semaphore
-{
-public:
-   /* copying not implemented */
-   timed_semaphore &operator=(const timed_semaphore &) = delete;
-   timed_semaphore(const timed_semaphore &) = delete;
+class timed_semaphore {
+  public:
+    /* copying not implemented */
+    timed_semaphore &operator=(const timed_semaphore &) = delete;
+    timed_semaphore(const timed_semaphore &) = delete;
 
-   ~timed_semaphore();
-   timed_semaphore()
-      : initialized(false){};
+    ~timed_semaphore();
+    timed_semaphore() : initialized(false){};
 
-   /**
-    * @brief initializes the semaphore
-    *
-    * @param count initial value of the semaphore
-    * @retval VK_ERROR_OUT_OF_HOST_MEMORY out of memory condition from pthread calls
-    * @retval VK_SUCCESS on success
-    */
-   VkResult init(unsigned count);
+    /**
+     * @brief initializes the semaphore
+     *
+     * @param count initial value of the semaphore
+     * @retval VK_ERROR_OUT_OF_HOST_MEMORY out of memory condition from pthread calls
+     * @retval VK_SUCCESS on success
+     */
+    VkResult init(unsigned count);
 
-   /**
-    * @brief decrement semaphore, waiting (with timeout) if the value is 0
-    *
-    * @param timeout time to wait (ns). 0 doesn't block, UINT64_MAX waits indefinately.
-    * @retval VK_TIMEOUT timeout was non-zero and reached the timeout
-    * @retval VK_NOT_READY timeout was zero and count is 0
-    * @retval VK_SUCCESS on success
-    */
-   VkResult wait(uint64_t timeout);
+    /**
+     * @brief decrement semaphore, waiting (with timeout) if the value is 0
+     *
+     * @param timeout time to wait (ns). 0 doesn't block, UINT64_MAX waits indefinately.
+     * @retval VK_TIMEOUT timeout was non-zero and reached the timeout
+     * @retval VK_NOT_READY timeout was zero and count is 0
+     * @retval VK_SUCCESS on success
+     */
+    VkResult wait(uint64_t timeout);
 
-   /**
-    * @brief increment semaphore, potentially unblocking a waiting thread
-    */
-   void post();
+    /**
+     * @brief increment semaphore, potentially unblocking a waiting thread
+     */
+    void post();
 
-private:
-   /**
-    * @brief true if the semaphore has been initialized
-    *
-    * Determines if the destructor should cleanup the mutex and cond.
-    */
-   bool initialized;
-   /**
-    * @brief semaphore value
-    */
-   unsigned m_count;
+  private:
+    /**
+     * @brief true if the semaphore has been initialized
+     *
+     * Determines if the destructor should cleanup the mutex and cond.
+     */
+    bool initialized;
+    /**
+     * @brief semaphore value
+     */
+    unsigned m_count;
 
-   pthread_mutex_t m_mutex;
-   pthread_cond_t m_cond;
+    pthread_mutex_t m_mutex;
+    pthread_cond_t m_cond;
 };
 
 } /* namespace util */

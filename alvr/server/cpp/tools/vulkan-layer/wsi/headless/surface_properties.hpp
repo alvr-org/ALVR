@@ -28,24 +28,23 @@
 #include <vulkan/vulkan.h>
 #include <wsi/surface_properties.hpp>
 
-namespace wsi
-{
-namespace headless
-{
+namespace wsi {
+namespace headless {
 
-class surface_properties : public wsi::surface_properties
-{
-public:
-   VkResult get_surface_capabilities(VkPhysicalDevice physical_device, VkSurfaceKHR surface,
-                                     VkSurfaceCapabilitiesKHR *pSurfaceCapabilities) override;
+class surface_properties : public wsi::surface_properties {
+  public:
+    VkResult get_surface_capabilities(VkPhysicalDevice physical_device, VkSurfaceKHR surface,
+                                      VkSurfaceCapabilitiesKHR *pSurfaceCapabilities) override;
 
-   VkResult get_surface_formats(VkPhysicalDevice physical_device, VkSurfaceKHR surface, uint32_t *surfaceFormatCount,
-                                VkSurfaceFormatKHR *surfaceFormats) override;
+    VkResult get_surface_formats(VkPhysicalDevice physical_device, VkSurfaceKHR surface,
+                                 uint32_t *surfaceFormatCount,
+                                 VkSurfaceFormatKHR *surfaceFormats) override;
 
-   VkResult get_surface_present_modes(VkPhysicalDevice physical_device, VkSurfaceKHR surface,
-                                      uint32_t *pPresentModeCount, VkPresentModeKHR *pPresentModes) override;
+    VkResult get_surface_present_modes(VkPhysicalDevice physical_device, VkSurfaceKHR surface,
+                                       uint32_t *pPresentModeCount,
+                                       VkPresentModeKHR *pPresentModes) override;
 
-   static surface_properties &get_instance();
+    static surface_properties &get_instance();
 };
 
 } /* namespace headless */

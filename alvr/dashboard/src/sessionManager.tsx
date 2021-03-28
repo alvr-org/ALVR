@@ -1,3 +1,4 @@
+import React, { useContext, useState } from "react"
 import { subscribeToEvent } from "./eventDispatch"
 
 export interface Session {
@@ -6,7 +7,7 @@ export interface Session {
 }
 
 export interface SessionSettingsRoot {
-    [k: string]: SessionSettingsNode
+    [k: string]: SessionSettingsSection
 }
 
 // Type definitions translated from settings-schema/src/lib.rs
@@ -132,7 +133,6 @@ export type PresetGroup = [string, SchemaHOS][]
 type SessionListener = (session: Session) => void
 
 let listener: SessionListener = () => {}
-
 subscribeToEvent("sessionUpdated", () => {
     fetchSession().then(listener)
 })
@@ -141,19 +141,40 @@ async function fetchSession(): Promise<Session> {
     return await (await fetch("/api/session/load")).json()
 }
 
-export function subscribeToSession(callback: SessionListener): void {
-    listener = callback
-}
-
-export function applySessionSettings(sessionSettings: SessionSettingsRoot): void {
-    fetch("/api/session/store-settings", {
-        body: JSON.stringify(sessionSettings),
-    })
-}
+let SessionContext: React.Context<Session>
 
 export async function initializeSessionManager(): Promise<[SettingsSchema, Session]> {
     const schema = (await (await fetch("/api/settings-schema")).json()) as SettingsSchema
     const session = await fetchSession()
 
+    SessionContext = React.createContext(session)
+
     return [schema, session]
+}
+
+export function SessionContextWrapper({
+    children,
+    initialSession,
+}: {
+    children: React.ReactNode
+    initialSession: Session
+}): JSX.Element {
+    const [session, setSession] = useState(initialSession)
+
+    listener = session => {
+        setSession(session)
+    }
+
+    return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>
+}
+
+export function useSession(): Session {
+    return useContext(SessionContext)
+}
+
+export function applySessionSettings(sessionSettings: SessionSettingsRoot): void {
+    fetch("/api/session/store-settings", {
+        method: "POST",
+        body: JSON.stringify(sessionSettings),
+    })
 }

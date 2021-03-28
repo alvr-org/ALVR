@@ -1,12 +1,10 @@
 import React from "react"
 import { SchemaBoolean } from "../../sessionManager"
 
-export function Boolean({
-    schema,
-    session,
-}: {
+export function Boolean(props: {
     schema: SchemaBoolean
     session: boolean
+    setSession: (session: boolean) => void
 }): JSX.Element {
-    return <></>
+    return <>todo boolean</>
 }

@@ -235,7 +235,12 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
         command::run_in(
             &workspace_dir().join("alvr/dashboard"),
             &format!(
-                "npm install && npx snowpack build --out=../../build/{}/dashboard",
+                "npm install && npx webpack --mode {} --output-path=../../build/{}/dashboard",
+                if is_release {
+                    "production"
+                } else {
+                    "development"
+                },
                 SERVER_BUILD_DIR_NAME,
             ),
         )
@@ -259,21 +264,6 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
         server_build_dir().join(exec_fname("ALVR Launcher")),
     )
     .unwrap();
-
-    // if cfg!(target_os = "linux") {
-    //     use std::io::Write;
-
-    //     let mut shortcut = str_err(
-    //         fs::OpenOptions::new()
-    //             .append(true)
-    //             .open(release_dir.join("alvr.desktop")),
-    //     )?;
-    //     str_err(writeln!(
-    //         shortcut,
-    //         "Exec={}",
-    //         gui_dst_path.to_string_lossy()
-    //     ))?;
-    // }
 }
 
 pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {

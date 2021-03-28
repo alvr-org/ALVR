@@ -1,12 +1,10 @@
 import React from "react"
 import { SchemaOptional, SessionSettingsOptional } from "../../sessionManager"
 
-export function Optional({
-    schema,
-    session,
-}: {
+export function Optional(props: {
     schema: SchemaOptional
     session: SessionSettingsOptional
+    setSession: (session: SessionSettingsOptional) => void
 }): JSX.Element {
-    return <></>
+    return <>todo optional</>
 }

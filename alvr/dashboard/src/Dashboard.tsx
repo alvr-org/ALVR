@@ -12,11 +12,11 @@ import {
     TableOutlined,
 } from "@ant-design/icons"
 import {
-    Session,
+    applySessionSettings,
     SessionSettingsChoice,
     SessionSettingsSection,
     SettingsSchema,
-    subscribeToSession,
+    useSession,
 } from "./sessionManager"
 import { Clients } from "./components/Clients"
 import { Statistics } from "./components/Statistics"
@@ -26,20 +26,11 @@ import { Installation } from "./components/Installation"
 import { Logs } from "./components/Logs"
 import { About } from "./components/About"
 
-// Default theme. The default theme can be overridden with "dark" or "compact", but not vice versa
+// Import light theme by default to avoid reflow during loading
 import "antd/dist/antd.css"
 
 const INITIAL_SELECTED_TAB = "clients"
-
-interface SessionData {
-    session: Session
-    locale: string
-    layout: {
-        direction: "ltr" | "rtl"
-        componentSize: "small" | "middle" | "large"
-    }
-}
-
+ 
 function MenuEntries({
     isMobile,
     onClick,
@@ -133,11 +124,10 @@ function MobileMenu(props: { selectionHandler: (selection: string) => void }): J
     )
 }
 
-export function Dashboard(props: {
-    settingsSchema: SettingsSchema
-    initialSession: Session
-}): JSX.Element {
-    let themeKey = ((props.initialSession.session_settings["extra"] as SessionSettingsSection)[
+export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }): JSX.Element {
+    const session = useSession()
+
+    let themeKey = ((session.session_settings["extra"] as SessionSettingsSection)[
         "theme"
     ] as SessionSettingsChoice).variant
 
@@ -155,37 +145,25 @@ export function Dashboard(props: {
     } else if (themeKey === "Compact") {
         import("antd/dist/antd.compact.css")
     } else {
-        // Already imported on top
+        import("antd/dist/antd.css")
     }
 
-    function getSessionData(session: Session): SessionData {
-        const locale = (session.session_settings["extra"] as SessionSettingsSection)[
-            "locale"
-        ] as string
+    const extraSettings = session.session_settings["extra"] as SessionSettingsSection
 
-        const directionString = ((session.session_settings["extra"] as SessionSettingsSection)[
-            "layout_direction"
-        ] as SessionSettingsChoice).variant
-        const direction = directionString === "LeftToRight" ? "ltr" : "rtl"
+    let locale = extraSettings["locale"] as string
 
-        const componentSizeString = ((session.session_settings["extra"] as SessionSettingsSection)[
-            "layout_density"
-        ] as SessionSettingsChoice).variant
-        const componentSize = componentSizeString.toLowerCase() as "small" | "middle" | "large"
+    const directionString = (extraSettings["layout_direction"] as SessionSettingsChoice).variant
+    const direction = directionString === "LeftToRight" ? "ltr" : "rtl"
 
-        return { session, locale, layout: { direction, componentSize } }
-    }
-
-    const [sessionData, setSessionData] = useState(getSessionData(props.initialSession))
-
-    subscribeToSession(session => setSessionData(getSessionData(session)))
+    const componentSizeString = (extraSettings["layout_density"] as SessionSettingsChoice).variant
+    const componentSize = componentSizeString.toLowerCase() as "small" | "middle" | "large"
 
     const { xs } = Grid.useBreakpoint()
 
-    const [localeSelection, setLocaleSelection] = useState(sessionData.locale)
     function changeLocale(modalCloseHandle: () => void) {
-        //todo
-        localeSelection
+        extraSettings["locale"] = locale
+
+        applySessionSettings(session.session_settings)
 
         modalCloseHandle()
     }
@@ -202,7 +180,7 @@ export function Dashboard(props: {
                 maskClosable: true,
                 content: (
                     <Row justify="center">
-                        <Select defaultValue={sessionData.locale} onChange={setLocaleSelection}>
+                        <Select defaultValue={locale} onChange={value => (locale = value)}>
                             <Select.Option value="">System</Select.Option>
                             <Select.Option value="en">English</Select.Option>
                             <Select.Option value="it">Italiano</Select.Option>
@@ -216,7 +194,7 @@ export function Dashboard(props: {
     }
 
     return (
-        <ConfigProvider {...sessionData.layout}>
+        <ConfigProvider {...{ direction, componentSize }}>
             <Layout>
                 {xs ? (
                     <MobileMenu selectionHandler={selectionHandler} />
@@ -234,10 +212,7 @@ export function Dashboard(props: {
                         <Presets />
                     </div>
                     <div hidden={selectedTab != "settings"}>
-                        <Settings
-                            schema={props.settingsSchema}
-                            session={sessionData.session.session_settings}
-                        />
+                        <Settings schema={settingsSchema} />
                     </div>
                     <div hidden={selectedTab != "installation"}>
                         <Installation />

@@ -351,7 +351,10 @@ pub async fn record_audio_loop(
     }
 
     if config.channels() > 2 {
-        return fmt_e!("Audio devices with more than 2 channels are not supported. Please use some external downmixing software.");
+        return fmt_e!(
+            "Audio devices with more than 2 channels are not supported. {}",
+            "Please turn off surround audio."
+        );
     }
 
     let stream_config = StreamConfig {

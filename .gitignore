@@ -48,6 +48,7 @@ wix/harvested.wxs
 
 # build result
 /build/
+dist
 
 .vscode/
 .DS_Store

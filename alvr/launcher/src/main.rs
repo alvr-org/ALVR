@@ -65,9 +65,7 @@ fn launcher_lifecycle(handle: ExtEventSink, window_id: WindowId) {
     let mut tried_steamvr_launch = false;
     loop {
         // get a small non-code file
-        let maybe_response = request_agent
-            .get("http://127.0.0.1:8082/favicon.png")
-            .call();
+        let maybe_response = request_agent.get("http://127.0.0.1:8082/index.html").call();
         if let Ok(response) = maybe_response {
             if response.status() == 200 {
                 handle.submit_command(CLOSE_WINDOW, (), window_id).ok();

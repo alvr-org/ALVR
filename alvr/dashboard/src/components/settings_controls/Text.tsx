@@ -1,6 +1,10 @@
 import React from "react"
 import { SchemaText } from "../../sessionManager"
 
-export function Text({ schema, session }: { schema: SchemaText; session: string }): JSX.Element {
-    return <></>
+export function Text(props: {
+    schema: SchemaText
+    session: string
+    setSession: (session: string) => void
+}): JSX.Element {
+    return <>&quot;{props.session}&quot;</>
 }

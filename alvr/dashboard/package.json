@@ -29,13 +29,13 @@
         "eslint-plugin-react": "7",
         "eslint-plugin-react-hooks": "4",
         "html-webpack-plugin": "5",
-        "http-proxy": "1",
+        "http-proxy": ">=1.18.1",
         "prettier": "2",
         "style-loader": "2",
         "ts-loader": "8",
         "typescript": "4",
         "webpack": "5",
         "webpack-cli": "4",
-        "webpack-dev-server": "3"
+        "webpack-dev-server": ">=3.1.11"
     }
 }

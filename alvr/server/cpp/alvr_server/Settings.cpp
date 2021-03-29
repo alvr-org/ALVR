@@ -1,5 +1,5 @@
 #include "Settings.h"
-// #include "Logger.h"
+#include "Logger.h"
 #define PICOJSON_USE_INT64
 #include "include/picojson.h"
 #include <string>
@@ -39,7 +39,7 @@ void Settings::Load()
 		std::string err = picojson::parse(v, json);
 		if (!err.empty())
 		{
-			// Error("Error on parsing json: %hs\n", err.c_str());
+			Error("Error on parsing json: %hs\n", err.c_str());
 			return;
 		}
 
@@ -131,17 +131,16 @@ void Settings::Load()
 		m_gamma = (float)config.get("gamma").get<double>();
 		m_sharpening = (float)config.get("sharpening").get<double>();
 
-		// Debug("Config JSON: %hs\n", json.c_str());
-		// Info("Serial Number: %hs\n", mSerialNumber.c_str());
-		// Info("Model Number: %hs\n", mModelNumber.c_str());
-		// Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
-		// Info("Seconds from Vsync to Photons: %f\n", m_flSecondsFromVsyncToPhotons);
-		// Info("Refresh Rate: %d\n", m_refreshRate);
-
+		Debug("Config JSON: %hs\n", json.c_str());
+		Info("Serial Number: %hs\n", mSerialNumber.c_str());
+		Info("Model Number: %hs\n", mModelNumber.c_str());
+		Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
+		Info("Seconds from Vsync to Photons: %f\n", m_flSecondsFromVsyncToPhotons);
+		Info("Refresh Rate: %d\n", m_refreshRate);
 		m_loaded = true;
 	}
 	catch (std::exception &e)
 	{
-		// Error("Exception on parsing json: %hs\n", e.what());
+		Error("Exception on parsing json: %hs\n", e.what());
 	}
 }

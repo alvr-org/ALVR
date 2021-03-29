@@ -55,6 +55,7 @@ add_library(${PROJECT_NAME} SHARED
    util/custom_allocator.cpp
    util/extension_list.cpp
    util/fence.cpp
+   util/fake_logger.cpp
    wsi/display.cpp
    wsi/swapchain_base.cpp
    wsi/wsi_factory.cpp

@@ -22,6 +22,14 @@
 			{
 				"name" : "VK_KHR_surface",
 				"spec_version" : "1"
+			},
+			{
+				"name" : "VK_EXT_acquire_xlib_display",
+				"spec_version" : "1"
+			},
+			{
+				"name" : "VK_KHR_display",
+				"spec_version" : "1"
 			}
 		],
 		"device_extensions": [

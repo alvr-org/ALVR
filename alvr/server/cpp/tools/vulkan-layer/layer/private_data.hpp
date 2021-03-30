@@ -112,7 +112,8 @@ struct instance_dispatch_table {
     OPTIONAL(QueuePresentKHR)                                                                      \
     OPTIONAL(GetSwapchainCounterEXT)                                                               \
     OPTIONAL(RegisterDisplayEventEXT)                                                              \
-    OPTIONAL(GetFenceStatus)
+    OPTIONAL(GetFenceStatus)                                                                       \
+    OPTIONAL(GetMemoryFdKHR)
 
 struct device_dispatch_table {
     VkResult populate(VkDevice dev, PFN_vkGetDeviceProcAddr get_proc);

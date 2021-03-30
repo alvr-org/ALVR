@@ -30,7 +30,16 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include <vulkan/vulkan.h>
 
+#include "alvr_server/Logger.h"
 #include <util/timed_semaphore.hpp>
 
 #include "swapchain.hpp"
@@ -108,10 +117,116 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
         destroy_image(image);
         return res;
     }
+
+    // Export into a FD to send later
+    VkMemoryGetFdInfoKHR fd_info = {};
+    fd_info.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR;
+    fd_info.pNext = NULL;
+    fd_info.memory = data->memory;
+    fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+
+    int fd;
+    res = m_device_data.disp.GetMemoryFdKHR(m_device, &fd_info, &fd);
+    if (res != VK_SUCCESS) {
+        Error("GetMemoryFdKHR failed\n");
+        destroy_image(image);
+        return res;
+    }
+    m_fds.push_back(fd);
+    Debug("GetMemoryFdKHR returned fd=%d\n", fd);
+
     return res;
 }
 
-void swapchain::present_image(uint32_t pending_index) { unpresent_image(pending_index); }
+int swapchain::send_fds() {
+    // This function does the arcane magic for sending
+    // file descriptors over unix domain sockets
+    // Stolen from https://gist.github.com/kokjo/75cec0f466fc34fa2922
+    //
+    // There will always be 3 fds (for the 3 images created in the swapchain) so we can avoid
+    // dynamic length. Initially, I tried to send the length in the normal data field (msg.msg_iov /
+    // data) but for some reason it was emptied on arrival, no matter what I did.
+    //
+    struct msghdr msg;
+    struct iovec iov[1];
+    struct cmsghdr *cmsg = NULL;
+    int fds[3];
+    char ctrl_buf[CMSG_SPACE(sizeof(fds))];
+    char data[1];
+
+    assert(m_fds.size() == 3);
+    std::copy(m_fds.begin(), m_fds.end(), fds);
+
+    memset(&msg, 0, sizeof(struct msghdr));
+    memset(ctrl_buf, 0, CMSG_SPACE(sizeof(fds)));
+
+    iov[0].iov_base = data;
+    iov[0].iov_len = sizeof(data);
+
+    msg.msg_name = NULL;
+    msg.msg_namelen = 0;
+    msg.msg_iov = iov;
+    msg.msg_iovlen = 1;
+    msg.msg_controllen = CMSG_SPACE(sizeof(fds));
+    msg.msg_control = ctrl_buf;
+
+    cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(fds));
+
+    memcpy(CMSG_DATA(cmsg), fds, sizeof(fds));
+
+    return sendmsg(m_socket, &msg, 0);
+}
+
+bool swapchain::try_connect(uint32_t current_index) {
+    Debug("swapchain::try_connect\n");
+    m_socketPath = getenv("XDG_RUNTIME_DIR");
+    m_socketPath += "/alvr-ipc";
+
+    int ret;
+    m_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+    struct sockaddr_un name;
+    if (m_socket == -1) {
+        perror("socket");
+        exit(1);
+    }
+
+    memset(&name, 0, sizeof(name));
+    name.sun_family = AF_UNIX;
+    strncpy(name.sun_path, m_socketPath.c_str(), sizeof(name.sun_path) - 1);
+
+    ret = connect(m_socket, (const struct sockaddr *)&name, sizeof(name));
+    if (ret == -1) {
+        return false; // we will try again next frame
+    }
+
+    ret = send_fds();
+    if (ret == -1) {
+        perror("sendmsg");
+        exit(1);
+    }
+    Debug("swapchain sent fds\n");
+
+    close(m_socket);
+    return true;
+}
+
+void swapchain::present_image(uint32_t pending_index) {
+    if (!m_connected) {
+        m_connected = try_connect();
+    } else {
+        int ret;
+        ret = write(m_socket, pending_index, sizeof(pending_index));
+        if (ret == -1) {
+            Error("error while trying to send pending_index");
+            perror("write");
+            exit(1);
+        }
+    }
+    unpresent_image(pending_index);
+}
 
 void swapchain::destroy_image(wsi::swapchain_image &image) {
     if (image.status != wsi::swapchain_image::INVALID) {

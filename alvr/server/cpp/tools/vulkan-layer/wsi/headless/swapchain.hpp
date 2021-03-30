@@ -30,6 +30,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include <vulkan/vk_icd.h>
 #include <vulkan/vulkan.h>
 #include <wsi/swapchain_base.hpp>
@@ -85,6 +87,14 @@ class swapchain : public wsi::swapchain_base {
      * @param image Handle to the image about to be released.
      */
     void destroy_image(wsi::swapchain_image &image);
+
+  private:
+    bool try_connect();
+    int send_fds();
+    int m_socket;
+    std::string m_socketPath;
+    bool m_connected = false;
+	std::vector<int> m_fds;
 };
 
 } /* namespace headless */

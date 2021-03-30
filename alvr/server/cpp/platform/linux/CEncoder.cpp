@@ -7,6 +7,8 @@
 #include <openvr_driver.h>
 #include <stdexcept>
 #include <string>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include "ALVR-common/packet_types.h"
 #include "alvr_server/ClientConnection.h"
@@ -16,105 +18,101 @@
 #include "alvr_server/Statistics.h"
 #include "subprocess.hpp"
 
+CEncoder::CEncoder(std::shared_ptr<ClientConnection> listener,
+                   std::shared_ptr<PoseHistory> poseHistory)
+    : m_listener(listener), m_poseHistory(poseHistory) {}
 
-CEncoder::CEncoder(std::shared_ptr<ClientConnection> listener, std::shared_ptr<PoseHistory> poseHistory):
-	m_listener(listener),
-	m_poseHistory(poseHistory)
-{
+CEncoder::~CEncoder() { Stop(); }
+
+void CEncoder::GetFds(int client, int (*received_fds)[3]) {
+    struct msghdr msg;
+    struct cmsghdr *cmsg;
+    union {
+        struct cmsghdr cm;
+        u_int8_t pktinfo_sizer[sizeof(struct cmsghdr) + 1024];
+    } control_un;
+    struct iovec iov[1];
+    char data[1];
+    int ret;
+
+    msg.msg_control = &control_un;
+    msg.msg_controllen = sizeof(control_un);
+    msg.msg_flags = 0;
+    msg.msg_name = NULL;
+    msg.msg_namelen = 0;
+    iov[0].iov_base = data;
+    iov[0].iov_len = 1;
+    msg.msg_iov = iov;
+    msg.msg_iovlen = 1;
+
+    ret = recvmsg(client, &msg, 0);
+    if (ret == -1) {
+        perror("recvmsg");
+        exit(1);
+    }
+
+    for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+        if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
+            memcpy(received_fds, CMSG_DATA(cmsg), sizeof(*received_fds));
+            break;
+        }
+    }
+
+    if (cmsg == NULL) {
+        fprintf(stderr, "CEncoder: cmsg is NULL\n");
+        exit(1);
+    }
+}
+void CEncoder::Run() {
+    Info("CEncoder::Run\n");
+    m_socketPath = getenv("XDG_RUNTIME_DIR");
+    m_socketPath += "/alvr-ipc";
+
+    int ret;
+    // we don't really care about what happends with unlink, it's just incase we crashed before this run
+    ret = unlink(m_socketPath.c_str());
+
+    m_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+    struct sockaddr_un name;
+    if (m_socket == -1) {
+        perror("socket");
+        exit(1);
+    }
+
+    memset(&name, 0, sizeof(name));
+    name.sun_family = AF_UNIX;
+    strncpy(name.sun_path, m_socketPath.c_str(), sizeof(name.sun_path) - 1);
+
+    ret = bind(m_socket, (const struct sockaddr *)&name, sizeof(name));
+    if (ret == -1) {
+        perror("bind");
+        exit(1);
+    }
+
+    ret = listen(m_socket, 1024);
+    if (ret == -1) {
+        perror("listen");
+        exit(1);
+    }
+
+    Info("CEncoder Listening\n");
+    int client = accept(m_socket, NULL, NULL);
+    Info("CEncoder client connected");
+	int received_fds[3];
+	GetFds(client, &received_fds);
+
+    printf("\n\nCEncoder: got fds: %d,%d,%d\n", received_fds[0], received_fds[1], received_fds[2]);
+
+    close(client);
+    this->Stop();
 }
 
-CEncoder::~CEncoder()
-{
-	Stop();
+void CEncoder::Stop() {
+    m_exiting = true;
+    close(m_socket);
+    unlink(m_socketPath.c_str());
 }
 
-namespace
-{
-void read_exactly(int fd, char* out, size_t size, std::atomic_bool& exiting)
-{
-	while (not exiting and size != 0)
-	{
-		timeval timeout{
-			.tv_sec = 0,
-			.tv_usec = 15000
-		};
-		fd_set read_fd, write_fd, except_fd;
-		FD_ZERO(&read_fd);
-		FD_SET(fd, &read_fd);
-		FD_ZERO(&write_fd);
-		FD_ZERO(&except_fd);
-		int count = select(fd + 1, &read_fd, &write_fd, &except_fd, &timeout);
-		if (count < 0) {
-			throw MakeException("select failed: %s", strerror(errno));
-		} else if (count == 1)
-		{
-			int s = read(fd, out, size);
-			if (s == -1)
-			{
-				throw MakeException("read failed: %s", strerror(errno));
-			}
-			out+= s;
-			size -= s;
-		}
-	}
-}
+void CEncoder::OnPacketLoss() { m_scheduler.OnPacketLoss(); }
 
-}
-
-void CEncoder::Run()
-{
-	try {
-		auto p = subprocess::Popen(
-				{"true", //FIXME: get the installation path
-				std::to_string(Settings::Instance().m_renderWidth),
-				std::to_string(Settings::Instance().m_renderHeight),
-				std::to_string(Settings::Instance().m_refreshRate),
-				std::to_string(Settings::Instance().m_codec),
-				std::to_string(Settings::Instance().mEncodeBitrateMBs)},
-				subprocess::output{subprocess::PIPE}
-				);
-
-		int pipe = fileno(p.output());
-		std::vector<char> frame_data;
-		for(int frame = 0; not m_exiting; ++frame)
-		{
-			std::chrono::system_clock::time_point grab_time;
-			read_exactly(pipe, (char*)&grab_time, sizeof(grab_time), m_exiting);
-
-			int size;
-			read_exactly(pipe, (char*)&size, sizeof(int), m_exiting);
-			frame_data.resize(size);
-			read_exactly(pipe, frame_data.data(), size, m_exiting);
-
-			uint64_t server_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(grab_time.time_since_epoch()).count();
-			auto hmd_pose = m_poseHistory->GetPoseAt(m_listener->serverToClientTime(server_timestamp) - 5000);
-			if (hmd_pose)
-				m_poseSubmitIndex = hmd_pose->info.FrameIndex;
-
-			m_listener->GetStatistics()->EncodeOutput(
-					std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - grab_time).count());
-			m_listener->SendVideo((uint8_t*)frame_data.data(), size, m_poseSubmitIndex);
-		}
-	}
-	catch (std::exception& e)
-	{
-		if (not m_exiting)
-			Error("encoder failed with error %s", e.what());
-	}
-}
-
-void CEncoder::Stop()
-{
-	m_exiting = true;
-	kill(m_subprocess, SIGINT);
-	Join();
-}
-
-void CEncoder::OnPacketLoss()
-{
-	m_scheduler.OnPacketLoss();
-}
-
-void CEncoder::InsertIDR() {
-	m_scheduler.InsertIDR();
-}
+void CEncoder::InsertIDR() { m_scheduler.InsertIDR(); }

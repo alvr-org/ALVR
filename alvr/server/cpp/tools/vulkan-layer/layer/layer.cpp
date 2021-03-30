@@ -174,6 +174,22 @@ VKAPI_ATTR VkResult create_instance(const VkInstanceCreateInfo *pCreateInfo,
         modified_app_info.apiVersion = minimum_required_vulkan_version;
     }
 
+    // Hijack one extension name
+    // the headless extension can't be added as a new parameter, because the loader performs a copy before
+    // calling the createInstance functions. The loader must know we activated this function because it
+    // will enable bits in the wsi part, so we switch to vulkan 1.1, and replace one of the extentions
+    // that has been promoted, with a const_cast.
+    for (uint32_t i = 0 ; i < pCreateInfo->enabledExtensionCount ; ++i) {
+      if (strcmp("VK_KHR_external_memory_capabilities", pCreateInfo->ppEnabledExtensionNames[i]) == 0)
+      {
+        const char** ext = const_cast<const char**>(pCreateInfo->ppEnabledExtensionNames + i);
+        *ext = VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME;
+      }
+    }
+
+    auto createInfo = *pCreateInfo;
+    createInfo.pApplicationInfo = &modified_app_info;
+
     /* Now call create instance on the chain further down the list.
      * Note that we do not remove the extensions that the layer supports from
      * modified_info.ppEnabledExtensionNames. Layers have to abide the rule that vkCreateInstance
@@ -181,7 +197,7 @@ VKAPI_ATTR VkResult create_instance(const VkInstanceCreateInfo *pCreateInfo,
      * extension list to ensure that ICDs do not see extensions that they do not support.
      */
     VkResult result;
-    result = fpCreateInstance(pCreateInfo, pAllocator, pInstance);
+    result = fpCreateInstance(&createInfo, pAllocator, pInstance);
     if (result != VK_SUCCESS) {
         return result;
     }

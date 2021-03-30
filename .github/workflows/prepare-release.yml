@@ -73,6 +73,10 @@ jobs:
         with:
           path: deps
           key: windows-deps
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
       - name: Build dependencies
         if: steps.deps_cache.outputs.cache-hit != 'true'
         env:
@@ -160,6 +164,12 @@ jobs:
         with:
           path: deps
           key: android-deps
+      - uses: actions-rs/toolchain@v1
+        if: steps.deps_cache.outputs.cache-hit != 'true'
+        with:
+          toolchain: stable
+          target: aarch64-linux-android
+          override: true
       - name: Build dependencies
         if: steps.deps_cache.outputs.cache-hit != 'true'
         env:

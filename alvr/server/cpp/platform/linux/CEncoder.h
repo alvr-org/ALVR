@@ -4,6 +4,7 @@
 #include "shared/threadtools.h"
 #include <atomic>
 #include <sys/types.h>
+#include <vulkan/vulkan.hpp>
 
 class ClientConnection;
 class PoseHistory;
@@ -20,6 +21,8 @@ class CEncoder : public CThread {
     void InsertIDR();
 
   private:
+    void GetFds(int client, int (*fds)[3]);
+
     std::shared_ptr<ClientConnection> m_listener;
     std::shared_ptr<PoseHistory> m_poseHistory;
     uint64_t m_poseSubmitIndex = 0;
@@ -27,5 +30,6 @@ class CEncoder : public CThread {
     IDRScheduler m_scheduler;
     int m_socket;
     std::string m_socketPath;
-    void GetFds(int client, int (*fds)[3]);
+    int m_fds[3];
+	vk::Instance m_vkInstance;
 };

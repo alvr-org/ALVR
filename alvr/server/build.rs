@@ -67,6 +67,7 @@ fn main() {
         cpp_dir.to_string_lossy()
     );
     println!("cargo:rustc-link-lib=openvr_api");
+    println!("cargo:rustc-link-lib=vulkan");
 
     for path in cpp_paths {
         println!("cargo:rerun-if-changed={}", path.to_string_lossy());

@@ -9,6 +9,7 @@
 #include <string>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <vulkan/vulkan.hpp>
 
 #include "ALVR-common/packet_types.h"
 #include "alvr_server/ClientConnection.h"
@@ -16,6 +17,7 @@
 #include "alvr_server/PoseHistory.h"
 #include "alvr_server/Settings.h"
 #include "alvr_server/Statistics.h"
+#include "protocol.h"
 #include "subprocess.hpp"
 
 CEncoder::CEncoder(std::shared_ptr<ClientConnection> listener,
@@ -69,7 +71,8 @@ void CEncoder::Run() {
     m_socketPath += "/alvr-ipc";
 
     int ret;
-    // we don't really care about what happends with unlink, it's just incase we crashed before this run
+    // we don't really care about what happends with unlink, it's just incase we crashed before this
+    // run
     ret = unlink(m_socketPath.c_str());
 
     m_socket = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -97,11 +100,29 @@ void CEncoder::Run() {
 
     Info("CEncoder Listening\n");
     int client = accept(m_socket, NULL, NULL);
-    Info("CEncoder client connected");
-	int received_fds[3];
-	GetFds(client, &received_fds);
+    Info("CEncoder client connected\n");
+    GetFds(client, &m_fds);
 
-    printf("\n\nCEncoder: got fds: %d,%d,%d\n", received_fds[0], received_fds[1], received_fds[2]);
+    Debug("CEncoder: got fds: %d,%d,%d\n", m_fds[0], m_fds[1], m_fds[2]);
+    //
+    // We have everything we need, it is time to initalize Vulkan.
+    //
+    // putenv("VK_APIDUMP_LOG_FILENAME=\"/home/ron/alvr_vrdump.txt\"");
+    fprintf(stderr, "\n\nWe are initalizing Vulkan in CEncoder thread\n\n\n");
+    vk::ApplicationInfo applicationInfo( "ALVR", 1, "vulkan.hpp", 1, VK_API_VERSION_1_1 );
+    vk::InstanceCreateInfo instanceCreateInfo( {}, &applicationInfo );
+    vk::Instance instance = vk::createInstance( instanceCreateInfo );
+    vk::PhysicalDevice physicalDevice = instance.enumeratePhysicalDevices().front();
+
+    present_packet packet;
+    while (true) {
+        ret = read(client, &packet, sizeof(packet));
+        if (ret == -1) {
+            perror("read");
+            exit(1);
+        }
+        // Debug("CEncoder: image index %d and frame %d\n", packet.image, packet.frame);
+    }
 
     close(client);
     this->Stop();

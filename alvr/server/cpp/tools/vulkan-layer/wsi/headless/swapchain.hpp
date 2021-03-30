@@ -94,7 +94,8 @@ class swapchain : public wsi::swapchain_base {
     int m_socket;
     std::string m_socketPath;
     bool m_connected = false;
-	std::vector<int> m_fds;
+    std::vector<int> m_fds;
+    long m_present_count;
 };
 
 } /* namespace headless */

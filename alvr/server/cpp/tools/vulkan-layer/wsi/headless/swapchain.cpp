@@ -42,6 +42,7 @@
 #include "alvr_server/Logger.h"
 #include <util/timed_semaphore.hpp>
 
+#include "platform/linux/protocol.h"
 #include "swapchain.hpp"
 
 namespace wsi {
@@ -57,6 +58,7 @@ swapchain::swapchain(layer::device_private_data &dev_data, const VkAllocationCal
 
 swapchain::~swapchain() {
     /* Call the base's teardown */
+    close(m_socket);
     teardown();
 }
 
@@ -180,7 +182,7 @@ int swapchain::send_fds() {
     return sendmsg(m_socket, &msg, 0);
 }
 
-bool swapchain::try_connect(uint32_t current_index) {
+bool swapchain::try_connect() {
     Debug("swapchain::try_connect\n");
     m_socketPath = getenv("XDG_RUNTIME_DIR");
     m_socketPath += "/alvr-ipc";
@@ -209,7 +211,6 @@ bool swapchain::try_connect(uint32_t current_index) {
     }
     Debug("swapchain sent fds\n");
 
-    close(m_socket);
     return true;
 }
 
@@ -218,13 +219,17 @@ void swapchain::present_image(uint32_t pending_index) {
         m_connected = try_connect();
     } else {
         int ret;
-        ret = write(m_socket, pending_index, sizeof(pending_index));
+        present_packet packet;
+        packet.image = pending_index;
+        packet.frame = m_present_count;
+        ret = write(m_socket, &packet, sizeof(packet));
         if (ret == -1) {
-            Error("error while trying to send pending_index");
+            Error("error while trying to send present packet\n");
             perror("write");
             exit(1);
         }
     }
+    m_present_count++;
     unpresent_image(pending_index);
 }
 

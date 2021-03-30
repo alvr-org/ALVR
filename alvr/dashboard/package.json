@@ -18,6 +18,7 @@
         "react-dom": "17"
     },
     "devDependencies": {
+        "@pmmmwh/react-refresh-webpack-plugin": "0.4",
         "@types/react": "17",
         "@types/react-dom": "17",
         "@typescript-eslint/eslint-plugin": "4",
@@ -29,8 +30,8 @@
         "eslint-plugin-react": "7",
         "eslint-plugin-react-hooks": "4",
         "html-webpack-plugin": "5",
-        "http-proxy": ">=1.18.1",
         "prettier": "2",
+        "react-refresh-typescript": "1",
         "style-loader": "2",
         "ts-loader": "8",
         "typescript": "4",

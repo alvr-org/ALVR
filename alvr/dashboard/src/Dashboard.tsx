@@ -30,7 +30,7 @@ import { About } from "./components/About"
 import "antd/dist/antd.css"
 
 const INITIAL_SELECTED_TAB = "clients"
- 
+
 function MenuEntries({
     isMobile,
     onClick,

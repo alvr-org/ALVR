@@ -166,9 +166,9 @@ VKAPI_ATTR VkResult create_instance(const VkInstanceCreateInfo *pCreateInfo,
     VkApplicationInfo modified_app_info{};
     if (nullptr != pCreateInfo->pApplicationInfo) {
         modified_app_info = *pCreateInfo->pApplicationInfo;
-        if (modified_app_info.apiVersion < minimum_required_vulkan_version) {
+        // if (modified_app_info.apiVersion < minimum_required_vulkan_version) {
             modified_app_info.apiVersion = minimum_required_vulkan_version;
-        }
+        // }
     } else {
         modified_app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         modified_app_info.apiVersion = minimum_required_vulkan_version;

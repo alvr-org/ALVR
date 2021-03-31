@@ -31,38 +31,30 @@ CEncoder::CEncoder(std::shared_ptr<ClientConnection> listener,
 
 CEncoder::~CEncoder() { Stop(); }
 
-namespace
-{
-void read_exactly(int fd, char* out, size_t size, std::atomic_bool& exiting)
-{
-  while (not exiting and size != 0)
-  {
-    timeval timeout{
-      .tv_sec = 0,
-      .tv_usec = 15000
-    };
-    fd_set read_fd, write_fd, except_fd;
-    FD_ZERO(&read_fd);
-    FD_SET(fd, &read_fd);
-    FD_ZERO(&write_fd);
-    FD_ZERO(&except_fd);
-    int count = select(fd + 1, &read_fd, &write_fd, &except_fd, &timeout);
-    if (count < 0) {
-      throw MakeException("select failed: %s", strerror(errno));
-    } else if (count == 1)
-    {
-      int s = read(fd, out, size);
-      if (s == -1)
-      {
-        throw MakeException("read failed: %s", strerror(errno));
-      }
-      out+= s;
-      size -= s;
+namespace {
+void read_exactly(int fd, char *out, size_t size, std::atomic_bool &exiting) {
+    while (not exiting and size != 0) {
+        timeval timeout{.tv_sec = 0, .tv_usec = 15000};
+        fd_set read_fd, write_fd, except_fd;
+        FD_ZERO(&read_fd);
+        FD_SET(fd, &read_fd);
+        FD_ZERO(&write_fd);
+        FD_ZERO(&except_fd);
+        int count = select(fd + 1, &read_fd, &write_fd, &except_fd, &timeout);
+        if (count < 0) {
+            throw MakeException("select failed: %s", strerror(errno));
+        } else if (count == 1) {
+            int s = read(fd, out, size);
+            if (s == -1) {
+                throw MakeException("read failed: %s", strerror(errno));
+            }
+            out += s;
+            size -= s;
+        }
     }
-  }
 }
 
-}
+} // namespace
 
 void CEncoder::GetFds(int client, int (*received_fds)[3]) {
     struct msghdr msg;
@@ -138,9 +130,15 @@ void CEncoder::Run() {
 
     Info("CEncoder Listening\n");
     int client = accept(m_socket, NULL, NULL);
-    Info("CEncoder client connected\n");
     init_packet init;
-    read_exactly(client, (char*)&init, sizeof(init), m_exiting);
+    read_exactly(client, (char *)&init, sizeof(init), m_exiting);
+    char ifbuf[256];
+    char ifbuf2[256];
+    sprintf(ifbuf, "/proc/%d/cmdline", (int)init.source_pid);
+    std::ifstream ifscmdl(ifbuf);
+    ifscmdl >> ifbuf2;
+    Info("CEncoder client connected, pid %d, cmdline %s\n", (int)init.source_pid, ifbuf2);
+
     GetFds(client, &m_fds);
 
     Debug("CEncoder: got fds: %d,%d,%d\n", m_fds[0], m_fds[1], m_fds[2]);
@@ -150,57 +148,64 @@ void CEncoder::Run() {
     // putenv("VK_APIDUMP_LOG_FILENAME=\"/home/ron/alvr_vrdump.txt\"");
     fprintf(stderr, "\n\nWe are initalizing Vulkan in CEncoder thread\n\n\n");
 
+    putenv("VK_INSTANCE_LAYERS");
     AVBufferRef *vulkan_ctx;
-    av_hwdevice_ctx_create(&vulkan_ctx, AV_HWDEVICE_TYPE_VULKAN, init.device_name.data(), NULL, 0);
+    AVDictionary *d = NULL; // "create" an empty dictionary
+    av_log_set_level(AV_LOG_VERBOSE);
+    av_dict_set(&d, "debug", "1", 0); // add an entry
+    av_hwdevice_ctx_create(&vulkan_ctx, AV_HWDEVICE_TYPE_VULKAN, init.device_name.data(), d, 0);
 
-    AVHWDeviceContext *hwctx = (AVHWDeviceContext*)vulkan_ctx->data;
-    AVVulkanDeviceContext *vkctx = (AVVulkanDeviceContext*)hwctx->internal;
+    AVHWDeviceContext *hwctx = (AVHWDeviceContext *)vulkan_ctx->data;
+    AVVulkanDeviceContext *vkctx = (AVVulkanDeviceContext *)hwctx->internal;
     vk::Device device = vkctx->act_dev;
 
-    AVVkFrame* images[3];
+    AVVkFrame *images[3];
 
-    init.image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // VUID-VkImageCreateInfo-pNext-01443
-    for (size_t i = 0; i < 3 ; ++i)
-    {
-      vk::ExternalMemoryImageCreateInfo extMemImageInfo;
-      extMemImageInfo.handleTypes = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
-      init.image_create_info.pNext = &extMemImageInfo;
-      vk::Image image = device.createImage(init.image_create_info);
+    init.image_create_info.initialLayout =
+        VK_IMAGE_LAYOUT_UNDEFINED; // VUID-VkImageCreateInfo-pNext-01443
+    assert(init.image_create_info.queueFamilyIndexCount == 0);
+    assert(init.image_create_info.pNext == NULL);
+    for (size_t i = 0; i < 3; ++i) {
+        vk::ExternalMemoryImageCreateInfo extMemImageInfo;
+        extMemImageInfo.handleTypes = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
+        init.image_create_info.pNext = &extMemImageInfo;
+        vk::Image image = device.createImage(init.image_create_info);
 
-      auto req = device.getImageMemoryRequirements(image);
+        auto req = device.getImageMemoryRequirements(image);
 
-      vk::MemoryDedicatedAllocateInfo dedicatedMemInfo;
-      dedicatedMemInfo.image = image;
-      vk::ImportMemoryFdInfoKHR importMemInfo;
-      importMemInfo.pNext = &dedicatedMemInfo;
-      importMemInfo.handleType = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
-      importMemInfo.fd = m_fds[i];
+        vk::MemoryDedicatedAllocateInfo dedicatedMemInfo;
+        dedicatedMemInfo.image = image;
+        vk::ImportMemoryFdInfoKHR importMemInfo;
+        importMemInfo.pNext = &dedicatedMemInfo;
+        importMemInfo.handleType = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
+        importMemInfo.fd = m_fds[i];
 
-      vk::MemoryAllocateInfo memAllocInfo;
-      memAllocInfo.pNext = &importMemInfo;
-      memAllocInfo.allocationSize = req.size;
-      memAllocInfo.memoryTypeIndex = init.mem_index;
+        vk::MemoryAllocateInfo memAllocInfo;
+        memAllocInfo.pNext = &importMemInfo;
+        memAllocInfo.allocationSize = req.size;
+        memAllocInfo.memoryTypeIndex = init.mem_index;
 
-      vk::DeviceMemory mem = device.allocateMemory(memAllocInfo);
-      device.bindImageMemory(image, mem, 0);
+        vk::DeviceMemory mem = device.allocateMemory(memAllocInfo);
+        device.bindImageMemory(image, mem, 0);
 
-      vk::SemaphoreCreateInfo semInfo;
-      vk::Semaphore semaphore = device.createSemaphore(semInfo);
+        vk::SemaphoreCreateInfo semInfo;
+        vk::Semaphore semaphore = device.createSemaphore(semInfo);
 
-      images[i] = av_vk_frame_alloc();
-      images[i]->img[0] = image;
-      images[i]->tiling = init.image_create_info.tiling;
-      images[i]->mem[0] = mem;
-      images[i]->size[0] = req.size;
-      //FIXME: images[i]->flags
-      //FIXME: images[i]->access
-      images[i]->layout[0] = VK_IMAGE_LAYOUT_UNDEFINED;
-      images[i]->sem[0] = semaphore;
+        images[i] = av_vk_frame_alloc();
+        images[i]->img[0] = image;
+        images[i]->tiling = init.image_create_info.tiling;
+        images[i]->mem[0] = mem;
+        images[i]->size[0] = req.size;
+        // FIXME: images[i]->flags
+        // FIXME: images[i]->access
+        images[i]->layout[0] = VK_IMAGE_LAYOUT_UNDEFINED;
+        images[i]->sem[0] = semaphore;
     }
 
+    fprintf(stderr, "CEncoder starting to read present packets");
     present_packet packet;
     while (not m_exiting) {
-        read_exactly(client, (char*)&packet, sizeof(packet), m_exiting);
+        read_exactly(client, (char *)&packet, sizeof(packet), m_exiting);
     }
 
     close(client);

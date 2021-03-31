@@ -209,14 +209,19 @@ bool swapchain::try_connect() {
     }
 
     VkPhysicalDeviceProperties prop;
-    m_device_data.instance_data.disp.GetPhysicalDeviceProperties(m_device_data.physical_device, &prop);
+    m_device_data.instance_data.disp.GetPhysicalDeviceProperties(m_device_data.physical_device,
+                                                                 &prop);
 
-    init_packet init{
-      .num_images = uint32_t(m_fds.size()),
-      .image_create_info = m_create_info,
-      .mem_index = m_mem_index
-    };
+    init_packet init{.num_images = uint32_t(m_fds.size()),
+                     .image_create_info = m_create_info,
+                     .mem_index = m_mem_index,
+                     .source_pid = getpid()};
     memcpy(init.device_name.data(), prop.deviceName, sizeof(prop.deviceName));
+    ret = write(m_socket, &init, sizeof(init));
+    if (ret == -1) {
+        perror("write");
+        exit(1);
+    }
 
     ret = send_fds();
     if (ret == -1) {

@@ -32,7 +32,7 @@ fn main() {
 
     let mut build = cc::Build::new();
     build
-        .debug(false) // This is because we cannot link to msvcrtd (see below)
+        .debug(true) // This is because we cannot link to msvcrtd (see below)
         .cpp(true)
         .files(source_files_paths)
         .flag_if_supported("-isystemcpp/openvr/headers") // silences many warnings from openvr headers
@@ -68,6 +68,8 @@ fn main() {
     );
     println!("cargo:rustc-link-lib=openvr_api");
     println!("cargo:rustc-link-lib=vulkan");
+    println!("cargo:rustc-link-lib=avutil");
+    println!("cargo:rustc-link-lib=avcodec");
 
     for path in cpp_paths {
         println!("cargo:rerun-if-changed={}", path.to_string_lossy());

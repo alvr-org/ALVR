@@ -1,6 +1,7 @@
 #include "CEncoder.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <exception>
 #include <memory>
@@ -130,7 +131,7 @@ void CEncoder::Run() {
         exit(1);
     }
 
-    ret = listen(m_socket, 1024);
+    ret = listen(m_socket, 0);
     if (ret == -1) {
         perror("listen");
         exit(1);
@@ -144,6 +145,15 @@ void CEncoder::Run() {
     GetFds(client, &m_fds);
 
     Debug("CEncoder: got fds: %d,%d,%d\n", m_fds[0], m_fds[1], m_fds[2]);
+    init_packet init_packet;
+    ret = read(client, &init_packet, sizeof(init_packet));
+    if (ret == -1) {
+        perror("read");
+        exit(1);
+    }
+    std::array<uint8_t, 8> targetPpcUuid;
+    std::copy(std::begin(init_packet.devicePpcUuid), std::end(init_packet.devicePpcUuid),
+              std::begin(targetPpcUuid));
     //
     // We have everything we need, it is time to initalize Vulkan.
     //
@@ -210,6 +220,8 @@ void CEncoder::Stop() {
     m_exiting = true;
     close(m_socket);
     unlink(m_socketPath.c_str());
+    m_vkDevice.destroy();
+    m_vkInstance.destroy();
 }
 
 void CEncoder::OnPacketLoss() { m_scheduler.OnPacketLoss(); }

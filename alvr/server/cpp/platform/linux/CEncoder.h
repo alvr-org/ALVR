@@ -31,5 +31,6 @@ class CEncoder : public CThread {
     int m_socket;
     std::string m_socketPath;
     int m_fds[3];
-	vk::Instance m_vkInstance;
+    vk::Instance m_vkInstance;
+    vk::Device m_vkDevice;
 };

@@ -140,6 +140,13 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
     }
     m_fds.push_back(fd);
     Debug("GetMemoryFdKHR returned fd=%d\n", fd);
+    // We have to use the same device in CEncoder, so let's make sure we have that to also send
+    // later.
+    VkPhysicalDeviceProperties props = {};
+    auto &ipd_inst = layer::instance_private_data::get(m_device_data.physical_device);
+    ipd_inst.disp.GetPhysicalDeviceProperties(m_device_data.physical_device, &props);
+    Debug("GetPhysicalDeviceProps UUID starts with: %x\n", props.pipelineCacheUUID[0]);
+    memcpy(m_devicePpcUuid, props.pipelineCacheUUID, sizeof(m_devicePpcUuid));
 
     return res;
 }
@@ -224,6 +231,15 @@ bool swapchain::try_connect() {
         exit(1);
     }
     Debug("swapchain sent fds\n");
+    init_packet packet;
+    memcpy(packet.devicePpcUuid, m_devicePpcUuid, sizeof(packet.devicePpcUuid));
+    packet.sourcePid = getpid();
+    ret = write(m_socket, &packet, sizeof(packet));
+    if (ret == -1) {
+        Error("error while trying to send init packet\n");
+        perror("write");
+        exit(1);
+    }
 
     return true;
 }

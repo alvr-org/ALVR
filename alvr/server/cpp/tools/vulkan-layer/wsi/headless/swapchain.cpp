@@ -65,6 +65,9 @@ swapchain::~swapchain() {
 VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
                                  wsi::swapchain_image &image) {
     VkResult res = VK_SUCCESS;
+    m_create_info = image_create;
+    m_create_info.pNext = nullptr;
+    m_create_info.pQueueFamilyIndices = nullptr;
     res = m_device_data.disp.CreateImage(m_device, &image_create, nullptr, &image.image);
     if (res != VK_SUCCESS) {
         return res;
@@ -87,6 +90,7 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
     mem_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     mem_info.allocationSize = memory_requirements.size;
     mem_info.memoryTypeIndex = mem_type_idx;
+    m_mem_index = mem_type_idx;
     image_data *data = nullptr;
 
     /* Create image_data */
@@ -203,6 +207,16 @@ bool swapchain::try_connect() {
     if (ret == -1) {
         return false; // we will try again next frame
     }
+
+    VkPhysicalDeviceProperties prop;
+    m_device_data.instance_data.disp.GetPhysicalDeviceProperties(m_device_data.physical_device, &prop);
+
+    init_packet init{
+      .num_images = uint32_t(m_fds.size()),
+      .image_create_info = m_create_info,
+      .mem_index = m_mem_index
+    };
+    memcpy(init.device_name.data(), prop.deviceName, sizeof(prop.deviceName));
 
     ret = send_fds();
     if (ret == -1) {

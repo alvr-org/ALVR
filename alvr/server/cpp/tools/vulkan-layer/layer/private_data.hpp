@@ -63,7 +63,7 @@ namespace layer {
     OPTIONAL(CreateDisplayPlaneSurfaceKHR)                                                         \
     OPTIONAL(ReleaseDisplayEXT)                                                                    \
     OPTIONAL(DestroySurfaceKHR)                                                                    \
-    OPTIONAL(CreateHeadlessSurfaceEXT)
+    OPTIONAL(CreateHeadlessSurfaceEXT)                                                             \
 
 struct instance_dispatch_table {
     VkResult populate(VkInstance instance, PFN_vkGetInstanceProcAddr get_proc);
@@ -184,10 +184,6 @@ class instance_private_data {
 
     int first_plane_index;
     static const int num_planes = 1;
-
-    struct Surface {
-        operator VkSurfaceKHR() const { return (VkSurfaceKHR)(this); }
-    };
 
   private:
     /**

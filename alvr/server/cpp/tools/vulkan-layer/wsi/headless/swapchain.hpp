@@ -96,6 +96,8 @@ class swapchain : public wsi::swapchain_base {
     bool m_connected = false;
     std::vector<int> m_fds;
     long m_present_count;
+    VkImageCreateInfo m_create_info;
+    size_t m_mem_index;
 };
 
 } /* namespace headless */

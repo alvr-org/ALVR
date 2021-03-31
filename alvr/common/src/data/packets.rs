@@ -72,7 +72,7 @@ pub struct PlayspaceSyncPacket {
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
     PlayspaceSync(PlayspaceSyncPacket),
-    RequestIDR,
+    RequestIdr,
     KeepAlive,
     Reserved(String),
     ReservedBuffer(Vec<u8>),

@@ -1,5 +1,5 @@
 import React, { CSSProperties, useState } from "react"
-import { ConfigProvider, Drawer, Grid, Layout, Menu, Modal, Row, Select, Typography } from "antd"
+import { ConfigProvider, Drawer, Grid, Layout, Menu, Modal, PageHeader, Row, Select } from "antd"
 import {
     ApiOutlined,
     AppstoreAddOutlined,
@@ -104,7 +104,7 @@ function MobileMenu(props: { selectionHandler: (selection: string) => void }): J
     }
 
     return (
-        <Layout.Header style={{ padding: 0 }}>
+        <PageHeader backIcon={<MenuOutlined />} title={title} onBack={() => setDrawerOpen(true)}>
             <Drawer
                 visible={drawerOpen}
                 closable={false}
@@ -113,39 +113,26 @@ function MobileMenu(props: { selectionHandler: (selection: string) => void }): J
             >
                 <MenuEntries isMobile onClick={handleMenuEntryClick} />
             </Drawer>
-            <Menu selectable={false} onClick={() => setDrawerOpen(true)} mode="horizontal">
-                <Menu.Item icon={<MenuOutlined style={{ fontSize: "18px" }} />}>
-                    <Typography.Text style={{ fontSize: "20px" }} strong>
-                        {title}
-                    </Typography.Text>
-                </Menu.Item>
-            </Menu>
-        </Layout.Header>
+        </PageHeader>
     )
 }
 
 export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }): JSX.Element {
     const session = useSession()
 
-    let themeKey = ((session.session_settings["extra"] as SessionSettingsSection)[
+    const theme = ((session.session_settings["extra"] as SessionSettingsSection)[
         "theme"
     ] as SessionSettingsChoice).variant
 
-    // debug override
-    themeKey = "Light"
-    // themeKey = "Dark"
-
     if (
-        (themeKey === "SystemDefault" &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches) ||
-        themeKey === "Dark"
+        (theme === "SystemDefault" && window.matchMedia("(prefers-color-scheme: dark)").matches) ||
+        theme === "Dark"
     ) {
         import("antd/dist/antd.dark.css")
-        themeKey = "Dark"
-    } else if (themeKey === "Compact") {
+    } else if (theme === "Compact") {
         import("antd/dist/antd.compact.css")
     } else {
-        import("antd/dist/antd.css")
+        // Already imported on top
     }
 
     const extraSettings = session.session_settings["extra"] as SessionSettingsSection
@@ -201,7 +188,7 @@ export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }
                 ) : (
                     <DesktopMenu selectionHandler={selectionHandler} />
                 )}
-                <Layout.Content style={{ height: "100vh" }}>
+                <Layout.Content style={{ height: "100vh", overflow: "auto" }}>
                     <div hidden={selectedTab != "clients"}>
                         <Clients />
                     </div>

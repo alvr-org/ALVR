@@ -633,7 +633,7 @@ async fn connection_pipeline() -> StrResult {
                 Ok(ClientControlPacket::PlayspaceSync(packet)) => {
                     playspace_sync_sender.send(packet).ok();
                 }
-                Ok(ClientControlPacket::RequestIDR) => unsafe { crate::RequestIDR() },
+                Ok(ClientControlPacket::RequestIdr) => unsafe { crate::RequestIDR() },
                 Ok(_) => (),
                 Err(e) => {
                     log_event(Event::ClientDisconnected);

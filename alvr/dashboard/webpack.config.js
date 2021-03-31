@@ -14,6 +14,7 @@ module.exports = (_, argv) => {
         resolve: {
             extensions: [".ts", ".tsx", ".js"],
         },
+        devtool: isDevelopment ? "eval-cheap-source-map" : false,
         module: {
             rules: [
                 {
@@ -35,7 +36,10 @@ module.exports = (_, argv) => {
             ],
         },
         plugins: [
-            new HtmlWebpackPlugin({ title: "ALVR dashboard" }),
+            new HtmlWebpackPlugin({
+                title: "ALVR dashboard",
+                favicon: "./src/resources/favicon.png",
+            }),
             isDevelopment && new ReactRefreshWebpackPlugin(),
         ].filter(Boolean),
         devServer: {

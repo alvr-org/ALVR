@@ -42,7 +42,7 @@ export function Settings({ schema }: { schema: SettingsSchema }): JSX.Element {
 
     const { session_settings } = useSession()
 
-    function setRootSession(tabName: string, content: SessionSettingsSection) {
+    function setTabContent(tabName: string, content: SessionSettingsSection) {
         session_settings[tabName] = content
 
         applySessionSettings(session_settings)
@@ -61,10 +61,10 @@ export function Settings({ schema }: { schema: SettingsSchema }): JSX.Element {
             >
                 {schema.content.map(([tabName, schemaContent]) => (
                     <Tabs.TabPane tab={tabName} key={tabName}>
-                        {generateSettingsControls(
+                        {generateSettingsControl(
                             schemaContent.content.content,
                             session_settings[tabName],
-                            session => setRootSession(tabName, session as SessionSettingsSection),
+                            session => setTabContent(tabName, session as SessionSettingsSection),
                         )}
                     </Tabs.TabPane>
                 ))}
@@ -73,7 +73,7 @@ export function Settings({ schema }: { schema: SettingsSchema }): JSX.Element {
     )
 }
 
-export function generateSettingsControls(
+export function generateSettingsControl(
     schema: SchemaNode,
     session: SessionSettingsNode,
     setSession: (session: SessionSettingsNode) => void,

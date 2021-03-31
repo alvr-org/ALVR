@@ -152,20 +152,15 @@ export async function initializeSessionManager(): Promise<[SettingsSchema, Sessi
     return [schema, session]
 }
 
-export function SessionContextWrapper({
-    children,
-    initialSession,
-}: {
+export function SessionContextWrapper(props: {
     children: React.ReactNode
     initialSession: Session
 }): JSX.Element {
-    const [session, setSession] = useState(initialSession)
+    const [session, setSession] = useState(props.initialSession)
 
-    listener = session => {
-        setSession(session)
-    }
+    listener = session => setSession(session)
 
-    return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>
+    return <SessionContext.Provider value={session}>{props.children}</SessionContext.Provider>
 }
 
 export function useSession(): Session {
@@ -173,8 +168,5 @@ export function useSession(): Session {
 }
 
 export function applySessionSettings(sessionSettings: SessionSettingsRoot): void {
-    fetch("/api/session/store-settings", {
-        method: "POST",
-        body: JSON.stringify(sessionSettings),
-    })
+    fetch("/api/session/store-settings", { method: "POST", body: JSON.stringify(sessionSettings) })
 }

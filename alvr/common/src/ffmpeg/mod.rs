@@ -16,7 +16,7 @@ pub enum FfmpegOptionValue {
 }
 
 pub enum FfmpegVideoEncoderType {
-    D3D11VA,
+    D3D11Va,
     Vulkan,
     Software,
 }

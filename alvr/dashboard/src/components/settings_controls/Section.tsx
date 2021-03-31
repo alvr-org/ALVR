@@ -1,6 +1,7 @@
+import { List } from "antd"
 import React, { useContext } from "react"
 import { SchemaSection, SessionSettingsNode, SessionSettingsSection } from "../../sessionManager"
-import { AdvancedContext, generateSettingsControls } from "../Settings"
+import { AdvancedContext, generateSettingsControl } from "../Settings"
 import { AudioDropdown } from "./AudioDropdown"
 import { HighOrderSetting } from "./HigherOrderSetting"
 
@@ -11,23 +12,26 @@ export function Section(props: {
 }): JSX.Element {
     const showAdvanced = useContext(AdvancedContext)
 
-    function setSectionSession(fieldName: string, content: SessionSettingsNode) {
+    function setFieldContent(fieldName: string, content: SessionSettingsNode) {
         props.session[fieldName] = content
-
         props.setSession(props.session)
+
+        if (fieldName === "theme") {
+            window.location.reload()
+        }
     }
 
     return (
-        <>
+        <List bordered>
             {props.schema.map(([fieldName, schemaContent]) => {
                 let control: JSX.Element | null = null
                 switch (schemaContent.type) {
                     case "Data": {
                         if (showAdvanced || !schemaContent.content.advanced) {
-                            control = generateSettingsControls(
+                            control = generateSettingsControl(
                                 schemaContent.content.content,
                                 props.session[fieldName],
-                                session => setSectionSession(fieldName, session),
+                                session => setFieldContent(fieldName, session),
                             )
                         }
                         break
@@ -55,12 +59,12 @@ export function Section(props: {
 
                 if (control) {
                     return (
-                        <div>
+                        <List.Item key={fieldName}>
                             {fieldName} {control}
-                        </div>
+                        </List.Item>
                     )
                 }
             })}
-        </>
+        </List>
     )
 }

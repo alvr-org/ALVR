@@ -526,7 +526,7 @@ async fn connection_pipeline(
             loop {
                 tokio::select! {
                     _ = crate::IDR_REQUEST_NOTIFIER.notified() => {
-                        control_sender.lock().await.send(&ClientControlPacket::RequestIDR).await?;
+                        control_sender.lock().await.send(&ClientControlPacket::RequestIdr).await?;
                     }
                     control_packet = control_receiver.recv() =>
                         match control_packet {

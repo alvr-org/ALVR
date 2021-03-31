@@ -74,6 +74,7 @@ jobs:
           path: deps
           key: windows-deps
       - uses: actions-rs/toolchain@v1
+        if: steps.deps_cache.outputs.cache-hit != 'true'
         with:
           toolchain: stable
           override: true

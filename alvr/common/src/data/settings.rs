@@ -4,72 +4,53 @@ use settings_schema::{DictionaryDefault, SettingsSchema, Switch, SwitchDefault, 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(tag = "type", content = "content")]
 pub enum FrameSize {
-    Scale(#[schema(min = 0.25, max = 2., step = 0.01)] f32),
+    Scale(#[schema(min = 0.25, max = 2., step = 0.01, gui = "up_down")] f32),
 
     Absolute {
-        #[schema(min = 32, step = 32)]
+        #[schema(min = 32, step = 32, gui = "up_down")]
         width: u32,
-        #[schema(min = 32, step = 32)]
+        #[schema(min = 32, step = 32, gui = "up_down")]
         height: u32,
     },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Default, Clone)]
-pub struct Fov {
-    #[schema(min = 0., max = 90., step = 0.1, gui = "up_down")]
-    pub left: f32,
-
-    #[schema(min = 0., max = 90., step = 0.1, gui = "up_down")]
-    pub right: f32,
-
-    #[schema(min = 0., max = 90., step = 0.1, gui = "up_down")]
-    pub top: f32,
-
-    #[schema(min = 0., max = 90., step = 0.1, gui = "up_down")]
-    pub bottom: f32,
-}
-
 #[derive(SettingsSchema, Serialize, Deserialize)]
 pub struct FoveatedRenderingDesc {
-    #[schema(min = 0.5, max = 10., step = 0.1)]
+    #[schema(min = 0.5, max = 10., step = 0.1, gui = "slider")]
     pub strength: f32,
 
-    #[schema(advanced, min = 0.5, max = 2., step = 0.1)]
+    #[schema(advanced, min = 0.5, max = 2., step = 0.1, gui = "slider")]
     pub shape: f32,
 
-    #[schema(min = -0.05, max = 0.05, step = 0.001)]
+    #[schema(min = -0.05, max = 0.05, step = 0.001, gui = "slider")]
     pub vertical_offset: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 pub struct ColorCorrectionDesc {
-    #[schema(min = -1., max = 1., step = 0.01)]
+    #[schema(min = -1., max = 1., step = 0.01, gui = "slider")]
     pub brightness: f32,
 
-    #[schema(min = -1., max = 1., step = 0.01)]
+    #[schema(min = -1., max = 1., step = 0.01, gui = "slider")]
     pub contrast: f32,
 
-    #[schema(min = -1., max = 1., step = 0.01)]
+    #[schema(min = -1., max = 1., step = 0.01, gui = "slider")]
     pub saturation: f32,
 
-    #[schema(min = 0., max = 5., step = 0.01)]
+    #[schema(min = 0., max = 5., step = 0.01, gui = "slider")]
     pub gamma: f32,
 
-    #[schema(min = -1., max = 5., step = 0.01)]
+    #[schema(min = -1., max = 5., step = 0.01, gui = "slider")]
     pub sharpening: f32,
 }
 
-// Note: This enum cannot be converted to camelCase due to a inconsistency between generation and
-// validation: "hevc" vs "hEVC".
-// This is caused by serde and settings-schema using different libraries for casing conversion
-// todo: don't use casing conversion also for all other structs and enums
 #[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
 #[serde(tag = "type")]
 #[schema(gui = "button_group")]
 #[repr(u8)]
 pub enum CodecType {
     H264,
-    HEVC,
+    HEVC, // todo: use pascal case
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Debug)]
@@ -99,10 +80,10 @@ pub struct VideoDesc {
             variant = "175%",
             variant = "200%",
         )),
-        modifier = r#"{video.render_resolution.variant} = "Scale""#,
-        modifier = "{video.render_resolution.content} = ({input} + 1) * 0.25",
-        modifier = r#"{video.recommended_target_resolution.variant} = "Scale""#,
-        modifier = "{video.recommended_target_resolution.content} = ({input} + 1) * 0.25",
+        modifier = r#"settings.video.render_resolution.variant = "Scale""#,
+        modifier = "settings.video.render_resolution.content = (input + 1) * 0.25",
+        modifier = r#"settings.video.recommended_target_resolution.variant = "Scale""#,
+        modifier = "settings.video.recommended_target_resolution.content = (input + 1) * 0.25",
     ))]
     //
     #[schema(advanced)]
@@ -121,14 +102,13 @@ pub struct VideoDesc {
             variant = "80Hz",
             variant = "90Hz",
         )),
-        modifier = r"
-            {video.preferred_fps} = ({input} == 0) * 60 
-                + ({input} == 1) * 72
-                + ({input} == 2) * 80
-                + ({input} == 3) * 90",
+        modifier = r"settings.video.preferred_fps = (input == 0) * 60 
+                        + (input == 1) * 72
+                        + (input == 2) * 80
+                        + (input == 3) * 90",
     ))]
     //
-    #[schema(advanced, min = 60.0, max = 90.0)]
+    #[schema(advanced, min = 60.0, max = 90.0, step = 1.0, gui = "up_down")]
     pub preferred_fps: f32,
 
     pub codec: CodecType,
@@ -138,7 +118,7 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub client_request_realtime_decoder: bool,
 
-    #[schema(min = 1, max = 500)]
+    #[schema(min = 1, step = 1, gui = "up_down")]
     pub encode_bitrate_mbs: u64,
 
     #[schema(advanced)]
@@ -153,15 +133,15 @@ pub struct VideoDesc {
 pub enum AudioDeviceId {
     Default,
     Name(String),
-    Index(#[schema(min = 1, gui = "up_down")] u64),
+    Index(#[schema(min = 1, step = 1, gui = "up_down")] u64),
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 pub struct AudioConfig {
-    #[schema(min = 0, max = 200)]
+    #[schema(min = 10, max = 200, step = 1, gui = "up_down")]
     pub average_buffering_ms: u64,
 
-    #[schema(advanced, min = 1, max = 20)]
+    #[schema(advanced, min = 1, max = 20, step = 1, gui = "up_down")]
     pub batch_ms: u64,
 }
 
@@ -189,7 +169,7 @@ pub struct MicrophoneDesc {
     #[schema(advanced)]
     pub output_device_id: AudioDeviceId,
 
-    #[schema(advanced)]
+    #[schema(advanced, min = 100, step = 100, gui = "up_down")]
     pub sample_rate: u32,
 
     pub config: AudioConfig,
@@ -263,11 +243,10 @@ pub struct ControllersDesc {
             variant = "medium",
             variant = "fast",
         )),
-        modifier = r"
-            {headset.controllers.content.pose_time_offset} = ({input} == 1) * 0.01 
-                + ({input} == 2) * -0.03
-                + ({input} == 3) * -1",
-        modifier = "{headset.controllers.content.clientside_prediction} = ({input} == 0)"
+        modifier = r"settings.headset.controllers.content.pose_time_offset} = (input == 1) * 0.01 
+                        + (input == 2) * -0.03
+                        + (input == 3) * -1",
+        modifier = "{headset.controllers.content.clientside_prediction} = (input == 0)"
     ))]
     //
     #[schema(advanced)]
@@ -282,7 +261,7 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub rotation_offset_left: [f32; 3],
 
-    #[schema(min = 0., max = 5., step = 0.1)]
+    #[schema(min = 0., max = 5., step = 0.1, gui = "slider")]
     pub haptics_intensity: f32,
 }
 
@@ -358,12 +337,12 @@ pub struct DiscoveryConfig {
 pub struct ConnectionDesc {
     pub client_discovery: Switch<DiscoveryConfig>,
 
-    #[schema(advanced, min = 1024, max = 65535)]
+    #[schema(advanced, min = 1024, max = 65535, step = 1, gui = "up_down")]
     pub web_server_port: u16,
 
     pub stream_protocol: SocketProtocol,
 
-    #[schema(advanced)]
+    #[schema(advanced, min = 1024, max = 65535, step = 1, gui = "up_down")]
     pub stream_port: u16,
 
     #[schema(advanced)]
@@ -384,18 +363,24 @@ pub struct ConnectionDesc {
 #[schema(gui = "button_group")]
 pub enum Theme {
     SystemDefault,
-    Classic,
-    Darkly,
+    Light,
+    Dark,
+    Compact,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(tag = "type")]
 #[schema(gui = "button_group")]
 pub enum UpdateChannel {
-    NoUpdates,
     Stable,
     Beta,
     Nightly,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+pub struct UpdatesConfig {
+    pub prompt_before_update: bool,
+    pub channel: UpdateChannel,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -428,8 +413,7 @@ pub struct ExtraDesc {
     pub client_dark_mode: bool,
     pub revert_confirm_dialog: bool,
     pub restart_confirm_dialog: bool,
-    pub prompt_before_update: bool,
-    pub update_channel: UpdateChannel,
+    pub automatic_updates: Switch<UpdatesConfig>,
     pub log_to_disk: bool,
 
     #[schema(advanced)]
@@ -605,12 +589,17 @@ pub fn session_settings_default() -> SettingsDefault {
             client_dark_mode: false,
             revert_confirm_dialog: true,
             restart_confirm_dialog: true,
-            prompt_before_update: !cfg!(feature = "nightly"),
-            update_channel: UpdateChannelDefault {
-                variant: if cfg!(feature = "nightly") {
-                    UpdateChannelDefaultVariant::Nightly
-                } else {
-                    UpdateChannelDefaultVariant::Stable
+            automatic_updates: SwitchDefault {
+                enabled: false,
+                content: UpdatesConfigDefault {
+                    prompt_before_update: !cfg!(feature = "nightly"),
+                    channel: UpdateChannelDefault {
+                        variant: if cfg!(feature = "nightly") {
+                            UpdateChannelDefaultVariant::Nightly
+                        } else {
+                            UpdateChannelDefaultVariant::Stable
+                        },
+                    },
                 },
             },
             log_to_disk: true,

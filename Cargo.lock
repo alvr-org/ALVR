@@ -44,13 +44,14 @@ dependencies = [
 
 [[package]]
 name = "alcro"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "baa125c72830e6b7b44cee41a007f8d48febc92f466e195a4835d261394ca39a"
+checksum = "69ea96a2244bef3522b33a236f46d2ea637a41b9f7d64a59eecddb4f9a9740c5"
 dependencies = [
  "crossbeam-channel",
  "dashmap",
  "libc",
+ "nix 0.20.0",
  "os_str_bytes",
  "serde",
  "serde_derive",

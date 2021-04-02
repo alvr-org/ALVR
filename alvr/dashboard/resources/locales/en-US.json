@@ -1,0 +1,16 @@
+{
+    "clients": "Clients",
+    "statistics": "Statistics",
+    "presets": "Presets",
+    "settings": {
+        "name": "Settings",
+        "video": {
+            "name": "Video",
+            "resolution_dropdown": "Video resolution"
+        }
+    },
+    "installation": "Installation",
+    "logs": "Logs",
+    "about": "About",
+    "language": "Language"
+}

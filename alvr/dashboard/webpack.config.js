@@ -2,6 +2,7 @@
 /* eslint-disable no-undef */
 
 const HtmlWebpackPlugin = require("html-webpack-plugin")
+const CopyPlugin = require("copy-webpack-plugin")
 const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin")
 
 module.exports = (_, argv) => {
@@ -38,7 +39,15 @@ module.exports = (_, argv) => {
         plugins: [
             new HtmlWebpackPlugin({
                 title: "ALVR dashboard",
-                favicon: "./src/resources/favicon.png",
+                favicon: "resources/favicon.png",
+            }),
+            new CopyPlugin({
+                patterns: [
+                    {
+                        from: "resources/locales",
+                        to: "locales",
+                    },
+                ],
             }),
             isDevelopment && new ReactRefreshWebpackPlugin(),
         ].filter(Boolean),

@@ -28,6 +28,8 @@ import { About } from "./components/About"
 
 // Import light theme by default to avoid reflow during loading
 import "antd/dist/antd.css"
+import { TransName } from "./translation"
+import { useTranslation } from "react-i18next"
 
 const INITIAL_SELECTED_TAB = "clients"
 
@@ -52,31 +54,31 @@ function MenuEntries({
                 defaultSelectedKeys={[INITIAL_SELECTED_TAB]}
                 onClick={handleMenuEntryClick}
             >
-                <Menu.Item key="clients" icon={<ApiOutlined style={{ fontSize: "18px" }} />}>
-                    Clients
+                <Menu.Item key="clients" icon={<ApiOutlined />}>
+                    <TransName subkey="clients" />
                 </Menu.Item>
                 <Menu.Item key="statistics" icon={<LineChartOutlined />}>
-                    Statistics
+                    <TransName subkey="statistics" />
                 </Menu.Item>
                 <Menu.Item key="presets" icon={<AppstoreAddOutlined rotate={-90} />}>
-                    Presets
+                    <TransName subkey="presets" />
                 </Menu.Item>
                 <Menu.Item key="settings" icon={<SettingOutlined />}>
-                    Settings
+                    <TransName subkey="settings" />
                 </Menu.Item>
                 <Menu.Item key="installation" icon={<HddOutlined />}>
-                    Installation
+                    <TransName subkey="installation" />
                 </Menu.Item>
                 <Menu.Item key="logs" icon={<TableOutlined />}>
-                    Logs
+                    <TransName subkey="logs" />
                 </Menu.Item>
                 <Menu.Item key="about" icon={<InfoCircleOutlined />}>
-                    About
+                    <TransName subkey="about" />
                 </Menu.Item>
             </Menu>
             <Menu theme={theme} selectable={false} style={style} onClick={handleMenuEntryClick}>
                 <Menu.Item key="language" icon={<GlobalOutlined />}>
-                    Language
+                    <TransName subkey="language" />
                 </Menu.Item>
             </Menu>
         </>
@@ -104,7 +106,11 @@ function MobileMenu(props: { selectionHandler: (selection: string) => void }): J
     }
 
     return (
-        <PageHeader backIcon={<MenuOutlined />} title={title} onBack={() => setDrawerOpen(true)}>
+        <PageHeader
+            backIcon={<MenuOutlined />}
+            title={<TransName subkey={title} />}
+            onBack={() => setDrawerOpen(true)}
+        >
             <Drawer
                 visible={drawerOpen}
                 closable={false}
@@ -169,8 +175,8 @@ export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }
                     <Row justify="center">
                         <Select defaultValue={locale} onChange={value => (locale = value)}>
                             <Select.Option value="">System</Select.Option>
-                            <Select.Option value="en">English</Select.Option>
-                            <Select.Option value="it">Italiano</Select.Option>
+                            <Select.Option value="en-US">English</Select.Option>
+                            <Select.Option value="it-IT">Italiano</Select.Option>
                         </Select>
                     </Row>
                 ),

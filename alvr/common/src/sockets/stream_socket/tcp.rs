@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    sockets::{StreamId, LDC, LOCAL_IP},
+    sockets::{StreamId, Ldc, LOCAL_IP},
 };
 use bytes::{Bytes, BytesMut};
 use futures::{
@@ -14,8 +14,8 @@ use tokio::{
 };
 use tokio_util::codec::Framed;
 
-pub type TcpStreamSendSocket = Arc<Mutex<SplitSink<Framed<TcpStream, LDC>, Bytes>>>;
-pub type TcpStreamReceiveSocket = SplitStream<Framed<TcpStream, LDC>>;
+pub type TcpStreamSendSocket = Arc<Mutex<SplitSink<Framed<TcpStream, Ldc>, Bytes>>>;
+pub type TcpStreamReceiveSocket = SplitStream<Framed<TcpStream, Ldc>>;
 
 pub async fn listen_for_server(port: u16) -> StrResult<TcpListener> {
     trace_err!(TcpListener::bind((LOCAL_IP, port)).await)
@@ -35,7 +35,7 @@ pub async fn accept_from_server(
         );
     }
 
-    let socket = Framed::new(socket, LDC::new());
+    let socket = Framed::new(socket, Ldc::new());
     let (send_socket, receive_socket) = socket.split();
 
     Ok((Arc::new(Mutex::new(send_socket)), receive_socket))
@@ -46,7 +46,7 @@ pub async fn connect_to_client(
     port: u16,
 ) -> StrResult<(TcpStreamSendSocket, TcpStreamReceiveSocket)> {
     let socket = trace_err!(TcpStream::connect((client_ip, port)).await)?;
-    let socket = Framed::new(socket, LDC::new());
+    let socket = Framed::new(socket, Ldc::new());
     let (send_socket, receive_socket) = socket.split();
 
     Ok((Arc::new(Mutex::new(send_socket)), receive_socket))

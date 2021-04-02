@@ -1,4 +1,4 @@
-use super::{CONTROL_PORT, LDC, LOCAL_IP};
+use super::{CONTROL_PORT, Ldc, LOCAL_IP};
 use crate::prelude::*;
 use bytes::Bytes;
 use futures::{
@@ -11,7 +11,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::Framed;
 
 pub struct ControlSocketSender<T> {
-    inner: SplitSink<Framed<TcpStream, LDC>, Bytes>,
+    inner: SplitSink<Framed<TcpStream, Ldc>, Bytes>,
     _phantom: PhantomData<T>,
 }
 
@@ -23,7 +23,7 @@ impl<S: Serialize> ControlSocketSender<S> {
 }
 
 pub struct ControlSocketReceiver<T> {
-    inner: SplitStream<Framed<TcpStream, LDC>>,
+    inner: SplitStream<Framed<TcpStream, Ldc>>,
     _phantom: PhantomData<T>,
 }
 
@@ -37,7 +37,7 @@ impl<R: DeserializeOwned> ControlSocketReceiver<R> {
 // Proto-control-socket that can send and receive any packet. After the split, only the packets of
 // the specified types can be exchanged
 pub struct ProtoControlSocket {
-    inner: Framed<TcpStream, LDC>,
+    inner: Framed<TcpStream, Ldc>,
 }
 
 pub enum PeerType {
@@ -64,7 +64,7 @@ impl ProtoControlSocket {
 
         trace_err!(socket.set_nodelay(true))?;
         let peer_ip = trace_err!(socket.peer_addr())?.ip();
-        let socket = Framed::new(socket, LDC::new());
+        let socket = Framed::new(socket, Ldc::new());
 
         Ok((Self { inner: socket }, peer_ip))
     }

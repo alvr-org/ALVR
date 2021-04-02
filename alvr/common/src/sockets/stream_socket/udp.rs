@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    sockets::{StreamId, LDC, LOCAL_IP},
+    sockets::{StreamId, Ldc, LOCAL_IP},
 };
 use bytes::{Bytes, BytesMut};
 use futures::{
@@ -22,14 +22,14 @@ use tokio_util::udp::UdpFramed;
 #[derive(Clone)]
 pub struct UdpStreamSendSocket {
     pub peer_addr: SocketAddr,
-    pub inner: Arc<Mutex<SplitSink<UdpFramed<LDC>, (Bytes, SocketAddr)>>>,
+    pub inner: Arc<Mutex<SplitSink<UdpFramed<Ldc>, (Bytes, SocketAddr)>>>,
 }
 
 // peer_addr is needed to check that the packet comes from the desired device. Connecting directly
 // to the peer is not supported by UdpFramed.
 pub struct UdpStreamReceiveSocket {
     pub peer_addr: SocketAddr,
-    pub inner: SplitStream<UdpFramed<LDC>>,
+    pub inner: SplitStream<UdpFramed<Ldc>>,
 }
 
 pub async fn bind(port: u16) -> StrResult<UdpSocket> {
@@ -42,7 +42,7 @@ pub async fn connect(
     port: u16,
 ) -> StrResult<(UdpStreamSendSocket, UdpStreamReceiveSocket)> {
     let peer_addr = (peer_ip, port).into();
-    let socket = UdpFramed::new(socket, LDC::new());
+    let socket = UdpFramed::new(socket, Ldc::new());
     let (send_socket, receive_socket) = socket.split();
 
     Ok((

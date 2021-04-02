@@ -1,7 +1,6 @@
 {
     "include": [
         "src",
-        "types"
     ],
     "compilerOptions": {
         "outDir": "./dist",
@@ -15,7 +14,7 @@
         "forceConsistentCasingInFileNames": true,
         "typeRoots": [
             "node_modules/@types",
-            "types"
+            "src/types"
         ]
     }
 }

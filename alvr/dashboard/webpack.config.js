@@ -5,6 +5,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin")
 const CopyPlugin = require("copy-webpack-plugin")
 const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin")
 const { HotModuleReplacementPlugin } = require("webpack")
+const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin")
 
 module.exports = (_, argv) => {
     const mode = argv.mode
@@ -44,6 +45,7 @@ module.exports = (_, argv) => {
             new CopyPlugin({ patterns: [{ from: "resources/locales", to: "locales" }] }),
             isDevelopment && new HotModuleReplacementPlugin(),
             isDevelopment && new ReactRefreshWebpackPlugin(),
+            new ForkTsCheckerWebpackPlugin(),
         ].filter(Boolean),
         devServer: {
             hot: true,

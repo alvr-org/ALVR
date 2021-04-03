@@ -39,6 +39,7 @@
         "eslint-plugin-prettier": "3",
         "eslint-plugin-react": "7",
         "eslint-plugin-react-hooks": "4",
+        "fork-ts-checker-webpack-plugin": "^6.2.0",
         "html-webpack-plugin": "5",
         "prettier": "2",
         "react-refresh": "^0.10.0",

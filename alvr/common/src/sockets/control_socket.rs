@@ -1,4 +1,4 @@
-use super::{CONTROL_PORT, Ldc, LOCAL_IP};
+use super::{Ldc, CONTROL_PORT, LOCAL_IP};
 use crate::prelude::*;
 use bytes::Bytes;
 use futures::{

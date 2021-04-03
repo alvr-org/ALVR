@@ -37,18 +37,8 @@ module.exports = (_, argv) => {
             ],
         },
         plugins: [
-            new HtmlWebpackPlugin({
-                title: "ALVR dashboard",
-                favicon: "resources/favicon.png",
-            }),
-            new CopyPlugin({
-                patterns: [
-                    {
-                        from: "resources/locales",
-                        to: "locales",
-                    },
-                ],
-            }),
+            new HtmlWebpackPlugin({ title: "ALVR dashboard", favicon: "resources/favicon.png" }),
+            new CopyPlugin({ patterns: [{ from: "resources/locales", to: "locales" }] }),
             isDevelopment && new ReactRefreshWebpackPlugin(),
         ].filter(Boolean),
         devServer: {

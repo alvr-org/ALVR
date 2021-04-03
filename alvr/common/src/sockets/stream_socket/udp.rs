@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    sockets::{StreamId, Ldc, LOCAL_IP},
+    sockets::{Ldc, StreamId, LOCAL_IP},
 };
 use bytes::{Bytes, BytesMut};
 use futures::{

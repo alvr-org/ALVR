@@ -29,7 +29,7 @@ SUBCOMMANDS:
     publish-client      Build client for all headsets
     clean               Removes build folder
     kill-oculus         Kill all Oculus processes
-    bump-versions       Bump server and/or client package versions
+    bump-versions       Bump server and client package versions
 
 FLAGS:
     --release           Optimized build without debug info. Used only for build subcommands

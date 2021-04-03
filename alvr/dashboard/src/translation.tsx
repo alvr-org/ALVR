@@ -9,18 +9,12 @@ i18next
     .use(I18nextBrowserLanguageDetector)
     .use(initReactI18next)
     .init({
-        fallbackLng: "en-US",
+        fallbackLng: "en",
         debug: true,
         returnObjects: false,
-        detection: {
-            order: ["navigator", "localStorage"],
-        },
-        interpolation: {
-            escapeValue: false,
-        },
-        backend: {
-            loadPath: "/locales/{{lng}}.json",
-        },
+        detection: { order: ["navigator", "localStorage"] },
+        interpolation: { escapeValue: false },
+        backend: { loadPath: "/languages/{{lng}}.json" },
     })
 export default i18next
 

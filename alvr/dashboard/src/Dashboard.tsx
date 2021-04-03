@@ -29,6 +29,7 @@ import { About } from "./components/About"
 
 // Import light theme by default to avoid reflow during loading
 import "antd/dist/antd.less"
+import { useAsync } from "react-async-hook"
 
 const INITIAL_SELECTED_TAB = "clients"
 
@@ -142,8 +143,6 @@ export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }
 
     const extraSettings = session.session_settings["extra"] as SessionSettingsSection
 
-    let locale = extraSettings["locale"] as string
-
     const directionString = (extraSettings["layout_direction"] as SessionSettingsChoice).variant
     const direction = directionString === "LeftToRight" ? "ltr" : "rtl"
 
@@ -152,15 +151,21 @@ export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }
 
     const { xs } = Grid.useBreakpoint()
 
-    function changeLocale(modalCloseHandle: () => void) {
-        extraSettings["locale"] = locale
+    const [selectedTab, setSelectedTab] = useState(INITIAL_SELECTED_TAB)
+
+    const futureLanguagesList = useAsync(async () => {
+        return (await (await fetch("/languages/list.json")).json()) as Record<string, string>
+    }, [])
+
+    let language = extraSettings["language"] as string
+
+    function changeLanguage(modalCloseHandle: () => void) {
+        extraSettings["language"] = language
 
         applySessionSettings(session.session_settings)
 
         modalCloseHandle()
     }
-
-    const [selectedTab, setSelectedTab] = useState(INITIAL_SELECTED_TAB)
 
     function selectionHandler(selection: string) {
         if (selection === "language") {
@@ -168,14 +173,20 @@ export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }
                 icon: null,
                 title: "Select a language",
                 width: 250,
-                onOk: changeLocale,
+                onOk: changeLanguage,
                 maskClosable: true,
                 content: (
                     <Row justify="center">
-                        <Select defaultValue={locale} onChange={value => (locale = value)}>
+                        <Select defaultValue={language} onChange={value => (language = value)}>
                             <Select.Option value="">System</Select.Option>
-                            <Select.Option value="en">English</Select.Option>
-                            <Select.Option value="it">Italiano</Select.Option>
+                            {futureLanguagesList.result &&
+                                Object.entries(futureLanguagesList.result).map(
+                                    ([code, displayName]) => (
+                                        <Select.Option key={code} value={code}>
+                                            {displayName}
+                                        </Select.Option>
+                                    ),
+                                )}
                         </Select>
                     </Row>
                 ),

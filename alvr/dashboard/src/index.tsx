@@ -1,4 +1,4 @@
-import React, { Suspense } from "react"
+import React, { Suspense, useState } from "react"
 import ReactDOM from "react-dom"
 import { useAsync } from "react-async-hook"
 import {
@@ -16,12 +16,17 @@ function TranslationLoader({ schema }: { schema: SettingsSchema }): JSX.Element 
     const { i18n } = useTranslation()
     const session = useSession()
 
-    const language = (session.session_settings["extra"] as SessionSettingsSection)[
-        "locale"
+    const newLanguage = (session.session_settings["extra"] as SessionSettingsSection)[
+        "language"
     ] as string
 
+    const [prevLanguage, setPrevLanguage] = useState(newLanguage)
+
     useAsync(async () => {
-        await i18n.changeLanguage(language !== "" ? language : undefined)
+        if (newLanguage !== prevLanguage) {
+            await i18n.changeLanguage(newLanguage !== "" ? newLanguage : undefined)
+            setPrevLanguage(newLanguage)
+        }
     }, [i18n, session])
 
     return <Dashboard settingsSchema={schema} />

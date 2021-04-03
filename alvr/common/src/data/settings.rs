@@ -421,7 +421,7 @@ pub struct ExtraDesc {
     #[schema(advanced)]
     pub exclude_notifications_without_id: bool,
     #[schema(advanced)]
-    locale: String,
+    language: String,
     #[schema(advanced)]
     show_setup_wizard: bool,
     layout_direction: LayoutDirection,
@@ -611,7 +611,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             exclude_notifications_without_id: false,
-            locale: "".into(),
+            language: "".into(),
             show_setup_wizard: true,
 
             layout_direction: LayoutDirectionDefault {

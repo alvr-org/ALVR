@@ -4,6 +4,10 @@
     "author": "alvr-org",
     "license": "MIT",
     "private": true,
+    "scripts": {
+        "start": "webpack serve",
+        "build": "webpack"
+    },
     "dependencies": {
         "@ant-design/icons": "4",
         "@types/webpack-env": "1",

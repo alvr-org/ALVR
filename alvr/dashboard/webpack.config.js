@@ -4,6 +4,9 @@
 const HtmlWebpackPlugin = require("html-webpack-plugin")
 const CopyPlugin = require("copy-webpack-plugin")
 const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin")
+const { HotModuleReplacementPlugin } = require("webpack")
+const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin")
+const theme = require("./src/theme")
 
 module.exports = (_, argv) => {
     const mode = argv.mode
@@ -19,27 +22,49 @@ module.exports = (_, argv) => {
         module: {
             rules: [
                 {
-                    test: /\.tsx?$/,
-                    loader: "ts-loader",
+                    test: /\.[jt]sx?$/,
                     exclude: /node_modules/,
-                    options: {
-                        getCustomTransformers: () => ({
-                            before: [isDevelopment && require("react-refresh-typescript")()].filter(
-                                Boolean,
-                            ),
-                        }),
-                    },
+                    use: [
+                        {
+                            loader: require.resolve("babel-loader"),
+                            options: {
+                                plugins: [
+                                    isDevelopment && require.resolve("react-refresh/babel"),
+                                ].filter(Boolean),
+                            },
+                        },
+                    ],
                 },
                 {
                     test: /\.css$/,
                     use: ["style-loader", "css-loader"],
+                },
+                {
+                    test: /\.less/,
+                    use: [
+                        "style-loader",
+                        "css-loader",
+                        {
+                            loader: "less-loader",
+                            options: {
+                                lessOptions: {
+                                    modifyVars: {
+                                        ...theme,
+                                    },
+                                    javascriptEnabled: true,
+                                },
+                            },
+                        },
+                    ],
                 },
             ],
         },
         plugins: [
             new HtmlWebpackPlugin({ title: "ALVR dashboard", favicon: "resources/favicon.png" }),
             new CopyPlugin({ patterns: [{ from: "resources/locales", to: "locales" }] }),
+            isDevelopment && new HotModuleReplacementPlugin(),
             isDevelopment && new ReactRefreshWebpackPlugin(),
+            new ForkTsCheckerWebpackPlugin(),
         ].filter(Boolean),
         devServer: {
             hot: true,

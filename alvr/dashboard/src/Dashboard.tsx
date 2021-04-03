@@ -18,6 +18,7 @@ import {
     SettingsSchema,
     useSession,
 } from "./sessionManager"
+import { Trans, TransName } from "./translation"
 import { Clients } from "./components/Clients"
 import { Statistics } from "./components/Statistics"
 import { Presets } from "./components/Presets"
@@ -27,8 +28,7 @@ import { Logs } from "./components/Logs"
 import { About } from "./components/About"
 
 // Import light theme by default to avoid reflow during loading
-import "antd/dist/antd.css"
-import { Trans, TransName } from "./translation"
+import "antd/dist/antd.less"
 
 const INITIAL_SELECTED_TAB = "clients"
 
@@ -133,9 +133,9 @@ export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }
         (theme === "SystemDefault" && window.matchMedia("(prefers-color-scheme: dark)").matches) ||
         theme === "Dark"
     ) {
-        import("antd/dist/antd.dark.css")
+        import("antd/dist/antd.dark.less")
     } else if (theme === "Compact") {
-        import("antd/dist/antd.compact.css")
+        import("antd/dist/antd.compact.less")
     } else {
         // Already imported on top
     }

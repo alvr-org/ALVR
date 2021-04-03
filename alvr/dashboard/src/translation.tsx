@@ -12,6 +12,9 @@ i18next
         fallbackLng: "en-US",
         debug: true,
         returnObjects: false,
+        detection: {
+            order: ["navigator", "localStorage"],
+        },
         interpolation: {
             escapeValue: false,
         },

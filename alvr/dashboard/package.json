@@ -5,8 +5,7 @@
     "license": "MIT",
     "private": true,
     "scripts": {
-        "start": "webpack serve",
-        "build": "webpack"
+        "start": "webpack serve"
     },
     "dependencies": {
         "@ant-design/icons": "4",

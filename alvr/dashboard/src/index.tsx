@@ -16,16 +16,21 @@ function TranslationLoader({ schema }: { schema: SettingsSchema }): JSX.Element 
     const { i18n } = useTranslation()
     const session = useSession()
 
-    const newLanguage = (session.session_settings["extra"] as SessionSettingsSection)[
+    const language = (session.session_settings["extra"] as SessionSettingsSection)[
         "language"
     ] as string
 
-    const [prevLanguage, setPrevLanguage] = useState(newLanguage)
-
+    // first time
     useAsync(async () => {
-        if (newLanguage !== prevLanguage) {
-            await i18n.changeLanguage(newLanguage !== "" ? newLanguage : undefined)
-            setPrevLanguage(newLanguage)
+        await i18n.changeLanguage(language)
+    }, [i18n])
+
+    // successive times
+    const [prevLanguage, setPrevLanguage] = useState(language)
+    useAsync(async () => {
+        if (language !== prevLanguage) {
+            await i18n.changeLanguage(language !== "" ? language : undefined)
+            setPrevLanguage(language)
         }
     }, [i18n, session])
 

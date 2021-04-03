@@ -1,5 +1,5 @@
 import React from "react"
 
-export function Clients(): JSX.Element {
+export function Connect(): JSX.Element {
     return <>todo clients</>
 }

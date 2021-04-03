@@ -1,5 +1,9 @@
 {
-    "clients": "Clients",
+    "common": {
+        "ok": "OK",
+        "cancel": "Cancel"
+    },
+    "connect": "Connect",
     "statistics": "Statistics",
     "presets": "Presets",
     "settings": {
@@ -12,5 +16,8 @@
     "installation": "Installation",
     "logs": "Logs",
     "about": "About",
-    "language": "Language"
+    "language": {
+        "name": "Language",
+        "prompt": "Select a language"
+    }
 }

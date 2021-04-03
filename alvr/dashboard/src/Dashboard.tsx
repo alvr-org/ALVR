@@ -18,8 +18,10 @@ import {
     SettingsSchema,
     useSession,
 } from "./sessionManager"
+import { useAsync } from "react-async-hook"
+import { useTranslation } from "react-i18next"
 import { Trans, TransName } from "./translation"
-import { Clients } from "./components/Clients"
+import { Connect } from "./components/Connect"
 import { Statistics } from "./components/Statistics"
 import { Presets } from "./components/Presets"
 import { Settings } from "./components/Settings"
@@ -29,9 +31,8 @@ import { About } from "./components/About"
 
 // Import light theme by default to avoid reflow during loading
 import "antd/dist/antd.less"
-import { useAsync } from "react-async-hook"
 
-const INITIAL_SELECTED_TAB = "clients"
+const INITIAL_SELECTED_TAB = "connect"
 
 function MenuEntries({
     isMobile,
@@ -54,8 +55,8 @@ function MenuEntries({
                 defaultSelectedKeys={[INITIAL_SELECTED_TAB]}
                 onClick={handleMenuEntryClick}
             >
-                <Menu.Item key="clients" icon={<ApiOutlined />}>
-                    <TransName subkey="clients" />
+                <Menu.Item key="connect" icon={<ApiOutlined />}>
+                    <TransName subkey="connect" />
                 </Menu.Item>
                 <Menu.Item key="statistics" icon={<LineChartOutlined />}>
                     <TransName subkey="statistics" />
@@ -126,6 +127,8 @@ function MobileMenu(props: { selectionHandler: (selection: string) => void }): J
 export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }): JSX.Element {
     const session = useSession()
 
+    const { t } = useTranslation()
+
     const theme = ((session.session_settings["extra"] as SessionSettingsSection)[
         "theme"
     ] as SessionSettingsChoice).variant
@@ -171,10 +174,12 @@ export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }
         if (selection === "language") {
             Modal.confirm({
                 icon: null,
-                title: "Select a language",
+                title: t("language.prompt"),
                 width: 250,
                 onOk: changeLanguage,
                 maskClosable: true,
+                okText: t("common.ok"),
+                cancelText: t("common.cancel"),
                 content: (
                     <Row justify="center">
                         <Select defaultValue={language} onChange={value => (language = value)}>
@@ -205,9 +210,9 @@ export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }
                     <DesktopMenu selectionHandler={selectionHandler} />
                 )}
                 <Layout.Content style={{ height: "100vh", overflow: "auto" }}>
-                    <div hidden={selectedTab != "clients"}>
-                        <Trans node="clients">
-                            <Clients />
+                    <div hidden={selectedTab != "connect"}>
+                        <Trans node="connect">
+                            <Connect />
                         </Trans>
                     </div>
                     <div hidden={selectedTab != "statistics"}>

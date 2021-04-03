@@ -1,16 +1,21 @@
 {
-    "clients": "Client",
+    "common": {
+        "cancel": "Annulla"
+    },
+    "connect": "Connetti",
     "statistics": "Statistiche",
     "presets": "Preset",
     "settings": {
         "name": "Impostazioni",
         "video": {
-            "name": "Video",
             "resolution_dropdown": "Risoluzione"
         }
     },
     "installation": "Installazione",
     "logs": "Log",
     "about": "Informazioni",
-    "language": "Lingua"
+    "language": {
+        "name": "Lingua",
+        "prompt": "Seleziona una lingua"
+    }
 }

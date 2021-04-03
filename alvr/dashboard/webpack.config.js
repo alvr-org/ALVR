@@ -6,7 +6,8 @@ const CopyPlugin = require("copy-webpack-plugin")
 const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin")
 const { HotModuleReplacementPlugin } = require("webpack")
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin")
-const theme = require("./src/theme")
+
+const theme = require("./resources/theme")
 
 module.exports = (_, argv) => {
     const mode = argv.mode

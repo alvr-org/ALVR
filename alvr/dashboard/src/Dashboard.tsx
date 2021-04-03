@@ -174,8 +174,8 @@ export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }
                     <Row justify="center">
                         <Select defaultValue={locale} onChange={value => (locale = value)}>
                             <Select.Option value="">System</Select.Option>
-                            <Select.Option value="en-US">English</Select.Option>
-                            <Select.Option value="it-IT">Italiano</Select.Option>
+                            <Select.Option value="en">English</Select.Option>
+                            <Select.Option value="it">Italiano</Select.Option>
                         </Select>
                     </Row>
                 ),

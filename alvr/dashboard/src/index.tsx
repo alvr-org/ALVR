@@ -21,7 +21,6 @@ function TranslationLoader({ schema }: { schema: SettingsSchema }): JSX.Element 
     ] as string
 
     useAsync(async () => {
-        console.error(language !== "" ? language : undefined)
         await i18n.changeLanguage(language !== "" ? language : undefined)
     }, [i18n, session])
 

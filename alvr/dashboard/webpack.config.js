@@ -6,6 +6,7 @@ const CopyPlugin = require("copy-webpack-plugin")
 const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin")
 const { HotModuleReplacementPlugin } = require("webpack")
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin")
+const theme = require("./src/theme")
 
 module.exports = (_, argv) => {
     const mode = argv.mode
@@ -37,6 +38,24 @@ module.exports = (_, argv) => {
                 {
                     test: /\.css$/,
                     use: ["style-loader", "css-loader"],
+                },
+                {
+                    test: /\.less/,
+                    use: [
+                        "style-loader",
+                        "css-loader",
+                        {
+                            loader: "less-loader",
+                            options: {
+                                lessOptions: {
+                                    modifyVars: {
+                                        ...theme,
+                                    },
+                                    javascriptEnabled: true,
+                                },
+                            },
+                        },
+                    ],
                 },
             ],
         },

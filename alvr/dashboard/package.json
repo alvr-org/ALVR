@@ -40,6 +40,8 @@
         "eslint-plugin-react-hooks": "4",
         "fork-ts-checker-webpack-plugin": "^6.2.0",
         "html-webpack-plugin": "5",
+        "less": "^4.1.1",
+        "less-loader": "^8.0.0",
         "prettier": "2",
         "react-refresh": "^0.10.0",
         "style-loader": "2",

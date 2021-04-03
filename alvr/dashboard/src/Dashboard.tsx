@@ -27,7 +27,7 @@ import { Logs } from "./components/Logs"
 import { About } from "./components/About"
 
 // Import light theme by default to avoid reflow during loading
-import "antd/dist/antd.css"
+import "antd/dist/antd.less"
 import { TransName } from "./translation"
 import { useTranslation } from "react-i18next"
 
@@ -134,9 +134,9 @@ export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }
         (theme === "SystemDefault" && window.matchMedia("(prefers-color-scheme: dark)").matches) ||
         theme === "Dark"
     ) {
-        import("antd/dist/antd.dark.css")
+        import("antd/dist/antd.dark.less")
     } else if (theme === "Compact") {
-        import("antd/dist/antd.compact.css")
+        import("antd/dist/antd.compact.less")
     } else {
         // Already imported on top
     }

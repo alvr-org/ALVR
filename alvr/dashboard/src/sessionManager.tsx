@@ -51,8 +51,10 @@ export interface SessionSettingsDictionary {
 }
 
 export interface SettingsSchema {
-    // These corresponds to the settings tabs
-    content: [string, { content: { content: SchemaNode } }][]
+    content: [string, SettingsSchemaTabContent][]
+}
+export interface SettingsSchemaTabContent {
+    content: { content: SchemaNode }
 }
 
 // Schema representation
@@ -67,14 +69,11 @@ export type SchemaNode =
     | { type: "Array"; content: SchemaNode[] }
     | { type: "Vector"; content: SchemaVector }
     | { type: "Dictionary"; content: SchemaDictionary }
-export type SchemaSection = [
-    string,
-    (
-        | { type: "Data"; content: { advanced: boolean; content: SchemaNode } }
-        | { type: "HigherOrder"; content: SchemaHOS }
-        | { type: "Placeholder" }
-    ),
-][]
+export type SchemaSection = [string, SchemaSectionEntryContent][]
+export type SchemaSectionEntryContent =
+    | { type: "Data"; content: { advanced: boolean; content: SchemaNode } }
+    | { type: "HigherOrder"; content: SchemaHOS }
+    | { type: "Placeholder" }
 export interface SchemaChoice {
     default: string
     variants: [string, { advanced: boolean; content: SchemaNode } | null][]

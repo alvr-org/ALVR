@@ -28,8 +28,7 @@ import { About } from "./components/About"
 
 // Import light theme by default to avoid reflow during loading
 import "antd/dist/antd.css"
-import { TransName } from "./translation"
-import { useTranslation } from "react-i18next"
+import { Trans, TransName } from "./translation"
 
 const INITIAL_SELECTED_TAB = "clients"
 
@@ -196,25 +195,39 @@ export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }
                 )}
                 <Layout.Content style={{ height: "100vh", overflow: "auto" }}>
                     <div hidden={selectedTab != "clients"}>
-                        <Clients />
+                        <Trans node="clients">
+                            <Clients />
+                        </Trans>
                     </div>
                     <div hidden={selectedTab != "statistics"}>
-                        <Statistics />
+                        <Trans node="statistics">
+                            <Statistics />
+                        </Trans>
                     </div>
                     <div hidden={selectedTab != "presets"}>
-                        <Presets />
+                        <Trans node="presets">
+                            <Presets />
+                        </Trans>
                     </div>
                     <div hidden={selectedTab != "settings"}>
-                        <Settings schema={settingsSchema} />
+                        <Trans node="settings">
+                            <Settings schema={settingsSchema} />
+                        </Trans>
                     </div>
                     <div hidden={selectedTab != "installation"}>
-                        <Installation />
+                        <Trans node="installation">
+                            <Installation />
+                        </Trans>
                     </div>
                     <div hidden={selectedTab != "logs"}>
-                        <Logs />
+                        <Trans node="logs">
+                            <Logs />
+                        </Trans>
                     </div>
                     <div hidden={selectedTab != "about"}>
-                        <About />
+                        <Trans node="about">
+                            <About />
+                        </Trans>
                     </div>
                 </Layout.Content>
             </Layout>

@@ -35,13 +35,16 @@ export interface TransKeys {
     notice?: string
 }
 
-export function useTransKeys(): TransKeys {
+export function useTransKeys(subkey?: string): TransKeys {
     const { i18n } = useTranslation()
 
-    const routeSegments = useContext(TransContext)
+    let routeSegments = useContext(TransContext)
+    if (subkey) {
+        routeSegments = [...routeSegments, subkey]
+    }
     const route = routeSegments.join(".")
 
-    if (!i18n.exists(route + ".name")) {
+    if (i18n.exists(route) && !i18n.exists(route + ".name")) {
         return { name: route }
     } else {
         let name: string | string[]
@@ -71,10 +74,10 @@ export interface TransValues {
     notice?: string
 }
 
-export function useTrans(): TransValues {
+export function useTrans(subkey?: string): TransValues {
     const { t } = useTranslation()
 
-    const { name, help, notice } = useTransKeys()
+    const { name, help, notice } = useTransKeys(subkey)
 
     return {
         name: typeof name === "string" ? t(name) : name[name.length - 1],
@@ -83,15 +86,7 @@ export function useTrans(): TransValues {
     }
 }
 
-function TransNameInner() {
-    const { name } = useTrans()
-    return <>{name}</>
-}
-
 export function TransName({ subkey }: { subkey: string }): JSX.Element {
-    return (
-        <Trans node={subkey}>
-            <TransNameInner />
-        </Trans>
-    )
+    const { name } = useTrans(subkey)
+    return <>{name}</>
 }

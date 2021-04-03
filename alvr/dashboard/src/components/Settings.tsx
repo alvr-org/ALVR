@@ -22,6 +22,7 @@ import {
     SettingsSchema,
     useSession,
 } from "../sessionManager"
+import { Trans, TransName } from "../translation"
 import { Array } from "./settings_controls/Array"
 import { Boolean } from "./settings_controls/Boolean"
 import { Choice } from "./settings_controls/Choice"
@@ -60,12 +61,15 @@ export function Settings({ schema }: { schema: SettingsSchema }): JSX.Element {
                 }
             >
                 {schema.content.map(([tabName, schemaContent]) => (
-                    <Tabs.TabPane tab={tabName} key={tabName}>
-                        {generateSettingsControl(
-                            schemaContent.content.content,
-                            session_settings[tabName],
-                            session => setTabContent(tabName, session as SessionSettingsSection),
-                        )}
+                    <Tabs.TabPane tab={<TransName subkey={tabName} />} key={tabName}>
+                        <Trans node={tabName}>
+                            {generateSettingsControl(
+                                schemaContent.content.content,
+                                session_settings[tabName],
+                                session =>
+                                    setTabContent(tabName, session as SessionSettingsSection),
+                            )}
+                        </Trans>
                     </Tabs.TabPane>
                 ))}
             </Tabs>

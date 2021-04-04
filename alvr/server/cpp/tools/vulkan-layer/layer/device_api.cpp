@@ -152,71 +152,18 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkRegisterDisplayEventEXT(
                                                      pFence);
     }
 
-    *pFence = wsi::display::get().get_vsync_fence();
+    *pFence = wsi::display::get(device).get_vsync_fence();
 
     return VK_SUCCESS;
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkWaitForFences(VkDevice device, uint32_t fenceCount,
-                                                         const VkFence *pFences, VkBool32 waitAll,
-                                                         uint64_t timeout) {
-    auto &instance = layer::device_private_data::get(device);
-    auto &alvr_fence = wsi::display::get().get_vsync_fence();
-    bool contains_alvr_fence = false;
-    std::vector<VkFence> other_fences;
-    for (uint32_t fence = 0; fence < fenceCount; ++fence) {
-        if (pFences[fence] == alvr_fence) {
-            contains_alvr_fence = true;
-        } else {
-            other_fences.push_back(pFences[fence]);
-        }
-    }
-
-    auto until = std::chrono::steady_clock::now() + std::chrono::nanoseconds(timeout);
-
-    if (waitAll) {
-        if (not other_fences.empty()) {
-            auto ret = instance.disp.WaitForFences(device, other_fences.size(), other_fences.data(),
-                                                   waitAll, timeout);
-            if (ret != VK_SUCCESS)
-                return ret;
-        }
-        if (contains_alvr_fence) {
-            bool signaled = alvr_fence.wait(until);
-            if (not signaled)
-                return VK_TIMEOUT;
-        }
-        return VK_SUCCESS;
-    } else {
-        // let's hope we don't go this path
-        while (std::chrono::steady_clock::now() < until) {
-            auto ret = instance.disp.WaitForFences(device, other_fences.size(), other_fences.data(),
-                                                   waitAll, 0);
-            if (ret != VK_TIMEOUT)
-                return ret;
-            if (alvr_fence.get())
-                return VK_SUCCESS;
-        }
-        return VK_TIMEOUT;
-    }
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkGetFenceStatus(VkDevice device, VkFence fence) {
-    auto &instance = layer::device_private_data::get(device);
-    auto &alvr_fence = wsi::display::get().get_vsync_fence();
-    if (fence == alvr_fence) {
-        return alvr_fence.get() ? VK_SUCCESS : VK_NOT_READY;
-    }
-    return instance.disp.GetFenceStatus(device, fence);
 }
 
 VKAPI_ATTR void VKAPI_CALL wsi_layer_vkDestroyFence(VkDevice device, VkFence fence,
                                                     const VkAllocationCallbacks *pAllocator) {
     auto &instance = layer::device_private_data::get(device);
-    auto &alvr_fence = wsi::display::get().get_vsync_fence();
+    auto &alvr_fence = wsi::display::get(device).get_vsync_fence();
     if (fence == alvr_fence) {
         return;
     }
-    instance.disp.GetFenceStatus(device, fence);
+    instance.disp.DestroyFence(device, fence, pAllocator);
 }
 }

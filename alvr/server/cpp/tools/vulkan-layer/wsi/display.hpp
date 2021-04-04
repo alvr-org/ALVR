@@ -1,19 +1,23 @@
 #pragma once
 
-#include "util/fence.h"
-#include <unordered_map>
+#include <atomic>
 #include <vulkan/vulkan.h>
+#include <thread>
 
 namespace wsi {
 
 class display {
   public:
-    static display &get();
+    static display &get(VkDevice device);
 
-    Fence &get_vsync_fence() { return vsync_fence; }
+    VkFence &get_vsync_fence() { return vsync_fence; }
 
   private:
-    Fence vsync_fence;
+    std::atomic_bool m_exiting{false};
+    std::thread m_vsync_thread;
+    display(VkDevice device);
+    ~display();
+    VkFence vsync_fence;
 };
 
 } // namespace wsi

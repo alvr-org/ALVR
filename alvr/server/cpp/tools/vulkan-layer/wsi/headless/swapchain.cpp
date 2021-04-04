@@ -44,6 +44,7 @@
 
 #include "platform/linux/protocol.h"
 #include "swapchain.hpp"
+#include "wsi/display.hpp"
 
 namespace wsi {
 namespace headless {
@@ -243,12 +244,14 @@ void swapchain::present_image(uint32_t pending_index) {
         packet.frame = m_present_count;
         ret = write(m_socket, &packet, sizeof(packet));
         if (ret == -1) {
-            Error("error while trying to send present packet\n");
-            perror("write");
-            exit(1);
+          //FIXME: try to reconnect?
         }
     }
     m_present_count++;
+    VkSubmitInfo submit = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    submit.commandBufferCount = 0;
+    submit.pCommandBuffers = nullptr;
+    m_device_data.disp.QueueSubmit(m_queue, 1, &submit, display::get(m_device).get_vsync_fence());
     unpresent_image(pending_index);
 }
 

@@ -43,8 +43,6 @@
 #include "display.hpp"
 #include "swapchain_base.hpp"
 
-VkFence global_vsync_fence = NULL;
-
 #if VULKAN_WSI_DEBUG > 0
 #define WSI_PRINT_ERROR(...) fprintf(stderr, ##__VA_ARGS__)
 #else
@@ -115,8 +113,6 @@ void swapchain_base::page_flip_thread() {
         else {
             present_image(pending_index);
         }
-
-        display::get().get_vsync_fence().signal();
     }
 }
 

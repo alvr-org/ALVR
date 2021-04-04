@@ -1,7 +1,9 @@
 import { Radio, Select, Space } from "antd"
 import React, { useContext } from "react"
 import { SchemaChoice, SessionSettingsChoice, SessionSettingsNode } from "../../sessionManager"
+import { Trans, TransName, useTrans } from "../../translation"
 import { AdvancedContext, SettingContainer, SettingControl } from "../Settings"
+import { Reset } from "./Reset"
 
 export function ChoiceControl(props: {
     schema: SchemaChoice
@@ -9,6 +11,8 @@ export function ChoiceControl(props: {
     setSession: (session: SessionSettingsChoice) => void
 }): JSX.Element {
     const showAdvanced = useContext(AdvancedContext)
+
+    const { name: defaultDisplayName } = useTrans(props.schema.default)
 
     const maybeContentSchema = props.schema.variants.find(
         ([variant]) => variant === props.session.variant,
@@ -35,7 +39,7 @@ export function ChoiceControl(props: {
                     {props.schema.variants.map(([variant]) => {
                         return (
                             <Radio.Button value={variant} key={variant}>
-                                {variant}
+                                <TransName subkey={variant} />
                             </Radio.Button>
                         )
                     })}
@@ -45,18 +49,25 @@ export function ChoiceControl(props: {
                     {props.schema.variants.map(([variant]) => {
                         return (
                             <Select.Option value={variant} key={variant}>
-                                {variant}
+                                <TransName subkey={variant} />
                             </Select.Option>
                         )
                     })}
                 </Select>
             )}
+            <Reset
+                default={props.schema.default}
+                display={defaultDisplayName}
+                reset={() => setVariant(props.schema.default)}
+            />
             {maybeContentSchema && (!maybeContentSchema.advanced || showAdvanced) && (
-                <SettingControl
-                    schema={maybeContentSchema.content}
-                    session={props.session[props.session.variant]}
-                    setSession={setContent}
-                />
+                <Trans node={props.session.variant}>
+                    <SettingControl
+                        schema={maybeContentSchema.content}
+                        session={props.session[props.session.variant]}
+                        setSession={setContent}
+                    />
+                </Trans>
             )}
         </Space>
     )
@@ -80,11 +91,13 @@ export function ChoiceContainer(props: {
 
     if (maybeContentSchema && (!maybeContentSchema.advanced || showAdvanced)) {
         return (
-            <SettingContainer
-                schema={maybeContentSchema.content}
-                session={props.session[props.session.variant]}
-                setSession={setContent}
-            />
+            <Trans node={props.session.variant}>
+                <SettingContainer
+                    schema={maybeContentSchema.content}
+                    session={props.session[props.session.variant]}
+                    setSession={setContent}
+                />
+            </Trans>
         )
     } else {
         return null

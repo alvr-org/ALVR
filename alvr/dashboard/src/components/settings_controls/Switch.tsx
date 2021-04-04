@@ -2,30 +2,47 @@ import React, { useContext } from "react"
 import { SchemaSwitch, SessionSettingsNode, SessionSettingsSwitch } from "../../sessionManager"
 import { Space, Switch as AntdSwitch } from "antd"
 import { AdvancedContext, SettingContainer, SettingControl } from "../Settings"
+import { Reset } from "./Reset"
+import { useTranslation } from "react-i18next"
 
 export function SwitchControl(props: {
     schema: SchemaSwitch
     session: SessionSettingsSwitch
     setSession: (session: SessionSettingsSwitch) => void
 }): JSX.Element {
-    function setEnabled(enabled: boolean) {
-        props.session.enabled = enabled
-        props.setSession(props.session)
-    }
+    const showAdvanced = useContext(AdvancedContext)
+
+    const { t } = useTranslation()
 
     function setContent(content: SessionSettingsNode) {
         props.session.content = content
         props.setSession(props.session)
     }
 
+    function setEnabled(enabled: boolean) {
+        props.session.enabled = enabled
+        props.setSession(props.session)
+    }
+
     return (
         <Space>
             <AntdSwitch checked={props.session.enabled} onChange={setEnabled} />
-            <SettingControl
-                schema={props.schema.content}
-                session={props.session.content}
-                setSession={setContent}
+            <Reset
+                default={props.schema.default_enabled}
+                display={
+                    props.schema.default_enabled
+                        ? t("settings.common.switch-enabled")
+                        : t("settings.common.switch-disabled")
+                }
+                reset={() => setEnabled(props.schema.default_enabled)}
             />
+            {props.session.enabled && (!props.schema.content_advanced || showAdvanced) && (
+                <SettingControl
+                    schema={props.schema.content}
+                    session={props.session.content}
+                    setSession={setContent}
+                />
+            )}
         </Space>
     )
 }

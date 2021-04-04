@@ -3,15 +3,34 @@
         "ok": "OK",
         "cancel": "Cancel"
     },
+
     "connect": "Connect",
     "statistics": "Statistics",
     "presets": "Presets",
     "settings": {
         "name": "Settings",
-        "advanced": "Advanced",
+        "advanced-mode": "Advanced",
+        "common": {
+            "resetPrompt": "Do you want to reset this setting to {{value}}?",
+            "switch-enabled": "Enabled",
+            "switch-disabled": "Disbaled"
+        },
+
         "video": {
             "name": "Video",
             "resolution_dropdown": "Video resolution"
+        },
+        "connection": {
+            "name": "Connection",
+            "stream_protocol": {
+                "name": "Stream protocol",
+                "Udp": "UDP",
+                "ThrottledUdp": {
+                    "name": "Trottled UDP",
+                    "bitrate_multiplier": "Bitrate multiplier"
+                },
+                "Tcp": "TCP"
+            }
         }
     },
     "installation": "Installation",

@@ -1,6 +1,7 @@
-import { Input, InputNumber, Slider } from "antd"
+import { Col, Input, InputNumber, Row, Slider, Space } from "antd"
 import React, { useEffect, useState } from "react"
 import { SchemaNumeric } from "../../sessionManager"
+import { Reset } from "./Reset"
 
 function NumericSlider(props: {
     default: number
@@ -95,13 +96,20 @@ export function NumericControl(props: {
 
     if (props.schema.gui === "UpDown" && props.schema.step !== null) {
         return (
-            <NumericUpDown
-                min={props.schema.min}
-                max={props.schema.max}
-                step={props.schema.step}
-                session={props.session}
-                apply={apply}
-            />
+            <Space>
+                <NumericUpDown
+                    min={props.schema.min}
+                    max={props.schema.max}
+                    step={props.schema.step}
+                    session={props.session}
+                    apply={apply}
+                />
+                <Reset
+                    default={props.schema.default}
+                    display={props.schema.default.toString()}
+                    reset={() => apply(props.schema.default)}
+                />
+            </Space>
         )
     } else {
         return null
@@ -123,13 +131,15 @@ export function NumericContainer(props: {
         props.setSession(maybeValue)
     }
 
+    let container: JSX.Element | null = null
+
     if (
         props.schema.gui === "Slider" &&
         props.schema.min !== null &&
         props.schema.max !== null &&
         props.schema.step !== null
     ) {
-        return (
+        container = (
             <NumericSlider
                 default={props.schema.default}
                 min={props.schema.min}
@@ -140,7 +150,22 @@ export function NumericContainer(props: {
             />
         )
     } else if (props.schema.gui !== "UpDown" || props.schema.step === null) {
-        return <NumericTextBox session={props.session} apply={apply} />
+        container = <NumericTextBox session={props.session} apply={apply} />
+    }
+
+    if (container) {
+        return (
+            <Row>
+                <Col flex="auto">{container}</Col>
+                <Col>
+                    <Reset
+                        default={props.schema.default}
+                        display={props.schema.default.toString()}
+                        reset={() => apply(props.schema.default)}
+                    />
+                </Col>
+            </Row>
+        )
     } else {
         return null
     }

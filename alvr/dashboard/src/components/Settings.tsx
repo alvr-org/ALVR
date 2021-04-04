@@ -61,7 +61,7 @@ export function Settings({ schema }: { schema: SettingsSchema }): JSX.Element {
                                 <Button type="link">
                                     <Space>
                                         <AntdSwitch checked={advanced} />
-                                        <TransName subkey="advanced" />
+                                        <TransName subkey="advanced-mode" />
                                     </Space>
                                 </Button>
                             </div>

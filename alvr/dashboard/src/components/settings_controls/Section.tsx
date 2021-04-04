@@ -1,4 +1,4 @@
-import { List } from "antd"
+import { Col, Row, Space } from "antd"
 import React, { useContext } from "react"
 import {
     SchemaSectionEntryContent,
@@ -7,7 +7,7 @@ import {
     SessionSettingsSection,
 } from "../../sessionManager"
 import { Trans, useTrans } from "../../translation"
-import { AdvancedContext, generateSettingsControl } from "../Settings"
+import { AdvancedContext, SettingContainer, SettingControl } from "../Settings"
 import { AudioDropdown } from "./AudioDropdown"
 import { HighOrderSetting } from "./HigherOrderSetting"
 
@@ -21,22 +21,32 @@ function SectionField(props: {
 
     const { name: displayName } = useTrans()
 
-    let content: JSX.Element | null = null
+    let control: JSX.Element | null = null
+    let container: JSX.Element | null = null
 
     switch (props.schemaContent.type) {
         case "Data": {
             if (showAdvanced || !props.schemaContent.content.advanced) {
-                content = generateSettingsControl(
-                    props.schemaContent.content.content,
-                    props.session,
-                    props.setContent,
+                control = (
+                    <SettingControl
+                        schema={props.schemaContent.content.content}
+                        session={props.session}
+                        setSession={props.setContent}
+                    />
+                )
+                container = (
+                    <SettingContainer
+                        schema={props.schemaContent.content.content}
+                        session={props.session}
+                        setSession={props.setContent}
+                    />
                 )
             }
             break
         }
         case "HigherOrder": {
             if (!showAdvanced) {
-                content = <HighOrderSetting schema={props.schemaContent.content} />
+                control = <HighOrderSetting schema={props.schemaContent.content} />
             }
             break
         }
@@ -46,7 +56,7 @@ function SectionField(props: {
                     case "device_dropdown":
                     case "input_device_dropdown":
                     case "output_device_dropdown": {
-                        content = <AudioDropdown name={props.name} />
+                        control = <AudioDropdown name={props.name} />
                         break
                     }
                 }
@@ -55,10 +65,26 @@ function SectionField(props: {
         }
     }
     return (
-        content && (
-            <List.Item>
-                {displayName} {content}
-            </List.Item>
+        (control || container) && (
+            <>
+                <Row>
+                    <Col flex="auto">
+                        <Space>
+                            {displayName} {control}
+                        </Space>
+                    </Col>
+                </Row>
+                {container && (
+                    <>
+                        <Row style={{ height: 8 }} />
+                        <Row>
+                            <Col flex="32px" />
+                            <Col flex="auto">{container}</Col>
+                        </Row>
+                    </>
+                )}
+                <Row style={{ height: 8 }} />
+            </>
         )
     )
 }
@@ -78,7 +104,7 @@ export function Section(props: {
     }
 
     return (
-        <List bordered>
+        <>
             {props.schema.map(([fieldName, schemaContent]) => (
                 <Trans node={fieldName} key={fieldName}>
                     <SectionField
@@ -89,6 +115,6 @@ export function Section(props: {
                     />
                 </Trans>
             ))}
-        </List>
+        </>
     )
 }

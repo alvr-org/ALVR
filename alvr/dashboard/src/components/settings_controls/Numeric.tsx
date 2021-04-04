@@ -2,18 +2,33 @@ import { Input, InputNumber, Slider } from "antd"
 import React, { useEffect, useState } from "react"
 import { SchemaNumeric } from "../../sessionManager"
 
-function NumericTextBox(props: { session: number; apply: (session: string) => void }): JSX.Element {
-    const [localValue, setLocalValue] = useState(props.session.toString())
+function NumericSlider(props: {
+    default: number
+    min: number
+    max: number
+    step: number
+    session: number
+    apply: (session: number) => void
+}): JSX.Element {
+    const [localValue, setLocalValue] = useState(props.session)
 
     useEffect(() => {
-        setLocalValue(props.session.toString())
+        setLocalValue(props.session)
     }, [props])
 
     return (
-        <Input
+        <Slider
             value={localValue}
-            onChange={e => setLocalValue(e.target.value)}
-            onBlur={e => props.apply(e.target.value)}
+            onChange={setLocalValue}
+            onAfterChange={props.apply}
+            min={props.min}
+            max={props.max}
+            step={props.step}
+            marks={{
+                [props.min]: `${props.min}`,
+                [props.default]: "Default",
+                [props.max]: `${props.max}`,
+            }}
         />
     )
 }
@@ -47,42 +62,57 @@ function NumericUpDown(props: {
     )
 }
 
-function NumericSlider(props: {
-    default: number
-    min: number
-    max: number
-    step: number
-    session: number
-    apply: (session: number) => void
-}): JSX.Element {
-    const [localValue, setLocalValue] = useState(props.session)
+function NumericTextBox(props: { session: number; apply: (session: string) => void }): JSX.Element {
+    const [localValue, setLocalValue] = useState(props.session.toString())
 
     useEffect(() => {
-        setLocalValue(props.session)
+        setLocalValue(props.session.toString())
     }, [props])
 
     return (
-        <Slider
+        <Input
             value={localValue}
-            onChange={setLocalValue}
-            onAfterChange={props.apply}
-            min={props.min}
-            max={props.max}
-            step={props.step}
-            marks={{
-                [props.min]: `${props.min}`,
-                [props.default]: "Default",
-                [props.max]: `${props.max}`,
-            }}
+            onChange={e => setLocalValue(e.target.value)}
+            onBlur={e => props.apply(e.target.value)}
         />
     )
 }
 
-export function Numeric(props: {
+export function NumericControl(props: {
     schema: SchemaNumeric
     session: number
     setSession: (session: number) => void
-}): JSX.Element {
+}): JSX.Element | null {
+    function apply(maybeValue: number | string | null) {
+        if (maybeValue === null) {
+            maybeValue = props.session
+        } else if (typeof maybeValue === "string") {
+            maybeValue = parseFloat(maybeValue)
+        }
+
+        props.setSession(maybeValue)
+    }
+
+    if (props.schema.gui === "UpDown" && props.schema.step !== null) {
+        return (
+            <NumericUpDown
+                min={props.schema.min}
+                max={props.schema.max}
+                step={props.schema.step}
+                session={props.session}
+                apply={apply}
+            />
+        )
+    } else {
+        return null
+    }
+}
+
+export function NumericContainer(props: {
+    schema: SchemaNumeric
+    session: number
+    setSession: (session: number) => void
+}): JSX.Element | null {
     function apply(maybeValue: number | string | null) {
         if (maybeValue === null) {
             maybeValue = props.session
@@ -109,17 +139,9 @@ export function Numeric(props: {
                 apply={apply}
             />
         )
-    } else if (props.schema.gui === "UpDown" && props.schema.step !== null) {
-        return (
-            <NumericUpDown
-                min={props.schema.min}
-                max={props.schema.max}
-                step={props.schema.step}
-                session={props.session}
-                apply={apply}
-            />
-        )
-    } else {
+    } else if (props.schema.gui !== "UpDown" || props.schema.step === null) {
         return <NumericTextBox session={props.session} apply={apply} />
+    } else {
+        return null
     }
 }

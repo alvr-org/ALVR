@@ -8,6 +8,7 @@
     "presets": "Presets",
     "settings": {
         "name": "Settings",
+        "advanced": "Advanced",
         "video": {
             "name": "Video",
             "resolution_dropdown": "Video resolution"

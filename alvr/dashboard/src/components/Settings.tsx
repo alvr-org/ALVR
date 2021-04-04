@@ -1,4 +1,4 @@
-import { Button, Switch as AntdSwitch, Tabs } from "antd"
+import { Button, Col, Row, Space, Switch as AntdSwitch, Tabs } from "antd"
 import React, { useState } from "react"
 import {
     applySessionSettings,
@@ -25,12 +25,12 @@ import {
 import { Trans, TransName } from "../translation"
 import { Array } from "./settings_controls/Array"
 import { Boolean } from "./settings_controls/Boolean"
-import { Choice } from "./settings_controls/Choice"
+import { ChoiceContainer, ChoiceControl } from "./settings_controls/Choice"
 import { Dictionary } from "./settings_controls/Dictionary"
-import { Numeric } from "./settings_controls/Numeric"
-import { Optional } from "./settings_controls/Optional"
+import { NumericContainer, NumericControl } from "./settings_controls/Numeric"
+import { OptionalContainer, OptionalControl } from "./settings_controls/Optional"
 import { Section } from "./settings_controls/Section"
-import { Switch } from "./settings_controls/Switch"
+import { SwitchContainer, SwitchControl } from "./settings_controls/Switch"
 import { Text } from "./settings_controls/Text"
 import { Vector } from "./settings_controls/Vector"
 
@@ -51,118 +51,185 @@ export function Settings({ schema }: { schema: SettingsSchema }): JSX.Element {
 
     return (
         <AdvancedContext.Provider value={advanced}>
-            <Tabs
-                defaultActiveKey={initialTabKey}
-                tabBarExtraContent={
-                    <div onClick={() => setAdvanced(!advanced)}>
-                        <AntdSwitch checked={advanced} />
-                        <Button type="link">Advanced</Button>
-                    </div>
-                }
-            >
-                {schema.content.map(([tabName, schemaContent]) => (
-                    <Tabs.TabPane tab={<TransName subkey={tabName} />} key={tabName}>
-                        <Trans node={tabName}>
-                            {generateSettingsControl(
-                                schemaContent.content.content,
-                                session_settings[tabName],
-                                session =>
-                                    setTabContent(tabName, session as SessionSettingsSection),
-                            )}
-                        </Trans>
-                    </Tabs.TabPane>
-                ))}
-            </Tabs>
+            <Row>
+                <Col flex="32px" />
+                <Col flex="auto">
+                    <Tabs
+                        defaultActiveKey={initialTabKey}
+                        tabBarExtraContent={
+                            <div onClick={() => setAdvanced(!advanced)}>
+                                <Button type="link">
+                                    <Space>
+                                        <AntdSwitch checked={advanced} />
+                                        <TransName subkey="advanced" />
+                                    </Space>
+                                </Button>
+                            </div>
+                        }
+                    >
+                        {schema.content.map(([tabName, schemaContent]) => (
+                            <Tabs.TabPane tab={<TransName subkey={tabName} />} key={tabName}>
+                                <Trans node={tabName}>
+                                    <SettingContainer
+                                        schema={schemaContent.content.content}
+                                        session={session_settings[tabName]}
+                                        setSession={session =>
+                                            setTabContent(
+                                                tabName,
+                                                session as SessionSettingsSection,
+                                            )
+                                        }
+                                    />
+                                </Trans>
+                            </Tabs.TabPane>
+                        ))}
+                    </Tabs>
+                </Col>
+                <Col flex="32px" />
+            </Row>
         </AdvancedContext.Provider>
     )
 }
 
-export function generateSettingsControl(
-    schema: SchemaNode,
-    session: SessionSettingsNode,
-    setSession: (session: SessionSettingsNode) => void,
-): JSX.Element {
-    switch (schema.type) {
-        case "Section":
-            return (
-                <Section
-                    schema={schema.content as SchemaSection}
-                    session={session as SessionSettingsSection}
-                    {...{ setSession }}
-                />
-            )
+// SettingControl vs SettingContent explanation:
+// Each setting entry has a chain of components. Some components are small enough to be rendered
+// inline (control), some need to be rendered below (container), some have both a control and a
+// container components. The control and container components work independently from each other:
+// when the user interacts with them, each components can request a session update that redraws the
+// whole settings tree.
+
+export function SettingControl(props: {
+    schema: SchemaNode
+    session: SessionSettingsNode
+    setSession: (session: SessionSettingsNode) => void
+}): JSX.Element | null {
+    switch (props.schema.type) {
         case "Choice":
             return (
-                <Choice
-                    schema={schema.content as SchemaChoice}
-                    session={session as SessionSettingsChoice}
-                    {...{ setSession }}
+                <ChoiceControl
+                    schema={props.schema.content as SchemaChoice}
+                    session={props.session as SessionSettingsChoice}
+                    setSession={props.setSession}
                 />
             )
         case "Optional":
             return (
-                <Optional
-                    schema={schema.content as SchemaOptional}
-                    session={session as SessionSettingsOptional}
-                    {...{ setSession }}
+                <OptionalControl
+                    schema={props.schema.content as SchemaOptional}
+                    session={props.session as SessionSettingsOptional}
+                    setSession={props.setSession}
                 />
             )
         case "Switch":
             return (
-                <Switch
-                    schema={schema.content as SchemaSwitch}
-                    session={session as SessionSettingsSwitch}
-                    {...{ setSession }}
+                <SwitchControl
+                    schema={props.schema.content as SchemaSwitch}
+                    session={props.session as SessionSettingsSwitch}
+                    setSession={props.setSession}
                 />
             )
         case "Boolean":
             return (
                 <Boolean
-                    schema={schema.content as SchemaBoolean}
-                    session={session as boolean}
-                    {...{ setSession }}
+                    schema={props.schema.content as SchemaBoolean}
+                    session={props.session as boolean}
+                    setSession={props.setSession}
                 />
             )
         case "Integer":
         case "Float":
             return (
-                <Numeric
-                    schema={schema.content as SchemaNumeric}
-                    session={session as number}
-                    {...{ setSession }}
+                <NumericControl
+                    schema={props.schema.content as SchemaNumeric}
+                    session={props.session as number}
+                    setSession={props.setSession}
+                />
+            )
+        default:
+            return null
+    }
+}
+
+export function SettingContainer(props: {
+    schema: SchemaNode
+    session: SessionSettingsNode
+    setSession: (session: SessionSettingsNode) => void
+}): JSX.Element | null {
+    switch (props.schema.type) {
+        case "Section":
+            return (
+                <Section
+                    schema={props.schema.content as SchemaSection}
+                    session={props.session as SessionSettingsSection}
+                    setSession={props.setSession}
+                />
+            )
+        case "Choice":
+            return (
+                <ChoiceContainer
+                    schema={props.schema.content as SchemaChoice}
+                    session={props.session as SessionSettingsChoice}
+                    setSession={props.setSession}
+                />
+            )
+        case "Optional":
+            return (
+                <OptionalContainer
+                    schema={props.schema.content as SchemaOptional}
+                    session={props.session as SessionSettingsOptional}
+                    setSession={props.setSession}
+                />
+            )
+        case "Switch":
+            return (
+                <SwitchContainer
+                    schema={props.schema.content as SchemaSwitch}
+                    session={props.session as SessionSettingsSwitch}
+                    setSession={props.setSession}
+                />
+            )
+        case "Integer":
+        case "Float":
+            return (
+                <NumericContainer
+                    schema={props.schema.content as SchemaNumeric}
+                    session={props.session as number}
+                    setSession={props.setSession}
                 />
             )
         case "Text":
             return (
                 <Text
-                    schema={schema.content as SchemaText}
-                    session={session as string}
-                    {...{ setSession }}
+                    schema={props.schema.content as SchemaText}
+                    session={props.session as string}
+                    setSession={props.setSession}
                 />
             )
         case "Array":
             return (
                 <Array
-                    schema={schema.content as SchemaNode[]}
-                    session={session as SessionSettingsNode[]}
-                    {...{ setSession }}
+                    schema={props.schema.content as SchemaNode[]}
+                    session={props.session as SessionSettingsNode[]}
+                    setSession={props.setSession}
                 />
             )
         case "Vector":
             return (
                 <Vector
-                    schema={schema.content as SchemaVector}
-                    session={session as SessionSettingsVector}
-                    {...{ setSession }}
+                    schema={props.schema.content as SchemaVector}
+                    session={props.session as SessionSettingsVector}
+                    setSession={props.setSession}
                 />
             )
         case "Dictionary":
             return (
                 <Dictionary
-                    schema={schema.content as SchemaDictionary}
-                    session={session as SessionSettingsDictionary}
-                    {...{ setSession }}
+                    schema={props.schema.content as SchemaDictionary}
+                    session={props.session as SessionSettingsDictionary}
+                    setSession={props.setSession}
                 />
             )
+        default:
+            return null
     }
 }

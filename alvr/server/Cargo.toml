@@ -52,6 +52,6 @@ nalgebra = "0.25"
 openvr-driver-sys = { path = "../openvr-driver-sys" }
 
 [build-dependencies]
-bindgen = "0.57"
+bindgen = "0.58"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"

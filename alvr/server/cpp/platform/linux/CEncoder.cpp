@@ -521,8 +521,13 @@ void CEncoder::Run() {
 
         auto encode_end = std::chrono::steady_clock::now();
 
+        uint64_t server_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(encode_start.time_since_epoch()).count();
+        auto hmd_pose = m_poseHistory->GetPoseAt(m_listener->serverToClientTime(server_timestamp) - 5000);
+        if (hmd_pose)
+          m_poseSubmitIndex = hmd_pose->info.FrameIndex;
+
         m_listener->GetStatistics()->EncodeOutput(std::chrono::duration_cast<std::chrono::microseconds>(encode_end - encode_start).count());
-        m_listener->SendVideo(frame_data, frame_size, frame_info.frame);
+        m_listener->SendVideo(frame_data, frame_size, m_poseSubmitIndex);
 
       }
       av_buffer_unref(&encoder_ctx);

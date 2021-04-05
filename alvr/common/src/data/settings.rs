@@ -71,6 +71,7 @@ pub struct VideoDesc {
         name = "resolution_dropdown",
         data(choice(
             default = "75%",
+            gui = "dropdown",
             variant = "25%",
             variant = "50%",
             variant = "75%",
@@ -80,10 +81,11 @@ pub struct VideoDesc {
             variant = "175%",
             variant = "200%",
         )),
-        modifier = r#"settings.video.render_resolution.variant = "Scale""#,
-        modifier = "settings.video.render_resolution.content = (input + 1) * 0.25",
-        modifier = r#"settings.video.recommended_target_resolution.variant = "Scale""#,
-        modifier = "settings.video.recommended_target_resolution.content = (input + 1) * 0.25",
+        modifier = r#"{settings}.video.render_resolution.variant = "Scale""#,
+        modifier = "{settings}.video.render_resolution.Scale = parseInt({input}) / 100",
+        modifier = r#"{settings}.video.recommended_target_resolution.variant = "Scale""#,
+        modifier = r"{settings}.video.recommended_target_resolution.Scale = 
+                        parseInt({input}) / 100",
     ))]
     //
     #[schema(advanced)]
@@ -102,10 +104,7 @@ pub struct VideoDesc {
             variant = "80Hz",
             variant = "90Hz",
         )),
-        modifier = r"settings.video.preferred_fps = (input == 0) * 60 
-                        + (input == 1) * 72
-                        + (input == 2) * 80
-                        + (input == 3) * 90",
+        modifier = "{settings}.video.preferred_fps = parseInt({input})",
     ))]
     //
     #[schema(advanced, min = 60.0, max = 90.0, step = 1.0, gui = "up_down")]
@@ -243,10 +242,12 @@ pub struct ControllersDesc {
             variant = "medium",
             variant = "fast",
         )),
-        modifier = r"settings.headset.controllers.content.pose_time_offset} = (input == 1) * 0.01 
-                        + (input == 2) * -0.03
-                        + (input == 3) * -1",
-        modifier = "{headset.controllers.content.clientside_prediction} = (input == 0)"
+        modifier = r#"{settings}.headset.controllers.content.pose_time_offset = 
+                        ({input} == "slow") * 0.01
+                            + ({input} == "medium") * -0.03
+                            + ({input} == "fast") * -1"#,
+        modifier = r#"{settings}.headset.controllers.content.clientside_prediction =
+                        ({input} == "oculus_prediction")"#
     ))]
     //
     #[schema(advanced)]

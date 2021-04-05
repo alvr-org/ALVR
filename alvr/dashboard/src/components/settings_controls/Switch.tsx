@@ -31,8 +31,8 @@ export function SwitchControl(props: {
                 default={props.schema.default_enabled}
                 display={
                     props.schema.default_enabled
-                        ? t("settings.common.switch-enabled")
-                        : t("settings.common.switch-disabled")
+                        ? t("common.switch-enabled")
+                        : t("common.switch-disabled")
                 }
                 reset={() => setEnabled(props.schema.default_enabled)}
             />

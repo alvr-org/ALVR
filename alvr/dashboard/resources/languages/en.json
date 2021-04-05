@@ -1,24 +1,53 @@
 {
     "common": {
         "ok": "OK",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "default": "Default",
+        "custom": "Custom",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "set": "Set",
+        "unset": "Unset",
+        "apply": "Apply",
+        "appied": "Applied",
+        "choice-custom": "$t(common.custom)",
+        "switch-enabled": "$t(common.enabled)",
+        "switch-disabled": "$t(common.disabled)",
+        "switch-unset": "$t(common.unset)",
+        "reset-prompt": "Do you want to reset this setting to {{value}}?"
     },
 
     "connect": "Connect",
     "statistics": "Statistics",
-    "presets": "Presets",
+    "presets": {
+        "name": "Presets",
+        "action-apply": "$t(common.apply)",
+        "action-applied": "$t(common.applied)"
+    },
     "settings": {
         "name": "Settings",
         "advanced-mode": "Advanced",
         "common": {
-            "resetPrompt": "Do you want to reset this setting to {{value}}?",
-            "switch-enabled": "Enabled",
-            "switch-disabled": "Disbaled"
+            "slider-default": "$t(common.default)",
+            "optional-set": "$t(common.set)",
+            "optional-unset": "$t(common.unset)"
         },
 
         "video": {
             "name": "Video",
             "resolution_dropdown": "Video resolution"
+        },
+        "headset": {
+            "name": "Headset",
+            "controllers": {
+                "tracking_speed": {
+                    "name": "Tracking speed",
+                    "oculus_prediction": "Oculus prediction",
+                    "slow": "Slow",
+                    "medium": "Medium",
+                    "fast": "Fast"
+                }
+            }
         },
         "connection": {
             "name": "Connection",
@@ -26,7 +55,7 @@
                 "name": "Stream protocol",
                 "Udp": "UDP",
                 "ThrottledUdp": {
-                    "name": "Trottled UDP",
+                    "name": "Throttled UDP",
                     "bitrate_multiplier": "Bitrate multiplier"
                 },
                 "Tcp": "TCP"

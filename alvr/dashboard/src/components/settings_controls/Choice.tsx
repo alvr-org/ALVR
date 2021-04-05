@@ -36,23 +36,19 @@ export function ChoiceControl(props: {
                     buttonStyle="solid"
                     onChange={e => setVariant(e.target.value)}
                 >
-                    {props.schema.variants.map(([variant]) => {
-                        return (
-                            <Radio.Button value={variant} key={variant}>
-                                <TransName subkey={variant} />
-                            </Radio.Button>
-                        )
-                    })}
+                    {props.schema.variants.map(([variant]) => (
+                        <Radio.Button value={variant} key={variant}>
+                            <TransName subkey={variant} />
+                        </Radio.Button>
+                    ))}
                 </Radio.Group>
             ) : (
                 <Select value={props.session.variant} onChange={setVariant}>
-                    {props.schema.variants.map(([variant]) => {
-                        return (
-                            <Select.Option value={variant} key={variant}>
-                                <TransName subkey={variant} />
-                            </Select.Option>
-                        )
-                    })}
+                    {props.schema.variants.map(([variant]) => (
+                        <Select.Option value={variant} key={variant}>
+                            <TransName subkey={variant} />
+                        </Select.Option>
+                    ))}
                 </Select>
             )}
             <Reset

@@ -1,5 +1,5 @@
-import { Col, Row, Space } from "antd"
-import React from "react"
+import { Col, Row } from "antd"
+import React, { Fragment } from "react"
 import { SchemaNode, SessionSettingsNode } from "../../sessionManager"
 import { SettingContainer, SettingControl } from "../Settings"
 
@@ -19,23 +19,38 @@ export function Array(props: {
             {props.schema.map((schemaContent, index) => {
                 const sessionContent = props.session[index]
 
+                const control = (
+                    <SettingControl
+                        schema={schemaContent}
+                        session={sessionContent}
+                        setSession={c => setContent(index, c)}
+                    />
+                )
+
+                const container = (
+                    <SettingContainer
+                        schema={schemaContent}
+                        session={sessionContent}
+                        setSession={c => setContent(index, c)}
+                    />
+                )
+
                 return (
-                    <Row key={index}>
-                        <Col>
-                            <Space>
-                                <SettingControl
-                                    schema={schemaContent}
-                                    session={sessionContent}
-                                    setSession={c => setContent(index, c)}
-                                />
-                                <SettingContainer
-                                    schema={schemaContent}
-                                    session={sessionContent}
-                                    setSession={c => setContent(index, c)}
-                                />
-                            </Space>
-                        </Col>
-                    </Row>
+                    <Fragment key={index}>
+                        {control && (
+                            <Row>
+                                <Col>{control}</Col>
+                            </Row>
+                        )}
+                        {control && <Row style={{ height: 8 }} />}
+                        {container && (
+                            <Row>
+                                {!control && <Col flex="32px" />}
+                                <Col flex="auto">{container}</Col>
+                            </Row>
+                        )}
+                        {container && <Row style={{ height: 8 }} />}
+                    </Fragment>
                 )
             })}
         </>

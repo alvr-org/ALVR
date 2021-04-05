@@ -115,19 +115,25 @@ export interface SchemaHOS {
     data_type:
         | {
               type: "Choice"
-              content: {
-                  default: string
-                  variants: string[]
-                  gui: "Dropdown" | "ButtonGroup" | null
-              }
+              content: ChoiceHosSchema
           }
         | { type: "Boolean"; content: { default: boolean } }
         | { type: "Action" }
 
     modifiers: string[]
 }
+export interface ChoiceHosSchema {
+    default: string
+    variants: string[]
+    gui: "Dropdown" | "ButtonGroup"
+}
 
-export type PresetGroup = [string, SchemaHOS][]
+export interface Preset extends SchemaHOS {
+    name: string | Record<string, string>
+    description?: string | Record<string, string>
+    version?: string
+    registry?: string
+}
 
 type SessionListener = (session: Session) => void
 

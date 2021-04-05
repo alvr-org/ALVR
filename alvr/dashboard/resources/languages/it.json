@@ -1,6 +1,7 @@
 {
     "common": {
-        "cancel": "Annulla"
+        "cancel": "Annulla",
+        "default": "Predefinito"
     },
     "connect": "Connetti",
     "statistics": "Statistiche",

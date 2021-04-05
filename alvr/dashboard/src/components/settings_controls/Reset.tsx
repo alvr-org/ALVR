@@ -16,7 +16,7 @@ export function Reset<T>(props: { default: T; display: string; reset: () => void
             content: (
                 <div
                     dangerouslySetInnerHTML={{
-                        __html: t("settings.common.resetPrompt", {
+                        __html: t("common.reset-prompt", {
                             value: "<strong>" + props.display + "</strong>",
                         }),
                     }}

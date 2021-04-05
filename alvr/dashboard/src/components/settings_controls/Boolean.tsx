@@ -17,9 +17,7 @@ export function Boolean(props: {
             <Reset
                 default={props.schema.default}
                 display={
-                    props.schema.default
-                        ? t("settings.common.switch-enabled")
-                        : t("settings.common.switch-disabled")
+                    props.schema.default ? t("common.switch-enabled") : t("common.switch-disabled")
                 }
                 reset={() => props.setSession(props.schema.default)}
             />

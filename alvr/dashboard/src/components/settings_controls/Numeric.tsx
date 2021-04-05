@@ -1,5 +1,6 @@
 import { Col, Input, InputNumber, Row, Slider, Space } from "antd"
 import React, { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { SchemaNumeric } from "../../sessionManager"
 import { Reset } from "./Reset"
 
@@ -11,6 +12,8 @@ function NumericSlider(props: {
     session: number
     apply: (session: number) => void
 }): JSX.Element {
+    const { t } = useTranslation()
+
     const [localValue, setLocalValue] = useState(props.session)
 
     useEffect(() => {
@@ -27,7 +30,7 @@ function NumericSlider(props: {
             step={props.step}
             marks={{
                 [props.min]: `${props.min}`,
-                [props.default]: "Default",
+                [props.default]: t("settings.common.slider-default"),
                 [props.max]: `${props.max}`,
             }}
         />
@@ -131,15 +134,13 @@ export function NumericContainer(props: {
         props.setSession(maybeValue)
     }
 
-    let container: JSX.Element | null = null
-
     if (
         props.schema.gui === "Slider" &&
         props.schema.min !== null &&
         props.schema.max !== null &&
         props.schema.step !== null
     ) {
-        container = (
+        return (
             <NumericSlider
                 default={props.schema.default}
                 min={props.schema.min}
@@ -150,13 +151,11 @@ export function NumericContainer(props: {
             />
         )
     } else if (props.schema.gui !== "UpDown" || props.schema.step === null) {
-        container = <NumericTextBox session={props.session} apply={apply} />
-    }
-
-    if (container) {
         return (
             <Row>
-                <Col flex="auto">{container}</Col>
+                <Col flex="auto">
+                    <NumericTextBox session={props.session} apply={apply} />
+                </Col>
                 <Col>
                     <Reset
                         default={props.schema.default}

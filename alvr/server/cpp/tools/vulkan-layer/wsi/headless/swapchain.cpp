@@ -87,10 +87,15 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
 
     assert(mem_type_idx <= 8 * sizeof(memory_requirements.memoryTypeBits) - 1);
 
+    VkMemoryDedicatedAllocateInfo ded_info = {};
+    ded_info.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
+    ded_info.image = image.image;
+
     VkMemoryAllocateInfo mem_info = {};
     mem_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     mem_info.allocationSize = memory_requirements.size;
     mem_info.memoryTypeIndex = mem_type_idx;
+    mem_info.pNext = &ded_info;
     m_mem_index = mem_type_idx;
     image_data *data = nullptr;
 
@@ -127,7 +132,7 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
 
     // Export into a FD to send later
     VkMemoryGetFdInfoKHR fd_info = {};
-    fd_info.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR;
+    fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
     fd_info.pNext = NULL;
     fd_info.memory = data->memory;
     fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
@@ -142,6 +147,40 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
     m_fds.push_back(fd);
     Debug("GetMemoryFdKHR returned fd=%d\n", fd);
 
+    VkExportSemaphoreCreateInfo exp_info = {};
+    exp_info.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO;
+    exp_info.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
+
+    VkSemaphoreCreateInfo sem_info = {};
+    sem_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    sem_info.pNext = &exp_info;
+
+    res = m_device_data.disp.CreateSemaphore(m_device, &sem_info, nullptr, &image.semaphore);
+    if (res != VK_SUCCESS) {
+        Error("CreateSemaphore failed\n");
+        destroy_image(image);
+        return res;
+    }
+
+    VkSubmitInfo submit = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    submit.signalSemaphoreCount = 1;
+    submit.pSignalSemaphores = &image.semaphore;
+    m_device_data.disp.QueueSubmit(m_queue, 1, &submit, VK_NULL_HANDLE);
+
+    VkSemaphoreGetFdInfoKHR sem_fd_info = {};
+    sem_fd_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR;
+    sem_fd_info.semaphore = image.semaphore;
+    sem_fd_info.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
+
+    res = m_device_data.disp.GetSemaphoreFdKHR(m_device, &sem_fd_info, &fd);
+    if (res != VK_SUCCESS) {
+        Error("GetSemaphoreFdKHR failed\n");
+        destroy_image(image);
+        return res;
+    }
+    m_fds.push_back(fd);
+    Debug("GetSemaphoreFdKHR returned fd=%d\n", fd);
+
     return res;
 }
 
@@ -150,18 +189,18 @@ int swapchain::send_fds() {
     // file descriptors over unix domain sockets
     // Stolen from https://gist.github.com/kokjo/75cec0f466fc34fa2922
     //
-    // There will always be 3 fds (for the 3 images created in the swapchain) so we can avoid
+    // There will always be 6 fds (for the 3 images and sempahores created in the swapchain) so we can avoid
     // dynamic length. Initially, I tried to send the length in the normal data field (msg.msg_iov /
     // data) but for some reason it was emptied on arrival, no matter what I did.
     //
     struct msghdr msg;
     struct iovec iov[1];
     struct cmsghdr *cmsg = NULL;
-    int fds[3];
+    assert(m_fds.size() == 6);
+    int fds[6];
     char ctrl_buf[CMSG_SPACE(sizeof(fds))];
     char data[1];
 
-    assert(m_fds.size() == 3);
     std::copy(m_fds.begin(), m_fds.end(), fds);
 
     memset(&msg, 0, sizeof(struct msghdr));
@@ -213,7 +252,7 @@ bool swapchain::try_connect() {
     m_device_data.instance_data.disp.GetPhysicalDeviceProperties(m_device_data.physical_device,
                                                                  &prop);
 
-    init_packet init{.num_images = uint32_t(m_fds.size()),
+    init_packet init{.num_images = uint32_t(m_swapchain_images.size()),
                      .image_create_info = m_create_info,
                      .mem_index = m_mem_index,
                      .source_pid = getpid()};
@@ -237,7 +276,8 @@ bool swapchain::try_connect() {
 void swapchain::present_image(uint32_t pending_index) {
     if (!m_connected) {
         m_connected = try_connect();
-    } else {
+    }
+    if (m_connected) {
         int ret;
         present_packet packet;
         packet.image = pending_index;
@@ -246,13 +286,21 @@ void swapchain::present_image(uint32_t pending_index) {
         if (ret == -1) {
           //FIXME: try to reconnect?
         }
+        uint32_t unused;
+        ret = read(m_socket, &unused, sizeof(unused));
+        unpresent_image(pending_index);
+    } else {
+      unpresent_image(pending_index);
     }
     m_present_count++;
     VkSubmitInfo submit = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
     submit.commandBufferCount = 0;
     submit.pCommandBuffers = nullptr;
-    m_device_data.disp.QueueSubmit(m_queue, 1, &submit, display::get(m_device).get_vsync_fence());
-    unpresent_image(pending_index);
+    VkFence fence = display::get(m_device).get_vsync_fence();
+    if (m_device_data.disp.GetFenceStatus(m_device, fence) != VK_NOT_READY) {
+      fence = VK_NULL_HANDLE;
+    }
+    m_device_data.disp.QueueSubmit(m_queue, 1, &submit, fence);
 }
 
 void swapchain::destroy_image(wsi::swapchain_image &image) {

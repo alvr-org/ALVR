@@ -21,7 +21,7 @@ class CEncoder : public CThread {
     void InsertIDR();
 
   private:
-    void GetFds(int client, int (*fds)[3]);
+    void GetFds(int client, int (*fds)[6]);
 
     std::shared_ptr<ClientConnection> m_listener;
     std::shared_ptr<PoseHistory> m_poseHistory;
@@ -30,6 +30,6 @@ class CEncoder : public CThread {
     IDRScheduler m_scheduler;
     int m_socket;
     std::string m_socketPath;
-    int m_fds[3];
+    int m_fds[6];
 	vk::Instance m_vkInstance;
 };

@@ -93,21 +93,30 @@ VkResult surface_properties::get_surface_formats(VkPhysicalDevice physical_devic
 
     VkResult res = VK_SUCCESS;
     /* Construct a list of all formats supported by the driver - for color attachment */
-    constexpr int max_core_1_0_formats = VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1;
-    VkFormat formats[max_core_1_0_formats];
+    VkFormat formats[] = {
+      VK_FORMAT_R8_UNORM,
+      VK_FORMAT_R16_UNORM,
+      VK_FORMAT_R8G8_UNORM,
+      VK_FORMAT_R8G8_UNORM,
+      VK_FORMAT_R16G16_UNORM,
+      VK_FORMAT_R16G16_UNORM,
+      VK_FORMAT_B8G8R8A8_UNORM,
+      VK_FORMAT_B8G8R8A8_UNORM,
+      VK_FORMAT_R8G8B8A8_UNORM,
+      VK_FORMAT_R8G8B8A8_UNORM};
     uint32_t format_count = 0;
 
-    for (int id = 0; id < max_core_1_0_formats; id++) {
+    for (int id = 0; id < std::size(formats); id++) {
         VkImageFormatProperties image_format_props;
 
         res = layer::instance_private_data::get(physical_device)
                   .disp.GetPhysicalDeviceImageFormatProperties(
-                      physical_device, static_cast<VkFormat>(id), VK_IMAGE_TYPE_2D,
+                      physical_device, formats[id], VK_IMAGE_TYPE_2D,
                       VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                       VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT, &image_format_props);
 
         if (res != VK_ERROR_FORMAT_NOT_SUPPORTED) {
-            formats[format_count] = static_cast<VkFormat>(id);
+            formats[format_count] = formats[id];
             format_count++;
         }
     }

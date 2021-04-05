@@ -34,6 +34,8 @@ extern "C" {
 #include <libavutil/pixdesc.h>
 }
 
+#define VK_LOAD_PFN(inst, name) (PFN_##name) vkGetInstanceProcAddr(inst, #name)
+
 CEncoder::CEncoder(std::shared_ptr<ClientConnection> listener,
                    std::shared_ptr<PoseHistory> poseHistory)
     : m_listener(listener), m_poseHistory(poseHistory) {}
@@ -92,7 +94,7 @@ private:
   {
     char av_msg[AV_ERROR_MAX_STRING_SIZE];
     av_strerror(averror, av_msg, sizeof(av_msg));
-    return msg + av_msg;
+    return msg + " " + av_msg;
   }
 };
 
@@ -122,7 +124,7 @@ void set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx, int width,
   frames_ctx->sw_format = AV_PIX_FMT_NV12;
   frames_ctx->width = width;
   frames_ctx->height = height;
-  frames_ctx->initial_pool_size = 20;
+  frames_ctx->initial_pool_size = 10;
   if ((err = av_hwframe_ctx_init(hw_frames_ref)) < 0) {
     av_buffer_unref(&hw_frames_ref);
     throw AvException("Failed to initialize VAAPI frame context:", err);
@@ -160,15 +162,13 @@ AVBufferRef* make_vk_hwframe_ctx(AVBufferRef *hw_device_ctx, VkImageCreateInfo i
   frames_ctx->sw_format = vk_format_to_av_format(info.format);
   frames_ctx->width = info.extent.width;
   frames_ctx->height = info.extent.height;
-  frames_ctx->initial_pool_size = 20;
+  frames_ctx->initial_pool_size = 0;
   if ((err = av_hwframe_ctx_init(hw_frames_ref)) < 0) {
     av_buffer_unref(&hw_frames_ref);
     throw AvException("Failed to initialize vulkan frame context:", err);
   }
   return hw_frames_ref;
 }
-
-#define DEBUG
 
 #ifdef DEBUG
 void logfn(void*, int level, const char* data, va_list va)
@@ -179,7 +179,7 @@ void logfn(void*, int level, const char* data, va_list va)
 
 } // namespace
 
-void CEncoder::GetFds(int client, int (*received_fds)[3]) {
+void CEncoder::GetFds(int client, int (*received_fds)[6]) {
     struct msghdr msg;
     struct cmsghdr *cmsg;
     union {
@@ -264,8 +264,6 @@ void CEncoder::Run() {
 
     try {
       GetFds(client, &m_fds);
-
-      Debug("CEncoder: got fds: %d,%d,%d\n", m_fds[0], m_fds[1], m_fds[2]);
       //
       // We have everything we need, it is time to initalize Vulkan.
       //
@@ -277,7 +275,7 @@ void CEncoder::Run() {
       av_log_set_callback(logfn);
 #endif
 
-      static char e1[] = "VK_INSTANCE_LAYERS";
+      static char e1[] = "VK_INSTANCE_LAYERS";//=VK_LAYER_KHRONOS_validation";
       static char e2[] = "DISABLE_ALVR_DISPLAY=1";
       putenv(e1);
       putenv(e2);
@@ -311,10 +309,11 @@ void CEncoder::Run() {
 
         vk::MemoryDedicatedAllocateInfo dedicatedMemInfo;
         dedicatedMemInfo.image = image;
+
         vk::ImportMemoryFdInfoKHR importMemInfo;
         importMemInfo.pNext = &dedicatedMemInfo;
         importMemInfo.handleType = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
-        importMemInfo.fd = m_fds[i];
+        importMemInfo.fd = m_fds[2*i];
 
         vk::MemoryAllocateInfo memAllocInfo;
         memAllocInfo.pNext = &importMemInfo;
@@ -327,13 +326,23 @@ void CEncoder::Run() {
         vk::SemaphoreCreateInfo semInfo;
         vk::Semaphore semaphore = device.createSemaphore(semInfo);
 
+        vk::ImportSemaphoreFdInfoKHR impSemInfo;
+        impSemInfo.semaphore = semaphore;
+        impSemInfo.handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueFd;
+        impSemInfo.fd = m_fds[2*i+1];
+
+        struct {
+          PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR;
+        } d;
+        d.vkImportSemaphoreFdKHR = VK_LOAD_PFN(vkctx->inst, vkImportSemaphoreFdKHR);
+
+        device.importSemaphoreFdKHR(impSemInfo, d);
+
         images[i] = av_vk_frame_alloc();
         images[i]->img[0] = image;
         images[i]->tiling = init.image_create_info.tiling;
         images[i]->mem[0] = mem;
         images[i]->size[0] = req.size;
-        // FIXME: images[i]->flags
-        // FIXME: images[i]->access
         images[i]->layout[0] = VK_IMAGE_LAYOUT_UNDEFINED;
         images[i]->sem[0] = semaphore;
       }
@@ -342,7 +351,7 @@ void CEncoder::Run() {
       //int err = av_hwdevice_ctx_create_derived(&encoder_ctx, AV_HWDEVICE_TYPE_VAAPI, vulkan_ctx, 0);
       int err = av_hwdevice_ctx_create(&encoder_ctx, AV_HWDEVICE_TYPE_VAAPI, NULL, NULL, 0);
       if (err < 0) {
-        throw AvException("Failed to create a VAAPI device: ", err);
+        throw AvException("Failed to create a VAAPI device:", err);
       }
 
       const int codec_id = Settings::Instance().m_codec;
@@ -373,7 +382,7 @@ void CEncoder::Run() {
 
       avctx->width = init.image_create_info.extent.width;
       avctx->height = init.image_create_info.extent.height;
-      avctx->time_base = AVRational{1, Settings::Instance().m_refreshRate};
+      avctx->time_base = {std::chrono::steady_clock::period::num, std::chrono::steady_clock::period::den};
       avctx->framerate = AVRational{Settings::Instance().m_refreshRate, 1}; // framerate will be forced by vsync
       avctx->sample_aspect_ratio = AVRational{1, 1};
       avctx->pix_fmt = AV_PIX_FMT_VAAPI;
@@ -385,7 +394,7 @@ void CEncoder::Run() {
       set_hwframe_ctx(avctx.get(), encoder_ctx, avctx->width, avctx->height);
 
       if ((err = avcodec_open2(avctx.get(), codec, NULL)) < 0) {
-        throw AvException("Cannot open video encoder codec: ", err);
+        throw AvException("Cannot open video encoder codec:", err);
       }
 
       auto filter_in = avfilter_get_by_name("buffer");
@@ -405,7 +414,7 @@ void CEncoder::Run() {
       memset(par, 0, sizeof(*par));
       par->width = init.image_create_info.extent.width;
       par->height = init.image_create_info.extent.height;
-      par->time_base = AVRational{1, Settings::Instance().m_refreshRate};
+      par->time_base = {std::chrono::steady_clock::period::num, std::chrono::steady_clock::period::den};
       par->format = AV_PIX_FMT_VULKAN;
       par->hw_frames_ctx = av_buffer_ref(vk_frame_ctx);
       av_buffersrc_parameters_set(filter_in_ctx, par);
@@ -414,7 +423,7 @@ void CEncoder::Run() {
       AVFilterContext *filter_out_ctx;
       if ((err = avfilter_graph_create_filter(&filter_out_ctx, filter_out, "out", NULL, NULL, graph.get())))
       {
-        throw AvException("filter_out creation failed: ", err);
+        throw AvException("filter_out creation failed:", err);
       }
 
       outputs->name = av_strdup("in");
@@ -427,7 +436,7 @@ void CEncoder::Run() {
       inputs->pad_idx = 0;
       inputs->next = NULL;
 
-      if ((err = avfilter_graph_parse_ptr(graph.get(), "hwmap,scale_vaapi=format=nv12",
+      if ((err = avfilter_graph_parse_ptr(graph.get(), "hwmap, scale_vaapi=format=nv12",
               &inputs, &outputs, NULL)) < 0)
       {
         throw AvException("avfilter_graph_parse_ptr failed:", err);
@@ -446,42 +455,45 @@ void CEncoder::Run() {
         throw AvException("avfilter_graph_config failed:", err);
       }
 
-      AVFrame *in_frames[3];
-      for (int i = 0 ; i < 3 ; ++i)
-      {
-        in_frames[i] = av_frame_alloc();
-        in_frames[i]->width = init.image_create_info.extent.width;
-        in_frames[i]->height = init.image_create_info.extent.height;
-        in_frames[i]->hw_frames_ctx = av_buffer_ref(vk_frame_ctx);
-        in_frames[i]->data[0] = (uint8_t*)images[i];
-        in_frames[i]->format = AV_PIX_FMT_VULKAN;
-        in_frames[i]->buf[0]= av_buffer_alloc(0);
-      }
-      av_buffer_unref(&vk_frame_ctx);
-
       AVFrame *encoder_frame = av_frame_alloc();
 
       fprintf(stderr, "CEncoder starting to read present packets");
       present_packet frame_info;
       std::vector<char> encoded_frame;
+      auto epoch = std::chrono::steady_clock::now();
       while (not m_exiting) {
         read_exactly(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
         auto encode_start = std::chrono::steady_clock::now();
 
-        err = av_buffersrc_add_frame_flags(filter_in_ctx, in_frames[frame_info.image], AV_BUFFERSRC_FLAG_PUSH);
+        AVFrame *in_frame = av_frame_alloc();
+        in_frame->width = init.image_create_info.extent.width;
+        in_frame->height = init.image_create_info.extent.height;
+        in_frame->hw_frames_ctx = av_buffer_ref(vk_frame_ctx);
+        in_frame->data[0] = (uint8_t*)images[frame_info.image];
+        in_frame->format = AV_PIX_FMT_VULKAN;
+        in_frame->buf[0] = av_buffer_alloc(1);
+        in_frame->pts = (encode_start - epoch).count();
+        static_assert(std::is_same_v<std::chrono::steady_clock::duration::rep, int64_t>);
+
+        err = av_buffersrc_add_frame_flags(filter_in_ctx, in_frame, AV_BUFFERSRC_FLAG_PUSH);
         if (err != 0)
         {
-          std::abort();
           throw AvException("av_buffersrc_add_frame failed", err);
         }
-        av_buffersink_get_frame(filter_out_ctx, encoder_frame);
+        err = av_buffersink_get_frame(filter_out_ctx, encoder_frame);
+        if (err != 0)
+        {
+          throw AvException("av_buffersink_get_frame failed", err);
+        }
+        av_frame_free(&in_frame);
 
         if ((err = avcodec_send_frame(avctx.get(), encoder_frame)) < 0) {
           throw AvException("avcodec_send_frame failed: ", err);
         }
         av_frame_unref(encoder_frame);
 
+        encoded_frame.clear();
         while (1) {
           AVPacket enc_pkt;
           av_init_packet(&enc_pkt);
@@ -498,6 +510,7 @@ void CEncoder::Run() {
           enc_pkt.stream_index = 0;
           av_packet_unref(&enc_pkt);
         }
+        write(client, &frame_info.image, sizeof(frame_info.image));
 
         uint8_t *frame_data = (uint8_t*)encoded_frame.data();
         int frame_size = encoded_frame.size();

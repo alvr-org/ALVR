@@ -58,6 +58,7 @@ struct swapchain_image {
     status status{swapchain_image::INVALID};
 
     VkFence present_fence{VK_NULL_HANDLE};
+    VkSemaphore semaphore{VK_NULL_HANDLE};
 };
 
 /**

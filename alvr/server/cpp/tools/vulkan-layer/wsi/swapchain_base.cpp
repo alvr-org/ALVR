@@ -183,9 +183,13 @@ VkResult swapchain_base::init(VkDevice device,
         return result;
     }
 
+		VkExternalMemoryImageCreateInfo ext_info = {};
+		ext_info.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+		ext_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+
     VkImageCreateInfo image_create_info = {};
     image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    image_create_info.pNext = nullptr;
+    image_create_info.pNext = &ext_info;
     image_create_info.imageType = VK_IMAGE_TYPE_2D;
     image_create_info.format = swapchain_create_info->imageFormat;
     image_create_info.extent = {swapchain_create_info->imageExtent.width,
@@ -195,7 +199,7 @@ VkResult swapchain_base::init(VkDevice device,
     image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
     image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
     image_create_info.usage = swapchain_create_info->imageUsage;
-    image_create_info.flags = 0;
+    image_create_info.flags = VK_IMAGE_CREATE_ALIAS_BIT;
     image_create_info.sharingMode = swapchain_create_info->imageSharingMode;
     image_create_info.queueFamilyIndexCount = swapchain_create_info->queueFamilyIndexCount;
     image_create_info.pQueueFamilyIndices = swapchain_create_info->pQueueFamilyIndices;
@@ -207,17 +211,17 @@ VkResult swapchain_base::init(VkDevice device,
         return result;
     }
 
+    m_device_data.disp.GetDeviceQueue(m_device, 0, 0, &m_queue);
+    result = m_device_data.SetDeviceLoaderData(m_device, m_queue);
+    if (VK_SUCCESS != result) {
+        return result;
+    }
+
     for (auto &img : m_swapchain_images) {
         result = create_image(image_create_info, img);
         if (result != VK_SUCCESS) {
             return result;
         }
-    }
-
-    m_device_data.disp.GetDeviceQueue(m_device, 0, 0, &m_queue);
-    result = m_device_data.SetDeviceLoaderData(m_device, m_queue);
-    if (VK_SUCCESS != result) {
-        return result;
     }
 
     /* Setup semaphore for signaling pageflip thread */

@@ -502,7 +502,6 @@ void CEncoder::Run() {
 
       fprintf(stderr, "CEncoder starting to read present packets");
       present_packet frame_info;
-      std::vector<char> encoded_frame;
       auto epoch = std::chrono::steady_clock::now();
       while (not m_exiting) {
         read_exactly(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
@@ -536,8 +535,9 @@ void CEncoder::Run() {
           throw AvException("avcodec_send_frame failed: ", err);
         }
         av_frame_unref(encoder_frame);
+        write(client, &frame_info.image, sizeof(frame_info.image));
 
-        encoded_frame.clear();
+        bool first_packet = true;
         while (1) {
           AVPacket enc_pkt;
           av_init_packet(&enc_pkt);
@@ -550,23 +550,21 @@ void CEncoder::Run() {
           } else if (err) {
             throw std::runtime_error("failed to encode");
           }
-          encoded_frame.insert(encoded_frame.end(), enc_pkt.data, enc_pkt.data + enc_pkt.size);
+          uint8_t *frame_data = (uint8_t*)enc_pkt.data;
+          int frame_size = enc_pkt.size;
+          if (first_packet and codec_id == ALVR_CODEC_H265)
+          {
+            skipAUD_h265(&frame_data, &frame_size);
+            first_packet = false;
+          }
+          m_listener->FECSend(frame_data, frame_size, m_poseSubmitIndex, frame_info.frame);
           enc_pkt.stream_index = 0;
           av_packet_unref(&enc_pkt);
-        }
-        write(client, &frame_info.image, sizeof(frame_info.image));
-
-        uint8_t *frame_data = (uint8_t*)encoded_frame.data();
-        int frame_size = encoded_frame.size();
-        if (codec_id == ALVR_CODEC_H265)
-        {
-          skipAUD_h265(&frame_data, &frame_size);
         }
 
         auto encode_end = std::chrono::steady_clock::now();
 
         m_listener->GetStatistics()->EncodeOutput(std::chrono::duration_cast<std::chrono::microseconds>(encode_end - encode_start).count());
-        m_listener->SendVideo(frame_data, frame_size, m_poseSubmitIndex);
 
       }
       av_buffer_unref(&encoder_ctx);

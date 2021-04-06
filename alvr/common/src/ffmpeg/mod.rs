@@ -4,7 +4,7 @@ mod ff {
     include!(concat!(env!("OUT_DIR"), "/ffmpeg_module.rs"));
 }
 
-use crate::StrResult;
+use crate::prelude::*;
 
 pub enum FfmpegOptionValue {
     String(String),

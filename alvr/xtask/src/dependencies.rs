@@ -190,6 +190,7 @@ fn build_ffmpeg(target_os: &str) {
 
 pub fn build_deps(target_os: &str) {
     if target_os == "windows" {
+        command::run("cargo install wasm-pack").unwrap();
         build_ffmpeg("windows");
     } else if target_os == "android" {
         command::run("rustup target add aarch64-linux-android").unwrap();

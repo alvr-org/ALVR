@@ -15,7 +15,6 @@ nightly = []
 # Basic utilities
 lazy_static = "1"
 parking_lot = "0.11"
-rand = "0.8"
 # Logging
 backtrace = "0.3"
 log = "0.4"
@@ -25,6 +24,13 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 settings-schema = { path = "../settings-schema", optional = true }
 settings-schema_legacy = { package = "settings-schema", git = "https://github.com/alvr-org/ALVR", features = ["rename_camel_case"], rev = "08708f19b2ec70264e2ba2b0adfaa64bd96489bd", optional = true }
+# Miscellaneous
+nalgebra = { version = "0.25", features = ["serde-serialize"] }
+semver = { version = "0.11", features = ['serde'] }
+
+[target.'cfg(any(windows, target_os = "linux", target_os = "android"))'.dependencies]
+# Basic utilities
+
 # Async and networking
 bytes = "1"
 futures = "0.3"
@@ -39,12 +45,11 @@ winit = "0.24" # needed to get the screen size
 cpal = "0.13"
 rodio = "0.13"
 # Miscellaneous
+rand = "0.8"
 encoding_rs_io = "0.1"
-nalgebra = { version = "0.25", features = ["serde-serialize"] }
 rcgen = "0.8"
-semver = { version = "0.11", features = ['serde'] }
 
-[target.'cfg(not(target_os = "android"))'.dependencies]
+[target.'cfg(any(windows, target_os = "linux"))'.dependencies]
 dirs = "3"
 msgbox = "0.6"
 runas = "0.2"

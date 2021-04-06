@@ -7,5 +7,6 @@ members = [
     "alvr/common",
     "alvr/client",
     "alvr/server",
+    "alvr/dashboard",
     "alvr/launcher",
 ]

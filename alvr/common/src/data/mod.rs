@@ -10,7 +10,6 @@ mod session;
 #[cfg(feature = "new_dashboard")]
 mod settings;
 
-use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub use packets::*;
@@ -37,7 +36,10 @@ pub struct PrivateIdentity {
     pub key_pem: String,
 }
 
+#[cfg(target_os = "android")]
 pub fn create_identity(hostname: Option<String>) -> StrResult<PrivateIdentity> {
+    use crate::prelude::*;
+
     let hostname = hostname.unwrap_or(format!("{}.client.alvr", rand::random::<u16>()));
 
     let certificate = trace_err!(rcgen::generate_simple_self_signed([hostname.clone()]))?;

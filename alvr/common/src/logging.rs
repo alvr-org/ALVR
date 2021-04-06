@@ -20,7 +20,7 @@ pub fn set_panic_hook() {
 
         log::error!("{}", err_str);
 
-        #[cfg(not(target_os = "android"))]
+        #[cfg(windows)]
         std::thread::spawn(move || {
             msgbox::create("ALVR panicked", &err_str, msgbox::IconType::Error).ok();
         });
@@ -31,7 +31,7 @@ pub fn show_w<W: Display>(w: W) {
     log::warn!("{}", w);
 
     // GDK crashes because of initialization in multiple thread
-    #[cfg(not(any(target_os = "android", target_os = "linux")))]
+    #[cfg(windows)]
     std::thread::spawn({
         let warn_string = w.to_string();
         move || {
@@ -54,7 +54,7 @@ fn show_e_block<E: Display>(e: E, blocking: bool) {
     log::error!("{}", e);
 
     // GDK crashes because of initialization in multiple thread
-    #[cfg(not(any(target_os = "android", target_os = "linux")))]
+    #[cfg(windows)]
     {
         // Store the last error shown in a message box. Do not open a new message box if the content
         // of the error has not changed

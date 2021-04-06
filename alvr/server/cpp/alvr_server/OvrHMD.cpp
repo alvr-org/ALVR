@@ -169,10 +169,10 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 #ifdef _WIN32
 			Info("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
 			Info("OSVer: %ls\n", GetWindowsOSVersion().c_str());
-#endif
 
 			m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
 			m_VSyncThread->Start();
+#endif
 
 			m_displayComponent = std::make_shared<OvrDisplayComponent>();
 #ifdef _WIN32

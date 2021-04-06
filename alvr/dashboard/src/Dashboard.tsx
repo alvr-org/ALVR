@@ -163,9 +163,7 @@ export function Dashboard({ settingsSchema }: { settingsSchema: SettingsSchema }
     let language = extraSettings["language"] as string
 
     function changeLanguage(modalCloseHandle: () => void) {
-        extraSettings["language"] = language
-
-        applySessionSettings(session.session_settings)
+        applySessionSettings({ extra: { language } })
 
         modalCloseHandle()
     }

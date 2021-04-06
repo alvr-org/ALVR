@@ -95,8 +95,7 @@ export function Section(props: {
     setSession: (session: SessionSettingsSection) => void
 }): JSX.Element {
     function setFieldContent(fieldName: string, content: SessionSettingsNode) {
-        props.session[fieldName] = content
-        props.setSession(props.session)
+        props.setSession({ [fieldName]: content })
 
         if (fieldName === "theme") {
             window.location.reload()

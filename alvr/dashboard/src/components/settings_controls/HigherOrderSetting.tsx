@@ -78,12 +78,6 @@ export function HighOrderSetting({ schema }: { schema: SchemaHOS }): JSX.Element
         }
     }
 
-    function setSession(value?: string | boolean) {
-        apply(session_settings, value)
-
-        applySessionSettings(session_settings)
-    }
-
     function isMatching(value?: string | boolean): boolean {
         const currentSettingsJson = JSON.stringify(session_settings)
 
@@ -94,6 +88,12 @@ export function HighOrderSetting({ schema }: { schema: SchemaHOS }): JSX.Element
 
         // structural equality
         return JSON.stringify(settings) === currentSettingsJson
+    }
+
+    function setSession(value?: string | boolean) {
+        const session = JSON.parse(JSON.stringify(session_settings)) as SessionSettingsRoot
+        apply(session, value)
+        applySessionSettings(session)
     }
 
     switch (schema.data_type.type) {

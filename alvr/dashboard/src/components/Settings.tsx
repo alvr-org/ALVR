@@ -44,9 +44,7 @@ export function Settings({ schema }: { schema: SettingsSchema }): JSX.Element {
     const { session_settings } = useSession()
 
     function setTabContent(tabName: string, content: SessionSettingsSection) {
-        session_settings[tabName] = content
-
-        applySessionSettings(session_settings)
+        applySessionSettings({ [tabName]: content })
     }
 
     return (

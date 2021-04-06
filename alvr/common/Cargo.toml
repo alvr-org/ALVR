@@ -70,5 +70,5 @@ wio = "0.2"
 gfx-backend-vulkan = "=0.6.5"
 
 [build-dependencies]
-bindgen = "0.57"
+bindgen = "0.58"
 cc = { version = "1", features = ["parallel"] }

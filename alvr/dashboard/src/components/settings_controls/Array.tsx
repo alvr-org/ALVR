@@ -9,9 +9,10 @@ export function Array(props: {
     setSession: (session: SessionSettingsNode[]) => void
 }): JSX.Element {
     function setContent(index: number, content: SessionSettingsNode) {
-        props.session[index] = content
-
-        props.setSession(props.session)
+        // branches at other indices must be imported, because otherwise the server cannot correctly
+        // work with the resulting session object
+        const newSession = props.session.map((branch, idx) => (idx === index ? content : branch))
+        props.setSession(newSession)
     }
 
     return (

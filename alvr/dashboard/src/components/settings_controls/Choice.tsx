@@ -19,13 +19,11 @@ export function ChoiceControl(props: {
     )?.[1]
 
     function setContent(content: SessionSettingsNode) {
-        props.session[props.session.variant] = content
-        props.setSession(props.session)
+        props.setSession({ [props.session.variant]: content, variant: props.session.variant })
     }
 
     function setVariant(variantName: string) {
-        props.session.variant = variantName
-        props.setSession(props.session)
+        props.setSession({ variant: variantName })
     }
 
     return (
@@ -81,8 +79,7 @@ export function ChoiceContainer(props: {
     )?.[1]
 
     function setContent(content: SessionSettingsNode) {
-        props.session[props.session.variant] = content
-        props.setSession(props.session)
+        props.setSession({ [props.session.variant]: content } as SessionSettingsChoice)
     }
 
     if (maybeContentSchema && (!maybeContentSchema.advanced || showAdvanced)) {

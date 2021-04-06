@@ -6,6 +6,6 @@ license = "MIT"
 edition = "2018"
 
 [build-dependencies]
-bindgen = "0.57.0"
+bindgen = "0.58.0"
 cc = "1.0.67"
 regex = "1.4.5"

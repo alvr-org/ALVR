@@ -15,13 +15,11 @@ export function SwitchControl(props: {
     const { t } = useTranslation()
 
     function setContent(content: SessionSettingsNode) {
-        props.session.content = content
-        props.setSession(props.session)
+        props.setSession({ enabled: props.session.enabled, content })
     }
 
     function setEnabled(enabled: boolean) {
-        props.session.enabled = enabled
-        props.setSession(props.session)
+        props.setSession({ enabled, content: props.session.content })
     }
 
     return (
@@ -55,8 +53,7 @@ export function SwitchContainer(props: {
     const showAdvanced = useContext(AdvancedContext)
 
     function setContent(content: SessionSettingsNode) {
-        props.session.content = content
-        props.setSession(props.session)
+        props.setSession({ enabled: props.session.enabled, content })
     }
 
     if (props.session.enabled && (!props.schema.content_advanced || showAdvanced)) {

@@ -37,6 +37,6 @@ android_logger = "0.10"
 oboe = "0.4" # Note: cannot use feature "java-interface" to query audio info
 
 [build-dependencies]
-bindgen = "0.57"
+bindgen = "0.58"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"

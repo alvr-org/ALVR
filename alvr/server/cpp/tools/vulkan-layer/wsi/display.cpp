@@ -5,23 +5,17 @@
 
 #include <chrono>
 
-wsi::display &wsi::display::get(VkDevice device) {
-    static display instance(device);
-    return instance;
-}
-
-wsi::display::display(VkDevice device) {
-  auto &device_data = layer::device_private_data::get(device);
+wsi::display::display(VkDevice device, layer::device_private_data& device_data, uint32_t queue_family_index, uint32_t queue_index) {
   VkFenceCreateInfo fence_info = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, nullptr, 0};
   device_data.disp.CreateFence(device, &fence_info, nullptr, &vsync_fence);
+  VkQueue queue;
+  device_data.disp.GetDeviceQueue(device, queue_family_index, queue_index, &queue);
 
-  m_vsync_thread = std::thread([this, &device_data, device]()
+  m_vsync_thread = std::thread([this, &device_data, device, queue]()
       {
-      VkQueue queue;
       auto refresh = Settings::Instance().m_refreshRate;
       auto next_frame = std::chrono::steady_clock::now();
       auto frame_time = std::chrono::duration_cast<decltype(next_frame)::duration>(std::chrono::duration<double>(1. / refresh));
-      device_data.disp.GetDeviceQueue(device, 0, 0, &queue);
       while (not m_exiting) {
         if (device_data.disp.GetFenceStatus(device, vsync_fence) == VK_NOT_READY)
         {
@@ -30,6 +24,7 @@ wsi::display::display(VkDevice device) {
         std::this_thread::sleep_until(next_frame);
         next_frame += frame_time;
       }
+      device_data.disp.DestroyFence(device, vsync_fence, nullptr);
       });
 }
 

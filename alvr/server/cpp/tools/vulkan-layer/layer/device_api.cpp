@@ -152,7 +152,7 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkRegisterDisplayEventEXT(
                                                      pFence);
     }
 
-    *pFence = wsi::display::get(device).get_vsync_fence();
+    *pFence = instance.display->get_vsync_fence();
 
     return VK_SUCCESS;
 }
@@ -160,7 +160,7 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkRegisterDisplayEventEXT(
 VKAPI_ATTR void VKAPI_CALL wsi_layer_vkDestroyFence(VkDevice device, VkFence fence,
                                                     const VkAllocationCallbacks *pAllocator) {
     auto &instance = layer::device_private_data::get(device);
-    auto &alvr_fence = wsi::display::get(device).get_vsync_fence();
+    auto &alvr_fence = instance.display->get_vsync_fence();
     if (fence == alvr_fence) {
         return;
     }

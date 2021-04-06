@@ -293,14 +293,6 @@ void swapchain::present_image(uint32_t pending_index) {
       unpresent_image(pending_index);
     }
     m_present_count++;
-    VkSubmitInfo submit = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    submit.commandBufferCount = 0;
-    submit.pCommandBuffers = nullptr;
-    VkFence fence = display::get(m_device).get_vsync_fence();
-    if (m_device_data.disp.GetFenceStatus(m_device, fence) != VK_NOT_READY) {
-      fence = VK_NULL_HANDLE;
-    }
-    m_device_data.disp.QueueSubmit(m_queue, 1, &submit, fence);
 }
 
 void swapchain::destroy_image(wsi::swapchain_image &image) {

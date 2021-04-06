@@ -160,6 +160,7 @@ dependencies = [
  "wasm-logger",
  "web-sys",
  "yew",
+ "yew-functional",
 ]
 
 [[package]]
@@ -592,12 +593,6 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
-
-[[package]]
-name = "cfg-match"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8100e46ff92eb85bf6dc2930c73f2a4f7176393c84a9446b3d501e1b354e7b34"
 
 [[package]]
 name = "chrono"
@@ -4829,24 +4824,17 @@ dependencies = [
 [[package]]
 name = "yew"
 version = "0.17.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d8703eb5b883e816cd74c65e2f6dd4144eeedb77c1b3e0284e8f3f593b80ab1"
+source = "git+https://github.com/yewstack/yew#b9fb7a1abcbe5feab82ce475fffac7c5269db3e0"
 dependencies = [
  "anyhow",
  "anymap",
  "bincode",
- "cfg-if 0.1.10",
- "cfg-match",
  "console_error_panic_hook",
- "futures",
  "gloo",
  "http",
  "indexmap",
  "js-sys",
  "log",
- "proc-macro-hack",
- "proc-macro-nested",
- "ryu",
  "serde",
  "serde_json",
  "slab",
@@ -4858,14 +4846,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "yew-functional"
+version = "0.13.0"
+source = "git+https://github.com/yewstack/yew#b9fb7a1abcbe5feab82ce475fffac7c5269db3e0"
+dependencies = [
+ "wasm-bindgen",
+ "yew",
+ "yew-functional-macro",
+]
+
+[[package]]
+name = "yew-functional-macro"
+version = "0.1.0"
+source = "git+https://github.com/yewstack/yew#b9fb7a1abcbe5feab82ce475fffac7c5269db3e0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "yew-macro"
 version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61a9a452e63b6222b28b426dafbc6b207192e0127cdb93324cc7407b8c7e1768"
+source = "git+https://github.com/yewstack/yew#b9fb7a1abcbe5feab82ce475fffac7c5269db3e0"
 dependencies = [
  "boolinator",
  "lazy_static",
- "proc-macro-hack",
  "proc-macro2",
  "quote",
  "syn",

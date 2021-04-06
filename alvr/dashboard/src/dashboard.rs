@@ -1,36 +1,18 @@
-use yew::{html, Component, ComponentLink, Html, ShouldRender};
+use yew::{html, Callback};
+use yew_functional::{function_component, use_state};
 
-pub struct Dashboard {
-    link: ComponentLink<Self>,
-    label: String,
-}
+#[function_component(Dashboard)]
+pub fn dashboard() -> Html {
+    let (label, set_label) = use_state(|| "Hello".to_owned());
 
-impl Component for Dashboard {
-    type Message = ();
-    type Properties = ();
+    let on_click = {
+        let label = label.clone();
+        Callback::from(move |_| set_label(format!("{} world", label)))
+    };
 
-    fn create(_props: (), link: ComponentLink<Self>) -> Self {
-        Self {
-            link,
-            label: "Hello".into(),
-        }
-    }
-
-    fn update(&mut self, _msg: ()) -> ShouldRender {
-        self.label = "world".into();
-
-        true
-    }
-
-    fn change(&mut self, _props: ()) -> ShouldRender {
-        false
-    }
-
-    fn view(&self) -> Html {
-        html! {
-            <button type="button" class="btm btn-primary" onclick=self.link.callback(|_| ())>
-                {&self.label}
-            </button>
-        }
+    html! {
+        <button class="btn btn-primary" onclick=on_click>
+            {label}
+        </button>
     }
 }

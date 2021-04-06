@@ -22,6 +22,7 @@ class CEncoder : public CThread {
 
   private:
     void GetFds(int client, int (*fds)[6]);
+    void UpdatePoseIndex();
 
     std::shared_ptr<ClientConnection> m_listener;
     std::shared_ptr<PoseHistory> m_poseHistory;

@@ -234,6 +234,30 @@ void CEncoder::GetFds(int client, int (*received_fds)[6]) {
       throw MakeException("cmsg is NULL");
     }
 }
+
+void CEncoder::UpdatePoseIndex()
+{
+  std::array<vr::Compositor_FrameTiming, 5> frames;
+  frames[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
+  if (vr::VRServerDriverHost()->IsExiting())
+  {
+    return;
+  }
+  // find the latest frame that has been presented
+  uint32_t s = vr::VRServerDriverHost()->GetFrameTimings(frames.data(), frames.size());
+  for (int i = s-1 ; i >= 0 ; --i)
+  {
+    if (frames[i].m_nNumFramePresents > 0) {
+      auto pose = m_poseHistory->GetBestPoseMatch(frames[i].m_HmdPose.mDeviceToAbsoluteTracking);
+      if (pose)
+        m_poseSubmitIndex = pose->info.FrameIndex;
+      return;
+    }
+  }
+
+}
+
+
 void CEncoder::Run() {
     Info("CEncoder::Run\n");
     m_socketPath = getenv("XDG_RUNTIME_DIR");
@@ -484,12 +508,7 @@ void CEncoder::Run() {
         read_exactly(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
         auto encode_start = std::chrono::steady_clock::now();
-
-        uint64_t server_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(encode_start.time_since_epoch()).count();
-        auto hmd_pose = m_poseHistory->GetPoseAt(m_listener->serverToClientTime(server_timestamp));
-        if (hmd_pose)
-          m_poseSubmitIndex = hmd_pose->info.FrameIndex;
-        vr::VRCompositorDriverHost();
+        UpdatePoseIndex();
 
         AVFrame *in_frame = av_frame_alloc();
         in_frame->width = init.image_create_info.extent.width;

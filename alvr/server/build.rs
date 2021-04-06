@@ -32,7 +32,6 @@ fn main() {
 
     let mut build = cc::Build::new();
     build
-        .debug(true) // This is because we cannot link to msvcrtd (see below)
         .cpp(true)
         .files(source_files_paths)
         .flag_if_supported("-isystemcpp/openvr/headers") // silences many warnings from openvr headers
@@ -43,6 +42,7 @@ fn main() {
 
     #[cfg(windows)]
     build
+        .debug(false) // This is because we cannot link to msvcrtd (see below)
         .define("NOMINMAX", None)
         .define("_WINSOCKAPI_", None)
         .define("_MBCS", None)

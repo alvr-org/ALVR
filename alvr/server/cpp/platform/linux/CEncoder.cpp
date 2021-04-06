@@ -65,6 +65,24 @@ void read_exactly(int fd, char *out, size_t size, std::atomic_bool &exiting) {
     }
 }
 
+int accept_timeout(int socket, std::atomic_bool &exiting) {
+    while (not exiting) {
+        timeval timeout{.tv_sec = 0, .tv_usec = 15000};
+        fd_set read_fd, write_fd, except_fd;
+        FD_ZERO(&read_fd);
+        FD_SET(socket, &read_fd);
+        FD_ZERO(&write_fd);
+        FD_ZERO(&except_fd);
+        int count = select(socket + 1, &read_fd, &write_fd, &except_fd, &timeout);
+        if (count < 0) {
+            throw MakeException("select failed: %s", strerror(errno));
+        } else if (count == 1) {
+          return accept(socket, NULL, NULL);
+        }
+    }
+    return -1;
+}
+
 void skipAUD_h265(uint8_t **buffer, int *length) {
   // H.265 encoder always produces AUD NAL even if AMF_VIDEO_ENCODER_HEVC_INSERT_AUD is set. But it is not needed.
   static const int AUD_NAL_SIZE = 7;
@@ -250,7 +268,9 @@ void CEncoder::Run() {
     }
 
     Info("CEncoder Listening\n");
-    int client = accept(m_socket, NULL, NULL);
+    int client = accept_timeout(m_socket, m_exiting);
+    if (m_exiting)
+      return;
     init_packet init;
     read_exactly(client, (char *)&init, sizeof(init), m_exiting);
     if (m_exiting)
@@ -281,7 +301,6 @@ void CEncoder::Run() {
       putenv(e2);
       AVBufferRef *vulkan_ctx;
       AVDictionary *d = NULL; // "create" an empty dictionary
-      av_log_set_level(AV_LOG_VERBOSE);
       //av_dict_set(&d, "debug", "1", 0); // add an entry
       ret = av_hwdevice_ctx_create(&vulkan_ctx, AV_HWDEVICE_TYPE_VULKAN, init.device_name.data(), d, 0);
       if (ret) {
@@ -466,6 +485,12 @@ void CEncoder::Run() {
 
         auto encode_start = std::chrono::steady_clock::now();
 
+        uint64_t server_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(encode_start.time_since_epoch()).count();
+        auto hmd_pose = m_poseHistory->GetPoseAt(m_listener->serverToClientTime(server_timestamp));
+        if (hmd_pose)
+          m_poseSubmitIndex = hmd_pose->info.FrameIndex;
+        vr::VRCompositorDriverHost();
+
         AVFrame *in_frame = av_frame_alloc();
         in_frame->width = init.image_create_info.extent.width;
         in_frame->height = init.image_create_info.extent.height;
@@ -520,11 +545,6 @@ void CEncoder::Run() {
         }
 
         auto encode_end = std::chrono::steady_clock::now();
-
-        uint64_t server_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(encode_start.time_since_epoch()).count();
-        auto hmd_pose = m_poseHistory->GetPoseAt(m_listener->serverToClientTime(server_timestamp) - 5000);
-        if (hmd_pose)
-          m_poseSubmitIndex = hmd_pose->info.FrameIndex;
 
         m_listener->GetStatistics()->EncodeOutput(std::chrono::duration_cast<std::chrono::microseconds>(encode_end - encode_start).count());
         m_listener->SendVideo(frame_data, frame_size, m_poseSubmitIndex);

@@ -338,6 +338,8 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 		m_encoder->OnStreamStart();
 #else
+		// This has to be set after initialization is done, because something in vrcompositor is setting it to 90Hz in the meantime
+		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().m_refreshRate));
 		m_encoder = std::make_shared<CEncoder>(m_Listener, m_poseHistory);
 		m_encoder->Start();
 #endif

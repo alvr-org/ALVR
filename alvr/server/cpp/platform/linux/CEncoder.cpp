@@ -355,8 +355,8 @@ void CEncoder::Run() {
       par->width = init.image_create_info.extent.width;
       par->height = init.image_create_info.extent.height;
       par->time_base = {std::chrono::steady_clock::period::num, std::chrono::steady_clock::period::den};
-      par->format = AV_PIX_FMT_VULKAN;
-      par->hw_frames_ctx = av_buffer_ref(vk_frame_ctx.ctx);
+      par->format = AV_PIX_FMT_VAAPI;
+      par->hw_frames_ctx = av_buffer_ref(avctx->hw_frames_ctx);
       av_buffersrc_parameters_set(filter_in_ctx, par);
       av_free(par);
 
@@ -376,7 +376,7 @@ void CEncoder::Run() {
       inputs->pad_idx = 0;
       inputs->next = NULL;
 
-      if ((err = avfilter_graph_parse_ptr(graph.get(), "hwmap, scale_vaapi=format=nv12",
+      if ((err = avfilter_graph_parse_ptr(graph.get(), "scale_vaapi=format=nv12",
               &inputs, &outputs, NULL)) < 0)
       {
         throw alvr::AvException("avfilter_graph_parse_ptr failed:", err);
@@ -397,6 +397,18 @@ void CEncoder::Run() {
 
       AVFrame *encoder_frame = av_frame_alloc();
 
+      std::vector<AVFrame *> mapped_frames;
+
+      for (size_t i = 0 ; i < images.size(); ++i)
+      {
+        AVFrame * mapped_frame = av_frame_alloc();
+        av_hwframe_get_buffer(avctx->hw_frames_ctx, mapped_frame, 0);
+        auto vk_frame = images[i].make_av_frame(vk_frame_ctx);
+        av_hwframe_map(mapped_frame, vk_frame.get(), AV_HWFRAME_MAP_READ);
+        mapped_frames.push_back(mapped_frame);
+      }
+
+
       fprintf(stderr, "CEncoder starting to read present packets");
       present_packet frame_info;
       while (not m_exiting) {
@@ -405,9 +417,7 @@ void CEncoder::Run() {
         auto encode_start = std::chrono::steady_clock::now();
         UpdatePoseIndex();
 
-        auto in_frame = images[frame_info.image].make_av_frame(vk_frame_ctx);
-
-        err = av_buffersrc_add_frame_flags(filter_in_ctx, in_frame.get(), AV_BUFFERSRC_FLAG_PUSH);
+        err = av_buffersrc_add_frame_flags(filter_in_ctx, mapped_frames[frame_info.image], AV_BUFFERSRC_FLAG_PUSH | AV_BUFFERSRC_FLAG_KEEP_REF);
         if (err != 0)
         {
           throw alvr::AvException("av_buffersrc_add_frame failed", err);
@@ -422,7 +432,6 @@ void CEncoder::Run() {
           throw alvr::AvException("avcodec_send_frame failed: ", err);
         }
         av_frame_unref(encoder_frame);
-        write(client, &frame_info.image, sizeof(frame_info.image));
 
         bool first_packet = true;
         while (1) {
@@ -448,6 +457,7 @@ void CEncoder::Run() {
           enc_pkt.stream_index = 0;
           av_packet_unref(&enc_pkt);
         }
+        write(client, &frame_info.image, sizeof(frame_info.image));
 
         auto encode_end = std::chrono::steady_clock::now();
 

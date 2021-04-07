@@ -9,7 +9,7 @@ use std::{
     env,
     error::Error,
     fs,
-    io::{Read, Write},
+    io::Write,
     path::{Path, PathBuf},
 };
 
@@ -30,6 +30,7 @@ SUBCOMMANDS:
     clean               Removes build folder
     kill-oculus         Kill all Oculus processes
     bump-versions       Bump server and client package versions
+    clippy              Show warnings for selected clippy lints
 
 FLAGS:
     --release           Optimized build without debug info. Used only for build subcommands
@@ -136,7 +137,6 @@ fn zip_dir(dir: &Path) -> BResult {
     )))?;
     let mut zip = zip::ZipWriter::new(zip_file);
 
-    let mut buffer = Vec::new();
     let iterator = walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_map(|e| e.ok());
@@ -149,11 +149,7 @@ fn zip_dir(dir: &Path) -> BResult {
         if path.is_file() {
             println!("adding file {:?} as {:?} ...", path, name);
             zip.start_file(name.to_string_lossy(), <_>::default())?;
-            let mut f = fs::File::open(path)?;
-
-            f.read_to_end(&mut buffer)?;
-            zip.write_all(&*buffer)?;
-            buffer.clear();
+            zip.write_all(&fs::read(path).unwrap())?;
         } else if !name.as_os_str().is_empty() {
             // Only if not root! Avoids path spec / warning
             // and mapname conversion failed error on unzip
@@ -255,7 +251,7 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
             .collect();
 
         let destination = server_build_dir().join("dashboard");
-        fs::create_dir(&destination).unwrap();
+        fs::create_dir_all(&destination).unwrap();
         fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
     }
 
@@ -445,6 +441,25 @@ pub fn kill_oculus_processes() {
         .ok();
 }
 
+fn clippy() {
+    command::run(&format!(
+        "cargo clippy {} -- {} {} {} {} {} {} {} {} {} {} {}",
+        "-p alvr_xtask -p alvr_common -p alvr_launcher -p alvr_dashboard", // todo: add more crates when they compile correctly
+        "-W clippy::clone_on_ref_ptr -W clippy::create_dir -W clippy::dbg_macro",
+        "-W clippy::decimal_literal_representation -W clippy::else_if_without_else",
+        "-W clippy::exit -W clippy::expect_used -W clippy::filetype_is_file",
+        "-W clippy::float_cmp_const -W clippy::get_unwrap -W clippy::let_underscore_must_use",
+        "-W clippy::lossy_float_literal -W clippy::map_err_ignore -W clippy::mem_forget",
+        "-W clippy::multiple_inherent_impl -W clippy::print_stderr -W clippy::print_stderr",
+        "-W clippy::rc_buffer -W clippy::rest_pat_in_fully_bound_structs -W clippy::str_to_string",
+        "-W clippy::string_to_string -W clippy::todo -W clippy::unimplemented",
+        "-W clippy::unneeded_field_pattern -W clippy::unwrap_in_result",
+        "-W clippy::verbose_file_reads -W clippy::wildcard_enum_match_arm",
+        "-W clippy::wrong_pub_self_convention"
+    ))
+    .unwrap();
+}
+
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
 
@@ -488,6 +503,7 @@ fn main() {
                 "bump-versions" => {
                     version::bump_version(args_values.version.as_deref(), args_values.is_nightly)
                 }
+                "clippy" => clippy(),
                 _ => {
                     println!("\nUnrecognized subcommand.");
                     println!("{}", HELP_STR);

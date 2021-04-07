@@ -31,7 +31,7 @@ fn download_and_extract(url: &str, target_name: &str) -> PathBuf {
         target_name,
         download_dir.to_string_lossy()
     );
-    zip::read::ZipArchive::new(io::Cursor::new(zip_data))
+    zip::ZipArchive::new(io::Cursor::new(zip_data))
         .unwrap()
         .extract(&download_dir)
         .unwrap();
@@ -150,7 +150,7 @@ fn build_ffmpeg(target_os: &str) {
         )
     } else {
         // target_os == "android"
-        ffmpeg_platform_flags = "--enable-jni --enable-mediacodec".to_string()
+        ffmpeg_platform_flags = "--enable-jni --enable-mediacodec".to_owned()
     };
 
     bash_in(
@@ -195,5 +195,7 @@ pub fn build_deps(target_os: &str) {
     } else if target_os == "android" {
         command::run("rustup target add aarch64-linux-android").unwrap();
         build_rust_android_gradle();
+    } else {
+        println!("Nothing to do for {}!", target_os)
     }
 }

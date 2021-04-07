@@ -37,9 +37,10 @@ pub struct PrivateIdentity {
 }
 
 #[cfg(target_os = "android")]
-pub fn create_identity(hostname: Option<String>) -> StrResult<PrivateIdentity> {
-    use crate::prelude::*;
+use crate::prelude::*;
 
+#[cfg(target_os = "android")]
+pub fn create_identity(hostname: Option<String>) -> StrResult<PrivateIdentity> {
     let hostname = hostname.unwrap_or(format!("{}.client.alvr", rand::random::<u16>()));
 
     let certificate = trace_err!(rcgen::generate_simple_self_signed([hostname.clone()]))?;

@@ -1,5 +1,3 @@
-#![allow(clippy::missing_safety_doc)]
-
 mod connection;
 mod connection_utils;
 mod logging_backend;
@@ -192,7 +190,7 @@ fn ui_thread() -> StrResult {
         ])
         .run())?);
 
-    *MAYBE_WINDOW.lock() = Some(window.clone());
+    *MAYBE_WINDOW.lock() = Some(Arc::clone(&window));
 
     window.wait_finish();
 

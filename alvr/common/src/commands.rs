@@ -143,7 +143,7 @@ pub fn get_alvr_dir_from_registered_drivers() -> StrResult<PathBuf> {
 pub fn get_alvr_dir() -> StrResult<PathBuf> {
     get_alvr_dir_from_storage()
         .or_else(|_| get_alvr_dir_from_registered_drivers())
-        .map_err(|_| "ALVR driver path not stored and not registered".into())
+        .map_err(|e| format!("ALVR driver path not stored and not registered ({})", e))
 }
 
 pub fn store_alvr_dir(alvr_dir: &Path) -> StrResult {

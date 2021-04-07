@@ -137,7 +137,7 @@ impl AudioDevice {
                             })
                             .ok_or_else(|| {
                                 "Matching output microphone not found. Did you rename it?"
-                                    .to_string()
+                                    .to_owned()
                             })?
                     } else {
                         return fmt_e!(
@@ -381,7 +381,7 @@ pub async fn record_audio_loop(
                 {
                     let data_sender = data_sender.clone();
                     move |data, _| {
-                        let mut data = if config.sample_format() == SampleFormat::F32 {
+                        let data = if config.sample_format() == SampleFormat::F32 {
                             data.bytes()
                                 .chunks_exact(4)
                                 .flat_map(|b| {
@@ -395,17 +395,17 @@ pub async fn record_audio_loop(
                             data.bytes().to_vec()
                         };
 
-                        if config.channels() == 1 && channels_count == 2 {
-                            data = data
-                                .chunks_exact(2)
+                        let data = if config.channels() == 1 && channels_count == 2 {
+                            data.chunks_exact(2)
                                 .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
                                 .collect()
                         } else if config.channels() == 2 && channels_count == 1 {
-                            data = data
-                                .chunks_exact(4)
+                            data.chunks_exact(4)
                                 .flat_map(|c| vec![c[0], c[1]])
                                 .collect()
-                        }
+                        } else {
+                            data
+                        };
 
                         data_sender.send(Ok(data)).ok();
                     }
@@ -647,7 +647,7 @@ pub async fn play_audio_loop(
     // Store the stream in a thread (because !Send)
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
     thread::spawn({
-        let sample_buffer = sample_buffer.clone();
+        let sample_buffer = Arc::clone(&sample_buffer);
         move || -> StrResult {
             let (_stream, handle) = trace_err!(OutputStream::try_from_device(&device.inner))?;
 

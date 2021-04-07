@@ -338,12 +338,12 @@ pub struct DiscoveryConfig {
 pub struct ConnectionDesc {
     pub client_discovery: Switch<DiscoveryConfig>,
 
-    #[schema(advanced, min = 1024, max = 65535, step = 1, gui = "up_down")]
+    #[schema(advanced, min = 1024, max = 0xFFFF, step = 1, gui = "up_down")]
     pub web_server_port: u16,
 
     pub stream_protocol: SocketProtocol,
 
-    #[schema(advanced, min = 1024, max = 65535, step = 1, gui = "up_down")]
+    #[schema(advanced, min = 1024, max = 0xFFFF, step = 1, gui = "up_down")]
     pub stream_port: u16,
 
     #[schema(advanced)]

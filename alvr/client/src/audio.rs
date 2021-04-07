@@ -121,7 +121,7 @@ pub async fn play_audio_loop(
     // store the stream in a thread (because !Send) and extract the playback handle
     let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
     thread::spawn({
-        let sample_buffer = sample_buffer.clone();
+        let sample_buffer = Arc::clone(&sample_buffer);
         move || -> StrResult {
             let mut stream = trace_err!(AudioStreamBuilder::default()
                 .set_shared()

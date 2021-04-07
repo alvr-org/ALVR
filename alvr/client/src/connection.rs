@@ -10,7 +10,7 @@ use alvr_common::{
         ServerHandshakePacket, SessionDesc, TrackingSpace, Version, ALVR_NAME, ALVR_VERSION,
     },
     prelude::*,
-    sockets::{PeerType, ProtoControlSocket, StreamSocketBuilder, AUDIO, LEGACY},
+    sockets::{PeerType, ProtoControlSocket, StreamSocketBuilder, LEGACY},
     spawn_cancelable,
 };
 use futures::future::BoxFuture;
@@ -246,7 +246,7 @@ async fn connection_pipeline(
 
     let is_connected = Arc::new(AtomicBool::new(true));
     let _stream_guard = StreamCloseGuard {
-        is_connected: is_connected.clone(),
+        is_connected: Arc::clone(&is_connected),
     };
 
     trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
@@ -310,7 +310,7 @@ async fn connection_pipeline(
 
     // let (debug_sender, mut debug_receiver) = tmpsc::unbounded_channel();
     // let debug_loop = {
-    //     let control_sender = control_sender.clone();
+    //     let control_sender = Arc::clone(&control_sender);
     //     async move {
     //         while let Some(data) = debug_receiver.recv().await {
     //             control_sender
@@ -356,9 +356,9 @@ async fn connection_pipeline(
     // many times per second. If using a future I'm forced to attach and detach the env continuously.
     // When the parent function exits or gets canceled, this loop will run to finish.
     let legacy_stream_socket_loop = task::spawn_blocking({
-        let java_vm = java_vm.clone();
-        let activity_ref = activity_ref.clone();
-        let nal_class_ref = nal_class_ref.clone();
+        let java_vm = Arc::clone(&java_vm);
+        let activity_ref = Arc::clone(&activity_ref);
+        let nal_class_ref = Arc::clone(&nal_class_ref);
         let codec = settings.video.codec;
         let enable_fec = settings.connection.enable_fec;
         move || -> StrResult {
@@ -422,7 +422,7 @@ async fn connection_pipeline(
 
     unsafe impl Send for crate::GuardianData {}
     let playspace_sync_loop = {
-        let control_sender = control_sender.clone();
+        let control_sender = Arc::clone(&control_sender);
         async move {
             loop {
                 let guardian_data = unsafe { crate::getGuardianData() };
@@ -493,9 +493,9 @@ async fn connection_pipeline(
     };
 
     let keepalive_sender_loop = {
-        let control_sender = control_sender.clone();
-        let java_vm = java_vm.clone();
-        let activity_ref = activity_ref.clone();
+        let control_sender = Arc::clone(&control_sender);
+        let java_vm = Arc::clone(&java_vm);
+        let activity_ref = Arc::clone(&activity_ref);
         async move {
             loop {
                 let res = control_sender
@@ -520,8 +520,8 @@ async fn connection_pipeline(
     };
 
     let control_loop = {
-        let java_vm = java_vm.clone();
-        let activity_ref = activity_ref.clone();
+        let java_vm = Arc::clone(&java_vm);
+        let activity_ref = Arc::clone(&activity_ref);
         async move {
             loop {
                 tokio::select! {
@@ -610,9 +610,9 @@ pub async fn connection_lifecycle_loop(
                     &headset_info,
                     device_name.to_owned(),
                     &private_identity,
-                    java_vm.clone(),
-                    activity_ref.clone(),
-                    nal_class_ref.clone(),
+                    Arc::clone(&java_vm),
+                    Arc::clone(&activity_ref),
+                    Arc::clone(&nal_class_ref),
                 )
                 .await;
 

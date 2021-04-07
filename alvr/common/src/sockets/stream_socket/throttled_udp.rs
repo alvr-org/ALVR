@@ -100,7 +100,7 @@ pub async fn connect_to_client(
     trace_err!(socket.connect(client_addr).await)?;
 
     let rx = Arc::new(socket);
-    let tx = rx.clone();
+    let tx = Arc::clone(&rx);
 
     let limiter = {
         // The byterate and burst amount computation here is based
@@ -141,7 +141,7 @@ pub async fn accept_from_server(
     trace_err!(socket.connect(server_addr).await)?;
 
     let rx = Arc::new(socket);
-    let tx = rx.clone();
+    let tx = Arc::clone(&rx);
 
     Ok((
         ThrottledUdpStreamSendSocket {

@@ -609,7 +609,7 @@ async fn connection_pipeline() -> StrResult {
     });
 
     let keepalive_loop = {
-        let control_sender = control_sender.clone();
+        let control_sender = Arc::clone(&control_sender);
         async move {
             loop {
                 let res = control_sender

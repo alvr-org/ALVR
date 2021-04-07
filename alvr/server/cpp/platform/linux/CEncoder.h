@@ -4,7 +4,6 @@
 #include "shared/threadtools.h"
 #include <atomic>
 #include <sys/types.h>
-#include <vulkan/vulkan.hpp>
 
 class ClientConnection;
 class PoseHistory;
@@ -32,5 +31,4 @@ class CEncoder : public CThread {
     int m_socket;
     std::string m_socketPath;
     int m_fds[6];
-	vk::Instance m_vkInstance;
 };

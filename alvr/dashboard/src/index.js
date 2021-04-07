@@ -1,4 +1,3 @@
-import "bootstrap"
-import "../resources/light.scss"
+import "tailwindcss/tailwind.css"
 
 import("../pkg/index.js").catch(console.error)

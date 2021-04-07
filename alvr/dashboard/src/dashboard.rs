@@ -1,3 +1,4 @@
+use crate::basic_components::Button;
 use std::rc::Rc;
 use yew::{html, Callback};
 use yew_functional::{function_component, use_state};
@@ -12,8 +13,8 @@ pub fn dashboard() -> Html {
     };
 
     html! {
-        <button class="btn btn-primary" onclick=on_click>
+        <Button onclick=on_click>
             {label}
-        </button>
+        </Button>
     }
 }

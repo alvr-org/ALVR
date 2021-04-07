@@ -8,7 +8,7 @@
         "start": "rimraf dist pkg && webpack serve --mode development"
     },
     "dependencies": {
-        "bootstrap": "^5.0.0-beta3"
+        "tailwindcss": "2"
     },
     "devDependencies": {
         "@wasm-tool/wasm-pack-plugin": "1",
@@ -17,8 +17,6 @@
         "html-webpack-plugin": "5",
         "prettier": "2",
         "rimraf": "3",
-        "sass": "1",
-        "sass-loader": "11",
         "style-loader": "2",
         "webpack": "5",
         "webpack-cli": "4",

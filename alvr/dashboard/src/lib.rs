@@ -1,3 +1,4 @@
+mod basic_components;
 mod dashboard;
 mod logging_backend;
 

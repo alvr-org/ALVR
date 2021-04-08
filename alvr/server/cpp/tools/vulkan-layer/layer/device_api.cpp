@@ -166,4 +166,19 @@ VKAPI_ATTR void VKAPI_CALL wsi_layer_vkDestroyFence(VkDevice device, VkFence fen
     }
     instance.disp.DestroyFence(device, fence, pAllocator);
 }
+
+VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkCreateDisplayModeKHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkDisplayKHR                                display,
+    const VkDisplayModeCreateInfoKHR*           pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkDisplayModeKHR*                           pMode)
+{
+  auto &instance = layer::instance_private_data::get(physicalDevice);
+  if (display != alvr_display_handle) {
+    return instance.disp.CreateDisplayModeKHR(physicalDevice, display, pCreateInfo, pAllocator, pMode);
+  }
+  return VK_ERROR_INITIALIZATION_FAILED;
+}
+
 }

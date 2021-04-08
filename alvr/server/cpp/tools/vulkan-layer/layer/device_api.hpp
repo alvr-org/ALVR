@@ -44,4 +44,11 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkGetFenceStatus(VkDevice device, VkFen
 
 VKAPI_ATTR void VKAPI_CALL wsi_layer_vkDestroyFence(VkDevice device, VkFence fence,
                                                     const VkAllocationCallbacks *pAllocator);
+
+VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkCreateDisplayModeKHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkDisplayKHR                                display,
+    const VkDisplayModeCreateInfoKHR*           pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkDisplayModeKHR*                           pMode);
 }

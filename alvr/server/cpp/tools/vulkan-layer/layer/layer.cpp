@@ -428,6 +428,7 @@ wsi_layer_vkGetInstanceProcAddr(VkInstance instance, const char *funcName) {
     GET_PROC_ADDR(vkAcquireXlibDisplayEXT);
     GET_PROC_ADDR(vkGetDisplayPlaneSupportedDisplaysKHR);
     GET_PROC_ADDR(vkCreateDisplayPlaneSurfaceKHR);
+    GET_PROC_ADDR(vkCreateDisplayModeKHR);
     GET_PROC_ADDR(vkReleaseDisplayEXT);
 
     return layer::instance_private_data::get(instance).disp.GetInstanceProcAddr(instance, funcName);

@@ -66,6 +66,7 @@ namespace layer {
     OPTIONAL(DestroySurfaceKHR)                                                                    \
     OPTIONAL(CreateHeadlessSurfaceEXT)                                                             \
     OPTIONAL(GetPhysicalDeviceQueueFamilyProperties)                                               \
+    OPTIONAL(CreateDisplayModeKHR)                                                                 \
 
 struct instance_dispatch_table {
     VkResult populate(VkInstance instance, PFN_vkGetInstanceProcAddr get_proc);

@@ -99,6 +99,7 @@ class swapchain : public wsi::swapchain_base {
     VkImageCreateInfo m_create_info;
     size_t m_mem_index;
     display &m_display;
+    uint32_t in_flight_index = -1;
 };
 
 } /* namespace headless */

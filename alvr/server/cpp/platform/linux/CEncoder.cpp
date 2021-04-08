@@ -458,7 +458,6 @@ void CEncoder::Run() {
           enc_pkt.stream_index = 0;
           av_packet_unref(&enc_pkt);
         }
-        write(client, &frame_info.image, sizeof(frame_info.image));
 
         uint8_t *frame_data = encoded_frame.data();
         int frame_size = encoded_frame.size();

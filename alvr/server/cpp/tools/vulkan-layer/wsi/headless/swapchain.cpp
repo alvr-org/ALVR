@@ -283,6 +283,9 @@ struct dummy_lock
 }
 
 void swapchain::present_image(uint32_t pending_index) {
+    if (in_flight_index != -1)
+      unpresent_image(in_flight_index);
+    in_flight_index = pending_index;
     if (!m_connected) {
         m_connected = try_connect();
     }
@@ -297,11 +300,7 @@ void swapchain::present_image(uint32_t pending_index) {
         }
         dummy_lock l;
         m_display.m_cond.wait_for(l, std::chrono::milliseconds(100));
-        uint32_t unused;
-        ret = read(m_socket, &unused, sizeof(unused));
-        unpresent_image(pending_index);
     } else {
-      unpresent_image(pending_index);
     }
     m_present_count++;
 }

@@ -55,7 +55,7 @@ struct image_data {
 };
 
 swapchain::swapchain(layer::device_private_data &dev_data, const VkAllocationCallbacks *pAllocator)
-    : wsi::swapchain_base(dev_data, pAllocator) {}
+    : wsi::swapchain_base(dev_data, pAllocator), m_display(*dev_data.display) {}
 
 swapchain::~swapchain() {
     /* Call the base's teardown */
@@ -273,6 +273,15 @@ bool swapchain::try_connect() {
     return true;
 }
 
+namespace
+{
+struct dummy_lock
+{
+  void lock() {}
+  void unlock() {}
+};
+}
+
 void swapchain::present_image(uint32_t pending_index) {
     if (!m_connected) {
         m_connected = try_connect();
@@ -286,6 +295,8 @@ void swapchain::present_image(uint32_t pending_index) {
         if (ret == -1) {
           //FIXME: try to reconnect?
         }
+        dummy_lock l;
+        m_display.m_cond.wait_for(l, std::chrono::milliseconds(100));
         uint32_t unused;
         ret = read(m_socket, &unused, sizeof(unused));
         unpresent_image(pending_index);

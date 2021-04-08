@@ -23,6 +23,7 @@ wsi::display::display(VkDevice device, layer::device_private_data& device_data, 
         }
         std::this_thread::sleep_until(next_frame);
         next_frame += frame_time;
+        m_cond.notify_all();
       }
       device_data.disp.DestroyFence(device, vsync_fence, nullptr);
       });

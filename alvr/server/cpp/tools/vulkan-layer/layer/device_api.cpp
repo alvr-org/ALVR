@@ -153,6 +153,7 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkRegisterDisplayEventEXT(
     }
 
     *pFence = instance.display->get_vsync_fence();
+    instance.disp.ResetFences(device, 1, pFence);
 
     return VK_SUCCESS;
 }

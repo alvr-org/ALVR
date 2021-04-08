@@ -226,6 +226,26 @@ int swapchain::send_fds() {
     return sendmsg(m_socket, &msg, 0);
 }
 
+vendor_t swapchain::decode_vendor_id(uint32_t vendor_id) {
+    // below 0x10000 are the PCI vendor IDs (https://pcisig.com/membership/member-companies)
+    if (vendor_id < 0x10000) {
+        switch (vendor_id) {
+        case 0x1022:
+            return AMD;
+        case 0x10DE:
+            return NVIDIA;
+        default:
+            return UNKNOWN_VENDOR;
+        }
+    } else {
+        // above 0x10000 should be vkVendorIDs, which nVidia and AMD shouldn't use as they do have a
+        // PCI vendor ID. Read
+        // https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPhysicalDeviceProperties.html#_description
+        // for more information
+        return UNKNOWN_VENDOR;
+    }
+}
+
 bool swapchain::try_connect() {
     Debug("swapchain::try_connect\n");
     m_socketPath = getenv("XDG_RUNTIME_DIR");
@@ -255,7 +275,8 @@ bool swapchain::try_connect() {
     init_packet init{.num_images = uint32_t(m_swapchain_images.size()),
                      .image_create_info = m_create_info,
                      .mem_index = m_mem_index,
-                     .source_pid = getpid()};
+                     .source_pid = getpid(),
+                     .pd_vendor = decode_vendor_id(prop.vendorID)};
     memcpy(init.device_name.data(), prop.deviceName, sizeof(prop.deviceName));
     ret = write(m_socket, &init, sizeof(init));
     if (ret == -1) {

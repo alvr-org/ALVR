@@ -36,6 +36,8 @@
 #include <vulkan/vulkan.h>
 #include <wsi/swapchain_base.hpp>
 
+#include "platform/linux/protocol.h"
+
 namespace wsi {
 namespace headless {
 
@@ -91,6 +93,7 @@ class swapchain : public wsi::swapchain_base {
   private:
     bool try_connect();
     int send_fds();
+    vendor_t decode_vendor_id(uint32_t);
     int m_socket;
     std::string m_socketPath;
     bool m_connected = false;

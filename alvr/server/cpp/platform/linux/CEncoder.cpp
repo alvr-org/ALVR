@@ -411,6 +411,7 @@ void CEncoder::Run() {
 
       fprintf(stderr, "CEncoder starting to read present packets");
       present_packet frame_info;
+      std::vector<uint8_t> encoded_frame;
       while (not m_exiting) {
         read_exactly(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
@@ -428,12 +429,19 @@ void CEncoder::Run() {
           throw alvr::AvException("av_buffersink_get_frame failed", err);
         }
 
+        if (m_scheduler.CheckIDRInsertion())
+        {
+          encoder_frame->pict_type = AV_PICTURE_TYPE_I;
+        } else {
+          encoder_frame->pict_type = AV_PICTURE_TYPE_NONE;
+        }
+
         if ((err = avcodec_send_frame(avctx.get(), encoder_frame)) < 0) {
           throw alvr::AvException("avcodec_send_frame failed: ", err);
         }
         av_frame_unref(encoder_frame);
 
-        bool first_packet = true;
+        encoded_frame.clear();
         while (1) {
           AVPacket enc_pkt;
           av_init_packet(&enc_pkt);
@@ -446,18 +454,19 @@ void CEncoder::Run() {
           } else if (err) {
             throw std::runtime_error("failed to encode");
           }
-          uint8_t *frame_data = (uint8_t*)enc_pkt.data;
-          int frame_size = enc_pkt.size;
-          if (first_packet and codec_id == ALVR_CODEC_H265)
-          {
-            skipAUD_h265(&frame_data, &frame_size);
-            first_packet = false;
-          }
-          m_listener->FECSend(frame_data, frame_size, m_poseSubmitIndex, frame_info.frame);
+          encoded_frame.insert(encoded_frame.end(), enc_pkt.data, enc_pkt.data + enc_pkt.size);
           enc_pkt.stream_index = 0;
           av_packet_unref(&enc_pkt);
         }
         write(client, &frame_info.image, sizeof(frame_info.image));
+
+        uint8_t *frame_data = encoded_frame.data();
+        int frame_size = encoded_frame.size();
+        if (codec_id == ALVR_CODEC_H265)
+        {
+          skipAUD_h265(&frame_data, &frame_size);
+        }
+        m_listener->SendVideo(frame_data, frame_size, m_poseSubmitIndex + Settings::Instance().m_trackingFrameOffset);
 
         auto encode_end = std::chrono::steady_clock::now();
 

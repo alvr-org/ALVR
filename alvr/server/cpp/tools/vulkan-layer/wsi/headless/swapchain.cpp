@@ -273,15 +273,6 @@ bool swapchain::try_connect() {
     return true;
 }
 
-namespace
-{
-struct dummy_lock
-{
-  void lock() {}
-  void unlock() {}
-};
-}
-
 void swapchain::present_image(uint32_t pending_index) {
     if (in_flight_index != -1)
       unpresent_image(in_flight_index);
@@ -293,16 +284,12 @@ void swapchain::present_image(uint32_t pending_index) {
         int ret;
         present_packet packet;
         packet.image = pending_index;
-        packet.frame = m_present_count;
+        packet.frame = m_display.m_vsync_count;
         ret = write(m_socket, &packet, sizeof(packet));
         if (ret == -1) {
           //FIXME: try to reconnect?
         }
-        dummy_lock l;
-        m_display.m_cond.wait_for(l, std::chrono::milliseconds(100));
-    } else {
     }
-    m_present_count++;
 }
 
 void swapchain::destroy_image(wsi::swapchain_image &image) {

@@ -93,8 +93,6 @@ void swapchain_base::page_flip_thread() {
             continue;
         }
 
-        m_vblank_count += 1;
-
         /* First present of the swapchain. If it has an ancestor, wait until all the pending buffers
          * from the ancestor have finished page flipping before we set mode. */
         if (m_first_present) {

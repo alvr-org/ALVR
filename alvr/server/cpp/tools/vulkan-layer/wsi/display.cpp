@@ -5,10 +5,11 @@
 
 #include <chrono>
 
-wsi::display::display(VkDevice device, layer::device_private_data& device_data, uint32_t queue_family_index, uint32_t queue_index) {
+wsi::display::display(VkDevice device, layer::device_private_data& device_data, uint32_t queue_family_index, uint32_t queue_index)
+{
+  VkQueue queue;
   VkFenceCreateInfo fence_info = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, nullptr, 0};
   device_data.disp.CreateFence(device, &fence_info, nullptr, &vsync_fence);
-  VkQueue queue;
   device_data.disp.GetDeviceQueue(device, queue_family_index, queue_index, &queue);
 
   m_vsync_thread = std::thread([this, &device_data, device, queue]()
@@ -21,11 +22,12 @@ wsi::display::display(VkDevice device, layer::device_private_data& device_data, 
         {
           device_data.disp.QueueSubmit(queue, 0, nullptr, vsync_fence);
         }
+        device_data.disp.QueueWaitIdle(queue);
         std::this_thread::sleep_until(next_frame);
+        m_vsync_count += 1;
         next_frame += frame_time;
-        m_cond.notify_all();
       }
-      device_data.disp.DestroyFence(device, vsync_fence, nullptr);
+  device_data.disp.DestroyFence(device, vsync_fence, nullptr);
       });
 }
 

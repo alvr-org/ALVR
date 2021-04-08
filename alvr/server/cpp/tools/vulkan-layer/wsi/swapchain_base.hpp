@@ -132,8 +132,6 @@ class swapchain_base {
     VkResult queue_present(VkQueue queue, const VkPresentInfoKHR *present_info,
                            const uint32_t image_index);
 
-    uint64_t vblank_count() const { return m_vblank_count; }
-
   protected:
     layer::device_private_data &m_device_data;
 
@@ -384,8 +382,6 @@ class swapchain_base {
      * semaphore of the swapchain will be posted.
      **/
     void page_flip_thread();
-
-    uint64_t m_vblank_count = 0;
 
     std::vector<VkFence> m_fences;
 };

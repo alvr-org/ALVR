@@ -45,9 +45,9 @@ use wio::com::ComPtr;
 lazy_static::lazy_static! {
     static ref VIRTUAL_MICROPHONE_PAIRS: Vec<(String, String)> = vec![
         ("CABLE Input".into(), "CABLE Output".into()),
-        ("Voice Meeter Input".into(), "Voice Meeter Output".into()),
-        ("Voice Meeter Aux Input".into(), "Voice Meeter Aux Output".into()),
-        ("Voice Meeter VAIO3 Input".into(), "Voice Meeter VAIO3 Output".into()),
+        ("VoiceMeeter Input".into(), "VoiceMeeter Output".into()),
+        ("VoiceMeeter Aux Input".into(), "VoiceMeeter Aux Output".into()),
+        ("VoiceMeeter VAIO3 Input".into(), "VoiceMeeter VAIO3 Output".into()),
     ];
 }
 

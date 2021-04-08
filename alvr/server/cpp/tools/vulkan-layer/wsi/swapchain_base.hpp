@@ -39,8 +39,6 @@
 #include <util/custom_allocator.hpp>
 #include <util/timed_semaphore.hpp>
 
-extern VkFence global_vsync_fence;
-
 namespace wsi {
 struct swapchain_image {
     enum status {

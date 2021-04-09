@@ -1,0 +1,341 @@
+.nav-side-menu {
+    overflow: auto;
+    font-family: verdana;
+    font-size: 12px;
+    font-weight: 200;
+    background-color: #2e353d;
+    /* flex: 1; */
+    max-width: 180px;
+    color: #e1ffff;
+    min-width: 180px;
+  }
+  .nav-side-menu .brand {
+    background-color: #23282e;
+    line-height: 50px;
+    display: block;
+    text-align: center;
+    font-size: 14px;
+  }
+  .nav-side-menu .toggle-btn {
+    display: none;
+  }
+  .nav-side-menu ul,
+  .nav-side-menu li {
+    list-style: none;
+    padding: 0px;
+    margin: 0px;
+    line-height: 35px;
+    cursor: pointer;
+   
+  }
+  .nav-side-menu ul :not(collapsed) .arrow:before,
+  .nav-side-menu li :not(collapsed) .arrow:before {
+    font-family: FontAwesome;
+    content: "\f078";
+    display: inline-block;
+    padding-left: 10px;
+    padding-right: 10px;
+    vertical-align: middle; 
+  }
+  .nav-side-menu ul .active,
+  .nav-side-menu li .active {
+    border-left: 3px solid #d19b3d;
+    background-color: #4f5b69;
+  }
+
+ .nav-side-menu ul .active, .nav-side-menu li:has(a .active) {
+    border-left: unset;
+     background-color: #4f5b69;
+}
+  
+
+  .nav-side-menu ul .active, .nav-side-menu li .active {
+    border-left: unset;
+    background-color: unset;
+}
+  
+  .nav-side-menu li {
+    padding-left: 0px;
+    border-left: 3px solid #2e353d;
+    border-bottom: 1px solid #23282e;
+  }
+  .nav-side-menu li a {
+    text-decoration: none;
+    color: #e1ffff;
+    display: block;
+  }
+  .nav-side-menu li a i {
+    padding-left: 10px;
+    width: 20px;
+    padding-right: 20px;
+  }
+  .nav-side-menu li:hover {
+    border-left: 3px solid #e1ffff;
+    background-color: #4f5b69;
+    -webkit-transition: all 1s ease;
+    -moz-transition: all 1s ease;
+    -o-transition: all 1s ease;
+    -ms-transition: all 1s ease;
+    transition: all 1s ease;
+  }
+  @media (max-width: 767px) {
+    .nav-side-menu {
+     
+width: 100%;
+     
+max-width: 100%;
+     
+margin-bottom: 10px;
+    }
+    .nav-side-menu .toggle-btn {
+      display: block;
+      cursor: pointer;
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      z-index: 10 !important;
+      padding: 3px;
+      background-color: #ffffff;
+      color: #000;
+      width: 40px;
+      text-align: center;
+    }
+    .brand {
+      text-align: left !important;
+      font-size: 22px;
+      padding-left: 20px;
+      line-height: 50px !important;
+    }
+
+    #bodyContent {
+        margin: 0px;
+        padding: 0px;
+        display: flex;
+        flex-direction: column;
+      }
+
+
+  }
+
+  @media (min-width: 767px) {
+    .nav-side-menu .menu-list {
+      display: block;
+    }
+
+    .nav-side-menu .menu-list-bottom {
+      max-height: fit-content;
+      min-height: fit-content;
+      position: absolute; 
+      bottom: 0; 
+      left: 0; 
+      max-width: 180px; 
+      min-width: 180px;
+    }
+    
+    .nav-side-menu .menu-list-language {
+      display: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .nav-side-menu .menu-list-bottom {
+      display: none;
+    }
+    
+    .nav-side-menu .menu-list-language {
+      display: inherit;
+    }
+  }
+
+  #bodyContent {
+    margin: 0px;
+    padding: 0px;
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+  } 
+ 
+
+  @media (max-width: 767px) {
+    #bodyContent {
+        display: flex;
+        flex-direction: column;
+      }
+}
+
+.brand img {
+    width : 50px;
+}
+
+#bodyContent {
+  height: 100vh;
+  width: 100vw;
+}
+
+.content {
+    flex : 1;
+    overflow: hidden; 
+}
+
+.container {padding-right: 8px !important;}
+
+.contentHeight {
+  height: 100%;
+}
+
+#configContainer {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#configContent {
+  height: calc(100% - 41px);
+  overflow: auto;
+  padding-right: 30px;
+  padding-left: 20px;
+}
+.rangeValue {
+  display: inline;
+}
+
+.parameter input[type="number"] {
+ width: 100px;
+}
+
+.parameter input[type="text"] {
+  width: 100px;
+ }
+
+.parameter input[type="range"] {
+  width: 50%;
+  display: block;
+}
+
+
+
+.parameter label:first-of-type {min-width: 50%;}
+
+.helpReset {
+  display: inline;
+  float: right;
+  color: grey;
+}
+
+.card-title input {
+  margin-right: 20px;
+  margin-left: 20px;
+}
+
+.card-body {
+  padding-top: 2px !important;
+}
+
+.card-title .accordion-toggle:after {
+  content: "\f077";
+  float: left;
+  color: grey;
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+  padding-right: 10px;
+}
+.card-title .accordion-toggle.collapsed:after {
+ 
+  content: "\f078";    /* adjust as needed, taken from bootstrap.css */
+}
+
+.card-body .parameter {
+  margin: 10px 0px 0px 0px;
+
+}
+
+.radioContent {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.advancedHidden {
+  display: none;
+}
+
+#toggleAdvanced {
+  text-align: right;
+  margin-bottom: 20px;
+  margin-top: 10px;
+}
+
+#toggleAdvanced i {
+  font-size: 20px;
+  color: grey;
+}
+
+.noselect {
+  -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+     -khtml-user-select: none; /* Konqueror HTML */
+       -moz-user-select: none; /* Old versions of Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome, Edge, Opera and Firefox */
+}
+
+#runSetupWizard {
+  margin-top: 20px;
+}
+
+.tooltip-inner {
+  white-space:pre-wrap;
+}
+
+.button-spacer {
+  height: 80px;
+}
+
+.alvrSection {
+ margin-left: 30px;
+ margin-right: 15px; 
+}
+
+#restartSteamVR {
+  position: fixed;
+  bottom: 30px;
+  right: 50px;
+  z-index: 10;
+}
+
+#registeredDriversInst {
+  margin-top: 40px;
+}
+
+#checkForUpdates {
+  margin-right: 100%; /* lets call it dirty hack*/
+  margin-top: 20px;
+  width: max-content;
+}
+
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+
+.upDownGrp {
+  display: inline-block
+}
+
+a {
+  color: #007bff;
+}
+
+.nav-link {
+  display: block;
+  padding: .5rem 1rem;
+}
+
+.client {
+  background-color: lightgray;
+}
+
+#loggingTable tr:nth-child(even) {
+  background-color: #f2f2f2;
+}

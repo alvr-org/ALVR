@@ -8,6 +8,8 @@
         "start": "rimraf dist pkg && webpack serve --mode development"
     },
     "dependencies": {
+        "@fortawesome/fontawesome-free": "5",
+        "bootstrap": "^5.0.0-beta3",
         "tailwindcss": "2"
     },
     "devDependencies": {

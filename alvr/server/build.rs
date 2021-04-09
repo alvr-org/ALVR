@@ -70,6 +70,10 @@ fn main() {
     println!("cargo:rustc-link-lib=vulkan");
     println!("cargo:rustc-link-lib=avutil");
     println!("cargo:rustc-link-lib=avcodec");
+    println!("cargo:rustc-link-lib=avfilter");
+
+    #[cfg(target_os = "linux")]
+    println!("cargo:rustc-cdylib-link-arg=-Wl,--no-undefined");
 
     for path in cpp_paths {
         println!("cargo:rerun-if-changed={}", path.to_string_lossy());

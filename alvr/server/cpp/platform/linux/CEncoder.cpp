@@ -183,25 +183,36 @@ void CEncoder::GetFds(int client, int (*received_fds)[6]) {
     }
 }
 
-void CEncoder::UpdatePoseIndex()
+bool CEncoder::UpdatePoseIndex()
 {
   std::array<vr::Compositor_FrameTiming, 5> frames;
   frames[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
   if (vr::VRServerDriverHost()->IsExiting())
   {
-    return;
+    return false;
   }
   // find the latest frame that has been presented
   uint32_t s = vr::VRServerDriverHost()->GetFrameTimings(frames.data(), frames.size());
   for (int i = s-1 ; i >= 0 ; --i)
   {
     if (frames[i].m_nNumFramePresents > 0) {
-      auto pose = m_poseHistory->GetBestPoseMatch(frames[i].m_HmdPose.mDeviceToAbsoluteTracking);
+      // check if the frame is actually new
+      if (frames[i].m_nFrameIndex == m_lastFrame)
+        return false;
+
+      auto now = std::chrono::system_clock::now();
+      // be careful not to cast absolute durations to float, this won't have enough accuracy
+      std::chrono::microseconds offset(std::chrono::microseconds::rep(frames[i].m_flTotalRenderGpuMs / 1000));
+      auto server_pose_time = std::chrono::duration_cast<std::chrono::microseconds>((now - offset).time_since_epoch());
+      auto client_pose_time = m_listener->serverToClientTime(server_pose_time.count());
+      auto pose = m_poseHistory->GetPoseAt(client_pose_time);
       if (pose)
         m_poseSubmitIndex = pose->info.FrameIndex;
-      return;
+      m_lastFrame = frames[i].m_nFrameIndex;
+      return true;
     }
   }
+  return false;
 
 }
 
@@ -416,7 +427,8 @@ void CEncoder::Run() {
         read_exactly(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
         auto encode_start = std::chrono::steady_clock::now();
-        UpdatePoseIndex();
+        if (not UpdatePoseIndex())
+          continue;
 
         err = av_buffersrc_add_frame_flags(filter_in_ctx, mapped_frames[frame_info.image], AV_BUFFERSRC_FLAG_PUSH | AV_BUFFERSRC_FLAG_KEEP_REF);
         if (err != 0)

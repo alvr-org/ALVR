@@ -21,11 +21,14 @@ class CEncoder : public CThread {
 
   private:
     void GetFds(int client, int (*fds)[6]);
-    void UpdatePoseIndex();
+    // Find the index of pose (tracking information) used to render the current frame
+    // returns false if there is no new frame since last call
+    bool UpdatePoseIndex();
 
     std::shared_ptr<ClientConnection> m_listener;
     std::shared_ptr<PoseHistory> m_poseHistory;
     uint64_t m_poseSubmitIndex = 0;
+    uint32_t m_lastFrame = 0;
     std::atomic_bool m_exiting{false};
     IDRScheduler m_scheduler;
     int m_socket;

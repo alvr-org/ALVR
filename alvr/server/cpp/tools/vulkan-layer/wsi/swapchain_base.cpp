@@ -181,9 +181,9 @@ VkResult swapchain_base::init(VkDevice device,
         return result;
     }
 
-		VkExternalMemoryImageCreateInfo ext_info = {};
-		ext_info.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
-		ext_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+    VkExternalMemoryImageCreateInfo ext_info = {};
+    ext_info.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+    ext_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
 
     VkImageCreateInfo image_create_info = {};
     image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -341,11 +341,13 @@ VkResult swapchain_base::acquire_next_image(uint64_t timeout, VkSemaphore semaph
         return VK_ERROR_OUT_OF_HOST_MEMORY;
     }
 
-    uint32_t i;
-    for (i = 0; i < m_swapchain_images.size(); ++i) {
+    uint32_t i = m_last_acquired_image + 1;
+    for (uint32_t j = 0; j < m_swapchain_images.size(); ++j) {
+      i = (i + 1) % m_pending_buffer_pool.size;
         if (m_swapchain_images[i].status == swapchain_image::FREE) {
             m_swapchain_images[i].status = swapchain_image::ACQUIRED;
             *image_index = i;
+            m_last_acquired_image = i;
             break;
         }
     }

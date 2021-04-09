@@ -381,6 +381,8 @@ class swapchain_base {
      **/
     void page_flip_thread();
 
+    uint32_t m_last_acquired_image = 0;
+
     std::vector<VkFence> m_fences;
 };
 

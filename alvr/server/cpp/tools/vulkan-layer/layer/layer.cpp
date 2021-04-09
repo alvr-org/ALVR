@@ -306,7 +306,7 @@ VKAPI_ATTR VkResult create_device(VkPhysicalDevice physicalDevice,
 
     std::unique_ptr<device_private_data> device{
         new device_private_data{inst_data, physicalDevice, *pDevice, table, loader_callback}};
-    device->display = std::make_unique<wsi::display>(*pDevice, *device, queueCreateInfo[display_queue].queueFamilyIndex, queueCreateInfo[display_queue].queueCount - 1);
+    device->display = std::make_unique<wsi::display>(*device, queueCreateInfo[display_queue].queueFamilyIndex, queueCreateInfo[display_queue].queueCount - 1);
     device_private_data::set(*pDevice, std::move(device));
     return VK_SUCCESS;
 }

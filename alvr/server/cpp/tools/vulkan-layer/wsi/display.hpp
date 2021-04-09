@@ -1,7 +1,6 @@
 #pragma once
 
 #include <atomic>
-#include <condition_variable>
 #include <vulkan/vulkan.h>
 #include <thread>
 
@@ -19,11 +18,8 @@ class display {
 
     VkFence &get_vsync_fence() { return vsync_fence; }
 
-    // condition variable that is signaled once per vsync
-    std::condition_variable_any m_cond;
     std::atomic<uint64_t> m_vsync_count{0};
 
-    void pixel_out();
   private:
     std::atomic_bool m_exiting{false};
     std::thread m_vsync_thread;

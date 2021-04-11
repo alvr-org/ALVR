@@ -252,13 +252,15 @@ bool swapchain::try_connect() {
     m_socketPath += "/alvr-ipc";
 
     int ret;
-    m_socket = socket(AF_UNIX, SOCK_STREAM, 0);
-    struct sockaddr_un name;
     if (m_socket == -1) {
+      m_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+      if (m_socket == -1) {
         perror("socket");
         exit(1);
+      }
     }
 
+    struct sockaddr_un name;
     memset(&name, 0, sizeof(name));
     name.sun_family = AF_UNIX;
     strncpy(name.sun_path, m_socketPath.c_str(), sizeof(name.sun_path) - 1);

@@ -94,7 +94,7 @@ class swapchain : public wsi::swapchain_base {
     bool try_connect();
     int send_fds();
     vendor_t decode_vendor_id(uint32_t);
-    int m_socket;
+    int m_socket = -1;
     std::string m_socketPath;
     bool m_connected = false;
     std::vector<int> m_fds;

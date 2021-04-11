@@ -223,7 +223,12 @@ int swapchain::send_fds() {
 
     memcpy(CMSG_DATA(cmsg), fds, sizeof(fds));
 
-    return sendmsg(m_socket, &msg, 0);
+    int ret = sendmsg(m_socket, &msg, 0);
+
+    for (auto fd: m_fds)
+      close(fd);
+
+    return ret;
 }
 
 vendor_t swapchain::decode_vendor_id(uint32_t vendor_id) {

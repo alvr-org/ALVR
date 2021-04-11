@@ -20,6 +20,7 @@ VkFence wsi::display::get_vsync_fence()
   VkFenceCreateInfo fence_info = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, nullptr, 0};
   m_device_data.disp.CreateFence(m_device_data.device, &fence_info, nullptr, &vsync_fence);
   m_device_data.disp.GetDeviceQueue(m_device_data.device, m_queue_family_index, m_queue_index, &queue);
+  m_device_data.SetDeviceLoaderData(m_device_data.device, queue);
   m_vsync_thread = std::thread([this, queue]()
       {
       auto refresh = Settings::Instance().m_refreshRate;
@@ -30,11 +31,12 @@ VkFence wsi::display::get_vsync_fence()
         {
           m_device_data.disp.QueueSubmit(queue, 0, nullptr, vsync_fence);
         }
+        m_device_data.disp.QueueWaitIdle(queue);
         std::this_thread::sleep_until(next_frame);
         m_vsync_count += 1;
         next_frame += frame_time;
       }
-  m_device_data.disp.DestroyFence(m_device_data.device, vsync_fence, nullptr);
+      m_device_data.disp.DestroyFence(m_device_data.device, vsync_fence, nullptr);
       });
   }
   return vsync_fence;

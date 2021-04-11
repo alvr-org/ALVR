@@ -12,7 +12,10 @@ pub enum ButtonType {
 #[derive(Properties, Clone, PartialEq)]
 pub struct Props {
     pub children: Children,
+
     pub on_click: Callback<()>,
+
+    #[prop_or(ButtonType::Primary)]
     pub button_type: ButtonType,
 }
 

@@ -1,4 +1,6 @@
-use crate::basic_components::{Button, ButtonGroup, ButtonType, Select, Slider, Switch};
+use crate::basic_components::{
+    Button, ButtonGroup, ButtonType, Select, Slider, Switch, TextField, UpDown,
+};
 use std::rc::Rc;
 use yew::{html, Callback};
 use yew_functional::{function_component, use_state};
@@ -18,6 +20,10 @@ pub fn dashboard() -> Html {
 
     let on_select = Callback::from(move |_| ());
 
+    let text_field_on_focus_lost = Callback::from(move |_| ());
+
+    let up_down_on_step = Callback::from(move |_| ());
+
     html! {
         <>
             <Button on_click=on_click button_type=ButtonType::None>
@@ -34,6 +40,16 @@ pub fn dashboard() -> Html {
                 options=vec!["hello1".into(), "hello2".into()]
                 selected="hello1"
                 on_select=on_select
+            />
+            <TextField
+                value="hello"
+                on_focus_lost=text_field_on_focus_lost.clone()
+            />
+            <UpDown
+                value="123"
+                on_focus_lost=text_field_on_focus_lost
+                on_step_down=up_down_on_step.clone()
+                on_step_up=up_down_on_step
             />
         </>
     }

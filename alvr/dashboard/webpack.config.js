@@ -7,7 +7,10 @@ module.exports = {
     entry: { index: "./src/index.js" },
     devtool: "eval-cheap-source-map",
     module: {
-        rules: [{ test: /\.css$/, use: ["style-loader", "css-loader"] }],
+        rules: [
+            { test: /\.css$/, use: ["style-loader", "css-loader"] },
+            { test: /\.(svg|eot|woff|woff2|ttf)$/, use: ["file-loader"] },
+        ],
     },
     plugins: [
         new HtmlWebpackPlugin({ title: "ALVR dashboard", favicon: "resources/favicon.png" }),

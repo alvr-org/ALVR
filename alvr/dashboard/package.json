@@ -8,11 +8,12 @@
         "start": "rimraf dist pkg && webpack serve --mode development"
     },
     "dependencies": {
-        "@fortawesome/fontawesome-free": "5",
         "bootstrap": "^5.0.0-beta3",
         "tailwindcss": "2"
     },
     "devDependencies": {
+        "@fortawesome/fontawesome-svg-core": "1",
+        "@fortawesome/free-solid-svg-icons": "5",
         "@wasm-tool/wasm-pack-plugin": "1",
         "copy-webpack-plugin": "8",
         "css-loader": "5",

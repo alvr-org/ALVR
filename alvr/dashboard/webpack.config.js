@@ -15,7 +15,7 @@ module.exports = {
     plugins: [
         new HtmlWebpackPlugin({ title: "ALVR dashboard", favicon: "resources/favicon.png" }),
         new CopyPlugin({ patterns: [{ from: "resources/languages", to: "languages" }] }),
-        new WasmPackPlugin({ crateDirectory: __dirname }),
+        new WasmPackPlugin({ crateDirectory: __dirname, extraArgs: "--no-typescript" }),
     ],
     devServer: {
         hot: true,

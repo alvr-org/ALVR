@@ -15,7 +15,7 @@ pub const SESSION_FNAME: &str = "session.json";
 
 // SessionSettings is similar to Settings but it contains every branch, even unused ones. This is
 // the settings representation that the UI uses.
-type SessionSettings = settings::SettingsDefault;
+pub type SessionSettings = settings::SettingsDefault;
 
 pub fn load_session(path: &Path) -> StrResult<SessionDesc> {
     trace_err!(json::from_str(&trace_err!(fs::read_to_string(path))?))
@@ -36,7 +36,7 @@ pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
 // dynamically.
 // todo: properties that can be set after the OpenVR initialization should be removed and set with
 // UpdateForStream.
-#[derive(Serialize, Deserialize, PartialEq, Default)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct OpenvrConfig {
     pub universe_id: u64,
     pub headset_serial_number: String,
@@ -87,14 +87,14 @@ pub struct OpenvrConfig {
     pub sharpening: f32,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct ClientConnectionDesc {
     pub display_name: String,
     pub manual_ips: HashSet<IpAddr>,
     pub trusted: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct SessionDesc {
     pub openvr_config: OpenvrConfig,
     // The hashmap key is the hostname

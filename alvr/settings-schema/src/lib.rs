@@ -26,7 +26,7 @@ impl<T> Switch<T> {
 
 /// Type used to specify the default value for type `Option`.  
 /// It allows specifying the set state and its content when it is set.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct OptionalDefault<C> {
     pub set: bool,
     pub content: C,
@@ -34,7 +34,7 @@ pub struct OptionalDefault<C> {
 
 /// Type used to specify the default value for type `Switch`.  
 /// It allows setting the enabled state and its content when set to enabled.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct SwitchDefault<C> {
     pub enabled: bool,
     pub content: C,
@@ -42,7 +42,7 @@ pub struct SwitchDefault<C> {
 
 /// Type used to specify the default value for type `Vec`.  
 /// It allows setting the default for the vector (all elements) and the default value for new elements.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct VectorDefault<T> {
     pub element: T,
     pub content: Vec<T>,
@@ -50,7 +50,7 @@ pub struct VectorDefault<T> {
 
 /// Type used to specify the default value for type `Vec<(String, X)>`.  
 /// It allows setting the default for the dictionary (all entries) and the default key and value for new entries.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct DictionaryDefault<T> {
     pub key: String,
     pub value: T,

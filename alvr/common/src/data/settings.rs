@@ -422,14 +422,14 @@ pub struct ExtraDesc {
     #[schema(advanced)]
     pub exclude_notifications_without_id: bool,
     #[schema(advanced)]
-    language: String,
+    pub language: String,
     #[schema(advanced)]
-    show_setup_wizard: bool,
-    layout_direction: LayoutDirection,
-    layout_density: LayoutDensity,
+    pub show_setup_wizard: bool,
+    pub layout_direction: LayoutDirection,
+    pub layout_density: LayoutDensity,
 
-    test_vec: Vec<i32>,
-    test_dict: Vec<(String, i32)>,
+    pub test_vec: Vec<i32>,
+    pub test_dict: Vec<(String, i32)>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]

@@ -231,7 +231,12 @@ fn variants_schema(
                     }
                 })));
                 aux_variants_structs_ts.push(quote! {
-                    #[derive(settings_schema::Serialize, settings_schema::Deserialize, Clone)]
+                    #[derive(
+                        settings_schema::Serialize,
+                        settings_schema::Deserialize,
+                        Clone,
+                        PartialEq
+                    )]
                     #vis struct #default_ty_ts {
                         #default_fields_ts
                     }
@@ -262,7 +267,7 @@ fn variants_schema(
         aux_objects_ts: Some(quote! {
             #(#aux_variants_structs_ts)*
 
-            #[derive(settings_schema::Serialize, settings_schema::Deserialize, Clone)]
+            #[derive(settings_schema::Serialize, settings_schema::Deserialize, Clone, PartialEq)]
             #vis enum #default_variant_ty {
                 #(#variants,)*
             }
@@ -315,7 +320,7 @@ fn schema(derive_input: DeriveInput) -> TResult {
         #aux_objects_ts
 
         #[allow(non_snake_case)]
-        #[derive(serde::Serialize, serde::Deserialize, Clone)]
+        #[derive(settings_schema::Serialize, settings_schema::Deserialize, Clone, PartialEq)]
         #vis struct #default_ty_ident {
             #default_fields_ts
         }

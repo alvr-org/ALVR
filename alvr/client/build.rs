@@ -2,10 +2,6 @@ use std::{env, path::PathBuf};
 
 fn main() {
     let platform_name = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    if platform_name != "android" {
-        return;
-    }
-
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let base_cpp_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("android");
 
@@ -20,47 +16,47 @@ fn main() {
         .map(|entry| entry.into_path())
         .collect::<Vec<_>>();
 
-    // TODO: do android build only if we're bulding for android
-    // (can't use target_os for that, since build.rs isn't being built for android)
-    let source_files_paths = cpp_paths.iter().filter(|path| {
-        path.extension()
-            .filter(|ext| ext.to_string_lossy() == "cpp")
-            .is_some()
-    });
-    let alvr_client_version = format!(r#""{}""#, env!("CARGO_PKG_VERSION"));
+    if platform_name == "android" {
+        let source_files_paths = cpp_paths.iter().filter(|path| {
+            path.extension()
+                .filter(|ext| ext.to_string_lossy() == "cpp")
+                .is_some()
+        });
+        let alvr_client_version = format!(r#""{}""#, env!("CARGO_PKG_VERSION"));
 
-    cc::Build::new()
-        .cpp(true)
-        .flag("-std=c++17")
-        .flag("-fexceptions")
-        .flag("-frtti")
-        .files(source_files_paths)
-        .include(&common_cpp_dir)
-        .include(include_cpp_dir)
-        .include(&source_cpp_dir)
-        .include(source_cpp_dir.join("gl_render_utils"))
-        .define("OVR_SDK", None)
-        .define("ALVR_CLIENT_VERSION", alvr_client_version.as_ref())
-        .cpp_link_stdlib("c++_static")
-        .compile("bindings");
+        cc::Build::new()
+            .cpp(true)
+            .flag("-std=c++17")
+            .flag("-fexceptions")
+            .flag("-frtti")
+            .files(source_files_paths)
+            .include(&common_cpp_dir)
+            .include(include_cpp_dir)
+            .include(&source_cpp_dir)
+            .include(source_cpp_dir.join("gl_render_utils"))
+            .define("OVR_SDK", None)
+            .define("ALVR_CLIENT_VERSION", alvr_client_version.as_ref())
+            .cpp_link_stdlib("c++_static")
+            .compile("bindings");
 
-    cc::Build::new()
-        .cpp(false)
-        .files(&[common_cpp_dir.join("reedsolomon").join("rs.c")])
-        .compile("bindings_rs_c");
+        cc::Build::new()
+            .cpp(false)
+            .files(&[common_cpp_dir.join("reedsolomon").join("rs.c")])
+            .compile("bindings_rs_c");
 
-    println!(
-        "cargo:rustc-link-search=native={}/app/src/main/jniLibs/arm64-v8a",
-        base_cpp_dir.to_string_lossy()
-    );
+        println!(
+            "cargo:rustc-link-search=native={}/app/src/main/jniLibs/arm64-v8a",
+            base_cpp_dir.to_string_lossy()
+        );
 
-    println!("cargo:rustc-link-lib=log");
-    println!("cargo:rustc-link-lib=vrapi");
-    println!("cargo:rustc-link-lib=GLESv3");
-    println!("cargo:rustc-link-lib=EGL");
-    println!("cargo:rustc-link-lib=android");
-    println!("cargo:rustc-link-lib=OpenSLES");
-    println!("cargo:rustc-link-lib=ovrplatformloader");
+        println!("cargo:rustc-link-lib=log");
+        println!("cargo:rustc-link-lib=vrapi");
+        println!("cargo:rustc-link-lib=GLESv3");
+        println!("cargo:rustc-link-lib=EGL");
+        println!("cargo:rustc-link-lib=android");
+        println!("cargo:rustc-link-lib=OpenSLES");
+        println!("cargo:rustc-link-lib=ovrplatformloader");
+    }
 
     bindgen::builder()
         .clang_arg("-xc++")

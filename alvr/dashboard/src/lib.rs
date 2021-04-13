@@ -15,6 +15,7 @@ use std::{
     rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},
 };
+use translation::TransProvider;
 use wasm_bindgen::prelude::*;
 use yew::{html, Callback};
 use yew_functional::{function_component, use_effect_with_deps, use_state};
@@ -31,7 +32,7 @@ fn root() -> Html {
 
     let events_callback_ref = Rc::new(RefCell::new(Callback::default()));
 
-    // run only one time
+    // run only once
     use_effect_with_deps(
         {
             let events_callback_ref = Rc::clone(&events_callback_ref);
@@ -76,9 +77,13 @@ fn root() -> Html {
     );
 
     if let Some(session) = &*maybe_session {
-        html!(<Dashboard events_callback_ref=events_callback_ref session=session.clone() />)
+        html! {
+            <TransProvider>
+                <Dashboard events_callback_ref=events_callback_ref session=session.clone() />
+            </TransProvider>
+        }
     } else {
-        html!(<p>{"Loading..."}</p>)
+        html!(<h1 class="position-absolute top-50 start-50 translate-middle">{"Loading..."}</h1>)
     }
 }
 

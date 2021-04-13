@@ -46,7 +46,11 @@ pub async fn events_listener<F: Future<Output = StrResult>>(
         let result = future::select(messages_loop, ws_closed_future).await;
 
         if let Either::Left((res, _)) = result {
+            // unexpected error in message_loop -> stop
             break res;
+        } else {
+            // ws_closed_future terminated -> retry
+            continue;
         }
     }
 }

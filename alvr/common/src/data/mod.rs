@@ -36,10 +36,10 @@ pub struct PrivateIdentity {
     pub key_pem: String,
 }
 
-#[cfg(target_os = "android")]
+#[cfg(any(windows, target_os = "linux", target_os = "android"))]
 use crate::prelude::*;
 
-#[cfg(target_os = "android")]
+#[cfg(any(windows, target_os = "linux", target_os = "android"))]
 pub fn create_identity(hostname: Option<String>) -> StrResult<PrivateIdentity> {
     let hostname = hostname.unwrap_or(format!("{}.client.alvr", rand::random::<u16>()));
 

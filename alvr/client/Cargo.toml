@@ -26,7 +26,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 alvr_common = { path = "../common" }
 cpal = "0.13"
 log = "0.4"
-nalgebra = "0.25"
+nalgebra = "0.26"
 
 # todo: move to target_os = "android"
 jni = "0.19"

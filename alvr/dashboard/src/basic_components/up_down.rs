@@ -36,7 +36,7 @@ pub fn up_down(props: &Props) -> Html {
             >
                 <i class="fa fa-minus" />
             </button>
-            // todo: make it growable
+            // todo: adapt size to content
             <input
                 type="text"
                 value=*value

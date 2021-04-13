@@ -23,12 +23,10 @@ i18next
     })
 
 // Exports for WASM:
+window.trans_key_exists = i18next.exists
 window.t = i18next.t
 window.change_language = async code => {
     window.t = await i18next.changeLanguage(code)
-}
-window.trans_key_exists = key => {
-    return i18next.exists(key)
 }
 
 // WASM entry point

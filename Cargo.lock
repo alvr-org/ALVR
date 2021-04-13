@@ -2447,12 +2447,11 @@ dependencies = [
 
 [[package]]
 name = "nalgebra"
-version = "0.25.4"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c70c9e8c5f213c8e93fc8c112ade4edd3ee62062fb897776c23dcebac7932900"
+checksum = "e420697df99b528ac4bac53d6b59936219c9f490933b79eab8e7b146152eb9ca"
 dependencies = [
  "approx",
- "generic-array",
  "matrixmultiply",
  "num-complex",
  "num-rational",
@@ -3342,9 +3341,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.11.2"
+version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf12057f289428dbf5c591c74bf10392e4a8003f993405a902f20117019022d4"
+checksum = "2296f2fac53979e8ccbc4a1136b25dcefd37be9ed7e4a1f6b05a6029c84ff124"
 dependencies = [
  "base64",
  "bytes",
@@ -3934,9 +3933,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.16.5"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "567e910ef0207be81a4e1bb0491e9a8d9866cf45b20fe1a52c03d347da9ea51b"
+checksum = "ec595b5d987c593c170ced49ae3aa4b3a6bea078b638866c38043155fd614812"
 dependencies = [
  "cfg-if 1.0.0",
  "core-foundation-sys 0.8.2",
@@ -4102,9 +4101,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.4.0"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "134af885d758d645f0f0505c9a8b3f9bf8a348fd822e112ab5248138348f1722"
+checksum = "83f0c8e7c0addab50b663055baf787d0af7f413a46e6e7fb9559a4e4db7137a5"
 dependencies = [
  "autocfg",
  "bytes",
@@ -4155,9 +4154,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-util"
-version = "0.6.5"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5143d049e85af7fbc36f5454d990e62c2df705b3589f123b71f441b6b59f443f"
+checksum = "940a12c99365c31ea8dd9ba04ec1be183ffe4920102bb7122c2f515437601e8e"
 dependencies = [
  "bytes",
  "futures-core",
@@ -4923,7 +4922,7 @@ dependencies = [
 [[package]]
 name = "yew"
 version = "0.17.4"
-source = "git+https://github.com/yewstack/yew#e5dca4525723fb93f75b44a30c914810a1b06d2a"
+source = "git+https://github.com/yewstack/yew#cc51208a4878f25cae29edd56428b2988b45d5ff"
 dependencies = [
  "anyhow",
  "anymap",
@@ -4947,7 +4946,7 @@ dependencies = [
 [[package]]
 name = "yew-functional"
 version = "0.13.0"
-source = "git+https://github.com/yewstack/yew#e5dca4525723fb93f75b44a30c914810a1b06d2a"
+source = "git+https://github.com/yewstack/yew#cc51208a4878f25cae29edd56428b2988b45d5ff"
 dependencies = [
  "wasm-bindgen",
  "yew 0.17.4 (git+https://github.com/yewstack/yew)",
@@ -4957,7 +4956,7 @@ dependencies = [
 [[package]]
 name = "yew-functional-macro"
 version = "0.1.0"
-source = "git+https://github.com/yewstack/yew#e5dca4525723fb93f75b44a30c914810a1b06d2a"
+source = "git+https://github.com/yewstack/yew#cc51208a4878f25cae29edd56428b2988b45d5ff"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4981,7 +4980,7 @@ dependencies = [
 [[package]]
 name = "yew-macro"
 version = "0.17.0"
-source = "git+https://github.com/yewstack/yew#e5dca4525723fb93f75b44a30c914810a1b06d2a"
+source = "git+https://github.com/yewstack/yew#cc51208a4878f25cae29edd56428b2988b45d5ff"
 dependencies = [
  "boolinator",
  "lazy_static",

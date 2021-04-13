@@ -29,7 +29,7 @@ pub fn text_field(props: &Props) -> Html {
 
     html! {
         <div class="input-group">
-            // todo: make it growable
+            // todo: adapt size to content
             <input
                 type="text"
                 value=*value

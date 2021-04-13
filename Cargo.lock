@@ -4923,7 +4923,7 @@ dependencies = [
 [[package]]
 name = "yew"
 version = "0.17.4"
-source = "git+https://github.com/yewstack/yew#e5dca4525723fb93f75b44a30c914810a1b06d2a"
+source = "git+https://github.com/yewstack/yew#cc51208a4878f25cae29edd56428b2988b45d5ff"
 dependencies = [
  "anyhow",
  "anymap",
@@ -4947,7 +4947,7 @@ dependencies = [
 [[package]]
 name = "yew-functional"
 version = "0.13.0"
-source = "git+https://github.com/yewstack/yew#e5dca4525723fb93f75b44a30c914810a1b06d2a"
+source = "git+https://github.com/yewstack/yew#cc51208a4878f25cae29edd56428b2988b45d5ff"
 dependencies = [
  "wasm-bindgen",
  "yew 0.17.4 (git+https://github.com/yewstack/yew)",
@@ -4957,7 +4957,7 @@ dependencies = [
 [[package]]
 name = "yew-functional-macro"
 version = "0.1.0"
-source = "git+https://github.com/yewstack/yew#e5dca4525723fb93f75b44a30c914810a1b06d2a"
+source = "git+https://github.com/yewstack/yew#cc51208a4878f25cae29edd56428b2988b45d5ff"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4981,7 +4981,7 @@ dependencies = [
 [[package]]
 name = "yew-macro"
 version = "0.17.0"
-source = "git+https://github.com/yewstack/yew#e5dca4525723fb93f75b44a30c914810a1b06d2a"
+source = "git+https://github.com/yewstack/yew#cc51208a4878f25cae29edd56428b2988b45d5ff"
 dependencies = [
  "boolinator",
  "lazy_static",

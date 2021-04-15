@@ -24,12 +24,12 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkGetPhysicalDeviceDisplayPropertiesKHR
     VkDisplayPropertiesKHR *initialProperties = pProperties;
     VkResult result =
         instance.disp.GetPhysicalDeviceDisplayPropertiesKHR(device, pPropertyCount, pProperties);
-    if (*pPropertyCount >= initial_devices) {
-        *pPropertyCount += 1;
+    *pPropertyCount += 1;
+    if (*pPropertyCount > initial_devices) {
         return VK_INCOMPLETE;
     }
     if (initialProperties) {
-        auto &properties = pProperties[*pPropertyCount];
+        auto &properties = pProperties[*pPropertyCount - 1];
         properties.display = alvr_display_handle;
         properties.displayName = alvr_display_name;
         properties.physicalDimensions = VkExtent2D{20, 20};
@@ -38,7 +38,6 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkGetPhysicalDeviceDisplayPropertiesKHR
         properties.planeReorderPossible = VK_FALSE;
         properties.persistentContent = VK_TRUE;
     }
-    *pPropertyCount += 1;
     return result;
 }
 

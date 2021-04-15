@@ -67,12 +67,16 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
                                  wsi::swapchain_image &image) {
     VkResult res = VK_SUCCESS;
     m_create_info = image_create;
-    m_create_info.pNext = nullptr;
-    m_create_info.pQueueFamilyIndices = nullptr;
-    res = m_device_data.disp.CreateImage(m_device, &image_create, nullptr, &image.image);
+    m_create_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+      | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+      | VK_IMAGE_USAGE_SAMPLED_BIT
+      | VK_IMAGE_USAGE_STORAGE_BIT;
+    res = m_device_data.disp.CreateImage(m_device, &m_create_info, nullptr, &image.image);
     if (res != VK_SUCCESS) {
         return res;
     }
+    m_create_info.pNext = nullptr;
+    m_create_info.pQueueFamilyIndices = nullptr;
 
     VkMemoryRequirements memory_requirements;
     m_device_data.disp.GetImageMemoryRequirements(m_device, image.image, &memory_requirements);

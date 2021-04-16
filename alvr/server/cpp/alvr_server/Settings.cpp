@@ -29,7 +29,7 @@ void Settings::Load()
 {
 	try
 	{
-		auto sessionFile = std::ifstream(g_alvrDir + "/session.json"s);
+		auto sessionFile = std::ifstream(g_alvrDir + (std::string)"/session.json");
 
 		auto json = std::string(
 			std::istreambuf_iterator<char>(sessionFile),
@@ -137,7 +137,6 @@ void Settings::Load()
 		Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
 		Info("Seconds from Vsync to Photons: %f\n", m_flSecondsFromVsyncToPhotons);
 		Info("Refresh Rate: %d\n", m_refreshRate);
-
 		m_loaded = true;
 	}
 	catch (std::exception &e)

@@ -36,8 +36,8 @@ public:
 	uint64_t m_DriverTestMode = 0;
 
 	int m_refreshRate;
-	int32_t m_renderWidth;
-	int32_t m_renderHeight;
+	uint32_t m_renderWidth;
+	uint32_t m_renderHeight;
 	int32_t m_recommendedTargetWidth;
 	int32_t m_recommendedTargetHeight;
 

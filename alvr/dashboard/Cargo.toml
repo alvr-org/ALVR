@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 js-sys = "0.3"
-web-sys = { version = "0.3", features = ["console"] }
+web-sys = { version = "0.3", features = ["console", "Navigator"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 ws_stream_wasm = "0.7"
@@ -22,5 +22,10 @@ log = "0.4"
 wasm-logger = "0.2"
 alvr_common = { path = "../common", default-features = false, features = ["new_dashboard"] }
 yew = { git = "https://github.com/yewstack/yew" }
-yewtil = { version = "0.3", features = ["fetch"] }
 yew-functional = { git = "https://github.com/yewstack/yew" }
+fluent = "0.15"
+fluent-langneg = "0.13"
+unic-langid = "0.9"
+fluent-fallback = "0.4"
+reqwest = { version = "0.11", features = ["json"] }
+async-trait = "0.1"

@@ -2,7 +2,7 @@ use crate::{
     basic_components::{
         Button, ButtonGroup, ButtonType, Select, Slider, Switch, TextField, UpDown,
     },
-    translation::t,
+    translation::use_trans,
 };
 use alvr_common::{data::SessionDesc, logging::Event};
 use std::{cell::RefCell, rc::Rc};
@@ -26,7 +26,7 @@ pub fn dashboard(props: &Props) -> Html {
         Callback::from(move |_| set_label(format!("{} world", label)))
     };
 
-    let default_string = t("common.default");
+    let default_string = use_trans("default");
 
     let switch_on_click = Callback::from(move |_| ());
 

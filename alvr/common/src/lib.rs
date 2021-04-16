@@ -1,9 +1,9 @@
 pub mod data;
 pub mod logging;
 
-#[cfg(any(windows, target_os = "linux", target_os = "android"))]
+#[cfg(not(target_arch = "wasm32"))]
 pub mod audio;
-#[cfg(any(windows, target_os = "linux", target_os = "android"))]
+#[cfg(not(target_arch = "wasm32"))]
 pub mod sockets;
 
 #[cfg(any(windows, target_os = "linux"))]
@@ -24,7 +24,7 @@ pub mod prelude {
 
 ////////////////////////////////////////////////////////
 
-#[cfg(any(windows, target_os = "linux", target_os = "android"))]
+#[cfg(not(target_arch = "wasm32"))]
 mod util {
     use crate::prelude::*;
     use std::future::Future;
@@ -49,5 +49,5 @@ mod util {
         )?
     }
 }
-#[cfg(any(windows, target_os = "linux", target_os = "android"))]
+#[cfg(not(target_arch = "wasm32"))]
 pub use util::*;

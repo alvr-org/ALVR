@@ -9,9 +9,6 @@
     },
     "dependencies": {
         "bootstrap": "^5.0.0-beta3",
-        "i18next": "20",
-        "i18next-browser-languagedetector": "6",
-        "i18next-http-backend": "1",
         "tailwindcss": "2"
     },
     "devDependencies": {

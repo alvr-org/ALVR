@@ -11,6 +11,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+use steamlocate::SteamDir;
 use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
@@ -88,7 +89,12 @@ pub fn kill_steamvr() {
 }
 
 pub fn check_steamvr_installation() -> bool {
-    commands::openvr_source_file_path().is_ok()
+    let mut steam_opt = SteamDir::locate();
+
+    match steam_opt {
+        Some(steam) => steam.app(&250820).is_some(),
+        None => false,
+    }
 }
 
 pub fn unblock_alvr_addon() -> StrResult {

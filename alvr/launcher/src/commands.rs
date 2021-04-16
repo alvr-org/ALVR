@@ -1,12 +1,12 @@
 use alvr_common::{
-    commands,
-    logging::{self, CRASH_LOG_FNAME},
+    commands::{self, exec_fname},
+    logging::{self, show_e_blocking, CRASH_LOG_FNAME},
     prelude::*,
 };
 use serde_json as json;
 use std::{
     env, fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Command,
     thread,
     time::{Duration, Instant},
@@ -15,6 +15,11 @@ use steamlocate::SteamDir;
 use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
+
+#[cfg(target_os = "linux")]
+const STEAMVR_OS_DIR_NAME: &str = "linux64";
+#[cfg(windows)]
+const STEAMVR_OS_DIR_NAME: &str = "win64";
 
 #[cfg(windows)]
 pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -30,6 +35,23 @@ fn spawn_no_window(command: &mut Command) {
     command.spawn().ok();
 }
 
+pub fn steamvr_installation_path() -> Option<PathBuf> {
+    SteamDir::locate()
+        .and_then(|mut dir| {
+            dir.app(&250820).cloned() // it hangs here
+        })
+        .map(|dir| dir.path)
+}
+
+pub fn ensure_openvrpaths_present(steamvr_path: &Path) {
+    if commands::openvr_source_file_path().is_err() {
+        maybe_launch_steamvr(steamvr_path);
+        thread::sleep(Duration::from_secs(5));
+        kill_steamvr();
+        thread::sleep(Duration::from_secs(5));
+    }
+}
+
 pub fn is_steamvr_running() -> bool {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
@@ -39,7 +61,7 @@ pub fn is_steamvr_running() -> bool {
         .is_empty()
 }
 
-pub fn maybe_launch_steamvr() {
+pub fn maybe_launch_steamvr(steamvr_path: &Path) {
     let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
     system.refresh_processes();
 
@@ -47,10 +69,17 @@ pub fn maybe_launch_steamvr() {
         .get_process_by_name(&commands::exec_fname("vrserver"))
         .is_empty()
     {
+        let executable_path_string = steamvr_path
+            .join("bin")
+            .join(STEAMVR_OS_DIR_NAME)
+            .join(exec_fname("vrmonitor"));
+
         #[cfg(windows)]
-        spawn_no_window(Command::new("cmd").args(&["/C", "start", "steam://rungameid/250820"]));
+        spawn_no_window(
+            Command::new("cmd").args(&["/C", &executable_path_string.to_string_lossy()]),
+        );
         #[cfg(not(windows))]
-        spawn_no_window(Command::new("steam").args(&["steam://rungameid/250820"]));
+        spawn_no_window(Command::new(&executable_path_string.to_string_lossy()));
     }
 }
 
@@ -88,15 +117,6 @@ pub fn kill_steamvr() {
     }
 }
 
-pub fn check_steamvr_installation() -> bool {
-    let steam = SteamDir::locate();
-
-    match steam {
-        Some(st) => st.app(&250820).is_some(),
-        None => false,
-    }
-}
-
 pub fn unblock_alvr_addon() -> StrResult {
     let config_path = commands::steam_config_dir()?.join("steamvr.vrsettings");
 
@@ -119,7 +139,6 @@ pub fn current_alvr_dir() -> StrResult<PathBuf> {
     Ok(trace_none!(current_path.parent())?.to_owned())
 }
 
-// Return a backup of the registered drivers if ALVR driver wasn't registered, otherwise return none
 pub fn maybe_register_alvr_driver() -> StrResult {
     let current_alvr_dir = current_alvr_dir()?;
 
@@ -153,12 +172,12 @@ pub fn maybe_register_alvr_driver() -> StrResult {
     Ok(())
 }
 
-pub fn fix_steamvr() {
+pub fn fix_steamvr(steamvr_path: &Path) {
     // If ALVR driver does not start use a more destructive approach: delete openvrpaths.vrpath then recreate it
     if let Ok(path) = commands::openvr_source_file_path() {
         fs::remove_file(path).ok();
 
-        maybe_launch_steamvr();
+        maybe_launch_steamvr(steamvr_path);
         thread::sleep(Duration::from_secs(5));
         kill_steamvr();
         thread::sleep(Duration::from_secs(5));
@@ -179,11 +198,11 @@ fn try_close_steamvr_gracefully() {
     thread::sleep(Duration::from_secs(2));
 }
 
-pub fn restart_steamvr() {
+pub fn restart_steamvr(steamvr_path: &Path) {
     try_close_steamvr_gracefully();
 
     if logging::show_err(maybe_register_alvr_driver()).is_some() {
-        maybe_launch_steamvr();
+        maybe_launch_steamvr(steamvr_path);
     }
 }
 

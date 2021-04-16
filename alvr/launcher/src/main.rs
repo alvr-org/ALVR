@@ -24,31 +24,23 @@ enum View {
 }
 
 fn launcher_lifecycle(handle: ExtEventSink, window_id: WindowId) {
-    loop {
-        let steamvr_ok = commands::check_steamvr_installation();
-
-        if steamvr_ok {
-            break;
+    let steamvr_path = loop {
+        if let Some(path) = commands::steamvr_installation_path() {
+            break path;
         } else {
-            let steamvr = format!(
-                "SteamVR installed: {}",
-                if steamvr_ok {
-                    "✅"
-                } else {
-                    "❌ Make sure you launched it at least once, then close it."
-                }
-            );
             handle
                 .submit_command(
                     CHANGE_VIEW_CMD,
-                    View::RequirementsCheck { steamvr },
+                    View::RequirementsCheck {
+                        steamvr: "Please install SteamVR".into(),
+                    },
                     Target::Auto,
                 )
                 .ok();
 
             thread::sleep(Duration::from_millis(500));
         }
-    }
+    };
 
     handle
         .submit_command(
@@ -58,13 +50,14 @@ fn launcher_lifecycle(handle: ExtEventSink, window_id: WindowId) {
         )
         .ok();
 
+    commands::ensure_openvrpaths_present(&steamvr_path);
+
     let request_agent = ureq::AgentBuilder::new()
         .timeout_connect(Duration::from_millis(100))
         .build();
 
     let mut tried_steamvr_launch = false;
     loop {
-        // get a small non-code file
         let maybe_response = request_agent.get("http://127.0.0.1:8082/index.html").call();
         if let Ok(response) = maybe_response {
             if response.status() == 200 {
@@ -80,7 +73,7 @@ fn launcher_lifecycle(handle: ExtEventSink, window_id: WindowId) {
                     commands::kill_steamvr();
                     thread::sleep(Duration::from_secs(2))
                 }
-                commands::maybe_launch_steamvr();
+                commands::maybe_launch_steamvr(&steamvr_path);
             }
             tried_steamvr_launch = true;
         }
@@ -99,11 +92,13 @@ fn reset_and_retry(handle: ExtEventSink) {
             )
             .ok();
 
+        let steamvr_path = commands::steamvr_installation_path().unwrap();
+
         commands::kill_steamvr();
 
-        commands::fix_steamvr();
+        commands::fix_steamvr(&steamvr_path);
 
-        commands::restart_steamvr();
+        commands::restart_steamvr(&steamvr_path);
 
         thread::sleep(Duration::from_secs(2));
 
@@ -247,7 +242,9 @@ fn make_window() -> StrResult {
 fn main() {
     let args = env::args().collect::<Vec<_>>();
     match args.get(1) {
-        Some(flag) if flag == "--restart-steamvr" => commands::restart_steamvr(),
+        Some(flag) if flag == "--restart-steamvr" => {
+            commands::restart_steamvr(&commands::steamvr_installation_path().unwrap())
+        }
         Some(flag) if flag == "--update" => commands::invoke_installer(),
         Some(_) | None => {
             logging::show_err_blocking(make_window());

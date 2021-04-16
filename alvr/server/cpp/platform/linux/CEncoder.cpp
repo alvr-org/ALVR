@@ -202,7 +202,7 @@ bool CEncoder::UpdatePoseIndex()
 
       auto now = std::chrono::system_clock::now();
       // be careful not to cast absolute durations to float, this won't have enough accuracy
-      std::chrono::microseconds offset(std::chrono::microseconds::rep(frames[i].m_flTotalRenderGpuMs / 1000));
+      std::chrono::microseconds offset(std::chrono::microseconds::rep((frames[i].m_flTotalRenderGpuMs - frames[i].m_flNewPosesReadyMs) / 1000));
       auto server_pose_time = std::chrono::duration_cast<std::chrono::microseconds>((now - offset).time_since_epoch());
       auto client_pose_time = m_listener->serverToClientTime(server_pose_time.count());
       auto pose = m_poseHistory->GetPoseAt(client_pose_time);

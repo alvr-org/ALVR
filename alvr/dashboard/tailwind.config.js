@@ -1,6 +1,6 @@
 module.exports = {
     purge: ["./src/**/*.rs"],
-    darkMode: false, // or 'media' or 'class'
+    darkMode: "class",
     theme: {
         extend: {},
     },

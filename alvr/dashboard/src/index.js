@@ -1,5 +1,6 @@
 import "bootstrap"
 import "bootstrap/dist/css/bootstrap.css"
+import "./style.css"
 // import "../resources/style.css"
 import { library, dom } from "@fortawesome/fontawesome-svg-core"
 import { faPlus, faMinus } from "@fortawesome/free-solid-svg-icons"

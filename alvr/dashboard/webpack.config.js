@@ -8,7 +8,21 @@ module.exports = {
     devtool: "eval-cheap-source-map",
     module: {
         rules: [
-            { test: /\.css$/, use: ["style-loader", "css-loader"] },
+            {
+                test: /\.css$/,
+                use: [
+                    "style-loader",
+                    "css-loader",
+                    {
+                        loader: "postcss-loader",
+                        options: {
+                            postcssOptions: {
+                                plugins: [["postcss-preset-env", {}]],
+                            },
+                        },
+                    },
+                ],
+            },
             { test: /\.(svg|eot|woff|woff2|ttf)$/, use: ["file-loader"] },
         ],
     },

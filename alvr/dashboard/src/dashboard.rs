@@ -21,10 +21,10 @@ pub fn dashboard(props: &Props) -> Html {
 
     *props.events_callback_ref.borrow_mut() = Callback::from(|event| ());
 
-    let on_click = {
+    let on_click = Callback::from({
         let label = Rc::clone(&label);
         Callback::from(move |_| set_label(format!("{} world", label)))
-    };
+    });
 
     let default_string = use_trans("default");
 
@@ -40,9 +40,20 @@ pub fn dashboard(props: &Props) -> Html {
 
     html! {
         <>
-            <Button on_click=on_click button_type=ButtonType::None>
-                {label}
-            </Button>
+            <div class="flex flex-col space-y-2 items-start">
+                <Button on_click=on_click.clone() button_type=ButtonType::None>
+                    {label.clone()}
+                </Button>
+                <Button on_click=on_click.clone() button_type=ButtonType::Primary>
+                    {label.clone()}
+                </Button>
+                <Button on_click=on_click.clone() button_type=ButtonType::Secondary>
+                    {label.clone()}
+                </Button>
+                <Button on_click=on_click.clone() button_type=ButtonType::Danger>
+                    {label.clone()}
+                </Button>
+            </div>
             <Switch on_click=switch_on_click checked=true/>
             <Slider value="0" default="30" min="-1" max="40" step="0.5" on_change=slider_on_change/>
             <ButtonGroup

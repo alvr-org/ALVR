@@ -419,7 +419,6 @@ void CEncoder::Run() {
         mapped_frames.push_back(mapped_frame);
       }
 
-
       fprintf(stderr, "CEncoder starting to read present packets");
       present_packet frame_info;
       std::vector<uint8_t> encoded_frame;
@@ -447,6 +446,7 @@ void CEncoder::Run() {
         } else {
           encoder_frame->pict_type = AV_PICTURE_TYPE_NONE;
         }
+        encoder_frame->pts = encode_start.time_since_epoch().count();
 
         if ((err = avcodec_send_frame(avctx.get(), encoder_frame)) < 0) {
           throw alvr::AvException("avcodec_send_frame failed: ", err);

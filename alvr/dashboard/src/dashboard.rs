@@ -21,10 +21,10 @@ pub fn dashboard(props: &Props) -> Html {
 
     *props.events_callback_ref.borrow_mut() = Callback::from(|event| ());
 
-    let on_click = Callback::from({
+    let on_click = {
         let label = Rc::clone(&label);
         Callback::from(move |_| set_label(format!("{} world", label)))
-    });
+    };
 
     let default_string = use_trans("default");
 
@@ -50,8 +50,8 @@ pub fn dashboard(props: &Props) -> Html {
                 <Button on_click=on_click.clone() button_type=ButtonType::Secondary>
                     {label.clone()}
                 </Button>
-                <Button on_click=on_click.clone() button_type=ButtonType::Danger>
-                    {label.clone()}
+                <Button on_click=on_click button_type=ButtonType::Danger>
+                    {label}
                 </Button>
             </div>
             <Switch on_click=switch_on_click checked=true/>

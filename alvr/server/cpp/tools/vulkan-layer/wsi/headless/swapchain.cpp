@@ -306,7 +306,7 @@ bool swapchain::try_connect() {
 }
 
 void swapchain::present_image(uint32_t pending_index) {
-    if (in_flight_index != -1)
+    if (in_flight_index != UINT32_MAX)
       unpresent_image(in_flight_index);
     in_flight_index = pending_index;
     if (!m_connected) {

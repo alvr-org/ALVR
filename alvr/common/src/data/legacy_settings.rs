@@ -111,7 +111,6 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub client_request_realtime_decoder: bool,
 
-    #[schema(advanced)]
     pub use_10bit_encoder: bool,
 
     #[schema(min = 1, max = 500)]

@@ -23,16 +23,17 @@ pub struct Props {
 pub fn button(props: &Props) -> Html {
     let on_click = props.on_click.clone();
 
+    // TODO: if we add a disabled prop, we need to disable the background color hover changes
     let class_type = match props.button_type {
-        ButtonType::Primary => "btn-primary",
-        ButtonType::Secondary => "btn-secondary",
-        ButtonType::Danger => "btn-danger",
-        ButtonType::None => "",
+        ButtonType::Primary => " bg-blue-500 text-blue-50 hover:bg-blue-600",
+        ButtonType::Secondary => "border text-gray-800 hover:bg-gray-200",
+        ButtonType::Danger => "bg-red-500 text-red-50 hover:bg-red-600",
+        ButtonType::None => "text-gray-800 hover:bg-gray-200",
     };
 
     html! {
         <button
-            class=format!("btn {}", class_type)
+            class=format!("flex items-center justify-center px-3 py-1 rounded font-medium cursor-pointer disabled:bg-opacity-10 {}", class_type)
             onclick=Callback::from(move |_| on_click.emit(()))
         >
             {props.children.clone()}

@@ -44,10 +44,10 @@
 namespace layer {
 
 static const VkLayerProperties global_layer = {
-    "VK_LAYER_window_system_integration",
+    "VK_LAYER_ALVR_capture",
     VK_LAYER_API_VERSION,
     1,
-    "Window system integration layer",
+    "ALVR capture layer",
 };
 static const VkExtensionProperties device_extension[] = {
     {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_SWAPCHAIN_SPEC_VERSION}};
@@ -277,7 +277,7 @@ VKAPI_ATTR VkResult create_device(VkPhysicalDevice physicalDevice,
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfo(pCreateInfo->pQueueCreateInfos, pCreateInfo->pQueueCreateInfos + pCreateInfo->queueCreateInfoCount);
     assert(queueCreateInfo.size() > 0);
     std::vector<VkQueueFamilyProperties> props(queueCreateInfo.size());
-    uint32_t size;
+    uint32_t size = props.size();
     inst_data.disp.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, &size, props.data());
     std::vector<float> queuePriorities;
     size_t display_queue = 0;

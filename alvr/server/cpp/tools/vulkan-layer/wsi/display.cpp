@@ -44,5 +44,6 @@ VkFence wsi::display::get_vsync_fence()
 
 wsi::display::~display() {
   m_exiting = true;
-  m_vsync_thread.join();
+  if (m_vsync_thread.joinable())
+    m_vsync_thread.join();
 }

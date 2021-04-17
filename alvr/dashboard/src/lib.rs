@@ -48,12 +48,10 @@ fn root() -> Html {
                     logging::show_err_async(async {
                         let initial_session = session::fetch_session().await?;
 
-                        let translation_manager = trace_err!(
-                            translation::TranslationManager::new(
-                                initial_session.to_settings().extra.language,
-                            )
-                            .await
-                        )?;
+                        let translation_manager = translation::TranslationManager::new(
+                            initial_session.to_settings().extra.language,
+                        )
+                        .await?;
 
                         set_data(Some((initial_session, Rc::new(translation_manager))));
 
@@ -62,16 +60,14 @@ fn root() -> Html {
                                 Event::SessionUpdated { .. } => {
                                     let session = session::fetch_session().await?;
 
-                                    let translation_manager = trace_err!(
-                                        translation::TranslationManager::new(
-                                            session.to_settings().extra.language,
-                                        )
-                                        .await
-                                    )?;
+                                    let translation_manager = translation::TranslationManager::new(
+                                        session.to_settings().extra.language,
+                                    )
+                                    .await?;
 
                                     set_data(Some((session, Rc::new(translation_manager))));
                                 }
-                                event => events_callback_ref.borrow().emit(event),
+                                other_event => events_callback_ref.borrow().emit(other_event),
                             }
 
                             Ok(())

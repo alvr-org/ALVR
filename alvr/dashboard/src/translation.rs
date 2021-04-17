@@ -2,7 +2,7 @@ use alvr_common::prelude::*;
 use fluent::{FluentArgs, FluentBundle, FluentResource};
 use fluent_fallback::{
     generator::{BundleGenerator, FluentBundleResult},
-    types::{L10nKey, L10nMessage},
+    types::L10nKey,
     Localization,
 };
 use fluent_langneg::NegotiationStrategy;
@@ -171,6 +171,55 @@ impl TranslationManager {
         }
     }
 
+    pub fn get_fallible<'a>(&'a self, key: &'a str) -> StrResult<Cow<'a, str>> {
+        match self.localization.format_value_sync(key, None, &mut vec![]) {
+            Ok(Some(value)) => Ok(value),
+            Ok(None) => fmt_e!("Translation key not found: {}", key),
+            Err(e) => fmt_e!("{}", e),
+        }
+    }
+
+    pub fn get_attribute(&self, key: &str, attribute: &str) -> String {
+        if let Ok(messages) = self.localization.format_messages_sync(
+            &[L10nKey {
+                id: key.into(),
+                args: None,
+            }],
+            &mut vec![],
+        ) {
+            if let Some(Some(message)) = messages.get(0) {
+                for attr in &message.attributes {
+                    if attr.name == attribute {
+                        return attr.value.as_ref().to_owned();
+                    }
+                }
+            }
+        }
+        attribute.to_owned()
+    }
+
+    pub fn get_attribute_fallible(&self, key: &str, attribute: &str) -> StrResult<String> {
+        match self.localization.format_messages_sync(
+            &[L10nKey {
+                id: key.into(),
+                args: None,
+            }],
+            &mut vec![],
+        ) {
+            Ok(messages) => {
+                if let Some(Some(message)) = messages.get(0) {
+                    for attr in &message.attributes {
+                        if attr.name == attribute {
+                            return Ok(attr.value.as_ref().to_owned());
+                        }
+                    }
+                }
+                fmt_e!("Translation attribute not found: {}.{}", key, attribute)
+            }
+            Err(e) => fmt_e!("{}", e),
+        }
+    }
+
     pub fn get_with_args<'a>(&'a self, key: &'a str, args: &'a FluentArgs) -> Cow<'a, str> {
         match self
             .localization
@@ -181,16 +230,6 @@ impl TranslationManager {
             Err(e) => {
                 error!("{}", e);
                 key.to_owned().into()
-            }
-        }
-    }
-
-    pub fn get_with_attributes<'a>(&'a self, keys: &'a [L10nKey<'a>]) -> Vec<Option<L10nMessage>> {
-        match self.localization.format_messages_sync(keys, &mut vec![]) {
-            Ok(messages) => messages,
-            Err(e) => {
-                error!("{}", e);
-                vec![]
             }
         }
     }
@@ -272,34 +311,13 @@ pub fn use_settings_trans(subkey: &str) -> SettingsTrans {
     let mut route_segments = (*use_context::<Vec<String>>().expect("Trans context")).clone();
     route_segments.push(subkey.to_owned());
 
-    let route = route_segments.join(".");
+    let route = route_segments.join("-");
 
-    let keys = vec![L10nKey {
-        id: route.into(),
-        args: None,
-    }];
-
-    let message = manager.get_with_attributes(&keys).pop();
-
-    if let Some(Some(message)) = message {
-        let name = message.value.as_deref().map(ToOwned::to_owned);
-
-        let mut help = None;
-        let mut notice = None;
-        for attribute in message.attributes {
-            if attribute.name == "help" {
-                help = Some(attribute.value.as_ref().to_owned())
-            } else if attribute.name == "notice" {
-                notice = Some(attribute.value.as_ref().to_owned())
-            } else {
-                error!("Unexpected translation attribute: {}", attribute.name)
-            }
-        }
-
+    if let Ok(name) = manager.get_fallible(&route) {
         SettingsTrans {
-            name: name.unwrap_or_else(|| subkey.to_owned()),
-            help,
-            notice,
+            name: name.as_ref().to_owned(),
+            help: manager.get_attribute_fallible(&route, "help").ok(),
+            notice: manager.get_attribute_fallible(&route, "notice").ok(),
         }
     } else {
         SettingsTrans {

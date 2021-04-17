@@ -766,9 +766,9 @@ dependencies = [
 
 [[package]]
 name = "const_fn"
-version = "0.4.6"
+version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "076a6803b0dacd6a88cfe64deba628b01533ff5ef265687e6938280c1afd0a28"
+checksum = "402da840495de3f976eaefc3485b7f5eb5b0bf9761f9a47be27fe975b3b8c2ec"
 
 [[package]]
 name = "constant_time_eq"
@@ -4975,7 +4975,7 @@ dependencies = [
 [[package]]
 name = "yew"
 version = "0.17.4"
-source = "git+https://github.com/yewstack/yew#cc51208a4878f25cae29edd56428b2988b45d5ff"
+source = "git+https://github.com/yewstack/yew#3e13321751cd4da75079041b17df30ad9338517b"
 dependencies = [
  "anyhow",
  "anymap",
@@ -4999,7 +4999,7 @@ dependencies = [
 [[package]]
 name = "yew-functional"
 version = "0.13.0"
-source = "git+https://github.com/yewstack/yew#cc51208a4878f25cae29edd56428b2988b45d5ff"
+source = "git+https://github.com/yewstack/yew#3e13321751cd4da75079041b17df30ad9338517b"
 dependencies = [
  "wasm-bindgen",
  "yew",
@@ -5009,7 +5009,7 @@ dependencies = [
 [[package]]
 name = "yew-functional-macro"
 version = "0.1.0"
-source = "git+https://github.com/yewstack/yew#cc51208a4878f25cae29edd56428b2988b45d5ff"
+source = "git+https://github.com/yewstack/yew#3e13321751cd4da75079041b17df30ad9338517b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5019,7 +5019,7 @@ dependencies = [
 [[package]]
 name = "yew-macro"
 version = "0.17.0"
-source = "git+https://github.com/yewstack/yew#cc51208a4878f25cae29edd56428b2988b45d5ff"
+source = "git+https://github.com/yewstack/yew#3e13321751cd4da75079041b17df30ad9338517b"
 dependencies = [
  "boolinator",
  "lazy_static",

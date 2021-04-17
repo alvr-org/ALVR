@@ -330,7 +330,10 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 			m_encoder->Initialize(m_D3DRender, m_Listener);
 		}
 		catch (Exception e) {
-			Error("Failed to initialize CEncoder. %s\n", e.what());
+			Error("Your GPU does not meet the requirements for video encoding. %s %s\n%s %s\n",
+				"If you get this error after changing some settings, you can revert them by",
+				"deleting the file \"session.json\" in the installation folder.",
+				"Failed to initialize CEncoder:", e.what());
 		}
 		m_encoder->Start();
 

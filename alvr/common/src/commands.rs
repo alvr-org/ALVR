@@ -86,7 +86,7 @@ fn get_single_openvr_path(path_type: &str) -> StrResult<PathBuf> {
     trace_none!(from_openvr_paths(paths_json).get(0).cloned())
 }
 
-fn steamvr_root_dir() -> StrResult<PathBuf> {
+pub fn steamvr_root_dir() -> StrResult<PathBuf> {
     get_single_openvr_path("runtime")
 }
 

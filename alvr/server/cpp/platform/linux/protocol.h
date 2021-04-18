@@ -10,6 +10,7 @@ typedef enum { UNKNOWN_VENDOR = 0, NVIDIA, AMD } vendor_t;
 struct present_packet {
     uint32_t image;
     uint32_t frame;
+    float pose[3][4];
 };
 
 struct init_packet {

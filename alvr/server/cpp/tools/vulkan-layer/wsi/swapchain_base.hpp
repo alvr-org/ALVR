@@ -38,6 +38,7 @@
 #include <layer/private_data.hpp>
 #include <util/custom_allocator.hpp>
 #include <util/timed_semaphore.hpp>
+#include <util/pose.hpp>
 
 namespace wsi {
 struct swapchain_image {
@@ -57,6 +58,8 @@ struct swapchain_image {
 
     VkFence present_fence{VK_NULL_HANDLE};
     VkSemaphore semaphore{VK_NULL_HANDLE};
+
+    TrackedDevicePose_t pose;
 };
 
 /**

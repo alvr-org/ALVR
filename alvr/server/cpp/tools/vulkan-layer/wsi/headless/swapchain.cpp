@@ -306,6 +306,8 @@ bool swapchain::try_connect() {
 }
 
 void swapchain::present_image(uint32_t pending_index) {
+    const auto & pose = m_swapchain_images[pending_index].pose.mDeviceToAbsoluteTracking.m;
+
     if (in_flight_index != UINT32_MAX)
       unpresent_image(in_flight_index);
     in_flight_index = pending_index;
@@ -317,6 +319,7 @@ void swapchain::present_image(uint32_t pending_index) {
         present_packet packet;
         packet.image = pending_index;
         packet.frame = m_display.m_vsync_count;
+        memcpy(&packet.pose, pose, sizeof(packet.pose));
         ret = write(m_socket, &packet, sizeof(packet));
         if (ret == -1) {
           //FIXME: try to reconnect?

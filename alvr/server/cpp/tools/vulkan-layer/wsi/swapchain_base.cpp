@@ -411,6 +411,8 @@ VkResult swapchain_base::queue_present(VkQueue queue, const VkPresentInfoKHR *pr
     VkResult result;
     bool descendent_started_presenting = false;
 
+    const auto & pose = find_pose_in_call_stack();
+
     if (m_descendant != VK_NULL_HANDLE) {
         auto *desc = reinterpret_cast<swapchain_base *>(m_descendant);
         for (auto &img : desc->m_swapchain_images) {
@@ -466,6 +468,7 @@ VkResult swapchain_base::queue_present(VkQueue queue, const VkPresentInfoKHR *pr
     }
 
     m_swapchain_images[image_index].status = swapchain_image::PENDING;
+    m_swapchain_images[image_index].pose = pose;
 
     m_pending_buffer_pool.ring[m_pending_buffer_pool.tail] = image_index;
     m_pending_buffer_pool.tail = (m_pending_buffer_pool.tail + 1) % m_pending_buffer_pool.size;

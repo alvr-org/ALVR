@@ -66,10 +66,17 @@ pub fn dashboard(props: &Props) -> Html {
                 selected="hello1"
                 on_select=on_select
             />
-            <TextField
-                value=default_string
-                on_focus_lost=text_field_on_focus_lost.clone()
-            />
+            <div class="space-y-2">
+                <TextField
+                    value=default_string.clone()
+                    on_focus_lost=text_field_on_focus_lost.clone()
+                />
+                <TextField
+                    label="Hi there"
+                    value=default_string
+                    on_focus_lost=text_field_on_focus_lost.clone()
+                />
+            </div>
             <UpDown
                 value="123"
                 on_focus_lost=text_field_on_focus_lost

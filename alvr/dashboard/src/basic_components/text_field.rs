@@ -7,8 +7,11 @@ pub struct Props {
     #[prop_or_default]
     pub value: String,
 
-    #[prop_or("".into())]
+    #[prop_or_default]
     pub placeholder: String,
+
+    #[prop_or("".into())]
+    pub label: String,
 
     pub on_focus_lost: Callback<String>,
 }
@@ -28,9 +31,21 @@ pub fn text_field(props: &Props) -> Html {
     };
 
     html! {
-        <div class="input-group">
+        <div>
+            {
+                if props.label.len() != 0 {
+                    html! {
+                        <label class="block text-sm text-gray-700 font-medium">
+                            {props.label.clone()}
+                        </label>
+                    }
+                } else {
+                    html! {}
+                }
+            }
             // todo: adapt size to content
             <input
+                class="rounded border border-gray-300 px-2 py-1 shadow-sm"
                 type="text"
                 value=*value
                 placeholder=props.placeholder

@@ -39,7 +39,7 @@ pub fn dashboard(props: &Props) -> Html {
     let up_down_on_step = Callback::from(move |_| ());
 
     html! {
-        <>
+        <div class="px-4 py-3">
             <div class="flex flex-col space-y-2 items-start">
                 <Button on_click=on_click.clone() button_type=ButtonType::None>
                     {label.clone()}
@@ -77,12 +77,21 @@ pub fn dashboard(props: &Props) -> Html {
                     on_focus_lost=text_field_on_focus_lost.clone()
                 />
             </div>
-            <UpDown
-                value="123"
-                on_focus_lost=text_field_on_focus_lost
-                on_step_down=up_down_on_step.clone()
-                on_step_up=up_down_on_step
-            />
-        </>
+            <div class="py-2 space-y-2">
+                <UpDown
+                    label="Bitrate"
+                    value="123"
+                    on_focus_lost=text_field_on_focus_lost.clone()
+                    on_step_down=up_down_on_step.clone()
+                    on_step_up=up_down_on_step.clone()
+                />
+                <UpDown
+                    value="123"
+                    on_focus_lost=text_field_on_focus_lost
+                    on_step_down=up_down_on_step.clone()
+                    on_step_up=up_down_on_step
+                />
+            </div>
+        </div>
     }
 }

@@ -26,57 +26,57 @@ pub fn dashboard(props: &DashboardProps) -> Html {
     let translation_on_click = Callback::from(move |_| {});
 
     html! {
-        <div class="flex flex-row">
-            <aside class="w-10">
-                <nav class="flex flex-col items-stretch">
+        <div class="flex h-full">
+            <aside class="w-40 bg-gray-100">
+                <nav class="flex flex-col items-start h-full py-4 space-y-2">
                     <MenuIcon
-                        name="connect"
+                        name="Connect"
                         icon="fas fa-plug"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="connect"
                     />
                     <MenuIcon
-                        name="statistics"
+                        name="Statistics"
                         icon="fas fa-chart-bar"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="statistics"
                     />
                     <MenuIcon
-                        name="presets"
+                        name="Presets"
                         icon="fas fa-th-large"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="presets"
                     />
                     <MenuIcon
-                        name="settings"
+                        name="Settings"
                         icon="fas fa-cog"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="settings"
                     />
                     <MenuIcon
-                        name="installation"
+                        name="Installation"
                         icon="fas fa-hdd"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="installation"
                     />
                     <MenuIcon
-                        name="logs"
+                        name="Logs"
                         icon="fas fa-th-list"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="logs"
                     />
                     <MenuIcon
-                        name="about"
+                        name="About"
                         icon="fas fa-info-circle"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="about"
                     />
-                    <div class="flex-grow" /> // not working
                     <MenuIcon
-                        name="language"
+                        name="Language"
                         icon="fas fa-globe"
                         on_click=translation_on_click
                         selected=false
+                        class="mt-auto"
                     />
                 </nav>
             </aside>
@@ -96,6 +96,9 @@ pub struct MenuIconProps {
     pub icon: String,
     pub on_click: Callback<String>,
     pub selected: bool,
+
+    #[prop_or_default]
+    pub class: String,
 }
 
 #[function_component(MenuIcon)]
@@ -116,13 +119,14 @@ pub fn menu_icon(props: &MenuIconProps) -> Html {
     };
 
     html! {
-        <div onmouseenter=on_enter onmouseleave=on_leave onclick=on_click>
-            <i class=format!("w-8 {}", props.icon.clone()) /> // cannot resize, should be centered horizontally
-            <div class="relative" hidden=!*tooltip_visible>
-                <div class="absolute transform translate-x-full"> // wrong position
-                    {use_trans(&props.name)}
-                </div>
-            </div>
+        <div
+            class=format!("w-36 flex items-center rounded-r px-3 py-1 space-x-2 bg-gray-300 cursor-pointer hover:bg-gray-400 {}", props.class.clone())
+            onmouseenter=on_enter
+            onmouseleave=on_leave
+            onclick=on_click
+        >
+            <i class=format!("w-8 text-gray-500 {}", props.icon.clone()) /> // cannot resize, should be centered horizontally
+            <span class="font-medium">{props.name.clone()}</span>
         </div>
     }
 }

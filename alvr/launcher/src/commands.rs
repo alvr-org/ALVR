@@ -161,11 +161,9 @@ pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
     let real_launcher_path = steamvr_bin_dir.join("vrcompositor-launcher.real");
     let launcher_path = steamvr_bin_dir.join("vrcompositor-launcher");
 
-    println!("\n\nOOH we're about to look at steamvr_bin_dir\n\n");
-    dbg!(&steamvr_bin_dir, &real_launcher_path, &launcher_path);
-
     if !real_launcher_path.exists() {
-        fs::rename(&launcher_path, &real_launcher_path);
+        fs::rename(&launcher_path, &real_launcher_path)
+            .map_err(|_| "couldn't rename original vrcompositor-launcher")?;
         let mut file =
             File::create(launcher_path).map_err(|_| "couldn't create file at launcher_path")?;
         file.write_all(include_bytes!("../res/wrapper.sh"))

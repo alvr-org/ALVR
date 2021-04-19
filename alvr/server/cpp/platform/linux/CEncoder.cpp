@@ -4,6 +4,7 @@
 #include <chrono>
 #include <exception>
 #include <memory>
+#include <sstream>
 #include <openvr_driver.h>
 #include <stdexcept>
 #include <stdlib.h>

@@ -34,7 +34,7 @@ pub fn up_down(props: &Props) -> Html {
     html! {
         <div>
             {
-                if props.label.len() != 0 {
+                if !props.label.is_empty() {
                     html! {
                         <label class="block text-sm text-gray-700 font-medium">
                             {props.label.clone()}
@@ -49,7 +49,7 @@ pub fn up_down(props: &Props) -> Html {
                     class="rounded-l border text-gray-500 hover:bg-gray-200 p-1 w-8"
                     onclick=Callback::from(move |_| on_step_down.emit(()))
                 >
-                    <i class="fa fa-minus" />
+                    <i class="fas fa-minus" />
                 </button>
                 // todo: adapt size to content
                 <input
@@ -63,7 +63,7 @@ pub fn up_down(props: &Props) -> Html {
                     class="rounded-r border text-gray-500 hover:bg-gray-200 p-1 w-8"
                     onclick=Callback::from(move |_| on_step_up.emit(()))
                 >
-                    <i class="fa fa-plus" />
+                    <i class="fas fa-plus" />
                 </button>
             </div>
         </div>

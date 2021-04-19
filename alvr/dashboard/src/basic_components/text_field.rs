@@ -33,7 +33,7 @@ pub fn text_field(props: &Props) -> Html {
     html! {
         <div>
             {
-                if props.label.len() != 0 {
+                if !props.label.is_empty() {
                     html! {
                         <label class="block text-sm text-gray-700 font-medium">
                             {props.label.clone()}

@@ -4,22 +4,132 @@ use crate::{
     },
     translation::use_trans,
 };
-use alvr_common::{data::SessionDesc, logging::Event};
+use alvr_common::{data::SessionDesc, logging::Event, prelude::*};
 use std::{cell::RefCell, rc::Rc};
 use yew::{html, Callback, Properties};
 use yew_functional::{function_component, use_state};
 
 #[derive(Properties, Clone, PartialEq)]
-pub struct Props {
+pub struct DashboardProps {
     pub events_callback_ref: Rc<RefCell<Callback<Event>>>,
     pub session: SessionDesc,
 }
 
 #[function_component(Dashboard)]
-pub fn dashboard(props: &Props) -> Html {
-    let (label, set_label) = use_state(|| "Hello".to_owned());
-
+pub fn dashboard(props: &DashboardProps) -> Html {
     *props.events_callback_ref.borrow_mut() = Callback::from(|event| ());
+
+    let (selected_tab, set_selected_tab) = use_state(|| "connect".to_owned());
+
+    let on_tab_click = Callback::from(move |name| set_selected_tab(name));
+
+    let translation_on_click = Callback::from(move |_| {});
+
+    html! {
+        <div class="flex flex-row">
+            <aside class="w-10">
+                <nav class="flex flex-col items-stretch">
+                    <MenuIcon
+                        name="connect"
+                        icon="fas fa-plug"
+                        on_click=on_tab_click.clone()
+                        selected=*selected_tab=="connect"
+                    />
+                    <MenuIcon
+                        name="statistics"
+                        icon="fas fa-chart-bar"
+                        on_click=on_tab_click.clone()
+                        selected=*selected_tab=="statistics"
+                    />
+                    <MenuIcon
+                        name="presets"
+                        icon="fas fa-th-large"
+                        on_click=on_tab_click.clone()
+                        selected=*selected_tab=="presets"
+                    />
+                    <MenuIcon
+                        name="settings"
+                        icon="fas fa-cog"
+                        on_click=on_tab_click.clone()
+                        selected=*selected_tab=="settings"
+                    />
+                    <MenuIcon
+                        name="installation"
+                        icon="fas fa-hdd"
+                        on_click=on_tab_click.clone()
+                        selected=*selected_tab=="installation"
+                    />
+                    <MenuIcon
+                        name="logs"
+                        icon="fas fa-th-list"
+                        on_click=on_tab_click.clone()
+                        selected=*selected_tab=="logs"
+                    />
+                    <MenuIcon
+                        name="about"
+                        icon="fas fa-info-circle"
+                        on_click=on_tab_click.clone()
+                        selected=*selected_tab=="about"
+                    />
+                    <div class="flex-grow" /> // not working
+                    <MenuIcon
+                        name="language"
+                        icon="fas fa-globe"
+                        on_click=translation_on_click
+                        selected=false
+                    />
+                </nav>
+            </aside>
+            <div class="flex-grow">
+                <div hidden=*selected_tab!="connect">
+                    <Test />
+                </div>
+            </div>
+        </div>
+
+    }
+}
+
+#[derive(Properties, Clone, PartialEq)]
+pub struct MenuIconProps {
+    pub name: String,
+    pub icon: String,
+    pub on_click: Callback<String>,
+    pub selected: bool,
+}
+
+#[function_component(MenuIcon)]
+pub fn menu_icon(props: &MenuIconProps) -> Html {
+    let (tooltip_visible, set_tooltip_visible) = use_state(|| false);
+
+    let on_enter = {
+        let set_tooltip_visible = Rc::clone(&set_tooltip_visible);
+        Callback::from(move |_| set_tooltip_visible(true))
+    };
+
+    let on_leave = Callback::from(move |_| set_tooltip_visible(false));
+
+    let on_click = {
+        let on_click = props.on_click.clone();
+        let name = props.name.clone();
+        Callback::from(move |_| on_click.emit(name.clone()))
+    };
+
+    html! {
+        <div onmouseenter=on_enter onmouseleave=on_leave onclick=on_click>
+            <i class=format!("w-8 {}", props.icon.clone()) /> // cannot resize, should be centered horizontally
+            <div class="relative" hidden=!*tooltip_visible>
+                <div class="absolute transform translate-x-full"> // wrong position
+                    {use_trans(&props.name)}
+                </div>
+            </div>
+        </div>
+    }
+}
+
+#[function_component(Test)]
+pub fn test() -> Html {
+    let (label, set_label) = use_state(|| "Hello".to_owned());
 
     let on_click = {
         let label = Rc::clone(&label);

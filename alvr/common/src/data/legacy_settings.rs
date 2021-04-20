@@ -103,7 +103,7 @@ pub struct VideoDesc {
 
     #[schema(placeholder = "display_refresh_rate")]
     //
-    #[schema(advanced, min = 60.0, max = 90.0)]
+    #[schema(advanced)]
     pub preferred_fps: f32,
 
     pub codec: CodecType,

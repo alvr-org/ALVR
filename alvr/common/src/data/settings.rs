@@ -105,11 +105,12 @@ pub struct VideoDesc {
             variant = "72Hz",
             variant = "80Hz",
             variant = "90Hz",
+            variant = "120Hz",
         )),
         modifier = "{settings}.video.preferred_fps = parseInt({input})",
     ))]
     //
-    #[schema(advanced, min = 60.0, max = 90.0, step = 1.0, gui = "up_down")]
+    #[schema(advanced, step = 1.0, gui = "up_down")]
     pub preferred_fps: f32,
 
     pub codec: CodecType,

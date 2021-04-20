@@ -289,6 +289,7 @@ define([
                     .removeClass("active");
 
                 switch (preferredFps.val()) {
+                    case "120":
                     case "90":
                     case "80":
                     case "72":
@@ -354,6 +355,10 @@ define([
                         <label class="btn btn-primary">
                             <input type="radio" name="displayRefreshRate" autocomplete="off" value="90">
                             90 Hz
+                        </label>
+                        <label class="btn btn-primary">
+                            <input type="radio" name="displayRefreshRate" autocomplete="off" value="120">
+                            120 Hz
                         </label>
 
                     </div> `;

@@ -129,7 +129,7 @@ pub fn menu_icon(props: &MenuIconProps) -> Html {
 
     html! {
         <div
-            class=format!("w-36 flex items-center rounded-r-lg px-3 py-1 space-x-2 bg-gray-300 cursor-pointer hover:bg-gray-400 {} {}", additional_cls, props.class.clone())
+            class=format!("w-36 flex items-center rounded-r-lg pr-3 pl-7 py-1 space-x-2 bg-gray-300 cursor-pointer transition transform -translate-x-4 hover:bg-gray-400 hover:translate-x-0 hover:shadow-md {} {}", additional_cls, props.class.clone())
             onmouseenter=on_enter
             onmouseleave=on_leave
             onclick=on_click

@@ -30,49 +30,49 @@ pub fn dashboard(props: &DashboardProps) -> Html {
             <aside class="w-44 bg-gray-100">
                 <nav class="flex flex-col items-start h-full py-4 space-y-2">
                     <MenuIcon
-                        name="Connect"
+                        name="connect"
                         icon="fas fa-plug"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="connect"
                     />
                     <MenuIcon
-                        name="Statistics"
+                        name="statistics"
                         icon="fas fa-chart-bar"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="statistics"
                     />
                     <MenuIcon
-                        name="Presets"
+                        name="presets"
                         icon="fas fa-th-large"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="presets"
                     />
                     <MenuIcon
-                        name="Settings"
+                        name="settings"
                         icon="fas fa-cog"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="settings"
                     />
                     <MenuIcon
-                        name="Installation"
+                        name="installation"
                         icon="fas fa-hdd"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="installation"
                     />
                     <MenuIcon
-                        name="Logs"
+                        name="logs"
                         icon="fas fa-th-list"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="logs"
                     />
                     <MenuIcon
-                        name="About"
+                        name="about"
                         icon="fas fa-info-circle"
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="about"
                     />
                     <MenuIcon
-                        name="Language"
+                        name="language"
                         icon="fas fa-globe"
                         on_click=translation_on_click
                         selected=false
@@ -118,24 +118,34 @@ pub fn menu_icon(props: &MenuIconProps) -> Html {
         Callback::from(move |_| on_click.emit(name.clone()))
     };
 
-    let mut additional_cls = "";
-    let mut additional_icon_cls = "";
-
-    if props.selected {
-        additional_cls = "w-40 bg-gradient-to-tr from-blue-700 via-blue-700 to-blue-600 hover:bg-blue-800 text-white shadow-md";
-        additional_icon_cls = "opacity-90";
-    } else {
-    };
-
     html! {
         <div
-            class=format!("w-36 flex items-center rounded-r-lg pr-3 pl-7 py-1 space-x-2 bg-gray-300 cursor-pointer transition transform -translate-x-4 hover:bg-gray-400 hover:translate-x-0 hover:shadow-md {} {}", additional_cls, props.class.clone())
+            class=format!(
+                "w-36 flex items-center rounded-r-lg pr-3 pl-7 py-1 space-x-2 {} {} {} {}",
+                "bg-gray-300 cursor-pointer transition transform -translate-x-4 hover:bg-gray-400",
+                "hover:translate-x-0 hover:shadow-md",
+                if props.selected {
+                    format!(
+                        "w-40 bg-gradient-to-tr from-blue-700 via-blue-700 to-blue-600 {}",
+                        "hover:bg-blue-800 text-white shadow-md"
+                    )
+                } else {
+                    "".into()
+                },
+                props.class.clone()
+            )
             onmouseenter=on_enter
             onmouseleave=on_leave
             onclick=on_click
         >
-            <i class=format!("w-8 opacity-75 {} {}", additional_icon_cls, props.icon.clone()) /> // cannot resize, should be centered horizontally
-            <span class="font-medium">{props.name.clone()}</span>
+            <i
+                class=format!(
+                    "w-8 opacity-75 {} {}",
+                    if props.selected { "opacity-90" } else { "" },
+                    props.icon.clone()
+                )
+            />
+            <span class="font-medium">{use_trans(&props.name)}</span>
         </div>
     }
 }

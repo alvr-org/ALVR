@@ -96,7 +96,7 @@ public class OvrActivity extends Activity {
     DecoderThread mDecoderThread = null;
     EGLContext mEGLContext;
     boolean mVrMode = false;
-    int mRefreshRate = 72;
+    float mRefreshRate = 60f;
     long mPreviousRender = 0;
     String mDashboardURL = null;
     String mLoadingMessage = "";
@@ -330,15 +330,14 @@ public class OvrActivity extends Activity {
 
                 renderLoadingNative();
                 mRenderingHandler.removeCallbacks(mRenderRunnable);
-                mRenderingHandler.postDelayed(mRenderRunnable, 13); // 72Hz = 13.8888ms
+                mRenderingHandler.postDelayed(mRenderRunnable, (long)(1f/ mRefreshRate));
             }
         }
     }
 
     private long checkRenderTiming() {
         long current = System.nanoTime();
-        long threshold = TimeUnit.SECONDS.toNanos(1) / mRefreshRate -
-                TimeUnit.MILLISECONDS.toNanos(5);
+        long threshold = (long)(1.0e9 / (double)mRefreshRate - 5.0e6);
         return TimeUnit.NANOSECONDS.toMillis(threshold - (current - mPreviousRender));
     }
 
@@ -406,7 +405,8 @@ public class OvrActivity extends Activity {
     }
 
     @SuppressWarnings("unused")
-    public void onServerConnected(int codec, boolean realtimeDecoder, String dashboardURL) {
+    public void onServerConnected(float fps, int codec, boolean realtimeDecoder, String dashboardURL) {
+        mRefreshRate = fps;
         mDashboardURL = dashboardURL;
         mRenderingHandler.post(() -> {
             onStreamStartNative();

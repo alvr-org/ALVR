@@ -291,8 +291,9 @@ async fn connection_pipeline(
     trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
         &*activity_ref,
         "onServerConnected",
-        "(IZLjava/lang/String;)V",
+        "(FIZLjava/lang/String;)V",
         &[
+            config_packet.fps,
             (matches!(settings.video.codec, CodecType::HEVC) as i32).into(),
             settings.video.client_request_realtime_decoder.into(),
             trace_err!(trace_err!(java_vm.attach_current_thread())?

@@ -27,7 +27,7 @@ pub fn dashboard(props: &DashboardProps) -> Html {
 
     html! {
         <div class="flex h-full">
-            <aside class="w-40 bg-gray-100">
+            <aside class="w-44 bg-gray-100">
                 <nav class="flex flex-col items-start h-full py-4 space-y-2">
                     <MenuIcon
                         name="Connect"
@@ -118,14 +118,23 @@ pub fn menu_icon(props: &MenuIconProps) -> Html {
         Callback::from(move |_| on_click.emit(name.clone()))
     };
 
+    let mut additional_cls = "";
+    let mut additional_icon_cls = "";
+
+    if props.selected {
+        additional_cls = "w-40 bg-gradient-to-tr from-blue-700 via-blue-700 to-blue-600 hover:bg-blue-800 text-white shadow-md";
+        additional_icon_cls = "opacity-90";
+    } else {
+    };
+
     html! {
         <div
-            class=format!("w-36 flex items-center rounded-r px-3 py-1 space-x-2 bg-gray-300 cursor-pointer hover:bg-gray-400 {}", props.class.clone())
+            class=format!("w-36 flex items-center rounded-r-lg px-3 py-1 space-x-2 bg-gray-300 cursor-pointer hover:bg-gray-400 {} {}", additional_cls, props.class.clone())
             onmouseenter=on_enter
             onmouseleave=on_leave
             onclick=on_click
         >
-            <i class=format!("w-8 text-gray-500 {}", props.icon.clone()) /> // cannot resize, should be centered horizontally
+            <i class=format!("w-8 opacity-75 {} {}", additional_icon_cls, props.icon.clone()) /> // cannot resize, should be centered horizontally
             <span class="font-medium">{props.name.clone()}</span>
         </div>
     }

@@ -201,7 +201,7 @@ void ClientConnection::ProcessRecv(unsigned char *buf, int len) {
 	uint64_t now = GetTimestampUs();
 	if (now - m_LastStatisticsUpdate > STATISTICS_TIMEOUT_US)
 	{
-		Info("#{ \"id\": \"statistics\", \"content\": {"
+		Info("#{ \"id\": \"Statistics\", \"data\": {"
 			"\"totalPackets\": %llu, "
 			"\"packetRate\": %llu, "
 			"\"packetsLostTotal\": %llu, "

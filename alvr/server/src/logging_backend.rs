@@ -2,6 +2,7 @@ use crate::{ALVR_DIR, SESSION_MANAGER};
 use alvr_common::logging;
 use fern::Dispatch;
 use log::LevelFilter;
+use logging::{EventSeverity, Raw};
 use std::fs;
 use tokio::sync::broadcast::Sender;
 
@@ -11,6 +12,23 @@ pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
         if maybe_event.contains("#{") {
             let event_data = maybe_event.replace("#{", "{").replace("}#", "}");
             events_sender.send(event_data).ok();
+        } else {
+            let severity = match record.level() {
+                log::Level::Error => EventSeverity::Error,
+                log::Level::Warn => EventSeverity::Warning,
+                log::Level::Info => EventSeverity::Info,
+                log::Level::Debug | log::Level::Trace => EventSeverity::Debug,
+            };
+
+            let event = Raw {
+                timestamp: chrono::Local::now().format("%H:%M:%S.%f").to_string(),
+                severity,
+                content: message.to_string(),
+            };
+
+            events_sender
+                .send(serde_json::to_string(&event).unwrap())
+                .ok();
         }
         let log_line = format!(
             "{} [{}] {}",

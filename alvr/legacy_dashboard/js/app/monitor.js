@@ -426,8 +426,8 @@ define([
 
         function handleJson(json) {
             switch (json.id) {
-                case "statistics":
-                    updateStatistics(json.content);
+                case "Statistics":
+                    updateStatistics(json.data);
                     break;
                 case "SessionUpdated":
                     updateSession();

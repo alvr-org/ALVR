@@ -9,7 +9,7 @@ set = Set
 unset = Unset
 apply = Apply
 applied = Applied
-reset-prompt = Do you want to reset this setting to { $value }?
+reset-prompt = Do you want to reset this setting to {$value}?
 
 # Dashboard
 connections = Connections
@@ -27,7 +27,7 @@ settings = Settings
 video = Video
 video-resolution_dropdown = Video resolution
 audio-microphone = Stream headset microphone
-    .notice = "Microphone streaming works only if VB-CABLE or VoiceMeeter is installed
+    .notice = Microphone streaming works only if VB-CABLE or VoiceMeeter is installed
 headset = Headset
 headset-controllers = Controllers
     .help = Allow the use of the controllers
@@ -54,4 +54,14 @@ language = Language
 
 # Client TODO
 
-# Events TODO
+# Events
+
+SessionSettingsExtrapolationFailed = 
+    Failed to reconstruct the session. If you tried to import a preset it might be invalid.
+ClientFoundInvalid = Error while identifying the client
+ClientFoundWrongVersion = 
+    The client that was trying to connect has version {$client-version}, which is incompatible with
+    the current server version {$server-version}. Please update {$side ->
+        [server] the server
+        *[client] the client
+    }.

@@ -12,7 +12,7 @@ applied = Applied
 reset-prompt = Do you want to reset this setting to { $value }?
 
 # Dashboard
-connect = Connect
+connections = Connections
     .new-clients = New clients
     .trust = Trust
     .trusted-clients = Trusted clients

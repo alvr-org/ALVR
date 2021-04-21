@@ -2,6 +2,7 @@ use crate::{
     basic_components::{
         Button, ButtonGroup, ButtonType, Select, Slider, Switch, TextField, UpDown,
     },
+    components::{About, Connections, Installation, Logs, Settings, Statistics},
     translation::use_trans,
 };
 use alvr_common::{data::SessionDesc, logging::Event, prelude::*};
@@ -12,7 +13,7 @@ use yew_functional::{function_component, use_state};
 #[derive(Properties, Clone, PartialEq)]
 pub struct DashboardProps {
     pub events_callback_ref: Rc<RefCell<Callback<Event>>>,
-    pub session: SessionDesc,
+    pub session: Rc<SessionDesc>,
 }
 
 #[function_component(Dashboard)]
@@ -30,10 +31,10 @@ pub fn dashboard(props: &DashboardProps) -> Html {
             <aside class="w-44 bg-gray-100">
                 <nav class="flex flex-col items-start h-full py-4 space-y-2">
                     <MenuIcon
-                        name="connect"
+                        name="connections"
                         icon="fas fa-plug"
                         on_click=on_tab_click.clone()
-                        selected=*selected_tab=="connect"
+                        selected=*selected_tab=="connections"
                     />
                     <MenuIcon
                         name="statistics"
@@ -41,12 +42,12 @@ pub fn dashboard(props: &DashboardProps) -> Html {
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="statistics"
                     />
-                    <MenuIcon
-                        name="presets"
-                        icon="fas fa-th-large"
-                        on_click=on_tab_click.clone()
-                        selected=*selected_tab=="presets"
-                    />
+                    // <MenuIcon
+                    //     name="presets"
+                    //     icon="fas fa-th-large"
+                    //     on_click=on_tab_click.clone()
+                    //     selected=*selected_tab=="presets"
+                    // />
                     <MenuIcon
                         name="settings"
                         icon="fas fa-cog"
@@ -81,8 +82,24 @@ pub fn dashboard(props: &DashboardProps) -> Html {
                 </nav>
             </aside>
             <div class="flex-grow">
-                <div hidden=*selected_tab!="connect">
+                <div hidden=*selected_tab!="connections">
+                    <Connections session=Rc::clone(&props.session) />
                     <Test />
+                </div>
+                <div hidden=*selected_tab!="statistics">
+                    <Statistics />
+                </div>
+                <div hidden=*selected_tab!="settings">
+                    <Settings session=Rc::clone(&props.session) />
+                </div>
+                <div hidden=*selected_tab!="installation">
+                    <Installation session=Rc::clone(&props.session)/>
+                </div>
+                <div hidden=*selected_tab!="logs">
+                    <Logs session=Rc::clone(&props.session)/>
+                </div>
+                <div hidden=*selected_tab!="about">
+                    <About session=Rc::clone(&props.session) />
                 </div>
             </div>
         </div>

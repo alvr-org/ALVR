@@ -182,7 +182,7 @@ define([
                 webSocket.onmessage = function (event) {
                     try {
                         const dataJSON = JSON.parse(event.data);
-                        if (dataJSON.id === "updateDownloadedBytesCount") {
+                        if (dataJSON.id === "UpdateDownloadedBytesCount") {
                             const BtoMB = 1.0 / (1024 * 1024);
                             const sizeMb = size * BtoMB;
                             const downloadProgress = (

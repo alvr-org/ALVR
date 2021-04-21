@@ -1,5 +1,5 @@
 use super::{legacy_settings as settings, Settings};
-use crate::{logging::SessionUpdateType, prelude::*};
+use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use settings_schema_legacy::SchemaNode;
@@ -545,8 +545,6 @@ fn json_session_settings_to_settings(
 pub struct SessionLock<'a> {
     session_desc: &'a mut SessionDesc,
     dir: &'a Path,
-    update_author_id: Option<String>,
-    update_type: SessionUpdateType,
 }
 
 impl Deref for SessionLock<'_> {
@@ -565,10 +563,7 @@ impl DerefMut for SessionLock<'_> {
 impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
         save_session(self.session_desc, &self.dir.join(SESSION_FNAME)).ok();
-        log_event(Event::SessionUpdated {
-            web_client_id: self.update_author_id.to_owned(),
-            update_type: self.update_type,
-        });
+        log_event(Event::SessionUpdated);
     }
 }
 
@@ -621,16 +616,10 @@ impl SessionManager {
         &self.session_desc
     }
 
-    pub fn get_mut(
-        &mut self,
-        update_author_id: Option<String>,
-        update_type: SessionUpdateType,
-    ) -> SessionLock {
+    pub fn get_mut(&mut self) -> SessionLock {
         SessionLock {
             session_desc: &mut self.session_desc,
             dir: &self.dir,
-            update_author_id,
-            update_type,
         }
     }
 }

@@ -14,7 +14,6 @@ use alvr_common::{
     commands,
     data::{ClientConnectionDesc, SessionManager},
     graphics, logging,
-    logging::SessionUpdateType,
     prelude::*,
 };
 use lazy_static::lazy_static;
@@ -156,10 +155,7 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
     }
 
     if updated {
-        SESSION_MANAGER
-            .lock()
-            .get_mut(None, SessionUpdateType::ClientList)
-            .client_connections = client_connections;
+        SESSION_MANAGER.lock().get_mut().client_connections = client_connections;
 
         CLIENTS_UPDATED_NOTIFIER.notify_waiters();
     }
@@ -211,9 +207,7 @@ fn init() {
     if let Some(runtime) = MAYBE_RUNTIME.lock().as_mut() {
         // Acquire and drop the session_manager lock to create session.json if not present
         // this is needed until Settings.cpp is replaced with Rust. todo: remove
-        SESSION_MANAGER
-            .lock()
-            .get_mut(None, SessionUpdateType::Other);
+        SESSION_MANAGER.lock().get_mut();
 
         runtime.spawn(async move {
             let connections = SESSION_MANAGER.lock().get().client_connections.clone();

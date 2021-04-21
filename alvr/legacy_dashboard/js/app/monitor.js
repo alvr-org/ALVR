@@ -429,7 +429,7 @@ define([
                 case "statistics":
                     updateStatistics(json.content);
                     break;
-                case "sessionUpdated":
+                case "SessionUpdated":
                     updateSession();
                     break;
                 default:

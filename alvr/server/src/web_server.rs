@@ -2,8 +2,7 @@ use crate::{ClientListAction, ALVR_DIR, SESSION_MANAGER};
 use alvr_common::{
     audio, commands,
     data::{self, Settings, ALVR_VERSION},
-    graphics,
-    logging::{self, SessionUpdateType},
+    graphics, logging,
     prelude::*,
 };
 use bytes::Buf;
@@ -106,7 +105,7 @@ async fn http_api(
             if let Ok(session_settings) = from_request_body::<json::Value>(request).await {
                 let res = SESSION_MANAGER
                     .lock()
-                    .get_mut(None, SessionUpdateType::Settings)
+                    .get_mut()
                     .merge_from_json(&json::json!({ "session_settings": session_settings }));
                 if let Err(e) = res {
                     warn!("{}", e);
@@ -122,28 +121,14 @@ async fn http_api(
         // todo: remove deprecated url
         "/api/session/store" => {
             if let Ok(data) = from_request_body::<json::Value>(request).await {
-                if let (Some(update_type), Some(update_author_id), Some(value)) = (
-                    data.get("updateType"),
-                    data.get("webClientId"),
-                    data.get("session"),
-                ) {
-                    if let (Ok(update_type), Ok(update_author_id)) = (
-                        json::from_value(update_type.clone()),
-                        json::from_value::<String>(update_author_id.clone()),
-                    ) {
-                        let res = SESSION_MANAGER
-                            .lock()
-                            .get_mut(Some(update_author_id), update_type)
-                            .merge_from_json(value);
-                        if let Err(e) = res {
-                            warn!("{}", e);
-                            // HTTP Code: WARNING
-                            reply(trace_err!(StatusCode::from_u16(199))?)?
-                        } else {
-                            reply(StatusCode::OK)?
-                        }
+                if let Some(value) = data.get("session") {
+                    let res = SESSION_MANAGER.lock().get_mut().merge_from_json(value);
+                    if let Err(e) = res {
+                        warn!("{}", e);
+                        // HTTP Code: WARNING
+                        reply(trace_err!(StatusCode::from_u16(199))?)?
                     } else {
-                        reply(StatusCode::BAD_REQUEST)?
+                        reply(StatusCode::OK)?
                     }
                 } else {
                     reply(StatusCode::BAD_REQUEST)?

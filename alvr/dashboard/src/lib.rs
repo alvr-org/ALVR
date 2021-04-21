@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 mod basic_components;
+mod components;
 mod dashboard;
 mod events_listener;
 mod logging_backend;
@@ -53,7 +54,10 @@ fn root() -> Html {
                         )
                         .await?;
 
-                        set_data(Some((initial_session, Rc::new(translation_manager))));
+                        set_data(Some((
+                            Rc::new(initial_session),
+                            Rc::new(translation_manager),
+                        )));
 
                         events_listener::events_listener(|event| async {
                             match event {
@@ -65,7 +69,10 @@ fn root() -> Html {
                                     )
                                     .await?;
 
-                                    set_data(Some((session, Rc::new(translation_manager))));
+                                    set_data(Some((
+                                        Rc::new(session),
+                                        Rc::new(translation_manager),
+                                    )));
                                 }
                                 other_event => events_callback_ref.borrow().emit(other_event),
                             }
@@ -86,7 +93,7 @@ fn root() -> Html {
     if let Some((session, translation_manager)) = &*maybe_data {
         html! {
             <TransProvider context=TransContext { manager: translation_manager.clone() }>
-                <Dashboard events_callback_ref=events_callback_ref session=session.clone() />
+                <Dashboard events_callback_ref=events_callback_ref session=Rc::clone(session) />
             </TransProvider>
         }
     } else {

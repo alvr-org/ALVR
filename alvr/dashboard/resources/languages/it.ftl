@@ -2,7 +2,7 @@
 default = Predefinito
 
 # Dashboard
-connect = Connetti
+connections = Connessioni
 
 statistics = Statistiche
 

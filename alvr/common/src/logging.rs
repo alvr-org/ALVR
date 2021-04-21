@@ -116,24 +116,12 @@ pub async fn show_err_async<T, E: Display>(
     show_err(future_res.await)
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
-pub enum SessionUpdateType {
-    Settings,
-    ClientList,
-    Other, // other top level flags, like "setup_wizard"
-}
-
 // Event is serialized as #{ "id": "..." [, "data": ...] }#
 // Pound signs are used to identify start and finish of json
 #[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", tag = "id", content = "data")]
+#[serde(tag = "id", content = "data")]
 pub enum Event {
-    #[serde(rename_all = "camelCase")]
-    SessionUpdated {
-        web_client_id: Option<String>,
-        update_type: SessionUpdateType,
-    },
+    SessionUpdated,
     SessionSettingsExtrapolationFailed,
     ClientFoundOk,
     ClientFoundInvalid,

@@ -13,7 +13,7 @@ use alvr_common::{
         HeadsetInfoPacket, OpenvrConfig, PlayspaceSyncPacket, ServerControlPacket, Version,
         ALVR_VERSION,
     },
-    logging::{self, SessionUpdateType},
+    logging,
     prelude::*,
     sockets::{
         ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
@@ -330,10 +330,7 @@ async fn client_handshake(
     };
 
     if SESSION_MANAGER.lock().get().openvr_config != new_openvr_config {
-        SESSION_MANAGER
-            .lock()
-            .get_mut(None, SessionUpdateType::Other)
-            .openvr_config = new_openvr_config;
+        SESSION_MANAGER.lock().get_mut().openvr_config = new_openvr_config;
 
         control_sender
             .send(&ServerControlPacket::Restarting)

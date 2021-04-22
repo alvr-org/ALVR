@@ -314,8 +314,8 @@ public class OvrActivity extends Activity {
                     renderNative(renderedFrameIndex);
                 }
                 
-                mRenderingHandler.removeCallbacks(mRenderRunnable);
-                mRenderingHandler.post(mRenderRunnable);
+                mRenderingHandler.removeCallbacks(mRenderRunnable);                
+                mRenderingHandler.postDelayed(mRenderRunnable, 1);
             } else {
                 mLoadingTexture.drawMessage(mLoadingMessage);
 

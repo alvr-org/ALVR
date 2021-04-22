@@ -11,7 +11,9 @@ apply = Apply
 applied = Applied
 reset-prompt = Do you want to reset this setting to {$value}?
 
+
 # Dashboard
+
 connections = Connections
     .new-clients = New clients
     .trust = Trust
@@ -52,7 +54,6 @@ about = About
 language = Language
     .prompt = Select a language
 
-# Client TODO
 
 # Events
 

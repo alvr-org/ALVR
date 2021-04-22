@@ -6,12 +6,17 @@ use alvr_common::{
 use serde_json as json;
 use std::{
     env, fs,
+    fs::File,
+    io::prelude::*,
     path::PathBuf,
     process::Command,
     thread,
     time::{Duration, Instant},
 };
 use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
+
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::PermissionsExt;
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -124,6 +129,9 @@ pub fn maybe_register_alvr_driver() -> StrResult {
         .filter(|dir| *dir == current_alvr_dir.clone())
         .is_some();
 
+    #[cfg(target_os = "linux")]
+    maybe_wrap_vrcompositor_launcher()?;
+
     if !driver_registered {
         let paths_backup = match commands::get_registered_drivers() {
             Ok(paths) => paths,
@@ -142,6 +150,31 @@ pub fn maybe_register_alvr_driver() -> StrResult {
         commands::driver_registration(&paths_backup, false)?;
 
         commands::driver_registration(&[current_alvr_dir], true)?;
+    }
+
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
+    let steamvr_bin_dir = commands::steamvr_root_dir()?.join("bin").join("linux64");
+    let real_launcher_path = steamvr_bin_dir.join("vrcompositor-launcher.real");
+    let launcher_path = steamvr_bin_dir.join("vrcompositor-launcher");
+
+    if !real_launcher_path.exists() {
+        fs::rename(&launcher_path, &real_launcher_path)
+            .map_err(|_| "couldn't rename original vrcompositor-launcher")?;
+        let mut file =
+            File::create(launcher_path).map_err(|_| "couldn't create file at launcher_path")?;
+        file.write_all(include_bytes!("../res/wrapper.sh"))
+            .map_err(|_| "couldn't write wrapper script to launcher_path")?;
+        let mut perms = file
+            .metadata()
+            .map_err(|_| "couldn't get file metadata")?
+            .permissions();
+        perms.set_mode(0o755); // rwxr-xr-x
+        file.set_permissions(perms)
+            .map_err(|_| "couldn't set file perms")?;
     }
 
     Ok(())

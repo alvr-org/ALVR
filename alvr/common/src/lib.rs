@@ -8,8 +8,8 @@ pub mod sockets;
 
 #[cfg(any(windows, target_os = "linux"))]
 pub mod commands;
-#[cfg(any(windows, target_os = "linux"))]
-pub mod ffmpeg;
+// #[cfg(any(windows, target_os = "linux"))]
+// pub mod ffmpeg;
 #[cfg(any(windows, target_os = "linux"))]
 pub mod graphics;
 

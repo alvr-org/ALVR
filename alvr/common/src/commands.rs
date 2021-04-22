@@ -86,7 +86,7 @@ fn get_single_openvr_path(path_type: &str) -> StrResult<PathBuf> {
     trace_none!(from_openvr_paths(paths_json).get(0).cloned())
 }
 
-fn steamvr_root_dir() -> StrResult<PathBuf> {
+pub fn steamvr_root_dir() -> StrResult<PathBuf> {
     get_single_openvr_path("runtime")
 }
 
@@ -122,8 +122,20 @@ pub fn driver_registration(driver_paths: &[PathBuf], register: bool) -> StrResul
     save_openvr_paths_json(&openvr_paths_json)
 }
 
+fn get_alvr_dir_store_path() -> StrResult<PathBuf> {
+    if cfg!(target_os = "linux") {
+        Ok(dirs::runtime_dir()
+            .ok_or_else(|| "couldn't get runtime_dir")?
+            .join(ALVR_DIR_STORAGE_FNAME))
+    } else if cfg!(windows) {
+        Ok(env::temp_dir().join(ALVR_DIR_STORAGE_FNAME))
+    } else {
+        unimplemented!()
+    }
+}
+
 fn get_alvr_dir_from_storage() -> StrResult<PathBuf> {
-    let alvr_dir_store_path = env::temp_dir().join(ALVR_DIR_STORAGE_FNAME);
+    let alvr_dir_store_path = get_alvr_dir_store_path()?;
     if let Ok(path) = fs::read_to_string(alvr_dir_store_path) {
         Ok(PathBuf::from(path))
     } else {
@@ -147,7 +159,7 @@ pub fn get_alvr_dir() -> StrResult<PathBuf> {
 }
 
 pub fn store_alvr_dir(alvr_dir: &Path) -> StrResult {
-    let alvr_dir_store_path = env::temp_dir().join(ALVR_DIR_STORAGE_FNAME);
+    let alvr_dir_store_path = get_alvr_dir_store_path()?;
 
     trace_err!(fs::write(
         alvr_dir_store_path,
@@ -156,7 +168,7 @@ pub fn store_alvr_dir(alvr_dir: &Path) -> StrResult {
 }
 
 pub fn maybe_delete_alvr_dir_storage() {
-    fs::remove_file(env::temp_dir().join(ALVR_DIR_STORAGE_FNAME)).ok();
+    fs::remove_file(get_alvr_dir_store_path().unwrap()).ok();
 }
 
 fn driver_paths_backup_present() -> bool {

@@ -32,7 +32,6 @@ fn main() {
 
     let mut build = cc::Build::new();
     build
-        .debug(false) // This is because we cannot link to msvcrtd (see below)
         .cpp(true)
         .files(source_files_paths)
         .flag_if_supported("-isystemcpp/openvr/headers") // silences many warnings from openvr headers
@@ -43,6 +42,7 @@ fn main() {
 
     #[cfg(windows)]
     build
+        .debug(false) // This is because we cannot link to msvcrtd (see below)
         .define("NOMINMAX", None)
         .define("_WINSOCKAPI_", None)
         .define("_MBCS", None)
@@ -67,6 +67,16 @@ fn main() {
         cpp_dir.to_string_lossy()
     );
     println!("cargo:rustc-link-lib=openvr_api");
+
+    if cfg!(target_os = "linux") {
+        println!("cargo:rustc-link-lib=vulkan");
+        println!("cargo:rustc-link-lib=avutil");
+        println!("cargo:rustc-link-lib=avcodec");
+        println!("cargo:rustc-link-lib=avfilter");
+
+        // fail build if there are undefined symbols in final library
+        println!("cargo:rustc-cdylib-link-arg=-Wl,--no-undefined");
+    }
 
     for path in cpp_paths {
         println!("cargo:rerun-if-changed={}", path.to_string_lossy());

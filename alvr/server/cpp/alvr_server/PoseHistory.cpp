@@ -69,10 +69,10 @@ std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetBestPoseMatch(c
 std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetPoseAt(uint64_t client_timestamp_us) const
 {
 	std::unique_lock<std::mutex> lock(m_mutex);
-	for (const auto& pose: m_poseBuffer)
+	for (auto it = m_poseBuffer.rbegin(), end = m_poseBuffer.rend() ; it != end ; ++it)
 	{
-		if (pose.info.clientTime >= client_timestamp_us)
-			return pose;
+		if (it->info.clientTime < client_timestamp_us)
+			return *it;
 	}
 	return {};
 }

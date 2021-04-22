@@ -97,7 +97,6 @@ public class OvrActivity extends Activity {
     EGLContext mEGLContext;
     boolean mVrMode = false;
     float mRefreshRate = 60f;
-    long mPreviousRender = 0;
     String mDashboardURL = null;
     String mLoadingMessage = "";
 
@@ -309,22 +308,14 @@ public class OvrActivity extends Activity {
     private void render() {
         if (mResumed && mScreenSurface != null) {
             if (isConnectedNative()) {
-                long next = checkRenderTiming();
-                if (next > 0) {
-                    mRenderingHandler.postDelayed(mRenderRunnable, next);
-                    return;
-                }
                 long renderedFrameIndex = mDecoderThread.clearAvailable(mStreamSurfaceTexture);
 
                 if (renderedFrameIndex != -1) {
                     renderNative(renderedFrameIndex);
-                    mPreviousRender = System.nanoTime();
-
-                    mRenderingHandler.postDelayed(mRenderRunnable, 5);
-                } else {
-                    mRenderingHandler.removeCallbacks(mRenderRunnable);
-                    mRenderingHandler.postDelayed(mRenderRunnable, 50);
                 }
+                
+                mRenderingHandler.removeCallbacks(mRenderRunnable);                
+                mRenderingHandler.postDelayed(mRenderRunnable, 1);
             } else {
                 mLoadingTexture.drawMessage(mLoadingMessage);
 
@@ -333,12 +324,6 @@ public class OvrActivity extends Activity {
                 mRenderingHandler.postDelayed(mRenderRunnable, (long)(1f/ mRefreshRate));
             }
         }
-    }
-
-    private long checkRenderTiming() {
-        long current = System.nanoTime();
-        long threshold = (long)(1.0e9 / (double)mRefreshRate - 5.0e6);
-        return TimeUnit.NANOSECONDS.toMillis(threshold - (current - mPreviousRender));
     }
 
     public void onVrModeChanged(boolean enter) {

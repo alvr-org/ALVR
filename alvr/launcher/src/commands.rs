@@ -162,19 +162,12 @@ pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
     let launcher_path = steamvr_bin_dir.join("vrcompositor-launcher");
 
     if !real_launcher_path.exists() {
-        fs::rename(&launcher_path, &real_launcher_path)
-            .map_err(|_| "couldn't rename original vrcompositor-launcher")?;
-        let mut file =
-            File::create(launcher_path).map_err(|_| "couldn't create file at launcher_path")?;
-        file.write_all(include_bytes!("../res/wrapper.sh"))
-            .map_err(|_| "couldn't write wrapper script to launcher_path")?;
-        let mut perms = file
-            .metadata()
-            .map_err(|_| "couldn't get file metadata")?
-            .permissions();
+        trace_err!(fs::rename(&launcher_path, &real_launcher_path))?;
+        let mut file = trace_err!(File::create(launcher_path))?;
+        trace_err!(file.write_all(include_bytes!("../res/wrapper.sh")))?;
+        let mut perms = trace_err!(file.metadata())?.permissions();
         perms.set_mode(0o755); // rwxr-xr-x
-        file.set_permissions(perms)
-            .map_err(|_| "couldn't set file perms")?;
+        trace_err!(file.set_permissions(perms))?;
     }
 
     Ok(())

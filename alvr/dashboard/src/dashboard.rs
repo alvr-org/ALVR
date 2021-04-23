@@ -135,12 +135,12 @@ pub fn menu_icon(props: &MenuIconProps) -> Html {
     html! {
         <div
             class=format!(
-                "w-36 flex items-center rounded-r-lg pr-3 pl-7 py-1 space-x-2 {} {} {} {}",
-                "bg-gray-300 cursor-pointer transition transform -translate-x-4 hover:bg-gray-400",
-                "hover:translate-x-0 hover:shadow-md",
+                "w-40 flex items-center rounded-r-lg pr-3 pl-7 py-1 space-x-2 {} {} {} {}",
+                "bg-gray-300 cursor-pointer transition transform -translate-x-4 overflow-hidden",
+                "whitespace-nowrap hover:bg-gray-400 hover:translate-x-0 hover:shadow-md",
                 if props.selected {
                     format!(
-                        "w-40 bg-gradient-to-tr from-blue-700 via-blue-700 to-blue-600 {}",
+                        "w-44 bg-gradient-to-tr from-blue-700 via-blue-700 to-blue-600 {}",
                         "hover:bg-blue-800 text-white shadow-md"
                     )
                 } else {
@@ -159,7 +159,7 @@ pub fn menu_icon(props: &MenuIconProps) -> Html {
                     props.icon.clone()
                 )
             />
-            <span class="font-medium">{use_trans(&props.name)}</span>
+            <span class="font-medium truncate">{use_trans(&props.name)}</span>
         </div>
     }
 }

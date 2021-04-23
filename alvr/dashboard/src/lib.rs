@@ -4,7 +4,7 @@
 mod basic_components;
 mod components;
 mod dashboard;
-mod events_listener;
+mod events_dispatch;
 mod logging_backend;
 mod session;
 mod translation;
@@ -12,11 +12,10 @@ mod translation;
 use alvr_common::{logging, prelude::*};
 use dashboard::Dashboard;
 use std::{
-    cell::RefCell,
     rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use translation::{TransContext, TransProvider};
+use translation::{TransContext, TransProvider, TranslationManager};
 use wasm_bindgen::prelude::*;
 use yew::{html, Callback};
 use yew_functional::{function_component, use_effect_with_deps, use_state};
@@ -38,54 +37,33 @@ pub fn get_base_url() -> String {
 fn root() -> Html {
     let (maybe_data, set_data) = use_state(|| None);
 
-    let events_callback_ref = Rc::new(RefCell::new(Callback::default()));
+    let update_session_async = Callback::from(move |()| {
+        let set_data = Rc::clone(&set_data);
+        wasm_bindgen_futures::spawn_local(async move {
+            logging::show_err_async(async {
+                let session = session::fetch_session().await?;
+
+                let translation_manager =
+                    TranslationManager::new(session.to_settings().extra.language).await?;
+
+                set_data(Some((Rc::new(session), Rc::new(translation_manager))));
+
+                StrResult::Ok(())
+            })
+            .await;
+        });
+    });
+
+    use_state({
+        let update_session_async = update_session_async.clone();
+        || recv_event_cb!(SessionUpdated, || update_session_async.emit(()))
+    });
 
     // run only once
     use_effect_with_deps(
-        {
-            let events_callback_ref = Rc::clone(&events_callback_ref);
-            move |_| {
-                wasm_bindgen_futures::spawn_local(async move {
-                    logging::show_err_async(async {
-                        let initial_session = session::fetch_session().await?;
-
-                        let translation_manager = translation::TranslationManager::new(
-                            initial_session.to_settings().extra.language,
-                        )
-                        .await?;
-
-                        set_data(Some((
-                            Rc::new(initial_session),
-                            Rc::new(translation_manager),
-                        )));
-
-                        events_listener::events_listener(|event| async {
-                            match event {
-                                Event::SessionUpdated { .. } => {
-                                    let session = session::fetch_session().await?;
-
-                                    let translation_manager = translation::TranslationManager::new(
-                                        session.to_settings().extra.language,
-                                    )
-                                    .await?;
-
-                                    set_data(Some((
-                                        Rc::new(session),
-                                        Rc::new(translation_manager),
-                                    )));
-                                }
-                                other_event => events_callback_ref.borrow().emit(other_event),
-                            }
-
-                            Ok(())
-                        })
-                        .await
-                    })
-                    .await;
-                });
-
-                || ()
-            }
+        move |_| {
+            update_session_async.emit(());
+            || ()
         },
         (),
     );
@@ -93,7 +71,7 @@ fn root() -> Html {
     if let Some((session, translation_manager)) = &*maybe_data {
         html! {
             <TransProvider context=TransContext { manager: translation_manager.clone() }>
-                <Dashboard events_callback_ref=events_callback_ref session=Rc::clone(session) />
+                <Dashboard session=Rc::clone(session) />
             </TransProvider>
         }
     } else {
@@ -104,6 +82,10 @@ fn root() -> Html {
 #[wasm_bindgen(start)]
 pub fn main() {
     logging_backend::init();
+
+    wasm_bindgen_futures::spawn_local(async {
+        logging::show_err_async(events_dispatch::events_dispatch_loop()).await;
+    });
 
     yew::start_app::<Root>();
 }

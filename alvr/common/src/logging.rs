@@ -116,7 +116,7 @@ pub async fn show_err_async<T, E: Display>(
     show_err(future_res.await)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum EventSeverity {
     Error,
     Warning,
@@ -125,7 +125,7 @@ pub enum EventSeverity {
 }
 
 // todo: remove some unused statistics
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")] // todo: remove casing conversion
 pub struct Statistics {
     pub total_packets: u64,
@@ -147,7 +147,7 @@ pub struct Statistics {
 }
 
 // This struct is temporary, until we switch to the new event system
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Raw {
     pub timestamp: String,
     pub severity: EventSeverity,
@@ -156,7 +156,7 @@ pub struct Raw {
 
 // Event is serialized as #{ "id": "..." [, "data": ...] }#
 // Pound signs are used to identify start and finish of json
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "id", content = "data")]
 pub enum Event {
     SessionUpdated,

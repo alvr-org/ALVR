@@ -5,22 +5,19 @@ use crate::{
     components::{About, Connections, Installation, Logs, Settings, Statistics},
     translation::use_trans,
 };
-use alvr_common::{data::SessionDesc, logging::Event, prelude::*};
-use std::{cell::RefCell, rc::Rc};
+use alvr_common::{data::SessionDesc, prelude::*};
+use std::rc::Rc;
 use yew::{html, Callback, Properties};
 use yew_functional::{function_component, use_state};
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct DashboardProps {
-    pub events_callback_ref: Rc<RefCell<Callback<Event>>>,
     pub session: Rc<SessionDesc>,
 }
 
 #[function_component(Dashboard)]
 pub fn dashboard(props: &DashboardProps) -> Html {
-    *props.events_callback_ref.borrow_mut() = Callback::from(|event| ());
-
-    let (selected_tab, set_selected_tab) = use_state(|| "connect".to_owned());
+    let (selected_tab, set_selected_tab) = use_state(|| "connections".to_owned());
 
     let on_tab_click = Callback::from(move |name| set_selected_tab(name));
 
@@ -96,7 +93,7 @@ pub fn dashboard(props: &DashboardProps) -> Html {
                     <Installation session=Rc::clone(&props.session)/>
                 </div>
                 <div hidden=*selected_tab!="logs">
-                    <Logs session=Rc::clone(&props.session)/>
+                    <Logs />
                 </div>
                 <div hidden=*selected_tab!="about">
                     <About session=Rc::clone(&props.session) />

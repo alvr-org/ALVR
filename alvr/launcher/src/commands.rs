@@ -6,17 +6,12 @@ use alvr_common::{
 use serde_json as json;
 use std::{
     env, fs,
-    fs::File,
-    io::prelude::*,
     path::PathBuf,
     process::Command,
     thread,
     time::{Duration, Instant},
 };
 use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
-
-#[cfg(target_os = "linux")]
-use std::os::unix::fs::PermissionsExt;
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -118,7 +113,6 @@ pub fn current_alvr_dir() -> StrResult<PathBuf> {
     Ok(trace_none!(current_path.parent())?.to_owned())
 }
 
-// Return a backup of the registered drivers if ALVR driver wasn't registered, otherwise return none
 pub fn maybe_register_alvr_driver() -> StrResult {
     let current_alvr_dir = current_alvr_dir()?;
 
@@ -157,14 +151,18 @@ pub fn maybe_register_alvr_driver() -> StrResult {
 
 #[cfg(target_os = "linux")]
 pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
+    use std::{fs::File, io::prelude::*, os::unix::fs::PermissionsExt};
+
     let steamvr_bin_dir = commands::steamvr_root_dir()?.join("bin").join("linux64");
     let real_launcher_path = steamvr_bin_dir.join("vrcompositor-launcher.real");
     let launcher_path = steamvr_bin_dir.join("vrcompositor-launcher");
 
     if !real_launcher_path.exists() {
         trace_err!(fs::rename(&launcher_path, &real_launcher_path))?;
+
         let mut file = trace_err!(File::create(launcher_path))?;
-        trace_err!(file.write_all(include_bytes!("../res/wrapper.sh")))?;
+        trace_err!(file.write_all(include_bytes!("../res/vrcompositor_launcher_wrapper.sh")))?;
+
         let mut perms = trace_err!(file.metadata())?.permissions();
         perms.set_mode(0o755); // rwxr-xr-x
         trace_err!(file.set_permissions(perms))?;

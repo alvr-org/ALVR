@@ -2,7 +2,7 @@ use crate::{ALVR_DIR, SESSION_MANAGER};
 use alvr_common::logging;
 use fern::Dispatch;
 use log::LevelFilter;
-use logging::{EventSeverity, Raw};
+use logging::{Event, EventSeverity, Raw};
 use std::fs;
 use tokio::sync::broadcast::Sender;
 
@@ -20,11 +20,11 @@ pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
                 log::Level::Debug | log::Level::Trace => EventSeverity::Debug,
             };
 
-            let event = Raw {
+            let event = Event::Raw(Raw {
                 timestamp: chrono::Local::now().format("%H:%M:%S.%f").to_string(),
                 severity,
                 content: message.to_string(),
-            };
+            });
 
             events_sender
                 .send(serde_json::to_string(&event).unwrap())

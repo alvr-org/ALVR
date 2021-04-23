@@ -14,7 +14,7 @@ pub struct Props {
     pub children: Children,
 
     pub on_click: Callback<()>,
-    
+
     #[prop_or_default]
     pub class: String,
 

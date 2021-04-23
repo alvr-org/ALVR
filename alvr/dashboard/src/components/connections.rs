@@ -104,7 +104,7 @@ pub fn client(
         log::info!("Hostname: {}", "hostname");
         Callback::from(move |_| ())
     };
-    
+
     let on_trust_click = {
         let hostname = hostname.clone();
         Callback::from(move |_| {
@@ -115,7 +115,8 @@ pub fn client(
                     .post(format!("{}/api/client/trust", crate::get_base_url()))
                     .json(&(hostname.clone(), None::<String>))
                     .send()
-                    .await.unwrap();
+                    .await
+                    .unwrap();
             });
         })
     };
@@ -129,7 +130,8 @@ pub fn client(
                     .post(format!("{}/api/client/remove", crate::get_base_url()))
                     .json(&(hostname.clone(), None::<String>))
                     .send()
-                    .await.unwrap();
+                    .await
+                    .unwrap();
             });
         })
     };

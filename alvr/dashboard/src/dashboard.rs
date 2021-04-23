@@ -70,6 +70,12 @@ pub fn dashboard(props: &DashboardProps) -> Html {
                         selected=*selected_tab=="about"
                     />
                     <MenuIcon
+                        name="test"
+                        icon="fas fa-asterisk"
+                        on_click=on_tab_click.clone()
+                        selected=*selected_tab=="test"
+                    />
+                    <MenuIcon
                         name="language"
                         icon="fas fa-globe"
                         on_click=translation_on_click
@@ -81,7 +87,6 @@ pub fn dashboard(props: &DashboardProps) -> Html {
             <div class="flex-grow">
                 <div hidden=*selected_tab!="connections">
                     <Connections session=Rc::clone(&props.session) />
-                    <Test />
                 </div>
                 <div hidden=*selected_tab!="statistics">
                     <Statistics />
@@ -97,6 +102,9 @@ pub fn dashboard(props: &DashboardProps) -> Html {
                 </div>
                 <div hidden=*selected_tab!="about">
                     <About session=Rc::clone(&props.session) />
+                </div>
+                <div hidden=*selected_tab!="test">
+                    <Test />
                 </div>
             </div>
         </div>

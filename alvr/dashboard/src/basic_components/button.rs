@@ -14,6 +14,9 @@ pub struct Props {
     pub children: Children,
 
     pub on_click: Callback<()>,
+    
+    #[prop_or_default]
+    pub class: String,
 
     #[prop_or(ButtonType::Primary)]
     pub button_type: ButtonType,
@@ -33,7 +36,7 @@ pub fn button(props: &Props) -> Html {
 
     html! {
         <button
-            class=format!("flex items-center justify-center px-3 py-1 rounded font-medium cursor-pointer disabled:bg-opacity-10 {}", class_type)
+            class=format!("flex items-center justify-center px-3 py-1 rounded font-medium cursor-pointer disabled:bg-opacity-10 {} {}", class_type, props.class)
             onclick=Callback::from(move |_| on_click.emit(()))
         >
             {props.children.clone()}

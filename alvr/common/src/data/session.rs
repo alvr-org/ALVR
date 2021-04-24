@@ -1,4 +1,4 @@
-use super::{settings, Settings};
+use super::{settings, Settings, DEFAULT_SESSION_SETTINGS, SETTINGS_SCHEMA};
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json as json;
@@ -129,7 +129,7 @@ impl Default for SessionDesc {
                 ..<_>::default()
             },
             client_connections: HashMap::new(),
-            session_settings: settings::session_settings_default(),
+            session_settings: DEFAULT_SESSION_SETTINGS.clone(),
         }
     }
 }
@@ -160,7 +160,7 @@ impl SessionDesc {
                     extrapolate_session_settings_from_session_settings(
                         &old_session_json[SESSION_SETTINGS_STR],
                         new_session_settings_json,
-                        &Settings::schema(settings::session_settings_default()),
+                        &SETTINGS_SCHEMA,
                     )
                 });
 
@@ -168,7 +168,7 @@ impl SessionDesc {
             .iter()
             .map(|(name, json_field_value)| {
                 let new_json_field_value = if name == SESSION_SETTINGS_STR {
-                    json::to_value(settings::session_settings_default()).unwrap()
+                    json::to_value(DEFAULT_SESSION_SETTINGS.clone()).unwrap()
                 } else {
                     json_value.get(name).unwrap_or(json_field_value).clone()
                 };
@@ -201,10 +201,9 @@ impl SessionDesc {
     // enums without data do not have tag and content set.
     pub fn to_settings(&self) -> Settings {
         let session_settings_json = json::to_value(&self.session_settings).unwrap();
-        let schema = Settings::schema(settings::session_settings_default());
         json::from_value(json_session_settings_to_settings(
             &session_settings_json,
-            &schema,
+            &SETTINGS_SCHEMA,
         ))
         .unwrap()
     }
@@ -681,10 +680,7 @@ mod tests {
 
     #[test]
     fn test_schema() {
-        println!(
-            "{:#?}",
-            Settings::schema(settings::session_settings_default())
-        );
+        println!("{:#?}", *SETTINGS_SCHEMA);
     }
 
     #[test]

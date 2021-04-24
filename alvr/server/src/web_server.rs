@@ -1,7 +1,7 @@
 use crate::{ClientListAction, ALVR_DIR, SESSION_MANAGER};
 use alvr_common::{
     audio, commands,
-    data::{self, Settings, ALVR_VERSION},
+    data::{self, ALVR_VERSION},
     graphics, logging,
     prelude::*,
 };
@@ -18,6 +18,9 @@ use std::{fs, io::Write, net::SocketAddr, path::PathBuf};
 use tokio::sync::broadcast::{self, error::RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
+
+#[cfg(feature = "new_dashboard")]
+use alvr_common::data::SETTINGS_SCHEMA;
 
 pub const WS_BROADCAST_CAPACITY: usize = 256;
 const DASHBOARD_DIR_NAME_STR: &str = "dashboard";
@@ -95,7 +98,7 @@ async fn http_api(
 ) -> StrResult<Response<Body>> {
     let mut response = match request.uri().path() {
         #[cfg(feature = "new_dashboard")]
-        "/api/settings-schema" => reply_json(&Settings::schema(data::session_settings_default()))?,
+        "/api/settings-schema" => reply_json(&*SETTINGS_SCHEMA)?,
         #[cfg(not(feature = "new_dashboard"))]
         "/api/settings-schema" => {
             reply_json(&data::settings_schema(data::session_settings_default()))?

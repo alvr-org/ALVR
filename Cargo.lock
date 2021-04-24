@@ -109,6 +109,7 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
+ "settings-schema 0.3.1",
  "settings-schema 0.3.1 (git+https://github.com/alvr-org/ALVR?rev=08708f19b2ec70264e2ba2b0adfaa64bd96489bd)",
  "tokio",
  "walkdir",

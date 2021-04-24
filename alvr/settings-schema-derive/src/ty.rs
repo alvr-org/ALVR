@@ -54,7 +54,7 @@ fn forbid_numeric_attrs(field: &FieldMeta, type_str: &str) -> TResult<()> {
 fn bool_type_schema(field: &FieldMeta) -> TResult {
     forbid_numeric_attrs(field, "bool")?;
 
-    Ok(quote!(settings_schema::SchemaNode::Boolean { default }))
+    Ok(quote!(SchemaNode::Boolean(default)))
 }
 
 fn maybe_integer_literal(literal: Option<&Lit>) -> TResult {
@@ -84,9 +84,9 @@ fn maybe_float_literal(literal: Option<&Lit>) -> TResult {
 fn maybe_numeric_gui(gui: Option<&NumericGuiType>) -> proc_macro2::TokenStream {
     if let Some(gui) = gui {
         match gui {
-            NumericGuiType::TextBox => quote!(Some(settings_schema::NumericGuiType::TextBox)),
-            NumericGuiType::UpDown => quote!(Some(settings_schema::NumericGuiType::UpDown)),
-            NumericGuiType::Slider => quote!(Some(settings_schema::NumericGuiType::Slider)),
+            NumericGuiType::TextBox => quote!(Some(NumericGuiType::TextBox)),
+            NumericGuiType::UpDown => quote!(Some(NumericGuiType::UpDown)),
+            NumericGuiType::Slider => quote!(Some(NumericGuiType::Slider)),
         }
     } else {
         quote!(None)
@@ -99,15 +99,13 @@ fn integer_type_schema(field: &FieldMeta) -> TResult {
     let step_ts = maybe_integer_literal(field.step.as_ref())?;
     let gui_ts = maybe_numeric_gui(field.gui.as_ref());
 
-    Ok(quote! {
-        settings_schema::SchemaNode::Integer {
-            default: default as _,
-            min: #min_ts,
-            max: #max_ts,
-            step: #step_ts,
-            gui: #gui_ts,
-        }
-    })
+    Ok(quote!(SchemaNode::Integer(SchemaNumeric {
+        default: default as _,
+        min: #min_ts,
+        max: #max_ts,
+        step: #step_ts,
+        gui: #gui_ts,
+    })))
 }
 
 fn float_type_schema(field: &FieldMeta) -> TResult {
@@ -116,21 +114,19 @@ fn float_type_schema(field: &FieldMeta) -> TResult {
     let step_ts = maybe_float_literal(field.step.as_ref())?;
     let gui_ts = maybe_numeric_gui(field.gui.as_ref());
 
-    Ok(quote! {
-        settings_schema::SchemaNode::Float {
-            default: default as _,
-            min: #min_ts,
-            max: #max_ts,
-            step: #step_ts,
-            gui: #gui_ts,
-        }
-    })
+    Ok(quote!(SchemaNode::Float(SchemaNumeric {
+        default: default as _,
+        min: #min_ts,
+        max: #max_ts,
+        step: #step_ts,
+        gui: #gui_ts,
+    })))
 }
 
 fn string_type_schema(field: &FieldMeta) -> TResult {
     forbid_numeric_attrs(field, "String")?;
 
-    Ok(quote!(settings_schema::SchemaNode::Text { default }))
+    Ok(quote!(SchemaNode::Text(default)))
 }
 
 fn custom_leaf_type_schema(ty_ident: &Ident, field: &FieldMeta) -> TResult {
@@ -161,7 +157,7 @@ pub(crate) fn schema(ty: &Type, meta: &FieldMeta) -> Result<SchemaData, TokenStr
                         #schema_code_ts
                     }).collect::<Vec<_>>();
 
-                    settings_schema::SchemaNode::Array(content)
+                    SchemaNode::Array(content)
                 }},
             })
         }
@@ -201,7 +197,7 @@ pub(crate) fn schema(ty: &Type, meta: &FieldMeta) -> Result<SchemaData, TokenStr
                         let default_set = default.set;
                         let default = default.content;
                         let content = Box::new(#schema_code_ts);
-                        settings_schema::SchemaNode::Optional { default_set, content }
+                        SchemaNode::Optional(SchemaOptional { default_set, content })
                     }},
                 })
             } else if ty_ident == "Switch" {
@@ -216,11 +212,11 @@ pub(crate) fn schema(ty: &Type, meta: &FieldMeta) -> Result<SchemaData, TokenStr
                         let default_enabled = default.enabled;
                         let default = default.content;
                         let content = Box::new(#schema_code_ts);
-                        settings_schema::SchemaNode::Switch {
+                        SchemaNode::Switch(SchemaSwitch {
                             default_enabled,
                             content_advanced: #content_advanced,
                             content
-                        }
+                        })
                     }},
                 })
             } else if ty_ident == "Vec" {
@@ -246,11 +242,11 @@ pub(crate) fn schema(ty: &Type, meta: &FieldMeta) -> Result<SchemaData, TokenStr
                                 let default_key = default.key;
                                 let default = default.value;
                                 let default_value = Box::new(#schema_code_ts);
-                                settings_schema::SchemaNode::Dictionary {
+                                SchemaNode::Dictionary(SchemaDictionary {
                                     default_key,
                                     default_value,
                                     default: default_content
-                                }
+                                })
                             }},
                         })
                     }
@@ -266,10 +262,10 @@ pub(crate) fn schema(ty: &Type, meta: &FieldMeta) -> Result<SchemaData, TokenStr
                                 serde_json::to_value(default.content).unwrap();
                             let default = default.element;
                             let default_element = Box::new(#schema_code_ts);
-                            settings_schema::SchemaNode::Vector {
+                            SchemaNode::Vector(SchemaVector {
                                 default_element,
                                 default: default_content
-                            }
+                            })
                         }},
                     })
                 }

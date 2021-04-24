@@ -2,7 +2,10 @@ use super::{settings, Settings, DEFAULT_SESSION_SETTINGS, SETTINGS_SCHEMA};
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json as json;
-use settings_schema::{EntryType, SchemaNode};
+use settings_schema::{
+    EntryType, SchemaChoice, SchemaDictionary, SchemaNode, SchemaOptional, SchemaSwitch,
+    SchemaVector,
+};
 use std::{
     collections::{HashMap, HashSet},
     fs,
@@ -246,7 +249,7 @@ fn extrapolate_session_settings_from_session_settings(
                 .collect(),
         ),
 
-        SchemaNode::Choice { variants, .. } => {
+        SchemaNode::Choice(SchemaChoice { variants, .. }) => {
             let variant_json = new_session_settings
                 .get("variant")
                 .cloned()
@@ -285,7 +288,7 @@ fn extrapolate_session_settings_from_session_settings(
             json::Value::Object(fields)
         }
 
-        SchemaNode::Optional { content, .. } => {
+        SchemaNode::Optional(SchemaOptional { content, .. }) => {
             let set_json = new_session_settings
                 .get("set")
                 .cloned()
@@ -309,7 +312,7 @@ fn extrapolate_session_settings_from_session_settings(
             })
         }
 
-        SchemaNode::Switch { content, .. } => {
+        SchemaNode::Switch(SchemaSwitch { content, .. }) => {
             let enabled_json = new_session_settings
                 .get("enabled")
                 .cloned()
@@ -333,7 +336,7 @@ fn extrapolate_session_settings_from_session_settings(
             })
         }
 
-        SchemaNode::Boolean { .. } => {
+        SchemaNode::Boolean(_) => {
             if new_session_settings.is_boolean() {
                 new_session_settings.clone()
             } else {
@@ -341,7 +344,7 @@ fn extrapolate_session_settings_from_session_settings(
             }
         }
 
-        SchemaNode::Integer { .. } => {
+        SchemaNode::Integer(_) => {
             if new_session_settings.is_i64() {
                 new_session_settings.clone()
             } else {
@@ -349,7 +352,7 @@ fn extrapolate_session_settings_from_session_settings(
             }
         }
 
-        SchemaNode::Float { .. } => {
+        SchemaNode::Float(_) => {
             if new_session_settings.is_number() {
                 new_session_settings.clone()
             } else {
@@ -357,7 +360,7 @@ fn extrapolate_session_settings_from_session_settings(
             }
         }
 
-        SchemaNode::Text { .. } => {
+        SchemaNode::Text(_) => {
             if new_session_settings.is_string() {
                 new_session_settings.clone()
             } else {
@@ -377,9 +380,9 @@ fn extrapolate_session_settings_from_session_settings(
             json::Value::Array(array_vec)
         }
 
-        SchemaNode::Vector {
+        SchemaNode::Vector(SchemaVector {
             default_element, ..
-        } => {
+        }) => {
             let element_json = new_session_settings
                 .get("element")
                 .map(|new_element_json| {
@@ -423,7 +426,7 @@ fn extrapolate_session_settings_from_session_settings(
             })
         }
 
-        SchemaNode::Dictionary { default_value, .. } => {
+        SchemaNode::Dictionary(SchemaDictionary { default_value, .. }) => {
             let key_json = new_session_settings
                 .get("key")
                 .cloned()
@@ -504,7 +507,7 @@ fn json_session_settings_to_settings(
                 .collect(),
         ),
 
-        SchemaNode::Choice { variants, .. } => {
+        SchemaNode::Choice(SchemaChoice { variants, .. }) => {
             let variant = session_settings["variant"].as_str().unwrap();
             let maybe_content = variants
                 .iter()
@@ -522,7 +525,7 @@ fn json_session_settings_to_settings(
             })
         }
 
-        SchemaNode::Optional { content, .. } => {
+        SchemaNode::Optional(SchemaOptional { content, .. }) => {
             if session_settings["set"].as_bool().unwrap() {
                 json_session_settings_to_settings(&session_settings["content"], content)
             } else {
@@ -530,7 +533,7 @@ fn json_session_settings_to_settings(
             }
         }
 
-        SchemaNode::Switch { content, .. } => {
+        SchemaNode::Switch(SchemaSwitch { content, .. }) => {
             let state;
             let maybe_content;
             if session_settings["enabled"].as_bool().unwrap() {
@@ -550,10 +553,10 @@ fn json_session_settings_to_settings(
             })
         }
 
-        SchemaNode::Boolean { .. }
-        | SchemaNode::Integer { .. }
-        | SchemaNode::Float { .. }
-        | SchemaNode::Text { .. } => session_settings.clone(),
+        SchemaNode::Boolean(_)
+        | SchemaNode::Integer(_)
+        | SchemaNode::Float(_)
+        | SchemaNode::Text(_) => session_settings.clone(),
 
         SchemaNode::Array(array_schema) => json::Value::Array(
             array_schema
@@ -565,9 +568,9 @@ fn json_session_settings_to_settings(
                 .collect(),
         ),
 
-        SchemaNode::Vector {
+        SchemaNode::Vector(SchemaVector {
             default_element, ..
-        } => json::Value::Array(
+        }) => json::Value::Array(
             session_settings["content"]
                 .as_array()
                 .unwrap()
@@ -576,7 +579,7 @@ fn json_session_settings_to_settings(
                 .collect(),
         ),
 
-        SchemaNode::Dictionary { default_value, .. } => {
+        SchemaNode::Dictionary(SchemaDictionary { default_value, .. }) => {
             let entries =
                 json::from_value::<Vec<(String, json::Value)>>(session_settings["content"].clone())
                     .unwrap();

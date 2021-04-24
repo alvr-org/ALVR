@@ -262,7 +262,7 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
     .unwrap();
 }
 
-pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
+pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool, new_dashboard: bool) {
     let headset_name = if for_oculus_go {
         "oculus_go"
     } else {
@@ -275,7 +275,11 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
         "OculusQuest"
     };
     let package_type = if is_nightly { "Nightly" } else { "Stable" };
-    let build_type = if is_release { "release" } else { "debug" };
+    let build_type = &*format!(
+        "{}{}",
+        if is_release { "release" } else { "debug" },
+        if new_dashboard { "NewDashboard" } else { "" }
+    );
 
     let build_task = format!("assemble{}{}{}", headset_type, package_type, build_type);
 
@@ -429,8 +433,8 @@ pub fn publish_server(is_nightly: bool) {
 }
 
 pub fn publish_client(is_nightly: bool) {
-    build_client(!is_nightly, is_nightly, false);
-    build_client(!is_nightly, is_nightly, true);
+    build_client(!is_nightly, is_nightly, false, false);
+    build_client(!is_nightly, is_nightly, true, false);
 }
 
 // Avoid Oculus link popups when debugging the client
@@ -490,10 +494,25 @@ fn main() {
                     if (args_values.for_oculus_quest && args_values.for_oculus_go)
                         || (!args_values.for_oculus_quest && !args_values.for_oculus_go)
                     {
-                        build_client(args_values.is_release, false, false);
-                        build_client(args_values.is_release, false, true);
+                        build_client(
+                            args_values.is_release,
+                            false,
+                            false,
+                            args_values.new_dashboard,
+                        );
+                        build_client(
+                            args_values.is_release,
+                            false,
+                            true,
+                            args_values.new_dashboard,
+                        );
                     } else {
-                        build_client(args_values.is_release, false, args_values.for_oculus_go);
+                        build_client(
+                            args_values.is_release,
+                            false,
+                            args_values.for_oculus_go,
+                            args_values.new_dashboard,
+                        );
                     }
                 }
                 "publish-server" => publish_server(args_values.is_nightly),

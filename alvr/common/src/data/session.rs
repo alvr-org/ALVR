@@ -11,11 +11,20 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub const SESSION_FNAME: &str = "session.json";
-
 // SessionSettings is similar to Settings but it contains every branch, even unused ones. This is
 // the settings representation that the UI uses.
 pub type SessionSettings = settings::SettingsDefault;
+
+pub fn get_session_path(base: &Path) -> StrResult<PathBuf> {
+    if cfg!(windows) {
+        Ok(base.join("session.json"))
+    } else {
+        Ok(dirs::config_dir()
+            .ok_or_else(|| "no config_dir found")?
+            .join("alvr")
+            .join("session.json"))
+    }
+}
 
 pub fn load_session(path: &Path) -> StrResult<SessionDesc> {
     trace_err!(json::from_str(&trace_err!(fs::read_to_string(path))?))
@@ -613,7 +622,7 @@ impl DerefMut for SessionLock<'_> {
 
 impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
-        save_session(self.session_desc, &self.dir.join(SESSION_FNAME)).ok();
+        save_session(self.session_desc, &get_session_path(&self.dir).unwrap());
         log_event(Event::SessionUpdated);
     }
 }
@@ -625,7 +634,7 @@ pub struct SessionManager {
 
 impl SessionManager {
     pub fn new(dir: &Path) -> Self {
-        let session_path = dir.join(SESSION_FNAME);
+        let session_path = get_session_path(&dir).unwrap();
         let session_desc = match fs::read_to_string(&session_path) {
             Ok(session_string) => {
                 let json_value = json::from_str::<json::Value>(&session_string).unwrap();

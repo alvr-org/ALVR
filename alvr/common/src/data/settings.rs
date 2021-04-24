@@ -1,6 +1,8 @@
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use settings_schema::{
-    DictionaryDefault, OptionalDefault, SettingsSchema, Switch, SwitchDefault, VectorDefault,
+    DictionaryDefault, OptionalDefault, SchemaNode, SettingsSchema, Switch, SwitchDefault,
+    VectorDefault,
 };
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -444,8 +446,8 @@ pub struct Settings {
     pub extra: ExtraDesc,
 }
 
-pub fn session_settings_default() -> SettingsDefault {
-    SettingsDefault {
+lazy_static! {
+    pub static ref DEFAULT_SESSION_SETTINGS: SettingsDefault = SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
             preferred_fps: 72.,
@@ -637,5 +639,6 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: vec![("".into(), 0)],
             },
         },
-    }
+    };
+    pub static ref SETTINGS_SCHEMA: SchemaNode = Settings::schema(DEFAULT_SESSION_SETTINGS.clone());
 }

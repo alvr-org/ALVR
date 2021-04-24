@@ -127,7 +127,7 @@ fn named_fields_schema(meta: Vec<FieldMeta>) -> TResult<SchemaData> {
         tys_ts.push(default_ty_ts);
         keys.push(ident.to_string());
         entry_types_ts.push(quote!(
-            settings_schema::EntryType::Data(settings_schema::EntryData {
+            EntryType::Data(EntryData {
                 advanced: #advanced,
                 content: {
                     let default = default.#ident;
@@ -139,7 +139,7 @@ fn named_fields_schema(meta: Vec<FieldMeta>) -> TResult<SchemaData> {
 
     Ok(SchemaData {
         default_fields_ts: quote!(#(#vis #idents: #tys_ts,)*),
-        schema_code_ts: quote!(settings_schema::SchemaNode::Section(
+        schema_code_ts: quote!(SchemaNode::Section(
             vec![#((#keys.into(), #entry_types_ts)),*]
         )),
         aux_objects_ts: None,
@@ -162,10 +162,10 @@ fn variants_schema(
     let gui_ts = match gui_type {
         None => quote!(None),
         Some(ChoiceControlType::Dropdown) => {
-            quote!(Some(settings_schema::ChoiceControlType::Dropdown))
+            quote!(Some(ChoiceControlType::Dropdown))
         }
         Some(ChoiceControlType::ButtonGroup) => {
-            quote!(Some(settings_schema::ChoiceControlType::ButtonGroup))
+            quote!(Some(ChoiceControlType::ButtonGroup))
         }
     };
 
@@ -255,7 +255,7 @@ fn variants_schema(
             #(#vis #data_variants: #data_tys_ts,)*
             variant: #default_variant_ty,
         },
-        schema_code_ts: quote!(settings_schema::SchemaNode::Choice {
+        schema_code_ts: quote!(SchemaNode::Choice(SchemaChoice {
             default: settings_schema::to_json_value(default.variant)
                 .unwrap()
                 .as_str()
@@ -263,7 +263,7 @@ fn variants_schema(
                 .into(),
             variants: vec![#((#keys.into(), #entry_data_ts)),*],
             gui: #gui_ts
-        }),
+        })),
         aux_objects_ts: Some(quote! {
             #(#aux_variants_structs_ts)*
 
@@ -327,6 +327,7 @@ fn schema(derive_input: DeriveInput) -> TResult {
 
         impl #derive_input_ident {
             #vis fn schema(default: #default_ty_ident) -> settings_schema::SchemaNode {
+                use settings_schema::*;
                 #schema_code_ts
             }
         }

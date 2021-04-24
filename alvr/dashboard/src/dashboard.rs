@@ -24,8 +24,8 @@ pub fn dashboard(props: &DashboardProps) -> Html {
     let translation_on_click = Callback::from(move |_| {});
 
     html! {
-        <div class="flex h-full">
-            <aside class="w-44 bg-gray-100">
+        <div class="flex h-full bg-gray-100">
+            <aside class="w-44 bg-gray-200">
                 <nav class="flex flex-col items-start h-full py-4 space-y-2">
                     <MenuIcon
                         name="connections"

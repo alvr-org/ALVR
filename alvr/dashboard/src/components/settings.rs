@@ -52,13 +52,11 @@ pub fn settings_content(props: &SettingsContentProps) -> Html {
                                 logging::show_err(trace_none!(props.session.get(name))).cloned()
                             {
                                 let class = if selected_tab_data.name == *name {
-                                    format!(
-                                        "py-2 px-6 bg-white rounded-t-lg hover:shadow-md {} {}",
-                                        "bg-gradient-to-tr from-blue-700 via-blue-700 to-blue-600",
-                                        "hover:bg-blue-800 text-white shadow-md"
-                                    )
+                                    r"py-2 px-6 bg-white rounded-t-lg hover:shadow-md
+                                    bg-gradient-to-tr from-blue-700 via-blue-700 to-blue-600
+                                    hover:bg-blue-800 text-white shadow-md"
                                 } else {
-                                    "py-2 px-6 bg-white rounded-t-lg hover:shadow-md".to_owned()
+                                    "py-2 px-6 bg-white rounded-t-lg hover:shadow-md"
                                 };
 
                                 let on_click = {

@@ -202,6 +202,17 @@ pub fn maybe_save_driver_paths_backup(paths_backup: &[PathBuf]) -> StrResult {
     Ok(())
 }
 
+pub fn get_session_path(base: &Path) -> StrResult<PathBuf> {
+    if cfg!(windows) {
+        Ok(base.join("session.json"))
+    } else {
+        Ok(dirs::config_dir()
+            .ok_or_else(|| "no config_dir found")?
+            .join("alvr")
+            .join("session.json"))
+    }
+}
+
 /////////////////// firewall //////////////////////
 
 fn netsh_add_rule_command_string(rule_name: &str, program_path: &Path) -> String {

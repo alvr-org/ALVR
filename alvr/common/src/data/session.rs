@@ -1,5 +1,5 @@
 use super::{settings, Settings, DEFAULT_SESSION_SETTINGS, SETTINGS_SCHEMA};
-use crate::prelude::*;
+use crate::{commands, prelude::*};
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use settings_schema::{
@@ -13,8 +13,6 @@ use std::{
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
 };
-
-pub const SESSION_FNAME: &str = "session.json";
 
 // SessionSettings is similar to Settings but it contains every branch, even unused ones. This is
 // the settings representation that the UI uses.
@@ -615,7 +613,10 @@ impl DerefMut for SessionLock<'_> {
 
 impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
-        save_session(self.session_desc, &self.dir.join(SESSION_FNAME)).ok();
+        save_session(
+            self.session_desc,
+            &commands::get_session_path(&self.dir).unwrap(),
+        );
         log_event(Event::SessionUpdated);
     }
 }
@@ -627,7 +628,7 @@ pub struct SessionManager {
 
 impl SessionManager {
     pub fn new(dir: &Path) -> Self {
-        let session_path = dir.join(SESSION_FNAME);
+        let session_path = commands::get_session_path(&dir).unwrap();
         let session_desc = match fs::read_to_string(&session_path) {
             Ok(session_string) => {
                 let json_value = json::from_str::<json::Value>(&session_string).unwrap();

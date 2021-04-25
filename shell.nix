@@ -5,8 +5,8 @@ let
   local = (import (pkgs.fetchFromGitHub {
     owner = "ronthecookie";
     repo = "nixpkgs";
-    rev = "7b99b731e6c0ccf27ec0fff1b47efc43cf1f61a4";
-    sha256 = "0y93q6z15caqq5wxm84qd5pbm8mn6q2zjwh6w4frczrdc5y4ga85";
+    rev = "9704ac164c630a4e9f50a3448aa165480a78f186";
+    sha256 = "1a9zwiw3f3j4ssk86yfw055kbv25vf9pyjf28gkwc15xwfb3jp6v";
     fetchSubmodules = true;
   })) { };
 in mkShell {

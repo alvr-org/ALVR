@@ -541,6 +541,7 @@ fn json_session_settings_to_settings(
 
 #[cfg(any(windows, target_os = "linux"))]
 mod manager {
+    use super::*;
     use crate::commands;
 
     // SessionDesc wrapper that saves settings.json and session.json on destruction.

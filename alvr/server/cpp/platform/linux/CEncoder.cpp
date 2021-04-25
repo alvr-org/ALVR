@@ -21,6 +21,10 @@
 #include "ffmpeg_helper.h"
 #include "EncodePipeline.h"
 
+extern "C" {
+#include <libavutil/avutil.h>
+}
+
 CEncoder::CEncoder(std::shared_ptr<ClientConnection> listener,
                    std::shared_ptr<PoseHistory> poseHistory)
     : m_listener(listener), m_poseHistory(poseHistory) {}
@@ -196,7 +200,7 @@ void CEncoder::Run() {
 
       fprintf(stderr, "CEncoder starting to read present packets");
       present_packet frame_info;
-			std::vector<uint8_t> encoded_data;
+      std::vector<uint8_t> encoded_data;
       while (not m_exiting) {
         read_exactly(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
@@ -209,6 +213,8 @@ void CEncoder::Run() {
         m_poseSubmitIndex = pose->info.FrameIndex;
 
         encode_pipeline->EncodeFrame(frame_info.image, m_scheduler.CheckIDRInsertion(), encoded_data);
+        if (encoded_data.empty())
+          continue;
 
         m_listener->SendVideo(encoded_data.data(), encoded_data.size(), m_poseSubmitIndex + Settings::Instance().m_trackingFrameOffset);
 

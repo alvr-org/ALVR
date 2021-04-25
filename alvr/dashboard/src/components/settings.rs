@@ -1,21 +1,30 @@
-use super::settings_controls::SettingContainer;
-use crate::{session, translation::use_trans};
+use super::settings_controls::{SettingContainer, SettingProps};
+use crate::{
+    basic_components::{Button, ButtonType},
+    session,
+    translation::{use_trans, SettingsTransNode, SettingsTransPathProvider},
+};
 use alvr_common::{data::SessionDesc, logging, prelude::*};
 use serde_json as json;
 use session::apply_session_settings;
 use settings_schema::{EntryData, EntryType, SchemaNode};
 use std::{collections::HashMap, rc::Rc};
 use yew::{html, Callback, Properties};
-use yew_functional::{function_component, use_effect_with_deps, use_state};
+use yew_functional::{
+    function_component, use_context, use_effect_with_deps, use_state, ContextProvider,
+};
 
-#[derive(Properties, Clone, PartialEq)]
-pub struct SettingsContentProps {
-    pub schema: Vec<(String, SchemaNode)>,
-    pub session: HashMap<String, json::Value>,
+#[derive(Clone, PartialEq)]
+struct AdvancedContext(bool);
+
+pub fn use_advanced() -> bool {
+    use_context::<AdvancedContext>().unwrap().0
 }
 
 #[function_component(SettingsContent)]
-pub fn settings_content(props: &SettingsContentProps) -> Html {
+pub fn settings_content(
+    props: &SettingProps<Vec<(String, SchemaNode)>, HashMap<String, json::Value>>,
+) -> Html {
     struct TabData {
         name: String,
         schema: SchemaNode,
@@ -24,7 +33,6 @@ pub fn settings_content(props: &SettingsContentProps) -> Html {
 
     let (selected_tab_data, set_selected_tab_data) = {
         let (name, schema) = props.schema[0].clone();
-        info!("{:?}", props.session);
         let session = props.session.get(&name).unwrap().clone();
         use_state(|| TabData {
             name,
@@ -33,17 +41,10 @@ pub fn settings_content(props: &SettingsContentProps) -> Html {
         })
     };
 
-    let set_session = Callback::from(|session| {
-        wasm_bindgen_futures::spawn_local(async {
-            logging::show_err(
-                async { apply_session_settings(&trace_err!(json::from_value(session))?).await }
-                    .await,
-            );
-        })
-    });
+    let (advanced, set_advanced) = use_state(|| false);
 
     html! {
-        <>
+        <SettingsTransPathProvider>
             <div style="border-bottom: 2px solid #eaeaea"> // <- todo use tailwind?
                 <ul class="flex cursor-pointer">
                     {
@@ -86,14 +87,37 @@ pub fn settings_content(props: &SettingsContentProps) -> Html {
                     }
                 </ul>
             </div>
-            <div>
-                <SettingContainer
-                    schema=selected_tab_data.schema.clone()
-                    session=selected_tab_data.session.clone()
-                    set_session=set_session
-                />
-            </div>
-        </>
+            <Button // todo: put this on the right of the tab labels
+                button_type=if *advanced {
+                    ButtonType::Primary
+                } else {
+                    ButtonType::None
+                }
+                on_click={
+                    let advanced = *advanced;
+                    Callback::from(move |_| set_advanced(!advanced))
+                }
+            >
+                {"Advanced"}
+            </Button>
+            <ContextProvider<AdvancedContext> context=AdvancedContext(*advanced)>
+                <SettingsTransNode subkey=selected_tab_data.name.clone()>
+                    <SettingContainer
+                        schema=selected_tab_data.schema.clone()
+                        session=selected_tab_data.session.clone()
+                        set_session={
+                            let session = props.session.clone();
+                            let set_session = props.set_session.clone();
+                            Callback::from(move |child_session| {
+                                let mut session = session.clone();
+                                session.insert(selected_tab_data.name.clone(), child_session);
+                                set_session.emit(session);
+                            })
+                        }
+                    />
+                </SettingsTransNode>
+            </ContextProvider<AdvancedContext>>
+        </SettingsTransPathProvider>
     }
 }
 
@@ -139,6 +163,29 @@ pub fn settings(props: &SettingsProps) -> Html {
         (),
     );
 
+    let set_session = {
+        let theme = props.session.session_settings.extra.theme.variant.clone();
+        Callback::from(move |session| {
+            let theme = theme.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                logging::show_err(
+                    async {
+                        let session_settings =
+                            trace_err!(json::from_value(trace_err!(json::to_value(session))?))?;
+                        trace_err!(apply_session_settings(&session_settings).await)?;
+
+                        if theme != session_settings.extra.theme.variant {
+                            trace_err_dbg!(trace_none!(web_sys::window())?.location().reload())?;
+                        }
+
+                        StrResult::Ok(())
+                    }
+                    .await,
+                );
+            })
+        })
+    };
+
     if let Some(schema) = &*maybe_schema {
         if let Some(session_json) =
             logging::show_err(json::to_value(&props.session.session_settings))
@@ -146,7 +193,9 @@ pub fn settings(props: &SettingsProps) -> Html {
             if let Some(session) =
                 logging::show_err(json::from_value::<HashMap<_, _>>(session_json))
             {
-                return html!(<SettingsContent schema=schema session=session />);
+                return html! {
+                    <SettingsContent schema=schema session=session set_session=set_session />
+                };
             } else {
                 html!()
             }

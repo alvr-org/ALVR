@@ -10,8 +10,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs,
     net::IpAddr,
-    ops::{Deref, DerefMut},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 // SessionSettings is similar to Settings but it contains every branch, even unused ones. This is
@@ -596,6 +595,10 @@ fn json_session_settings_to_settings(
 mod manager {
     use super::*;
     use crate::commands;
+    use std::{
+        ops::{Deref, DerefMut},
+        path::PathBuf,
+    };
 
     // SessionDesc wrapper that saves settings.json and session.json on destruction.
     pub struct SessionLock<'a> {

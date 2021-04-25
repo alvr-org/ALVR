@@ -253,7 +253,7 @@ fn variants_schema(
     Ok(SchemaData {
         default_fields_ts: quote! {
             #(#vis #data_variants: #data_tys_ts,)*
-            variant: #default_variant_ty,
+            #vis variant: #default_variant_ty,
         },
         schema_code_ts: quote!(SchemaNode::Choice(SchemaChoice {
             default: settings_schema::to_json_value(default.variant)

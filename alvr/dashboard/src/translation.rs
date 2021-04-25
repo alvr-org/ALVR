@@ -275,37 +275,62 @@ pub fn use_trans(key: &str) -> String {
 }
 
 #[derive(Properties, Clone, PartialEq)]
-pub struct TransNameProps {
-    #[prop_or_default]
-    key: String,
-}
-
-#[function_component(Trans)]
-pub fn trans(props: &TransNameProps) -> Html {
-    html!({ use_trans(&props.key) })
-}
-
-#[derive(Properties, Clone, PartialEq)]
 pub struct SettingsTransPathProviderProps {
     pub children: Children,
 }
 
+#[derive(Clone, PartialEq)]
+struct SettingsTransContext(Vec<String>);
+
 #[function_component(SettingsTransPathProvider)]
-pub fn settings_trans_path_provider(props: &TransProviderProps) -> Html {
+pub fn settings_trans_path_provider(props: &SettingsTransPathProviderProps) -> Html {
     html! {
-        <ContextProvider<Vec<String>> context=vec![]>
+        <ContextProvider<SettingsTransContext> context=SettingsTransContext(vec![])>
+            {props.children.clone()}
+        </ContextProvider<SettingsTransContext>>
+    }
+}
+
+#[derive(Properties, Clone, PartialEq)]
+pub struct SettingsTransNodeProps {
+    pub subkey: String,
+    pub children: Children,
+}
+
+#[function_component(SettingsTransNode)]
+pub fn settings_trans_node(props: &SettingsTransNodeProps) -> Html {
+    let mut context = (*use_context::<SettingsTransContext>().unwrap()).0.clone();
+    context.push(props.subkey.clone());
+
+    html! {
+        <ContextProvider<Vec<String>> context=context>
             {props.children.clone()}
         </ContextProvider<Vec<String>>>
     }
 }
 
-pub struct SettingsTrans {
-    name: String,
-    help: Option<String>,
-    notice: Option<String>,
+pub fn use_setting_name_trans(subkey: &str) -> String {
+    let manager = use_translation();
+
+    let mut route_segments = (*use_context::<SettingsTransContext>().unwrap()).0.clone();
+    route_segments.push(subkey.to_owned());
+
+    let route = route_segments.join("-");
+
+    if let Ok(name) = manager.get_fallible(&route) {
+        name.into()
+    } else {
+        subkey.into()
+    }
 }
 
-pub fn use_settings_trans(subkey: &str) -> SettingsTrans {
+pub struct SettingsTrans {
+    pub name: String,
+    pub help: Option<String>,
+    pub notice: Option<String>,
+}
+
+pub fn use_setting_trans(subkey: &str) -> SettingsTrans {
     let manager = use_translation();
 
     let mut route_segments = (*use_context::<Vec<String>>().expect("Trans context")).clone();

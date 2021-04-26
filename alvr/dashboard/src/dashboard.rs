@@ -75,12 +75,12 @@ pub fn dashboard(props: &DashboardProps) -> Html {
                         on_click=on_tab_click.clone()
                         selected=*selected_tab=="test"
                     />
+                    <div class="flex-auto" />
                     <MenuIcon
                         name="language"
                         icon="fas fa-globe"
                         on_click=translation_on_click
                         selected=false
-                        class="mt-auto"
                     />
                 </nav>
             </aside>
@@ -118,9 +118,6 @@ pub struct MenuIconProps {
     pub icon: String,
     pub on_click: Callback<String>,
     pub selected: bool,
-
-    #[prop_or_default]
-    pub class: String,
 }
 
 #[function_component(MenuIcon)]
@@ -143,7 +140,7 @@ pub fn menu_icon(props: &MenuIconProps) -> Html {
     html! {
         <div
             class=format!(
-                "w-40 flex items-center rounded-r-lg pr-3 pl-7 py-1 space-x-2 {} {} {} {}",
+                "w-40 flex items-center rounded-r-lg pr-3 pl-7 py-1 space-x-2 {} {} {}",
                 "bg-gray-300 cursor-pointer transition transform -translate-x-4 overflow-hidden",
                 "whitespace-nowrap hover:bg-gray-400 hover:translate-x-0 hover:shadow-md",
                 if props.selected {
@@ -154,7 +151,6 @@ pub fn menu_icon(props: &MenuIconProps) -> Html {
                 } else {
                     "".into()
                 },
-                props.class.clone()
             )
             onmouseenter=on_enter
             onmouseleave=on_leave

@@ -1312,9 +1312,9 @@ dependencies = [
 
 [[package]]
 name = "fluent-fallback"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a09e90042a09f5bdb19cdbb9400d97990c8e0b0cb271d8482cba59882efff02"
+checksum = "68ccc627fb3a16ae0830f17c68a52539844b5b37a7a498c3969cc911e6f583c3"
 dependencies = [
  "async-trait",
  "chunky-vec",

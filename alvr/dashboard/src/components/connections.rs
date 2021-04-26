@@ -186,16 +186,14 @@ pub fn client(
                     html! {
                         <>
                             <IconButton
-                                icon_cls="fas fa-trash"
-                                on_click=on_remove_click
-                                button_type=ButtonType::None
-                                class="hover:bg-red-500 hover:text-white"
-                            />
-                            <IconButton
                                 icon_cls="fas fa-cog"
                                 on_click=on_click
-                                button_type=ButtonType::None
                                 class="hover:bg-blue-500 hover:text-white"
+                            />
+                            <IconButton
+                                icon_cls="fas fa-trash"
+                                on_click=on_remove_click
+                                class="hover:bg-red-500 hover:text-white"
                             />
                         </>
                     }

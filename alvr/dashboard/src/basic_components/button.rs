@@ -10,7 +10,7 @@ pub enum ButtonType {
 }
 
 #[derive(Properties, Clone, PartialEq)]
-pub struct Props {
+pub struct ButtonProps {
     pub children: Children,
 
     pub on_click: Callback<()>,
@@ -23,7 +23,7 @@ pub struct Props {
 }
 
 #[function_component(Button)]
-pub fn button(props: &Props) -> Html {
+pub fn button(props: &ButtonProps) -> Html {
     let on_click = props.on_click.clone();
 
     // TODO: if we add a disabled prop, we need to disable the background color hover changes
@@ -48,12 +48,13 @@ pub fn button(props: &Props) -> Html {
 pub struct IconButtonProps {
     pub icon_cls: String,
 
+    #[prop_or_default]
     pub on_click: Callback<()>,
 
     #[prop_or_default]
     pub class: String,
 
-    #[prop_or(ButtonType::Primary)]
+    #[prop_or(ButtonType::None)]
     pub button_type: ButtonType,
 }
 

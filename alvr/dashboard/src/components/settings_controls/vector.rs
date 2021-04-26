@@ -6,5 +6,5 @@ use yew_functional::function_component;
 
 #[function_component(Vector)]
 pub fn vector(props: &SettingProps<SchemaVector, VectorDefault<json::Value>>) -> Html {
-    html!("dictionary")
+    html!("vector")
 }

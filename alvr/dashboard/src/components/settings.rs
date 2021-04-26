@@ -1,8 +1,8 @@
-use super::settings_controls::{SettingContainer, SettingProps};
+use super::settings_controls::{setting_container, SettingProps};
 use crate::{
     basic_components::{Button, ButtonType},
     session,
-    translation::{use_trans, SettingsTransNode, SettingsTransPathProvider},
+    translation::{use_trans, use_translation, SettingsTransNode, SettingsTransPathProvider},
 };
 use alvr_common::{data::SessionDesc, logging, prelude::*};
 use serde_json as json;
@@ -43,48 +43,61 @@ pub fn settings_content(
 
     let (advanced, set_advanced) = use_state(|| false);
 
+    let tabs = props.schema.iter().map(|(name, schema)| {
+        if let Some(session) = logging::show_err(trace_none!(props.session.get(name))).cloned() {
+            let class = if selected_tab_data.name == *name {
+                r"py-2 px-6 bg-white rounded-t-lg hover:shadow-md
+                bg-gradient-to-tr from-blue-700 via-blue-700 to-blue-600
+                hover:bg-blue-800 text-white shadow-md"
+            } else {
+                "py-2 px-6 bg-white rounded-t-lg hover:shadow-md"
+            };
+
+            let on_click = {
+                let name = name.clone();
+                let schema = schema.clone();
+                let set_selected_tab_data = Rc::clone(&set_selected_tab_data);
+                Callback::from(move |_| {
+                    set_selected_tab_data(TabData {
+                        name: name.clone(),
+                        schema: schema.clone(),
+                        session: session.clone(),
+                    })
+                })
+            };
+
+            html! {
+                <li key=name.as_ref() class=class onclick=on_click>
+                    {use_trans(name)}
+                </li>
+            }
+        } else {
+            html!()
+        }
+    });
+
+    let content = setting_container(
+        selected_tab_data.schema.clone(),
+        selected_tab_data.session.clone(),
+        {
+            let selected_tab_data = selected_tab_data.clone();
+            let session = props.session.clone();
+            let set_session = props.set_session.clone();
+            Callback::from(move |child_session| {
+                let mut session = session.clone();
+                session.insert(selected_tab_data.name.clone(), child_session);
+                set_session.emit(session);
+            })
+        },
+        *advanced,
+    )
+    .unwrap();
+
     html! {
         <SettingsTransPathProvider>
             <div style="border-bottom: 2px solid #eaeaea"> // <- todo use tailwind?
                 <ul class="flex cursor-pointer">
-                    {
-                        for props.schema.iter().map(|(name, schema)| {
-                            if let Some(session) =
-                                logging::show_err(trace_none!(props.session.get(name))).cloned()
-                            {
-                                let class = if selected_tab_data.name == *name {
-                                    r"py-2 px-6 bg-white rounded-t-lg hover:shadow-md
-                                    bg-gradient-to-tr from-blue-700 via-blue-700 to-blue-600
-                                    hover:bg-blue-800 text-white shadow-md"
-                                } else {
-                                    "py-2 px-6 bg-white rounded-t-lg hover:shadow-md"
-                                };
-
-                                let on_click = {
-                                    let name = name.clone();
-                                    let schema = schema.clone();
-                                    let session = session.clone();
-                                    let set_selected_tab_data = Rc::clone(&set_selected_tab_data);
-                                    Callback::from(move |_| {
-                                        set_selected_tab_data(TabData {
-                                            name: name.clone(),
-                                            schema: schema.clone(),
-                                            session: session.clone(),
-                                        })
-                                    })
-                                };
-
-                                html! {
-                                    <li key=name.as_ref() class=class onclick=on_click>
-                                        {use_trans(name)}
-                                    </li>
-                                }
-                            } else {
-                                html!()
-                            }
-
-                        })
-                    }
+                    {for tabs}
                 </ul>
             </div>
             <Button // todo: put this on the right of the tab labels
@@ -98,23 +111,11 @@ pub fn settings_content(
                     Callback::from(move |_| set_advanced(!advanced))
                 }
             >
-                {"Advanced"}
+                {use_translation().get_attribute("settings", "advanced-mode")}
             </Button>
             <ContextProvider<AdvancedContext> context=AdvancedContext(*advanced)>
                 <SettingsTransNode subkey=selected_tab_data.name.clone()>
-                    <SettingContainer
-                        schema=selected_tab_data.schema.clone()
-                        session=selected_tab_data.session.clone()
-                        set_session={
-                            let session = props.session.clone();
-                            let set_session = props.set_session.clone();
-                            Callback::from(move |child_session| {
-                                let mut session = session.clone();
-                                session.insert(selected_tab_data.name.clone(), child_session);
-                                set_session.emit(session);
-                            })
-                        }
-                    />
+                    {content}
                 </SettingsTransNode>
             </ContextProvider<AdvancedContext>>
         </SettingsTransPathProvider>

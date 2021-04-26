@@ -86,21 +86,17 @@ pub fn recv_any_event_cb(callback: Callback<Event>) -> ListenerHandle {
     })
 }
 
-// Note: the body is repeated for zero or some arguments, because "||" is treated as a single token
 #[macro_export]
 macro_rules! recv_event_cb {
-    ($event:ident, || $callback_body:expr) => {
+    ($event:ident, |$($($args:ident),+)?| $callback_body:expr) => {
         crate::events_dispatch::recv_any_event_cb(yew::Callback::from(move |event| {
-            if let alvr_common::logging::Event::$event = event {
+            if let alvr_common::logging::Event::$event$(($($args),+))? = event {
                 $callback_body
             }
         }))
     };
-    ($event:ident, |$($args:ident),+| $callback_body:expr) => {
-        crate::events_dispatch::recv_any_event_cb(yew::Callback::from(move |event| {
-            if let alvr_common::logging::Event::$event($($args),+) = event {
-                $callback_body
-            }
-        }))
+    ($event:ident, || $callback_body:expr) => {
+        // Two ajacent pipes do not match two separated pipes
+        recv_event_cb!($event, | | $callback_body)
     };
 }

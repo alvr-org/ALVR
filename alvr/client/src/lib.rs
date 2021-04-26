@@ -1,9 +1,11 @@
 #![allow(non_upper_case_globals, non_snake_case, clippy::missing_safety_doc)]
 
-mod audio;
 mod connection;
 mod connection_utils;
 mod logging_backend;
+
+#[cfg(target_os = "android")]
+mod audio;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 

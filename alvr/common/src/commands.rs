@@ -123,14 +123,10 @@ pub fn driver_registration(driver_paths: &[PathBuf], register: bool) -> StrResul
 }
 
 fn get_alvr_dir_store_path() -> StrResult<PathBuf> {
-    if cfg!(target_os = "linux") {
-        Ok(dirs::runtime_dir()
-            .ok_or_else(|| "couldn't get runtime_dir")?
-            .join(ALVR_DIR_STORAGE_FNAME))
-    } else if cfg!(windows) {
+    if cfg!(windows) {
         Ok(env::temp_dir().join(ALVR_DIR_STORAGE_FNAME))
     } else {
-        unimplemented!()
+        Ok(trace_none!(dirs::runtime_dir())?.join(ALVR_DIR_STORAGE_FNAME))
     }
 }
 
@@ -206,8 +202,7 @@ pub fn get_session_path(base: &Path) -> StrResult<PathBuf> {
     if cfg!(windows) {
         Ok(base.join("session.json"))
     } else {
-        Ok(dirs::config_dir()
-            .ok_or_else(|| "no config_dir found")?
+        Ok(trace_none!(dirs::config_dir())?
             .join("alvr")
             .join("session.json"))
     }

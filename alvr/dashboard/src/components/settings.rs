@@ -95,7 +95,7 @@ pub fn settings_content(
 
     html! {
         <SettingsTransPathProvider>
-            <div style="border-bottom: 2px solid #eaeaea"> // <- todo use tailwind?
+            <div class="border-b-2 border-gray-200">
                 <ul class="flex cursor-pointer">
                     {for tabs}
                 </ul>
@@ -115,7 +115,9 @@ pub fn settings_content(
             </Button>
             <ContextProvider<AdvancedContext> context=AdvancedContext(*advanced)>
                 <SettingsTransNode subkey=selected_tab_data.name.clone()>
-                    {content}
+                    <div class="h-fill overflow-y-auto">
+                        {content}
+                    </div>
                 </SettingsTransNode>
             </ContextProvider<AdvancedContext>>
         </SettingsTransPathProvider>

@@ -24,91 +24,93 @@ pub fn dashboard(props: &DashboardProps) -> Html {
     let translation_on_click = Callback::from(move |_| {});
 
     html! {
-        <div class="flex h-full bg-gray-100">
-            <aside class="w-44 bg-gray-200">
-                <nav class="flex flex-col items-start h-full py-4 space-y-2">
-                    <MenuIcon
-                        name="connections"
-                        icon="fas fa-plug"
-                        on_click=on_tab_click.clone()
-                        selected=*selected_tab=="connections"
-                    />
-                    <MenuIcon
-                        name="statistics"
-                        icon="fas fa-chart-bar"
-                        on_click=on_tab_click.clone()
-                        selected=*selected_tab=="statistics"
-                    />
-                    // <MenuIcon
-                    //     name="presets"
-                    //     icon="fas fa-th-large"
-                    //     on_click=on_tab_click.clone()
-                    //     selected=*selected_tab=="presets"
-                    // />
-                    <MenuIcon
-                        name="settings"
-                        icon="fas fa-cog"
-                        on_click=on_tab_click.clone()
-                        selected=*selected_tab=="settings"
-                    />
-                    <MenuIcon
-                        name="installation"
-                        icon="fas fa-hdd"
-                        on_click=on_tab_click.clone()
-                        selected=*selected_tab=="installation"
-                    />
-                    <MenuIcon
-                        name="logs"
-                        icon="fas fa-th-list"
-                        on_click=on_tab_click.clone()
-                        selected=*selected_tab=="logs"
-                    />
-                    <MenuIcon
-                        name="about"
-                        icon="fas fa-info-circle"
-                        on_click=on_tab_click.clone()
-                        selected=*selected_tab=="about"
-                    />
-                    <MenuIcon
-                        name="test"
-                        icon="fas fa-asterisk"
-                        on_click=on_tab_click.clone()
-                        selected=*selected_tab=="test"
-                    />
-                    <div class="flex-auto" />
-                    <MenuIcon
-                        name="language"
-                        icon="fas fa-globe"
-                        on_click=translation_on_click
-                        selected=false
-                    />
-                </nav>
-            </aside>
-            <div class="flex-grow">
-                <div hidden=*selected_tab!="connections">
-                    <Connections session=Rc::clone(&props.session) />
-                </div>
-                <div hidden=*selected_tab!="statistics">
-                    <Statistics />
-                </div>
-                <div hidden=*selected_tab!="settings">
-                    <Settings session=Rc::clone(&props.session) />
-                </div>
-                <div hidden=*selected_tab!="installation">
-                    <Installation session=Rc::clone(&props.session)/>
-                </div>
-                <div hidden=*selected_tab!="logs">
-                    <Logs />
-                </div>
-                <div hidden=*selected_tab!="about">
-                    <About session=Rc::clone(&props.session) />
-                </div>
-                <div hidden=*selected_tab!="test">
-                    <Test />
+        <div class="flex flex-col h-screen">
+            <div class="flex-grow flex items-stretch bg-gray-100 select-none">
+                <aside class="bg-gray-200">
+                    <nav class="flex flex-col items-stretch h-full py-4 space-y-2">
+                        <TabEntry
+                            name="connections"
+                            icon="fas fa-plug"
+                            on_click=on_tab_click.clone()
+                            selected=*selected_tab == "connections"
+                        />
+                        <TabEntry
+                            name="statistics"
+                            icon="fas fa-chart-bar"
+                            on_click=on_tab_click.clone()
+                            selected=*selected_tab == "statistics"
+                        />
+                        // <TabEntry
+                        //     name="presets"
+                        //     icon="fas fa-th-large"
+                        //     on_click=on_tab_click.clone()
+                        //     selected=*selected_tab == "presets"
+                        // />
+                        <TabEntry
+                            name="settings"
+                            icon="fas fa-cog"
+                            on_click=on_tab_click.clone()
+                            selected=*selected_tab == "settings"
+                        />
+                        <TabEntry
+                            name="installation"
+                            icon="fas fa-hdd"
+                            on_click=on_tab_click.clone()
+                            selected=*selected_tab == "installation"
+                        />
+                        <TabEntry
+                            name="logs"
+                            icon="fas fa-th-list"
+                            on_click=on_tab_click.clone()
+                            selected=*selected_tab == "logs"
+                        />
+                        <TabEntry
+                            name="about"
+                            icon="fas fa-info-circle"
+                            on_click=on_tab_click.clone()
+                            selected=*selected_tab == "about"
+                        />
+                        <TabEntry
+                            name="test"
+                            icon="fas fa-asterisk"
+                            on_click=on_tab_click.clone()
+                            selected=*selected_tab == "test"
+                        />
+                        <div class="flex-auto" />
+                        <TabEntry
+                            name="language"
+                            icon="fas fa-globe"
+                            on_click=translation_on_click
+                            selected=false
+                        />
+                    </nav>
+                </aside>
+                <div class="flex-grow h-full overflow-y-auto">
+                    <div hidden=*selected_tab != "connections">
+                        <Connections session=Rc::clone(&props.session) />
+                    </div>
+                    <div hidden=*selected_tab != "statistics">
+                        <Statistics />
+                    </div>
+                    <div hidden=*selected_tab != "settings">
+                        <Settings session=Rc::clone(&props.session) />
+                    </div>
+                    <div hidden=*selected_tab != "installation">
+                        <Installation session=Rc::clone(&props.session)/>
+                    </div>
+                    <div hidden=*selected_tab != "logs">
+                        <Logs />
+                    </div>
+                    <div hidden=*selected_tab != "about">
+                        <About session=Rc::clone(&props.session) />
+                    </div>
+                    <div hidden=*selected_tab != "test">
+                        <Test />
+                    </div>
                 </div>
             </div>
+            // <div></div> // todo notifications
         </div>
-
     }
 }
 
@@ -120,17 +122,8 @@ pub struct MenuIconProps {
     pub selected: bool,
 }
 
-#[function_component(MenuIcon)]
-pub fn menu_icon(props: &MenuIconProps) -> Html {
-    let (tooltip_visible, set_tooltip_visible) = use_state(|| false);
-
-    let on_enter = {
-        let set_tooltip_visible = Rc::clone(&set_tooltip_visible);
-        Callback::from(move |_| set_tooltip_visible(true))
-    };
-
-    let on_leave = Callback::from(move |_| set_tooltip_visible(false));
-
+#[function_component(TabEntry)]
+pub fn tab_entry(props: &MenuIconProps) -> Html {
     let on_click = {
         let on_click = props.on_click.clone();
         let name = props.name.clone();
@@ -140,30 +133,45 @@ pub fn menu_icon(props: &MenuIconProps) -> Html {
     html! {
         <div
             class=format!(
-                "w-40 flex items-center rounded-r-lg pr-3 pl-7 py-1 space-x-2 {} {} {}",
-                "bg-gray-300 cursor-pointer transition transform -translate-x-4 overflow-hidden",
-                "whitespace-nowrap hover:bg-gray-400 hover:translate-x-0 hover:shadow-md",
+                "mr-3
+                rounded-r-lg
+                cursor-pointer
+                transition-color transition-transform
+                {}",
                 if props.selected {
-                    format!(
-                        "w-44 bg-gradient-to-tr from-blue-700 via-blue-700 to-blue-600 {}",
-                        "hover:bg-blue-800 text-white shadow-md"
-                    )
+                    "bg-blue-700 hover:bg-blue-800
+                    shadow-md text-white"
                 } else {
-                    "".into()
+                    "transform -translate-x-2 hover:-translate-x-1
+                    bg-gray-300 hover:bg-gray-400"
                 },
             )
-            onmouseenter=on_enter
-            onmouseleave=on_leave
             onclick=on_click
         >
-            <i
+            <div
                 class=format!(
-                    "w-8 opacity-75 {} {}",
-                    if props.selected { "opacity-90" } else { "" },
-                    props.icon.clone()
+                    "flex w-full h-full py-1 pr-5
+                    transition-transform
+                    {}",
+                    if props.selected {
+                        ""
+                    } else {
+                        // exact opposite of parent
+                        "transform translate-x-2 hover:translate-x-1"
+                    }
                 )
-            />
-            <span class="font-medium truncate">{use_trans(&props.name)}</span>
+            >
+                <div class="w-10 flex justify-center items-center">
+                    <i
+                        class=format!(
+                            "opacity-75 {} {}",
+                            if props.selected { "opacity-90" } else { "" },
+                            props.icon.clone()
+                        )
+                    />
+                </div>
+                <div class="font-medium">{use_trans(&props.name)}</div>
+            </div>
         </div>
     }
 }
@@ -246,3 +254,5 @@ pub fn test() -> Html {
         </div>
     }
 }
+
+// https://play.tailwindcss.com/a02WW4bd69

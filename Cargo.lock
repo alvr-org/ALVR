@@ -1275,7 +1275,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc4d7142005e2066e4844caf9f271b93fc79836ee96ec85057b8c109687e629a"
 dependencies = [
- "fluent-bundle 0.15.0",
+ "fluent-bundle 0.15.1",
  "unic-langid",
 ]
 
@@ -1296,9 +1296,9 @@ dependencies = [
 
 [[package]]
 name = "fluent-bundle"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b589dfaa7e69ddf497be48cd0d184d7ff6e2cbb8186d1bb01c26d5cf5449a17"
+checksum = "8acf044eeb4872d9dbf2667541fbf461f5965c57e343878ad0fb24b5793fa007"
 dependencies = [
  "fluent-langneg",
  "fluent-syntax 0.11.0",
@@ -1318,7 +1318,7 @@ checksum = "68ccc627fb3a16ae0830f17c68a52539844b5b37a7a498c3969cc911e6f583c3"
 dependencies = [
  "async-trait",
  "chunky-vec",
- "fluent-bundle 0.15.0",
+ "fluent-bundle 0.15.1",
  "futures",
  "once_cell",
  "unic-langid",
@@ -2882,9 +2882,9 @@ checksum = "e293568965aea261bdf010db17df7030e3c9a275c415d51d6112f7cf9b7af012"
 
 [[package]]
 name = "ouroboros"
-version = "0.8.3"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f6d5c203fe8d786d9d7bec8203cbbff3eb2cf8410c0d70cfd05b3d5f5d545da"
+checksum = "fc53e78022445d2d37b673c5aaeed945a7aacaa4aa89c867c1f28b2e6778e67d"
 dependencies = [
  "ouroboros_macro",
  "stable_deref_trait",
@@ -2892,9 +2892,9 @@ dependencies = [
 
 [[package]]
 name = "ouroboros_macro"
-version = "0.8.3"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "129943a960e6a08c7e70ca5a09f113c273fe7f10ae8420992c78293e3dffdf65"
+checksum = "ee93af29e97048340c10f5c1a1d88c754f48337a41fbd4fb8e1e20ce41c76936"
 dependencies = [
  "Inflector",
  "proc-macro-error",
@@ -4419,9 +4419,9 @@ checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "ureq"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fbeb1aabb07378cf0e084971a74f24241273304653184f54cdce113c0d7df1b"
+checksum = "2475a6781e9bc546e7b64f4013d2f4032c8c6a40fcffd7c6f4ee734a890972ab"
 dependencies = [
  "base64",
  "chunked_transfer",

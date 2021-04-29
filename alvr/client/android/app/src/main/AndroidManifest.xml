@@ -30,6 +30,5 @@
             android:screenOrientation="landscape"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
         </activity>
-        <meta-data android:name="com.oculus.handtracking.frequency" android:value="HIGH"/>
     </application>
 </manifest>

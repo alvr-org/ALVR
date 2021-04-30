@@ -72,7 +72,7 @@ winapi = { version = "0.3", features = [
 wio = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-gfx-backend-vulkan = "=0.6.5"
+gfx-backend-vulkan = "=0.8.0"
 
 [build-dependencies]
 bindgen = "0.58"

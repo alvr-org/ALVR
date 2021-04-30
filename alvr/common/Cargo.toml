@@ -39,7 +39,7 @@ nonzero_ext = "0.2"
 tokio = { version = "1", features = ["rt", "net", "macros"] }
 tokio-util = { version = "0.6", features = ["codec", "net"] }
 # Graphics
-gfx-hal = "=0.6.0"
+gfx-hal = "=0.8.0"
 winit = "0.24" # needed to get the screen size
 # Audio
 cpal = "0.13"

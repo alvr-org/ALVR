@@ -55,7 +55,7 @@ msgbox = "0.6"
 runas = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-gfx-backend-dx11 = "=0.6.17"
+gfx-backend-dx11 = "=0.8.0"
 widestring = "0.4"
 winapi = { version = "0.3", features = [
     "impl-default",

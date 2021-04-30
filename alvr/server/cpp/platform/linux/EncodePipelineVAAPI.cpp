@@ -230,8 +230,6 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(std::vector<VkFrame>& input_frame
 alvr::EncodePipelineVAAPI::~EncodePipelineVAAPI()
 {
   avfilter_graph_free(&filter_graph);
-  avfilter_free(filter_out);
-  avfilter_free(filter_in);
   for (auto frame: mapped_frames)
   {
     av_frame_free(&frame);

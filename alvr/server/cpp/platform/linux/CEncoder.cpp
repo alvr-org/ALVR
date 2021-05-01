@@ -54,6 +54,23 @@ void read_exactly(int fd, char *out, size_t size, std::atomic_bool &exiting) {
     }
 }
 
+void read_latest(int fd, char *out, size_t size, std::atomic_bool &exiting) {
+  read_exactly(fd, out, size, exiting);
+  while (not exiting)
+  {
+    timeval timeout{.tv_sec = 0, .tv_usec = 0};
+    fd_set read_fd, write_fd, except_fd;
+    FD_ZERO(&read_fd);
+    FD_SET(fd, &read_fd);
+    FD_ZERO(&write_fd);
+    FD_ZERO(&except_fd);
+    int count = select(fd + 1, &read_fd, &write_fd, &except_fd, &timeout);
+    if (count == 0)
+      return;
+    read_exactly(fd, out, size, exiting);
+  }
+}
+
 int accept_timeout(int socket, std::atomic_bool &exiting) {
     while (not exiting) {
         timeval timeout{.tv_sec = 0, .tv_usec = 15000};
@@ -202,7 +219,7 @@ void CEncoder::Run() {
       present_packet frame_info;
       std::vector<uint8_t> encoded_data;
       while (not m_exiting) {
-        read_exactly(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
+        read_latest(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
         auto encode_start = std::chrono::steady_clock::now();
 

@@ -3,6 +3,8 @@
 #include <memory>
 #include <vector>
 
+extern "C" struct AVCodecContext;
+
 namespace alvr
 {
 
@@ -12,11 +14,14 @@ class VkFrameCtx;
 class EncodePipeline
 {
 public:
-  virtual ~EncodePipeline() = default;
+  virtual ~EncodePipeline();
 
-  virtual void EncodeFrame(uint32_t frame_index, bool idr, std::vector<uint8_t> & out) = 0;
+  virtual void PushFrame(uint32_t frame_index, bool idr) = 0;
+  bool GetEncoded(std::vector<uint8_t> & out);
 
   static std::unique_ptr<EncodePipeline> Create(std::vector<VkFrame> &input_frames, VkFrameCtx &vk_frame_ctx);
+protected:
+  AVCodecContext *encoder_ctx = nullptr; //shall be initialized by child class
 };
 
 }

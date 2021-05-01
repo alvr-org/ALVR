@@ -91,26 +91,6 @@ std::vector<AVFrame*> map_frames(AVBufferRef *hw_device_ctx, std::vector<alvr::V
   return result;
 }
 
-void skipAUD_h265(uint8_t **buffer, int *length) {
-  // H.265 encoder always produces AUD NAL even if AMF_VIDEO_ENCODER_HEVC_INSERT_AUD is set. But it is not needed.
-  static const int AUD_NAL_SIZE = 7;
-
-  if (*length < AUD_NAL_SIZE + 4) {
-    return;
-  }
-
-  // Check if start with AUD NAL.
-  if (memcmp(*buffer, "\x00\x00\x00\x01\x46", 5) != 0) {
-    return;
-  }
-  // Check if AUD NAL size is AUD_NAL_SIZE bytes.
-  if (memcmp(*buffer + AUD_NAL_SIZE, "\x00\x00\x00\x01", 4) != 0) {
-    return;
-  }
-  *buffer += AUD_NAL_SIZE;
-  *length -= AUD_NAL_SIZE;
-}
-
 }
 
 alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(std::vector<VkFrame>& input_frames, VkFrameCtx& vk_frame_ctx)
@@ -234,11 +214,10 @@ alvr::EncodePipelineVAAPI::~EncodePipelineVAAPI()
   {
     av_frame_free(&frame);
   }
-  avcodec_free_context(&encoder_ctx);
   av_buffer_unref(&hw_ctx);
 }
 
-void alvr::EncodePipelineVAAPI::EncodeFrame(uint32_t frame_index, bool idr, std::vector<uint8_t>& out)
+void alvr::EncodePipelineVAAPI::PushFrame(uint32_t frame_index, bool idr)
 {
   assert(frame_index < mapped_frames.size());
   AVFrame *encoder_frame = av_frame_alloc();
@@ -260,25 +239,4 @@ void alvr::EncodePipelineVAAPI::EncodeFrame(uint32_t frame_index, bool idr, std:
     throw alvr::AvException("avcodec_send_frame failed: ", err);
   }
   av_frame_unref(encoder_frame);
-
-  out.clear();
-  while (1) {
-    AVPacket * enc_pkt = av_packet_alloc();
-
-    err = avcodec_receive_packet(encoder_ctx, enc_pkt);
-    if (err == AVERROR(EAGAIN)) {
-      break;
-    } else if (err) {
-      throw std::runtime_error("failed to encode");
-    }
-    uint8_t *frame_data = enc_pkt->data;
-    int frame_size = enc_pkt->size;
-    switch (Settings::Instance().m_codec) {
-      case ALVR_CODEC_H265:
-        skipAUD_h265(&frame_data, &frame_size);
-        break;
-    }
-    out.insert(out.end(), frame_data, frame_data + frame_size);
-    av_packet_free(&enc_pkt);
-  }
 }

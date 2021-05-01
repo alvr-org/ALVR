@@ -2,7 +2,6 @@
 
 #include "EncodePipeline.h"
 
-extern "C" struct AVCodecContext;
 extern "C" struct AVFrame;
 extern "C" struct SwsContext;
 
@@ -15,9 +14,9 @@ public:
   ~EncodePipelineSW();
   EncodePipelineSW(std::vector<VkFrame> &input_frames, VkFrameCtx& vk_frame_ctx);
 
-  void EncodeFrame(uint32_t frame_index, bool idr, std::vector<uint8_t>& out) override;
+  void PushFrame(uint32_t frame_index, bool idr) override;
+
 private:
-  AVCodecContext *encoder_ctx = nullptr;
   std::vector<AVFrame *> vk_frames;
   AVFrame * transferred_frame = nullptr;
   AVFrame * encoder_frame = nullptr;

@@ -17,10 +17,10 @@ public:
   ~EncodePipelineVAAPI();
   EncodePipelineVAAPI(std::vector<VkFrame> &input_frames, VkFrameCtx& vk_frame_ctx);
 
-  void EncodeFrame(uint32_t frame_index, bool idr, std::vector<uint8_t>& out) override;
+  void PushFrame(uint32_t frame_index, bool idr) override;
+
 private:
   AVBufferRef *hw_ctx = nullptr;
-  AVCodecContext *encoder_ctx = nullptr;
   std::vector<AVFrame *> mapped_frames;
   AVFilterGraph *filter_graph = nullptr;
   AVFilterContext *filter_in = nullptr;

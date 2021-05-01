@@ -222,17 +222,15 @@ void CEncoder::Run() {
         read_latest(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
         auto encode_start = std::chrono::steady_clock::now();
+        encode_pipeline->PushFrame(frame_info.image, m_scheduler.CheckIDRInsertion());
 
         static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
         auto pose = m_poseHistory->GetBestPoseMatch((const vr::HmdMatrix34_t&)frame_info.pose);
-        if (not pose)
-          continue;
-        m_poseSubmitIndex = pose->info.FrameIndex;
+        if (pose)
+          m_poseSubmitIndex = pose->info.FrameIndex;
 
-        encode_pipeline->EncodeFrame(frame_info.image, m_scheduler.CheckIDRInsertion(), encoded_data);
-        if (encoded_data.empty())
-          continue;
-
+        encoded_data.clear();
+        while (encode_pipeline->GetEncoded(encoded_data)) {}
         m_listener->SendVideo(encoded_data.data(), encoded_data.size(), m_poseSubmitIndex + Settings::Instance().m_trackingFrameOffset);
 
         auto encode_end = std::chrono::steady_clock::now();

@@ -27,54 +27,6 @@ const char * encoder(ALVR_CODEC codec)
   throw std::runtime_error("invalid codec " + std::to_string(codec));
 }
 
-bool should_keep_nal_h264(const uint8_t * header_start)
-{
-  uint8_t nal_type = (header_start[2] == 0 ? header_start[4] : header_start[3]) & 0x1F;
-    switch (nal_type)
-    {
-      case 6: // supplemental enhancement information
-      case 9: // access unit delimiter
-        return false;
-      default:
-        return true;
-    }
-}
-
-bool should_keep_nal_h265(const uint8_t * header_start)
-{
-  uint8_t nal_type = ((header_start[2] == 0 ? header_start[4] : header_start[3]) >> 1) & 0x3F;
-    switch (nal_type)
-    {
-      case 5: // supplemental enhancement information
-      case 9: // access unit delimiter
-        return false;
-      default:
-        return true;
-    }
-}
-
-void filter_NAL(const uint8_t* input, size_t input_size, std::vector<uint8_t> &out)
-{
-  if (input_size < 4)
-    return;
-  auto codec = Settings::Instance().m_codec;
-  std::array<uint8_t, 3> header = {{0, 0, 1}};
-  auto end = input + input_size;
-  auto header_start = input;
-  while (header_start != end)
-  {
-    auto next_header = std::search(header_start + 3, end, header.begin(), header.end());
-    if (next_header != end and next_header[-1] == 0)
-    {
-      next_header--;
-    }
-    if (codec == ALVR_CODEC_H264 and should_keep_nal_h264(header_start))
-      out.insert(out.end(), header_start, next_header);
-    if (codec == ALVR_CODEC_H265 and should_keep_nal_h265(header_start))
-      out.insert(out.end(), header_start, next_header);
-    header_start = next_header;
-  }
-}
 
 }
 
@@ -149,14 +101,13 @@ alvr::EncodePipelineSW::EncodePipelineSW(std::vector<VkFrame>& input_frames, VkF
 
 alvr::EncodePipelineSW::~EncodePipelineSW()
 {
-  avcodec_free_context(&encoder_ctx);
   for (auto &vk_frame: vk_frames)
     av_frame_free(&vk_frame);
   av_frame_free(&transferred_frame);
   av_frame_free(&encoder_frame);
 }
 
-void alvr::EncodePipelineSW::EncodeFrame(uint32_t frame_index, bool idr, std::vector<uint8_t>& out)
+void alvr::EncodePipelineSW::PushFrame(uint32_t frame_index, bool idr)
 {
   int err = av_hwframe_transfer_data(transferred_frame, vk_frames[frame_index], 0);
   if (err)
@@ -172,18 +123,5 @@ void alvr::EncodePipelineSW::EncodeFrame(uint32_t frame_index, bool idr, std::ve
 
   if ((err = avcodec_send_frame(encoder_ctx, encoder_frame)) < 0) {
     throw alvr::AvException("avcodec_send_frame failed:", err);
-  }
-
-  out.clear();
-  while (1) {
-    AVPacket * enc_pkt = av_packet_alloc();
-    err = avcodec_receive_packet(encoder_ctx, enc_pkt);
-    if (err == AVERROR(EAGAIN)) {
-      break;
-    } else if (err) {
-      throw std::runtime_error("failed to encode");
-    }
-    filter_NAL(enc_pkt->data, enc_pkt->size, out);
-    av_packet_free(&enc_pkt);
   }
 }

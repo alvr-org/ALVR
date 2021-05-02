@@ -11,6 +11,7 @@ mod translation;
 
 use alvr_common::{logging, prelude::*};
 use dashboard::Dashboard;
+use session::SessionProvider;
 use std::{
     rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},
@@ -70,12 +71,18 @@ fn root() -> Html {
 
     if let Some((session, translation_manager)) = &*maybe_data {
         html! {
-            <TransProvider context=TransContext { manager: translation_manager.clone() }>
-                <Dashboard session=Rc::clone(session) />
-            </TransProvider>
+            <SessionProvider initial_session=(**session).clone()>
+                <TransProvider context=TransContext { manager: translation_manager.clone() }>
+                    <Dashboard />
+                </TransProvider>
+            </SessionProvider>
         }
     } else {
-        html!(<h1 class="position-absolute top-50 start-50 translate-middle">{"Loading..."}</h1>)
+        html! {
+            <div class="flex h-screen justify-center items-center">
+                <i class="fas fa-spinner fa-spin text-2xl" />
+            </div>
+        }
     }
 }
 

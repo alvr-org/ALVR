@@ -3,6 +3,8 @@ use alvr_common::{
     prelude::*,
 };
 use settings_schema::SchemaNode;
+use yew::{html, Children, Properties};
+use yew_functional::{function_component, ContextProvider};
 
 pub async fn fetch_schema() -> StrResult<SchemaNode> {
     trace_err!(
@@ -48,4 +50,19 @@ pub async fn apply_session_settings_raw(settings: String) -> StrResult {
     )?;
 
     Ok(())
+}
+
+#[derive(Properties, Clone, PartialEq)]
+pub struct SessionProviderProps {
+    pub initial_session: SessionDesc,
+    pub children: Children,
+}
+
+#[function_component(SessionProvider)]
+pub fn session_provider(props: &SessionProviderProps) -> Html {
+    html! {
+        <ContextProvider<SessionDesc> context=props.initial_session.clone()>
+            {props.children.clone()}
+        </ContextProvider<SessionDesc>>
+    }
 }

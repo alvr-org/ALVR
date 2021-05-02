@@ -1,7 +1,4 @@
-import "bootstrap"
-import "bootstrap/dist/css/bootstrap.css"
 import "./style.css"
-// import "../resources/style.css"
 import { library, dom } from "@fortawesome/fontawesome-svg-core"
 import {
     faPlug,
@@ -12,6 +9,7 @@ import {
     faThList,
     faInfoCircle,
     faGlobe,
+    faSpinner,
     faPlus,
     faMinus,
     faTrash,
@@ -23,7 +21,7 @@ import {
 // Menu:
 library.add(faPlug, faChartBar, faThLarge, faCog, faHdd, faThList, faInfoCircle, faGlobe)
 // Other:
-library.add(faPlus, faMinus, faTrash, faQuestionCircle, faUndo)
+library.add(faSpinner, faPlus, faMinus, faTrash, faQuestionCircle, faUndo)
 dom.watch()
 
 // WASM entry point

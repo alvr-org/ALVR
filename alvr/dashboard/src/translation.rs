@@ -10,7 +10,7 @@ use futures::Stream;
 use std::{
     borrow::{Cow, ToOwned},
     cell::RefCell,
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     pin::Pin,
     rc::Rc,
     task::{self, Poll},
@@ -160,8 +160,15 @@ impl TranslationManager {
         Ok(Self { localization })
     }
 
-    pub fn get<'a>(&'a self, key: &'a str) -> Cow<'a, str> {
-        match self.localization.format_value_sync(key, None, &mut vec![]) {
+    pub fn get_with_args<'a, A: Into<Option<&'a FluentArgs<'a>>>>(
+        &'a self,
+        key: &'a str,
+        args: A,
+    ) -> Cow<'a, str> {
+        match self
+            .localization
+            .format_value_sync(key, args.into(), &mut vec![])
+        {
             Ok(Some(value)) => value,
             Ok(None) => key.to_owned().into(),
             Err(e) => {
@@ -169,6 +176,10 @@ impl TranslationManager {
                 key.to_owned().into()
             }
         }
+    }
+
+    pub fn get<'a>(&'a self, key: &'a str) -> Cow<'a, str> {
+        self.get_with_args(key, None)
     }
 
     pub fn get_fallible<'a>(&'a self, key: &'a str) -> StrResult<Cow<'a, str>> {
@@ -179,11 +190,41 @@ impl TranslationManager {
         }
     }
 
-    pub fn get_attribute(&self, key: &str, attribute: &str) -> String {
+    pub fn get_attributes(&self, key: &str) -> HashMap<String, String> {
         if let Ok(messages) = self.localization.format_messages_sync(
             &[L10nKey {
                 id: key.into(),
                 args: None,
+            }],
+            &mut vec![],
+        ) {
+            if let Some(Some(message)) = messages.get(0) {
+                return message
+                    .attributes
+                    .iter()
+                    .map(|attr| {
+                        (
+                            attr.name.as_ref().to_owned(),
+                            attr.value.as_ref().to_owned(),
+                        )
+                    })
+                    .collect();
+            }
+        }
+
+        HashMap::new()
+    }
+
+    pub fn get_attribute_with_args<'a, A: Into<Option<FluentArgs<'a>>>>(
+        &self,
+        key: &str,
+        attribute: &str,
+        args: A,
+    ) -> String {
+        if let Ok(messages) = self.localization.format_messages_sync(
+            &[L10nKey {
+                id: key.into(),
+                args: args.into(),
             }],
             &mut vec![],
         ) {
@@ -195,7 +236,12 @@ impl TranslationManager {
                 }
             }
         }
+
         attribute.to_owned()
+    }
+
+    pub fn get_attribute(&self, key: &str, attribute: &str) -> String {
+        self.get_attribute_with_args(key, attribute, None)
     }
 
     pub fn get_attribute_fallible(&self, key: &str, attribute: &str) -> StrResult<String> {
@@ -217,20 +263,6 @@ impl TranslationManager {
                 fmt_e!("Translation attribute not found: {}.{}", key, attribute)
             }
             Err(e) => fmt_e!("{}", e),
-        }
-    }
-
-    pub fn get_with_args<'a>(&'a self, key: &'a str, args: &'a FluentArgs) -> Cow<'a, str> {
-        match self
-            .localization
-            .format_value_sync(key, Some(&args), &mut vec![])
-        {
-            Ok(Some(value)) => value,
-            Ok(None) => key.to_owned().into(),
-            Err(e) => {
-                error!("{}", e);
-                key.to_owned().into()
-            }
         }
     }
 }
@@ -263,10 +295,7 @@ pub fn trans_provider(props: &TransProviderProps) -> Html {
 }
 
 pub fn use_translation() -> Rc<TranslationManager> {
-    use_context::<TransContext>()
-        .expect("Trans context")
-        .manager
-        .clone()
+    use_context::<TransContext>().unwrap().manager.clone()
 }
 
 pub fn use_trans(key: &str) -> String {
@@ -274,16 +303,8 @@ pub fn use_trans(key: &str) -> String {
     manager.get(key).as_ref().to_owned()
 }
 
-#[derive(Properties, Clone, PartialEq)]
-pub struct TransNameProps {
-    #[prop_or_default]
-    key: String,
-}
-
-#[function_component(Trans)]
-pub fn trans(props: &TransNameProps) -> Html {
-    html!({ use_trans(&props.key) })
-}
+#[derive(Clone, PartialEq)]
+struct SettingsTransContext(Vec<String>);
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct SettingsTransPathProviderProps {
@@ -291,21 +312,54 @@ pub struct SettingsTransPathProviderProps {
 }
 
 #[function_component(SettingsTransPathProvider)]
-pub fn settings_trans_path_provider(props: &TransProviderProps) -> Html {
+pub fn settings_trans_path_provider(props: &SettingsTransPathProviderProps) -> Html {
     html! {
-        <ContextProvider<Vec<String>> context=vec![]>
+        <ContextProvider<SettingsTransContext> context=SettingsTransContext(vec![])>
+            {props.children.clone()}
+        </ContextProvider<SettingsTransContext>>
+    }
+}
+
+#[derive(Properties, Clone, PartialEq)]
+pub struct SettingsTransNodeProps {
+    pub subkey: String,
+    pub children: Children,
+}
+
+#[function_component(SettingsTransNode)]
+pub fn settings_trans_node(props: &SettingsTransNodeProps) -> Html {
+    let mut context = (*use_context::<SettingsTransContext>().unwrap()).0.clone();
+    context.push(props.subkey.clone());
+
+    html! {
+        <ContextProvider<Vec<String>> context=context>
             {props.children.clone()}
         </ContextProvider<Vec<String>>>
     }
 }
 
-pub struct SettingsTrans {
-    name: String,
-    help: Option<String>,
-    notice: Option<String>,
+pub fn use_setting_name_trans(subkey: &str) -> String {
+    let manager = use_translation();
+
+    let mut route_segments = (*use_context::<SettingsTransContext>().unwrap()).0.clone();
+    route_segments.push(subkey.to_owned());
+
+    let route = route_segments.join("-");
+
+    if let Ok(name) = manager.get_fallible(&route) {
+        name.into()
+    } else {
+        subkey.into()
+    }
 }
 
-pub fn use_settings_trans(subkey: &str) -> SettingsTrans {
+pub struct SettingsTrans {
+    pub name: String,
+    pub help: Option<String>,
+    pub notice: Option<String>,
+}
+
+pub fn use_setting_trans(subkey: &str) -> SettingsTrans {
     let manager = use_translation();
 
     let mut route_segments = (*use_context::<Vec<String>>().expect("Trans context")).clone();

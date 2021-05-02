@@ -154,6 +154,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
         int dummyWidth = 1024;
         MediaFormat format = MediaFormat.createVideoFormat(mFormat, dummyWidth, dummyHeight);
         format.setString("KEY_MIME", mFormat);
+        format.setInteger("vendor.qti-ext-dec-low-latency.enable", 1); //Qualcomm low latency mode
 
         format.setInteger(MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE);
         format.setInteger(MediaFormat.KEY_PRIORITY, mPriority);

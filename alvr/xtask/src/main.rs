@@ -33,6 +33,7 @@ SUBCOMMANDS:
     clippy              Show warnings for selected clippy lints
 
 FLAGS:
+    --fetch             Update crates with "cargo update"
     --release           Optimized build without debug info. Used only for build subcommands
     --nightly           Bump versions to nightly and build. Used only for publish subcommand
     --oculus-quest      Oculus Quest build. Used only for build-client subcommand
@@ -46,6 +47,7 @@ ARGS:
 type BResult<T = ()> = Result<T, Box<dyn Error>>;
 
 struct Args {
+    fetch: bool,
     is_release: bool,
     version: Option<String>,
     is_nightly: bool,
@@ -473,6 +475,7 @@ fn main() {
         println!("{}", HELP_STR);
     } else if let Ok(Some(subcommand)) = args.subcommand() {
         let args_values = Args {
+            fetch: args.contains("--fetch"),
             is_release: args.contains("--release"),
             version: args.opt_value_from_str("--version").unwrap(),
             is_nightly: args.contains("--nightly"),
@@ -487,7 +490,7 @@ fn main() {
                 "build-server" => build_server(
                     args_values.is_release,
                     false,
-                    true,
+                    args_values.fetch,
                     args_values.new_dashboard,
                 ),
                 "build-client" => {

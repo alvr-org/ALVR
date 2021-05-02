@@ -2,7 +2,6 @@
 use settings_schema_legacy as settings_schema;
 
 use crate::{
-    audio,
     connection_utils::{self, ConnectionError},
     MAYBE_LEGACY_SENDER,
 };
@@ -38,6 +37,9 @@ use tokio::{
     task,
     time::{self, Instant},
 };
+
+#[cfg(target_os = "android")]
+use crate::audio;
 
 const INITIAL_MESSAGE: &str = "Searching for server...\n(open ALVR on your PC)";
 const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the internet";
@@ -476,22 +478,32 @@ async fn connection_pipeline(
     };
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
-        let game_audio_receiver = stream_socket.subscribe_to_stream().await?;
-        Box::pin(audio::play_audio_loop(
-            config_packet.game_audio_sample_rate,
-            desc.config,
-            game_audio_receiver,
-        ))
+        #[cfg(target_os = "android")]
+        {
+            let game_audio_receiver = stream_socket.subscribe_to_stream().await?;
+            Box::pin(audio::play_audio_loop(
+                config_packet.game_audio_sample_rate,
+                desc.config,
+                game_audio_receiver,
+            ))
+        }
+        #[cfg(not(target_os = "android"))]
+        Box::pin(future::pending())
     } else {
         Box::pin(future::pending())
     };
 
     let microphone_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.microphone {
-        let microphone_sender = stream_socket.request_stream().await?;
-        Box::pin(audio::record_audio_loop(
-            config.sample_rate,
-            microphone_sender,
-        ))
+        #[cfg(target_os = "android")]
+        {
+            let microphone_sender = stream_socket.request_stream().await?;
+            Box::pin(audio::record_audio_loop(
+                config.sample_rate,
+                microphone_sender,
+            ))
+        }
+        #[cfg(not(target_os = "android"))]
+        Box::pin(future::pending())
     } else {
         Box::pin(future::pending())
     };

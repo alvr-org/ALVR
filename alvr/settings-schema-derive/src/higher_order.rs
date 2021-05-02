@@ -55,30 +55,30 @@ pub fn schema(setting: &HigherOrderSetting) -> TResult<Entry> {
             let gui_ts = match gui {
                 None => quote!(None),
                 Some(ChoiceControlType::Dropdown) => {
-                    quote!(Some(settings_schema::ChoiceControlType::Dropdown))
+                    quote!(Some(ChoiceControlType::Dropdown))
                 }
                 Some(ChoiceControlType::ButtonGroup) => {
-                    quote!(Some(settings_schema::ChoiceControlType::ButtonGroup))
+                    quote!(Some(ChoiceControlType::ButtonGroup))
                 }
             };
 
-            quote!(settings_schema::HigherOrderType::Choice {
+            quote!(HigherOrderType::Choice {
                 default: #default.into(),
                 variants: vec![#(#variants.into()),*],
                 gui: #gui_ts,
             })
         }
         HigherOrderType::Boolean { default } => {
-            quote!(settings_schema::HigherOrderType::Boolean { default: #default })
+            quote!(HigherOrderType::Boolean { default: #default })
         }
-        HigherOrderType::Action => quote!(settings_schema::HigherOrderType::Action),
+        HigherOrderType::Action => quote!(HigherOrderType::Action),
     };
 
     let modifiers_ts = &setting.modifiers;
 
     Ok(Entry {
         key: key.clone(),
-        entry_type_ts: quote!(settings_schema::EntryType::HigherOrder {
+        entry_type_ts: quote!(EntryType::HigherOrder {
             data_type: #data_type_ts,
             modifiers: vec![#(#modifiers_ts.into()),*],
         }),

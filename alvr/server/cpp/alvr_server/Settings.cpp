@@ -5,6 +5,8 @@
 #include <string>
 #include <fstream>
 #include <streambuf>
+#include <filesystem>
+#include <cstdlib>
 #include "bindings.h"
 
 using namespace std;
@@ -29,7 +31,14 @@ void Settings::Load()
 {
 	try
 	{
+		#ifdef __linux__
+		auto env = std::getenv("XDG_CONFIG_HOME");
+		auto xdgConfig = env ? env : (std::string)std::getenv("HOME") + "/.config"s;
+		std::filesystem::create_directory(xdgConfig + "/alvr"s);
+		auto sessionFile = std::ifstream(xdgConfig + "/alvr/session.json"s);
+		#else
 		auto sessionFile = std::ifstream(g_alvrDir + (std::string)"/session.json");
+		#endif
 
 		auto json = std::string(
 			std::istreambuf_iterator<char>(sessionFile),

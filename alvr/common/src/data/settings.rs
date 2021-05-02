@@ -1,6 +1,8 @@
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use settings_schema::{
-    DictionaryDefault, OptionalDefault, SettingsSchema, Switch, SwitchDefault, VectorDefault,
+    DictionaryDefault, OptionalDefault, SchemaNode, SettingsSchema, Switch, SwitchDefault,
+    VectorDefault,
 };
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -397,21 +399,6 @@ pub enum LogLevel {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum LayoutDirection {
-    LeftToRight,
-    RightToLeft,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum LayoutDensity {
-    Small,
-    Middle,
-    Large,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize)]
 pub struct ExtraDesc {
     pub theme: Theme,
     pub client_dark_mode: bool,
@@ -428,8 +415,8 @@ pub struct ExtraDesc {
     pub language: Option<String>,
     #[schema(advanced)]
     pub show_setup_wizard: bool,
-    pub layout_direction: LayoutDirection,
-    pub layout_density: LayoutDensity,
+    #[schema(advanced)]
+    pub show_advanced: bool,
 
     pub test_vec: Vec<i32>,
     pub test_dict: Vec<(String, i32)>,
@@ -444,8 +431,8 @@ pub struct Settings {
     pub extra: ExtraDesc,
 }
 
-pub fn session_settings_default() -> SettingsDefault {
-    SettingsDefault {
+lazy_static! {
+    pub static ref DEFAULT_SESSION_SETTINGS: SettingsDefault = SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
             preferred_fps: 72.,
@@ -615,18 +602,13 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             exclude_notifications_without_id: false,
+
             language: OptionalDefault {
                 set: false,
                 content: "".into(),
             },
             show_setup_wizard: true,
-
-            layout_direction: LayoutDirectionDefault {
-                variant: LayoutDirectionDefaultVariant::LeftToRight,
-            },
-            layout_density: LayoutDensityDefault {
-                variant: LayoutDensityDefaultVariant::Middle,
-            },
+            show_advanced: false,
             test_vec: VectorDefault {
                 element: 0,
                 content: vec![0],
@@ -637,5 +619,6 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: vec![("".into(), 0)],
             },
         },
-    }
+    };
+    pub static ref SETTINGS_SCHEMA: SchemaNode = Settings::schema(DEFAULT_SESSION_SETTINGS.clone());
 }

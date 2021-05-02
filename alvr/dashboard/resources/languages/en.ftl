@@ -15,10 +15,11 @@ reset-prompt = Do you want to reset this setting to {$value}?
 # Dashboard
 
 connections = Connections
-    .new-clients = New clients
+    .devices = Devices
+    .no-devices = No devices
     .trust = Trust
-    .trusted-clients = Trusted clients
-    .add-client-manually = Add client manually
+    .new-device = New!
+    .trusted-device = Trusted
 
 statistics = Statistics
 

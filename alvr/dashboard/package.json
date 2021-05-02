@@ -7,24 +7,21 @@
     "scripts": {
         "start": "rimraf dist pkg && webpack serve --mode development"
     },
-    "dependencies": {
-        "bootstrap": "^5.0.0-beta3"
-    },
     "devDependencies": {
         "@fortawesome/fontawesome-svg-core": "1",
         "@fortawesome/free-solid-svg-icons": "5",
         "@wasm-tool/wasm-pack-plugin": "1",
-        "autoprefixer": "^10.2.5",
+        "autoprefixer": "10",
         "copy-webpack-plugin": "8",
         "css-loader": "5",
         "html-webpack-plugin": "5",
-        "postcss": "^8.2.10",
-        "postcss-loader": "^5.2.0",
-        "postcss-preset-env": "^6.7.0",
+        "postcss": "8",
+        "postcss-loader": "5",
+        "postcss-preset-env": "6",
         "prettier": "2",
         "rimraf": "3",
         "style-loader": "2",
-        "tailwindcss": "^2.1.1",
+        "tailwindcss": "2",
         "webpack": "5",
         "webpack-cli": "4",
         "webpack-dev-server": ">=3.1.11"

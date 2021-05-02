@@ -160,7 +160,7 @@ impl TranslationManager {
         Ok(Self { localization })
     }
 
-    pub fn get_with_args<'a, A: Into<Option<&'a FluentArgs<'a>>>>(
+    pub fn with_args<'a, A: Into<Option<&'a FluentArgs<'a>>>>(
         &'a self,
         key: &'a str,
         args: A,
@@ -179,10 +179,10 @@ impl TranslationManager {
     }
 
     pub fn get<'a>(&'a self, key: &'a str) -> Cow<'a, str> {
-        self.get_with_args(key, None)
+        self.with_args(key, None)
     }
 
-    pub fn get_fallible<'a>(&'a self, key: &'a str) -> StrResult<Cow<'a, str>> {
+    pub fn fallible<'a>(&'a self, key: &'a str) -> StrResult<Cow<'a, str>> {
         match self.localization.format_value_sync(key, None, &mut vec![]) {
             Ok(Some(value)) => Ok(value),
             Ok(None) => fmt_e!("Translation key not found: {}", key),
@@ -190,7 +190,7 @@ impl TranslationManager {
         }
     }
 
-    pub fn get_attributes(&self, key: &str) -> HashMap<String, String> {
+    pub fn attributes(&self, key: &str) -> HashMap<String, String> {
         if let Ok(messages) = self.localization.format_messages_sync(
             &[L10nKey {
                 id: key.into(),
@@ -215,7 +215,7 @@ impl TranslationManager {
         HashMap::new()
     }
 
-    pub fn get_attribute_with_args<'a, A: Into<Option<FluentArgs<'a>>>>(
+    pub fn attribute_with_args<'a, A: Into<Option<FluentArgs<'a>>>>(
         &self,
         key: &str,
         attribute: &str,
@@ -240,11 +240,11 @@ impl TranslationManager {
         attribute.to_owned()
     }
 
-    pub fn get_attribute(&self, key: &str, attribute: &str) -> String {
-        self.get_attribute_with_args(key, attribute, None)
+    pub fn attribute(&self, key: &str, attribute: &str) -> String {
+        self.attribute_with_args(key, attribute, None)
     }
 
-    pub fn get_attribute_fallible(&self, key: &str, attribute: &str) -> StrResult<String> {
+    pub fn attribute_fallible(&self, key: &str, attribute: &str) -> StrResult<String> {
         match self.localization.format_messages_sync(
             &[L10nKey {
                 id: key.into(),
@@ -346,7 +346,7 @@ pub fn use_setting_name_trans(subkey: &str) -> String {
 
     let route = route_segments.join("-");
 
-    if let Ok(name) = manager.get_fallible(&route) {
+    if let Ok(name) = manager.fallible(&route) {
         name.into()
     } else {
         subkey.into()
@@ -367,11 +367,11 @@ pub fn use_setting_trans(subkey: &str) -> SettingsTrans {
 
     let route = route_segments.join("-");
 
-    if let Ok(name) = manager.get_fallible(&route) {
+    if let Ok(name) = manager.fallible(&route) {
         SettingsTrans {
             name: name.as_ref().to_owned(),
-            help: manager.get_attribute_fallible(&route, "help").ok(),
-            notice: manager.get_attribute_fallible(&route, "notice").ok(),
+            help: manager.attribute_fallible(&route, "help").ok(),
+            notice: manager.attribute_fallible(&route, "notice").ok(),
         }
     } else {
         SettingsTrans {

@@ -2,6 +2,7 @@ use alvr_common::{
     data::{SessionDesc, SessionSettings},
     prelude::*,
 };
+use serde::Serialize;
 use settings_schema::SchemaNode;
 use yew::{html, Children, Properties};
 use yew_functional::{function_component, ContextProvider};
@@ -22,7 +23,7 @@ pub async fn fetch_session() -> StrResult<SessionDesc> {
     )
 }
 
-pub async fn apply_session_settings(settings: &SessionSettings) -> StrResult {
+async fn apply_session_settings_impl<T: Serialize>(settings: &T) -> StrResult {
     trace_err!(
         reqwest::Client::new()
             .post(format!(
@@ -37,19 +38,12 @@ pub async fn apply_session_settings(settings: &SessionSettings) -> StrResult {
     Ok(())
 }
 
-pub async fn apply_session_settings_raw(settings: String) -> StrResult {
-    trace_err!(
-        reqwest::Client::new()
-            .post(format!(
-                "{}/api/session/store-settings",
-                crate::get_base_url()
-            ))
-            .body(settings)
-            .send()
-            .await
-    )?;
+pub async fn apply_session_settings(settings: &SessionSettings) -> StrResult {
+    apply_session_settings_impl(settings).await
+}
 
-    Ok(())
+pub async fn apply_session_settings_raw(settings: &serde_json::Value) -> StrResult {
+    apply_session_settings_impl(settings).await
 }
 
 #[derive(Properties, Clone, PartialEq)]

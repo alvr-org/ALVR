@@ -1,4 +1,4 @@
-use super::settings_controls::{setting_container, SettingProps};
+use super::settings_controls::setting_container;
 use crate::{
     basic_components::{Button, ButtonType},
     session,
@@ -8,79 +8,94 @@ use alvr_common::{data::SessionDesc, logging, prelude::*};
 use serde_json as json;
 use settings_schema::{EntryData, EntryType, SchemaNode};
 use std::{collections::HashMap, rc::Rc};
-use yew::{html, Callback};
+use yew::{html, Callback, Properties};
 use yew_functional::{function_component, use_context, use_effect_with_deps, use_state};
 
+#[derive(Properties, Clone, PartialEq)]
+pub struct SettingsContentProps {
+    schema: Vec<(String, SchemaNode)>,
+}
+
 #[function_component(SettingsContent)]
-pub fn settings_content(
-    props: &SettingProps<Vec<(String, SchemaNode)>, HashMap<String, json::Value>>,
-) -> Html {
-    let session_settings = use_context::<SessionDesc>()
-        .unwrap()
-        .session_settings
-        .clone();
+pub fn settings_content(props: &SettingsContentProps) -> Html {
+    let session = use_context::<SessionDesc>().unwrap();
+    let session_settings = session.session_settings.clone();
     let advanced = session_settings.extra.show_advanced;
+    let session_map = json::from_value::<HashMap<String, json::Value>>(
+        json::to_value(&session_settings).unwrap(),
+    )
+    .unwrap();
+
+    let t = use_translation();
 
     struct TabData {
         name: String,
         schema: SchemaNode,
-        session: json::Value,
     }
 
     let (selected_tab_data, set_selected_tab_data) = {
         let (name, schema) = props.schema[0].clone();
-        let session = props.session.get(&name).unwrap().clone();
-        use_state(|| TabData {
-            name,
-            schema,
-            session,
-        })
+        use_state(|| TabData { name, schema })
     };
 
     let tabs = props.schema.iter().map(|(name, schema)| {
-        if let Some(session) = logging::show_err(trace_none!(props.session.get(name))).cloned() {
-            let class = if selected_tab_data.name == *name {
-                "py-2 px-6 bg-white rounded-t-lg hover:shadow-md
+        let class = if selected_tab_data.name == *name {
+            "py-2 px-6 bg-white rounded-t-lg hover:shadow-md
                 bg-gradient-to-tr from-blue-700 via-blue-700 to-blue-600
                 hover:bg-blue-800 text-white shadow-md"
-            } else {
-                "py-2 px-6 bg-white rounded-t-lg hover:shadow-md"
-            };
-
-            let on_click = {
-                let name = name.clone();
-                let schema = schema.clone();
-                let set_selected_tab_data = Rc::clone(&set_selected_tab_data);
-                Callback::from(move |_| {
-                    set_selected_tab_data(TabData {
-                        name: name.clone(),
-                        schema: schema.clone(),
-                        session: session.clone(),
-                    })
-                })
-            };
-
-            html! {
-                <li key=name.as_ref() class=class onclick=on_click>
-                    {use_trans(name)}
-                </li>
-            }
         } else {
-            html!()
+            "py-2 px-6 bg-white rounded-t-lg hover:shadow-md"
+        };
+
+        let on_click = {
+            let name = name.clone();
+            let schema = schema.clone();
+            let set_selected_tab_data = Rc::clone(&set_selected_tab_data);
+            Callback::from(move |_| {
+                set_selected_tab_data(TabData {
+                    name: name.clone(),
+                    schema: schema.clone(),
+                })
+            })
+        };
+
+        html! {
+            <li key=name.as_ref() class=class onclick=on_click>
+                {t.get(name)}
+            </li>
         }
     });
 
     let content = setting_container(
         selected_tab_data.schema.clone(),
-        selected_tab_data.session.clone(),
+        session_map[&selected_tab_data.name].clone(),
         {
             let selected_tab_data = selected_tab_data.clone();
-            let session = props.session.clone();
-            let set_session = props.set_session.clone();
+            let session = session_map.clone();
+            let theme = session_settings.extra.theme.variant.clone();
             Callback::from(move |child_session| {
                 let mut session = session.clone();
                 session.insert(selected_tab_data.name.clone(), child_session);
-                set_session.emit(session);
+
+                let theme = theme.clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    logging::show_err(
+                        async {
+                            let session_settings =
+                                trace_err!(json::from_value(trace_err!(json::to_value(session))?))?;
+                            trace_err!(session::apply_session_settings(&session_settings).await)?;
+
+                            if theme != session_settings.extra.theme.variant {
+                                trace_err_dbg!(trace_none!(web_sys::window())?
+                                    .location()
+                                    .reload())?;
+                            }
+
+                            StrResult::Ok(())
+                        }
+                        .await,
+                    );
+                })
             })
         },
         advanced,
@@ -110,7 +125,7 @@ pub fn settings_content(
                 }
                 on_click=advanced_on_click
             >
-                {use_translation().get_attribute("settings", "advanced-mode")}
+                {use_translation().attribute("settings", "advanced-mode")}
             </Button>
             <SettingsTransNode subkey=selected_tab_data.name.clone()>
                 <div class="h-fill overflow-y-auto">
@@ -124,8 +139,6 @@ pub fn settings_content(
 #[function_component(Settings)]
 pub fn settings() -> Html {
     let (maybe_schema, set_schema) = use_state(|| None);
-
-    let session = use_context::<SessionDesc>().unwrap();
 
     use_effect_with_deps(
         move |_| {
@@ -160,43 +173,10 @@ pub fn settings() -> Html {
         (),
     );
 
-    let set_session = {
-        let theme = session.session_settings.extra.theme.variant.clone();
-        Callback::from(move |session| {
-            let theme = theme.clone();
-            wasm_bindgen_futures::spawn_local(async move {
-                logging::show_err(
-                    async {
-                        let session_settings =
-                            trace_err!(json::from_value(trace_err!(json::to_value(session))?))?;
-                        trace_err!(session::apply_session_settings(&session_settings).await)?;
-
-                        if theme != session_settings.extra.theme.variant {
-                            trace_err_dbg!(trace_none!(web_sys::window())?.location().reload())?;
-                        }
-
-                        StrResult::Ok(())
-                    }
-                    .await,
-                );
-            })
-        })
-    };
-
     if let Some(schema) = &*maybe_schema {
-        if let Some(session_json) = logging::show_err(json::to_value(&session.session_settings)) {
-            if let Some(session) =
-                logging::show_err(json::from_value::<HashMap<_, _>>(session_json))
-            {
-                return html! {
-                    <SettingsContent schema=schema session=session set_session=set_session />
-                };
-            } else {
-                html!()
-            }
-        } else {
-            html!()
-        }
+        return html! {
+            <SettingsContent schema=schema />
+        };
     } else {
         html!("Loading...")
     }

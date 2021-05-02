@@ -9,13 +9,34 @@ use yew_functional::{function_component, use_context};
 #[function_component(Connections)]
 pub fn connections() -> Html {
     let session = use_context::<SessionDesc>().unwrap();
-    let t = use_translation().get_attributes("connections");
+    let t = use_translation().attributes("connections");
 
-    let new_clients = session
+    let new_client_cards = session
         .client_connections
         .iter()
-        .filter(|(_, v)| !v.trusted);
-    let trusted_clients = session.client_connections.iter().filter(|(_, v)| v.trusted);
+        .filter(|(_, v)| !v.trusted)
+        .map(|(hostname, connection)| {
+            html! {
+                <Client
+                    display_name=&connection.display_name
+                    hostname=hostname.to_string()
+                    trusted=false
+                />
+            }
+        });
+    let trusted_client_cards = session
+        .client_connections
+        .iter()
+        .filter(|(_, v)| v.trusted)
+        .map(|(hostname, connection)| {
+            html! {
+                <Client
+                    display_name=&connection.display_name
+                    hostname=hostname.to_string()
+                    trusted=true
+                />
+            }
+        });
 
     html! {
         <div>
@@ -28,33 +49,15 @@ pub fn connections() -> Html {
                         if !session.client_connections.is_empty() {
                             html! {
                                 <>
-                                    {
-                                        for new_clients.map(|(hostname, connection)| html! {
-                                            <Client
-                                                display_name=&connection.display_name
-                                                hostname=hostname.to_string()
-                                                trusted=false
-                                            />
-                                        })
-                                    }
-                                    {
-                                        for trusted_clients.map(|(hostname, connection)| html! {
-                                            <Client
-                                                display_name=&connection.display_name
-                                                hostname=hostname.to_string()
-                                                trusted=true
-                                            />
-                                        })
-                                    }
+                                    {for new_client_cards}
+                                    {for trusted_client_cards}
                                 </>
                             }
                         } else {
                             html! {
                                 <div
-                                    class=format!(
-                                        "flex-1 flex items-center justify-center py-4 px-1 {}",
-                                        "text-gray-500 font-semibold text-lg"
-                                    )
+                                    class="flex-1 flex items-center justify-center py-4 px-1
+                                    text-gray-500 font-semibold text-lg"
                                 >
                                     {t["no-devices"].clone()}
                                     // TODO: add link to troubleshooting page if no devices
@@ -85,7 +88,7 @@ pub fn client(
         trusted,
     }: &ClientProps,
 ) -> Html {
-    let t = use_translation().get_attributes("connections");
+    let t = use_translation().attributes("connections");
 
     let on_click = {
         info!("Hostname: {}", "hostname");

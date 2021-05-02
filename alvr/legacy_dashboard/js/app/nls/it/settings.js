@@ -88,6 +88,8 @@ define({
     "_root_headset_positionOffset_2.name": "z", // adv
     "_root_headset_force3dof.name": "Modalità 3DOF",
     "_root_headset_force3dof.description": "Forza solo 3 gradi di libertà per il visore (solo rotazione)",
+    "_root_headset_trackingRefOnly.name": "Tracking Reference Only",
+    "_root_headset_trackingRefOnly.description": "Disables all video encoding/streaming and treats the HMD as an openvr tracking reference instead of the main HMD. This can be used to make ALVR's HMD/controllers as FBT trackers, as alternative controllers for other HMDs, for debugging purposes, etc.",
     "_root_headset_controllers.name": "Controller",
     // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
     // "_root_headset_controllers_enabled.description": "",

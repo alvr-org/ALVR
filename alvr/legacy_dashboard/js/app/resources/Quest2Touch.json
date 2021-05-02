@@ -5,7 +5,8 @@
     "renderModelNameLeft": "oculus_quest2_controller_left",
     "renderModelNameRight": "oculus_quest2_controller_right",
     "serialNumber": "1WMHH000X00000_Controller",
-    "ctrlType": "oculus_touch",
+    "ctrlTypeLeft": "oculus_touch",
+	"ctrlTypeRight": "oculus_touch",
     "registeredDeviceType": "oculus/1WMHH000X00000_Controller",
     "inputProfilePath": "{oculus}/input/touch_profile.json"
 }

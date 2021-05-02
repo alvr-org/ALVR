@@ -225,7 +225,10 @@ pub struct ControllersDesc {
     pub serial_number: String,
 
     #[schema(advanced)]
-    pub ctrl_type: String,
+    pub ctrl_type_left: String,
+
+    #[schema(advanced)]
+    pub ctrl_type_right: String,
 
     #[schema(advanced)]
     pub registered_device_type: String,
@@ -291,6 +294,8 @@ pub struct HeadsetDesc {
     pub position_offset: [f32; 3],
 
     pub force_3dof: bool,
+
+    pub tracking_ref_only: bool,
 
     pub controllers: Switch<ControllersDesc>,
 
@@ -497,6 +502,7 @@ pub fn session_settings_default() -> SettingsDefault {
             tracking_frame_offset: 0,
             position_offset: [0., 0., 0.],
             force_3dof: false,
+            tracking_ref_only: false,
             controllers: SwitchDefault {
                 enabled: true,
                 content: ControllersDescDefault {
@@ -507,7 +513,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     render_model_name_left: "oculus_quest2_controller_left".into(),
                     render_model_name_right: "oculus_quest2_controller_right".into(),
                     serial_number: "1WMGH000XX0000_Controller".into(),
-                    ctrl_type: "oculus_touch".into(),
+                    ctrl_type_left: "oculus_touch".into(),
+                    ctrl_type_right: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
                     pose_time_offset: 0.01,

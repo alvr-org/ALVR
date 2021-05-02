@@ -1,0 +1,12 @@
+{
+    "trackingSystemName": "lighthouse",
+    "manufacturerName": "HTC",
+    "modelNumber": "Vive Tracker Pro MV",
+    "renderModelNameLeft": "{htc}vr_tracker_vive_1_0",
+    "renderModelNameRight": "{htc}vr_tracker_vive_1_0",
+    "serialNumber": "ALVR Remote Controller",
+    "ctrlTypeLeft": "vive_tracker_left_foot",
+	"ctrlTypeRight": "vive_tracker_right_foot",
+    "registeredDeviceType": "ALVR/tracker/",
+    "inputProfilePath": "{htc}/input/vive_tracker_profile.json"
+}

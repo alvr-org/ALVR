@@ -24,6 +24,14 @@ void fixInvalidHaptics(float hapticFeedback[3])
 	}
 }
 
+inline vr::ETrackedDeviceClass getControllerDeviceClass()
+{
+	// index == 8/9 == "HTCViveTracker.json"
+	if (Settings::Instance().m_controllerMode == 8 || Settings::Instance().m_controllerMode == 9)
+		return vr::TrackedDeviceClass_GenericTracker;
+	return vr::TrackedDeviceClass_Controller;
+}
+
 OvrHmd::OvrHmd()
 		: m_baseComponentsInitialized(false)
 		, m_streamComponentsInitialized(false)
@@ -32,23 +40,26 @@ OvrHmd::OvrHmd()
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 		m_poseHistory = std::make_shared<PoseHistory>();
 
+		m_deviceClass = Settings::Instance().m_TrackingRefOnly ?
+			vr::TrackedDeviceClass_TrackingReference :
+			vr::TrackedDeviceClass_HMD;
 		bool ret;
 		ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 			GetSerialNumber().c_str(),
-			vr::TrackedDeviceClass_HMD,
+			m_deviceClass,
 			this);
 
 		if (!Settings::Instance().m_disableController) {
 			m_leftController = std::make_shared<OvrController>(true, 0);
 			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 				m_leftController->GetSerialNumber().c_str(),
-				vr::TrackedDeviceClass_Controller,
+				getControllerDeviceClass(),
 				m_leftController.get());
 
 			m_rightController = std::make_shared<OvrController>(false, 1);
 			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 				m_rightController->GetSerialNumber().c_str(),
-				vr::TrackedDeviceClass_Controller,
+				getControllerDeviceClass(),
 				m_rightController.get());
 		}
 
@@ -146,46 +157,51 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 			m_baseComponentsInitialized = true;
 
 #ifdef _WIN32
-			m_D3DRender = std::make_shared<CD3DRender>();
-
-			// Use the same adapter as vrcompositor uses. If another adapter is used, vrcompositor says "failed to open shared texture" and then crashes.
-			// It seems vrcompositor selects always(?) first adapter. vrcompositor may use Intel iGPU when user sets it as primary adapter. I don't know what happens on laptop which support optimus.
-			// Prop_GraphicsAdapterLuid_Uint64 is only for redirect display and is ignored on direct mode driver. So we can't specify an adapter for vrcompositor.
-			// m_nAdapterIndex is set 0 on the launcher.
-			if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
+			if (IsHMD())
 			{
-				Error("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.\n", Settings::Instance().m_nAdapterIndex);
-				return vr::VRInitError_Driver_Failed;
-			}
+				m_D3DRender = std::make_shared<CD3DRender>();
 
-			int32_t nDisplayAdapterIndex;
-			if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, m_adapterName))
-			{
-				Error("Failed to get primary adapter info!\n");
-				return vr::VRInitError_Driver_Failed;
-			}
+				// Use the same adapter as vrcompositor uses. If another adapter is used, vrcompositor says "failed to open shared texture" and then crashes.
+				// It seems vrcompositor selects always(?) first adapter. vrcompositor may use Intel iGPU when user sets it as primary adapter. I don't know what happens on laptop which support optimus.
+				// Prop_GraphicsAdapterLuid_Uint64 is only for redirect display and is ignored on direct mode driver. So we can't specify an adapter for vrcompositor.
+				// m_nAdapterIndex is set 0 on the launcher.
+				if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex))
+				{
+					Error("Could not create graphics device for adapter %d.  Requires a minimum of two graphics cards.\n", Settings::Instance().m_nAdapterIndex);
+					return vr::VRInitError_Driver_Failed;
+				}
+
+				int32_t nDisplayAdapterIndex;
+				if (!m_D3DRender->GetAdapterInfo(&nDisplayAdapterIndex, m_adapterName))
+				{
+					Error("Failed to get primary adapter info!\n");
+					return vr::VRInitError_Driver_Failed;
+				}
 #endif
 
 #ifdef _WIN32
-			Info("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
-			Info("OSVer: %ls\n", GetWindowsOSVersion().c_str());
+				Info("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
+				Info("OSVer: %ls\n", GetWindowsOSVersion().c_str());
 
-			m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
-			m_VSyncThread->Start();
+				m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
+				m_VSyncThread->Start();
 #endif
 
-			m_displayComponent = std::make_shared<OvrDisplayComponent>();
+				m_displayComponent = std::make_shared<OvrDisplayComponent>();
 #ifdef _WIN32
-			m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_poseHistory);
+				m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_poseHistory);
 #endif
+			}
 
-
-			DriverReadyIdle();
+			DriverReadyIdle(IsHMD());
 		}
-
-		vr::VREvent_Data_t eventData;
-		eventData.ipd = { Settings::Instance().m_flIPD };
-		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_IpdChanged, eventData, 0);
+		
+		if (IsHMD())
+		{
+			vr::VREvent_Data_t eventData;
+			eventData.ipd = { Settings::Instance().m_flIPD };
+			vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_IpdChanged, eventData, 0);
+		}
 
 		return vr::VRInitError_None;
 	}
@@ -302,9 +318,9 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 				updateController(info);
 			}
 
-			if (std::fabs(info.ipd - Settings::Instance().m_flIPD) > 0.0001f
+			if (IsHMD() && (std::fabs(info.ipd - Settings::Instance().m_flIPD) > 0.0001f
 				|| std::fabs(info.eyeFov[0].left - Settings::Instance().m_eyeFov[0].left) > 0.1f
-				|| std::fabs(info.eyeFov[0].right - Settings::Instance().m_eyeFov[0].right) > 0.1f) {
+				|| std::fabs(info.eyeFov[0].right - Settings::Instance().m_eyeFov[0].right) > 0.1f)) {
 				updateIPDandFoV(info);
 			}
 
@@ -324,28 +340,31 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		m_Listener.reset(new ClientConnection([&]() { OnPoseUpdated(); }, [&]() { OnPacketLoss(); }));
 
 		// Spin up a separate thread to handle the overlapped encoding/transmit step.
+		if (IsHMD())
+		{
 #ifdef _WIN32
-		m_encoder = std::make_shared<CEncoder>();
-		try {
-			m_encoder->Initialize(m_D3DRender, m_Listener);
-		}
-		catch (Exception e) {
-			Error("Your GPU does not meet the requirements for video encoding. %s %s\n%s %s\n",
-				"If you get this error after changing some settings, you can revert them by",
-				"deleting the file \"session.json\" in the installation folder.",
-				"Failed to initialize CEncoder:", e.what());
-		}
-		m_encoder->Start();
+			m_encoder = std::make_shared<CEncoder>();
+			try {
+				m_encoder->Initialize(m_D3DRender, m_Listener);
+			}
+			catch (Exception e) {
+				Error("Your GPU does not meet the requirements for video encoding. %s %s\n%s %s\n",
+					"If you get this error after changing some settings, you can revert them by",
+					"deleting the file \"session.json\" in the installation folder.",
+					"Failed to initialize CEncoder:", e.what());
+			}
+			m_encoder->Start();
 
-		m_directModeComponent->SetEncoder(m_encoder);
+			m_directModeComponent->SetEncoder(m_encoder);
 
-		m_encoder->OnStreamStart();
+			m_encoder->OnStreamStart();
 #else
-		// This has to be set after initialization is done, because something in vrcompositor is setting it to 90Hz in the meantime
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().m_refreshRate));
-		m_encoder = std::make_shared<CEncoder>(m_Listener, m_poseHistory);
-		m_encoder->Start();
+			// This has to be set after initialization is done, because something in vrcompositor is setting it to 90Hz in the meantime
+			vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().m_refreshRate));
+			m_encoder = std::make_shared<CEncoder>(m_Listener, m_poseHistory);
+			m_encoder->Start();
 #endif
+		}
 
 		m_streamComponentsInitialized = true;
 	}
@@ -459,7 +478,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	}
 
 	void OvrHmd::OnPacketLoss() {
-		if (!m_streamComponentsInitialized) {
+		if (!m_streamComponentsInitialized || IsTrackingRef()) {
 			return;
 		}
 		Debug("OnPacketLoss()\n");
@@ -473,7 +492,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	}
 
 	void OvrHmd::RequestIDR() {
-		if (!m_streamComponentsInitialized) {
+		if (!m_streamComponentsInitialized || IsTrackingRef()) {
 			return;
 		}
 		Debug("RequestIDR()\n");

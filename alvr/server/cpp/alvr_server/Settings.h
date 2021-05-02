@@ -69,11 +69,12 @@ public:
 	std::string m_controllerRenderModelNameLeft;
 	std::string m_controllerRenderModelNameRight;
 	std::string m_controllerSerialNumber;
-	std::string m_controllerType;
+	std::string m_controllerTypeLeft;
+	std::string m_controllerTypeRight;
 	std::string mControllerRegisteredDeviceType;
 	std::string m_controllerInputProfilePath;
 	bool m_disableController;
-
+	
 	double m_controllerPoseOffset = 0;
 
 	float m_OffsetPos[3];
@@ -97,4 +98,7 @@ public:
 	bool m_captureComposedDDSTrigger = false;
 	
 	int m_controllerMode = 0;
+
+	bool m_TrackingRefOnly = false;
+	
 };

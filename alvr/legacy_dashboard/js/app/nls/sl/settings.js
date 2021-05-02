@@ -87,6 +87,8 @@ define({
     "_root_headset_positionOffset_2.name": "Z", // adv
     "_root_headset_force3dof.name": "Vsili 3 DoF",
     "_root_headset_force3dof.description": "Vsili 3 stopnje svobode (Tako kot Oculus Go/Ostale VR naprave brez prostorskega sledenja).",
+    "_root_headset_trackingRefOnly.name": "Tracking Reference Only",
+    "_root_headset_trackingRefOnly.description": "Disables all video encoding/streaming and treats the HMD as an openvr tracking reference instead of the main HMD. This can be used to make ALVR's HMD/controllers as FBT trackers, as alternative controllers for other HMDs, for debugging purposes, etc.",
     "_root_headset_controllers.name": "Krmilniki",
     // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
     "_root_headset_controllers_enabled.description": "Dovoli uporabo krmilnikov.",
@@ -106,8 +108,10 @@ define({
     "_root_headset_controllers_content_renderModelNameRight.description": "Model number of the emulated right hand controller", // adv
     "_root_headset_controllers_content_serialNumber.name": "Serial number", // adv
     "_root_headset_controllers_content_serialNumber.description": "Serial number of the emulated controller", // adv
-    "_root_headset_controllers_content_ctrlType.name": "Controler type", // adv
-    "_root_headset_controllers_content_ctrlType.description": "Type of the emulated controller", // adv
+    "_root_headset_controllers_content_ctrlTypeLeft.name": "Left Controler type", // adv
+    "_root_headset_controllers_content_ctrlTypeLeft.description": "Type of the emulated controller", // adv
+    "_root_headset_controllers_content_ctrlTypeRight.name": "Right Controler type", // adv
+    "_root_headset_controllers_content_ctrlTypeRight.description": "Type of the emulated controller", // adv
     "_root_headset_controllers_content_registeredDeviceType.name": "Registered device type", // adv
     "_root_headset_controllers_content_registeredDeviceType.description": "Registered device type of the emulated controller", // adv
     "_root_headset_controllers_content_inputProfilePath.name": "Input profile path", // adv

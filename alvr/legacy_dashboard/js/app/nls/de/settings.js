@@ -93,6 +93,8 @@ define({
     "_root_headset_positionOffset_2.name": "Z", // adv
     "_root_headset_force3dof.name": "Erzwinge 3Dof",
     "_root_headset_force3dof.description": "Erzwingt den '3 degrees of freedom' Modus (wie die Oculus Go)",
+    "_root_headset_trackingRefOnly.name": "Tracking Reference Only",
+    "_root_headset_trackingRefOnly.description": "Disables all video encoding/streaming and treats the HMD as an openvr tracking reference instead of the main HMD. This can be used to make ALVR's HMD/controllers as FBT trackers, as alternative controllers for other HMDs, for debugging purposes, etc.",
     "_root_headset_controllers.name": "Controller",
     // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
     "_root_headset_controllers_enabled.description": "Erlaube die Nutzung von Controllern",
@@ -112,8 +114,10 @@ define({
     "_root_headset_controllers_content_renderModelNameRight.description": "Modellnummer des rechten simulierten Controllers", // adv
     "_root_headset_controllers_content_serialNumber.name": "Seriennummer", // adv
     "_root_headset_controllers_content_serialNumber.description": "Seriennummer des simulierten Controllers", // adv
-    "_root_headset_controllers_content_ctrlType.name": "Controller", // adv
-    "_root_headset_controllers_content_ctrlType.description": "Art des simulierten Controllers", // adv
+    "_root_headset_controllers_content_ctrlTypeLeft.name": "Left Controller", // adv
+    "_root_headset_controllers_content_ctrlTypeLeft.description": "Art des simulierten Controllers", // adv
+    "_root_headset_controllers_content_ctrlTypeRight.name": "Right Controller", // adv
+    "_root_headset_controllers_content_ctrlTypeRight.description": "Art des simulierten Controllers", // adv
     "_root_headset_controllers_content_registeredDeviceType.name": "Registrierter Geräte-Typ", // adv
     "_root_headset_controllers_content_registeredDeviceType.description": "Registrierter Geräte-Typ des simulierten Controllers", // adv
     "_root_headset_controllers_content_inputProfilePath.name": "Eingangsprofilpfad", // adv

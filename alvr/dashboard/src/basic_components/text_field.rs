@@ -10,7 +10,7 @@ pub struct Props {
     #[prop_or_default]
     pub placeholder: String,
 
-    #[prop_or("".into())]
+    #[prop_or_default]
     pub label: String,
 
     pub on_focus_lost: Callback<String>,

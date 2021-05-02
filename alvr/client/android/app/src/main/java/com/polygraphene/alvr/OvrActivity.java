@@ -32,7 +32,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Semaphore;
 
 public class OvrActivity extends Activity {
     static {
@@ -234,18 +234,24 @@ public class OvrActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        final Object sync = new Object();
+        Semaphore sem = new Semaphore(1);
+        try {
+            sem.acquire();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         mRenderingHandler.post(() -> {
             mLoadingTexture.destroyTexture();
             Utils.logi(TAG, () -> "Destroying vrapi state.");
             destroyNative();
-            sync.notify();
+            sem.release();
         });
         mRenderingHandlerThread.quitSafely();
         try {
             // Wait until destroyNative() is finished. Can't use Thread.join here, because
             // the posted lambda might not run, so wait on an object instead.
-            sync.wait();
+            sem.acquire();
+            sem.release();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -313,15 +319,15 @@ public class OvrActivity extends Activity {
                 if (renderedFrameIndex != -1) {
                     renderNative(renderedFrameIndex);
                 }
-                
-                mRenderingHandler.removeCallbacks(mRenderRunnable);                
+
+                mRenderingHandler.removeCallbacks(mRenderRunnable);
                 mRenderingHandler.postDelayed(mRenderRunnable, 1);
             } else {
                 mLoadingTexture.drawMessage(mLoadingMessage);
 
                 renderLoadingNative();
                 mRenderingHandler.removeCallbacks(mRenderRunnable);
-                mRenderingHandler.postDelayed(mRenderRunnable, (long)(1f/ mRefreshRate));
+                mRenderingHandler.postDelayed(mRenderRunnable, (long) (1f / mRefreshRate));
             }
         }
     }

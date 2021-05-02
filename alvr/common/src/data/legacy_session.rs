@@ -11,8 +11,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub const SESSION_FNAME: &str = "session.json";
-
 // SessionSettings is similar to Settings but it contains every branch, even unused ones. This is
 // the settings representation that the UI uses.
 type SessionSettings = settings::SettingsDefault;
@@ -543,88 +541,100 @@ fn json_session_settings_to_settings(
     }
 }
 
-// SessionDesc wrapper that saves settings.json and session.json on destruction.
-pub struct SessionLock<'a> {
-    session_desc: &'a mut SessionDesc,
-    dir: &'a Path,
-}
+#[cfg(any(windows, target_os = "linux"))]
+mod manager {
+    use super::*;
+    use crate::commands;
 
-impl Deref for SessionLock<'_> {
-    type Target = SessionDesc;
-    fn deref(&self) -> &SessionDesc {
-        self.session_desc
+    // SessionDesc wrapper that saves settings.json and session.json on destruction.
+    pub struct SessionLock<'a> {
+        session_desc: &'a mut SessionDesc,
+        dir: &'a Path,
     }
-}
 
-impl DerefMut for SessionLock<'_> {
-    fn deref_mut(&mut self) -> &mut SessionDesc {
-        self.session_desc
+    impl Deref for SessionLock<'_> {
+        type Target = SessionDesc;
+        fn deref(&self) -> &SessionDesc {
+            self.session_desc
+        }
     }
-}
 
-impl Drop for SessionLock<'_> {
-    fn drop(&mut self) {
-        save_session(self.session_desc, &self.dir.join(SESSION_FNAME)).ok();
-        log_event(Event::SessionUpdated);
+    impl DerefMut for SessionLock<'_> {
+        fn deref_mut(&mut self) -> &mut SessionDesc {
+            self.session_desc
+        }
     }
-}
 
-pub struct SessionManager {
-    session_desc: SessionDesc,
-    dir: PathBuf,
-}
+    impl Drop for SessionLock<'_> {
+        fn drop(&mut self) {
+            save_session(
+                self.session_desc,
+                &commands::get_session_path(&self.dir).unwrap(),
+            )
+            .unwrap();
+            log_event(Event::SessionUpdated);
+        }
+    }
 
-impl SessionManager {
-    pub fn new(dir: &Path) -> Self {
-        let session_path = dir.join(SESSION_FNAME);
-        let session_desc = match fs::read_to_string(&session_path) {
-            Ok(session_string) => {
-                let json_value = json::from_str::<json::Value>(&session_string).unwrap();
-                match json::from_value(json_value.clone()) {
-                    Ok(session_desc) => session_desc,
-                    Err(_) => {
-                        fs::write(dir.join("session_old.json"), &session_string).ok();
-                        let mut session_desc = SessionDesc::default();
-                        match session_desc.merge_from_json(&json_value) {
-                            Ok(_) => info!(
-                                "{} {}",
-                                "Session extrapolated successfully.",
-                                "Old session.json is stored as session_old.json"
-                            ),
-                            Err(e) => error!(
-                                "{} {} {}",
-                                "Error while extrapolating session.",
-                                "Old session.json is stored as session_old.json.",
-                                e
-                            ),
+    pub struct SessionManager {
+        session_desc: SessionDesc,
+        dir: PathBuf,
+    }
+
+    impl SessionManager {
+        pub fn new(dir: &Path) -> Self {
+            let session_path = commands::get_session_path(&dir).unwrap();
+            let session_desc = match fs::read_to_string(&session_path) {
+                Ok(session_string) => {
+                    let json_value = json::from_str::<json::Value>(&session_string).unwrap();
+                    match json::from_value(json_value.clone()) {
+                        Ok(session_desc) => session_desc,
+                        Err(_) => {
+                            fs::write(dir.join("session_old.json"), &session_string).ok();
+                            let mut session_desc = SessionDesc::default();
+                            match session_desc.merge_from_json(&json_value) {
+                                Ok(_) => info!(
+                                    "{} {}",
+                                    "Session extrapolated successfully.",
+                                    "Old session.json is stored as session_old.json"
+                                ),
+                                Err(e) => error!(
+                                    "{} {} {}",
+                                    "Error while extrapolating session.",
+                                    "Old session.json is stored as session_old.json.",
+                                    e
+                                ),
+                            }
+                            // not essential, but useful to avoid duplicated errors
+                            save_session(&session_desc, &session_path).ok();
+
+                            session_desc
                         }
-                        // not essential, but useful to avoid duplicated errors
-                        save_session(&session_desc, &session_path).ok();
-
-                        session_desc
                     }
                 }
+                Err(_) => SessionDesc::default(),
+            };
+
+            Self {
+                session_desc,
+                dir: dir.to_owned(),
             }
-            Err(_) => SessionDesc::default(),
-        };
-
-        Self {
-            session_desc,
-            dir: dir.to_owned(),
         }
-    }
 
-    pub fn get(&self) -> &SessionDesc {
-        &self.session_desc
-    }
+        pub fn get(&self) -> &SessionDesc {
+            &self.session_desc
+        }
 
-    pub fn get_mut(&mut self) -> SessionLock {
-        SessionLock {
-            session_desc: &mut self.session_desc,
-            dir: &self.dir,
+        pub fn get_mut(&mut self) -> SessionLock {
+            SessionLock {
+                session_desc: &mut self.session_desc,
+                dir: &self.dir,
+            }
         }
     }
 }
+#[cfg(any(windows, target_os = "linux"))]
+pub use manager::*;
 
 #[cfg(test)]
 mod tests {

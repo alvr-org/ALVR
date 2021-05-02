@@ -9,8 +9,8 @@ android {
         applicationId "alvr.client"
         minSdkVersion 24
         targetSdkVersion 30
-        versionCode 54
-        versionName "15.1.2"
+        versionCode 56
+        versionName "15.2.1"
         externalNativeBuild {
             cmake {
                 cppFlags "-std=c++17 -fexceptions -frtti"
@@ -33,29 +33,29 @@ android {
                 abiFilters "arm64-v8a"
             }
         }
-        releaseNewDashboard {
-            signingConfig signingConfigs.debug
-            ndk {
-                abiFilters "arm64-v8a"
-            }
-            cargo {
-                profile = "release"
-                features {
-                    noDefaultBut("new_dashboard", "alvr_common/new_dashboard")
-                }
-            }
-        }
-        debugNewDashboard {
-            jniDebuggable = true
-            ndk {
-                abiFilters "arm64-v8a"
-            }
-            cargo {
-                features {
-                    noDefaultBut("new_dashboard", "alvr_common/new_dashboard")
-                }
-            }
-        }
+//        releaseNewDashboard {
+//            signingConfig signingConfigs.debug
+//            ndk {
+//                abiFilters "arm64-v8a"
+//            }
+//            cargo {
+//                profile = "release"
+//                features {
+//                    noDefaultBut("new_dashboard", "alvr_common/new_dashboard")
+//                }
+//            }
+//        }
+//        debugNewDashboard {
+//            jniDebuggable = true
+//            ndk {
+//                abiFilters "arm64-v8a"
+//            }
+//            cargo {
+//                features {
+//                    noDefaultBut("new_dashboard", "alvr_common/new_dashboard")
+//                }
+//            }
+//        }
     }
     externalNativeBuild {
         cmake {

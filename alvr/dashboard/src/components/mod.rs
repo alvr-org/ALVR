@@ -3,6 +3,7 @@ mod connections;
 mod installation;
 mod logs;
 mod settings;
+mod settings_controls;
 mod statistics;
 
 pub use about::*;

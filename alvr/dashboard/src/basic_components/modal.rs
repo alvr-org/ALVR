@@ -1,5 +1,5 @@
 use super::Button;
-use crate::translation::use_trans;
+use crate::translation::use_translation;
 use std::rc::Rc;
 use yew::{html, Callback, Children, Properties};
 use yew_functional::{function_component, use_state};
@@ -14,11 +14,11 @@ pub struct Props {
 
 #[function_component(Modal)]
 pub fn modal(props: &Props) -> Html {
+    let t = use_translation();
+
     let id = crate::get_id();
 
     let (do_not_ask_again, set_do_not_ask_again) = use_state(|| false);
-
-    let do_not_ask_again_string = use_trans("do-not-ask-again");
 
     let on_ok = {
         let on_ok = props.on_ok.clone();
@@ -56,7 +56,7 @@ pub fn modal(props: &Props) -> Html {
                                         })
                                     />
                                     <label for=id class="font-medium">
-                                        {do_not_ask_again_string}
+                                        {t.get("do-not-ask-again")}
                                     </label>
                                 </>
                             }
@@ -65,8 +65,8 @@ pub fn modal(props: &Props) -> Html {
                         }
                     }
                     <div class="flex-grow" />
-                    <Button on_click=props.on_cancel.clone()>{use_trans("cancel")}</Button>
-                    <Button on_click=on_ok>{use_trans("ok")}</Button>
+                    <Button on_click=props.on_cancel.clone()>{t.get("cancel")}</Button>
+                    <Button on_click=on_ok>{t.get("ok")}</Button>
                 </div>
             </div>
         </div>

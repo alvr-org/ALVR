@@ -2,7 +2,7 @@ use super::settings_controls::setting_container;
 use crate::{
     basic_components::{Button, ButtonType},
     session,
-    translation::{use_trans, use_translation, SettingsTransNode, SettingsTransPathProvider},
+    translation::{use_translation, SettingsTransNode, SettingsTransPathProvider},
 };
 use alvr_common::{data::SessionDesc, logging, prelude::*};
 use serde_json as json;

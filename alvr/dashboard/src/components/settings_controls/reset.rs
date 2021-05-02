@@ -62,9 +62,12 @@ pub fn reset<T: Display + Clone + PartialEq + 'static>(props: &Props<T>) -> Html
     };
 
     if *modal_visible {
-        let args = fluent::fluent_args! {
-            "value" => format!("<strong>{}</strong>", props.default)
-        };
+        let content = t.with_args(
+            "reset-prompt",
+            fluent::fluent_args! {
+                "value" => format!("<strong>{}</strong>", props.default)
+            },
+        );
 
         html! {
             <>
@@ -74,7 +77,7 @@ pub fn reset<T: Display + Clone + PartialEq + 'static>(props: &Props<T>) -> Html
                     on_ok=on_ok
                     on_cancel=Callback::from(move |_| set_modal_visible(false))
                 >
-                    <RawHtml html=t.with_args("reset-prompt", &args).as_ref() />
+                    <RawHtml html=content />
                 </Modal>
             </>
         }

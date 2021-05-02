@@ -9,7 +9,7 @@ use yew_functional::{function_component, use_context};
 #[function_component(Connections)]
 pub fn connections() -> Html {
     let session = use_context::<SessionDesc>().unwrap();
-    let t = use_translation().attributes("connections");
+    let t = use_translation();
 
     let new_client_cards = session
         .client_connections
@@ -42,7 +42,7 @@ pub fn connections() -> Html {
         <div>
             <section class="px-4 py-3">
                 <div class="py-2 font-semibold text-gray-600 text-xl">
-                    {t["devices"].clone()}
+                    {t.attribute("connections", "devices")}
                 </div>
                 <div class="flex gap-8 flex-wrap py-4">
                     {
@@ -59,7 +59,7 @@ pub fn connections() -> Html {
                                     class="flex-1 flex items-center justify-center py-4 px-1
                                     text-gray-500 font-semibold text-lg"
                                 >
-                                    {t["no-devices"].clone()}
+                                    {t.attribute("connections", "no-devices")}
                                     // TODO: add link to troubleshooting page if no devices
                                 </div>
                             }
@@ -88,7 +88,7 @@ pub fn client(
         trusted,
     }: &ClientProps,
 ) -> Html {
-    let t = use_translation().attributes("connections");
+    let t = use_translation();
 
     let on_click = {
         info!("Hostname: {}", "hostname");
@@ -141,9 +141,9 @@ pub fn client(
             <h6 class="uppercase text-xs text-gray-400 font-medium">
                 {
                     if *trusted {
-                        html! {t["trusted-device"].clone()}
+                        html! {t.attribute("connections", "trusted-device")}
                     } else {
-                        html! {t["new-device"].clone()}
+                        html! {t.attribute("connections", "new-device")}
                     }
                 }
             </h6>
@@ -183,7 +183,7 @@ pub fn client(
                                 on_click=on_trust_click
                                 button_type=ButtonType::Primary
                             >
-                                {t["trust"].clone()}
+                                {t.attribute("connections", "trust")}
                             </Button>
                         }
                     }

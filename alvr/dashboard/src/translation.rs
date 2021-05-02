@@ -1,71 +1,99 @@
 use alvr_common::prelude::*;
 use fluent::{FluentArgs, FluentBundle, FluentResource};
-use fluent_fallback::{
-    generator::{BundleGenerator, FluentBundleResult},
-    types::L10nKey,
-    Localization,
-};
 use fluent_langneg::NegotiationStrategy;
-use futures::Stream;
-use std::{
-    borrow::{Cow, ToOwned},
-    cell::RefCell,
-    collections::{HashMap, VecDeque},
-    pin::Pin,
-    rc::Rc,
-    task::{self, Poll},
-};
+use fluent_syntax::ast::Pattern;
+use std::{borrow::ToOwned, rc::Rc};
 use unic_langid::LanguageIdentifier;
 use yew::{html, Children, Properties};
 use yew_functional::{function_component, use_context, ContextProvider};
 
-struct TranslationSourceStream {
-    prefetched_bundle_results: VecDeque<FluentBundleResult<FluentResource>>,
-}
-
-impl Iterator for TranslationSourceStream {
-    type Item = FluentBundleResult<FluentResource>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.prefetched_bundle_results.pop_front()
-    }
-}
-
-// Unused, required by fluent
-impl Stream for TranslationSourceStream {
-    type Item = FluentBundleResult<FluentResource>;
-
-    fn poll_next(self: Pin<&mut Self>, _: &mut task::Context<'_>) -> Poll<Option<Self::Item>> {
-        unreachable!()
-    }
-}
-
-struct TranslationSources {
-    prefetched_bundle_results: RefCell<Vec<FluentBundleResult<FluentResource>>>,
-}
-
-impl BundleGenerator for TranslationSources {
-    type Resource = FluentResource;
-    type Iter = TranslationSourceStream;
-    type Stream = TranslationSourceStream;
-
-    fn bundles_iter(
-        &self,
-        _: <Vec<LanguageIdentifier> as IntoIterator>::IntoIter,
-        _: Vec<String>,
-    ) -> TranslationSourceStream {
-        TranslationSourceStream {
-            prefetched_bundle_results: self
-                .prefetched_bundle_results
-                .borrow_mut()
-                .drain(..)
-                .collect(),
+async fn get_bundle(locale: &LanguageIdentifier) -> StrResult<FluentBundle<FluentResource>> {
+    let resource_future = {
+        let locale = locale.clone();
+        async move {
+            trace_err!(
+                trace_err!(
+                    reqwest::get(format!(
+                        "{}/languages/{}.ftl",
+                        crate::get_base_url(),
+                        locale
+                    ))
+                    .await
+                )?
+                .text()
+                .await
+            )
         }
+    };
+
+    let resource = match resource_future.await {
+        Ok(resource) => resource,
+        Err(e) => return fmt_e!("Failed to load \"{}\" language resource: {}", locale, e),
+    };
+
+    let resource = match FluentResource::try_new(resource) {
+        Ok(resource) => resource,
+        Err((_, errors)) => return fmt_e!("Failed to parse language resource: {:#?}", errors),
+    };
+
+    let mut bundle = FluentBundle::new(vec![locale.clone()]);
+    bundle.add_resource_overriding(resource);
+
+    Ok(bundle)
+}
+
+fn format_pattern(
+    bundle: &FluentBundle<FluentResource>,
+    pattern: &Pattern<&str>,
+    args: Option<&FluentArgs>,
+) -> String {
+    let mut errors = vec![];
+    let value = bundle.format_pattern(pattern, args, &mut errors);
+    if errors.is_empty() {
+        value.as_ref().to_owned()
+    } else {
+        error!(
+            "Translation error: pattern: \"{:?}\", errors: {:#?}",
+            pattern, errors
+        );
+        "ERROR: see log".to_string()
     }
+}
+
+fn get_message_value(
+    bundle: &FluentBundle<FluentResource>,
+    message_id: &str,
+    args: Option<&FluentArgs>,
+) -> Option<String> {
+    bundle
+        .get_message(message_id)
+        .map(|message| {
+            message
+                .value()
+                .map(|pattern| format_pattern(bundle, pattern, args))
+        })
+        .flatten()
+}
+
+fn get_attribute(
+    bundle: &FluentBundle<FluentResource>,
+    message_id: &str,
+    attribute_id: &str,
+    args: Option<&FluentArgs>,
+) -> Option<String> {
+    bundle
+        .get_message(message_id)
+        .map(|message| {
+            message
+                .get_attribute(attribute_id)
+                .map(|attribute| format_pattern(bundle, attribute.value(), args))
+        })
+        .flatten()
 }
 
 pub struct TranslationManager {
-    localization: Localization<TranslationSources, Vec<LanguageIdentifier>>,
+    preferred_bundle: FluentBundle<FluentResource>,
+    fallback_bundle: FluentBundle<FluentResource>,
 }
 
 impl TranslationManager {
@@ -91,179 +119,57 @@ impl TranslationManager {
             available_languages.push(lang_code);
         }
 
-        let default_code = trace_err!("en".parse())?;
+        let fallback_language = trace_err!("en".parse::<LanguageIdentifier>())?;
 
-        let resolved_locales: Vec<&LanguageIdentifier> = fluent_langneg::negotiate_languages(
+        let resolved_locales = fluent_langneg::negotiate_languages(
             &[requested_language],
             &available_languages,
-            Some(&default_code),
+            Some(&fallback_language),
             NegotiationStrategy::Filtering,
         );
 
-        let mut bundle_results = vec![];
+        let preferred_bundle = get_bundle(trace_none!(resolved_locales.first())?).await?;
+        let fallback_bundle = get_bundle(trace_none!(resolved_locales.last())?).await?;
 
-        for locale in resolved_locales.iter().cloned() {
-            let resource_future = {
-                let locale = locale.clone();
-                async move {
-                    trace_err!(
-                        trace_err!(
-                            reqwest::get(format!(
-                                "{}/languages/{}.ftl",
-                                crate::get_base_url(),
-                                locale
-                            ))
-                            .await
-                        )?
-                        .text()
-                        .await
-                    )
-                }
-            };
-
-            let resource = match resource_future.await {
-                Ok(resource) => resource,
-                Err(e) => {
-                    error!("Failed to load \"{}\" language resource: {}", locale, e);
-                    continue;
-                }
-            };
-
-            let mut bundle = FluentBundle::new(vec![locale.clone()]);
-
-            let resource = match FluentResource::try_new(resource) {
-                Ok(resource) => resource,
-                Err((_, errors)) => {
-                    bundle_results
-                        .push(Err((bundle, errors.into_iter().map(Into::into).collect())));
-                    continue;
-                }
-            };
-
-            if let Err(errors) = bundle.add_resource(resource) {
-                bundle_results.push(Err((bundle, errors.into_iter().map(Into::into).collect())));
-                continue;
-            }
-
-            bundle_results.push(Ok(bundle));
-        }
-
-        let localization = Localization::with_env(
-            vec![],
-            true,
-            vec![],
-            TranslationSources {
-                prefetched_bundle_results: RefCell::new(bundle_results),
-            },
-        );
-
-        Ok(Self { localization })
+        Ok(TranslationManager {
+            preferred_bundle,
+            fallback_bundle,
+        })
     }
 
-    pub fn with_args<'a, A: Into<Option<&'a FluentArgs<'a>>>>(
-        &'a self,
-        key: &'a str,
-        args: A,
-    ) -> Cow<'a, str> {
-        match self
-            .localization
-            .format_value_sync(key, args.into(), &mut vec![])
-        {
-            Ok(Some(value)) => value,
-            Ok(None) => key.to_owned().into(),
-            Err(e) => {
-                error!("{}", e);
-                key.to_owned().into()
-            }
-        }
+    pub fn fallible_with_args(&self, key: &str, args: Option<&FluentArgs>) -> Option<String> {
+        get_message_value(&self.preferred_bundle, key, args)
+            .or_else(|| get_message_value(&self.fallback_bundle, key, args))
     }
 
-    pub fn get<'a>(&'a self, key: &'a str) -> Cow<'a, str> {
-        self.with_args(key, None)
+    pub fn with_args(&self, key: &str, args: FluentArgs) -> String {
+        self.fallible_with_args(key, Some(&args))
+            .unwrap_or_else(|| key.to_owned())
     }
 
-    pub fn fallible<'a>(&'a self, key: &'a str) -> StrResult<Cow<'a, str>> {
-        match self.localization.format_value_sync(key, None, &mut vec![]) {
-            Ok(Some(value)) => Ok(value),
-            Ok(None) => fmt_e!("Translation key not found: {}", key),
-            Err(e) => fmt_e!("{}", e),
-        }
+    pub fn get(&self, key: &str) -> String {
+        self.fallible_with_args(key, None)
+            .unwrap_or_else(|| key.to_owned())
     }
 
-    pub fn attributes(&self, key: &str) -> HashMap<String, String> {
-        if let Ok(messages) = self.localization.format_messages_sync(
-            &[L10nKey {
-                id: key.into(),
-                args: None,
-            }],
-            &mut vec![],
-        ) {
-            if let Some(Some(message)) = messages.get(0) {
-                return message
-                    .attributes
-                    .iter()
-                    .map(|attr| {
-                        (
-                            attr.name.as_ref().to_owned(),
-                            attr.value.as_ref().to_owned(),
-                        )
-                    })
-                    .collect();
-            }
-        }
-
-        HashMap::new()
-    }
-
-    pub fn attribute_with_args<'a, A: Into<Option<FluentArgs<'a>>>>(
+    pub fn attribute_fallible_with_args(
         &self,
         key: &str,
-        attribute: &str,
-        args: A,
-    ) -> String {
-        if let Ok(messages) = self.localization.format_messages_sync(
-            &[L10nKey {
-                id: key.into(),
-                args: args.into(),
-            }],
-            &mut vec![],
-        ) {
-            if let Some(Some(message)) = messages.get(0) {
-                for attr in &message.attributes {
-                    if attr.name == attribute {
-                        return attr.value.as_ref().to_owned();
-                    }
-                }
-            }
-        }
-
-        attribute.to_owned()
+        attribute_key: &str,
+        args: Option<&FluentArgs>,
+    ) -> Option<String> {
+        get_attribute(&self.preferred_bundle, key, attribute_key, args)
+            .or_else(|| get_attribute(&self.fallback_bundle, key, attribute_key, args))
     }
 
-    pub fn attribute(&self, key: &str, attribute: &str) -> String {
-        self.attribute_with_args(key, attribute, None)
+    pub fn attribute_with_args(&self, key: &str, attribute_key: &str, args: FluentArgs) -> String {
+        self.attribute_fallible_with_args(key, attribute_key, Some(&args))
+            .unwrap_or_else(|| attribute_key.to_owned())
     }
 
-    pub fn attribute_fallible(&self, key: &str, attribute: &str) -> StrResult<String> {
-        match self.localization.format_messages_sync(
-            &[L10nKey {
-                id: key.into(),
-                args: None,
-            }],
-            &mut vec![],
-        ) {
-            Ok(messages) => {
-                if let Some(Some(message)) = messages.get(0) {
-                    for attr in &message.attributes {
-                        if attr.name == attribute {
-                            return Ok(attr.value.as_ref().to_owned());
-                        }
-                    }
-                }
-                fmt_e!("Translation attribute not found: {}.{}", key, attribute)
-            }
-            Err(e) => fmt_e!("{}", e),
-        }
+    pub fn attribute(&self, key: &str, attribute_key: &str) -> String {
+        self.attribute_fallible_with_args(key, attribute_key, None)
+            .unwrap_or_else(|| attribute_key.to_owned())
     }
 }
 
@@ -295,12 +201,7 @@ pub fn trans_provider(props: &TransProviderProps) -> Html {
 }
 
 pub fn use_translation() -> Rc<TranslationManager> {
-    use_context::<TransContext>().unwrap().manager.clone()
-}
-
-pub fn use_trans(key: &str) -> String {
-    let manager = use_translation();
-    manager.get(key).as_ref().to_owned()
+    Rc::clone(&use_context::<TransContext>().unwrap().manager)
 }
 
 #[derive(Clone, PartialEq)]
@@ -346,8 +247,8 @@ pub fn use_setting_name_trans(subkey: &str) -> String {
 
     let route = route_segments.join("-");
 
-    if let Ok(name) = manager.fallible(&route) {
-        name.into()
+    if let Some(name) = manager.fallible_with_args(&route, None) {
+        name
     } else {
         subkey.into()
     }
@@ -367,11 +268,11 @@ pub fn use_setting_trans(subkey: &str) -> SettingsTrans {
 
     let route = route_segments.join("-");
 
-    if let Ok(name) = manager.fallible(&route) {
+    if let Some(name) = manager.fallible_with_args(&route, None) {
         SettingsTrans {
-            name: name.as_ref().to_owned(),
-            help: manager.attribute_fallible(&route, "help").ok(),
-            notice: manager.attribute_fallible(&route, "notice").ok(),
+            name,
+            help: manager.attribute_fallible_with_args(&route, "help", None),
+            notice: manager.attribute_fallible_with_args(&route, "notice", None),
         }
     } else {
         SettingsTrans {

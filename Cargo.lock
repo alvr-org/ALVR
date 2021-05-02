@@ -158,8 +158,8 @@ dependencies = [
  "alvr_common",
  "async-trait",
  "fluent",
- "fluent-fallback",
  "fluent-langneg",
+ "fluent-syntax 0.11.0",
  "futures",
  "js-sys",
  "log",
@@ -632,12 +632,6 @@ name = "chunked_transfer"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fff857943da45f546682664a79488be82e69e43c1a7a2307679ab9afb3a66d2e"
-
-[[package]]
-name = "chunky-vec"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb7bdea464ae038f09197b82430b921c53619fc8d2bcaf7b151013b3ca008017"
 
 [[package]]
 name = "clang-sys"
@@ -1304,20 +1298,6 @@ dependencies = [
  "ouroboros",
  "rustc-hash",
  "smallvec",
- "unic-langid",
-]
-
-[[package]]
-name = "fluent-fallback"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68ccc627fb3a16ae0830f17c68a52539844b5b37a7a498c3969cc911e6f583c3"
-dependencies = [
- "async-trait",
- "chunky-vec",
- "fluent-bundle 0.15.1",
- "futures",
- "once_cell",
  "unic-langid",
 ]
 

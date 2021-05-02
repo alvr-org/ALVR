@@ -5,18 +5,12 @@ use crate::{
     components::{About, Connections, Installation, Logs, Settings, Statistics},
     translation::use_trans,
 };
-use alvr_common::{data::SessionDesc, prelude::*};
 use std::rc::Rc;
 use yew::{html, Callback, Properties};
 use yew_functional::{function_component, use_state};
 
-#[derive(Properties, Clone, PartialEq)]
-pub struct DashboardProps {
-    pub session: Rc<SessionDesc>,
-}
-
 #[function_component(Dashboard)]
-pub fn dashboard(props: &DashboardProps) -> Html {
+pub fn dashboard() -> Html {
     let (selected_tab, set_selected_tab) = use_state(|| "connections".to_owned());
 
     let on_tab_click = Callback::from(move |name| set_selected_tab(name));
@@ -87,22 +81,22 @@ pub fn dashboard(props: &DashboardProps) -> Html {
                 </aside>
                 <div class="flex-grow h-full overflow-y-auto">
                     <div hidden=*selected_tab != "connections">
-                        <Connections session=Rc::clone(&props.session) />
+                        <Connections />
                     </div>
                     <div hidden=*selected_tab != "statistics">
                         <Statistics />
                     </div>
                     <div hidden=*selected_tab != "settings">
-                        <Settings session=Rc::clone(&props.session) />
+                        <Settings />
                     </div>
                     <div hidden=*selected_tab != "installation">
-                        <Installation session=Rc::clone(&props.session)/>
+                        <Installation />
                     </div>
                     <div hidden=*selected_tab != "logs">
                         <Logs />
                     </div>
                     <div hidden=*selected_tab != "about">
-                        <About session=Rc::clone(&props.session) />
+                        <About />
                     </div>
                     <div hidden=*selected_tab != "test">
                         <Test />

@@ -1,4 +1,3 @@
-use crate::basic_components::IconButton;
 use yew::{html, Properties};
 use yew_functional::function_component;
 

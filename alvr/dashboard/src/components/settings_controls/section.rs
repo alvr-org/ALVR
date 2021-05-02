@@ -1,14 +1,11 @@
 use super::{Help, HigherOrder, Notice, SettingProps};
-use crate::{
-    components::use_advanced,
-    translation::{use_setting_trans, SettingsTrans},
-};
-use alvr_common::prelude::*;
+use crate::translation::{use_setting_trans, SettingsTrans};
+use alvr_common::data::SessionDesc;
 use serde_json as json;
 use settings_schema::EntryType;
 use std::collections::HashMap;
 use yew::{html, Callback, Html, Properties};
-use yew_functional::function_component;
+use yew_functional::{function_component, use_context};
 
 #[derive(Properties, Clone, PartialEq)]
 struct EntryProps {
@@ -66,7 +63,11 @@ fn entry(props: &EntryProps) -> Html {
 pub fn section(
     props: &SettingProps<Vec<(String, EntryType)>, HashMap<String, json::Value>>,
 ) -> Html {
-    let advanced = use_advanced();
+    let advanced = use_context::<SessionDesc>()
+        .unwrap()
+        .session_settings
+        .extra
+        .show_advanced;
 
     let entries = props.schema.iter().filter_map(|(name, schema)| {
         let maybe_control;

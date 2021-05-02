@@ -1,51 +1,35 @@
 use crate::{
-    basic_components::{
-        Button, ButtonGroup, ButtonType, IconButton, Select, Slider, Switch, TextField, UpDown,
-    },
-    translation::use_trans,
+    basic_components::{Button, ButtonType, IconButton},
+    translation::use_translation,
 };
-use alvr_common::data::{ClientConnectionDesc, SessionDesc};
-use std::{collections::HashMap, rc::Rc};
+use alvr_common::{data::SessionDesc, prelude::*};
 use yew::{html, Callback, Properties};
-use yew_functional::function_component;
-
-#[derive(Properties, Clone, PartialEq)]
-pub struct Props {
-    pub session: Rc<SessionDesc>,
-}
+use yew_functional::{function_component, use_context};
 
 #[function_component(Connections)]
-pub fn connections(props: &Props) -> Html {
-    // let on_click = Callback::from(move |_| ());
-    let session = props.session.clone();
-    for (key, value) in &props.session.client_connections {
-        log::info!("{:?}", key);
-    }
-    let new_clients: &HashMap<&String, &ClientConnectionDesc> = &props
-        .session
+pub fn connections() -> Html {
+    let session = use_context::<SessionDesc>().unwrap();
+    let t = use_translation().get_attributes("connections");
+
+    let new_clients = session
         .client_connections
         .iter()
-        .filter(|(k, v)| v.trusted == false)
-        .collect();
-    let trusted_clients: &HashMap<&String, &ClientConnectionDesc> = &props
-        .session
-        .client_connections
-        .iter()
-        .filter(|(k, v)| v.trusted == true)
-        .collect();
+        .filter(|(_, v)| !v.trusted);
+    let trusted_clients = session.client_connections.iter().filter(|(_, v)| v.trusted);
+
     html! {
         <div>
             <section class="px-4 py-3">
                 <div class="py-2 font-semibold text-gray-600 text-xl">
-                    {"Devices"}
+                    {t["devices"].clone()}
                 </div>
                 <div class="flex gap-8 flex-wrap py-4">
                     {
-                        if new_clients.len() > 0 || trusted_clients.len() > 0 {
+                        if !session.client_connections.is_empty() {
                             html! {
                                 <>
                                     {
-                                        for new_clients.iter().map(|(hostname, connection)| html! {
+                                        for new_clients.map(|(hostname, connection)| html! {
                                             <Client
                                                 display_name=&connection.display_name
                                                 hostname=hostname.to_string()
@@ -54,7 +38,7 @@ pub fn connections(props: &Props) -> Html {
                                         })
                                     }
                                     {
-                                        for trusted_clients.iter().map(|(hostname, connection)| html! {
+                                        for trusted_clients.map(|(hostname, connection)| html! {
                                             <Client
                                                 display_name=&connection.display_name
                                                 hostname=hostname.to_string()
@@ -72,7 +56,7 @@ pub fn connections(props: &Props) -> Html {
                                         "text-gray-500 font-semibold text-lg"
                                     )
                                 >
-                                    {"No Devices"}
+                                    {t["no-devices"].clone()}
                                     // TODO: add link to troubleshooting page if no devices
                                 </div>
                             }
@@ -101,8 +85,10 @@ pub fn client(
         trusted,
     }: &ClientProps,
 ) -> Html {
+    let t = use_translation().get_attributes("connections");
+
     let on_click = {
-        log::info!("Hostname: {}", "hostname");
+        info!("Hostname: {}", "hostname");
         Callback::from(move |_| ())
     };
 
@@ -110,11 +96,11 @@ pub fn client(
         let hostname = hostname.clone();
         Callback::from(move |_| {
             let hostname = hostname.clone();
-            log::info!("trust: {}", hostname);
+            info!("trust: {}", hostname);
             wasm_bindgen_futures::spawn_local(async move {
-                let _ = reqwest::Client::new()
+                reqwest::Client::new()
                     .post(format!("{}/api/client/trust", crate::get_base_url()))
-                    .json(&(hostname.clone(), None::<String>))
+                    .json(&(hostname.clone(), None::<()>))
                     .send()
                     .await
                     .unwrap();
@@ -125,11 +111,11 @@ pub fn client(
         let hostname = hostname.clone();
         Callback::from(move |_| {
             let hostname = hostname.clone();
-            log::info!("remove: {}", hostname);
+            info!("remove: {}", hostname);
             wasm_bindgen_futures::spawn_local(async move {
-                let _ = reqwest::Client::new()
+                reqwest::Client::new()
                     .post(format!("{}/api/client/remove", crate::get_base_url()))
-                    .json(&(hostname.clone(), None::<String>))
+                    .json(&(hostname.clone(), None::<()>))
                     .send()
                     .await
                     .unwrap();
@@ -139,76 +125,67 @@ pub fn client(
     html! {
         <div
             class=format!(
-                "flex-1 min-w-56 max-w-sm p-4 {} {} {}",
-                "shadow-md rounded-lg bg-white border-l-8 transform transition",
-                "hover:shadow-lg hover:-translate-y-1",
+                "flex-1 min-w-56 max-w-sm p-4
+                shadow-md rounded-lg bg-white border-l-8 transform transition
+                hover:shadow-lg hover:-translate-y-1 {}",
                 if *trusted {
                     "border-green-500"
                 } else {
                     "border-blue-600"
-                })
-        >
-        {
-            if *trusted {
-                html! {
-                    <h6
-                        class="uppercase text-xs text-gray-400 font-medium"
-                    >
-                        {"Trusted"}
-                    </h6>
                 }
-            } else {
-                html! {
-                    <h6
-                        class="uppercase text-xs text-gray-400 font-medium"
-                    >
-                        {"New!"}
-                    </h6>
-                }
-            }
-        }
-        <h4
-            class="text-gray-700 font-medium text-xl mt-1"
+            )
         >
-            {display_name}
-        </h4>
-        <div class="mt-4">
-            <div class="text-gray-700 font-medium">
-                {"Hostname"}
-            </div>
-            <div class="text-gray-800 text-lg">
-                {hostname}
-            </div>
-        </div>
-        <div class="flex justify-end space-x-2 mt-4">
-            {
-                if *trusted {
-                    html! {
-                        <>
-                            <IconButton
-                                icon_cls="fas fa-cog"
-                                on_click=on_click
-                                class="hover:bg-blue-500 hover:text-white"
-                            />
-                            <IconButton
-                                icon_cls="fas fa-trash"
-                                on_click=on_remove_click
-                                class="hover:bg-red-500 hover:text-white"
-                            />
-                        </>
-                    }
-                } else {
-                    html! {
-                        <Button
-                            on_click=on_trust_click
-                            button_type=ButtonType::Primary
-                        >
-                            {"Trust"}
-                        </Button>
+            <h6 class="uppercase text-xs text-gray-400 font-medium">
+                {
+                    if *trusted {
+                        html! {t["trusted-device"].clone()}
+                    } else {
+                        html! {t["new-device"].clone()}
                     }
                 }
-            }
+            </h6>
+            <h4
+                class="text-gray-700 font-medium text-xl mt-1"
+            >
+                {display_name}
+            </h4>
+            <div class="mt-4">
+                <div class="text-gray-700 font-medium">
+                    {"Hostname"}
+                </div>
+                <div class="text-gray-800 text-lg">
+                    {hostname}
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 mt-4">
+                {
+                    if *trusted {
+                        html! {
+                            <>
+                                <IconButton
+                                    icon_cls="fas fa-cog"
+                                    on_click=on_click
+                                    class="hover:bg-blue-500 hover:text-white"
+                                />
+                                <IconButton
+                                    icon_cls="fas fa-trash"
+                                    on_click=on_remove_click
+                                    class="hover:bg-red-500 hover:text-white"
+                                />
+                            </>
+                        }
+                    } else {
+                        html! {
+                            <Button
+                                on_click=on_trust_click
+                                button_type=ButtonType::Primary
+                            >
+                                {t["trust"].clone()}
+                            </Button>
+                        }
+                    }
+                }
+            </div>
         </div>
-    </div>
     }
 }

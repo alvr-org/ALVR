@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <string_view>
 
 #include "Settings.h"
 #include "Utils.h"
@@ -63,6 +64,8 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 {
 	Debug("RemoteController::Activate. objectId=%d\n", unObjectId);
 
+	const bool isViveTracker = Settings::Instance().m_controllerMode == 8 ||
+							   Settings::Instance().m_controllerMode == 9;
 	m_unObjectId = unObjectId;
 	m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
 
@@ -74,7 +77,25 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_SerialNumber_String, GetSerialNumber().c_str());
 	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_AttachedDeviceId_String, GetSerialNumber().c_str());
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RegisteredDeviceType_String, m_isLeftHand ? (Settings::Instance().mControllerRegisteredDeviceType + "_Left").c_str() : (Settings::Instance().mControllerRegisteredDeviceType + "_Right").c_str() );
+
+	const std::string regDeviceTypeString = [this, isViveTracker]()
+	{
+		const auto& settings = Settings::Instance();
+		if (isViveTracker)
+		{
+			static constexpr const std::string_view vive_prefix = "vive_tracker_";
+			const auto& ctrlType = m_isLeftHand ? settings.m_controllerTypeLeft : settings.m_controllerTypeRight;
+			std::string ret = settings.mControllerRegisteredDeviceType;
+			if (ret.length() > 0 && ret[ret.length()-1] != '/')
+				ret += '/';
+			ret += ctrlType.length() <= vive_prefix.length() ? ctrlType : ctrlType.substr(vive_prefix.length());
+			return ret;
+		}
+		return m_isLeftHand ?
+			(Settings::Instance().mControllerRegisteredDeviceType + "_Left") :
+			(Settings::Instance().mControllerRegisteredDeviceType + "_Right");
+	}();
+	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RegisteredDeviceType_String, regDeviceTypeString.c_str());
 
 	uint64_t supportedButtons = 0xFFFFFFFFFFFFFFFFULL;
 	vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_SupportedButtons_Uint64, supportedButtons);
@@ -84,9 +105,11 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 	vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis0Type_Int32, vr::k_eControllerAxis_Joystick);
 
-	vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_ControllerRoleHint_Int32, m_isLeftHand ? vr::TrackedControllerRole_LeftHand : vr::TrackedControllerRole_RightHand);
+	vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_ControllerRoleHint_Int32, isViveTracker ? 
+																										vr::TrackedControllerRole_Invalid :
+																										(m_isLeftHand ? vr::TrackedControllerRole_LeftHand : vr::TrackedControllerRole_RightHand));
 
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ControllerType_String, Settings::Instance().m_controllerType.c_str());
+	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ControllerType_String, m_isLeftHand ? Settings::Instance().m_controllerTypeLeft.c_str() : Settings::Instance().m_controllerTypeRight.c_str());
 	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_InputProfilePath_String, Settings::Instance().m_controllerInputProfilePath.c_str());
 
 	switch (Settings::Instance().m_controllerMode) {
@@ -190,6 +213,52 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer, "/output/haptic", &m_compHaptic);
 		break;
 
+	case 8:
+	case 9: { // Vive Tracker
+		// All of these property values were dumped from real a vive tracker via https://github.com/SDraw/openvr_dumper
+		// and were copied from https://github.com/SDraw/driver_kinectV2
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ResourceRoot_String, "htc");
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_WillDriftInYaw_Bool, false);
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_TrackingFirmwareVersion_String, "1541800000 RUNNER-WATCHMAN$runner-watchman@runner-watchman 2018-01-01 FPGA 512(2.56/0/0) BL 0 VRC 1541800000 Radio 1518800000"); // Changed
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_HardwareRevision_String, "product 128 rev 2.5.6 lot 2000/0/0 0");
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ConnectedWirelessDongle_String, "D0000BE000");
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceIsWireless_Bool, true);
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceIsCharging_Bool, false);
+		vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_ControllerHandSelectionPriority_Int32, -1);
+		vr::HmdMatrix34_t l_transform = { -1.f, 0.f, 0.f, 0.f, 0.f, 0.f, -1.f, 0.f, 0.f, -1.f, 0.f, 0.f };
+		vr::VRProperties()->SetProperty(m_ulPropertyContainer, vr::Prop_StatusDisplayTransform_Matrix34, &l_transform, sizeof(vr::HmdMatrix34_t), vr::k_unHmdMatrix34PropertyTag);
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_Firmware_UpdateAvailable_Bool, false);
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_Firmware_ManualUpdate_Bool, false);
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_Firmware_ManualUpdateURL_String, "https://developer.valvesoftware.com/wiki/SteamVR/HowTo_Update_Firmware");
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_HardwareRevision_Uint64, 2214720000);
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_FirmwareVersion_Uint64, 1541800000);
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_FPGAVersion_Uint64, 512);
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_VRCVersion_Uint64, 1514800000);
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_RadioVersion_Uint64, 1518800000);
+		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_DongleVersion_Uint64, 8933539758);
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceCanPowerOff_Bool, true);
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_Firmware_ProgrammingTarget_String, GetSerialNumber().c_str());
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_Firmware_ForceUpdateRequired_Bool, false);
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_Identifiable_Bool, false);
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_Firmware_RemindUpdate_Bool, false);
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_HasDisplayComponent_Bool, false);
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_HasCameraComponent_Bool, false);
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_HasDriverDirectModeComponent_Bool, false);
+		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_HasVirtualDisplayComponent_Bool, false);
+
+		//icons
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceOff_String, "{htc}/icons/tracker_status_off.png");
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearching_String, "{htc}/icons/tracker_status_searching.gif");
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearchingAlert_String, "{htc}/icons/tracker_status_searching_alert.gif");
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReady_String, "{htc}/icons/tracker_status_ready.png");
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{htc}/icons/tracker_status_ready_alert.png");
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceNotReady_String, "{htc}/icons/tracker_status_error.png");
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String, "{htc}/icons/tracker_status_standby.png");
+		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{htc}/icons/tracker_status_ready_low.png");
+		// yes we want to explicitly fallthrough to vive case!, vive trackers can have input when POGO pins are connected to a peripheral.
+		// the input bindings are only active when the tracker role is set to "vive_tracker_handed"/held_in_hand roles.
+		//[[fallthrough]]
+	}
 	case 4: //Vive
 	case 5: //Vive no pinch
 		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/touch", &m_handles[ALVR_INPUT_TRACKPAD_TOUCH]);
@@ -537,6 +606,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRIGGER_VALUE], rotIndex, 0.0);
 			break;
 		case 4:
+		case 8: // vive tracker
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRACKPAD_TOUCH], rotThumb > 0.7f, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRACKPAD_CLICK], rotThumb > 0.9f, 0.0);
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRACKPAD_X], 0, 0.0);
@@ -548,6 +618,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_SYSTEM_CLICK], (c.inputStateStatus & alvrInputStateHandStatus_RingPinching) != 0, 0.0);
 			break;
 		case 5:
+		case 9: // vive tracker
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRACKPAD_TOUCH], rotThumb > 0.7f, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRACKPAD_CLICK], rotThumb > 0.9f, 0.0);
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRACKPAD_X], 0, 0.0);
@@ -763,6 +834,8 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 
 		case 4:
 		case 5:
+		case 8: // Vive Tracker
+		case 9: // Vive Tracker (No Pinch)
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRACKPAD_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH)) != 0, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_TRACKPAD_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_CLICK)) != 0, 0.0);
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_TRACKPAD_X], c.trackpadPosition.x, 0.0);

@@ -233,6 +233,7 @@ async fn client_handshake(
         target_eye_resolution_height: target_eye_height,
         seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
         force_3dof: settings.headset.force_3dof,
+        tracking_ref_only: settings.headset.tracking_ref_only,
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
         adapter_index: settings.video.adapter_index,
         codec: matches!(settings.video.codec, CodecType::HEVC) as _,
@@ -275,11 +276,17 @@ async fn client_handshake(
             .content
             .serial_number
             .clone(),
-        controllers_type: session_settings
+        controllers_type_left: session_settings
             .headset
             .controllers
             .content
-            .ctrl_type
+            .ctrl_type_left
+            .clone(),
+        controllers_type_right: session_settings
+            .headset
+            .controllers
+            .content
+            .ctrl_type_right
             .clone(),
         controllers_registered_device_type: session_settings
             .headset
@@ -580,30 +587,35 @@ async fn connection_pipeline() -> StrResult {
     };
 
     let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<PlayspaceSyncPacket>();
-    // use a separate thread because SetChaperone() is blocking
-    thread::spawn(move || {
-        while let Ok(packet) = playspace_sync_receiver.recv() {
-            let transform = Translation3::from(packet.position.coords) * packet.rotation;
-            // transposition is done to switch from column major to row major
-            let matrix_transp = transform.to_matrix().transpose();
+    
+    let is_tracking_ref_only =  settings.headset.tracking_ref_only;
+    if !is_tracking_ref_only
+    {
+        // use a separate thread because SetChaperone() is blocking
+        thread::spawn(move || {
+            while let Ok(packet) = playspace_sync_receiver.recv() {
+                let transform = Translation3::from(packet.position.coords) * packet.rotation;
+                // transposition is done to switch from column major to row major
+                let matrix_transp = transform.to_matrix().transpose();
 
-            let perimeter_points = if let Some(perimeter_points) = packet.perimeter_points {
-                perimeter_points.iter().map(|p| [p[0], p[1]]).collect()
-            } else {
-                vec![]
-            };
+                let perimeter_points = if let Some(perimeter_points) = packet.perimeter_points {
+                    perimeter_points.iter().map(|p| [p[0], p[1]]).collect()
+                } else {
+                    vec![]
+                };
 
-            unsafe {
-                crate::SetChaperone(
-                    matrix_transp.as_ptr(),
-                    packet.area_width,
-                    packet.area_height,
-                    perimeter_points.as_ptr() as _,
-                    perimeter_points.len() as _,
-                )
-            };
-        }
-    });
+                unsafe {
+                    crate::SetChaperone(
+                        matrix_transp.as_ptr(),
+                        packet.area_width,
+                        packet.area_height,
+                        perimeter_points.as_ptr() as _,
+                        perimeter_points.len() as _,
+                    )
+                };
+            }
+        });
+    }
 
     let keepalive_loop = {
         let control_sender = Arc::clone(&control_sender);
@@ -623,12 +635,15 @@ async fn connection_pipeline() -> StrResult {
             }
         }
     };
-
+    
     let control_loop = async move {
         loop {
             match control_receiver.recv().await {
                 Ok(ClientControlPacket::PlayspaceSync(packet)) => {
-                    playspace_sync_sender.send(packet).ok();
+                    if !is_tracking_ref_only
+                    {
+                        playspace_sync_sender.send(packet).ok();
+                    }
                 }
                 Ok(ClientControlPacket::RequestIdr) => unsafe { crate::RequestIDR() },
                 Ok(_) => (),

@@ -109,6 +109,8 @@ define({
     "_root_headset_positionOffset_2.name": "Z", // adv
     "_root_headset_force3dof.name": "강제 3Dof(3축)",
     "_root_headset_force3dof.description": "강제 3축모드를 사용합니다.(Oculus Go와 유사)",
+    "_root_headset_trackingRefOnly.name": "Tracking Reference Only",
+    "_root_headset_trackingRefOnly.description": "Disables all video encoding/streaming and treats the HMD as an openvr tracking reference instead of the main HMD. This can be used to make ALVR's HMD/controllers as FBT trackers, as alternative controllers for other HMDs, for debugging purposes, etc.",
     "_root_headset_controllers.name": "컨트롤러",
     // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
     "_root_headset_controllers_enabled.description": "컨트롤러를 사용합니다.",
@@ -128,8 +130,10 @@ define({
     "_root_headset_controllers_content_renderModelNameRight.description": "오른손 에뮬레이터 컨트롤러의 모델 숫자", // adv
     "_root_headset_controllers_content_serialNumber.name": "시리얼 숫자", // adv
     "_root_headset_controllers_content_serialNumber.description": "에뮬레이터 컨트롤러의 시리얼 숫자", // adv
-    "_root_headset_controllers_content_ctrlType.name": "컨트롤러 타입", // adv
-    "_root_headset_controllers_content_ctrlType.description": "에뮬레이터 컨트롤러의 타입", // adv
+    "_root_headset_controllers_content_ctrlTypeLeft.name": "Left 컨트롤러 타입", // adv
+    "_root_headset_controllers_content_ctrlTypeLeft.description": "에뮬레이터 컨트롤러의 타입", // adv
+    "_root_headset_controllers_content_ctrlTypeRight.name": "Right 컨트롤러 타입", // adv
+    "_root_headset_controllers_content_ctrlTypeRight.description": "에뮬레이터 컨트롤러의 타입", // adv
     "_root_headset_controllers_content_registeredDeviceType.name": "등록된 디바이스 타입", // adv
     "_root_headset_controllers_content_registeredDeviceType.description": "에뮬레이터 컨트롤러의 등록된 디바이스 타입", // adv
     "_root_headset_controllers_content_inputProfilePath.name": "입력 프로파일 경로", // adv

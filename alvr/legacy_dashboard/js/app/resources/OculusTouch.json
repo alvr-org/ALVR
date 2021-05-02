@@ -5,7 +5,8 @@
     "renderModelNameLeft": "oculus_rifts_controller_left",
     "renderModelNameRight": "oculus_rifts_controller_right",
     "serialNumber": "1WMGH000XX0000_Controller",
-    "ctrlType": "oculus_touch",
+    "ctrlTypeLeft": "oculus_touch",
+	"ctrlTypeRight": "oculus_touch",
     "registeredDeviceType": "oculus/1WMGH000XX0000_Controller",
     "inputProfilePath": "{oculus}/input/touch_profile.json"
 }

@@ -10,6 +10,7 @@ define([
     "json!app/resources/ValveIndex.json",
     "json!app/resources/HTCViveWand.json",
     "json!app/resources/Quest2Touch.json",
+    "json!app/resources/HTCViveTracker.json"
 ], function (
     i18n,
     i18nWizard,
@@ -22,6 +23,7 @@ define([
     index,
     vivewand,
     q2touch,
+    vivetracker
 ) {
     return function (alvrSettings) {
         const self = this;
@@ -79,6 +81,8 @@ define([
                 vivewand,
                 q2touch,
                 q2touch,
+                vivetracker,
+                vivetracker
             ];
 
             controller.append(`<option value="0">Oculus Rift S</option>`);
@@ -96,6 +100,10 @@ define([
             controller.append(`<option value="6">Oculus Quest 2</option>`);
             controller.append(
                 `<option value="7">Oculus Quest 2 (no handtracking pinch)</option>`,
+            );
+            controller.append(`<option value="8">HTC Vive Tracker</option>`);
+            controller.append(
+                `<option value="9">HTC Vive Tracker (no handtracking pinch)</option>`,
             );
 
             const select = new Selectal(

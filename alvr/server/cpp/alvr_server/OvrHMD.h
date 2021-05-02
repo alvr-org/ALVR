@@ -68,10 +68,14 @@ public:
 
 	void updateIPDandFoV(const TrackingInfo& info);
 
+	bool IsTrackingRef() const { return m_deviceClass == vr::TrackedDeviceClass_TrackingReference; }
+	bool IsHMD() const { return m_deviceClass == vr::TrackedDeviceClass_HMD; }
+
 	std::shared_ptr<ClientConnection> m_Listener;
 private:
 	bool m_baseComponentsInitialized;
 	bool m_streamComponentsInitialized;
+	vr::ETrackedDeviceClass m_deviceClass;
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 	

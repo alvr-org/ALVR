@@ -82,7 +82,8 @@ void Settings::Load()
 
 		m_flIPD = 0.063;
 
-		m_force3DOF = config.get("force_3dof").get<bool>();
+		m_force3DOF = config.get("force_3dof").get<bool>();		
+		m_TrackingRefOnly = config.get("tracking_ref_only").get<bool>();
 
 		m_aggressiveKeyframeResend = config.get("aggressive_keyframe_resend").get<bool>();
 
@@ -99,7 +100,8 @@ void Settings::Load()
 		m_controllerRenderModelNameLeft = config.get("render_model_name_left_controller").get<std::string>();
 		m_controllerRenderModelNameRight = config.get("render_model_name_right_controller").get<std::string>();
 		m_controllerSerialNumber = config.get("controllers_serial_number").get<std::string>();
-		m_controllerType = config.get("controllers_type").get<std::string>();
+		m_controllerTypeLeft = config.get("controllers_type_left").get<std::string>();
+		m_controllerTypeRight = config.get("controllers_type_right").get<std::string>();
 		mControllerRegisteredDeviceType = config.get("controllers_registered_device_type").get<std::string>();
 		m_controllerInputProfilePath = config.get("controllers_input_profile_path").get<std::string>();
 
@@ -139,7 +141,7 @@ void Settings::Load()
 		m_saturation = (float)config.get("saturation").get<double>();
 		m_gamma = (float)config.get("gamma").get<double>();
 		m_sharpening = (float)config.get("sharpening").get<double>();
-
+		
 		Debug("Config JSON: %hs\n", json.c_str());
 		Info("Serial Number: %hs\n", mSerialNumber.c_str());
 		Info("Model Number: %hs\n", mModelNumber.c_str());

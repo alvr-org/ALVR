@@ -54,6 +54,8 @@ define({
     "_root_headset_trackingFrameOffset.description": "Compensatie voor het pose-voorspellingsalgoritme",
     "_root_headset_force3dof.name": "Forceer 3Dof",
     "_root_headset_force3dof.description": "Forceert the 3 degrees of freedom modus (zoals Oculus Go)",
+    "_root_headset_trackingRefOnly.name": "Tracking Reference Only",
+    "_root_headset_trackingRefOnly.description": "Disables all video encoding/streaming and treats the HMD as an openvr tracking reference instead of the main HMD. This can be used to make ALVR's HMD/controllers as FBT trackers, as alternative controllers for other HMDs, for debugging purposes, etc.",
     "_root_headset_controllers.name": "Controllers",
     // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
     "_root_headset_controllers_enabled.description": "Laat het gebruik van controllers toe",

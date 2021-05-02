@@ -100,6 +100,8 @@ define({
     "_root_headset_positionOffset_2.description": "Z偏移", // adv
     "_root_headset_force3dof.name": "强制3自由度",
     "_root_headset_force3dof.description": "强制3个自由度模式（例如Oculus Go）",
+    "_root_headset_trackingRefOnly.name": "Tracking Reference Only",
+    "_root_headset_trackingRefOnly.description": "Disables all video encoding/streaming and treats the HMD as an openvr tracking reference instead of the main HMD. This can be used to make ALVR's HMD/controllers as FBT trackers, as alternative controllers for other HMDs, for debugging purposes, etc.",
     "_root_headset_controllers.name": "控制器",
     // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
     "_root_headset_controllers_enabled.description": "启用控制器的使用",
@@ -119,8 +121,10 @@ define({
     "_root_headset_controllers_content_renderModelNameRight.description": "右控制器的渲染模型的名称", // adv
     "_root_headset_controllers_content_serialNumber.name": "序列号", // adv
     "_root_headset_controllers_content_serialNumber.description": "控制器的序列号", // adv
-    "_root_headset_controllers_content_ctrlType.name": "控制器类型", // adv
-    "_root_headset_controllers_content_ctrlType.description": "模拟控制器的类型", // adv
+    "_root_headset_controllers_content_ctrlTypeLeft.name": "Left 控制器类型", // adv
+    "_root_headset_controllers_content_ctrlTypeLeft.description": "模拟控制器的类型", // adv
+    "_root_headset_controllers_content_ctrlTypeRight.name": "Right 控制器类型", // adv
+    "_root_headset_controllers_content_ctrlTypeRight.description": "模拟控制器的类型", // adv
     "_root_headset_controllers_content_registeredDeviceType.name": "设备类型名称", // adv
     "_root_headset_controllers_content_registeredDeviceType.description": "模拟设备类型的名称", // adv
     "_root_headset_controllers_content_inputProfilePath.name": "配置文件路径", // adv

@@ -5,7 +5,8 @@
     "renderModelNameLeft": "vr_controller_vive_1_5",
     "renderModelNameRight": "vr_controller_vive_1_5",
     "serialNumber": "ALVR Remote Controller",
-    "ctrlType": "vive_controller",
+    "ctrlTypeLeft": "vive_controller",
+	"ctrlTypeRight": "vive_controller",
     "registeredDeviceType": "vive_controller",
     "inputProfilePath": "{htc}/input/vive_controller_profile.json"
 }

@@ -14,8 +14,8 @@
                 LicenseUrl="https://github.com/alvr-org/ALVR/blob/master/LICENSE"
                 ShowVersion="yes"
                 SuppressOptionsUI="yes"
-                LogoSideFile="wix\bundle_sidebar.png"
-                LogoFile="wix\bundle_logo.png"
+                LogoSideFile="alvr\xtask\wix\bundle_sidebar.png"
+                LogoFile="alvr\xtask\wix\bundle_logo.png"
                 />
         </BootstrapperApplicationRef>
 

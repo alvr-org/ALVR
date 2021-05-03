@@ -17,8 +17,8 @@ pub fn switch(props: &Props) -> Html {
     let on_click = {
         let checked = Rc::clone(&checked);
         Callback::from(move |_| {
+            on_click.emit(!*checked);
             set_checked(!*checked);
-            on_click.emit(*checked);
         })
     };
 

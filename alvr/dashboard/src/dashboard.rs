@@ -3,7 +3,7 @@ use crate::{
         Button, ButtonGroup, ButtonType, Select, Slider, Switch, TextField, UpDown,
     },
     components::{About, Connections, Installation, Logs, Settings, Statistics},
-    translation::use_trans,
+    translation::use_translation,
 };
 use std::rc::Rc;
 use yew::{html, Callback, Properties};
@@ -164,7 +164,7 @@ pub fn tab_entry(props: &MenuIconProps) -> Html {
                         )
                     />
                 </div>
-                <div class="font-medium">{use_trans(&props.name)}</div>
+                <div class="font-medium">{use_translation().get(&props.name)}</div>
             </div>
         </div>
     }
@@ -179,7 +179,7 @@ pub fn test() -> Html {
         Callback::from(move |_| set_label(format!("{} world", label)))
     };
 
-    let default_string = use_trans("default");
+    let default_string = use_translation().get("default");
 
     let switch_on_click = Callback::from(move |_| ());
 

@@ -9,6 +9,7 @@ set = Set
 unset = Unset
 apply = Apply
 applied = Applied
+do-not-ask-again = Do not ask again
 reset-prompt = Do you want to reset this setting to {$value}?
 
 

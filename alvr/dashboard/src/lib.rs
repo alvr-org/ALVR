@@ -13,6 +13,7 @@ use alvr_common::{logging, prelude::*};
 use dashboard::Dashboard;
 use session::SessionProvider;
 use std::{
+    future::Future,
     rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},
 };
@@ -34,11 +35,17 @@ pub fn get_base_url() -> String {
     )
 }
 
+pub fn spawn_str_result_future<F: Future<Output = StrResult> + 'static>(future: F) {
+    wasm_bindgen_futures::spawn_local(async {
+        logging::show_err(future.await);
+    })
+}
+
 #[function_component(Root)]
 fn root() -> Html {
     let (maybe_data, set_data) = use_state(|| None);
 
-    let update_session_async = Callback::from(move |()| {
+    let update_session_async = Callback::from(move |_| {
         let set_data = Rc::clone(&set_data);
         wasm_bindgen_futures::spawn_local(async move {
             logging::show_err_async(async {

@@ -112,6 +112,8 @@ define({
         "_root_headset_force3dof.description": "Forces the 3 degrees of freedom mode (like Oculus Go)",
         "_root_headset_trackingRefOnly.name": "Tracking Reference Only",
         "_root_headset_trackingRefOnly.description": "Disables all video encoding/streaming and treats the HMD as an openvr tracking reference instead of the main HMD. This can be used to make ALVR's HMD/controllers as FBT trackers, as alternative controllers for other HMDs, for debugging purposes, etc.",
+        "_root_headset_enableViveTrackerProxy.name": "Vive Tracker Proxy",
+        "_root_headset_enableViveTrackerProxy.description": "Spawns a vive tracker proxy which mirrors ALVR's HMD position & orientation. This can be used for example to make ALVR's HMD a hip tracker in FBT or just a general tracked object in supporting games/apps.",
         "_root_headset_controllers.name": "Controllers",
         // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
         "_root_headset_controllers_enabled.description": "Allow the use of the controllers",
@@ -139,6 +141,8 @@ define({
         "_root_headset_controllers_content_registeredDeviceType.description": "Registered device type of the emulated controller", // adv
         "_root_headset_controllers_content_inputProfilePath.name": "Input profile path", // adv
         "_root_headset_controllers_content_inputProfilePath.description": "Input profile path of the emulated controller", // adv
+        "_root_headset_controllers_content_useHeadsetTrackingSystem.name": "Use Headset Tracking System",
+        "_root_headset_controllers_content_useHeadsetTrackingSystem.description": "Overrides the current controller profile's tracking system name with the current ALVR HMD's tracking system. Enable this in cases such as space calibration with OpenVR space calibrator.",
         "_root_headset_controllers_content_trackingSpeed.name": "Tracking speed",
         "_root_headset_controllers_content_trackingSpeed.description": "For fast paced games like Beatsaber, choose medium or fast. For slower games like Skyrim leave it on normal. \nOculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
         "_root_headset_controllers_content_poseTimeOffset.name": "Pose time offset", // adv

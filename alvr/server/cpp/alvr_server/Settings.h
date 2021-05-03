@@ -100,5 +100,9 @@ public:
 	int m_controllerMode = 0;
 
 	bool m_TrackingRefOnly = false;
+
+	bool m_enableViveTrackerProxy = false;
+
+	bool m_useHeadsetTrackingSystem = false;
 	
 };

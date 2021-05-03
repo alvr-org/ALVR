@@ -2,6 +2,7 @@
 
 #include "Settings.h"
 #include "OvrController.h"
+#include "OvrViveTrackerProxy.h"
 #include "Logger.h"
 #include "bindings.h"
 #include "VSyncThread.h"
@@ -61,6 +62,14 @@ OvrHmd::OvrHmd()
 				m_rightController->GetSerialNumber().c_str(),
 				getControllerDeviceClass(),
 				m_rightController.get());
+		}
+
+		if (Settings::Instance().m_enableViveTrackerProxy) {
+		 	m_viveTrackerProxy = std::make_shared<OvrViveTrackerProxy>(*this);
+			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+				m_viveTrackerProxy->GetSerialNumber(),
+				vr::TrackedDeviceClass_GenericTracker,
+				m_viveTrackerProxy.get());
 		}
 
 		Debug("CRemoteHmd successfully initialized.\n");
@@ -327,6 +336,9 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 			m_poseHistory->OnPoseUpdated(info);
 		
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
+
+			if (m_viveTrackerProxy != nullptr)
+				m_viveTrackerProxy->update();
 
 		}
 	}

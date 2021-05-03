@@ -85,6 +85,8 @@ void Settings::Load()
 		m_force3DOF = config.get("force_3dof").get<bool>();		
 		m_TrackingRefOnly = config.get("tracking_ref_only").get<bool>();
 
+		m_enableViveTrackerProxy = config.get("enable_vive_tracker_proxy").get<bool>();
+
 		m_aggressiveKeyframeResend = config.get("aggressive_keyframe_resend").get<bool>();
 
 		m_nAdapterIndex = (int32_t)config.get("adapter_index").get<int64_t>();
@@ -129,6 +131,8 @@ void Settings::Load()
 		m_leftControllerRotationOffset[2] = leftControllerRotationOffset[2].get<double>();
 
 		m_hapticsIntensity = config.get("haptics_intensity").get<double>();
+
+		m_useHeadsetTrackingSystem = config.get("use_headset_tracking_system").get<bool>();
 
 		m_enableFoveatedRendering = config.get("enable_foveated_rendering").get<bool>();
 		m_foveationStrength = (float)config.get("foveation_strength").get<double>();

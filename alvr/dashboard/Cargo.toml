@@ -24,8 +24,8 @@ alvr_common = { path = "../common", default-features = false, features = ["new_d
 yew = { git = "https://github.com/yewstack/yew" }
 yew-functional = { git = "https://github.com/yewstack/yew" }
 fluent = "0.15"
+fluent-syntax = "0.11"
 fluent-langneg = "0.13"
 unic-langid = "0.9"
-fluent-fallback = "0.4"
 reqwest = { version = "0.11", features = ["json"] }
 async-trait = "0.1"

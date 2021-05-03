@@ -102,6 +102,8 @@ define({
     "_root_headset_force3dof.description": "强制3个自由度模式（例如Oculus Go）",
     "_root_headset_trackingRefOnly.name": "Tracking Reference Only",
     "_root_headset_trackingRefOnly.description": "Disables all video encoding/streaming and treats the HMD as an openvr tracking reference instead of the main HMD. This can be used to make ALVR's HMD/controllers as FBT trackers, as alternative controllers for other HMDs, for debugging purposes, etc.",
+    "_root_headset_enableViveTrackerProxy.name": "Vive Tracker Proxy",
+    "_root_headset_enableViveTrackerProxy.description": "Spawns a vive tracker proxy which mirrors ALVR's HMD position & orientation. This can be used for example to make ALVR's HMD a hip tracker in FBT or just a general tracked object in supporting games/apps.",
     "_root_headset_controllers.name": "控制器",
     // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
     "_root_headset_controllers_enabled.description": "启用控制器的使用",
@@ -129,6 +131,8 @@ define({
     "_root_headset_controllers_content_registeredDeviceType.description": "模拟设备类型的名称", // adv
     "_root_headset_controllers_content_inputProfilePath.name": "配置文件路径", // adv
     "_root_headset_controllers_content_inputProfilePath.description": "输入配置文件的路径", // adv
+    "_root_headset_controllers_content_useHeadsetTrackingSystem.name": "Use Headset Tracking System",
+    "_root_headset_controllers_content_useHeadsetTrackingSystem.description": "Overrides the current controller profile's tracking system name with the current ALVR HMD's tracking system. Enable this in cases such as space calibration with OpenVR space calibrator.",
     "_root_headset_controllers_content_trackingSpeed.name": "追踪速度",
     "_root_headset_controllers_content_trackingSpeed.description": "像需要快速运动的游戏比如《光剑》，选择中速或快速。 运动比较慢的游戏比如《Skyrim》，使用正常即可。",
     "_root_headset_controllers_content_poseTimeOffset.name": "姿势时间偏移", // adv

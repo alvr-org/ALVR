@@ -252,6 +252,9 @@ pub struct ControllersDesc {
 
     #[schema(min = 0., max = 5., step = 0.1)]
     pub haptics_intensity: f32,
+
+    #[schema(advanced)]
+    pub use_headset_tracking_system: bool
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -295,7 +298,11 @@ pub struct HeadsetDesc {
 
     pub force_3dof: bool,
 
+    #[schema(advanced)]
     pub tracking_ref_only: bool,
+
+    #[schema(advanced)]
+    pub enable_vive_tracker_proxy: bool,
 
     pub controllers: Switch<ControllersDesc>,
 
@@ -503,6 +510,7 @@ pub fn session_settings_default() -> SettingsDefault {
             position_offset: [0., 0., 0.],
             force_3dof: false,
             tracking_ref_only: false,
+            enable_vive_tracker_proxy: false,
             controllers: SwitchDefault {
                 enabled: true,
                 content: ControllersDescDefault {
@@ -522,6 +530,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,
+                    use_headset_tracking_system: false
                 },
             },
             tracking_space: TrackingSpaceDefault {

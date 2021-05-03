@@ -69,7 +69,10 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	m_unObjectId = unObjectId;
 	m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
 
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_TrackingSystemName_String, Settings::Instance().m_controllerTrackingSystemName.c_str());
+	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_TrackingSystemName_String,
+		Settings::Instance().m_useHeadsetTrackingSystem ?
+			Settings::Instance().mTrackingSystemName.c_str() :
+		 	Settings::Instance().m_controllerTrackingSystemName.c_str());
 	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ManufacturerName_String, Settings::Instance().m_controllerManufacturerName.c_str());
 	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, m_isLeftHand ? (Settings::Instance().m_controllerModelNumber + " (Left Controller)").c_str() : (Settings::Instance().m_controllerModelNumber + " (Right Controller)").c_str());
 

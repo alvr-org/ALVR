@@ -234,6 +234,7 @@ async fn client_handshake(
         seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
         force_3dof: settings.headset.force_3dof,
         tracking_ref_only: settings.headset.tracking_ref_only,
+        enable_vive_tracker_proxy: settings.headset.enable_vive_tracker_proxy,
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
         adapter_index: settings.video.adapter_index,
         codec: matches!(settings.video.codec, CodecType::HEVC) as _,
@@ -320,6 +321,11 @@ async fn client_handshake(
             .controllers
             .content
             .haptics_intensity,
+        use_headset_tracking_system: session_settings
+            .headset
+            .controllers
+            .content
+            .use_headset_tracking_system,
         enable_foveated_rendering: session_settings.video.foveated_rendering.enabled,
         foveation_strength: session_settings.video.foveated_rendering.content.strength,
         foveation_shape: session_settings.video.foveated_rendering.content.shape,

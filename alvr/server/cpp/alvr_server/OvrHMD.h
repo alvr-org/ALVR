@@ -14,6 +14,7 @@ class VSyncThread;
 
 class OvrController;
 class OvrController;
+class OvrViveTrackerProxy;
 
 class OvrDisplayComponent;
 class CEncoder;
@@ -100,4 +101,6 @@ private:
 	std::shared_ptr<OvrDirectModeComponent> m_directModeComponent;
 #endif
 	std::shared_ptr<PoseHistory> m_poseHistory;
+
+	std::shared_ptr<OvrViveTrackerProxy> m_viveTrackerProxy;
 };

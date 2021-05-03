@@ -25,6 +25,7 @@ SUBCOMMANDS:
     build-android-deps  Download and compile external dependencies for Android
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
+    build-ffmpeg-linux  Build FFmpeg with VAAPI and Vulkan support. Only for CI
     publish-server      Build server in release mode, make portable version and installer
     publish-client      Build client for all headsets
     clean               Removes build folder
@@ -33,7 +34,7 @@ SUBCOMMANDS:
     clippy              Show warnings for selected clippy lints
 
 FLAGS:
-    --fetch             Update crates with "cargo update"
+    --fetch             Update crates with "cargo update". Used only for build subcommands
     --release           Optimized build without debug info. Used only for build subcommands
     --nightly           Bump versions to nightly and build. Used only for publish subcommand
     --oculus-quest      Oculus Quest build. Used only for build-client subcommand
@@ -45,16 +46,6 @@ ARGS:
 "#;
 
 type BResult<T = ()> = Result<T, Box<dyn Error>>;
-
-struct Args {
-    fetch: bool,
-    is_release: bool,
-    version: Option<String>,
-    is_nightly: bool,
-    for_oculus_quest: bool,
-    for_oculus_go: bool,
-    new_dashboard: bool,
-}
 
 #[cfg(target_os = "linux")]
 const SERVER_BUILD_DIR_NAME: &str = "alvr_server_linux";
@@ -480,57 +471,34 @@ fn main() {
     if args.contains(["-h", "--help"]) {
         println!("{}", HELP_STR);
     } else if let Ok(Some(subcommand)) = args.subcommand() {
-        let args_values = Args {
-            fetch: args.contains("--fetch"),
-            is_release: args.contains("--release"),
-            version: args.opt_value_from_str("--version").unwrap(),
-            is_nightly: args.contains("--nightly"),
-            for_oculus_quest: args.contains("--oculus-quest"),
-            for_oculus_go: args.contains("--oculus-go"),
-            new_dashboard: args.contains("--new-dashboard"),
-        };
+        let fetch = args.contains("--fetch");
+        let is_release = args.contains("--release");
+        let version: Option<String> = args.opt_value_from_str("--version").unwrap();
+        let is_nightly = args.contains("--nightly");
+        let for_oculus_quest = args.contains("--oculus-quest");
+        let for_oculus_go = args.contains("--oculus-go");
+        let new_dashboard = args.contains("--new-dashboard");
+
         if args.finish().is_empty() {
             match subcommand.as_str() {
                 "build-windows-deps" => dependencies::build_deps("windows"),
                 "build-android-deps" => dependencies::build_deps("android"),
-                "build-server" => build_server(
-                    args_values.is_release,
-                    false,
-                    args_values.fetch,
-                    args_values.new_dashboard,
-                ),
+                "build-server" => build_server(is_release, false, fetch, new_dashboard),
                 "build-client" => {
-                    if (args_values.for_oculus_quest && args_values.for_oculus_go)
-                        || (!args_values.for_oculus_quest && !args_values.for_oculus_go)
+                    if (for_oculus_quest && for_oculus_go) || (!for_oculus_quest && !for_oculus_go)
                     {
-                        build_client(
-                            args_values.is_release,
-                            false,
-                            false,
-                            args_values.new_dashboard,
-                        );
-                        build_client(
-                            args_values.is_release,
-                            false,
-                            true,
-                            args_values.new_dashboard,
-                        );
+                        build_client(is_release, false, false, new_dashboard);
+                        build_client(is_release, false, true, new_dashboard);
                     } else {
-                        build_client(
-                            args_values.is_release,
-                            false,
-                            args_values.for_oculus_go,
-                            args_values.new_dashboard,
-                        );
+                        build_client(is_release, false, for_oculus_go, new_dashboard);
                     }
                 }
-                "publish-server" => publish_server(args_values.is_nightly),
-                "publish-client" => publish_client(args_values.is_nightly),
+                "build-ffmpeg-linux" => dependencies::build_ffmpeg_linux(),
+                "publish-server" => publish_server(is_nightly),
+                "publish-client" => publish_client(is_nightly),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
-                "bump-versions" => {
-                    version::bump_version(args_values.version.as_deref(), args_values.is_nightly)
-                }
+                "bump-versions" => version::bump_version(version.as_deref(), is_nightly),
                 "clippy" => clippy(),
                 _ => {
                     println!("\nUnrecognized subcommand.");

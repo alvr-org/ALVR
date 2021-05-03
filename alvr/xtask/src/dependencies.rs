@@ -1,4 +1,8 @@
-use crate::command::{self, run_as_bash as bash, run_as_bash_in as bash_in};
+use crate::{
+    command::{self, run_as_bash as bash, run_as_bash_in as bash_in},
+    workspace_dir,
+};
+use fs_extra::dir as dirx;
 use rand::Rng;
 use std::{
     fs,
@@ -100,69 +104,54 @@ fn windows_to_wsl2_path(path: &Path) -> String {
     }
 }
 
-fn build_ffmpeg(target_os: &str) {
-    if target_os == "windows" {
-        bash(&format!(
-            "sudo apt update && sudo apt remove --auto-remove -y gcc && sudo apt install -y {}",
-            "make mingw-w64 mingw-w64-tools binutils-mingw-w64 nasm"
-        ))
-        .unwrap();
-    };
+fn build_ffmpeg_windows() {
+    bash(&format!(
+        "sudo apt update && sudo apt remove --auto-remove -y gcc && sudo apt install -y {}",
+        "make mingw-w64 mingw-w64-tools binutils-mingw-w64 nasm"
+    ))
+    .unwrap();
 
     let mut temp_paths = vec![];
 
     let ffmpeg_path = download_and_extract(
-        "https://github.com/FFmpeg/FFmpeg/archive/n4.3.2.zip",
+        "https://github.com/FFmpeg/FFmpeg/archive/n4.4.zip",
         "FFmpeg",
     );
     temp_paths.push(ffmpeg_path.clone());
-    let ffmpeg_path = ffmpeg_path.join("FFmpeg-n4.3.2");
+    let ffmpeg_path = ffmpeg_path.join("FFmpeg-n4.4");
 
     // todo: add more video encoders: libkvazaar, OpenH264, libvpx, libx265
     // AV1 encoders are excluded because of lack of hardware accelerated decoding support
 
-    let ffmpeg_platform_flags;
-    if target_os == "windows" {
-        let x264_path = download_and_extract(
-            "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.zip",
-            "x264",
-        );
-        temp_paths.push(x264_path.clone());
-        let x264_path = x264_path.join("x264-stable");
+    let x264_path = download_and_extract(
+        "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.zip",
+        "x264",
+    );
+    temp_paths.push(x264_path.clone());
+    let x264_path = x264_path.join("x264-stable");
 
-        bash_in(
-            &x264_path,
-            &format!(
-                "./configure --prefix=./build --disable-cli --enable-static {}",
-                "--host=x86_64-w64-mingw32 --cross-prefix=x86_64-w64-mingw32-"
-            ),
-        )
-        .unwrap();
-        bash_in(&x264_path, "make -j$(nproc) && make install").unwrap();
+    bash_in(
+        &x264_path,
+        &format!(
+            "./configure --prefix=./build --disable-cli --enable-static {}",
+            "--host=x86_64-w64-mingw32 --cross-prefix=x86_64-w64-mingw32-"
+        ),
+    )
+    .unwrap();
+    bash_in(&x264_path, "make -j$(nproc) && make install").unwrap();
 
-        let x264_wsl2_path = windows_to_wsl2_path(&x264_path.join("build"));
-        ffmpeg_platform_flags = format!(
-            "{} {} {} {}",
-            format!("--extra-cflags=\"-I{}/include\"", x264_wsl2_path),
-            format!("--extra-ldflags=\"-L{}/lib\"", x264_wsl2_path),
-            "--target-os=mingw32 --cross-prefix=x86_64-w64-mingw32-",
-            "--disable-decoders --enable-libx264 --arch=x86_64"
-        )
-    } else {
-        // target_os == "android"
-        ffmpeg_platform_flags = "--enable-jni --enable-mediacodec".to_owned()
-    };
+    let x264_wsl2_path = windows_to_wsl2_path(&x264_path.join("build"));
 
     bash_in(
         &ffmpeg_path,
         &format!(
-            "./configure {} {} {} {} {} {} {} {} {}",
+            "./configure {} {} {} {} {} {} {} {} {} {} {} {}",
             format!(
                 "--prefix={}",
                 windows_to_wsl2_path(
                     &crate::workspace_dir()
                         .join("deps")
-                        .join(target_os)
+                        .join("windows")
                         .join("ffmpeg")
                 )
             ),
@@ -176,7 +165,10 @@ fn build_ffmpeg(target_os: &str) {
                 "--disable-bsfs --disable-protocols --disable-devices --disable-filters"
             ),
             "--enable-lto",
-            ffmpeg_platform_flags
+            format!("--extra-cflags=\"-I{}/include\"", x264_wsl2_path),
+            format!("--extra-ldflags=\"-L{}/lib\"", x264_wsl2_path),
+            "--target-os=mingw32 --cross-prefix=x86_64-w64-mingw32-",
+            "--disable-decoders --enable-libx264 --arch=x86_64",
         ),
     )
     .unwrap();
@@ -188,10 +180,51 @@ fn build_ffmpeg(target_os: &str) {
     }
 }
 
+pub fn build_ffmpeg_linux() {
+    // dependencies: build-essential pkg-config nasm libva-dev libvulkan-dev libx264-dev libx265-dev
+
+    let ffmpeg_path = download_and_extract(
+        "https://github.com/FFmpeg/FFmpeg/archive/n4.4.zip",
+        "FFmpeg",
+    );
+    let ffmpeg_path = ffmpeg_path.join("FFmpeg-n4.4");
+
+    bash_in(
+        &ffmpeg_path,
+        &format!(
+            "./configure {} {} {} {} {} {} {} {} {}",
+            "--enable-gpl --enable-version3",
+            "--disable-static --enable-shared",
+            "--disable-programs",
+            "--disable-doc",
+            format!(
+                "--disable-avdevice --disable-avformat --disable-swresample {}",
+                "--disable-swscale --disable-postproc"
+            ),
+            "--disable-network",
+            "--enable-lto",
+            format!(
+                "--disable-everything {} {} {} {}",
+                "--enable-encoder=h264_vaapi --enable-encoder=hevc_vaapi",
+                "--enable-encoder=libx264 --enable-encoder=libx264rgb --enable-encoder=libx265",
+                "--enable-hwaccel=h264_vaapi --enable-hwaccel=hevc_vaapi",
+                "--enable-filter=scale_vaapi",
+            ),
+            "--enable-libx264 --enable-libx265 --enable-vulkan",
+        ),
+    )
+    .unwrap();
+    bash_in(&ffmpeg_path, "make -j$(nproc)").unwrap();
+
+    let destination = workspace_dir().join("deps").join("ubuntu");
+    fs::create_dir_all(&destination).unwrap();
+    dirx::copy(ffmpeg_path, destination, &dirx::CopyOptions::new()).unwrap();
+}
+
 pub fn build_deps(target_os: &str) {
     if target_os == "windows" {
         command::run("cargo install wasm-pack").unwrap();
-        build_ffmpeg("windows");
+        build_ffmpeg_windows();
     } else if target_os == "android" {
         command::run("rustup target add aarch64-linux-android").unwrap();
         build_rust_android_gradle();

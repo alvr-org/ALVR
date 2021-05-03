@@ -118,7 +118,7 @@ pub fn section(
         if maybe_control.is_some() || maybe_container.is_some() {
             Some(html! {
                 <Entry
-                    // key=name.clone() // <- bug: VComp is not mounted
+                    key=name.clone() // <- bug: VComp is not mounted
                     name=name.clone()
                     control=maybe_control
                     container=maybe_container

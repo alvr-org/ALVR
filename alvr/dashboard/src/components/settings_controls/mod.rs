@@ -70,14 +70,14 @@ pub fn setting_control(
             SchemaNode::Optional(schema) => Some(html! {
                 <OptionalControl
                     schema=schema
-                    session=trace_err!(json::from_value::<OptionalDefault<json::Value>>(session))?
+                    session=trace_err!(json::from_value::<OptionalDefault<_>>(session))?
                     set_session=bubble_up(set_session)
                 />
             }),
             SchemaNode::Switch(schema) => Some(html! {
                 <SwitchControl
                     schema=schema
-                    session=trace_err!(json::from_value::<SwitchDefault<json::Value>>(session))?
+                    session=trace_err!(json::from_value::<SwitchDefault<_>>(session))?
                     set_session=bubble_up(set_session)
                 />
             }),
@@ -138,34 +138,34 @@ pub fn setting_container(
             ),
             SchemaNode::Optional(schema) => optional_container(
                 schema,
-                trace_err!(json::from_value::<OptionalDefault<json::Value>>(session))?,
+                trace_err!(json::from_value::<OptionalDefault<_>>(session))?,
                 bubble_up(set_session),
                 advanced,
             ),
             SchemaNode::Switch(schema) => switch_container(
                 schema,
-                trace_err!(json::from_value::<SwitchDefault<json::Value>>(session))?,
+                trace_err!(json::from_value::<SwitchDefault<_>>(session))?,
                 bubble_up(set_session),
                 advanced,
             ),
             SchemaNode::Array(schema) => Some(html! {
                 <Array
                     schema=schema
-                    session=trace_err!(json::from_value::<Vec<json::Value>>(session))?
+                    session=trace_err!(json::from_value::<Vec<_>>(session))?
                     set_session=bubble_up(set_session)
                 />
             }),
             SchemaNode::Vector(schema) => Some(html! {
                 <Vector
                     schema=schema
-                    session=trace_err!(json::from_value::<VectorDefault<json::Value>>(session))?
+                    session=trace_err!(json::from_value::<VectorDefault<_>>(session))?
                     set_session=bubble_up(set_session)
                 />
             }),
             SchemaNode::Dictionary(schema) => Some(html! {
                 <Dictionary
                     schema=schema
-                    session=trace_err!(json::from_value::<DictionaryDefault<json::Value>>(session))?
+                    session=trace_err!(json::from_value::<DictionaryDefault<_>>(session))?
                     set_session=bubble_up(set_session)
                 />
             }),

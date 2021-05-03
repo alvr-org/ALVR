@@ -120,8 +120,14 @@ pub fn reset_server_build_folder() {
     fs::create_dir_all(&server_build_dir()).unwrap();
 
     // get all file and folder paths at depth 1, excluded template root (at index 0)
-    let dir_content =
-        dirx::get_dir_content2("server_release_template", &dirx::DirOptions { depth: 1 }).unwrap();
+    let dir_content = dirx::get_dir_content2(
+        workspace_dir()
+            .join("alvr")
+            .join("xtask")
+            .join("server_release_template"),
+        &dirx::DirOptions { depth: 1 },
+    )
+    .unwrap();
     let items: Vec<&String> = dir_content.directories[1..]
         .iter()
         .chain(dir_content.files.iter())
@@ -355,7 +361,7 @@ fn build_installer(wix_path: &str) {
             "-ext",
             "WixUtilExtension",
             &format!("-dVersion={}", version),
-            "wix\\main.wxs",
+            "alvr\\xtask\\wix\\main.wxs",
             "target\\wix\\harvested.wxs",
             "-o",
             "target\\wix\\",
@@ -389,7 +395,7 @@ fn build_installer(wix_path: &str) {
             "WixUtilExtension",
             "-ext",
             "WixBalExtension",
-            "wix\\bundle.wxs",
+            "alvr\\xtask\\wix\\bundle.wxs",
             "-o",
             "target\\wix\\",
         ],

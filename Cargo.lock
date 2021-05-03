@@ -2991,9 +2991,9 @@ dependencies = [
 
 [[package]]
 name = "pico-args"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d70072c20945e1ab871c472a285fc772aefd4f5407723c206242f2c6f94595d6"
+checksum = "7d7afeb98c5a10e0bffcc7fc16e105b04d06729fac5fd6384aebf7ff5cb5a67d"
 
 [[package]]
 name = "piet"
@@ -3434,9 +3434,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-demangle"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e3bad0ee36814ca07d7968269dd4b7ec89ec2da10c4bb613928d3077083c232"
+checksum = "410f7acf3cb3a44527c5d9546bad4bf4e6c460915d5f9f2fc524498bfe8f70ce"
 
 [[package]]
 name = "rustc-hash"
@@ -3515,6 +3515,12 @@ name = "scoped-tls"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea6a9290e3c9cf0f18145ef7ffa62d68ee0bf5fcd651017e586dc7fd5da448c2"
+
+[[package]]
+name = "scoped-tls-hkt"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2e9d7eaddb227e8fbaaa71136ae0e1e913ca159b86c7da82f3e8f0044ad3a63"
 
 [[package]]
 name = "scopeguard"
@@ -4894,7 +4900,7 @@ dependencies = [
 [[package]]
 name = "yew"
 version = "0.17.4"
-source = "git+https://github.com/yewstack/yew#c51ab7f09482d045e0b9bd309d27033c31f9b91f"
+source = "git+https://github.com/yewstack/yew#21eca25fd0bb5e301454909ee423bc664c625de3"
 dependencies = [
  "anyhow",
  "anymap",
@@ -4918,8 +4924,9 @@ dependencies = [
 [[package]]
 name = "yew-functional"
 version = "0.13.0"
-source = "git+https://github.com/yewstack/yew#c51ab7f09482d045e0b9bd309d27033c31f9b91f"
+source = "git+https://github.com/yewstack/yew#21eca25fd0bb5e301454909ee423bc664c625de3"
 dependencies = [
+ "scoped-tls-hkt",
  "wasm-bindgen",
  "yew",
  "yew-functional-macro",
@@ -4928,7 +4935,7 @@ dependencies = [
 [[package]]
 name = "yew-functional-macro"
 version = "0.1.0"
-source = "git+https://github.com/yewstack/yew#c51ab7f09482d045e0b9bd309d27033c31f9b91f"
+source = "git+https://github.com/yewstack/yew#21eca25fd0bb5e301454909ee423bc664c625de3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4938,7 +4945,7 @@ dependencies = [
 [[package]]
 name = "yew-macro"
 version = "0.17.0"
-source = "git+https://github.com/yewstack/yew#c51ab7f09482d045e0b9bd309d27033c31f9b91f"
+source = "git+https://github.com/yewstack/yew#21eca25fd0bb5e301454909ee423bc664c625de3"
 dependencies = [
  "boolinator",
  "lazy_static",

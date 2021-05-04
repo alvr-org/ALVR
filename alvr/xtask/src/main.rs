@@ -310,7 +310,7 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool, new
     .unwrap();
 }
 
-fn build_vulkan_layer() {
+fn build_vulkan_layer(is_release: bool) {
     let destination = workspace_dir().join("build").join("vulkan-layer");
     fs::remove_dir_all(&destination).ok();
     fs::create_dir_all(&destination).unwrap();
@@ -320,6 +320,7 @@ fn build_vulkan_layer() {
         .target("x86_64-unknown-linux-gnu")
         .host("x86_64-unknown-linux-gnu")
         .out_dir(&destination)
+        .profile(if is_release { "Debug" } else { "Release" })
         .build();
 }
 
@@ -442,7 +443,7 @@ pub fn publish_server(is_nightly: bool) {
     }
 
     if cfg!(target_os = "linux") {
-        build_vulkan_layer();
+        build_vulkan_layer(true);
         zip_dir(&build_dir().join("vulkan-layer")).unwrap();
     }
 }
@@ -510,7 +511,7 @@ fn main() {
                     }
                 }
                 "build-ffmpeg-linux" => dependencies::build_ffmpeg_linux(),
-                "build-vulkan-layer" => build_vulkan_layer(),
+                "build-vulkan-layer" => build_vulkan_layer(is_release),
                 "publish-server" => publish_server(is_nightly),
                 "publish-client" => publish_client(is_nightly),
                 "clean" => remove_build_dir(),

@@ -320,7 +320,8 @@ fn build_vulkan_layer(is_release: bool) {
         .target("x86_64-unknown-linux-gnu")
         .host("x86_64-unknown-linux-gnu")
         .out_dir(&destination)
-        .profile(if is_release { "Debug" } else { "Release" })
+        .profile(if is_release { "Release" } else { "Debug" })
+        .no_build_target(true)
         .build();
 }
 

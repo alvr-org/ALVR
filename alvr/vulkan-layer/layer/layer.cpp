@@ -38,6 +38,7 @@
 #include "util/custom_allocator.hpp"
 #include "util/extension_list.hpp"
 #include "wsi/wsi_factory.hpp"
+#include "layer.h"
 
 #define VK_LAYER_API_VERSION VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION)
 

@@ -9,4 +9,5 @@ members = [
     "alvr/server",
     "alvr/dashboard",
     "alvr/launcher",
+    "alvr/vulkan-layer",
 ]

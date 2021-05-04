@@ -3,17 +3,10 @@
 	"layer" : {
 		"name": "VK_LAYER_ALVR_capture",
 		"type": "GLOBAL",
-		"library_path": "./libVkLayer_window_system_integration.so",
+		"library_path": "../../../lib64/libalvr_vulkan_layer.so",
 		"api_version": "1.0.68",
 		"implementation_version": "1",
 		"description": "ALVR display intercept layer",
-		"enable_environment": {
-			"SteamAppId":"250820"
-		},
-		"functions": {
-			"vkGetInstanceProcAddr": "wsi_layer_vkGetInstanceProcAddr",
-			"vkGetDeviceProcAddr": "wsi_layer_vkGetDeviceProcAddr"
-		},
 		"instance_extensions": [
 			{
 				"name" : "VK_EXT_headless_surface",
@@ -36,12 +29,6 @@
 			{
 				"name" : "VK_KHR_swapchain",
 				"spec_version" : "1"
-			},
-			{
-				"name": "VK_EXT_tooling_info",
-				"spec_version": "1",
-				"entrypoints": ["vkGetPhysicalDeviceToolPropertiesEXT"
-				]
 			}
 		],
 		"disable_environment": {

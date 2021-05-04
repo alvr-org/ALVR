@@ -139,21 +139,6 @@ fn zip_dir(dir: &Path) -> BResult {
     Ok(())
 }
 
-fn build_vulkan_layer(is_release: bool) {
-    let destination = build_dir().join("vulkan_layer");
-    fs::remove_dir_all(&destination).ok();
-    fs::create_dir_all(&destination).unwrap();
-
-    // generator + build
-    cmake::Config::new(workspace_dir().join("alvr").join("vulkan-layer"))
-        .target("x86_64-unknown-linux-gnu")
-        .host("x86_64-unknown-linux-gnu")
-        .out_dir(&destination)
-        .profile(if is_release { "Release" } else { "Debug" })
-        .no_build_target(true)
-        .build();
-}
-
 pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_dashboard: bool) {
     let build_type = if is_release { "release" } else { "debug" };
     let build_flag = if is_release { "--release" } else { "" };
@@ -267,20 +252,25 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
     }
 
     if cfg!(target_os = "linux") {
-        build_vulkan_layer(is_release);
+        command::run_in(
+            &workspace_dir().join("alvr/vulkan-layer"),
+            &format!("cargo build {}", build_flag),
+        )
+        .unwrap();
 
-        let source = build_dir().join("vulkan_layer").join("build");
-        let destination = server_build_dir().join("vulkan_layer");
+        let lib_dir = server_build_dir().join("lib64");
+        let manifest_dir = server_build_dir().join("share/vulkan/explicit_layer.d");
 
-        fs::create_dir_all(&destination).unwrap();
+        fs::create_dir_all(&manifest_dir).unwrap();
+        fs::create_dir_all(&lib_dir).unwrap();
         fs::copy(
-            source.join("alvr_x86_64.json"),
-            destination.join("alvr_x86_64.json"),
+            workspace_dir().join("alvr/vulkan-layer/layer/alvr_x86_64.json"),
+            manifest_dir.join("alvr_x86_64.json"),
         )
         .unwrap();
         fs::copy(
-            source.join("libVkLayer_window_system_integration.so"),
-            destination.join("libVkLayer_window_system_integration.so"),
+            artifacts_dir.join(dynlib_fname("alvr_vulkan_layer")),
+            lib_dir.join(dynlib_fname("alvr_vulkan_layer")),
         )
         .unwrap();
     }

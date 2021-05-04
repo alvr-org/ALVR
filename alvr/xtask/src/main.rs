@@ -319,25 +319,6 @@ fn build_vulkan_layer() {
     cmake::Config::new(workspace_dir().join("alvr").join("vulkan-layer"))
         .out_dir(&destination)
         .build();
-
-    // Deleted CMake temp files
-    for entry in walkdir::WalkDir::new(destination)
-        .contents_first(true)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        if entry.file_name() != "alvr_x86_64.json"
-            && entry.file_name() != "libVkLayer_window_system_integration.so"
-        {
-            let path = entry.path();
-            if path.is_dir() {
-                // If dir is not empty this will silently fail. It is intended behavior
-                fs::remove_dir(path).ok();
-            } else if path.is_file() {
-                fs::remove_file(path).ok();
-            }
-        }
-    }
 }
 
 fn build_installer(wix_path: &str) {

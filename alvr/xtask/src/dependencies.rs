@@ -197,10 +197,7 @@ pub fn build_ffmpeg_linux() {
             "--disable-static --enable-shared",
             "--disable-programs",
             "--disable-doc",
-            format!(
-                "--disable-avdevice --disable-avformat --disable-swresample {}",
-                "--disable-swscale --disable-postproc"
-            ),
+            "--disable-avdevice --disable-avformat --disable-swresample --disable-postproc",
             "--disable-network",
             "--enable-lto",
             format!(
@@ -208,7 +205,7 @@ pub fn build_ffmpeg_linux() {
                 "--enable-encoder=h264_vaapi --enable-encoder=hevc_vaapi",
                 "--enable-encoder=libx264 --enable-encoder=libx264rgb --enable-encoder=libx265",
                 "--enable-hwaccel=h264_vaapi --enable-hwaccel=hevc_vaapi",
-                "--enable-filter=scale_vaapi",
+                "--enable-filter=scale --enable-filter=scale_vaapi",
             ),
             "--enable-libx264 --enable-libx265 --enable-vulkan",
         ),

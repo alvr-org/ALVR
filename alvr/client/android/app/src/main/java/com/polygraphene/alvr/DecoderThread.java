@@ -2,6 +2,7 @@ package com.polygraphene.alvr;
 
 import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
+import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.os.Handler;
 import android.os.Looper;
@@ -54,23 +55,6 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
     private static final int H265_NAL_TYPE_IDR_W_RADL = 19;
     private static final int H265_NAL_TYPE_VPS = 32;
 
-    // Dummy SPS/PPS for some decoders which crashes on not set csd-0/csd-1. (e.g. Galaxy S6 Exynos decoder)
-    private final byte[] DummySPS = new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x67, (byte) 0x64, (byte) 0x00, (byte) 0x20, (byte) 0xac, (byte) 0x2b, (byte) 0x40, (byte) 0x20,
-            0x02, (byte) 0x0d, (byte) 0x80, (byte) 0x88, (byte) 0x00, (byte) 0x00, (byte) 0x1f, (byte) 0x40, (byte) 0x00, (byte) 0x0e, (byte) 0xa6, (byte) 0x04,
-            0x7a, (byte) 0x55};
-    private final byte[] DummyPPS = new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x68, (byte) 0xee, (byte) 0x3c, (byte) 0xb0};
-
-    private final byte[] DummyCSD_H265 = new byte[]{
-            (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x40, (byte) 0x01, (byte) 0x0c, (byte) 0x01, (byte) 0xff, (byte) 0xff, (byte) 0x21, (byte) 0x40,
-            (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x00, (byte) 0x00, (byte) 0x03,
-            (byte) 0x00, (byte) 0x78, (byte) 0xac, (byte) 0x09, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x42, (byte) 0x01, (byte) 0x01, (byte) 0x21,
-            (byte) 0x40, (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x00, (byte) 0x00,
-            (byte) 0x03, (byte) 0x00, (byte) 0x78, (byte) 0xa0, (byte) 0x02, (byte) 0x00, (byte) 0x80, (byte) 0x20, (byte) 0x16, (byte) 0x5a, (byte) 0xd2, (byte) 0x90,
-            (byte) 0x96, (byte) 0x4b, (byte) 0x8c, (byte) 0x04, (byte) 0x04, (byte) 0x00, (byte) 0x00, (byte) 0x03, (byte) 0x00, (byte) 0x04, (byte) 0x00, (byte) 0x00,
-            (byte) 0x03, (byte) 0x00, (byte) 0xf0, (byte) 0x20, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x44, (byte) 0x01, (byte) 0xc0, (byte) 0xf7,
-            (byte) 0xc0, (byte) 0xcc, (byte) 0x90
-    };
-
     private final Queue<Integer> mAvailableInputs = new LinkedList<>();
 
     public DecoderThread(Surface surface, DecoderCallback callback) {
@@ -99,6 +83,42 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
                 NAL nal = (NAL) msg.obj;
 
                 detectNALType(nal);
+
+                // find an SPS nal to initialize decoder
+                // in fact it will contain all config nals concatenated
+                if (mDecoder == null) {
+                  if (nal.type != NAL_TYPE_SPS)
+                  {
+                    mNalQueue.recycle(nal);
+                    return true;
+                  }
+
+                  MediaFormat format = MediaFormat.createVideoFormat(mFormat, 512, 1024);
+                  format.setString("KEY_MIME", mFormat);
+                  format.setInteger("vendor.qti-ext-dec-low-latency.enable", 1); //Qualcomm low latency mode
+                  format.setInteger(MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE);
+                  format.setInteger(MediaFormat.KEY_PRIORITY, mPriority);
+                  format.setByteBuffer("csd-0", ByteBuffer.wrap(nal.buf, 0, nal.buf.length));
+                  MediaCodecList codecs = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
+                  String codec = codecs.findDecoderForFormat(format);
+                  try {
+                    mDecoder = MediaCodec.createByCodecName(codec);
+                    mQueue.setCodec(mDecoder);
+
+                    mDecoder.setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT);
+                    mDecoder.setCallback(new Callback());
+                    mDecoder.configure(format, mSurface, null, 0);
+                    mDecoder.start();
+
+                    Utils.logi(TAG, () -> "Codec created. Type=" + mFormat + " Name=" + mDecoder.getCodecInfo().getName());
+
+                    mDecoderCallback.onPrepared();
+                  } catch (IOException e) {
+                    e.printStackTrace();
+                    mNalQueue.recycle(nal);
+                    return true;
+                  }
+                }
                 mNalQueue.add(nal);
                 pushNALInternal();
                 return true;
@@ -123,7 +143,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
     protected void run() {
         try {
             decodeLoop();
-        } catch (IOException | IllegalStateException e) {
+        } catch (IllegalStateException e) {
             e.printStackTrace();
             Utils.loge(TAG, () -> "DecoderThread stopped by Exception.");
         } finally {
@@ -143,42 +163,12 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
         Utils.logi(TAG, () -> "DecoderThread stopped.");
     }
 
-    private void decodeLoop() throws IOException {
+    private void decodeLoop(){
         mAvailableInputs.clear();
         mNalQueue.clear();
 
         Looper.prepare();
         mHandler = new Handler(this);
-
-        int dummyHeight = 512;
-        int dummyWidth = 1024;
-        MediaFormat format = MediaFormat.createVideoFormat(mFormat, dummyWidth, dummyHeight);
-        format.setString("KEY_MIME", mFormat);
-        format.setInteger("vendor.qti-ext-dec-low-latency.enable", 1); //Qualcomm low latency mode
-
-        format.setInteger(MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE);
-        format.setInteger(MediaFormat.KEY_PRIORITY, mPriority);
-
-        if (mCodec == CODEC_H264) {
-            format.setByteBuffer("csd-0", ByteBuffer.wrap(DummySPS, 0, DummySPS.length));
-            format.setByteBuffer("csd-1", ByteBuffer.wrap(DummyPPS, 0, DummyPPS.length));
-        } else {
-            format.setByteBuffer("csd-0", ByteBuffer.wrap(DummyCSD_H265, 0, DummyCSD_H265.length));
-        }
-        mDecoder = MediaCodec.createDecoderByType(mFormat);
-
-        mQueue.setCodec(mDecoder);
-
-
-
-        mDecoder.setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT);
-        mDecoder.setCallback(new Callback());
-        mDecoder.configure(format, mSurface, null, 0);
-        mDecoder.start();
-
-        Utils.logi(TAG, () -> "Codec created. Type=" + mFormat + " Name=" + mDecoder.getCodecInfo().getName());
-
-        mDecoderCallback.onPrepared();
 
         mWaitNextIDR = true;
         setWaitingNextIDR(true);

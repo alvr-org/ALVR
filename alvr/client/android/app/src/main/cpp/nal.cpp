@@ -140,7 +140,7 @@ int NALParser::findVPSSPS(const std::byte *frameBuffer, int frameByteSize)
         }
         else if (frameBuffer[i] == std::byte(1))
         {
-            if (zeroes == 3)
+            if (zeroes >= 2)
             {
                 foundNals++;
                 if (m_codec == ALVR_CODEC_H264 && foundNals >= 3)

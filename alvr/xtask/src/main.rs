@@ -269,7 +269,7 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
     if cfg!(target_os = "linux") {
         build_vulkan_layer(is_release);
 
-        let source = build_dir().join("vulkan_layer");
+        let source = build_dir().join("vulkan_layer").join("build");
         let destination = server_build_dir().join("vulkan_layer");
 
         fs::create_dir_all(&destination).unwrap();

@@ -145,7 +145,7 @@ fn build_vulkan_layer(is_release: bool) {
     fs::create_dir_all(&destination).unwrap();
 
     // generator + build
-    cmake::Config::new(workspace_dir().join("alvr").join("vulkan_layer"))
+    cmake::Config::new(workspace_dir().join("alvr").join("vulkan-layer"))
         .target("x86_64-unknown-linux-gnu")
         .host("x86_64-unknown-linux-gnu")
         .out_dir(&destination)

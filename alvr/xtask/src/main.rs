@@ -26,7 +26,6 @@ SUBCOMMANDS:
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
     build-ffmpeg-linux  Build FFmpeg with VAAPI and Vulkan support. Only for CI
-    build-vulkan-layer  Build vulkan validation layer required for Linux
     publish-server      Build server in release mode, make portable version and installer
     publish-client      Build client for all headsets
     clean               Removes build folder
@@ -138,6 +137,21 @@ fn zip_dir(dir: &Path) -> BResult {
     }
 
     Ok(())
+}
+
+fn build_vulkan_layer(is_release: bool) {
+    let destination = build_dir().join("vulkan_layer");
+    fs::remove_dir_all(&destination).ok();
+    fs::create_dir_all(&destination).unwrap();
+
+    // generator + build
+    cmake::Config::new(workspace_dir().join("alvr").join("vulkan_layer"))
+        .target("x86_64-unknown-linux-gnu")
+        .host("x86_64-unknown-linux-gnu")
+        .out_dir(&destination)
+        .profile(if is_release { "Release" } else { "Debug" })
+        .no_build_target(true)
+        .build();
 }
 
 pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_dashboard: bool) {
@@ -252,6 +266,25 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
         fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
     }
 
+    if cfg!(target_os = "linux") {
+        build_vulkan_layer(is_release);
+
+        let source = build_dir().join("vulkan_layer");
+        let destination = server_build_dir().join("vulkan_layer");
+
+        fs::create_dir_all(&destination).unwrap();
+        fs::copy(
+            source.join("alvr_x86_64.json"),
+            destination.join("alvr_x86_64.json"),
+        )
+        .unwrap();
+        fs::copy(
+            source.join("libVkLayer_window_system_integration.so"),
+            destination.join("libVkLayer_window_system_integration.so"),
+        )
+        .unwrap();
+    }
+
     fs::copy(
         artifacts_dir.join(exec_fname("alvr_launcher")),
         server_build_dir().join(exec_fname("ALVR Launcher")),
@@ -308,21 +341,6 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool, new
             .join(format!("{}.apk", artifact_name)),
     )
     .unwrap();
-}
-
-fn build_vulkan_layer(is_release: bool) {
-    let destination = workspace_dir().join("build").join("vulkan-layer");
-    fs::remove_dir_all(&destination).ok();
-    fs::create_dir_all(&destination).unwrap();
-
-    // generator + build
-    cmake::Config::new(workspace_dir().join("alvr").join("vulkan-layer"))
-        .target("x86_64-unknown-linux-gnu")
-        .host("x86_64-unknown-linux-gnu")
-        .out_dir(&destination)
-        .profile(if is_release { "Release" } else { "Debug" })
-        .no_build_target(true)
-        .build();
 }
 
 fn build_installer(wix_path: &str) {
@@ -442,11 +460,6 @@ pub fn publish_server(is_nightly: bool) {
             println!("No WiX toolset installation found, skipping installer.");
         }
     }
-
-    if cfg!(target_os = "linux") {
-        build_vulkan_layer(true);
-        zip_dir(&build_dir().join("vulkan-layer")).unwrap();
-    }
 }
 
 pub fn publish_client(is_nightly: bool) {
@@ -512,7 +525,6 @@ fn main() {
                     }
                 }
                 "build-ffmpeg-linux" => dependencies::build_ffmpeg_linux(),
-                "build-vulkan-layer" => build_vulkan_layer(is_release),
                 "publish-server" => publish_server(is_nightly),
                 "publish-client" => publish_client(is_nightly),
                 "clean" => remove_build_dir(),

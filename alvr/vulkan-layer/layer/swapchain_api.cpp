@@ -157,7 +157,7 @@ VKAPI_ATTR VkResult wsi_layer_vkGetSwapchainCounterEXT(VkDevice device, VkSwapch
     if (!device_data.layer_owns_swapchain(swapchain)) {
         return device_data.disp.GetSwapchainCounterEXT(device, swapchain, counter, pCounterValue);
     }
-    if (VK_SURFACE_COUNTER_VBLANK_BIT_EXT == counter) {
+    if (VK_SURFACE_COUNTER_VBLANK_EXT == counter) {
         *pCounterValue = device_data.display->m_vsync_count;
     }
     return VK_SUCCESS;

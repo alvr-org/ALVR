@@ -19,7 +19,7 @@ pub fn dashboard() -> Html {
 
     html! {
         <div class="flex flex-col h-screen">
-            <div class="flex-grow flex items-stretch bg-gray-100 select-none">
+            <div class="flex-grow flex items-stretch bg-gray-100 select-none h-full">
                 <aside class="bg-gray-200">
                     <nav class="flex flex-col items-stretch h-full py-4 space-y-2">
                         <TabEntry

@@ -107,27 +107,6 @@ pub fn remove_build_dir() {
     fs::remove_dir_all(&build_dir).ok();
 }
 
-pub fn reset_server_build_folder() {
-    fs::remove_dir_all(&server_build_dir()).ok();
-    fs::create_dir_all(&server_build_dir()).unwrap();
-
-    // get all file and folder paths at depth 1, excluded template root (at index 0)
-    let dir_content = dirx::get_dir_content2(
-        workspace_dir()
-            .join("alvr")
-            .join("xtask")
-            .join("server_release_template"),
-        &dirx::DirOptions { depth: 1 },
-    )
-    .unwrap();
-    let items: Vec<&String> = dir_content.directories[1..]
-        .iter()
-        .chain(dir_content.files.iter())
-        .collect();
-
-    fsx::copy_items(&items, server_build_dir(), &dirx::CopyOptions::new()).unwrap();
-}
-
 // https://github.com/mvdnes/zip-rs/blob/master/examples/write_dir.rs
 fn zip_dir(dir: &Path) -> BResult {
     let parent_dir = dir.parent().unwrap();
@@ -169,12 +148,30 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
     let artifacts_dir = target_dir.join(build_type);
     let driver_dst_dir = server_build_dir().join("bin").join(STEAMVR_OS_DIR_NAME);
 
-    reset_server_build_folder();
-    fs::create_dir_all(&driver_dst_dir).unwrap();
-
     if fetch_crates {
         command::run("cargo update").unwrap();
     }
+
+    fs::remove_dir_all(&server_build_dir()).ok();
+    fs::create_dir_all(&server_build_dir()).unwrap();
+
+    // get all file and folder paths at depth 1, excluded template root (at index 0)
+    let dir_content = dirx::get_dir_content2(
+        workspace_dir()
+            .join("alvr")
+            .join("xtask")
+            .join("server_release_template"),
+        &dirx::DirOptions { depth: 1 },
+    )
+    .unwrap();
+    let items: Vec<&String> = dir_content.directories[1..]
+        .iter()
+        .chain(dir_content.files.iter())
+        .collect();
+
+    fsx::copy_items(&items, server_build_dir(), &dirx::CopyOptions::new()).unwrap();
+
+    fs::create_dir_all(&driver_dst_dir).unwrap();
 
     if is_nightly {
         command::run_in(
@@ -315,11 +312,32 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool, new
 
 fn build_vulkan_layer() {
     let destination = workspace_dir().join("build").join("vulkan-layer");
+    fs::remove_dir_all(&destination).ok();
     fs::create_dir_all(&destination).unwrap();
+
     // generator + build
     cmake::Config::new(workspace_dir().join("alvr").join("vulkan-layer"))
-        .out_dir(destination)
+        .out_dir(&destination)
         .build();
+
+    // Deleted CMake temp files
+    for entry in walkdir::WalkDir::new(destination)
+        .contents_first(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if entry.file_name() != "alvr_x86_64.json"
+            && entry.file_name() != "libVkLayer_window_system_integration.so"
+        {
+            let path = entry.path();
+            if path.is_dir() {
+                // If dir is not empty this will silently fail. It is intended behavior
+                fs::remove_dir(path).ok();
+            } else if path.is_file() {
+                fs::remove_file(path).ok();
+            }
+        }
+    }
 }
 
 fn build_installer(wix_path: &str) {
@@ -438,6 +456,11 @@ pub fn publish_server(is_nightly: bool) {
         } else {
             println!("No WiX toolset installation found, skipping installer.");
         }
+    }
+
+    if cfg!(target_os = "linux") {
+        build_vulkan_layer();
+        zip_dir(&build_dir().join("vulkan-layer")).unwrap();
     }
 }
 

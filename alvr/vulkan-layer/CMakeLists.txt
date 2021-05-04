@@ -63,13 +63,13 @@ add_library(${PROJECT_NAME} SHARED
    wsi/wsi_factory.cpp
    wsi/headless/surface_properties.cpp
    wsi/headless/swapchain.cpp
-   ../../alvr_server/Settings.cpp)
+   ../server/cpp/alvr_server/Settings.cpp)
 
 target_link_libraries(${PROJECT_NAME} PkgConfig::libunwind)
    
 target_compile_definitions(${PROJECT_NAME} PRIVATE -DVK_USE_PLATFORM_XLIB_XRANDR_EXT)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
 target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR} ${VULKAN_CXX_INCLUDE})
-target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR} ../../)
+target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR} ../server/cpp)
 
 configure_file(layer/alvr_x86_64.json alvr_x86_64.json COPYONLY)

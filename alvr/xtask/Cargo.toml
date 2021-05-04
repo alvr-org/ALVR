@@ -18,6 +18,7 @@ toml_edit = "0.2"
 walkdir = "2"
 zip = "0.5"
 # Miscellaneous
+cmake = "0.1"
 pico-args = "0.4"
 runas = "0.2"
 semver = "0.11"

@@ -26,6 +26,7 @@ SUBCOMMANDS:
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
     build-ffmpeg-linux  Build FFmpeg with VAAPI and Vulkan support. Only for CI
+    build-vulkan-layer  Build vulkan validation layer required for Linux
     publish-server      Build server in release mode, make portable version and installer
     publish-client      Build client for all headsets
     clean               Removes build folder
@@ -312,6 +313,15 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool, new
     .unwrap();
 }
 
+fn build_vulkan_layer() {
+    let destination = workspace_dir().join("build").join("vulkan-layer");
+    fs::create_dir_all(&destination).unwrap();
+    // generator + build
+    cmake::Config::new(workspace_dir().join("alvr").join("vulkan-layer"))
+        .out_dir(destination)
+        .build();
+}
+
 fn build_installer(wix_path: &str) {
     let wix_path = PathBuf::from(wix_path).join("bin");
     let heat_cmd = wix_path.join("heat.exe");
@@ -494,6 +504,7 @@ fn main() {
                     }
                 }
                 "build-ffmpeg-linux" => dependencies::build_ffmpeg_linux(),
+                "build-vulkan-layer" => build_vulkan_layer(),
                 "publish-server" => publish_server(is_nightly),
                 "publish-client" => publish_client(is_nightly),
                 "clean" => remove_build_dir(),

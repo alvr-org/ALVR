@@ -214,6 +214,7 @@ dependencies = [
  "nalgebra",
  "openvr-driver-sys",
  "parking_lot",
+ "pkg-config",
  "reqwest",
  "serde",
  "serde_json",

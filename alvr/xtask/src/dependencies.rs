@@ -78,15 +78,17 @@ fn build_rust_android_gradle() {
     fs::remove_dir_all(temp_build_dir).ok();
 }
 
-pub fn build_ffmpeg_linux() {
+pub fn build_ffmpeg_linux() -> std::path::PathBuf {
     // dependencies: build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev
 
     let download_path = deps_dir().join("ubuntu");
-    download_and_extract_zip(
-        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n4.4",
-        &download_path,
-    );
     let ffmpeg_path = download_path.join("FFmpeg-n4.4");
+    if !ffmpeg_path.exists() {
+        download_and_extract_zip(
+            "https://codeload.github.com/FFmpeg/FFmpeg/zip/n4.4",
+            &download_path,
+        );
+    }
 
     bash_in(
         &ffmpeg_path,
@@ -112,6 +114,8 @@ pub fn build_ffmpeg_linux() {
     )
     .unwrap();
     bash_in(&ffmpeg_path, "make -j$(nproc)").unwrap();
+
+    ffmpeg_path
 }
 
 pub fn build_deps(target_os: &str) {

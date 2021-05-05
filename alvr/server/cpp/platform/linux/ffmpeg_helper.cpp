@@ -2,10 +2,29 @@
 
 #include <chrono>
 
-extern "C" {
-#include <libavutil/avutil.h>
-#include <libavutil/hwcontext.h>
-#include <libavutil/hwcontext_vulkan.h>
+#include "alvr_server/bindings.h"
+
+#define str(s) #s
+#define LOAD_LIB(LIBNAME, VERSION) \
+	if (not m_##LIBNAME.Load(g_alvrDir + std::string("/lib64/alvr/lib"#LIBNAME".so." str(VERSION)))) {\
+		if (not m_##LIBNAME.Load("lib"#LIBNAME".so." str(VERSION))) {\
+			throw std::runtime_error("failed to load lib"#LIBNAME".so." str(VERSION));\
+		}\
+	}\
+
+alvr::libav::libav()
+{
+	LOAD_LIB(avutil, AVUTIL_MAJOR)
+	LOAD_LIB(avcodec, AVCODEC_MAJOR)
+	LOAD_LIB(swscale, SWSCALE_MAJOR)
+	LOAD_LIB(avfilter, AVFILTER_MAJOR)
+}
+#undef str
+
+alvr::libav& alvr::libav::instance()
+{
+	static libav instance;
+	return instance;
 }
 
 namespace {
@@ -14,7 +33,7 @@ AVPixelFormat vk_format_to_av_format(vk::Format vk_fmt)
 {
   for (int f = AV_PIX_FMT_NONE; f < AV_PIX_FMT_NB; ++f)
   {
-    auto current_fmt = av_vkfmt_from_pixfmt(AVPixelFormat(f));
+    auto current_fmt = AVUTIL.av_vkfmt_from_pixfmt(AVPixelFormat(f));
     if (current_fmt and *current_fmt == (VkFormat)vk_fmt)
       return AVPixelFormat(f);
   }
@@ -25,13 +44,13 @@ AVPixelFormat vk_format_to_av_format(vk::Format vk_fmt)
 std::string alvr::AvException::makemsg(const std::string & msg, int averror)
 {
   char av_msg[AV_ERROR_MAX_STRING_SIZE];
-  av_strerror(averror, av_msg, sizeof(av_msg));
+  AVUTIL.av_strerror(averror, av_msg, sizeof(av_msg));
   return msg + " " + av_msg;
 }
 
 alvr::VkContext::VkContext(const char* device, AVDictionary * opt)
 {
-  int ret = av_hwdevice_ctx_create(&ctx, AV_HWDEVICE_TYPE_VULKAN, device, opt, 0);
+  int ret = AVUTIL.av_hwdevice_ctx_create(&ctx, AV_HWDEVICE_TYPE_VULKAN, device, opt, 0);
   if (ret)
     throw AvException("failed to initialize vulkan", ret);
 
@@ -51,7 +70,7 @@ vk::Device alvr::VkContext::get_vk_device() const
 
 alvr::VkContext::~VkContext()
 {
-  av_buffer_unref(&ctx);
+  AVUTIL.av_buffer_unref(&ctx);
 }
 
 alvr::VkFrameCtx::VkFrameCtx(VkContext & vkContext, vk::ImageCreateInfo image_create_info)
@@ -59,7 +78,7 @@ alvr::VkFrameCtx::VkFrameCtx(VkContext & vkContext, vk::ImageCreateInfo image_cr
   AVHWFramesContext *frames_ctx = NULL;
   int err = 0;
 
-  if (!(ctx = av_hwframe_ctx_alloc(vkContext.ctx))) {
+  if (!(ctx = AVUTIL.av_hwframe_ctx_alloc(vkContext.ctx))) {
     throw std::runtime_error("Failed to create vulkan frame context.");
   }
   frames_ctx = (AVHWFramesContext *)(ctx->data);
@@ -68,15 +87,15 @@ alvr::VkFrameCtx::VkFrameCtx(VkContext & vkContext, vk::ImageCreateInfo image_cr
   frames_ctx->width = image_create_info.extent.width;
   frames_ctx->height = image_create_info.extent.height;
   frames_ctx->initial_pool_size = 0;
-  if ((err = av_hwframe_ctx_init(ctx)) < 0) {
-    av_buffer_unref(&ctx);
+  if ((err = AVUTIL.av_hwframe_ctx_init(ctx)) < 0) {
+    AVUTIL.av_buffer_unref(&ctx);
     throw alvr::AvException("Failed to initialize vulkan frame context:", err);
   }
 }
 
 alvr::VkFrameCtx::~VkFrameCtx()
 {
-  av_buffer_unref(&ctx);
+  AVUTIL.av_buffer_unref(&ctx);
 }
 
 alvr::VkFrame::VkFrame(
@@ -123,7 +142,7 @@ alvr::VkFrame::VkFrame(
 
   device.importSemaphoreFdKHR(impSemInfo, vk_ctx.d);
 
-  av_vkframe = av_vk_frame_alloc();
+  av_vkframe = AVUTIL.av_vk_frame_alloc();
   av_vkframe->img[0] = image;
   av_vkframe->tiling = (VkImageTiling)image_create_info.tiling;
   av_vkframe->mem[0] = mem;
@@ -137,21 +156,21 @@ alvr::VkFrame::~VkFrame()
   device.destroySemaphore(av_vkframe->sem[0]);
   device.destroyImage(av_vkframe->img[0]);
   device.freeMemory(av_vkframe->mem[0]);
-  av_free(av_vkframe);
+  AVUTIL.av_free(av_vkframe);
 }
 
 std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> alvr::VkFrame::make_av_frame(VkFrameCtx &frame_ctx)
 {
   std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> frame{
-    av_frame_alloc(),
-      [](AVFrame *p) {av_frame_free(&p);}
+    AVUTIL.av_frame_alloc(),
+      [](AVFrame *p) {AVUTIL.av_frame_free(&p);}
   };
   frame->width = width;
   frame->height = height;
-  frame->hw_frames_ctx = av_buffer_ref(frame_ctx.ctx);
+  frame->hw_frames_ctx = AVUTIL.av_buffer_ref(frame_ctx.ctx);
   frame->data[0] = (uint8_t*)av_vkframe;
   frame->format = AV_PIX_FMT_VULKAN;
-  frame->buf[0] = av_buffer_alloc(1);
+  frame->buf[0] = AVUTIL.av_buffer_alloc(1);
   frame->pts = std::chrono::steady_clock::now().time_since_epoch().count();
 
   return frame;

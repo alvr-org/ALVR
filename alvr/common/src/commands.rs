@@ -208,6 +208,15 @@ pub fn get_session_path(base: &Path) -> StrResult<PathBuf> {
     }
 }
 
+#[cfg(target_os = "linux")]
+pub fn maybe_create_alvr_config_directory() -> StrResult {
+    let alvr_dir = trace_none!(dirs::config_dir())?.join("alvr");
+    if !alvr_dir.exists() {
+        trace_err!(fs::create_dir(alvr_dir))?;
+    }
+    Ok(())
+}
+
 /////////////////// firewall //////////////////////
 
 fn netsh_add_rule_command_string(rule_name: &str, program_path: &Path) -> String {

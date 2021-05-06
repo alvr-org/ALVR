@@ -7,6 +7,7 @@
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/layer_bindings.rs"));
 }
+use bindings::*;
 
 use std::os::raw::c_char;
 

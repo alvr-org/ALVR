@@ -79,7 +79,7 @@ fn build_rust_android_gradle() {
 }
 
 pub fn build_ffmpeg_linux() {
-    // dependencies: build-essential pkg-config nasm libva-dev libvulkan-dev libx264-dev libx265-dev
+    // dependencies: build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev
 
     let download_path = deps_dir().join("ubuntu");
     download_and_extract_zip(
@@ -91,7 +91,7 @@ pub fn build_ffmpeg_linux() {
     bash_in(
         &ffmpeg_path,
         &format!(
-            "./configure {} {} {} {} {} {} {} {} {}",
+            "./configure {} {} {} {} {} {} {} {} {} {}",
             "--enable-gpl --enable-version3",
             "--disable-static --enable-shared",
             "--disable-programs",
@@ -107,6 +107,7 @@ pub fn build_ffmpeg_linux() {
                 "--enable-filter=scale --enable-filter=scale_vaapi",
             ),
             "--enable-libx264 --enable-libx265 --enable-vulkan",
+            "--enable-libdrm",
         ),
     )
     .unwrap();

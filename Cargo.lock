@@ -227,6 +227,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "alvr_vulkan-layer"
+version = "15.2.1"
+dependencies = [
+ "bindgen 0.58.1",
+ "cc",
+ "pkg-config",
+ "walkdir",
+]
+
+[[package]]
 name = "alvr_xtask"
 version = "1.0.0"
 dependencies = [
@@ -4910,7 +4920,7 @@ dependencies = [
 [[package]]
 name = "yew"
 version = "0.17.4"
-source = "git+https://github.com/yewstack/yew#21eca25fd0bb5e301454909ee423bc664c625de3"
+source = "git+https://github.com/yewstack/yew#e2d761980095dd5710c5ec8641dc02e1a17d74b3"
 dependencies = [
  "anyhow",
  "anymap",
@@ -4934,7 +4944,7 @@ dependencies = [
 [[package]]
 name = "yew-functional"
 version = "0.13.0"
-source = "git+https://github.com/yewstack/yew#21eca25fd0bb5e301454909ee423bc664c625de3"
+source = "git+https://github.com/yewstack/yew#e2d761980095dd5710c5ec8641dc02e1a17d74b3"
 dependencies = [
  "scoped-tls-hkt",
  "wasm-bindgen",
@@ -4945,7 +4955,7 @@ dependencies = [
 [[package]]
 name = "yew-functional-macro"
 version = "0.1.0"
-source = "git+https://github.com/yewstack/yew#21eca25fd0bb5e301454909ee423bc664c625de3"
+source = "git+https://github.com/yewstack/yew#e2d761980095dd5710c5ec8641dc02e1a17d74b3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4955,7 +4965,7 @@ dependencies = [
 [[package]]
 name = "yew-macro"
 version = "0.17.0"
-source = "git+https://github.com/yewstack/yew#21eca25fd0bb5e301454909ee423bc664c625de3"
+source = "git+https://github.com/yewstack/yew#e2d761980095dd5710c5ec8641dc02e1a17d74b3"
 dependencies = [
  "boolinator",
  "lazy_static",

@@ -35,11 +35,6 @@ pub fn version() -> String {
 fn bump_client_gradle_version(new_version: &str, is_nightly: bool) {
     let old_version = version();
 
-    println!(
-        "Bumping client version (gradle): {} -> {}",
-        old_version, new_version
-    );
-
     let gradle_file_path = crate::workspace_dir()
         .join("alvr/client/android/app")
         .join("build.gradle");

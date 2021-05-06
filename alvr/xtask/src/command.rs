@@ -123,7 +123,7 @@ pub fn date_utc_yyyymmdd() -> String {
             .unwrap()
     } else {
         Command::new("date")
-            .args(&["-u", "+\"%Y.%m.%d\""])
+            .args(&["-u", "+%Y.%m.%d"])
             .output()
             .unwrap()
     };

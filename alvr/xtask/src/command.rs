@@ -42,10 +42,6 @@ pub fn run_as_bash_in(workdir: &Path, cmd: &str) -> BResult {
     run_as_shell_in(workdir, "bash", "-c", cmd)
 }
 
-pub fn run_as_bash(cmd: &str) -> BResult {
-    run_as_bash_in(&env::current_dir().unwrap(), cmd)
-}
-
 pub fn run_without_shell(cmd: &str, args: &[&str]) -> BResult {
     println!(
         "\n> {}",
@@ -66,4 +62,75 @@ pub fn run_without_shell(cmd: &str, args: &[&str]) -> BResult {
         )
         .into())
     }
+}
+
+pub fn zip(source: &Path) -> BResult {
+    if cfg!(windows) {
+        run_without_shell(
+            "powershell",
+            &[
+                "Compress-Archive",
+                &source.to_string_lossy(),
+                &format!("{}.zip", source.to_string_lossy()),
+            ],
+        )
+    } else {
+        run_without_shell(
+            "zip",
+            &[
+                "-r",
+                &format!("{}.zip", source.to_string_lossy()),
+                &source.to_string_lossy(),
+            ],
+        )
+    }
+}
+
+pub fn unzip(source: &Path, destination: &Path) -> BResult {
+    if cfg!(windows) {
+        run_without_shell(
+            "powershell",
+            &[
+                "Expand-Archive",
+                &source.to_string_lossy(),
+                &destination.to_string_lossy(),
+            ],
+        )
+    } else {
+        run_without_shell(
+            "unzip",
+            &[
+                &source.to_string_lossy(),
+                "-d",
+                &destination.to_string_lossy(),
+            ],
+        )
+    }
+}
+
+pub fn download(url: &str, destination: &Path) -> BResult {
+    run_without_shell(
+        "curl",
+        &["-o", &destination.to_string_lossy(), "--url", url],
+    )
+}
+
+pub fn date_utc_yyyymmdd() -> String {
+    let output = if cfg!(windows) {
+        Command::new("powershell")
+            .arg("(Get-Date).ToUniversalTime().ToString(\"yyyy.MM.dd\")")
+            .output()
+            .unwrap()
+    } else {
+        Command::new("date")
+            .args(&["-u", "+\"%Y.%m.%d\""])
+            .output()
+            .unwrap()
+    };
+
+    String::from_utf8_lossy(&output.stdout)
+        .as_ref()
+        .to_owned()
+        .replace('\r', "")
+        .replace('\n', "")
 }

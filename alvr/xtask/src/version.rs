@@ -1,18 +1,8 @@
-use chrono::Utc;
-use lazy_static::lazy_static;
-use regex::{Captures, Regex};
-use semver::{Identifier, Version};
+use crate::command;
 use std::{
     fs,
     path::{Path, PathBuf},
 };
-
-lazy_static! {
-    static ref GRADLE_VERSIONNAME_REGEX: Regex =
-        Regex::new(r#"versionName\s+"[\d.]+[0-9A-Za-z-.]*(?:\+[0-9A-Za-z-.]+){0,1}""#).unwrap();
-    static ref GRADLE_VERSIONCODE_REGEX: Regex =
-        Regex::new(r#"versionCode\s+(?P<code>\d+)"#).unwrap();
-}
 
 fn packages_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -21,16 +11,28 @@ fn packages_dir() -> PathBuf {
         .into()
 }
 
+pub fn split_string(source: &str, start_pattern: &str, end: char) -> (String, String, String) {
+    let start_idx = source.find(start_pattern).unwrap() + start_pattern.len();
+    let end_idx = start_idx + source[start_idx..].find(end).unwrap();
+
+    (
+        source[..start_idx].to_owned(),
+        source[start_idx..end_idx].to_owned(),
+        source[end_idx..].to_owned(),
+    )
+}
+
 pub fn version() -> String {
     let manifest_path = packages_dir().join("common").join("Cargo.toml");
     println!("cargo:rerun-if-changed={}", manifest_path.to_string_lossy());
 
-    let manifest: toml_edit::Document = fs::read_to_string(manifest_path).unwrap().parse().unwrap();
+    let manifest = fs::read_to_string(manifest_path).unwrap();
+    let (_, version, _) = split_string(&manifest, "version = \"", '\"');
 
-    manifest["package"]["version"].as_str().unwrap().into()
+    version
 }
 
-fn bump_client_gradle_version(new_version: &Version, is_nightly: bool) {
+fn bump_client_gradle_version(new_version: &str, is_nightly: bool) {
     let old_version = version();
 
     println!(
@@ -43,49 +45,43 @@ fn bump_client_gradle_version(new_version: &Version, is_nightly: bool) {
         .join("build.gradle");
     let file_content = fs::read_to_string(&gradle_file_path).unwrap();
 
-    let file_content = GRADLE_VERSIONNAME_REGEX.replace(&file_content, |_: &Captures| {
-        format!(r#"versionName "{}""#, new_version)
-    });
+    // Replace versionName
+    let (file_start, _, file_end) = split_string(&file_content, "versionName \"", '\"');
+    let file_content = format!("{}{}{}", file_start, new_version, file_end);
+
     let file_content = if !is_nightly {
-        GRADLE_VERSIONCODE_REGEX.replace(&file_content, |caps: &Captures| {
-            let code: u32 = (&caps["code"]).parse().unwrap();
-            format!("versionCode {}", code + 1)
-        })
+        // Replace versionCode
+        let (file_start, old_version_code_string, file_end) =
+            split_string(&file_content, "versionCode ", '\n');
+        format!(
+            "{}{}{}",
+            file_start,
+            old_version_code_string.parse::<usize>().unwrap() + 1,
+            file_end
+        )
     } else {
         file_content
     };
 
-    fs::write(gradle_file_path, file_content.as_ref()).unwrap();
+    fs::write(gradle_file_path, file_content).unwrap();
 }
 
-fn bump_cargo_version(crate_dir_name: &str, new_version: &Version) {
-    let manifest_path = crate::workspace_dir()
-        .join("alvr")
-        .join(crate_dir_name)
-        .join("Cargo.toml");
+fn bump_cargo_version(crate_dir_name: &str, new_version: &str) {
+    let manifest_path = packages_dir().join(crate_dir_name).join("Cargo.toml");
 
-    let mut manifest: toml_edit::Document =
-        fs::read_to_string(&manifest_path).unwrap().parse().unwrap();
+    let manifest = fs::read_to_string(&manifest_path).unwrap();
 
-    manifest["package"]["version"] = toml_edit::value(new_version.to_string());
+    let (file_start, _, file_end) = split_string(&manifest, "version = \"", '\"');
+    let manifest = format!("{}{}{}", file_start, new_version, file_end);
 
-    fs::write(manifest_path, manifest.to_string_in_original_order()).unwrap();
+    fs::write(manifest_path, manifest).unwrap();
 }
 
-pub fn bump_version(version_arg: Option<&str>, is_nightly: bool) {
-    let mut version = if let Some(version_arg) = version_arg {
-        Version::parse(version_arg).unwrap()
-    } else {
-        let mut version = Version::parse(&version()).unwrap();
-        if !is_nightly {
-            version.increment_patch();
-        }
-        version
-    };
+pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
+    let mut version = maybe_version.unwrap_or_else(version);
 
     if is_nightly {
-        let today = Utc::now().format("%Y%m%d");
-        version.build = vec![Identifier::AlphaNumeric(format!("nightly.{}", today))];
+        version = format!("{}+nightly.{}", version, command::date_utc_yyyymmdd());
     }
 
     bump_client_gradle_version(&version, is_nightly);

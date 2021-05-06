@@ -27,7 +27,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - uses: Swatinem/rust-cache@v1
 
       - name: Bump version
         id: bump_version

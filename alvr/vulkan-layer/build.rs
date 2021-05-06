@@ -1,4 +1,3 @@
-use pkg_config;
 use std::{env, path::PathBuf};
 
 fn main() {
@@ -44,13 +43,14 @@ fn main() {
         .write_to_file(out_dir.join("layer_bindings.rs"))
         .expect("layer_bindings.rs");
 
-    for path in cpp_paths {
-        println!("cargo:rerun-if-changed={}", path.to_string_lossy());
-    }
     for lib in libunwind.libs {
         println!("cargo:rustc-link-lib={}", lib);
     }
 
     // fail build if there are undefined symbols in final library
     println!("cargo:rustc-cdylib-link-arg=-Wl,--no-undefined");
+
+    for path in cpp_paths {
+        println!("cargo:rerun-if-changed={}", path.to_string_lossy());
+    }
 }

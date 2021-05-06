@@ -4,12 +4,10 @@ mod version;
 
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
-use semver::Version;
 use std::{
     env,
     error::Error,
     fs,
-    io::Write,
     path::{Path, PathBuf},
 };
 
@@ -104,39 +102,6 @@ pub fn server_build_dir() -> PathBuf {
 pub fn remove_build_dir() {
     let build_dir = build_dir();
     fs::remove_dir_all(&build_dir).ok();
-}
-
-// https://github.com/mvdnes/zip-rs/blob/master/examples/write_dir.rs
-fn zip_dir(dir: &Path) -> BResult {
-    let parent_dir = dir.parent().unwrap();
-    let zip_file = fs::File::create(parent_dir.join(format!(
-        "{}.zip",
-        dir.file_name().unwrap().to_string_lossy()
-    )))?;
-    let mut zip = zip::ZipWriter::new(zip_file);
-
-    let iterator = walkdir::WalkDir::new(dir)
-        .into_iter()
-        .filter_map(|e| e.ok());
-    for entry in iterator {
-        let path = entry.path();
-        let name = path.strip_prefix(Path::new(parent_dir))?;
-
-        // Write file or directory explicitly
-        // Some unzip tools unzip files with directory paths correctly, some do not!
-        if path.is_file() {
-            println!("adding file {:?} as {:?} ...", path, name);
-            zip.start_file(name.to_string_lossy(), <_>::default())?;
-            zip.write_all(&fs::read(path).unwrap())?;
-        } else if !name.as_os_str().is_empty() {
-            // Only if not root! Avoids path spec / warning
-            // and mapname conversion failed error on unzip
-            println!("adding dir {:?} as {:?} ...", path, name);
-            zip.add_directory(name.to_string_lossy(), <_>::default())?;
-        }
-    }
-
-    Ok(())
 }
 
 pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_dashboard: bool) {
@@ -339,10 +304,14 @@ fn build_installer(wix_path: &str) {
     let candle_cmd = wix_path.join("candle.exe");
     let light_cmd = wix_path.join("light.exe");
 
-    let mut version = Version::parse(&version::version()).unwrap();
     // Clear away build and prerelease version specifiers, MSI can have only dot-separated numbers.
-    version.pre.clear();
-    version.build.clear();
+    let mut version = version::version();
+    if let Some(idx) = version.find('-') {
+        version = version[..idx].to_owned();
+    }
+    if let Some(idx) = version.find('+') {
+        version = version[..idx].to_owned();
+    }
 
     command::run_without_shell(
         &heat_cmd.to_string_lossy(),
@@ -431,7 +400,7 @@ fn build_installer(wix_path: &str) {
 
 pub fn publish_server(is_nightly: bool) {
     build_server(true, is_nightly, false, false);
-    zip_dir(&server_build_dir()).unwrap();
+    command::zip(&server_build_dir()).unwrap();
 
     if cfg!(windows) {
         if is_nightly {
@@ -459,10 +428,18 @@ pub fn publish_client(is_nightly: bool) {
 
 // Avoid Oculus link popups when debugging the client
 pub fn kill_oculus_processes() {
-    runas::Command::new("taskkill")
-        .args(&["/F", "/IM", "OVR*", "/T"])
-        .status()
-        .ok();
+    command::run_without_shell(
+        "powershell",
+        &[
+            "Start-Process",
+            "taskkill",
+            "-ArgumentList",
+            "\"/F /IM OVR* /T\"",
+            "-Verb",
+            "runAs",
+        ],
+    )
+    .unwrap();
 }
 
 fn clippy() {
@@ -519,7 +496,7 @@ fn main() {
                 "publish-client" => publish_client(is_nightly),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
-                "bump-versions" => version::bump_version(version.as_deref(), is_nightly),
+                "bump-versions" => version::bump_version(version, is_nightly),
                 "clippy" => clippy(),
                 _ => {
                     println!("\nUnrecognized subcommand.");

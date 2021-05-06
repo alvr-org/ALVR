@@ -157,14 +157,19 @@ pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
     let real_launcher_path = steamvr_bin_dir.join("vrcompositor-launcher.real");
     let launcher_path = steamvr_bin_dir.join("vrcompositor-launcher");
 
-    if !real_launcher_path.exists() {
-        trace_err!(fs::rename(&launcher_path, &real_launcher_path))?;
-    }
-
     let wrapper_data = include_bytes!("../res/vrcompositor_launcher_wrapper.sh");
 
-    let launcher_data = trace_err!(fs::read_to_string(launcher_path.clone()))?;
-    if launcher_data.as_bytes() != wrapper_data {
+    let should_write_wrapper;
+
+    if !real_launcher_path.exists() {
+        trace_err!(fs::rename(&launcher_path, &real_launcher_path))?;
+        should_write_wrapper = true;
+    } else {
+        let launcher_data = trace_err!(fs::read(launcher_path.clone()))?;
+        should_write_wrapper = launcher_data != wrapper_data
+    }
+
+    if should_write_wrapper {
         let mut launcher_file = trace_err!(File::create(launcher_path))?;
         trace_err!(launcher_file.write_all(wrapper_data))?;
 

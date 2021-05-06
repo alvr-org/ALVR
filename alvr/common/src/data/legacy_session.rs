@@ -581,6 +581,9 @@ mod manager {
 
     impl SessionManager {
         pub fn new(dir: &Path) -> Self {
+            #[cfg(target_os = "linux")]
+            commands::maybe_create_alvr_config_directory().unwrap();
+
             let session_path = commands::get_session_path(&dir).unwrap();
             let session_desc = match fs::read_to_string(&session_path) {
                 Ok(session_string) => {

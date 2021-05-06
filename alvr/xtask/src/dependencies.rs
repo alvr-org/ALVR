@@ -1,7 +1,4 @@
-use crate::{
-    command::{self, run_as_bash_in as bash_in},
-    workspace_dir,
-};
+use crate::command::{self, run_as_bash_in as bash_in};
 use std::{
     fs,
     io::ErrorKind,
@@ -10,7 +7,7 @@ use std::{
 };
 
 fn deps_dir() -> PathBuf {
-    workspace_dir().join("deps")
+    crate::workspace_dir().join("deps")
 }
 
 fn download_and_extract_zip(url: &str, destination: &Path) {
@@ -31,7 +28,9 @@ fn build_rust_android_gradle() {
     const PLUGIN_COMMIT: &str = "6e553c13ef2d9bb40b58a7675b96e0757d1b0443";
     const PLUGIN_VERSION: &str = "0.8.3";
 
-    let temp_build_dir = deps_dir().join("temp_gradle_plugin_build");
+    // Note: build_dir is used because the task always fails to delete the temp_gradle_plugin_build
+    // at the end. CI will try to zip the deps dir and this folder must not be present
+    let temp_build_dir = crate::build_dir().join("temp_gradle_plugin_build");
     download_and_extract_zip(
         &format!(
             "https://codeload.github.com/mozilla/rust-android-gradle/zip/{}",
@@ -52,9 +51,7 @@ fn build_rust_android_gradle() {
     )
     .unwrap();
 
-    let dep_dir = crate::workspace_dir()
-        .join("deps")
-        .join("rust-android-gradle");
+    let dep_dir = deps_dir().join("rust-android-gradle");
     if let Err(e) = fs::create_dir_all(&dep_dir) {
         if e.kind() != ErrorKind::AlreadyExists {
             panic::panic_any(e);

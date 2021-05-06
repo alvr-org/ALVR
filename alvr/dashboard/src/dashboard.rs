@@ -5,15 +5,17 @@ use crate::{
     components::{About, Connections, Installation, Logs, Settings, Statistics},
     translation::use_translation,
 };
-use std::rc::Rc;
 use yew::{html, Callback, Properties};
 use yew_functional::{function_component, use_state};
 
 #[function_component(Dashboard)]
 pub fn dashboard() -> Html {
-    let (selected_tab, set_selected_tab) = use_state(|| "connections".to_owned());
+    let selected_tab_handle = use_state(|| "connections".to_owned());
 
-    let on_tab_click = Callback::from(move |name| set_selected_tab(name));
+    let on_tab_click = {
+        let selected_tab_handle = selected_tab_handle.clone();
+        Callback::from(move |name| selected_tab_handle.set(name))
+    };
 
     let translation_on_click = Callback::from(move |_| {});
 
@@ -26,49 +28,49 @@ pub fn dashboard() -> Html {
                             name="connections"
                             icon="fas fa-plug"
                             on_click=on_tab_click.clone()
-                            selected=*selected_tab == "connections"
+                            selected=*selected_tab_handle == "connections"
                         />
                         <TabEntry
                             name="statistics"
                             icon="fas fa-chart-bar"
                             on_click=on_tab_click.clone()
-                            selected=*selected_tab == "statistics"
+                            selected=*selected_tab_handle == "statistics"
                         />
                         // <TabEntry
                         //     name="presets"
                         //     icon="fas fa-th-large"
                         //     on_click=on_tab_click.clone()
-                        //     selected=*selected_tab == "presets"
+                        //     selected=*selected_tab_handle == "presets"
                         // />
                         <TabEntry
                             name="settings"
                             icon="fas fa-cog"
                             on_click=on_tab_click.clone()
-                            selected=*selected_tab == "settings"
+                            selected=*selected_tab_handle == "settings"
                         />
                         <TabEntry
                             name="installation"
                             icon="fas fa-hdd"
                             on_click=on_tab_click.clone()
-                            selected=*selected_tab == "installation"
+                            selected=*selected_tab_handle == "installation"
                         />
                         <TabEntry
                             name="logs"
                             icon="fas fa-th-list"
                             on_click=on_tab_click.clone()
-                            selected=*selected_tab == "logs"
+                            selected=*selected_tab_handle == "logs"
                         />
                         <TabEntry
                             name="about"
                             icon="fas fa-info-circle"
                             on_click=on_tab_click.clone()
-                            selected=*selected_tab == "about"
+                            selected=*selected_tab_handle == "about"
                         />
                         <TabEntry
                             name="test"
                             icon="fas fa-asterisk"
                             on_click=on_tab_click.clone()
-                            selected=*selected_tab == "test"
+                            selected=*selected_tab_handle == "test"
                         />
                         <div class="flex-auto" />
                         <TabEntry
@@ -80,25 +82,25 @@ pub fn dashboard() -> Html {
                     </nav>
                 </aside>
                 <div class="flex-grow h-full overflow-y-auto">
-                    <div hidden=*selected_tab != "connections">
+                    <div hidden=*selected_tab_handle != "connections">
                         <Connections />
                     </div>
-                    <div hidden=*selected_tab != "statistics">
+                    <div hidden=*selected_tab_handle != "statistics">
                         <Statistics />
                     </div>
-                    <div hidden=*selected_tab != "settings">
+                    <div hidden=*selected_tab_handle != "settings">
                         <Settings />
                     </div>
-                    <div hidden=*selected_tab != "installation">
+                    <div hidden=*selected_tab_handle != "installation">
                         <Installation />
                     </div>
-                    <div hidden=*selected_tab != "logs">
+                    <div hidden=*selected_tab_handle != "logs">
                         <Logs />
                     </div>
-                    <div hidden=*selected_tab != "about">
+                    <div hidden=*selected_tab_handle != "about">
                         <About />
                     </div>
-                    <div hidden=*selected_tab != "test">
+                    <div hidden=*selected_tab_handle != "test">
                         <Test />
                     </div>
                 </div>
@@ -172,11 +174,11 @@ pub fn tab_entry(props: &MenuIconProps) -> Html {
 
 #[function_component(Test)]
 pub fn test() -> Html {
-    let (label, set_label) = use_state(|| "Hello".to_owned());
+    let label_handle = use_state(|| "Hello".to_owned());
 
     let on_click = {
-        let label = Rc::clone(&label);
-        Callback::from(move |_| set_label(format!("{} world", label)))
+        let label_handle = label_handle.clone();
+        Callback::from(move |_| label_handle.set(format!("{} world", *label_handle)))
     };
 
     let default_string = use_translation().get("default");
@@ -195,16 +197,16 @@ pub fn test() -> Html {
         <div class="px-4 py-3">
             <div class="flex flex-col space-y-2 items-start">
                 <Button on_click=on_click.clone() button_type=ButtonType::None>
-                    {label.clone()}
+                    {(*label_handle).clone()}
                 </Button>
                 <Button on_click=on_click.clone() button_type=ButtonType::Primary>
-                    {label.clone()}
+                    {(*label_handle).clone()}
                 </Button>
                 <Button on_click=on_click.clone() button_type=ButtonType::Secondary>
-                    {label.clone()}
+                    {(*label_handle).clone()}
                 </Button>
                 <Button on_click=on_click button_type=ButtonType::Danger>
-                    {label}
+                    {(*label_handle).clone()}
                 </Button>
             </div>
             <Switch on_click=switch_on_click checked=true/>

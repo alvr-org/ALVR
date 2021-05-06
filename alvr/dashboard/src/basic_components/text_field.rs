@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use yew::{html, Callback, InputData, Properties};
 use yew_functional::{function_component, use_state};
 
@@ -21,13 +20,16 @@ pub fn text_field(props: &Props) -> Html {
     let value = props.value.clone();
     let on_focus_lost = props.on_focus_lost.clone();
 
-    let (value, set_value) = use_state(|| value);
+    let value_handle = use_state(|| value);
 
-    let on_input = Callback::from(move |data: InputData| set_value(data.value));
+    let on_input = {
+        let value_handle = value_handle.clone();
+        Callback::from(move |data: InputData| value_handle.set(data.value))
+    };
 
     let on_focus_lost = {
-        let value = Rc::clone(&value);
-        Callback::from(move |_| on_focus_lost.emit(value.as_ref().clone()))
+        let value_handle = value_handle.clone();
+        Callback::from(move |_| on_focus_lost.emit((*value_handle).clone()))
     };
 
     html! {
@@ -47,7 +49,7 @@ pub fn text_field(props: &Props) -> Html {
             <input
                 class="rounded border border-gray-300 px-2 py-1 shadow-sm"
                 type="text"
-                value=*value
+                value=*value_handle
                 placeholder=props.placeholder
                 oninput=on_input
                 onblur=on_focus_lost

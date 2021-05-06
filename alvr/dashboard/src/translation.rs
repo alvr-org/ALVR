@@ -4,8 +4,8 @@ use fluent_langneg::NegotiationStrategy;
 use fluent_syntax::ast::Pattern;
 use std::{borrow::ToOwned, rc::Rc};
 use unic_langid::LanguageIdentifier;
-use yew::{html, Children, Properties};
-use yew_functional::{function_component, use_context, ContextProvider};
+use yew::{html, Children, ContextProvider, Properties};
+use yew_functional::{function_component, use_context};
 
 async fn get_bundle(locale: &LanguageIdentifier) -> StrResult<FluentBundle<FluentResource>> {
     let resource_future = {
@@ -229,7 +229,7 @@ pub struct SettingsTransNodeProps {
 
 #[function_component(SettingsTransNode)]
 pub fn settings_trans_node(props: &SettingsTransNodeProps) -> Html {
-    let mut context = (*use_context::<SettingsTransContext>().unwrap()).0.clone();
+    let mut context = use_context::<SettingsTransContext>().unwrap().0;
     context.push(props.subkey.clone());
 
     html! {
@@ -242,7 +242,7 @@ pub fn settings_trans_node(props: &SettingsTransNodeProps) -> Html {
 pub fn use_setting_name_trans(subkey: &str) -> String {
     let manager = use_translation();
 
-    let mut route_segments = (*use_context::<SettingsTransContext>().unwrap()).0.clone();
+    let mut route_segments = use_context::<SettingsTransContext>().unwrap().0;
     route_segments.push(subkey.to_owned());
 
     let route = route_segments.join("-");
@@ -263,7 +263,7 @@ pub struct SettingsTrans {
 pub fn use_setting_trans(subkey: &str) -> SettingsTrans {
     let manager = use_translation();
 
-    let mut route_segments = (*use_context::<Vec<String>>().expect("Trans context")).clone();
+    let mut route_segments = use_context::<Vec<String>>().expect("Trans context");
     route_segments.push(subkey.to_owned());
 
     let route = route_segments.join("-");

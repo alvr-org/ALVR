@@ -13,12 +13,15 @@ pub fn button_group(props: &Props) -> Html {
     let selected = props.selected.clone();
     let on_select = props.on_select.clone();
 
-    let (option, set_option) = use_state(move || selected);
+    let option_handle = use_state(move || selected);
 
-    let on_select = Callback::from(move |o: String| {
-        set_option(o.clone());
-        on_select.emit(o);
-    });
+    let on_select = {
+        let option_handle = option_handle.clone();
+        Callback::from(move |option: String| {
+            option_handle.set(option.clone());
+            on_select.emit(option);
+        })
+    };
 
     html! {
         <div class="btn-group" role="group">
@@ -35,7 +38,7 @@ pub fn button_group(props: &Props) -> Html {
                             id=id
                             type="radio"
                             class="btn-check"
-                            checked=*o==*option
+                            checked=*o==*option_handle
                             onclick=on_click
                         />
                         <label for=id class="btn btn-outline-primary">{o.clone()}</label>

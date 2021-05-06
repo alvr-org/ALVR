@@ -849,10 +849,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "cpuid-bool"
-version = "0.1.2"
+name = "cpufeatures"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8aebca1129a03dc6dc2b127edd729435bbc4a37e1d5f4d7513165089ceb02634"
+checksum = "5cd5a7748210e7ec1a9696610b1015e6e31fbf58f77a160801f124bd1c36592a"
 
 [[package]]
 name = "crossbeam-channel"
@@ -3227,9 +3227,9 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85dd92e586f7355c633911e11f77f3d12f04b1b1bd76a198bd34ae3af8341ef2"
+checksum = "742739e41cd49414de871ea5e549afb7e2a3ac77b589bcbebe8c82fab37147fc"
 dependencies = [
  "bitflags",
 ]
@@ -3618,13 +3618,13 @@ dependencies = [
 
 [[package]]
 name = "sha-1"
-version = "0.9.4"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfebf75d25bd900fd1e7d11501efab59bc846dbc76196839663e6637bba9f25f"
+checksum = "b659df5fc3ce22274daac600ffb845300bd2125bcfaec047823075afdab81c00"
 dependencies = [
  "block-buffer",
  "cfg-if 1.0.0",
- "cpuid-bool",
+ "cpufeatures",
  "digest",
  "opaque-debug",
 ]
@@ -4806,7 +4806,7 @@ dependencies = [
 [[package]]
 name = "yew"
 version = "0.17.4"
-source = "git+https://github.com/yewstack/yew#21eca25fd0bb5e301454909ee423bc664c625de3"
+source = "git+https://github.com/yewstack/yew#e2d761980095dd5710c5ec8641dc02e1a17d74b3"
 dependencies = [
  "anyhow",
  "anymap",
@@ -4830,7 +4830,7 @@ dependencies = [
 [[package]]
 name = "yew-functional"
 version = "0.13.0"
-source = "git+https://github.com/yewstack/yew#21eca25fd0bb5e301454909ee423bc664c625de3"
+source = "git+https://github.com/yewstack/yew#e2d761980095dd5710c5ec8641dc02e1a17d74b3"
 dependencies = [
  "scoped-tls-hkt",
  "wasm-bindgen",
@@ -4841,7 +4841,7 @@ dependencies = [
 [[package]]
 name = "yew-functional-macro"
 version = "0.1.0"
-source = "git+https://github.com/yewstack/yew#21eca25fd0bb5e301454909ee423bc664c625de3"
+source = "git+https://github.com/yewstack/yew#e2d761980095dd5710c5ec8641dc02e1a17d74b3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4851,7 +4851,7 @@ dependencies = [
 [[package]]
 name = "yew-macro"
 version = "0.17.0"
-source = "git+https://github.com/yewstack/yew#21eca25fd0bb5e301454909ee423bc664c625de3"
+source = "git+https://github.com/yewstack/yew#e2d761980095dd5710c5ec8641dc02e1a17d74b3"
 dependencies = [
  "boolinator",
  "lazy_static",

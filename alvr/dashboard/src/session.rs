@@ -4,8 +4,8 @@ use alvr_common::{
 };
 use serde::Serialize;
 use settings_schema::SchemaNode;
-use yew::{html, Children, Properties};
-use yew_functional::{function_component, ContextProvider};
+use yew::{html, Children, ContextProvider, Properties};
+use yew_functional::function_component;
 
 pub async fn fetch_schema() -> StrResult<SchemaNode> {
     trace_err!(

@@ -2,6 +2,7 @@
 name = "alvr_dashboard"
 version = "0.1.0"
 authors = ["alvr-org"]
+license = "MIT"
 edition = "2018"
 
 [lib]

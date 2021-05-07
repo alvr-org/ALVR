@@ -400,6 +400,35 @@ fn build_installer(wix_path: &str) {
 
 pub fn publish_server(is_nightly: bool) {
     build_server(true, is_nightly, false, false);
+
+    // Add licenses
+    let licenses_dir = server_build_dir().join("licenses");
+    fs::create_dir_all(&licenses_dir).unwrap();
+    fs::copy(
+        workspace_dir().join("LICENSE"),
+        licenses_dir.join("ALVR.txt"),
+    )
+    .unwrap();
+    command::run("cargo install cargo-about").unwrap();
+    command::run(&format!(
+        "cargo about generate {} > {}",
+        workspace_dir()
+            .join("alvr")
+            .join("xtask")
+            .join("licenses_template.hbs")
+            .to_string_lossy(),
+        licenses_dir.join("dependencies.html").to_string_lossy()
+    ))
+    .unwrap();
+    fs::copy(
+        workspace_dir()
+            .join("alvr")
+            .join("server")
+            .join("LICENSE-Valve"),
+        licenses_dir.join("Valve.txt"),
+    )
+    .unwrap();
+
     command::zip(&server_build_dir()).unwrap();
 
     if cfg!(windows) {

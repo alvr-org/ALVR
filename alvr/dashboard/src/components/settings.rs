@@ -7,7 +7,7 @@ use crate::{
 use alvr_common::{data::SessionDesc, logging, prelude::*};
 use serde_json as json;
 use settings_schema::{EntryData, EntryType, SchemaNode};
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 use yew::{html, Callback, Properties};
 use yew_functional::{function_component, use_context, use_effect_with_deps, use_state};
 
@@ -19,7 +19,7 @@ pub struct SettingsContentProps {
 #[function_component(SettingsContent)]
 pub fn settings_content(props: &SettingsContentProps) -> Html {
     let session = use_context::<SessionDesc>().unwrap();
-    let session_settings = session.session_settings.clone();
+    let session_settings = session.session_settings;
     let advanced = session_settings.extra.show_advanced;
     let session_map = json::from_value::<HashMap<String, json::Value>>(
         json::to_value(&session_settings).unwrap(),
@@ -33,7 +33,7 @@ pub fn settings_content(props: &SettingsContentProps) -> Html {
         schema: SchemaNode,
     }
 
-    let (selected_tab_data, set_selected_tab_data) = {
+    let selected_tab_data = {
         let (name, schema) = props.schema[0].clone();
         use_state(|| TabData { name, schema })
     };
@@ -50,9 +50,9 @@ pub fn settings_content(props: &SettingsContentProps) -> Html {
         let on_click = {
             let name = name.clone();
             let schema = schema.clone();
-            let set_selected_tab_data = Rc::clone(&set_selected_tab_data);
+            let selected_tab_data = selected_tab_data.clone();
             Callback::from(move |_| {
-                set_selected_tab_data(TabData {
+                selected_tab_data.set(TabData {
                     name: name.clone(),
                     schema: schema.clone(),
                 })
@@ -138,42 +138,45 @@ pub fn settings_content(props: &SettingsContentProps) -> Html {
 
 #[function_component(Settings)]
 pub fn settings() -> Html {
-    let (maybe_schema, set_schema) = use_state(|| None);
+    let maybe_schema_handle = use_state(|| None);
 
     use_effect_with_deps(
-        move |_| {
-            wasm_bindgen_futures::spawn_local(async move {
-                logging::show_err_async(async {
-                    let schema = trace_err!(session::fetch_schema().await)?;
-                    if let SchemaNode::Section(entries) = schema {
-                        let schema = entries
-                            .into_iter()
-                            .filter_map(|(name, content)| {
-                                if let EntryType::Data(EntryData { content, .. }) = content {
-                                    Some((name, content))
-                                } else {
-                                    error!("Invalid schema!");
-                                    None
-                                }
-                            })
-                            .collect();
+        {
+            let maybe_schema_handle = maybe_schema_handle.clone();
+            move |_| {
+                wasm_bindgen_futures::spawn_local(async move {
+                    logging::show_err_async(async {
+                        let schema = trace_err!(session::fetch_schema().await)?;
+                        if let SchemaNode::Section(entries) = schema {
+                            let schema = entries
+                                .into_iter()
+                                .filter_map(|(name, content)| {
+                                    if let EntryType::Data(EntryData { content, .. }) = content {
+                                        Some((name, content))
+                                    } else {
+                                        error!("Invalid schema!");
+                                        None
+                                    }
+                                })
+                                .collect();
 
-                        set_schema(Some(schema));
-                    } else {
-                        error!("Invalid schema!");
-                    }
+                            maybe_schema_handle.set(Some(schema));
+                        } else {
+                            error!("Invalid schema!");
+                        }
 
-                    StrResult::Ok(())
-                })
-                .await;
-            });
+                        StrResult::Ok(())
+                    })
+                    .await;
+                });
 
-            || ()
+                || ()
+            }
         },
         (),
     );
 
-    if let Some(schema) = &*maybe_schema {
+    if let Some(schema) = &*maybe_schema_handle {
         return html! {
             <SettingsContent schema=schema />
         };

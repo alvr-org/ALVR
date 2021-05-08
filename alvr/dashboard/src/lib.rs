@@ -43,24 +43,27 @@ pub fn spawn_str_result_future<F: Future<Output = StrResult> + 'static>(future: 
 
 #[function_component(Root)]
 fn root() -> Html {
-    let (maybe_data, set_data) = use_state(|| None);
+    let maybe_data_handle = use_state(|| None);
 
-    let update_session_async = Callback::from(move |_| {
-        let set_data = Rc::clone(&set_data);
-        wasm_bindgen_futures::spawn_local(async move {
-            logging::show_err_async(async {
-                let session = session::fetch_session().await?;
+    let update_session_async = {
+        let maybe_data_handle = maybe_data_handle.clone();
+        Callback::from(move |_| {
+            let maybe_data_handle = maybe_data_handle.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                logging::show_err_async(async {
+                    let session = session::fetch_session().await?;
 
-                let translation_manager =
-                    TranslationManager::new(session.to_settings().extra.language).await?;
+                    let translation_manager =
+                        TranslationManager::new(session.to_settings().extra.language).await?;
 
-                set_data(Some((Rc::new(session), Rc::new(translation_manager))));
+                    maybe_data_handle.set(Some((Rc::new(session), Rc::new(translation_manager))));
 
-                StrResult::Ok(())
-            })
-            .await;
-        });
-    });
+                    StrResult::Ok(())
+                })
+                .await;
+            });
+        })
+    };
 
     use_state({
         let update_session_async = update_session_async.clone();
@@ -76,7 +79,7 @@ fn root() -> Html {
         (),
     );
 
-    if let Some((session, translation_manager)) = &*maybe_data {
+    if let Some((session, translation_manager)) = &*maybe_data_handle {
         html! {
             <SessionProvider initial_session=(**session).clone()>
                 <TransProvider context=TransContext { manager: translation_manager.clone() }>

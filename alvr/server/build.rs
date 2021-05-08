@@ -73,6 +73,7 @@ fn main() {
         println!("cargo:rustc-link-lib=avutil");
         println!("cargo:rustc-link-lib=avcodec");
         println!("cargo:rustc-link-lib=avfilter");
+        println!("cargo:rustc-link-lib=swscale");
 
         // fail build if there are undefined symbols in final library
         println!("cargo:rustc-cdylib-link-arg=-Wl,--no-undefined");

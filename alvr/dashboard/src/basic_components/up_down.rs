@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use yew::{html, Callback, InputData, Properties};
 use yew_functional::{function_component, use_state};
 
@@ -17,18 +16,30 @@ pub struct Props {
 
 #[function_component(UpDown)]
 pub fn up_down(props: &Props) -> Html {
-    let value = props.value.clone();
-    let on_focus_lost = props.on_focus_lost.clone();
-    let on_step_down = props.on_step_down.clone();
-    let on_step_up = props.on_step_up.clone();
+    let value_handle = {
+        let value = props.value.clone();
+        use_state(|| value)
+    };
 
-    let (value, set_value) = use_state(|| value);
-
-    let on_input = Callback::from(move |data: InputData| set_value(data.value));
+    let on_input = {
+        let value_handle = value_handle.clone();
+        Callback::from(move |data: InputData| value_handle.set(data.value))
+    };
 
     let on_focus_lost = {
-        let value = Rc::clone(&value);
-        Callback::from(move |_| on_focus_lost.emit(value.as_ref().clone()))
+        let on_focus_lost = props.on_focus_lost.clone();
+        let value_handle = value_handle.clone();
+        Callback::from(move |_| on_focus_lost.emit((*value_handle).clone()))
+    };
+
+    let on_step_down = {
+        let on_step_down = props.on_step_down.clone();
+        Callback::from(move |_| on_step_down.emit(()))
+    };
+
+    let on_step_up = {
+        let on_step_up = props.on_step_up.clone();
+        Callback::from(move |_| on_step_up.emit(()))
     };
 
     html! {
@@ -47,7 +58,7 @@ pub fn up_down(props: &Props) -> Html {
             <div class="flex shadow-sm">
                 <button
                     class="rounded-l border text-gray-500 hover:bg-gray-200 p-1 w-8"
-                    onclick=Callback::from(move |_| on_step_down.emit(()))
+                    onclick=on_step_down
                 >
                     <i class="fas fa-minus" />
                 </button>
@@ -55,13 +66,13 @@ pub fn up_down(props: &Props) -> Html {
                 <input
                     class="border-t border-b  px-2 py-1 flex-1"
                     type="text"
-                    value=*value
+                    value=*value_handle
                     oninput=on_input
                     onblur=on_focus_lost
                 />
                 <button
                     class="rounded-r border text-gray-500 hover:bg-gray-200 p-1 w-8"
-                    onclick=Callback::from(move |_| on_step_up.emit(()))
+                    onclick=on_step_up
                 >
                     <i class="fas fa-plus" />
                 </button>

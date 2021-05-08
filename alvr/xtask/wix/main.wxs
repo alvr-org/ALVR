@@ -127,7 +127,7 @@
             </Publish>
         </UI>
         
-        <WixVariable Id="WixUIBannerBmp" Value="wix\installer_banner.bmp"/>
-        <WixVariable Id="WixUIDialogBmp" Value="wix\installer_dialog.bmp"/>
+        <WixVariable Id="WixUIBannerBmp" Value="alvr\xtask\wix\installer_banner.bmp"/>
+        <WixVariable Id="WixUIDialogBmp" Value="alvr\xtask\wix\installer_dialog.bmp"/>
     </Product>
 </Wix>

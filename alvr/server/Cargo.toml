@@ -1,8 +1,8 @@
 [package]
 name = "alvr_server"
 version = "15.2.1"
-authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
-license = "MIT"
+authors = ["alvr-org", "polygraphene", "Valve Corporation"]
+license = "MIT AND BSD-3-Clause"
 edition = "2018"
 
 [lib]

@@ -435,7 +435,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             seconds_from_vsync_to_photons: 0.005,
             foveated_rendering: SwitchDefault {
-                enabled: true,
+                enabled: !cfg!(target_os = "linux"),
                 content: FoveatedRenderingDescDefault {
                     strength: 2.,
                     shape: 1.5,
@@ -461,7 +461,7 @@ pub fn session_settings_default() -> SettingsDefault {
         },
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {
-                enabled: true,
+                enabled: !cfg!(target_os = "linux"),
                 content: GameAudioDescDefault {
                     device_id: AudioDeviceIdDefault {
                         variant: AudioDeviceIdDefaultVariant::Default,
@@ -547,7 +547,11 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             web_server_port: 8082,
             stream_protocol: SocketProtocolDefault {
-                variant: SocketProtocolDefaultVariant::Tcp,
+                variant: if !cfg!(target_os = "linux") {
+                    SocketProtocolDefaultVariant::Udp
+                } else {
+                    SocketProtocolDefaultVariant::Tcp
+                },
                 ThrottledUdp: SocketProtocolThrottledUdpDefault {
                     bitrate_multiplier: 1.5,
                 },
@@ -565,7 +569,7 @@ pub fn session_settings_default() -> SettingsDefault {
             client_dark_mode: false,
             revert_confirm_dialog: true,
             restart_confirm_dialog: true,
-            prompt_before_update: !cfg!(feature = "nightly"),
+            prompt_before_update: !cfg!(feature = "nightly") || cfg!(target_os = "linux"),
             update_channel: UpdateChannelDefault {
                 variant: if cfg!(feature = "nightly") {
                     UpdateChannelDefaultVariant::Nightly

@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use yew::{html, Callback, Properties};
 use yew_functional::{function_component, use_state};
 
@@ -12,13 +11,13 @@ pub struct Props {
 pub fn switch(props: &Props) -> Html {
     let Props { checked, on_click } = props.clone();
 
-    let (checked, set_checked) = use_state(move || checked);
+    let checked = use_state(move || checked);
 
     let on_click = {
-        let checked = Rc::clone(&checked);
+        let checked = checked.clone();
         Callback::from(move |_| {
             on_click.emit(!*checked);
-            set_checked(!*checked);
+            checked.set(!*checked);
         })
     };
 

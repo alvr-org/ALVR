@@ -4,7 +4,7 @@ use crate::{
     translation::use_translation,
 };
 use alvr_common::data::SessionDesc;
-use std::{fmt::Display, rc::Rc};
+use std::fmt::Display;
 use yew::{html, Callback, Properties};
 use yew_functional::{function_component, use_context, use_state};
 
@@ -24,17 +24,17 @@ pub fn reset<T: Display + Clone + PartialEq + 'static>(props: &Props<T>) -> Html
         .extra
         .revert_confirm_dialog;
 
-    let (modal_visible, set_modal_visible) = use_state(|| false);
+    let modal_visible_handle = use_state(|| false);
 
     let on_reset_requested = {
-        let set_modal_visible = Rc::clone(&set_modal_visible);
-        Callback::from(move |_| set_modal_visible(should_show_modal))
+        let modal_visible_handle = modal_visible_handle.clone();
+        Callback::from(move |_| modal_visible_handle.set(should_show_modal))
     };
 
     let on_ok = {
         let default = props.default.clone();
         let set_default = props.set_default.clone();
-        let set_modal_visible = Rc::clone(&set_modal_visible);
+        let modal_visible_handle = modal_visible_handle.clone();
         Callback::from(move |do_not_ask_again: bool| {
             // Use partial session to trigger extrapolation. This avoids race-conditions between
             // requests (synce they are async).
@@ -50,7 +50,7 @@ pub fn reset<T: Display + Clone + PartialEq + 'static>(props: &Props<T>) -> Html
 
             set_default.emit(default.clone());
 
-            set_modal_visible(false);
+            modal_visible_handle.set(false);
         })
     };
 
@@ -61,7 +61,7 @@ pub fn reset<T: Display + Clone + PartialEq + 'static>(props: &Props<T>) -> Html
         />
     };
 
-    if *modal_visible {
+    if *modal_visible_handle {
         let content = t.with_args(
             "reset-prompt",
             fluent::fluent_args! {
@@ -75,7 +75,7 @@ pub fn reset<T: Display + Clone + PartialEq + 'static>(props: &Props<T>) -> Html
                 <Modal
                     use_do_not_ask_again=true
                     on_ok=on_ok
-                    on_cancel=Callback::from(move |_| set_modal_visible(false))
+                    on_cancel=Callback::from(move |_| modal_visible_handle.set(false))
                 >
                     <RawHtml html=content />
                 </Modal>

@@ -11,7 +11,7 @@ let
   })) { };
 in mkShell {
   stdenv = pkgs.clangStdenv;
-  nativeBuildInputs = [ pkg-config ];
+  nativeBuildInputs = [ cmake pkg-config ];
   buildInputs = [
     binutils-unwrapped
     alsaLib
@@ -36,6 +36,9 @@ in mkShell {
     vulkan-headers
     (enableDebugging vulkan-loader)
     vulkan-validation-layers
+    xorg.libX11
+    xorg.libXrandr
+    libunwind
   ];
   shellHook = ''
     export LIBCLANG_PATH="${pkgs.llvmPackages.libclang}/lib"

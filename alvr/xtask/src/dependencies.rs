@@ -1,56 +1,44 @@
-use crate::command::{self, run_as_bash as bash, run_as_bash_in as bash_in};
-use rand::Rng;
+use crate::command::{self, run_as_bash_in as bash_in};
 use std::{
     fs,
-    io::{self, ErrorKind, Read},
-    iter, panic,
+    io::ErrorKind,
+    panic,
     path::{Path, PathBuf},
 };
 
-fn download_and_extract(url: &str, target_name: &str) -> PathBuf {
-    let random_dir_name = iter::repeat(())
-        .map(|_| rand::thread_rng().sample(rand::distributions::Alphanumeric))
-        .map(char::from)
-        .take(10)
-        .collect::<String>();
-    let download_dir = std::env::temp_dir().join(random_dir_name);
+fn deps_dir() -> PathBuf {
+    crate::workspace_dir().join("deps")
+}
 
-    // Note: downloaded in-memory instead of on disk
-    // todo: display progress
-    println!("Downloading {}...", target_name);
-    let mut zip_data = vec![];
-    ureq::get(url)
-        .call()
-        .unwrap()
-        .into_reader()
-        .read_to_end(&mut zip_data)
-        .unwrap();
+fn download_and_extract_zip(url: &str, destination: &Path) {
+    let zip_file = deps_dir().join("temp_download.zip");
 
-    println!(
-        "Extracting {} into {}...",
-        target_name,
-        download_dir.to_string_lossy()
-    );
-    zip::ZipArchive::new(io::Cursor::new(zip_data))
-        .unwrap()
-        .extract(&download_dir)
-        .unwrap();
+    fs::remove_file(&zip_file).ok();
+    fs::create_dir_all(deps_dir()).unwrap();
+    command::download(url, &zip_file).unwrap();
 
-    download_dir
+    fs::remove_dir_all(&destination).ok();
+    fs::create_dir_all(&destination).unwrap();
+    command::unzip(&zip_file, &destination).unwrap();
+
+    fs::remove_file(zip_file).unwrap();
 }
 
 fn build_rust_android_gradle() {
     const PLUGIN_COMMIT: &str = "6e553c13ef2d9bb40b58a7675b96e0757d1b0443";
     const PLUGIN_VERSION: &str = "0.8.3";
 
-    let download_path = download_and_extract(
+    // Note: build_dir is used because the task always fails to delete the temp_gradle_plugin_build
+    // at the end. CI will try to zip the deps dir and this folder must not be present
+    let temp_build_dir = crate::build_dir().join("temp_gradle_plugin_build");
+    download_and_extract_zip(
         &format!(
-            "https://github.com/mozilla/rust-android-gradle/archive/{}.zip",
+            "https://codeload.github.com/mozilla/rust-android-gradle/zip/{}",
             PLUGIN_COMMIT
         ),
-        "Rust Android Gradle plugin",
+        &temp_build_dir,
     );
-    let download_path = download_path.join(format!("rust-android-gradle-{}", PLUGIN_COMMIT));
+    let download_path = temp_build_dir.join(format!("rust-android-gradle-{}", PLUGIN_COMMIT));
 
     #[cfg(windows)]
     let gradlew_path = download_path.join("gradlew.bat");
@@ -63,9 +51,7 @@ fn build_rust_android_gradle() {
     )
     .unwrap();
 
-    let dep_dir = crate::workspace_dir()
-        .join("deps")
-        .join("rust-android-gradle");
+    let dep_dir = deps_dir().join("rust-android-gradle");
     if let Err(e) = fs::create_dir_all(&dep_dir) {
         if e.kind() != ErrorKind::AlreadyExists {
             panic::panic_any(e);
@@ -88,110 +74,49 @@ fn build_rust_android_gradle() {
         dep_dir.join(format!("rust-android-{}.jar", PLUGIN_VERSION)),
     )
     .unwrap();
+
+    fs::remove_dir_all(temp_build_dir).ok();
 }
 
-fn windows_to_wsl2_path(path: &Path) -> String {
-    if cfg!(windows) {
-        path.to_string_lossy()
-            .replace("C:\\", "/mnt/c/")
-            .replace("\\", "/")
-    } else {
-        path.to_string_lossy().as_ref().to_owned()
-    }
-}
+pub fn build_ffmpeg_linux() {
+    // dependencies: build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev
 
-fn build_ffmpeg(target_os: &str) {
-    if target_os == "windows" {
-        bash(&format!(
-            "sudo apt update && sudo apt remove --auto-remove -y gcc && sudo apt install -y {}",
-            "make mingw-w64 mingw-w64-tools binutils-mingw-w64 nasm"
-        ))
-        .unwrap();
-    };
-
-    let mut temp_paths = vec![];
-
-    let ffmpeg_path = download_and_extract(
-        "https://github.com/FFmpeg/FFmpeg/archive/n4.3.2.zip",
-        "FFmpeg",
+    let download_path = deps_dir().join("ubuntu");
+    download_and_extract_zip(
+        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n4.4",
+        &download_path,
     );
-    temp_paths.push(ffmpeg_path.clone());
-    let ffmpeg_path = ffmpeg_path.join("FFmpeg-n4.3.2");
-
-    // todo: add more video encoders: libkvazaar, OpenH264, libvpx, libx265
-    // AV1 encoders are excluded because of lack of hardware accelerated decoding support
-
-    let ffmpeg_platform_flags;
-    if target_os == "windows" {
-        let x264_path = download_and_extract(
-            "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.zip",
-            "x264",
-        );
-        temp_paths.push(x264_path.clone());
-        let x264_path = x264_path.join("x264-stable");
-
-        bash_in(
-            &x264_path,
-            &format!(
-                "./configure --prefix=./build --disable-cli --enable-static {}",
-                "--host=x86_64-w64-mingw32 --cross-prefix=x86_64-w64-mingw32-"
-            ),
-        )
-        .unwrap();
-        bash_in(&x264_path, "make -j$(nproc) && make install").unwrap();
-
-        let x264_wsl2_path = windows_to_wsl2_path(&x264_path.join("build"));
-        ffmpeg_platform_flags = format!(
-            "{} {} {} {}",
-            format!("--extra-cflags=\"-I{}/include\"", x264_wsl2_path),
-            format!("--extra-ldflags=\"-L{}/lib\"", x264_wsl2_path),
-            "--target-os=mingw32 --cross-prefix=x86_64-w64-mingw32-",
-            "--disable-decoders --enable-libx264 --arch=x86_64"
-        )
-    } else {
-        // target_os == "android"
-        ffmpeg_platform_flags = "--enable-jni --enable-mediacodec".to_owned()
-    };
+    let ffmpeg_path = download_path.join("FFmpeg-n4.4");
 
     bash_in(
         &ffmpeg_path,
         &format!(
-            "./configure {} {} {} {} {} {} {} {} {}",
-            format!(
-                "--prefix={}",
-                windows_to_wsl2_path(
-                    &crate::workspace_dir()
-                        .join("deps")
-                        .join(target_os)
-                        .join("ffmpeg")
-                )
-            ),
+            "./configure {} {} {} {} {} {} {} {} {} {}",
             "--enable-gpl --enable-version3",
             "--disable-static --enable-shared",
             "--disable-programs",
             "--disable-doc",
+            "--disable-avdevice --disable-avformat --disable-swresample --disable-postproc",
             "--disable-network",
-            format!(
-                "--disable-muxers --disable-demuxers --disable-parsers {}",
-                "--disable-bsfs --disable-protocols --disable-devices --disable-filters"
-            ),
             "--enable-lto",
-            ffmpeg_platform_flags
+            format!(
+                "--disable-everything {} {} {} {}",
+                "--enable-encoder=h264_vaapi --enable-encoder=hevc_vaapi",
+                "--enable-encoder=libx264 --enable-encoder=libx264rgb --enable-encoder=libx265",
+                "--enable-hwaccel=h264_vaapi --enable-hwaccel=hevc_vaapi",
+                "--enable-filter=scale --enable-filter=scale_vaapi",
+            ),
+            "--enable-libx264 --enable-libx265 --enable-vulkan",
+            "--enable-libdrm",
         ),
     )
     .unwrap();
-    bash_in(&ffmpeg_path, "make -j$(nproc) && make install").unwrap();
-
-    println!("Cleaning up...");
-    for path in temp_paths {
-        fs::remove_dir_all(path).ok();
-    }
+    bash_in(&ffmpeg_path, "make -j$(nproc)").unwrap();
 }
 
 pub fn build_deps(target_os: &str) {
     if target_os == "windows" {
         command::run("cargo install wasm-pack").unwrap();
-        build_ffmpeg("windows");
     } else if target_os == "android" {
         command::run("rustup target add aarch64-linux-android").unwrap();
         build_rust_android_gradle();

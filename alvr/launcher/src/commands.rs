@@ -159,13 +159,18 @@ pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
 
     if !real_launcher_path.exists() {
         trace_err!(fs::rename(&launcher_path, &real_launcher_path))?;
+    }
 
-        let mut file = trace_err!(File::create(launcher_path))?;
-        trace_err!(file.write_all(include_bytes!("../res/vrcompositor_launcher_wrapper.sh")))?;
+    let wrapper_data = include_bytes!("../res/vrcompositor_launcher_wrapper.sh");
 
-        let mut perms = trace_err!(file.metadata())?.permissions();
+    // write the wrapper if it is outdated or does not exist
+    if fs::read(launcher_path.clone()).map_or(true, |file_data| file_data != wrapper_data) {
+        let mut launcher_file = trace_err!(File::create(launcher_path))?;
+        trace_err!(launcher_file.write_all(wrapper_data))?;
+
+        let mut perms = trace_err!(launcher_file.metadata())?.permissions();
         perms.set_mode(0o755); // rwxr-xr-x
-        trace_err!(file.set_permissions(perms))?;
+        trace_err!(launcher_file.set_permissions(perms))?;
     }
 
     Ok(())

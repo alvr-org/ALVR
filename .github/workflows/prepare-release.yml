@@ -27,7 +27,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - uses: Swatinem/rust-cache@v1
 
       - name: Bump version
         id: bump_version
@@ -107,7 +106,6 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - uses: Swatinem/rust-cache@v1
 
       - name: Get dependencies
         uses: actions/download-artifact@v2
@@ -203,7 +201,6 @@ jobs:
           toolchain: stable
           target: aarch64-linux-android
           override: true
-      - uses: Swatinem/rust-cache@v1
 
       - name: Set better Android SDK path (workaround for rust-android-gradle)
         shell: cmd

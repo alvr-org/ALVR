@@ -1,6 +1,5 @@
 use super::Button;
 use crate::translation::use_translation;
-use std::rc::Rc;
 use yew::{html, Callback, Children, Properties};
 use yew_functional::{function_component, use_state};
 
@@ -18,11 +17,11 @@ pub fn modal(props: &Props) -> Html {
 
     let id = crate::get_id();
 
-    let (do_not_ask_again, set_do_not_ask_again) = use_state(|| false);
+    let do_not_ask_again = use_state(|| false);
 
     let on_ok = {
         let on_ok = props.on_ok.clone();
-        let do_not_ask_again = Rc::clone(&do_not_ask_again);
+        let do_not_ask_again = do_not_ask_again.clone();
         Callback::from(move |_| on_ok.emit(*do_not_ask_again))
     };
 
@@ -52,7 +51,7 @@ pub fn modal(props: &Props) -> Html {
                                         type="checkbox"
                                         checked=*do_not_ask_again
                                         onclick=Callback::from(move |_| {
-                                            set_do_not_ask_again(!*do_not_ask_again)
+                                            do_not_ask_again.set(!*do_not_ask_again)
                                         })
                                     />
                                     <label for=id class="font-medium">

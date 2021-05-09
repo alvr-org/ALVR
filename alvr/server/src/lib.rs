@@ -290,7 +290,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
-    pub extern "C" fn driver_ready_idle(set_default_chap : bool) {
+    pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
         logging::show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone()));
 
         if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {

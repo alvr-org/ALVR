@@ -239,7 +239,7 @@ pub struct ControllersDesc {
 
     #[schema(advanced)]
     pub input_profile_path: String,
-        
+
     #[schema(advanced)]
     pub use_headset_tracking_system: bool,
 
@@ -275,7 +275,6 @@ pub struct ControllersDesc {
 
     #[schema(min = 0., max = 5., step = 0.1, gui = "slider")]
     pub haptics_intensity: f32,
-
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]

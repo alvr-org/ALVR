@@ -109,10 +109,6 @@ define({
     "_root_headset_positionOffset_2.name": "Z", // adv
     "_root_headset_force3dof.name": "강제 3Dof(3축)",
     "_root_headset_force3dof.description": "강제 3축모드를 사용합니다.(Oculus Go와 유사)",
-    "_root_headset_trackingRefOnly.name": "Tracking Reference Only",
-    "_root_headset_trackingRefOnly.description": "Disables all video encoding/streaming and treats the HMD as an openvr tracking reference instead of the main HMD. This can be used to make ALVR's HMD/controllers as FBT trackers, as alternative controllers for other HMDs, for debugging purposes, etc.",
-    "_root_headset_enableViveTrackerProxy.name": "Vive Tracker Proxy",
-    "_root_headset_enableViveTrackerProxy.description": "Spawns a vive tracker proxy which mirrors ALVR's HMD position & orientation. This can be used for example to make ALVR's HMD a hip tracker in FBT or just a general tracked object in supporting games/apps.",
     "_root_headset_controllers.name": "컨트롤러",
     // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
     "_root_headset_controllers_enabled.description": "컨트롤러를 사용합니다.",
@@ -132,16 +128,10 @@ define({
     "_root_headset_controllers_content_renderModelNameRight.description": "오른손 에뮬레이터 컨트롤러의 모델 숫자", // adv
     "_root_headset_controllers_content_serialNumber.name": "시리얼 숫자", // adv
     "_root_headset_controllers_content_serialNumber.description": "에뮬레이터 컨트롤러의 시리얼 숫자", // adv
-    "_root_headset_controllers_content_ctrlTypeLeft.name": "Left 컨트롤러 타입", // adv
-    "_root_headset_controllers_content_ctrlTypeLeft.description": "에뮬레이터 컨트롤러의 타입", // adv
-    "_root_headset_controllers_content_ctrlTypeRight.name": "Right 컨트롤러 타입", // adv
-    "_root_headset_controllers_content_ctrlTypeRight.description": "에뮬레이터 컨트롤러의 타입", // adv
     "_root_headset_controllers_content_registeredDeviceType.name": "등록된 디바이스 타입", // adv
     "_root_headset_controllers_content_registeredDeviceType.description": "에뮬레이터 컨트롤러의 등록된 디바이스 타입", // adv
     "_root_headset_controllers_content_inputProfilePath.name": "입력 프로파일 경로", // adv
     "_root_headset_controllers_content_inputProfilePath.description": "에뮬레이터 컨트롤러의 입력 프로파일 경로", // adv
-    "_root_headset_controllers_content_useHeadsetTrackingSystem.name": "Use Headset Tracking System",
-    "_root_headset_controllers_content_useHeadsetTrackingSystem.description": "Overrides the current controller profile's tracking system name with the current ALVR HMD's tracking system. Enable this in cases such as space calibration with OpenVR space calibrator.",
     "_root_headset_controllers_content_trackingSpeed.name": "트래킹 속도",
     "_root_headset_controllers_content_trackingSpeed.description": "비트세이버처럼 빠른 속도의 게임을 플레이하신다면 보통 혹은 중간을 선택하세요. 스카이림처럼 느린 게임을 플레이하신다면 보통을 선택하세요. \n 오큘러스 예측은 SteamVR 대신 헤드셋에서 컨트롤러 위치를 예측합니다.",
     "_root_headset_controllers_content_poseTimeOffset.name": "포즈 타임 오프셋", // adv

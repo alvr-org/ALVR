@@ -165,9 +165,9 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		if (!m_baseComponentsInitialized) {
 			m_baseComponentsInitialized = true;
 
-#ifdef _WIN32
 			if (IsHMD())
 			{
+#ifdef _WIN32
 				m_D3DRender = std::make_shared<CD3DRender>();
 
 				// Use the same adapter as vrcompositor uses. If another adapter is used, vrcompositor says "failed to open shared texture" and then crashes.

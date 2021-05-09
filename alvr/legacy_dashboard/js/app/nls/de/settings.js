@@ -93,10 +93,6 @@ define({
     "_root_headset_positionOffset_2.name": "Z", // adv
     "_root_headset_force3dof.name": "Erzwinge 3Dof",
     "_root_headset_force3dof.description": "Erzwingt den '3 degrees of freedom' Modus (wie die Oculus Go)",
-    "_root_headset_trackingRefOnly.name": "Tracking Reference Only",
-    "_root_headset_trackingRefOnly.description": "Disables all video encoding/streaming and treats the HMD as an openvr tracking reference instead of the main HMD. This can be used to make ALVR's HMD/controllers as FBT trackers, as alternative controllers for other HMDs, for debugging purposes, etc.",
-    "_root_headset_enableViveTrackerProxy.name": "Enable Vive Tracker Proxy",
-    "_root_headset_enableViveTrackerProxy.description": "Spawns vive tracker proxy which mirrors ALVR's HMD position & orientation. This can be used for example to make ALVR's HMD a hip tracker in FBT or just a general tracked object in supporting games/apps.",
     "_root_headset_controllers.name": "Controller",
     // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
     "_root_headset_controllers_enabled.description": "Erlaube die Nutzung von Controllern",
@@ -116,16 +112,10 @@ define({
     "_root_headset_controllers_content_renderModelNameRight.description": "Modellnummer des rechten simulierten Controllers", // adv
     "_root_headset_controllers_content_serialNumber.name": "Seriennummer", // adv
     "_root_headset_controllers_content_serialNumber.description": "Seriennummer des simulierten Controllers", // adv
-    "_root_headset_controllers_content_ctrlTypeLeft.name": "Left Controller", // adv
-    "_root_headset_controllers_content_ctrlTypeLeft.description": "Art des simulierten Controllers", // adv
-    "_root_headset_controllers_content_ctrlTypeRight.name": "Right Controller", // adv
-    "_root_headset_controllers_content_ctrlTypeRight.description": "Art des simulierten Controllers", // adv
     "_root_headset_controllers_content_registeredDeviceType.name": "Registrierter Geräte-Typ", // adv
     "_root_headset_controllers_content_registeredDeviceType.description": "Registrierter Geräte-Typ des simulierten Controllers", // adv
     "_root_headset_controllers_content_inputProfilePath.name": "Eingangsprofilpfad", // adv
     "_root_headset_controllers_content_inputProfilePath.description": "Eingangsprofilpfad jedes simulierten Controllers", // adv
-    "_root_headset_controllers_content_useHeadsetTrackingSystem.name": "Use Headset Tracking System",
-    "_root_headset_controllers_content_useHeadsetTrackingSystem.description": "Overrides the current controller profile's tracking system name with the current ALVR HMD's tracking system. Enable this in cases such as space calibration with OpenVR space calibrator.",
     "_root_headset_controllers_content_trackingSpeed.name": "Trackinggeschwindigkeit",
     "_root_headset_controllers_content_trackingSpeed.description": "Wähle Medium oder Schnell für schnelle Spiele wie BeatSaber. Lass es auf normal für langsamere Spiele wie Skyrim.\nOculus Vorhersage-Algorithmus bedeutet dass die Vorhersage auf dem Headset anstatt des PCs geschiet.",
 	// "_root_headset_controllers_content_poseTimeOffset.name": "", // adv 

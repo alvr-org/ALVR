@@ -87,10 +87,6 @@ define({
     "_root_headset_positionOffset_2.name": "Z", // adv
     "_root_headset_force3dof.name": "Vsili 3 DoF",
     "_root_headset_force3dof.description": "Vsili 3 stopnje svobode (Tako kot Oculus Go/Ostale VR naprave brez prostorskega sledenja).",
-    "_root_headset_trackingRefOnly.name": "Tracking Reference Only",
-    "_root_headset_trackingRefOnly.description": "Disables all video encoding/streaming and treats the HMD as an openvr tracking reference instead of the main HMD. This can be used to make ALVR's HMD/controllers as FBT trackers, as alternative controllers for other HMDs, for debugging purposes, etc.",
-    "_root_headset_enableViveTrackerProxy.name": "Vive Tracker Proxy",
-    "_root_headset_enableViveTrackerProxy.description": "Spawns a vive tracker proxy which mirrors ALVR's HMD position & orientation. This can be used for example to make ALVR's HMD a hip tracker in FBT or just a general tracked object in supporting games/apps.",
     "_root_headset_controllers.name": "Krmilniki",
     // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
     "_root_headset_controllers_enabled.description": "Dovoli uporabo krmilnikov.",
@@ -110,16 +106,10 @@ define({
     "_root_headset_controllers_content_renderModelNameRight.description": "Model number of the emulated right hand controller", // adv
     "_root_headset_controllers_content_serialNumber.name": "Serial number", // adv
     "_root_headset_controllers_content_serialNumber.description": "Serial number of the emulated controller", // adv
-    "_root_headset_controllers_content_ctrlTypeLeft.name": "Left Controler type", // adv
-    "_root_headset_controllers_content_ctrlTypeLeft.description": "Type of the emulated controller", // adv
-    "_root_headset_controllers_content_ctrlTypeRight.name": "Right Controler type", // adv
-    "_root_headset_controllers_content_ctrlTypeRight.description": "Type of the emulated controller", // adv
     "_root_headset_controllers_content_registeredDeviceType.name": "Registered device type", // adv
     "_root_headset_controllers_content_registeredDeviceType.description": "Registered device type of the emulated controller", // adv
     "_root_headset_controllers_content_inputProfilePath.name": "Input profile path", // adv
     "_root_headset_controllers_content_inputProfilePath.description": "Input profile path of the emulated controller", // adv
-    "_root_headset_controllers_content_useHeadsetTrackingSystem.name": "Use Headset Tracking System",
-    "_root_headset_controllers_content_useHeadsetTrackingSystem.description": "Overrides the current controller profile's tracking system name with the current ALVR HMD's tracking system. Enable this in cases such as space calibration with OpenVR space calibrator.",
     "_root_headset_controllers_content_trackingSpeed.name": "Hitrost sledenja",
     "_root_headset_controllers_content_trackingSpeed.description": "Za hitre igre kot Beatsaber, izberi SREDNJE ali HITRO. Za počasnejše igre kjer potrebuješ večjo natančnost uporabi NAVADNO.\nOCULUS predvidevanje pomeni, da je predvidevanje izvedeno na napravi, namesto na računalniku preko SteamVR.",
     "_root_headset_controllers_content_poseTimeOffset.name": "Pose time offset", // adv

@@ -17,7 +17,7 @@ extern "C" void (*LogError)(const char *stringPtr);
 extern "C" void (*LogWarn)(const char *stringPtr);
 extern "C" void (*LogInfo)(const char *stringPtr);
 extern "C" void (*LogDebug)(const char *stringPtr);
-extern "C" void (*DriverReadyIdle)();
+extern "C" void (*DriverReadyIdle)(bool setDefaultChaprone);
 extern "C" void (*LegacySend)(unsigned char *buf, int len);
 extern "C" void (*ShutdownRuntime)();
 

@@ -229,13 +229,19 @@ pub struct ControllersDesc {
     pub serial_number: String,
 
     #[schema(advanced)]
-    pub ctrl_type: String,
+    pub ctrl_type_left: String,
+
+    #[schema(advanced)]
+    pub ctrl_type_right: String,
 
     #[schema(advanced)]
     pub registered_device_type: String,
 
     #[schema(advanced)]
     pub input_profile_path: String,
+        
+    #[schema(advanced)]
+    pub use_headset_tracking_system: bool,
 
     #[schema(higher_order(
         name = "tracking_speed",
@@ -269,6 +275,7 @@ pub struct ControllersDesc {
 
     #[schema(min = 0., max = 5., step = 0.1, gui = "slider")]
     pub haptics_intensity: f32,
+
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -310,6 +317,12 @@ pub struct HeadsetDesc {
     pub position_offset: [f32; 3],
 
     pub force_3dof: bool,
+
+    #[schema(advanced)]
+    pub tracking_ref_only: bool,
+
+    #[schema(advanced)]
+    pub enable_vive_tracker_proxy: bool,
 
     pub controllers: Switch<ControllersDesc>,
 
@@ -528,6 +541,8 @@ lazy_static! {
             tracking_frame_offset: 0,
             position_offset: [0., 0., 0.],
             force_3dof: false,
+            tracking_ref_only: false,
+            enable_vive_tracker_proxy: false,
             controllers: SwitchDefault {
                 enabled: true,
                 content: ControllersDescDefault {
@@ -538,7 +553,8 @@ lazy_static! {
                     render_model_name_left: "oculus_quest2_controller_left".into(),
                     render_model_name_right: "oculus_quest2_controller_right".into(),
                     serial_number: "1WMGH000XX0000_Controller".into(),
-                    ctrl_type: "oculus_touch".into(),
+                    ctrl_type_left: "oculus_touch".into(),
+                    ctrl_type_right: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
                     pose_time_offset: 0.01,
@@ -546,6 +562,7 @@ lazy_static! {
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,
+                    use_headset_tracking_system: false
                 },
             },
             tracking_space: TrackingSpaceDefault {

@@ -140,7 +140,7 @@ void (*LogError)(const char *stringPtr);
 void (*LogWarn)(const char *stringPtr);
 void (*LogInfo)(const char *stringPtr);
 void (*LogDebug)(const char *stringPtr);
-void (*DriverReadyIdle)();
+void (*DriverReadyIdle)(bool setDefaultChaprone);
 void (*LegacySend)(unsigned char *buf, int len);
 void (*ShutdownRuntime)();
 

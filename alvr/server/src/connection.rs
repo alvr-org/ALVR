@@ -593,10 +593,9 @@ async fn connection_pipeline() -> StrResult {
     };
 
     let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<PlayspaceSyncPacket>();
-    
-    let is_tracking_ref_only =  settings.headset.tracking_ref_only;
-    if !is_tracking_ref_only
-    {
+
+    let is_tracking_ref_only = settings.headset.tracking_ref_only;
+    if !is_tracking_ref_only {
         // use a separate thread because SetChaperone() is blocking
         thread::spawn(move || {
             while let Ok(packet) = playspace_sync_receiver.recv() {
@@ -641,13 +640,12 @@ async fn connection_pipeline() -> StrResult {
             }
         }
     };
-    
+
     let control_loop = async move {
         loop {
             match control_receiver.recv().await {
                 Ok(ClientControlPacket::PlayspaceSync(packet)) => {
-                    if !is_tracking_ref_only
-                    {
+                    if !is_tracking_ref_only {
                         playspace_sync_sender.send(packet).ok();
                     }
                 }

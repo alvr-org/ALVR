@@ -25,13 +25,13 @@ public:
 	}
 
 	virtual inline void EnterStandby() override {}	
-	virtual inline void *GetComponent( const char *pchComponentNameAndVersion ) override
+	virtual inline void *GetComponent( const char */*pchComponentNameAndVersion*/ ) override
 	{
 		// override this to add a component to a driver
 		return nullptr;
 	}
 
-	virtual inline void DebugRequest( const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize ) override
+	virtual inline void DebugRequest( const char */*pchRequest*/, char *pchResponseBuffer, uint32_t unResponseBufferSize ) override
 	{
 		if ( unResponseBufferSize >= 1 )
 			pchResponseBuffer[0] = 0;

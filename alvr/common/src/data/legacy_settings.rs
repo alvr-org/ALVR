@@ -254,7 +254,7 @@ pub struct ControllersDesc {
     pub haptics_intensity: f32,
 
     #[schema(advanced)]
-    pub use_headset_tracking_system: bool
+    pub use_headset_tracking_system: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -530,7 +530,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,
-                    use_headset_tracking_system: false
+                    use_headset_tracking_system: false,
                 },
             },
             tracking_space: TrackingSpaceDefault {

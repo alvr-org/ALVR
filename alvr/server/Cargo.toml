@@ -11,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["settings-schema_legacy"]
 new_dashboard = ["settings-schema"]
+bundled_ffmpeg = []
 
 [dependencies]
 # Basic utilities
@@ -55,3 +56,5 @@ openvr-driver-sys = { path = "../openvr-driver-sys" }
 bindgen = "0.58"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"
+[target.'cfg(unix)'.build-dependencies]
+pkg-config = "0.3.9"

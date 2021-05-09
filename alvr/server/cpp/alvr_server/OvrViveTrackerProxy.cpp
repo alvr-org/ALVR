@@ -1,4 +1,5 @@
 #include "OvrViveTrackerProxy.h"
+#include "Settings.h"
 #include "OvrHMD.h"
 
 #include <cassert>

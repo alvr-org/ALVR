@@ -198,8 +198,8 @@ void CEncoder::Run() {
       fprintf(stderr, "\n\nWe are initalizing Vulkan in CEncoder thread\n\n\n");
 
 #ifdef DEBUG
-      av_log_set_level(AV_LOG_DEBUG);
-      av_log_set_callback(logfn);
+      AVUTIL.av_log_set_level(AV_LOG_DEBUG);
+      AVUTIL.av_log_set_callback(logfn);
 #endif
 
       AVDictionary *d = NULL; // "create" an empty dictionary

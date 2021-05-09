@@ -214,6 +214,7 @@ dependencies = [
  "nalgebra",
  "openvr-driver-sys",
  "parking_lot",
+ "pkg-config",
  "reqwest",
  "serde",
  "serde_json",
@@ -242,6 +243,7 @@ version = "1.0.0"
 dependencies = [
  "fs_extra",
  "pico-args",
+ "walkdir",
 ]
 
 [[package]]

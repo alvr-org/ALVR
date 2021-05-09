@@ -37,6 +37,7 @@ FLAGS:
     --nightly           Bump versions to nightly and build. Used only for publish subcommand
     --oculus-quest      Oculus Quest build. Used only for build-client subcommand
     --oculus-go         Oculus Go build. Used only for build-client subcommand
+    --bundle-ffmpeg     Bundle ffmpeg libraries. Only used for build-server subcommand on Linux
     --help              Print this text
 
 ARGS:
@@ -104,9 +105,34 @@ pub fn remove_build_dir() {
     fs::remove_dir_all(&build_dir).ok();
 }
 
-pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_dashboard: bool) {
+pub fn build_server(
+    is_release: bool,
+    is_nightly: bool,
+    fetch_crates: bool,
+    new_dashboard: bool,
+    bundle_ffmpeg: bool,
+) {
     let build_type = if is_release { "release" } else { "debug" };
     let build_flag = if is_release { "--release" } else { "" };
+
+    let mut server_features: Vec<&str> = vec![];
+    let mut launcher_features: Vec<&str> = vec![];
+
+    if is_nightly {
+        server_features.push("alvr_common/nightly");
+        launcher_features.push("alvr_common/nightly");
+    }
+    if new_dashboard {
+        server_features.push("new_dashboard");
+        server_features.push("alvr_common/new_dashboard");
+        launcher_features.push("alvr_common/new_dashboard");
+    } else {
+        server_features.push("default");
+        launcher_features.push("alvr_common/default");
+    }
+    if bundle_ffmpeg {
+        server_features.push("bundled_ffmpeg");
+    }
 
     let target_dir = target_dir();
     let artifacts_dir = target_dir.join(build_type);
@@ -137,41 +163,38 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, new_
 
     fs::create_dir_all(&driver_dst_dir).unwrap();
 
-    if is_nightly {
-        command::run_in(
-            &workspace_dir().join("alvr/server"),
-            &format!("cargo build {} --features alvr_common/nightly", build_flag),
-        )
-        .unwrap();
-        command::run_in(
-            &workspace_dir().join("alvr/launcher"),
-            &format!("cargo build {} --features alvr_common/nightly", build_flag),
-        )
-        .unwrap();
-    } else if new_dashboard {
-        command::run_in(
-            &workspace_dir().join("alvr/server"),
-            &format!(
-                "cargo build --no-default-features {} {}",
-                " --features new_dashboard --features alvr_common/new_dashboard", build_flag
-            ),
-        )
-        .unwrap();
-        command::run_in(
-            &workspace_dir().join("alvr/launcher"),
-            &format!(
-                "cargo build --no-default-features {} {}",
-                "--features alvr_common/new_dashboard", build_flag
-            ),
-        )
-        .unwrap();
-    } else {
-        command::run(&format!(
-            "cargo build -p alvr_server -p alvr_launcher {}",
-            build_flag
-        ))
-        .unwrap();
+    if bundle_ffmpeg {
+        let ffmpeg_path = dependencies::build_ffmpeg_linux();
+        let lib_dir = server_build_dir().join("lib64").join("alvr");
+        fs::create_dir_all(lib_dir.clone()).unwrap();
+        for lib in walkdir::WalkDir::new(ffmpeg_path)
+            .into_iter()
+            .filter_map(|maybe_entry| maybe_entry.ok())
+            .map(|entry| entry.into_path())
+            .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".so."))
+        {
+            fs::copy(lib.clone(), lib_dir.join(lib.file_name().unwrap())).unwrap();
+        }
     }
+
+    command::run_in(
+        &workspace_dir().join("alvr/server"),
+        &format!(
+            "cargo build {} --no-default-features --features {}",
+            build_flag,
+            server_features.join(",")
+        ),
+    )
+    .unwrap();
+    command::run_in(
+        &workspace_dir().join("alvr/launcher"),
+        &format!(
+            "cargo build {} --no-default-features --features {}",
+            build_flag,
+            launcher_features.join(",")
+        ),
+    )
+    .unwrap();
     fs::copy(
         artifacts_dir.join(dynlib_fname("alvr_server")),
         driver_dst_dir.join(DRIVER_FNAME),
@@ -399,7 +422,7 @@ fn build_installer(wix_path: &str) {
 }
 
 pub fn publish_server(is_nightly: bool) {
-    build_server(true, is_nightly, false, false);
+    build_server(true, is_nightly, false, false, false);
 
     // Add licenses
     let licenses_dir = server_build_dir().join("licenses");
@@ -505,12 +528,15 @@ fn main() {
         let for_oculus_quest = args.contains("--oculus-quest");
         let for_oculus_go = args.contains("--oculus-go");
         let new_dashboard = args.contains("--new-dashboard");
+        let bundle_ffmpeg = args.contains("--bundle-ffmpeg");
 
         if args.finish().is_empty() {
             match subcommand.as_str() {
                 "build-windows-deps" => dependencies::build_deps("windows"),
                 "build-android-deps" => dependencies::build_deps("android"),
-                "build-server" => build_server(is_release, false, fetch, new_dashboard),
+                "build-server" => {
+                    build_server(is_release, false, fetch, new_dashboard, bundle_ffmpeg)
+                }
                 "build-client" => {
                     if (for_oculus_quest && for_oculus_go) || (!for_oculus_quest && !for_oculus_go)
                     {
@@ -520,7 +546,9 @@ fn main() {
                         build_client(is_release, false, for_oculus_go, new_dashboard);
                     }
                 }
-                "build-ffmpeg-linux" => dependencies::build_ffmpeg_linux(),
+                "build-ffmpeg-linux" => {
+                    dependencies::build_ffmpeg_linux();
+                }
                 "publish-server" => publish_server(is_nightly),
                 "publish-client" => publish_client(is_nightly),
                 "clean" => remove_build_dir(),

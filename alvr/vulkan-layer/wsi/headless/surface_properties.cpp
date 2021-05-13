@@ -52,7 +52,7 @@ surface_properties::get_surface_capabilities(VkPhysicalDevice physical_device, V
                                              VkSurfaceCapabilitiesKHR *surface_capabilities) {
     UNUSED(surface);
     /* Image count limits */
-    surface_capabilities->minImageCount = 1;
+    surface_capabilities->minImageCount = 4;
     /* There is no maximum theoretically speaking */
     surface_capabilities->maxImageCount = UINT32_MAX;
 

@@ -60,7 +60,7 @@ typedef unsigned char gf;
  * A value related to the multiplication is held in a local variable
  * declared with USE_GF_MULC . See usage in addmul1().
  */
-#define USE_GF_MULC register gf * __gf_mulc_
+#define USE_GF_MULC gf * __gf_mulc_
 #define GF_MULC0(c) __gf_mulc_ = &gf_mul_table[(c)<<8]
 #define GF_ADDMULC(dst, x) dst ^= __gf_mulc_[x]
 #define GF_MULC(dst, x) dst = __gf_mulc_[x]
@@ -95,7 +95,7 @@ static inline gf modnn(int x) {
 static void addmul(gf *dst1, gf *src1, gf c, int sz) {
     USE_GF_MULC;
     if (c != 0) {
-        register gf *dst = dst1, *src = src1;
+        gf *dst = dst1, *src = src1;
         gf *lim = &dst[sz];
 
         GF_MULC0(c);
@@ -107,7 +107,7 @@ static void addmul(gf *dst1, gf *src1, gf c, int sz) {
 static void mul(gf *dst1, gf *src1, gf c, int sz) {
     USE_GF_MULC;
     if (c != 0) {
-        register gf *dst = dst1, *src = src1;
+        gf *dst = dst1, *src = src1;
         gf *lim = &dst[sz];
         GF_MULC0(c);
         for (; dst < lim; dst++, src++)
@@ -339,6 +339,7 @@ static int invert_mat(gf *src, int k) {
  * Not check for input params
  * */
 static gf* sub_matrix(gf* matrix, int rmin, int cmin, int rmax, int cmax,  int nrows, int ncols) {
+    (void)nrows;
     int i, j, ptr = 0;
     gf* new_m = (gf*) malloc((rmax-rmin) * (cmax-cmin));
     if (NULL != new_m) {
@@ -491,7 +492,7 @@ static int reed_solomon_decode(reed_solomon* rs, unsigned char **data_blocks, in
     unsigned char* subShards[DATA_SHARDS_MAX];
     unsigned char* outputs[DATA_SHARDS_MAX];
     gf* m = rs->m;
-    int i, j, c, swap, subMatrixRow, dataShards, nos, nshards;
+    int i, j, c, swap, subMatrixRow, dataShards;
 
     /* the erased_blocks should always sorted
      * if sorted, nr_fec_blocks times to check it
@@ -515,11 +516,9 @@ static int reed_solomon_decode(reed_solomon* rs, unsigned char **data_blocks, in
 
     j = 0;
     subMatrixRow = 0;
-    nos = 0;
-    nshards = 0;
     dataShards = rs->data_shards;
     for (i = 0; i < dataShards; i++) {
-        if (j < nr_fec_blocks && i == erased_blocks[j])
+        if (j < nr_fec_blocks && i == (int)erased_blocks[j])
             j++;
         else {
             /* this row is ok */

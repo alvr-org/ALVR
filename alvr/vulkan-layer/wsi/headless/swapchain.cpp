@@ -64,7 +64,7 @@ swapchain::~swapchain() {
     teardown();
 }
 
-VkResult swapchain::init_platform(VkDevice device, const VkSwapchainCreateInfoKHR *pSwapchainCreateInfo) {
+VkResult swapchain::init_platform(VkDevice /*device*/, const VkSwapchainCreateInfoKHR *pSwapchainCreateInfo) {
   assert(m_fds.empty());
   int fd = memfd_create("ALVR image present shared memory", MFD_CLOEXEC);
   if (fd == -1) {
@@ -193,7 +193,8 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
         return res;
     }
 
-    VkSubmitInfo submit = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    VkSubmitInfo submit = {};
+    submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit.signalSemaphoreCount = 1;
     submit.pSignalSemaphores = &image.semaphore;
     m_device_data.disp.QueueSubmit(m_queue, 1, &submit, VK_NULL_HANDLE);
@@ -280,9 +281,10 @@ bool swapchain::try_connect() {
                                                                  &prop);
 
     init_packet init{.num_images = uint32_t(m_swapchain_images.size()),
-                     .image_create_info = m_create_info,
-                     .mem_index = m_mem_index,
-                     .source_pid = getpid()};
+      .device_name = {},
+      .image_create_info = m_create_info,
+      .mem_index = m_mem_index,
+      .source_pid = getpid()};
     memcpy(init.device_name.data(), prop.deviceName, sizeof(prop.deviceName));
     ret = write(socket_fd, &init, sizeof(init));
     if (ret == -1) {

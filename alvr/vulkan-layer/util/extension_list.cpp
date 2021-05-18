@@ -77,7 +77,8 @@ VkResult extension_list::add(
 VkResult extension_list::add(const char *const *extensions, uint32_t count) {
     for (uint32_t i = 0; i < count; i++) {
         VkExtensionProperties props = {};
-        strncpy(props.extensionName, extensions[i], sizeof(props.extensionName));
+        strncpy(props.extensionName, extensions[i], sizeof(props.extensionName) - 1);
+        props.extensionName[sizeof(props.extensionName) - 1] = '\0';
         if (!m_ext_props.try_push_back(props)) {
             return VK_ERROR_OUT_OF_HOST_MEMORY;
         }
@@ -95,7 +96,8 @@ VkResult extension_list::add(const VkExtensionProperties *props, uint32_t count)
 VkResult extension_list::add(const char *ext) {
     if (!contains(ext)) {
         VkExtensionProperties props = {};
-        strncpy(props.extensionName, ext, sizeof(props.extensionName));
+        strncpy(props.extensionName, ext, sizeof(props.extensionName) - 1);
+        props.extensionName[sizeof(props.extensionName) - 1] = '\0';
         if (!m_ext_props.try_push_back(props)) {
             return VK_ERROR_OUT_OF_HOST_MEMORY;
         }

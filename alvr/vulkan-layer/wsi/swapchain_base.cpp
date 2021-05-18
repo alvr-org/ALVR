@@ -355,7 +355,8 @@ VkResult swapchain_base::acquire_next_image(uint64_t timeout, VkSemaphore semaph
     assert(i < m_swapchain_images.size());
 
     if (VK_NULL_HANDLE != semaphore || VK_NULL_HANDLE != fence) {
-        VkSubmitInfo submit = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        VkSubmitInfo submit = {};
+        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
         if (VK_NULL_HANDLE != semaphore) {
             submit.signalSemaphoreCount = 1;

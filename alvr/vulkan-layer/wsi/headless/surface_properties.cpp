@@ -97,16 +97,12 @@ VkResult surface_properties::get_surface_formats(VkPhysicalDevice physical_devic
       VK_FORMAT_R8_UNORM,
       VK_FORMAT_R16_UNORM,
       VK_FORMAT_R8G8_UNORM,
-      VK_FORMAT_R8G8_UNORM,
-      VK_FORMAT_R16G16_UNORM,
       VK_FORMAT_R16G16_UNORM,
       VK_FORMAT_B8G8R8A8_UNORM,
-      VK_FORMAT_B8G8R8A8_UNORM,
-      VK_FORMAT_R8G8B8A8_UNORM,
       VK_FORMAT_R8G8B8A8_UNORM};
     uint32_t format_count = 0;
 
-    for (int id = 0; id < std::size(formats); id++) {
+    for (size_t id = 0; id < std::size(formats); id++) {
         VkImageFormatProperties image_format_props;
 
         res = layer::instance_private_data::get(physical_device)

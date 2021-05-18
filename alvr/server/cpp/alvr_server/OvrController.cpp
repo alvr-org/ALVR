@@ -260,7 +260,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{htc}/icons/tracker_status_ready_low.png");
 		// yes we want to explicitly fallthrough to vive case!, vive trackers can have input when POGO pins are connected to a peripheral.
 		// the input bindings are only active when the tracker role is set to "vive_tracker_handed"/held_in_hand roles.
-		//[[fallthrough]]
+		[[fallthrough]];
 	}
 	case 4: //Vive
 	case 5: //Vive no pinch
@@ -308,7 +308,7 @@ void *OvrController::GetComponent(const char *pchComponentNameAndVersion)
 }
 
 /** debug request from a client */
- void OvrController::DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize)
+ void OvrController::DebugRequest(const char * /*pchRequest*/, char *pchResponseBuffer, uint32_t unResponseBufferSize)
 {
 	if (unResponseBufferSize >= 1)
 		pchResponseBuffer[0] = 0;

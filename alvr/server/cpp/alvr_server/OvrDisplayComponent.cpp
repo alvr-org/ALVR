@@ -73,7 +73,7 @@ void OvrDisplayComponent::GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float
 	Debug("GetProjectionRaw Eye=%d (l,r,t,b)=(%f,%f,%f,%f)\n", eEye, eyeFov.left, eyeFov.right, eyeFov.top, eyeFov.bottom);
 }
 
-vr::DistortionCoordinates_t OvrDisplayComponent::ComputeDistortion(vr::EVREye eEye, float fU, float fV) 
+vr::DistortionCoordinates_t OvrDisplayComponent::ComputeDistortion(vr::EVREye /*eEye*/, float fU, float fV) 
 {
 	vr::DistortionCoordinates_t coordinates;
 	coordinates.rfBlue[0] = fU;

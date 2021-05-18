@@ -49,6 +49,9 @@ OvrHmd::OvrHmd()
 			GetSerialNumber().c_str(),
 			m_deviceClass,
 			this);
+		if (!ret) {
+			Warn("Failed to register device");
+		}
 
 		if (!Settings::Instance().m_disableController) {
 			m_leftController = std::make_shared<OvrController>(true, 0);
@@ -56,12 +59,18 @@ OvrHmd::OvrHmd()
 				m_leftController->GetSerialNumber().c_str(),
 				getControllerDeviceClass(),
 				m_leftController.get());
+			if (!ret) {
+				Warn("Failed to register left controller");
+			}
 
 			m_rightController = std::make_shared<OvrController>(false, 1);
 			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 				m_rightController->GetSerialNumber().c_str(),
 				getControllerDeviceClass(),
 				m_rightController.get());
+			if (!ret) {
+				Warn("Failed to register right controller");
+			}
 		}
 
 		if (Settings::Instance().m_enableViveTrackerProxy) {
@@ -70,6 +79,9 @@ OvrHmd::OvrHmd()
 				m_viveTrackerProxy->GetSerialNumber(),
 				vr::TrackedDeviceClass_GenericTracker,
 				m_viveTrackerProxy.get());
+			if (!ret) {
+				Warn("Failed to register Vive tracker");
+			}
 		}
 
 		Debug("CRemoteHmd successfully initialized.\n");
@@ -244,7 +256,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	}
 
 	/** debug request from a client */
-	void OvrHmd::DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize)
+	void OvrHmd::DebugRequest(const char * /*pchRequest*/, char *pchResponseBuffer, uint32_t unResponseBufferSize)
 	{
 		if (unResponseBufferSize >= 1)
 			pchResponseBuffer[0] = 0;
@@ -252,7 +264,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 	vr::DriverPose_t OvrHmd::GetPose()
 	{
-		vr::DriverPose_t pose = { 0 };
+		vr::DriverPose_t pose = {};
 		pose.poseIsValid = true;
 		pose.result = vr::TrackingResult_Running_OK;
 		pose.deviceIsConnected = true;
@@ -411,7 +423,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		vr::VRServerDriverHost()->SetDisplayProjectionRaw(m_unObjectId, m_eyeFoVLeft, m_eyeFoVRight);
 		Settings::Instance().m_flIPD = info.ipd;
 
-		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_LensDistortionChanged, {0, 0}, 0);
+		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_LensDistortionChanged, {}, 0);
 	}
 
 	void OvrHmd::updateController(const TrackingInfo& info) {
@@ -499,7 +511,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 	void OvrHmd::OnShutdown() {
 		Info("Sending shutdown signal to vrserver.\n");
-		vr::VREvent_Reserved_t data = { 0, 0 };
+		vr::VREvent_Reserved_t data = {};
 		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_DriverRequestedQuit, (vr::VREvent_Data_t&)data, 0);
 	}
 

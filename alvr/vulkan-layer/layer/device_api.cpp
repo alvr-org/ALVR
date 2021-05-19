@@ -111,11 +111,11 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkGetDisplayPlaneSupportedDisplaysKHR(
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkCreateDisplayPlaneSurfaceKHR(
-    VkInstance vkinstance, const VkDisplaySurfaceCreateInfoKHR *pCreateInfo,
+    VkInstance vkinstance, const VkDisplaySurfaceCreateInfoKHR * /*pCreateInfo*/,
     const VkAllocationCallbacks *pAllocator, VkSurfaceKHR *pSurface) {
     auto &instance = layer::instance_private_data::get(vkinstance);
-    VkHeadlessSurfaceCreateInfoEXT createInfo{
-        .sType = VK_STRUCTURE_TYPE_HEADLESS_SURFACE_CREATE_INFO_EXT};
+    VkHeadlessSurfaceCreateInfoEXT createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_HEADLESS_SURFACE_CREATE_INFO_EXT;
     auto res =
         instance.disp.CreateHeadlessSurfaceEXT(vkinstance, &createInfo, pAllocator, pSurface);
     if (*pSurface == NULL)

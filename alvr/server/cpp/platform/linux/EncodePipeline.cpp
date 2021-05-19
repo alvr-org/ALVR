@@ -67,9 +67,9 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(std::vector<V
 {
   try {
     return std::make_unique<alvr::EncodePipelineVAAPI>(input_frames, vk_frame_ctx);
-  } catch (std::runtime_error &e)
+  } catch (...)
   {
-    Info("failed to create VAAPI encoder: %s", e.what());
+    Info("failed to create VAAPI encoder");
   }
   return std::make_unique<alvr::EncodePipelineSW>(input_frames, vk_frame_ctx);
 }

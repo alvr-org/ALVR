@@ -121,9 +121,12 @@ private:
 			Info("[GPU PRIO FIX] Failed to get d3dkmt_spspc\n");
 			return false;
 		}
-		
+
 		NTSTATUS status = d3dkmt_spspc(GetCurrentProcess(), D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME);
-		if (status != 0) {
+		if (status == 0xc0000022) { // STATUS_ACCESS_DENIED, see http://deusexmachina.uk/ntstatus.html
+			Info("[GPU PRIO FIX] Failed to set process (%d) priority class, please run ALVR as Administrator.\n", GetCurrentProcess());
+			return false;
+		} else if (status != 0) {
 			Info("[GPU PRIO FIX] Failed to set process (%d) priority class: %u\n", GetCurrentProcess(), status);
 			return false;
 		}
@@ -138,4 +141,3 @@ private:
 		return true;
 	}
 };
-

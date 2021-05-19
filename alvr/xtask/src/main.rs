@@ -177,6 +177,24 @@ pub fn build_server(
         }
     }
 
+    #[cfg(target_os = "linux")]
+    {
+        command::run_in(
+            &workspace_dir().join("alvr/vrcompositor-wrapper"),
+            &format!("cargo build {}", build_flag),
+        )
+        .unwrap();
+        fs::create_dir_all(server_build_dir().join("libexec").join("alvr")).unwrap();
+        fs::copy(
+            artifacts_dir.join("vrcompositor-wrapper"),
+            server_build_dir()
+                .join("libexec")
+                .join("alvr")
+                .join("vrcompositor-wrapper"),
+        )
+        .unwrap();
+    }
+
     command::run_in(
         &workspace_dir().join("alvr/server"),
         &format!(

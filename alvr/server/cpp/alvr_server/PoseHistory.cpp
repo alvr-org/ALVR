@@ -40,10 +40,8 @@ std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetBestPoseMatch(c
 {
 	std::unique_lock<std::mutex> lock(m_mutex);
 	float minDiff = 100000;
-	int index = 0;
-	int minIndex = 0;
 	auto minIt = m_poseBuffer.begin();
-	for (auto it = m_poseBuffer.begin(); it != m_poseBuffer.end(); it++, index++) {
+	for (auto it = m_poseBuffer.begin(); it != m_poseBuffer.end(); ++it) {
 		float distance = 0;
 		// Rotation matrix composes a part of ViewMatrix of TrackingInfo.
 		// Be carefull of transpose.
@@ -55,7 +53,6 @@ std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetBestPoseMatch(c
 		}
 		//LogDriver("diff %f %llu", distance, it->info.FrameIndex);
 		if (minDiff > distance) {
-			minIndex = index;
 			minIt = it;
 			minDiff = distance;
 		}

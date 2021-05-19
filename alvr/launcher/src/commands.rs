@@ -151,27 +151,25 @@ pub fn maybe_register_alvr_driver() -> StrResult {
 
 #[cfg(target_os = "linux")]
 pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
-    use std::{fs::File, io::prelude::*, os::unix::fs::PermissionsExt};
-
     let steamvr_bin_dir = commands::steamvr_root_dir()?.join("bin").join("linux64");
-    let real_launcher_path = steamvr_bin_dir.join("vrcompositor-launcher.real");
-    let launcher_path = steamvr_bin_dir.join("vrcompositor-launcher");
+    let real_launcher_path = steamvr_bin_dir.join("vrcompositor.real");
+    let launcher_path = steamvr_bin_dir.join("vrcompositor");
 
-    if !real_launcher_path.exists() {
-        trace_err!(fs::rename(&launcher_path, &real_launcher_path))?;
-    }
+    // In case of SteamVR update, vrcompositor will be restored
+    match fs::read_link(&launcher_path) {
+        Err(_) => match fs::metadata(&launcher_path) {
+            Err(_) => (), //file does not exist, do nothing
+            Ok(_) => {
+                trace_err!(fs::rename(&launcher_path, &real_launcher_path))?;
+            }
+        },
+        Ok(_) => trace_err!(fs::remove_file(&launcher_path))?, // recreate the link
+    };
 
-    let wrapper_data = include_bytes!("../res/vrcompositor_launcher_wrapper.sh");
-
-    // write the wrapper if it is outdated or does not exist
-    if fs::read(launcher_path.clone()).map_or(true, |file_data| file_data != wrapper_data) {
-        let mut launcher_file = trace_err!(File::create(launcher_path))?;
-        trace_err!(launcher_file.write_all(wrapper_data))?;
-
-        let mut perms = trace_err!(launcher_file.metadata())?.permissions();
-        perms.set_mode(0o755); // rwxr-xr-x
-        trace_err!(launcher_file.set_permissions(perms))?;
-    }
+    trace_err!(std::os::unix::fs::symlink(
+        commands::get_alvr_dir()?.join("libexec/alvr/vrcompositor-wrapper"),
+        &launcher_path
+    ))?;
 
     Ok(())
 }

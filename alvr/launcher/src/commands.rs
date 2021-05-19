@@ -116,8 +116,6 @@ pub fn current_alvr_dir() -> StrResult<PathBuf> {
 pub fn maybe_register_alvr_driver() -> StrResult {
     let current_alvr_dir = current_alvr_dir()?;
 
-    commands::store_alvr_dir(&current_alvr_dir)?;
-
     let driver_registered = commands::get_alvr_dir_from_registered_drivers()
         .ok()
         .filter(|dir| *dir == current_alvr_dir.clone())

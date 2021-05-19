@@ -19,7 +19,7 @@ public:
 	void SendVideo(uint8_t *buf, int len, uint64_t frameIndex);
 	void SendAudio(uint8_t *buf, int len, uint64_t presentationTime);
 	void SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand);
-	void ProcessRecv(unsigned char *buf, int len);
+	void ProcessRecv(unsigned char *buf, size_t len);
 	bool HasValidTrackingInfo() const;
 	void GetTrackingInfo(TrackingInfo &info);
 	uint64_t clientToServerTime(uint64_t clientTime) const;

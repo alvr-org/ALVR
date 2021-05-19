@@ -40,7 +40,10 @@ in mkShell {
     xorg.libXrandr
     libunwind
   ];
+
+  LIBCLANG_PATH = "${pkgs.llvmPackages.libclang}/lib";
+  RUST_ANDROID_GRADLE_PYTHON_COMMAND = "${pkgs.python3Minimal}/bin/python3";
   shellHook = ''
-    export LIBCLANG_PATH="${pkgs.llvmPackages.libclang}/lib"
+    export PATH=$(pwd)/alvr/client:$PATH
   '';
 }

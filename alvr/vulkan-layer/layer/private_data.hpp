@@ -187,7 +187,7 @@ class instance_private_data {
 
     const instance_dispatch_table disp;
 
-    int first_plane_index;
+    uint32_t first_plane_index;
     static const int num_planes = 1;
 
   private:

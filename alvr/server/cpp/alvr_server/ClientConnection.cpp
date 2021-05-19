@@ -16,7 +16,7 @@ ClientConnection::ClientConnection(
 	m_PoseUpdatedCallback = poseUpdatedCallback;
 	m_PacketLossCallback = packetLossCallback;
 
-	memset(&m_TrackingInfo, 0, sizeof(m_TrackingInfo));
+	m_TrackingInfo = {};
 
 	m_Statistics = std::make_shared<Statistics>();
 
@@ -140,7 +140,7 @@ void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, 
 	LegacySend((unsigned char *)&packetBuffer, sizeof(HapticsFeedback));
 }
 
-void ClientConnection::ProcessRecv(unsigned char *buf, int len) {
+void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 	m_Statistics->CountPacket(len);
 
 	uint32_t type = *(uint32_t*)buf;

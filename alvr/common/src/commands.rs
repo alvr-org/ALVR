@@ -144,7 +144,10 @@ pub fn get_alvr_dir_from_registered_drivers() -> StrResult<PathBuf> {
                 continue;
             };
             if parsed_manifest.unwrap().name == "alvr_server" {
-                return Ok(dir);
+                return alvr_filesystem_layout::alvr_dir_from_component(
+                    &dir,
+                    &alvr_filesystem_layout::LAYOUT.openvr_driver_dir,
+                );
             }
         }
     }

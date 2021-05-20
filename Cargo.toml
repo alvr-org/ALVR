@@ -6,6 +6,7 @@ members = [
     "alvr/xtask",
     "alvr/common",
     "alvr/client",
+    "alvr/filesystem-layout",
     "alvr/server",
     "alvr/dashboard",
     "alvr/launcher",

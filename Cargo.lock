@@ -115,6 +115,7 @@ dependencies = [
 name = "alvr_common"
 version = "15.2.1"
 dependencies = [
+ "alvr_filesystem-layout",
  "backtrace",
  "bincode",
  "bindgen 0.58.1",
@@ -179,10 +180,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "alvr_filesystem-layout"
+version = "15.2.1"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
 name = "alvr_launcher"
 version = "15.2.1"
 dependencies = [
  "alvr_common",
+ "alvr_filesystem-layout",
  "druid",
  "gtk",
  "semver 0.11.0",
@@ -200,6 +209,7 @@ version = "15.2.1"
 dependencies = [
  "alcro",
  "alvr_common",
+ "alvr_filesystem-layout",
  "bincode",
  "bindgen 0.58.1",
  "bytes",
@@ -241,6 +251,7 @@ dependencies = [
 name = "alvr_xtask"
 version = "1.0.0"
 dependencies = [
+ "alvr_filesystem-layout",
  "fs_extra",
  "pico-args",
  "walkdir",

@@ -109,20 +109,20 @@ pub fn unblock_alvr_addon() -> StrResult {
 }
 
 pub fn current_alvr_dir() -> StrResult<PathBuf> {
-    let current_path = trace_err!(env::current_exe())?;
-    Ok(trace_none!(current_path.parent())?.to_owned())
+    alvr_filesystem_layout::alvr_dir_from_component(
+        &trace_err!(env::current_exe())?,
+        &alvr_filesystem_layout::LAYOUT.launcher_exe,
+    )
 }
 
 pub fn maybe_register_alvr_driver() -> StrResult {
     let current_alvr_dir = current_alvr_dir()?;
+    let alvr_driver_dir = current_alvr_dir.join(&alvr_filesystem_layout::LAYOUT.openvr_driver_dir);
 
     let driver_registered = commands::get_alvr_dir_from_registered_drivers()
         .ok()
-        .filter(|dir| *dir == current_alvr_dir.clone())
+        .filter(|dir| *dir == alvr_driver_dir)
         .is_some();
-
-    #[cfg(target_os = "linux")]
-    maybe_wrap_vrcompositor_launcher()?;
 
     if !driver_registered {
         let paths_backup = match commands::get_registered_drivers() {
@@ -141,8 +141,11 @@ pub fn maybe_register_alvr_driver() -> StrResult {
 
         commands::driver_registration(&paths_backup, false)?;
 
-        commands::driver_registration(&[current_alvr_dir], true)?;
+        commands::driver_registration(&[alvr_driver_dir], true)?;
     }
+
+    #[cfg(target_os = "linux")]
+    maybe_wrap_vrcompositor_launcher()?;
 
     Ok(())
 }
@@ -165,7 +168,7 @@ pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
     };
 
     trace_err!(std::os::unix::fs::symlink(
-        commands::get_alvr_dir()?.join("libexec/alvr/vrcompositor-wrapper"),
+        commands::get_alvr_dir()?.join(&alvr_filesystem_layout::LAYOUT.vrcompositor_wrapper),
         &launcher_path
     ))?;
 

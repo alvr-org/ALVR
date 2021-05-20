@@ -23,7 +23,6 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 use alvr_common::data::SETTINGS_SCHEMA;
 
 pub const WS_BROADCAST_CAPACITY: usize = 256;
-const DASHBOARD_DIR_NAME_STR: &str = "dashboard";
 
 fn reply(code: StatusCode) -> StrResult<Response<Body>> {
     trace_err!(Response::builder().status(code).body(Body::empty()))
@@ -260,7 +259,9 @@ async fn http_api(
 
                 let maybe_file = tokio::fs::File::open(format!(
                     "{}{}",
-                    ALVR_DIR.join(DASHBOARD_DIR_NAME_STR).to_string_lossy(),
+                    ALVR_DIR
+                        .join(&alvr_filesystem_layout::LAYOUT.dashboard_resources_dir)
+                        .to_string_lossy(),
                     path_branch
                 ))
                 .await;

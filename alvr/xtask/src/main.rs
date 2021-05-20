@@ -52,16 +52,6 @@ const SERVER_BUILD_DIR_NAME: &str = "alvr_server_linux";
 const SERVER_BUILD_DIR_NAME: &str = "alvr_server_windows";
 
 #[cfg(target_os = "linux")]
-const STEAMVR_OS_DIR_NAME: &str = "linux64";
-#[cfg(windows)]
-const STEAMVR_OS_DIR_NAME: &str = "win64";
-
-#[cfg(target_os = "linux")]
-const DRIVER_FNAME: &str = "driver_alvr_server.so";
-#[cfg(windows)]
-const DRIVER_FNAME: &str = "driver_alvr_server.dll";
-
-#[cfg(target_os = "linux")]
 pub fn exec_fname(name: &str) -> String {
     name.to_owned()
 }
@@ -136,7 +126,12 @@ pub fn build_server(
 
     let target_dir = target_dir();
     let artifacts_dir = target_dir.join(build_type);
-    let driver_dst_dir = server_build_dir().join("bin").join(STEAMVR_OS_DIR_NAME);
+    let driver_dst_dir = server_build_dir().join(
+        alvr_filesystem_layout::LAYOUT
+            .openvr_driver_lib()
+            .parent()
+            .unwrap(),
+    );
 
     if fetch_crates {
         command::run("cargo update").unwrap();
@@ -144,24 +139,25 @@ pub fn build_server(
 
     fs::remove_dir_all(&server_build_dir()).ok();
     fs::create_dir_all(&server_build_dir()).unwrap();
-
-    // get all file and folder paths at depth 1, excluded template root (at index 0)
-    let dir_content = dirx::get_dir_content2(
-        workspace_dir()
-            .join("alvr")
-            .join("xtask")
-            .join("server_release_template"),
-        &dirx::DirOptions { depth: 1 },
+    fs::create_dir_all(&driver_dst_dir).unwrap();
+    fs::create_dir_all(
+        server_build_dir().join(
+            alvr_filesystem_layout::LAYOUT
+                .launcher_exe
+                .parent()
+                .unwrap(),
+        ),
     )
     .unwrap();
-    let items: Vec<&String> = dir_content.directories[1..]
-        .iter()
-        .chain(dir_content.files.iter())
-        .collect();
 
-    fsx::copy_items(&items, server_build_dir(), &dirx::CopyOptions::new()).unwrap();
-
-    fs::create_dir_all(&driver_dst_dir).unwrap();
+    let mut copy_options = dirx::CopyOptions::new();
+    copy_options.copy_inside = true;
+    fsx::copy_items(
+        &["alvr/xtask/resources/presets"],
+        server_build_dir().join(&alvr_filesystem_layout::LAYOUT.presets_dir),
+        &copy_options,
+    )
+    .expect("copy presets");
 
     if bundle_ffmpeg {
         let ffmpeg_path = dependencies::build_ffmpeg_linux();
@@ -184,13 +180,18 @@ pub fn build_server(
             &format!("cargo build {}", build_flag),
         )
         .unwrap();
-        fs::create_dir_all(server_build_dir().join("libexec").join("alvr")).unwrap();
+        fs::create_dir_all(
+            server_build_dir().join(
+                alvr_filesystem_layout::LAYOUT
+                    .vrcompositor_wrapper
+                    .parent()
+                    .unwrap(),
+            ),
+        )
+        .unwrap();
         fs::copy(
             artifacts_dir.join("vrcompositor-wrapper"),
-            server_build_dir()
-                .join("libexec")
-                .join("alvr")
-                .join("vrcompositor-wrapper"),
+            server_build_dir().join(&alvr_filesystem_layout::LAYOUT.vrcompositor_wrapper),
         )
         .unwrap();
     }
@@ -215,9 +216,15 @@ pub fn build_server(
     .unwrap();
     fs::copy(
         artifacts_dir.join(dynlib_fname("alvr_server")),
-        driver_dst_dir.join(DRIVER_FNAME),
+        server_build_dir().join(alvr_filesystem_layout::LAYOUT.openvr_driver_lib()),
     )
     .unwrap();
+
+    fs::copy(
+        std::path::Path::new("alvr/xtask/resources/driver.vrdrivermanifest"),
+        server_build_dir().join(alvr_filesystem_layout::LAYOUT.openvr_driver_manifest()),
+    )
+    .expect("copy openVR driver manifest");
 
     if cfg!(windows) {
         let dir_content = dirx::get_dir_content("alvr/server/cpp/bin/windows").unwrap();
@@ -252,7 +259,8 @@ pub fn build_server(
             .chain(dir_content.files.iter())
             .collect();
 
-        let destination = server_build_dir().join("dashboard");
+        let destination =
+            server_build_dir().join(&alvr_filesystem_layout::LAYOUT.dashboard_resources_dir);
         fs::create_dir_all(&destination).unwrap();
         fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
     }
@@ -283,7 +291,7 @@ pub fn build_server(
 
     fs::copy(
         artifacts_dir.join(exec_fname("alvr_launcher")),
-        server_build_dir().join(exec_fname("ALVR Launcher")),
+        server_build_dir().join(&alvr_filesystem_layout::LAYOUT.launcher_exe),
     )
     .unwrap();
 }

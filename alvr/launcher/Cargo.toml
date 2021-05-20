@@ -6,6 +6,7 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
+alvr_filesystem-layout = { path = "../filesystem-layout" }
 alvr_common = { path = "../common" }
 druid = "0.7"
 semver = "0.11"

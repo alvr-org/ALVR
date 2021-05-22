@@ -3,9 +3,6 @@ use std::{fmt::Display, future::Future};
 
 pub type StrResult<T = ()> = Result<T, String>;
 
-pub const SESSION_LOG_FNAME: &str = "session_log.txt";
-pub const CRASH_LOG_FNAME: &str = "crash_log.txt";
-
 pub fn set_panic_hook() {
     std::panic::set_hook(Box::new(|panic_info| {
         let message = panic_info

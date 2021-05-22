@@ -52,7 +52,7 @@ pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
                 .write(true)
                 .create(true)
                 .truncate(true)
-                .open(ALVR_DIR.join(logging::SESSION_LOG_FNAME))
+                .open(alvr_filesystem_layout::session_log(&ALVR_DIR))
                 .unwrap(),
         );
     } else {
@@ -64,7 +64,7 @@ pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
         .chain(
             Dispatch::new()
                 .level(LevelFilter::Error)
-                .chain(fern::log_file(ALVR_DIR.join(logging::CRASH_LOG_FNAME)).unwrap()),
+                .chain(fern::log_file(alvr_filesystem_layout::crash_log(&ALVR_DIR)).unwrap()),
         )
         .apply()
         .unwrap();

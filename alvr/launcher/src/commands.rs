@@ -1,8 +1,4 @@
-use alvr_common::{
-    commands,
-    logging::{self, CRASH_LOG_FNAME},
-    prelude::*,
-};
+use alvr_common::{commands, logging, prelude::*};
 use serde_json as json;
 use std::{
     env, fs,
@@ -215,5 +211,11 @@ pub fn invoke_installer() {
     spawn_no_window(Command::new(commands::installer_path()).arg("-q"));
 
     // delete crash_log.txt (take advantage of the occasion to do some routine cleaning)
-    fs::remove_file(current_alvr_dir().unwrap().join(CRASH_LOG_FNAME)).ok();
+    match current_alvr_dir() {
+        Ok(alvr_dir) => {
+            fs::remove_file(alvr_filesystem_layout::crash_log(&alvr_dir)).ok();
+            ()
+        }
+        Err(_) => (),
+    }
 }

@@ -56,6 +56,26 @@ lazy_static! {
     };
 }
 
+pub fn session_log(alvr_dir: &Path) -> PathBuf {
+    if cfg!(windows) {
+        alvr_dir.join("session_log.txt")
+    } else {
+        dirs::home_dir()
+            .expect("get home directory")
+            .join("alvr_session_log.txt")
+    }
+}
+
+pub fn crash_log(alvr_dir: &Path) -> PathBuf {
+    if cfg!(windows) {
+        alvr_dir.join("crash_log.txt")
+    } else {
+        dirs::home_dir()
+            .expect("get home directory")
+            .join("alvr_crash_log.txt")
+    }
+}
+
 // return the base alvr path from the path of one component
 pub fn alvr_dir_from_component(
     component_path: &PathBuf,

@@ -5,7 +5,8 @@ use settings_schema::*;
 enum ChoiceTest {
     A,
 
-    B(#[schema(min = -10, max = 10, step = 2, gui = "slider")] i32),
+    #[schema(min = -10, max = 10, step = 2, gui = "Slider")]
+    B(i32),
 
     C {
         #[schema(advanced)]
@@ -26,6 +27,6 @@ fn choice_test_default() -> ChoiceTestDefault {
 fn main() {
     println!(
         "{}",
-        serde_json::to_string_pretty(&ChoiceTest::schema(choice_test_default())).unwrap()
+        serde_json::to_string_pretty(&choice_test_schema(choice_test_default())).unwrap()
     );
 }

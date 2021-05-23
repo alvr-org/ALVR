@@ -1,6 +1,3 @@
-#[cfg(not(feature = "new_dashboard"))]
-use settings_schema_legacy as settings_schema;
-
 use crate::{
     connection_utils, openvr, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
     RESTART_NOTIFIER, SESSION_MANAGER,

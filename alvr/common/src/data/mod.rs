@@ -1,13 +1,6 @@
 mod packets;
 mod version;
-
-#[cfg(not(feature = "new_dashboard"))]
-mod legacy_session;
-#[cfg(not(feature = "new_dashboard"))]
-mod legacy_settings;
-#[cfg(feature = "new_dashboard")]
 mod session;
-#[cfg(feature = "new_dashboard")]
 mod settings;
 
 use serde::{Deserialize, Serialize};
@@ -15,13 +8,7 @@ use serde::{Deserialize, Serialize};
 pub use packets::*;
 pub use version::*;
 
-#[cfg(not(feature = "new_dashboard"))]
-pub use legacy_session::*;
-#[cfg(not(feature = "new_dashboard"))]
-pub use legacy_settings::*;
-#[cfg(feature = "new_dashboard")]
 pub use session::*;
-#[cfg(feature = "new_dashboard")]
 pub use settings::*;
 
 #[derive(Serialize, Deserialize, Clone)]

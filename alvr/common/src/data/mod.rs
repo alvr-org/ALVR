@@ -1,7 +1,7 @@
 mod packets;
-mod version;
 mod session;
 mod settings;
+mod version;
 
 use serde::{Deserialize, Serialize};
 

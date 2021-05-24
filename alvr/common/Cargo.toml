@@ -9,6 +9,7 @@ edition = "2018"
 nightly = []
 
 [dependencies]
+alvr_filesystem-layout = { path = "../filesystem-layout" }
 # Basic utilities
 lazy_static = "1"
 parking_lot = "0.11"

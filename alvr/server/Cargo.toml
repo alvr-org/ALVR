@@ -13,6 +13,7 @@ default = []
 bundled_ffmpeg = []
 
 [dependencies]
+alvr_filesystem-layout = { path = "../filesystem-layout" }
 # Basic utilities
 chrono = "0.4"
 lazy_static = "1"

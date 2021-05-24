@@ -231,11 +231,6 @@ fn init() {
 
     let alvr_dir_c_string = CString::new(ALVR_DIR.to_string_lossy().to_string()).unwrap();
     unsafe { g_alvrDir = alvr_dir_c_string.into_raw() };
-
-    // ALVR_DIR has been used (and so initialized). I don't need alvr_dir storage on disk anymore for windows, however it is required for the Vulkan layer on Linux
-    if cfg!(not(target_os = "linux")) {
-        commands::maybe_delete_alvr_dir_storage();
-    }
 }
 
 #[no_mangle]

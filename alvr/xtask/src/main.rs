@@ -229,7 +229,7 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
     }
 
     let dir_content =
-        dirx::get_dir_content2("alvr/legacy_dashboard", &dirx::DirOptions { depth: 1 }).unwrap();
+        dirx::get_dir_content2("alvr/dashboard", &dirx::DirOptions { depth: 1 }).unwrap();
     let items: Vec<&String> = dir_content.directories[1..]
         .iter()
         .chain(dir_content.files.iter())

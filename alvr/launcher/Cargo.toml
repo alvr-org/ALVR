@@ -5,6 +5,9 @@ authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"
 
+[features]
+default = []
+
 [dependencies]
 alvr_filesystem-layout = { path = "../filesystem-layout" }
 alvr_common = { path = "../common" }
@@ -16,7 +19,7 @@ sysinfo = "0.17"
 ureq = "2"
 
 [target.'cfg(windows)'.dependencies]
-winreg = "0.8"
+winreg = "0.9"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.9"

@@ -95,13 +95,7 @@ pub fn remove_build_dir() {
     fs::remove_dir_all(&build_dir).ok();
 }
 
-pub fn build_server(
-    is_release: bool,
-    is_nightly: bool,
-    fetch_crates: bool,
-    new_dashboard: bool,
-    bundle_ffmpeg: bool,
-) {
+pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bundle_ffmpeg: bool) {
     let build_type = if is_release { "release" } else { "debug" };
     let build_flag = if is_release { "--release" } else { "" };
 
@@ -112,16 +106,14 @@ pub fn build_server(
         server_features.push("alvr_common/nightly");
         launcher_features.push("alvr_common/nightly");
     }
-    if new_dashboard {
-        server_features.push("new_dashboard");
-        server_features.push("alvr_common/new_dashboard");
-        launcher_features.push("alvr_common/new_dashboard");
-    } else {
-        server_features.push("default");
-        launcher_features.push("alvr_common/default");
-    }
     if bundle_ffmpeg {
         server_features.push("bundled_ffmpeg");
+    }
+    if server_features.is_empty() {
+        server_features.push("default")
+    }
+    if launcher_features.is_empty() {
+        launcher_features.push("default")
     }
 
     let target_dir = target_dir();
@@ -236,34 +228,17 @@ pub fn build_server(
         .unwrap();
     }
 
-    if new_dashboard {
-        command::run_in(
-            &workspace_dir().join("alvr/dashboard"),
-            &format!(
-                "npm install && npx webpack --mode {} --output-path=../../build/{}/dashboard",
-                if is_release {
-                    "production"
-                } else {
-                    "development"
-                },
-                SERVER_BUILD_DIR_NAME,
-            ),
-        )
-        .unwrap()
-    } else {
-        let dir_content =
-            dirx::get_dir_content2("alvr/legacy_dashboard", &dirx::DirOptions { depth: 1 })
-                .unwrap();
-        let items: Vec<&String> = dir_content.directories[1..]
-            .iter()
-            .chain(dir_content.files.iter())
-            .collect();
+    let dir_content =
+        dirx::get_dir_content2("alvr/dashboard", &dirx::DirOptions { depth: 1 }).unwrap();
+    let items: Vec<&String> = dir_content.directories[1..]
+        .iter()
+        .chain(dir_content.files.iter())
+        .collect();
 
-        let destination =
-            server_build_dir().join(&alvr_filesystem_layout::LAYOUT.dashboard_resources_dir);
-        fs::create_dir_all(&destination).unwrap();
-        fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
-    }
+    let destination =
+        server_build_dir().join(&alvr_filesystem_layout::LAYOUT.dashboard_resources_dir);
+    fs::create_dir_all(&destination).unwrap();
+    fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
 
     if cfg!(target_os = "linux") {
         command::run_in(
@@ -296,7 +271,7 @@ pub fn build_server(
     .unwrap();
 }
 
-pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool, new_dashboard: bool) {
+pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
     let headset_name = if for_oculus_go {
         "oculus_go"
     } else {
@@ -309,11 +284,7 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool, new
         "OculusQuest"
     };
     let package_type = if is_nightly { "Nightly" } else { "Stable" };
-    let build_type = &*format!(
-        "{}{}",
-        if is_release { "release" } else { "debug" },
-        if new_dashboard { "NewDashboard" } else { "" }
-    );
+    let build_type = if is_release { "release" } else { "debug" };
 
     let build_task = format!("assemble{}{}{}", headset_type, package_type, build_type);
 
@@ -448,7 +419,7 @@ fn build_installer(wix_path: &str) {
 }
 
 pub fn publish_server(is_nightly: bool) {
-    build_server(true, is_nightly, false, false, false);
+    build_server(true, is_nightly, false, false);
 
     // Add licenses
     let licenses_dir = server_build_dir().join("licenses");
@@ -500,8 +471,8 @@ pub fn publish_server(is_nightly: bool) {
 }
 
 pub fn publish_client(is_nightly: bool) {
-    build_client(!is_nightly, is_nightly, false, false);
-    build_client(!is_nightly, is_nightly, true, false);
+    build_client(!is_nightly, is_nightly, false);
+    build_client(!is_nightly, is_nightly, true);
 }
 
 // Avoid Oculus link popups when debugging the client
@@ -553,23 +524,20 @@ fn main() {
         let is_nightly = args.contains("--nightly");
         let for_oculus_quest = args.contains("--oculus-quest");
         let for_oculus_go = args.contains("--oculus-go");
-        let new_dashboard = args.contains("--new-dashboard");
         let bundle_ffmpeg = args.contains("--bundle-ffmpeg");
 
         if args.finish().is_empty() {
             match subcommand.as_str() {
                 "build-windows-deps" => dependencies::build_deps("windows"),
                 "build-android-deps" => dependencies::build_deps("android"),
-                "build-server" => {
-                    build_server(is_release, false, fetch, new_dashboard, bundle_ffmpeg)
-                }
+                "build-server" => build_server(is_release, false, fetch, bundle_ffmpeg),
                 "build-client" => {
                     if (for_oculus_quest && for_oculus_go) || (!for_oculus_quest && !for_oculus_go)
                     {
-                        build_client(is_release, false, false, new_dashboard);
-                        build_client(is_release, false, true, new_dashboard);
+                        build_client(is_release, false, false);
+                        build_client(is_release, false, true);
                     } else {
-                        build_client(is_release, false, for_oculus_go, new_dashboard);
+                        build_client(is_release, false, for_oculus_go);
                     }
                 }
                 "build-ffmpeg-linux" => {

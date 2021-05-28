@@ -8,7 +8,6 @@ members = [
     "alvr/client",
     "alvr/filesystem-layout",
     "alvr/server",
-    "alvr/dashboard",
     "alvr/launcher",
     "alvr/vrcompositor-wrapper",
     "alvr/vulkan-layer",

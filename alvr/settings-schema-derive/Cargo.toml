@@ -9,7 +9,7 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
-darling = "0.12"
 proc-macro2 = "1"
-quote = "1"
 syn = "1"
+quote = "1"
+heck = "0.3"

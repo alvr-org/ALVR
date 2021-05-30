@@ -13,11 +13,13 @@
 #include <unistd.h>
 
 #include "ALVR-common/packet_types.h"
+#include "alvr_server/ChaperoneUpdater.h"
 #include "alvr_server/ClientConnection.h"
 #include "alvr_server/Logger.h"
 #include "alvr_server/PoseHistory.h"
 #include "alvr_server/Settings.h"
 #include "alvr_server/Statistics.h"
+#include "alvr_server/include/openvr_math.h"
 #include "protocol.h"
 #include "ffmpeg_helper.h"
 #include "EncodePipeline.h"
@@ -230,7 +232,11 @@ void CEncoder::Run() {
         encode_pipeline->PushFrame(image, m_scheduler.CheckIDRInsertion());
 
         static_assert(sizeof(shm->info[0].pose) == sizeof(vr::HmdMatrix34_t&));
-        auto pose = m_poseHistory->GetBestPoseMatch((const vr::HmdMatrix34_t&)shm->info[image].pose);
+
+        // tranform provided by the compositor needs to be converted back to raw position, as configured in chaperone
+        auto t = vrmath::matMul33((const vr::HmdMatrix34_t&)shm->info[image].pose, *(const vr::HmdMatrix34_t*) ZeroToRawPose());
+
+        auto pose = m_poseHistory->GetBestPoseMatch(t);
         if (pose)
           m_poseSubmitIndex = pose->info.FrameIndex;
 

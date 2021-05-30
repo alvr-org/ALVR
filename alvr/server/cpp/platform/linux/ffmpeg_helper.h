@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
+#include <functional>
 #include <memory>
 
 #include "generated/avutil_loader.h"

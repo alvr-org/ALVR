@@ -1,10 +1,15 @@
 #include "bindings.h"
+#include "ChaperoneUpdater.h"
 #include "Logger.h"
 #include "ALVR-common/packet_types.h"
+#include <algorithm>
+#include <array>
 #include <vector>
 #include <openvr.h>
 
 using namespace std;
+
+static std::array<float, 12> zero_to_raw;
 
 void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
 				  float (*perimeterPoints)[2], unsigned int perimeterPointsCount)
@@ -39,6 +44,8 @@ void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
 
 	vr::VRChaperoneSetup()->RoomSetupStarting();
 
+	std::copy(transform, transform + 12, zero_to_raw.begin());
+
 	vr::VRChaperoneSetup()->SetWorkingPerimeter(reinterpret_cast<vr::HmdVector2_t *>(perimeterPoints), perimeterPointsCount);
 	vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(reinterpret_cast<vr::HmdMatrix34_t *>(&transform));
 	vr::VRChaperoneSetup()->SetWorkingSeatedZeroPoseToRawTrackingPose(reinterpret_cast<vr::HmdMatrix34_t *>(&transform));
@@ -58,4 +65,9 @@ void SetDefaultChaperone()
 						   0, 0, 1, 0};
 
 	SetChaperone(transform, 0, 0, nullptr, 0);
+}
+
+float * ZeroToRawPose()
+{
+	return zero_to_raw.data();
 }

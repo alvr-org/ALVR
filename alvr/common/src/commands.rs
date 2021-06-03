@@ -278,9 +278,11 @@ pub fn firewall_rules(add: bool) -> Result<(), i32> {
 /////////////////// launcher invocation ///////////////////////
 
 fn invoke_launcher(alvr_dir: &Path, flag: &str) -> StrResult {
-    trace_err!(Command::new(alvr_dir.join(exec_fname("ALVR launcher")))
-        .arg(flag)
-        .status())?;
+    trace_err!(
+        Command::new(alvr_dir.join(&alvr_filesystem_layout::LAYOUT.launcher_exe))
+            .arg(flag)
+            .status()
+    )?;
 
     Ok(())
 }

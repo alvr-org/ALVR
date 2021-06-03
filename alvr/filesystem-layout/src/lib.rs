@@ -39,7 +39,7 @@ impl Layout {
 lazy_static! {
     pub static ref LAYOUT: Layout = if cfg!(windows) {
         Layout {
-            openvr_driver_dir: PathBuf::from("."),
+            openvr_driver_dir: PathBuf::from(""),
             presets_dir: PathBuf::from("presets"),
             vrcompositor_wrapper: PathBuf::from(""),
             launcher_exe: PathBuf::from("ALVR Launcher.exe"),

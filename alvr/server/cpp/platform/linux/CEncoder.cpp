@@ -234,11 +234,17 @@ void CEncoder::Run() {
         static_assert(sizeof(shm->info[0].pose) == sizeof(vr::HmdMatrix34_t&));
 
         // tranform provided by the compositor needs to be converted back to raw position, as configured in chaperone
-        auto t = vrmath::matMul33((const vr::HmdMatrix34_t&)shm->info[image].pose, *(const vr::HmdMatrix34_t*) ZeroToRawPose());
+        auto t = vrmath::matMul33(vrmath::transposeMul33(*(const vr::HmdMatrix34_t*) ZeroToRawPose(false)), (const vr::HmdMatrix34_t&)shm->info[image].pose);
 
         auto pose = m_poseHistory->GetBestPoseMatch(t);
         if (pose)
+        {
+          if (pose->info.FrameIndex < m_poseSubmitIndex)
+          {
+            ZeroToRawPose(true);
+          }
           m_poseSubmitIndex = pose->info.FrameIndex;
+        }
 
         encoded_data.clear();
         while (encode_pipeline->GetEncoded(encoded_data)) {}

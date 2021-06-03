@@ -6,10 +6,12 @@
 #include <array>
 #include <vector>
 #include <openvr.h>
+#include <mutex>
 
 using namespace std;
 
 static std::array<float, 12> zero_to_raw;
+static std::mutex chaperone_mutex;
 
 void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
 				  float (*perimeterPoints)[2], unsigned int perimeterPointsCount)
@@ -32,6 +34,8 @@ void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
 		perimeterPoints = standingPerimeterPointsBuffer;
 		perimeterPointsCount = 4;
 	}
+
+	std::unique_lock<std::mutex> lock;
 
 	vr::EVRInitError error;
 	vr::VR_Init(&error, vr::VRApplication_Utility);
@@ -67,7 +71,15 @@ void SetDefaultChaperone()
 	SetChaperone(transform, 0, 0, nullptr, 0);
 }
 
-float * ZeroToRawPose()
+float * ZeroToRawPose(bool force)
 {
+	if (force)
+	{
+		std::unique_lock<std::mutex> lock;
+		vr::EVRInitError error;
+		vr::VR_Init(&error, vr::VRApplication_Utility);
+		vr::VRChaperoneSetup()->GetWorkingStandingZeroPoseToRawTrackingPose(reinterpret_cast<vr::HmdMatrix34_t *>(zero_to_raw.data()));
+		vr::VR_Shutdown();
+	}
 	return zero_to_raw.data();
 }

@@ -35,7 +35,7 @@ void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
 		perimeterPointsCount = 4;
 	}
 
-	std::unique_lock<std::mutex> lock;
+	std::unique_lock<std::mutex> lock(chaperone_mutex);
 
 	vr::EVRInitError error;
 	vr::VR_Init(&error, vr::VRApplication_Utility);
@@ -75,7 +75,7 @@ float * ZeroToRawPose(bool force)
 {
 	if (force)
 	{
-		std::unique_lock<std::mutex> lock;
+		std::unique_lock<std::mutex> lock(chaperone_mutex);
 		vr::EVRInitError error;
 		vr::VR_Init(&error, vr::VRApplication_Utility);
 		vr::VRChaperoneSetup()->GetWorkingStandingZeroPoseToRawTrackingPose(reinterpret_cast<vr::HmdMatrix34_t *>(zero_to_raw.data()));

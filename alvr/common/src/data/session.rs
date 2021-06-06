@@ -124,10 +124,12 @@ impl Default for SessionDesc {
                 headset_manufacturer_name: "Oculus".into(),
                 headset_render_model_name: "generic_hmd".into(),
                 headset_registered_device_type: "oculus/1WMGH000XX0000".into(),
-                eye_resolution_width: 960,
-                eye_resolution_height: 1080,
-                target_eye_resolution_width: 960,
-                target_eye_resolution_height: 1080,
+                // avoid realistic resolutions, as on first start, on Linux, it
+                // could trigger direct mode on an existing monitor
+                eye_resolution_width: 800,
+                eye_resolution_height: 900,
+                target_eye_resolution_width: 800,
+                target_eye_resolution_height: 900,
                 seconds_from_vsync_to_photons: 0.005,
                 adapter_index: 0,
                 refresh_rate: 60,

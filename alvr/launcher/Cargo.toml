@@ -5,7 +5,11 @@ authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"
 
+[features]
+default = []
+
 [dependencies]
+alvr_filesystem-layout = { path = "../filesystem-layout" }
 alvr_common = { path = "../common" }
 druid = "0.7"
 semver = "0.11"

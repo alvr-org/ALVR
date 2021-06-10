@@ -1,10 +1,17 @@
 #include "bindings.h"
+#include "ChaperoneUpdater.h"
 #include "Logger.h"
 #include "ALVR-common/packet_types.h"
+#include <algorithm>
+#include <array>
 #include <vector>
 #include <openvr.h>
+#include <mutex>
 
 using namespace std;
+
+static std::array<float, 12> zero_to_raw;
+static std::mutex chaperone_mutex;
 
 void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
 				  float (*perimeterPoints)[2], unsigned int perimeterPointsCount)
@@ -28,6 +35,8 @@ void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
 		perimeterPointsCount = 4;
 	}
 
+	std::unique_lock<std::mutex> lock(chaperone_mutex);
+
 	vr::EVRInitError error;
 	vr::VR_Init(&error, vr::VRApplication_Utility);
 
@@ -38,6 +47,8 @@ void SetChaperone(const float transform[12], float areaWidth, float areaHeight,
 	}
 
 	vr::VRChaperoneSetup()->RoomSetupStarting();
+
+	std::copy(transform, transform + 12, zero_to_raw.begin());
 
 	vr::VRChaperoneSetup()->SetWorkingPerimeter(reinterpret_cast<vr::HmdVector2_t *>(perimeterPoints), perimeterPointsCount);
 	vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(reinterpret_cast<vr::HmdMatrix34_t *>(&transform));
@@ -58,4 +69,17 @@ void SetDefaultChaperone()
 						   0, 0, 1, 0};
 
 	SetChaperone(transform, 0, 0, nullptr, 0);
+}
+
+float * ZeroToRawPose(bool force)
+{
+	if (force)
+	{
+		std::unique_lock<std::mutex> lock(chaperone_mutex);
+		vr::EVRInitError error;
+		vr::VR_Init(&error, vr::VRApplication_Utility);
+		vr::VRChaperoneSetup()->GetWorkingStandingZeroPoseToRawTrackingPose(reinterpret_cast<vr::HmdMatrix34_t *>(zero_to_raw.data()));
+		vr::VR_Shutdown();
+	}
+	return zero_to_raw.data();
 }

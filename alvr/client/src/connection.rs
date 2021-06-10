@@ -1,6 +1,3 @@
-#[cfg(not(feature = "new_dashboard"))]
-use settings_schema_legacy as settings_schema;
-
 use crate::{
     connection_utils::{self, ConnectionError},
     MAYBE_LEGACY_SENDER,

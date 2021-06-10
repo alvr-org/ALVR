@@ -1,65 +1,80 @@
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use settings_schema::{
-    DictionaryDefault, OptionalDefault, SchemaNode, SettingsSchema, Switch, SwitchDefault,
-    VectorDefault,
-};
+use settings_schema::{EntryData, SettingsSchema, Switch, SwitchDefault};
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(tag = "type", content = "content")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum FrameSize {
-    Scale(#[schema(min = 0.25, max = 2., step = 0.01, gui = "up_down")] f32),
+    #[schema(min = 0.25, max = 2., step = 0.01)]
+    Scale(f32),
 
     Absolute {
-        #[schema(min = 32, step = 32, gui = "up_down")]
+        #[schema(min = 32, step = 32)]
         width: u32,
-        #[schema(min = 32, step = 32, gui = "up_down")]
+        #[schema(min = 32, step = 32)]
         height: u32,
     },
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Default, Clone)]
+pub struct Fov {
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
+    pub left: f32,
+
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
+    pub right: f32,
+
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
+    pub top: f32,
+
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
+    pub bottom: f32,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FoveatedRenderingDesc {
-    #[schema(min = 0.5, max = 10., step = 0.1, gui = "slider")]
+    #[schema(min = 0.5, max = 10., step = 0.1)]
     pub strength: f32,
 
-    #[schema(advanced, min = 0.5, max = 2., step = 0.1, gui = "slider")]
+    #[schema(advanced, min = 0.5, max = 2., step = 0.1)]
     pub shape: f32,
 
-    #[schema(min = -0.05, max = 0.05, step = 0.001, gui = "slider")]
+    #[schema(min = -0.05, max = 0.05, step = 0.001)]
     pub vertical_offset: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 pub struct ColorCorrectionDesc {
-    #[schema(min = -1., max = 1., step = 0.01, gui = "slider")]
+    #[schema(min = -1., max = 1., step = 0.01)]
     pub brightness: f32,
 
-    #[schema(min = -1., max = 1., step = 0.01, gui = "slider")]
+    #[schema(min = -1., max = 1., step = 0.01)]
     pub contrast: f32,
 
-    #[schema(min = -1., max = 1., step = 0.01, gui = "slider")]
+    #[schema(min = -1., max = 1., step = 0.01)]
     pub saturation: f32,
 
-    #[schema(min = 0., max = 5., step = 0.01, gui = "slider")]
+    #[schema(min = 0., max = 5., step = 0.01)]
     pub gamma: f32,
 
-    #[schema(min = -1., max = 5., step = 0.01, gui = "slider")]
+    #[schema(min = -1., max = 5., step = 0.01)]
     pub sharpening: f32,
 }
 
+// Note: This enum cannot be converted to camelCase due to a inconsistency between generation and
+// validation: "hevc" vs "hEVC".
+// This is caused by serde and settings-schema using different libraries for casing conversion
+// todo: don't use casing conversion also for all other structs and enums
 #[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
-#[serde(tag = "type")]
-#[schema(gui = "button_group")]
+#[serde(tag = "type", content = "content")]
 #[repr(u8)]
 pub enum CodecType {
     H264,
-    HEVC, // todo: use pascal case
+    HEVC,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Debug)]
-#[serde(tag = "type")]
-#[schema(gui = "button_group")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 #[repr(u8)]
 pub enum TrackingSpace {
     Local,
@@ -67,30 +82,17 @@ pub enum TrackingSpace {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VideoDesc {
     #[schema(advanced)]
     pub adapter_index: u32,
 
-    #[schema(higher_order(
-        name = "resolution_dropdown",
-        data(choice(
-            default = "75%",
-            gui = "dropdown",
-            variant = "25%",
-            variant = "50%",
-            variant = "75%",
-            variant = "100%",
-            variant = "125%",
-            variant = "150%",
-            variant = "175%",
-            variant = "200%",
-        )),
-        modifier = r#"{settings}.video.render_resolution.variant = "Scale""#,
-        modifier = "{settings}.video.render_resolution.Scale = parseInt({input}) / 100",
-        modifier = r#"{settings}.video.recommended_target_resolution.variant = "Scale""#,
-        modifier = r"{settings}.video.recommended_target_resolution.Scale = 
-                        parseInt({input}) / 100",
-    ))]
+    // Dropdown with 25%, 50%, 75%, 100%, 125%, 150% etc or custom
+    // Should set renderResolution (always in scale mode).
+    // When the user sets a resolution not obtainable with the preset scales, set the dropdown to
+    // custom.
+    // Warping compensation is already applied by the web server and driver
+    #[schema(placeholder = "resolution_dropdown")]
     //
     #[schema(advanced)]
     pub render_resolution: FrameSize,
@@ -98,31 +100,19 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub recommended_target_resolution: FrameSize,
 
-    #[schema(higher_order(
-        name = "display_refresh_rate",
-        data(choice(
-            default = "72Hz",
-            gui = "button_group",
-            variant = "60Hz",
-            variant = "72Hz",
-            variant = "80Hz",
-            variant = "90Hz",
-            variant = "120Hz",
-        )),
-        modifier = "{settings}.video.preferred_fps = parseInt({input})",
-    ))]
+    #[schema(placeholder = "display_refresh_rate")]
     //
-    #[schema(advanced, step = 1.0, gui = "up_down")]
+    #[schema(advanced)]
     pub preferred_fps: f32,
 
     pub codec: CodecType,
 
-    pub use_10bit_encoder: bool,
-
     #[schema(advanced)]
     pub client_request_realtime_decoder: bool,
 
-    #[schema(min = 1, step = 1, gui = "up_down")]
+    pub use_10bit_encoder: bool,
+
+    #[schema(min = 1, max = 500)]
     pub encode_bitrate_mbs: u64,
 
     #[schema(advanced)]
@@ -133,23 +123,26 @@ pub struct VideoDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[serde(tag = "type", content = "content")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum AudioDeviceId {
     Default,
     Name(String),
-    Index(#[schema(min = 1, step = 1, gui = "up_down")] u64),
+    #[schema(min = 1, gui = "UpDown")]
+    Index(u64),
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AudioConfig {
-    #[schema(min = 10, max = 200, step = 1, gui = "up_down")]
+    #[schema(min = 0, max = 200)]
     pub average_buffering_ms: u64,
 
-    #[schema(advanced, min = 1, max = 20, step = 1, gui = "up_down")]
+    #[schema(advanced, min = 1, max = 20)]
     pub batch_ms: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GameAudioDesc {
     #[schema(placeholder = "device_dropdown")]
     //
@@ -162,6 +155,7 @@ pub struct GameAudioDesc {
 // Note: sample rate is a free parameter for microphone, because both server and client supports
 // resampling. In contrary, for game audio, the server does not support resampling.
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MicrophoneDesc {
     #[schema(placeholder = "input_device_dropdown")]
     //
@@ -173,20 +167,20 @@ pub struct MicrophoneDesc {
     #[schema(advanced)]
     pub output_device_id: AudioDeviceId,
 
-    #[schema(advanced, min = 100, step = 100, gui = "up_down")]
+    #[schema(advanced)]
     pub sample_rate: u32,
 
     pub config: AudioConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AudioSection {
     pub game_audio: Switch<GameAudioDesc>,
     pub microphone: Switch<MicrophoneDesc>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[serde(tag = "type", content = "content")]
 pub enum OpenvrPropValue {
     Bool(bool),
     Float(f32),
@@ -198,6 +192,7 @@ pub enum OpenvrPropValue {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ControllersDesc {
     // Dropdown:
     // Oculus Rift S
@@ -240,26 +235,7 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub input_profile_path: String,
 
-    #[schema(advanced)]
-    pub use_headset_tracking_system: bool,
-
-    #[schema(higher_order(
-        name = "tracking_speed",
-        data(choice(
-            default = "medium",
-            gui = "button_group",
-            variant = "oculus_prediction",
-            variant = "slow",
-            variant = "medium",
-            variant = "fast",
-        )),
-        modifier = r#"{settings}.headset.controllers.content.pose_time_offset = 
-                        ({input} == "slow") * 0.01
-                            + ({input} == "medium") * -0.03
-                            + ({input} == "fast") * -1"#,
-        modifier = r#"{settings}.headset.controllers.content.clientside_prediction =
-                        ({input} == "oculus_prediction")"#
-    ))]
+    #[schema(placeholder = "tracking_speed")]
     //
     #[schema(advanced)]
     pub pose_time_offset: f32,
@@ -273,11 +249,15 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub rotation_offset_left: [f32; 3],
 
-    #[schema(min = 0., max = 5., step = 0.1, gui = "slider")]
+    #[schema(min = 0., max = 5., step = 0.1)]
     pub haptics_intensity: f32,
+
+    #[schema(advanced)]
+    pub use_headset_tracking_system: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HeadsetDesc {
     #[schema(advanced)]
     pub mode_idx: u64,
@@ -332,13 +312,14 @@ pub struct HeadsetDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(tag = "type", content = "content")]
-#[schema(gui = "button_group")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum SocketProtocol {
     Udp,
 
+    #[schema(advanced)]
+    #[serde(rename_all = "camelCase")]
     ThrottledUdp {
-        #[schema(advanced, min = 1.0, step = 0.1, gui = "up_down")]
+        #[schema(min = 1.0, step = 0.1, gui = "UpDown")]
         bitrate_multiplier: f32,
     },
 
@@ -346,21 +327,23 @@ pub enum SocketProtocol {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DiscoveryConfig {
     #[schema(advanced)]
     pub auto_trust_clients: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ConnectionDesc {
     pub client_discovery: Switch<DiscoveryConfig>,
 
-    #[schema(advanced, min = 1024, max = 0xFFFF, step = 1, gui = "up_down")]
+    #[schema(advanced, min = 1024, max = 65535)]
     pub web_server_port: u16,
 
     pub stream_protocol: SocketProtocol,
 
-    #[schema(advanced, min = 1024, max = 0xFFFF, step = 1, gui = "up_down")]
+    #[schema(advanced)]
     pub stream_port: u16,
 
     #[schema(advanced)]
@@ -377,32 +360,24 @@ pub struct ConnectionDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(tag = "type")]
-#[schema(gui = "button_group")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum Theme {
     SystemDefault,
-    Light,
-    Dark,
-    Compact,
+    Classic,
+    Darkly,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(tag = "type")]
-#[schema(gui = "button_group")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum UpdateChannel {
+    NoUpdates,
     Stable,
     Beta,
     Nightly,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
-pub struct UpdatesConfig {
-    pub prompt_before_update: bool,
-    pub channel: UpdateChannel,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum LogLevel {
     Error,
     Warning,
@@ -411,27 +386,20 @@ pub enum LogLevel {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExtraDesc {
     pub theme: Theme,
     pub client_dark_mode: bool,
     pub revert_confirm_dialog: bool,
     pub restart_confirm_dialog: bool,
-    pub automatic_updates: Switch<UpdatesConfig>,
+    pub prompt_before_update: bool,
+    pub update_channel: UpdateChannel,
     pub log_to_disk: bool,
 
     #[schema(advanced)]
     pub notification_level: LogLevel,
     #[schema(advanced)]
     pub exclude_notifications_without_id: bool,
-    #[schema(advanced)]
-    pub language: Option<String>,
-    #[schema(advanced)]
-    pub show_setup_wizard: bool,
-    #[schema(advanced)]
-    pub show_advanced: bool,
-
-    pub test_vec: Vec<i32>,
-    pub test_dict: Vec<(String, i32)>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -443,8 +411,8 @@ pub struct Settings {
     pub extra: ExtraDesc,
 }
 
-lazy_static! {
-    pub static ref DEFAULT_SESSION_SETTINGS: SettingsDefault = SettingsDefault {
+pub fn session_settings_default() -> SettingsDefault {
+    SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
             preferred_fps: 72.,
@@ -466,7 +434,7 @@ lazy_static! {
             },
             seconds_from_vsync_to_photons: 0.005,
             foveated_rendering: SwitchDefault {
-                enabled: true,
+                enabled: !cfg!(target_os = "linux"),
                 content: FoveatedRenderingDescDefault {
                     strength: 2.,
                     shape: 1.5,
@@ -492,7 +460,7 @@ lazy_static! {
         },
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {
-                enabled: true,
+                enabled: !cfg!(target_os = "linux"),
                 content: GameAudioDescDefault {
                     device_id: AudioDeviceIdDefault {
                         variant: AudioDeviceIdDefaultVariant::Default,
@@ -561,7 +529,7 @@ lazy_static! {
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,
-                    use_headset_tracking_system: false
+                    use_headset_tracking_system: false,
                 },
             },
             tracking_space: TrackingSpaceDefault {
@@ -578,7 +546,11 @@ lazy_static! {
             },
             web_server_port: 8082,
             stream_protocol: SocketProtocolDefault {
-                variant: SocketProtocolDefaultVariant::Tcp,
+                variant: if !cfg!(target_os = "linux") {
+                    SocketProtocolDefaultVariant::Udp
+                } else {
+                    SocketProtocolDefaultVariant::Tcp
+                },
                 ThrottledUdp: SocketProtocolThrottledUdpDefault {
                     bitrate_multiplier: 1.5,
                 },
@@ -596,20 +568,15 @@ lazy_static! {
             client_dark_mode: false,
             revert_confirm_dialog: true,
             restart_confirm_dialog: true,
-            automatic_updates: SwitchDefault {
-                enabled: false,
-                content: UpdatesConfigDefault {
-                    prompt_before_update: !cfg!(feature = "nightly"),
-                    channel: UpdateChannelDefault {
-                        variant: if cfg!(feature = "nightly") {
-                            UpdateChannelDefaultVariant::Nightly
-                        } else {
-                            UpdateChannelDefaultVariant::Stable
-                        },
-                    },
+            prompt_before_update: !cfg!(feature = "nightly") || cfg!(target_os = "linux"),
+            update_channel: UpdateChannelDefault {
+                variant: if cfg!(feature = "nightly") {
+                    UpdateChannelDefaultVariant::Nightly
+                } else {
+                    UpdateChannelDefaultVariant::Stable
                 },
             },
-            log_to_disk: true,
+            log_to_disk: cfg!(debug_assertions),
             notification_level: LogLevelDefault {
                 variant: if cfg!(debug_assertions) {
                     LogLevelDefaultVariant::Info
@@ -618,23 +585,6 @@ lazy_static! {
                 },
             },
             exclude_notifications_without_id: false,
-
-            language: OptionalDefault {
-                set: false,
-                content: "".into(),
-            },
-            show_setup_wizard: true,
-            show_advanced: false,
-            test_vec: VectorDefault {
-                element: 0,
-                content: vec![0],
-            },
-            test_dict: DictionaryDefault {
-                key: "".into(),
-                value: 0,
-                content: vec![("".into(), 0)],
-            },
         },
-    };
-    pub static ref SETTINGS_SCHEMA: SchemaNode = Settings::schema(DEFAULT_SESSION_SETTINGS.clone());
+    }
 }

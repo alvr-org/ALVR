@@ -55,11 +55,6 @@ static const VkExtensionProperties device_extension[] = {
 static const VkExtensionProperties instance_extension[] = {
     {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_SURFACE_SPEC_VERSION}};
 
-char alvrDir[255];
-extern "C" {
-char *g_alvrDir = alvrDir;
-}
-
 VKAPI_ATTR VkResult extension_properties(const uint32_t count,
                                          const VkExtensionProperties *layer_ext, uint32_t *pCount,
                                          VkExtensionProperties *pProp) {
@@ -125,18 +120,7 @@ VKAPI_ATTR VkLayerDeviceCreateInfo *get_chain_info(const VkDeviceCreateInfo *pCr
 VKAPI_ATTR VkResult create_instance(const VkInstanceCreateInfo *pCreateInfo,
                                     const VkAllocationCallbacks *pAllocator,
                                     VkInstance *pInstance) {
-    // We might aswell prepare g_alvrDir and Settings here.
-    std::string path = getenv("XDG_RUNTIME_DIR");
-    path += "/alvr_dir.txt";
-
-    std::ifstream alvr_dir_if(path);
-    alvr_dir_if.getline(alvrDir, sizeof(alvrDir));
-
-    if (alvr_dir_if.fail()) {
-        std::cerr << "failed to read alvr_dir.txt\n";
-        exit(1);
-    };
-
+    // Make sure settings are loaded before we access them
     Settings::Instance().Load();
 
     VkLayerInstanceCreateInfo *layerCreateInfo = get_chain_info(pCreateInfo, VK_LAYER_LINK_INFO);

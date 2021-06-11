@@ -8,6 +8,7 @@ class LatencyCollector {
 public:
     static LatencyCollector &Instance();
 
+    uint64_t getLatencyTotal();
     uint64_t getLatency(uint32_t i, uint32_t j);
     uint64_t getPacketsLostTotal();
     uint64_t getPacketsLostInSecond();
@@ -64,6 +65,8 @@ private:
     uint64_t m_FecFailureTotal = 0;
     uint64_t m_FecFailureInSecond = 0;
     uint64_t m_FecFailurePrevious = 0;
+	
+    uint64_t m_LatencyTotal = 0;
 
     // Total/Transport/Decode latency
     // Total/Max/Min/Count

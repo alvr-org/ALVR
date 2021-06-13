@@ -527,7 +527,7 @@ void sendTrackingInfo(bool clientsidePrediction) {
     frame->frameIndex = g_ctx.FrameIndex;
     frame->fetchTime = getTimestampUs();
 
-    frame->displayTime = vrapi_GetTimeInSeconds() + LatencyCollector::Instance().getLatencyTotal() * 1e-6;
+    frame->displayTime = vrapi_GetTimeInSeconds() + LatencyCollector::Instance().getTrackingPredictionLatency() * 1e-6;
     frame->tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, frame->displayTime);
 
     {

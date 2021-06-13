@@ -47,7 +47,7 @@ void LatencyCollector::submit(uint64_t frameIndex) {
     FrameTimestamp timestamp = getFrame(frameIndex);
     timestamp.submit = getTimestampUs();
 
-	m_LatencyTotal = timestamp.submit - timestamp.tracking;
+    m_TrackingPredictionTime = timestamp.submit + (timestamp.submit - timestamp.tracking);
 
     uint64_t latency[3];
     latency[0] = timestamp.submit - timestamp.tracking;
@@ -143,6 +143,13 @@ void LatencyCollector::submitNewFrame() {
     m_framesInSecond++;
 }
 
+uint64_t LatencyCollector::getTrackingPredictionLatency() {
+    if (getTimestampUs() >= m_TrackingPredictionTime)
+        return 0;
+    else
+        return m_TrackingPredictionTime - getTimestampUs();
+}
+
 uint64_t LatencyCollector::getLatency(uint32_t i, uint32_t j) {
     if(j == 1 || j == 2) {
         // Min/Max
@@ -167,10 +174,6 @@ uint64_t LatencyCollector::getFecFailureInSecond() {
 }
 uint32_t LatencyCollector::getFramesInSecond() {
     return m_framesPrevious;
-}
-
-uint64_t LatencyCollector::getLatencyTotal() {
-    return m_LatencyTotal;
 }
 
 LatencyCollector &LatencyCollector::Instance() {

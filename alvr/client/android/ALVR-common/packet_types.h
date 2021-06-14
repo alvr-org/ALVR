@@ -234,7 +234,7 @@ struct TimeSync {
 	uint64_t fecFailureInSecond;
 	uint64_t fecFailureTotal;
 
-	uint32_t fps;
+	float fps;
 };
 struct VideoFrame {
 	uint32_t type; // ALVR_PACKET_TYPE_VIDEO_FRAME

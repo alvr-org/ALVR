@@ -216,7 +216,7 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			"\"fecPercentage\": %d, "
 			"\"fecFailureTotal\": %llu, "
 			"\"fecFailureInSecond\": %llu, "
-			"\"clientFPS\": %d, "
+			"\"clientFPS\": %f, "
 			"\"serverFPS\": %d"
 			"} }#\n",
 			m_Statistics->GetPacketsSentTotal(),

@@ -56,6 +56,9 @@ void LatencyCollector::submit(uint64_t frameIndex) {
 
     submitNewFrame();
 
+    m_FramesInSecond = 1000000.0 / (timestamp.submit - m_LastSubmit);
+    m_LastSubmit = timestamp.submit;
+
     FrameLog(frameIndex, "totalLatency=%.1f transportLatency=%.1f decodeLatency=%.1f renderLatency1=%.1f renderLatency2=%.1f"
             , latency[0] / 1000.0, latency[1] / 1000.0, latency[2] / 1000.0
             , (timestamp.rendered2 - timestamp.decoderOutput) / 1000.0
@@ -67,7 +70,8 @@ void LatencyCollector::updateLatency(uint64_t *latency) {
 
     for(int i = 0; i < 3; i++) {
         // Total
-        m_Latency[i][0] += latency[i];
+        m_PreviousLatency[i][0] = latency[i];
+        m_Latency[i][0] = latency[i];
         // Max
         m_Latency[i][1] = std::max(m_Latency[i][1], latency[i]);
         // Min
@@ -86,8 +90,7 @@ void LatencyCollector::resetAll() {
     m_FecFailureInSecond = 0;
     m_FecFailurePrevious = 0;
 
-    m_framesInSecond = 0;
-    m_framesPrevious = 0;
+    m_FramesInSecond = 0;
 
     m_StatisticsTime = getTimestampUs() / USECS_IN_SEC;
 
@@ -108,9 +111,6 @@ void LatencyCollector::resetSecond(){
 
     m_FecFailurePrevious = m_FecFailureInSecond;
     m_FecFailureInSecond = 0;
-
-    m_framesPrevious = m_framesInSecond;
-    m_framesInSecond = 0;
 }
 
 void LatencyCollector::checkAndResetSecond() {
@@ -137,8 +137,6 @@ void LatencyCollector::fecFailure() {
 
 void LatencyCollector::submitNewFrame() {
     checkAndResetSecond();
-
-    m_framesInSecond++;
 }
 
 uint64_t LatencyCollector::getLatency(uint32_t i, uint32_t j) {
@@ -149,7 +147,7 @@ uint64_t LatencyCollector::getLatency(uint32_t i, uint32_t j) {
     if(m_PreviousLatency[i][3] == 0) {
         return 0;
     }
-    return m_PreviousLatency[i][0] / m_PreviousLatency[i][3];
+    return m_PreviousLatency[i][0];
 }
 uint64_t LatencyCollector::getPacketsLostTotal() {
     return m_PacketsLostTotal;
@@ -163,8 +161,8 @@ uint64_t LatencyCollector::getFecFailureTotal() {
 uint64_t LatencyCollector::getFecFailureInSecond() {
     return m_FecFailurePrevious;
 }
-uint32_t LatencyCollector::getFramesInSecond() {
-    return m_framesPrevious;
+float LatencyCollector::getFramesInSecond() {
+    return m_FramesInSecond;
 }
 
 LatencyCollector &LatencyCollector::Instance() {

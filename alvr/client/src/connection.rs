@@ -402,7 +402,7 @@ async fn connection_pipeline(
                     if now > statistics_deadline {
                         // sendTimeSync() must be called on the same thread of initializeSocket()
                         crate::sendTimeSync();
-                        statistics_deadline += Duration::from_secs(1);
+                        statistics_deadline += Duration::from_secs_f32(1_f32 / 100_f32);
                     }
                 }
 

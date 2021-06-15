@@ -694,6 +694,8 @@ define([
             framerateGraph.setData(framerateGraphData);
         }
 
+        let lastStatisticsUpdate = now;
+
         function updateStatistics(statistics) {
             clearTimeout(timeoutHandler);
             // $("#connectionCard").hide();
@@ -728,8 +730,13 @@ define([
                     $("#logging").removeClass("show");
             }
 
-            for (const stat in statistics) {
-                $("#statistic_" + stat).text(statistics[stat]);
+            const now = parseInt(new Date().getTime());
+
+            if (now > lastGraphUpdate + 100) {
+                for (const stat in statistics) {
+                    $("#statistic_" + stat).text(statistics[stat]);
+                }
+                lastGraphUpdate = now
             }
             timeoutHandler = setTimeout(() => {
                 // $("#connectionCard").show();

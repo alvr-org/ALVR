@@ -176,6 +176,10 @@ uint32_t LatencyCollector::getFramesInSecond() {
     return m_framesPrevious;
 }
 
+uint64_t LatencyCollector::getLatencyTotal() {
+    return m_LatencyTotal;
+}
+
 LatencyCollector &LatencyCollector::Instance() {
     return m_Instance;
 }

@@ -587,6 +587,13 @@ OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
         LOGE("Invalid ANativeWindow");
     }
 
+    {
+        // set Color Space
+        ovrHmdColorDesc colorDesc{};
+        colorDesc.ColorSpace = VRAPI_COLORSPACE_RIFT_S;
+        vrapi_SetClientColorDesc(g_ctx.Ovr, &colorDesc);
+    }
+
     vrapi_SetPerfThread(g_ctx.Ovr, VRAPI_PERF_THREAD_TYPE_MAIN, gettid());
 
     vrapi_SetTrackingSpace(g_ctx.Ovr, g_ctx.m_UsedTrackingSpace);

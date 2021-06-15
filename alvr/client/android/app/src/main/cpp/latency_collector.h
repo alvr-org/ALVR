@@ -65,6 +65,8 @@ private:
     uint64_t m_FecFailureTotal = 0;
     uint64_t m_FecFailureInSecond = 0;
     uint64_t m_FecFailurePrevious = 0;
+	
+    uint64_t m_LatencyTotal = 0;
 
     uint64_t m_TrackingPredictionTime = 0;
 

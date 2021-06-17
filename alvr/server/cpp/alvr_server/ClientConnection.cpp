@@ -179,6 +179,39 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			if (timeSync->fecFailure) {
 				OnFecFailure();
 			}
+			Info("#{ \"id\": \"Statistics\", \"data\": {"
+				"\"totalPackets\": %llu, "
+				"\"packetRate\": %llu, "
+				"\"packetsLostTotal\": %llu, "
+				"\"packetsLostPerSecond\": %llu, "
+				"\"totalSent\": %llu, "
+				"\"sentRate\": %f, "
+				"\"totalLatency\": %f, "
+				"\"encodeLatency\": %f, "
+				"\"encodeLatencyMax\": %f, "
+				"\"transportLatency\": %f, "
+				"\"decodeLatency\": %f, "
+				"\"fecPercentage\": %d, "
+				"\"fecFailureTotal\": %llu, "
+				"\"fecFailureInSecond\": %llu, "
+				"\"clientFPS\": %f, "
+				"\"serverFPS\": %d"
+				"} }#\n",
+				m_Statistics->GetPacketsSentTotal(),
+				m_Statistics->GetPacketsSentInSecond(),
+				m_reportedStatistics.packetsLostTotal,
+				m_reportedStatistics.packetsLostInSecond,
+				m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000,
+				m_Statistics->GetBitsSentInSecond() / 1000. / 1000.0,
+				m_reportedStatistics.averageTotalLatency / 1000.0,
+				(double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS,
+				(double)(m_Statistics->GetEncodeLatencyMax()) / US_TO_MS,
+				m_reportedStatistics.averageTransportLatency / 1000.0,
+				m_reportedStatistics.averageDecodeLatency / 1000.0, m_fecPercentage,
+				m_reportedStatistics.fecFailureTotal,
+				m_reportedStatistics.fecFailureInSecond,
+				m_reportedStatistics.fps,
+				m_Statistics->GetFPS());
 		}
 		else if (timeSync->mode == 2) {
 			// Calclate RTT
@@ -197,46 +230,6 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			OnFecFailure();
 		}
 	}
-
-	uint64_t now = GetTimestampUs();
-	if (now - m_LastStatisticsUpdate > STATISTICS_TIMEOUT_US)
-	{
-		Info("#{ \"id\": \"Statistics\", \"data\": {"
-			"\"totalPackets\": %llu, "
-			"\"packetRate\": %llu, "
-			"\"packetsLostTotal\": %llu, "
-			"\"packetsLostPerSecond\": %llu, "
-			"\"totalSent\": %llu, "
-			"\"sentRate\": %f, "
-			"\"totalLatency\": %f, "
-			"\"encodeLatency\": %f, "
-			"\"encodeLatencyMax\": %f, "
-			"\"transportLatency\": %f, "
-			"\"decodeLatency\": %f, "
-			"\"fecPercentage\": %d, "
-			"\"fecFailureTotal\": %llu, "
-			"\"fecFailureInSecond\": %llu, "
-			"\"clientFPS\": %f, "
-			"\"serverFPS\": %d"
-			"} }#\n",
-			m_Statistics->GetPacketsSentTotal(),
-			m_Statistics->GetPacketsSentInSecond(),
-			m_reportedStatistics.packetsLostTotal,
-			m_reportedStatistics.packetsLostInSecond,
-			m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000,
-			m_Statistics->GetBitsSentInSecond() / 1000. / 1000.0,
-			m_reportedStatistics.averageTotalLatency / 1000.0,
-			(double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS,
-			(double)(m_Statistics->GetEncodeLatencyMax()) / US_TO_MS,
-			m_reportedStatistics.averageTransportLatency / 1000.0,
-			m_reportedStatistics.averageDecodeLatency / 1000.0, m_fecPercentage,
-			m_reportedStatistics.fecFailureTotal,
-			m_reportedStatistics.fecFailureInSecond,
-			m_reportedStatistics.fps,
-			m_Statistics->GetFPS());
-		
-		m_LastStatisticsUpdate = now;
-	};
 }
 
 bool ClientConnection::HasValidTrackingInfo() const {

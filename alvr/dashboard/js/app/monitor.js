@@ -8,8 +8,9 @@ define([
     "i18n!app/nls/notifications",
     "css!app/templates/monitor.css",
     // eslint-disable-next-line requirejs/no-js-extension
-    "js/lib/uPlot.iife.js",
-    "css!js/lib/uPlot.css",
+    "js/lib/uPlot.iife.min.js",
+    "css!js/lib/uPlot.min.css",
+    "js/lib/simple-statistics.min.js",
 ], function (
     addClientModalTemplate,
     configureClientModalTemplate,

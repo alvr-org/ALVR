@@ -10,7 +10,6 @@ define([
     // eslint-disable-next-line requirejs/no-js-extension
     "js/lib/uPlot.iife.min.js",
     "css!js/lib/uPlot.min.css",
-    "js/lib/simple-statistics.min.js",
 ], function (
     addClientModalTemplate,
     configureClientModalTemplate,
@@ -560,7 +559,19 @@ define([
         let latencyGraphOptions = {
             width: 560,
             height: 200,
+            cursor: {
+                 drag: {
+                    dist: 10,
+                    uni: 20,
+                 },
+                 sync: {
+                    key: "graph",
+                    scales: ["x"],
+                 },
+            },
+            pxAlign: 0,
             ms: 1,
+            pxSnap: false,
             plugins: [
                 legendAsTooltipPlugin(),
             ],
@@ -572,28 +583,28 @@ define([
                     stroke: "#1f77b4",
                     fill: "#1f77b4",
                     value: (u, v, si, i) => latencyGraphData[si][i].toFixed(3) + " ms",
-                    points: { show: false }
+                    spanGaps: false,
                 },
                 {
                     label: "Decode",
                     stroke: "#ff7f0e",
                     fill: "#ff7f0e",
                     value: (u, v, si, i) => latencyGraphData[si][i].toFixed(3) + " ms",
-                    points: { show: false }
+                    spanGaps: false,
                 },
                 {
                     label: "Transport",
                     stroke: "#2ca02c",
                     fill: "#2ca02c",
                     value: (u, v, si, i) => latencyGraphData[si][i].toFixed(3) + " ms",
-                    points: { show: false }
+                    spanGaps: false,
                 },
                 {
                     label: "Other",
                     stroke: "#d62728",
                     fill: "#d62728",
                     value: (u, v, si, i) => latencyGraphData[si][i].toFixed(3) + " ms",
-                    points: { show: false }
+                    spanGaps: false,
                 },
             ],
             axes:
@@ -621,7 +632,19 @@ define([
         const framerateGraphOptions = {
             width: 560,
             height: 160,
+            cursor: {
+                 drag: {
+                    dist: 10,
+                    uni: 20,
+                 },
+                 sync: {
+                    key: "graph",
+                    scales: ["x"],
+                 },
+            },
+            pxAlign: 0,
             ms: 1,
+            pxSnap: false,
             plugins: [
                 legendAsTooltipPlugin(),
             ],
@@ -633,13 +656,13 @@ define([
                     label: "Server",
                     stroke: "#1f77b4",
                     value: (u, v) => v.toFixed(3) + " FPS",
-                    points: { show: false }
+                    spanGaps: false,
                 },
                 {
                     label: "Client",
                     stroke: "#ff7f0e",
                     value: (u, v) => v.toFixed(3) + " FPS",
-                    points: { show: false }
+                    spanGaps: false,
                 },
             ],
             axes:
@@ -667,31 +690,43 @@ define([
                 statistics["decodeLatency"] -
                 statistics["transportLatency"];
 
-            for (let i = 0; i < 5; i++) {
-                latencyGraphData[i].shift();
+            if (otherLatency > 0) {
+                for (let i = 0; i < 5; i++) {
+                    latencyGraphData[i].shift();
+                }
+
+                latencyGraphData[0].push(now);
+                latencyGraphData[1].push(statistics["encodeLatency"]);
+                latencyGraphData[2].push(statistics["decodeLatency"]);
+                latencyGraphData[3].push(statistics["transportLatency"]);
+                latencyGraphData[4].push(otherLatency);
+
+                latencyGraphData[0].shift();
+                latencyGraphData[0].unshift(now - 10000);
+
+                latencyGraph.setData(stack(latencyGraphData, i => false).data);
+            }
+            else {
+                for (let i = 1; i < 5; i++) {
+                    latencyGraphData[i].shift();
+                    latencyGraphData[i].push(null);
+                }
+
+                latencyGraphData[0].shift();
+                latencyGraphData[0].push(now);
             }
 
             for (let i = 0; i < 3; i++) {
                 framerateGraphData[i].shift();
             }
 
-            latencyGraphData[0].shift();
-            latencyGraphData[0].unshift(now - 10000);
-
-            framerateGraphData[0].shift();
-            framerateGraphData[0].unshift(now - 10000);
-
-            latencyGraphData[0].push(now);
-            latencyGraphData[1].push(statistics["encodeLatency"]);
-            latencyGraphData[2].push(statistics["decodeLatency"]);
-            latencyGraphData[3].push(statistics["transportLatency"]);
-            latencyGraphData[4].push(otherLatency);
-
             framerateGraphData[0].push(now);
             framerateGraphData[1].push(statistics["serverFPS"]);
             framerateGraphData[2].push(statistics["clientFPS"]);
 
-            latencyGraph.setData(stack(latencyGraphData, i => false).data);
+            framerateGraphData[0].shift();
+            framerateGraphData[0].unshift(now - 10000);
+
             framerateGraph.setData(framerateGraphData);
         }
 
@@ -762,6 +797,23 @@ define([
                     $("#performanceGraphs").removeClass("active");
                 if ($("#performanceGraphs").hasClass("show"))
                     $("#performanceGraphs").removeClass("show");
+
+                for (let i = 1; i < 5; i++) {
+                    latencyGraphData[i].shift();
+                    latencyGraphData[i].push(null);
+                }
+
+                latencyGraphData[0].shift();
+                latencyGraphData[0].push(now);
+
+                for (let i = 1; i < 4; i++) {
+                    framerateGraphData[i].shift();
+                    framerateGraphData[i].push(null);
+                }
+
+                framerateGraphData[0].shift();
+                framerateGraphData[0].push(now);
+
                 // hide logging
                 if ($("#loggingTab").hasClass("active"))
                     $("#loggingTab").removeClass("active");

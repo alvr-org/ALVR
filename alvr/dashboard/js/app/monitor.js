@@ -614,7 +614,8 @@ define([
                 {
                     space: 40,
                     values: [
-                        [1, ":{ss}", null, null, null, null, null, null, 1],
+                        [1000, ":{ss}", null, null, null, null, null, null, 1],
+                        [1, ":{ss}.{fff}", null, null, null, null, null, null, 1],
                     ],
                 },
             ],
@@ -675,7 +676,8 @@ define([
                 {
                     space: 40,
                     values: [
-                        [1, ":{ss}", null, null, null, null, null, null, 1],
+                        [1000, ":{ss}", null, null, null, null, null, null, 1],
+                        [1, ":{ss}.{fff}", null, null, null, null, null, null, 1],
                     ],
                 },
             ],

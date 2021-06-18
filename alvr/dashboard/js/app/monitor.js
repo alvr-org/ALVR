@@ -539,6 +539,28 @@ define([
             return {opts, data: stacked.data};
         }
 
+        function getThemedOpts(opts) {
+            opts.axes[0].stroke = "#ffffff";
+            opts.axes[0].grid.stroke = "#444444";
+            opts.axes[0].ticks.stroke = "#444444";
+            opts.axes[1].stroke = "#ffffff";
+            opts.axes[1].grid.stroke = "#444444";
+            opts.axes[1].ticks.stroke = "#444444";
+            return opts;
+        }
+
+        let themeColor = $("input[name='theme']:checked").val();
+
+        if (themeColor == "systemDefault") {
+            if (
+                window.matchMedia &&
+                window.matchMedia("(prefers-color-scheme: dark)").matches
+            ) {
+                themeColor = "darkly";
+            } else {
+                themeColor = "classic";
+            }
+        }
 
         const now = parseInt(new Date().getTime());
         let lastGraphUpdate = now;
@@ -617,10 +639,19 @@ define([
                         [1000, ":{ss}", null, null, null, null, null, null, 1],
                         [1, ":{ss}.{fff}", null, null, null, null, null, null, 1],
                     ],
+                    grid: {},
+                    ticks: {},
+                },
+                {
+                    grid: {},
+                    ticks: {},
                 },
             ],
         };
 
+        if (themeColor == "darkly") {
+            latencyGraphOptions = getThemedOpts(latencyGraphOptions);
+        }
         latencyGraphOptions = getStackedOpts(latencyGraphOptions, latencyGraphData).opts;
 
         let framerateGraphData = [
@@ -632,7 +663,7 @@ define([
         framerateGraphData[0].shift();
         framerateGraphData[0].unshift(now - 10000);
 
-        const framerateGraphOptions = {
+        let framerateGraphOptions = {
             width: 560,
             height: 180,
             cursor: {
@@ -679,9 +710,19 @@ define([
                         [1000, ":{ss}", null, null, null, null, null, null, 1],
                         [1, ":{ss}.{fff}", null, null, null, null, null, null, 1],
                     ],
+                    grid: {},
+                    ticks: {},
+                },
+                {
+                    grid: {},
+                    ticks: {},
                 },
             ],
         };
+
+        if (themeColor == "darkly") {
+            framerateGraphOptions = getThemedOpts(framerateGraphOptions);
+        }
 
         function initPerformanceGraphs() {
             latencyGraph = new uPlot(latencyGraphOptions, latencyGraphData, document.getElementById("latencyGraphArea"));

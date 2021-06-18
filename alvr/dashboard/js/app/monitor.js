@@ -563,7 +563,6 @@ define([
         }
 
         const now = parseInt(new Date().getTime());
-        let lastGraphUpdate = now;
 
         const length = 2000;
 
@@ -816,11 +815,11 @@ define([
 
             const now = parseInt(new Date().getTime());
 
-            if (now > lastGraphUpdate + 100) {
+            if (now > lastStatisticsUpdate + 100) {
                 for (const stat in statistics) {
                     $("#statistic_" + stat).text(statistics[stat]);
                 }
-                lastGraphUpdate = now
+                lastStatisticsUpdate = now
             }
             timeoutHandler = setTimeout(() => {
                 // $("#connectionCard").show();

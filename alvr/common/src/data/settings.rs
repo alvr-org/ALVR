@@ -525,7 +525,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
                     pose_time_offset: 0.01,
-                    clientside_prediction: false,
+                    clientside_prediction: true,
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,
@@ -535,7 +535,7 @@ pub fn session_settings_default() -> SettingsDefault {
             tracking_space: TrackingSpaceDefault {
                 variant: TrackingSpaceDefaultVariant::Local,
             },
-            extra_latency_mode: true,
+            extra_latency_mode: false,
         },
         connection: ConnectionDescDefault {
             client_discovery: SwitchDefault {

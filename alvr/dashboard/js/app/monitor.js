@@ -558,7 +558,7 @@ define([
 
         let latencyGraphOptions = {
             width: 560,
-            height: 200,
+            height: 220,
             cursor: {
                  drag: {
                     dist: 10,
@@ -577,33 +577,35 @@ define([
             ],
             series:
             [
-                {},
+                {
+                    label: "Total",
+                    value: (u, v, si, i) => (latencyGraphData[1][i] + latencyGraphData[2][i] + latencyGraphData[3][i] + latencyGraphData[4][i] || 0).toFixed(3) + " ms",},
                 {
                     label: "Encode",
                     stroke: "#1f77b4",
                     fill: "#1f77b4",
-                    value: (u, v, si, i) => latencyGraphData[si][i].toFixed(3) + " ms",
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Decode",
                     stroke: "#ff7f0e",
                     fill: "#ff7f0e",
-                    value: (u, v, si, i) => latencyGraphData[si][i].toFixed(3) + " ms",
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Transport",
                     stroke: "#2ca02c",
                     fill: "#2ca02c",
-                    value: (u, v, si, i) => latencyGraphData[si][i].toFixed(3) + " ms",
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Other",
                     stroke: "#d62728",
                     fill: "#d62728",
-                    value: (u, v, si, i) => latencyGraphData[si][i].toFixed(3) + " ms",
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
             ],
@@ -631,7 +633,7 @@ define([
 
         const framerateGraphOptions = {
             width: 560,
-            height: 160,
+            height: 180,
             cursor: {
                  drag: {
                     dist: 10,
@@ -651,17 +653,20 @@ define([
             series:
             [
                 {
+                    label: "---",
+                    value: "",
+                    show: false,
                 },
                 {
                     label: "Server",
                     stroke: "#1f77b4",
-                    value: (u, v) => v.toFixed(3) + " FPS",
+                    value: (u, v, si, i) => (framerateGraphData[si][i] || 0).toFixed(3) + " FPS",
                     spanGaps: false,
                 },
                 {
                     label: "Client",
                     stroke: "#ff7f0e",
-                    value: (u, v) => v.toFixed(3) + " FPS",
+                    value: (u, v, si, i) => (framerateGraphData[si][i] || 0).toFixed(3) + " FPS",
                     spanGaps: false,
                 },
             ],
@@ -806,7 +811,7 @@ define([
                 latencyGraphData[0].shift();
                 latencyGraphData[0].push(now);
 
-                for (let i = 1; i < 4; i++) {
+                for (let i = 1; i < 3; i++) {
                     framerateGraphData[i].shift();
                     framerateGraphData[i].push(null);
                 }

@@ -608,7 +608,7 @@ define([
                     value: (u, v, si, i) => (latencyGraphData[9][i] || 0).toFixed(3) + " ms",
                 },
                 {
-                    label: "Send",
+                    label: "Receive",
                     stroke: "#ed38c0",
                     fill: "#ed38c0",
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
@@ -643,7 +643,7 @@ define([
                     spanGaps: false,
                 },
                 {
-                    label: "Transport",
+                    label: "Send",
                     stroke: "#2ca02c",
                     fill: "#2ca02c",
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",

@@ -197,27 +197,27 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			if (timeSync->fecFailure) {
 				OnFecFailure();
 			}
-			Info("#{\"id\":\"Statistics\",\"data\":{"
-				"\"totalPackets\":%llu,"
-				"\"packetRate\":%llu,"
-				"\"packetsLostTotal\":%llu,"
-				"\"packetsLostPerSecond\":%llu,"
-				"\"totalSent\":%llu,"
-				"\"sentRate\":%.3f,"
-				"\"total\":%.3f,"
-				"\"receive\":%.3f,"
-				"\"render\":%.3f,"
-				"\"idle\":%.3f,"
-				"\"vsync\":%.3f,"
-				"\"encode\":%.3f,"
-				"\"send\":%.3f,"
-				"\"decode\":%.3f,"
-				"\"fecPercentage\":%d,"
-				"\"fecFailureTotal\":%llu,"
-				"\"fecFailureInSecond\":%llu,"
-				"\"clientFPS\":%.3f,"
-				"\"serverFPS\":%d"
-				"}}#\n",
+			Info("#{ \"id\": \"Statistics\", \"data\": {"
+				"\"totalPackets\": %llu, "
+				"\"packetRate\": %llu, "
+				"\"packetsLostTotal\": %llu, "
+				"\"packetsLostPerSecond\": %llu, "
+				"\"totalSent\": %llu, "
+				"\"sentRate\": %.3f, "
+				"\"totalLatency\": %.3f, "
+				"\"sendLatency\": %.3f, "
+				"\"renderTime\": %.3f, "
+				"\"idleTime\": %.3f, "
+				"\"waitTime\": %.3f, "
+				"\"encodeLatency\": %.3f, "
+				"\"transportLatency\": %.3f, "
+				"\"decodeLatency\": %.3f, "
+				"\"fecPercentage\": %d, "
+				"\"fecFailureTotal\": %llu, "
+				"\"fecFailureInSecond\": %llu, "
+				"\"clientFPS\": %.3f, "
+				"\"serverFPS\": %d"
+				"} }#\n",
 				m_Statistics->GetPacketsSentTotal(),
 				m_Statistics->GetPacketsSentInSecond(),
 				m_reportedStatistics.packetsLostTotal,

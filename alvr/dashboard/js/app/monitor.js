@@ -765,33 +765,33 @@ define([
         function updatePerformanceGraphs(statistics) {
             const now = parseInt(new Date().getTime());
 
-            const other =
-                statistics["total"] -
-                statistics["receive"] -
-                statistics["render"] -
-                statistics["idle"] -
-                statistics["vsync"] -
-                statistics["encode"] -
-                statistics["send"] -
-                statistics["decode"];
+            let otherLatency =
+                statistics["totalLatency"] -
+                statistics["receiveLatency"] -
+                statistics["renderTime"] -
+                statistics["idleTime"] -
+                statistics["waitTime"] -
+                statistics["encodeLatency"] -
+                statistics["sendLatency"] -
+                statistics["decodeLatency"];
 
-            if (other < 0)
-                other = 0;
+            if (otherLatency < 0)
+                otherLatency = 0;
 
             for (let i = 0; i < 10; i++) {
                 latencyGraphData[i].shift();
             }
 
             latencyGraphData[0].push(now);
-            latencyGraphData[1].push(statistics["receive"]);
-            latencyGraphData[2].push(statistics["render"]);
-            latencyGraphData[3].push(statistics["idle"]);
-            latencyGraphData[4].push(statistics["vsync"]);
-            latencyGraphData[5].push(statistics["encode"]);
-            latencyGraphData[6].push(statistics["send"]);
-            latencyGraphData[7].push(statistics["decode"]);
-            latencyGraphData[8].push(other);
-            latencyGraphData[9].push(statistics["total"]);
+            latencyGraphData[1].push(statistics["receiveLatency"]);
+            latencyGraphData[2].push(statistics["renderTime"]);
+            latencyGraphData[3].push(statistics["idleTime"]);
+            latencyGraphData[4].push(statistics["waitTime"]);
+            latencyGraphData[5].push(statistics["sendLatency"]);
+            latencyGraphData[6].push(statistics["sendLatency"]);
+            latencyGraphData[7].push(statistics["decodeLatency"]);
+            latencyGraphData[8].push(otherLatency);
+            latencyGraphData[9].push(statistics["totalLatency"]);
 
             latencyGraphData[0].shift();
             latencyGraphData[0].unshift(now - 10000);

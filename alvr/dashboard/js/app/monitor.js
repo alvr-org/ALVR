@@ -573,6 +573,9 @@ define([
             Array(length).fill(null),
             Array(length).fill(null),
             Array(length).fill(null),
+            Array(length).fill(null),
+            Array(length).fill(null),
+            Array(length).fill(null),
         ];
 
         latencyGraphData[0].shift();
@@ -604,16 +607,37 @@ define([
                     value: (u, v, si, i) => (latencyGraphData[1][i] + latencyGraphData[2][i] + latencyGraphData[3][i] + latencyGraphData[4][i] || 0).toFixed(3) + " ms",
                 },
                 {
-                    label: "Encode",
-                    stroke: "#1f77b4",
-                    fill: "#1f77b4",
+                    label: "Send",
+                    stroke: "#ed38c0",
+                    fill: "#ed38c0",
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
-                    label: "Decode",
-                    stroke: "#ff7f0e",
-                    fill: "#ff7f0e",
+                    label: "Render",
+                    stroke: "#4a15ea",
+                    fill: "#4a15ea",
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Idle",
+                    stroke: "#1be44e",
+                    fill: "#1be44e",
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Wait",
+                    stroke: "#d5d52b",
+                    fill: "#d5d52b",
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Encode",
+                    stroke: "#1f77b4",
+                    fill: "#1f77b4",
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
@@ -625,16 +649,16 @@ define([
                     spanGaps: false,
                 },
                 {
-                    label: "Other",
-                    stroke: "#d62728",
-                    fill: "#d62728",
+                    label: "Decode",
+                    stroke: "#ff7f0e",
+                    fill: "#ff7f0e",
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
-                    label: "Send",
-                    stroke: "#ff00ff",
-                    fill: "#ff00ff",
+                    label: "Other",
+                    stroke: "#d62728",
+                    fill: "#d62728",
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
@@ -743,21 +767,27 @@ define([
             const otherLatency =
                 statistics["totalLatency"] -
                 statistics["sendLatency"] -
+                statistics["renderTime"] -
+                statistics["idleTime"] -
+                statistics["waitTime"] -
                 statistics["encodeLatency"] -
-                statistics["decodeLatency"] -
-                statistics["transportLatency"];
+                statistics["transportLatency"] -
+                statistics["decodeLatency"];
 
             if (otherLatency > 0) {
-                for (let i = 0; i < 6; i++) {
+                for (let i = 0; i < 9; i++) {
                     latencyGraphData[i].shift();
                 }
 
                 latencyGraphData[0].push(now);
-                latencyGraphData[1].push(statistics["encodeLatency"]);
-                latencyGraphData[2].push(statistics["decodeLatency"]);
-                latencyGraphData[3].push(statistics["transportLatency"]);
-                latencyGraphData[4].push(otherLatency);
-                latencyGraphData[5].push(statistics["sendLatency"]);
+                latencyGraphData[1].push(statistics["sendLatency"]);
+                latencyGraphData[2].push(statistics["renderTime"]);
+                latencyGraphData[3].push(statistics["idleTime"]);
+                latencyGraphData[4].push(statistics["waitTime"]);
+                latencyGraphData[5].push(statistics["encodeLatency"]);
+                latencyGraphData[6].push(statistics["transportLatency"]);
+                latencyGraphData[7].push(statistics["decodeLatency"]);
+                latencyGraphData[8].push(otherLatency);
 
                 latencyGraphData[0].shift();
                 latencyGraphData[0].unshift(now - 10000);
@@ -765,7 +795,7 @@ define([
                 latencyGraph.setData(stack(latencyGraphData, i => false).data);
             }
             else {
-                for (let i = 1; i < 6; i++) {
+                for (let i = 1; i < 9; i++) {
                     latencyGraphData[i].shift();
                     latencyGraphData[i].push(null);
                 }
@@ -856,7 +886,7 @@ define([
                 if ($("#performanceGraphs").hasClass("show"))
                     $("#performanceGraphs").removeClass("show");
 
-                for (let i = 1; i < 5; i++) {
+                for (let i = 1; i < 9; i++) {
                     latencyGraphData[i].shift();
                     latencyGraphData[i].push(null);
                 }

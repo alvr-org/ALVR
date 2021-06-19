@@ -186,9 +186,11 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 
 			vr::Compositor_FrameTiming timing;
 			timing.m_nSize = sizeof(vr::Compositor_FrameTiming);
-			vr::VRServerDriverHost()->GetFrameTimings(&timing, 1);
+			vr::VRServerDriverHost()->GetFrameTimings(&timing, 2);
 
-			Info("Total Render: %f ms", timing.m_flTotalRenderGpuMs);
+			float renderTime = timing.m_flPreSubmitGpuMs + timing.m_flPostSubmitGpuMs + timing.m_flTotalRenderGpuMs + timing.m_flCompositorRenderGpuMs + timing.m_flCompositorRenderCpuMs;
+			float idleTime = timing.m_flCompositorIdleCpuMs;
+			float waitTime = timing.m_flClientFrameIntervalMs + timing.m_flPresentCallCpuMs + timing.m_flWaitForPresentCpuMs + timing.m_flSubmitFrameMs;
 
 			if (timeSync->fecFailure) {
 				OnFecFailure();
@@ -202,6 +204,9 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				"\"sentRate\": %f, "
 				"\"totalLatency\": %f, "
 				"\"sendLatency\": %f, "
+				"\"renderTime\": %f, "
+				"\"idleTime\": %f, "
+				"\"waitTime\": %f, "
 				"\"encodeLatency\": %f, "
 				"\"encodeLatencyMax\": %f, "
 				"\"transportLatency\": %f, "
@@ -220,6 +225,9 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				m_Statistics->GetBitsSentInSecond() / 1000. / 1000.0,
 				m_reportedStatistics.averageTotalLatency / 1000.0,
 				m_reportedStatistics.averageSendLatency / 1000.0,
+				renderTime,
+				idleTime,
+				waitTime,
 				(double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS,
 				(double)(m_Statistics->GetEncodeLatencyMax()) / US_TO_MS,
 				m_reportedStatistics.averageTransportLatency / 1000.0,

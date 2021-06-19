@@ -775,36 +775,28 @@ define([
                 statistics["transportLatency"] -
                 statistics["decodeLatency"];
 
-            if (otherLatency > 0) {
-                for (let i = 0; i < 10; i++) {
-                    latencyGraphData[i].shift();
-                }
+            if (otherLatency < 0)
+                otherLatency = 0;
 
-                latencyGraphData[0].push(now);
-                latencyGraphData[1].push(statistics["sendLatency"]);
-                latencyGraphData[2].push(statistics["renderTime"]);
-                latencyGraphData[3].push(statistics["idleTime"]);
-                latencyGraphData[4].push(statistics["waitTime"]);
-                latencyGraphData[5].push(statistics["encodeLatency"]);
-                latencyGraphData[6].push(statistics["transportLatency"]);
-                latencyGraphData[7].push(statistics["decodeLatency"]);
-                latencyGraphData[8].push(otherLatency);
-                latencyGraphData[9].push(statistics["totalLatency"]);
-
-                latencyGraphData[0].shift();
-                latencyGraphData[0].unshift(now - 10000);
-
-                latencyGraph.setData(stack(latencyGraphData, i => false).data);
+            for (let i = 0; i < 10; i++) {
+                latencyGraphData[i].shift();
             }
-            else {
-                for (let i = 1; i < 10; i++) {
-                    latencyGraphData[i].shift();
-                    latencyGraphData[i].push(null);
-                }
 
-                latencyGraphData[0].shift();
-                latencyGraphData[0].push(now);
-            }
+            latencyGraphData[0].push(now);
+            latencyGraphData[1].push(statistics["sendLatency"]);
+            latencyGraphData[2].push(statistics["renderTime"]);
+            latencyGraphData[3].push(statistics["idleTime"]);
+            latencyGraphData[4].push(statistics["waitTime"]);
+            latencyGraphData[5].push(statistics["encodeLatency"]);
+            latencyGraphData[6].push(statistics["transportLatency"]);
+            latencyGraphData[7].push(statistics["decodeLatency"]);
+            latencyGraphData[8].push(otherLatency);
+            latencyGraphData[9].push(statistics["totalLatency"]);
+
+            latencyGraphData[0].shift();
+            latencyGraphData[0].unshift(now - 10000);
+
+            latencyGraph.setData(stack(latencyGraphData, i => false).data);
 
             for (let i = 0; i < 3; i++) {
                 framerateGraphData[i].shift();

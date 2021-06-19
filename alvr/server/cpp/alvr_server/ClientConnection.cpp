@@ -188,6 +188,8 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			timing.m_nSize = sizeof(vr::Compositor_FrameTiming);
 			vr::VRServerDriverHost()->GetFrameTimings(&timing, 1);
 
+			Info("Total Render: %f ms", timing.m_flTotalRenderGpuMs);
+
 			if (timeSync->fecFailure) {
 				OnFecFailure();
 			}

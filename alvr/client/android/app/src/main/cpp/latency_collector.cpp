@@ -144,10 +144,13 @@ void LatencyCollector::submitNewFrame() {
 }
 
 uint64_t LatencyCollector::getTrackingPredictionLatency() {
-    if (getTimestampUs() >= m_TrackingPredictionTime)
+    uint64_t current = getTimestampUs();
+    if (current >= m_TrackingPredictionTime)
         return 0;
+    else if (current + 1e5 < m_TrackingPredictionTime)
+        return current + 1e5;
     else
-        return m_TrackingPredictionTime - getTimestampUs();
+        return m_TrackingPredictionTime - current;
 }
 
 uint64_t LatencyCollector::getLatency(uint32_t i, uint32_t j) {

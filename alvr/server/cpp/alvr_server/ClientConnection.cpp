@@ -184,13 +184,15 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			sendBuf.serverTime = Current;
 			LegacySend((unsigned char *)&sendBuf, sizeof(sendBuf));
 
-			vr::Compositor_FrameTiming timing;
-			timing.m_nSize = sizeof(vr::Compositor_FrameTiming);
-			vr::VRServerDriverHost()->GetFrameTimings(&timing, 2);
+			//timings might be a little incorrect since it is a mix from a previous sent frame and latest frame
 
-			float renderTime = timing.m_flPreSubmitGpuMs + timing.m_flPostSubmitGpuMs + timing.m_flTotalRenderGpuMs + timing.m_flCompositorRenderGpuMs + timing.m_flCompositorRenderCpuMs;
-			float idleTime = timing.m_flCompositorIdleCpuMs;
-			float waitTime = timing.m_flClientFrameIntervalMs + timing.m_flPresentCallCpuMs + timing.m_flWaitForPresentCpuMs + timing.m_flSubmitFrameMs;
+			vr::Compositor_FrameTiming timing[2];
+			timing[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
+			vr::VRServerDriverHost()->GetFrameTimings(&timing[0], 2);
+
+			float renderTime = timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs;
+			float idleTime = timing[0].m_flCompositorIdleCpuMs;
+			float waitTime = timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs;
 
 			if (timeSync->fecFailure) {
 				OnFecFailure();

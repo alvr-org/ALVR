@@ -576,6 +576,7 @@ define([
             Array(length).fill(null),
             Array(length).fill(null),
             Array(length).fill(null),
+            Array(length).fill(null),
         ];
 
         latencyGraphData[0].shift();
@@ -604,7 +605,7 @@ define([
             [
                 {
                     label: "Total",
-                    value: (u, v, si, i) => (latencyGraphData[1][i] + latencyGraphData[2][i] + latencyGraphData[3][i] + latencyGraphData[4][i] || 0).toFixed(3) + " ms",
+                    value: (u, v, si, i) => (latencyGraphData[9][i] || 0).toFixed(3) + " ms",
                 },
                 {
                     label: "Send",
@@ -775,7 +776,7 @@ define([
                 statistics["decodeLatency"];
 
             if (otherLatency > 0) {
-                for (let i = 0; i < 9; i++) {
+                for (let i = 0; i < 10; i++) {
                     latencyGraphData[i].shift();
                 }
 
@@ -788,6 +789,7 @@ define([
                 latencyGraphData[6].push(statistics["transportLatency"]);
                 latencyGraphData[7].push(statistics["decodeLatency"]);
                 latencyGraphData[8].push(otherLatency);
+                latencyGraphData[9].push(statistics["totalLatency"]);
 
                 latencyGraphData[0].shift();
                 latencyGraphData[0].unshift(now - 10000);
@@ -795,7 +797,7 @@ define([
                 latencyGraph.setData(stack(latencyGraphData, i => false).data);
             }
             else {
-                for (let i = 1; i < 9; i++) {
+                for (let i = 1; i < 10; i++) {
                     latencyGraphData[i].shift();
                     latencyGraphData[i].push(null);
                 }
@@ -886,7 +888,7 @@ define([
                 if ($("#performanceGraphs").hasClass("show"))
                     $("#performanceGraphs").removeClass("show");
 
-                for (let i = 1; i < 9; i++) {
+                for (let i = 1; i < 10; i++) {
                     latencyGraphData[i].shift();
                     latencyGraphData[i].push(null);
                 }

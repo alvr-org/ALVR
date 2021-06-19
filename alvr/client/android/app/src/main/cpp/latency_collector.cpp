@@ -148,7 +148,7 @@ uint64_t LatencyCollector::getTrackingPredictionLatency() {
     if (current >= m_TrackingPredictionTime)
         return 0;
     else if (current + 1e5 < m_TrackingPredictionTime)
-        return current + 1e5;
+        return 1e5;
     else
         return m_TrackingPredictionTime - current;
 }

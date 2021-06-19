@@ -184,9 +184,9 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			sendBuf.serverTime = Current;
 			LegacySend((unsigned char *)&sendBuf, sizeof(sendBuf));
 
-		vr::Compositor_FrameTiming timing;
-		timing.m_nSize = sizeof(vr::Compositor_FrameTiming);
-		vr::IVRServerDriverHost()->GetFrameTimings(&timing, 1);
+			vr::Compositor_FrameTiming timing;
+			timing.m_nSize = sizeof(vr::Compositor_FrameTiming);
+			vr::VRServerDriverHost()->GetFrameTimings(&timing, 1);
 
 			if (timeSync->fecFailure) {
 				OnFecFailure();

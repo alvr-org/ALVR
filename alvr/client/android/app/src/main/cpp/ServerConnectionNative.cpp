@@ -131,6 +131,9 @@ void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
             sendBuf.clientTime = Current;
             legacySend((const unsigned char *) &sendBuf, sizeof(sendBuf));
         }
+        if (timeSync->mode == 3) {
+            LatencyCollector::Instance().received(timeSync->trackingRecvFrameIndex, timeSync->serverTime);
+        }
     } else if (type == ALVR_PACKET_TYPE_HAPTICS) {
         if (packetSize < sizeof(HapticsFeedback)) {
             return;
@@ -156,17 +159,13 @@ void sendTimeSync() {
     timeSync.packetsLostTotal = LatencyCollector::Instance().getPacketsLostTotal();
     timeSync.packetsLostInSecond = LatencyCollector::Instance().getPacketsLostInSecond();
 
-    timeSync.averageTotalLatency = (uint32_t) LatencyCollector::Instance().getLatency(0, 0);
-    timeSync.maxTotalLatency = (uint32_t) LatencyCollector::Instance().getLatency(0, 1);
-    timeSync.minTotalLatency = (uint32_t) LatencyCollector::Instance().getLatency(0, 2);
+    timeSync.averageTotalLatency = (uint32_t) LatencyCollector::Instance().getLatency(0);
 
-    timeSync.averageTransportLatency = (uint32_t) LatencyCollector::Instance().getLatency(1, 0);
-    timeSync.maxTransportLatency = (uint32_t) LatencyCollector::Instance().getLatency(1, 1);
-    timeSync.minTransportLatency = (uint32_t) LatencyCollector::Instance().getLatency(1, 2);
+    timeSync.averageSendLatency = (uint32_t) LatencyCollector::Instance().getLatency(3);
 
-    timeSync.averageDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2, 0);
-    timeSync.maxDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2, 1);
-    timeSync.minDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2, 2);
+    timeSync.averageTransportLatency = (uint32_t) LatencyCollector::Instance().getLatency(1);
+
+    timeSync.averageDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2);
 
     timeSync.fecFailure = g_socket.m_nalParser->fecFailure() ? 1 : 0;
     timeSync.fecFailureTotal = LatencyCollector::Instance().getFecFailureTotal();

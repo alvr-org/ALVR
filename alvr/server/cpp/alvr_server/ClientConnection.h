@@ -7,6 +7,8 @@
 
 #include "ALVR-common/packet_types.h"
 
+#include "openvr_driver.h"
+
 class Statistics;
 
 class ClientConnection {

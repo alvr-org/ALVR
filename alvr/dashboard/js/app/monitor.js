@@ -572,6 +572,7 @@ define([
             Array(length).fill(null),
             Array(length).fill(null),
             Array(length).fill(null),
+            Array(length).fill(null),
         ];
 
         latencyGraphData[0].shift();
@@ -600,7 +601,8 @@ define([
             [
                 {
                     label: "Total",
-                    value: (u, v, si, i) => (latencyGraphData[1][i] + latencyGraphData[2][i] + latencyGraphData[3][i] + latencyGraphData[4][i] || 0).toFixed(3) + " ms",},
+                    value: (u, v, si, i) => (latencyGraphData[1][i] + latencyGraphData[2][i] + latencyGraphData[3][i] + latencyGraphData[4][i] || 0).toFixed(3) + " ms",
+                },
                 {
                     label: "Encode",
                     stroke: "#1f77b4",
@@ -626,6 +628,13 @@ define([
                     label: "Other",
                     stroke: "#d62728",
                     fill: "#d62728",
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Send",
+                    stroke: "#ff00ff",
+                    fill: "#ff00ff",
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
@@ -733,12 +742,13 @@ define([
 
             const otherLatency =
                 statistics["totalLatency"] -
+                statistics["sendLatency"] -
                 statistics["encodeLatency"] -
                 statistics["decodeLatency"] -
                 statistics["transportLatency"];
 
             if (otherLatency > 0) {
-                for (let i = 0; i < 5; i++) {
+                for (let i = 0; i < 6; i++) {
                     latencyGraphData[i].shift();
                 }
 
@@ -747,6 +757,7 @@ define([
                 latencyGraphData[2].push(statistics["decodeLatency"]);
                 latencyGraphData[3].push(statistics["transportLatency"]);
                 latencyGraphData[4].push(otherLatency);
+                latencyGraphData[5].push(statistics["sendLatency"]);
 
                 latencyGraphData[0].shift();
                 latencyGraphData[0].unshift(now - 10000);
@@ -754,7 +765,7 @@ define([
                 latencyGraph.setData(stack(latencyGraphData, i => false).data);
             }
             else {
-                for (let i = 1; i < 5; i++) {
+                for (let i = 1; i < 6; i++) {
                     latencyGraphData[i].shift();
                     latencyGraphData[i].push(null);
                 }

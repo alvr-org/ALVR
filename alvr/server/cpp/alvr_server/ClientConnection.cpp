@@ -146,6 +146,14 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 	uint32_t type = *(uint32_t*)buf;
 
 	if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
+		uint64_t Current = GetTimestampUs();
+		TimeSync sendBuf = {};
+		sendBuf.type = ALVR_PACKET_TYPE_TIME_SYNC;
+		sendBuf.mode = 3;
+		sendBuf.serverTime = serverToClientTime(Current);
+		sendBuf.trackingRecvFrameIndex = m_TrackingInfo.FrameIndex;
+		LegacySend((unsigned char *)&sendBuf, sizeof(sendBuf));
+
 		{
 			std::unique_lock lock(m_CS);
 			m_TrackingInfo = *(TrackingInfo *)buf;
@@ -176,6 +184,10 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			sendBuf.serverTime = Current;
 			LegacySend((unsigned char *)&sendBuf, sizeof(sendBuf));
 
+		vr::Compositor_FrameTiming timing;
+		timing.m_nSize = sizeof(vr::Compositor_FrameTiming);
+		vr::IVRServerDriverHost::GetFrameTimings(&timing, 1);
+
 			if (timeSync->fecFailure) {
 				OnFecFailure();
 			}
@@ -187,6 +199,7 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				"\"totalSent\": %llu, "
 				"\"sentRate\": %f, "
 				"\"totalLatency\": %f, "
+				"\"sendLatency\": %f, "
 				"\"encodeLatency\": %f, "
 				"\"encodeLatencyMax\": %f, "
 				"\"transportLatency\": %f, "
@@ -204,6 +217,7 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000,
 				m_Statistics->GetBitsSentInSecond() / 1000. / 1000.0,
 				m_reportedStatistics.averageTotalLatency / 1000.0,
+				m_reportedStatistics.averageSendLatency / 1000.0,
 				(double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS,
 				(double)(m_Statistics->GetEncodeLatencyMax()) / US_TO_MS,
 				m_reportedStatistics.averageTransportLatency / 1000.0,

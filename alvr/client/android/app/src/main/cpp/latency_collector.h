@@ -19,6 +19,8 @@ public:
     void packetLoss(int64_t lost);
     void fecFailure();
 
+    void setTotalLatency(uint32_t latency);
+
     void tracking(uint64_t frameIndex);
     void estimatedSent(uint64_t frameIndex, uint64_t offset);
     void received(uint64_t frameIndex, uint64_t timestamp);
@@ -67,6 +69,7 @@ private:
     uint64_t m_FecFailureInSecond = 0;
     uint64_t m_FecFailurePrevious = 0;
 
+    uint32_t m_ServerTotalLatency = 0;
     uint64_t m_TrackingPredictionTime = 0;
 
     // Total/Transport/Decode latency

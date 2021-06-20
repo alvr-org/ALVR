@@ -121,6 +121,7 @@ void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
         auto *timeSync = (TimeSync *) packet;
         uint64_t Current = getTimestampUs();
         if (timeSync->mode == 1) {
+            LatencyCollector::Instance().setTotalLatency(timeSync->serverTotalLatency);
             uint64_t RTT = Current - timeSync->clientTime;
             g_socket.m_timeDiff =
                     ((int64_t) timeSync->serverTime + (int64_t) RTT / 2) - (int64_t) Current;

@@ -178,21 +178,22 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 		uint64_t Current = GetTimestampUs();
 
 		if (timeSync->mode == 0) {
-			m_reportedStatistics = *timeSync;
-			TimeSync sendBuf = *timeSync;
-			sendBuf.mode = 1;
-			sendBuf.serverTime = Current;
-			LegacySend((unsigned char *)&sendBuf, sizeof(sendBuf));
-
 			//timings might be a little incorrect since it is a mix from a previous sent frame and latest frame
 
 			vr::Compositor_FrameTiming timing[2];
 			timing[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
 			vr::VRServerDriverHost()->GetFrameTimings(&timing[0], 2);
 
-			float renderTime = timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs;
-			float idleTime = timing[0].m_flCompositorIdleCpuMs;
-			float waitTime = timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs;
+			m_reportedStatistics = *timeSync;
+			TimeSync sendBuf = *timeSync;
+			sendBuf.mode = 1;
+			sendBuf.serverTime = Current;
+			sendBuf.serverTotalLatency = (int)(m_reportedStatistics.averageSendLatency + (timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs + timing[0].m_flCompositorIdleCpuMs + timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs) * 1000 + m_Statistics->GetEncodeLatencyAverage() + m_reportedStatistics.averageTransportLatency + m_reportedStatistics.averageDecodeLatency);
+			LegacySend((unsigned char *)&sendBuf, sizeof(sendBuf));
+
+			//float renderTime = timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs;
+			//float idleTime = timing[0].m_flCompositorIdleCpuMs;
+			//float waitTime = timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs;
 
 			if (timeSync->fecFailure) {
 				OnFecFailure();
@@ -206,9 +207,16 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				"\"sentRate\": %.3f, "
 				"\"totalLatency\": %.3f, "
 				"\"receiveLatency\": %.3f, "
-				"\"renderTime\": %.3f, "
-				"\"idleTime\": %.3f, "
-				"\"waitTime\": %.3f, "
+				"\"rT1\": %.3f, "
+				"\"rT2\": %.3f, "
+				"\"rT3\": %.3f, "
+				"\"rT4\": %.3f, "
+				"\"rT5\": %.3f, "
+				"\"iT1\": %.3f, "
+				"\"wT1\": %.3f, "
+				"\"wT2\": %.3f, "
+				"\"wT3\": %.3f, "
+				"\"wT4\": %.3f, "
 				"\"encodeLatency\": %.3f, "
 				"\"sendLatency\": %.3f, "
 				"\"decodeLatency\": %.3f, "
@@ -226,9 +234,9 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				m_Statistics->GetBitsSentInSecond() / 1000. / 1000.0,
 				m_reportedStatistics.averageTotalLatency / 1000.0,
 				m_reportedStatistics.averageSendLatency / 1000.0,
-				renderTime,
-				idleTime,
-				waitTime,
+				timing[0].m_flPreSubmitGpuMs, timing[0].m_flPostSubmitGpuMs, timing[0].m_flTotalRenderGpuMs, timing[0].m_flCompositorRenderGpuMs, timing[0].m_flCompositorRenderCpuMs,
+				timing[0].m_flCompositorIdleCpuMs,
+				timing[0].m_flClientFrameIntervalMs, timing[0].m_flPresentCallCpuMs, timing[0].m_flWaitForPresentCpuMs, timing[0].m_flSubmitFrameMs,
 				(double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS,
 				m_reportedStatistics.averageTransportLatency / 1000.0,
 				m_reportedStatistics.averageDecodeLatency / 1000.0, m_fecPercentage,

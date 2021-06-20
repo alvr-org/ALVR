@@ -232,6 +232,9 @@ struct TimeSync {
 
 	float fps;
 
+	// Following value are filled by server only when mode=1.
+	uint32_t serverTotalLatency;
+
 	// Following value are filled by server only when mode=3.
 	uint64_t trackingRecvFrameIndex;
 };

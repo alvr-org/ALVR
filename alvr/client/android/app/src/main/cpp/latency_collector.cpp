@@ -18,6 +18,10 @@ LatencyCollector::FrameTimestamp &LatencyCollector::getFrame(uint64_t frameIndex
     return frame;
 }
 
+void LatencyCollector::setTotalLatency(uint32_t latency) {
+    if (latency < 5e5)
+        m_ServerTotalLatency = latency * 0.1 + m_ServerTotalLatency * 0.9;
+}
 void LatencyCollector::tracking(uint64_t frameIndex) {
     getFrame(frameIndex).tracking = getTimestampUs();
 }
@@ -50,7 +54,7 @@ void LatencyCollector::submit(uint64_t frameIndex) {
     FrameTimestamp timestamp = getFrame(frameIndex);
     timestamp.submit = getTimestampUs();
 
-    m_TrackingPredictionTime = timestamp.submit + (timestamp.submit - timestamp.tracking);
+    m_TrackingPredictionTime = timestamp.submit + m_ServerTotalLatency;
 
     m_Latency[0] = timestamp.submit - timestamp.tracking;
     m_Latency[1] = timestamp.receivedLast - timestamp.estimatedSent;
@@ -126,8 +130,8 @@ uint64_t LatencyCollector::getTrackingPredictionLatency() {
     uint64_t current = getTimestampUs();
     if (current >= m_TrackingPredictionTime)
         return 0;
-    else if (current + 1e5 < m_TrackingPredictionTime)
-        return current + 1e5;
+    else if (current + 5e5 < m_TrackingPredictionTime)
+        return 5e5;
     else
         return m_TrackingPredictionTime - current;
 }

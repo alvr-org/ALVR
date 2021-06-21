@@ -207,16 +207,16 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				"\"sentRate\": %.3f, "
 				"\"totalLatency\": %.3f, "
 				"\"receiveLatency\": %.3f, "
-				"\"rT1\": %.3f, "
-				"\"rT2\": %.3f, "
-				"\"rT3\": %.3f, "
-				"\"rT4\": %.3f, "
-				"\"rT5\": %.3f, "
-				"\"iT1\": %.3f, "
-				"\"wT1\": %.3f, "
-				"\"wT2\": %.3f, "
-				"\"wT3\": %.3f, "
-				"\"wT4\": %.3f, "
+				"\"preSubmit\": %.3f, "
+				"\"postSubmit\": %.3f, "
+				"\"totalRender\": %.3f, "
+				"\"compositorRenderGpu\": %.3f, "
+				"\"compositorRenderCpu\": %.3f, "
+				"\"compositorIdle\": %.3f, "
+				"\"frameInterval\": %.3f, "
+				"\"presentCall\": %.3f, "
+				"\"waitForPresent\": %.3f, "
+				"\"submitFrame\": %.3f, "
 				"\"encodeLatency\": %.3f, "
 				"\"sendLatency\": %.3f, "
 				"\"decodeLatency\": %.3f, "
@@ -232,7 +232,7 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				m_reportedStatistics.packetsLostInSecond,
 				m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000,
 				m_Statistics->GetBitsSentInSecond() / 1000. / 1000.0,
-				m_reportedStatistics.averageTotalLatency / 1000.0,
+				sendBuf.serverTotalLatency / 1000.0,
 				m_reportedStatistics.averageSendLatency / 1000.0,
 				timing[0].m_flPreSubmitGpuMs, timing[0].m_flPostSubmitGpuMs, timing[0].m_flTotalRenderGpuMs, timing[0].m_flCompositorRenderGpuMs, timing[0].m_flCompositorRenderCpuMs,
 				timing[0].m_flCompositorIdleCpuMs,

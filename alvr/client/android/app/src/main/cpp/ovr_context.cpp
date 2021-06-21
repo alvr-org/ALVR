@@ -860,6 +860,7 @@ void renderNative(long long renderedFrameIndex) {
     vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
 
     LatencyCollector::Instance().submit(renderedFrameIndex);
+    // TimeSync here might be an issue but it seems to work fine
     sendTimeSync();
 
     FrameLog(renderedFrameIndex, "vrapi_SubmitFrame2 Orientation=(%f, %f, %f, %f)",

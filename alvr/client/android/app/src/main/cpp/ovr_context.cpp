@@ -859,6 +859,7 @@ void renderNative(long long renderedFrameIndex) {
     vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
 
     LatencyCollector::Instance().submit(renderedFrameIndex);
+    sendTimeSync();
 
     FrameLog(renderedFrameIndex, "vrapi_SubmitFrame2 Orientation=(%f, %f, %f, %f)",
              frame->tracking.HeadPose.Pose.Orientation.x,

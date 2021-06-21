@@ -36,7 +36,7 @@ private:
 	static const int PACKET_SIZE = 1400;
 	static const int64_t REQUEST_TIMEOUT = 5 * 1000 * 1000;
 	static const int64_t CONNECTION_TIMEOUT = 5 * 1000 * 1000;
-	static const int64_t STATISTICS_TIMEOUT_US = 1000 * 1000;
+	static const int64_t STATISTICS_TIMEOUT_US = 10 * 1000;
 
 	uint32_t videoPacketCounter = 0;
 	uint32_t soundPacketCounter = 0;

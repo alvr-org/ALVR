@@ -469,10 +469,10 @@ define([
                     values[i].style.fontWeight = "700";
 
                 // hide series color markers
-                const idents = legendEl.querySelectorAll(".u-marker");
+                //const idents = legendEl.querySelectorAll(".u-marker");
 
-                for (let i = 0; i < idents.length; i++)
-                    idents[i].style.display = "none";
+                //for (let i = 0; i < idents.length; i++)
+                    //idents[i].style.display = "none";
 
                 const overEl = u.over;
                 overEl.style.overflow = "visible";
@@ -598,6 +598,8 @@ define([
         latencyGraphData[0].shift();
         latencyGraphData[0].unshift(now - 10000);
 
+        const graphColors = ["#9ca3af", "#ef4444", "#d97706", "#047857", "#373da3", "#831843"];
+
         let latencyGraphOptions = {
             width: 560,
             height: 220,
@@ -625,99 +627,99 @@ define([
                 },
                 {
                     label: "Receive",
-                    stroke: "#2ca02c",
-                    fill: "#2ca02c",
+                    stroke: graphColors[0],
+                    fill: graphColors[0],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Pre Submit",
-                    stroke: "#9467bd",
-                    fill: "#9467bd",
+                    stroke: graphColors[1],
+                    fill: graphColors[1],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Post Submit",
-                    stroke: "#9467bd",
-                    fill: "#9467bd",
+                    stroke: graphColors[1],
+                    fill: graphColors[1],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Total Render",
-                    stroke: "#9467bd",
-                    fill: "#9467bd",
+                    stroke: graphColors[1],
+                    fill: graphColors[1],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Compositor (GPU)",
-                    stroke: "#9467bd",
-                    fill: "#9467bd",
+                    stroke: graphColors[1],
+                    fill: graphColors[1],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Compositor (CPU)",
-                    stroke: "#9467bd",
-                    fill: "#9467bd",
+                    stroke: graphColors[1],
+                    fill: graphColors[1],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Compositor Idle",
-                    stroke: "#e377c2",
-                    fill: "#e377c2",
+                    stroke: graphColors[2],
+                    fill: graphColors[2],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Frame Interval",
-                    stroke: "#d62728",
-                    fill: "#d62728",
+                    stroke: graphColors[3],
+                    fill: graphColors[3],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Present Call",
-                    stroke: "#d62728",
-                    fill: "#d62728",
+                    stroke: graphColors[3],
+                    fill: graphColors[3],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Wait For Present",
-                    stroke: "#d62728",
-                    fill: "#d62728",
+                    stroke: graphColors[3],
+                    fill: graphColors[3],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Submit Frame",
-                    stroke: "#d62728",
-                    fill: "#d62728",
+                    stroke: graphColors[3],
+                    fill: graphColors[3],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Encode",
-                    stroke: "#1f77b4",
-                    fill: "#1f77b4",
+                    stroke: graphColors[4],
+                    fill: graphColors[4],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Send",
-                    stroke: "#2ca02c",
-                    fill: "#2ca02c",
+                    stroke: graphColors[0],
+                    fill: graphColors[0],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Decode",
-                    stroke: "#ff7f0e",
-                    fill: "#ff7f0e",
+                    stroke: graphColors[5],
+                    fill: graphColors[5],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },

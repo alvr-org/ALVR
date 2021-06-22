@@ -437,7 +437,7 @@ define([
             }
         }
 
-        function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255, 249, 196, 0.92)", color: "black", fontFamily:"Lato", fontSize:"80%", lineHeight:"1" } } = {}) {
+        function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255, 249, 196, 0.92)", color: "black", fontFamily:'Lato,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"', fontSize:"80%", lineHeight:"1" } } = {}) {
             let legendEl;
 
             function init(u, opts) {

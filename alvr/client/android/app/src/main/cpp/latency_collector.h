@@ -70,7 +70,6 @@ private:
     uint64_t m_FecFailurePrevious = 0;
 
     uint32_t m_ServerTotalLatency = 0;
-    uint64_t m_TrackingPredictionTime = 0;
 
     // Total/Transport/Decode latency
     // Total/Max/Min/Count

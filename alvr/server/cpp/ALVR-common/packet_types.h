@@ -219,9 +219,10 @@ struct TrackingInfo {
 // Client >----(mode 0)----> Server
 // Client <----(mode 1)----< Server
 // Client >----(mode 2)----> Server
+// Client <----(mode 3)----< Server
 struct TimeSync {
 	uint32_t type; // ALVR_PACKET_TYPE_TIME_SYNC
-	uint32_t mode; // 0,1,2
+	uint32_t mode; // 0,1,2,3
 	uint64_t sequence;
 	uint64_t serverTime;
 	uint64_t clientTime;

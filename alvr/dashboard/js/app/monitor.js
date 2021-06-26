@@ -727,6 +727,7 @@ define([
             axes:
             [
                 {
+                    size: 30,
                     space: 40,
                     values: [
                         [1000, ":{ss}", null, null, null, null, null, null, 1],
@@ -798,6 +799,7 @@ define([
             axes:
             [
                 {
+                    size: 30,
                     space: 40,
                     values: [
                         [1000, ":{ss}", null, null, null, null, null, null, 1],

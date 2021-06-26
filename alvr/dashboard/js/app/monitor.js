@@ -574,7 +574,7 @@ define([
 
         const now = parseInt(new Date().getTime());
 
-        const length = 2000;
+        const length = 1200;
 
         let latencyGraphData = [
             Array(length).fill(now),
@@ -825,12 +825,12 @@ define([
         function updatePerformanceGraphs(statistics) {
             const now = parseInt(new Date().getTime());
 
-            if (statistics["totalLatency"] < 1e6) {
-                for (let i = 0; i < 16; i++) {
-                    latencyGraphData[i].shift();
-                }
+            for (let i = 0; i < 16; i++) {
+                latencyGraphData[i].shift();
+            }
 
-                latencyGraphData[0].push(now);
+            latencyGraphData[0].push(statistics["time"]);
+            if (statistics["totalLatency"] < 1e6) {
                 latencyGraphData[1].push(statistics["receiveLatency"]);
                 latencyGraphData[2].push(statistics["preSubmit"]);
                 latencyGraphData[3].push(statistics["postSubmit"]);
@@ -846,37 +846,29 @@ define([
                 latencyGraphData[13].push(statistics["sendLatency"]);
                 latencyGraphData[14].push(statistics["decodeLatency"]);
                 latencyGraphData[15].push(statistics["totalLatency"]);
-
-                latencyGraphData[0].shift();
-                latencyGraphData[0].unshift(now - 10000);
-
-                latencyGraph.setData(stack(latencyGraphData, i => false).data);
-            }
-            else {
+            } else {
                 for (let i = 1; i < 16; i++) {
-                    latencyGraphData[i].shift();
                     latencyGraphData[i].push(null);
                 }
+			}
 
-                latencyGraphData[0].shift();
-                latencyGraphData[0].push(now);
-            }
+            latencyGraphData[0].shift();
+            latencyGraphData[0].unshift(statistics["time"] - 10000);
 
             for (let i = 0; i < 3; i++) {
                 framerateGraphData[i].shift();
             }
 
-            framerateGraphData[0].push(now);
+            framerateGraphData[0].push(statistics["time"]);
             framerateGraphData[1].push(statistics["serverFPS"]);
             framerateGraphData[2].push(statistics["clientFPS"]);
 
             framerateGraphData[0].shift();
-            framerateGraphData[0].unshift(now - 10000);
-
-            framerateGraph.setData(framerateGraphData);
+            framerateGraphData[0].unshift(statistics["time"] - 10000);
         }
 
         let lastStatisticsUpdate = now;
+        let lastGraphUpdate = now;
 
         function updateStatistics(statistics) {
             clearTimeout(timeoutHandler);
@@ -918,7 +910,12 @@ define([
                 for (const stat in statistics) {
                     $("#statistic_" + stat).text(statistics[stat]);
                 }
-                lastStatisticsUpdate = now
+                lastStatisticsUpdate = now;
+            }
+            if (now > lastGraphUpdate + 16) {
+                latencyGraph.setData(stack(latencyGraphData, i => false).data);
+                framerateGraph.setData(framerateGraphData);
+                lastGraphUpdate = now;
             }
             timeoutHandler = setTimeout(() => {
                 // $("#connectionCard").show();
@@ -943,23 +940,6 @@ define([
                     $("#performanceGraphs").removeClass("active");
                 if ($("#performanceGraphs").hasClass("show"))
                     $("#performanceGraphs").removeClass("show");
-
-                for (let i = 1; i < 16; i++) {
-                    latencyGraphData[i].shift();
-                    latencyGraphData[i].push(null);
-                }
-
-                latencyGraphData[0].shift();
-                latencyGraphData[0].push(now);
-
-                for (let i = 1; i < 3; i++) {
-                    framerateGraphData[i].shift();
-                    framerateGraphData[i].push(null);
-                }
-
-                framerateGraphData[0].shift();
-                framerateGraphData[0].push(now);
-
                 // hide logging
                 if ($("#loggingTab").hasClass("active"))
                     $("#loggingTab").removeClass("active");

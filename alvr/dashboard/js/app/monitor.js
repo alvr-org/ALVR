@@ -910,13 +910,6 @@ define([
                     $("#statistics").addClass("active");
                 if (!$("#statistics").hasClass("show"))
                     $("#statistics").addClass("show");
-                // hide performanceGraphs
-                if ($("#performanceGraphsTab").hasClass("active"))
-                    $("#performanceGraphsTab").removeClass("active");
-                if ($("#performanceGraphs").hasClass("active"))
-                    $("#performanceGraphs").removeClass("active");
-                if ($("#performanceGraphs").hasClass("show"))
-                    $("#performanceGraphs").removeClass("show");
                 // hide logging
                 if ($("#loggingTab").hasClass("active"))
                     $("#loggingTab").removeClass("active");
@@ -955,13 +948,6 @@ define([
                     $("#statistics").removeClass("active");
                 if ($("#statistics").hasClass("show"))
                     $("#statistics").removeClass("show");
-                // hide performanceGraphs
-                if ($("#performanceGraphsTab").hasClass("active"))
-                    $("#performanceGraphsTab").removeClass("active");
-                if ($("#performanceGraphs").hasClass("active"))
-                    $("#performanceGraphs").removeClass("active");
-                if ($("#performanceGraphs").hasClass("show"))
-                    $("#performanceGraphs").removeClass("show");
                 // hide logging
                 if ($("#loggingTab").hasClass("active"))
                     $("#loggingTab").removeClass("active");

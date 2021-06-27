@@ -201,7 +201,6 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				OnFecFailure();
 			}
 			Info("#{ \"id\": \"Statistics\", \"data\": {"
-				"\"bitrate\": %llu, "
 				"\"time\": %llu, "
 				"\"totalPackets\": %llu, "
 				"\"packetRate\": %llu, "
@@ -230,7 +229,6 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				"\"clientFPS\": %.3f, "
 				"\"serverFPS\": %d"
 				"} }#\n",
-				m_Statistics->GetBitrate(),
 				Current / 1000,
 				m_Statistics->GetPacketsSentTotal(),
 				m_Statistics->GetPacketsSentInSecond(),

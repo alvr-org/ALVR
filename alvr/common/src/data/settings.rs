@@ -37,10 +37,10 @@ pub struct AdaptiveBitrateDesc {
     pub bitrate_maximum: u64,
 
     #[schema(advanced, min = 1000, max = 50000, step = 100)]
-    pub bitrate_target: u64,
+    pub latency_target: u64,
 
     #[schema(advanced, min = 500, max = 5000, step = 100)]
-    pub bitrate_threshold: u64,
+    pub latency_threshold: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -451,8 +451,8 @@ pub fn session_settings_default() -> SettingsDefault {
                 enabled: !cfg!(target_os = "linux"),
                 content: AdaptiveBitrateDescDefault {
                     bitrate_maximum: 200,
-                    bitrate_target: 12000,
-                    bitrate_threshold: 4000,
+                    latency_target: 12000,
+                    latency_threshold: 4000,
                 },
 			},
             seconds_from_vsync_to_photons: 0.005,

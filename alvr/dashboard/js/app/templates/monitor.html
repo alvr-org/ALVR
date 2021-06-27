@@ -47,16 +47,16 @@
                         <div class="card-body">
                             <table id="statisticsTable">
                                 <tr>
-                                    <td>Bitrate:</td>
-                                    <td><div id="statistic_bitrate">0</div> Mbps</td>
-                                </tr>
-                                <tr>
-                                    <td><%= sentRate%>:</td>
-                                    <td><div id="statistic_sentRate">0</div> Mbps</td>
+                                    <td><%= totalPackets%>:</td>
+                                    <td><div id="statistic_totalPackets" >0</div> <%= packets%></td>
                                 </tr>
                                 <tr>
                                     <td><%= packetsLostTotal%>:</td>
                                     <td><div id="statistic_packetsLostTotal" >0</div> <%= packets%></td>
+                                </tr>
+                                <tr>
+                                    <td><%= sentRate%>:</td>
+                                    <td><div id="statistic_sentRate">0</div> Mbps</td>
                                 </tr>
                                 <tr>
                                     <td><%= fecFailureTotal%>:</td>

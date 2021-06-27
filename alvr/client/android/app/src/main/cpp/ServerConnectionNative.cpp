@@ -124,7 +124,7 @@ void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
             uint64_t RTT = Current - timeSync->clientTime;
             g_socket.m_timeDiff =
                     ((int64_t) timeSync->serverTime + (int64_t) RTT / 2) - (int64_t) Current;
-            LOGI("TimeSync: server - client = %ld us RTT = %lu us", g_socket.m_timeDiff, RTT);
+            LOG("TimeSync: server - client = %ld us RTT = %lu us", g_socket.m_timeDiff, RTT);
 
             TimeSync sendBuf = *timeSync;
             sendBuf.mode = 2;
@@ -145,7 +145,7 @@ void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
 }
 
 void sendTimeSync() {
-    LOGI("Sending timesync.");
+    LOG("Sending timesync.");
 
     TimeSync timeSync = {};
     timeSync.type = ALVR_PACKET_TYPE_TIME_SYNC;

@@ -381,7 +381,6 @@ async fn connection_pipeline(
 
                 let mut idr_request_deadline = None;
 
-                let mut statistics_deadline = Instant::now();
                 while let Ok(mut data) = legacy_receive_data_receiver.recv() {
                     // Send again IDR packet every 2s in case it is missed
                     // (due to dropped burst of packets at the start of the stream or otherwise).
@@ -397,13 +396,6 @@ async fn connection_pipeline(
                     }
 
                     crate::legacyReceive(data.as_mut_ptr(), data.len() as _);
-
-                    let now = Instant::now();
-                    if now > statistics_deadline {
-                        // sendTimeSync() must be called on the same thread of initializeSocket()
-                        crate::sendTimeSync();
-                        statistics_deadline += Duration::from_secs(1);
-                    }
                 }
 
                 crate::closeSocket(env_ptr);

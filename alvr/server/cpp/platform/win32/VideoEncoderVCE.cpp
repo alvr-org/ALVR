@@ -240,7 +240,7 @@ VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, m_renderWidth(width)
 	, m_renderHeight(height)
 	, m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs)
-	, m_adaptiveBitrate(Settings::Instance().m_adaptiveBitrate)
+	, m_enableAdaptiveBitrate(Settings::Instance().m_enableAdaptiveBitrate)
 	, m_adaptiveBitrateMaximum(Settings::Instance().m_adaptiveBitrateMaximum)
 	, m_adaptiveBitrateTarget(Settings::Instance().m_adaptiveBitrateTarget)
 	, m_adaptiveBitrateThreshold(Settings::Instance().m_adaptiveBitrateThreshold)
@@ -294,7 +294,7 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 	amf::AMFSurfacePtr surface;
 	// Surface is cached by AMF.
 
-	if (m_adaptiveBitrate && m_Listener) {
+	if (m_enableAdaptiveBitrate && m_Listener) {
 		uint64_t latencyUs = m_Listener->GetStatistics()->GetSendLatencyAverage();
 		if (latencyUs != 0) {
 			if (latencyUs > m_adaptiveBitrateTarget + m_adaptiveBitrateThreshold) {

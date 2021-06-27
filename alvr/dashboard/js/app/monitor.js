@@ -942,6 +942,23 @@ define([
                     $("#performanceGraphs").removeClass("active");
                 if ($("#performanceGraphs").hasClass("show"))
                     $("#performanceGraphs").removeClass("show");
+
+                for (let i = 1; i < 5; i++) {
+                    latencyGraphData[i].shift();
+                    latencyGraphData[i].push(null);
+                }
+
+                latencyGraphData[0].shift();
+                latencyGraphData[0].push(now);
+
+                for (let i = 1; i < 3; i++) {
+                    framerateGraphData[i].shift();
+                    framerateGraphData[i].push(null);
+                }
+
+                framerateGraphData[0].shift();
+                framerateGraphData[0].push(now);
+
                 // hide logging
                 if ($("#loggingTab").hasClass("active"))
                     $("#loggingTab").removeClass("active");

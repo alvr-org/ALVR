@@ -184,6 +184,8 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			timing[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
 			vr::VRServerDriverHost()->GetFrameTimings(&timing[0], 2);
 
+			m_Statistics->NetworkSend(m_reportedStatistics.averageTransportLatency);
+
 			m_reportedStatistics = *timeSync;
 			TimeSync sendBuf = *timeSync;
 			sendBuf.mode = 1;
@@ -199,6 +201,8 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				OnFecFailure();
 			}
 			Info("#{ \"id\": \"Statistics\", \"data\": {"
+				"\"bitrate\": %llu, "
+				"\"sendAverage\": %llu, "
 				"\"time\": %llu, "
 				"\"totalPackets\": %llu, "
 				"\"packetRate\": %llu, "
@@ -227,6 +231,8 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				"\"clientFPS\": %.3f, "
 				"\"serverFPS\": %d"
 				"} }#\n",
+				m_Statistics->GetBitrate(),
+				m_Statistics->GetSendLatencyAverage(),
 				Current / 1000,
 				m_Statistics->GetPacketsSentTotal(),
 				m_Statistics->GetPacketsSentInSecond(),

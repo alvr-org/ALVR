@@ -29,6 +29,8 @@ public:
 		m_encodeLatencyAveragePrev = 0;
 		m_encodeLatencyMinPrev = 0;
 		m_encodeLatencyMaxPrev = 0;
+
+		m_sendLatencyAveragePrev = 0;
 	}
 
 	void CountPacket(int bytes) {
@@ -38,6 +40,10 @@ public:
 		m_packetsSentInSecond++;
 		m_bitsSentTotal += bytes * 8;
 		m_bitsSentInSecond += bytes * 8;
+	}
+
+	void Bitrate(uint64_t bitrate) {
+		m_bitrate = bitrate;
 	}
 
 	void EncodeOutput(uint64_t latencyUs) {
@@ -51,11 +57,24 @@ public:
 		m_encodeSampleCount++;
 	}
 
+	void NetworkSend(uint64_t latencyUs) {
+		if (latencyUs > 5e5)
+			latencyUs = 5e5;
+		if (m_sendLatencyAveragePrev == 0) {
+			m_sendLatencyAveragePrev = latencyUs;
+		} else {
+			m_sendLatencyAveragePrev = latencyUs * 0.1 + m_sendLatencyAveragePrev * 0.9;
+		}
+	}
+
 	uint64_t GetPacketsSentTotal() {
 		return m_packetsSentTotal;
 	}
 	uint64_t GetPacketsSentInSecond() {
 		return m_packetsSentInSecondPrev;
+	}
+	uint64_t GetBitrate() {
+		return m_bitrate;
 	}
 	uint64_t GetBitsSentTotal() {
 		return m_bitsSentTotal;
@@ -74,6 +93,18 @@ public:
 	}
 	uint64_t GetEncodeLatencyMax() {
 		return m_encodeLatencyMaxPrev;
+	}
+	uint64_t GetSendLatencyAverage() {
+		return m_sendLatencyAveragePrev;
+	}
+
+	bool CheckBitrateUpdated() {
+		time_t current = time(NULL);
+		if (m_bitrateUpdated != current) {
+			m_bitrateUpdated = current;
+			return true;
+		}
+		return false;
 	}
 private:
 	void ResetSecond() {
@@ -105,6 +136,7 @@ private:
 	uint64_t m_packetsSentInSecond;
 	uint64_t m_packetsSentInSecondPrev;
 
+	uint64_t m_bitrate;
 	uint64_t m_bitsSentTotal;
 	uint64_t m_bitsSentInSecond;
 	uint64_t m_bitsSentInSecondPrev;
@@ -120,5 +152,8 @@ private:
 	uint64_t m_encodeLatencyMinPrev;
 	uint64_t m_encodeLatencyMaxPrev;
 
+	uint64_t m_sendLatencyAveragePrev;
+
 	time_t m_current;
+	time_t m_bitrateUpdated;
 };

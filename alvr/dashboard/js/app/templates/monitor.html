@@ -47,7 +47,6 @@
             <div class="tab-pane container fade" id="statistics">
                 <div id="divStatisticsContent">
                     <div class="card" id="statisticsCard">
-                        <div class="card-header"><%= streamingStatistics%></div>
                         <div class="card-body">
                             <table id="statisticsTable">
                                 <tr>
@@ -55,79 +54,44 @@
                                     <td><div id="statistic_totalPackets" >0</div> <%= packets%></td>
                                 </tr>
                                 <tr>
-                                    <td><%= packetRate%>:</td>
-                                    <td><div id="statistic_packetRate" >0</div> <%= packetss%></td>
-                                </tr>
-                                <tr>
                                     <td><%= packetsLostTotal%>:</td>
                                     <td><div id="statistic_packetsLostTotal" >0</div> <%= packets%></td>
-                                </tr>
-                                <tr>
-                                    <td><%= packetsLostPerSecond%>:</td>
-                                    <td><div id="statistic_packetsLostPerSecond">0</div> <%= packetss%></td>
-                                </tr>
-                                <tr>
-                                    <td><%= totalSent%>:</td>
-                                    <td><div id="statistic_totalSent">0</div> MB</td>
                                 </tr>
                                 <tr>
                                     <td><%= sentRate%>:</td>
                                     <td><div id="statistic_sentRate">0</div> Mbps</td>
                                 </tr>
                                 <tr>
-                                    <td><%= totalLatency%>:</td>
-                                    <td><div id="statistic_totalLatency">0</div> ms</td>
+                                    <td>Bitrate:</td>
+                                    <td><div id="statistic_bitrate">0</div> Mbps</td>
                                 </tr>
                                 <tr>
-                                    <td><%= encodeLatency%>:</td>
-                                    <td><div id="statistic_encodeLatency">0</div> ms</td>
-                                </tr>
-                                <tr>
-                                    <td><%= transportLatency%>:</td>
-                                    <td><div id="statistic_sendLatency">0</div> ms</td>
-                                </tr>
-                                <tr>
-                                    <td><%= decodeLatency%>:</td>
-                                    <td><div id="statistic_decodeLatency">0</div> ms</td>
-                                </tr>
-                                <tr>
-                                    <td><%= fecPercentage%>:</td>
-                                    <td><div id="statistic_fecPercentage">0</div> %</td>
+                                    <td>Latency:</td>
+                                    <td><div id="statistic_sendAverage">0</div> Us</td>
                                 </tr>
                                 <tr>
                                     <td><%= fecFailureTotal%>:</td>
                                     <td><div id="statistic_fecFailureTotal">0</div> <%= packets%></td>
                                 </tr>
-                                <tr>
-                                    <td><%= fecFailureInSecond%>:</td>
-                                    <td><div id="statistic_fecFailureInSecond">0</div> <%= packetss%></td>
-                                </tr>
-                                <tr>
-                                    <td><%= clientFPS%>:</td>
-                                    <td><div id="statistic_clientFPS">0</div> fps</td>
-                                </tr>
-                                <tr>
-                                    <td><%= serverFPS%>:</td>
-                                    <td><div id="statistic_serverFPS">0</div> fps</td>
-                                </tr>
                             </table>
                         </div>
                     </div>
-                </div>
-            </div>
-            <div class="tab-pane container fade" id="performanceGraphs">
-                <div id="divPerformanceGraphsContent">
+                    <div class="mt-3"></div>
                     <h5 class="float-left mr-3"><%= performanceLatency%></h5>
-                    <span class="badge badge-primary" style="background-color: #9ca3af; ">Network</span>
-                    <span class="badge badge-primary" style="background-color: #ef4444; ">Render</span>
-                    <span class="badge badge-primary" style="background-color: #f59e0b; ">Idle</span>
-                    <span class="badge badge-primary" style="background-color: #4145e9; ">Transcode</span>
-                    <div id="latencyGraphArea" style="width: 520px; height: 220px"></div>
+                    <span class="badge badge-primary" style="background-color: #7f7f7f; ">Network</span>
+                    <span class="badge badge-primary" style="background-color: #d62728; ">Render</span>
+                    <span class="badge badge-primary" style="background-color: #ff7f0e; ">Idle</span>
+                    <span class="badge badge-primary" style="background-color: #1f77b4; ">Transcode</span>
+                    <div id="latencyGraphArea"></div>
                     <div class="mt-3"></div>
                     <h5 class="float-left mr-3"><%= performanceFramerate%></h5>
                     <span class="badge badge-primary" style="background-color: #1f77b4; "><%= serverFPS%></span>
                     <span class="badge badge-primary" style="background-color: #ff7f0e; "><%= clientFPS%></span>
-                    <div id="framerateGraphArea" style="width: 520px; height: 180px"></div>
+                    <div id="framerateGraphArea"></div>
+                </div>
+            </div>
+            <div class="tab-pane container fade" id="performanceGraphs">
+                <div id="divPerformanceGraphsContent">
                 </div>
             </div>
             <div class="tab-pane container fade" id="logging">

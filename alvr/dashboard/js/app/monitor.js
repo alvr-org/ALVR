@@ -598,11 +598,11 @@ define([
         latencyGraphData[0].shift();
         latencyGraphData[0].unshift(now - 10000);
 
-        const graphColors = ["#9ca3af", "#ef4444", "#f59e0b", "#4145e9"];
+        const graphColors = ["#7f7f7f", "#d62728", "#ff7f0e", "#1f77b4"];
 
         let latencyGraphOptions = {
             width: 560,
-            height: 220,
+            height: 160,
             cursor: {
                  drag: {
                     dist: 10,
@@ -727,18 +727,28 @@ define([
             axes:
             [
                 {
-                    size: 30,
+                    size: 20,
                     space: 40,
                     values: [
                         [1000, ":{ss}", null, null, null, null, null, null, 1],
                         [1, ":{ss}.{fff}", null, null, null, null, null, null, 1],
                     ],
-                    grid: {},
-                    ticks: {},
+                    grid: {
+                        width: 1,
+                    },
+                    ticks: {
+                        size: 5,
+                    },
                 },
                 {
-                    grid: {},
-                    ticks: {},
+                    size: 30,
+                    space: 20,
+                    grid: {
+                        width: 1,
+                    },
+                    ticks: {
+                        size: 5,
+                    },
                 },
             ],
         };
@@ -759,7 +769,7 @@ define([
 
         let framerateGraphOptions = {
             width: 560,
-            height: 180,
+            height: 100,
             cursor: {
                  drag: {
                     dist: 10,
@@ -799,18 +809,28 @@ define([
             axes:
             [
                 {
-                    size: 30,
+                    size: 20,
                     space: 40,
                     values: [
                         [1000, ":{ss}", null, null, null, null, null, null, 1],
                         [1, ":{ss}.{fff}", null, null, null, null, null, null, 1],
                     ],
-                    grid: {},
-                    ticks: {},
+                    grid: {
+                        width: 1,
+                    },
+                    ticks: {
+                        size: 5,
+                    },
                 },
                 {
-                    grid: {},
-                    ticks: {},
+                    size: 30,
+                    space: 20,
+                    grid: {
+                        width: 1,
+                    },
+                    ticks: {
+                        size: 5,
+                    },
                 },
             ],
         };

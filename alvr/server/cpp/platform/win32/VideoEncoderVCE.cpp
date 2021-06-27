@@ -240,6 +240,10 @@ VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, m_renderWidth(width)
 	, m_renderHeight(height)
 	, m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs)
+	, m_adaptiveBitrate(Settings::Instance().m_adaptiveBitrate)
+	, m_adaptiveBitrateMaximum(Settings::Instance().m_adaptiveBitrateMaximum)
+	, m_adaptiveBitrateTarget(Settings::Instance().m_adaptiveBitrateTarget)
+	, m_adaptiveBitrateThreshold(Settings::Instance().m_adaptiveBitrateThreshold)
 {
 }
 
@@ -289,6 +293,33 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 {
 	amf::AMFSurfacePtr surface;
 	// Surface is cached by AMF.
+
+	if (m_adaptiveBitrate && m_Listener) {
+		uint64_t latencyUs = m_Listener->GetStatistics()->GetSendLatencyAverage();
+		if (latencyUs != 0) {
+			if (latencyUs > m_adaptiveBitrateTarget + m_adaptiveBitrateThreshold) {
+				m_bitrateInMBits -= 3;
+			} else if (latencyUs < m_adaptiveBitrateTarget - m_adaptiveBitrateThreshold) {
+				m_bitrateInMBits += 1;
+			}
+			if (m_bitrateInMBits > m_adaptiveBitrateMaximum) {
+				m_bitrateInMBits = m_adaptiveBitrateMaximum;
+			} else if (m_bitrateInMBits < 5) {
+				m_bitrateInMBits = 5;
+			} else {
+				amf_int64 bitRateIn = m_bitrateInMBits * 1000000L; // in bits
+				if (m_codec == ALVR_CODEC_H264)
+				{
+					surface->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
+				}
+				else
+				{
+					surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
+				}
+			}
+		}
+	}
+
 	AMF_THROW_IF(m_amfContext->AllocSurface(amf::AMF_MEMORY_DX11, CONVERTER_INPUT_FORMAT, m_renderWidth, m_renderHeight, &surface));
 	ID3D11Texture2D *textureDX11 = (ID3D11Texture2D*)surface->GetPlaneAt(0)->GetNative(); // no reference counting - do not Release()
 	m_d3dRender->GetContext()->CopyResource(textureDX11, pTexture);

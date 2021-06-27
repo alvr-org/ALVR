@@ -44,6 +44,7 @@ public:
 		CheckAndResetSecond();
 
 		m_framesInSecond++;
+		m_encodeLatencyAveragePrev = latencyUs;
 		m_encodeLatencyTotalUs += latencyUs;
 		m_encodeLatencyMin = std::min(latencyUs, m_encodeLatencyMin);
 		m_encodeLatencyMax = std::max(latencyUs, m_encodeLatencyMax);
@@ -86,11 +87,6 @@ private:
 
 		m_encodeLatencyMinPrev = m_encodeLatencyMin;
 		m_encodeLatencyMaxPrev = m_encodeLatencyMax;
-		if (m_encodeSampleCount == 0) {
-			m_encodeLatencyAveragePrev = 0;
-		}else{
-			m_encodeLatencyAveragePrev = m_encodeLatencyTotalUs / m_encodeSampleCount;
-		}
 		m_encodeLatencyTotalUs = 0;
 		m_encodeSampleCount = 0;
 		m_encodeLatencyMin = UINT64_MAX;

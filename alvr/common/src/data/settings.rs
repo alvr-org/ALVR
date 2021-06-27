@@ -447,14 +447,14 @@ pub fn session_settings_default() -> SettingsDefault {
                     height: 1600,
                 },
             },
-			adaptive_bitrate: SwitchDefault {
+            adaptive_bitrate: SwitchDefault {
                 enabled: !cfg!(target_os = "linux"),
                 content: AdaptiveBitrateDescDefault {
                     bitrate_maximum: 200,
                     latency_target: 12000,
                     latency_threshold: 4000,
                 },
-			},
+            },
             seconds_from_vsync_to_photons: 0.005,
             foveated_rendering: SwitchDefault {
                 enabled: !cfg!(target_os = "linux"),

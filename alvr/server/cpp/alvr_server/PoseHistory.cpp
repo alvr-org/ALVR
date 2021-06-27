@@ -31,7 +31,7 @@ void PoseHistory::OnPoseUpdated(const TrackingInfo &info) {
 			m_poseBuffer.push_back(history);
 		}
 	}
-	if (m_poseBuffer.size() > 10) {
+	if (m_poseBuffer.size() > 36) {
 		m_poseBuffer.pop_front();
 	}
 }

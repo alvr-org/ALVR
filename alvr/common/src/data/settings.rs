@@ -36,7 +36,7 @@ pub struct AdaptiveBitrateDesc {
     #[schema(min = 10, max = 500, step = 1)]
     pub bitrate_maximum: u64,
 
-    #[schema(advanced, min = 1000, max = 50000, step = 100)]
+    #[schema(advanced, min = 1000, max = 25000, step = 100)]
     pub latency_target: u64,
 
     #[schema(advanced, min = 500, max = 5000, step = 100)]

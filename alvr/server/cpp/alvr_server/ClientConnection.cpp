@@ -146,6 +146,14 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 	uint32_t type = *(uint32_t*)buf;
 
 	if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
+		uint64_t Current = GetTimestampUs();
+		TimeSync sendBuf = {};
+		sendBuf.type = ALVR_PACKET_TYPE_TIME_SYNC;
+		sendBuf.mode = 3;
+		sendBuf.serverTime = serverToClientTime(Current);
+		sendBuf.trackingRecvFrameIndex = m_TrackingInfo.FrameIndex;
+		LegacySend((unsigned char *)&sendBuf, sizeof(sendBuf));
+
 		{
 			std::unique_lock lock(m_CS);
 			m_TrackingInfo = *(TrackingInfo *)buf;
@@ -170,42 +178,68 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 		uint64_t Current = GetTimestampUs();
 
 		if (timeSync->mode == 0) {
+			//timings might be a little incorrect since it is a mix from a previous sent frame and latest frame
+
+			vr::Compositor_FrameTiming timing[2];
+			timing[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
+			vr::VRServerDriverHost()->GetFrameTimings(&timing[0], 2);
+
 			m_reportedStatistics = *timeSync;
 			TimeSync sendBuf = *timeSync;
 			sendBuf.mode = 1;
 			sendBuf.serverTime = Current;
+			sendBuf.serverTotalLatency = (int)(m_reportedStatistics.averageSendLatency + (timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs + timing[0].m_flCompositorIdleCpuMs + timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs) * 1000 + m_Statistics->GetEncodeLatencyAverage() + m_reportedStatistics.averageTransportLatency + m_reportedStatistics.averageDecodeLatency);
 			LegacySend((unsigned char *)&sendBuf, sizeof(sendBuf));
+
+			//float renderTime = timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs;
+			//float idleTime = timing[0].m_flCompositorIdleCpuMs;
+			//float waitTime = timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs;
 
 			if (timeSync->fecFailure) {
 				OnFecFailure();
 			}
 			Info("#{ \"id\": \"Statistics\", \"data\": {"
+				"\"time\": %llu, "
 				"\"totalPackets\": %llu, "
 				"\"packetRate\": %llu, "
 				"\"packetsLostTotal\": %llu, "
 				"\"packetsLostPerSecond\": %llu, "
 				"\"totalSent\": %llu, "
-				"\"sentRate\": %f, "
-				"\"totalLatency\": %f, "
-				"\"encodeLatency\": %f, "
-				"\"encodeLatencyMax\": %f, "
-				"\"transportLatency\": %f, "
-				"\"decodeLatency\": %f, "
+				"\"sentRate\": %.3f, "
+				"\"totalLatency\": %.3f, "
+				"\"receiveLatency\": %.3f, "
+				"\"preSubmit\": %.3f, "
+				"\"postSubmit\": %.3f, "
+				"\"totalRender\": %.3f, "
+				"\"compositorRenderGpu\": %.3f, "
+				"\"compositorRenderCpu\": %.3f, "
+				"\"compositorIdle\": %.3f, "
+				"\"frameInterval\": %.3f, "
+				"\"presentCall\": %.3f, "
+				"\"waitForPresent\": %.3f, "
+				"\"submitFrame\": %.3f, "
+				"\"encodeLatency\": %.3f, "
+				"\"sendLatency\": %.3f, "
+				"\"decodeLatency\": %.3f, "
 				"\"fecPercentage\": %d, "
 				"\"fecFailureTotal\": %llu, "
 				"\"fecFailureInSecond\": %llu, "
-				"\"clientFPS\": %f, "
+				"\"clientFPS\": %.3f, "
 				"\"serverFPS\": %d"
 				"} }#\n",
+				Current / 1000,
 				m_Statistics->GetPacketsSentTotal(),
 				m_Statistics->GetPacketsSentInSecond(),
 				m_reportedStatistics.packetsLostTotal,
 				m_reportedStatistics.packetsLostInSecond,
 				m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000,
 				m_Statistics->GetBitsSentInSecond() / 1000. / 1000.0,
-				m_reportedStatistics.averageTotalLatency / 1000.0,
+				sendBuf.serverTotalLatency / 1000.0,
+				m_reportedStatistics.averageSendLatency / 1000.0,
+				timing[0].m_flPreSubmitGpuMs, timing[0].m_flPostSubmitGpuMs, timing[0].m_flTotalRenderGpuMs, timing[0].m_flCompositorRenderGpuMs, timing[0].m_flCompositorRenderCpuMs,
+				timing[0].m_flCompositorIdleCpuMs,
+				timing[0].m_flClientFrameIntervalMs, timing[0].m_flPresentCallCpuMs, timing[0].m_flWaitForPresentCpuMs, timing[0].m_flSubmitFrameMs,
 				(double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS,
-				(double)(m_Statistics->GetEncodeLatencyMax()) / US_TO_MS,
 				m_reportedStatistics.averageTransportLatency / 1000.0,
 				m_reportedStatistics.averageDecodeLatency / 1000.0, m_fecPercentage,
 				m_reportedStatistics.fecFailureTotal,

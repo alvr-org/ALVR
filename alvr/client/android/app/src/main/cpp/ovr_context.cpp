@@ -527,6 +527,7 @@ void sendTrackingInfo(bool clientsidePrediction) {
     frame->frameIndex = g_ctx.FrameIndex;
     frame->fetchTime = getTimestampUs();
 
+    // vrapi_GetTimeInSeconds doesn't match getTimestampUs
     frame->displayTime = vrapi_GetTimeInSeconds() + LatencyCollector::Instance().getTrackingPredictionLatency() * 1e-6;
     frame->tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, frame->displayTime);
 
@@ -859,6 +860,7 @@ void renderNative(long long renderedFrameIndex) {
     vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
 
     LatencyCollector::Instance().submit(renderedFrameIndex);
+    // TimeSync here might be an issue but it seems to work fine
     sendTimeSync();
 
     FrameLog(renderedFrameIndex, "vrapi_SubmitFrame2 Orientation=(%f, %f, %f, %f)",

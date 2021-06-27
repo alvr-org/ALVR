@@ -437,7 +437,7 @@ define([
             }
         }
 
-        function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255, 249, 196, 0.92)", color: "black" } } = {}) {
+        function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255, 249, 196, 0.92)", color: "black", fontFamily:'Lato,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"', fontSize:"80%", lineHeight:"1" } } = {}) {
             let legendEl;
 
             function init(u, opts) {
@@ -458,11 +458,21 @@ define([
                     ...style
                 });
 
-                // hide series color markers
-                const idents = legendEl.querySelectorAll(".u-marker");
+                const labels = legendEl.querySelectorAll(".u-label");
 
-                for (let i = 0; i < idents.length; i++)
-                    idents[i].style.display = "none";
+                for (let i = 0; i < labels.length; i++)
+                    labels[i].style.fontWeight = "700";
+
+                const values = legendEl.querySelectorAll(".u-value");
+
+                for (let i = 0; i < values.length; i++)
+                    values[i].style.fontWeight = "700";
+
+                // hide series color markers
+                //const idents = legendEl.querySelectorAll(".u-marker");
+
+                //for (let i = 0; i < idents.length; i++)
+                    //idents[i].style.display = "none";
 
                 const overEl = u.over;
                 overEl.style.overflow = "visible";
@@ -564,10 +574,21 @@ define([
 
         const now = parseInt(new Date().getTime());
 
-        const length = 2000;
+        const length = 1200;
 
         let latencyGraphData = [
             Array(length).fill(now),
+            Array(length).fill(null),
+            Array(length).fill(null),
+            Array(length).fill(null),
+            Array(length).fill(null),
+            Array(length).fill(null),
+            Array(length).fill(null),
+            Array(length).fill(null),
+            Array(length).fill(null),
+            Array(length).fill(null),
+            Array(length).fill(null),
+            Array(length).fill(null),
             Array(length).fill(null),
             Array(length).fill(null),
             Array(length).fill(null),
@@ -576,6 +597,8 @@ define([
 
         latencyGraphData[0].shift();
         latencyGraphData[0].unshift(now - 10000);
+
+        const graphColors = ["#9ca3af", "#ef4444", "#f59e0b", "#4145e9"];
 
         let latencyGraphOptions = {
             width: 560,
@@ -599,33 +622,104 @@ define([
             series:
             [
                 {
-                    label: "Total",
-                    value: (u, v, si, i) => (latencyGraphData[1][i] + latencyGraphData[2][i] + latencyGraphData[3][i] + latencyGraphData[4][i] || 0).toFixed(3) + " ms",},
+                    label: "Total Latency",
+                    value: (u, v, si, i) => (latencyGraphData[15][i] || 0).toFixed(3) + " ms",
+                },
+                {
+                    label: "Receive",
+                    stroke: graphColors[0],
+                    fill: graphColors[0],
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Pre Submit",
+                    stroke: graphColors[1],
+                    fill: graphColors[1],
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Post Submit",
+                    stroke: graphColors[1],
+                    fill: graphColors[1],
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Total Render",
+                    stroke: graphColors[1],
+                    fill: graphColors[1],
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Compositor (GPU)",
+                    stroke: graphColors[1],
+                    fill: graphColors[1],
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Compositor (CPU)",
+                    stroke: graphColors[1],
+                    fill: graphColors[1],
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Compositor Idle",
+                    stroke: graphColors[2],
+                    fill: graphColors[2],
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Frame Interval",
+                    stroke: graphColors[2],
+                    fill: graphColors[2],
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Present Call",
+                    stroke: graphColors[2],
+                    fill: graphColors[2],
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Wait For Present",
+                    stroke: graphColors[2],
+                    fill: graphColors[2],
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Submit Frame",
+                    stroke: graphColors[2],
+                    fill: graphColors[2],
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
                 {
                     label: "Encode",
-                    stroke: "#1f77b4",
-                    fill: "#1f77b4",
+                    stroke: graphColors[3],
+                    fill: graphColors[3],
+                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
+                    spanGaps: false,
+                },
+                {
+                    label: "Send",
+                    stroke: graphColors[0],
+                    fill: graphColors[0],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
                     label: "Decode",
-                    stroke: "#ff7f0e",
-                    fill: "#ff7f0e",
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Transport",
-                    stroke: "#2ca02c",
-                    fill: "#2ca02c",
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Other",
-                    stroke: "#d62728",
-                    fill: "#d62728",
+                    stroke: graphColors[3],
+                    fill: graphColors[3],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
@@ -633,6 +727,7 @@ define([
             axes:
             [
                 {
+                    size: 30,
                     space: 40,
                     values: [
                         [1000, ":{ss}", null, null, null, null, null, null, 1],
@@ -704,6 +799,7 @@ define([
             axes:
             [
                 {
+                    size: 30,
                     space: 40,
                     values: [
                         [1000, ":{ss}", null, null, null, null, null, null, 1],
@@ -731,53 +827,50 @@ define([
         function updatePerformanceGraphs(statistics) {
             const now = parseInt(new Date().getTime());
 
-            const otherLatency =
-                statistics["totalLatency"] -
-                statistics["encodeLatency"] -
-                statistics["decodeLatency"] -
-                statistics["transportLatency"];
-
-            if (otherLatency > 0) {
-                for (let i = 0; i < 5; i++) {
-                    latencyGraphData[i].shift();
-                }
-
-                latencyGraphData[0].push(now);
-                latencyGraphData[1].push(statistics["encodeLatency"]);
-                latencyGraphData[2].push(statistics["decodeLatency"]);
-                latencyGraphData[3].push(statistics["transportLatency"]);
-                latencyGraphData[4].push(otherLatency);
-
-                latencyGraphData[0].shift();
-                latencyGraphData[0].unshift(now - 10000);
-
-                latencyGraph.setData(stack(latencyGraphData, i => false).data);
+            for (let i = 0; i < 16; i++) {
+                latencyGraphData[i].shift();
             }
-            else {
-                for (let i = 1; i < 5; i++) {
-                    latencyGraphData[i].shift();
+
+            latencyGraphData[0].push(statistics["time"]);
+            if (statistics["totalLatency"] < 1e6) {
+                latencyGraphData[1].push(statistics["receiveLatency"]);
+                latencyGraphData[2].push(statistics["preSubmit"]);
+                latencyGraphData[3].push(statistics["postSubmit"]);
+                latencyGraphData[4].push(statistics["totalRender"]);
+                latencyGraphData[5].push(statistics["compositorRenderGpu"]);
+                latencyGraphData[6].push(statistics["compositorRenderCpu"]);
+                latencyGraphData[7].push(statistics["compositorIdle"]);
+                latencyGraphData[8].push(statistics["frameInterval"]);
+                latencyGraphData[9].push(statistics["presentCall"]);
+                latencyGraphData[10].push(statistics["waitForPresent"]);
+                latencyGraphData[11].push(statistics["submitFrame"]);
+                latencyGraphData[12].push(statistics["encodeLatency"]);
+                latencyGraphData[13].push(statistics["sendLatency"]);
+                latencyGraphData[14].push(statistics["decodeLatency"]);
+                latencyGraphData[15].push(statistics["totalLatency"]);
+            } else {
+                for (let i = 1; i < 16; i++) {
                     latencyGraphData[i].push(null);
                 }
+			}
 
-                latencyGraphData[0].shift();
-                latencyGraphData[0].push(now);
-            }
+            latencyGraphData[0].shift();
+            latencyGraphData[0].unshift(statistics["time"] - 10000);
 
             for (let i = 0; i < 3; i++) {
                 framerateGraphData[i].shift();
             }
 
-            framerateGraphData[0].push(now);
+            framerateGraphData[0].push(statistics["time"]);
             framerateGraphData[1].push(statistics["serverFPS"]);
             framerateGraphData[2].push(statistics["clientFPS"]);
 
             framerateGraphData[0].shift();
-            framerateGraphData[0].unshift(now - 10000);
-
-            framerateGraph.setData(framerateGraphData);
+            framerateGraphData[0].unshift(statistics["time"] - 10000);
         }
 
         let lastStatisticsUpdate = now;
+        let lastGraphUpdate = now;
 
         function updateStatistics(statistics) {
             clearTimeout(timeoutHandler);
@@ -819,7 +912,12 @@ define([
                 for (const stat in statistics) {
                     $("#statistic_" + stat).text(statistics[stat]);
                 }
-                lastStatisticsUpdate = now
+                lastStatisticsUpdate = now;
+            }
+            if (now > lastGraphUpdate + 16) {
+                latencyGraph.setData(stack(latencyGraphData, i => false).data);
+                framerateGraph.setData(framerateGraphData);
+                lastGraphUpdate = now;
             }
             timeoutHandler = setTimeout(() => {
                 // $("#connectionCard").show();

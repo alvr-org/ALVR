@@ -219,9 +219,10 @@ struct TrackingInfo {
 // Client >----(mode 0)----> Server
 // Client <----(mode 1)----< Server
 // Client >----(mode 2)----> Server
+// Client <----(mode 3)----< Server
 struct TimeSync {
 	uint32_t type; // ALVR_PACKET_TYPE_TIME_SYNC
-	uint32_t mode; // 0,1,2
+	uint32_t mode; // 0,1,2,3
 	uint64_t sequence;
 	uint64_t serverTime;
 	uint64_t clientTime;
@@ -231,22 +232,24 @@ struct TimeSync {
 	uint64_t packetsLostInSecond;
 
 	uint32_t averageTotalLatency;
-	uint32_t maxTotalLatency;
-	uint32_t minTotalLatency;
+
+	uint32_t averageSendLatency;
 
 	uint32_t averageTransportLatency;
-	uint32_t maxTransportLatency;
-	uint32_t minTransportLatency;
 
 	uint32_t averageDecodeLatency;
-	uint32_t maxDecodeLatency;
-	uint32_t minDecodeLatency;
 
 	uint32_t fecFailure;
 	uint64_t fecFailureInSecond;
 	uint64_t fecFailureTotal;
 
 	float fps;
+
+	// Following value are filled by server only when mode=1.
+	uint32_t serverTotalLatency;
+
+	// Following value are filled by server only when mode=3.
+	uint64_t trackingRecvFrameIndex;
 };
 struct VideoFrame {
 	uint32_t type; // ALVR_PACKET_TYPE_VIDEO_FRAME

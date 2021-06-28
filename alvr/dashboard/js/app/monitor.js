@@ -595,7 +595,7 @@ define([
 
         let latencyGraphOptions = {
             width: 560,
-            height: 220,
+            height: 160,
             cursor: {
                  drag: {
                     dist: 10,
@@ -706,7 +706,7 @@ define([
 
         let framerateGraphOptions = {
             width: 560,
-            height: 180,
+            height: 100,
             cursor: {
                  drag: {
                     dist: 10,
@@ -839,13 +839,6 @@ define([
                     $("#statistics").addClass("active");
                 if (!$("#statistics").hasClass("show"))
                     $("#statistics").addClass("show");
-                // hide performanceGraphs
-                if ($("#performanceGraphsTab").hasClass("active"))
-                    $("#performanceGraphsTab").removeClass("active");
-                if ($("#performanceGraphs").hasClass("active"))
-                    $("#performanceGraphs").removeClass("active");
-                if ($("#performanceGraphs").hasClass("show"))
-                    $("#performanceGraphs").removeClass("show");
                 // hide logging
                 if ($("#loggingTab").hasClass("active"))
                     $("#loggingTab").removeClass("active");
@@ -884,13 +877,6 @@ define([
                     $("#statistics").removeClass("active");
                 if ($("#statistics").hasClass("show"))
                     $("#statistics").removeClass("show");
-                // hide performanceGraphs
-                if ($("#performanceGraphsTab").hasClass("active"))
-                    $("#performanceGraphsTab").removeClass("active");
-                if ($("#performanceGraphs").hasClass("active"))
-                    $("#performanceGraphs").removeClass("active");
-                if ($("#performanceGraphs").hasClass("show"))
-                    $("#performanceGraphs").removeClass("show");
                 // hide logging
                 if ($("#loggingTab").hasClass("active"))
                     $("#loggingTab").removeClass("active");

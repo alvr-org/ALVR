@@ -680,8 +680,8 @@ define([
                     value: "",
                     show: false,
                 },
-				getSeries("Server", graphColors[3], null, latencyGraphData, " FPS"),
-                getSeries("Client", graphColors[2], null, latencyGraphData, " FPS"),
+				getSeries("Server", graphColors[3], null, framerateGraphData, " FPS"),
+                getSeries("Client", graphColors[2], null, framerateGraphData, " FPS"),
             ],
         };
 

@@ -38,8 +38,4 @@ private:
 	int m_renderWidth;
 	int m_renderHeight;
 	int m_bitrateInMBits;
-	bool m_enableAdaptiveBitrate;
-	int m_adaptiveBitrateMaximum;
-	int m_adaptiveBitrateTarget;
-	int m_adaptiveBitrateThreshold;
 };

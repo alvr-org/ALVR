@@ -222,7 +222,7 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				"\"fecFailureTotal\": %llu, "
 				"\"fecFailureInSecond\": %llu, "
 				"\"clientFPS\": %.3f, "
-				"\"serverFPS\": %d"
+				"\"serverFPS\": %.3f"
 				"} }#\n",
 				m_Statistics->GetBitrate(),
 				m_Statistics->GetSendLatencyAverage() / 1000.0,

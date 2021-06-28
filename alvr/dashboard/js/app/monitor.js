@@ -575,6 +575,7 @@ define([
         const now = parseInt(new Date().getTime());
 
         const length = 1200;
+        const duration = 10000;
 
         let latencyGraphData = [
             Array(length).fill(now),
@@ -585,18 +586,10 @@ define([
             Array(length).fill(null),
             Array(length).fill(null),
             Array(length).fill(null),
-            Array(length).fill(null),
-            Array(length).fill(null),
-            Array(length).fill(null),
-            Array(length).fill(null),
-            Array(length).fill(null),
-            Array(length).fill(null),
-            Array(length).fill(null),
-            Array(length).fill(null),
         ];
 
         latencyGraphData[0].shift();
-        latencyGraphData[0].unshift(now - 10000);
+        latencyGraphData[0].unshift(now - duration);
 
         const graphColors = ["#7f7f7f", "#d62728", "#ff7f0e", "#1f77b4"];
 
@@ -623,7 +616,7 @@ define([
             [
                 {
                     label: "Total Latency",
-                    value: (u, v, si, i) => (latencyGraphData[15][i] || 0).toFixed(3) + " ms",
+                    value: (u, v, si, i) => (latencyGraphData[7][i] || 0).toFixed(3) + " ms",
                 },
                 {
                     label: "Receive",
@@ -633,70 +626,14 @@ define([
                     spanGaps: false,
                 },
                 {
-                    label: "Pre Submit",
+                    label: "Render",
                     stroke: graphColors[1],
                     fill: graphColors[1],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
                     spanGaps: false,
                 },
                 {
-                    label: "Post Submit",
-                    stroke: graphColors[1],
-                    fill: graphColors[1],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Total Render",
-                    stroke: graphColors[1],
-                    fill: graphColors[1],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Compositor (GPU)",
-                    stroke: graphColors[1],
-                    fill: graphColors[1],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Compositor (CPU)",
-                    stroke: graphColors[1],
-                    fill: graphColors[1],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Compositor Idle",
-                    stroke: graphColors[2],
-                    fill: graphColors[2],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Frame Interval",
-                    stroke: graphColors[2],
-                    fill: graphColors[2],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Present Call",
-                    stroke: graphColors[2],
-                    fill: graphColors[2],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Wait For Present",
-                    stroke: graphColors[2],
-                    fill: graphColors[2],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Submit Frame",
+                    label: "Idle",
                     stroke: graphColors[2],
                     fill: graphColors[2],
                     value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
@@ -765,7 +702,7 @@ define([
         ];
 
         framerateGraphData[0].shift();
-        framerateGraphData[0].unshift(now - 10000);
+        framerateGraphData[0].unshift(now - duration);
 
         let framerateGraphOptions = {
             width: 560,
@@ -847,35 +784,27 @@ define([
         function updatePerformanceGraphs(statistics) {
             const now = parseInt(new Date().getTime());
 
-            for (let i = 0; i < 16; i++) {
+            for (let i = 0; i < 8; i++) {
                 latencyGraphData[i].shift();
             }
 
             latencyGraphData[0].push(statistics["time"]);
             if (statistics["totalLatency"] < 1e6) {
                 latencyGraphData[1].push(statistics["receiveLatency"]);
-                latencyGraphData[2].push(statistics["preSubmit"]);
-                latencyGraphData[3].push(statistics["postSubmit"]);
-                latencyGraphData[4].push(statistics["totalRender"]);
-                latencyGraphData[5].push(statistics["compositorRenderGpu"]);
-                latencyGraphData[6].push(statistics["compositorRenderCpu"]);
-                latencyGraphData[7].push(statistics["compositorIdle"]);
-                latencyGraphData[8].push(statistics["frameInterval"]);
-                latencyGraphData[9].push(statistics["presentCall"]);
-                latencyGraphData[10].push(statistics["waitForPresent"]);
-                latencyGraphData[11].push(statistics["submitFrame"]);
-                latencyGraphData[12].push(statistics["encodeLatency"]);
-                latencyGraphData[13].push(statistics["sendLatency"]);
-                latencyGraphData[14].push(statistics["decodeLatency"]);
-                latencyGraphData[15].push(statistics["totalLatency"]);
+                latencyGraphData[2].push(statistics["renderTime"]);
+                latencyGraphData[3].push(statistics["idleTime"] + statistics["waitTime"]);
+                latencyGraphData[4].push(statistics["encodeLatency"]);
+                latencyGraphData[5].push(statistics["sendLatency"]);
+                latencyGraphData[6].push(statistics["decodeLatency"]);
+                latencyGraphData[7].push(statistics["totalLatency"]);
             } else {
-                for (let i = 1; i < 16; i++) {
+                for (let i = 1; i < 8; i++) {
                     latencyGraphData[i].push(null);
                 }
 			}
 
             latencyGraphData[0].shift();
-            latencyGraphData[0].unshift(statistics["time"] - 10000);
+            latencyGraphData[0].unshift(statistics["time"] - duration);
 
             for (let i = 0; i < 3; i++) {
                 framerateGraphData[i].shift();
@@ -886,7 +815,7 @@ define([
             framerateGraphData[2].push(statistics["clientFPS"]);
 
             framerateGraphData[0].shift();
-            framerateGraphData[0].unshift(statistics["time"] - 10000);
+            framerateGraphData[0].unshift(statistics["time"] - duration);
         }
 
         let lastStatisticsUpdate = now;

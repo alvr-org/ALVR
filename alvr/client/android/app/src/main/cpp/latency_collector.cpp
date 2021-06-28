@@ -59,6 +59,8 @@ void LatencyCollector::submit(uint64_t frameIndex) {
     m_Latency[2] = timestamp.decoderOutput - timestamp.decoderInput;
     if (timestamp.received) {
         m_Latency[3] = timestamp.received - timestamp.tracking;
+    } else {
+        m_Latency[3] = m_Latency[1];
     }
 
     submitNewFrame();

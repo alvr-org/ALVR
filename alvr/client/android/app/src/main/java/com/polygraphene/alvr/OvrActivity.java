@@ -81,7 +81,7 @@ public class OvrActivity extends Activity {
     final BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context ctxt, Intent intent) {
-            onBatteryChangedNative(intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0));
+            onBatteryChangedNative(intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0), intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0));
         }
     };
 
@@ -376,7 +376,7 @@ public class OvrActivity extends Activity {
 
     native void onHapticsFeedbackNative(long startTime, float amplitude, float duration, float frequency, boolean hand);
 
-    native void onBatteryChangedNative(int battery);
+    native void onBatteryChangedNative(int battery, int plugged);
 
     native boolean isConnectedNative();
 

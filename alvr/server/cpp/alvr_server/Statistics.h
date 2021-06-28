@@ -32,6 +32,8 @@ public:
 		m_encodeLatencyAveragePrev = 0;
 		m_encodeLatencyMinPrev = 0;
 		m_encodeLatencyMaxPrev = 0;
+
+		m_sendLatency = 0;
 	}
 
 	void CountPacket(int bytes) {

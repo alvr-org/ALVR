@@ -790,14 +790,20 @@ define([
                 lastStatisticsUpdate = now;
             }
             if (now > lastGraphUpdate + 16) {
-				const lq1 = quantile(latencyGraphData[latencyGraphData.length-1],0.25);
-				const lq3 = quantile(latencyGraphData[latencyGraphData.length-1],0.75);
-                latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
-                latencyGraph.setData(stack(latencyGraphData, i => false).data);
-				const fq1 = quantile(framerateGraphData[1].concat(framerateGraphData[2]),0.25);
-				const fq3 = quantile(framerateGraphData[1].concat(framerateGraphData[2]),0.75);
-                framerateGraph.setScale("y", {min: fq1-(fq3-fq1)*1.5, max: fq3+(fq3-fq1)*1.5});
-                framerateGraph.setData(framerateGraphData);
+                const ldata = [].concat(latencyGraphData[latencyGraphData.length-1]);
+                const lq1 = quantile(ldata,0.25);
+                const lq3 = quantile(ldata,0.75);
+                latencyGraph.batch(() => {
+                    latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
+                    latencyGraph.setData(stack(latencyGraphData, i => false).data);
+                });
+                const fdata = framerateGraphData[1].concat(framerateGraphData[2]);
+                const fq1 = quantile(fdata,0.25);
+                const fq3 = quantile(fdata,0.75);
+                latencyGraph.batch(() => {
+                    framerateGraph.setScale("y", {min: fq1-(fq3-fq1)*1.5, max: fq3+(fq3-fq1)*1.5});
+                    framerateGraph.setData(framerateGraphData);
+                });
                 lastGraphUpdate = now;
             }
             timeoutHandler = setTimeout(() => {

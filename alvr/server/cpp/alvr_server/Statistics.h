@@ -93,7 +93,7 @@ public:
 
 	bool CheckBitrateUpdated() {
 		if (m_enableAdaptiveBitrate) {
-		uint64_t latencyUs = m_sendLatency;
+			uint64_t latencyUs = m_sendLatency;
 			if (latencyUs != 0) {
 				if (latencyUs > m_adaptiveBitrateTarget + m_adaptiveBitrateThreshold) {
 					m_bitrate -= 3;

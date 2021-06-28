@@ -290,6 +290,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 			pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
 
 			// set battery percentage
+			vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceIsCharging_Bool, info.plugged);
 			vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, info.battery / 100.0f);
 
 			Debug("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)\n",
@@ -491,12 +492,17 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 		for (int i = 0; i < 2; i++) {	
 
-			bool leftHand = (info.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) != 0;
+			bool enabled = info.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_ENABLE;
+
+			if (enabled) {
+
+				bool leftHand = (info.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) != 0;
 		
-			if (leftHand) {
-				m_leftController->onPoseUpdate(i, info);
-			} else {
-				m_rightController->onPoseUpdate(i, info);
+				if (leftHand) {
+					m_leftController->onPoseUpdate(i, info);
+				} else {
+					m_rightController->onPoseUpdate(i, info);
+				}
 			}
 		}
 	}

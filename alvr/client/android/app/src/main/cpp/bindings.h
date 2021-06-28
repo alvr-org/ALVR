@@ -57,7 +57,7 @@ extern "C" void onPauseNative();
 extern "C" void
 onHapticsFeedbackNative(long long startTime, float amplitude, float duration,
                         float frequency, unsigned char hand);
-extern "C" void onBatteryChangedNative(int battery);
+extern "C" void onBatteryChangedNative(int battery, int plugged);
 extern "C" GuardianData getGuardianData();
 
 extern "C" void

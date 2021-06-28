@@ -437,6 +437,18 @@ define([
             }
         }
 
+        const quantile = (arr, q) => {
+            const sorted = arr.sort((a, b) => a - b);
+            const pos = (sorted.length - 1) * q;
+            const base = Math.floor(pos);
+            const rest = pos - base;
+            if (sorted[base + 1] !== undefined) {
+                return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+            } else {
+                return sorted[base];
+            }
+        };
+
         function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255, 249, 196, 0.92)", color: "black", fontFamily:'Lato,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"', fontSize:"80%", lineHeight:"1" } } = {}) {
             let legendEl;
 
@@ -578,7 +590,7 @@ define([
                         width: 1,
                     },
                     ticks: {
-                        size: 5,
+                        size: 0,
                     },
                 },
                 {
@@ -588,7 +600,7 @@ define([
                         width: 1,
                     },
                     ticks: {
-                        size: 5,
+                        size: 0,
                     },
                 },
             ];
@@ -778,7 +790,13 @@ define([
                 lastStatisticsUpdate = now;
             }
             if (now > lastGraphUpdate + 16) {
+				const lq1 = quantile(latencyGraphData[latencyGraphData.length-1],0.25);
+				const lq3 = quantile(latencyGraphData[latencyGraphData.length-1],0.75);
+                latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
                 latencyGraph.setData(stack(latencyGraphData, i => false).data);
+				const fq1 = quantile(framerateGraphData[1].concat(framerateGraphData[2]),0.25);
+				const fq3 = quantile(framerateGraphData[1].concat(framerateGraphData[2]),0.75);
+                framerateGraph.setScale("y", {min: fq1-(fq3-fq1)*1.5, max: fq3+(fq3-fq1)*1.5});
                 framerateGraph.setData(framerateGraphData);
                 lastGraphUpdate = now;
             }

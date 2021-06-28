@@ -10,6 +10,7 @@ define([
     // eslint-disable-next-line requirejs/no-js-extension
     "js/lib/uPlot.iife.min.js",
     "css!js/lib/uPlot.min.css",
+    "js/app/util.js",
 ], function (
     addClientModalTemplate,
     configureClientModalTemplate,
@@ -437,18 +438,6 @@ define([
             }
         }
 
-        const quantile = (arr, q) => {
-            const sorted = arr.sort((a, b) => a - b);
-            const pos = (sorted.length - 1) * q;
-            const base = Math.floor(pos);
-            const rest = pos - base;
-            if (sorted[base + 1] !== undefined) {
-                return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
-            } else {
-                return sorted[base];
-            }
-        };
-
         function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255, 249, 196, 0.92)", color: "black", fontFamily:'Lato,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"', fontSize:"80%", lineHeight:"1" } } = {}) {
             let legendEl;
 
@@ -608,7 +597,13 @@ define([
         }
 
         function getSeries(label, stroke, fill, data, postfix) {
-            return {label: label, stroke: stroke, fill: fill, value: (u, v, si, i) => (data[si][i] || 0).toFixed(3) + postfix, spanGaps: false};
+            return {
+                label: label,
+                stroke: stroke,
+                fill: fill,
+                value: (u, v, si, i) => (data[si][i] || 0).toFixed(3) + postfix,
+                spanGaps: false,
+            };
         }
 
         function getThemedOpts(opts) {
@@ -658,7 +653,7 @@ define([
                     label: "Total Latency",
                     value: (u, v, si, i) => (latencyGraphData[latencyGraphData.length - 1][i] || 0).toFixed(3) + " ms",
                 },
-				getSeries("Receive", graphColors[0], graphColors[0], latencyGraphData, " ms"),
+                getSeries("Receive", graphColors[0], graphColors[0], latencyGraphData, " ms"),
                 getSeries("Render", graphColors[1], graphColors[1], latencyGraphData, " ms"),
                 getSeries("Idle", graphColors[2], graphColors[2], latencyGraphData, " ms"),
                 getSeries("Encode", graphColors[3], graphColors[3], latencyGraphData, " ms"),
@@ -692,7 +687,7 @@ define([
                     value: "",
                     show: false,
                 },
-				getSeries("Server", graphColors[3], null, framerateGraphData, " FPS"),
+                getSeries("Server", graphColors[3], null, framerateGraphData, " FPS"),
                 getSeries("Client", graphColors[2], null, framerateGraphData, " FPS"),
             ],
         };
@@ -727,7 +722,7 @@ define([
                 for (let i = 1; i < latencyGraphData.length; i++) {
                     latencyGraphData[i].push(null);
                 }
-			}
+            }
 
             latencyGraphData[0].shift();
             latencyGraphData[0].unshift(statistics["time"] - duration);
@@ -783,14 +778,20 @@ define([
                 lastStatisticsUpdate = now;
             }
             if (now > lastGraphUpdate + 16) {
-				const lq1 = quantile(latencyGraphData[latencyGraphData.length-1],0.25);
-				const lq3 = quantile(latencyGraphData[latencyGraphData.length-1],0.75);
-                latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
-                latencyGraph.setData(stack(latencyGraphData, i => false).data);
-				const fq1 = quantile(framerateGraphData[1].concat(framerateGraphData[2]),0.25);
-				const fq3 = quantile(framerateGraphData[1].concat(framerateGraphData[2]),0.75);
-                framerateGraph.setScale("y", {min: fq1-(fq3-fq1)*1.5, max: fq3+(fq3-fq1)*1.5});
-                framerateGraph.setData(framerateGraphData);
+                const ldata = [].concat(latencyGraphData[latencyGraphData.length-1]);
+                const lq1 = quantile(ldata,0.25);
+                const lq3 = quantile(ldata,0.75);
+                latencyGraph.batch(() => {
+                    latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
+                    latencyGraph.setData(stack(latencyGraphData, i => false).data);
+                });
+                const fdata = framerateGraphData[1].concat(framerateGraphData[2]);
+                const fq1 = quantile(fdata,0.25);
+                const fq3 = quantile(fdata,0.75);
+                latencyGraph.batch(() => {
+                    framerateGraph.setScale("y", {min: fq1-(fq3-fq1)*1.5, max: fq3+(fq3-fq1)*1.5});
+                    framerateGraph.setData(framerateGraphData);
+                });
                 lastGraphUpdate = now;
             }
             timeoutHandler = setTimeout(() => {

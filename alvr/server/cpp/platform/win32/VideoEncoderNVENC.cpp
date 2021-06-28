@@ -19,10 +19,6 @@ VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	, m_renderWidth(width)
 	, m_renderHeight(height)
 	, m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs)
-	, m_enableAdaptiveBitrate(Settings::Instance().m_enableAdaptiveBitrate)
-	, m_adaptiveBitrateMaximum(Settings::Instance().m_adaptiveBitrateMaximum)
-	, m_adaptiveBitrateTarget(Settings::Instance().m_adaptiveBitrateTarget)
-	, m_adaptiveBitrateThreshold(Settings::Instance().m_adaptiveBitrateThreshold)
 {
 	
 }
@@ -97,28 +93,16 @@ void VideoEncoderNVENC::Shutdown()
 
 void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR)
 {
-	if (m_enableAdaptiveBitrate && m_Listener) {
-		uint64_t latencyUs = m_Listener->GetStatistics()->GetSendLatencyAverage();
-		if (latencyUs != 0) {
-			if (latencyUs > m_adaptiveBitrateTarget + m_adaptiveBitrateThreshold) {
-				m_bitrateInMBits -= 3;
-			} else if (latencyUs < m_adaptiveBitrateTarget - m_adaptiveBitrateThreshold) {
-				m_bitrateInMBits += 1;
-			}
-			if (m_bitrateInMBits > m_adaptiveBitrateMaximum) {
-				m_bitrateInMBits = m_adaptiveBitrateMaximum;
-			} else if (m_bitrateInMBits < 5) {
-				m_bitrateInMBits = 5;
-			} else {
-				m_Listener->GetStatistics()->Bitrate(m_bitrateInMBits);
-				NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
-				NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
-				initializeParams.encodeConfig = &encodeConfig;
-				FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000);
-				NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
-				reconfigureParams.reInitEncodeParams = initializeParams;
-				m_NvNecoder->Reconfigure(&reconfigureParams);
-			}
+	if (m_Listener) {
+		if (m_Listener->GetStatistics()->CheckBitrateUpdated()) {
+			m_bitrateInMBits = m_Listener->GetStatistics()->GetBitrate();
+			NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
+			NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
+			initializeParams.encodeConfig = &encodeConfig;
+			FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000);
+			NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
+			reconfigureParams.reInitEncodeParams = initializeParams;
+			m_NvNecoder->Reconfigure(&reconfigureParams);
 		}
 	}
 

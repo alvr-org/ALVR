@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <time.h>
 
+#include "Utils.h"
+#include "Settings.h"
+
 class Statistics {
 public:
 	Statistics() {
@@ -30,7 +33,7 @@ public:
 		m_encodeLatencyMinPrev = 0;
 		m_encodeLatencyMaxPrev = 0;
 
-		m_sendLatencyAveragePrev = 0;
+		m_sendLatency = 0;
 	}
 
 	void CountPacket(int bytes) {
@@ -40,10 +43,6 @@ public:
 		m_packetsSentInSecond++;
 		m_bitsSentTotal += bytes * 8;
 		m_bitsSentInSecond += bytes * 8;
-	}
-
-	void Bitrate(uint64_t bitrate) {
-		m_bitrate = bitrate;
 	}
 
 	void EncodeOutput(uint64_t latencyUs) {
@@ -60,10 +59,10 @@ public:
 	void NetworkSend(uint64_t latencyUs) {
 		if (latencyUs > 5e5)
 			latencyUs = 5e5;
-		if (m_sendLatencyAveragePrev == 0) {
-			m_sendLatencyAveragePrev = latencyUs;
+		if (m_sendLatency == 0) {
+			m_sendLatency = latencyUs;
 		} else {
-			m_sendLatencyAveragePrev = latencyUs * 0.1 + m_sendLatencyAveragePrev * 0.9;
+			m_sendLatency = latencyUs * 0.1 + m_sendLatency * 0.9;
 		}
 	}
 
@@ -82,26 +81,32 @@ public:
 	uint64_t GetBitsSentInSecond() {
 		return m_bitsSentInSecondPrev;
 	}
-	uint32_t GetFPS() {
+	float GetFPS() {
 		return m_framesPrevious;
 	}
 	uint64_t GetEncodeLatencyAverage() {
 		return m_encodeLatencyAveragePrev;
 	}
-	uint64_t GetEncodeLatencyMin() {
-		return m_encodeLatencyMinPrev;
-	}
-	uint64_t GetEncodeLatencyMax() {
-		return m_encodeLatencyMaxPrev;
-	}
 	uint64_t GetSendLatencyAverage() {
-		return m_sendLatencyAveragePrev;
+		return m_sendLatency;
 	}
 
 	bool CheckBitrateUpdated() {
-		time_t current = time(NULL);
-		if (m_bitrateUpdated != current) {
-			m_bitrateUpdated = current;
+		uint64_t latencyUs = m_sendLatency;
+		if (latencyUs != 0) {
+			if (latencyUs > m_adaptiveBitrateTarget + m_adaptiveBitrateThreshold) {
+				m_bitrate -= 3;
+			} else if (latencyUs < m_adaptiveBitrateTarget - m_adaptiveBitrateThreshold) {
+				m_bitrate += 1;
+			}
+			if (m_bitrate > m_adaptiveBitrateMaximum) {
+				m_bitrate = m_adaptiveBitrateMaximum;
+			} else if (m_bitrate < 5) {
+				m_bitrate = 5;
+			}
+		}
+		if (m_bitrateUpdated != m_bitrate) {
+			m_bitrateUpdated = m_bitrate;
 			return true;
 		}
 		return false;
@@ -136,7 +141,6 @@ private:
 	uint64_t m_packetsSentInSecond;
 	uint64_t m_packetsSentInSecondPrev;
 
-	uint64_t m_bitrate = 0;
 	uint64_t m_bitsSentTotal;
 	uint64_t m_bitsSentInSecond;
 	uint64_t m_bitsSentInSecondPrev;
@@ -151,9 +155,16 @@ private:
 	uint64_t m_encodeLatencyAveragePrev = 0;
 	uint64_t m_encodeLatencyMinPrev;
 	uint64_t m_encodeLatencyMaxPrev;
+	
+	uint64_t m_sendLatency = 0;
 
-	uint64_t m_sendLatencyAveragePrev = 0;
+	uint64_t m_bitrate = Settings::Instance().mEncodeBitrateMBs;
+	uint64_t m_bitrateUpdated = Settings::Instance().mEncodeBitrateMBs;
+
+	bool m_enableAdaptiveBitrate = Settings::Instance().m_enableAdaptiveBitrate;
+	uint64_t m_adaptiveBitrateMaximum = Settings::Instance().m_adaptiveBitrateMaximum;
+	uint64_t m_adaptiveBitrateTarget = Settings::Instance().m_adaptiveBitrateTarget;
+	uint64_t m_adaptiveBitrateThreshold = Settings::Instance().m_adaptiveBitrateThreshold;
 
 	time_t m_current;
-	time_t m_bitrateUpdated;
 };

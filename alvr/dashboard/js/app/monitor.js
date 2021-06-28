@@ -437,6 +437,18 @@ define([
             }
         }
 
+        const quantile = (arr, q) => {
+            const sorted = arr.sort((a, b) => a - b);
+            const pos = (sorted.length - 1) * q;
+            const base = Math.floor(pos);
+            const rest = pos - base;
+            if (sorted[base + 1] !== undefined) {
+                return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+            } else {
+                return sorted[base];
+            }
+        };
+
         function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255, 249, 196, 0.92)", color: "black", fontFamily:'Lato,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"', fontSize:"80%", lineHeight:"1" } } = {}) {
             let legendEl;
 
@@ -546,7 +558,57 @@ define([
                 ],
             };
 
-            return {opts, data: stacked.data};
+            return opts;
+        }
+
+        function getSharedOpts(opts) {
+            opts.cursor = {
+                 drag: {
+                    dist: 10,
+                    uni: 20,
+                 },
+                 sync: {
+                    key: "graph",
+                    scales: ["x"],
+                 },
+            };
+            opts.pxAlign = 0,
+            opts.ms = 1,
+            opts.pxSnap = false,
+            opts.plugins = [
+                legendAsTooltipPlugin(),
+            ];
+            opts.axes = [
+                {
+                    size: 20,
+                    space: 40,
+                    values: [
+                        [1000, ":{ss}", null, null, null, null, null, null, 1],
+                        [1, ":{ss}.{fff}", null, null, null, null, null, null, 1],
+                    ],
+                    grid: {
+                        width: 1,
+                    },
+                    ticks: {
+                        size: 0,
+                    },
+                },
+                {
+                    size: 30,
+                    space: 20,
+                    grid: {
+                        width: 1,
+                    },
+                    ticks: {
+                        size: 0,
+                    },
+                },
+            ];
+            return opts;
+        }
+
+        function getSeries(label, stroke, fill, data, postfix) {
+            return {label: label, stroke: stroke, fill: fill, value: (u, v, si, i) => (data[si][i] || 0).toFixed(3) + postfix, spanGaps: false};
         }
 
         function getThemedOpts(opts) {
@@ -579,13 +641,7 @@ define([
 
         let latencyGraphData = [
             Array(length).fill(now),
-            Array(length).fill(null),
-            Array(length).fill(null),
-            Array(length).fill(null),
-            Array(length).fill(null),
-            Array(length).fill(null),
-            Array(length).fill(null),
-            Array(length).fill(null),
+            ...Array(7).fill(null).map(x => Array(length).fill(null)),
         ];
 
         latencyGraphData[0].shift();
@@ -596,104 +652,26 @@ define([
         let latencyGraphOptions = {
             width: 560,
             height: 160,
-            cursor: {
-                 drag: {
-                    dist: 10,
-                    uni: 20,
-                 },
-                 sync: {
-                    key: "graph",
-                    scales: ["x"],
-                 },
-            },
-            pxAlign: 0,
-            ms: 1,
-            pxSnap: false,
-            plugins: [
-                legendAsTooltipPlugin(),
-            ],
             series:
             [
                 {
                     label: "Total Latency",
-                    value: (u, v, si, i) => (latencyGraphData[7][i] || 0).toFixed(3) + " ms",
+                    value: (u, v, si, i) => (latencyGraphData[latencyGraphData.length - 1][i] || 0).toFixed(3) + " ms",
                 },
-                {
-                    label: "Receive",
-                    stroke: graphColors[0],
-                    fill: graphColors[0],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Render",
-                    stroke: graphColors[1],
-                    fill: graphColors[1],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Idle",
-                    stroke: graphColors[2],
-                    fill: graphColors[2],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Encode",
-                    stroke: graphColors[3],
-                    fill: graphColors[3],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Send",
-                    stroke: graphColors[0],
-                    fill: graphColors[0],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-                {
-                    label: "Decode",
-                    stroke: graphColors[3],
-                    fill: graphColors[3],
-                    value: (u, v, si, i) => (latencyGraphData[si][i] || 0).toFixed(3) + " ms",
-                    spanGaps: false,
-                },
-            ],
-            axes:
-            [
-                {
-                    size: 20,
-                    space: 40,
-                    values: [
-                        [1000, ":{ss}", null, null, null, null, null, null, 1],
-                        [1, ":{ss}.{fff}", null, null, null, null, null, null, 1],
-                    ],
-                    grid: {
-                        width: 1,
-                    },
-                    ticks: {
-                        size: 5,
-                    },
-                },
-                {
-                    size: 30,
-                    space: 20,
-                    grid: {
-                        width: 1,
-                    },
-                    ticks: {
-                        size: 5,
-                    },
-                },
+				getSeries("Receive", graphColors[0], graphColors[0], latencyGraphData, " ms"),
+                getSeries("Render", graphColors[1], graphColors[1], latencyGraphData, " ms"),
+                getSeries("Idle", graphColors[2], graphColors[2], latencyGraphData, " ms"),
+                getSeries("Encode", graphColors[3], graphColors[3], latencyGraphData, " ms"),
+                getSeries("Send", graphColors[0], graphColors[0], latencyGraphData, " ms"),
+                getSeries("Decode", graphColors[3], graphColors[3], latencyGraphData, " ms"),
             ],
         };
 
+        latencyGraphOptions = getSharedOpts(latencyGraphOptions);
         if (themeColor == "darkly") {
             latencyGraphOptions = getThemedOpts(latencyGraphOptions);
         }
-        latencyGraphOptions = getStackedOpts(latencyGraphOptions, latencyGraphData).opts;
+        latencyGraphOptions = getStackedOpts(latencyGraphOptions, latencyGraphData);
 
         let framerateGraphData = [
             Array(length).fill(now),
@@ -707,22 +685,6 @@ define([
         let framerateGraphOptions = {
             width: 560,
             height: 100,
-            cursor: {
-                 drag: {
-                    dist: 10,
-                    uni: 20,
-                 },
-                 sync: {
-                    key: "graph",
-                    scales: ["x"],
-                 },
-            },
-            pxAlign: 0,
-            ms: 1,
-            pxSnap: false,
-            plugins: [
-                legendAsTooltipPlugin(),
-            ],
             series:
             [
                 {
@@ -730,48 +692,12 @@ define([
                     value: "",
                     show: false,
                 },
-                {
-                    label: "Server",
-                    stroke: "#1f77b4",
-                    value: (u, v, si, i) => (framerateGraphData[si][i] || 0).toFixed(3) + " FPS",
-                    spanGaps: false,
-                },
-                {
-                    label: "Client",
-                    stroke: "#ff7f0e",
-                    value: (u, v, si, i) => (framerateGraphData[si][i] || 0).toFixed(3) + " FPS",
-                    spanGaps: false,
-                },
-            ],
-            axes:
-            [
-                {
-                    size: 20,
-                    space: 40,
-                    values: [
-                        [1000, ":{ss}", null, null, null, null, null, null, 1],
-                        [1, ":{ss}.{fff}", null, null, null, null, null, null, 1],
-                    ],
-                    grid: {
-                        width: 1,
-                    },
-                    ticks: {
-                        size: 5,
-                    },
-                },
-                {
-                    size: 30,
-                    space: 20,
-                    grid: {
-                        width: 1,
-                    },
-                    ticks: {
-                        size: 5,
-                    },
-                },
+				getSeries("Server", graphColors[3], null, framerateGraphData, " FPS"),
+                getSeries("Client", graphColors[2], null, framerateGraphData, " FPS"),
             ],
         };
 
+        framerateGraphOptions = getSharedOpts(framerateGraphOptions);
         if (themeColor == "darkly") {
             framerateGraphOptions = getThemedOpts(framerateGraphOptions);
         }
@@ -784,12 +710,12 @@ define([
         function updatePerformanceGraphs(statistics) {
             const now = parseInt(new Date().getTime());
 
-            for (let i = 0; i < 8; i++) {
+            for (let i = 0; i < latencyGraphData.length; i++) {
                 latencyGraphData[i].shift();
             }
 
             latencyGraphData[0].push(statistics["time"]);
-            if (statistics["totalLatency"] < 1e6) {
+            if (statistics["totalLatency"] < Infinity) {
                 latencyGraphData[1].push(statistics["receiveLatency"]);
                 latencyGraphData[2].push(statistics["renderTime"]);
                 latencyGraphData[3].push(statistics["idleTime"] + statistics["waitTime"]);
@@ -798,7 +724,7 @@ define([
                 latencyGraphData[6].push(statistics["decodeLatency"]);
                 latencyGraphData[7].push(statistics["totalLatency"]);
             } else {
-                for (let i = 1; i < 8; i++) {
+                for (let i = 1; i < latencyGraphData.length; i++) {
                     latencyGraphData[i].push(null);
                 }
 			}
@@ -806,7 +732,7 @@ define([
             latencyGraphData[0].shift();
             latencyGraphData[0].unshift(statistics["time"] - duration);
 
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < framerateGraphData.length; i++) {
                 framerateGraphData[i].shift();
             }
 
@@ -857,7 +783,13 @@ define([
                 lastStatisticsUpdate = now;
             }
             if (now > lastGraphUpdate + 16) {
+				const lq1 = quantile(latencyGraphData[latencyGraphData.length-1],0.25);
+				const lq3 = quantile(latencyGraphData[latencyGraphData.length-1],0.75);
+                latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
                 latencyGraph.setData(stack(latencyGraphData, i => false).data);
+				const fq1 = quantile(framerateGraphData[1].concat(framerateGraphData[2]),0.25);
+				const fq3 = quantile(framerateGraphData[1].concat(framerateGraphData[2]),0.75);
+                framerateGraph.setScale("y", {min: fq1-(fq3-fq1)*1.5, max: fq3+(fq3-fq1)*1.5});
                 framerateGraph.setData(framerateGraphData);
                 lastGraphUpdate = now;
             }

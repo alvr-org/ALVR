@@ -60,6 +60,10 @@ public:
 
 	int m_codec;
 	uint64_t mEncodeBitrateMBs;
+	bool m_enableAdaptiveBitrate;
+	uint64_t m_adaptiveBitrateMaximum;
+	uint64_t m_adaptiveBitrateTarget;
+	uint64_t m_adaptiveBitrateThreshold;
 	bool m_use10bitEncoder;
 
 	// Controller configs

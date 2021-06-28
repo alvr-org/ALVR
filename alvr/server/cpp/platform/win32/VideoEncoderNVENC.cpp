@@ -93,6 +93,19 @@ void VideoEncoderNVENC::Shutdown()
 
 void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, uint64_t clientTime, bool insertIDR)
 {
+	if (m_Listener) {
+		if (m_Listener->GetStatistics()->CheckBitrateUpdated()) {
+			m_bitrateInMBits = m_Listener->GetStatistics()->GetBitrate();
+			NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
+			NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
+			initializeParams.encodeConfig = &encodeConfig;
+			FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000);
+			NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
+			reconfigureParams.reInitEncodeParams = initializeParams;
+			m_NvNecoder->Reconfigure(&reconfigureParams);
+		}
+	}
+
 	std::vector<std::vector<uint8_t>> vPacket;
 
 	const NvEncInputFrame* encoderInputFrame = m_NvNecoder->GetNextInputFrame();

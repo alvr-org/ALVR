@@ -238,6 +238,22 @@ async fn client_handshake(
         refresh_rate: fps as _,
         use_10bit_encoder: settings.video.use_10bit_encoder,
         encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
+        enable_adaptive_bitrate: session_settings.video.adaptive_bitrate.enabled,
+        bitrate_maximum: session_settings
+            .video
+            .adaptive_bitrate
+            .content
+            .bitrate_maximum,
+        latency_target: session_settings
+            .video
+            .adaptive_bitrate
+            .content
+            .latency_target,
+        latency_threshold: session_settings
+            .video
+            .adaptive_bitrate
+            .content
+            .latency_threshold,
         controllers_tracking_system_name: session_settings
             .headset
             .controllers

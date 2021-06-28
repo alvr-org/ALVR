@@ -71,6 +71,10 @@
                                     <td><div id="statistic_totalSent">0</div> MB</td>
                                 </tr>
                                 <tr>
+                                    <td>Bitrate:</td>
+                                    <td><div id="statistic_bitrate">0</div> Mbps</td>
+                                </tr>
+                                <tr>
                                     <td><%= sentRate%>:</td>
                                     <td><div id="statistic_sentRate">0</div> Mbps</td>
                                 </tr>
@@ -118,16 +122,16 @@
             <div class="tab-pane container fade" id="performanceGraphs">
                 <div id="divPerformanceGraphsContent">
                     <h5 class="float-left mr-3"><%= performanceLatency%></h5>
-                    <span class="badge badge-primary" style="background-color: #9ca3af; ">Network</span>
-                    <span class="badge badge-primary" style="background-color: #ef4444; ">Render</span>
-                    <span class="badge badge-primary" style="background-color: #f59e0b; ">Idle</span>
-                    <span class="badge badge-primary" style="background-color: #4145e9; ">Transcode</span>
-                    <div id="latencyGraphArea" style="width: 520px; height: 220px"></div>
+                    <span class="badge badge-primary" style="background-color: #7f7f7f; ">Network</span>
+                    <span class="badge badge-primary" style="background-color: #d62728; ">Render</span>
+                    <span class="badge badge-primary" style="background-color: #ff7f0e; ">Idle</span>
+                    <span class="badge badge-primary" style="background-color: #1f77b4; ">Transcode</span>
+                    <div id="latencyGraphArea"></div>
                     <div class="mt-3"></div>
                     <h5 class="float-left mr-3"><%= performanceFramerate%></h5>
                     <span class="badge badge-primary" style="background-color: #1f77b4; "><%= serverFPS%></span>
                     <span class="badge badge-primary" style="background-color: #ff7f0e; "><%= clientFPS%></span>
-                    <div id="framerateGraphArea" style="width: 520px; height: 180px"></div>
+                    <div id="framerateGraphArea"></div>
                 </div>
             </div>
             <div class="tab-pane container fade" id="logging">

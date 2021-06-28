@@ -32,6 +32,19 @@ pub struct Fov {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AdaptiveBitrateDesc {
+    #[schema(min = 10, max = 500, step = 1)]
+    pub bitrate_maximum: u64,
+
+    #[schema(advanced, min = 1000, max = 25000, step = 100)]
+    pub latency_target: u64,
+
+    #[schema(advanced, min = 500, max = 5000, step = 100)]
+    pub latency_threshold: u64,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FoveatedRenderingDesc {
     #[schema(min = 0.5, max = 10., step = 0.1)]
     pub strength: f32,
@@ -114,6 +127,8 @@ pub struct VideoDesc {
 
     #[schema(min = 1, max = 500)]
     pub encode_bitrate_mbs: u64,
+
+    pub adaptive_bitrate: Switch<AdaptiveBitrateDesc>,
 
     #[schema(advanced)]
     pub seconds_from_vsync_to_photons: f32,
@@ -430,6 +445,14 @@ pub fn session_settings_default() -> SettingsDefault {
                 Absolute: FrameSizeAbsoluteDefault {
                     width: 2880,
                     height: 1600,
+                },
+            },
+            adaptive_bitrate: SwitchDefault {
+                enabled: !cfg!(target_os = "linux"),
+                content: AdaptiveBitrateDescDefault {
+                    bitrate_maximum: 200,
+                    latency_target: 12000,
+                    latency_threshold: 4000,
                 },
             },
             seconds_from_vsync_to_photons: 0.005,

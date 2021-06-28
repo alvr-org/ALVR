@@ -163,6 +163,8 @@ struct TrackingInfo {
 	struct EyeFov eyeFov[2];
 	float ipd;
 	uint64_t battery;
+	uint64_t plugged;
+
 	static const uint32_t MAX_CONTROLLERS = 2;
 	struct Controller {
 		static const uint32_t FLAG_CONTROLLER_ENABLE         = (1 << 0);

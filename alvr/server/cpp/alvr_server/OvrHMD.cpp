@@ -492,12 +492,17 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 		for (int i = 0; i < 2; i++) {	
 
-			bool leftHand = (info.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) != 0;
+			bool enabled = info.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_ENABLE;
+
+			if (enabled) {
+
+				bool leftHand = (info.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) != 0;
 		
-			if (leftHand) {
-				m_leftController->onPoseUpdate(i, info);
-			} else {
-				m_rightController->onPoseUpdate(i, info);
+				if (leftHand) {
+					m_leftController->onPoseUpdate(i, info);
+				} else {
+					m_rightController->onPoseUpdate(i, info);
+				}
 			}
 		}
 	}

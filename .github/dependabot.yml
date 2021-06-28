@@ -9,6 +9,6 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "monthly"
-    allowed_updates:
-      - match:
-          update_type: "security"
+    ignore:
+      - dependency-name: "*"
+        update-types: [ "version-update:semver-minor","version-update:semver-patch" ]

@@ -92,22 +92,24 @@ public:
 	}
 
 	bool CheckBitrateUpdated() {
+		if (m_enableAdaptiveBitrate) {
 		uint64_t latencyUs = m_sendLatency;
-		if (latencyUs != 0) {
-			if (latencyUs > m_adaptiveBitrateTarget + m_adaptiveBitrateThreshold) {
-				m_bitrate -= 3;
-			} else if (latencyUs < m_adaptiveBitrateTarget - m_adaptiveBitrateThreshold) {
-				m_bitrate += 1;
+			if (latencyUs != 0) {
+				if (latencyUs > m_adaptiveBitrateTarget + m_adaptiveBitrateThreshold) {
+					m_bitrate -= 3;
+				} else if (latencyUs < m_adaptiveBitrateTarget - m_adaptiveBitrateThreshold) {
+					m_bitrate += 1;
+				}
+				if (m_bitrate > m_adaptiveBitrateMaximum) {
+					m_bitrate = m_adaptiveBitrateMaximum;
+				} else if (m_bitrate < 5) {
+					m_bitrate = 5;
+				}
 			}
-			if (m_bitrate > m_adaptiveBitrateMaximum) {
-				m_bitrate = m_adaptiveBitrateMaximum;
-			} else if (m_bitrate < 5) {
-				m_bitrate = 5;
+			if (m_bitrateUpdated != m_bitrate) {
+				m_bitrateUpdated = m_bitrate;
+				return true;
 			}
-		}
-		if (m_bitrateUpdated != m_bitrate) {
-			m_bitrateUpdated = m_bitrate;
-			return true;
 		}
 		return false;
 	}

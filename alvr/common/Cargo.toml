@@ -40,7 +40,7 @@ gfx-hal = "=0.6.0"
 winit = "0.24" # needed to get the screen size
 # Audio
 cpal = "0.13"
-rodio = "0.13"
+rodio = "0.14"
 # Miscellaneous
 rand = "0.8"
 encoding_rs_io = "0.1"

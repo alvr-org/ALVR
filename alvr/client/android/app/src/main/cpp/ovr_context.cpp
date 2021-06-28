@@ -77,6 +77,7 @@ public:
 
     // headset battery level
     int batteryLevel;
+    int batteryPlugged;
 
     struct HapticsState {
         uint64_t startUs;
@@ -552,6 +553,7 @@ void sendTrackingInfo(bool clientsidePrediction) {
     info.eyeFov[0] = fovPair.first;
     info.eyeFov[1] = fovPair.second;
     info.battery = g_ctx.batteryLevel;
+    info.plugged = g_ctx.batteryPlugged;
 
     memcpy(&info.HeadPose_Pose_Orientation, &frame->tracking.HeadPose.Pose.Orientation,
            sizeof(ovrQuatf));
@@ -920,8 +922,9 @@ void onHapticsFeedbackNative(long long startTime, float amplitude, float duratio
     s.buffered = false;
 }
 
-void onBatteryChangedNative(int battery) {
+void onBatteryChangedNative(int battery, int plugged) {
     g_ctx.batteryLevel = battery;
+	g_ctx.batteryPlugged = plugged;
 }
 
 GuardianData getGuardianData() {

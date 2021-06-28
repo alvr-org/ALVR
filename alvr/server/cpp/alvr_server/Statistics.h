@@ -136,7 +136,7 @@ private:
 	uint64_t m_packetsSentInSecond;
 	uint64_t m_packetsSentInSecondPrev;
 
-	uint64_t m_bitrate;
+	uint64_t m_bitrate = 0;
 	uint64_t m_bitsSentTotal;
 	uint64_t m_bitsSentInSecond;
 	uint64_t m_bitsSentInSecondPrev;
@@ -148,11 +148,11 @@ private:
 	uint64_t m_encodeLatencyMin;
 	uint64_t m_encodeLatencyMax;
 	uint64_t m_encodeSampleCount;
-	uint64_t m_encodeLatencyAveragePrev;
+	uint64_t m_encodeLatencyAveragePrev = 0;
 	uint64_t m_encodeLatencyMinPrev;
 	uint64_t m_encodeLatencyMaxPrev;
 
-	uint64_t m_sendLatencyAveragePrev;
+	uint64_t m_sendLatencyAveragePrev = 0;
 
 	time_t m_current;
 	time_t m_bitrateUpdated;

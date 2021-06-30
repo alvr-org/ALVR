@@ -784,7 +784,8 @@ define([
                 //const lq1 = 0;
                 //const lq3 = quantile(ldata,0.5);
                 latencyGraph.batch(() => {
-                    latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
+                    latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*3});
+                    //latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
                     latencyGraph.setData(stack(latencyGraphData, i => false).data);
                 });
                 const fdata = framerateGraphData[1].concat(framerateGraphData[2]).filter(Boolean);

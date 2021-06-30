@@ -8,9 +8,6 @@
                 <a class="nav-link" data-toggle="tab" href="#statistics" id="statisticsTab"><%= statistics%></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#performanceGraphs" id="performanceGraphsTab"><%= performanceGraphs%></a>
-            </li>
-            <li class="nav-item">
                 <a class="nav-link" data-toggle="tab" href="#logging" id="loggingTab"><%= logging%></a>
             </li>
         </ul>
@@ -46,37 +43,39 @@
             </div>
             <div class="tab-pane container fade" id="statistics">
                 <div id="divStatisticsContent">
+                    <h5 class="float-left mr-3"><%= performanceLatency%></h5>
+                    <span class="badge badge-primary" style="background-color: #7f7f7f; ">Network</span>
+                    <span class="badge badge-primary" style="background-color: #d62728; ">Render</span>
+                    <span class="badge badge-primary" style="background-color: #ff7f0e; ">Idle</span>
+                    <span class="badge badge-primary" style="background-color: #1f77b4; ">Transcode</span>
+                    <div id="latencyGraphArea"></div>
+                    <div class="mt-3"></div>
+                    <h5 class="float-left mr-3"><%= performanceFramerate%></h5>
+                    <span class="badge badge-primary" style="background-color: #1f77b4; "><%= serverFPS%></span>
+                    <span class="badge badge-primary" style="background-color: #ff7f0e; "><%= clientFPS%></span>
+                    <div id="framerateGraphArea"></div>
+                    <div class="mt-3"></div>
                     <div class="card" id="statisticsCard">
-                        <div class="card-header"><%= streamingStatistics%></div>
                         <div class="card-body">
                             <table id="statisticsTable">
                                 <tr>
                                     <td><%= totalPackets%>:</td>
                                     <td><div id="statistic_totalPackets" >0</div> <%= packets%></td>
-                                </tr>
-                                <tr>
-                                    <td><%= packetRate%>:</td>
-                                    <td><div id="statistic_packetRate" >0</div> <%= packetss%></td>
+                                    <td><div id="statistic_packetRate">0</div> <%= packetss%></td>
                                 </tr>
                                 <tr>
                                     <td><%= packetsLostTotal%>:</td>
                                     <td><div id="statistic_packetsLostTotal" >0</div> <%= packets%></td>
-                                </tr>
-                                <tr>
-                                    <td><%= packetsLostPerSecond%>:</td>
                                     <td><div id="statistic_packetsLostPerSecond">0</div> <%= packetss%></td>
                                 </tr>
                                 <tr>
                                     <td><%= totalSent%>:</td>
                                     <td><div id="statistic_totalSent">0</div> MB</td>
+                                    <td><div id="statistic_sentRate">0</div> Mbps</td>
                                 </tr>
                                 <tr>
                                     <td>Bitrate:</td>
                                     <td><div id="statistic_bitrate">0</div> Mbps</td>
-                                </tr>
-                                <tr>
-                                    <td><%= sentRate%>:</td>
-                                    <td><div id="statistic_sentRate">0</div> Mbps</td>
                                 </tr>
                                 <tr>
                                     <td><%= totalLatency%>:</td>
@@ -101,9 +100,6 @@
                                 <tr>
                                     <td><%= fecFailureTotal%>:</td>
                                     <td><div id="statistic_fecFailureTotal">0</div> <%= packets%></td>
-                                </tr>
-                                <tr>
-                                    <td><%= fecFailureInSecond%>:</td>
                                     <td><div id="statistic_fecFailureInSecond">0</div> <%= packetss%></td>
                                 </tr>
                                 <tr>
@@ -117,21 +113,6 @@
                             </table>
                         </div>
                     </div>
-                </div>
-            </div>
-            <div class="tab-pane container fade" id="performanceGraphs">
-                <div id="divPerformanceGraphsContent">
-                    <h5 class="float-left mr-3"><%= performanceLatency%></h5>
-                    <span class="badge badge-primary" style="background-color: #7f7f7f; ">Network</span>
-                    <span class="badge badge-primary" style="background-color: #d62728; ">Render</span>
-                    <span class="badge badge-primary" style="background-color: #ff7f0e; ">Idle</span>
-                    <span class="badge badge-primary" style="background-color: #1f77b4; ">Transcode</span>
-                    <div id="latencyGraphArea"></div>
-                    <div class="mt-3"></div>
-                    <h5 class="float-left mr-3"><%= performanceFramerate%></h5>
-                    <span class="badge badge-primary" style="background-color: #1f77b4; "><%= serverFPS%></span>
-                    <span class="badge badge-primary" style="background-color: #ff7f0e; "><%= clientFPS%></span>
-                    <div id="framerateGraphArea"></div>
                 </div>
             </div>
             <div class="tab-pane container fade" id="logging">

@@ -646,7 +646,7 @@ define([
 
         let latencyGraphOptions = {
             width: 560,
-            height: 220,
+            height: 160,
             series:
             [
                 {
@@ -679,7 +679,7 @@ define([
 
         let framerateGraphOptions = {
             width: 560,
-            height: 180,
+            height: 100,
             series:
             [
                 {
@@ -760,13 +760,6 @@ define([
                     $("#statistics").addClass("active");
                 if (!$("#statistics").hasClass("show"))
                     $("#statistics").addClass("show");
-                // hide performanceGraphs
-                if ($("#performanceGraphsTab").hasClass("active"))
-                    $("#performanceGraphsTab").removeClass("active");
-                if ($("#performanceGraphs").hasClass("active"))
-                    $("#performanceGraphs").removeClass("active");
-                if ($("#performanceGraphs").hasClass("show"))
-                    $("#performanceGraphs").removeClass("show");
                 // hide logging
                 if ($("#loggingTab").hasClass("active"))
                     $("#loggingTab").removeClass("active");
@@ -785,14 +778,17 @@ define([
                 lastStatisticsUpdate = now;
             }
             if (now > lastGraphUpdate + 16) {
-                const ldata = [].concat(latencyGraphData[latencyGraphData.length-1]);
+                const ldata = [].concat(latencyGraphData[latencyGraphData.length-1]).filter(Boolean);
                 const lq1 = quantile(ldata,0.25);
                 const lq3 = quantile(ldata,0.75);
+                //const lq1 = 0;
+                //const lq3 = quantile(ldata,0.5);
                 latencyGraph.batch(() => {
-                    latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
+                    latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*3});
+                    //latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
                     latencyGraph.setData(stack(latencyGraphData, i => false).data);
                 });
-                const fdata = framerateGraphData[1].concat(framerateGraphData[2]);
+                const fdata = framerateGraphData[1].concat(framerateGraphData[2]).filter(Boolean);
                 const fq1 = quantile(fdata,0.25);
                 const fq3 = quantile(fdata,0.75);
                 latencyGraph.batch(() => {
@@ -817,13 +813,6 @@ define([
                     $("#statistics").removeClass("active");
                 if ($("#statistics").hasClass("show"))
                     $("#statistics").removeClass("show");
-                // hide performanceGraphs
-                if ($("#performanceGraphsTab").hasClass("active"))
-                    $("#performanceGraphsTab").removeClass("active");
-                if ($("#performanceGraphs").hasClass("active"))
-                    $("#performanceGraphs").removeClass("active");
-                if ($("#performanceGraphs").hasClass("show"))
-                    $("#performanceGraphs").removeClass("show");
                 // hide logging
                 if ($("#loggingTab").hasClass("active"))
                     $("#loggingTab").removeClass("active");

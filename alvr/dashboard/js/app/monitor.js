@@ -778,14 +778,16 @@ define([
                 lastStatisticsUpdate = now;
             }
             if (now > lastGraphUpdate + 16) {
-                const ldata = [].concat(latencyGraphData[latencyGraphData.length-1]);
+                const ldata = [].concat(latencyGraphData[latencyGraphData.length-1]).filter(Boolean);
                 const lq1 = quantile(ldata,0.25);
                 const lq3 = quantile(ldata,0.75);
+                //const lq1 = 0;
+                //const lq3 = quantile(ldata,0.5);
                 latencyGraph.batch(() => {
                     latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
                     latencyGraph.setData(stack(latencyGraphData, i => false).data);
                 });
-                const fdata = framerateGraphData[1].concat(framerateGraphData[2]);
+                const fdata = framerateGraphData[1].concat(framerateGraphData[2]).filter(Boolean);
                 const fq1 = quantile(fdata,0.25);
                 const fq3 = quantile(fdata,0.75);
                 latencyGraph.batch(() => {

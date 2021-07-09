@@ -1,15 +1,7 @@
 { pkgs ? import <nixpkgs> { } }:
 
 with pkgs;
-let
-  local = (import (pkgs.fetchFromGitHub {
-    owner = "ronthecookie";
-    repo = "nixpkgs";
-    rev = "9704ac164c630a4e9f50a3448aa165480a78f186";
-    sha256 = "1a9zwiw3f3j4ssk86yfw055kbv25vf9pyjf28gkwc15xwfb3jp6v";
-    fetchSubmodules = true;
-  })) { };
-in mkShell {
+mkShell {
   stdenv = pkgs.clangStdenv;
   nativeBuildInputs = [ cmake pkg-config ];
   buildInputs = [
@@ -17,7 +9,7 @@ in mkShell {
     alsaLib
     openssl
     glib
-    (enableDebugging (local.ffmpeg-full.override { nonfreeLicensing = true; }))
+    (enableDebugging (ffmpeg-full.override { nonfreeLicensing = true; }))
     cairo
     pango
     atk
@@ -41,9 +33,9 @@ in mkShell {
     libunwind
   ];
 
-  LIBCLANG_PATH = "${pkgs.llvmPackages.libclang}/lib";
+  LIBCLANG_PATH = "${llvmPackages.libclang.lib}/lib";
   RUST_ANDROID_GRADLE_PYTHON_COMMAND = "${pkgs.python3Minimal}/bin/python3";
   shellHook = ''
-    export PATH=$(pwd)/alvr/client:$PATH
+    export PATH=$(pwd)/alvr/client/android:$PATH
   '';
 }

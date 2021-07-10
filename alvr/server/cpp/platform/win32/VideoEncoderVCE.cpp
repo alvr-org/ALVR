@@ -290,20 +290,20 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 	amf::AMFSurfacePtr surface;
 	// Surface is cached by AMF.
 
-	if (m_Listener) {
-		if (m_Listener->GetStatistics()->CheckBitrateUpdated()) {
-			m_bitrateInMBits = m_Listener->GetStatistics()->GetBitrate();
-			amf_int64 bitRateIn = m_bitrateInMBits * 1000000L; // in bits
-			if (m_codec == ALVR_CODEC_H264)
-			{
-				surface->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
-			}
-			else
-			{
-				surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
-			}
-		}
-	}
+//	if (m_Listener) {
+//		if (m_Listener->GetStatistics()->CheckBitrateUpdated()) {
+//			m_bitrateInMBits = m_Listener->GetStatistics()->GetBitrate();
+//			amf_int64 bitRateIn = m_bitrateInMBits * 1000000L; // in bits
+//			if (m_codec == ALVR_CODEC_H264)
+//			{
+//				surface->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
+//			}
+//			else
+//			{
+//				surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
+//			}
+//		}
+//	}
 
 	AMF_THROW_IF(m_amfContext->AllocSurface(amf::AMF_MEMORY_DX11, CONVERTER_INPUT_FORMAT, m_renderWidth, m_renderHeight, &surface));
 	ID3D11Texture2D *textureDX11 = (ID3D11Texture2D*)surface->GetPlaneAt(0)->GetNative(); // no reference counting - do not Release()

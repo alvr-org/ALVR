@@ -15,10 +15,30 @@ Requires(postun): policycoreutils
 ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience. All games that work with an Oculus Rift (s) should work with ALVR.
 
 %pre
-%define alvrSrcDir %{_builddir}/alvr-%{version}/build/%{name}_server_linux
+%define alvrSrcDir %{_builddir}/ALVR-%{version}/build/%{name}_server_linux
 
 %prep
 %autosetup -D -n %{_builddir}
+
+# Check for snapd
+if ! [ -h /etc/systemd/system/multi-user.target.wants/snapd.service ]; then
+    sudo systemctl enable --now snapd
+fi
+
+# Check for rustup
+if ! snap list rustup >/dev/null 2>&1; then
+    sudo snap install rustup --classic 
+    . /etc/profile.d/snapd.sh
+fi
+
+# Check for default toolchain
+if ! rustup toolchain list | grep 'stable-x86_64-unknown-linux-gnu (default)' >/dev/null 2>&1; then 
+    rustup install stable
+fi
+
+%build
+cd %{_builddir}/ALVR-%{version}
+cargo xtask build-server --release
 
 %changelog
 * Tue Jul 13 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a1

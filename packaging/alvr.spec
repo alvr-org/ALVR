@@ -5,11 +5,12 @@ Summary: Stream VR games from your PC to your headset via Wi-Fi
 License: MIT
 Source: v%{version}.tar.gz
 BuildArch: x86_64
-BuildRequires: alsa-lib-devel cairo-gobject-devel clang-devel ffmpeg-devel gcc gcc-c++ libunwind-devel rust-atk-sys-devel rust-cairo-sys-rs-devel rust-gdk-sys-devel rust-glib-sys-devel rust-pango-sys-devel snapd vulkan-headers
+BuildRequires: alsa-lib-devel cairo-gobject-devel clang-devel ffmpeg-devel gcc gcc-c++ libunwind-devel rust-atk-sys-devel rust-cairo-sys-rs-devel rust-gdk-sys-devel rust-glib-sys-devel rust-pango-sys-devel snapd vulkan-headers vulkan-loader-devel
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 Requires: ffmpeg rpmfusion-free-release rpmfusion-nonfree-release steam
 Requires(post): policycoreutils
 Requires(postun): policycoreutils
+%global debug_package %{nil}
 
 %description
 ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience. All games that work with an Oculus Rift (s) should work with ALVR.
@@ -46,15 +47,15 @@ cargo xtask build-server --release
 
 %install
 # Create dirs 
-mkdir -p %{buildroot}{%{_bindir},%{_datadir}/{licenses/%{name},selinux/packages},%{_libdir},%{_libexecdir},%{_docdir}}}
+mkdir -p %{buildroot}{%{_bindir},%{_datadir}/{licenses/%{name},selinux/packages},%{_libdir},%{_libexecdir},%{_docdir}}
 
 # Copy files
-cp "%{alvrSrcDir}/%{name}_launcher" "%{buildroot}%{_bindir}"
+cp "%{alvrSrcDir}/bin/%{name}_launcher" "%{buildroot}%{_bindir}"
 chmod +x "%{buildroot}%{_bindir}/%{name}_launcher"
 cp -ar "%{alvrSrcDir}/lib64/"* "%{buildroot}%{_libdir}/"
 cp -ar "%{alvrSrcDir}/libexec/%{name}" "%{buildroot}%{_libexecdir}/"
 cp -ar "%{alvrSrcDir}/share/"* "%{buildroot}%{_datadir}/"
-cp -ar "%{alvrSrcDir}/licenses/"* "%{buildroot}%{_datadir}/licenses/%{name}"
+cp -ar "%{_builddir}/ALVR-%{version}/LICENSE" "%{buildroot}%{_datadir}/licenses/%{name}"
 
 # Create policy module for safestore
 #make -f /usr/share/selinux/devel/Makefile -C "%{ssSrcDir}/policies/"
@@ -64,14 +65,14 @@ cp -ar "%{alvrSrcDir}/licenses/"* "%{buildroot}%{_datadir}/licenses/%{name}"
 #semodule_package -o "%{buildroot}%{_datadir}/selinux/packages/%{name}-rsyncd.pp" -m "%{_builddir}/%{name}-rsyncd.mod"
 # Package and move 
 #bzip2 %{buildroot}%{_datadir}/selinux/packages/%{name}{,-rsyncd}.pp
+#%{_datadir}/selinux/packages/%{name}.pp.bz2
 
 
 %files 
 %{_bindir}/alvr_launcher
 %{_datadir}/%{name}
-#%{_datadir}/selinux/packages/%{name}.pp.bz2
-%{_datadir}/vulkan/explicit_layer.d/%{name}_%{arch}.json
-%{_docdir}/%{name}/
+%{_datadir}/licenses/%{name}
+%{_datadir}/vulkan/explicit_layer.d/%{name}_x86_64.json
 %{_libdir}/%{name}/
 %{_libdir}/lib%{name}_vulkan_layer.so
 %{_libexecdir}/%{name}/
@@ -79,14 +80,14 @@ cp -ar "%{alvrSrcDir}/licenses/"* "%{buildroot}%{_datadir}/licenses/%{name}"
 %clean
 rm -rf %{buildroot}
 
-%postun
+#%postun
 #if [ "${1}" = 0 ]; then
     # Unload SELinux policy
 #    semodule -nr %{name}
 #fi
 
 
-%post
+#%post
 # Check if SELinux is enabled and load policy
 #selinuxenabled && if [ $? -eq 0 ]; then
     # Load SELinux policy

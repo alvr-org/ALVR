@@ -10,6 +10,8 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 Requires: ffmpeg rpmfusion-free-release rpmfusion-nonfree-release steam
 Requires(post): policycoreutils
 Requires(postun): policycoreutils
+# Thank you for the useless documentation on the turd nugget that is debuginfo...
+%global debug_package %{nil} 
 
 %description
 ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience. All games that work with an Oculus Rift (s) should work with ALVR.

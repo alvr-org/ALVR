@@ -339,3 +339,8 @@ a {
 #loggingTable tr:nth-child(even) {
   background-color: #f2f2f2;
 }
+
+::-webkit-scrollbar {
+  width: 1em; }
+::-webkit-scrollbar-thumb {
+  background-color: #dee2e6; }

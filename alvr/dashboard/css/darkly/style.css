@@ -342,3 +342,8 @@ a:hover {
 #loggingTable tr:nth-child(even) {
   background-color: #1d1c1c;
 }
+
+::-webkit-scrollbar {
+  width: 1em; }
+::-webkit-scrollbar-thumb {
+  background-color: #444; }

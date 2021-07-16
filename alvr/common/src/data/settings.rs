@@ -32,12 +32,22 @@ pub struct Fov {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct LatencyUseFrametimeDesc {
+    #[schema(advanced, min = 10000, max = 100000, step = 1000)]
+    pub latency_target_maximum: u64,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AdaptiveBitrateDesc {
     #[schema(min = 10, max = 500, step = 1)]
     pub bitrate_maximum: u64,
 
-    #[schema(advanced, min = 1000, max = 25000, step = 100)]
+    #[schema(advanced, min = 1000, max = 25000, step = 500)]
     pub latency_target: u64,
+
+    #[schema(advanced)]
+    pub latency_use_frametime: Switch<LatencyUseFrametimeDesc>,
 
     #[schema(advanced, min = 500, max = 5000, step = 100)]
     pub latency_threshold: u64,
@@ -452,6 +462,12 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: AdaptiveBitrateDescDefault {
                     bitrate_maximum: 200,
                     latency_target: 12000,
+                    latency_use_frametime: SwitchDefault {
+                        enabled: true,
+                        content: LatencyUseFrametimeDescDefault {
+                            latency_target_maximum: 50000,
+                        },
+                    },
                     latency_threshold: 4000,
                 },
             },

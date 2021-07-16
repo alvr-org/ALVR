@@ -63,6 +63,8 @@ public:
 	bool m_enableAdaptiveBitrate;
 	uint64_t m_adaptiveBitrateMaximum;
 	uint64_t m_adaptiveBitrateTarget;
+	bool m_adaptiveBitrateUseFrametime;
+	uint64_t m_adaptiveBitrateTargetMaximum;
 	uint64_t m_adaptiveBitrateThreshold;
 	bool m_use10bitEncoder;
 

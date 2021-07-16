@@ -61,6 +61,8 @@ pub struct OpenvrConfig {
     pub enable_adaptive_bitrate: bool,
     pub bitrate_maximum: u64,
     pub latency_target: u64,
+    pub latency_use_frametime: bool,
+    pub latency_target_maximum: u64,
     pub latency_threshold: u64,
     pub controllers_tracking_system_name: String,
     pub controllers_manufacturer_name: String,

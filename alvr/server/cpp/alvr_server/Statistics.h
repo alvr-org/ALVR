@@ -129,6 +129,13 @@ private:
 		m_encodeSampleCount = 0;
 		m_encodeLatencyMin = UINT64_MAX;
 		m_encodeLatencyMax = 0;
+
+		if (m_framesPrevious > 0) {
+			m_adaptiveBitrateTarget = 1e6 / m_framesPrevious;
+		}
+		if (m_adaptiveBitrateTarget > m_adaptiveBitrateTargetMaximum) {
+			m_adaptiveBitrateTarget = m_adaptiveBitrateTargetMaximum;
+		}
 	}
 
 	void CheckAndResetSecond() {
@@ -166,6 +173,8 @@ private:
 	bool m_enableAdaptiveBitrate = Settings::Instance().m_enableAdaptiveBitrate;
 	uint64_t m_adaptiveBitrateMaximum = Settings::Instance().m_adaptiveBitrateMaximum;
 	uint64_t m_adaptiveBitrateTarget = Settings::Instance().m_adaptiveBitrateTarget;
+	bool m_adaptiveBitrateUseFrametime = Settings::Instance().m_adaptiveBitrateUseFrametime;
+	uint64_t m_adaptiveBitrateTargetMaximum = Settings::Instance().m_adaptiveBitrateTargetMaximum;
 	uint64_t m_adaptiveBitrateThreshold = Settings::Instance().m_adaptiveBitrateThreshold;
 
 	time_t m_current;

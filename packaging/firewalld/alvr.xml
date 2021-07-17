@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>Stream VR games from your PC to your headset via Wi-Fi</short>
+  <description>ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience. All games that work with an Oculus Rift (s) should work with ALVR.</description>
+  <port protocol="udp" port="9943"/>
+  <port protocol="udp" port="9944"/>
+</service>

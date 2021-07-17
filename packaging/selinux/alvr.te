@@ -1,0 +1,18 @@
+policy_module(alvr, 1.0.0)
+
+########################################
+#
+# Declarations
+#
+type alvr_t;
+type alvr_exec_t;
+type alvr_lib_t;
+type alvr_usr_t;
+init_daemon_domain(alvr_t, alvr_exec_t)
+
+########################################
+#
+# Local policy
+#
+# Allow executing common binaries
+corecmd_exec_bin(alvr_t)

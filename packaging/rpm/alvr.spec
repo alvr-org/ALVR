@@ -53,7 +53,7 @@ cp -ar "%{alvrBuildDir}/share/"* "%{buildroot}%{_datadir}/"
 
 # Copy source files
 cp -ar "%{alvrSrcDir}/LICENSE" "%{buildroot}%{_datadir}/licenses/%{name}"
-cp "%{alvrSrcDir}/packaging/firewalld/alvr.xml" "%{buildroot}%{_libdir}"
+cp "%{alvrSrcDir}/packaging/firewalld/alvr.xml" "%{buildroot}%{_libdir}/firewalld/services/"
 
 %files 
 %{_bindir}/%{name}_launcher

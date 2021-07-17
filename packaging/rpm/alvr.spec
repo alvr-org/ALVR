@@ -17,19 +17,18 @@ Requires(postun): policycoreutils
 ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience. All games that work with an Oculus Rift (s) should work with ALVR.
 
 %pre
-%define alvrSrcDir %{_builddir}/ALVR-%{version}
-%define alvrBuildDir %{alvrSrcDir}/build/%{name}_server_linux
+%define alvrBuildDir build/%{name}_server_linux
 
 %prep
 %autosetup -D -n %{_builddir}
 
 %build
-cd %{_builddir}/ALVR-%{version}
+# Build ALVR
 cargo xtask build-server --release
-make -f /usr/share/selinux/devel/Makefile -C "%{alvrSrcDir}/packaging/selinux"
-#cp "%{ssSrcDir}/policies/%{name}.pp" "%{buildroot}%{_datadir}/selinux/packages/" 
-#Package and move 
-#bzip2 %{buildroot}%{_datadir}/selinux/packages/%{name}{,-rsyncd}.pp
+# Build SELinux policy
+rm -f packaging/selinux/alvr.pp.bz2
+make -f /usr/share/selinux/devel/Makefile -C 'packaging/selinux'
+bzip2 "packaging/selinux/%{name}.pp" 
 
 %changelog
 * Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a3
@@ -42,18 +41,17 @@ make -f /usr/share/selinux/devel/Makefile -C "%{alvrSrcDir}/packaging/selinux"
 
 %install
 # Create dirs 
-mkdir -p %{buildroot}{%{_bindir},%{_datadir}/{licenses/%{name},selinux/packages},%{_libdir},%{_libexecdir},%{_docdir}}
-
+mkdir -p %{buildroot}{%{_bindir},%{_datadir}/{licenses/%{name},selinux/packages},%{_libdir}/firewalld/services,%{_libexecdir},%{_docdir}}
 # Copy build files
 cp "%{alvrBuildDir}/bin/%{name}_launcher" "%{buildroot}%{_bindir}"
 chmod +x "%{buildroot}%{_bindir}/%{name}_launcher"
 cp -ar "%{alvrBuildDir}/lib64/"* "%{buildroot}%{_libdir}/"
 cp -ar "%{alvrBuildDir}/libexec/%{name}" "%{buildroot}%{_libexecdir}/"
 cp -ar "%{alvrBuildDir}/share/"* "%{buildroot}%{_datadir}/"
-
 # Copy source files
-cp -ar "%{alvrSrcDir}/LICENSE" "%{buildroot}%{_datadir}/licenses/%{name}"
-cp "%{alvrSrcDir}/packaging/firewalld/alvr.xml" "%{buildroot}%{_libdir}/firewalld/services/"
+cp -ar "LICENSE" "%{buildroot}%{_datadir}/licenses/%{name}"
+cp "packaging/firewalld/alvr.xml" "%{buildroot}%{_libdir}/firewalld/services/"
+cp "packaging/selinux/%{name}.pp.bz2" "%{buildroot}%{_datadir}/selinux/packages/%{name}.pp.bz2"
 
 %files 
 %{_bindir}/%{name}_launcher
@@ -67,14 +65,13 @@ cp "%{alvrSrcDir}/packaging/firewalld/alvr.xml" "%{buildroot}%{_libdir}/firewall
 %{_libexecdir}/%{name}/
 
 %clean
-rm -rf %{buildroot}
+rm -rf "%{buildroot}"
 
 %postun
 if [ "${1}" = 0 ]; then
     # Unload SELinux policy
     semodule -nr %{name}
 fi
-
 
 %post
 # Check if SELinux is enabled and load policy

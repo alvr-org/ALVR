@@ -35,7 +35,6 @@ bzip2 "packaging/selinux/%{name}.pp"
     - Updated license
     - Added trailing newlines
     - Removed path from executable in freedesktop config
-* Sun Jul 18 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.0.0
     - Corrected license
     - Updated specfile to be a bit clearer
     - Added conditional logic for port labeling

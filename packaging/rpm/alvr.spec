@@ -1,8 +1,8 @@
 Name: alvr
 Version: 15.2.1
-Release: 1.0.0
+Release: 1.1.0
 Summary: Stream VR games from your PC to your headset via Wi-Fi
-License: Proprietary (alvr-org)
+License: MIT
 Source: v%{version}.tar.gz
 ExclusiveArch: x86_64
 BuildRequires: alsa-lib-devel cairo-gobject-devel cargo clang-devel ffmpeg-devel gcc gcc-c++ ImageMagick libunwind-devel rust rust-atk-sys-devel rust-cairo-sys-rs-devel rust-gdk-sys-devel rust-glib-sys-devel rust-pango-sys-devel vulkan-headers vulkan-loader-devel
@@ -13,7 +13,7 @@ Requires(postun): policycoreutils
 %global debug_package %{nil} 
 
 %description
-ALVR uses technologies like Asynchronous Timewarp and Fixed Foveated Rendering for a smoother experience. All games that work with an Oculus Rift (s) should work with ALVR.
+ALVR is an open source remote VR display which allows playing SteamVR games on a standalone headset such as Gear VR or Oculus Go/Quest.
 
 %pre
 %define alvrBuildDir build/%{name}_server_linux
@@ -30,6 +30,11 @@ make -f /usr/share/selinux/devel/Makefile -C 'packaging/selinux'
 bzip2 "packaging/selinux/%{name}.pp"
 
 %changelog
+* Sun Jul 18 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.0
+    - Updated descriptions
+    - Updated license
+    - Added trailing newlines
+    - Removed path from executable in freedesktop config
 * Sun Jul 18 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.0.0
     - Corrected license
     - Updated specfile to be a bit clearer
@@ -65,7 +70,6 @@ cp -ar "%{alvrBuildDir}/share/"* "%{buildroot}%{_datadir}/"
 cp -ar "LICENSE" "%{buildroot}%{_datadir}/licenses/%{name}/"
 cp "packaging/selinux/%{name}.pp.bz2" "%{buildroot}%{_datadir}/selinux/packages/"
 cp "packaging/freedesktop/%{name}.desktop" "%{buildroot}%{_datadir}/applications/"
-# Firewalld incorrectly uses lib instead of lib64 on 64-bit >:(
 cp "packaging/firewalld/alvr.xml" "%{buildroot}/%{_usr}/lib/firewalld/services/"
 # Generate png icons
 for res in 16x16 32x32 48x48 64x64 128x128 256x256; do

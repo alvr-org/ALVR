@@ -25,7 +25,7 @@ define([
                 "(Radeon (((VIVO|[2-9][0-9][0-9][0-9]) ?S*)|VE|LE|X(1?[0-9][0-5]0))" +
                     "|GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450)))" +
                     "|Intel" +
-                    "|Unknown",
+                    "|Unknown"
             );
 
             if (unsupportedGPURegex.test(gpu)) {
@@ -43,10 +43,7 @@ define([
             $("#setupWizard").remove();
             $("body").append(template);
             $(document).ready(() => {
-                uploadPreset.addUploadPreset(
-                    "importPlaceholder",
-                    alvrSettings.getWebClientId(),
-                );
+                uploadPreset.addUploadPreset("importPlaceholder", alvrSettings.getWebClientId());
 
                 $("#setupWizard").modal({
                     backdrop: "static",
@@ -83,10 +80,10 @@ define([
                     const target = $(ev.target);
 
                     const poseTimeOffsetTarget = $(
-                        "#_root_headset_controllers_content_poseTimeOffset",
+                        "#_root_headset_controllers_content_poseTimeOffset"
                     );
                     const clientsidePrediction = $(
-                        "#_root_headset_controllers_content_clientsidePrediction",
+                        "#_root_headset_controllers_content_clientsidePrediction"
                     );
 
                     switch (target.attr("value")) {
@@ -117,9 +114,7 @@ define([
                 $(".performanceOptions").change((ev) => {
                     const target = $(ev.target);
 
-                    const renderResolution = $(
-                        "#_root_video_renderResolution_scale-choice-",
-                    );
+                    const renderResolution = $("#_root_video_renderResolution_scale-choice-");
                     renderResolution
                         .parent()
                         .parent()
@@ -130,7 +125,7 @@ define([
                     alvrSettings.storeParam(renderResolution);
 
                     const targetResolution = $(
-                        "#_root_video_recommendedTargetResolution_scale-choice-",
+                        "#_root_video_recommendedTargetResolution_scale-choice-"
                     );
                     targetResolution
                         .parent()
@@ -141,18 +136,12 @@ define([
                     targetResolution.prop("checked", true);
                     alvrSettings.storeParam(targetResolution);
 
-                    const renderResolutionScale = $(
-                        "#_root_video_renderResolution_scale",
-                    );
+                    const renderResolutionScale = $("#_root_video_renderResolution_scale");
                     const targetResolutionScale = $(
-                        "#_root_video_recommendedTargetResolution_scale",
+                        "#_root_video_recommendedTargetResolution_scale"
                     );
-                    const enableFfrTarget = $(
-                        "#_root_video_foveatedRendering_enabled",
-                    );
-                    const ffrStrengthTarget = $(
-                        "#_root_video_foveatedRendering_content_strength",
-                    );
+                    const enableFfrTarget = $("#_root_video_foveatedRendering_enabled");
+                    const ffrStrengthTarget = $("#_root_video_foveatedRendering_content_strength");
                     const bitrateTarget = $("#_root_video_encodeBitrateMbs");
                     const preferredFps = $("#_root_video_preferredFps");
 
@@ -165,9 +154,7 @@ define([
                             ffrStrengthTarget.val(2);
                             preferredFps.val(72);
 
-                            const h264CodecTarget = $(
-                                "#_root_video_codec_H264-choice-",
-                            );
+                            const h264CodecTarget = $("#_root_video_codec_H264-choice-");
                             h264CodecTarget
                                 .parent()
                                 .parent()
@@ -184,9 +171,7 @@ define([
                             enableFfrTarget.prop("checked", false);
                             preferredFps.val(90);
 
-                            const hevcCodecTarget = $(
-                                "#_root_video_codec_HEVC-choice-",
-                            );
+                            const hevcCodecTarget = $("#_root_video_codec_HEVC-choice-");
                             hevcCodecTarget
                                 .parent()
                                 .parent()
@@ -226,7 +211,7 @@ define([
                     $(
                         $("#wizardMain")
                             .children()
-                            .get(currentPage + 1),
+                            .get(currentPage + 1)
                     ).show();
 
                     $("#wizardNextButton").blur();
@@ -247,7 +232,7 @@ define([
                     $(
                         $("#wizardMain")
                             .children()
-                            .get(currentPage - 1),
+                            .get(currentPage - 1)
                     ).show();
 
                     $("#wizardBackButton").blur();

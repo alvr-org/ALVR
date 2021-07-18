@@ -17,20 +17,19 @@ define([
             const _elementId = elementId;
             // this call need const variable unless you want them overwriten by the next call.
             $(document).ready(() => {
-                const selectElement = document.getElementById(
-                    "localeChange_" + _elementId,
-                );
+                const selectElement = document.getElementById("localeChange_" + _elementId);
                 // remove the "root": {}, from the main object
                 delete main.root;
                 // add english to the list
-                Object.assign(main, {"en" : true});
+                Object.assign(main, { en: true });
                 // keep only the key (languages codes) from the main object
                 const availableLanguage = Object.keys(main).sort();
                 // for each languages create the html element
                 availableLanguage.forEach((element) => {
-                    selectElement.options[
-                        selectElement.options.length
-                    ] = new Option(languageList[element].nativeName, element);
+                    selectElement.options[selectElement.options.length] = new Option(
+                        languageList[element].nativeName,
+                        element
+                    );
                 });
                 // select the current languages.
                 selectElement.value = sessionLocale;
@@ -38,9 +37,7 @@ define([
 
             // change locale after selected a new one
             $(document).on("change", "#localeChange_" + elementId, () => {
-                const storedLocale = document.getElementById(
-                    "localeChange_" + elementId,
-                ).value;
+                const storedLocale = document.getElementById("localeChange_" + elementId).value;
                 session.locale = storedLocale;
                 alvrSettings.updateSession(session);
                 alvrSettings.storeSession("other");

@@ -7,7 +7,7 @@ Source: v%{version}.tar.gz
 ExclusiveArch: x86_64
 BuildRequires: alsa-lib-devel cairo-gobject-devel cargo clang-devel ffmpeg-devel gcc gcc-c++ ImageMagick libunwind-devel rust rust-atk-sys-devel rust-cairo-sys-rs-devel rust-gdk-sys-devel rust-glib-sys-devel rust-pango-sys-devel vulkan-headers vulkan-loader-devel
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
-Requires: ffmpeg rpmfusion-free-release rpmfusion-nonfree-release steam
+Requires: ffmpeg steam
 Requires(post): policycoreutils
 Requires(postun): policycoreutils
 %global debug_package %{nil} 

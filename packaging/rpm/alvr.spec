@@ -1,6 +1,6 @@
 Name: alvr
 Version: 15.2.1
-Release: 0.0.a7
+Release: 0.0.b1
 Summary: Stream VR games from your PC to your headset via Wi-Fi
 License: MIT
 Source: v%{version}.tar.gz
@@ -31,6 +31,9 @@ make -f /usr/share/selinux/devel/Makefile -C 'packaging/selinux'
 bzip2 "packaging/selinux/%{name}.pp" 
 
 %changelog
+* Sun Jul 18 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.b1
+    - Added freedesktop desktop file for Gnome / KDE
+    - Updated %post script to reload firewalld
 * Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a6
     - Added SELinux port restrictions
 * Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a5
@@ -47,7 +50,7 @@ bzip2 "packaging/selinux/%{name}.pp"
 
 %install
 # Create dirs 
-mkdir -p %{buildroot}{%{_bindir},%{_datadir}/{licenses/%{name},selinux/packages},%{_libdir},%{_usr}/lib/firewalld/services,%{_libexecdir},%{_docdir}}
+mkdir -p %{buildroot}{%{_bindir},%{_datadir}/{applications,licenses/%{name},selinux/packages},%{_libdir},%{_usr}/lib/firewalld/services,%{_libexecdir},%{_docdir}}
 # Copy build files
 cp "%{alvrBuildDir}/bin/%{name}_launcher" "%{buildroot}%{_bindir}"
 chmod +x "%{buildroot}%{_bindir}/%{name}_launcher"
@@ -55,17 +58,19 @@ cp -ar "%{alvrBuildDir}/lib64/"* "%{buildroot}%{_libdir}/"
 cp -ar "%{alvrBuildDir}/libexec/%{name}" "%{buildroot}%{_libexecdir}/"
 cp -ar "%{alvrBuildDir}/share/"* "%{buildroot}%{_datadir}/"
 # Copy source files
-cp -ar "LICENSE" "%{buildroot}%{_datadir}/licenses/%{name}"
-cp "packaging/selinux/%{name}.pp.bz2" "%{buildroot}%{_datadir}/selinux/packages/%{name}.pp.bz2"
+cp -ar "LICENSE" "%{buildroot}%{_datadir}/licenses/%{name}/"
+cp "packaging/selinux/%{name}.pp.bz2" "%{buildroot}%{_datadir}/selinux/packages/"
+cp "packaging/freedesktop/%{name}.desktop" "%{buildroot}%{_datadir}/applications/"
 # Firewalld incorrectly uses lib instead of lib64 on 64-bit >:(
 cp "packaging/firewalld/alvr.xml" "%{buildroot}/%{_usr}/lib/firewalld/services/"
 
 %files 
 %{_bindir}/%{name}_launcher
-%{_datadir}/%{name}
+%{_datadir}/%{name}/
 %{_datadir}/licenses/%{name}
 %{_datadir}/selinux/packages/%{name}.pp.bz2
 %{_datadir}/vulkan/explicit_layer.d/%{name}_x86_64.json
+%{_datadir}/applications/%{name}.desktop
 %{_libdir}/%{name}/
 %{_libdir}/lib%{name}_vulkan_layer.so
 %{_libexecdir}/%{name}/
@@ -82,8 +87,11 @@ if [ "${1}" = 0 ]; then
 fi
 
 %post
+# Check if firewalld is running and reload
+if firewall-cmd --get-active-zones >/dev/null 2>&1; then firewall-cmd --reload; fi
+
 # Check if SELinux is enabled and load policy
-selinuxenabled && if [ $? -eq 0 ]; then
+if selinuxenabled; then
     # Load SELinux policy
     semodule -ni %{_datadir}/selinux/packages/%{name}.pp.bz2
     load_policy

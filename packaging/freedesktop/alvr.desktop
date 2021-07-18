@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=ALVR
+GenericName=Game
+Comment=Stream VR games from your PC to your headset via Wi-Fi
+Exec=/usr/bin/alvr_launcher
+Icon=alvr
+Categories=Game;
+StartupNotify=true
+PrefersNonDefaultGPU=true
+X-KDE-RunOnDiscreteGpu=true

@@ -1,4 +1,4 @@
-policy_module(alvr, 1.1.0)
+policy_module(alvr, 1.2.0)
 
 ########################################
 #
@@ -14,7 +14,5 @@ init_daemon_domain(alvr_t, alvr_exec_t)
 #
 # Local policy
 #
-# Allow executing common binaries
-corecmd_exec_bin(alvr_t)
 # Allow specific port listening only
 corenet_port(alvr_port_t)

@@ -5,7 +5,7 @@ Summary: Stream VR games from your PC to your headset via Wi-Fi
 License: MIT
 Source: v%{version}.tar.gz
 ExclusiveArch: x86_64
-BuildRequires: alsa-lib-devel cairo-gobject-devel cargo clang-devel ffmpeg-devel gcc gcc-c++ libunwind-devel rust rust-atk-sys-devel rust-cairo-sys-rs-devel rust-gdk-sys-devel rust-glib-sys-devel rust-pango-sys-devel vulkan-headers vulkan-loader-devel
+BuildRequires: alsa-lib-devel cairo-gobject-devel cargo clang-devel ffmpeg-devel gcc gcc-c++ ImageMagick libunwind-devel rust rust-atk-sys-devel rust-cairo-sys-rs-devel rust-gdk-sys-devel rust-glib-sys-devel rust-pango-sys-devel vulkan-headers vulkan-loader-devel
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 Requires: ffmpeg rpmfusion-free-release rpmfusion-nonfree-release steam
 Requires(post): policycoreutils
@@ -28,12 +28,13 @@ cargo xtask build-server --release
 # Build SELinux policy
 rm -f packaging/selinux/alvr.pp.bz2
 make -f /usr/share/selinux/devel/Makefile -C 'packaging/selinux'
-bzip2 "packaging/selinux/%{name}.pp" 
+bzip2 "packaging/selinux/%{name}.pp"
 
 %changelog
 * Sun Jul 18 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.b1
     - Added freedesktop desktop file for Gnome / KDE
     - Updated %post script to reload firewalld
+    - Added ImageMagick png generation for icons
 * Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a6
     - Added SELinux port restrictions
 * Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a5
@@ -61,16 +62,28 @@ cp -ar "%{alvrBuildDir}/share/"* "%{buildroot}%{_datadir}/"
 cp -ar "LICENSE" "%{buildroot}%{_datadir}/licenses/%{name}/"
 cp "packaging/selinux/%{name}.pp.bz2" "%{buildroot}%{_datadir}/selinux/packages/"
 cp "packaging/freedesktop/%{name}.desktop" "%{buildroot}%{_datadir}/applications/"
+
 # Firewalld incorrectly uses lib instead of lib64 on 64-bit >:(
 cp "packaging/firewalld/alvr.xml" "%{buildroot}/%{_usr}/lib/firewalld/services/"
+# Generate png icons
+for res in 16 32 48 64 128 256; do
+    mkdir -p "%{buildroot}%{_datadir}/icons/hicolor/${res}x${res}/apps"
+    convert 'alvr/launcher/res/launcher.ico' -thumbnail "${res}x${res}" -alpha on -background none -flatten "%{buildroot}%{_datadir}/icons/hicolor/${res}x${res}/apps/alvr.png"
+done
 
 %files 
 %{_bindir}/%{name}_launcher
 %{_datadir}/%{name}/
+%{_datadir}/applications/%{name}.desktop
+%{_datadir}/icons/hicolor/16x16/apps/alvr.png
+%{_datadir}/icons/hicolor/32x32/apps/alvr.png
+%{_datadir}/icons/hicolor/48x48/apps/alvr.png
+%{_datadir}/icons/hicolor/64x64/apps/alvr.png
+%{_datadir}/icons/hicolor/128x128/apps/alvr.png
+%{_datadir}/icons/hicolor/256x256/apps/alvr.png
 %{_datadir}/licenses/%{name}
 %{_datadir}/selinux/packages/%{name}.pp.bz2
 %{_datadir}/vulkan/explicit_layer.d/%{name}_x86_64.json
-%{_datadir}/applications/%{name}.desktop
 %{_libdir}/%{name}/
 %{_libdir}/lib%{name}_vulkan_layer.so
 %{_libexecdir}/%{name}/
@@ -88,7 +101,9 @@ fi
 
 %post
 # Check if firewalld is running and reload
-if firewall-cmd --get-active-zones >/dev/null 2>&1; then firewall-cmd --reload; fi
+if firewall-cmd --get-active-zones >/dev/null 2>&1; then 
+    firewall-cmd --reload
+fi
 
 # Check if SELinux is enabled and load policy
 if selinuxenabled; then
@@ -97,6 +112,6 @@ if selinuxenabled; then
     load_policy
     # Restore contexts
     restorecon -FR "%{_bindir}/%{name}_launcher" %{_libdir}/{%{name},lib%{name}_vulkan_layer.so} "%{_libexecdir}/%{name}"
-    # Label ports
-    semanage port -a -t "%{name}_port_t" -p udp 9943-9944
+    # Label ports (ignore errors about it already existing)
+    semanage port -a -t "%{name}_port_t" -p udp 9943-9944 >/dev/null 2>&1
 fi

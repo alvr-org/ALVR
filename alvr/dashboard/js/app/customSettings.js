@@ -10,7 +10,7 @@ define([
     "json!app/resources/ValveIndex.json",
     "json!app/resources/HTCViveWand.json",
     "json!app/resources/Quest2Touch.json",
-    "json!app/resources/HTCViveTracker.json"
+    "json!app/resources/HTCViveTracker.json",
 ], function (
     i18n,
     i18nWizard,
@@ -54,9 +54,7 @@ define([
         };
 
         function setControllerEmulation() {
-            let controller = $(
-                "#_root_headset_controllers_content_controllerMode",
-            );
+            let controller = $("#_root_headset_controllers_content_controllerMode");
             controller.unbind();
             controller.after(
                 alvrSettings.getHelpReset(
@@ -66,7 +64,7 @@ define([
                     (postFix = ""),
                     "controllerMode",
                     "Oculus Quest 2"
-                ),
+                )
             );
             controller.parent().addClass("special");
 
@@ -82,33 +80,23 @@ define([
                 q2touch,
                 q2touch,
                 vivetracker,
-                vivetracker
+                vivetracker,
             ];
 
             controller.append(`<option value="0">Oculus Rift S</option>`);
-            controller.append(
-                `<option value="1">Oculus Rift S (no handtracking pinch)</option>`,
-            );
+            controller.append(`<option value="1">Oculus Rift S (no handtracking pinch)</option>`);
             controller.append(`<option value="2">Valve Index</option>`);
-            controller.append(
-                `<option value="3">Valve Index (no handtracking pinch)</option>`,
-            );
+            controller.append(`<option value="3">Valve Index (no handtracking pinch)</option>`);
             controller.append(`<option value="4">HTC Vive</option>`);
-            controller.append(
-                `<option value="5">HTC Vive (no handtracking pinch)</option>`,
-            );
+            controller.append(`<option value="5">HTC Vive (no handtracking pinch)</option>`);
             controller.append(`<option value="6">Oculus Quest 2</option>`);
-            controller.append(
-                `<option value="7">Oculus Quest 2 (no handtracking pinch)</option>`,
-            );
+            controller.append(`<option value="7">Oculus Quest 2 (no handtracking pinch)</option>`);
             controller.append(`<option value="8">HTC Vive Tracker</option>`);
             controller.append(
-                `<option value="9">HTC Vive Tracker (no handtracking pinch)</option>`,
+                `<option value="9">HTC Vive Tracker (no handtracking pinch)</option>`
             );
 
-            const select = new Selectal(
-                "#_root_headset_controllers_content_controllerMode",
-            );
+            const select = new Selectal("#_root_headset_controllers_content_controllerMode");
             controller = $("#_root_headset_controllers_content_controllerMode");
 
             controller.val(controllerMode.val());
@@ -138,7 +126,7 @@ define([
                     (postFix = ""),
                     "headsetEmulationMode",
                     "Oculus Quest 2"
-                ),
+                )
             );
             headset.parent().addClass("special");
 
@@ -168,31 +156,17 @@ define([
 
         function setVideoOptions() {
             let dropdown = $("#_root_video_resolutionDropdown");
-            dropdown.after(
-                alvrSettings.getHelpReset(
-                    "resolutionDropdown",
-                    "_root_video",
-                    "100",
-                ),
-            );
+            dropdown.after(alvrSettings.getHelpReset("resolutionDropdown", "_root_video", "100"));
             dropdown.parent().addClass("special");
             dropdown.unbind();
 
             const renderScale = $("#_root_video_renderResolution_scale");
-            const targetScale = $(
-                "#_root_video_recommendedTargetResolution_scale",
-            );
-            const renderScaleVariant = $(
-                "#_root_video_renderResolution_scale-choice-",
-            );
-            const targetScaleVariant = $(
-                "#_root_video_recommendedTargetResolution_scale-choice-",
-            );
+            const targetScale = $("#_root_video_recommendedTargetResolution_scale");
+            const renderScaleVariant = $("#_root_video_renderResolution_scale-choice-");
+            const targetScaleVariant = $("#_root_video_recommendedTargetResolution_scale-choice-");
 
             video_scales.forEach((scale) => {
-                dropdown.append(
-                    `<option value="${scale}"> ${scale}% </option>`,
-                );
+                dropdown.append(`<option value="${scale}"> ${scale}% </option>`);
             });
 
             const select = new Selectal("#_root_video_resolutionDropdown");
@@ -206,9 +180,7 @@ define([
             let update = false;
 
             const updateDropdown = function () {
-                useScale =
-                    renderScaleVariant.prop("checked") &&
-                    targetScaleVariant.prop("checked");
+                useScale = renderScaleVariant.prop("checked") && targetScaleVariant.prop("checked");
                 sameScale = renderScale.val() == targetScale.val();
                 if (useScale && sameScale) {
                     if (video_scales.indexOf(renderScale.val() * 100) != -1) {
@@ -230,7 +202,7 @@ define([
             updateDropdown();
 
             $(
-                "#_root_video_renderResolution_scale-choice-,#_root_video_recommendedTargetResolution_scale-choice-,#_root_video_renderResolution_scale,#_root_video_recommendedTargetResolution_scale",
+                "#_root_video_renderResolution_scale-choice-,#_root_video_recommendedTargetResolution_scale-choice-,#_root_video_renderResolution_scale,#_root_video_recommendedTargetResolution_scale"
             ).change((ev) => {
                 if (update) {
                     return;
@@ -292,9 +264,7 @@ define([
 
             function setRefreshRateRadio() {
                 $("#displayRefreshRateCustomButton").remove();
-                $("input:radio[name='displayRefreshRate']")
-                    .parent()
-                    .removeClass("active");
+                $("input:radio[name='displayRefreshRate']").parent().removeClass("active");
 
                 switch (preferredFps.val()) {
                     case "120":
@@ -305,12 +275,12 @@ define([
                         $(
                             "input:radio[name='displayRefreshRate'][value='" +
                                 preferredFps.val() +
-                                "']",
+                                "']"
                         ).prop("checked", "true");
                         $(
                             "input:radio[name='displayRefreshRate'][value='" +
                                 preferredFps.val() +
-                                "']",
+                                "']"
                         )
                             .parent()
                             .addClass("active");
@@ -344,7 +314,7 @@ define([
                         72,
                         (postFix = ""),
                         "displayRefreshRate",
-                        "72 Hz",
+                        "72 Hz"
                     )}
                     </div>
                     <div class="btn-group" data-toggle="buttons" id="displayRefreshRateButtons">
@@ -375,20 +345,14 @@ define([
 
             $(document).ready(() => {
                 $("input:radio[name='displayRefreshRate']").on("change", () => {
-                    setRefreshRateValue(
-                        $(
-                            "input:radio:checked[name='displayRefreshRate']",
-                        ).val(),
-                    );
+                    setRefreshRateValue($("input:radio:checked[name='displayRefreshRate']").val());
                 });
                 preferredFps.on("change", () => {
                     setRefreshRateRadio();
                 });
 
                 $("#_root_video_displayRefreshRate").on("change", (ev) => {
-                    setRefreshRateValue(
-                        $("#_root_video_displayRefreshRate").val(),
-                    );
+                    setRefreshRateValue($("#_root_video_displayRefreshRate").val());
                 });
 
                 setRefreshRateRadio();
@@ -405,11 +369,9 @@ define([
                 el.append(`<option value="${deviceName}"> ${deviceName} </option>`);
             });
 
-            let currentSetting = alvrSettings
-                .getSession()
-                .sessionSettings
-                .audio[section]
-                .content[targetDevice];
+            let currentSetting = alvrSettings.getSession().sessionSettings.audio[section].content[
+                targetDevice
+            ];
 
             //select the current option in dropdown
             if (currentSetting.variant == "default") {
@@ -426,24 +388,29 @@ define([
                 if (!updating) {
                     updating = true;
 
-                    target
-                        .children()
-                        .first()
-                        .children()
-                        .filter(".active")
-                        .removeClass("active");
+                    target.children().first().children().filter(".active").removeClass("active");
 
                     let selection = $(ev.target).val();
                     if (selection == "default") {
-                        let targetVariant = $("#_root_audio_" + section + "_content_" + targetDevice + "_default-choice-");
+                        let targetVariant = $(
+                            "#_root_audio_" +
+                                section +
+                                "_content_" +
+                                targetDevice +
+                                "_default-choice-"
+                        );
                         targetVariant.prop("checked", true);
                         alvrSettings.storeParam(targetVariant);
                     } else {
-                        let targetVariant = $("#_root_audio_" + section + "_content_" + targetDevice + "_name-choice-");
+                        let targetVariant = $(
+                            "#_root_audio_" + section + "_content_" + targetDevice + "_name-choice-"
+                        );
                         targetVariant.prop("checked", true);
                         alvrSettings.storeParam(targetVariant);
 
-                        let targetName = $("#_root_audio_" + section + "_content_" + targetDevice + "_name");
+                        let targetName = $(
+                            "#_root_audio_" + section + "_content_" + targetDevice + "_name"
+                        );
                         targetName.val(selection);
                         alvrSettings.storeParam(targetName);
                     }
@@ -456,10 +423,7 @@ define([
                 if (!updating) {
                     updating = true;
 
-                    let currentSetting = alvrSettings
-                        .getSession()
-                        .sessionSettings
-                        .audio[section]
+                    let currentSetting = alvrSettings.getSession().sessionSettings.audio[section]
                         .content[targetDevice];
 
                     if (currentSetting.variant == "default") {
@@ -483,11 +447,9 @@ define([
         function setTrackingSpeed() {
             const el = $("#_root_headset_controllers_content_trackingSpeed");
 
-            const poseTimeOffset = $(
-                "#_root_headset_controllers_content_poseTimeOffset",
-            );
+            const poseTimeOffset = $("#_root_headset_controllers_content_poseTimeOffset");
             const clientsidePrediction = $(
-                "#_root_headset_controllers_content_clientsidePrediction",
+                "#_root_headset_controllers_content_clientsidePrediction"
             );
 
             const oculus = i18nWizard.oculusTracking;
@@ -503,45 +465,39 @@ define([
 
             function setTrackingRadio() {
                 $("#trackingSpeedCustomButton").remove();
-                $("input:radio[name='trackingSpeed']")
-                    .parent()
-                    .removeClass("active");
+                $("input:radio[name='trackingSpeed']").parent().removeClass("active");
 
                 if (clientsidePrediction.is(":checked")) {
-                    $("input:radio[name='trackingSpeed'][value='oculus']").prop(
-                        "checked",
-                        "true",
-                    );
+                    $("input:radio[name='trackingSpeed'][value='oculus']").prop("checked", "true");
                     $("input:radio[name='trackingSpeed'][value='oculus']")
                         .parent()
                         .addClass("active");
                 } else {
                     switch (poseTimeOffset.val()) {
                         case "-1":
-                            $(
-                                "input:radio[name='trackingSpeed'][value='fast']",
-                            ).prop("checked", "true");
+                            $("input:radio[name='trackingSpeed'][value='fast']").prop(
+                                "checked",
+                                "true"
+                            );
                             $("input:radio[name='trackingSpeed'][value='fast']")
                                 .parent()
                                 .addClass("active");
                             break;
                         case "-0.03":
-                            $(
-                                "input:radio[name='trackingSpeed'][value='medium']",
-                            ).prop("checked", "true");
-                            $(
-                                "input:radio[name='trackingSpeed'][value='medium']",
-                            )
+                            $("input:radio[name='trackingSpeed'][value='medium']").prop(
+                                "checked",
+                                "true"
+                            );
+                            $("input:radio[name='trackingSpeed'][value='medium']")
                                 .parent()
                                 .addClass("active");
                             break;
                         case "0.01":
-                            $(
-                                "input:radio[name='trackingSpeed'][value='normal']",
-                            ).prop("checked", "true");
-                            $(
-                                "input:radio[name='trackingSpeed'][value='normal']",
-                            )
+                            $("input:radio[name='trackingSpeed'][value='normal']").prop(
+                                "checked",
+                                "true"
+                            );
+                            $("input:radio[name='trackingSpeed'][value='normal']")
                                 .parent()
                                 .addClass("active");
                             break;
@@ -589,7 +545,7 @@ define([
                         "normal",
                         (postFix = ""),
                         "trackingSpeed",
-                        i18nWizard.normalTracking,
+                        i18nWizard.normalTracking
                     )}
                         </div>
                         <div class="btn-group" data-toggle="buttons" id="trackingSpeedButtons">
@@ -615,9 +571,7 @@ define([
 
             $(document).ready(() => {
                 $("input:radio[name='trackingSpeed']").on("change", () => {
-                    setTrackingValue(
-                        $("input:radio:checked[name='trackingSpeed']").val(),
-                    );
+                    setTrackingValue($("input:radio:checked[name='trackingSpeed']").val());
                 });
                 poseTimeOffset.on("change", () => {
                     setTrackingRadio();
@@ -626,16 +580,9 @@ define([
                     setTrackingRadio();
                 });
 
-                $("#_root_headset_controllers_content_trackingSpeed").on(
-                    "change",
-                    (ev) => {
-                        setTrackingValue(
-                            $(
-                                "#_root_headset_controllers_content_trackingSpeed",
-                            ).val(),
-                        );
-                    },
-                );
+                $("#_root_headset_controllers_content_trackingSpeed").on("change", (ev) => {
+                    setTrackingValue($("#_root_headset_controllers_content_trackingSpeed").val());
+                });
 
                 setTrackingRadio();
             });
@@ -672,29 +619,23 @@ define([
                 }
             }
 
-            window
-                .matchMedia("(prefers-color-scheme: dark)")
-                .addEventListener("change", (e) => {
-                    themeColor = e.matches ? "darkly" : "classic";
-                    bootstrap.attr("href", themes[themeColor]["bootstrap"]);
-                    selectal.attr("href", themes[themeColor]["selectal"]);
-                    style.attr("href", themes[themeColor]["style"]);
-                });
+            window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+                themeColor = e.matches ? "darkly" : "classic";
+                bootstrap.attr("href", themes[themeColor]["bootstrap"]);
+                selectal.attr("href", themes[themeColor]["selectal"]);
+                style.attr("href", themes[themeColor]["style"]);
+            });
 
             bootstrap.attr("href", themes[themeColor]["bootstrap"]);
             selectal.attr("href", themes[themeColor]["selectal"]);
             style.attr("href", themes[themeColor]["style"]);
 
             themeSelector.on("change", function () {
-                themeColor = $(
-                    "input[name='theme']:checked",
-                    "#_root_extra_theme-choice-",
-                ).val();
+                themeColor = $("input[name='theme']:checked", "#_root_extra_theme-choice-").val();
                 if (themeColor == "systemDefault") {
                     if (
                         window.matchMedia &&
-                        window.matchMedia("(prefers-color-scheme: dark)")
-                            .matches
+                        window.matchMedia("(prefers-color-scheme: dark)").matches
                     ) {
                         themeColor = "darkly";
                     } else {

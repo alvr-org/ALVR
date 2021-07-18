@@ -1,4 +1,4 @@
 define({
     "statistics.title": "Statistiken",
-    "statistics.msg": "Statistiken Information erhalten"
+    "statistics.msg": "Statistiken Information erhalten",
 });

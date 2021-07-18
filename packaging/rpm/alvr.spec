@@ -1,6 +1,6 @@
 Name: alvr
 Version: 15.2.1
-Release: 0.0.a6
+Release: 0.0.a7
 Summary: Stream VR games from your PC to your headset via Wi-Fi
 License: MIT
 Source: v%{version}.tar.gz
@@ -31,7 +31,7 @@ make -f /usr/share/selinux/devel/Makefile -C 'packaging/selinux'
 bzip2 "packaging/selinux/%{name}.pp" 
 
 %changelog
-* Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a5
+* Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a6
     - Added SELinux port restrictions
 * Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a5
     - Fixed restorecon
@@ -90,5 +90,5 @@ selinuxenabled && if [ $? -eq 0 ]; then
     # Restore contexts
     restorecon -FR "%{_bindir}/%{name}_launcher" %{_libdir}/{%{name},lib%{name}_vulkan_layer.so} "%{_libexecdir}/%{name}"
     # Label ports
-    semanage port -a -t "${name}_port_t" -p udp 9943-9944
+    semanage port -a -t "%{name}_port_t" -p udp 9943-9944
 fi

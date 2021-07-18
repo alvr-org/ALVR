@@ -30,6 +30,7 @@ SUBCOMMANDS:
     kill-oculus         Kill all Oculus processes
     bump-versions       Bump server and client package versions
     clippy              Show warnings for selected clippy lints
+    prettier            Format JS and CSS files with prettier; Requires Node.js and NPM.
 
 FLAGS:
     --fetch             Update crates with "cargo update". Used only for build subcommands
@@ -510,6 +511,10 @@ fn clippy() {
     .unwrap();
 }
 
+fn prettier() {
+    command::run("npx -p prettier@2.2.1 prettier --write '**/*[!.min].{css,js}'").unwrap();
+}
+
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
 
@@ -549,6 +554,7 @@ fn main() {
                 "kill-oculus" => kill_oculus_processes(),
                 "bump-versions" => version::bump_version(version, is_nightly),
                 "clippy" => clippy(),
+                "prettier" => prettier(),
                 _ => {
                     println!("\nUnrecognized subcommand.");
                     println!("{}", HELP_STR);

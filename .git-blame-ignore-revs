@@ -1,0 +1,4 @@
+# Run this to use this: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# commit    Run `cargo xtask prettier`
+49d47064164a4684081b36294fa929928cfb757a

@@ -3,7 +3,7 @@ Version: 15.2.1
 Release: 1.1.0
 Summary: Stream VR games from your PC to your headset via Wi-Fi
 License: MIT
-Source: v%{version}.tar.gz
+Source: https://github.com/alvr-org/ALVR/archive/refs/tags/v%{version}.tar.gz
 ExclusiveArch: x86_64
 BuildRequires: alsa-lib-devel cairo-gobject-devel cargo clang-devel ffmpeg-devel gcc gcc-c++ ImageMagick libunwind-devel rust rust-atk-sys-devel rust-cairo-sys-rs-devel rust-gdk-sys-devel rust-glib-sys-devel rust-pango-sys-devel vulkan-headers vulkan-loader-devel
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -41,7 +41,7 @@ bzip2 "packaging/selinux/%{name}.pp"
     - Added conditional logic for port labeling
 * Sun Jul 18 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.b1
     - Added freedesktop desktop file for Gnome / KDE
-    - Updated %post script to reload firewalld
+    - Updated post script to reload firewalld
     - Added ImageMagick png generation for icons
 * Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a6
     - Added SELinux port restrictions

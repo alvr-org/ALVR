@@ -512,7 +512,7 @@ fn clippy() {
 }
 
 fn prettier() {
-    command::run("npx -p prettier@2.2.1 prettier --write '**/*[!.min].{css,js}'").unwrap();
+    command::run("npx -p prettier@2.2.1 prettier --config alvr/xtask/.prettierrc --write '**/*[!.min].{css,js}'").unwrap();
 }
 
 fn main() {

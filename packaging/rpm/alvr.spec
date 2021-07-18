@@ -33,6 +33,7 @@ bzip2 "packaging/selinux/%{name}.pp"
 * Sun Jul 18 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.0.0
     - Corrected license
     - Updated specfile to be a bit clearer
+    - Added conditional logic for port labeling
 * Sun Jul 18 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.b1
     - Added freedesktop desktop file for Gnome / KDE
     - Updated %post script to reload firewalld
@@ -114,6 +115,8 @@ if selinuxenabled; then
     load_policy
     # Restore contexts
     restorecon -FR "%{_bindir}/%{name}_launcher" %{_libdir}/{%{name},lib%{name}_vulkan_layer.so} "%{_libexecdir}/%{name}"
-    # Label ports (ignore errors about it already existing)
-    semanage port -a -t "%{name}_port_t" -p udp 9943-9944 >/dev/null 2>&1
+    # Label ports if they're unlabeled
+    if ! semanage port -l | grep -P "%{name}_port_t\s+udp\s+9943-9944" >/dev/null 2>&1; then
+        semanage port -a -t "%{name}_port_t" -p udp 9943-9944
+    fi
 fi

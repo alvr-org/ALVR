@@ -81,7 +81,6 @@ fn bump_spec_version(new_version: &str) {
     fs::write(spec_path, spec).unwrap();
 }
 
-
 pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
     let mut version = maybe_version.unwrap_or_else(version);
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Basic script to add / remove firewall configuration for ALVR
-# Usage: ./alvr_fw_config.sh firewalld|iptables|ufw add|remove
+# Usage: ./alvr_fw_config.sh add|remove
 # Exit codes: 
 # 1 - Invalid command
 # 2 - Invalid action
@@ -11,8 +11,10 @@ iptables_cfg() {
 }
 
 firewalld_cfg() {
+    # Iterate around each active zone
     for zone in $(firewall-cmd --get-active-zones | grep -P '^\w+.*\w$'); do 
         if [ "${1}" == 'add' ]; then
+            # If running or permanent alvr service is missing, add it
             if ! firewall-cmd --zone="${zone}" --list-services | grep 'alvr' >/dev/null 2>&1; then
                 firewall-cmd --zone="${zone}"  --add-service='alvr'
             fi
@@ -20,6 +22,7 @@ firewalld_cfg() {
                 firewall-cmd --zone="${zone}"  --add-service='alvr' --permanent
             fi
         elif [ "${1}" == 'remove' ]; then
+            # If running or persistent alvr service exists, remove it
             if firewall-cmd --zone="${zone}" --list-services | grep 'alvr' >/dev/null 2>&1; then
                 firewall-cmd --zone="${zone}"  --remove-service='alvr'
             fi
@@ -33,16 +36,26 @@ firewalld_cfg() {
 }
 
 ufw_cfg() {
-    exit 99
+    if [ "${1}" == 'add' ] && ! ufw status | grep 'ALVR' >/dev/null 2>&1; then
+        ufw allow 'ALVR'
+    elif [ "${1}" == 'remove' ] && ufw status | grep 'ALVR' >/dev/null 2>&1; then
+        ufw delete allow 'ALVR'
+    else
+        exit 2
+    fi
 }
 
 main() {
-    case "${1,,}" in
-        'firewalld') firewalld_cfg "${2,,}";;
-        'iptables') iptables_cfg "${2,,}";;
-        'ufw') ufw_cfg "${2,,}";;
-        *) exit 1
-    esac
+    # Check if firewall-cmd exists and firewalld is running
+    if which firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
+        firewalld_cfg "${1,,}"
+    # Check if ufw exists and is running
+    elif which ufw >/dev/null 2>&1 && ! ufw status | grep 'Status: inactive' >/dev/null 2>&1; then
+        ufw_cfg "${1,,}"
+    # Check if iptables exists
+    elif which iptables >/dev/null 2>&1; then
+        iptables_cfg "${1,,}"
+    fi
 }
 
 main "${@}"

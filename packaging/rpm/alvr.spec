@@ -30,6 +30,8 @@ make -f /usr/share/selinux/devel/Makefile -C 'packaging/selinux'
 bzip2 "packaging/selinux/%{name}.pp"
 
 %changelog
+* Mon Jul 19 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.0.1
+    - Changed source location for firewalld config
 * Sun Jul 18 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.0.0
     - Updated descriptions
     - Updated license
@@ -69,7 +71,7 @@ cp -ar "%{alvrBuildDir}/share/"* "%{buildroot}%{_datadir}/"
 cp -ar "LICENSE" "%{buildroot}%{_datadir}/licenses/%{name}/"
 cp "packaging/selinux/%{name}.pp.bz2" "%{buildroot}%{_datadir}/selinux/packages/"
 cp "packaging/freedesktop/%{name}.desktop" "%{buildroot}%{_datadir}/applications/"
-cp "packaging/firewalld/alvr.xml" "%{buildroot}/%{_usr}/lib/firewalld/services/"
+cp "packaging/firewall/firewalld-alvr.xml" "%{buildroot}/%{_usr}/lib/firewalld/services/alvr.xml"
 # Generate png icons
 for res in 16x16 32x32 48x48 64x64 128x128 256x256; do
     mkdir -p "%{buildroot}%{_datadir}/icons/hicolor/${res}/apps"

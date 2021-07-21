@@ -1,4 +1,5 @@
 use crate::command;
+use crate::workspace_dir;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -33,7 +34,7 @@ pub fn version() -> String {
 }
 
 fn bump_client_gradle_version(new_version: &str, is_nightly: bool) {
-    let gradle_file_path = crate::workspace_dir()
+    let gradle_file_path = workspace_dir()
         .join("alvr/client/android/app")
         .join("build.gradle");
     let file_content = fs::read_to_string(&gradle_file_path).unwrap();
@@ -71,7 +72,7 @@ fn bump_cargo_version(crate_dir_name: &str, new_version: &str) {
 }
 
 fn bump_rpm_spec_version(new_version: &str) {
-    let spec_path = crate::workspace_dir().join("packaging/rpm/alvr.spec");
+    let spec_path = workspace_dir().join("packaging/rpm/alvr.spec");
     let spec = fs::read_to_string(&spec_path).unwrap();
 
     // Replace Version

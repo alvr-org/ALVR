@@ -78,6 +78,7 @@ fn bump_rpm_spec_version(new_version: &str) {
     // Replace Version
     let (file_start, _, file_end) = split_string(&spec, "Version: ", '\n');
     let spec = format!("{}{}{}", file_start, new_version, file_end);
+
     // Reset Release to 1.0.0
     let (file_start, _, file_end) = split_string(&spec, "Release: ", '\n');
     let spec = format!("{}1.0.0{}", file_start, file_end);

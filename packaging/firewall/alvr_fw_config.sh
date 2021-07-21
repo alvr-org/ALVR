@@ -36,10 +36,21 @@ firewalld_cfg() {
 }
 
 ufw_cfg() {
-    if [ "${1}" == 'add' ] && ! ufw status | grep 'ALVR' >/dev/null 2>&1; then
-        ufw allow 'ALVR'
-    elif [ "${1}" == 'remove' ] && ufw status | grep 'ALVR' >/dev/null 2>&1; then
-        ufw delete allow 'ALVR'
+    # Try and install the application file
+    if ! ufw app info 'alvr'; then
+        if [ -f '/usr/share/alvr/ufw-alvr' ]; then 
+            cp '/usr/share/alvr/ufw-alvr' '/etc/ufw/applications.d/'
+        elif [ -f './ufw-alvr' ]; then
+            cp './ufw-alvr' '/etc/ufw/applications.d/'
+        else 
+            exit 3
+        fi
+    fi
+
+    if [ "${1}" == 'add' ] && ! ufw status | grep 'alvr' >/dev/null 2>&1; then
+        ufw allow 'alvr'
+    elif [ "${1}" == 'remove' ] && ufw status | grep 'alvr' >/dev/null 2>&1; then
+        ufw delete allow 'alvr'
     else
         exit 2
     fi

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Basic script to add / remove firewall configuration for ALVR
 # Usage: ./alvr_fw_config.sh add|remove
-# Exit codes: 
+# Exit codes:
 # 1 - Invalid command
 # 2 - Invalid action
 # 99 - Feature not implemented
@@ -12,7 +12,7 @@ iptables_cfg() {
 
 firewalld_cfg() {
     # Iterate around each active zone
-    for zone in $(firewall-cmd --get-active-zones | grep -P '^\w+.*\w$'); do 
+    for zone in $(firewall-cmd --get-active-zones | grep -P '^\w+.*\w$'); do
         if [ "${1}" == 'add' ]; then
             # If running or permanent alvr service is missing, add it
             if ! firewall-cmd --zone="${zone}" --list-services | grep 'alvr' >/dev/null 2>&1; then
@@ -38,11 +38,11 @@ firewalld_cfg() {
 ufw_cfg() {
     # Try and install the application file
     if ! ufw app info 'alvr'; then
-        if [ -f '/usr/share/alvr/ufw-alvr' ]; then 
+        if [ -f '/usr/share/alvr/ufw-alvr' ]; then
             cp '/usr/share/alvr/ufw-alvr' '/etc/ufw/applications.d/'
         elif [ -f './ufw-alvr' ]; then
             cp './ufw-alvr' '/etc/ufw/applications.d/'
-        else 
+        else
             exit 3
         fi
     fi

@@ -33,7 +33,7 @@ bzip2 'packaging/selinux/%{name}.pp'
 
 %changelog
 * Wed Jul 21 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.1
-    - Added CXXFLAGS 
+    - Added CXXFLAGS
 * Tue Jul 20 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.0
     - Changed source location for firewalld config
     - Replaced all double quotes with single where possible
@@ -75,7 +75,7 @@ newDirs=(
     '%{_libexecdir}'
     '%{_docdir}'
 )
-for newDir in "${newDirs[@]}"; do 
+for newDir in "${newDirs[@]}"; do
     mkdir -p "%{buildroot}${newDir}"
 done
 

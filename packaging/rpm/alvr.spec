@@ -1,6 +1,6 @@
 Name: alvr
 Version: 15.2.1
-Release: 1.1.0
+Release: 1.1.1
 Summary: Stream VR games from your PC to your headset via Wi-Fi
 License: MIT
 Source: https://github.com/alvr-org/ALVR/archive/refs/tags/v%{version}.tar.gz
@@ -22,6 +22,8 @@ ALVR is an open source remote VR display which allows playing SteamVR games on a
 %autosetup -D -n %{_builddir}
 
 %build
+# Set CXXFLAGS for ffmpeg
+export CXXFLAGS='-I/usr/include/ffmpeg'
 # Build ALVR
 cargo xtask build-server --release
 # Build SELinux policy
@@ -30,6 +32,8 @@ make -f '/usr/share/selinux/devel/Makefile' -C 'packaging/selinux'
 bzip2 'packaging/selinux/%{name}.pp'
 
 %changelog
+* Wed Jul 21 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.1
+    - Added CXXFLAGS 
 * Tue Jul 20 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.0
     - Changed source location for firewalld config
     - Replaced all double quotes with single where possible

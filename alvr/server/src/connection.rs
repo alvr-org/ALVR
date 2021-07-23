@@ -196,7 +196,8 @@ async fn client_handshake(
         eye_resolution_height: video_eye_height,
         fps,
         game_audio_sample_rate,
-        reserved: format!("{}", *ALVR_VERSION),
+        reserved: "".into(),
+        server_version: version.clone(),
     };
     proto_socket.send(&client_config).await?;
 
@@ -474,18 +475,13 @@ async fn connection_pipeline() -> StrResult {
         .send(&ServerControlPacket::StartStream)
         .await?;
 
-    if version
-        .map(|v| v >= Version::from((15, 1, 0)))
-        .unwrap_or(false)
-    {
-        match control_receiver.recv().await {
-            Ok(ClientControlPacket::Reserved(data)) if data == "StreamReady" => {}
-            Ok(_) => {
-                return fmt_e!("Got unexpected packet waiting for stream ack");
-            }
-            Err(e) => {
-                return fmt_e!("Error while waiting for stream ack: {}", e);
-            }
+    match control_receiver.recv().await {
+        Ok(ClientControlPacket::StreamReady) => {}
+        Ok(_) => {
+            return fmt_e!("Got unexpected packet waiting for stream ack");
+        }
+        Err(e) => {
+            return fmt_e!("Error while waiting for stream ack: {}", e);
         }
     }
 

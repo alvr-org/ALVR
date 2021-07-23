@@ -1,0 +1,4 @@
+/usr/bin/alvr_launcher                  gen_context(system_u:object_r:alvr_exec_t,s0)
+/usr/lib(64)?/alvr(/.*)?                gen_context(system_u:object_r:alvr_lib_t,s0)  
+/usr/lib(64)?/libalvr_vulkan_layer.so   gen_context(system_u:object_r:alvr_lib_t,s0)
+/usr/libexec/alvr(/.*)?                 gen_context(system_u:object_r:alvr_exec_t,s0)

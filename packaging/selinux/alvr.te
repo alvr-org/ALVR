@@ -1,0 +1,18 @@
+policy_module(alvr, 1.2.0)
+
+########################################
+#
+# Declarations
+#
+type alvr_t;
+type alvr_exec_t;
+type alvr_lib_t;
+type alvr_port_t;
+init_daemon_domain(alvr_t, alvr_exec_t)
+
+########################################
+#
+# Local policy
+#
+# Allow specific port listening only
+corenet_port(alvr_port_t)

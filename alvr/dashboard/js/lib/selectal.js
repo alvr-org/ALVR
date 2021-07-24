@@ -25,21 +25,19 @@ https://github.com/Kovee98/selectal
 */
 
 var Selectal = function (selectStr) {
-
     // Create the necessary elements and structure
     var select = document.querySelector(selectStr);
-    var options = select.querySelectorAll('option');
+    var options = select.querySelectorAll("option");
 
-    this.selectGroup = document.createElement('div');
+    this.selectGroup = document.createElement("div");
     this.selectGroup.className = "selectal-group";
     this.selectGroup.id = select.id + "-selectal";
 
-    this.selectBtn = document.createElement('div');
+    this.selectBtn = document.createElement("div");
     this.selectBtn.className = "selectal-btn";
 
-    this.selectedItem = document.createElement('p');
+    this.selectedItem = document.createElement("p");
     this.selectedItem.className = "selectal-selected-item";
-
 
     if (options !== undefined && options.length > 0) {
         this.selectedItem.innerHTML = options[0].innerHTML;
@@ -47,17 +45,17 @@ var Selectal = function (selectStr) {
 
     this.selectBtn.appendChild(this.selectedItem);
 
-    this.arrow = document.createElement('span');
+    this.arrow = document.createElement("span");
     this.arrow.className = "arrow-down";
     this.selectBtn.appendChild(this.arrow);
     this.selectGroup.appendChild(this.selectBtn);
 
-    this.dropdown = document.createElement('div');
+    this.dropdown = document.createElement("div");
     this.dropdown.className = "selectal-dropdown selectal-hidden";
 
     if (options !== undefined) {
         for (var i = 0; i < options.length; i++) {
-            var option = document.createElement('p');
+            var option = document.createElement("p");
             option.className = "selectal-dropdown-option";
             option.id = options[i].value;
             option.innerHTML = options[i].innerHTML;
@@ -67,7 +65,7 @@ var Selectal = function (selectStr) {
     this.selectGroup.appendChild(this.dropdown);
 
     var selectId = select.id;
-    this.input = document.createElement('input');
+    this.input = document.createElement("input");
     this.input.type = "hidden";
 
     if (options !== undefined && options.length > 0) {
@@ -76,39 +74,37 @@ var Selectal = function (selectStr) {
     this.input.id = select.id;
     this.selectGroup.appendChild(this.input);
 
-
     $(this.input).change(() => {
         this.setValue(this.getValue());
-    })
-
+    });
 
     // Finally, append this to where the select element was and add the event listeners
     select.parentNode.insertBefore(this.selectGroup, select.nextSibling);
     select.remove();
     this.options = addEventListeners(this);
-
-
-}
+};
 
 function addEventListeners(selectal) {
-    var options = document.querySelectorAll("#" + selectal.selectGroup.id + ' .selectal-dropdown-option');
+    var options = document.querySelectorAll(
+        "#" + selectal.selectGroup.id + " .selectal-dropdown-option"
+    );
 
-    selectal.selectBtn.addEventListener('click', function () {
-        var dropdown = this.parentNode.querySelector('.selectal-dropdown');
+    selectal.selectBtn.addEventListener("click", function () {
+        var dropdown = this.parentNode.querySelector(".selectal-dropdown");
         selectal.toggleDropdown();
     });
 
     for (var i = 0; i < options.length; i++) {
-        options[i].addEventListener('click', function () {
+        options[i].addEventListener("click", function () {
             var dropdown = this.parentNode;
             var selectGroup = dropdown.parentNode;
-            var input = selectGroup.querySelector('input');
-            var selectBtn = selectGroup.querySelector('.selectal-btn');
+            var input = selectGroup.querySelector("input");
+            var selectBtn = selectGroup.querySelector(".selectal-btn");
             var text = this.innerHTML;
-            var selectedText = this.parentNode.parentNode.querySelector('.selectal-selected-item');
+            var selectedText = this.parentNode.parentNode.querySelector(".selectal-selected-item");
             selectedText.innerHTML = text;
             input.value = this.id;
-            input.dispatchEvent(new Event('change'));
+            input.dispatchEvent(new Event("change"));
             selectal.closeDropdown();
         });
     }
@@ -162,7 +158,6 @@ function removeEventListener(event, fn) {
     this.input.removeEventListener(event, fn);
 }
 
-
 function getValue() {
     var value = this.input.value;
     return value;
@@ -174,7 +169,9 @@ function setValue(value) {
 
         if (option.id == value) {
             this.input.value = value;
-            var selectedText = option.parentNode.parentNode.querySelector('.selectal-selected-item');
+            var selectedText = option.parentNode.parentNode.querySelector(
+                ".selectal-selected-item"
+            );
             selectedText.innerHTML = option.innerHTML;
         }
     }
@@ -188,4 +185,3 @@ Selectal.prototype.closeDropdown = closeDropdown;
 Selectal.prototype.openDropdown = openDropdown;
 Selectal.prototype.getValue = getValue;
 Selectal.prototype.setValue = setValue;
-

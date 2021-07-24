@@ -7,7 +7,8 @@ define({
     // "_root_video_displayRefreshRate.description": "",
     // "_root_video_preferredFps.name": "", // adv
     "_root_video_resolutionDropdown.name": "解像度",
-    "_root_video_resolutionDropdown.description": "100%に設定するとOculus Questのネイティブ解像度である2880x1600になる.\n解像度を設定すると, 見た目の品質が多少向上する可能性があるが非推奨.\n100%より低く設定するとレイテンシが低下し, ネットワークパフォーマンスが向上する可能性がある",
+    "_root_video_resolutionDropdown.description":
+        "100%に設定するとOculus Questのネイティブ解像度である2880x1600になる.\n解像度を設定すると, 見た目の品質が多少向上する可能性があるが非推奨.\n100%より低く設定するとレイテンシが低下し, ネットワークパフォーマンスが向上する可能性がある",
     "_root_video_renderResolution-choice-.name": "解像度", // adv
     // "_root_video_renderResolution_scale-choice-.name": "", // adv
     // "_root_video_renderResolution_absolute-choice-.name": "", // adv
@@ -22,41 +23,53 @@ define({
     // "_root_video_foveatedRendering.description": use "_root_video_foveatedRendering_enabled.description"
     "_root_video_foveatedRendering_enabled.description": `画像の中心部を高解像度で描画し, 周辺部を低解像度で描画する技術. これにより, ネットワーク経由で送信するビデオ解像度が大幅に減少する. 同ビットレートにおいて, 解像度が低い方がよりディテールを保持できると同時にレイテンシを低下させることができる. しかし, 設定やゲームによっては表示領域の端で多かれ少なかれ視覚的な異常を引き起こす`,
     "_root_video_foveatedRendering_content_strength.name": "強度",
-    "_root_video_foveatedRendering_content_strength.description": "値が高いほど, より画像端付近の解像度が低くなり, 歪みが多くなる",
+    "_root_video_foveatedRendering_content_strength.description":
+        "値が高いほど, より画像端付近の解像度が低くなり, 歪みが多くなる",
     // "_root_video_foveatedRendering_content_shape.name": "", // adv
     // "_root_video_foveatedRendering_content_shape.description": "", // adv
     "_root_video_foveatedRendering_content_verticalOffset.name": "垂直オフセット",
-    "_root_video_foveatedRendering_content_verticalOffset.description": "値が高いほど, 高解像度の領域が下へ移動する",
+    "_root_video_foveatedRendering_content_verticalOffset.description":
+        "値が高いほど, 高解像度の領域が下へ移動する",
     "_root_video_colorCorrection.name": "色補正",
     // "_root_video_colorCorrection.description": use "_root_video_colorCorrection_enabled.description"
-    "_root_video_colorCorrection_enabled.description": "色補正はシャープネス, ガンマ, 明度, コントラスト, 彩度の順に適用",
+    "_root_video_colorCorrection_enabled.description":
+        "色補正はシャープネス, ガンマ, 明度, コントラスト, 彩度の順に適用",
     "_root_video_colorCorrection_content_brightness.name": "明度",
-    "_root_video_colorCorrection_content_brightness.description": "明るさ. -1設定時は完全に黒, 1設定時は完全に白となる",
+    "_root_video_colorCorrection_content_brightness.description":
+        "明るさ. -1設定時は完全に黒, 1設定時は完全に白となる",
     "_root_video_colorCorrection_content_contrast.name": "コントラスト",
-    "_root_video_colorCorrection_content_contrast.description": "コントラスト. -1設定時はグレースケールとなる",
+    "_root_video_colorCorrection_content_contrast.description":
+        "コントラスト. -1設定時はグレースケールとなる",
     "_root_video_colorCorrection_content_saturation.name": "彩度",
-    "_root_video_colorCorrection_content_saturation.description": "鮮やかさ. -1設定時は白と黒となる",
+    "_root_video_colorCorrection_content_saturation.description":
+        "鮮やかさ. -1設定時は白と黒となる",
     "_root_video_colorCorrection_content_gamma.name": "ガンマ",
-    "_root_video_colorCorrection_content_gamma.description": "ガンマ値. sRGBからRGB空間に補正する場合は2.2を指定",
+    "_root_video_colorCorrection_content_gamma.description":
+        "ガンマ値. sRGBからRGB空間に補正する場合は2.2を指定",
     "_root_video_colorCorrection_content_sharpening.name": "シャープネス",
-    "_root_video_colorCorrection_content_sharpening.description": "鮮明化度. -1設定時は最も不鮮明で, 5設定時は最も鮮明化される",
+    "_root_video_colorCorrection_content_sharpening.description":
+        "鮮明化度. -1設定時は最も不鮮明で, 5設定時は最も鮮明化される",
     "_root_video_codec-choice-.name": "ビデオコーデック",
-    "_root_video_codec-choice-.description": "使用されるビデオコーデック. 可能であれば, 低いビットレートでより見た目の品質が向上するH.265を推奨",
+    "_root_video_codec-choice-.description":
+        "使用されるビデオコーデック. 可能であれば, 低いビットレートでより見た目の品質が向上するH.265を推奨",
     "_root_video_codec_H264-choice-.name": "H.264",
     "_root_video_codec_H264-choice-.description": "H.264コーデックを使用する",
     "_root_video_codec_HEVC-choice-.name": "HEVC (H.265)",
     "_root_video_codec_HEVC-choice-.description": "HEVC (H.265)コーデックを使用する",
     // "_root_video_clientRequestRealtimeDecoder.name": "", // adv
     "_root_video_encodeBitrateMbs.name": "映像ビットレート",
-    "_root_video_encodeBitrateMbs.description": "映像ストリーミングのビットレート. 30Mbpsを推奨. \nビットレートを高くすると画質が良くなるが, レイテンシと通信量が多くなる",
+    "_root_video_encodeBitrateMbs.description":
+        "映像ストリーミングのビットレート. 30Mbpsを推奨. \nビットレートを高くすると画質が良くなるが, レイテンシと通信量が多くなる",
     // Audio tab
     "_root_audio_tab.name": "音声",
     "_root_audio_tab.description": "音声設定",
     "_root_audio_gameAudio.name": "ゲーム音声のストリーミング",
     // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
-    "_root_audio_gameAudio_enabled.description": "ヘッドセットへのゲーム音声のストリーミングを有効化する",
+    "_root_audio_gameAudio_enabled.description":
+        "ヘッドセットへのゲーム音声のストリーミングを有効化する",
     "_root_audio_gameAudio_content_deviceId-choice-.name": "オーディオ機器の選択",
-    "_root_audio_gameAudio_content_deviceId-choice-.description": "音声キャプチャのために使用されるオーディオ機器",
+    "_root_audio_gameAudio_content_deviceId-choice-.description":
+        "音声キャプチャのために使用されるオーディオ機器",
     // "_root_audio_gameAudio_content_muteWhenStreaming.name": "",
     // "_root_audio_gameAudio_content_muteWhenStreaming.description": "",
     "_root_audio_microphone.name": "マイクのストリーミング",
@@ -67,7 +80,8 @@ define({
     // Headset tab
     "_root_headset_tab.name": "ヘッドセット",
     "_root_headset_headsetEmulationMode.name": "ヘッドセットエミュレーション",
-    "_root_headset_headsetEmulationMode.description": "互換性向上のために様々なヘッドセットをエミュレートする",
+    "_root_headset_headsetEmulationMode.description":
+        "互換性向上のために様々なヘッドセットをエミュレートする",
     // "_root_headset_universeId.name": "", // adv
     // "_root_headset_serialNumber.name": "", // adv
     // "_root_headset_serialNumber.description": "", // adv
@@ -96,7 +110,8 @@ define({
     // "_root_headset_controllers.description": use "_root_headset_controllers_enabled.description"
     "_root_headset_controllers_enabled.description": "コントローラの使用を有効にする",
     "_root_headset_controllers_content_controllerMode.name": "コントローラエミュレーション",
-    "_root_headset_controllers_content_controllerMode.description": "互換性向上のために様々なコントローラをエミュレートしたり, ハンドトラッキングを有効にする",
+    "_root_headset_controllers_content_controllerMode.description":
+        "互換性向上のために様々なコントローラをエミュレートしたり, ハンドトラッキングを有効にする",
     // "_root_headset_controllers_content_modeIdx.name": "", // adv
     // "_root_headset_controllers_content_modeIdx.description": "", // adv
     // "_root_headset_controllers_content_trackingSystemName.name": "", // adv
@@ -120,7 +135,8 @@ define({
     // "_root_headset_controllers_content_trackingSpeed.name": "",
     // "_root_headset_controllers_content_trackingSpeed.description": "",
     "_root_headset_controllers_content_poseTimeOffset.name": "ポーズタイムオフセット", // adv
-    "_root_headset_controllers_content_poseTimeOffset.description": "姿勢予測アルゴリズム用のオフセット値", // adv
+    "_root_headset_controllers_content_poseTimeOffset.description":
+        "姿勢予測アルゴリズム用のオフセット値", // adv
     // "_root_headset_controllers_content_positionOffsetLeft.name": "", // adv
     // "_root_headset_controllers_content_positionOffsetLeft.description": "", // adv
     // "_root_headset_controllers_content_positionOffsetLeft_0.name": "", // adv

@@ -1,0 +1,17 @@
+name: Prettier Check
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  prettier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actionsx/prettier@v2
+        with:
+          # prettier CLI arguments: https://prettier.io/docs/en/cli.html
+          args: '--config alvr/xtask/.prettierrc --check "**/*[!.min].{js,css}"'

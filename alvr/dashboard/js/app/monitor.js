@@ -18,7 +18,7 @@ define([
     session,
     _,
     i18n,
-    i18nNotifications,
+    i18nNotifications
 ) {
     return function (alvrSettings) {
         let notificationLevels = [];
@@ -105,12 +105,7 @@ define([
                     notificationLevels = ["[ERROR]", "[WARN]", "[INFO]"];
                     break;
                 case "debug":
-                    notificationLevels = [
-                        "[ERROR]",
-                        "[WARN]",
-                        "[INFO]",
-                        "[DEBUG]",
-                    ];
+                    notificationLevels = ["[ERROR]", "[WARN]", "[INFO]", "[DEBUG]"];
                     break;
                 default:
                     notificationLevels = [];
@@ -160,11 +155,7 @@ define([
                             type: "POST",
                             url: "api/client/add",
                             contentType: "application/json;charset=UTF-8",
-                            data: JSON.stringify([
-                                deviceName,
-                                clientHostname,
-                                ip,
-                            ]),
+                            data: JSON.stringify([deviceName, clientHostname, ip]),
                         });
 
                         $("#addClientModal").modal("hide");
@@ -197,11 +188,7 @@ define([
                     $("#addNewIpAddressButton").click(() => {
                         const ip = $("#newIpAddress").val();
 
-                        if (
-                            session.clientConnections[
-                                _hostmane
-                            ].manualIps.includes(ip)
-                        ) {
+                        if (session.clientConnections[_hostmane].manualIps.includes(ip)) {
                             Lobibox.notify("error", {
                                 size: "mini",
                                 rounded: true,
@@ -330,7 +317,7 @@ define([
         function validateIPv4address(ipaddress) {
             if (
                 /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(
-                    ipaddress,
+                    ipaddress
                 )
             ) {
                 return true;
@@ -353,9 +340,7 @@ define([
             const split = line.split(" ");
             line = line.replace(split[0] + " " + split[1], "");
 
-            const skipWithoutId = $(
-                "#_root_extra_excludeNotificationsWithoutId",
-            ).prop("checked");
+            const skipWithoutId = $("#_root_extra_excludeNotificationsWithoutId").prop("checked");
 
             if (idObject !== undefined) {
                 idObject = JSON.parse(idObject);
@@ -363,26 +348,20 @@ define([
             }
 
             if (notificationLevels.includes(split[1].trim())) {
-                if (
-                    !(skipWithoutId && idObject === undefined) &&
-                    Lobibox.notify.list.length < 2
-                ) {
+                if (!(skipWithoutId && idObject === undefined) && Lobibox.notify.list.length < 2) {
                     Lobibox.notify(getNotificationType(split[1]), {
                         size: "mini",
                         rounded: true,
                         delayIndicator: false,
                         sound: false,
                         position: "bottom left",
-                        title: getI18nNotification(idObject, line, split[1])
-                            .title,
+                        title: getI18nNotification(idObject, line, split[1]).title,
                         msg: getI18nNotification(idObject, line, split[1]).msg,
                     });
                 }
             }
 
-            const row = `<tr><td>${split[0]}</td><td>${
-                split[1]
-            }</td><td>${line.trim()}</td></tr>`;
+            const row = `<tr><td>${split[0]}</td><td>${split[1]}</td><td>${line.trim()}</td></tr>`;
             $("#loggingTable").append(row);
             if ($("#loggingTable").children().length > 500) {
                 $("#loggingTable tr").first().remove();
@@ -401,10 +380,7 @@ define([
                         msg: i18nNotifications[idObject.id + ".msg"],
                     };
                 } else {
-                    console.log(
-                        "Notification with additional info: ",
-                        idObject.id,
-                    );
+                    console.log("Notification with additional info: ", idObject.id);
                     return { title: level, msg: idObject.id + ": " + line };
                 }
             }
@@ -438,7 +414,17 @@ define([
             }
         }
 
-        function legendAsTooltipPlugin({ className, style = { backgroundColor:"rgba(255, 249, 196, 0.92)", color: "black", fontFamily:'Lato,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"', fontSize:"80%", lineHeight:"1" } } = {}) {
+        function legendAsTooltipPlugin({
+            className,
+            style = {
+                backgroundColor: "rgba(255, 249, 196, 0.92)",
+                color: "black",
+                fontFamily:
+                    'Lato,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"',
+                fontSize: "80%",
+                lineHeight: "1",
+            },
+        } = {}) {
             let legendEl;
 
             function init(u, opts) {
@@ -456,24 +442,22 @@ define([
                     top: 0,
                     zIndex: 100,
                     boxShadow: "2px 2px 10px rgba(0,0,0,0.5)",
-                    ...style
+                    ...style,
                 });
 
                 const labels = legendEl.querySelectorAll(".u-label");
 
-                for (let i = 0; i < labels.length; i++)
-                    labels[i].style.fontWeight = "700";
+                for (let i = 0; i < labels.length; i++) labels[i].style.fontWeight = "700";
 
                 const values = legendEl.querySelectorAll(".u-value");
 
-                for (let i = 0; i < values.length; i++)
-                    values[i].style.fontWeight = "700";
+                for (let i = 0; i < values.length; i++) values[i].style.fontWeight = "700";
 
                 // hide series color markers
                 //const idents = legendEl.querySelectorAll(".u-marker");
 
                 //for (let i = 0; i < idents.length; i++)
-                    //idents[i].style.display = "none";
+                //idents[i].style.display = "none";
 
                 const overEl = u.over;
                 overEl.style.overflow = "visible";
@@ -482,11 +466,15 @@ define([
                 overEl.appendChild(legendEl);
 
                 // show/hide tooltip on enter/exit
-                overEl.addEventListener("mouseenter", () => {legendEl.style.display = null;});
-                overEl.addEventListener("mouseleave", () => {legendEl.style.display = "none";});
+                overEl.addEventListener("mouseenter", () => {
+                    legendEl.style.display = null;
+                });
+                overEl.addEventListener("mouseleave", () => {
+                    legendEl.style.display = "none";
+                });
 
                 // let tooltip exit plot
-            //    overEl.style.overflow = "visible";
+                //    overEl.style.overflow = "visible";
             }
 
             function update(u) {
@@ -498,7 +486,7 @@ define([
                 hooks: {
                     init: init,
                     setCursor: update,
-                }
+                },
             };
         }
 
@@ -508,21 +496,18 @@ define([
             let d0Len = data[0].length;
             let accum = Array(d0Len);
 
-            for (let i = 0; i < d0Len; i++)
-                accum[i] = 0;
+            for (let i = 0; i < d0Len; i++) accum[i] = 0;
 
             for (let i = 1; i < data.length; i++)
                 data2.push(omit(i) ? data[i] : data[i].map((v, i) => (accum[i] += +v)));
 
             for (let i = 1; i < data.length; i++)
-                !omit(i) && bands.push({
-                    series: [
-                        data.findIndex((s, j) => j > i && !omit(j)),
-                        i,
-                    ],
-                });
+                !omit(i) &&
+                    bands.push({
+                        series: [data.findIndex((s, j) => j > i && !omit(j)), i],
+                    });
 
-            bands = bands.filter(b => b.series[1] > -1);
+            bands = bands.filter((b) => b.series[1] > -1);
 
             return {
                 data: [data[0]].concat(data2),
@@ -531,7 +516,7 @@ define([
         }
 
         function getStackedOpts(opts, data) {
-            let stacked = stack(data, i => false);
+            let stacked = stack(data, (i) => false);
 
             opts.bands = stacked.bands;
 
@@ -539,11 +524,11 @@ define([
             opts.hooks = {
                 setSeries: [
                     (u, i) => {
-                        let stacked = stack(data, i => !u.series[i].show);
+                        let stacked = stack(data, (i) => !u.series[i].show);
                         u.delBand(null);
-                        stacked.bands.forEach(b => u.addBand(b));
+                        stacked.bands.forEach((b) => u.addBand(b));
                         u.setData(stacked.data);
-                    }
+                    },
                 ],
             };
 
@@ -552,21 +537,19 @@ define([
 
         function getSharedOpts(opts) {
             opts.cursor = {
-                 drag: {
+                drag: {
                     dist: 10,
                     uni: 20,
-                 },
-                 sync: {
+                },
+                sync: {
                     key: "graph",
                     scales: ["x"],
-                 },
+                },
             };
-            opts.pxAlign = 0,
-            opts.ms = 1,
-            opts.pxSnap = false,
-            opts.plugins = [
-                legendAsTooltipPlugin(),
-            ];
+            (opts.pxAlign = 0),
+                (opts.ms = 1),
+                (opts.pxSnap = false),
+                (opts.plugins = [legendAsTooltipPlugin()]);
             opts.axes = [
                 {
                     size: 20,
@@ -619,10 +602,7 @@ define([
         let themeColor = $("input[name='theme']:checked").val();
 
         if (themeColor == "systemDefault") {
-            if (
-                window.matchMedia &&
-                window.matchMedia("(prefers-color-scheme: dark)").matches
-            ) {
+            if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
                 themeColor = "darkly";
             } else {
                 themeColor = "classic";
@@ -636,7 +616,9 @@ define([
 
         let latencyGraphData = [
             Array(length).fill(now),
-            ...Array(7).fill(null).map(x => Array(length).fill(null)),
+            ...Array(7)
+                .fill(null)
+                .map((x) => Array(length).fill(null)),
         ];
 
         latencyGraphData[0].shift();
@@ -647,11 +629,11 @@ define([
         let latencyGraphOptions = {
             width: 560,
             height: 160,
-            series:
-            [
+            series: [
                 {
                     label: "Total Latency",
-                    value: (u, v, si, i) => (latencyGraphData[latencyGraphData.length - 1][i] || 0).toFixed(3) + " ms",
+                    value: (u, v, si, i) =>
+                        (latencyGraphData[latencyGraphData.length - 1][i] || 0).toFixed(3) + " ms",
                 },
                 getSeries("Receive", graphColors[0], graphColors[0], latencyGraphData, " ms"),
                 getSeries("Render", graphColors[1], graphColors[1], latencyGraphData, " ms"),
@@ -680,8 +662,7 @@ define([
         let framerateGraphOptions = {
             width: 560,
             height: 100,
-            series:
-            [
+            series: [
                 {
                     label: "---",
                     value: "",
@@ -698,8 +679,16 @@ define([
         }
 
         function initPerformanceGraphs() {
-            latencyGraph = new uPlot(latencyGraphOptions, latencyGraphData, document.getElementById("latencyGraphArea"));
-            framerateGraph = new uPlot(framerateGraphOptions, framerateGraphData, document.getElementById("framerateGraphArea"));
+            latencyGraph = new uPlot(
+                latencyGraphOptions,
+                latencyGraphData,
+                document.getElementById("latencyGraphArea")
+            );
+            framerateGraph = new uPlot(
+                framerateGraphOptions,
+                framerateGraphData,
+                document.getElementById("framerateGraphArea")
+            );
         }
 
         function updatePerformanceGraphs(statistics) {
@@ -751,22 +740,15 @@ define([
                 // hide connection
                 if ($("#connectionTab").hasClass("active"))
                     $("#connectionTab").removeClass("active");
-                if ($("#connection").hasClass("active"))
-                    $("#connection").removeClass("active");
+                if ($("#connection").hasClass("active")) $("#connection").removeClass("active");
                 // show statistics
-                if (!$("#statisticsTab").hasClass("active"))
-                    $("#statisticsTab").addClass("active");
-                if (!$("#statistics").hasClass("active"))
-                    $("#statistics").addClass("active");
-                if (!$("#statistics").hasClass("show"))
-                    $("#statistics").addClass("show");
+                if (!$("#statisticsTab").hasClass("active")) $("#statisticsTab").addClass("active");
+                if (!$("#statistics").hasClass("active")) $("#statistics").addClass("active");
+                if (!$("#statistics").hasClass("show")) $("#statistics").addClass("show");
                 // hide logging
-                if ($("#loggingTab").hasClass("active"))
-                    $("#loggingTab").removeClass("active");
-                if ($("#logging").hasClass("active"))
-                    $("#logging").removeClass("active");
-                if ($("#logging").hasClass("show"))
-                    $("#logging").removeClass("show");
+                if ($("#loggingTab").hasClass("active")) $("#loggingTab").removeClass("active");
+                if ($("#logging").hasClass("active")) $("#logging").removeClass("active");
+                if ($("#logging").hasClass("show")) $("#logging").removeClass("show");
             }
 
             const now = parseInt(new Date().getTime());
@@ -778,21 +760,26 @@ define([
                 lastStatisticsUpdate = now;
             }
             if (now > lastGraphUpdate + 16) {
-                const ldata = [].concat(latencyGraphData[latencyGraphData.length-1]).filter(Boolean);
-                const lq1 = quantile(ldata,0.25);
-                const lq3 = quantile(ldata,0.75);
+                const ldata = []
+                    .concat(latencyGraphData[latencyGraphData.length - 1])
+                    .filter(Boolean);
+                const lq1 = quantile(ldata, 0.25);
+                const lq3 = quantile(ldata, 0.75);
                 //const lq1 = 0;
                 //const lq3 = quantile(ldata,0.5);
                 latencyGraph.batch(() => {
-                    latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*3});
+                    latencyGraph.setScale("y", { min: 0, max: lq3 + (lq3 - lq1) * 3 });
                     //latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
-                    latencyGraph.setData(stack(latencyGraphData, i => false).data);
+                    latencyGraph.setData(stack(latencyGraphData, (i) => false).data);
                 });
                 const fdata = framerateGraphData[1].concat(framerateGraphData[2]).filter(Boolean);
-                const fq1 = quantile(fdata,0.25);
-                const fq3 = quantile(fdata,0.75);
+                const fq1 = quantile(fdata, 0.25);
+                const fq3 = quantile(fdata, 0.75);
                 latencyGraph.batch(() => {
-                    framerateGraph.setScale("y", {min: fq1-(fq3-fq1)*1.5, max: fq3+(fq3-fq1)*1.5});
+                    framerateGraph.setScale("y", {
+                        min: fq1 - (fq3 - fq1) * 1.5,
+                        max: fq3 + (fq3 - fq1) * 1.5,
+                    });
                     framerateGraph.setData(framerateGraphData);
                 });
                 lastGraphUpdate = now;
@@ -802,24 +789,17 @@ define([
                 // $("#statisticsCard").hide();
                 clientConnected = false;
                 // show connection
-                if (!$("#connectionTab").hasClass("active"))
-                    $("#connectionTab").addClass("active");
-                if (!$("#connection").hasClass("active"))
-                    $("#connection").addClass("active");
+                if (!$("#connectionTab").hasClass("active")) $("#connectionTab").addClass("active");
+                if (!$("#connection").hasClass("active")) $("#connection").addClass("active");
                 // hide statistics
                 if ($("#statisticsTab").hasClass("active"))
                     $("#statisticsTab").removeClass("active");
-                if ($("#statistics").hasClass("active"))
-                    $("#statistics").removeClass("active");
-                if ($("#statistics").hasClass("show"))
-                    $("#statistics").removeClass("show");
+                if ($("#statistics").hasClass("active")) $("#statistics").removeClass("active");
+                if ($("#statistics").hasClass("show")) $("#statistics").removeClass("show");
                 // hide logging
-                if ($("#loggingTab").hasClass("active"))
-                    $("#loggingTab").removeClass("active");
-                if ($("#logging").hasClass("active"))
-                    $("#logging").removeClass("active");
-                if ($("#logging").hasClass("show"))
-                    $("#logging").removeClass("show");
+                if ($("#loggingTab").hasClass("active")) $("#loggingTab").removeClass("active");
+                if ($("#logging").hasClass("active")) $("#logging").removeClass("active");
+                if ($("#logging").hasClass("show")) $("#logging").removeClass("show");
             }, 2000);
 
             updatePerformanceGraphs(statistics);
@@ -850,8 +830,7 @@ define([
                 let ch = data[index++];
                 if (ch & 0x80) {
                     let extra = extraByteMap[(ch >> 3) & 0x07];
-                    if (!(ch & 0x40) || !extra || index + extra > count)
-                        return null;
+                    if (!(ch & 0x40) || !extra || index + extra > count) return null;
 
                     ch = ch & (0x3f >> extra);
                     for (; extra > 0; extra -= 1) {

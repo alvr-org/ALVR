@@ -15,7 +15,7 @@ define([
     i18n,
     revertRestartI18n,
     revertConfirm,
-    restartConfirm,
+    restartConfirm
 ) {
     return function () {
         const self = this;
@@ -27,8 +27,7 @@ define([
 
         function randomAlphanumericID() {
             const len = 10;
-            const arr =
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghilmnopqrstuvwxyz0123456789";
+            const arr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghilmnopqrstuvwxyz0123456789";
             let ans = "";
             for (let i = len; i > 0; i--) {
                 ans += arr[Math.floor(Math.random() * arr.length)];
@@ -83,8 +82,7 @@ define([
 
         function printUnusedi18n() {
             for (const key in i18n) {
-                if (usedi18n[key] === undefined)
-                    console.log("Unused i18n key:", key);
+                if (usedi18n[key] === undefined) console.log("Unused i18n key:", key);
             }
         }
 
@@ -98,9 +96,7 @@ define([
                     usedi18n[id + ".name"] = true;
                     name = i18n[id + ".name"];
                 } else {
-                    name = id
-                        .substring(id.lastIndexOf("_") + 1, id.length)
-                        .replace("-choice-", "");
+                    name = id.substring(id.lastIndexOf("_") + 1, id.length).replace("-choice-", "");
                 }
 
                 return { name: name, description: i18n[id + ".description"] };
@@ -123,10 +119,7 @@ define([
             if (el.prop("type") == "checkbox" || el.prop("type") == "radio") {
                 val = el.prop("checked");
             } else {
-                if (
-                    el.prop("type") == "text" &&
-                    el.attr("guitype") != "numeric"
-                ) {
+                if (el.prop("type") == "text" && el.attr("guitype") != "numeric") {
                     val = el.val();
                 } else if (el.prop("type") == "radio") {
                     val = el.attr("value");
@@ -224,10 +217,7 @@ define([
                     object[item].forEach((element, index) => {
                         setProperties(element, path + "_" + item + "_" + index);
                     });
-                } else if (
-                    Object.prototype.toString.call(object[item]) ===
-                    "[object Object]"
-                ) {
+                } else if (Object.prototype.toString.call(object[item]) === "[object Object]") {
                     setProperties(object[item], path + "_" + item);
                 } else {
                     let pathItem = item;
@@ -240,32 +230,22 @@ define([
 
                     if (el.length == 0) {
                         console.log("NOT FOUND");
-                        console.log(
-                            "setting value: ",
-                            path + "_" + pathItem,
-                            object[item],
-                        );
+                        console.log("setting value: ", path + "_" + pathItem, object[item]);
                     } else {
                         if (el.prop("type") == "checkbox") {
                             el.prop("checked", object[item]);
                         } else if (el.prop("type") == "radio") {
                             el.prop("checked", object[item]);
-                            el.parent()
-                                .parent()
-                                .children()
-                                .filter(".active")
-                                .removeClass("active");
+                            el.parent().parent().children().filter(".active").removeClass("active");
                             el.parent().addClass("active");
                             $(
                                 `#${el
                                     .parent()
                                     .parent()
                                     .parent()
-                                    .attr("id")}radioContent .radioContent`,
+                                    .attr("id")}radioContent .radioContent`
                             ).hide();
-                            $(
-                                `div.radioContent[for="${el.attr("id")}"]`,
-                            ).show();
+                            $(`div.radioContent[for="${el.attr("id")}"]`).show();
                         } else {
                             el.val(object[item]);
                         }
@@ -277,13 +257,8 @@ define([
         }
 
         function getProperties(object, path, separator = "_") {
-            const properties = Array.isArray(path)
-                ? path
-                : path.split(separator);
-            return properties.reduce(
-                (prev, curr) => prev && prev[curr],
-                object,
-            );
+            const properties = Array.isArray(path) ? path : path.split(separator);
+            return properties.reduce((prev, curr) => prev && prev[curr], object);
         }
 
         function updateSwitchContent() {
@@ -299,10 +274,7 @@ define([
 
         function updateOptionalContent() {
             $(".optional").each((index, el) => {
-                const checked = $(el)
-                    .find("input[type='checkbox']")
-                    .first()
-                    .prop("checked");
+                const checked = $(el).find("input[type='checkbox']").first().prop("checked");
 
                 if (checked) {
                     $(el).find(".optionalSet").button("toggle");
@@ -333,9 +305,7 @@ define([
                 const defText = el.attr("defaultText");
 
                 if (!$("#" + path + "_" + name).prop("disabled")) {
-                    const confirm = $("#_root_extra_revertConfirmDialog").prop(
-                        "checked",
-                    );
+                    const confirm = $("#_root_extra_revertConfirmDialog").prop("checked");
                     if (confirm) {
                         showResetConfirmDialog(def, defText).then((res) => {
                             if (res) {
@@ -368,9 +338,7 @@ define([
                 });
             };
 
-            const confirm = $("#_root_extra_restartConfirmDialog").prop(
-                "checked",
-            );
+            const confirm = $("#_root_extra_restartConfirmDialog").prop("checked");
             if (confirm) {
                 showRestartConfirmDialog().then((res) => {
                     if (res) {
@@ -411,15 +379,7 @@ define([
         }
 
         //nodes
-        function fillNode(
-            node,
-            name,
-            level,
-            element,
-            path,
-            parentType,
-            advanced = false,
-        ) {
+        function fillNode(node, name, level, element, path, parentType, advanced = false) {
             index += 1;
 
             if (node == null) {
@@ -451,7 +411,7 @@ define([
                     default:
                         console.log(
                             "Unhandled node without content. Should be implemented as special case:",
-                            name,
+                            name
                         );
                         break;
                 }
@@ -469,17 +429,9 @@ define([
                     if (level == 1) {
                         element = createTab(element, path, name, advanced);
                     } else if (level > 1) {
-                        if (
-                            parentType != "switch" &&
-                            parentType != "optional"
-                        ) {
+                        if (parentType != "switch" && parentType != "optional") {
                             //switch and optional add own sections
-                            element = addContainer(
-                                element,
-                                path,
-                                name,
-                                advanced,
-                            );
+                            element = addContainer(element, path, name, advanced);
                         }
                     }
 
@@ -499,17 +451,10 @@ define([
                                 element,
                                 newPath,
                                 node.type,
-                                el[1].advanced,
+                                el[1].advanced
                             );
                         } else {
-                            fillNode(
-                                null,
-                                el[0],
-                                level + 1,
-                                element,
-                                newPath,
-                                node.type,
-                            );
+                            fillNode(null, el[0], level + 1, element, newPath, node.type);
                         }
                     });
 
@@ -522,21 +467,9 @@ define([
                 case "switch":
                     if (level == 1) {
                         element = createTab(element, path, name, advanced);
-                        element = addSwitchContainer(
-                            element,
-                            path,
-                            name,
-                            advanced,
-                            node,
-                        );
+                        element = addSwitchContainer(element, path, name, advanced, node);
                     } else if (level > 1) {
-                        element = addSwitchContainer(
-                            element,
-                            path,
-                            name,
-                            advanced,
-                            node,
-                        );
+                        element = addSwitchContainer(element, path, name, advanced, node);
                     }
 
                     fillNode(
@@ -546,7 +479,7 @@ define([
                         element,
                         path,
                         node.type,
-                        node.content.advanced,
+                        node.content.advanced
                     );
                     break;
 
@@ -562,20 +495,14 @@ define([
                             element,
                             path + "_" + arrayName,
                             "array",
-                            el.advanced,
+                            el.advanced
                         );
                     });
 
                     break;
 
                 case "choice":
-                    element = addRadioContainer(
-                        element,
-                        path,
-                        name,
-                        advanced,
-                        node,
-                    );
+                    element = addRadioContainer(element, path, name, advanced, node);
                     node.content.variants.forEach((el, index) => {
                         const variantElement = addRadioVariant(
                             element,
@@ -584,7 +511,7 @@ define([
                             advanced,
                             name,
                             el[1],
-                            el[0] == node.content.default,
+                            el[0] == node.content.default
                         );
 
                         if (el[1] != null) {
@@ -595,7 +522,7 @@ define([
                                 variantElement,
                                 path + "_" + name + "_" + el[0],
                                 "choice",
-                                el[1].advanced,
+                                el[1].advanced
                             );
                         }
                     });
@@ -605,21 +532,9 @@ define([
                 case "optional":
                     if (level == 1) {
                         element = createTab(element, path, name, advanced);
-                        element = addOptionalContainer(
-                            element,
-                            path,
-                            name,
-                            advanced,
-                            node,
-                        );
+                        element = addOptionalContainer(element, path, name, advanced, node);
                     } else if (level > 1) {
-                        element = addOptionalContainer(
-                            element,
-                            path,
-                            name,
-                            advanced,
-                            node,
-                        );
+                        element = addOptionalContainer(element, path, name, advanced, node);
                     }
 
                     fillNode(
@@ -629,7 +544,7 @@ define([
                         element,
                         path,
                         node.type,
-                        node.content.advanced,
+                        node.content.advanced
                     );
                     break;
 
@@ -669,17 +584,15 @@ define([
         function createTab(element, path, name, advanced) {
             $("#configTabs").append(`
                     <li class="nav-item ${getAdvancedClass(advanced)}">
-                        <a class="nav-link" data-toggle="tab" href="#${
-                            path + "_" + name
-                        }" id="${path + "_" + name + "_tab"}">${
-                getI18n(path + "_" + name + "_tab").name
-            }</a>
+                        <a class="nav-link" data-toggle="tab" href="#${path + "_" + name}" id="${
+                path + "_" + name + "_tab"
+            }">${getI18n(path + "_" + name + "_tab").name}</a>
                     </li>                    
                     `);
             $("#configContent").append(`
-                    <div class="tab-pane fade ${getAdvancedClass(
-                        advanced,
-                    )}" id="${path + "_" + name}" role="tabpanel" >
+                    <div class="tab-pane fade ${getAdvancedClass(advanced)}" id="${
+                path + "_" + name
+            }" role="tabpanel" >
                     </div>`);
 
             //check if the tab is the first, then set classes to activate. First child is advanced button, second the reload steamVr
@@ -715,7 +628,7 @@ define([
         function addOptionalContainer(element, path, name, advanced, node) {
             const defaultSet = !getProperties(
                 session,
-                path.replace("_root", "sessionSettings") + "_" + name + "_set",
+                path.replace("_root", "sessionSettings") + "_" + name + "_set"
             );
             let checked = "";
             let expanded = true;
@@ -729,9 +642,7 @@ define([
                 collapsed = "collapsed";
             }
 
-            const el = `<div class="parameter optional ${getAdvancedClass(
-                advanced,
-            )}" >   
+            const el = `<div class="parameter optional ${getAdvancedClass(advanced)}" >   
                 <div class="card-title">
                     <div class="btn-group btn-group-sm" data-toggle="buttons">
                         <label class="btn btn-primary optionalSet"><input class="skipInput" type="radio" name="${path}_${name}" id="${path}_${name}_setRadio" >Set</label>
@@ -758,29 +669,20 @@ define([
                 $("#" + _path + "_" + _name + "_setRadio")
                     .parent()
                     .click(() => {
-                        $("#" + _path + "_" + _name + "_set").prop(
-                            "checked",
-                            true,
-                        );
+                        $("#" + _path + "_" + _name + "_set").prop("checked", true);
                         $("#" + _path + "_" + _name + "_set").change();
                         $("#collapse_" + _index).collapse("show");
                     });
                 $("#" + _path + "_" + _name + "_defaultRadio")
                     .parent()
                     .click(() => {
-                        $("#" + _path + "_" + _name + "_set").prop(
-                            "checked",
-                            false,
-                        );
+                        $("#" + _path + "_" + _name + "_set").prop("checked", false);
                         $("#" + _path + "_" + _name + "_set").change();
                         $("#collapse_" + _index).collapse("hide");
                     });
             });
 
-            $("#" + path + "_" + name + "_set").on(
-                "change",
-                updateOptionalContent,
-            );
+            $("#" + path + "_" + name + "_set").on("change", updateOptionalContent);
 
             element = element.find(".card-body").last();
 
@@ -790,26 +692,20 @@ define([
         function addRadioContainer(element, path, name, advanced, node) {
             const el = `<div class="parameter ${getAdvancedClass(advanced)}" >
                 <div class="card-title">
-                    ${
-                        getI18n(path + "_" + name + "-choice-").name
-                    }  ${self.getHelpReset(
+                    ${getI18n(path + "_" + name + "-choice-").name}  ${self.getHelpReset(
                 name,
                 path,
                 true,
                 "_" + node.content.default + "-choice-",
                 name + "-choice-",
-                getI18n(
-                    path + "_" + name + "_" + node.content.default + "-choice-",
-                ).name,
+                getI18n(path + "_" + name + "_" + node.content.default + "-choice-").name
             )}
                 </div>   
                 <div>
                 <form id="${path + "_" + name + "-choice-"}" class="card-body">
                     <div class="btn-group btn-group-toggle" data-toggle="buttons">
                     </div>
-                    <div id="${
-                        path + "_" + name + "-choice-" + "radioContent"
-                    }"></div>
+                    <div id="${path + "_" + name + "-choice-" + "radioContent"}"></div>
                 </form>
                 </div> 
             </div>`;
@@ -820,12 +716,8 @@ define([
         }
 
         function addDropdown(element, path, name, advanced) {
-            element.append(`<div class="parameter ${getAdvancedClass(
-                advanced,
-            )}" >     
-            <label for="${path}_${name}">${
-                getI18n(path + "_" + name).name
-            } </label> 
+            element.append(`<div class="parameter ${getAdvancedClass(advanced)}" >     
+            <label for="${path}_${name}">${getI18n(path + "_" + name).name} </label> 
            
             <select id="${path}_${name}" >
            
@@ -842,27 +734,15 @@ define([
          * @param {boolean} advanced  flag if the settig is an adanced one
          */
         function addHidden(element, path, name, advanced) {
-            element.append(`<div class="parameter ${getAdvancedClass(
-                advanced,
-            )}" >     
-            <label for="${path}_${name}">${
-                getI18n(path + "_" + name).name
-            } </label> 
+            element.append(`<div class="parameter ${getAdvancedClass(advanced)}" >     
+            <label for="${path}_${name}">${getI18n(path + "_" + name).name} </label> 
            
             <input type="hidden" id="${path}_${name}" >           
             </input>
         </div>`);
         }
 
-        function addRadioVariant(
-            element,
-            path,
-            name,
-            advanced,
-            radioName,
-            node,
-            isDefault,
-        ) {
+        function addRadioVariant(element, path, name, advanced, radioName, node, isDefault) {
             let checked = "";
             let active = "";
             if (isDefault) {
@@ -870,9 +750,7 @@ define([
                 active = "active";
             }
 
-            const el = `<div class="btn btn-primary" ${getAdvancedClass(
-                advanced,
-            )}" >
+            const el = `<div class="btn btn-primary" ${getAdvancedClass(advanced)}" >
                 <input type="radio" id="${path}_${name}-choice-" name="${radioName}"  value="${name}"> 
                 <label for="${path}_${name}-choice-" style="margin-bottom:0">${
                 getI18n(path + "_" + name + "-choice-").name
@@ -895,18 +773,12 @@ define([
                 checked = "checked";
             }
 
-            const el = `<div class="parameter switch ${getAdvancedClass(
-                advanced,
-            )}" >   
+            const el = `<div class="parameter switch ${getAdvancedClass(advanced)}" >   
                 <div class="card-title">
                     <input id="${path}_${name}_enabled" type="checkbox" ${checked} " />
                     <a class="accordion-toggle" data-toggle="collapse" data-target="#collapse_${index}" href="#collapse_${index}" aria-expanded="true">
                     ${getI18n(path + "_" + name).name}</a> 
-                    ${self.getHelpReset(
-                        name + "_enabled",
-                        path,
-                        node.content.defaultEnabled,
-                    )}
+                    ${self.getHelpReset(name + "_enabled", path, node.content.defaultEnabled)}
                 </div>   
                 <div id="collapse_${index}" class="collapse show">
                     <div class="card-body">
@@ -916,10 +788,7 @@ define([
 
             element.append(el);
 
-            $("#" + path + "_" + name + "_enabled").on(
-                "change",
-                updateSwitchContent,
-            );
+            $("#" + path + "_" + name + "_enabled").on("change", updateSwitchContent);
 
             element = element.find(".card-body").last();
 
@@ -927,16 +796,10 @@ define([
         }
 
         function addTextType(element, path, name, advanced, node) {
-            element.append(`<div class="parameter ${getAdvancedClass(
-                advanced,
-            )}" >     
-                        <label for="${path}_${name}">${
-                getI18n(path + "_" + name).name
-            } </label> 
+            element.append(`<div class="parameter ${getAdvancedClass(advanced)}" >     
+                        <label for="${path}_${name}">${getI18n(path + "_" + name).name} </label> 
                         ${self.getHelpReset(name, path, node.content.default)}
-                        <input id="${path}_${name}" type="text" value="${
-                node.content.default
-            }" >
+                        <input id="${path}_${name}" type="text" value="${node.content.default}" >
                         </input>
                     </div>`);
         }
@@ -947,9 +810,7 @@ define([
                 checked = "checked";
             }
 
-            element.append(`<div class="parameter ${getAdvancedClass(
-                advanced,
-            )}" > 
+            element.append(`<div class="parameter ${getAdvancedClass(advanced)}" > 
                         <input id="${path}_${name}" type="checkbox" ${checked} />
                         <label for="${path}_${name}">${
                 getI18n(path + "_" + name).name
@@ -957,7 +818,7 @@ define([
                          ${self.getHelpReset(
                              name,
                              path,
-                             node.content.default,
+                             node.content.default
                          )}                         
                     </div>`);
         }
@@ -975,19 +836,13 @@ define([
                 case "slider":
                     base += `<div class="rangeValue" id="${path}_${name}_label">[${
                         node.content.default
-                    }]</div>${self.getHelpReset(
-                        name,
-                        path,
-                        node.content.default,
-                    )}
-                    <input numericType="${
-                        node.type
-                    }" id="${path}_${name}" type="range" min="${
+                    }]</div>${self.getHelpReset(name, path, node.content.default)}
+                    <input numericType="${node.type}" id="${path}_${name}" type="range" min="${
                         node.content.min
                     }" 
-                    max="${node.content.max}" value="${
-                        node.content.default
-                    }"  step="${node.content.step}"  >`;
+                    max="${node.content.max}" value="${node.content.default}"  step="${
+                        node.content.step
+                    }"  >`;
                     break;
 
                 case "upDown":
@@ -1004,11 +859,7 @@ define([
                         <button class="btn btn-primary btn-sm" id="plus-btn"><i class="fa fa-plus"></i></button>
                     </div>
                     
-                    </div></div>${self.getHelpReset(
-                        name,
-                        path,
-                        node.content.default,
-                    )}`;
+                    </div></div>${self.getHelpReset(name, path, node.content.default)}`;
 
                     base += grp;
                     break;
@@ -1019,13 +870,9 @@ define([
                     }" id="${path}_${name}"  type="text" min="${
                         node.content.min
                     }" guiType="numeric" 
-                    max="${node.content.max}" value="${
-                        node.content.default
-                    }"  step="${node.content.step}" > ${self.getHelpReset(
-                        name,
-                        path,
-                        node.content.default,
-                    )}`;
+                    max="${node.content.max}" value="${node.content.default}"  step="${
+                        node.content.step
+                    }" > ${self.getHelpReset(name, path, node.content.default)}`;
                     break;
 
                 default:
@@ -1036,9 +883,7 @@ define([
             element.append(base + `</div>`);
 
             $("#" + path + "_" + name).on("input", (el) => {
-                $("#" + el.target.id + "_label").text(
-                    "[" + el.target.value + "]",
-                );
+                $("#" + el.target.id + "_label").text("[" + el.target.value + "]");
             });
 
             //add spinner functions
@@ -1081,14 +926,7 @@ define([
         }
 
         //helper
-        self.getHelpReset = function (
-            name,
-            path,
-            defaultVal,
-            postFix = "",
-            helpName,
-            defaultText,
-        ) {
+        self.getHelpReset = function (name, path, defaultVal, postFix = "", helpName, defaultText) {
             if (helpName == undefined) {
                 helpName = name;
             }
@@ -1105,7 +943,7 @@ define([
             return `<div class="helpReset">
                 <i class="fa fa-question-circle fa-lg helpIcon" data-toggle="tooltip" title="${getHelp(
                     helpName,
-                    path,
+                    path
                 )}" ${getVisibility()}></i>
                 <i class="fa fa-redo fa-lg paramReset" name="${name}${postFix}" path="${path}" default="${defaultVal}" defaultText="${defaultText}" )" ></i>
             </div>`;
@@ -1124,12 +962,7 @@ define([
         }
 
         function resetToDefault(name, path, defaultVal) {
-            console.log(
-                "reset",
-                path,
-                name,
-                $("#" + path + "_" + name).prop("type"),
-            );
+            console.log("reset", path, name, $("#" + path + "_" + name).prop("type"));
 
             if (
                 $("#" + path + "_" + name).prop("type") == "checkbox" ||
@@ -1157,10 +990,7 @@ define([
         }
 
         function getMinMaxLabel(node) {
-            if (
-                node !== undefined &&
-                (node.content.min == null || node.content.max == null)
-            ) {
+            if (node !== undefined && (node.content.min == null || node.content.max == null)) {
                 return "";
             } else {
                 return `(${node.content.min}-${node.content.max})`;
@@ -1187,9 +1017,10 @@ define([
 
                         //disable future confirmation
                         if ($("#confirmRestartCheckbox").prop("checked")) {
-                            const confirm = $(
-                                "#_root_extra_restartConfirmDialog",
-                            ).prop("checked", false);
+                            const confirm = $("#_root_extra_restartConfirmDialog").prop(
+                                "checked",
+                                false
+                            );
                             confirm.change();
                         }
 
@@ -1237,10 +1068,7 @@ define([
         }
 
         function clampNumeric(element, value) {
-            if (
-                element.attr("min") !== "null" &&
-                element.attr("max") !== "null"
-            ) {
+            if (element.attr("min") !== "null" && element.attr("max") !== "null") {
                 return _.clamp(value, element.attr("min"), element.attr("max"));
             } else {
                 return value;

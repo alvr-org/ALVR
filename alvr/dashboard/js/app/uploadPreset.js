@@ -2,7 +2,7 @@ define(["jquery", "lib/lodash", "text!app/templates/uploadPreset.html"], functio
     $,
     _,
     uploadTemplate,
-    i18n,
+    i18n
 ) {
     return new (function () {
         let _webClientId = "";
@@ -57,8 +57,7 @@ define(["jquery", "lib/lodash", "text!app/templates/uploadPreset.html"], functio
                                         rounded: true,
                                         delayIndicator: false,
                                         sound: false,
-                                        title:
-                                            "Error while storing the settings",
+                                        title: "Error while storing the settings",
                                         msg: res,
                                     });
                                     console.log("FAILED", res);

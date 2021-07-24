@@ -1,11 +1,11 @@
 Name: alvr
-Version: 15.2.1
-Release: 1.1.1
+Version: 16.0.0
+Release: 1.0.0
 Summary: Stream VR games from your PC to your headset via Wi-Fi
 License: MIT
 Source: https://github.com/alvr-org/ALVR/archive/refs/tags/v%{version}.tar.gz
 ExclusiveArch: x86_64
-BuildRequires: alsa-lib-devel cairo-gobject-devel cargo clang-devel ffmpeg-devel gcc gcc-c++ ImageMagick libunwind-devel rust rust-atk-sys-devel rust-cairo-sys-rs-devel rust-gdk-sys-devel rust-glib-sys-devel rust-pango-sys-devel vulkan-headers vulkan-loader-devel
+BuildRequires: alsa-lib-devel cairo-gobject-devel cargo clang-devel ffmpeg-devel gcc gcc-c++ ImageMagick libunwind-devel openssl-devel rpmdevtools rust rust-atk-sys-devel rust-cairo-sys-rs-devel rust-gdk-sys-devel rust-glib-sys-devel rust-pango-sys-devel selinux-policy-devel vulkan-headers vulkan-loader-devel
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 Requires: ffmpeg steam
 Requires(post): policycoreutils
@@ -32,6 +32,9 @@ make -f '/usr/share/selinux/devel/Makefile' -C 'packaging/selinux'
 bzip2 'packaging/selinux/%{name}.pp'
 
 %changelog
+* Sat Jul 24 2021 Trae Santiago <trae32566@gmail.com> - 16.0.0-1.0.0
+    - Added rpmdevtools to BuildRequires so yum-builddeps adds it
+    - Added missing openssl-devel and selinux-policy-devel
 * Wed Jul 21 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.1
     - Added CXXFLAGS
 * Tue Jul 20 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.0

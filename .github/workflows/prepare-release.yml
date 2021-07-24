@@ -63,7 +63,7 @@ jobs:
 
   build_windows_server:
     runs-on: windows-latest
-    needs: [prepare_release, build_windows_deps]
+    needs: [prepare_release]
     env:
       # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
       # This is specific to the GitHub windows-latest runner.

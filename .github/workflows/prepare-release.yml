@@ -61,34 +61,6 @@ jobs:
           prerelease: false
           commitish: ${{ steps.output_ref.outputs.release_ref }}
 
-  build_windows_deps:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Cache dependencies
-        uses: actions/cache@v2
-        id: deps_cache
-        with:
-          path: deps
-          key: windows-deps
-      - uses: actions-rs/toolchain@v1
-        if: steps.deps_cache.outputs.cache-hit != 'true'
-        with:
-          toolchain: stable
-          override: true
-      - name: Build dependencies
-        if: steps.deps_cache.outputs.cache-hit != 'true'
-        env:
-          RUST_BACKTRACE: 1
-        run: cargo xtask build-windows-deps
-
-      - name: Upload dependencies
-        uses: actions/upload-artifact@v2
-        with:
-          name: windows-deps
-          path: deps
-
   build_windows_server:
     runs-on: windows-latest
     needs: [prepare_release, build_windows_deps]
@@ -107,12 +79,6 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Get dependencies
-        uses: actions/download-artifact@v2
-        with:
-          name: windows-deps
-          path: deps
-
       - name: Download WiX 3.14 binaries
         run: |
           Invoke-WebRequest http://static.wixtoolset.org/releases/v3.14.0.4118/wix314-binaries.zip -OutFile wix314-binaries.zip
@@ -124,6 +90,7 @@ jobs:
           WIX: "wix314-binaries"
           RUST_BACKTRACE: 1
         run: |
+          cargo xtask build-windows-deps
           cargo xtask publish-server
           $file = Get-ChildItem -Name .\build\*.exe | Select-Object -f 1
           echo "::set-output name=exe_filename::$file"

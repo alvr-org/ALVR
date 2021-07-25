@@ -9,7 +9,6 @@ edition = "2018"
 nightly = []
 
 [dependencies]
-alvr_filesystem-layout = { path = "../filesystem-layout" }
 # Basic utilities
 lazy_static = "1"
 parking_lot = "0.11"
@@ -20,14 +19,9 @@ log = "0.4"
 bincode = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-settings-schema = { path = "../settings-schema", features = ["rename_camel_case"] }
-# Miscellaneous
-nalgebra = { version = "0.26", features = ["serde-serialize"] }
-semver = { version = "0.11", features = ['serde'] }
-
-[target.'cfg(any(windows, target_os = "linux", target_os = "android"))'.dependencies]
-# Basic utilities
-
+settings-schema = { path = "../settings-schema", features = [
+    "rename_camel_case",
+] }
 # Async and networking
 bytes = "1"
 futures = "0.3"
@@ -36,23 +30,26 @@ nonzero_ext = "0.2"
 tokio = { version = "1", features = ["rt", "net", "macros"] }
 tokio-util = { version = "0.6", features = ["codec", "net"] }
 # Graphics
-gfx-hal = "=0.6.0"
-winit = "0.24" # needed to get the screen size
+egui = "0.13"
+wgpu = "0.9"
+winit = "0.25"     # needed to get the screen size
 # Audio
 cpal = "0.13"
-rodio = "0.13"
+rodio = "0.14"
 # Miscellaneous
-rand = "0.8"
+alvr_filesystem-layout = { path = "../filesystem-layout" }
 encoding_rs_io = "0.1"
+nalgebra = { version = "0.28", features = ["serde-serialize"] }
+rand = "0.8"
 rcgen = "0.8"
+semver = { version = "1", features = ['serde'] }
 
-[target.'cfg(any(windows, target_os = "linux"))'.dependencies]
+[target.'cfg(not(target_os = "android"))'.dependencies]
 dirs = "3"
 msgbox = "0.6"
 runas = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-gfx-backend-dx11 = "=0.6.17"
 widestring = "0.4"
 winapi = { version = "0.3", features = [
     "impl-default",
@@ -68,9 +65,6 @@ winapi = { version = "0.3", features = [
 ] }
 wio = "0.2"
 
-[target.'cfg(target_os = "linux")'.dependencies]
-gfx-backend-vulkan = "=0.6.5"
-
 [build-dependencies]
-bindgen = "0.58"
+bindgen = "0.59"
 cc = { version = "1", features = ["parallel"] }

@@ -6,7 +6,7 @@ use alvr_common::{
     data::{
         ClientConfigPacket, ClientControlPacket, ClientHandshakePacket, CodecType,
         HeadsetInfoPacket, PlayspaceSyncPacket, PrivateIdentity, ServerControlPacket,
-        ServerHandshakePacket, SessionDesc, TrackingSpace, Version, ALVR_NAME, ALVR_VERSION,
+        ServerHandshakePacket, SessionDesc, TrackingSpace, ALVR_NAME, ALVR_VERSION,
     },
     prelude::*,
     sockets::{PeerType, ProtoControlSocket, StreamSocketBuilder, LEGACY},
@@ -18,6 +18,7 @@ use jni::{
     JavaVM,
 };
 use nalgebra::{Point2, Point3, Quaternion, UnitQuaternion};
+use semver::Version;
 use serde_json as json;
 use settings_schema::Switch;
 use std::{

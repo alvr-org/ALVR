@@ -28,9 +28,11 @@ impl Layout {
         } else if cfg!(target_os = "linux") {
             self.openvr_driver_dir
                 .join("bin/linux64/driver_alvr_server.so")
-        } else {
+        } else if cfg!(target_os = "macos") {
             self.openvr_driver_dir
                 .join("bin/macos/driver_alvr_server.dylib")
+        } else {
+            unimplemented!()
         }
     }
     // path to the manifest file for openVR
@@ -56,7 +58,7 @@ lazy_static! {
             launcher_exe: PathBuf::from("bin/alvr_launcher"),
             dashboard_resources_dir: PathBuf::from("share/alvr/dashboard"),
         }
-    } else {
+    } else if cfg!(target_os = "macos") {
         Layout {
             openvr_driver_dir: PathBuf::from(""),
             presets_dir: PathBuf::from("presets"),
@@ -64,6 +66,8 @@ lazy_static! {
             launcher_exe: PathBuf::from("alvr_launcher"),
             dashboard_resources_dir: PathBuf::from("dashboard"),
         }
+    } else {
+        unimplemented!()
     };
 }
 

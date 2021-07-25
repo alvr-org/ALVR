@@ -24,7 +24,7 @@ ALVR is an open source remote VR display which allows playing SteamVR games on
 # Set CXXFLAGS for ffmpeg
 export CXXFLAGS='-I/usr/include/ffmpeg'
 # Build ALVR
-cargo xtask build-server --release
+cargo xtask build-server
 # Build SELinux policy
 rm -f 'packaging/selinux/%{name}.pp.bz2'
 make -f '/usr/share/selinux/devel/Makefile' -C 'packaging/selinux'

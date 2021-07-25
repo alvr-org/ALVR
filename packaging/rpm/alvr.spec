@@ -12,6 +12,7 @@ Requires: ffmpeg steam
 Requires(post): policycoreutils
 Requires(postun): policycoreutils
 %define alvrBuildDir build/%{name}_server_linux
+%global debug_package %{nil} 
 
 %description
 ALVR is an open source remote VR display which allows playing SteamVR games on
@@ -24,7 +25,7 @@ ALVR is an open source remote VR display which allows playing SteamVR games on
 # Set CXXFLAGS for ffmpeg
 export CXXFLAGS='-I/usr/include/ffmpeg'
 # Build ALVR
-cargo xtask build-server
+cargo xtask build-server --release
 # Build SELinux policy
 rm -f 'packaging/selinux/%{name}.pp.bz2'
 make -f '/usr/share/selinux/devel/Makefile' -C 'packaging/selinux'
@@ -37,6 +38,7 @@ bzip2 'packaging/selinux/%{name}.pp'
     - Broke description into multiple lines
     - Added URL
     - Updated Source to be static
+    - Added license as doc
 * Wed Jul 21 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.1
     - Added CXXFLAGS
 * Tue Jul 20 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.0
@@ -83,7 +85,7 @@ newDirs=(
 for newDir in "${newDirs[@]}"; do
     mkdir -p "%{buildroot}${newDir}"
 done
-# Set binaries executable
+# Strip binaries
 newBins=(
     'bin/%{name}_launcher'
     'lib64/%{name}/bin/linux64/driver_%{name}_server.so'
@@ -92,6 +94,7 @@ newBins=(
 )
 for newBin in "${newBins[@]}"; do
     chmod 0755 "%{alvrBuildDir}/${newBin}"
+    #strip "%{alvrBuildDir}/${newBin}"
 done
 # Copy build files
 cp '%{alvrBuildDir}/bin/%{name}_launcher' '%{buildroot}%{_bindir}'
@@ -121,7 +124,7 @@ done
 %{_datadir}/icons/hicolor/64x64/apps/%{name}.png
 %{_datadir}/icons/hicolor/128x128/apps/%{name}.png
 %{_datadir}/icons/hicolor/256x256/apps/%{name}.png
-%{_datadir}/licenses/%{name}
+%doc %{_datadir}/licenses/%{name}
 %{_datadir}/selinux/packages/%{name}.pp.bz2
 %{_datadir}/vulkan/explicit_layer.d/%{name}_x86_64.json
 %{_libdir}/%{name}/

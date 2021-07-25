@@ -1,0 +1,10 @@
+[package]
+name = "alvr_egui_dashboard"
+version = "15.2.1"
+authors = ["alvr-org"]
+license = "MIT"
+edition = "2018"
+
+[dependencies]
+eframe = "0.13"
+alvr_common = { path = "../common" }

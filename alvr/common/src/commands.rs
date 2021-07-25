@@ -13,15 +13,11 @@ use std::{
 const DRIVER_PATHS_BACKUP_FNAME: &str = "alvr_drivers_paths_backup.txt";
 const INSTALLER_FNAME: &str = "alvr_installer";
 
-#[cfg(target_os = "linux")]
+#[cfg(not(windows))]
 pub fn exec_fname(name: &str) -> String {
     name.to_owned()
 }
 #[cfg(windows)]
-pub fn exec_fname(name: &str) -> String {
-    format!("{}.exe", name)
-}
-#[cfg(target_os = "macos")]
 pub fn exec_fname(name: &str) -> String {
     format!("{}.exe", name)
 }

@@ -10,6 +10,7 @@ fn main() {
     let mut build = cc::Build::new();
     let mut build = build
         .cpp(true)
+        .flag("-std=c++11")
         .file("src/bindings.cpp")
         .flag("-Isrc")
         .flag("-Iinclude")
@@ -21,6 +22,7 @@ fn main() {
 
     bindgen::builder()
         .clang_arg("-xc++")
+        .clang_arg("-std=c++11")
         .header("src/openvr_driver_capi.h")
         .clang_arg("-Isrc")
         .clang_arg("-Iinclude")

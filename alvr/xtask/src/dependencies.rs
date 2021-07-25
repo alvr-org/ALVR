@@ -42,7 +42,7 @@ fn build_rust_android_gradle() {
 
     #[cfg(windows)]
     let gradlew_path = download_path.join("gradlew.bat");
-    #[cfg(target_os = "linux")]
+    #[cfg(not(windows))]
     let gradlew_path = download_path.join("gradlew");
 
     command::run_in(

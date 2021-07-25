@@ -25,9 +25,12 @@ impl Layout {
         if cfg!(windows) {
             self.openvr_driver_dir
                 .join("bin/win64/driver_alvr_server.dll")
-        } else {
+        } else if cfg!(target_os = "linux") {
             self.openvr_driver_dir
                 .join("bin/linux64/driver_alvr_server.so")
+        } else {
+            self.openvr_driver_dir
+                .join("bin/macos/driver_alvr_server.dylib")
         }
     }
     // path to the manifest file for openVR
@@ -43,9 +46,9 @@ lazy_static! {
             presets_dir: PathBuf::from("presets"),
             vrcompositor_wrapper: PathBuf::from(""),
             launcher_exe: PathBuf::from("ALVR Launcher.exe"),
-            dashboard_resources_dir: PathBuf::from("share/alvr/dashboard"),
+            dashboard_resources_dir: PathBuf::from("dashboard"),
         }
-    } else {
+    } else if cfg!(target_os = "linux") {
         Layout {
             openvr_driver_dir: PathBuf::from("lib64/alvr"),
             presets_dir: PathBuf::from("share/alvr/presets"),
@@ -53,11 +56,19 @@ lazy_static! {
             launcher_exe: PathBuf::from("bin/alvr_launcher"),
             dashboard_resources_dir: PathBuf::from("share/alvr/dashboard"),
         }
+    } else {
+        Layout {
+            openvr_driver_dir: PathBuf::from(""),
+            presets_dir: PathBuf::from("presets"),
+            vrcompositor_wrapper: PathBuf::from(""),
+            launcher_exe: PathBuf::from("alvr_launcher"),
+            dashboard_resources_dir: PathBuf::from("dashboard"),
+        }
     };
 }
 
 pub fn session_log(alvr_dir: &Path) -> PathBuf {
-    if cfg!(windows) {
+    if cfg!(not(target_os = "linux")) {
         alvr_dir.join("session_log.txt")
     } else {
         dirs::home_dir()
@@ -67,7 +78,7 @@ pub fn session_log(alvr_dir: &Path) -> PathBuf {
 }
 
 pub fn crash_log(alvr_dir: &Path) -> PathBuf {
-    if cfg!(windows) {
+    if cfg!(not(target_os = "linux")) {
         alvr_dir.join("crash_log.txt")
     } else {
         dirs::home_dir()

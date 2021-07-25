@@ -606,7 +606,7 @@ OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
                                                 VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
-    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.streamTexture.get(),
+    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth*2, eyeHeight*2, g_ctx.streamTexture.get(),
                        g_ctx.loadingTexture, {false});
 #pragma clang diagnostic pop
 
@@ -646,7 +646,10 @@ void setStreamConfig(StreamConfig config) {
 
 void onStreamStartNative() {
     ovrRenderer_Destroy(&g_ctx.Renderer);
-    ovrRenderer_Create(&g_ctx.Renderer, g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
+    auto eyeWidth = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
+    auto eyeHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
+                                                VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
+    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth*2, eyeHeight*2,
                        g_ctx.streamTexture.get(), g_ctx.loadingTexture,
                        {g_ctx.streamConfig.enableFoveation, g_ctx.streamConfig.eyeWidth,
                         g_ctx.streamConfig.eyeHeight, EyeFov(),

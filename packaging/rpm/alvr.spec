@@ -11,7 +11,6 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 Requires: ffmpeg steam
 Requires(post): policycoreutils
 Requires(postun): policycoreutils
-%global debug_package %{nil} 
 %define alvrBuildDir build/%{name}_server_linux
 
 %description

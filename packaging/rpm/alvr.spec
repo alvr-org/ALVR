@@ -3,7 +3,8 @@ Version: 16.0.0
 Release: 0.0.1rc1
 Summary: Stream VR games from your PC to your headset via Wi-Fi
 License: MIT
-Source: https://github.com/alvr-org/ALVR/archive/refs/tags/v%{version}.tar.gz
+Source: https://github.com/alvr-org/ALVR/archive/refs/tags/v16.0.0-rc1.tar.gz
+URL: https://github.com/alvr-org/ALVR/
 ExclusiveArch: x86_64
 BuildRequires: alsa-lib-devel cairo-gobject-devel cargo clang-devel ffmpeg-devel gcc gcc-c++ ImageMagick libunwind-devel openssl-devel rpmdevtools rust rust-atk-sys-devel rust-cairo-sys-rs-devel rust-gdk-sys-devel rust-glib-sys-devel rust-pango-sys-devel selinux-policy-devel vulkan-headers vulkan-loader-devel
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -33,9 +34,12 @@ make -f '/usr/share/selinux/devel/Makefile' -C 'packaging/selinux'
 bzip2 'packaging/selinux/%{name}.pp'
 
 %changelog
-* Sat Jul 24 2021 Trae Santiago <trae32566@gmail.com> - 16.0.0-0.0.1rc1
+* Sun Jul 25 2021 Trae Santiago <trae32566@gmail.com> - 16.0.0-0.0.1rc1
     - Added rpmdevtools to BuildRequires so yum-builddeps adds it
     - Added missing openssl-devel and selinux-policy-devel
+    - Broke description into multiple lines
+    - Added URL
+    - Updated Source to be static
 * Wed Jul 21 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.1
     - Added CXXFLAGS
 * Tue Jul 20 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.0
@@ -85,7 +89,6 @@ done
 
 # Copy build files
 cp '%{alvrBuildDir}/bin/%{name}_launcher' '%{buildroot}%{_bindir}'
-chmod +x '%{buildroot}%{_bindir}/%{name}_launcher'
 cp -ar '%{alvrBuildDir}/lib64/'* '%{buildroot}%{_libdir}/'
 cp -ar '%{alvrBuildDir}/libexec/%{name}' '%{buildroot}%{_libexecdir}/'
 cp -ar '%{alvrBuildDir}/share/'* '%{buildroot}%{_datadir}/'
@@ -96,6 +99,8 @@ cp 'packaging/freedesktop/%{name}.desktop' '%{buildroot}%{_datadir}/applications
 cp 'packaging/firewall/%{name}-firewalld.xml' '%{buildroot}/%{_usr}/lib/firewalld/services/%{name}.xml'
 cp 'packaging/firewall/%{name}_fw_config.sh' '%{buildroot}%{_libexecdir}/%{name}/'
 cp 'packaging/firewall/ufw-%{name}' '%{buildroot}%{_datadir}/%{name}'
+# Set permissions
+chmod 0755 '%{buildroot}%{_bindir}/%{name}_launcher' '%{buildroot}%{_libdir}/lib%{name}_vulkan_layer.so' 
 # Generate png icons
 for res in 16x16 32x32 48x48 64x64 128x128 256x256; do
     mkdir -p "%{buildroot}%{_datadir}/icons/hicolor/${res}/apps"

@@ -1,9 +1,9 @@
 Name: alvr
-Version: 16.0.0
-Release: 0.0.1rc1
+Version: 16.0.0-rc1
+Release: 1.0.0
 Summary: Stream VR games from your PC to your headset via Wi-Fi
 License: MIT
-Source: https://github.com/alvr-org/ALVR/archive/refs/tags/v16.0.0-rc1.tar.gz
+Source: https://github.com/alvr-org/ALVR/archive/refs/tags/16.0.0-rc1.tar.gz
 URL: https://github.com/alvr-org/ALVR/
 ExclusiveArch: x86_64
 BuildRequires: alsa-lib-devel cairo-gobject-devel cargo clang-devel ffmpeg-devel gcc gcc-c++ ImageMagick libunwind-devel openssl-devel rpmdevtools rust rust-atk-sys-devel rust-cairo-sys-rs-devel rust-gdk-sys-devel rust-glib-sys-devel rust-pango-sys-devel selinux-policy-devel vulkan-headers vulkan-loader-devel
@@ -17,7 +17,6 @@ Requires(postun): policycoreutils
 %description
 ALVR is an open source remote VR display which allows playing SteamVR games on
  a standalone headset such as Gear VR or Oculus Go/Quest.
-
 
 %prep
 %autosetup -D -n %{_builddir}
@@ -85,10 +84,18 @@ newDirs=(
 for newDir in "${newDirs[@]}"; do
     mkdir -p "%{buildroot}${newDir}"
 done
-
+# Set binaries executable
+newBins=(
+    'bin/%{name}_launcher'
+    'lib64/%{name}/bin/linux64/driver_%{name}_server.so'
+    'lib64/lib%{name}_vulkan_layer.so'
+    'libexec/%{name}/vrcompositor-wrapper'
+)
+for newBin in "${newBins[@]}"; do
+    chmod 0755 "%{alvrBuildDir}/${newBin}"
+done
 # Copy build files
 cp '%{alvrBuildDir}/bin/%{name}_launcher' '%{buildroot}%{_bindir}'
-chmod 0755 '%{buildroot}%{_bindir}/%{name}_launcher'
 cp -ar '%{alvrBuildDir}/lib64/'* '%{buildroot}%{_libdir}/'
 cp -ar '%{alvrBuildDir}/libexec/%{name}' '%{buildroot}%{_libexecdir}/'
 cp -ar '%{alvrBuildDir}/share/'* '%{buildroot}%{_datadir}/'
@@ -140,7 +147,6 @@ fi
 if firewall-cmd --get-active-zones >/dev/null 2>&1; then 
     firewall-cmd --reload >/dev/null
 fi
-
 # Check if SELinux is enabled and load policy
 if selinuxenabled; then
     # Load SELinux policy

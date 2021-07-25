@@ -13,7 +13,8 @@ Requires(postun): policycoreutils
 %global debug_package %{nil} 
 
 %description
-ALVR is an open source remote VR display which allows playing SteamVR games on a standalone headset such as Gear VR or Oculus Go/Quest.
+ALVR is an open source remote VR display which allows playing SteamVR games on
+ a standalone headset such as Gear VR or Oculus Go/Quest.
 
 %pre
 %define alvrBuildDir build/%{name}_server_linux

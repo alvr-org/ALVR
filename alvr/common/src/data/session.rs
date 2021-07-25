@@ -548,7 +548,7 @@ fn json_session_settings_to_settings(
     }
 }
 
-#[cfg(any(windows, target_os = "linux"))]
+#[cfg(not(target_os = "android"))]
 mod manager {
     use super::*;
     use crate::commands;
@@ -643,7 +643,7 @@ mod manager {
         }
     }
 }
-#[cfg(any(windows, target_os = "linux"))]
+#[cfg(not(target_os = "android"))]
 pub use manager::*;
 
 #[cfg(test)]

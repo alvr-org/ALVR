@@ -51,8 +51,10 @@ type BResult<T = ()> = Result<T, Box<dyn Error>>;
 const SERVER_BUILD_DIR_NAME: &str = "alvr_server_linux";
 #[cfg(windows)]
 const SERVER_BUILD_DIR_NAME: &str = "alvr_server_windows";
+#[cfg(target_os = "macos")]
+const SERVER_BUILD_DIR_NAME: &str = "alvr_server_macos";
 
-#[cfg(target_os = "linux")]
+#[cfg(not(windows))]
 pub fn exec_fname(name: &str) -> String {
     name.to_owned()
 }
@@ -68,6 +70,10 @@ fn dynlib_fname(name: &str) -> String {
 #[cfg(windows)]
 fn dynlib_fname(name: &str) -> String {
     format!("{}.dll", name)
+}
+#[cfg(target_os = "macos")]
+fn dynlib_fname(name: &str) -> String {
+    format!("lib{}.dylib", name)
 }
 
 pub fn target_dir() -> PathBuf {
@@ -166,8 +172,7 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
         }
     }
 
-    #[cfg(target_os = "linux")]
-    {
+    if cfg!(target_os = "linux") {
         command::run_in(
             &workspace_dir().join("alvr/vrcompositor-wrapper"),
             &format!("cargo build {}", build_flag),
@@ -189,15 +194,22 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
         .unwrap();
     }
 
-    command::run_in(
-        &workspace_dir().join("alvr/server"),
-        &format!(
-            "cargo build {} --no-default-features --features {}",
-            build_flag,
-            server_features.join(",")
-        ),
-    )
-    .unwrap();
+    if cfg!(not(target_os = "macos")) {
+        command::run_in(
+            &workspace_dir().join("alvr/server"),
+            &format!(
+                "cargo build {} --no-default-features --features {}",
+                build_flag,
+                server_features.join(",")
+            ),
+        )
+        .unwrap();
+        fs::copy(
+            artifacts_dir.join(dynlib_fname("alvr_server")),
+            server_build_dir().join(alvr_filesystem_layout::LAYOUT.openvr_driver_lib()),
+        )
+        .unwrap();
+    }
     command::run_in(
         &workspace_dir().join("alvr/launcher"),
         &format!(
@@ -208,10 +220,22 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
     )
     .unwrap();
     fs::copy(
-        artifacts_dir.join(dynlib_fname("alvr_server")),
-        server_build_dir().join(alvr_filesystem_layout::LAYOUT.openvr_driver_lib()),
+        artifacts_dir.join(exec_fname("alvr_launcher")),
+        server_build_dir().join(&alvr_filesystem_layout::LAYOUT.launcher_exe),
     )
     .unwrap();
+    if cfg!(debug_assertions) {
+        command::run_in(
+            &workspace_dir().join("alvr/egui_dashboard"),
+            &format!("cargo build {}", build_flag),
+        )
+        .unwrap();
+        fs::copy(
+            artifacts_dir.join(exec_fname("alvr_egui_dashboard")),
+            server_build_dir().join(exec_fname("alvr_egui_dashboard")),
+        )
+        .unwrap();
+    }
 
     fs::copy(
         std::path::Path::new("alvr/xtask/resources/driver.vrdrivermanifest"),
@@ -264,12 +288,6 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
         )
         .unwrap();
     }
-
-    fs::copy(
-        artifacts_dir.join(exec_fname("alvr_launcher")),
-        server_build_dir().join(&alvr_filesystem_layout::LAYOUT.launcher_exe),
-    )
-    .unwrap();
 }
 
 pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
@@ -291,7 +309,7 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
 
     let client_dir = workspace_dir().join("alvr/client/android");
     let command_name = if cfg!(not(windows)) {
-        "gradlew"
+        "./gradlew"
     } else {
         "gradlew.bat"
     };

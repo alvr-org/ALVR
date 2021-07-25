@@ -21,6 +21,10 @@ pub fn exec_fname(name: &str) -> String {
 pub fn exec_fname(name: &str) -> String {
     format!("{}.exe", name)
 }
+#[cfg(target_os = "macos")]
+pub fn exec_fname(name: &str) -> String {
+    format!("{}.exe", name)
+}
 
 pub fn installer_path() -> PathBuf {
     env::temp_dir().join(exec_fname(INSTALLER_FNAME))

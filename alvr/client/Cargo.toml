@@ -26,7 +26,8 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 alvr_common = { path = "../common" }
 cpal = "0.13"
 log = "0.4"
-nalgebra = "0.26"
+nalgebra = "0.28"
+semver = "1"
 
 # todo: move to target_os = "android"
 jni = "0.19"
@@ -37,6 +38,6 @@ android_logger = "0.10"
 oboe = "0.4" # Note: cannot use feature "java-interface" to query audio info
 
 [build-dependencies]
-bindgen = "0.58"
+bindgen = "0.59"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"

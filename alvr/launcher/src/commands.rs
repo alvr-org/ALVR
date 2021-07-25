@@ -30,7 +30,7 @@ pub fn is_steamvr_running() -> bool {
     system.refresh_processes();
 
     !system
-        .get_process_by_name(&commands::exec_fname("vrserver"))
+        .process_by_name(&commands::exec_fname("vrserver"))
         .is_empty()
 }
 
@@ -39,7 +39,7 @@ pub fn maybe_launch_steamvr() {
     system.refresh_processes();
 
     if system
-        .get_process_by_name(&commands::exec_fname("vrserver"))
+        .process_by_name(&commands::exec_fname("vrserver"))
         .is_empty()
     {
         #[cfg(windows)]
@@ -66,7 +66,7 @@ pub fn kill_steamvr() {
 
     // first kill vrmonitor, then kill vrserver if it is hung.
 
-    for process in system.get_process_by_name(&commands::exec_fname("vrmonitor")) {
+    for process in system.process_by_name(&commands::exec_fname("vrmonitor")) {
         #[cfg(not(windows))]
         process.kill(sysinfo::Signal::Term);
         #[cfg(windows)]
@@ -75,7 +75,7 @@ pub fn kill_steamvr() {
 
     thread::sleep(Duration::from_secs(1));
 
-    for process in system.get_process_by_name(&commands::exec_fname("vrserver")) {
+    for process in system.process_by_name(&commands::exec_fname("vrserver")) {
         #[cfg(not(windows))]
         process.kill(sysinfo::Signal::Term);
         #[cfg(windows)]
@@ -211,11 +211,7 @@ pub fn invoke_installer() {
     spawn_no_window(Command::new(commands::installer_path()).arg("-q"));
 
     // delete crash_log.txt (take advantage of the occasion to do some routine cleaning)
-    match current_alvr_dir() {
-        Ok(alvr_dir) => {
-            fs::remove_file(alvr_filesystem_layout::crash_log(&alvr_dir)).ok();
-            ()
-        }
-        Err(_) => (),
+    if let Ok(alvr_dir) = current_alvr_dir() {
+        fs::remove_file(alvr_filesystem_layout::crash_log(&alvr_dir)).ok();
     }
 }

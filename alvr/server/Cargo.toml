@@ -6,14 +6,13 @@ license = "MIT AND BSD-3-Clause"
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [features]
 default = []
 bundled_ffmpeg = []
 
 [dependencies]
-alvr_filesystem-layout = { path = "../filesystem-layout" }
 # Basic utilities
 chrono = "0.4"
 lazy_static = "1"
@@ -41,18 +40,20 @@ bytes = "1"
 headers = "0.3"
 hyper = { version = "0.14", features = ["http2", "server", "stream", "runtime", "tcp"] }
 reqwest = "0.11"
-tokio-tungstenite = "0.14"
+tokio-tungstenite = "0.15"
 tokio-util = { version = "0.6", features = ["codec"] }
 # Browser interop
 alcro = "0.5"
 webbrowser = "0.5" # this is just for opening links in the default browser
 # Miscellaneous
 alvr_common = { path = "../common" }
-nalgebra = "0.26"
+alvr_filesystem-layout = { path = "../filesystem-layout" }
+nalgebra = "0.28"
 openvr-driver-sys = { path = "../openvr-driver-sys" }
+semver = "1"
 
 [build-dependencies]
-bindgen = "0.58"
+bindgen = "0.59"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"
 [target.'cfg(unix)'.build-dependencies]

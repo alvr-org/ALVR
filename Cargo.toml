@@ -1,3 +1,5 @@
+[profile.release]
+debug = true
 [workspace]
 members = [
     "alvr/settings-schema-derive",

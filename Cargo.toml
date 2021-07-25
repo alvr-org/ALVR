@@ -11,4 +11,5 @@ members = [
     "alvr/launcher",
     "alvr/vrcompositor-wrapper",
     "alvr/vulkan-layer",
+    "alvr/egui_dashboard",
 ]

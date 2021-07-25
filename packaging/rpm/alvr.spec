@@ -1,6 +1,6 @@
 Name: alvr
-Version: 16.0.0-rc1
-Release: 1.0.0
+Version: 16.0.0
+Release: 0.0.1rc1
 Summary: Stream VR games from your PC to your headset via Wi-Fi
 License: MIT
 Source: https://github.com/alvr-org/ALVR/archive/refs/tags/16.0.0-rc1.tar.gz

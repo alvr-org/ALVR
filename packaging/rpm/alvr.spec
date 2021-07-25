@@ -12,13 +12,12 @@ Requires: ffmpeg steam
 Requires(post): policycoreutils
 Requires(postun): policycoreutils
 %global debug_package %{nil} 
+%define alvrBuildDir build/%{name}_server_linux
 
 %description
 ALVR is an open source remote VR display which allows playing SteamVR games on
  a standalone headset such as Gear VR or Oculus Go/Quest.
 
-%pre
-%define alvrBuildDir build/%{name}_server_linux
 
 %prep
 %autosetup -D -n %{_builddir}
@@ -89,6 +88,7 @@ done
 
 # Copy build files
 cp '%{alvrBuildDir}/bin/%{name}_launcher' '%{buildroot}%{_bindir}'
+chmod 0755 '%{buildroot}%{_bindir}/%{name}_launcher'
 cp -ar '%{alvrBuildDir}/lib64/'* '%{buildroot}%{_libdir}/'
 cp -ar '%{alvrBuildDir}/libexec/%{name}' '%{buildroot}%{_libexecdir}/'
 cp -ar '%{alvrBuildDir}/share/'* '%{buildroot}%{_datadir}/'
@@ -99,8 +99,6 @@ cp 'packaging/freedesktop/%{name}.desktop' '%{buildroot}%{_datadir}/applications
 cp 'packaging/firewall/%{name}-firewalld.xml' '%{buildroot}/%{_usr}/lib/firewalld/services/%{name}.xml'
 cp 'packaging/firewall/%{name}_fw_config.sh' '%{buildroot}%{_libexecdir}/%{name}/'
 cp 'packaging/firewall/ufw-%{name}' '%{buildroot}%{_datadir}/%{name}'
-# Set permissions
-chmod 0755 '%{buildroot}%{_bindir}/%{name}_launcher' '%{buildroot}%{_libdir}/lib%{name}_vulkan_layer.so' 
 # Generate png icons
 for res in 16x16 32x32 48x48 64x64 128x128 256x256; do
     mkdir -p "%{buildroot}%{_datadir}/icons/hicolor/${res}/apps"

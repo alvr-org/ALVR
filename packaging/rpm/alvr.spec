@@ -12,6 +12,7 @@ Requires: ffmpeg steam
 Requires(post): policycoreutils
 Requires(postun): policycoreutils
 %define alvrBuildDir build/%{name}_server_linux
+# find-debuginfo.sh doesn't appear to be working 
 %global debug_package %{nil} 
 
 %description
@@ -93,8 +94,7 @@ newBins=(
     'libexec/%{name}/vrcompositor-wrapper'
 )
 for newBin in "${newBins[@]}"; do
-    chmod 0755 "%{alvrBuildDir}/${newBin}"
-    #strip "%{alvrBuildDir}/${newBin}"
+    strip "%{alvrBuildDir}/${newBin}"
 done
 # Copy build files
 cp '%{alvrBuildDir}/bin/%{name}_launcher' '%{buildroot}%{_bindir}'

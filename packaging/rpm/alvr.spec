@@ -33,7 +33,7 @@ make -f '/usr/share/selinux/devel/Makefile' -C 'packaging/selinux'
 bzip2 'packaging/selinux/%{name}.pp'
 
 %changelog
-* Sun Jul 25 2021 Trae Santiago <trae32566@gmail.com> - 16.0.0-0.0.1rc1
+* Tue Jul 27 2021 Trae Santiago <trae32566@gmail.com> - 16.0.0-0.0.1rc1
     - Added rpmdevtools to BuildRequires so yum-builddeps adds it
     - Added missing openssl-devel and selinux-policy-devel
     - Broke description into multiple lines

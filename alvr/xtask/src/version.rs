@@ -77,7 +77,7 @@ fn bump_rpm_spec_version(new_version: &str) {
     let version_start;
     let version_end;
 
-    // If there's a `-`, split the version around it
+    // If there's a '-', split the version around it
     if new_version.contains("-") {
         let (_, tmp_start, mut tmp_end) = split_string(new_version, "", '-');
         tmp_end.remove(0);

@@ -83,8 +83,7 @@ fn bump_rpm_spec_version(new_version: &str) {
         tmp_end.remove(0);
         version_start = tmp_start.to_string();
         version_end = format!("0.0.1{}", tmp_end.to_string());
-    }
-    else {
+    } else {
         version_start = new_version.to_string();
         version_end = "1.0.0".to_string();
     }

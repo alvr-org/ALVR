@@ -384,7 +384,7 @@ pub struct ConnectionDesc {
     pub enable_fec: bool,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum Theme {
     SystemDefault,

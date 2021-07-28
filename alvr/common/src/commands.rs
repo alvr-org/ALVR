@@ -191,12 +191,12 @@ pub fn maybe_save_driver_paths_backup(paths_backup: &[PathBuf]) -> StrResult {
 }
 
 pub fn get_session_path(base: &Path) -> StrResult<PathBuf> {
-    if cfg!(windows) {
-        Ok(base.join("session.json"))
-    } else {
+    if cfg!(target_os = "linux") {
         Ok(trace_none!(dirs::config_dir())?
             .join("alvr")
             .join("session.json"))
+    } else {
+        Ok(base.join("session.json"))
     }
 }
 

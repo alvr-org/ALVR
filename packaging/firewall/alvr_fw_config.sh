@@ -5,6 +5,7 @@
 # 1 - Invalid command
 # 2 - Invalid action
 # 99 - Feature not implemented
+# 126 - pkexec failed - Request dismissed
 
 iptables_cfg() {
     exit 99
@@ -57,15 +58,20 @@ ufw_cfg() {
 }
 
 main() {
-    # Check if firewall-cmd exists and firewalld is running
-    if which firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
-        firewalld_cfg "${1,,}"
-    # Check if ufw exists and is running
-    elif which ufw >/dev/null 2>&1 && ! ufw status | grep 'Status: inactive' >/dev/null 2>&1; then
-        ufw_cfg "${1,,}"
-    # Check if iptables exists
-    elif which iptables >/dev/null 2>&1; then
-        iptables_cfg "${1,,}"
+    # If we're not root use pkexec for GUI prompt
+    if [ "$(whoami)" == 'root' ]; then
+        # Check if firewall-cmd exists and firewalld is running
+        if which firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
+            firewalld_cfg "${1,,}"
+        # Check if ufw exists and is running
+        elif which ufw >/dev/null 2>&1 && ! ufw status | grep 'Status: inactive' >/dev/null 2>&1; then
+            ufw_cfg "${1,,}"
+        # Check if iptables exists
+        elif which iptables >/dev/null 2>&1; then
+            iptables_cfg "${1,,}"
+        fi
+    else
+        pkexec $(realpath "${0}") "${@}"
     fi
 }
 

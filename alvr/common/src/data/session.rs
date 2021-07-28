@@ -34,7 +34,7 @@ pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
 // dynamically.
 // todo: properties that can be set after the OpenVR initialization should be removed and set with
 // UpdateForStream.
-#[derive(Serialize, Deserialize, PartialEq, Default)]
+#[derive(Serialize, Deserialize, PartialEq, Default, Clone)]
 pub struct OpenvrConfig {
     pub universe_id: u64,
     pub headset_serial_number: String,
@@ -103,7 +103,7 @@ pub struct ClientConnectionDesc {
     pub trusted: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionDesc {
     pub setup_wizard: bool,

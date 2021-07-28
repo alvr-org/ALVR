@@ -1,3 +1,7 @@
-use egui::Ui;
+use egui::{plot::Plot, Ui};
 
-pub fn statistics_tab(ui: &mut Ui) {}
+use crate::dashboard::DashboardResponse;
+
+pub fn statistics_tab(ui: &mut Ui) -> Option<DashboardResponse> {
+    None
+}

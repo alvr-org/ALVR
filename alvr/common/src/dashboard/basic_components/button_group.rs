@@ -1,8 +1,8 @@
-use egui::{Button, Color32, Layout, Ui};
+use egui::{Button, Color32, Ui};
 
 // todo: use a custom widget
 pub fn button_group(ui: &mut Ui, options: &[String], selection: &mut String) {
-    ui.with_layout(Layout::left_to_right(), |ui| {
+    ui.group(|ui| {
         for opt in options {
             let mut button = Button::new(opt);
 

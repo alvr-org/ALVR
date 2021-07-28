@@ -7,11 +7,7 @@ use super::SettingContainer;
 pub struct ChoiceControl {}
 
 impl ChoiceControl {
-    pub fn update(
-        ui: &mut Ui,
-        session: &json::Value,
-        advanced: bool,
-    ) -> Option<DashboardResponse> {
+    pub fn update(ui: &mut Ui, session: &json::Value, advanced: bool) -> Option<DashboardResponse> {
         None
     }
 }

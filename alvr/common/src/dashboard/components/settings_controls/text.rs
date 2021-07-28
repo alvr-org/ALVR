@@ -14,7 +14,6 @@ impl Text {
     }
 }
 
-
 impl SettingContainer for Text {
     fn update(
         &mut self,

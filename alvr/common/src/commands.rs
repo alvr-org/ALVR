@@ -233,12 +233,7 @@ pub fn firewall_rules(add: bool) -> Result<(), i32> {
     let exit_status;
 
     if cfg!(target_os = "linux") {
-        let action = if add {
-            "add"
-        } else {
-            "remove"
-        };
-
+        let action = if add { "add" } else { "remove" };
         // run as normal user since we use pkexec to sudo
         exit_status = Command::new("bash")
             .arg("/usr/libexec/alvr/alvr_fw_config.sh")

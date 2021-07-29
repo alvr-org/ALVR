@@ -31,6 +31,8 @@ mkShell {
     xorg.libX11
     xorg.libXrandr
     libunwind
+    rustc
+    cargo
   ];
 
   LIBCLANG_PATH = "${llvmPackages.libclang.lib}/lib";

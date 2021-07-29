@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>Stream VR games from your PC to your headset via Wi-Fi</short>
+  <description>ALVR is an open source remote VR display which allows playing SteamVR games on a standalone headset such as Gear VR or Oculus Go/Quest.</description>
+  <port protocol="tcp" port="9943-9944"/>
+  <port protocol="udp" port="9943-9944"/>
+</service>

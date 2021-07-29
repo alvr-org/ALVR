@@ -74,14 +74,31 @@ fn bump_cargo_version(crate_dir_name: &str, new_version: &str) {
 fn bump_rpm_spec_version(new_version: &str) {
     let spec_path = workspace_dir().join("packaging/rpm/alvr.spec");
     let spec = fs::read_to_string(&spec_path).unwrap();
+    let version_start;
+    let version_end;
+
+    // If there's a '-', split the version around it
+    if new_version.contains("-") {
+        let (_, tmp_start, mut tmp_end) = split_string(new_version, "", '-');
+        tmp_end.remove(0);
+        version_start = tmp_start.to_string();
+        version_end = format!("0.0.1{}", tmp_end.to_string());
+    } else {
+        version_start = new_version.to_string();
+        version_end = "1.0.0".to_string();
+    }
 
     // Replace Version
     let (file_start, _, file_end) = split_string(&spec, "Version: ", '\n');
-    let spec = format!("{}{}{}", file_start, new_version, file_end);
+    let spec = format!("{}{}{}", file_start, version_start, file_end);
 
     // Reset Release to 1.0.0
     let (file_start, _, file_end) = split_string(&spec, "Release: ", '\n');
-    let spec = format!("{}1.0.0{}", file_start, file_end);
+    let spec = format!("{}{}{}", file_start, version_end, file_end);
+
+    // Replace Source in github URL
+    let (file_start, _, file_end) = split_string(&spec, "refs/tags/v", 't');
+    let spec = format!("{}{}.{}", file_start, new_version, file_end);
 
     fs::write(spec_path, spec).unwrap();
 }

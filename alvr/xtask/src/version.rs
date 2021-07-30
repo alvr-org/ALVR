@@ -81,7 +81,7 @@ fn bump_rpm_spec_version(new_version: &str) {
             let (_, tmp_start, mut tmp_end) = split_string(new_version, "", '-');
             tmp_end.remove(0);
             (
-                tmp_start.to_string(), 
+                tmp_start.to_string(),
                 format!("0.0.1{}", tmp_end.to_string()),
             )
         } else {

@@ -9,6 +9,7 @@ accepted = [
     "MPL-2.0",
     "OpenSSL",
     "Unlicense",
+    "Zlib",
     "zlib-acknowledgement",
 ]
 

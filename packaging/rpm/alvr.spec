@@ -33,7 +33,7 @@ make -f '/usr/share/selinux/devel/Makefile' -C 'packaging/selinux'
 bzip2 'packaging/selinux/%{name}.pp'
 
 %changelog
-* Tue Jul 27 2021 Trae Santiago <trae32566@gmail.com> - 16.0.0-0.0.1rc1
+* Fri Jul 30 2021 Trae Santiago <trae32566@gmail.com> - 16.0.0-0.0.1rc1
     - Merged spec file
 
 %install

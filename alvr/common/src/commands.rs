@@ -272,9 +272,8 @@ pub fn firewall_rules(add: bool) -> Result<(), i32> {
         };
         fs::write(&script_path, firewall_rules_script_content).map_err(|_| -1)?;
 
-        // run with admin priviles
+        // run with admin privileges
         exit_status = runas::Command::new(script_path)
-            .show(cfg!(target_os = "linux"))
             .gui(true) // UAC, if available
             .status()
             .map_err(|_| -1)?;

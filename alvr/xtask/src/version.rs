@@ -1,4 +1,4 @@
-use crate::command;
+use crate::command::date_utc_yyyymmdd;
 use crate::workspace_dir;
 use std::{
     fs,
@@ -71,7 +71,7 @@ fn bump_cargo_version(crate_dir_name: &str, new_version: &str) {
     fs::write(manifest_path, manifest).unwrap();
 }
 
-fn bump_rpm_spec_version(new_version: &str) {
+fn bump_rpm_spec_version(new_version: &str, is_nightly: bool) {
     let spec_path = workspace_dir().join("packaging/rpm/alvr.spec");
     let spec = fs::read_to_string(&spec_path).unwrap();
 
@@ -82,7 +82,15 @@ fn bump_rpm_spec_version(new_version: &str) {
             tmp_end.remove(0);
             (
                 tmp_start.to_string(),
-                format!("0.0.1{}", tmp_end.to_string()),
+                if is_nightly {
+                    format!(
+                        "0.0.1{}+nightly.{}",
+                        tmp_end.to_string(),
+                        date_utc_yyyymmdd()
+                    )
+                } else {
+                    format!("0.0.1{}", tmp_end.to_string())
+                },
             )
         } else {
             (new_version.to_string(), "1.0.0".to_string())
@@ -108,7 +116,7 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
     let mut version = maybe_version.unwrap_or_else(version);
 
     if is_nightly {
-        version = format!("{}+nightly.{}", version, command::date_utc_yyyymmdd());
+        version = format!("{}+nightly.{}", version, date_utc_yyyymmdd());
     }
 
     bump_client_gradle_version(&version, is_nightly);
@@ -116,7 +124,7 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
     bump_cargo_version("server", &version);
     bump_cargo_version("launcher", &version);
     bump_cargo_version("client", &version);
-    bump_rpm_spec_version(&version);
+    bump_rpm_spec_version(&version, is_nightly);
 
     println!("Git tag:\nv{}", version);
 }

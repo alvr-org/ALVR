@@ -4,6 +4,7 @@
 # Exit codes:
 # 1 - Invalid command
 # 2 - Invalid action
+# 3 - Failed to copy UFW configuration
 # 99 - Feature not implemented
 # 126 - pkexec failed - Request dismissed
 
@@ -39,10 +40,11 @@ firewalld_cfg() {
 ufw_cfg() {
     # Try and install the application file
     if ! ufw app info 'alvr'; then
-        if [ -f '/usr/share/alvr/ufw-alvr' ]; then
+        # Pull application file from local build first if the script lives inside it
+        if [ -f "$(dirname $(realpath ${0}))/ufw-alvr" ]; then
+            cp "$(dirname $(realpath ${0}))/ufw-alvr" '/etc/ufw/applications.d/'
+        elif [ -f '/usr/share/alvr/ufw-alvr' ]; then
             cp '/usr/share/alvr/ufw-alvr' '/etc/ufw/applications.d/'
-        elif [ -f './ufw-alvr' ]; then
-            cp './ufw-alvr' '/etc/ufw/applications.d/'
         else
             exit 3
         fi

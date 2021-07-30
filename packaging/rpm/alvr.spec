@@ -17,14 +17,14 @@ Requires(postun): policycoreutils
 
 %description
 ALVR is an open source remote VR display which allows playing SteamVR games on
- a standalone headset such as Gear VR or Oculus Go/Quest.
+a standalone headset such as Gear VR or Oculus Go/Quest.
 
 %prep
 %autosetup -D -n %{_builddir}
 
 %build
 # Set CXXFLAGS for ffmpeg
-export CXXFLAGS='-I/usr/include/ffmpeg'
+export CXXFLAGS+=' -I/usr/include/ffmpeg'
 # Build ALVR
 cargo xtask build-server --release
 # Build SELinux policy
@@ -34,44 +34,7 @@ bzip2 'packaging/selinux/%{name}.pp'
 
 %changelog
 * Tue Jul 27 2021 Trae Santiago <trae32566@gmail.com> - 16.0.0-0.0.1rc1
-    - Added rpmdevtools to BuildRequires so yum-builddeps adds it
-    - Added missing openssl-devel and selinux-policy-devel
-    - Broke description into multiple lines
-    - Added URL
-    - Updated Source to be static
-    - Added license as doc
-* Wed Jul 21 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.1
-    - Added CXXFLAGS
-* Tue Jul 20 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.1.0
-    - Changed source location for firewalld config
-    - Replaced all double quotes with single where possible
-    - Replaced all instances of alvr with name
-    - Made directory creation more readable
-* Sun Jul 18 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-1.0.0
-    - Updated descriptions
-    - Updated license
-    - Added trailing newlines
-    - Removed path from executable in freedesktop config
-    - Corrected license
-    - Updated specfile to be a bit clearer
-    - Added conditional logic for port labeling
-* Sun Jul 18 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.b1
-    - Added freedesktop desktop file for Gnome / KDE
-    - Updated post script to reload firewalld
-    - Added ImageMagick png generation for icons
-* Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a6
-    - Added SELinux port restrictions
-* Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a5
-    - Fixed restorecon
-* Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a4
-    - Fixed firewalld and SELinux policy
-* Sat Jul 17 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a3
-    - Added firewalld policy
-    - Added SELinux policy and compilation
-* Tue Jul 13 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a2
-    - Removed dependencies on snapd in favor of system rust and cargo
-* Tue Jul 13 2021 Trae Santiago <trae32566@gmail.com> - 15.2.1-0.0.a1
-    - Initial specfile
+    - Merged spec file
 
 %install
 # Create dirs 

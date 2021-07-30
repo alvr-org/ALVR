@@ -59,7 +59,7 @@ ufw_cfg() {
 
 main() {
     # If we're not root use pkexec for GUI prompt
-    if [ "$(whoami)" == 'root' ]; then
+    if [ "${USER}" == 'root' ]; then
         # Check if firewall-cmd exists and firewalld is running
         if which firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
             firewalld_cfg "${1,,}"

@@ -93,13 +93,17 @@ impl Dashboard {
                 selection: language.clone(),
             },
             event_buffer: VecDeque::new(),
-            settings_tab: SettingsTab::new(),
+            settings_tab: SettingsTab::new(&session.session_settings),
             last_language: language,
             last_theme: theme,
         }
     }
 
     pub fn setup(&mut self, ctx: &CtxRef) {
+        let mut style = (*ctx.style()).clone();
+        style.spacing.slider_width = 200_f32; // slider width can only be set globally
+        ctx.set_style(style);
+
         if self.last_theme == Theme::Classic {
             ctx.set_visuals(Visuals::light());
         } else {
@@ -150,7 +154,7 @@ impl Dashboard {
                     ScrollArea::auto_sized().show(ui, |ui| match self.tab {
                         Tab::Connections => components::connections_tab(ui),
                         Tab::Statistics => components::statistics_tab(ui),
-                        Tab::Settings => self.settings_tab.update(ui, session),
+                        Tab::Settings => self.settings_tab.ui(ui, session),
                         Tab::Installation => components::installation_tab(ui),
                         Tab::Logs => components::logs_tab(ui),
                         Tab::About => components::about_tab(ui),

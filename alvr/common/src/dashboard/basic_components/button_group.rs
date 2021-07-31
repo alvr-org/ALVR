@@ -1,18 +1,21 @@
-use egui::{Button, Color32, Ui};
+use egui::Ui;
 
 // todo: use a custom widget
-pub fn button_group(ui: &mut Ui, options: &[String], selection: &mut String) {
-    ui.group(|ui| {
-        for opt in options {
-            let mut button = Button::new(opt);
-
-            if *opt == *selection {
-                button = button.fill(Color32::LIGHT_BLUE).text_color(Color32::BLACK);
-            }
-
-            if ui.add(button).clicked() {
-                *selection = opt.clone();
-            }
+pub fn button_group_clicked(
+    ui: &mut Ui,
+    options: &[(String, String)],
+    selection: &mut String,
+) -> bool {
+    let mut clicked = false;
+    for (name, display_name) in options {
+        if ui
+            .selectable_value(selection, name.clone(), display_name)
+            .clicked()
+        {
+            *selection = (*name).to_owned();
+            clicked = true;
         }
-    });
+    }
+
+    clicked
 }

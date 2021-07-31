@@ -1,19 +1,18 @@
+use super::{SettingContainer, SettingsContext, SettingsResponse};
 use crate::dashboard::DashboardResponse;
 use egui::Ui;
 use serde_json as json;
 use settings_schema::VectorDefault;
 
-use super::SettingContainer;
-
 pub struct Vector {}
 
 impl SettingContainer for Vector {
-    fn update(
+    fn ui(
         &mut self,
         ui: &mut Ui,
-        session: json::Value,
-        advanced: bool,
-    ) -> Option<DashboardResponse> {
+        session_fragment: json::Value,
+        context: &SettingsContext,
+    ) -> Option<SettingsResponse> {
         None
     }
 }

@@ -13,7 +13,7 @@ use std::{
 
 // SessionSettings is similar to Settings but it contains every branch, even unused ones. This is
 // the settings representation that the UI uses.
-type SessionSettings = settings::SettingsDefault;
+pub type SessionSettings = settings::SettingsDefault;
 
 pub fn load_session(path: &Path) -> StrResult<SessionDesc> {
     trace_err!(json::from_str(&trace_err!(fs::read_to_string(path))?))

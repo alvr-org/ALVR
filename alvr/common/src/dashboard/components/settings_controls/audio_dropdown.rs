@@ -1,17 +1,17 @@
-use super::SettingContainer;
-use crate::dashboard::DashboardResponse;
+use super::{SettingContainer, SettingsContext, SettingsResponse};
+use crate::{audio::AudioDevice, dashboard::DashboardResponse};
 use egui::Ui;
 use serde_json as json;
 
 pub struct AudioDropdown {}
 
 impl SettingContainer for AudioDropdown {
-    fn update(
+    fn ui(
         &mut self,
         ui: &mut Ui,
-        session: json::Value,
-        advanced: bool,
-    ) -> Option<DashboardResponse> {
+        session_fragment: json::Value,
+        context: &SettingsContext,
+    ) -> Option<SettingsResponse> {
         None
     }
 }

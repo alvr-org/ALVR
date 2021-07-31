@@ -1,7 +1,7 @@
-use super::{settings_controls::create_setting_container, Section, SettingContainer};
+use super::{Section, SettingsContext, SettingsResponse};
 use crate::{
     dashboard::{basic_components::tabs, DashboardResponse},
-    data::{self, SessionDesc},
+    data::{self, SessionDesc, SessionSettings},
 };
 use egui::Ui;
 use serde_json as json;
@@ -10,42 +10,47 @@ use std::collections::HashMap;
 
 pub struct SettingsTab {
     selected_tab: String,
-    advanced: bool,
-    tabs: Vec<(String, String, Box<dyn SettingContainer>)>,
+    tabs: Vec<(String, String, Section)>,
+    context: SettingsContext,
 }
 
 impl SettingsTab {
-    pub fn new() -> Self {
+    pub fn new(session_settings: &SessionSettings) -> Self {
         let schema = data::settings_schema(data::session_settings_default());
+        let mut session = json::from_value::<HashMap<String, json::Value>>(
+            json::to_value(session_settings).unwrap(),
+        )
+        .unwrap();
 
         if let SchemaNode::Section { entries } = schema {
             Self {
                 selected_tab: entries[0].0.clone(),
-                advanced: false,
                 // todo: get translation
                 tabs: entries
                     .into_iter()
                     .filter_map(|(name, data)| {
-                        if let Some(data) = data {
-                            Some((
-                                name.clone(),
-                                name.clone(),
-                                create_setting_container(data.content),
-                            ))
-                        } else {
-                            None
-                        }
+                        data.map(|data| {
+                            if let SchemaNode::Section { entries } = data.content {
+                                (
+                                    name.clone(),
+                                    name.clone(),
+                                    Section::new(entries, session.remove(&name).unwrap()),
+                                )
+                            } else {
+                                panic!("Invalid schema!")
+                            }
+                        })
                     })
                     .collect(),
+                context: SettingsContext { advanced: false },
             }
         } else {
             panic!("Invalid schema!")
         }
     }
 
-    pub fn update(&mut self, ui: &mut Ui, session: &SessionDesc) -> Option<DashboardResponse> {
+    pub fn ui(&mut self, ui: &mut Ui, session: &SessionDesc) -> Option<DashboardResponse> {
         let selected_tab = &mut self.selected_tab;
-        // let tabs_entries = &mut self.tabs;
         let tabs_list = self
             .tabs
             .iter()
@@ -58,28 +63,64 @@ impl SettingsTab {
             .find(|(name, _, _)| *name == *selected_tab)
             .unwrap()
             .2;
-        let advanced = &mut self.advanced;
 
-        let mut content_session = json::from_value::<HashMap<String, json::Value>>(
+        let mut session_tabs = json::from_value::<HashMap<String, json::Value>>(
             json::to_value(&session.session_settings).unwrap(),
         )
-        .unwrap()
-        .remove(selected_tab)
         .unwrap();
 
-        tabs(
+        let mut advanced = self.context.advanced;
+
+        let response = tabs(
             ui,
             tabs_list,
             selected_tab,
             {
-                let advanced = *advanced;
-                move |ui| content.update(ui, content_session, advanced)
-            },
-            |ui| {
-                if ui.selectable_label(*advanced, "Advanced").clicked() {
-                    *advanced = !*advanced;
+                let selected_tab = selected_tab.clone();
+                let context = &self.context;
+                move |ui| {
+                    content
+                        .ui_no_indentation(
+                            ui,
+                            session_tabs.get(&selected_tab).cloned().unwrap(),
+                            context,
+                        )
+                        .and_then(|res| match res {
+                            SettingsResponse::SessionFragment(tab_session) => {
+                                session_tabs.insert(selected_tab, tab_session);
+
+                                let mut session = session.clone();
+                                let session_settings = if let Ok(value) =
+                                    json::from_value(json::to_value(session_tabs).unwrap())
+                                {
+                                    value
+                                } else {
+                                    //Some numeric fields are not properly validated
+                                    println!("Invalid value");
+                                    return None;
+                                };
+
+                                session.session_settings = session_settings;
+
+                                Some(DashboardResponse::SessionUpdated(Box::new(session)))
+                            }
+                            SettingsResponse::PresetInvocation(code) => {
+                                Some(DashboardResponse::PresetInvocation(code))
+                            }
+                        })
                 }
             },
-        )
+            {
+                |ui| {
+                    if ui.selectable_label(advanced, "Advanced").clicked() {
+                        advanced = !advanced;
+                    }
+                }
+            },
+        );
+
+        self.context.advanced = advanced;
+
+        response
     }
 }

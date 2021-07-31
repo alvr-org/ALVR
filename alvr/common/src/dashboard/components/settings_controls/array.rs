@@ -1,4 +1,4 @@
-use super::SettingContainer;
+use super::{SettingContainer, SettingsContext, SettingsResponse};
 use crate::dashboard::DashboardResponse;
 use egui::Ui;
 use serde_json as json;
@@ -6,12 +6,12 @@ use serde_json as json;
 pub struct Array {}
 
 impl SettingContainer for Array {
-    fn update(
+    fn ui(
         &mut self,
         ui: &mut Ui,
-        session: json::Value,
-        advanced: bool,
-    ) -> Option<DashboardResponse> {
+        session_fragment: json::Value,
+        context: &SettingsContext,
+    ) -> Option<SettingsResponse> {
         None
     }
 }

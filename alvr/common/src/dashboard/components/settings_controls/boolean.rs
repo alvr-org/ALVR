@@ -1,18 +1,37 @@
-use crate::dashboard::DashboardResponse;
+use super::{SettingControl, SettingsContext, SettingsResponse};
+use crate::dashboard::basic_components;
 use egui::Ui;
 use serde_json as json;
 
-use super::SettingContainer;
+pub struct Boolean {
+    default: bool,
+}
 
-pub struct Boolean {}
+impl Boolean {
+    pub fn new(default: bool) -> Self {
+        Self { default }
+    }
+}
 
-impl SettingContainer for Boolean {
-    fn update(
+impl SettingControl for Boolean {
+    fn ui(
         &mut self,
         ui: &mut Ui,
-        session: json::Value,
-        advanced: bool,
-    ) -> Option<DashboardResponse> {
-        None
+        session_fragment: json::Value,
+        _: &SettingsContext,
+    ) -> Option<SettingsResponse> {
+        let mut on = json::from_value(session_fragment).unwrap();
+        let response = basic_components::switch(ui, &mut on)
+            .clicked()
+            .then(|| super::into_fragment(on));
+
+        super::reset_clicked(
+            ui,
+            &on,
+            &self.default,
+            if self.default { "ON" } else { "OFF" },
+        )
+        .then(|| super::into_fragment(self.default))
+        .or(response)
     }
 }

@@ -30,7 +30,7 @@ pub fn get_screen_size() -> StrResult<(u32, u32)> {
     Ok((size.width, size.height))
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "macos")]
 pub fn get_screen_size() -> StrResult<(u32, u32)> {
     Ok((0, 0))
 }

@@ -109,7 +109,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client"
-version = "16.0.0-rc1"
+version = "16.0.0-rc2"
 dependencies = [
  "alvr_common",
  "android_logger",
@@ -136,7 +136,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "16.0.0-rc1"
+version = "16.0.0-rc2"
 dependencies = [
  "alvr_filesystem-layout",
  "backtrace",
@@ -191,7 +191,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "16.0.0-rc1"
+version = "16.0.0-rc2"
 dependencies = [
  "alvr_common",
  "alvr_filesystem-layout",
@@ -208,7 +208,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "16.0.0-rc1"
+version = "16.0.0-rc2"
 dependencies = [
  "alcro",
  "alvr_common",

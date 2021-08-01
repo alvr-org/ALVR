@@ -1,19 +1,15 @@
 mod basic_components;
 mod components;
 
-use std::{collections::VecDeque, net::IpAddr};
-
-use basic_components::{modal, ModalResponse};
-use egui::{
-    Align, CentralPanel, ComboBox, CtxRef, Layout, Response, ScrollArea, SidePanel, Visuals,
-};
-
+use self::components::SettingsTab;
+use crate::theme;
 use alvr_common::{
     data::{SessionDesc, Theme},
     logging::Event,
 };
-
-use self::components::SettingsTab;
+use basic_components::ModalResponse;
+use egui::{Align, CentralPanel, ComboBox, CtxRef, Layout, ScrollArea, SidePanel};
+use std::{collections::VecDeque, net::IpAddr};
 
 pub enum ClientListAction {
     AddIfMissing { display_name: String },
@@ -100,15 +96,7 @@ impl Dashboard {
     }
 
     pub fn setup(&mut self, ctx: &CtxRef) {
-        let mut style = (*ctx.style()).clone();
-        style.spacing.slider_width = 200_f32; // slider width can only be set globally
-        ctx.set_style(style);
-
-        if self.last_theme == Theme::Classic {
-            ctx.set_visuals(Visuals::light());
-        } else {
-            ctx.set_visuals(Visuals::dark());
-        }
+        theme::set_theme(ctx, self.last_theme);
     }
 
     pub fn update(
@@ -172,11 +160,7 @@ impl Dashboard {
             if theme != self.last_theme {
                 self.last_theme = theme;
 
-                if self.last_theme == Theme::Classic {
-                    ctx.set_visuals(Visuals::light());
-                } else {
-                    ctx.set_visuals(Visuals::dark());
-                }
+                theme::set_theme(ctx, theme);
             }
 
             if session.locale != self.last_language {
@@ -203,7 +187,7 @@ fn language_modal(
 ) -> Option<DashboardResponse> {
     let LanguageModalState { visible, selection } = state;
 
-    let maybe_response = modal(
+    let maybe_response = basic_components::modal(
         ctx,
         "Select a language",
         |ui, available_width| {

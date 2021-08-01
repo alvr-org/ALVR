@@ -98,6 +98,7 @@ impl Section {
         Grid::new(format!("section_entries{}", self.id))
             .striped(true)
             .min_col_width(ui.available_width())
+            .max_col_width(ui.available_width())
             .show(ui, |ui| {
                 let mut response = None;
                 for entry in &mut self.entries {

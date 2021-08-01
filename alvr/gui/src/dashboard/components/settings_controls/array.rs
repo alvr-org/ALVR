@@ -1,5 +1,4 @@
 use super::{SettingContainer, SettingsContext, SettingsResponse};
-use crate::dashboard::DashboardResponse;
 use egui::Ui;
 use serde_json as json;
 

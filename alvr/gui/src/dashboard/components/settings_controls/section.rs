@@ -7,7 +7,7 @@ use serde_json as json;
 use settings_schema::EntryData;
 use std::{collections::HashMap, sync::atomic::AtomicUsize};
 
-const CONTROLS_TARGET_OFFSET: f32 = 150_f32;
+const CONTROLS_TARGET_OFFSET: f32 = 200_f32;
 
 fn get_id() -> usize {
     static COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -99,8 +99,6 @@ impl Section {
             .striped(true)
             .min_col_width(ui.available_width())
             .show(ui, |ui| {
-                let grid_width = ui.available_width();
-
                 let mut response = None;
                 for entry in &mut self.entries {
                     let session_entry = session_entries
@@ -124,7 +122,8 @@ impl Section {
                                             }
 
                                             // Align controls
-                                            let left_offset = grid_width - ui.available_width();
+                                            let left_offset =
+                                                context.view_width - ui.available_width();
                                             if left_offset < CONTROLS_TARGET_OFFSET {
                                                 ui.add_space(CONTROLS_TARGET_OFFSET - left_offset);
                                             }

@@ -69,6 +69,7 @@ pub fn map_fragment<T: Serialize>(
 
 pub struct SettingsContext {
     pub advanced: bool,
+    pub view_width: f32,
     //todo: add common translation strings
 }
 

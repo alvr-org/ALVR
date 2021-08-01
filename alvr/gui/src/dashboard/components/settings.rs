@@ -40,7 +40,10 @@ impl SettingsTab {
                         })
                     })
                     .collect(),
-                context: SettingsContext { advanced: false },
+                context: SettingsContext {
+                    advanced: false,
+                    view_width: 0_f32,
+                },
             }
         } else {
             panic!("Invalid schema!")
@@ -48,6 +51,8 @@ impl SettingsTab {
     }
 
     pub fn ui(&mut self, ui: &mut Ui, session: &SessionDesc) -> Option<DashboardResponse> {
+        self.context.view_width = ui.available_width();
+
         let selected_tab = &mut self.selected_tab;
         let tabs_list = self
             .tabs

@@ -1,13 +1,10 @@
-use std::env;
-
-use alvr_common::{
-    dashboard::{Dashboard, DashboardResponse},
-    data::{SessionManager, Theme},
-};
+use alvr_common::data::SessionManager;
+use alvr_gui::dashboard::{Dashboard, DashboardResponse};
 use eframe::{
-    egui::{CtxRef, Visuals},
+    egui::CtxRef,
     epi::{self, Frame, Storage},
 };
+use std::env;
 
 struct App {
     dashboard: Dashboard,

@@ -6,5 +6,6 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
-eframe = "0.13"
 alvr_common = { path = "../common" }
+alvr_gui = { path = "../gui" }
+eframe = "0.13"

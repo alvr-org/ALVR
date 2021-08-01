@@ -8,7 +8,7 @@ use egui::{
     Align, CentralPanel, ComboBox, CtxRef, Layout, Response, ScrollArea, SidePanel, Visuals,
 };
 
-use crate::{
+use alvr_common::{
     data::{SessionDesc, Theme},
     logging::Event,
 };

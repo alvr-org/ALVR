@@ -7,10 +7,10 @@ use serde_json as json;
 use settings_schema::EntryData;
 use std::{collections::HashMap, sync::atomic::AtomicUsize};
 
+const CONTROLS_TARGET_OFFSET: f32 = 150_f32;
+
 fn get_id() -> usize {
-    lazy_static::lazy_static! {
-        static ref COUNTER: AtomicUsize = AtomicUsize::new(0);
-    }
+    static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
     COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
@@ -99,6 +99,8 @@ impl Section {
             .striped(true)
             .min_col_width(ui.available_width())
             .show(ui, |ui| {
+                let grid_width = ui.available_width();
+
                 let mut response = None;
                 for entry in &mut self.entries {
                     let session_entry = session_entries
@@ -120,6 +122,13 @@ impl Section {
                                             if let Some(help) = &entry.help {
                                                 res.on_hover_text(help);
                                             }
+
+                                            // Align controls
+                                            let left_offset = grid_width - ui.available_width();
+                                            if left_offset < CONTROLS_TARGET_OFFSET {
+                                                ui.add_space(CONTROLS_TARGET_OFFSET - left_offset);
+                                            }
+
                                             entry.control.ui(ui, entry_session, context)
                                         }
                                     })

@@ -1,5 +1,5 @@
 use super::{SettingControl, SettingsContext, SettingsResponse};
-use egui::Ui;
+use egui::{TextEdit, Ui};
 use serde_json as json;
 
 pub struct Text {
@@ -23,7 +23,8 @@ impl SettingControl for Text {
         session_fragment: json::Value,
         _: &SettingsContext,
     ) -> Option<SettingsResponse> {
-        let res = ui.text_edit_singleline(&mut self.value);
+        let textbox = TextEdit::singleline(&mut self.value).desired_width(50_f32);
+        let res = ui.add(textbox);
 
         let response = if res.lost_focus() {
             Some(super::into_fragment(&self.value))

@@ -1,8 +1,6 @@
 use super::{Section, SettingsContext, SettingsResponse};
-use crate::{
-    dashboard::{basic_components::tabs, DashboardResponse},
-    data::{self, SessionDesc, SessionSettings},
-};
+use crate::dashboard::{basic_components, DashboardResponse};
+use alvr_common::data::{self, SessionDesc, SessionSettings};
 use egui::Ui;
 use serde_json as json;
 use settings_schema::SchemaNode;
@@ -71,7 +69,7 @@ impl SettingsTab {
 
         let mut advanced = self.context.advanced;
 
-        let response = tabs(
+        let response = basic_components::tabs(
             ui,
             tabs_list,
             selected_tab,

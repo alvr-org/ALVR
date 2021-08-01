@@ -1,4 +1,4 @@
-use crate::command;
+use crate::command::date_utc_yyyymmdd;
 use crate::workspace_dir;
 use std::{
     fs,
@@ -71,17 +71,43 @@ fn bump_cargo_version(crate_dir_name: &str, new_version: &str) {
     fs::write(manifest_path, manifest).unwrap();
 }
 
-fn bump_rpm_spec_version(new_version: &str) {
+fn bump_rpm_spec_version(new_version: &str, is_nightly: bool) {
     let spec_path = workspace_dir().join("packaging/rpm/alvr.spec");
     let spec = fs::read_to_string(&spec_path).unwrap();
 
+    // If there's a '-', split the version around it
+    let (version_start, version_end) = {
+        if new_version.contains("-") {
+            let (_, tmp_start, mut tmp_end) = split_string(new_version, "", '-');
+            tmp_end.remove(0);
+            (
+                tmp_start.to_string(),
+                if is_nightly {
+                    format!(
+                        "0.0.1{}+nightly.{}",
+                        tmp_end.to_string(),
+                        date_utc_yyyymmdd()
+                    )
+                } else {
+                    format!("0.0.1{}", tmp_end.to_string())
+                },
+            )
+        } else {
+            (new_version.to_string(), "1.0.0".to_string())
+        }
+    };
+
     // Replace Version
     let (file_start, _, file_end) = split_string(&spec, "Version: ", '\n');
-    let spec = format!("{}{}{}", file_start, new_version, file_end);
+    let spec = format!("{}{}{}", file_start, version_start, file_end);
 
     // Reset Release to 1.0.0
     let (file_start, _, file_end) = split_string(&spec, "Release: ", '\n');
-    let spec = format!("{}1.0.0{}", file_start, file_end);
+    let spec = format!("{}{}{}", file_start, version_end, file_end);
+
+    // Replace Source in github URL
+    let (file_start, _, file_end) = split_string(&spec, "refs/tags/v", 't');
+    let spec = format!("{}{}.{}", file_start, new_version, file_end);
 
     fs::write(spec_path, spec).unwrap();
 }
@@ -90,7 +116,7 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
     let mut version = maybe_version.unwrap_or_else(version);
 
     if is_nightly {
-        version = format!("{}+nightly.{}", version, command::date_utc_yyyymmdd());
+        version = format!("{}+nightly.{}", version, date_utc_yyyymmdd());
     }
 
     bump_client_gradle_version(&version, is_nightly);
@@ -98,7 +124,7 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
     bump_cargo_version("server", &version);
     bump_cargo_version("launcher", &version);
     bump_cargo_version("client", &version);
-    bump_rpm_spec_version(&version);
+    bump_rpm_spec_version(&version, is_nightly);
 
     println!("Git tag:\nv{}", version);
 }

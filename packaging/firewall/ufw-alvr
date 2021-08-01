@@ -1,0 +1,4 @@
+[alvr]
+title=ALVR
+description=Stream VR games from your PC to your headset via Wi-Fi
+ports=9943:9944

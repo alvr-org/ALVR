@@ -1,13 +1,10 @@
-use std::env;
-
-use alvr_common::{
-    dashboard::{Dashboard, DashboardResponse},
-    data::{SessionManager, Theme},
-};
+use alvr_common::data::SessionManager;
+use alvr_gui::dashboard::{Dashboard, DashboardResponse};
 use eframe::{
-    egui::{CtxRef, Visuals},
+    egui::CtxRef,
     epi::{self, Frame, Storage},
 };
+use std::env;
 
 struct App {
     dashboard: Dashboard,
@@ -24,10 +21,11 @@ impl epi::App for App {
     }
 
     fn update(&mut self, ctx: &CtxRef, _: &mut Frame<'_>) {
-        if let Some(response) = self.dashboard.update(ctx, &self.session_manager.get(), &[]) {
+        if let Some(response) = self.dashboard.update(ctx, self.session_manager.get(), &[]) {
             match response {
                 DashboardResponse::Connections(_) => todo!(),
                 DashboardResponse::SessionUpdated(session) => {
+                    println!("saving session");
                     *self.session_manager.get_mut() = *session;
                 }
                 DashboardResponse::PresetInvocation(_) => todo!(),

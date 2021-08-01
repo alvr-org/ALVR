@@ -1,6 +1,6 @@
 [package]
 name = "alvr_common"
-version = "16.0.0-rc1"
+version = "16.0.0-rc2"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"
@@ -30,7 +30,6 @@ nonzero_ext = "0.2"
 tokio = { version = "1", features = ["rt", "net", "macros"] }
 tokio-util = { version = "0.6", features = ["codec", "net"] }
 # Graphics
-egui = "0.13"
 wgpu = "0.9"
 winit = "0.25"     # needed to get the screen size
 # Audio

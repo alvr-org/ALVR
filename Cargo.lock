@@ -114,6 +114,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "alvr_audio"
+version = "16.0.0-rc2"
+dependencies = [
+ "alvr_common",
+ "cpal",
+ "lazy_static",
+ "parking_lot",
+ "rodio",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "alvr_client"
 version = "16.0.0-rc2"
 dependencies = [
@@ -147,9 +160,7 @@ dependencies = [
  "alvr_filesystem_layout",
  "backtrace",
  "bincode",
- "bindgen 0.59.0",
  "bytes",
- "cc",
  "cpal",
  "dirs",
  "encoding_rs_io",
@@ -234,6 +245,7 @@ name = "alvr_server"
 version = "16.0.0-rc2"
 dependencies = [
  "alcro",
+ "alvr_audio",
  "alvr_common",
  "alvr_filesystem_layout",
  "bincode",
@@ -4548,9 +4560,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.6.0"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd3076b5c8cc18138b8f8814895c11eb4de37114a5d127bafdc5e55798ceef37"
+checksum = "4b7b349f11a7047e6d1276853e612d152f5e8a352c61917887cc2169e2366b4c"
 dependencies = [
  "autocfg",
  "bytes",

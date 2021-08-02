@@ -340,9 +340,9 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 				updateController(info);
 			}
 
-			if (IsHMD() && (std::fabs(info.ipd - Settings::Instance().m_flIPD) > 0.0001f
-				|| std::fabs(info.eyeFov[0].left - Settings::Instance().m_eyeFov[0].left) > 0.1f
-				|| std::fabs(info.eyeFov[0].right - Settings::Instance().m_eyeFov[0].right) > 0.1f)) {
+			if (IsHMD() && (std::abs(info.ipd - Settings::Instance().m_flIPD) > 0.0001f
+				|| std::abs(info.eyeFov[0].left - Settings::Instance().m_eyeFov[0].left) > 0.1f
+				|| std::abs(info.eyeFov[0].right - Settings::Instance().m_eyeFov[0].right) > 0.1f)) {
 				updateIPDandFoV(info);
 			}
 

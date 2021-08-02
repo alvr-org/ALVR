@@ -17,6 +17,7 @@ bundled_ffmpeg = []
 chrono = "0.4"
 lazy_static = "1"
 parking_lot = "0.11"
+semver = "1"
 # Logging
 fern = "0.6"
 log = "0.4"
@@ -48,9 +49,9 @@ webbrowser = "0.5" # this is just for opening links in the default browser
 # Miscellaneous
 alvr_common = { path = "../common" }
 alvr_filesystem_layout = { path = "../filesystem_layout" }
+alvr_audio = { path = "../audio" }
 nalgebra = "0.28"
 openvr-driver-sys = { path = "../openvr-driver-sys" }
-semver = "1"
 
 [build-dependencies]
 bindgen = "0.59"

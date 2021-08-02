@@ -1,4 +1,4 @@
-use crate::{
+use alvr_common::{
     data::{AudioConfig, AudioDeviceId},
     prelude::*,
     sockets::{StreamReceiver, StreamSender, AUDIO},

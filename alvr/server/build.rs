@@ -59,6 +59,8 @@ fn main() {
     let platform = "cpp/platform/win32";
     #[cfg(target_os = "linux")]
     let platform = "cpp/platform/linux";
+    #[cfg(target_os = "macos")]
+    let platform = "cpp/platform/macos";
 
     let common_iter = walkdir::WalkDir::new("cpp")
         .into_iter()

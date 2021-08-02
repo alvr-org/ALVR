@@ -1,13 +1,12 @@
 use crate::{
-    connection_utils, openvr, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
+    connection_utils, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
     RESTART_NOTIFIER, SESSION_MANAGER,
 };
+use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
-    audio::AudioDevice,
-    audio::{self, AudioDeviceType},
     data::{
-        AudioDeviceId, ClientConfigPacket, ClientControlPacket, CodecType, FrameSize,
-        HeadsetInfoPacket, OpenvrConfig, PlayspaceSyncPacket, ServerControlPacket, ALVR_VERSION,
+        ClientConfigPacket, ClientControlPacket, CodecType, FrameSize, HeadsetInfoPacket,
+        OpenvrConfig, PlayspaceSyncPacket, ServerControlPacket,
     },
     logging,
     prelude::*,
@@ -177,12 +176,12 @@ async fn client_handshake(
                 microphone_desc.input_device_id,
                 AudioDeviceType::VirtualMicrophoneInput,
             )?;
-            if audio::is_same_device(&game_audio_device, &microphone_device) {
+            if alvr_audio::is_same_device(&game_audio_device, &microphone_device) {
                 return fmt_e!("Game audio and microphone cannot point to the same device!");
             }
         }
 
-        trace_err!(audio::get_sample_rate(&game_audio_device))?
+        trace_err!(alvr_audio::get_sample_rate(&game_audio_device))?
     } else {
         0
     };
@@ -533,7 +532,7 @@ async fn connection_pipeline() -> StrResult {
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         let device = AudioDevice::new(desc.device_id, AudioDeviceType::Output)?;
-        let sample_rate = audio::get_sample_rate(&device)?;
+        let sample_rate = alvr_audio::get_sample_rate(&device)?;
         let sender = stream_socket.request_stream().await?;
         let mute_when_streaming = desc.mute_when_streaming;
 
@@ -541,7 +540,8 @@ async fn connection_pipeline() -> StrResult {
             #[cfg(windows)]
             openvr::set_game_output_audio_device_id(audio::get_windows_device_id(&device)?);
 
-            audio::record_audio_loop(device, 2, sample_rate, mute_when_streaming, sender).await?;
+            alvr_audio::record_audio_loop(device, 2, sample_rate, mute_when_streaming, sender)
+                .await?;
 
             #[cfg(windows)]
             {
@@ -576,7 +576,7 @@ async fn connection_pipeline() -> StrResult {
             openvr::set_headset_microphone_audio_device_id(microphone_device_id);
         }
 
-        Box::pin(audio::play_audio_loop(
+        Box::pin(alvr_audio::play_audio_loop(
             input_device,
             1,
             desc.sample_rate,

@@ -31,7 +31,7 @@ tokio = { version = "1", features = ["rt", "net", "macros"] }
 tokio-util = { version = "0.6", features = ["codec", "net"] }
 # Graphics
 wgpu = "0.9"
-winit = "0.25"     # needed to get the screen size
+winit = "0.25" # needed to get the screen size
 # Audio
 cpal = "0.13"
 rodio = "0.14"
@@ -63,7 +63,3 @@ winapi = { version = "0.3", features = [
     "wtypes",
 ] }
 wio = "0.2"
-
-[build-dependencies]
-bindgen = "0.59"
-cc = { version = "1", features = ["parallel"] }

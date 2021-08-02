@@ -576,7 +576,7 @@ mod manager {
         fn drop(&mut self) {
             save_session(
                 self.session_desc,
-                &commands::get_session_path(&self.dir).unwrap(),
+                &commands::get_session_path(self.dir).unwrap(),
             )
             .unwrap();
             log_event(Event::SessionUpdated);
@@ -593,7 +593,7 @@ mod manager {
             #[cfg(target_os = "linux")]
             commands::maybe_create_alvr_config_directory().unwrap();
 
-            let session_path = commands::get_session_path(&dir).unwrap();
+            let session_path = commands::get_session_path(dir).unwrap();
             let session_desc = match fs::read_to_string(&session_path) {
                 Ok(session_string) => {
                     let json_value = json::from_str::<json::Value>(&session_string).unwrap();

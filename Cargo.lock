@@ -124,6 +124,9 @@ dependencies = [
  "rodio",
  "serde",
  "tokio",
+ "widestring",
+ "winapi",
+ "wio",
 ]
 
 [[package]]
@@ -184,10 +187,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "wgpu",
- "widestring",
- "winapi",
  "winit",
- "wio",
 ]
 
 [[package]]

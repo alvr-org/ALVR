@@ -47,19 +47,3 @@ semver = { version = "1", features = ['serde'] }
 dirs = "3"
 msgbox = "0.6"
 runas = "0.2"
-
-[target.'cfg(windows)'.dependencies]
-widestring = "0.4"
-winapi = { version = "0.3", features = [
-    "impl-default",
-    "combaseapi",
-    "coml2api",
-    "endpointvolume",
-    "functiondiscoverykeys_devpkey",
-    "mmdeviceapi",
-    "objbase",
-    "propidl",
-    "propsys",
-    "wtypes",
-] }
-wio = "0.2"

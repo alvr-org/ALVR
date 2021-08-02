@@ -13,3 +13,19 @@ tokio = { version = "1" }
 alvr_common = { path = "../common" }
 cpal = "0.13"
 rodio = "0.14"
+
+[target.'cfg(windows)'.dependencies]
+widestring = "0.4"
+winapi = { version = "0.3", features = [
+    "impl-default",
+    "combaseapi",
+    "coml2api",
+    "endpointvolume",
+    "functiondiscoverykeys_devpkey",
+    "mmdeviceapi",
+    "objbase",
+    "propidl",
+    "propsys",
+    "wtypes",
+] }
+wio = "0.2"

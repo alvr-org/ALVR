@@ -1,12 +1,12 @@
 use crate::{
-    connection_utils, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
+    connection_utils, openvr, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
     RESTART_NOTIFIER, SESSION_MANAGER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
     data::{
-        ClientConfigPacket, ClientControlPacket, CodecType, FrameSize, HeadsetInfoPacket,
-        OpenvrConfig, PlayspaceSyncPacket, ServerControlPacket,
+        AudioDeviceId, ClientConfigPacket, ClientControlPacket, CodecType, FrameSize,
+        HeadsetInfoPacket, OpenvrConfig, PlayspaceSyncPacket, ServerControlPacket,
     },
     logging,
     prelude::*,
@@ -538,7 +538,7 @@ async fn connection_pipeline() -> StrResult {
 
         Box::pin(async move {
             #[cfg(windows)]
-            openvr::set_game_output_audio_device_id(audio::get_windows_device_id(&device)?);
+            openvr::set_game_output_audio_device_id(alvr_audio::get_windows_device_id(&device)?);
 
             alvr_audio::record_audio_loop(device, 2, sample_rate, mute_when_streaming, sender)
                 .await?;
@@ -547,7 +547,7 @@ async fn connection_pipeline() -> StrResult {
             {
                 let default_device =
                     AudioDevice::new(AudioDeviceId::Default, AudioDeviceType::Output)?;
-                let default_device_id = audio::get_windows_device_id(&default_device)?;
+                let default_device_id = alvr_audio::get_windows_device_id(&default_device)?;
                 openvr::set_game_output_audio_device_id(default_device_id);
             }
 
@@ -572,7 +572,7 @@ async fn connection_pipeline() -> StrResult {
                     matching_input_device_name: input_device.name()?,
                 },
             )?;
-            let microphone_device_id = audio::get_windows_device_id(&microphone_device)?;
+            let microphone_device_id = alvr_audio::get_windows_device_id(&microphone_device)?;
             openvr::set_headset_microphone_audio_device_id(microphone_device_id);
         }
 

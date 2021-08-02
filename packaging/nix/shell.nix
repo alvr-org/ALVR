@@ -33,6 +33,8 @@ mkShell {
     libunwind
     rustc
     cargo
+    python3 # for the xcb crate
+    libxkbcommon
   ];
 
   LIBCLANG_PATH = "${llvmPackages.libclang.lib}/lib";

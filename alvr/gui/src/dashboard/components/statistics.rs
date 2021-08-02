@@ -1,7 +1,14 @@
-use egui::{plot::Plot, Ui};
+use crate::{dashboard::DashboardResponse, translation::TranslationBundle};
+use egui::Ui;
 
-use crate::dashboard::DashboardResponse;
+pub struct StatisticsTab {}
 
-pub fn statistics_tab(ui: &mut Ui) -> Option<DashboardResponse> {
-    None
+impl StatisticsTab {
+    pub fn new(trans: &TranslationBundle) -> Self {
+        Self {}
+    }
+
+    pub fn ui(&self, ui: &mut Ui) -> Option<DashboardResponse> {
+        None
+    }
 }

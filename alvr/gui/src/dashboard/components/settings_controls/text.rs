@@ -21,7 +21,7 @@ impl SettingControl for Text {
         &mut self,
         ui: &mut Ui,
         session_fragment: json::Value,
-        _: &SettingsContext,
+        ctx: &SettingsContext,
     ) -> Option<SettingsResponse> {
         let textbox = TextEdit::singleline(&mut self.value).desired_width(50_f32);
         let res = ui.add(textbox);
@@ -41,6 +41,7 @@ impl SettingControl for Text {
             &self.value,
             &self.default,
             &format!("\"{}\"", self.default),
+            &ctx.t,
         )
         .then(|| super::into_fragment(&self.default))
         .or(response)

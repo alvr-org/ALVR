@@ -86,7 +86,7 @@ impl<T: Serialize + DeserializeOwned + Numeric + ToString> SettingControl for Nu
         &mut self,
         ui: &mut Ui,
         session_fragment: json::Value,
-        _: &SettingsContext,
+        ctx: &SettingsContext,
     ) -> Option<SettingsResponse> {
         let response = match self.numeric_type.clone() {
             NumericWidgetType::Slider { range, step } => {
@@ -133,8 +133,14 @@ impl<T: Serialize + DeserializeOwned + Numeric + ToString> SettingControl for Nu
             }
         };
 
-        super::reset_clicked(ui, &self.value, &self.default, &self.default.to_string())
-            .then(|| super::into_fragment(self.default))
-            .or(response)
+        super::reset_clicked(
+            ui,
+            &self.value,
+            &self.default,
+            &self.default.to_string(),
+            &ctx.t,
+        )
+        .then(|| super::into_fragment(self.default))
+        .or(response)
     }
 }

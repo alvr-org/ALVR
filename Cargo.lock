@@ -205,6 +205,7 @@ dependencies = [
  "fluent",
  "fluent-langneg",
  "fluent-syntax 0.11.0",
+ "locale_config",
  "serde",
  "serde_json",
  "settings-schema",
@@ -2636,6 +2637,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f84d96438c15fcd6c3f244c8fce01d1e2b9c6b5623e9c711dc9286d8fc92d6a"
 dependencies = [
  "cfg-if 1.0.0",
+ "winapi",
+]
+
+[[package]]
+name = "locale_config"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08d2c35b16f4483f6c26f0e4e9550717a2f6575bcd6f12a53ff0c490a94a6934"
+dependencies = [
+ "lazy_static",
+ "objc",
+ "objc-foundation",
+ "regex",
  "winapi",
 ]
 

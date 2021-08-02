@@ -1,9 +1,14 @@
+use crate::{dashboard::DashboardResponse, translation::TranslationBundle};
 use egui::Ui;
 
-use crate::dashboard::{Dashboard, DashboardResponse};
+pub struct AboutTab {}
 
-pub fn about_tab(ui: &mut Ui) -> Option<DashboardResponse> {
-    ui.label("todo");
+impl AboutTab {
+    pub fn new(trans_bundle: &TranslationBundle) -> Self {
+        Self {}
+    }
 
-    None
+    pub fn ui(&self, ui: &mut Ui) -> Option<DashboardResponse> {
+        None
+    }
 }

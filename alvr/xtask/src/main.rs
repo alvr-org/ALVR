@@ -225,6 +225,17 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
     )
     .unwrap();
     if cfg!(debug_assertions) {
+        let dir_content =
+            dirx::get_dir_content2("alvr/gui/languages", &dirx::DirOptions { depth: 1 }).unwrap();
+        let items: Vec<&String> = dir_content.directories[1..]
+            .iter()
+            .chain(dir_content.files.iter())
+            .collect();
+
+        let destination = server_build_dir().join("languages");
+        fs::create_dir_all(&destination).unwrap();
+        fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
+
         command::run_in(
             &workspace_dir().join("alvr/egui_dashboard"),
             &format!("cargo build {}", build_flag),

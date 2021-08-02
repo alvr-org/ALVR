@@ -1,4 +1,4 @@
-use crate::dashboard::basic_components;
+use crate::{dashboard::basic_components, translation::TranslationBundle, LocalizedId};
 
 use super::{
     EmptyContainer, EmptyControl, SettingContainer, SettingControl, SettingsContext,
@@ -10,9 +10,8 @@ use settings_schema::EntryData;
 use std::collections::HashMap;
 
 pub struct ChoiceControl {
-    default: String,
-    display_default: String,
-    variants_list: Vec<(String, String)>,
+    default: LocalizedId,
+    variant_labels: Vec<LocalizedId>,
     controls: HashMap<String, (Box<dyn SettingControl>, bool)>,
 }
 
@@ -21,37 +20,42 @@ impl ChoiceControl {
         default: String,
         variants_schema: Vec<(String, Option<EntryData>)>,
         session_fragment: json::Value,
+        trans_path: &str,
+        trans: &TranslationBundle,
     ) -> Self {
         let mut session_variants =
             json::from_value::<HashMap<String, json::Value>>(session_fragment).unwrap();
 
         Self {
-            default: default.clone(),
-            display_default: default,
-            variants_list: variants_schema
+            default: LocalizedId {
+                id: default.clone(),
+                trans: trans.attribute(trans_path, &default),
+            },
+            variant_labels: variants_schema
                 .iter()
-                .map(|(name, _)| {
-                    let display_name = name.clone();
-
-                    (name.clone(), display_name)
+                .map(|(id, _)| LocalizedId {
+                    id: id.clone(),
+                    trans: trans.attribute(trans_path, id),
                 })
                 .collect(),
             controls: variants_schema
                 .into_iter()
-                .map(|(name, data)| {
+                .map(|(id, data)| {
                     if let Some(data) = data {
                         (
-                            name.clone(),
+                            id.clone(),
                             (
                                 super::create_setting_control(
                                     data.content,
-                                    session_variants.remove(&name).unwrap(),
+                                    session_variants.remove(&id).unwrap(),
+                                    &format!("{}-{}", trans_path, id),
+                                    trans,
                                 ),
                                 data.advanced,
                             ),
                         )
                     } else {
-                        (name, (Box::new(EmptyControl) as _, false))
+                        (id, (Box::new(EmptyControl) as _, false))
                     }
                 })
                 .collect(),
@@ -64,7 +68,7 @@ impl SettingControl for ChoiceControl {
         &mut self,
         ui: &mut Ui,
         session_fragment: json::Value,
-        context: &SettingsContext,
+        ctx: &SettingsContext,
     ) -> Option<SettingsResponse> {
         let mut session_variants =
             json::from_value::<HashMap<String, json::Value>>(session_fragment).unwrap();
@@ -72,7 +76,7 @@ impl SettingControl for ChoiceControl {
             json::from_value(session_variants.get("variant").cloned().unwrap()).unwrap();
 
         let response =
-            basic_components::button_group_clicked(ui, &self.variants_list, &mut variant).then(
+            basic_components::button_group_clicked(ui, &self.variant_labels, &mut variant).then(
                 || {
                     session_variants
                         .insert("variant".to_owned(), json::to_value(&variant).unwrap());
@@ -85,10 +89,14 @@ impl SettingControl for ChoiceControl {
             ui,
             &variant,
             &self.default,
-            &format!("\"{}\"", self.display_default),
+            &format!("\"{}\"", self.default.trans),
+            &ctx.t,
         )
         .then(|| {
-            session_variants.insert("variant".to_owned(), json::to_value(&self.default).unwrap());
+            session_variants.insert(
+                "variant".to_owned(),
+                json::to_value(&*self.default).unwrap(),
+            );
             super::into_fragment(&session_variants)
         })
         .or(response);
@@ -99,16 +107,13 @@ impl SettingControl for ChoiceControl {
             .cloned()
             .unwrap_or(json::Value::Null);
 
-        (!*advanced || context.advanced)
+        (!*advanced || ctx.advanced)
             .then(|| {
-                super::map_fragment(
-                    control.ui(ui, session_variant, context),
-                    |session_variant| {
-                        session_variants.insert(variant, session_variant);
+                super::map_fragment(control.ui(ui, session_variant, ctx), |session_variant| {
+                    session_variants.insert(variant, session_variant);
 
-                        session_variants
-                    },
-                )
+                    session_variants
+                })
             })
             .flatten()
             .or(response)
@@ -123,6 +128,8 @@ impl ChoiceContainer {
     pub fn new(
         variants_schema: Vec<(String, Option<EntryData>)>,
         session_fragment: json::Value,
+        trans_path: &str,
+        trans: &TranslationBundle,
     ) -> Self {
         let mut session_variants =
             json::from_value::<HashMap<String, json::Value>>(session_fragment).unwrap();
@@ -130,20 +137,22 @@ impl ChoiceContainer {
         Self {
             containers: variants_schema
                 .into_iter()
-                .map(|(name, data)| {
+                .map(|(id, data)| {
                     if let Some(data) = data {
                         (
-                            name.clone(),
+                            id.clone(),
                             (
                                 super::create_setting_container(
                                     data.content,
-                                    session_variants.remove(&name).unwrap(),
+                                    session_variants.remove(&id).unwrap(),
+                                    &format!("{}-{}", trans_path, id),
+                                    trans,
                                 ),
                                 data.advanced,
                             ),
                         )
                     } else {
-                        (name, (Box::new(EmptyContainer) as _, false))
+                        (id, (Box::new(EmptyContainer) as _, false))
                     }
                 })
                 .collect(),

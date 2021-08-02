@@ -1,7 +1,14 @@
+use crate::{dashboard::DashboardResponse, translation::TranslationBundle};
 use egui::Ui;
 
-use crate::dashboard::DashboardResponse;
+pub struct InstallationTab {}
 
-pub fn installation_tab(ui: &mut Ui) -> Option<DashboardResponse> {
-    None
+impl InstallationTab {
+    pub fn new(trans: &TranslationBundle) -> Self {
+        Self {}
+    }
+
+    pub fn ui(&self, ui: &mut Ui) -> Option<DashboardResponse> {
+        None
+    }
 }

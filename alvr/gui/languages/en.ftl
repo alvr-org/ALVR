@@ -21,3 +21,4 @@ about = About
 
 language = Language
     .prompt = Select a language
+    .system = System

@@ -19,7 +19,7 @@ fn download_and_extract_zip(url: &str, destination: &Path) {
 
     fs::remove_dir_all(&destination).ok();
     fs::create_dir_all(&destination).unwrap();
-    command::unzip(&zip_file, &destination).unwrap();
+    command::unzip(&zip_file, destination).unwrap();
 
     fs::remove_file(zip_file).unwrap();
 }

@@ -18,7 +18,7 @@ impl SettingControl for Boolean {
         &mut self,
         ui: &mut Ui,
         session_fragment: json::Value,
-        _: &SettingsContext,
+        ctx: &SettingsContext,
     ) -> Option<SettingsResponse> {
         let mut on = json::from_value(session_fragment).unwrap();
         let response = basic_components::switch(ui, &mut on)
@@ -30,6 +30,7 @@ impl SettingControl for Boolean {
             &on,
             &self.default,
             if self.default { "ON" } else { "OFF" },
+            &ctx.t,
         )
         .then(|| super::into_fragment(self.default))
         .or(response)

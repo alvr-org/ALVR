@@ -1,15 +1,24 @@
 mod basic_components;
 mod components;
 
-use self::components::SettingsTab;
-use crate::theme;
+use self::components::{AboutTab, ConnectionsTab, InstallationTab, LogsTab, SettingsTab};
+use crate::{
+    dashboard::components::StatisticsTab,
+    theme,
+    translation::{self, SharedTranslation, TranslationBundle},
+};
 use alvr_common::{
     data::{SessionDesc, Theme},
     logging::Event,
 };
 use basic_components::ModalResponse;
-use egui::{Align, CentralPanel, ComboBox, CtxRef, Layout, ScrollArea, SidePanel};
-use std::{collections::VecDeque, net::IpAddr};
+use egui::{Align, CentralPanel, ComboBox, CtxRef, Layout, ScrollArea, SidePanel, Ui};
+use std::{
+    array::IntoIter,
+    collections::{BTreeMap, VecDeque},
+    net::IpAddr,
+    sync::Arc,
+};
 
 pub enum ClientListAction {
     AddIfMissing { display_name: String },
@@ -42,7 +51,7 @@ pub enum DashboardResponse {
     UpdateServer { url: String },
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum Tab {
     Connections,
     Statistics,
@@ -52,46 +61,86 @@ enum Tab {
     About,
 }
 
-fn tab_icon(tab: Tab) -> &'static str {
-    match tab {
-        Tab::Connections => "🔌",
-        Tab::Statistics => "📈",
-        Tab::Settings => "⚙",
-        Tab::Installation => "💾",
-        Tab::Logs => "📝",
-        Tab::About => "ℹ",
-    }
-}
-
 struct LanguageModalState {
     visible: bool,
-    selection: String,
+    selection: Option<String>,
 }
 
 pub struct Dashboard {
-    tab: Tab,
+    selected_tab: Tab,
     language_modal_state: LanguageModalState,
     event_buffer: VecDeque<Event>,
+    tab_labels: BTreeMap<Tab, String>,
+    language_label: String,
+    connections_tab: ConnectionsTab,
+    statistics_tab: StatisticsTab,
     settings_tab: SettingsTab,
-    last_language: String,
+    installation_tab: InstallationTab,
+    logs_tab: LogsTab,
+    about_tab: AboutTab,
     last_theme: Theme,
+    t: Arc<SharedTranslation>,
+    language_prompt_trans: String,
+    system_language_trans: String,
+    trans_bundle: Arc<TranslationBundle>,
 }
 
 impl Dashboard {
-    pub fn new(session: &SessionDesc) -> Self {
-        let language = session.locale.clone();
+    pub fn new(session: &SessionDesc, translation_bundle: Arc<TranslationBundle>) -> Self {
+        let language = if session.locale == "system" {
+            None
+        } else {
+            Some(session.locale.clone())
+        };
+
         let theme = session.to_settings().extra.theme;
 
+        let t = translation::get_shared_translation(&translation_bundle);
+
         Self {
-            tab: Tab::Connections,
+            selected_tab: Tab::Connections,
             language_modal_state: LanguageModalState {
                 visible: false,
-                selection: language.clone(),
+                selection: language,
             },
             event_buffer: VecDeque::new(),
-            settings_tab: SettingsTab::new(&session.session_settings),
-            last_language: language,
+            tab_labels: IntoIter::new([
+                (
+                    Tab::Connections,
+                    format!("🔌 {}", translation_bundle.get("connections")),
+                ),
+                (
+                    Tab::Statistics,
+                    format!("📈 {}", translation_bundle.get("statistics")),
+                ),
+                (
+                    Tab::Settings,
+                    format!("⚙ {}", translation_bundle.get("settings")),
+                ),
+                (
+                    Tab::Installation,
+                    format!("💾 {}", translation_bundle.get("installation")),
+                ),
+                (Tab::Logs, format!("📝 {}", translation_bundle.get("logs"))),
+                (Tab::About, format!("ℹ {}", translation_bundle.get("about"))),
+            ])
+            .collect(),
+            language_label: format!("🌐 {}", translation_bundle.get("language")),
+            connections_tab: ConnectionsTab::new(&translation_bundle),
+            statistics_tab: StatisticsTab::new(&translation_bundle),
+            settings_tab: SettingsTab::new(
+                &session.session_settings,
+                Arc::clone(&t),
+                &translation_bundle,
+            ),
+            installation_tab: InstallationTab::new(&translation_bundle),
+            logs_tab: LogsTab::new(&translation_bundle),
+            about_tab: AboutTab::new(&translation_bundle),
             last_theme: theme,
+            t,
+            language_prompt_trans: translation_bundle.attribute("language", "prompt"),
+            system_language_trans: translation_bundle.attribute("language", "system"),
+            trans_bundle: translation_bundle,
         }
     }
 
@@ -111,41 +160,46 @@ impl Dashboard {
                 ui.heading("ALVR");
                 egui::warn_if_debug_build(ui);
 
-                for tab in [
-                    Tab::Connections,
-                    Tab::Statistics,
-                    Tab::Settings,
-                    Tab::Installation,
-                    Tab::Logs,
-                    Tab::About,
-                ] {
-                    ui.selectable_value(&mut self.tab, tab, format!("{} {:?}", tab_icon(tab), tab));
+                for (tab, label) in &self.tab_labels {
+                    ui.selectable_value(&mut self.selected_tab, *tab, label);
                 }
 
                 ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {
-                    if ui.selectable_label(false, "🌐 Language").clicked() {
+                    if ui.selectable_label(false, &self.language_label).clicked() {
                         self.language_modal_state = LanguageModalState {
                             visible: true,
-                            selection: session.locale.clone(),
+                            selection: if session.locale == "system" {
+                                None
+                            } else {
+                                Some(session.locale.clone())
+                            },
                         };
                     }
                 });
 
-                language_modal(ctx, &mut self.language_modal_state, &session)
+                language_modal(
+                    ui,
+                    &mut self.language_modal_state,
+                    self.trans_bundle.languages(),
+                    session,
+                    &self.t,
+                    &self.language_prompt_trans,
+                    &self.system_language_trans,
+                )
             })
             .inner;
 
         let response = CentralPanel::default()
             .show(ctx, |ui| {
                 ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
-                    ui.heading(format!("{:?}", self.tab));
-                    ScrollArea::auto_sized().show(ui, |ui| match self.tab {
-                        Tab::Connections => components::connections_tab(ui),
-                        Tab::Statistics => components::statistics_tab(ui),
+                    ui.heading(self.tab_labels.get(&self.selected_tab).unwrap());
+                    ScrollArea::auto_sized().show(ui, |ui| match self.selected_tab {
+                        Tab::Connections => self.connections_tab.ui(ui, session),
+                        Tab::Statistics => self.statistics_tab.ui(ui),
                         Tab::Settings => self.settings_tab.ui(ui, session),
-                        Tab::Installation => components::installation_tab(ui),
-                        Tab::Logs => components::logs_tab(ui),
-                        Tab::About => components::about_tab(ui),
+                        Tab::Installation => self.installation_tab.ui(ui),
+                        Tab::Logs => self.logs_tab.ui(ui),
+                        Tab::About => self.about_tab.ui(ui),
                     })
                 })
                 .inner
@@ -162,34 +216,26 @@ impl Dashboard {
 
                 theme::set_theme(ctx, theme);
             }
-
-            if session.locale != self.last_language {
-                *self = Dashboard::new(session)
-            }
         }
 
         response
     }
 }
 
-fn language_display(code: &str) -> &str {
-    match code {
-        "en" => "English",
-        "it" => "Italiano",
-        _ => "",
-    }
-}
-
 fn language_modal(
-    ctx: &CtxRef,
+    ctx: &mut Ui,
     state: &mut LanguageModalState,
+    languages: &BTreeMap<String, String>,
     session: &SessionDesc,
+    t: &SharedTranslation,
+    prompt_trans: &str,
+    system_trans: &str,
 ) -> Option<DashboardResponse> {
     let LanguageModalState { visible, selection } = state;
 
     let maybe_response = basic_components::modal(
         ctx,
-        "Select a language",
+        prompt_trans,
         |ui, available_width| {
             const COMBO_WIDTH: f32 = 100_f32;
 
@@ -197,28 +243,32 @@ fn language_modal(
 
             ui.with_layout(Layout::left_to_right().with_cross_align(Align::TOP), |ui| {
                 ui.add_space((available_width - COMBO_WIDTH) / 2_f32);
+
+                let selection_text = match selection {
+                    Some(language) => languages.get(language).unwrap(),
+                    None => system_trans,
+                };
+
                 ComboBox::from_id_source("language_select")
                     .width(COMBO_WIDTH)
-                    .selected_text(language_display(selection))
+                    .selected_text(selection_text)
                     .show_ui(ui, |ui| {
-                        ui.selectable_value(selection, "en".into(), language_display("en"));
-                        ui.selectable_value(selection, "it".into(), language_display("it"));
-                        ui.selectable_value(selection, "it".into(), language_display("it"));
-                        ui.selectable_value(selection, "it".into(), language_display("it"));
-                        ui.selectable_value(selection, "it".into(), language_display("it"));
-                        ui.selectable_value(selection, "it".into(), language_display("it"));
-                        ui.selectable_value(selection, "it".into(), language_display("it"));
-                        ui.selectable_value(selection, "it".into(), language_display("it"));
+                        ui.selectable_value(selection, None, system_trans);
+
+                        for (name, trans) in languages {
+                            ui.selectable_value(selection, Some(name.clone()), trans);
+                        }
                     });
             });
         },
         None,
         visible,
+        t,
     );
 
     if matches!(maybe_response, Some(ModalResponse::Ok)) {
         let mut session = session.clone();
-        session.locale = selection.clone();
+        session.locale = selection.clone().unwrap_or_else(|| "system".into());
 
         Some(DashboardResponse::SessionUpdated(Box::new(session)))
     } else {

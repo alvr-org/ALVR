@@ -20,3 +20,6 @@ unic-langid = "0.9"
 
 [target.'cfg(any(windows, target_os = "macos"))'.dependencies]
 dark-light = "0.1"
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+locale_config = "0.3"

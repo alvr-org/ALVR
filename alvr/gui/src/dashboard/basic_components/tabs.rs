@@ -1,8 +1,9 @@
-use egui::{Align, InnerResponse, Layout, Response, Ui};
+use crate::LocalizedId;
+use egui::{Align, Layout, Ui};
 
 pub fn tabs<R>(
     ui: &mut Ui,
-    tabs: Vec<(String, String)>,
+    tabs: &[LocalizedId],
     selected_tab: &mut String,
     content: impl FnOnce(&mut Ui) -> R,
     right_slot: impl FnOnce(&mut Ui),
@@ -11,8 +12,8 @@ pub fn tabs<R>(
         Layout::top_down(Align::LEFT).with_cross_justify(true),
         |ui| {
             ui.with_layout(Layout::left_to_right().with_cross_align(Align::TOP), |ui| {
-                for (name, display_name) in tabs {
-                    ui.selectable_value(selected_tab, name, display_name);
+                for id in tabs {
+                    ui.selectable_value(selected_tab, (**id).clone(), &id.trans);
                 }
 
                 ui.with_layout(

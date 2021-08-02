@@ -14,6 +14,8 @@ mod switch;
 mod text;
 mod vector;
 
+use std::sync::Arc;
+
 pub use audio_dropdown::*;
 pub use boolean::*;
 pub use choice::*;
@@ -34,6 +36,8 @@ use egui::Ui;
 use serde::Serialize;
 use serde_json as json;
 use settings_schema::SchemaNode;
+
+use crate::translation::{SharedTranslation, TranslationBundle};
 
 // Due to the nature of immediate mode GUIs, the parent containers cannot conditionally render based
 // on the presence of the child container, so it is the child responsibility to format the container
@@ -70,7 +74,7 @@ pub fn map_fragment<T: Serialize>(
 pub struct SettingsContext {
     pub advanced: bool,
     pub view_width: f32,
-    //todo: add common translation strings
+    pub t: Arc<SharedTranslation>,
 }
 
 pub trait SettingControl {
@@ -108,11 +112,17 @@ impl SettingContainer for EmptyContainer {
 pub fn create_setting_control(
     schema: SchemaNode,
     session_fragment: json::Value,
+    trans_path: &str,
+    trans: &TranslationBundle,
 ) -> Box<dyn SettingControl> {
     match schema {
-        SchemaNode::Choice { default, variants } => {
-            Box::new(ChoiceControl::new(default, variants, session_fragment))
-        }
+        SchemaNode::Choice { default, variants } => Box::new(ChoiceControl::new(
+            default,
+            variants,
+            session_fragment,
+            trans_path,
+            trans,
+        )),
         SchemaNode::Optional {
             default_set,
             content,
@@ -126,6 +136,8 @@ pub fn create_setting_control(
             content_advanced,
             *content,
             session_fragment,
+            trans_path,
+            trans,
         )),
         SchemaNode::Boolean { default } => Box::new(Boolean::new(default)),
         SchemaNode::Integer {
@@ -167,12 +179,19 @@ pub fn create_setting_control(
 pub fn create_setting_container(
     schema: SchemaNode,
     session_fragment: json::Value,
+    trans_path: &str,
+    trans: &TranslationBundle,
 ) -> Box<dyn SettingContainer> {
     match schema {
-        SchemaNode::Section { entries } => Box::new(Section::new(entries, session_fragment)),
-        SchemaNode::Choice { default, variants } => {
-            Box::new(ChoiceContainer::new(variants, session_fragment))
+        SchemaNode::Section { entries } => {
+            Box::new(Section::new(entries, session_fragment, trans_path, trans))
         }
+        SchemaNode::Choice { default, variants } => Box::new(ChoiceContainer::new(
+            variants,
+            session_fragment,
+            trans_path,
+            trans,
+        )),
         SchemaNode::Optional {
             default_set,
             content,
@@ -185,6 +204,8 @@ pub fn create_setting_container(
             content_advanced,
             *content,
             session_fragment,
+            trans_path,
+            trans,
         )),
         SchemaNode::Array(_) => Box::new(EmptyContainer),
         SchemaNode::Vector {

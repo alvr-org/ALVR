@@ -1,19 +1,28 @@
 use super::{Section, SettingsContext, SettingsResponse};
-use crate::dashboard::{basic_components, DashboardResponse};
+use crate::{
+    dashboard::{basic_components, DashboardResponse},
+    translation::{SharedTranslation, TranslationBundle},
+    LocalizedId,
+};
 use alvr_common::data::{self, SessionDesc, SessionSettings};
 use egui::Ui;
 use serde_json as json;
 use settings_schema::SchemaNode;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 pub struct SettingsTab {
     selected_tab: String,
-    tabs: Vec<(String, String, Section)>,
+    tab_labels: Vec<LocalizedId>,
+    tab_contents: HashMap<String, Section>,
     context: SettingsContext,
 }
 
 impl SettingsTab {
-    pub fn new(session_settings: &SessionSettings) -> Self {
+    pub fn new(
+        session_settings: &SessionSettings,
+        t: Arc<SharedTranslation>,
+        trans: &TranslationBundle,
+    ) -> Self {
         let schema = data::settings_schema(data::session_settings_default());
         let mut session = json::from_value::<HashMap<String, json::Value>>(
             json::to_value(session_settings).unwrap(),
@@ -23,26 +32,30 @@ impl SettingsTab {
         if let SchemaNode::Section { entries } = schema {
             Self {
                 selected_tab: entries[0].0.clone(),
-                // todo: get translation
-                tabs: entries
+                tab_labels: entries
+                    .iter()
+                    .map(|(id, _)| LocalizedId {
+                        id: id.clone(),
+                        trans: trans.get(id),
+                    })
+                    .collect(),
+                tab_contents: entries
                     .into_iter()
-                    .filter_map(|(name, data)| {
-                        data.map(|data| {
-                            if let SchemaNode::Section { entries } = data.content {
-                                (
-                                    name.clone(),
-                                    name.clone(),
-                                    Section::new(entries, session.remove(&name).unwrap()),
-                                )
-                            } else {
-                                panic!("Invalid schema!")
-                            }
-                        })
+                    .map(|(id, data)| {
+                        if let SchemaNode::Section { entries } = data.unwrap().content {
+                            (
+                                id.clone(),
+                                Section::new(entries, session.remove(&id).unwrap(), &id, trans),
+                            )
+                        } else {
+                            panic!("Invalid schema!")
+                        }
                     })
                     .collect(),
                 context: SettingsContext {
                     advanced: false,
                     view_width: 0_f32,
+                    t,
                 },
             }
         } else {
@@ -54,18 +67,12 @@ impl SettingsTab {
         self.context.view_width = ui.available_width();
 
         let selected_tab = &mut self.selected_tab;
-        let tabs_list = self
-            .tabs
-            .iter()
-            .map(|(name, display_name, _)| (name.clone(), display_name.clone()))
-            .collect();
 
-        let content = &mut self
-            .tabs
+        let content = self
+            .tab_contents
             .iter_mut()
-            .find(|(name, _, _)| *name == *selected_tab)
-            .unwrap()
-            .2;
+            .find_map(|(id, section)| (**id == *selected_tab).then(|| section))
+            .unwrap();
 
         let mut session_tabs = json::from_value::<HashMap<String, json::Value>>(
             json::to_value(&session.session_settings).unwrap(),
@@ -76,7 +83,7 @@ impl SettingsTab {
 
         let response = basic_components::tabs(
             ui,
-            tabs_list,
+            &self.tab_labels,
             selected_tab,
             {
                 let selected_tab = selected_tab.clone();

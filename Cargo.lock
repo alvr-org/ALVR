@@ -130,6 +130,7 @@ dependencies = [
 name = "alvr_client"
 version = "16.0.0-rc2"
 dependencies = [
+ "alvr_audio",
  "alvr_common",
  "android_logger",
  "bincode",

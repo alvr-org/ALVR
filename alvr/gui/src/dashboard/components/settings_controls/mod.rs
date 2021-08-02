@@ -14,8 +14,7 @@ mod switch;
 mod text;
 mod vector;
 
-use std::sync::Arc;
-
+pub use array::*;
 pub use audio_dropdown::*;
 pub use boolean::*;
 pub use choice::*;
@@ -32,12 +31,18 @@ pub use switch::*;
 pub use text::*;
 pub use vector::*;
 
+use crate::translation::{SharedTranslation, TranslationBundle};
 use egui::Ui;
 use serde::Serialize;
 use serde_json as json;
 use settings_schema::SchemaNode;
+use std::sync::{atomic::AtomicUsize, Arc};
 
-use crate::translation::{SharedTranslation, TranslationBundle};
+fn get_id() -> usize {
+    static COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
 
 // Due to the nature of immediate mode GUIs, the parent containers cannot conditionally render based
 // on the presence of the child container, so it is the child responsibility to format the container
@@ -82,7 +87,7 @@ pub trait SettingControl {
         &mut self,
         ui: &mut Ui,
         session_fragment: json::Value,
-        context: &SettingsContext,
+        ctx: &SettingsContext,
     ) -> Option<SettingsResponse>;
 }
 
@@ -91,7 +96,7 @@ pub trait SettingContainer {
         &mut self,
         ui: &mut Ui,
         session_fragment: json::Value,
-        context: &SettingsContext,
+        ctx: &SettingsContext,
     ) -> Option<SettingsResponse>;
 }
 
@@ -207,7 +212,9 @@ pub fn create_setting_container(
             trans_path,
             trans,
         )),
-        SchemaNode::Array(_) => Box::new(EmptyContainer),
+        SchemaNode::Array(array) => {
+            Box::new(Array::new(array, session_fragment, trans_path, trans))
+        }
         SchemaNode::Vector {
             default_element,
             default,

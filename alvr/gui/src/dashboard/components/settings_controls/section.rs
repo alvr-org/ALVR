@@ -7,15 +7,9 @@ use super::{
 use egui::{Grid, Ui};
 use serde_json as json;
 use settings_schema::EntryData;
-use std::{collections::HashMap, sync::atomic::AtomicUsize};
+use std::collections::HashMap;
 
 const CONTROLS_TARGET_OFFSET: f32 = 200_f32;
-
-fn get_id() -> usize {
-    static COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-    COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-}
 
 fn entry_trans(trans: &TranslationBundle, trans_path_parent: &str, id: &str) -> String {
     trans
@@ -39,7 +33,7 @@ struct Entry {
 }
 
 pub struct Section {
-    id: usize, // the id is used to disambiguate grid containers and avoid disappearing entries
+    id: String, // the id is used to disambiguate grid containers and avoid disappearing entries
     entries: Vec<Entry>,
 }
 
@@ -54,7 +48,7 @@ impl Section {
             json::from_value::<HashMap<String, json::Value>>(session_fragment).unwrap();
 
         Self {
-            id: get_id(),
+            id: format!("section{}", super::get_id()),
             entries: entries
                 .into_iter()
                 .map(|(id, data)| {
@@ -124,7 +118,7 @@ impl Section {
         let session_entries =
             json::from_value::<HashMap<String, json::Value>>(session_fragment).unwrap();
 
-        Grid::new(format!("section_entries{}", self.id))
+        Grid::new(&self.id)
             .striped(true)
             .min_col_width(ui.available_width())
             .max_col_width(ui.available_width())

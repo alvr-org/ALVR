@@ -144,7 +144,7 @@ dependencies = [
 name = "alvr_common"
 version = "16.0.0-rc2"
 dependencies = [
- "alvr_filesystem-layout",
+ "alvr_filesystem_layout",
  "backtrace",
  "bincode",
  "bindgen 0.59.0",
@@ -188,7 +188,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "alvr_filesystem-layout"
+name = "alvr_filesystem_layout"
 version = "15.2.1"
 dependencies = [
  "dirs",
@@ -217,7 +217,7 @@ name = "alvr_launcher"
 version = "16.0.0-rc2"
 dependencies = [
  "alvr_common",
- "alvr_filesystem-layout",
+ "alvr_filesystem_layout",
  "druid",
  "gtk",
  "semver 1.0.3",
@@ -235,7 +235,7 @@ version = "16.0.0-rc2"
 dependencies = [
  "alcro",
  "alvr_common",
- "alvr_filesystem-layout",
+ "alvr_filesystem_layout",
  "bincode",
  "bindgen 0.59.0",
  "bytes",
@@ -267,7 +267,7 @@ dependencies = [
 name = "alvr_vulkan-layer"
 version = "15.2.1"
 dependencies = [
- "bindgen 0.58.1",
+ "bindgen 0.59.0",
  "cc",
  "pkg-config",
  "walkdir",
@@ -277,7 +277,7 @@ dependencies = [
 name = "alvr_xtask"
 version = "1.0.0"
 dependencies = [
- "alvr_filesystem-layout",
+ "alvr_filesystem_layout",
  "fs_extra",
  "pico-args",
  "walkdir",
@@ -467,29 +467,6 @@ dependencies = [
  "regex",
  "rustc-hash",
  "shlex 0.1.1",
-]
-
-[[package]]
-name = "bindgen"
-version = "0.58.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f8523b410d7187a43085e7e064416ea32ded16bd0a4e6fc025e21616d01258f"
-dependencies = [
- "bitflags",
- "cexpr 0.4.0",
- "clang-sys",
- "clap",
- "env_logger",
- "lazy_static",
- "lazycell",
- "log",
- "peeking_take_while",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash",
- "shlex 1.0.0",
- "which",
 ]
 
 [[package]]

@@ -36,7 +36,7 @@ winit = "0.25"     # needed to get the screen size
 cpal = "0.13"
 rodio = "0.14"
 # Miscellaneous
-alvr_filesystem-layout = { path = "../filesystem-layout" }
+alvr_filesystem_layout = { path = "../filesystem_layout" }
 encoding_rs_io = "0.1"
 nalgebra = { version = "0.28", features = ["serde-serialize"] }
 rand = "0.8"

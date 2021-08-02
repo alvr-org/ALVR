@@ -47,7 +47,7 @@ alcro = "0.5"
 webbrowser = "0.5" # this is just for opening links in the default browser
 # Miscellaneous
 alvr_common = { path = "../common" }
-alvr_filesystem-layout = { path = "../filesystem-layout" }
+alvr_filesystem_layout = { path = "../filesystem_layout" }
 nalgebra = "0.28"
 openvr-driver-sys = { path = "../openvr-driver-sys" }
 semver = "1"

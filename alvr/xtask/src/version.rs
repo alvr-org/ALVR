@@ -117,6 +117,8 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
 
     bump_client_gradle_version(&version, is_nightly);
     bump_cargo_version("common", &version);
+    bump_cargo_version("filesystem_layout", &version);
+    bump_cargo_version("gui", &version);
     bump_cargo_version("server", &version);
     bump_cargo_version("launcher", &version);
     bump_cargo_version("client", &version);

@@ -9,4 +9,4 @@ edition = "2018"
 fs_extra = "1"
 pico-args = "0.4"
 walkdir = "2"
-alvr_filesystem-layout = { path = "../filesystem-layout" }
+alvr_filesystem_layout = { path = "../filesystem_layout" }

@@ -9,7 +9,7 @@ edition = "2018"
 default = []
 
 [dependencies]
-alvr_filesystem-layout = { path = "../filesystem-layout" }
+alvr_filesystem_layout = { path = "../filesystem_layout" }
 alvr_common = { path = "../common" }
 druid = "0.7"
 semver = "1"

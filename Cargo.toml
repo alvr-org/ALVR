@@ -7,7 +7,7 @@ members = [
     "alvr/common",
     "alvr/gui",
     "alvr/client",
-    "alvr/filesystem-layout",
+    "alvr/filesystem_layout",
     "alvr/server",
     "alvr/launcher",
     "alvr/vrcompositor-wrapper",

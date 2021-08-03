@@ -1,4 +1,4 @@
-use crate::{graphics_info, ClientListAction, ALVR_DIR, SESSION_MANAGER};
+use crate::{graphics_info, ClientListAction, FILESYSTEM_LAYOUT, SESSION_MANAGER};
 use alvr_common::{commands, logging, prelude::*, ALVR_VERSION};
 use bytes::Buf;
 use futures::SinkExt;
@@ -130,7 +130,9 @@ async fn http_api(
         "/api/log" => text_websocket(request, log_sender).await?,
         "/api/events" => text_websocket(request, events_sender).await?,
         "/api/driver/register" => {
-            if commands::driver_registration(&[ALVR_DIR.clone()], true).is_ok() {
+            if commands::driver_registration(&[FILESYSTEM_LAYOUT.openvr_driver_dir.clone()], true)
+                .is_ok()
+            {
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::INTERNAL_SERVER_ERROR)?
@@ -247,9 +249,7 @@ async fn http_api(
 
                 let maybe_file = tokio::fs::File::open(format!(
                     "{}{}",
-                    ALVR_DIR
-                        .join(&alvr_filesystem_layout::LAYOUT.dashboard_resources_dir)
-                        .to_string_lossy(),
+                    FILESYSTEM_LAYOUT.dashboard_dir().to_string_lossy(),
                     path_branch
                 ))
                 .await;

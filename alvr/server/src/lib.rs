@@ -9,6 +9,7 @@ mod web_server;
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
+use alvr_filesystem::Layout;
 use bindings::*;
 
 use alvr_common::{commands, logging, prelude::*};
@@ -20,7 +21,6 @@ use std::{
     ffi::{c_void, CStr, CString},
     net::IpAddr,
     os::raw::c_char,
-    path::PathBuf,
     ptr,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -36,10 +36,10 @@ use tokio::{
 
 lazy_static! {
     // Since ALVR_DIR is needed to initialize logging, if error then just panic
-    static ref ALVR_DIR: PathBuf = {
-        commands::get_alvr_dir().unwrap()
-    };
-    static ref SESSION_MANAGER: Mutex<SessionManager> = Mutex::new(SessionManager::new(&ALVR_DIR));
+    static ref FILESYSTEM_LAYOUT: Layout =
+        Layout::from_openvr_driver_dir(&commands::get_driver_dir().unwrap());
+    static ref SESSION_MANAGER: Mutex<SessionManager> =
+        Mutex::new(SessionManager::new(&FILESYSTEM_LAYOUT.session()));
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
     static ref CLIENTS_UPDATED_NOTIFIER: Notify = Notify::new();
     static ref MAYBE_WINDOW: Mutex<Option<Arc<alcro::UI>>> = Mutex::new(None);
@@ -92,13 +92,13 @@ pub fn notify_shutdown_driver() {
 pub fn notify_restart_driver() {
     notify_shutdown_driver();
 
-    commands::restart_steamvr(&ALVR_DIR).ok();
+    commands::restart_steamvr(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
 }
 
 pub fn notify_application_update() {
     notify_shutdown_driver();
 
-    commands::invoke_application_update(&ALVR_DIR).ok();
+    commands::invoke_application_update(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
 }
 
 pub enum ClientListAction {
@@ -226,8 +226,14 @@ fn init() {
         thread::spawn(|| logging::show_err(ui_thread()));
     }
 
-    let alvr_dir_c_string = CString::new(ALVR_DIR.to_string_lossy().to_string()).unwrap();
-    unsafe { g_alvrDir = alvr_dir_c_string.into_raw() };
+    unsafe {
+        g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
+            .unwrap()
+            .into_raw();
+        g_driverLibDir = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
+            .unwrap()
+            .into_raw();
+    };
 }
 
 #[no_mangle]
@@ -283,7 +289,9 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
-        logging::show_err(commands::apply_driver_paths_backup(ALVR_DIR.clone()));
+        logging::show_err(commands::apply_driver_paths_backup(
+            FILESYSTEM_LAYOUT.openvr_driver_dir.clone(),
+        ));
 
         if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
             runtime.spawn(async move {

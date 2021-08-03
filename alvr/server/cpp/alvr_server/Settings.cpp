@@ -31,14 +31,7 @@ void Settings::Load()
 {
 	try
 	{
-		#ifdef __linux__
-		auto env = std::getenv("XDG_CONFIG_HOME");
-		auto xdgConfig = env ? env : (std::string)std::getenv("HOME") + "/.config"s;
-		std::filesystem::create_directory(xdgConfig + "/alvr"s);
-		auto sessionFile = std::ifstream(xdgConfig + "/alvr/session.json"s);
-		#else
-		auto sessionFile = std::ifstream(g_alvrDir + (std::string)"/session.json");
-		#endif
+		auto sessionFile = std::ifstream(g_sessionPath);
 
 		auto json = std::string(
 			std::istreambuf_iterator<char>(sessionFile),

@@ -6,8 +6,6 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
-alvr_filesystem_layout = { path = "../filesystem_layout" }
-
 # Basic utilities
 lazy_static = "1"
 parking_lot = "0.11"
@@ -23,6 +21,7 @@ rand = "0.8"
 semver = { version = "1", features = ['serde'] }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
+alvr_filesystem = { path = "../filesystem" }
 dirs = "3"
 msgbox = "0.6"
 runas = "0.2"

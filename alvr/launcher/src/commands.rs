@@ -1,8 +1,8 @@
 use alvr_common::{commands, logging, prelude::*};
+use alvr_filesystem::Layout;
 use serde_json as json;
 use std::{
     env, fs,
-    path::PathBuf,
     process::Command,
     thread,
     time::{Duration, Instant},
@@ -104,18 +104,10 @@ pub fn unblock_alvr_addon() -> StrResult {
     Ok(())
 }
 
-pub fn current_alvr_dir() -> StrResult<PathBuf> {
-    alvr_filesystem_layout::alvr_dir_from_component(
-        &trace_err!(env::current_exe())?,
-        &alvr_filesystem_layout::LAYOUT.launcher_exe,
-    )
-}
-
 pub fn maybe_register_alvr_driver() -> StrResult {
-    let current_alvr_dir = current_alvr_dir()?;
-    let alvr_driver_dir = current_alvr_dir.join(&alvr_filesystem_layout::LAYOUT.openvr_driver_dir);
+    let alvr_driver_dir = Layout::from_launcher_exe(&env::current_exe().unwrap()).openvr_driver_dir;
 
-    let driver_registered = commands::get_alvr_dir_from_registered_drivers()
+    let driver_registered = commands::get_driver_dir_from_registered()
         .ok()
         .filter(|dir| *dir == alvr_driver_dir)
         .is_some();
@@ -164,7 +156,7 @@ pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
     };
 
     trace_err!(std::os::unix::fs::symlink(
-        commands::get_alvr_dir()?.join(&alvr_filesystem_layout::LAYOUT.vrcompositor_wrapper),
+        commands::get_alvr_dir()?.join(&alvr_filesystem::LAYOUT.vrcompositor_wrapper),
         &launcher_path
     ))?;
 
@@ -211,7 +203,5 @@ pub fn invoke_installer() {
     spawn_no_window(Command::new(commands::installer_path()).arg("-q"));
 
     // delete crash_log.txt (take advantage of the occasion to do some routine cleaning)
-    if let Ok(alvr_dir) = current_alvr_dir() {
-        fs::remove_file(alvr_filesystem_layout::crash_log(&alvr_dir)).ok();
-    }
+    fs::remove_file(Layout::from_launcher_exe(&env::current_exe().unwrap()).crash_log()).ok();
 }

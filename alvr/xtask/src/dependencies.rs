@@ -1,20 +1,12 @@
 use crate::command::{self, run_as_bash_in as bash_in};
-use std::{
-    fs,
-    io::ErrorKind,
-    panic,
-    path::{Path, PathBuf},
-};
-
-fn deps_dir() -> PathBuf {
-    crate::workspace_dir().join("deps")
-}
+use alvr_filesystem as afs;
+use std::{fs, io::ErrorKind, panic, path::Path};
 
 fn download_and_extract_zip(url: &str, destination: &Path) {
-    let zip_file = deps_dir().join("temp_download.zip");
+    let zip_file = afs::deps_dir().join("temp_download.zip");
 
     fs::remove_file(&zip_file).ok();
-    fs::create_dir_all(deps_dir()).unwrap();
+    fs::create_dir_all(afs::deps_dir()).unwrap();
     command::download(url, &zip_file).unwrap();
 
     fs::remove_dir_all(&destination).ok();
@@ -30,7 +22,7 @@ fn build_rust_android_gradle() {
 
     // Note: build_dir is used because the task always fails to delete the temp_gradle_plugin_build
     // at the end. CI will try to zip the deps dir and this folder must not be present
-    let temp_build_dir = crate::build_dir().join("temp_gradle_plugin_build");
+    let temp_build_dir = afs::build_dir().join("temp_gradle_plugin_build");
     download_and_extract_zip(
         &format!(
             "https://codeload.github.com/mozilla/rust-android-gradle/zip/{}",
@@ -51,7 +43,7 @@ fn build_rust_android_gradle() {
     )
     .unwrap();
 
-    let dep_dir = deps_dir().join("rust-android-gradle");
+    let dep_dir = afs::deps_dir().join("rust-android-gradle");
     if let Err(e) = fs::create_dir_all(&dep_dir) {
         if e.kind() != ErrorKind::AlreadyExists {
             panic::panic_any(e);
@@ -81,7 +73,7 @@ fn build_rust_android_gradle() {
 pub fn build_ffmpeg_linux() -> std::path::PathBuf {
     // dependencies: build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev
 
-    let download_path = deps_dir().join("ubuntu");
+    let download_path = afs::deps_dir().join("ubuntu");
     let ffmpeg_path = download_path.join("FFmpeg-n4.4");
     if !ffmpeg_path.exists() {
         download_and_extract_zip(

@@ -2,6 +2,7 @@ mod command;
 mod dependencies;
 mod version;
 
+use alvr_filesystem::{self as afs, Layout};
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
 use std::{
@@ -47,62 +48,14 @@ ARGS:
 
 type BResult<T = ()> = Result<T, Box<dyn Error>>;
 
-#[cfg(target_os = "linux")]
-const SERVER_BUILD_DIR_NAME: &str = "alvr_server_linux";
-#[cfg(windows)]
-const SERVER_BUILD_DIR_NAME: &str = "alvr_server_windows";
-#[cfg(target_os = "macos")]
-const SERVER_BUILD_DIR_NAME: &str = "alvr_server_macos";
-
-#[cfg(not(windows))]
-pub fn exec_fname(name: &str) -> String {
-    name.to_owned()
-}
-#[cfg(windows)]
-pub fn exec_fname(name: &str) -> String {
-    format!("{}.exe", name)
-}
-
-#[cfg(target_os = "linux")]
-fn dynlib_fname(name: &str) -> String {
-    format!("lib{}.so", name)
-}
-#[cfg(windows)]
-fn dynlib_fname(name: &str) -> String {
-    format!("{}.dll", name)
-}
-#[cfg(target_os = "macos")]
-fn dynlib_fname(name: &str) -> String {
-    format!("lib{}.dylib", name)
-}
-
-pub fn target_dir() -> PathBuf {
-    Path::new(env!("OUT_DIR")).join("../../../..")
-}
-
-pub fn workspace_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .into()
-}
-
-pub fn build_dir() -> PathBuf {
-    workspace_dir().join("build")
-}
-
-pub fn server_build_dir() -> PathBuf {
-    build_dir().join(SERVER_BUILD_DIR_NAME)
-}
-
 pub fn remove_build_dir() {
-    let build_dir = build_dir();
+    let build_dir = afs::build_dir();
     fs::remove_dir_all(&build_dir).ok();
 }
 
 pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bundle_ffmpeg: bool) {
+    let layout = Layout::from_common_ancestor(&afs::server_build_dir());
+
     let build_type = if is_release { "release" } else { "debug" };
     let build_flag = if is_release { "--release" } else { "" };
 
@@ -123,44 +76,36 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
         launcher_features.push("default")
     }
 
-    let target_dir = target_dir();
+    let target_dir = afs::target_dir();
     let artifacts_dir = target_dir.join(build_type);
-    let driver_dst_dir = server_build_dir().join(
-        alvr_filesystem_layout::LAYOUT
-            .openvr_driver_lib()
-            .parent()
-            .unwrap(),
-    );
+    // let driver_dst_dir = afs::server_build_dir().join(
+    //     alvr_filesystem::LAYOUT
+    //         .openvr_driver_lib()
+    //         .parent()
+    //         .unwrap(),
+    // );
 
     if fetch_crates {
         command::run("cargo update").unwrap();
     }
 
-    fs::remove_dir_all(&server_build_dir()).ok();
-    fs::create_dir_all(&server_build_dir()).unwrap();
-    fs::create_dir_all(&driver_dst_dir).unwrap();
-    fs::create_dir_all(
-        server_build_dir().join(
-            alvr_filesystem_layout::LAYOUT
-                .launcher_exe
-                .parent()
-                .unwrap(),
-        ),
-    )
-    .unwrap();
+    fs::remove_dir_all(&afs::server_build_dir()).ok();
+    fs::create_dir_all(&afs::server_build_dir()).unwrap();
+    fs::create_dir_all(&layout.openvr_driver_lib().parent().unwrap()).unwrap();
+    fs::create_dir_all(&layout.launcher_exe().parent().unwrap()).unwrap();
 
     let mut copy_options = dirx::CopyOptions::new();
     copy_options.copy_inside = true;
     fsx::copy_items(
         &["alvr/xtask/resources/presets"],
-        server_build_dir().join(&alvr_filesystem_layout::LAYOUT.presets_dir),
+        layout.presets_dir(),
         &copy_options,
     )
     .expect("copy presets");
 
     if bundle_ffmpeg {
         let ffmpeg_path = dependencies::build_ffmpeg_linux();
-        let lib_dir = server_build_dir().join("lib64").join("alvr");
+        let lib_dir = afs::server_build_dir().join("lib64").join("alvr");
         fs::create_dir_all(lib_dir.clone()).unwrap();
         for lib in walkdir::WalkDir::new(ffmpeg_path)
             .into_iter()
@@ -174,29 +119,21 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
 
     if cfg!(target_os = "linux") {
         command::run_in(
-            &workspace_dir().join("alvr/vrcompositor-wrapper"),
+            &afs::workspace_dir().join("alvr/vrcompositor-wrapper"),
             &format!("cargo build {}", build_flag),
         )
         .unwrap();
-        fs::create_dir_all(
-            server_build_dir().join(
-                alvr_filesystem_layout::LAYOUT
-                    .vrcompositor_wrapper
-                    .parent()
-                    .unwrap(),
-            ),
-        )
-        .unwrap();
+        fs::create_dir_all(&layout.vrcompositor_wrapper_dir).unwrap();
         fs::copy(
             artifacts_dir.join("vrcompositor-wrapper"),
-            server_build_dir().join(&alvr_filesystem_layout::LAYOUT.vrcompositor_wrapper),
+            layout.vrcompositor_wrapper(),
         )
         .unwrap();
     }
 
     if cfg!(not(target_os = "macos")) {
         command::run_in(
-            &workspace_dir().join("alvr/server"),
+            &afs::workspace_dir().join("alvr/server"),
             &format!(
                 "cargo build {} --no-default-features --features {}",
                 build_flag,
@@ -205,13 +142,13 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
         )
         .unwrap();
         fs::copy(
-            artifacts_dir.join(dynlib_fname("alvr_server")),
-            server_build_dir().join(alvr_filesystem_layout::LAYOUT.openvr_driver_lib()),
+            artifacts_dir.join(afs::dynlib_fname("alvr_server")),
+            layout.openvr_driver_lib(),
         )
         .unwrap();
     }
     command::run_in(
-        &workspace_dir().join("alvr/launcher"),
+        &afs::workspace_dir().join("alvr/launcher"),
         &format!(
             "cargo build {} --no-default-features --features {}",
             build_flag,
@@ -220,8 +157,8 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
     )
     .unwrap();
     fs::copy(
-        artifacts_dir.join(exec_fname("alvr_launcher")),
-        server_build_dir().join(&alvr_filesystem_layout::LAYOUT.launcher_exe),
+        artifacts_dir.join(afs::exec_fname("alvr_launcher")),
+        layout.launcher_exe(),
     )
     .unwrap();
     if cfg!(debug_assertions) {
@@ -232,25 +169,25 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
             .chain(dir_content.files.iter())
             .collect();
 
-        let destination = server_build_dir().join("languages");
+        let destination = afs::server_build_dir().join("languages");
         fs::create_dir_all(&destination).unwrap();
         fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
 
         command::run_in(
-            &workspace_dir().join("alvr/egui_dashboard"),
+            &afs::workspace_dir().join("alvr/egui_dashboard"),
             &format!("cargo build {}", build_flag),
         )
         .unwrap();
         fs::copy(
-            artifacts_dir.join(exec_fname("alvr_egui_dashboard")),
-            server_build_dir().join(exec_fname("alvr_egui_dashboard")),
+            artifacts_dir.join(afs::exec_fname("alvr_egui_dashboard")),
+            afs::server_build_dir().join(afs::exec_fname("alvr_egui_dashboard")),
         )
         .unwrap();
     }
 
     fs::copy(
-        std::path::Path::new("alvr/xtask/resources/driver.vrdrivermanifest"),
-        server_build_dir().join(alvr_filesystem_layout::LAYOUT.openvr_driver_manifest()),
+        Path::new("alvr/xtask/resources/driver.vrdrivermanifest"),
+        layout.openvr_driver_manifest(),
     )
     .expect("copy openVR driver manifest");
 
@@ -258,7 +195,7 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
         let dir_content = dirx::get_dir_content("alvr/server/cpp/bin/windows").unwrap();
         fsx::copy_items(
             &dir_content.files,
-            driver_dst_dir,
+            layout.openvr_driver_lib().parent().unwrap(),
             &dirx::CopyOptions::new(),
         )
         .unwrap();
@@ -271,31 +208,29 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
         .chain(dir_content.files.iter())
         .collect();
 
-    let destination =
-        server_build_dir().join(&alvr_filesystem_layout::LAYOUT.dashboard_resources_dir);
-    fs::create_dir_all(&destination).unwrap();
-    fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
+    fs::create_dir_all(&layout.dashboard_dir()).unwrap();
+    fsx::copy_items(&items, layout.dashboard_dir(), &dirx::CopyOptions::new()).unwrap();
 
     if cfg!(target_os = "linux") {
         command::run_in(
-            &workspace_dir().join("alvr/vulkan-layer"),
+            &afs::workspace_dir().join("alvr/vulkan-layer"),
             &format!("cargo build {}", build_flag),
         )
         .unwrap();
 
-        let lib_dir = server_build_dir().join("lib64");
-        let manifest_dir = server_build_dir().join("share/vulkan/explicit_layer.d");
+        let lib_dir = afs::server_build_dir().join("lib64");
+        let manifest_dir = afs::server_build_dir().join("share/vulkan/explicit_layer.d");
 
         fs::create_dir_all(&manifest_dir).unwrap();
         fs::create_dir_all(&lib_dir).unwrap();
         fs::copy(
-            workspace_dir().join("alvr/vulkan-layer/layer/alvr_x86_64.json"),
+            afs::workspace_dir().join("alvr/vulkan-layer/layer/alvr_x86_64.json"),
             manifest_dir.join("alvr_x86_64.json"),
         )
         .unwrap();
         fs::copy(
-            artifacts_dir.join(dynlib_fname("alvr_vulkan_layer")),
-            lib_dir.join(dynlib_fname("alvr_vulkan_layer")),
+            artifacts_dir.join(afs::dynlib_fname("alvr_vulkan_layer")),
+            lib_dir.join(afs::dynlib_fname("alvr_vulkan_layer")),
         )
         .unwrap();
     }
@@ -318,7 +253,7 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
 
     let build_task = format!("assemble{}{}{}", headset_type, package_type, build_type);
 
-    let client_dir = workspace_dir().join("alvr/client/android");
+    let client_dir = afs::workspace_dir().join("alvr/client/android");
     let command_name = if cfg!(not(windows)) {
         "./gradlew"
     } else {
@@ -326,11 +261,11 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
     };
 
     let artifact_name = format!("alvr_client_{}", headset_name);
-    fs::create_dir_all(&build_dir().join(&artifact_name)).unwrap();
+    fs::create_dir_all(&afs::build_dir().join(&artifact_name)).unwrap();
 
     env::set_current_dir(&client_dir).unwrap();
     command::run(&format!("{} {}", command_name, build_task)).unwrap();
-    env::set_current_dir(workspace_dir()).unwrap();
+    env::set_current_dir(afs::workspace_dir()).unwrap();
 
     fs::copy(
         client_dir
@@ -341,7 +276,7 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
                 "app-{}-{}-{}.apk",
                 headset_type, package_type, build_type
             )),
-        build_dir()
+        afs::build_dir()
             .join(&artifact_name)
             .join(format!("{}.apk", artifact_name)),
     )
@@ -452,17 +387,17 @@ pub fn publish_server(is_nightly: bool) {
     build_server(true, is_nightly, false, false);
 
     // Add licenses
-    let licenses_dir = server_build_dir().join("licenses");
+    let licenses_dir = afs::server_build_dir().join("licenses");
     fs::create_dir_all(&licenses_dir).unwrap();
     fs::copy(
-        workspace_dir().join("LICENSE"),
+        afs::workspace_dir().join("LICENSE"),
         licenses_dir.join("ALVR.txt"),
     )
     .unwrap();
     command::run("cargo install cargo-about").unwrap();
     command::run(&format!(
         "cargo about generate {} > {}",
-        workspace_dir()
+        afs::workspace_dir()
             .join("alvr")
             .join("xtask")
             .join("licenses_template.hbs")
@@ -471,7 +406,7 @@ pub fn publish_server(is_nightly: bool) {
     ))
     .unwrap();
     fs::copy(
-        workspace_dir()
+        afs::workspace_dir()
             .join("alvr")
             .join("server")
             .join("LICENSE-Valve"),
@@ -479,13 +414,13 @@ pub fn publish_server(is_nightly: bool) {
     )
     .unwrap();
 
-    command::zip(&server_build_dir()).unwrap();
+    command::zip(&afs::server_build_dir()).unwrap();
 
     if cfg!(windows) {
         if is_nightly {
             fs::copy(
-                target_dir().join("release").join("alvr_server.pdb"),
-                build_dir().join("alvr_server.pdb"),
+                afs::target_dir().join("release").join("alvr_server.pdb"),
+                afs::build_dir().join("alvr_server.pdb"),
             )
             .unwrap();
         }

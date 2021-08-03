@@ -3,7 +3,7 @@ members = [
     "alvr/settings-schema-derive",
     "alvr/settings-schema",
     "alvr/openvr-driver-sys",
-    "alvr/filesystem_layout",
+    "alvr/filesystem",
     "alvr/common",
     "alvr/session",
     "alvr/sockets",

@@ -5,12 +5,11 @@ use crate::{
 use alvr_common::{
     data::{CodecType, SessionDesc, TrackingSpace, ALVR_NAME, ALVR_VERSION},
     prelude::*,
-    spawn_cancelable,
 };
 use alvr_sockets::{
-    ClientConfigPacket, ClientControlPacket, ClientHandshakePacket, HeadsetInfoPacket, PeerType,
-    PlayspaceSyncPacket, PrivateIdentity, ProtoControlSocket, ServerControlPacket,
-    ServerHandshakePacket, StreamSocketBuilder, LEGACY,
+    spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket,
+    HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, PrivateIdentity, ProtoControlSocket,
+    ServerControlPacket, ServerHandshakePacket, StreamSocketBuilder, LEGACY,
 };
 use futures::future::BoxFuture;
 use jni::{
@@ -170,12 +169,7 @@ async fn connection_pipeline(
     match control_receiver.recv().await {
         Ok(ServerControlPacket::StartStream) => {
             info!("Stream starting");
-            set_loading_message(
-                &*java_vm,
-                &*activity_ref,
-                &hostname,
-                STREAM_STARTING_MESSAGE,
-            )?;
+            set_loading_message(&*java_vm, &*activity_ref, hostname, STREAM_STARTING_MESSAGE)?;
         }
         Ok(ServerControlPacket::Restarting) => {
             info!("Server restarting");

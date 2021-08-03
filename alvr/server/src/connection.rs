@@ -7,12 +7,11 @@ use alvr_common::{
     data::{AudioDeviceId, CodecType, FrameSize, OpenvrConfig},
     logging,
     prelude::*,
-    spawn_cancelable,
 };
 use alvr_sockets::{
-    ClientConfigPacket, ClientControlPacket, ControlSocketReceiver, ControlSocketSender,
-    HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, ProtoControlSocket, ServerControlPacket,
-    StreamSocketBuilder, LEGACY,
+    spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
+    ControlSocketSender, HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, ProtoControlSocket,
+    ServerControlPacket, StreamSocketBuilder, LEGACY,
 };
 use futures::future::{BoxFuture, Either};
 use nalgebra::Translation3;

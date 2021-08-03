@@ -2846,9 +2846,9 @@ dependencies = [
 
 [[package]]
 name = "msgbox"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "997d7ddd958df6f965b5f7e28acfffb0c8ee5eac8e73e29f14b33c18ca461baa"
+checksum = "fb729d86ed5018bf7080f226842b54d7a59babe70f23fd2bbbeb680aee01cc28"
 dependencies = [
  "cocoa",
  "glib",

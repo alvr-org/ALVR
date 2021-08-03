@@ -170,6 +170,7 @@ dependencies = [
  "lazy_static",
  "log",
  "msgbox",
+ "parking_lot",
  "rand",
  "runas",
  "semver 1.0.3",

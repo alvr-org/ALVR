@@ -8,7 +8,8 @@ mod tcp;
 mod throttled_udp;
 mod udp;
 
-use alvr_common::{data::SocketProtocol, prelude::*};
+use alvr_common::prelude::*;
+use alvr_session::SocketProtocol;
 use bytes::{Buf, BufMut, BytesMut};
 use futures::SinkExt;
 use serde::{de::DeserializeOwned, Serialize};

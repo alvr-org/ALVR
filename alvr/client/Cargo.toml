@@ -9,6 +9,11 @@ edition = "2018"
 crate_type = ["staticlib", "cdylib"]
 
 [dependencies]
+alvr_audio = { path = "../audio" }
+alvr_common = { path = "../common" }
+alvr_session = { path = "../session" }
+alvr_sockets = { path = "../sockets" }
+
 # Basic utilities
 lazy_static = "1"
 parking_lot = "0.11"
@@ -21,13 +26,10 @@ settings-schema = { path = "../settings-schema", features = [
     "rename_camel_case",
 ] }
 # Async and networking
-alvr_sockets = { path = "../sockets" }
 bytes = "1"
 futures = "0.3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # Miscellaneous
-alvr_common = { path = "../common" }
-alvr_audio = { path = "../audio" }
 cpal = "0.13"
 log = "0.4"
 nalgebra = "0.28"

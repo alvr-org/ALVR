@@ -607,13 +607,9 @@ pub fn session_settings_default() -> SettingsDefault {
             client_dark_mode: false,
             revert_confirm_dialog: true,
             restart_confirm_dialog: true,
-            prompt_before_update: !cfg!(feature = "nightly") || cfg!(target_os = "linux"),
+            prompt_before_update: true,
             update_channel: UpdateChannelDefault {
-                variant: if cfg!(feature = "nightly") {
-                    UpdateChannelDefaultVariant::Nightly
-                } else {
-                    UpdateChannelDefaultVariant::Stable
-                },
+                variant: UpdateChannelDefaultVariant::Stable,
             },
             log_to_disk: cfg!(debug_assertions),
             notification_level: LogLevelDefault {

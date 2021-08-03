@@ -6,16 +6,18 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
+alvr_common = { path = "../common" }
+alvr_session = { path = "../session" }
+
+egui = "0.13"
+fluent = "0.16"
+fluent-syntax = "0.11"
+fluent-langneg = "0.13"
 serde = "1"
 serde_json = "1"
 settings-schema = { path = "../settings-schema", features = [
     "rename_camel_case",
 ] }
-alvr_common = { path = "../common" }
-egui = "0.13"
-fluent = "0.16"
-fluent-syntax = "0.11"
-fluent-langneg = "0.13"
 unic-langid = "0.9"
 
 [target.'cfg(any(windows, target_os = "macos"))'.dependencies]

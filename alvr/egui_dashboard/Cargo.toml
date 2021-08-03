@@ -8,4 +8,6 @@ edition = "2018"
 [dependencies]
 alvr_common = { path = "../common" }
 alvr_gui = { path = "../gui" }
+alvr_session = { path = "../session" }
+
 eframe = "0.13"

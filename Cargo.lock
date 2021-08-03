@@ -118,6 +118,7 @@ name = "alvr_audio"
 version = "16.0.0-rc2"
 dependencies = [
  "alvr_common",
+ "alvr_session",
  "alvr_sockets",
  "cpal",
  "lazy_static",
@@ -136,6 +137,7 @@ version = "16.0.0-rc2"
 dependencies = [
  "alvr_audio",
  "alvr_common",
+ "alvr_session",
  "alvr_sockets",
  "android_logger",
  "bincode",
@@ -176,7 +178,6 @@ dependencies = [
  "semver 1.0.3",
  "serde",
  "serde_json",
- "settings-schema",
 ]
 
 [[package]]
@@ -185,6 +186,7 @@ version = "15.2.1"
 dependencies = [
  "alvr_common",
  "alvr_gui",
+ "alvr_session",
  "eframe",
 ]
 
@@ -201,6 +203,7 @@ name = "alvr_gui"
 version = "0.1.0"
 dependencies = [
  "alvr_common",
+ "alvr_session",
  "dark-light",
  "egui",
  "fluent",
@@ -238,6 +241,7 @@ dependencies = [
  "alvr_audio",
  "alvr_common",
  "alvr_filesystem_layout",
+ "alvr_session",
  "alvr_sockets",
  "bincode",
  "bindgen 0.59.0",
@@ -269,10 +273,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "alvr_session"
+version = "16.0.0-rc2"
+dependencies = [
+ "alvr_common",
+ "serde",
+ "serde_json",
+ "settings-schema",
+]
+
+[[package]]
 name = "alvr_sockets"
 version = "16.0.0-rc2"
 dependencies = [
  "alvr_common",
+ "alvr_session",
  "bincode",
  "bytes",
  "futures",

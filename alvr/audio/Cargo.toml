@@ -7,7 +7,9 @@ edition = "2018"
 
 [dependencies]
 alvr_common = { path = "../common" }
+alvr_session = { path = "../session" }
 alvr_sockets = { path = "../sockets" }
+
 cpal = "0.13"
 lazy_static = "1"
 parking_lot = "0.11"

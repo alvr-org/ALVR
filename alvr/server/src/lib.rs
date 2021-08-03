@@ -11,12 +11,8 @@ mod bindings {
 }
 use bindings::*;
 
-use alvr_common::{
-    commands,
-    data::{ClientConnectionDesc, SessionManager},
-    logging,
-    prelude::*,
-};
+use alvr_common::{commands, logging, prelude::*};
+use alvr_session::{ClientConnectionDesc, SessionManager};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::{

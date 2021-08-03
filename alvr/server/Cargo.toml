@@ -13,6 +13,12 @@ default = []
 bundled_ffmpeg = []
 
 [dependencies]
+alvr_audio = { path = "../audio" }
+alvr_common = { path = "../common" }
+alvr_filesystem_layout = { path = "../filesystem_layout" }
+alvr_session = { path = "../session" }
+alvr_sockets = { path = "../sockets" }
+
 # Basic utilities
 chrono = "0.4"
 lazy_static = "1"
@@ -39,7 +45,6 @@ tokio = { version = "1", features = [
     "fs",
 ] }
 # Networking
-alvr_sockets = { path = "../sockets" }
 bytes = "1"
 headers = "0.3"
 hyper = { version = "0.14", features = [
@@ -59,9 +64,6 @@ winit = "0.25" # needed to get the screen size
 alcro = "0.5"
 webbrowser = "0.5" # this is just for opening links in the default browser
 # Miscellaneous
-alvr_common = { path = "../common" }
-alvr_filesystem_layout = { path = "../filesystem_layout" }
-alvr_audio = { path = "../audio" }
 nalgebra = "0.28"
 openvr-driver-sys = { path = "../openvr-driver-sys" }
 

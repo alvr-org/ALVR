@@ -1,10 +1,5 @@
 use crate::{graphics_info, ClientListAction, ALVR_DIR, SESSION_MANAGER};
-use alvr_common::{
-    commands,
-    data::{self, ALVR_VERSION},
-    logging,
-    prelude::*,
-};
+use alvr_common::{commands, data::ALVR_VERSION, logging, prelude::*};
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
@@ -93,9 +88,9 @@ async fn http_api(
     events_sender: broadcast::Sender<String>,
 ) -> StrResult<Response<Body>> {
     let mut response = match request.uri().path() {
-        "/api/settings-schema" => {
-            reply_json(&data::settings_schema(data::session_settings_default()))?
-        }
+        "/api/settings-schema" => reply_json(&alvr_session::settings_schema(
+            alvr_session::session_settings_default(),
+        ))?,
         "/api/session/load" => reply_json(SESSION_MANAGER.lock().get())?,
         "/api/session/store-settings" => {
             if let Ok(session_settings) = from_request_body::<json::Value>(request).await {

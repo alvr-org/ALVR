@@ -1,5 +1,8 @@
-use super::settings::{self, Settings};
-use crate::prelude::*;
+mod settings;
+
+pub use settings::*;
+
+use alvr_common::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use settings_schema::SchemaNode;
@@ -551,7 +554,7 @@ fn json_session_settings_to_settings(
 #[cfg(not(target_os = "android"))]
 mod manager {
     use super::*;
-    use crate::commands;
+    use alvr_common::commands;
 
     // SessionDesc wrapper that saves settings.json and session.json on destruction.
     pub struct SessionLock<'a> {

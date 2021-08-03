@@ -1,8 +1,8 @@
-use alvr_common::data::SessionManager;
 use alvr_gui::{
     dashboard::{Dashboard, DashboardResponse},
     translation::TranslationBundle,
 };
+use alvr_session::SessionManager;
 use eframe::{
     egui::CtxRef,
     epi::{self, Frame, Storage},

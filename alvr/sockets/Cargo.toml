@@ -6,6 +6,9 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
+alvr_common = { path = "../common" }
+alvr_session = { path = "../session" }
+
 # Serialization
 bincode = "1"
 serde = { version = "1", features = ["derive"] }
@@ -17,7 +20,6 @@ nonzero_ext = "0.2"
 tokio = { version = "1", features = ["rt", "net", "macros"] }
 tokio-util = { version = "0.6", features = ["codec", "net"] }
 # Miscellaneous
-alvr_common = { path = "../common" }
 nalgebra = { version = "0.28", features = ["serde-serialize"] }
 rand = "0.8"
 rcgen = "0.8"

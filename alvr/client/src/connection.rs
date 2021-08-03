@@ -3,9 +3,10 @@ use crate::{
     MAYBE_LEGACY_SENDER,
 };
 use alvr_common::{
-    data::{CodecType, SessionDesc, TrackingSpace, ALVR_NAME, ALVR_VERSION},
+    data::{ALVR_NAME, ALVR_VERSION},
     prelude::*,
 };
+use alvr_session::{CodecType, SessionDesc, TrackingSpace};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket,
     HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, PrivateIdentity, ProtoControlSocket,

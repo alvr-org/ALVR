@@ -4,7 +4,7 @@ use crate::{
     translation::{SharedTranslation, TranslationBundle},
     LocalizedId,
 };
-use alvr_common::data::{self, SessionDesc, SessionSettings};
+use alvr_session::{SessionDesc, SessionSettings};
 use egui::Ui;
 use serde_json as json;
 use settings_schema::SchemaNode;
@@ -23,7 +23,7 @@ impl SettingsTab {
         t: Arc<SharedTranslation>,
         trans: &TranslationBundle,
     ) -> Self {
-        let schema = data::settings_schema(data::session_settings_default());
+        let schema = alvr_session::settings_schema(alvr_session::session_settings_default());
         let mut session = json::from_value::<HashMap<String, json::Value>>(
             json::to_value(session_settings).unwrap(),
         )

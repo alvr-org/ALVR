@@ -3,11 +3,8 @@ use crate::{
     RESTART_NOTIFIER, SESSION_MANAGER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{
-    data::{AudioDeviceId, CodecType, FrameSize, OpenvrConfig},
-    logging,
-    prelude::*,
-};
+use alvr_common::{logging, prelude::*};
+use alvr_session::{AudioDeviceId, CodecType, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
     ControlSocketSender, HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, ProtoControlSocket,

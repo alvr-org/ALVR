@@ -1,4 +1,4 @@
-use alvr_common::data::Theme;
+use alvr_session::Theme;
 use egui::{CtxRef, Visuals};
 
 pub fn set_theme(ctx: &CtxRef, theme: Theme) {

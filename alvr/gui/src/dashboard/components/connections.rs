@@ -1,5 +1,5 @@
 use crate::{dashboard::DashboardResponse, translation::TranslationBundle};
-use alvr_common::data::SessionDesc;
+use alvr_session::SessionDesc;
 use egui::{Align, Layout, Resize, Ui};
 use std::cmp;
 

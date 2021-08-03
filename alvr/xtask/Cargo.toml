@@ -6,7 +6,8 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
+alvr_filesystem_layout = { path = "../filesystem_layout" }
+
 fs_extra = "1"
 pico-args = "0.4"
 walkdir = "2"
-alvr_filesystem_layout = { path = "../filesystem_layout" }

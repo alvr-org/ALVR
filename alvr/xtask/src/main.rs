@@ -78,12 +78,6 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
 
     let target_dir = afs::target_dir();
     let artifacts_dir = target_dir.join(build_type);
-    // let driver_dst_dir = afs::server_build_dir().join(
-    //     alvr_filesystem::LAYOUT
-    //         .openvr_driver_lib()
-    //         .parent()
-    //         .unwrap(),
-    // );
 
     if fetch_crates {
         command::run("cargo update").unwrap();

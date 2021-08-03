@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use alvr_common::prelude::*;
 
 pub fn get_gpu_names() -> Vec<String> {
     let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);

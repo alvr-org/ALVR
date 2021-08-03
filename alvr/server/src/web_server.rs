@@ -1,8 +1,8 @@
-use crate::{ClientListAction, ALVR_DIR, SESSION_MANAGER};
+use crate::{graphics_info, ClientListAction, ALVR_DIR, SESSION_MANAGER};
 use alvr_common::{
     commands,
     data::{self, ALVR_VERSION},
-    graphics, logging,
+    logging,
     prelude::*,
 };
 use bytes::Buf;
@@ -162,7 +162,7 @@ async fn http_api(
             reply_json(&maybe_err.unwrap_or(0))?
         }
         "/api/audio-devices" => reply_json(&alvr_audio::get_devices_list()?)?,
-        "/api/graphics-devices" => reply_json(&graphics::get_gpu_names())?,
+        "/api/graphics-devices" => reply_json(&graphics_info::get_gpu_names())?,
         "/restart-steamvr" => {
             crate::notify_restart_driver();
             reply(StatusCode::OK)?

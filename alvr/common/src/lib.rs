@@ -4,8 +4,6 @@ pub mod sockets;
 
 #[cfg(not(target_os = "android"))]
 pub mod commands;
-#[cfg(not(target_os = "android"))]
-pub mod graphics;
 
 pub mod prelude {
     pub use crate::{

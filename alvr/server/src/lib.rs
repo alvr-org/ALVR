@@ -1,5 +1,6 @@
 mod connection;
 mod connection_utils;
+mod graphics_info;
 mod logging_backend;
 mod openvr;
 mod web_server;
@@ -13,7 +14,7 @@ use bindings::*;
 use alvr_common::{
     commands,
     data::{ClientConnectionDesc, SessionManager},
-    graphics, logging,
+    logging,
     prelude::*,
 };
 use lazy_static::lazy_static;
@@ -167,15 +168,15 @@ fn ui_thread() -> StrResult {
     const WINDOW_WIDTH: u32 = 800;
     const WINDOW_HEIGHT: u32 = 600;
 
-    let (pos_left, pos_top) = if let Ok((screen_width, screen_height)) = graphics::get_screen_size()
-    {
-        (
-            (screen_width - WINDOW_WIDTH) / 2,
-            (screen_height - WINDOW_HEIGHT) / 2,
-        )
-    } else {
-        (0, 0)
-    };
+    let (pos_left, pos_top) =
+        if let Ok((screen_width, screen_height)) = graphics_info::get_screen_size() {
+            (
+                (screen_width - WINDOW_WIDTH) / 2,
+                (screen_height - WINDOW_HEIGHT) / 2,
+            )
+        } else {
+            (0, 0)
+        };
 
     let window = Arc::new(trace_err!(alcro::UIBuilder::new()
         .content(alcro::Content::Url("http://127.0.0.1:8082"))

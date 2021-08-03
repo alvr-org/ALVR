@@ -4,17 +4,15 @@ use crate::{
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
-    data::{
-        AudioDeviceId, ClientConfigPacket, ClientControlPacket, CodecType, FrameSize,
-        HeadsetInfoPacket, OpenvrConfig, PlayspaceSyncPacket, ServerControlPacket,
-    },
+    data::{AudioDeviceId, CodecType, FrameSize, OpenvrConfig},
     logging,
     prelude::*,
-    sockets::{
-        ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
-        StreamSocketBuilder, LEGACY,
-    },
     spawn_cancelable,
+};
+use alvr_sockets::{
+    ClientConfigPacket, ClientControlPacket, ControlSocketReceiver, ControlSocketSender,
+    HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, ProtoControlSocket, ServerControlPacket,
+    StreamSocketBuilder, LEGACY,
 };
 use futures::future::{BoxFuture, Either};
 use nalgebra::Translation3;

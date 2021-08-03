@@ -21,6 +21,7 @@ settings-schema = { path = "../settings-schema", features = [
     "rename_camel_case",
 ] }
 # Async and networking
+alvr_sockets = { path = "../sockets" }
 bytes = "1"
 futures = "0.3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }

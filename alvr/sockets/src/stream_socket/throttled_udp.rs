@@ -1,9 +1,7 @@
-use crate::{
-    prelude::*,
-    sockets::{StreamId, LOCAL_IP},
-};
+use super::StreamId;
+use crate::LOCAL_IP;
+use alvr_common::prelude::*;
 use bytes::{BufMut, Bytes, BytesMut};
-
 use futures::{Stream, StreamExt};
 use governor::{
     clock,

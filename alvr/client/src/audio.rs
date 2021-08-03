@@ -1,8 +1,5 @@
-use alvr_common::{
-    data::AudioConfig,
-    prelude::*,
-    sockets::{StreamReceiver, StreamSender, AUDIO},
-};
+use alvr_common::{data::AudioConfig, prelude::*};
+use alvr_sockets::{StreamReceiver, StreamSender, AUDIO};
 use oboe::{
     AudioInputCallback, AudioInputStreamSafe, AudioOutputCallback, AudioOutputStreamSafe,
     AudioStream, AudioStreamBuilder, DataCallbackResult, InputPreset, Mono, PerformanceMode,

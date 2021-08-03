@@ -118,6 +118,7 @@ name = "alvr_audio"
 version = "16.0.0-rc2"
 dependencies = [
  "alvr_common",
+ "alvr_sockets",
  "cpal",
  "lazy_static",
  "parking_lot",
@@ -135,6 +136,7 @@ version = "16.0.0-rc2"
 dependencies = [
  "alvr_audio",
  "alvr_common",
+ "alvr_sockets",
  "android_logger",
  "bincode",
  "bindgen 0.59.0",
@@ -245,6 +247,7 @@ dependencies = [
  "alvr_audio",
  "alvr_common",
  "alvr_filesystem_layout",
+ "alvr_sockets",
  "bincode",
  "bindgen 0.59.0",
  "bytes",
@@ -272,6 +275,33 @@ dependencies = [
  "webbrowser",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "alvr_sockets"
+version = "16.0.0-rc2"
+dependencies = [
+ "alvr_common",
+ "alvr_filesystem_layout",
+ "backtrace",
+ "bincode",
+ "bytes",
+ "encoding_rs_io",
+ "futures",
+ "governor",
+ "lazy_static",
+ "log",
+ "nalgebra",
+ "nonzero_ext",
+ "parking_lot",
+ "rand",
+ "rcgen",
+ "semver 1.0.3",
+ "serde",
+ "serde_json",
+ "settings-schema",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]

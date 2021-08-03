@@ -6,13 +6,14 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
-parking_lot = "0.11"
+alvr_common = { path = "../common" }
+alvr_sockets = { path = "../sockets" }
+cpal = "0.13"
 lazy_static = "1"
+parking_lot = "0.11"
+rodio = "0.14"
 serde = "1"
 tokio = { version = "1" }
-alvr_common = { path = "../common" }
-cpal = "0.13"
-rodio = "0.14"
 
 [target.'cfg(windows)'.dependencies]
 widestring = "0.4"

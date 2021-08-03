@@ -9,11 +9,8 @@ mod audio;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use alvr_common::{
-    data::{self, HeadsetInfoPacket, PrivateIdentity, ALVR_VERSION},
-    logging,
-    prelude::*,
-};
+use alvr_common::{data::ALVR_VERSION, logging, prelude::*};
+use alvr_sockets::{HeadsetInfoPacket, PrivateIdentity};
 use jni::{
     objects::{JClass, JObject, JString},
     JNIEnv,
@@ -53,7 +50,7 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_createIdentity(
     jidentity: JObject,
 ) {
     logging::show_err(|| -> StrResult {
-        let identity = data::create_identity(None)?;
+        let identity = alvr_sockets::create_identity(None)?;
 
         let jhostname = trace_err!(env.new_string(identity.hostname))?.into();
         trace_err!(env.set_field(jidentity, "hostname", "Ljava/lang/String;", jhostname))?;

@@ -1,8 +1,8 @@
 use alvr_common::{
     data::{AudioConfig, AudioDeviceId},
     prelude::*,
-    sockets::{StreamReceiver, StreamSender, AUDIO},
 };
+use alvr_sockets::{StreamReceiver, StreamSender, AUDIO};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, Device, Sample, SampleFormat, StreamConfig,

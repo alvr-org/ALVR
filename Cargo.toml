@@ -5,6 +5,7 @@ members = [
     "alvr/openvr-driver-sys",
     "alvr/filesystem_layout",
     "alvr/common",
+    "alvr/sockets",
     "alvr/audio",
     "alvr/gui",
     "alvr/client",

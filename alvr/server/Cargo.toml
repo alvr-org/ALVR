@@ -39,6 +39,7 @@ tokio = { version = "1", features = [
     "fs",
 ] }
 # Networking
+alvr_sockets = { path = "../sockets" }
 bytes = "1"
 headers = "0.3"
 hyper = { version = "0.14", features = [

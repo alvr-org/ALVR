@@ -1,7 +1,6 @@
-use crate::{
-    prelude::*,
-    sockets::{Ldc, StreamId, LOCAL_IP},
-};
+use super::StreamId;
+use crate::{Ldc, LOCAL_IP};
+use alvr_common::prelude::*;
 use bytes::{Bytes, BytesMut};
 use futures::{
     stream::{SplitSink, SplitStream},

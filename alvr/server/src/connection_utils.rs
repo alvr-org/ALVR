@@ -1,7 +1,10 @@
 use alvr_common::{
-    data::{self, ClientHandshakePacket, HandshakePacket, ServerHandshakePacket, ALVR_NAME},
+    data::{self, ALVR_NAME},
     prelude::*,
-    sockets::{CONTROL_PORT, LOCAL_IP, MAX_HANDSHAKE_PACKET_SIZE_BYTES},
+};
+use alvr_sockets::{
+    ClientHandshakePacket, HandshakePacket, ServerHandshakePacket, CONTROL_PORT, LOCAL_IP,
+    MAX_HANDSHAKE_PACKET_SIZE_BYTES,
 };
 use std::{future::Future, net::IpAddr};
 use tokio::net::UdpSocket;

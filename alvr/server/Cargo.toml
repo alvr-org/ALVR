@@ -2,7 +2,7 @@
 name = "alvr_server"
 version = "16.0.0-rc2"
 authors = ["alvr-org", "polygraphene", "Valve Corporation"]
-license = "MIT AND BSD-3-Clause"
+license = "MIT"
 edition = "2018"
 
 [lib]
@@ -71,5 +71,6 @@ openvr-driver-sys = { path = "../openvr-driver-sys" }
 bindgen = "0.59"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"
+
 [target.'cfg(unix)'.build-dependencies]
 pkg-config = "0.3.9"

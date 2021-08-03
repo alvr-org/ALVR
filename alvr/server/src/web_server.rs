@@ -1,5 +1,5 @@
 use crate::{graphics_info, ClientListAction, ALVR_DIR, SESSION_MANAGER};
-use alvr_common::{commands, data::ALVR_VERSION, logging, prelude::*};
+use alvr_common::{commands, logging, prelude::*, ALVR_VERSION};
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;

@@ -2,10 +2,7 @@ use crate::{
     connection_utils::{self, ConnectionError},
     MAYBE_LEGACY_SENDER,
 };
-use alvr_common::{
-    data::{ALVR_NAME, ALVR_VERSION},
-    prelude::*,
-};
+use alvr_common::{prelude::*, ALVR_NAME, ALVR_VERSION};
 use alvr_session::{CodecType, SessionDesc, TrackingSpace};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket,

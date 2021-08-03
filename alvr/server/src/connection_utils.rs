@@ -1,7 +1,4 @@
-use alvr_common::{
-    data::{self, ALVR_NAME},
-    prelude::*,
-};
+use alvr_common::{prelude::*, ALVR_NAME};
 use alvr_sockets::{
     ClientHandshakePacket, HandshakePacket, ServerHandshakePacket, CONTROL_PORT, LOCAL_IP,
     MAX_HANDSHAKE_PACKET_SIZE_BYTES,
@@ -47,7 +44,7 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
             return fmt_e!("Error while identifying client");
         }
 
-        if !data::is_version_compatible(&handshake_packet.version) {
+        if !alvr_common::is_version_compatible(&handshake_packet.version) {
             let response_bytes = trace_err!(bincode::serialize(&HandshakePacket::Server(
                 ServerHandshakePacket::IncompatibleVersions
             )))?;

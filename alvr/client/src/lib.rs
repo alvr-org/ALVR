@@ -9,7 +9,7 @@ mod audio;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use alvr_common::{data::ALVR_VERSION, logging, prelude::*};
+use alvr_common::{logging, prelude::*, ALVR_VERSION};
 use alvr_sockets::{HeadsetInfoPacket, PrivateIdentity};
 use jni::{
     objects::{JClass, JObject, JString},

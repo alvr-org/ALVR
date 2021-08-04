@@ -30,7 +30,7 @@ fn main() {
     );
 
     println!(
-        "cargo:rustc-env=custom_root={}",
+        "cargo:rustc-env=root={}",
         env::var("ALVR_ROOT_DIR").unwrap_or_else(|_| "".to_owned())
     );
 }

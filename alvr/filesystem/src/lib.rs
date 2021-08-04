@@ -64,14 +64,6 @@ pub fn installer_path() -> PathBuf {
     env::temp_dir().join(exec_fname("alvr_installer"))
 }
 
-// On Windows, UserPackage corresponds to DistributionPackage
-// On Linux, CustomRoot is used as a sysroot
-pub enum InstallationType {
-    DistributionPackage,
-    UserPackage,
-    CustomRoot(PathBuf),
-}
-
 // Layout of the ALVR installation. All paths are absolute
 #[derive(Clone)]
 pub struct Layout {
@@ -90,31 +82,17 @@ pub struct Layout {
 }
 
 impl Layout {
-    // This constructor should be used directly only for development builds and packaging
-    pub fn new(installation_type: InstallationType) -> Self {
+    pub fn new(root: &Path) -> Self {
         if cfg!(any(windows, target_os = "macos")) {
-            let root = match installation_type {
-                InstallationType::DistributionPackage | InstallationType::UserPackage => {
-                    PathBuf::from(r"C:\Program Files\ALVR")
-                }
-                InstallationType::CustomRoot(root) => root,
-            };
-
             Self {
-                executables_dir: root.clone(),
-                static_resources_dir: root.clone(),
-                config_dir: root.clone(),
-                log_dir: root.clone(),
-                openvr_driver_dir: root.clone(),
-                vrcompositor_wrapper_dir: root,
+                executables_dir: root.to_owned(),
+                static_resources_dir: root.to_owned(),
+                config_dir: root.to_owned(),
+                log_dir: root.to_owned(),
+                openvr_driver_dir: root.to_owned(),
+                vrcompositor_wrapper_dir: root.to_owned(),
             }
         } else if cfg!(target_os = "linux") {
-            let root = match installation_type {
-                InstallationType::DistributionPackage => PathBuf::from("/usr"),
-                InstallationType::UserPackage => PathBuf::from("/usr/local"),
-                InstallationType::CustomRoot(root) => root,
-            };
-
             // Get paths from environment or use FHS compliant paths
             let executables_dir = if !env!("executables_dir").is_empty() {
                 PathBuf::from(env!("executables_dir"))
@@ -154,22 +132,6 @@ impl Layout {
                 log_dir,
                 openvr_driver_dir,
                 vrcompositor_wrapper_dir,
-            }
-        } else if cfg!(target_os = "macos") {
-            let root = match installation_type {
-                InstallationType::DistributionPackage | InstallationType::UserPackage => {
-                    env::temp_dir().join("alvr")
-                }
-                InstallationType::CustomRoot(root) => root,
-            };
-
-            Self {
-                executables_dir: root.clone(),
-                static_resources_dir: root.clone(),
-                config_dir: root.clone(),
-                log_dir: root.clone(),
-                openvr_driver_dir: root.clone(),
-                vrcompositor_wrapper_dir: root,
             }
         } else {
             unimplemented!()
@@ -252,24 +214,16 @@ impl Layout {
 }
 
 lazy_static::lazy_static! {
-    static ref LAYOUT: Option<Layout> = {
-        if cfg!(feature = "distribution-package") {
-            Some(Layout::new(InstallationType::DistributionPackage))
-        } else if cfg!(feature = "user-package") {
-            Some(Layout::new(InstallationType::UserPackage))
-        } else if !env!("custom_root").is_empty() {
-            Some(Layout::new(InstallationType::CustomRoot(PathBuf::from(env!("custom_root")))))
-        } else {
-            None // The installation is portable, paths are generated on-demand
-        }
-    };
+    static ref LAYOUT: Option<Layout> = (!env!("root").is_empty()).then(|| {
+        Layout::new(Path::new(env!("root")))
+    });
 }
 
 // The path should include the executable file name
 // The path argument is used only if ALVR is built as portable
 pub fn filesystem_layout_from_launcher_exe(path: &Path) -> Layout {
     LAYOUT.clone().unwrap_or_else(|| {
-        let ancestor = if cfg!(any(windows, target_os = "macos")) {
+        let root = if cfg!(any(windows, target_os = "macos")) {
             path.parent().unwrap().to_owned()
         } else if cfg!(target_os = "linux") {
             // FHS path is expected
@@ -278,7 +232,7 @@ pub fn filesystem_layout_from_launcher_exe(path: &Path) -> Layout {
             unimplemented!()
         };
 
-        Layout::new(InstallationType::CustomRoot(ancestor))
+        Layout::new(&root)
     })
 }
 
@@ -286,7 +240,7 @@ pub fn filesystem_layout_from_launcher_exe(path: &Path) -> Layout {
 // The dir argument is used only if ALVR is built as portable
 pub fn filesystem_layout_from_openvr_driver_dir(dir: &Path) -> Layout {
     LAYOUT.clone().unwrap_or_else(|| {
-        let ancestor = if cfg!(windows) || cfg!(target_os = "macos") {
+        let root = if cfg!(any(windows, target_os = "macos")) {
             dir.to_owned()
         } else if cfg!(target_os = "linux") {
             // FHS path is expected
@@ -295,6 +249,6 @@ pub fn filesystem_layout_from_openvr_driver_dir(dir: &Path) -> Layout {
             unimplemented!()
         };
 
-        Layout::new(InstallationType::CustomRoot(ancestor))
+        Layout::new(&root)
     })
 }

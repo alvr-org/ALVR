@@ -72,7 +72,6 @@ pub fn build_server(
 
     if is_nightly {
         server_features.push("alvr_session/nightly");
-        launcher_features.push("alvr_session/nightly");
     }
     if bundle_ffmpeg {
         server_features.push("bundled_ffmpeg");

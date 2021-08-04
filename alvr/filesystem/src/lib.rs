@@ -93,7 +93,7 @@ impl Layout {
     // This constructor should be used directly only for development builds and packaging
     pub fn new(installation_type: InstallationType) -> Self {
         if cfg!(any(windows, target_os = "macos")) {
-            let common_ancestor = match installation_type {
+            let root = match installation_type {
                 InstallationType::DistributionPackage | InstallationType::UserPackage => {
                     PathBuf::from(r"C:\Program Files\ALVR")
                 }
@@ -101,15 +101,15 @@ impl Layout {
             };
 
             Self {
-                executables_dir: common_ancestor.clone(),
-                static_resources_dir: common_ancestor.clone(),
-                config_dir: common_ancestor.clone(),
-                log_dir: common_ancestor.clone(),
-                openvr_driver_dir: common_ancestor.clone(),
-                vrcompositor_wrapper_dir: common_ancestor,
+                executables_dir: root.clone(),
+                static_resources_dir: root.clone(),
+                config_dir: root.clone(),
+                log_dir: root.clone(),
+                openvr_driver_dir: root.clone(),
+                vrcompositor_wrapper_dir: root,
             }
         } else if cfg!(target_os = "linux") {
-            let common_ancestor = match installation_type {
+            let root = match installation_type {
                 InstallationType::DistributionPackage => PathBuf::from("/usr"),
                 InstallationType::UserPackage => PathBuf::from("/usr/local"),
                 InstallationType::CustomRoot(root) => root,
@@ -119,12 +119,12 @@ impl Layout {
             let executables_dir = if !env!("executables_dir").is_empty() {
                 PathBuf::from(env!("executables_dir"))
             } else {
-                common_ancestor.join("bin")
+                root.join("bin")
             };
             let static_resources_dir = if !env!("static_resources_dir").is_empty() {
                 PathBuf::from(env!("static_resources_dir"))
             } else {
-                common_ancestor.join("share/alvr")
+                root.join("share/alvr")
             };
             let config_dir = if !env!("config_dir").is_empty() {
                 PathBuf::from(env!("config_dir"))
@@ -139,12 +139,12 @@ impl Layout {
             let openvr_driver_dir = if !env!("openvr_driver_dir").is_empty() {
                 PathBuf::from(env!("openvr_driver_dir"))
             } else {
-                common_ancestor.join("lib64/alvr")
+                root.join("lib64/alvr")
             };
             let vrcompositor_wrapper_dir = if !env!("vrcompositor_wrapper_dir").is_empty() {
                 PathBuf::from(env!("vrcompositor_wrapper_dir"))
             } else {
-                common_ancestor.join("libexec/alvr")
+                root.join("libexec/alvr")
             };
 
             Self {
@@ -156,7 +156,7 @@ impl Layout {
                 vrcompositor_wrapper_dir,
             }
         } else if cfg!(target_os = "macos") {
-            let common_ancestor = match installation_type {
+            let root = match installation_type {
                 InstallationType::DistributionPackage | InstallationType::UserPackage => {
                     env::temp_dir().join("alvr")
                 }
@@ -164,12 +164,12 @@ impl Layout {
             };
 
             Self {
-                executables_dir: common_ancestor.clone(),
-                static_resources_dir: common_ancestor.clone(),
-                config_dir: common_ancestor.clone(),
-                log_dir: common_ancestor.clone(),
-                openvr_driver_dir: common_ancestor.clone(),
-                vrcompositor_wrapper_dir: common_ancestor,
+                executables_dir: root.clone(),
+                static_resources_dir: root.clone(),
+                config_dir: root.clone(),
+                log_dir: root.clone(),
+                openvr_driver_dir: root.clone(),
+                vrcompositor_wrapper_dir: root,
             }
         } else {
             unimplemented!()
@@ -272,6 +272,7 @@ pub fn filesystem_layout_from_launcher_exe(path: &Path) -> Layout {
         let ancestor = if cfg!(any(windows, target_os = "macos")) {
             path.parent().unwrap().to_owned()
         } else if cfg!(target_os = "linux") {
+            // FHS path is expected
             path.parent().unwrap().parent().unwrap().to_owned()
         } else {
             unimplemented!()
@@ -288,6 +289,7 @@ pub fn filesystem_layout_from_openvr_driver_dir(dir: &Path) -> Layout {
         let ancestor = if cfg!(windows) || cfg!(target_os = "macos") {
             dir.to_owned()
         } else if cfg!(target_os = "linux") {
+            // FHS path is expected
             dir.parent().unwrap().parent().unwrap().to_owned()
         } else {
             unimplemented!()

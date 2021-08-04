@@ -162,6 +162,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "alvr_commands"
+version = "16.0.0-rc2"
+dependencies = [
+ "alvr_common",
+ "alvr_filesystem",
+ "backtrace",
+ "dirs",
+ "encoding_rs_io",
+ "lazy_static",
+ "log",
+ "parking_lot",
+ "rand",
+ "runas",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "alvr_common"
 version = "16.0.0-rc2"
 dependencies = [
@@ -220,6 +238,7 @@ dependencies = [
 name = "alvr_launcher"
 version = "16.0.0-rc2"
 dependencies = [
+ "alvr_commands",
  "alvr_common",
  "alvr_filesystem",
  "druid",
@@ -239,6 +258,7 @@ version = "16.0.0-rc2"
 dependencies = [
  "alcro",
  "alvr_audio",
+ "alvr_commands",
  "alvr_common",
  "alvr_filesystem",
  "alvr_session",

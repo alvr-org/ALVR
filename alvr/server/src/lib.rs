@@ -11,7 +11,7 @@ mod bindings {
 }
 use bindings::*;
 
-use alvr_common::{commands, logging, prelude::*};
+use alvr_common::{logging, prelude::*};
 use alvr_filesystem::{self as afs, Layout};
 use alvr_session::{ClientConnectionDesc, SessionManager};
 use lazy_static::lazy_static;
@@ -37,7 +37,7 @@ use tokio::{
 lazy_static! {
     // Since ALVR_DIR is needed to initialize logging, if error then just panic
     static ref FILESYSTEM_LAYOUT: Layout =
-        afs::filesystem_layout_from_openvr_driver_dir(&commands::get_driver_dir().unwrap());
+        afs::filesystem_layout_from_openvr_driver_dir(&alvr_commands::get_driver_dir().unwrap());
     static ref SESSION_MANAGER: Mutex<SessionManager> =
         Mutex::new(SessionManager::new(&FILESYSTEM_LAYOUT.session()));
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
@@ -92,13 +92,13 @@ pub fn notify_shutdown_driver() {
 pub fn notify_restart_driver() {
     notify_shutdown_driver();
 
-    commands::restart_steamvr(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
+    alvr_commands::restart_steamvr(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
 }
 
 pub fn notify_application_update() {
     notify_shutdown_driver();
 
-    commands::invoke_application_update(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
+    alvr_commands::invoke_application_update(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
 }
 
 pub enum ClientListAction {
@@ -289,7 +289,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
-        logging::show_err(commands::apply_driver_paths_backup(
+        logging::show_err(alvr_commands::apply_driver_paths_backup(
             FILESYSTEM_LAYOUT.openvr_driver_dir.clone(),
         ));
 

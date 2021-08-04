@@ -1,5 +1,5 @@
 use crate::{graphics_info, ClientListAction, FILESYSTEM_LAYOUT, SESSION_MANAGER};
-use alvr_common::{commands, logging, prelude::*, ALVR_VERSION};
+use alvr_common::{logging, prelude::*, ALVR_VERSION};
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
@@ -130,8 +130,11 @@ async fn http_api(
         "/api/log" => text_websocket(request, log_sender).await?,
         "/api/events" => text_websocket(request, events_sender).await?,
         "/api/driver/register" => {
-            if commands::driver_registration(&[FILESYSTEM_LAYOUT.openvr_driver_dir.clone()], true)
-                .is_ok()
+            if alvr_commands::driver_registration(
+                &[FILESYSTEM_LAYOUT.openvr_driver_dir.clone()],
+                true,
+            )
+            .is_ok()
             {
                 reply(StatusCode::OK)?
             } else {
@@ -140,7 +143,7 @@ async fn http_api(
         }
         "/api/driver/unregister" => {
             if let Ok(path) = from_request_body::<PathBuf>(request).await {
-                if commands::driver_registration(&[path], false).is_ok() {
+                if alvr_commands::driver_registration(&[path], false).is_ok() {
                     reply(StatusCode::OK)?
                 } else {
                     reply(StatusCode::INTERNAL_SERVER_ERROR)?
@@ -149,10 +152,12 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/api/driver/list" => reply_json(&commands::get_registered_drivers().unwrap_or_default())?,
+        "/api/driver/list" => {
+            reply_json(&alvr_commands::get_registered_drivers().unwrap_or_default())?
+        }
         uri @ "/firewall-rules/add" | uri @ "/firewall-rules/remove" => {
             let add = uri.ends_with("add");
-            let maybe_err = commands::firewall_rules(add).err();
+            let maybe_err = alvr_commands::firewall_rules(add).err();
             if let Some(e) = &maybe_err {
                 error!("Setting firewall rules failed: code {}", e);
             }

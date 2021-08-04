@@ -157,7 +157,8 @@ pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
     };
 
     trace_err!(std::os::unix::fs::symlink(
-        Layout::from_launcher_exe(&env::current_exe().unwrap()).vrcompositor_wrapper(),
+        afs::filesystem_layout_from_launcher_exe(&env::current_exe().unwrap())
+            .vrcompositor_wrapper(),
         &launcher_path
     ))?;
 

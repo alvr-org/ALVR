@@ -29,7 +29,6 @@ fn main() {
         env::var("ALVR_VRCOMPOSITOR_WRAPPER_DIR").unwrap_or_else(|_| "".to_owned())
     );
 
-    // Used only when custom-root feature is enabled
     println!(
         "cargo:rustc-env=custom_root={}",
         env::var("ALVR_ROOT_DIR").unwrap_or_else(|_| "".to_owned())

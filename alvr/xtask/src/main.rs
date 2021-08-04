@@ -6,9 +6,7 @@ use alvr_filesystem::{self as afs, Layout};
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
 use std::{
-    env,
-    error::Error,
-    fs,
+    env, fs,
     path::{Path, PathBuf},
 };
 
@@ -47,8 +45,6 @@ ARGS:
     --root <PATH>       Installation root. By default no root is set and paths are calculated using
                         relative paths, which requires conforming to FHS on Linux.
 "#;
-
-type BResult<T = ()> = Result<T, Box<dyn Error>>;
 
 pub fn remove_build_dir() {
     let build_dir = afs::build_dir();

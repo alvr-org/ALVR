@@ -109,9 +109,6 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
     let mut server_features: Vec<&str> = vec![];
     let mut launcher_features: Vec<&str> = vec![];
 
-    if is_nightly {
-        server_features.push("alvr_session/nightly");
-    }
     if bundle_ffmpeg {
         server_features.push("bundled_ffmpeg");
     }

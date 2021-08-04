@@ -11,20 +11,6 @@ use std::{
 };
 
 const DRIVER_PATHS_BACKUP_FNAME: &str = "alvr_drivers_paths_backup.txt";
-const INSTALLER_FNAME: &str = "alvr_installer";
-
-#[cfg(not(windows))]
-pub fn exec_fname(name: &str) -> String {
-    name.to_owned()
-}
-#[cfg(windows)]
-pub fn exec_fname(name: &str) -> String {
-    format!("{}.exe", name)
-}
-
-pub fn installer_path() -> PathBuf {
-    env::temp_dir().join(exec_fname(INSTALLER_FNAME))
-}
 
 ///////////// openvrpaths.vrpath interop ///////////////
 

@@ -214,7 +214,7 @@ async fn http_api(
                 let mut resource_response =
                     trace_err!(reqwest::get(redirection_response.url().clone()).await)?;
 
-                let mut file = trace_err!(fs::File::create(commands::installer_path()))?;
+                let mut file = trace_err!(fs::File::create(alvr_filesystem::installer_path()))?;
 
                 let mut downloaded_bytes_count = 0;
                 loop {

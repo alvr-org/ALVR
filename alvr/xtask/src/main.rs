@@ -2,7 +2,7 @@ mod command;
 mod dependencies;
 mod version;
 
-use alvr_filesystem::{self as afs, Layout};
+use alvr_filesystem::{self as afs, InstallationType, Layout};
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
 use std::{
@@ -40,6 +40,7 @@ FLAGS:
     --oculus-quest      Oculus Quest build. Used only for build-client subcommand
     --oculus-go         Oculus Go build. Used only for build-client subcommand
     --bundle-ffmpeg     Bundle ffmpeg libraries. Only used for build-server subcommand on Linux
+    --portable          Build root-invariant binaries
     --help              Print this text
 
 ARGS:
@@ -53,8 +54,15 @@ pub fn remove_build_dir() {
     fs::remove_dir_all(&build_dir).ok();
 }
 
-pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bundle_ffmpeg: bool) {
-    let layout = Layout::from_common_ancestor(&afs::server_build_dir());
+pub fn build_server(
+    is_release: bool,
+    is_nightly: bool,
+    fetch_crates: bool,
+    bundle_ffmpeg: bool,
+    installation_type: InstallationType,
+) {
+    // Always use CustomRoot for contructing the build directory. The actual runtime layout is respected
+    let layout = Layout::new(InstallationType::CustomRoot(afs::server_build_dir()));
 
     let build_type = if is_release { "release" } else { "debug" };
     let build_flag = if is_release { "--release" } else { "" };
@@ -63,11 +71,24 @@ pub fn build_server(is_release: bool, is_nightly: bool, fetch_crates: bool, bund
     let mut launcher_features: Vec<&str> = vec![];
 
     if is_nightly {
-        server_features.push("alvr_common/nightly");
-        launcher_features.push("alvr_common/nightly");
+        server_features.push("alvr_session/nightly");
+        launcher_features.push("alvr_session/nightly");
     }
     if bundle_ffmpeg {
         server_features.push("bundled_ffmpeg");
+    }
+    match installation_type {
+        InstallationType::DistributionPackage => {
+            server_features.push("alvr_filesystem/distribution-package");
+            launcher_features.push("alvr_filesystem/distribution-package");
+        }
+        InstallationType::UserPackage => {
+            server_features.push("alvr_filesystem/user-package");
+            launcher_features.push("alvr_filesystem/user-package");
+        }
+        InstallationType::CustomRoot(root) => {
+            env::set_var("ALVR_ROOT_DIR", root);
+        }
     }
     if server_features.is_empty() {
         server_features.push("default")
@@ -377,8 +398,13 @@ fn build_installer(wix_path: &str) {
     .unwrap();
 }
 
-pub fn publish_server(is_nightly: bool) {
-    build_server(true, is_nightly, false, false);
+pub fn publish_server(is_nightly: bool, portable: bool) {
+    let installation_type = if portable {
+        InstallationType::CustomRoot(PathBuf::from(""))
+    } else {
+        InstallationType::DistributionPackage
+    };
+    build_server(true, is_nightly, false, false, installation_type);
 
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");
@@ -488,12 +514,19 @@ fn main() {
         let for_oculus_quest = args.contains("--oculus-quest");
         let for_oculus_go = args.contains("--oculus-go");
         let bundle_ffmpeg = args.contains("--bundle-ffmpeg");
+        let portable = args.contains("--portable");
 
         if args.finish().is_empty() {
             match subcommand.as_str() {
                 "build-windows-deps" => dependencies::build_deps("windows"),
                 "build-android-deps" => dependencies::build_deps("android"),
-                "build-server" => build_server(is_release, false, fetch, bundle_ffmpeg),
+                "build-server" => build_server(
+                    is_release,
+                    false,
+                    fetch,
+                    bundle_ffmpeg,
+                    InstallationType::CustomRoot(PathBuf::from("")),
+                ),
                 "build-client" => {
                     if (for_oculus_quest && for_oculus_go) || (!for_oculus_quest && !for_oculus_go)
                     {
@@ -506,7 +539,7 @@ fn main() {
                 "build-ffmpeg-linux" => {
                     dependencies::build_ffmpeg_linux();
                 }
-                "publish-server" => publish_server(is_nightly),
+                "publish-server" => publish_server(is_nightly, portable),
                 "publish-client" => publish_client(is_nightly),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),

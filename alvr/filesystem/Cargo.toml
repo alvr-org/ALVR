@@ -5,6 +5,12 @@ authors = ["alvr-org", "Patrick Nicolas <patricknicolas@laposte.net>"]
 license = "MIT"
 edition = "2018"
 
+[features]
+default = []
+distribution-package = []
+user-package = []
+# no feature means the custom root is used
+
 [dependencies]
 lazy_static = "1"
 dirs = "3"

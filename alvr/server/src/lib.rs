@@ -9,10 +9,10 @@ mod web_server;
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
-use alvr_filesystem::Layout;
 use bindings::*;
 
 use alvr_common::{commands, logging, prelude::*};
+use alvr_filesystem::{self as afs, Layout};
 use alvr_session::{ClientConnectionDesc, SessionManager};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
@@ -37,7 +37,7 @@ use tokio::{
 lazy_static! {
     // Since ALVR_DIR is needed to initialize logging, if error then just panic
     static ref FILESYSTEM_LAYOUT: Layout =
-        Layout::from_openvr_driver_dir(&commands::get_driver_dir().unwrap());
+        afs::filesystem_layout_from_openvr_driver_dir(&commands::get_driver_dir().unwrap());
     static ref SESSION_MANAGER: Mutex<SessionManager> =
         Mutex::new(SessionManager::new(&FILESYSTEM_LAYOUT.session()));
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());

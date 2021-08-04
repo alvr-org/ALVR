@@ -1,5 +1,5 @@
 use alvr_common::{commands, logging, prelude::*};
-use alvr_filesystem::Layout;
+use alvr_filesystem as afs;
 use serde_json as json;
 use std::{
     env, fs,
@@ -30,7 +30,7 @@ pub fn is_steamvr_running() -> bool {
     system.refresh_processes();
 
     !system
-        .process_by_name(&commands::exec_fname("vrserver"))
+        .process_by_name(&afs::exec_fname("vrserver"))
         .is_empty()
 }
 
@@ -39,7 +39,7 @@ pub fn maybe_launch_steamvr() {
     system.refresh_processes();
 
     if system
-        .process_by_name(&commands::exec_fname("vrserver"))
+        .process_by_name(&afs::exec_fname("vrserver"))
         .is_empty()
     {
         #[cfg(windows)]
@@ -66,7 +66,7 @@ pub fn kill_steamvr() {
 
     // first kill vrmonitor, then kill vrserver if it is hung.
 
-    for process in system.process_by_name(&commands::exec_fname("vrmonitor")) {
+    for process in system.process_by_name(&afs::exec_fname("vrmonitor")) {
         #[cfg(not(windows))]
         process.kill(sysinfo::Signal::Term);
         #[cfg(windows)]
@@ -75,7 +75,7 @@ pub fn kill_steamvr() {
 
     thread::sleep(Duration::from_secs(1));
 
-    for process in system.process_by_name(&commands::exec_fname("vrserver")) {
+    for process in system.process_by_name(&afs::exec_fname("vrserver")) {
         #[cfg(not(windows))]
         process.kill(sysinfo::Signal::Term);
         #[cfg(windows)]
@@ -105,7 +105,8 @@ pub fn unblock_alvr_addon() -> StrResult {
 }
 
 pub fn maybe_register_alvr_driver() -> StrResult {
-    let alvr_driver_dir = Layout::from_launcher_exe(&env::current_exe().unwrap()).openvr_driver_dir;
+    let alvr_driver_dir =
+        afs::filesystem_layout_from_launcher_exe(&env::current_exe().unwrap()).openvr_driver_dir;
 
     let driver_registered = commands::get_driver_dir_from_registered()
         .ok()
@@ -200,8 +201,11 @@ pub fn restart_steamvr() {
 pub fn invoke_installer() {
     try_close_steamvr_gracefully();
 
-    spawn_no_window(Command::new(commands::installer_path()).arg("-q"));
+    spawn_no_window(Command::new(afs::installer_path()).arg("-q"));
 
     // delete crash_log.txt (take advantage of the occasion to do some routine cleaning)
-    fs::remove_file(Layout::from_launcher_exe(&env::current_exe().unwrap()).crash_log()).ok();
+    fs::remove_file(
+        afs::filesystem_layout_from_launcher_exe(&env::current_exe().unwrap()).crash_log(),
+    )
+    .ok();
 }

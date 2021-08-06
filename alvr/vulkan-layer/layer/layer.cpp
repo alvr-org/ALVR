@@ -377,6 +377,9 @@ wsi_layer_vkEnumerateInstanceLayerProperties(uint32_t *pCount, VkLayerProperties
     if (!strcmp(funcName, #func))                                                                  \
         return (PFN_vkVoidFunction)&wsi_layer_##func;
 
+
+const char *g_sessionPath;
+
 VK_LAYER_EXPORT PFN_vkVoidFunction VKAPI_CALL wsi_layer_vkGetDeviceProcAddr(VkDevice device,
                                                                             const char *funcName) {
     GET_PROC_ADDR(vkCreateSwapchainKHR);

@@ -13,8 +13,6 @@ using namespace std;
 
 extern uint64_t g_DriverTestMode;
 
-const char *g_sessionPath;
-
 Settings Settings::m_Instance;
 
 Settings::Settings()

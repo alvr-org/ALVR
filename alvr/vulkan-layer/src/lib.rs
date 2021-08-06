@@ -9,6 +9,7 @@ mod bindings {
 }
 use bindings::*;
 
+use std::ffi::CString;
 use std::os::raw::c_char;
 
 #[no_mangle]

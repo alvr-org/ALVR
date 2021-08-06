@@ -8,6 +8,9 @@ edition = "2018"
 [lib]
 crate-type = ["cdylib"]
 
+[dependencies]
+alvr_filesystem = { path = "../filesystem" }
+
 [build-dependencies]
 bindgen = "0.59"
 cc = { version = "1", features = ["parallel"] }

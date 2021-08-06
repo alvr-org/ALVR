@@ -16,6 +16,15 @@ pub unsafe extern "C" fn vkGetInstanceProcAddr(
     instance: VkInstance,
     p_name: *const c_char,
 ) -> PFN_vkVoidFunction {
+    g_sessionPath = CString::new(
+        alvr_filesystem::filesystem_layout_from_invalid()
+            .session()
+            .to_string_lossy()
+            .to_string(),
+    )
+    .unwrap()
+    .into_raw();
+
     bindings::wsi_layer_vkGetInstanceProcAddr(instance, p_name)
 }
 

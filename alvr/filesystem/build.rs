@@ -9,6 +9,10 @@ fn main() {
         env::var("ALVR_EXECUTABLES_DIR").unwrap_or_else(|_| "".to_owned())
     );
     println!(
+        "cargo:rustc-env=libraries_dir={}",
+        env::var("ALVR_LIBRARIES_DIR").unwrap_or_else(|_| "".to_owned())
+    );
+    println!(
         "cargo:rustc-env=static_resources_dir={}",
         env::var("ALVR_STATIC_RESOURCES_DIR").unwrap_or_else(|_| "".to_owned())
     );
@@ -27,6 +31,10 @@ fn main() {
     println!(
         "cargo:rustc-env=vrcompositor_wrapper_dir={}",
         env::var("ALVR_VRCOMPOSITOR_WRAPPER_DIR").unwrap_or_else(|_| "".to_owned())
+    );
+    println!(
+        "cargo:rustc-env=vulkan_layer_manifest_dir={}",
+        env::var("ALVR_VULKAN_LAYER_MANIFEST_DIR").unwrap_or_else(|_| "".to_owned())
     );
 
     println!(

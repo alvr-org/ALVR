@@ -30,12 +30,7 @@ pub fn target_dir() -> PathBuf {
 }
 
 pub fn workspace_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .into()
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
 pub fn deps_dir() -> PathBuf {
@@ -69,6 +64,8 @@ pub fn installer_path() -> PathBuf {
 pub struct Layout {
     // directory containing the launcher executable
     pub executables_dir: PathBuf,
+    // (linux only) directory where alvr_vulkan_layer.so is saved
+    pub libraries_dir: PathBuf,
     // parent directory of resources like the dashboard and presets folders
     pub static_resources_dir: PathBuf,
     // directory for storing configuration files (session.json)
@@ -79,6 +76,8 @@ pub struct Layout {
     pub openvr_driver_dir: PathBuf,
     // (linux only) parent directory of the executable to wrap vrcompositor
     pub vrcompositor_wrapper_dir: PathBuf,
+    // (linux only) directory where the vulkan layer manifest is saved
+    pub vulkan_layer_manifest_dir: PathBuf,
 }
 
 impl Layout {
@@ -86,11 +85,13 @@ impl Layout {
         if cfg!(any(windows, target_os = "macos")) {
             Self {
                 executables_dir: root.to_owned(),
+                libraries_dir: root.to_owned(),
                 static_resources_dir: root.to_owned(),
                 config_dir: root.to_owned(),
                 log_dir: root.to_owned(),
                 openvr_driver_dir: root.to_owned(),
                 vrcompositor_wrapper_dir: root.to_owned(),
+                vulkan_layer_manifest_dir: root.to_owned(),
             }
         } else if cfg!(target_os = "linux") {
             // Get paths from environment or use FHS compliant paths
@@ -98,6 +99,11 @@ impl Layout {
                 PathBuf::from(env!("executables_dir"))
             } else {
                 root.join("bin")
+            };
+            let libraries_dir = if !env!("libraries_dir").is_empty() {
+                PathBuf::from(env!("libraries_dir"))
+            } else {
+                root.join("lib64")
             };
             let static_resources_dir = if !env!("static_resources_dir").is_empty() {
                 PathBuf::from(env!("static_resources_dir"))
@@ -124,14 +130,21 @@ impl Layout {
             } else {
                 root.join("libexec/alvr")
             };
+            let vulkan_layer_manifest_dir = if !env!("vulkan_layer_manifest_dir").is_empty() {
+                PathBuf::from(env!("vulkan_layer_manifest_dir"))
+            } else {
+                root.join("share/vulkan/explicit_layer.d")
+            };
 
             Self {
                 executables_dir,
+                libraries_dir,
                 static_resources_dir,
                 config_dir,
                 log_dir,
                 openvr_driver_dir,
                 vrcompositor_wrapper_dir,
+                vulkan_layer_manifest_dir,
             }
         } else {
             unimplemented!()
@@ -211,6 +224,14 @@ impl Layout {
     pub fn vrcompositor_wrapper(&self) -> PathBuf {
         self.vrcompositor_wrapper_dir.join("vrcompositor-wrapper")
     }
+
+    pub fn vulkan_layer(&self) -> PathBuf {
+        self.libraries_dir.join(dynlib_fname("alvr_vulkan_layer"))
+    }
+
+    pub fn vulkan_layer_manifest(&self) -> PathBuf {
+        self.vulkan_layer_manifest_dir.join("alvr_x86_64.json")
+    }
 }
 
 lazy_static::lazy_static! {
@@ -236,7 +257,6 @@ pub fn filesystem_layout_from_launcher_exe(path: &Path) -> Layout {
     })
 }
 
-// The path should include the executable file name
 // The dir argument is used only if ALVR is built as portable
 pub fn filesystem_layout_from_openvr_driver_dir(dir: &Path) -> Layout {
     LAYOUT.clone().unwrap_or_else(|| {
@@ -251,4 +271,11 @@ pub fn filesystem_layout_from_openvr_driver_dir(dir: &Path) -> Layout {
 
         Layout::new(&root)
     })
+}
+
+// Use this when there is no way of determining the current path. The reulting Layout paths will
+// be invalid, expect for the ones that disregard the relative path (for example the config dir) and
+// the ones that have been overridden.
+pub fn filesystem_layout_from_invalid() -> Layout {
+    LAYOUT.clone().unwrap_or_else(|| Layout::new(Path::new("")))
 }

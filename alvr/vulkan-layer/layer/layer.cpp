@@ -30,7 +30,7 @@
 
 #include <vulkan/vk_layer.h>
 
-#include "Settings.h"
+#include "settings.h"
 #include "device_api.hpp"
 #include "private_data.hpp"
 #include "surface_api.hpp"

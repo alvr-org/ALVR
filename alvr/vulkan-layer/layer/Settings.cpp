@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <cstdlib>
 #include "layer.h"
+#include "util/logger.h"
 
 using namespace std;
 
@@ -37,6 +38,7 @@ void Settings::Load()
 		std::string err = picojson::parse(v, json);
 		if (!err.empty())
 		{
+			Error("Error on parsing json: %hs\n", err.c_str());
 			return;
 		}
 
@@ -51,11 +53,17 @@ void Settings::Load()
 		m_nAdapterIndex = (int32_t)config.get("adapter_index").get<int64_t>();
 
 		m_refreshRate = (int)config.get("refresh_rate").get<int64_t>();
-
+		
+		Debug("Config JSON: %hs\n", json.c_str());
+		Info("Serial Number: %hs\n", mSerialNumber.c_str());
+		Info("Model Number: %hs\n", mModelNumber.c_str());
+		Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
+		Info("Seconds from Vsync to Photons: %f\n", m_flSecondsFromVsyncToPhotons);
+		Info("Refresh Rate: %d\n", m_refreshRate);
 		m_loaded = true;
 	}
 	catch (std::exception &e)
 	{
-		exit(1);
+		Error("Exception on parsing json: %hs\n", e.what());
 	}
 }

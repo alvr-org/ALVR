@@ -30,7 +30,7 @@
 
 #include <vulkan/vk_layer.h>
 
-#include "alvr_server/Settings.h"
+#include "Settings.h"
 #include "device_api.hpp"
 #include "private_data.hpp"
 #include "surface_api.hpp"

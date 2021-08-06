@@ -33,6 +33,7 @@ fn main() {
     build.compile("VkLayer_ALVR");
 
     bindgen::builder()
+        .clang_arg("-xc++")
         .header("layer/layer.h")
         .derive_default(true)
         .generate()

@@ -3,6 +3,8 @@ use std::{env, path::PathBuf};
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let cpp_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let server_cpp_dir =
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("../server/cpp");
 
     let vulkan = pkg_config::Config::new().probe("vulkan").unwrap();
     let libunwind = pkg_config::Config::new().probe("libunwind").unwrap();
@@ -27,6 +29,7 @@ fn main() {
         .flag_if_supported("-Wno-unused-parameter")
         .define("VK_USE_PLATFORM_XLIB_XRANDR_EXT", None)
         .include(cpp_dir)
+        .include(server_cpp_dir)
         .includes(vulkan.include_paths)
         .includes(libunwind.include_paths);
 

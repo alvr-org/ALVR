@@ -41,7 +41,6 @@
 #include <vulkan/vulkan.h>
 #include <sys/mman.h>
 
-#include "alvr_server/Logger.h"
 #include <util/timed_semaphore.hpp>
 
 #include "platform/linux/protocol.h"
@@ -171,12 +170,12 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
     int fd;
     res = m_device_data.disp.GetMemoryFdKHR(m_device, &fd_info, &fd);
     if (res != VK_SUCCESS) {
-        Error("GetMemoryFdKHR failed\n");
+        // Error("GetMemoryFdKHR failed\n");
         destroy_image(image);
         return res;
     }
     m_fds.push_back(fd);
-    Debug("GetMemoryFdKHR returned fd=%d\n", fd);
+    // Debug("GetMemoryFdKHR returned fd=%d\n", fd);
 
     VkExportSemaphoreCreateInfo exp_info = {};
     exp_info.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO;
@@ -188,7 +187,7 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
 
     res = m_device_data.disp.CreateSemaphore(m_device, &sem_info, nullptr, &image.semaphore);
     if (res != VK_SUCCESS) {
-        Error("CreateSemaphore failed\n");
+        // Error("CreateSemaphore failed\n");
         destroy_image(image);
         return res;
     }
@@ -206,12 +205,12 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
 
     res = m_device_data.disp.GetSemaphoreFdKHR(m_device, &sem_fd_info, &fd);
     if (res != VK_SUCCESS) {
-        Error("GetSemaphoreFdKHR failed\n");
+        // Error("GetSemaphoreFdKHR failed\n");
         destroy_image(image);
         return res;
     }
     m_fds.push_back(fd);
-    Debug("GetSemaphoreFdKHR returned fd=%d\n", fd);
+    // Debug("GetSemaphoreFdKHR returned fd=%d\n", fd);
 
     return res;
 }
@@ -255,7 +254,7 @@ int swapchain::send_fds(int socket_fd) {
 }
 
 bool swapchain::try_connect() {
-    Debug("swapchain::try_connect\n");
+    // Debug("swapchain::try_connect\n");
     std::string socketPath = getenv("XDG_RUNTIME_DIR");
     socketPath += "/alvr-ipc";
 
@@ -297,7 +296,7 @@ bool swapchain::try_connect() {
         perror("sendmsg");
         exit(1);
     }
-    Debug("swapchain sent fds\n");
+    // Debug("swapchain sent fds\n");
 
     return true;
 }

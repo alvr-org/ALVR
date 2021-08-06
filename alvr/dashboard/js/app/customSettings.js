@@ -369,9 +369,8 @@ define([
                 el.append(`<option value="${deviceName}"> ${deviceName} </option>`);
             });
 
-            let currentSetting = alvrSettings.getSession().sessionSettings.audio[section].content[
-                targetDevice
-            ];
+            let currentSetting =
+                alvrSettings.getSession().sessionSettings.audio[section].content[targetDevice];
 
             //select the current option in dropdown
             if (currentSetting.variant == "default") {
@@ -423,8 +422,10 @@ define([
                 if (!updating) {
                     updating = true;
 
-                    let currentSetting = alvrSettings.getSession().sessionSettings.audio[section]
-                        .content[targetDevice];
+                    let currentSetting =
+                        alvrSettings.getSession().sessionSettings.audio[section].content[
+                            targetDevice
+                        ];
 
                     if (currentSetting.variant == "default") {
                         el.val("default");

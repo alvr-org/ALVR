@@ -1097,8 +1097,10 @@
                 }
             }
             enterNodes.update = updateNodes;
-            enterNodes.parentNode = updateNodes.parentNode = exitNodes.parentNode =
-                group.parentNode;
+            enterNodes.parentNode =
+                updateNodes.parentNode =
+                exitNodes.parentNode =
+                    group.parentNode;
             enter.push(enterNodes);
             update.push(updateNodes);
             exit.push(exitNodes);
@@ -1238,12 +1240,8 @@
             for (var i = -1, n = group.length; ++i < n; ) {
                 if ((node = group[i])) {
                     subgroup.push(
-                        (upgroup[i] = subnode = selector.call(
-                            group.parentNode,
-                            node.__data__,
-                            i,
-                            j
-                        ))
+                        (upgroup[i] = subnode =
+                            selector.call(group.parentNode, node.__data__, i, j))
                     );
                     subnode.__data__ = node.__data__;
                 } else {
@@ -3911,7 +3909,18 @@
         };
     })();
     d3.geo.centroid = function (object) {
-        d3_geo_centroidW0 = d3_geo_centroidW1 = d3_geo_centroidX0 = d3_geo_centroidY0 = d3_geo_centroidZ0 = d3_geo_centroidX1 = d3_geo_centroidY1 = d3_geo_centroidZ1 = d3_geo_centroidX2 = d3_geo_centroidY2 = d3_geo_centroidZ2 = 0;
+        d3_geo_centroidW0 =
+            d3_geo_centroidW1 =
+            d3_geo_centroidX0 =
+            d3_geo_centroidY0 =
+            d3_geo_centroidZ0 =
+            d3_geo_centroidX1 =
+            d3_geo_centroidY1 =
+            d3_geo_centroidZ1 =
+            d3_geo_centroidX2 =
+            d3_geo_centroidY2 =
+            d3_geo_centroidZ2 =
+                0;
         d3.geo.stream(object, d3_geo_centroid);
         var x = d3_geo_centroidX2,
             y = d3_geo_centroidY2,
@@ -4907,11 +4916,12 @@
                 t = lower48.translate(),
                 x = (coordinates[0] - t[0]) / k,
                 y = (coordinates[1] - t[1]) / k;
-            return (y >= 0.12 && y < 0.234 && x >= -0.425 && x < -0.214
-                ? alaska
-                : y >= 0.166 && y < 0.234 && x >= -0.214 && x < -0.115
-                ? hawaii
-                : lower48
+            return (
+                y >= 0.12 && y < 0.234 && x >= -0.425 && x < -0.214
+                    ? alaska
+                    : y >= 0.166 && y < 0.234 && x >= -0.214 && x < -0.115
+                    ? hawaii
+                    : lower48
             ).invert(coordinates);
         };
         albersUsa.stream = function (stream) {
@@ -5006,7 +5016,10 @@
                 d3_geo_pathArea.lineStart = d3_geo_pathAreaRingStart;
             },
             polygonEnd: function () {
-                d3_geo_pathArea.lineStart = d3_geo_pathArea.lineEnd = d3_geo_pathArea.point = d3_noop;
+                d3_geo_pathArea.lineStart =
+                    d3_geo_pathArea.lineEnd =
+                    d3_geo_pathArea.point =
+                        d3_noop;
                 d3_geo_pathAreaSum += abs(d3_geo_pathAreaPolygon / 2);
             },
         };
@@ -5373,7 +5386,16 @@
             return d3_geo_pathAreaSum;
         };
         path.centroid = function (object) {
-            d3_geo_centroidX0 = d3_geo_centroidY0 = d3_geo_centroidZ0 = d3_geo_centroidX1 = d3_geo_centroidY1 = d3_geo_centroidZ1 = d3_geo_centroidX2 = d3_geo_centroidY2 = d3_geo_centroidZ2 = 0;
+            d3_geo_centroidX0 =
+                d3_geo_centroidY0 =
+                d3_geo_centroidZ0 =
+                d3_geo_centroidX1 =
+                d3_geo_centroidY1 =
+                d3_geo_centroidZ1 =
+                d3_geo_centroidX2 =
+                d3_geo_centroidY2 =
+                d3_geo_centroidZ2 =
+                    0;
             d3.geo.stream(object, projectStream(d3_geo_pathCentroid));
             return d3_geo_centroidZ2
                 ? [d3_geo_centroidX2 / d3_geo_centroidZ2, d3_geo_centroidY2 / d3_geo_centroidZ2]
@@ -5384,7 +5406,9 @@
                 : [NaN, NaN];
         };
         path.bounds = function (object) {
-            d3_geo_pathBoundsX1 = d3_geo_pathBoundsY1 = -(d3_geo_pathBoundsX0 = d3_geo_pathBoundsY0 = Infinity);
+            d3_geo_pathBoundsX1 = d3_geo_pathBoundsY1 = -(d3_geo_pathBoundsX0 =
+                d3_geo_pathBoundsY0 =
+                    Infinity);
             d3.geo.stream(object, projectStream(d3_geo_pathBounds));
             return [
                 [d3_geo_pathBoundsX0, d3_geo_pathBoundsY0],
@@ -5662,8 +5686,11 @@
             interpolate;
         function circle() {
             var center = typeof origin === "function" ? origin.apply(this, arguments) : origin,
-                rotate = d3_geo_rotation(-center[0] * d3_radians, -center[1] * d3_radians, 0)
-                    .invert,
+                rotate = d3_geo_rotation(
+                    -center[0] * d3_radians,
+                    -center[1] * d3_radians,
+                    0
+                ).invert,
                 ring = [];
             interpolate(null, null, 1, {
                 point: function (x, y) {
@@ -7040,7 +7067,11 @@
             cells: d3_geom_voronoiCells,
             edges: d3_geom_voronoiEdges,
         };
-        d3_geom_voronoiBeaches = d3_geom_voronoiCircles = d3_geom_voronoiEdges = d3_geom_voronoiCells = null;
+        d3_geom_voronoiBeaches =
+            d3_geom_voronoiCircles =
+            d3_geom_voronoiEdges =
+            d3_geom_voronoiCells =
+                null;
         return diagram;
     }
     function d3_geom_voronoiVertexOrder(a, b) {
@@ -7472,17 +7503,19 @@
     d3.interpolators = [
         function (a, b) {
             var t = typeof b;
-            return (t === "string"
-                ? d3_rgb_names.has(b.toLowerCase()) || /^(#|rgb\(|hsl\()/i.test(b)
+            return (
+                t === "string"
+                    ? d3_rgb_names.has(b.toLowerCase()) || /^(#|rgb\(|hsl\()/i.test(b)
+                        ? d3_interpolateRgb
+                        : d3_interpolateString
+                    : b instanceof d3_color
                     ? d3_interpolateRgb
-                    : d3_interpolateString
-                : b instanceof d3_color
-                ? d3_interpolateRgb
-                : Array.isArray(b)
-                ? d3_interpolateArray
-                : t === "object" && isNaN(b)
-                ? d3_interpolateObject
-                : d3_interpolateNumber)(a, b);
+                    : Array.isArray(b)
+                    ? d3_interpolateArray
+                    : t === "object" && isNaN(b)
+                    ? d3_interpolateObject
+                    : d3_interpolateNumber
+            )(a, b);
         },
     ];
     d3.interpolateArray = d3_interpolateArray;
@@ -9091,19 +9124,20 @@
             while ((node1 = queue.pop()) != null) {
                 for (var children = node1.children, child, i = 0, n = children.length; i < n; ++i) {
                     queue.push(
-                        ((children[i] = child = {
-                            _: children[i],
-                            parent: node1,
-                            children: ((child = children[i].children) && child.slice()) || [],
-                            A: null,
-                            a: null,
-                            z: 0,
-                            m: 0,
-                            c: 0,
-                            s: 0,
-                            t: null,
-                            i: i,
-                        }).a = child)
+                        ((children[i] = child =
+                            {
+                                _: children[i],
+                                parent: node1,
+                                children: ((child = children[i].children) && child.slice()) || [],
+                                A: null,
+                                a: null,
+                                z: 0,
+                                m: 0,
+                                c: 0,
+                                s: 0,
+                                t: null,
+                                i: i,
+                            }).a = child)
                     );
                 }
             }
@@ -10019,82 +10053,23 @@
         return d3.scale.ordinal().range(d3_category20c);
     };
     var d3_category10 = [
-        2062260,
-        16744206,
-        2924588,
-        14034728,
-        9725885,
-        9197131,
-        14907330,
-        8355711,
-        12369186,
+        2062260, 16744206, 2924588, 14034728, 9725885, 9197131, 14907330, 8355711, 12369186,
         1556175,
     ].map(d3_rgbString);
     var d3_category20 = [
-        2062260,
-        11454440,
-        16744206,
-        16759672,
-        2924588,
-        10018698,
-        14034728,
-        16750742,
-        9725885,
-        12955861,
-        9197131,
-        12885140,
-        14907330,
-        16234194,
-        8355711,
-        13092807,
-        12369186,
-        14408589,
-        1556175,
-        10410725,
+        2062260, 11454440, 16744206, 16759672, 2924588, 10018698, 14034728, 16750742, 9725885,
+        12955861, 9197131, 12885140, 14907330, 16234194, 8355711, 13092807, 12369186, 14408589,
+        1556175, 10410725,
     ].map(d3_rgbString);
     var d3_category20b = [
-        3750777,
-        5395619,
-        7040719,
-        10264286,
-        6519097,
-        9216594,
-        11915115,
-        13556636,
-        9202993,
-        12426809,
-        15186514,
-        15190932,
-        8666169,
-        11356490,
-        14049643,
-        15177372,
-        8077683,
-        10834324,
-        13528509,
-        14589654,
+        3750777, 5395619, 7040719, 10264286, 6519097, 9216594, 11915115, 13556636, 9202993,
+        12426809, 15186514, 15190932, 8666169, 11356490, 14049643, 15177372, 8077683, 10834324,
+        13528509, 14589654,
     ].map(d3_rgbString);
     var d3_category20c = [
-        3244733,
-        7057110,
-        10406625,
-        13032431,
-        15095053,
-        16616764,
-        16625259,
-        16634018,
-        3253076,
-        7652470,
-        10607003,
-        13101504,
-        7695281,
-        10394312,
-        12369372,
-        14342891,
-        6513507,
-        9868950,
-        12434877,
-        14277081,
+        3244733, 7057110, 10406625, 13032431, 15095053, 16616764, 16625259, 16634018, 3253076,
+        7652470, 10607003, 13101504, 7695281, 10394312, 12369372, 14342891, 6513507, 9868950,
+        12434877, 14277081,
     ].map(d3_rgbString);
     d3.scale.quantile = function () {
         return d3_scale_quantile([], []);
@@ -12563,24 +12538,8 @@
         return new Date(t);
     }
     var d3_time_scaleSteps = [
-        1e3,
-        5e3,
-        15e3,
-        3e4,
-        6e4,
-        3e5,
-        9e5,
-        18e5,
-        36e5,
-        108e5,
-        216e5,
-        432e5,
-        864e5,
-        1728e5,
-        6048e5,
-        2592e6,
-        7776e6,
-        31536e6,
+        1e3, 5e3, 15e3, 3e4, 6e4, 3e5, 9e5, 18e5, 36e5, 108e5, 216e5, 432e5, 864e5, 1728e5, 6048e5,
+        2592e6, 7776e6, 31536e6,
     ];
     var d3_time_scaleLocalMethods = [
         [d3_time.second, 1],

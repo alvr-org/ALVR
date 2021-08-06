@@ -169,9 +169,8 @@ function setValue(value) {
 
         if (option.id == value) {
             this.input.value = value;
-            var selectedText = option.parentNode.parentNode.querySelector(
-                ".selectal-selected-item"
-            );
+            var selectedText =
+                option.parentNode.parentNode.querySelector(".selectal-selected-item");
             selectedText.innerHTML = option.innerHTML;
         }
     }

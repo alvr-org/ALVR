@@ -1,6 +1,6 @@
 #include "settings.h"
 #define PICOJSON_USE_INT64
-#include "include/picojson.h"
+#include "alvr_server/include/picojson.h"
 #include <string>
 #include <fstream>
 #include <streambuf>

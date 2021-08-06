@@ -52,7 +52,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: -p alvr_xtask -p alvr_launcher -p alvr_server --verbose
+          args: -p alvr_xtask -p alvr_launcher -p alvr_server -p alvr_vulkan-layer -p vrcompositor-wrapper --verbose
 
   tests:
     runs-on: windows-latest

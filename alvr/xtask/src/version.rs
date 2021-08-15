@@ -115,13 +115,23 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
         version = format!("{}+nightly.{}", version, date_utc_yyyymmdd());
     }
 
+    for dir_name in [
+        "audio",
+        "client",
+        "commands",
+        "common",
+        "filesystem",
+        "launcher",
+        "server",
+        "session",
+        "sockets",
+        "vrcompositor-wrapper",
+        "vulkan-layer",
+        "xtask",
+    ] {
+        bump_cargo_version(dir_name, &version);
+    }
     bump_client_gradle_version(&version, is_nightly);
-    bump_cargo_version("common", &version);
-    bump_cargo_version("filesystem", &version);
-    bump_cargo_version("gui", &version);
-    bump_cargo_version("server", &version);
-    bump_cargo_version("launcher", &version);
-    bump_cargo_version("client", &version);
     bump_rpm_spec_version(&version, is_nightly);
 
     println!("Git tag:\nv{}", version);

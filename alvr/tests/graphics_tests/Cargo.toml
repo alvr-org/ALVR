@@ -1,0 +1,14 @@
+[package]
+name = "graphics_tests"
+version = "0.1.0"
+authors = ["alvr-org"]
+license = "MIT"
+edition = "2018"
+
+[dependencies]
+alvr_common = { path = "../../common" }
+
+wgpu = { git = "https://github.com/gfx-rs/wgpu" }
+winit = "0.25"
+pollster = "0.2"
+raw-window-handle = "0.3"

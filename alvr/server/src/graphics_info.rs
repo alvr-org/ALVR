@@ -1,8 +1,8 @@
 use alvr_common::prelude::*;
 
 pub fn get_gpu_names() -> Vec<String> {
-    let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
-    let adapters = instance.enumerate_adapters(wgpu::BackendBit::PRIMARY);
+    let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
+    let adapters = instance.enumerate_adapters(wgpu::Backends::PRIMARY);
 
     adapters
         .into_iter()

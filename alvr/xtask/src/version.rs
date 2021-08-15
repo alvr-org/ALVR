@@ -1,5 +1,5 @@
 use crate::command::date_utc_yyyymmdd;
-use crate::workspace_dir;
+use alvr_filesystem as afs;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -34,7 +34,7 @@ pub fn version() -> String {
 }
 
 fn bump_client_gradle_version(new_version: &str, is_nightly: bool) {
-    let gradle_file_path = workspace_dir()
+    let gradle_file_path = afs::workspace_dir()
         .join("alvr/client/android/app")
         .join("build.gradle");
     let file_content = fs::read_to_string(&gradle_file_path).unwrap();
@@ -72,7 +72,7 @@ fn bump_cargo_version(crate_dir_name: &str, new_version: &str) {
 }
 
 fn bump_rpm_spec_version(new_version: &str, is_nightly: bool) {
-    let spec_path = workspace_dir().join("packaging/rpm/alvr.spec");
+    let spec_path = afs::workspace_dir().join("packaging/rpm/alvr.spec");
     let spec = fs::read_to_string(&spec_path).unwrap();
 
     // If there's a '-', split the version around it
@@ -117,7 +117,7 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
 
     bump_client_gradle_version(&version, is_nightly);
     bump_cargo_version("common", &version);
-    bump_cargo_version("filesystem_layout", &version);
+    bump_cargo_version("filesystem", &version);
     bump_cargo_version("gui", &version);
     bump_cargo_version("server", &version);
     bump_cargo_version("launcher", &version);

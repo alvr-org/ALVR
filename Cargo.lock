@@ -162,10 +162,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "alvr_commands"
+version = "16.0.0-rc2"
+dependencies = [
+ "alvr_common",
+ "alvr_filesystem",
+ "backtrace",
+ "dirs",
+ "encoding_rs_io",
+ "lazy_static",
+ "log",
+ "parking_lot",
+ "rand",
+ "runas",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "alvr_common"
 version = "16.0.0-rc2"
 dependencies = [
- "alvr_filesystem_layout",
+ "alvr_filesystem",
  "backtrace",
  "dirs",
  "encoding_rs_io",
@@ -191,7 +209,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "alvr_filesystem_layout"
+name = "alvr_filesystem"
 version = "15.2.1"
 dependencies = [
  "dirs",
@@ -220,8 +238,9 @@ dependencies = [
 name = "alvr_launcher"
 version = "16.0.0-rc2"
 dependencies = [
+ "alvr_commands",
  "alvr_common",
- "alvr_filesystem_layout",
+ "alvr_filesystem",
  "druid",
  "gtk",
  "semver 1.0.3",
@@ -239,8 +258,9 @@ version = "16.0.0-rc2"
 dependencies = [
  "alcro",
  "alvr_audio",
+ "alvr_commands",
  "alvr_common",
- "alvr_filesystem_layout",
+ "alvr_filesystem",
  "alvr_session",
  "alvr_sockets",
  "bincode",
@@ -306,6 +326,7 @@ dependencies = [
 name = "alvr_vulkan-layer"
 version = "15.2.1"
 dependencies = [
+ "alvr_filesystem",
  "bindgen 0.59.0",
  "cc",
  "pkg-config",
@@ -316,7 +337,8 @@ dependencies = [
 name = "alvr_xtask"
 version = "1.0.0"
 dependencies = [
- "alvr_filesystem_layout",
+ "alvr_common",
+ "alvr_filesystem",
  "fs_extra",
  "pico-args",
  "walkdir",
@@ -2845,9 +2867,9 @@ dependencies = [
 
 [[package]]
 name = "msgbox"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "997d7ddd958df6f965b5f7e28acfffb0c8ee5eac8e73e29f14b33c18ca461baa"
+checksum = "fb729d86ed5018bf7080f226842b54d7a59babe70f23fd2bbbeb680aee01cc28"
 dependencies = [
  "cocoa",
  "glib",

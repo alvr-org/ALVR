@@ -113,20 +113,21 @@ var requirejs, require, define;
             (cfg = requirejs), (requirejs = void 0);
         }
         void 0 === require || isFunction(require) || ((cfg = require), (require = void 0)),
-            (req = requirejs = function (e, t, i, r) {
-                var n,
-                    o,
-                    a = defContextName;
-                return (
-                    isArray(e) ||
-                        "string" == typeof e ||
-                        ((o = e), isArray(t) ? ((e = t), (t = i), (i = r)) : (e = [])),
-                    o && o.context && (a = o.context),
-                    (n = getOwn(contexts, a)) || (n = contexts[a] = req.s.newContext(a)),
-                    o && n.configure(o),
-                    n.require(e, t, i)
-                );
-            }),
+            (req = requirejs =
+                function (e, t, i, r) {
+                    var n,
+                        o,
+                        a = defContextName;
+                    return (
+                        isArray(e) ||
+                            "string" == typeof e ||
+                            ((o = e), isArray(t) ? ((e = t), (t = i), (i = r)) : (e = [])),
+                        o && o.context && (a = o.context),
+                        (n = getOwn(contexts, a)) || (n = contexts[a] = req.s.newContext(a)),
+                        o && n.configure(o),
+                        n.require(e, t, i)
+                    );
+                }),
             (req.config = function (e) {
                 return req(e);
             }),
@@ -236,9 +237,8 @@ var requirejs, require, define;
                                 .replace(cjsRequireRegExp, function (e, t) {
                                     i.push(t);
                                 }),
-                            (i = (1 === t.length
-                                ? ["require"]
-                                : ["require", "exports", "module"]
+                            (i = (
+                                1 === t.length ? ["require"] : ["require", "exports", "module"]
                             ).concat(i)))),
                     useInteractive &&
                         (r = currentlyAddingScript || getInteractiveScript()) &&

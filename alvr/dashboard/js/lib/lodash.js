@@ -142,7 +142,8 @@
     /** Used to match property names within property paths. */
     var reIsDeepProp = /\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\\]|\\.)*?\1)\]/,
         reIsPlainProp = /^\w*$/,
-        rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))/g;
+        rePropName =
+            /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))/g;
 
     /**
      * Used to match `RegExp`
@@ -351,38 +352,58 @@
 
     /** Used to identify `toStringTag` values of typed arrays. */
     var typedArrayTags = {};
-    typedArrayTags[float32Tag] = typedArrayTags[float64Tag] = typedArrayTags[
-        int8Tag
-    ] = typedArrayTags[int16Tag] = typedArrayTags[int32Tag] = typedArrayTags[
-        uint8Tag
-    ] = typedArrayTags[uint8ClampedTag] = typedArrayTags[uint16Tag] = typedArrayTags[
-        uint32Tag
-    ] = true;
-    typedArrayTags[argsTag] = typedArrayTags[arrayTag] = typedArrayTags[
-        arrayBufferTag
-    ] = typedArrayTags[boolTag] = typedArrayTags[dataViewTag] = typedArrayTags[
-        dateTag
-    ] = typedArrayTags[errorTag] = typedArrayTags[funcTag] = typedArrayTags[
-        mapTag
-    ] = typedArrayTags[numberTag] = typedArrayTags[objectTag] = typedArrayTags[
-        regexpTag
-    ] = typedArrayTags[setTag] = typedArrayTags[stringTag] = typedArrayTags[weakMapTag] = false;
+    typedArrayTags[float32Tag] =
+        typedArrayTags[float64Tag] =
+        typedArrayTags[int8Tag] =
+        typedArrayTags[int16Tag] =
+        typedArrayTags[int32Tag] =
+        typedArrayTags[uint8Tag] =
+        typedArrayTags[uint8ClampedTag] =
+        typedArrayTags[uint16Tag] =
+        typedArrayTags[uint32Tag] =
+            true;
+    typedArrayTags[argsTag] =
+        typedArrayTags[arrayTag] =
+        typedArrayTags[arrayBufferTag] =
+        typedArrayTags[boolTag] =
+        typedArrayTags[dataViewTag] =
+        typedArrayTags[dateTag] =
+        typedArrayTags[errorTag] =
+        typedArrayTags[funcTag] =
+        typedArrayTags[mapTag] =
+        typedArrayTags[numberTag] =
+        typedArrayTags[objectTag] =
+        typedArrayTags[regexpTag] =
+        typedArrayTags[setTag] =
+        typedArrayTags[stringTag] =
+        typedArrayTags[weakMapTag] =
+            false;
 
     /** Used to identify `toStringTag` values supported by `_.clone`. */
     var cloneableTags = {};
-    cloneableTags[argsTag] = cloneableTags[arrayTag] = cloneableTags[
-        arrayBufferTag
-    ] = cloneableTags[dataViewTag] = cloneableTags[boolTag] = cloneableTags[
-        dateTag
-    ] = cloneableTags[float32Tag] = cloneableTags[float64Tag] = cloneableTags[
-        int8Tag
-    ] = cloneableTags[int16Tag] = cloneableTags[int32Tag] = cloneableTags[mapTag] = cloneableTags[
-        numberTag
-    ] = cloneableTags[objectTag] = cloneableTags[regexpTag] = cloneableTags[setTag] = cloneableTags[
-        stringTag
-    ] = cloneableTags[symbolTag] = cloneableTags[uint8Tag] = cloneableTags[
-        uint8ClampedTag
-    ] = cloneableTags[uint16Tag] = cloneableTags[uint32Tag] = true;
+    cloneableTags[argsTag] =
+        cloneableTags[arrayTag] =
+        cloneableTags[arrayBufferTag] =
+        cloneableTags[dataViewTag] =
+        cloneableTags[boolTag] =
+        cloneableTags[dateTag] =
+        cloneableTags[float32Tag] =
+        cloneableTags[float64Tag] =
+        cloneableTags[int8Tag] =
+        cloneableTags[int16Tag] =
+        cloneableTags[int32Tag] =
+        cloneableTags[mapTag] =
+        cloneableTags[numberTag] =
+        cloneableTags[objectTag] =
+        cloneableTags[regexpTag] =
+        cloneableTags[setTag] =
+        cloneableTags[stringTag] =
+        cloneableTags[symbolTag] =
+        cloneableTags[uint8Tag] =
+        cloneableTags[uint8ClampedTag] =
+        cloneableTags[uint16Tag] =
+        cloneableTags[uint32Tag] =
+            true;
     cloneableTags[errorTag] = cloneableTags[funcTag] = cloneableTags[weakMapTag] = false;
 
     /** Used to map Latin Unicode letters to basic Latin letters. */

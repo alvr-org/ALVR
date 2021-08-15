@@ -41,9 +41,9 @@
 #include <vulkan/vulkan.h>
 #include <sys/mman.h>
 
-#include "alvr_server/Logger.h"
 #include <util/timed_semaphore.hpp>
 
+#include "util/logger.h"
 #include "platform/linux/protocol.h"
 #include "swapchain.hpp"
 #include "wsi/display.hpp"

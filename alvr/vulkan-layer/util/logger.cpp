@@ -1,15 +1,9 @@
 #include <cstdarg>
 #include <cstdio>
-#include <exception>
 #include <cstdlib>
 
 void _log(const char *format, va_list args, bool err) {
     vfprintf(err ? stderr : stdout, format, args);
-}
-
-std::exception MakeException(const char *format, ...) {
-    // unimplemented
-    abort();
 }
 
 void Error(const char *format, ...) {

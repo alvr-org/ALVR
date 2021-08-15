@@ -33,7 +33,7 @@
 #include <vulkan/vulkan.h>
 
 #include <layer/private_data.hpp>
-#include "alvr_server/Settings.h"
+#include "layer/settings.h"
 
 #include "surface_properties.hpp"
 

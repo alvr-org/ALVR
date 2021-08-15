@@ -6,7 +6,7 @@
 
 #define str(s) #s
 #define LOAD_LIB(LIBNAME, VERSION) \
-	if (not m_##LIBNAME.Load(g_alvrDir + std::string("/lib64/alvr/lib"#LIBNAME".so." str(VERSION)))) {\
+	if (not m_##LIBNAME.Load(g_driverRootDir + std::string("/lib"#LIBNAME".so." str(VERSION)))) {\
 		if (not m_##LIBNAME.Load("lib"#LIBNAME".so." str(VERSION))) {\
 			throw std::runtime_error("failed to load lib"#LIBNAME".so." str(VERSION));\
 		}\

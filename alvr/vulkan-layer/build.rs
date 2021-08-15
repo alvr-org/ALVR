@@ -25,7 +25,6 @@ fn main() {
     build
         .cpp(true)
         .files(source_files_paths)
-        .file(server_cpp_dir.join("alvr_server/Settings.cpp"))
         .flag("-std=c++17")
         .flag_if_supported("-Wno-unused-parameter")
         .define("VK_USE_PLATFORM_XLIB_XRANDR_EXT", None)
@@ -37,6 +36,7 @@ fn main() {
     build.compile("VkLayer_ALVR");
 
     bindgen::builder()
+        .clang_arg("-xc++")
         .header("layer/layer.h")
         .derive_default(true)
         .generate()

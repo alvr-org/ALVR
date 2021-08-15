@@ -1,5 +1,5 @@
-use crate::{graphics_info, ClientListAction, ALVR_DIR, SESSION_MANAGER};
-use alvr_common::{commands, logging, prelude::*, ALVR_VERSION};
+use crate::{graphics_info, ClientListAction, FILESYSTEM_LAYOUT, SESSION_MANAGER};
+use alvr_common::{logging, prelude::*, ALVR_VERSION};
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
@@ -130,7 +130,12 @@ async fn http_api(
         "/api/log" => text_websocket(request, log_sender).await?,
         "/api/events" => text_websocket(request, events_sender).await?,
         "/api/driver/register" => {
-            if commands::driver_registration(&[ALVR_DIR.clone()], true).is_ok() {
+            if alvr_commands::driver_registration(
+                &[FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone()],
+                true,
+            )
+            .is_ok()
+            {
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::INTERNAL_SERVER_ERROR)?
@@ -138,7 +143,7 @@ async fn http_api(
         }
         "/api/driver/unregister" => {
             if let Ok(path) = from_request_body::<PathBuf>(request).await {
-                if commands::driver_registration(&[path], false).is_ok() {
+                if alvr_commands::driver_registration(&[path], false).is_ok() {
                     reply(StatusCode::OK)?
                 } else {
                     reply(StatusCode::INTERNAL_SERVER_ERROR)?
@@ -147,10 +152,12 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/api/driver/list" => reply_json(&commands::get_registered_drivers().unwrap_or_default())?,
+        "/api/driver/list" => {
+            reply_json(&alvr_commands::get_registered_drivers().unwrap_or_default())?
+        }
         uri @ "/firewall-rules/add" | uri @ "/firewall-rules/remove" => {
             let add = uri.ends_with("add");
-            let maybe_err = commands::firewall_rules(add).err();
+            let maybe_err = alvr_commands::firewall_rules(add).err();
             if let Some(e) = &maybe_err {
                 error!("Setting firewall rules failed: code {}", e);
             }
@@ -212,7 +219,7 @@ async fn http_api(
                 let mut resource_response =
                     trace_err!(reqwest::get(redirection_response.url().clone()).await)?;
 
-                let mut file = trace_err!(fs::File::create(commands::installer_path()))?;
+                let mut file = trace_err!(fs::File::create(alvr_filesystem::installer_path()))?;
 
                 let mut downloaded_bytes_count = 0;
                 loop {
@@ -247,9 +254,7 @@ async fn http_api(
 
                 let maybe_file = tokio::fs::File::open(format!(
                     "{}{}",
-                    ALVR_DIR
-                        .join(&alvr_filesystem_layout::LAYOUT.dashboard_resources_dir)
-                        .to_string_lossy(),
+                    FILESYSTEM_LAYOUT.dashboard_dir().to_string_lossy(),
                     path_branch
                 ))
                 .await;

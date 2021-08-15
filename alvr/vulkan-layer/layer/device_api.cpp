@@ -1,7 +1,7 @@
 #include "device_api.hpp"
 #include "private_data.hpp"
 #include "wsi/display.hpp"
-#include "alvr_server/Settings.h"
+#include "settings.h"
 
 #include <vector>
 

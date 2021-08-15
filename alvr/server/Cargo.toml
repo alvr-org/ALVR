@@ -14,8 +14,9 @@ bundled_ffmpeg = []
 
 [dependencies]
 alvr_audio = { path = "../audio" }
+alvr_commands = { path = "../commands" }
 alvr_common = { path = "../common" }
-alvr_filesystem_layout = { path = "../filesystem_layout" }
+alvr_filesystem = { path = "../filesystem" }
 alvr_session = { path = "../session" }
 alvr_sockets = { path = "../sockets" }
 

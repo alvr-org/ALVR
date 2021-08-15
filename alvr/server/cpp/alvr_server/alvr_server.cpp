@@ -134,7 +134,8 @@ unsigned int COMPRESS_SLICES_CSO_LEN;
 const unsigned char *COLOR_CORRECTION_CSO_PTR;
 unsigned int COLOR_CORRECTION_CSO_LEN;
 
-const char *g_alvrDir;
+const char *g_sessionPath;
+const char *g_driverRootDir;
 
 void (*LogError)(const char *stringPtr);
 void (*LogWarn)(const char *stringPtr);

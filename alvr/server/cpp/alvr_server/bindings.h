@@ -11,7 +11,8 @@ extern "C" unsigned int COMPRESS_SLICES_CSO_LEN;
 extern "C" const unsigned char *COLOR_CORRECTION_CSO_PTR;
 extern "C" unsigned int COLOR_CORRECTION_CSO_LEN;
 
-extern "C" const char *g_alvrDir;
+extern "C" const char *g_sessionPath;
+extern "C" const char *g_driverRootDir;
 
 extern "C" void (*LogError)(const char *stringPtr);
 extern "C" void (*LogWarn)(const char *stringPtr);

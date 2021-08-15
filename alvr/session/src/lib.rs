@@ -551,103 +551,90 @@ fn json_session_settings_to_settings(
     }
 }
 
-#[cfg(not(target_os = "android"))]
-mod manager {
-    use super::*;
-    use alvr_common::commands;
+// SessionDesc wrapper that saves settings.json and session.json on destruction.
+pub struct SessionLock<'a> {
+    session_desc: &'a mut SessionDesc,
+    session_path: &'a Path,
+}
 
-    // SessionDesc wrapper that saves settings.json and session.json on destruction.
-    pub struct SessionLock<'a> {
-        session_desc: &'a mut SessionDesc,
-        dir: &'a Path,
+impl Deref for SessionLock<'_> {
+    type Target = SessionDesc;
+    fn deref(&self) -> &SessionDesc {
+        self.session_desc
     }
+}
 
-    impl Deref for SessionLock<'_> {
-        type Target = SessionDesc;
-        fn deref(&self) -> &SessionDesc {
-            self.session_desc
-        }
+impl DerefMut for SessionLock<'_> {
+    fn deref_mut(&mut self) -> &mut SessionDesc {
+        self.session_desc
     }
+}
 
-    impl DerefMut for SessionLock<'_> {
-        fn deref_mut(&mut self) -> &mut SessionDesc {
-            self.session_desc
-        }
+impl Drop for SessionLock<'_> {
+    fn drop(&mut self) {
+        save_session(self.session_desc, self.session_path).unwrap();
+        log_event(Event::SessionUpdated);
     }
+}
 
-    impl Drop for SessionLock<'_> {
-        fn drop(&mut self) {
-            save_session(
-                self.session_desc,
-                &commands::get_session_path(self.dir).unwrap(),
-            )
-            .unwrap();
-            log_event(Event::SessionUpdated);
-        }
-    }
+pub struct SessionManager {
+    session_desc: SessionDesc,
+    session_path: PathBuf,
+}
 
-    pub struct SessionManager {
-        session_desc: SessionDesc,
-        dir: PathBuf,
-    }
+impl SessionManager {
+    pub fn new(session_path: &Path) -> Self {
+        let config_dir = session_path.parent().unwrap();
+        fs::create_dir_all(config_dir).ok();
 
-    impl SessionManager {
-        pub fn new(dir: &Path) -> Self {
-            #[cfg(target_os = "linux")]
-            commands::maybe_create_alvr_config_directory().unwrap();
-
-            let session_path = commands::get_session_path(dir).unwrap();
-            let session_desc = match fs::read_to_string(&session_path) {
-                Ok(session_string) => {
-                    let json_value = json::from_str::<json::Value>(&session_string).unwrap();
-                    match json::from_value(json_value.clone()) {
-                        Ok(session_desc) => session_desc,
-                        Err(_) => {
-                            fs::write(dir.join("session_old.json"), &session_string).ok();
-                            let mut session_desc = SessionDesc::default();
-                            match session_desc.merge_from_json(&json_value) {
-                                Ok(_) => info!(
-                                    "{} {}",
-                                    "Session extrapolated successfully.",
-                                    "Old session.json is stored as session_old.json"
-                                ),
-                                Err(e) => error!(
-                                    "{} {} {}",
-                                    "Error while extrapolating session.",
-                                    "Old session.json is stored as session_old.json.",
-                                    e
-                                ),
-                            }
-                            // not essential, but useful to avoid duplicated errors
-                            save_session(&session_desc, &session_path).ok();
-
-                            session_desc
+        let session_desc = match fs::read_to_string(&session_path) {
+            Ok(session_string) => {
+                let json_value = json::from_str::<json::Value>(&session_string).unwrap();
+                match json::from_value(json_value.clone()) {
+                    Ok(session_desc) => session_desc,
+                    Err(_) => {
+                        fs::write(config_dir.join("session_old.json"), &session_string).ok();
+                        let mut session_desc = SessionDesc::default();
+                        match session_desc.merge_from_json(&json_value) {
+                            Ok(_) => info!(
+                                "{} {}",
+                                "Session extrapolated successfully.",
+                                "Old session.json is stored as session_old.json"
+                            ),
+                            Err(e) => error!(
+                                "{} {} {}",
+                                "Error while extrapolating session.",
+                                "Old session.json is stored as session_old.json.",
+                                e
+                            ),
                         }
+                        // not essential, but useful to avoid duplicated errors
+                        save_session(&session_desc, session_path).ok();
+
+                        session_desc
                     }
                 }
-                Err(_) => SessionDesc::default(),
-            };
-
-            Self {
-                session_desc,
-                dir: dir.to_owned(),
             }
-        }
+            Err(_) => SessionDesc::default(),
+        };
 
-        pub fn get(&self) -> &SessionDesc {
-            &self.session_desc
+        Self {
+            session_desc,
+            session_path: session_path.to_owned(),
         }
+    }
 
-        pub fn get_mut(&mut self) -> SessionLock {
-            SessionLock {
-                session_desc: &mut self.session_desc,
-                dir: &self.dir,
-            }
+    pub fn get(&self) -> &SessionDesc {
+        &self.session_desc
+    }
+
+    pub fn get_mut(&mut self) -> SessionLock {
+        SessionLock {
+            session_desc: &mut self.session_desc,
+            session_path: &self.session_path,
         }
     }
 }
-#[cfg(not(target_os = "android"))]
-pub use manager::*;
 
 #[cfg(test)]
 mod tests {

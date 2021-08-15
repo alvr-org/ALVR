@@ -76,7 +76,13 @@ impl epi::App for App {
 fn main() {
     let options = eframe::NativeOptions::default();
 
-    let session_manager = SessionManager::new(env::current_exe().unwrap().parent().unwrap());
+    let session_manager = SessionManager::new(
+        &env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("session.json"),
+    );
     let last_locale = session_manager.get().locale.clone();
 
     let app = App {

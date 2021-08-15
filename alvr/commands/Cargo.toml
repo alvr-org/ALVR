@@ -1,11 +1,13 @@
 [package]
-name = "alvr_common"
+name = "alvr_commands"
 version = "16.0.0-rc2"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"
 
 [dependencies]
+alvr_common = { path = "../common" }
+
 # Basic utilities
 lazy_static = "1"
 parking_lot = "0.11"
@@ -18,12 +20,8 @@ serde_json = "1"
 # Miscellaneous
 encoding_rs_io = "0.1"
 rand = "0.8"
-semver = { version = "1", features = ['serde'] }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 alvr_filesystem = { path = "../filesystem" }
 dirs = "3"
 runas = "0.2"
-
-[target.'cfg(windows)'.dependencies]
-msgbox = "0.6"

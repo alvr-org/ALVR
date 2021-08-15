@@ -73,7 +73,7 @@ fn build_rust_android_gradle() {
 pub fn build_ffmpeg_linux() -> std::path::PathBuf {
     // dependencies: build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev
 
-    let download_path = afs::deps_dir().join("ubuntu");
+    let download_path = afs::deps_dir().join("linux");
     let ffmpeg_path = download_path.join("FFmpeg-n4.4");
     if !ffmpeg_path.exists() {
         download_and_extract_zip(

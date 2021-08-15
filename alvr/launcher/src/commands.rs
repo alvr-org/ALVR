@@ -105,8 +105,8 @@ pub fn unblock_alvr_addon() -> StrResult {
 }
 
 pub fn maybe_register_alvr_driver() -> StrResult {
-    let alvr_driver_dir =
-        afs::filesystem_layout_from_launcher_exe(&env::current_exe().unwrap()).openvr_driver_dir;
+    let alvr_driver_dir = afs::filesystem_layout_from_launcher_exe(&env::current_exe().unwrap())
+        .openvr_driver_root_dir;
 
     let driver_registered = alvr_commands::get_driver_dir_from_registered()
         .ok()

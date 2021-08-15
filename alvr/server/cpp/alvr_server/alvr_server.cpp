@@ -135,7 +135,7 @@ const unsigned char *COLOR_CORRECTION_CSO_PTR;
 unsigned int COLOR_CORRECTION_CSO_LEN;
 
 const char *g_sessionPath;
-const char *g_driverLibDir;
+const char *g_driverRootDir;
 
 void (*LogError)(const char *stringPtr);
 void (*LogWarn)(const char *stringPtr);

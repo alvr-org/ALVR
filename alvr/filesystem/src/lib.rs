@@ -73,7 +73,7 @@ pub struct Layout {
     // directory for storing log
     pub log_dir: PathBuf,
     // directory to register in openVR driver path
-    pub openvr_driver_dir: PathBuf,
+    pub openvr_driver_root_dir: PathBuf,
     // (linux only) parent directory of the executable to wrap vrcompositor
     pub vrcompositor_wrapper_dir: PathBuf,
     // (linux only) directory where the vulkan layer manifest is saved
@@ -89,7 +89,7 @@ impl Layout {
                 static_resources_dir: root.to_owned(),
                 config_dir: root.to_owned(),
                 log_dir: root.to_owned(),
-                openvr_driver_dir: root.to_owned(),
+                openvr_driver_root_dir: root.to_owned(),
                 vrcompositor_wrapper_dir: root.to_owned(),
                 vulkan_layer_manifest_dir: root.to_owned(),
             }
@@ -120,8 +120,8 @@ impl Layout {
             } else {
                 dirs::home_dir().unwrap()
             };
-            let openvr_driver_dir = if !env!("openvr_driver_dir").is_empty() {
-                PathBuf::from(env!("openvr_driver_dir"))
+            let openvr_driver_root_dir = if !env!("openvr_driver_root_dir").is_empty() {
+                PathBuf::from(env!("openvr_driver_root_dir"))
             } else {
                 root.join("lib64/alvr")
             };
@@ -142,7 +142,7 @@ impl Layout {
                 static_resources_dir,
                 config_dir,
                 log_dir,
-                openvr_driver_dir,
+                openvr_driver_root_dir,
                 vrcompositor_wrapper_dir,
                 vulkan_layer_manifest_dir,
             }
@@ -197,7 +197,7 @@ impl Layout {
             unimplemented!()
         };
 
-        self.openvr_driver_dir.join("bin").join(platform)
+        self.openvr_driver_root_dir.join("bin").join(platform)
     }
 
     // path to the shared library to be loaded by openVR
@@ -218,7 +218,7 @@ impl Layout {
 
     // path to the manifest file for openVR
     pub fn openvr_driver_manifest(&self) -> PathBuf {
-        self.openvr_driver_dir.join("driver.vrdrivermanifest")
+        self.openvr_driver_root_dir.join("driver.vrdrivermanifest")
     }
 
     pub fn vrcompositor_wrapper(&self) -> PathBuf {
@@ -258,7 +258,7 @@ pub fn filesystem_layout_from_launcher_exe(path: &Path) -> Layout {
 }
 
 // The dir argument is used only if ALVR is built as portable
-pub fn filesystem_layout_from_openvr_driver_dir(dir: &Path) -> Layout {
+pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Layout {
     LAYOUT.clone().unwrap_or_else(|| {
         let root = if cfg!(any(windows, target_os = "macos")) {
             dir.to_owned()

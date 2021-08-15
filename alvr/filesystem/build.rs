@@ -25,8 +25,8 @@ fn main() {
         env::var("ALVR_LOG_DIR").unwrap_or_else(|_| "".to_owned())
     );
     println!(
-        "cargo:rustc-env=openvr_driver_dir={}",
-        env::var("ALVR_OPENVR_DRIVER_DIR").unwrap_or_else(|_| "".to_owned())
+        "cargo:rustc-env=openvr_driver_root_dir={}",
+        env::var("ALVR_OPENVR_DRIVER_ROOT_DIR").unwrap_or_else(|_| "".to_owned())
     );
     println!(
         "cargo:rustc-env=vrcompositor_wrapper_dir={}",

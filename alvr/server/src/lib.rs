@@ -37,7 +37,7 @@ use tokio::{
 lazy_static! {
     // Since ALVR_DIR is needed to initialize logging, if error then just panic
     static ref FILESYSTEM_LAYOUT: Layout =
-        afs::filesystem_layout_from_openvr_driver_dir(&alvr_commands::get_driver_dir().unwrap());
+        afs::filesystem_layout_from_openvr_driver_root_dir(&alvr_commands::get_driver_dir().unwrap());
     static ref SESSION_MANAGER: Mutex<SessionManager> =
         Mutex::new(SessionManager::new(&FILESYSTEM_LAYOUT.session()));
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
@@ -230,9 +230,14 @@ fn init() {
         g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
             .unwrap()
             .into_raw();
-        g_driverLibDir = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
-            .unwrap()
-            .into_raw();
+        g_driverRootDir = CString::new(
+            FILESYSTEM_LAYOUT
+                .openvr_driver_root_dir
+                .to_string_lossy()
+                .to_string(),
+        )
+        .unwrap()
+        .into_raw();
     };
 }
 
@@ -290,7 +295,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
 
     pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
         logging::show_err(alvr_commands::apply_driver_paths_backup(
-            FILESYSTEM_LAYOUT.openvr_driver_dir.clone(),
+            FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone(),
         ));
 
         if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {

@@ -196,7 +196,7 @@ fn make_window() -> StrResult {
     let instance_mutex = trace_err!(single_instance::SingleInstance::new("alvr_launcher_mutex"))?;
     if instance_mutex.is_single() {
         let driver_dir = afs::filesystem_layout_from_launcher_exe(&env::current_exe().unwrap())
-            .openvr_driver_dir;
+            .openvr_driver_root_dir;
 
         if driver_dir.to_str().filter(|s| s.is_ascii()).is_none() {
             logging::show_e_blocking(format!(

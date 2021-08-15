@@ -131,7 +131,7 @@ async fn http_api(
         "/api/events" => text_websocket(request, events_sender).await?,
         "/api/driver/register" => {
             if alvr_commands::driver_registration(
-                &[FILESYSTEM_LAYOUT.openvr_driver_dir.clone()],
+                &[FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone()],
                 true,
             )
             .is_ok()

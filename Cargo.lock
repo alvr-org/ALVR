@@ -149,7 +149,7 @@ dependencies = [
  "jni 0.19.0",
  "lazy_static",
  "log",
- "nalgebra",
+ "nalgebra 0.28.0",
  "oboe",
  "parking_lot",
  "rand",
@@ -274,7 +274,7 @@ dependencies = [
  "hyper",
  "lazy_static",
  "log",
- "nalgebra",
+ "nalgebra 0.28.0",
  "openvr-driver-sys",
  "parking_lot",
  "pkg-config",
@@ -312,7 +312,7 @@ dependencies = [
  "bytes",
  "futures",
  "governor",
- "nalgebra",
+ "nalgebra 0.28.0",
  "nonzero_ext",
  "rand",
  "rcgen",
@@ -612,6 +612,12 @@ name = "bumpalo"
 version = "3.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c59e7af012c713f529e7a3ee57ce9b31ddd858d4b512923602f74608b009631"
+
+[[package]]
+name = "bytemuck"
+version = "1.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72957246c41db82b8ef88a5486143830adeb8227ef9837740bdec67724cf2c5b"
 
 [[package]]
 name = "byteorder"
@@ -2062,6 +2068,10 @@ name = "graphics_tests"
 version = "0.1.0"
 dependencies = [
  "alvr_common",
+ "alvr_session",
+ "nalgebra 0.29.0",
+ "openxr-sys",
+ "parking_lot",
  "pollster",
  "raw-window-handle",
  "wgpu",
@@ -2740,7 +2750,23 @@ dependencies = [
  "num-rational",
  "num-traits",
  "serde",
- "simba",
+ "simba 0.5.1",
+ "typenum",
+]
+
+[[package]]
+name = "nalgebra"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d506eb7e08d6329505faa8a3a00a5dcc6de9f76e0c77e4b75763ae3c770831ff"
+dependencies = [
+ "approx",
+ "matrixmultiply",
+ "nalgebra-macros",
+ "num-complex",
+ "num-rational",
+ "num-traits",
+ "simba 0.6.0",
  "typenum",
 ]
 
@@ -3112,6 +3138,17 @@ dependencies = [
  "bindgen 0.59.1",
  "cc",
  "regex",
+]
+
+[[package]]
+name = "openxr-sys"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c60b9787f1e4949f5597f8f8ad9da19a86f2461dc033ac00642ecbdfa4eaa73"
+dependencies = [
+ "jni 0.19.0",
+ "libc",
+ "winapi",
 ]
 
 [[package]]
@@ -3797,6 +3834,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
+name = "safe_arch"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "794821e4ccb0d9f979512f9c1973480123f9bd62a90d74ab0f9426fcf8f4a529"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4006,6 +4052,19 @@ dependencies = [
  "num-complex",
  "num-traits",
  "paste",
+]
+
+[[package]]
+name = "simba"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0b7840f121a46d63066ee7a99fc81dcabbc6105e437cae43528cea199b5a05f"
+dependencies = [
+ "approx",
+ "num-complex",
+ "num-traits",
+ "paste",
+ "wide",
 ]
 
 [[package]]
@@ -5061,6 +5120,16 @@ checksum = "d011071ae14a2f6671d0b74080ae0cd8ebf3a6f8c9589a2cd45f23126fe29724"
 dependencies = [
  "failure",
  "libc",
+]
+
+[[package]]
+name = "wide"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd89cf484471f953ee84f07c0dff0ea20e9ddf976f03cabdf5dda48b221f22e7"
+dependencies = [
+ "bytemuck",
+ "safe_arch",
 ]
 
 [[package]]

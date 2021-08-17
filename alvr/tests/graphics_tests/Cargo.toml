@@ -7,8 +7,12 @@ edition = "2018"
 
 [dependencies]
 alvr_common = { path = "../../common" }
+alvr_session = { path = "../../session" }
 
 wgpu = { git = "https://github.com/gfx-rs/wgpu" }
 winit = "0.25"
 pollster = "0.2"
 raw-window-handle = "0.3"
+openxr-sys = "0.9"
+nalgebra = "0.29"
+parking_lot = "0.11"

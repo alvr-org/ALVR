@@ -9,10 +9,12 @@ edition = "2018"
 alvr_common = { path = "../../common" }
 alvr_session = { path = "../../session" }
 
-wgpu = { git = "https://github.com/gfx-rs/wgpu" }
+wgpu = { git = "https://github.com/gfx-rs/wgpu", features = ["spirv"] }
 winit = "0.25"
 pollster = "0.2"
 raw-window-handle = "0.3"
 openxr-sys = "0.9"
 nalgebra = "0.29"
 parking_lot = "0.11"
+lazy_static = "1"
+bytemuck = { version = "1", features = ["derive"] }

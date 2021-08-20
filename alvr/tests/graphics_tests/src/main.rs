@@ -12,7 +12,9 @@ fn run() -> StrResult {
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
 
-    let compositor = Compositor::new(Context::new_any()?, (400, 300), None, None, 1);
+    let compositor = Compositor::new(Context::new_any()?, (400, 300), None, 1);
+
+    compositor.end_frame(&[], None);
 
     let context = compositor.context();
 

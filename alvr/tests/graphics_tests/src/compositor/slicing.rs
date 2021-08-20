@@ -1,3 +1,5 @@
+use wgpu::Texture;
+
 fn get_slice_size(original_size: (u32, u32), slice_count: usize) -> (u32, u32) {
     todo!()
 }
@@ -5,7 +7,9 @@ fn get_slice_size(original_size: (u32, u32), slice_count: usize) -> (u32, u32) {
 // Merge k slices then split the result into n slices
 // Slices are assumed to be packed and unpacked by this same pipeline, following a particular layout
 // determined by the number of slices and the shape of the reconstructed frame.
-pub struct SlicingPipeline {}
+pub struct SlicingPipeline {
+    input: Vec<Texture>,
+}
 
 impl SlicingPipeline {
     pub fn new(
@@ -14,5 +18,9 @@ impl SlicingPipeline {
         output_slices_count: usize,
     ) -> (Self, (u32, u32)) {
         todo!()
+    }
+
+    pub fn input(&self) -> &[Texture] {
+        &self.input
     }
 }

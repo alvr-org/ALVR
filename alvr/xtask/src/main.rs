@@ -34,7 +34,7 @@ SUBCOMMANDS:
 FLAGS:
     --fetch             Update crates with "cargo update". Used only for build subcommands
     --release           Optimized build without debug info. Used only for build subcommands
-    --tests             Build testing utilities and unfinished features
+    --experiments       Build unfinished features
     --nightly           Bump versions to nightly and build. Used only for publish subcommand
     --oculus-quest      Oculus Quest build. Used only for build-client subcommand
     --oculus-go         Oculus Go build. Used only for build-client subcommand
@@ -54,7 +54,7 @@ pub fn remove_build_dir() {
 
 pub fn build_server(
     is_release: bool,
-    tests: bool,
+    experiements: bool,
     fetch_crates: bool,
     bundle_ffmpeg: bool,
     root: Option<String>,
@@ -161,9 +161,9 @@ pub fn build_server(
         layout.launcher_exe(),
     )
     .unwrap();
-    if tests {
+    if experiements {
         let dir_content =
-            dirx::get_dir_content2("alvr/tests/gui/languages", &dirx::DirOptions { depth: 1 })
+            dirx::get_dir_content2("alvr/experiments/gui/languages", &dirx::DirOptions { depth: 1 })
                 .unwrap();
         let items: Vec<&String> = dir_content.directories[1..]
             .iter()
@@ -175,7 +175,7 @@ pub fn build_server(
         fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
 
         command::run_in(
-            &afs::workspace_dir().join("alvr/tests/egui_dashboard"),
+            &afs::workspace_dir().join("alvr/experiments/egui_dashboard"),
             &format!("cargo build {}", build_flag),
         )
         .unwrap();
@@ -490,7 +490,7 @@ fn main() {
     } else if let Ok(Some(subcommand)) = args.subcommand() {
         let fetch = args.contains("--fetch");
         let is_release = args.contains("--release");
-        let tests = args.contains("--tests");
+        let experiments = args.contains("--experiments");
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
         let is_nightly = args.contains("--nightly");
         let for_oculus_quest = args.contains("--oculus-quest");
@@ -502,7 +502,7 @@ fn main() {
             match subcommand.as_str() {
                 "build-windows-deps" => dependencies::build_deps("windows"),
                 "build-android-deps" => dependencies::build_deps("android"),
-                "build-server" => build_server(is_release, tests, fetch, bundle_ffmpeg, root),
+                "build-server" => build_server(is_release, experiments, fetch, bundle_ffmpeg, root),
                 "build-client" => {
                     if (for_oculus_quest && for_oculus_go) || (!for_oculus_quest && !for_oculus_go)
                     {

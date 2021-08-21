@@ -16,5 +16,5 @@ members = [
     "alvr/vrcompositor-wrapper",
     "alvr/vulkan-layer",
     "alvr/xtask",
-    "alvr/tests/*",
+    "alvr/experiments/*",
 ]

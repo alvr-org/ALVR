@@ -12,7 +12,7 @@ pub struct Layer<'a> {
     pub rect: openxr_sys::Rect2Di,
 }
 
-// Crop and render frames on top of each other, in the specified order
+// Crop and render layers on top of each other, in the specified order
 // todo: the compositor should support reprojection, in case layers are submitted with different
 // poses
 pub struct CompositingPipeline {
@@ -77,14 +77,13 @@ impl CompositingPipeline {
                     resource: BindingResource::TextureView(&view),
                 },
                 BindGroupEntry {
-                    binding: 0,
+                    binding: 1,
                     resource: BindingResource::Sampler(&self.sampler),
                 },
             ],
         })
     }
 
-    // Crop and render frames on top of each other, in the specified order
     pub fn draw<'a>(
         &self,
         encoder: &mut CommandEncoder,

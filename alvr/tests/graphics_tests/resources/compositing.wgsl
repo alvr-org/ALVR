@@ -14,6 +14,7 @@ var sampler: sampler;
 
 [[stage(fragment)]]
 fn main([[location(0)]] uv: vec2<f32>) -> [[location(0)]] vec4<f32> {
-    let new_uv = (pc.rect_offset + uv * pc.rect_extent) / vec2<f32>(textureDimension(layer))
+    let new_uv = (pc.rect_offset + uv * pc.rect_extent) / vec2<f32>(textureDimensions(layer));
+
     return textureSample(layer, sampler, new_uv);
 }

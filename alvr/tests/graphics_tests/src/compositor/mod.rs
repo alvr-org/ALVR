@@ -237,7 +237,6 @@ impl Compositor {
         self.output_size
     }
 
-    // image size used for encoding
     pub fn output(&self) -> &[Texture] {
         &self.output_textures
     }
@@ -248,8 +247,8 @@ impl Compositor {
         layers: &[&[CompositionLayerView]],
         color_correction: Option<ColorCorrectionDesc>,
     ) {
-        for layer in &*layers {
-            assert_eq!(layer.len(), 2);
+        for views in &*layers {
+            assert_eq!(views.len(), 2);
         }
 
         let mut encoder = self

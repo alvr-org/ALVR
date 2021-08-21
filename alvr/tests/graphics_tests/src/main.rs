@@ -31,5 +31,7 @@ fn run() -> StrResult {
 }
 
 fn main() {
+    env_logger::init();
+
     show_err(run());
 }

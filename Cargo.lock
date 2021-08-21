@@ -376,7 +376,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9ed09b18365ed295d722d0b5ed59c01b79a826ff2d2a8f73d5ecca8e6fb2f66"
 dependencies = [
  "android_log-sys",
- "env_logger",
+ "env_logger 0.8.4",
  "lazy_static",
  "log",
 ]
@@ -546,7 +546,7 @@ dependencies = [
  "cexpr 0.5.0",
  "clang-sys",
  "clap",
- "env_logger",
+ "env_logger 0.8.4",
  "lazy_static",
  "lazycell",
  "log",
@@ -1424,6 +1424,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_logger"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
+dependencies = [
+ "atty",
+ "humantime",
+ "log",
+ "regex",
+ "termcolor",
+]
+
+[[package]]
 name = "epaint"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2084,6 +2097,7 @@ dependencies = [
  "alvr_common",
  "alvr_session",
  "bytemuck",
+ "env_logger 0.9.0",
  "lazy_static",
  "nalgebra 0.29.0",
  "openxr-sys",

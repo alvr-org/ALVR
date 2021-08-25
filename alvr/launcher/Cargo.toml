@@ -17,7 +17,7 @@ druid = "0.7"
 semver = "1"
 serde_json = "1"
 single-instance = "0.3"
-sysinfo = "0.19"
+sysinfo = "0.20"
 ureq = "2"
 
 [target.'cfg(windows)'.dependencies]

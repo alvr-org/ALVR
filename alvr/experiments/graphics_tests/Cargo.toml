@@ -9,7 +9,8 @@ edition = "2018"
 alvr_common = { path = "../../common" }
 alvr_session = { path = "../../session" }
 
-wgpu = { git = "https://github.com/gfx-rs/wgpu", features = ["spirv"] }
+wgpu = { git = "https://github.com/zarik5/wgpu", features = ["spirv"] }
+wgpu-hal = { git = "https://github.com/zarik5/wgpu", features = ["vulkan"] }
 winit = "0.25"
 pollster = "0.2"
 raw-window-handle = "0.3"
@@ -19,3 +20,5 @@ parking_lot = "0.11"
 lazy_static = "1"
 bytemuck = { version = "1", features = ["derive"] }
 env_logger = "0.9"
+ash = "0.33"
+gpu-alloc = "0.5"

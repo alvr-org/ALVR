@@ -59,13 +59,13 @@ reqwest = "0.11"
 tokio-tungstenite = "0.15"
 tokio-util = { version = "0.6", features = ["codec"] }
 # Graphics
-wgpu = { git = "https://github.com/gfx-rs/wgpu" }
+wgpu = "0.10"
 winit = "0.25" # needed to get the screen size
 # Browser interop
 alcro = "0.5"
 webbrowser = "0.5" # this is just for opening links in the default browser
 # Miscellaneous
-nalgebra = "0.28"
+nalgebra = "0.29"
 openvr-driver-sys = { path = "../openvr-driver-sys" }
 
 [build-dependencies]

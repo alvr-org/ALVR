@@ -5,6 +5,7 @@ mod convert;
 mod foveated_rendering;
 mod slicing;
 
+use ash::vk;
 pub use convert::*;
 
 use alignment::AlignmentPipeline;
@@ -13,11 +14,11 @@ use alvr_session::{ColorCorrectionDesc, Fov, FoveatedRenderingDesc};
 use color_correction::ColorCorrectionPipeline;
 use compositing::{CompositingPipeline, Layer};
 use foveated_rendering::{Direction, FoveatedRenderingPipeline};
+use gpu_alloc::MemoryBlock;
 use slicing::SlicingPipeline;
 use wgpu::{
-    BindGroup, CommandEncoderDescriptor, Device, Extent3d, Instance, Queue, RenderPass,
-    ShaderModuleDescriptor, ShaderSource, Texture, TextureDescriptor, TextureDimension,
-    TextureFormat, TextureUsages, TextureView, VertexState,
+    BindGroup, CommandEncoderDescriptor, Device, Instance, Queue, RenderPass,
+    ShaderModuleDescriptor, ShaderSource, Texture, TextureFormat, TextureView, VertexState,
 };
 
 pub const TARGET_FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
@@ -32,6 +33,7 @@ pub struct Context {
     instance: Instance,
     device: Device,
     queue: Queue,
+    raw_device: ash::Device,
 }
 
 impl Context {
@@ -42,13 +44,15 @@ impl Context {
 
 pub struct Swapchain {
     textures: Vec<Texture>,
+    raw_images: Vec<vk::Image>,
+    memory: Vec<MemoryBlock<vk::DeviceMemory>>,
     bind_groups: Vec<Vec<BindGroup>>, //[0]: texture index, [1]: array index
     current_index: usize,
 }
 
 impl Swapchain {
-    pub fn enumerate_images(&self) -> &[Texture] {
-        &self.textures
+    pub fn enumerate_images(&self) -> &[vk::Image] {
+        &self.raw_images
     }
 
     // This is used in place of acquire_image + wait_image + release_image
@@ -83,8 +87,8 @@ pub struct Compositor {
     slicer2: SlicingPipeline,
     foveation_decoder: Option<FoveatedRenderingPipeline>,
 
-    output_textures: Vec<Texture>,
     output_texture_views: Vec<TextureView>,
+    output_raw_images: Vec<vk::Image>,
     output_size: (u32, u32),
 }
 
@@ -170,9 +174,8 @@ impl Compositor {
             aligner2,
             slicer2,
             foveation_decoder,
-            // wgpu does not support planar texture formats. Software encoding cannot be supported
-            output_textures: todo!(),
             output_texture_views: todo!(),
+            output_raw_images: todo!(),
             output_size,
         }
     }
@@ -181,38 +184,13 @@ impl Compositor {
         &self.context
     }
 
-    pub fn create_swapchain(
+    fn swapchain(
         &self,
-        count: Option<usize>,
-        usage: TextureUsages,
-        format: TextureFormat,
-        sample_count: u32,
-        width: u32,
-        height: u32,
-        // cubemap: bool, // unsupported
+        textures: Vec<Texture>,
+        raw_images: Vec<vk::Image>,
+        memory: Vec<MemoryBlock<vk::DeviceMemory>>,
         array_size: u32,
-        mip_count: u32,
     ) -> Swapchain {
-        let count = count.unwrap_or(2);
-
-        let textures = (0..count)
-            .map(|_| {
-                self.context.device.create_texture(&TextureDescriptor {
-                    label: None,
-                    size: Extent3d {
-                        width,
-                        height,
-                        depth_or_array_layers: array_size,
-                    },
-                    mip_level_count: mip_count,
-                    sample_count,
-                    dimension: TextureDimension::D2,
-                    format,
-                    usage,
-                })
-            })
-            .collect::<Vec<_>>();
-
         let bind_groups = textures
             .iter()
             .map(|texture| {
@@ -227,6 +205,8 @@ impl Compositor {
 
         Swapchain {
             textures,
+            raw_images,
+            memory,
             bind_groups,
             current_index: 0,
         }
@@ -237,8 +217,8 @@ impl Compositor {
         self.output_size
     }
 
-    pub fn output(&self) -> &[Texture] {
-        &self.output_textures
+    pub fn output(&self) -> &[vk::Image] {
+        &self.output_raw_images
     }
 
     // The function is blocking but it should finish quite fast.

@@ -32,7 +32,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # Miscellaneous
 cpal = "0.13"
 log = "0.4"
-nalgebra = "0.28"
+nalgebra = "0.29"
 semver = "1"
 
 # todo: move to target_os = "android"

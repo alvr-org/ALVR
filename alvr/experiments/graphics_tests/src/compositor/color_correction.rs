@@ -2,15 +2,15 @@ use alvr_session::ColorCorrectionDesc;
 use wgpu::{CommandEncoder, RenderPassColorAttachment, RenderPassDescriptor, Texture};
 
 pub struct ColorCorrectionPipeline {
-    input: Texture,
+    // input: Texture,
 }
 
 impl ColorCorrectionPipeline {
     pub fn new() -> Self {
-        todo!()
+        Self {}
     }
 
-    pub fn input(&self) -> &Texture {
-        &self.input
-    }
+    // pub fn input(&self) -> &Texture {
+    //     &self.input
+    // }
 }

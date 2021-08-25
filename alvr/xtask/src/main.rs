@@ -162,9 +162,11 @@ pub fn build_server(
     )
     .unwrap();
     if experiements {
-        let dir_content =
-            dirx::get_dir_content2("alvr/experiments/gui/languages", &dirx::DirOptions { depth: 1 })
-                .unwrap();
+        let dir_content = dirx::get_dir_content2(
+            "alvr/experiments/gui/languages",
+            &dirx::DirOptions { depth: 1 },
+        )
+        .unwrap();
         let items: Vec<&String> = dir_content.directories[1..]
             .iter()
             .chain(dir_content.files.iter())

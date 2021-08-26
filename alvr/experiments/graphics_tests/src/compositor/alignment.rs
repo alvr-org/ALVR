@@ -7,9 +7,9 @@ pub fn align_to_32(size: (u32, u32)) -> (u32, u32) {
 
 // Some encoders require the size to be a multiple of 32. To avoid color bleeding, the empty space
 // is filled with the nearest pixel color
-pub struct AlignmentPipeline {}
+pub struct AlignmentPass {}
 
-impl AlignmentPipeline {
+impl AlignmentPass {
     pub fn new(input_size: (u32, u32), output_size: (u32, u32)) -> Self {
         todo!()
     }

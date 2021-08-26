@@ -1,10 +1,8 @@
 use crate::compositor::TARGET_FORMAT;
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, BlendState, Color,
-    ColorTargetState, ColorWrites, CommandEncoder, Device, FilterMode, FragmentState, LoadOp,
-    MultisampleState, Operations, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
-    RenderPipelineDescriptor, Sampler, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource,
-    ShaderStages, Texture, TextureView, TextureViewDescriptor, VertexState,
+    BindGroup, BlendState, ColorTargetState, ColorWrites, CommandEncoder, Device, FragmentState,
+    MultisampleState, RenderPipeline, RenderPipelineDescriptor, Sampler, ShaderModuleDescriptor,
+    ShaderSource, Texture, TextureView, TextureViewDescriptor, VertexState,
 };
 
 pub struct Layer<'a> {
@@ -15,14 +13,19 @@ pub struct Layer<'a> {
 // Crop and render layers on top of each other, in the specified order
 // todo: the compositor should support reprojection, in case layers are submitted with different
 // poses
-pub struct CompositingPipeline {
+pub struct CompositingPass {
     inner: RenderPipeline,
     sampler: Sampler,
 }
 
-impl CompositingPipeline {
-    pub fn new(device: &Device, quad_vertex_state: VertexState) -> Self {
-        let shader = device.create_shader_module(&ShaderModuleDescriptor {
+impl CompositingPass {
+    pub fn new(device: &Device) -> Self {
+        let quad_shader = device.create_shader_module(&ShaderModuleDescriptor {
+            label: None,
+            source: ShaderSource::Wgsl(include_str!("../../resources/quad.wgsl").into()),
+        });
+
+        let fragment_shader = device.create_shader_module(&ShaderModuleDescriptor {
             label: None,
             source: ShaderSource::Wgsl(include_str!("../../resources/compositing.wgsl").into()),
         });
@@ -30,12 +33,16 @@ impl CompositingPipeline {
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: None,
             layout: None,
-            vertex: quad_vertex_state,
+            vertex: VertexState {
+                module: &quad_shader,
+                entry_point: "main",
+                buffers: &[],
+            },
             primitive: Default::default(),
             depth_stencil: None,
             multisample: MultisampleState::default(),
             fragment: Some(FragmentState {
-                module: &shader,
+                module: &fragment_shader,
                 entry_point: "main",
                 targets: &[ColorTargetState {
                     format: TARGET_FORMAT,
@@ -45,11 +52,7 @@ impl CompositingPipeline {
             }),
         });
 
-        let sampler = device.create_sampler(&SamplerDescriptor {
-            mag_filter: FilterMode::Linear,
-            min_filter: FilterMode::Linear,
-            ..Default::default()
-        });
+        let sampler = super::create_default_sampler(device);
 
         Self {
             inner: pipeline,
@@ -68,20 +71,7 @@ impl CompositingPipeline {
             ..Default::default()
         });
 
-        device.create_bind_group(&BindGroupDescriptor {
-            label: None,
-            layout: &self.inner.get_bind_group_layout(0),
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&view),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::Sampler(&self.sampler),
-                },
-            ],
-        })
+        super::create_default_bind_group_with_sampler(device, &self.inner, &view, &self.sampler)
     }
 
     pub fn draw<'a>(
@@ -91,29 +81,20 @@ impl CompositingPipeline {
         output: &TextureView,
     ) {
         for layer in layers {
-            let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                color_attachments: &[RenderPassColorAttachment {
-                    view: output,
-                    resolve_target: None,
-                    ops: Operations {
-                        load: LoadOp::Clear(Color::BLACK),
-                        store: true,
-                    },
-                }],
-                ..Default::default()
-            });
-            pass.set_pipeline(&self.inner);
-            pass.set_bind_group(0, layer.bind_group, &[]);
-
             let rect_f32 = [
                 layer.rect.offset.x as f32,
                 layer.rect.offset.y as f32,
                 layer.rect.extent.width as f32,
                 layer.rect.extent.height as f32,
             ];
-            pass.set_push_constants(ShaderStages::FRAGMENT, 0, bytemuck::cast_slice(&rect_f32));
 
-            super::draw_quad(pass);
+            super::execute_default_pass(
+                encoder,
+                &self.inner,
+                layer.bind_group,
+                bytemuck::cast_slice(&rect_f32),
+                output,
+            );
         }
     }
 }

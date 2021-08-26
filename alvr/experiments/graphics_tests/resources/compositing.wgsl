@@ -3,7 +3,6 @@ struct PushConstants {
     rect_offset: vec2<f32>;
     rect_extent: vec2<f32>; 
 };
-
 var<push_constant> pc: PushConstants;
 
 [[group(0), binding(0)]]

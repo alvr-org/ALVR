@@ -7,9 +7,9 @@ pub enum Direction {
 }
 
 // Implements Axis-Aligned Distorted Transfer algorithm
-pub struct FoveatedRenderingPipeline {}
+pub struct FoveatedRenderingPass {}
 
-impl FoveatedRenderingPipeline {
+impl FoveatedRenderingPass {
     // There is no way of selecting the best output size. The returned size is calculated using the
     // reference_fov which might not be what is actually used.
     // todo: reparametrize FoveatedRenderingDesc with focus area width and height in degrees

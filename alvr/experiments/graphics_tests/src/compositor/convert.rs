@@ -84,11 +84,10 @@ pub fn get_vulkan_device_extensions(version: u32) -> Vec<&'static CStr> {
 pub fn create_vulkan_device(
     entry: &ash::Entry,
     version: u32,
+    instance: &ash::Instance,
     physical_device: vk::PhysicalDevice,
     create_info: &vk::DeviceCreateInfo,
 ) -> StrResult<ash::Device> {
-    let null_instance = unsafe { ash::Instance::load(entry.static_fn(), vk::Instance::null()) };
-
     let mut extensions_ptrs = get_vulkan_device_extensions(version)
         .iter()
         .map(|x| x.as_ptr())
@@ -101,19 +100,22 @@ pub fn create_vulkan_device(
         )
     });
 
-    // todo: get from wgpu adapter
-    let features_ref =
-        unsafe { &mut *(create_info.p_enabled_features as *mut vk::PhysicalDeviceFeatures) };
-    features_ref.robust_buffer_access = true as _;
-    features_ref.independent_blend = true as _;
-    features_ref.sample_rate_shading = true as _;
+    let mut features = if !create_info.p_enabled_features.is_null() {
+        unsafe { *create_info.p_enabled_features }
+    } else {
+        vk::PhysicalDeviceFeatures::default()
+    };
+    features.robust_buffer_access = true as _;
+    features.independent_blend = true as _;
+    features.sample_rate_shading = true as _;
 
     unsafe {
-        trace_err!(null_instance.create_device(
+        trace_err!(instance.create_device(
             physical_device,
             &vk::DeviceCreateInfo {
                 enabled_extension_count: extensions_ptrs.len() as _,
                 pp_enabled_extension_names: extensions_ptrs.as_ptr(),
+                p_enabled_features: &features as *const _,
                 ..*create_info
             },
             None
@@ -223,6 +225,7 @@ impl Context {
         let vk_device = trace_err!(create_vulkan_device(
             &entry,
             TARGET_VULKAN_VERSION,
+            &vk_instance,
             physical_device,
             &vk::DeviceCreateInfo::builder().queue_create_infos(&[
                 vk::DeviceQueueCreateInfo::builder()

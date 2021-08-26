@@ -7,11 +7,11 @@ fn get_slice_size(original_size: (u32, u32), slice_count: usize) -> (u32, u32) {
 // Merge k slices then split the result into n slices
 // Slices are assumed to be packed and unpacked by this same pipeline, following a particular layout
 // determined by the number of slices and the shape of the reconstructed frame.
-pub struct SlicingPipeline {
+pub struct SlicingPass {
     input: Vec<Texture>,
 }
 
-impl SlicingPipeline {
+impl SlicingPass {
     pub fn new(
         original_size: (u32, u32),
         input_slices_count: usize,

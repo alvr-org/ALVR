@@ -1,3 +1,4 @@
+use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 use settings_schema::{EntryData, SettingsSchema, Switch, SwitchDefault};
 
@@ -66,7 +67,8 @@ pub struct FoveatedRenderingDesc {
     pub vertical_offset: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Clone, Copy, Serialize, Deserialize, Pod, Zeroable)]
+#[repr(C)]
 pub struct ColorCorrectionDesc {
     #[schema(min = -1., max = 1., step = 0.01)]
     pub brightness: f32,

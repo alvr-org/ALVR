@@ -1,4 +1,3 @@
-mod alignment;
 mod color_correction;
 mod compositing;
 mod convert;
@@ -8,22 +7,20 @@ mod slicing;
 use ash::vk;
 pub use convert::*;
 
-use alignment::AlignmentPass;
 use alvr_common::prelude::*;
 use alvr_session::{ColorCorrectionDesc, Fov, FoveatedRenderingDesc};
 use color_correction::ColorCorrectionPass;
 use compositing::{CompositingPass, Layer};
 use foveated_rendering::{Direction, FoveatedRenderingPass};
 use gpu_alloc::MemoryBlock;
-use slicing::SlicingPass;
+use slicing::{AlignmentDirection, SlicingPass};
 use wgpu::{
     AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Color,
     ColorTargetState, ColorWrites, CommandEncoder, CommandEncoderDescriptor, Device, Extent3d,
-    FilterMode, FragmentState, Instance, LoadOp, MultisampleState, Operations, Queue, RenderPass,
+    FilterMode, FragmentState, Instance, LoadOp, MultisampleState, Operations, Queue,
     RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
-    Sampler, SamplerDescriptor, ShaderModule, ShaderModuleDescriptor, ShaderSource, ShaderStages,
-    Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView,
-    TextureViewDescriptor, VertexState,
+    Sampler, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, ShaderStages, Texture,
+    TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, VertexState,
 };
 
 pub const TARGET_FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
@@ -79,15 +76,13 @@ pub struct Compositor {
     color_corrector: ColorCorrectionPass,
     foveation_encoder: Option<FoveatedRenderingPass>,
     slicer: SlicingPass,
-    aligner: AlignmentPass,
 
     // todo: move to client
-    aligner2: AlignmentPass,
     slicer2: SlicingPass,
     foveation_decoder: Option<FoveatedRenderingPass>,
 
     output_texture_views: Vec<TextureView>,
-    output_raw_images: Vec<vk::Image>,
+    // output_raw_images: Vec<vk::Image>,
     output_size: (u32, u32),
 }
 
@@ -140,15 +135,29 @@ impl Compositor {
             })
             .map(|(decoder, _)| decoder);
 
-        let (slicer, sliced_size) = SlicingPass::new(output_size, 2, slices_count);
+        let combined_size = (output_size.0 * 2, output_size.1);
 
-        let (slicer2, _) = SlicingPass::new(output_size, slices_count, 2);
+        let slicer = SlicingPass::new(
+            &context.device,
+            combined_size,
+            2,
+            slices_count,
+            AlignmentDirection::Output,
+        );
 
-        let output_size = alignment::align_to_32(sliced_size);
+        let slicer2 = SlicingPass::new(
+            &context.device,
+            combined_size,
+            slices_count,
+            2,
+            AlignmentDirection::Input,
+        );
 
-        let aligner = AlignmentPass::new(sliced_size, output_size);
+        let output_size = slicer.output_size();
 
-        let aligner2 = AlignmentPass::new(output_size, sliced_size);
+        let output_texture_views = (0..slices_count)
+            .map(|_| create_default_texture(&context.device, output_size))
+            .collect();
 
         Self {
             context,
@@ -156,12 +165,10 @@ impl Compositor {
             color_corrector,
             foveation_encoder,
             slicer,
-            aligner,
-            aligner2,
             slicer2,
             foveation_decoder,
-            output_texture_views: todo!(),
-            output_raw_images: todo!(),
+            output_texture_views,
+            // output_raw_images: todo!(),
             output_size,
         }
     }
@@ -204,7 +211,9 @@ impl Compositor {
     }
 
     pub fn output(&self) -> &[vk::Image] {
-        &self.output_raw_images
+        // &self.output_raw_images
+
+        todo!()
     }
 
     // The function is blocking but it should finish quite fast.
@@ -365,7 +374,7 @@ fn execute_default_pass(
     pass.set_bind_group(0, bind_group, &[]);
     pass.set_push_constants(ShaderStages::FRAGMENT, 0, push_constants);
 
-    pass.draw_indexed(0..6, 0, 0..1);
+    pass.draw(0..4, 0..1);
 
     // here the pass is dropped and applied to the command encoder
 }

@@ -1,9 +1,5 @@
 use crate::compositor::TARGET_FORMAT;
-use wgpu::{
-    BindGroup, BlendState, ColorTargetState, ColorWrites, CommandEncoder, Device, FragmentState,
-    MultisampleState, RenderPipeline, RenderPipelineDescriptor, Sampler, ShaderModuleDescriptor,
-    ShaderSource, Texture, TextureView, TextureViewDescriptor, VertexState,
-};
+use wgpu::{BindGroup, BlendState, Color, ColorTargetState, ColorWrites, CommandEncoder, Device, FragmentState, LoadOp, MultisampleState, Operations, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, Sampler, ShaderModuleDescriptor, ShaderSource, ShaderStages, Texture, TextureView, TextureViewDescriptor, VertexState};
 
 pub struct Layer<'a> {
     pub bind_group: &'a BindGroup,
@@ -80,21 +76,32 @@ impl CompositingPass {
         layers: impl Iterator<Item = Layer<'a>>,
         output: &TextureView,
     ) {
+        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            color_attachments: &[RenderPassColorAttachment {
+                view: output,
+                resolve_target: None,
+                ops: Operations {
+                    load: LoadOp::Clear(Color::BLACK),
+                    store: true,
+                },
+            }],
+            ..Default::default()
+        });
+
+        pass.set_pipeline(&self.inner);
+
         for layer in layers {
+            pass.set_bind_group(0, layer.bind_group, &[]);
+
             let rect_f32 = [
                 layer.rect.offset.x as f32,
                 layer.rect.offset.y as f32,
                 layer.rect.extent.width as f32,
                 layer.rect.extent.height as f32,
             ];
+            pass.set_push_constants(ShaderStages::FRAGMENT, 0, bytemuck::cast_slice(&rect_f32));
 
-            super::execute_default_pass(
-                encoder,
-                &self.inner,
-                layer.bind_group,
-                bytemuck::cast_slice(&rect_f32),
-                output,
-            );
+            pass.draw(0..4, 0..1);
         }
     }
 }

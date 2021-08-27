@@ -18,7 +18,8 @@ fn weighted_neighbor(coord: vec2<i32>, x_off: i32, y_off: i32) -> vec3<f32> {
 // https://forum.unity.com/threads/hue-saturation-brightness-contrast-shader.260649/
 [[stage(fragment)]]
 fn main([[location(0)]] uv: vec2<f32>) -> [[location(0)]] vec4<f32> {
-    let coord = vec2<i32>(uv * vec2<f32>(textureDimensions(tex)));
+    let target_size = textureDimensions(tex); // in this pass, input and output size correspond
+    let coord = vec2<i32>(uv * vec2<f32>(target_size));
 
     // Sharpening
     var pixel = textureLoad(tex, coord, 0).rgb * (pc.sharpening + 1.0);

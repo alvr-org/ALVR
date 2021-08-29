@@ -1,5 +1,11 @@
 use crate::compositor::TARGET_FORMAT;
-use wgpu::{BindGroup, BlendState, Color, ColorTargetState, ColorWrites, CommandEncoder, Device, FragmentState, LoadOp, MultisampleState, Operations, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, Sampler, ShaderModuleDescriptor, ShaderSource, ShaderStages, Texture, TextureView, TextureViewDescriptor, VertexState};
+use wgpu::{
+    BindGroup, BlendState, Color, ColorTargetState, ColorWrites, CommandEncoder, Device,
+    FragmentState, LoadOp, MultisampleState, Operations, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, Sampler,
+    ShaderModuleDescriptor, ShaderSource, ShaderStages, Texture, TextureView,
+    TextureViewDescriptor, VertexState,
+};
 
 pub struct Layer<'a> {
     pub bind_group: &'a BindGroup,

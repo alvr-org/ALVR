@@ -110,7 +110,7 @@ impl SlicingPass {
         let mut target_size = (
             output_slicing_layout.slice_width,
             output_slicing_layout.slice_height,
-        ); 
+        );
         if matches!(alignment_direction, AlignmentDirection::Output) {
             target_size = align_to_32(target_size);
         }

@@ -4,8 +4,8 @@ use ash::{extensions::khr, vk};
 use openxr_sys as sys;
 use std::{ffi::CStr, slice};
 use wgpu::{
-    DeviceDescriptor, Extent3d, Features, TextureDescriptor, TextureDimension, TextureFormat,
-    TextureUsages,
+    DeviceDescriptor, Extent3d, Features, Texture, TextureDescriptor, TextureDimension,
+    TextureFormat, TextureUsages,
 };
 use wgpu_hal as hal;
 
@@ -161,7 +161,7 @@ impl Context {
 
         let open_device = unsafe {
             trace_err!(exposed_adapter.adapter.device_from_raw(
-                vk_device.clone(),
+                vk_device,
                 owned,
                 &get_vulkan_device_extensions(version),
                 queue_family_index,
@@ -169,26 +169,31 @@ impl Context {
             ))?
         };
 
-        let instance = unsafe { wgpu::Instance::from_hal::<hal::api::Vulkan>(instance) };
-        let adapter = unsafe { instance.create_adapter_from_hal(exposed_adapter) };
-        let (device, queue) = unsafe {
-            trace_err!(adapter.create_device_from_hal(
-                open_device,
-                &DeviceDescriptor {
-                    label: None,
-                    features: Features::PUSH_CONSTANTS,
-                    limits: adapter.limits(),
-                },
-                None,
-            ))?
-        };
+        #[cfg(not(target_os = "macos"))]
+        {
+            let instance = unsafe { wgpu::Instance::from_hal::<hal::api::Vulkan>(instance) };
+            let adapter = unsafe { instance.create_adapter_from_hal(exposed_adapter) };
+            let (device, queue) = unsafe {
+                trace_err!(adapter.create_device_from_hal(
+                    open_device,
+                    &DeviceDescriptor {
+                        label: None,
+                        features: Features::PUSH_CONSTANTS,
+                        limits: adapter.limits(),
+                    },
+                    None,
+                ))?
+            };
 
-        Ok(Self {
-            instance,
-            device,
-            queue,
-            raw_device: vk_device,
-        })
+            Ok(Self {
+                instance,
+                device,
+                queue,
+            })
+        }
+
+        #[cfg(target_os = "macos")]
+        unimplemented!()
     }
 
     // This constructor is used for the Windows OpenVR driver
@@ -250,7 +255,13 @@ impl Context {
 
 pub enum SwapchainCreateData {
     // Used for the Vulkan layer
-    External(Vec<vk::Image>),
+    #[cfg(target_os = "linux")]
+    External {
+        images: Vec<vk::Image>,
+        vk_usage: vk::ImageUsageFlags,
+        vk_format: vk::Format,
+        hal_usage: hal::TextureUses,
+    },
 
     // Used for the Windows OpenVR driver
     Count(usize),
@@ -266,138 +277,72 @@ impl Compositor {
         data: SwapchainCreateData,
         usage: openxr_sys::SwapchainUsageFlags,
         format: TextureFormat,
-        vk_format: vk::Format,
         sample_count: u32,
         width: u32,
         height: u32,
-        cubemap: bool,
+        // cubemap: bool,
         array_size: u32,
         mip_count: u32,
     ) -> StrResult<Swapchain> {
-        let owned = !matches!(data, SwapchainCreateData::External(_));
-
-        let (vk_usage, hal_usage, wgpu_usage) = {
-            let mut vk_usage = vk::ImageUsageFlags::empty();
-            let mut hal_usage = hal::TextureUses::empty();
+        let wgpu_usage = {
             let mut wgpu_usage = TextureUsages::empty();
 
             if usage.contains(sys::SwapchainUsageFlags::COLOR_ATTACHMENT) {
-                vk_usage |= vk::ImageUsageFlags::COLOR_ATTACHMENT;
-                hal_usage |= hal::TextureUses::COLOR_TARGET;
                 wgpu_usage |= TextureUsages::RENDER_ATTACHMENT;
             }
             if usage.contains(sys::SwapchainUsageFlags::DEPTH_STENCIL_ATTACHMENT) {
-                vk_usage |= vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT;
-                hal_usage |=
-                    hal::TextureUses::DEPTH_STENCIL_READ | hal::TextureUses::DEPTH_STENCIL_WRITE;
                 wgpu_usage |= TextureUsages::RENDER_ATTACHMENT;
             }
             if usage.contains(sys::SwapchainUsageFlags::UNORDERED_ACCESS) {
                 // ?
             }
             if usage.contains(sys::SwapchainUsageFlags::TRANSFER_SRC) {
-                vk_usage |= vk::ImageUsageFlags::TRANSFER_SRC;
-                hal_usage |= hal::TextureUses::COPY_SRC;
                 wgpu_usage |= TextureUsages::COPY_SRC;
             }
             if usage.contains(sys::SwapchainUsageFlags::TRANSFER_DST) {
-                vk_usage |= vk::ImageUsageFlags::TRANSFER_DST;
-                hal_usage |= hal::TextureUses::COPY_DST;
                 wgpu_usage |= TextureUsages::COPY_DST;
             }
             if usage.contains(sys::SwapchainUsageFlags::SAMPLED) {
-                vk_usage |= vk::ImageUsageFlags::SAMPLED;
-                hal_usage |= hal::TextureUses::RESOURCE;
                 wgpu_usage |= TextureUsages::TEXTURE_BINDING;
             }
             if usage.contains(sys::SwapchainUsageFlags::MUTABLE_FORMAT) {
                 // ?
             }
             if usage.contains(sys::SwapchainUsageFlags::INPUT_ATTACHMENT) {
-                vk_usage |= vk::ImageUsageFlags::INPUT_ATTACHMENT;
+                // ?
             }
 
-            (vk_usage, hal_usage, wgpu_usage)
+            wgpu_usage
         };
 
-        let (raw_images, memory) = match data {
-            SwapchainCreateData::External(images) => (images, vec![]),
-            other => {
-                let count = if let SwapchainCreateData::Count(count) = other {
-                    count
-                } else {
-                    2
-                };
-
-                let mut flags = vk::ImageCreateFlags::empty();
-                if cubemap {
-                    flags |= vk::ImageCreateFlags::CUBE_COMPATIBLE;
-                }
-
-                let mut images = vec![];
-
-                for _ in 0..count {
-                    let image = unsafe {
-                        trace_err!(self.context.raw_device.create_image(
-                            &vk::ImageCreateInfo::builder()
-                                .flags(flags)
-                                .image_type(vk::ImageType::TYPE_2D)
-                                .format(vk_format)
-                                .extent(vk::Extent3D {
-                                    width,
-                                    height,
-                                    depth: 1,
-                                })
-                                .mip_levels(mip_count)
-                                .array_layers(array_size)
-                                .samples(vk::SampleCountFlags::from_raw(sample_count))
-                                .tiling(vk::ImageTiling::OPTIMAL)
-                                .usage(vk_usage)
-                                .sharing_mode(vk::SharingMode::EXCLUSIVE)
-                                .initial_layout(vk::ImageLayout::UNDEFINED),
-                            None
-                        ))?
-                    };
-
-                    // todo: add memory block
-
-                    images.push(image);
-                }
-
-                (images, vec![])
-            }
+        let texture_descriptor = TextureDescriptor {
+            label: None,
+            size: Extent3d {
+                width,
+                height,
+                depth_or_array_layers: array_size,
+            },
+            mip_level_count: mip_count,
+            sample_count,
+            dimension: TextureDimension::D2,
+            format,
+            usage: wgpu_usage,
         };
 
-        let textures = raw_images
-            .iter()
-            .map(|image| {
-                let hal_texture = unsafe {
-                    <hal::api::Vulkan as hal::Api>::Device::texture_from_raw(
-                        *image,
-                        &hal::TextureDescriptor {
-                            label: None,
-                            size: Extent3d {
-                                width,
-                                height,
-                                depth_or_array_layers: array_size,
-                            },
-                            mip_level_count: mip_count,
-                            sample_count,
-                            dimension: TextureDimension::D2,
-                            format,
-                            usage: hal_usage,
-                            memory_flags: hal::MemoryFlags::empty(),
-                        },
-                        (!owned).then(|| Box::new(()) as _),
-                    )
-                };
-
-                unsafe {
-                    self.context
-                        .device
-                        .create_texture_from_hal::<hal::api::Vulkan>(
-                            hal_texture,
-                            &TextureDescriptor {
+        let textures = match data {
+            #[cfg(target_os = "linux")]
+            SwapchainCreateData::External {
+                images,
+                vk_usage,
+                vk_format,
+                hal_usage,
+            } => images
+                .into_iter()
+                .map(|vk_image| {
+                    let hal_texture = unsafe {
+                        <hal::api::Vulkan as hal::Api>::Device::texture_from_raw(
+                            vk_image,
+                            &hal::TextureDescriptor {
                                 label: None,
                                 size: Extent3d {
                                     width,
@@ -408,13 +353,47 @@ impl Compositor {
                                 sample_count,
                                 dimension: TextureDimension::D2,
                                 format,
-                                usage: wgpu_usage,
+                                usage: hal_usage,
+                                memory_flags: hal::MemoryFlags::empty(),
                             },
+                            None,
                         )
-                }
-            })
-            .collect();
+                    };
 
-        Ok(self.swapchain(textures, raw_images, memory, array_size))
+                    unsafe {
+                        self.context
+                            .device
+                            .create_texture_from_hal::<hal::api::Vulkan>(
+                                hal_texture,
+                                &texture_descriptor,
+                            )
+                    }
+                })
+                .collect(),
+            other => {
+                let count = if let SwapchainCreateData::Count(count) = other {
+                    count
+                } else {
+                    2
+                };
+
+                (0..count)
+                    .map(|_| self.context.device.create_texture(&texture_descriptor))
+                    .collect()
+            }
+        };
+
+        Ok(self.swapchain(textures, array_size))
     }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn to_vulkan_images(textures: &[Texture]) -> Vec<vk::Image> {
+    textures
+        .iter()
+        .map(|tex| unsafe {
+            let hal_texture = tex.as_hal::<hal::api::Vulkan>();
+            hal_texture.as_inner().unwrap().raw_handle()
+        })
+        .collect()
 }

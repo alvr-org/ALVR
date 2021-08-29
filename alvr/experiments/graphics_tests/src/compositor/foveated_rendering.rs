@@ -1,5 +1,5 @@
 use alvr_session::{Fov, FoveatedRenderingDesc};
-use wgpu::CommandEncoder;
+use wgpu::{CommandEncoder, TextureView};
 
 pub enum Direction {
     Encoding,
@@ -22,7 +22,11 @@ impl FoveatedRenderingPass {
         todo!()
     }
 
+    pub fn input(&self) -> &TextureView {
+        todo!()
+    }
+
     // note: depending on the eye tracking implemetation, moving the focus area could be achieved
     // just by changing the fov argument
-    pub fn draw(encoder: CommandEncoder, fov: Fov) {}
+    pub fn draw(&self, encoder: &mut CommandEncoder, fov: Fov) {}
 }

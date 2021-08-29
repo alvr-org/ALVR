@@ -4,7 +4,6 @@ mod convert;
 mod foveated_rendering;
 mod slicing;
 
-use ash::vk;
 pub use convert::*;
 
 use alvr_common::prelude::*;
@@ -12,7 +11,6 @@ use alvr_session::{ColorCorrectionDesc, Fov, FoveatedRenderingDesc};
 use color_correction::ColorCorrectionPass;
 use compositing::{CompositingPass, Layer};
 use foveated_rendering::{Direction, FoveatedRenderingPass};
-use gpu_alloc::MemoryBlock;
 use slicing::{AlignmentDirection, SlicingPass};
 use wgpu::{
     AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Color,
@@ -29,7 +27,6 @@ pub struct Context {
     instance: Instance,
     device: Device,
     queue: Queue,
-    raw_device: ash::Device,
 }
 
 impl Context {
@@ -40,15 +37,13 @@ impl Context {
 
 pub struct Swapchain {
     textures: Vec<Texture>,
-    raw_images: Vec<vk::Image>,
-    memory: Vec<MemoryBlock<vk::DeviceMemory>>,
     bind_groups: Vec<Vec<BindGroup>>, //[0]: texture index, [1]: array index
     current_index: usize,
 }
 
 impl Swapchain {
-    pub fn enumerate_images(&self) -> &[vk::Image] {
-        &self.raw_images
+    pub fn enumerate_images(&self) -> &[Texture] {
+        &self.textures
     }
 
     // This is used in place of acquire_image + wait_image + release_image
@@ -81,8 +76,8 @@ pub struct Compositor {
     slicer2: SlicingPass,
     foveation_decoder: Option<FoveatedRenderingPass>,
 
+    output_textures: Vec<Texture>,
     output_texture_views: Vec<TextureView>,
-    // output_raw_images: Vec<vk::Image>,
     output_size: (u32, u32),
 }
 
@@ -155,8 +150,26 @@ impl Compositor {
 
         let output_size = slicer.output_size();
 
-        let output_texture_views = (0..slices_count)
-            .map(|_| create_default_texture(&context.device, output_size))
+        let output_textures = (0..slices_count)
+            .map(|_| {
+                context.device.create_texture(&TextureDescriptor {
+                    label: None,
+                    size: Extent3d {
+                        width: output_size.0,
+                        height: output_size.1,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: TextureDimension::D2,
+                    format: TARGET_FORMAT,
+                    usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+                })
+            })
+            .collect::<Vec<_>>();
+        let output_texture_views = output_textures
+            .iter()
+            .map(|tex| tex.create_view(&Default::default()))
             .collect();
 
         Self {
@@ -167,8 +180,8 @@ impl Compositor {
             slicer,
             slicer2,
             foveation_decoder,
+            output_textures,
             output_texture_views,
-            // output_raw_images: todo!(),
             output_size,
         }
     }
@@ -177,13 +190,7 @@ impl Compositor {
         &self.context
     }
 
-    fn swapchain(
-        &self,
-        textures: Vec<Texture>,
-        raw_images: Vec<vk::Image>,
-        memory: Vec<MemoryBlock<vk::DeviceMemory>>,
-        array_size: u32,
-    ) -> Swapchain {
+    fn swapchain(&self, textures: Vec<Texture>, array_size: u32) -> Swapchain {
         let bind_groups = textures
             .iter()
             .map(|texture| {
@@ -198,8 +205,6 @@ impl Compositor {
 
         Swapchain {
             textures,
-            raw_images,
-            memory,
             bind_groups,
             current_index: 0,
         }
@@ -210,13 +215,11 @@ impl Compositor {
         self.output_size
     }
 
-    pub fn output(&self) -> &[vk::Image] {
-        // &self.output_raw_images
-
-        todo!()
+    pub fn output(&self) -> &[Texture] {
+        &self.output_textures
     }
 
-    // The function is blocking but it should finish quite fast.
+    // The function is blocking but it should finish quite fast. Corresponds to xrEndFrame
     pub fn end_frame(
         &self,
         layers: &[&[CompositionLayerView]],
@@ -243,11 +246,46 @@ impl Compositor {
                 }
             });
 
-            self.inner
-                .draw(&mut encoder, layers, &self.output_texture_views[0]);
+            let render_target = if color_correction.is_some() {
+                self.color_corrector.input()
+            } else if let Some(encoder) = &self.foveation_encoder {
+                encoder.input()
+            } else {
+                &self.slicer.input()[view_index]
+            };
+
+            self.inner.draw(&mut encoder, layers, render_target);
+
+            if let Some(desc) = color_correction {
+                let render_target = if let Some(encoder) = &self.foveation_encoder {
+                    encoder.input()
+                } else {
+                    &self.slicer.input()[view_index]
+                };
+
+                self.color_corrector
+                    .draw(&mut encoder, &desc, render_target)
+            }
+
+            if let Some(foveation_encoder) = &self.foveation_encoder {
+                // todo: get correct fov
+                let fov = Fov::default();
+                foveation_encoder.draw(&mut encoder, fov);
+            }
         }
 
+        for slice_idx in 0..self.output_texture_views.len() {
+            self.slicer.draw(
+                &mut encoder,
+                slice_idx,
+                &self.output_texture_views[slice_idx],
+            )
+        }
+
+        // For the best performance, all compositing work is submitted at once.
         self.context.queue.submit(Some(encoder.finish()));
+
+        pollster::block_on(self.context.queue.on_submitted_work_done());
     }
 }
 

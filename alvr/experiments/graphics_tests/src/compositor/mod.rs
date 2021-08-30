@@ -61,6 +61,11 @@ pub struct CompositionLayerView<'a> {
     pub fov: Fov,
 }
 
+pub enum TextureType {
+    D2 { array_size: u32 },
+    Cubemap,
+}
+
 // Most of the compositor structure cannot be modified after creation. Some parameters like FOV for
 // FFR and color correction parameters (if enabled) can be changed on the fly. Enabling/disabling
 // FFR and changing the target view size require recreating the compositor completely, which might
@@ -163,7 +168,7 @@ impl Compositor {
                     sample_count: 1,
                     dimension: TextureDimension::D2,
                     format: TARGET_FORMAT,
-                    usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+                    usage: TextureUsages::RENDER_ATTACHMENT,
                 })
             })
             .collect::<Vec<_>>();
@@ -190,7 +195,7 @@ impl Compositor {
         &self.context
     }
 
-    fn swapchain(&self, textures: Vec<Texture>, array_size: u32) -> Swapchain {
+    fn inner_create_swapchain(&self, textures: Vec<Texture>, array_size: u32) -> Swapchain {
         let bind_groups = textures
             .iter()
             .map(|texture| {
@@ -321,24 +326,6 @@ fn create_default_render_pipeline(device: &Device, fragment_shader: &str) -> Ren
             }],
         }),
     })
-}
-
-fn create_default_texture(device: &Device, size: (u32, u32)) -> TextureView {
-    let texture = device.create_texture(&TextureDescriptor {
-        label: None,
-        size: Extent3d {
-            width: size.0,
-            height: size.1,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: TextureDimension::D2,
-        format: TARGET_FORMAT,
-        usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-    });
-
-    texture.create_view(&Default::default())
 }
 
 fn create_default_sampler(device: &Device) -> Sampler {

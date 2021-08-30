@@ -85,7 +85,7 @@ impl SlicingPass {
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: TARGET_FORMAT,
-            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::STORAGE_BINDING,
         });
 
         let inputs_view = input_texture.create_view(&Default::default());

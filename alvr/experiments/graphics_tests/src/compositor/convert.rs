@@ -1,4 +1,4 @@
-use super::{Compositor, Context, Swapchain};
+use super::{Compositor, Context, Swapchain, TextureType};
 use alvr_common::prelude::*;
 use ash::{extensions::khr, vk};
 use openxr_sys as sys;
@@ -263,11 +263,18 @@ pub enum SwapchainCreateData {
         hal_usage: hal::TextureUses,
     },
 
-    // Used for the Windows OpenVR driver
-    Count(usize),
+    // Used for the Windows OpenVR driver (Some) or for a OpenXR runtime (None)
+    Count(Option<usize>),
+}
 
-    // Used for a OpenXR runtime
-    None,
+pub struct SwapchainCreateInfo {
+    usage: sys::SwapchainUsageFlags,
+    format: TextureFormat,
+    sample_count: u32,
+    width: u32,
+    height: u32,
+    texture_type: TextureType,
+    mip_count: u32,
 }
 
 impl Compositor {
@@ -275,57 +282,56 @@ impl Compositor {
     pub fn create_swapchain(
         &self,
         data: SwapchainCreateData,
-        usage: openxr_sys::SwapchainUsageFlags,
-        format: TextureFormat,
-        sample_count: u32,
-        width: u32,
-        height: u32,
-        // cubemap: bool,
-        array_size: u32,
-        mip_count: u32,
+        info: SwapchainCreateInfo,
     ) -> StrResult<Swapchain> {
         let wgpu_usage = {
-            let mut wgpu_usage = TextureUsages::empty();
+            let mut wgpu_usage = TextureUsages::TEXTURE_BINDING; // Always required
 
-            if usage.contains(sys::SwapchainUsageFlags::COLOR_ATTACHMENT) {
+            if info
+                .usage
+                .contains(sys::SwapchainUsageFlags::COLOR_ATTACHMENT)
+            {
                 wgpu_usage |= TextureUsages::RENDER_ATTACHMENT;
             }
-            if usage.contains(sys::SwapchainUsageFlags::DEPTH_STENCIL_ATTACHMENT) {
+            if info
+                .usage
+                .contains(sys::SwapchainUsageFlags::DEPTH_STENCIL_ATTACHMENT)
+            {
                 wgpu_usage |= TextureUsages::RENDER_ATTACHMENT;
             }
-            if usage.contains(sys::SwapchainUsageFlags::UNORDERED_ACCESS) {
-                // ?
-            }
-            if usage.contains(sys::SwapchainUsageFlags::TRANSFER_SRC) {
+            if info.usage.contains(sys::SwapchainUsageFlags::TRANSFER_SRC) {
                 wgpu_usage |= TextureUsages::COPY_SRC;
             }
-            if usage.contains(sys::SwapchainUsageFlags::TRANSFER_DST) {
+            if info.usage.contains(sys::SwapchainUsageFlags::TRANSFER_DST) {
                 wgpu_usage |= TextureUsages::COPY_DST;
             }
-            if usage.contains(sys::SwapchainUsageFlags::SAMPLED) {
-                wgpu_usage |= TextureUsages::TEXTURE_BINDING;
-            }
-            if usage.contains(sys::SwapchainUsageFlags::MUTABLE_FORMAT) {
-                // ?
-            }
-            if usage.contains(sys::SwapchainUsageFlags::INPUT_ATTACHMENT) {
-                // ?
-            }
+
+            // Unused flags:
+            // * UNORDERED_ACCESS: No-op on vulkan
+            // * SAMPLED: Already required
+            // * MUTABLE_FORMAT: wgpu does not support this, but it should be no-op for the internal
+            //   Vulkan images (todo: check)
+            // * INPUT_ATTACHMENT: Always enabled on wgpu (todo: check)
 
             wgpu_usage
+        };
+
+        let depth_or_array_layers = match info.texture_type {
+            TextureType::D2 { array_size } => array_size,
+            TextureType::Cubemap => 6,
         };
 
         let texture_descriptor = TextureDescriptor {
             label: None,
             size: Extent3d {
-                width,
-                height,
-                depth_or_array_layers: array_size,
+                width: info.width,
+                height: info.height,
+                depth_or_array_layers,
             },
-            mip_level_count: mip_count,
-            sample_count,
+            mip_level_count: info.mip_count,
+            sample_count: info.sample_count,
             dimension: TextureDimension::D2,
-            format,
+            format: info.format,
             usage: wgpu_usage,
         };
 
@@ -370,20 +376,17 @@ impl Compositor {
                     }
                 })
                 .collect(),
-            other => {
-                let count = if let SwapchainCreateData::Count(count) = other {
-                    count
-                } else {
-                    2
-                };
-
-                (0..count)
-                    .map(|_| self.context.device.create_texture(&texture_descriptor))
-                    .collect()
-            }
+            SwapchainCreateData::Count(count) => (0..count.unwrap_or(2))
+                .map(|_| self.context.device.create_texture(&texture_descriptor))
+                .collect(),
         };
 
-        Ok(self.swapchain(textures, array_size))
+        let array_size = match info.texture_type {
+            TextureType::D2 { array_size } => array_size,
+            TextureType::Cubemap => 1, // for now cubemaps cannot be used in the compositor
+        };
+
+        Ok(self.inner_create_swapchain(textures, array_size))
     }
 }
 

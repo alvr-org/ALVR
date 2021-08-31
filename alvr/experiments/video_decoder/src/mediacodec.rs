@@ -1,6 +1,6 @@
 use alvr_common::prelude::*;
 use alvr_session::{CodecType, MediacodecDataType};
-use graphics_tests::Context;
+use graphics::Context;
 use ndk::{
     hardware_buffer::HardwareBufferUsage,
     media::image_reader::{ImageFormat, ImageReader},

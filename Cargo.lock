@@ -2095,13 +2095,8 @@ dependencies = [
  "alvr_session",
  "ash",
  "bytemuck",
- "lazy_static",
- "nalgebra",
- "parking_lot",
- "pollster",
  "wgpu",
  "wgpu-hal",
- "winit",
 ]
 
 [[package]]
@@ -2752,7 +2747,6 @@ dependencies = [
  "log",
  "num-traits",
  "petgraph",
- "rose_tree",
  "spirv",
  "thiserror",
 ]
@@ -3839,15 +3833,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rose_tree"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "284de9dae38774e2813aaabd7e947b4a6fe9b8c58c2309f754a487cdd50de1c2"
-dependencies = [
- "petgraph",
-]
-
-[[package]]
 name = "runas"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4057,12 +4042,8 @@ dependencies = [
  "bytemuck",
  "env_logger 0.9.0",
  "graphics",
- "lazy_static",
- "nalgebra",
  "openxr-sys",
- "parking_lot",
  "pollster",
- "raw-window-handle",
  "wgpu",
  "wgpu-hal",
  "winit",
@@ -5136,7 +5117,6 @@ dependencies = [
  "arrayvec 0.7.1",
  "js-sys",
  "log",
- "naga",
  "parking_lot",
  "raw-window-handle",
  "smallvec",

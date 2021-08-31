@@ -10,8 +10,8 @@ alvr_common = { path = "../../common" }
 alvr_session = { path = "../../session" }
 graphics = { path = "../graphics" }
 
-wgpu = { git = "https://github.com/zarik5/wgpu", features = ["spirv"] }
-wgpu-hal = { git = "https://github.com/zarik5/wgpu", features = ["vulkan"] }
+wgpu = { git = "https://github.com/gfx-rs/wgpu", features = ["spirv"] }
+wgpu-hal = { git = "https://github.com/gfx-rs/wgpu", features = ["vulkan"] }
 winit = "0.25"
 pollster = "0.2"
 raw-window-handle = "0.3"

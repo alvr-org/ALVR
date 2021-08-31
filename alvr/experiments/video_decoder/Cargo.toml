@@ -11,7 +11,7 @@ alvr_session = { path = "../../session" }
 graphics = { path = "../graphics" }
 
 ash = "0.33"
-wgpu = { git = "https://github.com/zarik5/wgpu", features = ["spirv"] }
+wgpu = { git = "https://github.com/gfx-rs/wgpu", features = ["spirv"] }
 pollster = "0.2"
 raw-window-handle = "0.3"
 

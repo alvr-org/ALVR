@@ -1,5 +1,5 @@
-use crate::TARGET_FORMAT;
 use alvr_session::ColorCorrectionDesc;
+use graphics::TARGET_FORMAT;
 use wgpu::{
     BindGroup, CommandEncoder, Device, Extent3d, RenderPipeline, TextureDescriptor,
     TextureDimension, TextureUsages, TextureView,
@@ -29,12 +29,12 @@ impl ColorCorrectionPass {
 
         let input = texture.create_view(&Default::default());
 
-        let pipeline = super::create_default_render_pipeline(
+        let pipeline = graphics::create_default_render_pipeline(
             device,
-            include_str!("../../resources/color_correction.wgsl"),
+            include_str!("../resources/color_correction.wgsl"),
         );
 
-        let bind_group = super::create_default_bind_group(device, &pipeline, &input);
+        let bind_group = graphics::create_default_bind_group(device, &pipeline, &input);
 
         Self {
             input,
@@ -53,7 +53,7 @@ impl ColorCorrectionPass {
         desc: &ColorCorrectionDesc,
         output: &TextureView,
     ) {
-        super::execute_default_pass(
+        graphics::execute_default_pass(
             encoder,
             &self.pipeline,
             &self.bind_group,

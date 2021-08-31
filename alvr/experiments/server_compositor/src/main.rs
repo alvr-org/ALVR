@@ -1,26 +1,25 @@
 mod color_correction;
 mod compositing;
 mod convert;
-mod foveated_rendering;
-mod slicing;
 
-pub use convert::*;
-
-use crate::{Context, TARGET_FORMAT};
 use alvr_common::prelude::*;
 use alvr_session::{ColorCorrectionDesc, Fov, FoveatedRenderingDesc};
 use color_correction::ColorCorrectionPass;
 use compositing::{CompositingPass, Layer};
-use foveated_rendering::{Direction, FoveatedRenderingPass};
-use slicing::{AlignmentDirection, SlicingPass};
+use graphics::{
+    foveated_rendering::{FoveatedRenderingPass, FrDirection},
+    slicing::{AlignmentDirection, SlicingPass},
+    Context, TARGET_FORMAT,
+};
 use std::sync::Arc;
 use wgpu::{
-    AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Color,
-    ColorTargetState, ColorWrites, CommandEncoder, CommandEncoderDescriptor, Device, Extent3d,
-    FilterMode, FragmentState, LoadOp, MultisampleState, Operations, RenderPassColorAttachment,
-    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, Sampler, SamplerDescriptor,
-    ShaderModuleDescriptor, ShaderSource, ShaderStages, Texture, TextureDescriptor,
-    TextureDimension, TextureFormat, TextureUsages, TextureView, VertexState,
+    BindGroup, CommandEncoderDescriptor, Extent3d, Texture, TextureDescriptor, TextureDimension,
+    TextureUsages, TextureView,
+};
+use winit::{
+    event::{Event, WindowEvent},
+    event_loop::{ControlFlow, EventLoop},
+    window::Window,
 };
 
 pub struct Swapchain {
@@ -66,10 +65,6 @@ pub struct Compositor {
     foveation_encoder: Option<FoveatedRenderingPass>,
     slicer: SlicingPass,
 
-    // todo: move to client
-    slicer2: SlicingPass,
-    foveation_decoder: Option<FoveatedRenderingPass>,
-
     output_textures: Vec<Texture>,
     output_texture_views: Vec<TextureView>,
     output_size: (u32, u32),
@@ -91,7 +86,7 @@ impl Compositor {
         let foveation_encoder = foveation_desc
             .map(|desc| {
                 FoveatedRenderingPass::new(
-                    Direction::Encoding,
+                    FrDirection::Encoding,
                     target_view_size,
                     desc,
                     Fov {
@@ -108,22 +103,6 @@ impl Compositor {
                 encoder
             });
 
-        let foveation_decoder = foveation_desc
-            .map(|desc| {
-                FoveatedRenderingPass::new(
-                    Direction::Decoding,
-                    target_view_size,
-                    desc,
-                    Fov {
-                        left: 45_f32,
-                        right: 45_f32,
-                        top: 45_f32,
-                        bottom: 45_f32,
-                    },
-                )
-            })
-            .map(|(decoder, _)| decoder);
-
         let combined_size = (output_size.0 * 2, output_size.1);
 
         let slicer = SlicingPass::new(
@@ -132,14 +111,6 @@ impl Compositor {
             2,
             slices_count,
             AlignmentDirection::Output,
-        );
-
-        let slicer2 = SlicingPass::new(
-            context.device(),
-            combined_size,
-            slices_count,
-            2,
-            AlignmentDirection::Input,
         );
 
         let output_size = slicer.output_size();
@@ -172,8 +143,6 @@ impl Compositor {
             color_corrector,
             foveation_encoder,
             slicer,
-            slicer2,
-            foveation_decoder,
             output_textures,
             output_texture_views,
             output_size,
@@ -279,112 +248,30 @@ impl Compositor {
     }
 }
 
-fn create_default_render_pipeline(device: &Device, fragment_shader: &str) -> RenderPipeline {
-    let quad_shader = device.create_shader_module(&ShaderModuleDescriptor {
-        label: None,
-        source: ShaderSource::Wgsl(include_str!("../../resources/quad.wgsl").into()),
-    });
+fn run() -> StrResult {
+    let event_loop = EventLoop::new();
+    let window = Window::new(&event_loop).unwrap();
 
-    let fragment_shader = device.create_shader_module(&ShaderModuleDescriptor {
-        label: None,
-        source: ShaderSource::Wgsl(fragment_shader.into()),
-    });
+    let context = Arc::new(Context::new(None)?);
 
-    device.create_render_pipeline(&RenderPipelineDescriptor {
-        label: None,
-        layout: None,
-        vertex: VertexState {
-            module: &quad_shader,
-            entry_point: "main",
-            buffers: &[],
-        },
-        primitive: Default::default(),
-        depth_stencil: None,
-        multisample: MultisampleState::default(),
-        fragment: Some(FragmentState {
-            module: &fragment_shader,
-            entry_point: "main",
-            targets: &[ColorTargetState {
-                format: TARGET_FORMAT,
-                blend: None,
-                write_mask: ColorWrites::ALL,
-            }],
-        }),
+    let compositor = Compositor::new(context.clone(), (400, 300), None, 1);
+
+    compositor.end_frame(&[], None);
+
+    let surface = unsafe { context.instance().create_surface(&window) };
+
+    event_loop.run(move |event, _, control| match event {
+        Event::WindowEvent {
+            event: WindowEvent::CloseRequested,
+            ..
+        } => *control = ControlFlow::Exit,
+        Event::WindowEvent { .. } => (),
+        _ => (),
     })
 }
 
-fn create_default_sampler(device: &Device) -> Sampler {
-    device.create_sampler(&SamplerDescriptor {
-        address_mode_u: AddressMode::ClampToEdge,
-        address_mode_v: AddressMode::ClampToEdge,
-        mag_filter: FilterMode::Linear,
-        min_filter: FilterMode::Linear,
-        mipmap_filter: FilterMode::Linear,
-        ..Default::default()
-    })
-}
+fn main() {
+    env_logger::init();
 
-fn create_default_bind_group_with_sampler(
-    device: &Device,
-    pipeline: &RenderPipeline,
-    texture_view: &TextureView,
-    sampler: &Sampler,
-) -> BindGroup {
-    device.create_bind_group(&BindGroupDescriptor {
-        label: None,
-        layout: &pipeline.get_bind_group_layout(0),
-        entries: &[
-            BindGroupEntry {
-                binding: 0,
-                resource: BindingResource::TextureView(texture_view),
-            },
-            BindGroupEntry {
-                binding: 1,
-                resource: BindingResource::Sampler(sampler),
-            },
-        ],
-    })
-}
-
-fn create_default_bind_group(
-    device: &Device,
-    pipeline: &RenderPipeline,
-    texture_view: &TextureView,
-) -> BindGroup {
-    device.create_bind_group(&BindGroupDescriptor {
-        label: None,
-        layout: &pipeline.get_bind_group_layout(0),
-        entries: &[BindGroupEntry {
-            binding: 0,
-            resource: BindingResource::TextureView(texture_view),
-        }],
-    })
-}
-
-fn execute_default_pass(
-    encoder: &mut CommandEncoder,
-    pipeline: &RenderPipeline,
-    bind_group: &BindGroup,
-    push_constants: &[u8],
-    output: &TextureView,
-) {
-    let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-        color_attachments: &[RenderPassColorAttachment {
-            view: output,
-            resolve_target: None,
-            ops: Operations {
-                load: LoadOp::Clear(Color::BLACK),
-                store: true,
-            },
-        }],
-        ..Default::default()
-    });
-
-    pass.set_pipeline(pipeline);
-    pass.set_bind_group(0, bind_group, &[]);
-    pass.set_push_constants(ShaderStages::FRAGMENT, 0, push_constants);
-
-    pass.draw(0..4, 0..1);
-
-    // here the pass is dropped and applied to the command encoder
+    show_err(run());
 }

@@ -101,7 +101,7 @@ impl SlicingPass {
 
         let pipeline = super::create_default_render_pipeline(
             device,
-            include_str!("../../resources/slicing.wgsl"),
+            include_str!("../resources/slicing.wgsl"),
         );
 
         let bind_group = super::create_default_bind_group(device, &pipeline, &inputs_view);

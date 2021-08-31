@@ -1,4 +1,4 @@
-use crate::TARGET_FORMAT;
+use graphics::TARGET_FORMAT;
 use wgpu::{
     BindGroup, BlendState, Color, ColorTargetState, ColorWrites, CommandEncoder, Device,
     FragmentState, LoadOp, MultisampleState, Operations, RenderPassColorAttachment,
@@ -22,14 +22,11 @@ pub struct CompositingPass {
 
 impl CompositingPass {
     pub fn new(device: &Device) -> Self {
-        let quad_shader = device.create_shader_module(&ShaderModuleDescriptor {
-            label: None,
-            source: ShaderSource::Wgsl(include_str!("../../resources/quad.wgsl").into()),
-        });
+        let quad_shader = graphics::quad_shader(device);
 
         let fragment_shader = device.create_shader_module(&ShaderModuleDescriptor {
             label: None,
-            source: ShaderSource::Wgsl(include_str!("../../resources/compositing.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("../resources/compositing.wgsl").into()),
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -54,7 +51,7 @@ impl CompositingPass {
             }),
         });
 
-        let sampler = super::create_default_sampler(device);
+        let sampler = graphics::create_default_sampler(device);
 
         Self {
             inner: pipeline,
@@ -73,7 +70,7 @@ impl CompositingPass {
             ..Default::default()
         });
 
-        super::create_default_bind_group_with_sampler(device, &self.inner, &view, &self.sampler)
+        graphics::create_default_bind_group_with_sampler(device, &self.inner, &view, &self.sampler)
     }
 
     pub fn draw<'a>(

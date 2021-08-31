@@ -1,5 +1,5 @@
 [package]
-name = "mediacodec_tests"
+name = "video_decoder"
 version = "0.1.0"
 authors = ["alvr-org"]
 license = "MIT"
@@ -8,7 +8,7 @@ edition = "2018"
 [dependencies]
 alvr_common = { path = "../../common" }
 alvr_session = { path = "../../session" }
-graphics_tests = { path = "../graphics_tests" }
+graphics = { path = "../graphics" }
 
 ash = "0.33"
 wgpu = { git = "https://github.com/zarik5/wgpu", features = ["spirv"] }

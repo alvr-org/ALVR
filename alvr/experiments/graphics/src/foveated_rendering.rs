@@ -1,7 +1,7 @@
 use alvr_session::{Fov, FoveatedRenderingDesc};
 use wgpu::{CommandEncoder, TextureView};
 
-pub enum Direction {
+pub enum FrDirection {
     Encoding,
     Decoding,
 }
@@ -14,7 +14,7 @@ impl FoveatedRenderingPass {
     // reference_fov which might not be what is actually used.
     // todo: reparametrize FoveatedRenderingDesc with focus area width and height in degrees
     pub fn new(
-        direction: Direction,
+        direction: FrDirection,
         original_size: (u32, u32),
         desc: &FoveatedRenderingDesc,
         reference_fov: Fov, // initial fov used to choose the encoded frame size
@@ -28,5 +28,7 @@ impl FoveatedRenderingPass {
 
     // note: depending on the eye tracking implemetation, moving the focus area could be achieved
     // just by changing the fov argument
-    pub fn draw(&self, encoder: &mut CommandEncoder, fov: Fov) {}
+    pub fn draw(&self, encoder: &mut CommandEncoder, fov: Fov) {
+        todo!()
+    }
 }

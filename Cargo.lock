@@ -2088,20 +2088,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "graphics_tests"
+name = "graphics"
 version = "0.1.0"
 dependencies = [
  "alvr_common",
  "alvr_session",
  "ash",
  "bytemuck",
- "env_logger 0.9.0",
  "lazy_static",
  "nalgebra",
- "openxr-sys",
  "parking_lot",
  "pollster",
- "raw-window-handle",
  "wgpu",
  "wgpu-hal",
  "winit",
@@ -2605,21 +2602,6 @@ name = "maybe-uninit"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00"
-
-[[package]]
-name = "mediacodec_tests"
-version = "0.1.0"
-dependencies = [
- "alvr_common",
- "alvr_session",
- "ash",
- "graphics_tests",
- "ndk 0.4.0 (git+https://github.com/MarijnS95/android-ndk-rs?rev=4f80b7d1b2ad2eb637f765d3bbe48b285563d39a)",
- "ndk-sys 0.2.1 (git+https://github.com/MarijnS95/android-ndk-rs?rev=4f80b7d1b2ad2eb637f765d3bbe48b285563d39a)",
- "pollster",
- "raw-window-handle",
- "wgpu",
-]
 
 [[package]]
 name = "memchr"
@@ -4066,6 +4048,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "server_compositor"
+version = "0.1.0"
+dependencies = [
+ "alvr_common",
+ "alvr_session",
+ "ash",
+ "bytemuck",
+ "env_logger 0.9.0",
+ "graphics",
+ "lazy_static",
+ "nalgebra",
+ "openxr-sys",
+ "parking_lot",
+ "pollster",
+ "raw-window-handle",
+ "wgpu",
+ "wgpu-hal",
+ "winit",
+]
+
+[[package]]
 name = "settings-schema"
 version = "0.3.1"
 dependencies = [
@@ -4884,6 +4887,21 @@ name = "version_check"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
+
+[[package]]
+name = "video_decoder"
+version = "0.1.0"
+dependencies = [
+ "alvr_common",
+ "alvr_session",
+ "ash",
+ "graphics",
+ "ndk 0.4.0 (git+https://github.com/MarijnS95/android-ndk-rs?rev=4f80b7d1b2ad2eb637f765d3bbe48b285563d39a)",
+ "ndk-sys 0.2.1 (git+https://github.com/MarijnS95/android-ndk-rs?rev=4f80b7d1b2ad2eb637f765d3bbe48b285563d39a)",
+ "pollster",
+ "raw-window-handle",
+ "wgpu",
+]
 
 [[package]]
 name = "vrcompositor-wrapper"

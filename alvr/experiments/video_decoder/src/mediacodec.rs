@@ -13,7 +13,7 @@ use wgpu::{
     TextureView,
 };
 
-pub struct SurfaceHandle(*const sys::ANativeWindow);
+pub struct SurfaceHandle(*mut sys::ANativeWindow);
 
 impl HasRawWindowHandle for SurfaceHandle {
     fn raw_window_handle(&self) -> RawWindowHandle {
@@ -151,8 +151,8 @@ impl VideoDecoder {
         }
     }
 
-    // Block until one frame is available or timeout is reached. Returns the index of the frame
-    // (as specified in push_buffer()). Returns None if timeout.
+    // Block until one frame is available or timeout is reached. Returns the frame index (as
+    // specified in push_frame_nals()). Returns None if timeout.
     pub fn get_output_frame(
         &self,
         output: &Texture,

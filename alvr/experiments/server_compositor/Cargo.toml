@@ -1,5 +1,5 @@
 [package]
-name = "graphics_tests"
+name = "server_compositor"
 version = "0.1.0"
 authors = ["alvr-org"]
 license = "MIT"
@@ -8,6 +8,7 @@ edition = "2018"
 [dependencies]
 alvr_common = { path = "../../common" }
 alvr_session = { path = "../../session" }
+graphics = { path = "../graphics" }
 
 wgpu = { git = "https://github.com/zarik5/wgpu", features = ["spirv"] }
 wgpu-hal = { git = "https://github.com/zarik5/wgpu", features = ["vulkan"] }

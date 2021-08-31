@@ -1,6 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
-use settings_schema::{EntryData, SettingsSchema, Switch, SwitchDefault};
+use settings_schema::{DictionaryDefault, EntryData, SettingsSchema, Switch, SwitchDefault};
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
@@ -29,6 +29,21 @@ pub struct Fov {
 
     #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
     pub bottom: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum MediacodecDataType {
+    Float(f32),
+    Int32(i32),
+    Int64(i64),
+    String(String), // Note: Double, Rect and Size are for level 28 and not compatible with the Oculus Go
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoCoding {
+    codec: CodecType,
+    mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -131,6 +146,9 @@ pub struct VideoDesc {
     pub preferred_fps: f32,
 
     pub codec: CodecType,
+
+    #[schema(advanced)]
+    pub video_coding: VideoCoding,
 
     #[schema(advanced)]
     pub client_request_realtime_decoder: bool,
@@ -442,7 +460,6 @@ pub fn session_settings_default() -> SettingsDefault {
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
-            preferred_fps: 72.,
             render_resolution: FrameSizeDefault {
                 variant: FrameSizeDefaultVariant::Scale,
                 Scale: 0.75,
@@ -459,6 +476,39 @@ pub fn session_settings_default() -> SettingsDefault {
                     height: 1600,
                 },
             },
+            preferred_fps: 72.,
+            codec: CodecTypeDefault {
+                variant: CodecTypeDefaultVariant::H264,
+            },
+            video_coding: VideoCodingDefault {
+                codec: CodecTypeDefault {
+                    variant: CodecTypeDefaultVariant::H264,
+                },
+                mediacodec_extra_options: DictionaryDefault {
+                    key: "".into(),
+                    value: MediacodecDataTypeDefault {
+                        variant: MediacodecDataTypeDefaultVariant::String,
+                        Float: 0.0,
+                        Int32: 0,
+                        Int64: 0,
+                        String: "".into(),
+                    },
+                    content: vec![
+                        ("operating-rate".into(), MediacodecDataType::Int32(i32::MAX)),
+                        ("priority".into(), MediacodecDataType::Int32(0)),
+                        // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
+                        // cabable, since they are on level 29.
+                        ("low-latency".into(), MediacodecDataType::Int32(1)),
+                        (
+                            "vendor.qti-ext-dec-low-latency.enable".into(),
+                            MediacodecDataType::Int32(1),
+                        ),
+                    ],
+                },
+            },
+            client_request_realtime_decoder: true,
+            use_10bit_encoder: false,
+            encode_bitrate_mbs: 30,
             adaptive_bitrate: SwitchDefault {
                 enabled: !cfg!(target_os = "linux"),
                 content: AdaptiveBitrateDescDefault {
@@ -492,12 +542,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     sharpening: 0.,
                 },
             },
-            codec: CodecTypeDefault {
-                variant: CodecTypeDefaultVariant::H264,
-            },
-            use_10bit_encoder: false,
-            client_request_realtime_decoder: true,
-            encode_bitrate_mbs: 30,
         },
         audio: AudioSectionDefault {
             game_audio: SwitchDefault {

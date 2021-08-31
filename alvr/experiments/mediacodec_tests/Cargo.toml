@@ -1,0 +1,24 @@
+[package]
+name = "mediacodec_tests"
+version = "0.1.0"
+authors = ["alvr-org"]
+license = "MIT"
+edition = "2018"
+
+[dependencies]
+alvr_common = { path = "../../common" }
+alvr_session = { path = "../../session" }
+graphics_tests = { path = "../graphics_tests" }
+
+ash = "0.33"
+wgpu = { git = "https://github.com/zarik5/wgpu", features = ["spirv"] }
+pollster = "0.2"
+raw-window-handle = "0.3"
+
+[target.'cfg(target_os = "android")'.dependencies]
+ndk = { git = "https://github.com/MarijnS95/android-ndk-rs", rev = "4f80b7d1b2ad2eb637f765d3bbe48b285563d39a", features = [
+    "media",
+    "hardware_buffer",
+    "api-level-24",
+] }
+ndk-sys = { git = "https://github.com/MarijnS95/android-ndk-rs", rev = "4f80b7d1b2ad2eb637f765d3bbe48b285563d39a" }

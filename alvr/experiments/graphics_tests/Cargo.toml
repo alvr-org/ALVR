@@ -21,4 +21,3 @@ lazy_static = "1"
 bytemuck = { version = "1", features = ["derive"] }
 env_logger = "0.9"
 ash = "0.33"
-gpu-alloc = "0.5"

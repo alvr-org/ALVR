@@ -6,34 +6,22 @@ mod slicing;
 
 pub use convert::*;
 
+use crate::{Context, TARGET_FORMAT};
 use alvr_common::prelude::*;
 use alvr_session::{ColorCorrectionDesc, Fov, FoveatedRenderingDesc};
 use color_correction::ColorCorrectionPass;
 use compositing::{CompositingPass, Layer};
 use foveated_rendering::{Direction, FoveatedRenderingPass};
 use slicing::{AlignmentDirection, SlicingPass};
+use std::sync::Arc;
 use wgpu::{
     AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Color,
     ColorTargetState, ColorWrites, CommandEncoder, CommandEncoderDescriptor, Device, Extent3d,
-    FilterMode, FragmentState, Instance, LoadOp, MultisampleState, Operations, Queue,
-    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
-    Sampler, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, ShaderStages, Texture,
-    TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, VertexState,
+    FilterMode, FragmentState, LoadOp, MultisampleState, Operations, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, Sampler, SamplerDescriptor,
+    ShaderModuleDescriptor, ShaderSource, ShaderStages, Texture, TextureDescriptor,
+    TextureDimension, TextureFormat, TextureUsages, TextureView, VertexState,
 };
-
-pub const TARGET_FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
-
-pub struct Context {
-    instance: Instance,
-    device: Device,
-    queue: Queue,
-}
-
-impl Context {
-    pub fn instance(&self) -> &Instance {
-        &self.instance
-    }
-}
 
 pub struct Swapchain {
     textures: Vec<Texture>,
@@ -63,7 +51,7 @@ pub struct CompositionLayerView<'a> {
 
 pub enum TextureType {
     D2 { array_size: u32 },
-    Cubemap,
+    Cubemap, // for now cubemaps cannot be used in the compositor
 }
 
 // Most of the compositor structure cannot be modified after creation. Some parameters like FOV for
@@ -71,7 +59,8 @@ pub enum TextureType {
 // FFR and changing the target view size require recreating the compositor completely, which might
 // cause a lag spike.
 pub struct Compositor {
-    context: Context,
+    context: Arc<Context>,
+
     inner: CompositingPass,
     color_corrector: ColorCorrectionPass,
     foveation_encoder: Option<FoveatedRenderingPass>,
@@ -88,14 +77,14 @@ pub struct Compositor {
 
 impl Compositor {
     pub fn new(
-        context: Context,
+        context: Arc<Context>,
         target_view_size: (u32, u32), // expected size of a layer after cropping
         foveation_desc: Option<&FoveatedRenderingDesc>,
         slices_count: usize,
     ) -> Self {
-        let inner = CompositingPass::new(&context.device);
+        let inner = CompositingPass::new(context.device());
 
-        let color_corrector = ColorCorrectionPass::new(&context.device, target_view_size);
+        let color_corrector = ColorCorrectionPass::new(context.device(), target_view_size);
 
         let mut output_size = target_view_size;
 
@@ -138,7 +127,7 @@ impl Compositor {
         let combined_size = (output_size.0 * 2, output_size.1);
 
         let slicer = SlicingPass::new(
-            &context.device,
+            context.device(),
             combined_size,
             2,
             slices_count,
@@ -146,7 +135,7 @@ impl Compositor {
         );
 
         let slicer2 = SlicingPass::new(
-            &context.device,
+            context.device(),
             combined_size,
             slices_count,
             2,
@@ -157,7 +146,7 @@ impl Compositor {
 
         let output_textures = (0..slices_count)
             .map(|_| {
-                context.device.create_texture(&TextureDescriptor {
+                context.device().create_texture(&TextureDescriptor {
                     label: None,
                     size: Extent3d {
                         width: output_size.0,
@@ -191,10 +180,6 @@ impl Compositor {
         }
     }
 
-    pub fn context(&self) -> &Context {
-        &self.context
-    }
-
     fn inner_create_swapchain(&self, textures: Vec<Texture>, array_size: u32) -> Swapchain {
         let bind_groups = textures
             .iter()
@@ -202,7 +187,7 @@ impl Compositor {
                 (0..array_size)
                     .map(|array_index| {
                         self.inner
-                            .create_bind_group(&self.context.device, texture, array_index)
+                            .create_bind_group(self.context.device(), texture, array_index)
                     })
                     .collect()
             })
@@ -236,7 +221,7 @@ impl Compositor {
 
         let mut encoder = self
             .context
-            .device
+            .device()
             .create_command_encoder(&CommandEncoderDescriptor::default());
 
         for view_index in 0..2 {
@@ -288,9 +273,9 @@ impl Compositor {
         }
 
         // For the best performance, all compositing work is submitted at once.
-        self.context.queue.submit(Some(encoder.finish()));
+        self.context.queue().submit(Some(encoder.finish()));
 
-        pollster::block_on(self.context.queue.on_submitted_work_done());
+        pollster::block_on(self.context.queue().on_submitted_work_done());
     }
 }
 

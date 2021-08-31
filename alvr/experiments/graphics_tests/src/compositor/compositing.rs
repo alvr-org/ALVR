@@ -1,4 +1,4 @@
-use crate::compositor::TARGET_FORMAT;
+use crate::TARGET_FORMAT;
 use wgpu::{
     BindGroup, BlendState, Color, ColorTargetState, ColorWrites, CommandEncoder, Device,
     FragmentState, LoadOp, MultisampleState, Operations, RenderPassColorAttachment,

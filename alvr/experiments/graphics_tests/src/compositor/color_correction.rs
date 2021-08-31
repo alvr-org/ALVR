@@ -1,7 +1,9 @@
+use crate::TARGET_FORMAT;
 use alvr_session::ColorCorrectionDesc;
-use wgpu::{BindGroup, CommandEncoder, Device, Extent3d, RenderPipeline, TextureDescriptor, TextureDimension, TextureUsages, TextureView};
-
-use crate::compositor::TARGET_FORMAT;
+use wgpu::{
+    BindGroup, CommandEncoder, Device, Extent3d, RenderPipeline, TextureDescriptor,
+    TextureDimension, TextureUsages, TextureView,
+};
 
 pub struct ColorCorrectionPass {
     input: TextureView,

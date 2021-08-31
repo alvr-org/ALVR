@@ -1,4 +1,4 @@
-use super::TARGET_FORMAT;
+use crate::TARGET_FORMAT;
 use wgpu::{
     BindGroup, CommandEncoder, Device, Extent3d, RenderPipeline, TextureDescriptor,
     TextureDimension, TextureUsages, TextureView, TextureViewDescriptor,

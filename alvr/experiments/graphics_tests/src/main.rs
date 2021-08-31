@@ -1,7 +1,11 @@
 mod compositor;
 
+pub use graphics_tests::*;
+
 use alvr_common::prelude::*;
-use compositor::{Compositor, Context};
+use compositor::Compositor;
+use graphics_tests::Context;
+use std::sync::Arc;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -12,11 +16,11 @@ fn run() -> StrResult {
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
 
-    let compositor = Compositor::new(Context::new(None)?, (400, 300), None, 1);
+    let context = Arc::new(Context::new(None)?);
+
+    let compositor = Compositor::new(context.clone(), (400, 300), None, 1);
 
     compositor.end_frame(&[], None);
-
-    let context = compositor.context();
 
     let surface = unsafe { context.instance().create_surface(&window) };
 

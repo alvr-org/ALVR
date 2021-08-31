@@ -210,7 +210,7 @@ impl Compositor {
             } else if let Some(encoder) = &self.foveation_encoder {
                 encoder.input()
             } else {
-                &self.slicer.input()[view_index]
+                &self.slicer.input_views()[view_index]
             };
 
             self.inner.draw(&mut encoder, layers, render_target);
@@ -219,7 +219,7 @@ impl Compositor {
                 let render_target = if let Some(encoder) = &self.foveation_encoder {
                     encoder.input()
                 } else {
-                    &self.slicer.input()[view_index]
+                    &self.slicer.input_views()[view_index]
                 };
 
                 self.color_corrector

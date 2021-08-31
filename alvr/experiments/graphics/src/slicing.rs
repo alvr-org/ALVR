@@ -1,6 +1,6 @@
 use crate::TARGET_FORMAT;
 use wgpu::{
-    BindGroup, CommandEncoder, Device, Extent3d, RenderPipeline, TextureDescriptor,
+    BindGroup, CommandEncoder, Device, Extent3d, RenderPipeline, Texture, TextureDescriptor,
     TextureDimension, TextureUsages, TextureView, TextureViewDescriptor,
 };
 
@@ -47,7 +47,8 @@ pub enum AlignmentDirection {
 // Slices are assumed to be packed and unpacked by this same pass, following a particular layout
 // determined by the number of slices and the shape of the reconstructed frame.
 pub struct SlicingPass {
-    inputs: Vec<TextureView>,
+    input_texture: Texture,
+    input_views: Vec<TextureView>,
     pipeline: RenderPipeline,
     bind_group: BindGroup,
     input_slicing_layout: SlicingLayout,
@@ -88,9 +89,9 @@ impl SlicingPass {
             usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::STORAGE_BINDING,
         });
 
-        let inputs_view = input_texture.create_view(&Default::default());
+        let texture_view = input_texture.create_view(&Default::default());
 
-        let inputs = (0..input_slices_count)
+        let input_views = (0..input_slices_count)
             .map(|idx| {
                 input_texture.create_view(&TextureViewDescriptor {
                     base_array_layer: idx as _,
@@ -104,7 +105,7 @@ impl SlicingPass {
             include_str!("../resources/slicing.wgsl"),
         );
 
-        let bind_group = super::create_default_bind_group(device, &pipeline, &inputs_view);
+        let bind_group = super::create_default_bind_group(device, &pipeline, &texture_view);
 
         let output_slicing_layout = get_slicing_layout(combined_size, output_slices_count);
         let mut target_size = (
@@ -116,7 +117,8 @@ impl SlicingPass {
         }
 
         Self {
-            inputs,
+            input_texture,
+            input_views,
             pipeline,
             bind_group,
             input_slicing_layout,
@@ -131,8 +133,13 @@ impl SlicingPass {
         (self.target_size.0 as u32, self.target_size.1 as u32)
     }
 
-    pub fn input(&self) -> &[TextureView] {
-        &self.inputs
+    // The texture has one layer for each slice
+    pub fn input_texture(&self) -> &Texture {
+        &self.input_texture
+    }
+
+    pub fn input_views(&self) -> &[TextureView] {
+        &self.input_views
     }
 
     pub fn draw(&self, encoder: &mut CommandEncoder, slice_index: usize, output: &TextureView) {

@@ -5112,7 +5112,7 @@ dependencies = [
 [[package]]
 name = "wgpu"
 version = "0.10.1"
-source = "git+https://github.com/gfx-rs/wgpu#0a2be6099c92a0faa080f70ddb0893829fa98750"
+source = "git+https://github.com/gfx-rs/wgpu#06316c1bac8b78ac04d762cfb1a886bd1d453b30"
 dependencies = [
  "arrayvec 0.7.1",
  "js-sys",
@@ -5131,7 +5131,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.10.0"
-source = "git+https://github.com/gfx-rs/wgpu#0a2be6099c92a0faa080f70ddb0893829fa98750"
+source = "git+https://github.com/gfx-rs/wgpu#06316c1bac8b78ac04d762cfb1a886bd1d453b30"
 dependencies = [
  "arrayvec 0.7.1",
  "bitflags",
@@ -5152,7 +5152,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "0.10.1"
-source = "git+https://github.com/gfx-rs/wgpu#0a2be6099c92a0faa080f70ddb0893829fa98750"
+source = "git+https://github.com/gfx-rs/wgpu#06316c1bac8b78ac04d762cfb1a886bd1d453b30"
 dependencies = [
  "arrayvec 0.7.1",
  "ash",
@@ -5185,7 +5185,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.10.0"
-source = "git+https://github.com/gfx-rs/wgpu#0a2be6099c92a0faa080f70ddb0893829fa98750"
+source = "git+https://github.com/gfx-rs/wgpu#06316c1bac8b78ac04d762cfb1a886bd1d453b30"
 dependencies = [
  "bitflags",
 ]

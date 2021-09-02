@@ -6,5 +6,5 @@ pub fn init_logging() {
             .with_min_level(log::Level::Info),
     );
 
-    alvr_common::logging::set_panic_hook();
+    alvr_common::set_panic_hook();
 }

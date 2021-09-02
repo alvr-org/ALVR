@@ -1,4 +1,4 @@
-use alvr_common::{logging, prelude::*};
+use alvr_common::prelude::*;
 use alvr_filesystem as afs;
 use serde_json as json;
 use std::{
@@ -196,7 +196,7 @@ fn try_close_steamvr_gracefully() {
 pub fn restart_steamvr() {
     try_close_steamvr_gracefully();
 
-    if logging::show_err(maybe_register_alvr_driver()).is_some() {
+    if alvr_common::show_err(maybe_register_alvr_driver()).is_some() {
         maybe_launch_steamvr();
     }
 }

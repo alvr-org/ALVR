@@ -1,5 +1,5 @@
 use crate::{graphics_info, ClientListAction, FILESYSTEM_LAYOUT, SESSION_MANAGER};
-use alvr_common::{logging, prelude::*, ALVR_VERSION};
+use alvr_common::{prelude::*, ALVR_VERSION};
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
@@ -306,7 +306,7 @@ pub async fn web_server(
                 async move {
                     let res = http_api(request, log_sender, events_sender).await;
                     if let Err(e) = &res {
-                        logging::show_e(e);
+                        alvr_common::show_e(e);
                     }
 
                     res

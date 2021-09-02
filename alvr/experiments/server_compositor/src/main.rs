@@ -2,8 +2,8 @@ mod color_correction;
 mod compositing;
 mod convert;
 
-use alvr_common::prelude::*;
-use alvr_session::{ColorCorrectionDesc, Fov, FoveatedRenderingDesc};
+use alvr_common::{prelude::*, Fov};
+use alvr_session::{ColorCorrectionDesc, FoveatedRenderingDesc};
 use color_correction::ColorCorrectionPass;
 use compositing::{CompositingPass, Layer};
 use graphics::{

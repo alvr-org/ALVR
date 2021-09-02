@@ -7,7 +7,7 @@ use crate::{
     theme,
     translation::{self, SharedTranslation, TranslationBundle},
 };
-use alvr_common::logging::Event;
+use alvr_common::Event;
 use alvr_session::{SessionDesc, Theme};
 use basic_components::ModalResponse;
 use egui::{Align, CentralPanel, ComboBox, CtxRef, Layout, ScrollArea, SidePanel, Ui};

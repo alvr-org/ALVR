@@ -11,7 +11,7 @@ mod bindings {
 }
 use bindings::*;
 
-use alvr_common::{logging, prelude::*};
+use alvr_common::prelude::*;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_session::{ClientConnectionDesc, SessionManager};
 use lazy_static::lazy_static;
@@ -215,7 +215,7 @@ fn init() {
             }
 
             let web_server =
-                logging::show_err_async(web_server::web_server(log_sender, events_sender));
+                alvr_common::show_err_async(web_server::web_server(log_sender, events_sender));
 
             tokio::select! {
                 _ = web_server => (),
@@ -223,7 +223,7 @@ fn init() {
             }
         });
 
-        thread::spawn(|| logging::show_err(ui_thread()));
+        thread::spawn(|| alvr_common::show_err(ui_thread()));
     }
 
     unsafe {
@@ -241,6 +241,7 @@ fn init() {
     };
 }
 
+/// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,
@@ -261,7 +262,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     COLOR_CORRECTION_CSO_LEN = COLOR_CORRECTION_CSO.len() as _;
 
     unsafe extern "C" fn log_error(string_ptr: *const c_char) {
-        logging::show_e(CStr::from_ptr(string_ptr).to_string_lossy());
+        alvr_common::show_e(CStr::from_ptr(string_ptr).to_string_lossy());
     }
 
     unsafe fn log(level: log::Level, string_ptr: *const c_char) {
@@ -294,7 +295,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
-        logging::show_err(alvr_commands::apply_driver_paths_backup(
+        alvr_common::show_err(alvr_commands::apply_driver_paths_backup(
             FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone(),
         ));
 

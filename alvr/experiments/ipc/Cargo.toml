@@ -1,0 +1,14 @@
+[package]
+name = "alvr_ipc"
+version = "0.1.0"
+authors = ["alvr-org"]
+license = "MIT"
+edition = "2018"
+
+[dependencies]
+alvr_common = { path = "../../common" }
+
+bincode = "1"
+interprocess = "1"
+nalgebra = "0.29"
+serde = { version = "1", features = ["derive"] }

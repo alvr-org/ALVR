@@ -3,7 +3,7 @@ use crate::{
     RESTART_NOTIFIER, SESSION_MANAGER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{logging, prelude::*};
+use alvr_common::prelude::*;
 use alvr_session::{AudioDeviceId, CodecType, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
@@ -714,7 +714,7 @@ pub async fn connection_lifecycle_loop() {
     loop {
         tokio::join!(
             async {
-                logging::show_err(connection_pipeline().await);
+                alvr_common::show_err(connection_pipeline().await);
 
                 // let any running task or socket shutdown
                 time::sleep(CLEANUP_PAUSE).await;

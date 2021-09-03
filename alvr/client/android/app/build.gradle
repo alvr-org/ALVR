@@ -9,8 +9,8 @@ android {
         applicationId "alvr.client"
         minSdkVersion 24
         targetSdkVersion 30
-        versionCode 61
-        versionName "16.0.0-rc2"
+        versionCode 62
+        versionName "16.0.0"
         externalNativeBuild {
             cmake {
                 cppFlags "-std=c++17 -fexceptions -frtti"

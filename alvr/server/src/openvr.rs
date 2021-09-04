@@ -1,5 +1,4 @@
-use alvr_common::prelude::*;
-use alvr_session::OpenvrPropValue;
+use alvr_common::{prelude::*, OpenvrPropValue};
 use openvr_driver_sys as vr;
 use std::ffi::CString;
 

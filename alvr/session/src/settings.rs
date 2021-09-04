@@ -210,17 +210,6 @@ pub struct AudioSection {
     pub microphone: Switch<MicrophoneDesc>,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub enum OpenvrPropValue {
-    Bool(bool),
-    Float(f32),
-    Int32(i32),
-    Uint64(u64),
-    Vector3([f32; 3]),
-    Double(f64),
-    String(String),
-}
-
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ControllersDesc {

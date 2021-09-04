@@ -1,0 +1,12 @@
+// dummy string
+
+#pragma once
+
+namespace std {
+class string {
+  public:
+    string();
+    string(const char *);
+    const char *c_str() const;
+};
+} // namespace std

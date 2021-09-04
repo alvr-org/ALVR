@@ -263,9 +263,13 @@ dependencies = [
 name = "alvr_openvr_driver"
 version = "0.1.0"
 dependencies = [
+ "alvr_common",
+ "alvr_ipc",
  "bindgen 0.59.1",
  "cc",
- "interprocess",
+ "lazy_static",
+ "parking_lot",
+ "regex",
 ]
 
 [[package]]

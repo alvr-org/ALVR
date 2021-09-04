@@ -1,0 +1,21 @@
+[package]
+name = "alvr_openvr_driver"
+version = "0.1.0"
+authors = ["alvr-org"]
+license = "MIT"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+alvr_common = { path = "../../common" }
+alvr_ipc = { path = "../ipc" }
+
+lazy_static = "1"
+parking_lot = "0.11"
+
+[build-dependencies]
+cc = "1"
+bindgen = "0.59"
+regex = "1"

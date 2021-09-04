@@ -1,0 +1,4 @@
+IndentWidth: 4
+ColumnLimit: 100
+BinPackArguments: false
+BinPackParameters: false

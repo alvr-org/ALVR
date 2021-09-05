@@ -5,11 +5,12 @@
     clippy::missing_safety_doc
 )]
 
-use alvr_common::OpenvrPropValue;
+use alvr_common::{Fov, OpenvrPropValue};
 use alvr_ipc::{
-    DriverConfigUpdate, DriverRequest, IpcClient, IpcSseReceiver, ResponseForDriver, SsePacket,
-    TrackedDeviceType,
+    DriverConfigUpdate, DriverRequest, IpcClient, IpcSseReceiver, Layer, ResponseForDriver,
+    SsePacket, TrackedDeviceType,
 };
+use core::slice;
 use parking_lot::Mutex;
 use std::ffi::CString;
 use std::ptr;
@@ -50,8 +51,8 @@ fn log(message: &str) {
 extern "C" fn spawn_sse_receiver_loop() -> bool {
     if let Some(mut receiver) = IPC_CONNECTIONS.lock().sse_receiver.take() {
         thread::spawn(move || {
-            while let Ok(message) = receiver.receive_non_blocking() {
-                match message {
+            while let Ok(maybe_message) = receiver.receive_non_blocking() {
+                match maybe_message {
                     Some(message) => match message {
                         SsePacket::UpdateConfig(_) => todo!(),
                         SsePacket::PropertyChanged { name, value } => todo!(),
@@ -201,6 +202,90 @@ extern "C" fn set_extra_properties(device_index: u64) {
     }
 }
 
+extern "C" fn create_swapchain(
+    pid: u32,
+    desc: vr::IVRDriverDirectModeComponent_SwapTextureSetDesc_t,
+) -> drv::SwapchainData {
+    if let Some(client) = &mut IPC_CONNECTIONS.lock().client {
+        let response = client.request(&DriverRequest::CreateSwapchain {
+            images_count: 3,
+            width: desc.nWidth,
+            height: desc.nHeight,
+            format: desc.nFormat,
+            sample_count: desc.nSampleCount,
+        });
+
+        if let Ok(ResponseForDriver::Swapchain { id, textures }) = response {
+            let mut texture_handles = [0; 3];
+            texture_handles.copy_from_slice(&textures);
+
+            return drv::SwapchainData {
+                id,
+                pid,
+                texture_handles,
+            };
+        }
+    }
+
+    drv::SwapchainData::default()
+}
+
+extern "C" fn destroy_swapchain(id: u64) {
+    if let Some(client) = &mut IPC_CONNECTIONS.lock().client {
+        client.request(&DriverRequest::DestroySwapchain { id }).ok();
+    }
+}
+
+extern "C" fn next_swapchain_index(id: u64) -> u32 {
+    if let Some(client) = &mut IPC_CONNECTIONS.lock().client {
+        let response = client.request(&DriverRequest::GetNextSwapchainIndex { id });
+        if let Ok(ResponseForDriver::SwapchainIndex(idx)) = response {
+            return idx as _;
+        }
+    }
+
+    0
+}
+
+extern "C" fn present(layers: *const drv::Layer, count: u32) {
+    if let Some(client) = &mut IPC_CONNECTIONS.lock().client {
+        let drv_layers = unsafe { slice::from_raw_parts::<drv::Layer>(layers, count as _) };
+
+        let mut layers = vec![];
+        for drv_layer in drv_layers {
+            let mut layer_views = vec![];
+            for idx in 0..2 {
+                let fov = Fov {
+                    left: drv_layer.fov[idx].left,
+                    right: drv_layer.fov[idx].right,
+                    top: drv_layer.fov[idx].top,
+                    bottom: drv_layer.fov[idx].bottom,
+                };
+
+                // float uMin, vMin;
+                // float uMax, vMax;
+                let rect_offset = (drv_layer.bounds[idx].uMin, drv_layer.bounds[idx].vMin);
+                let rect_size = (
+                    drv_layer.bounds[idx].uMax - rect_offset.0,
+                    drv_layer.bounds[idx].vMax - rect_offset.1,
+                );
+
+                layer_views.push(Layer {
+                    orientation: todo!(),
+                    fov,
+                    swaphcain_id: drv_layer.swapchain_ids[idx],
+                    rect_offset,
+                    rect_size,
+                });
+            }
+
+            layers.push(layer_views);
+        }
+
+        client.request(&DriverRequest::PresentLayers(layers)).ok();
+    }
+}
+
 // Entry point. The entry point must live on the Rust side, since C symbols are not exported
 #[no_mangle]
 pub unsafe extern "C" fn HmdDriverFactory(
@@ -211,6 +296,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
     drv::spawn_sse_receiver_loop = Some(spawn_sse_receiver_loop);
     drv::get_initialization_config = Some(get_initialization_config);
     drv::set_extra_properties = Some(set_extra_properties);
+    drv::create_swapchain = Some(create_swapchain);
+    drv::destroy_swapchain = Some(destroy_swapchain);
+    drv::next_swapchain_index = Some(next_swapchain_index);
+    drv::present = Some(present);
 
     drv::entry_point(interface_name, return_code)
 }

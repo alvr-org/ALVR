@@ -8,16 +8,6 @@
 #include <string>
 #include <vector>
 
-// Fuctions provided by Rust
-bool (*spawn_sse_receiver_loop)();
-InitializationConfig (*get_initialization_config)();
-void (*set_extra_properties)(uint64_t);
-
-void log(const char *message) {
-    auto message_string = std::string("[ALVR] ") + message;
-    vr::VRDriverLog()->Log(message_string.c_str());
-}
-
 class DriverProvider : vr::IServerTrackedDeviceProvider {
     virtual vr::EVRInitError Init(vr::IVRDriverContext *pContext) override {
         VR_INIT_SERVER_DRIVER_CONTEXT(pContext);
@@ -72,13 +62,15 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
     std::optional<Hmd> hmd;
     std::optional<Controller> left_controller, right_controller;
     std::vector<GenericTracker> generic_trackers;
+
+    // hmd, controllers and trackers in the order specified by the server
     std::vector<TrackedDevice *> tracked_devices;
 
-    DriverProvider() : hmd(std::nullopt) {}
+    DriverProvider() {}
 } g_driver_provider;
 
 void *entry_point(const char *interface_name, int *return_code) {
-    if (std::string(vr::IServerTrackedDeviceProvider_Version) == std::string(interface_name)) {
+    if (std::string(interface_name) == vr::IServerTrackedDeviceProvider_Version) {
         *return_code = vr::VRInitError_None;
         return &g_driver_provider;
     } else {
@@ -87,39 +79,44 @@ void *entry_point(const char *interface_name, int *return_code) {
     }
 }
 
+void log(const char *message) {
+    auto message_string = std::string("[ALVR] ") + message;
+    vr::VRDriverLog()->Log(message_string.c_str());
+}
+
 void handle_prop_error(vr::ETrackedPropertyError error) {
     log(vr::VRPropertiesRaw()->GetPropErrorNameFromEnum(error));
 }
 void set_bool_property(uint64_t device_index, vr::ETrackedDeviceProperty prop, bool value) {
-    auto container = g_driver_provider.tracked_devices[device_index]->get_container();
+    auto container = g_driver_provider.tracked_devices[device_index]->get_prop_container();
     handle_prop_error(vr::VRProperties()->SetBoolProperty(container, prop, value));
 }
 void set_float_property(uint64_t device_index, vr::ETrackedDeviceProperty prop, float value) {
-    auto container = g_driver_provider.tracked_devices[device_index]->get_container();
+    auto container = g_driver_provider.tracked_devices[device_index]->get_prop_container();
     handle_prop_error(vr::VRProperties()->SetFloatProperty(container, prop, value));
 }
 void set_int32_property(uint64_t device_index, vr::ETrackedDeviceProperty prop, int32_t value) {
-    auto container = g_driver_provider.tracked_devices[device_index]->get_container();
+    auto container = g_driver_provider.tracked_devices[device_index]->get_prop_container();
     handle_prop_error(vr::VRProperties()->SetInt32Property(container, prop, value));
 }
 void set_uint64_property(uint64_t device_index, vr::ETrackedDeviceProperty prop, uint64_t value) {
-    auto container = g_driver_provider.tracked_devices[device_index]->get_container();
+    auto container = g_driver_provider.tracked_devices[device_index]->get_prop_container();
     handle_prop_error(vr::VRProperties()->SetUint64Property(container, prop, value));
 }
 void set_vec3_property(uint64_t device_index,
                        vr::ETrackedDeviceProperty prop,
                        const vr::HmdVector3_t &value) {
-    auto container = g_driver_provider.tracked_devices[device_index]->get_container();
+    auto container = g_driver_provider.tracked_devices[device_index]->get_prop_container();
     handle_prop_error(vr::VRProperties()->SetVec3Property(container, prop, value));
 }
 void set_double_property(uint64_t device_index, vr::ETrackedDeviceProperty prop, double value) {
-    auto container = g_driver_provider.tracked_devices[device_index]->get_container();
+    auto container = g_driver_provider.tracked_devices[device_index]->get_prop_container();
     handle_prop_error(vr::VRProperties()->SetDoubleProperty(container, prop, value));
 }
 void set_string_property(uint64_t device_index,
                          vr::ETrackedDeviceProperty prop,
                          const char *value) {
-    auto container = g_driver_provider.tracked_devices[device_index]->get_container();
+    auto container = g_driver_provider.tracked_devices[device_index]->get_prop_container();
     handle_prop_error(vr::VRProperties()->SetStringProperty(container, prop, value));
 }
 
@@ -128,3 +125,12 @@ void set_motion_data(MotionData *data, size_t count, double time_offset_s) {
         g_driver_provider.tracked_devices[idx]->set_motion(data[idx], time_offset_s);
     }
 }
+
+// Fuctions provided by Rust
+bool (*spawn_sse_receiver_loop)();
+InitializationConfig (*get_initialization_config)();
+void (*set_extra_properties)(uint64_t);
+SwapchainData (*create_swapchain)(uint32_t, vr::IVRDriverDirectModeComponent::SwapTextureSetDesc_t);
+void (*destroy_swapchain)(uint64_t);
+uint32_t (*next_swapchain_index)(uint64_t);
+void (*present)(const Layer *, uint32_t);

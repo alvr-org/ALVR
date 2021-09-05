@@ -18,10 +18,6 @@ struct DriverConfigUpdate {
     float fps;
 };
 
-struct TrackerConfig {
-    unsigned int type_and_index; // 0: left, 1: right, >1: generic - 2
-};
-
 struct InitializationConfig {
     const char tracked_device_serial_numbers[10][20];
     vr::ETrackedDeviceClass tracked_device_classes[10];
@@ -41,13 +37,23 @@ struct MotionData {
     bool has_angular_velocity;
 };
 
-// Fuctions provided by Rust
-extern "C" bool (*spawn_sse_receiver_loop)();
-extern "C" InitializationConfig (*get_initialization_config)();
-extern "C" void (*set_extra_properties)(uint64_t device_index);
+struct SwapchainData {
+    uint64_t id;
+    uint32_t pid;
+    vr::SharedTextureHandle_t texture_handles[3];
+};
+
+struct Layer {
+    uint64_t swapchain_ids[2];
+    Fov fov[2];
+    vr::VRTextureBounds_t bounds[2];
+    vr::HmdMatrix34_t poses[2];
+};
 
 // This is our only way of logging. OpenVR does not have severity levels
 extern "C" void log(const char *message);
+
+extern "C" void *entry_point(const char *interface_name, int *return_code);
 
 extern "C" void
 set_bool_property(uint64_t device_index, vr::ETrackedDeviceProperty prop, bool value);
@@ -65,4 +71,12 @@ set_double_property(uint64_t device_index, vr::ETrackedDeviceProperty prop, doub
 extern "C" void
 set_string_property(uint64_t device_index, vr::ETrackedDeviceProperty prop, const char *value);
 
-extern "C" void *entry_point(const char *interface_name, int *return_code);
+// Functions provided by Rust
+extern "C" bool (*spawn_sse_receiver_loop)();
+extern "C" InitializationConfig (*get_initialization_config)();
+extern "C" void (*set_extra_properties)(uint64_t device_index);
+extern "C" SwapchainData (*create_swapchain)(
+    uint32_t pid, vr::IVRDriverDirectModeComponent::SwapTextureSetDesc_t desc);
+extern "C" void (*destroy_swapchain)(uint64_t id);
+extern "C" uint32_t (*next_swapchain_index)(uint64_t id);
+extern "C" void (*present)(const Layer *layers, uint32_t count);

@@ -1,5 +1,5 @@
 use alvr_common::{Fov, OpenvrPropValue};
-use nalgebra::{UnitQuaternion, Vector3};
+use nalgebra::{UnitQuaternion, Vector2, Vector3};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -29,8 +29,11 @@ pub struct DisplayConfig {
 
 #[derive(Serialize, Deserialize)]
 pub struct Layer {
-    pub views: Vec<(u64, Fov)>, // IDs of the swapchains
     pub orientation: UnitQuaternion<f32>,
+    pub fov: Fov,
+    pub swaphcain_id: u64,
+    pub rect_offset: (f32, f32),
+    pub rect_size: (f32, f32),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -50,7 +53,7 @@ pub enum DriverRequest {
     GetNextSwapchainIndex {
         id: u64,
     },
-    PresentLayers(Vec<Layer>),
+    PresentLayers(Vec<Vec<Layer>>),
     Haptics {
         duration: Duration,
         frequency: f32,

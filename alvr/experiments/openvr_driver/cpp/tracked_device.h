@@ -27,5 +27,5 @@ class TrackedDevice : public vr::ITrackedDeviceServerDriver {
 
   public:
     void set_motion(MotionData motion, double time_offset_s);
-    vr::PropertyContainerHandle_t get_container() { return this->property_container; }
+    vr::PropertyContainerHandle_t get_prop_container() { return this->property_container; }
 };

@@ -1,9 +1,9 @@
 #include "tracked_devices.h"
 #include <thread>
 
-vr::EVRInitError TrackedDevice::Activate(uint32_t object_id) {
-    this->object_id = object_id;
-    this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(object_id);
+vr::EVRInitError TrackedDevice::Activate(uint32_t id) {
+    this->object_id = id;
+    this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(id);
 
     this->activate_inner();
 
@@ -117,7 +117,7 @@ void Hmd::Present(vr::SharedTextureHandle_t sync_texture) {
     // todo: acquire lock on sync_texture
 
     // This call will block until the server finished rendering
-    present(&this->current_layers[0], this->current_layers.size());
+    present(&this->current_layers[0], (uint32_t)this->current_layers.size());
 
     this->current_layers.clear();
 }

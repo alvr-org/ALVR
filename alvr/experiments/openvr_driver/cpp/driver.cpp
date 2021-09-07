@@ -86,11 +86,11 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
     DriverProvider() {}
 } g_driver_provider;
 
-void log(std::string message) {
+void _log(const char *message) {
     auto message_string = std::string("[ALVR] ") + message + "\n";
     vr::VRDriverLog()->Log(message_string.c_str());
 }
-void log(const char *message) { log(std::string(message)); }
+void log(std::string message) { _log(message.c_str()); }
 
 void *entry_point(const char *interface_name, int *return_code) {
     if (std::string(interface_name) == vr::IServerTrackedDeviceProvider_Version) {

@@ -80,7 +80,6 @@ pub enum ButtonValue {
 pub struct TrackedDeviceConfig {
     pub serial_number: String,
     pub device_type: TrackedDeviceType,
-    pub available_buttons: Vec<(String, InputType)>,
 }
 
 #[derive(Serialize, Deserialize)]

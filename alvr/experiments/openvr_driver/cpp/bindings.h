@@ -43,8 +43,9 @@ struct Layer {
     vr::HmdMatrix34_t poses[2];
 };
 
-// This is our only way of logging. OpenVR does not have severity levels
-extern "C" void log(const char *message);
+// This is our only way of logging. OpenVR does not have severity levels. On MSVC, "log" is already
+// defained without "C" linkage, so a underscore prefix is used here.
+extern "C" void _log(const char *message);
 
 extern "C" void *entry_point(const char *interface_name, int *return_code);
 

@@ -54,7 +54,7 @@ lazy_static::lazy_static! {
 
 fn log(message: &str) {
     let c_string = CString::new(message).unwrap();
-    unsafe { drv::log(c_string.as_ptr()) };
+    unsafe { drv::_log(c_string.as_ptr()) };
 }
 
 fn ipc_driver_config_to_driver(config: DriverConfigUpdate) -> drv::DriverConfigUpdate {
@@ -438,6 +438,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     drv::stop_sse_receiver = Some(stop_sse_receiver);
     drv::get_initialization_config = Some(get_initialization_config);
     drv::set_extra_properties = Some(set_extra_properties);
+    drv::set_button_layout = Some(set_button_layout);
     drv::create_swapchain = Some(create_swapchain);
     drv::destroy_swapchain = Some(destroy_swapchain);
     drv::next_swapchain_index = Some(next_swapchain_index);

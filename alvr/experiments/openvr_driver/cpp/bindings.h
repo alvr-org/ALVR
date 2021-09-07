@@ -3,17 +3,10 @@
 #include "openvr_driver.h"
 #include <stdint.h>
 
-struct Fov {
-    float left;
-    float right;
-    float top;
-    float bottom;
-};
-
 struct DriverConfigUpdate {
     uint32_t preferred_view_width;
     uint32_t preferred_view_height;
-    Fov fov[2];
+    vr::HmdRect2_t fov[2];
     float ipd_m;
     float fps;
 };
@@ -45,7 +38,7 @@ struct SwapchainData {
 
 struct Layer {
     uint64_t swapchain_ids[2];
-    Fov fov[2];
+    vr::HmdRect2_t fov[2];
     vr::VRTextureBounds_t bounds[2];
     vr::HmdMatrix34_t poses[2];
 };
@@ -71,10 +64,26 @@ set_double_property(uint64_t device_index, vr::ETrackedDeviceProperty prop, doub
 extern "C" void
 set_string_property(uint64_t device_index, vr::ETrackedDeviceProperty prop, const char *value);
 
+extern "C" vr::VRInputComponentHandle_t create_boolean_component(uint64_t device_index,
+                                                                 const char *path);
+extern "C" void update_boolean_component(vr::VRInputComponentHandle_t component, bool value);
+extern "C" vr::VRInputComponentHandle_t
+create_scalar_component(uint64_t device_index, const char *path, vr::EVRScalarUnits units);
+extern "C" void update_scalar_component(vr::VRInputComponentHandle_t component, float value);
+
+// Server events
+extern "C" void update_config(DriverConfigUpdate config);
+extern "C" void set_tracking_data(const vr::DriverPose_t *poses, uint32_t count);
+extern "C" void vendor_event(vr::EVREventType event_type);
+extern "C" void restart();
+
 // Functions provided by Rust
 extern "C" bool (*spawn_sse_receiver_loop)();
+extern "C" void (*stop_sse_receiver)();
 extern "C" InitializationConfig (*get_initialization_config)();
 extern "C" void (*set_extra_properties)(uint64_t device_index);
+extern "C" void (*set_button_layout)(uint64_t device_index);
+extern "C" void (*send_haptics)(uint64_t device_index, vr::VREvent_HapticVibration_t event);
 extern "C" SwapchainData (*create_swapchain)(
     uint32_t pid, vr::IVRDriverDirectModeComponent::SwapTextureSetDesc_t desc);
 extern "C" void (*destroy_swapchain)(uint64_t id);

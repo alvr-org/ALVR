@@ -1,19 +1,43 @@
 #pragma once
 
 #include "bindings.h"
-#include "tracked_device.h"
+#include "openvr_driver.h"
 #include <chrono>
 #include <map>
 
+class TrackedDevice : public vr::ITrackedDeviceServerDriver {
+  public:
+    uint64_t device_index;              // index dictated by the server
+    vr::TrackedDeviceIndex_t object_id; // index dictated by SteamVR
+    vr::PropertyContainerHandle_t prop_container;
+    vr::DriverPose_t pose;
+    vr::PropertyContainerHandle_t haptics_container;
+    // Note: the button containers are stored on the Rust side
+
+    virtual vr::EVRInitError Activate(uint32_t object_id) override;
+    virtual void *GetComponent(const char *component_name_and_version) override { return nullptr; }
+    virtual void Deactivate() override {}
+    virtual void EnterStandby() override {}
+    virtual void DebugRequest(const char *request,
+                              char *response_buffer,
+                              uint32_t response_buffer_size) override {}
+    virtual vr::DriverPose_t GetPose() override { return this->pose; }
+
+    TrackedDevice(uint64_t device_index) : device_index(device_index) {
+        this->pose.result = vr::TrackingResult_Uninitialized;
+    }
+    virtual void activate_inner() {}
+};
+
 class Hmd : public TrackedDevice, vr::IVRDisplayComponent, vr::IVRDriverDirectModeComponent {
+  public:
     bool do_presentation;
     DriverConfigUpdate config;
     std::chrono::steady_clock::time_point next_virtual_vsync;
+    std::vector<Layer> current_layers; // reset after every Present()
 
     // map texture handles to their swapchain, which can be repeated
     std::map<vr::SharedTextureHandle_t, SwapchainData> swapchains;
-
-    std::vector<Layer> current_layers; // reset after every Present()
 
     // TrackedDevice
     virtual void activate_inner() override;
@@ -45,8 +69,21 @@ class Hmd : public TrackedDevice, vr::IVRDisplayComponent, vr::IVRDriverDirectMo
     virtual void PostPresent() override;
     virtual void GetFrameTiming(vr::DriverDirectMode_FrameTiming *frame_timing) override;
 
-  public:
     Hmd(uint64_t device_index, bool do_presentation, DriverConfigUpdate config)
-        : TrackedDevice(device_index), do_presentation(do_presentation), config(config),
-          next_virtual_vsync(std::chrono::steady_clock::now()) {}
+        : TrackedDevice(device_index), do_presentation(do_presentation), config(config) {}
+};
+
+class Controller : public TrackedDevice {
+  public:
+    vr::ETrackedControllerRole role;
+
+    virtual void activate_inner() override;
+
+    Controller(uint64_t device_index, vr::ETrackedControllerRole role)
+        : TrackedDevice(device_index), role(role) {}
+};
+
+class GenericTracker : public TrackedDevice {
+  public:
+    GenericTracker(uint64_t device_index) : TrackedDevice(device_index){};
 };

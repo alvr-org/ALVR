@@ -9,12 +9,7 @@ fn main() {
         .cpp(true)
         .flag_if_supported("-std=c++17")
         .flag_if_supported("-Wno-unused-parameter")
-        .files([
-            "cpp/tracked_device.cpp",
-            "cpp/hmd.cpp",
-            "cpp/controller.cpp",
-            "cpp/driver.cpp",
-        ])
+        .files(["cpp/tracked_devices.cpp", "cpp/driver.cpp"])
         .include("cpp")
         .compile("bindings");
 

@@ -1,5 +1,5 @@
 use alvr_common::{Fov, OpenvrPropValue};
-use nalgebra::{UnitQuaternion, Vector2, Vector3};
+use nalgebra::{UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -40,6 +40,7 @@ pub struct Layer {
 pub enum DriverRequest {
     GetInitializationConfig,
     GetExtraProperties(u64), // device index
+    GetButtonLayout(u64),    // device index
     CreateSwapchain {
         images_count: usize,
         width: u32,
@@ -55,6 +56,7 @@ pub enum DriverRequest {
     },
     PresentLayers(Vec<Vec<Layer>>),
     Haptics {
+        device_index: u64,
         duration: Duration,
         frequency: f32,
         amplitude: f32,
@@ -62,9 +64,10 @@ pub enum DriverRequest {
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum ButtonType {
+pub enum InputType {
     Boolean,
-    Scalar,
+    NormalizedOneSided,
+    NormalizedTwoSided,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -77,7 +80,7 @@ pub enum ButtonValue {
 pub struct TrackedDeviceConfig {
     pub serial_number: String,
     pub device_type: TrackedDeviceType,
-    pub available_buttons: Vec<(String, ButtonType)>,
+    pub available_buttons: Vec<(String, InputType)>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -88,6 +91,7 @@ pub enum ResponseForDriver {
         display_config: Option<DisplayConfig>, // None if there is no Hmd tracked device
     },
     ExtraProperties(Vec<(String, OpenvrPropValue)>),
+    ButtonLayout(Vec<(String, InputType)>),
     Swapchain {
         id: u64,
         textures: Vec<u64>, // HANDLEs or file descriptors
@@ -107,14 +111,18 @@ pub struct MotionData {
 pub enum SsePacket {
     UpdateConfig(DriverConfigUpdate),
     PropertyChanged {
+        device_index: u64,
         name: String,
         value: OpenvrPropValue,
     },
     TrackingData {
-        trackers_data: Vec<Option<MotionData>>,
-        hand_skeleton_motions: [Option<Box<[MotionData; 25]>>; 2],
+        motion_data: Vec<Option<MotionData>>,
+        hand_skeleton_motions: Box<[Option<[MotionData; 25]>; 2]>,
         target_time_offset: Duration, // controls black pull and controller jitter
     },
-    ButtonsData(Vec<(String, ButtonValue)>),
+    ButtonsData(Vec<Vec<(String, ButtonValue)>>), // [0]: device index
+    // ClientDisconnected, todo: use VREvent_WirelessDisconnect
+    // ClientReconnected, todo: use VREvent_WirelessReconnect
     Restart,
+    // Note: shutdown is issued just by closing the IPC pipe
 }

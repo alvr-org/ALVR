@@ -1,10 +1,24 @@
-
-#include "hmd.h"
-#include <algorithm>
-#include <string>
+#include "tracked_devices.h"
 #include <thread>
 
-void Hmd::activate_inner() {}
+vr::EVRInitError TrackedDevice::Activate(uint32_t object_id) {
+    this->object_id = object_id;
+    this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(object_id);
+
+    this->activate_inner();
+
+    set_extra_properties(this->device_index);
+    set_button_layout(this->device_index);
+
+    // Always provide a haptics endpoint, even for the hmd or generic tracker classes. These classes
+    // will not receive events or their events will be ignored by the server.
+    vr::VRDriverInput()->CreateHapticComponent(
+        this->prop_container, "/output/haptic", &this->haptics_container);
+
+    return vr::VRInitError_None;
+};
+
+void Hmd::activate_inner() { this->next_virtual_vsync = std::chrono::steady_clock::now(); }
 
 void *Hmd::GetComponent(const char *component_name_and_version) {
     auto name_and_vers = std::string(component_name_and_version);
@@ -36,10 +50,10 @@ void Hmd::GetEyeOutputViewport(
 
 void Hmd::GetProjectionRaw(vr::EVREye eye, float *left, float *right, float *top, float *bottom) {
     auto fov = this->config.fov[eye];
-    *left = fov.left;
-    *right = fov.right;
-    *top = fov.top;
-    *bottom = fov.bottom;
+    *left = fov.vTopLeft.v[0];
+    *right = fov.vBottomRight.v[0];
+    *top = fov.vTopLeft.v[1];
+    *bottom = fov.vBottomRight.v[1];
 }
 
 vr::DistortionCoordinates_t Hmd::ComputeDistortion(vr::EVREye, float u, float v) {
@@ -82,7 +96,7 @@ void Hmd::DestroyAllSwapTextureSets(uint32_t pid) {
 
 void Hmd::GetNextSwapTextureSetIndex(vr::SharedTextureHandle_t shared_texture_handles[2],
                                      uint32_t (*indices)[2]) {
-    for (int idx; idx < 2; idx++) {
+    for (int idx = 0; idx < 2; idx++) {
         auto swapchain = this->swapchains.at(shared_texture_handles[idx]);
         (*indices)[idx] = next_swapchain_index(swapchain.id);
     }
@@ -100,7 +114,7 @@ void Hmd::SubmitLayer(const SubmitLayerPerEye_t (&eye)[2]) {
 }
 
 void Hmd::Present(vr::SharedTextureHandle_t sync_texture) {
-    // todo: acquire sync on sync_texture
+    // todo: acquire lock on sync_texture
 
     // This call will block until the server finished rendering
     present(&this->current_layers[0], this->current_layers.size());
@@ -123,4 +137,9 @@ void Hmd::GetFrameTiming(vr::DriverDirectMode_FrameTiming *frame_timing) {
     if (frame_timing->m_nReprojectionFlags & vr::VRCompositor_ReprojectionMotion_AppThrottled) {
         // todo: halve framerate
     }
+}
+
+void Controller::activate_inner() {
+    vr::VRProperties()->SetInt32Property(
+        this->prop_container, vr::Prop_ControllerRoleHint_Int32, this->role);
 }

@@ -7,13 +7,16 @@
 
 use alvr_common::{Fov, OpenvrPropValue};
 use alvr_ipc::{
-    DriverConfigUpdate, DriverRequest, IpcClient, IpcSseReceiver, Layer, ResponseForDriver,
-    SsePacket, TrackedDeviceType,
+    ButtonValue, DriverConfigUpdate, DriverRequest, InputType, IpcClient, IpcSseReceiver, Layer,
+    MotionData, ResponseForDriver, SsePacket, TrackedDeviceType,
 };
 use core::slice;
+use nalgebra::Vector3;
 use parking_lot::Mutex;
+use std::collections::HashMap;
 use std::ffi::CString;
 use std::ptr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{ffi::c_void, os::raw::c_char, sync::Arc, thread, time::Duration};
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -41,6 +44,12 @@ lazy_static::lazy_static! {
             sse_receiver,
         }))
     };
+
+    static ref IPC_RUNNING: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
+
+    static ref BUTTON_COMPONENTS:
+        Arc<Mutex<HashMap<u64, HashMap<String, vr::VRInputComponentHandle_t>>>> =
+            Arc::new(Mutex::new(HashMap::new()));
 }
 
 fn log(message: &str) {
@@ -48,27 +57,158 @@ fn log(message: &str) {
     unsafe { drv::log(c_string.as_ptr()) };
 }
 
+fn ipc_driver_config_to_driver(config: DriverConfigUpdate) -> drv::DriverConfigUpdate {
+    drv::DriverConfigUpdate {
+        preferred_view_width: config.preferred_view_size.0,
+        preferred_view_height: config.preferred_view_size.1,
+        fov: [
+            vr::HmdRect2_t {
+                vTopLeft: vr::HmdVector2_t {
+                    v: [config.fov[0].left, config.fov[0].top],
+                },
+                vBottomRight: vr::HmdVector2_t {
+                    v: [config.fov[0].right, config.fov[0].bottom],
+                },
+            },
+            vr::HmdRect2_t {
+                vTopLeft: vr::HmdVector2_t {
+                    v: [config.fov[1].left, config.fov[1].top],
+                },
+                vBottomRight: vr::HmdVector2_t {
+                    v: [config.fov[1].right, config.fov[1].bottom],
+                },
+            },
+        ],
+        ipd_m: config.ipd_m,
+        fps: config.fps,
+    }
+}
+
+fn set_property(device_index: u64, name: &str, value: OpenvrPropValue) {
+    let key = match tracked_device_property_name_to_key(name) {
+        Ok(key) => key,
+        Err(e) => {
+            log(&e);
+            return;
+        }
+    };
+
+    unsafe {
+        match value {
+            OpenvrPropValue::Bool(value) => drv::set_bool_property(device_index, key, value),
+            OpenvrPropValue::Float(value) => drv::set_float_property(device_index, key, value),
+            OpenvrPropValue::Int32(value) => drv::set_int32_property(device_index, key, value),
+            OpenvrPropValue::Uint64(value) => drv::set_uint64_property(device_index, key, value),
+            OpenvrPropValue::Vector3(value) => {
+                drv::set_vec3_property(device_index, key, &vr::HmdVector3_t { v: value })
+            }
+            OpenvrPropValue::Double(value) => drv::set_double_property(device_index, key, value),
+            OpenvrPropValue::String(value) => {
+                let c_string = CString::new(value).unwrap();
+                drv::set_string_property(device_index, key, c_string.as_ptr())
+            }
+        }
+    };
+}
+
+fn set_tracking_data(
+    motion_data: Vec<Option<MotionData>>,
+    hand_skeleton_motions: [Option<[MotionData; 25]>; 2],
+    target_time_offset: Duration,
+) {
+    let time_offset_s = target_time_offset.as_secs_f64();
+
+    let data = motion_data
+        .into_iter()
+        .map(|maybe_data| {
+            if let Some(data) = maybe_data {
+                let p = data.position;
+                let o = data.orientation;
+                let lv = data.linear_velocity.unwrap_or_else(Vector3::zeros);
+                let av = data.angular_velocity.unwrap_or_else(Vector3::zeros);
+
+                vr::DriverPose_t {
+                    poseTimeOffset: time_offset_s,
+                    vecPosition: [p[0] as _, p[1] as _, p[2] as _],
+                    vecVelocity: [lv[0] as _, lv[1] as _, lv[2] as _],
+                    qRotation: vr::HmdQuaternion_t {
+                        w: o[3] as _,
+                        x: o[0] as _,
+                        y: o[1] as _,
+                        z: o[2] as _,
+                    },
+                    vecAngularVelocity: [av[0] as _, av[1] as _, av[2] as _],
+                    result: vr::TrackingResult_Running_OK,
+                    poseIsValid: true,
+                    deviceIsConnected: true,
+                    ..Default::default()
+                }
+            } else {
+                vr::DriverPose_t {
+                    result: vr::TrackingResult_Uninitialized,
+                    deviceIsConnected: false,
+                    ..Default::default()
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+
+    unsafe { drv::set_tracking_data(data.as_ptr(), data.len() as _) };
+}
+
+fn set_button_data(data: Vec<Vec<(String, ButtonValue)>>) {
+    let components = BUTTON_COMPONENTS.lock();
+    for (device_index, values) in data.into_iter().enumerate() {
+        let device_components = &components[&(device_index as _)];
+        for (path, value) in values {
+            let component = device_components[&path];
+            unsafe {
+                match value {
+                    ButtonValue::Boolean(value) => drv::update_boolean_component(component, value),
+                    ButtonValue::Scalar(value) => drv::update_scalar_component(component, value),
+                }
+            }
+        }
+    }
+}
+
 extern "C" fn spawn_sse_receiver_loop() -> bool {
     if let Some(mut receiver) = IPC_CONNECTIONS.lock().sse_receiver.take() {
         thread::spawn(move || {
-            while let Ok(maybe_message) = receiver.receive_non_blocking() {
-                match maybe_message {
-                    Some(message) => match message {
-                        SsePacket::UpdateConfig(_) => todo!(),
-                        SsePacket::PropertyChanged { name, value } => todo!(),
-                        SsePacket::TrackingData {
-                            trackers_data,
-                            hand_skeleton_motions,
-                            target_time_offset,
-                        } => todo!(),
-                        SsePacket::ButtonsData(data) => todo!(),
-                        SsePacket::Restart => todo!(),
-                    },
-                    None => {
-                        thread::sleep(Duration::from_millis(2));
+            while IPC_RUNNING.load(Ordering::Relaxed) {
+                if let Ok(maybe_message) = receiver.receive_non_blocking() {
+                    match maybe_message {
+                        Some(message) => match message {
+                            SsePacket::UpdateConfig(config) => unsafe {
+                                drv::update_config(ipc_driver_config_to_driver(config))
+                            },
+                            SsePacket::PropertyChanged {
+                                device_index,
+                                name,
+                                value,
+                            } => set_property(device_index, &name, value),
+                            SsePacket::TrackingData {
+                                motion_data,
+                                hand_skeleton_motions,
+                                target_time_offset,
+                            } => set_tracking_data(
+                                motion_data,
+                                *hand_skeleton_motions,
+                                target_time_offset,
+                            ),
+                            SsePacket::ButtonsData(data) => set_button_data(data),
+                            SsePacket::Restart => unsafe { drv::restart() },
+                        },
+                        None => {
+                            thread::sleep(Duration::from_millis(2));
+                        }
                     }
+                } else {
+                    break;
                 }
             }
+
+            unsafe { drv::vendor_event(vr::VREvent_DriverRequestedQuit) };
         });
 
         true
@@ -77,27 +217,8 @@ extern "C" fn spawn_sse_receiver_loop() -> bool {
     }
 }
 
-fn ipc_driver_config_to_driver(config: DriverConfigUpdate) -> drv::DriverConfigUpdate {
-    drv::DriverConfigUpdate {
-        preferred_view_width: config.preferred_view_size.0,
-        preferred_view_height: config.preferred_view_size.1,
-        fov: [
-            drv::Fov {
-                left: config.fov[0].left,
-                right: config.fov[0].right,
-                top: config.fov[0].top,
-                bottom: config.fov[0].bottom,
-            },
-            drv::Fov {
-                left: config.fov[1].left,
-                right: config.fov[1].right,
-                top: config.fov[1].top,
-                bottom: config.fov[1].bottom,
-            },
-        ],
-        ipd_m: config.ipd_m,
-        fps: config.fps,
-    }
+extern "C" fn stop_sse_receiver() {
+    IPC_RUNNING.store(false, Ordering::Relaxed);
 }
 
 extern "C" fn get_initialization_config() -> drv::InitializationConfig {
@@ -163,33 +284,6 @@ extern "C" fn get_initialization_config() -> drv::InitializationConfig {
     drv::InitializationConfig::default()
 }
 
-fn set_property(device_index: u64, name: &str, value: OpenvrPropValue) {
-    let key = match tracked_device_property_name_to_key(name) {
-        Ok(key) => key,
-        Err(e) => {
-            log(&e);
-            return;
-        }
-    };
-
-    unsafe {
-        match value {
-            OpenvrPropValue::Bool(value) => drv::set_bool_property(device_index, key, value),
-            OpenvrPropValue::Float(value) => drv::set_float_property(device_index, key, value),
-            OpenvrPropValue::Int32(value) => drv::set_int32_property(device_index, key, value),
-            OpenvrPropValue::Uint64(value) => drv::set_uint64_property(device_index, key, value),
-            OpenvrPropValue::Vector3(value) => {
-                drv::set_vec3_property(device_index, key, &vr::HmdVector3_t { v: value })
-            }
-            OpenvrPropValue::Double(value) => drv::set_double_property(device_index, key, value),
-            OpenvrPropValue::String(value) => {
-                let c_string = CString::new(value).unwrap();
-                drv::set_string_property(device_index, key, c_string.as_ptr())
-            }
-        }
-    };
-}
-
 extern "C" fn set_extra_properties(device_index: u64) {
     if let Some(client) = &mut IPC_CONNECTIONS.lock().client {
         let response = client.request(&DriverRequest::GetExtraProperties(device_index));
@@ -199,6 +293,55 @@ extern "C" fn set_extra_properties(device_index: u64) {
                 set_property(device_index, &name, value);
             }
         }
+    }
+}
+
+extern "C" fn set_button_layout(device_index: u64) {
+    if let Some(client) = &mut IPC_CONNECTIONS.lock().client {
+        let response = client.request(&DriverRequest::GetButtonLayout(device_index));
+
+        if let Ok(ResponseForDriver::ButtonLayout(layout)) = response {
+            let components = layout
+                .into_iter()
+                .map(|(path, input_type)| {
+                    let path_cstring = CString::new(path.clone()).unwrap();
+                    let component = unsafe {
+                        match input_type {
+                            InputType::Boolean => {
+                                drv::create_boolean_component(device_index, path_cstring.as_ptr())
+                            }
+                            InputType::NormalizedOneSided => drv::create_scalar_component(
+                                device_index,
+                                path_cstring.as_ptr(),
+                                vr::VRScalarUnits_NormalizedOneSided,
+                            ),
+                            InputType::NormalizedTwoSided => drv::create_scalar_component(
+                                device_index,
+                                path_cstring.as_ptr(),
+                                vr::VRScalarUnits_NormalizedTwoSided,
+                            ),
+                        }
+                    };
+
+                    (path, component)
+                })
+                .collect();
+
+            BUTTON_COMPONENTS.lock().insert(device_index, components);
+        }
+    }
+}
+
+extern "C" fn send_haptics(device_index: u64, event: vr::VREvent_HapticVibration_t) {
+    if let Some(client) = &mut IPC_CONNECTIONS.lock().client {
+        client
+            .request(&DriverRequest::Haptics {
+                device_index,
+                duration: Duration::from_secs_f32(event.fDurationSeconds),
+                frequency: event.fFrequency,
+                amplitude: event.fAmplitude,
+            })
+            .ok();
     }
 }
 
@@ -256,14 +399,12 @@ extern "C" fn present(layers: *const drv::Layer, count: u32) {
             let mut layer_views = vec![];
             for idx in 0..2 {
                 let fov = Fov {
-                    left: drv_layer.fov[idx].left,
-                    right: drv_layer.fov[idx].right,
-                    top: drv_layer.fov[idx].top,
-                    bottom: drv_layer.fov[idx].bottom,
+                    left: drv_layer.fov[idx].vTopLeft.v[0],
+                    right: drv_layer.fov[idx].vBottomRight.v[0],
+                    top: drv_layer.fov[idx].vTopLeft.v[1],
+                    bottom: drv_layer.fov[idx].vBottomRight.v[1],
                 };
 
-                // float uMin, vMin;
-                // float uMax, vMax;
                 let rect_offset = (drv_layer.bounds[idx].uMin, drv_layer.bounds[idx].vMin);
                 let rect_size = (
                     drv_layer.bounds[idx].uMax - rect_offset.0,
@@ -294,6 +435,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
 ) -> *mut c_void {
     // Initialize funtion pointers
     drv::spawn_sse_receiver_loop = Some(spawn_sse_receiver_loop);
+    drv::stop_sse_receiver = Some(stop_sse_receiver);
     drv::get_initialization_config = Some(get_initialization_config);
     drv::set_extra_properties = Some(set_extra_properties);
     drv::create_swapchain = Some(create_swapchain);

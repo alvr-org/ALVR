@@ -16,9 +16,9 @@ raw-window-handle = "0.3"
 wgpu = { git = "https://github.com/gfx-rs/wgpu" }
 
 [target.'cfg(target_os = "android")'.dependencies]
-ndk = { git = "https://github.com/MarijnS95/android-ndk-rs", rev = "4f80b7d1b2ad2eb637f765d3bbe48b285563d39a", features = [
+ndk = { git = "https://github.com/MarijnS95/android-ndk-rs", rev = "7c1f9400cfec99eda693f84bd7465138bc086c97", features = [
     "media",
     "hardware_buffer",
     "api-level-24",
 ] }
-ndk-sys = { git = "https://github.com/MarijnS95/android-ndk-rs", rev = "4f80b7d1b2ad2eb637f765d3bbe48b285563d39a" }
+ndk-sys = { git = "https://github.com/MarijnS95/android-ndk-rs", rev = "7c1f9400cfec99eda693f84bd7465138bc086c97" }

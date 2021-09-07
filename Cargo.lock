@@ -2951,11 +2951,11 @@ dependencies = [
 [[package]]
 name = "ndk"
 version = "0.4.0"
-source = "git+https://github.com/MarijnS95/android-ndk-rs?rev=4f80b7d1b2ad2eb637f765d3bbe48b285563d39a#4f80b7d1b2ad2eb637f765d3bbe48b285563d39a"
+source = "git+https://github.com/MarijnS95/android-ndk-rs?rev=7c1f9400cfec99eda693f84bd7465138bc086c97#7c1f9400cfec99eda693f84bd7465138bc086c97"
 dependencies = [
  "bitflags",
  "jni-sys",
- "ndk-sys 0.2.1 (git+https://github.com/MarijnS95/android-ndk-rs?rev=4f80b7d1b2ad2eb637f765d3bbe48b285563d39a)",
+ "ndk-sys 0.2.1 (git+https://github.com/MarijnS95/android-ndk-rs?rev=7c1f9400cfec99eda693f84bd7465138bc086c97)",
  "num_enum",
  "thiserror",
 ]
@@ -3010,7 +3010,7 @@ checksum = "c44922cb3dbb1c70b5e5f443d63b64363a898564d739ba5198e3a9138442868d"
 [[package]]
 name = "ndk-sys"
 version = "0.2.1"
-source = "git+https://github.com/MarijnS95/android-ndk-rs?rev=4f80b7d1b2ad2eb637f765d3bbe48b285563d39a#4f80b7d1b2ad2eb637f765d3bbe48b285563d39a"
+source = "git+https://github.com/MarijnS95/android-ndk-rs?rev=7c1f9400cfec99eda693f84bd7465138bc086c97#7c1f9400cfec99eda693f84bd7465138bc086c97"
 
 [[package]]
 name = "nix"
@@ -5021,8 +5021,8 @@ dependencies = [
  "alvr_session",
  "ash",
  "graphics",
- "ndk 0.4.0 (git+https://github.com/MarijnS95/android-ndk-rs?rev=4f80b7d1b2ad2eb637f765d3bbe48b285563d39a)",
- "ndk-sys 0.2.1 (git+https://github.com/MarijnS95/android-ndk-rs?rev=4f80b7d1b2ad2eb637f765d3bbe48b285563d39a)",
+ "ndk 0.4.0 (git+https://github.com/MarijnS95/android-ndk-rs?rev=7c1f9400cfec99eda693f84bd7465138bc086c97)",
+ "ndk-sys 0.2.1 (git+https://github.com/MarijnS95/android-ndk-rs?rev=7c1f9400cfec99eda693f84bd7465138bc086c97)",
  "pollster",
  "raw-window-handle",
  "wgpu",

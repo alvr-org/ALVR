@@ -10,3 +10,4 @@ Categories=Game;
 StartupNotify=true
 PrefersNonDefaultGPU=true
 X-KDE-RunOnDiscreteGpu=true
+StartupWMClass=ALVR

@@ -80,14 +80,7 @@ fn bump_rpm_spec_version(new_version: &str, is_nightly: bool) {
         if new_version.contains('-') {
             let (_, tmp_start, mut tmp_end) = split_string(new_version, "", '-');
             tmp_end.remove(0);
-            (
-                tmp_start,
-                if is_nightly {
-                    format!("0.0.1{}+nightly.{}", tmp_end, date_utc_yyyymmdd())
-                } else {
-                    format!("0.0.1{}", tmp_end)
-                },
-            )
+            (tmp_start, format!("0.0.1{}", tmp_end))
         } else {
             (new_version.to_string(), "1.0.0".to_string())
         }
@@ -102,10 +95,27 @@ fn bump_rpm_spec_version(new_version: &str, is_nightly: bool) {
     let spec = format!("{}{}{}", file_start, version_end, file_end);
 
     // Replace Source in github URL
-    let (file_start, _, file_end) = split_string(&spec, "refs/tags/v", 't');
-    let spec = format!("{}{}.{}", file_start, new_version, file_end);
+    let spec = {
+        if is_nightly {
+            spec
+        } else {
+            let (file_start, _, file_end) = split_string(&spec, "refs/tags/v", 't');
+            format!("{}{}.{}", file_start, new_version, file_end)
+        }
+    };
 
     fs::write(spec_path, spec).unwrap();
+}
+
+fn bump_deb_control_version(new_version: &str) {
+    let control_path = afs::workspace_dir().join("packaging/deb/control");
+    let control = fs::read_to_string(&control_path).unwrap();
+
+    // Replace Version
+    let (file_start, _, file_end) = split_string(&control, "\nVersion: ", '\n');
+    let control = format!("{}{}{}", file_start, new_version, file_end);
+
+    fs::write(control_path, control).unwrap();
 }
 
 pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
@@ -133,6 +143,7 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
     }
     bump_client_gradle_version(&version, is_nightly);
     bump_rpm_spec_version(&version, is_nightly);
+    bump_deb_control_version(&version);
 
     println!("Git tag:\nv{}", version);
 }

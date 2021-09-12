@@ -303,7 +303,7 @@ define({
             "Ask for confirmation before reverting settings to default value",
         "_root_extra_restartConfirmDialog.name": "Confirm SteamVR restart",
         "_root_extra_promptBeforeUpdate.name": "Prompt before update",
-        "_root_extra_updateChannel-choice-.name": "Update channel (Windows only)",
+        "_root_extra_updateChannel-choice-.name": "Update channel",
         "_root_extra_updateChannel_noUpdates-choice-.name": "No updates",
         "_root_extra_updateChannel_stable-choice-.name": "Stable",
         "_root_extra_updateChannel_beta-choice-.name": "Beta",

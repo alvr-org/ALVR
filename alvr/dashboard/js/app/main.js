@@ -37,11 +37,6 @@ define([
         const template = compiledTemplate(i18n);
 
         function checkForUpdate(settings, delay) {
-            // Linux uses package managers or manual updates
-            if (/Linux/.test(window.navigator.platform)) {
-                return;
-            }
-
             session = settings.getSession();
             const updateType =
                 session.sessionSettings.extra.updateChannel.variant;
@@ -307,14 +302,9 @@ define([
                 });
             });
 
-            // Linux uses package managers or manual updates
-            if (/Linux/.test(window.navigator.platform)) {
-                $("#checkForUpdates").hide();
-            } else {
-                $("#checkForUpdates").click(() => {
-                    checkForUpdate(settings, 5000);
-                });
-            }
+            $("#checkForUpdates").click(() => {
+                checkForUpdate(settings, 5000);
+            });
 
             $("#version").text("v" + version);
 

@@ -34,7 +34,7 @@ bzip2 'packaging/selinux/%{name}.pp'
 
 %changelog
 * Fri Jul 30 2021 Trae Santiago <trae32566@gmail.com> - 16.0.0-0.0.1rc1
-    - Initial release; see Github For changelog
+    - Initial release; see GitHub For changelog
 
 %install
 # Create dirs

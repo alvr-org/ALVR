@@ -1,14 +1,12 @@
 mod command;
 mod dependencies;
+mod packaging;
 mod version;
 
 use alvr_filesystem::{self as afs, Layout};
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
-};
+use std::{env, fs, path::Path, time::Instant};
 
 const HELP_STR: &str = r#"
 cargo xtask
@@ -286,163 +284,6 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
     .unwrap();
 }
 
-fn build_installer(wix_path: &str) {
-    let wix_path = PathBuf::from(wix_path).join("bin");
-    let heat_cmd = wix_path.join("heat.exe");
-    let candle_cmd = wix_path.join("candle.exe");
-    let light_cmd = wix_path.join("light.exe");
-
-    // Clear away build and prerelease version specifiers, MSI can have only dot-separated numbers.
-    let mut version = version::version();
-    if let Some(idx) = version.find('-') {
-        version = version[..idx].to_owned();
-    }
-    if let Some(idx) = version.find('+') {
-        version = version[..idx].to_owned();
-    }
-
-    command::run_without_shell(
-        &heat_cmd.to_string_lossy(),
-        &[
-            "dir",
-            "build\\alvr_server_windows",
-            "-ag",
-            "-sreg",
-            "-srd",
-            "-dr",
-            "APPLICATIONFOLDER",
-            "-cg",
-            "BuildFiles",
-            "-var",
-            "var.BuildRoot",
-            "-o",
-            "target\\wix\\harvested.wxs",
-        ],
-    )
-    .unwrap();
-
-    command::run_without_shell(
-        &candle_cmd.to_string_lossy(),
-        &[
-            "-arch",
-            "x64",
-            "-dBuildRoot=build\\alvr_server_windows",
-            "-ext",
-            "WixUtilExtension",
-            &format!("-dVersion={}", version),
-            "alvr\\xtask\\wix\\main.wxs",
-            "target\\wix\\harvested.wxs",
-            "-o",
-            "target\\wix\\",
-        ],
-    )
-    .unwrap();
-
-    command::run_without_shell(
-        &light_cmd.to_string_lossy(),
-        &[
-            "target\\wix\\main.wixobj",
-            "target\\wix\\harvested.wixobj",
-            "-ext",
-            "WixUIExtension",
-            "-ext",
-            "WixUtilExtension",
-            "-o",
-            "target\\wix\\alvr.msi",
-        ],
-    )
-    .unwrap();
-
-    // Build the bundle including ALVR and vc_redist.
-    command::run_without_shell(
-        &candle_cmd.to_string_lossy(),
-        &[
-            "-arch",
-            "x64",
-            "-dBuildRoot=build\\alvr_server_windows",
-            "-ext",
-            "WixUtilExtension",
-            "-ext",
-            "WixBalExtension",
-            "alvr\\xtask\\wix\\bundle.wxs",
-            "-o",
-            "target\\wix\\",
-        ],
-    )
-    .unwrap();
-
-    command::run_without_shell(
-        &light_cmd.to_string_lossy(),
-        &[
-            "target\\wix\\bundle.wixobj",
-            "-ext",
-            "WixUtilExtension",
-            "-ext",
-            "WixBalExtension",
-            "-o",
-            &format!("build\\ALVR_Installer_v{}.exe", version),
-        ],
-    )
-    .unwrap();
-}
-
-pub fn publish_server(is_nightly: bool, root: Option<String>) {
-    build_server(true, false, false, false, root);
-
-    // Add licenses
-    let licenses_dir = afs::server_build_dir().join("licenses");
-    fs::create_dir_all(&licenses_dir).unwrap();
-    fs::copy(
-        afs::workspace_dir().join("LICENSE"),
-        licenses_dir.join("ALVR.txt"),
-    )
-    .unwrap();
-    command::run("cargo install cargo-about").unwrap();
-    command::run(&format!(
-        "cargo about generate {} > {}",
-        afs::workspace_dir()
-            .join("alvr")
-            .join("xtask")
-            .join("licenses_template.hbs")
-            .to_string_lossy(),
-        licenses_dir.join("dependencies.html").to_string_lossy()
-    ))
-    .unwrap();
-    fs::copy(
-        afs::workspace_dir()
-            .join("alvr")
-            .join("server")
-            .join("LICENSE-Valve"),
-        licenses_dir.join("Valve.txt"),
-    )
-    .unwrap();
-
-    command::zip(&afs::server_build_dir()).unwrap();
-
-    if cfg!(windows) {
-        if is_nightly {
-            fs::copy(
-                afs::target_dir().join("release").join("alvr_server.pdb"),
-                afs::build_dir().join("alvr_server.pdb"),
-            )
-            .unwrap();
-        }
-
-        if let Some(wix_evar) = env::vars().find(|v| v.0 == "WIX") {
-            println!("Found WiX, will build installer.");
-
-            build_installer(&wix_evar.1);
-        } else {
-            println!("No WiX toolset installation found, skipping installer.");
-        }
-    }
-}
-
-pub fn publish_client(is_nightly: bool) {
-    build_client(!is_nightly, is_nightly, false);
-    build_client(!is_nightly, is_nightly, true);
-}
-
 // Avoid Oculus link popups when debugging the client
 pub fn kill_oculus_processes() {
     command::run_without_shell(
@@ -483,6 +324,8 @@ fn prettier() {
 }
 
 fn main() {
+    let begin_time = Instant::now();
+
     env::set_var("RUST_BACKTRACE", "1");
 
     let mut args = Arguments::from_env();
@@ -517,8 +360,8 @@ fn main() {
                 "build-ffmpeg-linux" => {
                     dependencies::build_ffmpeg_linux();
                 }
-                "publish-server" => publish_server(is_nightly, root),
-                "publish-client" => publish_client(is_nightly),
+                "publish-server" => packaging::publish_server(is_nightly, root),
+                "publish-client" => packaging::publish_client(is_nightly),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
                 "bump-versions" => version::bump_version(version, is_nightly),
@@ -541,5 +384,5 @@ fn main() {
         return;
     }
 
-    println!("\nDone\n");
+    println!("\nDone (in {:?})\n", Instant::now() - begin_time);
 }

@@ -111,11 +111,17 @@ pub fn build_ffmpeg_linux() -> std::path::PathBuf {
 }
 
 pub fn build_deps(target_os: &str) {
-    if target_os == "windows" {
-        command::run("cargo install wasm-pack").unwrap();
-    } else if target_os == "android" {
+    if target_os == "android" {
         command::run("rustup target add aarch64-linux-android").unwrap();
+        command::run("cargo install cargo-apk").unwrap();
+
         build_rust_android_gradle();
+
+        // OpenXR SDK v1.0.18. todo: upgrade when new version is available
+        download_and_extract_zip(
+            "https://securecdn.oculus.com/binaries/download/?id=4421717764533443",
+            &afs::deps_dir().join("oculus_openxr_mobile_sdk"),
+        );
     } else {
         println!("Nothing to do for {}!", target_os)
     }

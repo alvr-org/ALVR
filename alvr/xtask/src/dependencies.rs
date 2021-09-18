@@ -110,18 +110,34 @@ pub fn build_ffmpeg_linux() -> std::path::PathBuf {
     ffmpeg_path
 }
 
+fn get_oculus_openxr_mobile_loader() {
+    let temp_sdk_dir = afs::build_dir().join("temp_download");
+
+    // OpenXR SDK v1.0.18. todo: upgrade when new version is available
+    download_and_extract_zip(
+        "https://securecdn.oculus.com/binaries/download/?id=4421717764533443",
+        &temp_sdk_dir,
+    );
+
+    let destination_dir = afs::deps_dir().join("android/oculus_openxr/arm64-v8a");
+    fs::create_dir_all(&destination_dir).unwrap();
+
+    fs::copy(
+        temp_sdk_dir.join("OpenXR/Libs/Android/arm64-v8a/Release/libopenxr_loader.so"),
+        destination_dir.join("libopenxr_loader.so"),
+    )
+    .unwrap();
+
+    fs::remove_dir_all(temp_sdk_dir).ok();
+}
+
 pub fn build_deps(target_os: &str) {
     if target_os == "android" {
         command::run("rustup target add aarch64-linux-android").unwrap();
         command::run("cargo install cargo-apk").unwrap();
 
         build_rust_android_gradle();
-
-        // OpenXR SDK v1.0.18. todo: upgrade when new version is available
-        download_and_extract_zip(
-            "https://securecdn.oculus.com/binaries/download/?id=4421717764533443",
-            &afs::deps_dir().join("oculus_openxr_mobile_sdk"),
-        );
+        get_oculus_openxr_mobile_loader();
     } else {
         println!("Nothing to do for {}!", target_os)
     }

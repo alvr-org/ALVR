@@ -1,0 +1,73 @@
+[package]
+name = "client"
+version = "16.0.0-rc2"
+authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
+license = "MIT"
+edition = "2018"
+
+[lib]
+crate_type = ["cdylib"]
+
+[dependencies]
+alvr_audio = { path = "../../audio" }
+alvr_common = { path = "../../common" }
+alvr_session = { path = "../../session" }
+alvr_sockets = { path = "../../sockets" }
+alvr_graphics = { path = "../graphics" }
+
+# Basic utilities
+lazy_static = "1"
+parking_lot = "0.11"
+rand = "0.8"
+# Serialization
+serde = "1"
+serde_json = "1"
+bincode = "1"
+settings-schema = { path = "../../settings-schema", features = [
+    "rename_camel_case",
+] }
+# Async and networking
+pollster = "0.2"
+bytes = "1"
+futures = "0.3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+# Graphics
+raw-window-handle = "0.3"
+wgpu = { git = "https://github.com/gfx-rs/wgpu" }
+wgpu-hal = { git = "https://github.com/gfx-rs/wgpu" }
+# Miscellaneous
+nalgebra = "0.29"
+semver = "1"
+openxr = "0.15.4"
+ash = "0.33"
+
+[target.'cfg(target_os = "android")'.dependencies]
+ndk = { git = "https://github.com/MarijnS95/android-ndk-rs", rev = "7c1f9400cfec99eda693f84bd7465138bc086c97", features = [
+    "media",
+    "hardware_buffer",
+    "api-level-24",
+] }
+ndk-glue = { git = "https://github.com/MarijnS95/android-ndk-rs", rev = "7c1f9400cfec99eda693f84bd7465138bc086c97" }
+ndk-sys = { git = "https://github.com/MarijnS95/android-ndk-rs", rev = "7c1f9400cfec99eda693f84bd7465138bc086c97" }
+
+[package.metadata.android]
+build_targets = ["aarch64-linux-android"]
+runtime_libs = "../../../deps/android/oculus_openxr"
+
+[package.metadata.android.sdk]
+min_sdk_version = 21
+target_sdk_version = 30
+
+[package.metadata.android.application.activity]
+theme = "@android:style/Theme.Black.NoTitleBar.Fullscreen"
+config_changes = "density|keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|uiMode"
+launch_mode = "singleTask"
+orientation = "landscape"
+resizeable_activity = "false"
+
+[[package.metadata.android.application.activity.intent_filter]]
+actions = ["android.intent.action.MAIN"]
+categories = [
+    "com.oculus.intent.category.VR",
+    "android.intent.category.LAUNCHER",
+]

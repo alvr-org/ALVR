@@ -1,5 +1,5 @@
+use alvr_graphics::TARGET_FORMAT;
 use alvr_session::ColorCorrectionDesc;
-use graphics::TARGET_FORMAT;
 use wgpu::{
     BindGroup, CommandEncoder, Device, Extent3d, RenderPipeline, TextureDescriptor,
     TextureDimension, TextureUsages, TextureView,

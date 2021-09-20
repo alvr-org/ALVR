@@ -1,5 +1,5 @@
 [package]
-name = "graphics"
+name = "alvr_graphics"
 version = "0.1.0"
 authors = ["alvr-org"]
 license = "MIT"
@@ -11,5 +11,6 @@ alvr_session = { path = "../../session" }
 
 ash = "0.33"
 bytemuck = "1"
+openxr-sys = "0.9"
 wgpu = { git = "https://github.com/gfx-rs/wgpu" }
 wgpu-hal = { git = "https://github.com/gfx-rs/wgpu", features = ["vulkan"] }

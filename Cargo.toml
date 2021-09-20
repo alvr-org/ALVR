@@ -16,5 +16,6 @@ members = [
     "alvr/vrcompositor-wrapper",
     "alvr/vulkan-layer",
     "alvr/xtask",
+    "alvr/experiments/client", # needed for bug in cargo-subcommand
     "alvr/experiments/*",
 ]

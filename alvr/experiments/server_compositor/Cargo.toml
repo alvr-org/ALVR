@@ -8,7 +8,7 @@ edition = "2018"
 [dependencies]
 alvr_common = { path = "../../common" }
 alvr_session = { path = "../../session" }
-graphics = { path = "../graphics" }
+alvr_graphics = { path = "../graphics" }
 
 ash = "0.33"
 bytemuck = "1"

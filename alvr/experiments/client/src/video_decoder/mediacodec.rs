@@ -1,6 +1,6 @@
 use alvr_common::prelude::*;
+use alvr_graphics::Context;
 use alvr_session::{CodecType, MediacodecDataType};
-use graphics::Context;
 use ndk::{
     hardware_buffer::HardwareBufferUsage,
     media::image_reader::{ImageFormat, ImageReader},
@@ -9,16 +9,16 @@ use ndk_sys as sys;
 use raw_window_handle::{android::AndroidHandle, HasRawWindowHandle, RawWindowHandle};
 use std::{ffi::CString, ptr, sync::Arc, time::Duration};
 use wgpu::{
-    CommandEncoder, Device, Extent3d, ImageCopyTexture, Origin3d, Surface, TextureAspect,
+    CommandEncoder, Device, Extent3d, ImageCopyTexture, Origin3d, Surface, Texture, TextureAspect,
     TextureView,
 };
 
 pub struct SurfaceHandle(*mut sys::ANativeWindow);
 
-impl HasRawWindowHandle for SurfaceHandle {
+unsafe impl HasRawWindowHandle for SurfaceHandle {
     fn raw_window_handle(&self) -> RawWindowHandle {
         RawWindowHandle::Android(AndroidHandle {
-            a_native_window: self.0,
+            a_native_window: self.0 as _,
             ..AndroidHandle::empty()
         })
     }
@@ -26,7 +26,7 @@ impl HasRawWindowHandle for SurfaceHandle {
 
 pub struct VideoDecoder {
     context: Arc<Context>,
-    codec: *mut AMediaCodec,
+    codec: *mut sys::AMediaCodec,
     swapchain: ImageReader,
     swapchain_surface: Surface,
     video_size: (u32, u32),
@@ -52,7 +52,7 @@ impl VideoDecoder {
         let swapchain_surface = unsafe {
             context
                 .instance()
-                .create_surface(SurfaceHandle(surface_handle))
+                .create_surface(&SurfaceHandle(surface_handle))
         };
 
         let mime = match codec_type {
@@ -72,20 +72,20 @@ impl VideoDecoder {
             // Note: string keys and values are memcpy-ed internally into AMediaFormat. CString is
             // only needed to add the trailing null character.
             for (key, value) in extra_options {
-                let key_cstring = CString::new(key).unwrap();
+                let key_cstring = CString::new(key.clone()).unwrap();
 
                 match value {
                     MediacodecDataType::Float(value) => {
-                        sys::AMediaFormat_setFloat(format, key_cstring.as_ptr(), value)
+                        sys::AMediaFormat_setFloat(format, key_cstring.as_ptr(), *value)
                     }
                     MediacodecDataType::Int32(value) => {
-                        sys::AMediaFormat_setInt32(format, key_cstring.as_ptr(), value)
+                        sys::AMediaFormat_setInt32(format, key_cstring.as_ptr(), *value)
                     }
                     MediacodecDataType::Int64(value) => {
-                        sys::AMediaFormat_setInt64(format, key_cstring.as_ptr(), value)
+                        sys::AMediaFormat_setInt64(format, key_cstring.as_ptr(), *value)
                     }
                     MediacodecDataType::String(value) => {
-                        let value_cstring = CString::new(value).unwrap();
+                        let value_cstring = CString::new(value.clone()).unwrap();
                         sys::AMediaFormat_setString(
                             format,
                             key_cstring.as_ptr(),
@@ -131,20 +131,27 @@ impl VideoDecoder {
             unsafe { sys::AMediaCodec_dequeueInputBuffer(self.codec, timeout.as_micros() as _) };
         if index_or_error >= 0 {
             unsafe {
-                let buffer_ptr =
-                    sys::AMediaCodec_getInputBuffer(self.codec, index_or_error, out_size);
+                // todo: check for overflow
+                let mut _out_size = 0;
+                let buffer_ptr = sys::AMediaCodec_getInputBuffer(
+                    self.codec,
+                    index_or_error as _,
+                    &mut _out_size,
+                );
                 ptr::copy_nonoverlapping(data.as_ptr(), buffer_ptr, data.len());
 
                 sys::AMediaCodec_queueInputBuffer(
                     self.codec,
-                    index_or_error,
+                    index_or_error as _,
                     0,
-                    data.len(),
+                    data.len() as _,
                     frame_index as _, // presentationTimeUs is reinterpreted as the frame index
                     0,
                 );
             }
-        } else if index_or_error == sys::AMEDIACODEC_INFO_TRY_AGAIN_LATER {
+
+            Ok(true)
+        } else if index_or_error as i32 == sys::AMEDIACODEC_INFO_TRY_AGAIN_LATER {
             Ok(false)
         } else {
             return fmt_e!("Error dequeueing decoder input ({})", index_or_error);
@@ -159,24 +166,25 @@ impl VideoDecoder {
         slice_index: u32,
         timeout: Duration,
     ) -> StrResult<Option<usize>> {
-        let info: sys::AMediaCodecBufferInfo = unsafe { std::mem::zeroed() }; // todo: derive default
+        let mut info: sys::AMediaCodecBufferInfo = unsafe { std::mem::zeroed() }; // todo: derive default
         let index_or_error = unsafe {
             sys::AMediaCodec_dequeueOutputBuffer(self.codec, &mut info, timeout.as_micros() as _)
         };
         if index_or_error >= 0 {
             // Draw to the surface
-            if unsafe { sys::AMediaCodec_releaseOutputBuffer(self.codec, index_or_error, true) }
-                != 0
-            {
+            let res = unsafe {
+                sys::AMediaCodec_releaseOutputBuffer(self.codec, index_or_error as _, true)
+            };
+            if res != 0 {
                 return fmt_e!("Error releasing decoder output buffer ({})", res);
             };
 
             // Wgpu swapchain can throw Timeout or Outdated, but this should never happen here
-            let source = trace_err!(self.swapchain_surface.get_current_frame())?
+            let source = &trace_err!(self.swapchain_surface.get_current_frame())?
                 .output
                 .texture;
 
-            let encoder = self
+            let mut encoder = self
                 .context
                 .device()
                 .create_command_encoder(&Default::default());
@@ -184,7 +192,7 @@ impl VideoDecoder {
             // Copy surface/OES texture to normal texture
             encoder.copy_texture_to_texture(
                 ImageCopyTexture {
-                    texture: &source,
+                    texture: source,
                     mip_level: 0,
                     origin: Origin3d::ZERO,
                     aspect: TextureAspect::All,
@@ -211,7 +219,7 @@ impl VideoDecoder {
 
             // presentationTimeUs is reinterpreted as the frame index
             Ok(Some(info.presentationTimeUs as _))
-        } else if index_or_error == sys::AMEDIACODEC_INFO_TRY_AGAIN_LATER {
+        } else if index_or_error as i32 == sys::AMEDIACODEC_INFO_TRY_AGAIN_LATER {
             Ok(None)
         } else {
             return fmt_e!("Error dequeueing decoder output ({})", index_or_error);

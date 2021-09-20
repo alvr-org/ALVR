@@ -1,4 +1,4 @@
-use graphics::TARGET_FORMAT;
+use alvr_graphics::TARGET_FORMAT;
 use wgpu::{
     BindGroup, BlendState, Color, ColorTargetState, ColorWrites, CommandEncoder, Device,
     FragmentState, LoadOp, MultisampleState, Operations, RenderPassColorAttachment,

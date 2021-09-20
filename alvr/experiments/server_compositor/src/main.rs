@@ -1,16 +1,15 @@
 mod color_correction;
 mod compositing;
-mod convert;
 
 use alvr_common::{prelude::*, Fov};
-use alvr_session::{ColorCorrectionDesc, FoveatedRenderingDesc};
-use color_correction::ColorCorrectionPass;
-use compositing::{CompositingPass, Layer};
-use graphics::{
+use alvr_graphics::{
     foveated_rendering::{FoveatedRenderingPass, FrDirection},
     slicing::{AlignmentDirection, SlicingPass},
     Context, TARGET_FORMAT,
 };
+use alvr_session::{ColorCorrectionDesc, FoveatedRenderingDesc};
+use color_correction::ColorCorrectionPass;
+use compositing::{CompositingPass, Layer};
 use std::sync::Arc;
 use wgpu::{
     BindGroup, CommandEncoderDescriptor, Extent3d, Texture, TextureDescriptor, TextureDimension,
@@ -46,11 +45,6 @@ pub struct CompositionLayerView<'a> {
     pub image_rect: openxr_sys::Rect2Di,
     pub image_array_index: usize,
     pub fov: Fov,
-}
-
-pub enum TextureType {
-    D2 { array_size: u32 },
-    Cubemap, // for now cubemaps cannot be used in the compositor
 }
 
 // Most of the compositor structure cannot be modified after creation. Some parameters like FOV for
@@ -149,7 +143,19 @@ impl Compositor {
         }
     }
 
-    fn inner_create_swapchain(&self, textures: Vec<Texture>, array_size: u32) -> Swapchain {
+    // corresponds to xrCreateSwapchain
+    pub fn create_swapchain(
+        &self,
+        data: SwapchainCreateData,
+        info: SwapchainCreateInfo,
+    ) -> Swapchain {
+        let textures = create_swapchain(data, info);
+
+        let array_size = match info.texture_type {
+            TextureType::D2 { array_size } => array_size,
+            TextureType::Cubemap => 1,
+        };
+
         let bind_groups = textures
             .iter()
             .map(|texture| {

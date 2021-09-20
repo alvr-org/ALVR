@@ -1,12 +1,16 @@
+use crate::Context;
 use alvr_common::prelude::*;
 use ash::{extensions::khr, vk};
-use std::{ffi::CStr, slice};
-use wgpu::{DeviceDescriptor, Features, Texture};
+use openxr_sys::SwapchainUsageFlags;
+use std::{any::Any, ffi::CStr, slice, sync::Arc};
+use wgpu::{
+    Device, DeviceDescriptor, Extent3d, Features, Texture, TextureDescriptor, TextureDimension,
+    TextureFormat, TextureUsages,
+};
 use wgpu_hal as hal;
 
-use crate::Context;
-
 pub const TARGET_VULKAN_VERSION: u32 = vk::make_api_version(1, 0, 0, 0);
+pub const DEVICE_FEATURES: Features = Features::PUSH_CONSTANTS;
 
 // Get extensions needed by wgpu. Corresponds to xrGetVulkanInstanceExtensionsKHR
 pub fn get_vulkan_instance_extensions(
@@ -62,30 +66,50 @@ pub fn get_vulkan_graphics_device(
     Ok(physical_devices.remove(adapter_index.unwrap_or(0)))
 }
 
-// Corresponds to xrGetVulkanDeviceExtensionsKHR. Copied from wgpu.
-// Wgpu could need more extensions in future versions. Some extensions should be conditionally
-// enabled depending on the instance. todo: get directly from wgpu adapter (this can be achieved by
-// keeping track of the instance using a map with the physical device as key)
-pub fn get_vulkan_device_extensions(version: u32) -> Vec<&'static CStr> {
-    let mut extensions = vec![khr::Swapchain::name()];
+// Hal adapter used to get required device extensions and features
+pub fn get_temporary_hal_adapter(
+    entry: ash::Entry,
+    version: u32,
+    instance: ash::Instance,
+    physical_device: vk::PhysicalDevice,
+) -> StrResult<<hal::api::Vulkan as hal::Api>::Adapter> {
+    let instance_extensions = get_vulkan_instance_extensions(&entry, version)?;
 
-    if version < vk::API_VERSION_1_1 {
-        extensions.push(vk::KhrMaintenance1Fn::name());
-        extensions.push(vk::KhrMaintenance2Fn::name());
-    }
+    let mut flags = hal::InstanceFlags::empty();
+    if cfg!(debug_assertions) {
+        flags |= hal::InstanceFlags::VALIDATION;
+        flags |= hal::InstanceFlags::DEBUG;
+    };
 
-    extensions
+    let hal_instance = unsafe {
+        trace_err!(<hal::api::Vulkan as hal::Api>::Instance::from_raw(
+            entry,
+            instance,
+            version,
+            instance_extensions,
+            flags,
+            None, // <-- the instance is not destroyed on drop
+        ))?
+    };
+
+    let exposed_adapter = trace_none!(hal_instance.expose_adapter(physical_device))?;
+
+    Ok(exposed_adapter.adapter)
 }
 
 // Create wgpu-compatible Vulkan device. Corresponds to xrCreateVulkanDeviceKHR
 pub fn create_vulkan_device(
-    entry: &ash::Entry,
+    entry: ash::Entry,
     version: u32,
     instance: &ash::Instance,
     physical_device: vk::PhysicalDevice,
     create_info: &vk::DeviceCreateInfo,
 ) -> StrResult<ash::Device> {
-    let mut extensions_ptrs = get_vulkan_device_extensions(version)
+    let temp_adapter =
+        get_temporary_hal_adapter(entry, version, instance.clone(), physical_device)?;
+
+    let mut extensions_ptrs = temp_adapter
+        .required_device_extensions(DEVICE_FEATURES)
         .iter()
         .map(|x| x.as_ptr())
         .collect::<Vec<_>>();
@@ -97,6 +121,7 @@ pub fn create_vulkan_device(
         )
     });
 
+    // todo: add required wgpu features from temp_adapter
     let mut features = if !create_info.p_enabled_features.is_null() {
         unsafe { *create_info.p_enabled_features }
     } else {
@@ -129,7 +154,7 @@ impl Context {
         entry: ash::Entry,
         version: u32,
         vk_instance: ash::Instance,
-        adapter_index: Option<usize>,
+        vk_physical_device: vk::PhysicalDevice,
         vk_device: ash::Device,
         queue_family_index: u32,
         queue_index: u32,
@@ -153,14 +178,16 @@ impl Context {
             ))?
         };
 
-        let physical_device = get_vulkan_graphics_device(&vk_instance, adapter_index)?;
-        let exposed_adapter = trace_none!(instance.expose_adapter(physical_device))?;
+        let exposed_adapter = trace_none!(instance.expose_adapter(vk_physical_device))?;
+        let device_extensions = exposed_adapter
+            .adapter
+            .required_device_extensions(DEVICE_FEATURES);
 
         let open_device = unsafe {
             trace_err!(exposed_adapter.adapter.device_from_raw(
                 vk_device,
                 owned,
-                &get_vulkan_device_extensions(version),
+                &device_extensions,
                 queue_family_index,
                 queue_index,
             ))?
@@ -175,7 +202,7 @@ impl Context {
                     open_device,
                     &DeviceDescriptor {
                         label: None,
-                        features: Features::PUSH_CONSTANTS,
+                        features: DEVICE_FEATURES,
                         limits: adapter.limits(),
                     },
                     None,
@@ -206,11 +233,11 @@ impl Context {
                 .build()
         ))?;
 
-        let physical_device = get_vulkan_graphics_device(&vk_instance, adapter_index)?;
+        let vk_physical_device = get_vulkan_graphics_device(&vk_instance, adapter_index)?;
 
         let queue_family_index = unsafe {
             vk_instance
-                .get_physical_device_queue_family_properties(physical_device)
+                .get_physical_device_queue_family_properties(vk_physical_device)
                 .into_iter()
                 .enumerate()
                 .find_map(|(queue_family_index, info)| {
@@ -225,10 +252,10 @@ impl Context {
         let queue_index = 0;
 
         let vk_device = trace_err!(create_vulkan_device(
-            &entry,
+            entry.clone(),
             TARGET_VULKAN_VERSION,
             &vk_instance,
-            physical_device,
+            vk_physical_device,
             &vk::DeviceCreateInfo::builder().queue_create_infos(&[
                 vk::DeviceQueueCreateInfo::builder()
                     .queue_family_index(queue_family_index)
@@ -242,7 +269,7 @@ impl Context {
             entry,
             TARGET_VULKAN_VERSION,
             vk_instance,
-            adapter_index,
+            vk_physical_device,
             vk_device,
             queue_family_index,
             queue_index,
@@ -250,17 +277,152 @@ impl Context {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
-pub fn to_vulkan_images(textures: &[Texture]) -> Vec<vk::Image> {
-    textures
-        .iter()
-        .map(|tex| unsafe {
-            let mut handle = vk::Image::null();
-            let hal_texture = tex.as_hal::<hal::api::Vulkan>(|tex| {
-                handle = tex.unwrap().raw_handle();
-            });
+// broken for now
+// #[cfg(not(target_os = "macos"))]
+// pub fn to_vulkan_images(textures: &[Texture]) -> Vec<vk::Image> {
+//     textures
+//         .iter()
+//         .map(|tex| unsafe {
+//             let mut handle = vk::Image::null();
+//             tex.as_hal::<hal::api::Vulkan, _>(
+//                 |tex| {
+//                     handle = tex.unwrap().raw_handle();
+//                 },
+//             );
 
-            handle
-        })
-        .collect()
+//             handle
+//         })
+//         .collect()
+// }
+
+pub enum SwapchainCreateData {
+    // Used for the Vulkan layer and client
+    External {
+        images: Vec<vk::Image>,
+        vk_usage: vk::ImageUsageFlags,
+        vk_format: vk::Format,
+        hal_usage: hal::TextureUses,
+        drop_guard: Option<Arc<dyn Any + Send + Sync>>,
+    },
+
+    // Used for the Windows OpenVR driver (Some) or for a OpenXR runtime (None)
+    Count(Option<usize>),
+}
+
+pub enum TextureType {
+    Flat { array_size: u32 },
+    Cubemap, // for now cubemaps cannot be used in the compositor
+}
+
+pub struct SwapchainCreateInfo {
+    pub usage: SwapchainUsageFlags,
+    pub format: TextureFormat,
+    pub sample_count: u32,
+    pub width: u32,
+    pub height: u32,
+    pub texture_type: TextureType,
+    pub mip_count: u32,
+}
+
+pub fn create_texture_set(
+    device: &Device,
+    data: SwapchainCreateData,
+    info: SwapchainCreateInfo,
+) -> Vec<Texture> {
+    let wgpu_usage = {
+        let mut wgpu_usage = TextureUsages::TEXTURE_BINDING; // Always required
+
+        if info.usage.contains(SwapchainUsageFlags::COLOR_ATTACHMENT) {
+            wgpu_usage |= TextureUsages::RENDER_ATTACHMENT;
+        }
+        if info
+            .usage
+            .contains(SwapchainUsageFlags::DEPTH_STENCIL_ATTACHMENT)
+        {
+            wgpu_usage |= TextureUsages::RENDER_ATTACHMENT;
+        }
+        if info.usage.contains(SwapchainUsageFlags::TRANSFER_SRC) {
+            wgpu_usage |= TextureUsages::COPY_SRC;
+        }
+        if info.usage.contains(SwapchainUsageFlags::TRANSFER_DST) {
+            wgpu_usage |= TextureUsages::COPY_DST;
+        }
+
+        // Unused flags:
+        // * UNORDERED_ACCESS: No-op on vulkan
+        // * SAMPLED: Already required
+        // * MUTABLE_FORMAT: wgpu does not support this, but it should be no-op for the internal
+        //   Vulkan images (todo: check)
+        // * INPUT_ATTACHMENT: Always enabled on wgpu (todo: check)
+
+        wgpu_usage
+    };
+
+    let depth_or_array_layers = match info.texture_type {
+        TextureType::Flat { array_size } => array_size,
+        TextureType::Cubemap => 6,
+    };
+
+    let texture_descriptor = TextureDescriptor {
+        label: None,
+        size: Extent3d {
+            width: info.width,
+            height: info.height,
+            depth_or_array_layers,
+        },
+        mip_level_count: info.mip_count,
+        sample_count: info.sample_count,
+        dimension: TextureDimension::D2,
+        format: info.format,
+        usage: wgpu_usage,
+    };
+
+    let textures = match data {
+        SwapchainCreateData::External {
+            images,
+            vk_usage,
+            vk_format,
+            hal_usage,
+            drop_guard,
+        } => images
+            .into_iter()
+            .map(|vk_image| {
+                let hal_texture = unsafe {
+                    <hal::api::Vulkan as hal::Api>::Device::texture_from_raw(
+                        vk_image,
+                        &hal::TextureDescriptor {
+                            label: None,
+                            size: Extent3d {
+                                width: info.width,
+                                height: info.height,
+                                depth_or_array_layers,
+                            },
+                            mip_level_count: info.mip_count,
+                            sample_count: info.sample_count,
+                            dimension: TextureDimension::D2,
+                            format: info.format,
+                            usage: hal_usage,
+                            memory_flags: hal::MemoryFlags::empty(),
+                        },
+                        drop_guard.clone().map(|guard| Box::new(guard) as _),
+                    )
+                };
+
+                #[cfg(not(target_os = "macos"))]
+                unsafe {
+                    device.create_texture_from_hal::<hal::api::Vulkan>(
+                        hal_texture,
+                        &texture_descriptor,
+                    )
+                }
+                #[cfg(target_os = "macos")]
+                unimplemented!()
+            })
+            .collect(),
+        SwapchainCreateData::Count(count) => (0..count.unwrap_or(2))
+            .map(|_| device.create_texture(&texture_descriptor))
+            .collect(),
+    };
+
+    textures
 }

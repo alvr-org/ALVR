@@ -30,6 +30,7 @@ SUBCOMMANDS:
     prettier            Format JS and CSS files with prettier; Requires Node.js and NPM.
 
 FLAGS:
+    --reproducible      Force cargo to build reproducibly. Used only for build subcommands
     --fetch             Update crates with "cargo update". Used only for build subcommands
     --release           Optimized build without debug info. Used only for build subcommands
     --experiments       Build unfinished features
@@ -56,12 +57,22 @@ pub fn build_server(
     fetch_crates: bool,
     bundle_ffmpeg: bool,
     root: Option<String>,
+    reproducible: bool,
 ) {
     // Always use CustomRoot for contructing the build directory. The actual runtime layout is respected
     let layout = Layout::new(&afs::server_build_dir());
 
     let build_type = if is_release { "release" } else { "debug" };
-    let build_flag = if is_release { "--release" } else { "" };
+
+    let build_flags = format!(
+        "{} {}",
+        if is_release { "--release" } else { "" },
+        if reproducible {
+            "--offline --locked"
+        } else {
+            ""
+        }
+    );
 
     let mut server_features: Vec<&str> = vec![];
     let mut launcher_features: Vec<&str> = vec![];
@@ -118,7 +129,7 @@ pub fn build_server(
     if cfg!(target_os = "linux") {
         command::run_in(
             &afs::workspace_dir().join("alvr/vrcompositor-wrapper"),
-            &format!("cargo build {}", build_flag),
+            &format!("cargo build {}", build_flags),
         )
         .unwrap();
         fs::create_dir_all(&layout.vrcompositor_wrapper_dir).unwrap();
@@ -134,7 +145,7 @@ pub fn build_server(
             &afs::workspace_dir().join("alvr/server"),
             &format!(
                 "cargo build {} --no-default-features --features {}",
-                build_flag,
+                build_flags,
                 server_features.join(",")
             ),
         )
@@ -149,7 +160,7 @@ pub fn build_server(
         &afs::workspace_dir().join("alvr/launcher"),
         &format!(
             "cargo build {} --no-default-features --features {}",
-            build_flag,
+            build_flags,
             launcher_features.join(",")
         ),
     )
@@ -176,7 +187,7 @@ pub fn build_server(
 
         command::run_in(
             &afs::workspace_dir().join("alvr/experiments/egui_dashboard"),
-            &format!("cargo build {}", build_flag),
+            &format!("cargo build {}", build_flags),
         )
         .unwrap();
         fs::copy(
@@ -215,7 +226,7 @@ pub fn build_server(
     if cfg!(target_os = "linux") {
         command::run_in(
             &afs::workspace_dir().join("alvr/vulkan-layer"),
-            &format!("cargo build {}", build_flag),
+            &format!("cargo build {}", build_flags),
         )
         .unwrap();
 
@@ -341,13 +352,21 @@ fn main() {
         let for_oculus_quest = args.contains("--oculus-quest");
         let for_oculus_go = args.contains("--oculus-go");
         let bundle_ffmpeg = args.contains("--bundle-ffmpeg");
+        let reproducible = args.contains("--reproducible");
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
 
         if args.finish().is_empty() {
             match subcommand.as_str() {
                 "build-windows-deps" => dependencies::build_deps("windows"),
                 "build-android-deps" => dependencies::build_deps("android"),
-                "build-server" => build_server(is_release, experiments, fetch, bundle_ffmpeg, root),
+                "build-server" => build_server(
+                    is_release,
+                    experiments,
+                    fetch,
+                    bundle_ffmpeg,
+                    root,
+                    reproducible,
+                ),
                 "build-client" => {
                     if (for_oculus_quest && for_oculus_go) || (!for_oculus_quest && !for_oculus_go)
                     {
@@ -360,7 +379,7 @@ fn main() {
                 "build-ffmpeg-linux" => {
                     dependencies::build_ffmpeg_linux();
                 }
-                "publish-server" => packaging::publish_server(is_nightly, root),
+                "publish-server" => packaging::publish_server(is_nightly, root, reproducible),
                 "publish-client" => packaging::publish_client(is_nightly),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),

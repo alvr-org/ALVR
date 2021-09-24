@@ -51,14 +51,6 @@ pub fn remove_build_dir() {
     fs::remove_dir_all(&build_dir).ok();
 }
 
-fn optional_string(condition: bool, value: &str) -> &str {
-    if condition {
-        value
-    } else {
-        ""
-    }
-}
-
 pub fn build_server(
     is_release: bool,
     experiements: bool,
@@ -71,11 +63,16 @@ pub fn build_server(
     let layout = Layout::new(&afs::server_build_dir());
 
     let build_type = if is_release { "release" } else { "debug" };
-    let build_flags = [
-        optional_string(is_release, "--release"),
-        optional_string(reproducible, "--offline --frozen"),
-    ]
-    .join(" ");
+
+    let build_flags = format!(
+        "{} {}",
+        if is_release { "--release" } else { "" },
+        if reproducible {
+            "--offline --locked"
+        } else {
+            ""
+        }
+    );
 
     let mut server_features: Vec<&str> = vec![];
     let mut launcher_features: Vec<&str> = vec![];

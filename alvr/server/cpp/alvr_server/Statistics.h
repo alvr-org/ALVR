@@ -96,9 +96,9 @@ public:
 			uint64_t latencyUs = m_sendLatency;
 			if (latencyUs != 0) {
 				if (latencyUs > m_adaptiveBitrateTarget + m_adaptiveBitrateThreshold) {
-					m_bitrate -= 3;
+					m_bitrate -= m_adaptiveBitrateDownRate;
 				} else if (latencyUs < m_adaptiveBitrateTarget - m_adaptiveBitrateThreshold) {
-					m_bitrate += 1;
+					m_bitrate += m_adaptiveBitrateUpRate;
 				}
 				if (m_bitrate > m_adaptiveBitrateMaximum) {
 					m_bitrate = m_adaptiveBitrateMaximum;
@@ -176,6 +176,9 @@ private:
 	bool m_adaptiveBitrateUseFrametime = Settings::Instance().m_adaptiveBitrateUseFrametime;
 	uint64_t m_adaptiveBitrateTargetMaximum = Settings::Instance().m_adaptiveBitrateTargetMaximum;
 	uint64_t m_adaptiveBitrateThreshold = Settings::Instance().m_adaptiveBitrateThreshold;
+
+	uint64_t m_adaptiveBitrateUpRate = Settings::Instance().m_adaptiveBitrateUpRate;
+	uint64_t m_adaptiveBitrateDownRate = Settings::Instance().m_adaptiveBitrateDownRate;
 
 	time_t m_current;
 };

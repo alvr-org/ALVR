@@ -19,7 +19,7 @@ LatencyCollector::FrameTimestamp &LatencyCollector::getFrame(uint64_t frameIndex
 }
 
 void LatencyCollector::setTotalLatency(uint32_t latency) {
-    if (latency < 5e5)
+    if (latency < 2e5)
         m_ServerTotalLatency = latency * 0.05 + m_ServerTotalLatency * 0.95;
 }
 void LatencyCollector::tracking(uint64_t frameIndex) {

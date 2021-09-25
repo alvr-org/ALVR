@@ -771,8 +771,8 @@ void updateHapticsState() {
                 remoteCapabilities.HapticSamplesMax, remoteCapabilities.HapticSampleDurationMS);
 
             auto requiredHapticsBuffer = static_cast<uint32_t >((s.endUs - currentUs) /
-                                                                remoteCapabilities.HapticSampleDurationMS *
-                                                                1000);
+                                                                (remoteCapabilities.HapticSampleDurationMS *
+                                                                1000));
 
             std::vector<uint8_t> hapticBuffer(remoteCapabilities.HapticSamplesMax);
             ovrHapticBuffer buffer;
@@ -782,10 +782,8 @@ void updateHapticsState() {
                                          requiredHapticsBuffer);
             buffer.Terminated = false;
 
-            for (uint32_t i = 0; i < remoteCapabilities.HapticSamplesMax; i++) {
-                if (i > requiredHapticsBuffer)
-                    hapticBuffer[i] = 0;
-                else if (s.amplitude > 1.0f)
+            for (uint32_t i = 0; i < buffer.NumSamples; i++) {
+                if (s.amplitude > 1.0f)
                     hapticBuffer[i] = 255;
                 else
                     hapticBuffer[i] = static_cast<uint8_t>(255 * s.amplitude);

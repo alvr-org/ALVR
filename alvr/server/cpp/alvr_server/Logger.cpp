@@ -9,6 +9,8 @@ void _log(const char *format, va_list args, void (*logFn)(const char *))
 {
 	char buf[1024];
 	int count = vsnprintf(buf, sizeof(buf), format, args);
+	if (count > sizeof(buf))
+		count = sizeof(buf);
 	if (count > 0 && buf[count - 1] == '\n')
 		buf[count - 1] = '\0';
 

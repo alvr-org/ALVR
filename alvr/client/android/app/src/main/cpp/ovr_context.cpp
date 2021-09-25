@@ -786,7 +786,7 @@ void updateHapticsState() {
                 float current = ((currentUs - s.startUs) / 1000000.0f) +
                                 (remoteCapabilities.HapticSampleDurationMS * i) / 1000.0f;
                 float intensity =
-                        (sinf(static_cast<float>(current * M_PI * 2 * s.frequency)) + 1.0f) * 0.5f *
+                        (static_cast<uint64_t>(current * 2 * s.frequency) % 2 + 1) *
                         s.amplitude;
                 if (intensity < 0) {
                     intensity = 0;

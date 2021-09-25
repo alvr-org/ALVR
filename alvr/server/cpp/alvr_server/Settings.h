@@ -90,6 +90,10 @@ public:
 	double m_leftControllerRotationOffset[3];
 
 	float m_hapticsIntensity;
+	float m_hapticsAmplitudeCurve;
+	float m_hapticsMinDuration;
+	float m_hapticsLowDurationRange;
+	float m_hapticsLowDurationAmplitudeMultiplier;
 
 	int32_t m_causePacketLoss;
 

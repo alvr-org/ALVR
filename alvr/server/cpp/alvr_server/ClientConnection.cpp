@@ -128,7 +128,7 @@ void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 
 void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand)
 {
-	Info("Sending haptics feedback. startTime=%llu amplitude=%f duration=%f frequency=%f\n", startTime, amplitude, duration, frequency);
+	Debug("Sending haptics feedback. startTime=%llu amplitude=%f duration=%f frequency=%f\n", startTime, amplitude, duration, frequency);
 
 	if (duration < m_hapticsMinDuration * 0.5)
 		duration = m_hapticsMinDuration * 0.5;
@@ -204,7 +204,51 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			if (timeSync->fecFailure) {
 				OnFecFailure();
 			}
-			
+			Info("#{ \"id\": \"Statistics\", \"data\": {"
+				"\"bitrate\": %llu, "
+				"\"sendAverage\": %.3f, "
+				"\"time\": %llu, "
+				"\"totalPackets\": %llu, "
+				"\"packetRate\": %llu, "
+				"\"packetsLostTotal\": %llu, "
+				"\"packetsLostPerSecond\": %llu, "
+				"\"totalSent\": %llu, "
+				"\"sentRate\": %.3f, "
+				"\"totalLatency\": %.3f, "
+				"\"receiveLatency\": %.3f, "
+				"\"renderTime\": %.3f, "
+				"\"idleTime\": %.3f, "
+				"\"waitTime\": %.3f, "
+				"\"encodeLatency\": %.3f, "
+				"\"sendLatency\": %.3f, "
+				"\"decodeLatency\": %.3f, "
+				"\"fecPercentage\": %d, "
+				"\"fecFailureTotal\": %llu, "
+				"\"fecFailureInSecond\": %llu, "
+				"\"clientFPS\": %.3f, "
+				"\"serverFPS\": %.3f"
+				"} }#\n",
+				m_Statistics->GetBitrate(),
+				m_Statistics->GetSendLatencyAverage() / 1000.0,
+				Current / 1000,
+				m_Statistics->GetPacketsSentTotal(),
+				m_Statistics->GetPacketsSentInSecond(),
+				m_reportedStatistics.packetsLostTotal,
+				m_reportedStatistics.packetsLostInSecond,
+				m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000,
+				m_Statistics->GetBitsSentInSecond() / 1000. / 1000.0,
+				sendBuf.serverTotalLatency / 1000.0,
+				m_reportedStatistics.averageSendLatency / 1000.0,
+				renderTime,
+				idleTime,
+				waitTime,
+				(double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS,
+				m_reportedStatistics.averageTransportLatency / 1000.0,
+				m_reportedStatistics.averageDecodeLatency / 1000.0, m_fecPercentage,
+				m_reportedStatistics.fecFailureTotal,
+				m_reportedStatistics.fecFailureInSecond,
+				m_reportedStatistics.fps,
+				m_Statistics->GetFPS());
 		}
 		else if (timeSync->mode == 2) {
 			// Calclate RTT

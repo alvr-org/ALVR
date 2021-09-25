@@ -783,17 +783,12 @@ void updateHapticsState() {
             buffer.Terminated = false;
 
             for (uint32_t i = 0; i < remoteCapabilities.HapticSamplesMax; i++) {
-                float current = ((currentUs - s.startUs) / 1000000.0f) +
-                                (remoteCapabilities.HapticSampleDurationMS * i) / 1000.0f;
-                float intensity =
-                        (static_cast<uint64_t>(current * 2 * s.frequency) % -2 + 1) *
-                        s.amplitude;
-                if (intensity < 0) {
-                    intensity = 0;
-                } else if (intensity > 1.0) {
-                    intensity = 1.0;
-                }
-                hapticBuffer[i] = static_cast<uint8_t>(255 * intensity);
+                if (i > requiredHapticsBuffer)
+                    hapticBuffer[i] = 0;
+                else if (s.amplitude > 1.0f)
+                    hapticBuffer[i] = 255;
+                else
+                    hapticBuffer[i] = static_cast<uint8_t>(255 * s.amplitude);
             }
 
             result = vrapi_SetHapticVibrationBuffer(g_ctx.Ovr, curCaps.DeviceID, &buffer);

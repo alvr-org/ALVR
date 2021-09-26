@@ -48,6 +48,7 @@ OvrController::OvrController(bool isLeftHand, int index)
 	for (int i = 0; i < ALVR_INPUT_COUNT; i++) {
 		m_handles[i] = vr::k_ulInvalidInputComponentHandle;
 	}
+	m_dummyHandle = vr::k_ulInvalidInputComponentHandle;
 
 }
 
@@ -126,6 +127,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/grip/click", &m_handles[ALVR_INPUT_GRIP_CLICK]);
 	vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/grip/value", &m_handles[ALVR_INPUT_GRIP_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
 	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/grip/touch", &m_handles[ALVR_INPUT_GRIP_TOUCH]);
+	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/thumbrest/touch", &m_dummyHandle);
 
 	if (!m_isLeftHand) {
 		// A,B for right hand.

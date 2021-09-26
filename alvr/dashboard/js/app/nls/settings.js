@@ -79,7 +79,8 @@ define({
         "_root_video_adaptiveBitrate_content_latencyUseFrametime.name": "Use frame time", // adv
         "_root_video_adaptiveBitrate_content_latencyUseFrametime_enabled.description":
             "Use FPS as the target network latency", // adv
-        "_root_video_adaptiveBitrate_content_latencyUseFrametime_content_latencyTargetMaximum.name": "Latency target limit (us)", // adv
+        "_root_video_adaptiveBitrate_content_latencyUseFrametime_content_latencyTargetMaximum.name":
+            "Latency target limit (us)", // adv
         "_root_video_adaptiveBitrate_content_latencyUseFrametime_content_latencyTargetMaximum.description":
             "Adaptive bitrate will not use a target network latency higher than this limit if using frame time", // adv
         "_root_video_adaptiveBitrate_content_latencyThreshold.name": "Latency threshold (us)", // adv
@@ -242,7 +243,8 @@ define({
         "_root_headset_controllers_content_hapticsMinDuration.name": "Haptics minimum duration", // adv
         "_root_headset_controllers_content_hapticsMinDuration.description":
             "Minimum duration of any haptic event. \nIncrease the duration if haptic pulses feel too short or weak", // adv
-        "_root_headset_controllers_content_hapticsLowDurationAmplitudeMultiplier.name": "Short haptics amplitude multiplier", // adv
+        "_root_headset_controllers_content_hapticsLowDurationAmplitudeMultiplier.name":
+            "Short haptics amplitude multiplier", // adv
         "_root_headset_controllers_content_hapticsLowDurationAmplitudeMultiplier.description":
             "Amplitude multiplier for short haptic pulses. \nIncrease the multiplier if haptic pulses feel too weak", // adv
         "_root_headset_controllers_content_hapticsLowDurationRange.name": "Short haptics range", // adv

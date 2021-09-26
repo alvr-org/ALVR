@@ -96,14 +96,15 @@ public:
 			uint64_t latencyUs = m_sendLatency;
 			if (latencyUs != 0) {
 				if (latencyUs > m_adaptiveBitrateTarget + m_adaptiveBitrateThreshold) {
-					m_bitrate -= m_adaptiveBitrateDownRate;
+					if (m_bitrate < 5 + m_adaptiveBitrateDownRate)
+						m_bitrate = 5;
+					else
+						m_bitrate -= m_adaptiveBitrateDownRate;
 				} else if (latencyUs < m_adaptiveBitrateTarget - m_adaptiveBitrateThreshold) {
-					m_bitrate += m_adaptiveBitrateUpRate;
-				}
-				if (m_bitrate > m_adaptiveBitrateMaximum) {
-					m_bitrate = m_adaptiveBitrateMaximum;
-				} else if (m_bitrate < 5) {
-					m_bitrate = 5;
+					if (m_bitrate > m_adaptiveBitrateMaximum - m_adaptiveBitrateDownRate)
+						m_bitrate = m_adaptiveBitrateMaximum;
+					else
+						m_bitrate += m_adaptiveBitrateUpRate;
 				}
 			}
 			if (m_bitrateUpdated != m_bitrate) {

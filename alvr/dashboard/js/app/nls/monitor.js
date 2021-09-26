@@ -34,6 +34,7 @@ define({
         packetsLostPerSecond: "Packets lost / s",
         totalSent: "Total sent",
         sentRate: "Sent rate",
+        bitrate: "Bitrate",
         totalLatency: "Total latency",
         encodeLatency: "Encoder Latency",
         encodeLatencyMax: "Encode latency max",
@@ -54,6 +55,10 @@ define({
         error_InvalidIp: "Not a valid IPv4 formatted address",
         // Performance graphs tab
         performanceGraphs: "Performance graphs",
+        performanceNetwork: "Network",
+        performanceRender: "Render",
+        performanceIdle: "Idle",
+        performanceTranscode: "Transcode",
         performanceEncode: "Encode",
         performanceDecode: "Decode",
         performanceTransport: "Transport",

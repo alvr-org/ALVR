@@ -92,8 +92,8 @@ public:
 	float m_hapticsIntensity;
 	float m_hapticsAmplitudeCurve;
 	float m_hapticsMinDuration;
-	float m_hapticsLowDurationRange;
 	float m_hapticsLowDurationAmplitudeMultiplier;
+	float m_hapticsLowDurationRange;
 
 	int32_t m_causePacketLoss;
 

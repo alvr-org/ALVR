@@ -50,8 +50,8 @@ private:
 
 	float m_hapticsAmplitudeCurve = Settings::Instance().m_hapticsAmplitudeCurve;
 	float m_hapticsMinDuration = Settings::Instance().m_hapticsMinDuration;
-	float m_hapticsLowDurationRange = Settings::Instance().m_hapticsLowDurationRange;
 	float m_hapticsLowDurationAmplitudeMultiplier = Settings::Instance().m_hapticsLowDurationAmplitudeMultiplier;
+	float m_hapticsLowDurationRange = Settings::Instance().m_hapticsLowDurationRange;
 
 	uint64_t m_TimeDiff = 0;
 	std::mutex m_CS;

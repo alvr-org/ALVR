@@ -246,13 +246,13 @@ uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
         if (remoteInputState->Touches & ovrTouch_Joystick) {
             buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH);
         }
-        if (remoteInputState->Touches & 0x00001000) { // OR: ovrTouch_ThumbRest
+        if (remoteInputState->Touches & 0x00001000) { // ovrTouch_ThumbRest
             buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH);
         }
-        if (remoteInputState->Touches & 0x00002000) { // OR: ovrTouch_LThumbRest
+        if (remoteInputState->Touches & 0x00002000) { // ovrTouch_LThumbRest
             buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH);
         }
-        if (remoteInputState->Touches & 0x00004000) { // OR: ovrTouch_RThumbRest
+        if (remoteInputState->Touches & 0x00004000) { // ovrTouch_RThumbRest
             buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH);
         }
     } else {

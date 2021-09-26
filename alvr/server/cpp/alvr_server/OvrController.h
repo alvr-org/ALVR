@@ -53,7 +53,6 @@ private:
 	int m_index;
 
 	vr::VRInputComponentHandle_t m_handles[ALVR_INPUT_COUNT];
-	vr::VRInputComponentHandle_t m_dummyHandle;
 	vr::VRInputComponentHandle_t m_compHaptic;
 	vr::VRInputComponentHandle_t m_compSkeleton = vr::k_ulInvalidInputComponentHandle;
 	enum HandSkeletonBone : size_t

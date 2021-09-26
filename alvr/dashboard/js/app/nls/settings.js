@@ -241,13 +241,13 @@ define({
             "Increase to make lower amplitudes stronger",
         "_root_headset_controllers_content_hapticsMinDuration.name": "Haptics intensity",
         "_root_headset_controllers_content_hapticsMinDuration.description":
-            "Minimum duration of any haptic event. /nRaise the duration if haptic pulses feel too short or weak",
+            "Minimum duration of any haptic event. /Increase the duration if haptic pulses feel too short or weak",
         "_root_headset_controllers_content_hapticsLowDurationAmplitudeMultiplier.name": "Haptics intensity",
         "_root_headset_controllers_content_hapticsLowDurationAmplitudeMultiplier.description":
-            "Amplitude multiplier for short haptic pulses. /nRaise the multiplier if haptic pulses feel too weak",
+            "Amplitude multiplier for short haptic pulses. /Increase the multiplier if haptic pulses feel too weak",
         "_root_headset_controllers_content_hapticsLowDurationRange.name": "Haptics intensity",
         "_root_headset_controllers_content_hapticsLowDurationRange.description":
-            "Duration range for haptic pulses where intensity should be increased. /Raise the range if slightly longer haptic pulses feel too weak",
+            "Duration range for haptic pulses where intensity should be increased. /Increase the range if slightly longer haptic pulses feel too weak",
         "_root_headset_trackingSpace-choice-.name": "Tracking Space",
         "_root_headset_trackingSpace-choice-.description":
             "Sets what the headset uses as its reference for tracking and how the center of the space is defined. Stage tracking space behaves like a wired headset: the center of the space stays in one place after recentering the headset. This must be set if you want to use Vive trackers.",

@@ -72,7 +72,7 @@ define({
             "Use frame time or user selected target to adjust bitrate",
         "_root_video_adaptiveBitrate_content_bitrateMaximum.name": "Bitrate Limit",
         "_root_video_adaptiveBitrate_content_bitrateMaximum.description":
-            "Adaptive bitrate will not use a higher bitrate than this limit",
+            "Adaptive bitrate will not use a bitrate higher than this limit",
         "_root_video_adaptiveBitrate_content_latencyTarget.name": "Latency Target (us)",
         "_root_video_adaptiveBitrate_content_latencyTarget.description":
             "This value will be used as the target network latency if not using frame time",
@@ -81,7 +81,7 @@ define({
             "Use FPS as the target network latency",
         "_root_video_adaptiveBitrate_content_latencyTargetMaximum.name": "Latency Target Limit (us)",
         "_root_video_adaptiveBitrate_content_latencyTargetMaximum.description":
-            "Adaptive bitrate will not use a higher target network latency than this limit if using frame time",
+            "Adaptive bitrate will not use a target network latency higher than this limit if using frame time",
         "_root_video_adaptiveBitrate_content_latencyThreshold.name": "Latency Threshold (us)",
         "_root_video_adaptiveBitrate_content_latencyThreshold.description":
             "Adaptive bitrate will adjust bitrate when the network latency reaches the latency threshold",

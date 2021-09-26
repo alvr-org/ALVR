@@ -67,28 +67,28 @@ define({
         "_root_video_encodeBitrateMbs.name": "Video Bitrate",
         "_root_video_encodeBitrateMbs.description":
             "Bitrate of video streaming. 30Mbps is recommended. \nHigher bitrates result in better image but also higher latency and network traffic ",
-        "_root_video_adaptiveBitrate.name": "Adaptive Bitrate",
+        "_root_video_adaptiveBitrate.name": "Adaptive bitrate",
         "_root_video_adaptiveBitrate_enabled.description":
             "Use frame time or user selected target to adjust bitrate",
-        "_root_video_adaptiveBitrate_content_bitrateMaximum.name": "Bitrate Limit",
+        "_root_video_adaptiveBitrate_content_bitrateMaximum.name": "Bitrate limit",
         "_root_video_adaptiveBitrate_content_bitrateMaximum.description":
             "Adaptive bitrate will not use a bitrate higher than this limit",
-        "_root_video_adaptiveBitrate_content_latencyTarget.name": "Latency Target (us)",
+        "_root_video_adaptiveBitrate_content_latencyTarget.name": "Latency target (us)",
         "_root_video_adaptiveBitrate_content_latencyTarget.description":
             "This value will be used as the target network latency if not using frame time",
-        "_root_video_adaptiveBitrate_content_latencyUseFrametime.name": "Use Frame Time",
+        "_root_video_adaptiveBitrate_content_latencyUseFrametime.name": "Use frame time",
         "_root_video_adaptiveBitrate_content_latencyUseFrametime_enabled.description":
             "Use FPS as the target network latency",
-        "_root_video_adaptiveBitrate_content_latencyTargetMaximum.name": "Latency Target Limit (us)",
-        "_root_video_adaptiveBitrate_content_latencyTargetMaximum.description":
+        "_root_video_adaptiveBitrate_content_latencyUseFrametime_content_latencyTargetMaximum.name": "Latency target limit (us)",
+        "_root_video_adaptiveBitrate_content_latencyUseFrametime_content_latencyTargetMaximum.description":
             "Adaptive bitrate will not use a target network latency higher than this limit if using frame time",
-        "_root_video_adaptiveBitrate_content_latencyThreshold.name": "Latency Threshold (us)",
+        "_root_video_adaptiveBitrate_content_latencyThreshold.name": "Latency threshold (us)",
         "_root_video_adaptiveBitrate_content_latencyThreshold.description":
             "Adaptive bitrate will adjust bitrate when the network latency reaches the latency threshold",
-        "_root_video_adaptiveBitrate_content_bitrateUpRate.name": "Bitrate Increasing rate",
+        "_root_video_adaptiveBitrate_content_bitrateUpRate.name": "Bitrate increasing rate",
         "_root_video_adaptiveBitrate_content_bitrateUpRate.description":
             "How much to increase bitrate when the network latency reaches the latency threshold",
-        "_root_video_adaptiveBitrate_content_bitrateDownRate.name": "Bitrate Decreasing rate",
+        "_root_video_adaptiveBitrate_content_bitrateDownRate.name": "Bitrate decreasing rate",
         "_root_video_adaptiveBitrate_content_bitrateDownRate.description":
             "How much to decrease bitrate when the network latency reaches the latency threshold",
         // Audio tab
@@ -236,18 +236,18 @@ define({
         "_root_headset_controllers_content_hapticsIntensity.name": "Haptics intensity",
         "_root_headset_controllers_content_hapticsIntensity.description":
             "Factor to reduce or increase the intensity of the vibration of the controls.",
-        "_root_headset_controllers_content_hapticsAmplitudeCurve.name": "Haptics intensity",
+        "_root_headset_controllers_content_hapticsAmplitudeCurve.name": "Haptics amplitude curve",
         "_root_headset_controllers_content_hapticsAmplitudeCurve.description":
             "Increase to make lower amplitudes stronger",
-        "_root_headset_controllers_content_hapticsMinDuration.name": "Haptics intensity",
+        "_root_headset_controllers_content_hapticsMinDuration.name": "Haptics minimum duration",
         "_root_headset_controllers_content_hapticsMinDuration.description":
-            "Minimum duration of any haptic event. /Increase the duration if haptic pulses feel too short or weak",
-        "_root_headset_controllers_content_hapticsLowDurationAmplitudeMultiplier.name": "Haptics intensity",
+            "Minimum duration of any haptic event. \nIncrease the duration if haptic pulses feel too short or weak",
+        "_root_headset_controllers_content_hapticsLowDurationAmplitudeMultiplier.name": "Short haptics amplitude multiplier",
         "_root_headset_controllers_content_hapticsLowDurationAmplitudeMultiplier.description":
-            "Amplitude multiplier for short haptic pulses. /Increase the multiplier if haptic pulses feel too weak",
-        "_root_headset_controllers_content_hapticsLowDurationRange.name": "Haptics intensity",
+            "Amplitude multiplier for short haptic pulses. \nIncrease the multiplier if haptic pulses feel too weak",
+        "_root_headset_controllers_content_hapticsLowDurationRange.name": "Short haptics range",
         "_root_headset_controllers_content_hapticsLowDurationRange.description":
-            "Duration range for haptic pulses where intensity should be increased. /Increase the range if slightly longer haptic pulses feel too weak",
+            "Duration range for haptic pulses where intensity should be increased. \nIncrease the range if slightly longer haptic pulses feel too weak",
         "_root_headset_trackingSpace-choice-.name": "Tracking Space",
         "_root_headset_trackingSpace-choice-.description":
             "Sets what the headset uses as its reference for tracking and how the center of the space is defined. Stage tracking space behaves like a wired headset: the center of the space stays in one place after recentering the headset. This must be set if you want to use Vive trackers.",

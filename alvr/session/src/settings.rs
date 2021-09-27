@@ -600,7 +600,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,
-                    haptics_amplitude_curve: 0.5,
+                    haptics_amplitude_curve: 0.4,
                     haptics_min_duration: 0.01,
                     haptics_low_duration_amplitude_multiplier: 2.5,
                     haptics_low_duration_range: 0.5,

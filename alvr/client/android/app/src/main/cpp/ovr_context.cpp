@@ -34,7 +34,7 @@ using namespace gl_render_utils;
 
 const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 5s;
 const uint32_t ovrButton_Unknown1 = 0x01000000;
-const int MAXIMUM_TRACKING_FRAMES = 180;
+const int MAXIMUM_TRACKING_FRAMES = 360;
 
 struct TrackingFrame {
     ovrTracking2 tracking;

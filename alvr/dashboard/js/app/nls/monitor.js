@@ -56,6 +56,8 @@ define({
         // Performance graphs tab
         performanceGraphs: "Performance graphs",
         performanceNetwork: "Network",
+        performanceReceive: "Receive",
+        performanceSend: "Send",
         performanceRender: "Render",
         performanceIdle: "Idle",
         performanceTranscode: "Transcode",

@@ -78,6 +78,10 @@ typedef enum ovrTouch_ {
     ovrTouch_LThumb = 0x00000400, //< The Left controller Joystick has a finger/thumb resting on it.
     ovrTouch_RThumb =
         0x00000800, //< The Right controller Joystick has a finger/thumb resting on it.
+
+    ovrTouch_ThumbRest = 0x00001000, 
+    ovrTouch_LThumbRest = 0x00002000,
+    ovrTouch_RThumbRest = 0x00004000,
         ovrTouch_EnumSize
 } ovrTouch;
 

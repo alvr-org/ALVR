@@ -64,7 +64,7 @@ define({
         performanceTransport: "Transport",
         performanceOther: "Other",
         performanceLatency: "Latency",
-        performamceTotalLatency: "Total Latency",
+        performanceTotalLatency: "Total Latency",
         performanceFramerate: "Framerate",
         performanceNoDateCaptured: "No data captured yet",
     },

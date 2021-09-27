@@ -68,6 +68,8 @@ define({
         performanceLatency: "Latency",
         performanceTotalLatency: "Total Latency",
         performanceFramerate: "Framerate",
+        performanceServer: "Server",
+        performanceClient: "Client",
         performanceNoDateCaptured: "No data captured yet",
     },
     it: true,

@@ -1,6 +1,6 @@
 [package]
 name = "alvr_audio"
-version = "16.0.0-rc2"
+version = "16.0.0"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2018"

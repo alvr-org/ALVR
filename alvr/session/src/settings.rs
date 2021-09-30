@@ -268,10 +268,10 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub rotation_offset_left: [f32; 3],
 
-    #[schema(min = 0., max = 5., step = 0.1)]
+    #[schema(advanced, min = 0., max = 5., step = 0.1)]
     pub haptics_intensity: f32,
 
-    #[schema(min = 0., max = 1., step = 0.01)]
+    #[schema(advanced, min = 0., max = 1., step = 0.01)]
     pub haptics_amplitude_curve: f32,
 
     #[schema(advanced, min = 0., max = 0.1, step = 0.001)]

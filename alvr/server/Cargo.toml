@@ -62,6 +62,7 @@ tokio-util = { version = "0.6", features = ["codec"] }
 wgpu = { git = "https://github.com/gfx-rs/wgpu" }
 winit = "0.25" # needed to get the screen size
 # Browser interop
+tempfile = "3.2.0"
 alcro = "0.5"
 webbrowser = "0.5" # this is just for opening links in the default browser
 # Miscellaneous

@@ -317,6 +317,7 @@ dependencies = [
  "serde",
  "serde_json",
  "settings-schema",
+ "tempfile",
  "tokio",
  "tokio-tungstenite",
  "tokio-util",

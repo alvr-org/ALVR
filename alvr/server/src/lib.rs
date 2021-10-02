@@ -19,6 +19,7 @@ use parking_lot::Mutex;
 use std::{
     collections::{hash_map::Entry, HashSet},
     ffi::{c_void, CStr, CString},
+    fs,
     net::IpAddr,
     os::raw::c_char,
     ptr,
@@ -28,7 +29,6 @@ use std::{
     },
     thread,
     time::Duration,
-    fs,
 };
 use tokio::{
     runtime::Runtime,

@@ -87,7 +87,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_setWaitin
     _: JObject,
     waiting: bool,
 ) {
-    IDR_PARSED.store(waiting, Ordering::Relaxed);
+    IDR_PARSED.store(!waiting, Ordering::Relaxed);
 }
 
 #[no_mangle]

@@ -341,6 +341,26 @@ async fn client_handshake(
             .controllers
             .content
             .haptics_intensity,
+        haptics_amplitude_curve: session_settings
+            .headset
+            .controllers
+            .content
+            .haptics_amplitude_curve,
+        haptics_min_duration: session_settings
+            .headset
+            .controllers
+            .content
+            .haptics_min_duration,
+        haptics_low_duration_amplitude_multiplier: session_settings
+            .headset
+            .controllers
+            .content
+            .haptics_low_duration_amplitude_multiplier,
+        haptics_low_duration_range: session_settings
+            .headset
+            .controllers
+            .content
+            .haptics_low_duration_range,
         use_headset_tracking_system: session_settings
             .headset
             .controllers

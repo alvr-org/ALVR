@@ -130,11 +130,15 @@ void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, 
 {
 	Debug("Sending haptics feedback. startTime=%llu amplitude=%f duration=%f frequency=%f\n", startTime, amplitude, duration, frequency);
 
+	if (duration < m_hapticsMinDuration * 0.5)
+		duration = m_hapticsMinDuration * 0.5;
+
 	HapticsFeedback packetBuffer;
 	packetBuffer.type = ALVR_PACKET_TYPE_HAPTICS;
 	packetBuffer.startTime = startTime;
-	packetBuffer.amplitude = amplitude;
-	packetBuffer.duration = duration;
+	// packetBuffer.amplitude = pow(amplitude * ((m_hapticsLowDurationAmplitudeMultiplier - 1) * m_hapticsMinDuration / (pow(m_hapticsMinDuration, 2) * 0.25 / duration + duration) + 1), 1 - m_hapticsAmplitudeCurve);
+	packetBuffer.amplitude = pow(amplitude * ((m_hapticsLowDurationAmplitudeMultiplier - 1) * m_hapticsMinDuration * m_hapticsLowDurationRange / (pow(m_hapticsMinDuration * m_hapticsLowDurationRange, 2) * 0.25 / (duration - 0.5 * m_hapticsMinDuration * (1 - m_hapticsLowDurationRange)) + (duration - 0.5 * m_hapticsMinDuration * (1 - m_hapticsLowDurationRange))) + 1), 1 - m_hapticsAmplitudeCurve);
+	packetBuffer.duration = pow(m_hapticsMinDuration, 2) * 0.25 / duration + duration;
 	packetBuffer.frequency = frequency;
 	packetBuffer.hand = hand;
 	LegacySend((unsigned char *)&packetBuffer, sizeof(HapticsFeedback));

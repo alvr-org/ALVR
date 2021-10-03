@@ -268,8 +268,20 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub rotation_offset_left: [f32; 3],
 
-    #[schema(min = 0., max = 5., step = 0.1)]
+    #[schema(advanced, min = 0., max = 5., step = 0.1)]
     pub haptics_intensity: f32,
+
+    #[schema(advanced, min = 0., max = 1., step = 0.01)]
+    pub haptics_amplitude_curve: f32,
+
+    #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
+    pub haptics_min_duration: f32,
+
+    #[schema(advanced, min = 1., max = 5., step = 0.1)]
+    pub haptics_low_duration_amplitude_multiplier: f32,
+
+    #[schema(advanced, min = 0., max = 1., step = 0.01)]
+    pub haptics_low_duration_range: f32,
 
     #[schema(advanced)]
     pub use_headset_tracking_system: bool,
@@ -588,6 +600,10 @@ pub fn session_settings_default() -> SettingsDefault {
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,
+                    haptics_amplitude_curve: 0.4,
+                    haptics_min_duration: 0.01,
+                    haptics_low_duration_amplitude_multiplier: 2.5,
+                    haptics_low_duration_range: 0.5,
                     use_headset_tracking_system: false,
                 },
             },

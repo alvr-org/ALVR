@@ -44,10 +44,10 @@
             <div class="tab-pane container fade" id="statistics">
                 <div id="divStatisticsContent">
                     <h5 class="float-left mr-3"><%= performanceLatency%></h5>
-                    <span class="badge badge-primary" style="background-color: #7f7f7f; ">Network</span>
-                    <span class="badge badge-primary" style="background-color: #d62728; ">Render</span>
-                    <span class="badge badge-primary" style="background-color: #ff7f0e; ">Idle</span>
-                    <span class="badge badge-primary" style="background-color: #1f77b4; ">Transcode</span>
+                    <span class="badge badge-primary" style="background-color: #7f7f7f; "><%= performanceNetwork%></span>
+                    <span class="badge badge-primary" style="background-color: #d62728; "><%= performanceRender%></span>
+                    <span class="badge badge-primary" style="background-color: #ff7f0e; "><%= performanceIdle%></span>
+                    <span class="badge badge-primary" style="background-color: #1f77b4; "><%= performanceTranscode%></span>
                     <div id="latencyGraphArea"></div>
                     <div class="mt-3"></div>
                     <h5 class="float-left mr-3"><%= performanceFramerate%></h5>
@@ -74,7 +74,7 @@
                                     <td><div id="statistic_sentRate">0</div> Mbps</td>
                                 </tr>
                                 <tr>
-                                    <td>Bitrate:</td>
+                                    <td><%= bitrate%>:</td>
                                     <td><div id="statistic_bitrate">0</div> Mbps</td>
                                 </tr>
                                 <tr>

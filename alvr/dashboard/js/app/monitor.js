@@ -631,16 +631,52 @@ define([
             height: 160,
             series: [
                 {
-                    label: "Total Latency",
+                    label: i18n["performanceTotalLatency"],
                     value: (u, v, si, i) =>
                         (latencyGraphData[latencyGraphData.length - 1][i] || 0).toFixed(3) + " ms",
                 },
-                getSeries("Receive", graphColors[0], graphColors[0], latencyGraphData, " ms"),
-                getSeries("Render", graphColors[1], graphColors[1], latencyGraphData, " ms"),
-                getSeries("Idle", graphColors[2], graphColors[2], latencyGraphData, " ms"),
-                getSeries("Encode", graphColors[3], graphColors[3], latencyGraphData, " ms"),
-                getSeries("Send", graphColors[0], graphColors[0], latencyGraphData, " ms"),
-                getSeries("Decode", graphColors[3], graphColors[3], latencyGraphData, " ms"),
+                getSeries(
+                    i18n["performanceReceive"],
+                    graphColors[0],
+                    graphColors[0],
+                    latencyGraphData,
+                    " ms"
+                ),
+                getSeries(
+                    i18n["performanceRender"],
+                    graphColors[1],
+                    graphColors[1],
+                    latencyGraphData,
+                    " ms"
+                ),
+                getSeries(
+                    i18n["performanceIdle"],
+                    graphColors[2],
+                    graphColors[2],
+                    latencyGraphData,
+                    " ms"
+                ),
+                getSeries(
+                    i18n["performanceEncode"],
+                    graphColors[3],
+                    graphColors[3],
+                    latencyGraphData,
+                    " ms"
+                ),
+                getSeries(
+                    i18n["performanceSend"],
+                    graphColors[0],
+                    graphColors[0],
+                    latencyGraphData,
+                    " ms"
+                ),
+                getSeries(
+                    i18n["performanceDecode"],
+                    graphColors[3],
+                    graphColors[3],
+                    latencyGraphData,
+                    " ms"
+                ),
             ],
         };
 
@@ -668,8 +704,20 @@ define([
                     value: "",
                     show: false,
                 },
-                getSeries("Server", graphColors[3], null, framerateGraphData, " FPS"),
-                getSeries("Client", graphColors[2], null, framerateGraphData, " FPS"),
+                getSeries(
+                    i18n["performanceServer"],
+                    graphColors[3],
+                    null,
+                    framerateGraphData,
+                    " FPS"
+                ),
+                getSeries(
+                    i18n["performanceClient"],
+                    graphColors[2],
+                    null,
+                    framerateGraphData,
+                    " FPS"
+                ),
             ],
         };
 

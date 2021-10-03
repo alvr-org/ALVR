@@ -261,6 +261,16 @@ async fn client_handshake(
             .adaptive_bitrate
             .content
             .latency_threshold,
+        bitrate_up_rate: session_settings
+            .video
+            .adaptive_bitrate
+            .content
+            .bitrate_up_rate,
+        bitrate_down_rate: session_settings
+            .video
+            .adaptive_bitrate
+            .content
+            .bitrate_down_rate,
         controllers_tracking_system_name: session_settings
             .headset
             .controllers

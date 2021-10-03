@@ -66,6 +66,8 @@ public:
 	bool m_adaptiveBitrateUseFrametime;
 	uint64_t m_adaptiveBitrateTargetMaximum;
 	uint64_t m_adaptiveBitrateThreshold;
+	uint64_t m_adaptiveBitrateUpRate;
+	uint64_t m_adaptiveBitrateDownRate;
 	bool m_use10bitEncoder;
 
 	// Controller configs

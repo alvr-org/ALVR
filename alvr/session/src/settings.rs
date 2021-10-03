@@ -52,6 +52,12 @@ pub struct AdaptiveBitrateDesc {
 
     #[schema(advanced, min = 500, max = 5000, step = 100)]
     pub latency_threshold: u64,
+
+    #[schema(advanced, min = 1, max = 10, step = 1)]
+    pub bitrate_up_rate: u64,
+
+    #[schema(advanced, min = 1, max = 10, step = 1)]
+    pub bitrate_down_rate: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -507,6 +513,8 @@ pub fn session_settings_default() -> SettingsDefault {
                         },
                     },
                     latency_threshold: 4000,
+                    bitrate_up_rate: 1,
+                    bitrate_down_rate: 3,
                 },
             },
             seconds_from_vsync_to_photons: 0.005,

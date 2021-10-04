@@ -73,7 +73,7 @@ define([
                 updateClients();
             });
 
-            setInterval(fillPerformanceGraphs, 8); 
+            setInterval(fillPerformanceGraphs, 8);
         }
 
         function updateClients() {
@@ -692,7 +692,7 @@ define([
                 document.getElementById("framerateGraphArea")
             );
         }
-	
+
         let lastStatisticsUpdate = now;
         let lastGraphUpdate = now;
         let lastGraphRedraw = now;
@@ -787,7 +787,7 @@ define([
             if (!statisticsRedrawStopped) {
                 const now = parseInt(new Date().getTime());
                 lastStatistics["time"] = now;
-                if (now - 16 > lastGraphRedraw & now - 1000 < lastStatisticsUpdate) {
+                if ((now - 16 > lastGraphRedraw) & (now - 1000 < lastStatisticsUpdate)) {
                     if (now - 100 > lastGraphUpdate) {
                         if (!statisticsUpdateStopped) {
                             statisticsUpdateStopped = true;
@@ -803,8 +803,7 @@ define([
                         updatePerformanceGraphs(lastStatistics);
                     }
                     redrawPerformanceGraphs(lastStatistics);
-                }
-                else if (now - 1000 > lastStatisticsUpdate) {
+                } else if (now - 1000 > lastStatisticsUpdate) {
                     statisticsRedrawStopped = true;
                     lastStatistics["renderTime"] = null;
                     lastStatistics["idleTime"] = null;
@@ -862,8 +861,7 @@ define([
                 lastStatisticsUpdate = now;
             }
 
-            if (statisticsUpdateStopped)
-                statisticsUpdateStopped = false;
+            if (statisticsUpdateStopped) statisticsUpdateStopped = false;
             if (statisticsRedrawStopped) {
                 lastStatistics["time"] = now;
                 updatePerformanceGraphs(lastStatistics);

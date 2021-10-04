@@ -804,14 +804,11 @@ define([
                             lastStatistics["fecFailureInSecond"] = null;
                             lastStatistics["clientFPS"] = null;
                             lastStatistics["serverFPS"] = null;
+                            updatePerformanceGraphs(lastStatistics);
                         }
-                        updatePerformanceGraphs(lastStatistics);
                     }
                     redrawPerformanceGraphs(lastStatistics);
-                } else if (now - 1000 > lastStatisticsUpdate) {
-                    statisticsRedrawStopped = true;
-                    updatePerformanceGraphs(lastStatistics);
-                }
+                } else if (now - 1000 > lastStatisticsUpdate) statisticsRedrawStopped = true;
             }
         }
 

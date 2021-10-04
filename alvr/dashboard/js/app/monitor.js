@@ -794,22 +794,22 @@ define([
                             lastStatistics["time"] = lastGraphUpdate + 16;
                             lastStatistics["packetsLostPerSecond"] = null;
                             lastStatistics["receiveLatency"] = null;
+                            lastStatistics["renderTime"] = null;
+                            lastStatistics["idleTime"] = null;
+                            lastStatistics["waitTime"] = null;
+                            lastStatistics["encodeLatency"] = null;
                             lastStatistics["sendLatency"] = null;
                             lastStatistics["decodeLatency"] = null;
                             lastStatistics["totalLatency"] = null;
                             lastStatistics["fecFailureInSecond"] = null;
                             lastStatistics["clientFPS"] = null;
+                            lastStatistics["serverFPS"] = null;
                         }
                         updatePerformanceGraphs(lastStatistics);
                     }
                     redrawPerformanceGraphs(lastStatistics);
                 } else if (now - 1000 > lastStatisticsUpdate) {
                     statisticsRedrawStopped = true;
-                    lastStatistics["renderTime"] = null;
-                    lastStatistics["idleTime"] = null;
-                    lastStatistics["waitTime"] = null;
-                    lastStatistics["encodeLatency"] = null;
-                    lastStatistics["serverFPS"] = null;
                     updatePerformanceGraphs(lastStatistics);
                 }
             }

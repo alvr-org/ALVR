@@ -74,16 +74,15 @@ define([
                     uni: 20,
                 },
             };
-            (opts.pxAlign = 0),
-                (opts.pxSnap = false);
+            (opts.pxAlign = 0), (opts.pxSnap = false);
             opts.legend = {
-				show: false,
-			};
-			opts.scales = [
-				{
-					time: false,
-				},
-			];
+                show: false,
+            };
+            opts.scales = [
+                {
+                    time: false,
+                },
+            ];
             return opts;
         }
 
@@ -111,16 +110,19 @@ define([
 
         let themeColor;
 
-		function getThemeColor() {
-			themeColor = $("input[name='theme']").val();
- 			if (themeColor == "systemDefault") {
- 			    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
- 			        themeColor = "darkly";
- 			    } else {
- 			        themeColor = "classic";
- 			    }
- 			}
-		}
+        function getThemeColor() {
+            themeColor = $("input[name='theme']").val();
+            if (themeColor == "systemDefault") {
+                if (
+                    window.matchMedia &&
+                    window.matchMedia("(prefers-color-scheme: dark)").matches
+                ) {
+                    themeColor = "darkly";
+                } else {
+                    themeColor = "classic";
+                }
+            }
+        }
 
         const graphColors = ["#7f7f7f", "#d62728", "#ff7f0e", "#1f77b4"];
 
@@ -144,75 +146,74 @@ define([
             Array(length).fill(0),
         ];
 
-		let hapticMinDuration;
-		let hapticShortMultiplier;
+        let hapticMinDuration;
+        let hapticShortMultiplier;
 
-		function getHapticSettings() {
-			let hapticMultiplier = $("input[id='_root_headset_controllers_content_hapticsIntensity']").val();
-			let hapticCurve = $("input[id='_root_headset_controllers_content_hapticsAmplitudeCurve']").val();
-			hapticMinDuration = $("input[id='_root_headset_controllers_content_hapticsMinDuration']").val()*1000;
-			hapticShortMultiplier = $("input[id='_root_headset_controllers_content_hapticsLowDurationAmplitudeMultiplier']").val()-1;
-			let hapticShortRange = $("input[id='_root_headset_controllers_content_hapticsLowDurationRange']").val();
-			
-			for (var i = 0; i < length; i++) {
-				let x = i/length;
-				let ms = (i/length)*(hapticMinDuration*2);
+        function getHapticSettings() {
+            let hapticMultiplier = $(
+                "input[id='_root_headset_controllers_content_hapticsIntensity']"
+            ).val();
+            let hapticCurve = $(
+                "input[id='_root_headset_controllers_content_hapticsAmplitudeCurve']"
+            ).val();
+            hapticMinDuration =
+                $("input[id='_root_headset_controllers_content_hapticsMinDuration']").val() * 1000;
+            hapticShortMultiplier =
+                $(
+                    "input[id='_root_headset_controllers_content_hapticsLowDurationAmplitudeMultiplier']"
+                ).val() - 1;
+            let hapticShortRange = $(
+                "input[id='_root_headset_controllers_content_hapticsLowDurationRange']"
+            ).val();
 
-				hapticGraph1Data[0][i] = x*100;
-				hapticGraph2Data[0][i] = ms;
-				hapticGraph3Data[0][i] = ms;
+            for (var i = 0; i < length; i++) {
+                let x = i / length;
+                let ms = (i / length) * (hapticMinDuration * 2);
 
-				hapticGraph1Data[1][i] = x*100;
-				hapticGraph1Data[2][i] = Math.pow(x*hapticMultiplier,1-hapticCurve)*100;
+                hapticGraph1Data[0][i] = x * 100;
+                hapticGraph2Data[0][i] = ms;
+                hapticGraph3Data[0][i] = ms;
 
-				hapticGraph2Data[1][i] = ms;
-				hapticGraph2Data[2][i] = hapticMinDuration;
-				if (ms>hapticMinDuration/2)
-					hapticGraph2Data[3][i] = Math.pow(hapticMinDuration,2)/ms*0.25+ms;
-				else
-					hapticGraph2Data[3][i] = hapticMinDuration;
+                hapticGraph1Data[1][i] = x * 100;
+                hapticGraph1Data[2][i] = Math.pow(x * hapticMultiplier, 1 - hapticCurve) * 100;
 
-				hapticGraph3Data[1][i] = 1;
-				hapticGraph3Data[2][i] = hapticShortMultiplier+1;
-				if (ms>hapticMinDuration/2)
-					hapticGraph3Data[3][i] = hapticMinDuration*hapticShortMultiplier*hapticShortRange/(Math.pow(hapticMinDuration*hapticShortRange,2)/(4*ms-2*hapticMinDuration+2*hapticMinDuration*hapticShortRange)+ms-0.5*hapticMinDuration+0.5*hapticMinDuration*hapticShortRange)+1;
-				else
-					hapticGraph3Data[3][i] = hapticShortMultiplier+1;
-			}
-		}
+                hapticGraph2Data[1][i] = ms;
+                hapticGraph2Data[2][i] = hapticMinDuration;
+                if (ms > hapticMinDuration / 2)
+                    hapticGraph2Data[3][i] = (Math.pow(hapticMinDuration, 2) / ms) * 0.25 + ms;
+                else hapticGraph2Data[3][i] = hapticMinDuration;
+
+                hapticGraph3Data[1][i] = 1;
+                hapticGraph3Data[2][i] = hapticShortMultiplier + 1;
+                if (ms > hapticMinDuration / 2)
+                    hapticGraph3Data[3][i] =
+                        (hapticMinDuration * hapticShortMultiplier * hapticShortRange) /
+                            (Math.pow(hapticMinDuration * hapticShortRange, 2) /
+                                (4 * ms -
+                                    2 * hapticMinDuration +
+                                    2 * hapticMinDuration * hapticShortRange) +
+                                ms -
+                                0.5 * hapticMinDuration +
+                                0.5 * hapticMinDuration * hapticShortRange) +
+                        1;
+                else hapticGraph3Data[3][i] = hapticShortMultiplier + 1;
+            }
+        }
 
         let hapticGraph1Options = {
             title: "Amplitude",
             width: 540,
             height: 100,
             series: [
-                getSeries(
-                    "Raw Amplitude",
-                    null,
-                    null,
-                    hapticGraph1Data,
-                    " %"
-                ),
-                getSeries(
-                    "Raw",
-                    graphColors[3],
-                    null,
-                    hapticGraph1Data,
-                    " %"
-                ),
-                getSeries(
-                    "Amplitude",
-                    graphColors[2],
-                    null,
-                    hapticGraph1Data,
-                    " %"
-                ),
+                getSeries("Raw Amplitude", null, null, hapticGraph1Data, " %"),
+                getSeries("Raw", graphColors[3], null, hapticGraph1Data, " %"),
+                getSeries("Amplitude", graphColors[2], null, hapticGraph1Data, " %"),
             ],
-			axes: [
+            axes: [
                 {
                     size: 20,
                     space: 40,
-					values: (u, vals, space) => vals.map(v => v + "%"),
+                    values: (u, vals, space) => vals.map((v) => v + "%"),
                     grid: {
                         width: 1,
                     },
@@ -223,7 +224,7 @@ define([
                 {
                     size: 50,
                     space: 20,
-					values: (u, vals, space) => vals.map(v => v + "%"),
+                    values: (u, vals, space) => vals.map((v) => v + "%"),
                     grid: {
                         width: 1,
                     },
@@ -239,40 +240,16 @@ define([
             width: 540,
             height: 100,
             series: [
-                getSeries(
-                    "Raw Duration",
-                    null,
-                    null,
-                    hapticGraph2Data,
-                    " ms"
-                ),
-                getSeries(
-                    "Min",
-                    graphColors[3],
-                    null,
-                    hapticGraph2Data,
-                    " ms"
-                ),
-                getSeries(
-                    "Min",
-                    graphColors[3],
-                    null,
-                    hapticGraph2Data,
-                    " ms"
-                ),
-                getSeries(
-                    "Duration",
-                    graphColors[2],
-                    null,
-                    hapticGraph2Data,
-                    " ms"
-                ),
+                getSeries("Raw Duration", null, null, hapticGraph2Data, " ms"),
+                getSeries("Min", graphColors[3], null, hapticGraph2Data, " ms"),
+                getSeries("Min", graphColors[3], null, hapticGraph2Data, " ms"),
+                getSeries("Duration", graphColors[2], null, hapticGraph2Data, " ms"),
             ],
-			axes: [
+            axes: [
                 {
                     size: 20,
                     space: 40,
-					values: (u, vals, space) => vals.map(v => v + " ms"),
+                    values: (u, vals, space) => vals.map((v) => v + " ms"),
                     grid: {
                         width: 1,
                     },
@@ -283,7 +260,7 @@ define([
                 {
                     size: 50,
                     space: 20,
-					values: (u, vals, space) => vals.map(v => v + " ms"),
+                    values: (u, vals, space) => vals.map((v) => v + " ms"),
                     grid: {
                         width: 1,
                     },
@@ -299,40 +276,16 @@ define([
             width: 540,
             height: 100,
             series: [
-                getSeries(
-                    "Raw Duration",
-                    null,
-                    null,
-                    hapticGraph3Data,
-                    " ms"
-                ),
-                getSeries(
-                    "Min",
-                    graphColors[3],
-                    null,
-                    hapticGraph3Data,
-                    "x"
-                ),
-                getSeries(
-                    "Max",
-                    graphColors[3],
-                    null,
-                    hapticGraph3Data,
-                    "x"
-                ),
-                getSeries(
-                    "Multiplier",
-                    graphColors[2],
-                    null,
-                    hapticGraph3Data,
-                    "x"
-                ),
+                getSeries("Raw Duration", null, null, hapticGraph3Data, " ms"),
+                getSeries("Min", graphColors[3], null, hapticGraph3Data, "x"),
+                getSeries("Max", graphColors[3], null, hapticGraph3Data, "x"),
+                getSeries("Multiplier", graphColors[2], null, hapticGraph3Data, "x"),
             ],
-			axes: [
+            axes: [
                 {
                     size: 20,
                     space: 40,
-					values: (u, vals, space) => vals.map(v => v + " ms"),
+                    values: (u, vals, space) => vals.map((v) => v + " ms"),
                     grid: {
                         width: 1,
                     },
@@ -343,7 +296,7 @@ define([
                 {
                     size: 50,
                     space: 20,
-					values: (u, vals, space) => vals.map(v => v + "x"),
+                    values: (u, vals, space) => vals.map((v) => v + "x"),
                     grid: {
                         width: 1,
                     },
@@ -354,9 +307,9 @@ define([
             ],
         };
 
-		hapticGraph1Options = getSharedOpts(hapticGraph1Options);
-		hapticGraph2Options = getSharedOpts(hapticGraph2Options);
-		hapticGraph3Options = getSharedOpts(hapticGraph3Options);
+        hapticGraph1Options = getSharedOpts(hapticGraph1Options);
+        hapticGraph2Options = getSharedOpts(hapticGraph2Options);
+        hapticGraph3Options = getSharedOpts(hapticGraph3Options);
 
         function randomAlphanumericID() {
             const len = 10;
@@ -384,7 +337,7 @@ define([
                 hapticGraph2Options = getThemedOpts(hapticGraph2Options);
                 hapticGraph3Options = getThemedOpts(hapticGraph3Options);
             }
-			getHapticSettings();
+            getHapticSettings();
 
             updateSwitchContent();
             updateOptionalContent();
@@ -426,11 +379,11 @@ define([
                 });
                 hapticGraph2.setScale("x", {
                     min: 0,
-                    max: hapticMinDuration*2,
+                    max: hapticMinDuration * 2,
                 });
                 hapticGraph3.setScale("x", {
                     min: 0,
-                    max: hapticMinDuration*2,
+                    max: hapticMinDuration * 2,
                 });
                 hapticGraph1.setScale("y", {
                     min: 0,
@@ -438,11 +391,11 @@ define([
                 });
                 hapticGraph2.setScale("y", {
                     min: 0,
-                    max: hapticMinDuration*2,
+                    max: hapticMinDuration * 2,
                 });
                 hapticGraph3.setScale("y", {
                     min: 1,
-                    max: hapticShortMultiplier+1,
+                    max: hapticShortMultiplier + 1,
                 });
             });
         }
@@ -452,7 +405,7 @@ define([
             session = newSession;
             setProperties(newSession.sessionSettings, "_root");
             updating = false;
-			getHapticSettings();
+            getHapticSettings();
             hapticGraph1.batch(() => {
                 hapticGraph1.setScale("x", {
                     min: 0,
@@ -460,11 +413,11 @@ define([
                 });
                 hapticGraph2.setScale("x", {
                     min: 0,
-                    max: hapticMinDuration*2,
+                    max: hapticMinDuration * 2,
                 });
                 hapticGraph3.setScale("x", {
                     min: 0,
-                    max: hapticMinDuration*2,
+                    max: hapticMinDuration * 2,
                 });
                 hapticGraph1.setScale("y", {
                     min: 0,
@@ -472,11 +425,11 @@ define([
                 });
                 hapticGraph2.setScale("y", {
                     min: 0,
-                    max: hapticMinDuration*2,
+                    max: hapticMinDuration * 2,
                 });
                 hapticGraph3.setScale("y", {
                     min: 1,
-                    max: hapticShortMultiplier+1,
+                    max: hapticShortMultiplier + 1,
                 });
             });
         };

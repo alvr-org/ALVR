@@ -124,7 +124,6 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint6
 void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 	FECSend(buf, len, frameIndex, mVideoFrameIndex);
 	mVideoFrameIndex++;
-	FillStatistics();
 }
 
 void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand)
@@ -246,9 +245,6 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 				m_reportedStatistics.fecFailureInSecond,
 				m_reportedStatistics.fps,
 				m_Statistics->GetFPS());
-
-			m_LastStatisticsUpdate = Current;
-			m_LastStatisticsRedrawUpdate = Current;
 		}
 		else if (timeSync->mode == 2) {
 			// Calclate RTT
@@ -267,81 +263,6 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			OnFecFailure();
 		}
 	}
-	FillStatistics();
-}
-
-void ClientConnection::FillStatistics() {
-	uint64_t now = GetTimestampUs();
-	if (now - m_LastStatisticsFillerUpdate > STATISTICS_FILLER_US && now - m_LastStatisticsUpdate > STATISTICS_FILLER_US && now - m_LastStatisticsUpdate < STATISTICS_TIMEOUT_US)
-	{
-		//timings might be a little incorrect since it is a mix from a previous sent frame and latest frame
-
-		vr::Compositor_FrameTiming timing[2];
-		timing[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
-		vr::VRServerDriverHost()->GetFrameTimings(&timing[0], 2);
-
-		float renderTime = timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs;
-		float idleTime = timing[0].m_flCompositorIdleCpuMs;
-		float waitTime = timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs;
-
-		Info("#{ \"id\": \"Statistics\", \"data\": {"
-			"\"bitrate\": %llu, "
-			"\"sendAverage\": %.3f, "
-			"\"time\": %llu, "
-			"\"totalPackets\": %llu, "
-			"\"packetRate\": %llu, "
-			"\"packetsLostTotal\": %llu, "
-			"\"packetsLostPerSecond\": %llu, "
-			"\"totalSent\": %llu, "
-			"\"sentRate\": %.3f, "
-			"\"totalLatency\": %.3f, "
-			"\"receiveLatency\": %.3f, "
-			"\"renderTime\": %.3f, "
-			"\"idleTime\": %.3f, "
-			"\"waitTime\": %.3f, "
-			"\"encodeLatency\": %.3f, "
-			"\"sendLatency\": %.3f, "
-			"\"decodeLatency\": %.3f, "
-			"\"fecPercentage\": %d, "
-			"\"fecFailureTotal\": %llu, "
-			"\"fecFailureInSecond\": %llu, "
-			"\"clientFPS\": %.3f, "
-			"\"serverFPS\": %.3f"
-			"} }#\n",
-			m_Statistics->GetBitrate(),
-			m_Statistics->GetSendLatencyAverage() / 1000.0,
-			now / 1000,
-			m_Statistics->GetPacketsSentTotal(),
-			m_Statistics->GetPacketsSentInSecond(),
-			m_reportedStatistics.packetsLostTotal,
-			0,
-			m_Statistics->GetBitsSentTotal() / 8 / 1000 / 1000,
-			m_Statistics->GetBitsSentInSecond() / 1000. / 1000.0,
-			(int)(m_reportedStatistics.averageSendLatency + (timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs + timing[0].m_flCompositorIdleCpuMs + timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs) * 1000 + m_Statistics->GetEncodeLatencyAverage() + m_reportedStatistics.averageTransportLatency + m_reportedStatistics.averageDecodeLatency) / 1000.0,
-			0,
-			renderTime,
-			idleTime,
-			waitTime,
-			(double)(m_Statistics->GetEncodeLatencyAverage()) / US_TO_MS,
-			0,
-			0, m_fecPercentage,
-			m_reportedStatistics.fecFailureTotal,
-			0,
-			0,
-			m_Statistics->GetFPS());
-
-		m_LastStatisticsFillerUpdate = now;
-		m_LastStatisticsRedrawUpdate = now;
-	};
-	if (now - m_LastStatisticsRedrawUpdate > STATISTICS_REDRAW_US && now - m_LastStatisticsUpdate < STATISTICS_TIMEOUT_US)
-	{
-		Info("#{ \"id\": \"StatisticsRedraw\", \"data\": {"
-			"\"time\": %llu"
-			"} }#\n",
-			now / 1000);
-
-		m_LastStatisticsRedrawUpdate = now;
-	};
 }
 
 bool ClientConnection::HasValidTrackingInfo() const {

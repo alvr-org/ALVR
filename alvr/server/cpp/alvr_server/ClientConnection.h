@@ -22,7 +22,6 @@ public:
 	void SendAudio(uint8_t *buf, int len, uint64_t presentationTime);
 	void SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand);
 	void ProcessRecv(unsigned char *buf, size_t len);
-	void FillStatistics();
 	bool HasValidTrackingInfo() const;
 	void GetTrackingInfo(TrackingInfo &info);
 	uint64_t clientToServerTime(uint64_t clientTime) const;
@@ -39,9 +38,7 @@ private:
 	static const int PACKET_SIZE = 1400;
 	static const int64_t REQUEST_TIMEOUT = 5 * 1000 * 1000;
 	static const int64_t CONNECTION_TIMEOUT = 5 * 1000 * 1000;
-	static const int64_t STATISTICS_TIMEOUT_US = 1000 * 1000;
-	static const int64_t STATISTICS_FILLER_US = 100 * 1000;
-	static const int64_t STATISTICS_REDRAW_US = 1000 * 1000 / 60;
+	static const int64_t STATISTICS_TIMEOUT_US = 10 * 1000;
 
 	uint32_t videoPacketCounter = 0;
 	uint32_t soundPacketCounter = 0;
@@ -63,6 +60,4 @@ private:
 	uint64_t mVideoFrameIndex = 1;
 
 	uint64_t m_LastStatisticsUpdate;
-	uint64_t m_LastStatisticsFillerUpdate;
-	uint64_t m_LastStatisticsRedrawUpdate;
 };

@@ -72,6 +72,8 @@ define([
 
                 updateClients();
             });
+
+            setInterval(fillPerformanceGraphs, 8); 
         }
 
         function updateClients() {
@@ -403,9 +405,6 @@ define([
 
         function handleJson(json) {
             switch (json.id) {
-                case "StatisticsRedraw":
-                    redrawPerformanceGraphs(json.data);
-                    break;
                 case "Statistics":
                     updateStatistics(json.data);
                     break;
@@ -693,6 +692,10 @@ define([
                 document.getElementById("framerateGraphArea")
             );
         }
+	
+        let lastStatisticsUpdate = now;
+        let lastGraphUpdate = now;
+        let lastGraphRedraw = now;
 
         function updatePerformanceGraphs(statistics) {
             const now = parseInt(new Date().getTime());
@@ -729,10 +732,10 @@ define([
             framerateGraphData[0].push(statistics["time"]);
             framerateGraphData[1].push(statistics["serverFPS"]);
             framerateGraphData[2].push(statistics["clientFPS"]);
-        }
 
-        let lastStatisticsUpdate = now;
-        let lastGraphUpdate = now;
+            lastStatistics = statistics;
+            lastGraphUpdate = now;
+        }
 
         function redrawPerformanceGraphs(statistics) {
             const now = parseInt(new Date().getTime());
@@ -749,7 +752,7 @@ define([
             framerateGraphData[0].shift();
             framerateGraphData[0].unshift(statistics["time"] - duration);
 
-            if (now > lastGraphUpdate + 16) {
+            if (now > lastGraphRedraw + 16) {
                 const ldata = []
                     .concat(latencyGraphData[latencyGraphData.length - 1])
                     .filter(Boolean);
@@ -772,7 +775,44 @@ define([
                     });
                     framerateGraph.setData(framerateGraphData);
                 });
-                lastGraphUpdate = now;
+                lastGraphRedraw = now;
+            }
+        }
+
+        let lastStatistics = {};
+        let statisticsUpdateStopped = true;
+        let statisticsRedrawStopped = true;
+
+        function fillPerformanceGraphs() {
+            if (!statisticsRedrawStopped) {
+                const now = parseInt(new Date().getTime());
+                lastStatistics["time"] = now;
+                if (now - 16 > lastGraphRedraw & now - 1000 < lastStatisticsUpdate) {
+                    if (now - 100 > lastGraphUpdate) {
+                        if (!statisticsUpdateStopped) {
+                            statisticsUpdateStopped = true;
+                            lastStatistics["time"] = lastGraphUpdate + 16;
+                            lastStatistics["packetsLostPerSecond"] = null;
+                            lastStatistics["receiveLatency"] = null;
+                            lastStatistics["sendLatency"] = null;
+                            lastStatistics["decodeLatency"] = null;
+                            lastStatistics["totalLatency"] = null;
+                            lastStatistics["fecFailureInSecond"] = null;
+                            lastStatistics["clientFPS"] = null;
+                        }
+                        updatePerformanceGraphs(lastStatistics);
+                    }
+                    redrawPerformanceGraphs(lastStatistics);
+                }
+                else if (now - 1000 > lastStatisticsUpdate) {
+                    statisticsRedrawStopped = true;
+                    lastStatistics["renderTime"] = null;
+                    lastStatistics["idleTime"] = null;
+                    lastStatistics["waitTime"] = null;
+                    lastStatistics["encodeLatency"] = null;
+                    lastStatistics["serverFPS"] = null;
+                    updatePerformanceGraphs(lastStatistics);
+                }
             }
         }
 
@@ -822,6 +862,13 @@ define([
                 lastStatisticsUpdate = now;
             }
 
+            if (statisticsUpdateStopped)
+                statisticsUpdateStopped = false;
+            if (statisticsRedrawStopped) {
+                lastStatistics["time"] = now;
+                updatePerformanceGraphs(lastStatistics);
+                statisticsRedrawStopped = false;
+            }
             updatePerformanceGraphs(statistics);
             redrawPerformanceGraphs(statistics);
         }

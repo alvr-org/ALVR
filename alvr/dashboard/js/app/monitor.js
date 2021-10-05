@@ -72,6 +72,8 @@ define([
 
                 updateClients();
             });
+
+            setInterval(fillPerformanceGraphs, 8);
         }
 
         function updateClients() {
@@ -615,7 +617,7 @@ define([
         const duration = 10000;
 
         let latencyGraphData = [
-            Array(length).fill(now),
+            Array(length + 1).fill(now),
             ...Array(7)
                 .fill(null)
                 .map((x) => Array(length).fill(null)),
@@ -687,7 +689,7 @@ define([
         latencyGraphOptions = getStackedOpts(latencyGraphOptions, latencyGraphData);
 
         let framerateGraphData = [
-            Array(length).fill(now),
+            Array(length + 1).fill(now),
             Array(length).fill(null),
             Array(length).fill(null),
         ];
@@ -739,12 +741,19 @@ define([
             );
         }
 
+        let lastStatisticsUpdate = now;
+        let lastGraphUpdate = now;
+        let lastGraphRedraw = now;
+
         function updatePerformanceGraphs(statistics) {
             const now = parseInt(new Date().getTime());
 
             for (let i = 0; i < latencyGraphData.length; i++) {
                 latencyGraphData[i].shift();
             }
+
+            latencyGraphData[0].pop();
+            latencyGraphData[0].push(statistics["time"]);
 
             latencyGraphData[0].push(statistics["time"]);
             if (statistics["totalLatency"] < Infinity) {
@@ -761,53 +770,37 @@ define([
                 }
             }
 
-            latencyGraphData[0].shift();
-            latencyGraphData[0].unshift(statistics["time"] - duration);
-
             for (let i = 0; i < framerateGraphData.length; i++) {
                 framerateGraphData[i].shift();
             }
+
+            framerateGraphData[0].pop();
+            framerateGraphData[0].push(statistics["time"]);
 
             framerateGraphData[0].push(statistics["time"]);
             framerateGraphData[1].push(statistics["serverFPS"]);
             framerateGraphData[2].push(statistics["clientFPS"]);
 
-            framerateGraphData[0].shift();
-            framerateGraphData[0].unshift(statistics["time"] - duration);
+            lastStatistics = statistics;
+            lastGraphUpdate = now;
         }
 
-        let lastStatisticsUpdate = now;
-        let lastGraphUpdate = now;
-
-        function updateStatistics(statistics) {
-            clearTimeout(timeoutHandler);
-            // $("#connectionCard").hide();
-            // $("#statisticsCard").show();
-            if (!clientConnected) {
-                clientConnected = true;
-                // hide connection
-                if ($("#connectionTab").hasClass("active"))
-                    $("#connectionTab").removeClass("active");
-                if ($("#connection").hasClass("active")) $("#connection").removeClass("active");
-                // show statistics
-                if (!$("#statisticsTab").hasClass("active")) $("#statisticsTab").addClass("active");
-                if (!$("#statistics").hasClass("active")) $("#statistics").addClass("active");
-                if (!$("#statistics").hasClass("show")) $("#statistics").addClass("show");
-                // hide logging
-                if ($("#loggingTab").hasClass("active")) $("#loggingTab").removeClass("active");
-                if ($("#logging").hasClass("active")) $("#logging").removeClass("active");
-                if ($("#logging").hasClass("show")) $("#logging").removeClass("show");
-            }
-
+        function redrawPerformanceGraphs(statistics) {
             const now = parseInt(new Date().getTime());
 
-            if (now > lastStatisticsUpdate + 100) {
-                for (const stat in statistics) {
-                    $("#statistic_" + stat).text(statistics[stat]);
-                }
-                lastStatisticsUpdate = now;
-            }
-            if (now > lastGraphUpdate + 16) {
+            latencyGraphData[0].pop();
+            latencyGraphData[0].push(statistics["time"]);
+
+            latencyGraphData[0].shift();
+            latencyGraphData[0].unshift(statistics["time"] - duration);
+
+            framerateGraphData[0].pop();
+            framerateGraphData[0].push(statistics["time"]);
+
+            framerateGraphData[0].shift();
+            framerateGraphData[0].unshift(statistics["time"] - duration);
+
+            if (now > lastGraphRedraw + 16) {
                 const ldata = []
                     .concat(latencyGraphData[latencyGraphData.length - 1])
                     .filter(Boolean);
@@ -830,7 +823,61 @@ define([
                     });
                     framerateGraph.setData(framerateGraphData);
                 });
-                lastGraphUpdate = now;
+                lastGraphRedraw = now;
+            }
+        }
+
+        let lastStatistics = {};
+        let statisticsUpdateStopped = true;
+        let statisticsRedrawStopped = true;
+
+        function fillPerformanceGraphs() {
+            if (!statisticsRedrawStopped) {
+                const now = parseInt(new Date().getTime());
+                lastStatistics["time"] = now;
+                if ((now - 16 > lastGraphRedraw) & (now - 1000 < lastStatisticsUpdate)) {
+                    if (now - 100 > lastGraphUpdate) {
+                        if (!statisticsUpdateStopped) {
+                            statisticsUpdateStopped = true;
+                            lastStatistics["time"] = lastGraphUpdate + 16;
+                            lastStatistics["packetsLostPerSecond"] = null;
+                            lastStatistics["receiveLatency"] = null;
+                            lastStatistics["renderTime"] = null;
+                            lastStatistics["idleTime"] = null;
+                            lastStatistics["waitTime"] = null;
+                            lastStatistics["encodeLatency"] = null;
+                            lastStatistics["sendLatency"] = null;
+                            lastStatistics["decodeLatency"] = null;
+                            lastStatistics["totalLatency"] = null;
+                            lastStatistics["fecFailureInSecond"] = null;
+                            lastStatistics["clientFPS"] = null;
+                            lastStatistics["serverFPS"] = null;
+                            updatePerformanceGraphs(lastStatistics);
+                        }
+                    }
+                    redrawPerformanceGraphs(lastStatistics);
+                } else if (now - 1000 > lastStatisticsUpdate) statisticsRedrawStopped = true;
+            }
+        }
+
+        function updateStatistics(statistics) {
+            clearTimeout(timeoutHandler);
+            // $("#connectionCard").hide();
+            // $("#statisticsCard").show();
+            if (!clientConnected) {
+                clientConnected = true;
+                // hide connection
+                if ($("#connectionTab").hasClass("active"))
+                    $("#connectionTab").removeClass("active");
+                if ($("#connection").hasClass("active")) $("#connection").removeClass("active");
+                // show statistics
+                if (!$("#statisticsTab").hasClass("active")) $("#statisticsTab").addClass("active");
+                if (!$("#statistics").hasClass("active")) $("#statistics").addClass("active");
+                if (!$("#statistics").hasClass("show")) $("#statistics").addClass("show");
+                // hide logging
+                if ($("#loggingTab").hasClass("active")) $("#loggingTab").removeClass("active");
+                if ($("#logging").hasClass("active")) $("#logging").removeClass("active");
+                if ($("#logging").hasClass("show")) $("#logging").removeClass("show");
             }
             timeoutHandler = setTimeout(() => {
                 // $("#connectionCard").show();
@@ -850,7 +897,23 @@ define([
                 if ($("#logging").hasClass("show")) $("#logging").removeClass("show");
             }, 2000);
 
+            const now = parseInt(new Date().getTime());
+
+            if (now > lastStatisticsUpdate + 100) {
+                for (const stat in statistics) {
+                    $("#statistic_" + stat).text(statistics[stat]);
+                }
+                lastStatisticsUpdate = now;
+            }
+
+            if (statisticsUpdateStopped) statisticsUpdateStopped = false;
+            if (statisticsRedrawStopped) {
+                lastStatistics["time"] = now;
+                updatePerformanceGraphs(lastStatistics);
+                statisticsRedrawStopped = false;
+            }
             updatePerformanceGraphs(statistics);
+            redrawPerformanceGraphs(statistics);
         }
 
         let isUpdating = false;

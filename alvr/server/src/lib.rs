@@ -19,6 +19,7 @@ use parking_lot::Mutex;
 use std::{
     collections::{hash_map::Entry, HashSet},
     ffi::{c_void, CStr, CString},
+    fs,
     net::IpAddr,
     os::raw::c_char,
     ptr,
@@ -174,8 +175,13 @@ fn ui_thread() -> StrResult {
             (0, 0)
         };
 
+    let _tmpdir = trace_err!(tempfile::TempDir::new());
+    let path = _tmpdir.as_ref().unwrap().path();
+    let mut file = trace_err!(fs::File::create(path.join("FirstLaunchAfterInstallation")))?;
+
     let window = Arc::new(trace_err!(alcro::UIBuilder::new()
         .content(alcro::Content::Url("http://127.0.0.1:8082"))
+        .user_data_dir(path)
         .size(WINDOW_WIDTH as _, WINDOW_HEIGHT as _)
         .custom_args(&[
             "--disk-cache-size=1",

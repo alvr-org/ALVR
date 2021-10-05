@@ -115,7 +115,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -133,7 +133,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -163,7 +163,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_commands"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -181,7 +181,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "backtrace",
  "lazy_static",
@@ -206,7 +206,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_filesystem"
-version = "15.2.1"
+version = "16.0.0"
 dependencies = [
  "dirs",
  "lazy_static",
@@ -256,7 +256,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_commands",
  "alvr_common",
@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alcro",
  "alvr_audio",
@@ -329,7 +329,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "bytemuck",
@@ -340,7 +340,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -360,7 +360,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_vulkan-layer"
-version = "15.2.1"
+version = "16.0.0"
 dependencies = [
  "alvr_filesystem",
  "bindgen 0.59.1",
@@ -371,7 +371,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "1.0.0"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -1674,9 +1674,9 @@ dependencies = [
 
 [[package]]
 name = "fixedbitset"
-version = "0.2.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
+checksum = "398ea4fabe40b9b0d885340a2a991a44c8a645624075ad966d21f88688e2b69e"
 
 [[package]]
 name = "fluent"
@@ -2405,6 +2405,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hexf-parse"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
+
+[[package]]
 name = "hound"
 version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2933,12 +2939,13 @@ dependencies = [
 [[package]]
 name = "naga"
 version = "0.6.0"
-source = "git+https://github.com/gfx-rs/naga?rev=93db57c#93db57c12b4a5eff48bdd00c494efa5ec89567ad"
+source = "git+https://github.com/gfx-rs/naga?rev=52d74e9#52d74e91a4b062d317304250b5461890913d3bb8"
 dependencies = [
  "bit-set",
  "bitflags",
  "codespan-reporting",
  "fxhash",
+ "hexf-parse",
  "log",
  "num-traits",
  "petgraph",
@@ -3600,9 +3607,9 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "petgraph"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "467d164a6de56270bd7c4d070df81d07beace25012d5103ced4e9ff08d6afdb7"
+checksum = "4a13a2fa9d0b63e5f22328828741e523766fff0ee9e779316902290dff3f824f"
 dependencies = [
  "fixedbitset",
  "indexmap",
@@ -5128,7 +5135,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
 name = "vrcompositor-wrapper"
-version = "15.2.1"
+version = "16.0.0"
 dependencies = [
  "exec",
 ]
@@ -5360,7 +5367,7 @@ dependencies = [
 [[package]]
 name = "wgpu"
 version = "0.10.1"
-source = "git+https://github.com/gfx-rs/wgpu#076031c1ba8362245810a52bc21dd8d3b10eb80a"
+source = "git+https://github.com/gfx-rs/wgpu#7f2485ea9d9a4c25037d89720389926dfe043aaf"
 dependencies = [
  "arrayvec 0.7.1",
  "js-sys",
@@ -5379,7 +5386,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.10.0"
-source = "git+https://github.com/gfx-rs/wgpu#076031c1ba8362245810a52bc21dd8d3b10eb80a"
+source = "git+https://github.com/gfx-rs/wgpu#7f2485ea9d9a4c25037d89720389926dfe043aaf"
 dependencies = [
  "arrayvec 0.7.1",
  "bitflags",
@@ -5400,7 +5407,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "0.10.1"
-source = "git+https://github.com/gfx-rs/wgpu#076031c1ba8362245810a52bc21dd8d3b10eb80a"
+source = "git+https://github.com/gfx-rs/wgpu#7f2485ea9d9a4c25037d89720389926dfe043aaf"
 dependencies = [
  "arrayvec 0.7.1",
  "ash",
@@ -5422,6 +5429,7 @@ dependencies = [
  "naga",
  "objc",
  "parking_lot",
+ "profiling",
  "range-alloc",
  "raw-window-handle",
  "renderdoc-sys",
@@ -5433,7 +5441,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.10.0"
-source = "git+https://github.com/gfx-rs/wgpu#076031c1ba8362245810a52bc21dd8d3b10eb80a"
+source = "git+https://github.com/gfx-rs/wgpu#7f2485ea9d9a4c25037d89720389926dfe043aaf"
 dependencies = [
  "bitflags",
 ]

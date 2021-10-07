@@ -58,7 +58,7 @@ pub struct AdaptiveBitrateDesc {
 
     #[schema(advanced, min = 1, max = 10, step = 1)]
     pub bitrate_down_rate: u64,
-	
+
     #[schema(advanced, min = 0., max = 1., step = 0.01)]
     pub bitrate_light_load_threshold: f32,
 }

@@ -68,6 +68,7 @@ public:
 	uint64_t m_adaptiveBitrateThreshold;
 	uint64_t m_adaptiveBitrateUpRate;
 	uint64_t m_adaptiveBitrateDownRate;
+	float m_adaptiveBitrateLightLoadThreshold;
 	bool m_use10bitEncoder;
 
 	// Controller configs

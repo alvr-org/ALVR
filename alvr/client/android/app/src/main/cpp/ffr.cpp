@@ -117,18 +117,6 @@ namespace {
             return vec2(eyeUV.x / 2. + float(isRightEye) * (1. - eyeUV.x), eyeUV.y);
         }
 
-        vec3 lerp2(float grey, vec3 base, float saturation) {
-            return vec3(mix(grey,base.r,saturation),mix(grey,base.g,saturation),mix(grey,base.b,saturation));
-        }
-
-        vec3 blendLighten(vec3 base, vec3 blend) {
-            return vec3(max(base.r,blend.r),max(base.g,blend.g),max(base.b,blend.b));
-        }
-
-        vec3 saturate(vec3 base, float saturation) {
-            return blendLighten(lerp2(dot(base, vec3(0.299, 0.587, 0.114)), base, saturation), base); 
-        }
-
     )glsl";
 
     const string UNDISTORT_FRAGMENT_SHADER = R"glsl(
@@ -211,9 +199,7 @@ namespace {
             vec2 uncompressedUV = (centeredUV + FOVEATION_SCALE * foveationRescale +
                                    compressedOffset) / uncompressedScale + paddingCount * PADDING;
 
-            float saturation = 1.400;
-
-            color = vec4(saturate(texture(tex0, EyeToTextureUV(uncompressedUV * RESOLUTION_SCALE, isRightEye)).rgb, saturation), 1.);
+            color = texture(tex0, EyeToTextureUV(uncompressedUV * RESOLUTION_SCALE, isRightEye));
         }
     )glsl";
 

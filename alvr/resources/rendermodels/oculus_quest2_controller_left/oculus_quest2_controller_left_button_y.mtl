@@ -1,0 +1,9 @@
+# MTL written from oculus_quest2_controller_left_button_y.obj
+newmtl oculus_quest2_controller_left
+Kd 0.48 0.48 0.48
+Ns 256
+d 1
+illum 2
+Ka 0 0 0
+Ks 0.04 0.04 0.04
+map_Kd oculus_quest2_controller_left.png

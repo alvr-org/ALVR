@@ -115,7 +115,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -133,7 +133,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -163,7 +163,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_commands"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -181,7 +181,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "backtrace",
  "lazy_static",
@@ -206,7 +206,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_filesystem"
-version = "15.2.1"
+version = "16.0.0"
 dependencies = [
  "dirs",
  "lazy_static",
@@ -256,7 +256,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_commands",
  "alvr_common",
@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alcro",
  "alvr_audio",
@@ -329,7 +329,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "bytemuck",
@@ -340,7 +340,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -360,7 +360,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_vulkan-layer"
-version = "15.2.1"
+version = "16.0.0"
 dependencies = [
  "alvr_filesystem",
  "bindgen 0.59.1",
@@ -371,7 +371,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "1.0.0"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -5128,7 +5128,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
 name = "vrcompositor-wrapper"
-version = "15.2.1"
+version = "16.0.0"
 dependencies = [
  "exec",
 ]

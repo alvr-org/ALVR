@@ -116,7 +116,6 @@ namespace {
             // left: x / 2; right 1 - (x / 2)
             return vec2(eyeUV.x / 2. + float(isRightEye) * (1. - eyeUV.x), eyeUV.y);
         }
-
     )glsl";
 
     const string UNDISTORT_FRAGMENT_SHADER = R"glsl(

@@ -7,7 +7,7 @@
 
 use alvr_common::{Fov, OpenvrPropValue};
 use alvr_ipc::{
-    ButtonValue, DriverConfigUpdate, DriverRequest, InputType, IpcClient, IpcSseReceiver, Layer,
+    ButtonValue, VideoConfigUpdate, DriverRequest, InputType, IpcClient, IpcSseReceiver, Layer,
     MotionData, ResponseForDriver, SsePacket, TrackedDeviceType,
 };
 use core::slice;
@@ -57,7 +57,7 @@ fn log(message: &str) {
     unsafe { drv::_log(c_string.as_ptr()) };
 }
 
-fn ipc_driver_config_to_driver(config: DriverConfigUpdate) -> drv::DriverConfigUpdate {
+fn ipc_driver_config_to_driver(config: VideoConfigUpdate) -> drv::DriverConfigUpdate {
     drv::DriverConfigUpdate {
         preferred_view_width: config.preferred_view_size.0,
         preferred_view_height: config.preferred_view_size.1,
@@ -179,9 +179,10 @@ extern "C" fn spawn_sse_receiver_loop() -> bool {
                 if let Ok(maybe_message) = receiver.receive_non_blocking() {
                     match maybe_message {
                         Some(message) => match message {
-                            SsePacket::UpdateConfig(config) => unsafe {
+                            SsePacket::UpdateVideoConfig(config) => unsafe {
                                 drv::update_config(ipc_driver_config_to_driver(config))
                             },
+                            SsePacket::UpdateBattery { device_index, value } => todo!(),
                             SsePacket::PropertyChanged {
                                 device_index,
                                 name,
@@ -414,7 +415,7 @@ extern "C" fn present(layers: *const drv::Layer, count: u32) {
                 layer_views.push(Layer {
                     orientation: todo!(),
                     fov,
-                    swaphcain_id: drv_layer.swapchain_ids[idx],
+                    swapchain_id: drv_layer.swapchain_ids[idx],
                     rect_offset,
                     rect_size,
                 });

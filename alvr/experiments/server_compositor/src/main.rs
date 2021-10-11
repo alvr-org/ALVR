@@ -3,6 +3,7 @@ mod compositing;
 
 use alvr_common::{prelude::*, Fov};
 use alvr_graphics::{
+    convert::{self, SwapchainCreateData, SwapchainCreateInfo, TextureType},
     foveated_rendering::{FoveatedRenderingPass, FrDirection},
     slicing::{AlignmentDirection, SlicingPass},
     Context, TARGET_FORMAT,
@@ -149,12 +150,12 @@ impl Compositor {
         data: SwapchainCreateData,
         info: SwapchainCreateInfo,
     ) -> Swapchain {
-        let textures = create_swapchain(data, info);
-
         let array_size = match info.texture_type {
-            TextureType::D2 { array_size } => array_size,
+            TextureType::Flat { array_size } => array_size,
             TextureType::Cubemap => 1,
         };
+
+        let textures = convert::create_texture_set(self.context.device(), data, info);
 
         let bind_groups = textures
             .iter()

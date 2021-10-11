@@ -1,0 +1,10 @@
+[package]
+name = "alvr_mock_driver"
+version = "0.1.0"
+authors = ["alvr-org"]
+license = "MIT"
+edition = "2018"
+
+[dependencies]
+alvr_common = { path = "../../common" }
+alvr_ipc = { path = "../ipc" }

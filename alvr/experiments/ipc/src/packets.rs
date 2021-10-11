@@ -11,27 +11,25 @@ pub enum TrackedDeviceType {
     GenericTracker,
 }
 
-// This packet groups all data that is updated rarely
 #[derive(Serialize, Deserialize)]
-pub struct DriverConfigUpdate {
+pub struct VideoConfigUpdate {
     pub preferred_view_size: (u32, u32),
     pub fov: [Fov; 2],
     pub ipd_m: f32,
     pub fps: f32,
-    pub battery: Vec<(TrackedDeviceType, f32)>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct DisplayConfig {
     pub presentation: bool,
-    pub config: DriverConfigUpdate,
+    pub config: VideoConfigUpdate,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Layer {
     pub orientation: UnitQuaternion<f32>,
     pub fov: Fov,
-    pub swaphcain_id: u64,
+    pub swapchain_id: u64,
     pub rect_offset: (f32, f32),
     pub rect_size: (f32, f32),
 }
@@ -80,6 +78,7 @@ pub enum ButtonValue {
 pub struct TrackedDeviceConfig {
     pub serial_number: String,
     pub device_type: TrackedDeviceType,
+    pub battery: f32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -108,7 +107,11 @@ pub struct MotionData {
 
 #[derive(Serialize, Deserialize)]
 pub enum SsePacket {
-    UpdateConfig(DriverConfigUpdate),
+    UpdateVideoConfig(VideoConfigUpdate),
+    UpdateBattery {
+        device_index: u64,
+        value: f32, // normalized
+    },
     PropertyChanged {
         device_index: u64,
         name: String,

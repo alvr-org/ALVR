@@ -22,7 +22,7 @@ pub struct CompositingPass {
 
 impl CompositingPass {
     pub fn new(device: &Device) -> Self {
-        let quad_shader = graphics::quad_shader(device);
+        let quad_shader = alvr_graphics::quad_shader(device);
 
         let fragment_shader = device.create_shader_module(&ShaderModuleDescriptor {
             label: None,
@@ -51,7 +51,7 @@ impl CompositingPass {
             }),
         });
 
-        let sampler = graphics::create_default_sampler(device);
+        let sampler = alvr_graphics::create_default_sampler(device);
 
         Self {
             inner: pipeline,
@@ -70,7 +70,12 @@ impl CompositingPass {
             ..Default::default()
         });
 
-        graphics::create_default_bind_group_with_sampler(device, &self.inner, &view, &self.sampler)
+        alvr_graphics::create_default_bind_group_with_sampler(
+            device,
+            &self.inner,
+            &view,
+            &self.sampler,
+        )
     }
 
     pub fn draw<'a>(

@@ -115,7 +115,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -133,7 +133,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -163,7 +163,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_commands"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -181,7 +181,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "backtrace",
  "lazy_static",
@@ -206,7 +206,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_filesystem"
-version = "15.2.1"
+version = "16.0.0"
 dependencies = [
  "dirs",
  "lazy_static",
@@ -256,7 +256,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_commands",
  "alvr_common",
@@ -270,6 +270,14 @@ dependencies = [
  "ureq",
  "winreg 0.9.0",
  "winres",
+]
+
+[[package]]
+name = "alvr_mock_driver"
+version = "0.1.0"
+dependencies = [
+ "alvr_common",
+ "alvr_ipc",
 ]
 
 [[package]]
@@ -288,7 +296,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alcro",
  "alvr_audio",
@@ -329,7 +337,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "bytemuck",
@@ -340,7 +348,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "16.0.0-rc2"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -360,7 +368,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_vulkan-layer"
-version = "15.2.1"
+version = "16.0.0"
 dependencies = [
  "alvr_filesystem",
  "bindgen 0.59.1",
@@ -371,7 +379,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "1.0.0"
+version = "16.0.0"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -2699,9 +2707,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.101"
+version = "0.2.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cb00336871be5ed2c8ed44b60ae9959dc5b9f08539422ed43f09e34ecaeba21"
+checksum = "dd8f7255a17a627354f321ef0055d63b898c6fb27eff628af4d1b66b7331edf6"
 
 [[package]]
 name = "libloading"
@@ -4386,9 +4394,9 @@ dependencies = [
 
 [[package]]
 name = "single-instance"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3f2792c0b6ed65b82366169fae5b7bbaa44e7d9d127745f03e4683e96cdaa7b"
+checksum = "23e235a472aa6d6b39ac39f2a314590396ba724528298f1d56fe4da71ddc1064"
 dependencies = [
  "libc",
  "nix 0.19.1",
@@ -4629,9 +4637,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.20.3"
+version = "0.20.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92d77883450d697c0010e60db3d940ed130b0ed81d27485edee981621b434e52"
+checksum = "ffff4a02fa61eee51f95210fc9c98ea6eeb46bb071adeafd61e1a0b9b22c6a6d"
 dependencies = [
  "cfg-if 1.0.0",
  "core-foundation-sys 0.8.2",
@@ -5128,7 +5136,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
 name = "vrcompositor-wrapper"
-version = "15.2.1"
+version = "16.0.0"
 dependencies = [
  "exec",
 ]
@@ -5556,9 +5564,9 @@ dependencies = [
 
 [[package]]
 name = "winres"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff4fb510bbfe5b8992ff15f77a2e6fe6cf062878f0eda00c0f44963a807ca5dc"
+checksum = "b68db261ef59e9e52806f688020631e987592bd83619edccda9c47d42cde4f6c"
 dependencies = [
  "toml",
 ]

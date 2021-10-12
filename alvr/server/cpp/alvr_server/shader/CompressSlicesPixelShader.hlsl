@@ -11,7 +11,7 @@ Texture2D<float4> compositionTexture;
 SamplerState trilinearSampler {
 	Filter = MIN_MAG_MIP_LINEAR;
 	//AddressU = Wrap;
-	//AddressU = Wrap; // not working, using fmod() instead
+	//AddressV = Wrap;
 };
 
 float4 main(float2 uv : TEXCOORD0) : SV_Target{
@@ -33,5 +33,5 @@ float4 main(float2 uv : TEXCOORD0) : SV_Target{
 	float2 compressedUV = underBound*leftEdge+inBound*center+overBound*rightEdge;
 
 	return compositionTexture.Sample(
-		trilinearSampler, EyeToTextureUV(fmod(compressedUV + 1., 1), isRightEye));
+		trilinearSampler, EyeToTextureUV(compressedUV, isRightEye));
 }

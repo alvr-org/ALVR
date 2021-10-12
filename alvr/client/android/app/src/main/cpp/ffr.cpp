@@ -99,9 +99,9 @@ namespace {
         //vec2 GetFilteringWeight2D(vec2 uv) {
         //    float radialExpansion = length(UndistortRadialDerivative(uv));
         //    vec2 contraction = 1. / (radialExpansion * RESOLUTION_SCALE);
-		//
+        //
         //    vec2 modifiedContraction = contraction - 1. / contraction; // -> ?
-		//
+        //
         //    return max(modifiedContraction, EPS);
         //}
 

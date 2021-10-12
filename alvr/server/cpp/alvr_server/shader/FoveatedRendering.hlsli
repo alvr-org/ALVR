@@ -105,7 +105,8 @@ float2 TextureToEyeUV(float2 textureUV, bool isRightEye) {
 
 float2 EyeToTextureUV(float2 eyeUV, bool isRightEye) {
 	// saturate is used to avoid color bleeding between the two sides of the texture or with the black border when filtering
-	float2 clampedUV = saturate(eyeUV);
+	//float2 clampedUV = saturate(eyeUV);
 	// left: x / 2; right 1 - (x / 2)
-	return float2(clampedUV.x / 2. + float(isRightEye) * (1. - clampedUV.x), clampedUV.y);
+	//return float2(clampedUV.x / 2. + float(isRightEye) * (1. - clampedUV.x), clampedUV.y);
+	return float2(eyeUV.x / 2. + float(isRightEye) * (1. - eyeUV.x), eyeUV.y);
 }

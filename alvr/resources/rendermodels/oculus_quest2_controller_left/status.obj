@@ -1,0 +1,18 @@
+# This file uses centimeters as units for non-parametric coordinates.
+
+mtllib status.mtl
+g default
+v 0.003844 -0.016987 0.033197
+v 0.026020 -0.017059 0.036998
+v 0.005324 -0.023770 0.024431
+v 0.027500 -0.023842 0.028232
+vt 0.000000 0.000000
+vt 1.000000 0.000000
+vt 1.000000 0.500000
+vt 0.000000 0.500000
+vn -0.4354 -0.7993 0.4141
+vn 0.2676 -0.8016 0.5346
+s 1
+g status group1
+usemtl initialShadingGroup
+f 1/1/1 2/2/2 4/3/2 3/4/1

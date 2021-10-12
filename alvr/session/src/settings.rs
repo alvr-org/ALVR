@@ -531,11 +531,11 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             color_correction: SwitchDefault {
-                enabled: false,
+                enabled: true,
                 content: ColorCorrectionDescDefault {
                     brightness: 0.,
                     contrast: 0.,
-                    saturation: 0.,
+                    saturation: 0.5,
                     gamma: 1.,
                     sharpening: 0.,
                 },

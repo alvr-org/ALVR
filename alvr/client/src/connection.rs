@@ -254,28 +254,28 @@ async fn connection_pipeline(
             {
                 foveation_vars.center_size_x
             } else {
-                3_f32/5_f32
+                3_f32 / 5_f32
             },
             foveationCenterSizeY: if let Switch::Enabled(foveation_vars) =
                 &settings.video.foveated_rendering
             {
                 foveation_vars.center_size_y
             } else {
-                2_f32/5_f32
+                2_f32 / 5_f32
             },
             foveationCenterShiftX: if let Switch::Enabled(foveation_vars) =
                 &settings.video.foveated_rendering
             {
                 foveation_vars.center_shift_x
             } else {
-                0_f32
+                2_f32 / 5_f32
             },
             foveationCenterShiftY: if let Switch::Enabled(foveation_vars) =
                 &settings.video.foveated_rendering
             {
                 foveation_vars.center_shift_y
             } else {
-                0_f32
+                1_f32 / 10_f32
             },
             foveationEdgeRatioX: if let Switch::Enabled(foveation_vars) =
                 &settings.video.foveated_rendering

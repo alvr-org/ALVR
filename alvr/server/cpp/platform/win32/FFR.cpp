@@ -26,39 +26,6 @@ namespace {
 		float edgeRatioY;
 	};
 
-	const float DEG_TO_RAD = (float)M_PI / 180;
-
-#define INVERSE_DISTORTION_FN(a) atan(a);
-	const float INVERSE_DISTORTION_DERIVATIVE_IN_0 = 1; // d(atan(0))/dx = 1
-
-	float CalcBoundStart(float focusPos, float fovScale) {
-		return INVERSE_DISTORTION_FN(-focusPos * fovScale);
-	}
-
-	float CalcBoundEnd(float focusPos, float fovScale) {
-		return INVERSE_DISTORTION_FN((1.f - focusPos) * fovScale);
-	}
-
-	float CalcDistortedDimension(float focusPos, float fovScale) {
-		float boundEnd = CalcBoundEnd(focusPos, fovScale);
-		float boundStart = CalcBoundStart(focusPos, fovScale);
-		return boundEnd - boundStart;
-	}
-
-	float CalcOptimalDimensionForWarp(float scale, float distortedDim, float originalDim) {
-		float inverseDistortionDerivative = INVERSE_DISTORTION_DERIVATIVE_IN_0 * scale;
-		float gradientOnFocus = inverseDistortionDerivative / distortedDim;
-		return originalDim / gradientOnFocus;
-	}
-
-	float Align4Normalized(float scale, float originalDim) {
-		return float(int(scale * originalDim / 4.f) * 4) / originalDim;
-	}
-
-	float CalcOptimalDimensionForSlicing(float scale, float originalDim) {
-		return (1.f + 3.f * scale) / 4.f * originalDim + 6;
-	}
-
 	FoveationVars CalculateFoveationVars() {
 		float targetEyeWidth = (float)Settings::Instance().m_renderWidth / 2;
 		float targetEyeHeight = (float)Settings::Instance().m_renderHeight;
@@ -121,12 +88,12 @@ void FFR::Initialize(ID3D11Texture2D* compositionTexture) {
 		fovVars.optimizedEyeHeight, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
 
 	if (Settings::Instance().m_enableFoveatedRendering) {
-		std::vector<uint8_t> compressSlicesShaderCSO(COMPRESS_SLICES_CSO_PTR, COMPRESS_SLICES_CSO_PTR + COMPRESS_SLICES_CSO_LEN);
-		auto compressSlicesPipeline = RenderPipeline(mDevice.Get());
-		compressSlicesPipeline.Initialize({ compositionTexture }, mQuadVertexShader.Get(),
-			compressSlicesShaderCSO, mOptimizedTexture.Get(), foveatedRenderingBuffer.Get());
+		std::vector<uint8_t> compressAxisAlignedShaderCSO(COMPRESS_AXIS_ALIGNED_CSO_PTR, COMPRESS_AXIS_ALIGNED_CSO_PTR + COMPRESS_AXIS_ALIGNED_CSO_LEN);
+		auto compressAxisAlignedPipeline = RenderPipeline(mDevice.Get());
+		compressAxisAlignedPipeline.Initialize({ compositionTexture }, mQuadVertexShader.Get(),
+			compressAxisAlignedShaderCSO, mOptimizedTexture.Get(), foveatedRenderingBuffer.Get());
 
-		mPipelines.push_back(compressSlicesPipeline);
+		mPipelines.push_back(compressAxisAlignedPipeline);
 	} else {
 		mOptimizedTexture = compositionTexture;
 	}

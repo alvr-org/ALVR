@@ -10,10 +10,12 @@ struct FFRData {
     bool enabled;
     uint32_t eyeWidth;
     uint32_t eyeHeight;
-    EyeFov leftEyeFov;
-    float foveationStrength;
-    float foveationShape;
-    float foveationVerticalOffset;
+    float centerSizeX;
+    float centerSizeY;
+    float centerShiftX;
+    float centerShiftY;
+    float edgeRatioX;
+    float edgeRatioY;
 };
 
 class FFR {

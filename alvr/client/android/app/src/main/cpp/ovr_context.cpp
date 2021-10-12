@@ -651,10 +651,11 @@ void onStreamStartNative() {
     ovrRenderer_Destroy(&g_ctx.Renderer);
     ovrRenderer_Create(&g_ctx.Renderer, g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
                        g_ctx.streamTexture.get(), g_ctx.loadingTexture,
-                       {g_ctx.streamConfig.enableFoveation, g_ctx.streamConfig.eyeWidth,
-                        g_ctx.streamConfig.eyeHeight, EyeFov(),
-                        g_ctx.streamConfig.foveationStrength, g_ctx.streamConfig.foveationShape,
-                        g_ctx.streamConfig.foveationVerticalOffset});
+                       {g_ctx.streamConfig.enableFoveation,
+                        g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
+                        g_ctx.streamConfig.foveationCenterSizeX, g_ctx.streamConfig.foveationCenterSizeY,
+                        g_ctx.streamConfig.foveationCenterShiftX, g_ctx.streamConfig.foveationCenterShiftY,
+                        g_ctx.streamConfig.foveationEdgeRatioX, g_ctx.streamConfig.foveationEdgeRatioY});
     ovrRenderer_CreateScene(&g_ctx.Renderer, g_ctx.darkMode);
 
     // On Oculus Quest, without ExtraLatencyMode frames passed to vrapi_SubmitFrame2 are sometimes discarded from VrAPI(?).

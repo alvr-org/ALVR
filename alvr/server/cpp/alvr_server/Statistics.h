@@ -103,7 +103,7 @@ public:
 				} else if (latencyUs < m_adaptiveBitrateTarget - m_adaptiveBitrateThreshold) {
 					if (m_bitrate > m_adaptiveBitrateMaximum - m_adaptiveBitrateDownRate)
 						m_bitrate = m_adaptiveBitrateMaximum;
-					else
+					else if (m_bitsSentInSecondPrev * 1e-6 > m_bitrate * m_adaptiveBitrateLightLoadThreshold)
 						m_bitrate += m_adaptiveBitrateUpRate;
 				}
 			}
@@ -180,6 +180,8 @@ private:
 
 	uint64_t m_adaptiveBitrateUpRate = Settings::Instance().m_adaptiveBitrateUpRate;
 	uint64_t m_adaptiveBitrateDownRate = Settings::Instance().m_adaptiveBitrateDownRate;
+
+	float m_adaptiveBitrateLightLoadThreshold = Settings::Instance().m_adaptiveBitrateLightLoadThreshold;
 
 	time_t m_current;
 };

@@ -92,6 +92,10 @@ define({
         "_root_video_adaptiveBitrate_content_bitrateDownRate.name": "Bitrate decreasing rate", // adv
         "_root_video_adaptiveBitrate_content_bitrateDownRate.description":
             "How much to decrease bitrate when the network latency reaches the latency threshold", // adv
+        "_root_video_adaptiveBitrate_content_bitrateLightLoadThreshold.name":
+            "Bitrate light load threshold", // adv
+        "_root_video_adaptiveBitrate_content_bitrateLightLoadThreshold.description":
+            "Limit increasing bitrate if sent rate is below threshold percentage of bitrate. Prevents stutters caused when switching from simple scenes to complex scenes", // adv
         // Audio tab
         "_root_audio_tab.name": "Audio",
         "_root_audio_gameAudio.name": "Stream game audio",

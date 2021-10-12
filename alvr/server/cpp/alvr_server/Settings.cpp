@@ -95,6 +95,7 @@ void Settings::Load()
 		m_adaptiveBitrateThreshold = (int)config.get("latency_threshold").get<int64_t>();
 		m_adaptiveBitrateUpRate = (int)config.get("bitrate_up_rate").get<int64_t>();
 		m_adaptiveBitrateDownRate = (int)config.get("bitrate_down_rate").get<int64_t>();
+		m_adaptiveBitrateLightLoadThreshold = config.get("bitrate_light_load_threshold").get<double>();
 		m_use10bitEncoder = config.get("use_10bit_encoder").get<bool>();
 
 		m_controllerTrackingSystemName = config.get("controllers_tracking_system_name").get<std::string>();

@@ -69,6 +69,7 @@ pub struct OpenvrConfig {
     pub latency_threshold: u64,
     pub bitrate_up_rate: u64,
     pub bitrate_down_rate: u64,
+    pub bitrate_light_load_threshold: f32,
     pub controllers_tracking_system_name: String,
     pub controllers_manufacturer_name: String,
     pub controllers_model_number: String,

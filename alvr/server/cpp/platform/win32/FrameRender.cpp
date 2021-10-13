@@ -205,10 +205,11 @@ bool FrameRender::Startup()
 	// Create the sample state
 	D3D11_SAMPLER_DESC sampDesc;
 	ZeroMemory(&sampDesc, sizeof(sampDesc));
-	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sampDesc.Filter = D3D11_FILTER_ANISOTROPIC;
 	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.MaxAnisotropy = D3D11_REQ_MAXANISOTROPY;
 	sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
 	sampDesc.MinLOD = 0;
 	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
@@ -388,7 +389,7 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 			Error("CreateShaderResourceView %p %ls\n", hr, GetErrorStr(hr).c_str());
 			return false;
 		}
-		
+
 		if (i == 0) {
 			m_pD3DRender->GetContext()->OMSetBlendState(m_pBlendStateFirst.Get(), NULL, 0xffffffff);
 		}

@@ -36,12 +36,11 @@ bool FrameRender::Startup()
 	compositionTextureDesc.Width = Settings::Instance().m_renderWidth;
 	compositionTextureDesc.Height = Settings::Instance().m_renderHeight;
 	compositionTextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-	compositionTextureDesc.MipLevels = 0;
+	compositionTextureDesc.MipLevels = 1;
 	compositionTextureDesc.ArraySize = 1;
 	compositionTextureDesc.SampleDesc.Count = 1;
 	compositionTextureDesc.Usage = D3D11_USAGE_DEFAULT;
 	compositionTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-	compositionTextureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
 	ComPtr<ID3D11Texture2D> compositionTexture;
 

@@ -35,9 +35,12 @@ struct StreamConfig {
     unsigned int eyeHeight;
     float refreshRate;
     bool enableFoveation;
-    float foveationStrength;
-    float foveationShape;
-    float foveationVerticalOffset;
+	float foveationCenterSizeX;
+	float foveationCenterSizeY;
+	float foveationCenterShiftX;
+	float foveationCenterShiftY;
+	float foveationEdgeRatioX;
+	float foveationEdgeRatioY;
     int trackingSpaceType;
     bool extraLatencyMode;
 };

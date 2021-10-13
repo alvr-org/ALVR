@@ -382,13 +382,36 @@ async fn client_handshake(
             .content
             .use_headset_tracking_system,
         enable_foveated_rendering: session_settings.video.foveated_rendering.enabled,
-        foveation_strength: session_settings.video.foveated_rendering.content.strength,
-        foveation_shape: session_settings.video.foveated_rendering.content.shape,
-        foveation_vertical_offset: session_settings
+        foveation_center_size_x: session_settings
             .video
             .foveated_rendering
             .content
-            .vertical_offset,
+            .center_size_x,
+        foveation_center_size_y: session_settings
+            .video
+            .foveated_rendering
+            .content
+            .center_size_y,
+        foveation_center_shift_x: session_settings
+            .video
+            .foveated_rendering
+            .content
+            .center_shift_x,
+        foveation_center_shift_y: session_settings
+            .video
+            .foveated_rendering
+            .content
+            .center_shift_y,
+        foveation_edge_ratio_x: session_settings
+            .video
+            .foveated_rendering
+            .content
+            .edge_ratio_x,
+        foveation_edge_ratio_y: session_settings
+            .video
+            .foveated_rendering
+            .content
+            .edge_ratio_y,
         enable_color_correction: session_settings.video.color_correction.enabled,
         brightness: session_settings.video.color_correction.content.brightness,
         contrast: session_settings.video.color_correction.content.contrast,

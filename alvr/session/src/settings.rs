@@ -66,14 +66,23 @@ pub struct AdaptiveBitrateDesc {
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FoveatedRenderingDesc {
-    #[schema(min = 0.5, max = 10., step = 0.1)]
-    pub strength: f32,
+    #[schema(min = 0., max = 1., step = 0.01)]
+    pub center_size_x: f32,
 
-    #[schema(advanced, min = 0.5, max = 2., step = 0.1)]
-    pub shape: f32,
+    #[schema(min = 0., max = 1., step = 0.01)]
+    pub center_size_y: f32,
 
-    #[schema(min = -0.05, max = 0.05, step = 0.001)]
-    pub vertical_offset: f32,
+    #[schema(min = -1., max = 1., step = 0.01)]
+    pub center_shift_x: f32,
+
+    #[schema(min = -1., max = 1., step = 0.01)]
+    pub center_shift_y: f32,
+
+    #[schema(min = 1., max = 10., step = 0.1)]
+    pub edge_ratio_x: f32,
+
+    #[schema(min = 1., max = 10., step = 0.1)]
+    pub edge_ratio_y: f32,
 }
 
 #[derive(SettingsSchema, Clone, Copy, Serialize, Deserialize, Pod, Zeroable)]
@@ -525,9 +534,12 @@ pub fn session_settings_default() -> SettingsDefault {
             foveated_rendering: SwitchDefault {
                 enabled: !cfg!(target_os = "linux"),
                 content: FoveatedRenderingDescDefault {
-                    strength: 2.,
-                    shape: 1.5,
-                    vertical_offset: 0.,
+                    center_size_x: 0.5,
+                    center_size_y: 0.4,
+                    center_shift_x: 0.4,
+                    center_shift_y: 0.1,
+                    edge_ratio_x: 2.,
+                    edge_ratio_y: 2.,
                 },
             },
             color_correction: SwitchDefault {

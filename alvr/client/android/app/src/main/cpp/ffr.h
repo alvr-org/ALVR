@@ -10,10 +10,12 @@ struct FFRData {
     bool enabled;
     uint32_t eyeWidth;
     uint32_t eyeHeight;
-    EyeFov leftEyeFov;
-    float foveationStrength;
-    float foveationShape;
-    float foveationVerticalOffset;
+    float centerSizeX;
+    float centerSizeY;
+    float centerShiftX;
+    float centerShiftY;
+    float edgeRatioX;
+    float edgeRatioY;
 };
 
 class FFR {
@@ -31,5 +33,5 @@ private:
     gl_render_utils::Texture *mInputSurface;
     std::unique_ptr<gl_render_utils::Texture> mExpandedTexture;
     std::unique_ptr<gl_render_utils::RenderState> mExpandedTextureState;
-    std::unique_ptr<gl_render_utils::RenderPipeline> mDecompressSlicesPipeline;
+    std::unique_ptr<gl_render_utils::RenderPipeline> mDecompressAxisAlignedPipeline;
 };

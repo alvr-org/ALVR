@@ -141,9 +141,12 @@ void Settings::Load()
 		m_useHeadsetTrackingSystem = config.get("use_headset_tracking_system").get<bool>();
 
 		m_enableFoveatedRendering = config.get("enable_foveated_rendering").get<bool>();
-		m_foveationStrength = (float)config.get("foveation_strength").get<double>();
-		m_foveationShape = (float)config.get("foveation_shape").get<double>();
-		m_foveationVerticalOffset = (float)config.get("foveation_vertical_offset").get<double>();
+		m_foveationCenterSizeX = (float)config.get("foveation_center_size_x").get<double>();
+		m_foveationCenterSizeY = (float)config.get("foveation_center_size_y").get<double>();
+		m_foveationCenterShiftX = (float)config.get("foveation_center_shift_x").get<double>();
+		m_foveationCenterShiftY = (float)config.get("foveation_center_shift_y").get<double>();
+		m_foveationEdgeRatioX = (float)config.get("foveation_edge_ratio_x").get<double>();
+		m_foveationEdgeRatioY = (float)config.get("foveation_edge_ratio_y").get<double>();
 
 		m_enableColorCorrection = config.get("enable_color_correction").get<bool>();
 		m_brightness = (float)config.get("brightness").get<double>();

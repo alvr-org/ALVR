@@ -6,8 +6,8 @@ extern "C" const unsigned char *FRAME_RENDER_PS_CSO_PTR;
 extern "C" unsigned int FRAME_RENDER_PS_CSO_LEN;
 extern "C" const unsigned char *QUAD_SHADER_CSO_PTR;
 extern "C" unsigned int QUAD_SHADER_CSO_LEN;
-extern "C" const unsigned char *COMPRESS_SLICES_CSO_PTR;
-extern "C" unsigned int COMPRESS_SLICES_CSO_LEN;
+extern "C" const unsigned char *COMPRESS_AXIS_ALIGNED_CSO_PTR;
+extern "C" unsigned int COMPRESS_AXIS_ALIGNED_CSO_LEN;
 extern "C" const unsigned char *COLOR_CORRECTION_CSO_PTR;
 extern "C" unsigned int COLOR_CORRECTION_CSO_LEN;
 

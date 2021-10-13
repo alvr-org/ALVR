@@ -26,15 +26,24 @@ define({
         // "_root_video_foveatedRendering.description": use "_root_video_foveatedRendering_enabled.description"
         "_root_video_foveatedRendering_enabled.description":
             "Rendering technique that reduces the resolution of the image at the periphery of the vision to reduce the computational load on the GPU. Results in a much lower video resolution that needs to be transmitted over the network.",
-        "_root_video_foveatedRendering_content_strength.name": "Strength",
-        "_root_video_foveatedRendering_content_strength.description":
-            "Higher value means less detail toward the edges of the frame and more artifacts",
-        "_root_video_foveatedRendering_content_shape.name": "Shape", // adv
-        "_root_video_foveatedRendering_content_shape.description":
-            "The shape of the foveated rendering", // adv
-        "_root_video_foveatedRendering_content_verticalOffset.name": "Vertical offset",
-        "_root_video_foveatedRendering_content_verticalOffset.description":
-            "Higher value means the high quality frame region is moved further down",
+        "_root_video_foveatedRendering_content_centerSizeX.name": "Center width",
+        "_root_video_foveatedRendering_content_centerSizeX.description":
+            "Width of the uncompressed center",
+        "_root_video_foveatedRendering_content_centerSizeY.name": "Center height",
+        "_root_video_foveatedRendering_content_centerSizeY.description":
+            "Height of the uncompressed center",
+        "_root_video_foveatedRendering_content_centerShiftX.name": "Center horizontal offset",
+        "_root_video_foveatedRendering_content_centerShiftX.description":
+            "Higher value moves the uncompressed center towards the middle of your vision",
+        "_root_video_foveatedRendering_content_centerShiftY.name": "Center vertical offset",
+        "_root_video_foveatedRendering_content_centerShiftY.description":
+            "Higher value moves the uncompressed center towards the bottom of your vision",
+        "_root_video_foveatedRendering_content_edgeRatioX.name": "Horizontal compression ratio",
+        "_root_video_foveatedRendering_content_edgeRatioX.description":
+            "Compression strength of the left and right edges",
+        "_root_video_foveatedRendering_content_edgeRatioY.name": "Vertical compression ratio",
+        "_root_video_foveatedRendering_content_edgeRatioY.description":
+            "Compression strength of the top and bottom edges",
         "_root_video_colorCorrection.name": "Color correction",
         // "_root_video_colorCorrection.description": use "_root_video_colorCorrection_enabled.description"
         "_root_video_colorCorrection_enabled.description":

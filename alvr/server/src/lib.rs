@@ -55,8 +55,8 @@ lazy_static! {
         include_bytes!("../cpp/platform/win32/FrameRenderPS.cso").to_vec();
     static ref QUAD_SHADER_CSO: Vec<u8> =
         include_bytes!("../cpp/platform/win32/QuadVertexShader.cso").to_vec();
-    static ref COMPRESS_SLICES_CSO: Vec<u8> =
-        include_bytes!("../cpp/platform/win32/CompressSlicesPixelShader.cso").to_vec();
+    static ref COMPRESS_AXIS_ALIGNED_CSO: Vec<u8> =
+        include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso").to_vec();
     static ref COLOR_CORRECTION_CSO: Vec<u8> =
         include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso").to_vec();
 }
@@ -262,8 +262,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
     FRAME_RENDER_PS_CSO_LEN = FRAME_RENDER_PS_CSO.len() as _;
     QUAD_SHADER_CSO_PTR = QUAD_SHADER_CSO.as_ptr();
     QUAD_SHADER_CSO_LEN = QUAD_SHADER_CSO.len() as _;
-    COMPRESS_SLICES_CSO_PTR = COMPRESS_SLICES_CSO.as_ptr();
-    COMPRESS_SLICES_CSO_LEN = COMPRESS_SLICES_CSO.len() as _;
+    COMPRESS_AXIS_ALIGNED_CSO_PTR = COMPRESS_AXIS_ALIGNED_CSO.as_ptr();
+    COMPRESS_AXIS_ALIGNED_CSO_LEN = COMPRESS_AXIS_ALIGNED_CSO.len() as _;
     COLOR_CORRECTION_CSO_PTR = COLOR_CORRECTION_CSO.as_ptr();
     COLOR_CORRECTION_CSO_LEN = COLOR_CORRECTION_CSO.len() as _;
 

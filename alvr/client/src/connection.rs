@@ -249,26 +249,47 @@ async fn connection_pipeline(
             eyeHeight: config_packet.eye_resolution_height,
             refreshRate: config_packet.fps,
             enableFoveation: matches!(settings.video.foveated_rendering, Switch::Enabled(_)),
-            foveationStrength: if let Switch::Enabled(foveation_vars) =
+            foveationCenterSizeX: if let Switch::Enabled(foveation_vars) =
                 &settings.video.foveated_rendering
             {
-                foveation_vars.strength
+                foveation_vars.center_size_x
             } else {
-                0_f32
+                3_f32 / 5_f32
             },
-            foveationShape: if let Switch::Enabled(foveation_vars) =
+            foveationCenterSizeY: if let Switch::Enabled(foveation_vars) =
                 &settings.video.foveated_rendering
             {
-                foveation_vars.shape
+                foveation_vars.center_size_y
             } else {
-                1_f32
+                2_f32 / 5_f32
             },
-            foveationVerticalOffset: if let Switch::Enabled(foveation_vars) =
+            foveationCenterShiftX: if let Switch::Enabled(foveation_vars) =
                 &settings.video.foveated_rendering
             {
-                foveation_vars.vertical_offset
+                foveation_vars.center_shift_x
             } else {
-                0_f32
+                2_f32 / 5_f32
+            },
+            foveationCenterShiftY: if let Switch::Enabled(foveation_vars) =
+                &settings.video.foveated_rendering
+            {
+                foveation_vars.center_shift_y
+            } else {
+                1_f32 / 10_f32
+            },
+            foveationEdgeRatioX: if let Switch::Enabled(foveation_vars) =
+                &settings.video.foveated_rendering
+            {
+                foveation_vars.edge_ratio_x
+            } else {
+                2_f32
+            },
+            foveationEdgeRatioY: if let Switch::Enabled(foveation_vars) =
+                &settings.video.foveated_rendering
+            {
+                foveation_vars.edge_ratio_y
+            } else {
+                2_f32
             },
             trackingSpaceType: matches!(settings.headset.tracking_space, TrackingSpace::Stage) as _,
             extraLatencyMode: settings.headset.extra_latency_mode,

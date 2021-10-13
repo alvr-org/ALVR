@@ -7,8 +7,8 @@
 
 use alvr_common::{Fov, OpenvrPropValue};
 use alvr_ipc::{
-    ButtonValue, VideoConfigUpdate, DriverRequest, InputType, IpcClient, IpcSseReceiver, Layer,
-    MotionData, ResponseForDriver, SsePacket, TrackedDeviceType,
+    ButtonValue, DriverRequest, InputType, IpcClient, IpcSseReceiver, Layer, MotionData,
+    ResponseForDriver, SsePacket, TrackedDeviceType, VideoConfigUpdate,
 };
 use core::slice;
 use nalgebra::Vector3;
@@ -182,7 +182,10 @@ extern "C" fn spawn_sse_receiver_loop() -> bool {
                             SsePacket::UpdateVideoConfig(config) => unsafe {
                                 drv::update_config(ipc_driver_config_to_driver(config))
                             },
-                            SsePacket::UpdateBattery { device_index, value } => todo!(),
+                            SsePacket::UpdateBattery {
+                                device_index,
+                                value,
+                            } => todo!(),
                             SsePacket::PropertyChanged {
                                 device_index,
                                 name,

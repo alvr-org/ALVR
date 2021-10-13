@@ -127,8 +127,8 @@ void LatencyCollector::submitNewFrame() {
 }
 
 uint64_t LatencyCollector::getTrackingPredictionLatency() {
-    if (m_ServerTotalLatency > 5e5)
-        return 5e5;
+    if (m_ServerTotalLatency > 2e5)
+        return 2e5;
     else
         return m_ServerTotalLatency;
 }

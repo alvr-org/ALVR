@@ -7,4 +7,4 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "1"
-dirs = "3"
+dirs = "4"

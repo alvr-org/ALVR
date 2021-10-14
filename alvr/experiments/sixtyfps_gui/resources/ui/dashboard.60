@@ -1,0 +1,108 @@
+import { StandardButton, Button, VerticalBox, ListView } from "sixtyfps_widgets.60";
+
+// todo: use something more advanced
+TabLabel := Button { 
+    property<bool> selected;
+
+    border-color: #0000;
+    border-radius: 10px;
+
+    property<color> base-color: (selected ? #9bcfff : white);
+    background: base-color.darker(touch-area.has-hover ? (touch-area.pressed ? 0.2 : 0.1) : 0);
+
+    animate background {
+        duration: 100ms;
+    }
+
+    touch-area := TouchArea {
+        clicked => { parent.clicked() }
+    }
+}
+
+Dashboard := Window {
+    preferred-width: 800px;
+    preferred-height: 600px;
+    title: "ALVR Dashboard";
+    icon: @image-url("../images/favicon.png");
+
+    property<bool> has-notification: false;
+    property<string> selected-tab: "connection";
+
+    VerticalLayout {
+        HorizontalLayout {
+            VerticalBox {
+                Image {
+                    source: @image-url("../images/favicon.png");
+                    height: 30px;
+                }
+    
+                connection-tab-button := TabLabel {
+                    icon: @image-url("../images/favicon.png");
+                    text: "Connection";
+                    selected: selected-tab == "connection";
+                    clicked => { selected-tab = "connection" }
+                }
+                statistics-tab-button := TabLabel {
+                    icon: @image-url("../images/favicon.png");
+                    text: "Statistics";
+                    selected: selected-tab == "statistics";
+                    clicked => { selected-tab = "statistics" }
+                }
+                settings-tab-button := TabLabel {
+                    icon: @image-url("../images/favicon.png");
+                    text: "Settings";
+                    selected: selected-tab == "settings";
+                    clicked => { selected-tab = "settings" }
+                }
+                installation-tab-button := TabLabel {
+                    icon: @image-url("../images/favicon.png");
+                    text: "Installation";
+                    selected: selected-tab == "installation";
+                    clicked => { selected-tab = "installation" }
+                }
+                logs-tab-button := TabLabel {
+                    icon: @image-url("../images/favicon.png");
+                    text: "Logs";
+                    selected: selected-tab == "logs";
+                    clicked => { selected-tab = "logs" }
+                }
+                about-tab-button := TabLabel {
+                    icon: @image-url("../images/favicon.png");
+                    text: "About";
+                    selected: selected-tab == "about";
+                    clicked => { selected-tab = "about" }
+                }
+    
+                Rectangle {  } // something that stretches
+    
+                language-tab-button := TabLabel {
+                    icon: @image-url("../images/favicon.png");
+                    text: "Language";
+                    // clicked => { language-popup.show() }
+                }
+            }
+
+            if selected-tab == "connection" : Rectangle {
+                width: 100%;
+                Button {
+                    text: "toggle notification";
+                    clicked => { has-notification = !has-notification }
+                }
+            }
+            if selected-tab == "statistics" : Rectangle {
+                Text { text: "statistics"; }
+            }
+        }
+
+        notification-bar := Rectangle {
+            height: has-notification ? 20px : 0px;
+            background: red;
+            animate height {
+                duration: 100ms;
+            }
+
+            Text { text: "my notification"; }
+        }
+
+    }
+}

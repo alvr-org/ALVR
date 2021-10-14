@@ -286,11 +286,9 @@ pub fn to_vulkan_images(textures: &[Texture]) -> Vec<vk::Image> {
         .iter()
         .map(|tex| unsafe {
             let mut handle = vk::Image::null();
-            tex.as_hal::<hal::api::Vulkan, _>(
-                |tex| {
-                    handle = tex.unwrap().raw_handle();
-                },
-            );
+            tex.as_hal::<hal::api::Vulkan, _>(|tex| {
+                handle = tex.unwrap().raw_handle();
+            });
 
             handle
         })

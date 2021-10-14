@@ -4,9 +4,18 @@ import { StandardButton, Button, VerticalBox, ListView } from "sixtyfps_widgets.
 TabLabel := Button { 
     property<bool> selected;
 
-    background: selected ? #9bcfff : #ffffff;
+    border-color: #0000;
+    border-radius: 10px;
+
+    property<color> base-color: (selected ? #9bcfff : white);
+    background: base-color.darker(touch-area.has-hover ? (touch-area.pressed ? 0.2 : 0.1) : 0);
+
     animate background {
         duration: 100ms;
+    }
+
+    touch-area := TouchArea {
+        clicked => { parent.clicked() }
     }
 }
 

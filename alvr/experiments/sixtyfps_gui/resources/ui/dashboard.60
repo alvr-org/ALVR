@@ -1,13 +1,17 @@
-import { StandardButton, Button, VerticalBox, ListView } from "sixtyfps_widgets.60";
+import { StandardButton, Button, VerticalBox, ListView, Slider, GroupBox, HorizontalBox, VerticalBox, ScrollView } from "sixtyfps_widgets.60";
+import { StringName, Themes } from "common.60";
+import { ConnectionPanel } from "components/connection.60";
+import { StatisticsPanel } from "components/statistics.60";
+import { SettingsPanel } from "components/settings.60";
 
 // todo: use something more advanced
-TabLabel := Button { 
+TabButton := Button { 
     property<bool> selected;
 
-    border-color: #0000;
+    border-color: transparent;
     border-radius: 10px;
 
-    property<color> base-color: (selected ? #9bcfff : white);
+    property<color> base-color: selected ? Themes.active.accent : Themes.active.background;
     background: base-color.darker(touch-area.has-hover ? (touch-area.pressed ? 0.2 : 0.1) : 0);
 
     animate background {
@@ -24,6 +28,7 @@ Dashboard := Window {
     preferred-height: 600px;
     title: "ALVR Dashboard";
     icon: @image-url("../images/favicon.png");
+    background: Themes.active.background;
 
     property<bool> has-notification: false;
     property<string> selected-tab: "connection";
@@ -36,37 +41,37 @@ Dashboard := Window {
                     height: 30px;
                 }
     
-                connection-tab-button := TabLabel {
+                connection-tab-button := TabButton {
                     icon: @image-url("../images/favicon.png");
                     text: "Connection";
                     selected: selected-tab == "connection";
                     clicked => { selected-tab = "connection" }
                 }
-                statistics-tab-button := TabLabel {
+                statistics-tab-button := TabButton {
                     icon: @image-url("../images/favicon.png");
                     text: "Statistics";
                     selected: selected-tab == "statistics";
                     clicked => { selected-tab = "statistics" }
                 }
-                settings-tab-button := TabLabel {
+                settings-tab-button := TabButton {
                     icon: @image-url("../images/favicon.png");
                     text: "Settings";
                     selected: selected-tab == "settings";
                     clicked => { selected-tab = "settings" }
                 }
-                installation-tab-button := TabLabel {
+                installation-tab-button := TabButton {
                     icon: @image-url("../images/favicon.png");
                     text: "Installation";
                     selected: selected-tab == "installation";
                     clicked => { selected-tab = "installation" }
                 }
-                logs-tab-button := TabLabel {
+                logs-tab-button := TabButton {
                     icon: @image-url("../images/favicon.png");
                     text: "Logs";
                     selected: selected-tab == "logs";
                     clicked => { selected-tab = "logs" }
                 }
-                about-tab-button := TabLabel {
+                about-tab-button := TabButton {
                     icon: @image-url("../images/favicon.png");
                     text: "About";
                     selected: selected-tab == "about";
@@ -75,33 +80,44 @@ Dashboard := Window {
     
                 Rectangle {  } // something that stretches
     
-                language-tab-button := TabLabel {
+                language-tab-button := TabButton {
                     icon: @image-url("../images/favicon.png");
                     text: "Language";
                     // clicked => { language-popup.show() }
                 }
             }
 
-            if selected-tab == "connection" : Rectangle {
-                width: 100%;
-                Button {
-                    text: "toggle notification";
-                    clicked => { has-notification = !has-notification }
+            Rectangle {
+                horizontal-stretch: 1;
+
+                VerticalBox {
+                    property<length> vp-width: width - 40px;
+
+                    Text {
+                        font-size: 30px;
+                        text: selected-tab;
+                    }
+
+                    if selected-tab == "connection" : ConnectionPanel { }
+                    if selected-tab == "statistics" : StatisticsPanel { }
+                    if selected-tab == "settings" : SettingsPanel { }
+                    if selected-tab == "installation" : Rectangle {}
+                    if selected-tab == "logs" : Rectangle {}
+                    if selected-tab == "about" : Rectangle {}
                 }
-            }
-            if selected-tab == "statistics" : Rectangle {
-                Text { text: "statistics"; }
             }
         }
 
-        notification-bar := Rectangle {
+        Rectangle {
+            property<string> type: "error";
+
+            background: type == "error" ? red : (type == "warning" ? yellow : (type == "info" ? lightblue : white));
             height: has-notification ? 20px : 0px;
-            background: red;
             animate height {
                 duration: 100ms;
             }
 
-            Text { text: "my notification"; }
+            notification-text := Text { text: "my notification"; }
         }
 
     }

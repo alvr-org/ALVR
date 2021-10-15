@@ -1,0 +1,56 @@
+import { ScrollView, VerticalBox, TabWidget, HorizontalBox, Button } from "sixtyfps_widgets.60";
+import { StringName, Themes } from "../common.60";
+
+// NB TabWidget cannot be used because Tabs cannot be set dynamicaly
+
+TabButton := Button { 
+    property<bool> selected;
+
+    height: 27px;
+
+    border-color: transparent;
+    border-radius: 5px;
+
+    property<color> base-color: selected ? Themes.active.accent : Themes.active.background;
+    background: base-color.darker(touch-area.has-hover ? (touch-area.pressed ? 0.2 : 0.1) : 0);
+
+    animate background {
+        duration: 100ms;
+    }
+
+    touch-area := TouchArea {
+        clicked => { parent.clicked() }
+    }
+}
+
+
+SettingsPanel := Rectangle {
+    property<string> selected-tab;
+    property<bool> advanced;
+
+    property<[StringName]> tabs: [{ id: "lorem", display: "Lorem" }, { id: "ipsum", display: "Ipsum" }];
+
+    VerticalLayout {
+        HorizontalLayout {
+            padding: 2px;
+
+            for tab in tabs: TabButton {
+                text: tab.display;
+                selected: selected-tab == tab.id;
+                clicked => { selected-tab = tab.id }
+            }
+
+            Rectangle {}
+
+            TabButton {
+                text: "Advanced";
+                selected: advanced;
+                clicked => { advanced = !advanced }
+            }
+        }
+
+        ScrollView {
+            border-color: transparent;
+        }
+    }
+}

@@ -78,10 +78,10 @@ pub struct FoveatedRenderingDesc {
     #[schema(min = -1., max = 1., step = 0.01)]
     pub center_shift_y: f32,
 
-    #[schema(min = 1., max = 10., step = 0.1)]
+    #[schema(min = 1., max = 10., step = 1.)]
     pub edge_ratio_x: f32,
 
-    #[schema(min = 1., max = 10., step = 0.1)]
+    #[schema(min = 1., max = 10., step = 1.)]
     pub edge_ratio_y: f32,
 }
 

@@ -376,7 +376,9 @@ define([
             }
 
             if (addToTable) {
-                const row = `<tr><td>${split[0]}</td><td>${split[1]}</td><td>${line.trim()}</td></tr>`;
+                const row = `<tr><td>${split[0]}</td><td>${
+                    split[1]
+                }</td><td>${line.trim()}</td></tr>`;
                 $("#loggingTable").append(row);
                 if ($("#loggingTable").children().length > 500) {
                     $("#loggingTable tr").first().remove();
@@ -820,7 +822,7 @@ define([
             if (now > lastGraphRedraw + 16) {
                 const ldata = []
                     .concat(latencyGraphData[latencyGraphData.length - 1])
-                    .filter((v,i) => latencyGraphData[0][i] > now - 10*1000)
+                    .filter((v, i) => latencyGraphData[0][i] > now - 10 * 1000)
                     .filter(Boolean);
                 const lq1 = quantile(ldata, 0.25);
                 const lq3 = quantile(ldata, 0.75);
@@ -833,11 +835,11 @@ define([
                 });
                 const fdata1 = []
                     .concat(framerateGraphData[1])
-                    .filter((v,i) => latencyGraphData[0][i] > now - 10*1000)
+                    .filter((v, i) => latencyGraphData[0][i] > now - 10 * 1000)
                     .filter(Boolean);
                 const fdata2 = []
                     .concat(framerateGraphData[2])
-                    .filter((v,i) => latencyGraphData[0][i] > now - 10*1000)
+                    .filter((v, i) => latencyGraphData[0][i] > now - 10 * 1000)
                     .filter(Boolean);
                 const fdata = fdata1.concat(fdata2);
                 const fq1 = quantile(fdata, 0.25);
@@ -918,7 +920,7 @@ define([
         }
 
         function updateGraphStatistics(statistics) {
-           const now = parseInt(new Date().getTime());
+            const now = parseInt(new Date().getTime());
 
             lastStatisticsUpdate = now;
 

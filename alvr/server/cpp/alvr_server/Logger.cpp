@@ -5,7 +5,7 @@
 #include "driverlog.h"
 #include "bindings.h"
 
-void _log(const char *format, va_list args, void (*logFn)(const char *))
+void _log(const char *format, va_list args, void (*logFn)(const char *), bool driverLog = false)
 {
 	char buf[1024];
 	int count = vsnprintf(buf, sizeof(buf), format, args);
@@ -17,7 +17,10 @@ void _log(const char *format, va_list args, void (*logFn)(const char *))
 	logFn(buf);
 
 	//TODO: driver logger should concider current log level
-	DriverLogVarArgs(format, args);
+#ifndef ALVR_DEBUG_LOG
+	if (driverLog)
+#endif
+		DriverLogVarArgs(format, args);
 }
 
 Exception MakeException(const char *format, ...)
@@ -34,7 +37,7 @@ void Error(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	_log(format, args, LogError);
+	_log(format, args, LogError, true);
 	va_end(args);
 }
 
@@ -42,7 +45,7 @@ void Warn(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	_log(format, args, LogWarn);
+	_log(format, args, LogWarn, true);
 	va_end(args);
 }
 
@@ -50,6 +53,7 @@ void Info(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
+	// Don't log to SteamVR/writing to file for info level, this is mostly statistics info
 	_log(format, args, LogInfo);
 	va_end(args);
 }

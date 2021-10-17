@@ -99,6 +99,7 @@ fn bump_rpm_spec_version(new_version: &str, is_nightly: bool) {
         if is_nightly {
             spec
         } else {
+            // Grab version (ex: https://github.com/alvr-org/ALVR/archive/refs/tags/v16.0.0-rc1.tar.gz)
             let (file_start, _, file_end) = split_string(&spec, "refs/tags/v", 't');
             format!("{}{}.{}", file_start, new_version, file_end)
         }

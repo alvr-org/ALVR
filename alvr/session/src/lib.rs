@@ -85,6 +85,7 @@ pub struct OpenvrConfig {
     pub position_offset: [f32; 3],
     pub tracking_frame_offset: i32,
     pub controller_pose_offset: f32,
+    pub serverside_prediction: bool,
     pub position_offset_left: [f32; 3],
     pub rotation_offset_left: [f32; 3],
     pub haptics_intensity: f32,

@@ -452,8 +452,12 @@ define([
             const clientsidePrediction = $(
                 "#_root_headset_controllers_content_clientsidePrediction"
             );
+            const serversidePrediction = $(
+                "#_root_headset_controllers_content_serversidePrediction"
+            );
 
             const oculus = i18nWizard.oculusTracking;
+            const steamvr = i18nWizard.steamvrTracking;
             const normal = i18nWizard.normalTracking;
             const medium = i18nWizard.mediumTracking;
             const fast = i18nWizard.fastTracking;
@@ -464,13 +468,26 @@ define([
                 ${custom}
             </label> `;
 
+            const undefinedButton = `<label id="trackingSpeedUndefinedButton" class="btn btn-primary active">
+            <input type="radio" name="trackingSpeed"  autocomplete="off" value="custom" checked>
+                undefined
+            </label> `;
+
             function setTrackingRadio() {
                 $("#trackingSpeedCustomButton").remove();
+                $("#trackingSpeedUndefinedButton").remove();
                 $("input:radio[name='trackingSpeed']").parent().removeClass("active");
 
-                if (clientsidePrediction.is(":checked")) {
+                if (clientsidePrediction.is(":checked") && serversidePrediction.is(":checked")) {
+                    $("#trackingSpeedButtons").append(undefinedButton);
+                } else if (clientsidePrediction.is(":checked")) {
                     $("input:radio[name='trackingSpeed'][value='oculus']").prop("checked", "true");
                     $("input:radio[name='trackingSpeed'][value='oculus']")
+                        .parent()
+                        .addClass("active");
+                } else if (serversidePrediction.is(":checked")) {
+                    $("input:radio[name='trackingSpeed'][value='steamvr']").prop("checked", "true");
+                    $("input:radio[name='trackingSpeed'][value='steamvr']")
                         .parent()
                         .addClass("active");
                 } else {
@@ -514,17 +531,25 @@ define([
                 switch (val) {
                     case "oculus":
                         clientsidePrediction.prop("checked", true);
+                        serversidePrediction.prop("checked", false);
+                        break;
+                    case "steamvr":
+                        clientsidePrediction.prop("checked", false);
+                        serversidePrediction.prop("checked", true);
                         break;
                     case "normal":
                         clientsidePrediction.prop("checked", false);
+                        serversidePrediction.prop("checked", false);
                         poseTimeOffset.val("0.01");
                         break;
                     case "medium":
                         clientsidePrediction.prop("checked", false);
+                        serversidePrediction.prop("checked", false);
                         poseTimeOffset.val("-0.03");
                         break;
                     case "fast":
                         clientsidePrediction.prop("checked", false);
+                        serversidePrediction.prop("checked", false);
                         poseTimeOffset.val("-1");
                         break;
                     default:
@@ -532,6 +557,7 @@ define([
                 }
                 alvrSettings.storeParam(poseTimeOffset);
                 alvrSettings.storeParam(clientsidePrediction);
+                alvrSettings.storeParam(serversidePrediction);
                 setTrackingRadio();
             }
 
@@ -543,16 +569,20 @@ define([
                     ${alvrSettings.getHelpReset(
                         "trackingSpeed",
                         "_root_headset_controllers_content",
-                        "normal",
+                        "oculus",
                         (postFix = ""),
                         "trackingSpeed",
-                        i18nWizard.normalTracking
+                        i18nWizard.oculusTracking
                     )}
                         </div>
                         <div class="btn-group" data-toggle="buttons" id="trackingSpeedButtons">
                             <label style="min-width:10%" class="btn btn-primary">
                                 <input type="radio" name="trackingSpeed"  autocomplete="off" value="oculus">
                                 ${oculus}
+                            </label>
+                            <label style="min-width:10%" class="btn btn-primary">
+                                <input type="radio" name="trackingSpeed"  autocomplete="off" value="steamvr">
+                                ${steamvr}
                             </label>
                             <label style="min-width:10%" class="btn btn-primary">
                                 <input type="radio" name="trackingSpeed"  autocomplete="off" value="normal">
@@ -578,6 +608,9 @@ define([
                     setTrackingRadio();
                 });
                 clientsidePrediction.on("change", () => {
+                    setTrackingRadio();
+                });
+                serversidePrediction.on("change", () => {
                     setTrackingRadio();
                 });
 

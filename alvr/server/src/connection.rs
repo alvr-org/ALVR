@@ -341,6 +341,11 @@ async fn client_handshake(
         position_offset: settings.headset.position_offset,
         tracking_frame_offset: settings.headset.tracking_frame_offset,
         controller_pose_offset,
+        serverside_prediction: session_settings
+            .headset
+			.controllers
+			.content
+			.serverside_prediction,
         position_offset_left: session_settings
             .headset
             .controllers

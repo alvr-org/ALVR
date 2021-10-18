@@ -9,10 +9,11 @@
 #include "include/openvr_math.h"
 #include "Logger.h"
 
-OvrController::OvrController(bool isLeftHand, int index)
+OvrController::OvrController(bool isLeftHand, int index, float* poseTimeOffset)
 	: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 	, m_isLeftHand(isLeftHand)
 	, m_index(index)
+	, m_poseTimeOffset(poseTimeOffset)
 {
 	double rightHandSignFlip = isLeftHand ? 1. : -1.;
 
@@ -489,7 +490,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	*/
 	
 
-	m_pose.poseTimeOffset = Settings::Instance().m_controllerPoseOffset;
+	m_pose.poseTimeOffset = *m_poseTimeOffset;
 
 	   
 
@@ -497,6 +498,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	Debug("Controller%d %d %lu: %08llX %08X %f:%f\n", m_index,controllerIndex, (unsigned long)m_unObjectId, c.buttons, c.flags, c.trackpadPosition.x, c.trackpadPosition.y);
 
 	if (c.flags & TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND) {
+		//m_pose.poseTimeOffset = 0.;
 		float rotThumb = (c.boneRotations[alvrHandBone_Thumb0].z + c.boneRotations[alvrHandBone_Thumb0].y + c.boneRotations[alvrHandBone_Thumb1].z + c.boneRotations[alvrHandBone_Thumb1].y + c.boneRotations[alvrHandBone_Thumb2].z + c.boneRotations[alvrHandBone_Thumb2].y + c.boneRotations[alvrHandBone_Thumb3].z + c.boneRotations[alvrHandBone_Thumb3].y) * 0.67f;
 		float rotIndex = (c.boneRotations[alvrHandBone_Index1].z + c.boneRotations[alvrHandBone_Index2].z + c.boneRotations[alvrHandBone_Index3].z) * 0.67f;
 		float rotMiddle = (c.boneRotations[alvrHandBone_Middle1].z + c.boneRotations[alvrHandBone_Middle2].z + c.boneRotations[alvrHandBone_Middle3].z) * 0.67f;

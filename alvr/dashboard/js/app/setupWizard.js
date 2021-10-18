@@ -85,28 +85,40 @@ define([
                     const clientsidePrediction = $(
                         "#_root_headset_controllers_content_clientsidePrediction"
                     );
+                    const serversidePrediction = $(
+                        "#_root_headset_controllers_content_serversidePrediction"
+                    );
 
                     switch (target.attr("value")) {
                         case "oculus":
                             clientsidePrediction.prop("checked", true);
+                            serversidePrediction.prop("checked", false);
+                            break;
+                        case "steamvr":
+                            clientsidePrediction.prop("checked", false);
+                            serversidePrediction.prop("checked", true);
                             break;
                         case "normal":
                             clientsidePrediction.prop("checked", false);
+                            serversidePrediction.prop("checked", false);
                             poseTimeOffsetTarget.val("0.01");
                             break;
                         case "medium":
                             clientsidePrediction.prop("checked", false);
+                            serversidePrediction.prop("checked", false);
                             poseTimeOffsetTarget.val("-0.03");
                             break;
                         case "fast":
                             clientsidePrediction.prop("checked", false);
+                            serversidePrediction.prop("checked", false);
                             poseTimeOffsetTarget.val("-1");
                             break;
                         default:
                             break;
                     }
-                    alvrSettings.storeParam(poseTimeOffsetTarget);
+                    alvrSettings.storeParam(poseTimeOffset);
                     alvrSettings.storeParam(clientsidePrediction);
+                    alvrSettings.storeParam(serversidePrediction);
 
                     console.log(target.attr("value"));
                 });

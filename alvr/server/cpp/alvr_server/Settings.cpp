@@ -121,6 +121,7 @@ void Settings::Load()
 
 		m_trackingFrameOffset = (int32_t)config.get("tracking_frame_offset").get<int64_t>();
 		m_controllerPoseOffset = (double)config.get("controller_pose_offset").get<double>();
+		m_serversidePrediction = config.get("serverside_prediction").get<bool>();
 
 		auto leftControllerPositionOffset = config.get("position_offset_left").get<picojson::array>();
 		m_leftControllerPositionOffset[0] = leftControllerPositionOffset[0].get<double>();

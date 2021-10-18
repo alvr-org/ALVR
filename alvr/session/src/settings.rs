@@ -281,6 +281,9 @@ pub struct ControllersDesc {
     pub clientside_prediction: bool,
 
     #[schema(advanced)]
+    pub serverside_prediction: bool,
+
+    #[schema(advanced)]
     pub position_offset_left: [f32; 3],
 
     #[schema(advanced)]
@@ -621,6 +624,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
                     pose_time_offset: 0.01,
                     clientside_prediction: true,
+                    serverside_prediction: false,
                     position_offset_left: [-0.007, 0.005, -0.053],
                     rotation_offset_left: [36., 0., 0.],
                     haptics_intensity: 1.,

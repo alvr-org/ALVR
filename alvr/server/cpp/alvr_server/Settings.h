@@ -88,6 +88,7 @@ public:
 	bool m_disableController;
 	
 	double m_controllerPoseOffset = 0;
+	bool m_serversidePrediction;
 
 	float m_OffsetPos[3];
 	bool m_EnableOffsetPos;

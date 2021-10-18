@@ -54,7 +54,7 @@ OvrHmd::OvrHmd()
 		}
 
 		if (!Settings::Instance().m_disableController) {
-			m_leftController = std::make_shared<OvrController>(true, 0);
+			m_leftController = std::make_shared<OvrController>(true, 0, &m_poseTimeOffset);
 			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 				m_leftController->GetSerialNumber().c_str(),
 				getControllerDeviceClass(),
@@ -63,7 +63,7 @@ OvrHmd::OvrHmd()
 				Warn("Failed to register left controller");
 			}
 
-			m_rightController = std::make_shared<OvrController>(false, 1);
+			m_rightController = std::make_shared<OvrController>(false, 1, &m_poseTimeOffset);
 			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 				m_rightController->GetSerialNumber().c_str(),
 				getControllerDeviceClass(),
@@ -490,6 +490,10 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		
 		//Update controller
 
+		if (Settings::Instance().m_serversidePrediction)
+			m_poseTimeOffset = m_Listener->GetPoseTimeOffset();
+		else
+			m_poseTimeOffset = Settings::Instance().m_controllerPoseOffset;
 		for (int i = 0; i < 2; i++) {	
 
 			bool enabled = info.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_ENABLE;

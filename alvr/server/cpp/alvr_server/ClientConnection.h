@@ -53,7 +53,8 @@ private:
 	float m_hapticsLowDurationAmplitudeMultiplier = Settings::Instance().m_hapticsLowDurationAmplitudeMultiplier;
 	float m_hapticsLowDurationRange = Settings::Instance().m_hapticsLowDurationRange;
 
-	uint64_t m_TimeDiff = 0;
+	uint64_t m_RTT = 0;
+	int64_t m_TimeDiff = 0;
 	std::mutex m_CS;
 
 	TimeSync m_reportedStatistics;

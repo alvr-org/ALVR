@@ -637,7 +637,7 @@ define([
 
         let latencyGraphData = [
             Array(length + 1).fill(now),
-            ...Array(7)
+            ...Array(8)
                 .fill(null)
                 .map((x) => Array(length).fill(null)),
         ];
@@ -695,6 +695,13 @@ define([
                     i18n["performanceDecode"],
                     graphColors[3],
                     graphColors[3],
+                    latencyGraphData,
+                    " ms"
+                ),
+                getSeries(
+                    i18n["performanceClientIdle"],
+                    graphColors[2],
+                    graphColors[2],
                     latencyGraphData,
                     " ms"
                 ),
@@ -782,7 +789,8 @@ define([
                 latencyGraphData[4].push(statistics[6]);
                 latencyGraphData[5].push(statistics[7]);
                 latencyGraphData[6].push(statistics[8]);
-                latencyGraphData[7].push(statistics[1]);
+                latencyGraphData[7].push(statistics[9]);
+                latencyGraphData[8].push(statistics[1]);
             } else {
                 for (let i = 1; i < latencyGraphData.length; i++) {
                     latencyGraphData[i].push(null);
@@ -797,8 +805,8 @@ define([
             framerateGraphData[0].push(statistics[0]);
 
             framerateGraphData[0].push(statistics[0]);
-            framerateGraphData[1].push(statistics[10]);
-            framerateGraphData[2].push(statistics[9]);
+            framerateGraphData[1].push(statistics[11]);
+            framerateGraphData[2].push(statistics[10]);
 
             lastStatistics = statistics;
             lastGraphUpdate = now;

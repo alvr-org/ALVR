@@ -28,8 +28,8 @@ void LatencyCollector::tracking(uint64_t frameIndex) {
 void LatencyCollector::estimatedSent(uint64_t frameIndex, uint64_t offset) {
     getFrame(frameIndex).estimatedSent = getTimestampUs() + offset;
 }
-void LatencyCollector::received(uint64_t frameIndex, uint64_t timestamp) {
-    getFrame(frameIndex).received = timestamp;
+void LatencyCollector::received(uint64_t frameIndex) {
+    getFrame(frameIndex).received = getTimestampUs(); // Round trip
 }
 void LatencyCollector::receivedFirst(uint64_t frameIndex) {
     getFrame(frameIndex).receivedFirst = getTimestampUs();
@@ -55,13 +55,21 @@ void LatencyCollector::submit(uint64_t frameIndex) {
     timestamp.submit = getTimestampUs();
 
     m_Latency[0] = timestamp.submit - timestamp.tracking;
-    m_Latency[1] = timestamp.receivedLast - timestamp.estimatedSent;
-    m_Latency[2] = timestamp.decoderOutput - timestamp.decoderInput;
+    if (timestamp.decoderInput >= timestamp.decoderOutput)
+        m_Latency[2] = 0;
+    else
+        m_Latency[2] = timestamp.decoderOutput - timestamp.decoderInput;
     if (timestamp.received) {
-        m_Latency[3] = timestamp.received - timestamp.tracking;
+        m_Latency[3] = (timestamp.received - timestamp.tracking) / 2;
+        m_Latency[1] = timestamp.receivedLast - timestamp.receivedFirst + m_Latency[3];
     } else {
-        m_Latency[3] = m_Latency[1];
+        m_Latency[3] = 0;
+        m_Latency[1] = timestamp.receivedLast - timestamp.receivedFirst;
     }
+    if (timestamp.decoderOutput >= timestamp.rendered2)
+        m_Latency[4] = 0;
+    else
+        m_Latency[4] = timestamp.rendered2 - timestamp.decoderOutput;
 
     submitNewFrame();
 
@@ -87,7 +95,7 @@ void LatencyCollector::resetAll() {
 
     m_StatisticsTime = getTimestampUs() / USECS_IN_SEC;
 
-    for(int i = 0; i < 4; i++) {
+    for(int i = 0; i < 5; i++) {
         m_Latency[i] = 0;
     }
 }

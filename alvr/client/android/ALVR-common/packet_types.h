@@ -228,7 +228,9 @@ struct TimeSync {
 
 	uint32_t averageTransportLatency;
 
-	uint32_t averageDecodeLatency;
+	uint64_t averageDecodeLatency;
+
+	uint32_t idleTime;
 
 	uint32_t fecFailure;
 	uint64_t fecFailureInSecond;

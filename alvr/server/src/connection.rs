@@ -343,9 +343,9 @@ async fn client_handshake(
         controller_pose_offset,
         serverside_prediction: session_settings
             .headset
-			.controllers
-			.content
-			.serverside_prediction,
+            .controllers
+            .content
+            .serverside_prediction,
         position_offset_left: session_settings
             .headset
             .controllers

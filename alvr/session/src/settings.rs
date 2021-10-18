@@ -517,14 +517,14 @@ pub fn session_settings_default() -> SettingsDefault {
                 enabled: !cfg!(target_os = "linux"),
                 content: AdaptiveBitrateDescDefault {
                     bitrate_maximum: 200,
-                    latency_target: 12000,
+                    latency_target: 16000,
                     latency_use_frametime: SwitchDefault {
-                        enabled: true,
+                        enabled: false,
                         content: LatencyUseFrametimeDescDefault {
                             latency_target_maximum: 50000,
                         },
                     },
-                    latency_threshold: 4000,
+                    latency_threshold: 3000,
                     bitrate_up_rate: 1,
                     bitrate_down_rate: 3,
                     bitrate_light_load_threshold: 0.7,
@@ -538,8 +538,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     center_size_y: 0.4,
                     center_shift_x: 0.4,
                     center_shift_y: 0.1,
-                    edge_ratio_x: 2.,
-                    edge_ratio_y: 2.,
+                    edge_ratio_x: 4.,
+                    edge_ratio_y: 4.,
                 },
             },
             color_correction: SwitchDefault {

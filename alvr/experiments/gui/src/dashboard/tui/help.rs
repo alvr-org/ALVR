@@ -1,13 +1,4 @@
-use alvr_session::SessionDesc;
-use termion::event::Key;
-use tui::{
-    backend::Backend,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Modifier, Style},
-    text::{Span, Spans},
-    widgets::{Block, Borders, Paragraph},
-    Frame,
-};
+use tui::{backend::Backend, layout::Rect, text::Spans, widgets::Paragraph, Frame};
 
 pub fn draw_help_panel<B: Backend>(frame: &mut Frame<B>, area: Rect) {
     let text = Paragraph::new(vec![
@@ -20,7 +11,7 @@ pub fn draw_help_panel<B: Backend>(frame: &mut Frame<B>, area: Rect) {
         Spans::from(""),
         Spans::from("Press 'Ctrl+C' to exit."),
         Spans::from(""),
-        Spans::from("To modify the settings, please close ALVR and edit settings.json."),
+        Spans::from("To modify the settings, please close ALVR and edit session.json."),
     ]);
     frame.render_widget(text, area);
 }

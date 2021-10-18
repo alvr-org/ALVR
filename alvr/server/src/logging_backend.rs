@@ -1,5 +1,5 @@
 use crate::{FILESYSTEM_LAYOUT, SESSION_MANAGER};
-use alvr_common::{ServerEvent, EventSeverity, Raw};
+use alvr_common::{EventSeverity, Raw, ServerEvent};
 use fern::Dispatch;
 use log::LevelFilter;
 use std::fs;

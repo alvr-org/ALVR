@@ -6,6 +6,8 @@ mod installation;
 mod logs;
 mod notification;
 
+use crate::dashboard::tui::installation::InstallationPanel;
+
 use self::{command::CommandBar, connection::ConnectionPanel, notification::NotificationBar};
 use super::DashboardEvent;
 use alvr_common::ServerEvent;
@@ -16,13 +18,11 @@ use std::{
     io,
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc, Arc, Mutex,
+        Arc, Mutex,
     },
     thread,
-    time::Duration,
 };
 use termion::{
-    cursor::Right,
     event::Key,
     input::{MouseTerminal, TermRead},
     raw::IntoRawMode,
@@ -30,10 +30,10 @@ use termion::{
 };
 use tui::{
     backend::TermionBackend,
-    layout::{Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Span, Spans, Text},
-    widgets::{Block, Borders, Paragraph, TableState, Tabs},
+    text::Spans,
+    widgets::{Block, Borders, Tabs},
     Terminal,
 };
 
@@ -77,10 +77,15 @@ impl Dashboard {
             }
         });
 
-        let mut selected_tab = 0;
+        let mut selected_tab = if self.session.setup_wizard {
+            4 // help tab
+        } else {
+            0
+        };
         let mut command_mode = false;
 
         let mut connection_panel = ConnectionPanel::new();
+        let mut installation_panel = InstallationPanel::new();
         let mut command_bar = CommandBar::new();
         let mut notification_bar = NotificationBar::new();
 
@@ -98,15 +103,16 @@ impl Dashboard {
                     let tabs = Tabs::new(vec![
                         Spans::from("Connection"),
                         Spans::from("Statistics"),
-                        Spans::from("Installation"),
                         Spans::from("Logs"),
+                        Spans::from("Installation"),
                         Spans::from("Help"),
                         Spans::from("About"),
                     ])
                     .block(
                         Block::default()
                             .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                            .title("ALVR Dashboard"),
+                            .title("ALVR Dashboard")
+                            .title_alignment(Alignment::Center),
                     )
                     .select(selected_tab)
                     .highlight_style(
@@ -122,6 +128,7 @@ impl Dashboard {
 
                     match selected_tab {
                         0 => connection_panel.draw(frame, panel_area, &self.session),
+                        3 => installation_panel.draw(frame, panel_area),
                         4 => help::draw_help_panel(frame, panel_area),
                         5 => about::draw_about_panel(frame, panel_area),
                         _ => (),
@@ -154,7 +161,8 @@ impl Dashboard {
                     Key::Right => selected_tab = cmp::min(selected_tab + 1, 5),
                     Key::Char('c') => command_mode = true,
                     key => match selected_tab {
-                        0 => connection_panel.react_to_key(key),
+                        0 => connection_panel.react_to_key(key, &self.session, &mut event_handler),
+                        3 => installation_panel.react_to_key(key, &mut event_handler),
                         _ => (),
                     },
                 }

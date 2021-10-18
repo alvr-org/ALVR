@@ -29,10 +29,14 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
         {
             packet
         } else if &packet_buffer[..5] == b"\x01ALVR" {
-            log_event(ServerEvent::ClientFoundWrongVersion("v11 or previous".into()));
+            log_event(ServerEvent::ClientFoundWrongVersion(
+                "v11 or previous".into(),
+            ));
             return fmt_e!("ALVR client version is too old!");
         } else if &packet_buffer[..4] == b"ALVR" {
-            log_event(ServerEvent::ClientFoundWrongVersion("v12.x.x - v13.x.x".into()));
+            log_event(ServerEvent::ClientFoundWrongVersion(
+                "v12.x.x - v13.x.x".into(),
+            ));
             return fmt_e!("ALVR client version is too old!");
         } else {
             debug!("Found unrelated packet during client discovery");

@@ -953,7 +953,7 @@ void onHapticsFeedbackNative(long long startTime, float amplitude, float duratio
 
 void onBatteryChangedNative(int battery, int plugged) {
     g_ctx.batteryLevel = battery;
-	g_ctx.batteryPlugged = plugged;
+    g_ctx.batteryPlugged = plugged;
 }
 
 GuardianData getGuardianData() {

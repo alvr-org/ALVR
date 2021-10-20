@@ -61,33 +61,8 @@ swapchain::swapchain(layer::device_private_data &dev_data, const VkAllocationCal
 
 swapchain::~swapchain() {
     /* Call the base's teardown */
+    close(m_socket);
     teardown();
-}
-
-VkResult swapchain::init_platform(VkDevice /*device*/, const VkSwapchainCreateInfoKHR *pSwapchainCreateInfo) {
-  assert(m_fds.empty());
-  int fd = memfd_create("ALVR image present shared memory", MFD_CLOEXEC);
-  if (fd == -1) {
-    perror("memfd_create");
-    return VK_ERROR_OUT_OF_HOST_MEMORY;
-  }
-  m_fds.push_back(fd);
-  size_t len = sizeof(present_shm) + pSwapchainCreateInfo->minImageCount * sizeof(present_info);
-  int err = ftruncate(fd, len);
-  if (err != 0) {
-    perror("ftruncate");
-    return VK_ERROR_OUT_OF_HOST_MEMORY;
-  }
-  m_shm = (present_shm*) mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  if (m_shm == MAP_FAILED) {
-    perror("mmap");
-    return VK_ERROR_OUT_OF_HOST_MEMORY;
-  }
-  new(m_shm) present_shm;
-  m_shm->size = pSwapchainCreateInfo->minImageCount;
-  for(uint32_t i = 0 ; i < m_shm->size ; ++i)
-    new(&m_shm->info[i]) present_info;
-  return VK_SUCCESS;
 }
 
 VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
@@ -216,18 +191,27 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
     return res;
 }
 
-int swapchain::send_fds(int socket_fd) {
+int swapchain::send_fds() {
     // This function does the arcane magic for sending
     // file descriptors over unix domain sockets
     // Stolen from https://gist.github.com/kokjo/75cec0f466fc34fa2922
+    //
+    // There will always be 6 fds (for the 3 images and sempahores created in the swapchain) so we can avoid
+    // dynamic length. Initially, I tried to send the length in the normal data field (msg.msg_iov /
+    // data) but for some reason it was emptied on arrival, no matter what I did.
+    //
     struct msghdr msg;
     struct iovec iov[1];
     struct cmsghdr *cmsg = NULL;
-    size_t sizeof_fd = sizeof(int) * m_fds.size();
-    std::vector<char> ctrl_buf(CMSG_SPACE(sizeof_fd), 0);
+    assert(m_fds.size() == 6);
+    int fds[6];
+    char ctrl_buf[CMSG_SPACE(sizeof(fds))];
     char data[1];
 
+    std::copy(m_fds.begin(), m_fds.end(), fds);
+
     memset(&msg, 0, sizeof(struct msghdr));
+    memset(ctrl_buf, 0, CMSG_SPACE(sizeof(fds)));
 
     iov[0].iov_base = data;
     iov[0].iov_len = sizeof(data);
@@ -236,17 +220,17 @@ int swapchain::send_fds(int socket_fd) {
     msg.msg_namelen = 0;
     msg.msg_iov = iov;
     msg.msg_iovlen = 1;
-    msg.msg_controllen = ctrl_buf.size();
-    msg.msg_control = ctrl_buf.data();
+    msg.msg_controllen = CMSG_SPACE(sizeof(fds));
+    msg.msg_control = ctrl_buf;
 
     cmsg = CMSG_FIRSTHDR(&msg);
     cmsg->cmsg_level = SOL_SOCKET;
     cmsg->cmsg_type = SCM_RIGHTS;
-    cmsg->cmsg_len = CMSG_LEN(sizeof_fd);
+    cmsg->cmsg_len = CMSG_LEN(sizeof(fds));
 
-    memcpy(CMSG_DATA(cmsg), m_fds.data(), sizeof_fd);
+    memcpy(CMSG_DATA(cmsg), fds, sizeof(fds));
 
-    int ret = sendmsg(socket_fd, &msg, 0);
+    int ret = sendmsg(m_socket, &msg, 0);
 
     for (auto fd: m_fds)
       close(fd);
@@ -256,22 +240,24 @@ int swapchain::send_fds(int socket_fd) {
 
 bool swapchain::try_connect() {
     Debug("swapchain::try_connect\n");
-    std::string socketPath = getenv("XDG_RUNTIME_DIR");
-    socketPath += "/alvr-ipc";
+    m_socketPath = getenv("XDG_RUNTIME_DIR");
+    m_socketPath += "/alvr-ipc";
 
     int ret;
-    int socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (socket_fd == -1) {
-      perror("socket");
-      exit(1);
+    if (m_socket == -1) {
+        m_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (m_socket == -1) {
+            perror("socket");
+            exit(1);
+        }
     }
 
     struct sockaddr_un name;
     memset(&name, 0, sizeof(name));
     name.sun_family = AF_UNIX;
-    strncpy(name.sun_path, socketPath.c_str(), sizeof(name.sun_path) - 1);
+    strncpy(name.sun_path, m_socketPath.c_str(), sizeof(name.sun_path) - 1);
 
-    ret = connect(socket_fd, (const struct sockaddr *)&name, sizeof(name));
+    ret = connect(m_socket, (const struct sockaddr *)&name, sizeof(name));
     if (ret == -1) {
         return false; // we will try again next frame
     }
@@ -286,13 +272,13 @@ bool swapchain::try_connect() {
       .mem_index = m_mem_index,
       .source_pid = getpid()};
     memcpy(init.device_name.data(), prop.deviceName, sizeof(prop.deviceName));
-    ret = write(socket_fd, &init, sizeof(init));
+    ret = write(m_socket, &init, sizeof(init));
     if (ret == -1) {
         perror("write");
         exit(1);
     }
 
-    ret = send_fds(socket_fd);
+    ret = send_fds();
     if (ret == -1) {
         perror("sendmsg");
         exit(1);
@@ -304,30 +290,23 @@ bool swapchain::try_connect() {
 
 void swapchain::present_image(uint32_t pending_index) {
     const auto & pose = m_swapchain_images[pending_index].pose.mDeviceToAbsoluteTracking.m;
+
+    if (in_flight_index != UINT32_MAX)
+        unpresent_image(in_flight_index);
+    in_flight_index = pending_index;
     if (!m_connected) {
         m_connected = try_connect();
     }
-    memcpy(&m_shm->info[pending_index].pose, pose, sizeof(present_info));
-
-    m_swapchain_images[pending_index].status = swapchain_image::PRESENTED;
-
-    uint32_t freed;
-    {
-      std::unique_lock<std::mutex> lock(m_shm->mutex);
-      freed = m_shm->next;
-      m_shm->next = pending_index;
-      m_shm->cv.notify_all();
-    }
-    if (freed != present_shm::none_id)
-      unpresent_image(freed);
-
-    for (uint32_t i = 0 ; i < m_swapchain_images.size() ; ++i)
-    {
-      if (m_swapchain_images[i].status == swapchain_image::PRESENTED)
-      {
-        if (i != pending_index and i != m_shm->owned_by_consumer)
-          unpresent_image(i);
-      }
+    if (m_connected) {
+        int ret;
+        present_packet packet;
+        packet.image = pending_index;
+        packet.frame = m_display.m_vsync_count;
+        memcpy(&packet.pose, pose, sizeof(packet.pose));
+        ret = write(m_socket, &packet, sizeof(packet));
+        if (ret == -1) {
+            //FIXME: try to reconnect?
+        }
     }
 }
 

@@ -57,6 +57,23 @@ void read_exactly(int fd, char *out, size_t size, std::atomic_bool &exiting) {
     }
 }
 
+void read_latest(int fd, char *out, size_t size, std::atomic_bool &exiting) {
+    read_exactly(fd, out, size, exiting);
+    while (not exiting)
+    {
+        timeval timeout{.tv_sec = 0, .tv_usec = 0};
+        fd_set read_fd, write_fd, except_fd;
+        FD_ZERO(&read_fd);
+        FD_SET(fd, &read_fd);
+        FD_ZERO(&write_fd);
+        FD_ZERO(&except_fd);
+        int count = select(fd + 1, &read_fd, &write_fd, &except_fd, &timeout);
+        if (count == 0)
+            return;
+        read_exactly(fd, out, size, exiting);
+    }
+}
+
 int accept_timeout(int socket, std::atomic_bool &exiting) {
     while (not exiting) {
         timeval timeout{.tv_sec = 0, .tv_usec = 15000};
@@ -84,7 +101,7 @@ void logfn(void*, int level, const char* data, va_list va)
 
 } // namespace
 
-std::vector<int> get_fds(int client, size_t num_fds) {
+void CEncoder::GetFds(int client, int (*received_fds)[6]) {
     struct msghdr msg;
     struct cmsghdr *cmsg;
     union {
@@ -110,10 +127,9 @@ std::vector<int> get_fds(int client, size_t num_fds) {
       throw MakeException("recvmsg failed: %s", strerror(errno));
     }
 
-    std::vector<int> res(num_fds, 0);
     for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
         if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
-            memcpy(res.data(), CMSG_DATA(cmsg), sizeof(int) * num_fds);
+            memcpy(received_fds, CMSG_DATA(cmsg), sizeof(*received_fds));
             break;
         }
     }
@@ -121,44 +137,43 @@ std::vector<int> get_fds(int client, size_t num_fds) {
     if (cmsg == NULL) {
       throw MakeException("cmsg is NULL");
     }
-    return res;
 }
 
 void CEncoder::Run() {
     Info("CEncoder::Run\n");
-    std::string socketPath = getenv("XDG_RUNTIME_DIR");
-    socketPath += "/alvr-ipc";
+    m_socketPath = getenv("XDG_RUNTIME_DIR");
+    m_socketPath += "/alvr-ipc";
 
     int ret;
     // we don't really care about what happends with unlink, it's just incase we crashed before this
     // run
-    ret = unlink(socketPath.c_str());
+    ret = unlink(m_socketPath.c_str());
 
-    int socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    m_socket = socket(AF_UNIX, SOCK_STREAM, 0);
     struct sockaddr_un name;
-    if (socket_fd == -1) {
+    if (m_socket == -1) {
         perror("socket");
         exit(1);
     }
 
     memset(&name, 0, sizeof(name));
     name.sun_family = AF_UNIX;
-    strncpy(name.sun_path, socketPath.c_str(), sizeof(name.sun_path) - 1);
+    strncpy(name.sun_path, m_socketPath.c_str(), sizeof(name.sun_path) - 1);
 
-    ret = bind(socket_fd, (const struct sockaddr *)&name, sizeof(name));
+    ret = bind(m_socket, (const struct sockaddr *)&name, sizeof(name));
     if (ret == -1) {
         perror("bind");
         exit(1);
     }
 
-    ret = listen(socket_fd, 1024);
+    ret = listen(m_socket, 1024);
     if (ret == -1) {
         perror("listen");
         exit(1);
     }
 
     Info("CEncoder Listening\n");
-    int client = accept_timeout(socket_fd, m_exiting);
+    int client = accept_timeout(m_socket, m_exiting);
     if (m_exiting)
       return;
     init_packet init;
@@ -178,12 +193,7 @@ void CEncoder::Run() {
     Info("CEncoder client connected, pid %d, cmdline %s\n", (int)init.source_pid, ifbuf2);
 
     try {
-      std::vector<int> fds = get_fds(client, init.num_images * 2 + 1);
-      close(client);
-      close(socket_fd);
-      unlink(socketPath.c_str());
-
-      present_shm *shm = (present_shm *)mmap(NULL, sizeof(present_shm) + init.num_images * sizeof(present_info), PROT_READ | PROT_WRITE, MAP_SHARED, fds[0], 0);
+        GetFds(client, &m_fds);
 
       fprintf(stderr, "\n\nWe are initalizing Vulkan in CEncoder thread\n\n\n");
 
@@ -198,43 +208,26 @@ void CEncoder::Run() {
       alvr::VkFrameCtx vk_frame_ctx(vk_ctx, init.image_create_info);
 
       std::vector<alvr::VkFrame> images;
-      images.reserve(init.num_images);
-      for (size_t i = 0; i < init.num_images; ++i) {
-        images.emplace_back(vk_ctx, init.image_create_info, init.mem_index, fds[2*i+1], fds[2*i+2]);
-      }
+        images.reserve(3);
+        for (size_t i = 0; i < 3; ++i) {
+            images.emplace_back(vk_ctx, init.image_create_info, init.mem_index, m_fds[2*i], m_fds[2*i+1]);
+        }
 
       auto encode_pipeline = alvr::EncodePipeline::Create(images, vk_frame_ctx);
 
       fprintf(stderr, "CEncoder starting to read present packets");
+        present_packet frame_info;
       std::vector<uint8_t> encoded_data;
       while (not m_exiting) {
-        uint32_t image = present_shm::none_id;
-        {
-          std::unique_lock<std::mutex> lock(shm->mutex);
-          while (not m_exiting)
-          {
-            image = shm->next;
-            if (image != present_shm::none_id)
-            {
-              shm->owned_by_consumer = image;
-              shm->next = present_shm::none_id;
-              break;
-            }
-            shm->cv.wait_for(lock, std::chrono::milliseconds(10));
-          }
-        }
-        if (m_exiting)
-          break;
-        assert(image != present_shm::none_id);
-        assert(image < init.num_images);
+          read_latest(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
         auto encode_start = std::chrono::steady_clock::now();
-        encode_pipeline->PushFrame(image, m_scheduler.CheckIDRInsertion());
+        encode_pipeline->PushFrame(frame_info.image, m_scheduler.CheckIDRInsertion());
 
-        static_assert(sizeof(shm->info[0].pose) == sizeof(vr::HmdMatrix34_t&));
+        static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
 
         // tranform provided by the compositor needs to be converted back to raw position, as configured in chaperone
-        auto t = vrmath::matMul33(vrmath::transposeMul33(*(const vr::HmdMatrix34_t*) ZeroToRawPose(false)), (const vr::HmdMatrix34_t&)shm->info[image].pose);
+        auto t = vrmath::matMul33(vrmath::transposeMul33(*(const vr::HmdMatrix34_t*) ZeroToRawPose(false)), (const vr::HmdMatrix34_t&)frame_info.pose);
 
         auto pose = m_poseHistory->GetBestPoseMatch(t);
         if (pose)
@@ -248,7 +241,7 @@ void CEncoder::Run() {
 
         encoded_data.clear();
         while (encode_pipeline->GetEncoded(encoded_data)) {}
-        shm->owned_by_consumer = present_shm::none_id;
+
         m_listener->SendVideo(encoded_data.data(), encoded_data.size(), m_poseSubmitIndex + Settings::Instance().m_trackingFrameOffset);
 
         auto encode_end = std::chrono::steady_clock::now();
@@ -262,10 +255,14 @@ void CEncoder::Run() {
       err << "error in encoder thread: " << e.what();
       Error(err.str().c_str());
     }
+
+    close(client);
 }
 
 void CEncoder::Stop() {
     m_exiting = true;
+    close(m_socket);
+    unlink(m_socketPath.c_str());
 }
 
 void CEncoder::OnPacketLoss() { m_scheduler.OnPacketLoss(); }

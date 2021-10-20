@@ -377,6 +377,14 @@ inline vr::HmdQuaternionf_t Slerp(vr::HmdQuaternionf_t &q1, vr::HmdQuaternionf_t
 	}
 }
 
+inline float Magnitude(const TrackingVector3& v) {
+	return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+// Magnitude already squared
+inline float Shape(float x, float a) {
+	return (x > a*a ? 1 - (a*a/x) : 0.);
+}
+
 #ifdef _WIN32
 // Delay loading for Cuda driver API to correctly work on non-NVIDIA GPU.
 inline bool LoadCudaDLL() {

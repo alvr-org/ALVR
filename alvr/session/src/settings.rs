@@ -283,6 +283,18 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub serverside_prediction: bool,
 
+    #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
+    pub linear_velocity_cutoff: f32,
+
+    #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
+    pub linear_acceleration_cutoff: f32,
+
+    #[schema(advanced, min = 0., max = 100., step = 1.)]
+    pub angular_velocity_cutoff: f32,
+
+    #[schema(advanced, min = 0., max = 100., step = 1.)]
+    pub angular_acceleration_cutoff: f32,
+
     #[schema(advanced)]
     pub position_offset_left: [f32; 3],
 
@@ -623,10 +635,14 @@ pub fn session_settings_default() -> SettingsDefault {
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
                     pose_time_offset: 0.01,
-                    clientside_prediction: true,
-                    serverside_prediction: false,
-                    position_offset_left: [-0.007, 0.005, -0.053],
-                    rotation_offset_left: [36., 0., 0.],
+                    clientside_prediction: false,
+                    serverside_prediction: true,
+                    linear_velocity_cutoff: 0.01,
+                    linear_acceleration_cutoff: 0.01,
+                    angular_velocity_cutoff: 10.,
+                    angular_acceleration_cutoff: 10.,
+                    position_offset_left: [-0.0065, 0.002, -0.051],
+                    rotation_offset_left: [40., 0., 0.],
                     haptics_intensity: 1.,
                     haptics_amplitude_curve: 0.4,
                     haptics_min_duration: 0.01,

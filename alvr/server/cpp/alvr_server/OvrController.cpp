@@ -420,18 +420,23 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 
 	}
 
-	m_pose.vecVelocity[0] = info.controller[controllerIndex].linearVelocity.x;
-	m_pose.vecVelocity[1] = info.controller[controllerIndex].linearVelocity.y;
-	m_pose.vecVelocity[2] = info.controller[controllerIndex].linearVelocity.z;
-	//m_pose.vecAcceleration[0] = info.controller[controllerIndex].linearAcceleration.x;
-	//m_pose.vecAcceleration[1] = info.controller[controllerIndex].linearAcceleration.y;
-	//m_pose.vecAcceleration[2] = info.controller[controllerIndex].linearAcceleration.z;
-	m_pose.vecAngularVelocity[0] = info.controller[controllerIndex].angularVelocity.x;
-	m_pose.vecAngularVelocity[1] = info.controller[controllerIndex].angularVelocity.y;
-	m_pose.vecAngularVelocity[2] = info.controller[controllerIndex].angularVelocity.z;
-	//m_pose.vecAngularAcceleration[0] = info.controller[controllerIndex].angularAcceleration.x;
-	//m_pose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y;
-	//m_pose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z;
+	float LinearVelocityMultiplier = Shape(Magnitude(info.controller[controllerIndex].linearVelocity), Settings::Instance().m_linearVelocityCutoff);
+	float LinearAccelerationMultiplier = Shape(Magnitude(info.controller[controllerIndex].linearAcceleration), Settings::Instance().m_linearAccelerationCutoff);
+	float AngularVelocityMultiplier = Shape(Magnitude(info.controller[controllerIndex].angularVelocity), Settings::Instance().m_angularVelocityCutoff * DEG_TO_RAD);
+	float AngularAccelerationMultiplier = Shape(Magnitude(info.controller[controllerIndex].angularAcceleration), Settings::Instance().m_angularAccelerationCutoff * DEG_TO_RAD);
+
+	m_pose.vecVelocity[0] = info.controller[controllerIndex].linearVelocity.x * LinearVelocityMultiplier;
+	m_pose.vecVelocity[1] = info.controller[controllerIndex].linearVelocity.y * LinearVelocityMultiplier;
+	m_pose.vecVelocity[2] = info.controller[controllerIndex].linearVelocity.z * LinearVelocityMultiplier;
+	m_pose.vecAcceleration[0] = info.controller[controllerIndex].linearAcceleration.x * LinearAccelerationMultiplier;
+	m_pose.vecAcceleration[1] = info.controller[controllerIndex].linearAcceleration.y * LinearAccelerationMultiplier;
+	m_pose.vecAcceleration[2] = info.controller[controllerIndex].linearAcceleration.z * LinearAccelerationMultiplier;
+	m_pose.vecAngularVelocity[0] = info.controller[controllerIndex].angularVelocity.x * AngularVelocityMultiplier;
+	m_pose.vecAngularVelocity[1] = info.controller[controllerIndex].angularVelocity.y * AngularVelocityMultiplier;
+	m_pose.vecAngularVelocity[2] = info.controller[controllerIndex].angularVelocity.z * AngularVelocityMultiplier;
+	m_pose.vecAngularAcceleration[0] = info.controller[controllerIndex].angularAcceleration.x * AngularAccelerationMultiplier;
+	m_pose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y * AngularAccelerationMultiplier;
+	m_pose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z * AngularAccelerationMultiplier;
 	
 	
 	

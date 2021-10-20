@@ -346,6 +346,26 @@ async fn client_handshake(
             .controllers
             .content
             .serverside_prediction,
+        linear_velocity_cutoff: session_settings
+            .headset
+            .controllers
+            .content
+            .linear_velocity_cutoff,
+        linear_acceleration_cutoff: session_settings
+            .headset
+            .controllers
+            .content
+            .linear_acceleration_cutoff,
+        angular_velocity_cutoff: session_settings
+            .headset
+            .controllers
+            .content
+            .angular_velocity_cutoff,
+        angular_acceleration_cutoff: session_settings
+            .headset
+            .controllers
+            .content
+            .angular_acceleration_cutoff,
         position_offset_left: session_settings
             .headset
             .controllers

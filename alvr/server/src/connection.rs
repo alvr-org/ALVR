@@ -590,17 +590,21 @@ async fn connection_pipeline() -> StrResult {
 
         Box::pin(async move {
             #[cfg(windows)]
-            openvr::set_game_output_audio_device_id(alvr_audio::get_windows_device_id(&device)?);
+            crate::openvr::set_game_output_audio_device_id(alvr_audio::get_windows_device_id(
+                &device,
+            )?);
 
             alvr_audio::record_audio_loop(device, 2, sample_rate, mute_when_streaming, sender)
                 .await?;
 
             #[cfg(windows)]
             {
-                let default_device =
-                    AudioDevice::new(AudioDeviceId::Default, AudioDeviceType::Output)?;
+                let default_device = AudioDevice::new(
+                    alvr_session::AudioDeviceId::Default,
+                    AudioDeviceType::Output,
+                )?;
                 let default_device_id = alvr_audio::get_windows_device_id(&default_device)?;
-                openvr::set_game_output_audio_device_id(default_device_id);
+                crate::openvr::set_game_output_audio_device_id(default_device_id);
             }
 
             Ok(())
@@ -625,7 +629,7 @@ async fn connection_pipeline() -> StrResult {
                 },
             )?;
             let microphone_device_id = alvr_audio::get_windows_device_id(&microphone_device)?;
-            openvr::set_headset_microphone_audio_device_id(microphone_device_id);
+            crate::openvr::set_headset_microphone_audio_device_id(microphone_device_id);
         }
 
         Box::pin(alvr_audio::play_audio_loop(

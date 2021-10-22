@@ -177,7 +177,7 @@ fn ui_thread() -> StrResult {
 
     let _tmpdir = trace_err!(tempfile::TempDir::new());
     let path = _tmpdir.as_ref().unwrap().path();
-    let mut file = trace_err!(fs::File::create(path.join("FirstLaunchAfterInstallation")))?;
+    let _file = trace_err!(fs::File::create(path.join("FirstLaunchAfterInstallation")))?;
 
     let window = Arc::new(trace_err!(alcro::UIBuilder::new()
         .content(alcro::Content::Url("http://127.0.0.1:8082"))

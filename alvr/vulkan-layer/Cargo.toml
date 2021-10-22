@@ -3,7 +3,8 @@ name = "alvr_vulkan-layer"
 version = "16.0.0"
 authors = ["alvr-org", "ARM", "Patrick Nicolas <patricknicolas@laposte.net>"]
 license = "MIT"
-edition = "2018"
+edition = "2021"
+rust-version = "1.56"
 
 [lib]
 crate-type = ["cdylib"]

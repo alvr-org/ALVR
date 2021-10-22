@@ -3,7 +3,8 @@ name = "alvr_server"
 version = "16.0.0"
 authors = ["alvr-org", "polygraphene", "Valve Corporation"]
 license = "MIT"
-edition = "2018"
+edition = "2021"
+rust-version = "1.56"
 
 [lib]
 crate-type = ["cdylib"]

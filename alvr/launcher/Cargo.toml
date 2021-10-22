@@ -3,7 +3,8 @@ name = "alvr_launcher"
 version = "16.0.0"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
-edition = "2018"
+edition = "2021"
+rust-version = "1.56"
 
 [features]
 default = []

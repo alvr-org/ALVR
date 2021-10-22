@@ -1,10 +1,10 @@
 use crate::{
-    connection_utils, openvr, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
+    connection_utils, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
     RESTART_NOTIFIER, SESSION_MANAGER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::prelude::*;
-use alvr_session::{AudioDeviceId, CodecType, FrameSize, OpenvrConfig};
+use alvr_session::{CodecType, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
     ControlSocketSender, HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, ProtoControlSocket,
@@ -527,7 +527,7 @@ async fn connection_pipeline() -> StrResult {
 
     let ConnectionInfo {
         client_ip,
-        version,
+        version: _,
         control_sender,
         mut control_receiver,
     } = connection_info;

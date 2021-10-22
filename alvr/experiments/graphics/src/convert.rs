@@ -88,6 +88,7 @@ pub fn get_temporary_hal_adapter(
             version,
             instance_extensions,
             flags,
+            false,
             None, // <-- the instance is not destroyed on drop
         ))?
     };
@@ -174,6 +175,7 @@ impl Context {
                 version,
                 extensions,
                 flags,
+                false,
                 owned.then(|| Box::new(()) as _)
             ))?
         };
@@ -188,6 +190,7 @@ impl Context {
                 vk_device,
                 owned,
                 &device_extensions,
+                hal::UpdateAfterBindTypes::empty(), // todo: proper initialization
                 queue_family_index,
                 queue_index,
             ))?
@@ -277,23 +280,20 @@ impl Context {
     }
 }
 
-// broken for now
-// #[cfg(not(target_os = "macos"))]
-// pub fn to_vulkan_images(textures: &[Texture]) -> Vec<vk::Image> {
-//     textures
-//         .iter()
-//         .map(|tex| unsafe {
-//             let mut handle = vk::Image::null();
-//             tex.as_hal::<hal::api::Vulkan, _>(
-//                 |tex| {
-//                     handle = tex.unwrap().raw_handle();
-//                 },
-//             );
+#[cfg(not(target_os = "macos"))]
+pub fn to_vulkan_images(textures: &[Texture]) -> Vec<vk::Image> {
+    textures
+        .iter()
+        .map(|tex| unsafe {
+            let mut handle = vk::Image::null();
+            tex.as_hal::<hal::api::Vulkan, _>(|tex| {
+                handle = tex.unwrap().raw_handle();
+            });
 
-//             handle
-//         })
-//         .collect()
-// }
+            handle
+        })
+        .collect()
+}
 
 pub enum SwapchainCreateData {
     // Used for the Vulkan layer and client
@@ -377,7 +377,7 @@ pub fn create_texture_set(
         usage: wgpu_usage,
     };
 
-    let textures = match data {
+    match data {
         SwapchainCreateData::External {
             images,
             vk_usage,
@@ -422,7 +422,5 @@ pub fn create_texture_set(
         SwapchainCreateData::Count(count) => (0..count.unwrap_or(2))
             .map(|_| device.create_texture(&texture_descriptor))
             .collect(),
-    };
-
-    textures
+    }
 }

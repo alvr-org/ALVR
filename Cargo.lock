@@ -202,8 +202,8 @@ dependencies = [
  "ash",
  "bytemuck",
  "openxr-sys",
- "wgpu",
- "wgpu-hal",
+ "wgpu 0.11.0 (git+https://github.com/gfx-rs/wgpu)",
+ "wgpu-hal 0.11.2 (git+https://github.com/gfx-rs/wgpu)",
 ]
 
 [[package]]
@@ -315,7 +315,7 @@ dependencies = [
  "tokio-util",
  "walkdir",
  "webbrowser",
- "wgpu",
+ "wgpu 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "winit",
 ]
 
@@ -937,8 +937,8 @@ dependencies = [
  "serde_json",
  "settings-schema",
  "tokio",
- "wgpu",
- "wgpu-hal",
+ "wgpu 0.11.0 (git+https://github.com/gfx-rs/wgpu)",
+ "wgpu-hal 0.11.2 (git+https://github.com/gfx-rs/wgpu)",
 ]
 
 [[package]]
@@ -1567,9 +1567,9 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "3.0.2"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30baa043103c9d0c2a57cf537cc2f35623889dc0d405e6c3cccfadbc81c71309"
+checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
 dependencies = [
  "dirs-sys",
 ]
@@ -4979,8 +4979,8 @@ dependencies = [
  "env_logger 0.9.0",
  "openxr-sys",
  "pollster",
- "wgpu",
- "wgpu-hal",
+ "wgpu 0.11.0 (git+https://github.com/gfx-rs/wgpu)",
+ "wgpu-hal 0.11.2 (git+https://github.com/gfx-rs/wgpu)",
  "winit",
 ]
 
@@ -6445,9 +6445,9 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "wgpu-core",
- "wgpu-hal",
- "wgpu-types",
+ "wgpu-core 0.11.0 (git+https://github.com/gfx-rs/wgpu)",
+ "wgpu-hal 0.11.2 (git+https://github.com/gfx-rs/wgpu)",
+ "wgpu-types 0.11.0 (git+https://github.com/gfx-rs/wgpu)",
 ]
 
 [[package]]
@@ -6467,8 +6467,8 @@ dependencies = [
  "raw-window-handle",
  "smallvec",
  "thiserror",
- "wgpu-hal",
- "wgpu-types",
+ "wgpu-hal 0.11.2 (git+https://github.com/gfx-rs/wgpu)",
+ "wgpu-types 0.11.0 (git+https://github.com/gfx-rs/wgpu)",
 ]
 
 [[package]]

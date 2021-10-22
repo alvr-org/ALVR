@@ -23,7 +23,7 @@ public:
 
     void tracking(uint64_t frameIndex);
     void estimatedSent(uint64_t frameIndex, uint64_t offset);
-    void received(uint64_t frameIndex, uint64_t timestamp);
+    void received(uint64_t frameIndex);
     void receivedFirst(uint64_t frameIndex);
     void receivedLast(uint64_t frameIndex);
     void decoderInput(uint64_t frameIndex);
@@ -71,9 +71,8 @@ private:
 
     uint32_t m_ServerTotalLatency = 0;
 
-    // Total/Transport/Decode latency
-    // Total/Max/Min/Count
-    uint64_t m_Latency[4];
+    // Total/Transport/Decode/Idle latency
+    uint64_t m_Latency[5];
 
     uint64_t m_LastSubmit;
     float m_FramesInSecond = 0;

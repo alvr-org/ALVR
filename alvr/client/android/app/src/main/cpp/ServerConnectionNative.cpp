@@ -133,7 +133,7 @@ void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
             legacySend((const unsigned char *) &sendBuf, sizeof(sendBuf));
         }
         if (timeSync->mode == 3) {
-            LatencyCollector::Instance().received(timeSync->trackingRecvFrameIndex, timeSync->serverTime);
+            LatencyCollector::Instance().received(timeSync->trackingRecvFrameIndex);
         }
     } else if (type == ALVR_PACKET_TYPE_HAPTICS) {
         if (packetSize < sizeof(HapticsFeedback)) {
@@ -166,7 +166,9 @@ void sendTimeSync() {
 
     timeSync.averageTransportLatency = (uint32_t) LatencyCollector::Instance().getLatency(1);
 
-    timeSync.averageDecodeLatency = (uint32_t) LatencyCollector::Instance().getLatency(2);
+    timeSync.averageDecodeLatency = (uint64_t) LatencyCollector::Instance().getLatency(2);
+
+    timeSync.idleTime = (uint32_t) LatencyCollector::Instance().getLatency(4);
 
     timeSync.fecFailure = g_socket.m_nalParser->fecFailure() ? 1 : 0;
     timeSync.fecFailureTotal = LatencyCollector::Instance().getFecFailureTotal();

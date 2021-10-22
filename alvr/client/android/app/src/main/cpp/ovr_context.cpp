@@ -79,6 +79,10 @@ public:
     int batteryLevel;
     int batteryPlugged;
 
+    ovrHandPose lastHandPose[2];
+    ovrTracking lastTrackingRot[2];
+    ovrTracking lastTrackingPos[2];
+
     struct HapticsState {
         uint64_t startUs;
         uint64_t endUs;
@@ -347,14 +351,26 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
                     c.handFingerConfidences |=
                             handPose.FingerConfidences[i] == ovrConfidence_HIGH ? (1 << i) : 0;
                 }
-
-                memcpy(&c.boneRootOrientation, &handPose.RootPose.Orientation,
-                       sizeof(handPose.RootPose.Orientation));
-                memcpy(&c.boneRootPosition, &handPose.RootPose.Position,
-                       sizeof(handPose.RootPose.Position));
-                for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
-                    memcpy(&c.boneRotations[i], &handPose.BoneRotations[i],
-                           sizeof(handPose.BoneRotations[i]));
+                if (handPose.Status&ovrHandTrackingStatus_Tracked) {
+                    memcpy(&c.boneRootOrientation, &handPose.RootPose.Orientation,
+                           sizeof(handPose.RootPose.Orientation));
+                    memcpy(&c.boneRootPosition, &handPose.RootPose.Position,
+                           sizeof(handPose.RootPose.Position));
+                    for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
+                        memcpy(&c.boneRotations[i], &handPose.BoneRotations[i],
+                               sizeof(handPose.BoneRotations[i]));
+                    }
+                    memcpy(&g_ctx.lastHandPose[controller], &handPose,
+                           sizeof(handPose));
+                } else if (g_ctx.lastHandPose[controller].Status&ovrHandTrackingStatus_Tracked) {
+                    memcpy(&c.boneRootOrientation, &g_ctx.lastHandPose[controller].RootPose.Orientation,
+                           sizeof(g_ctx.lastHandPose[controller].RootPose.Orientation));
+                    memcpy(&c.boneRootPosition, &g_ctx.lastHandPose[controller].RootPose.Position,
+                           sizeof(g_ctx.lastHandPose[controller].RootPose.Position));
+                    for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
+                        memcpy(&c.boneRotations[i], &g_ctx.lastHandPose[controller].BoneRotations[i],
+                               sizeof(g_ctx.lastHandPose[controller].BoneRotations[i]));
+                    }
                 }
             }
             controller++;
@@ -455,13 +471,29 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
                 LOG("vrapi_GetInputTrackingState failed. Device was disconnected?");
             } else {
 
-                memcpy(&c.orientation,
-                       &tracking.HeadPose.Pose.Orientation,
-                       sizeof(tracking.HeadPose.Pose.Orientation));
+                if (tracking.Status&VRAPI_TRACKING_STATUS_ORIENTATION_TRACKED) {
+                    memcpy(&c.orientation,
+                           &tracking.HeadPose.Pose.Orientation,
+                           sizeof(tracking.HeadPose.Pose.Orientation));
+                    memcpy(&g_ctx.lastTrackingRot[controller],
+                           &tracking,
+                           sizeof(tracking));
+                } else if (g_ctx.lastTrackingRot[controller].Status&VRAPI_TRACKING_STATUS_ORIENTATION_TRACKED)
+                    memcpy(&c.orientation,
+                           &g_ctx.lastTrackingRot[controller].HeadPose.Pose.Orientation,
+                           sizeof(g_ctx.lastTrackingRot[controller].HeadPose.Pose.Orientation));
 
-                memcpy(&c.position,
-                       &tracking.HeadPose.Pose.Position,
-                       sizeof(tracking.HeadPose.Pose.Position));
+                if (tracking.Status&VRAPI_TRACKING_STATUS_POSITION_TRACKED) {
+                    memcpy(&c.position,
+                           &tracking.HeadPose.Pose.Position,
+                           sizeof(tracking.HeadPose.Pose.Position));
+                    memcpy(&g_ctx.lastTrackingPos[controller],
+                           &tracking,
+                           sizeof(tracking));
+                } else if (g_ctx.lastTrackingPos[controller].Status&VRAPI_TRACKING_STATUS_POSITION_TRACKED)
+                    memcpy(&c.position,
+                           &g_ctx.lastTrackingPos[controller].HeadPose.Pose.Position,
+                           sizeof(g_ctx.lastTrackingPos[controller].HeadPose.Pose.Position));
 
                 memcpy(&c.angularVelocity,
                        &tracking.HeadPose.AngularVelocity,
@@ -921,7 +953,7 @@ void onHapticsFeedbackNative(long long startTime, float amplitude, float duratio
 
 void onBatteryChangedNative(int battery, int plugged) {
     g_ctx.batteryLevel = battery;
-	g_ctx.batteryPlugged = plugged;
+    g_ctx.batteryPlugged = plugged;
 }
 
 GuardianData getGuardianData() {

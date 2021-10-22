@@ -5,7 +5,7 @@ define({
     clients: "클라이언트",
     newClients: "새로운 클라이언트",
     addTrustedClient: "신뢰하기",
-    trustedClients: "신뢰 클라이언트",
+    trustedClients: "신뢰한 클라이언트",
     removeTrustedClient: "제거하기",
     troubleshooting:
         "당신의 헤드셋이 보이지 않나요? 문제해결 페이지에 방문하세요 <a target= '_blank' href='https://github.com/alvr-org/ALVR/wiki/Troubleshooting#alvr-cant-see-my-headset'>이곳</a>",
@@ -43,10 +43,10 @@ define({
     fecFailureInSecond: "Fec 실패 / s",
     clientFPS: "클라이언트 FPS",
     serverFPS: "서버 FPS",
-    packets: "Packets",
-    packetss: "Packets / s",
+    packets: "패킷",
+    packetss: "패킷 / s",
     // Logging tab
-    logging: "로깅",
+    logging: "로그",
     // validation errors
     error_DuplicateHostname: "이미 등록된 호스트 이름입니다.",
     error_DuplicateIp: "이미 등록된 IP 주소입니다.",
@@ -58,6 +58,6 @@ define({
     performanceTransport: "전송",
     performanceOther: "기타",
     performanceLatency: "지연시간",
-    performanceFramerate: "프레임레이트",
+    performanceFramerate: "프레임률",
     performanceNoDateCaptured: "아직 데이터가 없습니다.",
 });

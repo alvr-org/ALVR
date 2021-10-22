@@ -114,6 +114,26 @@ public:
 		}
 		return false;
 	}
+
+	void Reset() {
+		for(int i = 0; i < 6; i++) {
+			m_statistics[i] = 0;
+		}
+		m_statisticsCount = 0;
+	}
+	void Add(float total, float encode, float send, float decode, float fps, float ping) {
+		m_statistics[0] += total;
+		m_statistics[1] += encode;
+		m_statistics[2] += send;
+		m_statistics[3] += decode;
+		m_statistics[4] += fps;
+		m_statistics[5] += ping;
+		m_statisticsCount++;
+	}
+	float Get(uint32_t i) {
+		return (m_statistics[i] / m_statisticsCount);
+	}
+
 private:
 	void ResetSecond() {
 		m_packetsSentInSecondPrev = m_packetsSentInSecond;
@@ -184,4 +204,8 @@ private:
 	float m_adaptiveBitrateLightLoadThreshold = Settings::Instance().m_adaptiveBitrateLightLoadThreshold;
 
 	time_t m_current;
+	
+	// Total/Encode/Send/Decode/ClientFPS/Ping
+	float m_statistics[6];
+	uint64_t m_statisticsCount = 0;
 };

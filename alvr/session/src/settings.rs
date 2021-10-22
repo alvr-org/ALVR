@@ -78,10 +78,10 @@ pub struct FoveatedRenderingDesc {
     #[schema(min = -1., max = 1., step = 0.01)]
     pub center_shift_y: f32,
 
-    #[schema(min = 1., max = 10., step = 0.1)]
+    #[schema(min = 1., max = 10., step = 1.)]
     pub edge_ratio_x: f32,
 
-    #[schema(min = 1., max = 10., step = 0.1)]
+    #[schema(min = 1., max = 10., step = 1.)]
     pub edge_ratio_y: f32,
 }
 
@@ -517,14 +517,14 @@ pub fn session_settings_default() -> SettingsDefault {
                 enabled: !cfg!(target_os = "linux"),
                 content: AdaptiveBitrateDescDefault {
                     bitrate_maximum: 200,
-                    latency_target: 12000,
+                    latency_target: 16000,
                     latency_use_frametime: SwitchDefault {
-                        enabled: true,
+                        enabled: false,
                         content: LatencyUseFrametimeDescDefault {
                             latency_target_maximum: 50000,
                         },
                     },
-                    latency_threshold: 4000,
+                    latency_threshold: 3000,
                     bitrate_up_rate: 1,
                     bitrate_down_rate: 3,
                     bitrate_light_load_threshold: 0.7,
@@ -538,8 +538,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     center_size_y: 0.4,
                     center_shift_x: 0.4,
                     center_shift_y: 0.1,
-                    edge_ratio_x: 2.,
-                    edge_ratio_y: 2.,
+                    edge_ratio_x: 4.,
+                    edge_ratio_y: 4.,
                 },
             },
             color_correction: SwitchDefault {
@@ -621,8 +621,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
                     pose_time_offset: 0.01,
                     clientside_prediction: true,
-                    position_offset_left: [-0.007, 0.005, -0.053],
-                    rotation_offset_left: [36., 0., 0.],
+                    position_offset_left: [-0.0065, 0.002, -0.051],
+                    rotation_offset_left: [40., 0., 0.],
                     haptics_intensity: 1.,
                     haptics_amplitude_curve: 0.4,
                     haptics_min_duration: 0.01,

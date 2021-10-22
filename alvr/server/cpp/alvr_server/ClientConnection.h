@@ -39,7 +39,7 @@ private:
 	static const int PACKET_SIZE = 1400;
 	static const int64_t REQUEST_TIMEOUT = 5 * 1000 * 1000;
 	static const int64_t CONNECTION_TIMEOUT = 5 * 1000 * 1000;
-	static const int64_t STATISTICS_TIMEOUT_US = 10 * 1000;
+	static const int64_t STATISTICS_TIMEOUT_US = 100 * 1000;
 
 	uint32_t videoPacketCounter = 0;
 	uint32_t soundPacketCounter = 0;
@@ -53,7 +53,8 @@ private:
 	float m_hapticsLowDurationAmplitudeMultiplier = Settings::Instance().m_hapticsLowDurationAmplitudeMultiplier;
 	float m_hapticsLowDurationRange = Settings::Instance().m_hapticsLowDurationRange;
 
-	uint64_t m_TimeDiff = 0;
+	uint64_t m_RTT = 0;
+	int64_t m_TimeDiff = 0;
 	std::mutex m_CS;
 
 	TimeSync m_reportedStatistics;

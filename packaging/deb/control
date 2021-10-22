@@ -1,0 +1,39 @@
+Source: alvr
+Section: games
+Priority: optional
+Maintainer: Trae Santiago <trae32566@gmail.com>
+Build-Depends:
+ build-essential,
+ imagemagick,
+ libasound2-dev,
+ libatk1.0-dev,
+ libcairo2-dev,
+ libclang-dev,
+ libdrm-dev,
+ libglib2.0-dev,
+ libgtk-3-dev,
+ libpango1.0-dev,
+ libssl-dev,
+ libswscale-dev,
+ libunwind-dev,
+ libvulkan-dev,
+ libx264-dev,
+ libx265-dev,
+ libxcb-shape0-dev,
+ libxcb-xfixes0-dev,
+ nasm,
+ pkg-config,
+ unzip,
+ yasm
+Standards-Version: 4.5.1
+Homepage: https://github.com/alvr-org/ALVR/
+Vcs-Browser: https://github.com/alvr-org/ALVR
+Vcs-Git: https://github.com/alvr-org/ALVR.git
+Rules-Requires-Root: no
+Package: alvr
+Version: 16.0.0
+Architecture: amd64
+Recommends: steam
+Description: Stream VR games from your PC to your headset via Wi-Fi
+ ALVR is an open source remote VR display which allows playing SteamVR games on
+ a standalone headset such as Gear VR or Oculus Go/Quest.

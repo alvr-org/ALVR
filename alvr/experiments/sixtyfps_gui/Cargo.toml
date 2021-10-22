@@ -2,7 +2,7 @@
 name = "sixtyfps_gui"
 version = "0.1.0"
 authors = ["alvr-org"]
-license = "GPLv3"
+license = "MIT"
 edition = "2018"
 
 [dependencies]

@@ -11,6 +11,7 @@ accepted = [
     "Unlicense",
     "Zlib",
     "zlib-acknowledgement",
+    "GPL-3.0", # only for optional code
 ]
 
 targets = [

@@ -1,5 +1,5 @@
 use crate::{FILESYSTEM_LAYOUT, SESSION_MANAGER};
-use alvr_common::{Event, EventSeverity, Raw};
+use alvr_common::{EventSeverity, Raw, ServerEvent};
 use fern::Dispatch;
 use log::LevelFilter;
 use std::fs;
@@ -19,7 +19,7 @@ pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
                 log::Level::Debug | log::Level::Trace => EventSeverity::Debug,
             };
 
-            let event = Event::Raw(Raw {
+            let event = ServerEvent::Raw(Raw {
                 timestamp: chrono::Local::now().format("%H:%M:%S.%f").to_string(),
                 severity,
                 content: message.to_string(),

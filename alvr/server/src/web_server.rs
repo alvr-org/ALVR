@@ -227,11 +227,13 @@ async fn http_api(
                         Ok(Some(chunk)) => {
                             downloaded_bytes_count += chunk.len();
                             trace_err!(file.write_all(&chunk))?;
-                            log_event(Event::UpdateDownloadedBytesCount(downloaded_bytes_count));
+                            log_event(ServerEvent::UpdateDownloadedBytesCount(
+                                downloaded_bytes_count,
+                            ));
                         }
                         Ok(None) => break,
                         Err(e) => {
-                            log_event(Event::UpdateDownloadError);
+                            log_event(ServerEvent::UpdateDownloadError);
                             error!("Download update failed: {}", e);
                             return reply(StatusCode::BAD_GATEWAY);
                         }

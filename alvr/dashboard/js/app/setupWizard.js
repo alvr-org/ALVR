@@ -131,7 +131,7 @@ define([
                             break;
                     }
                     alvrSettings.storeParam(poseTimeOffset);
-			     
+
                     console.log(target.attr("value"));
                 });
 

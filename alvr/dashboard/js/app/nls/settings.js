@@ -235,22 +235,28 @@ define({
         "_root_headset_controllers_content_poseTimeOffset.name": "Pose time offset", // adv
         "_root_headset_controllers_content_poseTimeOffset.description":
             "Offset for the pose prediction algorithm", // adv
-        "_root_headset_controllers_content_clientsidePrediction.name": "Adaptive prediction (Client)", // adv
+        "_root_headset_controllers_content_clientsidePrediction.name":
+            "Adaptive prediction (Client)", // adv
         "_root_headset_controllers_content_clientsidePrediction.description":
             "Use adaptive prediction from the headset", // adv
-        "_root_headset_controllers_content_serversidePrediction.name": "Adaptive prediction (Server)", // adv
+        "_root_headset_controllers_content_serversidePrediction.name":
+            "Adaptive prediction (Server)", // adv
         "_root_headset_controllers_content_serversidePrediction.description":
             "Use adaptive prediction from the server. \nAllows using prediction cutoffs to reduce jittering with slow or precise movements", // adv
-        "_root_headset_controllers_content_linearVelocityCutoff.name": "Linear velocity cutoff (m/s)", // adv
+        "_root_headset_controllers_content_linearVelocityCutoff.name":
+            "Linear velocity cutoff (m/s)", // adv
         "_root_headset_controllers_content_linearVelocityCutoff.description":
             "Prediction cutoff for linear velocity", // adv
-        "_root_headset_controllers_content_linearAccelerationCutoff.name": "Linear acceleration cutoff (m/s^2)", // adv
+        "_root_headset_controllers_content_linearAccelerationCutoff.name":
+            "Linear acceleration cutoff (m/s^2)", // adv
         "_root_headset_controllers_content_linearAccelerationCutoff.description":
             "Prediction cutoff for linear acceleration", // adv
-        "_root_headset_controllers_content_angularVelocityCutoff.name": "Angular velocity cutoff (deg/s)", // adv
+        "_root_headset_controllers_content_angularVelocityCutoff.name":
+            "Angular velocity cutoff (deg/s)", // adv
         "_root_headset_controllers_content_angularVelocityCutoff.description":
             "Prediction cutoff for angular velocity", // adv
-        "_root_headset_controllers_content_angularAccelerationCutoff.name": "Angular acceleration cutoff (deg/s^2)", // adv
+        "_root_headset_controllers_content_angularAccelerationCutoff.name":
+            "Angular acceleration cutoff (deg/s^2)", // adv
         "_root_headset_controllers_content_angularAccelerationCutoff.description":
             "Prediction cutoff for angular velocity", // adv
         "_root_headset_controllers_content_positionOffsetLeft.name": "Position offset", // adv

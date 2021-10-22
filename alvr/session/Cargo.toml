@@ -3,7 +3,8 @@ name = "alvr_session"
 version = "16.0.0"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
-edition = "2018"
+edition = "2021"
+rust-version = "1.56"
 
 [dependencies]
 alvr_common = { path = "../common" }

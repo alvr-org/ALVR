@@ -3,7 +3,8 @@ name = "settings-schema"
 version = "0.3.1"
 authors = ["Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
-edition = "2018"
+edition = "2021"
+rust-version = "1.56"
 
 [features]
 default = []

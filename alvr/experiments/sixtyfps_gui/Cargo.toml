@@ -1,16 +1,10 @@
 [package]
-name = "alvr_gui"
+name = "sixtyfps_gui"
 version = "0.1.0"
 authors = ["alvr-org"]
-license = "MIT"
+license = "GPLv3"
 edition = "2021"
 rust-version = "1.56"
-
-
-
-[features]
-default = []
-gpl = ["sixtyfps", "sixtyfps-build"]
 
 [dependencies]
 alvr_common = { path = "../../common" }
@@ -24,9 +18,7 @@ serde_json = "1"
 settings-schema = { path = "../../settings-schema", features = [
     "rename_camel_case",
 ] }
-sixtyfps = { git = "https://github.com/sixtyfpsui/sixtyfps", optional = true }
-termion = "1"
-tui = "0.16"
+sixtyfps = "0.1.3"
 unic-langid = "0.9"
 
 [target.'cfg(any(windows, target_os = "macos"))'.dependencies]
@@ -36,4 +28,4 @@ dark-light = "0.1"
 locale_config = "0.3"
 
 [build-dependencies]
-sixtyfps-build = { git = "https://github.com/sixtyfpsui/sixtyfps", optional = true }
+sixtyfps-build = "0.1"

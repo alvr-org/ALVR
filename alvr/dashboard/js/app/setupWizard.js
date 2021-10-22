@@ -92,34 +92,46 @@ define([
                     switch (target.attr("value")) {
                         case "oculus":
                             clientsidePrediction.prop("checked", true);
-                            serversidePrediction.prop("checked", false);
                             break;
                         case "steamvr":
+                        case "normal":
+                        case "medium":
+                        case "fast":
                             clientsidePrediction.prop("checked", false);
+                            break;
+                        default:
+                            break;
+                    }
+                    alvrSettings.storeParam(clientsidePrediction);
+                    switch (target.attr("value")) {
+                        case "steamvr":
                             serversidePrediction.prop("checked", true);
                             break;
+                        case "oculus":
                         case "normal":
-                            clientsidePrediction.prop("checked", false);
+                        case "medium":
+                        case "fast":
                             serversidePrediction.prop("checked", false);
+                            break;
+                        default:
+                            break;
+                    }
+                    alvrSettings.storeParam(serversidePrediction);
+                    switch (target.attr("value")) {
+                        case "normal":
                             poseTimeOffsetTarget.val("0.01");
                             break;
                         case "medium":
-                            clientsidePrediction.prop("checked", false);
-                            serversidePrediction.prop("checked", false);
                             poseTimeOffsetTarget.val("-0.03");
                             break;
                         case "fast":
-                            clientsidePrediction.prop("checked", false);
-                            serversidePrediction.prop("checked", false);
                             poseTimeOffsetTarget.val("-1");
                             break;
                         default:
                             break;
                     }
                     alvrSettings.storeParam(poseTimeOffset);
-                    alvrSettings.storeParam(clientsidePrediction);
-                    alvrSettings.storeParam(serversidePrediction);
-
+			     
                     console.log(target.attr("value"));
                 });
 

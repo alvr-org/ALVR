@@ -531,33 +531,47 @@ define([
                 switch (val) {
                     case "oculus":
                         clientsidePrediction.prop("checked", true);
-                        serversidePrediction.prop("checked", false);
                         break;
                     case "steamvr":
+                    case "normal":
+                    case "medium":
+                    case "fast":
                         clientsidePrediction.prop("checked", false);
+                        break;
+                    default:
+                        break;
+                }
+                alvrSettings.storeParam(clientsidePrediction);
+                setTrackingRadio();
+                switch (val) {
+                    case "steamvr":
                         serversidePrediction.prop("checked", true);
                         break;
+                    case "oculus":
                     case "normal":
-                        clientsidePrediction.prop("checked", false);
+                    case "medium":
+                    case "fast":
                         serversidePrediction.prop("checked", false);
+                        break;
+                    default:
+                        break;
+                }
+                alvrSettings.storeParam(serversidePrediction);
+                setTrackingRadio();
+                switch (val) {
+                    case "normal":
                         poseTimeOffset.val("0.01");
                         break;
                     case "medium":
-                        clientsidePrediction.prop("checked", false);
-                        serversidePrediction.prop("checked", false);
                         poseTimeOffset.val("-0.03");
                         break;
                     case "fast":
-                        clientsidePrediction.prop("checked", false);
-                        serversidePrediction.prop("checked", false);
                         poseTimeOffset.val("-1");
                         break;
                     default:
                         break;
                 }
                 alvrSettings.storeParam(poseTimeOffset);
-                alvrSettings.storeParam(clientsidePrediction);
-                alvrSettings.storeParam(serversidePrediction);
                 setTrackingRadio();
             }
 

@@ -89,6 +89,7 @@ define([
                         "#_root_headset_controllers_content_serversidePrediction"
                     );
 
+                    // need to store parameters quickly, otherwise it seems to not apply properly
                     switch (target.attr("value")) {
                         case "oculus":
                             clientsidePrediction.prop("checked", true);

@@ -420,6 +420,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 
 	}
 
+    // use cutoffs for velocity and acceleration to stop jitter when there is not a lot of movement
 	float LinearVelocityMultiplier = Shape(Magnitude(info.controller[controllerIndex].linearVelocity), Settings::Instance().m_linearVelocityCutoff);
 	float LinearAccelerationMultiplier = Shape(Magnitude(info.controller[controllerIndex].linearAcceleration), Settings::Instance().m_linearAccelerationCutoff);
 	float AngularVelocityMultiplier = Shape(Magnitude(info.controller[controllerIndex].angularVelocity), Settings::Instance().m_angularVelocityCutoff * DEG_TO_RAD);

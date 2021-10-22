@@ -528,6 +528,7 @@ define([
             }
 
             function setTrackingValue(val) {
+                // need to store parameters quickly, otherwise it seems to not apply properly
                 switch (val) {
                     case "oculus":
                         clientsidePrediction.prop("checked", true);

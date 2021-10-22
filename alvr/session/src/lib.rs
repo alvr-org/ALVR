@@ -217,7 +217,7 @@ impl SessionDesc {
             Err(e) => {
                 *self = session_desc_mut;
 
-                log_event(Event::SessionSettingsExtrapolationFailed);
+                log_event(ServerEvent::SessionSettingsExtrapolationFailed);
                 fmt_e!(
                     "Error while deserializing extrapolated session settings: {}",
                     e
@@ -583,7 +583,7 @@ impl DerefMut for SessionLock<'_> {
 impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
         save_session(self.session_desc, self.session_path).unwrap();
-        log_event(Event::SessionUpdated);
+        log_event(ServerEvent::SessionUpdated);
     }
 }
 

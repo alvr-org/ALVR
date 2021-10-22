@@ -153,7 +153,7 @@ pub struct Raw {
 // Pound signs are used to identify start and finish of json
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "id", content = "data")]
-pub enum Event {
+pub enum ServerEvent {
     SessionUpdated,
     SessionSettingsExtrapolationFailed,
     ClientFoundOk,
@@ -167,7 +167,7 @@ pub enum Event {
     Raw(Raw),
 }
 
-pub fn log_event(id: Event) {
+pub fn log_event(id: ServerEvent) {
     log::info!("#{}#", serde_json::to_string(&id).unwrap());
 }
 

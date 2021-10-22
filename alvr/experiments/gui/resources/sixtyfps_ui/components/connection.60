@@ -1,0 +1,41 @@
+import { Button, ScrollView, VerticalBox, HorizontalBox } from "sixtyfps_widgets.60";
+
+export struct ClientData := {
+    display-name: string,
+    hostname: string,
+}
+
+ClientCard := Rectangle {
+    property<string> display-name;
+    property<string> hostname;
+
+    height: 50px;
+
+    background: #c4ecff;
+
+    border-width: 0.5px;
+    border-color: black;
+    border-radius: 10px;
+
+    HorizontalBox {
+        Text {
+            text: display-name;
+        }
+        Text {
+            text: hostname;
+        }
+    }
+}
+
+export ConnectionPanel := ScrollView {
+    border-color: transparent;
+
+    property<[ClientData]> clients;
+
+    VerticalBox {
+        for client in clients : ClientCard {
+            display-name: client.display-name;
+            hostname: client.hostname;
+        }
+    }
+}

@@ -13,7 +13,7 @@ Requires(post): policycoreutils
 Requires(postun): policycoreutils
 %define alvrBuildDir build/%{name}_server_linux
 # find-debuginfo.sh doesn't appear to be working
-%global debug_package %{nil} 
+%global debug_package %{nil}
 
 %description
 ALVR is an open source remote VR display which allows playing SteamVR games on
@@ -34,17 +34,16 @@ bzip2 'packaging/selinux/%{name}.pp'
 
 %changelog
 * Fri Jul 30 2021 Trae Santiago <trae32566@gmail.com> - 16.0.0-0.0.1rc1
-    - Merged spec file
+    - Initial release; see GitHub For changelog
 
 %install
-# Create dirs 
+# Create dirs
 newDirs=(
     '%{_bindir}'
     '%{_datadir}/'{'applications','licenses/%{name}','selinux/packages'}
     '%{_libdir}'
     '%{_usr}/lib/firewalld/services'
     '%{_libexecdir}'
-    '%{_docdir}'
 )
 for newDir in "${newDirs[@]}"; do
     mkdir -p "%{buildroot}${newDir}"
@@ -77,7 +76,7 @@ for res in 16x16 32x32 48x48 64x64 128x128 256x256; do
     convert '%{name}/launcher/res/launcher.ico' -thumbnail "${res}" -alpha on -background none -flatten "%{buildroot}%{_datadir}/icons/hicolor/${res}/apps/%{name}.png"
 done
 
-%files 
+%files
 %{_bindir}/%{name}_launcher
 %{_datadir}/%{name}/
 %{_datadir}/applications/%{name}.desktop
@@ -109,7 +108,7 @@ fi
 
 %post
 # Check if firewalld is running and reload
-if firewall-cmd --get-active-zones >/dev/null 2>&1; then 
+if firewall-cmd --get-active-zones >/dev/null 2>&1; then
     firewall-cmd --reload >/dev/null
 fi
 # Check if SELinux is enabled and load policy

@@ -468,18 +468,12 @@ define([
                 ${custom}
             </label> `;
 
-            const undefinedButton = `<label id="trackingSpeedUndefinedButton" class="btn btn-primary active">
-            <input type="radio" name="trackingSpeed"  autocomplete="off" value="custom" checked>
-                undefined
-            </label> `;
-
             function setTrackingRadio() {
                 $("#trackingSpeedCustomButton").remove();
-                $("#trackingSpeedUndefinedButton").remove();
                 $("input:radio[name='trackingSpeed']").parent().removeClass("active");
 
                 if (clientsidePrediction.is(":checked") && serversidePrediction.is(":checked")) {
-                    $("#trackingSpeedButtons").append(undefinedButton);
+                    $("#trackingSpeedButtons").append(customButton);
                 } else if (clientsidePrediction.is(":checked")) {
                     $("input:radio[name='trackingSpeed'][value='oculus']").prop("checked", "true");
                     $("input:radio[name='trackingSpeed'][value='oculus']")

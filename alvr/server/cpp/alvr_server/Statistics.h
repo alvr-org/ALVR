@@ -151,11 +151,13 @@ private:
 		m_encodeLatencyMin = UINT64_MAX;
 		m_encodeLatencyMax = 0;
 
-		if (m_framesPrevious > 0) {
-			m_adaptiveBitrateTarget = 1e6 / m_framesPrevious;
-		}
-		if (m_adaptiveBitrateTarget > m_adaptiveBitrateTargetMaximum) {
-			m_adaptiveBitrateTarget = m_adaptiveBitrateTargetMaximum;
+		if (m_adaptiveBitrateUseFrametime) {
+			if (m_framesPrevious > 0) {
+				m_adaptiveBitrateTarget = 1e6 / m_framesPrevious;
+			}
+			if (m_adaptiveBitrateTarget > m_adaptiveBitrateTargetMaximum) {
+				m_adaptiveBitrateTarget = m_adaptiveBitrateTargetMaximum;
+			}
 		}
 	}
 

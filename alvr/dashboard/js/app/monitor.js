@@ -648,7 +648,7 @@ define([
         const graphColors = ["#7f7f7f", "#d62728", "#ff7f0e", "#1f77b4"];
 
         let latencyGraphOptions = {
-            width: 560,
+            width: 550,
             height: 160,
             series: [
                 {
@@ -724,7 +724,7 @@ define([
         framerateGraphData[0].unshift(now - duration);
 
         let framerateGraphOptions = {
-            width: 560,
+            width: 550,
             height: 100,
             series: [
                 {

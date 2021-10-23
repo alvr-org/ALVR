@@ -517,7 +517,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 enabled: !cfg!(target_os = "linux"),
                 content: AdaptiveBitrateDescDefault {
                     bitrate_maximum: 200,
-                    latency_target: 16000,
+                    latency_target: 12000,
                     latency_use_frametime: SwitchDefault {
                         enabled: false,
                         content: LatencyUseFrametimeDescDefault {

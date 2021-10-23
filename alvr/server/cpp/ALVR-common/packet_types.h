@@ -167,6 +167,10 @@ struct TrackingInfo {
 	double predictedDisplayTime;
 	TrackingQuat HeadPose_Pose_Orientation;
 	TrackingVector3 HeadPose_Pose_Position;
+	TrackingVector3 HeadPose_AngularVelocity;
+	TrackingVector3 HeadPose_LinearVelocity;
+	TrackingVector3 HeadPose_AngularAcceleration;
+	TrackingVector3 HeadPose_LinearAcceleration;
 
 	TrackingVector3 Other_Tracking_Source_Position;
 	TrackingQuat Other_Tracking_Source_Orientation;

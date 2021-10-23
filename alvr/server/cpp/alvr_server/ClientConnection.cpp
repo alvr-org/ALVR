@@ -195,6 +195,7 @@ void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 			sendBuf.serverTotalLatency = (int)(m_reportedStatistics.averageSendLatency + (timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs + timing[0].m_flCompositorIdleCpuMs + timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs) * 1000 + m_Statistics->GetEncodeLatencyAverage() + m_reportedStatistics.averageTransportLatency + m_reportedStatistics.averageDecodeLatency + m_reportedStatistics.idleTime);
 			LegacySend((unsigned char *)&sendBuf, sizeof(sendBuf));
 
+			m_Statistics->NetworkTotal(sendBuf.serverTotalLatency);
 			m_Statistics->NetworkSend(m_reportedStatistics.averageTransportLatency);
 
 			float renderTime = timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs;
@@ -300,6 +301,10 @@ bool ClientConnection::HasValidTrackingInfo() const {
 void ClientConnection::GetTrackingInfo(TrackingInfo &info) {
 	std::unique_lock<std::mutex> lock(m_CS);
 	info = m_TrackingInfo;
+}
+
+float ClientConnection::GetPoseTimeOffset() {
+	return -(double)(m_Statistics->GetTotalLatencyAverage()) / 1000.0 / 1000.0;
 }
 
 uint64_t ClientConnection::clientToServerTime(uint64_t clientTime) const {

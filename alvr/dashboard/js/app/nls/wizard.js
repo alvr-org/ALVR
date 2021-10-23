@@ -25,8 +25,9 @@ define({
         // Tracking page
         titleTracking: "Tracking",
         textTracking:
-            "How should the tracking of the controller be handled. If you plan on playing fast paced games like Beatsaber, choose medium or fast. For slower games like Skyrim leave it on normal. <br/> <br/> Oculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
-        oculusTracking: "Oculus prediction",
+            "How should the tracking of the controller be handled. Recommended to use adaptive Oculus or SteamVR prediction. If you want to use fixed tracking speeds: Medium or fast for fast paced games like Beatsaber, normal for slower games like Skyrim. <br/> <br/> Oculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
+        oculusTracking: "Oculus",
+        steamvrTracking: "SteamVR",
         normalTracking: "Normal",
         mediumTracking: "Medium",
         fastTracking: "Fast",

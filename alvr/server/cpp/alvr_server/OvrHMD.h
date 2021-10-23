@@ -73,6 +73,7 @@ public:
 	bool IsHMD() const { return m_deviceClass == vr::TrackedDeviceClass_HMD; }
 
 	std::shared_ptr<ClientConnection> m_Listener;
+	float m_poseTimeOffset;
 private:
 	bool m_baseComponentsInitialized;
 	bool m_streamComponentsInitialized;

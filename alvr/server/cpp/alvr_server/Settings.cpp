@@ -121,6 +121,11 @@ void Settings::Load()
 
 		m_trackingFrameOffset = (int32_t)config.get("tracking_frame_offset").get<int64_t>();
 		m_controllerPoseOffset = (double)config.get("controller_pose_offset").get<double>();
+		m_serversidePrediction = config.get("serverside_prediction").get<bool>();
+		m_linearVelocityCutoff = (float)config.get("linear_velocity_cutoff").get<double>();
+		m_linearAccelerationCutoff = (float)config.get("linear_acceleration_cutoff").get<double>();
+		m_angularVelocityCutoff = (float)config.get("angular_velocity_cutoff").get<double>();
+		m_angularAccelerationCutoff = (float)config.get("angular_acceleration_cutoff").get<double>();
 
 		auto leftControllerPositionOffset = config.get("position_offset_left").get<picojson::array>();
 		m_leftControllerPositionOffset[0] = leftControllerPositionOffset[0].get<double>();

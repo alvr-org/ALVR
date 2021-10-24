@@ -311,7 +311,7 @@ define([
             driverList.fillDriverList("registeredDriversInst");
 
             uploadPreset.addUploadPreset(
-                "restartSteamVR",
+                "settingUploadPreset",
                 settings.getWebClientId(),
             );
         });

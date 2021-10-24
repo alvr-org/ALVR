@@ -39,6 +39,13 @@
     </div>
     <div id="menu-list-bottom" class="menu-list-bottom collapse show">
         <ul id="menu-content-bottom" class="list-group menu-content ">
+            <li id="settingUploadPreset">
+            </li>
+            <li>
+                <a id="restartSteamVRButton">
+                    <i class="fa fa-sync-alt fa-lg"></i> <%= restartSteamVR%>
+                </a>
+            </li>
             <li>
                 <a>
                     <i class="fa fa-globe fa-lg"></i> <%= languages%>
@@ -68,10 +75,6 @@
                         <div class="tab-content" id="configContent">
                             <div id="toggleAdvanced"> <%= toggleAdvanced%>
                                 <i class="fas fa-toggle-on"></i>
-                            </div>
-                            <div id="restartSteamVR">
-                                <button id="restartSteamVRButton" type="button"
-                                    class="btn btn-primary"><%= restartSteamVR%></button>
                             </div>
                         </div>
 

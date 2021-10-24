@@ -88,6 +88,11 @@ public:
 	bool m_disableController;
 	
 	double m_controllerPoseOffset = 0;
+	bool m_serversidePrediction;
+	float m_linearVelocityCutoff;
+	float m_linearAccelerationCutoff;
+	float m_angularVelocityCutoff;
+	float m_angularAccelerationCutoff;
 
 	float m_OffsetPos[3];
 	bool m_EnableOffsetPos;

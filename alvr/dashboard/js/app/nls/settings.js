@@ -231,10 +231,34 @@ define({
             "Overrides the current controller profile's tracking system name with the current ALVR HMD's tracking system. Enable this in cases such as space calibration with OpenVR space calibrator.",
         "_root_headset_controllers_content_trackingSpeed.name": "Tracking speed",
         "_root_headset_controllers_content_trackingSpeed.description":
-            "Recommended to use Oculus Prediction. For fast paced games like Beatsaber, choose medium or fast. For slower games like Skyrim leave it on normal. \nOculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
+            "Recommended to use adaptive Oculus or SteamVR prediction. If you want to use fixed tracking speeds: Medium or fast for fast paced games like Beatsaber, normal for slower games like Skyrim. \nOculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
         "_root_headset_controllers_content_poseTimeOffset.name": "Pose time offset", // adv
         "_root_headset_controllers_content_poseTimeOffset.description":
             "Offset for the pose prediction algorithm", // adv
+        "_root_headset_controllers_content_clientsidePrediction.name":
+            "Adaptive prediction (Client)", // adv
+        "_root_headset_controllers_content_clientsidePrediction.description":
+            "Use adaptive prediction from the headset", // adv
+        "_root_headset_controllers_content_serversidePrediction.name":
+            "Adaptive prediction (Server)", // adv
+        "_root_headset_controllers_content_serversidePrediction.description":
+            "Use adaptive prediction from the server. \nAllows using prediction cutoffs to reduce jittering with slow or precise movements", // adv
+        "_root_headset_controllers_content_linearVelocityCutoff.name":
+            "Linear velocity cutoff (m/s)", // adv
+        "_root_headset_controllers_content_linearVelocityCutoff.description":
+            "Prediction cutoff for linear velocity", // adv
+        "_root_headset_controllers_content_linearAccelerationCutoff.name":
+            "Linear acceleration cutoff (m/s^2)", // adv
+        "_root_headset_controllers_content_linearAccelerationCutoff.description":
+            "Prediction cutoff for linear acceleration", // adv
+        "_root_headset_controllers_content_angularVelocityCutoff.name":
+            "Angular velocity cutoff (deg/s)", // adv
+        "_root_headset_controllers_content_angularVelocityCutoff.description":
+            "Prediction cutoff for angular velocity", // adv
+        "_root_headset_controllers_content_angularAccelerationCutoff.name":
+            "Angular acceleration cutoff (deg/s^2)", // adv
+        "_root_headset_controllers_content_angularAccelerationCutoff.description":
+            "Prediction cutoff for angular velocity", // adv
         "_root_headset_controllers_content_positionOffsetLeft.name": "Position offset", // adv
         "_root_headset_controllers_content_positionOffsetLeft.description":
             "Position offset in meters for the left controller. \nFor the right controller, x value is mirrored", // adv

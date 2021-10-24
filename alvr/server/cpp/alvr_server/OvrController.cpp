@@ -9,10 +9,11 @@
 #include "include/openvr_math.h"
 #include "Logger.h"
 
-OvrController::OvrController(bool isLeftHand, int index)
+OvrController::OvrController(bool isLeftHand, int index, float* poseTimeOffset)
 	: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 	, m_isLeftHand(isLeftHand)
 	, m_index(index)
+	, m_poseTimeOffset(poseTimeOffset)
 {
 	double rightHandSignFlip = isLeftHand ? 1. : -1.;
 
@@ -419,18 +420,24 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 
 	}
 
-	m_pose.vecVelocity[0] = info.controller[controllerIndex].linearVelocity.x;
-	m_pose.vecVelocity[1] = info.controller[controllerIndex].linearVelocity.y;
-	m_pose.vecVelocity[2] = info.controller[controllerIndex].linearVelocity.z;
-	//m_pose.vecAcceleration[0] = info.controller[controllerIndex].linearAcceleration.x;
-	//m_pose.vecAcceleration[1] = info.controller[controllerIndex].linearAcceleration.y;
-	//m_pose.vecAcceleration[2] = info.controller[controllerIndex].linearAcceleration.z;
-	m_pose.vecAngularVelocity[0] = info.controller[controllerIndex].angularVelocity.x;
-	m_pose.vecAngularVelocity[1] = info.controller[controllerIndex].angularVelocity.y;
-	m_pose.vecAngularVelocity[2] = info.controller[controllerIndex].angularVelocity.z;
-	//m_pose.vecAngularAcceleration[0] = info.controller[controllerIndex].angularAcceleration.x;
-	//m_pose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y;
-	//m_pose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z;
+    // use cutoffs for velocity and acceleration to stop jitter when there is not a lot of movement
+	float LinearVelocityMultiplier = Shape(Magnitude(info.controller[controllerIndex].linearVelocity), Settings::Instance().m_linearVelocityCutoff);
+	float LinearAccelerationMultiplier = Shape(Magnitude(info.controller[controllerIndex].linearAcceleration), Settings::Instance().m_linearAccelerationCutoff);
+	float AngularVelocityMultiplier = Shape(Magnitude(info.controller[controllerIndex].angularVelocity), Settings::Instance().m_angularVelocityCutoff * DEG_TO_RAD);
+	float AngularAccelerationMultiplier = Shape(Magnitude(info.controller[controllerIndex].angularAcceleration), Settings::Instance().m_angularAccelerationCutoff * DEG_TO_RAD);
+
+	m_pose.vecVelocity[0] = info.controller[controllerIndex].linearVelocity.x * LinearVelocityMultiplier;
+	m_pose.vecVelocity[1] = info.controller[controllerIndex].linearVelocity.y * LinearVelocityMultiplier;
+	m_pose.vecVelocity[2] = info.controller[controllerIndex].linearVelocity.z * LinearVelocityMultiplier;
+	m_pose.vecAcceleration[0] = info.controller[controllerIndex].linearAcceleration.x * LinearAccelerationMultiplier;
+	m_pose.vecAcceleration[1] = info.controller[controllerIndex].linearAcceleration.y * LinearAccelerationMultiplier;
+	m_pose.vecAcceleration[2] = info.controller[controllerIndex].linearAcceleration.z * LinearAccelerationMultiplier;
+	m_pose.vecAngularVelocity[0] = info.controller[controllerIndex].angularVelocity.x * AngularVelocityMultiplier;
+	m_pose.vecAngularVelocity[1] = info.controller[controllerIndex].angularVelocity.y * AngularVelocityMultiplier;
+	m_pose.vecAngularVelocity[2] = info.controller[controllerIndex].angularVelocity.z * AngularVelocityMultiplier;
+	m_pose.vecAngularAcceleration[0] = info.controller[controllerIndex].angularAcceleration.x * AngularAccelerationMultiplier;
+	m_pose.vecAngularAcceleration[1] = info.controller[controllerIndex].angularAcceleration.y * AngularAccelerationMultiplier;
+	m_pose.vecAngularAcceleration[2] = info.controller[controllerIndex].angularAcceleration.z * AngularAccelerationMultiplier;
 	
 	
 	
@@ -489,7 +496,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	*/
 	
 
-	m_pose.poseTimeOffset = Settings::Instance().m_controllerPoseOffset;
+	m_pose.poseTimeOffset = *m_poseTimeOffset;
 
 	   
 
@@ -497,6 +504,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	Debug("Controller%d %d %lu: %08llX %08X %f:%f\n", m_index,controllerIndex, (unsigned long)m_unObjectId, c.buttons, c.flags, c.trackpadPosition.x, c.trackpadPosition.y);
 
 	if (c.flags & TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND) {
+		//m_pose.poseTimeOffset = 0.;
 		float rotThumb = (c.boneRotations[alvrHandBone_Thumb0].z + c.boneRotations[alvrHandBone_Thumb0].y + c.boneRotations[alvrHandBone_Thumb1].z + c.boneRotations[alvrHandBone_Thumb1].y + c.boneRotations[alvrHandBone_Thumb2].z + c.boneRotations[alvrHandBone_Thumb2].y + c.boneRotations[alvrHandBone_Thumb3].z + c.boneRotations[alvrHandBone_Thumb3].y) * 0.67f;
 		float rotIndex = (c.boneRotations[alvrHandBone_Index1].z + c.boneRotations[alvrHandBone_Index2].z + c.boneRotations[alvrHandBone_Index3].z) * 0.67f;
 		float rotMiddle = (c.boneRotations[alvrHandBone_Middle1].z + c.boneRotations[alvrHandBone_Middle2].z + c.boneRotations[alvrHandBone_Middle3].z) * 0.67f;

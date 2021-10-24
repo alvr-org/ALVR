@@ -25,6 +25,7 @@ public:
 	void ProcessRecv(unsigned char *buf, size_t len);
 	bool HasValidTrackingInfo() const;
 	void GetTrackingInfo(TrackingInfo &info);
+	float GetPoseTimeOffset();
 	uint64_t clientToServerTime(uint64_t clientTime) const;
 	uint64_t serverToClientTime(uint64_t serverTime) const;
 	void OnFecFailure();

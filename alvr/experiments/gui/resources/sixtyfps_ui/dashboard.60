@@ -24,7 +24,7 @@ TabButton := Button {
     }
 }
 
-Dashboard := Window {
+DashboardWindow := Window {
     preferred-width: 800px;
     preferred-height: 600px;
     title: "ALVR Dashboard";

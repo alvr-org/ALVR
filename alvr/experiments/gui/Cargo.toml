@@ -6,17 +6,9 @@ license = "MIT"
 edition = "2021"
 rust-version = "1.56"
 
-
-
 [features]
-default = []
-gpl = ["sixtyfps", "sixtyfps-build"]
-
-
-
-[features]
-default = []
-gpl = ["sixtyfps", "sixtyfps-build"]
+default = [] #["gpl"]
+gpl = ["sixtyfps", "sixtyfps-build", "sixtyfps-interpreter"]
 
 [dependencies]
 alvr_common = { path = "../../common" }
@@ -25,12 +17,13 @@ alvr_session = { path = "../../session" }
 fluent = "0.16"
 fluent-syntax = "0.11"
 fluent-langneg = "0.13"
+rhai = { version = "1", features = ["serde"] }
 serde = "1"
 serde_json = "1"
 settings-schema = { path = "../../settings-schema", features = [
     "rename_camel_case",
 ] }
-sixtyfps = { git = "https://github.com/sixtyfpsui/sixtyfps", optional = true }
+sixtyfps = { version = "0.1.4", optional = true }
 termion = "1"
 tui = "0.16"
 unic-langid = "0.9"
@@ -42,4 +35,5 @@ dark-light = "0.1"
 locale_config = "0.3"
 
 [build-dependencies]
-sixtyfps-build = { git = "https://github.com/sixtyfpsui/sixtyfps", optional = true }
+sixtyfps-build = { version = "0.1.4", optional = true }
+sixtyfps-interpreter = { version = "0.1.4", optional = true }

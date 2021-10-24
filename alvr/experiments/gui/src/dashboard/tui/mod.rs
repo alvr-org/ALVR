@@ -1,19 +1,10 @@
-mod about;
-mod command;
-mod connection;
-mod help;
-mod installation;
-mod logs;
-mod notification;
+mod events;
+mod repl;
 
-use crate::dashboard::tui::installation::InstallationPanel;
-
-use self::{command::CommandBar, connection::ConnectionPanel, notification::NotificationBar};
-use super::DashboardEvent;
+use self::{events::EventsPanel, repl::ReplPanel};
 use alvr_common::ServerEvent;
 use alvr_session::SessionDesc;
 use std::{
-    cmp,
     collections::VecDeque,
     io,
     sync::{
@@ -30,30 +21,26 @@ use termion::{
 };
 use tui::{
     backend::TermionBackend,
-    layout::{Alignment, Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    text::Spans,
-    widgets::{Block, Borders, Tabs},
+    layout::{Constraint, Direction, Layout},
+    widgets::{canvas::Line, Block, Borders},
     Terminal,
 };
 
 pub struct Dashboard {
-    session: SessionDesc,
     unprocessed_events: Arc<Mutex<Vec<ServerEvent>>>,
 
     running: Arc<AtomicBool>,
 }
 
 impl Dashboard {
-    pub fn new(initial_session: SessionDesc) -> Self {
+    pub fn new(_: SessionDesc) -> Self {
         Self {
-            session: initial_session,
             unprocessed_events: Arc::new(Mutex::new(vec![])),
             running: Arc::new(AtomicBool::new(true)),
         }
     }
 
-    pub fn run(&self, mut event_handler: impl FnMut(DashboardEvent)) {
+    pub fn run(&self, mut request_handler: impl FnMut(String) -> String) {
         let stdout = io::stdout().into_raw_mode().unwrap();
         let stdout = MouseTerminal::from(stdout);
         let stdout = AlternateScreen::from(stdout);
@@ -77,102 +64,51 @@ impl Dashboard {
             }
         });
 
-        let mut selected_tab = if self.session.setup_wizard {
-            4 // help tab
-        } else {
-            0
-        };
-        let mut command_mode = false;
-
-        let mut connection_panel = ConnectionPanel::new();
-        let mut installation_panel = InstallationPanel::new();
-        let mut command_bar = CommandBar::new();
-        let mut notification_bar = NotificationBar::new();
+        let mut events_panel = EventsPanel::new();
+        let mut repl_panel = ReplPanel::new();
 
         while self.running.load(Ordering::Relaxed) {
+            events_panel.push_events(
+                self.unprocessed_events
+                    .lock()
+                    .unwrap()
+                    .drain(..)
+                    .collect::<Vec<_>>(),
+            );
+
             terminal
                 .draw(|frame| {
                     let chunks = Layout::default()
                         .direction(Direction::Vertical)
                         .constraints([
-                            Constraint::Length(2),
-                            Constraint::Min(0),
+                            Constraint::Percentage(50),
                             Constraint::Length(1),
+                            Constraint::Percentage(50),
                         ])
                         .split(frame.size());
-                    let tabs = Tabs::new(vec![
-                        Spans::from("Connection"),
-                        Spans::from("Statistics"),
-                        Spans::from("Logs"),
-                        Spans::from("Installation"),
-                        Spans::from("Help"),
-                        Spans::from("About"),
-                    ])
-                    .block(
-                        Block::default()
-                            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                            .title("ALVR Dashboard")
-                            .title_alignment(Alignment::Center),
-                    )
-                    .select(selected_tab)
-                    .highlight_style(
-                        Style::default()
-                            .add_modifier(Modifier::BOLD)
-                            .fg(Color::Blue),
-                    );
-                    frame.render_widget(tabs, chunks[0]);
 
-                    let panel_block = Block::default().borders(Borders::ALL);
-                    let panel_area = panel_block.inner(chunks[1]);
-                    frame.render_widget(panel_block, chunks[1]);
-
-                    match selected_tab {
-                        0 => connection_panel.draw(frame, panel_area, &self.session),
-                        3 => installation_panel.draw(frame, panel_area),
-                        4 => help::draw_help_panel(frame, panel_area),
-                        5 => about::draw_about_panel(frame, panel_area),
-                        _ => (),
-                    }
-
-                    if command_mode {
-                        command_bar.draw(frame, chunks[2], command_mode);
-                    } else {
-                        notification_bar.draw(frame, chunks[2]);
-                    }
+                    events_panel.draw(frame, chunks[0]);
+                    frame.render_widget(Block::default().borders(Borders::TOP), chunks[1]);
+                    repl_panel.draw(frame, chunks[2]);
                 })
                 .unwrap();
 
             while let Some(key) = key_events.lock().unwrap().pop_front() {
-                match key {
-                    Key::Ctrl('c') => {
-                        self.running.store(false, Ordering::Relaxed);
-                        event_handler(DashboardEvent::Quit);
-                    }
-
-                    key if command_mode => {
-                        command_bar.react_to_key(key, &mut event_handler, &mut command_mode)
-                    }
-
-                    Key::Left => {
-                        if selected_tab > 0 {
-                            selected_tab -= 1;
-                        }
-                    }
-                    Key::Right => selected_tab = cmp::min(selected_tab + 1, 5),
-                    Key::Char('c') => command_mode = true,
-                    key => match selected_tab {
-                        0 => connection_panel.react_to_key(key, &self.session, &mut event_handler),
-                        3 => installation_panel.react_to_key(key, &mut event_handler),
-                        _ => (),
-                    },
+                if let Key::Ctrl('c') = key {
+                    self.running.store(false, Ordering::Relaxed);
+                    request_handler("quit()".into());
+                } else {
+                    repl_panel.react_to_key(key, &mut request_handler);
                 }
             }
         }
     }
 
-    pub fn update_session(&self, session_desc: SessionDesc) {}
+    pub fn update_session(&self, _: SessionDesc) {}
 
-    pub fn report_event(&self, event: ServerEvent) {}
+    pub fn report_event(&self, event: ServerEvent) {
+        self.unprocessed_events.lock().unwrap().push(event);
+    }
 
     pub fn request_exit(&self) {
         self.running.store(false, Ordering::Relaxed);

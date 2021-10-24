@@ -48,6 +48,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "739f4a8db6605981345c5654f3a85b056ce52f37a39d34da03f25bf2151ea16e"
 
 [[package]]
+name = "ahash"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
+dependencies = [
+ "getrandom",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -217,11 +228,13 @@ dependencies = [
  "fluent-langneg",
  "fluent-syntax 0.11.0",
  "locale_config",
+ "rhai",
  "serde",
  "serde_json",
  "settings-schema",
  "sixtyfps",
  "sixtyfps-build",
+ "sixtyfps-interpreter",
  "termion",
  "tui",
  "unic-langid",
@@ -1056,7 +1069,8 @@ dependencies = [
 [[package]]
 name = "const-field-offset"
 version = "0.1.1"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba27bd1ad8321d7f74529b437aeb226e2a42cb76889ff7c228166462780571fb"
 dependencies = [
  "const-field-offset-macro",
  "field-offset",
@@ -1065,7 +1079,8 @@ dependencies = [
 [[package]]
 name = "const-field-offset-macro"
 version = "0.1.1"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4bf15c922cf1f0cee8dfab3ca8eceefdacfb003709f4c4442062e71167c5e6a9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2363,6 +2378,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "generativity"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82b63cd86a56f00d274f18ecadb1fa2c4a562005c91b51c8f8facde2dd36435d"
+
+[[package]]
 name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3083,11 +3104,11 @@ dependencies = [
 
 [[package]]
 name = "kurbo"
-version = "0.8.2"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1479e7ffd381ab2ae38617d5e457c5b875ee928c53a7f165dad5d47053319cc"
+checksum = "eb348d766edbac91ba1eb83020d96f4f8867924d194393083c15a51f185e6a82"
 dependencies = [
- "arrayvec 0.7.1",
+ "arrayvec 0.5.2",
 ]
 
 [[package]]
@@ -4669,6 +4690,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "rhai"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0a6abd5b3f1fe29984451102a69c79e65212f6c70015a68245a43a8ecc2a88b"
+dependencies = [
+ "ahash 0.7.6",
+ "instant",
+ "num-traits",
+ "rhai_codegen",
+ "serde",
+ "smallvec",
+ "smartstring",
+]
+
+[[package]]
+name = "rhai_codegen"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2a81e59b9782e8b85052aaed305d71dfcdec1bfa53e774c19ac1085307cbf39"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "ring"
 version = "0.16.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5153,7 +5200,8 @@ checksum = "533494a8f9b724d33625ab53c6c4800f7cc445895924a8ef649222dcb76e938b"
 [[package]]
 name = "sixtyfps"
 version = "0.1.4"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e2784897f8b507fceb3c0decd003f6bbcd663d82afa66e14070963d95ec4ca0"
 dependencies = [
  "const-field-offset",
  "once_cell",
@@ -5167,7 +5215,8 @@ dependencies = [
 [[package]]
 name = "sixtyfps-build"
 version = "0.1.4"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e64625cc4616f04e020ef13e93cc1430bd47993d867eeb5034c95203ffabed6f"
 dependencies = [
  "sixtyfps-compilerlib",
  "spin_on",
@@ -5177,7 +5226,8 @@ dependencies = [
 [[package]]
 name = "sixtyfps-compilerlib"
 version = "0.1.4"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dadc144b8c27e46fd82f1277bdd5be0610ced5beac67654ecddf7598ef327a32"
 dependencies = [
  "by_address",
  "codemap",
@@ -5202,14 +5252,14 @@ dependencies = [
 [[package]]
 name = "sixtyfps-corelib"
 version = "0.1.4"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5af745b87653c29aa00b7664b7dd429a22af634e37cb3cb50b4ea464a0c5f7bb"
 dependencies = [
  "auto_enums",
  "cfg-if 1.0.0",
  "const-field-offset",
  "derive_more",
  "euclid",
- "image",
  "instant",
  "lyon_algorithms",
  "lyon_geom",
@@ -5223,8 +5273,8 @@ dependencies = [
  "sixtyfps-corelib-macros",
  "slab",
  "static_assertions",
- "strum 0.21.0",
- "strum_macros 0.21.1",
+ "strum 0.22.0",
+ "strum_macros 0.22.0",
  "triomphe",
  "unicode-segmentation",
  "vtable",
@@ -5236,16 +5286,36 @@ dependencies = [
 [[package]]
 name = "sixtyfps-corelib-macros"
 version = "0.1.4"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bdd98c3ef78e8c8fd4341799651ee484030a67636701b0790a738850df1c9d9"
 dependencies = [
  "quote",
  "syn",
 ]
 
 [[package]]
+name = "sixtyfps-interpreter"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5554a79574d08eb4467d24d804dc233126147f3f45b510a31b5a56edddb18b98"
+dependencies = [
+ "derive_more",
+ "generativity",
+ "lyon_path",
+ "once_cell",
+ "sixtyfps-compilerlib",
+ "sixtyfps-corelib",
+ "sixtyfps-rendering-backend-default",
+ "sixtyfps-rendering-backend-gl",
+ "thiserror",
+ "vtable",
+]
+
+[[package]]
 name = "sixtyfps-macros"
 version = "0.1.4"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab982551351b1158602a40ef096db3f81251259f6e44959ab8f099517448d00f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5256,7 +5326,8 @@ dependencies = [
 [[package]]
 name = "sixtyfps-rendering-backend-default"
 version = "0.1.4"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b126dacfeb34dc2ad4c4b474d4ff279ef7cb6ace24a8fa979c41059031e243d"
 dependencies = [
  "cfg-if 1.0.0",
  "once_cell",
@@ -5268,7 +5339,8 @@ dependencies = [
 [[package]]
 name = "sixtyfps-rendering-backend-gl"
 version = "0.1.4"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1643bee07a4da232fec6e35fbd04672c6beb15b534614de76912d1e1ebad3f1a"
 dependencies = [
  "by_address",
  "cfg-if 1.0.0",
@@ -5308,7 +5380,8 @@ dependencies = [
 [[package]]
 name = "sixtyfps-rendering-backend-qt"
 version = "0.1.4"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b54880b99847faaff2bbd8212aa18914d2def94afc1d56533c581551b7f4b72b"
 dependencies = [
  "const-field-offset",
  "cpp",
@@ -5354,6 +5427,15 @@ name = "smallvec"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
+
+[[package]]
+name = "smartstring"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31aa6a31c0c2b21327ce875f7e8952322acfcfd0c27569a6e18a647281352c9b"
+dependencies = [
+ "static_assertions",
+]
 
 [[package]]
 name = "smithay-client-toolkit"
@@ -5526,9 +5608,9 @@ checksum = "57bd81eb48f4c437cadc685403cad539345bf703d78e63707418431cecd4522b"
 
 [[package]]
 name = "strum"
-version = "0.21.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aaf86bbcfd1fa9670b7a129f64fc0c9fcbbfe4f1bc4210e9e98fe71ffc12cde2"
+checksum = "f7ac893c7d471c8a21f31cfe213ec4f6d9afeed25537c772e08ef3f005f8729e"
 
 [[package]]
 name = "strum_macros"
@@ -5544,9 +5626,9 @@ dependencies = [
 
 [[package]]
 name = "strum_macros"
-version = "0.21.1"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d06aaeeee809dbc59eb4556183dd927df67db1540de5be8d3ec0b6636358a5ec"
+checksum = "339f799d8b549e3744c7ac7feb216383e4005d94bdb22561b3ab8f3b808ae9fb"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -6144,7 +6226,7 @@ dependencies = [
  "flate2",
  "float-cmp 0.9.0",
  "fontdb",
- "kurbo 0.8.2",
+ "kurbo 0.8.0",
  "log",
  "pico-args",
  "rctree",
@@ -6205,7 +6287,8 @@ dependencies = [
 [[package]]
 name = "vtable"
 version = "0.1.3"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46332604883121cdf7346cc3e1bf533234773118b72ef1598cbf0dc2e379d203"
 dependencies = [
  "const-field-offset",
  "vtable-macro",
@@ -6214,7 +6297,8 @@ dependencies = [
 [[package]]
 name = "vtable-macro"
 version = "0.1.3"
-source = "git+https://github.com/sixtyfpsui/sixtyfps#9f3d02c319a025451969521ed3d361b8ae682bd0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5e3b722e4a33410cf8e876b28c09be85e632888ced1b8b4159910427d24a087"
 dependencies = [
  "proc-macro2",
  "quote",

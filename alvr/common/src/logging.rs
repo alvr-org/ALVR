@@ -154,6 +154,7 @@ pub struct Raw {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "id", content = "data")]
 pub enum ServerEvent {
+    Session(String),
     SessionUpdated,
     SessionSettingsExtrapolationFailed,
     ClientFoundOk,
@@ -165,6 +166,7 @@ pub enum ServerEvent {
     UpdateDownloadError,
     Statistics(Statistics),
     Raw(Raw),
+    EchoQuery(String),
 }
 
 pub fn log_event(id: ServerEvent) {

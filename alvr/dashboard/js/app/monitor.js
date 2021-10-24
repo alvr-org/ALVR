@@ -620,19 +620,19 @@ define([
             return opts;
         }
 
-		function getLatencyGraphSize() {
-			return {
-				width: document.getElementById("statisticsCard").clientWidth,
-				height: 160,
-			}
-		}
+        function getLatencyGraphSize() {
+            return {
+                width: document.getElementById("statisticsCard").clientWidth,
+                height: 160,
+            };
+        }
 
-		function getFramerateGraphSize() {
-			return {
-				width: document.getElementById("statisticsCard").clientWidth,
-				height: 100,
-			}
-		}
+        function getFramerateGraphSize() {
+            return {
+                width: document.getElementById("statisticsCard").clientWidth,
+                height: 100,
+            };
+        }
 
         let themeColor = $("input[name='theme']:checked").val();
 

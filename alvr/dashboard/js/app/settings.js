@@ -458,10 +458,6 @@ define([
                         }
                     });
 
-                    if (level == 1) {
-                        element.append(`<div class="button-spacer"></div>`);
-                    }
-
                     break;
 
                 case "switch":

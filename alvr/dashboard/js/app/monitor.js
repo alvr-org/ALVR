@@ -620,6 +620,20 @@ define([
             return opts;
         }
 
+        function getLatencyGraphSize() {
+            return {
+                width: document.getElementById("statisticsCard").clientWidth,
+                height: 160,
+            };
+        }
+
+        function getFramerateGraphSize() {
+            return {
+                width: document.getElementById("statisticsCard").clientWidth,
+                height: 100,
+            };
+        }
+
         let themeColor = $("input[name='theme']:checked").val();
 
         if (themeColor == "systemDefault") {
@@ -648,8 +662,6 @@ define([
         const graphColors = ["#7f7f7f", "#d62728", "#ff7f0e", "#1f77b4"];
 
         let latencyGraphOptions = {
-            width: 560,
-            height: 160,
             series: [
                 {
                     label: i18n["performanceTotalLatency"],
@@ -724,8 +736,6 @@ define([
         framerateGraphData[0].unshift(now - duration);
 
         let framerateGraphOptions = {
-            width: 560,
-            height: 100,
             series: [
                 {
                     label: "---",
@@ -868,6 +878,8 @@ define([
         let statisticsRedrawStopped = true;
 
         function fillPerformanceGraphs() {
+            latencyGraph.setSize(getLatencyGraphSize());
+            framerateGraph.setSize(getFramerateGraphSize());
             if (!statisticsRedrawStopped) {
                 const now = parseInt(new Date().getTime());
                 lastStatistics[0] = now;

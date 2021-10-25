@@ -592,6 +592,11 @@ impl Drop for SessionLock<'_> {
     }
 }
 
+// Correct usage:
+// SessionManager should be used behind a Mutex. Each write of the session should be preceded by a
+// read, within the same lock.
+// fixme: the dashboard is doing this wrong because it is holding its own session state. If read and
+// write need to happen on separate threads, a critical region should be implemented.
 pub struct SessionManager {
     session_desc: SessionDesc,
     session_path: PathBuf,

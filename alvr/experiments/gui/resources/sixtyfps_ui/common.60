@@ -1,4 +1,0 @@
-export struct StringName := {
-    id: string,
-    display: string,
-}

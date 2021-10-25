@@ -1,9 +1,9 @@
-#[cfg(feature = "gpl")]
-mod sixtyfps;
-#[cfg(not(feature = "gpl"))]
-mod tui;
+#[cfg(feature = "pretty")]
+mod pretty;
+#[cfg(feature = "terminal")]
+mod terminal;
 
-#[cfg(feature = "gpl")]
-pub use self::sixtyfps::*;
-#[cfg(not(feature = "gpl"))]
-pub use self::tui::*;
+#[cfg(feature = "pretty")]
+pub use self::pretty::*;
+#[cfg(feature = "terminal")]
+pub use self::terminal::*;

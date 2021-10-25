@@ -7,13 +7,16 @@ edition = "2021"
 rust-version = "1.56"
 
 [features]
-default = [] #["gpl"]
-gpl = ["sixtyfps", "sixtyfps-build", "sixtyfps-interpreter"]
+default = ["pretty"]
+pretty = ["iced", "iced_native"]
+terminal = ["tui", "termion"]
 
 [dependencies]
 alvr_common = { path = "../../common" }
 alvr_session = { path = "../../session" }
 
+iced = { git = "https://github.com/iced-rs/iced", optional = true }
+iced_native = { git = "https://github.com/iced-rs/iced", optional = true }
 fluent = "0.16"
 fluent-syntax = "0.11"
 fluent-langneg = "0.13"
@@ -23,17 +26,9 @@ serde_json = "1"
 settings-schema = { path = "../../settings-schema", features = [
     "rename_camel_case",
 ] }
-sixtyfps = { version = "0.1.4", optional = true }
-termion = "1"
-tui = "0.16"
+termion = { version = "1", optional = true }
+tui = { version = "0.16", optional = true }
 unic-langid = "0.9"
-
-[target.'cfg(any(windows, target_os = "macos"))'.dependencies]
-dark-light = "0.1"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 locale_config = "0.3"
-
-[build-dependencies]
-sixtyfps-build = { version = "0.1.4", optional = true }
-sixtyfps-interpreter = { version = "0.1.4", optional = true }

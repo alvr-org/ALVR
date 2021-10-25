@@ -6,33 +6,7 @@ use dashboard::Dashboard;
 use std::collections::HashSet;
 
 fn main() {
-    let mut session = SessionDesc::default();
-    session.client_connections.insert(
-        "1234.client.alvr".into(),
-        ClientConnectionDesc {
-            display_name: "Oculus Quest 2".into(),
-            manual_ips: HashSet::new(),
-            trusted: false,
-        },
-    );
-    session.client_connections.insert(
-        "4321.client.alvr".into(),
-        ClientConnectionDesc {
-            display_name: "Oculus Quest".into(),
-            manual_ips: HashSet::new(),
-            trusted: true,
-        },
-    );
-    session.client_connections.insert(
-        "51423.client.alvr".into(),
-        ClientConnectionDesc {
-            display_name: "Oculus Quest 2".into(),
-            manual_ips: HashSet::new(),
-            trusted: true,
-        },
-    );
-
-    let dashboard = Dashboard::new(session);
+    let dashboard = Dashboard::new();
 
     dashboard.report_event(ServerEvent::Raw(Raw {
         timestamp: "time1".into(),
@@ -62,10 +36,39 @@ fn main() {
     let mut scope = rhai::Scope::new();
     scope.push_dynamic("session", session);
 
-    dashboard.run(|command| {
-        engine
-            .eval_with_scope::<rhai::Dynamic>(&mut scope, &command)
-            .map(|d| d.to_string())
-            .unwrap_or_else(|e| e.to_string())
-    });
+    let mut session = SessionDesc::default();
+    session.client_connections.insert(
+        "1234.client.alvr".into(),
+        ClientConnectionDesc {
+            display_name: "Oculus Quest 2".into(),
+            manual_ips: HashSet::new(),
+            trusted: false,
+        },
+    );
+    session.client_connections.insert(
+        "4321.client.alvr".into(),
+        ClientConnectionDesc {
+            display_name: "Oculus Quest".into(),
+            manual_ips: HashSet::new(),
+            trusted: true,
+        },
+    );
+    session.client_connections.insert(
+        "51423.client.alvr".into(),
+        ClientConnectionDesc {
+            display_name: "Oculus Quest 2".into(),
+            manual_ips: HashSet::new(),
+            trusted: true,
+        },
+    );
+
+    dashboard.run(
+        session,
+        Box::new(move |command| {
+            engine
+                .eval_with_scope::<rhai::Dynamic>(&mut scope, &command)
+                .map(|d| d.to_string())
+                .unwrap_or_else(|e| e.to_string())
+        }),
+    );
 }

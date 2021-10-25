@@ -22,35 +22,34 @@ use termion::{
 use tui::{
     backend::TermionBackend,
     layout::{Constraint, Direction, Layout},
-    widgets::{canvas::Line, Block, Borders},
+    widgets::{Block, Borders},
     Terminal,
 };
 
 pub struct Dashboard {
     unprocessed_events: Arc<Mutex<Vec<ServerEvent>>>,
-
-    running: Arc<AtomicBool>,
 }
 
 impl Dashboard {
-    pub fn new(_: SessionDesc) -> Self {
+    pub fn new() -> Self {
         Self {
             unprocessed_events: Arc::new(Mutex::new(vec![])),
-            running: Arc::new(AtomicBool::new(true)),
         }
     }
 
-    pub fn run(&self, mut request_handler: impl FnMut(String) -> String) {
+    pub fn run(&self, _: SessionDesc, mut request_handler: Box<dyn FnMut(String) -> String>) {
         let stdout = io::stdout().into_raw_mode().unwrap();
         let stdout = MouseTerminal::from(stdout);
         let stdout = AlternateScreen::from(stdout);
         let backend = TermionBackend::new(stdout);
         let mut terminal = Terminal::new(backend).unwrap();
 
+        let running = Arc::new(AtomicBool::new(true));
+
         let key_events = Arc::new(Mutex::new(VecDeque::new()));
         thread::spawn({
             let key_events = Arc::clone(&key_events);
-            let running = Arc::clone(&self.running);
+            let running = Arc::clone(&running);
             move || {
                 for event in io::stdin().keys() {
                     if let Ok(event) = event {
@@ -67,7 +66,7 @@ impl Dashboard {
         let mut events_panel = EventsPanel::new();
         let mut repl_panel = ReplPanel::new();
 
-        while self.running.load(Ordering::Relaxed) {
+        while running.load(Ordering::Relaxed) {
             events_panel.push_events(
                 self.unprocessed_events
                     .lock()
@@ -95,7 +94,7 @@ impl Dashboard {
 
             while let Some(key) = key_events.lock().unwrap().pop_front() {
                 if let Key::Ctrl('c') = key {
-                    self.running.store(false, Ordering::Relaxed);
+                    running.store(false, Ordering::Relaxed);
                     request_handler("quit()".into());
                 } else {
                     repl_panel.react_to_key(key, &mut request_handler);
@@ -104,13 +103,7 @@ impl Dashboard {
         }
     }
 
-    pub fn update_session(&self, _: SessionDesc) {}
-
     pub fn report_event(&self, event: ServerEvent) {
         self.unprocessed_events.lock().unwrap().push(event);
-    }
-
-    pub fn request_exit(&self) {
-        self.running.store(false, Ordering::Relaxed);
     }
 }

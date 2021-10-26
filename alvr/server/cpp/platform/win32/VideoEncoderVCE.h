@@ -21,6 +21,7 @@ public:
 	void Start();
 	void Shutdown();
 	void Submit(amf::AMFData *data);
+	amf::AMFComponentPtr Get();
 private:
 	amf::AMFComponentPtr m_amfEncoder;
 	std::thread *m_thread = NULL;

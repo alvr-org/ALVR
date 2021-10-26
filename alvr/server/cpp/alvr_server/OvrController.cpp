@@ -324,11 +324,11 @@ void *OvrController::GetComponent(const char *pchComponentNameAndVersion)
 	return m_pose;
 }
 
- int OvrController::getControllerIndex() {
+int OvrController::getControllerIndex() {
 	 return m_index;
- }
+}
 
- vr::VRInputComponentHandle_t OvrController::getHapticComponent() {
+vr::VRInputComponentHandle_t OvrController::getHapticComponent() {
 	return m_compHaptic;
 }
 
@@ -369,10 +369,28 @@ vr::HmdQuaternionf_t QuatMultiply(const vr::HmdQuaternionf_t* q1, const vr::HmdQ
 	return result;
 }
 
+bool OvrController::inactive() {
+
+	if (m_unObjectId == vr::k_unTrackedDeviceIndexInvalid) {
+		return false;
+	}
+
+	if (m_pose.deviceIsConnected) {
+		m_pose.deviceIsConnected = false;
+		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));
+	}
+
+	return false;
+}
+
 bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) {
 
 	if (m_unObjectId == vr::k_unTrackedDeviceIndexInvalid) {
 		return false;
+	}
+
+	if (!m_pose.deviceIsConnected) {
+		m_pose.deviceIsConnected = true;
 	}
 	
 	if (info.controller[controllerIndex].flags & TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND) {
@@ -876,7 +894,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GRIP_CLICK], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_CLICK)) != 0, 0.0);
 			vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_GRIP_VALUE], c.gripValue, 0.0);
 			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_GRIP_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_TOUCH)) != 0, 0.0);
-			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_THUMB_REST_TOUCH], (c.buttons& ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH)) != 0, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_handles[ALVR_INPUT_THUMB_REST_TOUCH], (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH)) != 0, 0.0);
 
 
 			if (!m_isLeftHand) {

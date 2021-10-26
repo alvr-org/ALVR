@@ -34,6 +34,7 @@ public:
 
 	vr::VRInputComponentHandle_t getHapticComponent();
 
+	bool inactive();
 	bool onPoseUpdate(int controllerIndex, const TrackingInfo &info);
 	std::string GetSerialNumber();
 

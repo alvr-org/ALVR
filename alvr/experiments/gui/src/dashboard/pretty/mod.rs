@@ -5,12 +5,17 @@ mod theme;
 use self::dashboard::DashboardEvent;
 use alvr_common::ServerEvent;
 use alvr_session::SessionDesc;
-use iced::{Application, Command, Element, Settings, Subscription, Text, Toggler, container, executor, futures::{
+use iced::{
+    container, executor,
+    futures::{
         channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
         lock::Mutex,
         stream::{self, BoxStream},
         StreamExt,
-    }, window::{self, Position}};
+    },
+    window::{self, Position},
+    Application, Command, Element, Settings, Subscription, Text, Toggler,
+};
 use iced_native::{row, subscription::Recipe};
 use std::{
     any::TypeId,

@@ -15,7 +15,7 @@ terminal = ["tui", "termion"]
 alvr_common = { path = "../../common" }
 alvr_session = { path = "../../session" }
 
-iced = { git = "https://github.com/iced-rs/iced", optional = true }
+iced = { git = "https://github.com/iced-rs/iced", optional = true, features = ["image"] }
 iced_native = { git = "https://github.com/iced-rs/iced", optional = true }
 fluent = "0.16"
 fluent-syntax = "0.11"

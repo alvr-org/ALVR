@@ -1,27 +1,22 @@
+mod dashboard;
+mod tabs;
+mod theme;
+
+use self::dashboard::DashboardEvent;
 use alvr_common::ServerEvent;
 use alvr_session::SessionDesc;
-use iced::{
-    executor,
-    futures::{
+use iced::{Application, Command, Element, Settings, Subscription, Text, Toggler, container, executor, futures::{
         channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
         lock::Mutex,
         stream::{self, BoxStream},
         StreamExt,
-    },
-    window::{self, Position},
-    Application, Command, Element, Settings, Subscription, Text,
-};
-use iced_native::subscription::Recipe;
+    }, window::{self, Position}};
+use iced_native::{row, subscription::Recipe};
 use std::{
     any::TypeId,
     hash::{Hash, Hasher},
     sync::Arc,
 };
-
-#[derive(Debug)]
-enum DashboardEvent {
-    ServerEvent(ServerEvent),
-}
 
 pub struct EventsRecipe {
     receiver: Arc<Mutex<UnboundedReceiver<ServerEvent>>>,
@@ -49,13 +44,14 @@ struct InitData {
     event_receiver: Arc<Mutex<UnboundedReceiver<ServerEvent>>>,
 }
 
-struct DashboardApp {
+struct Window {
     session: SessionDesc,
     request_handler: Box<dyn FnMut(String) -> String>,
     event_receiver: Arc<Mutex<UnboundedReceiver<ServerEvent>>>,
+    dashboard: dashboard::Dashboard,
 }
 
-impl Application for DashboardApp {
+impl Application for Window {
     type Executor = executor::Default;
     type Message = DashboardEvent;
     type Flags = InitData;
@@ -66,6 +62,7 @@ impl Application for DashboardApp {
                 session: init_data.session,
                 request_handler: init_data.request_handler,
                 event_receiver: init_data.event_receiver,
+                dashboard: Default::default(),
             },
             Command::none(),
         )
@@ -76,11 +73,13 @@ impl Application for DashboardApp {
     }
 
     fn update(&mut self, event: DashboardEvent) -> Command<DashboardEvent> {
+        self.dashboard.update(event, &mut *self.request_handler);
+
         Command::none()
     }
 
     fn view(&mut self) -> Element<DashboardEvent> {
-        Text::new("test").into()
+        self.dashboard.view()
     }
 
     fn subscription(&self) -> Subscription<DashboardEvent> {
@@ -106,7 +105,7 @@ impl Dashboard {
     }
 
     pub fn run(&self, session: SessionDesc, request_handler: Box<dyn FnMut(String) -> String>) {
-        DashboardApp::run(Settings {
+        Window::run(Settings {
             id: None,
             window: window::Settings {
                 size: (800, 600),
@@ -120,7 +119,7 @@ impl Dashboard {
                 event_receiver: Arc::clone(&self.event_receiver),
             },
             default_font: None,
-            default_text_size: 20,
+            default_text_size: 15,
             text_multithreading: false,
             antialiasing: false,
             exit_on_close_request: true,

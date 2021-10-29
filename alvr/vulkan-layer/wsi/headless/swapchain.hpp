@@ -58,7 +58,9 @@ class swapchain : public wsi::swapchain_base {
     /**
      * @brief Platform specific init
      */
-    VkResult init_platform(VkDevice device, const VkSwapchainCreateInfoKHR *pSwapchainCreateInfo);
+    VkResult init_platform(VkDevice device, const VkSwapchainCreateInfoKHR *pSwapchainCreateInfo) {
+        return VK_SUCCESS;
+    };
 
     /**
      * @brief Creates a new swapchain image.
@@ -90,13 +92,15 @@ class swapchain : public wsi::swapchain_base {
 
   private:
     bool try_connect();
-    int send_fds(int socket_fd);
+    int send_fds();
+    int m_socket = -1;
+    std::string m_socketPath;
     bool m_connected = false;
-    std::vector<int> m_fds; //first is shared memory for communication with server, then alternating one per image and one per semaphore
+    std::vector<int> m_fds;
     VkImageCreateInfo m_create_info;
     size_t m_mem_index;
     display &m_display;
-    present_shm *m_shm;
+    uint32_t in_flight_index = UINT32_MAX;
 };
 
 } /* namespace headless */

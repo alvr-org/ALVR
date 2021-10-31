@@ -37,7 +37,7 @@ pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
 // dynamically.
 // todo: properties that can be set after the OpenVR initialization should be removed and set with
 // UpdateForStream.
-#[derive(Serialize, Deserialize, PartialEq, Default, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Default, Clone, Debug)]
 pub struct OpenvrConfig {
     pub universe_id: u64,
     pub headset_serial_number: String,
@@ -113,7 +113,7 @@ pub struct OpenvrConfig {
     pub sharpening: f32,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ClientConnectionDesc {
     pub display_name: String,
@@ -121,7 +121,7 @@ pub struct ClientConnectionDesc {
     pub trusted: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionDesc {
     pub setup_wizard: bool,
@@ -132,6 +132,7 @@ pub struct SessionDesc {
     // The hashmap key is the hostname
     pub client_connections: HashMap<String, ClientConnectionDesc>,
     pub session_settings: SessionSettings,
+    pub advanced: bool,
 }
 
 impl Default for SessionDesc {
@@ -164,6 +165,7 @@ impl Default for SessionDesc {
             },
             client_connections: HashMap::new(),
             session_settings: settings::session_settings_default(),
+            advanced: false,
         }
     }
 }

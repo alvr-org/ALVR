@@ -1,10 +1,13 @@
 use super::{
-    tabs::{ConnectionEvent, ConnectionPanel},
+    tabs::{ConnectionEvent, ConnectionPanel, SettingsPanel, SettingsPanelEvent},
     theme::{ContainerStyle, ACCENT, BACKGROUND_SECONDARY, FOREGROUND},
 };
+use crate::dashboard::RequestHandler;
 use alvr_common::ServerEvent;
+use alvr_session::SessionDesc;
 use iced::{
-    button, image, Alignment, Button, Column, Container, Element, Image, Length, Row, Space, Text,
+    alignment::Horizontal, button, image, Alignment, Button, Column, Container, Element, Image,
+    Length, Row, Space, Text,
 };
 
 pub enum TabLabelStyle {
@@ -34,9 +37,11 @@ impl button::StyleSheet for TabLabelStyle {
 #[derive(Clone, Debug)]
 pub enum DashboardEvent {
     ServerEvent(ServerEvent),
+    RequestResponse(String),
     TabClick(usize),
     LanguageClick,
     ConnectionEvent(ConnectionEvent),
+    SettingsEvent(SettingsPanelEvent),
 }
 
 pub struct TabState {
@@ -60,10 +65,11 @@ pub struct Dashboard {
     tab_states: Vec<TabState>,
     language_state: TabState,
     connection_panel: ConnectionPanel,
+    settings_panel: SettingsPanel,
 }
 
-impl Default for Dashboard {
-    fn default() -> Self {
+impl Dashboard {
+    pub fn new(session: SessionDesc, request_handler: &mut RequestHandler) -> Self {
         Self {
             selected_tab: 0,
             tab_states: vec![
@@ -92,36 +98,35 @@ impl Default for Dashboard {
                     ..Default::default()
                 },
             ],
-            connection_panel: ConnectionPanel::default(),
             language_state: TabState {
                 display_name: "Language".into(),
                 ..Default::default()
             },
+            connection_panel: ConnectionPanel::new(&session),
+            settings_panel: SettingsPanel::new(&session, request_handler),
         }
     }
-}
 
-impl Dashboard {
-    pub fn update(
-        &mut self,
-        event: DashboardEvent,
-        request_handler: &mut dyn FnMut(String) -> String,
-    ) {
+    pub fn update(&mut self, event: DashboardEvent, request_handler: &mut RequestHandler) {
         match event {
             DashboardEvent::ServerEvent(_) => (),
+            DashboardEvent::RequestResponse(_) => (),
             DashboardEvent::TabClick(tab) => self.selected_tab = tab,
             DashboardEvent::LanguageClick => (),
             DashboardEvent::ConnectionEvent(event) => {
                 self.connection_panel.update(event, request_handler)
             }
+            DashboardEvent::SettingsEvent(event) => {
+                // self.connection_panel.update(event, request_handler)
+            }
         }
     }
 
     pub fn view(&mut self) -> Element<DashboardEvent> {
-        let mut sidebar_children = vec![Image::new(image::Handle::from_memory(
-            include_bytes!("../../../resources/images/favicon.png").to_vec(),
-        ))
-        .into()];
+        let mut sidebar_children = vec![Text::new("ALVR")
+            .size(20)
+            .horizontal_alignment(Horizontal::Center)
+            .into()];
 
         // work around "self.tab_states cannot be borrowed both mutably and immutably"
         let mut selected_tab_display_name = "".into();
@@ -148,6 +153,7 @@ impl Dashboard {
                 } else {
                     TabLabelStyle::Normal
                 })
+                .padding(7)
                 .on_press(DashboardEvent::TabClick(index))
                 .into(),
             );
@@ -160,6 +166,7 @@ impl Dashboard {
                 Text::new(&self.language_state.display_name),
             )
             .style(TabLabelStyle::Normal)
+            .padding(7)
             .on_press(DashboardEvent::LanguageClick)
             .into(),
         );
@@ -174,12 +181,14 @@ impl Dashboard {
 
         Container::new(Row::with_children(vec![
             Column::with_children(sidebar_children)
-                .padding(5)
-                .spacing(5)
+                .padding(10)
+                .spacing(10)
                 .align_items(Alignment::Fill)
                 .into(),
             Column::with_children(vec![
-                Text::new(selected_tab_display_name).size(30).into(),
+                Container::new(Text::new(selected_tab_display_name).size(30))
+                    .padding([10, 20])
+                    .into(),
                 content_panel,
             ])
             .width(Length::Fill)

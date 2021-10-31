@@ -7,3 +7,5 @@ mod terminal;
 pub use self::pretty::*;
 #[cfg(feature = "terminal")]
 pub use self::terminal::*;
+
+type RequestHandler = dyn FnMut(String) -> serde_json::Value;

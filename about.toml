@@ -7,11 +7,11 @@ accepted = [
     "CC0-1.0",
     "ISC",
     "MPL-2.0",
+    "OFL-1.1",
     "OpenSSL",
     "Unlicense",
     "Zlib",
     "zlib-acknowledgement",
-    "GPL-3.0", # only for optional code
 ]
 
 targets = [
@@ -20,3 +20,5 @@ targets = [
     "aarch64-linux-android",
     "wasm32-unknown-unknown",
 ]
+
+workarounds = ["ring"]

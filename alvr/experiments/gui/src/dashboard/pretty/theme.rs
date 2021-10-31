@@ -1,4 +1,4 @@
-use iced::{button, container, Color, Vector};
+use iced::{button, container, scrollable, Color};
 
 // The theme is fixed to dark.
 
@@ -74,5 +74,28 @@ impl button::StyleSheet for ButtonStyle {
                 ..baseline
             },
         }
+    }
+}
+
+pub struct ScrollableStyle;
+
+impl scrollable::StyleSheet for ScrollableStyle {
+    fn active(&self) -> scrollable::Scrollbar {
+        scrollable::Scrollbar {
+            background: None,
+            border_radius: 5.0,
+            border_width: 0.0,
+            border_color: Color::TRANSPARENT,
+            scroller: scrollable::Scroller {
+                color: [1.0, 1.0, 1.0, 0.25].into(),
+                border_radius: 5.0,
+                border_width: 0.0,
+                border_color: Color::TRANSPARENT,
+            },
+        }
+    }
+
+    fn hovered(&self) -> scrollable::Scrollbar {
+        self.active()
     }
 }

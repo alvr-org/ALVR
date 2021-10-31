@@ -23,6 +23,8 @@ use std::{
     sync::Arc,
 };
 
+use super::RequestHandler;
+
 pub struct EventsRecipe {
     receiver: Arc<Mutex<UnboundedReceiver<ServerEvent>>>,
 }
@@ -45,13 +47,12 @@ impl<H: Hasher, E> Recipe<H, E> for EventsRecipe {
 
 struct InitData {
     session: SessionDesc,
-    request_handler: Box<dyn FnMut(String) -> String>,
+    request_handler: Box<RequestHandler>,
     event_receiver: Arc<Mutex<UnboundedReceiver<ServerEvent>>>,
 }
 
 struct Window {
-    session: SessionDesc,
-    request_handler: Box<dyn FnMut(String) -> String>,
+    request_handler: Box<RequestHandler>,
     event_receiver: Arc<Mutex<UnboundedReceiver<ServerEvent>>>,
     dashboard: dashboard::Dashboard,
 }
@@ -61,13 +62,15 @@ impl Application for Window {
     type Message = DashboardEvent;
     type Flags = InitData;
 
-    fn new(init_data: InitData) -> (Self, Command<DashboardEvent>) {
+    fn new(mut init_data: InitData) -> (Self, Command<DashboardEvent>) {
         (
             Self {
-                session: init_data.session,
+                dashboard: dashboard::Dashboard::new(
+                    init_data.session,
+                    &mut init_data.request_handler,
+                ),
                 request_handler: init_data.request_handler,
                 event_receiver: init_data.event_receiver,
-                dashboard: Default::default(),
             },
             Command::none(),
         )
@@ -109,7 +112,7 @@ impl Dashboard {
         }
     }
 
-    pub fn run(&self, session: SessionDesc, request_handler: Box<dyn FnMut(String) -> String>) {
+    pub fn run(&self, session: SessionDesc, request_handler: Box<RequestHandler>) {
         Window::run(Settings {
             id: None,
             window: window::Settings {
@@ -124,7 +127,7 @@ impl Dashboard {
                 event_receiver: Arc::clone(&self.event_receiver),
             },
             default_font: None,
-            default_text_size: 15,
+            default_text_size: 16,
             text_multithreading: false,
             antialiasing: false,
             exit_on_close_request: true,

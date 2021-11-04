@@ -1,8 +1,8 @@
 mod dashboard;
 
-use alvr_common::{EventSeverity, Raw, ServerEvent};
-use alvr_session::{ClientConnectionDesc, SessionDesc};
+use alvr_session::{ClientConnectionDesc, EventSeverity, Raw, ServerEvent, SessionDesc};
 use dashboard::Dashboard;
+use rhai::Dynamic;
 use std::collections::HashSet;
 
 fn load_session() -> SessionDesc {
@@ -37,7 +37,11 @@ fn load_session() -> SessionDesc {
     session
 }
 
-fn store_session(session: SessionDesc) {
+fn load_session_dyn() -> Dynamic {
+    rhai::serde::to_dynamic(load_session()).unwrap()
+}
+
+fn store_session(session: Dynamic) {
     println!("store_session");
 }
 
@@ -80,22 +84,19 @@ fn main() {
     let mut engine = rhai::Engine::new();
 
     let mut scope = rhai::Scope::new();
-    engine.register_fn("load_session", load_session);
+    engine.register_fn("load_session", load_session_dyn);
     engine.register_fn("store_session", store_session);
     engine.register_fn("add_client", add_client);
     engine.register_fn("trust_client", trust_client);
     engine.register_fn("remove_client", remove_client);
 
-    let session = load_session();
-
     dashboard.run(
-        session,
+        Box::new(load_session),
         Box::new(move |command| {
-            let dynamic_res = engine
+            engine
                 .eval_with_scope::<rhai::Dynamic>(&mut scope, &command)
-                .unwrap();
-
-            serde_json::to_value(dynamic_res).unwrap()
+                .map(|d| d.to_string())
+                .unwrap_or_else(|e| e.to_string())
         }),
     );
 }

@@ -1,5 +1,7 @@
+mod events;
 mod settings;
 
+pub use events::*;
 pub use settings::*;
 
 use alvr_common::prelude::*;

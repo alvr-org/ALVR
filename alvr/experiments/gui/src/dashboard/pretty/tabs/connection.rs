@@ -19,60 +19,53 @@ pub enum ConnectionEvent {
     RemoveClient(String),
 }
 
-struct ClientState {
+struct ClientEntry {
     display_name: String,
     hostname: String,
     button_state: button::State,
 }
 
-struct SplitClients {
-    new: Vec<ClientState>,
-    trusted: Vec<ClientState>,
-}
-
-fn split_clients(session: &SessionDesc) -> SplitClients {
-    let new = session
-        .client_connections
-        .iter()
-        .filter_map(|(hostname, conn_desc)| {
-            (!conn_desc.trusted).then(|| ClientState {
-                display_name: conn_desc.display_name.clone(),
-                hostname: hostname.clone(),
-                button_state: Default::default(),
-            })
-        })
-        .collect::<Vec<_>>();
-    let trusted = session
-        .client_connections
-        .iter()
-        .filter_map(|(hostname, conn_desc)| {
-            conn_desc.trusted.then(|| ClientState {
-                display_name: conn_desc.display_name.clone(),
-                hostname: hostname.clone(),
-                button_state: Default::default(),
-            })
-        })
-        .collect::<Vec<_>>();
-
-    SplitClients { new, trusted }
-}
-
 pub struct ConnectionPanel {
-    clients: SplitClients,
+    new_clients: Vec<ClientEntry>,
+    trusted_clients: Vec<ClientEntry>,
     scrollable_state: scrollable::State,
 }
 
 impl ConnectionPanel {
-    pub fn new(session: &SessionDesc) -> Self {
+    pub fn new() -> Self {
         Self {
-            clients: split_clients(session),
-            scrollable_state: Default::default(),
+            new_clients: vec![],
+            trusted_clients: vec![],
+            scrollable_state: scrollable::State::new(),
         }
     }
 
     pub fn update(&mut self, event: ConnectionEvent, request_handler: &mut RequestHandler) {
         match event {
-            ConnectionEvent::SessionUpdated(session) => self.clients = split_clients(&session),
+            ConnectionEvent::SessionUpdated(session) => {
+                self.new_clients = session
+                    .client_connections
+                    .iter()
+                    .filter_map(|(hostname, conn_desc)| {
+                        (!conn_desc.trusted).then(|| ClientEntry {
+                            display_name: conn_desc.display_name.clone(),
+                            hostname: hostname.clone(),
+                            button_state: Default::default(),
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                self.trusted_clients = session
+                    .client_connections
+                    .iter()
+                    .filter_map(|(hostname, conn_desc)| {
+                        conn_desc.trusted.then(|| ClientEntry {
+                            display_name: conn_desc.display_name.clone(),
+                            hostname: hostname.clone(),
+                            button_state: Default::default(),
+                        })
+                    })
+                    .collect::<Vec<_>>();
+            }
             ConnectionEvent::AddClient(hostname, ip_address) => {
                 request_handler(format!(r#"add_client("{}", "{}")"#, hostname, ip_address));
             }
@@ -93,8 +86,8 @@ impl ConnectionPanel {
 
         scrollable = scrollable.push(Text::new("New clients").size(20));
 
-        if !self.clients.new.is_empty() {
-            for client in &mut self.clients.new {
+        if !self.new_clients.is_empty() {
+            for client in &mut self.new_clients {
                 scrollable = scrollable.push(
                     Container::new(
                         Row::with_children(vec![
@@ -122,8 +115,8 @@ impl ConnectionPanel {
 
         scrollable = scrollable.push(Text::new("Trusted clients").size(20));
 
-        if !self.clients.trusted.is_empty() {
-            for client in &mut self.clients.trusted {
+        if !self.trusted_clients.is_empty() {
+            for client in &mut self.trusted_clients {
                 scrollable = scrollable.push(
                     Container::new(
                         Row::with_children(vec![

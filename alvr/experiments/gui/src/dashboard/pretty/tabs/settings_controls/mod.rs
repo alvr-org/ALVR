@@ -1,41 +1,22 @@
-mod array;
-mod audio_dropdown;
-mod boolean;
-mod choice;
-mod dictionary;
-mod help;
-mod higher_order;
-mod notice;
-mod numeric;
-mod optional;
-mod reset;
-mod section;
-mod switch;
-mod text;
-mod vector;
-
-use std::collections::HashMap;
-
-pub use array::*;
-pub use audio_dropdown::*;
-pub use boolean::*;
-pub use choice::*;
-pub use dictionary::*;
-pub use help::*;
-pub use higher_order::*;
-pub use notice::*;
-pub use numeric::*;
-pub use optional::*;
-pub use reset::*;
-pub use section::*;
-pub use switch::*;
-pub use text::*;
-pub use vector::*;
+pub mod array;
+pub mod audio_dropdown;
+pub mod boolean;
+pub mod choice;
+pub mod dictionary;
+pub mod higher_order;
+pub mod numeric;
+pub mod optional;
+pub mod reset;
+pub mod section;
+pub mod switch;
+pub mod text;
+pub mod vector;
 
 use crate::dashboard::RequestHandler;
 use iced::Element;
 use serde_json as json;
 use settings_schema::SchemaNode;
+use std::collections::HashMap;
 
 enum ShowMode {
     Basic,
@@ -44,53 +25,107 @@ enum ShowMode {
 }
 
 #[derive(Clone, Debug)]
-pub enum SettingEvent {
-    SettingsUpdated(json::Value),
-    Section(Box<SectionEvent>),
-    Choice(Box<ChoiceEvent>),
+pub enum SettingControlEventType {
+    SessionUpdated(json::Value),
+    ResetClick,
+    Click,                         // For HOS/Action
+    VariantClick(String),          // For Choice, HOS/Choice
+    Toggle,                        // For Optional, Switch, Boolean, HOS/Boolean
+    IntegerChanged(i128),          // For Integer, Float (slider)
+    FloatChanged(i64),             // For Integer, Float (slider)
+    Increase,                      // For Integer, Float (numeric up-down)
+    Decrease,                      // For Integer, Float (numeric up-down)
+    TextChanged(String),           // For Integer, Float, Text
+    ApplyValue,                    // For Integer, Float, Text
+    AddRow,                        // For Vector, Dictionary
+    RemoveRow(usize),              // For Vector, Dictionary
+    MoveRowUp(usize),              // For Vector, Dictionary
+    MoveRowDown(usize),            // For Vector, Dictionary
+    KeyTextChanged(usize, String), // For Dictionary
+    ApplyKeyText(usize),           // For Dictionary
+}
+
+#[derive(Clone, Debug)]
+pub struct SettingControlEvent {
+    // Path of the control constructed during event bubbling in the drawing fuctions. The order of
+    // the segments is reversed. Most controls add 0, except Section, Array, Vector and Dictionary,
+    // which add the index of the child.
+    pub path: Vec<usize>,
+
+    pub event_type: SettingControlEventType,
+}
+
+pub struct InitData<S> {
+    pub schema: S,
+    pub trans: (), // todo
+}
+
+pub struct UpdatingData<'a> {
+    pub path: Vec<usize>, // For SessionUpdated, the construction of the path is skipped
+
+    pub event: SettingControlEventType,
+    pub request_handler: &'a mut RequestHandler,
+
+    // Path used to construct a command submitted with request_handler. For SessionUpdated, the
+    // construction of the path is skipped
+    pub string_path: String,
+}
+
+pub struct DrawingData {
+    pub advanced: bool,
+    pub common_trans: (), // todo
 }
 
 pub enum SettingControl {
-    Section(Box<SectionControl>),
-    Choice(Box<ChoiceControl>),
-    Optional(Box<OptionalControl>),
-    Switch(Box<SwitchControl>),
-    Boolean(BooleanControl),
-    Integer(IntegerControl),
-    Float(FloatControl),
-    Text(TextControl),
-    Array(Box<ArrayControl>),
-    Vector(Box<VectorControl>),
-    Dictionary(Box<DictionaryControl>),
-    HigherOrder(HigherOrderControl),
-    AudioDropdown(AudioDropdownControl),
+    Section(Box<section::Control>),
+    Choice(Box<choice::Control>),
+    Optional(Box<optional::Control>),
+    Switch(Box<switch::Control>),
+    Boolean(boolean::Control),
+    Integer(numeric::Control<i128>),
+    Float(numeric::Control<f64>),
+    Text(text::Control),
+    Array(Box<array::Control>),
+    Vector(Box<vector::Control>),
+    Dictionary(Box<dictionary::Control>),
+    HigherOrder(higher_order::Control),
+    AudioDropdown(audio_dropdown::Control),
 }
 
 impl SettingControl {
-    pub fn new(
-        path: String,
-        schema: SchemaNode,
-        session: json::Value,
-        request_handler: &mut RequestHandler,
-    ) -> Self {
+    pub fn new(data: InitData<SchemaNode>) -> Self {
+        let InitData { schema, trans } = data;
+
         match schema {
-            SchemaNode::Section { entries } => SettingControl::Section(Box::new(
-                SectionControl::new(path, entries, session, request_handler),
-            )),
-            SchemaNode::Choice { default, variants } => SettingControl::Choice(Box::new(
-                ChoiceControl::new(path, default, variants, session, request_handler),
-            )),
+            SchemaNode::Section { entries } => {
+                SettingControl::Section(Box::new(section::Control::new(InitData {
+                    schema: entries,
+                    trans,
+                })))
+            }
+            SchemaNode::Choice { default, variants } => {
+                SettingControl::Choice(Box::new(choice::Control::new(InitData {
+                    schema: (default, variants),
+                    trans,
+                })))
+            }
             SchemaNode::Optional {
                 default_set,
                 content,
-            } => SettingControl::Optional(Box::new(OptionalControl {})),
+            } => todo!(),
             SchemaNode::Switch {
                 default_enabled,
                 content_advanced,
                 content,
-            } => SettingControl::Switch(Box::new(SwitchControl {})),
+            } => SettingControl::Switch(Box::new(switch::Control::new(InitData {
+                schema: (default_enabled, content_advanced, content),
+                trans,
+            }))),
             SchemaNode::Boolean { default } => {
-                SettingControl::Boolean(BooleanControl::new(path, default, session))
+                SettingControl::Boolean(boolean::Control::new(InitData {
+                    schema: default,
+                    trans,
+                }))
             }
             SchemaNode::Integer {
                 default,
@@ -98,48 +133,69 @@ impl SettingControl {
                 max,
                 step,
                 gui,
-            } => SettingControl::Integer(IntegerControl::new(
-                path, default, min, max, step, gui, session,
-            )),
+            } => SettingControl::Integer(numeric::Control::new(InitData {
+                schema: (default, min, max, step, gui),
+                trans,
+            })),
             SchemaNode::Float {
                 default,
                 min,
                 max,
                 step,
                 gui,
-            } => SettingControl::Float(FloatControl::new(
-                path, default, min, max, step, gui, session,
-            )),
-            SchemaNode::Text { default } => SettingControl::Text(TextControl {}),
-            SchemaNode::Array(_) => SettingControl::Array(Box::new(ArrayControl {})),
+            } => SettingControl::Float(numeric::Control::new(InitData {
+                schema: (default, min, max, step, gui),
+                trans,
+            })),
+            SchemaNode::Text { default } => SettingControl::Text(text::Control::new(InitData {
+                schema: default,
+                trans,
+            })),
+            SchemaNode::Array(entries) => {
+                SettingControl::Array(Box::new(array::Control::new(InitData {
+                    schema: entries,
+                    trans,
+                })))
+            }
             SchemaNode::Vector {
                 default_element,
                 default,
-            } => SettingControl::Vector(Box::new(VectorControl {})),
+            } => todo!(),
             SchemaNode::Dictionary {
                 default_key,
                 default_value,
                 default,
-            } => SettingControl::Dictionary(Box::new(DictionaryControl {})),
+            } => todo!(),
         }
     }
 
-    pub fn update(&mut self, event: SettingEvent, request_handler: &mut RequestHandler) {
-        match (self, event) {
-            (SettingControl::Section(control), SettingEvent::Section(event)) => {
-                control.update(*event, request_handler)
-            }
-            _ => unreachable!(),
+    pub fn update(&mut self, data: UpdatingData) {
+        match self {
+            SettingControl::Section(control) => control.update(data),
+            SettingControl::Choice(control) => (),
+            SettingControl::Optional(control) => (),
+            SettingControl::Switch(control) => (),
+            SettingControl::Boolean(control) => (),
+            SettingControl::Integer(control) => (),
+            SettingControl::Float(control) => (),
+            SettingControl::Text(control) => (),
+            SettingControl::Array(control) => (),
+            SettingControl::Vector(control) => (),
+            SettingControl::Dictionary(control) => (),
+            SettingControl::HigherOrder(control) => (),
+            SettingControl::AudioDropdown(control) => (),
         }
     }
 
-    // List of labels or left-side controls. If no controls are required, spaces must be inserted
-    pub fn label_elements(&mut self, advanced: bool) -> Vec<Element<SettingEvent>> {
+    pub fn inline_element(&mut self, data: DrawingData) -> Element<SettingControlEvent> {
         todo!()
     }
 
-    // List of right-side controls. The first one is to the right of the entry label
-    pub fn control_elements(&mut self, advanced: bool) -> Vec<Element<SettingEvent>> {
+    pub fn label_elements(&mut self, data: DrawingData) -> Vec<Element<SettingControlEvent>> {
+        todo!()
+    }
+
+    pub fn control_elements(&mut self, data: DrawingData) -> Vec<Element<SettingControlEvent>> {
         todo!()
     }
 }

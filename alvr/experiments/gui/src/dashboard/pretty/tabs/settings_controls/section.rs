@@ -1,45 +1,32 @@
-use super::{HigherOrderControl, SettingControl, ShowMode};
-use crate::dashboard::{
-    pretty::tabs::{
-        ArrayControl, BooleanControl, ChoiceControl, DictionaryControl, FloatControl,
-        IntegerControl, SettingsPanelEvent, SwitchControl, TextControl, VectorControl,
-    },
-    RequestHandler,
-};
-use iced::{Element, Text};
+use super::{DrawingData, InitData, SettingControl, ShowMode, UpdatingData};
+use crate::dashboard::pretty::tabs::{higher_order, SettingControlEventType};
+use iced::{button, Element, Text};
 use serde_json as json;
-use settings_schema::{EntryData, SchemaNode};
+use settings_schema::EntryData;
 use std::collections::HashMap;
 
-#[derive(Clone, Debug)]
-pub enum SectionEvent {
-    SettingsUpdated(json::Value),
-    Inner {
-        entry: String,
-        event: SettingsPanelEvent,
-    },
+struct HelpButtonState {
+    state: button::State,
+    text: String,
 }
 
-struct SectionEntry {
+struct Entry {
     show_mode: ShowMode,
+    name: String,
     display_name: String,
     control: SettingControl,
+    help_button_state: Option<HelpButtonState>,
+    notice: Option<String>,
 }
 
-pub struct SectionControl {
-    entries: Vec<SectionEntry>,
+pub struct Control {
+    entries: Vec<Entry>,
 }
 
-impl SectionControl {
-    pub fn new(
-        path: String,
-        schema: Vec<(String, Option<EntryData>)>,
-        session: json::Value,
-        request_handler: &mut RequestHandler,
-    ) -> Self {
-        let session_entries = json::from_value::<HashMap<String, json::Value>>(session).unwrap();
-
-        let entries = schema
+impl Control {
+    pub fn new(data: InitData<Vec<(String, Option<EntryData>)>>) -> Self {
+        let entries = data
+            .schema
             .into_iter()
             .map(|(name, maybe_data)| {
                 if let Some(data) = maybe_data {
@@ -48,20 +35,30 @@ impl SectionControl {
                     } else {
                         ShowMode::Always
                     };
-                    let path = format!("{}.{}", path, name);
-                    let session = session_entries.get(&name).unwrap().clone();
+                    let control = SettingControl::new(InitData {
+                        schema: data.content,
+                        trans: (),
+                    });
 
-                    SectionEntry {
+                    Entry {
                         show_mode,
-                        display_name: name,
-                        control: SettingControl::new(path, data.content, session, request_handler),
+                        name: name.clone(),
+                        display_name: name, // todo
+                        control,
+                        help_button_state: None, // todo
+                        notice: None,            // todo
                     }
                 } else {
                     // todo
-                    SectionEntry {
+                    let control = SettingControl::HigherOrder(higher_order::Control::new(()));
+
+                    Entry {
                         show_mode: ShowMode::Basic,
+                        name: name.clone(),
                         display_name: name,
-                        control: SettingControl::HigherOrder(HigherOrderControl {}),
+                        control,
+                        help_button_state: None,
+                        notice: None,
                     }
                 }
             })
@@ -70,13 +67,35 @@ impl SectionControl {
         Self { entries }
     }
 
-    pub fn update(&mut self, event: SectionEvent, request_handler: &mut RequestHandler) {}
+    pub fn update(&mut self, mut data: UpdatingData) {
+        match data.event {
+            SettingControlEventType::SessionUpdated(session) => {
+                let session_entries =
+                    json::from_value::<HashMap<String, json::Value>>(session).unwrap();
 
-    pub fn label_views(&mut self, advanced: bool) -> Vec<Element<SectionEvent>> {
-        vec![Text::new("unimplemented").into()]
-    }
-
-    pub fn control_views(&mut self, advanced: bool) -> Vec<Element<SectionEvent>> {
-        vec![Text::new("unimplemented").into()]
+                for entry in &mut self.entries {
+                    let session = session_entries
+                        .get(&entry.name)
+                        .cloned()
+                        .unwrap_or(json::Value::Null); // in case of HOS or custom controls
+                    entry.control.update(UpdatingData {
+                        path: vec![],
+                        event: SettingControlEventType::SessionUpdated(session),
+                        request_handler: data.request_handler,
+                        string_path: String::new(),
+                    })
+                }
+            }
+            _ => {
+                let entry = &mut self.entries[data.path.pop().unwrap()];
+                let string_path = format!("{}.{}", data.string_path, entry.name);
+                entry.control.update(UpdatingData {
+                    path: data.path,
+                    event: data.event,
+                    request_handler: data.request_handler,
+                    string_path,
+                })
+            }
+        }
     }
 }

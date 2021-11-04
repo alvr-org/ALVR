@@ -1,6 +1,5 @@
+use alvr_session::ServerEvent;
 use std::{cmp, collections::VecDeque};
-
-use alvr_common::ServerEvent;
 use tui::{backend::Backend, layout::Rect, text::Spans, widgets::Paragraph, Frame};
 
 const MAX_EVENTS: usize = 50;

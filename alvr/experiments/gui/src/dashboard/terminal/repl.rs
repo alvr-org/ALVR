@@ -8,6 +8,8 @@ use tui::{
     Frame,
 };
 
+use crate::dashboard::RequestHandler;
+
 pub struct ReplPanel {
     history_buffer: VecDeque<String>,
     last_command: String,
@@ -71,7 +73,7 @@ impl ReplPanel {
         );
     }
 
-    pub fn react_to_key(&mut self, key: Key, request_handler: &mut impl FnMut(String) -> String) {
+    pub fn react_to_key(&mut self, key: Key, request_handler: &mut RequestHandler) {
         match key {
             Key::PageDown if self.history_position > 0 => self.history_position -= 1,
             Key::PageUp => {
@@ -100,7 +102,7 @@ impl ReplPanel {
             Key::Char('\n') => {
                 self.history_buffer
                     .push_back(format!("> {}", self.temp_command.clone()));
-                let response = request_handler(self.temp_command.clone());
+                let response = request_handler(self.temp_command.clone()).to_string();
                 if !response.is_empty() {
                     for line in response.split('\n') {
                         self.history_buffer.push_back(line.into());

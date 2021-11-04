@@ -1,10 +1,9 @@
 use super::{
-    tabs::{ConnectionEvent, ConnectionPanel, SettingsPanel, SettingsPanelEvent},
+    tabs::{ConnectionEvent, ConnectionPanel, SettingsEvent, SettingsPanel},
     theme::{ContainerStyle, ACCENT, BACKGROUND_SECONDARY, FOREGROUND},
 };
 use crate::dashboard::RequestHandler;
-use alvr_common::ServerEvent;
-use alvr_session::SessionDesc;
+use alvr_session::{ServerEvent, SessionDesc};
 use iced::{
     alignment::Horizontal, button, image, Alignment, Button, Column, Container, Element, Image,
     Length, Row, Space, Text,
@@ -37,11 +36,10 @@ impl button::StyleSheet for TabLabelStyle {
 #[derive(Clone, Debug)]
 pub enum DashboardEvent {
     ServerEvent(ServerEvent),
-    RequestResponse(String),
     TabClick(usize),
     LanguageClick,
     ConnectionEvent(ConnectionEvent),
-    SettingsEvent(SettingsPanelEvent),
+    SettingsEvent(SettingsEvent),
 }
 
 pub struct TabState {
@@ -70,7 +68,7 @@ pub struct Dashboard {
 
 impl Dashboard {
     pub fn new(session: SessionDesc, request_handler: &mut RequestHandler) -> Self {
-        Self {
+        let mut this = Self {
             selected_tab: 0,
             tab_states: vec![
                 TabState {
@@ -102,22 +100,49 @@ impl Dashboard {
                 display_name: "Language".into(),
                 ..Default::default()
             },
-            connection_panel: ConnectionPanel::new(&session),
-            settings_panel: SettingsPanel::new(&session, request_handler),
-        }
+            connection_panel: ConnectionPanel::new(),
+            settings_panel: SettingsPanel::new(request_handler),
+        };
+
+        this.update(
+            DashboardEvent::ServerEvent(ServerEvent::Session(session)),
+            request_handler,
+        );
+
+        this
     }
 
     pub fn update(&mut self, event: DashboardEvent, request_handler: &mut RequestHandler) {
         match event {
-            DashboardEvent::ServerEvent(_) => (),
-            DashboardEvent::RequestResponse(_) => (),
+            DashboardEvent::ServerEvent(event) => match event {
+                ServerEvent::Session(session) => {
+                    self.connection_panel.update(
+                        ConnectionEvent::SessionUpdated(session.clone()),
+                        request_handler,
+                    );
+                    self.settings_panel
+                        .update(SettingsEvent::SessionUpdated(session), request_handler);
+                }
+                ServerEvent::SessionUpdated => (), // deprecated
+                ServerEvent::SessionSettingsExtrapolationFailed => todo!(),
+                ServerEvent::ClientFoundOk => todo!(),
+                ServerEvent::ClientFoundInvalid => todo!(),
+                ServerEvent::ClientFoundWrongVersion(_) => todo!(),
+                ServerEvent::ClientConnected => todo!(),
+                ServerEvent::ClientDisconnected => todo!(),
+                ServerEvent::UpdateDownloadedBytesCount(_) => todo!(),
+                ServerEvent::UpdateDownloadError => todo!(),
+                ServerEvent::Statistics(_) => todo!(),
+                ServerEvent::Raw(_) => (),
+                ServerEvent::EchoQuery(_) => todo!(),
+            },
             DashboardEvent::TabClick(tab) => self.selected_tab = tab,
             DashboardEvent::LanguageClick => (),
             DashboardEvent::ConnectionEvent(event) => {
                 self.connection_panel.update(event, request_handler)
             }
             DashboardEvent::SettingsEvent(event) => {
-                // self.connection_panel.update(event, request_handler)
+                self.settings_panel.update(event, request_handler)
             }
         }
     }
@@ -176,6 +201,10 @@ impl Dashboard {
                 .connection_panel
                 .view()
                 .map(DashboardEvent::ConnectionEvent),
+            2 => self
+                .settings_panel
+                .view()
+                .map(DashboardEvent::SettingsEvent),
             _ => Text::new("unimplemented").into(),
         };
 

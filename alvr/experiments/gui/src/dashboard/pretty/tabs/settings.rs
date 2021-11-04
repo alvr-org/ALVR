@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
-use crate::dashboard::{pretty::theme::ButtonStyle, RequestHandler};
+use crate::dashboard::{
+    pretty::{tabs::InitData, theme::ButtonStyle},
+    RequestHandler,
+};
 
-use super::{settings_controls::SectionControl, SettingControl, SettingEvent};
+use super::{SettingControl, SettingControlEvent, SettingControlEventType, UpdatingData};
 use alvr_session::SessionDesc;
 use iced::{scrollable, Button, Column, Element, Length, Row, Scrollable, Space, Text};
 use iced_native::button;
@@ -10,71 +13,62 @@ use serde_json as json;
 use settings_schema::SchemaNode;
 
 #[derive(Clone, Debug)]
-pub enum SettingsPanelEvent {
+pub enum SettingsEvent {
     SessionUpdated(SessionDesc),
     TabClick(usize),
     AdvancedClick,
-    Inner(SettingEvent), // the tab is known
+    FromControl(SettingControlEvent),
 }
 
-pub struct TabLabelState {
+pub struct TabLabel {
     name: String,
     display_name: String,
     label_state: button::State,
 }
 
-pub struct TabContentState {
+// Note: all child and descendant controls are stored in a flat vector. This allows simpler
+// management of events.
+pub struct TabContent {
     name: String,
-    content: SettingControl,
     scroll_state: scrollable::State,
+    control: SettingControl,
 }
 
 pub struct SettingsPanel {
     // labels and content is split to satisfy lifetimes in view()
-    tabs_labels: Vec<TabLabelState>,
-    tabs_content: Vec<TabContentState>,
+    tabs_labels: Vec<TabLabel>,
+    tabs_content: Vec<TabContent>,
     selected_tab: usize,
     advanced: bool,
     advanced_button_state: button::State,
 }
 
 impl SettingsPanel {
-    pub fn new(session: &SessionDesc, request_handler: &mut RequestHandler) -> Self {
+    pub fn new(request_handler: &mut RequestHandler) -> Self {
         let schema = alvr_session::settings_schema(alvr_session::session_settings_default());
-        let session_tabs = json::from_value::<HashMap<String, json::Value>>(
-            json::to_value(&session.session_settings).unwrap(),
-        )
-        .unwrap();
-
         let (tabs_labels, tabs_content);
         if let SchemaNode::Section { entries } = schema {
             tabs_labels = entries
                 .iter()
-                .map(|(name, maybe_data)| {
-                    if let Some(data) = maybe_data {
-                        TabLabelState {
-                            name: name.clone(),
-                            display_name: name.clone(),
-                            label_state: button::State::new(),
-                        }
-                    } else {
-                        unreachable!()
-                    }
+                .map(|(name, maybe_data)| TabLabel {
+                    name: name.clone(),
+                    display_name: name.clone(),
+                    label_state: button::State::new(),
                 })
                 .collect();
             tabs_content = entries
                 .into_iter()
                 .map(|(name, maybe_data)| {
                     if let Some(data) = maybe_data {
-                        TabContentState {
-                            name: name.clone(),
-                            content: SettingControl::new(
-                                format!("session.sessionSettings.{}", name),
-                                data.content,
-                                session_tabs.get(&name).unwrap().clone(),
-                                request_handler,
-                            ),
+                        let control = SettingControl::new(InitData {
+                            schema: data.content,
+                            trans: (),
+                        });
+
+                        TabContent {
+                            name,
                             scroll_state: scrollable::State::new(),
+                            control,
                         }
                     } else {
                         unreachable!()
@@ -89,28 +83,37 @@ impl SettingsPanel {
             tabs_labels,
             tabs_content,
             selected_tab: 0,
-            advanced: session.advanced,
+            advanced: false,
             advanced_button_state: button::State::new(),
         }
     }
 
-    pub fn update(&mut self, event: SettingsPanelEvent, request_handler: &mut RequestHandler) {
+    pub fn update(&mut self, event: SettingsEvent, request_handler: &mut RequestHandler) {
         match event {
-            SettingsPanelEvent::SessionUpdated(session) => {
+            SettingsEvent::SessionUpdated(session) => {
+                // NB: the SessionUpdated event cannot be just broadcated to every control. Since
+                // the session has a tree structure, each descendant is in change of extracting the
+                // relevant session portion for their children.
+
                 self.advanced = session.advanced;
+
                 let session_tabs = json::from_value::<HashMap<String, json::Value>>(
                     json::to_value(session.session_settings).unwrap(),
                 )
                 .unwrap();
                 for tab in &mut self.tabs_content {
-                    tab.content.update(
-                        SettingEvent::SettingsUpdated(session_tabs[&tab.name].clone()),
+                    tab.control.update(UpdatingData {
+                        path: vec![],
+                        event: SettingControlEventType::SessionUpdated(
+                            session_tabs[&tab.name].clone(),
+                        ),
                         request_handler,
-                    );
+                        string_path: String::new(),
+                    });
                 }
             }
-            SettingsPanelEvent::TabClick(tab_index) => self.selected_tab = tab_index,
-            SettingsPanelEvent::AdvancedClick => {
+            SettingsEvent::TabClick(tab_index) => self.selected_tab = tab_index,
+            SettingsEvent::AdvancedClick => {
                 request_handler(format!(
                     r#"
                         let session = load_session();
@@ -120,13 +123,20 @@ impl SettingsPanel {
                     !self.advanced
                 ));
             }
-            SettingsPanelEvent::Inner(event) => self.tabs_content[self.selected_tab]
-                .content
-                .update(event, request_handler),
+            SettingsEvent::FromControl(event) => {
+                let tab = &mut self.tabs_content[self.selected_tab];
+
+                tab.control.update(UpdatingData {
+                    path: event.path,
+                    event: event.event_type,
+                    request_handler,
+                    string_path: format!("session.session_settings.{}", tab.name),
+                })
+            }
         }
     }
 
-    pub fn view(&mut self) -> Element<SettingsPanelEvent> {
+    pub fn view(&mut self) -> Element<SettingsEvent> {
         Column::new()
             .push(
                 Row::with_children(
@@ -140,21 +150,23 @@ impl SettingsPanel {
                                 } else {
                                     ButtonStyle::Secondary
                                 })
-                                .on_press(SettingsPanelEvent::TabClick(index))
+                                .on_press(SettingsEvent::TabClick(index))
                                 .into()
                         })
                         .collect(),
                 )
                 .push(Space::with_width(Length::Fill))
                 .push(
-                    Button::new(&mut self.advanced_button_state, Text::new("Advanced")).style(
-                        if self.advanced {
+                    Button::new(&mut self.advanced_button_state, Text::new("Advanced"))
+                        .style(if self.advanced {
                             ButtonStyle::Primary
                         } else {
                             ButtonStyle::Secondary
-                        },
-                    ),
-                ),
+                        })
+                        .on_press(SettingsEvent::AdvancedClick),
+                )
+                .padding(5)
+                .spacing(5),
             )
             .push({
                 let active_tab = &mut self.tabs_content[self.selected_tab];

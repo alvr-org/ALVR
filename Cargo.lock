@@ -334,6 +334,7 @@ version = "16.0.0"
 dependencies = [
  "alvr_common",
  "bytemuck",
+ "log",
  "serde",
  "serde_json",
  "settings-schema",

@@ -528,7 +528,7 @@ pub fn session_settings_default() -> SettingsDefault {
             use_10bit_encoder: false,
             encode_bitrate_mbs: 30,
             adaptive_bitrate: SwitchDefault {
-                enabled: !cfg!(target_os = "linux"),
+                enabled: true,
                 content: AdaptiveBitrateDescDefault {
                     bitrate_maximum: 200,
                     latency_target: 12000,

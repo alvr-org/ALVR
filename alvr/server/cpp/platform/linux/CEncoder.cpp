@@ -221,6 +221,10 @@ void CEncoder::Run() {
       while (not m_exiting) {
           read_latest(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
+        if (m_listener->GetStatistics()->CheckBitrateUpdated()) {
+          encode_pipeline->SetBitrate(m_listener->GetStatistics()->GetBitrate() * 1000000L); // in bits;
+        }
+
         auto encode_start = std::chrono::steady_clock::now();
         encode_pipeline->PushFrame(frame_info.image, m_scheduler.CheckIDRInsertion());
 

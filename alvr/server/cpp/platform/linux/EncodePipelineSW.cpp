@@ -78,7 +78,7 @@ alvr::EncodePipelineSW::EncodePipelineSW(std::vector<VkFrame>& input_frames, VkF
   encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
   encoder_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
   encoder_ctx->max_b_frames = 0;
-  encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1024 * 1024;
+  encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1000 * 1000;
 
   int err = AVCODEC.avcodec_open2(encoder_ctx, codec, &opt);
   if (err < 0) {

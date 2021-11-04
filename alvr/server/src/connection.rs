@@ -4,7 +4,7 @@ use crate::{
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::prelude::*;
-use alvr_session::{CodecType, FrameSize, OpenvrConfig};
+use alvr_session::{CodecType, FrameSize, OpenvrConfig, ServerEvent};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
     ControlSocketSender, HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, ProtoControlSocket,
@@ -588,7 +588,7 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
-    log_event(ServerEvent::ClientConnected);
+    alvr_session::log_event(ServerEvent::ClientConnected);
 
     {
         let on_connect_script = settings.connection.on_connect_script;
@@ -735,7 +735,7 @@ async fn connection_pipeline() -> StrResult {
                     .send(&ServerControlPacket::KeepAlive)
                     .await;
                 if let Err(e) = res {
-                    log_event(ServerEvent::ClientDisconnected);
+                    alvr_session::log_event(ServerEvent::ClientDisconnected);
                     info!("Client disconnected. Cause: {}", e);
                     break Ok(());
                 }
@@ -755,7 +755,7 @@ async fn connection_pipeline() -> StrResult {
                 Ok(ClientControlPacket::RequestIdr) => unsafe { crate::RequestIDR() },
                 Ok(_) => (),
                 Err(e) => {
-                    log_event(ServerEvent::ClientDisconnected);
+                    alvr_session::log_event(ServerEvent::ClientDisconnected);
                     info!("Client disconnected. Cause: {}", e);
                     break;
                 }
@@ -768,7 +768,7 @@ async fn connection_pipeline() -> StrResult {
     // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
         res = spawn_cancelable(stream_socket.receive_loop()) => {
-            log_event(ServerEvent::ClientDisconnected);
+            alvr_session::log_event(ServerEvent::ClientDisconnected);
             if let Err(e) = res {
                 info!("Client disconnected. Cause: {}", e);
             }

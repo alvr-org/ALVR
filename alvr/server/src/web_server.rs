@@ -1,5 +1,6 @@
 use crate::{graphics_info, ClientListAction, FILESYSTEM_LAYOUT, SESSION_MANAGER};
 use alvr_common::{prelude::*, ALVR_VERSION};
+use alvr_session::ServerEvent;
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
@@ -227,13 +228,13 @@ async fn http_api(
                         Ok(Some(chunk)) => {
                             downloaded_bytes_count += chunk.len();
                             trace_err!(file.write_all(&chunk))?;
-                            log_event(ServerEvent::UpdateDownloadedBytesCount(
+                            alvr_session::log_event(ServerEvent::UpdateDownloadedBytesCount(
                                 downloaded_bytes_count,
                             ));
                         }
                         Ok(None) => break,
                         Err(e) => {
-                            log_event(ServerEvent::UpdateDownloadError);
+                            alvr_session::log_event(ServerEvent::UpdateDownloadError);
                             error!("Download update failed: {}", e);
                             return reply(StatusCode::BAD_GATEWAY);
                         }

@@ -63,8 +63,8 @@ void filter_NAL(const uint8_t* input, size_t input_size, std::vector<uint8_t> &o
 
 }
 
-void alvr::EncodePipeline::SetBitrate(uint64_t bitrate) {
-  encoder_ctx->bit_rate = (amf_int64)bitrate;
+void alvr::EncodePipeline::SetBitrate(int64_t bitrate) {
+  encoder_ctx->bit_rate = bitrate;
 }
 
 std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(std::vector<VkFrame> &input_frames, VkFrameCtx &vk_frame_ctx)

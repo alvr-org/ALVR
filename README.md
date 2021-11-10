@@ -43,7 +43,7 @@ Follow the guide [here](https://github.com/alvr-org/ALVR/wiki/Usage).
 ## Troubleshooting
 
 -   Please check the [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting) page. The original repository [wiki](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) can also help.  
--   You can find some setup advice [here](https://github.com/alvr-org/ALVR/wiki/Setup-advice).
+-   Configuration recommendations and information may be found [here](https://github.com/alvr-org/ALVR/wiki/Configuration-Information-and-Recommendations)
 
 ## Uninstall
 

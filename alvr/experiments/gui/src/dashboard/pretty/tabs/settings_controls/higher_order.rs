@@ -1,7 +1,8 @@
 use crate::dashboard::pretty::InitData;
 
-use super::{boolean, choice, reset};
-use iced::button;
+use super::{boolean, choice, reset, DrawingData, DrawingResult, ROW_HEIGHT};
+use iced::{button, Element, Space, Text};
+use iced_native::Widget;
 
 pub enum Control {
     Action {
@@ -27,6 +28,14 @@ impl Control {
         Self::Action {
             applied: false,
             button_state: button::State::new(),
+        }
+    }
+
+    pub fn view(&mut self, data: &DrawingData) -> DrawingResult {
+        DrawingResult {
+            inline: Some(Text::new("unimplemented").height(ROW_HEIGHT).into()),
+            left: Space::with_height(0.into()).into(),
+            right: Space::with_height(0.into()).into(),
         }
     }
 }

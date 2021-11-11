@@ -38,7 +38,8 @@ fn load_session() -> SessionDesc {
 }
 
 fn load_session_dyn() -> Dynamic {
-    rhai::serde::to_dynamic(load_session()).unwrap()
+    let session_json = serde_json::to_value(load_session()).unwrap();
+    rhai::serde::to_dynamic(session_json).unwrap()
 }
 
 fn store_session(session: Dynamic) {

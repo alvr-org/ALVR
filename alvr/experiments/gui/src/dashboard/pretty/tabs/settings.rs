@@ -1,11 +1,17 @@
 use std::collections::HashMap;
 
 use crate::dashboard::{
-    pretty::{tabs::InitData, theme::ButtonStyle},
+    pretty::{
+        tabs::InitData,
+        theme::{ButtonStyle, ScrollableStyle},
+    },
     RequestHandler,
 };
 
-use super::{SettingControl, SettingControlEvent, SettingControlEventType, UpdatingData};
+use super::{
+    DrawingData, DrawingResult, SettingControl, SettingControlEvent, SettingControlEventType,
+    UpdatingData,
+};
 use alvr_session::SessionDesc;
 use iced::{scrollable, Button, Column, Element, Length, Row, Scrollable, Space, Text};
 use iced_native::button;
@@ -26,8 +32,6 @@ pub struct TabLabel {
     label_state: button::State,
 }
 
-// Note: all child and descendant controls are stored in a flat vector. This allows simpler
-// management of events.
 pub struct TabContent {
     name: String,
     scroll_state: scrollable::State,
@@ -171,11 +175,22 @@ impl SettingsPanel {
             .push({
                 let active_tab = &mut self.tabs_content[self.selected_tab];
 
-                // let label_elements = active_tab.content.label_elements(self.advanced);
-                // let control_elements = active_tab.content.control_elements(self.advanced);
+                let DrawingResult {
+                    inline,
+                    left,
+                    right,
+                } = active_tab.control.view(&DrawingData {
+                    advanced: true, //self.advanced,
+                    common_trans: (),
+                });
 
-                Scrollable::new(&mut active_tab.scroll_state) // .push(Column::new().push(label_elements))
-                                                              // .push(Column::new().push(control_elements))
+                Scrollable::new(&mut active_tab.scroll_state)
+                    .push(
+                        Row::new()
+                            .push(left.map(SettingsEvent::FromControl))
+                            .push(right.map(SettingsEvent::FromControl)),
+                    )
+                    .style(ScrollableStyle)
             })
             .into()
     }

@@ -163,7 +163,7 @@ impl Layout {
     }
 
     pub fn resources_dir(&self) -> PathBuf {
-        self.static_resources_dir.join("resources")
+        self.openvr_driver_root_dir.join("resources")
     }
 
     pub fn dashboard_dir(&self) -> PathBuf {

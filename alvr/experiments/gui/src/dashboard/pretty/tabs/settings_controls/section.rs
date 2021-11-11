@@ -2,14 +2,36 @@ use super::{
     DrawingData, DrawingResult, InitData, SettingControl, SettingControlEvent, ShowMode,
     UpdatingData, INDENTATION,
 };
-use crate::dashboard::pretty::tabs::{
-    higher_order, settings_controls::ROW_HEIGHT, SettingControlEventType,
+use crate::dashboard::pretty::{
+    tabs::{higher_order, settings_controls::ROW_HEIGHT, SettingControlEventType},
+    theme::{BACKGROUND, BACKGROUND_SECONDARY, FOREGROUND},
 };
-use iced::{button, Column, Element, Length, Row, Space, Text};
+use iced::{alignment, button, container, Column, Container, Element, Length, Row, Space, Text};
 use iced_native::Widget;
 use serde_json as json;
 use settings_schema::EntryData;
 use std::collections::HashMap;
+
+#[derive(Clone, Copy)]
+pub enum RowStyle {
+    Even,
+    Odd,
+}
+
+impl container::StyleSheet for RowStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            text_color: FOREGROUND.into(),
+            background: if matches!(self, RowStyle::Even) {
+                BACKGROUND
+            } else {
+                BACKGROUND_SECONDARY
+            }
+            .into(),
+            ..Default::default()
+        }
+    }
+}
 
 struct HelpButtonState {
     state: button::State,
@@ -100,7 +122,7 @@ impl Control {
     }
 
     pub fn view(&mut self, data: &DrawingData) -> DrawingResult {
-        let (left_controls, right_controls): (Vec<_>, Vec<_>) = self
+        let (left_controls, right_controls) = self
             .entries
             .iter_mut()
             .enumerate()
@@ -110,8 +132,11 @@ impl Control {
                     || (entry.show_mode == ShowMode::Basic && !data.advanced))
                     .then(|| {
                         let result = entry.control.view(data);
-                        let mut left_control = Column::new()
-                            .push(Text::new(entry.display_name.clone()).height(ROW_HEIGHT));
+                        let mut left_control = Column::new().push(
+                            Text::new(entry.display_name.clone())
+                                .height(ROW_HEIGHT)
+                                .vertical_alignment(alignment::Vertical::Center),
+                        );
                         let mut right_control = Column::new().push(
                             result
                                 .inline

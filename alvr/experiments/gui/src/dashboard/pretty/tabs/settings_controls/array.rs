@@ -1,5 +1,5 @@
 use super::{draw_result, DrawingData, DrawingResult, InitData, SettingControl};
-use iced::{Column, Container, Space, Text};
+use iced::Column;
 use settings_schema::SchemaNode;
 
 pub struct Control {

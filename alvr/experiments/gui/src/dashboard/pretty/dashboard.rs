@@ -1,6 +1,6 @@
 use super::{
     tabs::{ConnectionEvent, ConnectionPanel, SettingsEvent, SettingsPanel},
-    theme::{ContainerStyle, ACCENT, BACKGROUND_SECONDARY, FOREGROUND},
+    theme::{ContainerStyle, ACCENT, ELEMENT_BACKGROUND, FOREGROUND},
 };
 use crate::dashboard::RequestHandler;
 use alvr_session::{ServerEvent, SessionDesc};
@@ -17,7 +17,7 @@ pub enum TabLabelStyle {
 impl button::StyleSheet for TabLabelStyle {
     fn active(&self) -> button::Style {
         let normal = button::Style {
-            background: BACKGROUND_SECONDARY.into(),
+            background: ELEMENT_BACKGROUND.into(),
             border_radius: 10.0,
             text_color: FOREGROUND,
             ..Default::default()

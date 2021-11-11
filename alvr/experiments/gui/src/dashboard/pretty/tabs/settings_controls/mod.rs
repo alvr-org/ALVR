@@ -18,7 +18,7 @@ use serde_json as json;
 use settings_schema::SchemaNode;
 use std::collections::HashMap;
 
-const ROW_HEIGHT_UNITS: u16 = 25;
+const ROW_HEIGHT_UNITS: u16 = 30;
 const ROW_HEIGHT: Length = Length::Units(ROW_HEIGHT_UNITS);
 const INDENTATION: Length = Length::Units(10);
 

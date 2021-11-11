@@ -1,9 +1,15 @@
-use iced::{button, container, scrollable, Color};
+use iced::{button, container, scrollable, text_input, Color, TextInput};
 
 // The theme is fixed to dark.
 
 pub const BACKGROUND: Color = Color::BLACK;
 pub const BACKGROUND_SECONDARY: Color = Color {
+    r: 0.125,
+    g: 0.125,
+    b: 0.125,
+    a: 1.0,
+};
+pub const ELEMENT_BACKGROUND: Color = Color {
     r: 0.25,
     g: 0.25,
     b: 0.25,
@@ -62,7 +68,7 @@ impl button::StyleSheet for ButtonStyle {
                 ..baseline
             },
             ButtonStyle::Secondary => button::Style {
-                background: BACKGROUND_SECONDARY.into(),
+                background: ELEMENT_BACKGROUND.into(),
                 ..baseline
             },
             ButtonStyle::Danger => button::Style {
@@ -97,5 +103,33 @@ impl scrollable::StyleSheet for ScrollableStyle {
 
     fn hovered(&self) -> scrollable::Scrollbar {
         self.active()
+    }
+}
+
+pub struct TextInputStyle;
+
+impl text_input::StyleSheet for TextInputStyle {
+    fn active(&self) -> text_input::Style {
+        text_input::Style {
+            background: ELEMENT_BACKGROUND.into(),
+            border_radius: 5.0,
+            ..Default::default()
+        }
+    }
+
+    fn focused(&self) -> text_input::Style {
+        self.active()
+    }
+
+    fn placeholder_color(&self) -> Color {
+        FOREGROUND
+    }
+
+    fn value_color(&self) -> Color {
+        FOREGROUND
+    }
+
+    fn selection_color(&self) -> Color {
+        BACKGROUND
     }
 }

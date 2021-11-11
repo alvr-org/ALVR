@@ -6,7 +6,7 @@ use crate::dashboard::pretty::tabs::{
 use super::{
     reset, DrawingData, DrawingResult, InitData, SettingControl, SettingControlEvent, UpdatingData,
 };
-use iced::{Space, Text, Toggler};
+use iced::{Alignment, Length, Row, Space, Text, Toggler};
 use serde_json as json;
 use settings_schema::{SchemaNode, SwitchDefault};
 
@@ -70,12 +70,16 @@ impl Control {
     }
 
     pub fn view(&mut self, data: &DrawingData) -> DrawingResult {
-        let inline = Toggler::new(self.enabled, None, |_| SettingControlEvent {
-            path: vec![],
-            event_type: SettingControlEventType::Toggle,
-        })
-        .size(ROW_HEIGHT_UNITS)
-        .into();
+        let inline = Row::new()
+            .push(Toggler::new(self.enabled, None, |_| SettingControlEvent {
+                path: vec![],
+                event_type: SettingControlEventType::Toggle,
+            }))
+            .push(Space::with_width(Length::Fill))
+            .push(self.reset_control.view())
+            .height(ROW_HEIGHT)
+            .align_items(Alignment::Center)
+            .into();
 
         let (left, right) = if self.enabled && (data.advanced || !self.content_advanced) {
             draw_result(self.inner_control.view(data))

@@ -1,6 +1,6 @@
-use iced::{button, Button, Element, Text};
-
 use super::{SettingControlEvent, SettingControlEventType};
+use crate::dashboard::pretty::{tabs::settings_controls::ROW_HEIGHT, theme::ButtonStyle};
+use iced::{button, Button, Element, Text};
 
 pub struct Control {
     enabled: bool,
@@ -19,11 +19,17 @@ impl Control {
         self.enabled = enabled;
     }
 
-    pub fn view(&mut self) -> Element<()> {
-        let button = Button::new(&mut self.button_state, Text::new("Reset"));
+    pub fn view(&mut self) -> Element<SettingControlEvent> {
+        let button =
+            Button::new(&mut self.button_state, Text::new("Reset")).style(ButtonStyle::Secondary);
 
         if self.enabled {
-            button.on_press(()).into()
+            button
+                .on_press(SettingControlEvent {
+                    path: vec![],
+                    event_type: SettingControlEventType::ResetClick,
+                })
+                .into()
         } else {
             button.into()
         }

@@ -6,10 +6,8 @@ use crate::dashboard::{
     pretty::{tabs::SettingControlEventType, theme::ButtonStyle},
     RequestHandler,
 };
-use iced::{
-    button::{self, State},
-    Button, Column, Element, Row, Space, Text,
-};
+use iced::{button, Alignment, Button, Length, Row, Space, Text};
+use iced_native::Widget;
 use serde_json as json;
 use settings_schema::EntryData;
 use std::collections::HashMap;
@@ -114,7 +112,7 @@ impl Control {
             (data.request_handler)(format!(
                 r#"
                     let session = load_session();
-                    {}.variant = {};
+                    {}.variant = "{}";
                     store_session(session);
                 "#,
                 data.string_path, variant
@@ -131,7 +129,6 @@ impl Control {
             .enumerate()
             .map(|(index, variant)| {
                 Button::new(&mut variant.button_state, Text::new(&variant.display_name))
-                    .height(ROW_HEIGHT)
                     .style(if index == self.selection {
                         ButtonStyle::Primary
                     } else {
@@ -145,7 +142,12 @@ impl Control {
             })
             .collect();
 
-        let inline = Row::with_children(buttons);
+        let inline = Row::with_children(buttons)
+            .push(Space::with_width(Length::Fill))
+            .push(self.reset_control.view())
+            .height(ROW_HEIGHT)
+            .align_items(Alignment::Center)
+            .into();
 
         let maybe_block = if let Some(variant) = &mut self.content_controls[self.selection] {
             (data.advanced || !variant.advanced)
@@ -162,28 +164,9 @@ impl Control {
         });
 
         DrawingResult {
-            inline: Some(inline.into()),
+            inline: Some(inline),
             left,
             right,
         }
     }
 }
-
-// pub fn new(
-//     path: String,
-//     default: String,
-//     variants: Vec<(String, Option<EntryData>)>,
-//     session: json::Value,
-//     request_handler: &mut RequestHandler,
-// ) -> Self {
-//     let mut session_map = json::from_value::<HashMap<String, json::Value>>(session).unwrap();
-
-//     let variant = session_map
-//         .remove("variant")
-//         .unwrap()
-//         .as_str()
-//         .unwrap()
-//         .to_owned();
-
-//     Self {}
-// }

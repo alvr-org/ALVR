@@ -1,9 +1,13 @@
-use crate::dashboard::pretty::tabs::{InitData, SettingControlEventType};
+use crate::dashboard::pretty::{
+    tabs::{InitData, SettingControlEventType},
+    theme::TextInputStyle,
+};
 
 use super::{
-    reset, DrawingData, DrawingResult, SettingControlEvent, UpdatingData, ROW_HEIGHT_UNITS,
+    reset, DrawingData, DrawingResult, SettingControlEvent, UpdatingData, ROW_HEIGHT,
+    ROW_HEIGHT_UNITS,
 };
-use iced::{slider, text_input, Space, Text, TextInput};
+use iced::{slider, text_input, Alignment, Container, Length, Row, Space, Text, TextInput};
 use iced_native::Widget;
 use serde::de::DeserializeOwned;
 use serde_json as json;
@@ -55,13 +59,26 @@ impl<T: Copy + Display + PartialEq + DeserializeOwned> Control<T> {
     }
 
     pub fn view(&mut self, data: &DrawingData) -> DrawingResult {
-        let inline = TextInput::new(&mut self.textbox_state, "".into(), &self.text, |s| {
-            SettingControlEvent {
-                path: vec![],
-                event_type: SettingControlEventType::TextChanged(s),
-            }
-        })
-        .size(ROW_HEIGHT_UNITS);
+        let inline = Row::new()
+            .push(
+                Row::new()
+                    .push(
+                        TextInput::new(&mut self.textbox_state, "", &self.text, |s| {
+                            SettingControlEvent {
+                                path: vec![],
+                                event_type: SettingControlEventType::TextChanged(s),
+                            }
+                        })
+                        .padding([0, 5])
+                        .style(TextInputStyle),
+                    )
+                    .padding([5, 0])
+                    .width(Length::Fill),
+            )
+            .push(self.reset_control.view())
+            .height(ROW_HEIGHT)
+            .spacing(5)
+            .align_items(Alignment::Center);
 
         DrawingResult {
             inline: Some(inline.into()),

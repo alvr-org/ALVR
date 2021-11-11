@@ -134,7 +134,7 @@ impl SettingsPanel {
                     path: event.path,
                     event: event.event_type,
                     request_handler,
-                    string_path: format!("session.session_settings.{}", tab.name),
+                    string_path: format!("session.sessionSettings.{}", tab.name),
                 })
             }
         }
@@ -169,7 +169,7 @@ impl SettingsPanel {
                         })
                         .on_press(SettingsEvent::AdvancedClick),
                 )
-                .padding(5)
+                .padding([5, 10])
                 .spacing(5),
             )
             .push({
@@ -188,7 +188,9 @@ impl SettingsPanel {
                     .push(
                         Row::new()
                             .push(left.map(SettingsEvent::FromControl))
-                            .push(right.map(SettingsEvent::FromControl)),
+                            .push(right.map(SettingsEvent::FromControl))
+                            .spacing(15)
+                            .padding(10),
                     )
                     .style(ScrollableStyle)
             })

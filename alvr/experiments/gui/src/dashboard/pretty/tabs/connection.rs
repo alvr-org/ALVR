@@ -7,7 +7,7 @@ use iced::{
 };
 
 use crate::dashboard::{
-    pretty::theme::{ButtonStyle, ScrollableStyle, BACKGROUND_SECONDARY},
+    pretty::theme::{ButtonStyle, ScrollableStyle, ELEMENT_BACKGROUND},
     RequestHandler,
 };
 
@@ -149,7 +149,7 @@ struct ClientCardStyle;
 impl container::StyleSheet for ClientCardStyle {
     fn style(&self) -> container::Style {
         container::Style {
-            background: BACKGROUND_SECONDARY.into(),
+            background: ELEMENT_BACKGROUND.into(),
             border_radius: 10.0,
             ..Default::default()
         }

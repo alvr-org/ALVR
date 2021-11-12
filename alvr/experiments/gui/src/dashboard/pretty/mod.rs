@@ -6,7 +6,7 @@ use self::dashboard::DashboardEvent;
 use super::RequestHandler;
 use alvr_session::{ServerEvent, SessionDesc};
 use iced::{
-    container, executor,
+    executor,
     futures::{
         channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
         lock::Mutex,
@@ -14,16 +14,16 @@ use iced::{
         StreamExt,
     },
     window::{self, Position},
-    Application, Command, Element, Settings, Subscription, Text, Toggler,
+    Application, Command, Element, Settings, Subscription,
 };
-use iced_native::{row, subscription::Recipe};
+use iced_native::subscription::Recipe;
 use std::{
     any::TypeId,
     hash::{Hash, Hasher},
     sync::Arc,
 };
 
-pub struct EventsRecipe {
+struct EventsRecipe {
     receiver: Arc<Mutex<UnboundedReceiver<ServerEvent>>>,
 }
 
@@ -53,6 +53,7 @@ struct Window {
     request_handler: Box<RequestHandler>,
     event_receiver: Arc<Mutex<UnboundedReceiver<ServerEvent>>>,
     dashboard: dashboard::Dashboard,
+    should_exit: bool,
 }
 
 impl Application for Window {
@@ -61,14 +62,19 @@ impl Application for Window {
     type Flags = InitData;
 
     fn new(mut init_data: InitData) -> (Self, Command<DashboardEvent>) {
+        let mut dashboard = dashboard::Dashboard::new();
+
+        dashboard.update(
+            DashboardEvent::ServerEvent(ServerEvent::Session(init_data.session)),
+            &mut init_data.request_handler,
+        );
+
         (
             Self {
-                dashboard: dashboard::Dashboard::new(
-                    init_data.session,
-                    &mut init_data.request_handler,
-                ),
+                dashboard,
                 request_handler: init_data.request_handler,
                 event_receiver: init_data.event_receiver,
+                should_exit: false,
             },
             Command::none(),
         )
@@ -79,6 +85,10 @@ impl Application for Window {
     }
 
     fn update(&mut self, event: DashboardEvent) -> Command<DashboardEvent> {
+        if let DashboardEvent::ServerEvent(ServerEvent::ServerQuitting) = event {
+            self.should_exit = true;
+        }
+
         self.dashboard.update(event, &mut *self.request_handler);
 
         Command::none()
@@ -93,6 +103,10 @@ impl Application for Window {
             receiver: Arc::clone(&self.event_receiver),
         })
         .map(DashboardEvent::ServerEvent)
+    }
+
+    fn should_exit(&self) -> bool {
+        self.should_exit
     }
 }
 

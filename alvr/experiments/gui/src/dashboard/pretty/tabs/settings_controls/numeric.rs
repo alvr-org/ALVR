@@ -1,11 +1,8 @@
 use super::{
-    reset, DrawingData, DrawingResult, InitData, SettingControlEvent, SettingControlEventType,
-    UpdatingData, ROW_HEIGHT,
+    reset, DrawingResult, InitData, SettingControlEvent, SettingControlEventType, UpdatingData,
+    ROW_HEIGHT,
 };
-use crate::dashboard::pretty::{
-    tabs::settings_controls::ROW_HEIGHT_UNITS,
-    theme::{TextInputStyle, TooltipStyle},
-};
+use crate::dashboard::pretty::theme::{TextInputStyle, TooltipStyle};
 use iced::{
     slider, text_input, tooltip::Position, Alignment, Length, Row, Slider, Space, Text, TextInput,
     Tooltip,

@@ -55,8 +55,7 @@ async fn client_discovery(auto_trust_clients: bool) -> StrResult<ClientId> {
                 ClientListAction::AddIfMissing {
                     display_name: handshake_packet.device_name,
                 },
-            )
-            .await;
+            );
 
             if let Some(connection_desc) = SESSION_MANAGER
                 .lock()

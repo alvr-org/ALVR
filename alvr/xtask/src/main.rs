@@ -53,7 +53,7 @@ pub fn remove_build_dir() {
 
 pub fn build_server(
     is_release: bool,
-    experiements: bool,
+    experiments: bool,
     fetch_crates: bool,
     bundle_ffmpeg: bool,
     root: Option<String>,
@@ -80,6 +80,10 @@ pub fn build_server(
     if bundle_ffmpeg {
         server_features.push("bundled_ffmpeg");
     }
+    if experiments {
+        server_features.push("new-dashboard")
+    }
+
     if server_features.is_empty() {
         server_features.push("default")
     }
@@ -170,9 +174,9 @@ pub fn build_server(
         layout.launcher_exe(),
     )
     .unwrap();
-    if experiements {
+    if experiments {
         let dir_content = dirx::get_dir_content2(
-            "alvr/experiments/gui/languages",
+            "alvr/experiments/gui/resources/languages",
             &dirx::DirOptions { depth: 1 },
         )
         .unwrap();
@@ -184,17 +188,6 @@ pub fn build_server(
         let destination = afs::server_build_dir().join("languages");
         fs::create_dir_all(&destination).unwrap();
         fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
-
-        command::run_in(
-            &afs::workspace_dir().join("alvr/experiments/egui_dashboard"),
-            &format!("cargo build {}", build_flags),
-        )
-        .unwrap();
-        fs::copy(
-            artifacts_dir.join(afs::exec_fname("alvr_egui_dashboard")),
-            afs::server_build_dir().join(afs::exec_fname("alvr_egui_dashboard")),
-        )
-        .unwrap();
     }
 
     fs::copy(

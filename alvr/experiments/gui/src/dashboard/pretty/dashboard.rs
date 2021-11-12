@@ -3,10 +3,10 @@ use super::{
     theme::{ContainerStyle, ACCENT, ELEMENT_BACKGROUND, FOREGROUND},
 };
 use crate::dashboard::{pretty::theme::ContainerSecondaryStyle, RequestHandler};
-use alvr_session::{ServerEvent, SessionDesc};
+use alvr_session::ServerEvent;
 use iced::{
-    alignment::Horizontal, button, image, Alignment, Button, Column, Container, Element, Image,
-    Length, Row, Space, Text,
+    alignment::Horizontal, button, Alignment, Button, Column, Container, Element, Length, Row,
+    Space, Text,
 };
 
 pub enum TabLabelStyle {
@@ -67,8 +67,8 @@ pub struct Dashboard {
 }
 
 impl Dashboard {
-    pub fn new(session: SessionDesc, request_handler: &mut RequestHandler) -> Self {
-        let mut this = Self {
+    pub fn new() -> Self {
+        Self {
             selected_tab: 0,
             tab_states: vec![
                 TabState {
@@ -101,15 +101,8 @@ impl Dashboard {
                 ..Default::default()
             },
             connection_panel: ConnectionPanel::new(),
-            settings_panel: SettingsPanel::new(request_handler),
-        };
-
-        this.update(
-            DashboardEvent::ServerEvent(ServerEvent::Session(session)),
-            request_handler,
-        );
-
-        this
+            settings_panel: SettingsPanel::new(),
+        }
     }
 
     pub fn update(&mut self, event: DashboardEvent, request_handler: &mut RequestHandler) {
@@ -133,6 +126,7 @@ impl Dashboard {
                 ServerEvent::UpdateDownloadedBytesCount(_) => todo!(),
                 ServerEvent::UpdateDownloadError => todo!(),
                 ServerEvent::Statistics(_) => todo!(),
+                ServerEvent::ServerQuitting => unreachable!(),
                 ServerEvent::Raw(_) => (),
                 ServerEvent::EchoQuery(_) => todo!(),
             },

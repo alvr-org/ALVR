@@ -177,10 +177,8 @@ async fn http_api(
                 crate::update_client_list(
                     hostname.clone(),
                     ClientListAction::AddIfMissing { display_name },
-                )
-                .await;
-                crate::update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(Some(ip)))
-                    .await;
+                );
+                crate::update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(Some(ip)));
 
                 reply(StatusCode::OK)?
             } else {
@@ -189,8 +187,7 @@ async fn http_api(
         }
         "/api/client/trust" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
-                crate::update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(maybe_ip))
-                    .await;
+                crate::update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(maybe_ip));
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::BAD_REQUEST)?
@@ -198,8 +195,7 @@ async fn http_api(
         }
         "/api/client/remove" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
-                crate::update_client_list(hostname, ClientListAction::RemoveIpOrEntry(maybe_ip))
-                    .await;
+                crate::update_client_list(hostname, ClientListAction::RemoveIpOrEntry(maybe_ip));
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::BAD_REQUEST)?

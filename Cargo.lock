@@ -298,6 +298,7 @@ dependencies = [
  "alvr_commands",
  "alvr_common",
  "alvr_filesystem",
+ "alvr_gui",
  "alvr_session",
  "alvr_sockets",
  "bincode",
@@ -316,6 +317,7 @@ dependencies = [
  "parking_lot",
  "pkg-config",
  "reqwest",
+ "rhai",
  "semver 1.0.4",
  "serde",
  "serde_json",
@@ -2562,7 +2564,7 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#8a2a7f7e2144542b47c1d259f296ad7dcc5f3cf9"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2575,7 +2577,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#8a2a7f7e2144542b47c1d259f296ad7dcc5f3cf9"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "bitflags",
 ]
@@ -2583,7 +2585,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#8a2a7f7e2144542b47c1d259f296ad7dcc5f3cf9"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "futures",
  "log",
@@ -2593,7 +2595,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.2.0"
-source = "git+https://github.com/iced-rs/iced#8a2a7f7e2144542b47c1d259f296ad7dcc5f3cf9"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "bytemuck",
  "font-kit",
@@ -2607,10 +2609,11 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#8a2a7f7e2144542b47c1d259f296ad7dcc5f3cf9"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "iced_core",
  "iced_futures",
+ "iced_style",
  "num-traits",
  "twox-hash",
  "unicode-segmentation",
@@ -2619,7 +2622,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#8a2a7f7e2144542b47c1d259f296ad7dcc5f3cf9"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "iced_core",
 ]
@@ -2627,7 +2630,7 @@ dependencies = [
 [[package]]
 name = "iced_web"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#8a2a7f7e2144542b47c1d259f296ad7dcc5f3cf9"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "base64",
  "dodrio",
@@ -2644,7 +2647,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#8a2a7f7e2144542b47c1d259f296ad7dcc5f3cf9"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -2664,7 +2667,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#8a2a7f7e2144542b47c1d259f296ad7dcc5f3cf9"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -3022,15 +3025,6 @@ name = "memmap2"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9b70ca2a6103ac8b665dc150b142ef0e4e89df640c9e6cf295d189c3caebe5a"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "memmap2"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "723e3ebdcdc5c023db1df315364573789f8857c11b631a2fdfad7c00f5c046b4"
 dependencies = [
  "libc",
 ]
@@ -4367,9 +4361,9 @@ dependencies = [
 
 [[package]]
 name = "rhai"
-version = "1.1.0"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0a6abd5b3f1fe29984451102a69c79e65212f6c70015a68245a43a8ecc2a88b"
+checksum = "0b9394df571d413a865159d9e73df2e16e270c112bddc15538944c076469760a"
 dependencies = [
  "ahash 0.7.6",
  "instant",
@@ -4562,9 +4556,9 @@ dependencies = [
 
 [[package]]
 name = "self_cell"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55267dd945ff7d9388dd56c5a6a97477bdb6f2584be5ba45fdde7207b7cac3a6"
+checksum = "7ac753e6625df1711012c6469644ddd9b6338be1e4abf235c3a8817191411ae1"
 
 [[package]]
 name = "semver"
@@ -4847,23 +4841,6 @@ dependencies = [
 
 [[package]]
 name = "smithay-client-toolkit"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec783683499a2cfc85b6df3d04f83b1907b5cbd98a1aed44667dbdf1eac4e64c"
-dependencies = [
- "bitflags",
- "dlib 0.5.0",
- "lazy_static",
- "log",
- "memmap2 0.2.3",
- "nix 0.20.0",
- "wayland-client 0.28.6",
- "wayland-cursor 0.28.6",
- "wayland-protocols 0.28.6",
-]
-
-[[package]]
-name = "smithay-client-toolkit"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "210cf40de565aaaa085face1d860b17f6aee9f76f9d2816307ea2cc45eeb64f3"
@@ -4883,12 +4860,12 @@ dependencies = [
 
 [[package]]
 name = "smithay-clipboard"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "986c5b4a7bd4f50d4c51f81f844745535cb488360f9cf63293780b109b9295f3"
+checksum = "610b551bd25378bfd2b8e7a0fcbd83d427e8f2f6a40c47ae0f70688e9949dd55"
 dependencies = [
- "smithay-client-toolkit 0.14.0",
- "wayland-client 0.28.6",
+ "smithay-client-toolkit 0.15.2",
+ "wayland-client 0.29.1",
 ]
 
 [[package]]

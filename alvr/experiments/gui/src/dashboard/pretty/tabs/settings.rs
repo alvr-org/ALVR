@@ -12,8 +12,7 @@ use super::{
     DrawingData, SettingControl, SettingControlEvent, SettingControlEventType, UpdatingData,
 };
 use alvr_session::SessionDesc;
-use iced::{scrollable, Button, Column, Element, Length, Row, Scrollable, Space, Text};
-use iced_native::button;
+use iced::{button, scrollable, Button, Column, Element, Length, Row, Scrollable, Space, Text};
 use serde_json as json;
 use settings_schema::SchemaNode;
 
@@ -47,13 +46,13 @@ pub struct SettingsPanel {
 }
 
 impl SettingsPanel {
-    pub fn new(request_handler: &mut RequestHandler) -> Self {
+    pub fn new() -> Self {
         let schema = alvr_session::settings_schema(alvr_session::session_settings_default());
         let (tabs_labels, tabs_content);
         if let SchemaNode::Section { entries } = schema {
             tabs_labels = entries
                 .iter()
-                .map(|(name, maybe_data)| TabLabel {
+                .map(|(name, _)| TabLabel {
                     name: name.clone(),
                     display_name: name.clone(),
                     label_state: button::State::new(),

@@ -1,5 +1,6 @@
 mod connection;
 mod connection_utils;
+mod dashboard;
 mod graphics_info;
 mod logging_backend;
 mod openvr;
@@ -13,13 +14,12 @@ use bindings::*;
 
 use alvr_common::prelude::*;
 use alvr_filesystem::{self as afs, Layout};
-use alvr_session::{ClientConnectionDesc, SessionManager};
+use alvr_session::{ClientConnectionDesc, ServerEvent, SessionManager};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::{
     collections::{hash_map::Entry, HashSet},
     ffi::{c_void, CStr, CString},
-    fs,
     net::IpAddr,
     os::raw::c_char,
     ptr,
@@ -44,6 +44,7 @@ lazy_static! {
     static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
     static ref CLIENTS_UPDATED_NOTIFIER: Notify = Notify::new();
     static ref MAYBE_WINDOW: Mutex<Option<Arc<alcro::UI>>> = Mutex::new(None);
+    static ref MAYBE_NEW_DASHBOARD: Mutex<Option<Arc<alvr_gui::Dashboard>>> = Mutex::new(None);
     static ref MAYBE_LEGACY_SENDER: Mutex<Option<mpsc::UnboundedSender<Vec<u8>>>> =
         Mutex::new(None);
     static ref RESTART_NOTIFIER: Notify = Notify::new();
@@ -62,6 +63,8 @@ lazy_static! {
 }
 
 pub fn shutdown_runtime() {
+    alvr_session::log_event(ServerEvent::ServerQuitting);
+
     if let Some(window) = MAYBE_WINDOW.lock().take() {
         window.close();
     }
@@ -108,7 +111,7 @@ pub enum ClientListAction {
     RemoveIpOrEntry(Option<IpAddr>),
 }
 
-pub async fn update_client_list(hostname: String, action: ClientListAction) {
+pub fn update_client_list(hostname: String, action: ClientListAction) {
     let mut client_connections = SESSION_MANAGER.lock().get().client_connections.clone();
 
     let maybe_client_entry = client_connections.entry(hostname);
@@ -159,49 +162,6 @@ pub async fn update_client_list(hostname: String, action: ClientListAction) {
     }
 }
 
-// this thread gets interrupted when SteamVR closes
-// todo: handle this in a better way
-fn ui_thread() -> StrResult {
-    const WINDOW_WIDTH: u32 = 800;
-    const WINDOW_HEIGHT: u32 = 600;
-
-    let (pos_left, pos_top) =
-        if let Ok((screen_width, screen_height)) = graphics_info::get_screen_size() {
-            (
-                (screen_width - WINDOW_WIDTH) / 2,
-                (screen_height - WINDOW_HEIGHT) / 2,
-            )
-        } else {
-            (0, 0)
-        };
-
-    let _tmpdir = trace_err!(tempfile::TempDir::new());
-    let path = _tmpdir.as_ref().unwrap().path();
-    let _file = trace_err!(fs::File::create(path.join("FirstLaunchAfterInstallation")))?;
-
-    let window = Arc::new(trace_err!(alcro::UIBuilder::new()
-        .content(alcro::Content::Url("http://127.0.0.1:8082"))
-        .user_data_dir(path)
-        .size(WINDOW_WIDTH as _, WINDOW_HEIGHT as _)
-        .custom_args(&[
-            "--disk-cache-size=1",
-            &format!("--window-position={},{}", pos_left, pos_top)
-        ])
-        .run())?);
-
-    *MAYBE_WINDOW.lock() = Some(Arc::clone(&window));
-
-    window.wait_finish();
-
-    // prevent panic on window.close()
-    *MAYBE_WINDOW.lock() = None;
-    shutdown_runtime();
-
-    unsafe { ShutdownSteamvr() };
-
-    Ok(())
-}
-
 fn init() {
     let (log_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
@@ -216,20 +176,23 @@ fn init() {
             let connections = SESSION_MANAGER.lock().get().client_connections.clone();
             for (hostname, connection) in connections {
                 if !connection.trusted {
-                    update_client_list(hostname, ClientListAction::RemoveIpOrEntry(None)).await;
+                    update_client_list(hostname, ClientListAction::RemoveIpOrEntry(None));
                 }
             }
 
             let web_server =
-                alvr_common::show_err_async(web_server::web_server(log_sender, events_sender));
+                alvr_common::show_err_async(web_server::web_server(log_sender, events_sender.clone()));
+            
+            let dashboard_event_handler = dashboard::event_listener(events_sender);
 
             tokio::select! {
                 _ = web_server => (),
+                _ = dashboard_event_handler => (),
                 _ = SHUTDOWN_NOTIFIER.notified() => (),
             }
         });
 
-        thread::spawn(|| alvr_common::show_err(ui_thread()));
+        thread::spawn(|| alvr_common::show_err(dashboard::ui_thread()));
     }
 
     unsafe {

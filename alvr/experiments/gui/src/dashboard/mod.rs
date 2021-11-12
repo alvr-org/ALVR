@@ -9,6 +9,5 @@ pub use self::pretty::*;
 pub use self::terminal::*;
 
 use alvr_common::StrResult;
-use alvr_session::SessionDesc;
 
 type RequestHandler = dyn FnMut(String) -> StrResult<String>;

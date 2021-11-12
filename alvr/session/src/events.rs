@@ -57,6 +57,7 @@ pub enum ServerEvent {
     UpdateDownloadedBytesCount(usize),
     UpdateDownloadError,
     Statistics(Statistics),
+    ServerQuitting,
     Raw(Raw),
     EchoQuery(String),
 }

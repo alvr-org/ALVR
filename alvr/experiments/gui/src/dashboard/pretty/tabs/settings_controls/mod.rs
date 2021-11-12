@@ -185,17 +185,17 @@ impl SettingControl {
         match self {
             SettingControl::Section(control) => control.update(data),
             SettingControl::Choice(control) => control.update(data),
-            SettingControl::Optional(control) => (),
+            SettingControl::Optional(_) => (),
             SettingControl::Switch(control) => control.update(data),
             SettingControl::Boolean(control) => control.update(data),
             SettingControl::Integer(control) => control.update(data),
             SettingControl::Float(control) => control.update(data),
             SettingControl::Text(control) => control.update(data),
             SettingControl::Array(control) => control.update(data),
-            SettingControl::Vector(control) => (),
-            SettingControl::Dictionary(control) => (),
-            SettingControl::HigherOrder(control) => (),
-            SettingControl::AudioDropdown(control) => (),
+            SettingControl::Vector(_) => (),
+            SettingControl::Dictionary(_) => (),
+            SettingControl::HigherOrder(_) => (),
+            SettingControl::AudioDropdown(_) => (),
         }
     }
 

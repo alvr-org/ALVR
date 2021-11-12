@@ -1,7 +1,5 @@
-mod dashboard;
-
 use alvr_session::{ClientConnectionDesc, EventSeverity, Raw, ServerEvent, SessionDesc};
-use dashboard::Dashboard;
+use alvr_gui::Dashboard;
 use rhai::Dynamic;
 use std::{
     collections::HashSet,

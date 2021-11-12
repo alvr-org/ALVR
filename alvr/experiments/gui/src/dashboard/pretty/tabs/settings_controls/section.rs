@@ -1,37 +1,11 @@
 use super::{
-    DrawingData, DrawingResult, InitData, SettingControl, SettingControlEvent, ShowMode,
-    UpdatingData, INDENTATION,
+    higher_order, DrawingData, DrawingResult, InitData, SettingControl, SettingControlEvent,
+    SettingControlEventType, ShowMode, UpdatingData, INDENTATION, ROW_HEIGHT,
 };
-use crate::dashboard::pretty::{
-    tabs::{higher_order, settings_controls::ROW_HEIGHT, SettingControlEventType},
-    theme::{BACKGROUND, BACKGROUND_SECONDARY, FOREGROUND},
-};
-use iced::{alignment, button, container, Column, Container, Element, Length, Row, Space, Text};
-use iced_native::Widget;
+use iced::{alignment, button, Column, Element, Row, Space, Text};
 use serde_json as json;
 use settings_schema::EntryData;
 use std::collections::HashMap;
-
-#[derive(Clone, Copy)]
-pub enum RowStyle {
-    Even,
-    Odd,
-}
-
-impl container::StyleSheet for RowStyle {
-    fn style(&self) -> container::Style {
-        container::Style {
-            text_color: FOREGROUND.into(),
-            background: if matches!(self, RowStyle::Even) {
-                BACKGROUND
-            } else {
-                BACKGROUND_SECONDARY
-            }
-            .into(),
-            ..Default::default()
-        }
-    }
-}
 
 struct HelpButtonState {
     state: button::State,

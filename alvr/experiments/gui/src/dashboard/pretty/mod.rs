@@ -3,6 +3,7 @@ mod tabs;
 mod theme;
 
 use self::dashboard::DashboardEvent;
+use super::RequestHandler;
 use alvr_session::{ServerEvent, SessionDesc};
 use iced::{
     container, executor,
@@ -21,8 +22,6 @@ use std::{
     hash::{Hash, Hasher},
     sync::Arc,
 };
-
-use super::{LoadSession, RequestHandler};
 
 pub struct EventsRecipe {
     receiver: Arc<Mutex<UnboundedReceiver<ServerEvent>>>,
@@ -45,7 +44,7 @@ impl<H: Hasher, E> Recipe<H, E> for EventsRecipe {
 }
 
 struct InitData {
-    load_session: Box<LoadSession>,
+    session: SessionDesc,
     request_handler: Box<RequestHandler>,
     event_receiver: Arc<Mutex<UnboundedReceiver<ServerEvent>>>,
 }
@@ -65,7 +64,7 @@ impl Application for Window {
         (
             Self {
                 dashboard: dashboard::Dashboard::new(
-                    (init_data.load_session)(),
+                    init_data.session,
                     &mut init_data.request_handler,
                 ),
                 request_handler: init_data.request_handler,
@@ -111,7 +110,7 @@ impl Dashboard {
         }
     }
 
-    pub fn run(&self, load_session: Box<LoadSession>, request_handler: Box<RequestHandler>) {
+    pub fn run(&self, session: SessionDesc, request_handler: Box<RequestHandler>) {
         Window::run(Settings {
             id: None,
             window: window::Settings {
@@ -121,7 +120,7 @@ impl Dashboard {
                 ..Default::default()
             },
             flags: InitData {
-                load_session,
+                session,
                 request_handler,
                 event_receiver: Arc::clone(&self.event_receiver),
             },

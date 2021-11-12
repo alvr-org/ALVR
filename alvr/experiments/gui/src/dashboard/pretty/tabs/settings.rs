@@ -9,8 +9,7 @@ use crate::dashboard::{
 };
 
 use super::{
-    DrawingData, DrawingResult, SettingControl, SettingControlEvent, SettingControlEventType,
-    UpdatingData,
+    DrawingData, SettingControl, SettingControlEvent, SettingControlEventType, UpdatingData,
 };
 use alvr_session::SessionDesc;
 use iced::{scrollable, Button, Column, Element, Length, Row, Scrollable, Space, Text};
@@ -169,29 +168,25 @@ impl SettingsPanel {
                         })
                         .on_press(SettingsEvent::AdvancedClick),
                 )
-                .padding([5, 10])
+                .padding([5, 15])
                 .spacing(5),
             )
             .push({
                 let active_tab = &mut self.tabs_content[self.selected_tab];
 
-                let DrawingResult {
-                    inline,
-                    left,
-                    right,
-                } = active_tab.control.view(&DrawingData {
-                    advanced: true, //self.advanced,
+                let result = active_tab.control.view(&DrawingData {
+                    advanced: self.advanced,
                     common_trans: (),
                 });
 
                 Scrollable::new(&mut active_tab.scroll_state)
                     .push(
                         Row::new()
-                            .push(left.map(SettingsEvent::FromControl))
-                            .push(right.map(SettingsEvent::FromControl))
-                            .spacing(15)
-                            .padding(10),
+                            .push(result.left.map(SettingsEvent::FromControl))
+                            .push(result.right.map(SettingsEvent::FromControl))
+                            .spacing(15),
                     )
+                    .padding([0, 15, 30, 15])
                     .style(ScrollableStyle)
             })
             .into()

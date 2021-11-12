@@ -1,11 +1,9 @@
 use super::{
-    reset, DrawingData, DrawingResult, InitData, UpdatingData, ROW_HEIGHT, ROW_HEIGHT_UNITS,
+    reset, DrawingData, DrawingResult, InitData, SettingControlEvent, SettingControlEventType,
+    UpdatingData, ROW_HEIGHT,
 };
-use crate::dashboard::pretty::{
-    tabs::{SettingControlEvent, SettingControlEventType},
-    theme::TextInputStyle,
-};
-use iced::{text_input, Alignment, Length, Row, Space, Text, TextInput};
+use crate::dashboard::pretty::theme::{TextInputStyle, TooltipStyle};
+use iced::{text_input, tooltip::Position, Alignment, Length, Row, Space, TextInput, Tooltip};
 use serde_json as json;
 
 pub struct Control {
@@ -28,12 +26,27 @@ impl Control {
     pub fn update(&mut self, data: UpdatingData) {
         match data.event {
             SettingControlEventType::SessionUpdated(session) => {
-                self.value = json::from_value(session).unwrap()
+                self.value = json::from_value(session).unwrap();
+                self.reset_control.update(self.value != self.default);
             }
-            SettingControlEventType::ResetClick => todo!(),
-            SettingControlEventType::TextChanged(_) => todo!(),
-            SettingControlEventType::ApplyValue => todo!(),
-            _ => unimplemented!(),
+            SettingControlEventType::TempValueChanged(value) => self.value = value,
+            event => {
+                let value = if event == SettingControlEventType::ApplyValue {
+                    self.value.clone()
+                } else {
+                    self.default.clone()
+                };
+
+                (data.request_handler)(format!(
+                    r#"
+                        let session = load_session();
+                        {} = "{}";
+                        store_session(session);
+                    "#,
+                    data.string_path, value
+                ))
+                .unwrap();
+            }
         }
     }
 
@@ -42,14 +55,23 @@ impl Control {
             .push(
                 Row::new()
                     .push(
-                        TextInput::new(&mut self.control_state, "", &self.value, |s| {
-                            SettingControlEvent {
+                        Tooltip::new(
+                            TextInput::new(&mut self.control_state, "", &self.value, |s| {
+                                SettingControlEvent {
+                                    path: vec![],
+                                    event_type: SettingControlEventType::TempValueChanged(s),
+                                }
+                            })
+                            .padding([0, 5])
+                            .style(TextInputStyle)
+                            .on_submit(SettingControlEvent {
                                 path: vec![],
-                                event_type: SettingControlEventType::TextChanged(s),
-                            }
-                        })
-                        .padding([0, 5])
-                        .style(TextInputStyle),
+                                event_type: SettingControlEventType::ApplyValue,
+                            }),
+                            "Press Enter to apply the value",
+                            Position::Bottom,
+                        )
+                        .style(TooltipStyle),
                     )
                     .padding([5, 0])
                     .width(Length::Fill),

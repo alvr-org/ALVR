@@ -2,7 +2,7 @@ use super::{
     tabs::{ConnectionEvent, ConnectionPanel, SettingsEvent, SettingsPanel},
     theme::{ContainerStyle, ACCENT, ELEMENT_BACKGROUND, FOREGROUND},
 };
-use crate::dashboard::RequestHandler;
+use crate::dashboard::{pretty::theme::ContainerSecondaryStyle, RequestHandler};
 use alvr_session::{ServerEvent, SessionDesc};
 use iced::{
     alignment::Horizontal, button, image, Alignment, Button, Column, Container, Element, Image,
@@ -148,7 +148,7 @@ impl Dashboard {
     }
 
     pub fn view(&mut self) -> Element<DashboardEvent> {
-        let mut sidebar_children = vec![Text::new("ALVR")
+        let mut tab_labels = vec![Text::new("ALVR")
             .size(20)
             .horizontal_alignment(Horizontal::Center)
             .into()];
@@ -161,40 +161,44 @@ impl Dashboard {
                 selected_tab_display_name = state.display_name.clone();
             }
 
-            sidebar_children.push(
+            tab_labels.push(
                 Button::new(
                     &mut state.state,
-                    Row::with_children(vec![
-                        Image::new(image::Handle::from_memory(
-                            include_bytes!("../../../resources/images/favicon.png").to_vec(),
-                        ))
-                        .into(),
-                        Text::new(&state.display_name).into(),
-                    ])
-                    .spacing(5),
+                    Row::new()
+                        // .push(Image::new(image::Handle::from_memory(
+                        //     include_bytes!("../../../resources/images/favicon.png").to_vec(),
+                        // )))
+                        .push(Text::new(&state.display_name))
+                        .spacing(10),
                 )
                 .style(if self.selected_tab == index {
                     TabLabelStyle::Selected
                 } else {
                     TabLabelStyle::Normal
                 })
-                .padding(7)
+                .padding([7, 10])
                 .on_press(DashboardEvent::TabClick(index))
                 .into(),
             );
         }
 
-        sidebar_children.push(Space::with_height(Length::Fill).into());
-        sidebar_children.push(
-            Button::new(
-                &mut self.language_state.state,
-                Text::new(&self.language_state.display_name),
-            )
-            .style(TabLabelStyle::Normal)
-            .padding(7)
-            .on_press(DashboardEvent::LanguageClick)
-            .into(),
-        );
+        let sidebar = Container::new(
+            Column::with_children(tab_labels)
+                .push(Space::with_height(Length::Fill))
+                .push(
+                    Button::new(
+                        &mut self.language_state.state,
+                        Text::new(&self.language_state.display_name),
+                    )
+                    .style(TabLabelStyle::Normal)
+                    .padding([7, 10])
+                    .on_press(DashboardEvent::LanguageClick),
+                )
+                .padding(10)
+                .spacing(10)
+                .align_items(Alignment::Fill),
+        )
+        .style(ContainerSecondaryStyle);
 
         let content_panel = match self.selected_tab {
             0 => self
@@ -208,21 +212,17 @@ impl Dashboard {
             _ => Text::new("unimplemented").into(),
         };
 
-        Container::new(Row::with_children(vec![
-            Column::with_children(sidebar_children)
-                .padding(10)
-                .spacing(10)
-                .align_items(Alignment::Fill)
-                .into(),
-            Column::with_children(vec![
-                Container::new(Text::new(selected_tab_display_name).size(30))
-                    .padding([10, 20])
-                    .into(),
-                content_panel,
-            ])
-            .width(Length::Fill)
-            .into(),
-        ]))
+        Container::new(
+            Row::new().push(sidebar).push(
+                Column::new()
+                    .push(
+                        Container::new(Text::new(selected_tab_display_name).size(30))
+                            .padding([10, 20]),
+                    )
+                    .push(content_panel)
+                    .width(Length::Fill),
+            ),
+        )
         .style(ContainerStyle)
         .into()
     }

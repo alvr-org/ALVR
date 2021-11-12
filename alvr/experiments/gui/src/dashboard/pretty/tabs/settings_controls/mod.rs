@@ -16,7 +16,6 @@ use crate::dashboard::RequestHandler;
 use iced::{Column, Element, Length, Row, Space};
 use serde_json as json;
 use settings_schema::SchemaNode;
-use std::collections::HashMap;
 
 const ROW_HEIGHT_UNITS: u16 = 30;
 const ROW_HEIGHT: Length = Length::Units(ROW_HEIGHT_UNITS);
@@ -33,14 +32,10 @@ enum ShowMode {
 pub enum SettingControlEventType {
     SessionUpdated(json::Value),
     ResetClick,
-    Click,                // For HOS/Action
-    VariantClick(usize),  // For Choice, HOS/Choice
-    Toggle,               // For Optional, Switch, Boolean, HOS/Boolean
-    IntegerChanged(i128), // For Integer, Float (slider)
-    FloatChanged(i64),    // For Integer, Float (slider)
-    // Increase,                      // For Integer, Float (numeric up-down)
-    // Decrease,                      // For Integer, Float (numeric up-down)
-    TextChanged(String),           // For Integer, Float, Text
+    Click,                         // For HOS/Action
+    VariantClick(usize),           // For Choice, HOS/Choice
+    Toggle,                        // For Optional, Switch, Boolean, HOS/Boolean
+    TempValueChanged(String),      // For Integer, Float, Text
     ApplyValue,                    // For Integer, Float, Text
     AddRow,                        // For Vector, Dictionary
     RemoveRow(usize),              // For Vector, Dictionary
@@ -93,7 +88,7 @@ pub enum SettingControl {
     Optional(Box<optional::Control>),
     Switch(Box<switch::Control>),
     Boolean(boolean::Control),
-    Integer(numeric::Control<i128>),
+    Integer(numeric::Control<i32>), // Cannot use i128. I need From<f64> for Slider
     Float(numeric::Control<f64>),
     Text(text::Control),
     Array(Box<array::Control>),
@@ -145,7 +140,13 @@ impl SettingControl {
                 step,
                 gui,
             } => SettingControl::Integer(numeric::Control::new(InitData {
-                schema: (default, min, max, step, gui),
+                schema: (
+                    default as _,
+                    min.map(|v| v as i32),
+                    max.map(|v| v as i32),
+                    step.map(|v| v as i32),
+                    gui,
+                ),
                 trans,
             })),
             SchemaNode::Float {
@@ -190,7 +191,7 @@ impl SettingControl {
             SettingControl::Integer(control) => control.update(data),
             SettingControl::Float(control) => control.update(data),
             SettingControl::Text(control) => control.update(data),
-            SettingControl::Array(control) => (),
+            SettingControl::Array(control) => control.update(data),
             SettingControl::Vector(control) => (),
             SettingControl::Dictionary(control) => (),
             SettingControl::HigherOrder(control) => (),
@@ -205,8 +206,8 @@ impl SettingControl {
             SettingControl::Optional(_) => todo!(),
             SettingControl::Switch(control) => control.view(data),
             SettingControl::Boolean(control) => control.view(data),
-            SettingControl::Integer(control) => control.view(data),
-            SettingControl::Float(control) => control.view(data),
+            SettingControl::Integer(control) => control.view(),
+            SettingControl::Float(control) => control.view(),
             SettingControl::Text(control) => control.view(data),
             SettingControl::Array(control) => control.view(data),
             SettingControl::Vector(_) => todo!(),

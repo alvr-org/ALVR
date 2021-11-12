@@ -1,5 +1,5 @@
 use super::{SettingControlEvent, SettingControlEventType};
-use crate::dashboard::pretty::{tabs::settings_controls::ROW_HEIGHT, theme::ButtonStyle};
+use crate::dashboard::pretty::theme::ButtonStyle;
 use iced::{button, Button, Element, Text};
 
 pub struct Control {

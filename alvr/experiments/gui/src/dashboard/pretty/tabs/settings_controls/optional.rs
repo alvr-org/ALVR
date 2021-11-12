@@ -1,6 +1,5 @@
-use iced::button;
-
 use super::{reset, SettingControl};
+use iced::button;
 
 pub struct Control {
     default_set: bool,

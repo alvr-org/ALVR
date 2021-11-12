@@ -102,7 +102,10 @@ impl ReplPanel {
             Key::Char('\n') => {
                 self.history_buffer
                     .push_back(format!("> {}", self.temp_command.clone()));
-                let response = request_handler(self.temp_command.clone()).to_string();
+                let response = match request_handler(self.temp_command.clone()) {
+                    Ok(res) => res,
+                    Err(e) => e, // todo: render in red
+                };
                 if !response.is_empty() {
                     for line in response.split('\n') {
                         self.history_buffer.push_back(line.into());

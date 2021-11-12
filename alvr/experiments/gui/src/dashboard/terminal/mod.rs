@@ -2,8 +2,8 @@ mod events;
 mod repl;
 
 use self::{events::EventsPanel, repl::ReplPanel};
-use super::{LoadSession, RequestHandler};
-use alvr_session::ServerEvent;
+use super::RequestHandler;
+use alvr_session::{ServerEvent, SessionDesc};
 use std::{
     collections::VecDeque,
     io,
@@ -37,7 +37,7 @@ impl Dashboard {
         }
     }
 
-    pub fn run(&self, _: Box<LoadSession>, mut request_handler: Box<RequestHandler>) {
+    pub fn run(&self, _: SessionDesc, mut request_handler: Box<RequestHandler>) {
         let stdout = io::stdout().into_raw_mode().unwrap();
         let stdout = MouseTerminal::from(stdout);
         let stdout = AlternateScreen::from(stdout);

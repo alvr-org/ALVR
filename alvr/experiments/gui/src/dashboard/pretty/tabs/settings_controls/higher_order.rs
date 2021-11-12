@@ -1,8 +1,5 @@
-use crate::dashboard::pretty::InitData;
-
-use super::{boolean, choice, reset, DrawingData, DrawingResult, ROW_HEIGHT};
-use iced::{button, Element, Space, Text};
-use iced_native::Widget;
+use super::{reset, DrawingData, DrawingResult, ROW_HEIGHT};
+use iced::{button, Space, Text};
 
 pub enum Control {
     Action {

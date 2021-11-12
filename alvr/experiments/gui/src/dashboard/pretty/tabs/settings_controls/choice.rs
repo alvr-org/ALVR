@@ -1,13 +1,9 @@
 use super::{
-    reset, DrawingData, DrawingResult, InitData, SettingControl, SettingControlEvent, UpdatingData,
-    INDENTATION, ROW_HEIGHT,
+    reset, DrawingData, DrawingResult, InitData, SettingControl, SettingControlEvent,
+    SettingControlEventType, UpdatingData, ROW_HEIGHT,
 };
-use crate::dashboard::{
-    pretty::{tabs::SettingControlEventType, theme::ButtonStyle},
-    RequestHandler,
-};
+use crate::dashboard::pretty::theme::ButtonStyle;
 use iced::{button, Alignment, Button, Length, Row, Space, Text};
-use iced_native::Widget;
 use serde_json as json;
 use settings_schema::EntryData;
 use std::collections::HashMap;
@@ -45,7 +41,7 @@ impl Control {
 
         let variant_buttons = variants
             .iter()
-            .map(|(name, maybe_data)| {
+            .map(|(name, _)| {
                 VariantLabel {
                     name: name.clone(),
                     display_name: name.clone(), // todo
@@ -86,6 +82,8 @@ impl Control {
             let variant = variant_json.as_str().unwrap();
 
             self.selection = self.variant_indices[variant];
+            self.reset_control
+                .update(self.selection != self.variant_indices[&self.default]);
 
             for content in self.content_controls.iter_mut().flatten() {
                 let session_content = session_variants.remove(&content.name).unwrap();
@@ -116,7 +114,8 @@ impl Control {
                     store_session(session);
                 "#,
                 data.string_path, variant
-            ));
+            ))
+            .unwrap();
 
             self.selection = self.variant_indices[variant];
         }

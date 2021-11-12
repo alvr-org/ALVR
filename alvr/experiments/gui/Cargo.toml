@@ -16,12 +16,17 @@ terminal = ["tui", "termion"]
 alvr_common = { path = "../../common" }
 alvr_session = { path = "../../session" }
 
-iced = { git = "https://github.com/iced-rs/iced", optional = true, features = ["image"] }
+# todo: use iced stable. blocked by conflict on wasm-bindgen for wgpu
+iced = { git = "https://github.com/iced-rs/iced", optional = true, features = [
+    "image",
+] }
 iced_native = { git = "https://github.com/iced-rs/iced", optional = true }
 fluent = "0.16"
 fluent-syntax = "0.11"
 fluent-langneg = "0.13"
-rhai = { version = "1", features = ["serde"] }
+lazy_static = "1"
+num = "0.4"
+rhai = { version = "1", features = ["serde", "f32_float"] }
 serde = "1"
 serde_json = "1"
 settings-schema = { path = "../../settings-schema", features = [

@@ -1,11 +1,9 @@
+use super::{
+    reset, DrawingData, DrawingResult, InitData, SettingControlEvent, SettingControlEventType,
+    UpdatingData, ROW_HEIGHT,
+};
 use iced::{Alignment, Length, Row, Space, Toggler};
 use serde_json as json;
-
-use crate::dashboard::pretty::tabs::{
-    settings_controls::ROW_HEIGHT, SettingControlEvent, SettingControlEventType,
-};
-
-use super::{reset, DrawingData, DrawingResult, InitData, UpdatingData};
 
 pub struct Control {
     default: bool,
@@ -40,7 +38,8 @@ impl Control {
                     store_session(session);
                 "#,
                 data.string_path, value
-            ));
+            ))
+            .unwrap();
 
             self.value = value;
         }

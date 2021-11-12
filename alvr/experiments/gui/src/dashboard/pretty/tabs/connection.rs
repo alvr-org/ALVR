@@ -82,7 +82,7 @@ impl ConnectionPanel {
         let mut scrollable = Scrollable::new(&mut self.scrollable_state)
             .style(ScrollableStyle)
             .spacing(10)
-            .padding(10);
+            .padding(15);
 
         scrollable = scrollable.push(Text::new("New clients").size(20));
 

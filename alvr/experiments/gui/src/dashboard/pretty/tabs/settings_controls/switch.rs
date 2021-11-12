@@ -1,12 +1,8 @@
-use crate::dashboard::pretty::tabs::{
-    settings_controls::{draw_result, INDENTATION, ROW_HEIGHT, ROW_HEIGHT_UNITS},
-    SettingControlEventType, SettingsEvent,
-};
-
 use super::{
-    reset, DrawingData, DrawingResult, InitData, SettingControl, SettingControlEvent, UpdatingData,
+    reset, DrawingData, DrawingResult, InitData, SettingControl, SettingControlEvent,
+    SettingControlEventType, UpdatingData, ROW_HEIGHT,
 };
-use iced::{Alignment, Length, Row, Space, Text, Toggler};
+use iced::{Alignment, Length, Row, Space, Toggler};
 use serde_json as json;
 use settings_schema::{SchemaNode, SwitchDefault};
 
@@ -39,11 +35,13 @@ impl Control {
             let session_switch = json::from_value::<SwitchDefault<json::Value>>(session).unwrap();
 
             self.enabled = session_switch.enabled;
+            self.reset_control
+                .update(session_switch.enabled != self.default_enabled);
 
             self.inner_control.update(UpdatingData {
                 event: SettingControlEventType::SessionUpdated(session_switch.content),
                 ..data
-            })
+            });
         } else if data.path.pop().is_some() {
             self.inner_control.update(UpdatingData {
                 string_path: format!("{}.content", data.string_path),
@@ -62,8 +60,9 @@ impl Control {
                     {}.enabled = {};
                     store_session(session);
                 "#,
-                data.string_path, self.enabled
-            ));
+                data.string_path, enabled
+            ))
+            .unwrap();
 
             self.enabled = enabled;
         }
@@ -82,7 +81,7 @@ impl Control {
             .into();
 
         let (left, right) = if self.enabled && (data.advanced || !self.content_advanced) {
-            draw_result(self.inner_control.view(data))
+            super::draw_result(self.inner_control.view(data))
         } else {
             (
                 Space::with_height(0.into()).into(),

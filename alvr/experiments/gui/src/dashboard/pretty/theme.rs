@@ -1,4 +1,4 @@
-use iced::{button, container, scrollable, text_input, Color, TextInput};
+use iced::{button, container, scrollable, text_input, tooltip, Color, TextInput};
 
 // The theme is fixed to dark.
 
@@ -13,6 +13,12 @@ pub const ELEMENT_BACKGROUND: Color = Color {
     r: 0.25,
     g: 0.25,
     b: 0.25,
+    a: 1.0,
+};
+pub const MIDDLE: Color = Color {
+    r: 0.5,
+    g: 0.5,
+    b: 0.5,
     a: 1.0,
 };
 pub const FOREGROUND: Color = Color::WHITE;
@@ -43,6 +49,17 @@ impl container::StyleSheet for ContainerStyle {
             text_color: FOREGROUND.into(),
             background: BACKGROUND.into(),
             ..Default::default()
+        }
+    }
+}
+
+pub struct ContainerSecondaryStyle;
+
+impl container::StyleSheet for ContainerSecondaryStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            background: BACKGROUND_SECONDARY.into(),
+            ..ContainerStyle.style()
         }
     }
 }
@@ -130,6 +147,19 @@ impl text_input::StyleSheet for TextInputStyle {
     }
 
     fn selection_color(&self) -> Color {
-        BACKGROUND
+        MIDDLE
+    }
+}
+
+pub struct TooltipStyle;
+
+impl container::StyleSheet for TooltipStyle {
+    fn style(&self) -> container::Style {
+        container::Style {
+            text_color: FOREGROUND.into(),
+            background: BACKGROUND_SECONDARY.into(),
+            border_radius: 5.0,
+            ..Default::default()
+        }
     }
 }

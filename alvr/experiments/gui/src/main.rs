@@ -3,46 +3,68 @@ mod dashboard;
 use alvr_session::{ClientConnectionDesc, EventSeverity, Raw, ServerEvent, SessionDesc};
 use dashboard::Dashboard;
 use rhai::Dynamic;
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
+};
+
+lazy_static::lazy_static! {
+    static ref SESSION: Arc<Mutex<SessionDesc>> = {
+        let mut session = SessionDesc::default();
+        session.client_connections.insert(
+            "1234.client.alvr".into(),
+            ClientConnectionDesc {
+                display_name: "Oculus Quest 2".into(),
+                manual_ips: HashSet::new(),
+                trusted: false,
+            },
+        );
+        session.client_connections.insert(
+            "4321.client.alvr".into(),
+            ClientConnectionDesc {
+                display_name: "Oculus Quest".into(),
+                manual_ips: HashSet::new(),
+                trusted: true,
+            },
+        );
+        session.client_connections.insert(
+            "51423.client.alvr".into(),
+            ClientConnectionDesc {
+                display_name: "Oculus Quest 2".into(),
+                manual_ips: HashSet::new(),
+                trusted: true,
+            },
+        );
+
+        Arc::new(Mutex::new(session))
+    };
+
+    static ref SESSION_MODIFIED: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+}
 
 fn load_session() -> SessionDesc {
-    let mut session = SessionDesc::default();
-    session.client_connections.insert(
-        "1234.client.alvr".into(),
-        ClientConnectionDesc {
-            display_name: "Oculus Quest 2".into(),
-            manual_ips: HashSet::new(),
-            trusted: false,
-        },
-    );
-    session.client_connections.insert(
-        "4321.client.alvr".into(),
-        ClientConnectionDesc {
-            display_name: "Oculus Quest".into(),
-            manual_ips: HashSet::new(),
-            trusted: true,
-        },
-    );
-    session.client_connections.insert(
-        "51423.client.alvr".into(),
-        ClientConnectionDesc {
-            display_name: "Oculus Quest 2".into(),
-            manual_ips: HashSet::new(),
-            trusted: true,
-        },
-    );
-
-    println!("load_session");
-
-    session
+    SESSION.lock().unwrap().clone()
 }
 
 fn load_session_dyn() -> Dynamic {
     rhai::serde::to_dynamic(load_session()).unwrap()
 }
 
-fn store_session(session: Dynamic) {
-    println!("store_session");
+fn store_session(session: Dynamic) -> String {
+    match rhai::serde::from_dynamic(&session) {
+        Ok(res) => {
+            *SESSION.lock().unwrap() = res;
+            SESSION_MODIFIED.store(true, Ordering::Relaxed);
+
+            println!("store_session");
+
+            "".into()
+        }
+        Err(e) => e.to_string(),
+    }
 }
 
 fn add_client(hostname: &str, ip: &str) {
@@ -58,7 +80,7 @@ fn remove_client(hostname: &str) {
 }
 
 fn main() {
-    let dashboard = Dashboard::new();
+    let dashboard = Arc::new(Dashboard::new());
 
     dashboard.report_event(ServerEvent::Raw(Raw {
         timestamp: "time1".into(),
@@ -90,13 +112,19 @@ fn main() {
     engine.register_fn("trust_client", trust_client);
     engine.register_fn("remove_client", remove_client);
 
-    dashboard.run(
-        Box::new(load_session),
+    dashboard.run(load_session(), {
+        let dashboard = Arc::clone(&dashboard);
         Box::new(move |command| {
-            engine
+            let res = engine
                 .eval_with_scope::<rhai::Dynamic>(&mut scope, &command)
                 .map(|d| d.to_string())
-                .unwrap_or_else(|e| e.to_string())
-        }),
-    );
+                .map_err(|e| e.to_string());
+
+            if SESSION_MODIFIED.load(Ordering::Relaxed) {
+                dashboard.report_event(ServerEvent::Session(SESSION.lock().unwrap().clone()))
+            }
+
+            res
+        })
+    });
 }

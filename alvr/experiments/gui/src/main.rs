@@ -1,5 +1,5 @@
-use alvr_session::{ClientConnectionDesc, EventSeverity, Raw, ServerEvent, SessionDesc};
 use alvr_gui::Dashboard;
+use alvr_session::{ClientConnectionDesc, EventSeverity, Raw, ServerEvent, SessionDesc};
 use rhai::Dynamic;
 use std::{
     collections::HashSet,

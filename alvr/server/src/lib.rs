@@ -180,9 +180,11 @@ fn init() {
                 }
             }
 
-            let web_server =
-                alvr_common::show_err_async(web_server::web_server(log_sender, events_sender.clone()));
-            
+            let web_server = alvr_common::show_err_async(web_server::web_server(
+                log_sender,
+                events_sender.clone(),
+            ));
+
             let dashboard_event_handler = dashboard::event_listener(events_sender);
 
             tokio::select! {

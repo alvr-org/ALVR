@@ -15,7 +15,7 @@ use tokio::sync::broadcast::{error::RecvError, Sender};
 // this thread gets interrupted when SteamVR closes
 // todo: handle this in a better way
 #[cfg(not(feature = "new-dashboard"))]
-pub fn ui_thread(_: Sender<String>) -> StrResult {
+pub fn ui_thread() -> StrResult {
     const WINDOW_WIDTH: u32 = 800;
     const WINDOW_HEIGHT: u32 = 600;
 

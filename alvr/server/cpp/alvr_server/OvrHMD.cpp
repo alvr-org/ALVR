@@ -13,6 +13,8 @@
 
 #ifdef _WIN32
 	#include "platform/win32/CEncoder.h"
+#elif __APPLE__
+	#include "platform/macos/CEncoder.h"
 #else
 	#include "platform/linux/CEncoder.h"
 #endif
@@ -389,6 +391,8 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 			m_directModeComponent->SetEncoder(m_encoder);
 
 			m_encoder->OnStreamStart();
+#elif __APPLE__
+			m_encoder = std::make_shared<CEncoder>();
 #else
 			// This has to be set after initialization is done, because something in vrcompositor is setting it to 90Hz in the meantime
 			vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().m_refreshRate));

@@ -20,11 +20,7 @@ public:
 		return m_loaded;
 	}
 
-	int32_t m_nAdapterIndex;
-
 	int m_refreshRate;
 	uint32_t m_renderWidth;
 	uint32_t m_renderHeight;
-	int32_t m_recommendedTargetWidth;
-	int32_t m_recommendedTargetHeight;
 };

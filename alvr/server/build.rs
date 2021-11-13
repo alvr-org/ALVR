@@ -102,6 +102,9 @@ fn main() {
         .define("_MBCS", None)
         .define("_MT", None);
 
+    #[cfg(target_os = "macos")]
+    build.define("__APPLE__", None);
+
     // #[cfg(debug_assertions)]
     // build.define("ALVR_DEBUG_LOG", None);
 

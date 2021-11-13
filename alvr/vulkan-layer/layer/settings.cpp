@@ -47,11 +47,6 @@ void Settings::Load()
 		m_renderWidth = config.get("eye_resolution_width").get<int64_t>() * 2;
 		m_renderHeight = config.get("eye_resolution_height").get<int64_t>();
 
-		m_recommendedTargetWidth = config.get("target_eye_resolution_width").get<int64_t>() * 2;
-		m_recommendedTargetHeight = config.get("target_eye_resolution_height").get<int64_t>();
-
-		m_nAdapterIndex = (int32_t)config.get("adapter_index").get<int64_t>();
-
 		m_refreshRate = (int)config.get("refresh_rate").get<int64_t>();
 		
 		Debug("Config JSON: %hs\n", json.c_str());

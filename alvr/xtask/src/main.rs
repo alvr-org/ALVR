@@ -144,22 +144,21 @@ pub fn build_server(
         .unwrap();
     }
 
-    if cfg!(not(target_os = "macos")) {
-        command::run_in(
-            &afs::workspace_dir().join("alvr/server"),
-            &format!(
-                "cargo build {} --no-default-features --features {}",
-                build_flags,
-                server_features.join(",")
-            ),
-        )
-        .unwrap();
-        fs::copy(
-            artifacts_dir.join(afs::dynlib_fname("alvr_server")),
-            layout.openvr_driver_lib(),
-        )
-        .unwrap();
-    }
+    command::run_in(
+        &afs::workspace_dir().join("alvr/server"),
+        &format!(
+            "cargo build {} --no-default-features --features {}",
+            build_flags,
+            server_features.join(",")
+        ),
+    )
+    .unwrap();
+    fs::copy(
+        artifacts_dir.join(afs::dynlib_fname("alvr_server")),
+        layout.openvr_driver_lib(),
+    )
+    .unwrap();
+
     command::run_in(
         &afs::workspace_dir().join("alvr/launcher"),
         &format!(
@@ -174,6 +173,7 @@ pub fn build_server(
         layout.launcher_exe(),
     )
     .unwrap();
+
     if experiments {
         let dir_content = dirx::get_dir_content2(
             "alvr/experiments/gui/resources/languages",

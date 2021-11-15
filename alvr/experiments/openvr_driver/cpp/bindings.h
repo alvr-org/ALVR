@@ -3,8 +3,8 @@
 #include "openvr_driver.h"
 #include <stdint.h>
 
-struct DriverConfigUpdate {
-    uint32_t preferred_view_width;
+struct VideoConfig {
+    uint32_t preferred_view_width; // view is the single eye viewport
     uint32_t preferred_view_height;
     vr::HmdRect2_t fov[2];
     float ipd_m;
@@ -17,7 +17,6 @@ struct InitializationConfig {
     vr::ETrackedControllerRole controller_role[10];
     uint64_t tracked_devices_count;
     bool presentation;
-    DriverConfigUpdate config;
 };
 
 struct MotionData {
@@ -73,7 +72,7 @@ create_scalar_component(uint64_t device_index, const char *path, vr::EVRScalarUn
 extern "C" void update_scalar_component(vr::VRInputComponentHandle_t component, float value);
 
 // Server events
-extern "C" void update_config(DriverConfigUpdate config);
+extern "C" void update_video_config(VideoConfig config);
 extern "C" void set_tracking_data(const vr::DriverPose_t *poses, uint32_t count);
 extern "C" void vendor_event(vr::EVREventType event_type);
 extern "C" void restart();

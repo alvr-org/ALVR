@@ -52,6 +52,13 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
 }
 
 fn main() {
+    #[cfg(windows)]
+    {
+        let mut res = winres::WindowsResource::new();
+        res.set_icon("res/launcher.ico");
+        res.compile().unwrap();
+    }
+
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let cpp_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("cpp");
 

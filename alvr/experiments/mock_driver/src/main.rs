@@ -1,4 +1,5 @@
-use alvr_ipc::{DriverRequest, Layer, ResponseForDriver, SsePacket};
+use alvr_common::Fov;
+use alvr_ipc::{DriverRequest, Layer, ResponseForDriver, SsePacket, VideoConfigUpdate};
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -12,40 +13,54 @@ const VK_FORMAT_R8G8B8A8_SRGB: u32 = 43;
 const DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: u32 = 29;
 
 fn main() {
-    let (mut ipc_client, mut sse_receiver) = alvr_ipc::ipc_connect("driver").unwrap();
+    println!("Waiting for connection...");
+
+    let (mut ipc_client, mut sse_receiver) =
+        alvr_ipc::ipc_connect("/tmp/alvr_driver_request.sock", "/tmp/alvr_driver_sse.sock")
+            .unwrap();
+
+    println!("Server connected");
 
     let ipc_running = Arc::new(AtomicBool::new(true));
 
-    let display_config = if let ResponseForDriver::InitializationConfig {
-        tracked_devices: _,
-        display_config,
+    println!("Requesting initialization config...");
+    let presentation = if let ResponseForDriver::InitializationConfig {
+        tracked_devices,
+        presentation,
     } = ipc_client
         .request(&DriverRequest::GetInitializationConfig)
         .unwrap()
     {
-        display_config
+        dbg!(tracked_devices);
+        presentation
     } else {
         unreachable!()
     };
 
-    let display_config = display_config.unwrap(); // for now, there must always be a HMD
-    let display_config = Arc::new(Mutex::new(display_config));
+    let video_config = Arc::new(Mutex::new(VideoConfigUpdate {
+        preferred_view_size: (500, 500),
+        fov: [Fov::default(), Fov::default()],
+        ipd_m: 0.65,
+        fps: 60.0,
+    }));
 
     thread::spawn({
         let ipc_running = Arc::clone(&ipc_running);
-        let display_config = Arc::clone(&display_config);
+        let video_config = Arc::clone(&video_config);
         move || {
             while ipc_running.load(Ordering::Relaxed) {
                 if let Ok(maybe_message) = sse_receiver.receive_non_blocking() {
                     match maybe_message {
                         Some(SsePacket::Restart) => {
+                            println!("Restart requested. todo: restart");
                             ipc_running.store(false, Ordering::Relaxed);
                             // todo: implement restart
                         }
-                        Some(SsePacket::UpdateVideoConfig(video_config)) => {
-                            display_config.lock().unwrap().config = video_config;
+                        Some(SsePacket::UpdateVideoConfig(config)) => {
+                            println!("Video config updated: {:?}", &config);
+                            *video_config.lock().unwrap() = config;
                         }
-                        Some(_) => (),
+                        Some(_) => println!("Ignored server packet"),
                         None => thread::sleep(Duration::from_millis(2)),
                     }
                 } else {
@@ -70,7 +85,8 @@ fn main() {
         running: Arc::clone(&ipc_running),
     };
 
-    if display_config.lock().unwrap().presentation {
+    if presentation {
+        println!("Presentation enabled. Requesting a swapchain");
         let (swapchain_id, texture_handles) = if let ResponseForDriver::Swapchain { id, textures } =
             ipc_client
                 .request(&DriverRequest::CreateSwapchain {
@@ -96,6 +112,7 @@ fn main() {
         let mut presentation_time = Instant::now();
 
         while ipc_running.load(Ordering::Relaxed) {
+            println!("Get next swapchain index");
             let idx = if let ResponseForDriver::SwapchainIndex(idx) = ipc_client
                 .request(&DriverRequest::GetNextSwapchainIndex { id: swapchain_id })
                 .unwrap()
@@ -105,14 +122,16 @@ fn main() {
                 unreachable!()
             };
 
+            println!("Rendering");
             // todo: render something here
             // texture[idx];
 
             thread::sleep(
                 Instant::now() - presentation_time
-                    + Duration::from_secs_f32(1.0 / display_config.lock().unwrap().config.fps),
+                    + Duration::from_secs_f32(1.0 / video_config.lock().unwrap().fps),
             );
 
+            println!("Present layers");
             presentation_time = Instant::now();
             ipc_client
                 .request(&DriverRequest::PresentLayers(vec![vec![
@@ -134,6 +153,7 @@ fn main() {
                 .unwrap();
         }
     } else {
+        println!("Presentation disabled. Idle");
         while ipc_running.load(Ordering::Relaxed) {
             thread::sleep(Duration::from_millis(500));
         }

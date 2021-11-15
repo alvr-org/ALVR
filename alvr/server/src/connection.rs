@@ -1,5 +1,5 @@
 use crate::{
-    connection_utils, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
+    connection_utils, ClientListAction, CLIENTS_UPDATED_NOTIFIER, LEGACY_SENDER,
     RESTART_NOTIFIER, SESSION_MANAGER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
@@ -444,19 +444,21 @@ async fn client_handshake(
         sharpening: session_settings.video.color_correction.content.sharpening,
     };
 
-    if SESSION_MANAGER.lock().get().openvr_config != new_openvr_config {
-        SESSION_MANAGER.lock().get_mut().openvr_config = new_openvr_config;
+    SESSION_MANAGER.lock().get_mut().openvr_config = new_openvr_config;
 
-        control_sender
-            .send(&ServerControlPacket::Restarting)
-            .await
-            .ok();
+    // if SESSION_MANAGER.lock().get().openvr_config != new_openvr_config {
+    //     SESSION_MANAGER.lock().get_mut().openvr_config = new_openvr_config;
 
-        crate::notify_restart_driver();
+    //     control_sender
+    //         .send(&ServerControlPacket::Restarting)
+    //         .await
+    //         .ok();
 
-        // waiting for execution canceling
-        future::pending::<()>().await;
-    }
+    //     crate::notify_restart_driver();
+
+    //     // waiting for execution canceling
+    //     future::pending::<()>().await;
+    // }
 
     Ok(ConnectionInfo {
         client_ip,
@@ -671,7 +673,7 @@ async fn connection_pipeline() -> StrResult {
         let mut socket_sender = stream_socket.request_stream::<_, LEGACY>().await?;
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
+            *LEGACY_SENDER.lock() = Some(data_sender);
 
             while let Some(data) = data_receiver.recv().await {
                 let mut buffer = socket_sender.new_buffer(&(), data.len())?;

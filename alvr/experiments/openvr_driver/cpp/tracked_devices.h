@@ -32,7 +32,7 @@ class TrackedDevice : public vr::ITrackedDeviceServerDriver {
 class Hmd : public TrackedDevice, vr::IVRDisplayComponent, vr::IVRDriverDirectModeComponent {
   public:
     bool do_presentation;
-    DriverConfigUpdate config;
+    VideoConfig video_config;
     std::chrono::steady_clock::time_point next_virtual_vsync;
     std::vector<Layer> current_layers; // reset after every Present()
 
@@ -69,8 +69,7 @@ class Hmd : public TrackedDevice, vr::IVRDisplayComponent, vr::IVRDriverDirectMo
     virtual void PostPresent() override;
     virtual void GetFrameTiming(vr::DriverDirectMode_FrameTiming *frame_timing) override;
 
-    Hmd(uint64_t device_index, bool do_presentation, DriverConfigUpdate config)
-        : TrackedDevice(device_index), do_presentation(do_presentation), config(config) {}
+    Hmd(uint64_t device_index, bool do_presentation);
 };
 
 class Controller : public TrackedDevice {

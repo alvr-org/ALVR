@@ -154,47 +154,41 @@ pub fn build_server(
     )
     .unwrap();
     fs::copy(
-        artifacts_dir.join(afs::dynlib_fname("alvr_server")),
-        layout.openvr_driver_lib(),
+        artifacts_dir.join(afs::exec_fname("alvr_server")),
+        layout.executables_dir.join(afs::exec_fname("ALVR Server")),
     )
     .unwrap();
 
     command::run_in(
-        &afs::workspace_dir().join("alvr/launcher"),
-        &format!(
-            "cargo build {} --no-default-features --features {}",
-            build_flags,
-            launcher_features.join(",")
-        ),
+        &afs::workspace_dir().join("alvr/experiments/openvr_driver"),
+        &format!("cargo build {}", build_flags),
     )
     .unwrap();
     fs::copy(
-        artifacts_dir.join(afs::exec_fname("alvr_launcher")),
-        layout.launcher_exe(),
+        artifacts_dir.join(afs::dynlib_fname("alvr_openvr_driver")),
+        layout.openvr_driver_lib(),
     )
     .unwrap();
 
-    if experiments {
-        let dir_content = dirx::get_dir_content2(
-            "alvr/experiments/gui/resources/languages",
-            &dirx::DirOptions { depth: 1 },
-        )
-        .unwrap();
-        let items: Vec<&String> = dir_content.directories[1..]
-            .iter()
-            .chain(dir_content.files.iter())
-            .collect();
+    let dir_content = dirx::get_dir_content2(
+        "alvr/experiments/gui/resources/languages",
+        &dirx::DirOptions { depth: 1 },
+    )
+    .unwrap();
+    let items: Vec<&String> = dir_content.directories[1..]
+        .iter()
+        .chain(dir_content.files.iter())
+        .collect();
 
-        let destination = afs::server_build_dir().join("languages");
-        fs::create_dir_all(&destination).unwrap();
-        fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
-    }
+    let destination = afs::server_build_dir().join("languages");
+    fs::create_dir_all(&destination).unwrap();
+    fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
 
     fs::copy(
         Path::new("alvr/xtask/resources/driver.vrdrivermanifest"),
         layout.openvr_driver_manifest(),
     )
-    .expect("copy openVR driver manifest");
+    .unwrap();
 
     if cfg!(windows) {
         let dir_content = dirx::get_dir_content("alvr/server/cpp/bin/windows").unwrap();
@@ -406,5 +400,6 @@ fn main() {
         return;
     }
 
-    println!("\nDone (in {:?})\n", Instant::now() - begin_time);
+    let exec_time_s = (Instant::now() - begin_time).as_secs();
+    println!("\nDone [{}m {}s]\n", exec_time_s / 60, exec_time_s % 60);
 }

@@ -261,7 +261,7 @@ dependencies = [
  "semver 1.0.4",
  "serde_json",
  "single-instance",
- "sysinfo",
+ "sysinfo 0.20.5",
  "ureq",
  "winreg 0.9.0",
  "winres",
@@ -299,6 +299,7 @@ dependencies = [
  "alvr_common",
  "alvr_filesystem",
  "alvr_gui",
+ "alvr_ipc",
  "alvr_session",
  "alvr_sockets",
  "bincode",
@@ -322,6 +323,8 @@ dependencies = [
  "serde",
  "serde_json",
  "settings-schema",
+ "single-instance",
+ "sysinfo 0.21.1",
  "tempfile",
  "tokio",
  "tokio-tungstenite",
@@ -5043,6 +5046,21 @@ name = "sysinfo"
 version = "0.20.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e223c65cd36b485a34c2ce6e38efa40777d31c4166d9076030c74cdcf971679f"
+dependencies = [
+ "cfg-if 1.0.0",
+ "core-foundation-sys 0.8.3",
+ "libc",
+ "ntapi",
+ "once_cell",
+ "rayon",
+ "winapi",
+]
+
+[[package]]
+name = "sysinfo"
+version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb6c2c4a6ca462f07ca89841a2618dca6e405304d19ae238997e64915d89f513"
 dependencies = [
  "cfg-if 1.0.0",
  "core-foundation-sys 0.8.3",

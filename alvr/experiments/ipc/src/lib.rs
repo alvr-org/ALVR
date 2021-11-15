@@ -4,8 +4,8 @@ pub use packets::*;
 
 use alvr_common::prelude::*;
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
-use serde::{de::DeserializeOwned, Serialize};
-use std::{io::ErrorKind, marker::PhantomData, thread, time::Duration};
+use serde::de::DeserializeOwned;
+use std::{io::ErrorKind, thread, time::Duration};
 
 fn deserialize_non_blocking<R: DeserializeOwned>(
     mut socket: &mut LocalSocketStream,
@@ -19,61 +19,53 @@ fn deserialize_non_blocking<R: DeserializeOwned>(
     }
 }
 
-pub struct IpcClient<S, R> {
+pub struct IpcClient {
     socket: LocalSocketStream,
-    _phantom: PhantomData<(S, R)>,
 }
 
-impl<S: Serialize, R: DeserializeOwned> IpcClient<S, R> {
-    pub fn request(&mut self, message: &S) -> StrResult<R> {
+impl IpcClient {
+    pub fn request(&mut self, message: &DriverRequest) -> StrResult<ResponseForDriver> {
         trace_err!(bincode::serialize_into(&mut self.socket, message))?;
         trace_err!(bincode::deserialize_from(&mut self.socket))
     }
 }
 
-pub struct IpcSseReceiver<R> {
+pub struct IpcSseReceiver {
     socket: LocalSocketStream,
-    _phantom: PhantomData<R>,
 }
 
-impl<R: DeserializeOwned> IpcSseReceiver<R> {
-    pub fn receive_non_blocking(&mut self) -> StrResult<Option<R>> {
+impl IpcSseReceiver {
+    pub fn receive_non_blocking(&mut self) -> StrResult<Option<SsePacket>> {
         deserialize_non_blocking(&mut self.socket)
     }
 }
 
-pub fn ipc_connect<CS, CR, SR>(name: &str) -> StrResult<(IpcClient<CS, CR>, IpcSseReceiver<SR>)> {
-    let request_socket = trace_err!(LocalSocketStream::connect(format!(
-        "/tmp/alvr_{}_request.sock",
-        name
-    )))?;
-    let sse_socket = trace_err!(trace_err!(LocalSocketListener::bind(format!(
-        "/tmp/alvr_{}_sse.sock",
-        name
-    )))?
-    .accept())?;
+pub fn ipc_connect(
+    request_pipe_name: &str,
+    sse_pipe_name: &str,
+) -> StrResult<(IpcClient, IpcSseReceiver)> {
+    let request_socket = trace_err!(LocalSocketStream::connect(request_pipe_name))?;
+    let sse_socket = trace_err!(trace_err!(LocalSocketListener::bind(sse_pipe_name))?.accept())?;
 
     sse_socket.set_nonblocking(true).unwrap();
 
     Ok((
         IpcClient {
             socket: request_socket,
-            _phantom: PhantomData,
         },
-        IpcSseReceiver {
-            socket: sse_socket,
-            _phantom: PhantomData,
-        },
+        IpcSseReceiver { socket: sse_socket },
     ))
 }
 
-pub struct IpcServer<S, R> {
+pub struct IpcServer {
     socket: LocalSocketStream,
-    _phantom: PhantomData<(S, R)>,
 }
-impl<S: Serialize, R: DeserializeOwned> IpcServer<S, R> {
+impl IpcServer {
     // Ok: try again, Err: connection closed
-    pub fn serve_non_blocking(&mut self, mut request_callback: impl FnMut(R) -> S) -> StrResult {
+    pub fn serve_non_blocking(
+        &mut self,
+        mut request_callback: impl FnMut(DriverRequest) -> ResponseForDriver,
+    ) -> StrResult {
         while let Some(request) = deserialize_non_blocking(&mut self.socket)? {
             let response = request_callback(request);
 
@@ -86,42 +78,35 @@ impl<S: Serialize, R: DeserializeOwned> IpcServer<S, R> {
     }
 }
 
-pub struct IpcSseSender<S> {
+pub struct IpcSseSender {
     socket: LocalSocketStream,
-    _phantom: PhantomData<S>,
 }
 
-impl<S: Serialize> IpcSseSender<S> {
-    pub fn send(&mut self, message: &S) -> StrResult {
+impl IpcSseSender {
+    pub fn send(&mut self, message: &SsePacket) -> StrResult {
         trace_err!(bincode::serialize_into(&mut self.socket, message))
     }
 }
 
-pub fn ipc_listen<CS, CR, SR>(name: &str) -> StrResult<(IpcServer<CS, CR>, IpcSseSender<SR>)> {
-    let request_socket = trace_err!(trace_err!(LocalSocketListener::bind(format!(
-        "/tmp/alvr_{}_request.sock",
-        name
-    )))?
-    .accept())?;
+pub fn ipc_listen(
+    request_pipe_name: &str,
+    sse_pipe_name: &str,
+) -> StrResult<(IpcServer, IpcSseSender)> {
+    let listener = trace_err!(LocalSocketListener::bind(request_pipe_name))?;
+    listener.set_nonblocking(true).unwrap();
 
+    let request_socket = trace_err!(listener.accept())?;
     request_socket.set_nonblocking(true).unwrap();
 
     // Wait for the client to setup the sse socket listener
     thread::sleep(Duration::from_millis(100));
 
-    let sse_sender = trace_err!(LocalSocketStream::connect(format!(
-        "/tmp/alvr_{}_sse.sock",
-        name
-    )))?;
+    let sse_sender = trace_err!(LocalSocketStream::connect(sse_pipe_name))?;
 
     Ok((
         IpcServer {
             socket: request_socket,
-            _phantom: PhantomData,
         },
-        IpcSseSender {
-            socket: sse_sender,
-            _phantom: PhantomData,
-        },
+        IpcSseSender { socket: sse_sender },
     ))
 }

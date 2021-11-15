@@ -11,7 +11,7 @@ use alvr_ipc::{
     ResponseForDriver, SsePacket, TrackedDeviceType, VideoConfigUpdate,
 };
 use core::slice;
-use nalgebra::Vector3;
+use nalgebra::{Matrix3, UnitQuaternion, Vector3};
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::ffi::CString;
@@ -27,13 +27,16 @@ use root::vr;
 include!(concat!(env!("OUT_DIR"), "/properties_mappings.rs"));
 
 struct IpcConnections {
-    client: Option<IpcClient<DriverRequest, ResponseForDriver>>,
-    sse_receiver: Option<IpcSseReceiver<SsePacket>>,
+    client: Option<IpcClient>,
+    sse_receiver: Option<IpcSseReceiver>,
 }
 
 lazy_static::lazy_static! {
     static ref IPC_CONNECTIONS: Arc<Mutex<IpcConnections>> = {
-        let (client, sse_receiver) = if let Ok((client, sse_receiver)) = alvr_ipc::ipc_connect("driver") {
+        let (client, sse_receiver) = if let Ok((client, sse_receiver)) = alvr_ipc::ipc_connect(
+            "/tmp/alvr_driver_request.sock",
+            "/tmp/alvr_driver_sse.sock",
+        ) {
             (Some(client), Some(sse_receiver))
         } else {
             (None, None)
@@ -57,8 +60,8 @@ fn log(message: &str) {
     unsafe { drv::_log(c_string.as_ptr()) };
 }
 
-fn ipc_driver_config_to_driver(config: VideoConfigUpdate) -> drv::DriverConfigUpdate {
-    drv::DriverConfigUpdate {
+fn update_video_config(config: VideoConfigUpdate) {
+    let config = drv::VideoConfig {
         preferred_view_width: config.preferred_view_size.0,
         preferred_view_height: config.preferred_view_size.1,
         fov: [
@@ -81,7 +84,9 @@ fn ipc_driver_config_to_driver(config: VideoConfigUpdate) -> drv::DriverConfigUp
         ],
         ipd_m: config.ipd_m,
         fps: config.fps,
-    }
+    };
+
+    unsafe { drv::update_video_config(config) }
 }
 
 fn set_property(device_index: u64, name: &str, value: OpenvrPropValue) {
@@ -179,9 +184,7 @@ extern "C" fn spawn_sse_receiver_loop() -> bool {
                 if let Ok(maybe_message) = receiver.receive_non_blocking() {
                     match maybe_message {
                         Some(message) => match message {
-                            SsePacket::UpdateVideoConfig(config) => unsafe {
-                                drv::update_config(ipc_driver_config_to_driver(config))
-                            },
+                            SsePacket::UpdateVideoConfig(config) => update_video_config(config),
                             SsePacket::UpdateBattery {
                                 device_index,
                                 value,
@@ -230,7 +233,7 @@ extern "C" fn get_initialization_config() -> drv::InitializationConfig {
         let response = client.request(&DriverRequest::GetInitializationConfig);
         if let Ok(ResponseForDriver::InitializationConfig {
             tracked_devices,
-            display_config,
+            presentation,
         }) = response
         {
             let mut tracked_device_serial_numbers = [[0; 20]; 10];
@@ -265,22 +268,12 @@ extern "C" fn get_initialization_config() -> drv::InitializationConfig {
                 }
             }
 
-            let (presentation, config) = if let Some(display_config) = display_config {
-                (
-                    display_config.presentation,
-                    ipc_driver_config_to_driver(display_config.config),
-                )
-            } else {
-                (false, drv::DriverConfigUpdate::default())
-            };
-
             return drv::InitializationConfig {
                 tracked_device_serial_numbers,
                 tracked_device_classes,
                 controller_role,
                 tracked_devices_count: tracked_devices.len() as _,
                 presentation,
-                config,
             };
         }
     }
@@ -402,6 +395,13 @@ extern "C" fn present(layers: *const drv::Layer, count: u32) {
         for drv_layer in drv_layers {
             let mut layer_views = vec![];
             for idx in 0..2 {
+                // Note: both OpenVR and nalgebra use row-major matrix convention
+                let m = drv_layer.poses[0].m;
+                let matrix = Matrix3::new(
+                    m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2],
+                );
+                let orientation = UnitQuaternion::from_matrix(&matrix);
+
                 let fov = Fov {
                     left: drv_layer.fov[idx].vTopLeft.v[0],
                     right: drv_layer.fov[idx].vBottomRight.v[0],
@@ -416,7 +416,7 @@ extern "C" fn present(layers: *const drv::Layer, count: u32) {
                 );
 
                 layer_views.push(Layer {
-                    orientation: todo!(),
+                    orientation,
                     fov,
                     swapchain_id: drv_layer.swapchain_ids[idx],
                     rect_offset,

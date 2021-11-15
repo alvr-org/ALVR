@@ -6,22 +6,21 @@ license = "MIT"
 edition = "2021"
 rust-version = "1.56"
 
-[lib]
-crate-type = ["cdylib"]
-
 [features]
-default = []
+default = ["no-launcher"]
 bundled_ffmpeg = []
 new-dashboard = []
+no-launcher = []
 
 [dependencies]
 alvr_audio = { path = "../audio" }
 alvr_commands = { path = "../commands" }
 alvr_common = { path = "../common" }
 alvr_filesystem = { path = "../filesystem" }
+alvr_ipc = { path = "../experiments/ipc" }
+alvr_gui = { path = "../experiments/gui" }
 alvr_session = { path = "../session" }
 alvr_sockets = { path = "../sockets" }
-alvr_gui = { path = "../experiments/gui" }
 
 # Basic utilities
 chrono = "0.4"
@@ -72,6 +71,8 @@ webbrowser = "0.5" # this is just for opening links in the default browser
 nalgebra = "0.29"
 openvr-driver-sys = { path = "../openvr-driver-sys" }
 rhai = "1"
+single-instance = "0.3"
+sysinfo = "0.21"
 
 [build-dependencies]
 bindgen = "0.59"

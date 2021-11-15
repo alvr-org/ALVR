@@ -3,7 +3,7 @@ use nalgebra::{UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum TrackedDeviceType {
     Hmd,
     LeftHand,
@@ -11,18 +11,13 @@ pub enum TrackedDeviceType {
     GenericTracker,
 }
 
-#[derive(Serialize, Deserialize)]
+// Some property updates that require special handling
+#[derive(Serialize, Deserialize, Debug)]
 pub struct VideoConfigUpdate {
     pub preferred_view_size: (u32, u32),
     pub fov: [Fov; 2],
     pub ipd_m: f32,
     pub fps: f32,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct DisplayConfig {
-    pub presentation: bool,
-    pub config: VideoConfigUpdate,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -74,11 +69,10 @@ pub enum ButtonValue {
     Scalar(f32),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct TrackedDeviceConfig {
     pub serial_number: String,
     pub device_type: TrackedDeviceType,
-    pub battery: f32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -86,7 +80,7 @@ pub enum ResponseForDriver {
     Ok,
     InitializationConfig {
         tracked_devices: Vec<TrackedDeviceConfig>,
-        display_config: Option<DisplayConfig>, // None if there is no Hmd tracked device
+        presentation: bool, // false if only tracking or using the Vulkan layer
     },
     ExtraProperties(Vec<(String, OpenvrPropValue)>),
     ButtonLayout(Vec<(String, InputType)>),

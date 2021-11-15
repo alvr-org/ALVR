@@ -1,6 +1,23 @@
 #include "tracked_devices.h"
 #include <thread>
 
+Hmd::Hmd(uint64_t device_index, bool do_presentation)
+    : TrackedDevice(device_index), do_presentation(do_presentation) {
+    this->video_config = {};
+
+    this->video_config.preferred_view_width = 500;
+    this->video_config.preferred_view_height = 500;
+
+    vr::HmdRect2_t fov = {{45.0, 45.0}, {45.0, 45.0}};
+    this->video_config.fov[0] = fov;
+    this->video_config.fov[1] = fov;
+
+    this->video_config.ipd_m = 0.63;
+    this->video_config.fps = 60.0;
+
+    // Note: video_config will be set to proper values once a client has connected
+}
+
 vr::EVRInitError TrackedDevice::Activate(uint32_t id) {
     this->object_id = id;
     this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(id);
@@ -31,25 +48,25 @@ void *Hmd::GetComponent(const char *component_name_and_version) {
 void Hmd::GetWindowBounds(int32_t *x, int32_t *y, uint32_t *width, uint32_t *height) {
     *x = 0;
     *y = 0;
-    *width = this->config.preferred_view_width * 2;
-    *height = this->config.preferred_view_height;
+    *width = this->video_config.preferred_view_width * 2;
+    *height = this->video_config.preferred_view_height;
 }
 
 void Hmd::GetRecommendedRenderTargetSize(uint32_t *width, uint32_t *height) {
-    *width = this->config.preferred_view_width;
-    *height = this->config.preferred_view_height;
+    *width = this->video_config.preferred_view_width;
+    *height = this->video_config.preferred_view_height;
 }
 
 void Hmd::GetEyeOutputViewport(
     vr::EVREye eye, uint32_t *x, uint32_t *y, uint32_t *width, uint32_t *height) {
-    *x = (eye == vr::Eye_Left ? 0 : this->config.preferred_view_width);
+    *x = (eye == vr::Eye_Left ? 0 : this->video_config.preferred_view_width);
     *y = 0;
-    *width = this->config.preferred_view_width;
-    *height = this->config.preferred_view_height;
+    *width = this->video_config.preferred_view_width;
+    *height = this->video_config.preferred_view_height;
 }
 
 void Hmd::GetProjectionRaw(vr::EVREye eye, float *left, float *right, float *top, float *bottom) {
-    auto fov = this->config.fov[eye];
+    auto fov = this->video_config.fov[eye];
     *left = fov.vTopLeft.v[0];
     *right = fov.vBottomRight.v[0];
     *top = fov.vTopLeft.v[1];
@@ -106,7 +123,7 @@ void Hmd::SubmitLayer(const SubmitLayerPerEye_t (&eye)[2]) {
     auto layer = Layer{};
     for (int idx = 0; idx < 2; idx++) {
         layer.swapchain_ids[idx] = this->swapchains.at(eye[idx].hTexture).id;
-        layer.fov[idx] = this->config.fov[idx];
+        layer.fov[idx] = this->video_config.fov[idx];
         layer.bounds[idx] = eye[idx].bounds;
         layer.poses[idx] = eye[idx].mHmdPose;
     }
@@ -123,7 +140,7 @@ void Hmd::Present(vr::SharedTextureHandle_t sync_texture) {
 }
 
 void Hmd::PostPresent() {
-    this->next_virtual_vsync += std::chrono::nanoseconds(int(1'000'000'000 / this->config.fps));
+    this->next_virtual_vsync += std::chrono::nanoseconds(int(1'000'000'000 / this->video_config.fps));
     std::this_thread::sleep_until(this->next_virtual_vsync);
 
     vr::VRServerDriverHost()->VsyncEvent(0);

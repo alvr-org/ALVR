@@ -620,7 +620,7 @@ pub fn session_settings_default() -> SettingsDefault {
             tracking_ref_only: false,
             enable_vive_tracker_proxy: false,
             controllers: SwitchDefault {
-                enabled: true,
+                enabled: false,
                 content: ControllersDescDefault {
                     mode_idx: 7,
                     tracking_system_name: "oculus".into(),

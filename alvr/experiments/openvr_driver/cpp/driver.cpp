@@ -25,7 +25,7 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
             TrackedDevice *device;
 
             if (config.tracked_device_classes[idx] == vr::TrackedDeviceClass_HMD) {
-                this->hmd = Hmd(idx, config.presentation, config.config);
+                this->hmd = Hmd(idx, config.presentation);
                 device = &*this->hmd;
             } else if (config.tracked_device_classes[idx] == vr::TrackedDeviceClass_Controller &&
                        config.controller_role[idx] == vr::TrackedControllerRole_LeftHand) {
@@ -163,10 +163,10 @@ void update_scalar_component(vr::VRInputComponentHandle_t component, float value
     handle_input_error(vr::VRDriverInput()->UpdateScalarComponent(component, value, 0));
 }
 
-void update_config(DriverConfigUpdate config) {
+void update_video_config(VideoConfig config) {
     auto object_id = g_driver_provider.hmd->object_id;
 
-    g_driver_provider.hmd->config = config;
+    g_driver_provider.hmd->video_config = config;
 
     vr::VRServerDriverHost()->SetRecommendedRenderTargetSize(
         object_id, config.preferred_view_width, config.preferred_view_height);

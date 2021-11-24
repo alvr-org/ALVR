@@ -17,5 +17,7 @@ env_logger = "0.9"
 openxr-sys = "0.9"
 pollster = "0.2"
 winit = "0.25"
-wgpu = { git = "https://github.com/gfx-rs/wgpu" }
-wgpu-hal = { git = "https://github.com/gfx-rs/wgpu", features = ["vulkan"] }
+wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
+wgpu-hal = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4", features = [
+    "vulkan",
+] }

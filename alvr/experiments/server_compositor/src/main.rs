@@ -6,7 +6,7 @@ use alvr_graphics::{
     convert::{self, SwapchainCreateData, SwapchainCreateInfo, TextureType},
     foveated_rendering::{FoveatedRenderingPass, FrDirection},
     slicing::{AlignmentDirection, SlicingPass},
-    Context, TARGET_FORMAT,
+    GraphicsContext, TARGET_FORMAT,
 };
 use alvr_session::{ColorCorrectionDesc, FoveatedRenderingDesc};
 use color_correction::ColorCorrectionPass;
@@ -53,7 +53,7 @@ pub struct CompositionLayerView<'a> {
 // FFR and changing the target view size require recreating the compositor completely, which might
 // cause a lag spike.
 pub struct Compositor {
-    context: Arc<Context>,
+    context: Arc<GraphicsContext>,
 
     inner: CompositingPass,
     color_corrector: ColorCorrectionPass,
@@ -67,7 +67,7 @@ pub struct Compositor {
 
 impl Compositor {
     pub fn new(
-        context: Arc<Context>,
+        context: Arc<GraphicsContext>,
         target_view_size: (u32, u32), // expected size of a layer after cropping
         foveation_desc: Option<&FoveatedRenderingDesc>,
         slices_count: usize,
@@ -259,7 +259,7 @@ fn run() -> StrResult {
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
 
-    let context = Arc::new(Context::new(None)?);
+    let context = Arc::new(GraphicsContext::new(None)?);
 
     let compositor = Compositor::new(context.clone(), (400, 300), None, 1);
 

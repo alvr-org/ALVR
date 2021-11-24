@@ -19,7 +19,7 @@ serde = "1"
 tokio = { version = "1" }
 
 [target.'cfg(windows)'.dependencies]
-widestring = "0.4"
+widestring = "0.5"
 winapi = { version = "0.3", features = [
     "impl-default",
     "combaseapi",

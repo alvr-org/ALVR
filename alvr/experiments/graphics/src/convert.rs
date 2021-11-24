@@ -1,6 +1,6 @@
-use crate::Context;
 use alvr_common::prelude::*;
 use ash::{extensions::khr, vk};
+use core::sync;
 use openxr_sys::SwapchainUsageFlags;
 use std::{any::Any, ffi::CStr, slice, sync::Arc};
 use wgpu::{
@@ -8,6 +8,8 @@ use wgpu::{
     TextureFormat, TextureUsages,
 };
 use wgpu_hal as hal;
+
+use crate::GraphicsContext;
 
 pub const TARGET_VULKAN_VERSION: u32 = vk::make_api_version(1, 0, 0, 0);
 pub const DEVICE_FEATURES: Features = Features::PUSH_CONSTANTS;
@@ -146,19 +148,19 @@ pub fn create_vulkan_device(
     }
 }
 
-impl Context {
+impl GraphicsContext {
     // This constructor is used primarily for the vulkan layer. It corresponds to xrCreateSession
     // with GraphicsBindingVulkanKHR. If owned == false, this Context must be dropped before
     // destroying vk_instance and vk_device.
     pub fn from_vulkan(
-        owned: bool, // should wgpu be in change of destrying the vulkan objects
         entry: ash::Entry,
         version: u32,
-        vk_instance: ash::Instance,
-        vk_physical_device: vk::PhysicalDevice,
-        vk_device: ash::Device,
+        raw_instance: ash::Instance,
+        raw_physical_device: vk::PhysicalDevice,
+        raw_device: ash::Device,
         queue_family_index: u32,
         queue_index: u32,
+        drop_guard: Option<Box<dyn Any + Send + Sync>>,
     ) -> StrResult<Self> {
         let mut flags = hal::InstanceFlags::empty();
         if cfg!(debug_assertions) {
@@ -168,27 +170,29 @@ impl Context {
 
         let extensions = get_vulkan_instance_extensions(&entry, version)?;
 
+        let handle_is_owned = drop_guard.is_some();
+
         let instance = unsafe {
             trace_err!(<hal::api::Vulkan as hal::Api>::Instance::from_raw(
                 entry,
-                vk_instance.clone(),
+                raw_instance.clone(),
                 version,
                 extensions,
                 flags,
                 false,
-                owned.then(|| Box::new(()) as _)
+                drop_guard,
             ))?
         };
 
-        let exposed_adapter = trace_none!(instance.expose_adapter(vk_physical_device))?;
+        let exposed_adapter = trace_none!(instance.expose_adapter(raw_physical_device))?;
         let device_extensions = exposed_adapter
             .adapter
             .required_device_extensions(DEVICE_FEATURES);
 
         let open_device = unsafe {
             trace_err!(exposed_adapter.adapter.device_from_raw(
-                vk_device,
-                owned,
+                raw_device.clone(),
+                handle_is_owned,
                 &device_extensions,
                 hal::UpdateAfterBindTypes::empty(), // todo: proper initialization
                 queue_family_index,
@@ -227,7 +231,7 @@ impl Context {
     pub fn new(adapter_index: Option<usize>) -> StrResult<Self> {
         let entry = unsafe { trace_err!(ash::Entry::new())? };
 
-        let vk_instance = trace_err!(create_vulkan_instance(
+        let raw_instance = trace_err!(create_vulkan_instance(
             &entry,
             &vk::InstanceCreateInfo::builder()
                 .application_info(
@@ -236,11 +240,11 @@ impl Context {
                 .build()
         ))?;
 
-        let vk_physical_device = get_vulkan_graphics_device(&vk_instance, adapter_index)?;
+        let raw_physical_device = get_vulkan_graphics_device(&raw_instance, adapter_index)?;
 
         let queue_family_index = unsafe {
-            vk_instance
-                .get_physical_device_queue_family_properties(vk_physical_device)
+            raw_instance
+                .get_physical_device_queue_family_properties(raw_physical_device)
                 .into_iter()
                 .enumerate()
                 .find_map(|(queue_family_index, info)| {
@@ -254,11 +258,11 @@ impl Context {
         };
         let queue_index = 0;
 
-        let vk_device = trace_err!(create_vulkan_device(
+        let raw_device = trace_err!(create_vulkan_device(
             entry.clone(),
             TARGET_VULKAN_VERSION,
-            &vk_instance,
-            vk_physical_device,
+            &raw_instance,
+            raw_physical_device,
             &vk::DeviceCreateInfo::builder().queue_create_infos(&[
                 vk::DeviceQueueCreateInfo::builder()
                     .queue_family_index(queue_family_index)
@@ -268,14 +272,14 @@ impl Context {
         ))?;
 
         Self::from_vulkan(
-            true,
             entry,
             TARGET_VULKAN_VERSION,
-            vk_instance,
-            vk_physical_device,
-            vk_device,
+            raw_instance,
+            raw_physical_device,
+            raw_device,
             queue_family_index,
             queue_index,
+            Some(Box::new(())),
         )
     }
 }

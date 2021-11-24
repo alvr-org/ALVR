@@ -1,5 +1,5 @@
 use alvr_common::prelude::*;
-use alvr_graphics::Context;
+use alvr_graphics::GraphicsContext;
 use alvr_session::{CodecType, MediacodecDataType};
 use std::{sync::Arc, time::Duration};
 use wgpu::Texture;
@@ -8,7 +8,7 @@ pub struct VideoDecoder {}
 
 impl VideoDecoder {
     pub fn new(
-        context: Arc<Context>,
+        context: Arc<GraphicsContext>,
         codec_type: CodecType,
         video_size: (u32, u32),
         extra_options: &[(String, MediacodecDataType)],
@@ -19,7 +19,7 @@ impl VideoDecoder {
     // Block until the buffer has been written or timeout is reached. Returns false if timeout.
     pub fn push_frame_nals(
         &self,
-        frame_index: usize,
+        frame_timestamp: Duration,
         data: &[u8],
         timeout: Duration,
     ) -> StrResult<bool> {

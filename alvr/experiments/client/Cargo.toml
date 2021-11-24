@@ -20,6 +20,7 @@ alvr_graphics = { path = "../graphics" }
 lazy_static = "1"
 parking_lot = "0.11"
 rand = "0.8"
+crossbeam-channel = "0.5"
 # Serialization
 serde = "1"
 serde_json = "1"
@@ -33,9 +34,10 @@ bytes = "1"
 futures = "0.3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # Graphics
-raw-window-handle = "0.3"
-wgpu = { git = "https://github.com/gfx-rs/wgpu" }
-wgpu-hal = { git = "https://github.com/gfx-rs/wgpu" }
+raw-window-handle = "0.4"
+wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
+wgpu-hal = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
+rend3 = { git = "https://github.com/BVE-Reborn/rend3" }
 # Miscellaneous
 nalgebra = "0.29"
 semver = "1"
@@ -43,13 +45,14 @@ openxr = "0.15.4"
 ash = "0.33"
 
 [target.'cfg(target_os = "android")'.dependencies]
-ndk = { git = "https://github.com/MarijnS95/android-ndk-rs", rev = "7c1f9400cfec99eda693f84bd7465138bc086c97", features = [
+ndk = { git = "https://github.com/rust-windowing/android-ndk-rs", features = [
     "media",
     "hardware_buffer",
     "api-level-24",
 ] }
-ndk-glue = { git = "https://github.com/MarijnS95/android-ndk-rs", rev = "7c1f9400cfec99eda693f84bd7465138bc086c97" }
-ndk-sys = { git = "https://github.com/MarijnS95/android-ndk-rs", rev = "7c1f9400cfec99eda693f84bd7465138bc086c97" }
+ndk-glue = { git = "https://github.com/rust-windowing/android-ndk-rs" }
+ndk-sys = { git = "https://github.com/rust-windowing/android-ndk-rs" }
+
 
 [package.metadata.android]
 build_targets = ["aarch64-linux-android"]

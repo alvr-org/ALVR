@@ -16,6 +16,11 @@ members = [
     "alvr/vrcompositor-wrapper",
     "alvr/vulkan-layer",
     "alvr/xtask",
-    "alvr/experiments/client", # needed for bug in cargo-subcommand
+    "alvr/experiments/client",     # needed for bug in cargo-subcommand
     "alvr/experiments/*",
 ]
+
+[patch.crates-io] # wgpu version that works both with rend3 and alvr_graphics vulkan interop
+wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
+wgpu-hal = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
+wgpu-types = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }

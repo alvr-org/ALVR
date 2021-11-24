@@ -59,10 +59,10 @@ hyper = { version = "0.14", features = [
     "tcp",
 ] }
 reqwest = "0.11"
-tokio-tungstenite = "0.15"
+tokio-tungstenite = "0.16"
 tokio-util = { version = "0.6", features = ["codec"] }
 # Graphics
-wgpu = "0.11"
+wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
 winit = "0.25" # needed to get the screen size
 # Browser interop
 tempfile = "3.2.0"

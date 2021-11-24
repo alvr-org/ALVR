@@ -2,8 +2,10 @@ pub mod convert;
 pub mod foveated_rendering;
 pub mod slicing;
 
+use ash::vk;
+use std::sync::Arc;
 use wgpu::{
-    AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Color,
+    Adapter, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Color,
     ColorTargetState, ColorWrites, CommandEncoder, Device, FilterMode, FragmentState, Instance,
     LoadOp, MultisampleState, Operations, Queue, RenderPassColorAttachment, RenderPassDescriptor,
     RenderPipeline, RenderPipelineDescriptor, Sampler, SamplerDescriptor, ShaderModule,
@@ -12,24 +14,16 @@ use wgpu::{
 
 pub const TARGET_FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
 
-pub struct Context {
-    instance: Instance,
-    device: Device,
-    queue: Queue,
-}
-
-impl Context {
-    pub fn instance(&self) -> &Instance {
-        &self.instance
-    }
-
-    pub fn device(&self) -> &Device {
-        &self.device
-    }
-
-    pub fn queue(&self) -> &Queue {
-        &self.queue
-    }
+pub struct GraphicsContext {
+    pub instance: Arc<Instance>,
+    pub adapter: Arc<Adapter>,
+    pub device: Arc<Device>,
+    pub queue: Arc<Queue>,
+    pub raw_instance: ash::Instance,
+    pub raw_physical_device: vk::PhysicalDevice,
+    pub raw_device: ash::Device,
+    pub queue_family_index: u32,
+    pub queue_index: u32,
 }
 
 pub fn quad_shader(device: &Device) -> ShaderModule {

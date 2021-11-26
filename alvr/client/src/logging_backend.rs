@@ -1,3 +1,5 @@
+use alvr_common::log;
+
 pub fn init_logging() {
     #[cfg(target_os = "android")]
     android_logger::init_once(

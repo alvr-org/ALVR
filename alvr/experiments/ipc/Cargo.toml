@@ -11,5 +11,4 @@ alvr_common = { path = "../../common" }
 
 bincode = "1"
 interprocess = "1"
-nalgebra = { version = "0.29", features = ["serde-serialize"] }
 serde = { version = "1", features = ["derive"] }

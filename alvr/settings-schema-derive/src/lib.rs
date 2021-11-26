@@ -377,7 +377,7 @@ fn type_schema(ty: &Type, schema_attrs: SchemaAttributes) -> Result<TypeSchema, 
                             },
                             schema_code_ts: quote! {{
                                 let default_content =
-                                    serde_json::to_value(default.content).unwrap();
+                                    settings_schema::serde_json::to_value(default.content).unwrap();
                                 let default_key = default.key;
                                 let default = default.value;
                                 let default_value = Box::new(#schema_code_ts);
@@ -398,7 +398,7 @@ fn type_schema(ty: &Type, schema_attrs: SchemaAttributes) -> Result<TypeSchema, 
                         default_ty_ts: quote!(settings_schema::VectorDefault<#default_ty_ts, #ty>),
                         schema_code_ts: quote! {{
                             let default_content =
-                                serde_json::to_value(default.content).unwrap();
+                                settings_schema::serde_json::to_value(default.content).unwrap();
                             let default = default.element;
                             let default_element = Box::new(#schema_code_ts);
                             settings_schema::SchemaNode::Vector {
@@ -577,7 +577,7 @@ fn schema(input: DeriveInput) -> Result<TokenStream2, TokenStream> {
                         }});
 
                         variant_aux_objects_ts.push(quote! {
-                            #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+                            #[derive(settings_schema::serde::Serialize, settings_schema::serde::Deserialize, Clone, Debug)]
                             #case_trasform_serde_attr_ts
                             #vis struct #variant_default_ty_ident {
                                 pub #(#variant_field_idents: #variant_field_tys_ts,)*
@@ -616,7 +616,7 @@ fn schema(input: DeriveInput) -> Result<TokenStream2, TokenStream> {
             maybe_aux_objects_ts = Some(quote! {
                 #(#variant_aux_objects_ts)*
 
-                #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+                #[derive(settings_schema::serde::Serialize, settings_schema::serde::Deserialize, Clone, Debug)]
                 #case_trasform_serde_attr_ts
                 #vis enum #variant_ty_ident {
                     #(#variant_idents,)*
@@ -633,7 +633,7 @@ fn schema(input: DeriveInput) -> Result<TokenStream2, TokenStream> {
             schema_root_code_ts = quote! {{
                 let mut variants = vec![];
                 #(variants.push((#variant_strings.into(), #schema_variants_ts));)*
-                let default = serde_json::to_value(default.variant)
+                let default = settings_schema::serde_json::to_value(default.variant)
                     .unwrap()
                     .as_str()
                     .unwrap()
@@ -652,7 +652,7 @@ fn schema(input: DeriveInput) -> Result<TokenStream2, TokenStream> {
         #maybe_aux_objects_ts
 
         #[allow(non_snake_case)]
-        #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+        #[derive(settings_schema::serde::Serialize, settings_schema::serde::Deserialize, Clone, Debug)]
         #case_trasform_serde_attr_ts
         #vis struct #default_ty_ident {
             #(pub #field_idents: #field_tys_ts,)*

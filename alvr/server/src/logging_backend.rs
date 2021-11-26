@@ -1,7 +1,7 @@
 use crate::{FILESYSTEM_LAYOUT, SESSION_MANAGER};
+use alvr_common::log::{self, LevelFilter};
 use alvr_session::{EventSeverity, Raw, ServerEvent};
 use fern::Dispatch;
-use log::LevelFilter;
 use std::fs;
 use tokio::sync::broadcast::Sender;
 

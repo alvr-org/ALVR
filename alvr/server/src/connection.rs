@@ -3,7 +3,7 @@ use crate::{
     RESTART_NOTIFIER, SESSION_MANAGER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::prelude::*;
+use alvr_common::{glam::Mat4, prelude::*, semver::Version};
 use alvr_session::{CodecType, FrameSize, OpenvrConfig, ServerEvent};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
@@ -11,8 +11,6 @@ use alvr_sockets::{
     ServerControlPacket, StreamSocketBuilder, LEGACY,
 };
 use futures::future::{BoxFuture, Either};
-use nalgebra::Translation3;
-use semver::Version;
 use settings_schema::Switch;
 use std::{
     future,
@@ -701,9 +699,21 @@ async fn connection_pipeline() -> StrResult {
         // use a separate thread because SetChaperone() is blocking
         thread::spawn(move || {
             while let Ok(packet) = playspace_sync_receiver.recv() {
-                let transform = Translation3::from(packet.position.coords) * packet.rotation;
-                // transposition is done to switch from column major to row major
-                let matrix_transp = transform.to_matrix().transpose();
+                let transform = Mat4::from_rotation_translation(packet.rotation, packet.position);
+                let matrix34_row_major = [
+                    transform.x_axis[0],
+                    transform.y_axis[0],
+                    transform.z_axis[0],
+                    transform.w_axis[0],
+                    transform.x_axis[1],
+                    transform.y_axis[1],
+                    transform.z_axis[1],
+                    transform.w_axis[1],
+                    transform.x_axis[2],
+                    transform.y_axis[2],
+                    transform.z_axis[2],
+                    transform.w_axis[2],
+                ];
 
                 let perimeter_points = if let Some(perimeter_points) = packet.perimeter_points {
                     perimeter_points.iter().map(|p| [p[0], p[1]]).collect()
@@ -713,7 +723,7 @@ async fn connection_pipeline() -> StrResult {
 
                 unsafe {
                     crate::SetChaperone(
-                        matrix_transp.as_ptr(),
+                        matrix34_row_major.as_ptr(),
                         packet.area_width,
                         packet.area_height,
                         perimeter_points.as_ptr() as _,

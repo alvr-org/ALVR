@@ -1,5 +1,7 @@
-use nalgebra::{Point2, Point3, UnitQuaternion};
-use semver::Version;
+use alvr_common::{
+    glam::{Quat, Vec2, Vec3},
+    semver::Version,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -63,11 +65,11 @@ pub enum ServerControlPacket {
 
 #[derive(Serialize, Deserialize)]
 pub struct PlayspaceSyncPacket {
-    pub position: Point3<f32>,
-    pub rotation: UnitQuaternion<f32>,
+    pub position: Vec3,
+    pub rotation: Quat,
     pub area_width: f32,
     pub area_height: f32,
-    pub perimeter_points: Option<Vec<Point2<f32>>>,
+    pub perimeter_points: Option<Vec<Vec2>>,
 }
 
 #[derive(Serialize, Deserialize)]

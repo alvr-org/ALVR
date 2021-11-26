@@ -1,5 +1,5 @@
 use crate::{graphics_info, ClientListAction, MAYBE_NEW_DASHBOARD, MAYBE_WINDOW, SESSION_MANAGER};
-use alvr_common::prelude::*;
+use alvr_common::{lazy_static, prelude::*};
 use alvr_gui::Dashboard;
 use alvr_session::SessionDesc;
 use parking_lot::Mutex;
@@ -58,7 +58,7 @@ pub fn ui_thread() -> StrResult {
     Ok(())
 }
 
-lazy_static::lazy_static! {
+lazy_static! {
     static ref TEMP_SESSION: Arc<Mutex<SessionDesc>> = Arc::new(Mutex::new(SessionDesc::default()));
     static ref TEMP_SESSION_MODIFIED: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 }

@@ -7,11 +7,3 @@ pub use firewall::*;
 pub use launcher::*;
 pub use openvr_drivers::*;
 pub use openvrpaths::*;
-
-///////////// openvrpaths.vrpath interop ///////////////
-
-///////////////// driver paths management ///////////////////
-
-/////////////////// firewall //////////////////////
-
-/////////////////// launcher invocation ///////////////////////

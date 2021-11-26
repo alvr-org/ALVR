@@ -1,4 +1,4 @@
-use alvr_common::prelude::*;
+use alvr_common::{lazy_static, prelude::*};
 use alvr_session::{AudioConfig, AudioDeviceId};
 use alvr_sockets::{StreamReceiver, StreamSender, AUDIO};
 use cpal::{
@@ -40,12 +40,18 @@ use winapi::{
 #[cfg(windows)]
 use wio::com::ComPtr;
 
-lazy_static::lazy_static! {
+lazy_static! {
     static ref VIRTUAL_MICROPHONE_PAIRS: Vec<(String, String)> = vec![
         ("CABLE Input".into(), "CABLE Output".into()),
         ("VoiceMeeter Input".into(), "VoiceMeeter Output".into()),
-        ("VoiceMeeter Aux Input".into(), "VoiceMeeter Aux Output".into()),
-        ("VoiceMeeter VAIO3 Input".into(), "VoiceMeeter VAIO3 Output".into()),
+        (
+            "VoiceMeeter Aux Input".into(),
+            "VoiceMeeter Aux Output".into()
+        ),
+        (
+            "VoiceMeeter VAIO3 Input".into(),
+            "VoiceMeeter VAIO3 Output".into()
+        ),
     ];
 }
 

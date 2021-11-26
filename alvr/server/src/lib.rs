@@ -12,10 +12,9 @@ mod bindings {
 }
 use bindings::*;
 
-use alvr_common::prelude::*;
+use alvr_common::{lazy_static, log, prelude::*};
 use alvr_filesystem::{self as afs, Layout};
 use alvr_session::{ClientConnectionDesc, ServerEvent, SessionManager};
-use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::{
     collections::{hash_map::Entry, HashSet},
@@ -301,7 +300,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     let interface_name_usize = interface_name as usize;
     let return_code_usize = return_code as usize;
 
-    lazy_static::lazy_static! {
+    lazy_static! {
         static ref MAYBE_PTR_USIZE: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
         static ref NUM_TRIALS: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
     }

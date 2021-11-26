@@ -9,13 +9,12 @@ mod audio;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use alvr_common::{prelude::*, ALVR_VERSION};
+use alvr_common::{lazy_static, prelude::*, ALVR_VERSION};
 use alvr_sockets::{HeadsetInfoPacket, PrivateIdentity};
 use jni::{
     objects::{JClass, JObject, JString},
     JNIEnv,
 };
-use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use std::{
     ptr, slice,

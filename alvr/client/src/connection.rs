@@ -2,7 +2,11 @@ use crate::{
     connection_utils::{self, ConnectionError},
     MAYBE_LEGACY_SENDER,
 };
-use alvr_common::{prelude::*, ALVR_NAME, ALVR_VERSION};
+use alvr_common::{
+    glam::{Quat, Vec2, Vec3},
+    prelude::*,
+    ALVR_NAME, ALVR_VERSION,
+};
 use alvr_session::{CodecType, SessionDesc, TrackingSpace};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket,
@@ -14,7 +18,6 @@ use jni::{
     objects::{GlobalRef, JClass},
     JavaVM,
 };
-use nalgebra::{Point2, Point3, Quaternion, UnitQuaternion};
 use serde_json as json;
 use settings_schema::Switch;
 use std::{
@@ -441,19 +444,19 @@ async fn connection_pipeline(
 
                         let perimeter_points = perimeter_slice
                             .iter()
-                            .map(|p| Point2::from_slice(&[p[0], p[2]]))
+                            .map(|p| Vec2::from_slice(&[p[0], p[2]]))
                             .collect::<Vec<_>>();
 
                         Some(perimeter_points)
                     };
                     let packet = PlayspaceSyncPacket {
-                        position: Point3::from_slice(&guardian_data.position),
-                        rotation: UnitQuaternion::from_quaternion(Quaternion::new(
-                            guardian_data.rotation[3],
+                        position: Vec3::from_slice(&guardian_data.position),
+                        rotation: Quat::from_xyzw(
                             guardian_data.rotation[0],
                             guardian_data.rotation[1],
                             guardian_data.rotation[2],
-                        )),
+                            guardian_data.rotation[3],
+                        ),
                         area_width: guardian_data.areaWidth,
                         area_height: guardian_data.areaHeight,
                         perimeter_points,

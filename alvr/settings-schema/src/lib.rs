@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub use serde;
+pub use serde_json;
 pub use settings_schema_derive::SettingsSchema;
 
 /// The `Switch` is used to represent something that makes sense to specify its state only when it's enabled.

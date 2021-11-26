@@ -13,8 +13,6 @@ crate-type = ["cdylib"]
 alvr_common = { path = "../../common" }
 alvr_ipc = { path = "../ipc" }
 
-lazy_static = "1"
-nalgebra = "0.29"
 parking_lot = "0.11"
 
 [build-dependencies]

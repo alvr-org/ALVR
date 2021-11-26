@@ -1,11 +1,14 @@
 mod data;
 mod logging;
 
-pub use data::*;
-pub use logging::*;
-
-use lazy_static::lazy_static;
 use semver::{BuildMetadata, Prerelease, Version};
+
+pub use data::*;
+pub use glam;
+pub use lazy_static::lazy_static;
+pub use log;
+pub use logging::*;
+pub use semver;
 
 pub type StrResult<T = ()> = Result<T, String>;
 

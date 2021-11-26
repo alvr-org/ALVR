@@ -15,26 +15,29 @@ terminal = ["tui", "termion"]
 [dependencies]
 alvr_common = { path = "../../common" }
 alvr_session = { path = "../../session" }
+settings-schema = { path = "../../settings-schema", features = [
+    "rename_camel_case",
+] }
 
+# Basic utilities
+num = "0.4"
+serde = "1"
+serde_json = "1"
+# GUI
 # todo: use iced stable. blocked by conflict on wasm-bindgen for wgpu
 iced = { git = "https://github.com/iced-rs/iced", optional = true, features = [
     "image",
 ] }
 iced_native = { git = "https://github.com/iced-rs/iced", optional = true }
+termion = { version = "1", optional = true }
+tui = { version = "0.16", optional = true }
+# Translation
 fluent = "0.16"
 fluent-syntax = "0.11"
 fluent-langneg = "0.13"
-lazy_static = "1"
-num = "0.4"
-rhai = { version = "1", features = ["serde", "f32_float"] }
-serde = "1"
-serde_json = "1"
-settings-schema = { path = "../../settings-schema", features = [
-    "rename_camel_case",
-] }
-termion = { version = "1", optional = true }
-tui = { version = "0.16", optional = true }
 unic-langid = "0.9"
+# Miscellaneous
+rhai = { version = "1", features = ["serde", "f32_float"] }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 locale_config = "0.3"

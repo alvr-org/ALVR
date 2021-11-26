@@ -172,6 +172,7 @@ dependencies = [
  "lazy_static",
  "log",
  "msgbox",
+ "parking_lot",
  "semver 1.0.4",
  "serde",
  "settings-schema",

@@ -39,7 +39,6 @@ wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e
 wgpu-hal = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
 # Miscellaneous
 ash = "0.33"
-glam = "0.20"
 openxr = { git = "https://github.com/Ralith/openxrs" }
 
 [target.'cfg(target_os = "android")'.dependencies]

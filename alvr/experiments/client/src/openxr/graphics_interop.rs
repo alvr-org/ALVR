@@ -1,5 +1,5 @@
 use super::{OpenxrContext, OpenxrSwapchain};
-use alvr_common::prelude::*;
+use alvr_common::{glam::UVec2, prelude::*};
 use alvr_graphics::{
     convert::{
         self, SwapchainCreateData, SwapchainCreateInfo, TextureType, DEVICE_FEATURES,
@@ -112,7 +112,7 @@ pub fn create_graphics_context(xr_context: &OpenxrContext) -> StrResult<Graphics
 pub fn create_swapchain(
     device: &Device,
     session: &xr::Session<xr::Vulkan>,
-    size: (u32, u32),
+    size: UVec2,
 ) -> OpenxrSwapchain {
     const FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
     const USAGE: xr::SwapchainUsageFlags = xr::SwapchainUsageFlags::COLOR_ATTACHMENT;
@@ -123,8 +123,8 @@ pub fn create_swapchain(
             usage_flags: USAGE,
             format: FORMAT.as_raw() as _,
             sample_count: 1,
-            width: size.0,
-            height: size.1,
+            width: size.x,
+            height: size.y,
             face_count: 1,
             array_size: 1,
             mip_count: 1,
@@ -151,8 +151,7 @@ pub fn create_swapchain(
             usage: USAGE,
             format: TextureFormat::Rgba8UnormSrgb,
             sample_count: 1,
-            width: size.0,
-            height: size.1,
+            size,
             texture_type: TextureType::Flat { array_size: 1 },
             mip_count: 1,
         },
@@ -169,6 +168,6 @@ pub fn create_swapchain(
                 }))
             })
             .collect(),
-        view_size: (size.0 as _, size.1 as _),
+        size,
     }
 }

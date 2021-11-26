@@ -26,14 +26,14 @@ impl VideoDecoder {
         todo!()
     }
 
-    // Block until one frame is available or timeout is reached. Returns the frame index (as
+    // Block until one frame is available or timeout is reached. Returns the frame timestamp (as
     // specified in push_frame_nals()). Returns None if timeout.
     pub fn get_output_frame(
         &self,
         output: &Texture,
         slice_index: u32,
         timeout: Duration,
-    ) -> StrResult<Option<usize>> {
+    ) -> StrResult<Option<Duration>> {
         todo!()
     }
 }

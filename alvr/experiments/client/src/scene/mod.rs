@@ -1,6 +1,9 @@
-use alvr_common::{prelude::*, Fov};
+use alvr_common::{
+    glam::{Mat4, Quat, UVec2, Vec3, Vec4},
+    prelude::*,
+    Fov,
+};
 use alvr_graphics::GraphicsContext;
-use glam::{Mat4, Quat, UVec2, Vec3, Vec4};
 use rend3::{
     types::{Camera, CameraProjection},
     util::output::OutputFrame,

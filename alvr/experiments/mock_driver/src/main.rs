@@ -1,3 +1,4 @@
+use alvr_common::glam::Vec2;
 use alvr_ipc::{DriverRequest, Layer, ResponseForDriver, SsePacket};
 use std::{
     sync::{
@@ -120,15 +121,15 @@ fn main() {
                         orientation: Default::default(),
                         fov: Default::default(),
                         swapchain_id,
-                        rect_offset: (0.0, 0.0),
-                        rect_size: (960.0, 1080.0),
+                        rect_offset: Vec2::new(0_f32, 0_f32),
+                        rect_size: Vec2::new(960_f32, 1080_f32),
                     },
                     Layer {
                         orientation: Default::default(),
                         fov: Default::default(),
                         swapchain_id, // use same swapchain for both eyes for now
-                        rect_offset: (0.0, 0.0),
-                        rect_size: (960.0, 1080.0),
+                        rect_offset: Vec2::new(0_f32, 0_f32),
+                        rect_size: Vec2::new(960_f32, 1080_f32),
                     },
                 ]]))
                 .unwrap();

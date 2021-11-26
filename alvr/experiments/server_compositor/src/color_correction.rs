@@ -1,3 +1,4 @@
+use alvr_common::glam::UVec2;
 use alvr_graphics::TARGET_FORMAT;
 use alvr_session::ColorCorrectionDesc;
 use wgpu::{
@@ -12,12 +13,12 @@ pub struct ColorCorrectionPass {
 }
 
 impl ColorCorrectionPass {
-    pub fn new(device: &Device, input_size: (u32, u32)) -> Self {
+    pub fn new(device: &Device, input_size: UVec2) -> Self {
         let texture = device.create_texture(&TextureDescriptor {
             label: None,
             size: Extent3d {
-                width: input_size.0,
-                height: input_size.1,
+                width: input_size.x,
+                height: input_size.y,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,

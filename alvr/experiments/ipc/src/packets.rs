@@ -1,5 +1,7 @@
-use alvr_common::{Fov, OpenvrPropValue};
-use nalgebra::{UnitQuaternion, Vector3};
+use alvr_common::{
+    glam::{Quat, Vec2, Vec3},
+    Fov, OpenvrPropValue,
+};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -27,11 +29,11 @@ pub struct DisplayConfig {
 
 #[derive(Serialize, Deserialize)]
 pub struct Layer {
-    pub orientation: UnitQuaternion<f32>,
+    pub orientation: Quat,
     pub fov: Fov,
     pub swapchain_id: u64,
-    pub rect_offset: (f32, f32),
-    pub rect_size: (f32, f32),
+    pub rect_offset: Vec2,
+    pub rect_size: Vec2,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -99,10 +101,10 @@ pub enum ResponseForDriver {
 
 #[derive(Serialize, Deserialize)]
 pub struct MotionData {
-    pub position: Vector3<f32>,
-    pub orientation: UnitQuaternion<f32>,
-    pub linear_velocity: Option<Vector3<f32>>,
-    pub angular_velocity: Option<Vector3<f32>>,
+    pub orientation: Quat,
+    pub position: Vec3,
+    pub linear_velocity: Option<Vec3>,
+    pub angular_velocity: Option<Vec3>,
 }
 
 #[derive(Serialize, Deserialize)]

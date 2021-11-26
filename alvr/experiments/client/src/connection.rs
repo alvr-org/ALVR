@@ -1,10 +1,13 @@
-use alvr_common::Fov;
-use openxr::Posef;
 use std::time::Duration;
 
-pub struct VideoPacket {
+use crate::ViewConfig;
+
+pub struct VideoSlicePacket {
     timestamp: Duration,
     buffer: Vec<u8>,
-    pose: Posef,
-    fov: Fov,
+}
+
+pub struct FrameMetadataPacket {
+    timestamp: Duration,
+    views: Vec<ViewConfig>,
 }

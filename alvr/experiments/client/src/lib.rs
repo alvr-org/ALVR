@@ -5,19 +5,29 @@ mod streaming_compositor;
 mod video_decoder;
 
 use crate::openxr::{OpenxrContext, OpenxrSession};
-use alvr_common::prelude::*;
+use alvr_common::{
+    glam::{Quat, Vec2},
+    prelude::*,
+    Fov,
+};
 use alvr_graphics::GraphicsContext;
-use connection::VideoPacket;
+use connection::{FrameMetadataPacket, VideoSlicePacket};
 use parking_lot::Mutex;
 use scene::SceneRenderer;
 use std::{sync::Arc, time::Duration};
 use streaming_compositor::StreamingCompositor;
 use video_decoder::VideoDecoder;
 
+pub struct ViewConfig {
+    orientation: Quat,
+    position: Vec2,
+    fov: Fov,
+}
+
 struct VideoStreamingComponents {
     compositor: StreamingCompositor,
     video_decoder: Vec<VideoDecoder>,
-    video_stream_receivers: Vec<crossbeam_channel::Receiver<VideoPacket>>,
+    frame_metadata_receiver: crossbeam_channel::Receiver<FrameMetadataPacket>,
 }
 
 #[cfg_attr(target_os = "android", ndk_glue::main)]

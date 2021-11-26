@@ -5,19 +5,27 @@
     clippy::missing_safety_doc
 )]
 
-use alvr_common::{Fov, OpenvrPropValue};
+use alvr_common::{
+    glam::{Vec2, Vec3},
+    lazy_static, Fov, OpenvrPropValue,
+};
 use alvr_ipc::{
     ButtonValue, DriverRequest, InputType, IpcClient, IpcSseReceiver, Layer, MotionData,
     ResponseForDriver, SsePacket, TrackedDeviceType, VideoConfigUpdate,
 };
-use core::slice;
-use nalgebra::Vector3;
 use parking_lot::Mutex;
-use std::collections::HashMap;
-use std::ffi::CString;
-use std::ptr;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::{ffi::c_void, os::raw::c_char, sync::Arc, thread, time::Duration};
+use std::{
+    collections::HashMap,
+    ffi::{c_void, CString},
+    os::raw::c_char,
+    ptr, slice,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread,
+    time::Duration,
+};
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
@@ -31,25 +39,23 @@ struct IpcConnections {
     sse_receiver: Option<IpcSseReceiver<SsePacket>>,
 }
 
-lazy_static::lazy_static! {
+lazy_static! {
     static ref IPC_CONNECTIONS: Arc<Mutex<IpcConnections>> = {
-        let (client, sse_receiver) = if let Ok((client, sse_receiver)) = alvr_ipc::ipc_connect("driver") {
-            (Some(client), Some(sse_receiver))
-        } else {
-            (None, None)
-        };
+        let (client, sse_receiver) =
+            if let Ok((client, sse_receiver)) = alvr_ipc::ipc_connect("driver") {
+                (Some(client), Some(sse_receiver))
+            } else {
+                (None, None)
+            };
 
         Arc::new(Mutex::new(IpcConnections {
             client,
             sse_receiver,
         }))
     };
-
     static ref IPC_RUNNING: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
-
-    static ref BUTTON_COMPONENTS:
-        Arc<Mutex<HashMap<u64, HashMap<String, vr::VRInputComponentHandle_t>>>> =
-            Arc::new(Mutex::new(HashMap::new()));
+    static ref BUTTON_COMPONENTS: Arc<Mutex<HashMap<u64, HashMap<String, vr::VRInputComponentHandle_t>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
 }
 
 fn log(message: &str) {
@@ -124,20 +130,20 @@ fn set_tracking_data(
             if let Some(data) = maybe_data {
                 let p = data.position;
                 let o = data.orientation;
-                let lv = data.linear_velocity.unwrap_or_else(Vector3::zeros);
-                let av = data.angular_velocity.unwrap_or_else(Vector3::zeros);
+                let lv = data.linear_velocity.unwrap_or(Vec3::ZERO);
+                let av = data.angular_velocity.unwrap_or(Vec3::ZERO);
 
                 vr::DriverPose_t {
                     poseTimeOffset: time_offset_s,
-                    vecPosition: [p[0] as _, p[1] as _, p[2] as _],
-                    vecVelocity: [lv[0] as _, lv[1] as _, lv[2] as _],
+                    vecPosition: [p.x as _, p.y as _, p.z as _],
+                    vecVelocity: [lv.x as _, lv.y as _, lv.z as _],
                     qRotation: vr::HmdQuaternion_t {
-                        w: o[3] as _,
-                        x: o[0] as _,
-                        y: o[1] as _,
-                        z: o[2] as _,
+                        w: o.w as _,
+                        x: o.x as _,
+                        y: o.y as _,
+                        z: o.z as _,
                     },
-                    vecAngularVelocity: [av[0] as _, av[1] as _, av[2] as _],
+                    vecAngularVelocity: [av.x as _, av.y as _, av.z as _],
                     result: vr::TrackingResult_Running_OK,
                     poseIsValid: true,
                     deviceIsConnected: true,
@@ -409,10 +415,10 @@ extern "C" fn present(layers: *const drv::Layer, count: u32) {
                     bottom: drv_layer.fov[idx].vBottomRight.v[1],
                 };
 
-                let rect_offset = (drv_layer.bounds[idx].uMin, drv_layer.bounds[idx].vMin);
-                let rect_size = (
-                    drv_layer.bounds[idx].uMax - rect_offset.0,
-                    drv_layer.bounds[idx].vMax - rect_offset.1,
+                let rect_offset = Vec2::new(drv_layer.bounds[idx].uMin, drv_layer.bounds[idx].vMin);
+                let rect_size = Vec2::new(
+                    drv_layer.bounds[idx].uMax - rect_offset.x,
+                    drv_layer.bounds[idx].vMax - rect_offset.y,
                 );
 
                 layer_views.push(Layer {

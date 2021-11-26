@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use settings_schema::{EntryData, SettingsSchema};
 
+// Field of view in radians
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Default, Clone)]
 pub struct Fov {
     #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]

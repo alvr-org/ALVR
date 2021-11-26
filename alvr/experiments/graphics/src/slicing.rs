@@ -1,29 +1,27 @@
 use crate::TARGET_FORMAT;
+use alvr_common::glam::UVec2;
 use wgpu::{
     BindGroup, CommandEncoder, Device, Extent3d, RenderPipeline, Texture, TextureDescriptor,
     TextureDimension, TextureUsages, TextureView, TextureViewDescriptor,
 };
 
 pub struct SlicingLayout {
-    slice_width: i32,
-    slice_height: i32,
-    columns: i32,
+    slice_size: UVec2,
+    columns: u32,
 }
 
-fn get_slicing_layout(combined_size: (u32, u32), slice_count: usize) -> SlicingLayout {
+fn get_slicing_layout(combined_size: UVec2, slice_count: usize) -> SlicingLayout {
     // only 1 or 2 slices are handled for now.
     // todo: port complete algorithm from zarik5/bridgevr-dev. It can also split vertically after
     // a certain slice count.
     if slice_count == 1 {
         SlicingLayout {
-            slice_width: combined_size.0 as i32,
-            slice_height: combined_size.1 as i32,
+            slice_size: combined_size,
             columns: 1,
         }
     } else if slice_count == 2 {
         SlicingLayout {
-            slice_width: combined_size.0 as i32 / 2,
-            slice_height: combined_size.1 as i32,
+            slice_size: UVec2::new(combined_size.x / 2, combined_size.y),
             columns: 2,
         }
     } else {
@@ -31,10 +29,10 @@ fn get_slicing_layout(combined_size: (u32, u32), slice_count: usize) -> SlicingL
     }
 }
 
-pub fn align_to_32(size: (i32, i32)) -> (i32, i32) {
-    (
-        (size.0 as f32 / 32_f32).ceil() as i32 * 32,
-        (size.1 as f32 / 32_f32).ceil() as i32 * 32,
+pub fn align_to_32(size: UVec2) -> UVec2 {
+    UVec2::new(
+        (size.x as f32 / 32_f32).ceil() as u32 * 32,
+        (size.y as f32 / 32_f32).ceil() as u32 * 32,
     )
 }
 
@@ -52,24 +50,21 @@ pub struct SlicingPass {
     pipeline: RenderPipeline,
     bind_group: BindGroup,
     input_slicing_layout: SlicingLayout,
-    combined_size: (i32, i32),
+    combined_size: UVec2,
     output_slicing_layout: SlicingLayout,
-    target_size: (i32, i32),
+    target_size: UVec2,
 }
 
 impl SlicingPass {
     pub fn new(
         device: &Device,
-        combined_size: (u32, u32),
+        combined_size: UVec2,
         input_slices_count: usize,
         output_slices_count: usize,
         alignment_direction: AlignmentDirection,
     ) -> Self {
         let input_slicing_layout = get_slicing_layout(combined_size, input_slices_count);
-        let mut input_size = (
-            input_slicing_layout.slice_width,
-            input_slicing_layout.slice_height,
-        );
+        let mut input_size = input_slicing_layout.slice_size;
         if matches!(alignment_direction, AlignmentDirection::Input) {
             input_size = align_to_32(input_size);
         }
@@ -77,8 +72,8 @@ impl SlicingPass {
         let input_texture = device.create_texture(&TextureDescriptor {
             label: None,
             size: Extent3d {
-                width: input_size.0 as u32,
-                height: input_size.1 as u32,
+                width: input_size.x,
+                height: input_size.y,
                 // make sure the texture is still an array, even if the second texture is unused
                 depth_or_array_layers: u32::max(input_slices_count as _, 2),
             },
@@ -108,10 +103,7 @@ impl SlicingPass {
         let bind_group = super::create_default_bind_group(device, &pipeline, &texture_view);
 
         let output_slicing_layout = get_slicing_layout(combined_size, output_slices_count);
-        let mut target_size = (
-            output_slicing_layout.slice_width,
-            output_slicing_layout.slice_height,
-        );
+        let mut target_size = output_slicing_layout.slice_size;
         if matches!(alignment_direction, AlignmentDirection::Output) {
             target_size = align_to_32(target_size);
         }
@@ -122,15 +114,15 @@ impl SlicingPass {
             pipeline,
             bind_group,
             input_slicing_layout,
-            combined_size: (combined_size.0 as i32, combined_size.1 as i32),
+            combined_size,
             output_slicing_layout,
             target_size,
         }
     }
 
     // Aligned slice size
-    pub fn output_size(&self) -> (u32, u32) {
-        (self.target_size.0 as u32, self.target_size.1 as u32)
+    pub fn output_size(&self) -> UVec2 {
+        self.target_size
     }
 
     // The texture has one layer for each slice
@@ -144,17 +136,17 @@ impl SlicingPass {
 
     pub fn draw(&self, encoder: &mut CommandEncoder, slice_index: usize, output: &TextureView) {
         let data = [
-            self.input_slicing_layout.slice_width,
-            self.input_slicing_layout.slice_height,
-            self.input_slicing_layout.columns,
-            self.combined_size.0,
-            self.combined_size.1,
-            self.output_slicing_layout.slice_width
-                * (slice_index as i32 % self.output_slicing_layout.columns),
-            self.output_slicing_layout.slice_height
-                * (slice_index as i32 / self.output_slicing_layout.columns),
-            self.target_size.0,
-            self.target_size.1,
+            self.input_slicing_layout.slice_size.x as i32,
+            self.input_slicing_layout.slice_size.y as i32,
+            self.input_slicing_layout.columns as i32,
+            self.combined_size.x as i32,
+            self.combined_size.y as i32,
+            (self.output_slicing_layout.slice_size.x
+                * (slice_index as u32 % self.output_slicing_layout.columns)) as i32,
+            (self.output_slicing_layout.slice_size.y
+                * (slice_index as u32 / self.output_slicing_layout.columns)) as i32,
+            self.target_size.x as i32,
+            self.target_size.y as i32,
         ];
 
         super::execute_default_pass(

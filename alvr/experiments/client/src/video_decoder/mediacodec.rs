@@ -123,7 +123,7 @@ impl VideoDecoder {
     // Block until the buffer has been written or timeout is reached. Returns false if timeout.
     pub fn push_frame_nals(
         &self,
-        frame_index: usize,
+        timestamp: Duration,
         data: &[u8],
         timeout: Duration,
     ) -> StrResult<bool> {
@@ -158,14 +158,14 @@ impl VideoDecoder {
         }
     }
 
-    // Block until one frame is available or timeout is reached. Returns the frame index (as
+    // Block until one frame is available or timeout is reached. Returns the frame timestamp (as
     // specified in push_frame_nals()). Returns None if timeout.
     pub fn get_output_frame(
         &self,
         output: &Texture,
         slice_index: u32,
         timeout: Duration,
-    ) -> StrResult<Option<usize>> {
+    ) -> StrResult<Option<Duration>> {
         let mut info: sys::AMediaCodecBufferInfo = unsafe { std::mem::zeroed() }; // todo: derive default
         let index_or_error = unsafe {
             sys::AMediaCodec_dequeueOutputBuffer(self.codec, &mut info, timeout.as_micros() as _)

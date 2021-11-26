@@ -1,7 +1,7 @@
 mod color_correction;
 mod compositing;
 
-use alvr_common::{prelude::*, Fov};
+use alvr_common::{glam::UVec2, prelude::*, Fov};
 use alvr_graphics::{
     convert::{self, SwapchainCreateData, SwapchainCreateInfo, TextureType},
     foveated_rendering::{FoveatedRenderingPass, FrDirection},
@@ -62,19 +62,19 @@ pub struct Compositor {
 
     output_textures: Vec<Texture>,
     output_texture_views: Vec<TextureView>,
-    output_size: (u32, u32),
+    output_size: UVec2,
 }
 
 impl Compositor {
     pub fn new(
         context: Arc<GraphicsContext>,
-        target_view_size: (u32, u32), // expected size of a layer after cropping
+        target_view_size: UVec2, // expected size of a layer after cropping
         foveation_desc: Option<&FoveatedRenderingDesc>,
         slices_count: usize,
     ) -> Self {
-        let inner = CompositingPass::new(context.device());
+        let inner = CompositingPass::new(&context.device);
 
-        let color_corrector = ColorCorrectionPass::new(context.device(), target_view_size);
+        let color_corrector = ColorCorrectionPass::new(&context.device, target_view_size);
 
         let mut output_size = target_view_size;
 
@@ -98,10 +98,10 @@ impl Compositor {
                 encoder
             });
 
-        let combined_size = (output_size.0 * 2, output_size.1);
+        let combined_size = UVec2::new(output_size.x * 2, output_size.y);
 
         let slicer = SlicingPass::new(
-            context.device(),
+            &context.device,
             combined_size,
             2,
             slices_count,
@@ -112,11 +112,11 @@ impl Compositor {
 
         let output_textures = (0..slices_count)
             .map(|_| {
-                context.device().create_texture(&TextureDescriptor {
+                context.device.create_texture(&TextureDescriptor {
                     label: None,
                     size: Extent3d {
-                        width: output_size.0,
-                        height: output_size.1,
+                        width: output_size.x,
+                        height: output_size.y,
                         depth_or_array_layers: 1,
                     },
                     mip_level_count: 1,
@@ -155,7 +155,7 @@ impl Compositor {
             TextureType::Cubemap => 1,
         };
 
-        let textures = convert::create_texture_set(self.context.device(), data, info);
+        let textures = convert::create_texture_set(&self.context.device, data, info);
 
         let bind_groups = textures
             .iter()
@@ -163,7 +163,7 @@ impl Compositor {
                 (0..array_size)
                     .map(|array_index| {
                         self.inner
-                            .create_bind_group(self.context.device(), texture, array_index)
+                            .create_bind_group(&self.context.device, texture, array_index)
                     })
                     .collect()
             })
@@ -177,7 +177,7 @@ impl Compositor {
     }
 
     // image size used for encoding
-    pub fn output_size(&self) -> (u32, u32) {
+    pub fn output_size(&self) -> UVec2 {
         self.output_size
     }
 
@@ -197,7 +197,7 @@ impl Compositor {
 
         let mut encoder = self
             .context
-            .device()
+            .device
             .create_command_encoder(&CommandEncoderDescriptor::default());
 
         for view_index in 0..2 {
@@ -249,9 +249,9 @@ impl Compositor {
         }
 
         // For the best performance, all compositing work is submitted at once.
-        self.context.queue().submit(Some(encoder.finish()));
+        self.context.queue.submit(Some(encoder.finish()));
 
-        pollster::block_on(self.context.queue().on_submitted_work_done());
+        pollster::block_on(self.context.queue.on_submitted_work_done());
     }
 }
 
@@ -261,11 +261,11 @@ fn run() -> StrResult {
 
     let context = Arc::new(GraphicsContext::new(None)?);
 
-    let compositor = Compositor::new(context.clone(), (400, 300), None, 1);
+    let compositor = Compositor::new(context.clone(), UVec2::new(400, 300), None, 1);
 
     compositor.end_frame(&[], None);
 
-    let surface = unsafe { context.instance().create_surface(&window) };
+    let surface = unsafe { context.instance.create_surface(&window) };
 
     event_loop.run(move |event, _, control| match event {
         Event::WindowEvent {

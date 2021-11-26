@@ -2,9 +2,14 @@ mod graphics_interop;
 mod interaction;
 
 pub use graphics_interop::*;
+use xr::{Fovf, Posef, Quaternionf, Vector3f};
 
 use self::interaction::OpenxrInteractionContext;
-use alvr_common::prelude::*;
+use alvr_common::{
+    glam::{Quat, UVec2, Vec3},
+    prelude::*,
+    Fov,
+};
 use alvr_graphics::GraphicsContext;
 use ash::vk::Handle;
 use openxr as xr;
@@ -71,12 +76,12 @@ impl OpenxrContext {
 pub struct OpenxrSwapchain {
     handle: Arc<Mutex<xr::Swapchain<xr::Vulkan>>>,
     views: Vec<Arc<TextureView>>,
-    view_size: (i32, i32),
+    size: UVec2,
 }
 
 pub struct AcquiredOpenxrSwapchain<'a> {
     handle_lock: MutexGuard<'a, xr::Swapchain<xr::Vulkan>>,
-    size: (i32, i32),
+    pub size: UVec2,
     pub texture_view: Arc<TextureView>,
 }
 
@@ -84,6 +89,13 @@ pub struct OpenxrSessionLock<'a> {
     pub acquired_scene_swapchain: Vec<AcquiredOpenxrSwapchain<'a>>,
     pub acquired_stream_swapchain: Vec<AcquiredOpenxrSwapchain<'a>>,
     pub frame_state: xr::FrameState,
+}
+
+pub struct PresentationView<'a> {
+    pub acquired_swapchain: AcquiredOpenxrSwapchain<'a>,
+    pub orientation: Quat,
+    pub position: Vec3,
+    pub fov: Fov,
 }
 
 pub struct OpenxrSession {
@@ -131,7 +143,7 @@ impl OpenxrSession {
                 create_swapchain(
                     &graphics_context.device,
                     &session,
-                    (
+                    UVec2::new(
                         config.recommended_image_rect_width,
                         config.recommended_image_rect_height,
                     ),
@@ -141,7 +153,7 @@ impl OpenxrSession {
 
         // Recreated later
         let stream_swapchains = (0..2)
-            .map(|_| create_swapchain(&graphics_context.device, &session, (1, 1)))
+            .map(|_| create_swapchain(&graphics_context.device, &session, UVec2::new(1, 1)))
             .collect();
 
         let environment_blend_mode = *xr_context.environment_blend_modes.first().unwrap();
@@ -159,15 +171,9 @@ impl OpenxrSession {
         })
     }
 
-    pub fn recreate_stream_swapchains(&mut self, view_width: u32, view_height: u32) {
+    pub fn recreate_stream_swapchains(&mut self, view_size: UVec2) {
         self.stream_swapchains = (0..2)
-            .map(|_| {
-                create_swapchain(
-                    &self.graphics_context.device,
-                    &self.inner,
-                    (view_width, view_height),
-                )
-            })
+            .map(|_| create_swapchain(&self.graphics_context.device, &self.inner, view_size))
             .collect();
     }
 
@@ -182,7 +188,7 @@ impl OpenxrSession {
 
                 AcquiredOpenxrSwapchain {
                     handle_lock,
-                    size: swapchain.view_size,
+                    size: swapchain.size,
                     texture_view: Arc::clone(&swapchain.views[index as usize]),
                 }
             })
@@ -215,28 +221,45 @@ impl OpenxrSession {
         }))
     }
 
-    fn create_presentation_views<'a>(
-        views: &'a mut [(AcquiredOpenxrSwapchain, xr::View)],
+    fn create_layer_views<'a>(
+        views: &'a mut [PresentationView],
     ) -> Vec<xr::CompositionLayerProjectionView<'a, xr::Vulkan>> {
         views
             .iter_mut()
-            .map(|(swapchain, view)| {
-                swapchain.handle_lock.release_image().unwrap();
+            .map(|view| {
+                view.acquired_swapchain.handle_lock.release_image().unwrap();
 
                 let rect = xr::Rect2Di {
                     offset: xr::Offset2Di { x: 0, y: 0 },
                     extent: xr::Extent2Di {
-                        width: swapchain.size.0 as _,
-                        height: swapchain.size.1 as _,
+                        width: view.acquired_swapchain.size.x as _,
+                        height: view.acquired_swapchain.size.y as _,
                     },
                 };
 
                 xr::CompositionLayerProjectionView::new()
-                    .pose(view.pose)
-                    .fov(view.fov)
+                    .pose(Posef {
+                        orientation: Quaternionf {
+                            x: view.orientation.x,
+                            y: view.orientation.y,
+                            z: view.orientation.z,
+                            w: view.orientation.w,
+                        },
+                        position: Vector3f {
+                            x: view.position.x,
+                            y: view.position.y,
+                            z: view.position.z,
+                        },
+                    })
+                    .fov(Fovf {
+                        angle_left: view.fov.left,
+                        angle_right: view.fov.right,
+                        angle_up: view.fov.top,
+                        angle_down: view.fov.bottom,
+                    })
                     .sub_image(
                         xr::SwapchainSubImage::new()
-                            .swapchain(&swapchain.handle_lock)
+                            .swapchain(&view.acquired_swapchain.handle_lock)
                             .image_array_index(0)
                             .image_rect(rect),
                     )
@@ -247,8 +270,8 @@ impl OpenxrSession {
     pub fn end_frame(
         &self,
         display_timestamp: Duration,
-        mut stream_views: Vec<(AcquiredOpenxrSwapchain, xr::View)>,
-        mut scene_views: Vec<(AcquiredOpenxrSwapchain, xr::View)>,
+        mut stream_views: Vec<PresentationView>,
+        mut scene_views: Vec<PresentationView>,
     ) -> StrResult {
         //Note: scene layers are drawn always on top of the stream layers
         trace_err!(self.frame_stream.lock().end(
@@ -257,10 +280,10 @@ impl OpenxrSession {
             &[
                 &xr::CompositionLayerProjection::new()
                     .space(&self.interaction_context.reference_space)
-                    .views(&Self::create_presentation_views(&mut stream_views)),
+                    .views(&Self::create_layer_views(&mut stream_views)),
                 &xr::CompositionLayerProjection::new()
                     .space(&self.interaction_context.reference_space)
-                    .views(&Self::create_presentation_views(&mut scene_views)),
+                    .views(&Self::create_layer_views(&mut scene_views)),
             ],
         ))
     }

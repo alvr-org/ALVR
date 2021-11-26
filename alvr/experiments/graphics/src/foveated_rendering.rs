@@ -1,4 +1,4 @@
-use alvr_common::Fov;
+use alvr_common::{glam::UVec2, Fov};
 use alvr_session::FoveatedRenderingDesc;
 use wgpu::{CommandEncoder, TextureView};
 
@@ -16,10 +16,10 @@ impl FoveatedRenderingPass {
     // todo: reparametrize FoveatedRenderingDesc with focus area width and height in degrees
     pub fn new(
         direction: FrDirection,
-        original_size: (u32, u32),
+        original_size: UVec2,
         desc: &FoveatedRenderingDesc,
         reference_fov: Fov, // initial fov used to choose the encoded frame size
-    ) -> (Self, (u32, u32)) {
+    ) -> (Self, UVec2) {
         todo!()
     }
 

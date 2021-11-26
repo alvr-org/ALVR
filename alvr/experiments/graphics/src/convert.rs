@@ -1,4 +1,4 @@
-use alvr_common::prelude::*;
+use alvr_common::{glam::UVec2, prelude::*};
 use ash::{extensions::khr, vk};
 use core::sync;
 use openxr_sys::SwapchainUsageFlags;
@@ -322,8 +322,7 @@ pub struct SwapchainCreateInfo {
     pub usage: SwapchainUsageFlags,
     pub format: TextureFormat,
     pub sample_count: u32,
-    pub width: u32,
-    pub height: u32,
+    pub size: UVec2,
     pub texture_type: TextureType,
     pub mip_count: u32,
 }
@@ -367,13 +366,15 @@ pub fn create_texture_set(
         TextureType::Cubemap => 6,
     };
 
+    let size = Extent3d {
+        width: info.size.x,
+        height: info.size.y,
+        depth_or_array_layers,
+    };
+
     let texture_descriptor = TextureDescriptor {
         label: None,
-        size: Extent3d {
-            width: info.width,
-            height: info.height,
-            depth_or_array_layers,
-        },
+        size,
         mip_level_count: info.mip_count,
         sample_count: info.sample_count,
         dimension: TextureDimension::D2,
@@ -396,11 +397,7 @@ pub fn create_texture_set(
                         vk_image,
                         &hal::TextureDescriptor {
                             label: None,
-                            size: Extent3d {
-                                width: info.width,
-                                height: info.height,
-                                depth_or_array_layers,
-                            },
+                            size,
                             mip_level_count: info.mip_count,
                             sample_count: info.sample_count,
                             dimension: TextureDimension::D2,

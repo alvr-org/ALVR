@@ -1,3 +1,4 @@
+use alvr_common::lazy_static;
 use alvr_gui::Dashboard;
 use alvr_session::{ClientConnectionDesc, EventSeverity, Raw, ServerEvent, SessionDesc};
 use rhai::Dynamic;
@@ -9,7 +10,7 @@ use std::{
     },
 };
 
-lazy_static::lazy_static! {
+lazy_static! {
     static ref SESSION: Arc<Mutex<SessionDesc>> = {
         let mut session = SessionDesc::default();
         session.client_connections.insert(
@@ -39,7 +40,6 @@ lazy_static::lazy_static! {
 
         Arc::new(Mutex::new(session))
     };
-
     static ref SESSION_MODIFIED: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 }
 

@@ -1,5 +1,3 @@
-use std::{mem, sync::Arc};
-
 use super::{OpenxrContext, OpenxrSwapchain};
 use alvr_common::prelude::*;
 use alvr_graphics::{
@@ -12,6 +10,7 @@ use alvr_graphics::{
 use ash::vk::{self, Handle};
 use openxr as xr;
 use parking_lot::Mutex;
+use std::{mem, sync::Arc};
 use wgpu::{Device, TextureFormat, TextureViewDescriptor};
 use wgpu_hal as hal;
 
@@ -164,10 +163,10 @@ pub fn create_swapchain(
         views: textures
             .iter()
             .map(|tex| {
-                tex.create_view(&TextureViewDescriptor {
+                Arc::new(tex.create_view(&TextureViewDescriptor {
                     base_array_layer: 0,
                     ..Default::default()
-                })
+                }))
             })
             .collect(),
         view_size: (size.0 as _, size.1 as _),

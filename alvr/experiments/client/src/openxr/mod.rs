@@ -70,14 +70,14 @@ impl OpenxrContext {
 
 pub struct OpenxrSwapchain {
     handle: Arc<Mutex<xr::Swapchain<xr::Vulkan>>>,
-    views: Vec<TextureView>,
+    views: Vec<Arc<TextureView>>,
     view_size: (i32, i32),
 }
 
 pub struct AcquiredOpenxrSwapchain<'a> {
     handle_lock: MutexGuard<'a, xr::Swapchain<xr::Vulkan>>,
     size: (i32, i32),
-    pub texture_view: &'a TextureView,
+    pub texture_view: Arc<TextureView>,
 }
 
 pub struct OpenxrSessionLock<'a> {
@@ -104,7 +104,7 @@ impl OpenxrSession {
         graphics_context: Arc<GraphicsContext>,
     ) -> StrResult<Self> {
         let (session, frame_waiter, frame_stream) = unsafe {
-            trace_err!(xr_context.instance.create_session::<xr::Vulkan>(
+            trace_err!(xr_context.instance.create_session_with_guard::<xr::Vulkan>(
                 xr_context.system,
                 &xr::vulkan::SessionCreateInfo {
                     instance: graphics_context.raw_instance.handle().as_raw() as _,
@@ -113,6 +113,7 @@ impl OpenxrSession {
                     queue_family_index: graphics_context.queue_family_index,
                     queue_index: graphics_context.queue_index,
                 },
+                Box::new(Arc::clone(&graphics_context.device)),
             ))?
         };
 
@@ -182,7 +183,7 @@ impl OpenxrSession {
                 AcquiredOpenxrSwapchain {
                     handle_lock,
                     size: swapchain.view_size,
-                    texture_view: &swapchain.views[index as usize],
+                    texture_view: Arc::clone(&swapchain.views[index as usize]),
                 }
             })
             .collect()

@@ -21,6 +21,7 @@ settings-schema = { path = "../../settings-schema", features = [
 
 # Basic utilities
 crossbeam-channel = "0.5"
+env_logger = "0.9"
 parking_lot = "0.11"
 rand = "0.8"
 # Serialization
@@ -32,7 +33,7 @@ futures = "0.3"
 pollster = "0.2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # Graphics
-raw-window-handle = "0.4"
+raw-window-handle = "0.3"                                                                               # blocked on wgpu
 rend3 = { git = "https://github.com/BVE-Reborn/rend3" }
 rend3-routine = { git = "https://github.com/BVE-Reborn/rend3" }
 wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }

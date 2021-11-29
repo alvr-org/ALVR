@@ -7,17 +7,20 @@ mod video_decoder;
 use crate::openxr::{OpenxrContext, OpenxrPresentationGuard, OpenxrSession};
 use alvr_common::{
     glam::{Quat, Vec3},
+    log,
     prelude::*,
     Fov,
 };
 use alvr_graphics::GraphicsContext;
-use connection::FrameMetadataPacket;
+use connection::VideoFrameMetadataPacket;
 use parking_lot::{Mutex, RwLock};
 use scene::Scene;
 use std::{sync::Arc, time::Duration};
 use streaming_compositor::StreamingCompositor;
 use video_decoder::VideoDecoder;
 use wgpu::Texture;
+
+const MAX_SESSION_LOOP_FAILS: usize = 5;
 
 // Timeout stream after this portion of frame interval. must be less than 1, so Phase Sync can
 // compensate for it.
@@ -33,11 +36,14 @@ pub struct ViewConfig {
 struct VideoStreamingComponents {
     compositor: StreamingCompositor,
     video_decoders: Vec<VideoDecoder>,
-    frame_metadata_receiver: crossbeam_channel::Receiver<FrameMetadataPacket>,
+    frame_metadata_receiver: crossbeam_channel::Receiver<VideoFrameMetadataPacket>,
 }
 
 #[cfg_attr(target_os = "android", ndk_glue::main)]
 pub fn main() {
+    env_logger::init();
+    log::error!("enter main");
+
     show_err(run());
 
     #[cfg(target_os = "android")]
@@ -49,6 +55,7 @@ fn run() -> StrResult {
 
     let graphics_context = Arc::new(openxr::create_graphics_context(&xr_context)?);
 
+    let mut fails_count = 0;
     loop {
         let res = show_err(session_pipeline(
             Arc::clone(&xr_context),
@@ -57,6 +64,16 @@ fn run() -> StrResult {
 
         if res.is_some() {
             break Ok(());
+        } else {
+            fails_count += 1;
+
+            if fails_count == MAX_SESSION_LOOP_FAILS {
+                log::error!(
+                    "session loop failed {} times. Terminating.",
+                    MAX_SESSION_LOOP_FAILS
+                );
+                break Ok(());
+            }
         }
     }
 }
@@ -155,7 +172,7 @@ fn get_video_frame_data(
     streaming_components: &VideoStreamingComponents,
     decoder_target: &Texture,
     timeout: Duration,
-) -> Option<FrameMetadataPacket> {
+) -> Option<VideoFrameMetadataPacket> {
     let mut frame_metadata = streaming_components
         .frame_metadata_receiver
         .recv_timeout(timeout)

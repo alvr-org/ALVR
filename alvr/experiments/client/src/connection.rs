@@ -6,7 +6,7 @@ pub struct VideoSlicePacket {
     pub buffer: Vec<u8>,
 }
 
-pub struct FrameMetadataPacket {
+pub struct VideoFrameMetadataPacket {
     pub timestamp: Duration,
     pub view_configs: Vec<ViewConfig>,
 }

@@ -850,6 +850,7 @@ dependencies = [
  "bincode",
  "bytes",
  "crossbeam-channel",
+ "env_logger 0.9.0",
  "futures",
  "ndk 0.5.0",
  "ndk-glue 0.5.0",
@@ -858,7 +859,7 @@ dependencies = [
  "parking_lot",
  "pollster",
  "rand",
- "raw-window-handle 0.4.2",
+ "raw-window-handle",
  "rend3",
  "rend3-routine",
  "serde_json",
@@ -1229,12 +1230,6 @@ dependencies = [
  "cfg-if 1.0.0",
  "lazy_static",
 ]
-
-[[package]]
-name = "cty"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
 
 [[package]]
 name = "d3d12"
@@ -2571,7 +2566,7 @@ dependencies = [
  "glam 0.10.2",
  "iced_native",
  "iced_style",
- "raw-window-handle 0.3.3",
+ "raw-window-handle",
  "thiserror",
 ]
 
@@ -2628,7 +2623,7 @@ dependencies = [
  "image",
  "kamadak-exif",
  "log",
- "raw-window-handle 0.3.3",
+ "raw-window-handle",
  "wgpu",
  "wgpu_glyph",
 ]
@@ -4142,15 +4137,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a441a7a6c80ad6473bd4b74ec1c9a4c951794285bf941c2126f607c72e48211"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "raw-window-handle"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fba75eee94a9d5273a68c9e1e105d9cffe1ef700532325788389e5a83e2522b7"
-dependencies = [
- "cty",
 ]
 
 [[package]]
@@ -5866,7 +5852,7 @@ dependencies = [
  "log",
  "naga",
  "parking_lot",
- "raw-window-handle 0.3.3",
+ "raw-window-handle",
  "smallvec",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -5890,7 +5876,7 @@ dependencies = [
  "naga",
  "parking_lot",
  "profiling",
- "raw-window-handle 0.3.3",
+ "raw-window-handle",
  "smallvec",
  "thiserror",
  "wgpu-hal",
@@ -5925,7 +5911,7 @@ dependencies = [
  "parking_lot",
  "profiling",
  "range-alloc",
- "raw-window-handle 0.3.3",
+ "raw-window-handle",
  "renderdoc-sys",
  "thiserror",
  "wasm-bindgen",
@@ -6047,7 +6033,7 @@ dependencies = [
  "clipboard_macos",
  "clipboard_wayland",
  "clipboard_x11",
- "raw-window-handle 0.3.3",
+ "raw-window-handle",
 ]
 
 [[package]]
@@ -6074,7 +6060,7 @@ dependencies = [
  "objc",
  "parking_lot",
  "percent-encoding",
- "raw-window-handle 0.3.3",
+ "raw-window-handle",
  "scopeguard",
  "smithay-client-toolkit 0.12.3",
  "wayland-client 0.28.6",
@@ -6105,7 +6091,7 @@ dependencies = [
  "objc",
  "parking_lot",
  "percent-encoding",
- "raw-window-handle 0.3.3",
+ "raw-window-handle",
  "smithay-client-toolkit 0.15.2",
  "wasm-bindgen",
  "wayland-client 0.29.1",

@@ -1,5 +1,5 @@
-use alvr_common::prelude::*;
-use alvr_graphics::Context;
+use alvr_common::{glam::UVec2, prelude::*};
+use alvr_graphics::GraphicsContext;
 use alvr_session::{CodecType, MediacodecDataType};
 use ndk::{
     hardware_buffer::HardwareBufferUsage,
@@ -25,23 +25,23 @@ unsafe impl HasRawWindowHandle for SurfaceHandle {
 }
 
 pub struct VideoDecoder {
-    context: Arc<Context>,
+    context: Arc<GraphicsContext>,
     codec: *mut sys::AMediaCodec,
     swapchain: ImageReader,
     swapchain_surface: Surface,
-    video_size: (u32, u32),
+    video_size: UVec2,
 }
 
 impl VideoDecoder {
     pub fn new(
-        context: Arc<Context>,
+        context: Arc<GraphicsContext>,
         codec_type: CodecType,
-        video_size: (u32, u32),
+        video_size: UVec2,
         extra_options: &[(String, MediacodecDataType)],
     ) -> StrResult<Self> {
         let swapchain = trace_err!(ImageReader::new_with_usage(
-            video_size.0 as _,
-            video_size.1 as _,
+            video_size.x as _,
+            video_size.y as _,
             ImageFormat::RGBX_8888,
             HardwareBufferUsage::GPU_SAMPLED_IMAGE,
             2, // double buffered
@@ -51,7 +51,7 @@ impl VideoDecoder {
 
         let swapchain_surface = unsafe {
             context
-                .instance()
+                .instance
                 .create_surface(&SurfaceHandle(surface_handle))
         };
 
@@ -66,8 +66,8 @@ impl VideoDecoder {
 
             let format = sys::AMediaFormat_new();
             sys::AMediaFormat_setString(format, sys::AMEDIAFORMAT_KEY_MIME, mime_cstring.as_ptr());
-            sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_WIDTH, video_size.0 as _);
-            sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_HEIGHT, video_size.1 as _);
+            sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_WIDTH, video_size.x as _);
+            sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_HEIGHT, video_size.y as _);
 
             // Note: string keys and values are memcpy-ed internally into AMediaFormat. CString is
             // only needed to add the trailing null character.
@@ -140,12 +140,15 @@ impl VideoDecoder {
                 );
                 ptr::copy_nonoverlapping(data.as_ptr(), buffer_ptr, data.len());
 
+                // NB: the function expects the timestamp in micros, but nanos is used to have
+                // complete precision, so when converted back to Duration it can compare correctly
+                // to other Durations
                 sys::AMediaCodec_queueInputBuffer(
                     self.codec,
                     index_or_error as _,
                     0,
                     data.len() as _,
-                    frame_index as _, // presentationTimeUs is reinterpreted as the frame index
+                    timestamp.as_nanos() as _,
                     0,
                 );
             }
@@ -180,13 +183,11 @@ impl VideoDecoder {
             };
 
             // Wgpu swapchain can throw Timeout or Outdated, but this should never happen here
-            let source = &trace_err!(self.swapchain_surface.get_current_frame())?
-                .output
-                .texture;
+            let source = &trace_err!(self.swapchain_surface.get_current_texture())?.texture;
 
             let mut encoder = self
                 .context
-                .device()
+                .device
                 .create_command_encoder(&Default::default());
 
             // Copy surface/OES texture to normal texture
@@ -208,17 +209,16 @@ impl VideoDecoder {
                     aspect: TextureAspect::All,
                 },
                 Extent3d {
-                    width: self.video_size.0,
-                    height: self.video_size.1,
+                    width: self.video_size.x,
+                    height: self.video_size.y,
                     depth_or_array_layers: 1,
                 },
             );
 
-            self.context.queue().submit(Some(encoder.finish()));
-            pollster::block_on(self.context.queue().on_submitted_work_done());
+            self.context.queue.submit(Some(encoder.finish()));
 
-            // presentationTimeUs is reinterpreted as the frame index
-            Ok(Some(info.presentationTimeUs as _))
+            // NB: presentationTimeUs is actually nanos as explained in push_frame_nals()
+            Ok(Some(Duration::from_nanos(info.presentationTimeUs as _)))
         } else if index_or_error as i32 == sys::AMEDIACODEC_INFO_TRY_AGAIN_LATER {
             Ok(None)
         } else {

@@ -217,9 +217,15 @@ impl GraphicsContext {
             };
 
             Ok(Self {
-                instance,
-                device,
-                queue,
+                instance: Arc::new(instance),
+                adapter: Arc::new(adapter),
+                device: Arc::new(device),
+                queue: Arc::new(queue),
+                raw_instance,
+                raw_physical_device,
+                raw_device,
+                queue_family_index,
+                queue_index,
             })
         }
 

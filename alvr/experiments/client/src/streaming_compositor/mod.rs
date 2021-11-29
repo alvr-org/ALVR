@@ -1,3 +1,4 @@
+use alvr_common::glam::UVec2;
 use alvr_graphics::{
     slicing::{AlignmentDirection, SlicingPass},
     GraphicsContext,
@@ -14,8 +15,8 @@ pub struct StreamingCompositor {
 }
 
 impl StreamingCompositor {
-    pub fn new(graphics_context: Arc<GraphicsContext>, target_view_size: (u32, u32)) -> Self {
-        let combined_size = (target_view_size.0 * 2, target_view_size.1);
+    pub fn new(graphics_context: Arc<GraphicsContext>, target_view_size: UVec2) -> Self {
+        let combined_size = UVec2::new(target_view_size.x * 2, target_view_size.y);
 
         let slicer = SlicingPass::new(
             &graphics_context.device,
@@ -35,7 +36,7 @@ impl StreamingCompositor {
         self.slicer.input_texture()
     }
 
-    pub fn render(&self, output: &TextureView) {
+    pub fn render(&self, target: &[Arc<TextureView>]) {
         let mut encoder = self
             .graphics_context
             .device

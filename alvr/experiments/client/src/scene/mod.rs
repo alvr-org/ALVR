@@ -1,7 +1,10 @@
+use crate::{
+    openxr::{OpenxrHandPoseInput, SceneButtons},
+    ViewConfig,
+};
 use alvr_common::{
-    glam::{Mat4, Quat, UVec2, Vec3, Vec4},
+    glam::{Mat4, UVec2, Vec4},
     prelude::*,
-    Fov,
 };
 use alvr_graphics::GraphicsContext;
 use rend3::{
@@ -16,12 +19,12 @@ use wgpu::{Backend, DeviceType, TextureView};
 const NEAR_PLANE_M: f32 = 0.01;
 
 // Responsible for rendering the lobby room or HUD
-pub struct SceneRenderer {
+pub struct Scene {
     renderer: Arc<rend3::Renderer>,
     pbr_routine: PbrRenderRoutine,
 }
 
-impl SceneRenderer {
+impl Scene {
     pub fn new(graphics_context: &GraphicsContext) -> StrResult<Self> {
         let iad = InstanceAdapterDevice {
             instance: Arc::clone(&graphics_context.instance),
@@ -53,11 +56,20 @@ impl SceneRenderer {
         })
     }
 
+    pub fn update(
+        &mut self,
+        left_pose_input: OpenxrHandPoseInput,
+        right_pose_input: OpenxrHandPoseInput,
+        buttons: SceneButtons,
+        stream_updated: bool,
+    ) {
+        // todo: render controllers or hands
+        // todo: fade-in/out scene when stream_updated changes
+    }
+
     pub fn render(
         &mut self,
-        camera_rotation: Quat,
-        camera_translation: Vec3,
-        fov: Fov,
+        camera_view_config: &ViewConfig,
         output: Arc<TextureView>,
         output_resolution: UVec2,
     ) {
@@ -71,10 +83,10 @@ impl SceneRenderer {
             },
         );
 
-        let l = fov.left.tan();
-        let r = fov.right.tan();
-        let t = fov.top.tan();
-        let b = fov.bottom.tan();
+        let l = camera_view_config.fov.left.tan();
+        let r = camera_view_config.fov.right.tan();
+        let t = camera_view_config.fov.top.tan();
+        let b = camera_view_config.fov.bottom.tan();
         let projection = Mat4::from_cols(
             // NB: the matrix here is defined as column major, it appears transposed but it's not
             Vec4::new(2_f32 / (r - l), 0_f32, 0_f32, 0_f32),
@@ -84,7 +96,10 @@ impl SceneRenderer {
         );
         self.renderer.set_camera_data(Camera {
             projection: CameraProjection::Raw(projection),
-            view: Mat4::from_rotation_translation(camera_rotation, camera_translation),
+            view: Mat4::from_rotation_translation(
+                camera_view_config.orientation,
+                camera_view_config.position,
+            ),
         });
 
         let (command_buffers, ready_data) = self.renderer.ready();

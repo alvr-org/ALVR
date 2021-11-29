@@ -1,20 +1,24 @@
+mod convert;
 mod graphics_interop;
 mod interaction;
 
-pub use graphics_interop::*;
-use xr::{Fovf, Posef, Quaternionf, Vector3f};
+pub use graphics_interop::create_graphics_context;
 
-use self::interaction::OpenxrInteractionContext;
+use self::interaction::{
+    OpenxrActionType, OpenxrActionValue, OpenxrInteractionContext, OpenxrProfileDesc,
+};
+use crate::ViewConfig;
 use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     prelude::*,
-    Fov,
+    Fov, MotionData,
 };
 use alvr_graphics::GraphicsContext;
+use alvr_session::TrackingSpace;
 use ash::vk::Handle;
 use openxr as xr;
 use parking_lot::{Mutex, MutexGuard};
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 use wgpu::TextureView;
 
 pub struct OpenxrContext {
@@ -81,33 +85,136 @@ pub struct OpenxrSwapchain {
 
 pub struct AcquiredOpenxrSwapchain<'a> {
     handle_lock: MutexGuard<'a, xr::Swapchain<xr::Vulkan>>,
-    pub size: UVec2,
     pub texture_view: Arc<TextureView>,
+    pub size: UVec2,
 }
 
-pub struct OpenxrSessionLock<'a> {
-    pub acquired_scene_swapchain: Vec<AcquiredOpenxrSwapchain<'a>>,
-    pub acquired_stream_swapchain: Vec<AcquiredOpenxrSwapchain<'a>>,
-    pub frame_state: xr::FrameState,
+fn create_layer_views<'a>(
+    acquired_swapchains: &'a mut [AcquiredOpenxrSwapchain],
+    view_configs: &'a [ViewConfig],
+) -> Vec<xr::CompositionLayerProjectionView<'a, xr::Vulkan>> {
+    acquired_swapchains
+        .iter_mut()
+        .enumerate()
+        .map(|(index, swapchain)| {
+            let view_config = view_configs
+                .get(index)
+                .cloned()
+                .unwrap_or_else(|| ViewConfig {
+                    orientation: Quat::IDENTITY,
+                    position: Vec3::ZERO,
+                    fov: Fov::default(),
+                });
+
+            swapchain.handle_lock.release_image().unwrap();
+
+            let rect = xr::Rect2Di {
+                offset: xr::Offset2Di { x: 0, y: 0 },
+                extent: xr::Extent2Di {
+                    width: swapchain.size.x as _,
+                    height: swapchain.size.y as _,
+                },
+            };
+
+            xr::CompositionLayerProjectionView::new()
+                .pose(xr::Posef {
+                    orientation: convert::to_xr_orientation(view_config.orientation),
+                    position: convert::to_xr_vec3(view_config.position),
+                })
+                .fov(convert::to_xr_fov(view_config.fov))
+                .sub_image(
+                    xr::SwapchainSubImage::new()
+                        .swapchain(&swapchain.handle_lock)
+                        .image_array_index(0)
+                        .image_rect(rect),
+                )
+        })
+        .collect()
 }
 
-pub struct PresentationView<'a> {
-    pub acquired_swapchain: AcquiredOpenxrSwapchain<'a>,
-    pub orientation: Quat,
-    pub position: Vec3,
-    pub fov: Fov,
+// End frame and submit swapchains once dropped
+pub struct OpenxrPresentationGuard<'a> {
+    frame_stream_lock: MutexGuard<'a, xr::FrameStream<xr::Vulkan>>,
+    interaction_context: &'a OpenxrInteractionContext,
+    environment_blend_mode: xr::EnvironmentBlendMode,
+    pub acquired_scene_swapchains: Vec<AcquiredOpenxrSwapchain<'a>>,
+    pub acquired_stream_swapchains: Vec<AcquiredOpenxrSwapchain<'a>>,
+    pub predicted_frame_interval: Duration,
+    pub display_timestamp: Duration,          // output/input
+    pub scene_view_configs: Vec<ViewConfig>,  // input
+    pub stream_view_configs: Vec<ViewConfig>, // input
+}
+
+impl<'a> Drop for OpenxrPresentationGuard<'a> {
+    fn drop(&mut self) {
+        let reference_space = &self.interaction_context.reference_space;
+
+        //Note: scene layers are drawn always on top of the stream layers
+        self.frame_stream_lock
+            .end(
+                xr::Time::from_nanos(self.display_timestamp.as_nanos() as _),
+                self.environment_blend_mode,
+                &[
+                    &xr::CompositionLayerProjection::new()
+                        .space(reference_space)
+                        .views(&create_layer_views(
+                            &mut self.acquired_scene_swapchains,
+                            &self.scene_view_configs,
+                        )),
+                    &xr::CompositionLayerProjection::new()
+                        .space(reference_space)
+                        .views(&create_layer_views(
+                            &mut self.acquired_stream_swapchains,
+                            &self.stream_view_configs,
+                        )),
+                ],
+            )
+            .ok();
+        // Note: in case of error, the next usage of the session will error, triggering a recreation
+        // of the session
+    }
+}
+
+pub struct HandTrackingInput {
+    pub target_ray_motion: MotionData,
+    pub skeleton_motion: Vec<MotionData>,
+}
+
+pub struct OpenxrHandPoseInput {
+    pub grip_motion: MotionData,
+    pub hand_tracking_input: Option<HandTrackingInput>,
+}
+
+pub struct SceneButtons {
+    pub select: bool,
+    pub menu: bool,
+}
+
+pub struct OpenxrSceneInput {
+    pub view_configs: Vec<ViewConfig>,
+    pub left_pose_input: OpenxrHandPoseInput,
+    pub right_pose_input: OpenxrHandPoseInput,
+    pub buttons: SceneButtons,
+}
+
+pub struct OpenxrStreamingInput {
+    pub view_configs: Vec<ViewConfig>,
+    pub left_pose_input: OpenxrHandPoseInput,
+    pub right_pose_input: OpenxrHandPoseInput,
+    pub button_values: HashMap<String, OpenxrActionValue>,
 }
 
 pub struct OpenxrSession {
-    pub xr_context: Arc<OpenxrContext>,
-    pub graphics_context: Arc<GraphicsContext>,
-    pub inner: xr::Session<xr::Vulkan>,
-    pub frame_stream: Mutex<xr::FrameStream<xr::Vulkan>>,
-    pub frame_waiter: Mutex<xr::FrameWaiter>,
+    xr_context: Arc<OpenxrContext>,
+    graphics_context: Arc<GraphicsContext>,
+    inner: xr::Session<xr::Vulkan>,
     scene_swapchains: Vec<OpenxrSwapchain>,
     stream_swapchains: Vec<OpenxrSwapchain>,
-    pub environment_blend_mode: xr::EnvironmentBlendMode,
-    pub interaction_context: OpenxrInteractionContext,
+    environment_blend_mode: xr::EnvironmentBlendMode,
+    interaction_context: OpenxrInteractionContext,
+    frame_stream: Mutex<xr::FrameStream<xr::Vulkan>>,
+    frame_waiter: Mutex<xr::FrameWaiter>,
+    scene_predicted_display_timestamp: Mutex<xr::Time>,
 }
 
 impl OpenxrSession {
@@ -140,7 +247,7 @@ impl OpenxrSession {
         let scene_swapchains = views
             .into_iter()
             .map(|config| {
-                create_swapchain(
+                graphics_interop::create_swapchain(
                     &graphics_context.device,
                     &session,
                     UVec2::new(
@@ -153,28 +260,70 @@ impl OpenxrSession {
 
         // Recreated later
         let stream_swapchains = (0..2)
-            .map(|_| create_swapchain(&graphics_context.device, &session, UVec2::new(1, 1)))
+            .map(|_| {
+                graphics_interop::create_swapchain(
+                    &graphics_context.device,
+                    &session,
+                    UVec2::new(1, 1),
+                )
+            })
             .collect();
 
         let environment_blend_mode = *xr_context.environment_blend_modes.first().unwrap();
+
+        let interaction_context = OpenxrInteractionContext::new(
+            &xr_context,
+            session.clone(),
+            &[],
+            vec![],
+            TrackingSpace::Local,
+        )?;
 
         Ok(Self {
             xr_context,
             graphics_context,
             inner: session,
-            frame_stream: Mutex::new(frame_stream),
-            frame_waiter: Mutex::new(frame_waiter),
             scene_swapchains,
             stream_swapchains,
             environment_blend_mode,
-            interaction_context: todo!(),
+            interaction_context,
+            frame_stream: Mutex::new(frame_stream),
+            frame_waiter: Mutex::new(frame_waiter),
+            scene_predicted_display_timestamp: Mutex::new(xr::Time::from_nanos(0)),
         })
     }
 
-    pub fn recreate_stream_swapchains(&mut self, view_size: UVec2) {
+    pub fn update_for_stream(
+        &mut self,
+        view_size: UVec2,
+        action_types: &[(String, OpenxrActionType)],
+        profile_descs: Vec<OpenxrProfileDesc>,
+        reference_space_type: TrackingSpace,
+        environment_blend_mode: xr::EnvironmentBlendMode,
+    ) -> StrResult {
+        // Note: if called between begin_frame() and end_frame(), the old swapchains will live until
+        // presented, then they will get dropped. It can't happen to present an unacquired swapchain.
         self.stream_swapchains = (0..2)
-            .map(|_| create_swapchain(&self.graphics_context.device, &self.inner, view_size))
+            .map(|_| {
+                graphics_interop::create_swapchain(
+                    &self.graphics_context.device,
+                    &self.inner,
+                    view_size,
+                )
+            })
             .collect();
+
+        self.interaction_context = OpenxrInteractionContext::new(
+            &self.xr_context,
+            self.inner.clone(),
+            action_types,
+            profile_descs,
+            reference_space_type,
+        )?;
+
+        self.environment_blend_mode = environment_blend_mode;
+
+        Ok(())
     }
 
     fn acquire_views(swapchains: &[OpenxrSwapchain]) -> Vec<AcquiredOpenxrSwapchain> {
@@ -195,14 +344,16 @@ impl OpenxrSession {
             .collect()
     }
 
-    // fixme: release swapchains if not consumed by end_frame()
-    pub fn begin_frame(&self) -> StrResult<Option<OpenxrSessionLock>> {
+    pub fn begin_frame(&self) -> StrResult<Option<OpenxrPresentationGuard>> {
+        // This is the blocking call that performs Phase Sync
         let frame_state = trace_err!(self.frame_waiter.lock().wait())?;
 
-        trace_err!(self.frame_stream.lock().begin())?;
+        let mut frame_stream_lock = self.frame_stream.lock();
+
+        trace_err!(frame_stream_lock.begin())?;
 
         if !frame_state.should_render {
-            trace_err!(self.frame_stream.lock().end(
+            trace_err!(frame_stream_lock.end(
                 frame_state.predicted_display_time,
                 self.environment_blend_mode,
                 &[],
@@ -211,80 +362,56 @@ impl OpenxrSession {
             return Ok(None);
         }
 
-        let acquired_scene_swapchain = Self::acquire_views(&self.scene_swapchains);
-        let acquired_stream_swapchain = Self::acquire_views(&self.stream_swapchains);
+        let acquired_scene_swapchains = Self::acquire_views(&self.scene_swapchains);
+        let acquired_stream_swapchains = Self::acquire_views(&self.stream_swapchains);
 
-        Ok(Some(OpenxrSessionLock {
-            acquired_scene_swapchain,
-            acquired_stream_swapchain,
-            frame_state,
+        *self.scene_predicted_display_timestamp.lock() = frame_state.predicted_display_time;
+        let display_timestamp =
+            Duration::from_nanos(frame_state.predicted_display_time.as_nanos() as _);
+
+        Ok(Some(OpenxrPresentationGuard {
+            frame_stream_lock,
+            interaction_context: &self.interaction_context,
+            environment_blend_mode: self.environment_blend_mode,
+            acquired_scene_swapchains,
+            acquired_stream_swapchains,
+            predicted_frame_interval: Duration::from_nanos(
+                frame_state.predicted_display_period.as_nanos() as _,
+            ),
+            display_timestamp,
+            scene_view_configs: vec![],
+            stream_view_configs: vec![],
         }))
     }
 
-    fn create_layer_views<'a>(
-        views: &'a mut [PresentationView],
-    ) -> Vec<xr::CompositionLayerProjectionView<'a, xr::Vulkan>> {
-        views
-            .iter_mut()
-            .map(|view| {
-                view.acquired_swapchain.handle_lock.release_image().unwrap();
+    pub fn get_scene_input(&self) -> StrResult<OpenxrSceneInput> {
+        let display_time = *self.scene_predicted_display_timestamp.lock();
+        let ctx = &self.interaction_context;
 
-                let rect = xr::Rect2Di {
-                    offset: xr::Offset2Di { x: 0, y: 0 },
-                    extent: xr::Extent2Di {
-                        width: view.acquired_swapchain.size.x as _,
-                        height: view.acquired_swapchain.size.y as _,
-                    },
-                };
+        ctx.sync_input()?;
 
-                xr::CompositionLayerProjectionView::new()
-                    .pose(Posef {
-                        orientation: Quaternionf {
-                            x: view.orientation.x,
-                            y: view.orientation.y,
-                            z: view.orientation.z,
-                            w: view.orientation.w,
-                        },
-                        position: Vector3f {
-                            x: view.position.x,
-                            y: view.position.y,
-                            z: view.position.z,
-                        },
-                    })
-                    .fov(Fovf {
-                        angle_left: view.fov.left,
-                        angle_right: view.fov.right,
-                        angle_up: view.fov.top,
-                        angle_down: view.fov.bottom,
-                    })
-                    .sub_image(
-                        xr::SwapchainSubImage::new()
-                            .swapchain(&view.acquired_swapchain.handle_lock)
-                            .image_array_index(0)
-                            .image_rect(rect),
-                    )
-            })
-            .collect()
+        Ok(OpenxrSceneInput {
+            view_configs: ctx.get_views(xr::ViewConfigurationType::PRIMARY_STEREO, display_time)?,
+            left_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
+            right_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
+            buttons: ctx.get_scene_buttons()?,
+        })
     }
 
-    pub fn end_frame(
+    pub fn get_streaming_input(
         &self,
         display_timestamp: Duration,
-        mut stream_views: Vec<PresentationView>,
-        mut scene_views: Vec<PresentationView>,
-    ) -> StrResult {
-        //Note: scene layers are drawn always on top of the stream layers
-        trace_err!(self.frame_stream.lock().end(
-            xr::Time::from_nanos(display_timestamp.as_nanos() as _),
-            self.environment_blend_mode,
-            &[
-                &xr::CompositionLayerProjection::new()
-                    .space(&self.interaction_context.reference_space)
-                    .views(&Self::create_layer_views(&mut stream_views)),
-                &xr::CompositionLayerProjection::new()
-                    .space(&self.interaction_context.reference_space)
-                    .views(&Self::create_layer_views(&mut scene_views)),
-            ],
-        ))
+    ) -> StrResult<OpenxrStreamingInput> {
+        let display_time = xr::Time::from_nanos(display_timestamp.as_nanos() as _);
+        let ctx = &self.interaction_context;
+
+        ctx.sync_input()?;
+
+        Ok(OpenxrStreamingInput {
+            view_configs: ctx.get_views(xr::ViewConfigurationType::PRIMARY_STEREO, display_time)?,
+            left_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
+            right_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
+            button_values: ctx.get_streming_buttons()?,
+        })
     }
 }

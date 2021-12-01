@@ -1,18 +1,15 @@
+use crate::GraphicsContext;
 use alvr_common::{glam::UVec2, prelude::*};
-use ash::{extensions::khr, vk};
-use core::sync;
+use ash::vk;
 use openxr_sys::SwapchainUsageFlags;
 use std::{any::Any, ffi::CStr, slice, sync::Arc};
 use wgpu::{
-    Device, DeviceDescriptor, Extent3d, Features, Texture, TextureDescriptor, TextureDimension,
+    Device, DeviceDescriptor, Extent3d, Texture, TextureDescriptor, TextureDimension,
     TextureFormat, TextureUsages,
 };
 use wgpu_hal as hal;
 
-use crate::GraphicsContext;
-
-pub const TARGET_VULKAN_VERSION: u32 = vk::make_api_version(1, 0, 0, 0);
-pub const DEVICE_FEATURES: Features = Features::PUSH_CONSTANTS;
+pub const TARGET_VULKAN_VERSION: u32 = vk::make_api_version(0, 1, 1, 0);
 
 // Get extensions needed by wgpu. Corresponds to xrGetVulkanInstanceExtensionsKHR
 pub fn get_vulkan_instance_extensions(
@@ -74,7 +71,7 @@ pub fn get_temporary_hal_adapter(
     version: u32,
     instance: ash::Instance,
     physical_device: vk::PhysicalDevice,
-) -> StrResult<<hal::api::Vulkan as hal::Api>::Adapter> {
+) -> StrResult<hal::ExposedAdapter<hal::api::Vulkan>> {
     let instance_extensions = get_vulkan_instance_extensions(&entry, version)?;
 
     let mut flags = hal::InstanceFlags::empty();
@@ -95,9 +92,7 @@ pub fn get_temporary_hal_adapter(
         ))?
     };
 
-    let exposed_adapter = trace_none!(hal_instance.expose_adapter(physical_device))?;
-
-    Ok(exposed_adapter.adapter)
+    trace_none!(hal_instance.expose_adapter(physical_device))
 }
 
 // Create wgpu-compatible Vulkan device. Corresponds to xrCreateVulkanDeviceKHR
@@ -111,11 +106,18 @@ pub fn create_vulkan_device(
     let temp_adapter =
         get_temporary_hal_adapter(entry, version, instance.clone(), physical_device)?;
 
-    let mut extensions_ptrs = temp_adapter
-        .required_device_extensions(DEVICE_FEATURES)
+    let wgpu_extensions = temp_adapter
+        .adapter
+        .required_device_extensions(temp_adapter.features);
+    let mut extensions_ptrs = wgpu_extensions
         .iter()
         .map(|x| x.as_ptr())
         .collect::<Vec<_>>();
+    let mut enabled_phd_features = temp_adapter.adapter.physical_device_features(
+        &wgpu_extensions,
+        temp_adapter.features,
+        hal::UpdateAfterBindTypes::empty(),
+    );
 
     extensions_ptrs.extend_from_slice(unsafe {
         slice::from_raw_parts(
@@ -123,6 +125,10 @@ pub fn create_vulkan_device(
             create_info.enabled_extension_count as _,
         )
     });
+
+    let temp_create_info = vk::DeviceCreateInfo::builder();
+    let temp_create_info = enabled_phd_features.add_to_device_create_builder(temp_create_info);
+    // todo
 
     // todo: add required wgpu features from temp_adapter
     let mut features = if !create_info.p_enabled_features.is_null() {
@@ -148,55 +154,57 @@ pub fn create_vulkan_device(
     }
 }
 
+pub struct GraphicsContextVulkanInitDesc {
+    pub entry: ash::Entry,
+    pub version: u32,
+    pub raw_instance: ash::Instance,
+    pub raw_physical_device: vk::PhysicalDevice,
+    pub raw_device: ash::Device,
+    pub queue_family_index: u32,
+    pub queue_index: u32,
+    pub drop_guard: Option<Box<dyn Any + Send + Sync>>,
+}
+
 impl GraphicsContext {
     // This constructor is used primarily for the vulkan layer. It corresponds to xrCreateSession
     // with GraphicsBindingVulkanKHR. If owned == false, this Context must be dropped before
     // destroying vk_instance and vk_device.
-    pub fn from_vulkan(
-        entry: ash::Entry,
-        version: u32,
-        raw_instance: ash::Instance,
-        raw_physical_device: vk::PhysicalDevice,
-        raw_device: ash::Device,
-        queue_family_index: u32,
-        queue_index: u32,
-        drop_guard: Option<Box<dyn Any + Send + Sync>>,
-    ) -> StrResult<Self> {
+    pub fn from_vulkan(desc: GraphicsContextVulkanInitDesc) -> StrResult<Self> {
         let mut flags = hal::InstanceFlags::empty();
         if cfg!(debug_assertions) {
             flags |= hal::InstanceFlags::VALIDATION;
             flags |= hal::InstanceFlags::DEBUG;
         };
 
-        let extensions = get_vulkan_instance_extensions(&entry, version)?;
+        let extensions = get_vulkan_instance_extensions(&desc.entry, desc.version)?;
 
-        let handle_is_owned = drop_guard.is_some();
+        let handle_is_owned = desc.drop_guard.is_some();
 
         let instance = unsafe {
             trace_err!(<hal::api::Vulkan as hal::Api>::Instance::from_raw(
-                entry,
-                raw_instance.clone(),
-                version,
+                desc.entry,
+                desc.raw_instance.clone(),
+                desc.version,
                 extensions,
                 flags,
                 false,
-                drop_guard,
+                desc.drop_guard,
             ))?
         };
 
-        let exposed_adapter = trace_none!(instance.expose_adapter(raw_physical_device))?;
+        let exposed_adapter = trace_none!(instance.expose_adapter(desc.raw_physical_device))?;
         let device_extensions = exposed_adapter
             .adapter
-            .required_device_extensions(DEVICE_FEATURES);
+            .required_device_extensions(exposed_adapter.features);
 
         let open_device = unsafe {
             trace_err!(exposed_adapter.adapter.device_from_raw(
-                raw_device.clone(),
+                desc.raw_device.clone(),
                 handle_is_owned,
                 &device_extensions,
                 hal::UpdateAfterBindTypes::empty(), // todo: proper initialization
-                queue_family_index,
-                queue_index,
+                desc.queue_family_index,
+                desc.queue_index,
             ))?
         };
 
@@ -209,7 +217,7 @@ impl GraphicsContext {
                     open_device,
                     &DeviceDescriptor {
                         label: None,
-                        features: DEVICE_FEATURES,
+                        features: adapter.features(),
                         limits: adapter.limits(),
                     },
                     None,
@@ -221,11 +229,11 @@ impl GraphicsContext {
                 adapter: Arc::new(adapter),
                 device: Arc::new(device),
                 queue: Arc::new(queue),
-                raw_instance,
-                raw_physical_device,
-                raw_device,
-                queue_family_index,
-                queue_index,
+                raw_instance: desc.raw_instance,
+                raw_physical_device: desc.raw_physical_device,
+                raw_device: desc.raw_device,
+                queue_family_index: desc.queue_family_index,
+                queue_index: desc.queue_index,
             })
         }
 
@@ -277,16 +285,16 @@ impl GraphicsContext {
             ])
         ))?;
 
-        Self::from_vulkan(
+        Self::from_vulkan(GraphicsContextVulkanInitDesc {
             entry,
-            TARGET_VULKAN_VERSION,
+            version: TARGET_VULKAN_VERSION,
             raw_instance,
             raw_physical_device,
             raw_device,
             queue_family_index,
             queue_index,
-            Some(Box::new(())),
-        )
+            drop_guard: Some(Box::new(())),
+        })
     }
 }
 
@@ -309,8 +317,6 @@ pub enum SwapchainCreateData {
     // Used for the Vulkan layer and client
     External {
         images: Vec<vk::Image>,
-        vk_usage: vk::ImageUsageFlags,
-        vk_format: vk::Format,
         hal_usage: hal::TextureUses,
         drop_guard: Option<Arc<dyn Any + Send + Sync>>,
     },
@@ -391,8 +397,6 @@ pub fn create_texture_set(
     match data {
         SwapchainCreateData::External {
             images,
-            vk_usage,
-            vk_format,
             hal_usage,
             drop_guard,
         } => images

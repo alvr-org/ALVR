@@ -2,7 +2,7 @@ use super::{OpenxrContext, OpenxrSwapchain};
 use alvr_common::{glam::UVec2, prelude::*};
 use alvr_graphics::{
     convert::{
-        self, SwapchainCreateData, SwapchainCreateInfo, TextureType, DEVICE_FEATURES,
+        self, GraphicsContextVulkanInitDesc, SwapchainCreateData, SwapchainCreateInfo, TextureType,
         TARGET_VULKAN_VERSION,
     },
     GraphicsContext,
@@ -68,11 +68,13 @@ pub fn create_graphics_context(xr_context: &OpenxrContext) -> StrResult<Graphics
             raw_instance.clone(),
             raw_physical_device,
         )?;
-        let extensions = temp_adapter.required_device_extensions(DEVICE_FEATURES);
-        let mut features = temp_adapter.physical_device_features(
+        let extensions = temp_adapter
+            .adapter
+            .required_device_extensions(temp_adapter.features);
+        let mut features = temp_adapter.adapter.physical_device_features(
             &extensions,
-            DEVICE_FEATURES,
-            wgpu_hal::UpdateAfterBindTypes::empty(),
+            temp_adapter.features,
+            hal::UpdateAfterBindTypes::empty(),
         );
 
         let queue_infos = [vk::DeviceQueueCreateInfo::builder()
@@ -97,16 +99,16 @@ pub fn create_graphics_context(xr_context: &OpenxrContext) -> StrResult<Graphics
         )
     };
 
-    GraphicsContext::from_vulkan(
+    GraphicsContext::from_vulkan(GraphicsContextVulkanInitDesc {
         entry,
-        TARGET_VULKAN_VERSION,
+        version: TARGET_VULKAN_VERSION,
         raw_instance,
         raw_physical_device,
         raw_device,
         queue_family_index,
         queue_index,
-        Some(Box::new(xr_context.instance.clone())),
-    )
+        drop_guard: Some(Box::new(xr_context.instance.clone())),
+    })
 }
 
 pub fn create_swapchain(
@@ -142,8 +144,6 @@ pub fn create_swapchain(
                 .iter()
                 .map(|raw_image| vk::Image::from_raw(*raw_image))
                 .collect(),
-            vk_usage: vk::ImageUsageFlags::COLOR_ATTACHMENT,
-            vk_format: FORMAT,
             hal_usage: hal::TextureUses::COLOR_TARGET,
             drop_guard: Some(Arc::clone(&swapchain) as _),
         },

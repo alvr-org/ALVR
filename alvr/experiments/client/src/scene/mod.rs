@@ -4,28 +4,32 @@ use crate::{
 };
 use alvr_common::{
     glam::{Mat4, UVec2, Vec4},
+    log,
     prelude::*,
 };
 use alvr_graphics::GraphicsContext;
 use rend3::{
-    types::{Camera, CameraProjection},
+    types::{Camera, CameraProjection, MipmapCount, MipmapSource, Texture},
     util::output::OutputFrame,
     ExtendedAdapterInfo, InstanceAdapterDevice, RenderGraph, RendererMode, Vendor,
 };
-use rend3_routine::{PbrRenderRoutine, RenderTextureOptions, SampleCount};
+use rend3_routine::{PbrRenderRoutine, RenderTextureOptions, SampleCount, SkyboxRoutine};
 use std::sync::Arc;
-use wgpu::{Backend, DeviceType, TextureView};
+use wgpu::{Backend, DeviceType, TextureFormat, TextureView};
 
 const NEAR_PLANE_M: f32 = 0.01;
 
 // Responsible for rendering the lobby room or HUD
 pub struct Scene {
     renderer: Arc<rend3::Renderer>,
-    pbr_routine: PbrRenderRoutine,
+    skybox_routine: SkyboxRoutine,
+    // pbr_routine: PbrRenderRoutine,
 }
 
 impl Scene {
     pub fn new(graphics_context: &GraphicsContext) -> StrResult<Self> {
+        log::error!("create scene");
+
         let iad = InstanceAdapterDevice {
             instance: Arc::clone(&graphics_context.instance),
             adapter: Arc::clone(&graphics_context.adapter),
@@ -41,18 +45,42 @@ impl Scene {
             },
         };
 
+        log::error!("create renderer");
+
         let renderer = trace_err!(rend3::Renderer::new(iad, None))?;
-        let pbr_routine = PbrRenderRoutine::new(
+        log::error!("create pbr routine");
+        // let pbr_routine = PbrRenderRoutine::new(
+        //     &renderer,
+        //     RenderTextureOptions {
+        //         resolution: UVec2::new(100, 100),
+        //         samples: SampleCount::One,
+        //     },
+        // );
+
+        let mut skybox_routine = SkyboxRoutine::new(
             &renderer,
             RenderTextureOptions {
                 resolution: UVec2::new(1, 1),
                 samples: SampleCount::One,
             },
         );
+        let skybox_handle = renderer.add_texture_cube(Texture {
+            label: Some("skybox".into()),
+            data: vec![
+                255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255,
+                255, 0, 0, 255,
+            ],
+            format: TextureFormat::Rgba8UnormSrgb,
+            size: UVec2::new(1, 1),
+            mip_count: MipmapCount::ONE,
+            mip_source: MipmapSource::Uploaded,
+        });
+        skybox_routine.set_background_texture(Some(skybox_handle));
 
         Ok(Self {
             renderer,
-            pbr_routine,
+            skybox_routine,
+            // pbr_routine,
         })
     }
 
@@ -75,13 +103,13 @@ impl Scene {
     ) {
         self.renderer
             .set_aspect_ratio(output_resolution.x as f32 / output_resolution.y as f32);
-        self.pbr_routine.resize(
-            &self.renderer,
-            RenderTextureOptions {
-                resolution: output_resolution,
-                samples: SampleCount::One,
-            },
-        );
+        // self.pbr_routine.resize(
+        //     &self.renderer,
+        //     RenderTextureOptions {
+        //         resolution: output_resolution,
+        //         samples: SampleCount::One,
+        //     },
+        // );
 
         let l = camera_view_config.fov.left.tan();
         let r = camera_view_config.fov.right.tan();
@@ -103,17 +131,19 @@ impl Scene {
         });
 
         let (command_buffers, ready_data) = self.renderer.ready();
+        self.skybox_routine.ready(&self.renderer);
 
         let mut graph = RenderGraph::new();
 
-        self.pbr_routine.add_pre_cull_to_graph(&mut graph);
-        self.pbr_routine
-            .add_shadow_culling_to_graph(&mut graph, &ready_data);
-        self.pbr_routine.add_culling_to_graph(&mut graph);
-        self.pbr_routine
-            .add_shadow_rendering_to_graph(&mut graph, &ready_data);
-        self.pbr_routine.add_prepass_to_graph(&mut graph);
-        self.pbr_routine.add_forward_to_graph(&mut graph);
+        // self.pbr_routine.add_pre_cull_to_graph(&mut graph);
+        // self.pbr_routine
+        //     .add_shadow_culling_to_graph(&mut graph, &ready_data);
+        // self.pbr_routine.add_culling_to_graph(&mut graph);
+        // self.pbr_routine
+        //     .add_shadow_rendering_to_graph(&mut graph, &ready_data);
+        // self.pbr_routine.add_prepass_to_graph(&mut graph);
+        // self.skybox_routine.add_to_graph(&mut graph);
+        // self.pbr_routine.add_forward_to_graph(&mut graph);
 
         // Note: consumes the graph, cannot keep between render() calls
         graph.execute(

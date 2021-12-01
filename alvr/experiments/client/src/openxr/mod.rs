@@ -10,6 +10,7 @@ use self::interaction::{
 use crate::ViewConfig;
 use alvr_common::{
     glam::{Quat, UVec2, Vec3},
+    log,
     prelude::*,
     Fov, MotionData,
 };
@@ -18,7 +19,15 @@ use alvr_session::TrackingSpace;
 use ash::vk::Handle;
 use openxr as xr;
 use parking_lot::{Mutex, MutexGuard};
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread,
+    time::Duration,
+};
 use wgpu::TextureView;
 
 pub struct OpenxrContext {
@@ -38,6 +47,7 @@ impl OpenxrContext {
 
         let mut enabled_extensions = xr::ExtensionSet::default();
         enabled_extensions.khr_vulkan_enable2 = true;
+        enabled_extensions.ext_hand_tracking = true;
         #[cfg(target_os = "android")]
         {
             enabled_extensions.khr_android_create_instance = true;
@@ -195,6 +205,7 @@ pub struct OpenxrSceneInput {
     pub left_pose_input: OpenxrHandPoseInput,
     pub right_pose_input: OpenxrHandPoseInput,
     pub buttons: SceneButtons,
+    pub is_focused: bool,
 }
 
 pub struct OpenxrStreamingInput {
@@ -212,9 +223,17 @@ pub struct OpenxrSession {
     stream_swapchains: Vec<OpenxrSwapchain>,
     environment_blend_mode: xr::EnvironmentBlendMode,
     interaction_context: OpenxrInteractionContext,
+    running_state: AtomicBool,
+    focused_state: AtomicBool,
     frame_stream: Mutex<xr::FrameStream<xr::Vulkan>>,
     frame_waiter: Mutex<xr::FrameWaiter>,
     scene_predicted_display_timestamp: Mutex<xr::Time>,
+}
+
+pub enum OpenxrEvent<'a> {
+    ShouldRender(OpenxrPresentationGuard<'a>),
+    Idle,
+    Shutdown,
 }
 
 impl OpenxrSession {
@@ -287,6 +306,8 @@ impl OpenxrSession {
             stream_swapchains,
             environment_blend_mode,
             interaction_context,
+            running_state: AtomicBool::new(false),
+            focused_state: AtomicBool::new(false),
             frame_stream: Mutex::new(frame_stream),
             frame_waiter: Mutex::new(frame_waiter),
             scene_predicted_display_timestamp: Mutex::new(xr::Time::from_nanos(0)),
@@ -344,7 +365,63 @@ impl OpenxrSession {
             .collect()
     }
 
-    pub fn begin_frame(&self) -> StrResult<Option<OpenxrPresentationGuard>> {
+    pub fn begin_frame(&self) -> StrResult<OpenxrEvent> {
+        let mut event_storage = xr::EventDataBuffer::new();
+        while let Some(event) = self
+            .xr_context
+            .instance
+            .poll_event(&mut event_storage)
+            .unwrap()
+        {
+            match event {
+                xr::Event::EventsLost(event) => {
+                    return fmt_e!("Lost {} events", event.lost_event_count())
+                }
+                xr::Event::InstanceLossPending(_) => return Ok(OpenxrEvent::Shutdown),
+                xr::Event::SessionStateChanged(event) => {
+                    log::error!("Enter OpenXR session state: {:?}", event.state());
+
+                    match event.state() {
+                        xr::SessionState::UNKNOWN | xr::SessionState::IDLE => (),
+                        xr::SessionState::READY => {
+                            trace_err!(self
+                                .inner
+                                .begin(xr::ViewConfigurationType::PRIMARY_STEREO))?;
+                            self.running_state.store(true, Ordering::Relaxed);
+                        }
+                        xr::SessionState::SYNCHRONIZED => (),
+                        xr::SessionState::VISIBLE => {
+                            self.focused_state.store(false, Ordering::Relaxed)
+                        }
+                        xr::SessionState::FOCUSED => {
+                            self.focused_state.store(true, Ordering::Relaxed)
+                        }
+                        xr::SessionState::STOPPING => {
+                            self.running_state.store(false, Ordering::Relaxed);
+                            trace_err!(self.inner.end())?;
+                            
+                        }
+                        xr::SessionState::EXITING | xr::SessionState::LOSS_PENDING => {
+                            return Ok(OpenxrEvent::Shutdown)
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                xr::Event::ReferenceSpaceChangePending(_) => (), // todo
+                xr::Event::PerfSettingsEXT(_) => (),             // todo
+                xr::Event::VisibilityMaskChangedKHR(_) => (),    // todo
+                xr::Event::InteractionProfileChanged(_) => (),   // todo
+                xr::Event::MainSessionVisibilityChangedEXTX(_) => (), // todo
+                xr::Event::DisplayRefreshRateChangedFB(_) => (), // todo
+                _ => log::debug!("OpenXR: Unknown event"),
+            }
+        }
+
+        if !self.running_state.load(Ordering::Relaxed) {
+            thread::sleep(Duration::from_millis(5));
+            return Ok(OpenxrEvent::Idle);
+        }
+
         // This is the blocking call that performs Phase Sync
         let frame_state = trace_err!(self.frame_waiter.lock().wait())?;
 
@@ -359,7 +436,7 @@ impl OpenxrSession {
                 &[],
             ))?;
 
-            return Ok(None);
+            return Ok(OpenxrEvent::Idle);
         }
 
         let acquired_scene_swapchains = Self::acquire_views(&self.scene_swapchains);
@@ -369,7 +446,7 @@ impl OpenxrSession {
         let display_timestamp =
             Duration::from_nanos(frame_state.predicted_display_time.as_nanos() as _);
 
-        Ok(Some(OpenxrPresentationGuard {
+        Ok(OpenxrEvent::ShouldRender(OpenxrPresentationGuard {
             frame_stream_lock,
             interaction_context: &self.interaction_context,
             environment_blend_mode: self.environment_blend_mode,
@@ -395,6 +472,7 @@ impl OpenxrSession {
             left_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
             right_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
             buttons: ctx.get_scene_buttons()?,
+            is_focused: self.focused_state.load(Ordering::Relaxed),
         })
     }
 

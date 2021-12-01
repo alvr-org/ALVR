@@ -4,7 +4,7 @@ mod scene;
 mod streaming_compositor;
 mod video_decoder;
 
-use crate::openxr::{OpenxrContext, OpenxrPresentationGuard, OpenxrSession};
+use crate::openxr::{OpenxrContext, OpenxrEvent, OpenxrPresentationGuard, OpenxrSession};
 use alvr_common::{
     glam::{Quat, Vec3},
     log,
@@ -15,7 +15,7 @@ use alvr_graphics::GraphicsContext;
 use connection::VideoFrameMetadataPacket;
 use parking_lot::{Mutex, RwLock};
 use scene::Scene;
-use std::{sync::Arc, time::Duration};
+use std::{sync::Arc, thread, time::Duration};
 use streaming_compositor::StreamingCompositor;
 use video_decoder::VideoDecoder;
 use wgpu::Texture;
@@ -65,13 +65,12 @@ fn run() -> StrResult {
         if res.is_some() {
             break Ok(());
         } else {
+            thread::sleep(Duration::from_millis(500));
+
             fails_count += 1;
 
             if fails_count == MAX_SESSION_LOOP_FAILS {
-                log::error!(
-                    "session loop failed {} times. Terminating.",
-                    MAX_SESSION_LOOP_FAILS
-                );
+                log::error!("session loop failed {} times. Terminating.", fails_count);
                 break Ok(());
             }
         }
@@ -86,8 +85,10 @@ fn session_pipeline(
         Arc::clone(&xr_context),
         Arc::clone(&graphics_context),
     )?));
+    log::error!("session created");
 
     let mut scene = Scene::new(&graphics_context)?;
+    log::error!("scene created");
 
     let streaming_components = Arc::new(Mutex::new(None::<VideoStreamingComponents>));
 
@@ -98,10 +99,10 @@ fn session_pipeline(
 
     loop {
         let xr_session_rlock = xr_session.read();
-        let mut presentation_guard = if let Some(guard) = xr_session_rlock.begin_frame()? {
-            guard
-        } else {
-            continue;
+        let mut presentation_guard = match xr_session_rlock.begin_frame()? {
+            OpenxrEvent::ShouldRender(guard) => guard,
+            OpenxrEvent::Idle => continue,
+            OpenxrEvent::Shutdown => return Ok(()),
         };
 
         let maybe_stream_view_configs =

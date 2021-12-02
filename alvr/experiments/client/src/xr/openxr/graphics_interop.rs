@@ -1,4 +1,4 @@
-use super::{OpenxrContext, OpenxrSwapchain};
+use super::{OpenxrSwapchain, XrContext};
 use alvr_common::{glam::UVec2, prelude::*};
 use alvr_graphics::{
     convert::{
@@ -14,7 +14,7 @@ use std::{ffi::CStr, mem, sync::Arc};
 use wgpu::{Device, TextureFormat, TextureViewDescriptor};
 use wgpu_hal as hal;
 
-pub fn create_graphics_context(xr_context: &OpenxrContext) -> StrResult<GraphicsContext> {
+pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsContext> {
     let entry = unsafe { ash::Entry::new().unwrap() };
 
     let raw_instance = unsafe {

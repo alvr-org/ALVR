@@ -1,6 +1,6 @@
-use super::{OpenxrContext, OpenxrHandPoseInput, SceneButtons};
+use super::{convert, SceneButtons, XrContext, XrHandPoseInput};
 use crate::{
-    openxr::{convert, HandTrackingInput},
+    xr::{XrActionType, XrActionValue, XrHandTrackingInput, XrProfileDesc},
     ViewConfig,
 };
 use alvr_common::{prelude::*, MotionData};
@@ -20,25 +20,6 @@ const OCULUS_SELECT_PATHS: &[&str] = &[
 
 const MENU_ACTION_NAME: &str = "alvr_scene_menu";
 const OCULUS_MENU_PATHS: &[&str] = &["/user/hand/left/input/menu/click"];
-
-pub enum OpenxrActionType {
-    Binary,
-    Scalar,
-}
-
-pub enum OpenxrActionValue {
-    Boolean(bool),
-    Scalar(f32),
-}
-
-// Note: `tracked` and `has_haptics` should always refer to whether the profile has the
-// functionality, not if the funcionality should be enabled/disabled
-pub struct OpenxrProfileDesc {
-    pub profile: String,
-    pub button_bindings: Vec<(String, String)>,
-    pub tracked: bool,
-    pub has_haptics: bool,
-}
 
 enum OpenxrButtonAction {
     Binary(xr::Action<bool>),
@@ -75,7 +56,7 @@ pub struct OpenxrInteractionContext {
 
 impl OpenxrInteractionContext {
     fn get_hand_interaction(
-        xr_context: &OpenxrContext,
+        xr_context: &XrContext,
         session: xr::Session<xr::Vulkan>,
         action_set: &xr::ActionSet,
         hand: xr::Hand,
@@ -138,10 +119,10 @@ impl OpenxrInteractionContext {
     }
 
     pub fn new(
-        xr_context: &OpenxrContext,
+        xr_context: &XrContext,
         session: xr::Session<xr::Vulkan>,
-        stream_action_types: &[(String, OpenxrActionType)],
-        stream_profile_descs: Vec<OpenxrProfileDesc>,
+        stream_action_types: &[(String, XrActionType)],
+        stream_profile_descs: Vec<XrProfileDesc>,
         reference_space_type: TrackingSpace,
     ) -> StrResult<Self> {
         let action_set = xr_context
@@ -157,7 +138,7 @@ impl OpenxrInteractionContext {
         let mut streaming_button_actions = HashMap::new();
         for (name, action_type) in stream_action_types {
             match action_type {
-                OpenxrActionType::Binary => streaming_button_actions.insert(
+                XrActionType::Binary => streaming_button_actions.insert(
                     name.clone(),
                     OpenxrButtonAction::Binary(trace_err!(action_set.create_action(
                         name,
@@ -165,7 +146,7 @@ impl OpenxrInteractionContext {
                         &[]
                     ))?),
                 ),
-                OpenxrActionType::Scalar => streaming_button_actions.insert(
+                XrActionType::Scalar => streaming_button_actions.insert(
                     name.clone(),
                     OpenxrButtonAction::Scalar(trace_err!(action_set.create_action(
                         name,
@@ -214,7 +195,7 @@ impl OpenxrInteractionContext {
                 button_bindings.push((MENU_ACTION_NAME.to_owned(), (*path).to_owned()));
             }
 
-            profile_descs.push(OpenxrProfileDesc {
+            profile_descs.push(XrProfileDesc {
                 profile: OCULUS_PROFILE.to_owned(),
                 button_bindings,
                 tracked: true,
@@ -362,7 +343,7 @@ impl OpenxrInteractionContext {
         &self,
         hand_interaction: &HandInteractionContext,
         display_time: xr::Time,
-    ) -> StrResult<OpenxrHandPoseInput> {
+    ) -> StrResult<XrHandPoseInput> {
         let (grip_location, grip_velocity) = trace_err!(hand_interaction
             .grip_space
             .relate(&self.reference_space, display_time))?;
@@ -395,7 +376,7 @@ impl OpenxrInteractionContext {
                     })
                     .collect();
 
-                Some(HandTrackingInput {
+                Some(XrHandTrackingInput {
                     target_ray_motion,
                     skeleton_motion,
                 })
@@ -406,7 +387,7 @@ impl OpenxrInteractionContext {
             None
         };
 
-        Ok(OpenxrHandPoseInput {
+        Ok(XrHandPoseInput {
             grip_motion,
             hand_tracking_input,
         })
@@ -424,7 +405,7 @@ impl OpenxrInteractionContext {
         })
     }
 
-    pub fn get_streming_buttons(&self) -> StrResult<HashMap<String, OpenxrActionValue>> {
+    pub fn get_streming_buttons(&self) -> StrResult<HashMap<String, XrActionValue>> {
         let mut values = HashMap::new();
 
         for (name, action) in &self.streaming_button_actions {
@@ -432,7 +413,7 @@ impl OpenxrInteractionContext {
                 OpenxrButtonAction::Binary(action) => {
                     values.insert(
                         name.clone(),
-                        OpenxrActionValue::Boolean(
+                        XrActionValue::Boolean(
                             trace_err!(action.state(&self.session, xr::Path::NULL))?.current_state,
                         ),
                     );
@@ -440,7 +421,7 @@ impl OpenxrInteractionContext {
                 OpenxrButtonAction::Scalar(action) => {
                     values.insert(
                         name.clone(),
-                        OpenxrActionValue::Scalar(
+                        XrActionValue::Scalar(
                             trace_err!(action.state(&self.session, xr::Path::NULL))?.current_state,
                         ),
                     );

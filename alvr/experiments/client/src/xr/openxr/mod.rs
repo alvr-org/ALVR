@@ -4,9 +4,8 @@ mod interaction;
 
 pub use graphics_interop::create_graphics_context;
 
-use self::interaction::{
-    OpenxrActionType, OpenxrActionValue, OpenxrInteractionContext, OpenxrProfileDesc,
-};
+use self::interaction::OpenxrInteractionContext;
+use super::{XrActionType, XrActionValue, XrProfileDesc};
 use crate::ViewConfig;
 use alvr_common::{
     glam::{Quat, UVec2, Vec3},
@@ -30,13 +29,13 @@ use std::{
 };
 use wgpu::TextureView;
 
-pub struct OpenxrContext {
+pub struct XrContext {
     pub instance: xr::Instance,
     pub system: xr::SystemId,
     pub environment_blend_modes: Vec<xr::EnvironmentBlendMode>,
 }
 
-impl OpenxrContext {
+impl XrContext {
     pub fn new() -> Self {
         let entry = xr::Entry::load().unwrap();
 
@@ -93,14 +92,14 @@ pub struct OpenxrSwapchain {
     size: UVec2,
 }
 
-pub struct AcquiredOpenxrSwapchain<'a> {
+pub struct AcquiredXrSwapchain<'a> {
     handle_lock: MutexGuard<'a, xr::Swapchain<xr::Vulkan>>,
     pub texture_view: Arc<TextureView>,
     pub size: UVec2,
 }
 
 fn create_layer_views<'a>(
-    acquired_swapchains: &'a mut [AcquiredOpenxrSwapchain],
+    acquired_swapchains: &'a mut [AcquiredXrSwapchain],
     view_configs: &'a [ViewConfig],
 ) -> Vec<xr::CompositionLayerProjectionView<'a, xr::Vulkan>> {
     acquired_swapchains
@@ -143,19 +142,19 @@ fn create_layer_views<'a>(
 }
 
 // End frame and submit swapchains once dropped
-pub struct OpenxrPresentationGuard<'a> {
+pub struct XrPresentationGuard<'a> {
     frame_stream_lock: MutexGuard<'a, xr::FrameStream<xr::Vulkan>>,
     interaction_context: &'a OpenxrInteractionContext,
     environment_blend_mode: xr::EnvironmentBlendMode,
-    pub acquired_scene_swapchains: Vec<AcquiredOpenxrSwapchain<'a>>,
-    pub acquired_stream_swapchains: Vec<AcquiredOpenxrSwapchain<'a>>,
+    pub acquired_scene_swapchains: Vec<AcquiredXrSwapchain<'a>>,
+    pub acquired_stream_swapchains: Vec<AcquiredXrSwapchain<'a>>,
     pub predicted_frame_interval: Duration,
     pub display_timestamp: Duration,          // output/input
     pub scene_view_configs: Vec<ViewConfig>,  // input
     pub stream_view_configs: Vec<ViewConfig>, // input
 }
 
-impl<'a> Drop for OpenxrPresentationGuard<'a> {
+impl<'a> Drop for XrPresentationGuard<'a> {
     fn drop(&mut self) {
         let reference_space = &self.interaction_context.reference_space;
 
@@ -185,14 +184,14 @@ impl<'a> Drop for OpenxrPresentationGuard<'a> {
     }
 }
 
-pub struct HandTrackingInput {
+pub struct XrHandTrackingInput {
     pub target_ray_motion: MotionData,
     pub skeleton_motion: Vec<MotionData>,
 }
 
-pub struct OpenxrHandPoseInput {
+pub struct XrHandPoseInput {
     pub grip_motion: MotionData,
-    pub hand_tracking_input: Option<HandTrackingInput>,
+    pub hand_tracking_input: Option<XrHandTrackingInput>,
 }
 
 pub struct SceneButtons {
@@ -200,23 +199,23 @@ pub struct SceneButtons {
     pub menu: bool,
 }
 
-pub struct OpenxrSceneInput {
+pub struct XrSceneInput {
     pub view_configs: Vec<ViewConfig>,
-    pub left_pose_input: OpenxrHandPoseInput,
-    pub right_pose_input: OpenxrHandPoseInput,
+    pub left_pose_input: XrHandPoseInput,
+    pub right_pose_input: XrHandPoseInput,
     pub buttons: SceneButtons,
     pub is_focused: bool,
 }
 
-pub struct OpenxrStreamingInput {
+pub struct XrStreamingInput {
     pub view_configs: Vec<ViewConfig>,
-    pub left_pose_input: OpenxrHandPoseInput,
-    pub right_pose_input: OpenxrHandPoseInput,
-    pub button_values: HashMap<String, OpenxrActionValue>,
+    pub left_pose_input: XrHandPoseInput,
+    pub right_pose_input: XrHandPoseInput,
+    pub button_values: HashMap<String, XrActionValue>,
 }
 
-pub struct OpenxrSession {
-    xr_context: Arc<OpenxrContext>,
+pub struct XrSession {
+    xr_context: Arc<XrContext>,
     graphics_context: Arc<GraphicsContext>,
     inner: xr::Session<xr::Vulkan>,
     scene_swapchains: Vec<OpenxrSwapchain>,
@@ -230,15 +229,15 @@ pub struct OpenxrSession {
     scene_predicted_display_timestamp: Mutex<xr::Time>,
 }
 
-pub enum OpenxrEvent<'a> {
-    ShouldRender(OpenxrPresentationGuard<'a>),
+pub enum XrEvent<'a> {
+    ShouldRender(XrPresentationGuard<'a>),
     Idle,
     Shutdown,
 }
 
-impl OpenxrSession {
+impl XrSession {
     pub fn new(
-        xr_context: Arc<OpenxrContext>,
+        xr_context: Arc<XrContext>,
         graphics_context: Arc<GraphicsContext>,
     ) -> StrResult<Self> {
         let (session, frame_waiter, frame_stream) = unsafe {
@@ -317,8 +316,8 @@ impl OpenxrSession {
     pub fn update_for_stream(
         &mut self,
         view_size: UVec2,
-        action_types: &[(String, OpenxrActionType)],
-        profile_descs: Vec<OpenxrProfileDesc>,
+        action_types: &[(String, XrActionType)],
+        profile_descs: Vec<XrProfileDesc>,
         reference_space_type: TrackingSpace,
         environment_blend_mode: xr::EnvironmentBlendMode,
     ) -> StrResult {
@@ -347,7 +346,7 @@ impl OpenxrSession {
         Ok(())
     }
 
-    fn acquire_views(swapchains: &[OpenxrSwapchain]) -> Vec<AcquiredOpenxrSwapchain> {
+    fn acquire_views(swapchains: &[OpenxrSwapchain]) -> Vec<AcquiredXrSwapchain> {
         swapchains
             .iter()
             .map(|swapchain| {
@@ -356,7 +355,7 @@ impl OpenxrSession {
                 let index = handle_lock.acquire_image().unwrap();
                 handle_lock.wait_image(xr::Duration::INFINITE).unwrap();
 
-                AcquiredOpenxrSwapchain {
+                AcquiredXrSwapchain {
                     handle_lock,
                     size: swapchain.size,
                     texture_view: Arc::clone(&swapchain.views[index as usize]),
@@ -365,7 +364,7 @@ impl OpenxrSession {
             .collect()
     }
 
-    pub fn begin_frame(&self) -> StrResult<OpenxrEvent> {
+    pub fn begin_frame(&self) -> StrResult<XrEvent> {
         let mut event_storage = xr::EventDataBuffer::new();
         while let Some(event) = self
             .xr_context
@@ -377,7 +376,7 @@ impl OpenxrSession {
                 xr::Event::EventsLost(event) => {
                     return fmt_e!("Lost {} events", event.lost_event_count())
                 }
-                xr::Event::InstanceLossPending(_) => return Ok(OpenxrEvent::Shutdown),
+                xr::Event::InstanceLossPending(_) => return Ok(XrEvent::Shutdown),
                 xr::Event::SessionStateChanged(event) => {
                     log::error!("Enter OpenXR session state: {:?}", event.state());
 
@@ -399,10 +398,9 @@ impl OpenxrSession {
                         xr::SessionState::STOPPING => {
                             self.running_state.store(false, Ordering::Relaxed);
                             trace_err!(self.inner.end())?;
-                            
                         }
                         xr::SessionState::EXITING | xr::SessionState::LOSS_PENDING => {
-                            return Ok(OpenxrEvent::Shutdown)
+                            return Ok(XrEvent::Shutdown)
                         }
                         _ => unreachable!(),
                     }
@@ -419,7 +417,7 @@ impl OpenxrSession {
 
         if !self.running_state.load(Ordering::Relaxed) {
             thread::sleep(Duration::from_millis(5));
-            return Ok(OpenxrEvent::Idle);
+            return Ok(XrEvent::Idle);
         }
 
         // This is the blocking call that performs Phase Sync
@@ -436,7 +434,7 @@ impl OpenxrSession {
                 &[],
             ))?;
 
-            return Ok(OpenxrEvent::Idle);
+            return Ok(XrEvent::Idle);
         }
 
         let acquired_scene_swapchains = Self::acquire_views(&self.scene_swapchains);
@@ -446,7 +444,7 @@ impl OpenxrSession {
         let display_timestamp =
             Duration::from_nanos(frame_state.predicted_display_time.as_nanos() as _);
 
-        Ok(OpenxrEvent::ShouldRender(OpenxrPresentationGuard {
+        Ok(XrEvent::ShouldRender(XrPresentationGuard {
             frame_stream_lock,
             interaction_context: &self.interaction_context,
             environment_blend_mode: self.environment_blend_mode,
@@ -461,13 +459,13 @@ impl OpenxrSession {
         }))
     }
 
-    pub fn get_scene_input(&self) -> StrResult<OpenxrSceneInput> {
+    pub fn get_scene_input(&self) -> StrResult<XrSceneInput> {
         let display_time = *self.scene_predicted_display_timestamp.lock();
         let ctx = &self.interaction_context;
 
         ctx.sync_input()?;
 
-        Ok(OpenxrSceneInput {
+        Ok(XrSceneInput {
             view_configs: ctx.get_views(xr::ViewConfigurationType::PRIMARY_STEREO, display_time)?,
             left_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
             right_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
@@ -476,16 +474,13 @@ impl OpenxrSession {
         })
     }
 
-    pub fn get_streaming_input(
-        &self,
-        display_timestamp: Duration,
-    ) -> StrResult<OpenxrStreamingInput> {
+    pub fn get_streaming_input(&self, display_timestamp: Duration) -> StrResult<XrStreamingInput> {
         let display_time = xr::Time::from_nanos(display_timestamp.as_nanos() as _);
         let ctx = &self.interaction_context;
 
         ctx.sync_input()?;
 
-        Ok(OpenxrStreamingInput {
+        Ok(XrStreamingInput {
             view_configs: ctx.get_views(xr::ViewConfigurationType::PRIMARY_STEREO, display_time)?,
             left_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
             right_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,

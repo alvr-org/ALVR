@@ -1,10 +1,10 @@
 mod connection;
-mod openxr;
 mod scene;
 mod streaming_compositor;
 mod video_decoder;
+mod xr;
 
-use crate::openxr::{OpenxrContext, OpenxrEvent, OpenxrPresentationGuard, OpenxrSession};
+use crate::xr::{XrContext, XrEvent, XrPresentationGuard, XrSession};
 use alvr_common::{
     glam::{Quat, Vec3},
     log,
@@ -51,9 +51,9 @@ pub fn main() {
 }
 
 fn run() -> StrResult {
-    let xr_context = Arc::new(OpenxrContext::new());
+    let xr_context = Arc::new(XrContext::new());
 
-    let graphics_context = Arc::new(openxr::create_graphics_context(&xr_context)?);
+    let graphics_context = Arc::new(xr::create_graphics_context(&xr_context)?);
 
     let mut fails_count = 0;
     loop {
@@ -78,10 +78,10 @@ fn run() -> StrResult {
 }
 
 fn session_pipeline(
-    xr_context: Arc<OpenxrContext>,
+    xr_context: Arc<XrContext>,
     graphics_context: Arc<GraphicsContext>,
 ) -> StrResult {
-    let xr_session = Arc::new(RwLock::new(OpenxrSession::new(
+    let xr_session = Arc::new(RwLock::new(XrSession::new(
         Arc::clone(&xr_context),
         Arc::clone(&graphics_context),
     )?));
@@ -100,9 +100,9 @@ fn session_pipeline(
     loop {
         let xr_session_rlock = xr_session.read();
         let mut presentation_guard = match xr_session_rlock.begin_frame()? {
-            OpenxrEvent::ShouldRender(guard) => guard,
-            OpenxrEvent::Idle => continue,
-            OpenxrEvent::Shutdown => return Ok(()),
+            XrEvent::ShouldRender(guard) => guard,
+            XrEvent::Idle => continue,
+            XrEvent::Shutdown => return Ok(()),
         };
 
         let maybe_stream_view_configs =
@@ -141,7 +141,7 @@ fn session_pipeline(
 // Returns true if stream is updated for the current frame
 fn video_streaming_pipeline(
     streaming_components: &Arc<Mutex<Option<VideoStreamingComponents>>>,
-    presentation_guard: &mut OpenxrPresentationGuard,
+    presentation_guard: &mut XrPresentationGuard,
 ) -> Option<Vec<ViewConfig>> {
     if let Some(streaming_components) = streaming_components.lock().as_ref() {
         let decoder_target = streaming_components.compositor.input_texture();

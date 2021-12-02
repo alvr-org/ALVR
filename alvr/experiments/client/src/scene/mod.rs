@@ -1,5 +1,5 @@
 use crate::{
-    openxr::{OpenxrHandPoseInput, SceneButtons},
+    xr::{SceneButtons, XrHandPoseInput},
     ViewConfig,
 };
 use alvr_common::{
@@ -99,8 +99,8 @@ impl Scene {
 
     pub fn update(
         &mut self,
-        left_pose_input: OpenxrHandPoseInput,
-        right_pose_input: OpenxrHandPoseInput,
+        left_pose_input: XrHandPoseInput,
+        right_pose_input: XrHandPoseInput,
         buttons: SceneButtons,
         stream_updated: bool,
     ) {
@@ -134,7 +134,6 @@ impl Scene {
         }
 
         self.graphics_context.queue.submit(Some(encoder.finish()));
-
 
         pollster::block_on(self.graphics_context.queue.on_submitted_work_done());
 

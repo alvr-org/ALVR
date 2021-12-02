@@ -10,7 +10,7 @@ use alvr_graphics::{
 use ash::vk::{self, Handle};
 use openxr as xr;
 use parking_lot::Mutex;
-use std::{mem, sync::Arc};
+use std::{ffi::CStr, mem, sync::Arc};
 use wgpu::{Device, TextureFormat, TextureViewDescriptor};
 use wgpu_hal as hal;
 
@@ -23,6 +23,9 @@ pub fn create_graphics_context(xr_context: &OpenxrContext) -> StrResult<Graphics
                 .iter()
                 .map(|x| x.as_ptr())
                 .collect::<Vec<_>>();
+        let layers = vec![CStr::from_bytes_with_nul(b"VK_LAYER_KHRONOS_validation\0").unwrap()];
+        let layers_ptrs = layers.iter().map(|x| x.as_ptr()).collect::<Vec<_>>();
+
         let raw_instance_ptr =
             trace_err!(trace_err!(xr_context.instance.create_vulkan_instance(
                 xr_context.system,
@@ -31,8 +34,8 @@ pub fn create_graphics_context(xr_context: &OpenxrContext) -> StrResult<Graphics
                     .application_info(
                         &vk::ApplicationInfo::builder().api_version(TARGET_VULKAN_VERSION),
                     )
-                    .enabled_extension_names(&extensions_ptrs) as *const _
-                    as *const _,
+                    .enabled_extension_names(&extensions_ptrs)
+                    .enabled_layer_names(&layers_ptrs) as *const _ as *const _,
             ))?)?;
         ash::Instance::load(
             entry.static_fn(),
@@ -117,12 +120,15 @@ pub fn create_swapchain(
     size: UVec2,
 ) -> OpenxrSwapchain {
     const FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
-    const USAGE: xr::SwapchainUsageFlags = xr::SwapchainUsageFlags::COLOR_ATTACHMENT;
+
+    let usage = xr::SwapchainUsageFlags::COLOR_ATTACHMENT | xr::SwapchainUsageFlags::SAMPLED;
+    // This corresponds to USAGE
+    let hal_usage = hal::TextureUses::COLOR_TARGET | hal::TextureUses::RESOURCE;
 
     let swapchain = session
         .create_swapchain(&xr::SwapchainCreateInfo {
             create_flags: xr::SwapchainCreateFlags::EMPTY,
-            usage_flags: USAGE,
+            usage_flags: usage,
             format: FORMAT.as_raw() as _,
             sample_count: 1,
             width: size.x,
@@ -144,11 +150,11 @@ pub fn create_swapchain(
                 .iter()
                 .map(|raw_image| vk::Image::from_raw(*raw_image))
                 .collect(),
-            hal_usage: hal::TextureUses::COLOR_TARGET,
+            hal_usage,
             drop_guard: Some(Arc::clone(&swapchain) as _),
         },
         SwapchainCreateInfo {
-            usage: USAGE,
+            usage,
             format: TextureFormat::Rgba8UnormSrgb,
             sample_count: 1,
             size,

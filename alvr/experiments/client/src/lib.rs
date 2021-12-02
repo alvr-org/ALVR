@@ -87,7 +87,7 @@ fn session_pipeline(
     )?));
     log::error!("session created");
 
-    let mut scene = Scene::new(&graphics_context)?;
+    let mut scene = Scene::new(Arc::clone(&graphics_context))?;
     log::error!("scene created");
 
     let streaming_components = Arc::new(Mutex::new(None::<VideoStreamingComponents>));

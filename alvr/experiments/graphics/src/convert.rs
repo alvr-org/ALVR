@@ -43,11 +43,16 @@ pub fn create_vulkan_instance(
         )
     });
 
+    let layers = vec![CStr::from_bytes_with_nul(b"VK_LAYER_KHRONOS_validation\0").unwrap()];
+    let layers_ptrs = layers.iter().map(|x| x.as_ptr()).collect::<Vec<_>>();
+
     unsafe {
         trace_err!(entry.create_instance(
             &vk::InstanceCreateInfo {
                 enabled_extension_count: extensions_ptrs.len() as _,
                 pp_enabled_extension_names: extensions_ptrs.as_ptr(),
+                enabled_layer_count: layers_ptrs.len() as _,
+                pp_enabled_layer_names: layers_ptrs.as_ptr(),
                 ..*info
             },
             None,
@@ -345,8 +350,11 @@ pub fn create_texture_set(
     info: SwapchainCreateInfo,
 ) -> Vec<Texture> {
     let wgpu_usage = {
-        let mut wgpu_usage = TextureUsages::TEXTURE_BINDING; // Always required
+        let mut wgpu_usage = TextureUsages::empty();
 
+        if info.usage.contains(SwapchainUsageFlags::SAMPLED) {
+            wgpu_usage |= TextureUsages::TEXTURE_BINDING;
+        }
         if info.usage.contains(SwapchainUsageFlags::COLOR_ATTACHMENT) {
             wgpu_usage |= TextureUsages::RENDER_ATTACHMENT;
         }
@@ -365,7 +373,6 @@ pub fn create_texture_set(
 
         // Unused flags:
         // * UNORDERED_ACCESS: No-op on vulkan
-        // * SAMPLED: Already required
         // * MUTABLE_FORMAT: wgpu does not support this, but it should be no-op for the internal
         //   Vulkan images (todo: check)
         // * INPUT_ATTACHMENT: Always enabled on wgpu (todo: check)

@@ -9,7 +9,7 @@ mkShell {
     alsaLib
     openssl
     glib
-    (enableDebugging (ffmpeg-full.override { nonfreeLicensing = true; }))
+    (ffmpeg-full.override { nonfreeLicensing = true; })
     cairo
     pango
     atk
@@ -26,7 +26,7 @@ mkShell {
       ];
     }))
     vulkan-headers
-    (enableDebugging vulkan-loader)
+    vulkan-loader
     vulkan-validation-layers
     xorg.libX11
     xorg.libXrandr

@@ -14,7 +14,7 @@ use wgpu::{
     TextureFormat, TextureView, VertexState,
 };
 
-pub const TARGET_FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
+pub const TARGET_FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
 
 pub struct GraphicsContext {
     pub instance: Arc<Instance>,
@@ -57,25 +57,25 @@ pub struct BindingDesc<'a> {
 pub fn create_default_render_pipeline(
     label: &str,
     device: &Device,
-    spirv_fragment_shader: &[u8],
+    fragment_shader: &str,
     bindings: Vec<BindingDesc>,
     push_constants_size: usize,
 ) -> (RenderPipeline, BindGroup) {
     let quad_shader = quad_shader(device);
 
-    let len = spirv_fragment_shader.len() / mem::size_of::<u32>();
-    let mut buffer: Vec<u32> = vec![0; len];
-    unsafe {
-        ptr::copy_nonoverlapping(
-            spirv_fragment_shader.as_ptr() as _,
-            buffer.as_mut_ptr(),
-            len,
-        )
-    };
+    // let len = spirv_fragment_shader.len() / mem::size_of::<u32>();
+    // let mut buffer: Vec<u32> = vec![0; len];
+    // unsafe {
+    //     ptr::copy_nonoverlapping(
+    //         spirv_fragment_shader.as_ptr() as _,
+    //         buffer.as_mut_ptr(),
+    //         len,
+    //     )
+    // };
 
     let fragment_shader = device.create_shader_module(&ShaderModuleDescriptor {
-        label: None,
-        source: ShaderSource::SpirV(buffer.into()),
+        label: Some(label),
+        source: ShaderSource::Wgsl(fragment_shader.into()),
     });
 
     let layout_entries = bindings

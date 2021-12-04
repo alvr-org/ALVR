@@ -12,7 +12,6 @@ alvr_session = { path = "../../session" }
 
 ash = "0.33"
 bytemuck = "1"
-naga = "0.7"
 openxr-sys = { git = "https://github.com/Ralith/openxrs" }
 wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4", features = [
     "spirv",
@@ -20,7 +19,3 @@ wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e
 wgpu-hal = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4", features = [
     "vulkan",
 ] }
-
-
-[build-dependencies]
-shaderc = "0.7"

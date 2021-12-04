@@ -93,17 +93,15 @@ fn session_pipeline(
 
     let streaming_components = Arc::new(Mutex::new(None::<VideoStreamingComponents>));
 
-    log::error!("create compositor");
     let compositor =
         StreamingCompositor::new(Arc::clone(&graphics_context), UVec2::new(100, 100), 1);
-    log::error!("compositor created");
 
-    let video_decoder = VideoDecoder::new(
-        Arc::clone(&graphics_context),
-        CodecType::H264,
-        UVec2::new(200, 100),
-        &[],
-    )?;
+    // let video_decoder = VideoDecoder::new(
+    //     Arc::clone(&graphics_context),
+    //     CodecType::H264,
+    //     UVec2::new(200, 100),
+    //     &[],
+    // )?;
 
     // todo: init async runtime and sockets
 

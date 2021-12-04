@@ -4,12 +4,12 @@ use crate::{BindingDesc, TARGET_FORMAT};
 use alvr_common::{glam::UVec2, log};
 use wgpu::{
     BindGroup, BindingResource, BindingType, CommandEncoder, Device, Extent3d, RenderPipeline,
-    StorageTextureAccess, Texture, TextureDescriptor, TextureDimension, TextureFormat,
-    TextureUsages, TextureView, TextureViewDescriptor, TextureViewDimension,
+    Texture, TextureDescriptor, TextureDimension, TextureSampleType, TextureUsages, TextureView,
+    TextureViewDescriptor, TextureViewDimension,
 };
 
-const VARS_COUNT: usize = 9;
-const VARS_SIZE: usize = VARS_COUNT * mem::size_of::<i32>();
+const VARS_COUNT_ALIGNED: usize = 10;
+const VARS_SIZE: usize = VARS_COUNT_ALIGNED * mem::size_of::<i32>();
 
 pub struct SlicingLayout {
     slice_size: UVec2,
@@ -89,7 +89,7 @@ impl SlicingPass {
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: TARGET_FORMAT,
-            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::STORAGE_BINDING,
+            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
         });
 
         let input_views = (0..input_slices_count)
@@ -104,14 +104,17 @@ impl SlicingPass {
         let (pipeline, bind_group) = super::create_default_render_pipeline(
             "slicing",
             device,
-            include_bytes!(concat!(env!("OUT_DIR"), "/slicing.spv")),
+            include_str!("../resources/slicing.wgsl"),
             vec![BindingDesc {
                 index: 0,
-                binding_type: BindingType::StorageTexture {
-                    access: StorageTextureAccess::ReadOnly,
-                    format: TARGET_FORMAT,
+                binding_type: BindingType::Texture {
+                    sample_type: TextureSampleType::Float { filterable: false },
                     view_dimension: TextureViewDimension::D2Array,
+                    multisampled: false,
                 },
+                // access: StorageTextureAccess::ReadOnly,
+                // format: TARGET_FORMAT,
+                // view_dimension: TextureViewDimension::D2Array,
                 array_size: Some(input_slices_count),
                 resource: BindingResource::TextureViewArray(
                     &input_views.iter().collect::<Vec<_>>(), // &[T] -> &[&T]
@@ -155,10 +158,11 @@ impl SlicingPass {
     }
 
     pub fn draw(&self, encoder: &mut CommandEncoder, slice_index: usize, output: &TextureView) {
-        let data: [i32; VARS_COUNT] = [
+        let data: [i32; VARS_COUNT_ALIGNED] = [
             self.input_slicing_layout.slice_size.x as i32,
             self.input_slicing_layout.slice_size.y as i32,
             self.input_slicing_layout.columns as i32,
+            0,
             self.combined_size.x as i32,
             self.combined_size.y as i32,
             (self.output_slicing_layout.slice_size.x
